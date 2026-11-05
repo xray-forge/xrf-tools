@@ -8,7 +8,7 @@ import {
 import { isRecord, Nullable } from "@xrf/types";
 
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
-import { toRenderFeatureChoice } from "@/core/render/lib/settings/choice/render-feature-choice";
+import { isSameRenderFeature, toRenderFeatureChoice } from "@/core/render/lib/settings/choice/render-feature-choice";
 import { IRenderFeatureOverrides } from "@/core/render/lib/settings/choice/render-feature-overrides";
 import {
   IRenderFeatureSettings,
@@ -446,6 +446,27 @@ export const LEVEL_FEATURE_TOGGLES_ON: Readonly<TLevelFeatureToggles> = {
   isShadowed: true,
   isWaterVisible: true,
 };
+
+/**
+ * @param key - A feature group the view sets part of.
+ * @param settings - What the renderer's settings set, for every viewport.
+ * @param view - What the view sets over them.
+ * @returns Whether what the view sets draws the group otherwise than the settings do, which its reset would undo; a
+ *   value set to what the settings say already changes nothing.
+ */
+export function isLevelFeatureSet<K extends keyof ILevelFeatureOptions & keyof IRenderFeatureSettings>(
+  key: K,
+  settings: IRenderFeatureSettings,
+  view: ILevelFeatureOptions
+): boolean {
+  const unset: ILevelFeatureOptions = { ...view, [key]: toLevelFeatureOptions(null)[key] };
+
+  return !isSameRenderFeature(
+    key,
+    toLevelRendererFeatures(settings, view, LEVEL_FEATURE_TOGGLES_ON)[key],
+    toLevelRendererFeatures(settings, unset, LEVEL_FEATURE_TOGGLES_ON)[key]
+  );
+}
 
 /**
  * @param settings - What the renderer's settings set, for every viewport.

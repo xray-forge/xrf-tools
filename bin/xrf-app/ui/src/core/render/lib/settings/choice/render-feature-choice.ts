@@ -75,9 +75,21 @@ export function isRenderFeatureCustom(
   preset: ERenderPreset,
   group: keyof IRenderFeatureSettings
 ): boolean {
-  const node: TSchemaNode = (SCHEMA as { readonly [key: string]: TSchemaNode })[group];
+  return !isSameRenderFeature(group, features[group], RENDER_PRESETS[preset][group]);
+}
 
-  return !isSame(node, features[group], RENDER_PRESETS[preset][group]);
+/**
+ * @param group - One feature group.
+ * @param a - The group as one source draws it.
+ * @param b - The group as another does.
+ * @returns Whether the two draw alike, setting by setting as the schema compares them.
+ */
+export function isSameRenderFeature<K extends keyof IRenderFeatureSettings>(
+  group: K,
+  a: IRenderFeatureSettings[K],
+  b: IRenderFeatureSettings[K]
+): boolean {
+  return isSame((SCHEMA as { readonly [key: string]: TSchemaNode })[group], a, b);
 }
 
 /**

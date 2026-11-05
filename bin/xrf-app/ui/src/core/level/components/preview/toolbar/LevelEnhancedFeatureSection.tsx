@@ -1,9 +1,11 @@
+import { Optional } from "@xrf/types";
 import { EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { LEVEL_SETTINGS_RESET_LABEL } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
+import { useLevelFeatureReset } from "@/core/level/components/preview/toolbar/use-level-feature-reset";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import {
   ILevelEnhancedFeature,
@@ -30,7 +32,8 @@ export function LevelEnhancedFeatureSection<K extends TLevelEnhancedFeatureKey>(
   feature,
 }: ILevelEnhancedFeatureSectionProps<K>): ReactElement {
   const { settings, features, drawn } = useLevelRenderFeatures();
-  const { set, reset, isSet } = useLevelFeatureOverride(feature);
+  const { set } = useLevelFeatureOverride(feature);
+  const onReset: Optional<() => void> = useLevelFeatureReset(feature);
 
   const enhanced: ILevelEnhancedFeature<K> = LEVEL_ENHANCED_FEATURES[feature];
   const value: IRenderFeatureSettings[K] = toLevelModeFeature(feature, settings, features);
@@ -47,7 +50,7 @@ export function LevelEnhancedFeatureSection<K extends TLevelEnhancedFeatureKey>(
       isOn={isEnhanced}
       resetLabel={LEVEL_SETTINGS_RESET_LABEL}
       onToggle={() => set({ mode: isEnhanced ? "engine" : "enhanced" } as ILevelFeatureOptions[K])}
-      onReset={isSet ? reset : undefined}
+      onReset={onReset}
     >
       <RenderSettingEntries
         settings={enhanced.settings}

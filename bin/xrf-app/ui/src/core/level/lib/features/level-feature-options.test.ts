@@ -20,6 +20,7 @@ import { mockLevelFeatureOptions } from "@/core/level/fixtures/level.mocks";
 import {
   describeLevelFeatureToggle,
   ILevelFeatureOptions,
+  isLevelFeatureSet,
   LEVEL_ANTIALIASING_MODES,
   TLevelFeatureKey,
   toLevelFeatureOptions,
@@ -48,6 +49,22 @@ const VIEW: ILevelFeatureOptions = {
 const KEYS: ReadonlyArray<TLevelFeatureKey> = ["ambientOcclusion", "grass", "lights", "shadows"];
 
 describe("level feature options", () => {
+  it("counts a group as set only where what the view sets draws it otherwise than the settings", () => {
+    const view: ILevelFeatureOptions = mockLevelFeatureOptions();
+
+    expect(isLevelFeatureSet("parallax", SETTINGS, view)).toBe(false);
+    expect(isLevelFeatureSet("parallax", SETTINGS, { ...view, parallax: { steps: SETTINGS.parallax.steps } })).toBe(
+      false
+    );
+    expect(isLevelFeatureSet("parallax", SETTINGS, { ...view, parallax: { steps: SETTINGS.parallax.steps + 1 } })).toBe(
+      true
+    );
+    expect(isLevelFeatureSet("shadows", SETTINGS, { ...view, shadows: { cascades: SETTINGS.shadows.cascades } })).toBe(
+      false
+    );
+    expect(isLevelFeatureSet("shadows", SETTINGS, VIEW)).toBe(true);
+  });
+
   it("follows the settings by default", () => {
     expect(toLevelRendererAntialiasing(ERenderAntialiasing.SMAA, mockLevelFeatureOptions(), true)).toBe(
       ERenderAntialiasing.SMAA
