@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, jest } from "@jest/globals";
 
+import { GO_TO_LEVEL_COORDINATES_KEYBIND_COMMAND } from "@/core/level/commands";
 import { mockLevelViewContainer } from "@/core/level/fixtures/level-container";
 import { EToolId } from "@/core/routing/tool";
 import { EMenuEntryKind, IMenuContribution, isSameMenuSection, TMenuEntry } from "@/core/shell/menu/lib";
@@ -11,7 +12,7 @@ import { LEVEL_VIEWER_ACTIONS_MENU } from "@/tools/level-viewer/menus";
 import { LevelViewerRecordingService } from "@/tools/level-viewer/services/level-viewer-recording";
 import { LevelViewerSnapshotService } from "@/tools/level-viewer/services/level-viewer-snapshot";
 
-function renderCaptureRows(): Array<Array<string>> {
+function renderActions(): ReadonlyArray<IMenuContribution> {
   const { container } = mockLevelViewContainer([
     ...mockToolScope(EToolId.LEVEL_VIEWER),
     LevelViewerRecordingService,
@@ -21,10 +22,13 @@ function renderCaptureRows(): Array<Array<string>> {
   // The tool open is read off the route, which is what keys what it publishes.
   renderWithProviders(<LevelViewerActionsMenu />, { container, route: "/level-viewer" });
 
-  const [contribution] = container
-    .get(ShellContributionsService)
-    .menus.get(EToolId.LEVEL_VIEWER)
-    .filter((it: IMenuContribution) => isSameMenuSection(it.section, LEVEL_VIEWER_ACTIONS_MENU.sections.capture));
+  return container.get(ShellContributionsService).menus.get(EToolId.LEVEL_VIEWER);
+}
+
+function renderCaptureRows(): Array<Array<string>> {
+  const [contribution] = renderActions().filter((it: IMenuContribution) =>
+    isSameMenuSection(it.section, LEVEL_VIEWER_ACTIONS_MENU.sections.capture)
+  );
   const [capture] = contribution?.entries ?? [];
 
   if (capture?.kind !== EMenuEntryKind.SUBMENU) {
@@ -47,6 +51,16 @@ describe("LevelViewerActionsMenu", () => {
     expect(renderCaptureRows()).toEqual([
       ["Take screenshot", "Record"],
       ["Capture map…", "Capture cubemap…"],
+    ]);
+  });
+
+  it("offers to go to coordinates after the captures, as its own section", () => {
+    const [camera] = renderActions().filter((it: IMenuContribution) =>
+      isSameMenuSection(it.section, LEVEL_VIEWER_ACTIONS_MENU.sections.camera)
+    );
+
+    expect(camera?.entries).toEqual([
+      { kind: EMenuEntryKind.COMMAND, command: GO_TO_LEVEL_COORDINATES_KEYBIND_COMMAND },
     ]);
   });
 

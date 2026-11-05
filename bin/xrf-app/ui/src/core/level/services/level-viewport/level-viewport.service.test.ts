@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { Container } from "@wirestate/core";
 
 import { KeybindCommandsService } from "@/core/commands";
-import { CLEAR_LEVEL_SELECTION_KEYBIND_COMMAND } from "@/core/level/commands";
+import { CLEAR_LEVEL_SELECTION_KEYBIND_COMMAND, GO_TO_LEVEL_COORDINATES_KEYBIND_COMMAND } from "@/core/level/commands";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { ELevelPick } from "@/core/level/lib/pick/level-pick";
 import { LevelViewportService } from "@/core/level/services/level-viewport/level-viewport.service";
@@ -56,6 +56,24 @@ describe("LevelViewportService", () => {
     service.noteSceneFocused(true);
     service.clearPicked();
     expect(service.picked).toBeNull();
+  });
+
+  // The field starts at where the camera stands, so it opens only once the viewport has said, and a closed level shuts it.
+  it("opens the go-to field once the camera has reported, and shuts it with the level", () => {
+    const container: Container = mockContainer([LevelViewportService]).provision();
+    const commandsService: KeybindCommandsService = container.get(KeybindCommandsService);
+    const service: LevelViewportService = container.get(LevelViewportService);
+
+    expect(commandsService.isAvailable(GO_TO_LEVEL_COORDINATES_KEYBIND_COMMAND)).toBe(false);
+
+    service.noteCamera(camera());
+    expect(commandsService.isAvailable(GO_TO_LEVEL_COORDINATES_KEYBIND_COMMAND)).toBe(true);
+
+    expect(commandsService.execute(GO_TO_LEVEL_COORDINATES_KEYBIND_COMMAND)).toBe(true);
+    expect(service.isGoingTo).toBe(true);
+
+    service.clear();
+    expect(service.isGoingTo).toBe(false);
   });
 
   // A closed viewer showing the last frame of the level before it is worse than showing nothing: it reads as a level

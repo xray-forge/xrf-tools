@@ -12,11 +12,11 @@ export const LEVEL_VIEWER_VIEW_MENU: IMenu<"frame" | "objects"> = defineMenu({
   sections: ["frame", "objects"],
 });
 
-/** What the level viewer does with the open level, a submenu a kind: Capture ▸ first. */
-export const LEVEL_VIEWER_ACTIONS_MENU: IMenu<"capture"> = defineMenu({
+/** What the level viewer does with the open level: Capture ▸ first, then where the camera goes. */
+export const LEVEL_VIEWER_ACTIONS_MENU: IMenu<"capture" | "camera"> = defineMenu({
   id: "level-viewer/actions",
   label: "Actions",
-  sections: ["capture"],
+  sections: ["capture", "camera"],
 });
 
 /** What the level viewer adds to File: the view written to a file and read back. */

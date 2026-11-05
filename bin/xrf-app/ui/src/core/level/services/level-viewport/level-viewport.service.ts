@@ -7,6 +7,7 @@ import { Nullable } from "@xrf/types";
 import { KeybindCommand } from "@/core/commands";
 import {
   CLEAR_LEVEL_SELECTION_KEYBIND_COMMAND,
+  GO_TO_LEVEL_COORDINATES_KEYBIND_COMMAND,
   HIDE_LEVEL_SELECTION_KEYBIND_COMMAND,
   REVEAL_LEVEL_OBJECTS_KEYBIND_COMMAND,
 } from "@/core/level/commands";
@@ -64,6 +65,10 @@ export class LevelViewportService {
   /** Whether the scene has the keyboard, so keys meant for it act on what it shows rather than on a panel's. */
   @RefObservable()
   public isSceneFocused: boolean = false;
+
+  /** Whether the camera readout stands open as the field coordinates are typed or pasted into, to go to them. */
+  @RefObservable()
+  public isGoingTo: boolean = false;
 
   /** How far the renderer has read the open level and put it on the GPU, or null until it says. */
   @RefObservable()
@@ -232,6 +237,21 @@ export class LevelViewportService {
     this.hidden = [];
   }
 
+  /** Opens the field to go to coordinates in, once the viewport has said where its camera stands. */
+  @KeybindCommand(GO_TO_LEVEL_COORDINATES_KEYBIND_COMMAND, {
+    isEnabled: (service: LevelViewportService) => service.camera !== null,
+  })
+  @BoundAction()
+  public openGoTo(): void {
+    this.isGoingTo = true;
+  }
+
+  /** Closes the field to go to coordinates in, gone there or not. */
+  @BoundAction()
+  public closeGoTo(): void {
+    this.isGoingTo = false;
+  }
+
   /**
    * @param camera - Where the camera is now, in the level's own coordinates.
    */
@@ -240,7 +260,10 @@ export class LevelViewportService {
     this.camera = camera;
   }
 
-  /** Forgets the open level's telemetry, selection, hidden and hovered objects, so a closed viewer reports nothing. */
+  /**
+   * Forgets the open level's telemetry, selection, hidden and hovered objects and an open go-to field, so a closed viewer
+   * reports nothing.
+   */
   @BoundAction()
   public clear(): void {
     this.load = null;
@@ -250,6 +273,7 @@ export class LevelViewportService {
     this.hovered = null;
     this.isFocusPicking = false;
     this.isSceneFocused = false;
+    this.isGoingTo = false;
   }
 
   @OnDeactivation()

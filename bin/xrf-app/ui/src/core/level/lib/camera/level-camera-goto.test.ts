@@ -3,13 +3,11 @@ import { toXrayHeading, toXraySpace } from "@xrf/math";
 
 import { formatLevelFacing, formatLevelPosition, ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import {
+  formatLevelGoTo,
   ILevelGoTo,
   isLevelGoTo,
-  isLevelGoToText,
   parseLevelGoTo,
-  parseLevelGoToTexts,
   toLevelGoTo,
-  toLevelGoToTexts,
   toLevelGoToViewpoint,
   toRoundedLevelGoTo,
 } from "@/core/level/lib/camera/level-camera-goto";
@@ -53,6 +51,18 @@ describe("parseLevelGoTo", () => {
     expect(parseLevelGoTo("y 12", { ...HERE, x: 5 })).toEqual({ ...HERE, x: 5, y: 12 });
     expect(parseLevelGoTo("somewhere", HERE)).toBeNull();
   });
+
+  // A config writes a position as bare numbers, `position = -394.9, 4.6, 167.7`, in the readout's own order.
+  it("reads bare numbers in the readout's order, keeping what they leave out", () => {
+    expect(parseLevelGoTo("position = -394.9, 4.6, 167.7", { ...HERE, heading: 30 })).toEqual({
+      heading: 30,
+      pitch: 0,
+      x: -394.9,
+      y: 4.6,
+      z: 167.7,
+    });
+    expect(parseLevelGoTo("1 2 3 90 -10 77", HERE)).toEqual({ heading: 90, pitch: -10, x: 1, y: 2, z: 3 });
+  });
 });
 
 describe("toLevelGoToViewpoint", () => {
@@ -83,26 +93,18 @@ function toLevelGoToCameraAngles(goTo: ILevelGoTo): Pick<ILevelCamera, "heading"
   return { heading: (goTo.heading * Math.PI) / 180, pitch: (goTo.pitch * Math.PI) / 180 };
 }
 
-describe("parseLevelGoToTexts", () => {
-  it("reads back what toLevelGoToTexts shows, a decimal each", () => {
+describe("formatLevelGoTo", () => {
+  it("states a place as the camera readout does, which parseLevelGoTo reads back to a decimal", () => {
     const goTo: ILevelGoTo = { heading: 102.24, pitch: -21.66, x: -394.92, y: 4.6, z: 167.7 };
+    const camera: ILevelCamera = { ...toLevelGoToCameraAngles(goTo), position: { x: goTo.x, y: goTo.y, z: goTo.z } };
 
-    expect(toLevelGoToTexts(goTo)).toEqual({ heading: "102.2", pitch: "-21.7", x: "-394.9", y: "4.6", z: "167.7" });
-    expect(parseLevelGoToTexts(toLevelGoToTexts(goTo))).toEqual({
+    expect(formatLevelGoTo(goTo)).toBe(`${formatLevelPosition(camera)} ${formatLevelFacing(camera)}`);
+    expect(parseLevelGoTo(formatLevelGoTo(goTo), HERE)).toEqual({
       heading: 102.2,
       pitch: -21.7,
       x: -394.9,
       y: 4.6,
       z: 167.7,
     });
-  });
-
-  it("reads nothing while a value is empty or not a number", () => {
-    const texts: Record<keyof ILevelGoTo, string> = { heading: "0", pitch: "0", x: "1", y: "2", z: "3" };
-
-    expect(isLevelGoToText(" ")).toBe(false);
-    expect(isLevelGoToText("-4.5")).toBe(true);
-    expect(parseLevelGoToTexts({ ...texts, y: "" })).toBeNull();
-    expect(parseLevelGoToTexts({ ...texts, z: "abc" })).toBeNull();
   });
 });

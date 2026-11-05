@@ -15,10 +15,12 @@ import { cn } from "@xrf/ui/theme";
 import { ReactElement, ReactNode } from "react";
 
 import { LevelPreviewCover } from "@/core/level/components/preview/LevelPreviewCover";
+import { LevelPreviewGoTo } from "@/core/level/components/preview/LevelPreviewGoTo";
 import { LevelPreviewPick } from "@/core/level/components/preview/LevelPreviewPick";
 import { ILevelPreviewViewportProps, LevelPreviewViewport } from "@/core/level/components/preview/LevelPreviewViewport";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { LevelViewService } from "@/core/level/services/level-view";
+import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { useShellPanels } from "@/core/shell/contributions";
 import { IShellPanel } from "@/core/shell/panels/shell-panel";
 import { LevelViewerCaptureCover } from "@/tools/level-viewer/components/capture/LevelViewerCaptureCover";
@@ -81,8 +83,11 @@ export function LevelViewerLayout({
   onDeselect = null,
 }: ILevelViewerLayoutProps): ReactElement {
   const viewService: LevelViewService = useInjection(LevelViewService);
+  const viewportService: LevelViewportService = useInjection(LevelViewportService);
 
   const viewOptions: ILevelViewOptions = viewService.options;
+  // The go-to field stands in the camera readout's corner, as the readout made editable.
+  const isGoingTo: boolean = viewportService.isGoingTo;
 
   const isOpen: boolean = Boolean(name);
   const heading: Nullable<string> = name ?? pending;
@@ -177,9 +182,11 @@ export function LevelViewerLayout({
           {isOpen && viewOptions.isStatsVisible ? (
             <>
               <LevelPreviewMetrics />
-              <LevelPreviewCoordinates />
+              {isGoingTo ? null : <LevelPreviewCoordinates />}
             </>
           ) : null}
+
+          {isOpen && isGoingTo ? <LevelPreviewGoTo /> : null}
 
           {isOpen && viewOptions.isMetered ? <LevelPreviewSpot /> : null}
 

@@ -8,7 +8,6 @@ import { LevelLightsAction } from "@/core/level/components/preview/toolbar/light
 import { LevelSunAction } from "@/core/level/components/preview/toolbar/lighting/LevelSunAction";
 import { LevelSoundAction } from "@/core/level/components/preview/toolbar/sound/LevelSoundAction";
 import { LevelCameraAction } from "@/core/level/components/preview/toolbar/view/LevelCameraAction";
-import { LevelGoToAction } from "@/core/level/components/preview/toolbar/view/LevelGoToAction";
 import { LevelShowAction } from "@/core/level/components/preview/toolbar/view/LevelShowAction";
 import { LevelCullingAction } from "@/core/level/components/preview/toolbar/world/LevelCullingAction";
 import { LevelGrassAction } from "@/core/level/components/preview/toolbar/world/LevelGrassAction";
@@ -54,7 +53,6 @@ export function LevelViewerToolbar({
         <RenderSliderReference source={ERenderSliderReferenceSource.SETTINGS}>
           <LevelShowAction />
           <LevelCameraAction />
-          <LevelGoToAction />
 
           <EditorToolbarSeparator />
 
