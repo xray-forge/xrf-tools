@@ -8,6 +8,8 @@ interface IEditorPanelSectionProps extends BaseComponentProps {
   title: ReactNode;
   /** What distinguishes this group from a similar one beside it. */
   caption?: ReactNode;
+  /** What acts on the group as a whole, icon actions at the end of its title line. */
+  actions?: ReactNode;
   children: ReactNode;
   /**
    * Takes the height the panel has left over, for content that scrolls on its own rather than flowing.
@@ -25,18 +27,30 @@ export function EditorPanelSection({
   className,
   title,
   caption,
+  actions,
   children,
   isFilling,
 }: IEditorPanelSectionProps): ReactElement {
+  const heading: ReactElement = (
+    <Typography className={"min-w-0 wrap-anywhere text-text-secondary"} component={"h3"} variant={"overline"}>
+      {title}
+    </Typography>
+  );
+
   return (
     <div
       data-testid={dataTestId}
       id={id}
       className={cn("panel-section", isFilling ? "flex min-h-0 grow flex-col" : null, className)}
     >
-      <Typography className={"wrap-anywhere text-text-secondary"} component={"h3"} variant={"overline"}>
-        {title}
-      </Typography>
+      {actions ? (
+        <div className={"flex items-center justify-between gap-1"}>
+          {heading}
+          <div className={"flex shrink-0 items-center"}>{actions}</div>
+        </div>
+      ) : (
+        heading
+      )}
 
       {caption ? (
         <Typography className={"block wrap-anywhere text-text-disabled"} variant={"caption"}>
