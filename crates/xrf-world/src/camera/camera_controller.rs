@@ -54,11 +54,22 @@ impl CameraController {
   /// Advances the camera by a frame's time; `height` is the viewport's in CSS pixels.
   pub fn update(&mut self, delta: Duration, height: f32) {
     match self {
-      CameraController::Fly(controller) => controller.update(delta),
+      CameraController::Fly(controller) => {
+        controller.resize(height);
+        controller.update(delta)
+      }
       CameraController::Orbit(controller) => {
         controller.resize(height);
         controller.update(delta)
       }
+    }
+  }
+
+  /// The steps of speed the wheel asked for since they were last taken, positive faster; an orbit camera has none.
+  pub fn take_speed_steps(&mut self) -> i32 {
+    match self {
+      CameraController::Fly(controller) => controller.take_speed_steps(),
+      CameraController::Orbit(_) => 0,
     }
   }
 

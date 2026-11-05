@@ -3,7 +3,7 @@ import { EWorldCameraCommand, WorldCamera } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
 
 import { ILevelGoTo, toLevelGoToViewpoint } from "@/core/level/lib/camera/level-camera-goto";
-import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
+import { ILevelCameraOptions, stepLevelCameraSpeed } from "@/core/level/lib/camera/level-camera-options";
 import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import { ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
 import { toLevelCameraAt } from "@/core/level/lib/render/level-render-view";
@@ -62,6 +62,18 @@ export class LevelRenderCamera {
    */
   public start(): Array<() => void> {
     return [reaction(() => this.sources.viewService.cameraOptions, this.applyOptions)];
+  }
+
+  /**
+   * Steps the toolbar's speed, as the wheel does while the secondary button flies the camera; the camera keeps where it
+   * has flown.
+   *
+   * @param steps - Whole steps, positive faster.
+   */
+  public stepSpeed(steps: number): void {
+    const options: ILevelCameraOptions = this.sources.viewService.cameraOptions;
+
+    this.sources.viewService.setCameraOptions({ ...options, speed: stepLevelCameraSpeed(options.speed, steps) });
   }
 
   /** Stands the camera at the open level's start, anew. */

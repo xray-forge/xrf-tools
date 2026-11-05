@@ -1,9 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { RenderViewportLayout } from "@xrf/ipc/types/xrf-renderer";
-import { EWorldCamera, EWorldDragEndReason, EWorldInputEvent, WorldInputEvent } from "@xrf/ipc/types/xrf-world";
+import {
+  EWorldCamera,
+  EWorldDragEndReason,
+  EWorldInputEvent,
+  WorldInputButtons,
+  WorldInputEvent,
+  WorldInputModifiers,
+} from "@xrf/ipc/types/xrf-world";
 
 import { NativeViewport } from "@/core/render/lib/native/viewport/native-viewport";
 import { NativeViewportTarget } from "@/core/render/lib/native/viewport/native-viewport-target";
+
+const MAIN: WorldInputButtons = { auxiliary: false, main: true, secondary: false };
+const SECONDARY: WorldInputButtons = { auxiliary: false, main: false, secondary: true };
+const MAIN_AND_SECONDARY: WorldInputButtons = { auxiliary: false, main: true, secondary: true };
+const NO_MODIFIERS: WorldInputModifiers = { altKey: false, ctrlKey: false, metaKey: false, shiftKey: false };
 
 interface IViewportSpy {
   layouts: Array<RenderViewportLayout>;
@@ -142,17 +154,101 @@ describe("NativeViewportTarget", () => {
     element.dispatchEvent(pointer("pointerup", { button: 0, clientX: 40, clientY: 35 }));
 
     expect(inputs).toEqual([
-      {
-        button: 0,
-        kind: EWorldInputEvent.DRAG_START,
-        modifiers: { altKey: false, ctrlKey: false, metaKey: false, shiftKey: false },
-      },
+      { buttons: MAIN, kind: EWorldInputEvent.DRAG_START, modifiers: NO_MODIFIERS },
       // The travel before it became a drag included, so the view does not jump.
       { dx: 20, dy: 5, kind: EWorldInputEvent.DRAG_MOVE },
       { kind: EWorldInputEvent.DRAG_END, reason: EWorldDragEndReason.RELEASED },
     ]);
     expect(onClick).not.toHaveBeenCalled();
     expect(element.style.cursor).toBe("");
+
+    target.dispose();
+  });
+
+  it("drags the secondary button as it goes down, and asks for a menu only where it did not travel", () => {
+    const { element } = mockTree();
+    const { inputs, viewport } = mockViewport();
+    const onClick = jest.fn();
+    const target: NativeViewportTarget = new NativeViewportTarget(element, viewport, { onClick });
+
+    element.dispatchEvent(pointer("pointerdown", { button: 2, buttons: 2, clientX: 20, clientY: 30 }));
+
+    // Held before the pointer moves, so a key pressed now already flies.
+    expect(inputs).toEqual([{ buttons: SECONDARY, kind: EWorldInputEvent.DRAG_START, modifiers: NO_MODIFIERS }]);
+
+    element.dispatchEvent(pointer("pointerup", { button: 2, clientX: 20, clientY: 30 }));
+    element.dispatchEvent(pointer("contextmenu", { button: 2 }));
+
+    element.dispatchEvent(pointer("pointerdown", { button: 2, buttons: 2, clientX: 20, clientY: 30 }));
+    element.dispatchEvent(pointer("pointermove", { button: -1, buttons: 2, clientX: 40, clientY: 30 }));
+    element.dispatchEvent(pointer("pointerup", { button: 2, clientX: 40, clientY: 30 }));
+    element.dispatchEvent(pointer("contextmenu", { button: 2 }));
+
+    expect(inputs.slice(1)).toEqual([
+      { kind: EWorldInputEvent.DRAG_END, reason: EWorldDragEndReason.RELEASED },
+      { kind: EWorldInputEvent.CONTEXT_MENU },
+      { buttons: SECONDARY, kind: EWorldInputEvent.DRAG_START, modifiers: NO_MODIFIERS },
+      { dx: 20, dy: 0, kind: EWorldInputEvent.DRAG_MOVE },
+      { kind: EWorldInputEvent.DRAG_END, reason: EWorldDragEndReason.RELEASED },
+    ]);
+    expect(onClick).not.toHaveBeenCalled();
+
+    target.dispose();
+  });
+
+  it("drags at once a pending click another button joins, and tells the world as its buttons change", () => {
+    const { element } = mockTree();
+    const { inputs, viewport } = mockViewport();
+    const onClick = jest.fn();
+    const target: NativeViewportTarget = new NativeViewportTarget(element, viewport, { onClick });
+
+    element.dispatchEvent(pointer("pointerdown", { button: 0, buttons: 1, clientX: 20, clientY: 30 }));
+    // A chorded press reaches the page as a move naming the button that changed.
+    element.dispatchEvent(pointer("pointermove", { button: 2, buttons: 3, clientX: 21, clientY: 30 }));
+    element.dispatchEvent(pointer("pointermove", { button: -1, buttons: 3, clientX: 31, clientY: 30 }));
+    element.dispatchEvent(pointer("pointermove", { button: 0, buttons: 2, clientX: 31, clientY: 30 }));
+    element.dispatchEvent(pointer("pointerup", { button: 2, clientX: 31, clientY: 30 }));
+
+    expect(inputs).toEqual([
+      { buttons: MAIN_AND_SECONDARY, kind: EWorldInputEvent.DRAG_START, modifiers: NO_MODIFIERS },
+      { dx: 11, dy: 0, kind: EWorldInputEvent.DRAG_MOVE },
+      { buttons: SECONDARY, kind: EWorldInputEvent.DRAG_BUTTONS },
+      { kind: EWorldInputEvent.DRAG_END, reason: EWorldDragEndReason.RELEASED },
+    ]);
+    expect(onClick).not.toHaveBeenCalled();
+
+    target.dispose();
+  });
+
+  it("presses nothing with a button a drag does not tell of", () => {
+    const { element } = mockTree();
+    const { inputs, viewport } = mockViewport();
+    const target: NativeViewportTarget = new NativeViewportTarget(element, viewport);
+
+    element.dispatchEvent(pointer("pointerdown", { button: 3, buttons: 8, clientX: 20, clientY: 30 }));
+    element.dispatchEvent(pointer("pointermove", { button: -1, buttons: 8, clientX: 40, clientY: 30 }));
+    element.dispatchEvent(pointer("pointerup", { button: 3, clientX: 40, clientY: 30 }));
+    jest.advanceTimersByTime(100);
+
+    expect(inputs.filter((input: WorldInputEvent) => input.kind !== EWorldInputEvent.HOVER)).toEqual([]);
+
+    target.dispose();
+  });
+
+  it("hands the wheel to the world whatever is held, which tells moving the camera from asking for its speed", () => {
+    const { element } = mockTree();
+    const { inputs, viewport } = mockViewport();
+    const target: NativeViewportTarget = new NativeViewportTarget(element, viewport);
+
+    element.dispatchEvent(new WheelEvent("wheel", { deltaY: -100 }));
+    element.dispatchEvent(pointer("pointerdown", { button: 2, buttons: 2, clientX: 20, clientY: 30 }));
+    element.dispatchEvent(new WheelEvent("wheel", { deltaMode: WheelEvent.DOM_DELTA_LINE, deltaY: 3 }));
+
+    expect(inputs).toEqual([
+      { deltaMode: 0, deltaX: 0, deltaY: -100, kind: EWorldInputEvent.WHEEL },
+      { buttons: SECONDARY, kind: EWorldInputEvent.DRAG_START, modifiers: NO_MODIFIERS },
+      { deltaMode: 1, deltaX: 0, deltaY: 3, kind: EWorldInputEvent.WHEEL },
+    ]);
 
     target.dispose();
   });
