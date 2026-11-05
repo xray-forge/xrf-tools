@@ -11,8 +11,14 @@ import { Logger } from "@xrf/logging";
 import { getPathName } from "@xrf/path";
 import { isRecord, Maybe, Nullable } from "@xrf/types";
 
+import { KeybindCommand } from "@/core/commands";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
-import { isLevelGoTo, toLevelGoTo, toRoundedLevelGoTo } from "@/core/level/lib/camera/level-camera-goto";
+import {
+  formatLevelGoTo,
+  isLevelGoTo,
+  toLevelGoTo,
+  toRoundedLevelGoTo,
+} from "@/core/level/lib/camera/level-camera-goto";
 import { ILevelFeatureOptions, toLevelOutput } from "@/core/level/lib/features/level-feature-options";
 import { ELevelLookSource, ILevelLookChoice, toLevelLookChoice } from "@/core/level/lib/look/level-look-choice";
 import { ILevelHelperOptions, toLevelHelperOptions } from "@/core/level/lib/objects/level-helper-options";
@@ -29,6 +35,7 @@ import { mergeRenderFeatureOverrides } from "@/core/render/lib/settings/choice/r
 import { IRenderFeatureOverrides } from "@/core/render/lib/settings/choice/render-feature-overrides";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { flattenDottedRecord, unflattenDottedRecord } from "@/lib/object/dotted-record";
+import { COPY_LEVEL_COORDINATES_KEYBIND_COMMAND } from "@/tools/level-viewer/commands";
 import { toLevelViewerFileStem, toLevelViewerLevelName } from "@/tools/level-viewer/lib/files/level-viewer-file-stem";
 import {
   compareLevelViewerSnapshot,
@@ -50,7 +57,8 @@ import {
 /**
  * A level view as a file holds it: what the viewer draws, from where and under what weather, taken whole and given
  * back in part, a value at a time, into the view's own settings alone; File › Export view and Import view, the view
- * written to a file the user picks, in the tool's own folder of views by default, and read back for import.
+ * written to a file the user picks, in the tool's own folder of views by default, and read back for import. Its camera
+ * alone copies to the clipboard as the readout states it, for Go to coordinates to read back.
  */
 @Injectable()
 export class LevelViewerSnapshotService {
@@ -97,6 +105,35 @@ export class LevelViewerSnapshotService {
       this.log.warn("Could not read the build for a level view's snapshot:", error);
 
       return null;
+    });
+  }
+
+  /** Whether the viewport has said where its camera stands, so there is a place to copy. */
+  @Computed()
+  public get isCameraPlaced(): boolean {
+    return this.viewportService.camera !== null;
+  }
+
+  /** Puts where the camera stands on the clipboard as its readout states it, which Go to coordinates reads back. */
+  @KeybindCommand(COPY_LEVEL_COORDINATES_KEYBIND_COMMAND, {
+    isEnabled: (service: LevelViewerSnapshotService) => service.isCameraPlaced,
+  })
+  @ExclusiveFlow()
+  public *copyCoordinates(): TFlow {
+    const camera: Nullable<ILevelCamera> = this.viewportService.camera;
+
+    if (!camera) {
+      return;
+    }
+
+    const coordinates: string = formatLevelGoTo(toLevelGoTo(camera));
+
+    yield* this.reporter.run({
+      name: "Copy coordinates",
+      subject: coordinates,
+      command: () => navigator.clipboard.writeText(coordinates),
+      failure: "Could not copy the coordinates",
+      success: () => ({ details: coordinates, title: "Copied the coordinates" }),
     });
   }
 

@@ -1,3 +1,4 @@
+import { ContentCopyIcon } from "@xrf/ui/icons/content-copy";
 import { FiberManualRecordIcon as RecordIcon } from "@xrf/ui/icons/fiber-manual-record";
 import { MapOutlinedIcon as MapIcon } from "@xrf/ui/icons/map-outlined";
 import { PanoramaPhotosphereOutlinedIcon as PanoramaPhotosphereIcon } from "@xrf/ui/icons/panorama-photosphere-outlined";
@@ -55,9 +56,25 @@ export const RECORD_LEVEL_KEYBIND_COMMAND: IKeybindCommand = defineKeybindComman
   label: "Record",
 });
 
+/**
+ * Puts where the camera stands on the clipboard as its readout states it, which Go to coordinates reads back; `alt` and
+ * `shift` with `c`, as an editor copies a path, since `mod+shift+c` is the webview's element picker.
+ */
+export const COPY_LEVEL_COORDINATES_KEYBIND_COMMAND: IKeybindCommand = defineKeybindCommand({
+  category: EKeybindCommandCategory.VIEW,
+  chords: ["shift+alt+c"],
+  description:
+    "Puts where the camera stands on the clipboard as its readout states it, `x 0 y 0 z 0 h 0 p 0`, which Go to " +
+    "coordinates reads back.",
+  icon: <ContentCopyIcon />,
+  id: "level-viewer/copy-coordinates",
+  label: "Copy coordinates",
+});
+
 /** Commands reachable inside the level viewer, beside the root ones. */
 export const LEVEL_VIEWER_KEYBIND_COMMANDS: ReadonlyArray<IKeybindCommand> = [
   ...LEVEL_KEYBIND_COMMANDS,
+  COPY_LEVEL_COORDINATES_KEYBIND_COMMAND,
   TAKE_LEVEL_SCREENSHOT_KEYBIND_COMMAND,
   RECORD_LEVEL_KEYBIND_COMMAND,
   CAPTURE_LEVEL_MAP_KEYBIND_COMMAND,
