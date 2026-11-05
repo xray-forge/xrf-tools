@@ -1,24 +1,27 @@
 import { useInjection } from "@wirestate/react";
 import { formatPercent } from "@xrf/format";
 import { ERenderWaterMode } from "@xrf/ipc/types/xrf-renderer";
-import { EditorPopoverNote } from "@xrf/ui/editor/popover-row";
+import { Optional } from "@xrf/types";
+import { EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
 import { EditorPopoverToggle } from "@xrf/ui/editor/popover-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { WaterIcon } from "@xrf/ui/icons/water";
 import { ReactElement, useCallback } from "react";
 
-import { LevelSettingsResetButton } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
+import { LEVEL_SETTINGS_RESET_LABEL } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
+import { useLevelFeatureReset } from "@/core/level/components/preview/toolbar/use-level-feature-reset";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";
 import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelManualWeatherSlider";
-import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWeatherResetButton";
+import { LEVEL_WEATHER_RESET_LABEL } from "@/core/level/components/weather/LevelWeatherResetButton";
 import { describeLevelFeatureToggle, toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
 import { LEVEL_MANUAL_WEATHER_WATER_KEYS } from "@/core/level/lib/weather/level-manual-weather-groups";
 import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelWeatherService } from "@/core/level/services/level-weather";
 import { RenderSettingEntries } from "@/core/render/components/settings/RenderSettingEntries";
+import { RenderSettingSection } from "@/core/render/components/settings/RenderSettingSection";
 import {
   RENDER_ENHANCED_WATER_SETTINGS,
   RENDER_WATER_SETTINGS,
@@ -30,8 +33,9 @@ import {
 } from "@/core/render/lib/settings/choice/render-feature-settings";
 
 /**
- * Whether this view draws the water, how strongly the weather has it reflect, and how it moves, reflects and
- * distorts: the engine's own, or the enhanced water refracting what lies under it.
+ * Whether this view draws the water, the engine's own or the enhanced water refracting what lies under it, and a
+ * section each of its waves, of what shows under its surface, of its reflection and of its distortion, the enhanced
+ * water's values disabled under the engine's; then how strongly the weather has it reflect.
  */
 export function LevelWaterAction({
   "data-testid": dataTestId = "level-water-action",
@@ -42,9 +46,11 @@ export function LevelWaterAction({
   const renderService: LevelRenderService = useInjection(LevelRenderService);
   const { settings, features, drawn } = useLevelRenderFeatures();
   const { isOn, toggle } = useLevelViewToggle("isWaterVisible");
-  const { state, set, setNested, reset } = useLevelFeature("water");
+  const { state, set, setNested } = useLevelFeature("water");
+  const onReset: Optional<() => void> = useLevelFeatureReset("water");
   // The keyframe on screen, whose `water_intensity` scales what the water reflects.
   const manual: ILevelManualWeather = weatherService.shown;
+  const isWeatherResettable: boolean = weatherService.isManualResettable(LEVEL_MANUAL_WEATHER_WATER_KEYS);
   const water: TRenderWaterSettings = state.value;
   const isEnhanced: boolean = water.mode === ERenderWaterMode.ENHANCED;
   // The water's reflection is set in the Reflections group, beside the surfaces' and the ray trace both share.
@@ -54,6 +60,10 @@ export function LevelWaterAction({
   const onSetEnhanced = useCallback(
     (part: Partial<TRenderEnhancedWaterSettings>): void => setNested("enhanced", part),
     [setNested]
+  );
+  const onWeatherReset = useCallback(
+    () => weatherService.resetManual(LEVEL_MANUAL_WEATHER_WATER_KEYS),
+    [weatherService]
   );
 
   return (
@@ -75,71 +85,97 @@ export function LevelWaterAction({
       isOn={isOn && state.isAvailable}
       isDisabled={!state.isAvailable}
       toggleLabel={"Water"}
+      resetLabel={LEVEL_SETTINGS_RESET_LABEL}
       onToggle={toggle}
+      onReset={onReset}
     >
-      <LevelManualWeatherSlider
-        field={"waterIntensity"}
-        manual={manual}
-        format={formatPercent}
-        onEdit={weatherService.editManual}
-      />
-
-      <LevelWeatherResetButton keys={LEVEL_MANUAL_WEATHER_WATER_KEYS} onReset={weatherService.resetManual} />
-
       <RenderSettingEntries
         settings={RENDER_WATER_SETTINGS}
-        names={["mode"]}
+        names={["mode", "isSoft"]}
         group={water}
         features={drawn}
         onSet={set}
       />
 
-      <RenderSettingEntries
-        settings={RENDER_ENHANCED_WATER_SETTINGS}
-        names={["refraction", "turbidity", "softBorder", "reflectivity"]}
-        group={water.enhanced}
-        features={drawn}
-        onSet={onSetEnhanced}
-      />
+      <EditorPopoverGroupSection label={"Waves"}>
+        <RenderSettingEntries
+          settings={RENDER_WATER_SETTINGS}
+          names={["waveHeight", "waveSpeed", "ripple"]}
+          group={water}
+          features={drawn}
+          onSet={set}
+        />
 
-      {isEnhanced ? (
-        <EditorPopoverNote>
-          {!reflections.isWaterReflected
-            ? "It reflects the sky's cube alone: Reflections, Water reflects the screen."
-            : isReflectionTraced
-              ? "It reflects the screen, what that misses ray-traced: Reflections, Water and Ray tracing."
-              : "It reflects the screen, the sky's cube where that misses: Reflections, Water and Ray tracing."}
-        </EditorPopoverNote>
-      ) : null}
+        <RenderSettingEntries
+          settings={RENDER_ENHANCED_WATER_SETTINGS}
+          names={["parallaxHeight", "flow", "calmFlow", "variation", "ripples"]}
+          group={water.enhanced}
+          features={drawn}
+          onSet={onSetEnhanced}
+        />
+      </EditorPopoverGroupSection>
 
-      <RenderSettingEntries
-        settings={RENDER_ENHANCED_WATER_SETTINGS}
-        names={[
-          "reflectionBlur",
-          "blurNoise",
-          "vibrance",
-          "specular",
-          "caustics",
-          "parallaxHeight",
-          "flow",
-          "calmFlow",
-          "variation",
-          "ripples",
-        ]}
-        group={water.enhanced}
-        features={drawn}
-        onSet={onSetEnhanced}
-      />
+      <EditorPopoverGroupSection label={"Under the surface"}>
+        <RenderSettingEntries
+          settings={RENDER_ENHANCED_WATER_SETTINGS}
+          names={["refraction", "turbidity", "softBorder", "caustics"]}
+          group={water.enhanced}
+          features={drawn}
+          onSet={onSetEnhanced}
+        />
+      </EditorPopoverGroupSection>
 
-      <RenderSettingEntries
+      <EditorPopoverGroupSection
+        label={"Reflection"}
+        note={
+          isEnhanced
+            ? !reflections.isWaterReflected
+              ? "It reflects the sky's cube alone: Reflections, Water reflects the screen."
+              : isReflectionTraced
+                ? "It reflects the screen, what that misses ray-traced: Reflections, Water and Ray tracing."
+                : "It reflects the screen, the sky's cube where that misses: Reflections, Water and Ray tracing."
+            : undefined
+        }
+      >
+        <RenderSettingEntries
+          settings={RENDER_WATER_SETTINGS}
+          names={["reflection"]}
+          group={water}
+          features={drawn}
+          onSet={set}
+        />
+
+        <RenderSettingEntries
+          settings={RENDER_ENHANCED_WATER_SETTINGS}
+          names={["reflectivity", "reflectionBlur", "blurNoise", "specular", "vibrance"]}
+          group={water.enhanced}
+          features={drawn}
+          onSet={onSetEnhanced}
+        />
+      </EditorPopoverGroupSection>
+
+      <RenderSettingSection
         settings={RENDER_WATER_SETTINGS}
-        names={["isSoft", "isDistorted", "waveHeight", "waveSpeed", "ripple", "reflection", "distortion"]}
+        name={"isDistorted"}
+        names={["distortion"]}
         group={water}
         features={drawn}
         onSet={set}
       />
 
-      <LevelSettingsResetButton onReset={reset} />
+      <EditorPopoverGroupSection
+        label={"Weather"}
+        resetLabel={LEVEL_WEATHER_RESET_LABEL}
+        onReset={isWeatherResettable ? onWeatherReset : undefined}
+      >
+        <LevelManualWeatherSlider
+          field={"waterIntensity"}
+          label={"Intensity"}
+          manual={manual}
+          format={formatPercent}
+          onEdit={weatherService.editManual}
+        />
+      </EditorPopoverGroupSection>
     </EditorPopoverToggle>
   );
 }

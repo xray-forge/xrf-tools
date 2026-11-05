@@ -41,8 +41,8 @@ describe("RenderSettingEntries", () => {
   it("draws each setting as its declaration says, disabled where its rule finds it changing nothing", () => {
     const { getByRole } = renderEntries();
 
-    expect(getByRole("checkbox", { name: "Lamp shafts" })).toBeEnabled();
-    expect(getByRole("slider", { name: "Shaft strength" })).toBeDisabled();
+    expect(getByRole("checkbox", { name: "Shafts" })).toBeEnabled();
+    expect(getByRole("slider", { name: "Strength" })).toBeDisabled();
     expect(getByRole("button", { name: "Every lamp" })).toBeDisabled();
   });
 
@@ -53,8 +53,8 @@ describe("RenderSettingEntries", () => {
       return !it.classList.contains("sr-only");
     }
 
-    expect(getAllByText(RENDER_LIGHTS_SETTINGS.isVolumetric.description as string).some(isShown)).toBe(true);
     expect(getByText(explainRenderLightShafts(ERenderLightShafts.ENGINE))).toBeInTheDocument();
+    expect(getAllByText(RENDER_LIGHTS_SETTINGS.isVolumetric.description as string).some(isShown)).toBe(false);
     expect(getAllByText(RENDER_LIGHTS_SETTINGS.isShadowed.description as string).some(isShown)).toBe(false);
   });
 
@@ -62,7 +62,7 @@ describe("RenderSettingEntries", () => {
     const onSet = jest.fn<(part: Partial<TRenderLightsSettings>) => void>();
     const { getByRole } = renderEntries(onSet);
 
-    fireEvent.click(getByRole("checkbox", { name: "Lamp shafts" }));
+    fireEvent.click(getByRole("checkbox", { name: "Shafts" }));
 
     expect(onSet).toHaveBeenCalledWith({ isVolumetric: true });
   });

@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { Optional } from "@xrf/types";
 import { EditorPopoverGroup } from "@xrf/ui/editor/popover-group";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CameraOutlinedIcon } from "@xrf/ui/icons/camera-outlined";
@@ -6,18 +7,23 @@ import { CenterFocusStrongIcon } from "@xrf/ui/icons/center-focus-strong";
 import { Button } from "@xrf/ui/material/button";
 import { ReactElement } from "react";
 
-import { LevelCameraEffectSection } from "@/core/level/components/preview/toolbar/image/LevelCameraEffectSection";
-import { LevelSettingsResetButton } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
+import { LEVEL_SETTINGS_RESET_LABEL } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
+import { useLevelFeatureReset } from "@/core/level/components/preview/toolbar/use-level-feature-reset";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { LevelViewportService } from "@/core/level/services/level-viewport";
-import { formatCameraFocusDistance } from "@/core/render/lib/features/image/render-camera-choices";
+import { RenderSettingSection } from "@/core/render/components/settings/RenderSettingSection";
+import {
+  formatCameraFocusDistance,
+  RENDER_CAMERA_SETTINGS,
+} from "@/core/render/lib/features/image/render-camera-choices";
 import { TRenderCameraSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 
 /**
  * The camera this view's frame is shown through: its motion blur, its depth of field focused by a value or by a click
- * in the view, its vignette, its film grain and its chromatic aberration, each over the settings for the view alone.
+ * in the view, its vignette, its film grain and its chromatic aberration, a section each, all over the settings for the
+ * view alone and set back together from the popover's heading.
  */
 export function LevelCameraEffectsAction({
   "data-testid": dataTestId = "level-camera-effects-action",
@@ -26,7 +32,8 @@ export function LevelCameraEffectsAction({
 }: BaseComponentProps): ReactElement {
   const viewportService: LevelViewportService = useInjection(LevelViewportService);
   const { settings, features, drawn } = useLevelRenderFeatures();
-  const { set, reset } = useLevelFeatureOverride("camera");
+  const { set } = useLevelFeatureOverride("camera");
+  const onReset: Optional<() => void> = useLevelFeatureReset("camera");
 
   const camera: TRenderCameraSettings = toLevelModeFeature("camera", settings, features);
   const isFocusPicking: boolean = viewportService.isFocusPicking;
@@ -48,20 +55,24 @@ export function LevelCameraEffectsAction({
       description={summary ? summary.charAt(0).toUpperCase() + summary.slice(1) : "None"}
       icon={<CameraOutlinedIcon />}
       isActive={effects.length > 0}
+      resetLabel={LEVEL_SETTINGS_RESET_LABEL}
+      onReset={onReset}
     >
-      <LevelCameraEffectSection
-        effect={"isMotionBlurred"}
+      <RenderSettingSection
+        settings={RENDER_CAMERA_SETTINGS}
+        name={"isMotionBlurred"}
         names={["shutter"]}
-        camera={camera}
+        group={camera}
         features={drawn}
         onSet={set}
       />
 
-      <LevelCameraEffectSection
+      <RenderSettingSection
         data-testid={"level-camera-depth-of-field"}
-        effect={"isDefocused"}
+        settings={RENDER_CAMERA_SETTINGS}
+        name={"isDefocused"}
         names={["fStop", "focusDistance"]}
-        camera={camera}
+        group={camera}
         features={drawn}
         onSet={set}
       >
@@ -74,33 +85,34 @@ export function LevelCameraEffectsAction({
         >
           {isFocusPicking ? "Click in the view to focus" : "Focus by a click"}
         </Button>
-      </LevelCameraEffectSection>
+      </RenderSettingSection>
 
-      <LevelCameraEffectSection
-        effect={"isVignetted"}
+      <RenderSettingSection
+        settings={RENDER_CAMERA_SETTINGS}
+        name={"isVignetted"}
         names={["vignetteStrength"]}
-        camera={camera}
+        group={camera}
         features={drawn}
         onSet={set}
       />
 
-      <LevelCameraEffectSection
-        effect={"isGrained"}
+      <RenderSettingSection
+        settings={RENDER_CAMERA_SETTINGS}
+        name={"isGrained"}
         names={["grainStrength", "grainSize"]}
-        camera={camera}
+        group={camera}
         features={drawn}
         onSet={set}
       />
 
-      <LevelCameraEffectSection
-        effect={"isAberrated"}
+      <RenderSettingSection
+        settings={RENDER_CAMERA_SETTINGS}
+        name={"isAberrated"}
         names={["aberrationStrength"]}
-        camera={camera}
+        group={camera}
         features={drawn}
         onSet={set}
       />
-
-      <LevelSettingsResetButton onReset={reset} />
     </EditorPopoverGroup>
   );
 }

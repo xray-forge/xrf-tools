@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import { act, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
 import { LevelGrassAction } from "@/core/level/components/preview/toolbar/world/LevelGrassAction";
@@ -8,6 +9,7 @@ import {
   renderLevelView,
 } from "@/core/level/fixtures/level-container";
 import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
+import { TRenderFoliageSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { clearLocalStorage } from "@/core/storage";
 
 beforeEach(() => {
@@ -25,9 +27,30 @@ describe("LevelGrassAction", () => {
 
     await userEvent.pointer({ keys: "[MouseRight]", target: getByRole("button", { name: "Grass" }) });
     await findByRole("dialog", { name: "Grass" });
-    await userEvent.click(getByRole("button", { name: "Back to the settings" }));
+    await userEvent.click(getByRole("button", { name: "Grass: Back to the settings" }));
 
     expect(view.features).toEqual({ ...before, grass: {} });
+  });
+
+  // The foliage's motion is the Wind popover's, so the reset here neither offers to set it back nor does.
+  it("offers no reset for the foliage's motion alone, and keeps it on setting the grass back", async () => {
+    const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer();
+    const FOLIAGE: TRenderFoliageSettings = descriptor.renderSettings.rendererFeatures.grass.foliage;
+    const moved: TRenderFoliageSettings = { ...FOLIAGE, grassSpeed: FOLIAGE.grassSpeed + 0.5 };
+
+    descriptor.view.setFeatures({ ...descriptor.view.features, grass: { foliage: moved } });
+
+    const { getByRole, findByRole, queryByRole, view } = renderLevelView(<LevelGrassAction />, descriptor);
+
+    await userEvent.pointer({ keys: "[MouseRight]", target: getByRole("button", { name: "Grass" }) });
+    await findByRole("dialog", { name: "Grass" });
+
+    expect(queryByRole("button", { name: "Grass: Back to the settings" })).toBeNull();
+
+    act(() => view.setFeatures({ ...view.features, grass: { foliage: moved, radius: 80 } }));
+    await userEvent.click(await findByRole("button", { name: "Grass: Back to the settings" }));
+
+    expect(view.features.grass).toEqual({ foliage: moved });
   });
 
   it("keeps the shadows' reach settable only while the grass is shadowed", async () => {
@@ -40,12 +63,15 @@ describe("LevelGrassAction", () => {
     await userEvent.pointer({ keys: "[MouseRight]", target: getByRole("button", { name: "Grass" }) });
     await findByRole("dialog", { name: "Grass" });
 
-    expect(getByRole("slider", { name: "Shadow radius" })).toBeDisabled();
+    const shadows: HTMLElement = getByRole("group", { name: "Shadows" });
 
-    await userEvent.click(getByRole("checkbox", { name: "Shadows" }));
+    expect(within(shadows).getByRole("slider", { name: "Radius" })).toBeDisabled();
+
+    await userEvent.click(within(shadows).getByRole("checkbox", { name: "Shadows" }));
 
     expect(view.features.grass).toEqual({ isShadowed: true });
-    expect(getByRole("slider", { name: "Shadow radius" })).toBeEnabled();
+    expect(within(shadows).getByRole("slider", { name: "Radius" })).toBeEnabled();
+    expect(within(shadows).getByRole("slider", { name: "Cascades" })).toBeEnabled();
   });
 
   it("opens on a click, saying why, while the settings keep the grass off", async () => {

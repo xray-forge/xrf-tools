@@ -82,7 +82,10 @@ export const RENDER_LIGHT_SHADOW_FILTER_OPTIONS: ReadonlyArray<IChoiceFormRowOpt
     value,
   }));
 
-/** How each lamp setting is set, in the settings and the Lamps popover alike. */
+/**
+ * How each lamp setting is set, in the settings and the Lamps popover alike, whose shadows and shafts each head a
+ * section of their values.
+ */
 export const RENDER_LIGHTS_SETTINGS: TRenderSettings<TRenderLightsSettings> = {
   falloff: {
     control: ERenderSettingControl.CHOICE,
@@ -100,7 +103,6 @@ export const RENDER_LIGHTS_SETTINGS: TRenderSettings<TRenderLightsSettings> = {
     control: ERenderSettingControl.CHECKBOX,
     description:
       "The level file's static lights, already in its lightmaps, so they add on top. Game setting: r2_allow_r1_lights.",
-    isEntryDescribed: true,
     label: "Level lights",
   },
   isShadowed: {
@@ -111,17 +113,20 @@ export const RENDER_LIGHTS_SETTINGS: TRenderSettings<TRenderLightsSettings> = {
   isVolumetric: {
     control: ERenderSettingControl.CHECKBOX,
     description: "Shafts of light from the shadowed lamps. Game setting: r2_volumetric_lights.",
-    isEntryDescribed: true,
+    entryLabel: "Shafts",
     label: "Lamp shafts",
   },
   shadowFilter: {
     control: ERenderSettingControl.CHOICE,
     description: "Engine: the game's fixed four-tap filter. Soft: Anomaly's PCSS, wider with distance from the caster.",
+    entryLabel: "Filter",
+    isInert: (lights: TRenderLightsSettings) => !lights.isShadowed,
     label: "Shadow filter",
     options: RENDER_LIGHT_SHADOW_FILTER_OPTIONS,
   },
   shafts: {
     control: ERenderSettingControl.CHOICE,
+    entryLabel: "From",
     explain: explainRenderLightShafts,
     isEntryDescribed: true,
     isInert: (lights: TRenderLightsSettings) => !lights.isVolumetric,
@@ -131,6 +136,7 @@ export const RENDER_LIGHTS_SETTINGS: TRenderSettings<TRenderLightsSettings> = {
   shaftStrength: {
     control: ERenderSettingControl.SLIDER,
     description: "How strong every lamp's shafts are against the game's, in either volumetric light.",
+    entryLabel: "Strength",
     format: formatShaftStrength,
     isInert: (lights: TRenderLightsSettings) => !lights.isVolumetric,
     label: "Shaft strength",

@@ -16,7 +16,10 @@ export enum ERenderSettingControl {
 interface IRenderSettingText<G> {
   /** What it is called, in the settings and in a popover alike. */
   label: string;
-  /** What it is called in a popover holding more than its own feature, the feature named in it. */
+  /**
+   * What it is called in a popover, where that differs: shorter under a section heading naming what it leaves out, or
+   * its feature named where the popover holds more than its own.
+   */
   entryLabel?: string;
   /** What it does, under its row in the settings; a function where that turns on its group or another feature. */
   description?: string | ((group: G, features: IRenderFeatureSettings) => string);

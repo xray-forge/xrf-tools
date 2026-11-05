@@ -70,11 +70,16 @@ function isUndrawnWater(water: TRenderWaterSettings): boolean {
   return !water.isEnabled;
 }
 
-/** How each water setting is set, in the settings and the Water popover alike. */
+/**
+ * How each water setting is set, in the settings and the Water popover alike; both the engine's water and the
+ * enhanced one draw them, the popover's sections placing each by what it shapes.
+ */
 export const RENDER_WATER_SETTINGS: TRenderSettings<TRenderWaterSettings> = {
   distortion: {
     control: ERenderSettingControl.SLIDER,
+    entryLabel: "Strength",
     format: formatWaterDistortion,
+    isInert: (water: TRenderWaterSettings) => isUndrawnWater(water) || !water.isDistorted,
     label: "Distortion strength",
     limits: toRenderLimits(RENDER_FEATURE_SCHEMA.water.distortion, 0.005),
   },
@@ -82,7 +87,6 @@ export const RENDER_WATER_SETTINGS: TRenderSettings<TRenderWaterSettings> = {
   isDistorted: {
     control: ERenderSettingControl.CHECKBOX,
     description: "Refracts what is seen through the surface.",
-    isEntryDescribed: true,
     isInert: isUndrawnWater,
     label: "Distortion",
   },
@@ -94,7 +98,6 @@ export const RENDER_WATER_SETTINGS: TRenderSettings<TRenderWaterSettings> = {
   isSoft: {
     control: ERenderSettingControl.CHECKBOX,
     description: "Fades the water by its depth and lays foam in the shallows. Game setting: r2_soft_water.",
-    isEntryDescribed: true,
     isInert: isUndrawnWater,
     label: "Soft water",
   },
@@ -107,6 +110,8 @@ export const RENDER_WATER_SETTINGS: TRenderSettings<TRenderWaterSettings> = {
   },
   reflection: {
     control: ERenderSettingControl.SLIDER,
+    description: "How strongly the water reflects the sky's cube, against the game's.",
+    entryLabel: "Sky",
     format: formatWaterMultiple,
     label: "Reflection",
     limits: toRenderLimits(RENDER_FEATURE_SCHEMA.water.reflection, 0.05),
@@ -119,12 +124,14 @@ export const RENDER_WATER_SETTINGS: TRenderSettings<TRenderWaterSettings> = {
   },
   waveHeight: {
     control: ERenderSettingControl.SLIDER,
+    entryLabel: "Height",
     format: formatWaveHeight,
     label: "Wave height",
     limits: toRenderLimits(RENDER_FEATURE_SCHEMA.water.waveHeight, 0.001),
   },
   waveSpeed: {
     control: ERenderSettingControl.SLIDER,
+    entryLabel: "Speed",
     format: formatWaveSpeed,
     label: "Wave speed",
     limits: toRenderLimits(RENDER_FEATURE_SCHEMA.water.waveSpeed, 1),
@@ -179,11 +186,14 @@ export const RENDER_ENHANCED_WATER_SETTINGS: TRenderSettings<TRenderEnhancedWate
     toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.parallaxHeight, 0.005),
     formatWaveHeight
   ),
-  reflectionBlur: toEnhancedWaterSlider(
-    "Reflection blur",
-    toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.reflectionBlur, 0.05),
-    formatWaterStrength
-  ),
+  reflectionBlur: {
+    ...toEnhancedWaterSlider(
+      "Reflection blur",
+      toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.reflectionBlur, 0.05),
+      formatWaterStrength
+    ),
+    entryLabel: "Blur",
+  },
   reflectivity: toEnhancedWaterSlider(
     "Reflectivity",
     toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.reflectivity, 0.05),
