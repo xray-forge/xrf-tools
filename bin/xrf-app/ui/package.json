@@ -47,13 +47,13 @@
     "date-fns": "catalog:",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "react-router-dom": "^7.18.4"
+    "react-router-dom": "^7.18.5"
   },
   "jest": {
     "preset": "./cli/test/jest.config.cjs"
   },
   "devDependencies": {
-    "@babel/core": "^8.0.9",
+    "@babel/core": "^8.0.10",
     "@jest/globals": "catalog:",
     "@swc/core": "catalog:",
     "@swc/jest": "catalog:",
