@@ -29,12 +29,12 @@ impl ObjectDecompiler {
     ObjectInference::TwoSidedSurfaces,
   ];
 
-  /// Decompiles a rigid skeleton OGF, every vertex owned by one bone.
+  /// Decompiles a skeleton OGF, its vertices following one bone each or blended across up to four.
   ///
   /// # Errors
   ///
-  /// Returns an error for an OGF that is not a skeleton, has a vertex linked to more than one bone or static vertices,
-  /// which are not decompiled yet, or whose bones, IK data or indices do not hold together.
+  /// Returns an error for an OGF that is not a skeleton or has static vertices, which are not decompiled yet, or whose
+  /// bones, IK data or indices do not hold together.
   pub fn decompile(file: &OgfFile) -> XrfResult<ObjectDecompile> {
     match OgfModelType::from_raw(file.header.model_type) {
       Some(OgfModelType::SkeletonRigid | OgfModelType::SkeletonAnim) => {}

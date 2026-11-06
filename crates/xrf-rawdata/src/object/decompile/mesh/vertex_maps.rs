@@ -9,8 +9,10 @@ use crate::object::decompile::mesh::mesh_assembler::MeshAssembler;
 
 /// A mesh's vertex maps as they fill, and the references its corners make into them.
 ///
-/// The maps come in a fixed order: the point UV map first, one weight map per bone owning a point, in bone order,
-/// then the polygon UV map, written only where some corner's UV is not its point's.
+/// The maps come in a fixed order: the point UV map first, one weight map per bone some point follows, in bone order,
+/// then the polygon UV map, written only where some corner's UV is not its point's. A corner refers to its UV and to
+/// its point's entry in the weight map of each bone the point follows, as `CEditableMesh::GenerateSVertices` reads
+/// them back.
 pub(crate) struct VertexMaps {
   /// The UV of each point, from the first corner standing on it.
   point_uvs: Vec<Option<Vector2d>>,
@@ -20,51 +22,62 @@ pub(crate) struct VertexMaps {
   /// The bone each weight map is for.
   weight_bones: Vec<u16>,
   weight_points: Vec<Vec<u32>>,
-  /// Each point's weight map and its entry in it.
-  point_weights: Vec<EditableVMapPoint>,
+  weight_values: Vec<Vec<f32>>,
+  /// Each point's entries in the weight maps of the bones it follows.
+  point_weights: Vec<Vec<EditableVMapPoint>>,
   bone_names: Vec<String>,
   pub(crate) references: Vec<EditableVMapReference>,
-  reference_of: HashMap<[u32; 4], u32>,
+  /// The reference of each UV entry and point a corner has referred to.
+  reference_of: HashMap<[u32; 3], u32>,
 }
 
 impl VertexMaps {
   const POINT_UV_MAP: u32 = 0;
   const FIRST_WEIGHT_MAP: u32 = 1;
 
-  /// The weight of a rigid model's point to its one bone.
-  const FULL_WEIGHT: f32 = 1.0;
-
-  /// The maps of `welded`'s points, each weighed fully to its bone.
+  /// The maps of `welded`'s points, each weighed to the bones it follows.
   ///
   /// # Errors
   ///
   /// Returns an error when a point's bone is past `bone_names`, or a count outgrows a `u32`.
   pub(crate) fn new(welded: &WeldedMesh, bone_names: &[String]) -> XrfResult<Self> {
-    let mut weight_bones: Vec<u16> = welded.point_bones.clone();
+    let mut weight_bones: Vec<u16> = welded
+      .point_influences
+      .iter()
+      .flat_map(|influences| influences.iter().map(|(bone, _)| bone))
+      .collect();
 
     weight_bones.sort_unstable();
     weight_bones.dedup();
 
-    let mut weight_points: Vec<Vec<u32>> = vec![Vec::new(); weight_bones.len()];
-    let mut point_weights: Vec<EditableVMapPoint> = Vec::with_capacity(welded.point_bones.len());
+    if let Some(bone) = weight_bones.iter().find(|bone| usize::from(**bone) >= bone_names.len()) {
+      return Err(XrfError::new_invalid_error(format!(
+        "A vertex is linked to bone {bone}, past the OGF's {} bones",
+        bone_names.len()
+      )));
+    }
 
-    for (point, bone) in welded.point_bones.iter().enumerate() {
-      if usize::from(*bone) >= bone_names.len() {
-        return Err(XrfError::new_invalid_error(format!(
-          "A vertex is linked to bone {bone}, past the OGF's {} bones",
-          bone_names.len()
-        )));
+    let mut weight_points: Vec<Vec<u32>> = vec![Vec::new(); weight_bones.len()];
+    let mut weight_values: Vec<Vec<f32>> = vec![Vec::new(); weight_bones.len()];
+    let mut point_weights: Vec<Vec<EditableVMapPoint>> = Vec::with_capacity(welded.point_influences.len());
+
+    for (point, influences) in welded.point_influences.iter().enumerate() {
+      let mut entries: Vec<EditableVMapPoint> = Vec::new();
+
+      for (bone, weight) in influences.iter() {
+        let map: usize = weight_bones
+          .binary_search(&bone)
+          .expect("every bone a point follows has a weight map");
+
+        entries.push(EditableVMapPoint {
+          vmap: Self::FIRST_WEIGHT_MAP + MeshAssembler::to_index(map, "weight maps")?,
+          index: MeshAssembler::to_index(weight_points[map].len(), "weights")?,
+        });
+        weight_points[map].push(MeshAssembler::to_index(point, "points")?);
+        weight_values[map].push(weight);
       }
 
-      let map: usize = weight_bones
-        .binary_search(bone)
-        .expect("every point's bone has a weight map");
-
-      point_weights.push(EditableVMapPoint {
-        vmap: Self::FIRST_WEIGHT_MAP + MeshAssembler::to_index(map, "weight maps")?,
-        index: MeshAssembler::to_index(weight_points[map].len(), "weights")?,
-      });
-      weight_points[map].push(MeshAssembler::to_index(point, "points")?);
+      point_weights.push(entries);
     }
 
     Ok(Self {
@@ -74,6 +87,7 @@ impl VertexMaps {
       polygon_faces: Vec::new(),
       weight_bones,
       weight_points,
+      weight_values,
       point_weights,
       bone_names: bone_names.to_vec(),
       references: Vec::new(),
@@ -114,18 +128,20 @@ impl VertexMaps {
         }
       }
     };
-    let weight_entry: EditableVMapPoint = self.point_weights[point_index];
-    let key: [u32; 4] = [uv_entry.vmap, uv_entry.index, weight_entry.vmap, weight_entry.index];
+    // A point's weight entries are its own, so the UV entry and the point decide the reference.
+    let key: [u32; 3] = [uv_entry.vmap, uv_entry.index, point];
 
     if let Some(reference) = self.reference_of.get(&key) {
       return Ok(*reference);
     }
 
     let reference: u32 = MeshAssembler::to_index(self.references.len(), "vertex map references")?;
+    let mut entries: Vec<EditableVMapPoint> = Vec::with_capacity(1 + self.point_weights[point_index].len());
 
-    self.references.push(EditableVMapReference {
-      points: vec![uv_entry, weight_entry],
-    });
+    entries.push(uv_entry);
+    entries.extend_from_slice(&self.point_weights[point_index]);
+
+    self.references.push(EditableVMapReference { points: entries });
     self.reference_of.insert(key, reference);
 
     Ok(reference)
@@ -146,12 +162,12 @@ impl VertexMaps {
       polygon_indices: None,
     }];
 
-    for (bone, points) in self.weight_bones.iter().zip(self.weight_points) {
+    for ((bone, points), values) in self.weight_bones.iter().zip(self.weight_points).zip(self.weight_values) {
       vmaps.push(EditableVMap {
         name: self.bone_names[usize::from(*bone)].clone(),
         dimension: 1,
         kind: EditableVMapKind::Weight,
-        values: vec![Self::FULL_WEIGHT; points.len()],
+        values,
         vertex_indices: points,
         polygon_indices: None,
       });

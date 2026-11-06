@@ -11,9 +11,9 @@ use crate::object::decompile::mesh::vertex_maps::VertexMaps;
 
 /// Builds the editable mesh and its surfaces from welded faces, laid out as the SDK lays out a skinned object.
 ///
-/// One mesh, `skin`, whose every corner refers to two vertex map entries, its UV and its bone weight: a point UV map
-/// `texture`, a weight map named after each bone, and a polygon-mapped `texture` for the corners whose UV is not their
-/// point's, which is how a seam gives one point two UVs. A rigid model weighs each point fully to its one bone.
+/// One mesh, `skin`, whose every corner refers to its UV and to its point's weight for each bone the point follows: a
+/// point UV map `texture`, a weight map named after each bone, and a polygon-mapped `texture` for the corners whose UV
+/// is not their point's, which is how a seam gives one point two UVs.
 pub(crate) struct MeshAssembler;
 
 impl MeshAssembler {

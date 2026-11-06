@@ -1,3 +1,4 @@
+pub(crate) mod bone_influences;
 pub(crate) mod ogf_corner;
 pub(crate) mod ogf_surface;
 pub(crate) mod smoothing_inference;
