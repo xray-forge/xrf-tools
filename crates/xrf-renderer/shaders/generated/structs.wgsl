@@ -191,6 +191,7 @@ struct TraceGrass {
   height: f32,
   model_count: u32,
   slope_limit: f32,
+  card_reach: f32,
 }
 
 struct Calibration {
@@ -482,6 +483,8 @@ struct EnhancedWater {
   rings_tile: f32,
   rings_reach: f32,
   rings_strength: f32,
+  fully_traced: u32,
+  plant_reach: f32,
   heights: vec4<f32>,
   wave_layers: array<vec4<f32>, 2>,
   map_offsets: array<vec4<f32>, 2>,

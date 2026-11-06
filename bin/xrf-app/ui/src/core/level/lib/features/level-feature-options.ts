@@ -302,6 +302,7 @@ const LEVEL_GROUP_KEYS: {
     isGrassReflected: true,
     isRayBudgeted: true,
     isTraced: true,
+    isWaterFullyTraced: true,
     isWaterReflected: true,
     mode: true,
     probe: true,

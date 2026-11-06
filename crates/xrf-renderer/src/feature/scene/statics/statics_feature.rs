@@ -8,8 +8,6 @@ use xrf_renderer_core::{
 use crate::camera::camera_view::CameraView;
 use crate::contract::view::output::render_debug_view::RenderDebugView;
 use crate::contract::view::render_view_options::RenderViewOptions;
-use crate::feature::scene::pyramid::pyramid_depth_parameters::PyramidDepthParameters;
-use crate::feature::scene::pyramid::pyramid_level_parameters::PyramidLevelParameters;
 use crate::feature::scene::pyramid::pyramid_reduction::PyramidReduction;
 use crate::feature::scene::statics::cull::static_cull_parameters::StaticCullParameters;
 use crate::feature::scene::statics::cull::static_cull_uniform::StaticCullUniform;
@@ -361,36 +359,13 @@ impl StaticsFeature {
     }
 
     let (late, late_dispatch): (GraphBuffer, GraphBuffer) = (scene.late, scene.late_dispatch);
-    // Each level as its own resource, the depth reduced into the first and each into the next.
-    let level_views: Vec<GraphTexture> = pyramid
-      .level_views
-      .iter()
-      .map(|view| bindings.import_view(&mut *graph, "depth pyramid level", view))
-      .collect();
-    let first: PyramidDepthParameters = PyramidDepthParameters {
-      source_depth: depth,
-      target_level: level_views[0],
-    };
-    let levels: Vec<PyramidLevelParameters> = level_views
-      .windows(2)
-      .map(|pair| PyramidLevelParameters {
-        source_level: pair[0],
-        target_level: pair[1],
-      })
-      .collect();
-
-    levels
-      .iter()
-      .fold(
-        graph.add_compute_pass("depth pyramid").parameters(&first),
-        |builder, level| builder.parameters(level),
-      )
-      .record(move |context| {
-        passes
-          .scene
-          .pyramid
-          .record(context, pyramid, &first, &levels, PyramidReduction::Farthest)
-      });
+    passes.scene.pyramid.add_passes(
+      &mut *graph,
+      &mut *bindings,
+      "depth pyramid",
+      (pyramid, depth),
+      PyramidReduction::Farthest,
+    );
     graph
       .add_encoder_pass("late cull dispatch")
       .buffer(late, GraphBufferAccess::CopySource)

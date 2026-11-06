@@ -5,6 +5,7 @@ use xrf_renderer_core::{
   RasterPassBuilder, RenderPipelineDescription, StorageValue, UniformBinding,
 };
 
+use crate::feature::scene::pyramid::pyramid_reduction::PyramidReduction;
 use crate::feature::scene::statics::draw::static_draws::StaticDraws;
 use crate::feature::tracing::ray_guides::ray_guides_pass::RayGuidesPass;
 use crate::feature::tracing::scene_trace::reflection_scene_parameters::ReflectionSceneParameters;
@@ -70,6 +71,9 @@ pub struct WaterPass {
 }
 
 impl WaterPass {
+  /// The pass reducing the frame's depth into the pyramid the reflection's rays walk over.
+  pub(crate) const PYRAMID_PASS: &'static str = "water pyramid";
+
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
@@ -252,7 +256,6 @@ impl WaterPass {
           .histories
           .get_sides()
           .map(|side| import("water reflection", &side.view)),
-        blue_noise: import("water blue noise", &self.maps.blue_noise),
       });
 
     let WaterReflected { blurred, history } = match reflection {
@@ -329,10 +332,20 @@ impl WaterPass {
       nothing,
       reflection,
       histories,
-      blue_noise,
     } = inputs;
     let (width, height) = draw.targets.size;
     let [written, read]: [GraphTexture; 2] = histories;
+
+    // The frame's depth as it stands now, the grass in it, reduced to its nearest for the rays to walk over.
+    draw.depth_pyramid.add_passes(
+      &mut *graph,
+      &mut *bindings,
+      Self::PYRAMID_PASS,
+      (&reflection.pyramid, draw.targets.depth),
+      PyramidReduction::Nearest,
+    );
+
+    let nearest_depth: GraphTexture = bindings.import_view(graph, "water nearest depth", &reflection.pyramid.view);
     let current: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
       "water reflection current",
       width,
@@ -354,7 +367,8 @@ impl WaterPass {
       nearest_water: frame.nearest,
       water_scene: scene,
       reflection_history: read,
-      blue_noise,
+      nearest_depth,
+      material_target: draw.targets.material,
       water_current: nothing,
     };
 

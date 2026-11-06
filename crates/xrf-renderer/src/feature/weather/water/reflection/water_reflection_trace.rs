@@ -11,4 +11,7 @@ pub struct WaterReflectionTrace {
   pub dim_turns: u32,
   /// The steps the reflection marches, at least one.
   pub march_steps: u32,
+  /// Whether every pixel traces every frame, the screen answering only plants past the grass's cards
+  /// (`RenderReflectionSettings::is_water_fully_traced`).
+  pub is_full: bool,
 }

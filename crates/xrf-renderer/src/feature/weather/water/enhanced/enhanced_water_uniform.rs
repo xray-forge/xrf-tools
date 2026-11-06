@@ -49,6 +49,11 @@ pub struct EnhancedWaterUniform {
   pub rings_tile: f32,
   pub rings_reach: f32,
   pub rings_strength: f32,
+  /// One where every pixel traces every frame and the screen answers only plants, and metres from the eye within which
+  /// it leaves those to the trace's grass cards too (`WaterFeature::follow_grass_cards`).
+  pub fully_traced: u32,
+  pub plant_reach: f32,
+  pub _pad: [u32; 2],
   /// Where each of its maps' reads has scrolled to (`EnhancedWaterScroll`): the heights', the wave layers', the rain
   /// ripples' and the wind layer's, the caustics' and the calm patches', and the ripples' clocks.
   pub heights: Vec4,
@@ -91,6 +96,7 @@ impl EnhancedWaterUniform {
       trace_frame: trace.frame,
       dim_turns: trace.dim_turns.max(1),
       march_steps: trace.march_steps.max(1),
+      fully_traced: trace.is_full as u32,
       vibrance: settings.vibrance,
       heights: scroll.heights,
       wave_layers: scroll.wave_layers,

@@ -46,16 +46,6 @@ const MIRROR_FRAMES: f32 = 4.0;
 // The share of the roughness's mip a missed ray reads the prefiltered sky at: its lobe spreads the rays already, and
 // the denoiser gathers them, so the cube supplies the other half of the blur.
 const MISS_BLUR: f32 = 0.5;
-// Metres behind a surface a ray may lie, and what of its distance more, and still have met it: thin, so a leaf stays a
-// leaf and a ray aimed past its edge goes past it; further behind, the walk ends uncertain. Within `PROBABLE_BEHIND`
-// more (metres, then a share of the distance: a wall met at a glancing step) the surface it stands behind is the
-// probable answer, and its colour is taken with a confidence fading over that depth; beyond it the ray has passed
-// something standing between, and the miss chain answers. Behind a plant the band is a bush's depth
-// (`PROBABLE_BEHIND_PLANT`): its blades are billboards standing in for a volume, a ray from the ground under a bush
-// leaves a metre behind its front, and behind a blade is mostly more bush.
-const HIT_THICKNESS: vec2<f32> = vec2<f32>(0.05, 0.005);
-const PROBABLE_BEHIND: vec2<f32> = vec2<f32>(0.5, 0.03);
-const PROBABLE_BEHIND_PLANT: vec2<f32> = vec2<f32>(1.5, 0.05);
 // How far along the ray the met surface's own normal may point before the hit is a back face: faded out from none to
 // this, since the depth's normal at an edge leans.
 const BACK_FACING: f32 = 0.2;
@@ -623,7 +613,9 @@ fn trace_pixel(pixel: vec2<f32>) -> TraceTargets {
   // A rough surface's reflection is blurred over its lobe: half the crossings find what it shows.
   let budget: u32 = u32(f32(reflection.crossings) * mix(1.0, ROUGH_CROSSINGS, smoothstep(ROUGH_BUDGET.x, ROUGH_BUDGET.y,
     roughness)));
-  let walk: RayWalk = ray_walk(nearest_depth, origin, toward_screen, max(budget, 8u), HIT_THICKNESS);
+  // A ray goes on behind a twig or a blade, as behind a wire: the surfaces' rays answer a plant probable instead.
+  let walk: RayWalk = ray_walk(nearest_depth, material_target, false, origin, toward_screen, max(budget, 8u),
+    HIT_THICKNESS);
   let distance_met: f32 = -ray_view_point(walk.position).z;
   let thickness: f32 = HIT_THICKNESS.x + distance_met * HIT_THICKNESS.y;
   let confidence: f32 = select(0.0, hit_confidence(walk, position, thickness), walk.is_met);
@@ -674,8 +666,7 @@ fn trace_pixel(pixel: vec2<f32>) -> TraceTargets {
   if (walk.end == END_UNCERTAIN) {
     let behind_texel: vec2<i32> = walk_texel(walk.position.xy);
     let is_plant: bool = has_mark(textureLoad(material_target, behind_texel, 0).a, MARK_PLANT);
-    let band: vec2<f32> = select(PROBABLE_BEHIND, PROBABLE_BEHIND_PLANT, is_plant);
-    let probable: f32 = 1.0 - smoothstep(thickness, thickness + band.x + distance_met * band.y, walk.behind);
+    let probable: f32 = probable_behind(walk.behind, thickness, distance_met, is_plant);
 
     if (probable > 0.0) {
       let shown: vec3<f32> = shown_point(behind_texel).xyz;

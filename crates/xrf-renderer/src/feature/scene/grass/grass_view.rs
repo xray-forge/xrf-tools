@@ -65,11 +65,14 @@ pub struct GrassView {
   planted: Option<(u64, i32, u32, u32)>,
   /// Whether this frame plants and draws.
   is_drawn: bool,
-  /// The cards casting the grass's shadows, while it casts them, whether the view traces them, and the metres from the
-  /// eye its sun cascades draw them to this frame, none where they draw none: traced, the cards stand further out than
-  /// the cascades they are asked in reach.
+  /// The cards casting the grass's shadows while it casts them, and standing for it in the water's every reflected ray
+  /// while the water traces those; whether the view traces them, and the mask their instance carries
+  /// (`GrassCards::SHADOW_MASK`, `GrassCards::REFLECTION_MASK`); and the metres from the eye its sun cascades draw them
+  /// to this frame, none where they draw none: traced, the cards stand further out than the cascades they are asked in
+  /// reach.
   cards: Option<GrassCards>,
   is_card_traced: bool,
+  card_mask: u8,
   card_cascade_reach: Option<f32>,
   /// The planting as a traced hit reads it, no models while none is drawn.
   trace: TraceGrassUniform,
@@ -94,6 +97,7 @@ impl GrassView {
       is_drawn: false,
       cards: None,
       is_card_traced: false,
+      card_mask: 0,
       card_cascade_reach: None,
       trace: TraceGrassUniform::default(),
       stats: StatsReadback::new(device),
@@ -125,6 +129,7 @@ impl GrassView {
       foliage,
       puddles,
       is_traced,
+      is_reflected,
       cascade_reach,
     } = *frame;
     let wind: GrassWindUniform = self
@@ -143,10 +148,13 @@ impl GrassView {
       return;
     };
 
-    let is_cascaded: bool = cascade_reach.is_some();
+    // The cards stand while the grass casts its shadows, by the trace or the cascades, or while the water's every ray
+    // meets them; traced for either, the water's rays meet them.
+    let is_shadow_traced: bool = is_traced && settings.is_shadowed;
 
-    self.is_card_traced = is_traced;
-    self.card_cascade_reach = cascade_reach;
+    self.is_card_traced = is_shadow_traced || is_reflected;
+    self.card_cascade_reach = cascade_reach.filter(|_| settings.is_shadowed);
+    self.card_mask = GrassCards::REFLECTION_MASK | if is_shadow_traced { GrassCards::SHADOW_MASK } else { 0 };
 
     // Made again where the radius or what their tufts ask wants them to hold another number of triangles.
     let capacity: u32 = GrassCards::get_capacity(
@@ -154,7 +162,7 @@ impl GrassView {
       self.card_demand.take()[0],
     );
 
-    if !(is_traced || is_cascaded) || !settings.is_shadowed {
+    if !self.is_card_traced && self.card_cascade_reach.is_none() {
       self.cards = None;
     } else if self.cards.as_ref().is_none_or(|cards| cards.capacity != capacity) {
       self.cards = Some(GrassCards::new(device, capacity));
@@ -196,9 +204,15 @@ impl GrassView {
       return;
     };
     let eye: Vec3 = Vec3::new(camera.position.x, camera.position.y, -camera.position.z);
-    // Traced, the cards shadow as far as their radius; drawn into the cascades alone, as far as those reach.
-    let (card_reach, card_fade): (f32, f32) =
-      GrassCards::get_reach(settings, if is_traced { None } else { cascade_reach });
+    // Traced, the cards stand as far as their radius; drawn into the cascades alone, as far as those reach.
+    let (card_reach, card_fade): (f32, f32) = GrassCards::get_reach(
+      settings,
+      if self.is_card_traced {
+        None
+      } else {
+        self.card_cascade_reach
+      },
+    );
 
     self.values = GrassUniform {
       eye: eye.extend(if camera.is_orthographic() { 0.0 } else { 1.0 }),
@@ -235,11 +249,17 @@ impl GrassView {
       height: settings.height,
       model_count: level.model_count,
       slope_limit,
-      _pad: [0.0; 3],
+      card_reach: if self.get_trace_instance().is_some() {
+        GrassCards::get_whole_reach(settings)
+      } else {
+        0.0
+      },
+      _pad: [0.0; 2],
     };
   }
 
-  /// The cards as an instance of the view's own top level, where the view traces the grass's shadows this frame.
+  /// The cards as an instance of the view's own top level, where the view traces them this frame: for the grass's
+  /// shadows, the water's reflected rays, or both.
   pub fn get_trace_instance(&self) -> Option<DrawableTraceInstance<'_>> {
     self
       .cards
@@ -249,7 +269,7 @@ impl GrassView {
       .map(|blas| DrawableTraceInstance {
         blas,
         custom_index: GrassCards::INSTANCE,
-        mask: GrassCards::MASK,
+        mask: self.card_mask,
       })
   }
 

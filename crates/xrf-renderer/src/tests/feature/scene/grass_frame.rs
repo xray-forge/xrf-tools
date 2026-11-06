@@ -8,11 +8,13 @@ use xrf_visual::{DetailsDescription, DetailsModel, DetailsPackage, VisualSection
 
 use crate::camera::camera_view::CameraView;
 use crate::context::gpu_context::GpuContext;
+use crate::context::gpu_requirements::can_trace;
 use crate::contract::feature::scene::render_grass_settings::RenderGrassSettings;
 use crate::feature::lighting::shadows::cascade_target::CascadeTarget;
 use crate::feature::lighting::shadows::cascades::sun_shadow_maps::SunShadowMaps;
 use crate::feature::scene::grass::build::grass_planting::GrassPlanting;
 use crate::feature::scene::grass::cards::grass_card_handles::GrassCardHandles;
+use crate::feature::scene::grass::cards::grass_cards::GrassCards;
 use crate::feature::scene::grass::cards::grass_shadow_casters::GrassShadowCasters;
 use crate::feature::scene::grass::draw::grass_occlusion_parameters::GrassOcclusionParameters;
 use crate::feature::scene::grass::grass_pass::GrassPass;
@@ -160,13 +162,11 @@ impl GrassFrames {
     }
   }
 
-  /// Plants, culls, stands the cards of, draws and casts into a sun cascade `level`'s grass for one frame of `grass`
-  /// through the frame graph, every pass declared, and submits it.
-  fn draw(&mut self, context: &GpuContext, grass: &mut GrassView, level: &GrassLevel, frame: u32) {
-    let device: &wgpu::Device = &context.device;
-
+  /// Readies `level`'s grass for one frame of `grass`, the view's light traced or not and its water tracing every
+  /// reflected ray or not (`is_traced`, `is_reflected`), its sun cascades drawing to 40 metres.
+  fn prepare(&self, context: &GpuContext, grass: &mut GrassView, level: &GrassLevel, frame: u32, traced: (bool, bool)) {
     grass.prepare(
-      device,
+      &context.device,
       Some(level),
       &self.settings,
       &GrassViewFrame {
@@ -180,10 +180,19 @@ impl GrassFrames {
         strength: 1.0,
         foliage: &FoliageWindValues::default(),
         puddles: (&self.puddles_view, GrassPuddlesUniform::default()),
-        is_traced: false,
+        is_traced: traced.0,
+        is_reflected: traced.1,
         cascade_reach: Some(40.0),
       },
     );
+  }
+
+  /// Plants, culls, stands the cards of, draws and casts into a sun cascade `level`'s grass for one frame of `grass`
+  /// through the frame graph, every pass declared, and submits it.
+  fn draw(&mut self, context: &GpuContext, grass: &mut GrassView, level: &GrassLevel, frame: u32) {
+    let device: &wgpu::Device = &context.device;
+
+    self.prepare(context, grass, level, frame, (false, false));
 
     {
       let (pass, textures): (&GrassPass, &TextureCache) = (&self.pass, &self.textures);
@@ -291,6 +300,61 @@ fn plants_draws_and_casts_the_grass_without_a_validation_error() {
   context.device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
 
   assert!(pollster::block_on(scope.pop()).is_none());
+}
+
+/// The cards stand traced for a view whose water traces every reflected ray though the grass casts no shadow, meeting
+/// the water's rays alone and telling a traced hit how far they stand whole; while the grass shadows a traced view
+/// they meet the rays asking whether the light is blocked too; and with neither, none is traced and every hit walks the
+/// grass's layers. Skipped, and says so, on a machine whose adapter traces no rays.
+#[test]
+fn the_cards_stand_for_the_waters_trace_whether_or_not_they_shadow() {
+  let Some(context) = create_test_context("to trace with") else {
+    return;
+  };
+
+  if !can_trace(&context.device) {
+    eprintln!("skipped: the adapter traces no rays");
+
+    return;
+  }
+
+  let mut frames: GrassFrames = GrassFrames::new(&context);
+  let level: GrassLevel = GrassLevel::new(
+    &context.device,
+    &create_details(1),
+    &mut frames.textures,
+    &frames.assets,
+  );
+  let mut grass: GrassView = GrassView::new(&context.device);
+  let whole: f32 = GrassCards::get_whole_reach(&frames.settings);
+  let traced = |frames: &GrassFrames, grass: &mut GrassView, asked: (bool, bool)| -> (Option<u8>, f32) {
+    frames.prepare(&context, grass, &level, 0, asked);
+
+    (
+      grass.get_trace_instance().map(|instance| instance.mask),
+      grass.get_trace_uniform().card_reach,
+    )
+  };
+
+  frames.settings.is_shadowed = false;
+
+  assert_eq!(
+    traced(&frames, &mut grass, (true, true)),
+    (Some(GrassCards::REFLECTION_MASK), whole)
+  );
+  assert_eq!(traced(&frames, &mut grass, (true, false)), (None, 0.0));
+  assert!(
+    grass.get_cascade_reach().is_none(),
+    "unshadowed cards cast into no cascade"
+  );
+
+  frames.settings.is_shadowed = true;
+
+  assert_eq!(
+    traced(&frames, &mut grass, (true, false)),
+    (Some(GrassCards::REFLECTION_MASK | GrassCards::SHADOW_MASK), whole)
+  );
+  assert_eq!(traced(&frames, &mut grass, (false, false)), (None, 0.0));
 }
 
 /// A scene's grass replaced by another read is planted again whole by a view drawing it, every pass binding the new

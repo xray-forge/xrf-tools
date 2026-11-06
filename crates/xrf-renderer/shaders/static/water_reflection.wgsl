@@ -7,11 +7,18 @@
 #import "common/trace_requests"
 #import "generated/static/water_reflection"
 
-// The reflection's march, its steps the settings' (`EnhancedWater::march_steps`): its refinements of a hit, how thick a
-// surface it takes for one, traced or not, and how far it reaches.
-const MARCH_REFINES: i32 = 2;
-const MARCH_THICKNESS: f32 = 3.0;
+// The reflection's walk over the pyramid of the frame's nearest depth, its hits and probable answers the surfaces' rays'
+// (`HIT_THICKNESS`, `probable_behind`): how far it reaches, and the cells it crosses for each of the settings' march
+// steps (`EnhancedWater::march_steps`).
 const MARCH_REACH: f32 = 150.0;
+const MARCH_CROSSINGS: u32 = 4u;
+
+// A surface nearer than this, where a game's weapon would stand, is passed over rather than reflected.
+const MARCH_NEAREST: f32 = 1.3;
+
+// Metres in front of what lies under the water's start a surface may stand and still be the screen's answer where a
+// ray runs out over the ground.
+const MARCH_GROUND_FRONT: f32 = 2.0;
 
 // How much of the reflection the last frames keep, and how much less of it where the ray met the sky.
 const REFLECTION_HISTORY: f32 = 0.97;
@@ -140,35 +147,8 @@ fn vs_water(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) i
   return water_vertex(vertex_index, instance_index, water);
 }
 
-// A view space point's place on the screen, in texture coordinates.
-fn view_to_uv(point: vec3<f32>) -> vec2<f32> {
-  let clip: vec4<f32> = camera.projection * vec4<f32>(point, 1.0);
-
-  return clip.xy / clip.w * vec2<f32>(0.5, -0.5) + 0.5;
-}
-
-// The reflection's ray as it marches the screen: where it starts and steps, how long it runs on the screen, and how far
-// along the view its ends lie.
-struct ReflectionRay {
-  start: vec2<f32>,
-  step: vec2<f32>,
-  length: f32,
-  near: f32,
-  far: f32,
-};
-
-// How far the ray, at a place on the screen, lies past the surface there, and that surface's
-// distance.
-fn ray_behind(ray: ReflectionRay, at: vec2<f32>) -> vec2<f32> {
-  let share: f32 = length(at - ray.start) / max(ray.length, 1e-6);
-  let along: f32 = ray.near * ray.far / mix(ray.far, ray.near, share);
-  let scene: f32 = scene_distance(at, depth_target);
-
-  return vec2<f32>(along - scene, scene);
-}
-
 // The view space point at a place on the screen, a distance along the view: through the whole projection, its
-// off-centre terms the temporal jitter moves included, as `view_to_uv` projects back.
+// off-centre terms the temporal jitter moves included, as `ray_screen_point` projects back.
 fn view_point(at: vec2<f32>, distance: f32) -> vec3<f32> {
   let ndc: vec2<f32> = (at * 2.0 - 1.0) * vec2<f32>(1.0, -1.0);
   let centred: vec2<f32> = ndc + vec2<f32>(camera.projection[2][0], camera.projection[2][1]);
@@ -198,80 +178,62 @@ fn is_facing_away(at: vec2<f32>, direction: vec3<f32>) -> bool {
   return dot(normal, direction) > FACING_AWAY;
 }
 
-// The ray from a point of the water along its reflection, marched over the screen and refined
-// where it passes behind a surface `thickness` thick at most; where it hit, then that surface's distance, then one
-// where it crossed the surface or nought where it ran out of steps short of one and takes the last it passed in front
-// of; or nothing where it left the screen. A surface nearer than 1.3 m, where a game's weapon would stand, is passed
-// through.
-fn march_reflection(start: vec3<f32>, direction: vec3<f32>, noise: f32, uv: vec2<f32>, thickness: f32) -> vec4<f32> {
+// The ray from a point of the water (in view space) along its reflection, walked over the pyramid of the frame's
+// nearest depth as the surfaces' rays are (`ray_walk`), so a wire or a cable a pixel wide stops it where fixed steps
+// passed over it, and a ray passing behind one goes on; but a plant's texel is the crown or the reeds it stands in
+// for, and a ray gone behind it has met it, so a poplar drawn a few texels wide at a low drawn size holds rather than
+// let the jitter choose which rays slip through to the bank. The surface the screen answers with, its place and
+// distance, then how sure the screen is of it: sure where the ray met it; as sure as it is probably still in what it
+// went behind and stayed behind (a wall, a hill); sure of the ground where the ray ran its reach out over it, the
+// screen's last answer. Nothing where it left the screen, met only the sky, ran its crossings out, or met a surface
+// nearer than `MARCH_NEAREST`. Squeezed across near the screen's sides, unless the eye looks down.
+fn march_reflection(start: vec3<f32>, direction: vec3<f32>, uv: vec2<f32>) -> vec4<f32> {
   // A ray turning towards the eye stops short of the near plane rather than wrap behind it.
   let reach: f32 = select(MARCH_REACH, min(MARCH_REACH, (-0.1 - start.z) / direction.z), direction.z > 0.0);
-  let end: vec3<f32> = start + direction * max(reach, 0.0);
-  let screen_start: vec2<f32> = view_to_uv(start);
-  let screen_end: vec2<f32> = view_to_uv(end);
-  var ray: ReflectionRay;
-
-  ray.start = screen_start;
-  ray.step = (screen_end - screen_start) / f32(enhanced.march_steps);
-  ray.length = length(screen_end - screen_start);
-  ray.near = -start.z;
-  ray.far = -end.z;
-
-  // Squeezed across near the screen's sides, unless the eye looks down.
+  let origin: vec3<f32> = ray_screen_point(start);
+  var toward: vec3<f32> = ray_screen_point(start + direction * max(reach, 1e-3)) - origin;
   let edges: vec2<f32> = 1.0 - smoothstep(vec2<f32>(0.9), vec2<f32>(1.0), vec2<f32>(uv.x, 1.0 - uv.x));
   let looking_down: f32 = saturate(-camera.view[1].z * 3.0);
 
-  ray.step.x *= saturate(edges.x * edges.y + looking_down);
+  toward.x *= saturate(edges.x * edges.y + looking_down);
 
-  var at: vec2<f32> = ray.start + ray.step * noise;
-  let start_distance: f32 = scene_distance(ray.start, depth_target);
-  var behind: vec3<f32> = vec3<f32>(0.0);
+  let walk: RayWalk = ray_walk(nearest_depth, material_target, true, origin, toward,
+    enhanced.march_steps * MARCH_CROSSINGS, HIT_THICKNESS);
+  let at: vec2<f32> = walk.position.xy;
 
-  for (var step: i32 = 1; step <= i32(enhanced.march_steps); step++) {
-    if (any(at < vec2<f32>(0.0)) || any(at > vec2<f32>(1.0))) {
-      return vec4<f32>(0.0);
-    }
-
-    var check: vec2<f32> = ray_behind(ray, at);
-    let is_far: bool = check.y > 1.3;
-
-    check.x *= f32(is_far);
-
-    if (check.x > 0.0) {
-      if (check.x <= thickness || start_distance + 40.0 < check.y) {
-        return vec4<f32>(at, check.y, 1.0);
-      }
-
-      let kept: vec2<f32> = at;
-      let kept_step: vec2<f32> = ray.step;
-      var last_sign: f32 = -1.0;
-
-      for (var refine: i32 = 0; refine < MARCH_REFINES; refine++) {
-        if (sign(check.x) != last_sign) {
-          ray.step *= -0.5;
-          last_sign = sign(check.x);
-        }
-
-        at += ray.step;
-        check = ray_behind(ray, at);
-
-        if (abs(check.x) <= thickness) {
-          return vec4<f32>(at, check.y, 1.0);
-        }
-      }
-
-      at = kept;
-      ray.step = kept_step;
-    } else {
-      behind = vec3<f32>(at, check.y) * f32(start_distance - 2.0 < check.y && is_far);
-    }
-
-    let is_passed: bool = !is_far && check.y > 0.01 && f32(step) > f32(enhanced.march_steps) * 0.4;
-
-    at += ray.step * select(1.0, 3.5, is_passed);
+  if (walk.end == END_OFF_SCREEN || any(at < vec2<f32>(0.0)) || any(at > vec2<f32>(1.0))) {
+    return vec4<f32>(0.0);
   }
 
-  return vec4<f32>(behind, 0.0);
+  let pixel: vec2<i32> = walk_pixel(at);
+  let distance: f32 = scene_distance(at, depth_target);
+
+  if (textureLoad(depth_target, pixel, 0) <= 0.0 || distance <= MARCH_NEAREST) {
+    return vec4<f32>(0.0);
+  }
+
+  if (walk.is_met) {
+    return vec4<f32>(at, distance, 1.0);
+  }
+
+  // Behind no plant: those the walk met.
+  if (walk.end == END_UNCERTAIN) {
+    return vec4<f32>(at, distance,
+      probable_behind(walk.behind, HIT_THICKNESS.x + distance * HIT_THICKNESS.y, distance, false));
+  }
+
+  // Only a ray that ran its reach out over the ground ends in front of it; one that ran its crossings out may stand
+  // behind anything, a cable it was passing included, and is left to the trace or the sky.
+  let is_ground: bool = walk.end == END_FAR && scene_distance(origin.xy, depth_target) - MARCH_GROUND_FRONT < distance;
+
+  return select(vec4<f32>(0.0), vec4<f32>(at, distance, 1.0), is_ground);
+}
+
+// The drawn texel a walk's place on the screen falls in.
+fn walk_pixel(at: vec2<f32>) -> vec2<i32> {
+  let size: vec2<f32> = camera.viewport.xy;
+
+  return vec2<i32>(clamp(floor(at * size), vec2<f32>(0.0), size - 1.0));
 }
 
 // The scene the water's flat surface reflects, marched over the screen as it stood before the water and faded towards
@@ -303,14 +265,21 @@ fn fs_water_reflection(in: WaterVarying) -> @location(0) vec4<f32> {
   // bridge's reflection off short.
   let away: f32 = smoothstep(-0.1, -0.4, dot(-eye, reflected));
   let is_away: bool = away > 0.0;
-  let noise_uv: vec2<f32> = (uv * 1.33 + water.time * 0.02) * vec2<f32>(size.x / size.y, 1.0);
-  let noise: f32 = textureSampleLevel(blue_noise, texture_sampler, noise_uv, 0.0).x * 1.5;
   // A branch rather than a select, which would march every ray to throw most away.
   let is_traced: bool = enhanced.trace_distance > 0.0;
   var hit: vec4<f32> = vec4<f32>(0.0);
 
   if (is_away) {
-    hit = march_reflection(position, reflected, noise, uv, MARCH_THICKNESS);
+    hit = march_reflection(position, reflected, uv);
+  }
+
+  // Fully traced, the screen answers only the plants past the grass's cards (`plant_reach`, from the eye), which the
+  // level's trace does not hold; every other ray is traced, so a cable's or a pipe's reflection is what the ray meets
+  // lit, not the side the eye sees, and a reed's its blades, not its screen copy stretched down behind it.
+  if (is_traced && enhanced.fully_traced != 0u && hit.w > 0.0 &&
+    (!has_mark(textureLoad(material_target, walk_pixel(hit.xy), 0).a, MARK_PLANT) ||
+      length(view_point(hit.xy, hit.z)) < enhanced.plant_reach)) {
+    hit = vec4<f32>(0.0);
   }
   // The sky's picture as the frame's display brings it in, so the reflection holds light throughout, as what the
   // screen and the trace answer is.
@@ -320,8 +289,8 @@ fn fs_water_reflection(in: WaterVarying) -> @location(0) vec4<f32> {
   );
   // The screen answers first, as it does untraced: the trace takes only what it misses (off the screen, the sky, past
   // its reach), and a surface the screen met facing away from the ray, which the mirror cannot see.
-  let is_met: bool = all(hit.xy != vec2<f32>(0.0)) && !(is_traced && is_away && is_facing_away(hit.xy, reflected));
-  let screen_share: f32 = select(0.0, saturate(hit.y * 5.0) * away, is_met);
+  let is_met: bool = hit.w > 0.0 && !(is_traced && is_away && is_facing_away(hit.xy, reflected));
+  let screen_share: f32 = select(0.0, saturate(hit.y * 5.0) * away * hit.w, is_met);
   var scene: vec3<f32> = vec3<f32>(0.0);
   var share: f32 = 0.0;
 

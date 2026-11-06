@@ -28,10 +28,13 @@ impl GrassCards {
   /// Bytes a triangle's corners and its record take.
   const VERTEX_BYTES: u64 = 36;
   const TRIANGLE_BYTES: u64 = 16;
-  /// The top-level instance's custom index (`SCENE_GRASS_CARDS`), past any of the scene's, and its mask, which a ray
-  /// leaves out by its own (`SCENE_MASK_SCENE`).
+  /// The top-level instance's custom index (`SCENE_GRASS_CARDS`), past any of the scene's; its mask's bit for the rays
+  /// asking whether the light is blocked (`SCENE_MASK_CARD_SHADOWS`), set while the grass casts its shadows, and for
+  /// the water's reflected rays (`SCENE_MASK_CARD_REFLECTIONS`), set whenever the cards are traced. A surfaces' ray
+  /// leaves both out (`SCENE_MASK_SCENE`).
   pub const INSTANCE: u32 = 0x00ff_ffff;
-  pub const MASK: u8 = 0x02;
+  pub const SHADOW_MASK: u8 = 0x02;
+  pub const REFLECTION_MASK: u8 = 0x04;
   /// The share of their reach over which the cards fade out.
   const FADE_SHARE: f32 = 0.2;
 
@@ -108,6 +111,14 @@ impl GrassCards {
       .clamp(1.0, Self::MOST_REACH);
 
     (reach, reach * Self::FADE_SHARE)
+  }
+
+  /// Metres from the eye within which the traced cards stand every tuft whole for `settings`, short of their fade: where
+  /// a water's ray meets the grass as its cards, and past which it walks the grass's layers.
+  pub fn get_whole_reach(settings: &RenderGrassSettings) -> f32 {
+    let (reach, fade): (f32, f32) = Self::get_reach(settings, None);
+
+    reach - fade
   }
 
   /// Slots each way from the eye's that `reach` spans: the eye stands up to half a slot off its slot's middle.

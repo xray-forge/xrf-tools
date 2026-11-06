@@ -25,7 +25,7 @@ export function SettingsRendererRayTracedReflections(): ReactElement {
       <div className={"mt-4 flex flex-col gap-6"}>
         <RenderSettingRows
           settings={RENDER_REFLECTION_SETTINGS}
-          names={["isTraced", "traceInterval"]}
+          names={["isTraced", "traceInterval", "isWaterFullyTraced"]}
           group={features.reflections}
           features={features}
           onSet={onSet}

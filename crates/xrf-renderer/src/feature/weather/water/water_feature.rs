@@ -40,6 +40,8 @@ pub struct WaterFeature {
   flow: WaterFlow,
   /// Frames prepared, which turns which of its pixels trace.
   frame: u32,
+  /// Whether this frame's enhanced water traces every pixel's reflected ray.
+  is_fully_traced: bool,
 }
 
 impl WaterFeature {
@@ -80,6 +82,7 @@ impl WaterFeature {
       skies: [&views.cubes[0], &views.cubes[1]],
       sky_sampler: passes.sky.get_clamp(),
       water: self,
+      depth_pyramid: &passes.scene.pyramid,
       scene_trace: &passes.tracing.scene_trace,
       traced,
       rings,
@@ -109,6 +112,7 @@ impl WaterFeature {
     self.uniform = WaterUniform::new(&settings, frame.intensity, frame.time.now).following(frame.time.get_previous());
     // Advanced while the engine's water draws too, so switching back does not lurch the maps by the time between.
     self.flow.advance(frame.time, &settings.enhanced, frame.wind);
+    self.is_fully_traced = false;
 
     // Kept while the enhanced water is asked for, though none is in sight, so water coming back into view takes no new
     // histories; a frame drawing none forgets the history in them (`end_frame`).
@@ -134,18 +138,22 @@ impl WaterFeature {
     }
 
     let is_traced: bool = reflections.is_traced && can_trace(device);
+    // Every pixel tracing every frame lists as many requests as the frame has pixels, at a turn of one, never waiting
+    // dim.
+    let is_fully_traced: bool = is_traced && reflections.is_water_fully_traced;
 
     self.frame = self.frame.wrapping_add(1);
+    self.is_fully_traced = is_fully_traced && self.is_drawn && self.reflection.is_some();
 
     if let Some(reflection) = &mut self.reflection {
       let (width, height) = reflection.size;
 
       reflection.requests.fit(
         device,
-        if is_traced {
-          (width * height).div_ceil(WaterReflection::REQUEST_SHARE)
-        } else {
-          0
+        match (is_traced, is_fully_traced) {
+          (_, true) => width * height,
+          (true, false) => (width * height).div_ceil(WaterReflection::REQUEST_SHARE),
+          (false, _) => 0,
         },
       );
     }
@@ -168,14 +176,19 @@ impl WaterFeature {
           .is_some_and(|reflection| reflection.histories.is_valid()),
         trace: WaterReflectionTrace {
           distance: if is_traced { reflections.distance } else { 0.0 },
-          turns: reflections.get_trace_interval(),
+          turns: if is_fully_traced {
+            1
+          } else {
+            reflections.get_trace_interval()
+          },
           frame: self.frame,
-          dim_turns: if reflections.is_ray_budgeted {
+          dim_turns: if reflections.is_ray_budgeted && !is_fully_traced {
             WaterReflection::DIM_TURNS
           } else {
             1
           },
           march_steps: reflections.get_water_steps(),
+          is_full: is_fully_traced,
         },
       },
     );
@@ -183,6 +196,12 @@ impl WaterFeature {
 
   pub fn is_drawn(&self) -> bool {
     self.is_drawn
+  }
+
+  /// Whether this frame's enhanced water draws and traces every pixel's reflected ray, which the grass's cards stand
+  /// in.
+  pub fn is_fully_traced(&self) -> bool {
+    self.is_fully_traced
   }
 
   /// Whether the enhanced water draws, reading the scene before it to refract.
@@ -204,6 +223,13 @@ impl WaterFeature {
     self.enhanced.rings_tile = rings.tile;
     self.enhanced.rings_reach = rings.reach;
     self.enhanced.rings_strength = rings.strength;
+  }
+
+  /// Follows the grass's cards this frame, readied after the water: the metres from the eye within which the trace
+  /// stands every tuft whole (`TraceGrassUniform::card_reach`, none where it traces none), so the screen leaves the
+  /// plants there to the trace while every pixel traces, and answers them where the trace would meet nothing.
+  pub fn follow_grass_cards(&mut self, card_reach: f32) {
+    self.enhanced.plant_reach = if self.is_fully_traced { card_reach } else { 0.0 };
   }
 
   pub fn get_enhanced_uniform(&self) -> &EnhancedWaterUniform {
