@@ -4,7 +4,7 @@ use xrf_error::XrfResult;
 use xrf_material::{
   XrayBumpNaming, XrayMaterialBump, XrayMaterialDeclaration, XrayMaterialDescriptor, XrayMaterialResolver,
 };
-use xrf_texture::BumpAlignment;
+use xrf_texture::{BumpAlignment, BumpAlignmentLevel};
 use xrf_vfs::{XrayAsset, XrayAssetType, XrayResolution, XraySearch};
 
 use crate::commands::thm::bump_alignment::bump_alignment_set::{BumpAlignmentOutcome, BumpAlignmentSet};
@@ -79,10 +79,16 @@ impl BumpAlignmentSurvey {
       .flatten()
   }
 
+  /// Each file is held only while its level decodes, not through the comparison, the longest step: whole files held
+  /// through it on every worker at once would be most of the survey's memory.
   fn read(search: &XraySearch, diffuse: &XrayAsset, bump: &XrayAsset) -> XrfResult<BumpAlignment> {
-    BumpAlignment::read(
-      &DdsFile::read_from_bytes(&search.read_asset(diffuse)?)?,
-      &DdsFile::read_from_bytes(&search.read_asset(bump)?)?,
-    )
+    let diffuse: BumpAlignmentLevel = Self::read_level(search, diffuse)?;
+    let bump: BumpAlignmentLevel = Self::read_level(search, bump)?;
+
+    Ok(BumpAlignment::compare(&diffuse, &bump))
+  }
+
+  fn read_level(search: &XraySearch, texture: &XrayAsset) -> XrfResult<BumpAlignmentLevel> {
+    BumpAlignmentLevel::read(&DdsFile::read_from_vec(search.read_asset(texture)?)?)
   }
 }

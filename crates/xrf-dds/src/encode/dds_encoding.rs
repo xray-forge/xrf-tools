@@ -1,7 +1,10 @@
 use ddsfile::{Caps, Caps2, D3DFormat, Dds, NewD3dParams};
-use image_dds::{ImageFormat, Mipmaps, Quality, SurfaceRgba8};
+use image::RgbaImage;
+use image_dds::{ImageFormat, Mipmaps, Quality, Surface, SurfaceRgba8};
+use rayon::prelude::*;
 use xrf_error::{XrfError, XrfResult};
 
+use crate::encode::dds_surface_levels::DdsSurfaceLevels;
 use crate::file::dds_file::DdsFile;
 use crate::mip::dds_mip_chain::DdsMipChain;
 
@@ -16,6 +19,9 @@ impl DdsEncoding {
   /// Pixels along one edge of a block, which every block-compressed family in this format shares.
   pub const BLOCK_SIZE: u32 = 4;
 
+  /// Rows of a level encoded as one piece, a whole number of blocks high so no piece but a level's last is padded.
+  const STRIPE_ROWS: u32 = 16 * Self::BLOCK_SIZE;
+
   pub fn new(format: ImageFormat, quality: Quality) -> Self {
     Self { format, quality }
   }
@@ -26,7 +32,7 @@ impl DdsEncoding {
   ///
   /// Returns an error when the chain cannot be laid out as a surface, or when the encoder refuses the pixels.
   pub fn encode(&self, chain: &DdsMipChain) -> XrfResult<DdsFile> {
-    self.write(chain.to_surface()?)
+    self.write(&DdsSurfaceLevels::of_chain(chain)?)
   }
 
   /// Writes six chains into a cube texture, `+x -x +y -y +z -z`, each face level for level as [`Self::encode`] does.
@@ -35,15 +41,24 @@ impl DdsEncoding {
   ///
   /// Returns an error unless there are six square faces alike in size and levels, or where [`Self::encode`] does.
   pub fn encode_cube(&self, faces: &[DdsMipChain]) -> XrfResult<DdsFile> {
-    self.write(DdsMipChain::to_cube_surface(faces)?)
+    self.write(&DdsSurfaceLevels::of_cube(faces)?)
   }
 
   /// Writes a surface of one layer, or of six as a cube.
-  fn write(&self, surface: SurfaceRgba8<Vec<u8>>) -> XrfResult<DdsFile> {
+  fn write(&self, levels: &DdsSurfaceLevels) -> XrfResult<DdsFile> {
+    let base: &RgbaImage = levels.base();
+    let surface: Surface<Vec<u8>> = Surface {
+      width: base.width(),
+      height: base.height(),
+      depth: 1,
+      layers: u32::try_from(levels.layers())
+        .map_err(|_| XrfError::new_texture_processing_error("Surface exceeds the supported layer count"))?,
+      mipmaps: u32::try_from(levels.mipmaps())
+        .map_err(|_| XrfError::new_texture_processing_error("Mip chain exceeds the supported level count"))?,
+      image_format: self.format,
+      data: self.encode_levels(levels.levels())?,
+    };
     let is_cube: bool = surface.layers == 6;
-    let surface = surface
-      .encode(self.format, self.quality, Mipmaps::FromSurface)
-      .map_err(|error| XrfError::new_texture_processing_error(error.to_string()))?;
 
     let mut dds: Dds = match Self::legacy_format(self.format) {
       Some(format) => {
@@ -77,6 +92,46 @@ impl DdsEncoding {
     }
 
     DdsFile::from_encoded(dds)
+  }
+
+  /// Every level encoded and laid end to end, as one surface's payload stores them.
+  ///
+  /// A level is encoded in stripes of [`Self::STRIPE_ROWS`] on every worker at once. Each block is encoded from its
+  /// own sixteen pixels alone and a payload is its blocks row by row, so the stripes laid end to end are the bytes the
+  /// level encoded whole would be; only a level's last stripe is padded out to whole blocks, as the whole level is.
+  fn encode_levels(&self, levels: &[&RgbaImage]) -> XrfResult<Vec<u8>> {
+    let stripes: Vec<SurfaceRgba8<&[u8]>> = levels.iter().flat_map(|level| Self::stripes_of(level)).collect();
+    let encoded: Vec<Vec<u8>> = stripes
+      .par_iter()
+      .map(|stripe| {
+        stripe
+          .encode(self.format, self.quality, Mipmaps::FromSurface)
+          .map(|surface| surface.data)
+          .map_err(|error| XrfError::new_texture_processing_error(error.to_string()))
+      })
+      .collect::<XrfResult<Vec<Vec<u8>>>>()?;
+
+    Ok(encoded.concat())
+  }
+
+  /// One level as surfaces of [`Self::STRIPE_ROWS`] rows each, the last holding what remains.
+  fn stripes_of(level: &RgbaImage) -> impl Iterator<Item = SurfaceRgba8<&[u8]>> {
+    let row_length: usize = level.width() as usize * 4;
+
+    (0..level.height())
+      .step_by(Self::STRIPE_ROWS as usize)
+      .map(move |first| {
+        let height: u32 = Self::STRIPE_ROWS.min(level.height() - first);
+
+        SurfaceRgba8 {
+          width: level.width(),
+          height,
+          depth: 1,
+          layers: 1,
+          mipmaps: 1,
+          data: &level.as_raw()[first as usize * row_length..][..height as usize * row_length],
+        }
+      })
   }
 
   /// The legacy `FourCC` spelling of a layout, for the formats that predate the DX10 header extension.

@@ -8,6 +8,7 @@ use image::{ExtendedColorType, ImageEncoder, RgbaImage};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{StagedFile, format_path};
 
+use crate::file::dds_block_decoder::DdsBlockDecoder;
 use crate::file::dds_metadata::DdsMetadata;
 use crate::file::dds_png::DdsPng;
 use crate::file::dds_uncompressed_decoder::DdsUncompressedDecoder;
@@ -97,6 +98,28 @@ impl DdsFile {
     Self::from_parsed(dds, file_size)
   }
 
+  /// Reads a whole texture from bytes handed over, keeping them as its payload where [`Self::read_from_bytes`] copies
+  /// the payload out: a reader holding many textures at once holds each once.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the bytes do not hold a readable DDS.
+  pub fn read_from_vec(mut bytes: Vec<u8>) -> XrfResult<Self> {
+    let file_size: u64 = u64::try_from(bytes.len())
+      .map_err(|_| XrfError::new_texture_processing_error("DDS input exceeds the supported size range"))?;
+    let header: &[u8] = &bytes[..bytes.len().min(DX10_HEADER_SIZE as usize)];
+    let mut dds: Dds = Dds::read(&mut Cursor::new(header))
+      .map_err(|error| XrfError::new_texture_processing_error(format!("Failed to read DDS from memory: {error}.")))?;
+    let header_size: usize = usize::try_from(Self::header_size(&dds))
+      .map_err(|_| XrfError::new_texture_processing_error("DDS header exceeds the supported size range"))?;
+
+    // The header read whole, so the payload is everything after it, as a read of the whole file answers it.
+    bytes.drain(..header_size);
+    dds.data = bytes;
+
+    Self::from_parsed(dds, file_size)
+  }
+
   /// Wraps a freshly encoded texture, deriving the sizes its header and payload occupy.
   pub(crate) fn from_encoded(dds: Dds) -> XrfResult<Self> {
     let data_size: u64 = u64::try_from(dds.data.len())
@@ -125,8 +148,9 @@ impl DdsFile {
 
   /// Decode one mip level to RGBA, for whatever wants pixels rather than the file.
   ///
-  /// Two decoders, in order. `image_dds` owns every block compressed layout and the packings it has names for; what it
-  /// refuses goes to `decode_uncompressed`, which expands a packing from the channel masks its header declares.
+  /// Two decoders, in order. `image_dds` owns every block compressed layout and the packings it has names for, a flat
+  /// texture's block-compressed level split into stripes of rows decoded on every worker; what it refuses goes to
+  /// `decode_uncompressed`, which expands a packing from the channel masks its header declares.
   /// Between them they cover every layout in the reference trees - 28,606 files across `gamedata`, `gamedata-anomaly`,
   /// `gamedata-coc`, `gamedata-cop-ee`, `gamedata-cs` and `gamedata-openxray-gunslinger`:
   ///
@@ -148,6 +172,12 @@ impl DdsFile {
   /// Returns an error when neither decoder reads the layout, when the file is a cubemap or volume, or when the
   /// requested level is not in the file.
   pub fn decode_rgba(&self, mipmap_level: u32) -> XrfResult<RgbaImage> {
+    // A flat block-compressed level, most of what a tree holds, decodes in stripes on every worker; anything that
+    // refuses takes the whole-level path below, which answers its pixels or its error as it would alone.
+    if let Some(image) = DdsBlockDecoder::decode(&self.dds, mipmap_level) {
+      return Ok(image);
+    }
+
     match image_dds::image_from_dds(&self.dds, mipmap_level) {
       Ok(image) => Ok(image),
       Err(error) => DdsUncompressedDecoder::decode(&self.dds, mipmap_level).map_err(|fallback| {
@@ -358,6 +388,25 @@ mod tests {
         .metadata(),
       DdsFile::read_from_path(&path).expect("expect path to parse").metadata()
     );
+  }
+
+  #[test]
+  fn reads_the_same_texture_from_bytes_handed_over() {
+    // A legacy header and a DX10 one, whose payloads start twenty bytes apart.
+    for bytes in [
+      encoded_file(64, 32, DdsMipmaps::Filtered(DdsMipFilter::Box)).write_to_bytes(),
+      dx10_file(DxgiFormat::BC7_UNorm).write_to_bytes(),
+    ] {
+      let bytes: Vec<u8> = bytes.expect("expect DDS bytes");
+      let copied: DdsFile = DdsFile::read_from_bytes(&bytes).expect("expect bytes to parse");
+      let kept: DdsFile = DdsFile::read_from_vec(bytes.clone()).expect("expect bytes to parse");
+
+      assert_eq!(kept.metadata(), copied.metadata());
+      assert_eq!(kept.get_data(), copied.get_data());
+      assert_eq!(kept.write_to_bytes().expect("expect DDS bytes"), bytes);
+    }
+
+    assert!(DdsFile::read_from_vec(b"not a DDS".to_vec()).is_err());
   }
 
   #[test]

@@ -103,6 +103,6 @@ impl LevelAlbedoSurvey {
   }
 
   fn read(search: &XraySearch, asset: &XrayAsset, alpha_reference: Option<u8>) -> XrfResult<Option<TextureAlbedo>> {
-    TextureAlbedo::read(&DdsFile::read_from_bytes(&search.read_asset(asset)?)?, alpha_reference)
+    TextureAlbedo::read(&DdsFile::read_from_vec(search.read_asset(asset)?)?, alpha_reference)
   }
 }

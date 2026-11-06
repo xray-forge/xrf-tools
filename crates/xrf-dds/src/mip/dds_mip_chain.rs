@@ -1,5 +1,4 @@
 use image::RgbaImage;
-use image_dds::SurfaceRgba8;
 use xrf_error::{XrfError, XrfResult};
 
 use crate::mip::dds_mip_resampler::DdsMipResampler;
@@ -8,8 +7,8 @@ use crate::mip::dds_mipmaps::DdsMipmaps;
 /// A base image and the reduced levels below it, ready to be encoded as they are.
 ///
 /// Every level is reduced from the base rather than from the level above it, so a wide kernel is applied once instead
-/// of compounding its own output. For a box kernel the two are the same picture, since averaging four 2x2 averages is
-/// averaging 4x4.
+/// of compounding its own output. For a box kernel the two would be the same picture, since averaging four 2x2 averages
+/// is averaging 4x4, but for each level being rounded to bytes before the next is reduced from it.
 ///
 /// Channels are resampled independently and alpha is never premultiplied. That is wrong for a picture whose
 /// transparent texels carry no colour, and right for this format: X-Ray packs a bump pair's normal, gloss, error and
@@ -96,74 +95,6 @@ impl DdsMipChain {
     &self.levels
   }
 
-  /// The chain as one surface, which is the shape the encoder takes a caller's own levels in.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when the chain describes more levels than the format's `u32` count can carry.
-  pub(crate) fn to_surface(&self) -> XrfResult<SurfaceRgba8<Vec<u8>>> {
-    Self::to_layered_surface(std::slice::from_ref(self))
-  }
-
-  /// Six chains as one cube surface, each face's levels in turn, `+x -x +y -y +z -z`.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error unless there are six faces, square and alike in the size of every level.
-  pub(crate) fn to_cube_surface(faces: &[Self]) -> XrfResult<SurfaceRgba8<Vec<u8>>> {
-    let surface: SurfaceRgba8<Vec<u8>> = Self::to_layered_surface(faces)?;
-
-    if surface.layers != 6 || surface.width != surface.height {
-      return Err(XrfError::new_texture_processing_error(format!(
-        "A cube is six square faces, not {} of {} by {}",
-        surface.layers, surface.width, surface.height
-      )));
-    }
-
-    Ok(surface)
-  }
-
-  /// Chains alike in the size of every level as one surface, a layer each, each layer's levels in turn.
-  fn to_layered_surface(layers: &[Self]) -> XrfResult<SurfaceRgba8<Vec<u8>>> {
-    let [first, ..] = layers else {
-      return Err(XrfError::new_texture_processing_error(
-        "Cannot encode a surface holding no layers",
-      ));
-    };
-    let base: &RgbaImage = first
-      .levels
-      .first()
-      .ok_or_else(|| XrfError::new_texture_processing_error("Cannot encode a mip chain holding no levels"))?;
-    let is_alike = |layer: &Self| {
-      layer
-        .levels
-        .iter()
-        .map(RgbaImage::dimensions)
-        .eq(first.levels.iter().map(RgbaImage::dimensions))
-    };
-
-    if !layers.iter().all(is_alike) {
-      return Err(XrfError::new_texture_processing_error(
-        "Layers of one surface must share the size of every level",
-      ));
-    }
-
-    Ok(SurfaceRgba8 {
-      width: base.width(),
-      height: base.height(),
-      depth: 1,
-      layers: u32::try_from(layers.len())
-        .map_err(|_| XrfError::new_texture_processing_error("Surface exceeds the supported layer count"))?,
-      mipmaps: u32::try_from(first.levels.len())
-        .map_err(|_| XrfError::new_texture_processing_error("Mip chain exceeds the supported level count"))?,
-      data: layers
-        .iter()
-        .flat_map(|layer| &layer.levels)
-        .flat_map(|level| level.as_raw().iter().copied())
-        .collect(),
-    })
-  }
-
   /// The size of one mip level of a base this size, which halves on each axis and never falls below one pixel.
   ///
   /// The one rule for it, shared by building a chain and by reading one back out of a payload.
@@ -180,7 +111,6 @@ impl DdsMipChain {
 #[cfg(test)]
 mod tests {
   use image::{Rgba, RgbaImage};
-  use image_dds::SurfaceRgba8;
   use xrf_error::XrfResult;
 
   use super::DdsMipChain;
@@ -250,27 +180,10 @@ mod tests {
   }
 
   #[test]
-  fn lays_the_chain_out_as_one_surface() -> XrfResult {
-    let chain: DdsMipChain = DdsMipChain::build(&RgbaImage::new(4, 4), DdsMipmaps::Filtered(DdsMipFilter::Box))?;
-    let surface: SurfaceRgba8<Vec<u8>> = chain.to_surface()?;
-
-    assert_eq!(
-      (surface.width, surface.height, surface.depth, surface.layers),
-      (4, 4, 1, 1)
-    );
-    assert_eq!(surface.mipmaps, 3);
-    // Every level's pixels, back to back and unpadded: 16 + 4 + 1 pixels of four bytes.
-    assert_eq!(surface.data.len(), (16 + 4 + 1) * 4);
-
-    Ok(())
-  }
-
-  #[test]
   fn a_flat_chain_carries_the_base_alone() -> XrfResult {
     let chain: DdsMipChain = DdsMipChain::build(&steps(&[0, 10, 20, 30]), DdsMipmaps::Disabled)?;
 
     assert_eq!(chain.levels().len(), 1);
-    assert_eq!(chain.to_surface()?.mipmaps, 1);
 
     Ok(())
   }
@@ -280,7 +193,7 @@ mod tests {
     // A chain stopping early, as the SDK's own reduction does once the shorter side reaches one.
     let chain: DdsMipChain = DdsMipChain::from_levels(vec![RgbaImage::new(8, 2), RgbaImage::new(4, 1)])?;
 
-    assert_eq!(chain.to_surface()?.mipmaps, 2);
+    assert_eq!(chain.levels().len(), 2);
     assert!(DdsMipChain::from_levels(vec![RgbaImage::new(8, 2), RgbaImage::new(3, 1)]).is_err());
     assert!(DdsMipChain::from_levels(vec![RgbaImage::new(1, 1), RgbaImage::new(1, 1)]).is_err());
     assert!(DdsMipChain::from_levels(Vec::new()).is_err());

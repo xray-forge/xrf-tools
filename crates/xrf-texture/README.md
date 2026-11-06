@@ -17,7 +17,8 @@ below the CLI's `dds` and `sprite` commands and the desktop app's texture and sp
 - `EquipmentGridVerifier::find_overlaps` checks occupied inventory rectangles in resolved LTX data.
 - `TextureAlbedo::read` measures how a diffuse texture's colours sit as albedo, and `AlbedoVerdict` judges its median
   against the range unlit materials span.
-- `BumpAlignment::read` measures whether a bump belongs to its diffuse, and `BumpAlignmentVerdict` judges it.
+- `BumpAlignment::compare` measures whether a bump belongs to its diffuse, each read with `BumpAlignmentLevel::read`,
+  and `BumpAlignmentVerdict` judges it.
 
 `TextureEncodingFormat` and `TextureEncodingQuality` are the five formats and three efforts a texture or a capture is
 offered to be written in, as the desktop app's editors ask; `to_candidate` and `to_quality` turn them into
@@ -119,7 +120,8 @@ not decide it. `None` answers a texture whose alpha test keeps nothing.
 
 ## Bump alignment
 
-`BumpAlignment::read` decodes a diffuse and its bump each at its largest level within 512 texels a side, brings both
+`BumpAlignmentLevel::read` decodes a diffuse or a bump at its largest level within 512 texels a side, so a survey can
+let each file go before the comparison, which takes most of the time. `BumpAlignment::compare` brings the two levels
 to the coarser of the two along each side (they are sampled over the same texture coordinates whatever their
 proportions), and correlates their edges texel for texel: the diffuse's colour gradient against the gradient of the
 bump's normal, its gloss left out. A set authored together has its cracks, seams and atlas outlines at the same texels
