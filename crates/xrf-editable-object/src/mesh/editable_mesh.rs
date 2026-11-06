@@ -57,6 +57,13 @@ impl EditableMesh {
   /// `flSGMask`: a face with no smoothing group of its own is flat rather than smoothed with all its neighbours.
   pub const SMOOTHING_GROUP_MASK_FLAG: u8 = 1 << 2;
 
+  /// The smoothing word of a flat face, every edge hard, which `LoadMesh` gives each face of a mesh storing no words.
+  pub const FLAT_FACE_SMOOTHING: u32 = u32::MAX;
+
+  /// The smoothing word's bit for a back face, which numbers its edges the other way round and smooths only with
+  /// other back faces.
+  pub const BACK_FACE_SMOOTHING_FLAG: u32 = 1 << 3;
+
   /// Reads the children of one numbered mesh chunk, as `CEditableMesh::LoadMesh` finds them.
   ///
   /// # Errors
@@ -259,6 +266,18 @@ impl EditableMesh {
   /// Whether a face with no smoothing group of its own is drawn flat.
   pub const fn is_smoothing_group_masked(&self) -> bool {
     self.flags & Self::SMOOTHING_GROUP_MASK_FLAG != 0
+  }
+
+  /// The bit of a face's smoothing word that marks `edge`, from corner `edge` to corner `(edge + 1) % 3`, hard
+  /// (`face_smoth_flags.h`): a back face stores edge `e` at bit `(4 - e) % 3` (`convert_edge_index`).
+  pub const fn get_hard_edge_flag(smoothing: u32, edge: usize) -> u32 {
+    let bit: usize = if smoothing & Self::BACK_FACE_SMOOTHING_FLAG != 0 {
+      (4 - edge) % 3
+    } else {
+      edge
+    };
+
+    1 << bit
   }
 
   /// The faces around each point, by index, in face order: a face whose corners share a point lists it once per
