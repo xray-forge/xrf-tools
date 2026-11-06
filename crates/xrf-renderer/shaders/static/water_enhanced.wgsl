@@ -3,6 +3,7 @@
 #import "common/scene_light"
 #import "common/display_transform"
 #import "common/water_enhanced"
+#import "common/water_reflection_read"
 #import "common/rain_rings"
 #import "common/ray_guides"
 #import "generated/static/water_enhanced"
@@ -455,16 +456,22 @@ fn enhanced_colour(in: WaterVarying, tilt: vec2<f32>) -> vec3<f32> {
 }
 
 // What the enhanced water reflects, as the picture the frame's display shows it as: its reflection drawn this frame,
-// light, blurred and clear mixed by a perlin noise over the level and greyed a little, read where its waves move it;
-// the sky's picture alone while it draws none.
+// light, blurred and clear mixed by a perlin noise over the level and greyed a little, read where its waves move it
+// while that is water; the sky's picture alone while it draws none.
 fn enhanced_reflection(waves: EnhancedWaves, reflected: vec3<f32>, world: vec3<f32>, uv: vec2<f32>) -> vec3<f32> {
   if (enhanced.reflected < 0.5) {
     return enhanced_sky(reflected, lighting, sky_cube_0, sky_cube_1, sky_clamp) * water.reflection;
   }
 
-  // The blurred reflection is read where the waves move it twice as far.
-  let blurred: vec3<f32> = textureSampleLevel(reflection_blurred, sky_clamp, saturate(uv + waves.screen * 2.0), 0.0).rgb;
-  let clear: vec3<f32> = textureSampleLevel(reflection_clear, sky_clamp, saturate(uv + waves.screen), 0.0).rgb;
+  // The blurred reflection is read where the waves move it twice as far; of the water's texels alone, and where they
+  // move it off the water altogether, at the pixel's own place, as the refraction refuses a read of what stands over
+  // it.
+  let moved_blurred: vec4<f32> = read_water_reflection(reflection_blurred, saturate(uv + waves.screen * 2.0));
+  let moved_clear: vec4<f32> = read_water_reflection(reflection_clear, saturate(uv + waves.screen));
+  let blurred: vec3<f32> = select(textureSampleLevel(reflection_blurred, sky_clamp, uv, 0.0).rgb, moved_blurred.rgb,
+    moved_blurred.a > 0.0);
+  let clear: vec3<f32> =
+    select(textureSampleLevel(reflection_clear, sky_clamp, uv, 0.0).rgb, moved_clear.rgb, moved_clear.a > 0.0);
   let level: vec2<f32> = vec2<f32>(world.x, -world.z) + waves.normal.xy * 100.0;
   let noise: f32 = textureSampleLevel(perlin_map, texture_sampler, level * 0.02, 0.0).r;
   // The rain's roughness takes the clear reflection away for the blurred one.
