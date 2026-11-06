@@ -19,6 +19,7 @@ use crate::feature::scene::grass::grass_pass::GrassPass;
 use crate::feature::scene::pyramid::depth_pyramid_pass::DepthPyramidPass;
 use crate::feature::scene::statics::cull::static_cull_pass::StaticCullPass;
 use crate::feature::tracing::scene_trace::requests::trace_request::TraceRequest;
+use crate::feature::tracing::scene_trace::requests::water_rays::WaterRays;
 use crate::feature::tracing::surroundings::surroundings_pass::SurroundingsPass;
 use crate::feature::tracing::view_trace::sway::trace_sway_pass::TraceSwayPass;
 use crate::feature::weather::sky::irradiance::sky_irradiance_pass::SkyIrradiancePass;
@@ -589,6 +590,17 @@ fn the_rays_climb_the_pyramid_as_high_as_rust_makes_it() {
   );
 }
 
+/// The water's every-pixel ray records take the words Rust makes room for at each pixel.
+#[test]
+fn the_water_ray_records_fill_the_room_rust_makes() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+
+  assert_eq!(
+    get_constant(&library, "common/water_rays", "WATER_RAY_WORDS"),
+    WaterRays::WORDS
+  );
+}
+
 /// Each compute entry dispatched by groups of a size Rust counts in declares that size: one side for a line of work,
 /// two for a square of pixels.
 #[test]
@@ -596,7 +608,7 @@ fn the_compute_entries_run_the_workgroups_rust_dispatches() {
   let library: ShaderLibrary = ShaderLibrary::default();
   let line = |size: u32| [size, 1, 1];
   let square = |size: u32| [size, size, 1];
-  let entries: [(&str, &[&str], [u32; 3]); 18] = [
+  let entries: [(&str, &[&str], [u32; 3]); 19] = [
     (
       "frame/pyramid",
       &[
@@ -691,6 +703,11 @@ fn the_compute_entries_run_the_workgroups_rust_dispatches() {
     ),
     ("static/trace_sway", &["cs_trace_sway"], line(TraceSwayPass::WORKGROUP)),
     ("frame/reflection_scene", &["cs_scene"], line(TraceRequest::WORKGROUP)),
+    (
+      "frame/reflection_scene",
+      &["cs_water_scene"],
+      square(WaterRays::WORKGROUP),
+    ),
   ];
 
   for (name, names, size) in entries {

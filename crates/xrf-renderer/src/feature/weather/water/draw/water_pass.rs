@@ -2,7 +2,7 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{
   FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDeclaration,
   GraphDepthAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor, PassParameters, PipelineSet, RasterContext,
-  RasterPassBuilder, RenderPipelineDescription, StorageValue, UniformBinding,
+  RasterPassBuilder, RenderPipelineDescription, StorageArray, StorageArrayMut, StorageValue, UniformBinding,
 };
 
 use crate::feature::scene::pyramid::pyramid_reduction::PyramidReduction;
@@ -11,6 +11,9 @@ use crate::feature::tracing::ray_guides::ray_guides_pass::RayGuidesPass;
 use crate::feature::tracing::scene_trace::reflection_scene_parameters::ReflectionSceneParameters;
 use crate::feature::tracing::scene_trace::requests::trace_request_handles::TraceRequestHandles;
 use crate::feature::tracing::scene_trace::requests::trace_request_parameters::TraceRequestParameters;
+use crate::feature::tracing::scene_trace::requests::water_ray_parameters::WaterRayParameters;
+use crate::feature::tracing::scene_trace::requests::water_rays::WaterRays;
+use crate::feature::tracing::scene_trace::requests::water_rays_uniform::WaterRaysUniform;
 use crate::feature::tracing::scene_trace::scene_trace_bindings::SceneTraceBindings;
 use crate::feature::tracing::scene_trace::scene_trace_request::SceneTraceRequest;
 use crate::feature::tracing::view_trace::traced_scene::TracedScene;
@@ -66,8 +69,9 @@ pub struct WaterPass {
   pipelines: PipelineSet<WaterPipelines>,
   blur: WaterBlurPass,
   maps: EnhancedWaterMaps,
-  /// What a binding a pass does not read is given: a texel of nothing.
+  /// What a binding a pass does not read is given: a texel of nothing, and a ray record of nothing.
   nothing: wgpu::TextureView,
+  no_rays: WaterRays,
 }
 
 impl WaterPass {
@@ -113,6 +117,7 @@ impl WaterPass {
       blur: WaterBlurPass::new(source)?,
       maps: EnhancedWaterMaps::new(device, queue, bundle, &nothing),
       nothing,
+      no_rays: WaterRays::new(device, "water nothing", 0),
       layouts,
       request_layout,
       parameter_layouts,
@@ -356,6 +361,8 @@ impl WaterPass {
       draw
         .scene_trace
         .add_reset(graph, bindings, "water reflection requests clear", &reflection.requests);
+    let rays: GraphBuffer = bindings.import_buffer(graph, "water reflection rays", &reflection.rays.records);
+    let no_rays: GraphBuffer = bindings.import_buffer(graph, "water nothing rays", &self.no_rays.records);
     let parameters: WaterReflectionParameters<'a> = WaterReflectionParameters {
       lighting: draw.lit.lighting,
       water: frame.uniform,
@@ -370,6 +377,7 @@ impl WaterPass {
       nearest_depth,
       material_target: draw.targets.material,
       water_current: nothing,
+      water_rays: StorageArrayMut::new(rays),
     };
 
     self.add_batch_pass(
@@ -387,41 +395,57 @@ impl WaterPass {
       |it| &it.reflection,
     );
 
-    // The rays the screen left, traced against the level's geometry, their hits written into the reflection.
+    // The rays the screen left, traced against the level's geometry, their hits written into the reflection: the
+    // list's, or every pixel's records where every pixel traces.
     if let Some(TracedWater {
       sky,
       scene: TracedScene { trace, textures },
     }) = draw.traced
     {
-      let (trace_requests, trace_request_head) = listed.to_read();
       let no_ends: GraphTexture = bindings.import_view(graph, "scene trace no ends", draw.scene_trace.get_no_ends());
+      let scene_bindings: SceneTraceBindings<'a> = SceneTraceBindings {
+        view: draw.view,
+        parameters: ReflectionSceneParameters {
+          lighting: draw.lit.lighting,
+          material_lut: draw.lit.material_lut,
+          lut_sampler: draw.lit.lut_sampler,
+          exposure: StorageValue::new(draw.lit.exposure),
+          traced_out: current,
+          ends_out: no_ends,
+          screen_scene: scene,
+          screen_depth: draw.targets.depth,
+        },
+        sky,
+        trace,
+        textures,
+      };
 
-      draw.scene_trace.add_trace(
-        graph,
-        SceneTraceRequest {
-          dispatch_label: "water scene dispatch",
-          trace_label: "water scene",
-          handles: listed,
-        },
-        SceneTraceBindings {
-          view: draw.view,
-          parameters: ReflectionSceneParameters {
-            lighting: draw.lit.lighting,
-            material_lut: draw.lit.material_lut,
-            lut_sampler: draw.lit.lut_sampler,
-            exposure: StorageValue::new(draw.lit.exposure),
-            trace_requests,
-            trace_request_head,
-            traced_out: current,
-            ends_out: no_ends,
-            screen_scene: scene,
-            screen_depth: draw.targets.depth,
+      if draw.water.is_fully_traced() {
+        let enhanced_values: &EnhancedWaterUniform = draw.water.get_enhanced_uniform();
+        let water_rays: WaterRayParameters = WaterRayParameters {
+          water_rays: StorageArray::new(rays),
+          water_rays_frame: runtime.push_uniform(&WaterRaysUniform {
+            trace_distance: enhanced_values.trace_distance,
+            sky_share: draw.water.get_uniform().reflection,
+            frame: enhanced_values.trace_frame,
+          }),
+          water_depth: frame.nearest,
+        };
+
+        draw
+          .scene_trace
+          .add_trace_pixels(graph, "water scene", draw.targets.size, scene_bindings, water_rays);
+      } else {
+        draw.scene_trace.add_trace(
+          graph,
+          SceneTraceRequest {
+            dispatch_label: "water scene dispatch",
+            trace_label: "water scene",
+            handles: listed,
           },
-          sky,
-          trace,
-          textures,
-        },
-      );
+          scene_bindings,
+        );
+      }
     }
 
     self.add_batch_pass(
@@ -435,6 +459,7 @@ impl WaterPass {
         .depth(GraphDepthAttachment::new_read_only(draw.targets.depth)),
       WaterReflectionParameters {
         water_current: current,
+        water_rays: StorageArrayMut::new(no_rays),
         ..parameters
       },
       None,

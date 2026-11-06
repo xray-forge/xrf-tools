@@ -9,7 +9,10 @@
 #import "common/display_transform"
 #import "common/scene_trace"
 #import "common/sky_box"
+#import "common/water_rays"
 #import "generated/frame/reflection_scene"
+#import "generated/frame/scene_list"
+#import "generated/frame/water_rays"
 #import "generated/common/sky"
 
 // The reflections' scene pass: the rays the trace left unanswered on their turn (`TraceRequest`), traced against the
@@ -18,9 +21,11 @@
 // sky the trace wrote: the screen's weighed answer and the hit's light by the share the screen left, the hit's length
 // where the screen held less than half, and the reason the trace gave it; a miss leaves the sky. A water's request
 // (`TRACE_REQUEST_WATER`) meets the grass's cards too where the view traces them, and is answered into the water's
-// reflection (`answer_water`) with the grass it passes past them. A hit a screen showed takes its colour from that
-// screen, so a traced reflection reads as the screen's own: the surfaces' from the last frame's scene and depth, which
-// their trace keeps, the water's from this frame's copy before the water.
+// reflection (`answer_water`) with the grass it passes past them. The rays come in two ways, each binding its own
+// group: a list's (`cs_scene`, group 5), or while every water pixel traces every frame a record at each pixel
+// (`cs_water_scene`, group 6, `common/water_rays`). A hit a screen showed takes its colour from that screen, so a traced
+// reflection reads as the screen's own: the surfaces' from the last frame's scene and depth, which their trace keeps,
+// the water's from this frame's copy before the water.
 
 // Where the screen `view_projection` drew shows a world point, and in `w` one where it shows it: read where the
 // screen's depth agrees within `SOURCE_DEPTH_TOLERANCE` of the point's distance. None off the screen, or in front of or
@@ -83,6 +88,59 @@ fn keep_trace_wait() {
   trace_request_head[TRACE_REQUEST_WAIT] = clamp(u32(ceil(asked / room)), 1u, TRACE_REQUEST_WAIT_MOST);
 }
 
+// The water's every-pixel rays (`WaterRays`): a thread a drawn pixel, its record traced as the request it stands in
+// for, its start read back from the water's depth there and lifted along the normal its reflection leaves by; a pixel
+// no record was written at this frame (the screen answered it whole), or where no water drew, passed over.
+@compute @workgroup_size(8, 8)
+fn cs_water_scene(@builtin(global_invocation_id) id: vec3<u32>) {
+  let size: vec2<u32> = vec2<u32>(camera.viewport.xy);
+  let at: u32 = water_ray_at(id.xy);
+
+  if (any(id.xy >= size) || at + WATER_RAY_WORDS > arrayLength(&water_rays)) {
+    return;
+  }
+
+  let last: u32 = water_rays[at + 3u];
+  // Where no water drew this frame there is nothing to answer, even where a record of a frame its stamp's half wraps
+  // to stands: its hit would mark a pixel of no water as some.
+  let depth: f32 = textureLoad(water_depth, vec2<i32>(id.xy), 0);
+
+  if (!is_water_ray_of(last, water_rays_frame.frame) || depth <= 0.0) {
+    return;
+  }
+
+  let centre: vec2<f32> = (vec2<f32>(id.xy) + 0.5) / vec2<f32>(size);
+  let world: vec3<f32> = camera_unproject(vec2<f32>(centre.x * 2.0 - 1.0, 1.0 - centre.y * 2.0), depth);
+  let toward: vec3<f32> = normalize(octahedral_decode(unpack2x16snorm(water_rays[at])));
+  // A mirror's ray leaves along its view turned about the normal: their difference is the normal.
+  let leaving: vec3<f32> = toward - normalize(world - camera.position.xyz);
+  let normal: vec3<f32> = select(vec3<f32>(0.0, 1.0, 0.0), normalize(leaving), dot(leaving, leaving) > 1e-8);
+  let distance: f32 = -(camera.view * vec4<f32>(world, 1.0)).z;
+  let pixel_angle: f32 = 2.0 / (camera.projection[1][1] * camera.viewport.y);
+  var request: TraceRequest;
+
+  request.origin = vec4<f32>(world + normal * TRACED_LIFT, water_rays_frame.trace_distance);
+  request.cone = vec2<f32>(distance * pixel_angle, pixel_angle);
+  request.toward = water_rays[at];
+  request.pixel = id.x | (id.y << 16u);
+  request.screen = vec2<u32>(water_rays[at + 1u], water_rays[at + 2u]);
+  request.screen_length = unpack2x16float(last & 0xffffu).x;
+  request.hit_end = TRACE_REQUEST_WATER | (pack2x16float(vec2<f32>(water_rays_frame.sky_share, 0.0)) & 0xffffu);
+
+  trace_water_request(request);
+}
+
+// A water's request traced against the level's geometry and the grass's cards, answered into the water's reflection.
+fn trace_water_request(request: TraceRequest) {
+  let toward: vec3<f32> = normalize(octahedral_decode(unpack2x16snorm(request.toward)));
+  let cone: SceneCone = SceneCone(request.cone.x, request.cone.y);
+  let screen: vec4<f32> = vec4<f32>(unpack2x16float(request.screen.x), unpack2x16float(request.screen.y));
+  let pixel: vec2<u32> = vec2<u32>(request.pixel & 0xffffu, request.pixel >> 16u);
+
+  answer_water(request, toward, cone, trace_water_ray(request.origin.xyz, toward, 0.0, request.origin.w, cone), screen,
+    pixel);
+}
+
 @compute @workgroup_size(64)
 fn cs_scene(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
   let index: u32 = compute_index(id, groups, TRACE_REQUEST_WORKGROUP);
@@ -102,8 +160,7 @@ fn cs_scene(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroup
   let pixel: vec2<u32> = vec2<u32>(request.pixel & 0xffffu, request.pixel >> 16u);
 
   if ((request.hit_end & TRACE_REQUEST_WATER) != 0u) {
-    answer_water(request, toward, cone, trace_water_ray(request.origin.xyz, toward, 0.0, request.origin.w, cone),
-      screen, pixel);
+    trace_water_request(request);
 
     return;
   }

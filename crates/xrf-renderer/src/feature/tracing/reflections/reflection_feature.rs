@@ -364,7 +364,6 @@ impl ReflectionFeature {
 
     // The rays the trace left, traced against the level's geometry.
     if let Some(TracedScene { trace, textures }) = scene_trace {
-      let (trace_requests, trace_request_head) = listed.to_read();
       let head = listed.head;
 
       passes.tracing.scene_trace.add_trace(
@@ -381,8 +380,6 @@ impl ReflectionFeature {
             material_lut: lit.material_lut,
             lut_sampler: lit.lut_sampler,
             exposure: StorageValue::new(lit.exposure),
-            trace_requests,
-            trace_request_head,
             traced_out: traced,
             ends_out: ends,
             screen_scene: parameters.source_scene,

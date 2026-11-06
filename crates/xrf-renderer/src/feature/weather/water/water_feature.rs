@@ -138,24 +138,14 @@ impl WaterFeature {
     }
 
     let is_traced: bool = reflections.is_traced && can_trace(device);
-    // Every pixel tracing every frame lists as many requests as the frame has pixels, at a turn of one, never waiting
-    // dim.
+    // Every pixel tracing every frame leaves a record at its place, at a turn of one, never waiting dim.
     let is_fully_traced: bool = is_traced && reflections.is_water_fully_traced;
 
     self.frame = self.frame.wrapping_add(1);
     self.is_fully_traced = is_fully_traced && self.is_drawn && self.reflection.is_some();
 
     if let Some(reflection) = &mut self.reflection {
-      let (width, height) = reflection.size;
-
-      reflection.requests.fit(
-        device,
-        match (is_traced, is_fully_traced) {
-          (_, true) => width * height,
-          (true, false) => (width * height).div_ceil(WaterReflection::REQUEST_SHARE),
-          (false, _) => 0,
-        },
-      );
+      reflection.fit_trace(device, is_traced, is_fully_traced);
     }
 
     self.enhanced = EnhancedWaterUniform::new(

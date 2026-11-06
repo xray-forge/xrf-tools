@@ -5,6 +5,7 @@
 #import "common/display_transform"
 #import "common/water_enhanced"
 #import "common/trace_requests"
+#import "common/water_rays"
 #import "generated/static/water_reflection"
 
 // The reflection's walk over the pyramid of the frame's nearest depth, its hits and probable answers the surfaces' rays'
@@ -27,9 +28,6 @@ const REFLECTION_SKY_HISTORY: f32 = 0.2;
 // Pixels of motion over which the history gives way entirely: a fast turn draws the reflection afresh rather than drag
 // the last frames behind it.
 const HISTORY_MOTION: f32 = 40.0;
-
-// Metres a traced ray starts off the water, so its own surface's triangles beneath do not meet it.
-const TRACED_LIFT: f32 = 0.05;
 
 // How far a surface the screen met may face along the ray before the trace answers in its place.
 const FACING_AWAY: f32 = 0.1;
@@ -140,6 +138,24 @@ fn request_water_trace(pixel: vec2<f32>, world: vec3<f32>, normal: vec3<f32>, to
   request.hit_end = TRACE_REQUEST_WATER | (pack2x16float(vec2<f32>(water.reflection, 0.0)) & 0xffffu);
 
   return list_trace_request(request);
+}
+
+// The record a pixel leaves the scene pass while every pixel traces every frame, in place of a request: its ray's
+// direction, what the screen answered (`scene` weighed by its `share`) and the distance along the view of what it met,
+// none where it met nothing, on this frame (`common/water_rays`).
+fn write_water_ray(pixel: vec2<u32>, toward: vec3<f32>, answer: vec4<f32>, share: f32) {
+  let at: u32 = water_ray_at(pixel);
+
+  if (at + WATER_RAY_WORDS > arrayLength(&water_rays)) {
+    return;
+  }
+
+  let screen: vec2<u32> = trace_request_screen(answer.rgb, share);
+
+  water_rays[at] = pack2x16snorm(octahedral_encode(toward));
+  water_rays[at + 1u] = screen.x;
+  water_rays[at + 2u] = screen.y;
+  water_rays[at + 3u] = water_ray_last(answer.w, enhanced.trace_frame);
 }
 
 @vertex
@@ -309,12 +325,14 @@ fn fs_water_reflection(in: WaterVarying) -> @location(0) vec4<f32> {
   // over the sky; off its turn, or past the list's room, the pixel holds what it reflected the frame before. Only turns
   // trace, so the list always has room: water with no history to hold (newly in view, a fast turn's edge) takes its
   // fresh neighbours' instead, since tracing it too would overflow the list wherever much of the water lost its
-  // history.
+  // history. Every pixel tracing every frame leaves its record at its place instead.
   if (screen_share < 1.0 && is_traced) {
     let pixel: vec2<f32> = floor(in.clip.xy);
     let answer: vec4<f32> = vec4<f32>(scene, met_distance);
 
-    if (!(is_water_trace_turn(pixel, water_trace_turns(in.world, normal, trace_request_wait())) &&
+    if (enhanced.fully_traced != 0u) {
+      write_water_ray(vec2<u32>(pixel), flat_reflected, answer, share);
+    } else if (!(is_water_trace_turn(pixel, water_trace_turns(in.world, normal, trace_request_wait())) &&
       request_water_trace(pixel, in.world, normal, flat_reflected, -position.z, answer, share))) {
       met_distance = WATER_HELD;
     }
