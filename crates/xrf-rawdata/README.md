@@ -42,8 +42,14 @@ prepares them, so the engine draws what the editor's export would give it:
 
 The order of the children follows the surfaces' order in the object, where the export follows their addresses in
 memory, so it can differ; the engine draws the same either way. Where the export's tangent pass divides by a zero
-length and stores infinities, the compile builds a basis from the normal instead. The triangle order the engine draws
-in, and writing the OGF itself, are not built yet.
+length and stores infinities, the compile builds a basis from the normal instead.
+
+`ObjectCompiler::compile` writes the OGF from those children as the export writes it: the header (`MT_SKELETON_ANIM`
+for an object referencing motion libraries, else `MT_SKELETON_RIGID`), the description, a child per split, each bone's
+name, parent and box, its physics with the joint limits stored as the physics engine reads them, the class script, the
+LODs and the motion references. A bone's box is fitted along the bone's own axes around the vertices that lead with
+it, where the export fits the smallest box, so it holds the same vertices and is no smaller. The triangle order the
+engine draws in is the build's own, and an object embedding its own motions is refused for now.
 
 ## Checks
 

@@ -1,15 +1,42 @@
+use xrf_chunk::XRayByteOrder;
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::{XrfError, XrfResult};
 
+use crate::object::compile::object_compile_source::ObjectCompileSource;
 use crate::object::compile::skeleton::skeleton_geometry::SkeletonGeometry;
 use crate::object::compile::skeleton::skeleton_geometry_builder::SkeletonGeometryBuilder;
+use crate::object::compile::skeleton::skeleton_ogf_writer::SkeletonOgfWriter;
 
 /// Turns an editable object into what the Actor Editor's `Export OGF` writes, for the engine to load: see the crate's
 /// documentation for what matches the editor's output and what only matches what the engine draws.
 pub struct ObjectCompiler;
 
 impl ObjectCompiler {
-  /// The children a skeleton object's OGF holds, before tangents and the triangle order the engine draws in.
+  /// The OGF of a skeleton object, as bytes.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error where [`Self::build_skeleton_geometry`] does, and for an object embedding its own motions, which
+  /// is not compiled yet.
+  pub fn compile(object: &EditableObjectFile, source: &ObjectCompileSource) -> XrfResult<Vec<u8>> {
+    Self::write_skeleton(object, &Self::build_skeleton_geometry(object)?, source)
+  }
+
+  /// The OGF of a skeleton object whose `geometry` [`Self::build_skeleton_geometry`] built, as bytes.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for an object embedding its own motions, which is not compiled yet, and where a chunk does not
+  /// write, such as a description time past the 32-bit times it was authored with.
+  pub fn write_skeleton(
+    object: &EditableObjectFile,
+    geometry: &SkeletonGeometry,
+    source: &ObjectCompileSource,
+  ) -> XrfResult<Vec<u8>> {
+    SkeletonOgfWriter::write::<XRayByteOrder>(object, geometry, source)
+  }
+
+  /// The children a skeleton object's OGF holds, before the triangle order the engine draws in.
   ///
   /// # Errors
   ///

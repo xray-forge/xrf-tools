@@ -11,7 +11,10 @@ impl ObjectGroup {
       slug: "object",
       label: "Object",
       about: "SDK editable object (.object) tools",
-      commands: vec![object::decompile::DecompileCommand::new_box()],
+      commands: vec![
+        object::compile::CompileCommand::new_box(),
+        object::decompile::DecompileCommand::new_box(),
+      ],
     }
   }
 }

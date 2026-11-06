@@ -1,0 +1,130 @@
+use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
+use xrf_build_info::{BuildInfo, build_info};
+use xrf_chunk::XRayByteOrder;
+use xrf_editable_object::EditableObjectFile;
+use xrf_error::{XrfError, XrfResult};
+use xrf_output::OutputOptions;
+use xrf_rawdata::{ObjectCompileSource, ObjectCompiler, SkeletonGeometry};
+use xrf_utils::{StagedFile, format_path};
+
+use crate::commands::object::compile::report::ObjectCompileReport;
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+
+/// Compiles an SDK editable object into the OGF the engine loads, as the Actor Editor's export does.
+#[derive(Default)]
+pub struct CompileCommand;
+
+impl GenericCommand for CompileCommand {
+  fn operation(&self) -> &'static str {
+    "compile"
+  }
+
+  fn declare(&self, command: Command) -> Command {
+    command
+      .about("Compile a skeleton SDK .object into the OGF the engine loads")
+      .arg(
+        Arg::new("path")
+          .help("Path to the .object to compile")
+          .short('p')
+          .long("path")
+          .required(true)
+          .value_parser(value_parser!(PathBuf)),
+      )
+      .arg(
+        Arg::new("dest")
+          .help("Path of the OGF to write")
+          .short('d')
+          .long("dest")
+          .required(true)
+          .value_parser(value_parser!(PathBuf)),
+      )
+      .arg(
+        Arg::new("force")
+          .help("Overwrite an existing OGF")
+          .short('f')
+          .long("force")
+          .action(ArgAction::SetTrue),
+      )
+  }
+
+  fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
+    let source: &PathBuf = matches.get_one::<PathBuf>("path").expect("the path is required");
+    let destination: &PathBuf = matches.get_one::<PathBuf>("dest").expect("the destination is required");
+    let output: OutputOptions = context.get_output().clone();
+
+    let report: ObjectCompileReport = Self::compile(&output, source, destination, matches.get_flag("force"))?;
+
+    context.set_result(|| &report)?;
+
+    Ok(())
+  }
+}
+
+impl CompileCommand {
+  fn compile(
+    output: &OutputOptions,
+    source: &Path,
+    destination: &Path,
+    is_forced: bool,
+  ) -> XrfResult<ObjectCompileReport> {
+    if !is_forced && destination.exists() {
+      return Err(XrfError::new_invalid_error(format!(
+        "{} already exists; pass --force to overwrite it",
+        format_path(destination)
+      )));
+    }
+
+    let object: EditableObjectFile = EditableObjectFile::read_from_path::<XRayByteOrder, _>(&source)?;
+    let geometry: SkeletonGeometry = ObjectCompiler::build_skeleton_geometry(&object)?;
+    let build: BuildInfo = build_info!();
+    let bytes: Vec<u8> = ObjectCompiler::write_skeleton(
+      &object,
+      &geometry,
+      &ObjectCompileSource {
+        source_file: format_path(source).to_string(),
+        convertor: match build.short_commit() {
+          Some(commit) => format!("xrf-cli object compile {} ({commit})", build.version),
+          None => format!("xrf-cli object compile {}", build.version),
+        },
+        built_at: SystemTime::now()
+          .duration_since(UNIX_EPOCH)
+          .map_or(0, |elapsed| elapsed.as_secs()),
+      },
+    )?;
+
+    StagedFile::write_creating_directories(destination, &bytes).map_err(|error| {
+      XrfError::new_io_error(
+        format!("{} was not written: {error}", format_path(destination)),
+        error.kind(),
+      )
+    })?;
+
+    let report: ObjectCompileReport = ObjectCompileReport {
+      source: format_path(source).to_string(),
+      destination: format_path(destination).to_string(),
+      children: geometry.splits.len(),
+      vertices: geometry.splits.iter().map(|split| split.vertices.len()).sum(),
+      faces: geometry.splits.iter().map(|split| split.faces.len()).sum(),
+      dropped_faces: geometry.dropped_faces,
+      bones: object.bones.as_ref().map_or(0, Vec::len),
+      bytes: bytes.len(),
+    };
+
+    xrf_output::success!(
+      output,
+      "Compiled {} into {}: {} children, {} vertices, {} faces ({} dropped), {} bones",
+      report.source,
+      report.destination,
+      report.children,
+      report.vertices,
+      report.faces,
+      report.dropped_faces,
+      report.bones
+    );
+
+    Ok(report)
+  }
+}

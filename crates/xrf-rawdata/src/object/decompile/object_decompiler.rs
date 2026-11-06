@@ -69,7 +69,8 @@ impl ObjectDecompiler {
           },
         flags_size: EditableObjectFile::FLAGS_SIZE,
         class_script: file.user_data.as_ref().map(|chunk| Self::to_text(&chunk.user_data)),
-        lods: file.lods.as_ref().map(|chunk| Self::to_text(&chunk.lods)),
+        // Exported as a line (`w_string`), so its first line, as the engine reads it.
+        lods: file.lods.as_ref().map(|chunk| String::from(chunk.get_visual_name())),
         meshes: Some(vec![assembled.mesh]),
         surfaces: Some(assembled.surfaces),
         bones: Some(bones),
