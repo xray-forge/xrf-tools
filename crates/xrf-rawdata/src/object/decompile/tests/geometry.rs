@@ -1,11 +1,13 @@
 use xrf_error::XrfResult;
+use xrf_ogf::OgfVertexLink;
 
+use crate::object::decompile::geometry::bone_influences::BoneInfluences;
 use crate::object::decompile::geometry::ogf_corner::OgfCorner;
 use crate::object::decompile::geometry::smoothing_inference::SmoothingInference;
 use crate::object::decompile::geometry::two_sided_pairs::TwoSidedPairs;
 use crate::object::decompile::geometry::welded_face::WeldedFace;
 use crate::object::decompile::geometry::welded_mesh::WeldedMesh;
-use crate::object::decompile::tests::fixtures::{DOWN, OUT, UP, corner, surface};
+use crate::object::decompile::tests::fixtures::{DOWN, OUT, UP, corner, link, surface, with_links};
 
 /// Two triangles of a flat quad, `a b c` and `a c d`, each triangle's corners carrying its own normal.
 fn quad(first_normal: [f32; 3], second_normal: [f32; 3]) -> Vec<[OgfCorner; 3]> {
@@ -34,12 +36,55 @@ fn welds_corners_split_from_one_point_and_keeps_points_of_two_bones_apart() -> X
   assert_eq!(welded.faces[0].points, [0, 1, 2]);
   assert_eq!(welded.faces[1].points, [0, 2, 3]);
 
-  // The same position owned by another bone is another point.
+  // The same position following another bone, or another set of bones, is another point.
   let mut other_bone: Vec<[OgfCorner; 3]> = quad(UP, UP);
 
-  other_bone[1][0].bone = 1;
+  other_bone[1][0] = with_links(other_bone[1][0], &[(1, 1.0)]);
 
   assert_eq!(WeldedMesh::weld(&[surface(other_bone)])?.points.len(), 5);
+
+  let mut blended: Vec<[OgfCorner; 3]> = quad(UP, UP);
+
+  blended[1][0] = with_links(blended[1][0], &[(0, 0.5), (1, 0.5)]);
+
+  assert_eq!(WeldedMesh::weld(&[surface(blended)])?.points.len(), 5);
+
+  Ok(())
+}
+
+#[test]
+fn undoes_the_padding_each_link_layout_writes() {
+  let influences = |links: &[OgfVertexLink]| BoneInfluences::of_links(links).iter().collect::<Vec<(u16, f32)>>();
+
+  // A one-bone vertex in a two-link child: the bone twice, the whole weight on the copy.
+  assert_eq!(influences(&[link(4, 0.0), link(4, 1.0)]), vec![(4, 1.0)]);
+  // Two bones in a three-link child: the first repeated last with what rounding leaves, a sliver either side of
+  // nought, which joins the first bone's weight.
+  for sliver in [-1e-8, 3e-8] {
+    let collapsed: Vec<(u16, f32)> = influences(&[link(7, 0.75), link(2, 0.25), link(7, sliver)]);
+
+    assert_eq!(collapsed.iter().map(|(bone, _)| *bone).collect::<Vec<u16>>(), [2, 7]);
+    assert!((collapsed[1].1 - 0.75).abs() <= 1e-6, "{collapsed:?}");
+  }
+  // Three bones in a four-link child, the padding weightless.
+  assert_eq!(
+    influences(&[link(1, 0.5), link(3, 0.3), link(2, 0.2), link(1, 0.0)]),
+    vec![(1, 0.5), (2, 0.2), (3, 0.3)]
+  );
+}
+
+#[test]
+fn welds_one_point_exported_into_children_of_different_layouts() -> XrfResult {
+  // The same blended point, its weights rounded apart by two layouts, still welds into one.
+  let [a, b, c] = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]];
+  let in_two_links: OgfCorner = with_links(corner(a, UP), &[(0, 0.700_000_05), (1, 0.299_999_95)]);
+  let in_three_links: OgfCorner = with_links(corner(a, UP), &[(0, 0.7), (1, 0.3), (0, 1e-8)]);
+  let welded: WeldedMesh = WeldedMesh::weld(&[
+    surface(vec![[in_two_links, corner(b, UP), corner(c, UP)]]),
+    surface(vec![[in_three_links, corner(c, UP), corner(b, UP)]]),
+  ])?;
+
+  assert_eq!(welded.points.len(), 3);
 
   Ok(())
 }

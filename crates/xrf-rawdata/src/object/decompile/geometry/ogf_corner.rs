@@ -1,13 +1,15 @@
 use xrf_math::{Vector2d, Vector3d};
 
+use crate::object::decompile::geometry::bone_influences::BoneInfluences;
+
 /// One corner of an exported triangle as the OGF stores it: where it stands, the normal the export gave it, its
-/// texture coordinate and the one bone a rigid model ties it to.
+/// texture coordinate and the bones it follows.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct OgfCorner {
   pub(crate) position: Vector3d,
   pub(crate) normal: Vector3d,
   pub(crate) texture_coordinate: Vector2d,
-  pub(crate) bone: u16,
+  pub(crate) influences: BoneInfluences,
 }
 
 impl OgfCorner {
@@ -26,14 +28,20 @@ impl OgfCorner {
     Self::is_near(&self.normal, &-&other.normal)
   }
 
-  /// The position's bits and the bone, which together decide a welded point: the export copied one float into every
-  /// corner split from a point, and a point belongs to one bone.
-  pub(crate) fn get_weld_key(&self) -> [u32; 4] {
+  /// The position's bits and the bones followed, which together decide a welded point: the export copied one float into
+  /// every corner split from a point, and a point's weights are its own. The weights stay out of the key, since a point
+  /// exported into children of different link layouts comes back with weights rounded differently.
+  pub(crate) fn get_weld_key(&self) -> [u32; 3 + BoneInfluences::CAPACITY] {
+    let bones: [u32; BoneInfluences::CAPACITY] = self.influences.get_bone_key();
+
     [
       self.position.x.to_bits(),
       self.position.y.to_bits(),
       self.position.z.to_bits(),
-      u32::from(self.bone),
+      bones[0],
+      bones[1],
+      bones[2],
+      bones[3],
     ]
   }
 

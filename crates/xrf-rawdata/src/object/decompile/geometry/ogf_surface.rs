@@ -2,6 +2,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector2d;
 use xrf_ogf::{OgfFile, OgfVertex, OgfVertexData};
 
+use crate::object::decompile::geometry::bone_influences::BoneInfluences;
 use crate::object::decompile::geometry::ogf_corner::OgfCorner;
 
 /// One OGF child read back as the surface it was exported from: its texture and engine shader, and its full-detail
@@ -18,8 +19,8 @@ impl OgfSurface {
   ///
   /// # Errors
   ///
-  /// Returns an error for a vertex linked to more than one bone or a child with static vertices, which this does not
-  /// decompile yet, and for an index past its child's vertices.
+  /// Returns an error for a child with static vertices, which this does not decompile yet, and for an index past its
+  /// child's vertices.
   pub(crate) fn collect(file: &OgfFile) -> XrfResult<Vec<Self>> {
     let mut surfaces: Vec<Self> = Vec::new();
 
@@ -34,7 +35,7 @@ impl OgfSurface {
         Some(OgfVertexData::Skinned(vertices)) => vertices,
         Some(OgfVertexData::Static(_)) => {
           return Err(XrfError::new_not_implemented_error(
-            "An OGF child with static vertices is not decompiled yet; only rigid skeletons are",
+            "An OGF child with static vertices is not decompiled yet; only skeletons are",
           ));
         }
         None => {
@@ -43,13 +44,6 @@ impl OgfSurface {
           ));
         }
       };
-
-      if let Some(vertex) = vertices.iter().find(|vertex| vertex.links.len() != 1) {
-        return Err(XrfError::new_not_implemented_error(format!(
-          "A vertex linked to {} bones is not decompiled yet; only rigid skeletons, one bone a vertex, are",
-          vertex.links.len()
-        )));
-      }
 
       let indices: &[u16] = Self::get_full_detail_indices(file, geometry.indices.as_deref().unwrap_or_default())?;
       let corner = |index: u16| -> XrfResult<OgfCorner> {
@@ -61,7 +55,7 @@ impl OgfSurface {
           position: vertex.position,
           normal: vertex.normal,
           texture_coordinate: Vector2d::new(vertex.texture_u, vertex.texture_v),
-          bone: vertex.links[0].bone,
+          influences: BoneInfluences::of_links(&vertex.links),
         })
       };
 

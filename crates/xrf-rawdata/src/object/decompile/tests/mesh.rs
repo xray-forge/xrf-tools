@@ -1,11 +1,11 @@
-use xrf_editable_object::{EditableSurface, EditableVMap, EditableVMapKind};
+use xrf_editable_object::{EditableSurface, EditableVMap, EditableVMapKind, EditableVMapReference};
 use xrf_error::XrfResult;
 use xrf_skeleton::SkeletonJointLimit;
 
 use crate::object::decompile::geometry::ogf_corner::OgfCorner;
 use crate::object::decompile::mesh::assembled_mesh::AssembledMesh;
 use crate::object::decompile::skeleton::bone_converter::BoneConverter;
-use crate::object::decompile::tests::fixtures::{DOWN, UP, assemble, corner, surface, with_uv};
+use crate::object::decompile::tests::fixtures::{DOWN, UP, assemble, corner, surface, with_links, with_uv};
 
 #[test]
 fn maps_a_seam_corner_into_the_polygon_uv_map_and_shares_references() -> XrfResult {
@@ -28,7 +28,7 @@ fn maps_a_seam_corner_into_the_polygon_uv_map_and_shares_references() -> XrfResu
     ]
   );
   assert_eq!(vmaps[0].get_count(), 4, "one UV per point");
-  assert_eq!(vmaps[1].values, vec![1.0; 4], "a rigid model weighs every point fully");
+  assert_eq!(vmaps[1].values, vec![1.0; 4], "a point following one bone weighs fully");
   assert_eq!(vmaps[2].vertex_indices, [0], "the seam corner's point");
   assert_eq!(vmaps[2].polygon_indices, Some(vec![1]), "and its face");
   // Five distinct corners, `c` shared by both triangles with one UV and one weight.
@@ -36,6 +36,50 @@ fn maps_a_seam_corner_into_the_polygon_uv_map_and_shares_references() -> XrfResu
   assert_eq!(
     assembled.mesh.faces[0].corners[2].vmap_reference,
     assembled.mesh.faces[1].corners[1].vmap_reference
+  );
+
+  Ok(())
+}
+
+#[test]
+fn enters_a_blended_point_in_the_weight_map_of_each_bone_it_follows() -> XrfResult {
+  let [a, b, c] = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]];
+  // `a` follows the lid and the hinge, `b` the hinge alone, `c` the link; no point follows the lid alone.
+  let triangles: Vec<[OgfCorner; 3]> = vec![[
+    with_links(corner(a, UP), &[(2, 0.25), (1, 0.75)]),
+    with_links(corner(b, UP), &[(2, 1.0)]),
+    corner(c, UP),
+  ]];
+
+  let assembled: AssembledMesh = assemble(&[surface(triangles)])?;
+  let vmaps: &[EditableVMap] = assembled.mesh.vmaps.as_deref().unwrap_or_default();
+  let weights = |name: &str| {
+    vmaps
+      .iter()
+      .find(|vmap| vmap.name == name)
+      .map(|vmap| (vmap.vertex_indices.clone(), vmap.values.clone()))
+  };
+
+  // One weight map per bone some point follows, in bone order.
+  assert_eq!(
+    vmaps.iter().map(|it| it.name.as_str()).collect::<Vec<_>>(),
+    ["texture", "link", "lid", "hinge"]
+  );
+  assert_eq!(weights("link"), Some((vec![2], vec![1.0])));
+  assert_eq!(weights("lid"), Some((vec![0], vec![0.75])));
+  assert_eq!(weights("hinge"), Some((vec![0, 1], vec![0.25, 1.0])));
+
+  // The blended corner refers to its UV and to both of its weights, lid first by bone order.
+  let reference: &EditableVMapReference =
+    &assembled.mesh.vmap_references[assembled.mesh.faces[0].corners[0].vmap_reference as usize];
+
+  assert_eq!(
+    reference
+      .points
+      .iter()
+      .map(|it| (it.vmap, it.index))
+      .collect::<Vec<_>>(),
+    [(0, 0), (2, 0), (3, 0)]
   );
 
   Ok(())
