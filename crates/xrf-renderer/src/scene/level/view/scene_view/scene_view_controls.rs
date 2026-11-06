@@ -22,14 +22,15 @@ impl SceneView {
 
   /// Starts what it carries from frame to frame and moves by the time again from nothing at its next frame: its last
   /// frame's time, which every unit steps on from, the wind's drift and sway, the water's scroll, the falling rain's
-  /// clock and easing, and the temporal resolve's history and jitter. What it draws from then on follows from its frames
-  /// since alone, as two bursts from one time must.
+  /// clock and easing, the exposure's adaptation, and the temporal resolve's history and jitter. What it draws from then
+  /// on follows from its frames since alone, as two bursts from one time must.
   pub fn restart_motion(&mut self) {
     self.last_time = None;
     self.features.wind.restart();
     self.features.rain.restart();
     self.features.grass.restart_wind();
     self.features.water.restart();
+    self.features.exposure.restart();
     self.features.resolve.restart();
   }
 

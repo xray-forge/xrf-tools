@@ -23,7 +23,7 @@ pub struct AmbientWind {
   gust: AmbientGust,
   /// `wind_gust_factor`.
   gust_factor: f32,
-  /// `ambient_effect_wind_start`, `_in_time`, `_end` and `_out_time`, on the level's clock.
+  /// `ambient_effect_wind_start`, `_in_time`, `_end` and `_out_time`, on the engine's clock.
   start: Duration,
   rise_end: Duration,
   end: Duration,

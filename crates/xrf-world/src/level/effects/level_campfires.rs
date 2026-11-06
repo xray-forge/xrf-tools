@@ -10,7 +10,7 @@ use crate::level::effects::campfire_state::CampfireState;
 pub struct LevelCampfires {
   campfires: HashMap<u16, Campfire>,
   state: CampfireState,
-  /// The level's clock at this frame, which every campfire's turn is timed by.
+  /// The engine's clock at this frame, which every campfire's turn is timed by.
   now: Duration,
 }
 
@@ -30,7 +30,7 @@ impl LevelCampfires {
     }
   }
 
-  /// Moves on to `now`, the level's clock: turns every campfire to the view's switch, `state`, when it flips, and
+  /// Moves on to `now`, the engine's clock: turns every campfire to the view's switch, `state`, when it flips, and
   /// settles each turn that has taken its time.
   pub fn prepare(&mut self, state: CampfireState, now: Duration) {
     self.now = now;

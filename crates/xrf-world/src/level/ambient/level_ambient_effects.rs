@@ -28,7 +28,7 @@ const FIRST_EFFECT_SEED: i32 = 1 << 24;
 /// tells when its particles have died.
 pub struct LevelAmbientEffects {
   random: WeatherRandom,
-  /// `ambient_effect_next_time` and `ambient_effect_stop_time`, on the level's clock.
+  /// `ambient_effect_next_time` and `ambient_effect_stop_time`, on the engine's clock.
   next_time: Duration,
   stop_time: Duration,
   /// `ambient_particles`.
@@ -67,7 +67,7 @@ impl Default for LevelAmbientEffects {
 impl LevelAmbientEffects {
   /// Lets an effect whose particles died go, blows the wind on, starts an effect when one is due, and stops it once its
   /// time is up or indoors, in the order the engine takes them each frame, posting what the scene plays. `outdoors` is
-  /// where the camera stands outdoors, in engine space, none where it stands indoors; `now` is the level's clock.
+  /// where the camera stands outdoors, in engine space, none where it stands indoors; `now` is the engine's clock.
   pub fn update(
     &mut self,
     updates: &mut Vec<RenderSceneUpdate>,
@@ -134,7 +134,14 @@ impl LevelAmbientEffects {
     self.is_forced = true;
   }
 
-  /// Where they stand at a moment of the level's clock: what plays and how much of its life is left, and how long until
+  /// Starts afresh, as at the level's first frame: what plays leaves the scene with its particles, the next effect is
+  /// due at once, and the numbers effects are drawn by, their seeds and the wind start over.
+  pub fn restart(&mut self, updates: &mut Vec<RenderSceneUpdate>, emitters: &mut ProxyAllocator<ParticleEmitterProxy>) {
+    self.release(updates, emitters);
+    *self = Self::default();
+  }
+
+  /// Where they stand at a moment of the engine's clock: what plays and how much of its life is left, and how long until
   /// the next may start. Whether the camera stands indoors is the camera's estimate to fill; it is left outdoors.
   pub fn report(&self, now: Duration) -> WorldAmbientReport {
     WorldAmbientReport {
