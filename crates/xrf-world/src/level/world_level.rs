@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 
 use xrf_renderer::{
   LevelPart, LevelParts, RenderLevelSource, RenderSceneFeedback, RenderSceneFrame, RenderSceneUpdate,
-  RenderStreamingProgress, RenderViewportId, RenderWorkers,
+  RenderStreamingProgress, RenderViewBurst, RenderViewportId, RenderWorkers,
 };
 
 use crate::contract::level::world_level_problems::WorldLevelProblems;
@@ -16,8 +16,10 @@ use crate::host::world_level_source::WorldLevelSource;
 use crate::host::world_level_weather::WorldLevelWeather;
 use crate::level::ambient::started_effect::StartedEffect;
 use crate::level::animation::level_animation::LevelAnimation;
+use crate::level::effects::effect_clocks::EffectClocks;
 use crate::level::effects::effects_frame::EffectsFrame;
 use crate::level::effects::level_effects::LevelEffects;
+use crate::level::engine_clock::EngineClock;
 use crate::level::level_drive::LevelDrive;
 use crate::level::loading::loader_slot::LoaderSlot;
 use crate::level::streaming::level_streaming::LevelStreaming;
@@ -30,7 +32,8 @@ use crate::sound::weather::rain_frame::RainFrame;
 /// effects play, and what every weather of it plays with, read once for every viewport showing it.
 ///
 /// It owns the level's clock: begun on the frames' clock at the first frame it plays, which its scene is made on and
-/// told of (`RenderSceneFrame::opened`), so its effects, its sound and its picture keep one time. Its sound waits for
+/// told of (`RenderSceneFrame::opened`), so its effects, its sound and its picture keep one time; and the engine's clock
+/// its effects and its scene's particles step by (`EngineClock`, `RenderSceneFrame::engine_time`). Its sound waits for
 /// the scene to stand ready, then starts every schedule at that frame, as the game starts a level's sound once it has
 /// loaded; a burst is heard whether or not it stands ready, as it starts its schedules afresh itself.
 pub struct WorldLevel {
@@ -41,6 +44,8 @@ pub struct WorldLevel {
   sound: LevelSound,
   /// When the level's clock began, on the frames' clock; none before its first frame.
   opened: Option<Instant>,
+  /// The engine's clock its effects and its scene's particles step by, which never jumps as the level's clock may.
+  engine_clock: EngineClock,
   /// Whether the level's scene has stood ready, as it told the world.
   has_stood_ready: bool,
   /// What a reload took out of the scene, posted ahead of the next frame's own.
@@ -56,6 +61,7 @@ impl WorldLevel {
       streaming: LevelStreaming::start(source, workers),
       animation: LevelAnimation::new(workers),
       opened: None,
+      engine_clock: EngineClock::default(),
       has_stood_ready: false,
       queued: Vec::new(),
     }
@@ -149,6 +155,7 @@ impl WorldLevel {
     let mut updates: Vec<RenderSceneUpdate> = std::mem::take(&mut self.queued);
     let opened: Instant = *self.opened.get_or_insert(now);
     let clock: Duration = now.saturating_duration_since(opened);
+    let engine: Duration = self.engine_clock.advance(clock);
     let driver: RenderViewportId = drive.viewport;
 
     self
@@ -156,9 +163,14 @@ impl WorldLevel {
       .stream(&mut updates, &mut self.animation, drive.toggles.get_spawn_filter());
     self.animation.pose(&mut updates, self.streaming.get_source());
 
+    // A burst's first frame starts the ambient effects afresh, as it starts the sound's schedules.
+    if sound.burst == Some(RenderViewBurst::Starting) {
+      self.effects.restart_ambient(&mut updates);
+    }
+
     let mut effects: EffectsFrame = self.effects.advance(
       &mut updates,
-      clock,
+      EffectClocks { level: clock, engine },
       drive,
       self.streaming.list_light_campfires(),
       self.streaming.list_light_motions(),
@@ -191,6 +203,7 @@ impl WorldLevel {
     RenderSceneFrame {
       source: Arc::clone(self.streaming.get_source()) as Arc<dyn RenderLevelSource>,
       opened,
+      engine_time: engine,
       driver: Some(driver),
       updates,
       streaming: self.get_progress(),

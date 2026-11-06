@@ -7,7 +7,7 @@ use crate::level::effects::campfire_state::CampfireState;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Campfire {
   state: CampfireState,
-  /// When the turn under way ends, on the level's clock (`m_turn_time`); none once it has.
+  /// When the turn under way ends, on the engine's clock (`m_turn_time`); none once it has.
   turn_end: Option<Duration>,
 }
 

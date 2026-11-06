@@ -62,11 +62,16 @@ pub struct ExposureFeature {
   /// Whether the scale holds where it stands, metered no more: a capture's tiles or faces share one exposure, or
   /// their seams show.
   is_frozen: bool,
+  /// Whether the next frame it meters takes its measure whole, the view having restarted what it carries between
+  /// frames.
+  is_restarted: bool,
 }
 
 impl ExposureFeature {
   /// Cells a side the frame's luminance is measured over, as `rt_LUM_64` is.
   pub const CELLS: u32 = 64;
+  /// The adaptation's rate a view starts from, and starts again from when its light model changes or it restarts.
+  const START_RATE: f32 = 0.5;
 
   pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
     let state: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
@@ -87,7 +92,7 @@ impl ExposureFeature {
       bins,
       params: ExposureUniform::default(),
       histogram: ExposureHistogramUniform::default(),
-      rate: 0.5,
+      rate: Self::START_RATE,
       last: None,
       is_adapting: false,
       is_measuring: false,
@@ -98,6 +103,7 @@ impl ExposureFeature {
       pre_exposure: PreExposure::NONE,
       metering: ExposureMetering::default(),
       is_frozen: false,
+      is_restarted: false,
     };
 
     exposure.reset(queue, 1.0);
@@ -150,7 +156,7 @@ impl ExposureFeature {
       self.is_physical = is_physical;
       self.is_readback_stale = !self.readback.is_free();
       self.last = None;
-      self.rate = 0.5;
+      self.rate = Self::START_RATE;
       self.held = None;
       self.reset(queue, start);
       self.pre_exposure = PreExposure {
@@ -201,7 +207,7 @@ impl ExposureFeature {
       if self.is_adapting {
         self.is_adapting = false;
         self.last = None;
-        self.rate = 0.5;
+        self.rate = Self::START_RATE;
         self.reset(queue, 1.0);
       }
 
@@ -211,11 +217,17 @@ impl ExposureFeature {
     }
 
     let delta: Duration = self.get_delta(now);
+    // A restarted view's first metered frame moves the scale all the way, from wherever the frames before left it.
+    let blend: f32 = if std::mem::take(&mut self.is_restarted) {
+      1.0
+    } else {
+      self.advance_rate(delta, settings)
+    };
 
     self.is_adapting = true;
     self.is_measuring = true;
     self.last = Some(now);
-    self.params = ExposureUniform::new(settings, self.advance_rate(delta, settings));
+    self.params = ExposureUniform::new(settings, blend);
   }
 
   /// Advances the rate by `delta`, `f_luminance_adapt = .9 * f + .1 * dt * adaptation`, and gives how far this frame
@@ -255,6 +267,7 @@ impl ExposureFeature {
 
     let delta: Duration = self.get_delta(now);
     let engine_blend: f32 = self.advance_rate(delta, settings);
+    let is_restarted: bool = std::mem::take(&mut self.is_restarted);
 
     self.histogram = ExposureHistogramUniform::new(
       settings,
@@ -262,12 +275,28 @@ impl ExposureFeature {
       ExposureStep {
         delta: delta.as_secs_f32(),
         engine_blend,
-        is_snapped: self.last.is_none(),
+        is_snapped: self.last.is_none() || is_restarted,
       },
     );
     self.is_measuring = true;
     self.last = Some(now);
     self.held = None;
+  }
+
+  /// Starts its adaptation again from nothing: the next frame it meters takes its measure whole, as a first frame
+  /// does, its rate back where a new view's starts, rather than easing from the scale the frames before left. What a
+  /// view draws from a restart then follows from its frames since alone, as two bursts from one time must. A frozen
+  /// scale holds, and takes the measure whole once it adapts again.
+  pub fn restart(&mut self) {
+    self.last = None;
+    self.rate = Self::START_RATE;
+    self.is_restarted = true;
+  }
+
+  /// How the physical light meters this frame.
+  #[cfg(test)]
+  pub fn get_histogram(&self) -> &ExposureHistogramUniform {
+    &self.histogram
   }
 
   /// Holds the scale where it stands, or lets it adapt again.

@@ -18,6 +18,7 @@ use crate::level::ambient::level_ambient_effects::LevelAmbientEffects;
 use crate::level::effects::camera_hemi::CameraHemi;
 use crate::level::effects::campfire::Campfire;
 use crate::level::effects::campfire_state::CampfireState;
+use crate::level::effects::effect_clocks::EffectClocks;
 use crate::level::effects::effects_frame::EffectsFrame;
 use crate::level::effects::level_campfires::LevelCampfires;
 use crate::level::effects::level_object_motions::LevelObjectMotions;
@@ -40,7 +41,7 @@ pub struct LevelEffects {
   campfires: LevelCampfires,
   motions: LevelObjectMotions,
   workers: RenderWorkers,
-  /// The level's clock at the last frame it moved on.
+  /// The engine's clock at the last frame it moved on.
   now: Duration,
 }
 
@@ -119,6 +120,13 @@ impl LevelEffects {
     self.ambient.play_now();
   }
 
+  /// Starts the ambient effects afresh, as at the level's first frame: what plays leaves the scene with its particles,
+  /// and the next effect and the numbers it is drawn by start over, so what a burst plays depends on its own frames
+  /// alone. The placed particles and the campfires go on as they were.
+  pub fn restart_ambient(&mut self, updates: &mut Vec<RenderSceneUpdate>) {
+    self.ambient.restart(updates, &mut self.emitters);
+  }
+
   /// Where the ambient effects stand as of the last frame, none until the particles are read.
   pub fn report_ambient(&self) -> Option<WorldAmbientReport> {
     self.systems.as_ref().map(|systems| WorldAmbientReport {
@@ -132,16 +140,17 @@ impl LevelEffects {
     self.finished.extend(finished.into_iter().map(|(handle, _)| handle));
   }
 
-  /// Moves the effects on to `now`, the level's clock, and posts what the scene plays: takes the read particles, plays
-  /// the weather's ambient effects, switches the campfires and moves the object motions, then plays what each placement
-  /// plays, as the driving viewport gives the frame. `light_campfires` and `light_motions` are the campfires and motions
-  /// the level's lights follow. The wind blows and the camera's indoor estimate runs every frame; while particles are
-  /// not drawn, or the ambient effects are switched off, the ambient effects play as though indoors: none starts, what
-  /// plays stops, and the wind calms.
+  /// Moves the effects on and posts what the scene plays: takes the read particles, plays the weather's ambient effects,
+  /// switches the campfires and moves the object motions, then plays what each placement plays, as the driving viewport
+  /// gives the frame. What steps or waits (the ambient effects and their wind, the camera's indoor estimate, the
+  /// campfires) moves by `clocks.engine`, which never jumps; the object motions, a function of time, by `clocks.level`.
+  /// `light_campfires` and `light_motions` are the campfires and motions the level's lights follow. The wind blows and
+  /// the camera's indoor estimate runs every frame; while particles are not drawn, or the ambient effects are switched
+  /// off, the ambient effects play as though indoors: none starts, what plays stops, and the wind calms.
   pub fn advance(
     &mut self,
     updates: &mut Vec<RenderSceneUpdate>,
-    now: Duration,
+    clocks: EffectClocks,
     LevelDrive {
       viewport: _,
       options,
@@ -152,6 +161,8 @@ impl LevelEffects {
     light_campfires: &[u16],
     light_motions: &[String],
   ) -> EffectsFrame {
+    let now: Duration = clocks.engine;
+
     self.now = now;
 
     let is_playing: bool = options.show.is_particled && options.mode.is_lit;
@@ -180,7 +191,7 @@ impl LevelEffects {
     // The campfires switch and the moving zones move whether or not their particles are drawn, so their lights follow
     // them alike.
     self.campfires.prepare(CampfireState::of(toggles.is_campfire_lit), now);
-    self.motions.prepare(now);
+    self.motions.prepare(clocks.level);
 
     let placed: &[PlacedEmitter] = self.systems.as_ref().map_or(&[], |systems| &systems.placed);
     let mut campfire_shares: HashMap<u16, f32> = HashMap::new();

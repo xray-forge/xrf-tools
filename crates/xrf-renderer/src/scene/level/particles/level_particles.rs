@@ -201,8 +201,8 @@ impl LevelParticles {
     self.emitters.remove(handle);
   }
 
-  /// Plays an effect at an emitter unless it already plays there, from `time`, the scene's; nothing before the
-  /// definitions are in.
+  /// Plays an effect at an emitter unless it already plays there, from `time`, the engine's
+  /// (`RenderSceneFrame::engine_time`); nothing before the definitions are in.
   pub fn play(&mut self, handle: ProxyHandle<ParticleEmitterProxy>, effect: PlacedEffect, name: &str, time: Duration) {
     self.settle();
 
@@ -256,8 +256,9 @@ impl LevelParticles {
     std::mem::take(&mut self.finished)
   }
 
-  /// Starts stepping every effect playing to `time`, the scene's, as the engine schedules them on the workers, as `view`
-  /// sees them (the scene's first view, which stands for the actor); nothing while particles are not drawn.
+  /// Starts stepping every effect playing to `time`, the engine's (`RenderSceneFrame::engine_time`), which never runs
+  /// back as the scene's may, as the engine schedules them on the workers, as `view` sees them (the scene's first view,
+  /// which stands for the actor); nothing while particles are not drawn.
   pub fn start_simulation(&mut self, view: &CameraView, options: &RenderViewOptions, time: Duration) {
     self.settle();
 

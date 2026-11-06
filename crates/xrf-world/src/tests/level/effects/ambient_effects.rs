@@ -203,6 +203,35 @@ impl AmbientScene {
     }
   }
 
+  /// Restarts the effects, as a burst's first frame does, and applies what they post.
+  fn restart(&mut self) {
+    let mut updates: Vec<RenderSceneUpdate> = Vec::new();
+
+    self.effects.restart(&mut updates, &mut self.allocator);
+
+    for update in updates {
+      match update {
+        RenderSceneUpdate::RemoveEmitter(handle) => {
+          self.emitters.remove(&handle);
+        }
+        _ => panic!("A restart only takes emitters out"),
+      }
+    }
+  }
+
+  /// The effect playing in the scene and its emitter's seed, if any plays.
+  fn get_playing_effect(&self) -> Option<(String, i32)> {
+    self.emitters.values().find_map(|emitter| {
+      let (object, _) = emitter.object.as_ref()?;
+      let name: String = match object.get_instance() {
+        ParticleInstance::Effect(effect) => effect.get_definition().name.clone(),
+        ParticleInstance::Group(_) => String::new(),
+      };
+
+      Some((name, emitter.seed))
+    })
+  }
+
   /// The effect playing in the scene, if any.
   fn get_playing(&self) -> Option<&ParticleObject> {
     self
@@ -377,4 +406,42 @@ fn playing_one_now_ends_the_one_playing_and_starts_without_waiting() {
   scene.effects.play_now();
   scene.update(frame, None, 700);
   assert!(scene.get_playing().is_none());
+}
+
+/// A restart, as a burst's first frame makes, takes what plays out of the scene and plays on as from the level's first
+/// frame: the effect it started first, at once, at the same seed, whatever played between.
+#[test]
+fn a_restart_ends_what_plays_and_plays_on_as_from_the_first_frame() {
+  let names: [&str; 3] = ["fog", "leaves", "vortex"];
+  let particles: Vec<String> = names.iter().map(|name| format!("nature\\{name}")).collect();
+  let mut scene: AmbientScene = AmbientScene::new(
+    XrayEngine::Extended,
+    &particles.iter().map(String::as_str).collect::<Vec<_>>(),
+  );
+  let (weather, ambients) = (weather(&names), day());
+  let frame: AmbientFrame = AmbientFrame {
+    ambients: &ambients,
+    level: &weather,
+  };
+
+  scene.update(frame, Some(OUTDOORS), 1);
+
+  let first: (String, i32) = scene.get_playing_effect().expect("an effect plays at once");
+
+  for now in (51..45_000).step_by(50) {
+    scene.update(frame, Some(OUTDOORS), now);
+  }
+
+  assert!(
+    scene.effects.report(Duration::from_secs(45)).played > 1,
+    "effects played on"
+  );
+
+  scene.restart();
+
+  assert!(scene.get_playing().is_none(), "what played left the scene");
+
+  scene.update(frame, Some(OUTDOORS), 45_001);
+
+  assert_eq!(scene.get_playing_effect(), Some(first));
 }

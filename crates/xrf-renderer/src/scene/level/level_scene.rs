@@ -88,6 +88,9 @@ pub struct LevelScene {
   pub camera_hemi: Option<f32>,
   /// How wet the level is and how full its puddles, which every view of it wets its surfaces by.
   pub(super) wetness: LevelWetness,
+  /// The engine's time at this frame, as the world steps it (`RenderSceneFrame::engine_time`), which its particles step
+  /// and start by.
+  engine_time: Duration,
   /// The sectors and the spawned models it could not take in since the world was last told.
   sector_failures: Vec<RenderSectorFailure>,
   model_failures: Vec<RenderModelFailure>,
@@ -135,6 +138,7 @@ impl LevelScene {
       campfire_shares: HashMap::new(),
       camera_hemi: None,
       wetness: LevelWetness::default(),
+      engine_time: Duration::ZERO,
       sector_failures: Vec::new(),
       model_failures: Vec::new(),
       pending: VecDeque::new(),
@@ -165,6 +169,7 @@ impl LevelScene {
       source,
       // The level's clock begins once, with the scene's (`LevelScene::new`).
       opened: _,
+      engine_time,
       driver,
       updates,
       streaming,
@@ -178,6 +183,8 @@ impl LevelScene {
 
     // The world moves a scene onto a next source of its level, which every read from now on goes through.
     self.source = source;
+    // Before its updates, which start effects at it.
+    self.engine_time = engine_time;
 
     let assets: Arc<dyn RenderAssetSource> = Arc::clone(&self.source) as Arc<dyn RenderAssetSource>;
 
@@ -248,13 +255,13 @@ impl LevelScene {
   }
 
   /// Begins this frame's step, once before any of its views readies, by the view standing for the actor: its camera
-  /// `actor`, the `options` it draws with and the `lighting` it plays. The effects start stepping on the workers, which
-  /// its settle (`settle`) joins, and the wetness every view wets its surfaces by moves on by that view's rain, both on
-  /// the scene's clock.
+  /// `actor`, the `options` it draws with and the `lighting` it plays. The effects start stepping on the workers to the
+  /// engine's time the world gave (`RenderSceneFrame::engine_time`), which its settle (`settle`) joins, and the wetness
+  /// every view wets its surfaces by moves on by that view's rain on the scene's clock.
   pub fn begin_frame(&mut self, actor: &CameraView, options: &RenderViewOptions, lighting: &RenderLighting) {
     let time: LevelTime = self.get_time();
 
-    self.particles.start_simulation(actor, options, time.get_duration());
+    self.particles.start_simulation(actor, options, self.engine_time);
     self.wetness.advance(lighting, &options.features.rain, time);
   }
 
@@ -506,9 +513,7 @@ impl LevelScene {
         } => self.particles.add_emitter(handle, transform, seed),
         RenderSceneUpdate::RemoveEmitter(handle) => self.particles.remove_emitter(handle),
         RenderSceneUpdate::PlayEffect { handle, effect, name } => {
-          let time: LevelTime = self.get_time();
-
-          self.particles.play(handle, effect, &name, time.get_duration());
+          self.particles.play(handle, effect, &name, self.engine_time);
         }
         RenderSceneUpdate::StopEffect {
           handle,

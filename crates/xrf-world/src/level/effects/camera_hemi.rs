@@ -27,7 +27,7 @@ pub struct CameraHemi {
   smooth: f32,
   /// `hemi_cube_smooth`, its faces as `HemiCube` orders them.
   cube_smooth: [f32; 6],
-  /// When the next estimate is due, and when the hemi was last smoothed, on the level's clock.
+  /// When the next estimate is due, and when the hemi was last smoothed, on the engine's clock.
   due: Duration,
   smoothed_at: Option<Duration>,
   workers: RenderWorkers,
@@ -47,7 +47,7 @@ impl CameraHemi {
     }
   }
 
-  /// Takes a finished estimate, asks for the next one once due, and smooths the hemi on to `now`, the level's clock.
+  /// Takes a finished estimate, asks for the next one once due, and smooths the hemi on to `now`, the engine's clock.
   /// `eye` is where the camera stands, in engine space.
   pub fn advance(&mut self, eye: Vec3, now: Duration) {
     // A worker that never answered leaves none pending, so the next is asked for.
