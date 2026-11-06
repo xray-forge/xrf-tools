@@ -1,4 +1,4 @@
-mod fixtures;
+pub(crate) mod fixtures;
 mod geometry;
 mod mesh;
 mod object;

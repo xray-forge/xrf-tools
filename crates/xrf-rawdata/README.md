@@ -24,7 +24,24 @@ one: the source path and SHA-256, the tool, the time, and every inference.
 
 An OGF that is not a skeleton, or a child with static vertices, is refused for now.
 
+## Compiling an editable object into an OGF
+
+`ObjectCompiler::build_skeleton_geometry` builds a skeleton object's children as the Actor Editor's `Export OGF`
+prepares them, so the engine draws what the editor's export would give it:
+
+- every face corner takes its normal from the mesh's smoothing (`EditableMeshNormals`), the last texture coordinate its
+  vertex map reference names, and its four strongest bone weights, normalised;
+- faces go to one split per engine shader, texture and breakable part, a two-sided face again mirrored;
+- corners pack into vertices as the export packs them: positions and normals within a millimetre, texture coordinates
+  within `EPS_S`, the same bones and weights, looked up through the export's grid over the object's box, a near corner
+  moved onto the vertex it stood near; degenerate and repeated faces are dropped;
+- a split's link count is its widest vertex's, a corner of a face that follows one bone padded with a weightless copy.
+
+The order of the children follows the surfaces' order in the object, where the export follows their addresses in
+memory, so it can differ; the engine draws the same either way. Tangents, the triangle order the engine draws in, and
+writing the OGF itself are not built yet.
+
 ## Checks
 
-Run `cargo test --locked -p xrf-rawdata` from the repository root. See the [decompiler](src/object/decompile/) and the
-[provenance sidecar](src/provenance/).
+Run `cargo test --locked -p xrf-rawdata` from the repository root. See the [decompiler](src/object/decompile/), the
+[compiler](src/object/compile/) and the [provenance sidecar](src/provenance/).
