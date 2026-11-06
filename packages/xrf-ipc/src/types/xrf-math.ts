@@ -1,5 +1,11 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
+/** An axis-aligned box, the engine's `Fbox`: its lowest and highest corner. */
+export type Aabb = {
+  min: Vector3d;
+  max: Vector3d;
+};
+
 /**
  * An `Fmatrix` stored without its fourth column, as `NET_Packet::w_matrix` writes one: the three axis rows `i`, `j`
  * and `k`, then the translation `c`. Reading one back fixes the dropped column at `0, 0, 0, 1`, so what it holds is

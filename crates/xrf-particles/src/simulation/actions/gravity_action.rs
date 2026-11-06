@@ -22,7 +22,7 @@ impl GravityAction {
 impl From<&ParticleActionGravity> for GravityAction {
   fn from(action: &ParticleActionGravity) -> Self {
     Self {
-      direction: Vec3::from_array(action.direction.to_array()),
+      direction: Vec3::from(&action.direction),
     }
   }
 }

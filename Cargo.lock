@@ -8653,6 +8653,7 @@ version = "0.1.0"
 dependencies = [
  "byteorder",
  "derive_more 2.1.1",
+ "glam",
  "serde",
  "serde_json",
  "specta",

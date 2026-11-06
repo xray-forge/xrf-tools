@@ -69,7 +69,7 @@ impl CameraHemi {
       let estimator: Arc<HemiEstimator> = Arc::clone(estimator);
 
       self.workers.spawn(move || {
-        let _ = sender.send(estimator.estimate(&Vector3d::new(eye.x, eye.y, eye.z), 0.0));
+        let _ = sender.send(estimator.estimate(&Vector3d::from(eye), 0.0));
       });
       self.pending = Some(receiver);
       self.due = now + ESTIMATE_INTERVAL;

@@ -57,7 +57,7 @@ impl TargetColorAction {
 
 impl From<&ParticleActionTargetColor> for TargetColorAction {
   fn from(action: &ParticleActionTargetColor) -> Self {
-    let color: Vec3 = Vec3::from_array(action.color.to_array());
+    let color: Vec3 = Vec3::from(&action.color);
 
     Self {
       color: color.extend(action.alpha),

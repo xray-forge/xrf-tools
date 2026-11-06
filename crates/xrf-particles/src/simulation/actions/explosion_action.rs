@@ -52,7 +52,7 @@ impl ExplosionAction {
 
 impl From<&ParticleActionExplosion> for ExplosionAction {
   fn from(action: &ParticleActionExplosion) -> Self {
-    let center: Vec3 = Vec3::from_array(action.center.to_array());
+    let center: Vec3 = Vec3::from(&action.center);
 
     Self {
       center_local: center,

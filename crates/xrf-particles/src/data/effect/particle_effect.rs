@@ -197,6 +197,13 @@ impl ChunkReadWrite for ParticleEffect {
     name_chunk_writer.write_w1251_string(&self.name)?;
     name_chunk_writer.flush_chunk_into::<T>(writer, Self::NAME_CHUNK_ID)?;
 
+    // The SDK's authorship record follows the name; the engine's own save, which keeps none, has no place for it.
+    if let Some(description) = &self.description {
+      let mut description_chunk_writer: ChunkWriter = ChunkWriter::new();
+      description_chunk_writer.write_xr::<T, _>(description)?;
+      description_chunk_writer.flush_chunk_into::<T>(writer, Self::DESCRIPTION_CHUNK_ID)?;
+    }
+
     let mut max_particles_chunk_writer: ChunkWriter = ChunkWriter::new();
     max_particles_chunk_writer.write_u32::<T>(self.max_particles)?;
     max_particles_chunk_writer.flush_chunk_into::<T>(writer, Self::MAX_PARTICLES_CHUNK_ID)?;
@@ -209,16 +216,17 @@ impl ChunkReadWrite for ParticleEffect {
     flags_chunk_writer.write_u32::<T>(self.flags)?;
     flags_chunk_writer.flush_chunk_into::<T>(writer, Self::FLAGS_CHUNK_ID)?;
 
-    if let Some(frame) = &self.frame {
-      let mut frame_chunk_writer: ChunkWriter = ChunkWriter::new();
-      frame_chunk_writer.write_xr::<T, _>(frame)?;
-      frame_chunk_writer.flush_chunk_into::<T>(writer, Self::FRAME_CHUNK_ID)?;
-    }
-
+    // `CPEDef::Save` writes the sprite ahead of the frame, against their ids.
     if let Some(sprite) = &self.sprite {
       let mut sprite_chunk_writer: ChunkWriter = ChunkWriter::new();
       sprite_chunk_writer.write_xr::<T, _>(sprite)?;
       sprite_chunk_writer.flush_chunk_into::<T>(writer, Self::SPRITE_CHUNK_ID)?;
+    }
+
+    if let Some(frame) = &self.frame {
+      let mut frame_chunk_writer: ChunkWriter = ChunkWriter::new();
+      frame_chunk_writer.write_xr::<T, _>(frame)?;
+      frame_chunk_writer.flush_chunk_into::<T>(writer, Self::FRAME_CHUNK_ID)?;
     }
 
     if let Some(time_limit) = self.time_limit {
@@ -237,12 +245,6 @@ impl ChunkReadWrite for ParticleEffect {
       let mut velocity_scale_chunk_writer: ChunkWriter = ChunkWriter::new();
       velocity_scale_chunk_writer.write_xr::<T, Vector3d>(velocity_scale)?;
       velocity_scale_chunk_writer.flush_chunk_into::<T>(writer, Self::VELOCITY_SCALE_CHUNK_ID)?;
-    }
-
-    if let Some(description) = &self.description {
-      let mut description_chunk_writer: ChunkWriter = ChunkWriter::new();
-      description_chunk_writer.write_xr::<T, _>(description)?;
-      description_chunk_writer.flush_chunk_into::<T>(writer, Self::DESCRIPTION_CHUNK_ID)?;
     }
 
     if let Some(rotation) = &self.rotation {
@@ -434,6 +436,16 @@ mod tests {
     original.write::<XRayByteOrder>(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 343);
+    // The SDK's order, which reading never checks and the shipped libraries keep: the description after the name, the
+    // sprite ahead of the frame, the rotation ahead of the editor data.
+    assert_eq!(
+      ChunkReader::from_bytes(&writer.buffer)?
+        .read_children()?
+        .iter()
+        .map(|chunk| chunk.id)
+        .collect::<Vec<u32>>(),
+      [1, 2, 35, 3, 4, 5, 7, 6, 8, 33, 34, 37, 36]
+    );
 
     let bytes_written: usize = writer.flush_chunk_into::<XRayByteOrder>(
       &mut GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), &filename))?,

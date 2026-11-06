@@ -71,7 +71,7 @@ impl LevelObjectMotions {
       (motion.evaluate(looped_before).0, position)
     };
     let velocity: Vec3 = if elapsed > 0.0 {
-      (Vec3::from(to.to_array()) - Vec3::from(from.to_array())) / elapsed
+      (Vec3::from(to) - Vec3::from(from)) / elapsed
     } else {
       Vec3::ZERO
     };

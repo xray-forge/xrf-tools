@@ -28,7 +28,7 @@ impl DampingAction {
 impl From<&ParticleActionDamping> for DampingAction {
   fn from(action: &ParticleActionDamping) -> Self {
     Self {
-      damping: Vec3::from_array(action.damping.to_array()),
+      damping: Vec3::from(&action.damping),
       v_low_sqr: action.v_low_sqr,
       v_high_sqr: action.v_high_sqr,
     }

@@ -1,9 +1,7 @@
-use xrf_math::Vector3d;
+use xrf_math::{Aabb, Sphere, Vector3d};
 use xrf_ogf::{OgfFile, OgfGeometry, OgfModelType, OgfSlideWindow, OgfVertex, OgfVertexData};
 
 use crate::data::visual::bounds::visual_bounds::VisualBounds;
-use crate::data::visual::bounds::visual_box::VisualBox;
-use crate::data::visual::bounds::visual_sphere::VisualSphere;
 use crate::data::visual::geometry::visual_clusters::VisualClusters;
 use crate::data::visual::geometry::visual_draw_range::VisualDrawRange;
 use crate::data::visual::geometry::visual_geometry::VisualGeometry;
@@ -107,11 +105,8 @@ impl VisualPacker {
         source_file: None,
         // A built mesh declares nothing of itself: what it spans is all there is to declare.
         declared_bounds: computed_bounds.clone().unwrap_or(VisualBounds {
-          bounding_box: VisualBox {
-            min: Vector3d::ZERO,
-            max: Vector3d::ZERO,
-          },
-          bounding_sphere: VisualSphere {
+          bounding_box: Aabb::of_point(&Vector3d::ZERO),
+          bounding_sphere: Sphere {
             center: Vector3d::ZERO,
             radius: 0.0,
           },

@@ -19,7 +19,7 @@ xrf-chunk = { workspace = true }
 xrf-engine-target = { workspace = true }
 xrf-error = { workspace = true }
 xrf-ltx = { workspace = true }
-xrf-math = { workspace = true }
+xrf-math = { workspace = true, features = ["glam"] }
 xrf-utils = { workspace = true }
 
 [dev-dependencies]

@@ -38,21 +38,15 @@ impl ParticleSprite {
   pub fn push(&self, effect: &ParticleEffectInstance, surface: u32, vertices: &mut Vec<ParticleVertex>) {
     let definition = effect.get_definition();
     let flags: ParticleEffectFlags = effect.get_flags();
-    let alignment: Vec3 = definition
-      .rotation
-      .as_ref()
-      .map_or(DEFAULT_ALIGNMENT, |it| Vec3::new(it.x, it.y, it.z));
-    let velocity_scale: Vec3 = definition
-      .velocity_scale
-      .as_ref()
-      .map_or(Vec3::ZERO, |it| Vec3::new(it.x, it.y, it.z));
+    let alignment: Vec3 = definition.rotation.as_ref().map_or(DEFAULT_ALIGNMENT, Vec3::from);
+    let velocity_scale: Vec3 = definition.velocity_scale.as_ref().map_or(Vec3::ZERO, Vec3::from);
 
     for m in effect.get_pool().get_particles() {
       let (lt, rb) = match &definition.frame {
         Some(frame) if flags.is(ParticleEffectFlags::FRAMED) => {
           let index: u32 = m.get_frame_index();
           let dimension: u32 = frame.frame_dimension_x.max(1);
-          let size: Vec2 = Vec2::from_array(frame.texture_size.to_array());
+          let size: Vec2 = Vec2::from(frame.texture_size);
           let lt: Vec2 = Vec2::new((index % dimension) as f32, (index / dimension) as f32) * size;
 
           (lt, lt + size)

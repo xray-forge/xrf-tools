@@ -85,8 +85,9 @@ fn main() -> xrf_error::XrfResult {
 
 `SkeletonMotion` keeps the payload as stored: the label, the declared frame `count`, and the `keys`, one run per bone,
 each led by its own flags byte. `decode_bone_motions(bone_count)` dequantises them into one `SkeletonBoneMotion` per
-run: rotations as `Quaternion`s and translations as vectors. A held bone stores one key however many frames the motion
-declares, and `get_rotation` and `get_translation` clamp a frame to what a stream holds, so they answer any frame.
+run: rotations as `xrf-math`'s `Quaternion`s and translations as vectors. A held bone stores one key however many
+frames the motion declares, and `get_rotation` and `get_translation` clamp a frame to what a stream holds, so they
+answer any frame.
 Motions sample at a fixed `SkeletonMotion::SAMPLE_FPS` (30), which `get_duration_seconds` divides the frame count by.
 
 The payload stores no bone count: the caller supplies it, usually the partitions' total. Decoding fails when the payload

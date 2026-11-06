@@ -21,15 +21,13 @@ impl LevelParticleCollider {
 impl ParticleCollider for LevelParticleCollider {
   fn pick(&self, origin: Vec3, direction: Vec3, range: f32, _is_dynamic: bool) -> Option<ParticleContact> {
     // todo: Collide `dfCollisionDyn` effects with spawned objects too (`rqtBoth`); the level's form alone answers.
-    let hit: LevelCformHit = self.tracer.get_nearest_hit(
-      &Vector3d::new(origin.x, origin.y, origin.z),
-      &Vector3d::new(direction.x, direction.y, direction.z),
-      range,
-    )?;
+    let hit: LevelCformHit = self
+      .tracer
+      .get_nearest_hit(&Vector3d::from(origin), &Vector3d::from(direction), range)?;
 
     Some(ParticleContact {
       distance: hit.distance,
-      normal: Vec3::new(hit.normal.x, hit.normal.y, hit.normal.z),
+      normal: Vec3::from(&hit.normal),
     })
   }
 }

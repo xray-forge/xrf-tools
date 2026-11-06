@@ -188,7 +188,7 @@ impl LevelObjectsDescription {
   fn to_corner_box(corners: &[Vector3d]) -> Option<CornerBox> {
     let points: Vec<Vec3> = corners
       .iter()
-      .map(|corner| Self::to_vec3(&LevelObject::to_renderer_space(corner)))
+      .map(|corner| Vec3::from(LevelObject::to_renderer_space(corner)))
       .collect();
     let first: Vec3 = *points.first()?;
     let mut spans: Vec<Vec3> = points.iter().skip(1).map(|point| *point - first).collect();
@@ -205,22 +205,22 @@ impl LevelObjectsDescription {
 
     (normal != Vec3::ZERO && c.length() > f32::EPSILON).then(|| CornerBox {
       center: points.iter().copied().sum::<Vec3>() / points.len() as f32,
-      axes: [a, b, c].map(|axis| Vector3d::new(axis.x, axis.y, axis.z)),
+      axes: [a, b, c].map(Vector3d::from),
     })
   }
 
   /// A fog volume: the unit cube its matrix stands, and each obstacle's cube cutting it, about the volume's centre.
   fn to_fog_volume(volume: &LevelFogVolume) -> PlacementSpace {
-    let center: Vec3 = Self::to_vec3(&LevelObject::to_renderer_space(&Self::get_matrix_row(
+    let center: Vec3 = Vec3::from(LevelObject::to_renderer_space(&Self::get_matrix_row(
       &volume.transform,
       3,
     )));
     let to_box = |matrix: &Matrix4x4| -> LevelObjectShape {
-      let at: Vec3 = Self::to_vec3(&LevelObject::to_renderer_space(&Self::get_matrix_row(matrix, 3)));
+      let at: Vec3 = Vec3::from(LevelObject::to_renderer_space(&Self::get_matrix_row(matrix, 3)));
 
       LevelObjectShape::Box {
         axes: [0, 1, 2].map(|row| LevelObject::to_renderer_space(&Self::get_matrix_row(matrix, row))),
-        center: Vector3d::new(at.x - center.x, at.y - center.y, at.z - center.z),
+        center: Vector3d::from(at - center),
       }
     };
 
@@ -258,13 +258,9 @@ impl LevelObjectsDescription {
   /// Unturned at a point already in renderer space.
   fn to_renderer_place(center: Vec3) -> VisualTransform {
     VisualTransform {
-      c: Vector3d::new(center.x, center.y, center.z),
+      c: Vector3d::from(center),
       ..Self::to_place(&Vector3d::new(0.0, 0.0, 0.0))
     }
-  }
-
-  fn to_vec3(vector: &Vector3d) -> Vec3 {
-    Vec3::new(vector.x, vector.y, vector.z)
   }
 }
 

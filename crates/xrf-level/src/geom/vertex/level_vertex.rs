@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use xrf_math::{Vector2d, Vector3d};
 
+use crate::geom::vertex::level_vertex_color::LevelVertexColor;
+
 /// One vertex of a level's render geometry, decoded from whichever declaration stored it.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -15,8 +17,8 @@ pub struct LevelVertex {
   pub texture_coordinate: Vector2d,
   /// The lightmap coordinate, for a surface xrLC lit from a lightmap.
   pub lightmap_coordinate: Option<Vector2d>,
-  /// The baked vertex colour as `(r, g, b)`, for a surface xrLC lit from vertex colour instead.
-  pub color: Option<(u8, u8, u8)>,
+  /// The baked vertex colour, for a surface xrLC lit from vertex colour instead.
+  pub color: Option<LevelVertexColor>,
   /// The vertex's hemisphere term, which the normal's alpha byte carries rather than padding.
   pub hemi: u8,
 }
@@ -47,12 +49,12 @@ impl LevelVertex {
   }
 
   /// The colour of a `D3DCOLOR` element, as the red, green and blue the packing puts on disk.
-  pub const fn decode_color(bytes: [u8; 4]) -> (u8, u8, u8) {
-    (
-      bytes[Self::DIRECTION_X],
-      bytes[Self::DIRECTION_Y],
-      bytes[Self::DIRECTION_Z],
-    )
+  pub const fn decode_color(bytes: [u8; 4]) -> LevelVertexColor {
+    LevelVertexColor {
+      r: bytes[Self::DIRECTION_X],
+      g: bytes[Self::DIRECTION_Y],
+      b: bytes[Self::DIRECTION_Z],
+    }
   }
 }
 
@@ -61,6 +63,7 @@ mod tests {
   use xrf_math::Vector3d;
 
   use crate::geom::vertex::level_vertex::LevelVertex;
+  use crate::geom::vertex::level_vertex_color::LevelVertexColor;
 
   #[test]
   fn test_direction_decodes_the_bytes_in_the_order_they_are_written() {
@@ -89,6 +92,9 @@ mod tests {
 
   #[test]
   fn test_color_takes_the_same_byte_order_as_a_direction() {
-    assert_eq!(LevelVertex::decode_color([1, 2, 3, 4]), (3, 2, 1));
+    assert_eq!(
+      LevelVertex::decode_color([1, 2, 3, 4]),
+      LevelVertexColor { r: 3, g: 2, b: 1 }
+    );
   }
 }

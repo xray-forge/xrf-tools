@@ -21,7 +21,7 @@ impl LightBasis {
   /// The direction, and the right the lamp gives made square to it through the up they make, or the world's up where
   /// it gives none. Crossed in the renderer's mirrored space, the engine's cross products turn their sign.
   pub fn of(light: &LightDescription) -> Self {
-    let position: Vec3 = Vec3::from(light.position.to_array());
+    let position: Vec3 = Vec3::from(&light.position);
 
     if !matches!(light.kind, LightKind::Spot) {
       return Self {
@@ -32,8 +32,8 @@ impl LightBasis {
       };
     }
 
-    let direction: Vec3 = Vec3::from(light.direction.to_array()).normalize_or(Vec3::NEG_Z);
-    let given: Vec3 = Vec3::from(light.right.to_array());
+    let direction: Vec3 = Vec3::from(&light.direction).normalize_or(Vec3::NEG_Z);
+    let given: Vec3 = Vec3::from(&light.right);
     let (right, up): (Vec3, Vec3) = if given.length_squared() > EPS {
       let up: Vec3 = -direction.cross(given.normalize()).normalize_or(Vec3::Y);
 

@@ -103,7 +103,7 @@ impl From<&ParticleActionSource> for SourceAction {
       particle_rate: action.particle_rate,
       age: action.age,
       age_sigma: action.age_sigma,
-      parent_velocity: Vec3::from_array(action.parent_vel.to_array()),
+      parent_velocity: Vec3::from(&action.parent_vel),
       parent_motion: action.parent_motion,
     }
   }

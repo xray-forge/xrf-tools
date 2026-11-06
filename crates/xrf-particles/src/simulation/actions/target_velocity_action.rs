@@ -27,7 +27,7 @@ impl TargetVelocityAction {
 
 impl From<&ParticleActionTargetVelocity> for TargetVelocityAction {
   fn from(action: &ParticleActionTargetVelocity) -> Self {
-    let velocity: Vec3 = Vec3::from_array(action.velocity.to_array());
+    let velocity: Vec3 = Vec3::from(&action.velocity);
 
     Self {
       velocity_local: velocity,

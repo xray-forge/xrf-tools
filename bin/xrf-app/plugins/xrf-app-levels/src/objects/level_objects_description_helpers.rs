@@ -53,13 +53,8 @@ impl HelperLook {
     }
 
     if let Some(patrol) = &object.patrol {
-      let origin: Vec3 = Vec3::new(object.transform.c.x, object.transform.c.y, object.transform.c.z);
-      let point = |index: u32| -> Option<Vec3> {
-        patrol
-          .points
-          .get(index as usize)
-          .map(|it| Vec3::new(it.x, it.y, it.z) - origin)
-      };
+      let origin: Vec3 = Vec3::from(&object.transform.c);
+      let point = |index: u32| -> Option<Vec3> { patrol.points.get(index as usize).map(|it| Vec3::from(it) - origin) };
       let ends: Vec<[[f32; 3]; 2]> = patrol
         .links
         .iter()

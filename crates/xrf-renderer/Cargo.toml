@@ -29,7 +29,7 @@ xrf-env-flags = { workspace = true }
 xrf-error = { workspace = true }
 xrf-ipc = { workspace = true, optional = true }
 xrf-material = { workspace = true }
-xrf-math = { workspace = true }
+xrf-math = { workspace = true, features = ["glam"] }
 xrf-particles = { workspace = true }
 xrf-renderer-core = { workspace = true }
 xrf-renderer-derive = { workspace = true }

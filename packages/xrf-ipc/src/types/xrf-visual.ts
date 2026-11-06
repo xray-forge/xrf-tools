@@ -1,6 +1,6 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { Vector3d } from "#/types/xrf-math";
+import { Aabb, Sphere, Vector3d } from "#/types/xrf-math";
 import { XrayResolution } from "#/types/xrf-vfs";
 
 /** What one sector is and where it sits, before any of its geometry is read. */
@@ -33,16 +33,13 @@ export type VisualBone = {
   bindTransform: VisualTransform | null;
 };
 
-/** A visual's extent, as a box and a sphere. */
+/**
+ * A visual's extent in renderer space, as a box and a sphere; `convert_declared_bounds` brings an OGF header's engine
+ * space bounds here.
+ */
 export type VisualBounds = {
-  boundingBox: VisualBox;
-  boundingSphere: VisualSphere;
-};
-
-/** Axis aligned box in renderer space. */
-export type VisualBox = {
-  min: Vector3d;
-  max: Vector3d;
+  boundingBox: Aabb;
+  boundingSphere: Sphere;
 };
 
 /**
@@ -167,12 +164,6 @@ export enum EVisualSkipCause {
 
 /** Every `EVisualSkipCause` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type VisualSkipCause = `${EVisualSkipCause}`;
-
-/** Enclosing sphere in renderer space. */
-export type VisualSphere = {
-  center: Vector3d;
-  radius: number | null;
-};
 
 /** One drawable piece of a visual: a child of a skeleton, or a whole single level visual. */
 export type VisualSubmesh = {

@@ -44,7 +44,7 @@ impl JetAction {
 
 impl From<&ParticleActionJet> for JetAction {
   fn from(action: &ParticleActionJet) -> Self {
-    let center: Vec3 = Vec3::from_array(action.center.to_array());
+    let center: Vec3 = Vec3::from(&action.center);
     let acceleration: ParticleVolume = ParticleVolume::from(&action.acc);
 
     Self {
