@@ -86,8 +86,8 @@ impl LtxImportExport for AlifeObjectPhysic {
 
     ltx
       .with_section(section_name)
-      .set("physic_type", self.physic_type.to_string())
-      .set("mass", self.mass.to_string())
+      .set("physic_type", self.physic_type)
+      .set("mass", self.mass)
       .set("fixed_bones", &self.fixed_bones);
 
     PhysicsNetState::export_optional(self.update_state.as_ref(), section_name, "physic.update_state", ltx);

@@ -111,12 +111,12 @@ impl LtxImportExport for AlifeObjectActor {
 
     ltx
       .with_section(section_name)
-      .set("actor.holder_id", self.holder_id.to_string())
-      .set("actor.update_movement_state", self.update_movement_state.to_string())
-      .set("actor.update_acceleration", self.update_acceleration.to_string())
-      .set("actor.update_velocity", self.update_velocity.to_string())
-      .set("actor.update_radiation", self.update_radiation.to_string())
-      .set("actor.update_weapon", self.update_weapon.to_string());
+      .set("actor.holder_id", self.holder_id)
+      .set("actor.update_movement_state", self.update_movement_state)
+      .set("actor.update_acceleration", &self.update_acceleration)
+      .set("actor.update_velocity", &self.update_velocity)
+      .set("actor.update_radiation", self.update_radiation)
+      .set("actor.update_weapon", self.update_weapon);
 
     self.update_body.export(section_name, "actor.update_body", ltx);
 

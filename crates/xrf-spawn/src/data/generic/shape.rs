@@ -151,9 +151,7 @@ impl Shape {
 
   /// Export shapes object to target ltx file section.
   pub fn export_list(shapes: &[Self], section_name: &str, ltx: &mut Ltx) {
-    ltx
-      .with_section(section_name)
-      .set("shapes_count", shapes.len().to_string());
+    ltx.with_section(section_name).set("shapes_count", shapes.len());
 
     for (index, shape) in shapes.iter().enumerate() {
       let prefix: String = format!("shape.{index}");
@@ -163,17 +161,17 @@ impl Shape {
           ltx
             .with_section(section_name)
             .set(format!("{prefix}.type"), "sphere")
-            .set(format!("{prefix}.center"), sphere.center.to_string())
-            .set(format!("{prefix}.radius"), sphere.radius.to_string());
+            .set(format!("{prefix}.center"), sphere.center)
+            .set(format!("{prefix}.radius"), sphere.radius);
         }
         Self::Box(transform) => {
           ltx
             .with_section(section_name)
             .set(format!("{prefix}.type"), "box")
-            .set(format!("{prefix}.a"), transform.x_axis.to_string())
-            .set(format!("{prefix}.b"), transform.y_axis.to_string())
-            .set(format!("{prefix}.c"), transform.z_axis.to_string())
-            .set(format!("{prefix}.d"), transform.translation.to_string());
+            .set(format!("{prefix}.a"), transform.x_axis)
+            .set(format!("{prefix}.b"), transform.y_axis)
+            .set(format!("{prefix}.c"), transform.z_axis)
+            .set(format!("{prefix}.d"), transform.translation);
         }
       }
     }

@@ -60,7 +60,7 @@ impl LtxImportExport for AlifeObjectDynamicVisual {
     ltx
       .with_section(section_name)
       .set("dynamic_visual.visual_name", &self.visual_name)
-      .set("dynamic_visual.visual_flags", self.visual_flags.to_string());
+      .set("dynamic_visual.visual_flags", self.visual_flags);
 
     Ok(())
   }

@@ -53,9 +53,7 @@ impl LtxImportExport for AlifeObjectBreakable {
   fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
     self.base.export(section_name, ltx)?;
 
-    ltx
-      .with_section(section_name)
-      .set("breakable.health", self.health.to_string());
+    ltx.with_section(section_name).set("breakable.health", self.health);
 
     Ok(())
   }

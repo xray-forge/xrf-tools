@@ -74,9 +74,9 @@ impl LtxImportExport for GraphLevel {
       .with_section(section_name)
       .set("name", &self.name)
       .set("section", &self.section)
-      .set("offset", self.offset.to_string())
-      .set("id", self.id.to_string())
-      .set("guid", self.guid.to_string());
+      .set("offset", self.offset)
+      .set("id", self.id)
+      .set("guid", self.guid);
 
     Ok(())
   }

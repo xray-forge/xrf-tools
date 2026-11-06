@@ -14,7 +14,7 @@ use crate::source::{LtxFilesystemSource, LtxVfsSource};
 impl Ltx {
   /// Read one document from a string under standard rules, without reading anything it includes.
   pub fn read_from_str(buf: &str) -> XrfResult<Self> {
-    LtxStandardDialect::lower(&Self::read_document_from_str(buf)?)
+    LtxStandardDialect::parse_and_lower(buf)
   }
 
   /// Read one LTX file as the document it was written as, applying no dialect rule.

@@ -81,11 +81,11 @@ impl LtxImportExport for ParticleEffectFrame {
     ltx
       .with_section(section_name)
       .set(META_TYPE_FIELD, Self::META_TYPE)
-      .set("texture_size", self.texture_size.to_string())
-      .set("reserved", self.reserved.to_string())
-      .set("frame_dimension_x", self.frame_dimension_x.to_string())
-      .set("frame_count", self.frame_count.to_string())
-      .set("frame_speed", self.frame_speed.to_string());
+      .set("texture_size", self.texture_size)
+      .set("reserved", self.reserved)
+      .set("frame_dimension_x", self.frame_dimension_x)
+      .set("frame_count", self.frame_count)
+      .set("frame_speed", self.frame_speed);
 
     Ok(())
   }

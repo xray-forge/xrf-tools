@@ -56,10 +56,10 @@ impl LtxImportExport for ParticleActionSpeedLimit {
   fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
     ltx
       .with_section(section_name)
-      .set("action_flags", self.action_flags.to_string())
-      .set("action_type", self.action_type.to_string())
-      .set("min_speed", self.min_speed.to_string())
-      .set("max_speed", self.max_speed.to_string());
+      .set("action_flags", self.action_flags)
+      .set("action_type", self.action_type)
+      .set("min_speed", self.min_speed)
+      .set("max_speed", self.max_speed);
 
     Ok(())
   }

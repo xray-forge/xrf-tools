@@ -69,7 +69,7 @@ impl LtxImportExport for AlifeObjectStationaryMgun {
 
     ltx
       .with_section(section_name)
-      .set("stationary_mgun.update_working", self.update_working.to_string())
+      .set("stationary_mgun.update_working", self.update_working)
       .set(
         "stationary_mgun.update_enemy_direction",
         vector_to_string(&self.update_enemy_direction),

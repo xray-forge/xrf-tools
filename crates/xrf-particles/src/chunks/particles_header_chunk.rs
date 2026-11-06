@@ -83,7 +83,7 @@ impl FileImportExport for ParticlesHeaderChunk {
     ltx
       .with_section("header")
       .set(META_TYPE_FIELD, Self::META_TYPE)
-      .set("version", self.version.to_string());
+      .set("version", self.version);
 
     ltx.write_to_path(path.as_ref().join("header.ltx"))?;
 

@@ -2,9 +2,14 @@
 
 use xrf_error::XrfResult;
 
-use crate::dialect::LtxStandardDialect;
+use crate::dialect::{LtxStandardDialect, LtxTextInterner};
 use crate::document::{LtxCheck, LtxDocument, LtxItem, LtxItemKind};
 use crate::ltx::Ltx;
+
+/// A held document lowered under standard rules, as a root's resolution lowers each file it reads.
+fn lower(document: &LtxDocument) -> XrfResult<Ltx> {
+  LtxStandardDialect::lower_with(document, &mut LtxTextInterner::default())
+}
 
 /// The kinds a document holds, rendered compactly so a test can assert the whole shape.
 fn outline(document: &LtxDocument) -> Vec<String> {
@@ -94,7 +99,7 @@ fn the_document_accepts_dltx_syntax_that_standard_lowering_refuses() -> XrfResul
   );
 
   // Refusing them is the dialect's job, and the diagnostic names the flag that would evaluate them.
-  let error: String = LtxStandardDialect::lower(&document)
+  let error: String = lower(&document)
     .expect_err("standard lowering to refuse a patch file")
     .to_string();
 
@@ -115,7 +120,7 @@ fn every_patch_operation_is_reported_where_it_was_written() -> XrfResult {
     ("@[section]\n", "section '@[section]'"),
     ("!![section]\n", "section '!![section]'"),
   ] {
-    let error: String = LtxStandardDialect::lower(&Ltx::read_document_from_str(statement)?)
+    let error: String = lower(&Ltx::read_document_from_str(statement)?)
       .expect_err("standard lowering to refuse a patch operation")
       .to_string();
 
@@ -133,7 +138,7 @@ fn a_plain_section_named_like_a_patch_target_is_not_an_operation() -> XrfResult 
 
   assert!(!document.get_items().iter().any(LtxItem::is_patch_operation));
   assert_eq!(
-    LtxStandardDialect::lower(&document)?.get_from("section", "condition"),
+    lower(&document)?.get_from("section", "condition"),
     Some("{!actor_in_zone} true")
   );
 
@@ -150,10 +155,7 @@ fn one_parse_answers_resolution_formatting_and_the_include_list() -> XrfResult {
     document.to_formatted(),
     "; note\r\n#include \"a.ltx\"\r\n#include \"b.ltx\"\r\n\r\n[section]\r\nkey = value\r\n"
   );
-  assert_eq!(
-    LtxStandardDialect::lower(&document)?.get_from("section", "key"),
-    Some("value")
-  );
+  assert_eq!(lower(&document)?.get_from("section", "key"), Some("value"));
 
   // Each of the three is a read of the same document, so the answers cannot disagree.
   assert_eq!(document.to_formatted(), Ltx::format_from_str(contents)?);
@@ -246,7 +248,96 @@ fn the_header_directive_is_recorded_on_the_document() -> XrfResult {
   assert!(document.is_check_skipped(LtxCheck::Inheritance));
 
   // And survives lowering, because the resolver is what acts on it.
-  assert!(LtxStandardDialect::lower(&document)?.into_inherited().is_ok());
+  assert!(lower(&document)?.into_inherited().is_ok());
 
   Ok(())
+}
+
+/// Reading one document lowers each statement as it is parsed, and has to answer exactly what lowering the whole parsed
+/// document answers: the same sections in the same order, root fields and empty declared sections included, and the
+/// same error, of the same kind and at the same line and column.
+///
+/// Every ordered three lines of a pool holding each statement the parser reads and each it refuses, and each refusal
+/// lowering makes (a section or include named twice, every DLTX operation), under each line break: so every error meets
+/// every other in both orders, and every refusal sits above and below every parse error.
+#[test]
+fn reading_one_document_answers_what_lowering_its_parse_does() {
+  const LINES: [&str; 26] = [
+    "",
+    "; note",
+    "; @xrf-ltx skip-inheritance",
+    "; @xrf-ltx skip-unknown",
+    "; @xrf-ltx",
+    "[a]",
+    "  [b]:a, , c ; header note",
+    "[a]x trailing caption",
+    "k = v",
+    "k =",
+    "k = мова ; why",
+    "bare",
+    "#include \"x.ltx\"",
+    "#include(\"y.LTX\") ; note",
+    "![a]",
+    "@[a]:b",
+    "!![a]",
+    "!k",
+    ">k = v",
+    "<k = v",
+    "[unclosed",
+    "[",
+    "#include",
+    "#include \"\"",
+    "#include \"x.ini\"",
+    "=",
+  ];
+
+  let mut compared: usize = 0;
+
+  for first in LINES {
+    for second in LINES {
+      for third in LINES {
+        for separator in ["\n", "\r\n", "\r"] {
+          let contents: String = [first, second, third].join(separator);
+          let streamed: XrfResult<Ltx> = Ltx::read_from_str(&contents);
+          let held: XrfResult<Ltx> = Ltx::read_document_from_str(&contents).and_then(|document| lower(&document));
+
+          match (streamed, held) {
+            (Ok(streamed), Ok(held)) => {
+              assert_eq!(streamed, held, "{contents:?}");
+              assert_eq!(
+                streamed.is_check_skipped(LtxCheck::Inheritance),
+                held.is_check_skipped(LtxCheck::Inheritance),
+                "{contents:?}"
+              );
+            }
+            (Err(streamed), Err(held)) => assert_eq!(format!("{streamed:?}"), format!("{held:?}"), "{contents:?}"),
+            (streamed, held) => panic!("{contents:?} read as {streamed:?}, lowered as {held:?}"),
+          }
+
+          compared += 1;
+        }
+      }
+    }
+  }
+
+  assert_eq!(compared, 26 * 26 * 26 * 3);
+}
+
+/// The whole text was parsed before anything was lowered, so a line that does not parse outranks a refusal written
+/// above it; reading statement by statement keeps that order.
+#[test]
+fn a_parse_error_below_a_refusal_is_the_one_reported() {
+  let error: String = Ltx::read_from_str("[twice]\n[twice]\n[not_closed\n")
+    .expect_err("neither to read")
+    .to_string();
+
+  assert!(error.contains("closing bracket"), "{error}");
+  // Where the cursor stood once the third line was read, past its break.
+  assert!(error.contains("4:1"), "{error}");
+
+  let error: String = Ltx::read_from_str("[twice]\n[twice]\n[fine]\n")
+    .expect_err("a section declared twice to be refused")
+    .to_string();
+
+  assert!(error.contains("declared twice"), "{error}");
 }

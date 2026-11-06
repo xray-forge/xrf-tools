@@ -116,18 +116,12 @@ impl LtxImportExport for AlifeSmartTerrain {
 
     ltx
       .with_section(section_name)
-      .set("arriving_objects_count", self.arriving_objects_count.to_string())
-      .set(
-        "object_job_descriptors_count",
-        self.object_job_descriptors_count.to_string(),
-      )
-      .set("dead_objects_infos_count", self.dead_objects_infos_count.to_string())
-      .set(
-        "smart_terrain_actor_control",
-        self.smart_terrain_actor_control.to_string(),
-      )
-      .set("respawn_point", self.respawn_point.to_string())
-      .set("staying_objects_count", self.staying_objects_count.to_string());
+      .set("arriving_objects_count", self.arriving_objects_count)
+      .set("object_job_descriptors_count", self.object_job_descriptors_count)
+      .set("dead_objects_infos_count", self.dead_objects_infos_count)
+      .set("smart_terrain_actor_control", self.smart_terrain_actor_control)
+      .set("respawn_point", self.respawn_point)
+      .set("staying_objects_count", self.staying_objects_count);
 
     Ok(())
   }

@@ -158,9 +158,9 @@ impl ParticleGroupEffectOld {
       .set(META_TYPE_FIELD, Self::META_TYPE)
       .set("name", &self.name)
       .set("on_play_child_name", &self.on_play_child_name)
-      .set("time_0", self.time_0.to_string())
-      .set("time_1", self.time_1.to_string())
-      .set("flags", self.flags.to_string());
+      .set("time_0", self.time_0)
+      .set("time_1", self.time_1)
+      .set("flags", self.flags);
 
     Ok(())
   }

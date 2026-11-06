@@ -89,11 +89,11 @@ impl LtxImportExport for AlifeObjectCustomZone {
 
     ltx
       .with_section(section_name)
-      .set("custom_zone.max_power", self.max_power.to_string())
-      .set("custom_zone.owner_id", self.owner_id.to_string())
-      .set("custom_zone.enabled_time", self.enabled_time.to_string())
-      .set("custom_zone.disabled_time", self.disabled_time.to_string())
-      .set("custom_zone.start_time_shift", self.start_time_shift.to_string());
+      .set("custom_zone.max_power", self.max_power)
+      .set("custom_zone.owner_id", self.owner_id)
+      .set("custom_zone.enabled_time", self.enabled_time)
+      .set("custom_zone.disabled_time", self.disabled_time)
+      .set("custom_zone.start_time_shift", self.start_time_shift);
 
     Ok(())
   }

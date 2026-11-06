@@ -61,7 +61,7 @@ impl LtxImportExport for AlifeObjectSpaceRestrictor {
 
     ltx
       .with_section(section_name)
-      .set("space_restrictor.restrictor_type", self.restrictor_type.to_string());
+      .set("space_restrictor.restrictor_type", self.restrictor_type);
 
     Ok(())
   }

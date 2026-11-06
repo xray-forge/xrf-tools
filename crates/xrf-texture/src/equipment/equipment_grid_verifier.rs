@@ -86,10 +86,10 @@ mod tests {
 
       section
         .set("$inventory_icon", "true")
-        .set("inv_grid_x", x.to_string())
-        .set("inv_grid_y", y.to_string())
-        .set("inv_grid_width", w.to_string())
-        .set("inv_grid_height", h.to_string());
+        .set("inv_grid_x", x)
+        .set("inv_grid_y", y)
+        .set("inv_grid_width", w)
+        .set("inv_grid_height", h);
     }
 
     ltx

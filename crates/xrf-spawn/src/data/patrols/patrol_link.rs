@@ -112,14 +112,14 @@ impl LtxImportExport for PatrolLink {
   fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
     ltx
       .with_section(section_name)
-      .set("index", self.index.to_string())
-      .set("count", self.links.len().to_string());
+      .set("index", self.index)
+      .set("count", self.links.len());
 
     for (index, (from, weight)) in self.links.iter().enumerate() {
       ltx
         .with_section(section_name)
-        .set(format!("from.{index}"), from.to_string())
-        .set(format!("weight.{index}"), weight.to_string());
+        .set(format!("from.{index}"), from)
+        .set(format!("weight.{index}"), weight);
     }
 
     Ok(())

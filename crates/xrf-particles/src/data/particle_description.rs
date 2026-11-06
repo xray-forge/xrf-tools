@@ -78,8 +78,8 @@ impl LtxImportExport for ParticleDescription {
       .set(META_TYPE_FIELD, Self::META_TYPE)
       .set("creator", &self.creator)
       .set("editor", &self.editor)
-      .set("created_time", self.created_time.to_string())
-      .set("edit_time", self.edit_time.to_string());
+      .set("created_time", self.created_time)
+      .set("edit_time", self.edit_time);
 
     Ok(())
   }

@@ -324,14 +324,14 @@ impl LtxImportExport for ParticleEffect {
     ltx
       .with_section(section_name)
       .set(META_TYPE_FIELD, Self::META_TYPE)
-      .set("version", self.version.to_string())
+      .set("version", self.version)
       .set("name", &self.name)
-      .set("actions_count", self.actions.len().to_string())
-      .set("max_particles", self.max_particles.to_string())
-      .set("flags", self.flags.to_string())
-      .set_optional("time_limit", self.time_limit.map(|it| it.to_string()))
-      .set_optional("rotation", self.rotation.as_ref().map(|it| it.to_string()))
-      .set_optional("velocity_scale", self.velocity_scale.as_ref().map(|it| it.to_string()));
+      .set("actions_count", self.actions.len())
+      .set("max_particles", self.max_particles)
+      .set("flags", self.flags)
+      .set_optional("time_limit", self.time_limit)
+      .set_optional("rotation", self.rotation.as_ref())
+      .set_optional("velocity_scale", self.velocity_scale.as_ref());
 
     ParticleEffectSprite::export_optional(&Self::get_sprite_section(section_name), ltx, self.sprite.as_ref())?;
 

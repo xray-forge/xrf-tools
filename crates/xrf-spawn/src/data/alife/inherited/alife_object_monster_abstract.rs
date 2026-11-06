@@ -108,24 +108,15 @@ impl LtxImportExport for AlifeObjectMonsterAbstract {
       .with_section(section_name)
       .set("monster.out_space_restrictors", &self.out_space_restrictors)
       .set("monster.in_space_restrictors", &self.in_space_restrictors)
-      .set("monster.smart_terrain_id", self.smart_terrain_id.to_string())
-      .set("monster.task_reached", self.task_reached.to_string())
-      .set(
-        "monster.update_next_game_vertex_id",
-        self.update_next_game_vertex_id.to_string(),
-      )
+      .set("monster.smart_terrain_id", self.smart_terrain_id)
+      .set("monster.task_reached", self.task_reached)
+      .set("monster.update_next_game_vertex_id", self.update_next_game_vertex_id)
       .set(
         "monster.update_previous_game_vertex_id",
-        self.update_previous_game_vertex_id.to_string(),
+        self.update_previous_game_vertex_id,
       )
-      .set(
-        "monster.update_distance_from_point",
-        self.update_distance_from_point.to_string(),
-      )
-      .set(
-        "monster.update_distance_to_point",
-        self.update_distance_to_point.to_string(),
-      );
+      .set("monster.update_distance_from_point", self.update_distance_from_point)
+      .set("monster.update_distance_to_point", self.update_distance_to_point);
 
     Ok(())
   }

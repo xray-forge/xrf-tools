@@ -85,7 +85,7 @@ impl LtxImportExport for AlifeSmartCover {
     ltx
       .with_section(section_name)
       .set("last_description", &self.last_description)
-      .set("loopholes", self.loopholes.len().to_string())
+      .set("loopholes", self.loopholes.len())
       .set("loopholes", AlifeSmartCoverLoophole::list_to_string(&self.loopholes));
 
     Ok(())

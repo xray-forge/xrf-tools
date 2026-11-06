@@ -85,8 +85,8 @@ impl LtxImportExport for AlifeObjectSkeleton {
     ltx
       .with_section(section_name)
       .set("skeleton.name", &self.name)
-      .set("skeleton.flags", self.flags.to_string())
-      .set("skeleton.source_id", self.source_id.to_string());
+      .set("skeleton.flags", self.flags)
+      .set("skeleton.source_id", self.source_id);
 
     Ok(())
   }
@@ -222,7 +222,7 @@ mod tests {
 
     ltx
       .with_section("object")
-      .set("skeleton.flags", AlifeObjectSkeleton::FLAG_SAVED_DATA.to_string());
+      .set("skeleton.flags", AlifeObjectSkeleton::FLAG_SAVED_DATA);
 
     assert!(matches!(
       AlifeObjectSkeleton::import("object", &ltx),

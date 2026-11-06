@@ -190,10 +190,10 @@ impl LtxImportExport for ParticleGroup {
     ltx
       .with_section(section_name)
       .set(META_TYPE_FIELD, Self::META_TYPE)
-      .set("version", self.version.to_string())
+      .set("version", self.version)
       .set("name", &self.name)
-      .set("flags", self.flags.to_string())
-      .set("time_limit", self.time_limit.to_string());
+      .set("flags", self.flags)
+      .set("time_limit", self.time_limit);
 
     ParticleGroupEffect::export_list(&self.effects, section_name, ltx)?;
 

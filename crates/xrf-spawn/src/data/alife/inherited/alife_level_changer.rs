@@ -113,20 +113,14 @@ impl LtxImportExport for AlifeLevelChanger {
 
     ltx
       .with_section(section_name)
-      .set(
-        "level_changer.dest_game_vertex_id",
-        self.dest_game_vertex_id.to_string(),
-      )
-      .set(
-        "level_changer.dest_level_vertex_id",
-        self.dest_level_vertex_id.to_string(),
-      )
-      .set("level_changer.dest_position", self.dest_position.to_string())
-      .set("level_changer.dest_direction", self.dest_direction.to_string())
+      .set("level_changer.dest_game_vertex_id", self.dest_game_vertex_id)
+      .set("level_changer.dest_level_vertex_id", self.dest_level_vertex_id)
+      .set("level_changer.dest_position", self.dest_position)
+      .set("level_changer.dest_direction", self.dest_direction)
       .set("level_changer.dest_level_name", &self.dest_level_name)
       .set("level_changer.dest_graph_point", &self.dest_graph_point)
-      .set("level_changer.silent_mode", self.silent_mode.to_string())
-      .set("level_changer.enabled", self.enabled.to_string())
+      .set("level_changer.silent_mode", self.silent_mode)
+      .set("level_changer.enabled", self.enabled)
       .set("level_changer.hint", &self.hint);
 
     Ok(())

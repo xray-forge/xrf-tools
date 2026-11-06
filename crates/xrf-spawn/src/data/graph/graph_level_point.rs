@@ -60,9 +60,9 @@ impl LtxImportExport for GraphLevelPoint {
   fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
     ltx
       .with_section(section_name)
-      .set("position", self.position.to_string())
-      .set("level_vertex_id", self.level_vertex_id.to_string())
-      .set("distance", self.distance.to_string());
+      .set("position", self.position)
+      .set("level_vertex_id", self.level_vertex_id)
+      .set("distance", self.distance);
 
     Ok(())
   }

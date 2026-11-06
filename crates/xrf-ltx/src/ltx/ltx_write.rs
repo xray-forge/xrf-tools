@@ -1,9 +1,9 @@
 use std::fs;
-use std::io::{BufWriter, Write};
+use std::io::Write;
 use std::path::Path;
 
 use xrf_error::XrfResult;
-use xrf_utils::{StagedFile, encode_string_to_w1251_bytes, read_as_string_from_w1251_encoded};
+use xrf_utils::{StagedFile, encode_string_into_w1251_bytes, read_as_string_from_w1251_encoded};
 
 use crate::ltx::Ltx;
 use crate::syntax::{DEFAULT_KV_SEPARATOR, LTX_LINE_SEPARATOR, ROOT_SECTION};
@@ -21,7 +21,7 @@ impl Ltx {
       if write {
         // The read path above decodes Windows-1251, so the rewrite has to go back in that encoding. Staged, so a
         // failed write leaves the source as it was.
-        StagedFile::write(filename.as_ref(), &encode_string_to_w1251_bytes(&formatted)?)?;
+        StagedFile::write(filename.as_ref(), &encode_string_into_w1251_bytes(formatted)?)?;
       }
 
       Ok(true)
@@ -46,34 +46,37 @@ impl Ltx {
 
   /// The file's bytes, in the Windows-1251 encoding the read path decodes.
   ///
-  /// Rendered into a buffer first because `write!` of a Rust string emits UTF-8, which the next read would decode as
-  /// something else. Encoding per `write!` is not an option: a format piece can end mid-character.
+  /// Rendered as text first and encoded whole, because the text is Rust's UTF-8, which the next read would decode as
+  /// something else. ASCII text, as an exported spawn or particle library is, encodes to itself, so its buffer is
+  /// handed back as the bytes rather than copied.
   pub fn write_to_bytes(&self) -> XrfResult<Vec<u8>> {
-    let mut rendered: Vec<u8> = Vec::new();
-
-    self.render_to(&mut rendered)?;
-
-    Ok(encode_string_to_w1251_bytes(
-      // Every piece written below came from a Rust string, so the buffer is valid UTF-8.
-      &String::from_utf8(rendered).expect("Rendered LTX to be valid UTF-8"),
-    )?)
+    Ok(encode_string_into_w1251_bytes(self.render())?)
   }
 
-  /// Buffered here rather than at the call sites. Every line below is a `write!`, and `write_fmt` issues one
-  /// `write_all` per format piece, so writing straight to a `File` cost four syscalls a line — two orders of magnitude
-  /// slower than this on an export the size of the particles library. Flushed explicitly so a failing flush is returned
-  /// instead of being swallowed when the buffer drops.
-  fn render_to<W: Write>(&self, writer: &mut W) -> XrfResult {
-    let mut writer: BufWriter<&mut W> = BufWriter::new(writer);
+  /// The text of the file, measured by a first pass so a document of tens of megabytes is laid down once rather than
+  /// copied each time a growing buffer doubles.
+  fn render(&self) -> String {
+    let mut length: usize = 0;
+
+    self.render_pieces(|piece| length += piece.len());
+
+    let mut rendered: String = String::with_capacity(length);
+
+    self.render_pieces(|piece| rendered.push_str(piece));
+
+    rendered
+  }
+
+  /// Hands `emit` the file's text piece by piece, in order: the one place its layout is written down.
+  fn render_pieces(&self, mut emit: impl FnMut(&str)) {
     let mut firstline: bool = true;
 
-    // Write include statements.
-    if !self.includes.is_empty() {
+    for include in &self.includes {
       firstline = false;
-
-      for include in &self.includes {
-        write!(writer, "#include \"{}\"{}", include, LTX_LINE_SEPARATOR)?;
-      }
+      emit("#include \"");
+      emit(include);
+      emit("\"");
+      emit(LTX_LINE_SEPARATOR);
     }
 
     for (section, props) in &self.sections {
@@ -83,30 +86,31 @@ impl Ltx {
           firstline = false;
         } else {
           // Write an empty line between sections
-          writer.write_all(LTX_LINE_SEPARATOR.as_bytes())?;
+          emit(LTX_LINE_SEPARATOR);
         }
       }
 
       if section != ROOT_SECTION {
-        let inherited: String = if props.inherited.is_empty() {
-          String::new()
-        } else {
-          format!(":{}", props.inherited.join(", "))
-        };
+        emit("[");
+        emit(section);
+        emit("]");
 
-        write!(writer, "[{}]{}{}", section, inherited, LTX_LINE_SEPARATOR)?;
+        for (index, parent) in props.inherited.iter().enumerate() {
+          emit(if index == 0 { ":" } else { ", " });
+          emit(parent);
+        }
+
+        emit(LTX_LINE_SEPARATOR);
       }
 
       for (key, value) in props.iter() {
-        let separator: &str = if value.is_empty() { " =" } else { DEFAULT_KV_SEPARATOR };
-
-        write!(writer, "{}{}{}{}", key, separator, value, LTX_LINE_SEPARATOR)?;
+        emit(key);
+        // An empty value leaves no trailing space.
+        emit(if value.is_empty() { " =" } else { DEFAULT_KV_SEPARATOR });
+        emit(value);
+        emit(LTX_LINE_SEPARATOR);
       }
     }
-
-    writer.flush()?;
-
-    Ok(())
   }
 }
 
@@ -172,6 +176,35 @@ a3 = n3
         str::from_utf8(&buf).unwrap()
       );
     }
+  }
+
+  /// Includes, parents and root fields each take their own branch of the layout, and the text is sized before it is
+  /// written, so the exact bytes are pinned here.
+  #[test]
+  fn writes_includes_parents_and_root_fields_in_their_places() {
+    let mut ltx: Ltx = Ltx::new();
+
+    ltx.include(String::from("first.ltx"));
+    ltx.include(String::from("second.ltx"));
+    ltx.with_root_section().set("root", 1);
+    ltx.with_section("child").set("key", "value").set("empty", "");
+    ltx.section_mut("child").expect("the section").inherit("first_parent");
+    ltx.section_mut("child").expect("the section").inherit("second_parent");
+    ltx.with_section("only_parent").set("x", 2.5);
+    ltx.section_mut("only_parent").expect("the section").inherit("base");
+
+    let bytes: Vec<u8> = ltx.write_to_bytes().unwrap();
+
+    assert_eq!(
+      String::from_utf8(bytes.clone()).unwrap(),
+      "#include \"first.ltx\"\r\n#include \"second.ltx\"\r\n\r\nroot = 1\r\n\r\n\
+       [child]:first_parent, second_parent\r\nkey = value\r\nempty =\r\n\r\n[only_parent]:base\r\nx = 2.5\r\n"
+    );
+    assert_eq!(
+      bytes.len(),
+      bytes.capacity(),
+      "the text to be sized exactly before it is written"
+    );
   }
 
   #[test]

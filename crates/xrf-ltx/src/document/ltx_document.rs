@@ -51,10 +51,4 @@ impl LtxDocument {
   pub fn get_source_lines(&self) -> &[Box<str>] {
     &self.source_lines
   }
-
-  pub(crate) fn record_skipped_check(&mut self, check: LtxCheck) {
-    if !self.is_check_skipped(check) {
-      self.skipped_checks.push(check);
-    }
-  }
 }

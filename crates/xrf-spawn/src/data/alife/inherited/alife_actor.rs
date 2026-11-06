@@ -84,7 +84,7 @@ impl LtxImportExport for AlifeActor {
 
     ltx
       .with_section(section_name)
-      .set("actor.start_position_filled", self.start_position_filled.to_string());
+      .set("actor.start_position_filled", self.start_position_filled);
 
     Ok(())
   }

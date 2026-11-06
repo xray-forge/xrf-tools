@@ -122,19 +122,19 @@ impl LtxImportExport for AlifeObjectItemWeapon {
 
     ltx
       .with_section(section_name)
-      .set("item_weapon.ammo_current", self.ammo_current.to_string())
-      .set("item_weapon.ammo_elapsed", self.ammo_elapsed.to_string())
-      .set("item_weapon.weapon_state", self.weapon_state.to_string())
-      .set("item_weapon.addon_flags", self.addon_flags.to_string())
-      .set("item_weapon.ammo_type", self.ammo_type.to_string())
-      .set("item_weapon.elapsed_grenades", self.elapsed_grenades.to_string())
-      .set("item_weapon.update_condition", self.update_condition.to_string())
-      .set("item_weapon.update_weapon_flags", self.update_weapon_flags.to_string())
-      .set("item_weapon.update_ammo_elapsed", self.update_ammo_elapsed.to_string())
-      .set("item_weapon.update_addon_flags", self.update_addon_flags.to_string())
-      .set("item_weapon.update_ammo_type", self.update_ammo_type.to_string())
-      .set("item_weapon.update_weapon_state", self.update_weapon_state.to_string())
-      .set("item_weapon.update_zoom", self.update_zoom.to_string());
+      .set("item_weapon.ammo_current", self.ammo_current)
+      .set("item_weapon.ammo_elapsed", self.ammo_elapsed)
+      .set("item_weapon.weapon_state", self.weapon_state)
+      .set("item_weapon.addon_flags", self.addon_flags)
+      .set("item_weapon.ammo_type", self.ammo_type)
+      .set("item_weapon.elapsed_grenades", self.elapsed_grenades)
+      .set("item_weapon.update_condition", self.update_condition)
+      .set("item_weapon.update_weapon_flags", self.update_weapon_flags)
+      .set("item_weapon.update_ammo_elapsed", self.update_ammo_elapsed)
+      .set("item_weapon.update_addon_flags", self.update_addon_flags)
+      .set("item_weapon.update_ammo_type", self.update_ammo_type)
+      .set("item_weapon.update_weapon_state", self.update_weapon_state)
+      .set("item_weapon.update_zoom", self.update_zoom);
 
     Ok(())
   }

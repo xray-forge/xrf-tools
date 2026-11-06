@@ -158,10 +158,10 @@ impl LtxImportExport for AlifeObjectCreature {
 
     ltx
       .with_section(section_name)
-      .set("creature.team", self.team.to_string())
-      .set("creature.squad", self.squad.to_string())
-      .set("creature.group", self.group.to_string())
-      .set("creature.health", self.health.to_string())
+      .set("creature.team", self.team)
+      .set("creature.squad", self.squad)
+      .set("creature.group", self.group)
+      .set("creature.health", self.health)
       .set(
         "creature.dynamic_out_restrictions",
         vector_to_string(&self.dynamic_out_restrictions),
@@ -170,19 +170,19 @@ impl LtxImportExport for AlifeObjectCreature {
         "creature.dynamic_in_restrictions",
         vector_to_string(&self.dynamic_in_restrictions),
       )
-      .set("creature.killer_id", self.killer_id.to_string())
-      .set("creature.game_death_time", self.game_death_time.to_string())
-      .set("creature.update_health", self.update_health.to_string())
-      .set("creature.update_timestamp", self.update_timestamp.to_string())
-      .set("creature.update_flags", self.update_flags.to_string())
-      .set("creature.update_position", self.update_position.to_string())
-      .set("creature.update_model_yaw", self.update_model_yaw.to_string())
-      .set("creature.update_torso_yaw", self.update_torso_yaw.to_string())
-      .set("creature.update_torso_pitch", self.update_torso_pitch.to_string())
-      .set("creature.update_torso_roll", self.update_torso_roll.to_string())
-      .set("creature.update_team", self.update_team.to_string())
-      .set("creature.update_squad", self.update_squad.to_string())
-      .set("creature.update_group", self.update_group.to_string());
+      .set("creature.killer_id", self.killer_id)
+      .set("creature.game_death_time", self.game_death_time)
+      .set("creature.update_health", self.update_health)
+      .set("creature.update_timestamp", self.update_timestamp)
+      .set("creature.update_flags", self.update_flags)
+      .set("creature.update_position", self.update_position)
+      .set("creature.update_model_yaw", self.update_model_yaw)
+      .set("creature.update_torso_yaw", self.update_torso_yaw)
+      .set("creature.update_torso_pitch", self.update_torso_pitch)
+      .set("creature.update_torso_roll", self.update_torso_roll)
+      .set("creature.update_team", self.update_team)
+      .set("creature.update_squad", self.update_squad)
+      .set("creature.update_group", self.update_group);
 
     Ok(())
   }

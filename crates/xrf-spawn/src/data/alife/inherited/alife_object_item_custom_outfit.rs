@@ -68,7 +68,7 @@ impl LtxImportExport for AlifeObjectItemCustomOutfit {
 
     ltx
       .with_section(section_name)
-      .set("item_custom_outfit.update_condition", self.update_condition.to_string());
+      .set("item_custom_outfit.update_condition", self.update_condition);
 
     Ok(())
   }

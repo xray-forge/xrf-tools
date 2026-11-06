@@ -80,12 +80,12 @@ impl LtxImportExport for AlifeObjectSmartCover {
     ltx
       .with_section(section_name)
       .set("description", &self.description)
-      .set("hold_position_time", self.hold_position_time.to_string())
-      .set("enter_min_enemy_distance", self.enter_min_enemy_distance.to_string())
-      .set("exit_min_enemy_distance", self.exit_min_enemy_distance.to_string())
-      .set("exit_min_enemy_distance", self.exit_min_enemy_distance.to_string())
-      .set("is_combat_cover", self.is_combat_cover.to_string())
-      .set("can_fire", self.can_fire.to_string());
+      .set("hold_position_time", self.hold_position_time)
+      .set("enter_min_enemy_distance", self.enter_min_enemy_distance)
+      .set("exit_min_enemy_distance", self.exit_min_enemy_distance)
+      .set("exit_min_enemy_distance", self.exit_min_enemy_distance)
+      .set("is_combat_cover", self.is_combat_cover)
+      .set("can_fire", self.can_fire);
 
     Shape::export_list(&self.shape, section_name, ltx);
 

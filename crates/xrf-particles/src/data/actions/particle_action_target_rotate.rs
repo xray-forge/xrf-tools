@@ -57,10 +57,10 @@ impl LtxImportExport for ParticleActionTargetRotate {
   fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
     ltx
       .with_section(section_name)
-      .set("action_flags", self.action_flags.to_string())
-      .set("action_type", self.action_type.to_string())
-      .set("rot", self.rot.to_string())
-      .set("scale", self.scale.to_string());
+      .set("action_flags", self.action_flags)
+      .set("action_type", self.action_type)
+      .set("rot", self.rot)
+      .set("scale", self.scale);
 
     Ok(())
   }

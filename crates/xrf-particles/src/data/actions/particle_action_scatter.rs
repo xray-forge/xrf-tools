@@ -66,12 +66,12 @@ impl LtxImportExport for ParticleActionScatter {
   fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
     ltx
       .with_section(section_name)
-      .set("action_flags", self.action_flags.to_string())
-      .set("action_type", self.action_type.to_string())
-      .set("center", self.center.to_string())
-      .set("magnitude", self.magnitude.to_string())
-      .set("epsilon", self.epsilon.to_string())
-      .set("max_radius", self.max_radius.to_string());
+      .set("action_flags", self.action_flags)
+      .set("action_type", self.action_type)
+      .set("center", self.center)
+      .set("magnitude", self.magnitude)
+      .set("epsilon", self.epsilon)
+      .set("max_radius", self.max_radius);
 
     Ok(())
   }

@@ -231,7 +231,7 @@ impl ActorPhysicsState {
       } => {
         section
           .set(prefix, Self::ALIVE)
-          .set(key("enabled"), enabled.to_string())
+          .set(key("enabled"), enabled)
           .set(key("angular_velocity"), vector_to_string(angular_velocity))
           .set(key("linear_velocity"), vector_to_string(linear_velocity))
           .set(key("force"), vector_to_string(force))
@@ -248,8 +248,8 @@ impl ActorPhysicsState {
       } => {
         section
           .set(prefix, Self::DEAD)
-          .set(key("bone_count"), bone_count.to_string())
-          .set(key("bone_data_size"), bone_data_size.to_string())
+          .set(key("bone_count"), bone_count)
+          .set(key("bone_data_size"), bone_data_size)
           .set(key("low_corner"), vector_to_string(low_corner))
           .set(key("high_corner"), vector_to_string(high_corner))
           .set(key("bones"), encode_bytes_to_base64(bones));

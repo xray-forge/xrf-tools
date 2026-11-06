@@ -72,10 +72,10 @@ impl LtxImportExport for AlifeGraphPoint {
       .with_section(section_name)
       .set("graph_point.connection_point_name", &self.connection_point_name)
       .set("graph_point.connection_level_name", &self.connection_level_name)
-      .set("graph_point.location0", self.location0.to_string())
-      .set("graph_point.location1", self.location1.to_string())
-      .set("graph_point.location2", self.location2.to_string())
-      .set("graph_point.location3", self.location3.to_string());
+      .set("graph_point.location0", self.location0)
+      .set("graph_point.location1", self.location1)
+      .set("graph_point.location2", self.location2)
+      .set("graph_point.location3", self.location3);
 
     Ok(())
   }

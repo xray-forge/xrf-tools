@@ -9,10 +9,10 @@ use crate::syntax::{
 };
 
 /// A section header as its line spells it: the name, the parents it declares, and any trailing comment.
-type ParsedSectionHeader = (Box<str>, Option<Vec<Box<str>>>, Option<Box<str>>);
+type ParsedSectionHeader<'a> = (&'a str, Option<Vec<&'a str>>, Option<&'a str>);
 
 /// A field line as its text spells it: the key, its value where it has one, and any trailing comment.
-type ParsedKeyValue = (Box<str>, Option<Box<str>>, Option<Box<str>>);
+type ParsedKeyValue<'a> = (&'a str, Option<&'a str>, Option<&'a str>);
 
 /// What one statement turned out to be, with its DLTX prefix removed.
 enum StatementOperation<'a> {
@@ -24,23 +24,35 @@ enum StatementOperation<'a> {
 /// Ltx parser.
 pub struct LtxParser<'a> {
   char: Option<char>,
+  /// The input from `char` on, so a line can be taken as a slice of it rather than rebuilt a character at a time.
+  at_char: &'a str,
   reader: Chars<'a>,
   line: usize,
   column: usize,
   /// Whitespace consumed since the last line break, kept only to rebuild an authored line verbatim.
   indent: String,
   is_preserving_source: bool,
+  /// Whether nothing but comments has been read yet: only that leading block may carry `@xrf-ltx` directives.
+  is_metadata_header: bool,
+  /// Checks the leading comment block opted out of, in the order first named.
+  skipped_checks: Vec<LtxCheck>,
+  /// One authored line per statement read, when the parser keeps them.
+  source_lines: Vec<Box<str>>,
 }
 
 impl Default for LtxParser<'_> {
   fn default() -> Self {
     Self {
       char: None,
+      at_char: "",
       indent: String::new(),
       is_preserving_source: false,
+      is_metadata_header: true,
       line: 0,
       column: 0,
       reader: "".chars(),
+      skipped_checks: Vec::new(),
+      source_lines: Vec::new(),
     }
   }
 }
@@ -52,12 +64,8 @@ impl<'a> LtxParser<'a> {
   /// Create new parser based on characters stream.
   pub fn new(reader: Chars<'a>) -> Self {
     let mut parser: Self = Self {
-      char: None,
-      indent: String::new(),
-      is_preserving_source: false,
-      line: 0,
-      column: 0,
       reader,
+      ..Self::default()
     };
 
     parser.bump();
@@ -84,74 +92,92 @@ impl<'a> LtxParser<'a> {
   ///
   /// Every statement keeps its line, and each is exactly one line, so a gap between consecutive spans is a blank run.
   pub fn parse_document(&mut self) -> XrfResult<LtxDocument> {
-    let mut document: LtxDocument = LtxDocument::default();
-    let mut is_metadata_header: bool = true;
+    let mut items: Vec<LtxItem> = Vec::new();
 
-    self.skip_whitespaces();
-
-    while let Some(current_char) = self.char {
-      let span: LtxSpan = self.span_here();
-
-      // Kept whole, comment included, because the document carries what a reformat needs to write back. The value of a
-      // statement is unaffected: every `parse_*_from_line` splits the comment off itself.
-      let line: String = self.parse_until_eol();
-
-      if self.is_preserving_source {
-        document
-          .source_lines
-          .push(format!("{}{line}", self.indent).into_boxed_str());
-      }
-
-      let kind: LtxItemKind = if current_char == LTX_SYMBOL_COMMENT {
-        // `;` is one byte, so the body starts at index 1.
-        let text: Box<str> = Box::from(line[1..].trim());
-
-        if is_metadata_header {
-          // One column past the `;`, where the directive itself starts, which is what this diagnostic has always said.
-          let position: LtxSpan = LtxSpan::new(span.line, span.column.saturating_add(1));
-
-          self.parse_metadata_directive(&text, &mut document, position)?;
-        }
-
-        LtxItemKind::Comment { text }
-      } else {
-        is_metadata_header = false;
-
-        match Self::split_statement_operation(&line) {
-          StatementOperation::Include => {
-            let (path, comment) = self.parse_include_from_line(&line)?;
-
-            LtxItemKind::Include { comment, path }
-          }
-          StatementOperation::Section(operation, rest) => {
-            let (name, parents, comment) = self.parse_section_from_line(rest)?;
-
-            LtxItemKind::Section {
-              comment,
-              name,
-              operation,
-              parents: parents.unwrap_or_default().into_boxed_slice(),
-            }
-          }
-          StatementOperation::Key(operation, rest) => {
-            let (name, value, comment) = self.parse_key_value_from_line(rest)?;
-
-            LtxItemKind::Key {
-              comment,
-              name,
-              operation,
-              value,
-            }
-          }
-        }
-      };
-
-      document.items.push(LtxItem::new(kind, span));
-
-      self.skip_whitespaces();
+    while let Some(item) = self.parse_next_item()? {
+      items.push(LtxItem::from(item));
     }
 
-    Ok(document)
+    Ok(LtxDocument {
+      items,
+      skipped_checks: self.take_skipped_checks(),
+      source_lines: std::mem::take(&mut self.source_lines),
+    })
+  }
+
+  /// The next statement, its text borrowed from the input, or `None` once the input is spent.
+  ///
+  /// What [`Self::parse_document`] collects, for a reader that spends each statement as it comes rather than holding
+  /// them all: a document of a few hundred thousand records otherwise holds every statement beside what it becomes.
+  pub(crate) fn parse_next_item(&mut self) -> XrfResult<Option<LtxItem<&'a str>>> {
+    self.skip_whitespaces();
+
+    let Some(current_char) = self.char else {
+      return Ok(None);
+    };
+
+    let span: LtxSpan = self.span_here();
+
+    // Kept whole, comment included, because the document carries what a reformat needs to write back. The value of a
+    // statement is unaffected: every `parse_*_from_line` splits the comment off itself.
+    let line: &'a str = self.parse_until_eol();
+
+    if self.is_preserving_source {
+      self
+        .source_lines
+        .push(format!("{}{line}", self.indent).into_boxed_str());
+    }
+
+    let kind: LtxItemKind<&'a str> = if current_char == LTX_SYMBOL_COMMENT {
+      // `;` is one byte, so the body starts at index 1.
+      let text: &'a str = line[1..].trim();
+
+      if self.is_metadata_header {
+        // One column past the `;`, where the directive itself starts, which is what this diagnostic has always said.
+        let position: LtxSpan = LtxSpan::new(span.line, span.column.saturating_add(1));
+
+        self.parse_metadata_directive(text, position)?;
+      }
+
+      LtxItemKind::Comment { text }
+    } else {
+      self.is_metadata_header = false;
+
+      match Self::split_statement_operation(line) {
+        StatementOperation::Include => {
+          let (path, comment) = self.parse_include_from_line(line)?;
+
+          LtxItemKind::Include { comment, path }
+        }
+        StatementOperation::Section(operation, rest) => {
+          let (name, parents, comment) = self.parse_section_from_line(rest)?;
+
+          LtxItemKind::Section {
+            comment,
+            name,
+            operation,
+            parents: parents.unwrap_or_default().into_boxed_slice(),
+          }
+        }
+        StatementOperation::Key(operation, rest) => {
+          let (name, value, comment) = self.parse_key_value_from_line(rest)?;
+
+          LtxItemKind::Key {
+            comment,
+            name,
+            operation,
+            value,
+          }
+        }
+      }
+    };
+
+    Ok(Some(LtxItem::new(kind, span)))
+  }
+
+  /// The checks the leading comment block opted out of, taken from the parser.
+  pub(crate) fn take_skipped_checks(&mut self) -> Vec<LtxCheck> {
+    std::mem::take(&mut self.skipped_checks)
   }
 
   /// Classify one statement and strip whatever DLTX prefix it carries.
@@ -192,7 +218,7 @@ impl<'a> LtxParser<'a> {
     StatementOperation::Key(LtxKeyOperation::Set, line)
   }
 
-  fn parse_metadata_directive(&self, comment: &str, document: &mut LtxDocument, span: LtxSpan) -> XrfResult {
+  fn parse_metadata_directive(&mut self, comment: &str, span: LtxSpan) -> XrfResult {
     let (line, column) = (span.get_line(), span.get_column());
 
     let mut parts: std::str::SplitWhitespace<'_> = comment.split_whitespace();
@@ -225,13 +251,15 @@ impl<'a> LtxParser<'a> {
       ));
     };
 
-    document.record_skipped_check(check);
+    if !self.skipped_checks.contains(&check) {
+      self.skipped_checks.push(check);
+    }
 
     Ok(())
   }
 }
 
-impl LtxParser<'_> {
+impl<'a> LtxParser<'a> {
   /// Where the cursor is, as a statement records it.
   ///
   /// `column` already counts from one and names the character now under the cursor, which is this statement's first.
@@ -245,6 +273,7 @@ impl LtxParser<'_> {
   }
 
   fn bump(&mut self) {
+    self.at_char = self.reader.as_str();
     self.char = self.reader.next();
 
     match self.char {
@@ -288,17 +317,26 @@ impl LtxParser<'_> {
   }
 
   /// The rest of the current line, leaving the cursor on the break that ends it.
-  fn parse_until_eol(&mut self) -> String {
-    let mut line: String = String::new();
-
-    while let Some(char) = self.char {
-      if char == '\n' || char == '\r' {
-        break;
-      }
-
-      line.push(char);
-      self.bump();
+  ///
+  /// Taken as one slice of the input rather than a character at a time: no break lies inside the line, so the cursor
+  /// only moves along it, one column per character, exactly as stepping through it would.
+  fn parse_until_eol(&mut self) -> &'a str {
+    if matches!(self.char, None | Some('\n' | '\r')) {
+      return "";
     }
+
+    let text: &'a str = self.at_char;
+    // Searched as bytes: both breaks are ASCII, which no byte of a wider character can be.
+    let end: usize = text
+      .bytes()
+      .position(|byte| byte == b'\n' || byte == b'\r')
+      .unwrap_or(text.len());
+    let line: &'a str = &text[..end];
+
+    // The line's first character is the one under the cursor, already counted.
+    self.column += line.chars().count() - 1;
+    self.reader = text[line.len()..].chars();
+    self.bump();
 
     line
   }
@@ -306,7 +344,7 @@ impl LtxParser<'_> {
 
 impl LtxParser<'_> {
   /// Parse section name, inherited sections and comment from the line.
-  fn parse_section_from_line(&self, line: &str) -> XrfResult<ParsedSectionHeader> {
+  fn parse_section_from_line<'line>(&self, line: &'line str) -> XrfResult<ParsedSectionHeader<'line>> {
     if line.is_empty() {
       return self.error("Failed to parse empty section statement");
     }
@@ -318,7 +356,7 @@ impl LtxParser<'_> {
     }
 
     let section_ends_at: usize = closing_bracket_position.unwrap();
-    let section: Box<str> = Box::from(&line[1..section_ends_at]);
+    let section: &str = &line[1..section_ends_at];
     let remainder: &str = line[section_ends_at + 1..].trim();
 
     if remainder.is_empty() {
@@ -329,19 +367,16 @@ impl LtxParser<'_> {
         None => (remainder, None),
       };
 
-      let inherited: Vec<Box<str>> = inherited
+      let inherited: Vec<&str> = inherited
         .split(',')
-        .filter_map(|it| {
-          let it: &str = it.trim();
-
-          if it.is_empty() { None } else { Some(Box::from(it)) }
-        })
-        .collect::<Vec<Box<str>>>();
+        .map(str::trim)
+        .filter(|it| !it.is_empty())
+        .collect::<Vec<&str>>();
 
       Ok((
         section,
         if inherited.is_empty() { None } else { Some(inherited) },
-        comment.map(|comment| Box::from(comment.trim())),
+        comment.map(str::trim),
       ))
     } else {
       // Anything else after the brackets is no part of the header, and the engine reads past it: shipped configs write
@@ -352,7 +387,7 @@ impl LtxParser<'_> {
         .unwrap_or(remainder)
         .trim_start();
 
-      Ok((section, None, (!comment.is_empty()).then(|| Box::from(comment))))
+      Ok((section, None, (!comment.is_empty()).then_some(comment)))
     }
   }
 
@@ -360,7 +395,7 @@ impl LtxParser<'_> {
   ///
   /// The name is what sits between the first two quotes after the directive, which is how the engine's `CInifile` reads
   /// it, so `#include "file.ltx"`, `#include("file.ltx")` and any spacing around the quotes all name `file.ltx`.
-  fn parse_include_from_line(&self, line: &str) -> XrfResult<(Box<str>, Option<Box<str>>)> {
+  fn parse_include_from_line<'line>(&self, line: &'line str) -> XrfResult<(&'line str, Option<&'line str>)> {
     let (include, comment) = match line.trim().split_once(LTX_SYMBOL_COMMENT) {
       Some((include, comment)) => (include.trim(), Some(comment.trim())),
       None => (line.trim(), None),
@@ -375,26 +410,24 @@ impl LtxParser<'_> {
       ));
     };
 
-    let included_path: Box<str> = Box::from(name);
-
-    if included_path.is_empty() {
+    if name.is_empty() {
       return self.error(String::from(
         "Expected valid file name in include statement, got empty file name",
       ));
     }
 
-    if !XrayExtension::Ltx.matches(&included_path) {
+    if !XrayExtension::Ltx.matches(name) {
       return self.error(format!(
-        "Included file should have .{} extension, got '{included_path}'",
+        "Included file should have .{} extension, got '{name}'",
         XrayExtension::Ltx
       ));
     }
 
-    Ok((included_path, comment.filter(|it| !it.is_empty()).map(Box::from)))
+    Ok((name, comment.filter(|it| !it.is_empty())))
   }
 
   /// Parse line key, value and comment from provided line.
-  fn parse_key_value_from_line(&self, line: &str) -> XrfResult<ParsedKeyValue> {
+  fn parse_key_value_from_line<'line>(&self, line: &'line str) -> XrfResult<ParsedKeyValue<'line>> {
     if line.is_empty() {
       return self.error("Failed to parse empty value statement");
     }
@@ -409,11 +442,7 @@ impl LtxParser<'_> {
       Some((key, value)) => (key.trim(), Some(value.trim())),
     };
 
-    Ok((
-      Box::from(key),
-      value.map(Box::from),
-      comment.filter(|it| !it.is_empty()).map(Box::from),
-    ))
+    Ok((key, value, comment.filter(|it| !it.is_empty())))
   }
 }
 
@@ -440,6 +469,26 @@ mod test {
     );
   }
 
+  /// A line is taken whole, but the cursor still counts one column per character, wide or not, and a lone `\r` ends a
+  /// line without starting a new one, as stepping through the text a character at a time did.
+  #[test]
+  fn places_an_error_by_characters_after_wide_text_and_lone_returns() {
+    for (input, expected_line, expected_column) in [
+      ("ключ = 1\n[не", 2, 4),
+      ("a = 1\r[не\r", 1, 11),
+      // Reported where the cursor stands, past the break that ended the line.
+      ("a = 1\r\n\r\n  [не ; ж\nb = 2", 4, 1),
+      ("a = 1\r\n\r\n  [не ; ж\rb = 2", 3, 11),
+    ] {
+      match Ltx::read_from_str(input).expect_err("an unclosed header") {
+        xrf_error::XrfError::LtxParse { line, col, .. } => {
+          assert_eq!((line, col), (expected_line, expected_column), "{input:?}");
+        }
+        error => panic!("Unexpected error {error}"),
+      }
+    }
+  }
+
   #[test]
   fn ignores_metadata_directive_after_ltx_content() {
     let ltx: Ltx = Ltx::read_from_str("[section]\n; @xrf-ltx skip-inheritance\n").unwrap();
@@ -453,7 +502,7 @@ mod test {
 
     assert_eq!(
       parser.parse_section_from_line("[section]").unwrap(),
-      (Box::from("section"), None, None)
+      ("section", None, None)
     );
   }
 
@@ -463,11 +512,7 @@ mod test {
 
     assert_eq!(
       parser.parse_section_from_line("[section] : a,   b, c").unwrap(),
-      (
-        Box::from("section"),
-        Some(vec!(Box::from("a"), Box::from("b"), Box::from("c"),)),
-        None
-      )
+      ("section", Some(vec!("a", "b", "c",)), None)
     );
   }
 
@@ -477,7 +522,7 @@ mod test {
 
     assert_eq!(
       parser.parse_section_from_line("[section] :  ").unwrap(),
-      (Box::from("section"), None, None)
+      ("section", None, None)
     );
   }
 
@@ -487,7 +532,7 @@ mod test {
 
     assert_eq!(
       parser.parse_section_from_line("[section] :  ;;;; test").unwrap(),
-      (Box::from("section"), None, Some(Box::from(";;; test")))
+      ("section", None, Some(";;; test"))
     );
   }
 
@@ -499,11 +544,7 @@ mod test {
       parser
         .parse_section_from_line("[section] : a,  b    ;   commented phrase ")
         .unwrap(),
-      (
-        Box::from("section"),
-        Some(vec!(Box::from("a"), Box::from("b"))),
-        Some(Box::from("commented phrase"))
-      )
+      ("section", Some(vec!("a", "b")), Some("commented phrase"))
     );
   }
 
@@ -513,7 +554,7 @@ mod test {
 
     assert_eq!(
       parser.parse_section_from_line("[section];commented phrase ").unwrap(),
-      (Box::from("section"), None, Some(Box::from("commented phrase")))
+      ("section", None, Some("commented phrase"))
     );
   }
 
@@ -527,15 +568,11 @@ mod test {
       parser
         .parse_section_from_line("[m_dog_step_params]   fwdleftleg   fwdrightleg")
         .unwrap(),
-      (
-        Box::from("m_dog_step_params"),
-        None,
-        Some(Box::from("fwdleftleg   fwdrightleg"))
-      )
+      ("m_dog_step_params", None, Some("fwdleftleg   fwdrightleg"))
     );
     assert_eq!(
       parser.parse_section_from_line("[logic]r").unwrap(),
-      (Box::from("logic"), None, Some(Box::from("r")))
+      ("logic", None, Some("r"))
     );
   }
 
@@ -546,7 +583,7 @@ mod test {
 
     assert_eq!(
       parser.parse_section_from_line("[marsh_20]Жовтий").unwrap(),
-      (Box::from("marsh_20"), None, Some(Box::from("Жовтий")))
+      ("marsh_20", None, Some("Жовтий"))
     );
   }
 
@@ -562,14 +599,14 @@ mod test {
     ] {
       assert_eq!(
         parser.parse_include_from_line(line).unwrap(),
-        (Box::from("file.ltx"), None),
+        ("file.ltx", None),
         "for {line}"
       );
     }
 
     assert_eq!(
       parser.parse_include_from_line("#include \"file.ltx\" ; why").unwrap(),
-      (Box::from("file.ltx"), Some(Box::from("why")))
+      ("file.ltx", Some("why"))
     );
   }
 
@@ -588,7 +625,7 @@ mod test {
 
     assert_eq!(
       parser.parse_key_value_from_line("  key   =   value").unwrap(),
-      (Box::from("key"), Some(Box::from("value")), None)
+      ("key", Some("value"), None)
     );
   }
 
@@ -600,7 +637,7 @@ mod test {
       parser
         .parse_key_value_from_line("  key   =   1     ;   some phrase")
         .unwrap(),
-      (Box::from("key"), Some(Box::from("1")), Some(Box::from("some phrase")))
+      ("key", Some("1"), Some("some phrase"))
     );
   }
 
@@ -610,7 +647,7 @@ mod test {
 
     assert_eq!(
       parser.parse_key_value_from_line("  key   ").unwrap(),
-      (Box::from("key"), None, None)
+      ("key", None, None)
     );
   }
 }
