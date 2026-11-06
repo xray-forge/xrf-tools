@@ -1,19 +1,21 @@
 use std::collections::HashMap;
 
+use xrf_editable_object::EditableMesh;
+
 use crate::object::decompile::geometry::welded_face::WeldedFace;
 
 /// Infers each face's smoothing edge flags from the normals the export gave its corners.
 ///
-/// A CoP SDK mesh keeps one word per face (`face_smoth_flags.h`): bit `e` set makes edge `e`, from corner `e` to
-/// corner `(e + 1) % 3`, hard, and `CEditableMesh::GenerateVNormals` sums, for each corner, the face normals it can
-/// reach around its point through soft edges. Two faces smoothed across an edge so carry one normal at both its ends;
-/// a hard edge splits them. So an edge is soft where every face across it agrees with this one at both ends, and hard
-/// otherwise, an open edge included. A face with no soft edge is the SDK's flat face, every bit set.
+/// A CoP SDK mesh keeps one word per face, a bit per edge marking it hard (`EditableMesh::get_hard_edge_flag`), and
+/// `CEditableMesh::GenerateVNormals` sums, for each corner, the face normals it can reach around its point through soft
+/// edges (`EditableMeshNormals`). Two faces smoothed across an edge so carry one normal at both its ends; a hard edge
+/// splits them. So an edge is soft where every face across it agrees with this one at both ends, and hard otherwise, an
+/// open edge included. Every face is written a front face, and one with no soft edge as the SDK's flat face.
 pub(crate) struct SmoothingInference;
 
 impl SmoothingInference {
-  /// The flat face: every edge hard, as the SDK fills a mesh without smoothing data.
-  pub(crate) const FLAT: u32 = u32::MAX;
+  /// The word of a front face with every edge hard.
+  const ALL_EDGES_HARD: u32 = 0b111;
 
   pub(crate) fn infer(faces: &[WeldedFace]) -> Vec<u32> {
     let mut faces_of_point: HashMap<u32, Vec<usize>> = HashMap::new();
@@ -30,11 +32,15 @@ impl SmoothingInference {
 
         for edge in 0..3 {
           if !Self::is_soft(faces, &faces_of_point, index, edge) {
-            flags |= 1 << edge;
+            flags |= EditableMesh::get_hard_edge_flag(0, edge);
           }
         }
 
-        if flags == 0b111 { Self::FLAT } else { flags }
+        if flags == Self::ALL_EDGES_HARD {
+          EditableMesh::FLAT_FACE_SMOOTHING
+        } else {
+          flags
+        }
       })
       .collect()
   }

@@ -19,6 +19,7 @@ pub use crate::editable_object_file::EditableObjectFile;
 pub use crate::mesh::editable_face::EditableFace;
 pub use crate::mesh::editable_face_corner::EditableFaceCorner;
 pub use crate::mesh::editable_mesh::EditableMesh;
+pub use crate::mesh::editable_mesh_normals::EditableMeshNormals;
 pub use crate::mesh::editable_surface_faces::EditableSurfaceFaces;
 pub use crate::mesh::vmap::editable_vmap::EditableVMap;
 pub use crate::mesh::vmap::editable_vmap_kind::EditableVMapKind;

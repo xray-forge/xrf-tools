@@ -1,3 +1,4 @@
+use xrf_editable_object::EditableMesh;
 use xrf_error::XrfResult;
 use xrf_ogf::OgfVertexLink;
 
@@ -122,7 +123,7 @@ fn smooths_an_edge_whose_ends_carry_one_normal_and_leaves_the_rest_hard() -> Xrf
 
   assert_eq!(
     SmoothingInference::infer(&hard.faces),
-    vec![SmoothingInference::FLAT, SmoothingInference::FLAT]
+    vec![EditableMesh::FLAT_FACE_SMOOTHING, EditableMesh::FLAT_FACE_SMOOTHING]
   );
 
   Ok(())
