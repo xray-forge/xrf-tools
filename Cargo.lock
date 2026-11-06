@@ -8251,6 +8251,7 @@ dependencies = [
  "xrf-dds",
  "xrf-dialog",
  "xrf-dltx",
+ "xrf-editable-object",
  "xrf-engine-target",
  "xrf-env-flags",
  "xrf-error",
@@ -8269,6 +8270,7 @@ dependencies = [
  "xrf-output",
  "xrf-pack",
  "xrf-particles",
+ "xrf-rawdata",
  "xrf-report",
  "xrf-shaders",
  "xrf-sound",
@@ -8749,6 +8751,21 @@ dependencies = [
  "xrf-error",
  "xrf-test-utils",
  "xrf-utils",
+]
+
+[[package]]
+name = "xrf-rawdata"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sha2",
+ "xrf-chunk",
+ "xrf-editable-object",
+ "xrf-error",
+ "xrf-math",
+ "xrf-ogf",
+ "xrf-skeleton",
 ]
 
 [[package]]

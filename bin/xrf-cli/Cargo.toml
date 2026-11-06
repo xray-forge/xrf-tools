@@ -29,6 +29,8 @@ xrf-vfs = { workspace = true }
 xrf-math = { workspace = true }
 xrf-ogf = { workspace = true }
 xrf-dds = { workspace = true }
+xrf-editable-object = { workspace = true }
+xrf-rawdata = { workspace = true }
 xrf-dialog = { workspace = true }
 xrf-gamedata = { workspace = true }
 xrf-gamemtl = { workspace = true }
