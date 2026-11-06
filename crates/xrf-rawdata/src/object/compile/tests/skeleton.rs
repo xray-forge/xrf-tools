@@ -143,6 +143,8 @@ fn snaps_a_near_corner_onto_a_vertex_and_drops_degenerate_and_repeated_faces() -
   let vertex = |position: [f32; 3], normal: [f32; 3]| SkeletonVertex {
     position: Vector3d::from(position),
     normal: Vector3d::from(normal),
+    tangent: Vector3d::X,
+    binormal: Vector3d::Z,
     texture_coordinate: Vector2d::ZERO,
     bones: vec![SkeletonVertexBone { bone: 0, weight: 1.0 }],
   };

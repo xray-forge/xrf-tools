@@ -35,11 +35,15 @@ prepares them, so the engine draws what the editor's export would give it:
 - corners pack into vertices as the export packs them: positions and normals within a millimetre, texture coordinates
   within `EPS_S`, the same bones and weights, looked up through the export's grid over the object's box, a near corner
   moved onto the vertex it stood near; degenerate and repeated faces are dropped;
-- a split's link count is its widest vertex's, a corner of a face that follows one bone padded with a weightless copy.
+- a split's link count is its widest vertex's, a corner of a face that follows one bone padded with a weightless copy;
+- tangents and binormals come from the export's tangent pass (NVIDIA's MeshMender as the SDK calls it), which splits a
+  vertex where the faces around it map the texture in disagreeing directions, then the vertices are ordered by first
+  use and the texture coordinates moved by whole tiles towards the origin.
 
 The order of the children follows the surfaces' order in the object, where the export follows their addresses in
-memory, so it can differ; the engine draws the same either way. Tangents, the triangle order the engine draws in, and
-writing the OGF itself are not built yet.
+memory, so it can differ; the engine draws the same either way. Where the export's tangent pass divides by a zero
+length and stores infinities, the compile builds a basis from the normal instead. The triangle order the engine draws
+in, and writing the OGF itself, are not built yet.
 
 ## Checks
 
