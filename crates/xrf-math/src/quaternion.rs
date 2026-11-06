@@ -19,4 +19,20 @@ impl Quaternion {
     z: 0.0,
     w: 1.0,
   };
+
+  /// The same rotation at unit length, as a quantised key needs it brought back; the identity for one of no length.
+  pub fn normalize_or_identity(&self) -> Self {
+    let length: f32 = (self.x * self.x + self.y * self.y + self.z * self.z + self.w * self.w).sqrt();
+
+    if length == 0.0 || !length.is_finite() {
+      return Self::IDENTITY;
+    }
+
+    Self {
+      x: self.x / length,
+      y: self.y / length,
+      z: self.z / length,
+      w: self.w / length,
+    }
+  }
 }

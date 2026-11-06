@@ -95,6 +95,55 @@ impl Affine3d {
     }
   }
 
+  /// The rotation a unit quaternion names, untranslated, `Fmatrix::rotation(const Fquaternion&)`: the inverse of
+  /// [`Self::get_rotation`].
+  pub fn from_rotation(rotation: &Quaternion) -> Self {
+    let Quaternion { x, y, z, w } = *rotation;
+
+    Self {
+      x_axis: Vector3d::new(
+        1.0 - 2.0 * (y * y + z * z),
+        2.0 * (x * y - w * z),
+        2.0 * (x * z + w * y),
+      ),
+      y_axis: Vector3d::new(
+        2.0 * (x * y + w * z),
+        1.0 - 2.0 * (x * x + z * z),
+        2.0 * (y * z - w * x),
+      ),
+      z_axis: Vector3d::new(
+        2.0 * (x * z - w * y),
+        2.0 * (y * z + w * x),
+        1.0 - 2.0 * (x * x + y * y),
+      ),
+      translation: Vector3d::ZERO,
+    }
+  }
+
+  /// Heading, pitch and bank, `Fmatrix::getHPB`: the inverse of [`Self::from_heading_pitch_bank`], with a pitch
+  /// within a right angle either way, and at a straight up or down pitch no bank.
+  pub fn get_heading_pitch_bank(&self) -> Vector3d {
+    let cos_pitch: f32 = (self.y_axis.y * self.y_axis.y + self.x_axis.y * self.x_axis.y).sqrt();
+    let pitch: f32 = -(-self.z_axis.y).atan2(cos_pitch);
+
+    if cos_pitch > 16.0 * f32::EPSILON {
+      Vector3d::new(
+        -self.z_axis.x.atan2(self.z_axis.z),
+        pitch,
+        -self.x_axis.y.atan2(self.y_axis.y),
+      )
+    } else {
+      Vector3d::new(-(-self.x_axis.z).atan2(self.x_axis.x), pitch, 0.0)
+    }
+  }
+
+  /// The bone angles giving this rotation, `Fmatrix::getXYZi`: the inverse of [`Self::from_xyz_inverse`].
+  pub fn get_xyz_inverse(&self) -> Vector3d {
+    let angles: Vector3d = self.get_heading_pitch_bank();
+
+    Vector3d::new(-angles.y, -angles.x, -angles.z)
+  }
+
   /// The rotation as a quaternion, `Fquaternion::set(const Fmatrix&)`: from the trace where it is positive, else from
   /// the largest diagonal element whose root clears `TRACE_QZERO_TOLERANCE`, in the engine's order of trying them. A
   /// matrix none clears leaves the identity.
@@ -269,6 +318,23 @@ mod tests {
     assert!(is_near(rotation(0.0, 0.0, PI), [0.0, 0.0, 1.0, 0.0]));
     assert!(is_near(rotation(0.0, PI, 0.0), [1.0, 0.0, 0.0, 0.0]));
     assert_eq!(Affine3d::IDENTITY.get_rotation(), Quaternion::IDENTITY);
+  }
+
+  #[test]
+  fn reads_back_the_rotation_and_angles_it_was_built_from() {
+    let angles: Vector3d = Vector3d::new(0.4, -1.2, 2.5);
+    let turned: Affine3d = Affine3d::from_xyz_inverse(&angles);
+    let rebuilt: Affine3d = Affine3d::from_rotation(&turned.get_rotation());
+
+    assert!(is_near(&turned.get_xyz_inverse(), &angles));
+
+    for (axis, other) in [
+      (turned.x_axis, rebuilt.x_axis),
+      (turned.y_axis, rebuilt.y_axis),
+      (turned.z_axis, rebuilt.z_axis),
+    ] {
+      assert!(is_near(&axis, &other));
+    }
   }
 
   #[test]

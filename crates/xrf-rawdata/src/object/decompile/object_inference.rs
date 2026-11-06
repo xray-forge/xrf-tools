@@ -18,4 +18,7 @@ pub enum ObjectInference {
   Smoothing,
   /// A surface is two-sided where its faces came in mirrored pairs.
   TwoSidedSurfaces,
+  /// The object's own motions are keyed at every frame, linearly between them: the OGF keeps the sampled poses, not
+  /// the authored curves or which bones kept their world orientation.
+  MotionCurves,
 }
