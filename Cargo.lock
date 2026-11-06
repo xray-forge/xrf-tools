@@ -8345,6 +8345,7 @@ name = "xrf-editable-object"
 version = "0.1.0"
 dependencies = [
  "byteorder",
+ "xrf-animation-envelope",
  "xrf-chunk",
  "xrf-error",
  "xrf-math",
@@ -8760,9 +8761,11 @@ name = "xrf-rawdata"
 version = "0.1.0"
 dependencies = [
  "byteorder",
+ "crc32fast",
  "serde",
  "serde_json",
  "sha2",
+ "xrf-animation-envelope",
  "xrf-chunk",
  "xrf-editable-object",
  "xrf-error",

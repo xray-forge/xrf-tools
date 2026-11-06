@@ -53,7 +53,10 @@ Three layouts older editors saved and the SDK still loads are read: description 
 low bytes (`EditableObjectFile::flags_size`). The faces around each point are derived data: `get_point_faces` computes
 them from the faces, the writer puts down what it computes, and a read refuses stored lists that differ, so an edited
 mesh never carries lists its faces no longer give. The older surface, vertex map and bone layouts are kept chunks, and
-embedded motions (`EOBJ_CHUNK_SMOTIONS`) are kept as their stored bytes. A field is `Option` wherever the editor's own
+embedded motions (`EOBJ_CHUNK_SMOTIONS`) are kept as their stored bytes: the SDK reads motion versions 4 to 7 and saves
+version 7, so a typed rewrite would change an older object. `EditableObjectFile::get_embedded_motions` reads them as
+`EditableMotion`s, each bone's channels [xrf-animation-envelope](../xrf-animation-envelope/README.md) envelopes, and
+`EditableMotion::write_list` writes version 7 for motions built in code. A field is `Option` wherever the editor's own
 loader treats its chunk as optional, so a file that omits a chunk writes back without it.
 
 A bone's collision shape, joint limits and joint kind are [xrf-skeleton](../xrf-skeleton/README.md)'s

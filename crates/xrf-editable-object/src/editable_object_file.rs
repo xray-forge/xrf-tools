@@ -9,7 +9,8 @@ use xrf_utils::{StagedFile, format_path, to_format_size};
 
 use crate::editable_chunks::EditableChunks;
 use crate::{
-  EditableActorTransform, EditableBone, EditableBonePart, EditableDescription, EditableMesh, EditableSurface,
+  EditableActorTransform, EditableBone, EditableBonePart, EditableDescription, EditableMesh, EditableMotion,
+  EditableSurface,
 };
 
 /// An editable object, the `.object` file the SDK's Actor and Level editors open: meshes, the surfaces their faces
@@ -35,8 +36,8 @@ pub struct EditableObjectFile {
   // todo: Read the older `EOBJ_CHUNK_SURFACES` and `_SURFACES2` layouts the SDK still loads, which stay extra chunks.
   pub surfaces: Option<Vec<EditableSurface>>,
   pub bones: Option<Vec<EditableBone>>,
-  /// Skeleton motions stored in the object itself, `EOBJ_CHUNK_SMOTIONS`, kept as stored bytes.
-  // todo: Read `CSMotion` into typed motions, so an object's own motions can be exported without the SDK.
+  /// Skeleton motions stored in the object itself, `EOBJ_CHUNK_SMOTIONS`, kept as stored bytes so an older layout
+  /// writes back as it was; [`Self::get_embedded_motions`] reads them.
   pub embedded_motions: Option<Vec<u8>>,
   /// The `.skls` motion files the object plays, by path.
   pub motion_references: Option<Vec<String>>,
@@ -75,6 +76,18 @@ impl EditableObjectFile {
 
   /// Bytes the flags chunk holds as the current editor writes it.
   pub const FLAGS_SIZE: u8 = 4;
+
+  /// The skeleton motions the object stores itself, none where it stores no chunk of them.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error where the stored motions are not ones [`EditableMotion::read_list`] reads.
+  pub fn get_embedded_motions<T: ByteOrder>(&self) -> XrfResult<Vec<EditableMotion>> {
+    self
+      .embedded_motions
+      .as_deref()
+      .map_or_else(|| Ok(Vec::new()), EditableMotion::read_list::<T>)
+  }
 
   /// Reads an editable object from a path.
   ///

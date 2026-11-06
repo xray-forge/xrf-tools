@@ -1,14 +1,16 @@
 use byteorder::ByteOrder;
 use xrf_chunk::{ChunkReadWrite, ChunkWriter};
 use xrf_editable_object::{EditableBone, EditableObjectFile, EditableTimeWidth};
-use xrf_error::{XrfError, XrfResult};
+use xrf_error::XrfResult;
 use xrf_math::{Aabb, Sphere, Vector3d};
 use xrf_ogf::{
   OgfBone, OgfBoneIkData, OgfBonesChunk, OgfChildrenChunk, OgfDescriptionChunk, OgfDescriptionTimeWidth, OgfGeometry,
   OgfHeaderChunk, OgfIkDataChunk, OgfJointIkData, OgfKinematicsChunk, OgfLodsChunk, OgfModelType, OgfTextureChunk,
   OgfUserDataChunk, OgfVertex, OgfVertexLink, OgfVertexLinks,
 };
+use xrf_skeleton::{SkeletonMotionParametersChunk, SkeletonMotionsChunk};
 
+use crate::object::compile::motion::motion_export::MotionExport;
 use crate::object::compile::object_compile_source::ObjectCompileSource;
 use crate::object::compile::skeleton::bone_boxes::BoneBoxes;
 use crate::object::compile::skeleton::skeleton_geometry::SkeletonGeometry;
@@ -16,9 +18,9 @@ use crate::object::compile::skeleton::skeleton_split::SkeletonSplit;
 use crate::object::compile::skeleton::skeleton_vertex::{SkeletonVertex, SkeletonVertexBone};
 use crate::object::joint_limit_sense::JointLimitSense;
 
-/// Writes a skeleton object's OGF as `CExportSkeleton::ExportGeometry` and `ExportMotionDefs` do: the header, the
+/// Writes a skeleton object's OGF as `CExportSkeleton::ExportGeometry` and `ExportMotions` do: the header, the
 /// description, a child per split, the bones' names and boxes, their physics, the class script, the LODs, then the
-/// motion references.
+/// object's own motions and how they play, or the motion files it references.
 pub(crate) struct SkeletonOgfWriter;
 
 impl SkeletonOgfWriter {
@@ -35,28 +37,23 @@ impl SkeletonOgfWriter {
   ///
   /// # Errors
   ///
-  /// Returns an error for an object embedding its own motions, which is not compiled yet, and where a chunk does not
-  /// write, such as a description time past the 32-bit times it was authored with.
+  /// Returns an error where the object's own motions do not export (see [`MotionExport::of`]), and where a chunk does
+  /// not write, such as a description time past the 32-bit times it was authored with.
   pub(crate) fn write<T: ByteOrder>(
     object: &EditableObjectFile,
     geometry: &SkeletonGeometry,
     source: &ObjectCompileSource,
   ) -> XrfResult<Vec<u8>> {
-    if object.embedded_motions.is_some() {
-      return Err(XrfError::new_not_implemented_error(
-        "An object embedding its own motions is not compiled yet; one referencing motion libraries is",
-      ));
-    }
-
     let bones: &[EditableBone] = object.bones.as_deref().unwrap_or_default();
     let motion_references: &[String] = object.motion_references.as_deref().unwrap_or_default();
+    let motions: Option<MotionExport> = MotionExport::of::<T>(object)?;
     let mut file: ChunkWriter = ChunkWriter::new();
 
     Self::write_chunk::<T, _>(
       &mut file,
       OgfHeaderChunk::CHUNK_ID,
       &Self::header(
-        if motion_references.is_empty() {
+        if motion_references.is_empty() && motions.is_none() {
           OgfModelType::SkeletonRigid
         } else {
           OgfModelType::SkeletonAnim
@@ -123,7 +120,11 @@ impl SkeletonOgfWriter {
       )?;
     }
 
-    if !motion_references.is_empty() {
+    // An object referencing motion files plays those and writes none of its own (`ExportMotionKeys`).
+    if let Some(motions) = &motions {
+      Self::write_chunk::<T, _>(&mut file, SkeletonMotionsChunk::CHUNK_ID, &motions.motions)?;
+      Self::write_chunk::<T, _>(&mut file, SkeletonMotionParametersChunk::CHUNK_ID, &motions.parameters)?;
+    } else if !motion_references.is_empty() {
       let mut kinematics: ChunkWriter = ChunkWriter::new();
 
       OgfKinematicsChunk {
