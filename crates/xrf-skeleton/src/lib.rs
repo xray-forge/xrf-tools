@@ -4,7 +4,7 @@ mod motions;
 mod parameters;
 mod physics;
 
-pub use crate::motions::{Quaternion, SkeletonBoneMotion, SkeletonMotion, SkeletonMotionsChunk};
+pub use crate::motions::{SkeletonBoneMotion, SkeletonMotion, SkeletonMotionsChunk};
 pub use crate::parameters::{
   SkeletonMotionDefinition, SkeletonMotionFlag, SkeletonMotionMark, SkeletonMotionParametersChunk, SkeletonPart,
 };

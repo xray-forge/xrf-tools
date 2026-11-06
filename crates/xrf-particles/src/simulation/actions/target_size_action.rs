@@ -23,8 +23,8 @@ impl TargetSizeAction {
 impl From<&ParticleActionTargetSize> for TargetSizeAction {
   fn from(action: &ParticleActionTargetSize) -> Self {
     Self {
-      size: Vec3::from_array(action.size.to_array()),
-      scale: Vec3::from_array(action.scale.to_array()),
+      size: Vec3::from(&action.size),
+      scale: Vec3::from(&action.scale),
     }
   }
 }

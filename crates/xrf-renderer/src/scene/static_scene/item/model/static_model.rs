@@ -104,10 +104,7 @@ impl StaticModel {
       indices,
       parts,
       sphere,
-      bounds: [
-        Vec3::new(declared_box.min.x, declared_box.min.y, declared_box.min.z),
-        Vec3::new(declared_box.max.x, declared_box.max.y, declared_box.max.z),
-      ],
+      bounds: [Vec3::from(&declared_box.min), Vec3::from(&declared_box.max)],
       skin: is_skinned.then_some(StaticModelSkin {
         links,
         bones: package.description.bones.len() as u32,

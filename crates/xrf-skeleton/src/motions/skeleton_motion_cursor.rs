@@ -1,8 +1,6 @@
 use byteorder::{ByteOrder, ReadBytesExt};
 use xrf_error::{XrfError, XrfResult};
-use xrf_math::Vector3d;
-
-use crate::motions::Quaternion;
+use xrf_math::{Quaternion, Vector3d};
 
 /// A position in one motion's key runs, reading the engine's key structs (`SkeletonMotions.hpp:31`) and reporting how
 /// much is left rather than panicking past the end.

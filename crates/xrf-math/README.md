@@ -2,10 +2,11 @@
 
 The engine's basic math types as the format crates read and write them: `Vector2d` and `Vector3d` (the engine's
 `Fvector2` and `Fvector`), `Matrix4x4` (its full `Fmatrix`) and `Affine3d` (an `Fmatrix` without its fourth column),
-`Color` (`Fcolor`), the shapes `Aabb`, `Obb`, `Sphere` and `Cylinder`, and the engine's float epsilons. It sits at the
-bottom of the format crates, depending only on `xrf-chunk` and `xrf-error`; spawn, level, visual, OGF and particle
-crates build on it. A format holds these rather than a field pair, a tuple or a struct of its own. Every type reads and
-writes through `xrf_chunk::ChunkReadWrite` in the byte order the caller names, and serializes with Serde in camelCase.
+`Quaternion` (`Fquaternion`), `Color` (`Fcolor`), the shapes `Aabb`, `Obb`, `Sphere` and `Cylinder`, and the engine's
+float epsilons. It sits at the bottom of the format crates, depending only on `xrf-chunk` and `xrf-error`; spawn, level,
+skeleton, visual, OGF and particle crates build on it. A format holds these rather than a field pair, a tuple or a
+struct of its own. Every type a file stores as floats reads and writes through `xrf_chunk::ChunkReadWrite` in the byte
+order the caller names, and all serialize with Serde in camelCase.
 
 ## Read, write and place
 
@@ -70,6 +71,11 @@ narrower type reads 48 of the 64 bytes and can still parse, leaving every later 
 `Color` is the engine's `Fcolor`: four `f32`s stored red, green, blue, alpha, 16 bytes; a level's static lights carry
 three. It is not a packed `D3DCOLOR`, which is four bytes in another order.
 
+## Quaternion
+
+`Quaternion` is the engine's `Fquaternion`, `x`, `y`, `z` and then `w`, with `IDENTITY` for no rotation. A skeleton
+motion stores its rotations quantised, so `xrf-skeleton` decodes each key into one rather than reading floats.
+
 ## Shapes
 
 Each is named for what it is and lays out as the engine's own type, read and written field by field in the engine's
@@ -85,10 +91,12 @@ order (`SERIALIZED_SIZE` on each):
 An OGF's header bounds its visual by an `Aabb` and a `Sphere`, its bone names carry an `Obb` each, and a bone's
 collision shape (`xrf-skeleton`'s `SkeletonBoneShape`) holds one of each of the last three. An editable object's mesh,
 a level's collision form, AI map and sound environment, and the compilers' `build.cform` and `build.aimap` are bounded
-by an `Aabb`; a spawn shape's sphere is a `Sphere`.
+by an `Aabb`; a spawn shape's sphere is a `Sphere`. A shape carries no space: `xrf-visual`'s `VisualBounds` holds an
+`Aabb` and a `Sphere` in renderer space, and says so, as a field of engine space would.
 
 `Aabb::from_points` is the box holding a run of points, `None` for none, where the engine's inverted box would stand for
-nothing; one grown point by point starts at `of_point` and takes each next through `include_point` (`Fbox::modify`); `get_size`, `get_center` and `get_bounding_sphere` are `Fbox::getsize`, `getcenter` and `getsphere`.
+nothing; one grown point by point starts at `of_point` and takes each next through `include_point` (`Fbox::modify`).
+`get_size`, `get_center` and `get_bounding_sphere` are `Fbox::getsize`, `getcenter` and `getsphere`.
 
 ## Epsilons
 
@@ -107,9 +115,13 @@ agrees with what the renderer draws.
 
 ## Features and checks
 
-`typescript-bindings` derives Specta types for every type here but `Matrix4x4`. `fixtures` exports `Vector3d::new_mock()`, the vector this
-crate's tests use, for dependants' tests.
+`typescript-bindings` derives Specta types for every type here but `Matrix4x4`. `fixtures` exports
+`Vector3d::new_mock()`, the vector this crate's tests use, for dependants' tests. `glam` converts `Vector3d` and
+`Vector2d` to and from `glam`'s `Vec3` and `Vec2` with `From`, for the runtime crates that compute with `glam` over
+stored values (particles, world, renderer, the levels plugin): a component-wise copy that changes no space, so a
+conversion between spaces stays where it is written.
 
 Run `cargo test --locked -p xrf-math` from the repository root. See [Vector2d](src/vector_2d.rs),
-[Vector3d](src/vector_3d.rs), [Matrix4x4](src/matrix_4x4.rs), [Affine3d](src/affine_3d.rs), [Color](src/color.rs), the
-[shapes](src/shape/) and the [epsilons](src/math_constants.rs).
+[Vector3d](src/vector_3d.rs), [Matrix4x4](src/matrix_4x4.rs), [Affine3d](src/affine_3d.rs),
+[Quaternion](src/quaternion.rs), [Color](src/color.rs), the [shapes](src/shape/), the
+[glam conversions](src/glam_conversions.rs) and the [epsilons](src/math_constants.rs).

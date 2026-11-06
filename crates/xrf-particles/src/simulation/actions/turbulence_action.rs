@@ -59,7 +59,7 @@ impl From<&ParticleActionTurbulence> for TurbulenceAction {
       octaves: action.octaves,
       magnitude: action.magnitude,
       epsilon: action.epsilon,
-      offset: Vec3::from_array(action.offset.to_array()),
+      offset: Vec3::from(&action.offset),
       age: 0.0,
     }
   }

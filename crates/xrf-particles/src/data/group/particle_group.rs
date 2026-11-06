@@ -118,6 +118,13 @@ impl ChunkReadWrite for ParticleGroup {
     name_chunk_writer.write_w1251_string(&self.name)?;
     name_chunk_writer.flush_chunk_into::<T>(writer, Self::NAME_CHUNK_ID)?;
 
+    // The SDK's authorship record follows the name, as it does in an effect.
+    if let Some(description) = &self.description {
+      let mut description_chunk_writer: ChunkWriter = ChunkWriter::new();
+      description.write::<T>(&mut description_chunk_writer)?;
+      description_chunk_writer.flush_chunk_into::<T>(writer, Self::DESCRIPTION_CHUNK_ID)?;
+    }
+
     let mut flags_chunk_writer: ChunkWriter = ChunkWriter::new();
     flags_chunk_writer.write_u32::<T>(self.flags)?;
     flags_chunk_writer.flush_chunk_into::<T>(writer, Self::FLAGS_CHUNK_ID)?;
@@ -129,12 +136,6 @@ impl ChunkReadWrite for ParticleGroup {
     let mut time_limit_chunk_writer: ChunkWriter = ChunkWriter::new();
     time_limit_chunk_writer.write_f32::<T>(self.time_limit)?;
     time_limit_chunk_writer.flush_chunk_into::<T>(writer, Self::TIME_LIMIT_CHUNK_ID)?;
-
-    if let Some(description) = &self.description {
-      let mut description_chunk_writer: ChunkWriter = ChunkWriter::new();
-      description.write::<T>(&mut description_chunk_writer)?;
-      description_chunk_writer.flush_chunk_into::<T>(writer, Self::DESCRIPTION_CHUNK_ID)?;
-    }
 
     if let Some(effects_old) = &self.effects_old
       && !effects_old.is_empty()

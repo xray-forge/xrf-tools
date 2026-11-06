@@ -39,7 +39,7 @@ xrf-level = { workspace = true }
 xrf-light-anim = { workspace = true }
 xrf-ltx = { workspace = true }
 xrf-material = { workspace = true }
-xrf-math = { workspace = true }
+xrf-math = { workspace = true, features = ["glam"] }
 xrf-ogf = { workspace = true }
 xrf-particles = { workspace = true }
 xrf-renderer = { workspace = true }

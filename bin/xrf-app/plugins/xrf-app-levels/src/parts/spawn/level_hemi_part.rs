@@ -7,9 +7,9 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
 use xrf_chunk::XRayByteOrder;
 use xrf_level::{LevelCformTracer, LevelLight, LevelLightsChunk, LevelLightsFile};
-use xrf_math::Vector3d;
+use xrf_math::{Sphere, Vector3d};
 use xrf_vfs::XraySearch;
-use xrf_visual::{HemiEstimator, VisualSphere, VisualTransform};
+use xrf_visual::{HemiEstimator, VisualTransform};
 
 use crate::level::{LevelSource, SelectedLevel};
 use crate::parts::{LevelCollisionPart, LevelSpawnPart};
@@ -51,7 +51,7 @@ impl LevelHemiPart {
   pub fn estimate_spawn(
     estimator: &HemiEstimator,
     spawn: &LevelSpawn,
-    spheres: &HashMap<&str, &VisualSphere>,
+    spheres: &HashMap<&str, &Sphere>,
   ) -> Vec<LevelSpawnObjectHemi> {
     spawn
       .objects
@@ -59,7 +59,7 @@ impl LevelHemiPart {
       .enumerate()
       .filter_map(|(index, object)| {
         let (_, visual) = LevelSpawnCategory::get_drawn_visual(object)?;
-        let sphere: &VisualSphere = spheres.get(visual)?;
+        let sphere: &Sphere = spheres.get(visual)?;
         // The visual's sphere is in renderer space, and so is where the object stands it; the form is the engine's.
         let centre: Vector3d =
           VisualTransform::of_spawn(&object.position, &object.direction).apply_to_point(&sphere.center);
@@ -84,7 +84,7 @@ impl LevelHemiPart {
     let Ok(spawn) = LevelSpawnPart::get(current, search) else {
       return Vec::new();
     };
-    let spheres: HashMap<&str, &VisualSphere> = read
+    let spheres: HashMap<&str, &Sphere> = read
       .iter()
       .map(|NamedSpawnVisual { name, visual }| (*name, &visual.package.description.declared_bounds.bounding_sphere))
       .collect();

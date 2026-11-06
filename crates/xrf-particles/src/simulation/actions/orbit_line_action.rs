@@ -41,8 +41,8 @@ impl OrbitLineAction {
 
 impl From<&ParticleActionOrbitLine> for OrbitLineAction {
   fn from(action: &ParticleActionOrbitLine) -> Self {
-    let position: Vec3 = Vec3::from_array(action.position.to_array());
-    let axis: Vec3 = Vec3::from_array(action.axis.to_array());
+    let position: Vec3 = Vec3::from(&action.position);
+    let axis: Vec3 = Vec3::from(&action.axis);
 
     Self {
       position_local: position,

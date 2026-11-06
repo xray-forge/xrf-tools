@@ -48,8 +48,8 @@ impl VortexAction {
 
 impl From<&ParticleActionVortex> for VortexAction {
   fn from(action: &ParticleActionVortex) -> Self {
-    let center: Vec3 = Vec3::from_array(action.center.to_array());
-    let axis: Vec3 = Vec3::from_array(action.axis.to_array());
+    let center: Vec3 = Vec3::from(&action.center);
+    let axis: Vec3 = Vec3::from(&action.axis);
 
     Self {
       center_local: center,

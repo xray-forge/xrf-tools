@@ -222,10 +222,10 @@ impl From<&ParticleDomain> for ParticleVolume {
   fn from(domain: &ParticleDomain) -> Self {
     Self {
       kind: ParticleVolumeKind::from(domain.domain_type),
-      p1: Vec3::from(domain.coordinates.0.to_array()),
-      p2: Vec3::from(domain.coordinates.1.to_array()),
-      u: Vec3::from(domain.basis.0.to_array()),
-      v: Vec3::from(domain.basis.1.to_array()),
+      p1: Vec3::from(&domain.coordinates.0),
+      p2: Vec3::from(&domain.coordinates.1),
+      u: Vec3::from(&domain.basis.0),
+      v: Vec3::from(&domain.basis.1),
       radius1: domain.radius1,
       radius2: domain.radius2,
       radius1_sqr: domain.radius1_sqr,

@@ -3,10 +3,10 @@ use std::io::Write;
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_math::Vector3d;
+use xrf_math::{Quaternion, Vector3d};
 use xrf_utils::{assert_count_fits, new_bounded_vec};
 
-use crate::motions::{Quaternion, SkeletonBoneMotion, SkeletonMotionCursor};
+use crate::motions::{SkeletonBoneMotion, SkeletonMotionCursor};
 
 /// One motion's payload in the motions chunk, as `motions_value::load` reads chunk `n + 1`.
 #[derive(Clone, Debug, PartialEq)]

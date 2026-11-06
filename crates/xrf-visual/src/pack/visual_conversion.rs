@@ -1,8 +1,6 @@
 use xrf_math::{Aabb, Matrix4x4, Sphere, Vector3d};
 
 use crate::data::visual::bounds::visual_bounds::VisualBounds;
-use crate::data::visual::bounds::visual_box::VisualBox;
-use crate::data::visual::bounds::visual_sphere::VisualSphere;
 
 /// Convert one X-Ray position or direction into renderer space, whose `z` runs the other way.
 pub fn convert_vector(vector: &Vector3d) -> Vector3d {
@@ -24,7 +22,8 @@ pub fn convert_declared_bounds(bounding_box: &Aabb, bounding_sphere: &Sphere) ->
   let max: Vector3d = convert_vector(&bounding_box.max);
 
   VisualBounds {
-    bounding_box: VisualBox {
+    // Mirroring `z` swaps which corner is lowest along it, and only along it.
+    bounding_box: Aabb {
       min: Vector3d {
         x: min.x,
         y: min.y,
@@ -36,7 +35,7 @@ pub fn convert_declared_bounds(bounding_box: &Aabb, bounding_sphere: &Sphere) ->
         z: min.z.max(max.z),
       },
     },
-    bounding_sphere: VisualSphere {
+    bounding_sphere: Sphere {
       center: convert_vector(&bounding_sphere.center),
       radius: bounding_sphere.radius,
     },

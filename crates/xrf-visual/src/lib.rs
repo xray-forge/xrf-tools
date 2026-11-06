@@ -28,8 +28,6 @@ pub use crate::data::sector::sector_section::SectorSection;
 pub use crate::data::sector::sector_skip::SectorSkip;
 pub use crate::data::sector::sector_surface::SectorSurface;
 pub use crate::data::visual::bounds::visual_bounds::VisualBounds;
-pub use crate::data::visual::bounds::visual_box::VisualBox;
-pub use crate::data::visual::bounds::visual_sphere::VisualSphere;
 pub use crate::data::visual::geometry::visual_clusters::VisualClusters;
 pub use crate::data::visual::geometry::visual_draw_range::VisualDrawRange;
 pub use crate::data::visual::geometry::visual_geometry::VisualGeometry;

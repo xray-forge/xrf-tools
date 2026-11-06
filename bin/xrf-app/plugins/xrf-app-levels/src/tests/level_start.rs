@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 use std::f32::consts::FRAC_PI_2;
 
-use xrf_math::Vector3d;
+use xrf_math::{Aabb, Sphere, Vector3d};
 use xrf_spawn::SpawnLevelArrival;
-use xrf_visual::{VisualBounds, VisualBox, VisualSphere};
+use xrf_visual::VisualBounds;
 
 use crate::parts::LevelStartPart;
 use crate::parts::{LevelSpawn, LevelStart, LevelStartOrigin};
@@ -11,11 +11,11 @@ use crate::parts::{LevelSpawn, LevelStart, LevelStartOrigin};
 /// A level 200 m across and 100 m along, centred on the origin, in renderer space.
 fn new_bounds() -> VisualBounds {
   VisualBounds {
-    bounding_box: VisualBox {
-      max: Vector3d::new(100.0, 10.0, 50.0),
+    bounding_box: Aabb {
       min: Vector3d::new(-100.0, -10.0, -50.0),
+      max: Vector3d::new(100.0, 10.0, 50.0),
     },
-    bounding_sphere: VisualSphere {
+    bounding_sphere: Sphere {
       center: Vector3d::new(0.0, 0.0, 0.0),
       radius: 112.0,
     },
