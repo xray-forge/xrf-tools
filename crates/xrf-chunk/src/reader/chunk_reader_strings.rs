@@ -1,7 +1,7 @@
 use std::io::{Read, SeekFrom};
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::decode_w1251_bytes_to_string;
+use xrf_utils::decode_w1251_field_to_string;
 
 use crate::reader::chunk_line::ChunkLine;
 use crate::reader::chunk_reader::ChunkReader;
@@ -58,7 +58,7 @@ impl<D: ChunkDataSource> ChunkReader<D> {
       self.give_back_read_ahead(collected.len() - end - 1)?;
       collected.truncate(end);
 
-      return Ok(decode_w1251_bytes_to_string(&collected)?);
+      return Ok(decode_w1251_field_to_string(&collected)?);
     }
   }
 
@@ -135,8 +135,8 @@ impl<D: ChunkDataSource> ChunkReader<D> {
     self.give_back_read_ahead(collected.len() - end)?;
 
     Ok(ChunkLine {
-      value: decode_w1251_bytes_to_string(&collected[..start])?,
-      terminator: decode_w1251_bytes_to_string(&collected[start..end])?,
+      value: decode_w1251_field_to_string(&collected[..start])?,
+      terminator: decode_w1251_field_to_string(&collected[start..end])?,
     })
   }
 
@@ -199,6 +199,19 @@ mod tests {
     assert_eq!(chunk.read_w1251_string()?, "", "Expect empty string with terminator");
     assert_eq!(chunk.cursor_pos(), 1, "Expect 1 byte read");
     assert_eq!(chunk.read_bytes_remain(), 0, "Expect 0 bytes remaining");
+
+    Ok(())
+  }
+
+  #[test]
+  fn reads_a_string_opening_on_byte_order_mark_bytes_as_its_letters() -> XrfResult {
+    // A chunk string is Windows-1251 throughout: `EF BB BF` is «п»ї», never a UTF-8 mark to drop, and `FF FE` is «яю»,
+    // never a UTF-16 one.
+    let mut chunk: ChunkReader<InMemoryChunkDataSource> =
+      ChunkReader::from_bytes(&[0xef, 0xbb, 0xbf, b'a', 0, 0xff, 0xfe, b'b', b'\n'])?;
+
+    assert_eq!(chunk.read_w1251_string()?, "п»їa");
+    assert_eq!(chunk.read_w1251_line()?, line("яюb", "\n"));
 
     Ok(())
   }

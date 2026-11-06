@@ -108,10 +108,21 @@ pub fn read_as_string_from_w1251_encoded<R: Read>(reader: &mut R) -> io::Result<
   decode_w1251_bytes_to_string(&bytes)
 }
 
-/// Decodes `bytes` as Windows-1251, the encoding game text is written in.
+/// Decodes `bytes` as Windows-1251, the encoding game text is written in, honouring a byte order mark the way a text
+/// editor saving a whole document leaves one; [`decode_w1251_field_to_string`] reads a string inside a binary format.
 #[inline]
 pub fn decode_w1251_bytes_to_string(bytes: &[u8]) -> io::Result<String> {
   decode_bytes_to_string(bytes, WINDOWS_1251)
+}
+
+/// Decodes a string a binary format stores, a chunk's name or a fixed-length field, as Windows-1251 throughout.
+///
+/// No byte order mark is looked for: such a string is never a document of its own, so `EF BB BF` at its start is
+/// «п»ї» and `FF FE` is «яю», and reading either as a mark would drop or reinterpret bytes a writer then cannot put
+/// back.
+#[inline]
+pub fn decode_w1251_field_to_string(bytes: &[u8]) -> io::Result<String> {
+  decode_bytes_to_string_without_bom_handling(bytes, WINDOWS_1251)
 }
 
 /// Encodes `string` as Windows-1251, the encoding game text is written in.
@@ -155,7 +166,38 @@ pub fn decode_string_from_base64(string: &str) -> XrfResult<String> {
 mod tests {
   use xrf_error::XrfError;
 
-  use super::{decode_string_from_base64, encode_string_to_base64};
+  use super::{
+    decode_string_from_base64, decode_w1251_bytes_to_string, decode_w1251_field_to_string, encode_string_to_base64,
+    encode_string_to_w1251_bytes,
+  };
+
+  #[test]
+  fn a_field_opening_on_byte_order_mark_bytes_reads_as_its_letters() {
+    // `EF BB BF` and `FF FE` are «п»ї» and «яю» in Windows-1251, and a field holds nothing else.
+    for bytes in [
+      &[0xef, 0xbb, 0xbf, b'a'][..],
+      &[0xff, 0xfe, b'a'][..],
+      &[0xfe, 0xff, b'a', b'b'][..],
+    ] {
+      let value: String = decode_w1251_field_to_string(bytes).expect("every byte is Windows-1251");
+
+      assert_eq!(encode_string_to_w1251_bytes(&value).expect("encodes"), bytes, "{value}");
+    }
+
+    assert_eq!(
+      decode_w1251_field_to_string(&[0xef, 0xbb, 0xbf, b'a']).expect("decodes"),
+      "п»їa"
+    );
+  }
+
+  #[test]
+  fn a_document_honours_a_byte_order_mark() {
+    // A text editor saving a whole LTX may leave one, and the document reader keeps reading such a file as before.
+    assert_eq!(
+      decode_w1251_bytes_to_string(&[0xef, 0xbb, 0xbf, b'a']).expect("decodes"),
+      "a"
+    );
+  }
 
   #[test]
   fn decode_string_from_base64_rejects_invalid_utf8() {

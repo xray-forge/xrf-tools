@@ -3,7 +3,7 @@ use xrf_chunk::{
   CHUNK_HEADER_SIZE, CHUNK_ID_COMPRESSED_MASK, CHUNK_ID_MASK, ChunkDataSource, ChunkReader, ChunkTrailing,
 };
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::decode_w1251_bytes_to_string;
+use xrf_utils::decode_w1251_field_to_string;
 
 use crate::chunks::skeleton::ogf_kinematics_chunk::OgfKinematicsChunk;
 use crate::residue::ogf_chunk_access::OgfChunkAccess;
@@ -140,7 +140,7 @@ impl OgfResidue {
       return None;
     }
 
-    decode_w1251_bytes_to_string(path).ok()
+    decode_w1251_field_to_string(path).ok()
   }
 
   /// Widens a last motion refs chunk whose counted references run on past its declared size to the end of the file,

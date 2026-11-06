@@ -20,10 +20,10 @@ pub use crate::staging::StagingFaults;
 pub use crate::text::{
   LineEndings, XRayEncoding, decode_bytes_from_base64, decode_bytes_to_string,
   decode_bytes_to_string_without_bom_handling, decode_string_from_base64, decode_w1251_bytes_to_string,
-  encode_bytes_to_base64, encode_string_to_base64, encode_string_to_bytes, encode_string_to_w1251_bytes,
-  error_to_string, natural_cmp, new_utf8_encoder, new_windows1250_encoder, new_windows1251_encoder,
-  new_windows1252_encoder, read_as_string_from_w1251_encoded, read_engine_integer, to_camel_case, vector_from_string,
-  vector_from_string_sized, vector_to_string,
+  decode_w1251_field_to_string, encode_bytes_to_base64, encode_string_to_base64, encode_string_to_bytes,
+  encode_string_to_w1251_bytes, error_to_string, natural_cmp, new_utf8_encoder, new_windows1250_encoder,
+  new_windows1251_encoder, new_windows1252_encoder, read_as_string_from_w1251_encoded, read_engine_integer,
+  to_camel_case, vector_from_string, vector_from_string_sized, vector_to_string,
 };
 pub use crate::units::{
   BYTES_PER_GIGABYTE, BYTES_PER_KILOBYTE, BYTES_PER_MEGABYTE, duration_ms, duration_ms_vec, duration_to_millis,
