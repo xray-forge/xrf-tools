@@ -40,7 +40,7 @@ fn an_object_reads_as_the_chunks_the_editor_saved() -> XrfResult {
   assert_eq!(description.creator, "gsc");
   assert_eq!(description.modifier, "\\\\MAINPC\\gladi");
   assert_eq!(description.modified_at, 1_200_000_000);
-  assert!(object.extra.is_empty());
+  assert!(object.layout.extra.is_empty());
 
   Ok(())
 }
@@ -68,13 +68,13 @@ fn a_chunk_nothing_names_survives_at_the_end_of_every_container() -> XrfResult {
     bytes: vec![0xde, 0xad, 0xbe, 0xef],
   };
 
-  assert_eq!(object.extra, vec![sentinel.clone()]);
+  assert_eq!(object.layout.extra, vec![sentinel.clone()]);
   assert_eq!(
-    object.meshes.as_ref().map(|meshes| meshes[0].extra.clone()),
+    object.meshes.as_ref().map(|meshes| meshes[0].layout.extra.clone()),
     Some(vec![sentinel.clone()])
   );
   assert_eq!(
-    object.bones.as_ref().map(|bones| bones[0].extra.clone()),
+    object.bones.as_ref().map(|bones| bones[0].layout.extra.clone()),
     Some(vec![sentinel])
   );
   assert_eq!(object.write_to_bytes::<XRayByteOrder>()?, original);
@@ -95,7 +95,7 @@ fn a_chunk_nothing_names_comes_back_where_the_file_stored_it() -> XrfResult {
   let original: Vec<u8> = fixtures::file(&body);
   let object: EditableObjectFile = read(original.clone())?;
 
-  assert_eq!(object.extra.len(), 1);
+  assert_eq!(object.layout.extra.len(), 1);
   assert_eq!(object.write_to_bytes::<XRayByteOrder>()?, original);
 
   Ok(())
@@ -107,14 +107,14 @@ fn an_object_built_in_code_is_written_in_the_editors_order() -> XrfResult {
   let original: Vec<u8> = fixtures::dynamic_object();
   let mut object: EditableObjectFile = read(original.clone())?;
 
-  object.chunk_order.clear();
+  object.layout.order.clear();
 
   for mesh in object.meshes.iter_mut().flatten() {
-    mesh.chunk_order.clear();
+    mesh.layout.order.clear();
   }
 
   for bone in object.bones.iter_mut().flatten() {
-    bone.chunk_order.clear();
+    bone.layout.order.clear();
   }
 
   assert_eq!(object.write_to_bytes::<XRayByteOrder>()?, original);
@@ -166,7 +166,7 @@ fn a_duplicate_of_a_named_chunk_is_kept_rather_than_read_over_the_first() -> Xrf
   let object: EditableObjectFile = read(fixtures::file(&body))?;
 
   assert_eq!(object.lods.as_deref(), Some(""));
-  assert_eq!(object.extra[0].id, EditableObjectFile::LODS_CHUNK_ID);
+  assert_eq!(object.layout.extra[0].id, EditableObjectFile::LODS_CHUNK_ID);
 
   Ok(())
 }

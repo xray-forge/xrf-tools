@@ -7,7 +7,7 @@ use crate::chunks::editable_chunk_sequence::EditableChunkSequence;
 use crate::chunks::editable_chunks::EditableChunks;
 use crate::{
   EditableBoneBindPose, EditableBoneBreak, EditableBoneDefinition, EditableBoneJoint, EditableBoneMass,
-  EditableExtraChunk,
+  EditableChunkLayout,
 };
 
 /// One bone of an editable object's skeleton, `CBone` as `CBone::Save` stores it.
@@ -34,11 +34,8 @@ pub struct EditableBone {
   pub joint_break: Option<EditableBoneBreak>,
   pub friction: Option<f32>,
   pub mass: Option<EditableBoneMass>,
-  /// Chunks no field takes, see [`EditableExtraChunk`].
-  pub extra: Vec<EditableExtraChunk>,
-  /// The bone's chunk ids in the order the file stored them, which the writer follows; empty for a bone built in
-  /// code.
-  pub chunk_order: Vec<u32>,
+  /// How the bone's chunks were laid out in its file.
+  pub layout: EditableChunkLayout,
 }
 
 impl EditableBone {
@@ -78,26 +75,18 @@ impl EditableBone {
     let mut joint_break: Option<EditableBoneBreak> = None;
     let mut friction: Option<f32> = None;
     let mut mass: Option<EditableBoneMass> = None;
-    let mut extra: Vec<EditableExtraChunk> = Vec::new();
 
-    let children: Vec<ChunkReader<D>> = reader.read_children()?;
-    let chunk_order: Vec<u32> = children.iter().map(|chunk| chunk.id).collect();
-
-    for mut chunk in children {
+    let layout: EditableChunkLayout = EditableChunkLayout::read(reader, |chunk| {
       match chunk.id {
-        Self::VERSION_CHUNK_ID if version.is_none() => {
-          version = Some(chunk.read_u16_payload::<T>()?);
-        }
+        Self::VERSION_CHUNK_ID if version.is_none() => version = Some(chunk.read_u16_payload::<T>()?),
         Self::DEFINITION_CHUNK_ID if definition.is_none() => {
-          definition = Some(EditableChunks::read_whole(&mut chunk, "bone definition", |chunk| {
+          definition = Some(EditableChunks::read_whole(chunk, "bone definition", |chunk| {
             chunk.read_xr::<T, _>()
           })?);
         }
-        Self::DEFINITION_CHUNK_ID if data_name.is_none() => {
-          data_name = Some(chunk.read_w1251_string_payload()?);
-        }
+        Self::DEFINITION_CHUNK_ID if data_name.is_none() => data_name = Some(chunk.read_w1251_string_payload()?),
         Self::BIND_POSE_CHUNK_ID if bind_pose.is_none() => {
-          bind_pose = Some(EditableChunks::read_whole(&mut chunk, "bone bind pose", |chunk| {
+          bind_pose = Some(EditableChunks::read_whole(chunk, "bone bind pose", |chunk| {
             chunk.read_xr::<T, _>()
           })?);
         }
@@ -105,34 +94,32 @@ impl EditableBone {
           game_material = Some(chunk.read_w1251_string_payload()?);
         }
         Self::SHAPE_CHUNK_ID if shape.is_none() => {
-          shape = Some(EditableChunks::read_whole(&mut chunk, "bone shape", |chunk| {
+          shape = Some(EditableChunks::read_whole(chunk, "bone shape", |chunk| {
             chunk.read_xr::<T, _>()
           })?);
         }
-        Self::FLAGS_CHUNK_ID if joint_flags.is_none() => {
-          joint_flags = Some(chunk.read_u32_payload::<T>()?);
-        }
+        Self::FLAGS_CHUNK_ID if joint_flags.is_none() => joint_flags = Some(chunk.read_u32_payload::<T>()?),
         Self::JOINT_CHUNK_ID if joint.is_none() => {
-          joint = Some(EditableChunks::read_whole(&mut chunk, "bone joint", |chunk| {
+          joint = Some(EditableChunks::read_whole(chunk, "bone joint", |chunk| {
             chunk.read_xr::<T, _>()
           })?);
         }
         Self::BREAK_CHUNK_ID if joint_break.is_none() => {
-          joint_break = Some(EditableChunks::read_whole(&mut chunk, "bone joint break", |chunk| {
+          joint_break = Some(EditableChunks::read_whole(chunk, "bone joint break", |chunk| {
             chunk.read_xr::<T, _>()
           })?);
         }
-        Self::FRICTION_CHUNK_ID if friction.is_none() => {
-          friction = Some(chunk.read_f32_payload::<T>()?);
-        }
+        Self::FRICTION_CHUNK_ID if friction.is_none() => friction = Some(chunk.read_f32_payload::<T>()?),
         Self::MASS_CHUNK_ID if mass.is_none() => {
-          mass = Some(EditableChunks::read_whole(&mut chunk, "bone mass", |chunk| {
+          mass = Some(EditableChunks::read_whole(chunk, "bone mass", |chunk| {
             chunk.read_xr::<T, _>()
           })?);
         }
-        _ => EditableChunks::keep(&mut chunk, &mut extra)?,
+        _ => return Ok(false),
       }
-    }
+
+      Ok(true)
+    })?;
 
     let version: u16 = EditableChunks::require(version, "bone version")?;
 
@@ -155,13 +142,12 @@ impl EditableBone {
       joint_break,
       friction,
       mass,
-      extra,
-      chunk_order,
+      layout,
     })
   }
 
-  /// Writes the bone's children in [`Self::chunk_order`], and any it does not list in the order `CBone::Save` writes
-  /// them, the extra chunks last.
+  /// Writes the bone's children as [`Self::layout`] lays them out, and any it does not list in the order
+  /// `CBone::Save` writes them.
   ///
   /// # Errors
   ///
@@ -208,8 +194,6 @@ impl EditableBone {
       sequence.push(Self::MASS_CHUNK_ID, |writer| mass.write::<T>(writer))?;
     }
 
-    sequence.push_extra(&self.extra);
-
-    sequence.write_into::<T>(writer, &self.chunk_order)
+    self.layout.write::<T>(writer, sequence)
   }
 }
