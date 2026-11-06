@@ -6,7 +6,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
-use xrf_ltx::{FileImportExport, Ltx, LtxImportExport, LtxRecordWriter};
+use xrf_ltx::{FileImportExport, Ltx, LtxImportExport, LtxRecordReader, LtxRecordWriter};
 use xrf_utils::{StagedFile, assert_length};
 
 use crate::data::graph::graph_cross_table::GraphCrossTable;
@@ -155,33 +155,16 @@ impl FileImportExport for SpawnGraphsChunk {
     let header: GraphHeader =
       GraphHeader::import("header", &Ltx::read_from_path(path.as_ref().join("graphs_header.ltx"))?)?;
 
-    let levels_ltx: Ltx = Ltx::read_from_path(path.as_ref().join("graphs_levels.ltx"))?;
-    let mut levels: Vec<GraphLevel> = Vec::new();
-
-    for index in 0..header.levels_count {
-      levels.push(GraphLevel::import(&index.to_string(), &levels_ltx)?);
-    }
-
-    let vertices_ltx: Ltx = Ltx::read_from_path(path.as_ref().join("graphs_vertices.ltx"))?;
-    let mut vertices: Vec<GraphVertex> = Vec::new();
-
-    for index in 0..header.vertices_count {
-      vertices.push(GraphVertex::import(&index.to_string(), &vertices_ltx)?);
-    }
-
-    let points_ltx: Ltx = Ltx::read_from_path(path.as_ref().join("graphs_points.ltx"))?;
-    let mut points: Vec<GraphLevelPoint> = Vec::new();
-
-    for index in 0..header.points_count {
-      points.push(GraphLevelPoint::import(&index.to_string(), &points_ltx)?);
-    }
-
-    let edges_ltx: Ltx = Ltx::read_from_path(path.as_ref().join("graphs_edges.ltx"))?;
-    let mut edges: Vec<GraphEdge> = Vec::new();
-
-    for index in 0..header.edges_count {
-      edges.push(GraphEdge::import(&index.to_string(), &edges_ltx)?);
-    }
+    let levels: Vec<GraphLevel> =
+      LtxRecordReader::import_indexed(path.as_ref().join("graphs_levels.ltx"), header.levels_count as usize)?;
+    let vertices: Vec<GraphVertex> = LtxRecordReader::import_indexed(
+      path.as_ref().join("graphs_vertices.ltx"),
+      header.vertices_count as usize,
+    )?;
+    let points: Vec<GraphLevelPoint> =
+      LtxRecordReader::import_indexed(path.as_ref().join("graphs_points.ltx"), header.points_count as usize)?;
+    let edges: Vec<GraphEdge> =
+      LtxRecordReader::import_indexed(path.as_ref().join("graphs_edges.ltx"), header.edges_count as usize)?;
 
     let cross_tables: Vec<GraphCrossTable> =
       GraphCrossTable::import_list::<XRayByteOrder>(&mut File::open(path.as_ref().join("graphs_cross_tables.gct"))?)?;

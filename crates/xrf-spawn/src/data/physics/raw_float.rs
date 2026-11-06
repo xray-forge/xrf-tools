@@ -6,7 +6,7 @@ use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::Section;
+use xrf_ltx::LtxSectionRead;
 use xrf_math::Vector3d;
 use xrf_utils::vector_from_string_sized;
 
@@ -64,7 +64,7 @@ impl RawFloat {
   }
 
   /// Import the `N` comma-separated floats an ltx field holds.
-  pub fn import_array<const N: usize>(section: &Section, key: &str) -> XrfResult<[Self; N]> {
+  pub fn import_array<const N: usize>(section: &impl LtxSectionRead, key: &str) -> XrfResult<[Self; N]> {
     let floats: Vec<Self> = vector_from_string_sized(&section.read_field::<String>(key)?, N)?;
 
     floats

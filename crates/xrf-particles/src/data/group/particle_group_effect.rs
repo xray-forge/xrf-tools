@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxSectionWrite, LtxWrite, META_TYPE_FIELD, Section};
+use xrf_ltx::{LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite, META_TYPE_FIELD};
 use xrf_utils::{assert_equal, assert_length, to_format_size};
 
 use crate::data::group::particle_group_child::ParticleGroupChild;
@@ -152,7 +152,7 @@ impl ChunkReadWrite for ParticleGroupEffect {
 
 impl ParticleGroupEffect {
   /// Import list of particles group effect data from provided path.
-  pub fn import_list(section_name: &str, ltx: &Ltx) -> XrfResult<Vec<Self>> {
+  pub fn import_list<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Vec<Self>> {
     let mut effect_index: usize = 0;
     let mut effects: Vec<Self> = Vec::new();
 
@@ -177,8 +177,8 @@ impl ParticleGroupEffect {
   }
 
   /// Import particles group effect data from provided path.
-  pub fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  pub fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "Particle group effect section '{}' should be defined in ltx file ({})",
         section_name,

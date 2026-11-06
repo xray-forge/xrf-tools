@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{LtxSectionWrite, LtxWrite, Section};
+use xrf_ltx::{LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_math::{Aabb, Affine3d, Sphere, Vector3d};
 use xrf_utils::{assert_length, to_format_size};
 
@@ -115,7 +115,7 @@ impl Shape {
   }
 
   /// Import shape objects from ltx config file.
-  pub fn import_list(section: &Section) -> XrfResult<Vec<Self>> {
+  pub fn import_list(section: &impl LtxSectionRead) -> XrfResult<Vec<Self>> {
     let mut shapes: Vec<Self> = Vec::new();
     let count: usize = section.read_field("shapes_count")?;
 

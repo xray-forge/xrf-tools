@@ -2,7 +2,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_ltx::{LtxSectionWrite, LtxWrite, Section};
+use xrf_ltx::{LtxSectionRead, LtxSectionWrite, LtxWrite};
 
 use crate::data::generic::script_to_string::ScriptToString;
 
@@ -23,7 +23,7 @@ impl OfflineObjectState {
   const LEVEL_VERTEX: &'static str = "Offline state level vertex";
 
   /// Import the state kept under `prefix`.
-  pub fn import(section: &Section, prefix: &str) -> XrfResult<Self> {
+  pub fn import(section: &impl LtxSectionRead, prefix: &str) -> XrfResult<Self> {
     Ok(Self {
       level_vertex_id: ScriptToString::parse_id(
         &section.read_field::<String>(&format!("{prefix}.level_vertex_id"))?,
