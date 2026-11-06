@@ -211,10 +211,12 @@ impl<'a> LevelBinariesVerifier<'a> {
       )];
     }
 
-    let ai: Arc<LevelAiFile> = match self
+    // The header is all the engine's assertions read, and a map runs to tens of megabytes of nodes after it.
+    let ai: LevelAiFile = match self
       .bundle
       .project()
-      .read_parsed(&path, LevelAiFile::read_from_chunk::<XRayByteOrder, _>)
+      .read_head(&path, LevelAiHeader::SIZE as usize)
+      .and_then(LevelAiFile::read_from_bytes::<XRayByteOrder>)
     {
       Ok(ai) => ai,
       Err(error) => {

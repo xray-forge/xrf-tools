@@ -27,6 +27,10 @@ pub struct DdsFile {
 }
 
 impl DdsFile {
+  /// The most bytes a header occupies, the DX10 extension included: a reader taking this many from a file's start holds
+  /// its whole header, which is all [`Self::read_xray_compatibility_from_bytes`] reads.
+  pub const MAX_HEADER_SIZE: usize = DX10_HEADER_SIZE as usize;
+
   /// Reads a whole texture, payload included, from a file.
   ///
   /// # Errors
@@ -76,8 +80,7 @@ impl DdsFile {
   pub fn read_metadata_from_bytes(bytes: &[u8]) -> XrfResult<DdsMetadata> {
     let file_size: u64 = u64::try_from(bytes.len())
       .map_err(|_| XrfError::new_texture_processing_error("DDS input exceeds the supported size range"))?;
-    let header: &[u8] = &bytes[..bytes.len().min(DX10_HEADER_SIZE as usize)];
-    let dds: Dds = Dds::read(&mut Cursor::new(header)).map_err(|error| {
+    let dds: Dds = Self::read_header(bytes).map_err(|error| {
       XrfError::new_texture_processing_error(format!("Failed to read DDS header from memory: {error}."))
     })?;
 
@@ -107,8 +110,7 @@ impl DdsFile {
   pub fn read_from_vec(mut bytes: Vec<u8>) -> XrfResult<Self> {
     let file_size: u64 = u64::try_from(bytes.len())
       .map_err(|_| XrfError::new_texture_processing_error("DDS input exceeds the supported size range"))?;
-    let header: &[u8] = &bytes[..bytes.len().min(DX10_HEADER_SIZE as usize)];
-    let mut dds: Dds = Dds::read(&mut Cursor::new(header))
+    let mut dds: Dds = Self::read_header(&bytes)
       .map_err(|error| XrfError::new_texture_processing_error(format!("Failed to read DDS from memory: {error}.")))?;
     let header_size: usize = usize::try_from(Self::header_size(&dds))
       .map_err(|_| XrfError::new_texture_processing_error("DDS header exceeds the supported size range"))?;
@@ -232,7 +234,23 @@ impl DdsFile {
   /// be refused, not a whitelist, and reporting an unnamed layout as broken would be an accusation rather than a
   /// finding.
   pub fn is_xray_compatible(&self) -> bool {
-    self.renderer_support(DdsRenderer::Dx9) != DdsFormatSupport::Unsupported
+    Self::is_xray_compatible_header(&self.dds)
+  }
+
+  /// [`Self::is_xray_compatible`] for the texture whose file these bytes are, answered from its header alone.
+  ///
+  /// The question a check asks of every texture a tree holds, ten gigabytes of them: reading each whole would copy its
+  /// payload out only to look at the first 148 bytes. The header is read from the same bytes a whole read would start
+  /// with, so the answer and any error are the ones [`Self::read_from_bytes`] would give.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the bytes do not begin with a readable DDS header.
+  pub fn read_xray_compatibility_from_bytes(bytes: &[u8]) -> XrfResult<bool> {
+    let dds: Dds = Self::read_header(bytes)
+      .map_err(|error| XrfError::new_texture_processing_error(format!("Failed to read DDS from memory: {error}.")))?;
+
+    Ok(Self::is_xray_compatible_header(&dds))
   }
 
   /// Whether one renderer path loads this file's layout.
@@ -240,18 +258,35 @@ impl DdsFile {
   /// A file whose header names no format the modern table knows answers [`DdsFormatSupport::Unverified`]: it is a
   /// layout this crate has no claim about either way, which is not the same as one a renderer refuses.
   pub fn renderer_support(&self, renderer: DdsRenderer) -> DdsFormatSupport {
-    if let Some(header10) = &self.dds.header10 {
+    Self::header_renderer_support(&self.dds, renderer)
+  }
+
+  fn is_xray_compatible_header(dds: &Dds) -> bool {
+    Self::header_renderer_support(dds, DdsRenderer::Dx9) != DdsFormatSupport::Unsupported
+  }
+
+  /// What [`Self::renderer_support`] answers, from a header alone.
+  fn header_renderer_support(dds: &Dds, renderer: DdsRenderer) -> DdsFormatSupport {
+    if let Some(header10) = &dds.header10 {
       return renderer.supports(header10.dxgi_format);
     }
 
-    if let Some(format) = self.dds.get_d3d_format() {
+    if let Some(format) = dds.get_d3d_format() {
       return renderer.supports_d3d(format);
     }
 
-    match DxgiFormat::try_from_pixel_format(&self.dds.header.spf) {
+    match DxgiFormat::try_from_pixel_format(&dds.header.spf) {
       Some(format) => renderer.supports(format),
       None => DdsFormatSupport::Unverified,
     }
+  }
+
+  /// The header the start of a file's bytes holds, with the few bytes after it as its payload.
+  ///
+  /// `Dds::read` takes whatever follows the header as the payload and checks no length against it, so reading no more
+  /// than the longest header yields the whole header (see [`Self::read_metadata_from_path`]).
+  fn read_header(bytes: &[u8]) -> Result<Dds, ddsfile::Error> {
+    Dds::read(&mut Cursor::new(&bytes[..bytes.len().min(Self::MAX_HEADER_SIZE)]))
   }
 
   fn from_parsed(dds: Dds, file_size: u64) -> XrfResult<Self> {
@@ -347,6 +382,38 @@ mod tests {
 
     assert!(encoded_file(4, 4, DdsMipmaps::Disabled).write_to_path(&path).is_err());
     RefusedPublication::assert_left_previous(&path, b"previous");
+  }
+
+  /// The header-only answer is only worth having if it is the whole read's, refusals included: a DX9 layout and DX10
+  /// ones the D3D9 path loads and refuses, and a file cut short inside its header.
+  #[test]
+  fn answers_compatibility_from_the_header_as_the_whole_read_does() {
+    let files: Vec<DdsFile> = vec![
+      encoded_file(8, 8, DdsMipmaps::Disabled),
+      dx10_file(DxgiFormat::BC3_UNorm),
+      dx10_file(DxgiFormat::BC7_UNorm),
+      dx10_file(DxgiFormat::R32G32B32A32_Float),
+    ];
+
+    for file in files {
+      let bytes: Vec<u8> = file.write_to_bytes().expect("expect DDS bytes");
+
+      assert_eq!(
+        DdsFile::read_xray_compatibility_from_bytes(&bytes).expect("expect the header to parse"),
+        file.is_xray_compatible()
+      );
+
+      let cut: &[u8] = &bytes[..60];
+
+      assert_eq!(
+        DdsFile::read_xray_compatibility_from_bytes(cut)
+          .map(|_| ())
+          .map_err(|error| error.to_string()),
+        DdsFile::read_from_bytes(cut)
+          .map(|_| ())
+          .map_err(|error| error.to_string())
+      );
+    }
   }
 
   #[test]

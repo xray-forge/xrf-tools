@@ -344,12 +344,18 @@ impl XraySearch {
   ///
   /// Returns a not-found error when no step holds the path, and otherwise whatever finding or reading it answers with.
   pub fn read(&self, logical_path: &str) -> XrfResult<Vec<u8>> {
-    match self.find(logical_path)? {
-      Some(asset) => self.read_asset(&asset),
-      None => Err(XrfError::new_not_found_error(format!(
-        "no asset '{logical_path}' in the searched sources"
-      ))),
-    }
+    self.read_asset(&self.require(logical_path)?)
+  }
+
+  /// The asset an exact logical path finds, where a read needs one.
+  ///
+  /// # Errors
+  ///
+  /// Returns a not-found error when no step holds the path, and otherwise whatever finding it answers with.
+  fn require(&self, logical_path: &str) -> XrfResult<XrayAsset> {
+    self
+      .find(logical_path)?
+      .ok_or_else(|| XrfError::new_not_found_error(format!("no asset '{logical_path}' in the searched sources")))
   }
 
   /// The bytes of the copy an asset already located names, recorded as a read of its logical path, which follows the
@@ -362,6 +368,21 @@ impl XraySearch {
     self.record(|| Some(XrayInputKind::File(asset.get_logical_path().clone())));
 
     self.vfs.read_asset_bytes(asset)
+  }
+
+  /// The first `count` bytes of the copy of an exact logical path this search finds, or the whole of a shorter one,
+  /// recorded as [`Self::read`] records a read: for a reader wanting only a header, which a loose file then gives without
+  /// reading the rest.
+  ///
+  /// # Errors
+  ///
+  /// As [`Self::read`].
+  pub fn read_head(&self, logical_path: &str, count: usize) -> XrfResult<Vec<u8>> {
+    let asset: XrayAsset = self.require(logical_path)?;
+
+    self.record(|| Some(XrayInputKind::File(asset.get_logical_path().clone())));
+
+    self.vfs.read_asset_head(&asset, count)
   }
 
   /// Reads and parses the copy an asset already located names, the one [`Self::read_asset`] reads, serving a retained

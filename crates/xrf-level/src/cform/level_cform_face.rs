@@ -24,6 +24,21 @@ pub struct LevelCformFace {
 impl LevelCformFace {
   /// Bytes one face occupies: three vertex indices and a packed word.
   pub const SERIALIZED_SIZE: usize = 16;
+
+  /// Where the packed word sits in a face, after its three vertex indices.
+  const PACKED_OFFSET: usize = 12;
+
+  /// The bits of the packed word holding the game material: fourteen, so an id is below `1 << 14`.
+  pub const MATERIAL_MASK: u32 = 0x3FFF;
+
+  /// The game material of a face's bytes, read where they lie, for a reader wanting nothing else of the face.
+  pub fn read_material<T: ByteOrder>(face: &[u8; Self::SERIALIZED_SIZE]) -> u16 {
+    Self::material_of(T::read_u32(&face[Self::PACKED_OFFSET..]))
+  }
+
+  fn material_of(packed: u32) -> u16 {
+    (packed & Self::MATERIAL_MASK) as u16
+  }
 }
 
 impl ChunkReadWrite for LevelCformFace {
@@ -38,7 +53,7 @@ impl ChunkReadWrite for LevelCformFace {
 
     Ok(Self {
       vertices,
-      material: (packed & 0x3FFF) as u16,
+      material: Self::material_of(packed),
       is_shadow_suppressed: packed & (1 << 14) != 0,
       is_wallmark_suppressed: packed & (1 << 15) != 0,
       sector: (packed >> 16) as u16,
@@ -52,7 +67,7 @@ impl ChunkReadWrite for LevelCformFace {
     }
 
     writer.write_u32::<T>(
-      u32::from(self.material & 0x3FFF)
+      (u32::from(self.material) & Self::MATERIAL_MASK)
         | (u32::from(self.is_shadow_suppressed) << 14)
         | (u32::from(self.is_wallmark_suppressed) << 15)
         | (u32::from(self.sector) << 16),

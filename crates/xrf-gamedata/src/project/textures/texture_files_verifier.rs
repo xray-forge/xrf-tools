@@ -50,7 +50,7 @@ impl<'a> TextureFilesVerifier<'a> {
   ///
   /// Returns an error when the texture does not read as a DDS.
   pub(crate) fn is_xray_compatible(project: &GamedataProject, path: &str) -> XrfResult<bool> {
-    Ok(DdsFile::read_from_bytes(&project.read_bytes(path)?)?.is_xray_compatible())
+    DdsFile::read_xray_compatibility_from_bytes(&project.read_head(path, DdsFile::MAX_HEADER_SIZE)?)
   }
 
   fn verify_texture(&self, options: &GamedataProjectVerifyOptions, path: &str) -> Option<Finding> {
