@@ -11,8 +11,11 @@ use crate::feature::tracing::reflections::reflection_uniform::ReflectionUniform;
 use crate::feature::tracing::reflections::trace::reflection_trace_out_parameters::ReflectionTraceOutParameters;
 use crate::feature::tracing::rtao::rtao_pass::RtaoPass;
 use crate::feature::tracing::scene_trace::reflection_scene_parameters::ReflectionSceneParameters;
+use crate::feature::tracing::scene_trace::requests::scene_list_parameters::SceneListParameters;
 use crate::feature::tracing::scene_trace::requests::trace_request::TraceRequest;
 use crate::feature::tracing::scene_trace::requests::trace_request_parameters::TraceRequestParameters;
+use crate::feature::tracing::scene_trace::requests::water_ray_parameters::WaterRayParameters;
+use crate::feature::tracing::scene_trace::requests::water_rays_uniform::WaterRaysUniform;
 use crate::feature::tracing::scene_trace::scene_trace_pass::SceneTracePass;
 use crate::feature::tracing::sun_trace::sun_trace_parameters::SunTraceParameters;
 use crate::feature::tracing::sun_trace::sun_trace_pass::SunTracePass;
@@ -103,6 +106,7 @@ impl TracingPasses {
     modules
       .declare::<TraceSwaySlot>()
       .declare::<TraceRequest>()
+      .declare::<WaterRaysUniform>()
       .declare::<SurroundingsUniform>()
       .declare::<SunTraceUniform>()
       .declare::<IndirectTraceUniform>()
@@ -115,6 +119,8 @@ impl TracingPasses {
       .add::<ReflectionParameters<'_>>("generated/frame/reflections")?
       .add::<TraceRequestParameters>("generated/common/trace_requests")?
       .add::<ReflectionSceneParameters<'_>>("generated/frame/reflection_scene")?
+      .add::<SceneListParameters>("generated/frame/scene_list")?
+      .add::<WaterRayParameters>("generated/frame/water_rays")?
       .add::<ReflectionTraceOutParameters>("generated/frame/reflection_trace_out")?
       .add::<IndirectTraceParameters<'_>>("generated/frame/indirect_trace")?
       .add::<SurroundingsParameters<'_>>("generated/frame/surroundings")?

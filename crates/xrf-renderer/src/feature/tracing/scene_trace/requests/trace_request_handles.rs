@@ -1,6 +1,6 @@
 use xrf_renderer_core::{GraphBuffer, StorageArray, StorageArrayMut};
 
-use crate::feature::tracing::scene_trace::requests::trace_request::TraceRequest;
+use crate::feature::tracing::scene_trace::requests::scene_list_parameters::SceneListParameters;
 use crate::feature::tracing::scene_trace::requests::trace_request_parameters::TraceRequestParameters;
 
 /// A request list as a frame's graph imported it, emptied for the frame: what the pass filling it binds, and what the
@@ -24,7 +24,10 @@ impl TraceRequestHandles {
   }
 
   /// The requests as the scene pass reads them, and their head, whose wait it keeps.
-  pub fn to_read(self) -> (StorageArray<TraceRequest>, StorageArrayMut<u32>) {
-    (StorageArray::new(self.requests), StorageArrayMut::new(self.head))
+  pub fn to_read(self) -> SceneListParameters {
+    SceneListParameters {
+      trace_requests: StorageArray::new(self.requests),
+      trace_request_head: StorageArrayMut::new(self.head),
+    }
   }
 }

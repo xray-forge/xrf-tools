@@ -1,15 +1,18 @@
 use crate::feature::tracing::scene_trace::requests::trace_request_list::TraceRequestList;
+use crate::feature::tracing::scene_trace::requests::water_rays::WaterRays;
 use crate::frame::targets::depth_pyramid::DepthPyramid;
 use crate::frame::targets::frame_texture::FrameTexture;
 use crate::frame::targets::history::History;
 use crate::frame::targets::view_targets::ViewTargets;
 
-/// The enhanced water's reflection: two histories at the drawn size, one written each frame over the other it reads,
-/// the list its rays the screen does not answer are left to the scene pass in, an eighth of the drawn pixels while it
-/// traces, a stub otherwise, and the pyramid of the frame's nearest depth its rays walk over.
+/// The enhanced water's reflection: two histories at the drawn size, one written each frame over the other it reads;
+/// where the scene pass takes the rays the screen does not answer, the list they are left in, an eighth of the drawn
+/// pixels while they trace on their turns, or a record at each pixel while every pixel traces every frame, either a
+/// stub otherwise; and the pyramid of the frame's nearest depth its rays walk over.
 pub struct WaterReflection {
   pub histories: History<FrameTexture>,
   pub requests: TraceRequestList,
+  pub rays: WaterRays,
   /// The frame's depth as the water finds it, the grass in it, reduced to its nearest: its own, as the surfaces' is
   /// built before the grass draws, which the water reflects.
   pub pyramid: DepthPyramid,
@@ -42,15 +45,32 @@ impl WaterReflection {
         )
       }),
       requests: TraceRequestList::new(device, "water reflection", 0),
+      rays: WaterRays::new(device, "water reflection", 0),
       pyramid: DepthPyramid::new_nearest(device, size.0, size.1, DepthPyramid::RAY_LEVELS),
       size,
     }
   }
 
-  /// Bytes its histories, its request list and its pyramid take.
+  /// Fits what it leaves the scene pass to how it traces: none untraced, a list an eighth of the drawn pixels large
+  /// while the screen answers first, a record at every drawn pixel while every pixel traces every frame.
+  pub fn fit_trace(&mut self, device: &wgpu::Device, is_traced: bool, is_fully_traced: bool) {
+    let pixels: u32 = self.size.0 * self.size.1;
+
+    self.requests.fit(
+      device,
+      if is_traced && !is_fully_traced {
+        pixels.div_ceil(Self::REQUEST_SHARE)
+      } else {
+        0
+      },
+    );
+    self.rays.fit(device, if is_fully_traced { pixels } else { 0 });
+  }
+
+  /// Bytes its histories, its request list, its rays and its pyramid take.
   pub fn get_memory(&self) -> u64 {
     let histories: u64 = self.histories.get_sides().iter().map(|side| side.get_memory()).sum();
 
-    histories + self.requests.get_memory() + self.pyramid.get_memory()
+    histories + self.requests.get_memory() + self.rays.get_memory() + self.pyramid.get_memory()
   }
 }

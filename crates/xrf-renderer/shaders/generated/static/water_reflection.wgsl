@@ -15,3 +15,4 @@
 @group(4) @binding(10) var nearest_depth: texture_2d<f32>;
 @group(4) @binding(11) var material_target: texture_2d<f32>;
 @group(4) @binding(12) var water_current: texture_2d<f32>;
+@group(4) @binding(13) var<storage, read_write> water_rays: array<u32>;

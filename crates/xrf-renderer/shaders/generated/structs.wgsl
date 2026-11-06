@@ -391,6 +391,12 @@ struct TraceRequest {
   hit_end: u32,
 }
 
+struct WaterRaysFrame {
+  trace_distance: f32,
+  sky_share: f32,
+  frame: u32,
+}
+
 struct Surroundings {
   to_sun: vec4<f32>,
   face: vec4<f32>,
