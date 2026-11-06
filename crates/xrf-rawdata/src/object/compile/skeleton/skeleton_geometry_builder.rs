@@ -2,24 +2,25 @@ use std::collections::HashMap;
 
 use xrf_editable_object::{EditableBone, EditableMesh, EditableObjectFile, EditableSurface, EditableSurfaceFaces};
 use xrf_error::{XrfError, XrfResult};
-use xrf_math::Aabb;
+use xrf_math::{Aabb, Vector3d};
 
 use crate::object::compile::skeleton::breakable_parts::BreakableParts;
 use crate::object::compile::skeleton::skeleton_geometry::SkeletonGeometry;
 use crate::object::compile::skeleton::skeleton_split::SkeletonSplit;
 use crate::object::compile::skeleton::skeleton_vertex::{SkeletonVertex, SkeletonVertexBone};
 use crate::object::compile::skeleton::skin_corner::SkinCorner;
+use crate::object::compile::skeleton::tangent_basis::TangentBasis;
 use crate::object::compile::skeleton::vertex_packer::VertexPacker;
 
-/// Builds a skeleton object's splits as `CExportSkeleton::PrepareGeometry` does, up to the tangent pass.
+/// Builds a skeleton object's splits as `CExportSkeleton::PrepareGeometry` does, its tangent pass included.
 ///
 /// Every mesh's faces are taken surface by surface in the object's surface order, the closest record of the order the
-/// export walks them in (their addresses in memory), each surface's faces as the mesh lists them. A face's link count is its
-/// widest corner's; a corner of a face whose corners all follow one bone lists that bone twice, the copy weightless,
-/// and any other corner lists its own bones, each sorted by bone. The face goes to the split of its surface's engine
-/// shader and texture and its bones' breakable part, made in the order first needed, and a two-sided surface's face
-/// goes again mirrored, its normals turned around. Vertices no face kept are dropped, as the tangent pass's cleanup
-/// does.
+/// export walks them in (their addresses in memory), each surface's faces as the mesh lists them. A face's link count
+/// is its widest corner's; a corner of a face whose corners all follow one bone lists that bone twice, the copy
+/// weightless, and any other corner lists its own bones, each sorted by bone. The face goes to the split of its
+/// surface's engine shader and texture and its bones' breakable part, made in the order first needed, and a two-sided
+/// surface's face goes again mirrored, its normals turned around. Each split then goes through the tangent pass
+/// ([`TangentBasis`]).
 pub(crate) struct SkeletonGeometryBuilder {
   splits: Vec<(SkeletonSplit, VertexPacker)>,
   bounds: Aabb,
@@ -119,7 +120,7 @@ impl SkeletonGeometryBuilder {
       }
     }
 
-    Ok(builder.finish())
+    builder.finish()
   }
 
   /// The object's box, `CEditableObject::UpdateBox`: every mesh's stored bounds together.
@@ -195,6 +196,9 @@ impl SkeletonGeometryBuilder {
     SkeletonVertex {
       position: corner.position,
       normal: corner.normal,
+      // What `SSkelVert` starts with, until the tangent pass.
+      tangent: Vector3d::X,
+      binormal: Vector3d::Z,
       texture_coordinate: corner.texture_coordinate,
       bones,
     }
@@ -250,8 +254,8 @@ impl SkeletonGeometryBuilder {
     })
   }
 
-  /// The splits that kept a face, each with only the vertices its faces use and its bones listed once.
-  fn finish(self) -> SkeletonGeometry {
+  /// The splits that kept a face, each through the tangent pass (see [`TangentBasis`]) and with its bones listed once.
+  fn finish(self) -> XrfResult<SkeletonGeometry> {
     let mut dropped_faces: usize = 0;
     let mut splits: Vec<SkeletonSplit> = Vec::with_capacity(self.splits.len());
 
@@ -262,7 +266,7 @@ impl SkeletonGeometryBuilder {
         continue;
       }
 
-      let (vertices, faces) = Self::drop_isolated_vertices(packer.vertices, packer.faces);
+      let (vertices, faces) = TangentBasis::mend(packer.vertices, &packer.faces)?;
 
       split.used_bones.sort_unstable();
       split.used_bones.dedup();
@@ -271,37 +275,6 @@ impl SkeletonGeometryBuilder {
       splits.push(split);
     }
 
-    SkeletonGeometry { splits, dropped_faces }
-  }
-
-  /// `t_remove_isolated_verts`: the vertices some face uses, in their order, and the faces renumbered to them.
-  fn drop_isolated_vertices(
-    vertices: Vec<SkeletonVertex>,
-    faces: Vec<[u16; 3]>,
-  ) -> (Vec<SkeletonVertex>, Vec<[u16; 3]>) {
-    let mut is_used: Vec<bool> = vec![false; vertices.len()];
-
-    for face in &faces {
-      for vertex in face {
-        is_used[usize::from(*vertex)] = true;
-      }
-    }
-
-    let mut renumbered: Vec<u16> = vec![0; vertices.len()];
-    let mut kept: Vec<SkeletonVertex> = Vec::with_capacity(vertices.len());
-
-    for ((vertex, used), number) in vertices.into_iter().zip(is_used).zip(renumbered.iter_mut()) {
-      if used {
-        *number = u16::try_from(kept.len()).expect("a split's vertices fit 16-bit indices");
-        kept.push(vertex);
-      }
-    }
-
-    let faces: Vec<[u16; 3]> = faces
-      .into_iter()
-      .map(|face| face.map(|vertex| renumbered[usize::from(vertex)]))
-      .collect();
-
-    (kept, faces)
+    Ok(SkeletonGeometry { splits, dropped_faces })
   }
 }
