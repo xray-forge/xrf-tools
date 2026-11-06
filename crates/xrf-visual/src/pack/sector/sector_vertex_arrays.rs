@@ -1,6 +1,6 @@
 use byteorder::ByteOrder;
 use xrf_error::{XrfError, XrfResult};
-use xrf_level::{LevelVertex, LevelVertexLayout, LevelVertexPayload};
+use xrf_level::{LevelVertex, LevelVertexBytes, LevelVertexLayout, LevelVertexPayload};
 use xrf_math::Vector3d;
 
 use crate::data::sector::sector_attributes::SectorAttributes;
@@ -88,39 +88,56 @@ impl SectorVertexArrays {
       )));
     }
 
-    for vertex in payload.vertices() {
-      Self::push_vector(&mut self.positions, &convert_vector(&vertex.get_position::<T>()));
+    // One array at a time, each sized once: a sector packs millions of vertices, and deciding every attribute and growing
+    // every array per vertex was a third of packing a terrain sector.
+    let count: usize = payload.len();
 
-      if self.attributes.normals {
-        Self::push_direction(&mut self.normals, vertex.get_normal());
-      }
+    self.positions.reserve(count * 3);
+    self.positions.extend(payload.vertices().flat_map(|vertex| {
+      let position: Vector3d = convert_vector(&vertex.get_position::<T>());
 
-      if self.attributes.tangents {
-        Self::push_direction(&mut self.tangents, vertex.get_tangent());
-      }
+      [position.x, position.y, position.z]
+    }));
 
-      if self.attributes.binormals {
-        Self::push_direction(&mut self.binormals, vertex.get_binormal());
-      }
+    if self.attributes.normals {
+      Self::push_directions(&mut self.normals, payload, |vertex| vertex.get_normal());
+    }
 
-      if self.attributes.uvs {
+    if self.attributes.tangents {
+      Self::push_directions(&mut self.tangents, payload, |vertex| vertex.get_tangent());
+    }
+
+    if self.attributes.binormals {
+      Self::push_directions(&mut self.binormals, payload, |vertex| vertex.get_binormal());
+    }
+
+    if self.attributes.uvs {
+      self.uvs.reserve(count * uv_components);
+
+      for vertex in payload.vertices() {
         let shorts: [i16; LevelVertexLayout::TREE_COORDINATE_SHORTS] =
           vertex.get_texture_coordinate::<T>().unwrap_or_default();
 
         self.uvs.extend_from_slice(&shorts[..uv_components]);
       }
+    }
 
-      if self.attributes.lightmap_uvs {
-        self
-          .lightmap_uvs
-          .extend_from_slice(&vertex.get_lightmap_coordinate::<T>().unwrap_or(Self::NEUTRAL_LIGHTMAP));
-      }
+    if self.attributes.lightmap_uvs {
+      self.lightmap_uvs.reserve(count * 2);
+      self.lightmap_uvs.extend(
+        payload
+          .vertices()
+          .flat_map(|vertex| vertex.get_lightmap_coordinate::<T>().unwrap_or(Self::NEUTRAL_LIGHTMAP)),
+      );
+    }
 
-      if self.attributes.colors {
-        self
-          .colors
-          .extend_from_slice(&vertex.get_color().unwrap_or(Self::NEUTRAL_COLOR));
-      }
+    if self.attributes.colors {
+      self.colors.reserve(count * 4);
+      self.colors.extend(
+        payload
+          .vertices()
+          .flat_map(|vertex| vertex.get_color().unwrap_or(Self::NEUTRAL_COLOR)),
+      );
     }
 
     Ok(())
@@ -182,21 +199,22 @@ impl SectorVertexArrays {
     declared.then(|| builder.push_u8_section(values))
   }
 
-  /// A direction's four bytes, its z negated into renderer space, or the neutral one where the vertex carries none.
-  fn push_direction(values: &mut Vec<u8>, direction: Option<[u8; 4]>) {
-    let Some(mut bytes) = direction else {
-      values.extend_from_slice(&Self::NEUTRAL_DIRECTION);
+  /// One direction of every vertex, four bytes each with its z negated into renderer space, or the neutral one where a
+  /// vertex carries none.
+  fn push_directions(
+    values: &mut Vec<u8>,
+    payload: &LevelVertexPayload,
+    direction: impl Fn(&LevelVertexBytes<'_>) -> Option<[u8; 4]>,
+  ) {
+    values.reserve(payload.len() * 4);
+    values.extend(payload.vertices().flat_map(|vertex| {
+      let Some(mut bytes) = direction(&vertex) else {
+        return Self::NEUTRAL_DIRECTION;
+      };
 
-      return;
-    };
+      bytes[LevelVertex::DIRECTION_Z] = u8::MAX - bytes[LevelVertex::DIRECTION_Z];
 
-    bytes[LevelVertex::DIRECTION_Z] = u8::MAX - bytes[LevelVertex::DIRECTION_Z];
-    values.extend_from_slice(&bytes);
-  }
-
-  fn push_vector(values: &mut Vec<f32>, vector: &Vector3d) {
-    values.push(vector.x);
-    values.push(vector.y);
-    values.push(vector.z);
+      bytes
+    }));
   }
 }
