@@ -4,7 +4,8 @@ use xrf_editable_object::{
 };
 use xrf_error::{XrfError, XrfResult};
 use xrf_ogf::{OgfBone, OgfBoneIkData, OgfFile};
-use xrf_skeleton::SkeletonJointLimit;
+
+use crate::object::joint_limit_sense::JointLimitSense;
 
 /// Rebuilds an editable object's bones from an OGF's bones chunk and its IK data, which `CBone::ExportOGF` wrote from
 /// them.
@@ -63,7 +64,7 @@ impl BoneConverter {
       joint_flags: Some(record.joint.ik_flags),
       joint: EditableBoneJoint {
         kind: record.joint.kind,
-        limits: record.joint.limits.clone().map(Self::to_authored_limit),
+        limits: record.joint.limits.clone().map(JointLimitSense::flip),
         spring_factor: record.joint.spring_factor,
         damping_factor: record.joint.damping_factor,
       },
@@ -77,16 +78,6 @@ impl BoneConverter {
         center: record.center_of_mass,
       }),
       layout: ChunkLayout::default(),
-    }
-  }
-
-  /// A limit as the editor authored it: `SJointIKData::Export` writes `-max` then `-min`, for the physics engine's
-  /// sense of rotation.
-  pub(crate) fn to_authored_limit(stored: SkeletonJointLimit) -> SkeletonJointLimit {
-    SkeletonJointLimit {
-      min: -stored.max,
-      max: -stored.min,
-      ..stored
     }
   }
 }

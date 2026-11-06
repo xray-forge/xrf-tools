@@ -37,6 +37,25 @@ impl OgfModelType {
     }
   }
 
+  /// The byte a header stores for this kind, the inverse of [`Self::from_raw`].
+  pub const fn to_raw(self) -> u8 {
+    match self {
+      Self::Normal => 0,
+      Self::Hierarchy => 1,
+      Self::Progressive => 2,
+      Self::SkeletonAnim => 3,
+      Self::SkeletonGeomdefPm => 4,
+      Self::SkeletonGeomdefSt => 5,
+      Self::Lod => 6,
+      Self::TreeSt => 7,
+      Self::ParticleEffect => 8,
+      Self::ParticleGroup => 9,
+      Self::SkeletonRigid => 10,
+      Self::TreePm => 11,
+      Self::FluidVolume => 12,
+    }
+  }
+
   /// Engine identifier for a raw model type byte, or a labelled unknown for a byte the engine has no
   /// name for. Unknown bytes keep their value visible rather than collapsing to one label.
   pub fn label(raw: u8) -> String {

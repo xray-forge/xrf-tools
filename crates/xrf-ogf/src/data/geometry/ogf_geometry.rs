@@ -1,5 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReader};
+use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::data::geometry::ogf_fvf::OgfFvf;
@@ -151,6 +151,48 @@ impl OgfGeometry {
     Ok(vertices.chunks_exact(vertex_size))
   }
 
+  /// Writes a skinned child's vertices and indices as the skeleton export writes them: the vertices chunk tagged with
+  /// the plain link count every vertex is laid out in, then the indices chunk, its count first.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the vertices are not all laid out in one link count, or a count outgrows a `u32`.
+  pub fn write_skinned<T: ByteOrder>(writer: &mut ChunkWriter, vertices: &[OgfVertex], indices: &[u16]) -> XrfResult {
+    let links: usize = vertices.first().map_or(1, |vertex| vertex.links.len());
+
+    if vertices.iter().any(|vertex| vertex.links.len() != links) {
+      return Err(XrfError::new_invalid_error(
+        "A skinned child's vertices are written in one link layout, the child's widest",
+      ));
+    }
+
+    let count = |length: usize, what: &str| {
+      u32::try_from(length)
+        .map_err(|_| XrfError::new_invalid_error(format!("A child holds more {what} than a u32 counts")))
+    };
+    let mut vertices_chunk: ChunkWriter = ChunkWriter::new();
+
+    vertices_chunk.write_u32::<T>(count(links, "links")?)?;
+    vertices_chunk.write_u32::<T>(count(vertices.len(), "vertices")?)?;
+
+    for vertex in vertices {
+      vertex.write::<T>(&mut vertices_chunk)?;
+    }
+
+    let mut indices_chunk: ChunkWriter = ChunkWriter::new();
+
+    indices_chunk.write_u32::<T>(count(indices.len(), "indices")?)?;
+
+    for index in indices {
+      indices_chunk.write_u16::<T>(*index)?;
+    }
+
+    vertices_chunk.flush_chunk_into::<T>(writer, Self::VERTICES_CHUNK_ID)?;
+    indices_chunk.flush_chunk_into::<T>(writer, Self::INDICES_CHUNK_ID)?;
+
+    Ok(())
+  }
+
   fn read_indices<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<u16>> {
     let indices: Vec<u16> = reader.read_u16_vector::<T>()?;
     reader.assert_read("Expect all data to be read from ogf indices")?;
@@ -171,7 +213,69 @@ mod tests {
 
   use super::OgfGeometry;
   use crate::data::geometry::ogf_static_vertex::OgfStaticVertex;
+  use crate::data::geometry::skin::ogf_vertex::OgfVertex;
+  use crate::data::geometry::skin::ogf_vertex_link::OgfVertexLink;
+  use crate::data::geometry::skin::ogf_vertex_links::OgfVertexLinks;
   use crate::data::ogf_model_type::OgfModelType;
+
+  fn skinned(links: &[(u16, f32)], texture_u: f32) -> OgfVertex {
+    OgfVertex {
+      position: Vector3d::new(1.0, 2.0, 3.0),
+      normal: Vector3d::Y,
+      tangent: Vector3d::X,
+      binormal: Vector3d::Z,
+      texture_u,
+      texture_v: 0.5,
+      links: OgfVertexLinks::from_slice(
+        &links
+          .iter()
+          .map(|(bone, weight)| OgfVertexLink {
+            bone: *bone,
+            weight: *weight,
+          })
+          .collect::<Vec<_>>(),
+      ),
+    }
+  }
+
+  fn write_then_read(vertices: &[OgfVertex], indices: &[u16]) -> XrfResult<OgfGeometry> {
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    OgfGeometry::write_skinned::<XRayByteOrder>(&mut writer, vertices, indices)?;
+
+    let bytes: Vec<u8> = writer.flush_raw_into_buffer()?;
+    let chunks = ChunkReader::from_bytes(&bytes)?.read_children()?;
+
+    Ok(
+      OgfGeometry::read_from_chunks::<XRayByteOrder, _>(&chunks, Some(OgfModelType::SkeletonGeomdefSt))?
+        .expect("geometry chunks are present"),
+    )
+  }
+
+  #[test]
+  fn writes_skinned_vertices_in_each_layout_that_read_back_alike() -> XrfResult {
+    // Weights a binary fraction holds exactly, since a reader derives the last from the rest.
+    for vertices in [
+      vec![skinned(&[(7, 1.0)], 0.25), skinned(&[(2, 1.0)], 0.75)],
+      vec![skinned(&[(1, 0.75), (4, 0.25)], 0.25)],
+      vec![skinned(&[(1, 0.5), (3, 0.25), (2, 0.25)], 0.25)],
+    ] {
+      let geometry: OgfGeometry = write_then_read(&vertices, &[0, 0, 0])?;
+
+      assert_eq!(geometry.vertex_format, Some(vertices[0].links.len() as u32));
+      assert_eq!(geometry.get_skinned_vertices(), Some(vertices.as_slice()));
+      assert_eq!(geometry.indices, Some(vec![0, 0, 0]));
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn refuses_vertices_of_two_layouts_in_one_child() {
+    let vertices: [OgfVertex; 2] = [skinned(&[(1, 1.0)], 0.0), skinned(&[(1, 0.5), (2, 0.5)], 0.0)];
+
+    assert!(OgfGeometry::write_skinned::<XRayByteOrder>(&mut ChunkWriter::new(), &vertices, &[]).is_err());
+  }
 
   #[test]
   fn test_read() -> XrfResult {

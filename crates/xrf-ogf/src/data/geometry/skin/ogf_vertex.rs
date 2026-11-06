@@ -1,4 +1,6 @@
-use byteorder::ByteOrder;
+use byteorder::{ByteOrder, WriteBytesExt};
+use xrf_chunk::{ChunkReadWrite, ChunkWriter};
+use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 
 use crate::data::geometry::skin::ogf_vertex_link::OgfVertexLink;
@@ -85,6 +87,66 @@ impl OgfVertex {
       &vertex[uv_offset..uv_offset + Self::UV_SIZE],
       OgfVertexLinks::from_slice(links),
     )
+  }
+
+  /// Writes the vertex in the skin layout of its link count, as `CExportSkeleton::SSplit::Save` lays it out and
+  /// [`Self::read_from_slice`] reads it: one link as the four vectors, the texture coordinate and the bone as a `u32`;
+  /// more as the bones as `u16`s, the four vectors, the weights but the last (two links store the second bone's) and
+  /// the texture coordinate.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the vertex carries no link or more than four, or the writer refuses the bytes.
+  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+    let links: &[OgfVertexLink] = &self.links;
+
+    if links.is_empty() || links.len() > OgfVertexLinks::CAPACITY {
+      return Err(XrfError::new_invalid_error(format!(
+        "A skinned vertex carries one to {} links, not {}",
+        OgfVertexLinks::CAPACITY,
+        links.len()
+      )));
+    }
+
+    if let [link] = links {
+      self.write_vectors::<T>(writer)?;
+      self.write_texture_coordinate::<T>(writer)?;
+      writer.write_u32::<T>(u32::from(link.bone))?;
+
+      return Ok(());
+    }
+
+    for link in links {
+      writer.write_u16::<T>(link.bone)?;
+    }
+
+    self.write_vectors::<T>(writer)?;
+
+    match links {
+      [_, second] => writer.write_f32::<T>(second.weight)?,
+      _ => {
+        for link in &links[..links.len() - 1] {
+          writer.write_f32::<T>(link.weight)?;
+        }
+      }
+    }
+
+    self.write_texture_coordinate::<T>(writer)
+  }
+
+  fn write_vectors<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+    for vector in [&self.position, &self.normal, &self.tangent, &self.binormal] {
+      vector.write::<T>(writer)?;
+    }
+
+    Ok(())
+  }
+
+  fn write_texture_coordinate<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_f32::<T>(self.texture_u)?;
+    writer.write_f32::<T>(self.texture_v)?;
+
+    Ok(())
   }
 
   fn read_geometry<T: ByteOrder>(vectors: &[u8], uv: &[u8], links: OgfVertexLinks) -> Self {

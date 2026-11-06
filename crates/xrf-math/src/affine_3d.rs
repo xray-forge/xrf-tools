@@ -26,15 +26,95 @@ impl Affine3d {
   /// Four vectors, twelve `f32`s: the 64-byte `Matrix4x4` less its fourth column.
   pub const SERIALIZED_SIZE: u64 = 48;
 
+  /// No rotation and no translation.
+  pub const IDENTITY: Self = Self {
+    x_axis: Vector3d::X,
+    y_axis: Vector3d::Y,
+    z_axis: Vector3d::Z,
+    translation: Vector3d::ZERO,
+  };
+
+  /// A rotation by heading, pitch and bank in radians, `Fmatrix::setHPB`, untranslated.
+  pub fn from_heading_pitch_bank(heading: f32, pitch: f32, bank: f32) -> Self {
+    let (sin_heading, cos_heading): (f32, f32) = heading.sin_cos();
+    let (sin_pitch, cos_pitch): (f32, f32) = pitch.sin_cos();
+    let (sin_bank, cos_bank): (f32, f32) = bank.sin_cos();
+    let (cc, cs, sc, ss): (f32, f32, f32, f32) = (
+      cos_heading * cos_bank,
+      cos_heading * sin_bank,
+      sin_heading * cos_bank,
+      sin_heading * sin_bank,
+    );
+
+    Self {
+      x_axis: Vector3d::new(cc - sin_pitch * ss, -cos_pitch * sin_bank, sin_pitch * cs + sc),
+      y_axis: Vector3d::new(sin_pitch * sc + cs, cos_pitch * cos_bank, ss - sin_pitch * cc),
+      z_axis: Vector3d::new(-cos_pitch * sin_heading, sin_pitch, cos_pitch * cos_heading),
+      translation: Vector3d::ZERO,
+    }
+  }
+
+  /// The rotation a bone's rest angles name, `Fmatrix::setXYZi`: heading, pitch and bank of `-y`, `-x` and `-z`.
+  pub fn from_xyz_inverse(angles: &Vector3d) -> Self {
+    Self::from_heading_pitch_bank(-angles.y, -angles.x, -angles.z)
+  }
+
+  /// The same transform moved to `translation`.
+  pub fn with_translation(self, translation: Vector3d) -> Self {
+    Self { translation, ..self }
+  }
+
   /// Places a point, `Fmatrix::transform_tiny`.
   pub fn transform_point(&self, point: &Vector3d) -> Vector3d {
     let mut placed: Vector3d = self.translation;
 
-    placed += &(&self.x_axis * point.x);
-    placed += &(&self.y_axis * point.y);
-    placed += &(&self.z_axis * point.z);
+    placed += &self.transform_direction(point);
 
     placed
+  }
+
+  /// Turns a direction, ignoring the translation, `Fmatrix::transform_dir`.
+  pub fn transform_direction(&self, direction: &Vector3d) -> Vector3d {
+    let mut turned: Vector3d = &self.x_axis * direction.x;
+
+    turned += &(&self.y_axis * direction.y);
+    turned += &(&self.z_axis * direction.z);
+
+    turned
+  }
+
+  /// `inner` applied first, then this, `Fmatrix::mul_43(self, inner)`: how a child's local transform becomes its world
+  /// transform under its parent's.
+  pub fn compose(&self, inner: &Self) -> Self {
+    Self {
+      x_axis: self.transform_direction(&inner.x_axis),
+      y_axis: self.transform_direction(&inner.y_axis),
+      z_axis: self.transform_direction(&inner.z_axis),
+      translation: self.transform_point(&inner.translation),
+    }
+  }
+
+  /// The inverse of a rotation and translation, its axes transposed: valid only while the axes stay orthonormal.
+  pub fn inverse_rigid(&self) -> Self {
+    let axes: [Vector3d; 3] = [self.x_axis, self.y_axis, self.z_axis];
+    let column = |index: usize| {
+      Vector3d::new(
+        axes[0].to_array()[index],
+        axes[1].to_array()[index],
+        axes[2].to_array()[index],
+      )
+    };
+
+    Self {
+      x_axis: column(0),
+      y_axis: column(1),
+      z_axis: column(2),
+      translation: Vector3d::new(
+        -self.translation.dot(&self.x_axis),
+        -self.translation.dot(&self.y_axis),
+        -self.translation.dot(&self.z_axis),
+      ),
+    }
   }
 }
 
@@ -81,6 +161,43 @@ mod tests {
       stretched().transform_point(&Vector3d::new(1.0, 1.0, 1.0)),
       Vector3d::new(12.0, 19.0, 33.0)
     );
+  }
+
+  fn is_near(first: &Vector3d, second: &Vector3d) -> bool {
+    first.distance(second) <= 1e-5
+  }
+
+  #[test]
+  fn turns_by_heading_about_the_vertical_axis_as_set_hpb_does() {
+    // A quarter turn of heading takes `x` to `z` and `z` to `-x`, `y` untouched.
+    let turned: Affine3d = Affine3d::from_heading_pitch_bank(std::f32::consts::FRAC_PI_2, 0.0, 0.0);
+
+    assert!(is_near(&turned.x_axis, &Vector3d::new(0.0, 0.0, 1.0)));
+    assert!(is_near(&turned.y_axis, &Vector3d::Y));
+    assert!(is_near(&turned.z_axis, &Vector3d::new(-1.0, 0.0, 0.0)));
+    assert_eq!(
+      Affine3d::from_xyz_inverse(&Vector3d::new(0.0, -std::f32::consts::FRAC_PI_2, 0.0)),
+      turned
+    );
+  }
+
+  #[test]
+  fn composes_a_child_under_its_parent_and_inverts_a_rigid_transform() {
+    let parent: Affine3d =
+      Affine3d::from_heading_pitch_bank(0.3, -0.2, 0.7).with_translation(Vector3d::new(1.0, 2.0, 3.0));
+    let child: Affine3d =
+      Affine3d::from_heading_pitch_bank(-0.5, 0.1, 0.0).with_translation(Vector3d::new(0.0, 0.5, 0.0));
+    let point: Vector3d = Vector3d::new(0.25, -1.0, 2.0);
+    let world: Affine3d = parent.compose(&child);
+
+    assert!(is_near(
+      &world.transform_point(&point),
+      &parent.transform_point(&child.transform_point(&point))
+    ));
+    assert!(is_near(
+      &world.inverse_rigid().transform_point(&world.transform_point(&point)),
+      &point
+    ));
   }
 
   #[test]

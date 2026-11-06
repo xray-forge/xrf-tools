@@ -24,6 +24,8 @@ pub use crate::chunks::mesh::ogf_swi_data_chunk::OgfSwiDataChunk;
 pub use crate::chunks::skeleton::ogf_bones_chunk::OgfBonesChunk;
 pub use crate::chunks::skeleton::ogf_ik_data_chunk::OgfIkDataChunk;
 pub use crate::chunks::skeleton::ogf_kinematics_chunk::OgfKinematicsChunk;
+pub use crate::chunks::skeleton::ogf_lods_chunk::OgfLodsChunk;
+pub use crate::chunks::skeleton::ogf_user_data_chunk::OgfUserDataChunk;
 pub use crate::chunks::visual::ogf_description_chunk::OgfDescriptionChunk;
 pub use crate::chunks::visual::ogf_description_time_width::OgfDescriptionTimeWidth;
 pub use crate::chunks::visual::ogf_header_chunk::OgfHeaderChunk;

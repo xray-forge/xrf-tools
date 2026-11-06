@@ -1,13 +1,15 @@
+use std::io::Write;
+
 use byteorder::ByteOrder;
-use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReader};
+use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::OgfFile;
 
 /// Child visuals carried whole, `OGF_CHILDREN`: numbered chunks from zero, each a visual of its own.
 ///
-/// Read-only, as [`OgfFile`] is: a child is an inspection view, and a narrow edit rewrites the bytes around it instead
-/// (see the reference patchers).
+/// Read as [`OgfFile`]s, which are inspection views: a narrow edit rewrites the bytes around a child instead (see the
+/// reference patchers). A new visual's children are written from their own bytes, [`Self::write_nested`].
 #[derive(Debug)]
 pub struct OgfChildrenChunk {
   pub nested: Vec<OgfFile>,
@@ -42,5 +44,29 @@ impl OgfChildrenChunk {
     reader.assert_read("Expect all data to be read from ogf children")?;
 
     Ok(Self { nested: children })
+  }
+
+  /// Writes the children chunk around `children`, each a child visual's chunks, numbered from zero in order.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when there are more children than a `u32` numbers, or the writer refuses the bytes.
+  pub fn write_nested<T: ByteOrder>(writer: &mut ChunkWriter, children: &[Vec<u8>]) -> XrfResult {
+    let mut nested: ChunkWriter = ChunkWriter::new();
+
+    for (index, child) in children.iter().enumerate() {
+      let mut numbered: ChunkWriter = ChunkWriter::new();
+
+      numbered.write_all(child)?;
+      numbered.flush_chunk_into::<T>(
+        &mut nested,
+        u32::try_from(index)
+          .map_err(|_| XrfError::new_invalid_error("An OGF holds more children than a u32 numbers"))?,
+      )?;
+    }
+
+    nested.flush_chunk_into::<T>(writer, Self::CHUNK_ID)?;
+
+    Ok(())
   }
 }

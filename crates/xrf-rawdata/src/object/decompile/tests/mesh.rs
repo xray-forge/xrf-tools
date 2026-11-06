@@ -4,8 +4,8 @@ use xrf_skeleton::SkeletonJointLimit;
 
 use crate::object::decompile::geometry::ogf_corner::OgfCorner;
 use crate::object::decompile::mesh::assembled_mesh::AssembledMesh;
-use crate::object::decompile::skeleton::bone_converter::BoneConverter;
 use crate::object::decompile::tests::fixtures::{DOWN, UP, assemble, corner, surface, with_links, with_uv};
+use crate::object::joint_limit_sense::JointLimitSense;
 
 #[test]
 fn maps_a_seam_corner_into_the_polygon_uv_map_and_shares_references() -> XrfResult {
@@ -111,7 +111,7 @@ fn splits_a_child_of_plain_and_two_sided_faces_into_two_surfaces() -> XrfResult 
 }
 
 #[test]
-fn turns_a_stored_joint_limit_back_into_the_authored_one() {
+fn flips_a_joint_limit_between_the_stored_and_the_authored_sense() {
   // `SJointIKData::Export` writes `-max` then `-min`.
   let stored: SkeletonJointLimit = SkeletonJointLimit {
     min: -0.5,
@@ -119,13 +119,15 @@ fn turns_a_stored_joint_limit_back_into_the_authored_one() {
     spring_factor: 1.0,
     damping_factor: 2.0,
   };
+  let authored: SkeletonJointLimit = JointLimitSense::flip(stored.clone());
 
   assert_eq!(
-    BoneConverter::to_authored_limit(stored.clone()),
+    authored,
     SkeletonJointLimit {
       min: -0.2,
       max: 0.5,
-      ..stored
+      ..stored.clone()
     }
   );
+  assert_eq!(JointLimitSense::flip(authored), stored);
 }
