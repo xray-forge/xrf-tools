@@ -2,8 +2,9 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use clap::{Arg, ArgMatches, Command, value_parser};
+use rayon::prelude::*;
 use xrf_archive::{ArchiveFileDescriptor, ArchiveProject};
-use xrf_error::XrfError;
+use xrf_error::{XrfError, XrfResult};
 use xrf_output::OutputOptions;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
 use xrf_vfs::{XrayArchiveSource, XrayPathCollision, XrayShadowingEntry};
@@ -69,8 +70,20 @@ impl GenericCommand for VerifyCommand {
     let mut findings: Vec<Finding> = Vec::new();
     let mut status: Status = Status::Passed;
 
-    for entry in entries {
-      match project.read_file_bytes(&entry.name) {
+    // Opened once for the sweep and read by position on every worker, as an unpack reads them, rather than every volume
+    // opened again for each entry on one thread. Each payload is dropped as soon as it is judged, and the outcomes are
+    // judged in the set's order, so the findings are the ones a sweep one entry at a time would make.
+    let outcomes: Vec<XrfResult> = match project.open_volumes() {
+      Ok(volumes) => entries
+        .par_iter()
+        .map(|entry| volumes.read_bytes(entry).map(drop))
+        .collect(),
+      // A set that will not open again is its first entry's failure to read, which ends the sweep there.
+      Err(error) => vec![Err(error)],
+    };
+
+    for (entry, outcome) in entries.iter().zip(outcomes) {
+      match outcome {
         Ok(_) => xrf_output::verbose!(output, "Verified {}", entry.name),
         // The sweep cannot finish, but what it already judged is still true and still worth reporting: the check
         // ends in an error carrying it, rather than a pass over the entries it never reached.

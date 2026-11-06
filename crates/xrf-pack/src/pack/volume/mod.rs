@@ -7,6 +7,7 @@
 
 mod alias;
 mod archive_descriptor_table;
+mod archive_prepared_entry;
 mod archive_published_set;
 mod archive_volume_layout;
 mod archive_volume_writer;
@@ -14,6 +15,7 @@ mod descriptor_name;
 
 pub(crate) use alias::{ArchiveAlias, ArchiveAliasCandidate, ArchiveAliasTable};
 pub(crate) use archive_descriptor_table::ArchiveDescriptorTable;
+pub(crate) use archive_prepared_entry::ArchivePreparedEntry;
 pub(crate) use archive_published_set::ArchivePublishedSet;
 pub(crate) use archive_volume_layout::ArchiveVolumeLayout;
 pub(crate) use archive_volume_writer::ArchiveVolumeWriter;

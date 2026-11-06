@@ -1,18 +1,16 @@
-use std::borrow::Cow;
 use std::fs::File;
 use std::io::{BufWriter, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 
-use lzokay::compress::Dict;
 use xrf_archive::{CHUNK_ID_DATA, CHUNK_ID_METADATA};
 use xrf_error::{XrfError, XrfResult};
-use xrf_extension::{XrayExtension, XrayExtensionOf};
 use xrf_utils::to_format_size;
 
-use crate::pack::config::{ArchivePackConfig, ArchivePackMode};
+use crate::pack::config::ArchivePackConfig;
 use crate::pack::source::{ArchivePackEntry, ArchivePackPayloads};
 use crate::pack::volume::{
-  ArchiveAlias, ArchiveAliasCandidate, ArchiveAliasTable, ArchiveDescriptorTable, ArchiveVolumeLayout, DescriptorName,
+  ArchiveAlias, ArchiveAliasCandidate, ArchiveAliasTable, ArchiveDescriptorTable, ArchivePreparedEntry,
+  ArchiveVolumeLayout, DescriptorName,
 };
 use crate::pack::{ArchivePackEntryOutcome, ArchivePackNarrator, ArchivePackResult};
 
@@ -36,22 +34,11 @@ pub(crate) struct ArchiveVolumeWriter<'a> {
   descriptors: ArchiveDescriptorTable,
   /// Borrows the entries written so far; the source table they belong to outlives the writer.
   aliases: ArchiveAliasTable<'a>,
-  /// The coder's working state, large enough to be worth building once on the heap and reusing for every entry.
-  dict: Box<Dict>,
   volume_index: usize,
   result: ArchivePackResult,
 }
 
 impl<'a> ArchiveVolumeWriter<'a> {
-  /// Extensions the engine expects to find compressed; everything else is stored.
-  ///
-  /// `testVFS` in `xrCompress.cpp` inverts the intuitive rule: only text the engine parses is worth the
-  /// LZO round trip, because meshes, textures, and sounds are already compressed in their own formats.
-  const COMPRESSED_EXTENSIONS: &[XrayExtension] = &[XrayExtension::Xml, XrayExtension::Ltx, XrayExtension::Script];
-
-  /// Compression must save more than this to be worth keeping, matching xrCompress.
-  const COMPRESSION_MARGIN: usize = 16;
-
   /// Open the first volume of the set, seeded with the directory rows every volume of it repeats.
   pub(crate) fn open(
     config: &'a ArchivePackConfig,
@@ -70,7 +57,6 @@ impl<'a> ArchiveVolumeWriter<'a> {
       position: 0,
       descriptors,
       aliases: ArchiveAliasTable::default(),
-      dict: Dict::new(),
       volume_index: 0,
       result: ArchivePackResult::default(),
     };
@@ -80,24 +66,13 @@ impl<'a> ArchiveVolumeWriter<'a> {
     Ok(writer)
   }
 
-  /// Place one entry in a volume and write it there.
+  /// Place one prepared entry in a volume and write it there.
   ///
-  /// Reads as it decides: measure the entry, offer it to the volume holding its twin, make room for it, write it.
-  ///
-  /// The payload borrows the bytes that were read whenever it is stored rather than compressed, which is every entry
-  /// the engine does not expect compressed. Copying them would double the largest entry's cost in memory and memcpy
-  /// the whole archive on the way past.
-  pub(crate) fn write_entry(&mut self, entry: &'a ArchivePackEntry) -> XrfResult<()> {
-    let contents: Vec<u8> = self.payloads.read(entry)?;
-    let size_real: u32 = u32::try_from(contents.len()).map_err(|_| {
-      XrfError::new_invalid_error(format!(
-        "File '{}' is {} bytes, larger than an archive entry can describe",
-        entry.name,
-        contents.len()
-      ))
-    })?;
-
-    let crc: u32 = crc32fast::hash(&contents);
+  /// Decides as it places: offer the entry to the volume holding its twin, make room for it, write it. A stored payload
+  /// is the bytes that were read, never a copy of them: copying would double the largest entry's cost in memory and
+  /// memcpy the whole archive on the way past.
+  pub(crate) fn write_entry(&mut self, entry: &'a ArchivePackEntry, prepared: ArchivePreparedEntry) -> XrfResult<()> {
+    let (size_real, crc): (u32, u32) = (prepared.size_real, prepared.crc);
     let name: DescriptorName = DescriptorName::encode(&entry.name)?;
 
     self.result.size_source += u64::from(size_real);
@@ -105,7 +80,7 @@ impl<'a> ArchiveVolumeWriter<'a> {
     // An alias costs a row and no payload, but only in the volume holding the payload it points at: moving the entry
     // on turns it back into a copy, so this volume is offered it first.
     if let Some(ArchiveAliasCandidate { source, alias }) =
-      self.aliases.find(self.payloads, &contents, size_real, crc)?
+      self.aliases.find(self.payloads, &prepared.contents, size_real, crc)?
     {
       if self.fits(0, name.get_row_size()) {
         self.place(
@@ -124,7 +99,7 @@ impl<'a> ArchiveVolumeWriter<'a> {
       self.start_next_volume()?;
     }
 
-    let (payload, outcome): (Cow<'_, [u8]>, ArchivePackEntryOutcome) = self.compress_payload(entry, &contents)?;
+    let payload: &[u8] = prepared.get_payload();
     let size_compressed: u32 = to_format_size(payload.len(), "archive entry payload")?;
 
     self.make_room_for(&entry.name, payload.len() as u64, name.get_row_size())?;
@@ -137,12 +112,12 @@ impl<'a> ArchiveVolumeWriter<'a> {
     })?;
 
     if let Some(file) = self.file.as_mut() {
-      file.write_all(&payload)?;
+      file.write_all(payload)?;
     }
 
     self.position += payload.len() as u64;
 
-    self.place(entry, outcome, size_real, size_compressed);
+    self.place(entry, prepared.outcome, size_real, size_compressed);
 
     self.aliases.record(
       entry,
@@ -286,40 +261,5 @@ impl<'a> ArchiveVolumeWriter<'a> {
     self.close_volume()?;
 
     self.open_volume()
-  }
-
-  /// Compress a payload when the engine expects it compressed and the result is actually smaller.
-  ///
-  /// Answers the payload with how it came to be, since the sizes alone cannot tell a stored payload from one that
-  /// reverted or was empty. Deciding only, never counting: what a decision is worth to the summary is
-  /// [`ArchivePackResult::record_outcome`], so the three that all end up stored say so in one place.
-  fn compress_payload<'contents>(
-    &mut self,
-    entry: &ArchivePackEntry,
-    contents: &'contents [u8],
-  ) -> XrfResult<(Cow<'contents, [u8]>, ArchivePackEntryOutcome<'static>)> {
-    let is_expected_compressed: bool = self.config.mode == ArchivePackMode::Compress
-      && XrayExtensionOf::of(&entry.name)
-        .known()
-        .is_some_and(|extension| Self::COMPRESSED_EXTENSIONS.contains(&extension));
-
-    if !is_expected_compressed {
-      return Ok((Cow::Borrowed(contents), ArchivePackEntryOutcome::Stored));
-    }
-
-    if contents.is_empty() {
-      return Ok((Cow::Borrowed(contents), ArchivePackEntryOutcome::Empty));
-    }
-
-    let compressed: Vec<u8> = lzokay::compress::compress_with_dict(contents, &mut self.dict)
-      .map_err(|error| XrfError::new_unexpected_error(format!("Failed to compress '{}': {error}", entry.name)))?;
-
-    // A payload that barely shrinks costs more to decompress than it saves, so it reverts to stored.
-    // The reader tells the two apart by the sizes alone, so this must stay a real size difference.
-    if compressed.len() + Self::COMPRESSION_MARGIN >= contents.len() {
-      return Ok((Cow::Borrowed(contents), ArchivePackEntryOutcome::Reverted));
-    }
-
-    Ok((Cow::Owned(compressed), ArchivePackEntryOutcome::Compressed))
   }
 }
