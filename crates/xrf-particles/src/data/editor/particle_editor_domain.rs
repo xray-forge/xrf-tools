@@ -36,7 +36,7 @@ impl ParticleEditorDomain {
 
     Self {
       domain_type,
-      points: [point.clone(), point.clone(), point],
+      points: [point, point, point],
     }
   }
 
@@ -56,8 +56,8 @@ impl ParticleEditorDomain {
     };
 
     match ParticleVolumeKind::from(self.domain_type) {
-      ParticleVolumeKind::Point => domain.coordinates.0 = a.clone(),
-      ParticleVolumeKind::Line => domain.coordinates = (a.clone(), b - a),
+      ParticleVolumeKind::Point => domain.coordinates.0 = *a,
+      ParticleVolumeKind::Line => domain.coordinates = (*a, b - a),
       ParticleVolumeKind::Box => {
         let (low_x, high_x) = Self::order_pair(a.x, b.x);
         let (low_y, high_y) = Self::order_pair(a.y, b.y);
@@ -68,24 +68,24 @@ impl ParticleEditorDomain {
           Vector3d::new(high_x, high_y, high_z),
         );
       }
-      ParticleVolumeKind::Triangle => Self::compile_planar(&mut domain, a.clone(), b - a, c - a),
-      ParticleVolumeKind::Rectangle => Self::compile_planar(&mut domain, a.clone(), b.clone(), c.clone()),
+      ParticleVolumeKind::Triangle => Self::compile_planar(&mut domain, *a, b - a, c - a),
+      ParticleVolumeKind::Rectangle => Self::compile_planar(&mut domain, *a, *b, *c),
       ParticleVolumeKind::Plane => {
-        let normal: Vector3d = b.clone().normalize_safe();
+        let normal: Vector3d = (*b).normalize_safe();
 
         domain.radius1 = -a.dot(&normal);
-        domain.coordinates = (a.clone(), normal);
+        domain.coordinates = (*a, normal);
       }
       ParticleVolumeKind::Sphere => {
         (domain.radius1, domain.radius2) = Self::order_radii(b.x, b.y);
         domain.radius1_sqr = domain.radius1 * domain.radius1;
         domain.radius2_sqr = domain.radius2 * domain.radius2;
-        domain.coordinates.0 = a.clone();
+        domain.coordinates.0 = *a;
       }
       ParticleVolumeKind::Cylinder | ParticleVolumeKind::Cone => {
         let axis: Vector3d = b - a;
         let axis_length_squared: f32 = axis.length_squared();
-        let normal: Vector3d = axis.clone().normalize_safe();
+        let normal: Vector3d = axis.normalize_safe();
         let (u, v) = Self::orthonormal_basis(&normal);
 
         (domain.radius1, domain.radius2) = Self::order_radii(c.x, c.y);
@@ -96,7 +96,7 @@ impl ParticleEditorDomain {
         } else {
           0.0
         };
-        domain.coordinates = (a.clone(), axis);
+        domain.coordinates = (*a, axis);
         domain.basis = (u, v);
       }
       ParticleVolumeKind::Blob => {
@@ -105,16 +105,16 @@ impl ParticleEditorDomain {
         domain.radius1 = b.x;
         domain.radius2_sqr = -0.5 * inverse * inverse;
         domain.radius2 = Self::ONE_OVER_SQRT_2PI * inverse;
-        domain.coordinates.0 = a.clone();
+        domain.coordinates.0 = *a;
       }
       ParticleVolumeKind::Disc => {
-        let normal: Vector3d = b.clone().normalize_safe();
+        let normal: Vector3d = (*b).normalize_safe();
         let (u, v) = Self::orthonormal_basis(&normal);
 
         (domain.radius1, domain.radius2) = Self::order_radii(c.x, c.y);
         // Holds the plane equation's `d` rather than a radius.
         domain.radius1_sqr = -a.dot(&normal);
-        domain.coordinates = (a.clone(), normal);
+        domain.coordinates = (*a, normal);
         domain.basis = (u, v);
       }
       ParticleVolumeKind::Unknown(_) => {}

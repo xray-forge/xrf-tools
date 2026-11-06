@@ -139,15 +139,60 @@ impl ChunkDataSource for InMemoryChunkDataSource {
       position: 0,
     }
   }
+
+  /// Copies straight out of the shared bytes, where the default zeroes a buffer first and then fills it.
+  fn read_bytes(&mut self, count: usize) -> IoResult<Vec<u8>> {
+    self.read_with(count, <[u8]>::to_vec)
+  }
+
+  /// Lends the bytes where they lie.
+  fn read_with<R>(&mut self, count: usize, visit: impl FnOnce(&[u8]) -> R) -> IoResult<R> {
+    let remaining: &[u8] = self.remaining();
+
+    let Some(bytes) = remaining.get(..count) else {
+      // As a short `read_exact` does, the bytes that were there are consumed before the failure.
+      self.position += remaining.len() as u64;
+
+      return Err(Self::short_read_error());
+    };
+
+    let visited: R = visit(bytes);
+
+    self.position += count as u64;
+
+    Ok(visited)
+  }
+}
+
+impl InMemoryChunkDataSource {
+  /// The bytes from the cursor to the end of the window, without moving the cursor.
+  fn remaining(&self) -> &[u8] {
+    &self.data[self.index_of(self.position)..self.end]
+  }
+
+  /// What a read reaching past the window answers, in the words `Read::read_exact` uses for it.
+  fn short_read_error() -> IoError {
+    IoError::new(ErrorKind::UnexpectedEof, "failed to fill whole buffer")
+  }
 }
 
 impl Read for InMemoryChunkDataSource {
   fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> {
-    let available: usize = self.len() as usize;
-    let count: usize = available.min(buf.len());
-    let from: usize = self.index_of(self.position);
+    let remaining: &[u8] = self.remaining();
+    let count: usize = remaining.len().min(buf.len());
 
-    buf[..count].copy_from_slice(&self.data[from..from + count]);
+    buf[..count].copy_from_slice(&remaining[..count]);
+    self.position += count as u64;
+
+    Ok(count)
+  }
+
+  /// Reserves the rest of the window once and copies it, where the default grows the buffer by probing reads.
+  fn read_to_end(&mut self, buf: &mut Vec<u8>) -> IoResult<usize> {
+    let remaining: &[u8] = self.remaining();
+    let count: usize = remaining.len();
+
+    buf.extend_from_slice(remaining);
     self.position += count as u64;
 
     Ok(count)
@@ -240,6 +285,43 @@ mod tests {
     assert_eq!(source.set_seek(SeekFrom::Start(64)).unwrap(), 64);
     assert_eq!(source.read(&mut [0; 4]).unwrap(), 0);
     assert!(source.set_seek(SeekFrom::Current(-128)).is_err());
+  }
+
+  #[test]
+  fn lends_bytes_where_they_lie_and_moves_past_them() {
+    let mut source: InMemoryChunkDataSource = source().slice(4..12);
+
+    assert_eq!(source.read_with(3, <[u8]>::to_vec).unwrap(), [4, 5, 6]);
+    assert_eq!(source.cursor_pos(), 3);
+    assert_eq!(source.read_at_with(1, 2, <[u8]>::to_vec).unwrap(), [5, 6]);
+    assert_eq!(source.cursor_pos(), 3, "a read at an offset leaves the cursor");
+  }
+
+  #[test]
+  fn fails_a_short_read_as_read_exact_does() {
+    // The words and the cursor match the standard `read_exact`, so a reader's error and position do not depend on
+    // whether it decoded the bytes where they lie or copied them out.
+    let mut lent: InMemoryChunkDataSource = source().slice(0..4);
+    let mut exact: InMemoryChunkDataSource = source().slice(0..4);
+    let mut copied: InMemoryChunkDataSource = source().slice(0..4);
+
+    let lent_error: String = lent.read_with(6, |_| ()).unwrap_err().to_string();
+    let exact_error: String = exact.read_exact(&mut [0; 6]).unwrap_err().to_string();
+
+    assert_eq!(lent_error, "failed to fill whole buffer");
+    assert_eq!(exact_error, lent_error);
+    assert!(copied.read_bytes(6).is_err());
+    assert_eq!([lent.cursor_pos(), exact.cursor_pos(), copied.cursor_pos()], [4; 3]);
+  }
+
+  #[test]
+  fn reads_the_rest_of_the_window_in_one_step() {
+    let mut source: InMemoryChunkDataSource = source().slice(28..40);
+    let mut rest: Vec<u8> = vec![1];
+
+    assert_eq!(source.read_to_end(&mut rest).unwrap(), 4);
+    assert_eq!(rest, [1, 28, 29, 30, 31]);
+    assert_eq!(source.read_to_end(&mut rest).unwrap(), 0);
   }
 
   #[test]

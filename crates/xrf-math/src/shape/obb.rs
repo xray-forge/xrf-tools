@@ -8,7 +8,7 @@ use crate::vector_3d::Vector3d;
 /// An oriented box, the engine's `Fobb` (`xrCore/_obb.h`): a rotation, the centre it is placed at, and half its size
 /// along each of its own axes, in the order the engine stores them.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Obb {
   /// `m_rotate`, an `Fmatrix33`: its rows are the box's axes.

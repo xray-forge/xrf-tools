@@ -32,10 +32,7 @@ impl LevelVertexPayload {
 
   /// Each vertex, a stride of bytes read through the layout.
   pub fn vertices(&self) -> impl Iterator<Item = LevelVertexBytes<'_>> {
-    self
-      .bytes
-      .chunks_exact(self.layout.get_stride() as usize)
-      .map(|bytes| LevelVertexBytes::new(&self.layout, bytes))
+    LevelVertexBytes::each(&self.layout, &self.bytes)
   }
 
   /// How many vertices it holds.

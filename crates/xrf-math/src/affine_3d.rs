@@ -9,7 +9,7 @@ use crate::vector_3d::Vector3d;
 /// and `k`, then the translation `c`. Reading one back fixes the dropped column at `0, 0, 0, 1`, so what it holds is
 /// an affine transform.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Affine3d {
   /// `i`, where the transform takes the x axis.
@@ -28,7 +28,7 @@ impl Affine3d {
 
   /// Places a point, `Fmatrix::transform_tiny`.
   pub fn transform_point(&self, point: &Vector3d) -> Vector3d {
-    let mut placed: Vector3d = self.translation.clone();
+    let mut placed: Vector3d = self.translation;
 
     placed += &(&self.x_axis * point.x);
     placed += &(&self.y_axis * point.y);

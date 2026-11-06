@@ -10,7 +10,7 @@ use crate::vector_3d::Vector3d;
 
 /// An axis-aligned box, the engine's `Fbox`: its lowest and highest corner.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Aabb {
   pub min: Vector3d,
@@ -37,8 +37,8 @@ impl Aabb {
   /// The box of one point, both corners at it.
   pub fn of_point(point: &Vector3d) -> Self {
     Self {
-      min: point.clone(),
-      max: point.clone(),
+      min: *point,
+      max: *point,
     }
   }
 
@@ -100,7 +100,7 @@ mod tests {
     ];
 
     assert_eq!(
-      Aabb::from_points(&points),
+      Aabb::from_points(points),
       Some(Aabb {
         min: Vector3d::new(-1.0, -2.0, -4.0),
         max: Vector3d::new(1.0, 5.0, 3.0),

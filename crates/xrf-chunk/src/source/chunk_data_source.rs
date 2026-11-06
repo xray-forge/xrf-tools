@@ -36,8 +36,17 @@ pub trait ChunkDataSource: ReadBytesExt + Read + Clone {
     Ok(buffer)
   }
 
-  /// Reads `count` bytes at a window-local offset without moving this source's own cursor.
-  fn read_at(&self, offset: u64, count: usize) -> IoResult<Vec<u8>> {
-    self.slice(offset..offset + count as u64).read_bytes(count)
+  /// Hands the next `count` bytes to `visit` and moves past them.
+  ///
+  /// For a reader that decodes a run of bytes into something else and keeps nothing of them: a source holding its bytes
+  /// in memory lends them where they lie, where reading them out first would copy every vertex and index payload once
+  /// more than decoding it does. This default reads them into a buffer.
+  fn read_with<R>(&mut self, count: usize, visit: impl FnOnce(&[u8]) -> R) -> IoResult<R> {
+    Ok(visit(&self.read_bytes(count)?))
+  }
+
+  /// [`Self::read_with`] at a window-local offset, without moving this source's own cursor.
+  fn read_at_with<R>(&self, offset: u64, count: usize, visit: impl FnOnce(&[u8]) -> R) -> IoResult<R> {
+    self.slice(offset..offset + count as u64).read_with(count, visit)
   }
 }

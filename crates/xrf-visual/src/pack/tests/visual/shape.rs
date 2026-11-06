@@ -25,8 +25,8 @@ fn list_triangles(package: &VisualPackage, geometry: &VisualGeometry) -> Vec<([V
     .iter()
     .map(|triangle| {
       (
-        triangle.map(|it| positions[usize::from(it)].clone()),
-        normals[usize::from(triangle[0])].clone(),
+        triangle.map(|it| positions[usize::from(it)]),
+        normals[usize::from(triangle[0])],
       )
     })
     .collect()

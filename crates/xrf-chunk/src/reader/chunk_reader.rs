@@ -290,6 +290,11 @@ impl<T: ChunkDataSource> Read for ChunkReader<T> {
   fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
     self.data.read(buf)
   }
+
+  /// The source's own, which for bytes in memory reserves once rather than growing by probing reads.
+  fn read_to_end(&mut self, buf: &mut Vec<u8>) -> std::io::Result<usize> {
+    self.data.read_to_end(buf)
+  }
 }
 
 /// The header and where it sits, without the payload bytes.

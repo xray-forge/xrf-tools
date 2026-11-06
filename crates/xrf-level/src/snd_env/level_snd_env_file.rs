@@ -148,7 +148,7 @@ impl LevelSndEnvFile {
       version: self.version,
       vertex_count: to_format_size(self.vertices.len(), "sound environment vertices")?,
       face_count: to_format_size(self.faces.len(), "sound environment faces")?,
-      bounds: self.bounds.clone(),
+      bounds: self.bounds,
     }
     .write::<T>(&mut geometry)?;
 

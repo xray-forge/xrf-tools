@@ -41,6 +41,9 @@ The outer reader spans the whole buffer. The child's ID is `7`, while its positi
   four bytes.
 - `read_u8_payload`, `read_u32_payload`, `read_w1251_string_payload` and their kin read a chunk whose whole payload is
   one value, and fail when bytes remain after it.
+- A reader that decodes a run of bytes and keeps none of them takes it through `read_remaining_with`, or a source's
+  `read_with` and `read_at_with`: an in-memory source lends the bytes where they lie, any other reads them into a
+  buffer first. OGF vertices and level render geometry are decoded this way.
 - Build a payload with `ChunkWriter`, then use `flush_chunk_into` or `flush_chunk_into_buffer` for a framed chunk, or
   `flush_raw_into` for raw bytes.
 - Implement `ChunkReadWrite` for a format's typed payload; `ChunkReadWriteList` and `ChunkReadWriteOptional` cover

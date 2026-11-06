@@ -81,6 +81,6 @@ impl LevelCformGeometry {
 
   /// A face's three corners.
   pub fn get_triangle(&self, face: &LevelCformFace) -> [Vector3d<f32>; 3] {
-    face.vertices.map(|index| self.vertices[index as usize].clone())
+    face.vertices.map(|index| self.vertices[index as usize])
   }
 }

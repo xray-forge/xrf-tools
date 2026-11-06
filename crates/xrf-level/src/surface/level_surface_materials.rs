@@ -87,7 +87,7 @@ impl LevelSurfaceMaterials {
     let place = |index: u16| -> Option<Vector3d<f32>> {
       let position: &Vector3d<f32> = &vertices.get(usize::from(index))?.position;
 
-      Some(placement.map_or_else(|| position.clone(), |transform| transform.transform_point(position)))
+      Some(placement.map_or_else(|| *position, |transform| transform.transform_point(position)))
     };
 
     for [first, second, third] in indices.as_chunks::<3>().0 {

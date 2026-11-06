@@ -4,7 +4,7 @@ use xrf_math::{Aabb, Cylinder, Obb, Sphere, Vector3d};
 use xrf_ogf::{
   OgfBoneIkData, OgfBonesChunk, OgfChildrenChunk, OgfDescriptionChunk, OgfDescriptionTimeWidth, OgfFile, OgfGeometry,
   OgfHeaderChunk, OgfJointIkData, OgfKinematicsChunk, OgfSlideWindow, OgfSwiDataChunk, OgfTextureChunk, OgfVertex,
-  OgfVertexData, OgfVertexLink,
+  OgfVertexData, OgfVertexLink, OgfVertexLinks,
 };
 use xrf_skeleton::{
   SkeletonBoneShape, SkeletonBoneShapeKind, SkeletonJointKind, SkeletonJointLimit, SkeletonMotion,
@@ -32,7 +32,7 @@ pub(crate) fn vertex(position: Vector3d, normal: Vector3d, u: f32, v: f32) -> Og
     binormal: vector(0.0, 0.0, 1.0),
     texture_u: u,
     texture_v: v,
-    links: vec![OgfVertexLink { bone: 0, weight: 1.0 }],
+    links: OgfVertexLinks::from([OgfVertexLink { bone: 0, weight: 1.0 }]),
   }
 }
 

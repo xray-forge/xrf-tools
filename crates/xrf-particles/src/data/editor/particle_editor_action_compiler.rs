@@ -75,14 +75,14 @@ impl ParticleEditorActionCompiler {
       ParticleActionType::Damping => ParticleAction::Damping(Box::new(ParticleActionDamping {
         action_flags: flags,
         action_type: ParticleActionType::Damping,
-        damping: action.get_vector("Damping")?.clone(),
+        damping: *action.get_vector("Damping")?,
         v_low_sqr: Self::square(action.get_float("V Low")?),
         v_high_sqr: Self::square(action.get_float("V High")?),
       })),
       ParticleActionType::Explosion => ParticleAction::Explosion(Box::new(ParticleActionExplosion {
         action_flags: flags,
         action_type: ParticleActionType::Explosion,
-        center: action.get_vector("Center")?.clone(),
+        center: *action.get_vector("Center")?,
         velocity: action.get_float("Velocity")?,
         magnitude: action.get_float("Magnitude")?,
         st_dev: action.get_float("Standart Dev")?,
@@ -108,12 +108,12 @@ impl ParticleEditorActionCompiler {
       ParticleActionType::Gravity => ParticleAction::Gravity(Box::new(ParticleActionGravity {
         action_flags: flags,
         action_type: ParticleActionType::Gravity,
-        direction: action.get_vector("Direction")?.clone(),
+        direction: *action.get_vector("Direction")?,
       })),
       ParticleActionType::Jet => ParticleAction::Jet(Box::new(ParticleActionJet {
         action_flags: flags,
         action_type: ParticleActionType::Jet,
-        center: action.get_vector("Center")?.clone(),
+        center: *action.get_vector("Center")?,
         acc: Self::read_domain(action, "Accelerate")?,
         magnitude: action.get_float("Magnitude")?,
         epsilon: action.get_float("Epsilon")?,
@@ -139,8 +139,8 @@ impl ParticleEditorActionCompiler {
       ParticleActionType::OrbitLine => ParticleAction::OrbitLine(Box::new(ParticleActionOrbitLine {
         action_flags: flags,
         action_type: ParticleActionType::OrbitLine,
-        position: action.get_vector("Position")?.clone(),
-        axis: action.get_vector("Axis")?.clone().normalize_safe(),
+        position: *action.get_vector("Position")?,
+        axis: (*action.get_vector("Axis")?).normalize_safe(),
         magnitude: action.get_float("Magnitude")?,
         epsilon: action.get_float("Epsilon")?,
         max_radius: action.get_float("Max Radius")?,
@@ -148,7 +148,7 @@ impl ParticleEditorActionCompiler {
       ParticleActionType::OrbitPoint => ParticleAction::OrbitPoint(Box::new(ParticleActionOrbitPoint {
         action_flags: flags,
         action_type: ParticleActionType::OrbitPoint,
-        center: action.get_vector("Center")?.clone(),
+        center: *action.get_vector("Center")?,
         magnitude: action.get_float("Magnitude")?,
         epsilon: action.get_float("Epsilon")?,
         max_radius: action.get_float("Max Radius")?,
@@ -176,7 +176,7 @@ impl ParticleEditorActionCompiler {
       ParticleActionType::Scatter => ParticleAction::Scatter(Box::new(ParticleActionScatter {
         action_flags: flags,
         action_type: ParticleActionType::Scatter,
-        center: action.get_vector("Center")?.clone(),
+        center: *action.get_vector("Center")?,
         magnitude: action.get_float("Magnitude")?,
         epsilon: action.get_float("Epsilon")?,
         max_radius: action.get_float("Max Radius")?,
@@ -224,7 +224,7 @@ impl ParticleEditorActionCompiler {
       ParticleActionType::TargetColor => ParticleAction::TargetColor(Box::new(ParticleActionTargetColor {
         action_flags: flags,
         action_type: ParticleActionType::TargetColor,
-        color: action.get_vector("Color")?.clone(),
+        color: *action.get_vector("Color")?,
         alpha: action.get_float("Alpha")?,
         scale: action.get_float("Scale")?,
         time_from: action.get_float("TimeFrom").unwrap_or(0.0),
@@ -233,15 +233,15 @@ impl ParticleEditorActionCompiler {
       ParticleActionType::TargetSize => ParticleAction::TargetSize(Box::new(ParticleActionTargetSize {
         action_flags: flags,
         action_type: ParticleActionType::TargetSize,
-        size: action.get_vector("Size")?.clone(),
-        scale: action.get_vector("Scale")?.clone(),
+        size: *action.get_vector("Size")?,
+        scale: *action.get_vector("Scale")?,
       })),
       // The SDK edits both rotations as one action and always compiles the plain one.
       ParticleActionType::TargetRotate | ParticleActionType::TargetRotateD => {
         ParticleAction::TargetRotate(Box::new(ParticleActionTargetRotate {
           action_flags: flags,
           action_type: ParticleActionType::TargetRotate,
-          rot: action.get_vector("Rotation")?.clone(),
+          rot: *action.get_vector("Rotation")?,
           scale: action.get_float("Scale")?,
         }))
       }
@@ -249,15 +249,15 @@ impl ParticleEditorActionCompiler {
         ParticleAction::TargetVelocity(Box::new(ParticleActionTargetVelocity {
           action_flags: flags,
           action_type: ParticleActionType::TargetVelocity,
-          velocity: action.get_vector("Velocity")?.clone(),
+          velocity: *action.get_vector("Velocity")?,
           scale: action.get_float("Scale")?,
         }))
       }
       ParticleActionType::Vortex => ParticleAction::Vortex(Box::new(ParticleActionVortex {
         action_flags: flags,
         action_type: ParticleActionType::Vortex,
-        center: action.get_vector("Center")?.clone(),
-        axis: action.get_vector("Axis")?.clone().normalize_safe(),
+        center: *action.get_vector("Center")?,
+        axis: (*action.get_vector("Axis")?).normalize_safe(),
         magnitude: action.get_float("Magnitude")?,
         epsilon: action.get_float("Epsilon")?,
         max_radius: action.get_float("Max Radius")?,
@@ -269,7 +269,7 @@ impl ParticleEditorActionCompiler {
         octaves: action.get_int("Octaves")?,
         magnitude: action.get_float("Magnitude")?,
         epsilon: action.get_float("Delta")?,
-        offset: action.get_vector("Movement")?.clone(),
+        offset: *action.get_vector("Movement")?,
       })),
       ParticleActionType::CallActionList | ParticleActionType::Unknown => {
         return Err(XrfError::new_invalid_error(format!(

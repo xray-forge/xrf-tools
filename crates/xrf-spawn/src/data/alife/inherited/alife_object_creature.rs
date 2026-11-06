@@ -48,7 +48,7 @@ impl AlifeObjectCreature {
   /// Place the creature at `position`, its torso facing `direction` as the spawn packet's angles give it: pitch about
   /// x and heading about y, as `CSE_ALifeCreatureAbstract::STATE_Read` derives the torso from `o_Angle`.
   pub fn move_to(&mut self, position: &Vector3d, direction: &Vector3d) {
-    self.update_position = position.clone();
+    self.update_position = *position;
     self.update_torso_pitch = direction.x;
     self.update_torso_yaw = direction.y;
   }

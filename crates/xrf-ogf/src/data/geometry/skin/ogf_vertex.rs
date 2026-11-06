@@ -1,7 +1,8 @@
 use byteorder::ByteOrder;
 use xrf_math::Vector3d;
 
-use crate::data::geometry::ogf_vertex_link::OgfVertexLink;
+use crate::data::geometry::skin::ogf_vertex_link::OgfVertexLink;
+use crate::data::geometry::skin::ogf_vertex_links::OgfVertexLinks;
 
 /// One vertex of an OGF visual, with its skinning links resolved.
 #[derive(Clone, Debug, PartialEq)]
@@ -12,7 +13,7 @@ pub struct OgfVertex {
   pub binormal: Vector3d,
   pub texture_u: f32,
   pub texture_v: f32,
-  pub links: Vec<OgfVertexLink>,
+  pub links: OgfVertexLinks,
 }
 
 impl OgfVertex {
@@ -25,58 +26,68 @@ impl OgfVertex {
 
   /// Read one vertex out of an already sized slice.
   pub fn read_from_slice<T: ByteOrder>(vertex: &[u8], links_count: usize) -> Self {
-    debug_assert!(links_count >= 1, "a vertex is linked to at least one bone");
+    debug_assert!(
+      (1..=OgfVertexLinks::CAPACITY).contains(&links_count),
+      "a vertex is linked to one to four bones"
+    );
 
     if links_count == 1 {
-      return Self {
-        links: vec![OgfVertexLink {
-          bone: T::read_u32(&vertex[Self::GEOMETRY_SIZE..Self::GEOMETRY_SIZE + 4]) as u16,
-          weight: 1.0,
-        }],
-        ..Self::read_geometry::<T>(&vertex[..Self::VECTORS_SIZE], &vertex[Self::VECTORS_SIZE..], Vec::new())
+      let link: OgfVertexLink = OgfVertexLink {
+        bone: T::read_u32(&vertex[Self::GEOMETRY_SIZE..Self::GEOMETRY_SIZE + 4]) as u16,
+        weight: 1.0,
       };
+
+      return Self::read_geometry::<T>(
+        &vertex[..Self::VECTORS_SIZE],
+        &vertex[Self::VECTORS_SIZE..],
+        OgfVertexLinks::from([link]),
+      );
     }
 
     let bones_size: usize = links_count * 2;
     let weights_offset: usize = bones_size + Self::VECTORS_SIZE;
     let uv_offset: usize = weights_offset + (links_count - 1) * 4;
 
-    let stored: Vec<f32> = (0..links_count - 1)
-      .map(|index| {
-        let offset: usize = weights_offset + index * 4;
+    let mut stored: [f32; OgfVertexLinks::CAPACITY - 1] = [0.0; OgfVertexLinks::CAPACITY - 1];
+    let stored: &mut [f32] = &mut stored[..links_count - 1];
 
-        T::read_f32(&vertex[offset..offset + 4])
-      })
-      .collect();
+    for (index, weight) in stored.iter_mut().enumerate() {
+      let offset: usize = weights_offset + index * 4;
+
+      *weight = T::read_f32(&vertex[offset..offset + 4]);
+    }
 
     // Two links are the engine's lerp, whose one stored weight belongs to the second bone, leaving the remainder to the
     // first. Three and four store a weight per bone but the last, which takes whatever the stored ones did not claim.
-    let weights: Vec<f32> = match links_count {
-      2 => vec![1.0 - stored[0], stored[0]],
-      _ => stored
-        .iter()
-        .copied()
-        .chain([1.0 - stored.iter().sum::<f32>()])
-        .collect(),
-    };
+    let mut links: [OgfVertexLink; OgfVertexLinks::CAPACITY] = [OgfVertexLink::default(); OgfVertexLinks::CAPACITY];
+    let links: &mut [OgfVertexLink] = &mut links[..links_count];
 
-    let links: Vec<OgfVertexLink> = weights
-      .into_iter()
-      .enumerate()
-      .map(|(index, weight)| OgfVertexLink {
-        bone: T::read_u16(&vertex[index * 2..index * 2 + 2]),
-        weight,
-      })
-      .collect();
+    match links_count {
+      2 => {
+        links[0].weight = 1.0 - stored[0];
+        links[1].weight = stored[0];
+      }
+      _ => {
+        for (link, weight) in links.iter_mut().zip(stored.iter()) {
+          link.weight = *weight;
+        }
+
+        links[links_count - 1].weight = 1.0 - stored.iter().sum::<f32>();
+      }
+    }
+
+    for (index, link) in links.iter_mut().enumerate() {
+      link.bone = T::read_u16(&vertex[index * 2..index * 2 + 2]);
+    }
 
     Self::read_geometry::<T>(
       &vertex[bones_size..bones_size + Self::VECTORS_SIZE],
       &vertex[uv_offset..uv_offset + Self::UV_SIZE],
-      links,
+      OgfVertexLinks::from_slice(links),
     )
   }
 
-  fn read_geometry<T: ByteOrder>(vectors: &[u8], uv: &[u8], links: Vec<OgfVertexLink>) -> Self {
+  fn read_geometry<T: ByteOrder>(vectors: &[u8], uv: &[u8], links: OgfVertexLinks) -> Self {
     let vector = |offset: usize| Vector3d {
       x: T::read_f32(&vectors[offset..offset + 4]),
       y: T::read_f32(&vectors[offset + 4..offset + 8]),
