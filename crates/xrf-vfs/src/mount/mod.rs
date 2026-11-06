@@ -9,7 +9,7 @@ mod xray_mount;
 mod xray_mount_id;
 mod xray_mount_mode;
 
-pub use fsgame::{FsgameDeclaration, FsgameFile};
+pub use fsgame::{FsgameDeclaration, FsgameFile, XraySdkInstallation};
 pub use plan::XraySkippedMount;
 pub(crate) use plan::{XrayMountPlan, XrayPlannedMount};
 pub use root::{XrayRoot, XrayRootKind, XrayRootProbe, XrayRoots};

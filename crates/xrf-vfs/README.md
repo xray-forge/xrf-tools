@@ -22,6 +22,20 @@ let bytes: Vec<u8> = search.read("configs\\system.ltx")?;
 # }
 ```
 
+An SDK's rawdata opens the same way, through the layout its editors read:
+
+```rust,no_run
+use xrf_vfs::{XraySdkInstallation, XraySearch};
+
+# fn main() -> xrf_error::XrfResult {
+let sdk: XraySdkInstallation = XraySdkInstallation::read("C:\\SDK\\editors")?;
+let rawdata: XraySearch = sdk.to_rawdata_search_plan()?.open()?;
+let objects: String = sdk.get_rawdata_prefix("$objects$")?.unwrap_or_default();
+let bytes: Vec<u8> = rawdata.read(&format!("{objects}\\editor\\axis.object"))?;
+# Ok(())
+# }
+```
+
 ## Concepts
 
 - **Logical path** — an engine identity: lower case, `\`-separated, with no empty, `.` or `..` component and no colon.
@@ -43,9 +57,14 @@ let bytes: Vec<u8> = search.read("configs\\system.ltx")?;
 - **fsgame file** — the layout file that declares an installation, found by `FsgameFile::find`. Every OpenXRay-family
   engine reads `fsgame.ltx`; each Enhanced Edition's engine reads only its own game's name instead (`fsgame_soc.ltx`,
   `fsgame_cs.ltx`, `fsgame_cop.ltx`) and supplies `$fs_root$` and `$app_data_root$` itself. A directory is searched in
-  `FsgameFile::FILE_NAMES` order, `fsgame.ltx` first. This crate anchors `$fs_root$` at the file's directory, takes a
-  root column naming an absolute directory as that directory, as the engine does, and leaves aliases under
-  `$app_data_root$` unresolved.
+  `FsgameFile::FILE_NAMES` order, `fsgame.ltx` first. This crate anchors `$fs_root$` at the file's directory and takes a
+  root column naming a directory as the engine does: an absolute one as it is, a relative one under the file's
+  directory, the working directory the engine opened the file from. A root rooted without a drive (`\`) and aliases
+  under an `$app_data_root$` the engine supplies stay unresolved.
+- **SDK installation** — `XraySdkInstallation` reads the `fs.ltx` an SDK's editors directory holds, the same format
+  laying out rawdata, the SDK's authoring tree, under `$server_data_root$` beside gamedata. Rawdata is searched apart
+  from gamedata, since both hold `textures\`, `sounds\` and `levels\`: `to_rawdata_search_plan` mounts it as a root of
+  its own, and `get_rawdata_prefix` gives an editor alias's logical path inside it, `objects` for `$objects$`.
 - **Search plan** — `XraySearchPlan` is the ordered search declared before anything is opened: `open` mounts it into a
   VFS of its own, `open_in` into a snapshot built with a cache policy or a read trace, `mount_into` into one someone
   else holds. `XrayRoots::to_search_plan` plans what a request names. A root that is not there is an empty step reported
