@@ -148,6 +148,7 @@ export const RENDER_DEFAULT_VIEW_FEATURES: RenderViewFeatures = {
     isGrassReflected: false,
     isRayBudgeted: true,
     isTraced: false,
+    isWaterFullyTraced: false,
     isWaterReflected: true,
     mode: "engine",
     probe: "fine",
@@ -395,6 +396,7 @@ export const RENDER_FEATURE_SCHEMA: RenderSettingNode = {
     isGrassReflected: { kind: "flag" },
     isRayBudgeted: { kind: "flag" },
     isTraced: { kind: "flag" },
+    isWaterFullyTraced: { kind: "flag" },
     isWaterReflected: { kind: "flag" },
     mode: { kind: "choice", values: ["engine", "enhanced"] },
     probe: { kind: "choice", values: ["coarse", "fine", "finest"] },
@@ -2405,6 +2407,14 @@ export type RenderReflectionSettings = {
    * interval trades how soon a reflection refreshes against the rays traced a frame, none advised over another.
    */
   traceInterval: number;
+  /**
+   * Whether, while traced, the water traces every pixel's ray every frame, meeting the grass's cards within their
+   * reach, and the screen answers only the plants past them, which the level's trace does not hold: what the screen
+   * cannot show (a cable's lit side, a pipe's underside, a reed's blades) reflected as it is, at a ray a water pixel a
+   * frame, a request list as large as the frame and the cards stood for it; off, the screen answers first and the
+   * trace takes what it misses, on its turns.
+   */
+  isWaterFullyTraced: boolean;
 };
 
 /**

@@ -34,6 +34,25 @@ const RAY_TOP_LEVEL: i32 = 6;
 // lattice bar is a cell or two across at the traced size, a twig a few; a trunk or a wall is many.
 const PASS_CELLS: u32 = 4u;
 const RAY_FAR: f32 = 3.402823466e+38;
+// Metres behind a surface a ray may lie, and what of its distance more, and still have met it: thin, so a leaf stays a
+// leaf, a cable a line, and a ray aimed past its edge goes past it; further behind, the walk ends uncertain. Within
+// `PROBABLE_BEHIND` more (metres, then a share of the distance: a wall met at a glancing step) the surface it stands
+// behind is the probable answer, its colour taken with a confidence fading over that depth; beyond it the ray has
+// passed something standing between, and the miss chain answers. Behind a plant the band is a bush's depth
+// (`PROBABLE_BEHIND_PLANT`): its blades are billboards standing in for a volume, a ray from the ground under a bush
+// leaves a metre behind its front, and behind a blade is mostly more bush.
+const HIT_THICKNESS: vec2<f32> = vec2<f32>(0.05, 0.005);
+const PROBABLE_BEHIND: vec2<f32> = vec2<f32>(0.5, 0.03);
+const PROBABLE_BEHIND_PLANT: vec2<f32> = vec2<f32>(1.5, 0.05);
+
+// How far a walk that ended uncertain, `behind` metres behind the surface where it first went behind, met that
+// surface `distance` metres off: one within the walk's hit `thickness` there, fading to none over the band past it (a
+// plant's deeper).
+fn probable_behind(behind: f32, thickness: f32, distance: f32, is_plant: bool) -> f32 {
+  let band: vec2<f32> = select(PROBABLE_BEHIND, PROBABLE_BEHIND_PLANT, is_plant);
+
+  return 1.0 - smoothstep(thickness, thickness + band.x + distance * band.y, behind);
+}
 
 // A point on the screen: texture coordinates, then the stored depth, reversed.
 fn ray_screen_point(view: vec3<f32>) -> vec3<f32> {
@@ -112,8 +131,10 @@ fn ray_cell_depth(pyramid: texture_2d<f32>, cell: vec2<i32>, level: i32) -> f32 
 // share of the distance). Further behind, it has passed behind something nearer than what it went for: a wire, a
 // lattice bar or a twig, which the ray goes on past, out from behind it within `PASS_CELLS` finest cells; or a wall,
 // a hill or a bush's crown it stays behind, where nothing on the screen can say what it met, and the walk ends
-// uncertain where it first went behind: the miss chain answers, never a guess from the pixels about it. Its second
-// part is whether it met a surface, never where it left the screen, ran out of crossings or ended uncertain.
+// uncertain where it first went behind: the miss chain answers, never a guess from the pixels about it. Where the
+// caller asks it (`are_plants_met`), a plant's texel (`marks`, the G-buffer's material) stands in for the volume of its
+// crown or tuft, and a ray gone behind one has met it: a crown drawn a few texels wide is no wire to pass behind. Its
+// second part is whether it met a surface, never where it left the screen, ran out of crossings or ended uncertain.
 struct RayWalk {
   position: vec3<f32>,
   is_met: bool,
@@ -123,8 +144,8 @@ struct RayWalk {
   behind: f32,
 };
 
-fn ray_walk(pyramid: texture_2d<f32>, origin: vec3<f32>, direction: vec3<f32>, crossings: u32,
-  thickness: vec2<f32>) -> RayWalk {
+fn ray_walk(pyramid: texture_2d<f32>, marks: texture_2d<f32>, are_plants_met: bool, origin: vec3<f32>,
+  direction: vec3<f32>, crossings: u32, thickness: vec2<f32>) -> RayWalk {
   let screen: vec2<f32> = camera.viewport.xy;
   let inverse: vec3<f32> = select(vec3<f32>(RAY_FAR), 1.0 / direction, direction != vec3<f32>(0.0));
   var level: i32 = 0;
@@ -168,6 +189,14 @@ fn ray_walk(pyramid: texture_2d<f32>, origin: vec3<f32>, direction: vec3<f32>, c
         if (behind <= reach) {
           return RayWalk(vec3<f32>(position.xy, surface), true, select(END_MET_THICK, END_MET_CROSSED, was_depth_crossed),
             max(behind, 0.0));
+        }
+
+        if (are_plants_met) {
+          let texel: vec2<i32> = clamp(vec2<i32>(at), vec2<i32>(0), vec2<i32>(textureDimensions(marks)) - 1);
+
+          if (has_mark(textureLoad(marks, texel, 0).a, MARK_PLANT)) {
+            return RayWalk(vec3<f32>(position.xy, surface), true, END_MET_THICK, behind);
+          }
         }
 
         // Further behind: on past a thin surface to the cell's far edge, or uncertain where the ray stays behind.

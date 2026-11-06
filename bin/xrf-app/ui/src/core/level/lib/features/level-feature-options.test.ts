@@ -181,6 +181,7 @@ describe("level feature options", () => {
       isDryTraced: true,
       isRayBudgeted: true,
       isWaterReflected: false,
+      isWaterFullyTraced: true,
     };
 
     expect(toLevelFeatureOptions({ reflections }).reflections).toEqual(reflections);

@@ -134,6 +134,16 @@ export const RENDER_REFLECTION_SETTINGS: TRenderSettings<TRenderReflectionSettin
       "surfaces and the water alike; elsewhere they reflect the sky's cube.",
     label: "Ray-traced reflections",
   },
+  isWaterFullyTraced: {
+    control: ERenderSettingControl.CHECKBOX,
+    description:
+      "Traces every water pixel every frame, its rays meeting the grass near the eye, so cables, the undersides " +
+      "of pipes and reeds reflect as they stand and are lit; the screen answers only plants further out. Costs " +
+      "about a ray a water pixel a frame, and the grass's shadow cards where grass shadows are off.",
+    isInert: (reflections: TRenderReflectionSettings, features: IRenderFeatureSettings) =>
+      !reflections.isTraced || features.water.mode !== ERenderWaterMode.ENHANCED || !reflections.isWaterReflected,
+    label: "Trace all water",
+  },
   isWaterReflected: {
     control: ERenderSettingControl.CHECKBOX,
     description: (_: TRenderReflectionSettings, features: IRenderFeatureSettings) =>

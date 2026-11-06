@@ -12,5 +12,6 @@
 @group(4) @binding(7) var nearest_water: texture_depth_2d;
 @group(4) @binding(8) var water_scene: texture_2d<f32>;
 @group(4) @binding(9) var reflection_history: texture_2d<f32>;
-@group(4) @binding(10) var blue_noise: texture_2d<f32>;
-@group(4) @binding(11) var water_current: texture_2d<f32>;
+@group(4) @binding(10) var nearest_depth: texture_2d<f32>;
+@group(4) @binding(11) var material_target: texture_2d<f32>;
+@group(4) @binding(12) var water_current: texture_2d<f32>;

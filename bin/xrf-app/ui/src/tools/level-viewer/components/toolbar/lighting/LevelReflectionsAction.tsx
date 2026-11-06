@@ -157,6 +157,15 @@ export function LevelReflectionsAction({
           onSet={set}
         />
 
+        <RenderSettingEntry
+          settings={RENDER_REFLECTION_SETTINGS}
+          name={"isWaterFullyTraced"}
+          group={value}
+          features={drawn}
+          isDisabled={!isTraced || !isWater}
+          onSet={set}
+        />
+
         {isTraced && isRayReconstructed && isSurfaces ? (
           <EditorPopoverNote>The surfaces re-trace every frame under ray reconstruction.</EditorPopoverNote>
         ) : null}

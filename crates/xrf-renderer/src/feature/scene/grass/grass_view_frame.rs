@@ -21,6 +21,8 @@ pub struct GrassViewFrame<'a> {
   pub puddles: (&'a wgpu::TextureView, GrassPuddlesUniform),
   /// Whether the view traces its light, which traces the cards' shadows.
   pub is_traced: bool,
+  /// Whether the view's water traces every pixel's reflected ray, which meets the cards whether or not they shadow.
+  pub is_reflected: bool,
   /// How far the sun's cascades reach where they draw the cards, none where they do not.
   pub cascade_reach: Option<f32>,
 }

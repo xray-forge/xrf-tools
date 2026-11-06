@@ -17,9 +17,10 @@
 // trace's registers and no wave waits on a few of its lanes. A ray meeting something writes its pixel's answer over the
 // sky the trace wrote: the screen's weighed answer and the hit's light by the share the screen left, the hit's length
 // where the screen held less than half, and the reason the trace gave it; a miss leaves the sky. A water's request
-// (`TRACE_REQUEST_WATER`) is answered into the water's reflection (`answer_water`), with the grass its ray passes. A hit
-// a screen showed takes its colour from that screen, so a traced reflection reads as the screen's own: the surfaces'
-// from the last frame's scene and depth, which their trace keeps, the water's from this frame's copy before the water.
+// (`TRACE_REQUEST_WATER`) meets the grass's cards too where the view traces them, and is answered into the water's
+// reflection (`answer_water`) with the grass it passes past them. A hit a screen showed takes its colour from that
+// screen, so a traced reflection reads as the screen's own: the surfaces' from the last frame's scene and depth, which
+// their trace keeps, the water's from this frame's copy before the water.
 
 // Where the screen `view_projection` drew shows a world point, and in `w` one where it shows it: read where the
 // screen's depth agrees within `SOURCE_DEPTH_TOLERANCE` of the point's distance. None off the screen, or in front of or
@@ -97,15 +98,17 @@ fn cs_scene(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroup
   let request: TraceRequest = trace_requests[index];
   let toward: vec3<f32> = normalize(octahedral_decode(unpack2x16snorm(request.toward)));
   let cone: SceneCone = SceneCone(request.cone.x, request.cone.y);
-  let hit: SceneHit = trace_scene_ray(request.origin.xyz, toward, 0.0, request.origin.w, cone);
   let screen: vec4<f32> = vec4<f32>(unpack2x16float(request.screen.x), unpack2x16float(request.screen.y));
   let pixel: vec2<u32> = vec2<u32>(request.pixel & 0xffffu, request.pixel >> 16u);
 
   if ((request.hit_end & TRACE_REQUEST_WATER) != 0u) {
-    answer_water(request, toward, cone, hit, screen, pixel);
+    answer_water(request, toward, cone, trace_water_ray(request.origin.xyz, toward, 0.0, request.origin.w, cone),
+      screen, pixel);
 
     return;
   }
+
+  let hit: SceneHit = trace_scene_ray(request.origin.xyz, toward, 0.0, request.origin.w, cone);
 
   if (hit.distance < 0.0) {
     return;
@@ -152,14 +155,21 @@ fn screen_shown_at(point: vec3<f32>) -> vec4<f32> {
 
 // A water's ray answered: what it met as the screen shows it where it does, so a traced hit reads as the march's do,
 // else lit and tonemapped as the scene copy the water reads was, or where it met nothing the sky as the water reflects
-// it; the grass it passed on the way over it; the screen's weighed answer over both. Its
-// distance is where the mirror shows the grass or the hit, the screen's where it met something; a ray meeting neither
-// grass nor geometry keeps the sky its pass wrote.
+// it; a grass card it met lit as the frame lights its tufts where the screen does not show it, or past the cards the
+// grass it passed on the way over what it met; the screen's weighed answer over both. Its distance is where the mirror
+// shows the grass or the hit, the screen's where it met something; a ray meeting neither grass nor geometry keeps the
+// sky its pass wrote.
 fn answer_water(request: TraceRequest, toward: vec3<f32>, cone: SceneCone, hit: SceneHit, screen: vec4<f32>,
   pixel: vec2<u32>) {
+  let is_card: bool = is_scene_grass_card(hit);
   let is_met: bool = hit.distance >= 0.0;
-  let grass: SceneGrassPassed =
-    scene_grass_passed(request.origin.xyz, toward, select(request.origin.w, hit.distance, is_met), is_met);
+  var grass: SceneGrassPassed;
+
+  if (is_card) {
+    grass = scene_card_grass(hit, cone.width + cone.spread * hit.distance);
+  } else {
+    grass = scene_grass_passed(request.origin.xyz, toward, select(request.origin.w, hit.distance, is_met), is_met);
+  }
 
   if (!is_met && grass.opacity <= 0.0) {
     return;
@@ -173,11 +183,13 @@ fn answer_water(request: TraceRequest, toward: vec3<f32>, cone: SceneCone, hit: 
   );
 
   if (is_met) {
-    let seen: vec4<f32> = screen_shown_at(request.origin.xyz + toward * hit.distance);
+    let seen: vec4<f32> = screen_shown_at(hit.position);
 
     if (seen.w > 0.5) {
       behind = seen.rgb;
-    } else {
+      // A card the screen shows reads as the screen shows its blades.
+      grass.opacity = select(grass.opacity, 0.0, is_card);
+    } else if (!is_card) {
       let shown: vec3<f32> = shade_scene_hit(hit, toward, cone, lighting, material_lut, lut_sampler, sky_environment_0,
         sky_environment_1, sky_clamp);
 

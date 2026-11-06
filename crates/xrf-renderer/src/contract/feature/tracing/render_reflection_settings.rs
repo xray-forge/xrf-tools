@@ -66,6 +66,12 @@ pub struct RenderReflectionSettings {
   /// interval trades how soon a reflection refreshes against the rays traced a frame, none advised over another.
   #[setting(min = 1, max = 8)]
   pub trace_interval: u32,
+  /// Whether, while traced, the water traces every pixel's ray every frame, meeting the grass's cards within their
+  /// reach, and the screen answers only the plants past them, which the level's trace does not hold: what the screen
+  /// cannot show (a cable's lit side, a pipe's underside, a reed's blades) reflected as it is, at a ray a water pixel a
+  /// frame, a request list as large as the frame and the cards stood for it; off, the screen answers first and the
+  /// trace takes what it misses, on its turns.
+  pub is_water_fully_traced: bool,
 }
 
 impl Default for RenderReflectionSettings {
@@ -91,6 +97,7 @@ impl Default for RenderReflectionSettings {
       water_steps: Self::WATER_STEPS,
       is_traced: false,
       trace_interval: Self::TRACE_INTERVAL,
+      is_water_fully_traced: false,
     }
   }
 }

@@ -1,5 +1,7 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters, PipelineSet};
+use xrf_renderer_core::{
+  ComputeContext, ComputePipelineDescription, FrameGraph, GraphBindings, GraphTexture, PassParameters, PipelineSet,
+};
 
 use crate::feature::scene::pyramid::cover_pyramid::CoverPyramid;
 use crate::feature::scene::pyramid::cover_pyramid_depth_parameters::CoverPyramidDepthParameters;
@@ -49,6 +51,45 @@ impl DepthPyramidPass {
     {
       log::error!("Depth pyramid rejected, reducing with the last one: {error}");
     }
+  }
+
+  /// Declares `pyramid` reduced from the frame's `depth` as it stands then, as the compute pass `name`: each level its
+  /// own resource, the depth reduced into the first and each into the next, keeping the depth `reduction` names.
+  pub fn add_passes<'a>(
+    &'a self,
+    graph: &mut FrameGraph<'a>,
+    bindings: &mut GraphBindings<'a>,
+    name: &'static str,
+    (pyramid, depth): (&'a DepthPyramid, GraphTexture),
+    reduction: PyramidReduction,
+  ) {
+    let label: &'static str = match reduction {
+      PyramidReduction::Farthest => "depth pyramid level",
+      PyramidReduction::Nearest => "nearest depth level",
+    };
+    let level_views: Vec<GraphTexture> = pyramid
+      .level_views
+      .iter()
+      .map(|view| bindings.import_view(&mut *graph, label, view))
+      .collect();
+    let first: PyramidDepthParameters = PyramidDepthParameters {
+      source_depth: depth,
+      target_level: level_views[0],
+    };
+    let levels: Vec<PyramidLevelParameters> = level_views
+      .windows(2)
+      .map(|pair| PyramidLevelParameters {
+        source_level: pair[0],
+        target_level: pair[1],
+      })
+      .collect();
+
+    levels
+      .iter()
+      .fold(graph.add_compute_pass(name).parameters(&first), |builder, level| {
+        builder.parameters(level)
+      })
+      .record(move |context| self.record(context, pyramid, &first, &levels, reduction));
   }
 
   /// Reduces the depth into the first level, then each level into the next, a dispatch each, keeping the depth

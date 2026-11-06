@@ -32,8 +32,6 @@ impl ReflectionHistory {
   pub const RADIANCE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   pub const SURFACE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   pub const HELD_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
-  /// Levels of the nearest depth's pyramid a ray climbs through: the depth itself and six halvings.
-  pub const PYRAMID_LEVELS: u32 = 7;
   /// Traced pixels a request the list holds stands for at most: a ray more than that leaves its pixel what it reflected
   /// the frame before, or the sky.
   pub const REQUEST_SHARE: u32 = 4;
@@ -104,7 +102,7 @@ impl ReflectionHistory {
       }),
       frame: 0,
       size,
-      pyramid: DepthPyramid::new_nearest(device, frame_size.0, frame_size.1, Self::PYRAMID_LEVELS),
+      pyramid: DepthPyramid::new_nearest(device, frame_size.0, frame_size.1, DepthPyramid::RAY_LEVELS),
       scene: create("reflection source scene", frame_size, ViewTargets::SCENE, copied),
       depth: ViewTargets::create_depth(device, frame_size),
       is_source_valid: false,

@@ -29,6 +29,7 @@ use crate::feature::weather::water::water_uniform::WaterUniform;
 use crate::feature::weather::wet::puddles::puddle_sites_pass::PuddleSitesPass;
 use crate::feature::weather::wet::puddles::puddle_sites_uniform::PuddleSitesUniform;
 use crate::feature::weather::wet::wet_uniform::WetUniform;
+use crate::frame::targets::depth_pyramid::DepthPyramid;
 use crate::frame::targets::view_targets::ViewTargets;
 use crate::lighting::material_slice::material_slice;
 use crate::pass::view::camera_uniform::CameraUniform;
@@ -575,6 +576,17 @@ fn get_constant(library: &ShaderLibrary, name: &str, constant: &str) -> u32 {
     naga::Expression::Literal(naga::Literal::U32(value)) => value,
     ref other => panic!("'{name}' declares {constant} as {other:?}"),
   }
+}
+
+/// The reflected rays, the surfaces' and the water's, climb a nearest depth's pyramid no higher than its last level.
+#[test]
+fn the_rays_climb_the_pyramid_as_high_as_rust_makes_it() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+
+  assert_eq!(
+    get_signed_constant(&library, "common/reflection_trace", "RAY_TOP_LEVEL") + 1,
+    DepthPyramid::RAY_LEVELS as i32
+  );
 }
 
 /// Each compute entry dispatched by groups of a size Rust counts in declares that size: one side for a line of work,

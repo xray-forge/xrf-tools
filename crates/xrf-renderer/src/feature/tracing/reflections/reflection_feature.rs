@@ -9,8 +9,6 @@ use crate::contract::feature::tracing::render_trace_size::RenderTraceSize;
 use crate::contract::report::applied::render_applied_reflections::RenderAppliedReflections;
 use crate::contract::report::applied::render_applied_report::RenderAppliedReport;
 use crate::feature::image::resolve::resolve_decisions::ResolveDecisions;
-use crate::feature::scene::pyramid::pyramid_depth_parameters::PyramidDepthParameters;
-use crate::feature::scene::pyramid::pyramid_level_parameters::PyramidLevelParameters;
 use crate::feature::scene::pyramid::pyramid_reduction::PyramidReduction;
 use crate::feature::tracing::reflections::draw::reflection_parameters::ReflectionParameters;
 use crate::feature::tracing::reflections::draw::reflection_pass::ReflectionPass;
@@ -37,7 +35,6 @@ use crate::feature::weather::sky::sky_parameters::SkyParameters;
 use crate::feature::weather::wet::wet_feature::WetFeature;
 use crate::feature::weather::wet::wet_targets::WetTargets;
 use crate::frame::readback::stats_readback::StatsReadback;
-use crate::frame::targets::depth_pyramid::DepthPyramid;
 use crate::frame::targets::frame_texture::FrameTexture;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::view::view_binding::ViewBinding;
@@ -162,36 +159,13 @@ impl ReflectionFeature {
     let (Some(_), Some(history)) = (self.trace, &self.history) else {
       return;
     };
-    let pyramid: &'a DepthPyramid = &history.pyramid;
-    let level_views: Vec<GraphTexture> = pyramid
-      .level_views
-      .iter()
-      .map(|level| bindings.import_view(&mut *graph, "nearest depth level", level))
-      .collect();
-    let first: PyramidDepthParameters = PyramidDepthParameters {
-      source_depth: depth,
-      target_level: level_views[0],
-    };
-    let levels: Vec<PyramidLevelParameters> = level_views
-      .windows(2)
-      .map(|pair| PyramidLevelParameters {
-        source_level: pair[0],
-        target_level: pair[1],
-      })
-      .collect();
-
-    levels
-      .iter()
-      .fold(
-        graph.add_compute_pass(ReflectionTrace::PYRAMID_PASS).parameters(&first),
-        |builder, level| builder.parameters(level),
-      )
-      .record(move |context| {
-        passes
-          .scene
-          .pyramid
-          .record(context, pyramid, &first, &levels, PyramidReduction::Nearest)
-      });
+    passes.scene.pyramid.add_passes(
+      graph,
+      bindings,
+      ReflectionTrace::PYRAMID_PASS,
+      (&history.pyramid, depth),
+      PyramidReduction::Nearest,
+    );
   }
 
   /// The last frame's scene and depth they keep, read by this frame's hits: the scene copied again after the particles

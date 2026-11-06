@@ -135,8 +135,8 @@ impl SceneView {
       .statics
       .prepare(&scene.statics, options, view, frame.drawn);
 
-    let is_traced: bool =
-      options.is_light_traced() && frame.passes.tracing.scene_trace.is_traced() && scene.trace.is_some();
+    let is_scene_traced: bool = frame.passes.tracing.scene_trace.is_traced() && scene.trace.is_some();
+    let is_traced: bool = options.is_light_traced() && is_scene_traced;
     // The sun's cascades shadow the frame where they are asked for and the sun is not traced in their place.
     let is_sun_traced: bool = is_traced && SunTraceFeature::is_asked(options, self.shared.resolve);
     let is_cascaded: bool = options.features.shadows.get_cascade_count() > 0 && !is_sun_traced;
@@ -156,6 +156,8 @@ impl SceneView {
         &self.features.wet,
       ),
       is_traced,
+      // The water readies before the scene, in the weather's units.
+      is_reflected: is_scene_traced && self.features.water.is_fully_traced(),
       cascade_reach: is_cascaded
         .then(|| {
           options
@@ -170,6 +172,10 @@ impl SceneView {
       .features
       .grass
       .prepare(device, scene.grass.get_level(), &options.features.grass, &grass);
+    self
+      .features
+      .water
+      .follow_grass_cards(self.features.grass.get_trace_uniform().card_reach);
 
     let sway_amplitude: f32 = self.features.wind.get_sway_amplitude();
     let frame_lights: LightsFrame = LightsFrame {
