@@ -51,6 +51,9 @@ impl EditableMesh {
   pub const VMAPS_CHUNK_ID: u32 = 0x1012;
   pub const SMOOTHING_GROUPS_CHUNK_ID: u32 = 0x1013;
 
+  /// `flVisible`: the editor draws the mesh, as every mesh it saves for export is.
+  pub const VISIBLE_FLAG: u8 = 1 << 0;
+
   /// `flSGMask`: a face with no smoothing group of its own is flat rather than smoothed with all its neighbours.
   pub const SMOOTHING_GROUP_MASK_FLAG: u8 = 1 << 2;
 

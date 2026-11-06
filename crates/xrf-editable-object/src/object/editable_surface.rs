@@ -32,6 +32,14 @@ impl EditableSurface {
   /// `CSurface::sf2Sided`.
   pub const TWO_SIDED_FLAG: u32 = 1;
 
+  /// `D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1`: a position, a normal and one texture coordinate set, the vertex
+  /// format the Actor Editor gives a model's surfaces.
+  pub const POSITION_NORMAL_UV_FVF: u32 = 0x112;
+
+  /// The name a surface's UV map goes by, `Texture`, which the editor matches to the mesh's `texture` map regardless
+  /// of case.
+  pub const UV_MAP_NAME: &'static str = "Texture";
+
   /// Whether both of its sides are drawn.
   pub const fn is_two_sided(&self) -> bool {
     self.flags & Self::TWO_SIDED_FLAG != 0

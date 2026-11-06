@@ -7,6 +7,7 @@ pub(crate) mod gamedata;
 pub(crate) mod gamemtl;
 pub(crate) mod level;
 pub(crate) mod ltx;
+pub(crate) mod object;
 pub(crate) mod ogf;
 pub(crate) mod omf;
 pub(crate) mod packed_file;

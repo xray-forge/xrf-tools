@@ -70,6 +70,9 @@ impl EditableObjectFile {
   /// `CEditableObject::eoDynamic`: the object is a skinned or animated model rather than level geometry.
   pub const DYNAMIC_FLAG: u32 = 1 << 0;
 
+  /// `CEditableObject::eoProgressive`: the export builds sliding-window detail levels of the mesh.
+  pub const PROGRESSIVE_FLAG: u32 = 1 << 1;
+
   /// Bytes the flags chunk holds as the current editor writes it.
   pub const FLAGS_SIZE: u8 = 4;
 

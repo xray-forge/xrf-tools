@@ -7,6 +7,7 @@ use crate::commands::gamedata::GamedataGroup;
 use crate::commands::gamemtl::GameMtlGroup;
 use crate::commands::level::LevelGroup;
 use crate::commands::ltx::LtxGroup;
+use crate::commands::object::ObjectGroup;
 use crate::commands::ogf::OgfGroup;
 use crate::commands::omf::OmfGroup;
 use crate::commands::particle::ParticleGroup;
@@ -30,6 +31,7 @@ impl CommandGroup {
       GameMtlGroup::declare(),
       LevelGroup::declare(),
       LtxGroup::declare(),
+      ObjectGroup::declare(),
       OgfGroup::declare(),
       OmfGroup::declare(),
       ParticleGroup::declare(),
