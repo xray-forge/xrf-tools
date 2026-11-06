@@ -4,8 +4,8 @@ use std::path::PathBuf;
 
 use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
-use xrf_math::Vector3d;
-use xrf_ogf::{OgfBox, OgfHeaderChunk, OgfKinematicsChunk, OgfSphere};
+use xrf_math::{Aabb, Sphere, Vector3d};
+use xrf_ogf::{OgfHeaderChunk, OgfKinematicsChunk};
 use xrf_spawn::XRayByteOrder;
 use xrf_test_utils::GeneratedResources;
 
@@ -43,12 +43,12 @@ fn header_bytes() -> XrfResult<Vec<u8>> {
     version: 4,
     model_type: 3,
     shader_id: 0,
-    bounding_box: OgfBox {
+    bounding_box: Aabb {
       min: Vector3d::new(0.0, 0.0, 0.0),
       max: Vector3d::new(1.0, 1.0, 1.0),
     },
-    bounding_sphere: OgfSphere {
-      position: Vector3d::new(0.0, 0.0, 0.0),
+    bounding_sphere: Sphere {
+      center: Vector3d::new(0.0, 0.0, 0.0),
       radius: 1.0,
     },
   })?;

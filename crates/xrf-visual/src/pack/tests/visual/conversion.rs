@@ -1,7 +1,6 @@
 //! Holds the handedness contract: what mirroring Z does to a vector, a uv pair, and a box.
 
-use xrf_math::{Matrix4x4, Vector3d};
-use xrf_ogf::{OgfBox, OgfSphere};
+use xrf_math::{Aabb, Matrix4x4, Sphere, Vector3d};
 
 use crate::data::visual::bounds::visual_bounds::VisualBounds;
 use crate::pack::tests::fixtures::vector;
@@ -26,12 +25,12 @@ fn reorders_a_declared_box_after_mirroring_z() {
   // Mirroring Z swaps which face is nearest, so a box converted corner by corner would come out with
   // its minimum Z above its maximum and read as empty.
   let bounds: VisualBounds = convert_declared_bounds(
-    &OgfBox {
+    &Aabb {
       min: vector(-1.0, -2.0, -3.0),
       max: vector(4.0, 5.0, 6.0),
     },
-    &OgfSphere {
-      position: vector(1.0, 2.0, 3.0),
+    &Sphere {
+      center: vector(1.0, 2.0, 3.0),
       radius: 7.0,
     },
   );
@@ -44,12 +43,12 @@ fn reorders_a_declared_box_after_mirroring_z() {
 #[test]
 fn mirrors_a_declared_sphere_centre_and_keeps_its_radius() {
   let bounds: VisualBounds = convert_declared_bounds(
-    &OgfBox {
+    &Aabb {
       min: vector(0.0, 0.0, 0.0),
       max: vector(1.0, 1.0, 1.0),
     },
-    &OgfSphere {
-      position: vector(1.0, 2.0, 3.0),
+    &Sphere {
+      center: vector(1.0, 2.0, 3.0),
       radius: 7.0,
     },
   );

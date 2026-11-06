@@ -8345,7 +8345,7 @@ dependencies = [
  "xrf-chunk",
  "xrf-error",
  "xrf-math",
- "xrf-ogf",
+ "xrf-skeleton",
  "xrf-test-utils",
  "xrf-utils",
 ]

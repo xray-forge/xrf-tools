@@ -3,7 +3,7 @@ use std::io::Write;
 use std::path::Path;
 
 use byteorder::{ByteOrder, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkLayout, ChunkReadWrite, ChunkReader, ChunkSequence, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{StagedFile, format_path, to_format_size};
 
@@ -11,7 +11,6 @@ use crate::editable_chunks::EditableChunks;
 use crate::{
   EditableActorTransform, EditableBone, EditableBonePart, EditableDescription, EditableMesh, EditableSurface,
 };
-use xrf_chunk::{ChunkLayout, ChunkSequence};
 
 /// An editable object, the `.object` file the SDK's Actor and Level editors open: meshes, the surfaces their faces
 /// are made of, and for a dynamic object its skeleton. It is the source an OGF is exported from, and holds what the

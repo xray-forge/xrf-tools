@@ -56,8 +56,9 @@ mesh never carries lists its faces no longer give. The older surface, vertex map
 embedded motions (`EOBJ_CHUNK_SMOTIONS`) are kept as their stored bytes. A field is `Option` wherever the editor's own
 loader treats its chunk as optional, so a file that omits a chunk writes back without it.
 
-Bone shapes and joint limits use `xrf-ogf`'s `OgfBoneShape` and `OgfJointLimit`, the same `SBoneShape` and
-`SJointLimit` layouts an OGF stores.
+A bone's collision shape, joint limits and joint kind are [xrf-skeleton](../xrf-skeleton/README.md)'s
+`SkeletonBoneShape`, `SkeletonJointLimit` and `SkeletonJointKind`, the `SBoneShape`, `SJointLimit` and `EJointType` an
+OGF's IK data stores too; a mesh's bounds are [xrf-math](../xrf-math/README.md)'s `Aabb`.
 
 ## Write an object
 

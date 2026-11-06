@@ -1,17 +1,15 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-
-use crate::data::shape::ogf_box::OgfBox;
-use crate::data::shape::ogf_sphere::OgfSphere;
+use xrf_math::{Aabb, Sphere};
 
 #[derive(Debug)]
 pub struct OgfHeaderChunk {
   pub version: u8,
   pub model_type: u8,
   pub shader_id: u16,
-  pub bounding_box: OgfBox,
-  pub bounding_sphere: OgfSphere,
+  pub bounding_box: Aabb,
+  pub bounding_sphere: Sphere,
 }
 
 impl OgfHeaderChunk {

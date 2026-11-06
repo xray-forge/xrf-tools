@@ -1,5 +1,6 @@
 use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_error::XrfResult;
+use xrf_skeleton::{SkeletonBoneShapeKind, SkeletonJointKind};
 
 use crate::EditableBone;
 use crate::tests::fixtures;
@@ -30,9 +31,9 @@ fn a_bone_reads_its_place_pose_and_physics() -> XrfResult {
   assert_eq!(bone.bind_pose.length, 1.0);
   assert_eq!(bone.data_name.as_deref(), Some("root"));
   assert_eq!(bone.game_material, "default_object");
-  assert_eq!(bone.shape.shape_type, 2);
-  assert_eq!(bone.joint.joint_type, 2);
-  assert_eq!(bone.joint.limits[1].limit_from, -0.25);
+  assert_eq!(bone.shape.kind, SkeletonBoneShapeKind::Sphere);
+  assert_eq!(bone.joint.kind, SkeletonJointKind::Joint);
+  assert_eq!(bone.joint.limits[1].min, -0.25);
   assert_eq!(bone.mass.as_ref().map(|mass| mass.mass), Some(10.0));
 
   Ok(())

@@ -1,19 +1,18 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkLayout, ChunkReadWrite, ChunkReader, ChunkSequence, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_math::Vector3d;
+use xrf_math::{Aabb, Vector3d};
 use xrf_utils::to_format_size;
 
 use crate::editable_chunks::EditableChunks;
-use crate::{EditableFace, EditableMeshBounds, EditableSurfaceFaces, EditableVMap, EditableVMapReference};
-use xrf_chunk::{ChunkLayout, ChunkSequence};
+use crate::{EditableFace, EditableSurfaceFaces, EditableVMap, EditableVMapReference};
 
 /// One mesh of an editable object, `CEditableMesh` as `CEditableMesh::SaveMesh` stores it: points, triangles that
 /// index them, the surfaces the triangles are made of, and the vertex maps their corners take UVs and weights from.
 #[derive(Clone, Debug, PartialEq)]
 pub struct EditableMesh {
   pub name: String,
-  pub bounds: EditableMeshBounds,
+  pub bounds: Aabb,
   /// `flVisible`, `flLocked` and `flSGMask`, the last saying how a mesh without smoothing groups is smoothed.
   pub flags: u8,
   /// `st_MeshOptions`, two reserved numbers the editor zeroes. `None` where the chunk is absent, which the SDK
@@ -65,7 +64,7 @@ impl EditableMesh {
   pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let mut version: Option<u16> = None;
     let mut name: Option<String> = None;
-    let mut bounds: Option<EditableMeshBounds> = None;
+    let mut bounds: Option<Aabb> = None;
     let mut flags: Option<u8> = None;
     let mut options: Option<[u32; 2]> = None;
     let mut points: Option<MeshPoints> = None;

@@ -1,16 +1,16 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
+use xrf_skeleton::{SkeletonJointKind, SkeletonJointLimit};
 
-use crate::data::skeleton::ogf_joint_limit::OgfJointLimit;
-
-/// Inverse kinematics settings of one bone, `SJointIKData` in the engine.
+/// A bone's joint as an OGF stores it, `SJointIKData::Export`: each limit negated and its two ends swapped for the
+/// physics engine's sense of rotation, then the joint's springs, flags, break limits and, from version 1, its
+/// friction.
 #[derive(Clone, Debug, PartialEq)]
 pub struct OgfJointIkData {
-  /// 0 rigid, 1 cloth, 2 joint, 3 wheel, 4 none, 5 slider.
-  pub joint_type: u32,
-  /// One per axis, XYZ for a joint and Z-wheel / X-steer for a wheel.
-  pub limits: [OgfJointLimit; 3],
+  pub kind: SkeletonJointKind,
+  /// One per axis, XYZ for a joint and Z-wheel, X-steer for a wheel.
+  pub limits: [SkeletonJointLimit; 3],
   pub spring_factor: f32,
   pub damping_factor: f32,
   pub ik_flags: u32,
@@ -21,12 +21,16 @@ pub struct OgfJointIkData {
 }
 
 impl OgfJointIkData {
+  /// Reads the joint of a record stored at `version`: friction follows when its low half is above zero, since the
+  /// engine reads the version as a `u32` and narrows it to a `u16` before asking (`SkeletonCustom.cpp`, `Load`).
   pub fn read_versioned<T: ByteOrder, D: ChunkDataSource>(
     reader: &mut ChunkReader<D>,
-    version: u16,
+    version: u32,
   ) -> XrfResult<Self> {
+    let is_friction_stored: bool = version & 0xffff > 0;
+
     Ok(Self {
-      joint_type: reader.read_u32::<T>()?,
+      kind: SkeletonJointKind::from(reader.read_u32::<T>()?),
       limits: [
         reader.read_xr::<T, _>()?,
         reader.read_xr::<T, _>()?,
@@ -37,7 +41,7 @@ impl OgfJointIkData {
       ik_flags: reader.read_u32::<T>()?,
       break_force: reader.read_f32::<T>()?,
       break_torque: reader.read_f32::<T>()?,
-      friction: if version > 0 {
+      friction: if is_friction_stored {
         Some(reader.read_f32::<T>()?)
       } else {
         None
@@ -46,7 +50,7 @@ impl OgfJointIkData {
   }
 
   pub fn write_versioned<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(self.joint_type)?;
+    writer.write_u32::<T>(u32::from(self.kind))?;
 
     for limit in &self.limits {
       limit.write::<T>(writer)?;

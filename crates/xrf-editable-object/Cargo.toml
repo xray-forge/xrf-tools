@@ -13,7 +13,7 @@ byteorder = { workspace = true }
 xrf-chunk = { workspace = true }
 xrf-error = { workspace = true }
 xrf-math = { workspace = true }
-xrf-ogf = { workspace = true }
+xrf-skeleton = { workspace = true }
 xrf-utils = { workspace = true }
 
 [dev-dependencies]

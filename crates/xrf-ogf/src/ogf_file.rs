@@ -311,14 +311,12 @@ impl OgfFile {
 mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_math::Vector3d;
+  use xrf_math::{Aabb, Sphere, Vector3d};
   use xrf_skeleton::{
     SkeletonMotion, SkeletonMotionDefinition, SkeletonMotionParametersChunk, SkeletonMotionsChunk, SkeletonPart,
   };
 
   use crate::chunks::visual::ogf_header_chunk::OgfHeaderChunk;
-  use crate::data::shape::ogf_box::OgfBox;
-  use crate::data::shape::ogf_sphere::OgfSphere;
   use crate::ogf_file::OgfFile;
 
   fn new_chunk_bytes<C: ChunkReadWrite>(id: u32, value: &C) -> XrfResult<Vec<u8>> {
@@ -336,12 +334,12 @@ mod tests {
         version: 4,
         model_type: 3,
         shader_id: 0,
-        bounding_box: OgfBox {
+        bounding_box: Aabb {
           min: Vector3d::new(0.0, 0.0, 0.0),
           max: Vector3d::new(1.0, 1.0, 1.0),
         },
-        bounding_sphere: OgfSphere {
-          position: Vector3d::new(0.0, 0.0, 0.0),
+        bounding_sphere: Sphere {
+          center: Vector3d::new(0.0, 0.0, 0.0),
           radius: 1.0,
         },
       },

@@ -25,7 +25,7 @@ README is also its crate's rustdoc page.
 | [xrf-omf](xrf-omf/README.md)                               | Read and write `.omf` motion libraries                                         |
 | [xrf-particles](xrf-particles/README.md)                   | Read and write `particles.xr` effects, groups, and the actions that drive them |
 | [xrf-ppe](xrf-ppe/README.md)                               | Read, write and evaluate animated post-process effects (`.ppe`)                |
-| [xrf-skeleton](xrf-skeleton/README.md)                     | Skeleton motion data that OGF visuals and OMF libraries share                  |
+| [xrf-skeleton](xrf-skeleton/README.md)                     | Skeleton motions and bone physics two formats share                            |
 | [xrf-sound](xrf-sound/README.md)                           | Read and edit sound parameters, validate audio, edit `senvironment.xr`         |
 | [xrf-spawn](xrf-spawn/README.md)                           | Read and write spawn sets, alife records, graphs, patrols, and artefact points |
 | [xrf-thm](xrf-thm/README.md)                               | Read and write `.thm` texture descriptors, bump pairs and SDK thumbnails       |
@@ -99,7 +99,7 @@ README is also its crate's rustdoc page.
 | [xrf-error](xrf-error/README.md)               | Share typed errors and results                                    |
 | [xrf-error-derive](xrf-error-derive/README.md) | Generate message-based error constructors                         |
 | [xrf-job](xrf-job/README.md)                   | Report progress, request cancellation, and plan worker limits     |
-| [xrf-math](xrf-math/README.md)                 | Vectors and matrices in the engine's layout                       |
+| [xrf-math](xrf-math/README.md)                 | Vectors, matrices and shapes in the engine's layout               |
 | [xrf-output](xrf-output/README.md)             | Route live messages and ordered worker output                     |
 | [xrf-report](xrf-report/README.md)             | Finalize checks and findings into deterministic reports           |
 | [xrf-test-utils](xrf-test-utils/README.md)     | Share test resources and assertions                               |
