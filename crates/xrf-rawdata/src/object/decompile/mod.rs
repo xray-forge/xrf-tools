@@ -6,4 +6,4 @@ pub(crate) mod object_inference;
 pub(crate) mod skeleton;
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
