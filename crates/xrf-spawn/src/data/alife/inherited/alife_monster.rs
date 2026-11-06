@@ -2,7 +2,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, LtxWrite, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxWrite};
 use xrf_math::Vector3d;
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
@@ -63,8 +63,8 @@ impl AlifePacketsReadWrite for AlifeMonster {
 
 impl LtxImportExport for AlifeMonster {
   /// Import monster data from ltx file section.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
         section_name,

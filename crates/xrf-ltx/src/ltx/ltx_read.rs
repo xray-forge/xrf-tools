@@ -6,10 +6,23 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{decode_w1251_bytes_to_string, format_path, read_as_string_from_w1251_encoded};
 use xrf_vfs::{XrayLogicalPath, XraySearch};
 
+use crate::binding::LtxRead;
 use crate::dialect::{LtxDialect, LtxResolveRequest, LtxStandardDialect};
 use crate::document::{LtxDocument, LtxParser};
-use crate::ltx::Ltx;
+use crate::ltx::{Ltx, Section};
 use crate::source::{LtxFilesystemSource, LtxVfsSource};
+
+impl LtxRead for Ltx {
+  type Section = Section;
+
+  fn section(&self, name: &str) -> Option<&Section> {
+    Ltx::section(self, name)
+  }
+
+  fn has_section(&self, name: &str) -> bool {
+    Ltx::has_section(self, name)
+  }
+}
 
 impl Ltx {
   /// Read one document from a string under standard rules, without reading anything it includes.

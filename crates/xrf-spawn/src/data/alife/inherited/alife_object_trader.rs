@@ -2,7 +2,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_ltx::{Ltx, LtxImportExport, LtxWrite};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxWrite};
 
 use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
 use crate::data::alife::inherited::alife_object_trader_abstract::AlifeObjectTraderAbstract;
@@ -38,7 +38,7 @@ impl ChunkReadWrite for AlifeObjectTrader {
 
 impl LtxImportExport for AlifeObjectTrader {
   /// Import trader object data from ltx config section.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
     Ok(Self {
       base: AlifeObjectDynamicVisual::import(section_name, ltx)?,
       trader: AlifeObjectTraderAbstract::import(section_name, ltx)?,

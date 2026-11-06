@@ -123,8 +123,11 @@ outside it are an error rather than replaced.
 - `read_engine_bool`, `read_engine_float`, `scan_engine_float` and `read_engine_floats` read a value as the engine's
   `CInifile` does, including what it makes of malformed text.
 - `Condlist` parses the `{+info} value, otherwise` condition lists that logic fields are written in.
-- `LtxImportExport` binds a typed record to a section, which reads its fields strictly through `Section::read_field`
-  and `Section::read_optional_field`.
+- `LtxImportExport` binds a typed record to a section. It reads through `LtxRead` and `LtxSectionRead`
+  (`read_field` and `read_optional_field` parse strictly) and writes through `LtxWrite` and `LtxSectionWrite`, which
+  `Ltx` implements for a caller holding a config. A file of records is read and written without one: `LtxRecordReader`
+  hands each section over as it is parsed (`import_all`, `import_indexed`), and `LtxRecordWriter` appends each
+  section's text, both with the bytes and the errors a config would give.
 
 ## Module map
 
@@ -139,9 +142,9 @@ The crate is grouped by the stage each part answers for, and a config passes thr
 - `project`: a whole tree of configs, and the verify and format passes over it.
 
 `scheme` and `condlist` are the two value languages a field may be written in, read on demand rather than as a stage.
-`binding` is how a typed record is read out of a config and written back into one. `finding` is what verification
-answers with, one type for the verifier, the explorer, the gamedata check and the CLI. Every module is private; the
-supported names are re-exported from the crate root.
+`binding` is how a typed record is read and written, from and into a config or a record file. `finding` is what
+verification answers with, one type for the verifier, the explorer, the gamedata check and the CLI. Every module is
+private; the supported names are re-exported from the crate root.
 
 ## Errors and checks
 

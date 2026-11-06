@@ -1,12 +1,12 @@
-use std::any::type_name;
 use std::ops::Index;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use xrf_error::{XrfError, XrfResult};
+use xrf_error::XrfResult;
 
+use crate::binding::LtxSectionRead;
 use crate::ltx::{PropertyIter, SectionData};
-use crate::syntax::{read_engine_bool, read_engine_float};
+use crate::syntax::read_engine_float;
 
 /// One resolved section: the parents its header declared, and its fields in written order.
 ///
@@ -136,7 +136,7 @@ impl Section {
 
   /// The value as `CInifile::r_bool` reads it; `None` for a key the section lacks.
   pub fn get_bool(&self, key: &str) -> Option<bool> {
-    self.get(key).map(read_engine_bool)
+    LtxSectionRead::get_bool(self, key)
   }
 
   /// The value as `CInifile::r_float` reads it, through `atof`; `None` for a key the section lacks.
@@ -150,16 +150,7 @@ impl Section {
   ///
   /// Returns a parsing error when the section lacks the field, or its value is not a valid `T`.
   pub fn read_field<T: FromStr>(&self, key: &str) -> XrfResult<T> {
-    let value: &str = self
-      .get(key)
-      .ok_or_else(|| XrfError::new_parsing_error(format!("Field '{key}' was not found in ltx file")))?;
-
-    value.parse::<T>().map_err(|_| {
-      XrfError::new_parsing_error(format!(
-        "Failed to parse ltx field '{key}' value '{value}', valid {} is expected",
-        type_name::<T>(),
-      ))
-    })
+    LtxSectionRead::read_field(self, key)
   }
 
   /// The value of a field a record may leave out, parsed as `T` strictly; `None` for a key the section lacks.
@@ -168,22 +159,18 @@ impl Section {
   ///
   /// Returns a parsing error when the value is not a valid `T`.
   pub fn read_optional_field<T: FromStr>(&self, key: &str) -> XrfResult<Option<T>> {
-    self
-      .get(key)
-      .map(|value| {
-        value.parse::<T>().map_err(|_| {
-          XrfError::new_parsing_error(format!(
-            "Failed to parse optional ltx field '{key}' value, correct {:?} is expected",
-            type_name::<T>()
-          ))
-        })
-      })
-      .transpose()
+    LtxSectionRead::read_optional_field(self, key)
   }
 
   /// Remove the property with the first value of the key.
   pub fn remove(&mut self, key: &str) -> Option<Arc<str>> {
     self.data.shift_remove(key)
+  }
+}
+
+impl LtxSectionRead for Section {
+  fn get(&self, key: &str) -> Option<&str> {
+    Section::get(self, key)
   }
 }
 

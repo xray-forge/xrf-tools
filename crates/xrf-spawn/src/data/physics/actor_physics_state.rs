@@ -4,7 +4,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{LtxSectionWrite, LtxWrite, Section};
+use xrf_ltx::{LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_math::Vector3d;
 use xrf_utils::{decode_bytes_from_base64, encode_bytes_to_base64, vector_to_string};
 
@@ -179,7 +179,7 @@ impl ActorPhysicsState {
   }
 
   /// Import the body kept under `prefix`, its kind in `prefix` itself.
-  pub fn import(section: &Section, prefix: &str) -> XrfResult<Self> {
+  pub fn import(section: &impl LtxSectionRead, prefix: &str) -> XrfResult<Self> {
     let key = |name: &str| format!("{prefix}.{name}");
 
     Ok(match section.read_field::<String>(prefix)?.trim() {

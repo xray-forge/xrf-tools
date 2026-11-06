@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{LtxSectionWrite, LtxWrite, Section};
+use xrf_ltx::{LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_math::Vector3d;
 use xrf_utils::vector_to_string;
 
@@ -163,7 +163,7 @@ impl PhysicsNetState {
   }
 
   /// Import the state kept under `prefix`, where `prefix = nil` stands for none.
-  pub fn import_optional(section: &Section, prefix: &str) -> XrfResult<Option<Self>> {
+  pub fn import_optional(section: &impl LtxSectionRead, prefix: &str) -> XrfResult<Option<Self>> {
     if section.get(prefix).map(str::trim) == Some(NIL) {
       return Ok(None);
     }
@@ -208,7 +208,7 @@ impl PhysicsNetState {
       .set(format!("{prefix}.awake"), state.awake);
   }
 
-  fn import_velocity(section: &Section, key: &str) -> XrfResult<Option<[RawFloat; 3]>> {
+  fn import_velocity(section: &impl LtxSectionRead, key: &str) -> XrfResult<Option<[RawFloat; 3]>> {
     if section.get(key).map(str::trim) == Some(NIL) {
       return Ok(None);
     }

@@ -6,7 +6,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{FileImportExport, Ltx, LtxImportExport, LtxRecordWriter};
+use xrf_ltx::{FileImportExport, LtxImportExport, LtxRecordReader, LtxRecordWriter};
 use xrf_utils::{assert_count_fits, assert_equal, assert_length, to_format_size};
 
 use crate::data::alife::alife_object::AlifeObject;
@@ -193,12 +193,7 @@ impl ChunkReadWrite for SpawnALifeSpawnsChunk {
 impl FileImportExport for SpawnALifeSpawnsChunk {
   /// Import ALife spawns data from provided path.
   fn import<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    let ltx: Ltx = Ltx::read_from_path(path.as_ref().join("alife_spawns.ltx"))?;
-    let mut objects: Vec<AlifeObject> = Vec::with_capacity(ltx.len());
-
-    for (section_name, _) in &ltx {
-      objects.push(AlifeObject::import(section_name, &ltx)?);
-    }
+    let objects: Vec<AlifeObject> = LtxRecordReader::import_all(path.as_ref().join("alife_spawns.ltx"))?;
 
     log::info!("Imported ALife spawns chunk");
 

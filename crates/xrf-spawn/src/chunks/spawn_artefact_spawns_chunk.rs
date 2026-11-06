@@ -5,7 +5,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_ltx::{FileImportExport, Ltx, LtxImportExport, LtxRecordWriter};
+use xrf_ltx::{FileImportExport, LtxImportExport, LtxRecordReader, LtxRecordWriter};
 use xrf_utils::{assert_length, to_format_size};
 
 use crate::data::artefact_spawn::artefact_spawn_point::ArtefactSpawnPoint;
@@ -66,12 +66,7 @@ impl FileImportExport for SpawnArtefactSpawnsChunk {
   /// Import artefact spawns data from provided path.
   /// Parse ltx files and populate spawn file.
   fn import<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    let ltx: Ltx = Ltx::read_from_path(path.as_ref().join("artefact_spawns.ltx"))?;
-    let mut nodes: Vec<ArtefactSpawnPoint> = Vec::with_capacity(ltx.len());
-
-    for (name, _) in ltx.iter() {
-      nodes.push(ArtefactSpawnPoint::import(name, &ltx)?);
-    }
+    let nodes: Vec<ArtefactSpawnPoint> = LtxRecordReader::import_all(path.as_ref().join("artefact_spawns.ltx"))?;
 
     log::info!("Imported artefact spawns chunk");
 

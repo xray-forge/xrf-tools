@@ -4,7 +4,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, LtxSectionWrite, LtxWrite, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_math::Vector3d;
 use xrf_utils::{assert_equal, to_format_size};
 
@@ -118,8 +118,8 @@ impl PatrolPoint {
   ///
   /// Ltx trims values, so a name padded with whitespace cannot be recovered from the `name` key. The owning patrol
   /// takes it from the section name, which keeps the padding.
-  pub fn import_named(section_name: &str, name: String, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  pub fn import_named<L: LtxRead>(section_name: &str, name: String, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "Patrol point section '{}' should be defined in ltx file ({})",
         section_name,
@@ -139,8 +139,8 @@ impl PatrolPoint {
 
 impl LtxImportExport for PatrolPoint {
   /// Import patrol point data from ltx config.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "Patrol point section '{}' should be defined in ltx file ({})",
         section_name,

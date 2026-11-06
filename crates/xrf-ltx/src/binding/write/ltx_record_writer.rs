@@ -5,7 +5,7 @@ use hashbrown::HashTable;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{StagedFile, encode_string_into_w1251_bytes};
 
-use crate::binding::{LtxRecordSection, LtxWrite};
+use crate::binding::{LtxFieldIndex, LtxRecordSection, LtxWrite};
 use crate::syntax::{DEFAULT_KV_SEPARATOR, EMPTY_VALUE_KV_SEPARATOR, LTX_LINE_SEPARATOR, ROOT_SECTION};
 
 /// Writes a file of exported records as its text while they are exported, without building a config of them.
@@ -18,8 +18,8 @@ pub struct LtxRecordWriter {
   open: Option<TextSpan>,
   /// The open section's fields, in written order.
   fields: Vec<FieldLine>,
-  /// The open section's fields by key, kept once there are more than a scan finds quickly.
-  field_keys: HashTable<usize>,
+  /// The open section's fields by key.
+  field_keys: LtxFieldIndex,
   /// The first section written to again after another had started.
   reopened: Option<String>,
 }
@@ -46,9 +46,6 @@ impl TextSpan {
 }
 
 impl LtxRecordWriter {
-  /// Fields a section holds before they are found by key instead of by scanning them all.
-  const SCANNED_FIELDS: usize = 8;
-
   pub fn new() -> Self {
     Self::default()
   }
@@ -154,24 +151,14 @@ impl LtxRecordWriter {
         Self::hash(finished.of(text))
       });
 
-    if self.fields.len() > Self::SCANNED_FIELDS {
-      self.field_keys.clear();
-    }
-
+    self.field_keys.clear();
     self.fields.clear();
   }
 
   fn find_field(&self, key: &str) -> Option<usize> {
-    let text: &str = &self.text;
+    let (text, fields): (&str, &[FieldLine]) = (&self.text, &self.fields);
 
-    if self.fields.len() <= Self::SCANNED_FIELDS {
-      self.fields.iter().position(|field| field.key.of(text) == key)
-    } else {
-      self
-        .field_keys
-        .find(Self::hash(key), |&index| self.fields[index].key.of(text) == key)
-        .copied()
-    }
+    self.field_keys.find(key, |index| fields[index].key.of(text))
   }
 
   fn push_field<V: Display>(&mut self, key: &str, value: V) {
@@ -191,25 +178,9 @@ impl LtxRecordWriter {
     });
     self.text.push_str(LTX_LINE_SEPARATOR);
 
-    let count: usize = self.fields.len();
+    let (text, fields): (&str, &[FieldLine]) = (&self.text, &self.fields);
 
-    // Past the scanned few, every field so far is indexed once, then each as it comes.
-    if count > Self::SCANNED_FIELDS {
-      let first: usize = if count == Self::SCANNED_FIELDS + 1 {
-        0
-      } else {
-        count - 1
-      };
-      let (text, fields): (&str, &[FieldLine]) = (&self.text, &self.fields);
-
-      for index in first..count {
-        self
-          .field_keys
-          .insert_unique(Self::hash(fields[index].key.of(text)), index, |&held| {
-            Self::hash(fields[held].key.of(text))
-          });
-      }
-    }
+    self.field_keys.push(|index| fields[index].key.of(text));
   }
 
   /// Write the field's value over the one its line holds, moving the lines after it.

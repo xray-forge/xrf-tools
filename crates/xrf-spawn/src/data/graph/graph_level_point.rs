@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, LtxSectionWrite, LtxWrite, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_math::Vector3d;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -40,8 +40,8 @@ impl ChunkReadWrite for GraphLevelPoint {
 
 impl LtxImportExport for GraphLevelPoint {
   /// Import graph level point from ltx file.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "Graph level point section '{}' should be defined in ltx file ({})",
         section_name,

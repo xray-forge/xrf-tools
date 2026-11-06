@@ -63,11 +63,7 @@ impl<'a> LtxStandardLowering<'a> {
         let path: &str = path.as_ref();
 
         if self.ltx.includes(path) {
-          return Err(XrfError::new_ltx_parse_error(
-            item.span.get_line(),
-            item.span.get_column(),
-            format!("Failed to parse include statement in ltx file, including '{path}' more than once"),
-          ));
+          return Err(Self::new_repeated_include_error(item, path));
         }
 
         self.ltx.include(String::from(path));
@@ -81,11 +77,7 @@ impl<'a> LtxStandardLowering<'a> {
         mem::take(&mut self.open).close_into(&mut self.ltx);
 
         if self.ltx.has_section(name) {
-          return Err(XrfError::new_ltx_parse_error(
-            item.span.get_line(),
-            item.span.get_column(),
-            format!("Duplicate sections are not allowed, looks like '{name}' is declared twice"),
-          ));
+          return Err(Self::new_repeated_section_error(item, name));
         }
 
         self.open = LtxOpenSection::declared(name, parents);
@@ -116,10 +108,28 @@ impl<'a> LtxStandardLowering<'a> {
     ltx
   }
 
+  /// The diagnostic an include named a second time gets.
+  pub(crate) fn new_repeated_include_error<S: AsRef<str>>(item: &LtxItem<S>, path: &str) -> XrfError {
+    XrfError::new_ltx_parse_error(
+      item.span.get_line(),
+      item.span.get_column(),
+      format!("Failed to parse include statement in ltx file, including '{path}' more than once"),
+    )
+  }
+
+  /// The diagnostic a section declared a second time gets, at the second header.
+  pub(crate) fn new_repeated_section_error<S: AsRef<str>>(item: &LtxItem<S>, name: &str) -> XrfError {
+    XrfError::new_ltx_parse_error(
+      item.span.get_line(),
+      item.span.get_column(),
+      format!("Duplicate sections are not allowed, looks like '{name}' is declared twice"),
+    )
+  }
+
   /// The diagnostic a DLTX statement gets in standard mode.
   ///
   /// Names the flag, because a patch file read without it is a mode mistake rather than a broken config.
-  fn new_patch_operation_error<S: AsRef<str>>(item: &LtxItem<S>) -> XrfError {
+  pub(crate) fn new_patch_operation_error<S: AsRef<str>>(item: &LtxItem<S>) -> XrfError {
     let statement: String = match &item.kind {
       LtxItemKind::Section { name, operation, .. } => {
         format!("section '{}[{}]'", operation.as_prefix(), name.as_ref())

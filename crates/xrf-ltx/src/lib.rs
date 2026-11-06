@@ -12,7 +12,8 @@ pub(crate) mod source;
 pub(crate) mod syntax;
 
 pub use crate::binding::{
-  FileImportExport, LtxImportExport, LtxRecordSection, LtxRecordWriter, LtxSectionWrite, LtxWrite, META_TYPE_FIELD,
+  FileImportExport, LtxImportExport, LtxRead, LtxRecord, LtxRecordReader, LtxRecordSection, LtxRecordWriter,
+  LtxSectionRead, LtxSectionWrite, LtxWrite, META_TYPE_FIELD,
 };
 pub use crate::condlist::{Condlist, CondlistBranch, CondlistCondition};
 pub use crate::dialect::{
