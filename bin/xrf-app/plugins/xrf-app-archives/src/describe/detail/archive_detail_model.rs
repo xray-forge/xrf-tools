@@ -2,7 +2,6 @@ use serde::Serialize;
 use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_level::DetailModel;
-use xrf_math::Vector3d;
 use xrf_vfs::XrayAssetType;
 
 use crate::describe::description::ArchiveBounds;
@@ -57,9 +56,7 @@ impl ArchiveDetailModel {
       unnamed_flags: model.flags & !DetailModel::NO_WAVING,
       vertices: model.vertices.len(),
       triangles: model.get_triangles_count(),
-      bounds: model
-        .get_bounds()
-        .map(|(minimum, maximum): (Vector3d<f32>, Vector3d<f32>)| ArchiveBounds::of(&minimum, &maximum)),
+      bounds: model.get_bounds().as_ref().map(ArchiveBounds::of),
     }
   }
 }

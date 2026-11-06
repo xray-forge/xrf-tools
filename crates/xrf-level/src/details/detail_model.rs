@@ -5,7 +5,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_math::Vector3d;
+use xrf_math::Aabb;
 use xrf_utils::{format_path, to_format_size};
 
 use crate::details::detail_vertex::DetailVertex;
@@ -90,18 +90,8 @@ impl DetailModel {
   /// The box the mesh occupies, or `None` for a model carrying no vertices.
   ///
   /// In engine units before the slot's own scale applies, so this is the object as authored rather than as planted.
-  pub fn get_bounds(&self) -> Option<(Vector3d<f32>, Vector3d<f32>)> {
-    let first: &DetailVertex = self.vertices.first()?;
-
-    let mut minimum: Vector3d<f32> = first.position.clone();
-    let mut maximum: Vector3d<f32> = first.position.clone();
-
-    for vertex in &self.vertices {
-      minimum = minimum.min(&vertex.position);
-      maximum = maximum.max(&vertex.position);
-    }
-
-    Some((minimum, maximum))
+  pub fn get_bounds(&self) -> Option<Aabb> {
+    Aabb::from_points(self.vertices.iter().map(|vertex: &DetailVertex| &vertex.position))
   }
 }
 

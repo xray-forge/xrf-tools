@@ -363,7 +363,7 @@ mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_ltx::{Ltx, LtxImportExport};
-  use xrf_math::Vector3d;
+  use xrf_math::{Vector2d, Vector3d};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::actions::particle_action_copy_vertex::ParticleActionCopyVertex;
@@ -402,8 +402,8 @@ mod tests {
       ],
       flags: 140,
       frame: Some(ParticleEffectFrame {
-        texture_size: (450.0, 360.0),
-        reserved: (45.2, 51.2),
+        texture_size: Vector2d::new(450.0, 360.0),
+        reserved: Vector2d::new(45.2, 51.2),
         frame_dimension_x: 320,
         frame_count: 60,
         frame_speed: 29.7,
@@ -481,8 +481,8 @@ mod tests {
       ],
       flags: 140,
       frame: Some(ParticleEffectFrame {
-        texture_size: (451.0, 361.0),
-        reserved: (45.2, 51.2),
+        texture_size: Vector2d::new(451.0, 361.0),
+        reserved: Vector2d::new(45.2, 51.2),
         frame_dimension_x: 320,
         frame_count: 60,
         frame_speed: 29.7,
@@ -543,8 +543,8 @@ mod tests {
       ],
       flags: 150,
       frame: Some(ParticleEffectFrame {
-        texture_size: (460.0, 380.0),
-        reserved: (41.2, 42.2),
+        texture_size: Vector2d::new(460.0, 380.0),
+        reserved: Vector2d::new(41.2, 42.2),
         frame_dimension_x: 640,
         frame_count: 80,
         frame_speed: 29.7,

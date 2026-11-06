@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use serde::Serialize;
-use xrf_math::Vector3d;
+use xrf_math::Aabb;
 use xrf_ogf::{OgfGeometryContainerChunk, OgfModelType};
 
 use crate::{LevelGeomVertexBuffer, LevelGeometryLayoutKind, LevelVertex, LevelVertexLayout};
@@ -25,7 +25,7 @@ pub struct LevelGeometryCensus {
   /// Visuals stored in each kind of vertex declaration.
   pub layouts: BTreeMap<LevelGeometryLayoutKind, usize>,
   /// The box every decoded position fell in, which is the level's own extent.
-  pub bounds: Option<(Vector3d, Vector3d)>,
+  pub bounds: Option<Aabb>,
   /// Decoded normals whose length is not near one, which a misread normal element would make of all of them.
   pub stray_normals: u64,
   /// The widest base texture coordinate decoded, against the 32 tiles the quantization allows.
@@ -79,10 +79,10 @@ impl LevelGeometryCensus {
 
   /// Folds one decoded vertex into the extent, the normal count and the widest coordinate.
   pub(crate) fn record_vertex(&mut self, vertex: &LevelVertex, has_normal: bool) {
-    self.bounds = Some(match self.bounds.take() {
-      None => (vertex.position.clone(), vertex.position.clone()),
-      Some((min, max)) => (min.min(&vertex.position), max.max(&vertex.position)),
-    });
+    match &mut self.bounds {
+      Some(bounds) => bounds.include_point(&vertex.position),
+      None => self.bounds = Some(Aabb::of_point(&vertex.position)),
+    }
 
     if has_normal && (vertex.normal.length() - 1.0).abs() > NORMAL_LENGTH_TOLERANCE {
       self.stray_normals += 1;
@@ -90,7 +90,7 @@ impl LevelGeometryCensus {
 
     self.widest_coordinate = self
       .widest_coordinate
-      .max(vertex.texture_coordinate.0.abs())
-      .max(vertex.texture_coordinate.1.abs());
+      .max(vertex.texture_coordinate.x.abs())
+      .max(vertex.texture_coordinate.y.abs());
   }
 }

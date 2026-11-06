@@ -5,7 +5,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_math::Vector3d;
+use xrf_math::{Aabb, Vector3d};
 use xrf_utils::{format_path, to_format_size};
 
 use crate::build_aimap::build_aimap_node::BuildAimapNode;
@@ -18,8 +18,7 @@ pub struct BuildAimapFile {
   /// `E_AIMAP_VERSION`, which decides how wide a link is.
   pub version: u16,
   /// The box around every node, which a node's height is packed across.
-  pub bounds_min: Vector3d<f32>,
-  pub bounds_max: Vector3d<f32>,
+  pub bounds: Aabb,
   pub params: BuildAimapParams,
   pub nodes: Vec<BuildAimapNode>,
 }
@@ -95,11 +94,10 @@ impl BuildAimapFile {
     let version: u16 = ChunkReader::find_required_by_id(&chunks, Self::VERSION_CHUNK_ID)?.read_u16_payload::<T>()?;
     let has_wide_links: bool = Self::has_wide_links(version)?;
 
-    let mut bounds: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::BOX_CHUNK_ID)?;
-    let bounds_min: Vector3d<f32> = bounds.read_xr::<T, _>()?;
-    let bounds_max: Vector3d<f32> = bounds.read_xr::<T, _>()?;
+    let mut bounds_chunk: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::BOX_CHUNK_ID)?;
+    let bounds: Aabb = bounds_chunk.read_xr::<T, _>()?;
 
-    bounds.assert_read("Expect all data to be read from build AI map box")?;
+    bounds_chunk.assert_read("Expect all data to be read from build AI map box")?;
 
     let mut params_chunk: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::PARAMS_CHUNK_ID)?;
     let params: BuildAimapParams = params_chunk.read_xr::<T, _>()?;
@@ -122,8 +120,7 @@ impl BuildAimapFile {
 
     Ok(Self {
       version,
-      bounds_min,
-      bounds_max,
+      bounds,
       params,
       nodes,
     })
@@ -145,8 +142,7 @@ impl BuildAimapFile {
 
     let mut bounds: ChunkWriter = ChunkWriter::new();
 
-    bounds.write_xr::<T, _>(&self.bounds_min)?;
-    bounds.write_xr::<T, _>(&self.bounds_max)?;
+    bounds.write_xr::<T, _>(&self.bounds)?;
     bounds.flush_chunk_into::<T>(&mut writer.buffer, Self::BOX_CHUNK_ID)?;
 
     let mut params: ChunkWriter = ChunkWriter::new();
@@ -172,7 +168,7 @@ impl BuildAimapFile {
   pub fn get_node_position(&self, node: &BuildAimapNode) -> Vector3d<f32> {
     Vector3d::new(
       f32::from(node.x) * self.params.patch_size,
-      f32::from(node.y) / f32::from(u16::MAX) * (self.bounds_max.y - self.bounds_min.y) + self.bounds_min.y,
+      f32::from(node.y) / f32::from(u16::MAX) * (self.bounds.max.y - self.bounds.min.y) + self.bounds.min.y,
       f32::from(node.z) * self.params.patch_size,
     )
   }

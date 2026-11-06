@@ -85,7 +85,6 @@ pub use crate::hom::level_hom_file::*;
 pub use crate::hom::level_hom_polygon::*;
 pub use crate::level::dynamic_lights::level_dynamic_light::*;
 pub use crate::level::dynamic_lights::level_dynamic_lights_chunk::*;
-pub use crate::level::dynamic_lights::level_light_color::*;
 pub use crate::level::glows::level_glow::*;
 pub use crate::level::glows::level_glows_chunk::*;
 pub use crate::level::level_file::*;

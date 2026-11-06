@@ -8,7 +8,7 @@ use uuid::{Uuid, uuid};
 use xrf_chunk::{ChunkReadWrite, ChunkWriter, XRayByteOrder};
 use xrf_gamemtl::GameMtlFile;
 use xrf_level::{LevelAiHeader, LevelCformHeader, LevelHeaderChunk, LevelShaderEntry, LevelShadersChunk};
-use xrf_math::Vector3d;
+use xrf_math::{Aabb, Vector3d};
 use xrf_spawn::{GraphCrossTable, GraphHeader, GraphLevel, SpawnGraphsChunk};
 use xrf_test_utils::GeneratedResources;
 
@@ -131,8 +131,10 @@ pub(crate) fn ai_map_bytes(version: u32, count: u32, guid: Uuid) -> Vec<u8> {
     count,
     size: 0.7,
     size_y: 0.2,
-    aabb_min: Vector3d::new(-1.0, -1.0, -1.0),
-    aabb_max: Vector3d::new(1.0, 1.0, 1.0),
+    bounds: Aabb {
+      min: Vector3d::new(-1.0, -1.0, -1.0),
+      max: Vector3d::new(1.0, 1.0, 1.0),
+    },
     guid,
   }
   .write::<XRayByteOrder>(&mut writer)
@@ -148,8 +150,10 @@ pub(crate) fn cform_bytes(version: u32) -> Vec<u8> {
     version,
     vertex_count: 10,
     face_count: 20,
-    aabb_min: Vector3d::new(-1.0, -1.0, -1.0),
-    aabb_max: Vector3d::new(1.0, 1.0, 1.0),
+    bounds: Aabb {
+      min: Vector3d::new(-1.0, -1.0, -1.0),
+      max: Vector3d::new(1.0, 1.0, 1.0),
+    },
   }
   .write::<XRayByteOrder>(&mut writer)
   .unwrap();
@@ -165,8 +169,10 @@ pub(crate) fn cform_faces_bytes(materials: &[u16]) -> Vec<u8> {
     version: CFORM_CURRENT_VERSION,
     vertex_count: 1,
     face_count: materials.len() as u32,
-    aabb_min: Vector3d::new(0.0, 0.0, 0.0),
-    aabb_max: Vector3d::new(0.0, 0.0, 0.0),
+    bounds: Aabb {
+      min: Vector3d::new(0.0, 0.0, 0.0),
+      max: Vector3d::new(0.0, 0.0, 0.0),
+    },
   }
   .write::<XRayByteOrder>(&mut writer)
   .unwrap();

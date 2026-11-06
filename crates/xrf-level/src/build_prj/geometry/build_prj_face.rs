@@ -2,6 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
+use xrf_math::Vector2d;
 
 /// One triangle of the scene's geometry, `b_face` (`communicate.h`).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -9,7 +10,7 @@ use xrf_error::XrfResult;
 pub struct BuildPrjFace {
   /// Its corners, by index into the vertices of the chunk or model holding it.
   pub vertices: [u32; 3],
-  pub texture_coordinates: [(f32, f32); 3],
+  pub texture_coordinates: [Vector2d; 3],
   /// Its material, by index into the material table.
   pub material: u16,
   /// The two bytes `#pragma pack(4)` puts before the game material, kept so a rewrite gives back what was read.
@@ -30,10 +31,10 @@ impl ChunkReadWrite for BuildPrjFace {
       reader.read_u32::<T>()?,
       reader.read_u32::<T>()?,
     ];
-    let mut texture_coordinates: [(f32, f32); 3] = [(0.0, 0.0); 3];
+    let mut texture_coordinates: [Vector2d; 3] = [Vector2d::ZERO; 3];
 
     for coordinate in &mut texture_coordinates {
-      *coordinate = (reader.read_f32::<T>()?, reader.read_f32::<T>()?);
+      *coordinate = reader.read_xr::<T, _>()?;
     }
 
     Ok(Self {
@@ -50,9 +51,8 @@ impl ChunkReadWrite for BuildPrjFace {
       writer.write_u32::<T>(vertex)?;
     }
 
-    for (u, v) in self.texture_coordinates {
-      writer.write_f32::<T>(u)?;
-      writer.write_f32::<T>(v)?;
+    for coordinate in &self.texture_coordinates {
+      writer.write_xr::<T, _>(coordinate)?;
     }
 
     writer.write_u16::<T>(self.material)?;

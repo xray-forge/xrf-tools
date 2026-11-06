@@ -64,7 +64,7 @@ impl LtxImportExport for AlifeObjectShape {
 mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_math::Vector3d;
+  use xrf_math::{Affine3d, Sphere, Vector3d};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
@@ -88,13 +88,16 @@ mod tests {
         spawn_story_id: 527841,
       },
       shape: vec![
-        Shape::Sphere((Vector3d::new(5.5, 0.5, 11.5), 1.0)),
-        Shape::Box((
-          Vector3d::new(5.5, 12.5, 73.1),
-          Vector3d::new(5.1, 13.2, 2.3),
-          Vector3d::new(1.0, 12.0, 6.4),
-          Vector3d::new(9.2, 13.3, 3.0),
-        )),
+        Shape::Sphere(Sphere {
+          center: Vector3d::new(5.5, 0.5, 11.5),
+          radius: 1.0,
+        }),
+        Shape::Box(Affine3d {
+          x_axis: Vector3d::new(5.5, 12.5, 73.1),
+          y_axis: Vector3d::new(5.1, 13.2, 2.3),
+          z_axis: Vector3d::new(1.0, 12.0, 6.4),
+          translation: Vector3d::new(9.2, 13.3, 3.0),
+        }),
       ],
     };
 

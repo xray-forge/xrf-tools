@@ -1,5 +1,6 @@
 use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
+use xrf_math::Vector2d;
 
 use crate::build_cform::build_cform_face::BuildCformFace;
 use crate::build_cform::build_cform_file::BuildCformFile;
@@ -59,7 +60,7 @@ fn a_build_cform_reads_its_geometry_and_one_raycast_record_per_face() -> XrfResu
   let file: BuildCformFile = BuildCformFile::read_from_bytes::<XRayByteOrder>(form_bytes(4, [0, 1, 2])?)?;
 
   assert_eq!(file.version, BuildCformFile::CURRENT_VERSION);
-  assert_eq!(file.aabb_max.y, 1.0);
+  assert_eq!(file.bounds.max.y, 1.0);
   assert_eq!(file.vertices.len(), 3);
   assert_eq!(
     file.faces,
@@ -72,7 +73,7 @@ fn a_build_cform_reads_its_geometry_and_one_raycast_record_per_face() -> XrfResu
   assert_eq!(file.raycast_faces[0].material, 2);
   assert_eq!(file.raycast_faces[0].material_padding, 0xBBAA);
   assert_eq!(file.raycast_faces[0].game_material, 5);
-  assert_eq!(file.raycast_faces[0].texture_coordinates[1], (0.75, 0.5));
+  assert_eq!(file.raycast_faces[0].texture_coordinates[1], Vector2d::new(0.75, 0.5));
 
   Ok(())
 }

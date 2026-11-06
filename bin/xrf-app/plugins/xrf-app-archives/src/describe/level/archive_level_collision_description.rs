@@ -33,7 +33,7 @@ impl ArchiveLevelCollisionDescription {
       version: header.version,
       vertices: header.vertex_count,
       faces: header.face_count,
-      bounds: ArchiveBounds::of(&header.aabb_min, &header.aabb_max),
+      bounds: ArchiveBounds::of(&header.bounds),
       size,
     })
   }

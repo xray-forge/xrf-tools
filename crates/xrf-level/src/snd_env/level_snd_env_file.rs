@@ -5,7 +5,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_math::Vector3d;
+use xrf_math::{Aabb, Vector3d};
 use xrf_utils::{format_path, to_format_size};
 
 use crate::cform::level_cform_file::LevelCformHeader;
@@ -24,8 +24,8 @@ pub struct LevelSndEnvFile {
   pub environments: Vec<String>,
   /// The mesh header's version, `CFORM_CURRENT_VERSION` as the editor writes it; the sound renderer does not check it.
   pub version: u32,
-  pub aabb_min: Vector3d<f32>,
-  pub aabb_max: Vector3d<f32>,
+  /// The mesh header's box, kept as the editor wrote it; the sound renderer does not read it.
+  pub bounds: Aabb,
   pub vertices: Vec<Vector3d<f32>>,
   pub faces: Vec<LevelSndEnvFace>,
 }
@@ -115,8 +115,7 @@ impl LevelSndEnvFile {
     let file: Self = Self {
       environments,
       version: header.version,
-      aabb_min: header.aabb_min,
-      aabb_max: header.aabb_max,
+      bounds: header.bounds,
       vertices,
       faces,
     };
@@ -149,8 +148,7 @@ impl LevelSndEnvFile {
       version: self.version,
       vertex_count: to_format_size(self.vertices.len(), "sound environment vertices")?,
       face_count: to_format_size(self.faces.len(), "sound environment faces")?,
-      aabb_min: self.aabb_min.clone(),
-      aabb_max: self.aabb_max.clone(),
+      bounds: self.bounds.clone(),
     }
     .write::<T>(&mut geometry)?;
 

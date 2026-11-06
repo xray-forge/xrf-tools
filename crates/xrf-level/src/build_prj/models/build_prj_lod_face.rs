@@ -1,15 +1,15 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_math::Vector3d;
+use xrf_math::{Vector2d, Vector3d};
 
 /// One quad of an impostor, `b_lod_face` (`communicate.h`).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BuildPrjLodFace {
   pub vertices: [Vector3d<f32>; 4],
-  pub texture_coordinates: [(f32, f32); 4],
+  pub texture_coordinates: [Vector2d; 4],
 }
 
 impl BuildPrjLodFace {
@@ -25,10 +25,10 @@ impl ChunkReadWrite for BuildPrjLodFace {
       *vertex = reader.read_xr::<T, _>()?;
     }
 
-    let mut texture_coordinates: [(f32, f32); 4] = [(0.0, 0.0); 4];
+    let mut texture_coordinates: [Vector2d; 4] = [Vector2d::ZERO; 4];
 
     for coordinate in &mut texture_coordinates {
-      *coordinate = (reader.read_f32::<T>()?, reader.read_f32::<T>()?);
+      *coordinate = reader.read_xr::<T, _>()?;
     }
 
     Ok(Self {
@@ -42,9 +42,8 @@ impl ChunkReadWrite for BuildPrjLodFace {
       writer.write_xr::<T, _>(vertex)?;
     }
 
-    for (u, v) in self.texture_coordinates {
-      writer.write_f32::<T>(u)?;
-      writer.write_f32::<T>(v)?;
+    for coordinate in &self.texture_coordinates {
+      writer.write_xr::<T, _>(coordinate)?;
     }
 
     Ok(())

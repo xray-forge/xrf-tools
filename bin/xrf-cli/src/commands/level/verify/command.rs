@@ -1,5 +1,6 @@
 use clap::{ArgMatches, Command};
 use xrf_level::{LevelGeometryVerifier, LevelGeometryVerifyResult};
+use xrf_math::Aabb;
 use xrf_output::OutputOptions;
 
 use crate::commands::level::level_assets::LevelAssets;
@@ -88,7 +89,7 @@ impl VerifyCommand {
       }
     );
 
-    if let Some((min, max)) = &result.census.bounds {
+    if let Some(Aabb { min, max }) = &result.census.bounds {
       xrf_output::info!(
         output,
         "Decoded geometry spans ({:.1}, {:.1}, {:.1}) to ({:.1}, {:.1}, {:.1}), widest texture coordinate {:.1} tiles",

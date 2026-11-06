@@ -87,7 +87,7 @@ impl LtxImportExport for AlifeZoneVisual {
 mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_math::Vector3d;
+  use xrf_math::{Affine3d, Sphere, Vector3d};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
@@ -120,13 +120,16 @@ mod tests {
               spawn_story_id: 754,
             },
             shape: vec![
-              Shape::Sphere((Vector3d::new(53.5, 50.5, 11.5), 2.0)),
-              Shape::Box((
-                Vector3d::new(51.5, 71.1, 53.1),
-                Vector3d::new(51.1, 72.2, 53.3),
-                Vector3d::new(54.0, 75.0, 56.4),
-                Vector3d::new(59.2, 78.3, 53.0),
-              )),
+              Shape::Sphere(Sphere {
+                center: Vector3d::new(53.5, 50.5, 11.5),
+                radius: 2.0,
+              }),
+              Shape::Box(Affine3d {
+                x_axis: Vector3d::new(51.5, 71.1, 53.1),
+                y_axis: Vector3d::new(51.1, 72.2, 53.3),
+                z_axis: Vector3d::new(54.0, 75.0, 56.4),
+                translation: Vector3d::new(59.2, 78.3, 53.0),
+              }),
             ],
             restrictor_type: 2,
           },
@@ -189,13 +192,16 @@ mod tests {
               spawn_story_id: 101,
             },
             shape: vec![
-              Shape::Sphere((Vector3d::new(3.5, 0.5, 11.5), 1.0)),
-              Shape::Box((
-                Vector3d::new(1.5, 1.1, 3.1),
-                Vector3d::new(1.1, 2.2, 3.3),
-                Vector3d::new(4.0, 5.0, 6.4),
-                Vector3d::new(9.2, 8.3, 3.0),
-              )),
+              Shape::Sphere(Sphere {
+                center: Vector3d::new(3.5, 0.5, 11.5),
+                radius: 1.0,
+              }),
+              Shape::Box(Affine3d {
+                x_axis: Vector3d::new(1.5, 1.1, 3.1),
+                y_axis: Vector3d::new(1.1, 2.2, 3.3),
+                z_axis: Vector3d::new(4.0, 5.0, 6.4),
+                translation: Vector3d::new(9.2, 8.3, 3.0),
+              }),
             ],
             restrictor_type: 2,
           },

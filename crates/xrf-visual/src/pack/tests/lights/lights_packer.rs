@@ -1,10 +1,10 @@
 use std::f32::consts::FRAC_PI_2;
 use std::sync::Arc;
 
-use xrf_level::{LevelDynamicLight, LevelLightColor};
+use xrf_level::LevelDynamicLight;
 use xrf_light_anim::{LightAnimFile, LightAnimItem, LightAnimKey};
 use xrf_ltx::Ltx;
-use xrf_math::Vector3d;
+use xrf_math::{Color, Sphere, Vector3d};
 use xrf_ogf::OgfFile;
 use xrf_spawn::{
   AlifeObject, AlifeObjectAbstract, AlifeObjectCustomZone, AlifeObjectDynamicVisual, AlifeObjectHangingLamp,
@@ -325,24 +325,9 @@ fn keeps_the_level_files_point_lights_and_leaves_its_sun() {
   let light = |kind: u32| LevelDynamicLight {
     controller: 0,
     kind,
-    diffuse: LevelLightColor {
-      r: 0.5,
-      g: 0.25,
-      b: 1.0,
-      a: 1.0,
-    },
-    specular: LevelLightColor {
-      r: 0.0,
-      g: 0.0,
-      b: 0.0,
-      a: 0.0,
-    },
-    ambient: LevelLightColor {
-      r: 0.0,
-      g: 0.0,
-      b: 0.0,
-      a: 0.0,
-    },
+    diffuse: Color::new(0.5, 0.25, 1.0, 1.0),
+    specular: Color::default(),
+    ambient: Color::default(),
     position: vector(1.0, 2.0, 3.0),
     direction: vector(0.0, -1.0, 0.0),
     range: 12.0,
@@ -508,7 +493,13 @@ fn carries_a_torrid_zones_light_along_its_motion() {
   let mut packer: LightsPacker = LightsPacker::new(Some(&animations)).with_sections(&ltx);
   let mut zone: AlifeObject = object("campfire", lamp(FLAG_R2, 0));
   // A sphere a metre along the zone's own +z, which its quarter turn stands along the engine's -x.
-  let torrid: AlifeObjectTorridZone = torrid(Shape::Sphere((vector(0.0, 0.0, 1.0), 3.0)), "");
+  let torrid: AlifeObjectTorridZone = torrid(
+    Shape::Sphere(Sphere {
+      center: vector(0.0, 0.0, 1.0),
+      radius: 3.0,
+    }),
+    "",
+  );
 
   zone.section = String::from("campfire");
   packer.add_zone(&zone, Some(&torrid));
@@ -538,7 +529,10 @@ fn keeps_an_always_fast_torrid_zones_light_on() {
   let mut packer: LightsPacker = LightsPacker::new(Some(&animations)).with_sections(&ltx);
   let mut zone: AlifeObject = object("campfire", lamp(FLAG_R2, 0));
   let torrid: AlifeObjectTorridZone = torrid(
-    Shape::Sphere((vector(0.0, 0.0, 0.0), 3.0)),
+    Shape::Sphere(Sphere {
+      center: vector(0.0, 0.0, 0.0),
+      radius: 3.0,
+    }),
     "[fast_mode]\nalways_fast = true\n",
   );
 
