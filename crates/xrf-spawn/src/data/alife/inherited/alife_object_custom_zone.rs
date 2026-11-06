@@ -108,7 +108,7 @@ mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_ltx::{Ltx, LtxImportExport};
-  use xrf_math::Vector3d;
+  use xrf_math::{Affine3d, Sphere, Vector3d};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
@@ -134,13 +134,16 @@ mod tests {
           spawn_story_id: 254,
         },
         shape: vec![
-          Shape::Sphere((Vector3d::new(2.5, 3.5, 1.5), 1.0)),
-          Shape::Box((
-            Vector3d::new(1.1, 1.1, 3.1),
-            Vector3d::new(1.1, 2.2, 3.3),
-            Vector3d::new(4.0, 5.0, 6.4),
-            Vector3d::new(9.2, 8.3, 7.0),
-          )),
+          Shape::Sphere(Sphere {
+            center: Vector3d::new(2.5, 3.5, 1.5),
+            radius: 1.0,
+          }),
+          Shape::Box(Affine3d {
+            x_axis: Vector3d::new(1.1, 1.1, 3.1),
+            y_axis: Vector3d::new(1.1, 2.2, 3.3),
+            z_axis: Vector3d::new(4.0, 5.0, 6.4),
+            translation: Vector3d::new(9.2, 8.3, 7.0),
+          }),
         ],
         restrictor_type: 3,
       },
@@ -189,13 +192,16 @@ mod tests {
           spawn_story_id: 52,
         },
         shape: vec![
-          Shape::Sphere((Vector3d::new(2.5, 3.5, 1.5), 1.0)),
-          Shape::Box((
-            Vector3d::new(11.1, 21.1, 33.1),
-            Vector3d::new(11.1, 22.2, 33.3),
-            Vector3d::new(14.0, 25.0, 36.4),
-            Vector3d::new(19.2, 28.3, 37.0),
-          )),
+          Shape::Sphere(Sphere {
+            center: Vector3d::new(2.5, 3.5, 1.5),
+            radius: 1.0,
+          }),
+          Shape::Box(Affine3d {
+            x_axis: Vector3d::new(11.1, 21.1, 33.1),
+            y_axis: Vector3d::new(11.1, 22.2, 33.3),
+            z_axis: Vector3d::new(14.0, 25.0, 36.4),
+            translation: Vector3d::new(19.2, 28.3, 37.0),
+          }),
         ],
         restrictor_type: 3,
       },
@@ -232,13 +238,16 @@ mod tests {
           spawn_story_id: 52,
         },
         shape: vec![
-          Shape::Sphere((Vector3d::new(22.5, 13.5, 31.5), 15.0)),
-          Shape::Box((
-            Vector3d::new(25.1, 21.1, 33.1),
-            Vector3d::new(25.1, 22.2, 33.3),
-            Vector3d::new(25.0, 25.0, 36.4),
-            Vector3d::new(25.2, 28.3, 37.0),
-          )),
+          Shape::Sphere(Sphere {
+            center: Vector3d::new(22.5, 13.5, 31.5),
+            radius: 15.0,
+          }),
+          Shape::Box(Affine3d {
+            x_axis: Vector3d::new(25.1, 21.1, 33.1),
+            y_axis: Vector3d::new(25.1, 22.2, 33.3),
+            z_axis: Vector3d::new(25.0, 25.0, 36.4),
+            translation: Vector3d::new(25.2, 28.3, 37.0),
+          }),
         ],
         restrictor_type: 3,
       },

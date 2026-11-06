@@ -2,9 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_math::Vector3d;
-
-use crate::level::dynamic_lights::level_light_color::LevelLightColor;
+use xrf_math::{Color, Vector3d};
 
 /// One static light of a compiled level, as `fsL_LIGHT_DYNAMIC` stores it.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -14,10 +12,10 @@ pub struct LevelDynamicLight {
   pub controller: u32,
   /// `Flight::Type`: point, spot or directional.
   pub kind: u32,
-  pub diffuse: LevelLightColor,
+  pub diffuse: Color,
   /// Written by the compiler and overwritten on load, which takes it from the diffuse at a fifth of the brightness.
-  pub specular: LevelLightColor,
-  pub ambient: LevelLightColor,
+  pub specular: Color,
+  pub ambient: Color,
   pub position: Vector3d,
   pub direction: Vector3d,
   pub range: f32,
@@ -42,7 +40,7 @@ impl LevelDynamicLight {
   pub const KIND_DIRECTIONAL: u32 = 3;
 
   /// Bytes one record occupies: the controller, then `Flight`.
-  pub const SERIALIZED_SIZE: u64 = 4 + 4 + (3 * LevelLightColor::SERIALIZED_SIZE) + (2 * 12) + (7 * 4);
+  pub const SERIALIZED_SIZE: u64 = 4 + 4 + (3 * Color::SERIALIZED_SIZE) + (2 * 12) + (7 * 4);
 
   /// The engine's name for the kind, or a labelled unknown for a value `Flight::Type` does not name.
   pub fn get_kind_label(&self) -> String {

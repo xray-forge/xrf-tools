@@ -3,32 +3,33 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, Section};
-use xrf_math::Vector3d;
+use xrf_math::{Aabb, Affine3d, Sphere, Vector3d};
 use xrf_utils::{assert_length, to_format_size};
 
-use crate::types::{Matrix3d, Sphere3d};
-
-/// Shape enumeration stored in objects descriptors.
+/// One shape of an object's volume, `CShapeData::shape_def`, in the object's own space.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Shape {
-  Sphere(Sphere3d),
-  Box(Matrix3d),
+  Sphere(Sphere),
+  /// The unit cube centred on the origin, placed by the transform: its axes are the box's sides and its
+  /// translation the box's centre.
+  Box(Affine3d),
+}
+
+impl Shape {
+  /// `cfSphere`, the type byte ahead of a sphere.
+  pub const SPHERE_TYPE: u8 = 0;
+
+  /// `cfBox`, the type byte ahead of a box.
+  pub const BOX_TYPE: u8 = 1;
 }
 
 impl ChunkReadWrite for Shape {
   /// Read shape from the chunk reader.
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let shape_type: u8 = reader.read_u8()?;
-
-    Ok(match shape_type {
-      0 => Self::Sphere((reader.read_xr::<T, _>()?, reader.read_f32::<T>()?)),
-      1 => Self::Box((
-        reader.read_xr::<T, _>()?,
-        reader.read_xr::<T, _>()?,
-        reader.read_xr::<T, _>()?,
-        reader.read_xr::<T, _>()?,
-      )),
+    Ok(match reader.read_u8()? {
+      Self::SPHERE_TYPE => Self::Sphere(reader.read_xr::<T, _>()?),
+      Self::BOX_TYPE => Self::Box(reader.read_xr::<T, _>()?),
       _ => {
         return Err(XrfError::new_parsing_error("Unexpected shape type provided"));
       }
@@ -38,20 +39,13 @@ impl ChunkReadWrite for Shape {
   /// Write shape data into the chunk reader.
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     match self {
-      Self::Sphere(data) => {
-        writer.write_u8(0)?;
-
-        data.0.write::<T>(writer)?;
-
-        writer.write_f32::<T>(data.1)?;
+      Self::Sphere(sphere) => {
+        writer.write_u8(Self::SPHERE_TYPE)?;
+        sphere.write::<T>(writer)?;
       }
-      Self::Box(data) => {
-        writer.write_u8(1)?;
-
-        data.0.write::<T>(writer)?;
-        data.1.write::<T>(writer)?;
-        data.2.write::<T>(writer)?;
-        data.3.write::<T>(writer)?;
+      Self::Box(transform) => {
+        writer.write_u8(Self::BOX_TYPE)?;
+        transform.write::<T>(writer)?;
       }
     }
 
@@ -93,53 +87,31 @@ impl ChunkReadWriteList for Shape {
 impl Shape {
   /// `CCF_Shape::ComputeBounds`: the sphere an object's shapes are measured by, in its own space; its one sphere as it
   /// is, else the sphere about the box holding every shape, none for no shapes.
-  pub fn get_bounding_sphere(shapes: &[Self]) -> Option<Sphere3d> {
+  pub fn get_bounding_sphere(shapes: &[Self]) -> Option<Sphere> {
     if let [Self::Sphere(sphere)] = shapes {
       return Some(sphere.clone());
     }
 
-    let mut low: [f32; 3] = [f32::MAX; 3];
-    let mut high: [f32; 3] = [f32::MIN; 3];
-    let mut hold = |point: [f32; 3]| {
-      for axis in 0..3 {
-        low[axis] = low[axis].min(point[axis]);
-        high[axis] = high[axis].max(point[axis]);
+    Aabb::from_points(shapes.iter().flat_map(Self::get_extreme_points)).map(|bounds: Aabb| bounds.get_bounding_sphere())
+  }
+
+  /// The points whose box is the shape's own: a sphere's lowest and highest corner, a box's eight corners where its
+  /// transform places the unit cube's, `transform_tiny`.
+  fn get_extreme_points(&self) -> Vec<Vector3d> {
+    match self {
+      Self::Sphere(sphere) => {
+        let reach: Vector3d = Vector3d::new(sphere.radius, sphere.radius, sphere.radius);
+
+        vec![&sphere.center - &reach, &sphere.center + &reach]
       }
-    };
+      Self::Box(transform) => (0..8)
+        .map(|corner: u8| {
+          let [x, y, z] = [corner & 1, corner >> 1 & 1, corner >> 2 & 1].map(|bit: u8| f32::from(bit) - 0.5);
 
-    for shape in shapes {
-      match shape {
-        Self::Sphere((center, radius)) => {
-          hold([center.x - radius, center.y - radius, center.z - radius]);
-          hold([center.x + radius, center.y + radius, center.z + radius]);
-        }
-        // The unit cube's corners where the box's matrix stands them, `transform_tiny`.
-        Self::Box((i, j, k, c)) => {
-          for corner in 0..8 {
-            let [x, y, z] = [corner & 1, corner >> 1 & 1, corner >> 2 & 1].map(|bit| bit as f32 - 0.5);
-
-            hold([
-              c.x + i.x * x + j.x * y + k.x * z,
-              c.y + i.y * x + j.y * y + k.y * z,
-              c.z + i.z * x + j.z * y + k.z * z,
-            ]);
-          }
-        }
-      }
+          transform.transform_point(&Vector3d::new(x, y, z))
+        })
+        .collect(),
     }
-
-    if shapes.is_empty() {
-      return None;
-    }
-
-    // `Fbox::getsphere`: its centre, and the distance to its far corner.
-    let center: [f32; 3] = [0, 1, 2].map(|axis| (low[axis] + high[axis]) / 2.0);
-    let radius: f32 = (0..3)
-      .map(|axis| (high[axis] - center[axis]).powi(2))
-      .sum::<f32>()
-      .sqrt();
-
-    Some((Vector3d::new(center[0], center[1], center[2]), radius))
   }
 
   /// Import shape objects from ltx config file.
@@ -153,18 +125,18 @@ impl Shape {
 
       match shape_type.as_str() {
         "sphere" => {
-          shapes.push(Self::Sphere((
-            section.read_field(&format!("{prefix}.center"))?,
-            section.read_field(&format!("{prefix}.radius"))?,
-          )));
+          shapes.push(Self::Sphere(Sphere {
+            center: section.read_field(&format!("{prefix}.center"))?,
+            radius: section.read_field(&format!("{prefix}.radius"))?,
+          }));
         }
         "box" => {
-          shapes.push(Self::Box((
-            section.read_field(&format!("{prefix}.a"))?,
-            section.read_field(&format!("{prefix}.b"))?,
-            section.read_field(&format!("{prefix}.c"))?,
-            section.read_field(&format!("{prefix}.d"))?,
-          )));
+          shapes.push(Self::Box(Affine3d {
+            x_axis: section.read_field(&format!("{prefix}.a"))?,
+            y_axis: section.read_field(&format!("{prefix}.b"))?,
+            z_axis: section.read_field(&format!("{prefix}.c"))?,
+            translation: section.read_field(&format!("{prefix}.d"))?,
+          }));
         }
         _ => {
           return Err(XrfError::new_parsing_error(format!(
@@ -191,17 +163,17 @@ impl Shape {
           ltx
             .with_section(section_name)
             .set(format!("{prefix}.type"), "sphere")
-            .set(format!("{prefix}.center"), sphere.0.to_string())
-            .set(format!("{prefix}.radius"), sphere.1.to_string());
+            .set(format!("{prefix}.center"), sphere.center.to_string())
+            .set(format!("{prefix}.radius"), sphere.radius.to_string());
         }
-        Self::Box(square) => {
+        Self::Box(transform) => {
           ltx
             .with_section(section_name)
             .set(format!("{prefix}.type"), "box")
-            .set(format!("{prefix}.a"), square.0.to_string())
-            .set(format!("{prefix}.b"), square.1.to_string())
-            .set(format!("{prefix}.c"), square.2.to_string())
-            .set(format!("{prefix}.d"), square.3.to_string());
+            .set(format!("{prefix}.a"), transform.x_axis.to_string())
+            .set(format!("{prefix}.b"), transform.y_axis.to_string())
+            .set(format!("{prefix}.c"), transform.z_axis.to_string())
+            .set(format!("{prefix}.d"), transform.translation.to_string());
         }
       }
     }
@@ -219,10 +191,29 @@ mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_ltx::Ltx;
-  use xrf_math::Vector3d;
+  use xrf_math::{Affine3d, Sphere, Vector3d};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::generic::shape::Shape;
+
+  fn sphere(x: f32, y: f32, z: f32, radius: f32) -> Shape {
+    Shape::Sphere(Sphere {
+      center: Vector3d::new(x, y, z),
+      radius,
+    })
+  }
+
+  /// A box whose rows are the four given vectors, each `(n + 0.5, n + 0.7, n)` times `scale` for row `n`.
+  fn box_of_rows(scale: f32) -> Shape {
+    let row = |n: f32| Vector3d::new((n + 0.5) * scale, (n + 0.7) * scale, n * scale);
+
+    Shape::Box(Affine3d {
+      x_axis: row(1.0),
+      y_axis: row(2.0),
+      z_axis: row(3.0),
+      translation: row(4.0),
+    })
+  }
 
   /// A truncated shape list is an error, not a panic that a release build turns into an abort.
   #[test]
@@ -247,40 +238,38 @@ mod tests {
 
   #[test]
   fn measures_one_sphere_as_it_is_and_anything_else_by_the_box_about_it() {
-    let one: Vec<Shape> = vec![Shape::Sphere((Vector3d::new(1.0, 2.0, 3.0), 4.0))];
-
     assert_eq!(
-      Shape::get_bounding_sphere(&one),
-      Some((Vector3d::new(1.0, 2.0, 3.0), 4.0))
+      Shape::get_bounding_sphere(&[sphere(1.0, 2.0, 3.0, 4.0)]),
+      Some(Sphere {
+        center: Vector3d::new(1.0, 2.0, 3.0),
+        radius: 4.0,
+      })
     );
     assert_eq!(Shape::get_bounding_sphere(&[]), None);
 
     // A box two wide, four tall and six deep at the origin: the sphere through its corners.
-    let block: Vec<Shape> = vec![Shape::Box((
-      Vector3d::new(2.0, 0.0, 0.0),
-      Vector3d::new(0.0, 4.0, 0.0),
-      Vector3d::new(0.0, 0.0, 6.0),
-      Vector3d::new(0.0, 0.0, 0.0),
-    ))];
-    let (center, radius) = Shape::get_bounding_sphere(&block).unwrap();
+    let block: Vec<Shape> = vec![Shape::Box(Affine3d {
+      x_axis: Vector3d::new(2.0, 0.0, 0.0),
+      y_axis: Vector3d::new(0.0, 4.0, 0.0),
+      z_axis: Vector3d::new(0.0, 0.0, 6.0),
+      translation: Vector3d::ZERO,
+    })];
+    let Sphere { center, radius } = Shape::get_bounding_sphere(&block).unwrap();
 
-    assert_eq!(center, Vector3d::new(0.0, 0.0, 0.0));
+    assert_eq!(center, Vector3d::ZERO);
     assert!((radius - 14.0_f32.sqrt()).abs() < 1e-5);
 
     // Two spheres: the box about both, not either sphere.
-    let pair: Vec<Shape> = vec![
-      Shape::Sphere((Vector3d::new(-2.0, 0.0, 0.0), 1.0)),
-      Shape::Sphere((Vector3d::new(2.0, 0.0, 0.0), 1.0)),
-    ];
-    let (center, radius) = Shape::get_bounding_sphere(&pair).unwrap();
+    let pair: Vec<Shape> = vec![sphere(-2.0, 0.0, 0.0, 1.0), sphere(2.0, 0.0, 0.0, 1.0)];
+    let Sphere { center, radius } = Shape::get_bounding_sphere(&pair).unwrap();
 
-    assert_eq!(center, Vector3d::new(0.0, 0.0, 0.0));
+    assert_eq!(center, Vector3d::ZERO);
     assert!((radius - 11.0_f32.sqrt()).abs() < 1e-5);
   }
 
   #[test]
   fn rejects_a_shape_list_past_its_count_field() {
-    let shapes: Vec<Shape> = vec![Shape::Sphere((Vector3d::new(0.0, 0.0, 0.0), 1.0)); 256];
+    let shapes: Vec<Shape> = vec![sphere(0.0, 0.0, 0.0, 1.0); 256];
     let mut writer: ChunkWriter = ChunkWriter::new();
 
     assert_eq!(
@@ -295,39 +284,7 @@ mod tests {
   fn test_read_write_list() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
     let filename: String = GeneratedResources::sample_name(file!(), "read_write_list.chunk");
-
-    let original: Vec<Shape> = vec![
-      Shape::Sphere((
-        Vector3d {
-          x: 125.465,
-          y: 456.123,
-          z: 675.345,
-        },
-        150.0,
-      )),
-      Shape::Box((
-        Vector3d {
-          x: 10.5,
-          y: 10.7,
-          z: 10.0,
-        },
-        Vector3d {
-          x: 20.5,
-          y: 20.7,
-          z: 20.0,
-        },
-        Vector3d {
-          x: 30.5,
-          y: 30.7,
-          z: 30.0,
-        },
-        Vector3d {
-          x: 40.5,
-          y: 40.7,
-          z: 40.0,
-        },
-      )),
-    ];
+    let original: Vec<Shape> = vec![sphere(125.465, 456.123, 675.345, 150.0), box_of_rows(10.0)];
 
     Shape::write_list::<XRayByteOrder>(&mut writer, &original)?;
 
@@ -353,15 +310,7 @@ mod tests {
   fn test_read_write_sphere() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
     let filename: String = GeneratedResources::sample_name(file!(), "read_write_sphere.chunk");
-
-    let original: Shape = Shape::Sphere((
-      Vector3d {
-        x: 25.5,
-        y: 3.4,
-        z: 45.1,
-      },
-      150.0,
-    ));
+    let original: Shape = sphere(25.5, 3.4, 45.1, 150.0);
 
     original.write::<XRayByteOrder>(&mut writer)?;
 
@@ -387,13 +336,7 @@ mod tests {
   fn test_read_write_box() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
     let filename: String = GeneratedResources::sample_name(file!(), "read_write_box.chunk");
-
-    let original: Shape = Shape::Box((
-      Vector3d { x: 1.5, y: 1.7, z: 1.0 },
-      Vector3d { x: 2.5, y: 2.7, z: 2.0 },
-      Vector3d { x: 3.5, y: 3.7, z: 3.0 },
-      Vector3d { x: 4.5, y: 4.7, z: 4.0 },
-    ));
+    let original: Shape = box_of_rows(1.0);
 
     original.write::<XRayByteOrder>(&mut writer)?;
 
@@ -419,115 +362,45 @@ mod tests {
   fn test_import_export() -> XrfResult {
     let config_path: &Path = &GeneratedResources::sample_path(file!(), "test_import_export.ltx");
     let mut ltx: Ltx = Ltx::new();
-
-    let original: Vec<Shape> = vec![
-      Shape::Sphere((
-        Vector3d {
-          x: 1634.465,
-          y: 2652.123,
-          z: 3624.345,
-        },
-        150.0,
-      )),
-      Shape::Box((
-        Vector3d {
-          x: 1000.5,
-          y: 1000.7,
-          z: 1000.0,
-        },
-        Vector3d {
-          x: 2000.5,
-          y: 2000.7,
-          z: 2000.0,
-        },
-        Vector3d {
-          x: 3000.5,
-          y: 3000.7,
-          z: 3000.0,
-        },
-        Vector3d {
-          x: 4000.5,
-          y: 4000.7,
-          z: 4000.0,
-        },
-      )),
-    ];
+    let original: Vec<Shape> = vec![sphere(1634.465, 2652.123, 3624.345, 150.0), box_of_rows(1000.0)];
 
     Shape::export_list(&original, "data", &mut ltx);
     ltx.write_to(&mut GeneratedResources::overwrite_path(config_path)?)?;
 
     assert_eq!(
-      Shape::import_list(Ltx::read_from_path(config_path)?.section("data").unwrap(),)?,
+      Shape::import_list(Ltx::read_from_path(config_path)?.section("data").unwrap())?,
       original
     );
 
     Ok(())
   }
 
+  /// The config keys are the format's, kept from before the shapes had named fields: a box's rows are `a` to `d`.
   #[test]
-  fn test_serialize_deserialize_sphere() -> XrfResult {
-    let original: Shape = Shape::Sphere((
-      Vector3d {
-        x: 243.5,
-        y: 456.4,
-        z: 475.1,
-      },
-      52.0,
-    ));
+  fn exports_a_box_under_the_keys_existing_configs_use() {
+    let mut ltx: Ltx = Ltx::new();
 
-    let mut file: File = GeneratedResources::overwrite(&GeneratedResources::sample_name(
-      file!(),
-      "serialize_deserialize_sphere.json",
-    ))?;
+    Shape::export_list(&[box_of_rows(1.0)], "data", &mut ltx);
 
-    file.write_all(to_string_pretty(&original)?.as_bytes())?;
-    file.seek(SeekFrom::Start(0))?;
+    let section = ltx.section("data").unwrap();
 
-    let serialized: String = read_to_string(&mut file)?;
-
-    assert_eq!(serialized.to_string(), serialized);
-    assert_eq!(original, serde_json::from_str::<Shape>(&serialized)?);
-
-    Ok(())
+    assert_eq!(section.get("shape.0.a"), Some("1.5,1.7,1"));
+    assert_eq!(section.get("shape.0.d"), Some("4.5,4.7,4"));
   }
 
   #[test]
-  fn test_serialize_deserialize_box() -> XrfResult {
-    let original: Shape = Shape::Box((
-      Vector3d {
-        x: 175.5,
-        y: 135.7,
-        z: 163.0,
-      },
-      Vector3d {
-        x: 264.5,
-        y: 274.7,
-        z: 244.0,
-      },
-      Vector3d {
-        x: 375.5,
-        y: 385.7,
-        z: 386.0,
-      },
-      Vector3d {
-        x: 498.5,
-        y: 460.7,
-        z: 489.0,
-      },
-    ));
+  fn test_serialize_deserialize() -> XrfResult {
+    for (name, original) in [
+      ("serialize_deserialize_sphere.json", sphere(243.5, 456.4, 475.1, 52.0)),
+      ("serialize_deserialize_box.json", box_of_rows(100.0)),
+    ] {
+      let mut file: File = GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), name))?;
 
-    let mut file: File = GeneratedResources::overwrite(&GeneratedResources::sample_name(
-      file!(),
-      "serialize_deserialize_box.json",
-    ))?;
+      file.write_all(to_string_pretty(&original)?.as_bytes())?;
+      file.seek(SeekFrom::Start(0))?;
 
-    file.write_all(to_string_pretty(&original)?.as_bytes())?;
-    file.seek(SeekFrom::Start(0))?;
-
-    let serialized: String = read_to_string(&mut file)?;
-
-    assert_eq!(serialized.to_string(), serialized);
-    assert_eq!(original, serde_json::from_str::<Shape>(&serialized)?);
+      assert_eq!(original, serde_json::from_str::<Shape>(&read_to_string(&mut file)?)?);
+    }
 
     Ok(())
   }

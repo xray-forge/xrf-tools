@@ -40,7 +40,6 @@ pub use crate::data::lod::ogf_lod_vertex::OgfLodVertex;
 pub use crate::data::ogf_collision_face::OgfCollisionFace;
 pub use crate::data::ogf_model_type::OgfModelType;
 pub use crate::data::ogf_slide_window::*;
-pub use crate::data::rgb_color::RgbColor;
 pub use crate::data::skeleton::ogf_bone::OgfBone;
 pub use crate::data::skeleton::ogf_bone_ik_data::OgfBoneIkData;
 pub use crate::data::skeleton::ogf_joint_ik_data::OgfJointIkData;

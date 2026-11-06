@@ -2,7 +2,7 @@ use std::io::Write;
 
 use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
-use xrf_math::Vector3d;
+use xrf_math::{Aabb, Vector3d};
 use xrf_test_utils::GeneratedResources;
 
 use crate::cform::level_cform_face::LevelCformFace;
@@ -13,8 +13,10 @@ fn sample() -> LevelCformHeader {
     version: 4,
     vertex_count: 420_690,
     face_count: 810_223,
-    aabb_min: Vector3d::new(-600.0, -20.5, -615.0),
-    aabb_max: Vector3d::new(600.0, 80.25, 585.0),
+    bounds: Aabb {
+      min: Vector3d::new(-600.0, -20.5, -615.0),
+      max: Vector3d::new(600.0, 80.25, 585.0),
+    },
   }
 }
 
@@ -49,8 +51,10 @@ fn reads_the_vertices_and_faces_the_header_counts() -> XrfResult {
     version: 4,
     vertex_count: 3,
     face_count: 1,
-    aabb_min: Vector3d::new(0.0, 0.0, 0.0),
-    aabb_max: Vector3d::new(1.0, 0.0, 1.0),
+    bounds: Aabb {
+      min: Vector3d::new(0.0, 0.0, 0.0),
+      max: Vector3d::new(1.0, 0.0, 1.0),
+    },
   };
 
   header.write::<XRayByteOrder>(&mut writer)?;
@@ -91,8 +95,10 @@ fn a_face_naming_a_vertex_past_the_count_is_an_error() -> XrfResult {
     version: 4,
     vertex_count: 1,
     face_count: 1,
-    aabb_min: Vector3d::new(0.0, 0.0, 0.0),
-    aabb_max: Vector3d::new(0.0, 0.0, 0.0),
+    bounds: Aabb {
+      min: Vector3d::new(0.0, 0.0, 0.0),
+      max: Vector3d::new(0.0, 0.0, 0.0),
+    },
   }
   .write::<XRayByteOrder>(&mut writer)?;
 
@@ -117,8 +123,10 @@ fn new_form(vertices: &[[f32; 3]], faces: &[[u32; 3]]) -> XrfResult<Vec<u8>> {
     version: 4,
     vertex_count: vertices.len() as u32,
     face_count: faces.len() as u32,
-    aabb_min: Vector3d::new(0.0, 0.0, 0.0),
-    aabb_max: Vector3d::new(0.0, 0.0, 0.0),
+    bounds: Aabb {
+      min: Vector3d::new(0.0, 0.0, 0.0),
+      max: Vector3d::new(0.0, 0.0, 0.0),
+    },
   }
   .write::<XRayByteOrder>(&mut writer)?;
 
@@ -178,8 +186,10 @@ fn reads_each_material_the_faces_name_once() -> XrfResult {
     version: 4,
     vertex_count: 3,
     face_count: 3,
-    aabb_min: Vector3d::new(0.0, 0.0, 0.0),
-    aabb_max: Vector3d::new(1.0, 0.0, 1.0),
+    bounds: Aabb {
+      min: Vector3d::new(0.0, 0.0, 0.0),
+      max: Vector3d::new(1.0, 0.0, 1.0),
+    },
   }
   .write::<XRayByteOrder>(&mut writer)?;
 

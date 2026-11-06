@@ -96,7 +96,7 @@ impl LtxImportExport for AlifeSmartCover {
 mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_math::Vector3d;
+  use xrf_math::{Affine3d, Sphere, Vector3d};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
@@ -122,7 +122,10 @@ mod tests {
             spawn_story_id: 160278,
           },
         },
-        shape: vec![Shape::Sphere((Vector3d::new(2.5, 1.3, -4.125), 5.5))],
+        shape: vec![Shape::Sphere(Sphere {
+          center: Vector3d::new(2.5, 1.3, -4.125),
+          radius: 5.5,
+        })],
         description: String::from("description"),
         hold_position_time: 34.0,
         enter_min_enemy_distance: 23.0,
@@ -170,13 +173,16 @@ mod tests {
         },
       },
       shape: vec![
-        Shape::Sphere((Vector3d::new(2.5, 1.3, -4.125), 5.5)),
-        Shape::Box((
-          Vector3d::new(1.1, 1.1, 6.1),
-          Vector3d::new(1.4, 2.2, 6.3),
-          Vector3d::new(4.0, 3.0, 6.4),
-          Vector3d::new(9.2, 8.3, 6.0),
-        )),
+        Shape::Sphere(Sphere {
+          center: Vector3d::new(2.5, 1.3, -4.125),
+          radius: 5.5,
+        }),
+        Shape::Box(Affine3d {
+          x_axis: Vector3d::new(1.1, 1.1, 6.1),
+          y_axis: Vector3d::new(1.4, 2.2, 6.3),
+          z_axis: Vector3d::new(4.0, 3.0, 6.4),
+          translation: Vector3d::new(9.2, 8.3, 6.0),
+        }),
       ],
       description: String::from("description"),
       hold_position_time: 34.0,
@@ -222,7 +228,10 @@ mod tests {
             spawn_story_id: 60,
           },
         },
-        shape: vec![Shape::Sphere((Vector3d::new(1.0, 2.0, 3.0), 4.0))],
+        shape: vec![Shape::Sphere(Sphere {
+          center: Vector3d::new(1.0, 2.0, 3.0),
+          radius: 4.0,
+        })],
         description: String::from("description"),
         hold_position_time: 1.0,
         enter_min_enemy_distance: 2.0,

@@ -39,7 +39,7 @@ impl ArchiveLevelAiDescription {
       nodes: header.count,
       node_size: header.size,
       node_height: header.size_y,
-      bounds: ArchiveBounds::of(&header.aabb_min, &header.aabb_max),
+      bounds: ArchiveBounds::of(&header.bounds),
       guid: header.guid.to_string(),
       size,
     })

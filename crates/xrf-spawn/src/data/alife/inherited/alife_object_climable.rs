@@ -70,7 +70,7 @@ mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_ltx::{Ltx, LtxImportExport};
-  use xrf_math::Vector3d;
+  use xrf_math::{Affine3d, Sphere, Vector3d};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
@@ -96,13 +96,16 @@ mod tests {
           spawn_story_id: 0,
         },
         shape: vec![
-          Shape::Sphere((Vector3d::new(54.5, 0.5, 11.5), 1.0)),
-          Shape::Box((
-            Vector3d::new(51.5, 2.5, 73.1),
-            Vector3d::new(55.1, 3.2, 2.3),
-            Vector3d::new(51.0, 3.0, 6.4),
-            Vector3d::new(59.2, 3.3, 3.0),
-          )),
+          Shape::Sphere(Sphere {
+            center: Vector3d::new(54.5, 0.5, 11.5),
+            radius: 1.0,
+          }),
+          Shape::Box(Affine3d {
+            x_axis: Vector3d::new(51.5, 2.5, 73.1),
+            y_axis: Vector3d::new(55.1, 3.2, 2.3),
+            z_axis: Vector3d::new(51.0, 3.0, 6.4),
+            translation: Vector3d::new(59.2, 3.3, 3.0),
+          }),
         ],
       },
       game_material: String::from("dest-material"),
@@ -146,13 +149,16 @@ mod tests {
           spawn_story_id: 53,
         },
         shape: vec![
-          Shape::Sphere((Vector3d::new(54.5, 0.5, 11.5), 1.0)),
-          Shape::Box((
-            Vector3d::new(5.5, 6.5, 3.1),
-            Vector3d::new(5.1, 3.2, 2.3),
-            Vector3d::new(5.0, 6.0, 2.4),
-            Vector3d::new(5.2, 3.3, 3.0),
-          )),
+          Shape::Sphere(Sphere {
+            center: Vector3d::new(54.5, 0.5, 11.5),
+            radius: 1.0,
+          }),
+          Shape::Box(Affine3d {
+            x_axis: Vector3d::new(5.5, 6.5, 3.1),
+            y_axis: Vector3d::new(5.1, 3.2, 2.3),
+            z_axis: Vector3d::new(5.0, 6.0, 2.4),
+            translation: Vector3d::new(5.2, 3.3, 3.0),
+          }),
         ],
       },
       game_material: String::from("dest-material"),
@@ -184,13 +190,16 @@ mod tests {
           spawn_story_id: 35,
         },
         shape: vec![
-          Shape::Sphere((Vector3d::new(54.5, 0.5, 11.5), 1.0)),
-          Shape::Box((
-            Vector3d::new(7.5, 2.5, 4.1),
-            Vector3d::new(7.1, 3.2, 4.3),
-            Vector3d::new(7.0, 3.0, 4.4),
-            Vector3d::new(7.2, 3.3, 4.0),
-          )),
+          Shape::Sphere(Sphere {
+            center: Vector3d::new(54.5, 0.5, 11.5),
+            radius: 1.0,
+          }),
+          Shape::Box(Affine3d {
+            x_axis: Vector3d::new(7.5, 2.5, 4.1),
+            y_axis: Vector3d::new(7.1, 3.2, 4.3),
+            z_axis: Vector3d::new(7.0, 3.0, 4.4),
+            translation: Vector3d::new(7.2, 3.3, 4.0),
+          }),
         ],
       },
       game_material: String::from("dest-material"),

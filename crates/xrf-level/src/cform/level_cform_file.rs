@@ -5,7 +5,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
-use xrf_math::Vector3d;
+use xrf_math::{Aabb, Vector3d};
 use xrf_utils::format_path;
 
 use crate::cform::level_cform_cover::LevelCformCover;
@@ -22,8 +22,8 @@ pub struct LevelCformHeader {
   pub version: u32,
   pub vertex_count: u32,
   pub face_count: u32,
-  pub aabb_min: Vector3d<f32>,
-  pub aabb_max: Vector3d<f32>,
+  /// The box every vertex lies in, `aabb`.
+  pub bounds: Aabb,
 }
 
 impl LevelCformHeader {
@@ -38,8 +38,7 @@ impl ChunkReadWrite for LevelCformHeader {
       version: reader.read_u32::<T>()?,
       vertex_count: reader.read_u32::<T>()?,
       face_count: reader.read_u32::<T>()?,
-      aabb_min: reader.read_xr::<T, _>()?,
-      aabb_max: reader.read_xr::<T, _>()?,
+      bounds: reader.read_xr::<T, _>()?,
     })
   }
 
@@ -48,8 +47,7 @@ impl ChunkReadWrite for LevelCformHeader {
     writer.write_u32::<T>(self.version)?;
     writer.write_u32::<T>(self.vertex_count)?;
     writer.write_u32::<T>(self.face_count)?;
-    writer.write_xr::<T, _>(&self.aabb_min)?;
-    writer.write_xr::<T, _>(&self.aabb_max)?;
+    writer.write_xr::<T, _>(&self.bounds)?;
 
     Ok(())
   }

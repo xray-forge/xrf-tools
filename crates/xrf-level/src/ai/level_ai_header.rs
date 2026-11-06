@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_math::{EPS_L, Vector3d};
+use xrf_math::{Aabb, EPS_L, Vector3d};
 
 use crate::ai::level_ai_node::LevelAiNode;
 
@@ -22,8 +22,8 @@ pub struct LevelAiHeader {
   pub size: f32,
   /// The vertical extent a node's packed height spreads over, `factor_y`.
   pub size_y: f32,
-  pub aabb_min: Vector3d<f32>,
-  pub aabb_max: Vector3d<f32>,
+  /// The box the grid covers, `aabb`: the first cell sits at its lowest corner.
+  pub bounds: Aabb,
   /// The graph identity, which the spawn set built against this map carries too.
   pub guid: Uuid,
 }
@@ -34,12 +34,12 @@ impl LevelAiHeader {
 
   /// Cells along z, the stride a node's packed cell counts x in (`m_row_length`).
   pub fn get_row_length(&self) -> u32 {
-    Self::get_cells_across(self.aabb_min.z, self.aabb_max.z, self.size)
+    Self::get_cells_across(self.bounds.min.z, self.bounds.max.z, self.size)
   }
 
   /// Cells along x (`m_column_length`).
   pub fn get_column_length(&self) -> u32 {
-    Self::get_cells_across(self.aabb_min.x, self.aabb_max.x, self.size)
+    Self::get_cells_across(self.bounds.min.x, self.bounds.max.x, self.size)
   }
 
   /// Where a node sits in the world: the centre of its cell, at its packed height (`CLevelGraph::vertex_position`).
@@ -49,9 +49,9 @@ impl LevelAiHeader {
     let row_length: u32 = self.get_row_length().max(1);
 
     Vector3d::new(
-      (node.packed_xz / row_length) as f32 * self.size + self.aabb_min.x,
-      f32::from(node.packed_y) / 65535.0 * self.size_y + self.aabb_min.y,
-      (node.packed_xz % row_length) as f32 * self.size + self.aabb_min.z,
+      (node.packed_xz / row_length) as f32 * self.size + self.bounds.min.x,
+      f32::from(node.packed_y) / 65535.0 * self.size_y + self.bounds.min.y,
+      (node.packed_xz % row_length) as f32 * self.size + self.bounds.min.z,
     )
   }
 
@@ -69,8 +69,7 @@ impl ChunkReadWrite for LevelAiHeader {
       count: reader.read_u32::<T>()?,
       size: reader.read_f32::<T>()?,
       size_y: reader.read_f32::<T>()?,
-      aabb_min: reader.read_xr::<T, _>()?,
-      aabb_max: reader.read_xr::<T, _>()?,
+      bounds: reader.read_xr::<T, _>()?,
       guid: Uuid::from_u128(reader.read_u128::<T>()?),
     })
   }
@@ -81,8 +80,7 @@ impl ChunkReadWrite for LevelAiHeader {
     writer.write_u32::<T>(self.count)?;
     writer.write_f32::<T>(self.size)?;
     writer.write_f32::<T>(self.size_y)?;
-    writer.write_xr::<T, _>(&self.aabb_min)?;
-    writer.write_xr::<T, _>(&self.aabb_max)?;
+    writer.write_xr::<T, _>(&self.bounds)?;
     writer.write_u128::<T>(self.guid.as_u128())?;
 
     Ok(())

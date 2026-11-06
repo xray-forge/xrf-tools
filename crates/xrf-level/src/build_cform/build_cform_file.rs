@@ -5,7 +5,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_math::Vector3d;
+use xrf_math::{Aabb, Vector3d};
 use xrf_utils::{format_path, to_format_size};
 
 use crate::build_cform::build_cform_face::BuildCformFace;
@@ -20,8 +20,7 @@ pub struct BuildCformFile {
   /// The header's version, `CFORM_CURRENT_VERSION`, which both compilers reading the file assert.
   pub version: u32,
   /// The compiled scene's box, which xrAI takes as the level's.
-  pub aabb_min: Vector3d<f32>,
-  pub aabb_max: Vector3d<f32>,
+  pub bounds: Aabb,
   pub vertices: Vec<Vector3d<f32>>,
   pub faces: Vec<BuildCformFace>,
   /// One per face, at the face's index.
@@ -128,8 +127,7 @@ impl BuildCformFile {
 
     let file: Self = Self {
       version: header.version,
-      aabb_min: header.aabb_min,
-      aabb_max: header.aabb_max,
+      bounds: header.bounds,
       vertices,
       faces,
       raycast_faces: ChunkReader::find_required_by_id(&chunks, Self::RAYCAST_FACES_CHUNK_ID)?.read_xr_records::<T, _>(
@@ -158,8 +156,7 @@ impl BuildCformFile {
       version: self.version,
       vertex_count: to_format_size(self.vertices.len(), "build collision form vertices")?,
       face_count: to_format_size(self.faces.len(), "build collision form faces")?,
-      aabb_min: self.aabb_min.clone(),
-      aabb_max: self.aabb_max.clone(),
+      bounds: self.bounds.clone(),
     }
     .write::<T>(&mut geometry)?;
 

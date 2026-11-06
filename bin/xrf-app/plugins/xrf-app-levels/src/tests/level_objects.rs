@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use xrf_math::Vector3d;
+use xrf_math::{Affine3d, Sphere, Vector3d};
 use xrf_renderer::{RenderHelperIcon, RenderHelperShape, RenderLevelHelpers};
 use xrf_spawn::{
   AlifeGraphPoint, AlifeObject, AlifeObjectAbstract, AlifeObjectDynamicVisual, AlifeObjectHangingLamp,
@@ -388,19 +388,25 @@ fn keeps_a_volumes_shapes_in_its_own_renderer_space_and_whom_it_restricts() {
       "keep_in",
       "space_restrictor",
       ClsId::SpcRsS,
-      new_restrictor(vec![Shape::Sphere((Vector3d::new(1.0, 2.0, 3.0), 4.0))], 4),
+      new_restrictor(
+        vec![Shape::Sphere(Sphere {
+          center: Vector3d::new(1.0, 2.0, 3.0),
+          radius: 4.0,
+        })],
+        4,
+      ),
     ),
     new_object(
       "keep_out",
       "space_restrictor",
       ClsId::SpcRsS,
       new_restrictor(
-        vec![Shape::Box((
-          Vector3d::new(2.0, 0.0, 0.0),
-          Vector3d::new(0.0, 2.0, 0.0),
-          Vector3d::new(0.0, 0.0, 2.0),
-          Vector3d::new(0.0, 0.0, 5.0),
-        ))],
+        vec![Shape::Box(Affine3d {
+          x_axis: Vector3d::new(2.0, 0.0, 0.0),
+          y_axis: Vector3d::new(0.0, 2.0, 0.0),
+          z_axis: Vector3d::new(0.0, 0.0, 2.0),
+          translation: Vector3d::new(0.0, 0.0, 5.0),
+        })],
         1,
       ),
     ),

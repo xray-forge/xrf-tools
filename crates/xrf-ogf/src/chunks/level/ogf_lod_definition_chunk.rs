@@ -71,7 +71,7 @@ impl ChunkReadWrite for OgfLodDefinitionChunk {
 mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_math::{Aabb, Vector3d};
+  use xrf_math::{Aabb, Vector2d, Vector3d};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::chunks::level::ogf_lod_definition_chunk::OgfLodDefinitionChunk;
@@ -84,7 +84,7 @@ mod tests {
       position: Vector3d::new(x, y, depth),
       rgb_hemi: 0x4d00_0000,
       sun: 16,
-      texture_coordinate: (x, y),
+      texture_coordinate: Vector2d::new(x, y),
     };
 
     OgfLodFacet {

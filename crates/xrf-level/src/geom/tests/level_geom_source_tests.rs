@@ -1,6 +1,6 @@
 use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
-use xrf_math::Vector3d;
+use xrf_math::{Vector2d, Vector3d};
 
 use crate::geom::buffers::level_geom_vertex_element::LevelGeomVertexElement;
 use crate::geom::level_geom_file::LevelGeomFile;
@@ -120,11 +120,11 @@ fn test_reads_a_vertex_of_the_lightmapped_declaration() -> XrfResult {
   // divisor stays the engine's 255 - from `unpack_D3DCOLOR` normalizing the byte - rather than drifting to the
   // 255.5 the compiler wrote it with, which a loose tolerance would not notice.
   assert_eq!(
-    vertex.texture_coordinate.0,
+    vertex.texture_coordinate.x,
     (1024.0_f32 + 128.0_f32 / 255.0_f32) / LevelVertexLayout::BASE_QUANT
   );
   assert_eq!(
-    vertex.texture_coordinate.1,
+    vertex.texture_coordinate.y,
     (512.0_f32 + 64.0_f32 / 255.0_f32) / LevelVertexLayout::BASE_QUANT
   );
   assert_eq!(
@@ -138,10 +138,10 @@ fn test_reads_a_vertex_of_the_lightmapped_declaration() -> XrfResult {
     "1.0 / 32768.0 in the engine's shader"
   );
 
-  let lightmap: (f32, f32) = vertex.lightmap_coordinate.expect("a lightmapped vertex");
+  let lightmap: Vector2d = vertex.lightmap_coordinate.expect("a lightmapped vertex");
 
-  assert!((lightmap.0 - 0.5).abs() < 1e-6);
-  assert!((lightmap.1 + 0.5).abs() < 1e-6);
+  assert!((lightmap.x - 0.5).abs() < 1e-6);
+  assert!((lightmap.y + 0.5).abs() < 1e-6);
   assert_eq!(vertex.color, None, "a lightmapped surface carries no vertex colour");
 
   Ok(())
@@ -299,8 +299,8 @@ fn test_tree_coordinates_use_the_tree_quantization() -> XrfResult {
 
   let vertices: Vec<LevelVertex> = source.read_vertices::<XRayByteOrder>(0, 0, 1)?;
 
-  assert!((vertices[0].texture_coordinate.0 - 1.0).abs() < 1e-6, "2048 / 2048");
-  assert!((vertices[0].texture_coordinate.1 - 0.5).abs() < 1e-6, "1024 / 2048");
+  assert!((vertices[0].texture_coordinate.x - 1.0).abs() < 1e-6, "2048 / 2048");
+  assert!((vertices[0].texture_coordinate.y - 0.5).abs() < 1e-6, "1024 / 2048");
 
   Ok(())
 }
@@ -333,7 +333,7 @@ fn test_tree_coordinates_add_no_low_bytes_from_the_tangent_frame() -> XrfResult 
 
   assert_eq!(
     vertices[0].texture_coordinate,
-    (1.0, 0.5),
+    Vector2d::new(1.0, 0.5),
     "2048 / 2048 and 1024 / 2048, nothing added"
   );
 

@@ -25,13 +25,13 @@ impl From<&Shape> for LevelObjectShape {
   /// its corners with each axis mirrored.
   fn from(shape: &Shape) -> Self {
     match shape {
-      Shape::Sphere((center, radius)) => Self::Sphere {
-        center: LevelObject::to_renderer_space(center),
-        radius: *radius,
+      Shape::Sphere(sphere) => Self::Sphere {
+        center: LevelObject::to_renderer_space(&sphere.center),
+        radius: sphere.radius,
       },
-      Shape::Box((i, j, k, c)) => Self::Box {
-        axes: [i, j, k].map(LevelObject::to_renderer_space),
-        center: LevelObject::to_renderer_space(c),
+      Shape::Box(transform) => Self::Box {
+        axes: [&transform.x_axis, &transform.y_axis, &transform.z_axis].map(LevelObject::to_renderer_space),
+        center: LevelObject::to_renderer_space(&transform.translation),
       },
     }
   }

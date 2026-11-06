@@ -1,6 +1,6 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { Vector3d } from "#/types/xrf-math";
+import { Affine3d, Sphere, Vector3d } from "#/types/xrf-math";
 
 /** Every `type` the `ActorPhysicsState` union is told apart by, so a switch or a comparison names one. */
 export enum EActorPhysicsState {
@@ -1029,10 +1029,14 @@ export type ScaledDirection = {
   magnitude: number | null;
 };
 
-/** Shape enumeration stored in objects descriptors. */
+/** One shape of an object's volume, `CShapeData::shape_def`, in the object's own space. */
 export type Shape =
-  | ({ Sphere: [Vector3d, number | null] } & { Box?: never })
-  | ({ Box: [Vector3d, Vector3d, Vector3d, Vector3d] } & { Sphere?: never });
+  | ({ Sphere: Sphere } & { Box?: never })
+  /**
+   * The unit cube centred on the origin, placed by the transform: its axes are the box's sides and its
+   * translation the box's centre.
+   */
+  | ({ Box: Affine3d } & { Sphere?: never });
 
 /**
  * ALife spawns chunk has the following structure:

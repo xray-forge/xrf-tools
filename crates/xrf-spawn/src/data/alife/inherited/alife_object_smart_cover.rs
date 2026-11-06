@@ -97,7 +97,7 @@ impl LtxImportExport for AlifeObjectSmartCover {
 mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_math::Vector3d;
+  use xrf_math::{Affine3d, Sphere, Vector3d};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
@@ -124,13 +124,16 @@ mod tests {
         },
       },
       shape: vec![
-        Shape::Sphere((Vector3d::new(0.5, 0.3, -0.125), 2.5)),
-        Shape::Box((
-          Vector3d::new(1.1, 1.1, 3.1),
-          Vector3d::new(1.4, 2.2, 3.3),
-          Vector3d::new(4.0, 3.0, 5.4),
-          Vector3d::new(9.2, 8.3, 2.0),
-        )),
+        Shape::Sphere(Sphere {
+          center: Vector3d::new(0.5, 0.3, -0.125),
+          radius: 2.5,
+        }),
+        Shape::Box(Affine3d {
+          x_axis: Vector3d::new(1.1, 1.1, 3.1),
+          y_axis: Vector3d::new(1.4, 2.2, 3.3),
+          z_axis: Vector3d::new(4.0, 3.0, 5.4),
+          translation: Vector3d::new(9.2, 8.3, 2.0),
+        }),
       ],
       description: String::from("test-description"),
       hold_position_time: 4.532,

@@ -52,7 +52,7 @@ impl ParticleSprite {
         Some(frame) if flags.is(ParticleEffectFlags::FRAMED) => {
           let index: u32 = m.get_frame_index();
           let dimension: u32 = frame.frame_dimension_x.max(1);
-          let size: Vec2 = Vec2::new(frame.texture_size.0, frame.texture_size.1);
+          let size: Vec2 = Vec2::from_array(frame.texture_size.to_array());
           let lt: Vec2 = Vec2::new((index % dimension) as f32, (index / dimension) as f32) * size;
 
           (lt, lt + size)

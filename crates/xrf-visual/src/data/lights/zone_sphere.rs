@@ -1,4 +1,4 @@
-use xrf_math::Vector3d;
+use xrf_math::{Sphere, Vector3d};
 use xrf_spawn::{AlifeObjectCustomZone, Shape};
 
 use crate::data::visual::skeleton::visual_transform::VisualTransform;
@@ -20,7 +20,10 @@ impl ZoneSphere {
       return None;
     }
 
-    let (center, radius) = Shape::get_bounding_sphere(&zone.base.shape).unwrap_or((Vector3d::new(0.0, 0.0, 0.0), 0.0));
+    let Sphere { center, radius } = Shape::get_bounding_sphere(&zone.base.shape).unwrap_or(Sphere {
+      center: Vector3d::ZERO,
+      radius: 0.0,
+    });
     // `XFORM().transform_tiny(P, s.P)`, in engine space.
     let at: Vector3d = VisualTransform::of_spawn(position, angle)
       .mirrored()

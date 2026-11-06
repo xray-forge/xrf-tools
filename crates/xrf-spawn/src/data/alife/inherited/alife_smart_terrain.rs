@@ -137,7 +137,7 @@ impl LtxImportExport for AlifeSmartTerrain {
 mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_math::Vector3d;
+  use xrf_math::{Affine3d, Sphere, Vector3d};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
@@ -161,13 +161,16 @@ mod tests {
             spawn_story_id: 25,
           },
           shape: vec![
-            Shape::Sphere((Vector3d::new(3.5, -2.5, 11.5), 1.0)),
-            Shape::Box((
-              Vector3d::new(1.5, 1.1, 73.1),
-              Vector3d::new(5.1, 2.2, 3.3),
-              Vector3d::new(4.0, 6.0, 2.4),
-              Vector3d::new(9.2, 4.3, 3.0),
-            )),
+            Shape::Sphere(Sphere {
+              center: Vector3d::new(3.5, -2.5, 11.5),
+              radius: 1.0,
+            }),
+            Shape::Box(Affine3d {
+              x_axis: Vector3d::new(1.5, 1.1, 73.1),
+              y_axis: Vector3d::new(5.1, 2.2, 3.3),
+              z_axis: Vector3d::new(4.0, 6.0, 2.4),
+              translation: Vector3d::new(9.2, 4.3, 3.0),
+            }),
           ],
           restrictor_type: 2,
         },

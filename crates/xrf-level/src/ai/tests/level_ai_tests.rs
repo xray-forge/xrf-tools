@@ -1,7 +1,7 @@
 use uuid::uuid;
 use xrf_chunk::{ChunkReadWrite, ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
-use xrf_math::Vector3d;
+use xrf_math::{Aabb, Vector3d};
 
 use crate::ai::level_ai_file::LevelAiFile;
 use crate::ai::level_ai_header::LevelAiHeader;
@@ -16,8 +16,10 @@ fn header(version: LevelAiVersion, count: u32) -> LevelAiHeader {
     count,
     size: 0.7,
     size_y: 20.0,
-    aabb_min: Vector3d::new(-5.0, -10.0, -3.0),
-    aabb_max: Vector3d::new(5.0, 10.0, 3.0),
+    bounds: Aabb {
+      min: Vector3d::new(-5.0, -10.0, -3.0),
+      max: Vector3d::new(5.0, 10.0, 3.0),
+    },
     guid: uuid!("78e55023-10b1-426f-9247-bb680e5fe0b7"),
   }
 }

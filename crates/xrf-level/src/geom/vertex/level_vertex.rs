@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use xrf_math::Vector3d;
+use xrf_math::{Vector2d, Vector3d};
 
 /// One vertex of a level's render geometry, decoded from whichever declaration stored it.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -12,9 +12,9 @@ pub struct LevelVertex {
   /// The authored binormal, mirrored with the tangent.
   pub binormal: Option<Vector3d>,
   /// The base texture coordinate, reassembled from its 16-bit part and the low byte the tangent and binormal carry.
-  pub texture_coordinate: (f32, f32),
+  pub texture_coordinate: Vector2d,
   /// The lightmap coordinate, for a surface xrLC lit from a lightmap.
-  pub lightmap_coordinate: Option<(f32, f32)>,
+  pub lightmap_coordinate: Option<Vector2d>,
   /// The baked vertex colour as `(r, g, b)`, for a surface xrLC lit from vertex colour instead.
   pub color: Option<(u8, u8, u8)>,
   /// The vertex's hemisphere term, which the normal's alpha byte carries rather than padding.

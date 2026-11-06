@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use image::RgbaImage;
 use uuid::Uuid;
 use xrf_app_core::TauriResult;
-use xrf_math::Vector3d;
+use xrf_math::{Affine3d, Sphere, Vector3d};
 use xrf_spawn::{
   AlifeLevelChanger, AlifeObject, AlifeObjectAbstract, AlifeObjectInherited, AlifeObjectSpaceRestrictor, ClsId,
   GraphLevel, Patrol, PatrolLink, PatrolPoint, Shape, SpawnLevelGraph,
@@ -51,12 +51,12 @@ fn new_level(id: u8, name: &str, offset: Vector3d) -> GraphLevel {
 
 /// A box four metres square and two high about the origin.
 fn new_box() -> Shape {
-  Shape::Box((
-    Vector3d::new(4.0, 0.0, 0.0),
-    Vector3d::new(0.0, 2.0, 0.0),
-    Vector3d::new(0.0, 0.0, 4.0),
-    Vector3d::new(0.0, 0.0, 0.0),
-  ))
+  Shape::Box(Affine3d {
+    x_axis: Vector3d::new(4.0, 0.0, 0.0),
+    y_axis: Vector3d::new(0.0, 2.0, 0.0),
+    z_axis: Vector3d::new(0.0, 0.0, 4.0),
+    translation: Vector3d::new(0.0, 0.0, 0.0),
+  })
 }
 
 fn new_spawn(objects: Vec<AlifeObject>) -> LevelSpawn {
@@ -176,7 +176,10 @@ fn outlines_a_box_from_above_at_its_place() {
 
 #[test]
 fn turns_a_sphere_with_its_object_and_keeps_its_radius() {
-  let sphere: Shape = Shape::Sphere((Vector3d::new(5.0, 0.0, 0.0), 3.0));
+  let sphere: Shape = Shape::Sphere(Sphere {
+    center: Vector3d::new(5.0, 0.0, 0.0),
+    radius: 3.0,
+  });
   let spawn: LevelSpawn = new_spawn(vec![new_object(
     "zat_in",
     Vector3d::new(100.0, 0.0, 0.0),

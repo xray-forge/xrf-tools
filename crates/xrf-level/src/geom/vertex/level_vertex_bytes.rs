@@ -1,5 +1,5 @@
 use byteorder::ByteOrder;
-use xrf_math::Vector3d;
+use xrf_math::{Vector2d, Vector3d};
 
 use crate::geom::vertex::level_vertex::LevelVertex;
 use crate::geom::vertex::level_vertex_layout::LevelVertexLayout;
@@ -99,7 +99,7 @@ impl<'a> LevelVertexBytes<'a> {
       color: self.get_color().map(LevelVertex::decode_color),
       hemi,
       lightmap_coordinate: self.get_lightmap_coordinate::<T>().map(|[u, v]| {
-        (
+        Vector2d::new(
           f32::from(u) / LevelVertexLayout::LIGHTMAP_QUANT,
           f32::from(v) / LevelVertexLayout::LIGHTMAP_QUANT,
         )
@@ -107,8 +107,8 @@ impl<'a> LevelVertexBytes<'a> {
       normal,
       position: self.get_position::<T>(),
       tangent: tangent.map(|(direction, _)| direction),
-      texture_coordinate: self.get_texture_coordinate::<T>().map_or((0.0, 0.0), |[u, v, ..]| {
-        (
+      texture_coordinate: self.get_texture_coordinate::<T>().map_or(Vector2d::ZERO, |[u, v, ..]| {
+        Vector2d::new(
           self.layout.rebuild_coordinate(u, fraction_u),
           self.layout.rebuild_coordinate(v, fraction_v),
         )
