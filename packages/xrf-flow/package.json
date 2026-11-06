@@ -31,7 +31,7 @@
     "@wirestate/mobx": "1.0.0",
     "eslint": "catalog:",
     "jest": "catalog:",
-    "mobx": "^6.16.1",
+    "mobx": "^7.1.3",
     "prettier": "catalog:",
     "typescript": "catalog:",
     "@xrf/toolchain": "workspace:*"
