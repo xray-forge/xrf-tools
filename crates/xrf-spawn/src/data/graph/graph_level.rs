@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{Ltx, LtxImportExport, LtxSectionWrite, LtxWrite, Section};
 use xrf_math::Vector3d;
 
 /// `GameGraph::SLevel::load` in xray codebase.
@@ -69,7 +69,7 @@ impl LtxImportExport for GraphLevel {
   }
 
   /// Export graph level data into ltx.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     ltx
       .with_section(section_name)
       .set("name", &self.name)

@@ -4,7 +4,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, Section};
+use xrf_ltx::{LtxSectionWrite, LtxWrite, Section};
 use xrf_math::Vector3d;
 use xrf_utils::{decode_bytes_from_base64, encode_bytes_to_base64, vector_to_string};
 
@@ -212,7 +212,7 @@ impl ActorPhysicsState {
   }
 
   /// Export the body under `prefix`, its kind in `prefix` itself.
-  pub fn export(&self, section_name: &str, prefix: &str, ltx: &mut Ltx) {
+  pub fn export(&self, section_name: &str, prefix: &str, ltx: &mut impl LtxWrite) {
     let key = |name: &str| format!("{prefix}.{name}");
     let mut section = ltx.with_section(section_name);
 

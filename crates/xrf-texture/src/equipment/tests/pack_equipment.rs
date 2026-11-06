@@ -6,7 +6,7 @@ use std::sync::Arc;
 use image::{Rgba, RgbaImage};
 use xrf_dds::{DdsFile, ImageFormat};
 use xrf_job::{JobHandle, JobOutcome};
-use xrf_ltx::Ltx;
+use xrf_ltx::{Ltx, LtxSectionWrite};
 use xrf_output::{Output, OutputChannel, OutputOptions, OutputVerbosity};
 use xrf_test_utils::GeneratedResources;
 

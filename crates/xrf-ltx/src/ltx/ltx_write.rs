@@ -5,8 +5,17 @@ use std::path::Path;
 use xrf_error::XrfResult;
 use xrf_utils::{StagedFile, encode_string_into_w1251_bytes, read_as_string_from_w1251_encoded};
 
-use crate::ltx::Ltx;
-use crate::syntax::{DEFAULT_KV_SEPARATOR, LTX_LINE_SEPARATOR, ROOT_SECTION};
+use crate::binding::LtxWrite;
+use crate::ltx::{Ltx, SectionSetter};
+use crate::syntax::{DEFAULT_KV_SEPARATOR, EMPTY_VALUE_KV_SEPARATOR, LTX_LINE_SEPARATOR, ROOT_SECTION};
+
+impl LtxWrite for Ltx {
+  type SectionWriter<'a> = SectionSetter<'a>;
+
+  fn with_section<'a>(&'a mut self, section: &'a str) -> SectionSetter<'a> {
+    SectionSetter::new(self, String::from(section))
+  }
+}
 
 impl Ltx {
   /// Format single LTX file by provided path
@@ -105,8 +114,11 @@ impl Ltx {
 
       for (key, value) in props.iter() {
         emit(key);
-        // An empty value leaves no trailing space.
-        emit(if value.is_empty() { " =" } else { DEFAULT_KV_SEPARATOR });
+        emit(if value.is_empty() {
+          EMPTY_VALUE_KV_SEPARATOR
+        } else {
+          DEFAULT_KV_SEPARATOR
+        });
         emit(value);
         emit(LTX_LINE_SEPARATOR);
       }
@@ -118,6 +130,7 @@ impl Ltx {
 mod test {
   use xrf_utils::{decode_w1251_bytes_to_string, encode_string_to_w1251_bytes};
 
+  use crate::binding::LtxSectionWrite;
   use crate::ltx::Ltx;
   use crate::syntax::{LTX_LINE_SEPARATOR, ROOT_SECTION};
 

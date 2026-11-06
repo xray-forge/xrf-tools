@@ -4,7 +4,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD, Section};
+use xrf_ltx::{Ltx, LtxImportExport, LtxSectionWrite, LtxWrite, META_TYPE_FIELD, Section};
 use xrf_utils::{assert_equal, decode_bytes_from_base64, encode_bytes_to_base64};
 
 use crate::data::editor::particle_editor_action::ParticleEditorAction;
@@ -93,7 +93,7 @@ impl LtxImportExport for ParticleEffectEditorData {
   }
 
   /// Export particle effect editor data into provided path.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     ltx
       .with_section(section_name)
       .set(META_TYPE_FIELD, Self::META_TYPE)

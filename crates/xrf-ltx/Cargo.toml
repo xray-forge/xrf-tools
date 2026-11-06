@@ -11,6 +11,7 @@ path = "src/lib.rs"
 
 [dependencies]
 fxhash = "0.2.1"
+hashbrown = { version = "0.17.1", default-features = false }
 indexmap = { workspace = true }
 rayon = { workspace = true }
 serde = { workspace = true }

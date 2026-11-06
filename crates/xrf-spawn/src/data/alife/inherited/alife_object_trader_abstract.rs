@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{Ltx, LtxImportExport, LtxSectionWrite, LtxWrite, Section};
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -80,7 +80,7 @@ impl LtxImportExport for AlifeObjectTraderAbstract {
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     ltx
       .with_section(section_name)
       .set("trader.money", self.money)

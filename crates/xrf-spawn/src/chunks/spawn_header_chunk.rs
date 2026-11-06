@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_ltx::{FileImportExport, Ltx, Section};
+use xrf_ltx::{FileImportExport, Ltx, LtxRecordWriter, LtxSectionWrite, LtxWrite, Section};
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -77,7 +77,7 @@ impl FileImportExport for SpawnHeaderChunk {
   /// Export header data into provided path.
   /// Creates ltx file config with header chunk description.
   fn export<P: AsRef<Path>>(&self, path: &P) -> XrfResult {
-    let mut ltx: Ltx = Ltx::new();
+    let mut ltx: LtxRecordWriter = LtxRecordWriter::new();
 
     ltx
       .with_section("header")

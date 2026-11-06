@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{Ltx, LtxImportExport, LtxSectionWrite, LtxWrite, Section};
 use xrf_utils::{assert_length, to_format_size};
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -109,7 +109,7 @@ impl LtxImportExport for PatrolLink {
   }
 
   /// Export patrol link data into ltx.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     ltx
       .with_section(section_name)
       .set("index", self.index)

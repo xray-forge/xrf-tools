@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use xrf_error::XrfResult;
 use xrf_test_utils::GeneratedResources;
 
+use crate::binding::LtxSectionWrite;
 use crate::ltx::{Ltx, Section};
 use crate::syntax::ROOT_SECTION;
 

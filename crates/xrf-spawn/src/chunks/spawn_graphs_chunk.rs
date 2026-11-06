@@ -6,7 +6,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
-use xrf_ltx::{FileImportExport, Ltx, LtxImportExport};
+use xrf_ltx::{FileImportExport, Ltx, LtxImportExport, LtxRecordWriter};
 use xrf_utils::{StagedFile, assert_length};
 
 use crate::data::graph::graph_cross_table::GraphCrossTable;
@@ -201,13 +201,13 @@ impl FileImportExport for SpawnGraphsChunk {
   /// Export graphs data into provided path.
   /// Constructs many files with contained data.
   fn export<P: AsRef<Path>>(&self, path: &P) -> XrfResult {
-    let mut graphs_header_ltx: Ltx = Ltx::new();
+    let mut graphs_header_ltx: LtxRecordWriter = LtxRecordWriter::new();
 
     self.header.export("header", &mut graphs_header_ltx)?;
 
     graphs_header_ltx.write_to_path(path.as_ref().join("graphs_header.ltx"))?;
 
-    let mut graphs_level_ltx: Ltx = Ltx::new();
+    let mut graphs_level_ltx: LtxRecordWriter = LtxRecordWriter::new();
 
     for (index, level) in self.levels.iter().enumerate() {
       level.export(&index.to_string(), &mut graphs_level_ltx)?;
@@ -217,7 +217,7 @@ impl FileImportExport for SpawnGraphsChunk {
 
     log::info!("Exported graph levels");
 
-    let mut graphs_vertices_ltx: Ltx = Ltx::new();
+    let mut graphs_vertices_ltx: LtxRecordWriter = LtxRecordWriter::new();
 
     for (index, vertex) in self.vertices.iter().enumerate() {
       vertex.export(&index.to_string(), &mut graphs_vertices_ltx)?;
@@ -227,7 +227,7 @@ impl FileImportExport for SpawnGraphsChunk {
 
     log::info!("Exported graph vertices");
 
-    let mut graphs_points_ltx: Ltx = Ltx::new();
+    let mut graphs_points_ltx: LtxRecordWriter = LtxRecordWriter::new();
 
     for (index, point) in self.points.iter().enumerate() {
       point.export(&index.to_string(), &mut graphs_points_ltx)?;
@@ -237,7 +237,7 @@ impl FileImportExport for SpawnGraphsChunk {
 
     log::info!("Exported graph points");
 
-    let mut graphs_edges_ltx: Ltx = Ltx::new();
+    let mut graphs_edges_ltx: LtxRecordWriter = LtxRecordWriter::new();
 
     for (index, edge) in self.edges.iter().enumerate() {
       edge.export(&index.to_string(), &mut graphs_edges_ltx)?;

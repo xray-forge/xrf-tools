@@ -1,4 +1,4 @@
-use crate::syntax::LTX_LINE_SEPARATOR;
+use crate::syntax::{DEFAULT_KV_SEPARATOR, EMPTY_VALUE_KV_SEPARATOR, LTX_LINE_SEPARATOR};
 
 /// Formatter of LTX statements.
 pub struct LtxStatementWriter {}
@@ -63,9 +63,10 @@ impl LtxStatementWriter {
 
     if let Some(value) = value {
       if value.is_empty() {
-        destination.push_str(" =");
+        destination.push_str(EMPTY_VALUE_KV_SEPARATOR);
       } else {
-        destination.push_str(&format!(" = {value}"));
+        destination.push_str(DEFAULT_KV_SEPARATOR);
+        destination.push_str(value);
       }
     }
 

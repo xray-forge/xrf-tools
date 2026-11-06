@@ -4,7 +4,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{Ltx, LtxImportExport, LtxSectionWrite, LtxWrite, Section};
 use xrf_math::Vector3d;
 use xrf_utils::{assert_equal, to_format_size};
 
@@ -152,7 +152,7 @@ impl LtxImportExport for PatrolPoint {
   }
 
   /// Export patrol point data into ltx.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     ltx
       .with_section(section_name)
       .set("name", &self.name)

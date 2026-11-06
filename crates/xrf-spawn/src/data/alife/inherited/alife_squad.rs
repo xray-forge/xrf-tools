@@ -2,7 +2,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{Ltx, LtxImportExport, LtxSectionWrite, LtxWrite, Section};
 
 use crate::data::alife::inherited::alife_object_online_offline_group::AlifeObjectOnlineOfflineGroup;
 use crate::data::generic::script_save_marker::ScriptSaveMarker;
@@ -97,7 +97,7 @@ impl LtxImportExport for AlifeSquad {
   }
 
   /// Export object data into ltx file, each value as the string the script writes for it.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     self.base.export(section_name, ltx)?;
 
     ltx

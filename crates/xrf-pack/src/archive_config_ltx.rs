@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_ltx::Ltx;
+use xrf_ltx::{Ltx, LtxSectionWrite};
 
 use crate::pack::config::ArchivePackHeaderEntry;
 

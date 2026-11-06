@@ -2,14 +2,16 @@ use std::fmt::Display;
 use std::mem;
 use std::sync::Arc;
 
+use crate::binding::LtxSectionWrite;
 use crate::ltx::section::section_value_text::SectionValueText;
 use crate::ltx::{Ltx, Section};
 
 /// Writes fields into one named section of a config, creating the section on the first write.
 ///
-/// An export writes a config record by record, a setter each, so its costs are paid per field across hundreds of
+/// A config can be written record by record, a setter each, so its costs are paid per field across hundreds of
 /// thousands of records: the section is found once, not per field, a key the section before it already holds shares
-/// that text instead of storing the name again, and a value is formatted straight into the text the field keeps.
+/// that text instead of storing the name again, and a value is formatted straight into the text the field keeps. A
+/// caller that only writes the file uses [`crate::LtxRecordWriter`] instead, which builds no config.
 pub struct SectionSetter<'a> {
   ltx: &'a mut Ltx,
   /// The section's name until the first write places it, which then moves it into the config.
@@ -26,33 +28,6 @@ impl<'a> SectionSetter<'a> {
       section_name,
       index: None,
     }
-  }
-
-  /// Set a field to the text `value` displays as, replacing any value it held and keeping its position.
-  ///
-  /// Takes anything that displays, text as much as a number or a vector, so a value is written as `to_string` would
-  /// write it without the copy `to_string` makes; lend a value that is not `Copy` (`&self.domain`).
-  pub fn set<K, V>(&'a mut self, key: K, value: V) -> &'a mut SectionSetter<'a>
-  where
-    K: AsRef<str>,
-    V: Display,
-  {
-    self.insert(key.as_ref(), SectionValueText::of(value).as_str());
-
-    self
-  }
-
-  /// Set a field when there is a value for it, as [`Self::set`] does; `None` writes nothing.
-  pub fn set_optional<K, V>(&'a mut self, key: K, value: Option<V>) -> &'a mut SectionSetter<'a>
-  where
-    K: AsRef<str>,
-    V: Display,
-  {
-    if let Some(value) = value {
-      self.insert(key.as_ref(), SectionValueText::of(value).as_str());
-    }
-
-    self
   }
 
   /// Remove a field from this section, if the section and the field exist.
@@ -108,10 +83,23 @@ impl<'a> SectionSetter<'a> {
   }
 }
 
+impl LtxSectionWrite for SectionSetter<'_> {
+  fn set<K, V>(&mut self, key: K, value: V) -> &mut Self
+  where
+    K: AsRef<str>,
+    V: Display,
+  {
+    self.insert(key.as_ref(), SectionValueText::of(value).as_str());
+
+    self
+  }
+}
+
 #[cfg(test)]
 mod test {
   use std::sync::Arc;
 
+  use crate::binding::LtxSectionWrite;
   use crate::ltx::{Ltx, SectionSetter};
 
   #[test]
