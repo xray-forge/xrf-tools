@@ -88,14 +88,14 @@ impl LtxImportExport for GraphVertex {
   fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
     ltx
       .with_section(section_name)
-      .set("level_point", self.level_point.to_string())
-      .set("game_point", self.game_point.to_string())
-      .set("level_id", self.level_id.to_string())
-      .set("level_vertex_id", self.level_vertex_id.to_string())
-      .set("edge_offset", self.edges_offset.to_string())
-      .set("level_point_offset", self.level_points_offset.to_string())
-      .set("edge_count", self.edges_count.to_string())
-      .set("level_point_count", self.level_points_count.to_string())
+      .set("level_point", self.level_point)
+      .set("game_point", self.game_point)
+      .set("level_id", self.level_id)
+      .set("level_vertex_id", self.level_vertex_id)
+      .set("edge_offset", self.edges_offset)
+      .set("level_point_offset", self.level_points_offset)
+      .set("edge_count", self.edges_count)
+      .set("level_point_count", self.level_points_count)
       .set(
         "vertex_type",
         vector_to_string(&[

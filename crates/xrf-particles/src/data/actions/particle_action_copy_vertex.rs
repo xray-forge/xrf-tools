@@ -52,9 +52,9 @@ impl LtxImportExport for ParticleActionCopyVertex {
   fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
     ltx
       .with_section(section_name)
-      .set("action_flags", self.action_flags.to_string())
-      .set("action_type", self.action_type.to_string())
-      .set("copy_position", self.copy_position.to_string());
+      .set("action_flags", self.action_flags)
+      .set("action_type", self.action_type)
+      .set("copy_position", self.copy_position);
 
     Ok(())
   }

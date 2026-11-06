@@ -53,9 +53,9 @@ impl LtxImportExport for ParticleActionGravity {
   fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
     ltx
       .with_section(section_name)
-      .set("action_flags", self.action_flags.to_string())
-      .set("action_type", self.action_type.to_string())
-      .set("direction", self.direction.to_string());
+      .set("action_flags", self.action_flags)
+      .set("action_type", self.action_type)
+      .set("direction", self.direction);
 
     Ok(())
   }

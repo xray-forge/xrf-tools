@@ -68,12 +68,12 @@ impl LtxImportExport for GraphHeader {
   fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
     ltx
       .with_section(section_name)
-      .set("version", self.version.to_string())
-      .set("vertex_count", self.vertices_count.to_string())
-      .set("edges_count", self.edges_count.to_string())
-      .set("point_count", self.points_count.to_string())
-      .set("level_count", self.levels_count.to_string())
-      .set("guid", self.guid.to_string());
+      .set("version", self.version)
+      .set("vertex_count", self.vertices_count)
+      .set("edges_count", self.edges_count)
+      .set("point_count", self.points_count)
+      .set("level_count", self.levels_count)
+      .set("guid", self.guid);
 
     Ok(())
   }

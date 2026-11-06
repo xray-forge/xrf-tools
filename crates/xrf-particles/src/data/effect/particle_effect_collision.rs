@@ -83,12 +83,9 @@ impl LtxImportExport for ParticleEffectCollision {
     ltx
       .with_section(section_name)
       .set(META_TYPE_FIELD, Self::META_TYPE)
-      .set(
-        "collide_one_minus_friction",
-        self.collide_one_minus_friction.to_string(),
-      )
-      .set("collide_resilience", self.collide_resilience.to_string())
-      .set("collide_sqr_cutoff", self.collide_sqr_cutoff.to_string());
+      .set("collide_one_minus_friction", self.collide_one_minus_friction)
+      .set("collide_resilience", self.collide_resilience)
+      .set("collide_sqr_cutoff", self.collide_sqr_cutoff);
 
     Ok(())
   }

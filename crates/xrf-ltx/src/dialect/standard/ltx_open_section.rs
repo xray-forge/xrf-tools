@@ -27,11 +27,11 @@ impl Default for LtxOpenSection {
 
 impl LtxOpenSection {
   /// A section a header just opened, carrying the parents that header declared.
-  pub(crate) fn declared(name: &str, parents: &[Box<str>]) -> Self {
+  pub(crate) fn declared<S: AsRef<str>>(name: &str, parents: &[S]) -> Self {
     let mut section: Section = Section::default();
 
     for parent in parents {
-      section.inherit(&**parent);
+      section.inherit(parent.as_ref());
     }
 
     Self {
@@ -87,7 +87,7 @@ mod test {
   fn a_declared_section_lands_even_when_it_holds_nothing() {
     let mut ltx: Ltx = Ltx::new();
 
-    LtxOpenSection::declared("empty", &[]).close_into(&mut ltx);
+    LtxOpenSection::declared::<&str>("empty", &[]).close_into(&mut ltx);
 
     assert!(ltx.has_section("empty"));
     assert_eq!(ltx.section("empty").expect("the section").len(), 0);

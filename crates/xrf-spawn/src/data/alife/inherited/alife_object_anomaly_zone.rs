@@ -65,16 +65,10 @@ impl LtxImportExport for AlifeObjectAnomalyZone {
       .with_section(section_name)
       .set(
         "anomaly_zone.offline_interactive_radius",
-        self.offline_interactive_radius.to_string(),
+        self.offline_interactive_radius,
       )
-      .set(
-        "anomaly_zone.artefact_spawn_count",
-        self.artefact_spawn_count.to_string(),
-      )
-      .set(
-        "anomaly_zone.artefact_position_offset",
-        self.artefact_position_offset.to_string(),
-      );
+      .set("anomaly_zone.artefact_spawn_count", self.artefact_spawn_count)
+      .set("anomaly_zone.artefact_position_offset", self.artefact_position_offset);
 
     Ok(())
   }

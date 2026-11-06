@@ -62,7 +62,7 @@ impl LtxImportExport for AlifeObjectItemWeaponMagazinedWgl {
 
     ltx.with_section(section_name).set(
       "item_weapon_magazined_wgl.update_grenade_mode",
-      self.update_grenade_mode.to_string(),
+      self.update_grenade_mode,
     );
 
     Ok(())

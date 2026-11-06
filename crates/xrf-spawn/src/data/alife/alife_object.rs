@@ -319,23 +319,23 @@ impl LtxImportExport for AlifeObject {
   fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
     ltx
       .with_section(section_name)
-      .set("id", self.id.to_string())
-      .set("net_action", self.net_action.to_string())
+      .set("id", self.id)
+      .set("net_action", self.net_action)
       .set("section", &self.section)
       .set("name", &self.name)
-      .set("script_game_id", self.script_game_id.to_string())
-      .set("script_rp", self.script_rp.to_string())
-      .set("position", self.position.to_string())
-      .set("direction", self.direction.to_string())
-      .set("respawn_time", self.respawn_time.to_string())
-      .set("parent_id", self.parent_id.to_string())
-      .set("phantom_id", self.phantom_id.to_string())
-      .set("script_flags", self.script_flags.to_string())
-      .set("version", self.version.to_string())
-      .set("game_type", self.game_type.to_string())
-      .set("script_version", self.script_version.to_string())
+      .set("script_game_id", self.script_game_id)
+      .set("script_rp", self.script_rp)
+      .set("position", self.position)
+      .set("direction", self.direction)
+      .set("respawn_time", self.respawn_time)
+      .set("parent_id", self.parent_id)
+      .set("phantom_id", self.phantom_id)
+      .set("script_flags", self.script_flags)
+      .set("version", self.version)
+      .set("game_type", self.game_type)
+      .set("script_version", self.script_version)
       .set("client_data", encode_bytes_to_base64(&self.client_data))
-      .set("spawn_id", self.spawn_id.to_string());
+      .set("spawn_id", self.spawn_id);
 
     self.inherited.export(section_name, ltx)
   }

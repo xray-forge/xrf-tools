@@ -83,16 +83,16 @@ impl LtxImportExport for AlifeObjectTraderAbstract {
   fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
     ltx
       .with_section(section_name)
-      .set("trader.money", self.money.to_string())
+      .set("trader.money", self.money)
       .set("trader.specific_character", &self.specific_character)
-      .set("trader.trader_flags", self.trader_flags.to_string())
+      .set("trader.trader_flags", self.trader_flags)
       .set("trader.character_profile", &self.character_profile)
-      .set("trader.community_index", self.community_index.to_string())
-      .set("trader.rank", self.rank.to_string())
-      .set("trader.reputation", self.reputation.to_string())
+      .set("trader.community_index", self.community_index)
+      .set("trader.rank", self.rank)
+      .set("trader.reputation", self.reputation)
       .set("trader.character_name", &self.character_name)
-      .set("trader.dead_body_can_take", self.dead_body_can_take.to_string())
-      .set("trader.dead_body_closed", self.dead_body_closed.to_string());
+      .set("trader.dead_body_can_take", self.dead_body_can_take)
+      .set("trader.dead_body_closed", self.dead_body_closed);
 
     Ok(())
   }

@@ -30,7 +30,7 @@ fn options_for(root: &Path, sections: &[&str]) -> EquipmentSpriteUnpackOptions {
     ltx
       .with_section(*section)
       .set("$inventory_icon", "true")
-      .set("inv_grid_x", index.to_string())
+      .set("inv_grid_x", index)
       .set("inv_grid_y", "0")
       .set("inv_grid_width", "1")
       .set("inv_grid_height", "1");

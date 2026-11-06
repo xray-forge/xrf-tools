@@ -191,8 +191,8 @@ impl PhysicsNetState {
 
     ltx
       .with_section(section_name)
-      .set(format!("{prefix}.item_count"), state.item_count.to_string())
-      .set(format!("{prefix}.enabled"), state.enabled.to_string())
+      .set(format!("{prefix}.item_count"), state.item_count)
+      .set(format!("{prefix}.enabled"), state.enabled)
       .set(format!("{prefix}.force"), vector_to_string(&state.force))
       .set(format!("{prefix}.torque"), vector_to_string(&state.torque))
       .set(format!("{prefix}.position"), vector_to_string(&state.position))
@@ -205,7 +205,7 @@ impl PhysicsNetState {
         format!("{prefix}.linear_velocity"),
         Self::export_velocity(state.linear_velocity.as_ref()),
       )
-      .set(format!("{prefix}.awake"), state.awake.to_string());
+      .set(format!("{prefix}.awake"), state.awake);
   }
 
   fn import_velocity(section: &Section, key: &str) -> XrfResult<Option<[RawFloat; 3]>> {

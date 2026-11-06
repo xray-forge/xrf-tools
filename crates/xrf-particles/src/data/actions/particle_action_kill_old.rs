@@ -56,10 +56,10 @@ impl LtxImportExport for ParticleActionKillOld {
   fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
     ltx
       .with_section(section_name)
-      .set("action_flags", self.action_flags.to_string())
-      .set("action_type", self.action_type.to_string())
-      .set("age_limit", self.age_limit.to_string())
-      .set("kill_less_than", self.kill_less_than.to_string());
+      .set("action_flags", self.action_flags)
+      .set("action_type", self.action_type)
+      .set("age_limit", self.age_limit)
+      .set("kill_less_than", self.kill_less_than);
 
     Ok(())
   }

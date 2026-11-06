@@ -55,8 +55,8 @@ impl LtxImportExport for GraphEdge {
   fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
     ltx
       .with_section(section_name)
-      .set("game_vertex_id", self.game_vertex_id.to_string())
-      .set("distance", self.distance.to_string());
+      .set("game_vertex_id", self.game_vertex_id)
+      .set("distance", self.distance);
 
     Ok(())
   }

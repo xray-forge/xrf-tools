@@ -156,10 +156,10 @@ impl LtxImportExport for PatrolPoint {
     ltx
       .with_section(section_name)
       .set("name", &self.name)
-      .set("flags", self.flags.to_string())
-      .set("position", self.position.to_string())
-      .set("level_vertex_id", self.level_vertex_id.to_string())
-      .set("game_vertex_id", self.game_vertex_id.to_string());
+      .set("flags", self.flags)
+      .set("position", self.position)
+      .set("level_vertex_id", self.level_vertex_id)
+      .set("game_vertex_id", self.game_vertex_id);
 
     Ok(())
   }

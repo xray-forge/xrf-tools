@@ -69,13 +69,13 @@ impl LtxImportExport for ParticleActionTurbulence {
   fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
     ltx
       .with_section(section_name)
-      .set("action_flags", self.action_flags.to_string())
-      .set("action_type", self.action_type.to_string())
-      .set("frequency", self.frequency.to_string())
-      .set("octaves", self.octaves.to_string())
-      .set("magnitude", self.magnitude.to_string())
-      .set("epsilon", self.epsilon.to_string())
-      .set("offset", self.offset.to_string());
+      .set("action_flags", self.action_flags)
+      .set("action_type", self.action_type)
+      .set("frequency", self.frequency)
+      .set("octaves", self.octaves)
+      .set("magnitude", self.magnitude)
+      .set("epsilon", self.epsilon)
+      .set("offset", self.offset);
 
     Ok(())
   }

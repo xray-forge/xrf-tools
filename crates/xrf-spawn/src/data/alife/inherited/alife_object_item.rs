@@ -96,7 +96,7 @@ impl LtxImportExport for AlifeObjectItem {
 
     ltx
       .with_section(section_name)
-      .set("item.condition", self.condition.to_string())
+      .set("item.condition", self.condition)
       .set("item.upgrades", vector_to_string(&self.upgrades));
 
     PhysicsNetState::export_optional(self.update_state.as_ref(), section_name, "item.update_state", ltx);

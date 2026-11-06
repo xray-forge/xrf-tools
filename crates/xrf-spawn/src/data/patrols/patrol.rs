@@ -259,7 +259,7 @@ impl Patrol {
           .collect::<Vec<String>>()
           .join(","),
       )
-      .set("links_count", self.links.len().to_string());
+      .set("links_count", self.links.len());
 
     for (index, point) in self.points.iter().enumerate() {
       point.export(&format!("{}.{}.{}", self.name, index, point.name), patrol_points_ltx)?;

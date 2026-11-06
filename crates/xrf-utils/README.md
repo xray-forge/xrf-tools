@@ -135,8 +135,9 @@ assert_eq!(names, ["item1", "item2", "item10"]);
   `decode_bytes_to_string` handles a BOM, `decode_bytes_to_string_without_bom_handling` does not, and
   `encode_string_to_bytes` encodes; each returns `InvalidData` rather than substituting characters. The encoding comes
   from the format, never from guessing; game text is Windows-1251 (`decode_w1251_bytes_to_string`,
-  `encode_string_to_w1251_bytes`, `read_as_string_from_w1251_encoded`). Base64 helpers use the URL-safe alphabet
-  without padding.
+  `encode_string_to_w1251_bytes`, `read_as_string_from_w1251_encoded`). `encode_string_into_w1251_bytes` and
+  `read_as_string_from_w1251_encoded` keep an ASCII buffer as it is instead of copying it, which matters for a document
+  of tens of megabytes. Base64 helpers use the URL-safe alphabet without padding.
 - `read_engine_integer` reads an integer as the engine's `atoi` does: the longest leading integer, or zero, saturated
   to `i32`. `vector_from_string(_sep)(_sized)` parse separated lists, `to_camel_case` turns a snake or kebab name into a
   JavaScript identifier.

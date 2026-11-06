@@ -81,11 +81,11 @@ impl FileImportExport for SpawnHeaderChunk {
 
     ltx
       .with_section("header")
-      .set("version", self.version.to_string())
-      .set("guid", self.guid.to_string())
-      .set("graph_guid", self.graph_guid.to_string())
-      .set("objects", self.objects_count.to_string())
-      .set("level_count", self.levels_count.to_string());
+      .set("version", self.version)
+      .set("guid", self.guid)
+      .set("graph_guid", self.graph_guid)
+      .set("objects", self.objects_count)
+      .set("level_count", self.levels_count);
 
     ltx.write_to_path(path.as_ref().join("header.ltx"))?;
 

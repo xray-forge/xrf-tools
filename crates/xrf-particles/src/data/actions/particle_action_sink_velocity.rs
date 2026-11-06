@@ -57,10 +57,10 @@ impl LtxImportExport for ParticleActionSinkVelocity {
   fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
     ltx
       .with_section(section_name)
-      .set("action_flags", self.action_flags.to_string())
-      .set("action_type", self.action_type.to_string())
-      .set("kill_inside", self.kill_inside.to_string())
-      .set("velocity", self.velocity.to_string());
+      .set("action_flags", self.action_flags)
+      .set("action_type", self.action_type)
+      .set("kill_inside", self.kill_inside)
+      .set("velocity", &self.velocity);
 
     Ok(())
   }

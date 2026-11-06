@@ -103,19 +103,19 @@ impl LtxImportExport for ParticleActionSource {
   fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
     ltx
       .with_section(section_name)
-      .set("action_flags", self.action_flags.to_string())
-      .set("action_type", self.action_type.to_string())
-      .set("position", self.position.to_string())
-      .set("velocity", self.velocity.to_string())
-      .set("rot", self.rot.to_string())
-      .set("size", self.size.to_string())
-      .set("color", self.color.to_string())
-      .set("alpha", self.alpha.to_string())
-      .set("particle_rate", self.particle_rate.to_string())
-      .set("age", self.age.to_string())
-      .set("age_sigma", self.age_sigma.to_string())
-      .set("parent_vel", self.parent_vel.to_string())
-      .set("parent_motion", self.parent_motion.to_string());
+      .set("action_flags", self.action_flags)
+      .set("action_type", self.action_type)
+      .set("position", &self.position)
+      .set("velocity", &self.velocity)
+      .set("rot", &self.rot)
+      .set("size", &self.size)
+      .set("color", &self.color)
+      .set("alpha", self.alpha)
+      .set("particle_rate", self.particle_rate)
+      .set("age", self.age)
+      .set("age_sigma", self.age_sigma)
+      .set("parent_vel", self.parent_vel)
+      .set("parent_motion", self.parent_motion);
 
     Ok(())
   }

@@ -68,7 +68,7 @@ impl LtxImportExport for AlifeObjectItemHelmet {
 
     ltx
       .with_section(section_name)
-      .set("item_helmet.update_condition", self.update_condition.to_string());
+      .set("item_helmet.update_condition", self.update_condition);
 
     Ok(())
   }

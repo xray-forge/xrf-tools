@@ -67,7 +67,7 @@ impl LtxImportExport for AlifeObjectItemPda {
 
     ltx
       .with_section(section_name)
-      .set("item_pda.owner", self.owner.to_string())
+      .set("item_pda.owner", self.owner)
       .set("item_pda.character", &self.character)
       .set("item_pda.info_portion", &self.info_portion);
 

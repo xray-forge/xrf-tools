@@ -60,10 +60,9 @@ impl LtxImportExport for AlifeObjectItemWeaponMagazined {
   fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
     self.base.export(section_name, ltx)?;
 
-    ltx.with_section(section_name).set(
-      "item_weapon_magazined.update_fire_mode",
-      self.update_fire_mode.to_string(),
-    );
+    ltx
+      .with_section(section_name)
+      .set("item_weapon_magazined.update_fire_mode", self.update_fire_mode);
 
     Ok(())
   }

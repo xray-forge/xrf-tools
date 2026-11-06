@@ -87,14 +87,14 @@ impl LtxImportExport for AlifeObjectAbstract {
   fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
     ltx
       .with_section(section_name)
-      .set("abstract.game_vertex_id", self.game_vertex_id.to_string())
-      .set("abstract.distance", self.distance.to_string())
-      .set("abstract.direct_control", self.direct_control.to_string())
-      .set("abstract.level_vertex_id", self.level_vertex_id.to_string())
-      .set("abstract.flags", self.flags.to_string())
+      .set("abstract.game_vertex_id", self.game_vertex_id)
+      .set("abstract.distance", self.distance)
+      .set("abstract.direct_control", self.direct_control)
+      .set("abstract.level_vertex_id", self.level_vertex_id)
+      .set("abstract.flags", self.flags)
       .set("abstract.custom_data", encode_string_to_base64(&self.custom_data))
-      .set("abstract.story_id", self.story_id.to_string())
-      .set("abstract.spawn_story_id", self.spawn_story_id.to_string());
+      .set("abstract.story_id", self.story_id)
+      .set("abstract.spawn_story_id", self.spawn_story_id);
 
     Ok(())
   }

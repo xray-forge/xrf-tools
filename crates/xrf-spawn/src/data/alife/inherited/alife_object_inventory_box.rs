@@ -63,8 +63,8 @@ impl LtxImportExport for AlifeObjectInventoryBox {
 
     ltx
       .with_section(section_name)
-      .set("inventory_box.can_take", self.can_take.to_string())
-      .set("inventory_box.is_closed", self.is_closed.to_string())
+      .set("inventory_box.can_take", self.can_take)
+      .set("inventory_box.is_closed", self.is_closed)
       .set("inventory_box.tip", &self.tip);
 
     Ok(())

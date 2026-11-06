@@ -94,7 +94,7 @@ impl LtxImportExport for AlifeStalker {
 
     ltx
       .with_section(section_name)
-      .set("stalker.loot_dropped", self.loot_dropped.to_string());
+      .set("stalker.loot_dropped", self.loot_dropped);
 
     Ok(())
   }

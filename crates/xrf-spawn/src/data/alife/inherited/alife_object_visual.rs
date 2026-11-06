@@ -52,7 +52,7 @@ impl LtxImportExport for AlifeObjectVisual {
     ltx
       .with_section(section_name)
       .set("visual.visual_name", &self.visual_name)
-      .set("visual.visual_flags", self.visual_flags.to_string());
+      .set("visual.visual_flags", self.visual_flags);
 
     Ok(())
   }

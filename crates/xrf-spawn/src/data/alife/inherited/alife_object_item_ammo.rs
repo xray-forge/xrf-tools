@@ -64,8 +64,8 @@ impl LtxImportExport for AlifeObjectItemAmmo {
 
     ltx
       .with_section(section_name)
-      .set("item_ammo.ammo_left", self.ammo_left.to_string())
-      .set("item_ammo.update_ammo_left", self.update_ammo_left.to_string());
+      .set("item_ammo.ammo_left", self.ammo_left)
+      .set("item_ammo.update_ammo_left", self.update_ammo_left);
 
     Ok(())
   }

@@ -71,7 +71,7 @@ impl LtxImportExport for AlifeObjectItemTorch {
 
     ltx
       .with_section(section_name)
-      .set("item_torch.update_flags", self.update_flags.to_string());
+      .set("item_torch.update_flags", self.update_flags);
 
     Ok(())
   }

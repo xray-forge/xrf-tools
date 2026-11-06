@@ -77,7 +77,7 @@ impl LtxImportExport for AlifeObjectMonsterBase {
 
     ltx
       .with_section(section_name)
-      .set("monster.spec_object_id", self.spec_object_id.to_string());
+      .set("monster.spec_object_id", self.spec_object_id);
 
     Ok(())
   }

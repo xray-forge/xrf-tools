@@ -59,9 +59,7 @@ impl LtxImportExport for AlifeObjectCar {
     self.base.export(section_name, ltx)?;
     self.skeleton.export(section_name, ltx)?;
 
-    ltx
-      .with_section(section_name)
-      .set("car.health", self.health.to_string());
+    ltx.with_section(section_name).set("car.health", self.health);
 
     Ok(())
   }
