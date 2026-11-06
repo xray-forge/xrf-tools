@@ -253,7 +253,7 @@ impl<'a, S: LevelFileSource + ?Sized> LevelGeometryVerifier<'a, S> {
       .iter()
       .map(|vertex| match placement {
         Some(transform) => transform.transform_point(&vertex.position),
-        None => vertex.position.clone(),
+        None => vertex.position,
       })
       .find(|position| {
         position.x < declared.min.x - Self::BOUNDS_TOLERANCE

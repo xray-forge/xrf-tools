@@ -4,9 +4,10 @@ use xrf_error::{XrfError, XrfResult};
 
 use crate::data::geometry::ogf_fvf::OgfFvf;
 use crate::data::geometry::ogf_static_vertex::OgfStaticVertex;
-use crate::data::geometry::ogf_vertex::OgfVertex;
 use crate::data::geometry::ogf_vertex_data::OgfVertexData;
 use crate::data::geometry::ogf_vertices::OgfVertices;
+use crate::data::geometry::skin::ogf_skin_layout::OgfSkinLayout;
+use crate::data::geometry::skin::ogf_vertex::OgfVertex;
 use crate::data::ogf_model_type::OgfModelType;
 
 /// Geometry embedded directly in an OGF visual.
@@ -41,25 +42,14 @@ impl OgfGeometry {
     }
   }
 
-  const VERTEX_FORMAT_1_LINK: u32 = 0x12071980;
-  const VERTEX_FORMAT_2_LINK: u32 = 2 * Self::VERTEX_FORMAT_1_LINK;
-  const VERTEX_FORMAT_3_LINK: u32 = 4 * Self::VERTEX_FORMAT_1_LINK;
-  const VERTEX_FORMAT_4_LINK: u32 = 5 * Self::VERTEX_FORMAT_1_LINK;
-
-  const VERTEX_SIZE_1_LINK: usize = 60;
-  const VERTEX_SIZE_2_LINK: usize = 64;
-  const VERTEX_SIZE_3_LINK: usize = 70;
-  const VERTEX_SIZE_4_LINK: usize = 76;
-
   /// Reads the embedded vertices and indices of a visual of `model_type`, which decides how its vertex format tag is
   /// read: a skinned child's as a skin layout, any other visual's as a flexible vertex format, as the engine does.
   pub fn read_from_chunks<T: ByteOrder, D: ChunkDataSource>(
     chunks: &[ChunkReader<D>],
     model_type: Option<OgfModelType>,
   ) -> XrfResult<Option<Self>> {
-    let is_skinned: bool = model_type.is_some_and(OgfModelType::is_skinned_geometry);
     let vertices: Option<OgfVertices> = match chunks.iter().find(|chunk| chunk.id == Self::VERTICES_CHUNK_ID) {
-      Some(chunk) => Some(Self::read_vertices::<T, D>(&mut chunk.clone(), is_skinned)?),
+      Some(chunk) => Some(Self::read_vertices::<T, D>(&mut chunk.clone(), model_type)?),
       None => None,
     };
 
@@ -85,37 +75,59 @@ impl OgfGeometry {
 
   fn read_vertices<T: ByteOrder, D: ChunkDataSource>(
     reader: &mut ChunkReader<D>,
-    is_skinned: bool,
+    model_type: Option<OgfModelType>,
   ) -> XrfResult<OgfVertices> {
     let vertex_format: u32 = reader.read_u32::<T>()?;
     let vertex_count: u32 = reader.read_u32::<T>()?;
-    let vertices: Vec<u8> = reader.read_remaining()?;
 
-    let data: Option<OgfVertexData> = if is_skinned {
-      match Self::skin_vertex_layout(vertex_format) {
-        Some((vertex_size, links)) => Some(OgfVertexData::Skinned(
-          Self::sized_vertices(&vertices, vertex_count, vertex_size, "skin")?
-            .map(|vertex| OgfVertex::read_from_slice::<T>(vertex, links))
-            .collect(),
-        )),
-        None => None,
+    // Decoded where the payload lies: a visual's vertices are most of its bytes, and only the decoded form is kept.
+    let data: Option<OgfVertexData> = reader.read_remaining_with(|vertices| {
+      if model_type.is_some_and(OgfModelType::is_skinned_geometry) {
+        Self::decode_skinned_vertices::<T>(vertices, vertex_format, vertex_count)
+      } else {
+        Self::decode_static_vertices::<T>(vertices, vertex_format, vertex_count)
       }
-    } else {
-      match OgfFvf::from_raw(vertex_format) {
-        Some(format) => Some(OgfVertexData::Static(
-          Self::sized_vertices(&vertices, vertex_count, format.get_stride(), "static")?
-            .map(|vertex| OgfStaticVertex::read_from_slice::<T>(vertex, &format))
-            .collect(),
-        )),
-        None => None,
-      }
-    };
+    })??;
 
     Ok(OgfVertices {
       format: vertex_format,
       count: vertex_count,
       data,
     })
+  }
+
+  /// The vertices of a skinned payload, or `None` for a skin layout the format tag does not name.
+  fn decode_skinned_vertices<T: ByteOrder>(
+    vertices: &[u8],
+    vertex_format: u32,
+    vertex_count: u32,
+  ) -> XrfResult<Option<OgfVertexData>> {
+    let Some(layout) = OgfSkinLayout::of(vertex_format) else {
+      return Ok(None);
+    };
+
+    Ok(Some(OgfVertexData::Skinned(
+      Self::sized_vertices(vertices, vertex_count, layout.vertex_size, "skin")?
+        .map(|vertex| OgfVertex::read_from_slice::<T>(vertex, layout.links))
+        .collect(),
+    )))
+  }
+
+  /// The vertices of a static payload, or `None` for a flexible vertex format this does not decode.
+  fn decode_static_vertices<T: ByteOrder>(
+    vertices: &[u8],
+    vertex_format: u32,
+    vertex_count: u32,
+  ) -> XrfResult<Option<OgfVertexData>> {
+    let Some(format) = OgfFvf::from_raw(vertex_format) else {
+      return Ok(None);
+    };
+
+    Ok(Some(OgfVertexData::Static(
+      Self::sized_vertices(vertices, vertex_count, format.get_stride(), "static")?
+        .map(|vertex| OgfStaticVertex::read_from_slice::<T>(vertex, &format))
+        .collect(),
+    )))
   }
 
   /// The vertex records of a payload that is exactly `count` records of `vertex_size`, which the engine assumes.
@@ -144,16 +156,6 @@ impl OgfGeometry {
     reader.assert_read("Expect all data to be read from ogf indices")?;
 
     Ok(indices)
-  }
-
-  fn skin_vertex_layout(vertex_format: u32) -> Option<(usize, usize)> {
-    match vertex_format {
-      Self::VERTEX_FORMAT_1_LINK | 1 => Some((Self::VERTEX_SIZE_1_LINK, 1)),
-      Self::VERTEX_FORMAT_2_LINK | 2 => Some((Self::VERTEX_SIZE_2_LINK, 2)),
-      Self::VERTEX_FORMAT_3_LINK | 3 => Some((Self::VERTEX_SIZE_3_LINK, 3)),
-      Self::VERTEX_FORMAT_4_LINK | 4 => Some((Self::VERTEX_SIZE_4_LINK, 4)),
-      _ => None,
-    }
   }
 }
 

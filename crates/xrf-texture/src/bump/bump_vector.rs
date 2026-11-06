@@ -64,7 +64,7 @@ impl BumpVector {
   /// vector with no length is kept, where the SDK asserts.
   fn normalize(vector: &Vector3d) -> Vector3d {
     match vector.length_squared() {
-      0.0 => vector.clone(),
+      0.0 => *vector,
       squared => vector * (1.0 / squared).sqrt(),
     }
   }

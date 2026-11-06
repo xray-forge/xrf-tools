@@ -8,7 +8,7 @@ use crate::vector_3d::Vector3d;
 /// A cylinder, the engine's `Fcylinder`: its centre, the direction of its axis, its full height along that axis and
 /// its radius.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Cylinder {
   pub center: Vector3d,

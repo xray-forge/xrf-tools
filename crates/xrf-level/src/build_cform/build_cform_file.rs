@@ -156,7 +156,7 @@ impl BuildCformFile {
       version: self.version,
       vertex_count: to_format_size(self.vertices.len(), "build collision form vertices")?,
       face_count: to_format_size(self.faces.len(), "build collision form faces")?,
-      bounds: self.bounds.clone(),
+      bounds: self.bounds,
     }
     .write::<T>(&mut geometry)?;
 

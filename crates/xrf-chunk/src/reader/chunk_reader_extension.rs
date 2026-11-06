@@ -116,13 +116,18 @@ impl<D: ChunkDataSource> ChunkReader<D> {
   /// Read serialized vector from chunk, where u32 count N is followed by N u16 entries.
   pub fn read_u16_vector<T: ByteOrder>(&mut self) -> XrfResult<Vec<u16>> {
     let count: u32 = self.read_u32::<T>()?;
-    let mut vector: Vec<u16> = self.new_bounded_vec(count.into(), size_of::<u16>() as u64, "u16 vector")?;
 
-    for _ in 0..count {
-      vector.push(self.read_u16::<T>()?)
-    }
+    // Bounded before anything is read, so a corrupt count is refused rather than reserved.
+    xrf_utils::assert_count_fits(
+      count.into(),
+      self.read_bytes_remain(),
+      size_of::<u16>() as u64,
+      "u16 vector",
+    )?;
 
-    Ok(vector)
+    Ok(self.data.read_with(count as usize * size_of::<u16>(), |bytes| {
+      bytes.as_chunks::<2>().0.iter().map(|it| T::read_u16(it)).collect()
+    })?)
   }
 
   /// Read a float the format stored as a `u16` spread across a range, `IReader::r_float_q16`.
@@ -149,6 +154,15 @@ impl<D: ChunkDataSource> ChunkReader<D> {
     }
 
     Ok(self.data.read_bytes(count)?)
+  }
+
+  /// Hand the rest of the chunk to `visit` and move past it, for a reader that decodes the bytes and keeps none of them;
+  /// see [`ChunkDataSource::read_with`] for why.
+  pub fn read_remaining_with<R>(&mut self, visit: impl FnOnce(&[u8]) -> R) -> XrfResult<R> {
+    let count: usize = usize::try_from(self.read_bytes_remain())
+      .map_err(|_| XrfError::new_invalid_error("Chunk remainder is over the platform limit"))?;
+
+    Ok(self.data.read_with(count, visit)?)
   }
 
   /// Read all remaining raw bytes.

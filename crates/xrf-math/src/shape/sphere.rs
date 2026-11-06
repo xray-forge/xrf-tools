@@ -7,7 +7,7 @@ use crate::vector_3d::Vector3d;
 
 /// A sphere, the engine's `Fsphere`: its centre, `P`, and radius, `R`.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Sphere {
   pub center: Vector3d,

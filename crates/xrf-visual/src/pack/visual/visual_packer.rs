@@ -1,5 +1,5 @@
 use xrf_math::{Aabb, Sphere, Vector3d};
-use xrf_ogf::{OgfFile, OgfGeometry, OgfModelType, OgfSlideWindow, OgfVertex, OgfVertexData};
+use xrf_ogf::{OgfFile, OgfGeometry, OgfModelType, OgfSlideWindow, OgfVertex, OgfVertexData, OgfVertexLinks};
 
 use crate::data::visual::bounds::visual_bounds::VisualBounds;
 use crate::data::visual::geometry::visual_clusters::VisualClusters;
@@ -336,18 +336,13 @@ impl VisualPacker {
       return Ok(None);
     }
 
+    // A vertex holds no more links than the widest skin layout stores, so every one fits the four this widens to.
+    const { assert!(OgfVertexLinks::CAPACITY <= VisualSkin::LINKS) };
+
     let mut indices: Vec<u16> = Vec::with_capacity(vertices.len() * VisualSkin::LINKS);
     let mut weights: Vec<f32> = Vec::with_capacity(vertices.len() * VisualSkin::LINKS);
 
     for vertex in vertices {
-      if vertex.links.len() > VisualSkin::LINKS {
-        return Err(VisualSkip::malformed(format!(
-          "A vertex carries {} skinning links, and the format stores at most {}",
-          vertex.links.len(),
-          VisualSkin::LINKS
-        )));
-      }
-
       for link in &vertex.links {
         if link.bone as usize >= bone_count {
           return Err(VisualSkip::malformed(format!(

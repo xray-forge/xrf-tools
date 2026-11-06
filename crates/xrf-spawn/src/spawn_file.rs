@@ -208,7 +208,7 @@ impl SpawnFile {
     let points: Vec<(u16, Vector3d)> = (0..=u16::MAX)
       .zip(&graph.vertices)
       .filter(|(id, _)| is_on_level(*id))
-      .map(|(id, vertex)| (id, vertex.level_point.clone()))
+      .map(|(id, vertex)| (id, vertex.level_point))
       .collect();
     let patrols: Vec<Patrol> = ChunkReader::find_required_by_id(chunks, SpawnPatrolsChunk::CHUNK_ID)?
       .read_xr::<T, SpawnPatrolsChunk>()?

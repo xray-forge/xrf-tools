@@ -57,7 +57,7 @@ impl BindTransform {
         y: sp,
         z: cp * ch,
       },
-      c: position.clone(),
+      c: *position,
     }
   }
 
@@ -85,7 +85,7 @@ impl BindTransform {
         y: 2.0 * (yz + wx),
         z: 1.0 - 2.0 * (xx + yy),
       },
-      c: translation.clone(),
+      c: *translation,
     }
   }
 
@@ -175,20 +175,20 @@ impl BindTransform {
   /// gives the same, the mirror commuting with composition.
   pub(crate) fn from_renderer_space(transform: &VisualTransform) -> Self {
     Self {
-      i: transform.i.clone(),
-      j: transform.j.clone(),
-      k: transform.k.clone(),
-      c: transform.c.clone(),
+      i: transform.i,
+      j: transform.j,
+      k: transform.k,
+      c: transform.c,
     }
   }
 
   /// The transform as it stands, taken to the wire unchanged, for one already in the renderer's space.
   pub(crate) fn to_visual(&self) -> VisualTransform {
     VisualTransform {
-      i: self.i.clone(),
-      j: self.j.clone(),
-      k: self.k.clone(),
-      c: self.c.clone(),
+      i: self.i,
+      j: self.j,
+      k: self.k,
+      c: self.c,
     }
   }
 
@@ -349,9 +349,9 @@ mod tests {
     let transform: BindTransform = BindTransform::from_bind(&vector(0.3, -0.7, 1.1), &vector(1.0, -2.0, 3.0));
     let round_trip: BindTransform = transform.mirrored().mirrored();
 
-    assert_close(&round_trip.i, transform.i.clone());
-    assert_close(&round_trip.j, transform.j.clone());
-    assert_close(&round_trip.k, transform.k.clone());
-    assert_close(&round_trip.c, transform.c.clone());
+    assert_close(&round_trip.i, transform.i);
+    assert_close(&round_trip.j, transform.j);
+    assert_close(&round_trip.k, transform.k);
+    assert_close(&round_trip.c, transform.c);
   }
 }

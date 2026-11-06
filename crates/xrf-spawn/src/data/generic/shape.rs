@@ -89,7 +89,7 @@ impl Shape {
   /// is, else the sphere about the box holding every shape, none for no shapes.
   pub fn get_bounding_sphere(shapes: &[Self]) -> Option<Sphere> {
     if let [Self::Sphere(sphere)] = shapes {
-      return Some(sphere.clone());
+      return Some(*sphere);
     }
 
     Aabb::from_points(shapes.iter().flat_map(Self::get_extreme_points)).map(|bounds: Aabb| bounds.get_bounding_sphere())

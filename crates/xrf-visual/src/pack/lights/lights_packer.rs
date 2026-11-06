@@ -170,9 +170,9 @@ impl<'a> LightsPacker<'a> {
 
     self.lights.push(LightDescription {
       kind: if is_spot { LightKind::Spot } else { LightKind::Point },
-      position: main.c.clone(),
+      position: main.c,
       direction: Self::to_direction(&main),
-      right: main.i.clone(),
+      right: main.i,
       color,
       range: lamp.main_range,
       range_jitter: 0.0,
@@ -199,9 +199,9 @@ impl<'a> LightsPacker<'a> {
     if lamp.has_point_ambient() {
       self.lights.push(LightDescription {
         kind: LightKind::Point,
-        position: ambient.c.clone(),
+        position: ambient.c,
         direction: Self::to_direction(&ambient),
-        right: ambient.i.clone(),
+        right: ambient.i,
         color: color.map(|channel| channel * lamp.ambient_power),
         range: lamp.ambient_radius,
         range_jitter: 0.0,

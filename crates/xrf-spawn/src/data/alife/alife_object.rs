@@ -757,8 +757,8 @@ mod tests {
   #[test]
   fn writes_and_reads_every_class_by_its_section() -> XrfResult {
     let position: Vector3d = Vector3d::new(1.0, 2.0, 3.0);
-    let visual: AlifeObjectDynamicVisual = AlifeObjectCreature::new_mock(position.clone()).base;
-    let item: AlifeObjectItem = AlifeObjectItem::new_mock(position.clone());
+    let visual: AlifeObjectDynamicVisual = AlifeObjectCreature::new_mock(position).base;
+    let item: AlifeObjectItem = AlifeObjectItem::new_mock(position);
     let skeleton: AlifeObjectSkeleton = AlifeObjectSkeleton {
       name: String::from("$editor"),
       flags: 0,
@@ -795,12 +795,12 @@ mod tests {
       (
         "m_crow",
         ClsId::AiCrow,
-        AlifeObjectInherited::CseAlifeCreatureCrow(Box::new(AlifeObjectCreature::new_mock(position.clone()))),
+        AlifeObjectInherited::CseAlifeCreatureCrow(Box::new(AlifeObjectCreature::new_mock(position))),
       ),
       (
         "m_phantom",
         ClsId::AiPhant,
-        AlifeObjectInherited::CseAlifeCreaturePhantom(Box::new(AlifeObjectCreature::new_mock(position.clone()))),
+        AlifeObjectInherited::CseAlifeCreaturePhantom(Box::new(AlifeObjectCreature::new_mock(position))),
       ),
       (
         "script_object",
@@ -871,8 +871,7 @@ mod tests {
 
     original.section = String::from("medkit");
     original.clsid = ClsId::SFood;
-    original.inherited =
-      AlifeObjectInherited::CseAlifeItem(Box::new(AlifeObjectItem::new_mock(original.position.clone())));
+    original.inherited = AlifeObjectInherited::CseAlifeItem(Box::new(AlifeObjectItem::new_mock(original.position)));
     original.move_to(Vector3d::new(7.0, 8.0, 9.0), Vector3d::new(0.0, 0.5, 0.0));
 
     let AlifeObjectInherited::CseAlifeItem(item) = &original.inherited else {

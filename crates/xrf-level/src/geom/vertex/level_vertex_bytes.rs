@@ -13,8 +13,20 @@ pub struct LevelVertexBytes<'a> {
 }
 
 impl<'a> LevelVertexBytes<'a> {
+  /// Each vertex of `bytes`, a run of whole strides of `layout`, which the range that cut them guarantees.
+  pub(crate) fn each(layout: &'a LevelVertexLayout, bytes: &'a [u8]) -> impl Iterator<Item = Self> {
+    debug_assert!(
+      bytes.len().is_multiple_of(layout.get_stride() as usize),
+      "a payload holds whole vertices"
+    );
+
+    bytes
+      .chunks_exact(layout.get_stride() as usize)
+      .map(move |vertex| Self::new(layout, vertex))
+  }
+
   /// A vertex of `layout`, one stride of `bytes`.
-  pub(crate) fn new(layout: &'a LevelVertexLayout, bytes: &'a [u8]) -> Self {
+  fn new(layout: &'a LevelVertexLayout, bytes: &'a [u8]) -> Self {
     debug_assert_eq!(bytes.len(), layout.get_stride() as usize, "a vertex is one stride");
 
     Self { layout, bytes }

@@ -48,7 +48,7 @@ mod tests {
     let stored: Vector3d = Vector3d::new(1.5, -2.0, 3.25);
 
     assert_eq!(Vec3::from(&stored), Vec3::new(1.5, -2.0, 3.25));
-    assert_eq!(Vector3d::from(Vec3::from(stored.clone())), stored);
+    assert_eq!(Vector3d::from(Vec3::from(stored)), stored);
     assert_eq!(
       Vector2d::from(Vec2::from(Vector2d::new(0.25, 4.0))),
       Vector2d::new(0.25, 4.0)
