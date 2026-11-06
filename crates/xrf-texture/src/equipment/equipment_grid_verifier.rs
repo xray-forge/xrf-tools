@@ -74,7 +74,7 @@ impl EquipmentGridVerifier {
 
 #[cfg(test)]
 mod tests {
-  use xrf_ltx::Ltx;
+  use xrf_ltx::{Ltx, LtxSectionWrite};
 
   use super::EquipmentGridVerifier;
 

@@ -6,7 +6,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_ltx::{FileImportExport, Ltx};
+use xrf_ltx::{FileImportExport, Ltx, LtxRecordWriter};
 use xrf_utils::{assert_length, to_format_size};
 
 use crate::data::patrols::patrol::Patrol;
@@ -94,9 +94,9 @@ impl FileImportExport for SpawnPatrolsChunk {
 
   /// Export patrols data into provided path.
   fn export<P: AsRef<Path>>(&self, path: &P) -> XrfResult {
-    let mut patrols_ltx: Ltx = Ltx::new();
-    let mut patrol_points_ltx: Ltx = Ltx::new();
-    let mut patrol_links_ltx: Ltx = Ltx::new();
+    let mut patrols_ltx: LtxRecordWriter = LtxRecordWriter::new();
+    let mut patrol_points_ltx: LtxRecordWriter = LtxRecordWriter::new();
+    let mut patrol_links_ltx: LtxRecordWriter = LtxRecordWriter::new();
 
     for patrol in &self.patrols {
       patrol.export(

@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use image::{Rgba, RgbaImage};
 use xrf_dds::ImageFormat;
 use xrf_error::XrfError;
-use xrf_ltx::Ltx;
+use xrf_ltx::{Ltx, LtxSectionWrite};
 use xrf_test_utils::GeneratedResources;
 
 use crate::equipment::{EquipmentSpriteUnpackOptions, EquipmentSpriteUnpacker};

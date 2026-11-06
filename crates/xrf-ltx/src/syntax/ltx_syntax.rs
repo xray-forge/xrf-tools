@@ -44,3 +44,6 @@ pub const LTX_LINE_SEPARATOR: &str = "\r\n";
 
 /// What a canonical rewrite puts between a key and its value.
 pub const DEFAULT_KV_SEPARATOR: &str = " = ";
+
+/// What a canonical rewrite puts after a key whose value is empty: the separator without its trailing space.
+pub const EMPTY_VALUE_KV_SEPARATOR: &str = " =";

@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{Ltx, LtxImportExport, LtxSectionWrite, LtxWrite, Section};
 use xrf_utils::{decode_string_from_base64, encode_string_to_base64};
 
 /// Generic ALife object abstraction data.
@@ -84,7 +84,7 @@ impl LtxImportExport for AlifeObjectAbstract {
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     ltx
       .with_section(section_name)
       .set("abstract.game_vertex_id", self.game_vertex_id)
@@ -108,7 +108,7 @@ mod tests {
   use serde_json::to_string_pretty;
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::{XrfError, XrfResult};
-  use xrf_ltx::{Ltx, LtxImportExport};
+  use xrf_ltx::{Ltx, LtxImportExport, LtxSectionWrite};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;

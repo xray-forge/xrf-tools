@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use xrf_error::{XrfError, XrfResult};
 
+use crate::binding::LtxSectionWrite;
 use crate::dialect::LtxProvenance;
 use crate::document::LtxCheck;
 use crate::ltx::{LtxInheritConvertor, LtxSections, Section, SectionEntry, SectionSetter};
@@ -247,6 +248,7 @@ impl<'q> IndexMut<&'q str> for Ltx {
 mod test {
   use xrf_error::{XrfError, XrfResult};
 
+  use crate::binding::LtxSectionWrite;
   use crate::ltx::{Ltx, Section};
   use crate::syntax::ROOT_SECTION;
 

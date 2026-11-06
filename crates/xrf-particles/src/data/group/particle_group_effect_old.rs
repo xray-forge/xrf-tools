@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, META_TYPE_FIELD, Section};
+use xrf_ltx::{Ltx, LtxSectionWrite, LtxWrite, META_TYPE_FIELD, Section};
 use xrf_utils::{assert_equal, assert_length, to_format_size};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -143,7 +143,7 @@ impl ParticleGroupEffectOld {
   }
 
   /// Export list of particles group effect data into provided path.
-  pub fn export_list(effects_old: &[Self], section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  pub fn export_list(effects_old: &[Self], section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     for (index, effect) in effects_old.iter().enumerate() {
       effect.export(&Self::get_effect_old_section(section_name, index), ltx)?
     }
@@ -152,7 +152,7 @@ impl ParticleGroupEffectOld {
   }
 
   /// Export particles group effect data into provided path.
-  pub fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  pub fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     ltx
       .with_section(section_name)
       .set(META_TYPE_FIELD, Self::META_TYPE)

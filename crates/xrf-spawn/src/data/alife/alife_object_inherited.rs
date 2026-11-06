@@ -4,7 +4,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport};
+use xrf_ltx::{Ltx, LtxImportExport, LtxWrite};
 use xrf_math::Vector3d;
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
@@ -568,7 +568,7 @@ impl AlifeObjectInherited {
     })
   }
 
-  pub fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  pub fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     match self {
       AlifeObjectInherited::SeActor(object) => object.export(section_name, ltx),
       AlifeObjectInherited::SeStalker(object) => object.export(section_name, ltx),

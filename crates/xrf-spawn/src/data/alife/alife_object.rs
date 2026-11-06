@@ -4,7 +4,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{Ltx, LtxImportExport, LtxSectionWrite, LtxWrite, Section};
 use xrf_math::Vector3d;
 use xrf_utils::{
   assert, assert_equal, assert_not_equal, decode_bytes_from_base64, encode_bytes_to_base64, to_format_size,
@@ -316,7 +316,7 @@ impl LtxImportExport for AlifeObject {
   }
 
   /// Export ALife object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     ltx
       .with_section(section_name)
       .set("id", self.id)
@@ -351,7 +351,7 @@ mod tests {
   use serde_json::to_string_pretty;
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::{XrfError, XrfResult};
-  use xrf_ltx::{Ltx, LtxImportExport};
+  use xrf_ltx::{Ltx, LtxImportExport, LtxSectionWrite};
   use xrf_math::Vector3d;
   use xrf_test_utils::{FileSlice, GeneratedResources};
 

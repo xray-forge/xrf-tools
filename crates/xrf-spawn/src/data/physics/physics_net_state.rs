@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, Section};
+use xrf_ltx::{LtxSectionWrite, LtxWrite, Section};
 use xrf_math::Vector3d;
 use xrf_utils::vector_to_string;
 
@@ -182,7 +182,7 @@ impl PhysicsNetState {
   }
 
   /// Export the state under `prefix`, or `prefix = nil` for none.
-  pub fn export_optional(state: Option<&Self>, section_name: &str, prefix: &str, ltx: &mut Ltx) {
+  pub fn export_optional(state: Option<&Self>, section_name: &str, prefix: &str, ltx: &mut impl LtxWrite) {
     let Some(state) = state else {
       ltx.with_section(section_name).set(prefix, NIL);
 

@@ -6,7 +6,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{FileImportExport, Ltx, LtxImportExport};
+use xrf_ltx::{FileImportExport, Ltx, LtxImportExport, LtxRecordWriter};
 use xrf_utils::{assert_count_fits, assert_equal, assert_length, to_format_size};
 
 use crate::data::alife::alife_object::AlifeObject;
@@ -207,7 +207,7 @@ impl FileImportExport for SpawnALifeSpawnsChunk {
 
   /// Export ALife spawns data into provided path.
   fn export<P: AsRef<Path>>(&self, path: &P) -> XrfResult {
-    let mut ltx: Ltx = Ltx::new();
+    let mut ltx: LtxRecordWriter = LtxRecordWriter::new();
 
     for (index, object) in self.objects.iter().enumerate() {
       object.export(&index.to_string(), &mut ltx)?;

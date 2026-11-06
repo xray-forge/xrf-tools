@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, Section};
+use xrf_ltx::{LtxSectionWrite, LtxWrite, Section};
 use xrf_math::{Aabb, Affine3d, Sphere, Vector3d};
 use xrf_utils::{assert_length, to_format_size};
 
@@ -150,7 +150,7 @@ impl Shape {
   }
 
   /// Export shapes object to target ltx file section.
-  pub fn export_list(shapes: &[Self], section_name: &str, ltx: &mut Ltx) {
+  pub fn export_list(shapes: &[Self], section_name: &str, ltx: &mut impl LtxWrite) {
     ltx.with_section(section_name).set("shapes_count", shapes.len());
 
     for (index, shape) in shapes.iter().enumerate() {

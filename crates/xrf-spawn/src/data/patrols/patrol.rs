@@ -4,7 +4,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{Ltx, LtxImportExport, LtxSectionWrite, LtxWrite, Section};
 use xrf_utils::{assert_equal, assert_length, new_bounded_vec, to_format_size};
 
 use crate::data::patrols::patrol_link::PatrolLink;
@@ -243,9 +243,9 @@ impl Patrol {
   pub fn export(
     &self,
     section_name: &str,
-    patrols_ltx: &mut Ltx,
-    patrol_points_ltx: &mut Ltx,
-    patrol_links_ltx: &mut Ltx,
+    patrols_ltx: &mut impl LtxWrite,
+    patrol_points_ltx: &mut impl LtxWrite,
+    patrol_links_ltx: &mut impl LtxWrite,
   ) -> XrfResult {
     patrols_ltx
       .with_section(section_name)
@@ -282,7 +282,7 @@ mod tests {
   use serde_json::to_string_pretty;
   use xrf_chunk::{ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_ltx::Ltx;
+  use xrf_ltx::{Ltx, LtxSectionWrite};
   use xrf_math::Vector3d;
   use xrf_test_utils::{FileSlice, GeneratedResources};
 

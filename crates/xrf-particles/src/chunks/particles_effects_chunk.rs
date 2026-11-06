@@ -5,7 +5,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{FileImportExport, Ltx, LtxImportExport, META_TYPE_FIELD};
+use xrf_ltx::{FileImportExport, Ltx, LtxImportExport, LtxRecordWriter, META_TYPE_FIELD};
 use xrf_utils::{assert, format_path, to_format_size};
 
 use crate::data::effect::particle_effect::ParticleEffect;
@@ -126,7 +126,7 @@ impl FileImportExport for ParticlesEffectsChunk {
 
   /// Export particles effects data into provided path.
   fn export<P: AsRef<Path>>(&self, path: &P) -> XrfResult {
-    let mut particles_effects_ltx: Ltx = Ltx::new();
+    let mut particles_effects_ltx: LtxRecordWriter = LtxRecordWriter::new();
 
     for effect in &self.effects {
       effect.export(&effect.name, &mut particles_effects_ltx)?;

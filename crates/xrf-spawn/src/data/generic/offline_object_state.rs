@@ -2,7 +2,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_ltx::{Ltx, Section};
+use xrf_ltx::{LtxSectionWrite, LtxWrite, Section};
 
 use crate::data::generic::script_to_string::ScriptToString;
 
@@ -34,7 +34,7 @@ impl OfflineObjectState {
   }
 
   /// Export the state under `prefix`, each value as the string the script writes for it.
-  pub fn export(&self, section_name: &str, prefix: &str, ltx: &mut Ltx) {
+  pub fn export(&self, section_name: &str, prefix: &str, ltx: &mut impl LtxWrite) {
     ltx
       .with_section(section_name)
       .set(

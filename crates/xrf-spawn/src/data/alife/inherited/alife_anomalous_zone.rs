@@ -2,7 +2,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{Ltx, LtxImportExport, LtxSectionWrite, LtxWrite, Section};
 
 use crate::data::alife::inherited::alife_object_anomaly_zone::AlifeObjectAnomalyZone;
 use crate::data::generic::last_spawn_time::LastSpawnTime;
@@ -55,7 +55,7 @@ impl LtxImportExport for AlifeAnomalousZone {
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     self.base.export(section_name, ltx)?;
 
     ltx

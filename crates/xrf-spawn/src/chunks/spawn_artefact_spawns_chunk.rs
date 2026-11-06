@@ -5,7 +5,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_ltx::{FileImportExport, Ltx, LtxImportExport};
+use xrf_ltx::{FileImportExport, Ltx, LtxImportExport, LtxRecordWriter};
 use xrf_utils::{assert_length, to_format_size};
 
 use crate::data::artefact_spawn::artefact_spawn_point::ArtefactSpawnPoint;
@@ -80,7 +80,7 @@ impl FileImportExport for SpawnArtefactSpawnsChunk {
 
   /// Export artefact spawns data into provided path.
   fn export<P: AsRef<Path>>(&self, path: &P) -> XrfResult {
-    let mut ltx: Ltx = Ltx::new();
+    let mut ltx: LtxRecordWriter = LtxRecordWriter::new();
 
     for (index, spawn_point) in self.nodes.iter().enumerate() {
       spawn_point.export(&index.to_string(), &mut ltx)?;

@@ -2,7 +2,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_ltx::{Ltx, LtxImportExport};
+use xrf_ltx::{Ltx, LtxImportExport, LtxWrite};
 
 use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
 
@@ -38,7 +38,7 @@ impl LtxImportExport for AlifeObjectDynamic {
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     self.base.export(section_name, ltx)?;
 
     Ok(())

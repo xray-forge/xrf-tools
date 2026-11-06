@@ -4,7 +4,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{FileImportExport, Ltx, META_TYPE_FIELD, Section};
+use xrf_ltx::{FileImportExport, Ltx, LtxRecordWriter, LtxSectionWrite, LtxWrite, META_TYPE_FIELD, Section};
 use xrf_utils::{assert_equal, format_path};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -78,7 +78,7 @@ impl FileImportExport for ParticlesHeaderChunk {
   /// Export header data into provided path.
   /// Creates ltx file config with header chunk description.
   fn export<P: AsRef<Path>>(&self, path: &P) -> XrfResult {
-    let mut ltx: Ltx = Ltx::new();
+    let mut ltx: LtxRecordWriter = LtxRecordWriter::new();
 
     ltx
       .with_section("header")
