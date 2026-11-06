@@ -30,12 +30,14 @@ fn main() -> xrf_error::XrfResult {
 ```
 
 Metadata inspection reads at most the 148-byte header and derives the payload size from the file length. Full reading
-loads the payload; decoding produces RGBA pixels for the requested mip level. These are different amounts of work and
+loads the payload; decoding produces RGBA pixels for the requested mip level, a flat texture's block-compressed level in
+stripes of rows on rayon's pool, the same pixels as one pass. These are different amounts of work and
 provide different validation guarantees: a successful metadata read does not validate the texture.
 
 ## Choose an operation
 
-- Read a DDS with `DdsFile::read_from_path` or `read_from_bytes`; header facts alone with `read_metadata_from_path` or
+- Read a DDS with `DdsFile::read_from_path`, `read_from_bytes`, or `read_from_vec`, which keeps the bytes it is handed
+  as the payload instead of copying them; header facts alone with `read_metadata_from_path` or
   `read_metadata_from_bytes`.
 - Decode with `decode_rgba` for one mip level, or `to_png` for a PNG of the base level. `get_data` is the payload as
   stored, every layer's chain largest level first.
@@ -71,7 +73,8 @@ fn main() -> xrf_error::XrfResult {
 a full chain down to one pixel. Every level is reduced from the base rather than from the level above, channels are
 resampled independently, and alpha is never premultiplied, because a bump pair packs unrelated planes into the four
 channels. `DdsMipFilter::from_label` matches a kernel by the SDK's name, ignoring case. Encoding consumes the prepared
-levels without generating a second chain. Block compression can change pixel values, so compare decoded output with a
+levels without generating a second chain. Both run on rayon's pool, reducing a level in slabs of rows and encoding it
+in stripes of whole blocks, and answer the same bytes whatever the split. Block compression can change pixel values, so compare decoded output with a
 tolerance rather than assuming lossless equality. Sides need not be multiples of `DdsEncoding::BLOCK_SIZE`; the
 encoder pads whole blocks and records the unpadded size.
 

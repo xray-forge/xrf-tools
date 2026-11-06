@@ -4,6 +4,7 @@ pub(crate) mod dds_encode_attempt;
 pub(crate) mod dds_encode_candidate;
 pub(crate) mod dds_encoding;
 pub(crate) mod dds_image_difference;
+pub(crate) mod dds_surface_levels;
 
 pub use dds_encode_attempt::DdsEncodeAttempt;
 pub use dds_encode_candidate::DdsEncodeCandidate;

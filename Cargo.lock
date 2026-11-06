@@ -8291,6 +8291,7 @@ dependencies = [
  "ddsfile",
  "image",
  "image_dds",
+ "rayon",
  "xrf-error",
  "xrf-test-utils",
  "xrf-utils",

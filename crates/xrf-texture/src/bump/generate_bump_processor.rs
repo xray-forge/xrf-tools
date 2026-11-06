@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use image::{Rgba, RgbaImage};
+use rayon::prelude::*;
 use xrf_dds::{DdsEncoding, DdsFile, DdsMipChain, DdsMipmaps, ImageFormat};
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
@@ -71,6 +72,8 @@ impl GenerateBumpProcessor {
 
     let normals: RgbaImage = Self::resolve_normals(options, &height)?;
 
+    // Each picture is let go once the next is made from it, a 4096 square one being 67 MB.
+    drop(height);
     steps.advance();
     options.job.set_detail(Some(String::from("Reading the gloss")));
 
@@ -87,6 +90,10 @@ impl GenerateBumpProcessor {
 
     // The first half as the engine reads it: gloss in red, and the normal's three channels reversed behind it.
     let bump: RgbaImage = Self::pack_bump(&normals, &gloss);
+
+    drop(normals);
+    drop(gloss);
+
     let encoded_bump: DdsFile = Self::encode(&bump, options)?;
 
     steps.advance();
@@ -106,6 +113,8 @@ impl GenerateBumpProcessor {
     let restored: RgbaImage = encoded_bump.decode_rgba(0)?;
     let companion: RgbaImage = Self::pack_companion(&bump, &restored, &Self::center_height(options));
 
+    drop(bump);
+    drop(restored);
     steps.advance();
     options.job.set_detail(Some(String::from("Encoding the height")));
 
@@ -187,7 +196,7 @@ impl GenerateBumpProcessor {
   /// The reversal is what lets the shader read `Nu.wzy` as the normal, and the gloss is stored one above what it was
   /// given, which the SDK does without explanation and which matters at the dark end.
   fn pack_bump(normals: &RgbaImage, gloss: &GreyPlane) -> RgbaImage {
-    RgbaImage::from_fn(normals.width(), normals.height(), |x, y| {
+    Self::packed_by_rows(normals, |x, y| {
       let normal = normals.get_pixel(x, y).0;
       let level: u8 = gloss.get_wrapped(i64::from(x), i64::from(y));
 
@@ -202,7 +211,7 @@ impl GenerateBumpProcessor {
   /// the byte range is clamped where the SDK's `color_rgba` keeps its low eight bits; only a far larger loss than
   /// DXT5's can reach it.
   fn pack_companion(bump: &RgbaImage, restored: &RgbaImage, height: &[u8]) -> RgbaImage {
-    RgbaImage::from_fn(bump.width(), bump.height(), |x, y| {
+    Self::packed_by_rows(bump, |x, y| {
       let original = bump.get_pixel(x, y).0;
       let decoded = restored.get_pixel(x, y).0;
       let error = |channel: usize| {
@@ -212,6 +221,23 @@ impl GenerateBumpProcessor {
       // Reversed once more, so the error lines up channel for channel with the normal the shader rebuilds.
       Rgba([error(3), error(2), error(1), height[(y * bump.width() + x) as usize]])
     })
+  }
+
+  /// A picture the size of `like`, each pixel what `pixel` answers for it, rows filled on every worker at once.
+  fn packed_by_rows(like: &RgbaImage, pixel: impl Fn(u32, u32) -> Rgba<u8> + Sync) -> RgbaImage {
+    let (width, height): (u32, u32) = like.dimensions();
+    let mut packed: RgbaImage = RgbaImage::new(width, height);
+
+    packed
+      .par_chunks_mut(width as usize * 4)
+      .zip(0..height)
+      .for_each(|(row, y)| {
+        for (texel, x) in row.as_chunks_mut::<4>().0.iter_mut().zip(0..width) {
+          *texel = pixel(x, y).0;
+        }
+      });
+
+    packed
   }
 
   /// The height plane as it is stored: the source's red channel, which is what `DXTCompressBump` reads here rather

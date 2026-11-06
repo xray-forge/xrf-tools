@@ -1,4 +1,5 @@
 use image::{Rgba, RgbaImage};
+use rayon::prelude::*;
 use xrf_math::Vector3d;
 
 use crate::bump::bump_vector::BumpVector;
@@ -22,21 +23,37 @@ impl BumpNormalMap {
   /// The cross product of the two slope vectors `(1, 0, du)` and `(0, 1, dv)` is `(-du, -dv, 1)`, so a flat region
   /// answers straight up and a steep one leans against the slope. Each kernel is summed in the order its elements are
   /// listed, as the convolver sums them.
+  ///
+  /// Rows are derived on every worker at once: packing a normal searches its byte neighbourhood, up to 125 candidates
+  /// a texel, and no texel's answer depends on another's.
   pub(crate) fn derive(height: &GreyPlane, virtual_height: f32) -> RgbaImage {
     let scale: f32 = virtual_height * Self::HEIGHT_SCALE;
+    let mut normals: RgbaImage = RgbaImage::new(height.width, height.height);
+    let row_length: usize = height.width as usize * 4;
 
-    RgbaImage::from_fn(height.width, height.height, |x, y| {
-      let (x, y): (i64, i64) = (i64::from(x), i64::from(y));
-      let du: f32 = (height.get_level_wrapped(x - 1, y) * -0.5 + height.get_level_wrapped(x + 1, y) * 0.5) * scale;
-      // The v kernel reads the row below as positive, which is what puts the normal in the handedness the packed pair
-      // is authored against.
-      let dv: f32 = (height.get_level_wrapped(x, y + 1) * 0.5 + height.get_level_wrapped(x, y - 1) * -0.5) * scale;
-      let magnitude: f32 = (du * du + dv * dv + 1.0).sqrt();
-      let [red, green, blue] = BumpVector::pack(&Vector3d::new(-du / magnitude, -dv / magnitude, 1.0 / magnitude));
+    normals
+      .par_chunks_mut(row_length)
+      .zip(0..height.height)
+      .for_each(|(row, y)| {
+        for (pixel, x) in row.as_chunks_mut::<4>().0.iter_mut().zip(0..height.width) {
+          *pixel = Self::normal_at(height, i64::from(x), i64::from(y), scale).0;
+        }
+      });
 
-      // Alpha is left at nought here; the gloss reversal fills it with the normal's own red a step later.
-      Rgba([red, green, blue, 0])
-    })
+    normals
+  }
+
+  /// The normal at one texel, as the bytes it is stored in.
+  fn normal_at(height: &GreyPlane, x: i64, y: i64, scale: f32) -> Rgba<u8> {
+    let du: f32 = (height.get_level_wrapped(x - 1, y) * -0.5 + height.get_level_wrapped(x + 1, y) * 0.5) * scale;
+    // The v kernel reads the row below as positive, which is what puts the normal in the handedness the packed pair is
+    // authored against.
+    let dv: f32 = (height.get_level_wrapped(x, y + 1) * 0.5 + height.get_level_wrapped(x, y - 1) * -0.5) * scale;
+    let magnitude: f32 = (du * du + dv * dv + 1.0).sqrt();
+    let [red, green, blue] = BumpVector::pack(&Vector3d::new(-du / magnitude, -dv / magnitude, 1.0 / magnitude));
+
+    // Alpha is left at nought here; the gloss reversal fills it with the normal's own red a step later.
+    Rgba([red, green, blue, 0])
   }
 }
 
