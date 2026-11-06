@@ -1,9 +1,9 @@
-use xrf_chunk::XRayByteOrder;
+use xrf_chunk::{ChunkPayload, XRayByteOrder};
 use xrf_error::XrfResult;
 use xrf_test_utils::GeneratedResources;
 
+use crate::EditableObjectFile;
 use crate::tests::fixtures;
-use crate::{EditableExtraChunk, EditableObjectFile};
 
 fn read(bytes: Vec<u8>) -> XrfResult<EditableObjectFile> {
   EditableObjectFile::read_from_bytes::<XRayByteOrder>(bytes)
@@ -40,7 +40,7 @@ fn an_object_reads_as_the_chunks_the_editor_saved() -> XrfResult {
   assert_eq!(description.creator, "gsc");
   assert_eq!(description.modifier, "\\\\MAINPC\\gladi");
   assert_eq!(description.modified_at, 1_200_000_000);
-  assert!(object.layout.extra.is_empty());
+  assert!(object.layout.kept.is_empty());
 
   Ok(())
 }
@@ -63,18 +63,18 @@ fn a_chunk_nothing_names_survives_at_the_end_of_every_container() -> XrfResult {
     &fixtures::sentinel(),
   ));
   let object: EditableObjectFile = read(original.clone())?;
-  let sentinel = EditableExtraChunk {
+  let sentinel = ChunkPayload {
     id: fixtures::SENTINEL_ID,
     bytes: vec![0xde, 0xad, 0xbe, 0xef],
   };
 
-  assert_eq!(object.layout.extra, vec![sentinel.clone()]);
+  assert_eq!(object.layout.kept, vec![sentinel.clone()]);
   assert_eq!(
-    object.meshes.as_ref().map(|meshes| meshes[0].layout.extra.clone()),
+    object.meshes.as_ref().map(|meshes| meshes[0].layout.kept.clone()),
     Some(vec![sentinel.clone()])
   );
   assert_eq!(
-    object.bones.as_ref().map(|bones| bones[0].layout.extra.clone()),
+    object.bones.as_ref().map(|bones| bones[0].layout.kept.clone()),
     Some(vec![sentinel])
   );
   assert_eq!(object.write_to_bytes::<XRayByteOrder>()?, original);
@@ -95,7 +95,7 @@ fn a_chunk_nothing_names_comes_back_where_the_file_stored_it() -> XrfResult {
   let original: Vec<u8> = fixtures::file(&body);
   let object: EditableObjectFile = read(original.clone())?;
 
-  assert_eq!(object.layout.extra.len(), 1);
+  assert_eq!(object.layout.kept.len(), 1);
   assert_eq!(object.write_to_bytes::<XRayByteOrder>()?, original);
 
   Ok(())
@@ -166,7 +166,7 @@ fn a_duplicate_of_a_named_chunk_is_kept_rather_than_read_over_the_first() -> Xrf
   let object: EditableObjectFile = read(fixtures::file(&body))?;
 
   assert_eq!(object.lods.as_deref(), Some(""));
-  assert_eq!(object.layout.extra[0].id, EditableObjectFile::LODS_CHUNK_ID);
+  assert_eq!(object.layout.kept[0].id, EditableObjectFile::LODS_CHUNK_ID);
 
   Ok(())
 }

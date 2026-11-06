@@ -4,11 +4,9 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 use xrf_utils::to_format_size;
 
-use crate::chunks::editable_chunk_sequence::EditableChunkSequence;
-use crate::chunks::editable_chunks::EditableChunks;
-use crate::{
-  EditableChunkLayout, EditableFace, EditableMeshBounds, EditableSurfaceFaces, EditableVMap, EditableVMapReference,
-};
+use crate::editable_chunks::EditableChunks;
+use crate::{EditableFace, EditableMeshBounds, EditableSurfaceFaces, EditableVMap, EditableVMapReference};
+use xrf_chunk::{ChunkLayout, ChunkSequence};
 
 /// One mesh of an editable object, `CEditableMesh` as `CEditableMesh::SaveMesh` stores it: points, triangles that
 /// index them, the surfaces the triangles are made of, and the vertex maps their corners take UVs and weights from.
@@ -35,7 +33,7 @@ pub struct EditableMesh {
   // todo: Read the older `EMESH_CHUNK_VMAPS_0` and `_1` layouts the SDK still loads, which stay extra chunks here.
   pub vmaps: Option<Vec<EditableVMap>>,
   /// How the mesh's chunks were laid out in its file.
-  pub layout: EditableChunkLayout,
+  pub layout: ChunkLayout,
 }
 
 impl EditableMesh {
@@ -77,7 +75,7 @@ impl EditableMesh {
     let mut surface_faces: Option<Vec<EditableSurfaceFaces>> = None;
     let mut vmaps: Option<Vec<EditableVMap>> = None;
 
-    let layout: EditableChunkLayout = EditableChunkLayout::read(reader, |chunk| {
+    let layout: ChunkLayout = ChunkLayout::read(reader, |chunk| {
       match chunk.id {
         Self::VERSION_CHUNK_ID if version.is_none() => version = Some(chunk.read_u16_payload::<T>()?),
         Self::NAME_CHUNK_ID if name.is_none() => name = Some(chunk.read_w1251_string_payload()?),
@@ -189,7 +187,7 @@ impl EditableMesh {
   pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     self.assert_smoothing_groups_match()?;
 
-    let mut sequence: EditableChunkSequence = EditableChunkSequence::new();
+    let mut sequence: ChunkSequence = ChunkSequence::new();
 
     sequence.push(Self::VERSION_CHUNK_ID, |writer| {
       Ok(writer.write_u16::<T>(Self::VERSION)?)

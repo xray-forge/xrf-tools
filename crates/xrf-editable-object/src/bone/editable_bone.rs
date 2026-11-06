@@ -3,12 +3,9 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ogf::OgfBoneShape;
 
-use crate::chunks::editable_chunk_sequence::EditableChunkSequence;
-use crate::chunks::editable_chunks::EditableChunks;
-use crate::{
-  EditableBoneBindPose, EditableBoneBreak, EditableBoneDefinition, EditableBoneJoint, EditableBoneMass,
-  EditableChunkLayout,
-};
+use crate::editable_chunks::EditableChunks;
+use crate::{EditableBoneBindPose, EditableBoneBreak, EditableBoneDefinition, EditableBoneJoint, EditableBoneMass};
+use xrf_chunk::{ChunkLayout, ChunkSequence};
 
 /// One bone of an editable object's skeleton, `CBone` as `CBone::Save` stores it.
 ///
@@ -35,7 +32,7 @@ pub struct EditableBone {
   pub friction: Option<f32>,
   pub mass: Option<EditableBoneMass>,
   /// How the bone's chunks were laid out in its file.
-  pub layout: EditableChunkLayout,
+  pub layout: ChunkLayout,
 }
 
 impl EditableBone {
@@ -76,7 +73,7 @@ impl EditableBone {
     let mut friction: Option<f32> = None;
     let mut mass: Option<EditableBoneMass> = None;
 
-    let layout: EditableChunkLayout = EditableChunkLayout::read(reader, |chunk| {
+    let layout: ChunkLayout = ChunkLayout::read(reader, |chunk| {
       match chunk.id {
         Self::VERSION_CHUNK_ID if version.is_none() => version = Some(chunk.read_u16_payload::<T>()?),
         Self::DEFINITION_CHUNK_ID if definition.is_none() => {
@@ -153,7 +150,7 @@ impl EditableBone {
   ///
   /// Returns an error when a string cannot be encoded.
   pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    let mut sequence: EditableChunkSequence = EditableChunkSequence::new();
+    let mut sequence: ChunkSequence = ChunkSequence::new();
 
     sequence.push(Self::VERSION_CHUNK_ID, |writer| {
       Ok(writer.write_u16::<T>(self.version)?)

@@ -7,19 +7,18 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{StagedFile, format_path, to_format_size};
 
-use crate::chunks::editable_chunk_sequence::EditableChunkSequence;
-use crate::chunks::editable_chunks::EditableChunks;
+use crate::editable_chunks::EditableChunks;
 use crate::{
-  EditableActorTransform, EditableBone, EditableBonePart, EditableChunkLayout, EditableDescription, EditableMesh,
-  EditableSurface,
+  EditableActorTransform, EditableBone, EditableBonePart, EditableDescription, EditableMesh, EditableSurface,
 };
+use xrf_chunk::{ChunkLayout, ChunkSequence};
 
 /// An editable object, the `.object` file the SDK's Actor and Level editors open: meshes, the surfaces their faces
 /// are made of, and for a dynamic object its skeleton. It is the source an OGF is exported from, and holds what the
 /// export drops: shared points, vertex maps, smoothing groups and every surface's names.
 ///
 /// Every chunk the SDK names is a field. How the file laid them out, and any chunk no field takes, is the body's,
-/// each mesh's and each bone's [`EditableChunkLayout`], so a file reads and writes back byte for byte whichever editor
+/// each mesh's and each bone's [`ChunkLayout`], so a file reads and writes back byte for byte whichever editor
 /// or exporter saved it, and an object built in code is written in the order `CEditableObject::Save` writes.
 #[derive(Clone, Debug, PartialEq)]
 pub struct EditableObjectFile {
@@ -46,7 +45,7 @@ pub struct EditableObjectFile {
   pub actor_transform: Option<EditableActorTransform>,
   pub description: Option<EditableDescription>,
   /// How the body's chunks were laid out in its file.
-  pub layout: EditableChunkLayout,
+  pub layout: ChunkLayout,
 }
 
 impl EditableObjectFile {
@@ -149,7 +148,7 @@ impl EditableObjectFile {
     let mut actor_transform: Option<EditableActorTransform> = None;
     let mut description: Option<EditableDescription> = None;
 
-    let layout: EditableChunkLayout = EditableChunkLayout::read(reader, |chunk| {
+    let layout: ChunkLayout = ChunkLayout::read(reader, |chunk| {
       match chunk.id {
         Self::VERSION_CHUNK_ID if version.is_none() => version = Some(chunk.read_u16_payload::<T>()?),
         Self::FLAGS_CHUNK_ID if flags.is_none() => {
@@ -270,7 +269,7 @@ impl EditableObjectFile {
   ///
   /// Returns an error as [`Self::write_to_bytes`] does.
   pub fn write_body<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    let mut sequence: EditableChunkSequence = EditableChunkSequence::new();
+    let mut sequence: ChunkSequence = ChunkSequence::new();
 
     sequence.push(Self::VERSION_CHUNK_ID, |writer| {
       Ok(writer.write_u16::<T>(Self::VERSION)?)

@@ -67,6 +67,17 @@ quantised into a `u16` over a range the format supplies; a write clamps a value 
 not the float, survive a round trip. `new_bounded_vec` reserves for a declared record count only after checking it
 against the bytes remaining.
 
+## Layout of a container
+
+`ChunkLayout` keeps how a container's children were laid out in a file, apart from what a format reads out of them:
+the order they were stored in, and every child no field takes as a `ChunkPayload`, its id and payload bytes.
+`ChunkLayout::read` hands each child to a closure that folds it into a field and answers `true`, or answers `false` to
+keep it. To write, a format encodes its children into a `ChunkSequence` in its own writer's order and hands it to
+`ChunkLayout::write`, which puts them down in the stored order, each id taking the first child with that id not yet
+written, then any the order does not list, the kept ones last. A default layout writes the format's own order. It
+serves a format whose reader finds chunks by id, where order carries no meaning but a byte-for-byte rewrite needs it:
+[xrf-editable-object](../xrf-editable-object/README.md) keeps one per container.
+
 ## Errors, trailing bytes and compressed chunks
 
 Empty sources, missing required children, incomplete headers, sizes reaching past the source, and reads outside the

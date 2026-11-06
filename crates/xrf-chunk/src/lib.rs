@@ -2,6 +2,7 @@
 
 pub(crate) mod chunk_constants;
 pub(crate) mod iterator;
+pub(crate) mod layout;
 pub(crate) mod read_write;
 pub(crate) mod reader;
 pub(crate) mod source;
@@ -13,6 +14,9 @@ pub use crate::chunk_constants::{
 };
 pub use crate::iterator::chunk_iterator::ChunkIterator;
 pub use crate::iterator::chunk_size_packed_iterator::ChunkSizePackedIterator;
+pub use crate::layout::chunk_layout::ChunkLayout;
+pub use crate::layout::chunk_payload::ChunkPayload;
+pub use crate::layout::chunk_sequence::ChunkSequence;
 pub use crate::read_write::chunk_read_write::ChunkReadWrite;
 pub use crate::read_write::chunk_read_write_list::ChunkReadWriteList;
 pub use crate::read_write::chunk_read_write_optional::ChunkReadWriteOptional;

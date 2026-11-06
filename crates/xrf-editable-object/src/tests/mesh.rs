@@ -1,9 +1,9 @@
-use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+use xrf_chunk::{ChunkPayload, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
 use crate::tests::fixtures;
-use crate::{EditableExtraChunk, EditableMesh, EditableVMap, EditableVMapKind};
+use crate::{EditableMesh, EditableVMap, EditableVMapKind};
 
 /// Reads mesh children the way the object's mesh list hands one over: inside a chunk of its own.
 fn read(children: &[u8]) -> XrfResult<EditableMesh> {
@@ -67,7 +67,7 @@ fn a_mesh_is_written_back_byte_for_byte() -> XrfResult {
 fn a_mesh_another_exporter_laid_out_comes_back_in_its_own_order() -> XrfResult {
   // Mod-shipped objects store the vertex map references before the smoothing groups, the other way round from
   // `SaveMesh`; the editor finds both by id, and the file has to come back as it was.
-  let mut chunks: Vec<EditableExtraChunk> = Vec::new();
+  let mut chunks: Vec<ChunkPayload> = Vec::new();
 
   for chunk in ChunkReader::from_vec(fixtures::mesh_children(&fixtures::vmaps_payload(false), &[]))
     .and_then(|mut reader| reader.read_children())
@@ -75,7 +75,7 @@ fn a_mesh_another_exporter_laid_out_comes_back_in_its_own_order() -> XrfResult {
   {
     let mut chunk = chunk;
 
-    chunks.push(EditableExtraChunk {
+    chunks.push(ChunkPayload {
       id: chunk.id,
       bytes: chunk.read_remaining().expect("expect the payload"),
     });
@@ -85,7 +85,7 @@ fn a_mesh_another_exporter_laid_out_comes_back_in_its_own_order() -> XrfResult {
     .iter()
     .position(|chunk| chunk.id == EditableMesh::SMOOTHING_GROUPS_CHUNK_ID)
     .expect("expect smoothing groups in the fixture");
-  let moved: EditableExtraChunk = chunks.remove(groups);
+  let moved: ChunkPayload = chunks.remove(groups);
 
   chunks.push(moved);
 
