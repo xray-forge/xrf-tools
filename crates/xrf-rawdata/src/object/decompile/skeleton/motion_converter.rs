@@ -2,7 +2,7 @@ use byteorder::ByteOrder;
 use xrf_animation_envelope::{AnimationEnvelope, AnimationKey, AnimationShape};
 use xrf_editable_object::{EditableBoneMotion, EditableBonePart, EditableMotion};
 use xrf_error::{XrfError, XrfResult};
-use xrf_math::{Affine3d, Quaternion, Vector3d};
+use xrf_math::{Quaternion, Vector3d};
 use xrf_ogf::OgfFile;
 use xrf_skeleton::{SkeletonBoneMotion, SkeletonMotion, SkeletonMotionDefinition, SkeletonMotionParametersChunk};
 
@@ -148,8 +148,7 @@ impl MotionConverter {
     let mut values: [Vec<f32>; 6] = Default::default();
 
     for frame in 0..if is_held { 1 } else { frames.max(1) } {
-      let rotation: Quaternion = keys.get_rotation(frame).normalize_or_identity();
-      let angles: Vector3d = Affine3d::from_rotation(&rotation).get_xyz_inverse();
+      let angles: Vector3d = Self::get_xyz_inverse(&keys.get_rotation(frame));
       let position: &Vector3d = keys.get_translation(frame);
       // Heading is the angles' `y` and pitch their `x`, as the export reads them back.
       let frame_values: [f32; 6] = [position.x, position.y, position.z, angles.y, angles.x, angles.z];
@@ -168,6 +167,45 @@ impl MotionConverter {
       flags: 0,
       channels: values.map(|channel| Self::envelope(&channel)),
     }
+  }
+
+  /// The bone angles a key's rotation stands for, `Fmatrix::getXYZi` of its matrix (`Fmatrix::rotation`), worked in
+  /// double precision on the normalised quaternion; the identity's for a quaternion of no length.
+  ///
+  /// By a straight up or down pitch, heading and bank come from matrix elements as small as 1e-5, which a 16-bit key's
+  /// rounding and single precision leave mostly noise: worked in `f32`, keys within a degree of the pole came back up
+  /// to 73 quantisation steps off. In double the elements are exact, and so are the angles to single precision.
+  pub(crate) fn get_xyz_inverse(rotation: &Quaternion) -> Vector3d {
+    let [x, y, z, w] = [rotation.x, rotation.y, rotation.z, rotation.w].map(f64::from);
+    let length: f64 = (x * x + y * y + z * z + w * w).sqrt();
+
+    if length == 0.0 {
+      return Vector3d::ZERO;
+    }
+
+    let [x, y, z, w] = [x, y, z, w].map(|component| component / length);
+    // `Affine3d::from_rotation`'s terms, those `getHPB` reads.
+    let (x_axis_x, x_axis_y, x_axis_z) = (
+      1.0 - 2.0 * (y * y + z * z),
+      2.0 * (x * y - w * z),
+      2.0 * (x * z + w * y),
+    );
+    let y_axis_y: f64 = 1.0 - 2.0 * (x * x + z * z);
+    let (z_axis_x, z_axis_y, z_axis_z) = (
+      2.0 * (x * z - w * y),
+      2.0 * (y * z + w * x),
+      1.0 - 2.0 * (x * x + y * y),
+    );
+    let cos_pitch: f64 = (y_axis_y * y_axis_y + x_axis_y * x_axis_y).sqrt();
+    let pitch: f64 = -(-z_axis_y).atan2(cos_pitch);
+    let (heading, bank): (f64, f64) = if cos_pitch > 16.0 * f64::EPSILON {
+      (-z_axis_x.atan2(z_axis_z), -x_axis_y.atan2(y_axis_y))
+    } else {
+      (-(-x_axis_z).atan2(x_axis_x), 0.0)
+    };
+
+    // `getXYZi` negates `getHPB` and swaps heading and pitch.
+    Vector3d::new(-pitch as f32, -heading as f32, -bank as f32)
   }
 
   /// Angles moved by whole turns to lie within half a turn of the one before, so the curve between frames takes the
