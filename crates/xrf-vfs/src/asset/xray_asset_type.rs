@@ -148,6 +148,8 @@ impl XrayAssetType {
       | XrayExtension::Html
       | XrayExtension::Json
       | XrayExtension::Md
+      // The SDK's source of an OGF, which no game tree resolves by reference.
+      | XrayExtension::Object
       | XrayExtension::Ts
       | XrayExtension::Txt
       | XrayExtension::Xml => return None,

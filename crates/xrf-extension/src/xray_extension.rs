@@ -128,6 +128,8 @@ declare_xray_extensions! {
   Ltx => "ltx",
   Lua => "lua",
   Md => "md",
+  /// The SDK's editable object, the Actor Editor's source of an OGF, which `xrf-rawdata` compiles and decompiles.
+  Object => "object",
   Ogf => "ogf",
   Ogg => "ogg",
   Ogm => "ogm",
@@ -283,7 +285,7 @@ mod tests {
   fn the_vocabulary_holds_every_spelling_it_held_before() {
     // Nothing else fails when a variant is deleted: `of` in `xrf-vfs` matches exhaustively and would simply stop
     // naming the kind, and every policy list would quietly shrink. Adding one is a decision; losing one is not.
-    assert_eq!(XrayExtension::ALL.len(), 60);
+    assert_eq!(XrayExtension::ALL.len(), 61);
   }
 
   #[test]

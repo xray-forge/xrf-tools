@@ -18,10 +18,13 @@ tauri-specta = { workspace = true, optional = true }
 xrf-app-core = { workspace = true }
 xrf-app-render = { workspace = true }
 xrf-chunk = { workspace = true }
+xrf-editable-object = { workspace = true }
 xrf-environment = { workspace = true }
 xrf-error = { workspace = true }
+xrf-extension = { workspace = true }
 xrf-material = { workspace = true }
 xrf-ogf = { workspace = true }
+xrf-rawdata = { workspace = true }
 xrf-renderer = { workspace = true }
 xrf-vfs = { workspace = true }
 xrf-visual = { workspace = true }
@@ -32,6 +35,7 @@ xrf-world = { workspace = true }
 tauri = { workspace = true, features = ["test"] }
 xrf-app-core = { workspace = true, features = ["fixtures"] }
 xrf-job = { workspace = true }
+xrf-math = { workspace = true }
 xrf-test-utils = { workspace = true }
 
 [features]
@@ -43,6 +47,7 @@ typescript-bindings = [
   "xrf-app-render/typescript-bindings",
   "xrf-environment/typescript-bindings",
   "xrf-material/typescript-bindings",
+  "xrf-rawdata/typescript-bindings",
   "xrf-renderer/typescript-bindings",
   "xrf-vfs/typescript-bindings",
   "xrf-visual/typescript-bindings",

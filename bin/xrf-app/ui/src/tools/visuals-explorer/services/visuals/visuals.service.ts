@@ -1,6 +1,7 @@
 import { inject, Injectable, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 import { AssetSource, EAssetSource } from "@xrf/ipc/types/xrf-app-core";
+import { SelectedObjectDescription } from "@xrf/ipc/types/xrf-app-visuals";
 import { Vector3d } from "@xrf/ipc/types/xrf-math";
 import { VisualBone } from "@xrf/ipc/types/xrf-visual";
 import { Logger } from "@xrf/logging";
@@ -111,6 +112,14 @@ export class VisualsService extends VisualInspectionService {
   }
 
   /**
+   * @returns What the open SDK object holds beyond the model compiled from it, or null where a compiled model is open.
+   */
+  @Computed()
+  public get object(): Nullable<SelectedObjectDescription> {
+    return this.selected?.object ?? null;
+  }
+
+  /**
    * The open a retry repeats, or null before anything has been asked for.
    * Not observable: what offers the retry is the failure already on screen, so nothing renders this.
    */
@@ -164,9 +173,9 @@ export class VisualsService extends VisualInspectionService {
   }
 
   /**
-   * Open a loose visual from disk.
+   * Open a loose visual from disk: a compiled model, or an SDK object compiled as it opens.
    *
-   * @param path - Filesystem path of the `.ogf` file.
+   * @param path - Filesystem path of the `.ogf` or `.object` file.
    * @param assetRoot - A further tree its references are searched in, or null to search only its own.
    */
   @BoundAction()

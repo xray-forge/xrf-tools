@@ -70,7 +70,7 @@ impl DecompileCommand {
     destination: &Path,
     is_forced: bool,
   ) -> XrfResult<ObjectDecompileReport> {
-    let sidecar: PathBuf = Self::get_sidecar_path(destination);
+    let sidecar: PathBuf = ObjectProvenance::sidecar_path(destination);
 
     if !is_forced && let Some(existing) = [destination, sidecar.as_path()].into_iter().find(|path| path.exists()) {
       return Err(XrfError::new_invalid_error(format!(
@@ -140,14 +140,5 @@ impl DecompileCommand {
     );
 
     Ok(report)
-  }
-
-  /// `<object>.xrf.json`, beside the object.
-  fn get_sidecar_path(destination: &Path) -> PathBuf {
-    let mut name = destination.as_os_str().to_owned();
-
-    name.push(ObjectProvenance::SIDECAR_SUFFIX);
-
-    PathBuf::from(name)
   }
 }

@@ -48,6 +48,8 @@ export enum EXrayExtension {
   LTX = "ltx",
   LUA = "lua",
   MD = "md",
+  /** The SDK's editable object, the Actor Editor's source of an OGF, which `xrf-rawdata` compiles and decompiles. */
+  OBJECT = "object",
   OGF = "ogf",
   OGG = "ogg",
   OGM = "ogm",

@@ -3,10 +3,15 @@ import { EToolId, IToolHelp } from "@/core/routing/tool";
 export const VISUALS_EXPLORER_HELP: IToolHelp = {
   summary:
     "Read-only 3D browser for `ogf` models: meshes, materials and textures, skeleton, and motion playback. " +
-    "Browse a whole root - archive volumes included - or open one loose file. Nothing is ever written.",
+    "Browse a whole root - archive volumes included - or open one loose file, an SDK `.object` included. " +
+    "Nothing is ever written.",
   workflow: [
     "Pick a mode: `Folder` lists every visual under a root (such as `gamedata` or a `meshes` directory), " +
-      "`Model` opens one loose `.ogf`.",
+      "`Model` opens one loose `.ogf` or SDK `.object`.",
+    "An SDK `.object` is compiled in memory exactly as `xrf-cli object compile` writes it, then shown and posed as " +
+      "any model is. The `Source` panel shows what only the object holds: surfaces' compiler shaders and game " +
+      "materials, smoothing, bone physics, and for a decompiled object the OGF it came from and what was guessed " +
+      "rather than read.",
     "Open a model with a double click in the tree, `Enter`, or the filter; the viewport shows its bind pose. " +
       "A model that fails to open states why and offers `Retry`; one click only selects, so its row stays " +
       "selected too.",
@@ -78,6 +83,8 @@ export const VISUALS_EXPLORER_HELP: IToolHelp = {
       "detail associations too, and is not read; the Materials panel says so when the searched roots hold one.",
     "`Model` mode accepts only loose files on disk; a model inside an archive is reached through `Folder` " +
       "mode, and `Browse folder` is unavailable for archive-sourced models.",
+    "An SDK `.object` opens only where the compile writes it: a skeleton object (static objects are not compiled " +
+      "yet), and not one whose motions move it through its root bone. `Folder` mode lists OGFs alone.",
   ],
   relatedTools: [EToolId.VISUALS_SEQUENCER, EToolId.ARCHIVES_EXPLORER],
 };

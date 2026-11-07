@@ -1,6 +1,8 @@
+use std::io::ErrorKind;
+use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use xrf_error::{XrfError, XrfResult};
 
@@ -8,7 +10,7 @@ use crate::object::decompile::object_inference::ObjectInference;
 
 /// The sidecar written beside a decompiled `.object`, so it is never taken for an authored one: where it came from,
 /// what made it and when, and what in it was inferred rather than read.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ObjectProvenance {
   /// The compiled file it was decompiled from, as the tool was given it.
@@ -57,5 +59,38 @@ impl ObjectProvenance {
   pub fn to_json(&self) -> XrfResult<String> {
     serde_json::to_string_pretty(self)
       .map_err(|error| XrfError::new_serialization_error(format!("Provenance did not serialise: {error}")))
+  }
+
+  /// Where the sidecar of the object at `object` stands: `<object>.xrf.json`, beside it.
+  pub fn sidecar_path(object: &Path) -> PathBuf {
+    let mut name = object.as_os_str().to_owned();
+
+    name.push(Self::SIDECAR_SUFFIX);
+
+    PathBuf::from(name)
+  }
+
+  /// The provenance of the object at `object`, read from its sidecar, or `None` when it has none, as an authored object
+  /// has none.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a sidecar stands there but cannot be read or is not one.
+  pub fn read_beside(object: &Path) -> XrfResult<Option<Self>> {
+    let sidecar: PathBuf = Self::sidecar_path(object);
+    let text: String = match std::fs::read_to_string(&sidecar) {
+      Ok(text) => text,
+      Err(error) if error.kind() == ErrorKind::NotFound => return Ok(None),
+      Err(error) => {
+        return Err(XrfError::new_read_error(format!(
+          "{} was not read: {error}",
+          sidecar.display()
+        )));
+      }
+    };
+
+    serde_json::from_str(&text).map(Some).map_err(|error| {
+      XrfError::new_parsing_error(format!("{} is not a provenance sidecar: {error}", sidecar.display()))
+    })
   }
 }

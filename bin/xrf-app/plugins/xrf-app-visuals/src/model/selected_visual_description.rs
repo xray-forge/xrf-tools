@@ -6,6 +6,8 @@ use xrf_material::{XrayMaterialDescriptor, XraySurfaceDescriptor};
 use xrf_vfs::{XrayAsset, XrayRoots};
 use xrf_visual::{VisualDependencies, VisualDescription};
 
+use crate::SelectedObjectDescription;
+
 /// What the viewer is showing, paired with where it came from: described once at the open and answered as held.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Debug, Serialize)]
@@ -25,4 +27,6 @@ pub struct SelectedVisualDescription {
   pub surfaces: Vec<XraySurfaceDescriptor>,
   /// A `textures.ltx` the searched roots hold, or `None`, since its declarations are not read.
   pub textures_ltx: Option<XrayAsset>,
+  /// What the SDK object the model was compiled from holds beyond it, or `None` for a compiled model opened as it is.
+  pub object: Option<SelectedObjectDescription>,
 }

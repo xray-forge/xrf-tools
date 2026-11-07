@@ -7,6 +7,11 @@ export const SPAWN_FILE_FILTERS: Array<DialogFilter> = [{ name: "spawn", extensi
 /** An OGF visual. */
 export const OGF_FILE_FILTERS: Array<DialogFilter> = [{ name: "Ogf visual", extensions: [EXrayExtension.OGF] }];
 
+/** A model to view: a compiled OGF, or the SDK object it is exported from. */
+export const VISUAL_SOURCE_FILE_FILTERS: Array<DialogFilter> = [
+  { name: "Ogf visual or SDK object", extensions: [EXrayExtension.OGF, EXrayExtension.OBJECT] },
+];
+
 /** Either half of a texture: its DDS, or the `.thm` descriptor beside it. */
 export const TEXTURE_FILE_FILTERS: Array<DialogFilter> = [
   { name: "Texture or descriptor", extensions: [EXrayExtension.DDS, EXrayExtension.THM] },
