@@ -76,7 +76,7 @@ impl RenderThread {
       let time: Duration = viewport.get_burst()?.get_time()?;
       let scene: &LevelScene = self.scenes.get(&viewport.get_shown_scene()?)?;
 
-      Some(scene.get_instant(time))
+      scene.get_instant(time)
     });
     let now: Instant = paced.unwrap_or(own);
     let delta: Duration = now.saturating_duration_since(self.drawn_at);

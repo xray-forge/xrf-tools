@@ -320,9 +320,10 @@ impl LevelScene {
     LevelTime::new(self.now.saturating_duration_since(self.started))
   }
 
-  /// The time on the frames' clock that stands `time` after it began opening.
-  pub fn get_instant(&self, time: Duration) -> Instant {
-    self.started + time
+  /// The time on the frames' clock that stands `time` after it began opening; none past what the platform's clock can
+  /// stand for.
+  pub fn get_instant(&self, time: Duration) -> Option<Instant> {
+    self.started.checked_add(time)
   }
 
   /// What it tells the world of the frames since the last: the sectors and the spawned models it could not take in,
