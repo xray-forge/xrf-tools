@@ -88,6 +88,9 @@ impl FlushBox {
 
   /// The smallest box with one axis along `normal`: the smallest rectangle around the points projected on the plane
   /// across it, with a side along each edge of their 2D hull in turn.
+  ///
+  /// A rectangle's extremes lie on the 2D hull and its depth along `normal` is the same for every edge, so each edge is
+  /// measured over the outline alone, and only the chosen one over every point.
   fn flush_to(points: &[DVec3], normal: DVec3, floor: f64) -> Option<Self> {
     let normal: DVec3 = normal.try_normalize()?;
     let helper: DVec3 = if normal.x.abs() < 0.9 { DVec3::X } else { DVec3::Y };
@@ -97,22 +100,39 @@ impl FlushBox {
       .iter()
       .map(|point| DVec2::new(point.dot(u), point.dot(v)))
       .collect();
+    let depth: f64 = Self::half_span(points.iter().map(|point| point.dot(normal))).max(floor);
     let outline: Vec<DVec2> = Self::hull_2d(&mut planar);
-    let mut best: Option<Self> = None;
+    let mut best: Option<(f64, DVec2)> = None;
 
     for (index, a) in outline.iter().enumerate() {
       let Some(edge) = (outline[(index + 1) % outline.len()] - *a).try_normalize() else {
         continue;
       };
-      let along: DVec3 = u * edge.x + v * edge.y;
-      let candidate: Self = Self::along(points, [along, normal.cross(along), normal]);
+      // `normal × along` is the edge turned a quarter in the plane, so the side runs along `edge.perp()`.
+      let size: f64 = [edge, edge.perp()]
+        .map(|axis| Self::half_span(outline.iter().map(|point| point.dot(axis))).max(floor))
+        .iter()
+        .product::<f64>()
+        * depth;
 
-      if best.is_none_or(|best| candidate.size(floor) < best.size(floor)) {
-        best = Some(candidate);
+      if best.is_none_or(|(best, _)| size < best) {
+        best = Some((size, edge));
       }
     }
 
-    best
+    let (_, edge) = best?;
+    let along: DVec3 = u * edge.x + v * edge.y;
+
+    Some(Self::along(points, [along, normal.cross(along), normal]))
+  }
+
+  /// Half the distance between the least and the greatest of `values`.
+  fn half_span(values: impl Iterator<Item = f64>) -> f64 {
+    let (low, high) = values.fold((f64::MAX, f64::MIN), |(low, high), value| {
+      (low.min(value), high.max(value))
+    });
+
+    0.5 * (high - low)
   }
 
   /// The convex hull of 2D points, counter-clockwise, by Andrew's monotone chain.
