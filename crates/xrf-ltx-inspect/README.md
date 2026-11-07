@@ -94,6 +94,11 @@ Each `LtxDeclaration` keeps the operation prefixes as written, on the statement 
 either. It is authored text: several declarations of one field can exist, and only a resolution says which one wins. A
 config that will not parse is recorded in `unreadable` and the search goes on.
 
+`LtxDeclarationSearch::list_holding_entry_points` turns a section search into the entry points whose resolution can
+hold that section: those above each config with a header for it. It is a superset, so a caller resolves those few
+instead of every root. It answers `None` when an attachment holds a plain or `@` header, which can create the section in
+a root the dialect does not record.
+
 ## Read source lines
 
 ```rust

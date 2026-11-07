@@ -190,6 +190,81 @@ fn an_empty_query_matches_nothing() -> XrfResult {
   Ok(())
 }
 
+/// The entry points a section search narrows to, over a tree whose `system.ltx` includes the weapon and whose
+/// `plugins\effects.ltx` declares an unrelated section of the same name, beside `extra` attachment configs.
+fn holding_entry_points(section: &str, extra: &[(&str, &str)]) -> XrfResult<Option<Vec<String>>> {
+  let mut files: Vec<(&str, &str)> = vec![
+    ("items\\w_ak74.ltx", "[wpn_ak74]\ncost = 4000\n"),
+    ("other.ltx", "[wpn_other]\ncost = 1\n"),
+    ("plugins\\effects.ltx", "[wpn_ak74]:wpn_groza\n"),
+    ("system.ltx", "#include \"items\\w_ak74.ltx\"\n"),
+  ];
+  files.extend_from_slice(extra);
+
+  let source: LtxMapSource = LtxMapSource::new(&files);
+  let mut inventory: LtxInventory = LtxInventory {
+    files: vec![
+      LtxInventoryFile {
+        included_by: vec![String::from("system.ltx")],
+        ..loose("items\\w_ak74.ltx", LtxInventoryRole::Included)
+      },
+      loose("other.ltx", LtxInventoryRole::EntryPoint),
+      loose("plugins\\effects.ltx", LtxInventoryRole::EntryPoint),
+      loose("system.ltx", LtxInventoryRole::EntryPoint),
+    ],
+  };
+
+  for (path, _) in extra {
+    inventory.files.push(loose(path, LtxInventoryRole::Attachment));
+  }
+
+  let search = LtxDeclarationReader::new(&inventory, &source).search(&LtxDeclarationQuery {
+    section: Some(String::from(section)),
+    ..LtxDeclarationQuery::default()
+  })?;
+
+  Ok(search.list_holding_entry_points(&inventory))
+}
+
+#[test]
+fn a_section_narrows_to_the_entry_points_above_the_configs_declaring_it() -> XrfResult {
+  // `other.ltx` declares nothing by that name, so resolving it could never answer; an included config answers through
+  // the entry point that includes it, not as a root of its own.
+  assert_eq!(
+    holding_entry_points("wpn_ak74", &[])?,
+    Some(vec![String::from("plugins\\effects.ltx"), String::from("system.ltx")])
+  );
+  assert_eq!(holding_entry_points("wpn_absent", &[])?, Some(Vec::new()));
+
+  Ok(())
+}
+
+#[test]
+fn an_attachment_editing_a_section_narrows_nothing_away() -> XrfResult {
+  // `![wpn_ak74]` only edits a section some config already declares, so the declaring roots still bound the answer.
+  assert_eq!(
+    holding_entry_points("wpn_ak74", &[("mod_system_a.ltx", "![wpn_ak74]\ncost = 9000\n")])?,
+    Some(vec![String::from("plugins\\effects.ltx"), String::from("system.ltx")])
+  );
+
+  Ok(())
+}
+
+#[test]
+fn an_attachment_that_can_create_a_section_names_no_bound() -> XrfResult {
+  // The root an attachment patches is not recorded, so a section it creates could be in any of them.
+  assert_eq!(
+    holding_entry_points("wpn_new", &[("mod_system_a.ltx", "@[wpn_new]\n")])?,
+    None
+  );
+  assert_eq!(
+    holding_entry_points("wpn_new", &[("mod_system_a.ltx", "[wpn_new]\n")])?,
+    None
+  );
+
+  Ok(())
+}
+
 #[test]
 fn a_config_that_will_not_parse_is_recorded_and_the_search_goes_on() -> XrfResult {
   let source: LtxMapSource = LtxMapSource::new(&[
