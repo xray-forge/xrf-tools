@@ -1,12 +1,13 @@
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
+use rayon::prelude::*;
 use xrf_error::XrfResult;
 use xrf_extension::XrayExtension;
 use xrf_gamemtl::GameMtlFile;
-use xrf_ltx::{Ltx, LtxProject};
+use xrf_ltx::Ltx;
 use xrf_utils::format_path;
-use xrf_vfs::{XrayAssetType, XrayLogicalPath};
+use xrf_vfs::{XrayAsset, XrayAssetType, XrayLogicalPath};
 use xrf_xml::{XmlDocument, XmlParseOptions};
 
 use crate::project::sounds::sound_references_verification_result::GamedataSoundReferencesVerificationResult;
@@ -61,26 +62,34 @@ impl<'a> SoundReferencesVerifier<'a> {
       .collect()
   }
 
+  /// Every config's references, taken in the project's order, so the findings and the narration are the ones one config
+  /// at a time gives.
   fn verify_references_in_configs(
     &self,
     sound_names: &HashSet<String>,
     sound_roots: &HashSet<String>,
     result: &mut GamedataSoundReferencesVerificationResult,
   ) {
-    for path in &self.project.ltx_project.ltx_file_entries {
-      if self.options.job.is_cancelled() {
-        break;
-      }
+    let outcomes: Vec<(PathBuf, XrfResult<GamedataSoundReferencesVerificationResult>)> =
+      self.project.visit_configs(&self.options.job, |ltx, reported| {
+        let mut found: GamedataSoundReferencesVerificationResult = Default::default();
 
-      if LtxProject::is_ltx_scheme_path(path) {
-        continue;
-      }
+        self.verify_references_in_ltx(sound_names, sound_roots, ltx, reported, &mut found);
 
-      // Read through the project: its entries are logical paths, which a filesystem read cannot resolve.
-      let reported: PathBuf = self.project.ltx_project.path_of(path);
+        found
+      });
 
-      match self.project.ltx_project.read_resolution(path) {
-        Ok(resolved) => self.verify_references_in_ltx(sound_names, sound_roots, &resolved.ltx, &reported, result),
+    for (reported, outcome) in outcomes {
+      match outcome {
+        Ok(found) => {
+          xrf_output::verbose!(
+            self.options.output,
+            "Verified sound references in {}",
+            format_path(&reported)
+          );
+
+          result.merge(found);
+        }
         Err(error) => xrf_output::verbose!(
           self.options.output,
           "Skipping ltx entry in sound reference check: {} - {}",
@@ -91,72 +100,90 @@ impl<'a> SoundReferencesVerifier<'a> {
     }
   }
 
+  /// Every config XML's `<sound>` references, each document read and parsed on its own worker and taken in the tree's
+  /// order.
   fn verify_references_in_xml(
     &self,
     sound_names: &HashSet<String>,
     sound_roots: &HashSet<String>,
     result: &mut GamedataSoundReferencesVerificationResult,
   ) {
-    // Enumerated and read through the VFS, so an installation's archived UI XML is inspected too. Reported by the path a
-    // person can act on, which for an archived entry is its logical path.
-    for location in self.project.entries() {
+    // Enumerated and read through the VFS, so an installation's archived UI XML is inspected too.
+    let documents: Vec<XrayAsset> = self
+      .project
+      .entries()
+      .into_iter()
+      .filter(|location| {
+        let logical_path: &XrayLogicalPath = location.get_logical_path();
+
+        logical_path
+          .is_under(GamedataProject::CONFIGS_DIRECTORY)
+          .unwrap_or(false)
+          && logical_path.has_extension(XrayExtension::Xml)
+      })
+      .collect();
+
+    let found: Vec<GamedataSoundReferencesVerificationResult> = documents
+      .par_iter()
+      .map(|location| self.verify_references_in_xml_document(sound_names, sound_roots, location))
+      .collect();
+
+    for found in found {
+      result.merge(found);
+    }
+  }
+
+  /// One XML document's references. Reported by the path a person can act on, which for an archived entry is its
+  /// logical path.
+  fn verify_references_in_xml_document(
+    &self,
+    sound_names: &HashSet<String>,
+    sound_roots: &HashSet<String>,
+    location: &XrayAsset,
+  ) -> GamedataSoundReferencesVerificationResult {
+    let mut found: GamedataSoundReferencesVerificationResult = Default::default();
+
+    if self.options.job.is_cancelled() {
+      return found;
+    }
+
+    let logical_path: &XrayLogicalPath = location.get_logical_path();
+    let path: PathBuf = location
+      .to_physical_path()
+      .unwrap_or_else(|| PathBuf::from(logical_path.as_str()));
+
+    let document: XmlDocument = match self
+      .project
+      .read_bytes(logical_path.as_str())
+      .and_then(|contents| XmlDocument::parse_bytes(&contents, XmlParseOptions { allow_dtd: true }))
+    {
+      Ok(document) => document,
+      Err(error) => {
+        found.checked_references_count += 1;
+        found.invalid_references_count += 1;
+        found.findings.push(GamedataFindingFactory::for_asset(
+          GamedataVerificationRule::SoundsReferences,
+          &path,
+          format!("Could not inspect XML sound references: {error}"),
+        ));
+
+        return found;
+      }
+    };
+
+    for sound in document.elements_named("sound") {
       if self.options.job.is_cancelled() {
         break;
       }
 
-      let logical_path: &XrayLogicalPath = location.get_logical_path();
+      let reference: &str = sound.text();
 
-      if !logical_path
-        .is_under(GamedataProject::CONFIGS_DIRECTORY)
-        .unwrap_or(false)
-        || !logical_path.has_extension(XrayExtension::Xml)
-      {
-        continue;
-      }
-
-      let path: PathBuf = location
-        .to_physical_path()
-        .unwrap_or_else(|| PathBuf::from(logical_path.as_str()));
-
-      let contents: Vec<u8> = match self.project.read_bytes(logical_path.as_str()) {
-        Ok(contents) => contents,
-        Err(error) => {
-          result.checked_references_count += 1;
-          result.invalid_references_count += 1;
-          result.findings.push(GamedataFindingFactory::for_asset(
-            GamedataVerificationRule::SoundsReferences,
-            &path,
-            format!("Could not inspect XML sound references: {error}"),
-          ));
-          continue;
-        }
-      };
-
-      let document: XmlDocument = match XmlDocument::parse_bytes(&contents, XmlParseOptions { allow_dtd: true }) {
-        Ok(document) => document,
-        Err(error) => {
-          result.checked_references_count += 1;
-          result.invalid_references_count += 1;
-          result.findings.push(GamedataFindingFactory::for_asset(
-            GamedataVerificationRule::SoundsReferences,
-            &path,
-            format!("Could not inspect XML sound references: {error}"),
-          ));
-          continue;
-        }
-      };
-
-      for sound in document.elements_named("sound") {
-        if self.options.job.is_cancelled() {
-          break;
-        }
-
-        let reference: &str = sound.text();
-        if Self::is_direct_sound_reference(sound_roots, reference) {
-          self.verify_reference(sound_names, reference, &path, "<sound>", result);
-        }
+      if Self::is_direct_sound_reference(sound_roots, reference) {
+        self.verify_reference(sound_names, reference, &path, "<sound>", &mut found);
       }
     }
+
+    found
   }
 
   /// The sounds material pairs play when broken, stepped on and collided with, each once however many pairs name it.
@@ -232,12 +259,6 @@ impl<'a> SoundReferencesVerifier<'a> {
         }
       }
     }
-
-    xrf_output::verbose!(
-      self.options.output,
-      "Verified sound references in {}",
-      format_path(path)
-    );
   }
 
   fn verify_reference(

@@ -3,15 +3,17 @@ use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use rayon::prelude::*;
 use xrf_chunk::{ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_engine_target::{XrayEngineDetector, XrayEngineResolution};
 use xrf_error::{XrfError, XrfResult};
 use xrf_gamemtl::GameMtlFile;
-use xrf_ltx::{LtxProject, LtxProjectOptions};
+use xrf_job::JobHandle;
+use xrf_ltx::{Ltx, LtxProject, LtxProjectOptions};
 use xrf_utils::format_path;
 use xrf_vfs::{
-  XrayAsset, XrayAssetType, XrayCachePolicy, XrayCacheStats, XrayMountMode, XrayPathCollision, XrayReadTraceSummary,
-  XrayRoots, XraySearch, XraySearchPlan, XraySkippedMount, XrayVfs,
+  XrayAsset, XrayAssetType, XrayCachePolicy, XrayCacheStats, XrayLogicalPath, XrayMountMode, XrayPathCollision,
+  XrayReadTraceSummary, XrayRoots, XraySearch, XraySearchPlan, XraySkippedMount, XrayVfs,
 };
 
 use crate::project::gamedata_project_read_options::GamedataProjectReadOptions;
@@ -73,8 +75,21 @@ impl GamedataProject {
     let plan: XraySearchPlan = XraySearchPlan::new().with_root_mode(SEARCH_STEP, &options.root, mode)?;
 
     // Project identity is independent of the inspection filter: a mesh-only check must not be aborted because a caller
-    // omitted configs. Resolve through the unfiltered plan so archive-only installations remain valid too.
-    let identity: XraySearch = plan.open()?;
+    // omitted configs. Resolve through the unfiltered plan so archive-only installations remain valid too. The probe
+    // reads configs alone, so where nothing ignored reaches into them and no read is traced, the search the checks read
+    // answers it just as well, and its plain reads leave nothing in the account a report gives: mounting a tree is most
+    // of opening one, and Anomaly's took 165 ms a time.
+    let is_probing_the_search: bool = Self::is_keeping_configs(&options.ignored) && !options.is_tracing_reads;
+    let (identity, search): (XraySearch, Option<XraySearch>) = if is_probing_the_search {
+      let search: XraySearch = plan
+        .clone()
+        .ignoring(&options.ignored)?
+        .open_in(Self::new_verification_vfs())?;
+
+      (search.clone(), Some(search))
+    } else {
+      (plan.open()?, None)
+    };
 
     if identity.find(SYSTEM_LTX_LOGICAL_PATH)?.is_none() {
       return Err(
@@ -95,18 +110,20 @@ impl GamedataProject {
       })
     });
 
-    // Checks enumerate and read only what the caller left in scope.
-    // Retaining motions is what keeps a sweep from re-reading a shared animation bank once per referencing visual.
-    let vfs: XrayVfs = XrayVfs::new().with_cache_policy(XrayCachePolicy::verification());
+    let search: XraySearch = match search {
+      Some(search) => search,
+      None => {
+        // Applied after the identity probe, so the account describes the sweep rather than the two reads opening it
+        // took.
+        let vfs: XrayVfs = if options.is_tracing_reads {
+          Self::new_verification_vfs().with_read_trace()
+        } else {
+          Self::new_verification_vfs()
+        };
 
-    // Applied after the identity probe, so the account describes the sweep rather than the two reads opening it took.
-    let vfs: XrayVfs = if options.is_tracing_reads {
-      vfs.with_read_trace()
-    } else {
-      vfs
+        plan.ignoring(&options.ignored)?.open_in(vfs)?
+      }
     };
-
-    let search: XraySearch = plan.ignoring(&options.ignored)?.open_in(vfs)?;
 
     let ltx_project: LtxProject = LtxProject::open_at_search_opt(
       // The configs directory, not the game root: this project *is* the config tree, and callers join onto its root.
@@ -129,6 +146,27 @@ impl GamedataProject {
       root: options.root.clone(),
       search,
     })
+  }
+
+  /// Whether nothing `ignored` names reaches into the configs, neither a prefix inside them nor one holding them. A
+  /// prefix that is no logical path answers no: the ignoring plan refuses it, as it always has.
+  fn is_keeping_configs(ignored: &[String]) -> bool {
+    let Ok(configs) = XrayLogicalPath::new(Self::CONFIGS_DIRECTORY) else {
+      return false;
+    };
+
+    ignored.iter().all(|prefix| {
+      XrayLogicalPath::new(prefix).is_ok_and(|ignored| {
+        !ignored.is_under(Self::CONFIGS_DIRECTORY).unwrap_or(true)
+          && !configs.is_under(ignored.as_str()).unwrap_or(true)
+      })
+    })
+  }
+
+  /// The snapshot checks read through. Checks enumerate and read only what the caller left in scope; retaining motions
+  /// is what keeps a sweep from re-reading a shared animation bank once per referencing visual.
+  fn new_verification_vfs() -> XrayVfs {
+    XrayVfs::new().with_cache_policy(XrayCachePolicy::verification())
   }
 
   /// Opens a project, treating the path as an installation only when it declares one.
@@ -203,6 +241,44 @@ impl GamedataProject {
   /// Sources this project's installation declared that could not be opened.
   pub fn skipped_mounts(&self) -> &[XraySkippedMount] {
     self.search.get_vfs().get_skipped_mounts()
+  }
+}
+
+/// Configs as checks read them.
+impl GamedataProject {
+  /// Every config a check reads values from, scheme files left out, each resolved and handed to `visit` on its own
+  /// worker: one answer per config in the project's order, the path it is reported by beside what `visit` made of it,
+  /// or why it would not resolve.
+  ///
+  /// A check that reports findings and narration in that order merges the answers as they come, and says the same as
+  /// one config at a time would. Configs not reached before the run is cancelled are left out, and the check's own
+  /// cancellation check ends it.
+  pub(crate) fn visit_configs<R, F>(&self, job: &JobHandle, visit: F) -> Vec<(PathBuf, XrfResult<R>)>
+  where
+    R: Send,
+    F: Fn(&Ltx, &Path) -> R + Sync,
+  {
+    self
+      .ltx_project
+      .ltx_file_entries
+      .par_iter()
+      .filter(|path| !LtxProject::is_ltx_scheme_path(path))
+      .filter_map(|path| {
+        if job.is_cancelled() {
+          return None;
+        }
+
+        // Reported by the physical path where there is one: its entries are logical paths, which a person reading a
+        // finding cannot open.
+        let reported: PathBuf = self.ltx_project.path_of(path);
+        let visited: XrfResult<R> = self
+          .ltx_project
+          .read_resolution(path)
+          .map(|resolved| visit(&resolved.ltx, &reported));
+
+        Some((reported, visited))
+      })
+      .collect()
   }
 }
 
@@ -340,5 +416,43 @@ impl GamedataProject {
 impl GamedataProject {
   pub fn is_valid_gamedata_dir<P: AsRef<Path>>(path: P) -> bool {
     path.as_ref().exists() && path.as_ref().is_dir()
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::GamedataProject;
+
+  fn keeps(ignored: &[&str]) -> bool {
+    GamedataProject::is_keeping_configs(&ignored.iter().map(|it| String::from(*it)).collect::<Vec<String>>())
+  }
+
+  #[test]
+  fn the_default_ignores_leave_the_configs_in_view() {
+    assert!(keeps(&[]));
+    assert!(keeps(&[
+      ".git",
+      ".idea",
+      "particles_unpacked",
+      "textures_unpacked",
+      "README.md"
+    ]));
+    assert!(
+      keeps(&["textures", "configs_backup"]),
+      "a name only sharing the prefix is not the configs"
+    );
+  }
+
+  #[test]
+  fn ignoring_the_configs_or_anything_in_them_hides_them() {
+    assert!(!keeps(&["configs"]));
+    assert!(!keeps(&["Configs"]), "the engine's paths fold case");
+    assert!(!keeps(&["textures", "configs\\environment"]));
+    assert!(!keeps(&["configs/environment/dynamic_weather_graphs.ltx"]));
+  }
+
+  #[test]
+  fn a_prefix_that_is_no_path_hides_them_too() {
+    assert!(!keeps(&["configs\\..\\textures"]));
   }
 }

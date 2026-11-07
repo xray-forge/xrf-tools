@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use xrf_error::XrfResult;
 use xrf_gamemtl::{GameMtlFile, GameMtlPair};
-use xrf_ltx::{Ltx, LtxProject};
+use xrf_ltx::Ltx;
 use xrf_spawn::{AlifeObjectInherited, SpawnFile, XRayByteOrder};
 use xrf_utils::format_path;
 
@@ -183,21 +183,25 @@ impl MaterialsVerifier<'_> {
     }
   }
 
+  /// Every config's material names, taken in the project's order so the findings are the ones one config at a time
+  /// gives.
   fn verify_configs(&self, library: &GameMtlFile, result: &mut GamedataMaterialsVerificationResult) {
-    for path in &self.project.ltx_project.ltx_file_entries {
-      if self.options.job.is_cancelled() {
-        return;
-      }
+    let outcomes: Vec<(PathBuf, XrfResult<GamedataMaterialsVerificationResult>)> =
+      self.project.visit_configs(&self.options.job, |ltx, reported| {
+        let mut found: GamedataMaterialsVerificationResult = GamedataMaterialsVerificationResult::default();
 
-      if LtxProject::is_ltx_scheme_path(path) {
-        continue;
-      }
+        Self::verify_ltx(library, ltx, reported, &mut found);
 
-      // Read through the project: its entries are logical paths, which a filesystem read cannot resolve.
-      let reported: PathBuf = self.project.ltx_project.path_of(path);
+        found
+      });
 
-      match self.project.ltx_project.read_resolution(path) {
-        Ok(resolved) => Self::verify_ltx(library, &resolved.ltx, &reported, result),
+    for (reported, outcome) in outcomes {
+      match outcome {
+        Ok(found) => {
+          result.checked_references_count += found.checked_references_count;
+          result.invalid_references_count += found.invalid_references_count;
+          result.findings.extend(found.findings);
+        }
         // Malformed ltx files are reported by the generic ltx check, not this one.
         Err(error) => xrf_output::verbose!(
           self.options.output,
