@@ -54,7 +54,7 @@ impl GenericCommand for CompileCommand {
         Arg::new("tangents")
           .help(
             "Tangent method: auto follows the provenance sidecar beside a decompiled object (MikkTSpace for a \
-             blender-xray source) and the Actor Editor's otherwise; actor-editor or mikktspace forces one",
+             model exported from Blender) and the Actor Editor's otherwise; actor-editor or mikktspace forces one",
           )
           .long("tangents")
           .value_parser([Self::AUTO, Self::ACTOR_EDITOR, Self::MIKKTSPACE])
