@@ -15,7 +15,8 @@ opens. It undoes what the editor's `Export OGF` did:
 - corners split at seams and hard edges are welded back into points, by bit-equal position, the bones followed and
   their weights within rounding, so two points the export's `VPack` moved onto one position stay two;
 - a face written twice, the copy mirrored with its normals inverted, is one face of a two-sided surface;
-- per-face smoothing edge flags (`face_smoth_flags.h`) come back from where welded corners' normals agree;
+- per-face smoothing edge flags (`face_smoth_flags.h`) come back from where welded corners' normals agree, for the
+  SDK, and the corners' normals themselves in `blender-xray`'s corner normals chunk, which the SDK does not read;
 - bones come from the bones and IK data chunks, joint limits turned back from the physics engine's sense;
 - the OGF's own motions come back as the object's, each bone keyed at every frame, its rotation turned back into the
   angles the editor keys, with how each motion plays and the bone parts they play on.
@@ -34,8 +35,10 @@ An OGF that is not a skeleton, or a child with static vertices, is refused for n
 `ObjectCompiler::build_skeleton_geometry` builds a skeleton object's children as the Actor Editor's `Export OGF`
 prepares them, so the engine draws what the editor's export would give it:
 
-- every face corner takes its normal from the mesh's smoothing (`EditableMeshNormals`), the last texture coordinate its
-  vertex map reference names, and its four strongest bone weights, normalised;
+- every face corner takes the normal the mesh stores for it (`EditableMesh::corner_normals`, which a decompile and
+  `blender-xray` write), else its smoothing's (`EditableMeshNormals`), the last texture coordinate its vertex map
+  reference names, and its four strongest bone weights, normalised: so a decompiled model keeps the normals its
+  exporter gave it, Blender's corner-angle weighting included, where the Actor Editor recomputes them from smoothing;
 - faces go to one split per engine shader, texture and breakable part, a two-sided face again mirrored;
 - corners pack into vertices as the export packs them: positions and normals within a millimetre, texture coordinates
   within `EPS_S`, the same bones and weights, looked up through the export's grid over the object's box, a near corner

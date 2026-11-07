@@ -112,6 +112,34 @@ fn writes_an_ogf_the_reader_takes_whole() -> XrfResult {
 }
 
 #[test]
+fn takes_the_normals_an_object_stores_over_its_smoothing() -> XrfResult {
+  // Normals no smoothing of the flat quad gives, as `blender-xray` or a decompile stores them beside the smoothing.
+  let tilted: Vector3d = Vector3d::new(0.0, 0.8, 0.6);
+  let normals = |file: &OgfFile| -> Vec<Vector3d> {
+    file
+      .children
+      .iter()
+      .flat_map(|children| &children.nested)
+      .filter_map(|child| child.geometry.as_ref()?.get_skinned_vertices())
+      .flatten()
+      .map(|vertex| vertex.normal)
+      .collect()
+  };
+  let mut object: EditableObjectFile = authored()?;
+  let mesh = &mut object.meshes.as_mut().expect("Expect a mesh")[0];
+
+  mesh.corner_normals = Some(vec![[tilted; 3]; mesh.faces.len()]);
+
+  assert!(normals(&compile(&object)?).iter().all(|normal| *normal == tilted));
+
+  object.meshes.as_mut().expect("Expect a mesh")[0].corner_normals = None;
+
+  assert!(normals(&compile(&object)?).iter().all(|normal| *normal != tilted));
+
+  Ok(())
+}
+
+#[test]
 fn boxes_each_bone_around_every_vertex_linked_to_it_in_its_rest_space() -> XrfResult {
   let file: OgfFile = compile(&authored()?)?;
   let bones = &file.bones.as_ref().expect("Expect bones").bones;

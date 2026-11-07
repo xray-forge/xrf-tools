@@ -153,6 +153,45 @@ fn smoothing_groups_not_matching_the_faces_are_refused() {
 }
 
 #[test]
+fn corner_normals_read_three_a_face_and_write_back_where_they_stood() -> XrfResult {
+  // As `blender-xray` appends them: no count, a normal per corner of the one face.
+  let normals: [f32; 9] = [0.0, 0.0, 1.0, 0.0, 0.6, 0.8, 0.6, 0.0, 0.8];
+  let original: Vec<u8> = fixtures::mesh_children(
+    &fixtures::vmaps_payload(false),
+    &fixtures::chunk(EditableMesh::CORNER_NORMALS_CHUNK_ID, &fixtures::floats(&normals)),
+  );
+  let mesh: EditableMesh = read(&original)?;
+
+  assert_eq!(
+    mesh.corner_normals,
+    Some(vec![[
+      Vector3d::new(0.0, 0.0, 1.0),
+      Vector3d::new(0.0, 0.6, 0.8),
+      Vector3d::new(0.6, 0.0, 0.8),
+    ]])
+  );
+  assert_eq!(write(&mesh)?, original);
+
+  Ok(())
+}
+
+#[test]
+fn corner_normals_not_matching_the_faces_are_refused() {
+  let two_faces: Vec<u8> = fixtures::floats(&[0.0, 0.0, 1.0].repeat(6));
+  let error: String = read(&fixtures::mesh_children(
+    &fixtures::vmaps_payload(false),
+    &fixtures::chunk(EditableMesh::CORNER_NORMALS_CHUNK_ID, &two_faces),
+  ))
+  .expect_err("expect two faces' normals for one face refused")
+  .to_string();
+
+  assert!(
+    error.contains("2 corner normal triples for 1 faces"),
+    "Unexpected error: {error}"
+  );
+}
+
+#[test]
 fn a_mesh_version_the_editor_does_not_load_is_refused() {
   let mut children: Vec<u8> = fixtures::mesh_children(&fixtures::vmaps_payload(false), &[]);
 

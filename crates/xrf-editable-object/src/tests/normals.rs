@@ -34,6 +34,7 @@ fn hinge(smoothing_groups: Option<Vec<u32>>, flags: u8) -> EditableMesh {
     has_point_faces: false,
     faces: vec![face([0, 1, 2]), face([0, 2, 3])],
     smoothing_groups,
+    corner_normals: None,
     vmap_references: Vec::new(),
     surface_faces: Vec::new(),
     vmaps: None,

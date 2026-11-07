@@ -38,14 +38,15 @@ order its chunks were stored in, and every child no field takes, a second copy o
 `ChunkPayload`. Content and layout stay apart, so code that builds or edits an object never handles storage detail,
 and a container built in code takes `ChunkLayout::default()`.
 
-| Container          | Named chunks                                                                                     |
-| ------------------ | ------------------------------------------------------------------------------------------------ |
-| Object body        | version, class script, LODs, flags, meshes, surfaces (`SURFACES3`), bones, embedded motions,     |
-|                    | motion references (`SMOTIONS3`), bone parts (`BONEPARTS2`), actor transform, description          |
-| Mesh (`EditableMesh`) | version, name, bounds, flags, options, points, faces, smoothing groups, vertex map references, |
-|                    | surface faces, vertex maps (`VMAPS_2`)                                                           |
-| Bone (`EditableBone`) | version, definition, bind pose, the repeated definition, material, shape, joint flags, joint,  |
-|                    | joint break, friction, mass                                                                      |
+| Container             | Named chunks                                                                                    |
+| --------------------- | ----------------------------------------------------------------------------------------------- |
+| Object body           | version, class script, LODs, flags, meshes, surfaces (`SURFACES3`), bones, embedded motions,    |
+|                       | motion references (`SMOTIONS3`), bone parts (`BONEPARTS2`), actor transform, description        |
+| Mesh (`EditableMesh`) | version, name, bounds, flags, options, points, faces, smoothing groups, corner normals          |
+|                       | (`blender-xray`'s `0x1014`, which the SDK does not read), vertex map references, surface faces, |
+|                       | vertex maps (`VMAPS_2`)                                                                         |
+| Bone (`EditableBone`) | version, definition, bind pose, the repeated definition, material, shape, joint flags, joint,   |
+|                       | joint break, friction, mass                                                                     |
 
 Three layouts older editors saved and the SDK still loads are read: description time stamps 32 or 64 bits wide
 (`EditableTimeWidth`, taken from the chunk's size), the faces around each point saved after the points
@@ -108,8 +109,8 @@ fn main() -> xrf_error::XrfResult {
 Reads refuse what the SDK refuses or asserts on: an object version other than `0x10`, a mesh version other than
 `0x11`, a bone version other than 1 or 2, and a missing chunk the loader requires. They also refuse what would not
 come back as it was: a root holding more than the body, a mesh or bone list not numbered from zero, a named chunk
-holding more or fewer bytes than its fields, smoothing groups not one per face, a polygon map mark other than 0 or 1,
-and a count larger than its chunk could hold. Writes refuse a list longer than its count field holds and a vertex map
+holding more or fewer bytes than its fields, smoothing groups or corner normal triples not one per face, a polygon map
+mark other than 0 or 1, and a count larger than its chunk could hold. Writes refuse a list longer than its count field holds and a vertex map
 whose values, vertex indices and polygon indices disagree on its entry count.
 
 Run `cargo test --locked -p xrf-editable-object` from the repository root. See the

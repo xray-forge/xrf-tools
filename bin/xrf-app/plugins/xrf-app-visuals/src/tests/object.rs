@@ -38,6 +38,7 @@ fn mesh() -> EditableMesh {
     has_point_faces: false,
     faces: vec![EditableFace::default(); 3],
     smoothing_groups: Some(vec![1, 1, 2]),
+    corner_normals: None,
     vmap_references: Vec::new(),
     surface_faces: vec![
       EditableSurfaceFaces {
