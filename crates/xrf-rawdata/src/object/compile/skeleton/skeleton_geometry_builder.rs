@@ -10,6 +10,7 @@ use crate::object::compile::skeleton::skeleton_split::SkeletonSplit;
 use crate::object::compile::skeleton::skeleton_vertex::{SkeletonVertex, SkeletonVertexBone};
 use crate::object::compile::skeleton::skin_corner::SkinCorner;
 use crate::object::compile::skeleton::tangent_basis::TangentBasis;
+use crate::object::compile::skeleton::vertex_cache_order::VertexCacheOrder;
 use crate::object::compile::skeleton::vertex_packer::VertexPacker;
 
 /// Builds a skeleton object's splits as `CExportSkeleton::PrepareGeometry` does, its tangent pass included.
@@ -20,7 +21,7 @@ use crate::object::compile::skeleton::vertex_packer::VertexPacker;
 /// weightless, and any other corner lists its own bones, each sorted by bone. The face goes to the split of its
 /// surface's engine shader and texture and its bones' breakable part, made in the order first needed, and a two-sided
 /// surface's face goes again mirrored, its normals turned around. Each split then goes through the tangent pass
-/// ([`TangentBasis`]).
+/// ([`TangentBasis`]), and its triangles and vertices are ordered for the vertex cache ([`VertexCacheOrder`]).
 pub(crate) struct SkeletonGeometryBuilder {
   splits: Vec<(SkeletonSplit, VertexPacker)>,
   bounds: Aabb,
@@ -254,7 +255,8 @@ impl SkeletonGeometryBuilder {
     })
   }
 
-  /// The splits that kept a face, each through the tangent pass (see [`TangentBasis`]) and with its bones listed once.
+  /// The splits that kept a face, each through the tangent pass (see [`TangentBasis`]), ordered for the vertex cache
+  /// (see [`VertexCacheOrder`]) and with its bones listed once.
   fn finish(self) -> XrfResult<SkeletonGeometry> {
     let mut dropped_faces: usize = 0;
     let mut splits: Vec<SkeletonSplit> = Vec::with_capacity(self.splits.len());
@@ -267,6 +269,7 @@ impl SkeletonGeometryBuilder {
       }
 
       let (vertices, faces) = TangentBasis::mend(packer.vertices, &packer.faces)?;
+      let (vertices, faces) = VertexCacheOrder::apply(vertices, &faces);
 
       split.used_bones.sort_unstable();
       split.used_bones.dedup();
