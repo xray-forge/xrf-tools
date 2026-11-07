@@ -11,6 +11,7 @@ path = "src/lib.rs"
 [dependencies]
 byteorder = { workspace = true }
 crc32fast = { workspace = true }
+glam = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sha2 = "0.10.9"
@@ -18,7 +19,7 @@ xrf-animation-envelope = { workspace = true }
 xrf-chunk = { workspace = true }
 xrf-editable-object = { workspace = true }
 xrf-error = { workspace = true }
-xrf-math = { workspace = true }
+xrf-math = { workspace = true, features = ["glam"] }
 xrf-ogf = { workspace = true }
 xrf-skeleton = { workspace = true }
 

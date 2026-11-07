@@ -10,9 +10,9 @@ use xrf_ogf::{
 };
 use xrf_skeleton::{SkeletonMotionParametersChunk, SkeletonMotionsChunk};
 
+use crate::object::compile::bounds::bone_boxes::BoneBoxes;
 use crate::object::compile::motion::motion_export::MotionExport;
 use crate::object::compile::object_compile_source::ObjectCompileSource;
-use crate::object::compile::skeleton::bone_boxes::BoneBoxes;
 use crate::object::compile::skeleton::skeleton_geometry::SkeletonGeometry;
 use crate::object::compile::skeleton::skeleton_split::SkeletonSplit;
 use crate::object::compile::skeleton::skeleton_vertex::{SkeletonVertex, SkeletonVertexBone};

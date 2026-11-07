@@ -1,3 +1,4 @@
+pub(crate) mod bounds;
 pub(crate) mod motion;
 pub(crate) mod object_compile_source;
 pub(crate) mod object_compiler;
