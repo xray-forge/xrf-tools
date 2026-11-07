@@ -90,14 +90,35 @@ impl OpenedLevel {
     let spawn_inputs: XrayInputRecord = XrayInputRecord::new();
     let sections_inputs: XrayInputRecord = XrayInputRecord::new();
     let start_inputs: XrayInputRecord = XrayInputRecord::new();
-    // The spawn, what stands over the places it has an actor at, and the configs' sections it names are read beside the
-    // level rather than after it: the renderer's first texture asks whether the configs reduce it.
-    let ((bundle, geometry), (spawn, open, sections)) = rayon::join(
+    // Two lines of reads, each waiting only on what it needs: the level, its geometry and then the surfaces and textures
+    // its shader table names; and beside them the spawn, then what stands over the places it has an actor at and the
+    // configs' sections it names, side by side. The renderer's first texture asks whether the configs reduce it, so the
+    // sections are read with the level rather than after it.
+    let ((dressed, geometry), (spawn, open, sections)) = rayon::join(
       || {
-        (
-          LevelBundle::read(source, search),
-          LevelGeometryPart::read(source, &search.clone().with_recording(&geometry_inputs)),
-        )
+        let (bundle, geometry) = rayon::join(
+          || LevelBundle::read(source, search),
+          || LevelGeometryPart::read(source, &search.clone().with_recording(&geometry_inputs)),
+        );
+        let dressed: TauriResult<(LevelBundle, Vec<XraySurfaceDescriptor>, Vec<LevelTextureReference>)> =
+          bundle.map(|bundle| {
+            let surfaces: Vec<XraySurfaceDescriptor> =
+              LevelSurfacesPart::resolve(&bundle.level, &search.clone().with_recording(&surfaces_inputs), &scope);
+
+            // The textures are resolved over the surfaces, so what moves the surfaces moves them too.
+            textures_inputs.extend_from(&surfaces_inputs);
+
+            let textures: Vec<LevelTextureReference> = LevelTexturesPart::resolve(
+              &bundle.level,
+              &surfaces,
+              &search.clone().with_recording(&textures_inputs),
+              &scope,
+            );
+
+            (bundle, surfaces, textures)
+          });
+
+        (dressed, geometry)
       },
       || {
         let spawn: TauriResult<Arc<LevelSpawn>> =
@@ -107,33 +128,20 @@ impl OpenedLevel {
         start_inputs.extend_from(&spawn_inputs);
         sections_inputs.extend_from(&spawn_inputs);
 
-        let open: Vec<bool> = spawn.as_deref().map_or_else(
-          |_| Vec::new(),
-          |spawn| LevelStartPart::find_open(source, &search.clone().with_recording(&start_inputs), spawn),
+        let Ok(found) = spawn.as_deref() else {
+          return (spawn, Vec::new(), None);
+        };
+        let (open, sections): (Vec<bool>, TauriResult<Arc<Ltx>>) = rayon::join(
+          || LevelStartPart::find_open(source, &search.clone().with_recording(&start_inputs), found),
+          || LevelSectionsPart::read(source, &search.clone().with_recording(&sections_inputs), configs, found),
         );
 
-        let sections: Option<TauriResult<Arc<Ltx>>> = spawn.as_deref().ok().map(|spawn| {
-          LevelSectionsPart::read(source, &search.clone().with_recording(&sections_inputs), configs, spawn)
-        });
-
-        (spawn, open, sections)
+        (spawn, open, Some(sections))
       },
     );
-    let bundle: LevelBundle = bundle?;
+    let (bundle, surfaces, textures): (LevelBundle, Vec<XraySurfaceDescriptor>, Vec<LevelTextureReference>) = dressed?;
     // A level without its geometry draws nothing, so it does not open; one that loses it later keeps its part's failure.
     let geometry: Arc<LevelGeomSource<InMemoryChunkDataSource>> = Arc::new(geometry?);
-    let surfaces: Vec<XraySurfaceDescriptor> =
-      LevelSurfacesPart::resolve(&bundle.level, &search.clone().with_recording(&surfaces_inputs), &scope);
-
-    // The textures are resolved over the surfaces, so what moves the surfaces moves them too.
-    textures_inputs.extend_from(&surfaces_inputs);
-
-    let textures: Vec<LevelTextureReference> = LevelTexturesPart::resolve(
-      &bundle.level,
-      &surfaces,
-      &search.clone().with_recording(&textures_inputs),
-      &scope,
-    );
     let outlines: Vec<SectorOutline> = bundle
       .level
       .get_sectors()
