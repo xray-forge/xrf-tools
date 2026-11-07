@@ -1,4 +1,4 @@
-use std::io::Read;
+use std::io::{Read, SeekFrom};
 
 use byteorder::{ByteOrder, ReadBytesExt};
 use xrf_error::{XrfError, XrfResult};
@@ -146,6 +146,37 @@ impl<D: ChunkDataSource> ChunkReader<D> {
   ///
   /// Returns an error, before reading anything, when fewer than `count` bytes remain in the chunk.
   pub fn read_bytes(&mut self, count: usize) -> XrfResult<Vec<u8>> {
+    self.assert_bytes_remain(count)?;
+
+    Ok(self.data.read_bytes(count)?)
+  }
+
+  /// Hand the next `count` bytes to `visit` and move past them, for a reader that decodes a run of bytes and keeps none
+  /// of them; see [`ChunkDataSource::read_with`] for why.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error, before reading anything, when fewer than `count` bytes remain in the chunk.
+  pub fn read_with<R>(&mut self, count: usize, visit: impl FnOnce(&[u8]) -> R) -> XrfResult<R> {
+    self.assert_bytes_remain(count)?;
+
+    Ok(self.data.read_with(count, visit)?)
+  }
+
+  /// Move past the next `count` bytes without reading them, for a payload a reader has no use for.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error, before moving, when fewer than `count` bytes remain in the chunk.
+  pub fn skip_bytes(&mut self, count: usize) -> XrfResult {
+    self.assert_bytes_remain(count)?;
+    self.data.set_seek(SeekFrom::Current(count as i64))?;
+
+    Ok(())
+  }
+
+  /// Refuse a read of `count` bytes the chunk does not hold, before any of it is read.
+  fn assert_bytes_remain(&self, count: usize) -> XrfResult {
     if count as u64 > self.read_bytes_remain() {
       return Err(XrfError::new_invalid_error(format!(
         "Requested {count} bytes, but only {} remain in the chunk",
@@ -153,7 +184,7 @@ impl<D: ChunkDataSource> ChunkReader<D> {
       )));
     }
 
-    Ok(self.data.read_bytes(count)?)
+    Ok(())
   }
 
   /// Hand the rest of the chunk to `visit` and move past it, for a reader that decodes the bytes and keeps none of them;
@@ -241,6 +272,38 @@ mod tests {
 
     assert!(error.contains("Requested 1000 bytes"), "Unexpected error: {error}");
     assert_eq!(chunk.cursor_pos(), 0);
+
+    Ok(())
+  }
+
+  /// A skip and a lent read move the cursor as a read of the same bytes would, and refuse a count past the payload as
+  /// `read_bytes` does, before moving at all.
+  #[test]
+  fn skips_and_lends_bytes_within_the_payload_only() -> XrfResult {
+    let mut chunk: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[0, 1, 2, 3, 4, 5, 6, 7])?;
+
+    chunk.skip_bytes(3)?;
+
+    assert_eq!(chunk.read_with(4, <[u8]>::to_vec)?, vec![3, 4, 5, 6]);
+    assert_eq!(chunk.cursor_pos(), 7);
+
+    for error in [
+      chunk.skip_bytes(2).expect_err("expect the skip to exceed the payload"),
+      chunk
+        .read_with(2, |_| ())
+        .expect_err("expect the read to exceed the payload"),
+    ] {
+      assert!(
+        error.to_string().contains("Requested 2 bytes, but only 1 remain"),
+        "Unexpected error: {error}"
+      );
+    }
+
+    assert_eq!(
+      chunk.cursor_pos(),
+      7,
+      "a refused count to leave the cursor where it was"
+    );
 
     Ok(())
   }

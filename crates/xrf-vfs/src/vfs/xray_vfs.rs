@@ -140,11 +140,15 @@ impl XrayVfs {
   fn read_from_mount(&self, mount: &XrayMount, source_path: &str, logical_path: &str) -> XrfResult<Vec<u8>> {
     let bytes: Vec<u8> = mount.get_source().read(source_path)?;
 
+    self.trace_read(logical_path, &bytes);
+
+    Ok(bytes)
+  }
+
+  fn trace_read(&self, logical_path: &str, bytes: &[u8]) {
     if let Some(trace) = &self.trace {
       trace.record(logical_path, bytes.len() as u64);
     }
-
-    Ok(bytes)
   }
 
   /// Sources a plan named that could not be opened.
@@ -428,6 +432,21 @@ impl XrayVfs {
     let (mount, source_path) = self.locate_copy(asset)?;
 
     self.read_from_mount(mount, source_path, asset.get_logical_path().as_str())
+  }
+
+  /// The first `count` bytes of the copy an asset this VFS already resolved names, or the whole of a shorter one, as
+  /// [`XrayAssetSource::read_head`] reads them.
+  ///
+  /// # Errors
+  ///
+  /// As [`Self::read_asset_bytes`].
+  pub(crate) fn read_asset_head(&self, asset: &XrayAsset, count: usize) -> XrfResult<Vec<u8>> {
+    let (mount, source_path) = self.locate_copy(asset)?;
+    let bytes: Vec<u8> = mount.get_source().read_head(source_path, count)?;
+
+    self.trace_read(asset.get_logical_path().as_str(), &bytes);
+
+    Ok(bytes)
   }
 
   /// The mount holding the copy an asset names, and its path there.

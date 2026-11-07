@@ -39,6 +39,19 @@ pub trait XrayAssetSource: Debug + Send + Sync {
   /// Reads an existing entry.
   fn read(&self, path: &str) -> XrfResult<Vec<u8>>;
 
+  /// The first `count` bytes of an existing entry, or the whole of a shorter one: what a reader wanting only a header
+  /// reads.
+  ///
+  /// This default reads the entry whole and keeps its start, which is all an archived entry allows when its payload is
+  /// compressed whole; a source holding loose files reads the start alone.
+  fn read_head(&self, path: &str, count: usize) -> XrfResult<Vec<u8>> {
+    let mut bytes: Vec<u8> = self.read(path)?;
+
+    bytes.truncate(count);
+
+    Ok(bytes)
+  }
+
   /// Where a writable source keeps a source-relative path on disk: the file it holds for it, or where a new one goes.
   /// `None` for a source nothing writes to.
   fn get_writable_path(&self, path: &str) -> Option<PathBuf> {

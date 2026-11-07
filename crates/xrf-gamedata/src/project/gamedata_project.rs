@@ -164,6 +164,15 @@ impl GamedataProject {
     self.search.read(logical_path)
   }
 
+  /// The first `count` bytes of an asset, or the whole of a shorter one, for a check wanting only its header.
+  ///
+  /// # Errors
+  ///
+  /// As [`Self::read_bytes`].
+  pub(crate) fn read_head(&self, logical_path: &str, count: usize) -> XrfResult<Vec<u8>> {
+    self.search.read_head(logical_path, count)
+  }
+
   /// Reads and parses a chunked asset, serving what this project is already holding.
   ///
   /// # Errors

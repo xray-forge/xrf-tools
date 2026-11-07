@@ -1,4 +1,5 @@
-use std::fs;
+use std::fs::{self, File};
+use std::io::Read;
 use std::path::{Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
@@ -44,6 +45,26 @@ impl XrayDirectorySource {
       label: label_from_path(root),
     })
   }
+
+  /// The file on disk holding a source-relative path.
+  ///
+  /// # Errors
+  ///
+  /// Returns a not-found error when the source holds no such path: absent, not unreadable, which lets a caller fall back
+  /// rather than fail.
+  fn require_file(&self, path: &str) -> XrfResult<PathBuf> {
+    match self.index.find(path)? {
+      Some(asset) => Ok(asset.absolute_path()),
+      None => Err(XrfError::new_not_found_error(format!(
+        "no asset '{path}' under root {}",
+        format_path(self.get_root_path())
+      ))),
+    }
+  }
+
+  fn new_read_error(absolute: &Path, error: &std::io::Error) -> XrfError {
+    XrfError::new_asset_error(format!("failed to read '{}': {error}", format_path(absolute)))
+  }
 }
 
 impl XrayAssetSource for XrayDirectorySource {
@@ -80,18 +101,21 @@ impl XrayAssetSource for XrayDirectorySource {
   }
 
   fn read(&self, path: &str) -> XrfResult<Vec<u8>> {
-    let Some(asset) = self.index.find(path)? else {
-      // Absent, not unreadable: the distinction lets a caller fall back rather than fail.
-      return Err(XrfError::new_not_found_error(format!(
-        "no asset '{path}' under root {}",
-        format_path(self.get_root_path())
-      )));
-    };
+    let absolute: PathBuf = self.require_file(path)?;
 
-    let absolute: PathBuf = asset.absolute_path();
+    fs::read(&absolute).map_err(|error| Self::new_read_error(&absolute, &error))
+  }
 
-    fs::read(&absolute)
-      .map_err(|error| XrfError::new_asset_error(format!("failed to read '{}': {error}", format_path(&absolute))))
+  /// Reads no further into the file than `count` bytes.
+  fn read_head(&self, path: &str, count: usize) -> XrfResult<Vec<u8>> {
+    let absolute: PathBuf = self.require_file(path)?;
+    let mut bytes: Vec<u8> = Vec::new();
+
+    File::open(&absolute)
+      .and_then(|file| file.take(count as u64).read_to_end(&mut bytes))
+      .map_err(|error| Self::new_read_error(&absolute, &error))?;
+
+    Ok(bytes)
   }
 
   /// The file indexed for a path, in the case it has on disk, or where a new one goes below the root.

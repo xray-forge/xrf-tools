@@ -215,6 +215,38 @@ fn reads_each_material_the_faces_name_once() -> XrfResult {
   Ok(())
 }
 
+/// The lowest and highest id a face can name, beside every sector bit, read from memory and from a file, whose window
+/// steps over the vertices by seeking rather than lending them.
+#[test]
+fn reads_the_edge_material_ids_from_memory_and_from_a_file() -> XrfResult {
+  let vertices: Vec<[f32; 3]> = vec![[0.0, 0.0, 0.0]; 5];
+  let mut bytes: Vec<u8> = new_form(&vertices, &[[0, 1, 2], [2, 3, 4], [4, 0, 1]])?;
+  let faces: usize = bytes.len() - 3 * LevelCformFace::SERIALIZED_SIZE;
+
+  for (face, packed) in [0xFFFF_u32 << 16, 0x3FFF | (0xFFFF << 16), 0x3FFF].iter().enumerate() {
+    let at: usize = faces + face * LevelCformFace::SERIALIZED_SIZE + 12;
+
+    bytes[at..at + 4].copy_from_slice(&packed.to_le_bytes());
+  }
+
+  let path = GeneratedResources::write("cform/edge_materials.cform", &bytes)?;
+  let from_file = LevelCformFile::read_with_materials_from_chunk::<XRayByteOrder, _>(&mut ChunkReader::from_file(
+    std::fs::File::open(&path)?,
+  )?)?;
+  let from_memory =
+    LevelCformFile::read_with_materials_from_chunk::<XRayByteOrder, _>(&mut ChunkReader::from_vec(bytes)?)?;
+
+  std::fs::remove_file(path)?;
+
+  assert_eq!(
+    from_memory.1.get_ids().iter().copied().collect::<Vec<u16>>(),
+    [0, 0x3FFF]
+  );
+  assert_eq!(from_file, from_memory);
+
+  Ok(())
+}
+
 #[test]
 fn a_form_holding_fewer_faces_than_it_counts_is_an_error_when_reading_materials() -> XrfResult {
   let mut bytes: Vec<u8> = new_form(&[[0.0, 0.0, 0.0]], &[[0, 0, 0]])?;
