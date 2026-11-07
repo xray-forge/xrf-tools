@@ -50,8 +50,9 @@ length and stores infinities, the compile builds a basis from the normal instead
 for an object referencing motion libraries, else `MT_SKELETON_RIGID`), the description, a child per split, each bone's
 name, parent and box, its physics with the joint limits stored as the physics engine reads them, the class script, the
 LODs and the motion references. A bone's box is fitted along the bone's own axes around the vertices that lead with
-it, where the export fits the smallest box, so it holds the same vertices and is no smaller. The triangle order the
-engine draws in is the build's own.
+it, where the export fits the smallest box, so it holds the same vertices and is no smaller. Each child's triangles
+are ordered for the vertex cache (Forsyth's linear-speed optimisation, `VertexCacheOrder`) and its vertices numbered by
+first use, where the export took D3DX's closed optimiser: as few cache misses as vanilla's order, not its bytes.
 
 An object's own motions are written as `ExportMotions` writes them: every bone posed at each frame from its channels,
 its rotation quantised to 16 bits and its translation to 8 or 16 within its range, or held where it never changes,
