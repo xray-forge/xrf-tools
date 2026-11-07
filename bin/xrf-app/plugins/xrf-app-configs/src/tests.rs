@@ -1,4 +1,5 @@
-//! Pins that formatting configs commits its rewrites, so what the app retains and the sessions reading them follow.
+//! Pins what an open configs project answers: formatting commits its rewrites so what the app retains and the sessions
+//! reading them follow, a commit is read again, and a declaration search compares names as the project's dialect does.
 
 use std::fs;
 use std::path::PathBuf;
@@ -8,11 +9,12 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::{SessionDerived, SessionId, SessionScopes, Sessions};
 use xrf_ltx::{LtxFormatOptions, LtxProjectFormatResult};
+use xrf_ltx_inspect::LtxDeclarationQuery;
 use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayAsset, XrayInputRecord, XrayMountMode, XrayRevision, XrayRoots, XraySearch, XrayTransaction};
 
 use crate::format::ConfigsFormat;
-use crate::project::{ConfigsProjects, OpenedConfigsProject};
+use crate::project::{ConfigsDeclarationSearch, ConfigsProjects, OpenedConfigsProject};
 
 const SYSTEM_LTX: &str = "configs\\system.ltx";
 const GAME_LTX: &str = "configs\\game.ltx";
@@ -125,4 +127,63 @@ fn an_open_project_lists_a_config_committed_beside_it_once_read_again() {
 
   assert_eq!(followed.revision, assets.get_vfs().get_revision(), "the session moved");
   assert_eq!(followed.descriptor.inventory.files.len(), 3);
+}
+
+#[test]
+fn a_declaration_search_compares_sections_as_the_dialect_does_and_caps_its_answer() {
+  let root: PathBuf = GeneratedResources::path("configs_find/declarations");
+
+  let _ = fs::remove_dir_all(&root);
+
+  fs::create_dir_all(root.join("configs")).expect("the tree is creatable");
+
+  // More statements writing `cost` than one answer carries, so the cut and the count both show.
+  let many: String = (0..ConfigsDeclarationSearch::MAXIMUM_DECLARATIONS + 20)
+    .map(|index| format!("[wpn_{index}]\ncost = {index}\n"))
+    .collect();
+
+  fs::write(root.join("configs/system.ltx"), format!("[wpn_ak74]\ncost = 1\n{many}")).expect("config written");
+  fs::write(root.join("configs/mod_system_a.ltx"), "![WPN_AK74]\ncost = 2\n").expect("config written");
+
+  let roots: XrayRoots = XrayRoots::one(root.clone(), XrayMountMode::Directory);
+  let search: XraySearch = AssetMountState::new().search(&roots).expect("the tree mounts");
+
+  let find = |is_dltx: bool, query: LtxDeclarationQuery| {
+    OpenedConfigsProject::read(&search, roots.clone(), None, is_dltx)
+      .expect("it opens")
+      .value
+      .find_declarations(query)
+      .expect("the search runs")
+  };
+  let section = |name: &str| LtxDeclarationQuery {
+    section: Some(String::from(name)),
+    ..LtxDeclarationQuery::default()
+  };
+
+  // The page never says how names compare: DLTX lowercases section names, so both headers name one section there.
+  let dltx: ConfigsDeclarationSearch = find(true, section("wpn_ak74"));
+  let standard: ConfigsDeclarationSearch = find(false, section("wpn_ak74"));
+
+  assert_eq!(dltx.total, 2);
+  assert!(dltx.search.query.is_section_case_folded);
+  assert_eq!(standard.total, 1);
+  assert!(!standard.search.query.is_section_case_folded);
+
+  let capped: ConfigsDeclarationSearch = find(
+    false,
+    LtxDeclarationQuery {
+      field: Some(String::from("cost")),
+      ..LtxDeclarationQuery::default()
+    },
+  );
+
+  assert_eq!(capped.total, ConfigsDeclarationSearch::MAXIMUM_DECLARATIONS + 22);
+  assert_eq!(
+    capped.search.declarations.len(),
+    ConfigsDeclarationSearch::MAXIMUM_DECLARATIONS
+  );
+  assert_eq!(
+    capped.search.declarations[0].path, "configs\\mod_system_a.ltx",
+    "the first ones in project order"
+  );
 }

@@ -3,12 +3,13 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use xrf_app_core::TauriResult;
 use xrf_ltx::{LtxDocumentSource, LtxEntryVerification, LtxProject};
 use xrf_ltx_inspect::{
-  LtxAnchoredFinding, LtxFileStructure, LtxFileText, LtxResolvedIndex, LtxRootReader, LtxTextReader,
+  LtxAnchoredFinding, LtxDeclarationQuery, LtxDeclarationReader, LtxDeclarationSearch, LtxFileStructure, LtxFileText,
+  LtxResolvedIndex, LtxRootReader, LtxTextReader,
 };
 use xrf_utils::{decode_w1251_bytes_to_string, error_to_string};
 use xrf_vfs::XrayLogicalPath;
 
-use crate::project::{ConfigsDocument, ConfigsProjectDescriptor, ConfigsResolvedRoot};
+use crate::project::{ConfigsDeclarationSearch, ConfigsDocument, ConfigsProjectDescriptor, ConfigsResolvedRoot};
 
 /// One opened configs project, and whatever has been resolved out of it.
 pub struct ConfigsProject {
@@ -87,6 +88,28 @@ impl ConfigsProject {
 
       Ok(resolved.hold_findings(Arc::new(findings)))
     })
+  }
+
+  /// Where the project writes what `query` names, read from documents without resolving anything.
+  ///
+  /// Section names compare as this project's dialect resolves them, whatever `query` said: a page asking about
+  /// `WPN_AK74` in a DLTX tree means the section the engine loads under that name.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a config the inventory lists cannot be read for any reason other than its own syntax.
+  pub fn find_declarations(&self, query: LtxDeclarationQuery) -> TauriResult<ConfigsDeclarationSearch> {
+    let query: LtxDeclarationQuery = LtxDeclarationQuery {
+      is_section_case_folded: self.project.get_dialect().is_folding_section_names(),
+      ..query
+    };
+    let source = self.project.document_source();
+
+    let search: LtxDeclarationSearch = LtxDeclarationReader::new(&self.descriptor.inventory, &source)
+      .search(&query)
+      .map_err(|error| format!("Cannot search the project's configs: {error}"))?;
+
+    Ok(ConfigsDeclarationSearch::new(search))
   }
 
   /// One config as the authored view renders it: the text as authored, and the structure judged against its entry
