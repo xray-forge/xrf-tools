@@ -1,7 +1,8 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 /// Something a decompiled object holds that its OGF did not store, so the decompiler inferred or defaulted it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ObjectInference {
   /// Surfaces are named after their texture; the authored names are not exported.

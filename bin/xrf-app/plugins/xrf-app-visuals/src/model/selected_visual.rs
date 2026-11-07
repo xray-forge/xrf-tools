@@ -11,7 +11,7 @@ use xrf_ogf::OgfFile;
 use xrf_vfs::{XrayRoots, XraySearch};
 use xrf_visual::{VisualDependencies, VisualDescription, VisualMotions, VisualPackage, VisualPacker};
 
-use crate::SelectedVisualDescription;
+use crate::{SelectedObject, SelectedObjectDescription, SelectedVisualDescription};
 
 /// One opened model: the visual packed for the renderer, what posing needs of it, and its description, made once at
 /// the open and shared by every answer.
@@ -24,7 +24,7 @@ pub struct SelectedVisual {
 
 impl SelectedVisual {
   /// Reads the visual `source` names within `roots`, centred on it where it is a file, through a fresh search, and
-  /// resolves every reference it declares.
+  /// resolves every reference it declares; an SDK `.object` is compiled first.
   ///
   /// # Errors
   ///
@@ -33,8 +33,14 @@ impl SelectedVisual {
     let roots: XrayRoots = roots.centred_on(source.physical_path());
     let search: XraySearch = assets.search_fresh(&roots)?;
     // Read once and pack from what was read: the skeleton posing needs comes off the same parse, so keeping it costs no
-    // second read of a file that may sit inside a volume.
-    let file: Arc<OgfFile> = Self::read_file(&source, &search)?;
+    // second read of a file that may sit inside a volume. An SDK object is compiled to the model it exports as.
+    let (file, object): (Arc<OgfFile>, Option<SelectedObjectDescription>) = if SelectedObject::is_object(&source) {
+      let (file, object) = SelectedObject::read(&source, &search)?;
+
+      (Arc::new(file), Some(object))
+    } else {
+      (Self::read_file(&source, &search)?, None)
+    };
     let package: VisualPackage = VisualPacker::pack(&file);
     let dependencies: VisualDependencies = VisualDependencies::resolve(&package.description, &search);
     let description: SelectedVisualDescription = SelectedVisualDescription {
@@ -42,6 +48,7 @@ impl SelectedVisual {
       materials: Self::describe_materials(&search, &dependencies),
       surfaces: Self::describe_surfaces(&search, &package.description),
       textures_ltx: XrayMaterialResolver::find_textures_ltx(&search),
+      object,
       description: package.description.clone(),
       dependencies,
       source,

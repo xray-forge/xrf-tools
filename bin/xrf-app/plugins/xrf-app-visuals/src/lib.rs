@@ -10,5 +10,8 @@ mod pose;
 mod tests;
 
 pub use browse::VisualBrowses;
-pub use model::{SelectedVisual, SelectedVisualDescription, VisualModels, VisualRenderSource};
+pub use model::{
+  SelectedObject, SelectedObjectBone, SelectedObjectDescription, SelectedObjectProvenance, SelectedObjectSurface,
+  SelectedVisual, SelectedVisualDescription, VisualModels, VisualRenderSource,
+};
 pub use pose::{PosedVisualMotion, VisualPoses};

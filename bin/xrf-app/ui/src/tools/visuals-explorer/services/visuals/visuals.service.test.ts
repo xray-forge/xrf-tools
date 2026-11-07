@@ -7,6 +7,7 @@ import { SelectedVisualDescription } from "@xrf/ipc/types/xrf-app-visuals";
 
 import {
   mockPackedSubmesh,
+  mockSelectedObject,
   mockSelectedVisual,
   mockVisualBone,
   MockVisualBuffer,
@@ -52,6 +53,36 @@ describe("VisualsService observability", () => {
     expect(isComputedProp(service, "highlightedJoint")).toBe(true);
     expect(isComputedProp(service, "hiddenBoneIndices")).toBe(true);
     expect(isComputedProp(service, "addonBones")).toBe(true);
+    expect(isComputedProp(service, "object")).toBe(true);
+  });
+});
+
+describe("VisualsService objects", () => {
+  beforeEach(() => {
+    resetMockInvoke();
+  });
+
+  it("describes what an open SDK object holds, and nothing for a compiled model", async () => {
+    mockIpcCommands({
+      [EVisualsCommand.OPEN_MODEL]: mockSessionResponse((parameters?: Record<string, unknown>) => {
+        const source: AssetSource = (parameters as { source: AssetSource }).source;
+
+        return describeVisualSource(source).endsWith(".object")
+          ? mockSelectedVisual({ source, object: mockSelectedObject() })
+          : mockSelectedVisual({ source });
+      }),
+    });
+
+    const { service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
+
+    await service.openFile("C:\\rawdata\\crate.object");
+
+    expect(service.object?.surfaces[0]?.compilerShader).toBe("default");
+    expect(service.sourceLabel).toBe("C:\\rawdata\\crate.object");
+
+    await service.openFile("C:\\gamedata\\meshes\\wpn_ak74.ogf");
+
+    expect(service.object).toBeNull();
   });
 });
 

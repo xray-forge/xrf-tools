@@ -8139,11 +8139,15 @@ dependencies = [
  "xrf-app-core",
  "xrf-app-render",
  "xrf-chunk",
+ "xrf-editable-object",
  "xrf-environment",
  "xrf-error",
+ "xrf-extension",
  "xrf-job",
  "xrf-material",
+ "xrf-math",
  "xrf-ogf",
+ "xrf-rawdata",
  "xrf-renderer",
  "xrf-test-utils",
  "xrf-vfs",
@@ -8766,6 +8770,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "specta",
  "xrf-animation-envelope",
  "xrf-chunk",
  "xrf-editable-object",
@@ -8773,6 +8778,7 @@ dependencies = [
  "xrf-math",
  "xrf-ogf",
  "xrf-skeleton",
+ "xrf-test-utils",
 ]
 
 [[package]]
