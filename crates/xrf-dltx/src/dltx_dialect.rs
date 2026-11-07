@@ -27,6 +27,11 @@ impl LtxDialect for DltxDialect {
     "dltx"
   }
 
+  /// Yes: the loader lowercases every section name it records, as Monolith's engine does, while parents stay as written.
+  fn is_folding_section_names(&self) -> bool {
+    true
+  }
+
   /// The `mod_<base>_*.ltx` files, which patch another config rather than standing alone.
   ///
   /// Without this a patch file would be verified as though it were a config in its own right, and every override in

@@ -105,7 +105,7 @@ fn a_field_keeps_the_operation_it_was_written_with() -> XrfResult {
   let found: Vec<LtxDeclaration> = search(LtxDeclarationQuery {
     section: Some(String::from("wpn_ak74")),
     field: Some(String::from("rpm")),
-    value: None,
+    ..LtxDeclarationQuery::default()
   })?;
 
   assert_eq!(located(&found), ["items\\w_ak74.ltx:3", "mod_system_xxx.ltx:3"]);
@@ -174,11 +174,36 @@ fn a_field_query_answers_field_lines_rather_than_their_headers() -> XrfResult {
   let found: Vec<LtxDeclaration> = search(LtxDeclarationQuery {
     section: Some(String::from("wpn_unused")),
     field: Some(String::from("cost")),
-    value: None,
+    ..LtxDeclarationQuery::default()
   })?;
 
   // `!![wpn_unused]` is a header with no fields: asked about a field, the header alone is no answer.
   assert!(found.is_empty());
+
+  Ok(())
+}
+
+#[test]
+fn a_dialect_folding_section_names_finds_every_spelling_of_one() -> XrfResult {
+  // Under DLTX `[Wpn_AK74]` is the same section as `[wpn_ak74]`, so a search that missed it would miss a statement the
+  // resolver merges. Field names are never folded.
+  let found: Vec<LtxDeclaration> = search(LtxDeclarationQuery {
+    is_section_case_folded: true,
+    ..section("WPN_AK74")
+  })?;
+
+  assert_eq!(
+    located(&found),
+    ["items\\w_ak74.ltx:1", "mod_system_xxx.ltx:1", "system.ltx:3"]
+  );
+
+  let field: Vec<LtxDeclaration> = search(LtxDeclarationQuery {
+    field: Some(String::from("COST")),
+    is_section_case_folded: true,
+    ..section("wpn_ak74")
+  })?;
+
+  assert!(field.is_empty(), "a field name keeps its case");
 
   Ok(())
 }
@@ -190,13 +215,24 @@ fn an_empty_query_matches_nothing() -> XrfResult {
   Ok(())
 }
 
-/// The entry points a section search narrows to, over a tree whose `system.ltx` includes the weapon and whose
-/// `plugins\effects.ltx` declares an unrelated section of the same name, beside `extra` attachment configs.
-fn holding_entry_points(section: &str, extra: &[(&str, &str)]) -> XrfResult<Option<Vec<String>>> {
+/// A section query, compared exactly.
+fn section(name: &str) -> LtxDeclarationQuery {
+  LtxDeclarationQuery {
+    section: Some(String::from(name)),
+    ..LtxDeclarationQuery::default()
+  }
+}
+
+/// The entry points a section query narrows to, beside `extra` attachment configs.
+///
+/// `system.ltx` includes the weapon, `plugins\effects.ltx` declares an unrelated section of the same name, and
+/// `magazines\w_am17.ltx` only names it as a parent - where nothing declares that parent, the engine creates it empty.
+fn holding_entry_points(query: LtxDeclarationQuery, extra: &[(&str, &str)]) -> XrfResult<Option<Vec<String>>> {
   let mut files: Vec<(&str, &str)> = vec![
     ("items\\w_ak74.ltx", "[wpn_ak74]\ncost = 4000\n"),
+    ("magazines\\w_am17.ltx", "[wpn_am17]:wpn_ak74\n"),
     ("other.ltx", "[wpn_other]\ncost = 1\n"),
-    ("plugins\\effects.ltx", "[wpn_ak74]:wpn_groza\n"),
+    ("plugins\\effects.ltx", "[WPN_AK74]:wpn_groza\n"),
     ("system.ltx", "#include \"items\\w_ak74.ltx\"\n"),
   ];
   files.extend_from_slice(extra);
@@ -208,6 +244,7 @@ fn holding_entry_points(section: &str, extra: &[(&str, &str)]) -> XrfResult<Opti
         included_by: vec![String::from("system.ltx")],
         ..loose("items\\w_ak74.ltx", LtxInventoryRole::Included)
       },
+      loose("magazines\\w_am17.ltx", LtxInventoryRole::EntryPoint),
       loose("other.ltx", LtxInventoryRole::EntryPoint),
       loose("plugins\\effects.ltx", LtxInventoryRole::EntryPoint),
       loose("system.ltx", LtxInventoryRole::EntryPoint),
@@ -218,23 +255,38 @@ fn holding_entry_points(section: &str, extra: &[(&str, &str)]) -> XrfResult<Opti
     inventory.files.push(loose(path, LtxInventoryRole::Attachment));
   }
 
-  let search = LtxDeclarationReader::new(&inventory, &source).search(&LtxDeclarationQuery {
-    section: Some(String::from(section)),
-    ..LtxDeclarationQuery::default()
-  })?;
+  LtxDeclarationReader::new(&inventory, &source).list_holding_entry_points(&query)
+}
 
-  Ok(search.list_holding_entry_points(&inventory))
+/// Owned paths, for comparing with what the reader answers.
+fn paths(paths: &[&str]) -> Option<Vec<String>> {
+  Some(paths.iter().map(|path| String::from(*path)).collect())
 }
 
 #[test]
-fn a_section_narrows_to_the_entry_points_above_the_configs_declaring_it() -> XrfResult {
-  // `other.ltx` declares nothing by that name, so resolving it could never answer; an included config answers through
-  // the entry point that includes it, not as a root of its own.
+fn a_section_narrows_to_the_entry_points_above_the_configs_writing_it() -> XrfResult {
+  // `other.ltx` writes nothing by that name, so resolving it could never answer; an included config answers through
+  // the entry point that includes it; `[WPN_AK74]` is another section where names are compared exactly.
   assert_eq!(
-    holding_entry_points("wpn_ak74", &[])?,
-    Some(vec![String::from("plugins\\effects.ltx"), String::from("system.ltx")])
+    holding_entry_points(section("wpn_ak74"), &[])?,
+    paths(&["magazines\\w_am17.ltx", "system.ltx"])
   );
-  assert_eq!(holding_entry_points("wpn_absent", &[])?, Some(Vec::new()));
+  assert_eq!(holding_entry_points(section("wpn_absent"), &[])?, Some(Vec::new()));
+
+  Ok(())
+}
+
+#[test]
+fn a_dialect_folding_section_names_narrows_to_every_spelling() -> XrfResult {
+  let folded: LtxDeclarationQuery = LtxDeclarationQuery {
+    is_section_case_folded: true,
+    ..section("wpn_ak74")
+  };
+
+  assert_eq!(
+    holding_entry_points(folded, &[])?,
+    paths(&["magazines\\w_am17.ltx", "plugins\\effects.ltx", "system.ltx"])
+  );
 
   Ok(())
 }
@@ -243,8 +295,11 @@ fn a_section_narrows_to_the_entry_points_above_the_configs_declaring_it() -> Xrf
 fn an_attachment_editing_a_section_narrows_nothing_away() -> XrfResult {
   // `![wpn_ak74]` only edits a section some config already declares, so the declaring roots still bound the answer.
   assert_eq!(
-    holding_entry_points("wpn_ak74", &[("mod_system_a.ltx", "![wpn_ak74]\ncost = 9000\n")])?,
-    Some(vec![String::from("plugins\\effects.ltx"), String::from("system.ltx")])
+    holding_entry_points(
+      section("wpn_ak74"),
+      &[("mod_system_a.ltx", "![wpn_ak74]\ncost = 9000\n")]
+    )?,
+    paths(&["magazines\\w_am17.ltx", "system.ltx"])
   );
 
   Ok(())
@@ -252,14 +307,20 @@ fn an_attachment_editing_a_section_narrows_nothing_away() -> XrfResult {
 
 #[test]
 fn an_attachment_that_can_create_a_section_names_no_bound() -> XrfResult {
-  // The root an attachment patches is not recorded, so a section it creates could be in any of them.
+  // The root an attachment patches is not recorded, so a section it creates could be in any of them - by declaring
+  // it, by `@`, or by naming it as a parent nothing in that root declares.
+  for patch in ["@[wpn_new]\n", "[wpn_new]\n", "![wpn_ak74]:wpn_new\n"] {
+    assert_eq!(
+      holding_entry_points(section("wpn_new"), &[("mod_system_a.ltx", patch)])?,
+      None,
+      "{patch}"
+    );
+  }
+
   assert_eq!(
-    holding_entry_points("wpn_new", &[("mod_system_a.ltx", "@[wpn_new]\n")])?,
-    None
-  );
-  assert_eq!(
-    holding_entry_points("wpn_new", &[("mod_system_a.ltx", "[wpn_new]\n")])?,
-    None
+    holding_entry_points(LtxDeclarationQuery::default(), &[])?,
+    None,
+    "a query naming no section bounds nothing"
   );
 
   Ok(())

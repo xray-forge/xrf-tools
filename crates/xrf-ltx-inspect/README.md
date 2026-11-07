@@ -86,18 +86,21 @@ reader reports every binding as undeclared rather than assuming a scheme exists 
 ## Find where something is written
 
 `LtxDeclarationReader::new` borrows an `LtxInventory` and a document source; `search` takes an `LtxDeclarationQuery` of
-an optional section, field and value. Section and field names match whole and case-sensitively, as resolution compares
-them, so a found section is the one `read_sections` resolves under the same name. A value matches as a case-sensitive
-substring. A query naming only a section answers headers; one naming a field or value answers field lines.
+an optional section, field and value. Names match whole, as resolution compares them, so a found section is the one
+`read_sections` resolves under the same name: a field name case-sensitively, a section name case-sensitively unless
+`is_section_case_folded` is set from `LtxDialect::is_folding_section_names`, which DLTX answers yes to. A value matches as
+a case-sensitive substring. A query naming only a section answers headers; one naming a field or value answers field
+lines.
 
 Each `LtxDeclaration` keeps the operation prefixes as written, on the statement and on its header, and `is_patch` marks
 either. It is authored text: several declarations of one field can exist, and only a resolution says which one wins. A
 config that will not parse is recorded in `unreadable` and the search goes on.
 
-`LtxDeclarationSearch::list_holding_entry_points` turns a section search into the entry points whose resolution can
-hold that section: those above each config with a header for it. It is a superset, so a caller resolves those few
-instead of every root. It answers `None` when an attachment holds a plain or `@` header, which can create the section in
-a root the dialect does not record.
+`LtxDeclarationReader::list_holding_entry_points` answers the entry points whose resolution can hold a query's section:
+those above each config with a header naming it, or naming it as a parent, since DLTX creates an empty section for a
+parent nothing declares. It is a superset, so a caller resolves those few instead of every root. It answers `None` when
+an attachment could add the section - a plain or `@` header for it, or one naming it as a parent - because the dialect
+does not record which root an attachment patches.
 
 ## Read source lines
 

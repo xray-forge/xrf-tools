@@ -5,8 +5,8 @@ use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxDocumentSource, LtxProject, LtxResolution};
 use xrf_ltx_inspect::{
-  LtxDeclarationQuery, LtxDeclarationReader, LtxDeclarationSearch, LtxInventory, LtxInventoryReader,
-  LtxResolvedDiagnostic, LtxResolvedField, LtxResolvedFieldOrigin, LtxResolvedSection, LtxRootReader,
+  LtxDeclarationQuery, LtxDeclarationReader, LtxInventory, LtxInventoryReader, LtxResolvedDiagnostic, LtxResolvedField,
+  LtxResolvedFieldOrigin, LtxResolvedSection, LtxRootReader,
 };
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
@@ -119,9 +119,9 @@ impl InspectCommand {
   /// nothing to do with the weapon. The first is still the answer; the others are named so a person can ask again with
   /// `--entry`.
   ///
-  /// Which entry points can hold it comes from the headers written for it, read without resolving anything, so only
-  /// the roots above a declaring config are resolved. Where an attachment could create the section, nothing bounds
-  /// that and every entry point is tried. The order is the project's either way, so the answer does not depend on
+  /// Which entry points can hold it comes from the headers naming it or naming it as a parent, read without resolving
+  /// anything, so only the roots above those configs are resolved. Where an attachment could add the section, nothing
+  /// bounds that and every entry point is tried. The order is the project's either way, so the answer does not depend on
   /// which search found it.
   ///
   /// # Errors
@@ -206,15 +206,15 @@ impl InspectCommand {
   fn list_holding_entry_points(project: &LtxProject, section: &str) -> XrfResult<Option<HashSet<String>>> {
     let source = project.document_source();
     let inventory: LtxInventory = LtxInventoryReader::new(project, &source as &dyn LtxDocumentSource).read()?;
-    let search: LtxDeclarationSearch = LtxDeclarationReader::new(&inventory, &source as &dyn LtxDocumentSource)
-      .search(&LtxDeclarationQuery {
-        section: Some(String::from(section)),
-        ..LtxDeclarationQuery::default()
-      })?;
+    let query: LtxDeclarationQuery = LtxDeclarationQuery {
+      section: Some(String::from(section)),
+      is_section_case_folded: project.get_dialect().is_folding_section_names(),
+      ..LtxDeclarationQuery::default()
+    };
 
     Ok(
-      search
-        .list_holding_entry_points(&inventory)
+      LtxDeclarationReader::new(&inventory, &source as &dyn LtxDocumentSource)
+        .list_holding_entry_points(&query)?
         .map(|holding| holding.into_iter().collect()),
     )
   }

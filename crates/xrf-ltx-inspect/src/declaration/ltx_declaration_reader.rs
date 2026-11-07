@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::sync::Arc;
 
 use xrf_error::{XrfError, XrfResult};
@@ -6,7 +7,7 @@ use xrf_ltx::{LtxDocument, LtxDocumentSource, LtxItemKind, LtxSectionOperation};
 use crate::declaration::{
   LtxDeclaration, LtxDeclarationQuery, LtxDeclarationSearch, LtxDeclarationStatement, LtxUnreadableConfig,
 };
-use crate::inventory::{LtxInventory, LtxInventoryFile};
+use crate::inventory::{LtxInventory, LtxInventoryFile, LtxInventoryRole};
 use crate::structure::LtxStructureParseError;
 
 /// Searches every config an inventory holds for the statements that write a section or a field.
@@ -36,14 +37,8 @@ impl<'a> LtxDeclarationReader<'a> {
     let mut unreadable: Vec<LtxUnreadableConfig> = Vec::new();
 
     for file in &self.inventory.files {
-      let document: Arc<LtxDocument> = match self.source.read_document(&file.path) {
-        Ok(Some(document)) => document,
-        Ok(None) => {
-          return Err(XrfError::new_read_error(format!(
-            "Failed to search ltx declarations, '{}' is not in scope",
-            file.path
-          )));
-        }
+      let document: Arc<LtxDocument> = match self.read_document(file) {
+        Ok(document) => document,
         Err(XrfError::LtxParse { line, col, message }) => {
           unreadable.push(LtxUnreadableConfig {
             path: file.path.clone(),
@@ -63,6 +58,87 @@ impl<'a> LtxDeclarationReader<'a> {
       declarations,
       unreadable,
     })
+  }
+
+  /// Entry points whose resolution can hold the section `query` names, sorted, or `None` when nothing bounds them.
+  ///
+  /// A superset of the entry points that do hold it, read from headers without resolving anything, so a caller can
+  /// resolve those few rather than every root of the tree. A section reaches a resolution two ways, and both count:
+  /// a header naming it, compared as `query` compares section names, and a header naming it as a parent, compared
+  /// exactly as both dialects compare parents - where nothing declares that parent, the engine creates it empty. Each
+  /// counts through the entry points above its config. A config that will not parse names none, and needs to: neither
+  /// it nor anything including it resolves.
+  ///
+  /// `None` when an attachment could add the section to a root, since a dialect's attachment plan drops which root
+  /// each attachment patches: a plain or `@` header naming it creates it, and naming it as a parent can. An
+  /// attachment's `!` or `!!` header for it only edits a section some config already declares. A query naming no
+  /// section bounds nothing either.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a config the inventory lists is no longer in scope, or cannot be read for any reason other
+  /// than its own syntax.
+  pub fn list_holding_entry_points(&self, query: &LtxDeclarationQuery) -> XrfResult<Option<Vec<String>>> {
+    let Some(section) = query.section.as_deref() else {
+      return Ok(None);
+    };
+
+    let creating: [LtxSectionOperation; 2] = [LtxSectionOperation::Declare, LtxSectionOperation::SafeOverride];
+    let mut holding: BTreeSet<String> = BTreeSet::new();
+
+    for file in &self.inventory.files {
+      let document: Arc<LtxDocument> = match self.read_document(file) {
+        Ok(document) => document,
+        Err(XrfError::LtxParse { .. }) => continue,
+        Err(error) => return Err(error),
+      };
+      let is_attachment: bool = matches!(file.role, LtxInventoryRole::Attachment);
+
+      for item in document.get_items() {
+        let LtxItemKind::Section {
+          name,
+          operation,
+          parents,
+          ..
+        } = &item.kind
+        else {
+          continue;
+        };
+
+        let is_named: bool = query.matches_section_name(name);
+        let is_parent: bool = parents.iter().any(|parent| &**parent == section);
+
+        if !is_named && !is_parent {
+          continue;
+        }
+
+        if !is_attachment {
+          holding.extend(self.inventory.list_entry_points_of(&file.path));
+
+          break;
+        }
+
+        if is_parent || creating.contains(operation) {
+          return Ok(None);
+        }
+      }
+    }
+
+    Ok(Some(holding.into_iter().collect()))
+  }
+
+  /// One listed config's document.
+  ///
+  /// A parse error passes through for the caller to judge; a config the inventory lists but the source no longer
+  /// holds is an error, since the inventory and the source were read from one project.
+  fn read_document(&self, file: &LtxInventoryFile) -> XrfResult<Arc<LtxDocument>> {
+    match self.source.read_document(&file.path)? {
+      Some(document) => Ok(document),
+      None => Err(XrfError::new_read_error(format!(
+        "Failed to read ltx declarations, '{}' is not in scope",
+        file.path
+      ))),
+    }
   }
 
   /// The statements of one document answering `query`, appended in document order.
