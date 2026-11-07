@@ -49,7 +49,12 @@ for an object referencing motion libraries, else `MT_SKELETON_RIGID`), the descr
 name, parent and box, its physics with the joint limits stored as the physics engine reads them, the class script, the
 LODs and the motion references. A bone's box is fitted along the bone's own axes around the vertices that lead with
 it, where the export fits the smallest box, so it holds the same vertices and is no smaller. The triangle order the
-engine draws in is the build's own, and an object embedding its own motions is refused for now.
+engine draws in is the build's own.
+
+An object's own motions are written as `ExportMotions` writes them: every bone posed at each frame from its channels,
+its rotation quantised to 16 bits and its translation to 8 or 16 within its range, or held where it never changes,
+then how each motion plays and the bone parts it plays on. A motion moving the whole object through its root bone is
+refused for now.
 
 ## Checks
 

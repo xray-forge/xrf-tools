@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
+use crate::quaternion::Quaternion;
 use crate::vector_3d::Vector3d;
 
 /// An `Fmatrix` stored without its fourth column, as `NET_Packet::w_matrix` writes one: the three axis rows `i`, `j`
@@ -94,6 +95,71 @@ impl Affine3d {
     }
   }
 
+  /// The rotation as a quaternion, `Fquaternion::set(const Fmatrix&)`: from the trace where it is positive, else from
+  /// the largest diagonal element whose root clears `TRACE_QZERO_TOLERANCE`, in the engine's order of trying them. A
+  /// matrix none clears leaves the identity.
+  pub fn get_rotation(&self) -> Quaternion {
+    const TRACE_ZERO_TOLERANCE: f32 = 0.1;
+
+    let [m11, m12, m13]: [f32; 3] = self.x_axis.to_array();
+    let [m21, m22, m23]: [f32; 3] = self.y_axis.to_array();
+    let [m31, m32, m33]: [f32; 3] = self.z_axis.to_array();
+    let trace: f32 = m11 + m22 + m33;
+
+    if trace > 0.0 {
+      let root: f32 = (trace + 1.0).sqrt();
+      let scale: f32 = 0.5 / root;
+
+      return Quaternion {
+        x: (m32 - m23) * scale,
+        y: (m13 - m31) * scale,
+        z: (m21 - m12) * scale,
+        w: root * 0.5,
+      };
+    }
+
+    let from_x = || {
+      let root: f32 = (m11 - (m22 + m33) + 1.0).sqrt();
+      let scale: f32 = 0.5 / root;
+
+      (root > TRACE_ZERO_TOLERANCE).then_some(Quaternion {
+        x: root * 0.5,
+        y: (m12 + m21) * scale,
+        z: (m13 + m31) * scale,
+        w: (m32 - m23) * scale,
+      })
+    };
+    let from_y = || {
+      let root: f32 = (m22 - (m33 + m11) + 1.0).sqrt();
+      let scale: f32 = 0.5 / root;
+
+      (root > TRACE_ZERO_TOLERANCE).then_some(Quaternion {
+        x: (m21 + m12) * scale,
+        y: root * 0.5,
+        z: (m23 + m32) * scale,
+        w: (m13 - m31) * scale,
+      })
+    };
+    let from_z = || {
+      let root: f32 = (m33 - (m11 + m22) + 1.0).sqrt();
+      let scale: f32 = 0.5 / root;
+
+      (root > TRACE_ZERO_TOLERANCE).then_some(Quaternion {
+        x: (m31 + m13) * scale,
+        y: (m32 + m23) * scale,
+        z: root * 0.5,
+        w: (m21 - m12) * scale,
+      })
+    };
+    let found: Option<Quaternion> = match (m11 > m22, m33 > m11) {
+      (_, true) => from_z().or_else(from_x).or_else(from_y),
+      (true, false) => from_x().or_else(from_z).or_else(from_y),
+      (false, false) => from_y().or_else(from_z).or_else(from_x),
+    };
+
+    found.unwrap_or(Quaternion::IDENTITY)
+  }
+
   /// The inverse of a rotation and translation, its axes transposed: valid only while the axes stay orthonormal.
   pub fn inverse_rigid(&self) -> Self {
     let axes: [Vector3d; 3] = [self.x_axis, self.y_axis, self.z_axis];
@@ -179,6 +245,30 @@ mod tests {
       Affine3d::from_xyz_inverse(&Vector3d::new(0.0, -std::f32::consts::FRAC_PI_2, 0.0)),
       turned
     );
+  }
+
+  #[test]
+  fn takes_the_rotation_from_the_trace_or_the_largest_diagonal_element() {
+    use std::f32::consts::{FRAC_1_SQRT_2, FRAC_PI_2, PI};
+
+    use crate::quaternion::Quaternion;
+
+    let rotation = |heading: f32, pitch: f32, bank: f32| {
+      let quaternion: Quaternion = Affine3d::from_heading_pitch_bank(heading, pitch, bank).get_rotation();
+
+      [quaternion.x, quaternion.y, quaternion.z, quaternion.w]
+    };
+    let is_near = |found: [f32; 4], expected: [f32; 4]| found.iter().zip(expected).all(|(a, b)| (a - b).abs() <= 1e-5);
+
+    // A quarter heading keeps a positive trace; half turns leave the largest of y, z or x to divide by.
+    assert!(is_near(
+      rotation(FRAC_PI_2, 0.0, 0.0),
+      [0.0, FRAC_1_SQRT_2, 0.0, FRAC_1_SQRT_2]
+    ));
+    assert!(is_near(rotation(PI, 0.0, 0.0), [0.0, 1.0, 0.0, 0.0]));
+    assert!(is_near(rotation(0.0, 0.0, PI), [0.0, 0.0, 1.0, 0.0]));
+    assert!(is_near(rotation(0.0, PI, 0.0), [1.0, 0.0, 0.0, 0.0]));
+    assert_eq!(Affine3d::IDENTITY.get_rotation(), Quaternion::IDENTITY);
   }
 
   #[test]

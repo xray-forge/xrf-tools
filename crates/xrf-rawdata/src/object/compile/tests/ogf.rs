@@ -14,7 +14,7 @@ const SOURCE: &str = "props\\crate.object";
 
 /// A quad on [`chain`], one corner blended between its first two bones, with a class script, LODs, motion
 /// references, an authored description, and physics on its second bone.
-fn authored() -> XrfResult<EditableObjectFile> {
+pub(super) fn authored() -> XrfResult<EditableObjectFile> {
   let [a, b, c, d] = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 0.0, 1.0], [0.0, 0.0, 1.0]];
   let mut bones: Vec<EditableBone> = chain();
 
@@ -56,7 +56,7 @@ fn authored() -> XrfResult<EditableObjectFile> {
   Ok(authored)
 }
 
-fn compile(object: &EditableObjectFile) -> XrfResult<OgfFile> {
+pub(super) fn compile(object: &EditableObjectFile) -> XrfResult<OgfFile> {
   let source: ObjectCompileSource = ObjectCompileSource {
     source_file: String::from(SOURCE),
     convertor: String::from("xrf"),
