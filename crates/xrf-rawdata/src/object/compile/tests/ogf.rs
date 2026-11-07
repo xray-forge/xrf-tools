@@ -112,14 +112,33 @@ fn writes_an_ogf_the_reader_takes_whole() -> XrfResult {
 }
 
 #[test]
-fn boxes_each_bone_around_the_vertices_it_leads_in_its_rest_space() -> XrfResult {
+fn boxes_each_bone_around_every_vertex_linked_to_it_in_its_rest_space() -> XrfResult {
   let file: OgfFile = compile(&authored()?)?;
   let bones = &file.bones.as_ref().expect("Expect bones").bones;
+  let mut root_half: [f32; 3] = bones[0].obb.half_extents.to_array();
+  let near = |a: &[f32], b: &[f32]| a.iter().zip(b).all(|(a, b)| (a - b).abs() < 1e-6);
 
-  // Every vertex leads with the root, the lowest bone it follows; the others lead none and keep the empty box.
-  assert_eq!(bones[0].obb.center, Vector3d::new(0.5, 0.0, 0.5));
-  assert_eq!(bones[0].obb.half_extents, Vector3d::new(0.5, 0.0, 0.5));
+  root_half.sort_by(f32::total_cmp);
+
+  // Every corner follows the root, which boxes the flat quad; the corner blended onto the second bone is that bone's
+  // box alone, a point where it stands; the third bone follows none and keeps the empty box. The bones rest at the
+  // origin, so rest space is model space.
+  assert!(
+    near(&bones[0].obb.center.to_array(), &[0.5, 0.0, 0.5]),
+    "{:?}",
+    bones[0].obb
+  );
+  assert!(near(&root_half, &[0.0, 0.5, 0.5]), "{root_half:?}");
+  assert!(
+    near(&bones[1].obb.center.to_array(), &[0.0, 0.0, 1.0]),
+    "{:?}",
+    bones[1].obb
+  );
   assert_eq!(bones[1].obb.half_extents, Vector3d::ZERO);
+  assert_eq!(
+    (bones[2].obb.center, bones[2].obb.half_extents),
+    (Vector3d::ZERO, Vector3d::ZERO)
+  );
   assert_eq!(
     bones.iter().map(|bone| bone.parent.as_str()).collect::<Vec<_>>(),
     ["", "link", "lid"]

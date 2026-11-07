@@ -49,8 +49,11 @@ length and stores infinities, the compile builds a basis from the normal instead
 `ObjectCompiler::compile` writes the OGF from those children as the export writes it: the header (`MT_SKELETON_ANIM`
 for an object referencing motion libraries, else `MT_SKELETON_RIGID`), the description, a child per split, each bone's
 name, parent and box, its physics with the joint limits stored as the physics engine reads them, the class script, the
-LODs and the motion references. A bone's box is fitted along the bone's own axes around the vertices that lead with
-it, where the export fits the smallest box, so it holds the same vertices and is no smaller. Each child's triangles
+LODs and the motion references. A bone's box (`BoneBoxes`) is the smallest box flush to a face of the convex hull
+(`FlushBox`, over our own quickhull, `ConvexHull`) around every vertex linked to the bone, in its rest space, where the
+export fits Wild Magic's `MinBox3` around the vertices whose lowest bone it is: one answer for one input, smaller than
+vanilla's in sum, and far fewer vertices leave it as the model animates, so the culling bounds and decals on bodies
+hold better. Bullet hits do not read these boxes: they test the bones' physics shapes. Each child's triangles
 are ordered for the vertex cache (Forsyth's linear-speed optimisation, `VertexCacheOrder`) and its vertices numbered by
 first use, where the export took D3DX's closed optimiser: as few cache misses as vanilla's order, not its bytes.
 
