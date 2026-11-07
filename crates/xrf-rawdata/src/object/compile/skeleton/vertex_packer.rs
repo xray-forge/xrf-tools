@@ -14,15 +14,18 @@ use crate::object::compile::skeleton::skeleton_vertex::SkeletonVertex;
 /// only, so the grid decides which near vertices a corner can meet, and is kept as the export lays it out. A corner
 /// matching none takes the position of the last vertex it stood within the delta of, then is packed as a vertex of
 /// its own.
+///
+/// Indices are 32-bit here, where the export's are 16-bit and overflow silently past 65,535 vertices: a split too big
+/// for one OGF child is cut into several once its tangents are known (`SplitPartition`).
 pub(crate) struct VertexPacker {
   pub(crate) vertices: Vec<SkeletonVertex>,
-  pub(crate) faces: Vec<[u16; 3]>,
+  pub(crate) faces: Vec<[u32; 3]>,
   /// Faces left out: degenerate, or repeating a face already added.
   pub(crate) dropped_faces: usize,
   /// Each face's vertices sorted, which a face in any winding shares with every other winding of it.
-  face_sets: HashSet<[u16; 3]>,
+  face_sets: HashSet<[u32; 3]>,
   /// The vertices filed under each cell, in the order they were packed.
-  cells: Vec<Vec<u16>>,
+  cells: Vec<Vec<u32>>,
   minimum: Vector3d,
   scale: Vector3d,
   /// How far above itself on each axis a vertex is filed.
@@ -70,8 +73,7 @@ impl VertexPacker {
   ///
   /// # Errors
   ///
-  /// Returns an error when a corner stands outside the object's box, or the split outgrows the 16-bit indices an OGF
-  /// stores.
+  /// Returns an error when a corner stands outside the object's box, or the split outgrows 32-bit indices.
   pub(crate) fn add_face(&mut self, corners: &mut [SkeletonVertex; 3]) -> XrfResult {
     let is_near = |first: &Vector3d, second: &Vector3d| Self::is_within(first, second, Self::EPSILON);
 
@@ -84,12 +86,12 @@ impl VertexPacker {
       return Ok(());
     }
 
-    let face: [u16; 3] = [
+    let face: [u32; 3] = [
       self.pack(&mut corners[0])?,
       self.pack(&mut corners[1])?,
       self.pack(&mut corners[2])?,
     ];
-    let mut sorted: [u16; 3] = face;
+    let mut sorted: [u32; 3] = face;
 
     sorted.sort_unstable();
 
@@ -103,12 +105,12 @@ impl VertexPacker {
   }
 
   /// `VPack`: the vertex `corner` is, packed now when no similar one is.
-  fn pack(&mut self, corner: &mut SkeletonVertex) -> XrfResult<u16> {
+  fn pack(&mut self, corner: &mut SkeletonVertex) -> XrfResult<u32> {
     let cell: [u32; 3] = self.get_cell(&corner.position)?;
-    let mut near: Option<u16> = None;
+    let mut near: Option<u32> = None;
 
     for candidate in &self.cells[self.get_cell_index(cell)] {
-      let vertex: &SkeletonVertex = &self.vertices[usize::from(*candidate)];
+      let vertex: &SkeletonVertex = &self.vertices[*candidate as usize];
 
       if Self::is_within(&vertex.position, &corner.position, Self::POSITION_DELTA) {
         if Self::is_similar(vertex, corner) {
@@ -120,13 +122,11 @@ impl VertexPacker {
     }
 
     if let Some(near) = near {
-      corner.position = self.vertices[usize::from(near)].position;
+      corner.position = self.vertices[near as usize].position;
     }
 
-    let index: u16 = u16::try_from(self.vertices.len())
-      .ok()
-      .filter(|index| *index != u16::MAX)
-      .ok_or_else(|| XrfError::new_invalid_error("A skeleton split holds more vertices than 16-bit indices reach"))?;
+    let index: u32 = u32::try_from(self.vertices.len())
+      .map_err(|_| XrfError::new_invalid_error("A skeleton split holds more vertices than 32-bit indices reach"))?;
 
     self.vertices.push(corner.clone());
     self.file(index, cell)?;
@@ -135,8 +135,8 @@ impl VertexPacker {
   }
 
   /// Files a packed vertex under its cell and the cells one reach above it.
-  fn file(&mut self, index: u16, cell: [u32; 3]) -> XrfResult {
-    let position: Vector3d = self.vertices[usize::from(index)].position;
+  fn file(&mut self, index: u32, cell: [u32; 3]) -> XrfResult {
+    let position: Vector3d = self.vertices[index as usize].position;
     let above: [u32; 3] = self.get_cell(&(&position + &self.reach))?;
     let [x, y, z] = cell;
     let [x_above, y_above, z_above] = above;

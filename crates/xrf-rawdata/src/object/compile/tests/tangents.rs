@@ -57,8 +57,8 @@ fn splits_the_vertices_of_an_edge_the_texture_is_mirrored_across() -> XrfResult 
   assert_eq!(vertices.len(), 6);
   assert_ne!(faces[0][0], faces[1][0], "`a` split");
   assert_ne!(faces[0][2], faces[1][1], "`c` split");
-  assert!(is_near(&vertices[usize::from(faces[0][0])].tangent, &Vector3d::X));
-  assert!(is_near(&vertices[usize::from(faces[1][0])].tangent, &-&Vector3d::X));
+  assert!(is_near(&vertices[faces[0][0] as usize].tangent, &Vector3d::X));
+  assert!(is_near(&vertices[faces[1][0] as usize].tangent, &-&Vector3d::X));
 
   Ok(())
 }

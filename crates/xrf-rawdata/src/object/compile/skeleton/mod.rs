@@ -6,6 +6,7 @@ pub(crate) mod skeleton_ogf_writer;
 pub(crate) mod skeleton_split;
 pub(crate) mod skeleton_vertex;
 pub(crate) mod skin_corner;
+pub(crate) mod split_partition;
 pub(crate) mod tangent_basis;
 pub(crate) mod vertex_cache_order;
 pub(crate) mod vertex_packer;
