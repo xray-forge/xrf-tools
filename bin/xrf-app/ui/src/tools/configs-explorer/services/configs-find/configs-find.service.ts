@@ -22,9 +22,6 @@ export interface IConfigsFindQuery {
   value: string;
 }
 
-/** The query nothing has been typed into. */
-export const EMPTY_FIND_QUERY: IConfigsFindQuery = { field: "", section: "", value: "" };
-
 /**
  * Where the open project writes a section, a field or a value.
  *
@@ -33,11 +30,14 @@ export const EMPTY_FIND_QUERY: IConfigsFindQuery = { field: "", section: "", val
  */
 @Injectable()
 export class ConfigsFindService {
+  /** The query nothing has been typed into. */
+  private static readonly EMPTY_QUERY: IConfigsFindQuery = { field: "", section: "", value: "" };
+
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   /** The query as the panel shows it, searched or not. */
   @Observable()
-  public query: IConfigsFindQuery = EMPTY_FIND_QUERY;
+  public query: IConfigsFindQuery = ConfigsFindService.EMPTY_QUERY;
 
   /** What the last search found. */
   @Observable()
@@ -62,9 +62,9 @@ export class ConfigsFindService {
   @LatestFlow("results")
   public *find(): TFlow {
     const sessionId: Nullable<string> = this.projectService.project.sessionId;
-    const section: Nullable<string> = toAsked(this.query.section);
-    const field: Nullable<string> = toAsked(this.query.field);
-    const value: Nullable<string> = toAsked(this.query.value);
+    const section: Nullable<string> = ConfigsFindService.toAsked(this.query.section);
+    const field: Nullable<string> = ConfigsFindService.toAsked(this.query.field);
+    const value: Nullable<string> = ConfigsFindService.toAsked(this.query.value);
 
     if (!sessionId) {
       this.log.error("Cannot search configs with no project open");
@@ -104,7 +104,7 @@ export class ConfigsFindService {
    * @param section - Section name, as the document names it.
    */
   public async findSection(section: string): Promise<void> {
-    this.setQuery({ ...EMPTY_FIND_QUERY, section });
+    this.setQuery({ ...ConfigsFindService.EMPTY_QUERY, section });
 
     await this.find();
   }
@@ -116,21 +116,21 @@ export class ConfigsFindService {
     cancelFlow(this, "results");
 
     runInAction(() => {
-      this.query = EMPTY_FIND_QUERY;
+      this.query = ConfigsFindService.EMPTY_QUERY;
       this.results = this.results.asIdle(null);
     });
   }
-}
 
-/**
- * One field of the query as the backend takes it: as typed, or null when empty.
- *
- * Not trimmed: a header keeps its padding in the name it records, so `[ wpn_base ]` is a section of its own, and the
- * panel answers exactly what `ltx find` would.
- *
- * @param typed - The field's text.
- * @returns The text to ask for, or null for nothing of that kind.
- */
-function toAsked(typed: string): Nullable<string> {
-  return typed === "" ? null : typed;
+  /**
+   * One field of the query as the backend takes it: as typed, or null when empty.
+   *
+   * Not trimmed: a header keeps its padding in the name it records, so `[ wpn_base ]` is a section of its own, and the
+   * panel answers exactly what `ltx find` would.
+   *
+   * @param typed - The field's text.
+   * @returns The text to ask for, or null for nothing of that kind.
+   */
+  private static toAsked(typed: string): Nullable<string> {
+    return typed === "" ? null : typed;
+  }
 }
