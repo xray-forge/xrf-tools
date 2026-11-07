@@ -21,6 +21,11 @@ export enum EObjectInference {
    * the authored curves or which bones kept their world orientation.
    */
   MOTION_CURVES = "motionCurves",
+  /**
+   * A motion holding one key per bone more than it declares is as long as its keys: `blender-xray` declares one frame
+   * fewer than it samples for an action starting between frames, which the engine misreads.
+   */
+  MOTION_LENGTHS = "motionLengths",
 }
 
 /** Every `EObjectInference` as the spelling it crosses IPC as, for a value no member has narrowed. */

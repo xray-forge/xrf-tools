@@ -89,9 +89,11 @@ A root walk reaches chunks as the engine does, and `OgfChunkAccess` says how: a 
 (`find_chunk`) is read off the visual's own reader, its declared size only saying where the next one starts and its
 compression mark ignored; a chunk it opens is bounded and would be decompressed. `OgfResidue` is where the bytes depart
 from a well-formed tree without the engine noticing, and `OgfResidueCause` says why that is invisible to it: a fragment
-too short for a header, a motion reference cut past the count the loader reads, or a last motion refs chunk whose size
-understates or overstates the references it holds, which end exactly where the file does. A mark on a found chunk is
-dropped from its id; one on an opened chunk, any other chunk the file cuts short, and any other departure are refused.
+too short for a header, bytes after the last chunk headed by an id no loader asks for (text appended to a visual), a
+motion reference cut past the count the loader reads, a last motion refs chunk whose size understates or overstates the
+references it holds, which end exactly where the file does, or a last LODs chunk overstating a line that ends within
+the file. A mark on a found chunk is dropped from its id; one on an opened chunk, any other chunk the file cuts short,
+and any other departure are refused.
 
 `OgfNormalization::normalize` is the one definition of a well-formed visual, so a patch and `ogf fix` agree on it: every
 root chunk written back as the walk reached it, without a meaningless mark, sized to the payload the engine reads, and

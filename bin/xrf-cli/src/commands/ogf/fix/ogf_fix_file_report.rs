@@ -7,9 +7,9 @@ use xrf_ogf::OgfResidue;
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OgfFixFileReport {
-  /// Why the residue was inert to the engine: `split-motion-ref` or `trailing-fragment` for bytes dropped,
-  /// `understated-motion-refs` or `overstated-motion-refs` for a size corrected. Absent when the only discarded bytes sat
-  /// inside the motion refs chunk, past its count.
+  /// Why the residue was inert to the engine: `split-motion-ref`, `trailing-fragment` or `unread-trailing-chunk` for
+  /// bytes dropped, `understated-motion-refs`, `overstated-motion-refs` or `overstated-lods` for a size corrected.
+  /// Absent when the only discarded bytes sat inside the motion refs chunk, past its count.
   cause: Option<String>,
   destination: String,
   /// The motion reference path the residue completed, for the split-reference shape only.
@@ -39,7 +39,7 @@ impl OgfFixFileReport {
     }
   }
 
-  /// Bytes the source carried that the engine never read, inside the motion refs chunk and after it.
+  /// Bytes the source carried that the engine never read, inside the motion refs chunk and after the last chunk.
   pub fn discarded_size(&self) -> usize {
     self.original_size.saturating_sub(self.normalized_size)
   }

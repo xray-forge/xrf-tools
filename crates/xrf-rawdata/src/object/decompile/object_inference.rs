@@ -22,4 +22,7 @@ pub enum ObjectInference {
   /// The object's own motions are keyed at every frame, linearly between them: the OGF keeps the sampled poses, not
   /// the authored curves or which bones kept their world orientation.
   MotionCurves,
+  /// A motion holding one key per bone more than it declares is as long as its keys: `blender-xray` declares one frame
+  /// fewer than it samples for an action starting between frames, which the engine misreads.
+  MotionLengths,
 }

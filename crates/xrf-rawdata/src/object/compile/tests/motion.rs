@@ -188,6 +188,35 @@ fn decompiles_its_motions_into_keys_that_compile_alike() -> XrfResult {
 }
 
 #[test]
+fn reads_a_motion_declaring_one_frame_fewer_than_its_keys_at_their_length() -> XrfResult {
+  // As `blender-xray` writes an action starting between frames: 31 keys a run under a header of 30.
+  let sampled: OgfFile = compile(&animated(EditableMotion::STOP_AT_END_FLAG)?)?;
+  let declaring = |count: u32| -> XrfResult<OgfFile> {
+    let mut file: OgfFile = compile(&animated(EditableMotion::STOP_AT_END_FLAG)?)?;
+
+    file.motions.as_mut().expect("Expect motions").motions[0].count = count;
+
+    Ok(file)
+  };
+  let decompile: ObjectDecompile = ObjectDecompiler::decompile(&declaring(30)?)?;
+  let compiled: OgfFile = compile(&decompile.object)?;
+
+  assert!(decompile.inferred.contains(&ObjectInference::MotionLengths));
+  assert_eq!(compiled.motions.expect("Expect motions").motions[0].count, 31);
+  assert!(
+    ObjectDecompiler::decompile(&declaring(29)?).is_err(),
+    "expect keys two frames longer than declared refused"
+  );
+  assert!(
+    !ObjectDecompiler::decompile(&sampled)?
+      .inferred
+      .contains(&ObjectInference::MotionLengths)
+  );
+
+  Ok(())
+}
+
+#[test]
 fn refuses_a_motion_moving_the_object_through_its_root() -> XrfResult {
   let error: String = compile(&animated(EditableMotion::ROOT_MOVER_FLAG)?)
     .expect_err("expect a root mover to be refused")

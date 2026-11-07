@@ -6,6 +6,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_utils::decode_w1251_field_to_string;
 
 use crate::chunks::skeleton::ogf_kinematics_chunk::OgfKinematicsChunk;
+use crate::chunks::skeleton::ogf_lods_chunk::OgfLodsChunk;
 use crate::residue::ogf_chunk_access::OgfChunkAccess;
 use crate::residue::ogf_residue_cause::OgfResidueCause;
 
@@ -105,10 +106,11 @@ impl OgfResidue {
       return Ok(residue);
     }
 
-    match Self::clip_overstated_motion_refs::<T, _>(reader, chunks, position, &bytes) {
-      Some(residue) => Ok(residue),
-      None => Err(error),
+    if let Some(residue) = Self::clip_overstated_last_chunk::<T, _>(reader, chunks, position, &bytes) {
+      return Ok(residue);
     }
+
+    Self::skip_unread_trailing_chunk::<T>(position, bytes).ok_or(error)
   }
 
   /// The motion reference path these bytes complete, when they complete one past the count the loader reads.
@@ -186,13 +188,17 @@ impl OgfResidue {
     })
   }
 
-  /// Clips a last motion refs chunk that declares more than the file holds to the bytes it does, when its references
-  /// end exactly where the file does: `CKinematicsAnimated::Load` finds the chunk and reads them off the visual's own
-  /// reader, so the size it overstates is never used.
+  /// Clips a last chunk that declares more than the file holds to the bytes it does, where the engine never reads past
+  /// them:
+  ///
+  /// - motion refs whose references end exactly where the file does: `CKinematicsAnimated::Load` finds the chunk and
+  ///   reads them off the visual's own reader, so the size it overstates is never used;
+  /// - LODs whose line ends within the file: `CKinematics::Load` opens the chunk, but its `r_string` stops at the line's
+  ///   end.
   ///
   /// Any other chunk cut short stays refused, found or opened: a payload that does not read whole is a truncated file,
   /// not a size the engine ignores.
-  fn clip_overstated_motion_refs<T: ByteOrder, D: ChunkDataSource>(
+  fn clip_overstated_last_chunk<T: ByteOrder, D: ChunkDataSource>(
     reader: &ChunkReader<D>,
     chunks: &mut Vec<ChunkReader<D>>,
     position: u64,
@@ -202,7 +208,7 @@ impl OgfResidue {
     let declared: u32 = T::read_u32(bytes.get(4..8)?);
     let payload: u64 = bytes.len() as u64 - CHUNK_HEADER_SIZE;
 
-    if !Self::is_kinematics(chunk_id) || u64::from(declared) <= payload {
+    if u64::from(declared) <= payload {
       return None;
     }
 
@@ -213,21 +219,39 @@ impl OgfResidue {
       position: start,
       data: reader.data.slice(start..start + payload),
     };
-
-    if !OgfKinematicsChunk::read::<T, _>(&mut clipped.clone(), chunk_id)
-      .ok()?
-      .trailing
-      .is_empty()
-    {
+    let cause: OgfResidueCause = if Self::is_kinematics(chunk_id) {
+      OgfKinematicsChunk::read::<T, _>(&mut clipped.clone(), chunk_id)
+        .ok()?
+        .trailing
+        .is_empty()
+        .then_some(OgfResidueCause::OverstatedMotionRefs { declared })?
+    } else if chunk_id == OgfLodsChunk::CHUNK_ID {
+      bytes[CHUNK_HEADER_SIZE as usize..]
+        .iter()
+        .any(|byte| matches!(byte, b'\r' | b'\n'))
+        .then_some(OgfResidueCause::OverstatedLods { declared })?
+    } else {
       return None;
-    }
+    };
 
     chunks.push(clipped);
 
     Some(Self {
       position,
       bytes: Vec::new(),
-      cause: OgfResidueCause::OverstatedMotionRefs { declared },
+      cause,
+    })
+  }
+
+  /// Bytes after the last chunk whose header names an id no loader reads, which `find_chunk` skips by their declared
+  /// size, past the file's end, and so never reads.
+  fn skip_unread_trailing_chunk<T: ByteOrder>(position: u64, bytes: Vec<u8>) -> Option<Self> {
+    let id: u32 = T::read_u32(bytes.get(..4)?);
+
+    OgfChunkAccess::of(id & CHUNK_ID_MASK).is_none().then_some(Self {
+      position,
+      bytes,
+      cause: OgfResidueCause::UnreadTrailingChunk { id },
     })
   }
 

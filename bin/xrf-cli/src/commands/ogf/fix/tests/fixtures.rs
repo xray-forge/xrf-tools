@@ -97,11 +97,13 @@ pub(super) fn split_motion_ref() -> XrfResult<Vec<u8>> {
   Ok(bytes)
 }
 
-/// Trailing bytes long enough to be a header and belonging to nothing, which the reader refuses.
+/// Trailing bytes headed as a user data chunk, which the engine opens, cut short: the reader refuses them.
 pub(super) fn unexplained_residue() -> XrfResult<Vec<u8>> {
   let mut bytes: Vec<u8> = well_formed()?;
 
-  bytes.extend_from_slice(b"alker_scenario_animation\0");
+  bytes.extend_from_slice(&17u32.to_le_bytes());
+  bytes.extend_from_slice(&4343u32.to_le_bytes());
+  bytes.extend_from_slice(b"[collide]");
 
   Ok(bytes)
 }
