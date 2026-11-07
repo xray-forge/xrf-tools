@@ -2,13 +2,19 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
+use lzokay::compress::Dict;
+use rayon::prelude::*;
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::{JobHandle, JobOutcome, JobScope};
 use xrf_utils::format_path;
 
 use crate::pack::config::ArchivePackConfig;
-use crate::pack::source::{ArchivePackNameTable, ArchivePackPayloads, ArchivePackSource, ArchivePackSourceCollector};
-use crate::pack::volume::{ArchiveDescriptorTable, ArchivePublishedSet, ArchiveVolumeLayout, ArchiveVolumeWriter};
+use crate::pack::source::{
+  ArchivePackEntry, ArchivePackNameTable, ArchivePackPayloads, ArchivePackSource, ArchivePackSourceCollector,
+};
+use crate::pack::volume::{
+  ArchiveDescriptorTable, ArchivePreparedEntry, ArchivePublishedSet, ArchiveVolumeLayout, ArchiveVolumeWriter,
+};
 use crate::pack::{ArchivePackNarrator, ArchivePackOptions, ArchivePackResult};
 use crate::path::is_inside_directory;
 
@@ -16,6 +22,10 @@ use crate::path::is_inside_directory;
 pub struct ArchivePacker;
 
 impl ArchivePacker {
+  /// Entries whose text is compressed ahead of the writer at once: enough to keep every worker busy, few enough that
+  /// the compressed text held while the writer catches up stays small.
+  const PREPARED_WINDOW: usize = 256;
+
   /// Pack the configured source into `<name>.db<N>` volumes and report what was written.
   pub fn pack(config: &ArchivePackConfig) -> XrfResult<ArchivePackResult> {
     Self::pack_opt(config, ArchivePackOptions::default())
@@ -153,6 +163,37 @@ impl ArchivePacker {
     Ok(result)
   }
 
+  /// Reads and compresses a window's text on every worker, one answer per entry of it in order, `None` for the entries
+  /// stored as read, which are read as they are placed.
+  ///
+  /// Compressing is the cost of a pack, and an entry compresses the same wherever it lands, so its text is prepared
+  /// ahead of the writer. Only the text: everything else is stored as read, and reading a window of textures ahead would
+  /// hold all of them at once for nothing. A worker's coder is built on its first text, since it is a large zeroed
+  /// table, and a window holding no text never reaches the pool at all.
+  fn prepare_text(
+    config: &ArchivePackConfig,
+    payloads: &ArchivePackPayloads,
+    window: &[ArchivePackEntry],
+  ) -> Vec<Option<XrfResult<ArchivePreparedEntry>>> {
+    if !window
+      .iter()
+      .any(|entry| ArchivePreparedEntry::is_compressed_kind(config, entry))
+    {
+      return window.iter().map(|_| None).collect();
+    }
+
+    window
+      .par_iter()
+      .map_init(
+        || None,
+        |dict: &mut Option<Box<Dict>>, entry| {
+          ArchivePreparedEntry::is_compressed_kind(config, entry)
+            .then(|| ArchivePreparedEntry::read_coded(config, payloads, entry, dict.get_or_insert_with(Dict::new)))
+        },
+      )
+      .collect()
+  }
+
   /// Write one already-decided name table into the destination's volume set.
   ///
   /// # Errors
@@ -178,22 +219,31 @@ impl ArchivePacker {
     {
       let writing: JobScope = job.enter(write_phase, Some(names.get_files().len() as u64));
 
-      for entry in names.get_files() {
-        // Between entries: a payload half-written into a volume would leave the descriptor table describing bytes
-        // that are not there, which is worse than a volume that simply ends early.
-        if job.is_cancelled() {
-          let mut abandoned: ArchivePackResult = writer.abandon();
+      for window in names.get_files().chunks(Self::PREPARED_WINDOW) {
+        let prepared: Vec<Option<XrfResult<ArchivePreparedEntry>>> = Self::prepare_text(config, payloads, window);
 
-          abandoned.outcome = JobOutcome::Cancelled;
+        for (entry, prepared) in window.iter().zip(prepared) {
+          // Between entries: a payload half-written into a volume would leave the descriptor table describing bytes
+          // that are not there, which is worse than a volume that simply ends early.
+          if job.is_cancelled() {
+            let mut abandoned: ArchivePackResult = writer.abandon();
 
-          return Ok(abandoned);
+            abandoned.outcome = JobOutcome::Cancelled;
+
+            return Ok(abandoned);
+          }
+
+          // Placed in order, so naming the current entry is meaningful here in a way it is not for a parallel unpack.
+          job.set_detail(Some(entry.name.clone()));
+
+          let prepared: ArchivePreparedEntry = match prepared {
+            Some(prepared) => prepared?,
+            None => ArchivePreparedEntry::read(payloads, entry)?,
+          };
+
+          writer.write_entry(entry, prepared)?;
+          writing.advance();
         }
-
-        // Sequential, so naming the current entry is meaningful here in a way it is not for a parallel unpack.
-        job.set_detail(Some(entry.name.clone()));
-
-        writer.write_entry(entry)?;
-        writing.advance();
       }
     }
 
