@@ -4,6 +4,7 @@ mod archive_constants;
 mod archive_descriptor;
 mod archive_file_descriptor;
 mod archive_header;
+mod archive_header_cipher;
 mod archive_header_item;
 mod archive_metadata;
 mod archive_reader;

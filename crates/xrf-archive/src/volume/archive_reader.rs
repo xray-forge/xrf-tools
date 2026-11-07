@@ -18,6 +18,7 @@ use crate::volume::archive_constants::{
   CHUNK_ID_FILE_DESCRIPTORS_READ, CHUNK_ID_METADATA_READ, DESCRIPTOR_ROW_FIELDS_SIZE, MAXIMUM_ENTRY_NAME_SIZE,
 };
 use crate::volume::archive_header::ArchiveHeader;
+use crate::volume::archive_header_cipher::ArchiveHeaderCipher;
 use crate::volume::archive_metadata::ArchiveMetadata;
 use crate::volume::{ArchiveDescriptor, ArchiveFileDescriptor};
 
@@ -95,7 +96,9 @@ impl ArchiveReader {
 
   /// Walks the volume's top-level chunks, keeping the name table and the metadata and skipping the rest.
   fn read_header(&mut self, volume_size: u64) -> XrfResult<ArchiveHeader> {
-    let mut files: Option<HashMap<Arc<str>, ArchiveFileDescriptor>> = None;
+    // The name table is kept as stored until the walk ends: whether it is enciphered depends on whether any chunk
+    // carried metadata, wherever that chunk stands.
+    let mut descriptors: Option<(Vec<u8>, bool)> = None;
     let mut root_path: Option<String> = None;
 
     loop {
@@ -121,9 +124,7 @@ impl ArchiveReader {
       let is_compressed: bool = (raw_chunk_id & CHUNK_ID_COMPRESSED_MASK) != 0;
 
       if CHUNK_ID_FILE_DESCRIPTORS_READ.contains(&chunk_id) {
-        let chunk: Vec<u8> = self.read_chunk(chunk_size, is_compressed)?;
-
-        files = Some(Self::read_file_descriptors(&mut Cursor::new(chunk.as_slice()))?);
+        descriptors = Some((self.read_stored_chunk(chunk_size)?, is_compressed));
       } else if CHUNK_ID_METADATA_READ.contains(&chunk_id) {
         let chunk: Vec<u8> = self.read_chunk(chunk_size, is_compressed)?;
         let metadata: String = decode_bytes_to_string_without_bom_handling(&chunk, Self::header_encoding())?;
@@ -140,12 +141,14 @@ impl ArchiveReader {
       }
     }
 
-    let files: HashMap<Arc<str>, ArchiveFileDescriptor> = files.ok_or_else(|| {
+    let (stored, is_compressed): (Vec<u8>, bool) = descriptors.ok_or_else(|| {
       XrfError::new_read_error(format!(
         "archive {} holds no file descriptors chunk",
         format_path(&self.path)
       ))
     })?;
+    let files: HashMap<Arc<str>, ArchiveFileDescriptor> =
+      self.read_name_table(&stored, is_compressed, root_path.is_some())?;
 
     Ok(ArchiveHeader {
       mount_root: ArchiveMetadata::to_mount_root(root_path.as_deref()),
@@ -156,15 +159,64 @@ impl ArchiveReader {
 
   /// Reads the payload of the chunk the file is positioned at, decompressing it when its id says so.
   fn read_chunk(&mut self, size: u32, is_compressed: bool) -> XrfResult<Vec<u8>> {
-    let mut buffer: Vec<u8> = new_declared_vec(size as usize, "an archive header chunk")?;
-
-    self.file.read_exact(buffer.as_mut_slice())?;
+    let buffer: Vec<u8> = self.read_stored_chunk(size)?;
 
     if is_compressed {
       LzhufDecoder::decompress(&buffer)
     } else {
       Ok(buffer)
     }
+  }
+
+  /// Reads the payload of the chunk the file is positioned at, as stored.
+  fn read_stored_chunk(&mut self, size: u32) -> XrfResult<Vec<u8>> {
+    let mut buffer: Vec<u8> = new_declared_vec(size as usize, "an archive header chunk")?;
+
+    self.file.read_exact(buffer.as_mut_slice())?;
+
+    Ok(buffer)
+  }
+
+  /// The entries a stored name table lists. A compressed one in a volume with no metadata, other than an `.xdb`, is
+  /// Shadow of Chornobyl's and enciphered, as `CLocatorAPI::LoadArchive` assumes: deciphered with the worldwide key,
+  /// else the Russian one, the key that yields a table that decompresses and reads whole winning.
+  fn read_name_table(
+    &self,
+    stored: &[u8],
+    is_compressed: bool,
+    has_metadata: bool,
+  ) -> XrfResult<HashMap<Arc<str>, ArchiveFileDescriptor>> {
+    let read = |bytes: &[u8]| -> XrfResult<HashMap<Arc<str>, ArchiveFileDescriptor>> {
+      let table: Vec<u8> = if is_compressed {
+        LzhufDecoder::decompress(bytes)?
+      } else {
+        bytes.to_vec()
+      };
+
+      Self::read_file_descriptors(&mut Cursor::new(table.as_slice()))
+    };
+    let is_xdb: bool = self
+      .path
+      .extension()
+      .is_some_and(|extension| extension.to_string_lossy().to_ascii_lowercase().starts_with("xdb"));
+
+    if !is_compressed || has_metadata || is_xdb {
+      return read(stored);
+    }
+
+    let mut first_error: Option<XrfError> = None;
+
+    for cipher in ArchiveHeaderCipher::ALL {
+      match read(&cipher.decode(stored)) {
+        Ok(files) => return Ok(files),
+        Err(error) => {
+          first_error.get_or_insert(error);
+        }
+      }
+    }
+
+    // A volume no key opens may still be a plain one some packer wrote without metadata.
+    read(stored).map_err(|error| first_error.unwrap_or(error))
   }
 
   fn read_file_descriptors<T: Read>(reader: &mut T) -> XrfResult<HashMap<Arc<str>, ArchiveFileDescriptor>> {
@@ -223,9 +275,12 @@ mod tests {
   use std::path::PathBuf;
 
   use byteorder::{LittleEndian, WriteBytesExt};
+  use xrf_chunk::CHUNK_ID_COMPRESSED_MASK;
+  use xrf_lzhuf::LzhufEncoder;
   use xrf_test_utils::GeneratedResources;
 
   use super::ArchiveReader;
+  use crate::volume::archive_header_cipher::ArchiveHeaderCipher;
 
   /// Writes raw bytes as a volume file, since malformed input is a byte-level condition.
   fn volume(name: &str, bytes: &[u8]) -> PathBuf {
@@ -348,6 +403,43 @@ mod tests {
         .read_archive()
         .is_err()
     );
+  }
+
+  #[test]
+  fn reads_a_name_table_shadow_of_chornobyl_enciphered() {
+    // One entry, compressed and enciphered, in a volume with no metadata: a Russian release's volume.
+    let name: &[u8] = b"meshes\\crate.ogf";
+    let mut descriptors: Vec<u8> = Vec::new();
+
+    descriptors
+      .write_u16::<LittleEndian>(16 + name.len() as u16)
+      .expect("header size");
+    descriptors.write_u32::<LittleEndian>(4).expect("size real");
+    descriptors.write_u32::<LittleEndian>(4).expect("size compressed");
+    descriptors.write_u32::<LittleEndian>(7).expect("crc");
+    descriptors.extend_from_slice(name);
+    descriptors.write_u32::<LittleEndian>(0).expect("offset");
+
+    let stored: Vec<u8> =
+      ArchiveHeaderCipher::Russian.encode(&LzhufEncoder::compress(&descriptors).expect("table compresses"));
+    let mut bytes: Vec<u8> = Vec::new();
+
+    bytes
+      .write_u32::<LittleEndian>(CHUNK_ID_COMPRESSED_MASK | 1)
+      .expect("chunk id");
+    bytes
+      .write_u32::<LittleEndian>(stored.len() as u32)
+      .expect("chunk size");
+    bytes.extend_from_slice(&stored);
+
+    let path: PathBuf = volume("enciphered.db0", &bytes);
+    let (descriptor, files) = ArchiveReader::from_path(&path)
+      .expect("reader opens")
+      .read_archive()
+      .expect("the name table deciphers");
+
+    assert_eq!(descriptor.entries, 1);
+    assert!(files.contains_key("meshes\\crate.ogf"), "{:?}", files.keys());
   }
 
   #[test]
