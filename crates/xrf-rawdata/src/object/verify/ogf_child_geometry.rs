@@ -16,6 +16,22 @@ pub(crate) struct OgfChildGeometry<'a> {
   pub(crate) faces: Vec<[u16; 3]>,
 }
 
+/// How a compiled child compares with the reference child it pairs with.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct OgfChildComparison {
+  /// Compiled vertices one of the reference's stands in for.
+  pub(crate) vertices_matched: usize,
+  /// Compiled vertices that would match but for their normal.
+  pub(crate) vertices_normal_only: usize,
+  /// Reference faces the compile draws too.
+  pub(crate) faces_matched: usize,
+  /// Reference faces with two corners at one position.
+  pub(crate) reference_flat_faces: usize,
+  /// Reference faces the compile does not draw, and faces it draws the reference does not.
+  pub(crate) faces_missing: usize,
+  pub(crate) faces_extra: usize,
+}
+
 impl<'a> OgfChildGeometry<'a> {
   /// Normals within this of each other are one normal.
   const NORMAL_TOLERANCE: f32 = 1e-3;
@@ -63,12 +79,68 @@ impl<'a> OgfChildGeometry<'a> {
     }
   }
 
+  /// How this compiled child compares with `reference`: its vertices by position, normal, texture coordinate and
+  /// weights, and the faces either draws by their corners' positions, each as often as it is drawn.
+  ///
+  /// A face with two corners at one position draws nothing, so it is compared on neither side: the export leaves one
+  /// where `VPack` moved a corner onto another, which either side may have done where the other did not.
+  pub(crate) fn compare(&self, reference: &Self) -> OgfChildComparison {
+    let mut comparison: OgfChildComparison = OgfChildComparison::default();
+    let by_position: HashMap<PositionKey, Vec<&OgfVertex>> = reference.by_position();
+
+    for vertex in self.vertices {
+      let candidates: &[&OgfVertex] = by_position
+        .get(&Self::position_key(&vertex.position))
+        .map_or(&[], Vec::as_slice);
+
+      if candidates
+        .iter()
+        .any(|candidate| Self::is_same_vertex(vertex, candidate))
+      {
+        comparison.vertices_matched += 1;
+      } else if candidates
+        .iter()
+        .any(|candidate| Self::is_same_vertex_apart_from_normal(vertex, candidate))
+      {
+        comparison.vertices_normal_only += 1;
+      }
+    }
+
+    let mut drawn: HashMap<[PositionKey; 3], usize> = HashMap::new();
+
+    for triangle in self.triangles().into_iter().filter(|it| !Self::is_flat(it)) {
+      *drawn.entry(triangle).or_default() += 1;
+    }
+
+    for triangle in reference.triangles() {
+      if Self::is_flat(&triangle) {
+        comparison.reference_flat_faces += 1;
+      } else if let Some(count) = drawn.get_mut(&triangle)
+        && *count > 0
+      {
+        *count -= 1;
+        comparison.faces_matched += 1;
+      } else {
+        comparison.faces_missing += 1;
+      }
+    }
+
+    comparison.faces_extra = drawn.values().sum();
+
+    comparison
+  }
+
+  /// Whether a triangle of sorted corners has two at one position, so draws nothing.
+  fn is_flat(triangle: &[PositionKey; 3]) -> bool {
+    triangle[0] == triangle[1] || triangle[1] == triangle[2]
+  }
+
   pub(crate) fn position_key(position: &Vector3d) -> PositionKey {
     [position.x.to_bits(), position.y.to_bits(), position.z.to_bits()]
   }
 
   /// Its vertices by where they stand.
-  pub(crate) fn by_position(&self) -> HashMap<PositionKey, Vec<&'a OgfVertex>> {
+  fn by_position(&self) -> HashMap<PositionKey, Vec<&'a OgfVertex>> {
     let mut by_position: HashMap<PositionKey, Vec<&'a OgfVertex>> = HashMap::new();
 
     for vertex in self.vertices {

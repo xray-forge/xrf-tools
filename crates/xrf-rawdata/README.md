@@ -12,7 +12,8 @@ opens. It undoes what the editor's `Export OGF` did:
 - every OGF child is a surface (texture and engine shader) and takes only its full-detail sliding window;
 - each vertex's links, padded to its child's layout, come back as the bones its point follows and their weights,
   normalised as the export left them, which become one weight map per bone;
-- corners split at seams and hard edges are welded back into points, by bit-equal position and the bones followed;
+- corners split at seams and hard edges are welded back into points, by bit-equal position, the bones followed and
+  their weights within rounding, so two points the export's `VPack` moved onto one position stay two;
 - a face written twice, the copy mirrored with its normals inverted, is one face of a two-sided surface;
 - per-face smoothing edge flags (`face_smoth_flags.h`) come back from where welded corners' normals agree;
 - bones come from the bones and IK data chunks, joint limits turned back from the physics engine's sense;

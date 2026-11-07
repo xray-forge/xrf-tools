@@ -28,9 +28,10 @@ impl OgfCorner {
     Self::is_near(&self.normal, &-&other.normal)
   }
 
-  /// The position's bits and the bones followed, which together decide a welded point: the export copied one float into
-  /// every corner split from a point, and a point's weights are its own. The weights stay out of the key, since a point
-  /// exported into children of different link layouts comes back with weights rounded differently.
+  /// The position's bits and the bones followed, which narrow a welded point to those standing there: the export copied
+  /// one float into every corner split from a point. The weights stay out of the key, since a point exported into
+  /// children of different link layouts comes back with weights rounded differently; [`BoneInfluences::is_alike`] tells
+  /// the points of one key apart.
   pub(crate) fn get_weld_key(&self) -> [u32; 3 + BoneInfluences::CAPACITY] {
     let bones: [u32; BoneInfluences::CAPACITY] = self.influences.get_bone_key();
 
