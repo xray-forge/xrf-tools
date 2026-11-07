@@ -573,6 +573,29 @@ fn ignores_an_out_of_range_index_outside_the_drawn_range() {
 }
 
 #[test]
+fn drops_a_coarse_level_addressing_a_missing_vertex() {
+  // A run naming a vertex the submesh lacks no longer vouches for its windows, so each is read on its own: the fine one
+  // draws, and the coarse one reaching the stray index is dropped.
+  let child: OgfFile = OgfFile {
+    geometry: Some(geometry(
+      (0..6)
+        .map(|index| vertex(vector(index as f32, 0.0, 0.0), vector(0.0, 0.0, 1.0), 0.0, 0.0))
+        .collect(),
+      vec![0, 2, 3, 0, 1, 4, 1, 2, 5, 99, 98, 97],
+    )),
+    swi_data: Some(swi(vec![window(0, 3, 6), window(9, 1, 3)])),
+    ..visual(MODEL_TYPE_GEOMDEF_PM)
+  };
+
+  let package: VisualPackage = VisualPacker::pack(&skeleton(vec![child]));
+
+  assert_eq!(
+    only_geometry(&package).detail_levels,
+    vec![VisualDrawRange { start: 0, count: 9 }]
+  );
+}
+
+#[test]
 fn packs_four_skinning_links_per_vertex_whatever_the_vertex_carries() {
   // Widening is the point: one vertex links two bones and the other one, and both must come back four wide with the
   // padding weighted to nothing, because a renderer reads them as one `vec4` pair.

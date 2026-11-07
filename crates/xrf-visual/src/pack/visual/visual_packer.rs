@@ -11,6 +11,7 @@ use crate::data::visual::geometry::visual_submesh_content::VisualSubmeshContent;
 use crate::data::visual::visual_description::VisualDescription;
 use crate::pack::buffer::visual_buffer_builder::VisualBufferBuilder;
 use crate::pack::buffer::visual_cluster_table::VisualClusterTable;
+use crate::pack::buffer::visual_index_run::VisualIndexRun;
 use crate::pack::buffer::visual_index_window::VisualIndexWindow;
 use crate::pack::visual::flat_skin::FlatSkin;
 use crate::pack::visual::visual_mesh::VisualMesh;
@@ -372,6 +373,7 @@ impl VisualPacker {
     model_type: u8,
   ) -> Result<Vec<VisualDrawRange>, VisualSkip> {
     let is_progressive: bool = OgfModelType::from_raw(model_type).is_some_and(OgfModelType::is_progressive);
+    let run: VisualIndexRun = VisualIndexRun::new(indices, u32::try_from(vertex_count).unwrap_or(u32::MAX));
 
     if !is_progressive {
       let whole: VisualDrawRange = VisualDrawRange {
@@ -379,8 +381,7 @@ impl VisualPacker {
         count: indices.len() as u32,
       };
 
-      Self::check_level(indices, whole, vertex_count)
-        .map_err(|reason| VisualSkip::malformed(format!("Drawn range {reason}")))?;
+      Self::check_level(&run, whole).map_err(|reason| VisualSkip::malformed(format!("Drawn range {reason}")))?;
 
       return Ok(vec![whole]);
     }
@@ -404,7 +405,7 @@ impl VisualPacker {
         count: u32::from(window.num_tris) * 3,
       };
 
-      match Self::check_level(indices, range, vertex_count) {
+      match Self::check_level(&run, range) {
         Ok(()) => levels.push(range),
         // The finest level is what the model is: without it there is nothing honest to draw. A coarser one is an
         // option the viewer offers, so a bad one costs the option rather than the submesh.
@@ -422,13 +423,12 @@ impl VisualPacker {
   }
 
   /// Refuses a range that leaves the index buffer or addresses a vertex the submesh does not have, saying why.
-  fn check_level(indices: &[u16], range: VisualDrawRange, vertex_count: usize) -> Result<(), String> {
-    VisualIndexWindow {
-      count: range.count,
-      offset: range.start,
-    }
-    .select(indices, u32::try_from(vertex_count).unwrap_or(u32::MAX))
-    .map(|_| ())
-    .map_err(|fault| fault.to_string())
+  fn check_level(run: &VisualIndexRun, range: VisualDrawRange) -> Result<(), String> {
+    run
+      .check(VisualIndexWindow {
+        count: range.count,
+        offset: range.start,
+      })
+      .map_err(|fault| fault.to_string())
   }
 }
