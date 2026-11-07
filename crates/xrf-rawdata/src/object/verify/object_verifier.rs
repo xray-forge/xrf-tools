@@ -1,16 +1,15 @@
-use std::collections::HashMap;
 use std::fmt::Debug;
 
 use xrf_chunk::XRayByteOrder;
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
-use xrf_ogf::{OgfBoneIkData, OgfFile, OgfModelType, OgfVertex};
+use xrf_ogf::{OgfBoneIkData, OgfFile, OgfJointIkData, OgfModelType};
 
 use crate::object::compile::object_compile_source::ObjectCompileSource;
 use crate::object::compile::object_compiler::ObjectCompiler;
 use crate::object::verify::object_verification::{ObjectGeometryCensus, ObjectVerification};
-use crate::object::verify::ogf_child_geometry::{OgfChildGeometry, PositionKey};
+use crate::object::verify::ogf_child_geometry::{OgfChildComparison, OgfChildGeometry};
 
 /// Compiles an object and compares the OGF with one it should stand in for, by what the engine reads: the model, the
 /// skeleton and its physics, the motions, and the geometry.
@@ -62,11 +61,19 @@ impl ObjectVerifier {
     };
 
     Self::note(differences, "model type", model_type(compiled), model_type(reference));
+    // The engine reads the user data as ini text, so a terminator one exporter wrote and another did not is no
+    // difference.
     Self::note(
       differences,
       "user data",
-      compiled.user_data.as_ref().map(|it| &it.user_data),
-      reference.user_data.as_ref().map(|it| &it.user_data),
+      compiled
+        .user_data
+        .as_ref()
+        .map(|it| it.user_data.trim_end_matches('\0')),
+      reference
+        .user_data
+        .as_ref()
+        .map(|it| it.user_data.trim_end_matches('\0')),
     );
     // The engine reads the LODs' first line alone, and exporters end it differently.
     Self::note(
@@ -107,11 +114,20 @@ impl ObjectVerifier {
       let fields: [(&str, bool); 7] = [
         ("game material", ik.game_material == other.game_material),
         ("shape", ik.shape == other.shape),
-        ("joint", ik.joint == other.joint),
-        ("mass", ik.mass == other.mass),
-        ("centre of mass", ik.center_of_mass == other.center_of_mass),
-        ("bind rotation", ik.bind_rotation == other.bind_rotation),
-        ("bind position", ik.bind_position == other.bind_position),
+        ("joint", Self::is_same_joint(&ik.joint, &other.joint)),
+        ("mass", Self::is_same(ik.mass, other.mass)),
+        (
+          "centre of mass",
+          Self::is_same_vector(&ik.center_of_mass, &other.center_of_mass),
+        ),
+        (
+          "bind rotation",
+          Self::is_same_vector(&ik.bind_rotation, &other.bind_rotation),
+        ),
+        (
+          "bind position",
+          Self::is_same_vector(&ik.bind_position, &other.bind_position),
+        ),
       ];
       let differing: Vec<&str> = fields
         .iter()
@@ -123,6 +139,53 @@ impl ObjectVerifier {
         differences.push(format!("bone {}: {} differ", bone.0, differing.join(", ")));
       }
     }
+  }
+
+  /// Whether two stored values are one: equal, or both not a number. Some vanilla bones store a NaN friction, which a
+  /// round trip keeps and `==` never finds equal to itself.
+  fn is_same(first: f32, second: f32) -> bool {
+    first == second || (first.is_nan() && second.is_nan())
+  }
+
+  fn is_same_vector(first: &Vector3d, second: &Vector3d) -> bool {
+    first
+      .to_array()
+      .iter()
+      .zip(second.to_array())
+      .all(|(a, b)| Self::is_same(*a, b))
+  }
+
+  fn is_same_joint(first: &OgfJointIkData, second: &OgfJointIkData) -> bool {
+    let factors = |joint: &OgfJointIkData| {
+      [
+        joint.spring_factor,
+        joint.damping_factor,
+        joint.break_force,
+        joint.break_torque,
+      ]
+    };
+    let limits = |joint: &OgfJointIkData| {
+      joint
+        .limits
+        .each_ref()
+        .map(|limit| [limit.min, limit.max, limit.spring_factor, limit.damping_factor])
+    };
+
+    first.kind == second.kind
+      && first.ik_flags == second.ik_flags
+      && factors(first)
+        .iter()
+        .zip(factors(second))
+        .all(|(a, b)| Self::is_same(*a, b))
+      && limits(first)
+        .as_flattened()
+        .iter()
+        .zip(limits(second).as_flattened())
+        .all(|(a, b)| Self::is_same(*a, *b))
+      && match (first.friction, second.friction) {
+        (Some(a), Some(b)) => Self::is_same(a, b),
+        (a, b) => a.is_none() && b.is_none(),
+      }
   }
 
   /// Each bone's name and its parent's, in the order stored.
@@ -250,71 +313,30 @@ impl ObjectVerifier {
     census: &mut ObjectGeometryCensus,
     differences: &mut Vec<String>,
   ) {
-    let by_position: HashMap<PositionKey, Vec<&OgfVertex>> = other.by_position();
-    let (mut matched, mut normal_only): (usize, usize) = (0, 0);
+    let comparison: OgfChildComparison = child.compare(other);
 
-    for vertex in child.vertices {
-      let candidates: &[&OgfVertex] = by_position
-        .get(&OgfChildGeometry::position_key(&vertex.position))
-        .map_or(&[], Vec::as_slice);
-
-      if candidates
-        .iter()
-        .any(|candidate| OgfChildGeometry::is_same_vertex(vertex, candidate))
-      {
-        matched += 1;
-      } else if candidates
-        .iter()
-        .any(|candidate| OgfChildGeometry::is_same_vertex_apart_from_normal(vertex, candidate))
-      {
-        normal_only += 1;
-      }
-    }
-    let mut drawn: HashMap<[PositionKey; 3], usize> = HashMap::new();
-
-    for triangle in child.triangles() {
-      *drawn.entry(triangle).or_default() += 1;
-    }
-
-    let mut faces_matched: usize = 0;
-    let mut flat: usize = 0;
-
-    for triangle in other.triangles() {
-      if triangle[0] == triangle[1] || triangle[1] == triangle[2] {
-        flat += 1;
-      } else if let Some(count) = drawn.get_mut(&triangle)
-        && *count > 0
-      {
-        *count -= 1;
-        faces_matched += 1;
-      }
-    }
-
-    census.vertices_matched += matched;
-    census.vertices_normal_only += normal_only;
+    census.vertices_matched += comparison.vertices_matched;
+    census.vertices_normal_only += comparison.vertices_normal_only;
     census.reference_faces += other.faces.len();
-    census.faces_matched += faces_matched;
-    census.reference_flat_faces += flat;
+    census.faces_matched += comparison.faces_matched;
+    census.reference_flat_faces += comparison.reference_flat_faces;
 
-    if matched != child.vertices.len() {
+    if comparison.vertices_matched != child.vertices.len() {
       differences.push(format!(
-        "child {} / {}: {} of {} vertices have no reference vertex like them, {normal_only} of them differing in their \
-         normal alone",
+        "child {} / {}: {} of {} vertices have no reference vertex like them, {} of them differing in their normal \
+         alone",
         child.texture,
         child.shader,
-        child.vertices.len() - matched,
-        child.vertices.len()
+        child.vertices.len() - comparison.vertices_matched,
+        child.vertices.len(),
+        comparison.vertices_normal_only
       ));
     }
 
-    // A flat reference face draws nothing, so the compile dropping it is no difference.
-    let missing: usize = other.faces.len() - flat - faces_matched;
-    let extra: usize = drawn.values().sum();
-
-    if missing > 0 || extra > 0 {
+    if comparison.faces_missing > 0 || comparison.faces_extra > 0 {
       differences.push(format!(
-        "child {} / {}: {missing} reference faces not drawn, {extra} drawn the reference does not",
-        child.texture, child.shader
+        "child {} / {}: {} reference faces not drawn, {} drawn the reference does not",
+        child.texture, child.shader, comparison.faces_missing, comparison.faces_extra
       ));
     }
   }

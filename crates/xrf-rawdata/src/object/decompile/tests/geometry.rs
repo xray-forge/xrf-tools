@@ -91,6 +91,32 @@ fn welds_one_point_exported_into_children_of_different_layouts() -> XrfResult {
 }
 
 #[test]
+fn keeps_two_points_apart_where_the_export_moved_one_onto_the_other() -> XrfResult {
+  // `VPack` snapped a source point onto its neighbour: one position, the same bones, weights of their own.
+  let [a, b, c, d] = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [-1.0, 0.0, 0.0]];
+  let welded: WeldedMesh = WeldedMesh::weld(&[surface(vec![
+    [
+      with_links(corner(a, UP), &[(0, 0.9), (1, 0.1)]),
+      corner(b, UP),
+      corner(c, UP),
+    ],
+    [
+      with_links(corner(a, UP), &[(0, 0.75), (1, 0.25)]),
+      corner(c, UP),
+      corner(d, UP),
+    ],
+  ])])?;
+
+  assert_eq!(welded.points.len(), 5);
+  assert_eq!(
+    welded.point_influences[3].iter().collect::<Vec<_>>(),
+    [(0, 0.75), (1, 0.25)]
+  );
+
+  Ok(())
+}
+
+#[test]
 fn folds_a_mirrored_copy_into_one_two_sided_face_and_keeps_a_plain_duplicate() -> XrfResult {
   let [a, b, c] = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]];
   let face: [OgfCorner; 3] = [corner(a, UP), corner(b, UP), corner(c, UP)];

@@ -11,7 +11,7 @@ use crate::object::compile::object_compiler::ObjectCompiler;
 use crate::object::decompile::tests::fixtures::{UP, assemble, chain, corner, object, surface, with_links};
 use crate::object::verify::object_verification::{ObjectGeometryCensus, ObjectVerification};
 use crate::object::verify::object_verifier::ObjectVerifier;
-use crate::object::verify::ogf_child_geometry::{OgfChildGeometry, PositionKey};
+use crate::object::verify::ogf_child_geometry::{OgfChildComparison, OgfChildGeometry, PositionKey};
 
 /// A quad on a chain of three bones, one corner blended between the first two, with LODs and motion references.
 fn quad() -> XrfResult<EditableObjectFile> {
@@ -102,6 +102,38 @@ fn finds_a_renamed_bone_and_changed_physics() -> XrfResult {
 }
 
 #[test]
+fn takes_a_stored_nan_for_itself() -> XrfResult {
+  // Vanilla bones store a NaN friction, which a round trip keeps and plain equality never finds equal.
+  let mut object: EditableObjectFile = quad()?;
+
+  object.bones.as_mut().expect("the quad has bones")[0].friction = Some(f32::NAN);
+
+  let verification: ObjectVerification = ObjectVerifier::verify(&object, &compiled(&object)?)?;
+
+  assert!(verification.skeleton.is_empty(), "{:?}", verification.skeleton);
+
+  Ok(())
+}
+
+#[test]
+fn reads_user_data_up_to_its_terminators() -> XrfResult {
+  // Exporters end the user data with a terminator or not; the engine reads the same ini text either way.
+  let mut object: EditableObjectFile = quad()?;
+
+  object.class_script = Some(String::from("[collide]\nignore_static"));
+
+  let mut exported: EditableObjectFile = object.clone();
+
+  exported.class_script = Some(String::from("[collide]\nignore_static\0"));
+
+  let verification: ObjectVerification = ObjectVerifier::verify(&object, &compiled(&exported)?)?;
+
+  assert!(verification.model.is_empty(), "{:?}", verification.model);
+
+  Ok(())
+}
+
+#[test]
 fn finds_what_the_model_is_to_the_engine() -> XrfResult {
   let verification: ObjectVerification = verify_against(|object| {
     object.class_script = Some(String::from("[collide]\nignore_static"));
@@ -164,9 +196,9 @@ fn finds_a_moved_corner_in_its_vertices_faces_and_bounds() -> XrfResult {
   Ok(())
 }
 
-#[test]
-fn leaves_out_a_face_naming_a_vertex_the_child_lacks() {
-  let vertex = |x: f32| OgfVertex {
+/// A vertex at `x` along the X axis, facing up, at the origin of its texture, following no bone.
+fn vertex(x: f32) -> OgfVertex {
+  OgfVertex {
     position: Vector3d::new(x, 0.0, 0.0),
     normal: Vector3d::new(0.0, 1.0, 0.0),
     tangent: Vector3d::ZERO,
@@ -174,7 +206,41 @@ fn leaves_out_a_face_naming_a_vertex_the_child_lacks() {
     texture_u: 0.0,
     texture_v: 0.0,
     links: OgfVertexLinks::default(),
+  }
+}
+
+#[test]
+fn compares_no_face_that_draws_nothing_on_either_side() {
+  // The fourth vertex stands where the first does, as `VPack` leaves a corner it moved onto another: a face on both
+  // draws nothing, so one kept by either side alone is no difference.
+  let vertices: [OgfVertex; 4] = [vertex(0.0), vertex(1.0), vertex(2.0), vertex(0.0)];
+  let child = |faces: Vec<[u16; 3]>| OgfChildGeometry {
+    texture: "wood",
+    shader: "models\\model",
+    vertices: &vertices,
+    faces,
   };
+  let with_flat: OgfChildGeometry = child(vec![[0, 1, 2], [0, 3, 1]]);
+  let without: OgfChildGeometry = child(vec![[0, 1, 2]]);
+
+  for (compiled, reference) in [(&with_flat, &without), (&without, &with_flat)] {
+    let comparison: OgfChildComparison = compiled.compare(reference);
+
+    assert_eq!(
+      (
+        comparison.faces_matched,
+        comparison.faces_missing,
+        comparison.faces_extra
+      ),
+      (1, 0, 0)
+    );
+  }
+
+  assert_eq!(without.compare(&with_flat).reference_flat_faces, 1);
+}
+
+#[test]
+fn leaves_out_a_face_naming_a_vertex_the_child_lacks() {
   let vertices: [OgfVertex; 3] = [vertex(0.0), vertex(1.0), vertex(2.0)];
   let child: OgfChildGeometry = OgfChildGeometry {
     texture: "wood",

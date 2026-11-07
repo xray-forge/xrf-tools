@@ -23,6 +23,10 @@ impl BoneInfluences {
   /// that already sum to one differs from nought by rounding alone.
   const NEGLIGIBLE_WEIGHT: f32 = 1e-6;
 
+  /// How far one point's weights may come back apart in two children of different link layouts, where the export
+  /// derives the last link's weight from the others: rounding, far below any two points' authored weights.
+  const WEIGHT_TOLERANCE: f32 = 1e-4;
+
   /// The influences `links` stand for, padding undone.
   pub(crate) fn of_links(links: &[OgfVertexLink]) -> Self {
     let mut summed: [(u16, f32); Self::CAPACITY] = [(0, 0.0); Self::CAPACITY];
@@ -81,6 +85,17 @@ impl BoneInfluences {
         .get(index)
         .map_or(u32::MAX, |(bone, _)| u32::from(*bone))
     })
+  }
+
+  /// Whether `other` follows the same bones as strongly, but for the rounding two link layouts give one point.
+  pub(crate) fn is_alike(&self, other: &Self) -> bool {
+    self.count == other.count
+      && self
+        .iter()
+        .zip(other.iter())
+        .all(|((bone, weight), (other_bone, other_weight))| {
+          bone == other_bone && (weight - other_weight).abs() <= Self::WEIGHT_TOLERANCE
+        })
   }
 
   fn len(&self) -> usize {
