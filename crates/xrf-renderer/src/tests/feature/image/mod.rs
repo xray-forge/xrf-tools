@@ -5,4 +5,5 @@ mod enhanced_bloom;
 mod exposure_readback;
 mod exposure_restart;
 mod fsr;
+mod image_corrections;
 mod temporal;
