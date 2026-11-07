@@ -11,4 +11,6 @@ pub use crate::object::compile::skeleton::skeleton_vertex::{SkeletonVertex, Skel
 pub use crate::object::decompile::object_decompile::ObjectDecompile;
 pub use crate::object::decompile::object_decompiler::ObjectDecompiler;
 pub use crate::object::decompile::object_inference::ObjectInference;
+pub use crate::object::verify::object_verification::{ObjectGeometryCensus, ObjectVerification};
+pub use crate::object::verify::object_verifier::ObjectVerifier;
 pub use crate::provenance::object_provenance::ObjectProvenance;

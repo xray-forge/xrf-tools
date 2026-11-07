@@ -1,0 +1,328 @@
+use std::collections::HashMap;
+use std::fmt::Debug;
+
+use xrf_chunk::XRayByteOrder;
+use xrf_editable_object::EditableObjectFile;
+use xrf_error::XrfResult;
+use xrf_math::Vector3d;
+use xrf_ogf::{OgfBoneIkData, OgfFile, OgfModelType, OgfVertex};
+
+use crate::object::compile::object_compile_source::ObjectCompileSource;
+use crate::object::compile::object_compiler::ObjectCompiler;
+use crate::object::verify::object_verification::{ObjectGeometryCensus, ObjectVerification};
+use crate::object::verify::ogf_child_geometry::{OgfChildGeometry, PositionKey};
+
+/// Compiles an object and compares the OGF with one it should stand in for, by what the engine reads: the model, the
+/// skeleton and its physics, the motions, and the geometry.
+///
+/// Left out, as the compile builds them its own way and the engine draws either alike: the order of children, vertices
+/// and triangles, tangents, bone boxes and the description's authoring stamps.
+pub struct ObjectVerifier;
+
+impl ObjectVerifier {
+  /// Header bounds within this of the reference's are the same bounds.
+  const BOUNDS_TOLERANCE: f32 = 1e-4;
+
+  /// How `object` compiled compares with `reference`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error where the compile does, or where its OGF does not read back.
+  pub fn verify(object: &EditableObjectFile, reference: &OgfFile) -> XrfResult<ObjectVerification> {
+    let compiled: OgfFile = OgfFile::read_from_bytes::<XRayByteOrder>(ObjectCompiler::compile(
+      object,
+      &ObjectCompileSource {
+        source_file: String::new(),
+        convertor: String::new(),
+        built_at: 0,
+      },
+    )?)?;
+
+    Ok(Self::compare(&compiled, reference))
+  }
+
+  /// How `compiled` compares with `reference`.
+  fn compare(compiled: &OgfFile, reference: &OgfFile) -> ObjectVerification {
+    let mut verification: ObjectVerification = ObjectVerification::default();
+
+    Self::compare_model(compiled, reference, &mut verification.model);
+    Self::compare_skeleton(compiled, reference, &mut verification.skeleton);
+    Self::compare_motions(compiled, reference, &mut verification.motions);
+    verification.census = Self::compare_geometry(compiled, reference, &mut verification.geometry);
+
+    verification
+  }
+
+  fn compare_model(compiled: &OgfFile, reference: &OgfFile, differences: &mut Vec<String>) {
+    let model_type = |file: &OgfFile| {
+      OgfModelType::from_raw(file.header.model_type).map_or_else(
+        || OgfModelType::label(file.header.model_type),
+        |it| String::from(it.name()),
+      )
+    };
+
+    Self::note(differences, "model type", model_type(compiled), model_type(reference));
+    Self::note(
+      differences,
+      "user data",
+      compiled.user_data.as_ref().map(|it| &it.user_data),
+      reference.user_data.as_ref().map(|it| &it.user_data),
+    );
+    // The engine reads the LODs' first line alone, and exporters end it differently.
+    Self::note(
+      differences,
+      "LODs",
+      compiled.lods.as_ref().map(|it| it.get_visual_name()),
+      reference.lods.as_ref().map(|it| it.get_visual_name()),
+    );
+    Self::note(
+      differences,
+      "motion references",
+      compiled.kinematics.as_ref().map(|it| &it.motion_refs),
+      reference.kinematics.as_ref().map(|it| &it.motion_refs),
+    );
+  }
+
+  fn compare_skeleton(compiled: &OgfFile, reference: &OgfFile, differences: &mut Vec<String>) {
+    let (names, reference_names) = (Self::bones(compiled), Self::bones(reference));
+
+    if names.len() != reference_names.len() {
+      differences.push(format!(
+        "bones: {} compiled, {} in the reference",
+        names.len(),
+        reference_names.len()
+      ));
+    }
+
+    for (index, (bone, other)) in names.iter().zip(&reference_names).enumerate() {
+      if bone != other {
+        differences.push(format!(
+          "bone {index}: {} under '{}', the reference's {} under '{}'",
+          bone.0, bone.1, other.0, other.1
+        ));
+      }
+    }
+
+    for ((bone, ik), other) in names.iter().zip(Self::physics(compiled)).zip(Self::physics(reference)) {
+      let fields: [(&str, bool); 7] = [
+        ("game material", ik.game_material == other.game_material),
+        ("shape", ik.shape == other.shape),
+        ("joint", ik.joint == other.joint),
+        ("mass", ik.mass == other.mass),
+        ("centre of mass", ik.center_of_mass == other.center_of_mass),
+        ("bind rotation", ik.bind_rotation == other.bind_rotation),
+        ("bind position", ik.bind_position == other.bind_position),
+      ];
+      let differing: Vec<&str> = fields
+        .iter()
+        .filter(|(_, is_same)| !is_same)
+        .map(|(field, _)| *field)
+        .collect();
+
+      if !differing.is_empty() {
+        differences.push(format!("bone {}: {} differ", bone.0, differing.join(", ")));
+      }
+    }
+  }
+
+  /// Each bone's name and its parent's, in the order stored.
+  fn bones(file: &OgfFile) -> Vec<(&str, &str)> {
+    file
+      .bones
+      .iter()
+      .flat_map(|chunk| &chunk.bones)
+      .map(|bone| (bone.name.as_str(), bone.parent.as_str()))
+      .collect()
+  }
+
+  /// Each bone's physics, in the order of the bones.
+  fn physics(file: &OgfFile) -> &[OgfBoneIkData] {
+    file.ik_data.as_ref().map_or(&[], |it| it.bones.as_slice())
+  }
+
+  /// Each own motion's label and length, in the order stored.
+  fn motions(file: &OgfFile) -> Vec<(&str, u32)> {
+    file
+      .motions
+      .iter()
+      .flat_map(|chunk| &chunk.motions)
+      .map(|motion| (motion.label.as_str(), motion.count))
+      .collect()
+  }
+
+  fn compare_motions(compiled: &OgfFile, reference: &OgfFile, differences: &mut Vec<String>) {
+    let (own, reference_own) = (Self::motions(compiled), Self::motions(reference));
+
+    if own.len() != reference_own.len() {
+      differences.push(format!(
+        "own motions: {} compiled, {} in the reference",
+        own.len(),
+        reference_own.len()
+      ));
+    }
+
+    for ((label, count), (other_label, other_count)) in own.iter().zip(&reference_own) {
+      if label != other_label || count != other_count {
+        differences.push(format!(
+          "motion {label} of {count} frames, the reference's {other_label} of {other_count}"
+        ));
+      }
+    }
+
+    Self::note(
+      differences,
+      "motion parts",
+      compiled.motion_parameters.as_ref().map(|it| &it.parts),
+      reference.motion_parameters.as_ref().map(|it| &it.parts),
+    );
+    Self::note(
+      differences,
+      "motion definitions",
+      compiled.motion_parameters.as_ref().map(|it| &it.motions),
+      reference.motion_parameters.as_ref().map(|it| &it.motions),
+    );
+  }
+
+  fn compare_geometry(compiled: &OgfFile, reference: &OgfFile, differences: &mut Vec<String>) -> ObjectGeometryCensus {
+    let is_near = |first: &Vector3d, second: &Vector3d| {
+      first
+        .to_array()
+        .iter()
+        .zip(second.to_array())
+        .all(|(a, b)| (a - b).abs() <= Self::BOUNDS_TOLERANCE)
+    };
+    let (bounds, reference_bounds) = (&compiled.header.bounding_box, &reference.header.bounding_box);
+
+    if !is_near(&bounds.min, &reference_bounds.min) || !is_near(&bounds.max, &reference_bounds.max) {
+      differences.push(format!("bounds {bounds:?}, the reference's {reference_bounds:?}"));
+    }
+
+    let children: Vec<OgfChildGeometry> = OgfChildGeometry::collect(compiled);
+    let reference_children: Vec<OgfChildGeometry> = OgfChildGeometry::collect(reference);
+    let mut census: ObjectGeometryCensus = ObjectGeometryCensus {
+      children: children.len(),
+      reference_children: reference_children.len(),
+      ..ObjectGeometryCensus::default()
+    };
+    let mut is_paired: Vec<bool> = vec![false; reference_children.len()];
+
+    // The export orders children by where their surfaces sat in the editor's memory, which nothing records, so a child
+    // pairs with the reference's of its texture and shader.
+    for child in &children {
+      census.vertices += child.vertices.len();
+      census.faces += child.faces.len();
+
+      let paired: Option<usize> = reference_children
+        .iter()
+        .enumerate()
+        .position(|(index, other)| !is_paired[index] && other.texture == child.texture && other.shader == child.shader);
+
+      match paired {
+        Some(index) => {
+          is_paired[index] = true;
+          Self::compare_child(child, &reference_children[index], &mut census, differences);
+        }
+        None => differences.push(format!(
+          "child {} / {} has no reference child",
+          child.texture, child.shader
+        )),
+      }
+    }
+
+    for (other, _) in reference_children
+      .iter()
+      .zip(&is_paired)
+      .filter(|(_, is_paired)| !**is_paired)
+    {
+      census.reference_faces += other.faces.len();
+      differences.push(format!(
+        "the reference's child {} / {} is not compiled",
+        other.texture, other.shader
+      ));
+    }
+
+    census
+  }
+
+  fn compare_child(
+    child: &OgfChildGeometry,
+    other: &OgfChildGeometry,
+    census: &mut ObjectGeometryCensus,
+    differences: &mut Vec<String>,
+  ) {
+    let by_position: HashMap<PositionKey, Vec<&OgfVertex>> = other.by_position();
+    let (mut matched, mut normal_only): (usize, usize) = (0, 0);
+
+    for vertex in child.vertices {
+      let candidates: &[&OgfVertex] = by_position
+        .get(&OgfChildGeometry::position_key(&vertex.position))
+        .map_or(&[], Vec::as_slice);
+
+      if candidates
+        .iter()
+        .any(|candidate| OgfChildGeometry::is_same_vertex(vertex, candidate))
+      {
+        matched += 1;
+      } else if candidates
+        .iter()
+        .any(|candidate| OgfChildGeometry::is_same_vertex_apart_from_normal(vertex, candidate))
+      {
+        normal_only += 1;
+      }
+    }
+    let mut drawn: HashMap<[PositionKey; 3], usize> = HashMap::new();
+
+    for triangle in child.triangles() {
+      *drawn.entry(triangle).or_default() += 1;
+    }
+
+    let mut faces_matched: usize = 0;
+    let mut flat: usize = 0;
+
+    for triangle in other.triangles() {
+      if triangle[0] == triangle[1] || triangle[1] == triangle[2] {
+        flat += 1;
+      } else if let Some(count) = drawn.get_mut(&triangle)
+        && *count > 0
+      {
+        *count -= 1;
+        faces_matched += 1;
+      }
+    }
+
+    census.vertices_matched += matched;
+    census.vertices_normal_only += normal_only;
+    census.reference_faces += other.faces.len();
+    census.faces_matched += faces_matched;
+    census.reference_flat_faces += flat;
+
+    if matched != child.vertices.len() {
+      differences.push(format!(
+        "child {} / {}: {} of {} vertices have no reference vertex like them, {normal_only} of them differing in their \
+         normal alone",
+        child.texture,
+        child.shader,
+        child.vertices.len() - matched,
+        child.vertices.len()
+      ));
+    }
+
+    // A flat reference face draws nothing, so the compile dropping it is no difference.
+    let missing: usize = other.faces.len() - flat - faces_matched;
+    let extra: usize = drawn.values().sum();
+
+    if missing > 0 || extra > 0 {
+      differences.push(format!(
+        "child {} / {}: {missing} reference faces not drawn, {extra} drawn the reference does not",
+        child.texture, child.shader
+      ));
+    }
+  }
+
+  /// Notes `label` as differing where `compiled` and `reference` are not equal.
+  fn note<T: PartialEq + Debug>(differences: &mut Vec<String>, label: &str, compiled: T, reference: T) {
+    if compiled != reference {
+      differences.push(format!("{label}: {compiled:?}, the reference's {reference:?}"));
+    }
+  }
+}
