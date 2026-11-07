@@ -1,7 +1,7 @@
 //! What `ObjectVerifier` counts as a difference, each reference here compiled from the object with one thing changed.
 
 use xrf_chunk::XRayByteOrder;
-use xrf_editable_object::{EditableBoneMass, EditableObjectFile};
+use xrf_editable_object::{EditableBone, EditableBoneMass, EditableObjectFile};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 use xrf_ogf::{OgfFile, OgfVertex, OgfVertexLinks};
@@ -11,7 +11,7 @@ use crate::object::compile::object_compiler::ObjectCompiler;
 use crate::object::decompile::tests::fixtures::{UP, assemble, chain, corner, object, surface, with_links};
 use crate::object::verify::object_verification::{ObjectGeometryCensus, ObjectVerification};
 use crate::object::verify::object_verifier::ObjectVerifier;
-use crate::object::verify::ogf_child_geometry::{OgfChildComparison, OgfChildGeometry, PositionKey};
+use crate::object::verify::ogf_material_geometry::{OgfMaterialComparison, OgfMaterialGeometry, PositionKey};
 
 /// A quad on a chain of three bones, one corner blended between the first two, with LODs and motion references.
 fn quad() -> XrfResult<EditableObjectFile> {
@@ -156,11 +156,46 @@ fn finds_a_child_drawn_with_another_texture() -> XrfResult {
   assert_eq!(
     verification.geometry,
     [
-      "child wood\\wood_plank6 / models\\model has no reference child",
-      "the reference's child wood\\wood_plank7 / models\\model is not compiled",
+      "wood\\wood_plank6 / models\\model is not drawn by the reference",
+      "the reference's wood\\wood_plank7 / models\\model is not compiled",
     ]
   );
   assert_eq!(verification.census.faces_matched, 0);
+
+  Ok(())
+}
+
+#[test]
+fn takes_a_surface_split_by_breakable_part_for_the_one_child_it_was() -> XrfResult {
+  // One triangle on the root and one on the lid: with the lid breakable the export draws them as two children, which
+  // an older exporter or another tool kept as one; the engine draws either alike.
+  let triangles = |offset: f32| {
+    let at = |x: f32, z: f32| [x + offset, 0.0, z];
+
+    [
+      corner(at(0.0, 0.0), UP),
+      corner(at(1.0, 0.0), UP),
+      corner(at(1.0, 1.0), UP),
+    ]
+  };
+  let [first, second] = [triangles(0.0), triangles(2.0).map(|it| with_links(it, &[(1, 1.0)]))];
+  let mesh = || assemble(&[surface(vec![first, second])]);
+  let mut bones: Vec<EditableBone> = chain();
+
+  bones[1].joint_flags = Some(1);
+
+  let verification: ObjectVerification =
+    ObjectVerifier::verify(&object(mesh()?, bones), &compiled(&object(mesh()?, chain()))?)?;
+
+  assert!(verification.geometry.is_empty(), "{:?}", verification.geometry);
+  assert_eq!(
+    (
+      verification.census.children,
+      verification.census.reference_children,
+      verification.census.faces_matched
+    ),
+    (2, 1, 2)
+  );
 
   Ok(())
 }
@@ -214,17 +249,18 @@ fn compares_no_face_that_draws_nothing_on_either_side() {
   // The fourth vertex stands where the first does, as `VPack` leaves a corner it moved onto another: a face on both
   // draws nothing, so one kept by either side alone is no difference.
   let vertices: [OgfVertex; 4] = [vertex(0.0), vertex(1.0), vertex(2.0), vertex(0.0)];
-  let child = |faces: Vec<[u16; 3]>| OgfChildGeometry {
+  let material = |faces: Vec<[u32; 3]>| OgfMaterialGeometry {
     texture: "wood",
     shader: "models\\model",
-    vertices: &vertices,
+    children: 1,
+    vertices: vertices.iter().collect(),
     faces,
   };
-  let with_flat: OgfChildGeometry = child(vec![[0, 1, 2], [0, 3, 1]]);
-  let without: OgfChildGeometry = child(vec![[0, 1, 2]]);
+  let with_flat: OgfMaterialGeometry = material(vec![[0, 1, 2], [0, 3, 1]]);
+  let without: OgfMaterialGeometry = material(vec![[0, 1, 2]]);
 
   for (compiled, reference) in [(&with_flat, &without), (&without, &with_flat)] {
-    let comparison: OgfChildComparison = compiled.compare(reference);
+    let comparison: OgfMaterialComparison = compiled.compare(reference);
 
     assert_eq!(
       (
@@ -240,18 +276,19 @@ fn compares_no_face_that_draws_nothing_on_either_side() {
 }
 
 #[test]
-fn leaves_out_a_face_naming_a_vertex_the_child_lacks() {
+fn leaves_out_a_face_naming_a_vertex_it_lacks() {
   let vertices: [OgfVertex; 3] = [vertex(0.0), vertex(1.0), vertex(2.0)];
-  let child: OgfChildGeometry = OgfChildGeometry {
+  let material: OgfMaterialGeometry = OgfMaterialGeometry {
     texture: "wood",
     shader: "models\\model",
-    vertices: &vertices,
+    children: 1,
+    vertices: vertices.iter().collect(),
     faces: vec![[2, 0, 1], [0, 1, 3]],
   };
-  let key = |x: f32| OgfChildGeometry::position_key(&Vector3d::new(x, 0.0, 0.0));
+  let key = |x: f32| OgfMaterialGeometry::position_key(&Vector3d::new(x, 0.0, 0.0));
   let mut expected: [PositionKey; 3] = [key(0.0), key(1.0), key(2.0)];
 
   expected.sort_unstable();
 
-  assert_eq!(child.triangles(), [expected]);
+  assert_eq!(material.triangles(), [expected]);
 }
