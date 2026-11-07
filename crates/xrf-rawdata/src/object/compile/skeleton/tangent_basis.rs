@@ -99,16 +99,16 @@ impl TangentBasis {
   ///
   /// # Errors
   ///
-  /// Returns an error when the split outgrows the 16-bit indices an OGF stores.
+  /// Returns an error when the split outgrows 32-bit indices.
   pub(crate) fn mend(
     vertices: Vec<SkeletonVertex>,
-    faces: &[[u16; 3]],
-  ) -> XrfResult<(Vec<SkeletonVertex>, Vec<[u16; 3]>)> {
+    faces: &[[u32; 3]],
+  ) -> XrfResult<(Vec<SkeletonVertex>, Vec<[u32; 3]>)> {
     let mut basis: Self = Self {
       triangles: faces
         .iter()
         .map(|face| {
-          let indices: [usize; 3] = face.map(usize::from);
+          let indices: [usize; 3] = face.map(|index| index as usize);
           let (tangent, binormal) = Self::get_gradients(indices.map(|index| &vertices[index]));
 
           Triangle {
@@ -370,20 +370,20 @@ impl TangentBasis {
   }
 
   /// `t_remove_isolated_verts`: the vertices the faces use, in the order the faces first reach them.
-  fn order_by_first_use(self) -> XrfResult<(Vec<SkeletonVertex>, Vec<[u16; 3]>)> {
-    let mut renumbered: Vec<Option<u16>> = vec![None; self.vertices.len()];
+  fn order_by_first_use(self) -> XrfResult<(Vec<SkeletonVertex>, Vec<[u32; 3]>)> {
+    let mut renumbered: Vec<Option<u32>> = vec![None; self.vertices.len()];
     let mut ordered: Vec<SkeletonVertex> = Vec::with_capacity(self.vertices.len());
-    let mut faces: Vec<[u16; 3]> = Vec::with_capacity(self.triangles.len());
+    let mut faces: Vec<[u32; 3]> = Vec::with_capacity(self.triangles.len());
 
     for triangle in &self.triangles {
-      let mut face: [u16; 3] = [0; 3];
+      let mut face: [u32; 3] = [0; 3];
 
       for (slot, index) in face.iter_mut().zip(triangle.indices) {
         *slot = match renumbered[index] {
           Some(number) => number,
           None => {
-            let number: u16 = u16::try_from(ordered.len()).map_err(|_| {
-              XrfError::new_invalid_error("A skeleton split outgrows 16-bit indices once its tangents split it")
+            let number: u32 = u32::try_from(ordered.len()).map_err(|_| {
+              XrfError::new_invalid_error("A skeleton split outgrows 32-bit indices once its tangents split it")
             })?;
 
             renumbered[index] = Some(number);

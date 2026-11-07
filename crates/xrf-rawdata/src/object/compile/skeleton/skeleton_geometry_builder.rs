@@ -9,6 +9,7 @@ use crate::object::compile::skeleton::skeleton_geometry::SkeletonGeometry;
 use crate::object::compile::skeleton::skeleton_split::SkeletonSplit;
 use crate::object::compile::skeleton::skeleton_vertex::{SkeletonVertex, SkeletonVertexBone};
 use crate::object::compile::skeleton::skin_corner::SkinCorner;
+use crate::object::compile::skeleton::split_partition::SplitPartition;
 use crate::object::compile::skeleton::tangent_basis::TangentBasis;
 use crate::object::compile::skeleton::vertex_cache_order::VertexCacheOrder;
 use crate::object::compile::skeleton::vertex_packer::VertexPacker;
@@ -255,8 +256,9 @@ impl SkeletonGeometryBuilder {
     })
   }
 
-  /// The splits that kept a face, each through the tangent pass (see [`TangentBasis`]), ordered for the vertex cache
-  /// (see [`VertexCacheOrder`]) and with its bones listed once.
+  /// The splits that kept a face, each through the tangent pass (see [`TangentBasis`]), cut where it outgrows one
+  /// child (see [`SplitPartition`]), each child ordered for the vertex cache (see [`VertexCacheOrder`]) and with its
+  /// bones listed once.
   fn finish(self) -> XrfResult<SkeletonGeometry> {
     let mut dropped_faces: usize = 0;
     let mut splits: Vec<SkeletonSplit> = Vec::with_capacity(self.splits.len());
@@ -269,13 +271,36 @@ impl SkeletonGeometryBuilder {
       }
 
       let (vertices, faces) = TangentBasis::mend(packer.vertices, &packer.faces)?;
-      let (vertices, faces) = VertexCacheOrder::apply(vertices, &faces);
+      let children: Vec<(Vec<SkeletonVertex>, Vec<[u16; 3]>)> = SplitPartition::cut(vertices, &faces);
+      let is_cut: bool = children.len() > 1;
 
       split.used_bones.sort_unstable();
       split.used_bones.dedup();
-      split.vertices = vertices;
-      split.faces = faces;
-      splits.push(split);
+
+      for (vertices, faces) in children {
+        let (vertices, faces) = VertexCacheOrder::apply(vertices, &faces);
+        // A whole split keeps the bones its faces named, the dropped ones' included, as the export lists them; a cut
+        // one's children each list the bones their own vertices follow.
+        let used_bones: Vec<u16> = if is_cut {
+          let mut bones: Vec<u16> = vertices
+            .iter()
+            .flat_map(|vertex| vertex.bones.iter().map(|bone| bone.bone))
+            .collect();
+
+          bones.sort_unstable();
+          bones.dedup();
+          bones
+        } else {
+          split.used_bones.clone()
+        };
+
+        splits.push(SkeletonSplit {
+          used_bones,
+          vertices,
+          faces,
+          ..split.clone()
+        });
+      }
     }
 
     Ok(SkeletonGeometry { splits, dropped_faces })

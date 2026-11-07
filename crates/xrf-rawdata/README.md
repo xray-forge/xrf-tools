@@ -41,7 +41,9 @@ prepares them, so the engine draws what the editor's export would give it:
 - a split's link count is its widest vertex's, a corner of a face that follows one bone padded with a weightless copy;
 - tangents and binormals come from the export's tangent pass (NVIDIA's MeshMender as the SDK calls it), which splits a
   vertex where the faces around it map the texture in disagreeing directions, then the vertices are ordered by first
-  use and the texture coordinates moved by whole tiles towards the origin.
+  use and the texture coordinates moved by whole tiles towards the origin;
+- a split past 65,535 vertices is cut, its faces in order, into children 16-bit indices reach (`SplitPartition`),
+  where the export would overflow them: high-poly models other tools exported spread a surface over several children.
 
 The order of the children follows the surfaces' order in the object, where the export follows their addresses in
 memory, so it can differ; the engine draws the same either way. Where the export's tangent pass divides by a zero
