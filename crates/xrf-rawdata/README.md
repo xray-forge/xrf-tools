@@ -15,11 +15,13 @@ opens. It undoes what the editor's `Export OGF` did:
 - corners split at seams and hard edges are welded back into points, by bit-equal position and the bones followed;
 - a face written twice, the copy mirrored with its normals inverted, is one face of a two-sided surface;
 - per-face smoothing edge flags (`face_smoth_flags.h`) come back from where welded corners' normals agree;
-- bones come from the bones and IK data chunks, joint limits turned back from the physics engine's sense.
+- bones come from the bones and IK data chunks, joint limits turned back from the physics engine's sense;
+- the OGF's own motions come back as the object's, each bone keyed at every frame, its rotation turned back into the
+  angles the editor keys, with how each motion plays and the bone parts they play on.
 
 What the OGF does not store is inferred and listed in `ObjectDecompile::inferred`: surface names, compiler shaders and
-game materials (the Actor Editor's `default`), the mesh name (`skin`), bone lengths (the SDK's 0.5), smoothing and the
-two-sided flag. `ObjectProvenance` is the sidecar written beside a decompiled file, so it is never taken for an authored
+game materials (the Actor Editor's `default`), the mesh name (`skin`), bone lengths (the SDK's 0.5), smoothing, the
+two-sided flag, and for an animated model its motions' curves between frames. `ObjectProvenance` is the sidecar written beside a decompiled file, so it is never taken for an authored
 one: the source path and SHA-256, the tool, the time, and every inference.
 
 An OGF that is not a skeleton, or a child with static vertices, is refused for now.

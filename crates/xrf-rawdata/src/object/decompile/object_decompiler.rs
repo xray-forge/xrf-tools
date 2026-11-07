@@ -1,5 +1,5 @@
-use xrf_chunk::ChunkLayout;
-use xrf_editable_object::{EditableBone, EditableDescription, EditableObjectFile, EditableTimeWidth};
+use xrf_chunk::{ChunkLayout, XRayByteOrder};
+use xrf_editable_object::{EditableBone, EditableDescription, EditableMotion, EditableObjectFile, EditableTimeWidth};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ogf::{OgfDescriptionChunk, OgfDescriptionTimeWidth, OgfFile, OgfModelType};
 
@@ -12,6 +12,7 @@ use crate::object::decompile::mesh::mesh_assembler::MeshAssembler;
 use crate::object::decompile::object_decompile::ObjectDecompile;
 use crate::object::decompile::object_inference::ObjectInference;
 use crate::object::decompile::skeleton::bone_converter::BoneConverter;
+use crate::object::decompile::skeleton::motion_converter::{ConvertedMotions, MotionConverter};
 
 /// Turns an OGF the Actor Editor exported back into the editable object it was exported from, as near as the OGF
 /// allows: see the crate's documentation for what is recovered and what inferred.
@@ -58,6 +59,12 @@ impl ObjectDecompiler {
     let bones: Vec<EditableBone> = BoneConverter::convert(file)?;
     let bone_names: Vec<String> = bones.iter().map(|bone| bone.definition.name.clone()).collect();
     let assembled: AssembledMesh = MeshAssembler::assemble(&surfaces, &welded, smoothing, &bone_names)?;
+    let motions: Option<ConvertedMotions> = MotionConverter::convert::<XRayByteOrder>(file, &bone_names)?;
+    let mut inferred: Vec<ObjectInference> = Self::INFERRED.to_vec();
+
+    if motions.is_some() {
+      inferred.push(ObjectInference::MotionCurves);
+    }
 
     Ok(ObjectDecompile {
       object: EditableObjectFile {
@@ -74,18 +81,21 @@ impl ObjectDecompiler {
         meshes: Some(vec![assembled.mesh]),
         surfaces: Some(assembled.surfaces),
         bones: Some(bones),
-        embedded_motions: None,
+        embedded_motions: motions
+          .as_ref()
+          .map(|it| EditableMotion::write_list::<XRayByteOrder>(&it.motions))
+          .transpose()?,
         motion_references: file
           .kinematics
           .as_ref()
           .map(|chunk| chunk.motion_refs.clone())
           .filter(|references| !references.is_empty()),
-        bone_parts: None,
+        bone_parts: motions.map(|it| it.parts),
         actor_transform: None,
         description: file.get_description().map(Self::to_description),
         layout: ChunkLayout::default(),
       },
-      inferred: Self::INFERRED.to_vec(),
+      inferred,
     })
   }
 

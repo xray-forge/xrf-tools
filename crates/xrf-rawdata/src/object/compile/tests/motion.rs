@@ -8,6 +8,9 @@ use xrf_skeleton::{SkeletonBoneMotion, SkeletonMotion, SkeletonMotionParametersC
 
 use crate::object::compile::motion::motion_keys::MotionKeys;
 use crate::object::compile::tests::ogf::{authored, compile};
+use crate::object::decompile::object_decompile::ObjectDecompile;
+use crate::object::decompile::object_decompiler::ObjectDecompiler;
+use crate::object::decompile::object_inference::ObjectInference;
 
 /// Decodes the one run `rotations` and `translations` write.
 fn run(rotations: &[[i16; 4]], translations: &[Vector3d]) -> XrfResult<(u8, SkeletonBoneMotion)> {
@@ -132,6 +135,54 @@ fn samples_each_frame_of_the_objects_own_motion() -> XrfResult {
     (parameters.motions[0].name.as_str(), parameters.motions[0].flags),
     ("open", u32::from(EditableMotion::STOP_AT_END_FLAG))
   );
+
+  Ok(())
+}
+
+#[test]
+fn decompiles_its_motions_into_keys_that_compile_alike() -> XrfResult {
+  let first: OgfFile = compile(&animated(EditableMotion::STOP_AT_END_FLAG)?)?;
+  let decompile: ObjectDecompile = ObjectDecompiler::decompile(&first)?;
+  let second: OgfFile = compile(&decompile.object)?;
+  let motions = |file: &OgfFile| file.motions.as_ref().expect("Expect motions").motions.clone();
+  let parameters = |file: &OgfFile| {
+    let chunk: &SkeletonMotionParametersChunk = file.motion_parameters.as_ref().expect("Expect parameters");
+
+    (chunk.parts.clone(), chunk.motions.clone())
+  };
+
+  assert!(decompile.inferred.contains(&ObjectInference::MotionCurves));
+  assert_eq!(parameters(&second), parameters(&first));
+
+  for (motion, other) in motions(&second).iter().zip(&motions(&first)) {
+    assert_eq!((&motion.label, motion.count), (&other.label, other.count));
+
+    let runs: Vec<SkeletonBoneMotion> = motion.decode_bone_motions::<XRayByteOrder>(3)?;
+    let others: Vec<SkeletonBoneMotion> = other.decode_bone_motions::<XRayByteOrder>(3)?;
+
+    for (run, other) in runs.iter().zip(&others) {
+      for frame in 0..motion.count as usize {
+        let (rotation, expected) = (run.get_rotation(frame), other.get_rotation(frame));
+
+        // A quantised key turned to angles and back lands within a step of where it was.
+        for (component, expected) in [rotation.x, rotation.y, rotation.z, rotation.w]
+          .into_iter()
+          .zip([expected.x, expected.y, expected.z, expected.w])
+        {
+          assert!(
+            (component - expected).abs() * 32767.0 <= 1.0,
+            "{component} against {expected}"
+          );
+        }
+
+        // Quantised again, a position truncates towards zero and may slip a step: half the metre `lid` rises over
+        // 127 steps.
+        let gap: f32 = run.get_translation(frame).distance(other.get_translation(frame));
+
+        assert!(gap <= 0.5 / 127.0 + 1e-6, "frame {frame} moved {gap}");
+      }
+    }
+  }
 
   Ok(())
 }
