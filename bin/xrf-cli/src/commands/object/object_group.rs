@@ -14,6 +14,7 @@ impl ObjectGroup {
       commands: vec![
         object::compile::CompileCommand::new_box(),
         object::decompile::DecompileCommand::new_box(),
+        object::verify::VerifyCommand::new_box(),
       ],
     }
   }

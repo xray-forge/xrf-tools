@@ -62,7 +62,14 @@ its rotation quantised to 16 bits and its translation to 8 or 16 within its rang
 then how each motion plays and the bone parts it plays on. A motion moving the whole object through its root bone is
 refused for now.
 
+`ObjectVerifier::verify` compiles an object and compares the OGF with one it should stand in for, by what the engine
+reads: the model type, user data, LODs and motion references; each bone's name, parent, order and physics; the own
+motions by name and length with their parameters; and the geometry, each child paired by texture and shader, its
+vertices by position, normal, texture coordinate and weights, and its triangles by their corners' positions. The orders
+the compile chooses, tangents, bone boxes and authoring stamps are left out. `ObjectVerification` lists the differences
+of each area and counts what matched, telling a vertex that differs in its normal alone from one that differs more.
+
 ## Checks
 
 Run `cargo test --locked -p xrf-rawdata` from the repository root. See the [decompiler](src/object/decompile/), the
-[compiler](src/object/compile/) and the [provenance sidecar](src/provenance/).
+[compiler](src/object/compile/), the [verifier](src/object/verify/) and the [provenance sidecar](src/provenance/).
