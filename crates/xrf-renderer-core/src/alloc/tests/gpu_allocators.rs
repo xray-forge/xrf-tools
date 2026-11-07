@@ -138,3 +138,18 @@ fn grows_an_upload_ring_that_a_frame_outgrows() {
   assert_eq!(ring.get_generation(), 1);
   assert!(ring.get_buffer().size() >= u64::from(ring.get_alignment()) * 7 + 4);
 }
+
+// A frame that never executes leaves nothing for the next to push after.
+#[test]
+fn drops_what_a_frame_that_never_executed_pushed() {
+  let Some((device, _queue)) = create_device() else {
+    return;
+  };
+  let mut ring: UploadRing = UploadRing::new(&device, "test", wgpu::BufferUsages::UNIFORM, 256);
+
+  ring.push(&[1.0f32; 4]);
+  ring.discard();
+
+  assert_eq!(ring.get_pushed(), 0);
+  assert_eq!(ring.push(&7u32), UploadSlice { offset: 0, size: 4 });
+}

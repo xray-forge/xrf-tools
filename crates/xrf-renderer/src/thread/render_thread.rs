@@ -119,8 +119,8 @@ pub struct RenderThread {
   textures_swept: Instant,
   /// Who asked the thread to stop at once, answered once it stopped.
   stopping: Option<Sender<()>>,
-  /// The composition's failures, which repeat every frame until a shader changes.
-  composition_failures: FrameFailureLog,
+  /// Failures that repeat every frame until something changes: the frame's own, the grid's, the composition's.
+  frame_failures: FrameFailureLog,
 }
 
 impl RenderThread {
@@ -165,7 +165,7 @@ impl RenderThread {
       shader_watcher: ShaderWatcher::new(&ShaderLibrary::get_source_root()),
       textures_swept: now,
       stopping: None,
-      composition_failures: FrameFailureLog::default(),
+      frame_failures: FrameFailureLog::default(),
     }
   }
 
