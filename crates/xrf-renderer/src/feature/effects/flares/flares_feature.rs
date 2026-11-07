@@ -15,6 +15,7 @@ use crate::feature::effects::flares::flare_uniform::FlareUniform;
 use crate::feature::effects::flares::lens_flare_fade::LensFlareFade;
 use crate::feature::effects::flares::sun_sprite::SunSprite;
 use crate::feature::view::view_feature::ViewFeature;
+use crate::feature::view::view_restart::ViewRestart;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::weather::flares::render_lens_flare::RenderLensFlare;
 use crate::host::weather::render_level_weather::RenderLevelWeather;
@@ -269,5 +270,16 @@ impl ViewFeature for FlaresFeature {
     self.state = None;
     self.textures.clear();
     self.is_drawn = false;
+  }
+
+  /// Its motion restarted, the fade settles on the lens flare named at the next frame (`LensFlareFade::settle`), the
+  /// sun's eased visibility starts again from none as at a view's first frame, and the step is taken from that frame
+  /// on; a cut leaves them, the visibility easing to the new place as it eases to a sun stepping behind a wall.
+  fn restart(&mut self, restart: ViewRestart) {
+    if restart == ViewRestart::Motion {
+      self.fade.settle();
+      self.state = None;
+      self.last = None;
+    }
   }
 }
