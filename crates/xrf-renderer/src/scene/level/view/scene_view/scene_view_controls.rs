@@ -5,6 +5,7 @@ use xrf_dlss::Dlss;
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::view::render_view_options::RenderViewOptions;
+use crate::feature::view::view_restart::ViewRestart;
 use crate::pass::view::view_motion::ViewMotion;
 use crate::scene::level::view::scene_view::SceneView;
 
@@ -21,17 +22,12 @@ impl SceneView {
   }
 
   /// Starts what it carries from frame to frame and moves by the time again from nothing at its next frame: its last
-  /// frame's time, which every unit steps on from, the wind's drift and sway, the water's scroll, the falling rain's
-  /// clock and easing, the exposure's adaptation, and the temporal resolve's history and jitter. What it draws from then
-  /// on follows from its frames since alone, as two bursts from one time must.
+  /// frame's time, which every unit steps on from, and each unit's clocks, easings, noise turns and histories
+  /// (`ViewRestart::Motion`). What it draws from then on follows from its frames since alone, as two bursts from one
+  /// time must.
   pub fn restart_motion(&mut self) {
     self.last_time = None;
-    self.features.wind.restart();
-    self.features.rain.restart();
-    self.features.grass.restart_wind();
-    self.features.water.restart();
-    self.features.exposure.restart();
-    self.features.resolve.restart();
+    self.restart_units(ViewRestart::Motion);
   }
 
   /// Draws its next frames as a reference's `sample` of `samples`: unresolved, at that place of the jitter's
@@ -41,9 +37,23 @@ impl SceneView {
   }
 
   /// What this frame, seen through `view` and drawn by the `jittered` view projection, measures its motion and
-  /// reprojects by; none moved across a cut.
+  /// reprojects by; none moved across a cut, after which no unit reads a history of the place the camera left
+  /// (`ViewRestart::Cut`).
   pub fn next_motion(&mut self, view: &CameraView, jittered: Mat4) -> ViewMotion {
-    self.features.resolve.next_motion(view, jittered)
+    let motion: ViewMotion = self.features.resolve.next_motion(view, jittered);
+
+    if self.features.resolve.is_camera_cut() {
+      self.restart_units(ViewRestart::Cut);
+    }
+
+    motion
+  }
+
+  /// Asks every unit of the view to start again what it carries, as `restart` asks.
+  fn restart_units(&mut self, restart: ViewRestart) {
+    for unit in self.features.list_mut().into_iter().chain(self.stages.list_mut()) {
+      unit.restart(restart);
+    }
   }
 
   /// Where the next frame's samples sit within their pixels, in drawn pixels, `y` down, on a GPU that has DLSS where

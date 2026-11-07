@@ -3,6 +3,7 @@ use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::scene::wind::foliage_wind_values::FoliageWindValues;
 use crate::feature::scene::wind::wind_uniform::WindUniform;
 use crate::feature::view::view_feature::ViewFeature;
+use crate::feature::view::view_restart::ViewRestart;
 use crate::lighting::weather::render_lighting::RenderLighting;
 use crate::lighting::wind::foliage_motion::FoliageMotion;
 use crate::lighting::wind::foliage_wind::FoliageWind;
@@ -52,11 +53,6 @@ impl WindFeature {
     };
   }
 
-  /// Starts the foliage's drift and the trees' sway again from nothing, as at a view's first frame.
-  pub fn restart(&mut self) {
-    *self = Self::default();
-  }
-
   /// How the trees sway this frame, which every static draw reads.
   pub fn get_uniform(&self) -> &WindUniform {
     &self.uniform
@@ -80,4 +76,12 @@ impl ViewFeature for WindFeature {
   }
 
   fn release(&mut self) {}
+
+  /// Its motion restarted, the foliage's drift and the trees' sway start again from nothing, as at a view's first
+  /// frame; a cut leaves them, which follow the time and not the camera.
+  fn restart(&mut self, restart: ViewRestart) {
+    if restart == ViewRestart::Motion {
+      *self = Self::default();
+    }
+  }
 }

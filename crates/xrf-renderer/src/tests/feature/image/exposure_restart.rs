@@ -3,6 +3,8 @@ use std::time::{Duration, Instant};
 use crate::contract::feature::lighting::model::render_light_model::RenderLightModel;
 use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::image::exposure::exposure_feature::ExposureFeature;
+use crate::feature::view::view_feature::ViewFeature;
+use crate::feature::view::view_restart::ViewRestart;
 use crate::tests::support::test_context::create_test_context;
 
 /// A restarted exposure takes its next frame's measure whole, under the engine's light and the physical alike, rather
@@ -29,7 +31,7 @@ fn a_restarted_exposure_takes_its_next_measure_whole() {
 
   assert!(exposure.params.blend < 1.0, "an adapting exposure eases");
 
-  exposure.restart();
+  exposure.restart(ViewRestart::Motion);
   exposure.prepare(queue, &engine, frame(4));
 
   assert_eq!(
@@ -47,7 +49,7 @@ fn a_restarted_exposure_takes_its_next_measure_whole() {
 
   assert_eq!(exposure.get_histogram().snap, 0.0, "the physical exposure eases");
 
-  exposure.restart();
+  exposure.restart(ViewRestart::Motion);
   exposure.prepare(queue, &physical, frame(10));
 
   assert_eq!(

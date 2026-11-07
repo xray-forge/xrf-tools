@@ -17,6 +17,7 @@ use crate::feature::image::exposure::reading::exposure_head::ExposureHead;
 use crate::feature::image::exposure::reading::exposure_metering::ExposureMetering;
 use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
 use crate::feature::view::view_feature::ViewFeature;
+use crate::feature::view::view_restart::ViewRestart;
 use crate::frame::jitter_guard::JitterGuard;
 use crate::frame::readback::gpu_readback::GpuReadback;
 use crate::frame::targets::view_target_handles::ViewTargetHandles;
@@ -283,16 +284,6 @@ impl ExposureFeature {
     self.held = None;
   }
 
-  /// Starts its adaptation again from nothing: the next frame it meters takes its measure whole, as a first frame
-  /// does, its rate back where a new view's starts, rather than easing from the scale the frames before left. What a
-  /// view draws from a restart then follows from its frames since alone, as two bursts from one time must. A frozen
-  /// scale holds, and takes the measure whole once it adapts again.
-  pub fn restart(&mut self) {
-    self.last = None;
-    self.rate = Self::START_RATE;
-    self.is_restarted = true;
-  }
-
   /// How the physical light meters this frame.
   #[cfg(test)]
   pub fn get_histogram(&self) -> &ExposureHistogramUniform {
@@ -447,4 +438,17 @@ impl ViewFeature for ExposureFeature {
 
   /// Nothing to let go of on its own: its state goes with it.
   fn release(&mut self) {}
+
+  /// Its motion restarted, its adaptation starts again from nothing: the next frame it meters takes its measure whole,
+  /// as a first frame does, its rate back where a new view's starts, rather than easing from the scale the frames
+  /// before left. What a view draws from a restart then follows from its frames since alone, as two bursts from one
+  /// time must. A frozen scale holds, and takes the measure whole once it adapts again. A cut leaves it adapting, as
+  /// the eye adapts to the place it lands in.
+  fn restart(&mut self, restart: ViewRestart) {
+    if restart == ViewRestart::Motion {
+      self.last = None;
+      self.rate = Self::START_RATE;
+      self.is_restarted = true;
+    }
+  }
 }

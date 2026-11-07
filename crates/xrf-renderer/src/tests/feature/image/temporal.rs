@@ -10,6 +10,8 @@ use crate::feature::image::resolve::resolve_feature::ResolveFeature;
 use crate::feature::image::resolve::temporal::temporal_frame::TemporalFrame;
 use crate::feature::image::resolve::temporal::temporal_uniform::TemporalUniform;
 use crate::feature::image::resolve::temporal_jitter::TemporalJitter;
+use crate::feature::view::view_feature::ViewFeature;
+use crate::feature::view::view_restart::ViewRestart;
 
 #[test]
 fn halton_places_samples_as_the_radical_inverse_of_their_index() {
@@ -138,7 +140,7 @@ fn a_restarted_resolve_jitters_from_the_first_place_again() {
 
   let first: Vec<Vec2> = (0..3).map(|_| resolve.next_jitter(&options, 1.0, None)).collect();
 
-  resolve.restart();
+  resolve.restart(ViewRestart::Motion);
 
   let again: Vec<Vec2> = (0..3).map(|_| resolve.next_jitter(&options, 1.0, None)).collect();
 
@@ -168,7 +170,7 @@ fn a_jump_or_a_sharp_turn_is_a_cut() {
   assert!(!resolve.is_cut(&at(Vec3::new(40.5, 0.0, 0.0), 0.3)));
   assert!(resolve.is_cut(&at(Vec3::new(40.5, 0.0, 0.0), 2.0)));
 
-  resolve.restart();
+  resolve.restart(ViewRestart::Motion);
 
   assert!(!resolve.is_cut(&at(Vec3::new(-100.0, 0.0, 0.0), 0.0)));
 }

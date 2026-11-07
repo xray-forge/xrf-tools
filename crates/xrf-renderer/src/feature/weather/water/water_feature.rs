@@ -8,6 +8,7 @@ use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::effects::rain::rings::drop_rings::DropRings;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::view::view_frame_end::ViewFrameEnd;
+use crate::feature::view::view_restart::ViewRestart;
 use crate::feature::weather::sky::sky_views::SkyViews;
 use crate::feature::weather::water::draw::traced_water::TracedWater;
 use crate::feature::weather::water::draw::water_draw::WaterDraw;
@@ -91,14 +92,6 @@ impl WaterFeature {
     };
 
     Some(passes.weather.water.add_passes(graph, bindings, runtime, draw))
-  }
-
-  /// Starts its maps' scroll, its traced pixels' turn and its reflection's histories again from nothing; its wave's
-  /// last place starts over with the view's last frame.
-  pub fn restart(&mut self) {
-    self.flow = WaterFlow::default();
-    self.frame = 0;
-    self.reflection = None;
   }
 
   /// Takes this frame's settings: makes or drops the reflection's histories, and works out the uniforms.
@@ -252,6 +245,24 @@ impl ViewFeature for WaterFeature {
       reflection.histories.swap();
     } else {
       reflection.histories.invalidate();
+    }
+  }
+
+  /// Its motion restarted, its maps' scroll, its traced pixels' turn and its reflection's histories start again from
+  /// nothing, its wave's last place over with the view's last frame; a cut leaves the reflection's history nothing to
+  /// read, its scroll running on.
+  fn restart(&mut self, restart: ViewRestart) {
+    match restart {
+      ViewRestart::Motion => {
+        self.flow = WaterFlow::default();
+        self.frame = 0;
+        self.reflection = None;
+      }
+      ViewRestart::Cut => {
+        if let Some(reflection) = &mut self.reflection {
+          reflection.histories.invalidate();
+        }
+      }
     }
   }
 }
