@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use xrf_error::XrfResult;
 use xrf_test_utils::GeneratedResources;
 
+use crate::object::compile::object_compile_options::{ObjectCompileOptions, TangentMethod};
 use crate::object::decompile::object_inference::ObjectInference;
 use crate::provenance::object_provenance::ObjectProvenance;
 
@@ -35,11 +36,45 @@ fn reads_back_the_sidecar_it_writes() -> XrfResult {
     "xrf-cli object decompile",
     "1.0.0",
     vec![ObjectInference::SurfaceNames, ObjectInference::Smoothing],
+    TangentMethod::MikkTSpace,
   );
 
   fs::write(ObjectProvenance::sidecar_path(&object), provenance.to_json()?).expect("sidecar is writable");
 
   assert_eq!(ObjectProvenance::read_beside(&object)?, Some(provenance));
+
+  Ok(())
+}
+
+#[test]
+fn compiles_with_the_tangent_method_a_sidecar_records_and_the_editors_without_one() -> XrfResult {
+  // A sidecar written before the tangent method was recorded.
+  let object: PathBuf = directory("older").join("crate.object");
+
+  fs::write(
+    ObjectProvenance::sidecar_path(&object),
+    r#"{"source":"meshes/crate.ogf","sourceSha256":"00","tool":"xrf-cli object decompile","toolVersion":"1.0.0",
+       "decompiledAt":0,"inferred":[]}"#,
+  )
+  .expect("sidecar is writable");
+
+  let older: Option<ObjectProvenance> = ObjectProvenance::read_beside(&object)?;
+  let mut blender: ObjectProvenance = older.clone().expect("expect the older sidecar read");
+
+  blender.tangents = TangentMethod::MikkTSpace;
+
+  assert_eq!(
+    ObjectCompileOptions::following(older.as_ref()).tangents,
+    TangentMethod::ActorEditor
+  );
+  assert_eq!(
+    ObjectCompileOptions::following(Some(&blender)).tangents,
+    TangentMethod::MikkTSpace
+  );
+  assert_eq!(
+    ObjectCompileOptions::following(None).tangents,
+    TangentMethod::ActorEditor
+  );
 
   Ok(())
 }

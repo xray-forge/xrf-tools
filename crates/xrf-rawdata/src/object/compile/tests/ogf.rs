@@ -5,6 +5,7 @@ use xrf_math::{Aabb, Vector3d};
 use xrf_ogf::{OgfFile, OgfModelType};
 use xrf_skeleton::SkeletonJointLimit;
 
+use crate::object::compile::object_compile_options::TangentMethod;
 use crate::object::compile::object_compile_source::ObjectCompileSource;
 use crate::object::compile::object_compiler::ObjectCompiler;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
@@ -107,6 +108,29 @@ fn writes_an_ogf_the_reader_takes_whole() -> XrfResult {
     file.kinematics.as_ref().map(|it| it.motion_refs.clone()),
     Some(vec![String::from("crate_motions")])
   );
+
+  Ok(())
+}
+
+#[test]
+fn decompiles_a_blender_xray_model_to_compile_back_with_mikktspace() -> XrfResult {
+  let exported_by = |convertor: &str| -> XrfResult<TangentMethod> {
+    let source: ObjectCompileSource = ObjectCompileSource {
+      source_file: String::from(SOURCE),
+      convertor: String::from(convertor),
+      built_at: 3_000,
+    };
+    let file: OgfFile = OgfFile::read_from_bytes::<XRayByteOrder>(ObjectCompiler::compile(&authored()?, &source)?)?;
+
+    Ok(ObjectDecompiler::decompile(&file)?.tangents)
+  };
+
+  // The convertor `blender-xray` 2.37.0 writes.
+  assert_eq!(
+    exported_by("program: blender v3.6.12, addon: blender-xray-v2.37.0")?,
+    TangentMethod::MikkTSpace
+  );
+  assert_eq!(exported_by("\\\\YURIY\\Yuriy")?, TangentMethod::ActorEditor);
 
   Ok(())
 }

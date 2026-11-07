@@ -93,6 +93,7 @@ impl DecompileCommand {
         None => build.version.to_string(),
       },
       decompile.inferred.clone(),
+      decompile.tangents,
     );
 
     // The sidecar first: an object that failed to publish leaves a stray sidecar, never a decompile taken for an

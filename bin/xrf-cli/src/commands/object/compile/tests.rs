@@ -1,4 +1,4 @@
-//! What `object compile` refuses, and that a refusal writes nothing.
+//! What `object compile` refuses, that a refusal writes nothing, and which tangent method it compiles with.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use xrf_chunk::{ChunkLayout, XRayByteOrder};
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::XrfResult;
+use xrf_rawdata::{ObjectProvenance, TangentMethod};
 use xrf_test_utils::GeneratedResources;
 
 use crate::commands::object::compile::command::CompileCommand;
@@ -69,6 +70,31 @@ fn refuses_to_replace_an_ogf_without_force() -> XrfResult {
     "Expect the refusal to name the flag: {error}"
   );
   assert_eq!(fs::read(&destination)?, b"exported");
+
+  Ok(())
+}
+
+#[test]
+fn takes_the_tangent_method_a_sidecar_records_unless_told_otherwise() -> XrfResult {
+  let root: PathBuf = GeneratedResources::create_dir("object-compile/tangents")?;
+  let (decompiled, authored) = (root.join("decompiled.object"), root.join("authored.object"));
+  let provenance: ObjectProvenance = ObjectProvenance::new(
+    "meshes/decompiled.ogf",
+    b"ogf",
+    "xrf-cli object decompile",
+    "1.0.0",
+    Vec::new(),
+    TangentMethod::MikkTSpace,
+  );
+
+  fs::write(ObjectProvenance::sidecar_path(&decompiled), provenance.to_json()?)?;
+
+  let tangents = |source: &Path, choice: &str| CompileCommand::get_options(source, choice).map(|it| it.tangents);
+
+  assert_eq!(tangents(&decompiled, "auto")?, TangentMethod::MikkTSpace);
+  assert_eq!(tangents(&decompiled, "actor-editor")?, TangentMethod::ActorEditor);
+  assert_eq!(tangents(&authored, "auto")?, TangentMethod::ActorEditor);
+  assert_eq!(tangents(&authored, "mikktspace")?, TangentMethod::MikkTSpace);
 
   Ok(())
 }

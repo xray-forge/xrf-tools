@@ -3,6 +3,7 @@
 pub(crate) mod object;
 pub(crate) mod provenance;
 
+pub use crate::object::compile::object_compile_options::{ObjectCompileOptions, TangentMethod};
 pub use crate::object::compile::object_compile_source::ObjectCompileSource;
 pub use crate::object::compile::object_compiler::ObjectCompiler;
 pub use crate::object::compile::skeleton::skeleton_geometry::SkeletonGeometry;

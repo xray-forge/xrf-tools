@@ -1,6 +1,7 @@
 use xrf_error::XrfResult;
 use xrf_math::{Vector2d, Vector3d};
 
+use crate::object::compile::skeleton::mikktspace_basis::MikkTSpaceBasis;
 use crate::object::compile::skeleton::skeleton_vertex::{SkeletonVertex, SkeletonVertexBone};
 use crate::object::compile::skeleton::tangent_basis::TangentBasis;
 
@@ -59,6 +60,71 @@ fn splits_the_vertices_of_an_edge_the_texture_is_mirrored_across() -> XrfResult 
   assert_ne!(faces[0][2], faces[1][1], "`c` split");
   assert!(is_near(&vertices[faces[0][0] as usize].tangent, &Vector3d::X));
   assert!(is_near(&vertices[faces[1][0] as usize].tangent, &-&Vector3d::X));
+
+  Ok(())
+}
+
+#[test]
+fn gives_mikktspace_the_same_basis_where_the_mapping_is_square() -> XrfResult {
+  // On a square mapped square every basis agrees: the binormal, `sign · (normal × tangent)`, runs along `v` as the
+  // mender's does. MikkTSpace reads the sign off the winding, so the faces turn about their normal as the export's do,
+  // `(p1 - p0) × (p2 - p1)` along it; the mender reads none.
+  let (vertices, faces) = MikkTSpaceBasis::generate(
+    vec![
+      vertex([0.0, 0.0, 0.0], [0.0, 0.0]),
+      vertex([1.0, 0.0, 0.0], [1.0, 0.0]),
+      vertex([1.0, 0.0, 1.0], [1.0, 1.0]),
+      vertex([0.0, 0.0, 1.0], [0.0, 1.0]),
+    ],
+    &[[0, 2, 1], [0, 3, 2]],
+  )?;
+
+  assert_eq!((vertices.len(), faces), (4, vec![[0, 1, 2], [0, 3, 1]]));
+  assert!(vertices.iter().all(|vertex| is_near(&vertex.tangent, &Vector3d::X)));
+  assert!(vertices.iter().all(|vertex| is_near(&vertex.binormal, &Vector3d::Z)));
+
+  Ok(())
+}
+
+#[test]
+fn splits_mikktspace_vertices_where_the_texture_is_mirrored() -> XrfResult {
+  let (vertices, faces) = MikkTSpaceBasis::generate(
+    vec![
+      vertex([0.0, 0.0, 0.0], [0.0, 0.0]),
+      vertex([1.0, 0.0, 0.0], [1.0, 0.0]),
+      vertex([1.0, 0.0, 1.0], [1.0, 1.0]),
+      vertex([0.0, 0.0, 1.0], [2.0, 1.0]),
+    ],
+    &[[0, 2, 1], [0, 3, 2]],
+  )?;
+
+  assert_eq!(vertices.len(), 6);
+  assert!(is_near(&vertices[faces[0][0] as usize].tangent, &Vector3d::X));
+  assert!(is_near(&vertices[faces[1][0] as usize].tangent, &-&Vector3d::X));
+  // The mirrored face's binormal still runs along `v`.
+  assert!(is_near(&vertices[faces[1][0] as usize].binormal, &Vector3d::Z));
+
+  Ok(())
+}
+
+#[test]
+fn gives_a_face_mapped_to_a_point_a_basis_from_its_normal() -> XrfResult {
+  // Every corner at one texture coordinate: MikkTSpace has no direction to give, and nothing near to borrow one from.
+  let (vertices, _) = MikkTSpaceBasis::generate(
+    vec![
+      vertex([0.0, 0.0, 0.0], [0.5, 0.5]),
+      vertex([1.0, 0.0, 0.0], [0.5, 0.5]),
+      vertex([1.0, 0.0, 1.0], [0.5, 0.5]),
+    ],
+    &[[0, 1, 2]],
+  )?;
+  let (tangent, binormal) = TangentBasis::get_basis_from_normal(&Vector3d::Y);
+
+  assert!(
+    vertices
+      .iter()
+      .all(|vertex| { is_near(&vertex.tangent, &tangent) && is_near(&vertex.binormal, &binormal) })
+  );
 
   Ok(())
 }

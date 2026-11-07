@@ -9,6 +9,7 @@ rust-version.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
+bevy_mikktspace = "1.0.0"
 byteorder = { workspace = true }
 crc32fast = { workspace = true }
 glam = { workspace = true }
