@@ -5,7 +5,7 @@ use std::time::Instant;
 
 use xrf_error::XrfResult;
 use xrf_gamemtl::GameMtlFile;
-use xrf_ltx::{Ltx, LtxProject};
+use xrf_ltx::Ltx;
 use xrf_particles::ParticlesFile;
 use xrf_spawn::{SpawnFile, XRayByteOrder};
 use xrf_utils::format_path;
@@ -100,21 +100,34 @@ impl ParticlesUsageVerifier<'_> {
     Ok(names)
   }
 
+  /// Every config's particle names, taken in the project's order: each unknown one is said as its config's findings are
+  /// taken in, so the narration and the findings are the ones one config at a time gives.
   fn verify_configs(&self, particle_names: &HashSet<String>, result: &mut GamedataParticlesUsageVerificationResult) {
-    for path in &self.project.ltx_project.ltx_file_entries {
-      if self.options.job.is_cancelled() {
-        break;
-      }
+    let outcomes: Vec<(PathBuf, XrfResult<GamedataParticlesUsageVerificationResult>)> =
+      self.project.visit_configs(&self.options.job, |ltx, reported| {
+        let mut found: GamedataParticlesUsageVerificationResult = GamedataParticlesUsageVerificationResult::default();
 
-      if LtxProject::is_ltx_scheme_path(path) {
-        continue;
-      }
+        self.verify_ltx(particle_names, ltx, reported, &mut found);
 
-      // Read through the project: its entries are logical paths, which a filesystem read cannot resolve.
-      let reported: PathBuf = self.project.ltx_project.path_of(path);
+        found
+      });
 
-      match self.project.ltx_project.read_resolution(path) {
-        Ok(resolved) => self.verify_ltx(particle_names, &resolved.ltx, &reported, result),
+    for (reported, outcome) in outcomes {
+      match outcome {
+        Ok(found) => {
+          for finding in &found.findings {
+            xrf_output::error!(
+              self.options.output,
+              "{} ({})",
+              finding.message(),
+              format_path(&reported)
+            );
+          }
+
+          result.checked_references_count += found.checked_references_count;
+          result.invalid_references_count += found.invalid_references_count;
+          result.findings.extend(found.findings);
+        }
         // Malformed ltx files are reported by the generic ltx check, not this one.
         Err(error) => xrf_output::verbose!(
           self.options.output,
@@ -253,12 +266,6 @@ impl ParticlesUsageVerifier<'_> {
           result.checked_references_count += 1;
 
           if !particle_names.contains(&Self::normalize_particle_name(reference)) {
-            xrf_output::error!(
-              self.options.output,
-              "Unknown particle reference: [{section_name}] {key} = {reference} ({})",
-              format_path(path)
-            );
-
             result.findings.push(GamedataFindingFactory::for_asset(
               GamedataVerificationRule::ParticlesUsageReference,
               path,
