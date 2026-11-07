@@ -48,7 +48,7 @@ impl FrameCapture {
     let row: u32 = (rect.width * 4).next_multiple_of(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
 
     Ok(Self {
-      readback: GpuReadback::new(device, "capture", (row * rect.height) as u64),
+      readback: GpuReadback::new(device, "capture", u64::from(row) * u64::from(rect.height)),
       rect,
       format,
       row,
@@ -90,7 +90,7 @@ impl FrameCapture {
 
     Self {
       coverage: Some((
-        GpuReadback::new(device, "map tile coverage", (row * height) as u64),
+        GpuReadback::new(device, "map tile coverage", u64::from(row) * u64::from(height)),
         row,
       )),
       ..self
