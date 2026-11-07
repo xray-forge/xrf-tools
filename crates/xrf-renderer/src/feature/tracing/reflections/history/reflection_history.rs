@@ -1,6 +1,7 @@
 use crate::feature::tracing::reflections::history::reflection_frame::ReflectionFrame;
 use crate::feature::tracing::reflections::trace::reflection_trace::ReflectionTrace;
 use crate::feature::tracing::scene_trace::requests::trace_request_list::TraceRequestList;
+use crate::feature::view::view_restart::ViewRestart;
 use crate::frame::targets::depth_pyramid::DepthPyramid;
 use crate::frame::targets::frame_texture::FrameTexture;
 use crate::frame::targets::history::History;
@@ -139,6 +140,24 @@ impl ReflectionHistory {
     std::mem::swap(&mut self.depth, depth);
     self.frame = self.frame.wrapping_add(1);
     self.is_source_valid = true;
+  }
+
+  /// Starts again what it keeps, as `restart` asks: the denoiser's frames and the scene and depth kept left nothing to
+  /// read, the last place's leading nowhere true; its motion restarted, the frames counted and the noise turning from
+  /// none again too, as if just made.
+  pub fn restart(&mut self, restart: ViewRestart) {
+    if let Some(frames) = &mut self.frames {
+      match restart {
+        ViewRestart::Motion => frames.restart(),
+        ViewRestart::Cut => frames.invalidate(),
+      }
+    }
+
+    if restart == ViewRestart::Motion {
+      self.frame = 0;
+    }
+
+    self.is_source_valid = false;
   }
 
   /// Bytes its textures and the pyramid take.

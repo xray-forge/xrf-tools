@@ -31,6 +31,7 @@ use crate::feature::tracing::scene_trace::scene_trace_request::SceneTraceRequest
 use crate::feature::tracing::view_trace::traced_scene::TracedScene;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::view::view_frame_end::ViewFrameEnd;
+use crate::feature::view::view_restart::ViewRestart;
 use crate::feature::weather::sky::sky_parameters::SkyParameters;
 use crate::feature::weather::wet::wet_feature::WetFeature;
 use crate::feature::weather::wet::wet_targets::WetTargets;
@@ -579,6 +580,13 @@ impl ViewFeature for ReflectionFeature {
   fn end_frame(&mut self, end: &mut ViewFrameEnd<'_>) {
     if let (Some(_), Some(history), Some(depth)) = (self.trace, &mut self.history, end.depth.as_deref_mut()) {
       history.swap(depth);
+    }
+  }
+
+  /// Their history starts again as `restart` asks (`ReflectionHistory::restart`).
+  fn restart(&mut self, restart: ViewRestart) {
+    if let Some(history) = &mut self.history {
+      history.restart(restart);
     }
   }
 }

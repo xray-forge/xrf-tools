@@ -8,6 +8,7 @@ use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::lighting::lights::lights_feature::LightsFeature;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::view::view_frame_end::ViewFrameEnd;
+use crate::feature::view::view_restart::ViewRestart;
 use crate::feature::weather::volumetric::froxels::froxel_inject_parameters::FroxelInjectParameters;
 use crate::feature::weather::volumetric::froxels::froxel_integrate_parameters::FroxelIntegrateParameters;
 use crate::feature::weather::volumetric::froxels::froxel_uniform::FroxelUniform;
@@ -254,6 +255,17 @@ impl ViewFeature for VolumetricFeature {
   fn end_frame(&mut self, _end: &mut ViewFrameEnd<'_>) {
     if let (Some(_), Some(froxels)) = (self.uniform, &mut self.froxels) {
       froxels.histories.swap();
+    }
+  }
+
+  /// Its motion restarted, the froxels' history starts again as if just made, their points' jitter from its first
+  /// step; a cut leaves it nothing to read, the last place's scattering leading nowhere true, the jitter stepping on.
+  fn restart(&mut self, restart: ViewRestart) {
+    if let Some(froxels) = &mut self.froxels {
+      match restart {
+        ViewRestart::Motion => froxels.histories.restart(),
+        ViewRestart::Cut => froxels.histories.invalidate(),
+      }
     }
   }
 }
