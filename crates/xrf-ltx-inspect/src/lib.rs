@@ -1,5 +1,6 @@
 #![doc = include_str!("../README.md")]
 
+pub(crate) mod declaration;
 pub(crate) mod findings;
 pub(crate) mod inventory;
 pub(crate) mod ltx_root_reader;
@@ -11,6 +12,10 @@ pub(crate) mod text;
 #[cfg(test)]
 mod tests;
 
+pub use crate::declaration::{
+  LtxDeclaration, LtxDeclarationQuery, LtxDeclarationReader, LtxDeclarationSearch, LtxDeclarationStatement,
+  LtxUnreadableConfig,
+};
 pub use crate::findings::LtxAnchoredFinding;
 pub use crate::inventory::{LtxInventory, LtxInventoryFile, LtxInventoryReader, LtxInventoryRole};
 pub use crate::ltx_root_reader::LtxRootReader;

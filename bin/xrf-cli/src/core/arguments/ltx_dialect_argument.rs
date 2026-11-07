@@ -26,6 +26,11 @@ impl LtxDialectArgument {
   /// The dialect the command was asked to resolve configs under: standard LTX for a command that never declared the
   /// flag, which is what it would have used anyway.
   pub fn of(matches: &ArgMatches) -> Arc<dyn LtxDialect> {
-    DltxDialect::select(OptionalArgument::read::<bool>(matches, Self::NAME) == Some(&true))
+    DltxDialect::select(Self::is_dltx(matches))
+  }
+
+  /// Whether the command was asked for the patch dialect, false for a command that never declared the flag.
+  pub fn is_dltx(matches: &ArgMatches) -> bool {
+    OptionalArgument::read::<bool>(matches, Self::NAME) == Some(&true)
   }
 }

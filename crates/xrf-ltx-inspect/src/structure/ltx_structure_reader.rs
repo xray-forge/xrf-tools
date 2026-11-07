@@ -38,13 +38,7 @@ impl LtxStructureReader {
         return Ok(LtxFileStructure {
           entry_points: entry_points.to_vec(),
           includes: Vec::new(),
-          parse_error: Some(LtxStructureParseError {
-            // Saturated rather than wrapped: no config reaches four billion lines, and a wrapped number would point at
-            // a line that is not the one that broke.
-            column: u32::try_from(col).unwrap_or(u32::MAX),
-            line: u32::try_from(line).unwrap_or(u32::MAX),
-            message,
-          }),
+          parse_error: Some(LtxStructureParseError::new(line, col, message)),
           path: String::from(path),
           root_entries: Vec::new(),
           sections: Vec::new(),
