@@ -1,3 +1,4 @@
+mod geometry_clusters;
 mod static_row;
 mod static_scene;
 mod static_surface_builder;

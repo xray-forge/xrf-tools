@@ -40,7 +40,8 @@ impl<'a> GeometryClusters<'a> {
   }
 
   /// The clusters covering an index range, as `(first index, triangles, sphere)`: the packer's own where they tile it
-  /// exactly, else the range cut in runs of `CLUSTER_TRIANGLES` with spheres taken from their vertices.
+  /// exactly, else the range's whole triangles cut in runs of `CLUSTER_TRIANGLES` with spheres taken from their
+  /// vertices, the one or two indices a damaged range ends in past its last triangle left out.
   pub fn cut(&self, start: u32, count: u32) -> Vec<(u32, u32, Vec4)> {
     // A pack whose spheres are fewer than its ranges is cut anew, as one without clusters is.
     if let Some(run) = self.find_run(start, count)
@@ -59,7 +60,7 @@ impl<'a> GeometryClusters<'a> {
         read_pods(self.buffer, &self.geometry.positions),
       )
     });
-    let end: u32 = start.saturating_add(count);
+    let end: u32 = start.saturating_add(count - count % 3);
 
     (start..end)
       .step_by(StaticGeometry::CLUSTER_VERTICES as usize)
