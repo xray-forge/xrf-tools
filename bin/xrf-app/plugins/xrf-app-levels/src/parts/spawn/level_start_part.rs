@@ -87,7 +87,7 @@ impl LevelStartPart {
       .zip(open)
       .filter_map(|(candidate, is_open)| is_open.then_some(candidate))
       .min_by(|(left, _, _), (right, _, _)| Self::to_distance(left, x, z).total_cmp(&Self::to_distance(right, x, z)))
-      .map(|(eye, heading, origin)| Self::to_start(&eye, heading, origin))
+      .map(|(eye, heading, origin)| LevelStart::of(&eye, heading, origin))
   }
 
   /// Each arrival, then the actor's spawn, as an eye, a heading and what it is.
@@ -116,16 +116,6 @@ impl LevelStartPart {
   /// An actor's eye above a place, in the engine's space.
   fn to_eye(position: &Vector3d) -> Vector3d {
     Vector3d::new(position.x, position.y + Self::ACTOR_EYE_HEIGHT, position.z)
-  }
-
-  /// An eye in the renderer's space, turned to a heading as `CActor::MoveActor` turns it: the forward axis of `setHP`
-  /// of the heading.
-  fn to_start(eye: &Vector3d, heading: f32, origin: LevelStartOrigin) -> LevelStart {
-    LevelStart {
-      direction: convert_vector(&Vector3d::new(-heading.sin(), 0.0, heading.cos())),
-      origin,
-      position: convert_vector(eye),
-    }
   }
 
   /// The middle of an extent in the renderer's space, as the engine's x and z: the conversion is its own inverse.

@@ -1,6 +1,7 @@
 use image::RgbaImage;
 use xrf_dds::{DdsMipChain, DdsMipFilter, DdsMipmaps};
 use xrf_error::XrfResult;
+use xrf_thm::{ThmMipFilter, ThmTextureFlag, ThmTextureParamChunk};
 
 use crate::build::recipe::build_texture_advanced_chain::BuildTextureAdvancedChain;
 
@@ -16,6 +17,39 @@ pub enum BuildTextureMipmaps {
 }
 
 impl BuildTextureMipmaps {
+  /// What a texture of `param` carries below its base level, its `Advanced` chain fading after `fade_delay`.
+  pub fn of(param: &ThmTextureParamChunk, fade_delay: Option<u8>) -> Self {
+    if !param.flags.has(ThmTextureFlag::GenerateMipMaps) {
+      return Self::Disabled;
+    }
+
+    let filter: DdsMipFilter = match param.mip_filter {
+      // Not a filter: `DXTCompressImage` reduces this chain itself and hands nvDXT the levels.
+      ThmMipFilter::Advanced => {
+        return Self::Advanced(BuildTextureAdvancedChain::of(param, fade_delay));
+      }
+      ThmMipFilter::Box => DdsMipFilter::Box,
+      ThmMipFilter::Point => DdsMipFilter::Point,
+      ThmMipFilter::Triangle => DdsMipFilter::Triangle,
+      ThmMipFilter::Quadratic => DdsMipFilter::Quadratic,
+      ThmMipFilter::Cubic => DdsMipFilter::Cubic,
+      ThmMipFilter::Catrom => DdsMipFilter::Catrom,
+      ThmMipFilter::Mitchell => DdsMipFilter::Mitchell,
+      ThmMipFilter::Gaussian => DdsMipFilter::Gaussian,
+      ThmMipFilter::Sinc => DdsMipFilter::Sinc,
+      ThmMipFilter::Bessel => DdsMipFilter::Bessel,
+      ThmMipFilter::Hanning => DdsMipFilter::Hanning,
+      ThmMipFilter::Hamming => DdsMipFilter::Hamming,
+      ThmMipFilter::Blackman => DdsMipFilter::Blackman,
+      ThmMipFilter::Kaiser => DdsMipFilter::Kaiser,
+      // A filter the SDK has no name for is one nvDXT was never told about either: its `switch` has no case for it,
+      // so the library kept whatever it defaults to. Box is the closest thing to that this build can state.
+      ThmMipFilter::Unknown(_) => DdsMipFilter::Box,
+    };
+
+    Self::Filtered(filter)
+  }
+
   /// The levels one face of the texture is written with.
   ///
   /// # Errors

@@ -4,7 +4,7 @@ use std::sync::Arc;
 use serde::Serialize;
 use xrf_vfs::{XrayInputRecord, XrayRevision};
 
-use crate::session::{SessionId, SessionParts};
+use crate::session::{SessionDerived, SessionId, SessionParts};
 
 /// An immutable value addressed by the opening that produced it; a held snapshot survives close.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -53,6 +53,18 @@ impl<T> SessionSnapshot<T> {
     SessionSnapshot {
       revision: self.revision,
       ..SessionSnapshot::new(self.session_id, value)
+    }
+  }
+
+  /// The snapshot a derivation of this one read at `revision` publishes: its identity, the derived value, and no part
+  /// but those the derivation read on its way.
+  pub(crate) fn with_derived(&self, revision: XrayRevision, derived: SessionDerived<T>) -> Self {
+    Self {
+      session_id: self.session_id,
+      revision,
+      value: Arc::new(derived.value),
+      inputs: derived.inputs,
+      parts: derived.parts,
     }
   }
 }

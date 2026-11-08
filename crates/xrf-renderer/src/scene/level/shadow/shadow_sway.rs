@@ -1,6 +1,8 @@
 use glam::Vec4;
 
+use crate::feature::scene::wind::wind_feature::WindFeature;
 use crate::scene::level::level_time::LevelTime;
+use crate::scene::static_scene::static_scene::StaticScene;
 
 /// What of the interval a frame may come early by and still draw for the sway, so a 60 Hz display a hair short of an
 /// interval does not halve the sway to every other frame.
@@ -23,10 +25,21 @@ pub(crate) struct ShadowSway<'a> {
   pub places: &'a [(Vec4, f32)],
 }
 
-impl ShadowSway<'_> {
+impl<'a> ShadowSway<'a> {
   /// Seconds between a shadow's draws for what sways alone, at most sixty a second: the sway is slow, and each draw
   /// over the trees costs a light face's or a cascade's cull and draw.
   pub(crate) const INTERVAL: f32 = 1.0 / 60.0;
+
+  /// The sway the shadows see this frame at the level's clock `time`: the `wind`, the trees' reach in `scene`, and
+  /// where they stand.
+  pub(crate) fn of(scene: &'a StaticScene, wind: &WindFeature, time: LevelTime) -> Self {
+    Self {
+      amplitude: wind.get_sway_amplitude(),
+      reach: scene.get_sway_reach(),
+      time,
+      places: scene.list_swaying(),
+    }
+  }
 
   /// Whether a map drawn at `drawn_at` draws again for the sway alone: once its interval passed, and only where a tree
   /// reaching `reach` leans across enough of a texel `texel` wide to show. Both are metres, or both are per metre of

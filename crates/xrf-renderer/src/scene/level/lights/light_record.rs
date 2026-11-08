@@ -1,5 +1,12 @@
-use glam::Vec4;
+use glam::{Mat4, Vec3, Vec4};
 use xrf_renderer_core::ShaderStruct;
+use xrf_visual::{LightDescription, LightKind};
+
+use crate::lighting::lamp::light_basis::LightBasis;
+use crate::lighting::lamp::light_bulb::get_bulb_radius;
+use crate::lighting::lamp::light_shadow_size::to_light_shadow_scale;
+use crate::scene::level::lights::asks::light_in_view::LightInView;
+use crate::scene::texture::texture_cache::TextureCache;
 
 /// One local light standing in view this frame, in view space, as `shaders/common/light_clusters.wgsl` declares it.
 #[repr(C)]
@@ -33,4 +40,48 @@ impl LightRecord {
 
   /// What a light without a cone writes as its cone's cosine: every point passes its test.
   pub(crate) const NO_CONE: f32 = -2.0;
+
+  /// A light's record, in view space: standing as `it` sees it, of `color` and `specular` weight, out to `range`, its
+  /// projector's slot looked up in `projectors`. Unshadowed and unscattered until the frame fills those in.
+  pub(crate) fn of(
+    projectors: &[u32],
+    light: &LightDescription,
+    it: &LightInView,
+    color: Vec3,
+    specular: f32,
+    range: f32,
+    view: Mat4,
+  ) -> Self {
+    let (basis, bound): (&LightBasis, Vec4) = (&it.basis, it.bound);
+    let is_spot: bool = matches!(light.kind, LightKind::Spot);
+    let projector: f32 = light
+      .projector
+      .and_then(|projector| projectors.get(projector as usize))
+      .filter(|slot| **slot != TextureCache::MISSING_SLOT)
+      .map_or(Self::NO_PROJECTOR, |slot| *slot as f32);
+
+    Self {
+      position: view
+        .transform_point3(basis.position)
+        .extend(if range > 0.0 { 1.0 / (range * range) } else { 0.0 }),
+      color: color.extend(specular),
+      axis: view.transform_vector3(basis.direction).extend(if is_spot {
+        (light.cone / 2.0).cos()
+      } else {
+        Self::NO_CONE
+      }),
+      right: view.transform_vector3(basis.right).extend(if is_spot {
+        to_light_shadow_scale(light.cone)
+      } else {
+        0.0
+      }),
+      up: view
+        .transform_vector3(basis.up)
+        .extend(if is_spot { projector } else { Self::NO_PROJECTOR }),
+      sphere: view.transform_point3(bound.truncate()).extend(bound.w),
+      shadow: Vec4::new(0.0, 0.0, 0.0, get_bulb_radius(light).powi(2)),
+      faces: [Vec4::ZERO; 6],
+      scatter: Vec4::ZERO,
+    }
+  }
 }

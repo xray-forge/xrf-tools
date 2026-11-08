@@ -2,10 +2,9 @@ use std::collections::BTreeSet;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use glam::Vec4;
 use wgpu::util::DeviceExt;
 use xrf_material::XraySurfaceDraw;
-use xrf_visual::{DetailsDescription, DetailsModel, VisualSection};
+use xrf_visual::{DetailsDescription, VisualSection};
 
 use crate::feature::scene::grass::grass_pass::GrassPass;
 use crate::feature::scene::grass::level::grass_model_record::GrassModelRecord;
@@ -101,7 +100,7 @@ impl GrassLevel {
       {
         log::warn!("Grass model {index} ({}) is damaged and draws nothing", model.texture);
         texture_slots.insert(texture);
-        records.push(Self::to_record(model, texture, reference, (first_index, 0), 0.0));
+        records.push(GrassModelRecord::of(model, texture, reference, (first_index, 0), 0.0));
 
         continue;
       }
@@ -117,7 +116,7 @@ impl GrassLevel {
       uvs.extend(model_uvs);
       indices.extend(model_indices.iter().map(|it| u32::from(*it) + base));
       texture_slots.insert(texture);
-      records.push(Self::to_record(
+      records.push(GrassModelRecord::of(
         model,
         texture,
         reference,
@@ -194,25 +193,6 @@ impl GrassLevel {
     static NEXT: AtomicU64 = AtomicU64::new(1);
 
     NEXT.fetch_add(1, Ordering::Relaxed)
-  }
-
-  fn to_record(
-    model: &DetailsModel,
-    texture: u32,
-    reference: u8,
-    (first_index, index_count): (u32, u32),
-    spread: f32,
-  ) -> GrassModelRecord {
-    GrassModelRecord {
-      shape: Vec4::new(model.min_scale, model.max_scale, model.radius, model.height),
-      is_waving: if model.is_waving { 1.0 } else { 0.0 },
-      texture,
-      alpha_reference: f32::from(reference) / 255.0,
-      index_count,
-      first_index,
-      spread,
-      pad: [0; 2],
-    }
   }
 
   /// The engine's dither (`bwdithermap(2, dither)` over `magic4x4`), indexed `column * 16 + row` as the planting reads

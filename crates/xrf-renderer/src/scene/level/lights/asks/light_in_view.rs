@@ -1,8 +1,9 @@
-use glam::Vec4;
+use glam::{Vec3, Vec4};
 use xrf_renderer_core::ProxyHandle;
-use xrf_visual::LightDescription;
+use xrf_visual::{LightDescription, LightKind};
 
 use crate::lighting::lamp::light_basis::LightBasis;
+use crate::lighting::lamp::light_shadow_size::LIGHT_SHADOW_POINT_FACES;
 
 /// A light standing in a view this frame.
 pub(crate) struct LightInView {
@@ -33,4 +34,26 @@ impl LightFades {
     faces: [1.0; 6],
     shown: 1.0,
   };
+
+  /// How far a shadowed light has faded from `eye` over the cull's levels of detail, `start` to `end` metres.
+  pub(crate) fn of(light: &LightDescription, basis: &LightBasis, eye: Vec3, (start, end): (f32, f32)) -> Self {
+    if matches!(light.kind, LightKind::Spot) {
+      let fade: f32 = LightBasis::to_light_lod(basis.get_spatial_sphere(light), eye, start, end);
+
+      return Self {
+        whole: fade,
+        faces: [1.0; 6],
+        shown: fade,
+      };
+    }
+
+    let faces: [f32; 6] = LIGHT_SHADOW_POINT_FACES
+      .map(|(direction, _)| LightBasis::to_light_lod(basis.get_face_sphere(light, direction), eye, start, end));
+
+    Self {
+      whole: 1.0,
+      faces,
+      shown: faces.into_iter().fold(0.0, f32::max),
+    }
+  }
 }

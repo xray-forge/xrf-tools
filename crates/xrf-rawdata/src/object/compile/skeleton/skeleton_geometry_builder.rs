@@ -2,10 +2,9 @@ use std::collections::HashMap;
 
 use xrf_editable_object::{EditableBone, EditableMesh, EditableObjectFile, EditableSurface};
 use xrf_error::{XrfError, XrfResult};
-use xrf_math::{Aabb, Vector3d};
+use xrf_math::Aabb;
 
 use crate::object::compile::geometry::export_vertex::ExportVertex;
-use crate::object::compile::geometry::export_vertex_bone::ExportVertexBone;
 use crate::object::compile::geometry::source::mesh_surface_faces::MeshSurfaceFaces;
 use crate::object::compile::geometry::split_partition::SplitPartition;
 use crate::object::compile::geometry::tangent_basis::TangentBasis;
@@ -101,7 +100,7 @@ impl SkeletonGeometryBuilder {
       )));
     }
 
-    let mut vertices: [ExportVertex; 3] = corners.clone().map(|corner| Self::to_vertex(corner, link_count == 1));
+    let mut vertices: [ExportVertex; 3] = corners.clone().map(|corner| corner.into_vertex(link_count == 1));
     let part: u16 = self.get_part(&vertices)?;
     let split: usize = self.find_split(surface, part);
     let (split, packer) = &mut self.splits[split];
@@ -125,37 +124,6 @@ impl SkeletonGeometryBuilder {
     }
 
     Ok(())
-  }
-
-  /// A corner as the export sets its vertex: its bones sorted by bone, one bone padded with its weightless copy in a
-  /// face whose every corner follows one.
-  fn to_vertex(corner: SkinCorner, is_one_link: bool) -> ExportVertex {
-    let mut bones: Vec<ExportVertexBone> = if is_one_link {
-      vec![
-        ExportVertexBone {
-          bone: corner.weights[0].bone,
-          weight: 1.0,
-        },
-        ExportVertexBone {
-          bone: corner.weights[0].bone,
-          weight: 0.0,
-        },
-      ]
-    } else {
-      corner.weights
-    };
-
-    bones.sort_by_key(|bone| bone.bone);
-
-    ExportVertex {
-      position: corner.position,
-      normal: corner.normal,
-      // What `SSkelVert` starts with, until the tangent pass.
-      tangent: Vector3d::X,
-      binormal: Vector3d::Z,
-      texture_coordinate: corner.texture_coordinate,
-      bones,
-    }
   }
 
   /// The breakable part a face's bones belong to, all of them one part or the export refuses the object.

@@ -70,7 +70,7 @@ impl LevelObjectsDescription {
         let Some(corner_box) = Self::to_corner_box(corners) else {
           continue;
         };
-        let SoundEnvironmentPair { outer, inner } = Self::to_sound_environments(file, index);
+        let SoundEnvironmentPair { outer, inner } = SoundEnvironmentPair::of(file, index);
 
         objects.push(LevelObject::from(PlacementRecord {
           file: LevelPlacementFile::SoundEnvironments,
@@ -170,17 +170,6 @@ impl LevelObjectsDescription {
           )
         }),
     );
-  }
-
-  /// The environments outside and inside a sound box, by its first face's front and back, as the editor writes them.
-  fn to_sound_environments(file: &LevelSndEnvFile, index: usize) -> SoundEnvironmentPair {
-    let face = file.faces.get(index * Self::SOUND_BOX_FACES);
-    let name = |name: Option<&str>| name.unwrap_or("unnamed").to_owned();
-
-    SoundEnvironmentPair {
-      outer: name(face.and_then(|face| file.get_front_environment(face))),
-      inner: name(face.and_then(|face| file.get_back_environment(face))),
-    }
   }
 
   /// A box from its eight corners in engine space: the two shortest edges from a corner, and the corner standing most
@@ -306,4 +295,18 @@ struct CornerBox {
 struct SoundEnvironmentPair {
   outer: String,
   inner: String,
+}
+
+impl SoundEnvironmentPair {
+  /// The environments outside and inside box `index` of `file`, by its first face's front and back, as the editor
+  /// writes them.
+  fn of(file: &LevelSndEnvFile, index: usize) -> Self {
+    let face = file.faces.get(index * LevelObjectsDescription::SOUND_BOX_FACES);
+    let name = |name: Option<&str>| name.unwrap_or("unnamed").to_owned();
+
+    Self {
+      outer: name(face.and_then(|face| file.get_front_environment(face))),
+      inner: name(face.and_then(|face| file.get_back_environment(face))),
+    }
+  }
 }

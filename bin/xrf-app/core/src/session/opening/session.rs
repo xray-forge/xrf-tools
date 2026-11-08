@@ -316,7 +316,7 @@ impl<T: Send + Sync + 'static> Session<T> {
 
         match derive(&current, assets) {
           Ok(derived) => (
-            Self::to_derived(&current, revision, derived),
+            current.with_derived(revision, derived),
             SessionRootChange::Derived,
             current.parts.list_built(),
           ),
@@ -421,7 +421,7 @@ impl<T: Send + Sync + 'static> Session<T> {
           current.parts.list_built(),
         );
 
-        (Some(Self::to_derived(current, revision, derived)), change)
+        (Some(current.with_derived(revision, derived)), change)
       }
       Err(reason) => (None, self.to_failed(current, reason)),
     };
@@ -475,22 +475,6 @@ impl<T: Send + Sync + 'static> Session<T> {
     drop(previous);
 
     true
-  }
-
-  /// The snapshot a derivation of `current` read at `revision` publishes: its identity, the derived value, and no part
-  /// but those the derivation read on its way.
-  fn to_derived(
-    current: &SessionSnapshot<T>,
-    revision: XrayRevision,
-    derived: SessionDerived<T>,
-  ) -> SessionSnapshot<T> {
-    SessionSnapshot {
-      session_id: current.session_id,
-      revision,
-      value: Arc::new(derived.value),
-      inputs: derived.inputs,
-      parts: derived.parts,
-    }
   }
 
   /// What a failed derivation of `current` reports: the session stays at the revision it had.
