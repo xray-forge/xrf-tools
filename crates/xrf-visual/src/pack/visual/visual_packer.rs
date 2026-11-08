@@ -92,7 +92,8 @@ impl VisualPacker {
         model_type_label: OgfModelType::label(Self::BUILT_MODEL_TYPE),
         texture_name: mesh.texture_name.clone(),
         shader_name: mesh.shader_name.clone(),
-        content: Self::to_content(Self::pack_mesh(&mut builder, mesh)),
+        content: Self::pack_mesh(&mut builder, mesh)
+          .map_or_else(VisualSubmeshContent::from, VisualSubmeshContent::from),
       })
       .collect();
     let computed_bounds: Option<VisualBounds> = Self::compute_bounds(&submeshes);
@@ -186,18 +187,8 @@ impl VisualPacker {
       model_type_label: OgfModelType::label(model_type),
       texture_name: source.texture.as_ref().map(|it| it.texture_name.clone()),
       shader_name: source.texture.as_ref().map(|it| it.shader_name.clone()),
-      content: Self::to_content(Self::pack_geometry(builder, source, bone_count)),
-    }
-  }
-
-  /// What a submesh holds once packed: its geometry, or why it has none, verbatim.
-  fn to_content(packed: Result<VisualGeometry, VisualSkip>) -> VisualSubmeshContent {
-    match packed {
-      Ok(geometry) => VisualSubmeshContent::Packed { geometry },
-      Err(skip) => VisualSubmeshContent::Skipped {
-        cause: skip.cause,
-        reason: skip.reason,
-      },
+      content: Self::pack_geometry(builder, source, bone_count)
+        .map_or_else(VisualSubmeshContent::from, VisualSubmeshContent::from),
     }
   }
 

@@ -127,14 +127,14 @@ impl StaticGeometry {
   /// How full its pools are, as a report of the static draws has them.
   pub(crate) fn get_pools(&self) -> RenderStaticReport {
     RenderStaticReport {
-      slots: Self::to_pool_use(&self.slots),
-      places: Self::to_pool_use(&self.places),
+      slots: RenderPoolUse::from(&self.slots),
+      places: RenderPoolUse::from(&self.places),
       rows: RenderPoolUse {
         used: self.row_records.len() as u32,
         capacity: self.rows.get_capacity(),
       },
-      lods: Self::to_pool_use(&self.impostors),
-      clusters: Self::to_pool_use(&self.clusters),
+      lods: RenderPoolUse::from(&self.impostors),
+      clusters: RenderPoolUse::from(&self.clusters),
       ..Default::default()
     }
   }
@@ -348,10 +348,12 @@ impl StaticGeometry {
 
     buffer.allocate(device, queue, count as u32).map(Some)
   }
+}
 
-  /// How full a span buffer is: its elements held, and its capacity.
-  fn to_pool_use(buffer: &SpanBuffer) -> RenderPoolUse {
-    RenderPoolUse {
+/// How full a span buffer is: its elements held, and its capacity.
+impl From<&SpanBuffer> for RenderPoolUse {
+  fn from(buffer: &SpanBuffer) -> Self {
+    Self {
       used: buffer.get_capacity() - buffer.get_free(),
       capacity: buffer.get_capacity(),
     }

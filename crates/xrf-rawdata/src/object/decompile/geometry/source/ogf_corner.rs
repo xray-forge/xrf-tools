@@ -1,4 +1,7 @@
+use xrf_error::{XrfError, XrfResult};
+use xrf_level::{DetailVertex, LevelVertex};
 use xrf_math::{Vector2d, Vector3d};
+use xrf_ogf::{OgfStaticVertex, OgfVertex};
 
 use crate::object::decompile::geometry::source::bone_influences::BoneInfluences;
 use crate::object::decompile::geometry::source::normal_precision::NormalPrecision;
@@ -60,5 +63,76 @@ impl OgfCorner {
         && (first.y - second.y).abs() <= tolerance
         && (first.z - second.z).abs() <= tolerance,
     )
+  }
+}
+
+/// A skinned vertex's corner, with the bones its links name.
+impl From<&OgfVertex> for OgfCorner {
+  fn from(vertex: &OgfVertex) -> Self {
+    Self {
+      position: vertex.position,
+      normal: vertex.normal,
+      normal_precision: NormalPrecision::Float,
+      texture_coordinate: Vector2d::new(vertex.texture_u, vertex.texture_v),
+      influences: BoneInfluences::of_links(&vertex.links),
+    }
+  }
+}
+
+/// A static vertex's corner, from its normal and first texture coordinate set: the export writes position, normal and
+/// one coordinate pair (`D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1`).
+impl TryFrom<&OgfStaticVertex> for OgfCorner {
+  type Error = XrfError;
+
+  /// # Errors
+  ///
+  /// Returns an error for a layout without a normal or a two-component first coordinate set, which no editable object
+  /// was exported to.
+  fn try_from(vertex: &OgfStaticVertex) -> XrfResult<Self> {
+    let normal: Vector3d = vertex
+      .normal
+      .ok_or_else(|| XrfError::new_not_implemented_error("A static OGF child whose vertices store no normal"))?;
+    let texture_coordinate: Vector2d = match vertex.texture_coordinates.first().map(Vec::as_slice) {
+      Some([u, v]) => Vector2d::new(*u, *v),
+      _ => {
+        return Err(XrfError::new_not_implemented_error(
+          "A static OGF child whose vertices store no two-component texture coordinate",
+        ));
+      }
+    };
+
+    Ok(Self {
+      position: vertex.position,
+      normal,
+      normal_precision: NormalPrecision::Float,
+      texture_coordinate,
+      influences: BoneInfluences::NONE,
+    })
+  }
+}
+
+/// A level vertex's corner, its normal stored a byte a component in `level.geom`.
+impl From<&LevelVertex> for OgfCorner {
+  fn from(vertex: &LevelVertex) -> Self {
+    Self {
+      position: vertex.position,
+      normal: vertex.normal,
+      normal_precision: NormalPrecision::Byte,
+      texture_coordinate: vertex.texture_coordinate,
+      influences: BoneInfluences::NONE,
+    }
+  }
+}
+
+/// A detail model vertex's corner, which stores a position and a texture coordinate and no normal.
+impl From<&DetailVertex> for OgfCorner {
+  fn from(vertex: &DetailVertex) -> Self {
+    Self {
+      position: vertex.position,
+      normal: Vector3d::ZERO,
+      normal_precision: NormalPrecision::Unstored,
+      texture_coordinate: Vector2d::new(vertex.u, vertex.v),
+      influences: BoneInfluences::NONE,
+    }
   }
 }

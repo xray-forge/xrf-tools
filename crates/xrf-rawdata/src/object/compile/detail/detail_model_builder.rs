@@ -62,7 +62,7 @@ impl DetailModelBuilder {
       dropped_faces: 0,
     };
 
-    for corners in MeshCorners::without_normals(mesh).read_faces(Self::to_vertex)? {
+    for corners in MeshCorners::without_normals(mesh).read_faces(DetailVertex::try_from)? {
       builder.add_face(corners)?;
     }
 
@@ -87,20 +87,6 @@ impl DetailModelBuilder {
       dropped_faces: builder.dropped_faces,
       tangents: None,
     })
-  }
-
-  /// A corner's vertex: its position and the texture coordinate of its reference's first entry, whatever map it is in.
-  fn to_vertex(corner: MeshCorner<'_>) -> XrfResult<DetailVertex> {
-    match corner.entries.first().map(|entry| entry.values) {
-      Some([u, v, ..]) => Ok(DetailVertex {
-        position: corner.position,
-        u: *u,
-        v: *v,
-      }),
-      _ => Err(XrfError::new_invalid_error(
-        "A detail object's face corner names no texture coordinate first",
-      )),
-    }
   }
 
   fn add_face(&mut self, corners: [DetailVertex; 3]) -> XrfResult {
@@ -147,5 +133,24 @@ impl DetailModelBuilder {
       && is_near(first_position.x, second_position.x)
       && is_near(first_position.y, second_position.y)
       && is_near(first_position.z, second_position.z)
+  }
+}
+
+/// A corner's detail vertex: its position and the texture coordinate of its reference's first entry, whatever map it is
+/// in.
+impl TryFrom<MeshCorner<'_>> for DetailVertex {
+  type Error = XrfError;
+
+  fn try_from(corner: MeshCorner<'_>) -> XrfResult<Self> {
+    match corner.entries.first().map(|entry| entry.values) {
+      Some([u, v, ..]) => Ok(Self {
+        position: corner.position,
+        u: *u,
+        v: *v,
+      }),
+      _ => Err(XrfError::new_invalid_error(
+        "A detail object's face corner names no texture coordinate first",
+      )),
+    }
   }
 }
