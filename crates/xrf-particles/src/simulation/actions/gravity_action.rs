@@ -10,7 +10,7 @@ pub(crate) struct GravityAction {
 }
 
 impl GravityAction {
-  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
+  pub(crate) fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
     let delta: Vec3 = self.direction * step.dt;
 
     for m in pool.get_particles_mut() {

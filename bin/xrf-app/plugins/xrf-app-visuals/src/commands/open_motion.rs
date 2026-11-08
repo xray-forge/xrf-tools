@@ -13,7 +13,7 @@ use crate::{PosedVisualMotion, SelectedVisual, VisualModels, VisualPoses};
 /// what came out; baked on the pool.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "open_motion")]
-pub async fn visuals_open_motion(
+pub(crate) async fn visuals_open_motion(
   session_id: SessionId,
   motion_id: SessionId,
   name: String,

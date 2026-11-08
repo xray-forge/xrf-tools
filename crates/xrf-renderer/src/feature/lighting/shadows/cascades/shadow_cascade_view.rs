@@ -7,7 +7,7 @@ use crate::scene::level::level_time::LevelTime;
 
 /// One cascade of a level's sun shadow: its fit, the cut it is culled and drawn by, and what its map was last drawn at;
 /// and, while it keeps a static layer, which layer that is, what it was drawn at, and the next one drawn ahead.
-pub struct ShadowCascadeView {
+pub(crate) struct ShadowCascadeView {
   pub cascade: SunCascade,
   pub cut: ShadowCut,
   /// The version and what the scene held when its map was last drawn, or none before it was drawn.
@@ -42,7 +42,7 @@ pub struct ShadowCascadeView {
 }
 
 impl ShadowCascadeView {
-  pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout, index: usize) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout, index: usize) -> Self {
     Self {
       cascade: SunCascade::default(),
       cut: ShadowCut::new(device, view_layout, "sun shadow"),
@@ -65,7 +65,7 @@ impl ShadowCascadeView {
 
   /// Lets go of what it holds, its cut's lists and its band, and of what its map was drawn at: drawn afresh once it is
   /// asked for again.
-  pub fn release(&mut self, index: usize) {
+  pub(crate) fn release(&mut self, index: usize) {
     self.cut.release_lists();
     self.band = None;
     self.drawn = None;
@@ -73,7 +73,7 @@ impl ShadowCascadeView {
   }
 
   /// Forgets its static layer: drawn again before it is read, from the cascade's own layer.
-  pub fn forget_static(&mut self, index: usize) {
+  pub(crate) fn forget_static(&mut self, index: usize) {
     self.static_layer = index as u32;
     self.drawn_static = None;
     self.prefetch = None;

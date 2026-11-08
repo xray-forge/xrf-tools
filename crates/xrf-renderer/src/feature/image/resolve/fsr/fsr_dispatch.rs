@@ -4,7 +4,7 @@ use glam::Vec2;
 /// pixels across, its texels sampled `jitter` off their centres (`previous_jitter` the frame before's), its jitter's
 /// phase count, the frame's index since the last reset, and whether its colour is linear light past the display's range.
 #[derive(Clone, Copy, Debug, Default)]
-pub struct FsrDispatch {
+pub(crate) struct FsrDispatch {
   pub render: (u32, u32),
   pub display: (u32, u32),
   pub jitter: Vec2,

@@ -17,7 +17,7 @@ use crate::parts::{LevelStart, LevelTextureReference};
 
 /// What the level plugin says to the log, in one place rather than beside each command that says it; the viewer's
 /// lines are `LevelViewerReport`'s.
-pub struct LevelReport;
+pub(crate) struct LevelReport;
 
 impl LevelReport {
   /// How many names a log line about a set of them carries before it stops listing and starts counting.
@@ -27,7 +27,7 @@ impl LevelReport {
   const LARGE_SECTOR_BYTES: usize = 256 * 1024 * 1024;
 
   /// How many levels the roots hold, and how many of them draw.
-  pub fn listed_levels(entries: &[LevelEntry], started: Instant) {
+  pub(crate) fn listed_levels(entries: &[LevelEntry], started: Instant) {
     log::info!(
       "Listed {} levels in {}, {} of them with render geometry",
       entries.len(),
@@ -37,23 +37,23 @@ impl LevelReport {
   }
 
   /// That an open has begun, before anything is read.
-  pub fn opening(source: &LevelSource) {
+  pub(crate) fn opening(source: &LevelSource) {
     log::info!("Opening level: {}", source.get_label());
   }
 
   /// That a level's bundle was read, and the engine its configs are read as.
-  pub fn reading(source: &LevelSource, engine: &XrayEngineResolution) {
+  pub(crate) fn reading(source: &LevelSource, engine: &XrayEngineResolution) {
     log::info!("Reading level {} as {}", source.get_label(), engine.describe());
   }
 
   /// That a level is shown in a viewport.
-  pub fn showing(source: &LevelSource, viewport: RenderViewportId) {
+  pub(crate) fn showing(source: &LevelSource, viewport: RenderViewportId) {
     log::info!("Showing level {} in native viewport {viewport}", source.get_label());
   }
 
   /// What one open came to, its surfaces and their textures as the open resolved them, and what about it is worth a
   /// warning.
-  pub fn opened(
+  pub(crate) fn opened(
     opened: &SessionSnapshot<SelectedLevel>,
     surfaces: &[XraySurfaceDescriptor],
     textures: &[LevelTextureReference],
@@ -175,7 +175,7 @@ impl LevelReport {
   }
 
   /// Where a level opens, and what that was taken from.
-  pub fn start(source: &LevelSource, start: Option<&LevelStart>) {
+  pub(crate) fn start(source: &LevelSource, start: Option<&LevelStart>) {
     match start {
       Some(start) => log::info!(
         "Level {} opens at {:?}, from its {:?}",
@@ -191,7 +191,7 @@ impl LevelReport {
   }
 
   /// Says what one sector came to, and says it louder when it came to too much.
-  pub fn packed_sector(package: &SectorPackage, started: Instant) {
+  pub(crate) fn packed_sector(package: &SectorPackage, started: Instant) {
     let description: &SectorDescription = &package.description;
     let instances: u32 = description
       .instances
@@ -230,7 +230,7 @@ impl LevelReport {
   }
 
   /// What a level's share of the spawn came to, and how much of the spawn could not be read at all.
-  pub fn spawn(level: &str, file: &str, read: &SpawnLevelObjects, started: Instant) {
+  pub(crate) fn spawn(level: &str, file: &str, read: &SpawnLevelObjects, started: Instant) {
     log::info!(
       "Read the spawn of {level} in {}: {} of {} objects, {} arrivals",
       xrf_utils::format_duration(started.elapsed()),
@@ -251,19 +251,19 @@ impl LevelReport {
   }
 
   /// How many of a level's spawned objects are left out as a new game releases them.
-  pub fn new_game_releases(level: &str, released: usize) {
+  pub(crate) fn new_game_releases(level: &str, released: usize) {
     if released > 0 {
       log::info!("Marked {released} spawned objects of {level} that a new game releases");
     }
   }
 
   /// That a list of the objects a new game releases could not be read, so they are drawn.
-  pub fn unreadable_releases(file: &str, error: &impl Display) {
+  pub(crate) fn unreadable_releases(file: &str, error: &impl Display) {
     log::warn!("Objects '{file}' releases on a new game are kept, as it is unreadable: {error}");
   }
 
   /// How many of the resolved configs' sections a level keeps, which is the ones its spawned objects name.
-  pub fn sections(source: &LevelSource, kept: usize, resolved: usize, started: Instant) {
+  pub(crate) fn sections(source: &LevelSource, kept: usize, resolved: usize, started: Instant) {
     log::info!(
       "Read the configs of {} in {}: kept {kept} of {resolved} sections",
       source.get_label(),
@@ -272,7 +272,7 @@ impl LevelReport {
   }
 
   /// Which sections the level's spawned objects name that the configs lack, whose objects light and play nothing.
-  pub fn missing_sections_named(source: &LevelSource, missing: &[&str]) {
+  pub(crate) fn missing_sections_named(source: &LevelSource, missing: &[&str]) {
     if missing.is_empty() {
       return;
     }
@@ -286,22 +286,22 @@ impl LevelReport {
   }
 
   /// That the configs could not be read, so zones light nothing and lamps keep their spawned flags.
-  pub fn missing_sections(error: &impl Display) {
+  pub(crate) fn missing_sections(error: &impl Display) {
     log::warn!("No zone lights and no lamp sections: {error}");
   }
 
   /// That the light animation library could not be read, so no light is animated.
-  pub fn unreadable_animations(file: &str, error: &impl Display) {
+  pub(crate) fn unreadable_animations(file: &str, error: &impl Display) {
     log::warn!("No light is animated, as '{file}' is unreadable: {error}");
   }
 
   /// That the spawn could not be read, so the level keeps its own lights alone.
-  pub fn missing_spawned_lights(source: &LevelSource, error: &impl Display) {
+  pub(crate) fn missing_spawned_lights(source: &LevelSource, error: &impl Display) {
     log::warn!("No spawned lights for {}: {error}", source.get_label());
   }
 
   /// What a level's lights came to.
-  pub fn lights(source: &LevelSource, lights: &LightsDescription, started: Instant) {
+  pub(crate) fn lights(source: &LevelSource, lights: &LightsDescription, started: Instant) {
     log::info!(
       "Collected lights of {} in {}: {} lights, {} animators, {} projectors",
       source.get_label(),
@@ -313,37 +313,37 @@ impl LevelReport {
   }
 
   /// That the spawn could not be read, so the level lists no object.
-  pub fn missing_level_objects(source: &LevelSource, error: &impl Display) {
+  pub(crate) fn missing_level_objects(source: &LevelSource, error: &impl Display) {
     log::warn!("No level objects for {}: {error}", source.get_label());
   }
 
   /// That the spawn's graph could not be read, so the level lists no patrol path or graph point.
-  pub fn missing_level_graph(source: &LevelSource, error: &impl Display) {
+  pub(crate) fn missing_level_graph(source: &LevelSource, error: &impl Display) {
     log::warn!("No patrol paths or graph points for {}: {error}", source.get_label());
   }
 
   /// That one of the level's companion files could not be read, so nothing it places is listed.
-  pub fn unreadable_placements(source: &LevelSource, error: &impl Display) {
+  pub(crate) fn unreadable_placements(source: &LevelSource, error: &impl Display) {
     log::warn!("Placements of {} left out: {error}", source.get_label());
   }
 
   /// That a spawned visual could not be read, so it is not drawn.
-  pub fn undrawn_visual(name: &str, error: &impl Display) {
+  pub(crate) fn undrawn_visual(name: &str, error: &impl Display) {
     log::warn!("Spawned visual '{name}' is not drawn: {error}");
   }
 
   /// That a spawned visual's rest cycle holds no frame, so it stands in its bind pose.
-  pub fn empty_rest_motion(name: &str, motion: &str) {
+  pub(crate) fn empty_rest_motion(name: &str, motion: &str) {
     log::debug!("Spawned visual '{name}' has an empty '{motion}' cycle, so it stands in its bind pose");
   }
 
   /// That a spawned visual's rest cycle could not be baked, so it stands in its bind pose.
-  pub fn bind_rest_pose(name: &str, error: &impl Display) {
+  pub(crate) fn bind_rest_pose(name: &str, error: &impl Display) {
     log::debug!("Spawned visual '{name}' stands in its bind pose: {error}");
   }
 
   /// What a level's objects came to: how many there are, and how many visuals they are drawn as.
-  pub fn level_objects(source: &LevelSource, objects: &LevelObjectsDescription, started: Instant) {
+  pub(crate) fn level_objects(source: &LevelSource, objects: &LevelObjectsDescription, started: Instant) {
     log::info!(
       "Described the objects of {} in {}: {} objects, {} visuals",
       source.get_label(),
@@ -354,7 +354,7 @@ impl LevelReport {
   }
 
   /// What the estimate of how a level lights its spawned objects was built from, and how long building it took.
-  pub fn hemi(source: &LevelSource, lights: usize, started: Instant) {
+  pub(crate) fn hemi(source: &LevelSource, lights: usize, started: Instant) {
     log::info!(
       "Built the spawned objects' lighting of {} in {}: {lights} compiled point lights",
       source.get_label(),
@@ -363,7 +363,7 @@ impl LevelReport {
   }
 
   /// That the collision form was read and its rays' hierarchy built.
-  pub fn collision(source: &LevelSource, triangles: usize, read: Duration, started: Instant) {
+  pub(crate) fn collision(source: &LevelSource, triangles: usize, read: Duration, started: Instant) {
     log::info!(
       "Built the collision form of {} in {} ({} reading it): {triangles} triangles",
       source.get_label(),
@@ -373,7 +373,7 @@ impl LevelReport {
   }
 
   /// That the collision form could not be read, so every spawned object is lit as if under the open sky.
-  pub fn missing_hemi(source: &LevelSource, error: &impl Display) {
+  pub(crate) fn missing_hemi(source: &LevelSource, error: &impl Display) {
     log::warn!(
       "Spawned objects of {} are lit as under the open sky: {error}",
       source.get_label()
@@ -381,7 +381,7 @@ impl LevelReport {
   }
 
   /// That the compiled lights could not be read, so they light no spawned object.
-  pub fn unreadable_lights(source: &LevelSource, error: &impl Display) {
+  pub(crate) fn unreadable_lights(source: &LevelSource, error: &impl Display) {
     log::warn!(
       "Compiled lights of {} light no spawned object: {error}",
       source.get_label()
@@ -389,7 +389,7 @@ impl LevelReport {
   }
 
   /// That the game material library could not be read, so every collision triangle is solid ground.
-  pub fn unreadable_materials(file: &str, error: &impl Display) {
+  pub(crate) fn unreadable_materials(file: &str, error: &impl Display) {
     log::warn!("Every collision triangle is taken as solid ground, as '{file}' is unreadable: {error}");
   }
 
@@ -409,7 +409,7 @@ impl LevelReport {
   }
 
   /// That the level's particle systems were placed and the effects they reach described.
-  pub fn particles(
+  pub(crate) fn particles(
     source: &LevelSource,
     library: &ParticleLibrary,
     placements: usize,
@@ -426,7 +426,7 @@ impl LevelReport {
   }
 
   /// That placements name effects or groups the particle library lacks, which play nothing.
-  pub fn unknown_particles(names: &[&str]) {
+  pub(crate) fn unknown_particles(names: &[&str]) {
     log::warn!(
       "{} particle systems are not in the library and play nothing: {}",
       names.len(),
@@ -435,22 +435,22 @@ impl LevelReport {
   }
 
   /// That the level's zones play no particles, their spawn being unreadable.
-  pub fn missing_zone_particles(source: &LevelSource, error: &impl Display) {
+  pub(crate) fn missing_zone_particles(source: &LevelSource, error: &impl Display) {
     log::warn!("Zones of {} play no particles: {error}", source.get_label());
   }
 
   /// That the level's zones play no sound, their spawn or the configs naming their sounds being unreadable.
-  pub fn missing_zone_sounds(source: &LevelSource, error: &impl Display) {
+  pub(crate) fn missing_zone_sounds(source: &LevelSource, error: &impl Display) {
     log::warn!("Zones of {} play no sound: {error}", source.get_label());
   }
 
   /// That the collision form could not be read, so no particle effect collides with anything.
-  pub fn missing_particle_collision(source: &LevelSource, error: &impl Display) {
+  pub(crate) fn missing_particle_collision(source: &LevelSource, error: &impl Display) {
     log::warn!("Particles of {} collide with nothing: {error}", source.get_label());
   }
 
   /// That a level's surfaces could not be resolved for its drawing, so every surface draws flat.
-  pub fn unresolved_surfaces(source: &LevelSource, error: &impl Display) {
+  pub(crate) fn unresolved_surfaces(source: &LevelSource, error: &impl Display) {
     log::warn!(
       "The surfaces of level {} cannot be resolved, so they draw flat: {error}",
       source.get_label()
@@ -458,7 +458,7 @@ impl LevelReport {
   }
 
   /// That a shown level stays as it is drawn while its session reads it again.
-  pub fn follow_deriving(source: &LevelSource) {
+  pub(crate) fn follow_deriving(source: &LevelSource) {
     log::info!(
       "Level {} stays as drawn while its session reads it again",
       source.get_label()
@@ -466,7 +466,7 @@ impl LevelReport {
   }
 
   /// That a shown level stays as it is drawn, its session having kept the snapshot at `revision`.
-  pub fn follow_kept(source: &LevelSource, revision: impl Display) {
+  pub(crate) fn follow_kept(source: &LevelSource, revision: impl Display) {
     log::info!(
       "Level {} stays as drawn: its session kept revision {revision}",
       source.get_label()
@@ -474,7 +474,7 @@ impl LevelReport {
   }
 
   /// That a shown level's scene followed its session to `revision`, streamed afresh or reloading what `reload` names.
-  pub fn followed(
+  pub(crate) fn followed(
     source: &LevelSource,
     revision: impl Display,
     scene: Option<RenderSceneId>,
@@ -491,17 +491,17 @@ impl LevelReport {
   }
 
   /// That a level's `level.env_mod` could not be read, so its weather plays without its local overrides.
-  pub fn unreadable_modifiers(source: &LevelSource, error: &impl Display) {
+  pub(crate) fn unreadable_modifiers(source: &LevelSource, error: &impl Display) {
     log::warn!("Level {} weather modifiers were not read: {error}", source.get_label());
   }
 
   /// That a level's `level.ltx` could not be read, so it places no map.
-  pub fn unreadable_map(source: &LevelSource, error: &impl Display) {
+  pub(crate) fn unreadable_map(source: &LevelSource, error: &impl Display) {
     log::warn!("Level {} places no map: {error}", source.get_label());
   }
 
   /// That a level's collision form could not be read for its start, so every eye is taken as under the open sky.
-  pub fn unreadable_open_sky(source: &LevelSource, error: &impl Display) {
+  pub(crate) fn unreadable_open_sky(source: &LevelSource, error: &impl Display) {
     log::warn!(
       "Level {} takes every start as under the open sky: {error}",
       source.get_label()
@@ -509,13 +509,13 @@ impl LevelReport {
   }
 
   /// That the game's console is read from an installation's own `user.ltx`.
-  pub fn console_read(path: &Path) {
+  pub(crate) fn console_read(path: &Path) {
     log::info!("Reading the game's console from {}", path.display());
   }
 
   /// That an installation's console, or the fsgame file naming where it is, is there and will not read, so the game's
   /// shipped defaults stand alone.
-  pub fn unreadable_console(path: &Path, error: &impl Display) {
+  pub(crate) fn unreadable_console(path: &Path, error: &impl Display) {
     log::warn!(
       "The game's console is its shipped defaults alone, as {} does not read: {error}",
       path.display()
@@ -523,17 +523,17 @@ impl LevelReport {
   }
 
   /// That rain draws no splashes, its model not reading.
-  pub fn undrawn_rain(error: &impl Display) {
+  pub(crate) fn undrawn_rain(error: &impl Display) {
     log::warn!("Rain splashes are not drawn: {error}");
   }
 
   /// That thunderbolts are not coloured, the colour animation library not reading.
-  pub fn uncoloured_thunderbolts(file: &str, error: &impl Display) {
+  pub(crate) fn uncoloured_thunderbolts(file: &str, error: &impl Display) {
     log::warn!("Thunderbolts are not coloured, '{file}' does not read: {error}");
   }
 
   /// That a thunderbolt's model is not drawn.
-  pub fn undrawn_thunderbolt_model(name: &str, error: &impl Display) {
+  pub(crate) fn undrawn_thunderbolt_model(name: &str, error: &impl Display) {
     log::warn!("Thunderbolt model '{name}' is not drawn: {error}");
   }
 }

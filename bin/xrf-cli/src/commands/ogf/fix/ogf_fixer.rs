@@ -17,13 +17,13 @@ use crate::commands::ogf::fix::ogf_fix_outcome::OgfFixOutcome;
 use crate::commands::ogf::fix::report::OgfFixReport;
 use crate::core::host_walk::HostWalk;
 
-pub struct OgfFixer<'a> {
+pub(crate) struct OgfFixer<'a> {
   output: &'a OutputOptions,
   is_dry_run: bool,
 }
 
 impl<'a> OgfFixer<'a> {
-  pub fn new(output: &'a OutputOptions, is_dry_run: bool) -> Self {
+  pub(crate) fn new(output: &'a OutputOptions, is_dry_run: bool) -> Self {
     Self { output, is_dry_run }
   }
 
@@ -33,7 +33,7 @@ impl<'a> OgfFixer<'a> {
   ///
   /// Returns an error before touching anything when the selection itself is wrong: a path that does not exist, a
   /// directory holding no visuals, or a destination given for a directory.
-  pub fn fix(&self, path: &Path, destination: Option<&Path>) -> XrfResult<OgfFixReport> {
+  pub(crate) fn fix(&self, path: &Path, destination: Option<&Path>) -> XrfResult<OgfFixReport> {
     if destination.is_some() && path.is_dir() {
       return Err(XrfError::new_invalid_error(format!(
         "Destination applies to a single ogf file, {} is a directory",

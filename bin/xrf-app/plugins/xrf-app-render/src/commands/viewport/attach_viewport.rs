@@ -14,7 +14,7 @@ use crate::{RenderViewports, ViewportEvent};
 /// through `events`.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "attach_viewport")]
-pub fn render_attach_viewport(
+pub(crate) fn render_attach_viewport(
   viewports: State<'_, RenderViewports>,
   handles: State<'_, WindowHandles>,
   window: InvokingWindow,

@@ -10,7 +10,7 @@ use crate::core::arguments::JobsArgument;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct FixCommand;
+pub(crate) struct FixCommand;
 
 impl GenericCommand for FixCommand {
   fn operation(&self) -> &'static str {

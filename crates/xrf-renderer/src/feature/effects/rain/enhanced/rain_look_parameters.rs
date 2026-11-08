@@ -8,7 +8,7 @@ use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 /// glint is taken from, and the lighting and exposure the light they scatter is shown at.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 2)]
-pub struct RainLookParameters<'a> {
+pub(crate) struct RainLookParameters<'a> {
   #[texture(d2, float)]
   pub refracted: GraphTexture,
   #[sampler(filtering)]

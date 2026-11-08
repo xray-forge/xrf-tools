@@ -4,7 +4,7 @@ use crate::frame::targets::frame_texture::FrameTexture;
 /// and its variance, the surface's world normal and roughness, and the distance along the view of the point, how many
 /// frames its reflection holds and the distance through it to what it reflects; at the frame's size, the reflection
 /// resolved again, which combine reads.
-pub struct ReflectionFrame {
+pub(crate) struct ReflectionFrame {
   pub radiance: FrameTexture,
   pub surface: FrameTexture,
   pub held: FrameTexture,

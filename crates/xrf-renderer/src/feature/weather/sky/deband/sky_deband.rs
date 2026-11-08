@@ -11,7 +11,7 @@ use crate::scene::texture::weather_textures::WeatherTextures;
 /// keyframes' cubes and clouds, each copied into float once its texture is up and again when the weather names
 /// another, the combine reading the copies and every other reader the textures as they are.
 #[derive(Default)]
-pub struct SkyDeband {
+pub(crate) struct SkyDeband {
   /// The cubes' copies, then the clouds', none for a texture not up or not drawn.
   slots: [Option<SkyDebandSlot>; 4],
 }
@@ -38,7 +38,7 @@ impl SkyDeband {
   ];
 
   /// Whether a view debands its sky: the enhanced debanding asked for, the sky shown, lit and solid.
-  pub fn is_asked(options: &RenderViewOptions) -> bool {
+  pub(crate) fn is_asked(options: &RenderViewOptions) -> bool {
     let is_shown: bool = options.mode.is_lit && !options.mode.is_wireframe && options.show.is_sky_visible;
 
     is_shown && options.features.debanding.is_drawn()
@@ -46,7 +46,13 @@ impl SkyDeband {
 
   /// Takes this frame's sky: a texture up for the first time, or named in place of the one copied, is copied again this
   /// frame; one not up, or clouds not drawn (`is_clouded`), keeps no copy, the sky reading it as it stands.
-  pub fn prepare(&mut self, device: &wgpu::Device, textures: WeatherTextures<'_>, sky: &RenderSky, is_clouded: bool) {
+  pub(crate) fn prepare(
+    &mut self,
+    device: &wgpu::Device,
+    textures: WeatherTextures<'_>,
+    sky: &RenderSky,
+    is_clouded: bool,
+  ) {
     let references: [Option<&str>; 4] = [
       sky.textures[0].as_deref(),
       sky.textures[1].as_deref(),
@@ -73,7 +79,7 @@ impl SkyDeband {
   }
 
   /// Forgets a smoothing this frame made, where its frame was not submitted: it smooths again on the next.
-  pub fn abandon_frame(&mut self) {
+  pub(crate) fn abandon_frame(&mut self) {
     for slot in self.slots.iter_mut().flatten().filter(|slot| slot.is_due) {
       slot.is_filled = false;
     }
@@ -81,7 +87,7 @@ impl SkyDeband {
 
   /// The sky's parameters (`sky`) with the copies in place of the textures they were made from, each smoothed first
   /// where this frame copies it.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
     bindings: &mut GraphBindings<'a>,

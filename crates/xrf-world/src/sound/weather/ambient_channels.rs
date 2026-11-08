@@ -24,7 +24,7 @@ const HEIGHT: f32 = 10.0;
 /// by its place in the ambient's list, first waits a drawn time, then plays one of its sounds at random around the
 /// camera, a drawn distance out on the level and ten metres up, and waits the sound's length and a drawn pause before
 /// the next. The ambient is drawn each update between the two keyframes' by how far the weather stands between them.
-pub struct AmbientChannels {
+pub(crate) struct AmbientChannels {
   /// `ambient_sound_next_time`, by the channel's place, which an ambient taking over keeps.
   next: Vec<Option<Duration>>,
   /// Each channel's sounds' last plays, which a sound picked again while playing starts over.
@@ -54,7 +54,7 @@ impl Default for AmbientChannels {
 
 impl AmbientChannels {
   /// Plays on to `now`, the level's clock, the camera standing at `eye` in engine space.
-  pub fn update(
+  pub(crate) fn update(
     &mut self,
     emitters: &mut SoundEmitters,
     level: &WorldLevelWeather,
@@ -118,12 +118,12 @@ impl AmbientChannels {
   }
 
   /// The ambient the last update played, none while the weather names none.
-  pub fn get_ambient(&self) -> Option<&str> {
+  pub(crate) fn get_ambient(&self) -> Option<&str> {
     self.ambient.as_deref()
   }
 
   /// How long until each channel of the ambient the last update played sounds next.
-  pub fn report(&self, level: Option<&WorldLevelWeather>, now: Duration) -> Vec<WorldSoundChannelReport> {
+  pub(crate) fn report(&self, level: Option<&WorldLevelWeather>, now: Duration) -> Vec<WorldSoundChannelReport> {
     let Some(ambient) = level
       .zip(self.ambient.as_deref())
       .and_then(|(level, name)| level.ambients.get(name))

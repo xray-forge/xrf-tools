@@ -14,7 +14,7 @@ use crate::core::terminal::{MountDescription, SourceReachability};
 const PRINT_LIMIT: usize = SourceReachability::PRINT_LIMIT;
 
 #[derive(Default)]
-pub struct ListCommand;
+pub(crate) struct ListCommand;
 
 impl GenericCommand for ListCommand {
   fn operation(&self) -> &'static str {

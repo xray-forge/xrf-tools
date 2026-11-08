@@ -19,7 +19,7 @@ enum CaptureStage {
 }
 
 /// A level map or cubemap captured in a viewport in place of its own frames, through a view of the scene of its own.
-pub struct CaptureJob {
+pub(crate) struct CaptureJob {
   plan: CapturePlan,
   stage: CaptureStage,
   /// Its view of the scene and its camera on the GPU, made once a GPU is there.
@@ -35,7 +35,7 @@ impl CaptureJob {
   /// settles alike however fast it draws.
   const FRAME_STEP: Duration = Duration::from_micros(16_667);
 
-  pub fn new(plan: CapturePlan, events: Sender<CaptureEvent>) -> Self {
+  pub(crate) fn new(plan: CapturePlan, events: Sender<CaptureEvent>) -> Self {
     let mut job: Self = Self {
       plan,
       stage: CaptureStage::Metering { frames: 0 },
@@ -54,7 +54,7 @@ impl CaptureJob {
   }
 
   /// The shot this frame draws: a metering view, a shot settling, or none while the last come back.
-  pub fn get_drawn_shot(&self) -> Option<CaptureShot> {
+  pub(crate) fn get_drawn_shot(&self) -> Option<CaptureShot> {
     match self.stage {
       CaptureStage::Metering { frames } => self.plan.get_meter(frames),
       CaptureStage::Shot { index, .. } => self.plan.shots.get(index).copied(),
@@ -63,12 +63,12 @@ impl CaptureJob {
   }
 
   /// Whether this frame meters the exposure rather than drawing a shot.
-  pub fn is_metering(&self) -> bool {
+  pub(crate) fn is_metering(&self) -> bool {
     matches!(self.stage, CaptureStage::Metering { .. })
   }
 
   /// Whether this frame's shot is the one copied out: the last of its settling frames.
-  pub fn is_kept_frame(&self) -> bool {
+  pub(crate) fn is_kept_frame(&self) -> bool {
     match self.stage {
       CaptureStage::Shot { frames, .. } => frames + 1 >= self.plan.settle_frames.max(1),
       _ => false,
@@ -76,7 +76,10 @@ impl CaptureJob {
   }
 
   /// Its view and its camera's binding, made with `make` the first time, its clock stepped by its frames.
-  pub fn get_view_mut(&mut self, make: impl FnOnce() -> (SceneView, ViewBinding)) -> (&mut SceneView, &ViewBinding) {
+  pub(crate) fn get_view_mut(
+    &mut self,
+    make: impl FnOnce() -> (SceneView, ViewBinding),
+  ) -> (&mut SceneView, &ViewBinding) {
     let (view, binding): &mut (SceneView, ViewBinding) = self.view.get_or_insert_with(|| {
       let (mut view, binding): (SceneView, ViewBinding) = make();
 
@@ -89,18 +92,18 @@ impl CaptureJob {
   }
 
   /// Its view and its camera's binding, none before they are made.
-  pub fn get_view(&self) -> Option<(&SceneView, &ViewBinding)> {
+  pub(crate) fn get_view(&self) -> Option<(&SceneView, &ViewBinding)> {
     self.view.as_ref().map(|(view, binding)| (view, binding))
   }
 
   /// Its view, none before it is made.
-  pub fn get_scene_view_mut(&mut self) -> Option<&mut SceneView> {
+  pub(crate) fn get_scene_view_mut(&mut self) -> Option<&mut SceneView> {
     self.view.as_mut().map(|(view, _)| view)
   }
 
   /// Ends the frame its view drew and moves on, with `kept` the shot copied out of it; a shot whose copy was not
   /// recorded is drawn again.
-  pub fn advance(&mut self, kept: Option<FrameCapture>) {
+  pub(crate) fn advance(&mut self, kept: Option<FrameCapture>) {
     if let Some((view, _)) = self.view.as_mut() {
       view.end_frame();
     }
@@ -142,7 +145,7 @@ impl CaptureJob {
   }
 
   /// Tells the caller of the shots come back since, and of its end once every shot is back.
-  pub fn poll(&mut self) {
+  pub(crate) fn poll(&mut self) {
     for (index, capture) in std::mem::take(&mut self.in_flight) {
       match capture.take() {
         Some(Ok(capture)) => match self.plan.shots.get(index).copied() {
@@ -165,7 +168,7 @@ impl CaptureJob {
   }
 
   /// Stops it, telling the caller why; nothing more is drawn or read back.
-  pub fn stop(&mut self, error: XrfError) {
+  pub(crate) fn stop(&mut self, error: XrfError) {
     if !self.is_ended {
       self.is_ended = true;
       self.in_flight.clear();
@@ -174,7 +177,7 @@ impl CaptureJob {
   }
 
   /// Whether it finished or stopped, so its viewport draws its own frames again.
-  pub fn is_ended(&self) -> bool {
+  pub(crate) fn is_ended(&self) -> bool {
     self.is_ended
   }
 

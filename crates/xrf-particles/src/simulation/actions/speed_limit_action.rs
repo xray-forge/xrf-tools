@@ -8,7 +8,7 @@ pub(crate) struct SpeedLimitAction {
 }
 
 impl SpeedLimitAction {
-  pub fn execute(&self, pool: &mut ParticlePool) {
+  pub(crate) fn execute(&self, pool: &mut ParticlePool) {
     let min_sqr: f32 = self.min_speed * self.min_speed;
     let max_sqr: f32 = self.max_speed * self.max_speed;
 

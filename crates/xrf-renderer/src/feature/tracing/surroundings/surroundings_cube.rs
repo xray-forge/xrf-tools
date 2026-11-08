@@ -35,7 +35,7 @@ use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 
 /// The level around the camera as a cube, a face a frame, lit into the prefiltered sky cube's first mip, so a
 /// reflection that meets nothing on the screen reads the trees and the hills around it rather than the sky alone.
-pub struct SurroundingsCube {
+pub(crate) struct SurroundingsCube {
   /// What culls and draws a face whole, and the camera it is lit by; and what culls and draws a band.
   cut: ShadowCut,
   band: ShadowCut,
@@ -109,8 +109,8 @@ enum CubeOffer {
 impl SurroundingsCube {
   /// Texels a side each face's G-buffer is drawn at over the cube's: twice, averaged down, so a thin tree does not
   /// alias out of the probe; never past `DRAWN_MOST`, which bounds what the six G-buffers keep.
-  pub const DRAWN_OVER: u32 = 2;
-  pub const DRAWN_MOST: u32 = 1024;
+  pub(crate) const DRAWN_OVER: u32 = 2;
+  pub(crate) const DRAWN_MOST: u32 = 1024;
   /// Metres the faces see from the camera: from past what stands about it, which the screen traces, to the whole of a
   /// level.
   const NEAR: f32 = 15.0;
@@ -127,7 +127,7 @@ impl SurroundingsCube {
   const DRAW_SEED: f32 = 1.1e-6;
   const LIGHT_SEED: f32 = 0.01;
 
-  pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout) -> Self {
     Self {
       cut: ShadowCut::new(device, view_layout, "surroundings"),
       band: ShadowCut::new(device, view_layout, "surroundings band"),
@@ -147,18 +147,18 @@ impl SurroundingsCube {
   }
 
   /// Whether it stands in the prefiltered cube's first mip this frame, a face drawn or all kept as they were.
-  pub fn is_active(&self) -> bool {
+  pub(crate) fn is_active(&self) -> bool {
     self.is_active
   }
 
   /// Texels a side a face is drawn at for a cube `size` texels a side.
-  pub fn get_drawn_size(size: u32) -> u32 {
+  pub(crate) fn get_drawn_size(size: u32) -> u32 {
     (size * Self::DRAWN_OVER).min(Self::DRAWN_MOST).max(size)
   }
 
   /// Draws no face this frame: nothing reads the cube. Its faces, their G-buffers and its cuts' lists go, since the
   /// prefilter fills their mip with the sky meanwhile.
-  pub fn rest(&mut self) {
+  pub(crate) fn rest(&mut self) {
     self.is_due = false;
     self.band_due = None;
     self.offer = None;
@@ -176,7 +176,7 @@ impl SurroundingsCube {
   /// first band of one the camera or the scene left behind, each after the last in turn, seen from where the
   /// viewport's camera stands; else one the sun turned from, then the one lit longest ago past `REFRESH_FRAMES`, lit
   /// again from where they were drawn.
-  pub fn offer(
+  pub(crate) fn offer(
     &mut self,
     device: &wgpu::Device,
     frame: &ShadowFrame<'_>,
@@ -316,7 +316,7 @@ impl SurroundingsCube {
   /// Readies what `scheduler` granted of this frame's offer: a face's camera, looking down its axis with the up a cube
   /// texture's face lays its texels by, or a band's, the same narrowed to its rows; a band not granted waits a frame
   /// more. `encoder` takes what readying it writes.
-  pub fn commit(
+  pub(crate) fn commit(
     &mut self,
     device: &wgpu::Device,
     encoder: &mut FrameEncoder,
@@ -422,7 +422,7 @@ impl SurroundingsCube {
 
   /// Forgets that this frame drew its face, where its frame was not submitted: it draws again, and a face drawn band by
   /// band starts again.
-  pub fn abandon_frame(&mut self) {
+  pub(crate) fn abandon_frame(&mut self) {
     if self.is_due {
       self.is_due = false;
       self.drawn[self.face as usize] = None;
@@ -465,7 +465,7 @@ impl SurroundingsCube {
   /// Declares this frame's band of the face drawn again, into the spare G-buffer; then the face's cull and its draw
   /// into the G-buffer it keeps where it is drawn whole, and its resolve into `faces`, the prefiltered cube's first
   /// mip, where this frame lights one.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration {
       graph,

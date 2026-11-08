@@ -50,7 +50,7 @@ pub(crate) fn reverse_triangle_winding<T>(indices: &mut [T]) {
 }
 
 /// Convert a placement into renderer space, so it places already converted vertices.
-pub fn convert_placement(placement: &Matrix4x4) -> Matrix4x4 {
+pub(crate) fn convert_placement(placement: &Matrix4x4) -> Matrix4x4 {
   const Z: usize = 2;
 
   let mut values: [f32; Matrix4x4::ELEMENTS] = placement.values;

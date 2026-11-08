@@ -5,7 +5,7 @@ use crate::feature::image::resolve::fsr::fsr_uniform::FsrUniform;
 /// FSR's depth reconstruction: the depth and motion drawn, and the previous depth it scatters into.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 0)]
-pub struct FsrReconstructParameters {
+pub(crate) struct FsrReconstructParameters {
   #[uniform]
   pub fsr: UniformBinding<FsrUniform>,
   #[texture(d2, depth)]

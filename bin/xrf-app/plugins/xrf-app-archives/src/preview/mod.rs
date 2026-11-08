@@ -6,4 +6,4 @@ pub(crate) mod commands;
 mod descriptor;
 pub(crate) mod routes;
 
-pub use descriptor::{AudioDescriptor, ImageDescriptor};
+pub(crate) use descriptor::{AudioDescriptor, ImageDescriptor};

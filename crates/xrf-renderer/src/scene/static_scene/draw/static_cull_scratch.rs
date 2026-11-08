@@ -9,7 +9,7 @@ use crate::scene::static_scene::geometry::static_geometry::StaticGeometry;
 /// the late arguments' templates, which a cull's own are reset from before it; sized by the entries each draw list may
 /// need. Each cull writes lists and arguments of its own: a view's camera (`StaticViewCull`), a shadow's (`ShadowCut`),
 /// a light's shadow faces.
-pub struct StaticCullScratch {
+pub(crate) struct StaticCullScratch {
   pub regions: wgpu::Buffer,
   /// Every batch's draw arguments as a cull starts them, copied into a cull's own before it.
   pub args_template: wgpu::Buffer,
@@ -25,27 +25,27 @@ pub struct StaticCullScratch {
 
 impl StaticCullScratch {
   /// Where the cull's counts follow every draw list's arguments in their buffer.
-  pub const STATS_OFFSET: u64 = (StaticBatch::LIST_COUNT * 16) as u64;
+  pub(crate) const STATS_OFFSET: u64 = (StaticBatch::LIST_COUNT * 16) as u64;
 
   /// Where the impostors' draw arguments follow the cull's counts.
-  pub const IMPOSTOR_ARGS_OFFSET: u64 = Self::STATS_OFFSET + 16;
+  pub(crate) const IMPOSTOR_ARGS_OFFSET: u64 = Self::STATS_OFFSET + 16;
 
   /// Where the late phase's dispatch follows every draw list's late arguments in theirs.
-  pub const LATE_DISPATCH_OFFSET: u64 = (StaticBatch::LIST_COUNT * 16) as u64;
+  pub(crate) const LATE_DISPATCH_OFFSET: u64 = (StaticBatch::LIST_COUNT * 16) as u64;
 
   /// Bytes a cull's draw arguments take.
-  pub const ARGS_SIZE: u64 = Self::IMPOSTOR_ARGS_OFFSET + 16;
+  pub(crate) const ARGS_SIZE: u64 = Self::IMPOSTOR_ARGS_OFFSET + 16;
 
   /// Bytes the late draw arguments take, the late phase's dispatch and the candidates' count with them.
-  pub const LATE_SIZE: u64 = Self::LATE_DISPATCH_OFFSET + 16;
+  pub(crate) const LATE_SIZE: u64 = Self::LATE_DISPATCH_OFFSET + 16;
 
   /// Bytes an entry of the visible list takes.
-  pub const ENTRY_BYTES: u64 = 8;
+  pub(crate) const ENTRY_BYTES: u64 = 8;
 
   /// The most copies of the visible list one frame's buffer holds: a light's shadow faces drawn in a frame.
-  pub const MOST_LIST_COPIES: u64 = 8;
+  pub(crate) const MOST_LIST_COPIES: u64 = 8;
 
-  pub fn new(device: &wgpu::Device) -> Self {
+  pub(crate) fn new(device: &wgpu::Device) -> Self {
     let buffer = |label: &str, size: u64, usage: wgpu::BufferUsages| {
       device.create_buffer(&wgpu::BufferDescriptor {
         label: Some(label),
@@ -72,7 +72,7 @@ impl StaticCullScratch {
 
   /// Refuses an item whose clusters would grow the visible list, at the most copies of it one buffer holds, past what
   /// the device binds as one storage buffer; asked before the item allocates anything.
-  pub fn check_capacities(&self, device: &wgpu::Device, added: &[u32; StaticBatch::LIST_COUNT]) -> XrfResult {
+  pub(crate) fn check_capacities(&self, device: &wgpu::Device, added: &[u32; StaticBatch::LIST_COUNT]) -> XrfResult {
     let limits: wgpu::Limits = device.limits();
     let entries: u64 = self
       .capacities
@@ -95,14 +95,14 @@ impl StaticCullScratch {
   }
 
   /// Adds an item's clusters to each draw list's capacity, which sizes the lists' regions.
-  pub fn add_capacities(&mut self, capacities: &[u32; StaticBatch::LIST_COUNT]) {
+  pub(crate) fn add_capacities(&mut self, capacities: &[u32; StaticBatch::LIST_COUNT]) {
     for (total, added) in self.capacities.iter_mut().zip(capacities) {
       *total += added;
     }
   }
 
   /// Takes an item's clusters back off each draw list's capacity.
-  pub fn remove_capacities(&mut self, capacities: &[u32; StaticBatch::LIST_COUNT]) {
+  pub(crate) fn remove_capacities(&mut self, capacities: &[u32; StaticBatch::LIST_COUNT]) {
     for (total, removed) in self.capacities.iter_mut().zip(capacities) {
       *total -= removed;
     }
@@ -110,24 +110,24 @@ impl StaticCullScratch {
 
   /// Writes the runs of the visible list and the templates the culls' arguments are reset from, where the capacities
   /// changed since they were last written.
-  pub fn prepare(&mut self, encoder: &mut FrameEncoder) {
+  pub(crate) fn prepare(&mut self, encoder: &mut FrameEncoder) {
     if self.written != Some(self.capacities) {
       self.write(encoder);
     }
   }
 
   /// Resets a cull's draw arguments empty, as every draw list's start a frame.
-  pub fn reset_args(&self, encoder: &mut wgpu::CommandEncoder, args: &wgpu::Buffer) {
+  pub(crate) fn reset_args(&self, encoder: &mut wgpu::CommandEncoder, args: &wgpu::Buffer) {
     encoder.copy_buffer_to_buffer(&self.args_template, 0, args, 0, Self::ARGS_SIZE);
   }
 
   /// Entries the visible list holds, and the candidates as many.
-  pub fn get_list_capacity(&self) -> u32 {
+  pub(crate) fn get_list_capacity(&self) -> u32 {
     self.list_capacity
   }
 
   /// Bytes one copy of the visible list takes, at least an entry's, which every cull's lists are made at.
-  pub fn get_list_bytes(&self) -> u64 {
+  pub(crate) fn get_list_bytes(&self) -> u64 {
     u64::from(self.list_capacity.max(1)) * Self::ENTRY_BYTES
   }
 

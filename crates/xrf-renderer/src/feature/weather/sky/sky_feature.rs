@@ -42,7 +42,7 @@ use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 /// once when new, else after `REFILL_WAIT_LEAST` frames and within `REFILL_WAIT_MOST` more, as the sky and its light
 /// move slowly), the haze map the distance fades into, and under the physical light the sky's irradiance.
 #[derive(Default)]
-pub struct SkyFeature {
+pub(crate) struct SkyFeature {
   views: Option<SkyViews>,
   /// The sun's sprite as the sky draws it, where one is drawn.
   sun_sprite: Option<SunSprite>,
@@ -89,14 +89,14 @@ impl SkyFeature {
 
   /// How far the clouds' layers have drifted over their textures at `time`, each within the textures' repeat of one,
   /// the first's in `xy` and the second's in `zw`.
-  pub fn get_cloud_drift(time: LevelTime) -> Vec4 {
+  pub(crate) fn get_cloud_drift(time: LevelTime) -> Vec4 {
     Vec4::from_array(Self::CLOUD_DRIFT.map(|rate| time.get_turns(rate)))
   }
 
   /// Takes this frame's sky: its textures and the sun's sprite (`sun_sprite`) as the weather textures hold them, the
   /// level's environment cubes beside them, and the prefiltered cube at the size the settings ask, made again where
   /// that changed.
-  pub fn prepare(
+  pub(crate) fn prepare(
     &mut self,
     &ViewPrepare {
       device,
@@ -165,7 +165,7 @@ impl SkyFeature {
   }
 
   /// Offers `scheduler` a refill of the prefiltered cube, while one is kept.
-  pub fn offer_refill(&mut self, scheduler: &mut PeriodicScheduler) {
+  pub(crate) fn offer_refill(&mut self, scheduler: &mut PeriodicScheduler) {
     if self.prefilter.is_none() {
       return;
     }
@@ -192,7 +192,7 @@ impl SkyFeature {
   }
 
   /// Takes the refill `scheduler` granted; one not granted waits a frame more.
-  pub fn commit_refill(&mut self, scheduler: &PeriodicScheduler) {
+  pub(crate) fn commit_refill(&mut self, scheduler: &PeriodicScheduler) {
     let Some(ticket) = self.refill.take() else {
       return;
     };
@@ -210,7 +210,7 @@ impl SkyFeature {
 
   /// Forgets a first fill this frame made, where its frame was not submitted: it fills again at once; and drops the
   /// harmonics that frame copied out.
-  pub fn abandon_frame(&mut self) {
+  pub(crate) fn abandon_frame(&mut self) {
     if self.is_refilled {
       self.is_filled = false;
     }
@@ -225,24 +225,24 @@ impl SkyFeature {
   }
 
   /// Asks for the harmonics copied out with the frame just submitted.
-  pub fn request_readback(&self) {
+  pub(crate) fn request_readback(&self) {
     if let Some(irradiance) = &self.irradiance {
       irradiance.request();
     }
   }
 
   /// Writes into `applied` whether the sky is drawn with its textures smoothed where they band.
-  pub fn describe(&self, applied: &mut RenderAppliedReport) {
+  pub(crate) fn describe(&self, applied: &mut RenderAppliedReport) {
     applied.is_sky_debanded = self.deband.is_some();
   }
 
   /// The sun's sprite as the sky draws it, where one is drawn.
-  pub fn get_sun_sprite(&self) -> Option<&SunSprite> {
+  pub(crate) fn get_sun_sprite(&self) -> Option<&SunSprite> {
     self.sun_sprite.as_ref()
   }
 
   /// Writes the sky's motion where nothing was drawn, which the resolves carry its history by.
-  pub fn add_motion_pass<'a>(
+  pub(crate) fn add_motion_pass<'a>(
     &self,
     graph: &mut FrameGraph<'a>,
     passes: LevelPasses<'a>,
@@ -264,7 +264,7 @@ impl SkyFeature {
   /// still going up shows the other one; whether both irradiance cubes are up; the clouds' drift at `time`; the sun's sprite
   /// while its texture is up; the exposure and the display the view decided (`shared`); at the physical light levels the
   /// world's light, and the units the light is in by the sky last projected.
-  pub fn get_lighting_frame(
+  pub(crate) fn get_lighting_frame(
     &self,
     &ViewPrepare {
       options,
@@ -313,19 +313,19 @@ impl SkyFeature {
   }
 
   /// The sky's textures this frame, once prepared.
-  pub fn get_views(&self) -> Option<&SkyViews> {
+  pub(crate) fn get_views(&self) -> Option<&SkyViews> {
     self.views.as_ref()
   }
 
   /// Whether the haze map is drawn this frame.
-  pub fn is_hazing(&self) -> bool {
+  pub(crate) fn is_hazing(&self) -> bool {
     self.is_hazing && self.views.is_some()
   }
 
   /// Adds the sky: its textures and the prefiltered cube imported, the surroundings' face drawn into its first mip
   /// where `surroundings` draws one, the cube filled where this frame refills it, and the haze map drawn; answers the
   /// sky's parameters, which the combine, the water and the composited surfaces bind, none before it is prepared.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -383,7 +383,7 @@ impl SkyFeature {
   /// The sky's parameters as the combine draws the sky, from those `add_passes` answered (`sky`): with the enhanced
   /// debanding, its textures' smoothed copies in their place, each smoothed first where this frame copies it; every
   /// other reader of the sky keeps the textures as they are.
-  pub fn add_drawn_sky<'a>(
+  pub(crate) fn add_drawn_sky<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,

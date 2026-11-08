@@ -14,7 +14,7 @@ use crate::core::terminal::MountDescription;
 /// Shared so the reading commands cannot drift from `ltx verify` about what a tree contains: an installation keeps
 /// nearly every config in an archive volume, and a command that only walked the filesystem would answer about a
 /// different set of files than the one that checks them.
-pub struct LtxProjectOpening;
+pub(crate) struct LtxProjectOpening;
 
 impl LtxProjectOpening {
   /// The project at `path`, read with the dialect the command was asked for.
@@ -23,7 +23,7 @@ impl LtxProjectOpening {
   ///
   /// Returns an error when `path` is not a directory, an installation cannot be mounted, or the project cannot be
   /// assembled.
-  pub fn open(path: &Path, matches: &ArgMatches, output: &OutputOptions) -> XrfResult<LtxProject> {
+  pub(crate) fn open(path: &Path, matches: &ArgMatches, output: &OutputOptions) -> XrfResult<LtxProject> {
     if !path.is_dir() {
       return Err(XrfError::new_read_error(
         "Expected configs root directory path as --path parameter",

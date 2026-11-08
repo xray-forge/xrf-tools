@@ -8,7 +8,7 @@ use xrf_utils::format_path;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct InitializeCommand;
+pub(crate) struct InitializeCommand;
 
 impl GenericCommand for InitializeCommand {
   fn operation(&self) -> &'static str {

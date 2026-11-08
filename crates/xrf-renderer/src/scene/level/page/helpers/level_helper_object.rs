@@ -5,7 +5,7 @@ use glam::Vec3;
 /// One helped object as a scene keeps it: what names it, how it is drawn, where it stands, its wires and icons among the
 /// scene's, and the spawned model it marks.
 #[derive(Clone, Debug, PartialEq)]
-pub struct LevelHelperObject {
+pub(crate) struct LevelHelperObject {
   pub id: u32,
   pub kind: u32,
   pub color: [f32; 3],

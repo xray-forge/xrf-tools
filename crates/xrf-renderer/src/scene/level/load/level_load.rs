@@ -10,7 +10,7 @@ use crate::scene::texture::texture_cache::TextureCache;
 
 /// What a level's load reports: how far its world streamed it, and whether every texture the renderer samples of it is
 /// settled; and how long each part took.
-pub struct LevelLoad {
+pub(crate) struct LevelLoad {
   /// When its scene was made, which its load is timed from until the world says when it began opening the level.
   started: Instant,
   progress: RenderStreamingProgress,
@@ -18,7 +18,7 @@ pub struct LevelLoad {
 }
 
 impl LevelLoad {
-  pub fn new(started: Instant) -> Self {
+  pub(crate) fn new(started: Instant) -> Self {
     Self {
       started,
       progress: RenderStreamingProgress::default(),
@@ -28,7 +28,7 @@ impl LevelLoad {
 
   /// Takes how far the world has streamed the level this frame, and notes the parts finished since the last; `slots`
   /// are every texture slot it samples.
-  pub fn advance(&mut self, progress: RenderStreamingProgress, slots: &[u32], textures: &TextureCache) {
+  pub(crate) fn advance(&mut self, progress: RenderStreamingProgress, slots: &[u32], textures: &TextureCache) {
     self.progress = progress;
 
     // Every part has finished by the time the whole has.
@@ -66,7 +66,7 @@ impl LevelLoad {
 
   /// How far the level has loaded: its sectors taken in or failed, its spawn, its grass, lights and particles read, and
   /// every texture it samples (`slots`) settled; and how long each took.
-  pub fn describe(&self, scene: RenderSceneId, slots: &[u32], textures: &TextureCache) -> RenderLoadReport {
+  pub(crate) fn describe(&self, scene: RenderSceneId, slots: &[u32], textures: &TextureCache) -> RenderLoadReport {
     let progress: &RenderStreamingProgress = &self.progress;
     let settled: u32 = textures.count_settled(slots.iter().copied());
     let total: u32 = slots.len() as u32;
@@ -84,17 +84,17 @@ impl LevelLoad {
   }
 
   /// Whether the level has stood ready once since its scene was made, as its load reports the moment.
-  pub fn has_stood_ready(&self) -> bool {
+  pub(crate) fn has_stood_ready(&self) -> bool {
     self.durations.ready.is_some()
   }
 
   /// Whether everything the level opens with is resident, so it draws as it will.
-  pub fn is_ready(&self, slots: impl IntoIterator<Item = impl Borrow<u32>>, textures: &TextureCache) -> bool {
+  pub(crate) fn is_ready(&self, slots: impl IntoIterator<Item = impl Borrow<u32>>, textures: &TextureCache) -> bool {
     textures.is_settled(slots) && self.are_parts_done()
   }
 
   /// What the level still waits for, said for a log: the parts not finished and the textures not settled.
-  pub fn describe_pending(&self, slots: &[u32], textures: &TextureCache) -> String {
+  pub(crate) fn describe_pending(&self, slots: &[u32], textures: &TextureCache) -> String {
     let settled: u32 = textures.count_settled(slots.iter().copied());
     let mut pending: Vec<String> = LevelPart::LOADED
       .into_iter()

@@ -8,7 +8,7 @@ use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 /// reflection blurred and as drawn, how much of the sun reaches the scene, its maps, and the enhanced drops' rings.
 #[derive(PassParameters)]
 #[parameters(group = 3)]
-pub struct EnhancedWaterParameters<'a> {
+pub(crate) struct EnhancedWaterParameters<'a> {
   #[uniform]
   pub lighting: UniformBinding<LightingUniform>,
   #[uniform]

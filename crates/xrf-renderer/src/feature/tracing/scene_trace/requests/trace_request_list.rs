@@ -4,7 +4,7 @@ use crate::feature::tracing::scene_trace::requests::trace_request::TraceRequest;
 /// least; their head (the count made, the scene pass's dispatch and the wait, `TraceRequest::HEAD_WORDS`); the
 /// dispatch copied out of it; and the wait copied out of it as the frame starts, which the listing pass reads plainly
 /// rather than by an atomic load in every pixel.
-pub struct TraceRequestList {
+pub(crate) struct TraceRequestList {
   label: String,
   capacity: u32,
   pub requests: wgpu::Buffer,
@@ -14,7 +14,7 @@ pub struct TraceRequestList {
 }
 
 impl TraceRequestList {
-  pub fn new(device: &wgpu::Device, label: &str, capacity: u32) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, label: &str, capacity: u32) -> Self {
     let buffer = |suffix: &str, size: u64, usage: wgpu::BufferUsages| -> wgpu::Buffer {
       device.create_buffer(&wgpu::BufferDescriptor {
         label: Some(&format!("{label} {suffix}")),
@@ -47,13 +47,13 @@ impl TraceRequestList {
   }
 
   /// Requests it holds at most.
-  pub fn get_capacity(&self) -> u32 {
+  pub(crate) fn get_capacity(&self) -> u32 {
     self.capacity
   }
 
   /// Makes the requests anew where they hold another number: the full share while the pass traces, none while it does
   /// not, so a list takes no memory until tracing is asked for.
-  pub fn fit(&mut self, device: &wgpu::Device, capacity: u32) {
+  pub(crate) fn fit(&mut self, device: &wgpu::Device, capacity: u32) {
     if capacity != self.capacity {
       self.capacity = capacity;
       self.requests = Self::create_requests(device, &self.label, capacity);

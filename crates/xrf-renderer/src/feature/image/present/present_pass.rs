@@ -8,7 +8,7 @@ use crate::pass::view::view_binding::ViewBinding;
 
 /// Puts a viewport's finished scene into its rectangle of the window, moved where the water and the particles distort
 /// it and dithered to the window's eight bits; or, for a debug view, one of the targets the scene was built from.
-pub struct PresentPass {
+pub(crate) struct PresentPass {
   layout: wgpu::BindGroupLayout,
   /// The bloom's, `smp_rtlinear`: filtered, clamped to the edge.
   bloom_sampler: wgpu::Sampler,
@@ -18,7 +18,7 @@ pub struct PresentPass {
 }
 
 impl PresentPass {
-  pub fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> Self {
+  pub(crate) fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> Self {
     let device: &wgpu::Device = source.device;
 
     let layout: wgpu::BindGroupLayout = PresentParameters::create_layout(device);
@@ -38,7 +38,7 @@ impl PresentPass {
 
   /// Builds the pipelines again from a library reloaded since they were built, one a window format each; a broken edit
   /// keeps the last good ones.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     let layouts: [&wgpu::BindGroupLayout; 2] = [&self.view_layout, &self.layout];
 
     if let Err(error) = self
@@ -54,7 +54,7 @@ impl PresentPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn prepare(&mut self, source: PipelineSource<'_>, format: wgpu::TextureFormat) -> XrfResult {
+  pub(crate) fn prepare(&mut self, source: PipelineSource<'_>, format: wgpu::TextureFormat) -> XrfResult {
     let layouts: [&wgpu::BindGroupLayout; 2] = [&self.view_layout, &self.layout];
 
     self
@@ -77,13 +77,13 @@ impl PresentPass {
   }
 
   /// The bloom's sampler, which a viewport's parameters bind.
-  pub fn get_bloom_sampler(&self) -> &wgpu::Sampler {
+  pub(crate) fn get_bloom_sampler(&self) -> &wgpu::Sampler {
     &self.bloom_sampler
   }
 
   /// Draws into the window's pass, whose viewport and scissor are the viewport's rectangle already; nothing into a
   /// `format` whose pipeline could not be built, which `prepare` answered and the composition logged.
-  pub fn draw(
+  pub(crate) fn draw(
     &self,
     context: &mut RasterContext<'_>,
     format: wgpu::TextureFormat,

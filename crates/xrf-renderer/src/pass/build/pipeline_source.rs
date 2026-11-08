@@ -6,7 +6,7 @@ use crate::shader::shader_library::ShaderLibrary;
 /// Where a feature unit asks for its pipelines: the renderer's cache, making what it lacks on the device from the
 /// shader library, each module composed for the device's features.
 #[derive(Clone, Copy)]
-pub struct PipelineSource<'a> {
+pub(crate) struct PipelineSource<'a> {
   pub cache: &'a PipelineCache,
   pub device: &'a wgpu::Device,
   pub shaders: &'a ShaderLibrary,
@@ -18,7 +18,7 @@ impl<'a> PipelineSource<'a> {
   /// # Errors
   ///
   /// Returns an error when the module cannot be composed or wgpu refuses the module or the pipeline.
-  pub fn get_render_pipeline(&self, description: &RenderPipelineDescription) -> XrfResult<wgpu::RenderPipeline> {
+  pub(crate) fn get_render_pipeline(&self, description: &RenderPipelineDescription) -> XrfResult<wgpu::RenderPipeline> {
     self.cache.get_render_pipeline(self.device, self, description)
   }
 
@@ -27,7 +27,10 @@ impl<'a> PipelineSource<'a> {
   /// # Errors
   ///
   /// Returns an error when the module cannot be composed or wgpu refuses the module or the pipeline.
-  pub fn get_compute_pipeline(&self, description: &ComputePipelineDescription) -> XrfResult<wgpu::ComputePipeline> {
+  pub(crate) fn get_compute_pipeline(
+    &self,
+    description: &ComputePipelineDescription,
+  ) -> XrfResult<wgpu::ComputePipeline> {
     self.cache.get_compute_pipeline(self.device, self, description)
   }
 
@@ -36,7 +39,7 @@ impl<'a> PipelineSource<'a> {
   /// # Errors
   ///
   /// Returns the first pipeline's error.
-  pub fn warm(&self, render: &[RenderPipelineDescription]) -> XrfResult {
+  pub(crate) fn warm(&self, render: &[RenderPipelineDescription]) -> XrfResult {
     self.cache.warm(self.device, self, render, &[])
   }
 }

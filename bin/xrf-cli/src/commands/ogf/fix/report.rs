@@ -10,7 +10,7 @@ use crate::commands::ogf::fix::ogf_fix_outcome::OgfFixOutcome;
 /// is, since those visuals are not listed.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct OgfFixReport {
+pub(crate) struct OgfFixReport {
   pub checked: usize,
   pub files: Vec<OgfFixFileReport>,
   pub findings: Vec<OgfFixFindingReport>,
@@ -19,7 +19,7 @@ pub struct OgfFixReport {
 }
 
 impl OgfFixReport {
-  pub fn new(outcomes: Vec<OgfFixOutcome>, is_dry_run: bool) -> Self {
+  pub(crate) fn new(outcomes: Vec<OgfFixOutcome>, is_dry_run: bool) -> Self {
     let mut report: Self = Self {
       checked: outcomes.len(),
       files: Vec::new(),
@@ -40,7 +40,7 @@ impl OgfFixReport {
   }
 
   /// Total bytes discarded across every normalized visual.
-  pub fn discarded_size(&self) -> usize {
+  pub(crate) fn discarded_size(&self) -> usize {
     self.files.iter().map(OgfFixFileReport::discarded_size).sum()
   }
 }

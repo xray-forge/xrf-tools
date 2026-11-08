@@ -35,7 +35,7 @@ impl StaticScene {
   ///
   /// Returns an error for a handle that holds a sector already, or when a buffer would outgrow what the device allows;
   /// none of it stands in the scene, though the surfaces it put and the texture slots they asked for stay.
-  pub fn add_sector(
+  pub(crate) fn add_sector(
     &mut self,
     context: &mut StaticItemContext<'_>,
     descriptors: &[XraySurfaceDescriptor],

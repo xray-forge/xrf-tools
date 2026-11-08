@@ -24,7 +24,7 @@ enum RecordSlot {
 /// last, presented at the size locked at the start and copied into one of a ring of four buffers, which the recorder
 /// reads on its own thread. With every buffer on its way or held by the recorder, a frame due is dropped and counted,
 /// so the render thread never waits on a recording.
-pub struct RecordJob {
+pub(crate) struct RecordJob {
   layout: RecordLayout,
   readbacks: Vec<Arc<GpuReadback>>,
   slots: [RecordSlot; Self::RING],
@@ -38,10 +38,10 @@ pub struct RecordJob {
 
 impl RecordJob {
   /// Buffers a recording's frames go back through.
-  pub const RING: usize = 4;
+  pub(crate) const RING: usize = 4;
 
   /// A recording of frames `size` pixels across, told to `events`.
-  pub fn new(size: (u32, u32), events: Sender<RecordEvent>) -> Self {
+  pub(crate) fn new(size: (u32, u32), events: Sender<RecordEvent>) -> Self {
     Self {
       layout: RecordLayout::new(size),
       readbacks: Vec::new(),
@@ -56,7 +56,7 @@ impl RecordJob {
 
   /// The frame this frame draws at `now`, where one is due a sixtieth on from the last and a buffer is free; a frame
   /// due with none free is dropped and counted. The buffers are made with the first.
-  pub fn take_shot(&mut self, device: &wgpu::Device, now: Instant) -> Option<RecordShot> {
+  pub(crate) fn take_shot(&mut self, device: &wgpu::Device, now: Instant) -> Option<RecordShot> {
     if self.is_ended {
       return None;
     }
@@ -91,7 +91,7 @@ impl RecordJob {
   }
 
   /// Ends the frame `shot` was drawn in, submitted: its copy asked back, or its buffer freed where the frame drew none.
-  pub fn advance(&mut self, shot: RecordShot) {
+  pub(crate) fn advance(&mut self, shot: RecordShot) {
     let readback: &GpuReadback = &self.readbacks[shot.slot];
 
     self.slots[shot.slot] = match self.slots[shot.slot] {
@@ -109,13 +109,13 @@ impl RecordJob {
   }
 
   /// Frees the buffer of `shot`, drawn in a frame that was never submitted.
-  pub fn abandon(&mut self, shot: &RecordShot) {
+  pub(crate) fn abandon(&mut self, shot: &RecordShot) {
     self.readbacks[shot.slot].abandon();
     self.slots[shot.slot] = RecordSlot::Free;
   }
 
   /// Notes `at` as the present time of the frames asked back that had none, the frame just presented.
-  pub fn present(&mut self, at: Instant) {
+  pub(crate) fn present(&mut self, at: Instant) {
     for slot in &mut self.slots {
       if let RecordSlot::Asked { presented, .. } = slot {
         presented.get_or_insert(at);
@@ -124,7 +124,7 @@ impl RecordJob {
   }
 
   /// Sends the recorder each frame back since and presented, and takes back the buffers it read or let go.
-  pub fn poll(&mut self) {
+  pub(crate) fn poll(&mut self) {
     for slot in 0..self.slots.len() {
       match self.slots[slot] {
         RecordSlot::Asked {
@@ -153,12 +153,12 @@ impl RecordJob {
 
   /// Frames dropped so far, every buffer on its way or held.
   #[cfg(test)]
-  pub fn get_dropped(&self) -> u64 {
+  pub(crate) fn get_dropped(&self) -> u64 {
     self.dropped
   }
 
   /// Stops it, telling the recorder why; nothing more is kept.
-  pub fn stop(&mut self, error: XrfError) {
+  pub(crate) fn stop(&mut self, error: XrfError) {
     if !self.is_ended {
       self.is_ended = true;
       let _ = self.events.send(RecordEvent::Stopped { error });
@@ -166,7 +166,7 @@ impl RecordJob {
   }
 
   /// Whether it stopped or its recorder went.
-  pub fn is_ended(&self) -> bool {
+  pub(crate) fn is_ended(&self) -> bool {
     self.is_ended
   }
 

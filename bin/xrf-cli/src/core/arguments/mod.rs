@@ -11,10 +11,10 @@ mod reporting_arguments;
 mod tests;
 mod xray_roots_arguments;
 
-pub use engine_target_argument::EngineTargetArgument;
-pub use jobs_argument::JobsArgument;
-pub use link_policy_argument::LinkPolicyArgument;
-pub use ltx_dialect_argument::LtxDialectArgument;
+pub(crate) use engine_target_argument::EngineTargetArgument;
+pub(crate) use jobs_argument::JobsArgument;
+pub(crate) use link_policy_argument::LinkPolicyArgument;
+pub(crate) use ltx_dialect_argument::LtxDialectArgument;
 pub(crate) use optional_argument::OptionalArgument;
-pub use reporting_arguments::ReportingArguments;
-pub use xray_roots_arguments::XrayRootsArguments;
+pub(crate) use reporting_arguments::ReportingArguments;
+pub(crate) use xray_roots_arguments::XrayRootsArguments;

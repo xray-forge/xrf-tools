@@ -7,9 +7,10 @@ mod report;
 mod request;
 pub(crate) mod routes;
 
-pub use comparison::{TextureComparison, TextureComparisons};
-pub use report::{
+pub(crate) use comparison::TextureComparison;
+pub use comparison::TextureComparisons;
+pub(crate) use report::{
   TextureEncodingComparison, TextureEncodingCurrent, TextureEncodingReport, TextureFormatSupport,
   TextureRendererSupport,
 };
-pub use request::TexturesCompareRequest;
+pub(crate) use request::TexturesCompareRequest;

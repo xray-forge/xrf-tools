@@ -6,7 +6,7 @@ use xrf_renderer_core::ShaderStruct;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "LightVolume")]
-pub struct LightVolumeRecord {
+pub(crate) struct LightVolumeRecord {
   /// The box's corner nearest the camera, then how many slices are drawn.
   pub near: Vec4,
   /// Its far corner, its depth stretched as the slices thin (`vMaxBounds`), then its light's record.

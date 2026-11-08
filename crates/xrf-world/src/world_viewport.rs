@@ -27,7 +27,7 @@ const POSE_INTERVAL: Duration = Duration::from_millis(100);
 
 /// One viewport's world: its camera, the scene it shows and that level's weather as it plays here, and what its page
 /// was last told of them.
-pub struct WorldViewport {
+pub(crate) struct WorldViewport {
   pub camera: CameraController,
   pub weather: ViewportWeather,
   /// The scene it shows, shared with every viewport showing the same level.
@@ -53,7 +53,7 @@ pub struct WorldViewport {
 }
 
 impl WorldViewport {
-  pub fn new(weather: ViewportWeather, now: Instant) -> Self {
+  pub(crate) fn new(weather: ViewportWeather, now: Instant) -> Self {
     Self {
       camera: CameraController::default(),
       weather,
@@ -72,14 +72,14 @@ impl WorldViewport {
   }
 
   /// Gives it the page's channel, which its camera's pose and its weather are published on.
-  pub fn set_sink(&mut self, sink: Box<dyn WorldEventSink>) {
+  pub(crate) fn set_sink(&mut self, sink: Box<dyn WorldEventSink>) {
     self.sink = Some(sink);
   }
 
   /// Moves the camera and the weather on a frame, publishes what changed, and answers the frame's input; `ambient` is
   /// where its scene's ambient effects stand, which its weather report carries, and `level` what its scene read every
   /// weather of the level plays with.
-  pub fn advance(
+  pub(crate) fn advance(
     &mut self,
     input: RenderViewInput<'_>,
     ambient: Option<WorldAmbientReport>,
@@ -154,7 +154,7 @@ impl WorldViewport {
   }
 
   /// What its weather's ambients play from this frame, for the ambient effects of a scene it drives.
-  pub fn get_ambient_frame(&self) -> Option<AmbientFrame<'_>> {
+  pub(crate) fn get_ambient_frame(&self) -> Option<AmbientFrame<'_>> {
     self.weather.get_level().map(|level| AmbientFrame {
       ambients: self.weather.get_player().get_ambients(),
       level,
@@ -163,7 +163,7 @@ impl WorldViewport {
 
   /// How hard its weather rains and blows as last mixed, no rain while it is switched off; `hemi` is how open the
   /// camera of the scene stands.
-  pub fn get_rain_frame(&self, hemi: Option<f32>) -> RainFrame {
+  pub(crate) fn get_rain_frame(&self, hemi: Option<f32>) -> RainFrame {
     let mix = self.weather.get_player().get_mix().filter(|_| self.toggles.is_rainy);
 
     RainFrame {
@@ -174,7 +174,7 @@ impl WorldViewport {
   }
 
   /// Milliseconds of the day its weather stands at, `GetGameDayTimeMS`.
-  pub fn get_game_time(&self) -> u32 {
+  pub(crate) fn get_game_time(&self) -> u32 {
     (self.weather.get_player().get_time() * 1000.0) as u32
   }
 

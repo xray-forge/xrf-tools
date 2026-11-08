@@ -74,7 +74,7 @@ enum RunningKind {
 
 impl ParticleRunningAction {
   /// `PlayEffect`: sources emit again; explosions and turbulence start over.
-  pub fn play(&mut self) {
+  pub(crate) fn play(&mut self) {
     match &mut self.kind {
       RunningKind::Source(action) => action.set_silent(false),
       RunningKind::Explosion(action) => action.play(),
@@ -84,14 +84,14 @@ impl ParticleRunningAction {
   }
 
   /// `StopEffect`: sources fall silent.
-  pub fn stop(&mut self) {
+  pub(crate) fn stop(&mut self) {
     if let RunningKind::Source(action) = &mut self.kind {
       action.set_silent(true);
     }
   }
 
   /// `ParticleManager::Transform`: places the action, by translation alone unless it allows rotation.
-  pub fn transform(&mut self, matrix: &Mat4, velocity: Vec3) {
+  pub(crate) fn transform(&mut self, matrix: &Mat4, velocity: Vec3) {
     let placement: Mat4 = if self.is_rotated {
       *matrix
     } else {
@@ -132,7 +132,7 @@ impl ParticleRunningAction {
   }
 
   /// `Execute`.
-  pub fn execute(&mut self, pool: &mut ParticlePool, step: &mut ParticleActionStep<'_>) {
+  pub(crate) fn execute(&mut self, pool: &mut ParticlePool, step: &mut ParticleActionStep<'_>) {
     match &mut self.kind {
       RunningKind::Avoid(action) => action.execute(pool, step),
       RunningKind::Bounce(action) => action.execute(pool, step),

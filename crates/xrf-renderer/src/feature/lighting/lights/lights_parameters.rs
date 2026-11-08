@@ -9,7 +9,7 @@ use crate::scene::level::lights::light_record::LightRecord;
 /// contact shadows towards the lights march by.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct LightsParameters<'a> {
+pub(crate) struct LightsParameters<'a> {
   #[texture(d2, unfilterable)]
   pub albedo_target: GraphTexture,
   #[texture(d2, unfilterable)]

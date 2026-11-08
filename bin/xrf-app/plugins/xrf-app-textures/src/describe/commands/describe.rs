@@ -9,7 +9,7 @@ use crate::describe::{TextureDescription, TextureSource};
 /// Describe one texture: its file, its descriptor as the engine reads it, and the pair the engine binds.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe")]
-pub async fn textures_describe(
+pub(crate) async fn textures_describe(
   source: TextureSource,
   roots: XrayRoots,
   assets: State<'_, AssetMountState>,

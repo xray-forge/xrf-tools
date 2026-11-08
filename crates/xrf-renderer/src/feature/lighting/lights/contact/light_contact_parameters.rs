@@ -5,7 +5,7 @@ use xrf_renderer_core::{GraphTexture, PassParameters};
 /// towards, which the visibility and the lights find the marched lights by.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 3)]
-pub struct LightContactParameters {
+pub(crate) struct LightContactParameters {
   #[storage_texture(d2_array, rgba32uint, write)]
   pub light_contact_out: GraphTexture,
   #[storage_texture(d2, r32float, write)]

@@ -9,7 +9,7 @@ use crate::WorldState;
 /// Say what a viewport's level could not draw: drawables the packer left out, sectors and spawned models unread.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_problems")]
-pub async fn render_describe_problems(
+pub(crate) async fn render_describe_problems(
   world: State<'_, WorldState>,
   execution: State<'_, ExecutionState>,
   viewport: RenderViewportId,

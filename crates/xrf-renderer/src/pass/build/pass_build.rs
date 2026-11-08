@@ -5,7 +5,7 @@ use crate::pass::build::pipeline_source::PipelineSource;
 /// by, the files bundled beside the code, and the layouts their draws share with every other pass, so each pipeline a
 /// view asks for is the one every view asks for.
 #[derive(Clone, Copy)]
-pub struct PassBuild<'a> {
+pub(crate) struct PassBuild<'a> {
   pub source: PipelineSource<'a>,
   pub queue: &'a wgpu::Queue,
   pub bundle: &'a dyn RenderBundle,
@@ -21,7 +21,7 @@ pub struct PassBuild<'a> {
 
 impl PassBuild<'_> {
   /// What a pass built on a thread of its own came to; a panic there goes on here.
-  pub fn join<T>(handle: std::thread::ScopedJoinHandle<'_, T>) -> T {
+  pub(crate) fn join<T>(handle: std::thread::ScopedJoinHandle<'_, T>) -> T {
     handle.join().unwrap_or_else(|panic| std::panic::resume_unwind(panic))
   }
 }

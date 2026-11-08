@@ -9,7 +9,7 @@ use xrf_error::XrfResult;
 /// Each class takes its spawn fields from the spawn packet and its update fields from the update packet, after its
 /// base's in each, as its `STATE_Read` and `UPDATE_Read` do. A class whose update packet is empty, and every base it
 /// inherits, reads the spawn packet alone through `ChunkReadWrite`.
-pub trait AlifePacketsReadWrite: Sized {
+pub(crate) trait AlifePacketsReadWrite: Sized {
   /// Read the payload's spawn fields from `spawn` and its update fields from `update`.
   fn read<T: ByteOrder, D: ChunkDataSource>(spawn: &mut ChunkReader<D>, update: &mut ChunkReader<D>)
   -> XrfResult<Self>;

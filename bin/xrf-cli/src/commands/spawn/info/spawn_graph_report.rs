@@ -4,7 +4,7 @@ use xrf_spawn::SpawnGraphsChunk;
 /// The level graph a spawn file carries, which is a census of its own.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SpawnGraphReport {
+pub(crate) struct SpawnGraphReport {
   edges: u32,
   points: u32,
   version: u8,
@@ -12,7 +12,7 @@ pub struct SpawnGraphReport {
 }
 
 impl SpawnGraphReport {
-  pub fn new(graphs: &SpawnGraphsChunk) -> Self {
+  pub(crate) fn new(graphs: &SpawnGraphsChunk) -> Self {
     Self {
       edges: graphs.header.edges_count,
       points: graphs.header.points_count,

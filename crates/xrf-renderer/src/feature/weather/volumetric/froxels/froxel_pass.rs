@@ -10,7 +10,7 @@ use crate::pass::view::view_binding::ViewBinding;
 /// Draws the enhanced volumetric lighting's froxels: fills each with what the sun and the local lights scatter in it
 /// and how thick it is, over its history, then integrates them along the view into what reaches the camera up to each,
 /// which the shafts' composite reads at each pixel's depth.
-pub struct FroxelPass {
+pub(crate) struct FroxelPass {
   layouts: [wgpu::BindGroupLayout; 3],
   /// The fill, then the integration.
   pipelines: PipelineSet<[wgpu::ComputePipeline; 2]>,
@@ -27,7 +27,7 @@ impl FroxelPass {
   /// # Errors
   ///
   /// Returns an error when a shader does not compose or compile.
-  pub fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+  pub(crate) fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
     let device: &wgpu::Device = source.device;
 
     let layouts: [wgpu::BindGroupLayout; 3] = [
@@ -64,17 +64,17 @@ impl FroxelPass {
     })
   }
 
-  pub fn get_sampler(&self) -> &wgpu::Sampler {
+  pub(crate) fn get_sampler(&self) -> &wgpu::Sampler {
     &self.sampler
   }
 
-  pub fn get_empty(&self) -> &wgpu::TextureView {
+  pub(crate) fn get_empty(&self) -> &wgpu::TextureView {
     &self.empty
   }
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self
       .pipelines
       .refresh(source.cache, || Self::create_pipelines(source, &self.layouts))
@@ -84,7 +84,7 @@ impl FroxelPass {
   }
 
   /// Fills every froxel of the grid.
-  pub fn record_inject(
+  pub(crate) fn record_inject(
     &self,
     context: &mut ComputeContext<'_>,
     view: &ViewBinding,
@@ -101,7 +101,7 @@ impl FroxelPass {
   }
 
   /// Integrates every column of the grid along the view.
-  pub fn record_integrate(
+  pub(crate) fn record_integrate(
     &self,
     context: &mut ComputeContext<'_>,
     view: &ViewBinding,

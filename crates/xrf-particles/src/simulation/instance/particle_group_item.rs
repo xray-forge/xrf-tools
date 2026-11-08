@@ -21,7 +21,7 @@ pub(crate) struct ParticleGroupItem {
 }
 
 impl ParticleGroupItem {
-  pub fn new(effect: Option<ParticleEffectInstance>, seed: i32) -> Self {
+  pub(crate) fn new(effect: Option<ParticleEffectInstance>, seed: i32) -> Self {
     Self {
       effect,
       related: Vec::new(),
@@ -30,18 +30,18 @@ impl ParticleGroupItem {
     }
   }
 
-  pub fn is_playing(&self) -> bool {
+  pub(crate) fn is_playing(&self) -> bool {
     self.effect.as_ref().is_some_and(ParticleEffectInstance::is_playing)
   }
 
-  pub fn play(&mut self) {
+  pub(crate) fn play(&mut self) {
     if let Some(effect) = &mut self.effect {
       effect.play();
     }
   }
 
   /// `Stop`: the effect and every child; without delay the children are dropped too.
-  pub fn stop(&mut self, is_deferred: bool) {
+  pub(crate) fn stop(&mut self, is_deferred: bool) {
     if let Some(effect) = &mut self.effect {
       effect.stop(is_deferred);
     }
@@ -56,14 +56,14 @@ impl ParticleGroupItem {
     }
   }
 
-  pub fn update_parent(&mut self, matrix: &Mat4, velocity: Vec3) {
+  pub(crate) fn update_parent(&mut self, matrix: &Mat4, velocity: Vec3) {
     if let Some(effect) = &mut self.effect {
       effect.update_parent(matrix, velocity);
     }
   }
 
   /// Every effect it draws: its own, then the related and free children.
-  pub fn get_effects(&self) -> impl Iterator<Item = &ParticleEffectInstance> {
+  pub(crate) fn get_effects(&self) -> impl Iterator<Item = &ParticleEffectInstance> {
     self
       .effect
       .iter()
@@ -72,7 +72,7 @@ impl ParticleGroupItem {
   }
 
   /// `SItem::OnFrame`: steps the effect, starts and stops children for its births and deaths, then steps them.
-  pub fn update(
+  pub(crate) fn update(
     &mut self,
     frame_milliseconds: u32,
     definition: &ParticleGroupEffect,

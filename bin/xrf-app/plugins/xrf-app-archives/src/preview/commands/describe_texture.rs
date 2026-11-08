@@ -9,7 +9,7 @@ use crate::browse::ArchiveSubjects;
 /// Report the shape of a texture of the open subject, without decoding it into a picture.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_texture")]
-pub async fn archives_describe_texture(
+pub(crate) async fn archives_describe_texture(
   session_id: SessionId,
   name: String,
   execution: State<'_, ExecutionState>,

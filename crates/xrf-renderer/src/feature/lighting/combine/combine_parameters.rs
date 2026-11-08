@@ -8,7 +8,7 @@ use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 /// the reflections traced and how much of the sun reaches each pixel.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct CombineParameters<'a> {
+pub(crate) struct CombineParameters<'a> {
   #[texture(d2, unfilterable)]
   pub albedo_target: GraphTexture,
   #[texture(d2, unfilterable)]

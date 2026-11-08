@@ -14,7 +14,7 @@ use crate::{TranslationProjectRead, TranslationProjects};
 /// those files reads the project again.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "open_project")]
-pub async fn translations_open_project(
+pub(crate) async fn translations_open_project(
   request: TranslationsOpenRequest,
   projects: State<'_, TranslationProjects>,
   assets: State<'_, AssetMountState>,

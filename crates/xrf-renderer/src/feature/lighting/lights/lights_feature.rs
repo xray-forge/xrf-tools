@@ -42,7 +42,7 @@ const OVERFLOW_BYTES: u64 = 16;
 
 /// A level's local lights as one view lights its frame with them: the nearest in its camera, written out by the scene's
 /// `LevelLights::prepare` in its view space, the clusters the lights pass bins them into, and what they came to.
-pub struct LightsFeature {
+pub(crate) struct LightsFeature {
   /// The lights as the view asks for them this frame.
   settings: RenderLightsSettings,
   /// The records written this frame, nearest first, `MAX_LIGHTS` at most.
@@ -67,9 +67,9 @@ pub struct LightsFeature {
 
 impl LightsFeature {
   /// Lights standing in view at most in one frame: the nearest are kept.
-  pub const MAX_LIGHTS: usize = 1024;
+  pub(crate) const MAX_LIGHTS: usize = 1024;
 
-  pub fn new(device: &wgpu::Device) -> Self {
+  pub(crate) fn new(device: &wgpu::Device) -> Self {
     let storage = |label: &str, size: u64| -> wgpu::Buffer {
       device.create_buffer(&wgpu::BufferDescriptor {
         label: Some(label),
@@ -107,7 +107,7 @@ impl LightsFeature {
   }
 
   /// Starts this frame's lights as the view asks for them (`settings`), their shafts sharing `volumes`: none written.
-  pub fn begin(&mut self, settings: RenderLightsSettings, volumes: LightVolumesUniform) {
+  pub(crate) fn begin(&mut self, settings: RenderLightsSettings, volumes: LightVolumesUniform) {
     self.settings = settings;
     self.records.clear();
     self.volumes.clear();
@@ -117,12 +117,12 @@ impl LightsFeature {
   }
 
   /// Counts the lights in view past those the records hold.
-  pub fn set_excess(&mut self, excess: u32) {
+  pub(crate) fn set_excess(&mut self, excess: u32) {
     self.report.excess = excess;
   }
 
   /// Writes a light's record after those written before; answers its index, none once `MAX_LIGHTS` are written.
-  pub fn push(&mut self, record: LightRecord) -> Option<u32> {
+  pub(crate) fn push(&mut self, record: LightRecord) -> Option<u32> {
     if self.records.len() >= Self::MAX_LIGHTS {
       return None;
     }
@@ -133,7 +133,7 @@ impl LightsFeature {
   }
 
   /// The same, the light counted shadowed.
-  pub fn push_shadowed(&mut self, record: LightRecord) -> Option<u32> {
+  pub(crate) fn push_shadowed(&mut self, record: LightRecord) -> Option<u32> {
     let index: Option<u32> = self.push(record);
 
     self.report.shadowed += u32::from(index.is_some());
@@ -142,14 +142,14 @@ impl LightsFeature {
   }
 
   /// Adds the shafts a written record draws, and the slices they draw.
-  pub fn push_volume(&mut self, volume: LightVolumeRecord, slices: u32) {
+  pub(crate) fn push_volume(&mut self, volume: LightVolumeRecord, slices: u32) {
     self.volumes.push(volume);
     self.volume_slices.push(slices);
   }
 
   /// The next of the view's random numbers a zone's range strays by: xorshift64, which needs nothing seeded but a
   /// state that is never zero.
-  pub fn next_random(&mut self) -> u64 {
+  pub(crate) fn next_random(&mut self) -> u64 {
     self.random ^= self.random << 13;
     self.random ^= self.random >> 7;
     self.random ^= self.random << 17;
@@ -158,28 +158,28 @@ impl LightsFeature {
   }
 
   /// Writes into `applied` the lights as the view asks for them this frame, none while they are off.
-  pub fn describe(&self, applied: &mut RenderAppliedReport) {
+  pub(crate) fn describe(&self, applied: &mut RenderAppliedReport) {
     applied.lights = Some(self.settings).filter(|settings| settings.is_enabled);
   }
 
   /// Whether a shadowed light draws shafts this frame.
-  pub fn has_volumes(&self) -> bool {
+  pub(crate) fn has_volumes(&self) -> bool {
     !self.volumes.is_empty()
   }
 
   /// The slices each of this frame's shafts draws, in their order.
-  pub fn get_volume_slices(&self) -> &[u32] {
+  pub(crate) fn get_volume_slices(&self) -> &[u32] {
     &self.volume_slices
   }
 
   /// What this frame's shafts share.
-  pub fn get_volumes_uniform(&self) -> &LightVolumesUniform {
+  pub(crate) fn get_volumes_uniform(&self) -> &LightVolumesUniform {
     &self.volumes_uniform
   }
 
   /// Writes the records written this frame and what the passes bin and light them with, and notes the share of the
   /// scene's shadow atlas in use (`atlas`).
-  pub fn write(
+  pub(crate) fn write(
     &mut self,
     encoder: &mut FrameEncoder,
     camera: &CameraView,
@@ -203,27 +203,27 @@ impl LightsFeature {
   }
 
   /// Clears the binning's overflow words before it counts this frame's.
-  pub fn clear_overflow(&self, encoder: &mut wgpu::CommandEncoder) {
+  pub(crate) fn clear_overflow(&self, encoder: &mut wgpu::CommandEncoder) {
     encoder.clear_buffer(&self.counts, LIGHT_CLUSTERS * 4, Some(OVERFLOW_BYTES));
   }
 
   /// Copies the binning's overflow out with this frame's work, for a report a frame or more later.
-  pub fn record_overflow(&self, encoder: &mut wgpu::CommandEncoder) {
+  pub(crate) fn record_overflow(&self, encoder: &mut wgpu::CommandEncoder) {
     self.overflow.record(encoder, &self.counts, LIGHT_CLUSTERS * 4);
   }
 
   /// Asks for the overflow recorded with the frame just submitted.
-  pub fn request_report(&self) {
+  pub(crate) fn request_report(&self) {
     self.overflow.request();
   }
 
   /// Drops the overflow recorded with a frame that was never submitted.
-  pub fn abandon_report(&self) {
+  pub(crate) fn abandon_report(&self) {
     self.overflow.abandon();
   }
 
   /// What the last frame's lights came to, with the binning's overflow as last read back.
-  pub fn take_report(&mut self) -> RenderLightsReport {
+  pub(crate) fn take_report(&mut self) -> RenderLightsReport {
     let [full_clusters, dropped, ..] = self.overflow.take();
 
     RenderLightsReport {
@@ -235,7 +235,7 @@ impl LightsFeature {
 
   /// Adds the binning's overflow words cleared and, while any light stands in view, the records binned into the
   /// clusters; answers the lights as the graph holds them.
-  pub fn add_binning_passes<'a>(
+  pub(crate) fn add_binning_passes<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -279,7 +279,7 @@ impl LightsFeature {
   /// shadowed light every pixel sees, traced through the scene where `traced` gives it, or through the scene's shadow
   /// `atlas` and those contact shadows, unless no light in view is shadowed; then the lights, at the anchored levels
   /// over the surface the wetting gives a water film. Nothing while none stands in view.
-  pub fn add_draw_passes<'a>(
+  pub(crate) fn add_draw_passes<'a>(
     &self,
     GraphDeclaration {
       graph,
@@ -475,7 +475,7 @@ impl LightsFeature {
   }
 
   /// Adds the binning's overflow read back, for a report a frame or more later: an effect the graph cannot see.
-  pub fn add_overflow_pass<'a>(&'a self, graph: &mut FrameGraph<'a>, buffers: LightBuffers) {
+  pub(crate) fn add_overflow_pass<'a>(&'a self, graph: &mut FrameGraph<'a>, buffers: LightBuffers) {
     graph
       .add_encoder_pass("light overflow")
       .buffer(buffers.counts, GraphBufferAccess::CopySource)

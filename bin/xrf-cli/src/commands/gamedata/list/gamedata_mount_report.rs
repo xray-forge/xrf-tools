@@ -5,7 +5,7 @@ use xrf_vfs::{XrayMount, XraySourceKind};
 /// One mount a `gamedata list` searched, in search order.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct GamedataMountReport {
+pub(crate) struct GamedataMountReport {
   kind: XraySourceKind,
   label: String,
   /// The directory, or the directory holding the archive volumes.
@@ -13,7 +13,7 @@ pub struct GamedataMountReport {
 }
 
 impl GamedataMountReport {
-  pub fn list(mounts: &[XrayMount]) -> Vec<Self> {
+  pub(crate) fn list(mounts: &[XrayMount]) -> Vec<Self> {
     mounts
       .iter()
       .map(|mount| Self {

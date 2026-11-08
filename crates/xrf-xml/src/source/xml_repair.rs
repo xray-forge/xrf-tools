@@ -14,7 +14,7 @@ impl XmlRepair {
   const DECLARATION_END: &'static [u8] = b"?>";
 
   /// A same-length copy of `input` with comment banners, bare ampersands and a misplaced declaration neutralized.
-  pub fn repair(input: &str) -> String {
+  pub(crate) fn repair(input: &str) -> String {
     let bytes: &[u8] = input.as_bytes();
     let mut repaired: Vec<u8> = bytes.to_vec();
     let mut index: usize = 0;

@@ -9,7 +9,7 @@ use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 /// exposure whose scale the sky is drawn on, the face's settings, and the cube's first mip, whose face it writes.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct SurroundingsParameters<'a> {
+pub(crate) struct SurroundingsParameters<'a> {
   #[texture(d2, depth)]
   pub depth_target: GraphTexture,
   #[texture(d2, unfilterable)]

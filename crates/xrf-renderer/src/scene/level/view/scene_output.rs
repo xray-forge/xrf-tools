@@ -7,7 +7,7 @@ use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 /// What a view's frame leaves for its window's composition: its targets as the frame's graph imported them, its
 /// finished frame and the image it shows, and its present and lighting uniforms as the frame pushed them.
 #[derive(Clone, Copy)]
-pub struct SceneOutput {
+pub(crate) struct SceneOutput {
   pub targets: ViewTargetHandles,
   /// The finished frame at the drawn size: the scene, or the target the smoothing or the temporal resolve wrote.
   pub scene: GraphTexture,

@@ -32,7 +32,7 @@ use crate::scene::static_scene::trace::static_trace_swaying::StaticTraceSwaying;
 /// at their transforms; and the drawable kinds' instances after the scene's (`DrawableTraceInstance`: the grass's cards
 /// the view stands). The scene's top level where neither stands.
 #[derive(Default)]
-pub struct ViewTraceFeature {
+pub(crate) struct ViewTraceFeature {
   trace: Option<ViewTrace>,
 }
 
@@ -68,7 +68,7 @@ impl ViewTraceFeature {
   /// the scene: the nearest chosen, a structure made for each newly chosen, the sway pass's slots written and the
   /// view's top level filled, the drawable `kinds`' instances after the scene's (the grass's cards where the view stands
   /// them).
-  pub fn prepare(
+  pub(crate) fn prepare(
     &mut self,
     &ViewPrepare {
       device,
@@ -328,7 +328,7 @@ impl ViewTraceFeature {
   }
 
   /// The scene's trace where the view traces rays against it this frame: the scene holds one and the device traces.
-  pub fn get_scene_trace<'a>(scene: &'a LevelScene, passes: LevelPasses<'_>) -> Option<&'a StaticTrace> {
+  pub(crate) fn get_scene_trace<'a>(scene: &'a LevelScene, passes: LevelPasses<'_>) -> Option<&'a StaticTrace> {
     scene.trace.as_ref().filter(|_| passes.tracing.scene_trace.is_traced())
   }
 
@@ -336,7 +336,7 @@ impl ViewTraceFeature {
   /// consumer binds (the reflections, the water), where the device traces rays; with the drawable `kinds`' parts, which
   /// each kind recorded over the same trace. The trace's shaders bind the grass's by name, so it traces nothing without
   /// it.
-  pub fn add_scene_trace<'a>(
+  pub(crate) fn add_scene_trace<'a>(
     &'a self,
     scene: &'a LevelScene,
     GraphDeclaration {

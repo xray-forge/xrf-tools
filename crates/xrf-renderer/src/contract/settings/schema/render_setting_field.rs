@@ -4,7 +4,7 @@ use serde::Serialize;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
-pub enum RenderSettingField {
+pub(crate) enum RenderSettingField {
   /// On or off.
   Flag,
   /// A number between bounds.
@@ -27,7 +27,7 @@ pub enum RenderSettingField {
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct RenderSettingNumber {
+pub(crate) struct RenderSettingNumber {
   pub min: f32,
   pub max: f32,
   /// Whether it is whole, as an engine's `CCC_Integer` is.

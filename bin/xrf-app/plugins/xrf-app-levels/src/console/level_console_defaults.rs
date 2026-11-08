@@ -15,7 +15,7 @@ use crate::report::LevelReport;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Default, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LevelConsoleDefaults {
+pub(crate) struct LevelConsoleDefaults {
   /// Whether the game ships console defaults at all.
   pub is_shipped: bool,
   /// `r2_tonemap`.
@@ -56,7 +56,7 @@ impl LevelConsoleDefaults {
   /// # Errors
   ///
   /// Returns an error when the shipped file is there and cannot be read.
-  pub fn read(search: &XraySearch, roots: &XrayRoots) -> XrfResult<Self> {
+  pub(crate) fn read(search: &XraySearch, roots: &XrayRoots) -> XrfResult<Self> {
     let shipped: Self = Self::read_shipped(search)?;
 
     let Some((path, text)) = Self::read_user_console(roots) else {
@@ -73,7 +73,7 @@ impl LevelConsoleDefaults {
   /// # Errors
   ///
   /// Returns an error when the file is there and cannot be read.
-  pub fn read_shipped(search: &XraySearch) -> XrfResult<Self> {
+  pub(crate) fn read_shipped(search: &XraySearch) -> XrfResult<Self> {
     let Some(asset) = search.find(Self::SHIPPED)? else {
       return Ok(Self::default());
     };
@@ -89,7 +89,7 @@ impl LevelConsoleDefaults {
   /// or one past the range the engine's console takes it in, is left to the engine, as the engine leaves its own value
   /// on refusing it (`CCC_Float::Execute`, `CCC_Vector3::Execute`). Whether the game ships such a file is its reader's
   /// to say.
-  pub fn parse(text: &str) -> Self {
+  pub(crate) fn parse(text: &str) -> Self {
     let mut defaults: Self = Self::default();
 
     for line in text.lines() {
@@ -186,7 +186,7 @@ impl LevelConsoleDefaults {
   }
 
   /// These commands over `base`'s: each one these leave unset taken from it.
-  pub fn over(self, base: Self) -> Self {
+  pub(crate) fn over(self, base: Self) -> Self {
     Self {
       is_shipped: self.is_shipped || base.is_shipped,
       is_tonemapped: self.is_tonemapped.or(base.is_tonemapped),

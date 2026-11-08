@@ -4,7 +4,7 @@ use xrf_renderer::{RenderFog, RenderLighting, RenderThunderSettings, RenderThund
 /// What a strike does to a frame: the colour it lights the sky, the sun and the fog with, the way its light travels,
 /// and the bolt drawn.
 #[derive(Clone, Debug, PartialEq)]
-pub struct ThunderFlash {
+pub(crate) struct ThunderFlash {
   /// The bolt's `color_anim` now, each channel in `[0, 1]`.
   pub color: Vec3,
   /// From the bolt towards the view, which the sun is turned to while it strikes, in renderer space.
@@ -15,7 +15,7 @@ pub struct ThunderFlash {
 impl ThunderFlash {
   /// `CEffect_Thunderbolt::OnFrame` over the mix: the strike's colour added to the sky (clamped), the sun and the fog,
   /// the sun turned to come from the bolt, and the bolt drawn.
-  pub fn light(&self, lighting: &RenderLighting, settings: &RenderThunderSettings) -> RenderLighting {
+  pub(crate) fn light(&self, lighting: &RenderLighting, settings: &RenderThunderSettings) -> RenderLighting {
     let added = |base: Vec3, by: f32| base + self.color * by;
     let mut thundered: RenderLighting = lighting.clone();
 

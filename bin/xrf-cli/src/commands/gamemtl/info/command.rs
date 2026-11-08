@@ -8,7 +8,7 @@ use crate::commands::gamemtl::gamemtl_file_arguments::GameMtlFileArguments;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct InfoCommand;
+pub(crate) struct InfoCommand;
 
 impl GenericCommand for InfoCommand {
   fn operation(&self) -> &'static str {

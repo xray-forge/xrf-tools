@@ -5,4 +5,4 @@ mod archive_shaders_description;
 mod archive_shaders_library;
 mod archive_shaders_property;
 
-pub use archive_shaders_description::ArchiveShadersDescription;
+pub(crate) use archive_shaders_description::ArchiveShadersDescription;

@@ -14,7 +14,7 @@ use crate::{SpawnConversion, SpawnConversionResult};
 /// Unpack a spawn file into a directory of chunks, as a tracked job sharing one lane with packing.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "unpack_file")]
-pub async fn spawn_unpack_file(
+pub(crate) async fn spawn_unpack_file(
   execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
   request: SpawnConvertRequest,

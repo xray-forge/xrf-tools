@@ -9,7 +9,7 @@ use crate::scene::static_scene::surface::static_surface::StaticSurface;
 /// swaying instances, and their swayed vertices, three floats each, in renderer space.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 0)]
-pub struct TraceSwayParameters {
+pub(crate) struct TraceSwayParameters {
   #[storage]
   pub words: StorageArray<u32>,
   #[storage]

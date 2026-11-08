@@ -3,7 +3,7 @@ use std::time::Duration;
 use crate::{Finding, GamedataCheckResult, GamedataVerificationStatus};
 
 #[derive(Default)]
-pub struct GamedataParticlesVerificationResult {
+pub(crate) struct GamedataParticlesVerificationResult {
   pub(crate) duration: Duration,
   pub(crate) checked_particle_files_count: u32,
   pub(crate) findings: Vec<Finding>,

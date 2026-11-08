@@ -9,7 +9,7 @@ use xrf_utils::format_path;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TextureSaveTarget {
+pub(crate) struct TextureSaveTarget {
   /// Absolute path of the file to replace or create.
   pub path: String,
   /// The stamp the editor read there, or `None` for a file it is creating.
@@ -23,7 +23,7 @@ impl TextureSaveTarget {
   ///
   /// Returns an error when the path is not Unicode, which the page could not send back as the same file, or when the
   /// file exists and its metadata cannot be read.
-  pub fn of_path(path: &Path) -> TauriResult<Self> {
+  pub(crate) fn of_path(path: &Path) -> TauriResult<Self> {
     Ok(Self {
       path: path
         .to_str()

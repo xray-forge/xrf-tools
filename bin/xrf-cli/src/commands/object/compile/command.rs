@@ -20,7 +20,7 @@ use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 /// Compiles an SDK editable object into the OGF the engine loads, as the Actor Editor's export does, or into a detail
 /// model as the Level Editor's `EDetail` exports one.
 #[derive(Default)]
-pub struct CompileCommand;
+pub(crate) struct CompileCommand;
 
 impl GenericCommand for CompileCommand {
   fn operation(&self) -> &'static str {

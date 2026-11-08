@@ -10,7 +10,7 @@ use crate::core::arguments::XrayRootsArguments;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct BumpAlignmentCommand;
+pub(crate) struct BumpAlignmentCommand;
 
 impl GenericCommand for BumpAlignmentCommand {
   fn operation(&self) -> &'static str {

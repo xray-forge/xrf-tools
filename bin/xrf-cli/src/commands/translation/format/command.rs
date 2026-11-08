@@ -10,7 +10,7 @@ use crate::core::command::{CommandContext, CommandError, CommandResult, GenericC
 use crate::core::terminal::CliJob;
 
 #[derive(Default)]
-pub struct FormatCommand;
+pub(crate) struct FormatCommand;
 
 impl GenericCommand for FormatCommand {
   fn operation(&self) -> &'static str {

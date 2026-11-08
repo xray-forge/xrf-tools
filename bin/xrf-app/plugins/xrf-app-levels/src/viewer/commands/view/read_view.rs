@@ -10,7 +10,7 @@ use crate::viewer::LevelViewerFolder;
 /// Read a level view's JSON file as text, for the page to check and import.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "read_view")]
-pub async fn levels_read_view(execution: State<'_, ExecutionState>, path: PathBuf) -> TauriResult<String> {
+pub(crate) async fn levels_read_view(execution: State<'_, ExecutionState>, path: PathBuf) -> TauriResult<String> {
   LevelViewerFolder::require_view_file(&path)?;
 
   execution

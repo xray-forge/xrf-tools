@@ -4,10 +4,10 @@ macro_rules! view_units {
   ($owner:ty { $($unit:ident),+ $(,)? }) => {
     impl $owner {
       /// How many units it holds.
-      pub const UNIT_COUNT: usize = [$(stringify!($unit)),+].len();
+      pub(crate) const UNIT_COUNT: usize = [$(stringify!($unit)),+].len();
 
       /// Every unit, to let go of or change alike.
-      pub fn list_mut(
+      pub(crate) fn list_mut(
         &mut self,
       ) -> [&mut dyn $crate::feature::view::view_feature::ViewFeature; Self::UNIT_COUNT] {
         [$(&mut self.$unit),+]

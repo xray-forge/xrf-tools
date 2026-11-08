@@ -7,11 +7,11 @@ pub const CHUNK_ID_FILE_DESCRIPTORS: u32 = 1;
 /// Every chunk id accepted as an entry name table. `0x86` appears in volumes this tooling has to open but in no
 /// reference engine tree, so its provenance is unverified: it is accepted because dropping it would make those volumes
 /// unreadable, and it is never written.
-pub const CHUNK_ID_FILE_DESCRIPTORS_READ: [u32; 2] = [CHUNK_ID_FILE_DESCRIPTORS, 0x86];
+pub(super) const CHUNK_ID_FILE_DESCRIPTORS_READ: [u32; 2] = [CHUNK_ID_FILE_DESCRIPTORS, 0x86];
 /// Chunk carrying the `[header]` metadata that names the volume's entry point: `CFS_HeaderChunkID` in `xrCore/FS.h`.
 pub const CHUNK_ID_METADATA: u32 = 666;
 /// Every chunk id accepted as that metadata. `1337` is unverified in the same way as `0x86`, and never written.
-pub const CHUNK_ID_METADATA_READ: [u32; 2] = [CHUNK_ID_METADATA, 1337];
+pub(super) const CHUNK_ID_METADATA_READ: [u32; 2] = [CHUNK_ID_METADATA, 1337];
 
 /// The four numeric fields a descriptor row carries around its name.
 pub const DESCRIPTOR_ROW_FIELDS_SIZE: u16 = 16;
@@ -19,4 +19,4 @@ pub const DESCRIPTOR_ROW_FIELDS_SIZE: u16 = 16;
 pub const DESCRIPTOR_ROW_SIZE_FIELD_SIZE: u16 = 2;
 
 /// Upper bound on an entry name, matching the fixed buffer a volume's name table is read through.
-pub const MAXIMUM_ENTRY_NAME_SIZE: usize = 520;
+pub(super) const MAXIMUM_ENTRY_NAME_SIZE: usize = 520;

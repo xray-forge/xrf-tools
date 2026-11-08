@@ -14,13 +14,13 @@ use xrf_renderer::{RenderWindowHost, SurfaceTargetUnsafe};
 ///
 /// The swapchain sits on the window itself, under the webview's child window, which shows it through the pixels the
 /// page leaves transparent.
-pub struct Win32WindowHost {
+pub(super) struct Win32WindowHost {
   hwnd: NonZeroIsize,
 }
 
 impl Win32WindowHost {
   /// A host over the window `hwnd` names.
-  pub fn new(hwnd: NonZeroIsize) -> Self {
+  pub(super) fn new(hwnd: NonZeroIsize) -> Self {
     Self { hwnd }
   }
 

@@ -12,13 +12,13 @@ const SPAN_SAMPLES: u32 = 2048;
 
 /// How much each shader table entry of a level draws, counted sector by sector as the loader packs them.
 #[derive(Default)]
-pub struct SurfaceTally {
+pub(crate) struct SurfaceTally {
   entries: HashMap<u16, WorldSurfaceGeometry>,
 }
 
 impl SurfaceTally {
   /// Counts one packed sector: its sections, and each mesh once per place it stands in at whole detail.
-  pub fn measure(package: &SectorPackage) -> Self {
+  pub(crate) fn measure(package: &SectorPackage) -> Self {
     let mut tally: Self = Self::default();
     let description = &package.description;
     let buffer: &[u8] = &package.buffer;
@@ -52,7 +52,7 @@ impl SurfaceTally {
     tally
   }
 
-  pub fn merge(&mut self, other: Self) {
+  pub(crate) fn merge(&mut self, other: Self) {
     for (shader_id, geometry) in other.entries {
       self
         .entries
@@ -63,7 +63,7 @@ impl SurfaceTally {
   }
 
   /// Every entry something draws, by shader id.
-  pub fn list(&self) -> Vec<WorldSurfaceGeometry> {
+  pub(crate) fn list(&self) -> Vec<WorldSurfaceGeometry> {
     let mut listed: Vec<WorldSurfaceGeometry> = self.entries.values().copied().collect();
 
     listed.sort_unstable_by_key(|geometry| geometry.shader_id);

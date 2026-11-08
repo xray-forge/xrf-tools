@@ -24,12 +24,16 @@ impl SessionPart for LevelSurfacesPart {
 
 impl LevelSurfacesPart {
   /// The store with `surfaces` kept as the level's surfaces part, resolved from `inputs` as the level opened.
-  pub fn with(parts: SessionParts, surfaces: Arc<Vec<XraySurfaceDescriptor>>, inputs: XrayInputRecord) -> SessionParts {
+  pub(crate) fn with(
+    parts: SessionParts,
+    surfaces: Arc<Vec<XraySurfaceDescriptor>>,
+    inputs: XrayInputRecord,
+  ) -> SessionParts {
     parts.with::<Self>(surfaces, inputs)
   }
 
   /// The open level's surfaces, resolved the first time anything asks and kept.
-  pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> Arc<Vec<XraySurfaceDescriptor>> {
+  pub(crate) fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> Arc<Vec<XraySurfaceDescriptor>> {
     current.parts.get_or_record::<Self>(search, |search| {
       Arc::new(Self::resolve(
         &current.level,
@@ -40,13 +44,17 @@ impl LevelSurfacesPart {
   }
 
   /// The open level's surfaces where they were resolved already; asking resolves nothing.
-  pub fn find(current: &SessionSnapshot<SelectedLevel>) -> Option<Arc<Vec<XraySurfaceDescriptor>>> {
+  pub(crate) fn find(current: &SessionSnapshot<SelectedLevel>) -> Option<Arc<Vec<XraySurfaceDescriptor>>> {
     current.parts.get::<Self>()
   }
 
   /// Describes how the renderer draws every entry of the level's shader table, in the table's own order, its textures
   /// read within `scope`.
-  pub fn resolve(level: &LevelFile, search: &XraySearch, scope: &XrayTextureScope) -> Vec<XraySurfaceDescriptor> {
+  pub(crate) fn resolve(
+    level: &LevelFile,
+    search: &XraySearch,
+    scope: &XrayTextureScope,
+  ) -> Vec<XraySurfaceDescriptor> {
     let Some(shaders) = level.shaders.as_ref() else {
       return Vec::new();
     };

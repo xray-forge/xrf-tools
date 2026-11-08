@@ -3,5 +3,5 @@
 mod archive_level_fog_vol_description;
 mod archive_level_fog_volume;
 
-pub use archive_level_fog_vol_description::ArchiveLevelFogVolDescription;
-pub use archive_level_fog_volume::ArchiveLevelFogVolume;
+pub(crate) use archive_level_fog_vol_description::ArchiveLevelFogVolDescription;
+pub(crate) use archive_level_fog_volume::ArchiveLevelFogVolume;

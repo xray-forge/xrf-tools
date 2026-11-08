@@ -16,7 +16,7 @@ use crate::scene::texture::texture_cache::TextureCache;
 
 /// The surfaces every item of a static scene shares: a row each in one buffer, asked for once by key and kept, and the
 /// texture and environment slots they sample.
-pub struct StaticSurfaces {
+pub(crate) struct StaticSurfaces {
   pub buffer: GrowableBuffer,
   /// Every texture slot the surfaces sample, in the order they were first asked for.
   pub texture_slots: BTreeSet<u32>,
@@ -33,7 +33,7 @@ pub struct StaticSurfaces {
 }
 
 impl StaticSurfaces {
-  pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
     let mut surfaces: Self = Self {
       buffer: GrowableBuffer::new(device, "static surfaces", wgpu::BufferUsages::STORAGE),
       texture_slots: BTreeSet::new(),
@@ -58,7 +58,7 @@ impl StaticSurfaces {
   }
 
   /// Appends the surfaces a writer asked for first, which every item shares from then on.
-  pub fn put(
+  pub(crate) fn put(
     &mut self,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
@@ -72,7 +72,7 @@ impl StaticSurfaces {
 
   /// A surface's row, its class and the surface passes it takes part in, made into `writer` the first time it is
   /// asked for (`ask`); none for a surface no static draw draws.
-  pub fn resolve(
+  pub(crate) fn resolve(
     &mut self,
     writer: &mut StaticSceneWriter,
     StaticSurfaceAsk {
@@ -109,7 +109,7 @@ impl StaticSurfaces {
   }
 
   /// An impostor surface's row, made into `writer` the first time its shader table entry is asked for.
-  pub fn resolve_impostor(
+  pub(crate) fn resolve_impostor(
     &mut self,
     writer: &mut StaticSceneWriter,
     surface: &SectorSurface,
@@ -130,7 +130,7 @@ impl StaticSurfaces {
   /// Whether a distorting surface may blur the frame: one whose map holds some blue or is not yet up
   /// (`TextureCache::is_blue_free`). Asked of every distorting surface the scene holds, which are few, rather than of
   /// those in sight.
-  pub fn is_distortion_blurring(&self, textures: &TextureCache) -> bool {
+  pub(crate) fn is_distortion_blurring(&self, textures: &TextureCache) -> bool {
     self.distortion_slots.iter().any(|slot| !textures.is_blue_free(*slot))
   }
 

@@ -10,7 +10,7 @@ impl ExternXmlRenderer {
   const INDENT: usize = 2;
 
   /// The manifest as XML, without a final newline.
-  pub fn render(manifest: &ExternManifest) -> String {
+  pub(crate) fn render(manifest: &ExternManifest) -> String {
     let mut result: String = String::from("<externs>\n  <exports>");
 
     for (name, export) in &manifest.exports {

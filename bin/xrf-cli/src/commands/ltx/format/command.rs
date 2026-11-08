@@ -14,7 +14,7 @@ use crate::core::terminal::CliJob;
 const DECLINED_LIMIT: usize = 20;
 
 #[derive(Default)]
-pub struct FormatCommand;
+pub(crate) struct FormatCommand;
 
 impl GenericCommand for FormatCommand {
   fn operation(&self) -> &'static str {

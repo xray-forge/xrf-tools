@@ -17,7 +17,7 @@ use crate::scene::static_scene::draw::static_selection::StaticSelection;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Camera")]
-pub struct CameraUniform {
+pub(crate) struct CameraUniform {
   pub view_projection: Mat4,
   pub inverse_view_projection: Mat4,
   pub view: Mat4,
@@ -78,7 +78,7 @@ impl CameraUniform {
   /// What a viewport's own camera draws the static scene with by its `options`: textured, bumped, the hemisphere's
   /// strength, then the surfaces' bits (steep, the parallax, bumps and heights debug views, enhanced, the sampled mip's
   /// debug view, the terrain's details hex tiled).
-  pub fn get_switches(options: &RenderViewOptions) -> Vec4 {
+  pub(crate) fn get_switches(options: &RenderViewOptions) -> Vec4 {
     Vec4::new(
       f32::from(u8::from(options.mode.surface_color == RenderSurfaceColor::Textured)),
       options.mode.is_bumped as u32 as f32,
@@ -95,7 +95,7 @@ impl CameraUniform {
     )
   }
 
-  pub fn new(view: &CameraView, rect: RenderRect, switches: Vec4) -> Self {
+  pub(crate) fn new(view: &CameraView, rect: RenderRect, switches: Vec4) -> Self {
     let view_projection: Mat4 = view.get_view_projection();
 
     Self {
@@ -126,14 +126,14 @@ impl CameraUniform {
   }
 
   /// The same camera varying the terrain's tiling by `settings`, its scale kept above nought, which the grid divides by.
-  pub fn with_terrain(mut self, settings: &RenderTerrainSettings) -> Self {
+  pub(crate) fn with_terrain(mut self, settings: &RenderTerrainSettings) -> Self {
     self.terrain = Vec4::new(settings.scale.max(0.25), settings.rotation, settings.sharpness, 0.0);
     self
   }
 
   /// The same camera marching the enhanced parallax by `settings`, shadowing towards the sun along `to_sun`, a view
   /// space direction.
-  pub fn with_parallax(mut self, settings: &RenderParallaxSettings, to_sun: Vec3) -> Self {
+  pub(crate) fn with_parallax(mut self, settings: &RenderParallaxSettings, to_sun: Vec3) -> Self {
     self.parallax = Vec4::new(
       settings.steps.max(1) as f32,
       settings.range,
@@ -153,7 +153,7 @@ impl CameraUniform {
   /// The same camera drawing as an asset viewer asks: a uv checker in place of every texture, surfaces solid where
   /// their alpha is not shown, its backdrop and the colour of a surface with no texture. `scale` is render pixels a
   /// viewport pixel, which a backdrop square's side is measured in.
-  pub fn with_asset_view(mut self, options: &RenderViewOptions, scale: f32) -> Self {
+  pub(crate) fn with_asset_view(mut self, options: &RenderViewOptions, scale: f32) -> Self {
     let to_set = |color: Option<[f32; 3]>| color.map_or(Vec4::ZERO, |it| Vec4::from((Vec3::from(it), 1.0)));
 
     self.modes.y = options.asset.checker;
@@ -169,7 +169,7 @@ impl CameraUniform {
 
   /// The same camera measuring motion between the last frame's unjittered view projection and this one's, and
   /// remembering the jittered one the last frame drew by.
-  pub fn with_motion(mut self, motion: ViewMotion) -> Self {
+  pub(crate) fn with_motion(mut self, motion: ViewMotion) -> Self {
     self.motion_current = motion.current;
     self.motion_previous = motion.previous;
     self.view_projection_previous = motion.jittered_previous;
@@ -178,7 +178,7 @@ impl CameraUniform {
 
   /// The same camera marking what a selection names where the G-buffer draws it; past the runs it holds, the runs
   /// nearest each other are joined, which marks the fewest clusters it does not name.
-  pub fn with_selection(mut self, selection: Option<&StaticSelection>) -> Self {
+  pub(crate) fn with_selection(mut self, selection: Option<&StaticSelection>) -> Self {
     let Some(selection) = selection.filter(|it| !it.runs.is_empty()) else {
       return self;
     };
@@ -195,20 +195,20 @@ impl CameraUniform {
   }
 
   /// The same camera drawing an untextured surface as clay, or as its shader's tint.
-  pub fn with_surface_color(mut self, color: RenderSurfaceColor) -> Self {
+  pub(crate) fn with_surface_color(mut self, color: RenderSurfaceColor) -> Self {
     self.modes.w = f32::from(u8::from(color == RenderSurfaceColor::Clay));
     self
   }
 
   /// The same camera reading its surfaces' textures `bias` mips away from what their footprint picks, negative
   /// sharper: a temporal resolve gathers the detail a frame drawn smaller than its output would lose.
-  pub fn with_texture_bias(mut self, bias: f32) -> Self {
+  pub(crate) fn with_texture_bias(mut self, bias: f32) -> Self {
     self.output.y = bias;
     self
   }
 
   /// The same camera with the sun and the lamps drawing what `view` shows in place of their light, or their light.
-  pub fn with_light_view(mut self, view: RenderDebugView) -> Self {
+  pub(crate) fn with_light_view(mut self, view: RenderDebugView) -> Self {
     self.output.z = LightView::of(view) as u32 as f32;
     self
   }
@@ -216,7 +216,7 @@ impl CameraUniform {
   /// The same camera lighting as the view's options ask: as the engine does (nought), or in linear light, its authored
   /// colours decoded, its lamps falling off by the engine's falloff (one) or the windowed inverse square
   /// (`RenderViewOptions::is_falloff_inverse_square`, two).
-  pub fn with_physical_light(mut self, options: &RenderViewOptions) -> Self {
+  pub(crate) fn with_physical_light(mut self, options: &RenderViewOptions) -> Self {
     self.output.w = if !options.is_light_physical() {
       0.0
     } else if options.is_falloff_inverse_square() {
@@ -228,13 +228,13 @@ impl CameraUniform {
   }
 
   /// The same camera over a scene holding linear light (`is_linear`), or tonemapped colour.
-  pub fn with_linear_scene(mut self, is_linear: bool) -> Self {
+  pub(crate) fn with_linear_scene(mut self, is_linear: bool) -> Self {
     self.output.x = f32::from(u8::from(is_linear));
     self
   }
 
   /// The same camera drawing every static surface as its triangles' edges, or as itself.
-  pub fn with_wireframe(mut self, is_wireframe: bool) -> Self {
+  pub(crate) fn with_wireframe(mut self, is_wireframe: bool) -> Self {
     self.modes.x = f32::from(u8::from(is_wireframe));
     self
   }

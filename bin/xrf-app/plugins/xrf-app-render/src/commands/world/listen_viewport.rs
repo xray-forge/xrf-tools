@@ -7,6 +7,6 @@ use crate::WorldState;
 /// and plays on.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "listen_viewport")]
-pub fn render_listen_viewport(world: State<'_, WorldState>, viewport: RenderViewportId) {
+pub(crate) fn render_listen_viewport(world: State<'_, WorldState>, viewport: RenderViewportId) {
   world.lock().set_listener(viewport);
 }

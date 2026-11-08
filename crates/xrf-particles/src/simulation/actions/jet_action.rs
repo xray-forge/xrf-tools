@@ -17,14 +17,14 @@ pub(crate) struct JetAction {
 }
 
 impl JetAction {
-  pub fn transform(&mut self, matrix: &Mat4) {
+  pub(crate) fn transform(&mut self, matrix: &Mat4) {
     self.center = matrix.transform_point3(self.center_local);
     self
       .acceleration
       .transform_direction_from(&self.acceleration_local, matrix);
   }
 
-  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
+  pub(crate) fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
     let magdt: f32 = self.magnitude * step.dt;
     let max_radius_sqr: f32 = self.max_radius * self.max_radius;
     let is_limited: bool = max_radius_sqr < ParticleActionStep::MAX_FLOAT;

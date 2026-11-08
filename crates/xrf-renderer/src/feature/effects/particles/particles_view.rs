@@ -26,7 +26,7 @@ const INITIAL_QUADS: u64 = 4096;
 /// scene's `LevelParticles::fill` each frame, the batches drawing their colour and the runs drawing their distortion
 /// where it reaches the screen.
 #[derive(Default)]
-pub struct ParticlesView {
+pub(crate) struct ParticlesView {
   vertices: Vec<ParticleVertex>,
   /// The blending effects' quads, far to near, a batch each run of one equation.
   batches: Vec<ParticleBatch>,
@@ -47,7 +47,7 @@ impl ParticlesView {
   const QUAD_BYTES: u64 = ParticleVertex::CORNERS as u64 * size_of::<ParticleVertex>() as u64;
 
   /// Forgets last frame's quads.
-  pub fn clear(&mut self) {
+  pub(crate) fn clear(&mut self) {
     self.vertices.clear();
     self.batches.clear();
     self.distortion_runs.clear();
@@ -59,7 +59,7 @@ impl ParticlesView {
   /// Adds an effect's quads after those added before, as `sprite` faces them with its `surface`: into its equation's
   /// batch where it blends, into a distortion run where it distorts, as the surface draws (`drawing`), and one of its
   /// quads reaches the screen of `view_projection`.
-  pub fn push_effect(
+  pub(crate) fn push_effect(
     &mut self,
     sprite: &ParticleSprite,
     view_projection: Mat4,
@@ -116,13 +116,13 @@ impl ParticlesView {
   }
 
   /// How many effects it draws this frame.
-  pub fn get_drawn(&self) -> u32 {
+  pub(crate) fn get_drawn(&self) -> u32 {
     self.drawn
   }
 
   /// Writes the quads filled this frame, growing the buffer past them up to the most one binding may hold; the nearest
   /// quads past that are not drawn.
-  pub fn upload(&mut self, device: &wgpu::Device, encoder: &mut FrameEncoder) {
+  pub(crate) fn upload(&mut self, device: &wgpu::Device, encoder: &mut FrameEncoder) {
     let most_quads: u64 = device.limits().max_storage_buffer_binding_size / Self::QUAD_BYTES;
 
     self.keep_quads(u32::try_from(most_quads).unwrap_or(u32::MAX));
@@ -168,7 +168,7 @@ impl ParticlesView {
 
   /// Draws the quads filled this frame over the scene, then the distorting ones into the distortion target, each
   /// surface's record read from `surfaces`.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     ViewRecord {
@@ -213,23 +213,23 @@ impl ParticlesView {
   }
 
   /// Whether this frame has particles to draw, as `add_passes` would draw them.
-  pub fn is_drawing(&self) -> bool {
+  pub(crate) fn is_drawing(&self) -> bool {
     !self.batches.is_empty() || self.is_distorting()
   }
 
   /// Whether this frame's particles draw into the distortion target.
-  pub fn is_distorting(&self) -> bool {
+  pub(crate) fn is_distorting(&self) -> bool {
     !self.distortion_runs.is_empty()
   }
 
   /// The tiles of the frame this frame's particles draw into the distortion target in.
-  pub fn get_distortion_tiles(&self) -> &ScreenTiles {
+  pub(crate) fn get_distortion_tiles(&self) -> &ScreenTiles {
     &self.distortion_tiles
   }
 
   /// Whether this frame's particles may blur the frame: one drawn into the distortion target whose map holds some blue
   /// or is not yet up (`TextureCache::is_blue_free`).
-  pub fn is_blurring(&self, textures: &TextureCache) -> bool {
+  pub(crate) fn is_blurring(&self, textures: &TextureCache) -> bool {
     self.distortion_slots.iter().any(|slot| !textures.is_blue_free(*slot))
   }
 

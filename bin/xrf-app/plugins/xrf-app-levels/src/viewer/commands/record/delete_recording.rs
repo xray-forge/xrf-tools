@@ -11,7 +11,7 @@ use crate::viewer::LevelViewerFolder;
 /// Delete a recording of the recordings folder for good.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "delete_recording")]
-pub async fn levels_delete_recording(
+pub(crate) async fn levels_delete_recording(
   directories: State<'_, AppDirectories>,
   execution: State<'_, ExecutionState>,
   path: PathBuf,

@@ -6,7 +6,7 @@ use crate::edit::{TextureDescriptorForm, TextureSaveTarget};
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TextureDescriptorSave {
+pub(crate) struct TextureDescriptorSave {
   pub target: TextureSaveTarget,
   pub form: TextureDescriptorForm,
 }

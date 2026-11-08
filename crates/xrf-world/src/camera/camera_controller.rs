@@ -11,7 +11,7 @@ use crate::contract::camera::world_input_event::WorldInputEvent;
 
 /// Drives a viewport's camera from what its consumer described and what the person does over it.
 #[derive(Clone, Debug)]
-pub enum CameraController {
+pub(crate) enum CameraController {
   Fly(FlyCameraController),
   Orbit(OrbitCameraController),
 }
@@ -24,7 +24,7 @@ impl Default for CameraController {
 
 impl CameraController {
   /// Takes a description, switching controllers when it asks for the other kind.
-  pub fn describe(&mut self, description: WorldCamera) {
+  pub(crate) fn describe(&mut self, description: WorldCamera) {
     match (self, description) {
       (Self::Fly(controller), WorldCamera::Fly { .. }) => {
         controller.describe(description);
@@ -37,14 +37,14 @@ impl CameraController {
     }
   }
 
-  pub fn command(&mut self, command: WorldCameraCommand) {
+  pub(crate) fn command(&mut self, command: WorldCameraCommand) {
     match self {
       Self::Fly(controller) => controller.command(command),
       Self::Orbit(controller) => controller.command(command),
     }
   }
 
-  pub fn input(&mut self, event: &WorldInputEvent) {
+  pub(crate) fn input(&mut self, event: &WorldInputEvent) {
     match self {
       Self::Fly(controller) => controller.input(event),
       Self::Orbit(controller) => controller.input(event),
@@ -52,7 +52,7 @@ impl CameraController {
   }
 
   /// Advances the camera by a frame's time; `height` is the viewport's in CSS pixels.
-  pub fn update(&mut self, delta: Duration, height: f32) {
+  pub(crate) fn update(&mut self, delta: Duration, height: f32) {
     match self {
       Self::Fly(controller) => {
         controller.resize(height);
@@ -66,14 +66,14 @@ impl CameraController {
   }
 
   /// The steps of speed the wheel asked for since they were last taken, positive faster; an orbit camera has none.
-  pub fn take_speed_steps(&mut self) -> i32 {
+  pub(crate) fn take_speed_steps(&mut self) -> i32 {
     match self {
       Self::Fly(controller) => controller.take_speed_steps(),
       Self::Orbit(_) => 0,
     }
   }
 
-  pub fn get_pose(&self) -> WorldCameraPose {
+  pub(crate) fn get_pose(&self) -> WorldCameraPose {
     match self {
       Self::Fly(controller) => controller.get_pose(),
       Self::Orbit(controller) => controller.get_pose(),
@@ -81,7 +81,7 @@ impl CameraController {
   }
 
   /// Where it stands and what its lens is this frame.
-  pub fn get_frame(&self) -> CameraFrame {
+  pub(crate) fn get_frame(&self) -> CameraFrame {
     match self {
       Self::Fly(controller) => controller.get_frame(),
       Self::Orbit(controller) => controller.get_frame(),

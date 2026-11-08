@@ -10,7 +10,7 @@ use crate::core::command::{CommandContext, CommandError, CommandResult, GenericC
 use crate::core::terminal::CliJob;
 
 #[derive(Default)]
-pub struct ParseCommand;
+pub(crate) struct ParseCommand;
 
 impl GenericCommand for ParseCommand {
   fn operation(&self) -> &'static str {

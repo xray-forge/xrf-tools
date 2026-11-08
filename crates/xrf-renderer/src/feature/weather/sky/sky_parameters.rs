@@ -7,7 +7,7 @@ use crate::scene::texture::texture_cache::TextureCache;
 /// sky as drawn prefiltered by roughness into a cube's mips (`SkyPrefilter`), indexed by a renderer-space direction.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 2)]
-pub struct SkyParameters<'a> {
+pub(crate) struct SkyParameters<'a> {
   #[texture(cube, float)]
   pub sky_cube_0: GraphTexture,
   #[texture(cube, float)]

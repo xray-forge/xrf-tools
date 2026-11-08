@@ -6,4 +6,4 @@
 mod archive_efd_description;
 mod archive_efd_pattern;
 
-pub use archive_efd_description::ArchiveEfdDescription;
+pub(crate) use archive_efd_description::ArchiveEfdDescription;

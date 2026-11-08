@@ -8,7 +8,7 @@ use xrf_thm::{
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TextureDescriptorForm {
+pub(crate) struct TextureDescriptorForm {
   /// The thumbnail's texture type, which is the gate `LoadTHM` reads before anything else.
   pub texture_type: u32,
   pub bump_mode: u32,
@@ -38,7 +38,7 @@ pub struct TextureDescriptorForm {
 
 impl TextureDescriptorForm {
   /// The fields of a descriptor, or of a new one with the SDK's defaults when there is none.
-  pub fn of(file: Option<&ThmFile>) -> Self {
+  pub(crate) fn of(file: Option<&ThmFile>) -> Self {
     match file {
       Some(file) => Self::read(file),
       None => Self::read(&ThmFile::new_texture()),
@@ -46,7 +46,7 @@ impl TextureDescriptorForm {
   }
 
   /// Reads the editable fields of a descriptor.
-  pub fn read(file: &ThmFile) -> Self {
+  pub(crate) fn read(file: &ThmFile) -> Self {
     let param: ThmTextureParamChunk = file.texture_param.unwrap_or_default();
     let detail: ThmDetailChunk = file.detail.clone().unwrap_or_default();
     let material: ThmMaterialChunk = file.material.unwrap_or_default();
@@ -75,12 +75,12 @@ impl TextureDescriptorForm {
   }
 
   /// Whether the flag word says the texture's alpha means something, which tells `tfDXT1` from `tfADXT1`.
-  pub fn has_alpha(&self) -> bool {
+  pub(crate) fn has_alpha(&self) -> bool {
     ThmTextureFlags::from(self.flags).has(ThmTextureFlag::HasAlpha)
   }
 
   /// Writes these fields onto a descriptor, leaving everything else it carries alone.
-  pub fn apply_to(&self, file: &mut ThmFile) {
+  pub(crate) fn apply_to(&self, file: &mut ThmFile) {
     Self::apply_chunk(&mut file.texture_type, ThmTextureType::from(self.texture_type));
     Self::apply_chunk(
       &mut file.texture_param,
@@ -122,7 +122,7 @@ impl TextureDescriptorForm {
   }
 
   /// The descriptor this form describes, built onto `file` when there is one and onto a new one when there is not.
-  pub fn to_descriptor(&self, file: Option<ThmFile>) -> ThmFile {
+  pub(crate) fn to_descriptor(&self, file: Option<ThmFile>) -> ThmFile {
     let mut descriptor: ThmFile = file.unwrap_or_else(ThmFile::new_texture);
 
     self.apply_to(&mut descriptor);

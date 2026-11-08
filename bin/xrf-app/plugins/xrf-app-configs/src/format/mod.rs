@@ -2,4 +2,4 @@
 
 mod configs_format;
 
-pub use configs_format::ConfigsFormat;
+pub(crate) use configs_format::ConfigsFormat;

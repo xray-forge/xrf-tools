@@ -53,7 +53,7 @@ const SLOT_METERS: f32 = 2.0;
 /// A level's grass as one view plants it: every frame in a ring around its camera, the ring caching what it planted,
 /// and drawn into the G-buffer swaying in the view's wind. The ring and lists are built again when the settings outgrow
 /// them, or need less than half; a density changed plants every slot again.
-pub struct GrassView {
+pub(crate) struct GrassView {
   build: Option<GrassBuild>,
   values: GrassUniform,
   wind: GrassWind,
@@ -84,7 +84,7 @@ pub struct GrassView {
 }
 
 impl GrassView {
-  pub fn new(device: &wgpu::Device) -> Self {
+  pub(crate) fn new(device: &wgpu::Device) -> Self {
     Self {
       build: None,
       values: GrassUniform {
@@ -109,7 +109,7 @@ impl GrassView {
   /// Fits the planting to the settings and the camera, building the ring and lists again where the settings outgrow
   /// them, and the cards where the grass casts shadows, traced where the view traces its light and drawn into the sun's
   /// cascades where they shadow the frame.
-  pub fn prepare(
+  pub(crate) fn prepare(
     &mut self,
     device: &wgpu::Device,
     level: Option<&GrassLevel>,
@@ -256,7 +256,7 @@ impl GrassView {
 
   /// The cards as an instance of the view's own top level, where the view traces them this frame: for the grass's
   /// shadows, the water's reflected rays, or both.
-  pub fn get_trace_instance(&self) -> Option<DrawableTraceInstance<'_>> {
+  pub(crate) fn get_trace_instance(&self) -> Option<DrawableTraceInstance<'_>> {
     self
       .cards
       .as_ref()
@@ -271,7 +271,7 @@ impl GrassView {
 
   /// Records what a traced hit reads of the grass this frame: each of the level's models' colour averaged, which a hit
   /// on grassed ground blends towards; the planting as the hit reads it; and the cards the frame stood.
-  pub fn add_trace<'a>(
+  pub(crate) fn add_trace<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -334,7 +334,7 @@ impl GrassView {
 
   /// Metres from the camera the grass casts the sun's shadow to through its cascades this frame, none where it does
   /// not: as far as its cards stand, and no further than the cascades they are asked in.
-  pub fn get_cascade_reach(&self) -> Option<f32> {
+  pub(crate) fn get_cascade_reach(&self) -> Option<f32> {
     self
       .card_cascade_reach
       .filter(|_| self.cards.is_some() && self.is_drawn)
@@ -343,18 +343,18 @@ impl GrassView {
 
   /// What the grass casts into the sun's cascades every frame: its cards, out to their reach; none where it casts none
   /// there.
-  pub fn get_sun_casters(&self) -> Option<PerFrameCasters> {
+  pub(crate) fn get_sun_casters(&self) -> Option<PerFrameCasters> {
     self.get_cascade_reach().map(GrassShadowCasters::get_sun_casters)
   }
 
   /// What the grass casts into the local lights' faces: its cards, where they stand for the sun's cascades; none where
   /// they stand for none.
-  pub fn get_light_casters(&self) -> Option<LightCasters> {
+  pub(crate) fn get_light_casters(&self) -> Option<LightCasters> {
     self.get_cascade_reach().map(GrassShadowCasters::get_light_casters)
   }
 
   /// The cards of `level` as the cascades draw them, stood this frame (`cards`), where they do.
-  pub fn get_shadow_casters<'a>(
+  pub(crate) fn get_shadow_casters<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     GrassSource { pass, level }: GrassSource<'a>,
@@ -379,7 +379,7 @@ impl GrassView {
 
   /// Stands the cards of `level` about the eye, sizes the cascades' draw of them, and builds their structure where the
   /// view traces them; none where the grass casts no shadow.
-  pub fn add_cards<'a>(
+  pub(crate) fn add_cards<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     GrassSource { pass, level }: GrassSource<'a>,
@@ -478,18 +478,18 @@ impl GrassView {
   }
 
   /// The planting as a traced hit reads it this frame.
-  pub fn get_trace_uniform(&self) -> &TraceGrassUniform {
+  pub(crate) fn get_trace_uniform(&self) -> &TraceGrassUniform {
     &self.trace
   }
 
   /// What the ring's slots are planted under, moved each time every slot is planted again.
   #[cfg(test)]
-  pub fn get_generation(&self) -> u32 {
+  pub(crate) fn get_generation(&self) -> u32 {
     self.values.generation
   }
 
   /// Writes into `applied` the grass as planted by `settings`, none where none is.
-  pub fn describe(&self, applied: &mut RenderAppliedReport, settings: &RenderGrassSettings) {
+  pub(crate) fn describe(&self, applied: &mut RenderAppliedReport, settings: &RenderGrassSettings) {
     applied.grass = self.get_applied(settings);
   }
 
@@ -509,19 +509,19 @@ impl GrassView {
   }
 
   /// Asks for the cull's total and the cards' demand copied out with the frame just submitted.
-  pub fn request_stats(&self) {
+  pub(crate) fn request_stats(&self) {
     self.stats.request();
     self.card_demand.request();
   }
 
   /// Drops the copies made with a frame that was never submitted.
-  pub fn abandon_stats(&self) {
+  pub(crate) fn abandon_stats(&self) {
     self.stats.abandon();
     self.card_demand.abandon();
   }
 
   /// What a recent frame drew: the cull's latest total read back, and the most the lists hold.
-  pub fn take_report(&mut self) -> RenderDrawableReport {
+  pub(crate) fn take_report(&mut self) -> RenderDrawableReport {
     let [drawn, ..] = self.stats.take();
 
     RenderDrawableReport {
@@ -537,7 +537,7 @@ impl GrassView {
 
   /// Plants the frame's grass of `level` where it is drawn: the ring's stale cells, ahead of the frame's depth. Answers
   /// what the frame's cull, cards and draw bind of it.
-  pub fn add_planting<'a>(
+  pub(crate) fn add_planting<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -612,7 +612,7 @@ impl GrassView {
 
   /// Culls what the ring holds by the view and the frame's depth `occlusion`, into the draw arguments the planting
   /// answered, then copies its total out for reading back: an effect the graph cannot see.
-  pub fn add_cull<'a>(
+  pub(crate) fn add_cull<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
     GrassSource { pass, level }: GrassSource<'a>,
@@ -667,7 +667,7 @@ impl GrassView {
   }
 
   /// Declares the draw of what the frame planted (`planting`) into the G-buffer.
-  pub fn add_draw<'a>(
+  pub(crate) fn add_draw<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
     GrassSource { pass, level }: GrassSource<'a>,

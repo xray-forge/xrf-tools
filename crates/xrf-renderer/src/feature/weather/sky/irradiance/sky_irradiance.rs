@@ -9,14 +9,14 @@ use crate::scene::level::view::record::lighting_handles::LightingHandles;
 
 /// The physical light's sky irradiance: the harmonics the GPU projects the sky into each frame, copied out without
 /// waiting, and the last that came back, which the lighting uniform carries to every pass lighting by the hemisphere.
-pub struct SkyIrradiance {
+pub(crate) struct SkyIrradiance {
   buffer: wgpu::Buffer,
   readback: GpuReadback,
   harmonics: SkyHarmonics,
 }
 
 impl SkyIrradiance {
-  pub fn new(device: &wgpu::Device) -> Self {
+  pub(crate) fn new(device: &wgpu::Device) -> Self {
     let size: u64 = size_of::<SkyHarmonics>() as u64;
 
     Self {
@@ -32,7 +32,7 @@ impl SkyIrradiance {
   }
 
   /// The harmonics last read back, refreshed from a copy back since the last frame; none projected before the first.
-  pub fn take_harmonics(&mut self) -> SkyHarmonics {
+  pub(crate) fn take_harmonics(&mut self) -> SkyHarmonics {
     if let Some(Ok(harmonics)) = self
       .readback
       .take(|bytes| bytemuck::pod_read_unaligned::<SkyHarmonics>(&bytes[..size_of::<SkyHarmonics>()]))
@@ -44,7 +44,7 @@ impl SkyIrradiance {
   }
 
   /// Projects the sky this frame and copies the harmonics out, unless an earlier copy is still on its way.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
@@ -87,12 +87,12 @@ impl SkyIrradiance {
   }
 
   /// Asks for the harmonics copied out with the frame just submitted.
-  pub fn request(&self) {
+  pub(crate) fn request(&self) {
     self.readback.request();
   }
 
   /// Drops the harmonics a frame that was never submitted copied out.
-  pub fn abandon(&self) {
+  pub(crate) fn abandon(&self) {
     self.readback.abandon();
   }
 }

@@ -5,7 +5,7 @@ use crate::frame::targets::history::History;
 
 /// What FSR keeps for one viewport: its working targets at the drawn size and at half of it, the reconstructed depth,
 /// and two frames of its own targets, one written while the other is read, swapped every frame.
-pub struct FsrTargets {
+pub(crate) struct FsrTargets {
   /// The drawn size, then the viewport's.
   pub render: (u32, u32),
   pub display: (u32, u32),
@@ -33,18 +33,18 @@ pub struct FsrTargets {
 }
 
 impl FsrTargets {
-  pub const HISTORY: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
-  pub const DEPTH: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
-  pub const MOTION: wgpu::TextureFormat = wgpu::TextureFormat::Rg16Float;
-  pub const LUMA: wgpu::TextureFormat = wgpu::TextureFormat::R16Float;
-  pub const LUMA_HISTORY: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
-  pub const MASK: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
-  pub const MASKS: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
-  pub const PYRAMID: wgpu::TextureFormat = wgpu::TextureFormat::Rg16Float;
+  pub(crate) const HISTORY: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub(crate) const DEPTH: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
+  pub(crate) const MOTION: wgpu::TextureFormat = wgpu::TextureFormat::Rg16Float;
+  pub(crate) const LUMA: wgpu::TextureFormat = wgpu::TextureFormat::R16Float;
+  pub(crate) const LUMA_HISTORY: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub(crate) const MASK: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
+  pub(crate) const MASKS: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+  pub(crate) const PYRAMID: wgpu::TextureFormat = wgpu::TextureFormat::Rg16Float;
   /// What a debug view is drawn into, at the display's size, made by the frame graph while one is shown.
-  pub const DEBUG: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+  pub(crate) const DEBUG: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
-  pub fn new(
+  pub(crate) fn new(
     device: &wgpu::Device,
     render: (u32, u32),
     display: (u32, u32),
@@ -102,7 +102,7 @@ impl FsrTargets {
     }
   }
 
-  pub fn is_sized(&self, render: (u32, u32), display: (u32, u32)) -> bool {
+  pub(crate) fn is_sized(&self, render: (u32, u32), display: (u32, u32)) -> bool {
     self.render == render && self.display == display
   }
 }

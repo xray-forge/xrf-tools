@@ -11,7 +11,7 @@ use super::report::DocsGenerateReport;
 use crate::core::command::{CommandContext, CommandError, CommandGroup, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct GenerateCommand;
+pub(crate) struct GenerateCommand;
 
 impl GenericCommand for GenerateCommand {
   fn operation(&self) -> &'static str {

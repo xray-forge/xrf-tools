@@ -5,7 +5,7 @@ use xrf_renderer_core::ShaderStruct;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "TraceInstance")]
-pub struct StaticTraceInstance {
+pub(crate) struct StaticTraceInstance {
   pub first_record: u32,
   pub place: u32,
   pub pad: [u32; 2],

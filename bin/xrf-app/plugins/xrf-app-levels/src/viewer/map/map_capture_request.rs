@@ -7,7 +7,7 @@ use xrf_renderer::{RenderMapCapture, RenderViewportId};
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub struct MapCaptureRequest {
+pub(crate) struct MapCaptureRequest {
   pub viewport: RenderViewportId,
   pub capture: RenderMapCapture,
   pub path: PathBuf,

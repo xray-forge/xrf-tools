@@ -14,7 +14,7 @@ use crate::shader::generated_modules::GeneratedModules;
 
 /// The passes blending over the lit scene: the composited surfaces and the glass, the particles and the distortion
 /// they bend the frame by, the falling rain, the thunder's bolts, and the sun's flares.
-pub struct EffectPasses {
+pub(crate) struct EffectPasses {
   pub composited: CompositedPass,
   pub glass: GlassPass,
   pub particles: ParticlePass,
@@ -30,7 +30,7 @@ impl EffectPasses {
   /// # Errors
   ///
   /// Returns an error when a pass's shaders do not compose or compile.
-  pub fn new(build: PassBuild<'_>) -> XrfResult<Self> {
+  pub(crate) fn new(build: PassBuild<'_>) -> XrfResult<Self> {
     let PassBuild {
       source,
       queue,
@@ -63,7 +63,7 @@ impl EffectPasses {
   }
 
   /// Rebuilds the pipelines a shader reload made stale, each pass keeping its last good ones where a rebuild fails.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     self.composited.refresh(source);
     self.glass.refresh(source);
     self.particles.refresh(source);
@@ -79,7 +79,7 @@ impl EffectPasses {
   ///
   /// Returns an error when passes sharing a module declare one of its bindings otherwise.
   #[cfg(test)]
-  pub fn declare_shaders(modules: &mut GeneratedModules) -> XrfResult<()> {
+  pub(crate) fn declare_shaders(modules: &mut GeneratedModules) -> XrfResult<()> {
     use crate::feature::effects::composited::composited_parameters::CompositedParameters;
     use crate::feature::effects::composited::glass::glass_copy_dispatch_parameters::GlassCopyDispatchParameters;
     use crate::feature::effects::composited::glass::glass_copy_parameters::GlassCopyParameters;

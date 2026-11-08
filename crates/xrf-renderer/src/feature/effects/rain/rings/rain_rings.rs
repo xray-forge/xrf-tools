@@ -1,7 +1,7 @@
 /// The rings the enhanced drops leave where they land, seen from overhead over the tile their columns repeat over,
 /// wrapping: each texel the tilt the rings give the water in renderer `x` and `z` and that tilt's square, reduced level
 /// by level so water seen far off reads them filtered.
-pub struct RainRings {
+pub(crate) struct RainRings {
   /// Texels its first level is across.
   pub size: u32,
   /// Every level, as the water and the puddles read it.
@@ -11,7 +11,7 @@ pub struct RainRings {
 }
 
 impl RainRings {
-  pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub(crate) const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
   /// Metres a texel of the first level spans at most, two centimetres, so a ring's waves span a few of them; and the
   /// most texels it is across.
@@ -19,20 +19,20 @@ impl RainRings {
   const MOST: u32 = 1536;
 
   /// Texels a reduction's workgroup takes a side, which the first level is a multiple of (`frame/rain_rings.wgsl`).
-  pub const BLOCK: u32 = 16;
+  pub(crate) const BLOCK: u32 = 16;
 
   /// Levels, the first and the four one dispatch reduces it into (`frame/rain_rings.wgsl`).
-  pub const LEVELS: u32 = 5;
+  pub(crate) const LEVELS: u32 = 5;
 
   /// Texels the first level is across for a tile `tile` metres a side.
-  pub fn get_size(tile: f32) -> u32 {
+  pub(crate) fn get_size(tile: f32) -> u32 {
     let blocks: u32 = (tile / Self::TEXEL / Self::BLOCK as f32).ceil() as u32;
 
     (blocks * Self::BLOCK).clamp(Self::BLOCK << Self::LEVELS, Self::MOST)
   }
 
   /// The rings of a tile `size` texels across (`get_size`).
-  pub fn new(device: &wgpu::Device, size: u32) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, size: u32) -> Self {
     let texture: wgpu::Texture = device.create_texture(&wgpu::TextureDescriptor {
       label: Some("rain rings"),
       size: wgpu::Extent3d {

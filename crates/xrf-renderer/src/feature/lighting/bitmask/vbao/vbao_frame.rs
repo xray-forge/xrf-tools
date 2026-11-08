@@ -3,7 +3,7 @@ use glam::Mat4;
 /// What one frame's occlusion search runs over: the camera's projection, the search target's size, the noise's frame,
 /// and the histories it carries.
 #[derive(Clone, Copy, Debug)]
-pub struct VbaoFrame {
+pub(crate) struct VbaoFrame {
   pub projection: Mat4,
   /// The search target's width and height.
   pub size: (u32, u32),

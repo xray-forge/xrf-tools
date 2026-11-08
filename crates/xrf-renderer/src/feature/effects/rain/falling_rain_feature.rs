@@ -36,7 +36,7 @@ use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 /// The falling rain, while the weather rains and the view shows it: the splash's model built for the level's weather,
 /// the uniform at the rain cover's window, the streak's and the splash's textures, and the drops drawn.
 #[derive(Default)]
-pub struct FallingRainFeature {
+pub(crate) struct FallingRainFeature {
   splash: Option<WeatherBuilt<WeatherModelBuffers>>,
   uniform: RainUniform,
   /// The streak's and the splash's textures, as the cache holds them when the frame is prepared.
@@ -58,7 +58,7 @@ impl FallingRainFeature {
   /// `time`: the splash's model built for the level's weather, the uniform at the rain cover's window and shape (in
   /// `windows`), and the textures; answers the uniform, which the wet surfaces follow, none where the weather has no
   /// rain to draw.
-  pub fn prepare(
+  pub(crate) fn prepare(
     &mut self,
     &ViewPrepare {
       device,
@@ -147,12 +147,12 @@ impl FallingRainFeature {
 
   /// The rain's clock in seconds, as it last fell: what the wet surfaces' splashes, flow and ripples run by while it
   /// rains.
-  pub fn get_clock(&self) -> f64 {
+  pub(crate) fn get_clock(&self) -> f64 {
     self.clock
   }
 
   /// The tile the enhanced drops' rings wrap over this frame (`RainUniform::get_rings`), none while none are drawn.
-  pub fn get_rings(&self) -> f32 {
+  pub(crate) fn get_rings(&self) -> f32 {
     match self.draw {
       Some(_) => self.uniform.get_rings(),
       None => 0.0,
@@ -160,17 +160,17 @@ impl FallingRainFeature {
   }
 
   /// Whether the rain falls this frame.
-  pub fn is_raining(&self) -> bool {
+  pub(crate) fn is_raining(&self) -> bool {
     self.draw.is_some()
   }
 
   /// Whether the enhanced splashes write into the distortion target this frame, bending the ground under them.
-  pub fn is_distorting(&self) -> bool {
+  pub(crate) fn is_distorting(&self) -> bool {
     self.uniform.is_enhanced != 0 && self.draw.is_some_and(|counts| counts.splash_indices > 0)
   }
 
   /// Follows the rain cover to where it stands once it has moved, as the drops read it.
-  pub fn follow_cover(&mut self, windows: OverheadWindows) {
+  pub(crate) fn follow_cover(&mut self, windows: OverheadWindows) {
     let RainCoverShape { texels, reach } = windows.cover_shape;
 
     self.uniform.window = windows.cover;
@@ -179,13 +179,13 @@ impl FallingRainFeature {
 
   /// Follows how the frame is shown (`DisplayMode::get_display`), which the streaks and the engine's splashes enter the
   /// scene through.
-  pub fn follow_display(&mut self, display: Vec4) {
+  pub(crate) fn follow_display(&mut self, display: Vec4) {
     self.uniform.display = display;
   }
 
   /// Follows the level water's and the level surface's maps where `windows` gives them, none where the surfaces are not
   /// drawn, which the enhanced drops land on.
-  pub fn follow_surfaces(&mut self, windows: Option<OverheadWindows>) {
+  pub(crate) fn follow_surfaces(&mut self, windows: Option<OverheadWindows>) {
     let landing: Option<OverheadWindows> = windows.filter(|_| self.uniform.is_enhanced != 0);
 
     self.uniform.water = landing.map_or(Vec4::ZERO, |it| it.water);
@@ -195,7 +195,7 @@ impl FallingRainFeature {
 
   /// Adds the rain over the scene, falling onto `covers`: the engine's streaks and splashes, or the enhanced splashes
   /// and the distortion under the enhanced streaks, which draw after the resolve (`add_over_resolved`).
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -238,7 +238,7 @@ impl FallingRainFeature {
 
   /// Adds the enhanced streaks over a copy of the image the resolve shows (`chain`), so no history holds them; answers
   /// the copy, which the window pass shows in its place, none without enhanced rain.
-  pub fn add_over_resolved<'a>(
+  pub(crate) fn add_over_resolved<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -290,7 +290,7 @@ impl FallingRainFeature {
   }
 
   /// Adds the rings the enhanced drops leave where they land on `covers`; answers them, none without them.
-  pub fn add_rings<'a>(
+  pub(crate) fn add_rings<'a>(
     &'a self,
     GraphDeclaration {
       graph,

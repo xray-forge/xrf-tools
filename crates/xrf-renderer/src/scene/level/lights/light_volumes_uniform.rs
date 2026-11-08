@@ -7,7 +7,7 @@ use crate::scene::level::level_time::LevelTime;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "LightVolumes")]
-pub struct LightVolumesUniform {
+pub(crate) struct LightVolumesUniform {
   pub noise: u32,
   /// The first read's scroll across and the second's down.
   pub scroll: f32,
@@ -20,7 +20,7 @@ impl LightVolumesUniform {
   const SCROLL_DOWN: f64 = 0.70091;
 
   /// The noise in slot `noise`, scrolled to the level's clock `time`.
-  pub fn new(noise: u32, time: LevelTime) -> Self {
+  pub(crate) fn new(noise: u32, time: LevelTime) -> Self {
     Self {
       noise,
       scroll: time.get_turns(Self::SCROLL),

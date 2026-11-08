@@ -24,17 +24,17 @@ impl<'a> EnvironmentSectionReader<'a> {
   /// The words `r_bool` is written with, either way; any other is read as false, which is worth saying.
   const FLAG_WORDS: [&'static str; 8] = ["on", "yes", "true", "1", "off", "no", "false", "0"];
 
-  pub fn get_engine(&self) -> XrayEngine {
+  pub(crate) fn get_engine(&self) -> XrayEngine {
     self.engine
   }
 
-  pub fn get_file(&self) -> &'a str {
+  pub(crate) fn get_file(&self) -> &'a str {
     self.file
   }
 
   /// Reads one section: each key of the table as the engine parses it, the rest as written, and a finding for each
   /// key the engine requires without a condition that the section does not write.
-  pub fn read<K: EnvironmentKey>(&mut self, name: &str, section: &Section) -> EnvironmentSection<K> {
+  pub(crate) fn read<K: EnvironmentKey>(&mut self, name: &str, section: &Section) -> EnvironmentSection<K> {
     let mut read: EnvironmentSection<K> = EnvironmentSection::new(name, self.file);
 
     for (key_name, raw) in section {
@@ -66,14 +66,14 @@ impl<'a> EnvironmentSectionReader<'a> {
   }
 
   /// Says the engine requires a key the section does not write, for a key whose requirement another key decides.
-  pub fn require<K: EnvironmentKey>(&mut self, section: &EnvironmentSection<K>, key: K) {
+  pub(crate) fn require<K: EnvironmentKey>(&mut self, section: &EnvironmentSection<K>, key: K) {
     if !section.has(key) {
       self.report_missing(&section.name, key.get_name());
     }
   }
 
   /// Reports one finding about a section of this config.
-  pub fn report(&mut self, rule: EnvironmentRule, section: &str, key: Option<&str>, message: String) {
+  pub(crate) fn report(&mut self, rule: EnvironmentRule, section: &str, key: Option<&str>, message: String) {
     self.findings.push(EnvironmentFinding {
       file: self.file.to_owned(),
       key: key.map(str::to_owned),
@@ -84,7 +84,7 @@ impl<'a> EnvironmentSectionReader<'a> {
   }
 
   /// Reports one finding about this config as a whole.
-  pub fn report_file(&mut self, rule: EnvironmentRule, message: String) {
+  pub(crate) fn report_file(&mut self, rule: EnvironmentRule, message: String) {
     self.findings.push(EnvironmentFinding {
       file: self.file.to_owned(),
       key: None,
@@ -95,7 +95,7 @@ impl<'a> EnvironmentSectionReader<'a> {
   }
 
   /// The subject and section as messages name them: `Weather [12:00:00]`.
-  pub fn describe(&self, section: &str) -> String {
+  pub(crate) fn describe(&self, section: &str) -> String {
     format!("{} [{section}]", self.subject)
   }
 

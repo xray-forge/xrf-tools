@@ -3,7 +3,7 @@ use crate::scene::static_scene::draw::static_cull_scratch::StaticCullScratch;
 
 /// One cull and draw of a shadow's map, or of a region of it: the visible lists and draw arguments its cull fills, and
 /// the camera it is culled and drawn by.
-pub struct ShadowCut {
+pub(crate) struct ShadowCut {
   /// Made by the first cull that reserves them, as large as the scene's lists, and let go of while it rests.
   lists: Option<wgpu::Buffer>,
   pub args: wgpu::Buffer,
@@ -11,7 +11,7 @@ pub struct ShadowCut {
 }
 
 impl ShadowCut {
-  pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout, label: &'static str) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout, label: &'static str) -> Self {
     Self {
       lists: None,
       args: device.create_buffer(&wgpu::BufferDescriptor {
@@ -26,7 +26,7 @@ impl ShadowCut {
 
   /// Makes the lists hold at least `size` bytes for a cull this frame, doubling them where they are too small; a cull
   /// fills them whole, so nothing they held is kept.
-  pub fn reserve_lists(&mut self, device: &wgpu::Device, size: u64) {
+  pub(crate) fn reserve_lists(&mut self, device: &wgpu::Device, size: u64) {
     let held: u64 = self.lists.as_ref().map_or(0, wgpu::Buffer::size);
 
     if size <= held {
@@ -46,7 +46,7 @@ impl ShadowCut {
   /// # Panics
   ///
   /// When no cull reserved them since the cut last rested.
-  pub fn get_lists(&self) -> &wgpu::Buffer {
+  pub(crate) fn get_lists(&self) -> &wgpu::Buffer {
     self
       .lists
       .as_ref()
@@ -54,7 +54,7 @@ impl ShadowCut {
   }
 
   /// Lets go of the lists, made again by the next cull.
-  pub fn release_lists(&mut self) {
+  pub(crate) fn release_lists(&mut self) {
     self.lists = None;
   }
 }

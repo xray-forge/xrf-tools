@@ -7,6 +7,6 @@ use crate::TranslationProjects;
 /// save.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "close_project")]
-pub fn translations_close_project(projects: State<'_, TranslationProjects>, session_ids: Vec<SessionId>) {
+pub(crate) fn translations_close_project(projects: State<'_, TranslationProjects>, session_ids: Vec<SessionId>) {
   projects.close(&session_ids);
 }

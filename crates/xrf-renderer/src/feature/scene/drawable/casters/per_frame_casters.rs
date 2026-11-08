@@ -4,7 +4,7 @@ use crate::feature::scene::drawable::drawable_kind::DrawableKind;
 /// A drawable kind's shadow casters moving every frame, as the sun's cascades draw them: over the kept layer of every
 /// near cascade they land in on screen, each frame, while what stands still and sways waits its own redraws.
 #[derive(Clone, Copy, Debug)]
-pub struct PerFrameCasters {
+pub(crate) struct PerFrameCasters {
   pub kind: DrawableKind,
   /// Metres from the eye they stand within, which the nearest cascades covering it are drawn with them.
   pub reach: f32,

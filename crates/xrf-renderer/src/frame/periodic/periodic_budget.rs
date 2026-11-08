@@ -8,7 +8,7 @@ use crate::contract::settings::render_frame_rate::RenderFrameRate;
 /// while the GPU's frame time is unknown. The GPU time and the refresh are smoothed over about half a second, and the
 /// budget moves only past `HYSTERESIS`, so it neither follows one slow frame nor wavers.
 #[derive(Debug, Default)]
-pub struct PeriodicBudget {
+pub(crate) struct PeriodicBudget {
   /// Smoothed milliseconds the GPU spends a frame.
   gpu: Option<f32>,
   /// Milliseconds between frames at the fastest the display presents them, as the frames found it.
@@ -19,7 +19,7 @@ pub struct PeriodicBudget {
 
 impl PeriodicBudget {
   /// Milliseconds a frame gives the work that may wait at most, so none takes a burst of it at once.
-  pub const CEILING: f32 = 4.0;
+  pub(crate) const CEILING: f32 = 4.0;
   /// Seconds the GPU time is smoothed over.
   const SMOOTHING: f32 = 0.5;
   /// The headroom kept clear: this share of the interval, at least `MARGIN_LEAST` milliseconds.
@@ -32,7 +32,7 @@ impl PeriodicBudget {
 
   /// Takes a frame `delta` after the last, `span` the milliseconds of the latest GPU frame read back where one came
   /// back, held to `frame_rate`: answers what the frame gives the work that may wait, at least `floor`.
-  pub fn update(&mut self, delta: Duration, span: Option<f32>, frame_rate: RenderFrameRate, floor: f32) -> f32 {
+  pub(crate) fn update(&mut self, delta: Duration, span: Option<f32>, frame_rate: RenderFrameRate, floor: f32) -> f32 {
     let seconds: f32 = delta.as_secs_f32();
     let interval: f32 = seconds * 1000.0;
 

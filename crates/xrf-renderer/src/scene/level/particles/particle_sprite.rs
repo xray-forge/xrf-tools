@@ -9,7 +9,7 @@ use crate::scene::level::particles::particle_vertex::ParticleVertex;
 
 /// `CParticleEffect::ParticleRenderStream`: an effect's particles as quads, each filled as `FillSprite` fills it in
 /// engine space, facing the camera or aligned to its path, then mirrored into renderer space.
-pub struct ParticleSprite {
+pub(crate) struct ParticleSprite {
   /// `Device.vCameraTop`, `vCameraRight` and `vCameraDirection`, in engine space.
   top: Vec3,
   right: Vec3,
@@ -24,7 +24,7 @@ const CHANNEL: f32 = 255.0;
 
 impl ParticleSprite {
   /// The camera's screen axes and facing, out of its view in renderer space.
-  pub fn new(view: Mat4) -> Self {
+  pub(crate) fn new(view: Mat4) -> Self {
     let camera: Mat4 = view.inverse();
 
     Self {
@@ -35,7 +35,7 @@ impl ParticleSprite {
   }
 
   /// Appends an effect's quads, four corners a particle, each corner naming the surface it draws with.
-  pub fn push(&self, effect: &ParticleEffectInstance, surface: u32, vertices: &mut Vec<ParticleVertex>) {
+  pub(crate) fn push(&self, effect: &ParticleEffectInstance, surface: u32, vertices: &mut Vec<ParticleVertex>) {
     let definition = effect.get_definition();
     let flags: ParticleEffectFlags = effect.get_flags();
     let alignment: Vec3 = definition.rotation.as_ref().map_or(DEFAULT_ALIGNMENT, Vec3::from);

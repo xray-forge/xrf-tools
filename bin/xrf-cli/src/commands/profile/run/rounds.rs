@@ -7,7 +7,7 @@ use std::time::Duration;
 /// a stopwatch. The memory figures are medians of per-round values for the same reason; the mean *within* a round is a
 /// different thing, and is what says how much a process held for most of its life.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct RoundStatistics {
+pub(crate) struct RoundStatistics {
   pub median: Duration,
   pub fastest: Duration,
   pub slowest: Duration,
@@ -20,7 +20,7 @@ impl RoundStatistics {
   ///
   /// Memory is absent rather than zero when nothing was sampled, which a command finishing inside one sampling interval
   /// does. Timing is what makes a round a round, so the durations decide whether there is anything to report at all.
-  pub fn of(rounds: &[Duration], peaks: &[u64], means: &[u64]) -> Option<Self> {
+  pub(crate) fn of(rounds: &[Duration], peaks: &[u64], means: &[u64]) -> Option<Self> {
     if rounds.is_empty() {
       return None;
     }
@@ -43,7 +43,7 @@ impl RoundStatistics {
   /// Interleaving is the whole protocol. Running all rounds of A and then all of B compares two different machine
   /// states — file cache, background load, thermal headroom — and has already produced a 10–16% difference that did
   /// not exist. Alternating means a drift over the session lands on every binary rather than on whichever went second.
-  pub fn interleaved(binaries: usize, rounds: usize) -> impl Iterator<Item = (usize, usize)> {
+  pub(crate) fn interleaved(binaries: usize, rounds: usize) -> impl Iterator<Item = (usize, usize)> {
     (0..rounds).flat_map(move |round| (0..binaries).map(move |binary| (round, binary)))
   }
 

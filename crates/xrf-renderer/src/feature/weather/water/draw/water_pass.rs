@@ -59,7 +59,7 @@ struct WaterFrameHandles<'a> {
 /// each pixel draws: a depth pass writes it first, as the engine's water, drawn in its index order, lets a fold of its
 /// surface draw over a nearer one. The enhanced water reads the scene as it stood before the water, which it refracts,
 /// and while it reflects draws its reflection first, accumulated over the frames before and blurred.
-pub struct WaterPass {
+pub(crate) struct WaterPass {
   /// The view's, the bindless textures' and the static draws' layouts, which every water pipeline binds below its own.
   layouts: [wgpu::BindGroupLayout; 3],
   /// The list the reflection leaves the rays the screen does not answer in, bound at group 3.
@@ -81,7 +81,7 @@ impl WaterPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(
+  pub(crate) fn new(
     queue: &wgpu::Queue,
     source: PipelineSource<'_>,
     [view_layout, scene_layout, texture_layout]: [&wgpu::BindGroupLayout; 3],
@@ -126,7 +126,7 @@ impl WaterPass {
 
   /// Draws the water a view's list holds into the depth the pass draws into, its waves lifted as the frame's: an
   /// overhead map's view, its own lists and arguments.
-  pub fn record_depth(
+  pub(crate) fn record_depth(
     &self,
     context: &mut RasterContext<'_>,
     groups: WaterGroups<'_>,
@@ -138,13 +138,13 @@ impl WaterPass {
   }
 
   /// The bundled maps, which the enhanced rain's puddles and ripples read too.
-  pub fn get_maps(&self) -> &EnhancedWaterMaps {
+  pub(crate) fn get_maps(&self) -> &EnhancedWaterMaps {
     &self.maps
   }
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipelines.refresh(source.cache, || {
       Self::create_pipelines(source, &self.layouts, &self.request_layout, &self.parameter_layouts)
     }) {
@@ -159,7 +159,7 @@ impl WaterPass {
   /// Declares the frame's water: the nearest surface's depth, then the engine's surface, or the enhanced water's scene
   /// copy, reflection and blur and its surface. Answers the G-buffer's depth with the nearest water's over it, which
   /// the resolve reprojects the water's pixels by.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
     bindings: &mut GraphBindings<'a>,

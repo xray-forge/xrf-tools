@@ -5,7 +5,7 @@ use xrf_renderer::RenderBackendAvailability;
 /// only those; each is probed off the render thread.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "list_backends")]
-pub async fn render_list_backends() -> TauriResult<Vec<RenderBackendAvailability>> {
+pub(crate) async fn render_list_backends() -> TauriResult<Vec<RenderBackendAvailability>> {
   tauri::async_runtime::spawn_blocking(xrf_renderer::probe_render_backends)
     .await
     .map_err(|error| format!("Probing the graphics backends failed: {error}"))

@@ -6,7 +6,7 @@ use crate::scene::level::lights::atlas::shadow_tile::ShadowTile;
 /// One face of a light's shadow: its square of the atlas, the camera it is drawn through, and what the scene held
 /// when it was last drawn, none before it is.
 #[derive(Clone, Copy, Debug)]
-pub struct LightShadowFace {
+pub(crate) struct LightShadowFace {
   pub tile: ShadowTile,
   pub view: CameraView,
   pub drawn: Option<usize>,

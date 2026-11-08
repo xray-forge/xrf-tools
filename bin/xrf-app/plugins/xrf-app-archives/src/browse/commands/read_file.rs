@@ -9,7 +9,7 @@ use crate::browse::ArchiveSubjects;
 /// Read one file of the open subject as text, subject to the viewer's read policy, whose ceiling keeps it a short read.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "read_file")]
-pub async fn archives_read_file(
+pub(crate) async fn archives_read_file(
   session_id: SessionId,
   name: String,
   execution: State<'_, ExecutionState>,

@@ -13,7 +13,7 @@ use crate::scene::level::view::view_time::ViewTime;
 /// wind changes how fast they move from then on, never where they stand; summed in `f64`, so a frame's few milliseconds
 /// still add to a day's sum.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct FoliageWind {
+pub(crate) struct FoliageWind {
   /// Drifted across the engine's ground in `xy`, the trunks' clock in `z`, seconds in `w`.
   anim: DVec4,
   previous: DVec4,
@@ -29,7 +29,7 @@ impl FoliageWind {
 
   /// Moves the fields on by the seconds since the view's last frame, never back, at this frame's `wind`, as far as `motion` lets them;
   /// `wetness`, from nothing to one, bends the leaves' normals harder.
-  pub fn advance(
+  pub(crate) fn advance(
     &mut self,
     time: ViewTime,
     settings: &RenderFoliageSettings,

@@ -3,4 +3,4 @@
 pub(crate) mod commands;
 mod request;
 
-pub use request::ArchivesUnpackRequest;
+pub(crate) use request::ArchivesUnpackRequest;

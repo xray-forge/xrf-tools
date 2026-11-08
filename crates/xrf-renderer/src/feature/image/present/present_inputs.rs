@@ -11,7 +11,7 @@ use crate::pass::frame_lighting::light_encoding::LightEncoding;
 /// the reflections' view shows what the rays met by, how the frame is shown, and the frame the camera's film grain is
 /// drawn for.
 #[derive(Clone, Copy, Debug, Default)]
-pub struct PresentInputs {
+pub(crate) struct PresentInputs {
   pub is_upscaled: bool,
   pub is_occluded: bool,
   pub is_indirect: bool,

@@ -18,7 +18,7 @@ const NAME_ARGUMENT: &str = "name";
 const SUGGESTIONS: usize = 10;
 
 #[derive(Default)]
-pub struct InspectCommand;
+pub(crate) struct InspectCommand;
 
 impl GenericCommand for InspectCommand {
   fn operation(&self) -> &'static str {

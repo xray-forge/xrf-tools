@@ -5,7 +5,7 @@ use xrf_vfs::XrayRoots;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub struct ConfigsVerifyRequest {
+pub(crate) struct ConfigsVerifyRequest {
   /// Trees to search, and how each is read.
   pub roots: XrayRoots,
   /// Scope inside those trees, or nothing for all of them.

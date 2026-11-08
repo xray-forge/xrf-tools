@@ -4,27 +4,27 @@ use tauri::ipc::Channel;
 use xrf_job::{JobProgress, ProgressSink};
 
 /// Sends a job's progress to whichever webview is currently watching it.
-pub struct JobProgressSink {
+pub(super) struct JobProgressSink {
   channel: RwLock<Option<Channel<JobProgress>>>,
 }
 
 impl JobProgressSink {
   /// A sink reporting to `channel`, which is what a command that was called by a page starts with.
-  pub fn new(channel: Channel<JobProgress>) -> Self {
+  pub(super) fn new(channel: Channel<JobProgress>) -> Self {
     Self {
       channel: RwLock::new(Some(channel)),
     }
   }
 
   /// A sink reporting nowhere, for a job nobody is watching yet.
-  pub fn detached() -> Self {
+  pub(super) fn detached() -> Self {
     Self {
       channel: RwLock::new(None),
     }
   }
 
   /// Report to `channel` from now on, dropping whatever was there.
-  pub fn attach(&self, channel: Channel<JobProgress>) {
+  pub(super) fn attach(&self, channel: Channel<JobProgress>) {
     *self.channel.write().unwrap_or_else(PoisonError::into_inner) = Some(channel);
   }
 

@@ -14,13 +14,13 @@ const FAILED: u8 = 4;
 /// is mapped once that frame's work is done, which a later frame's poll reports, and it is read then and freed again.
 /// Its state is shared, so another thread may read and free it once it is mapped.
 #[derive(Debug)]
-pub struct GpuReadback {
+pub(crate) struct GpuReadback {
   buffer: wgpu::Buffer,
   state: Arc<AtomicU8>,
 }
 
 impl GpuReadback {
-  pub fn new(device: &wgpu::Device, label: &str, size: u64) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, label: &str, size: u64) -> Self {
     Self {
       buffer: device.create_buffer(&wgpu::BufferDescriptor {
         label: Some(label),
@@ -32,39 +32,39 @@ impl GpuReadback {
     }
   }
 
-  pub fn get_buffer(&self) -> &wgpu::Buffer {
+  pub(crate) fn get_buffer(&self) -> &wgpu::Buffer {
     &self.buffer
   }
 
   /// Whether a copy may go into it: nothing is on its way.
-  pub fn is_free(&self) -> bool {
+  pub(crate) fn is_free(&self) -> bool {
     self.state.load(Ordering::Acquire) == FREE
   }
 
   /// Whether a copy into it was recorded with a frame and not yet asked for.
-  pub fn is_recorded(&self) -> bool {
+  pub(crate) fn is_recorded(&self) -> bool {
     self.state.load(Ordering::Acquire) == RECORDED
   }
 
   /// Whether what was copied is back, mapped or refused, so `take` answers.
-  pub fn is_back(&self) -> bool {
+  pub(crate) fn is_back(&self) -> bool {
     matches!(self.state.load(Ordering::Acquire), MAPPED | FAILED)
   }
 
   /// Notes a copy into it recorded with this frame's work.
-  pub fn mark_recorded(&self) {
+  pub(crate) fn mark_recorded(&self) {
     self.state.store(RECORDED, Ordering::Release);
   }
 
   /// Frees it of a copy recorded with a frame that was never submitted.
-  pub fn abandon(&self) {
+  pub(crate) fn abandon(&self) {
     let _ = self
       .state
       .compare_exchange(RECORDED, FREE, Ordering::AcqRel, Ordering::Acquire);
   }
 
   /// Asks for the copy recorded with the frame just submitted to be mapped.
-  pub fn request(&self) {
+  pub(crate) fn request(&self) {
     if self.state.load(Ordering::Acquire) == RECORDED {
       let state: Arc<AtomicU8> = Arc::clone(&self.state);
 
@@ -76,7 +76,7 @@ impl GpuReadback {
   }
 
   /// Reads what was copied once it is mapped, and frees the buffer for the next copy; nothing while it is on its way.
-  pub fn take<R>(&self, read: impl FnOnce(&[u8]) -> R) -> Option<XrfResult<R>> {
+  pub(crate) fn take<R>(&self, read: impl FnOnce(&[u8]) -> R) -> Option<XrfResult<R>> {
     match self.state.load(Ordering::Acquire) {
       MAPPED => {
         let result: XrfResult<R> = self

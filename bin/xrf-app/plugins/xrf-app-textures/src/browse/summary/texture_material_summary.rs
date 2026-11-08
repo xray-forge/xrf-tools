@@ -11,7 +11,7 @@ use crate::browse::{TextureBadges, TextureBumpPair};
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TextureMaterialSummary {
+pub(crate) struct TextureMaterialSummary {
   /// The reference of the texture the descriptor describes.
   pub reference: String,
   /// The pair the engine will try to bind, when the declaration is one it reads.
@@ -21,7 +21,7 @@ pub struct TextureMaterialSummary {
 
 impl TextureMaterialSummary {
   /// What a material's descriptor makes of the texture `reference` names.
-  pub fn of(reference: String, material: &XrayMaterialDescriptor) -> Self {
+  pub(crate) fn of(reference: String, material: &XrayMaterialDescriptor) -> Self {
     Self {
       reference,
       bump: material.declared_bump_pair().map(|(bump, companion)| TextureBumpPair {
@@ -37,14 +37,14 @@ impl TextureMaterialSummary {
   /// # Errors
   ///
   /// Returns an error when the roots cannot be planned or mounted.
-  pub fn sweep_roots(assets: &AssetMountState, roots: &XrayRoots) -> TauriResult<Vec<Self>> {
+  pub(crate) fn sweep_roots(assets: &AssetMountState, roots: &XrayRoots) -> TauriResult<Vec<Self>> {
     let search: XraySearch = assets.search(roots)?;
 
     Ok(Self::sweep(&search, &search.list_assets(XrayAssetType::Thm)))
   }
 
   /// Summarizes the given descriptors the way `LoadTHM` reads them, in the order given.
-  pub fn sweep(search: &XraySearch, descriptors: &[XrayAsset]) -> Vec<Self> {
+  pub(crate) fn sweep(search: &XraySearch, descriptors: &[XrayAsset]) -> Vec<Self> {
     descriptors
       .par_iter()
       .filter_map(|descriptor| {

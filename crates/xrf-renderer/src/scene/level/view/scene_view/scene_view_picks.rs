@@ -14,18 +14,18 @@ const PICKED_HELPER: u32 = 3;
 
 impl SceneView {
   /// Asks for a pick's texel back, its frame just submitted.
-  pub fn request_pick(&self, slot: usize) {
+  pub(crate) fn request_pick(&self, slot: usize) {
     self.features.pick.request(slot);
   }
 
   /// A pick's texel once it is back; a view made since the pick has no readback for it, and it met nothing still drawn.
-  pub fn take_pick(&self, slot: usize) -> Option<XrfResult<[u32; 4]>> {
+  pub(crate) fn take_pick(&self, slot: usize) -> Option<XrfResult<[u32; 4]>> {
     self.features.pick.take(slot)
   }
 
   /// Names what a pick's texel met, `unproject` turning its stored depth into where the ray met it and how many metres
   /// ahead of the camera, along its view, that point stands.
-  pub fn resolve_pick(
+  pub(crate) fn resolve_pick(
     &self,
     scene: &LevelScene,
     [kind, cluster, place, stored]: [u32; 4],

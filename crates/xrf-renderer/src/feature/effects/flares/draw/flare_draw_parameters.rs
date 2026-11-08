@@ -7,7 +7,7 @@ use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 /// lighting, whose display the flares' pictures enter the scene through.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct FlareDrawParameters<'a> {
+pub(crate) struct FlareDrawParameters<'a> {
   #[uniform]
   pub flares: UniformBinding<FlareUniform>,
   #[storage]

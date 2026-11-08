@@ -8,7 +8,7 @@ use crate::feature::scene::grass::draw::grass_wind_uniform::GrassWindUniform;
 /// corners, their triangles' records, how many stand and the cascades' draw of them.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 2)]
-pub struct GrassCardsParameters {
+pub(crate) struct GrassCardsParameters {
   #[storage]
   pub positions: StorageArray<f32>,
   #[storage]

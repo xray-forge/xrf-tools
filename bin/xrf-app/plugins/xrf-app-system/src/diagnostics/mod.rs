@@ -11,11 +11,11 @@
 //! - [`StartupLog`] - the log's first lines: the build, the machine, the process and the variables set.
 
 pub(crate) mod commands;
-pub mod memory;
+pub(crate) mod memory;
 mod probe;
 mod report;
 mod startup;
 
 pub use probe::MachineProbeState;
-pub use report::{HostInfo, RuntimeSnapshot};
+pub(crate) use report::{HostInfo, RuntimeSnapshot};
 pub use startup::StartupLog;

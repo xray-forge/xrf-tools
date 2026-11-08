@@ -2,4 +2,4 @@
 
 mod archives_unpack_request;
 
-pub use archives_unpack_request::ArchivesUnpackRequest;
+pub(crate) use archives_unpack_request::ArchivesUnpackRequest;

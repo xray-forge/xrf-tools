@@ -4,7 +4,7 @@ use xrf_texture::BumpAlignment;
 /// One descriptor's diffuse and the bump it declares, and whether the two belong together.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct BumpAlignmentSet {
+pub(crate) struct BumpAlignmentSet {
   /// The descriptor declaring the bump.
   pub descriptor: String,
   /// The diffuse beside it, where a root holds one.
@@ -23,7 +23,7 @@ pub struct BumpAlignmentSet {
 /// What comparing one set came to.
 #[derive(Debug, Serialize)]
 #[serde(tag = "status", rename_all = "camelCase", rename_all_fields = "camelCase")]
-pub enum BumpAlignmentOutcome {
+pub(crate) enum BumpAlignmentOutcome {
   Measured {
     alignment: BumpAlignment,
   },
@@ -38,7 +38,7 @@ pub enum BumpAlignmentOutcome {
 
 impl BumpAlignmentSet {
   /// Its measure, where it was measured.
-  pub fn get_alignment(&self) -> Option<&BumpAlignment> {
+  pub(crate) fn get_alignment(&self) -> Option<&BumpAlignment> {
     match &self.outcome {
       BumpAlignmentOutcome::Measured { alignment } => Some(alignment),
       _ => None,

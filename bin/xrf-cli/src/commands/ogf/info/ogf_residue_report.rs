@@ -5,7 +5,7 @@ use xrf_ogf::OgfResidue;
 /// a size its payload contradicts, which counts no ignored bytes.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct OgfResidueReport {
+pub(crate) struct OgfResidueReport {
   cause: String,
   /// The motion reference path the residue completes, for the split-reference shape only.
   discarded_reference: Option<String>,
@@ -16,7 +16,7 @@ pub struct OgfResidueReport {
 
 impl OgfResidueReport {
   /// The residue, with `trailing` the ignored bytes inside the motion refs chunk.
-  pub fn new(residue: &OgfResidue, trailing: usize) -> Self {
+  pub(crate) fn new(residue: &OgfResidue, trailing: usize) -> Self {
     Self {
       cause: String::from(residue.cause.as_str()),
       discarded_reference: residue.cause.get_discarded_path().map(String::from),

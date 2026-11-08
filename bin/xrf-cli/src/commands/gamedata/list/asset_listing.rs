@@ -3,7 +3,7 @@ use std::time::Duration;
 use xrf_vfs::{XrayAsset, XrayMount, XrayPathCollision, XraySkippedMount};
 
 /// Resolved assets and source metadata for one listing.
-pub struct AssetListing {
+pub(crate) struct AssetListing {
   /// How the path was interpreted when planning its mounts.
   pub origin: String,
   /// Every mount, in search order.

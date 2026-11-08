@@ -29,7 +29,10 @@ impl LevelEnvironmentPart {
   /// # Errors
   ///
   /// Returns the reason the configs cannot be read, which every later ask answers with again.
-  pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> TauriResult<Arc<LevelEnvironment>> {
+  pub(crate) fn get(
+    current: &SessionSnapshot<SelectedLevel>,
+    search: &XraySearch,
+  ) -> TauriResult<Arc<LevelEnvironment>> {
     current.parts.get_or_record::<Self>(search, |search| {
       let project: LtxProject = LevelConfigs::of(current).open(search)?;
       let catalog: EnvironmentCatalog = EnvironmentReader::read_opt(

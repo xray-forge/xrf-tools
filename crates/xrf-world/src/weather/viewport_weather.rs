@@ -22,7 +22,7 @@ const REPORT_INTERVAL: Duration = Duration::from_millis(100);
 /// One viewport's weather: what it was asked to play over what its scene read of the level's weathers, its cycles read
 /// through the level's source on the loader threads, played on, and what the scene is lit by as a result. A request
 /// outlives the level it was made for, so one sent before the level is shown plays once it is.
-pub struct ViewportWeather {
+pub(crate) struct ViewportWeather {
   player: WeatherPlayer,
   /// What was last asked to play, and how it takes over.
   request: (WorldWeatherPlay, WorldWeatherTransition),
@@ -43,7 +43,7 @@ pub struct ViewportWeather {
 }
 
 impl ViewportWeather {
-  pub fn new(now: Instant, workers: &RenderWorkers) -> Self {
+  pub(crate) fn new(now: Instant, workers: &RenderWorkers) -> Self {
     let (sender, receiver) = channel();
 
     Self {
@@ -64,26 +64,26 @@ impl ViewportWeather {
   }
 
   /// What the scene is lit by now.
-  pub fn get_lighting(&self) -> &RenderLighting {
+  pub(crate) fn get_lighting(&self) -> &RenderLighting {
     &self.lighting
   }
 
-  pub fn get_player(&self) -> &WeatherPlayer {
+  pub(crate) fn get_player(&self) -> &WeatherPlayer {
     &self.player
   }
 
-  pub fn get_player_mut(&mut self) -> &mut WeatherPlayer {
+  pub(crate) fn get_player_mut(&mut self) -> &mut WeatherPlayer {
     &mut self.player
   }
 
   /// What every weather of the shown level plays with, once read.
-  pub fn get_level(&self) -> Option<&Arc<WorldLevelWeather>> {
+  pub(crate) fn get_level(&self) -> Option<&Arc<WorldLevelWeather>> {
     self.level.as_ref()
   }
 
   /// Plays the weather of another level, or of none: nothing plays until its scene has read what the level's weathers
   /// play with (`advance`), and the last request plays over it once it has.
-  pub fn show(&mut self, source: Option<Arc<dyn WorldLevelSource>>) {
+  pub(crate) fn show(&mut self, source: Option<Arc<dyn WorldLevelSource>>) {
     self.level_generation += 1;
     self.level = None;
     self.player.take(None, WorldWeatherTransition::Cut);
@@ -92,7 +92,7 @@ impl ViewportWeather {
 
   /// Reads its cycles from `source`, a next source of the level shown, from now on; what its weathers play with follows
   /// its scene, which reads it again where a reload names the weather.
-  pub fn follow(&mut self, source: Arc<dyn WorldLevelSource>) {
+  pub(crate) fn follow(&mut self, source: Arc<dyn WorldLevelSource>) {
     self.source = Some(source);
   }
 
@@ -111,28 +111,28 @@ impl ViewportWeather {
   }
 
   /// Plays something else from now on.
-  pub fn play(&mut self, play: WorldWeatherPlay, transition: WorldWeatherTransition) {
+  pub(crate) fn play(&mut self, play: WorldWeatherPlay, transition: WorldWeatherTransition) {
     self.request = (play, transition);
     self.request_generation += 1;
     self.start();
   }
 
-  pub fn set_control(&mut self, control: WorldWeatherControl) {
+  pub(crate) fn set_control(&mut self, control: WorldWeatherControl) {
     self.player.set_control(control);
   }
 
-  pub fn seek(&mut self, time: f32) {
+  pub(crate) fn seek(&mut self, time: f32) {
     self.player.seek(time);
   }
 
-  pub fn play_effect(&mut self, name: Option<&str>) {
+  pub(crate) fn play_effect(&mut self, name: Option<&str>) {
     self.player.play_effect(name);
   }
 
   /// Takes what its scene read of the level (`level`) and the cycles the loaders read, moves the clock on to a frame and
   /// lights the scene by it, striking as `thunder` lets it. `view` is where the camera stands, in engine space; `is_up`
   /// says whether a lighting's skies are up.
-  pub fn advance(
+  pub(crate) fn advance(
     &mut self,
     now: Instant,
     view: [f32; 3],
@@ -157,7 +157,7 @@ impl ViewportWeather {
 
   /// The weather's report, with the ambient effects' near the camera, when it changed, at most every
   /// [`REPORT_INTERVAL`]; none inside while nothing plays.
-  pub fn take_report(
+  pub(crate) fn take_report(
     &mut self,
     now: Instant,
     ambient: Option<WorldAmbientReport>,

@@ -8,7 +8,7 @@ use crate::feature::scene::wind::foliage_wind_values::FoliageWindValues;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "GrassWind")]
-pub struct GrassWindUniform {
+pub(crate) struct GrassWindUniform {
   /// `dir1` and `dir2`.
   pub wind_1: Vec4,
   pub wind_2: Vec4,
@@ -34,7 +34,7 @@ pub struct GrassWindUniform {
 
 impl GrassWindUniform {
   /// This sway after the one before it, or after itself for a first frame.
-  pub fn following(mut self, before: Option<&Self>) -> Self {
+  pub(crate) fn following(mut self, before: Option<&Self>) -> Self {
     let before: Self = before.copied().unwrap_or(self);
 
     self.previous_wind_1 = before.wind_1;
@@ -45,7 +45,7 @@ impl GrassWindUniform {
   }
 
   /// This sway with the enhanced foliage motion's values.
-  pub fn with_foliage(mut self, foliage: &FoliageWindValues) -> Self {
+  pub(crate) fn with_foliage(mut self, foliage: &FoliageWindValues) -> Self {
     self.foliage_wind = foliage.wind;
     self.foliage_grass = foliage.grass;
     self.foliage_trees = foliage.trees;
@@ -57,7 +57,7 @@ impl GrassWindUniform {
   }
 
   /// The same wind, the tufts standing along their ground's normal where `is_aligned`.
-  pub fn with_alignment(mut self, is_aligned: bool) -> Self {
+  pub(crate) fn with_alignment(mut self, is_aligned: bool) -> Self {
     self.alignment = Vec4::new(f32::from(u8::from(is_aligned)), 0.0, 0.0, 0.0);
     self
   }

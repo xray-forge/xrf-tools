@@ -5,7 +5,7 @@ use xrf_material::XraySurfaceDraw;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub enum TextureSurfaceAlpha {
+pub(crate) enum TextureSurfaceAlpha {
   /// Not read at all, which is what the plain deferred base shader does.
   Ignored,
   /// Clipped against `def_aref`, which is what every `_aref` shader does.
@@ -16,7 +16,7 @@ pub enum TextureSurfaceAlpha {
 
 impl TextureSurfaceAlpha {
   /// How a surface reading its alpha this way is drawn.
-  pub fn to_draw(self) -> XraySurfaceDraw {
+  pub(crate) fn to_draw(self) -> XraySurfaceDraw {
     match self {
       Self::Ignored => XraySurfaceDraw::Opaque,
       Self::CutOut => XraySurfaceDraw::AlphaTested {

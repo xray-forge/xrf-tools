@@ -6,7 +6,7 @@ use crate::feature::weather::wet::wet_uniform::WetUniform;
 /// sampler, the wet surfaces' settings and state, and a puddle a cell.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 0)]
-pub struct PuddleKeepParameters<'a> {
+pub(crate) struct PuddleKeepParameters<'a> {
   #[binding(6)]
   #[texture(d2, unfilterable)]
   pub kept_sites: GraphTexture,

@@ -10,7 +10,7 @@ use crate::scene::level::lights::light_record::LightRecord;
 /// the view's clusters and their shadow atlas, the grid, the history the last frame wrote and this frame's.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct FroxelInjectParameters<'a> {
+pub(crate) struct FroxelInjectParameters<'a> {
   #[uniform]
   pub lighting: UniformBinding<LightingUniform>,
   #[texture(d2_array, depth)]

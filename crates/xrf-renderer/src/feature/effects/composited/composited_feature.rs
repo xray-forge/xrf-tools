@@ -34,7 +34,7 @@ use crate::scene::static_scene::surface::static_surface_pass::StaticSurfacePass;
 /// order, the strictly sorted ones back to front, the enhanced glass, the distorting surfaces' special pass and the
 /// selected ones' mark.
 #[derive(Default)]
-pub struct CompositedFeature {
+pub(crate) struct CompositedFeature {
   /// The sorted clusters in view, back to front, as `(cluster, place)` entries, and the runs of them alike in layout.
   sorted: Option<wgpu::Buffer>,
   sorted_count: u32,
@@ -48,7 +48,7 @@ pub struct CompositedFeature {
 impl CompositedFeature {
   /// Takes this frame's composited surfaces through the camera, with what of the `scene` is in `sight`: the sorted list
   /// written through `encoder`, whether the enhanced glass draws, and where on the frame a distorting surface may.
-  pub fn prepare(
+  pub(crate) fn prepare(
     &mut self,
     &ViewPrepare {
       device, view, options, ..
@@ -151,12 +151,12 @@ impl CompositedFeature {
   }
 
   /// The tiles of the frame a distorting surface of the scene in sight of a lit, solid view may touch.
-  pub fn get_distortion_tiles(&self) -> &ScreenTiles {
+  pub(crate) fn get_distortion_tiles(&self) -> &ScreenTiles {
     &self.distortion_tiles
   }
 
   /// Adds the blended, added and multiplied surfaces in the cull's order, over the lit scene.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &self,
     graph: &mut FrameGraph<'a>,
     passes: LevelPasses<'a>,
@@ -193,7 +193,7 @@ impl CompositedFeature {
   /// unsorted forward passes; the enhanced glass over the frame copied just before it, which it refracts; and the
   /// distorting surfaces' special pass, a window's glass bending what is behind it, into the distortion target the
   /// water and the particles wrote, as the engine draws `mapDistort` after every forward pass.
-  pub fn add_after_particles<'a>(
+  pub(crate) fn add_after_particles<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -337,7 +337,7 @@ impl CompositedFeature {
   }
 
   /// Adds the selected surfaces' mark into the material target, where the present outlines the selection.
-  pub fn add_selection_passes<'a>(
+  pub(crate) fn add_selection_passes<'a>(
     &self,
     graph: &mut FrameGraph<'a>,
     passes: LevelPasses<'a>,

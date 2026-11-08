@@ -75,7 +75,7 @@ impl FlyDrag {
 /// moves it forward, and with Alt it turns around, dollies to and tracks a pivot ahead of it. It holds yaw and pitch itself, since a rotation read back
 /// cannot tell `+π` from `-π`.
 #[derive(Clone, Debug)]
-pub struct FlyCameraController {
+pub(crate) struct FlyCameraController {
   description: WorldCamera,
   position: Vec3,
   yaw: f32,
@@ -111,7 +111,7 @@ impl Default for FlyCameraController {
 }
 
 impl FlyCameraController {
-  pub fn new(description: WorldCamera) -> Self {
+  pub(crate) fn new(description: WorldCamera) -> Self {
     let mut controller: Self = Self {
       description,
       position: Vec3::ZERO,
@@ -131,7 +131,7 @@ impl FlyCameraController {
   }
 
   /// Takes a new description, answering whether the camera jumped to its start rather than keeping where it stands.
-  pub fn describe(&mut self, description: WorldCamera) -> bool {
+  pub(crate) fn describe(&mut self, description: WorldCamera) -> bool {
     let is_moved: bool = description.get_start() != self.description.get_start();
 
     self.description = description;
@@ -143,18 +143,18 @@ impl FlyCameraController {
     is_moved
   }
 
-  pub fn command(&mut self, command: WorldCameraCommand) {
+  pub(crate) fn command(&mut self, command: WorldCameraCommand) {
     if command == WorldCameraCommand::Reset {
       self.reset();
     }
   }
 
   /// The viewport's height in CSS pixels, against which a track is measured.
-  pub fn resize(&mut self, height: f32) {
+  pub(crate) fn resize(&mut self, height: f32) {
     self.height = height.max(1.0);
   }
 
-  pub fn input(&mut self, event: &WorldInputEvent) {
+  pub(crate) fn input(&mut self, event: &WorldInputEvent) {
     match event {
       WorldInputEvent::DragStart { buttons, modifiers } => {
         self.modifiers = *modifiers;
@@ -197,12 +197,12 @@ impl FlyCameraController {
 
   /// The steps of speed the wheel asked for since they were last taken, positive faster. The speed is the page's
   /// setting, which describes the camera again with the speed it chose.
-  pub fn take_speed_steps(&mut self) -> i32 {
+  pub(crate) fn take_speed_steps(&mut self) -> i32 {
     std::mem::take(&mut self.speed_steps)
   }
 
   /// Advances the camera by a frame's time.
-  pub fn update(&mut self, delta: Duration) {
+  pub(crate) fn update(&mut self, delta: Duration) {
     let step: f32 = delta.min(MAX_DELTA).as_secs_f32();
     let turned: f32 = TURN_SPEED * step;
 
@@ -235,11 +235,11 @@ impl FlyCameraController {
 
   /// Whether a key or a drag is held.
   #[cfg(test)]
-  pub fn is_moving(&self) -> bool {
+  pub(crate) fn is_moving(&self) -> bool {
     !self.held.is_empty() || self.drag.is_some()
   }
 
-  pub fn get_pose(&self) -> WorldCameraPose {
+  pub(crate) fn get_pose(&self) -> WorldCameraPose {
     let target: Vec3 = self.position + self.get_rotation() * Vec3::NEG_Z;
 
     WorldCameraPose {
@@ -249,7 +249,7 @@ impl FlyCameraController {
   }
 
   /// Where it stands and what its lens is this frame.
-  pub fn get_frame(&self) -> CameraFrame {
+  pub(crate) fn get_frame(&self) -> CameraFrame {
     let (field_of_view, near, far) = self.description.get_lens();
     let world: Mat4 = Mat4::from_rotation_translation(self.get_rotation(), self.position);
 

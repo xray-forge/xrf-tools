@@ -59,7 +59,7 @@ const TEXTURE_SWEEP: Duration = Duration::from_secs(2);
 const ALLOCATOR_REPORT_EVERY: Duration = Duration::from_millis(500);
 
 /// The render thread: owns the GPU and every viewport, and is the only place GPU work happens.
-pub struct RenderThread {
+pub(crate) struct RenderThread {
   receiver: Receiver<RenderCommand>,
   /// What the queue shares with the thread, held weakly: once the last queue goes, so does its sender, and the thread
   /// stops as its channel disconnects.
@@ -124,7 +124,7 @@ pub struct RenderThread {
 }
 
 impl RenderThread {
-  pub fn new(
+  pub(crate) fn new(
     receiver: Receiver<RenderCommand>,
     link: Weak<Mutex<RenderLink>>,
     settings: RenderSettings,
@@ -171,7 +171,7 @@ impl RenderThread {
 
   /// Runs the thread until it idles past `IDLE_STOP` or is asked to stop: draws a frame while any viewport draws, paced
   /// to the settings' rate, keeps the GPU started while a hold is taken, and handles the commands sent between frames.
-  pub fn run(mut self) {
+  pub(crate) fn run(mut self) {
     log::info!("Render thread started");
 
     'running: loop {

@@ -6,7 +6,7 @@ use xrf_texture::TextureAlbedo;
 /// One base texture the level's albedo-writing surfaces dress with, and how its colours sit as albedo.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AlbedoTexture {
+pub(crate) struct AlbedoTexture {
   /// The texture as the shader table names it.
   pub reference: String,
   /// The file it resolved to, beside the level or in the shared tree.
@@ -24,7 +24,7 @@ pub struct AlbedoTexture {
 /// What reading one texture's albedo came to.
 #[derive(Debug, Serialize)]
 #[serde(tag = "status", rename_all = "camelCase", rename_all_fields = "camelCase")]
-pub enum AlbedoOutcome {
+pub(crate) enum AlbedoOutcome {
   Measured {
     albedo: TextureAlbedo,
   },
@@ -39,7 +39,7 @@ pub enum AlbedoOutcome {
 
 impl AlbedoTexture {
   /// Its measure, where it was measured.
-  pub fn get_albedo(&self) -> Option<&TextureAlbedo> {
+  pub(crate) fn get_albedo(&self) -> Option<&TextureAlbedo> {
     match &self.outcome {
       AlbedoOutcome::Measured { albedo } => Some(albedo),
       _ => None,

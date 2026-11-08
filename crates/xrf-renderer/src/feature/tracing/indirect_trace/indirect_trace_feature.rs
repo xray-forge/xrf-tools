@@ -14,7 +14,7 @@ use crate::scene::level::view::record::view_record::ViewRecord;
 /// the bitmask search gathers light: one ray a pixel at the frame's size, as ray reconstruction takes its noise, lit
 /// where it meets something as the reflections light a hit, written as the bounce's filter writes its light.
 #[derive(Default)]
-pub struct IndirectTraceFeature {
+pub(crate) struct IndirectTraceFeature {
   /// Whether it traces this frame, the scene's trace allowing.
   is_asked: bool,
   uniform: IndirectTraceUniform,
@@ -23,19 +23,19 @@ pub struct IndirectTraceFeature {
 impl IndirectTraceFeature {
   /// Takes this frame's trace at the light's `intensity`, where its pass is built, DLSS ray reconstruction resolves the
   /// frame and the bitmask search gathers light, none otherwise; its noise turned by `noise_frame`.
-  pub fn prepare(&mut self, intensity: Option<f32>, noise_frame: u32) {
+  pub(crate) fn prepare(&mut self, intensity: Option<f32>, noise_frame: u32) {
     self.is_asked = intensity.is_some();
     self.uniform = IndirectTraceUniform::new(noise_frame, intensity.unwrap_or_default());
   }
 
   /// Whether it traces this frame through the scene's trace, where that is built (`traced`).
-  pub fn is_traced(&self, traced: Option<&TracedScene<'_>>) -> bool {
+  pub(crate) fn is_traced(&self, traced: Option<&TracedScene<'_>>) -> bool {
     self.is_asked && traced.is_some()
   }
 
   /// Traces the indirect light where it does this frame and the scene's trace is built (`traced`), against the sky's
   /// group a missed ray reads. Answers the light and how far each ray went.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &self,
     GraphDeclaration { graph, runtime, .. }: GraphDeclaration<'_, 'a>,
     ViewRecord {

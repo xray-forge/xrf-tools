@@ -8,7 +8,7 @@ use xrf_app_render::CaptureFile;
 /// A burst's pictures encoded as PNG and written on the worker pool, a few at once, so the burst's frames keep coming
 /// while they are: a fullscreen frame's PNG takes about 200 ms to encode, its marks' 90 ms, longer than the renderer
 /// takes to draw the next. A write that failed is answered by a later call.
-pub struct BurstFiles {
+pub(crate) struct BurstFiles {
   sender: Sender<TauriResult>,
   written: Receiver<TauriResult>,
   pending: usize,
@@ -18,7 +18,7 @@ impl BurstFiles {
   /// Pictures encoding at once before the next waits: four frames and their marks, about 230 MB at 3730×1930.
   const MOST_PENDING: usize = 8;
 
-  pub fn new() -> Self {
+  pub(crate) fn new() -> Self {
     let (sender, written) = channel();
 
     Self {
@@ -33,7 +33,7 @@ impl BurstFiles {
   /// # Errors
   ///
   /// Returns an error when a picture written before could not be.
-  pub fn write(&mut self, picture: RgbaImage, path: PathBuf, name: &'static str) -> TauriResult {
+  pub(crate) fn write(&mut self, picture: RgbaImage, path: PathBuf, name: &'static str) -> TauriResult {
     while self.pending >= Self::MOST_PENDING {
       self.wait_one()?;
     }
@@ -53,7 +53,7 @@ impl BurstFiles {
   /// # Errors
   ///
   /// Returns the first error of a picture that could not be written.
-  pub fn finish(mut self) -> TauriResult {
+  pub(crate) fn finish(mut self) -> TauriResult {
     let mut result: TauriResult = Ok(());
 
     while self.pending > 0 {

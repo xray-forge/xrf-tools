@@ -10,7 +10,7 @@ use xrf_vfs::{XrayAsset, XrayAssetType, XrayResolution, XraySearch};
 use crate::commands::thm::bump_alignment::bump_alignment_set::{BumpAlignmentOutcome, BumpAlignmentSet};
 
 /// Every texture set a root's descriptors declare a bump for, each compared with its diffuse.
-pub struct BumpAlignmentSurvey {
+pub(crate) struct BumpAlignmentSurvey {
   /// Descriptors read.
   pub descriptors: usize,
   /// One a descriptor declaring a bump the engine reads, in path order.
@@ -20,7 +20,7 @@ pub struct BumpAlignmentSurvey {
 impl BumpAlignmentSurvey {
   /// Surveys the descriptors `listed` holds, resolving what they name through `search` as the renderer does outside
   /// any level, so a set narrowed to a subtree still finds a bump kept outside it.
-  pub fn run(search: &XraySearch, listed: &XraySearch) -> Self {
+  pub(crate) fn run(search: &XraySearch, listed: &XraySearch) -> Self {
     let descriptors: Vec<XrayAsset> = listed.list_assets(XrayAssetType::Thm);
     // Decoding is the survey's whole cost, and each set's is its own; the order is the listing's.
     let sets: Vec<BumpAlignmentSet> = descriptors

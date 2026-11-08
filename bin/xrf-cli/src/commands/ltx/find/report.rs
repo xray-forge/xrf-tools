@@ -7,7 +7,7 @@ use xrf_ltx_inspect::LtxDeclarationSearch;
 /// be one.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LtxFindReport<'a> {
+pub(crate) struct LtxFindReport<'a> {
   /// How the dialect the project was opened with names itself.
   dialect: &'a str,
   #[serde(flatten)]
@@ -15,7 +15,7 @@ pub struct LtxFindReport<'a> {
 }
 
 impl<'a> LtxFindReport<'a> {
-  pub fn new(dialect: &'a str, search: &'a LtxDeclarationSearch) -> Self {
+  pub(crate) fn new(dialect: &'a str, search: &'a LtxDeclarationSearch) -> Self {
     Self { dialect, search }
   }
 }

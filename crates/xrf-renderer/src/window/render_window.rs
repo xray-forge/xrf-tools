@@ -20,7 +20,7 @@ const FRAME_LATENCY: u32 = 2;
 const SKIPS_REPORTED_EVERY: u32 = 600;
 
 /// One native window's swapchain, covering its whole client area; its viewports are rectangles drawn into it.
-pub struct RenderWindow {
+pub(crate) struct RenderWindow {
   host: Arc<dyn RenderWindowHost>,
   surface: wgpu::Surface<'static>,
   format: wgpu::TextureFormat,
@@ -41,7 +41,7 @@ impl RenderWindow {
   /// # Errors
   ///
   /// Returns an error when the GPU cannot present to the window.
-  pub fn new(context: &GpuContext, host: Arc<dyn RenderWindowHost>) -> XrfResult<Self> {
+  pub(crate) fn new(context: &GpuContext, host: Arc<dyn RenderWindowHost>) -> XrfResult<Self> {
     // SAFETY: `RenderWindowHost`'s contract keeps the window alive until its last viewport's detach is handled, and the
     // thread lets the window's swapchain go as it handles that detach.
     let surface: wgpu::Surface<'static> = unsafe {
@@ -77,39 +77,39 @@ impl RenderWindow {
     })
   }
 
-  pub fn get_backdrop(&self) -> Option<&WindowBackdrop> {
+  pub(crate) fn get_backdrop(&self) -> Option<&WindowBackdrop> {
     self.backdrop.as_ref()
   }
 
   /// Where its backdrop is kept, for the backdrop pass to make and write.
-  pub fn get_backdrop_slot(&mut self) -> &mut Option<WindowBackdrop> {
+  pub(crate) fn get_backdrop_slot(&mut self) -> &mut Option<WindowBackdrop> {
     &mut self.backdrop
   }
 
   /// What it presents into: its swapchain, in the format it picked.
-  pub fn get_target(&self) -> DisplayTarget {
+  pub(crate) fn get_target(&self) -> DisplayTarget {
     DisplayTarget { format: self.format }
   }
 
   /// Whether its images may be copied out of, which a capture of what the window shows needs: as far as the platform's
   /// swapchain allows.
-  pub fn is_copyable(&self) -> bool {
+  pub(crate) fn is_copyable(&self) -> bool {
     self.usages.contains(wgpu::TextureUsages::COPY_SRC)
   }
 
   /// Whether the surface was lost: the window is then drawn into through a new one.
-  pub fn is_lost(&self) -> bool {
+  pub(crate) fn is_lost(&self) -> bool {
     self.is_lost.get()
   }
 
   /// Has the next frame configure the swapchain again, as a size change would.
-  pub fn configure_again(&self) {
+  pub(crate) fn configure_again(&self) {
     self.configured.set(None);
   }
 
   /// Configures the swapchain for the window's size now, presenting as `frame_rate` asks, answering the size; `None`
   /// while the window shows nothing.
-  pub fn ready(&mut self, context: &GpuContext, frame_rate: &RenderFrameRate) -> Option<(u32, u32)> {
+  pub(crate) fn ready(&mut self, context: &GpuContext, frame_rate: &RenderFrameRate) -> Option<(u32, u32)> {
     let (width, height) = self.host.get_client_size();
 
     if width == 0 || height == 0 || self.host.is_hidden() {
@@ -139,7 +139,7 @@ impl RenderWindow {
 
   /// The next image to draw into, of the size `ready` configured; `None` where the surface gives none this time, which
   /// is logged as a run of skipped frames rather than frame by frame.
-  pub fn acquire(&self) -> Option<wgpu::SurfaceTexture> {
+  pub(crate) fn acquire(&self) -> Option<wgpu::SurfaceTexture> {
     let frame: Result<wgpu::SurfaceTexture, &'static str> = self.take_image();
     let (count, reason) = self.skipped.get();
 

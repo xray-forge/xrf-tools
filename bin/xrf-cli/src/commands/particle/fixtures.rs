@@ -142,7 +142,7 @@ flags = 4
 ";
 
 /// Write the library under a root of its own, since tests run in parallel, and answer the packed file's path.
-pub fn create_library(name: &str) -> XrfResult<PathBuf> {
+pub(crate) fn create_library(name: &str) -> XrfResult<PathBuf> {
   let root: PathBuf = GeneratedResources::create_dir(&format!("particle_commands/{name}"))?;
   let unpacked: PathBuf = root.join("unpacked");
   let packed: PathBuf = root.join("particles.xr");
@@ -158,7 +158,7 @@ pub fn create_library(name: &str) -> XrfResult<PathBuf> {
 }
 
 /// Run a particle command on a library and answer what it deposited.
-pub fn run_for_result<T: GenericCommand>(command: &T, library: &Path, extra: &[&str]) -> CommandResult<Value> {
+pub(crate) fn run_for_result<T: GenericCommand>(command: &T, library: &Path, extra: &[&str]) -> CommandResult<Value> {
   let mut arguments: Vec<String> = vec![
     String::from(command.operation()),
     String::from("--path"),

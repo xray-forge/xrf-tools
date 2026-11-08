@@ -1,6 +1,6 @@
 /// `PDomainEnum`: the shape of a region particles are generated in or tested against, by the code the file stores.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum ParticleVolumeKind {
+pub(crate) enum ParticleVolumeKind {
   Point,
   Line,
   Triangle,

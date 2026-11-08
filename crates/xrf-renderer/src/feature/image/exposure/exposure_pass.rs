@@ -8,7 +8,7 @@ use crate::pass::build::pipeline_source::PipelineSource;
 
 /// `phase_luminance`: measures the scene combine finished, then adapts the scale the next frame's tonemap reads; under
 /// the physical light, a histogram of the scene's light, then the scale brought towards middle grey.
-pub struct ExposurePass {
+pub(crate) struct ExposurePass {
   layout: wgpu::BindGroupLayout,
   histogram_layout: wgpu::BindGroupLayout,
   /// Measuring, then adapting.
@@ -28,7 +28,7 @@ impl ExposurePass {
   /// # Errors
   ///
   /// Returns an error when a shader does not compose or compile.
-  pub fn new(source: PipelineSource<'_>) -> XrfResult<Self> {
+  pub(crate) fn new(source: PipelineSource<'_>) -> XrfResult<Self> {
     let device: &wgpu::Device = source.device;
 
     let layout: wgpu::BindGroupLayout = ExposureParameters::create_layout(device);
@@ -47,7 +47,7 @@ impl ExposurePass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     let measured: XrfResult = self
       .pipelines
       .refresh(source.cache, || Self::create_pipelines(source, &self.layout));
@@ -61,7 +61,7 @@ impl ExposurePass {
   }
 
   /// Measures the high part in cells, then adapts the exposure's scale towards what they read.
-  pub fn record(&self, context: &mut ComputeContext<'_>, parameters: &ExposureParameters) {
+  pub(crate) fn record(&self, context: &mut ComputeContext<'_>, parameters: &ExposureParameters) {
     context.bind(parameters);
 
     let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
@@ -77,7 +77,7 @@ impl ExposurePass {
   }
 
   /// Counts a `size` scene's light into the histogram, then settles the scale from it.
-  pub fn record_histogram(
+  pub(crate) fn record_histogram(
     &self,
     context: &mut ComputeContext<'_>,
     parameters: &ExposureHistogramParameters,

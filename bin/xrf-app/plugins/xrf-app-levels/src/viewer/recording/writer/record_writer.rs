@@ -11,7 +11,7 @@ use crate::viewer::recording::writer::{
 /// A recording written as fragmented MP4 on a thread of its own, which holds Media Foundation and the Sink Writer for
 /// the recording's life: samples handed over queue a few deep, so one handed faster than the encoders take it waits.
 /// Dropped unfinished, it finishes the file as far as it was handed.
-pub struct RecordWriter {
+pub(crate) struct RecordWriter {
   samples: SyncSender<RecordSample>,
   thread: Option<JoinHandle<TauriResult<RecordSummary>>>,
 }
@@ -26,7 +26,7 @@ impl RecordWriter {
   /// # Errors
   ///
   /// Returns an error when Media Foundation does not load or start, or the writer takes no stream of `format`.
-  pub fn start(file: PathBuf, format: RecordFormat) -> TauriResult<Self> {
+  pub(crate) fn start(file: PathBuf, format: RecordFormat) -> TauriResult<Self> {
     MediaProbe::MEDIA_FOUNDATION.load()?;
 
     let (samples, received) = sync_channel::<RecordSample>(Self::QUEUED);
@@ -60,7 +60,7 @@ impl RecordWriter {
   /// # Errors
   ///
   /// Returns why the writer stopped, where it did.
-  pub fn write(&mut self, sample: RecordSample) -> TauriResult {
+  pub(crate) fn write(&mut self, sample: RecordSample) -> TauriResult {
     self.samples.send(sample).map_err(|_| self.take_error())
   }
 
@@ -69,7 +69,7 @@ impl RecordWriter {
   /// # Errors
   ///
   /// Returns why the writer stopped, where it did, or the file could not be finished.
-  pub fn finish(self) -> TauriResult<RecordSummary> {
+  pub(crate) fn finish(self) -> TauriResult<RecordSummary> {
     let Self { samples, thread } = self;
 
     drop(samples);

@@ -18,7 +18,7 @@ use crate::viewer::map::annotations::{
 /// How a map's annotations are drawn: the area the map covers onto its pixels, the kinds of level object drawn, and
 /// whether every object is named rather than the smart terrains and level changers alone (a level has hundreds of
 /// patrols, whose names would bury the map).
-pub struct AnnotationCanvas {
+pub(crate) struct AnnotationCanvas {
   pub area: LevelMapArea,
   pub width: u32,
   pub height: u32,
@@ -50,7 +50,7 @@ impl AnnotationCanvas {
   /// # Errors
   ///
   /// Returns why the map's size cannot be read.
-  pub fn over_map(request: &MapAnnotationsWriteRequest) -> TauriResult<Self> {
+  pub(crate) fn over_map(request: &MapAnnotationsWriteRequest) -> TauriResult<Self> {
     let (width, height): (u32, u32) = image::image_dimensions(&request.path)
       .map_err(|error| format!("Failed to read map '{}': {error}", request.path.display()))?;
 
@@ -68,7 +68,7 @@ impl AnnotationCanvas {
   /// # Errors
   ///
   /// Returns why the SVG could not be written.
-  pub fn write(&self, annotations: &LevelAnnotations, target: &Path) -> TauriResult<String> {
+  pub(crate) fn write(&self, annotations: &LevelAnnotations, target: &Path) -> TauriResult<String> {
     let svg: String = self.draw(annotations);
 
     StagedFile::write(target, svg.as_bytes())
@@ -114,7 +114,7 @@ impl AnnotationCanvas {
 
   /// The annotations as an SVG over the map: its view box the map's pixels, a group a kind in its kind's colour, the
   /// lowest layer first.
-  pub fn draw(&self, annotations: &LevelAnnotations) -> String {
+  pub(crate) fn draw(&self, annotations: &LevelAnnotations) -> String {
     let growth: f32 = (self.width.max(self.height) as f32 / Self::BASE_SIDE).sqrt();
     let pen: AnnotationPen = AnnotationPen {
       stroke: (Self::STROKE_AT_BASE * growth).max(Self::STROKE_LEAST),
@@ -168,7 +168,7 @@ impl AnnotationCanvas {
 
   /// Where an engine-space point lands on the map, in its pixels from the top left: `+x` right and `+z` up, as
   /// `CDemoRecord` lays its map.
-  pub fn to_pixel(&self, [x, z]: AnnotationPoint) -> (f32, f32) {
+  pub(crate) fn to_pixel(&self, [x, z]: AnnotationPoint) -> (f32, f32) {
     let LevelMapArea {
       min_x,
       min_z,
@@ -334,7 +334,7 @@ impl AnnotationCanvas {
   /// # Errors
   ///
   /// Returns an error for an SVG that cannot be read, or a size of no pixels.
-  pub fn rasterise(svg: &str, (width, height): (u32, u32)) -> TauriResult<RgbaImage> {
+  pub(crate) fn rasterise(svg: &str, (width, height): (u32, u32)) -> TauriResult<RgbaImage> {
     let options: usvg::Options<'_> = usvg::Options {
       fontdb: Self::get_system_fonts(),
       ..usvg::Options::default()

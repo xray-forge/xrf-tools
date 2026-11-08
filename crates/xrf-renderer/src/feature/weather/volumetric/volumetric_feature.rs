@@ -26,7 +26,7 @@ use crate::scene::level::view::record::view_record::ViewRecord;
 /// place of the sun's and the lights' shafts; or the shadowed lights' shafts (`accum_volumetric`) the sun shafts'
 /// composite adds.
 #[derive(Default)]
-pub struct VolumetricFeature {
+pub(crate) struct VolumetricFeature {
   /// What the froxels read this frame, while they draw.
   uniform: Option<FroxelUniform>,
   froxels: Option<FroxelVolume>,
@@ -38,7 +38,7 @@ impl VolumetricFeature {
 
   /// Takes this frame's volumetric lighting: the froxels made or kept where the enhanced volume draws, which is lit and
   /// solid, dropped where it does not.
-  pub fn prepare(&mut self, device: &wgpu::Device, options: &RenderViewOptions) {
+  pub(crate) fn prepare(&mut self, device: &wgpu::Device, options: &RenderViewOptions) {
     let settings = options.features.volumetric;
 
     if !(settings.is_enhanced() && options.mode.is_lit && !options.mode.is_wireframe) {
@@ -77,13 +77,13 @@ impl VolumetricFeature {
   }
 
   /// Whether the froxels draw this frame, in place of the sun's and the lights' shafts.
-  pub fn is_froxeled(&self) -> bool {
+  pub(crate) fn is_froxeled(&self) -> bool {
     self.uniform.is_some() && self.froxels.is_some()
   }
 
   /// Adds the shadowed lights' shafts (`accum_volumetric`), or the enhanced volume's froxels in place of both shafts,
   /// for the sun shafts' composite.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration {
       graph,

@@ -13,7 +13,7 @@ use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 /// static scene's handles and the camera's layout draws, its draw arguments (the early phase's, and the late phase's
 /// where occlusion culls), and the parameters every one of them binds.
 #[derive(Clone)]
-pub struct CompositedDraw<'a> {
+pub(crate) struct CompositedDraw<'a> {
   pub view: &'a ViewBinding,
   pub textures: &'a wgpu::BindGroup,
   pub handles: ViewTargetHandles,
@@ -25,7 +25,7 @@ pub struct CompositedDraw<'a> {
 
 impl<'a> CompositedDraw<'a> {
   /// The draws of a frame's `record`, from the cull's argument buffers `args`.
-  pub fn new(record: ViewRecord<'a>, args: Vec<GraphBuffer>) -> Self {
+  pub(crate) fn new(record: ViewRecord<'a>, args: Vec<GraphBuffer>) -> Self {
     let lit: LightingHandles<'a> = record.lit;
 
     Self {

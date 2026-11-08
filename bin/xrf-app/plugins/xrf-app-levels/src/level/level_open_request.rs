@@ -8,7 +8,7 @@ use crate::level::LevelSource;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub struct LevelOpenRequest {
+pub(crate) struct LevelOpenRequest {
   pub source: LevelSource,
   /// Trees the level and its textures are searched in.
   pub roots: XrayRoots,

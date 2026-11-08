@@ -8,9 +8,9 @@ mod viewer_capture_job;
 mod viewer_dds_export;
 mod viewer_image;
 
-pub use level_viewer_report::LevelViewerReport;
-pub use screenshot_save_request::ScreenshotSaveRequest;
-pub use viewer_assembly::ViewerAssembly;
-pub use viewer_capture_job::ViewerCaptureJob;
-pub use viewer_dds_export::ViewerDdsExport;
-pub use viewer_image::ViewerImage;
+pub(crate) use level_viewer_report::LevelViewerReport;
+pub(crate) use screenshot_save_request::ScreenshotSaveRequest;
+pub(crate) use viewer_assembly::ViewerAssembly;
+pub(crate) use viewer_capture_job::ViewerCaptureJob;
+pub(crate) use viewer_dds_export::ViewerDdsExport;
+pub(crate) use viewer_image::ViewerImage;

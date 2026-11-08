@@ -6,7 +6,7 @@ use crate::feature::weather::wet::puddles::puddle_sites_uniform::PuddleSitesUnif
 /// site a cell.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 0)]
-pub struct PuddleSitesParameters {
+pub(crate) struct PuddleSitesParameters {
   #[binding(2)]
   #[uniform]
   pub shape: UniformBinding<PuddleSitesUniform>,

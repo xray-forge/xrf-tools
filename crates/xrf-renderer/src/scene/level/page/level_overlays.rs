@@ -6,7 +6,7 @@ use crate::frame::frame_encoder::FrameEncoder;
 
 /// A viewport's overlays as their vertices: every line segment's two ends, the points, and the sun's disc, uploaded
 /// once a set; and the skeleton's segments, written again every frame its pose may have moved.
-pub struct LevelOverlays {
+pub(crate) struct LevelOverlays {
   /// The set they were built from.
   pub version: u64,
   /// Position, then colour with one in `w` where depth tests it, a vertex; and how many vertices.
@@ -23,13 +23,13 @@ pub struct LevelOverlays {
 
 impl LevelOverlays {
   /// Floats a line's vertex takes: position, then colour with the depth test in `w`.
-  pub const LINE_FLOATS: usize = 7;
+  pub(crate) const LINE_FLOATS: usize = 7;
   /// Floats a point takes: position and size, then colour with the depth test in `w`.
-  pub const POINT_FLOATS: usize = 8;
+  pub(crate) const POINT_FLOATS: usize = 8;
   /// Floats the sun takes: colour, then size in pixels.
-  pub const SUN_FLOATS: usize = 4;
+  pub(crate) const SUN_FLOATS: usize = 4;
 
-  pub fn new(device: &wgpu::Device, overlays: &[RenderOverlay], version: u64) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, overlays: &[RenderOverlay], version: u64) -> Self {
     let mut vertices: Vec<[f32; Self::LINE_FLOATS]> = Vec::new();
     let mut points: Vec<[f32; Self::POINT_FLOATS]> = Vec::new();
     let mut sun: Option<[f32; Self::SUN_FLOATS]> = None;
@@ -93,7 +93,7 @@ impl LevelOverlays {
   }
 
   /// Takes this frame's skeleton segments, child then parent, in renderer space, while the set draws a skeleton.
-  pub fn set_skeleton(&mut self, device: &wgpu::Device, encoder: &mut FrameEncoder, segments: &[(Vec3, Vec3)]) {
+  pub(crate) fn set_skeleton(&mut self, device: &wgpu::Device, encoder: &mut FrameEncoder, segments: &[(Vec3, Vec3)]) {
     let Some((color, is_depth_tested)) = self.skeleton else {
       return;
     };

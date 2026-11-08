@@ -5,7 +5,7 @@ use xrf_spawn::{AlifeObject, AlifeObjectAbstract};
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LevelSpawnObjectDetails {
+pub(crate) struct LevelSpawnObjectDetails {
   /// Its ALife id in the spawn.
   pub id: u16,
   /// The game graph vertex it stands at, which places it among the levels; none for an object without the abstract
@@ -19,7 +19,7 @@ pub struct LevelSpawnObjectDetails {
 
 impl LevelSpawnObjectDetails {
   /// What `object` carries, its vertices none where it has no abstract part rather than the engine's invalid values.
-  pub fn of(object: &AlifeObject) -> Self {
+  pub(crate) fn of(object: &AlifeObject) -> Self {
     let base: Option<&AlifeObjectAbstract> = object.inherited.get_abstract();
 
     Self {

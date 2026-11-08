@@ -14,7 +14,7 @@ use crate::level::streaming::surface_tally::SurfaceTally;
 /// at once (`LoaderFlight`), handing each to the render thread as it is done; the next start as the render thread takes
 /// the finished ones, once a frame. Dropped, it lets go of the sectors not started yet, so a level closed mid open
 /// stops costing work.
-pub struct LevelLoader {
+pub(crate) struct LevelLoader {
   source: Arc<dyn WorldLevelSource>,
   workers: RenderWorkers,
   sender: Sender<SectorLoad>,
@@ -26,7 +26,7 @@ pub struct LevelLoader {
 }
 
 impl LevelLoader {
-  pub fn start(source: Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> Self {
+  pub(crate) fn start(source: Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> Self {
     let (sender, receiver) = LoaderReceiver::channel();
     let mut loader: Self = Self {
       total: source.get_sector_count(),
@@ -43,13 +43,13 @@ impl LevelLoader {
     loader
   }
 
-  pub fn get_total(&self) -> u32 {
+  pub(crate) fn get_total(&self) -> u32 {
     self.total
   }
 
   /// The sectors finished since the last call, at most `limit` of them; starts as many more as finished since the last
   /// call, whether or not they are taken yet.
-  pub fn take(&mut self, limit: usize) -> Vec<SectorLoad> {
+  pub(crate) fn take(&mut self, limit: usize) -> Vec<SectorLoad> {
     let taken: Vec<SectorLoad> = self.receiver.try_iter().take(limit).collect();
 
     self.refill();

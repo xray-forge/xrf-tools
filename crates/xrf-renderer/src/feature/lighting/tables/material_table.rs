@@ -2,22 +2,22 @@ use wgpu::util::DeviceExt;
 use xrf_math::EPS_S;
 
 /// The engine's material table (`r2_material`), uploaded once and sampled by every pass that lights a surface.
-pub struct MaterialTable {
+pub(crate) struct MaterialTable {
   pub view: wgpu::TextureView,
   pub sampler: wgpu::Sampler,
 }
 
 impl MaterialTable {
   /// Columns: `dot(L, N)`, nearly linear, so few.
-  pub const LUT_WIDTH: u32 = 128;
+  pub(crate) const LUT_WIDTH: u32 = 128;
 
   /// Rows: `dot(H, N)`, the specular lobe, so many.
-  pub const LUT_HEIGHT: u32 = 256;
+  pub(crate) const LUT_HEIGHT: u32 = 256;
 
   /// Slices: the four lighting models a texture descriptor chooses between.
-  pub const LUT_DEPTH: u32 = 4;
+  pub(crate) const LUT_DEPTH: u32 = 4;
 
-  pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
     let view: wgpu::TextureView = device
       .create_texture_with_data(
         queue,
@@ -54,7 +54,7 @@ impl MaterialTable {
   /// The engine's `$user$material` lookup, built as `r4_rendertarget_build_textures.cpp` builds it.
   ///
   /// `Rg8Unorm` texels, slice by slice, row by row, diffuse in red and specular in green.
-  pub fn create_lut() -> Vec<u8> {
+  pub(crate) fn create_lut() -> Vec<u8> {
     let mut data: Vec<u8> = Vec::with_capacity((Self::LUT_WIDTH * Self::LUT_HEIGHT * Self::LUT_DEPTH * 2) as usize);
 
     for slice in 0..Self::LUT_DEPTH {

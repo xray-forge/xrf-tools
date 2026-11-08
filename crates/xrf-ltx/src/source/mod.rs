@@ -10,7 +10,7 @@ pub(crate) mod ltx_listing_cache;
 pub(crate) mod ltx_vfs_source;
 
 pub use crate::source::ltx_document_source::LtxDocumentSource;
-pub use crate::source::ltx_filesystem_source::LtxFilesystemSource;
+pub(crate) use crate::source::ltx_filesystem_source::LtxFilesystemSource;
 pub(crate) use crate::source::ltx_include_mask::LtxIncludeMask;
 pub(crate) use crate::source::ltx_listing_cache::LtxListingCache;
 pub(crate) use crate::source::ltx_vfs_source::LtxVfsSource;

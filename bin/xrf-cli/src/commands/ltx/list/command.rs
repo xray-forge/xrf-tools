@@ -12,7 +12,7 @@ use crate::core::arguments::LtxDialectArgument;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct ListCommand;
+pub(crate) struct ListCommand;
 
 impl GenericCommand for ListCommand {
   fn operation(&self) -> &'static str {

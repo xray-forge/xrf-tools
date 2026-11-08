@@ -11,7 +11,7 @@ pub(crate) struct LtxListingCache {
 
 impl LtxListingCache {
   /// The names in `directory`, from `list` on the first request.
-  pub fn get_or_list(
+  pub(crate) fn get_or_list(
     &self,
     directory: &str,
     list: impl FnOnce() -> XrfResult<Vec<String>>,

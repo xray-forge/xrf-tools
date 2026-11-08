@@ -10,7 +10,7 @@ use crate::scene::static_scene::geometry::static_geometry::StaticGeometry;
 
 /// A geometry's clusters read once for every range cut from them: the packer's ranges and spheres, where each cluster
 /// starts, and the indices and positions a range without clusters is cut from, read the first time one is.
-pub struct GeometryClusters<'a> {
+pub(crate) struct GeometryClusters<'a> {
   geometry: &'a SectorGeometry,
   buffer: &'a [u8],
   ranges: Vec<[u32; 4]>,
@@ -21,7 +21,7 @@ pub struct GeometryClusters<'a> {
 }
 
 impl<'a> GeometryClusters<'a> {
-  pub fn new(geometry: &'a SectorGeometry, buffer: &'a [u8]) -> Self {
+  pub(crate) fn new(geometry: &'a SectorGeometry, buffer: &'a [u8]) -> Self {
     let ranges: Vec<[u32; 4]> = read_pods(buffer, &geometry.clusters.ranges);
     let mut starts: HashMap<u32, Vec<usize>> = HashMap::new();
 
@@ -42,7 +42,7 @@ impl<'a> GeometryClusters<'a> {
   /// The clusters covering an index range, as `(first index, triangles, sphere)`: the packer's own where they tile it
   /// exactly, else the range's whole triangles cut in runs of `CLUSTER_TRIANGLES` with spheres taken from their
   /// vertices, the one or two indices a damaged range ends in past its last triangle left out.
-  pub fn cut(&self, start: u32, count: u32) -> Vec<(u32, u32, Vec4)> {
+  pub(crate) fn cut(&self, start: u32, count: u32) -> Vec<(u32, u32, Vec4)> {
     // A pack whose spheres are fewer than its ranges is cut anew, as one without clusters is.
     if let Some(run) = self.find_run(start, count)
       && let Some(run_spheres) = self.spheres.get(run.clone())

@@ -25,12 +25,12 @@ impl WindowTransitions {
   const SYSTEM_SET: i32 = 0;
 
   /// Stops the animations of `window` until [`Self::enable`].
-  pub fn disable<R: Runtime>(window: &WebviewWindow<R>) {
+  pub(super) fn disable<R: Runtime>(window: &WebviewWindow<R>) {
     Self::force_disabled(window, Self::FORCED_OFF);
   }
 
   /// Lets `window` animate again.
-  pub fn enable<R: Runtime>(window: &WebviewWindow<R>) {
+  pub(super) fn enable<R: Runtime>(window: &WebviewWindow<R>) {
     Self::force_disabled(window, Self::SYSTEM_SET);
   }
 

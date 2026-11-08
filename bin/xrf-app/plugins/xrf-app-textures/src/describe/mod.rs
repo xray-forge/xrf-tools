@@ -6,5 +6,5 @@ mod description;
 pub(crate) mod routes;
 mod vocabulary;
 
-pub use description::{TextureDescription, TextureFiles, TextureSource};
-pub use vocabulary::TextureVocabulary;
+pub(crate) use description::{TextureDescription, TextureFiles, TextureSource};
+pub(crate) use vocabulary::TextureVocabulary;

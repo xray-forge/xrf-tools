@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub enum TextureSurfaceShape {
+pub(crate) enum TextureSurfaceShape {
   /// Flat and face on, where the decode is read most directly and tiling is judged.
   Plane,
   /// Curved, so the normal sweeps every grazing angle a wrong tangent sign shows up at.

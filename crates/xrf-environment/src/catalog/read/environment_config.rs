@@ -9,12 +9,12 @@ pub(crate) struct EnvironmentConfig {
 }
 
 impl EnvironmentConfig {
-  pub fn get_ltx(&self) -> &Ltx {
+  pub(crate) fn get_ltx(&self) -> &Ltx {
     &self.resolution.ltx
   }
 
   /// Where each key came from, where the read recorded it.
-  pub fn get_provenance(&self) -> Option<&LtxProvenance> {
+  pub(crate) fn get_provenance(&self) -> Option<&LtxProvenance> {
     Some(&self.resolution.provenance).filter(|provenance| !provenance.is_empty())
   }
 }

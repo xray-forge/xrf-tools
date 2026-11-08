@@ -7,7 +7,10 @@ use crate::execution::ExecutionState;
 /// Describe what a path is, without mounting it; on the pool, since a probe scans the directory.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "probe_root")]
-pub async fn assets_probe_root(path: String, execution: State<'_, ExecutionState>) -> TauriResult<XrayRootProbe> {
+pub(crate) async fn assets_probe_root(
+  path: String,
+  execution: State<'_, ExecutionState>,
+) -> TauriResult<XrayRootProbe> {
   execution
     .run_blocking("Probing a root", move || {
       let probe: XrayRootProbe = XrayRootProbe::describe(&path);

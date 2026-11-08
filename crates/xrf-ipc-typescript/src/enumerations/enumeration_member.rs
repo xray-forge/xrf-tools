@@ -23,7 +23,7 @@ impl EnumerationMember {
   ///
   /// When `source` is no longer an enum, or no longer declares as many variants as `named` serializes — either of
   /// which means the two views can no longer be paired at all.
-  pub fn pair(named: &NamedDataType, source: &NamedDataType, spellings: Vec<&str>) -> XrfResult<Vec<Self>> {
+  pub(super) fn pair(named: &NamedDataType, source: &NamedDataType, spellings: Vec<&str>) -> XrfResult<Vec<Self>> {
     let Some(DataType::Enum(rust)) = source.ty.as_ref() else {
       return Err(XrfError::new_invalid_error(format!(
         "`{}` renders as a list of identities but was collected as another shape",
@@ -58,7 +58,7 @@ impl EnumerationMember {
   }
 
   /// The TypeScript member name a Rust variant is written as.
-  pub fn member_name(variant: &str) -> String {
+  pub(super) fn member_name(variant: &str) -> String {
     let characters: Vec<char> = variant.chars().collect();
     let mut member: String = String::with_capacity(variant.len() + 4);
 
@@ -87,7 +87,7 @@ impl EnumerationMember {
   /// # Errors
   ///
   /// When two of `members` share a name, naming both Rust variants.
-  pub fn assert_distinct(name: &str, members: &[Self]) -> XrfResult {
+  pub(super) fn assert_distinct(name: &str, members: &[Self]) -> XrfResult {
     let mut claimed: BTreeMap<&str, &str> = BTreeMap::new();
 
     for member in members {

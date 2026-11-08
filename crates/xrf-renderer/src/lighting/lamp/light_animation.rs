@@ -5,7 +5,7 @@ use crate::scene::level::level_time::LevelTime;
 
 /// `CLAItem::CalculateRGB`: the colour an animation holds at a time, each channel in `[0, 255]`, looping over its
 /// frames.
-pub fn to_animated_color(animator: &LightAnimatorDescription, time: LevelTime) -> Vec3 {
+pub(crate) fn to_animated_color(animator: &LightAnimatorDescription, time: LevelTime) -> Vec3 {
   let length: f64 = f64::from(animator.frame_count) / f64::from(animator.fps);
   let frame: f32 = if length > 0.0 && length.is_finite() {
     (time.get_phase(length) * animator.fps).floor()

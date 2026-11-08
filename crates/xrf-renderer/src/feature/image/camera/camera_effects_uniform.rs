@@ -9,7 +9,7 @@ use crate::contract::feature::image::render_camera_settings::RenderCameraSetting
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "CameraEffects")]
-pub struct CameraEffectsUniform {
+pub(crate) struct CameraEffectsUniform {
   /// The shown frame's size in pixels, then its reciprocal.
   pub shown: Vec4,
   /// The drawn frame's size in texels, then its reciprocal.
@@ -32,9 +32,9 @@ pub struct CameraEffectsUniform {
 
 impl CameraEffectsUniform {
   /// The shown pixels a tile of the depth of field spans: eight of its half-size texels.
-  pub const FOCUS_TILE: u32 = 16;
+  pub(crate) const FOCUS_TILE: u32 = 16;
   /// The shown pixels a block of the motion's first reduction spans; a motion tile is a whole number of them.
-  pub const MOTION_BLOCK: u32 = 8;
+  pub(crate) const MOTION_BLOCK: u32 = 8;
   /// The most shown pixels a motion tile spans, so its reduction stays short however long the blur.
   const MOTION_TILE_MOST: u32 = 128;
   /// The widest circle of confusion's radius, as a share of the frame's height.
@@ -42,7 +42,11 @@ impl CameraEffectsUniform {
 
   /// The camera `settings` set over a frame drawn `drawn` texels across and shown `shown` pixels across, through
   /// `view`'s lens.
-  pub fn new(settings: &RenderCameraSettings, view: &CameraView, (drawn, shown): ((u32, u32), (u32, u32))) -> Self {
+  pub(crate) fn new(
+    settings: &RenderCameraSettings,
+    view: &CameraView,
+    (drawn, shown): ((u32, u32), (u32, u32)),
+  ) -> Self {
     let projection: Mat4 = view.projection;
     let is_orthographic: bool = view.is_orthographic();
     let tangents: Vec2 = view.get_lens_tangents();
@@ -97,22 +101,22 @@ impl CameraEffectsUniform {
   }
 
   /// Whether the frame is blurred out of focus.
-  pub fn is_focused(&self) -> bool {
+  pub(crate) fn is_focused(&self) -> bool {
     self.focus.y > 0.0
   }
 
   /// Whether the frame is blurred by its motion.
-  pub fn is_motion_blurred(&self) -> bool {
+  pub(crate) fn is_motion_blurred(&self) -> bool {
     self.motion.w > 0.0
   }
 
   /// Whether the lens dims or splits the frame.
-  pub fn is_lensed(&self) -> bool {
+  pub(crate) fn is_lensed(&self) -> bool {
     self.optics.z > 0.0 || self.optics.w > 0.0
   }
 
   /// The shown pixels a motion tile spans this frame.
-  pub fn get_motion_tile_size(&self) -> u32 {
+  pub(crate) fn get_motion_tile_size(&self) -> u32 {
     self.motion.z as u32
   }
 

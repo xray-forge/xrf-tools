@@ -11,11 +11,11 @@ pub(crate) struct RandomVelocityAction {
 }
 
 impl RandomVelocityAction {
-  pub fn transform(&mut self, matrix: &Mat4) {
+  pub(crate) fn transform(&mut self, matrix: &Mat4) {
     self.velocity.transform_direction_from(&self.velocity_local, matrix);
   }
 
-  pub fn execute(&self, pool: &mut ParticlePool) {
+  pub(crate) fn execute(&self, pool: &mut ParticlePool) {
     let (particles, random) = pool.split_mut();
 
     for m in particles {

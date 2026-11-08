@@ -5,7 +5,7 @@ use crate::feature::image::resolve::fsr::fsr_uniform::FsrUniform;
 /// FSR's reactive mask: the frame before the water and the blended surfaces, and after.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 0)]
-pub struct FsrReactiveParameters {
+pub(crate) struct FsrReactiveParameters {
   #[uniform]
   pub fsr: UniformBinding<FsrUniform>,
   #[texture(d2, unfilterable)]

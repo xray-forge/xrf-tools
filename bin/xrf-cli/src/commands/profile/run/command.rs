@@ -24,7 +24,7 @@ const DEFAULT_ROUNDS: usize = 5;
 const DEFAULT_WARMUP: usize = 1;
 
 #[derive(Default)]
-pub struct RunCommand;
+pub(crate) struct RunCommand;
 
 impl GenericCommand for RunCommand {
   fn operation(&self) -> &'static str {

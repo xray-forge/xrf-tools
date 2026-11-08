@@ -7,7 +7,7 @@ use crate::feature::lighting::shadows::shadow_uniform::ShadowUniform;
 /// for the rays on screen and the sun's shadow for those off it.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct FlareMeasureParameters {
+pub(crate) struct FlareMeasureParameters {
   #[uniform]
   pub flares: UniformBinding<FlareUniform>,
   #[storage]

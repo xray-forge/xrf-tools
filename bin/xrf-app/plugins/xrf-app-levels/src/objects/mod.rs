@@ -14,15 +14,15 @@ mod path;
 mod placement;
 mod volume;
 
-pub use kind::{
+pub(crate) use kind::{
   LEVEL_OBJECT_KINDS, LEVEL_SOUND_EMITTERS_HELPER_KIND, LevelObjectGroup, LevelObjectKind, LevelObjectKindEntry,
 };
-pub use level_object::LevelObject;
-pub use level_object_id::LevelObjectId;
-pub use level_object_light::LevelObjectLight;
-pub use level_object_sources::LevelObjectSources;
-pub use level_object_spawn::LevelObjectSpawn;
-pub use level_objects_description::LevelObjectsDescription;
-pub use path::{LevelObjectPatrol, LevelObjectPatrolPoint, LevelPatrolLink};
-pub use placement::{LevelObjectPlacement, LevelPlacementDetails, LevelPlacementFile, LevelSoundWindow};
-pub use volume::{LevelObjectShape, LevelObjectVolume, LevelRestriction};
+pub(crate) use level_object::LevelObject;
+pub(crate) use level_object_id::LevelObjectId;
+pub(crate) use level_object_light::LevelObjectLight;
+pub(crate) use level_object_sources::LevelObjectSources;
+pub(crate) use level_object_spawn::LevelObjectSpawn;
+pub(crate) use level_objects_description::LevelObjectsDescription;
+pub(crate) use path::{LevelObjectPatrol, LevelObjectPatrolPoint, LevelPatrolLink};
+pub(crate) use placement::{LevelObjectPlacement, LevelPlacementDetails, LevelPlacementFile, LevelSoundWindow};
+pub(crate) use volume::{LevelObjectShape, LevelObjectVolume, LevelRestriction};

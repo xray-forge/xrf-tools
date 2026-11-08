@@ -3,7 +3,7 @@ use crate::contract::settings::gpu::render_dlss_availability::RenderDlssAvailabi
 
 /// What a viewport's report says of the device it draws on, the same for every viewport of a frame.
 #[derive(Clone, Copy, Debug)]
-pub struct ViewportDevice<'a> {
+pub(crate) struct ViewportDevice<'a> {
   pub backend: RenderBackend,
   pub adapter: &'a str,
   /// Whether it traces rays, by hardware ray query.

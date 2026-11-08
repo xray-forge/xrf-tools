@@ -8,7 +8,7 @@ use crate::lighting::unit::light_units::LightUnits;
 /// What a viewport's frame adds to its lighting before the uniform is written: the exposure, how the present shows the
 /// frame, what is up of the sky, and the clocks.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct LightingFrame {
+pub(crate) struct LightingFrame {
   /// What the view's exposure decided for this frame.
   pub exposure: ExposureDecisions,
   /// How the present shows the frame (`DisplayMode::get_display`), as the view decided it for this frame.

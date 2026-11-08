@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub struct RecordingAvailability {
+pub(crate) struct RecordingAvailability {
   pub is_available: bool,
   pub reason: Option<String>,
 }

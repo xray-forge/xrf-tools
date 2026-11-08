@@ -21,7 +21,7 @@ const SECOND_WAVE: [f32; 3] = [1.0 / 3.0, 1.0 / 7.0, 1.0 / 5.0];
 /// frame's step so a change of strength turns them no faster at once. Each is kept within a turn, as only its sine,
 /// cosine or `cyclic` is read, so it moves as finely after a day as in a level's first minute.
 #[derive(Debug, Default)]
-pub struct GrassWind {
+pub(crate) struct GrassWind {
   /// `m_time_rot_1`, `m_time_rot_2` and `m_time_pos`.
   first_turn: f32,
   second_turn: f32,
@@ -32,7 +32,7 @@ pub struct GrassWind {
 
 impl GrassWind {
   /// The sway at a time at the wind's strength; still where the grass is held still.
-  pub fn advance(&mut self, time: ViewTime, motion: FoliageMotion, strength: f32) -> GrassWindUniform {
+  pub(crate) fn advance(&mut self, time: ViewTime, motion: FoliageMotion, strength: f32) -> GrassWindUniform {
     let wind: GrassWindUniform = self.turn(time, motion, strength).following(self.last.as_ref());
 
     self.last = Some(wind);

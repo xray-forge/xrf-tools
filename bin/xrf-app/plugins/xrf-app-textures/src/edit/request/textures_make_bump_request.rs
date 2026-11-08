@@ -18,7 +18,7 @@ use crate::edit::request::TextureBumpGloss;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TexturesMakeBumpRequest {
+pub(crate) struct TexturesMakeBumpRequest {
   /// Path of the texture the pair belongs to, without the `_bump` suffix or an extension.
   pub destination: String,
   /// Path of the image the relief is read from, averaged across its colour channels.
@@ -39,7 +39,7 @@ impl TexturesMakeBumpRequest {
   /// # Errors
   ///
   /// Returns an error naming the kernel when it is not one of the fourteen.
-  pub fn to_mip_filter(&self) -> TauriResult<DdsMipFilter> {
+  pub(crate) fn to_mip_filter(&self) -> TauriResult<DdsMipFilter> {
     match self.mip_filter.as_deref() {
       None => Ok(DdsMipFilter::Box),
       Some(label) => DdsMipFilter::from_label(label).ok_or_else(|| format!("Unexpected mip filter '{label}'")),
@@ -47,13 +47,13 @@ impl TexturesMakeBumpRequest {
   }
 
   /// The bump the pair is written as, the `_bump` of the destination texture.
-  pub fn to_bump(&self) -> PathBuf {
+  pub(crate) fn to_bump(&self) -> PathBuf {
     GenerateBumpProcessor::bump_of(Path::new(&self.destination))
   }
 
   /// Both files the pair is written as, following the generator's naming rule without decoding any image, as write
   /// claims.
-  pub fn to_resources(&self) -> Vec<JobResource> {
+  pub(crate) fn to_resources(&self) -> Vec<JobResource> {
     GenerateBumpProcessor::pair_paths(&self.to_bump())
       .iter()
       .map(JobResource::file)
@@ -66,7 +66,7 @@ impl TexturesMakeBumpRequest {
   ///
   /// Returns an error when an image cannot be read or decoded, or the gloss is one [`TextureBumpGloss::to_gloss`]
   /// refuses.
-  pub fn to_options(&self, job: JobHandle, mip_filter: DdsMipFilter) -> TauriResult<GenerateBumpOptions> {
+  pub(crate) fn to_options(&self, job: JobHandle, mip_filter: DdsMipFilter) -> TauriResult<GenerateBumpOptions> {
     Ok(GenerateBumpOptions {
       job,
       bump: self.to_bump(),

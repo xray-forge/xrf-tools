@@ -13,7 +13,7 @@ use crate::window::webview_extensions::WebviewExtensions;
 use crate::window::window_build_kind::WindowBuildKind;
 
 /// The window `tauri.conf.json` describes, which every page of the application runs in.
-pub struct MainWindow;
+pub(crate) struct MainWindow;
 
 impl MainWindow {
   /// Build the window and bring it up.
@@ -21,7 +21,7 @@ impl MainWindow {
   /// # Errors
   ///
   /// Returns an error when `tauri.conf.json` declares no window, or the window cannot be built.
-  pub fn build<R: Runtime>(application: &App<R>) -> Result<(), Box<dyn Error>> {
+  pub(crate) fn build<R: Runtime>(application: &App<R>) -> Result<(), Box<dyn Error>> {
     let config: &WindowConfig = application
       .config()
       .app

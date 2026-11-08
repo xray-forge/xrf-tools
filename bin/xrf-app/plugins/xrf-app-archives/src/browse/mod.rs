@@ -7,6 +7,7 @@ mod subject;
 #[cfg(test)]
 mod tests;
 
-pub use report::{ArchiveOverrideReport, ArchiveResolution};
-pub use request::ArchivesExtractRequest;
-pub use subject::{ArchiveNameIndex, ArchiveSubject, ArchiveSubjects, ArchiveWorld};
+pub(crate) use report::{ArchiveOverrideReport, ArchiveResolution};
+pub(crate) use request::ArchivesExtractRequest;
+pub use subject::ArchiveSubjects;
+pub(crate) use subject::{ArchiveNameIndex, ArchiveSubject, ArchiveWorld};

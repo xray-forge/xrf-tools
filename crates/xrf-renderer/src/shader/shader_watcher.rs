@@ -6,7 +6,7 @@ use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 
 /// A debug build's watch over the shader sources, which tells the render thread when a module's file was written, so
 /// it reads them again only then rather than looking at every file on a schedule.
-pub struct ShaderWatcher {
+pub(crate) struct ShaderWatcher {
   /// None in a release build, or where the platform refused a watcher; shaders then never reload.
   watcher: Option<RecommendedWatcher>,
   is_changed: Arc<AtomicBool>,
@@ -14,7 +14,7 @@ pub struct ShaderWatcher {
 
 impl ShaderWatcher {
   /// A watcher over the shader sources under `root` in a debug build; one that never sees a change otherwise.
-  pub fn new(root: &Path) -> Self {
+  pub(crate) fn new(root: &Path) -> Self {
     let is_changed: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
 
     Self {
@@ -26,7 +26,7 @@ impl ShaderWatcher {
   }
 
   /// Whether a shader source was written since this was last asked.
-  pub fn take_changed(&self) -> bool {
+  pub(crate) fn take_changed(&self) -> bool {
     self.watcher.is_some() && self.is_changed.swap(false, Ordering::AcqRel)
   }
 

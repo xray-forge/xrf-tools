@@ -12,7 +12,7 @@ use crate::commands::dds::dds_encode_arguments::DdsEncodeArguments;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct MakeBumpCommand;
+pub(crate) struct MakeBumpCommand;
 
 impl GenericCommand for MakeBumpCommand {
   fn operation(&self) -> &'static str {

@@ -13,7 +13,7 @@ use crate::weather::LevelWeatherCycle;
 /// not offer itself.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "read_level_cycle")]
-pub async fn levels_read_level_cycle(
+pub(crate) async fn levels_read_level_cycle(
   session_id: SessionId,
   cycle: WeatherCycleId,
   levels: State<'_, SelectedLevels>,

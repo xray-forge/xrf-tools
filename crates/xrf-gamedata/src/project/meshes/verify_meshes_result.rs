@@ -4,7 +4,7 @@ use crate::project::meshes::mesh_assets_verification_result::GamedataMeshAssetsV
 use crate::project::meshes::shader_library_verification_result::GamedataShaderLibraryVerificationResult;
 use crate::{Finding, GamedataCheckResult, GamedataVerificationStatus};
 
-pub struct GamedataMeshesVerificationResult {
+pub(crate) struct GamedataMeshesVerificationResult {
   pub(crate) duration: Duration,
   findings: Vec<Finding>,
   mesh_assets: GamedataMeshAssetsVerificationResult,

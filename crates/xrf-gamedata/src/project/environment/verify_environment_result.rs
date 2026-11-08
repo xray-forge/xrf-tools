@@ -4,7 +4,7 @@ use crate::{Finding, GamedataCheckResult, GamedataVerificationStatus};
 
 /// Counts, duration and findings reported by the environment check.
 #[derive(Default)]
-pub struct GamedataEnvironmentVerificationResult {
+pub(crate) struct GamedataEnvironmentVerificationResult {
   pub(crate) duration: Duration,
   /// Configs read, and configs the engine needed that were not there.
   pub(crate) checked_configs_count: u32,

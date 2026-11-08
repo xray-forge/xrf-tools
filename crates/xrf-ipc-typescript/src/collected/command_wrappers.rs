@@ -29,7 +29,7 @@ impl CommandWrappers {
   ///
   /// When the builder is configured otherwise than the wrappers are rendered for, Specta cannot render one of its
   /// types, or its exporter never reached the wrappers.
-  pub fn render(config: &BuilderConfiguration) -> Result<PluginCommands, Error> {
+  pub(crate) fn render(config: &BuilderConfiguration) -> Result<PluginCommands, Error> {
     Self::assert_supported(config)?;
 
     let plugin: &str = config.plugin_name.unwrap_or_default();

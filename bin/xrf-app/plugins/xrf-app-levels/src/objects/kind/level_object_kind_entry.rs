@@ -95,7 +95,7 @@ impl LevelObjectKindEntry {
 /// anomalies red, level changers green, patrols yellow and graph points pale grey as the map has drawn them, the
 /// spawned visuals teal, characters magenta, smart covers cyan, placements muted violet and cyan, lights warm white.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
-pub const LEVEL_OBJECT_KINDS: &[LevelObjectKindEntry] = &[
+pub(crate) const LEVEL_OBJECT_KINDS: &[LevelObjectKindEntry] = &[
   LevelObjectKindEntry {
     kind: LevelObjectKind::Props,
     label: "Props",
@@ -272,7 +272,7 @@ pub const LEVEL_OBJECT_KINDS: &[LevelObjectKindEntry] = &[
 /// The bit a view switches the sound emitters' helpers by, past the kind table's: each static and zone sound's spheres
 /// out to its minimum and maximum distance, named as its level object is.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
-pub const LEVEL_SOUND_EMITTERS_HELPER_KIND: u32 = LEVEL_OBJECT_KINDS.len() as u32;
+pub(crate) const LEVEL_SOUND_EMITTERS_HELPER_KIND: u32 = LEVEL_OBJECT_KINDS.len() as u32;
 
 // A view switches the helpers a bit a kind (`RenderHelperOptions::kinds`), so a kind past the mask's width would never
 // draw; widen the mask before the table and the sound emitters outgrow it.

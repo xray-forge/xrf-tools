@@ -61,7 +61,7 @@ mod scene_view_reports;
 /// across its frame's parts (`SceneFeatures`) and its stages (`ViewStages`), whose units draw in one part alone; each
 /// unit keeps what it keeps between frames. The scene (`LevelScene`) is shared by every view of it and passed in; this
 /// prepares the view's frame from it and records it into the frame's graph.
-pub struct SceneView {
+pub(crate) struct SceneView {
   /// The values every unit reads this frame.
   shared: ViewFrame,
   /// The G-buffer, depth, light and scene it draws into, once its size is known.
@@ -79,7 +79,7 @@ pub struct SceneView {
 
 impl SceneView {
   /// A view of a scene, nothing of it drawn yet.
-  pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, view_layout: &wgpu::BindGroupLayout) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, queue: &wgpu::Queue, view_layout: &wgpu::BindGroupLayout) -> Self {
     Self {
       shared: ViewFrame::default(),
       targets: None,
@@ -91,7 +91,7 @@ impl SceneView {
   }
 
   /// Asks for the textures its weather draws with: the rain's, the bolts', the flares' and the sky's.
-  pub fn request_textures(
+  pub(crate) fn request_textures(
     &mut self,
     scene: &LevelScene,
     weather_textures: &mut WeatherTextureCache,
@@ -151,7 +151,12 @@ impl SceneView {
   /// decided: the resolve's decisions, the weather and the sky, the scene, the view's own units, then the lighting.
   /// Answers what it asks of the scene, which settles every view's asks before each finishes its frame
   /// (`finish_prepare`).
-  pub fn prepare(&mut self, scene: &LevelScene, encoder: &mut FrameEncoder, frame: &ViewPrepare<'_>) -> SceneAsks {
+  pub(crate) fn prepare(
+    &mut self,
+    scene: &LevelScene,
+    encoder: &mut FrameEncoder,
+    frame: &ViewPrepare<'_>,
+  ) -> SceneAsks {
     profiling::scope!("prepare view");
 
     let (width, height) = frame.drawn;
@@ -184,7 +189,7 @@ impl SceneView {
   /// Finishes readying its frame once its scene settled every view's asks (`LevelScene::settle`): writes its lights as
   /// it asked for them, the faces now settled, and fills its effects' quads from the step the scene joined, with
   /// `options` as its frame was prepared. `finish_present` follows.
-  pub fn finish_prepare(
+  pub(crate) fn finish_prepare(
     &mut self,
     scene: &LevelScene,
     device: &wgpu::Device,
@@ -206,7 +211,7 @@ impl SceneView {
   /// Once every unit knows what it draws (`finish_prepare`): keeps the engine's bloom where the frame's distortion may
   /// blur it, by the blue of the maps its writers draw in `textures`, and notes what the window pass reads, with
   /// `options` and over `output` as its frame was prepared.
-  pub fn finish_present(
+  pub(crate) fn finish_present(
     &mut self,
     scene: &LevelScene,
     textures: &TextureCache,
@@ -238,7 +243,7 @@ impl SceneView {
   }
 
   /// Ends a frame its graph recorded: every unit's history it wrote becomes the one the next frame keeps.
-  pub fn end_frame(&mut self) {
+  pub(crate) fn end_frame(&mut self) {
     let mut end: ViewFrameEnd<'_> = ViewFrameEnd {
       depth: self.targets.as_mut().map(|targets| &mut targets.depth),
     };
@@ -250,7 +255,7 @@ impl SceneView {
 
   /// Readies a frame for its graph, none before the view's targets are made: a pick's camera narrowed to the texel
   /// picked and the readback it is copied into while one is free, and the depth the next frame's occlusion tests.
-  pub fn begin_frame(
+  pub(crate) fn begin_frame(
     &mut self,
     device: &wgpu::Device,
     encoder: &mut FrameEncoder,
@@ -277,7 +282,7 @@ impl SceneView {
   /// readied and drawn), its shadows (the cascades, the rain's cover, the level's surface and the lamps' faces), its lighting with
   /// the reflections and the water, and what blends over it and resolves it; the pick last. Which passes run is decided
   /// by the units; each reads the view, which recording leaves as it is. The present pass reads what it leaves.
-  pub fn record<'a>(
+  pub(crate) fn record<'a>(
     &'a self,
     scene: &'a LevelScene,
     GraphDeclaration {

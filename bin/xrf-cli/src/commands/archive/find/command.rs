@@ -12,7 +12,7 @@ use crate::commands::archive::list::archive_shared_payload_index::ArchiveSharedP
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct FindCommand;
+pub(crate) struct FindCommand;
 
 impl GenericCommand for FindCommand {
   fn operation(&self) -> &'static str {

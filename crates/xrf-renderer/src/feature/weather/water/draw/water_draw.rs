@@ -15,7 +15,7 @@ use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 /// before the water, what the static draws bind, the frame's lighting, both skies, the view's water, and the scene pass
 /// its reflection's rays are left to, with what it traces by where the device traces rays: the sky's group, the level's
 /// trace and the texture cache's group.
-pub struct WaterDraw<'a> {
+pub(crate) struct WaterDraw<'a> {
   pub targets: ViewTargetHandles,
   /// The frame as it stood before the water, which the enhanced water refracts and reflects; none for the engine's.
   pub before_water: Option<GraphTexture>,

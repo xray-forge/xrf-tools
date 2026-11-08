@@ -3,7 +3,7 @@ use std::time::Duration;
 use crate::{Finding, GamedataCheckResult, GamedataVerificationStatus};
 
 #[derive(Default)]
-pub struct GamedataLevelsVerificationResult {
+pub(crate) struct GamedataLevelsVerificationResult {
   pub(crate) duration: Duration,
   pub(crate) findings: Vec<Finding>,
   /// Whether any spawn asset provided a game graph to reconcile against.

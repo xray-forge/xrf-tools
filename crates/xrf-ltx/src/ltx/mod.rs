@@ -15,4 +15,5 @@ pub(crate) use crate::ltx::iter::PropertyIter;
 pub use crate::ltx::ltx::Ltx;
 pub(crate) use crate::ltx::ltx_collections::{LtxSections, SectionData};
 pub(crate) use crate::ltx::ltx_inherit::LtxInheritConvertor;
-pub use crate::ltx::section::{Section, SectionEntry, SectionSetter};
+pub use crate::ltx::section::Section;
+pub(crate) use crate::ltx::section::{SectionEntry, SectionSetter};

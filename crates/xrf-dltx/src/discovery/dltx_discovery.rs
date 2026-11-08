@@ -3,17 +3,17 @@ use xrf_extension::XrayExtension;
 use crate::discovery::dltx_attachment::DltxAttachment;
 
 /// Works out which files patch a base config, in the order the engine applies them.
-pub struct DltxDiscovery;
+pub(crate) struct DltxDiscovery;
 
 impl DltxDiscovery {
   /// Depth assigned to the base root. Its includes count up from here.
-  pub const BASE_DEPTH: i32 = 0;
+  pub(crate) const BASE_DEPTH: i32 = 0;
 
   /// Depth step between consecutive mod files.
   ///
   /// Two hundred slots each so a mod file's own include chain, which counts up one per level, cannot reach the next mod
   /// file's band. `Xr_ini.cpp`.
-  pub const MOD_DEPTH_STEP: i32 = -200;
+  pub(crate) const MOD_DEPTH_STEP: i32 = -200;
 
   /// What a patch file's name opens with, the fixed half of the engine's `mod_<stem>_*.ltx` glob.
   pub(crate) const MOD_PREFIX: &'static str = "mod_";
@@ -26,7 +26,7 @@ impl DltxDiscovery {
   ///
   /// The alphabetically last file wins a conflict, because depth decreases as the list advances and lower depth beats
   /// higher (`Xr_ini.cpp`).
-  pub fn attachments_of(base_name: &str, siblings: &[String]) -> Vec<DltxAttachment> {
+  pub(crate) fn attachments_of(base_name: &str, siblings: &[String]) -> Vec<DltxAttachment> {
     let Some(stem) = Self::config_stem(base_name) else {
       return Vec::new();
     };

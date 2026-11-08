@@ -5,7 +5,7 @@ use crate::contract::feature::scene::render_grass_settings::RenderGrassSettings;
 /// frame draws them each frame, their triangles' corners and records and how many stand; the structure built over them,
 /// which the view's own top level holds beside the scene's where it traces its light, and the draw of them into the
 /// near sun cascades where those shadow the frame (`shaders/grass/card_shadow.wgsl`).
-pub struct GrassCards {
+pub(crate) struct GrassCards {
   pub vertices: wgpu::Buffer,
   pub triangles: wgpu::Buffer,
   pub count: wgpu::Buffer,
@@ -32,14 +32,14 @@ impl GrassCards {
   /// asking whether the light is blocked (`SCENE_MASK_CARD_SHADOWS`), set while the grass casts its shadows, and for
   /// the water's reflected rays (`SCENE_MASK_CARD_REFLECTIONS`), set whenever the cards are traced. A surfaces' ray
   /// leaves both out (`SCENE_MASK_SCENE`).
-  pub const INSTANCE: u32 = 0x00ff_ffff;
-  pub const SHADOW_MASK: u8 = 0x02;
-  pub const REFLECTION_MASK: u8 = 0x04;
+  pub(crate) const INSTANCE: u32 = 0x00ff_ffff;
+  pub(crate) const SHADOW_MASK: u8 = 0x02;
+  pub(crate) const REFLECTION_MASK: u8 = 0x04;
   /// The share of their reach over which the cards fade out.
   const FADE_SHARE: f32 = 0.2;
 
   /// Cards holding `capacity` triangles at most, and the structure over them where the device traces rays.
-  pub fn new(device: &wgpu::Device, capacity: u32) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, capacity: u32) -> Self {
     let is_traceable: bool = can_trace(device);
     let buffer = |label: &str, size: u64, usage: wgpu::BufferUsages| -> wgpu::Buffer {
       device.create_buffer(&wgpu::BufferDescriptor {
@@ -91,7 +91,7 @@ impl GrassCards {
 
   /// Triangles the cards hold, `current` held now and their tufts having last asked for `asked`: `ASKED_MARGIN` more
   /// than asked, as a power of two; grown at once and shrunk only once that falls to half the room.
-  pub fn get_capacity(current: u32, asked: u32) -> u32 {
+  pub(crate) fn get_capacity(current: u32, asked: u32) -> u32 {
     let wanted: u32 = ((asked as f32 * Self::ASKED_MARGIN) as u32)
       .next_power_of_two()
       .clamp(Self::LEAST_CAPACITY, Self::MOST_CAPACITY);
@@ -105,7 +105,7 @@ impl GrassCards {
 
   /// Metres from the eye within which the cards stand a tuft for `settings`, no further than `most` where it is given,
   /// and the last of them over which they fade.
-  pub fn get_reach(settings: &RenderGrassSettings, most: Option<f32>) -> (f32, f32) {
+  pub(crate) fn get_reach(settings: &RenderGrassSettings, most: Option<f32>) -> (f32, f32) {
     let reach: f32 = most
       .map_or(settings.shadow_radius, |most| settings.shadow_radius.min(most))
       .clamp(1.0, Self::MOST_REACH);
@@ -115,24 +115,24 @@ impl GrassCards {
 
   /// Metres from the eye within which the traced cards stand every tuft whole for `settings`, short of their fade: where
   /// a water's ray meets the grass as its cards, and past which it walks the grass's layers.
-  pub fn get_whole_reach(settings: &RenderGrassSettings) -> f32 {
+  pub(crate) fn get_whole_reach(settings: &RenderGrassSettings) -> f32 {
     let (reach, fade): (f32, f32) = Self::get_reach(settings, None);
 
     reach - fade
   }
 
   /// Slots each way from the eye's that `reach` spans: the eye stands up to half a slot off its slot's middle.
-  pub fn get_slots(reach: f32) -> u32 {
+  pub(crate) fn get_slots(reach: f32) -> u32 {
     (reach / 2.0) as u32 + 2
   }
 
   /// Ring cells about the eye's whose tufts may stand within `slots` of it.
-  pub fn get_window_cells(slots: u32) -> u32 {
+  pub(crate) fn get_window_cells(slots: u32) -> u32 {
     (slots * 2 + 1) * (slots * 2 + 1)
   }
 
   /// Every triangle of `capacity` the cards hold, those not standing this frame marked as none by their corners.
-  pub fn get_size(capacity: u32) -> wgpu::BlasTriangleGeometrySizeDescriptor {
+  pub(crate) fn get_size(capacity: u32) -> wgpu::BlasTriangleGeometrySizeDescriptor {
     wgpu::BlasTriangleGeometrySizeDescriptor {
       vertex_format: wgpu::VertexFormat::Float32x3,
       vertex_count: capacity * 3,

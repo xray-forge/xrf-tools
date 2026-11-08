@@ -23,7 +23,7 @@ use crate::commands::ogf::verify::texture_resolution::TextureResolution;
 /// The visuals of one tree share one implied root, so its search is planned and mounted once, not once per texture
 /// reference. Repeated references reuse the success or failure cached for their resolved texture path.
 #[derive(Default)]
-pub struct OgfTextureResolver {
+pub(crate) struct OgfTextureResolver {
   /// Roots searched after the visual's own, in the order the caller named them.
   roots: Vec<PathBuf>,
   /// The root each directory of visuals implies, or `None` where it implies none: probing it asks the disk about every
@@ -41,7 +41,7 @@ impl OgfTextureResolver {
   /// A resolver that searches the visual's own tree, then each named root.
   ///
   /// The order is the engine's: the tree a mesh lives in wins over the trees layered behind it.
-  pub fn new(roots: Vec<PathBuf>) -> Self {
+  pub(crate) fn new(roots: Vec<PathBuf>) -> Self {
     Self {
       roots,
       ..Default::default()
@@ -54,7 +54,7 @@ impl OgfTextureResolver {
   /// # Errors
   ///
   /// Returns why the first root that cannot be planned is refused.
-  pub fn check_roots(roots: &[PathBuf]) -> XrfResult {
+  pub(crate) fn check_roots(roots: &[PathBuf]) -> XrfResult {
     for root in roots {
       XraySearchPlan::new().with_root(root.display().to_string(), root)?;
     }
@@ -62,7 +62,7 @@ impl OgfTextureResolver {
     Ok(())
   }
 
-  pub fn resolve(&mut self, visual: &Path, reference: &str) -> TextureResolution {
+  pub(crate) fn resolve(&mut self, visual: &Path, reference: &str) -> TextureResolution {
     let Some(root) = self.get_implied_root(visual) else {
       return TextureResolution::NoRoot;
     };
@@ -168,7 +168,7 @@ impl OgfTextureResolver {
   }
 
   /// Returns the number of distinct texture files inspected by the sweep.
-  pub fn distinct_textures(&self) -> usize {
+  pub(crate) fn distinct_textures(&self) -> usize {
     self.headers.len()
   }
 }

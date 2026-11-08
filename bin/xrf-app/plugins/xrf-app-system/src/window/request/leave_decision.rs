@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub enum LeaveDecision {
+pub(crate) enum LeaveDecision {
   /// A leave refused while an operation runs.
   RefusedWhileBusy,
   /// A leave or exit ignored while another waits for an answer.
@@ -43,7 +43,7 @@ pub enum LeaveDecision {
 
 impl LeaveDecision {
   /// How the log says it.
-  pub fn describe(self) -> &'static str {
+  pub(crate) fn describe(self) -> &'static str {
     match self {
       Self::RefusedWhileBusy => "refused leaving while an operation runs",
       Self::IgnoredWhilePending => "ignored a request while another waits for an answer",

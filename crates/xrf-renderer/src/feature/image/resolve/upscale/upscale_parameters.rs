@@ -5,7 +5,7 @@ use crate::feature::image::resolve::upscale::upscale_uniform::UpscaleUniform;
 /// What an upscale pass reads: the scene for EASU, the upscaled frame for RCAS, and the size and sharpness.
 #[derive(PassParameters)]
 #[parameters(group = 0)]
-pub struct UpscaleParameters {
+pub(crate) struct UpscaleParameters {
   #[texture(d2, unfilterable)]
   pub source: GraphTexture,
   #[uniform]

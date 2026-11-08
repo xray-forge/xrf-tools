@@ -33,7 +33,7 @@ const COMPOSITED_BLEND: wgpu::BlendState = wgpu::BlendState {
 /// Draws a viewport's visible blended, added and multiplied static surfaces over its lit scene, its wall marks into its
 /// G-buffer's albedo before any light, its distorting surfaces' special pass into the distortion target, and its
 /// selected ones' mark into the material target, each tested against the G-buffer's depth without writing it.
-pub struct CompositedPass {
+pub(crate) struct CompositedPass {
   layout: wgpu::BindGroupLayout,
   layouts: [wgpu::BindGroupLayout; 4],
   pipelines: PipelineSet<CompositedPipelines>,
@@ -42,7 +42,7 @@ pub struct CompositedPass {
 impl CompositedPass {
   /// Reversed depth steps a composited surface is pulled towards the eye by, so a surface laid on a wall never loses
   /// to it, and the same scaled by its slope for one seen at a grazing angle.
-  pub const DEPTH_BIAS: wgpu::DepthBiasState = wgpu::DepthBiasState {
+  pub(crate) const DEPTH_BIAS: wgpu::DepthBiasState = wgpu::DepthBiasState {
     constant: 256,
     slope_scale: 1.0,
     clamp: 0.0,
@@ -54,7 +54,7 @@ impl CompositedPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(
+  pub(crate) fn new(
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     scene_layout: &wgpu::BindGroupLayout,
@@ -81,7 +81,7 @@ impl CompositedPass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipelines.refresh(source.cache, || {
       Self::create_pipelines(source, &self.layouts, &self.layout)
     }) {
@@ -90,7 +90,7 @@ impl CompositedPass {
   }
 
   /// Draws the unsorted composited surfaces each argument buffer lists, in cluster order.
-  pub fn record(
+  pub(crate) fn record(
     &self,
     context: &mut RasterContext<'_>,
     StaticLayoutBindings {
@@ -121,7 +121,7 @@ impl CompositedPass {
 
   /// Draws the view's sorted composited clusters back to front: each run of them alike in layout, as `(layout, first
   /// entry, count)`, by its layout's program over the sorted list `sorted` reads.
-  pub fn record_sorted(
+  pub(crate) fn record_sorted(
     &self,
     context: &mut RasterContext<'_>,
     StaticLayoutBindings {
@@ -168,7 +168,7 @@ impl CompositedPass {
   /// Draws the distorting surfaces each argument buffer lists, every layout's run of the distortion draw list, into the
   /// distortion target, as `model_distort4glass` draws their special pass: unsorted and strictly sorted alike, in
   /// cluster order, which blending offsets makes no matter.
-  pub fn record_distortion(
+  pub(crate) fn record_distortion(
     &self,
     context: &mut RasterContext<'_>,
     StaticLayoutBindings {
@@ -198,7 +198,7 @@ impl CompositedPass {
 
   /// Marks the selected surfaces among the composited ones each argument buffer lists in the material target's alpha,
   /// which the present outlines the selection by.
-  pub fn record_selection(
+  pub(crate) fn record_selection(
     &self,
     context: &mut RasterContext<'_>,
     StaticLayoutBindings {
@@ -227,7 +227,7 @@ impl CompositedPass {
   }
 
   /// Lays the wall marks each argument buffer lists into the G-buffer's albedo, before any light reads it.
-  pub fn record_wallmarks(
+  pub(crate) fn record_wallmarks(
     &self,
     context: &mut RasterContext<'_>,
     StaticLayoutBindings {

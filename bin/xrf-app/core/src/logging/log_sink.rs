@@ -3,13 +3,13 @@ use std::io::{self, Write};
 
 /// Where every log record goes: the console, and the log file where one opened. A record is written to the file as it
 /// comes, unbuffered, so a log read after a freeze or a crash holds everything before it.
-pub struct LogSink {
+pub(super) struct LogSink {
   file: Option<File>,
 }
 
 impl LogSink {
   /// A sink writing to the console, and to `file` where the run has one.
-  pub fn new(file: Option<File>) -> Self {
+  pub(super) fn new(file: Option<File>) -> Self {
     Self { file }
   }
 }

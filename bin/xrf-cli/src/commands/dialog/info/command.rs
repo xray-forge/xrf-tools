@@ -13,7 +13,7 @@ use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 use crate::core::report::ReportVerdict;
 
 #[derive(Default)]
-pub struct InfoCommand;
+pub(crate) struct InfoCommand;
 
 impl GenericCommand for InfoCommand {
   fn operation(&self) -> &'static str {

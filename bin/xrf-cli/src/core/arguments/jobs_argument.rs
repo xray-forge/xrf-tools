@@ -10,14 +10,14 @@ use crate::core::arguments::OptionalArgument;
 /// everywhere; this one describes work, and a command with none has nothing to say about it. The generated reference is
 /// published, so a flag advertised on every page and honoured on three would be a documentation defect at scale rather
 /// than a harmless convenience.
-pub struct JobsArgument;
+pub(crate) struct JobsArgument;
 
 impl JobsArgument {
   const NAME: &'static str = "jobs";
 
   /// Declares `--jobs` on `command`. `-j` follows every other tool that has the flag; declaring it is a claim that the
   /// command's work is bounded by the plan the caller gets, wherever it fans out.
-  pub fn declare(command: Command) -> Command {
+  pub(crate) fn declare(command: Command) -> Command {
     command.arg(
       Arg::new(Self::NAME)
         .help("How much of the machine to use: 'auto', a worker count, or a share such as '50%'")
@@ -32,7 +32,7 @@ impl JobsArgument {
   }
 
   /// What the command was asked for, or `None` where it offers no say in the matter.
-  pub fn of(matches: &ArgMatches) -> Option<ExecutionRequest> {
+  pub(crate) fn of(matches: &ArgMatches) -> Option<ExecutionRequest> {
     OptionalArgument::read::<ExecutionRequest>(matches, Self::NAME).copied()
   }
 
@@ -41,7 +41,7 @@ impl JobsArgument {
   /// At normal verbosity, because the number is the first thing a reproducible bug report needs and the last thing
   /// anyone thinks to record. Only where `--jobs` exists: the console tells a person what they can change, and a line
   /// about a knob a command does not have is noise on every other page of output.
-  pub fn report(output: &OutputOptions, plan: &ExecutionPlan) {
+  pub(crate) fn report(output: &OutputOptions, plan: &ExecutionPlan) {
     xrf_output::info!(
       output,
       "Workers: {} ({})",

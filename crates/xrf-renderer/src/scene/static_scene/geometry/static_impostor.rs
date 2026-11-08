@@ -6,7 +6,7 @@ use xrf_renderer_core::ShaderStruct;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Impostor")]
-pub struct StaticImpostor {
+pub(crate) struct StaticImpostor {
   /// Its clump's sphere in renderer space.
   pub sphere: Vec4,
   /// Each facet's normal, facing back along the direction it is seen from.
@@ -20,6 +20,6 @@ pub struct StaticImpostor {
 
 impl StaticImpostor {
   /// Facets an impostor has, and corners each of them.
-  pub const FACETS: usize = 8;
-  pub const CORNERS: usize = Self::FACETS * 4;
+  pub(crate) const FACETS: usize = 8;
+  pub(crate) const CORNERS: usize = Self::FACETS * 4;
 }

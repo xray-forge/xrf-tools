@@ -20,7 +20,7 @@ use crate::scene::static_scene::trace::static_trace_record::StaticTraceRecord;
 /// its eye, whose holes a ray passes. The bindless textures a hit is shaded from are the texture cache's own group.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 3)]
-pub struct TraceParameters<'a> {
+pub(crate) struct TraceParameters<'a> {
   #[acceleration_structure]
   pub trace_scene: AccelerationStructureBinding<'a>,
   #[storage]

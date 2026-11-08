@@ -4,7 +4,7 @@ use xrf_renderer_core::ShaderStruct;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Cluster")]
-pub struct StaticCluster {
+pub(crate) struct StaticCluster {
   /// Its first index, in the shared index arena.
   pub first_index: u32,
   pub triangles: u32,

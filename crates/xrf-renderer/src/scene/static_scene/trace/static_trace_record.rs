@@ -8,7 +8,7 @@ use crate::scene::static_scene::trace::static_trace_geometry::StaticTraceGeometr
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "TraceRecord")]
-pub struct StaticTraceRecord {
+pub(crate) struct StaticTraceRecord {
   pub first_index: u32,
   pub vertex_start: u32,
   pub surface: u32,
@@ -18,9 +18,9 @@ pub struct StaticTraceRecord {
 }
 
 impl StaticTraceRecord {
-  pub const CUT_OUT: u32 = 1;
-  pub const TREE: u32 = 2;
-  pub const MODEL: u32 = 4;
+  pub(crate) const CUT_OUT: u32 = 1;
+  pub(crate) const TREE: u32 = 2;
+  pub(crate) const MODEL: u32 = 4;
 }
 
 impl From<&StaticTraceGeometry> for StaticTraceRecord {

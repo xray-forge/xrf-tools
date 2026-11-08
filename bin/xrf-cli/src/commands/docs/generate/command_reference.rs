@@ -3,7 +3,7 @@ use clap::Command;
 use super::argument_reference::ArgumentReference;
 
 /// Documentation model of one command: its usage line and the arguments its reference page tabulates.
-pub struct CommandReference {
+pub(crate) struct CommandReference {
   pub name: String,
   pub about: Option<String>,
   pub usage: String,
@@ -12,7 +12,7 @@ pub struct CommandReference {
 
 impl CommandReference {
   /// Preserves argument declaration order in generated reference pages.
-  pub fn from_command(domain: &str, mut command: Command) -> Self {
+  pub(crate) fn from_command(domain: &str, mut command: Command) -> Self {
     command.build();
 
     let usage: String = Self::render_usage(domain, &mut command);

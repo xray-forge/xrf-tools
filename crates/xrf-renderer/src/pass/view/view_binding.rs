@@ -2,14 +2,14 @@ use crate::frame::frame_encoder::FrameEncoder;
 use crate::pass::view::camera_uniform::CameraUniform;
 
 /// One viewport's camera on the GPU: its uniform buffer and the bind group passes read it through.
-pub struct ViewBinding {
+pub(crate) struct ViewBinding {
   pub buffer: wgpu::Buffer,
   pub bind_group: wgpu::BindGroup,
 }
 
 impl ViewBinding {
   /// The layout every pass binds a viewport's camera with, at group zero.
-  pub fn create_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+  pub(crate) fn create_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
     device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
       label: Some("view"),
       entries: &[wgpu::BindGroupLayoutEntry {
@@ -25,7 +25,7 @@ impl ViewBinding {
     })
   }
 
-  pub fn new(device: &wgpu::Device, layout: &wgpu::BindGroupLayout) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, layout: &wgpu::BindGroupLayout) -> Self {
     let buffer: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
       label: Some("view camera"),
       size: size_of::<CameraUniform>() as u64,
@@ -45,7 +45,7 @@ impl ViewBinding {
   }
 
   /// Writes the camera uniform through the frame's encoder, ahead of every pass of the graph.
-  pub fn write(&self, encoder: &mut FrameEncoder, uniform: &CameraUniform) {
+  pub(crate) fn write(&self, encoder: &mut FrameEncoder, uniform: &CameraUniform) {
     encoder.write_buffer(&self.buffer, 0, bytemuck::bytes_of(uniform));
   }
 }

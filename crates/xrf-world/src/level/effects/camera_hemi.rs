@@ -17,7 +17,7 @@ const SMOOTHING: f32 = 1.0;
 
 /// How lit the camera stands, as `CROS_impl` keeps the actor's hemi: estimated on the workers every so often where the
 /// camera stands, which stands in for the actor's sphere, and smoothed towards each estimate (`update_smooth`).
-pub struct CameraHemi {
+pub(crate) struct CameraHemi {
   estimator: Option<Arc<HemiEstimator>>,
   /// The estimate asked for and not taken yet.
   pending: Option<LoaderReceiver<HemiEstimate>>,
@@ -34,7 +34,7 @@ pub struct CameraHemi {
 }
 
 impl CameraHemi {
-  pub fn new(estimator: Option<Arc<HemiEstimator>>, workers: &RenderWorkers) -> Self {
+  pub(crate) fn new(estimator: Option<Arc<HemiEstimator>>, workers: &RenderWorkers) -> Self {
     Self {
       estimator,
       pending: None,
@@ -49,7 +49,7 @@ impl CameraHemi {
 
   /// Takes a finished estimate, asks for the next one once due, and smooths the hemi on to `now`, the engine's clock.
   /// `eye` is where the camera stands, in engine space.
-  pub fn advance(&mut self, eye: Vec3, now: Duration) {
+  pub(crate) fn advance(&mut self, eye: Vec3, now: Duration) {
     // A worker that never answered leaves none pending, so the next is asked for.
     if let Some(value) = take_answer(&mut self.pending, "camera hemi") {
       // The first estimate is taken as it is, as the first update takes it.
@@ -89,13 +89,13 @@ impl CameraHemi {
   }
 
   /// The smoothed hemi, none where the level has no estimator.
-  pub fn get_smooth(&self) -> Option<f32> {
+  pub(crate) fn get_smooth(&self) -> Option<f32> {
     self.estimator.is_some().then_some(self.smooth)
   }
 
   /// The brightest face of the smoothed cube but the one facing down, which the rain's loop is as loud as
   /// (`CEffect_Rain::OnFrame`); none where the level has no estimator.
-  pub fn get_open_sky(&self) -> Option<f32> {
+  pub(crate) fn get_open_sky(&self) -> Option<f32> {
     let [px, py, pz, nx, _, nz] = self.cube_smooth;
 
     self.estimator.is_some().then(|| px.max(py).max(pz).max(nx).max(nz))
@@ -104,7 +104,7 @@ impl CameraHemi {
   /// Whether the camera stands indoors, which a level without an estimator never does. The engine estimates the
   /// actor's hemi in its first frame; until the first estimate is back the camera counts as indoors, so nothing starts
   /// where it is not yet known.
-  pub fn is_indoors(&self) -> bool {
+  pub(crate) fn is_indoors(&self) -> bool {
     self.estimator.is_some() && (self.value.is_none() || self.smooth < INDOOR_HEMI)
   }
 }

@@ -18,7 +18,7 @@ use crate::core::report::ReportVerdict;
 use crate::core::reports::FileConversionReport;
 
 #[derive(Default)]
-pub struct RepackCommand;
+pub(crate) struct RepackCommand;
 
 impl GenericCommand for RepackCommand {
   fn operation(&self) -> &'static str {

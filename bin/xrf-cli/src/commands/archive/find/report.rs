@@ -11,13 +11,13 @@ use crate::commands::archive::list::archive_shared_payload_index::ArchiveSharedP
 /// produced it.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ArchiveFindReport {
+pub(crate) struct ArchiveFindReport {
   entries: Vec<ArchiveEntryReport>,
   query: String,
 }
 
 impl ArchiveFindReport {
-  pub fn new(
+  pub(crate) fn new(
     project: &ArchiveProject,
     query: &str,
     entries: &[&ArchiveFileDescriptor],

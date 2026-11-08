@@ -9,7 +9,7 @@ use crate::pass::view::view_binding::ViewBinding;
 
 /// Marches a ray towards the sun over the frame's depth from one drawn pixel of each two by two, into how much sunlight
 /// reaches it and how far along the view it stands, which the sun brings up to every pixel by depth.
-pub struct ContactShadowPass {
+pub(crate) struct ContactShadowPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   pipeline: PipelineSet<wgpu::RenderPipeline>,
@@ -19,7 +19,7 @@ pub struct ContactShadowPass {
 
 impl ContactShadowPass {
   /// The sunlight each marched pixel keeps, from none to all, then its distance along the view.
-  pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg16Float;
+  pub(crate) const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg16Float;
 
   /// The stand-in's texel: all lit, as far as half floats reach.
   const LIT: [u16; 2] = [0x3c00, 0x7bff];
@@ -27,7 +27,11 @@ impl ContactShadowPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(queue: &wgpu::Queue, source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+  pub(crate) fn new(
+    queue: &wgpu::Queue,
+    source: PipelineSource<'_>,
+    view_layout: &wgpu::BindGroupLayout,
+  ) -> XrfResult<Self> {
     let device: &wgpu::Device = source.device;
 
     let layout: wgpu::BindGroupLayout = ContactShadowParameters::create_layout(device);
@@ -63,7 +67,7 @@ impl ContactShadowPass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipeline.refresh(source.cache, || {
       Self::create_pipeline(source, &self.view_layout, &self.layout)
     }) {
@@ -72,12 +76,17 @@ impl ContactShadowPass {
   }
 
   /// The texel the sun reads in place of contact shadows not drawn.
-  pub fn get_lit(&self) -> &wgpu::TextureView {
+  pub(crate) fn get_lit(&self) -> &wgpu::TextureView {
     &self.lit
   }
 
   /// Marches the frame's pixels into the target the pass draws into.
-  pub fn record(&self, context: &mut RasterContext<'_>, view: &ViewBinding, parameters: &ContactShadowParameters) {
+  pub(crate) fn record(
+    &self,
+    context: &mut RasterContext<'_>,
+    view: &ViewBinding,
+    parameters: &ContactShadowParameters,
+  ) {
     context.bind(parameters);
 
     let pass: &mut wgpu::RenderPass<'static> = context.get_pass();

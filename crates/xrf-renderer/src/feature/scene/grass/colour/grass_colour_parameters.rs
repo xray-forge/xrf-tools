@@ -7,7 +7,7 @@ use crate::feature::scene::grass::level::grass_model_record::GrassModelRecord;
 /// stand and the share of its texture they cover.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 0)]
-pub struct GrassColourParameters {
+pub(crate) struct GrassColourParameters {
   #[storage]
   pub grass_models: StorageArray<GrassModelRecord>,
   #[storage]

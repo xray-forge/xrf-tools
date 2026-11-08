@@ -11,13 +11,13 @@ use crate::viewport::window_host::win32_window_host::Win32WindowHost;
 
 /// Builds the host viewports draw into from a window's native handle, as `WindowHandles` recorded it: one host for each
 /// platform the renderer presents on.
-pub struct WindowHostBuilder {
+pub(crate) struct WindowHostBuilder {
   handle: NonZeroIsize,
 }
 
 impl WindowHostBuilder {
   /// A builder of hosts over the native window `handle` names.
-  pub fn new(handle: NonZeroIsize) -> Self {
+  pub(crate) fn new(handle: NonZeroIsize) -> Self {
     Self { handle }
   }
 
@@ -27,7 +27,7 @@ impl WindowHostBuilder {
   ///
   /// Never on Windows; the signature is every platform's.
   #[cfg(windows)]
-  pub fn build(self) -> TauriResult<Arc<dyn RenderWindowHost>> {
+  pub(crate) fn build(self) -> TauriResult<Arc<dyn RenderWindowHost>> {
     Ok(Arc::new(Win32WindowHost::new(self.handle)))
   }
 

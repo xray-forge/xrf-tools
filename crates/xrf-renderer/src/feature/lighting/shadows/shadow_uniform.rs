@@ -6,7 +6,7 @@ use xrf_renderer_core::ShaderStruct;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Shadows")]
-pub struct ShadowUniform {
+pub(crate) struct ShadowUniform {
   /// Renderer space into each cascade's clip space, as its map was last drawn.
   pub matrices: [Mat4; 4],
   /// Metres one texel of each cascade's map is across.

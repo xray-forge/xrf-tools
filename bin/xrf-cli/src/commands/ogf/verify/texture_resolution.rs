@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use xrf_dds::DdsMetadata;
 
 /// The outcome of resolving and reading one texture reference.
-pub enum TextureResolution {
+pub(crate) enum TextureResolution {
   /// The visual sits under no directory that looks like an X-Ray root.
   NoRoot,
   /// Nothing searched holds the reference. `sources` is every root the search looked in, in order.

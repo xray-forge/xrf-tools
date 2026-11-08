@@ -3,7 +3,7 @@ use crate::frame::targets::view_targets::ViewTargets;
 /// The surroundings cube's faces as last drawn: each face's G-buffer kept at the size it is drawn at, so a face whose
 /// geometry still stands is lit again from it rather than culled and drawn again; and a spare, which a face drawn
 /// again band by band is drawn into before it takes the face's place.
-pub struct SurroundingsFaces {
+pub(crate) struct SurroundingsFaces {
   /// Texels a side each face is drawn at.
   pub drawn: u32,
   /// Every layer's albedo, normal, material and depth, in the order `SurroundingsFaces::FORMATS` names them.
@@ -15,7 +15,7 @@ pub struct SurroundingsFaces {
 
 impl SurroundingsFaces {
   /// What each face keeps: the G-buffer the surroundings' resolve reads.
-  pub const FORMATS: [(&'static str, wgpu::TextureFormat); 4] = [
+  pub(crate) const FORMATS: [(&'static str, wgpu::TextureFormat); 4] = [
     ("surroundings albedo", ViewTargets::ALBEDO),
     ("surroundings normal", ViewTargets::NORMAL),
     ("surroundings material", ViewTargets::MATERIAL),
@@ -24,7 +24,7 @@ impl SurroundingsFaces {
   /// Layers kept: a face each, and the spare.
   const LAYERS: usize = 7;
 
-  pub fn new(device: &wgpu::Device, drawn: u32) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, drawn: u32) -> Self {
     let textures: [wgpu::Texture; 4] = Self::FORMATS.map(|(label, format)| {
       device.create_texture(&wgpu::TextureDescriptor {
         label: Some(label),
@@ -61,17 +61,17 @@ impl SurroundingsFaces {
   }
 
   /// The G-buffer a face keeps.
-  pub fn get_face(&self, face: u32) -> &[wgpu::TextureView; 4] {
+  pub(crate) fn get_face(&self, face: u32) -> &[wgpu::TextureView; 4] {
     &self.layers[self.slots[face as usize]]
   }
 
   /// The G-buffer a face drawn again band by band is drawn into.
-  pub fn get_spare(&self) -> &[wgpu::TextureView; 4] {
+  pub(crate) fn get_spare(&self) -> &[wgpu::TextureView; 4] {
     &self.layers[self.spare]
   }
 
   /// Lets the spare, drawn whole, take a face's place, the face's old layer the spare.
-  pub fn swap(&mut self, face: u32) {
+  pub(crate) fn swap(&mut self, face: u32) {
     std::mem::swap(&mut self.slots[face as usize], &mut self.spare);
   }
 }

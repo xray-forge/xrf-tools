@@ -22,7 +22,7 @@ impl LevelLightShadows {
   /// Offers `scheduler` the faces wanting a draw this frame, the nearest lights' first, each once however many views
   /// asked for it, by their texels: one holding nothing yet or changed under within `STALE_WAIT_MOST` frames, one
   /// swaying within `SWAY_WAIT_MOST`, one its light carried at once.
-  pub fn finish(&mut self, scheduler: &mut PeriodicScheduler) {
+  pub(crate) fn finish(&mut self, scheduler: &mut PeriodicScheduler) {
     self.candidates.sort_by(|a, b| {
       (a.order.is_away, a.order.is_current)
         .cmp(&(b.order.is_away, b.order.is_current))
@@ -60,7 +60,7 @@ impl LevelLightShadows {
   /// Readies the faces `scheduler` granted this frame to be culled into their slots and drawn into their squares of the
   /// atlas, one not granted waiting a frame more, and lets a light's new faces take the place of its old once all are
   /// drawn; `encoder` takes the copies a list growing makes.
-  pub fn prepare(
+  pub(crate) fn prepare(
     &mut self,
     device: &wgpu::Device,
     encoder: &mut FrameEncoder,

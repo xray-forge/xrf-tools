@@ -6,7 +6,7 @@ use crate::feature::weather::volumetric::froxels::froxel_uniform::FroxelUniform;
 /// scattered towards the camera up to each.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct FroxelIntegrateParameters {
+pub(crate) struct FroxelIntegrateParameters {
   #[uniform]
   pub froxels: UniformBinding<FroxelUniform>,
   #[texture(d3, float)]

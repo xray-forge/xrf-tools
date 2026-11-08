@@ -5,7 +5,7 @@ use xrf_renderer_core::ShaderStruct;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Place")]
-pub struct StaticPlace {
+pub(crate) struct StaticPlace {
   pub transform: Mat4,
   /// The hemisphere's scale and bias, the impostor it stands for or `-1`, and the matrix's largest axis scale.
   pub info: Vec4,

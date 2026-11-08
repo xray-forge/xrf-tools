@@ -1,7 +1,7 @@
 /// How an overhead map of the level around the camera is drawn: its names, metres across, texels across, metres above
 /// the camera it is seen from and how far down it reaches, the step it moves by, and whether trees stand in it.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct OverheadShape {
+pub(crate) struct OverheadShape {
   pub label: &'static str,
   pub cull_pass: &'static str,
   pub draw_pass: &'static str,
@@ -32,7 +32,7 @@ impl OverheadShape {
   /// engine's wetting near the camera read it, three centimetres a texel, and fitted to the wet reach where the traced
   /// reflections want the wetness that far (`OverheadMap::fit_width`, 28 cm a texel at the default 250 m); its step a
   /// whole 64 texels of whatever width it has, so a thin edge never shifts in it as it moves.
-  pub const RAIN_COVER: Self = Self {
+  pub(crate) const RAIN_COVER: Self = Self {
     label: "rain cover",
     cull_pass: "rain cover cull",
     draw_pass: "rain cover",
@@ -58,7 +58,7 @@ impl OverheadShape {
   /// The level's own surface, which puddles are placed on: out past the farthest they are drawn, so its edge never
   /// shows, half a metre a texel, moving a whole 64 texels at a time so the static level never shifts in it; the trees
   /// left out, so the ground under their crowns is still the ground.
-  pub const LEVEL_SURFACE: Self = Self {
+  pub(crate) const LEVEL_SURFACE: Self = Self {
     label: "level surface",
     cull_pass: "level surface cull",
     draw_pass: "level surface",
@@ -81,7 +81,7 @@ impl OverheadShape {
   };
 
   /// The level's water around the camera, laid as the level's surface is, which puddles stay above and away from.
-  pub const LEVEL_WATER: Self = Self {
+  pub(crate) const LEVEL_WATER: Self = Self {
     label: "level water",
     cull_pass: "level water cull",
     draw_pass: "level water",

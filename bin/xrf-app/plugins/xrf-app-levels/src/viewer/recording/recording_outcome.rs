@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub struct RecordingOutcome {
+pub(crate) struct RecordingOutcome {
   pub file: PathBuf,
   pub duration: f64,
   pub frames: u32,

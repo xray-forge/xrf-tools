@@ -49,5 +49,5 @@ impl GpuZones {
 
   /// Nothing without the `tracy` feature.
   #[cfg(not(feature = "tracy"))]
-  pub fn send(&mut self, _stamps: &[u64], _names: &[Option<TimedPass>], _period: f32) {}
+  pub(super) fn send(&mut self, _stamps: &[u64], _names: &[Option<TimedPass>], _period: f32) {}
 }

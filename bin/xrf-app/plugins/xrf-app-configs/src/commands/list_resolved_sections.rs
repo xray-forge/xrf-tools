@@ -14,7 +14,7 @@ use crate::request::ConfigsListRequest;
 /// Lists every section one entry point resolves to, named and counted.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "list_resolved_sections")]
-pub async fn configs_list_resolved_sections(
+pub(crate) async fn configs_list_resolved_sections(
   execution: State<'_, ExecutionState>,
   projects: State<'_, ConfigsProjects>,
   request: ConfigsListRequest,

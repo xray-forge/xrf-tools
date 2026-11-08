@@ -13,7 +13,7 @@ use crate::scene::level::page::level_overlays::LevelOverlays;
 /// Draws a viewport's overlays into the window's pass after its frame: line segments and points, depth tested against
 /// the scene by the shader since the window's pass holds no depth, the sun's disc, and the helpers' wires and icons,
 /// blended by how they show behind the scene and how far off they stand.
-pub struct OverlayPass {
+pub(crate) struct OverlayPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   /// The helper icon atlas and its sampler, bound as the icons' third group.
@@ -25,7 +25,7 @@ pub struct OverlayPass {
 }
 
 impl OverlayPass {
-  pub fn new(
+  pub(crate) fn new(
     queue: &wgpu::Queue,
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
@@ -91,7 +91,7 @@ impl OverlayPass {
 
   /// Builds the pipelines again from a library reloaded since they were built, one a window format each; a broken edit
   /// keeps the last good ones.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     let layouts: [&wgpu::BindGroupLayout; 3] = [&self.view_layout, &self.layout, &self.atlas_layout];
 
     if let Err(error) = self
@@ -107,7 +107,7 @@ impl OverlayPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn prepare(&mut self, source: PipelineSource<'_>, format: wgpu::TextureFormat) -> XrfResult {
+  pub(crate) fn prepare(&mut self, source: PipelineSource<'_>, format: wgpu::TextureFormat) -> XrfResult {
     let layouts: [&wgpu::BindGroupLayout; 3] = [&self.view_layout, &self.layout, &self.atlas_layout];
 
     self
@@ -210,7 +210,7 @@ impl OverlayPass {
   /// Draws into a pass whose viewport and scissor are the view's already, the window's or a screenshot's own: the
   /// page's overlays where given, then every kept object's helpers and the singled out ones' over them, two vertices a
   /// wire and six corners an icon.
-  pub fn draw(&self, context: &mut RasterContext<'_>, format: wgpu::TextureFormat, draw: OverlayDraw<'_>) {
+  pub(crate) fn draw(&self, context: &mut RasterContext<'_>, format: wgpu::TextureFormat, draw: OverlayDraw<'_>) {
     let Some(pipelines) = self.pipelines.get(&format) else {
       return;
     };

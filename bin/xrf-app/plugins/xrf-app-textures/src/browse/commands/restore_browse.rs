@@ -8,7 +8,7 @@ use crate::browse::{TextureBrowses, TextureCatalog};
 /// The listing `tool` browses in the asking window, the newest it opened, or null when it holds none.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "restore_browse")]
-pub async fn textures_restore_browse(
+pub(crate) async fn textures_restore_browse(
   browses: State<'_, TextureBrowses>,
   window: InvokingWindow,
   tool: String,

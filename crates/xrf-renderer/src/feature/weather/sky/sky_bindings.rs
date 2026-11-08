@@ -8,14 +8,14 @@ use crate::scene::texture::weather_textures::WeatherTextures;
 
 /// What every pass drawing the weather's sky binds as its sky group: the layout [`SkyParameters`] make and the two
 /// samplers they read through, and the views a frame's sky takes from the weather textures.
-pub struct SkyBindings {
+pub(crate) struct SkyBindings {
   layout: wgpu::BindGroupLayout,
   clamp: wgpu::Sampler,
   repeat: wgpu::Sampler,
 }
 
 impl SkyBindings {
-  pub fn new(device: &wgpu::Device) -> Self {
+  pub(crate) fn new(device: &wgpu::Device) -> Self {
     Self {
       layout: SkyParameters::create_layout(device),
       // Its mips blend for the prefiltered cube, read at the mip a roughness names; every other cube is read at its
@@ -40,18 +40,18 @@ impl SkyBindings {
     }
   }
 
-  pub fn get_layout(&self) -> &wgpu::BindGroupLayout {
+  pub(crate) fn get_layout(&self) -> &wgpu::BindGroupLayout {
     &self.layout
   }
 
   /// The sampler a sky cube is read through.
-  pub fn get_clamp(&self) -> &wgpu::Sampler {
+  pub(crate) fn get_clamp(&self) -> &wgpu::Sampler {
     &self.clamp
   }
 
   /// A sky's textures, the sun's sprite and the environment cubes as the cache holds them now, each slot its kind's
   /// placeholder until its file is up; the first environment slot, and every one past `environments`, stands for none.
-  pub fn collect(
+  pub(crate) fn collect(
     &self,
     cache: WeatherTextures<'_>,
     sky: &RenderSky,
@@ -80,7 +80,7 @@ impl SkyBindings {
 
   /// Imports a frame's sky views and its prefiltered sky cube into its graph, as the parameters every pass drawing
   /// the sky binds.
-  pub fn import<'r>(
+  pub(crate) fn import<'r>(
     &'r self,
     views: &'r SkyViews,
     prefiltered: &'r wgpu::TextureView,

@@ -6,7 +6,7 @@ use crate::feature::image::resolve::fsr::fsr_uniform::FsrUniform;
 /// size, the new locks, and the last frame's history.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 0)]
-pub struct FsrAccumulateParameters<'a> {
+pub(crate) struct FsrAccumulateParameters<'a> {
   #[uniform]
   pub fsr: UniformBinding<FsrUniform>,
   #[texture(d2, unfilterable)]

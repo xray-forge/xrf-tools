@@ -1,7 +1,7 @@
 /// What a view's resolve decided for its frame, prepared before every other unit so each reads this frame's choice
 /// rather than the last one's.
 #[derive(Clone, Copy, Default)]
-pub struct ResolveDecisions {
+pub(crate) struct ResolveDecisions {
   /// Frames a temporal resolve gathered, or a reference's sample, which the screen-space effects turn their noise by.
   pub noise_frame: u32,
   /// The reference's sample the frame is drawn as; none outside a reference.

@@ -26,7 +26,7 @@ impl XmlNesting {
   /// # Errors
   ///
   /// Returns a parsing error naming the line where nesting first passes `limit`.
-  pub fn assert_within(input: &str, limit: usize) -> XrfResult {
+  pub(crate) fn assert_within(input: &str, limit: usize) -> XrfResult {
     let bytes: &[u8] = input.as_bytes();
     let mut depth: usize = 0;
     let mut index: usize = 0;

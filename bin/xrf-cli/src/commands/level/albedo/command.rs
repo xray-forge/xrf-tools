@@ -14,7 +14,7 @@ use crate::commands::level::level_selection::LevelSelection;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct AlbedoCommand;
+pub(crate) struct AlbedoCommand;
 
 impl GenericCommand for AlbedoCommand {
   fn operation(&self) -> &'static str {

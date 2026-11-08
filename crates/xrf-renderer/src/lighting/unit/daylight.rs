@@ -9,7 +9,7 @@ use crate::lighting::weather::render_lighting::RenderLighting;
 /// The weather keeps what it alone knows: how much of the sun its clouds let through, which light is the moon, the
 /// shape and colour of its sky.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Daylight {
+pub(crate) struct Daylight {
   /// The sun's, or by night the moon's, illuminance at normal incidence, lux, in its linear colour.
   pub sun: Vec3,
   /// The sky's illuminance on a level surface, lux.
@@ -65,7 +65,7 @@ impl Daylight {
 
   /// The world's light under `lighting`, the weather's own sun colour kept in its hue by `tint` (nought the
   /// atmosphere's alone, one the weather's).
-  pub fn of(lighting: &RenderLighting, tint: f32) -> Self {
+  pub(crate) fn of(lighting: &RenderLighting, tint: f32) -> Self {
     let clock: f32 = Self::get_sun_elevation(lighting.time_of_day);
     let is_moon: bool = lighting
       .sky
@@ -111,7 +111,7 @@ impl Daylight {
 
   /// The sun's height, degrees, at a time of day (seconds since midnight) by the Zone's latitude and the cycles'
   /// declination.
-  pub fn get_sun_elevation(time_of_day: f32) -> f32 {
+  pub(crate) fn get_sun_elevation(time_of_day: f32) -> f32 {
     let (latitude, declination): (f32, f32) = (Self::LATITUDE.to_radians(), Self::DECLINATION.to_radians());
     let hour_angle: f32 = (15.0 * (time_of_day / 3600.0 - Self::SOLAR_NOON)).to_radians();
 
@@ -123,7 +123,7 @@ impl Daylight {
 
   /// The share of the light above the atmosphere that reaches the ground through it, by channel, from a source a
   /// height up (degrees): the optical depth along Kasten and Young's air mass (1989); none from under the horizon.
-  pub fn get_transmittance(height: f32) -> Vec3 {
+  pub(crate) fn get_transmittance(height: f32) -> Vec3 {
     if height <= 0.0 {
       return Vec3::ZERO;
     }
@@ -135,7 +135,7 @@ impl Daylight {
 
   /// The clear sky's illuminance on a level surface, lux, for the sun's height (degrees), between the table's heights
   /// by the logarithm of the light.
-  pub fn get_clear_sky(height: f32) -> f32 {
+  pub(crate) fn get_clear_sky(height: f32) -> f32 {
     let table: &[(f32, f32)] = &Self::CLEAR_SKY;
     let (first, last) = (table[0], table[table.len() - 1]);
 

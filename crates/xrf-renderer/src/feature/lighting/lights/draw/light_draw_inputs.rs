@@ -10,7 +10,7 @@ use crate::scene::level::lights::atlas::light_shadow_atlas::LightShadowAtlas;
 /// wetting wrote, the uniform the contact shadows march by and how many of each texel's strongest lights they march
 /// towards, and the scene's trace where the shadowed lights are traced, its rays turned by `noise_frame`.
 #[derive(Clone, Copy)]
-pub struct LightDrawInputs<'a> {
+pub(crate) struct LightDrawInputs<'a> {
   pub atlas: LightShadowAtlas<'a>,
   pub buffers: LightBuffers,
   pub wet: WetTargets,

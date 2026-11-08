@@ -6,4 +6,4 @@ mod macos_window_host;
 mod win32_window_host;
 mod window_host_builder;
 
-pub use window_host_builder::WindowHostBuilder;
+pub(crate) use window_host_builder::WindowHostBuilder;

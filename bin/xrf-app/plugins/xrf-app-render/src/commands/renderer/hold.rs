@@ -9,6 +9,6 @@ use crate::RenderViewports;
 /// later draws at once: for a tool whose viewports come and go. Held until released, the page goes or the window closes.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "hold")]
-pub fn render_hold(viewports: State<'_, RenderViewports>, window: InvokingWindow) -> TauriResult<RenderHoldId> {
+pub(crate) fn render_hold(viewports: State<'_, RenderViewports>, window: InvokingWindow) -> TauriResult<RenderHoldId> {
   viewports.hold(window.get_label())
 }

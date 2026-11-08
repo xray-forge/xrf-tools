@@ -2,4 +2,4 @@ mod archive_game_mtl_description;
 mod archive_game_mtl_material;
 mod archive_game_mtl_property;
 
-pub use archive_game_mtl_description::ArchiveGameMtlDescription;
+pub(crate) use archive_game_mtl_description::ArchiveGameMtlDescription;

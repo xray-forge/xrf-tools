@@ -30,21 +30,21 @@ pub(crate) enum GraphPassWork<'a> {
 }
 
 impl GraphPassWork<'_> {
-  pub fn get_colors(&self) -> &[GraphColorAttachment] {
+  pub(crate) fn get_colors(&self) -> &[GraphColorAttachment] {
     match self {
       Self::Raster { colors, .. } => colors,
       _ => &[],
     }
   }
 
-  pub fn get_depth(&self) -> Option<&GraphDepthAttachment> {
+  pub(crate) fn get_depth(&self) -> Option<&GraphDepthAttachment> {
     match self {
       Self::Raster { depth, .. } => depth.as_ref(),
       _ => None,
     }
   }
 
-  pub fn is_raster(&self) -> bool {
+  pub(crate) fn is_raster(&self) -> bool {
     matches!(self, Self::Raster { .. })
   }
 }

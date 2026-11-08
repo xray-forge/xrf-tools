@@ -27,7 +27,7 @@ impl DirectoryAssetIndex {
   /// # Errors
   ///
   /// Returns an error when a file path cannot be made relative to `root`, which would mean the walk left its own root.
-  pub fn read(root: impl AsRef<Path>) -> XrfResult<Self> {
+  pub(crate) fn read(root: impl AsRef<Path>) -> XrfResult<Self> {
     let root: &Path = root.as_ref();
     let (index, journals): (Self, Vec<PathBuf>) = Self::walk(root)?;
 
@@ -108,12 +108,12 @@ impl DirectoryAssetIndex {
   }
 
   /// Returns the root from which relative paths are measured.
-  pub fn root(&self) -> &Path {
+  pub(crate) fn root(&self) -> &Path {
     &self.root
   }
 
   /// Iterates over all indexed files' root-relative paths in index order.
-  pub fn assets(&self) -> impl Iterator<Item = &Path> {
+  pub(crate) fn assets(&self) -> impl Iterator<Item = &Path> {
     self.assets.iter().map(PathBuf::as_path)
   }
 

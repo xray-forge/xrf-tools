@@ -8,7 +8,7 @@ use xrf_renderer::{RenderScreenshot, RenderViewportId};
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub struct ScreenshotSaveRequest {
+pub(crate) struct ScreenshotSaveRequest {
   pub viewport: RenderViewportId,
   pub path: PathBuf,
   pub screenshot: RenderScreenshot,

@@ -11,7 +11,7 @@ use crate::scene::static_scene::static_scene::StaticScene;
 /// whether a view sees it or it is only kept ready, and whether the asking view drives its scene; and what its faces are
 /// drawn of: the static scene, the sway, and what the drawable kinds cast into them.
 #[derive(Clone, Copy)]
-pub struct LightShadowAsk<'a> {
+pub(crate) struct LightShadowAsk<'a> {
   pub handle: ProxyHandle<LightDescription>,
   pub light: &'a LightDescription,
   pub basis: &'a LightBasis,

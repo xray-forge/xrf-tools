@@ -4,7 +4,7 @@ use crate::frame::targets::frame_texture::FrameTexture;
 
 /// DLSS's state: its upscaler, the frame it writes at the viewport's size, and whether the next frame forgets the ones
 /// before.
-pub struct DlssResolve {
+pub(crate) struct DlssResolve {
   pub upscaler: DlssUpscaler,
   pub output: FrameTexture,
   pub is_reset: bool,
@@ -12,12 +12,17 @@ pub struct DlssResolve {
 
 impl DlssResolve {
   /// What DLSS writes the upscaled frame as: colour of the scene's range, bound as storage.
-  pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub(crate) const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
   /// The frame an NGX feature writes, `size` pixels, cleared as it is made. NGX writes it as storage and clears it with
   /// a transfer command, all outside wgpu: left unwritten, wgpu would take its first frame for one never written and
   /// clear it under the pass reading it, after NGX wrote it, so every new view's first frame would show black.
-  pub fn create_output(device: &wgpu::Device, queue: &wgpu::Queue, label: &str, size: (u32, u32)) -> FrameTexture {
+  pub(crate) fn create_output(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    label: &str,
+    size: (u32, u32),
+  ) -> FrameTexture {
     let output: FrameTexture = FrameTexture::new(
       device,
       label,

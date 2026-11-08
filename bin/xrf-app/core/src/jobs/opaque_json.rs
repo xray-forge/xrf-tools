@@ -4,7 +4,7 @@
 /// finite Typescript expansion. Naming it `unknown` says the same thing the Rust side says, and better than a shape
 /// would: whoever reads the field is the one that knows what is in it, and a caller that guesses has to narrow first.
 #[cfg(feature = "typescript-bindings")]
-pub struct OpaqueJson;
+pub(super) struct OpaqueJson;
 
 #[cfg(feature = "typescript-bindings")]
 impl specta::Type for OpaqueJson {

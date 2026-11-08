@@ -14,7 +14,7 @@ use crate::scene::level::view::record::view_record::ViewRecord;
 /// A drawable kind beside the static scene as a view finds it every frame, before the frame readies it, a variant a
 /// kind: what the scene group draws each kind into the G-buffer through, and what the view's trace takes of it.
 #[derive(Clone, Copy)]
-pub enum DrawableKindSource<'a> {
+pub(crate) enum DrawableKindSource<'a> {
   /// The view's grass over the level's.
   Grass {
     view: &'a GrassView,
@@ -25,7 +25,7 @@ pub enum DrawableKindSource<'a> {
 impl<'a> DrawableKindSource<'a> {
   /// Every drawable kind beside the static scene a view draws and traces, as it finds them every frame from each kind's
   /// view of it and the `scene`'s level.
-  pub fn list(grass: &'a GrassView, scene: &'a LevelScene, passes: LevelPasses<'a>) -> [Self; 1] {
+  pub(crate) fn list(grass: &'a GrassView, scene: &'a LevelScene, passes: LevelPasses<'a>) -> [Self; 1] {
     [Self::Grass {
       view: grass,
       source: GrassSource {
@@ -37,7 +37,7 @@ impl<'a> DrawableKindSource<'a> {
 
   /// Readies the kind's frame ahead of the static scene's depth, as the grass plants its ring's stale cells; none where
   /// it draws nothing this frame.
-  pub fn add_ready(self, declaration: GraphDeclaration<'_, 'a>) -> Option<DrawableKindReadied<'a>> {
+  pub(crate) fn add_ready(self, declaration: GraphDeclaration<'_, 'a>) -> Option<DrawableKindReadied<'a>> {
     match self {
       Self::Grass { view, source } => {
         view
@@ -53,7 +53,7 @@ impl<'a> DrawableKindSource<'a> {
   }
 
   /// The kind's instance in the view's own top level, where the view traces it this frame: the grass's cards.
-  pub fn get_trace_instance(&self) -> Option<DrawableTraceInstance<'a>> {
+  pub(crate) fn get_trace_instance(&self) -> Option<DrawableTraceInstance<'a>> {
     match *self {
       Self::Grass { view, .. } => view.get_trace_instance(),
     }
@@ -61,7 +61,7 @@ impl<'a> DrawableKindSource<'a> {
 
   /// Records the kind's part of the view's scene trace, which the trace binds whether or not the kind readied a frame:
   /// from what the frame `readied` of it, `empty` bound in place of what it holds none of.
-  pub fn add_trace(
+  pub(crate) fn add_trace(
     &self,
     declaration: GraphDeclaration<'_, 'a>,
     record: ViewRecord<'a>,

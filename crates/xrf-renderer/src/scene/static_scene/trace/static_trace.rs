@@ -21,7 +21,7 @@ use crate::scene::static_scene::trace::static_trace_swaying::StaticTraceSwaying;
 /// instance names an entry of the instance table, its first record and its place, so a hit finds its geometry, its
 /// triangle's corners, its surface and its hemisphere (`TraceParameters`). Built again as sectors come and go, whole
 /// when an arena it reads grows.
-pub struct StaticTrace {
+pub(crate) struct StaticTrace {
   tlas: wgpu::Tlas,
   /// The key the top-level structure is bound by, a new one each time it is made.
   key: u64,
@@ -87,14 +87,14 @@ impl StaticTrace {
   const RECORDS: u64 = 1024;
 
   /// An instance's transform where the geometry stands in renderer space already.
-  pub const IDENTITY: [f32; 12] = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0];
+  pub(crate) const IDENTITY: [f32; 12] = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0];
   /// Every scene instance's mask (`SCENE_MASK_SCENE`), which a ray asking for the scene alone meets.
-  pub const MASK: u8 = 0x01;
+  pub(crate) const MASK: u8 = 0x01;
 
   /// The place every sector's baked geometry stands at: the scene's origin, whose hemisphere is the vertices' own.
   const ORIGIN_PLACE: u32 = 0;
 
-  pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
     let mut tlas: wgpu::Tlas = Self::create_tlas(device, Self::INSTANCES);
     let size: wgpu::BlasTriangleGeometrySizeDescriptor = Self::get_placeholder_size();
     let placeholder: wgpu::Blas = device.create_blas(
@@ -155,38 +155,38 @@ impl StaticTrace {
   }
 
   /// The top-level structure, as a pass binds it.
-  pub fn get_structure(&self) -> AccelerationStructureBinding<'_> {
+  pub(crate) fn get_structure(&self) -> AccelerationStructureBinding<'_> {
     AccelerationStructureBinding::new(&self.tlas, self.key)
   }
 
   /// Each instance's first record and place, by its custom index.
-  pub fn get_instances(&self) -> &wgpu::Buffer {
+  pub(crate) fn get_instances(&self) -> &wgpu::Buffer {
     &self.instances
   }
 
   /// What a trace binding with nothing to hold is given, such as the grass of a level without any.
-  pub fn get_empty(&self) -> &wgpu::Buffer {
+  pub(crate) fn get_empty(&self) -> &wgpu::Buffer {
     &self.empty
   }
 
   /// Each geometry's record, an instance's in a run its table entry names the first of.
-  pub fn get_records(&self) -> &wgpu::Buffer {
+  pub(crate) fn get_records(&self) -> &wgpu::Buffer {
     &self.records
   }
 
   /// The instances of trees' geometry, which the wind sways, as last built.
-  pub fn get_swaying(&self) -> &[StaticTraceSwaying] {
+  pub(crate) fn get_swaying(&self) -> &[StaticTraceSwaying] {
     &self.swaying
   }
 
   /// Top-level instances as last built.
-  pub fn get_instance_count(&self) -> usize {
+  pub(crate) fn get_instance_count(&self) -> usize {
     self.built_instances.len()
   }
 
   /// Fills a view's own top level with every instance as last built, those `swayed` names standing as the structure
   /// given beside each, swayed in its tree's own space, so a hit on it is turned to the renderer's as a still one is.
-  pub fn fill_view_tlas(&self, tlas: &mut wgpu::Tlas, swayed: &HashMap<u32, &wgpu::Blas>) {
+  pub(crate) fn fill_view_tlas(&self, tlas: &mut wgpu::Tlas, swayed: &HashMap<u32, &wgpu::Blas>) {
     for index in 0..tlas.get().len() {
       tlas[index] = self.built_instances.get(index).map(|(structure, transform)| {
         let blas: &wgpu::Blas = swayed
@@ -201,7 +201,7 @@ impl StaticTrace {
 
   /// Builds what changed in the scene since the last call into `encoder`: the structures of each sector come in or
   /// moved and each model come in, every one where an arena grew, and the top level over them all.
-  pub fn update(
+  pub(crate) fn update(
     &mut self,
     device: &wgpu::Device,
     queue: &wgpu::Queue,

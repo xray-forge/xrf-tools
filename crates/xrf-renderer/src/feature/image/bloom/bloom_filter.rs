@@ -1,6 +1,6 @@
 /// One way the engine's bloom is blurred, `bloom_filter.ps`.
 #[derive(Clone, Copy, Debug)]
-pub struct BloomFilter {
+pub(crate) struct BloomFilter {
   /// Whether it blurs across the target; down otherwise.
   pub is_across: bool,
   /// The blur's radius across, `kernel_g` texels.

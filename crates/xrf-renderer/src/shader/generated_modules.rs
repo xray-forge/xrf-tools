@@ -5,7 +5,7 @@ use xrf_renderer_core::{PassParameters, ShaderBindings, ShaderDeclarations, Shad
 /// with Rust, in the order they were declared, and each module's bindings, gathered from the parameters of every pass
 /// drawing with it.
 #[derive(Default)]
-pub struct GeneratedModules {
+pub(crate) struct GeneratedModules {
   structs: ShaderDeclarations,
   bindings: Vec<(&'static str, ShaderBindings)>,
 }
@@ -17,18 +17,18 @@ impl GeneratedModules {
   /// What each module of bindings opens with, for the structs its uniforms hold.
   const STRUCTS_IMPORT: &'static str = "#import \"generated/structs\"\n\n";
 
-  pub fn new() -> Self {
+  pub(crate) fn new() -> Self {
     Self::default()
   }
 
   /// Adds a struct shaders share with Rust, and every struct it holds.
-  pub fn declare<T: ShaderType>(&mut self) -> &mut Self {
+  pub(crate) fn declare<T: ShaderType>(&mut self) -> &mut Self {
     self.structs.declare::<T>();
     self
   }
 
   /// Adds the structs the uniforms and storage arrays of `P` hold.
-  pub fn declare_held<P: PassParameters>(&mut self) -> &mut Self {
+  pub(crate) fn declare_held<P: PassParameters>(&mut self) -> &mut Self {
     P::declare(&mut self.structs);
     self
   }
@@ -38,7 +38,7 @@ impl GeneratedModules {
   /// # Errors
   ///
   /// Returns an error when `P` declares a binding that parameters added to `module` before declare otherwise.
-  pub fn add<P: PassParameters>(&mut self, module: &'static str) -> XrfResult<&mut Self> {
+  pub(crate) fn add<P: PassParameters>(&mut self, module: &'static str) -> XrfResult<&mut Self> {
     let index: usize = match self.bindings.iter().position(|(name, _)| *name == module) {
       Some(index) => index,
       None => {
@@ -53,7 +53,7 @@ impl GeneratedModules {
   }
 
   /// Every module by name, the structs first, as its WGSL.
-  pub fn to_modules(&self) -> Vec<(&'static str, String)> {
+  pub(crate) fn to_modules(&self) -> Vec<(&'static str, String)> {
     let bindings = self
       .bindings
       .iter()

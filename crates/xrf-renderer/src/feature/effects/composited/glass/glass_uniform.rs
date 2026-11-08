@@ -4,6 +4,6 @@ use xrf_renderer_core::ShaderStruct;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Glass")]
-pub struct GlassUniform {
+pub(crate) struct GlassUniform {
   pub refraction: f32,
 }

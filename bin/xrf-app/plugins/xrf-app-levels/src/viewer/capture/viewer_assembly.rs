@@ -13,7 +13,7 @@ use crate::ipc::levels::{LEVELS_JOB_CAPTURE_CUBE, LEVELS_JOB_CAPTURE_MAP};
 
 /// A picture a viewport draws shot by shot, put together as the shots come back: a level map's tiles, or a cubemap's
 /// faces.
-pub trait ViewerAssembly: Sized + Send + 'static {
+pub(crate) trait ViewerAssembly: Sized + Send + 'static {
   /// What the renderer is asked to draw.
   type Plan: Copy + Send + serde::Serialize + 'static;
 

@@ -8,7 +8,7 @@ use xrf_vfs::XrayRoots;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub struct TranslationsParseRequest {
+pub(crate) struct TranslationsParseRequest {
   /// Roots holding the raw XML, read through the VFS so an installation imports like a loose tree.
   pub roots: XrayRoots,
   /// The language every entry this run reads is filed under. Never `all`.

@@ -3,7 +3,7 @@ use glam::Vec3;
 /// The axes a cascade's square is laid on, as the engine takes them (`render_phase_sun.cpp`): `x` across the light
 /// unless the light runs along it.
 #[derive(Clone, Copy, Debug)]
-pub struct SunCascadeBasis {
+pub(crate) struct SunCascadeBasis {
   /// Across the light.
   pub right: Vec3,
   /// Across the light and `right`.
@@ -17,7 +17,7 @@ pub struct SunCascadeBasis {
 impl SunCascadeBasis {
   /// The axes for light travelling along a direction; a zero one, which points nowhere, stands straight down, so the
   /// axes stay finite.
-  pub fn new(direction: Vec3) -> Self {
+  pub(crate) fn new(direction: Vec3) -> Self {
     let light: Vec3 = direction.try_normalize().unwrap_or(Vec3::NEG_Y);
     let mut right: Vec3 = Vec3::X;
 

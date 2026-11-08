@@ -9,7 +9,7 @@ use crate::ExportsProjects;
 /// Read the source the extern `name` is declared in, from the project `session_id` holds.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "get_source")]
-pub async fn exports_get_source(
+pub(crate) async fn exports_get_source(
   session_id: SessionId,
   name: &str,
   projects: State<'_, ExportsProjects>,

@@ -9,7 +9,7 @@ use crate::scene::level::level_time::LevelTime;
 /// and stall. The waves' scroll moves every read off the waves' coordinates by its own share, turned and tiled as that
 /// read is, so it is worked out here for each read.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct EnhancedWaterScroll {
+pub(crate) struct EnhancedWaterScroll {
   /// The heights' two scrolls, the first in `xy`, the second (read backwards) in `zw`.
   pub heights: Vec4,
   /// The four wave layers' runs and scroll, two layers a vector.
@@ -25,14 +25,14 @@ pub struct EnhancedWaterScroll {
 impl EnhancedWaterScroll {
   /// The wave layers' turns, as their cosines and sines, and their tiling: the shader's `WAVE_TURN_COS`,
   /// `WAVE_TURN_SIN` and `WAVE_TILES`.
-  pub const WAVE_TURN_COS: [f32; 4] = [1.0, 0.484810, -0.731354, -0.731354];
-  pub const WAVE_TURN_SIN: [f32; 4] = [0.0, 0.874620, 0.681998, -0.681998];
-  pub const WAVE_TILES: [f32; 4] = [1.0, std::f32::consts::GOLDEN_RATIO, 0.618034, 0.381966];
+  pub(crate) const WAVE_TURN_COS: [f32; 4] = [1.0, 0.484810, -0.731354, -0.731354];
+  pub(crate) const WAVE_TURN_SIN: [f32; 4] = [0.0, 0.874620, 0.681998, -0.681998];
+  pub(crate) const WAVE_TILES: [f32; 4] = [1.0, std::f32::consts::GOLDEN_RATIO, 0.618034, 0.381966];
   /// The wind layer's tiling of the waves' coordinates, and the rain ripples' map's, then its second and third reads':
   /// the shader's `GUST_SCALE`, `RIPPLE_MAP_SCALE` and `RIPPLE_LAYER_SCALES`.
-  pub const GUST_SCALE: f32 = 0.1;
-  pub const RIPPLE_MAP_SCALE: f32 = 0.6;
-  pub const RIPPLE_LAYER_SCALES: [f32; 2] = [0.61, 0.87];
+  pub(crate) const GUST_SCALE: f32 = 0.1;
+  pub(crate) const RIPPLE_MAP_SCALE: f32 = 0.6;
+  pub(crate) const RIPPLE_LAYER_SCALES: [f32; 2] = [0.61, 0.87];
 
   /// The waves' scroll across and down a second of their pace, and the map's repeats a wave-clock second a layer tiled
   /// once runs along its own axis.
@@ -47,7 +47,7 @@ impl EnhancedWaterScroll {
 
   /// The reads at the `flow`'s sums; the waves' scroll moves none where the parallax is `is_marched`, as its march sets
   /// the waves' coordinates in its place.
-  pub fn new(flow: &WaterFlow, is_marched: bool) -> Self {
+  pub(crate) fn new(flow: &WaterFlow, is_marched: bool) -> Self {
     let wrap = |value: f64| LevelTime::wrap(value, 1.0);
     let scroll: [f64; 2] = if is_marched {
       [0.0; 2]

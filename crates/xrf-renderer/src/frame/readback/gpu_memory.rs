@@ -7,7 +7,7 @@ use crate::contract::report::frame::render_memory_section::RenderMemorySection;
 /// the renderer started, and what it holds allocated by the names the resources were made under; with what the GPU's
 /// own memory holds and allows, where its driver says.
 #[derive(Clone, Debug, Default)]
-pub struct GpuMemory {
+pub(crate) struct GpuMemory {
   pub allocated: u64,
   pub reserved: u64,
   pub peak: u64,
@@ -17,13 +17,13 @@ pub struct GpuMemory {
 
 impl GpuMemory {
   /// Sections listed, the largest first; the rest are summed into one.
-  pub const SECTIONS_MOST: usize = 24;
+  pub(crate) const SECTIONS_MOST: usize = 24;
   /// The section the rest are summed into.
-  pub const OTHER: &'static str = "Other";
+  pub(crate) const OTHER: &'static str = "Other";
 
   /// What the allocator holds now, its peak carried on from `last`, and the adapter's memory; none where the backend
   /// reports nothing.
-  pub fn read(adapter: &wgpu::Adapter, device: &wgpu::Device, last: Option<&Self>) -> Option<Self> {
+  pub(crate) fn read(adapter: &wgpu::Adapter, device: &wgpu::Device, last: Option<&Self>) -> Option<Self> {
     let report: wgpu::AllocatorReport = device.generate_allocator_report()?;
     let allocated: u64 = report.total_allocated_bytes;
 
@@ -43,7 +43,7 @@ impl GpuMemory {
 
   /// The allocations summed by their name, a trailing number and the space before it dropped so that the sides of a
   /// history and the faces of a map read as one: the `SECTIONS_MOST` largest, the rest in `OTHER`.
-  pub fn list_sections<'a>(allocations: impl Iterator<Item = (&'a str, u64)>) -> Vec<RenderMemorySection> {
+  pub(crate) fn list_sections<'a>(allocations: impl Iterator<Item = (&'a str, u64)>) -> Vec<RenderMemorySection> {
     let mut by_name: HashMap<String, (u64, u32)> = HashMap::new();
 
     for (name, size) in allocations {

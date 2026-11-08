@@ -8,7 +8,7 @@ use crate::thread::views::readied_view::ReadiedView;
 /// A viewport's view of a scene readied this frame, waiting for its scene to settle every view's asks: the scene, what
 /// it asked of it, the options and the rectangle its frame was prepared with, which it finishes with, and its graph's
 /// frame, none where it readied none.
-pub struct PreparedView {
+pub(crate) struct PreparedView {
   pub id: RenderViewportId,
   pub scene: RenderSceneId,
   pub asks: SceneAsks,

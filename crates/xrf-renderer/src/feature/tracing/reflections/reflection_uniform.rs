@@ -8,7 +8,7 @@ use crate::feature::tracing::reflections::trace::reflection_trace_frame::Reflect
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Reflections")]
-pub struct ReflectionUniform {
+pub(crate) struct ReflectionUniform {
   /// Cells of the depth pyramid a ray crosses at most.
   pub crossings: u32,
   /// The frame's count, which turns each pixel's noise from one frame to the next.
@@ -35,13 +35,13 @@ pub struct ReflectionUniform {
 impl ReflectionUniform {
   /// The share under which a pixel is not traced: a dielectric's 4% traced, or, on a dry level not asked to trace
   /// dry surfaces, only what reflects more, metal and glass-like surfaces, the rest left to the prefiltered sky.
-  pub const TRACE_FLOOR: f32 = 0.02;
-  pub const DRY_TRACE_FLOOR: f32 = 0.08;
+  pub(crate) const TRACE_FLOOR: f32 = 0.02;
+  pub(crate) const DRY_TRACE_FLOOR: f32 = 0.08;
 
   /// The settings and how they are traced, over a `frame`: its count, with or without the last frame's reflections to
   /// carry and its scene to read, on a device that traces rays or not, over a level wet or dry. Raw, each pixel traces
   /// each frame.
-  pub fn new(settings: &RenderReflectionSettings, trace: ReflectionTrace, frame: ReflectionTraceFrame) -> Self {
+  pub(crate) fn new(settings: &RenderReflectionSettings, trace: ReflectionTrace, frame: ReflectionTraceFrame) -> Self {
     Self {
       crossings: settings.get_steps(),
       frame: frame.frame,

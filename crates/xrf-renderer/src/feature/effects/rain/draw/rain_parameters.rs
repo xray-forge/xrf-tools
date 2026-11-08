@@ -7,7 +7,7 @@ use crate::feature::effects::rain::rain_uniform::RainUniform;
 /// lowest heights, the streak's and the splash's textures, and the splash's model.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct RainParameters<'a> {
+pub(crate) struct RainParameters<'a> {
   #[uniform]
   pub rain: UniformBinding<RainUniform>,
   #[texture(d2, depth)]

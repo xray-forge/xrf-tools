@@ -9,7 +9,7 @@ use xrf_app_core::window::{InvokingWindow, WindowReveals};
 /// and showing the window from inside it never returns on Windows.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "reveal_window")]
-pub async fn system_reveal_window(reveals: State<'_, WindowReveals>, window: InvokingWindow) -> TauriResult {
+pub(crate) async fn system_reveal_window(reveals: State<'_, WindowReveals>, window: InvokingWindow) -> TauriResult {
   reveals.reveal(window.get_label());
 
   Ok(())

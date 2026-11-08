@@ -21,7 +21,7 @@ use crate::pass::frame_lighting::picture_shares::PictureShares;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Lighting")]
-pub struct LightingUniform {
+pub(crate) struct LightingUniform {
   /// Towards the sun, in view space.
   pub to_sun: Vec4,
   /// The sun's colour, then its specular weight, at the pre-exposure.
@@ -112,7 +112,7 @@ pub struct LightingUniform {
 }
 
 impl LightingUniform {
-  pub fn new(lighting: &RenderLighting, view: Mat4, options: &RenderViewOptions, frame: &LightingFrame) -> Self {
+  pub(crate) fn new(lighting: &RenderLighting, view: Mat4, options: &RenderViewOptions, frame: &LightingFrame) -> Self {
     // The direction the light travels, turned to face the sun and into view space.
     let to_sun: Vec3 = view
       .transform_vector3(-lighting.get_sun_direction())
@@ -292,7 +292,7 @@ impl LightingUniform {
 
   /// How the light is written, as `common/lighting` reads it: a light in the engine's units scaled to its luminance at
   /// the pre-exposure (`light_scale`), and whether it is the authored levels' summed light (`is_light_summed`).
-  pub fn get_light_encoding(&self) -> LightEncoding {
+  pub(crate) fn get_light_encoding(&self) -> LightEncoding {
     LightEncoding {
       scale: self.pre_exposure.z * self.pre_exposure.x,
       is_summed: self.summed_light.x > 0.0,
@@ -301,7 +301,7 @@ impl LightingUniform {
 
   /// Whether the light stands at the anchored levels, as `is_light_anchored` in `common/lighting` reads it: the sun and
   /// the lamps shaded by the one BRDF, their specular coloured in a target of its own.
-  pub fn is_light_anchored(&self) -> bool {
+  pub(crate) fn is_light_anchored(&self) -> bool {
     self.environment.w > 0.5
   }
 }

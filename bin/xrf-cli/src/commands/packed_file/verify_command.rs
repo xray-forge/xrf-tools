@@ -13,7 +13,7 @@ use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 use crate::core::report::ReportVerdict;
 
 /// Reads one packed file, or its unpacked folder, and judges whether it reads.
-pub struct VerifyCommand<F>(PhantomData<F>);
+pub(crate) struct VerifyCommand<F>(PhantomData<F>);
 
 impl<F> Default for VerifyCommand<F> {
   fn default() -> Self {

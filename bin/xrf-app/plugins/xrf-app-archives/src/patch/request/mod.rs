@@ -2,4 +2,4 @@
 
 mod archives_patch_request;
 
-pub use archives_patch_request::ArchivesPatchRequest;
+pub(crate) use archives_patch_request::ArchivesPatchRequest;

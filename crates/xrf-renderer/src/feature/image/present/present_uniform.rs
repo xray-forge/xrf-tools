@@ -12,7 +12,7 @@ use crate::pass::frame_lighting::light_encoding::LightEncoding;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Present")]
-pub struct PresentUniform {
+pub(crate) struct PresentUniform {
   /// The debug view's index, zero for the finished scene.
   pub view: u32,
   /// One where the screen's occlusion was searched this frame.
@@ -54,13 +54,13 @@ pub struct PresentUniform {
 
 impl PresentUniform {
   /// `is_bloomed` for the engine's bloom and for the enhanced one.
-  pub const BLOOM_ENGINE: u32 = 1;
-  pub const BLOOM_ENHANCED: u32 = 2;
+  pub(crate) const BLOOM_ENGINE: u32 = 1;
+  pub(crate) const BLOOM_ENHANCED: u32 = 2;
   /// The frames the grain is drawn anew for before it repeats, few enough that a float holds each whole.
   const GRAIN_FRAMES: u32 = 1 << 16;
 
   /// A `frame`'s present, its image corrected by `corrections`, held within the ranges the engine takes them in.
-  pub fn new(frame: PresentFrame, corrections: &RenderImageCorrections) -> Self {
+  pub(crate) fn new(frame: PresentFrame, corrections: &RenderImageCorrections) -> Self {
     let corrections: RenderImageCorrections = corrections.clamped();
     let [r, g, b] = corrections.grading;
     let output: RenderRect = frame.output;
@@ -87,13 +87,13 @@ impl PresentUniform {
   }
 
   /// The same showing its scene as `display` says (`DisplayMode::get_display`).
-  pub fn with_display(self, display: Vec4) -> Self {
+  pub(crate) fn with_display(self, display: Vec4) -> Self {
     Self { display, ..self }
   }
 
   /// The same, the cascades' view striping the grass's cards' reach of the sun's shadow (`reach` metres), none where
   /// they cast none.
-  pub fn with_grass_reach(self, reach: Option<f32>) -> Self {
+  pub(crate) fn with_grass_reach(self, reach: Option<f32>) -> Self {
     Self {
       inspect: Vec4::new(reach.unwrap_or(0.0), self.inspect.y, self.inspect.z, 0.0),
       ..self
@@ -102,7 +102,7 @@ impl PresentUniform {
 
   /// The same, the reflections' view showing what the rays met as the display value combine adds it: the light by the
   /// frame's `light` encodes it.
-  pub fn with_reflection_light(self, light: LightEncoding) -> Self {
+  pub(crate) fn with_reflection_light(self, light: LightEncoding) -> Self {
     Self {
       inspect: Vec4::new(self.inspect.x, light.scale, f32::from(u8::from(light.is_summed)), 0.0),
       ..self
@@ -111,7 +111,7 @@ impl PresentUniform {
 
   /// The same, the models the helpers marked tinted and outlined, and what neither they nor the selection cover faded,
   /// as `marks` asks.
-  pub fn with_marks(self, marks: PresentMarks) -> Self {
+  pub(crate) fn with_marks(self, marks: PresentMarks) -> Self {
     Self {
       marks: Vec4::new(
         f32::from(u8::from(marks.is_marked)),
@@ -124,7 +124,7 @@ impl PresentUniform {
   }
 
   /// The same, the enhanced bloom screened over the frame in place of the engine's.
-  pub fn with_enhanced_bloom(self) -> Self {
+  pub(crate) fn with_enhanced_bloom(self) -> Self {
     Self {
       is_bloomed: Self::BLOOM_ENHANCED,
       ..self
@@ -132,7 +132,7 @@ impl PresentUniform {
   }
 
   /// The same shown on the camera's film as `camera` sets it, its grains drawn for `frame`; none where it is off.
-  pub fn with_grain(self, camera: &RenderCameraSettings, frame: u32) -> Self {
+  pub(crate) fn with_grain(self, camera: &RenderCameraSettings, frame: u32) -> Self {
     if !camera.is_grained {
       return self;
     }
@@ -150,7 +150,7 @@ impl PresentUniform {
 
   /// The same drawn into a screenshot `size` pixels across, apart from the window and without the selection's outline
   /// or the helpers' marks and fading.
-  pub fn for_screenshot(self, size: (u32, u32)) -> Self {
+  pub(crate) fn for_screenshot(self, size: (u32, u32)) -> Self {
     Self {
       marks: Vec4::ZERO,
       ..self.for_helped_screenshot(size)
@@ -159,7 +159,7 @@ impl PresentUniform {
 
   /// The same drawn into a screenshot `size` pixels across that keeps the helpers: apart from the window and without
   /// the selection's outline, the helpers' marks and fading as the window draws them.
-  pub fn for_helped_screenshot(self, (width, height): (u32, u32)) -> Self {
+  pub(crate) fn for_helped_screenshot(self, (width, height): (u32, u32)) -> Self {
     Self {
       origin: Vec2::ZERO,
       size: Vec2::new(width as f32, height as f32),

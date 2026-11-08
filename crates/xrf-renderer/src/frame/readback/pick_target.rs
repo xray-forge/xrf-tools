@@ -4,7 +4,7 @@ use crate::frame::readback::gpu_readback::GpuReadback;
 
 /// A pick's one texel and its depth, and the buffers it is read back through: a few, so a pick asked while another is
 /// on its way is drawn without waiting for it.
-pub struct PickTarget {
+pub(crate) struct PickTarget {
   pub color: wgpu::TextureView,
   pub depth: wgpu::TextureView,
   texture: wgpu::Texture,
@@ -12,12 +12,12 @@ pub struct PickTarget {
 }
 
 impl PickTarget {
-  pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Uint;
-  pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
+  pub(crate) const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Uint;
+  pub(crate) const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
   /// Picks on their way back at once.
-  pub const READBACKS: usize = 3;
+  pub(crate) const READBACKS: usize = 3;
 
-  pub fn new(device: &wgpu::Device) -> Self {
+  pub(crate) fn new(device: &wgpu::Device) -> Self {
     let create = |format: wgpu::TextureFormat, usage: wgpu::TextureUsages| -> wgpu::Texture {
       device.create_texture(&wgpu::TextureDescriptor {
         label: Some("pick"),
@@ -51,12 +51,12 @@ impl PickTarget {
   }
 
   /// A readback free for a pick drawn this frame, none while every one is on its way.
-  pub fn find_free_readback(&self) -> Option<usize> {
+  pub(crate) fn find_free_readback(&self) -> Option<usize> {
     self.readbacks.iter().position(GpuReadback::is_free)
   }
 
   /// Copies the texel out with the frame's work into a readback `find_free_readback` answered.
-  pub fn copy_out(&self, encoder: &mut wgpu::CommandEncoder, slot: usize) {
+  pub(crate) fn copy_out(&self, encoder: &mut wgpu::CommandEncoder, slot: usize) {
     let readback: &GpuReadback = &self.readbacks[slot];
 
     encoder.copy_texture_to_buffer(
@@ -79,17 +79,17 @@ impl PickTarget {
   }
 
   /// Asks for a readback's texel, its frame just submitted.
-  pub fn request(&self, slot: usize) {
+  pub(crate) fn request(&self, slot: usize) {
     self.readbacks[slot].request();
   }
 
   /// Frees every readback a frame that was never submitted copied into.
-  pub fn abandon(&self) {
+  pub(crate) fn abandon(&self) {
     self.readbacks.iter().for_each(GpuReadback::abandon);
   }
 
   /// A readback's texel once it is back: kind, cluster, place and the depth's bits.
-  pub fn take(&self, slot: usize) -> Option<XrfResult<[u32; 4]>> {
+  pub(crate) fn take(&self, slot: usize) -> Option<XrfResult<[u32; 4]>> {
     self.readbacks[slot].take(|bytes| bytemuck::pod_read_unaligned::<[u32; 4]>(&bytes[..16]))
   }
 }

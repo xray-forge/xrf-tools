@@ -6,7 +6,7 @@ use crate::scene::static_scene::static_scene::StaticScene;
 /// spawned objects standing in its scene, the view's options, and the layout the marks are bound by
 /// (`StaticGBufferPass::get_marks_layout`).
 #[derive(Clone, Copy)]
-pub struct HelperSources<'a> {
+pub(crate) struct HelperSources<'a> {
   pub helpers: &'a LevelHelpers,
   pub sounding: &'a [u32],
   pub statics: &'a StaticScene,

@@ -4,7 +4,7 @@ use xrf_archive::ArchiveDescriptor;
 /// One volume of a set.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ArchiveVolumeReport {
+pub(crate) struct ArchiveVolumeReport {
   entries: usize,
   path: String,
   root: String,
@@ -13,7 +13,7 @@ pub struct ArchiveVolumeReport {
 }
 
 impl ArchiveVolumeReport {
-  pub fn new(archive: &ArchiveDescriptor) -> Self {
+  pub(crate) fn new(archive: &ArchiveDescriptor) -> Self {
     Self {
       entries: archive.entries,
       path: xrf_utils::to_portable_path_string(&archive.path),

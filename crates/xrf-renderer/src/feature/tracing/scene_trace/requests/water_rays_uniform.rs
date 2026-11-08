@@ -6,7 +6,7 @@ use xrf_renderer_core::ShaderStruct;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "WaterRaysFrame")]
-pub struct WaterRaysUniform {
+pub(crate) struct WaterRaysUniform {
   pub trace_distance: f32,
   pub sky_share: f32,
   pub frame: u32,

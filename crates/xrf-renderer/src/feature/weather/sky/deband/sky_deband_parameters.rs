@@ -3,7 +3,7 @@ use xrf_renderer_core::{GraphTexture, PassParameters};
 /// What smoothing a sky cube reads and writes: the cube as the weather holds it, its sampler, and the copy's six faces.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 0)]
-pub struct SkyDebandCubeParameters<'a> {
+pub(crate) struct SkyDebandCubeParameters<'a> {
   #[texture(cube, float)]
   pub cube: GraphTexture,
   #[sampler(filtering)]
@@ -16,7 +16,7 @@ pub struct SkyDebandCubeParameters<'a> {
 /// the copy.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 0)]
-pub struct SkyDebandFlatParameters<'a> {
+pub(crate) struct SkyDebandFlatParameters<'a> {
   #[texture(d2, float)]
   pub clouds: GraphTexture,
   #[sampler(filtering)]

@@ -12,7 +12,7 @@ const MAX_REACH: f32 = 0.125;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "ContactShadows")]
-pub struct ContactShadowUniform {
+pub(crate) struct ContactShadowUniform {
   /// Towards the sun, in view space.
   pub to_sun: Vec4,
   pub length: f32,
@@ -38,7 +38,13 @@ pub struct ContactShadowUniform {
 impl ContactShadowUniform {
   /// The settings towards the sun and as many local lights as they march towards, over a drawing `height` pixels tall,
   /// on the noise's `frame`, grass hiding a ray within `grass` metres (`ContactShadowUniform::grass`).
-  pub fn new(settings: &RenderContactShadowSettings, to_sun: Vec4, height: u32, frame: u32, grass: Vec2) -> Self {
+  pub(crate) fn new(
+    settings: &RenderContactShadowSettings,
+    to_sun: Vec4,
+    height: u32,
+    frame: u32,
+    grass: Vec2,
+  ) -> Self {
     let turn: u32 = frame % 4;
 
     Self {

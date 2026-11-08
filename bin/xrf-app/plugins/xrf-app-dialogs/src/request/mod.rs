@@ -3,5 +3,5 @@
 mod dialogs_open_request;
 mod dialogs_read_request;
 
-pub use dialogs_open_request::DialogsOpenRequest;
-pub use dialogs_read_request::DialogsReadRequest;
+pub(crate) use dialogs_open_request::DialogsOpenRequest;
+pub(crate) use dialogs_read_request::DialogsReadRequest;

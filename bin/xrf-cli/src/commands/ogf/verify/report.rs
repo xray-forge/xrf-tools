@@ -6,7 +6,7 @@ use crate::commands::ogf::verify::ogf_verification_census::OgfVerificationCensus
 /// What `ogf verify` found and counted: its checks as every verify command reports them, beside its census.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct OgfVerifyReport<'a> {
+pub(crate) struct OgfVerifyReport<'a> {
   census: &'a OgfVerificationCensus,
   #[serde(flatten)]
   report: &'a Report,
@@ -14,7 +14,7 @@ pub struct OgfVerifyReport<'a> {
 
 impl<'a> OgfVerifyReport<'a> {
   /// The report of a sweep that counted `census` and found `report`.
-  pub fn new(census: &'a OgfVerificationCensus, report: &'a Report) -> Self {
+  pub(crate) fn new(census: &'a OgfVerificationCensus, report: &'a Report) -> Self {
     Self { census, report }
   }
 }

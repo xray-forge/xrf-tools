@@ -8,7 +8,7 @@ use crate::{EquipmentSpriteMetadata, EquipmentSprites};
 /// The sheet `tool` holds in the asking window, the newest it opened, for a page attaching to it after a reload.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "restore_sprite")]
-pub async fn sprite_equipment_restore_sprite(
+pub(crate) async fn sprite_equipment_restore_sprite(
   sprites: State<'_, EquipmentSprites>,
   window: InvokingWindow,
   tool: String,

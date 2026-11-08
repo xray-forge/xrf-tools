@@ -10,21 +10,21 @@ use crate::contract::viewport::render_rect::RenderRect;
 
 /// How a level map is drawn: its tiles row by row from its top left, after a metering view of the whole.
 #[derive(Clone, Debug, PartialEq)]
-pub struct MapTilePlan {
+pub(crate) struct MapTilePlan {
   pub capture: RenderMapCapture,
   pub tiles: Vec<MapTile>,
 }
 
 impl MapTilePlan {
   /// The most pixels the metering view spans on its longer side.
-  pub const METER: u32 = 512;
+  pub(crate) const METER: u32 = 512;
 
   /// Plans `capture` for a device whose textures are at most `most_texture` pixels a side.
   ///
   /// # Errors
   ///
   /// Returns an error for an area or heights spanning nothing, or a map, supersampling or tile past what is drawn.
-  pub fn new(capture: RenderMapCapture, most_texture: u32) -> XrfResult<Self> {
+  pub(crate) fn new(capture: RenderMapCapture, most_texture: u32) -> XrfResult<Self> {
     let RenderMapCapture {
       min_x,
       min_z,
@@ -105,7 +105,7 @@ impl MapTilePlan {
   }
 
   /// The view its exposure is metered over first: the whole area, at most `METER` pixels, with no margin.
-  pub fn get_meter(&self) -> MapTile {
+  pub(crate) fn get_meter(&self) -> MapTile {
     let RenderMapCapture {
       min_x,
       min_z,

@@ -5,7 +5,7 @@ use xrf_app_core::session::SessionId;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub struct DialogsReadRequest {
+pub(crate) struct DialogsReadRequest {
   pub session_id: SessionId,
   pub logical_path: String,
   pub id: String,

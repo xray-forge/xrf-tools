@@ -8,7 +8,7 @@ use xrf_environment::{
 use xrf_world::{WorldAmbient, WorldAmbientEffect, WorldSound, WorldSoundChannel, WorldWindBlast};
 
 /// A level's ambients and the effects they play near the camera, as the world takes them.
-pub struct LevelWorldAmbients;
+pub(crate) struct LevelWorldAmbients;
 
 impl LevelWorldAmbients {
   /// A wind blast's ramp longer than this is read as this: past it a config holds no time a game could play out, and an
@@ -16,7 +16,7 @@ impl LevelWorldAmbients {
   const LONGEST_BLAST_RAMP: f32 = 3600.0;
 
   /// Every ambient a keyframe may name, as it plays on a level: its own file's section over a shared one of the name.
-  pub fn to_world(catalog: &EnvironmentCatalog, level: &str) -> HashMap<String, WorldAmbient> {
+  pub(crate) fn to_world(catalog: &EnvironmentCatalog, level: &str) -> HashMap<String, WorldAmbient> {
     catalog
       .ambients
       .iter()
@@ -41,7 +41,7 @@ impl LevelWorldAmbients {
   }
 
   /// Every effect an ambient may play, `CEnvAmbient::create_effect`, its sound read by `read_sound`.
-  pub fn to_world_effects(
+  pub(crate) fn to_world_effects(
     catalog: &EnvironmentCatalog,
     read_sound: &mut dyn FnMut(&str) -> WorldSound,
   ) -> HashMap<String, WorldAmbientEffect> {
@@ -61,7 +61,7 @@ impl LevelWorldAmbients {
   }
 
   /// Every sound channel an ambient may play, `CEnvAmbient::SSndChannel::load`, its sounds read by `read_sound`.
-  pub fn to_world_channels(
+  pub(crate) fn to_world_channels(
     catalog: &EnvironmentCatalog,
     read_sound: &mut dyn FnMut(&str) -> WorldSound,
   ) -> HashMap<String, WorldSoundChannel> {
@@ -149,7 +149,7 @@ impl LevelWorldAmbients {
   }
 
   /// The particles every effect of the catalog plays, which the level's particle surfaces must describe as well.
-  pub fn list_particles(catalog: &EnvironmentCatalog) -> Vec<String> {
+  pub(crate) fn list_particles(catalog: &EnvironmentCatalog) -> Vec<String> {
     catalog
       .ambient_effects
       .iter()

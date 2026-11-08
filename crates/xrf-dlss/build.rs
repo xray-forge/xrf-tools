@@ -33,7 +33,7 @@ mod sdk {
     cfg!(windows) && fetched.is_some() && used == fetched
   }
 
-  pub fn bind() {
+  pub(crate) fn bind() {
     let sdk: PathBuf = PathBuf::from(env::var("DLSS_SDK").expect("DLSS_SDK is set; run `cargo make fetch-sdks`"));
     let vulkan: PathBuf =
       PathBuf::from(env::var("VULKAN_SDK").expect("VULKAN_SDK is set; run `cargo make fetch-sdks`"));

@@ -6,7 +6,7 @@ use crate::feature::scene::grass::level::grass_model_record::GrassModelRecord;
 /// their triangles' records and the models.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 2)]
-pub struct GrassCardShadowParameters {
+pub(crate) struct GrassCardShadowParameters {
   #[storage]
   pub card_vertices: StorageArray<u32>,
   #[storage]

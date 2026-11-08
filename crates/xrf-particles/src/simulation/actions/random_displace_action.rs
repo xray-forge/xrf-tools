@@ -12,13 +12,13 @@ pub(crate) struct RandomDisplaceAction {
 }
 
 impl RandomDisplaceAction {
-  pub fn transform(&mut self, matrix: &Mat4) {
+  pub(crate) fn transform(&mut self, matrix: &Mat4) {
     self
       .displacement
       .transform_direction_from(&self.displacement_local, matrix);
   }
 
-  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
+  pub(crate) fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
     let (particles, random) = pool.split_mut();
 
     for m in particles {

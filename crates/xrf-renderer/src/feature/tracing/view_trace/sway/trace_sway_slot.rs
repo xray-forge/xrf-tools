@@ -8,7 +8,7 @@ use xrf_renderer_core::ShaderStruct;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "TraceSwaySlot")]
-pub struct TraceSwaySlot {
+pub(crate) struct TraceSwaySlot {
   pub to_local: Mat4,
   pub vertex_start: u32,
   pub vertex_count: u32,

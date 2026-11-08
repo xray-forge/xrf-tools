@@ -2,7 +2,7 @@
 /// singled out, when it fades and how strongly it shows hidden, and the id a pick of it answers.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct HelperIconInstance {
+pub(crate) struct HelperIconInstance {
   pub position: [f32; 3],
   /// Its cell, `RenderHelperIcon::get_index`.
   pub icon: u32,
@@ -16,14 +16,14 @@ pub struct HelperIconInstance {
 
 impl HelperIconInstance {
   /// Bytes an instance takes.
-  pub const SIZE: u64 = size_of::<Self>() as u64;
+  pub(crate) const SIZE: u64 = size_of::<Self>() as u64;
 
   /// The instance attributes, by location: position, cell, colour, fade, object.
-  pub const ATTRIBUTES: [wgpu::VertexAttribute; 5] =
+  pub(crate) const ATTRIBUTES: [wgpu::VertexAttribute; 5] =
     wgpu::vertex_attr_array![0 => Float32x3, 1 => Uint32, 2 => Float32x4, 3 => Float32x2, 4 => Uint32];
 
   /// What a pick reads of an instance: its position and its object.
-  pub const PICK_ATTRIBUTES: [wgpu::VertexAttribute; 2] = [
+  pub(crate) const PICK_ATTRIBUTES: [wgpu::VertexAttribute; 2] = [
     wgpu::VertexAttribute {
       format: wgpu::VertexFormat::Float32x3,
       offset: 0,

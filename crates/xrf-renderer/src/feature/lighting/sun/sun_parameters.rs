@@ -9,7 +9,7 @@ use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 /// under them, and what the sun's traced shadow saw, a lit texel where it is not traced.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct SunParameters<'a> {
+pub(crate) struct SunParameters<'a> {
   #[texture(d2, unfilterable)]
   pub albedo_target: GraphTexture,
   #[texture(d2, unfilterable)]

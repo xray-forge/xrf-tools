@@ -8,7 +8,7 @@ use crate::level::ambient::started_effect::StartedEffect;
 /// each campfire's idle light shows by its id, and where each object motion has its object in engine space and how fast
 /// it moves, by the motion's name.
 #[derive(Default)]
-pub struct EffectsFrame {
+pub(crate) struct EffectsFrame {
   pub gust: AmbientGust,
   pub campfire_shares: HashMap<u16, f32>,
   pub motions: HashMap<String, RenderMotionPose>,

@@ -11,7 +11,7 @@ use crate::scene::static_scene::surface::static_surface::StaticSurface;
 /// layout's vertex words through the shared indices, the surfaces, the wind, and skinned models' links and bones.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 2)]
-pub struct StaticDrawParameters {
+pub(crate) struct StaticDrawParameters {
   #[storage]
   pub clusters: StorageArray<StaticCluster>,
   #[storage]

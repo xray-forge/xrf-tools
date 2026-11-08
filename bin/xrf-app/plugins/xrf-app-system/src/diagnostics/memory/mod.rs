@@ -16,10 +16,10 @@ mod webview_process_probe;
 #[cfg(test)]
 mod tests;
 
-pub use gpu_memory_usage::GpuMemoryUsage;
-pub use memory_usage::MemoryUsage;
-pub use process_memory::ProcessMemory;
-pub use webview_process::WebviewProcess;
-pub use webview_process_kind::WebviewProcessKind;
-pub use webview_process_memory::WebviewProcessMemory;
-pub use webview_process_probe::WebviewProcessProbe;
+pub(crate) use gpu_memory_usage::GpuMemoryUsage;
+pub(crate) use memory_usage::MemoryUsage;
+pub(crate) use process_memory::ProcessMemory;
+pub(crate) use webview_process::WebviewProcess;
+pub(crate) use webview_process_kind::WebviewProcessKind;
+pub(crate) use webview_process_memory::WebviewProcessMemory;
+pub(crate) use webview_process_probe::WebviewProcessProbe;

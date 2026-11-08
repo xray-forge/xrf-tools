@@ -2,4 +2,4 @@
 
 mod gamedata_verify_request;
 
-pub use gamedata_verify_request::GamedataVerifyRequest;
+pub(crate) use gamedata_verify_request::GamedataVerifyRequest;

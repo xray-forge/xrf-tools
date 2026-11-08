@@ -6,7 +6,7 @@ use serde::Serialize;
 /// What reading one representation and writing another produced.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct FileConversionReport {
+pub(crate) struct FileConversionReport {
   destination: String,
   #[serde(with = "xrf_utils::duration_ms")]
   read_duration: Duration,
@@ -16,7 +16,7 @@ pub struct FileConversionReport {
 }
 
 impl FileConversionReport {
-  pub fn new(source: &Path, destination: &Path, read_duration: Duration, write_duration: Duration) -> Self {
+  pub(crate) fn new(source: &Path, destination: &Path, read_duration: Duration, write_duration: Duration) -> Self {
     Self {
       destination: xrf_utils::to_portable_path_string(destination),
       read_duration,

@@ -2,19 +2,19 @@ use serde::{Deserialize, Serialize};
 
 /// Map pixels a level map's tile spans on a side at most.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
-pub const RENDER_MAP_TILE: u32 = 2048;
+pub(crate) const RENDER_MAP_TILE: u32 = 2048;
 
 /// Map pixels a level map's tile is drawn past each side, as far as the screen-space passes gather around a pixel.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
-pub const RENDER_MAP_TILE_MARGIN: u32 = 64;
+pub(crate) const RENDER_MAP_TILE_MARGIN: u32 = 64;
 
 /// Map pixels a level map spans on a side at most.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
-pub const RENDER_MAP_MOST_PIXELS: u32 = 16384;
+pub(crate) const RENDER_MAP_MOST_PIXELS: u32 = 16384;
 
 /// Times over a level map's tile is drawn at most.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
-pub const RENDER_MAP_MOST_SUPERSAMPLING: u32 = 4;
+pub(crate) const RENDER_MAP_MOST_SUPERSAMPLING: u32 = 4;
 
 /// A level map asked of a viewport: an area in engine space seen straight down, `width` by `height` pixels.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

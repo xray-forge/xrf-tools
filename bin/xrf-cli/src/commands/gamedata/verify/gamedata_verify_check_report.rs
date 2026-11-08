@@ -9,7 +9,7 @@ use xrf_utils::to_portable_path_string;
 /// root, and the check's own one-line summary.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct GamedataVerifyCheckReport {
+pub(crate) struct GamedataVerifyCheckReport {
   #[serde(flatten)]
   check: CheckReport,
   summary: String,
@@ -17,7 +17,7 @@ pub struct GamedataVerifyCheckReport {
 
 impl GamedataVerifyCheckReport {
   /// `check` as reported, its asset paths relative to `root` where they lie beneath it.
-  pub fn new(root: &Path, check: &GamedataVerificationCheckReport) -> Self {
+  pub(crate) fn new(root: &Path, check: &GamedataVerificationCheckReport) -> Self {
     let report: &CheckReport = check.get_report();
     let findings: Vec<Finding> = report
       .findings()

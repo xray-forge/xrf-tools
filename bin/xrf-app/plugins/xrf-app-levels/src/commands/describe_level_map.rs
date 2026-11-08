@@ -11,7 +11,7 @@ use crate::parts::{LevelMapDescription, LevelMapPart};
 /// again where a commit let it go.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_level_map")]
-pub async fn levels_describe_level_map(
+pub(crate) async fn levels_describe_level_map(
   session_id: SessionId,
   levels: State<'_, SelectedLevels>,
   assets: State<'_, AssetMountState>,

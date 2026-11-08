@@ -11,7 +11,7 @@ use crate::pass::view::view_binding::ViewBinding;
 /// The sun's shadow traced at the frame's size: one ray a pixel towards a point of the sun's disc, traced against the
 /// level's geometry by hardware ray query (`frame/sun_trace`), its visibility written for the sun's pass, where DLSS
 /// ray reconstruction denoises it. Nothing traces on a device without ray queries.
-pub struct SunTracePass {
+pub(crate) struct SunTracePass {
   view_layout: wgpu::BindGroupLayout,
   /// Its own, the trace's and the texture cache's layouts, on a device with ray queries.
   layouts: Option<[wgpu::BindGroupLayout; 3]>,
@@ -21,7 +21,7 @@ pub struct SunTracePass {
 
 impl SunTracePass {
   /// How much of the sun a pixel sees: one or none, a ray at a time.
-  pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
+  pub(crate) const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
 
   /// Where the pass binds the trace's group, and the texture cache's after it.
   const TRACE_GROUP: u32 = 3;
@@ -30,7 +30,7 @@ impl SunTracePass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(
+  pub(crate) fn new(
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
@@ -57,7 +57,7 @@ impl SunTracePass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipeline.refresh(source.cache, || {
       Self::create_pipeline(source, &self.view_layout, self.layouts.as_ref())
     }) {
@@ -66,7 +66,7 @@ impl SunTracePass {
   }
 
   /// Traces the frame's pixels towards the sun into the target the pass draws into.
-  pub fn record(
+  pub(crate) fn record(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,

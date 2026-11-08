@@ -15,7 +15,7 @@ use crate::sound::weather::rain_frame::RainFrame;
 /// OpenXRay's factor is the rain's density, its volume at least a tenth of it; Monolith's is half density and half the
 /// wind (only while it rains), its volume held within a tenth and one, and its range halved.
 #[derive(Default)]
-pub struct RainSound {
+pub(crate) struct RainSound {
   emitter: Option<u64>,
   /// `hemi_factor`, eased toward the camera's hemi each frame.
   hemi: f32,
@@ -23,7 +23,7 @@ pub struct RainSound {
 
 impl RainSound {
   /// Plays on a frame `delta` long to `now`, the level's clock.
-  pub fn update(
+  pub(crate) fn update(
     &mut self,
     emitters: &mut SoundEmitters,
     sound: Option<&WorldSound>,

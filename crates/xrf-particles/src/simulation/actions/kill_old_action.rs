@@ -9,7 +9,7 @@ pub(crate) struct KillOldAction {
 }
 
 impl KillOldAction {
-  pub fn execute(&self, pool: &mut ParticlePool, step: &mut ParticleActionStep<'_>) {
+  pub(crate) fn execute(&self, pool: &mut ParticlePool, step: &mut ParticleActionStep<'_>) {
     step.kill_old_time = self.age_limit;
 
     // Backwards, so the particle moved into a removed one's place has been tested already.

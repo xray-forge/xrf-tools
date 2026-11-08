@@ -19,7 +19,7 @@ const NOISE_FRAMES: u32 = 256;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Vbao")]
-pub struct VbaoUniform {
+pub(crate) struct VbaoUniform {
   pub radius: f32,
   pub thickness: f32,
   /// The exponent the filtered visibility is raised to.
@@ -52,7 +52,7 @@ pub struct VbaoUniform {
 
 impl VbaoUniform {
   /// The settings over one `frame` of the search, gathering the indirect `light` beside the occlusion.
-  pub fn new(settings: &RenderAmbientOcclusionSettings, light: VbaoLight, frame: VbaoFrame) -> Self {
+  pub(crate) fn new(settings: &RenderAmbientOcclusionSettings, light: VbaoLight, frame: VbaoFrame) -> Self {
     let frames: u32 = settings.vbao.get_accumulation();
     let (width, height): (u32, u32) = frame.size;
     let has_history: bool = frame.has_history && frames > 1;

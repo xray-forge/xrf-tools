@@ -9,7 +9,7 @@ use crate::lighting::weather::render_lighting::RenderLighting;
 use crate::viewport::viewport_overlays::ViewportOverlays;
 
 /// What one view of a scene is drawn through this frame: a viewport's own, or a level map's tile in its place.
-pub struct SceneViewFraming<'a> {
+pub(crate) struct SceneViewFraming<'a> {
   /// Its camera, unjittered.
   pub view: CameraView,
   /// The whole rectangle it is resolved over, and the sizes it is resolved and drawn at.

@@ -7,7 +7,7 @@ use crate::parts::LevelStartOrigin;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LevelStart {
+pub(crate) struct LevelStart {
   /// Where the camera stands.
   pub position: Vector3d,
   /// Which way it looks, level with the horizon.

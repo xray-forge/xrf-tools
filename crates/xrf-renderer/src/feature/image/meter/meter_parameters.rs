@@ -8,7 +8,7 @@ use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 /// gathered, the depth, the frame's lighting and exposure, and the sample it writes.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct MeterParameters {
+pub(crate) struct MeterParameters {
   #[texture(d2, unfilterable)]
   pub scene: GraphTexture,
   #[texture(d2, unfilterable)]

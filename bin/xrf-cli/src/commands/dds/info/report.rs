@@ -12,7 +12,7 @@ use xrf_dds::DdsMetadata;
 /// so both are reported.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct DdsInfoReport {
+pub(crate) struct DdsInfoReport {
   bits_per_pixel: Option<u8>,
   block_size: Option<u32>,
   data_size: u64,
@@ -32,7 +32,7 @@ pub struct DdsInfoReport {
 }
 
 impl DdsInfoReport {
-  pub fn new(metadata: &DdsMetadata) -> Self {
+  pub(crate) fn new(metadata: &DdsMetadata) -> Self {
     Self {
       bits_per_pixel: metadata.bits_per_pixel,
       block_size: metadata.block_size,

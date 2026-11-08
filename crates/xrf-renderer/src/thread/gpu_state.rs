@@ -30,7 +30,7 @@ use crate::thread::queue::render_workers::RenderWorkers;
 use crate::window::render_window::RenderWindow;
 
 /// Everything made on the GPU, which goes as a whole when the GPU stops or is lost.
-pub struct GpuState {
+pub(crate) struct GpuState {
   pub context: GpuContext,
   pub view_layout: wgpu::BindGroupLayout,
   /// Each window's swapchain, by its host's key.
@@ -69,7 +69,7 @@ impl GpuState {
   /// # Errors
   ///
   /// Returns an error when a pass's shaders do not compose or compile.
-  pub fn new(
+  pub(crate) fn new(
     context: GpuContext,
     shaders: &ShaderLibrary,
     workers: &RenderWorkers,
@@ -158,7 +158,7 @@ impl GpuState {
 
   /// Keeps the driver's pipelines for the next start where it holds more of them than are kept: the composition, the
   /// grids and the feature units make theirs on demand, so the cache grows long after the start.
-  pub fn save_driver_cache(&mut self, store: Option<&dyn RenderCacheStore>) {
+  pub(crate) fn save_driver_cache(&mut self, store: Option<&dyn RenderCacheStore>) {
     let (Some(store), Some(key)) = (store, self.driver_cache_key.as_deref()) else {
       return;
     };
@@ -173,7 +173,7 @@ impl GpuState {
   }
 
   /// Where the feature units ask for their pipelines, made from `shaders`.
-  pub fn get_pipeline_source<'a>(&'a self, shaders: &'a ShaderLibrary) -> PipelineSource<'a> {
+  pub(crate) fn get_pipeline_source<'a>(&'a self, shaders: &'a ShaderLibrary) -> PipelineSource<'a> {
     PipelineSource {
       cache: &self.pipelines,
       device: &self.context.device,
@@ -187,7 +187,7 @@ impl GpuState {
   ///
   /// Returns an error when its shader does not compose or compile, the same one without building it again until a
   /// shader reloads.
-  pub fn ensure_grid(&mut self, shaders: &ShaderLibrary, format: wgpu::TextureFormat) -> XrfResult {
+  pub(crate) fn ensure_grid(&mut self, shaders: &ShaderLibrary, format: wgpu::TextureFormat) -> XrfResult {
     if self.grids.contains_key(&format) {
       return Ok(());
     }
@@ -216,11 +216,11 @@ impl GpuState {
   }
 
   /// The grid pass drawing into a format, once [`GpuState::ensure_grid`] built it.
-  pub fn get_grid(&self, format: wgpu::TextureFormat) -> Option<&GridPass> {
+  pub(crate) fn get_grid(&self, format: wgpu::TextureFormat) -> Option<&GridPass> {
     self.grids.get(&format)
   }
 
-  pub fn get_level_passes<'a>(&'a self, shaders: &'a ShaderLibrary) -> LevelPasses<'a> {
+  pub(crate) fn get_level_passes<'a>(&'a self, shaders: &'a ShaderLibrary) -> LevelPasses<'a> {
     LevelPasses {
       pipelines: self.get_pipeline_source(shaders),
       sky: &self.sky,
@@ -235,7 +235,7 @@ impl GpuState {
 
   /// Rebuilds the pipelines made from the modules a reload `changed`, or from any module importing one, and tries the
   /// grids that would not build again; every other pipeline stays as it was made.
-  pub fn refresh(&mut self, shaders: &ShaderLibrary, changed: &[&str]) {
+  pub(crate) fn refresh(&mut self, shaders: &ShaderLibrary, changed: &[&str]) {
     for module in shaders.list_dependents(changed) {
       self.pipelines.invalidate_module(module);
     }

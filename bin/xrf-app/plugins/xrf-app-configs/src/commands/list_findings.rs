@@ -15,7 +15,7 @@ use crate::request::ConfigsListRequest;
 /// answered as held.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "list_findings")]
-pub async fn configs_list_findings(
+pub(crate) async fn configs_list_findings(
   execution: State<'_, ExecutionState>,
   projects: State<'_, ConfigsProjects>,
   request: ConfigsListRequest,

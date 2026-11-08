@@ -22,7 +22,7 @@ static SUN_PASSES: [&str; RENDER_MAX_SHADOW_CASCADES] = [
 /// The grass's cards a frame draws into its near sun cascades, where those shadow it: the pass, what their draw reads
 /// and the textures it cuts them by, and their indirect draw as the graph knows it.
 #[derive(Clone, Copy)]
-pub struct GrassShadowCasters<'a> {
+pub(crate) struct GrassShadowCasters<'a> {
   pub pass: &'a GrassPass,
   pub parameters: GrassCardShadowParameters,
   pub textures: &'a wgpu::BindGroup,
@@ -43,7 +43,7 @@ impl<'a> GrassShadowCasters<'a> {
   const LEAN: f32 = 0.3;
 
   /// The cards as the sun's cascades draw them every frame, standing out to `reach` metres from the eye.
-  pub fn get_sun_casters(reach: f32) -> PerFrameCasters {
+  pub(crate) fn get_sun_casters(reach: f32) -> PerFrameCasters {
     PerFrameCasters {
       kind: DrawableKind::Grass,
       reach,
@@ -54,7 +54,7 @@ impl<'a> GrassShadowCasters<'a> {
   }
 
   /// The cards as the local lights' faces draw them, standing out to `reach` metres from the eye.
-  pub fn get_light_casters(reach: f32) -> LightCasters {
+  pub(crate) fn get_light_casters(reach: f32) -> LightCasters {
     LightCasters {
       kind: DrawableKind::Grass,
       reach,
@@ -65,14 +65,14 @@ impl<'a> GrassShadowCasters<'a> {
 
   /// Declares on `builder` what the cards' draw reads: its indirect arguments, their corners, their records and the
   /// models.
-  pub fn declare<'g>(&self, builder: RasterPassBuilder<'g, 'a>) -> RasterPassBuilder<'g, 'a> {
+  pub(crate) fn declare<'g>(&self, builder: RasterPassBuilder<'g, 'a>) -> RasterPassBuilder<'g, 'a> {
     builder
       .buffer(self.draw, GraphBufferAccess::Indirect)
       .parameters(&self.parameters)
   }
 
   /// Draws the cards into the map `context`'s pass draws into, seen by `view`, within the region already set.
-  pub fn record(&self, context: &mut RasterContext<'_>, view: &ViewBinding) {
+  pub(crate) fn record(&self, context: &mut RasterContext<'_>, view: &ViewBinding) {
     let draw: &wgpu::Buffer = context.get_buffer(self.draw);
 
     self
@@ -81,7 +81,7 @@ impl<'a> GrassShadowCasters<'a> {
   }
 
   /// Declares the cards' draw into a cascade of the sun's maps (`target`), over what it holds.
-  pub fn add_pass(
+  pub(crate) fn add_pass(
     &self,
     graph: &mut FrameGraph<'a>,
     CascadeTarget {

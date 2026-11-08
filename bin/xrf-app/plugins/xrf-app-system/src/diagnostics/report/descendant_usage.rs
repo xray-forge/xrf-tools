@@ -5,7 +5,7 @@ use sysinfo::{Pid, Process, System};
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct DescendantUsage {
+pub(crate) struct DescendantUsage {
   /// Resident set of every process descended from the root, at any depth.
   pub resident_memory: u64,
   /// How many such processes there are. Zero on a platform that runs the webview in the host process.
@@ -14,7 +14,7 @@ pub struct DescendantUsage {
 
 impl DescendantUsage {
   /// What every process descended from `root` costs, at any depth.
-  pub fn sum(system: &System, root: Pid) -> Self {
+  pub(crate) fn sum(system: &System, root: Pid) -> Self {
     let population: usize = system.processes().len();
     let mut usage: Self = Self::default();
 

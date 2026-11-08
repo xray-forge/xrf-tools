@@ -11,7 +11,7 @@ use crate::commands::dds::convert::dds_convert_candidate_report::DdsConvertCandi
 /// itself lossy, so the error reported here is what this conversion adds on top - never distance from an original.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct DdsConvertReport {
+pub(crate) struct DdsConvertReport {
   source: String,
   destination: String,
   width: u32,
@@ -24,7 +24,12 @@ pub struct DdsConvertReport {
 }
 
 impl DdsConvertReport {
-  pub fn new(source: &Path, destination: &Path, written: &DdsEncodeAttempt, compared: &[DdsEncodeAttempt]) -> Self {
+  pub(crate) fn new(
+    source: &Path,
+    destination: &Path,
+    written: &DdsEncodeAttempt,
+    compared: &[DdsEncodeAttempt],
+  ) -> Self {
     let metadata = written.file.metadata();
 
     Self {

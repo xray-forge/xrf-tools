@@ -4,7 +4,7 @@ use xrf_texture::{CropTextureOptions, CropTextureResult};
 /// What `dds crop` cut out of a sheet, and what it wrote.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct DdsCropReport {
+pub(crate) struct DdsCropReport {
   destination: String,
   height: u32,
   region_height: u32,
@@ -16,7 +16,7 @@ pub struct DdsCropReport {
 }
 
 impl DdsCropReport {
-  pub fn new(options: &CropTextureOptions, result: &CropTextureResult) -> Self {
+  pub(crate) fn new(options: &CropTextureOptions, result: &CropTextureResult) -> Self {
     Self {
       destination: xrf_utils::to_portable_path_string(&options.output_path),
       height: result.height,

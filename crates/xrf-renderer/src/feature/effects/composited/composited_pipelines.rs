@@ -1,5 +1,5 @@
 /// The composited pass's pipelines, each list one a layout or a batch.
-pub struct CompositedPipelines {
+pub(crate) struct CompositedPipelines {
   /// One a composited batch, in `StaticBatch::list_composited` order.
   pub composited: Vec<wgpu::RenderPipeline>,
   /// One a wall mark batch, in `StaticBatch::list_wallmarks` order.

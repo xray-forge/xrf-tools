@@ -8,7 +8,7 @@ use crate::scene::level::particles::particle_vertex::ParticleVertex;
 /// which they fade against.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct ParticleParameters<'a> {
+pub(crate) struct ParticleParameters<'a> {
   #[storage]
   pub vertices: StorageArray<ParticleVertex>,
   #[storage]

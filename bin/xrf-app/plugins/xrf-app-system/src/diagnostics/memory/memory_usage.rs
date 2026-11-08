@@ -6,7 +6,7 @@ use crate::diagnostics::memory::{GpuMemoryUsage, ProcessMemory, WebviewProcess, 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct MemoryUsage {
+pub(crate) struct MemoryUsage {
   /// The backend process itself.
   pub application: ProcessMemory,
   /// Every webview process still running, in the order the environment listed them.
@@ -18,7 +18,7 @@ pub struct MemoryUsage {
 impl MemoryUsage {
   /// Read the backend and each listed webview process beside the GPU's reading, or nothing where this platform cannot
   /// read a process.
-  pub fn read(pid: u32, processes: &[WebviewProcess], gpu: Option<GpuMemoryUsage>) -> Option<Self> {
+  pub(crate) fn read(pid: u32, processes: &[WebviewProcess], gpu: Option<GpuMemoryUsage>) -> Option<Self> {
     Some(Self {
       application: ProcessMemory::read(pid)?,
       // A process listed a moment ago may have exited since; it holds nothing now, so it is left out.

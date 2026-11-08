@@ -6,7 +6,7 @@ use xrf_vfs::XraySearch;
 use crate::level::LevelSource;
 
 /// One compiled level's `level` bundle as it is read: the level and its visuals.
-pub struct LevelBundle {
+pub(crate) struct LevelBundle {
   pub level: LevelFile,
   pub visuals: LevelVisualsChunk,
 }
@@ -17,7 +17,7 @@ impl LevelBundle {
   /// # Errors
   ///
   /// Returns why the bundle cannot be read, or that it carries no visuals.
-  pub fn read(source: &LevelSource, search: &XraySearch) -> TauriResult<Self> {
+  pub(crate) fn read(source: &LevelSource, search: &XraySearch) -> TauriResult<Self> {
     let bundle: Vec<u8> = source.read_file(search, LevelFile::FILE_NAME)?;
     let chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_vec(bundle)
       .and_then(|mut it| it.read_children())

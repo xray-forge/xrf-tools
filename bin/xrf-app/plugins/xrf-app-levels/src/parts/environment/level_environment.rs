@@ -16,7 +16,7 @@ use crate::weather::{
 
 /// The game's environment configs as the open level's engine reads them, and which of its cycles the level plays; kept
 /// as the level's environment part (`LevelEnvironmentPart`).
-pub struct LevelEnvironment {
+pub(crate) struct LevelEnvironment {
   pub catalog: Arc<EnvironmentCatalog>,
   pub weather: LevelWeather,
 }
@@ -24,7 +24,11 @@ pub struct LevelEnvironment {
 impl LevelEnvironment {
   /// Everything the viewer plays the level's weather from; the level's own file is read in the search, recorded as the
   /// level's weather part.
-  pub fn describe(&self, current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> LevelWeatherDescription {
+  pub(crate) fn describe(
+    &self,
+    current: &SessionSnapshot<SelectedLevel>,
+    search: &XraySearch,
+  ) -> LevelWeatherDescription {
     LevelWeatherPart::record(current, search, |search| self.describe_recorded(current, search))
   }
 
@@ -65,7 +69,7 @@ impl LevelEnvironment {
   /// # Errors
   ///
   /// Returns that the game has no cycle or effect `id` names.
-  pub fn read_cycle(&self, id: &WeatherCycleId) -> TauriResult<LevelWeatherCycle> {
+  pub(crate) fn read_cycle(&self, id: &WeatherCycleId) -> TauriResult<LevelWeatherCycle> {
     self
       .catalog
       .find_by_id(id)
@@ -74,7 +78,7 @@ impl LevelEnvironment {
   }
 
   /// What the level's cycles are read against, its textures found in the search.
-  pub fn get_source<'a>(&'a self, current: &SelectedLevel, search: &'a XraySearch) -> LevelWeatherSource<'a> {
+  pub(crate) fn get_source<'a>(&'a self, current: &SelectedLevel, search: &'a XraySearch) -> LevelWeatherSource<'a> {
     LevelWeatherSource {
       catalog: &self.catalog,
       search,
@@ -112,7 +116,7 @@ impl LevelEnvironment {
 
   /// The level's `level.env_mod`, none where it has none; one that will not read is said and left out, since the
   /// weather plays without it.
-  pub fn read_modifiers(current: &SelectedLevel, search: &XraySearch) -> Vec<LevelEnvModifier> {
+  pub(crate) fn read_modifiers(current: &SelectedLevel, search: &XraySearch) -> Vec<LevelEnvModifier> {
     current
       .source
       .read_optional_file(search, LevelWeatherPart::ENV_MOD_FILE)

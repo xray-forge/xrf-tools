@@ -6,12 +6,12 @@ use xrf_renderer_core::ShaderStruct;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "OverheadShift")]
-pub struct OverheadShiftUniform {
+pub(crate) struct OverheadShiftUniform {
   pub offset: Vec4,
 }
 
 impl OverheadShiftUniform {
-  pub fn new((across, down): (i32, i32), resolution: u32) -> Self {
+  pub(crate) fn new((across, down): (i32, i32), resolution: u32) -> Self {
     Self {
       offset: Vec4::new(across as f32, down as f32, resolution as f32, 0.0),
     }

@@ -8,9 +8,9 @@ mod level_render_source;
 mod level_scene_follower;
 mod shown_levels;
 
-pub use level_audio::LevelAudio;
-pub use level_particle_collider::LevelParticleCollider;
-pub use level_render_parts::LevelRenderParts;
-pub use level_render_source::LevelRenderSource;
+pub(crate) use level_audio::LevelAudio;
+pub(crate) use level_particle_collider::LevelParticleCollider;
+pub(crate) use level_render_parts::LevelRenderParts;
+pub(crate) use level_render_source::LevelRenderSource;
 pub(crate) use level_scene_follower::LevelSceneFollower;
 pub use shown_levels::ShownLevels;

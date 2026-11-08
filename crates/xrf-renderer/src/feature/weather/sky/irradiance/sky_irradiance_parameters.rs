@@ -9,7 +9,7 @@ use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 /// harmonics.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 0)]
-pub struct SkyIrradianceParameters<'a> {
+pub(crate) struct SkyIrradianceParameters<'a> {
   #[texture(cube, float)]
   pub sky_cube_0: GraphTexture,
   #[texture(cube, float)]

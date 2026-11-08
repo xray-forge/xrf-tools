@@ -2,7 +2,7 @@ use glam::Vec4;
 
 /// What the enhanced foliage motion reads this frame, copied into the trees' `Wind` and the grass's `GrassWind`.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct FoliageWindValues {
+pub(crate) struct FoliageWindValues {
   /// The way the wind blows across the engine's ground in `xy`, its speed in `z` and that speed's root in `w`, this
   /// frame and the last, which the motion measures the foliage's last place by.
   pub wind: Vec4,

@@ -8,7 +8,7 @@ use crate::frame::timing::frame_summary::FrameSummary;
 
 /// A viewport's frames since its last report.
 #[derive(Clone, Debug)]
-pub struct FrameStatistics {
+pub(crate) struct FrameStatistics {
   since: Instant,
   frames: u32,
   intervals: Vec<f32>,
@@ -25,9 +25,9 @@ pub struct FrameStatistics {
 
 impl FrameStatistics {
   /// How often a viewport reports what its frames cost.
-  pub const REPORT_INTERVAL: Duration = Duration::from_millis(250);
+  pub(crate) const REPORT_INTERVAL: Duration = Duration::from_millis(250);
 
-  pub fn new(now: Instant) -> Self {
+  pub(crate) fn new(now: Instant) -> Self {
     Self {
       since: now,
       frames: 0,
@@ -45,7 +45,7 @@ impl FrameStatistics {
   /// Notes one presented frame: its distance from the one before, the render thread's own work on it, the GPU's
   /// milliseconds on the frame read back with it where one came back, where the render thread's time went, and what
   /// each encode group cost.
-  pub fn record(
+  pub(crate) fn record(
     &mut self,
     interval: Duration,
     cpu: Duration,
@@ -80,12 +80,12 @@ impl FrameStatistics {
   }
 
   /// Whether a report is due: its interval passed since the last, and a frame was drawn.
-  pub fn is_due(&self, now: Instant) -> bool {
+  pub(crate) fn is_due(&self, now: Instant) -> bool {
     now.duration_since(self.since) >= Self::REPORT_INTERVAL && self.frames > 0
   }
 
   /// The summary of the frames since the last one taken, once a report is due.
-  pub fn take(&mut self, now: Instant) -> Option<FrameSummary> {
+  pub(crate) fn take(&mut self, now: Instant) -> Option<FrameSummary> {
     if !self.is_due(now) {
       return None;
     }

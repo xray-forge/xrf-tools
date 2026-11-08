@@ -2,4 +2,4 @@
 
 mod archives_pack_request;
 
-pub use archives_pack_request::ArchivesPackRequest;
+pub(crate) use archives_pack_request::ArchivesPackRequest;

@@ -6,7 +6,7 @@ use crate::scene::static_scene::draw::static_batch::StaticBatch;
 /// [`StaticSlot::SINGLE`]: crate::scene::static_scene::draw::slot::static_slot::StaticSlot::SINGLE
 /// [`StaticSlot::LISTED`]: crate::scene::static_scene::draw::slot::static_slot::StaticSlot::LISTED
 #[derive(Clone, Copy, Debug)]
-pub struct StaticSlotDraw {
+pub(crate) struct StaticSlotDraw {
   pub kind: u32,
   pub batch: StaticBatch,
   pub surface: u32,

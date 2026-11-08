@@ -28,7 +28,7 @@ use crate::shader::generated_modules::GeneratedModules;
 /// # Errors
 ///
 /// Returns an error when passes sharing a module declare one of its bindings otherwise.
-pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
+pub(crate) fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut modules: GeneratedModules = GeneratedModules::new();
 
   modules

@@ -7,7 +7,7 @@ use crate::viewer::ViewerDdsExport;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq)]
 #[serde(tag = "kind", rename_all = "camelCase")]
-pub enum MapExportFormat {
+pub(crate) enum MapExportFormat {
   Png,
   Tga,
   Svg,

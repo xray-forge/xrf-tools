@@ -10,7 +10,7 @@ use crate::{SpawnFiles, SpawnSession, SpawnSessionDescriptor};
 /// Open the packed spawn at `path`, read on the pool, answering what describes it without its large chunks.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "open_file")]
-pub async fn spawn_open_file(
+pub(crate) async fn spawn_open_file(
   session_id: SessionId,
   path: PathBuf,
   files: State<'_, SpawnFiles>,

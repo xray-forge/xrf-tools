@@ -7,5 +7,5 @@ mod archive_detail_entry;
 mod archive_detail_library_description;
 mod archive_detail_model;
 
-pub use archive_detail_library_description::ArchiveDetailLibraryDescription;
-pub use archive_detail_model::ArchiveDetailModel;
+pub(crate) use archive_detail_library_description::ArchiveDetailLibraryDescription;
+pub(crate) use archive_detail_model::ArchiveDetailModel;

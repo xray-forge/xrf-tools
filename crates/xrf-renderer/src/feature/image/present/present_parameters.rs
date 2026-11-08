@@ -8,7 +8,7 @@ use crate::feature::image::present::present_uniform::PresentUniform;
 /// helpers mark.
 #[derive(PassParameters)]
 #[parameters(group = 1)]
-pub struct PresentParameters<'a> {
+pub(crate) struct PresentParameters<'a> {
   #[texture(d2, unfilterable)]
   pub scene: GraphTexture,
   #[texture(d2, depth)]

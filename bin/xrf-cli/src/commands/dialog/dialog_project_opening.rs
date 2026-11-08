@@ -5,13 +5,13 @@ use xrf_error::XrfResult;
 use crate::core::arguments::XrayRootsArguments;
 
 /// What opening a dialog project takes, and the opening itself: its roots, and the language its lines are shown in.
-pub struct DialogProjectOpening;
+pub(crate) struct DialogProjectOpening;
 
 impl DialogProjectOpening {
   const LANGUAGE: &'static str = "language";
 
   /// Declares the roots every dialog command reads on `command`.
-  pub fn declare_roots(command: Command) -> Command {
+  pub(crate) fn declare_roots(command: Command) -> Command {
     XrayRootsArguments::declare(
       command,
       "Root holding dialog xml. Repeat to layer roots, highest priority first",
@@ -20,7 +20,7 @@ impl DialogProjectOpening {
   }
 
   /// Declares the roots and `--language` on `command`, for a command showing phrase lines.
-  pub fn declare(command: Command) -> Command {
+  pub(crate) fn declare(command: Command) -> Command {
     Self::declare_roots(command).arg(
       Arg::new(Self::LANGUAGE)
         .help("Language to show phrase lines in, such as rus or eng. Defaults to the first the tree holds")
@@ -34,7 +34,7 @@ impl DialogProjectOpening {
   /// # Errors
   ///
   /// Returns an error when the roots cannot be mounted or hold no dialog files under the prefix.
-  pub fn open(matches: &ArgMatches) -> XrfResult<DialogProject> {
+  pub(crate) fn open(matches: &ArgMatches) -> XrfResult<DialogProject> {
     DialogProject::open(&XrayRootsArguments::of(matches)?, &Self::to_layout(matches))
   }
 
@@ -43,7 +43,7 @@ impl DialogProjectOpening {
   /// # Errors
   ///
   /// Returns an error when the roots cannot be mounted or hold no dialog files under the prefix.
-  pub fn open_keys(matches: &ArgMatches) -> XrfResult<DialogProject> {
+  pub(crate) fn open_keys(matches: &ArgMatches) -> XrfResult<DialogProject> {
     let layout: DialogProjectLayout = DialogProjectLayout {
       is_text_skipped: true,
       ..Self::to_layout(matches)
@@ -53,13 +53,13 @@ impl DialogProjectOpening {
   }
 
   /// The language the command was asked to show lines in, if it was asked for one.
-  pub fn language_of(matches: &ArgMatches) -> Option<&str> {
+  pub(crate) fn language_of(matches: &ArgMatches) -> Option<&str> {
     matches.get_one::<String>(Self::LANGUAGE).map(String::as_str)
   }
 
   /// The text the command shows lines from: the requested language, or else the project's first; `None` when the tree
   /// holds no text in that language, in which case phrases show their keys alone.
-  pub fn text_of<'a>(matches: &'a ArgMatches, project: &'a DialogProject) -> Option<DialogTextLanguage<'a>> {
+  pub(crate) fn text_of<'a>(matches: &'a ArgMatches, project: &'a DialogProject) -> Option<DialogTextLanguage<'a>> {
     Self::language_of(matches)
       .or_else(|| project.get_text().get_default_language())
       .and_then(|language| project.get_text().in_language(language))

@@ -5,9 +5,9 @@ mod burst_writer;
 mod sound;
 mod video;
 
-pub use burst_capture_request::BurstCaptureRequest;
-pub use burst_files::BurstFiles;
-pub use burst_outcome::BurstOutcome;
-pub use burst_writer::BurstWriter;
-pub use sound::{BurstSound, BurstSoundChunk, BurstSoundFrame, BurstSoundOutcome, BurstSoundTee};
-pub use video::{BurstVideo, BurstVideoOutcome};
+pub(crate) use burst_capture_request::BurstCaptureRequest;
+pub(crate) use burst_files::BurstFiles;
+pub(crate) use burst_outcome::BurstOutcome;
+pub(crate) use burst_writer::BurstWriter;
+pub(crate) use sound::{BurstSound, BurstSoundChunk, BurstSoundFrame, BurstSoundOutcome, BurstSoundTee};
+pub(crate) use video::{BurstVideo, BurstVideoOutcome};

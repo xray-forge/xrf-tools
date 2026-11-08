@@ -20,7 +20,7 @@ fn engine_curve(light: Vec3) -> Vec3 {
 
 /// The engine's curve in the engine's domain: over the light encoded for the display, its output the display value,
 /// given back as the display's linear colour.
-pub fn engine_display(light: Vec3) -> Vec3 {
+pub(crate) fn engine_display(light: Vec3) -> Vec3 {
   let encoded: Vec3 = light.to_array().map(srgb_encoded).into();
 
   engine_curve(encoded).to_array().map(srgb_decoded).into()
@@ -28,7 +28,7 @@ pub fn engine_display(light: Vec3) -> Vec3 {
 
 /// Khronos PBR Neutral's shoulder, as the reference GLSL of the Khronos PBR Neutral specification writes it, without
 /// its toe: colours as they are below the shoulder, which starts where the reference's does.
-pub fn pbr_neutral(colour: Vec3) -> Vec3 {
+pub(crate) fn pbr_neutral(colour: Vec3) -> Vec3 {
   let start: f32 = 0.8 - 0.04;
   let desaturation: f32 = 0.15;
   let peak: f32 = colour.max_element();
@@ -48,7 +48,7 @@ pub fn pbr_neutral(colour: Vec3) -> Vec3 {
 
 /// AgX's base look as three.js's `AgXToneMapping` writes it: Rec. 2020, the inset, a log encoding over −12.47 to +4.03
 /// stops, the polynomial sigmoid, the outset, the 2.2 power, back to sRGB.
-pub fn agx(colour: Vec3) -> Vec3 {
+pub(crate) fn agx(colour: Vec3) -> Vec3 {
   let to_rec2020: Mat3 = Mat3::from_cols(
     Vec3::new(0.6274, 0.0691, 0.0164),
     Vec3::new(0.3293, 0.9195, 0.0880),
@@ -88,14 +88,14 @@ pub fn agx(colour: Vec3) -> Vec3 {
 }
 
 /// A luminance as the grading's `contrast` in stops about middle grey shows it, as `graded` does.
-pub fn get_graded(luminance: f32, contrast: f32) -> f32 {
+pub(crate) fn get_graded(luminance: f32, contrast: f32) -> f32 {
   MIDDLE_GREY * (luminance / MIDDLE_GREY).powf(contrast)
 }
 
 /// The least luminance a colour of `hue` is shown above the display's first level, `(1/255)^2.2`, through `transform`:
 /// where its toe begins to show anything, solved by bisection over the log2 luminance, as the transform rises with the
 /// light.
-pub fn get_least_shown(transform: fn(Vec3) -> Vec3, hue: Vec3) -> f32 {
+pub(crate) fn get_least_shown(transform: fn(Vec3) -> Vec3, hue: Vec3) -> f32 {
   let first: f32 = srgb_decoded(1.0 / 255.0);
   let unit: Vec3 = hue / luminance(hue).max(1e-6);
   let (mut low, mut high): (f32, f32) = (-30.0, 0.0);
@@ -115,7 +115,7 @@ pub fn get_least_shown(transform: fn(Vec3) -> Vec3, hue: Vec3) -> f32 {
 
 /// The stops a colour of `hue` at luminance `key` is lifted by for `transform` to show it as bright as the engine's curve
 /// shows it, held to `bounds`: the transform's response solved by bisection, as it rises with the light.
-pub fn get_key_match(transform: fn(Vec3) -> Vec3, (key, hue): (f32, Vec3), (least, most): (f32, f32)) -> f32 {
+pub(crate) fn get_key_match(transform: fn(Vec3) -> Vec3, (key, hue): (f32, Vec3), (least, most): (f32, f32)) -> f32 {
   let colour: Vec3 = hue * (key / luminance(hue).max(1e-6));
   let wanted: f32 = luminance(engine_display(colour));
   let (mut low, mut high): (f32, f32) = (least, most);

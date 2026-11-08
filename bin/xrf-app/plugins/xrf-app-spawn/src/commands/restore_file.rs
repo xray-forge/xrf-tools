@@ -8,7 +8,7 @@ use crate::{SpawnFiles, SpawnSession, SpawnSessionDescriptor};
 /// The spawn `tool` holds in the asking window, the newest it opened, described without its large chunks.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "restore_file")]
-pub async fn spawn_restore_file(
+pub(crate) async fn spawn_restore_file(
   files: State<'_, SpawnFiles>,
   window: InvokingWindow,
   tool: String,

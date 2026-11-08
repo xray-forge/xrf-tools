@@ -3,7 +3,7 @@ use std::time::Duration;
 use crate::{Finding, GamedataCheckResult, GamedataVerificationStatus};
 
 #[derive(Default)]
-pub struct GamedataScriptsVerificationResult {
+pub(crate) struct GamedataScriptsVerificationResult {
   pub(crate) duration: Duration,
   pub(crate) invalid_scripts_count: u32,
   pub(crate) checked_scripts_count: u32,

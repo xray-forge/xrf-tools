@@ -3,7 +3,7 @@ use crate::scene::texture::decoded_texture::DecodedTexture;
 
 /// The enhanced rain's maps from the renderer's bundle (`rain/`), uploaded once: the drops a streak carries and the
 /// splash, each the screen offset it bends the view by and its cover.
-pub struct EnhancedRainMaps {
+pub(crate) struct EnhancedRainMaps {
   pub drop: wgpu::TextureView,
   pub splash: wgpu::TextureView,
 }
@@ -13,7 +13,7 @@ impl EnhancedRainMaps {
   const SPLASH: &str = "rain/splash.dds";
 
   /// Reads both maps; one the bundle cannot give is `nothing`, which covers nothing, so no drop or splash shows.
-  pub fn new(
+  pub(crate) fn new(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     bundle: &dyn RenderBundle,

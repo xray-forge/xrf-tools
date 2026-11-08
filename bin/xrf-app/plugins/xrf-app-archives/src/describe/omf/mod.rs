@@ -13,4 +13,4 @@ mod archive_omf_part;
 mod archive_omf_quantized;
 mod archive_omf_target;
 
-pub use archive_omf_description::ArchiveOmfDescription;
+pub(crate) use archive_omf_description::ArchiveOmfDescription;

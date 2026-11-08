@@ -10,7 +10,7 @@ use crate::{EquipmentSpriteDocument, EquipmentSpriteMetadata, EquipmentSprites};
 /// is left as it is, for the page to close once the reload is shown, and a failed reload leaves it untouched.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "reload_sprite")]
-pub async fn sprite_equipment_reload_sprite(
+pub(crate) async fn sprite_equipment_reload_sprite(
   session_id: SessionId,
   previous_id: SessionId,
   assets: State<'_, AssetMountState>,

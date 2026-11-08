@@ -7,7 +7,7 @@ use crate::paths::PathReveal;
 /// Show a path in the desktop's own file manager.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "reveal_path")]
-pub async fn system_reveal_path(path: &str) -> TauriResult<()> {
+pub(crate) async fn system_reveal_path(path: &str) -> TauriResult<()> {
   let target: &Path = Path::new(path);
 
   if !target.exists() {

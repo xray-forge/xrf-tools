@@ -9,7 +9,7 @@ use crate::feature::weather::water::enhanced::enhanced_water_frame::EnhancedWate
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "EnhancedWater")]
-pub struct EnhancedWaterUniform {
+pub(crate) struct EnhancedWaterUniform {
   pub refraction: f32,
   pub turbidity: f32,
   pub soft_border: f32,
@@ -65,7 +65,7 @@ pub struct EnhancedWaterUniform {
 
 impl EnhancedWaterUniform {
   /// The settings over one `frame` of the weather, the water's flow and its reflection.
-  pub fn new(settings: &RenderEnhancedWaterSettings, frame: EnhancedWaterFrame) -> Self {
+  pub(crate) fn new(settings: &RenderEnhancedWaterSettings, frame: EnhancedWaterFrame) -> Self {
     let EnhancedWaterFrame {
       wind,
       rain,

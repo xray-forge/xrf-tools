@@ -1,6 +1,6 @@
 /// What a texture is sampled as, which decides what stands in for it while it loads or where it cannot be had.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum TextureRole {
+pub(crate) enum TextureRole {
   /// A diffuse, stood in for by a checker where it cannot be had, so the gap is seen.
   Base,
   /// A detail, neutral at mid grey since it is applied doubled.
@@ -29,7 +29,7 @@ pub enum TextureRole {
 
 impl TextureRole {
   /// Every role, in declaration order, so `role as usize` indexes what is kept a role.
-  pub const ALL: [Self; 11] = [
+  pub(crate) const ALL: [Self; 11] = [
     Self::Base,
     Self::Detail,
     Self::Bump,
@@ -44,11 +44,11 @@ impl TextureRole {
   ];
 
   /// What a terrain detail's height is named by beside the detail, as the third-party pack names it, and its bump.
-  pub const HEIGHT_SUFFIX: &'static str = "_height";
-  pub const BUMP_SUFFIX: &'static str = "_bump";
+  pub(crate) const HEIGHT_SUFFIX: &'static str = "_height";
+  pub(crate) const BUMP_SUFFIX: &'static str = "_bump";
 
   /// The colour it is drawn as while its texture loads.
-  pub const fn get_neutral(self) -> [u8; 4] {
+  pub(crate) const fn get_neutral(self) -> [u8; 4] {
     match self {
       Self::Base | Self::Hemi | Self::Projector | Self::TerrainMask => [255, 255, 255, 255],
       Self::Detail | Self::TerrainHeight | Self::Distortion => [128, 128, 128, 128],

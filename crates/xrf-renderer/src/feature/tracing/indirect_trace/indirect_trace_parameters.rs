@@ -7,7 +7,7 @@ use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 /// hit is lit by, and its own noise, reach and intensity.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct IndirectTraceParameters<'a> {
+pub(crate) struct IndirectTraceParameters<'a> {
   #[texture(d2, unfilterable)]
   pub normal_target: GraphTexture,
   #[texture(d2, depth)]

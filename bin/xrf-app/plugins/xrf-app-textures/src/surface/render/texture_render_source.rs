@@ -19,7 +19,7 @@ use crate::surface::{TextureSurfaceAlpha, TextureSurfaceShape, TexturesShowReque
 
 /// A texture laid on a body as the native renderer draws it: a scene of one object and no level, the texture and its
 /// bump pair read from the files its description located.
-pub struct TextureRenderSource {
+pub(crate) struct TextureRenderSource {
   assets: AssetMountState,
   roots: XrayRoots,
   /// The texture's reference, which its face names.
@@ -49,7 +49,7 @@ impl TextureRenderSource {
   const PLANE_FACE: usize = 4;
 
   /// The body `request` asks for, dressed in the texture `description` located, its files read through `assets`.
-  pub fn new(description: &TextureDescription, request: &TexturesShowRequest, assets: AssetMountState) -> Self {
+  pub(crate) fn new(description: &TextureDescription, request: &TexturesShowRequest, assets: AssetMountState) -> Self {
     let mut files: HashMap<String, Option<XrayAsset>> =
       HashMap::from([(description.reference.clone(), description.texture.clone())]);
 

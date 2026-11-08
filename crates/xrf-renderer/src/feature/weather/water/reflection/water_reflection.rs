@@ -9,7 +9,7 @@ use crate::frame::targets::view_targets::ViewTargets;
 /// where the scene pass takes the rays the screen does not answer, the list they are left in, an eighth of the drawn
 /// pixels while they trace on their turns, or a record at each pixel while every pixel traces every frame, either a
 /// stub otherwise; and the pyramid of the frame's nearest depth its rays walk over.
-pub struct WaterReflection {
+pub(crate) struct WaterReflection {
   pub histories: History<FrameTexture>,
   pub requests: TraceRequestList,
   pub rays: WaterRays,
@@ -21,17 +21,17 @@ pub struct WaterReflection {
 }
 
 impl WaterReflection {
-  pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub(crate) const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   /// This frame's reflection before the history keeps it: its colour, and the distance along the view of what it met.
-  pub const CURRENT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub(crate) const CURRENT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   /// Drawn pixels a request the list holds stands for at most while it traces; past its room the pixels stretch their
   /// turns by the list's wait.
-  pub const REQUEST_SHARE: u32 = 8;
+  pub(crate) const REQUEST_SHARE: u32 = 8;
   /// How many times its turns a still, dim reflection waits between its rays under the reflections' ray budgets, as the
   /// surfaces' dim tier does.
-  pub const DIM_TURNS: u32 = 4;
+  pub(crate) const DIM_TURNS: u32 = 4;
 
-  pub fn new(device: &wgpu::Device, targets: &ViewTargets) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, targets: &ViewTargets) -> Self {
     let size: (u32, u32) = (targets.width, targets.height);
 
     Self {
@@ -53,7 +53,7 @@ impl WaterReflection {
 
   /// Fits what it leaves the scene pass to how it traces: none untraced, a list an eighth of the drawn pixels large
   /// while the screen answers first, a record at every drawn pixel while every pixel traces every frame.
-  pub fn fit_trace(&mut self, device: &wgpu::Device, is_traced: bool, is_fully_traced: bool) {
+  pub(crate) fn fit_trace(&mut self, device: &wgpu::Device, is_traced: bool, is_fully_traced: bool) {
     let pixels: u32 = self.size.0 * self.size.1;
 
     self.requests.fit(

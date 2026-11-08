@@ -12,7 +12,7 @@ use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 use crate::core::terminal::CliJob;
 
 #[derive(Default)]
-pub struct UnpackCommand;
+pub(crate) struct UnpackCommand;
 
 impl GenericCommand for UnpackCommand {
   fn operation(&self) -> &'static str {

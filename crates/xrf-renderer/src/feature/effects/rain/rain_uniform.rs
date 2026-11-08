@@ -81,7 +81,7 @@ const ENHANCED_SPLASH_LOOK: Vec4 = Vec4::new(0.08, 0.5, 0.0, ENHANCED_SPLASHING)
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Rain")]
-pub struct RainUniform {
+pub(crate) struct RainUniform {
   /// `rain_color`, then `factor / 2 + .5`, which the streaks are drawn long by and the engine's covered by.
   pub color: Vec4,
   /// The way the rain falls, in renderer space, then the widest a drop strays from it, in radians.
@@ -130,14 +130,14 @@ pub struct RainUniform {
 
 impl RainUniform {
   /// `max_desired_items`: streaks at the heaviest rain; half as many at the lightest.
-  pub const STREAKS: u32 = 2500;
+  pub(crate) const STREAKS: u32 = 2500;
   /// Seconds the rain's clock repeats over, which the wet surfaces read too: each of their splashes, flows and ripples
   /// repeats a whole number of times in it (`WetUniform::time`). The drops have no repeat, each falling at a speed of
   /// its own; at the wrap each starts a new fall at once, as every drop does every second or two anyway.
-  pub const CLOCK_PERIOD: f64 = 2000.0;
+  pub(crate) const CLOCK_PERIOD: f64 = 2000.0;
 
   /// One `frame`'s rain, its drops leaned by the wind's strength as its field says.
-  pub fn new(frame: RainFrame<'_>) -> Self {
+  pub(crate) fn new(frame: RainFrame<'_>) -> Self {
     let RainFrame {
       rain,
       drops,
@@ -205,7 +205,7 @@ impl RainUniform {
 
   /// Metres a side of the tile the enhanced drops' rings wrap over; none for the engine's streaks or without the level
   /// water's map to land on.
-  pub fn get_rings(&self) -> f32 {
+  pub(crate) fn get_rings(&self) -> f32 {
     match self.is_enhanced != 0 && self.water.z > 0.0 {
       false => 0.0,
       true => self.near,
@@ -214,7 +214,7 @@ impl RainUniform {
 
   /// The same rain, its enhanced drops falling over a square `side` metres across as `frame/rain.wgsl`'s `far_drop`
   /// places them; the engine's streaks as they are.
-  pub fn squared(self, side: f32) -> Self {
+  pub(crate) fn squared(self, side: f32) -> Self {
     if self.is_enhanced == 0 {
       return self;
     }
@@ -241,7 +241,7 @@ impl RainUniform {
   }
 
   /// The same rain, its enhanced drops' rings `size` times their designed size, held off nought.
-  pub fn ringed(self, size: f32) -> Self {
+  pub(crate) fn ringed(self, size: f32) -> Self {
     Self {
       fall: self.fall.truncate().extend(size.max(RING_SIZE_LEAST)),
       ..self
@@ -249,12 +249,12 @@ impl RainUniform {
   }
 
   /// Streaks drawn at a density, `0.5 * (1 + factor) * max_desired_items`.
-  pub fn get_count(density: f32) -> u32 {
+  pub(crate) fn get_count(density: f32) -> u32 {
     (0.5 * (1.0 + density.clamp(0.0, 1.0)) * Self::STREAKS as f32) as u32
   }
 
   /// The same rain drawn over an image `size` texels across and down, which the enhanced streaks place themselves on.
-  pub fn over(self, (width, height): (u32, u32)) -> Self {
+  pub(crate) fn over(self, (width, height): (u32, u32)) -> Self {
     Self {
       aim: Vec4::new(self.aim.x, self.aim.y, width as f32, height as f32),
       ..self
@@ -263,19 +263,19 @@ impl RainUniform {
 
   /// Where the enhanced drops' square stands from the eye: `aim` eased `step` seconds towards Monolith's `Born` aim
   /// along `look` (`mad(view, dir, 5)`, its height dropped); there at once without one.
-  pub fn ease_aim(aim: Option<Vec2>, look: Vec3, step: f32) -> Vec2 {
+  pub(crate) fn ease_aim(aim: Option<Vec2>, look: Vec3, step: f32) -> Vec2 {
     let target: Vec2 = Vec2::new(look.x, look.z) * ENHANCED_AIM;
 
     aim.map_or(target, |aim| aim.lerp(target, Self::get_following(step)))
   }
 
   /// The share of the way to its target an eased value of the enhanced rain goes in `step` seconds.
-  pub fn get_following(step: f32) -> f32 {
+  pub(crate) fn get_following(step: f32) -> f32 {
     1.0 - (-step / ENHANCED_EASING).exp()
   }
 
   /// The same rain on its clock `time`, at its `pace` and leaning along `axis`, as eased from frame to frame.
-  pub fn clocked(self, time: f32, pace: f32, axis: Vec3) -> Self {
+  pub(crate) fn clocked(self, time: f32, pace: f32, axis: Vec3) -> Self {
     Self {
       time,
       pace,
@@ -285,7 +285,7 @@ impl RainUniform {
   }
 
   /// Enhanced drops drawn at a density, Monolith's `0.01 * (1 + factor * 99) * rain_max_particles`.
-  pub fn get_enhanced_count(density: f32) -> u32 {
+  pub(crate) fn get_enhanced_count(density: f32) -> u32 {
     (0.01 * (1.0 + density.clamp(0.0, 1.0) * 99.0) * ENHANCED_DROPS) as u32
   }
 

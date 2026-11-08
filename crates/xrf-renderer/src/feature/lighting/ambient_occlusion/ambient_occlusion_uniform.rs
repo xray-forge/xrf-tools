@@ -16,7 +16,7 @@ const MAX_REACH: f32 = 0.25;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "AmbientOcclusion")]
-pub struct AmbientOcclusionUniform {
+pub(crate) struct AmbientOcclusionUniform {
   pub radius: f32,
   pub power: f32,
   /// Metres one pixel of the search target spans at a metre from the camera.
@@ -30,7 +30,7 @@ pub struct AmbientOcclusionUniform {
 
 impl AmbientOcclusionUniform {
   /// The settings over a search target of a size, through the camera's projection.
-  pub fn new(settings: &RenderAmbientOcclusionSettings, projection: Mat4, (width, height): (u32, u32)) -> Self {
+  pub(crate) fn new(settings: &RenderAmbientOcclusionSettings, projection: Mat4, (width, height): (u32, u32)) -> Self {
     Self {
       radius: settings.radius * RADIUS_MULTIPLIER,
       power: FINAL_POWER * settings.strength,

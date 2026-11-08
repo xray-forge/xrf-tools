@@ -17,7 +17,7 @@ use crate::pass::view::view_binding::ViewBinding;
 
 /// Lights a viewport's G-buffer with the sun through its shadow's cascades, or what its traced shadow saw, into the
 /// light its frame accumulates, which it clears first, and writes beside it how much of the sun reaches each pixel.
-pub struct SunPass {
+pub(crate) struct SunPass {
   layout: wgpu::BindGroupLayout,
   /// A texel a layer of the sun's maps, all at the far plane, which the frame binds while no cascade is drawn.
   unshadowed: wgpu::TextureView,
@@ -32,25 +32,29 @@ pub struct SunPass {
 
 impl SunPass {
   /// How much of the sun reaches a pixel, past its shadow, its contact shadow and its relief.
-  pub const SEEN_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
+  pub(crate) const SEEN_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
 
   /// The filter's widths there are pipelines for: none to the settings' widest each way.
   const REACHES: usize = RENDER_MAX_SHADOW_FILTER as usize + 1;
 
   /// The sun's maps with nothing in them, which the frame binds while no cascade is drawn.
-  pub fn get_unshadowed(&self) -> &wgpu::TextureView {
+  pub(crate) fn get_unshadowed(&self) -> &wgpu::TextureView {
     &self.unshadowed
   }
 
   /// A lit texel, which the frame binds where the sun's shadow is not traced.
-  pub fn get_untraced(&self) -> &wgpu::TextureView {
+  pub(crate) fn get_untraced(&self) -> &wgpu::TextureView {
     &self.untraced
   }
 
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(queue: &wgpu::Queue, source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+  pub(crate) fn new(
+    queue: &wgpu::Queue,
+    source: PipelineSource<'_>,
+    view_layout: &wgpu::BindGroupLayout,
+  ) -> XrfResult<Self> {
     let device: &wgpu::Device = source.device;
 
     let layout: wgpu::BindGroupLayout = SunParameters::create_layout(device);
@@ -104,7 +108,7 @@ impl SunPass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipelines.refresh(source.cache, || {
       Self::create_pipelines(source, &self.view_layout, &self.layout)
     }) {
@@ -114,7 +118,7 @@ impl SunPass {
 
   /// Lights the G-buffer by the sun into the light target the pass draws into, as `draw` says: shadowed by its traced
   /// shadow or its cascades filtered, and its specular split into the specular target the pass draws into third.
-  pub fn record(
+  pub(crate) fn record(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,

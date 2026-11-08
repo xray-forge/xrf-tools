@@ -25,7 +25,7 @@ use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 const VALUE_COLUMN_CAP: usize = 44;
 
 #[derive(Default)]
-pub struct InspectCommand;
+pub(crate) struct InspectCommand;
 
 impl GenericCommand for InspectCommand {
   fn operation(&self) -> &'static str {

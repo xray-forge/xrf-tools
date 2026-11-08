@@ -4,6 +4,6 @@ mod level_object_patrol;
 mod level_object_patrol_point;
 mod level_patrol_link;
 
-pub use level_object_patrol::LevelObjectPatrol;
-pub use level_object_patrol_point::LevelObjectPatrolPoint;
-pub use level_patrol_link::LevelPatrolLink;
+pub(crate) use level_object_patrol::LevelObjectPatrol;
+pub(crate) use level_object_patrol_point::LevelObjectPatrolPoint;
+pub(crate) use level_patrol_link::LevelPatrolLink;

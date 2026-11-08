@@ -10,7 +10,7 @@ use crate::window::InvokingWindow;
 /// entered again, is not one it closes. What the openings held is dropped on the pool.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "release_scope")]
-pub fn sessions_release_scope(scopes: State<'_, SessionScopes>, window: InvokingWindow, tool: String) -> u32 {
+pub(crate) fn sessions_release_scope(scopes: State<'_, SessionScopes>, window: InvokingWindow, tool: String) -> u32 {
   let scope: SessionScope = SessionScope::of(&window, tool);
   let released: usize = scopes.release(&scope);
 

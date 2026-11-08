@@ -21,7 +21,7 @@ use crate::pass::level_passes::LevelPasses;
 /// then its lens, each over the image before it; the film's grain is the present's. Drawn where the view is lit, shows
 /// the finished frame, and turns one of them on.
 #[derive(Default)]
-pub struct CameraFeature {
+pub(crate) struct CameraFeature {
   /// What the camera draws this frame with, none where it draws nothing.
   frame: Option<CameraFrame>,
   /// The stages' pipelines, asked for once it draws.
@@ -31,7 +31,7 @@ pub struct CameraFeature {
 impl CameraFeature {
   /// Takes this frame's camera as `options` set it, looking through `view`; the stages' pipelines asked of the cache
   /// when it draws and the cache has changed since they were.
-  pub fn prepare(&mut self, passes: LevelPasses<'_>, options: &RenderViewOptions, view: &CameraView) {
+  pub(crate) fn prepare(&mut self, passes: LevelPasses<'_>, options: &RenderViewOptions, view: &CameraView) {
     let settings: &RenderCameraSettings = &options.features.camera;
     let is_drawn: bool = options.mode.is_lit
       && !options.mode.is_wireframe
@@ -59,7 +59,7 @@ impl CameraFeature {
   /// Adds the camera over the image the resolve shows (`chain`), answering the image it leaves, none where it draws
   /// nothing: the distance and motion under each pixel, read from the drawn `depth` and `handles.motion`; the depth of
   /// field; the motion blur; and the lens.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration { graph, runtime, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,

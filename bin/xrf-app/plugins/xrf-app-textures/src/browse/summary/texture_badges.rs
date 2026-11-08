@@ -5,7 +5,7 @@ use xrf_material::{XrayBumpOutcome, XrayMaterialDescriptor};
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TextureBadges {
+pub(crate) struct TextureBadges {
   /// Both halves of the declared pair resolved to the files the declaration names.
   pub is_bumped: bool,
   /// The bump shader path is taken but a half is a dummy or absent, so the surface is not what was authored.
@@ -20,7 +20,7 @@ pub struct TextureBadges {
 
 impl TextureBadges {
   /// The badges a material's descriptor earns.
-  pub fn of(material: &XrayMaterialDescriptor) -> Self {
+  pub(crate) fn of(material: &XrayMaterialDescriptor) -> Self {
     Self {
       is_bumped: material.outcome == XrayBumpOutcome::Bumped,
       is_degraded: material.outcome.is_degraded(),

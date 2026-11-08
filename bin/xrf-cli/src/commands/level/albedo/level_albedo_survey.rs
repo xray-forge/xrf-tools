@@ -11,7 +11,7 @@ use xrf_vfs::{XrayAsset, XraySearch};
 use crate::commands::level::albedo::albedo_texture::{AlbedoOutcome, AlbedoTexture};
 
 /// The base textures of a level's surfaces that write albedo, each measured as the renderer reads it.
-pub struct LevelAlbedoSurvey {
+pub(crate) struct LevelAlbedoSurvey {
   /// Shader table entries naming a surface.
   pub surfaces: usize,
   /// Of those, the ones writing no albedo: blended, added, multiplied, water, invisible or self-lit.
@@ -22,7 +22,7 @@ pub struct LevelAlbedoSurvey {
 
 impl LevelAlbedoSurvey {
   /// Surveys the shader table of `level`, its textures found within `scope` as the renderer finds them.
-  pub fn run(search: &XraySearch, scope: XrayTextureScope, level: &LevelFile) -> Self {
+  pub(crate) fn run(search: &XraySearch, scope: XrayTextureScope, level: &LevelFile) -> Self {
     let resolver: XraySurfaceResolver = XraySurfaceResolver::open(search, scope.clone());
     let references: Vec<&LevelShaderReference> = level
       .shaders

@@ -11,7 +11,7 @@ use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 /// reads the frame by.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 0)]
-pub struct ExposureHistogramParameters {
+pub(crate) struct ExposureHistogramParameters {
   #[texture(d2, unfilterable)]
   pub scene: GraphTexture,
   #[texture(d2, depth)]

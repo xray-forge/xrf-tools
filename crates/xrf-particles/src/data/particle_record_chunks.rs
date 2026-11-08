@@ -6,7 +6,7 @@ pub(crate) struct ParticleRecordChunks;
 
 impl ParticleRecordChunks {
   /// Reads a chunk the record cannot do without, naming it whether it is missing or malformed.
-  pub fn read_required<D: ChunkDataSource, R>(
+  pub(crate) fn read_required<D: ChunkDataSource, R>(
     chunks: &[ChunkReader<D>],
     id: u32,
     name: &str,
@@ -18,7 +18,7 @@ impl ParticleRecordChunks {
   }
 
   /// Reads a chunk the record may omit: absent is `None`, present but malformed is an error naming it.
-  pub fn read_optional<D: ChunkDataSource, R>(
+  pub(crate) fn read_optional<D: ChunkDataSource, R>(
     chunks: &[ChunkReader<D>],
     id: u32,
     name: &str,

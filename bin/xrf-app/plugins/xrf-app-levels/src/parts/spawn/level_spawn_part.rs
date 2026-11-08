@@ -39,14 +39,18 @@ impl LevelSpawnPart {
   ///
   /// Returns the reason when the spawn cannot be read or the level has no name to find its objects by, which every
   /// later ask answers with again.
-  pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> TauriResult<Arc<LevelSpawn>> {
+  pub(crate) fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> TauriResult<Arc<LevelSpawn>> {
     current
       .parts
       .get_or_record::<Self>(search, |search| Self::read(&current.source, search))
   }
 
   /// `parts` with the spawn an open read from `inputs` kept as the level's.
-  pub fn with(parts: SessionParts, spawn: TauriResult<Arc<LevelSpawn>>, inputs: XrayInputRecord) -> SessionParts {
+  pub(crate) fn with(
+    parts: SessionParts,
+    spawn: TauriResult<Arc<LevelSpawn>>,
+    inputs: XrayInputRecord,
+  ) -> SessionParts {
     parts.with::<Self>(spawn, inputs)
   }
 
@@ -55,7 +59,7 @@ impl LevelSpawnPart {
   /// # Errors
   ///
   /// Returns the reason when the spawn cannot be read or the level has no name to find its objects by.
-  pub fn read(source: &LevelSource, search: &XraySearch) -> TauriResult<Arc<LevelSpawn>> {
+  pub(crate) fn read(source: &LevelSource, search: &XraySearch) -> TauriResult<Arc<LevelSpawn>> {
     Self::read_level(search, &source.require_name()?).map(Arc::new)
   }
 
@@ -64,7 +68,9 @@ impl LevelSpawnPart {
   /// # Errors
   ///
   /// Returns why the spawn cannot be named or read.
-  pub fn read_chunks(search: &XraySearch) -> TauriResult<(XrayLogicalPath, Vec<ChunkReader<InMemoryChunkDataSource>>)> {
+  pub(crate) fn read_chunks(
+    search: &XraySearch,
+  ) -> TauriResult<(XrayLogicalPath, Vec<ChunkReader<InMemoryChunkDataSource>>)> {
     let path: XrayLogicalPath = XrayLogicalPath::new(Self::SPAWNS_DIRECTORY)
       .and_then(|directory| directory.join(Self::SPAWN_FILE))
       .map_err(|error| format!("Failed to name '{}': {error}", Self::SPAWN_FILE))?;

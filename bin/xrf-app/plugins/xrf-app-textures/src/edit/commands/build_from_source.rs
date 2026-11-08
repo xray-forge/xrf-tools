@@ -19,7 +19,7 @@ use crate::lease::TEXTURE_ENCODE_GROUP;
 /// Rebuild a texture from a source image, the way its descriptor says to.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "build_from_source")]
-pub async fn textures_build_from_source(
+pub(crate) async fn textures_build_from_source(
   request: TexturesBuildRequest,
   job_id: Uuid,
   progress: Channel<JobProgress>,

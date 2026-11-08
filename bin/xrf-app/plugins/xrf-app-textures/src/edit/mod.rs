@@ -7,9 +7,9 @@ mod outcome;
 mod request;
 mod save;
 
-pub use form::{TextureDescriptorForm, TextureEditTargets, TextureSaveTarget};
-pub use outcome::{TextureBuildOmissionReport, TextureBuildOutcome, TextureMakeBumpOutcome, TextureSaveOutcome};
-pub use request::{
+pub(crate) use form::{TextureDescriptorForm, TextureEditTargets, TextureSaveTarget};
+pub(crate) use outcome::{TextureBuildOmissionReport, TextureBuildOutcome, TextureMakeBumpOutcome, TextureSaveOutcome};
+pub(crate) use request::{
   TextureDescriptorSave, TextureEncodingSave, TexturesBuildRequest, TexturesMakeBumpRequest, TexturesSaveRequest,
 };
-pub use save::{TextureSaver, TextureWrite};
+pub(crate) use save::{TextureSaver, TextureWrite};

@@ -5,7 +5,7 @@ use crate::feature::image::resolve::fsr::fsr_uniform::FsrUniform;
 /// One of FSR's downsamples: the level it halves.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 0)]
-pub struct FsrDownsampleParameters {
+pub(crate) struct FsrDownsampleParameters {
   #[uniform]
   pub fsr: UniformBinding<FsrUniform>,
   #[texture(d2, unfilterable)]

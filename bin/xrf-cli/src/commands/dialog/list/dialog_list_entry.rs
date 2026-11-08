@@ -4,7 +4,7 @@ use xrf_dialog::{Dialog, DialogElementDescriptor, DialogOffer, DialogPhrase, Dia
 /// One dialog, with what deciding whether it is offered takes.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct DialogListEntry {
+pub(crate) struct DialogListEntry {
   pub id: String,
   /// Logical path of the file declaring it.
   pub logical_path: String,
@@ -22,7 +22,7 @@ pub struct DialogListEntry {
 }
 
 impl DialogListEntry {
-  pub fn new(
+  pub(crate) fn new(
     file: &DialogProjectFile,
     dialog: &Dialog,
     text: Option<DialogTextLanguage<'_>>,

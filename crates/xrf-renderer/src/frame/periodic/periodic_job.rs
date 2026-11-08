@@ -1,7 +1,7 @@
 /// Work drawn once in so many frames, offered to the frame's `PeriodicScheduler`: the passes that draw it, how much of
 /// it there is, and how long it may still wait.
 #[derive(Clone, Copy, Debug)]
-pub struct PeriodicJob {
+pub(crate) struct PeriodicJob {
   /// The passes that draw it, as the timer names them; the first names what its cost is learned under.
   pub passes: &'static [&'static str],
   /// Milliseconds a unit costs before the timer measured any.
@@ -16,7 +16,7 @@ pub struct PeriodicJob {
 
 impl PeriodicJob {
   /// A job drawn this frame whatever the budget: one never drawn, or one whose waiting would show.
-  pub fn new_now(passes: &'static [&'static str], seed: f32, units: f32) -> Self {
+  pub(crate) fn new_now(passes: &'static [&'static str], seed: f32, units: f32) -> Self {
     Self {
       passes,
       seed,
@@ -27,7 +27,13 @@ impl PeriodicJob {
   }
 
   /// A job that may wait up to `wait_most` frames, having waited `waited`.
-  pub fn new_waiting(passes: &'static [&'static str], seed: f32, units: f32, waited: u32, wait_most: u32) -> Self {
+  pub(crate) fn new_waiting(
+    passes: &'static [&'static str],
+    seed: f32,
+    units: f32,
+    waited: u32,
+    wait_most: u32,
+  ) -> Self {
     Self {
       passes,
       seed,
@@ -37,22 +43,22 @@ impl PeriodicJob {
     }
   }
 
-  pub fn is_now(&self) -> bool {
+  pub(crate) fn is_now(&self) -> bool {
     self.wait_most == 0
   }
 
   /// Whether it waited as long as it may.
-  pub fn is_overdue(&self) -> bool {
+  pub(crate) fn is_overdue(&self) -> bool {
     !self.is_now() && self.waited >= self.wait_most
   }
 
   /// Whether it waited a frame past as long as it may, which no frame defers further.
-  pub fn is_late(&self) -> bool {
+  pub(crate) fn is_late(&self) -> bool {
     !self.is_now() && self.waited > self.wait_most
   }
 
   /// How near its deadline it stands: the share of its wait it will have used by this frame's end.
-  pub fn get_urgency(&self) -> f32 {
+  pub(crate) fn get_urgency(&self) -> f32 {
     (self.waited + 1) as f32 / self.wait_most.max(1) as f32
   }
 }

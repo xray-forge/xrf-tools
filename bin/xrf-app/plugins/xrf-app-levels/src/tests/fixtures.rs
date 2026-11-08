@@ -10,7 +10,7 @@ use xrf_spawn::{AlifeObject, AlifeObjectAbstract, AlifeObjectInherited, ClsId};
 use xrf_vfs::{XrayLookupScope, XrayMountId, XraySearch, XrayVfs};
 
 /// A level whose shader table holds exactly these raw entries.
-pub fn new_level(entries: &[&str]) -> LevelFile {
+pub(super) fn new_level(entries: &[&str]) -> LevelFile {
   LevelFile {
     header: LevelHeaderChunk {
       xrlc_quality: 1,
@@ -27,7 +27,7 @@ pub fn new_level(entries: &[&str]) -> LevelFile {
 }
 
 /// A search over `tree` alone, mounted as the game's root.
-pub fn mount_search(tree: &FixtureTree) -> XraySearch {
+pub(super) fn mount_search(tree: &FixtureTree) -> XraySearch {
   let mut vfs: XrayVfs = XrayVfs::new();
   let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
 
@@ -35,7 +35,7 @@ pub fn mount_search(tree: &FixtureTree) -> XraySearch {
 }
 
 /// A catalog of nothing, the vanilla engine's, for a test to fill what it reads.
-pub fn new_catalog() -> EnvironmentCatalog {
+pub(super) fn new_catalog() -> EnvironmentCatalog {
   EnvironmentCatalog {
     ambient_effects: Vec::new(),
     ambients: Vec::new(),
@@ -56,7 +56,7 @@ pub fn new_catalog() -> EnvironmentCatalog {
 }
 
 /// An object's abstract part with `story_id`, on no vertex.
-pub fn new_abstract(story_id: u32) -> AlifeObjectAbstract {
+pub(super) fn new_abstract(story_id: u32) -> AlifeObjectAbstract {
   AlifeObjectAbstract {
     game_vertex_id: 0,
     distance: 0.0,
@@ -70,7 +70,7 @@ pub fn new_abstract(story_id: u32) -> AlifeObjectAbstract {
 }
 
 /// A spawned object named `name` of `section`, at `1, 2, 3` facing nowhere in particular.
-pub fn new_object(name: &str, section: &str, clsid: ClsId, inherited: AlifeObjectInherited) -> AlifeObject {
+pub(super) fn new_object(name: &str, section: &str, clsid: ClsId, inherited: AlifeObjectInherited) -> AlifeObject {
   AlifeObject {
     id: 0,
     net_action: 1,

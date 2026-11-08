@@ -11,7 +11,7 @@ use crate::viewer::LevelViewerFolder;
 /// within the same second.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "find_screenshot_path")]
-pub async fn levels_find_screenshot_path(
+pub(crate) async fn levels_find_screenshot_path(
   directories: State<'_, AppDirectories>,
   execution: State<'_, ExecutionState>,
   name: String,

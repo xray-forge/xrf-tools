@@ -20,7 +20,7 @@ pub(crate) struct GraphPass<'a> {
 
 impl GraphPass<'_> {
   /// Every texture it reads: those it accesses to read, and attachments it loads rather than clears.
-  pub fn list_texture_reads(&self) -> impl Iterator<Item = GraphTexture> + '_ {
+  pub(crate) fn list_texture_reads(&self) -> impl Iterator<Item = GraphTexture> + '_ {
     let accessed = self
       .textures
       .iter()
@@ -42,7 +42,7 @@ impl GraphPass<'_> {
   }
 
   /// Every texture it writes: those it accesses to write, and every attachment it draws into.
-  pub fn list_texture_writes(&self) -> impl Iterator<Item = GraphTexture> + '_ {
+  pub(crate) fn list_texture_writes(&self) -> impl Iterator<Item = GraphTexture> + '_ {
     let accessed = self
       .textures
       .iter()
@@ -58,7 +58,7 @@ impl GraphPass<'_> {
     accessed.chain(colors).chain(depth)
   }
 
-  pub fn list_buffer_reads(&self) -> impl Iterator<Item = GraphBuffer> + '_ {
+  pub(crate) fn list_buffer_reads(&self) -> impl Iterator<Item = GraphBuffer> + '_ {
     self
       .buffers
       .iter()
@@ -66,7 +66,7 @@ impl GraphPass<'_> {
       .map(|(buffer, _)| *buffer)
   }
 
-  pub fn list_buffer_writes(&self) -> impl Iterator<Item = GraphBuffer> + '_ {
+  pub(crate) fn list_buffer_writes(&self) -> impl Iterator<Item = GraphBuffer> + '_ {
     self
       .buffers
       .iter()
@@ -75,7 +75,7 @@ impl GraphPass<'_> {
   }
 
   /// Every texture it names, accessed or drawn into.
-  pub fn list_textures(&self) -> impl Iterator<Item = GraphTexture> + '_ {
+  pub(crate) fn list_textures(&self) -> impl Iterator<Item = GraphTexture> + '_ {
     let colors = self.work.get_colors().iter().map(|color| color.texture);
     let depth = self.work.get_depth().map(|depth| depth.texture);
 
@@ -87,7 +87,7 @@ impl GraphPass<'_> {
       .chain(depth)
   }
 
-  pub fn list_buffers(&self) -> impl Iterator<Item = GraphBuffer> + '_ {
+  pub(crate) fn list_buffers(&self) -> impl Iterator<Item = GraphBuffer> + '_ {
     self.buffers.iter().map(|(buffer, _)| *buffer)
   }
 }

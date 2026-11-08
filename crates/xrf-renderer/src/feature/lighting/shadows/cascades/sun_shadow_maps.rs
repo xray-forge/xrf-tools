@@ -2,7 +2,7 @@ use crate::contract::feature::lighting::render_shadow_settings::RENDER_MAX_SHADO
 
 /// The sun's cascades' maps: one layer a cascade there can be, each a square of reversed depth seen from the sun. The
 /// maps the sun samples, or the static layers, which hold what stands still and are copied into them.
-pub struct SunShadowMaps {
+pub(crate) struct SunShadowMaps {
   pub resolution: u32,
   /// Every layer, as the sun samples them.
   pub view: wgpu::TextureView,
@@ -11,10 +11,10 @@ pub struct SunShadowMaps {
 }
 
 impl SunShadowMaps {
-  pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
+  pub(crate) const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
   /// The maps the sun samples, which a static layer is copied into.
-  pub fn new(device: &wgpu::Device, resolution: u32) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, resolution: u32) -> Self {
     Self::create(
       device,
       resolution,
@@ -25,7 +25,7 @@ impl SunShadowMaps {
   }
 
   /// `layers` static layers, copied into the maps, or a band of them restored by a draw.
-  pub fn new_static(device: &wgpu::Device, resolution: u32, layers: u32) -> Self {
+  pub(crate) fn new_static(device: &wgpu::Device, resolution: u32, layers: u32) -> Self {
     Self::create(
       device,
       resolution,
@@ -37,7 +37,7 @@ impl SunShadowMaps {
 
   /// `layers` layers the trees are drawn into over a static layer's copy, kept between their draws and copied into the
   /// maps.
-  pub fn new_kept(device: &wgpu::Device, resolution: u32, layers: u32) -> Self {
+  pub(crate) fn new_kept(device: &wgpu::Device, resolution: u32, layers: u32) -> Self {
     Self::create(
       device,
       resolution,

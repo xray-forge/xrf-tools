@@ -13,7 +13,7 @@ use crate::ExportsProjects;
 /// the page lists in full.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "open_project")]
-pub async fn exports_open_project(
+pub(crate) async fn exports_open_project(
   session_id: SessionId,
   project_path: String,
   projects: State<'_, ExportsProjects>,

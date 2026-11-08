@@ -5,7 +5,7 @@ use crate::contract::report::frame::render_frame_phases::RenderFramePhases;
 
 /// Where the render thread's time went over one frame, or over many summed.
 #[derive(Clone, Copy, Debug, Default)]
-pub struct FramePhases {
+pub(crate) struct FramePhases {
   pub update: Duration,
   pub acquire: Duration,
   pub load: Duration,

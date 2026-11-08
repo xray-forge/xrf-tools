@@ -5,7 +5,7 @@ const KEY_WORDS: u64 = 4;
 
 /// A ring of planted slots and item lists of one size, `CDetailManager`'s cache on the GPU: made zeroed, every key
 /// holding generation nought, which no planting runs under, so every cell starts stale.
-pub struct GrassBuild {
+pub(crate) struct GrassBuild {
   pub size: GrassBuildSize,
   /// The ring: a key a cell, a vector a cell (its ground's middle height and half its height, its hemisphere and sun),
   /// and two vectors a cached tuft.
@@ -26,7 +26,7 @@ pub struct GrassBuild {
 
 impl GrassBuild {
   /// A ring and lists of `size`.
-  pub fn new(device: &wgpu::Device, size: GrassBuildSize) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, size: GrassBuildSize) -> Self {
     let buffer = |label: &str, bytes: u64| -> wgpu::Buffer {
       device.create_buffer(&wgpu::BufferDescriptor {
         label: Some(label),

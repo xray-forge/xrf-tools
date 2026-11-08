@@ -13,7 +13,7 @@ use crate::viewer::LevelViewerFolder;
 /// copy leaves no partial file and keeps any file it would have replaced.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "copy_screenshot")]
-pub async fn levels_copy_screenshot(
+pub(crate) async fn levels_copy_screenshot(
   directories: State<'_, AppDirectories>,
   execution: State<'_, ExecutionState>,
   path: PathBuf,

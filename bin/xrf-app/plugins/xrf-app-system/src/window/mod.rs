@@ -4,4 +4,4 @@
 pub(crate) mod commands;
 mod request;
 
-pub use request::LeaveDecision;
+pub(crate) use request::LeaveDecision;

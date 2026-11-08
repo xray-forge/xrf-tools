@@ -10,7 +10,7 @@ use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 /// The values every unit of a view reads this frame, prepared before them: what its exposure and resolve decided and how
 /// the present shows the frame by them, the camera and the sun it is drawn by, the shading switches, the shadows asked
 /// for, whether it draws its edges alone, and the lighting uniform.
-pub struct ViewFrame {
+pub(crate) struct ViewFrame {
   /// What the exposure decided, prepared before every other unit.
   pub exposure: ExposureDecisions,
   /// What the resolve decided, prepared before every other unit but the exposure.

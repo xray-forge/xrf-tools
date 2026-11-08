@@ -17,7 +17,7 @@ use crate::scene::texture::texture_role::TextureRole;
 
 /// A level's grass on the GPU as it is planted from, made once: the slot grid, the planted slots and their triangle
 /// bins, the dither, the models with their vertices, and what each frame counts and draws them into.
-pub struct GrassLevel {
+pub(crate) struct GrassLevel {
   /// What names it among every grass level made, so a view planting another replants every slot.
   pub key: u64,
   /// The grid's size in slots, and the world slot its first cell stands for, negated.
@@ -49,7 +49,7 @@ pub struct GrassLevel {
 }
 
 impl GrassLevel {
-  pub fn new(
+  pub(crate) fn new(
     device: &wgpu::Device,
     details: &RenderLevelDetails,
     textures: &mut TextureCache,
@@ -217,7 +217,7 @@ impl GrassLevel {
 
   /// The engine's dither (`bwdithermap(2, dither)` over `magic4x4`), indexed `column * 16 + row` as the planting reads
   /// it: `dither[(x + shift_x) % 16][(z + shift_z) % 16]`.
-  pub fn create_dither() -> [u32; 256] {
+  pub(crate) fn create_dither() -> [u32; 256] {
     const MAGIC: [[u32; 4]; 4] = [[0, 14, 3, 13], [11, 5, 8, 6], [12, 2, 15, 1], [7, 9, 4, 10]];
     // `N = 255 / (levels - 1)` for two levels, and `magicfact = (N - 1) / 16`, single precision as the engine keeps it,
     // the sum then taken in double precision as its `16.` literal makes it.

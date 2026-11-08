@@ -9,7 +9,7 @@ use crate::project::animations::hud::hud_motion_collisions_verification_result::
 use crate::project::animations::hud::player_hud_animations_verification_result::GamedataPlayerHudAnimationsVerificationResult;
 use crate::{Finding, GamedataCheckResult, GamedataVerificationStatus};
 
-pub struct GamedataAnimationsVerificationResult {
+pub(crate) struct GamedataAnimationsVerificationResult {
   pub(crate) duration: Duration,
   pub(crate) findings: Vec<Finding>,
   pub(crate) hud_item_animations: GamedataHudItemAnimationsVerificationResult,

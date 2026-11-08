@@ -9,9 +9,9 @@ mod reporting_options;
 #[cfg(test)]
 mod tests;
 
-pub use command_build::CommandBuild;
-pub use command_envelope::CommandEnvelope;
-pub use command_execution::CommandExecution;
-pub use report_destination::ReportDestination;
-pub use report_verdict::ReportVerdict;
-pub use reporting_options::ReportingOptions;
+pub(crate) use command_build::CommandBuild;
+pub(crate) use command_envelope::CommandEnvelope;
+pub(crate) use command_execution::CommandExecution;
+pub(crate) use report_destination::ReportDestination;
+pub(crate) use report_verdict::ReportVerdict;
+pub(crate) use reporting_options::ReportingOptions;

@@ -10,7 +10,7 @@ use crate::VisualBrowses;
 /// Remember the browsed roots under an identity independent from the selected model.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "open_browse")]
-pub async fn visuals_open_browse(
+pub(crate) async fn visuals_open_browse(
   session_id: SessionId,
   roots: XrayRoots,
   browses: State<'_, VisualBrowses>,

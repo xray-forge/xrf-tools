@@ -26,7 +26,7 @@ const FIRST_EFFECT_SEED: i32 = 1 << 24;
 /// where the camera stood plus its offset, stopped once its life time is up or the camera goes indoors, and gone once
 /// its particles have died; and the wind each effect brings. The scene plays each effect at an emitter of its own and
 /// tells when its particles have died.
-pub struct LevelAmbientEffects {
+pub(crate) struct LevelAmbientEffects {
   random: WeatherRandom,
   /// `ambient_effect_next_time` and `ambient_effect_stop_time`, on the engine's clock.
   next_time: Duration,
@@ -68,7 +68,7 @@ impl LevelAmbientEffects {
   /// Lets an effect whose particles died go, blows the wind on, starts an effect when one is due, and stops it once its
   /// time is up or indoors, in the order the engine takes them each frame, posting what the scene plays. `outdoors` is
   /// where the camera stands outdoors, in engine space, none where it stands indoors; `now` is the engine's clock.
-  pub fn update(
+  pub(crate) fn update(
     &mut self,
     updates: &mut Vec<RenderSceneUpdate>,
     mut systems: AmbientSystems<'_>,
@@ -120,30 +120,34 @@ impl LevelAmbientEffects {
   }
 
   /// The wind as it blows this frame.
-  pub fn get_gust(&self) -> AmbientGust {
+  pub(crate) fn get_gust(&self) -> AmbientGust {
     self.wind.get_gust()
   }
 
   /// The effect started since the last take.
-  pub fn take_started(&mut self) -> Option<StartedEffect> {
+  pub(crate) fn take_started(&mut self) -> Option<StartedEffect> {
     self.started.take()
   }
 
   /// Ends what plays at once and plays an effect on the next update, outdoors, without waiting.
-  pub fn play_now(&mut self) {
+  pub(crate) fn play_now(&mut self) {
     self.is_forced = true;
   }
 
   /// Starts afresh, as at the level's first frame: what plays leaves the scene with its particles, the next effect is
   /// due at once, and the numbers effects are drawn by, their seeds and the wind start over.
-  pub fn restart(&mut self, updates: &mut Vec<RenderSceneUpdate>, emitters: &mut ProxyAllocator<ParticleEmitterProxy>) {
+  pub(crate) fn restart(
+    &mut self,
+    updates: &mut Vec<RenderSceneUpdate>,
+    emitters: &mut ProxyAllocator<ParticleEmitterProxy>,
+  ) {
     self.release(updates, emitters);
     *self = Self::default();
   }
 
   /// Where they stand at a moment of the engine's clock: what plays and how much of its life is left, and how long until
   /// the next may start. Whether the camera stands indoors is the camera's estimate to fill; it is left outdoors.
-  pub fn report(&self, now: Duration) -> WorldAmbientReport {
+  pub(crate) fn report(&self, now: Duration) -> WorldAmbientReport {
     WorldAmbientReport {
       effect: self.playing.as_ref().map(|playing| WorldAmbientEffectReport {
         name: playing.name.clone(),
@@ -161,7 +165,11 @@ impl LevelAmbientEffects {
   }
 
   /// Takes the effect playing out of the scene, its particles with it.
-  pub fn release(&mut self, updates: &mut Vec<RenderSceneUpdate>, emitters: &mut ProxyAllocator<ParticleEmitterProxy>) {
+  pub(crate) fn release(
+    &mut self,
+    updates: &mut Vec<RenderSceneUpdate>,
+    emitters: &mut ProxyAllocator<ParticleEmitterProxy>,
+  ) {
     if let Some(playing) = self.playing.take() {
       emitters.free(playing.emitter);
       updates.push(RenderSceneUpdate::RemoveEmitter(playing.emitter));

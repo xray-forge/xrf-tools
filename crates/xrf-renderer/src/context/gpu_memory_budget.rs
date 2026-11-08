@@ -6,7 +6,7 @@
 /// The GPU's own memory as its driver tells it: all of it, what the system lets this process hold there now, and what
 /// the process holds there, everything counted, DLSS's and the driver's with the renderer's.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub struct GpuMemoryBudget {
+pub(crate) struct GpuMemoryBudget {
   pub total: u64,
   pub budget: u64,
   pub used: u64,
@@ -15,7 +15,7 @@ pub struct GpuMemoryBudget {
 impl GpuMemoryBudget {
   /// What the adapter's driver says of its own memory now: DXGI's on D3D12, `VK_EXT_memory_budget`'s over the
   /// device-local heaps on Vulkan, the device's working set on Metal; none where the driver says nothing.
-  pub fn read(adapter: &wgpu::Adapter) -> Option<Self> {
+  pub(crate) fn read(adapter: &wgpu::Adapter) -> Option<Self> {
     match adapter.get_info().backend {
       #[cfg(windows)]
       wgpu::Backend::Dx12 => Self::read_dx12(adapter),

@@ -9,7 +9,7 @@ use crate::pass::build::pipeline_source::PipelineSource;
 use crate::pass::view::view_binding::ViewBinding;
 
 /// Lights a viewport's G-buffer with the light it accumulated and the hemisphere, and tonemaps it into its scene.
-pub struct CombinePass {
+pub(crate) struct CombinePass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   sky_layout: wgpu::BindGroupLayout,
@@ -20,7 +20,7 @@ impl CombinePass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(
+  pub(crate) fn new(
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     sky_layout: &wgpu::BindGroupLayout,
@@ -42,7 +42,7 @@ impl CombinePass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipeline.refresh(source.cache, || {
       Self::create_pipeline(source, &self.view_layout, &self.layout, &self.sky_layout)
     }) {
@@ -51,7 +51,7 @@ impl CombinePass {
   }
 
   /// Lights the G-buffer as `hmodel` does into the scene and its high part, the sky drawn where nothing was.
-  pub fn record(
+  pub(crate) fn record(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,

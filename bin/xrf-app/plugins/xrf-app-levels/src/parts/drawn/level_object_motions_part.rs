@@ -34,7 +34,11 @@ impl LevelObjectMotionsPart {
   /// # Errors
   ///
   /// Returns why the motion is no `.anm` file, is found nowhere, or cannot be read.
-  pub fn read(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch, name: &str) -> TauriResult<AnmFile> {
+  pub(crate) fn read(
+    current: &SessionSnapshot<SelectedLevel>,
+    search: &XraySearch,
+    name: &str,
+  ) -> TauriResult<AnmFile> {
     current
       .parts
       .record_read::<Self, _>(search, |search| Self::read_recorded(&current.source, search, name))

@@ -30,7 +30,7 @@ const HALF_POSITIONS: [[f32; 3]; 2] = [[-0.5, 0.0, 0.3], [0.5, 0.0, 0.3]];
 ///
 /// A viewer may play one track by hand in place of the schedule, over and over until it asks the schedule back, and
 /// play the track playing from any point.
-pub struct LevelMusic {
+pub(crate) struct LevelMusic {
   tracks: Vec<WorldMusicTrack>,
   engine: XrayEngine,
   /// The track playing.
@@ -50,7 +50,7 @@ struct PlayingTrack {
 }
 
 impl LevelMusic {
-  pub fn new(mut tracks: Vec<WorldMusicTrack>, engine: XrayEngine) -> Self {
+  pub(crate) fn new(mut tracks: Vec<WorldMusicTrack>, engine: XrayEngine) -> Self {
     let mut random: SoundRandom = SoundRandom::new(SEED);
 
     if engine == XrayEngine::Extended {
@@ -69,7 +69,7 @@ impl LevelMusic {
   }
 
   /// Plays on to `now`, the level's clock, at `game_time`, milliseconds of the day.
-  pub fn update(&mut self, emitters: &mut SoundEmitters, game_time: u32, now: Duration) {
+  pub(crate) fn update(&mut self, emitters: &mut SoundEmitters, game_time: u32, now: Duration) {
     if self.tracks.is_empty() {
       return;
     }
@@ -98,7 +98,7 @@ impl LevelMusic {
 
   /// Does what a viewer asks at `now`, the level's clock, answering whether it could: a track it names is one the
   /// level has, and a seek finds a track playing.
-  pub fn command(&mut self, emitters: &mut SoundEmitters, command: &WorldMusicCommand, now: Duration) -> bool {
+  pub(crate) fn command(&mut self, emitters: &mut SoundEmitters, command: &WorldMusicCommand, now: Duration) -> bool {
     match command {
       WorldMusicCommand::Schedule => {
         if self.chosen.take().is_some() {
@@ -136,7 +136,7 @@ impl LevelMusic {
 
   /// The track playing, how far into it and how long it is, or how long until the next pick; the track chosen by
   /// hand, and every track by name.
-  pub fn report(&self, emitters: &SoundEmitters, now: Duration) -> WorldSoundMusicReport {
+  pub(crate) fn report(&self, emitters: &SoundEmitters, now: Duration) -> WorldSoundMusicReport {
     let heard: Option<&LiveEmitter> = self.current.as_ref().and_then(|current| {
       emitters
         .iter_playing(now)
@@ -164,11 +164,11 @@ impl LevelMusic {
   }
 
   /// The track played by hand, by its name, none while the schedule picks.
-  pub fn get_chosen(&self) -> Option<&str> {
+  pub(crate) fn get_chosen(&self) -> Option<&str> {
     self.chosen.map(|index| self.tracks[index].name.as_str())
   }
 
-  pub fn iter_tracks(&self) -> impl Iterator<Item = &WorldMusicTrack> {
+  pub(crate) fn iter_tracks(&self) -> impl Iterator<Item = &WorldMusicTrack> {
     self.tracks.iter()
   }
 

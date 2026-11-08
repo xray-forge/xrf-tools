@@ -7,7 +7,7 @@ use crate::pass::view::view_binding::ViewBinding;
 
 /// Reads a spot of the finished scene at a view's centre, and what the G-buffer holds there, into a sample a report
 /// reads back.
-pub struct MeterPass {
+pub(crate) struct MeterPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   pipeline: PipelineSet<wgpu::ComputePipeline>,
@@ -17,7 +17,7 @@ impl MeterPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+  pub(crate) fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
     let layout: wgpu::BindGroupLayout = MeterParameters::create_layout(source.device);
 
     Ok(Self {
@@ -29,7 +29,7 @@ impl MeterPass {
 
   /// Makes its pipeline again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last one where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipeline.refresh(source.cache, || {
       Self::create_pipeline(source, &self.view_layout, &self.layout)
     }) {
@@ -38,7 +38,7 @@ impl MeterPass {
   }
 
   /// Meters the spot into the sample its parameters write.
-  pub fn record(&self, context: &mut ComputeContext<'_>, view: &ViewBinding, parameters: &MeterParameters) {
+  pub(crate) fn record(&self, context: &mut ComputeContext<'_>, view: &ViewBinding, parameters: &MeterParameters) {
     context.bind(parameters);
 
     let pass: &mut wgpu::ComputePass<'static> = context.get_pass();

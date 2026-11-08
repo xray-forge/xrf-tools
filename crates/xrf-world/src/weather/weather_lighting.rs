@@ -8,12 +8,12 @@ use xrf_renderer::{
 };
 
 /// A weather's mix as the lighting the scene is drawn with.
-pub struct WeatherLighting;
+pub(crate) struct WeatherLighting;
 
 impl WeatherLighting {
   /// A weather's mix as the scene is lit by it, in renderer space: the skies and clouds of both keyframes by their
   /// references, the sky's irradiance stood in for until its cubes are up.
-  pub fn of(mix: &WeatherMix, [a, b]: &[WeatherPlayedKeyframe; 2], engine: XrayEngine) -> RenderLighting {
+  pub(crate) fn of(mix: &WeatherMix, [a, b]: &[WeatherPlayedKeyframe; 2], engine: XrayEngine) -> RenderLighting {
     let [a, b]: [&WeatherDescriptor; 2] = [&a.descriptor, &b.descriptor];
 
     RenderLighting {
@@ -66,7 +66,7 @@ impl WeatherLighting {
 
   /// The sky textures a keyframe's lighting samples, as `of` takes them from it: its cube, its irradiance cube and its
   /// clouds' layer, each only where the keyframe names it.
-  pub fn list_sky_textures(keyframe: &WeatherDescriptor) -> impl Iterator<Item = (String, WeatherTextureKind)> {
+  pub(crate) fn list_sky_textures(keyframe: &WeatherDescriptor) -> impl Iterator<Item = (String, WeatherTextureKind)> {
     [
       (Self::to_named(&keyframe.sky_texture), WeatherTextureKind::Cube),
       (Self::to_environment(keyframe), WeatherTextureKind::Cube),

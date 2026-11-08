@@ -4,7 +4,7 @@ use xrf_renderer_core::ShaderStruct;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Slot")]
-pub struct StaticSlot {
+pub(crate) struct StaticSlot {
   pub first_cluster: u32,
   pub cluster_count: u32,
   /// The place a single draw stands at; rows name their own.
@@ -22,7 +22,7 @@ pub struct StaticSlot {
 
 impl StaticSlot {
   /// Drawn once, at its own place: a sector's baked geometry.
-  pub const SINGLE: u32 = 1;
+  pub(crate) const SINGLE: u32 = 1;
   /// Drawn at every place its rows name: an instanced tree.
-  pub const LISTED: u32 = 2;
+  pub(crate) const LISTED: u32 = 2;
 }

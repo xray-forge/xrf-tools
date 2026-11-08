@@ -4,7 +4,7 @@ use crate::contract::viewport::render_rect::RenderRect;
 use crate::frame::targets::texture_layer::TextureLayer;
 
 /// Adds a pass copying the whole of one texture into another of its size.
-pub fn add_texture_copy(
+pub(crate) fn add_texture_copy(
   graph: &mut FrameGraph<'_>,
   name: &'static str,
   source: GraphTexture,
@@ -26,7 +26,7 @@ pub fn add_texture_copy(
 }
 
 /// Adds a pass copying `rects` of one texture into the same rectangles of another of its size.
-pub fn add_texture_rects_copy(
+pub(crate) fn add_texture_rects_copy(
   graph: &mut FrameGraph<'_>,
   name: &'static str,
   source: GraphTexture,
@@ -67,7 +67,12 @@ pub fn add_texture_rects_copy(
 }
 
 /// Adds a pass copying one layer of a layered texture, whole, into a layer of another whose layers are its size.
-pub fn add_layer_copy(graph: &mut FrameGraph<'_>, name: &'static str, source: TextureLayer, destination: TextureLayer) {
+pub(crate) fn add_layer_copy(
+  graph: &mut FrameGraph<'_>,
+  name: &'static str,
+  source: TextureLayer,
+  destination: TextureLayer,
+) {
   graph
     .add_encoder_pass(name)
     .texture(source.texture, GraphTextureAccess::CopySource)

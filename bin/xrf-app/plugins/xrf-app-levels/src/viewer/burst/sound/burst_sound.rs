@@ -20,7 +20,7 @@ use crate::viewer::burst::{BurstSoundChunk, BurstSoundFrame, BurstSoundOutcome, 
 ///
 /// The scene fades in over its first quarter of a second, and a sound starting with the burst's first frame lands up to
 /// a tick late, which a lead-in covers. Dropped before it is written, it stops taking frames and its thread ends.
-pub struct BurstSound {
+pub(crate) struct BurstSound {
   tee: BurstSoundTee,
   thread: Option<JoinHandle<TauriResult<Vec<f32>>>>,
   offsets: Vec<u64>,
@@ -61,7 +61,7 @@ struct BurstSoundTiming {
 
 impl BurstSound {
   /// Frames a second of `sound.wav`, which takes its two channels as 32-bit floats.
-  pub const RATE: u32 = 48_000;
+  pub(crate) const RATE: u32 = 48_000;
 
   /// Frames rendered at once, a tenth of a second.
   const CHUNK_FRAMES: usize = Self::RATE as usize / 10;
@@ -72,7 +72,7 @@ impl BurstSound {
   /// # Errors
   ///
   /// Returns an error while another burst records its sound, or when the sound's thread cannot start.
-  pub fn start(
+  pub(crate) fn start(
     burst: &RenderBurst,
     server: &AudioServer,
     tee: &BurstSoundTee,
@@ -118,7 +118,7 @@ impl BurstSound {
   /// # Errors
   ///
   /// Returns an error when no frame of the burst's sound came, or the file cannot be written.
-  pub fn write(mut self, folder: &Path) -> TauriResult<BurstSoundOutcome> {
+  pub(crate) fn write(mut self, folder: &Path) -> TauriResult<BurstSoundOutcome> {
     self.tee.disarm();
 
     let samples: Vec<f32> = self

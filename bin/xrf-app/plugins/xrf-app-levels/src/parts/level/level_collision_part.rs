@@ -31,7 +31,10 @@ impl LevelCollisionPart {
   /// # Errors
   ///
   /// Returns why the collision form cannot be read, which every later ask answers with again.
-  pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> TauriResult<Arc<LevelCformTracer>> {
+  pub(crate) fn get(
+    current: &SessionSnapshot<SelectedLevel>,
+    search: &XraySearch,
+  ) -> TauriResult<Arc<LevelCformTracer>> {
     current
       .parts
       .get_or_record::<Self>(search, |search| Self::read(&current.source, search))
@@ -42,7 +45,7 @@ impl LevelCollisionPart {
   /// # Errors
   ///
   /// Returns why the collision form cannot be read.
-  pub fn read_geometry(source: &LevelSource, search: &XraySearch) -> TauriResult<LevelCformGeometry> {
+  pub(crate) fn read_geometry(source: &LevelSource, search: &XraySearch) -> TauriResult<LevelCformGeometry> {
     LevelCformFile::read_geometry_from_bytes::<XRayByteOrder>(source.read_file(search, LevelCformFile::FILE_NAME)?)
       .map_err(|error| source.describe_read_failure(LevelCformFile::FILE_NAME, &error))
   }

@@ -5,7 +5,7 @@ use xrf_pack::ArchivePackConfig;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub struct ArchivesPackRequest {
+pub(crate) struct ArchivesPackRequest {
   /// What to pack and how.
   pub config: ArchivePackConfig,
   /// Whether an existing output may be overwritten.

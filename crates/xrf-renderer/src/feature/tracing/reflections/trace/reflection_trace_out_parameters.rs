@@ -4,7 +4,7 @@ use xrf_renderer_core::{GraphTexture, PassParameters};
 /// length, and how its ray ended.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 4)]
-pub struct ReflectionTraceOutParameters {
+pub(crate) struct ReflectionTraceOutParameters {
   #[storage_texture(d2, rgba16float, write)]
   pub traced_out: GraphTexture,
   #[storage_texture(d2, r32float, write)]

@@ -7,7 +7,7 @@ use crate::feature::image::resolve::temporal::temporal_frame::TemporalFrame;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Temporal")]
-pub struct TemporalUniform {
+pub(crate) struct TemporalUniform {
   pub current: Mat4,
   pub previous: Mat4,
   pub previous_view: Mat4,
@@ -18,9 +18,9 @@ pub struct TemporalUniform {
 
 impl TemporalUniform {
   /// The least share of this frame a pixel takes: its history is roughly this many frames' average, inverted.
-  pub const CURRENT_WEIGHT: f32 = 0.1;
+  pub(crate) const CURRENT_WEIGHT: f32 = 0.1;
 
-  pub fn new(frame: TemporalFrame) -> Self {
+  pub(crate) fn new(frame: TemporalFrame) -> Self {
     Self {
       current: frame.current,
       previous: frame.previous,

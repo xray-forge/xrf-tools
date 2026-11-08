@@ -11,7 +11,7 @@ use crate::objects::LevelObjectsDescription;
 /// cannot be read.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_objects")]
-pub async fn levels_describe_objects(
+pub(crate) async fn levels_describe_objects(
   session_id: SessionId,
   levels: State<'_, SelectedLevels>,
   assets: State<'_, AssetMountState>,

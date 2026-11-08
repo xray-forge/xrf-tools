@@ -17,7 +17,7 @@ use crate::request::TranslationsFormatRequest;
 /// never reads half a rewrite.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "check_project_format")]
-pub async fn translations_check_project_format(
+pub(crate) async fn translations_check_project_format(
   execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
   request: TranslationsFormatRequest,

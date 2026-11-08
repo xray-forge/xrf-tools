@@ -10,7 +10,7 @@ use crate::commands::archive::verify::archive_verify_override_report::ArchiveVer
 /// are worth reporting.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ArchiveVerifyReport {
+pub(crate) struct ArchiveVerifyReport {
   checked: usize,
   /// Engine paths the set answers with more than one copy, reported beside the verdict without joining it.
   overrides: Vec<ArchiveVerifyOverrideReport>,
@@ -28,7 +28,7 @@ pub struct ArchiveVerifyReport {
 impl ArchiveVerifyReport {
   /// The payloads `report` judged out of `checked` entries, beside the set's overrides and unreachable entries, which
   /// are not defects: a set full of working patches still passes.
-  pub fn new(
+  pub(crate) fn new(
     checked: usize,
     overrides: &[XrayShadowingEntry],
     unreachable: Vec<XrayPathCollision>,

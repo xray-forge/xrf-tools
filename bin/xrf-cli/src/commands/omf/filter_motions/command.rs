@@ -11,7 +11,7 @@ use super::report::OmfFilterMotionsReport;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct FilterMotionsCommand;
+pub(crate) struct FilterMotionsCommand;
 
 impl GenericCommand for FilterMotionsCommand {
   fn operation(&self) -> &'static str {

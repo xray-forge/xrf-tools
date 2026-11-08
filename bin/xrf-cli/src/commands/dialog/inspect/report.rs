@@ -7,7 +7,7 @@ use xrf_dialog::DialogDescriptor;
 /// declaring the same id, which a person asks again with `--file`.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct DialogInspectReport {
+pub(crate) struct DialogInspectReport {
   pub dialog: DialogDescriptor,
   /// Logical paths of the other files declaring the id, in logical-path order.
   pub also_declared_in: Vec<String>,

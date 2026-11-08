@@ -9,7 +9,7 @@ use crate::scene::level::view::view_time::ViewTime;
 /// thickening late in a level changes how fast they move from then on, never where they stand, and they run on one
 /// clock whether the rain falls or not.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct WetDrift {
+pub(crate) struct WetDrift {
   /// Metres the gusts have drifted along renderer `x` and `z`.
   gusts: [f64; 2],
   /// How far the calm waves have scrolled, in their map's repeats.
@@ -22,7 +22,7 @@ impl WetDrift {
 
   /// Moves on by the seconds since the view's last frame, never back, the gusts blowing `gust` (`WetUniform::get_gust`)
   /// under a rain of `density`.
-  pub fn advance(&mut self, time: ViewTime, gust: Vec2, density: f32) {
+  pub(crate) fn advance(&mut self, time: ViewTime, gust: Vec2, density: f32) {
     let step: f64 = time.get_advance();
     let (pace, rain_pace, rain_share): (f64, f64, f64) = Self::WAVE_PACE;
 
@@ -32,7 +32,7 @@ impl WetDrift {
   }
 
   /// The drift as `WetUniform::drift` holds it: the gusts' within `WetUniform::GUST_REPEAT`, the waves' within one.
-  pub fn get(&self) -> Vec4 {
+  pub(crate) fn get(&self) -> Vec4 {
     Vec4::new(
       LevelTime::wrap(self.gusts[0], WetUniform::GUST_REPEAT),
       LevelTime::wrap(self.gusts[1], WetUniform::GUST_REPEAT),

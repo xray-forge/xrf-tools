@@ -4,7 +4,7 @@ use tauri::{Manager, Runtime, include_image};
 use xrf_build_info::BuildKind;
 
 /// What the main window shows of the kind of build it belongs to.
-pub struct WindowBuildKind;
+pub(super) struct WindowBuildKind;
 
 impl WindowBuildKind {
   /// Carries `kind` into the window's icon, and into the document before any of its scripts run.
@@ -12,7 +12,7 @@ impl WindowBuildKind {
   /// # Errors
   ///
   /// Returns an error when the icon cannot be set.
-  pub fn apply<'a, R: Runtime, M: Manager<R>>(
+  pub(super) fn apply<'a, R: Runtime, M: Manager<R>>(
     builder: WebviewWindowBuilder<'a, R, M>,
     kind: BuildKind,
   ) -> tauri::Result<WebviewWindowBuilder<'a, R, M>> {
@@ -25,7 +25,7 @@ impl WindowBuildKind {
   }
 
   /// Script recording `kind` where the document reads it, as `window.__XRF_BUILD_KIND__`.
-  pub fn get_script(kind: BuildKind) -> String {
+  pub(super) fn get_script(kind: BuildKind) -> String {
     format!(
       "Object.defineProperty(window, \"__XRF_BUILD_KIND__\", {{ value: \"{}\" }});",
       kind.as_str()

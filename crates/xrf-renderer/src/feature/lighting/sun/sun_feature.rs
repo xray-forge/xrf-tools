@@ -12,13 +12,13 @@ use crate::scene::level::view::record::view_record::ViewRecord;
 /// and by the contact shadows; how much of it each pixel sees, which combine's glint reads; and at the anchored levels
 /// its coloured specular into the specular target.
 #[derive(Default)]
-pub struct SunFeature;
+pub(crate) struct SunFeature;
 
 impl SunFeature {
   /// Draws the sun shadowed by the `contact` shadows and what its trace saw (`sun_traced`), its cascades where none is
   /// traced, filtered `filter_reach` texels each way, over the surface the wetting gives a water film at the anchored
   /// levels. Answers how much of the sun each pixel sees.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     ViewRecord {

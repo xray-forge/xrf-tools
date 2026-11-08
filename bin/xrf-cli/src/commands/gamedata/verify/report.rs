@@ -13,7 +13,7 @@ use crate::core::reports::SkippedMountReport;
 /// What a `gamedata verify` run reports to a machine.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct GamedataVerifyReport {
+pub(crate) struct GamedataVerifyReport {
   /// What retention held and how it served the sweep, which no timing can show.
   cache: XrayCacheStats,
   checks: Vec<GamedataVerifyCheckReport>,
@@ -31,7 +31,7 @@ pub struct GamedataVerifyReport {
 
 impl GamedataVerifyReport {
   /// `result` as verified under `root`, with what the project's mount and reads said about the run.
-  pub fn new(
+  pub(crate) fn new(
     root: &Path,
     engine: &XrayEngineResolution,
     result: &GamedataVerificationReport,

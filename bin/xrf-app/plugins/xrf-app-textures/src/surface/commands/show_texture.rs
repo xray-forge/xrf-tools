@@ -15,7 +15,7 @@ use crate::surface::{TextureRenderSource, TexturesShowRequest};
 /// scene drawn, which the viewport's load reports name, or none.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "show_texture")]
-pub async fn textures_show_texture(
+pub(crate) async fn textures_show_texture(
   shows: State<'_, ViewportShows>,
   assets: State<'_, AssetMountState>,
   execution: State<'_, ExecutionState>,

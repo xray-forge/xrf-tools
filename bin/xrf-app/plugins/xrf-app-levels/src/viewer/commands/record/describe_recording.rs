@@ -7,7 +7,7 @@ use crate::viewer::recording::writer::MediaProbe;
 /// Whether a viewport can be recorded here: Media Foundation loads and the audio started; why not where not.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_recording")]
-pub fn levels_describe_recording(shown: State<'_, ShownLevels>) -> RecordingAvailability {
+pub(crate) fn levels_describe_recording(shown: State<'_, ShownLevels>) -> RecordingAvailability {
   let reason: Option<String> = MediaProbe::MEDIA_FOUNDATION.load().err().or_else(|| {
     shown
       .get_audio()

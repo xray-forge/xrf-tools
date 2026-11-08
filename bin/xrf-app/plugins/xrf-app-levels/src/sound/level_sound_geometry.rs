@@ -17,13 +17,13 @@ use crate::report::LevelReport;
 /// What shapes a shown level's sound: its collision form's triangles, each with the acoustics of the game material it
 /// is made of (`SGameMtl::MtlAcoustics`, or the engine's predefined set by name), read when the audio's simulation asks,
 /// on its thread. A face things walk through, as bushes are, lets sound through and is left out.
-pub struct LevelSoundGeometry {
+pub(crate) struct LevelSoundGeometry {
   level: Arc<SessionSnapshot<SelectedLevel>>,
   assets: AssetMountState,
 }
 
 impl LevelSoundGeometry {
-  pub fn new(level: Arc<SessionSnapshot<SelectedLevel>>, assets: AssetMountState) -> Self {
+  pub(crate) fn new(level: Arc<SessionSnapshot<SelectedLevel>>, assets: AssetMountState) -> Self {
     Self { level, assets }
   }
 

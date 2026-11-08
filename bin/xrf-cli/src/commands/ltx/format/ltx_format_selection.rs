@@ -10,7 +10,7 @@ use xrf_vfs::{XrayAsset, XrayAssetContainer, XrayAssetType, XraySearch};
 use crate::commands::ltx::ltx_installation::LtxInstallation;
 
 /// The files a formatting run will touch, and what it declined to.
-pub struct LtxFormatSelection {
+pub(crate) struct LtxFormatSelection {
   /// De-duplicated physical paths of loose files to format.
   pub files: Vec<PathBuf>,
   /// Display descriptions of archived winning configs that cannot be formatted in place.
@@ -27,7 +27,7 @@ impl LtxFormatSelection {
   ///
   /// Returns an error when a path does not exist, cannot be walked, or an installation's fsgame file cannot be read,
   /// decoded, or parsed.
-  pub fn select(paths: &[&PathBuf]) -> XrfResult<Self> {
+  pub(crate) fn select(paths: &[&PathBuf]) -> XrfResult<Self> {
     let mut files: Vec<PathBuf> = Vec::new();
     let mut declined: Vec<String> = Vec::new();
     let mut visited: HashSet<PathBuf> = HashSet::new();
@@ -47,7 +47,7 @@ impl LtxFormatSelection {
 
   /// Returns `true` when neither loose nor archived configs were selected.
   #[cfg(test)]
-  pub fn is_empty(&self) -> bool {
+  pub(crate) fn is_empty(&self) -> bool {
     self.files.is_empty() && self.declined.is_empty()
   }
 

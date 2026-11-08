@@ -4,7 +4,7 @@ use crate::lighting::sun::sun_cascade::SunCascade;
 /// shown: the fit it is drawn at, what the scene held when its first band was drawn, the bands drawn, and the frames a
 /// band has waited.
 #[derive(Clone, Copy, Debug)]
-pub struct ShadowPrefetch {
+pub(crate) struct ShadowPrefetch {
   pub fit: SunCascade,
   pub contents: usize,
   pub bands: u32,

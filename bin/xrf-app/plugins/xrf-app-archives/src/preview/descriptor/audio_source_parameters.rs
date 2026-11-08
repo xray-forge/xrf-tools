@@ -5,7 +5,7 @@ use xrf_sound::XRaySoundParameters;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AudioSourceParameters {
+pub(crate) struct AudioSourceParameters {
   pub min_distance: f32,
   pub max_distance: f32,
   pub base_volume: f32,

@@ -3,7 +3,7 @@ use std::time::Duration;
 use crate::{Finding, GamedataCheckResult, GamedataVerificationStatus};
 
 #[derive(Default)]
-pub struct GamedataMaterialsVerificationResult {
+pub(crate) struct GamedataMaterialsVerificationResult {
   pub(crate) duration: Duration,
   pub(crate) findings: Vec<Finding>,
   /// Whether the library read at all; nothing else is checked without it.

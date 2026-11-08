@@ -15,7 +15,7 @@ use crate::edit::TextureDescriptorForm;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TexturesBuildRequest {
+pub(crate) struct TexturesBuildRequest {
   /// Path of the `.dds` to write, which is the file beside the descriptor.
   pub destination: String,
   /// Path of the image to encode, of whatever kind `image` decodes; for a bump descriptor, the height in its colour and
@@ -32,7 +32,7 @@ pub struct TexturesBuildRequest {
 impl TexturesBuildRequest {
   /// The files this build would write, as write claims: a bump descriptor's companion beside the texture. A descriptor
   /// the build refuses claims the texture alone, since it writes nothing.
-  pub fn to_resources(&self) -> Vec<JobResource> {
+  pub(crate) fn to_resources(&self) -> Vec<JobResource> {
     let destination: PathBuf = self.to_destination();
 
     BuildTextureRecipe::of(&self.descriptor.to_descriptor(Some(ThmFile::new_texture())))
@@ -46,7 +46,7 @@ impl TexturesBuildRequest {
   }
 
   /// The `.dds` this build writes.
-  pub fn to_destination(&self) -> PathBuf {
+  pub(crate) fn to_destination(&self) -> PathBuf {
     PathBuf::from(&self.destination)
   }
 
@@ -55,7 +55,7 @@ impl TexturesBuildRequest {
   /// # Errors
   ///
   /// Returns an error when the map or its descriptor cannot be read.
-  pub fn to_normal_map(&self) -> TauriResult<Option<BuildTextureNormalMap>> {
+  pub(crate) fn to_normal_map(&self) -> TauriResult<Option<BuildTextureNormalMap>> {
     let Some(path) = &self.normal_map else {
       return Ok(None);
     };

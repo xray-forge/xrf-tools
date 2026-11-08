@@ -14,7 +14,7 @@ use crate::commands::level::level_selection::LevelSelection;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct MaterialsCommand;
+pub(crate) struct MaterialsCommand;
 
 impl GenericCommand for MaterialsCommand {
   fn operation(&self) -> &'static str {

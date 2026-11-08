@@ -8,7 +8,7 @@ use crate::pass::build::pipeline_source::PipelineSource;
 
 /// Places the puddles on the level's surface seen from overhead: its lowest heights, then a site a cell, a dispatch
 /// each, where it is drawn; and each frame, which sites hold a puddle and how big.
-pub struct PuddleSitesPass {
+pub(crate) struct PuddleSitesPass {
   layouts: [wgpu::BindGroupLayout; 3],
   /// The lowest heights, the sites, and the puddles.
   pipelines: PipelineSet<[wgpu::ComputePipeline; 3]>,
@@ -18,7 +18,7 @@ impl PuddleSitesPass {
   /// Invocations a workgroup runs a side, as `shaders/frame/puddle_sites.wgsl` declares them.
   pub(crate) const WORKGROUP: u32 = 8;
 
-  pub fn new(source: PipelineSource<'_>) -> XrfResult<Self> {
+  pub(crate) fn new(source: PipelineSource<'_>) -> XrfResult<Self> {
     let device: &wgpu::Device = source.device;
 
     let layouts: [wgpu::BindGroupLayout; 3] = [
@@ -35,7 +35,7 @@ impl PuddleSitesPass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self
       .pipelines
       .refresh(source.cache, || Self::create_pipelines(source, &self.layouts))
@@ -45,7 +45,7 @@ impl PuddleSitesPass {
   }
 
   /// Takes the lowest heights over a map `size` texels a side, then places a site in each of `cells` a side.
-  pub fn record(
+  pub(crate) fn record(
     &self,
     context: &mut ComputeContext<'_>,
     size: u32,
@@ -66,7 +66,7 @@ impl PuddleSitesPass {
   }
 
   /// Decides each of `cells` a side's puddle this frame.
-  pub fn record_keep(&self, context: &mut ComputeContext<'_>, cells: u32, keep: &PuddleKeepParameters<'_>) {
+  pub(crate) fn record_keep(&self, context: &mut ComputeContext<'_>, cells: u32, keep: &PuddleKeepParameters<'_>) {
     context.bind(keep);
     context.get_pass().set_pipeline(&self.pipelines[2]);
     context

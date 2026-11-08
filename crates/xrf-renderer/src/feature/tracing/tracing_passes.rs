@@ -16,7 +16,7 @@ use crate::shader::generated_modules::GeneratedModules;
 /// The passes reflecting and tracing the scene: the screen reflections and the surroundings cube below them, the
 /// scene's trace and its sway, the traced sun, indirect light and occlusion, and the guides DLSS reconstructs the rays
 /// by.
-pub struct TracingPasses {
+pub(crate) struct TracingPasses {
   pub reflections: ReflectionPass,
   pub surroundings: SurroundingsPass,
   pub scene_trace: SceneTracePass,
@@ -33,7 +33,7 @@ impl TracingPasses {
   /// # Errors
   ///
   /// Returns an error when a pass's shaders do not compose or compile.
-  pub fn new(build: PassBuild<'_>) -> XrfResult<Self> {
+  pub(crate) fn new(build: PassBuild<'_>) -> XrfResult<Self> {
     let PassBuild {
       source,
       queue,
@@ -67,7 +67,7 @@ impl TracingPasses {
   }
 
   /// Rebuilds the pipelines a shader reload made stale, each pass keeping its last good ones where a rebuild fails.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     self.reflections.refresh(source);
     self.surroundings.refresh(source);
     self.scene_trace.refresh(source);
@@ -85,7 +85,7 @@ impl TracingPasses {
   ///
   /// Returns an error when passes sharing a module declare one of its bindings otherwise.
   #[cfg(test)]
-  pub fn declare_shaders(modules: &mut GeneratedModules) -> XrfResult<()> {
+  pub(crate) fn declare_shaders(modules: &mut GeneratedModules) -> XrfResult<()> {
     use crate::feature::tracing::indirect_trace::indirect_trace_parameters::IndirectTraceParameters;
     use crate::feature::tracing::indirect_trace::indirect_trace_uniform::IndirectTraceUniform;
     use crate::feature::tracing::ray_guides::ray_guides_parameters::RayGuidesParameters;

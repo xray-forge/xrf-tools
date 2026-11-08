@@ -13,7 +13,7 @@ use crate::sound::LevelSoundReport;
 /// it schedules, the audio how each is heard, asked on a blocking thread since it answers from its own.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_sound")]
-pub async fn levels_describe_sound(
+pub(crate) async fn levels_describe_sound(
   world: State<'_, WorldState>,
   audio: State<'_, AudioServer>,
   execution: State<'_, ExecutionState>,

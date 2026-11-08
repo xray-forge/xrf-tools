@@ -8,7 +8,7 @@ use crate::viewer::burst::{BurstSoundFrame, BurstSoundTee};
 /// A shown level's sound on its way from the world to the audio's control thread: each frame the world fills is the
 /// audio's own, handed to the scene's inbox as it is, and every frame the control thread hands back goes back to the
 /// world to fill again. A burst's frames are sent on through the tee, and silenced on the device.
-pub struct LevelSoundSink {
+pub(crate) struct LevelSoundSink {
   inbox: AudioSceneInbox,
   tee: BurstSoundTee,
   assets: Arc<dyn AudioAssetSource>,
@@ -24,7 +24,7 @@ pub struct LevelSoundSink {
 impl LevelSoundSink {
   /// A sink into `inbox`, the scene's sounds read through `assets` and its walls from `geometry`, a burst's frames sent
   /// on through `tee`.
-  pub fn new(
+  pub(crate) fn new(
     inbox: AudioSceneInbox,
     tee: BurstSoundTee,
     assets: Arc<dyn AudioAssetSource>,

@@ -15,13 +15,13 @@ use crate::commands::dialog::info::dialog_sweep_census::DialogSweepCensus;
 use crate::commands::dialog::info::dialog_sweep_result::DialogSweepResult;
 
 /// Which roots to mount, and where to look inside it.
-pub struct DialogSweep<'a> {
+pub(crate) struct DialogSweep<'a> {
   roots: &'a XrayRoots,
   prefix: Option<&'a str>,
 }
 
 impl<'a> DialogSweep<'a> {
-  pub fn new(roots: &'a XrayRoots, prefix: Option<&'a str>) -> Self {
+  pub(crate) fn new(roots: &'a XrayRoots, prefix: Option<&'a str>) -> Self {
     Self { roots, prefix }
   }
 
@@ -36,7 +36,7 @@ impl<'a> DialogSweep<'a> {
   /// # Errors
   ///
   /// Returns an error when the path cannot be mounted, or when the prefix is not a logical path.
-  pub fn run(&self) -> XrfResult<DialogSweepResult> {
+  pub(crate) fn run(&self) -> XrfResult<DialogSweepResult> {
     let started: Instant = Instant::now();
 
     let search: XraySearch = self.roots.to_search_plan()?.open()?.with_optional_prefix(self.prefix)?;

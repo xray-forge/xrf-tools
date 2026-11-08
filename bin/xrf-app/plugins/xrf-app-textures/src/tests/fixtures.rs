@@ -21,41 +21,41 @@ use crate::describe::TextureSource;
 use crate::edit::TextureSaveTarget;
 
 /// One texture and the two halves of the pair it declares, which most of these start from.
-pub const BASE: &str = "ston\\ston_beton05";
-pub const BUMP: &str = "ston\\ston_beton05_bump";
-pub const COMPANION: &str = "ston\\ston_beton05_bump#";
+pub(crate) const BASE: &str = "ston\\ston_beton05";
+pub(crate) const BUMP: &str = "ston\\ston_beton05_bump";
+pub(crate) const COMPANION: &str = "ston\\ston_beton05_bump#";
 
 /// One mounted tree and a search naming it.
-pub fn mount(tree: &FixtureTree) -> (XrayVfs, XrayMountId) {
+pub(crate) fn mount(tree: &FixtureTree) -> (XrayVfs, XrayMountId) {
   let mut vfs: XrayVfs = XrayVfs::new();
   let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
 
   (vfs, id)
 }
 
-pub fn search_over(vfs: impl Into<Arc<XrayVfs>>, id: XrayMountId) -> XraySearch {
+pub(crate) fn search_over(vfs: impl Into<Arc<XrayVfs>>, id: XrayMountId) -> XraySearch {
   XraySearch::new(vfs).with_step("tree", XrayLookupScope::only([id]))
 }
 
-pub fn roots_of(tree: &FixtureTree) -> XrayRoots {
+pub(crate) fn roots_of(tree: &FixtureTree) -> XrayRoots {
   XrayRoots::one(tree.root().to_path_buf(), XrayMountMode::Directory)
 }
 
-pub fn catalog(tree: &FixtureTree) -> TextureCatalog {
+pub(crate) fn catalog(tree: &FixtureTree) -> TextureCatalog {
   let (vfs, id) = mount(tree);
 
   TextureCatalog::list(&search_over(vfs, id), roots_of(tree), TextureCatalogMode::Roots)
 }
 
 /// The sweep as the command runs it: over every descriptor the search lists.
-pub fn sweep(tree: &FixtureTree) -> Vec<TextureMaterialSummary> {
+pub(crate) fn sweep(tree: &FixtureTree) -> Vec<TextureMaterialSummary> {
   let (vfs, id) = mount(tree);
   let search: XraySearch = search_over(vfs, id);
 
   TextureMaterialSummary::sweep(&search, &search.list_assets(XrayAssetType::Thm))
 }
 
-pub fn entry<'a>(catalog: &'a TextureCatalog, reference: &str) -> &'a TextureEntry {
+pub(crate) fn entry<'a>(catalog: &'a TextureCatalog, reference: &str) -> &'a TextureEntry {
   catalog
     .entries
     .iter()
@@ -63,7 +63,7 @@ pub fn entry<'a>(catalog: &'a TextureCatalog, reference: &str) -> &'a TextureEnt
     .unwrap_or_else(|| panic!("catalog lists '{reference}'"))
 }
 
-pub fn summary<'a>(summaries: &'a [TextureMaterialSummary], reference: &str) -> &'a TextureMaterialSummary {
+pub(crate) fn summary<'a>(summaries: &'a [TextureMaterialSummary], reference: &str) -> &'a TextureMaterialSummary {
   summaries
     .iter()
     .find(|summary| summary.reference == reference)
@@ -71,7 +71,7 @@ pub fn summary<'a>(summaries: &'a [TextureMaterialSummary], reference: &str) -> 
 }
 
 /// A tree with a declared pair that resolves, which is the shape most of these start from.
-pub fn bumped_tree(case: &str) -> FixtureTree {
+pub(crate) fn bumped_tree(case: &str) -> FixtureTree {
   FixtureTree::new(&format!("textures_{case}"))
     .with_texture(BASE)
     .with_texture(BUMP)
@@ -80,7 +80,7 @@ pub fn bumped_tree(case: &str) -> FixtureTree {
 }
 
 /// The fixture tree made an X-Ray root the VFS implies: it holds textures already, so a `meshes` directory completes it.
-pub fn implied_root_tree(case: &str) -> FixtureTree {
+pub(crate) fn implied_root_tree(case: &str) -> FixtureTree {
   let tree: FixtureTree = FixtureTree::new(&format!("textures_{case}")).with_texture(BASE);
 
   fs::create_dir_all(tree.root().join("meshes")).expect("meshes directory");
@@ -88,36 +88,36 @@ pub fn implied_root_tree(case: &str) -> FixtureTree {
   tree
 }
 
-pub fn file_source(path: PathBuf) -> TextureSource {
+pub(crate) fn file_source(path: PathBuf) -> TextureSource {
   TextureSource::File {
     path: path.display().to_string(),
   }
 }
 
 /// A scratch directory of its own per case, so a save that writes files cannot reach another's.
-pub fn editing_directory(case: &str) -> PathBuf {
+pub(crate) fn editing_directory(case: &str) -> PathBuf {
   to_scratch_directory("textures_editing", case)
 }
 
 /// A scratch directory outside every X-Ray root, which is the case a standalone description exists for.
-pub fn loose_directory(case: &str) -> PathBuf {
+pub(crate) fn loose_directory(case: &str) -> PathBuf {
   to_scratch_directory("textures_standalone", case)
 }
 
 /// The target a save carries for a file, stamped as the editor would have stamped it.
-pub fn target(path: &Path) -> TextureSaveTarget {
+pub(crate) fn target(path: &Path) -> TextureSaveTarget {
   TextureSaveTarget {
     path: path.display().to_string(),
     expected: FileStamp::read(path).expect("stamp is readable"),
   }
 }
 
-pub fn read_descriptor(path: &Path) -> ThmFile {
+pub(crate) fn read_descriptor(path: &Path) -> ThmFile {
   ThmFile::read_from_path::<XRayByteOrder, _>(&path).expect("written descriptor parses")
 }
 
 /// A loose asset at `path`, as the VFS would have reported it.
-pub fn loose_asset(root: &Path, relative: &str) -> XrayAsset {
+pub(crate) fn loose_asset(root: &Path, relative: &str) -> XrayAsset {
   XrayAsset::new(
     XrayLogicalPath::new(relative).expect("logical path"),
     XrayAssetContainer::Directory {
@@ -128,7 +128,7 @@ pub fn loose_asset(root: &Path, relative: &str) -> XrayAsset {
 }
 
 /// A picture with detail in every channel and a half-transparent side, so a lossy candidate has something to lose.
-pub fn source_image(size: u32) -> RgbaImage {
+pub(crate) fn source_image(size: u32) -> RgbaImage {
   RgbaImage::from_fn(size, size, |x, y| {
     Rgba([
       (x * 7 + y * 13) as u8,
@@ -140,7 +140,7 @@ pub fn source_image(size: u32) -> RgbaImage {
 }
 
 /// A real uncompressed dds, so a standalone description has a header to read rather than a placeholder.
-pub fn to_dds_bytes(size: u32) -> Vec<u8> {
+pub(crate) fn to_dds_bytes(size: u32) -> Vec<u8> {
   let base: RgbaImage = RgbaImage::from_fn(size, size, |x, y| Rgba([(x * 8) as u8, (y * 8) as u8, 0, u8::MAX]));
 
   DdsEncoding::new(ImageFormat::Rgba8Unorm, Quality::Fast)

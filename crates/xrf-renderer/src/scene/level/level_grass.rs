@@ -8,24 +8,24 @@ use crate::scene::texture::texture_cache::TextureCache;
 /// A level's grass (`CDetailManager`): its slots and models as the world last posted them; each view plants and draws
 /// it around its own camera (`GrassView`).
 #[derive(Default)]
-pub struct LevelGrass {
+pub(crate) struct LevelGrass {
   level: Option<GrassLevel>,
 }
 
 impl LevelGrass {
   /// What was posted, none before it is or where the level has no grass.
-  pub fn get_level(&self) -> Option<&GrassLevel> {
+  pub(crate) fn get_level(&self) -> Option<&GrassLevel> {
     self.level.as_ref()
   }
 
   /// The texture slots its models sample, none before it is posted.
-  pub fn list_texture_slots(&self) -> impl Iterator<Item = u32> + '_ {
+  pub(crate) fn list_texture_slots(&self) -> impl Iterator<Item = u32> + '_ {
     self.level.iter().flat_map(|level| level.texture_slots.iter().copied())
   }
 
   /// Takes the level's grass as read in place of any taken before, asking for its textures; none leaves the level
   /// without grass.
-  pub fn replace(
+  pub(crate) fn replace(
     &mut self,
     device: &wgpu::Device,
     details: Option<RenderLevelDetails>,

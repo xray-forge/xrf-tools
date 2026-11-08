@@ -3,7 +3,7 @@ use crate::viewer::map::annotations::{AnnotationOutline, AnnotationPoint};
 
 /// A patrol path from above: its points, and the links between them by index.
 #[derive(Clone, Debug, PartialEq)]
-pub struct AnnotationPatrol {
+pub(crate) struct AnnotationPatrol {
   pub name: String,
   pub points: Vec<AnnotationPoint>,
   pub links: Vec<(usize, usize)>,
@@ -11,7 +11,7 @@ pub struct AnnotationPatrol {
 
 impl AnnotationPatrol {
   /// `object`'s path from above, or `None` for an object that is no patrol path.
-  pub fn of(object: &LevelObject) -> Option<Self> {
+  pub(crate) fn of(object: &LevelObject) -> Option<Self> {
     let patrol: &LevelObjectPatrol = object.patrol.as_ref()?;
 
     Some(Self {

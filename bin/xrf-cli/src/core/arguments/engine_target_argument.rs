@@ -4,13 +4,13 @@ use xrf_engine_target::XrayEngineChoice;
 use crate::core::arguments::OptionalArgument;
 
 /// `--engine`, on a command that reads configs the engines read differently.
-pub struct EngineTargetArgument;
+pub(crate) struct EngineTargetArgument;
 
 impl EngineTargetArgument {
   const NAME: &'static str = "engine";
 
   /// Declares `--engine` on `command`.
-  pub fn declare(command: Command) -> Command {
+  pub(crate) fn declare(command: Command) -> Command {
     command.arg(
       Arg::new(Self::NAME)
         .help(
@@ -26,7 +26,7 @@ impl EngineTargetArgument {
   }
 
   /// The engine the command was asked to read configs as; the default for a command that never declared the flag.
-  pub fn of(matches: &ArgMatches) -> XrayEngineChoice {
+  pub(crate) fn of(matches: &ArgMatches) -> XrayEngineChoice {
     OptionalArgument::read::<XrayEngineChoice>(matches, Self::NAME)
       .copied()
       .unwrap_or_default()

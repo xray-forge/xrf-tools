@@ -9,7 +9,7 @@ use crate::scene::level::level_time::LevelTime;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Water")]
-pub struct WaterUniform {
+pub(crate) struct WaterUniform {
   /// Seconds the water has moved, within `PERIOD`.
   pub time: f32,
   /// `W_POSITION_SHIFT_HEIGHT` and `W_POSITION_SHIFT_SPEED`: the engine's water's wave; none for the enhanced water
@@ -35,11 +35,11 @@ impl WaterUniform {
   /// tenth of it, which repeat over 2π and 20π; this spans the slower a hundred times, so a level's first hour and more
   /// runs as it always did. Its other readers, the reflection's march noise and jitter, follow no pattern a repeat
   /// breaks.
-  pub const PERIOD: f64 = 2000.0 * std::f64::consts::PI;
+  pub(crate) const PERIOD: f64 = 2000.0 * std::f64::consts::PI;
 
   /// The settings at `time`, under the weather's `water_intensity`, its wave still since the last frame until it
   /// follows one. The enhanced water stands flat (`get_wave_height`).
-  pub fn new(settings: &RenderWaterSettings, intensity: f32, time: LevelTime) -> Self {
+  pub(crate) fn new(settings: &RenderWaterSettings, intensity: f32, time: LevelTime) -> Self {
     let time: f32 = time.get_phase(Self::PERIOD);
 
     Self {
@@ -68,7 +68,7 @@ impl WaterUniform {
   }
 
   /// The same water after a frame drawn at `previous`, which its wave's motion is measured from.
-  pub fn following(self, previous: LevelTime) -> Self {
+  pub(crate) fn following(self, previous: LevelTime) -> Self {
     Self {
       previous_time: previous.get_phase(Self::PERIOD),
       ..self

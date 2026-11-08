@@ -6,7 +6,7 @@ use xrf_vfs::{XrayRoots, XraySearch};
 use crate::sound::LevelSoundFiles;
 
 /// Where a shown level's sounds are read from: the roots it was opened in, through the shared mount.
-pub struct LevelSoundAssets {
+pub(crate) struct LevelSoundAssets {
   assets: AssetMountState,
   roots: XrayRoots,
   /// What tells its sounds apart from another level's: its roots, as its textures are told apart.
@@ -14,7 +14,7 @@ pub struct LevelSoundAssets {
 }
 
 impl LevelSoundAssets {
-  pub fn new(assets: AssetMountState, roots: XrayRoots, scope: String) -> Self {
+  pub(crate) fn new(assets: AssetMountState, roots: XrayRoots, scope: String) -> Self {
     Self { assets, roots, scope }
   }
 }

@@ -19,7 +19,7 @@ use crate::core::report::{CommandEnvelope, ReportingOptions};
 /// ends with exactly one final stderr line, printed unconditionally so `--silent` can never hide
 /// that a run failed, and never on stdout so it cannot corrupt a piped document; commands themselves
 /// report finding details and never exit.
-pub fn run() -> ExitCode {
+pub(crate) fn run() -> ExitCode {
   let build: BuildInfo = build_info!();
   let groups: Vec<CommandGroup> = CommandGroup::list_all();
 

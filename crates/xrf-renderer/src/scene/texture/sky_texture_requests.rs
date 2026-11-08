@@ -8,7 +8,7 @@ use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 
 /// The weather textures a viewport's world asks for, read from its level's source; with no GPU or no level every sky
 /// counts as resident, so the weather plays on.
-pub struct SkyTextureRequests<'a> {
+pub(crate) struct SkyTextureRequests<'a> {
   pub cache: Option<&'a mut WeatherTextureCache>,
   pub source: Option<Arc<dyn RenderAssetSource>>,
   /// Whether the clouds are drawn, so the sky waits for their layers too.

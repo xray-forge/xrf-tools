@@ -12,7 +12,7 @@ use crate::level::animation::posed_skeleton::PosedSkeleton;
 
 /// The skinned objects standing in a level's scene and how they are posed: each one's skeleton and place, the motions
 /// they are posed by, and the pose asked for, an object posting its bone matrices only until it stands as asked.
-pub struct LevelAnimation {
+pub(crate) struct LevelAnimation {
   skeletons: HashMap<ProxyHandle<StaticObjectProxy>, (PosedSkeleton, Mat4)>,
   motions: ModelMotions,
   pose: WorldModelPose,
@@ -24,7 +24,7 @@ pub struct LevelAnimation {
 }
 
 impl LevelAnimation {
-  pub fn new(workers: &RenderWorkers) -> Self {
+  pub(crate) fn new(workers: &RenderWorkers) -> Self {
     Self {
       skeletons: HashMap::new(),
       motions: ModelMotions::new(workers),
@@ -36,25 +36,30 @@ impl LevelAnimation {
   }
 
   /// Stands every skinned object as asked from the next frame on.
-  pub fn set_pose(&mut self, pose: &WorldModelPose) {
+  pub(crate) fn set_pose(&mut self, pose: &WorldModelPose) {
     if self.pose != *pose {
       self.pose = pose.clone();
     }
   }
 
   /// Poses an object newly standing in the scene, where `transform` stands it.
-  pub fn add(&mut self, object: ProxyHandle<StaticObjectProxy>, skeleton: &RenderModelSkeleton, transform: Mat4) {
+  pub(crate) fn add(
+    &mut self,
+    object: ProxyHandle<StaticObjectProxy>,
+    skeleton: &RenderModelSkeleton,
+    transform: Mat4,
+  ) {
     self.skeletons.insert(object, (PosedSkeleton::new(skeleton), transform));
   }
 
-  pub fn remove(&mut self, object: ProxyHandle<StaticObjectProxy>) {
+  pub(crate) fn remove(&mut self, object: ProxyHandle<StaticObjectProxy>) {
     self.is_segments_stale |= self.skeletons.remove(&object).is_some();
   }
 
   /// Posts the bone matrices of each skinned object whose pose changes this frame, and the last frame's beside them:
   /// every object where the pose asked for or its motion's arrival changed, else one new or still settling, until it
   /// stands as asked. A motion still on its way poses the bind pose meanwhile.
-  pub fn pose(&mut self, updates: &mut Vec<RenderSceneUpdate>, source: &Arc<dyn WorldLevelSource>) {
+  pub(crate) fn pose(&mut self, updates: &mut Vec<RenderSceneUpdate>, source: &Arc<dyn WorldLevelSource>) {
     let pose: &WorldModelPose = &self.pose;
     let motion: Option<&RenderMotion> = match &pose.motion {
       Some(name) if !self.skeletons.is_empty() => self.motions.get(source, name),
@@ -93,7 +98,7 @@ impl LevelAnimation {
   }
 
   /// Every skinned object's bones as segments in renderer space, child then parent, where this frame poses them.
-  pub fn list_segments(&self) -> Arc<[(Vec3, Vec3)]> {
+  pub(crate) fn list_segments(&self) -> Arc<[(Vec3, Vec3)]> {
     Arc::clone(&self.segments)
   }
 

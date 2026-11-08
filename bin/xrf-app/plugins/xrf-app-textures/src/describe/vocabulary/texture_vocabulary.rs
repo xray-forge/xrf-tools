@@ -8,7 +8,7 @@ use crate::describe::vocabulary::{TextureFlagEntry, TextureTypeChange, TextureVo
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TextureVocabulary {
+pub(crate) struct TextureVocabulary {
   /// The gate `LoadTHM` reads before anything else.
   pub texture_types: Vec<TextureVocabularyEntry>,
   pub formats: Vec<TextureVocabularyEntry>,
@@ -28,7 +28,7 @@ pub struct TextureVocabulary {
 
 impl TextureVocabulary {
   /// The whole table, in the order each enum's own `NAMED` lists it.
-  pub fn describe() -> Self {
+  pub(crate) fn describe() -> Self {
     Self {
       texture_types: TextureVocabularyEntry::of_all(ThmTextureType::NAMED, ThmTextureType::label),
       formats: TextureVocabularyEntry::of_all(ThmFormat::NAMED, ThmFormat::label),

@@ -3,7 +3,7 @@
 /// while the engine bloom is built, shown or only blurred towards by the distortion, and the specular target while the
 /// light stands at the anchored levels.
 #[derive(Clone, Copy, Debug, Default)]
-pub struct ViewTargetUses {
+pub(crate) struct ViewTargetUses {
   pub is_occluded: bool,
   pub is_hazed: bool,
   pub is_engine_bloomed: bool,

@@ -10,7 +10,7 @@ use crate::edit::TextureBuildOmissionReport;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TextureBuildOutcome {
+pub(crate) struct TextureBuildOutcome {
   /// Whether the texture was written or the run stopped before it started.
   pub outcome: JobOutcome,
   pub destination: String,
@@ -36,7 +36,7 @@ impl TextureBuildOutcome {
   /// # Errors
   ///
   /// Returns an error when the texture cannot be encoded or written.
-  pub fn build(job: &JobHandle, options: &BuildTextureOptions) -> TauriResult<Self> {
+  pub(crate) fn build(job: &JobHandle, options: &BuildTextureOptions) -> TauriResult<Self> {
     // Read before the encode rather than after it. `BuildTextureProcessor::build` writes the file it encodes, so a
     // check on the far side would be reporting a stop for a run that had already published its result.
     if job.is_cancelled() {

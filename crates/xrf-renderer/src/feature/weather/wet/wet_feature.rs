@@ -32,7 +32,7 @@ use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 /// The wet surfaces: the G-buffer wetted by the level's wetness and its puddles' fill (`LevelWetness`, the scene's)
 /// while the rain falls and, enhanced, while the level is still wet after it stops.
 #[derive(Default)]
-pub struct WetFeature {
+pub(crate) struct WetFeature {
   uniform: WetUniform,
   /// The splash volume and the flow, as the weather textures hold them, while the surfaces are wetted.
   views: Option<[wgpu::TextureView; 2]>,
@@ -46,7 +46,7 @@ impl WetFeature {
   /// falls, over the overhead maps where they stand (`windows`), its cover's noise turned by `noise_frame`; dry for an
   /// orthographic view, which has no eye for the overhead maps to stand about. The drift moves on by the view's step
   /// whatever it draws.
-  pub fn prepare(
+  pub(crate) fn prepare(
     &mut self,
     &ViewPrepare {
       view,
@@ -132,12 +132,12 @@ impl WetFeature {
   }
 
   /// Follows the enhanced drops' rings this frame.
-  pub fn follow_rings(&mut self, rings: DropRings) {
+  pub(crate) fn follow_rings(&mut self, rings: DropRings) {
     self.uniform.rings = Vec4::new(rings.tile, rings.reach, rings.strength, 0.0);
   }
 
   /// Follows the overhead maps to where they stand once they have moved, as the wet surfaces read them.
-  pub fn follow(&mut self, windows: OverheadWindows) {
+  pub(crate) fn follow(&mut self, windows: OverheadWindows) {
     let RainCoverShape { texels, reach } = windows.cover_shape;
 
     self.uniform.cover = windows.cover;
@@ -149,34 +149,34 @@ impl WetFeature {
   }
 
   /// Whether the surfaces are wetted this frame.
-  pub fn is_wet(&self) -> bool {
+  pub(crate) fn is_wet(&self) -> bool {
     self.views.is_some()
   }
 
   /// Whether the enhanced wetting draws this frame, its puddles seated on the level's surface.
-  pub fn is_enhanced(&self) -> bool {
+  pub(crate) fn is_enhanced(&self) -> bool {
     self.is_wet() && self.uniform.is_enhanced > 0.5
   }
 
   /// Whether puddles stand this frame, which no tuft is planted in.
-  pub fn has_puddles(&self) -> bool {
+  pub(crate) fn has_puddles(&self) -> bool {
     self.is_enhanced() && self.uniform.puddle_state.y > 0.0
   }
 
   /// How far the rain cover reaches for the traced reflections' wet gloss, where it reaches past the engine's.
-  pub fn get_reach(&self) -> Option<f32> {
+  pub(crate) fn get_reach(&self) -> Option<f32> {
     (self.is_wet() && self.uniform.reach.x > 0.5).then_some(self.uniform.reach.y)
   }
 
   /// Pushes what its passes and the level surface's read, while the surfaces are wetted.
-  pub fn push_uniform(&self, runtime: &mut GraphRuntime) -> Option<UniformBinding<WetUniform>> {
+  pub(crate) fn push_uniform(&self, runtime: &mut GraphRuntime) -> Option<UniformBinding<WetUniform>> {
     self.is_wet().then(|| runtime.push_uniform(&self.uniform))
   }
 
   /// Adds the wetting of the G-buffer before any light is drawn over it, through the rain's cover and the level's
   /// surface (its lowest heights, its puddle sites and its water) as the shadows phase drew them, the puddles rippled
   /// by the enhanced drops' `rings`; answers what it writes for the reflections and combine.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     ViewRecord {

@@ -18,7 +18,7 @@ use crate::viewer::recording::writer::MediaProbe;
 /// with that sound as one video, where asked; answers once the last is written.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "save_burst")]
-pub async fn levels_save_burst(
+pub(crate) async fn levels_save_burst(
   renderer: State<'_, Renderer>,
   shown: State<'_, ShownLevels>,
   directories: State<'_, AppDirectories>,

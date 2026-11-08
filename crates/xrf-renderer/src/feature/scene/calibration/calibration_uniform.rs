@@ -10,7 +10,7 @@ use crate::lighting::srgb::srgb_encoded;
 #[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Calibration")]
 #[expect(clippy::use_self, reason = "an array length in a field cannot name `Self`")]
-pub struct CalibrationUniform {
+pub(crate) struct CalibrationUniform {
   /// Each prop's centre in the world, and its radius (a sphere) or half its width (the chart).
   pub props: [Vec4; CalibrationUniform::PROPS],
   /// Each prop's albedo as a colour texture holds it (sRGB encoded), and its gloss.
@@ -25,37 +25,37 @@ pub struct CalibrationUniform {
 
 impl CalibrationUniform {
   /// The props drawn: the spheres, then the chart.
-  pub const PROPS: usize = 4;
+  pub(crate) const PROPS: usize = 4;
   /// The props drawn as spheres, by their index; the chart follows them.
   #[cfg(test)]
-  pub const SPHERES: u32 = 3;
+  pub(crate) const SPHERES: u32 = 3;
   /// The grey card's albedo, middle grey.
-  pub const GREY: f32 = 0.18;
+  pub(crate) const GREY: f32 = 0.18;
   /// The white sphere's albedo.
-  pub const WHITE: f32 = 0.8;
+  pub(crate) const WHITE: f32 = 0.8;
   /// The mirror sphere's albedo, a polished metal's reflectance head on.
-  pub const MIRROR: f32 = 0.9;
+  pub(crate) const MIRROR: f32 = 0.9;
   /// The spheres' radius, metres.
-  pub const RADIUS: f32 = 0.25;
+  pub(crate) const RADIUS: f32 = 0.25;
   /// The chart's half width and half height, metres: the reference chart's proportions, larger, so it reads from
   /// metres away.
-  pub const CHART_HALF: (f32, f32) = (0.6, 0.4);
+  pub(crate) const CHART_HALF: (f32, f32) = (0.6, 0.4);
   /// Metres ahead of the camera the props stand, between the spheres' centres, and between the grey sphere and the
   /// chart's edge.
-  pub const AHEAD: f32 = 3.0;
-  pub const SPACING: f32 = 0.65;
-  pub const CHART_CLEARANCE: f32 = 0.45;
+  pub(crate) const AHEAD: f32 = 3.0;
+  pub(crate) const SPACING: f32 = 0.65;
+  pub(crate) const CHART_CLEARANCE: f32 = 0.45;
   /// A matte surface's gloss and the mirror's.
-  pub const MATTE_GLOSS: f32 = 2.0 / 255.0;
-  pub const MIRROR_GLOSS: f32 = 1.0;
+  pub(crate) const MATTE_GLOSS: f32 = 2.0 / 255.0;
+  pub(crate) const MIRROR_GLOSS: f32 = 1.0;
   /// The engine's material a dielectric prop is lit by (`Blinn`) and the mirror's (`metal`).
-  pub const DIELECTRIC_MATERIAL: f32 = 1.0;
-  pub const METAL_MATERIAL: f32 = 3.0;
+  pub(crate) const DIELECTRIC_MATERIAL: f32 = 1.0;
+  pub(crate) const METAL_MATERIAL: f32 = 3.0;
 
   /// The props standing `AHEAD` metres along `forward` from `eye`, the camera's view levelled, in a row across it: the
   /// grey sphere straight ahead, where the spot meter reads, the white and the mirror sphere to its left, and the
   /// chart to its right, facing back towards the eye.
-  pub fn new(eye: Vec3, forward: Vec3) -> Self {
+  pub(crate) fn new(eye: Vec3, forward: Vec3) -> Self {
     let level: Vec3 = Vec3::new(forward.x, 0.0, forward.z)
       .try_normalize()
       .unwrap_or(Vec3::NEG_Z);

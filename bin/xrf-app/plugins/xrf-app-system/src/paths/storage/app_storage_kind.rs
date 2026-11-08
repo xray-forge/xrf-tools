@@ -8,7 +8,7 @@ use xrf_app_core::directories::AppDirectories;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub enum AppStorageKind {
+pub(crate) enum AppStorageKind {
   /// What the renderer rebuilds when it is gone: the driver's compiled pipelines.
   RendererCache,
   /// Every other cache rebuilt from nothing.
@@ -26,7 +26,7 @@ pub enum AppStorageKind {
 
 impl AppStorageKind {
   /// Every kind, in the order a listing shows them.
-  pub const ALL: [Self; 6] = [
+  pub(crate) const ALL: [Self; 6] = [
     Self::RendererCache,
     Self::OtherCaches,
     Self::Logs,
@@ -37,7 +37,7 @@ impl AppStorageKind {
 
   /// The kind of a file at `relative` within the application's data directory; none for the caches' own bookkeeping
   /// (`AppCache::is_own_file`), which holds nothing and would read as their last use.
-  pub fn of(relative: &Path) -> Option<Self> {
+  pub(crate) fn of(relative: &Path) -> Option<Self> {
     let parts: Vec<&str> = relative
       .components()
       .filter_map(|component| match component {
@@ -59,7 +59,7 @@ impl AppStorageKind {
 
   /// The folder within the application's data directory a kind may be cleared by removing, where it may be: only the
   /// renderer's cache, which it rebuilds as it starts.
-  pub fn get_clearable_folder(self) -> Option<PathBuf> {
+  pub(crate) fn get_clearable_folder(self) -> Option<PathBuf> {
     match self {
       Self::RendererCache => Some(
         [AppDirectories::CACHE_DIRECTORY, AppDirectories::RENDERER_CACHE]

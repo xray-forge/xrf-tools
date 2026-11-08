@@ -23,7 +23,7 @@ use crate::pass::view::view_binding::ViewBinding;
 /// streaks draw after the temporal resolve instead, over a copy of the image it shows, which they bend blurred at an
 /// eighth of its size, after the frame's distortion, so the water's waves do not bend them. Where they land they draw
 /// rings into the rain's rings, which the water and the puddles ripple by.
-pub struct RainPass {
+pub(crate) struct RainPass {
   layout: wgpu::BindGroupLayout,
   reduce_layout: wgpu::BindGroupLayout,
   look_layout: wgpu::BindGroupLayout,
@@ -46,19 +46,19 @@ pub struct RainPass {
 
 impl RainPass {
   /// How many times smaller the enhanced drops' blurred image is than the image, as `rt_ssfx_rain` is.
-  pub const BLUR_SCALE: u32 = 8;
+  pub(crate) const BLUR_SCALE: u32 = 8;
 
   /// Vertices a near drop's rings take, as `vs_ring` lays them out: its fall's ring and its last fall's, each copied
   /// four times about the rings' tile, each copy a quad of two triangles.
-  pub const RING_VERTICES: u32 = 2 * 4 * 6;
+  pub(crate) const RING_VERTICES: u32 = 2 * 4 * 6;
 
   /// What the enhanced streaks draw over: the shown image copied, at the scene's own precision.
-  pub const LAYER: wgpu::TextureFormat = ViewTargets::SCENE;
+  pub(crate) const LAYER: wgpu::TextureFormat = ViewTargets::SCENE;
 
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(
+  pub(crate) fn new(
     queue: &wgpu::Queue,
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
@@ -124,7 +124,7 @@ impl RainPass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     let drawn: XrfResult = self.pipelines.refresh(source.cache, || {
       Self::create_pipelines(source, &self.view_layout, &self.layout, &self.look_layout)
     });
@@ -141,28 +141,33 @@ impl RainPass {
   }
 
   /// The sampler the streak, the splash and the blurred image are read through, which the parameters bind.
-  pub fn get_sampler(&self) -> &wgpu::Sampler {
+  pub(crate) fn get_sampler(&self) -> &wgpu::Sampler {
     &self.sampler
   }
 
   /// The enhanced drops' and splash's maps.
-  pub fn get_maps(&self) -> &EnhancedRainMaps {
+  pub(crate) fn get_maps(&self) -> &EnhancedRainMaps {
     &self.maps
   }
 
   /// The sampler the enhanced maps are read through.
-  pub fn get_map_sampler(&self) -> &wgpu::Sampler {
+  pub(crate) fn get_map_sampler(&self) -> &wgpu::Sampler {
     &self.map_sampler
   }
 
   /// A texel covering nothing, for an image a pass binds but does not read.
-  pub fn get_nothing(&self) -> &wgpu::TextureView {
+  pub(crate) fn get_nothing(&self) -> &wgpu::TextureView {
     &self.nothing
   }
 
   /// Declares the enhanced drops' blur of `image`, of `size`, into a transient an eighth of it across: its blocks, then
   /// their blur, which it answers.
-  pub fn add_blur<'a>(&'a self, graph: &mut FrameGraph<'a>, image: GraphTexture, size: (u32, u32)) -> GraphTexture {
+  pub(crate) fn add_blur<'a>(
+    &'a self,
+    graph: &mut FrameGraph<'a>,
+    image: GraphTexture,
+    size: (u32, u32),
+  ) -> GraphTexture {
     let small: (u32, u32) = (size.0.div_ceil(Self::BLUR_SCALE), size.1.div_ceil(Self::BLUR_SCALE));
     let blocks: GraphTexture = self.add_fullscreen(&mut *graph, "rain refraction blocks", &self.blur[0], image, small);
 
@@ -170,13 +175,18 @@ impl RainPass {
   }
 
   /// Declares `image`, of `size`, copied whole into a layer of the enhanced streaks' own, which it answers.
-  pub fn add_layer<'a>(&'a self, graph: &mut FrameGraph<'a>, image: GraphTexture, size: (u32, u32)) -> GraphTexture {
+  pub(crate) fn add_layer<'a>(
+    &'a self,
+    graph: &mut FrameGraph<'a>,
+    image: GraphTexture,
+    size: (u32, u32),
+  ) -> GraphTexture {
     self.add_fullscreen(&mut *graph, "rain layer", &self.blur[2], image, size)
   }
 
   /// Declares the enhanced drops' rings drawn into the rain's rings' first level, the near drops' each alone, then
   /// reduced into the rest of the `levels` in one dispatch.
-  pub fn add_rings<'a>(
+  pub(crate) fn add_rings<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
     view: &'a ViewBinding,
@@ -254,7 +264,7 @@ impl RainPass {
 
   /// Draws in the scene the splashes where the model has indices, and the engine's streaks falling: the engine's, or
   /// with `look` the enhanced splashes, whose streaks draw over the shown image instead.
-  pub fn record(
+  pub(crate) fn record(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
@@ -293,7 +303,7 @@ impl RainPass {
   }
 
   /// Draws the enhanced streaks over the shown image's layer.
-  pub fn record_over(
+  pub(crate) fn record_over(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,

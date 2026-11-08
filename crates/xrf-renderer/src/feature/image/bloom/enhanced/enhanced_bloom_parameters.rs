@@ -8,7 +8,7 @@ use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 /// its uniform.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct EnhancedBloomParameters<'a> {
+pub(crate) struct EnhancedBloomParameters<'a> {
   #[texture(d2, float)]
   pub source: GraphTexture,
   #[texture(d2, float)]

@@ -6,13 +6,13 @@ use xrf_particles::ParticlesFile;
 use xrf_spawn::XRayByteOrder;
 
 /// `-p/--path` to a `particles.xr`: what opening a particle library takes.
-pub struct ParticlesFileArguments;
+pub(crate) struct ParticlesFileArguments;
 
 impl ParticlesFileArguments {
   const PATH: &'static str = "path";
 
   /// Declares the required library path on `command`.
-  pub fn declare(command: Command) -> Command {
+  pub(crate) fn declare(command: Command) -> Command {
     command.arg(
       Arg::new(Self::PATH)
         .help("Path to the particle library, particles.xr")
@@ -24,7 +24,7 @@ impl ParticlesFileArguments {
   }
 
   /// The library file a command names.
-  pub fn path_of(matches: &ArgMatches) -> &PathBuf {
+  pub(crate) fn path_of(matches: &ArgMatches) -> &PathBuf {
     matches
       .get_one::<PathBuf>(Self::PATH)
       .expect("Expected the required particle library path")
@@ -35,7 +35,7 @@ impl ParticlesFileArguments {
   /// # Errors
   ///
   /// Returns an error when the file cannot be read or is no particle library.
-  pub fn open(matches: &ArgMatches) -> XrfResult<ParticlesFile> {
+  pub(crate) fn open(matches: &ArgMatches) -> XrfResult<ParticlesFile> {
     ParticlesFile::read_from_path::<XRayByteOrder, _>(Self::path_of(matches))
   }
 }

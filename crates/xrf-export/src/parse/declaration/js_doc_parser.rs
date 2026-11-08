@@ -18,14 +18,14 @@ impl<'a> JsDocParser<'a> {
   const RETURNS_TAG: &'static str = "@returns";
 
   /// Create a parser over the comment store associated with one TypeScript source.
-  pub fn new(comments: &'a dyn Comments) -> Self {
+  pub(crate) fn new(comments: &'a dyn Comments) -> Self {
     Self { comments }
   }
 
   /// Read a leading JSDoc block into the manifest documentation fields.
   ///
   /// Empty descriptions and `@returns` tags are omitted from the result.
-  pub fn parse(&self, position: BytePos) -> Option<ExternDocumentation> {
+  pub(crate) fn parse(&self, position: BytePos) -> Option<ExternDocumentation> {
     let raw: String = self.read_raw(position)?;
     let description: Option<String> = Self::read_description(&raw);
     let returns: Option<String> = Self::read_tag(&raw, Self::RETURNS_TAG);
@@ -37,7 +37,7 @@ impl<'a> JsDocParser<'a> {
   ///
   /// Only `@param name description` entries with both a name and non-empty
   /// description are returned.
-  pub fn parameter_docs(&self, position: BytePos) -> BTreeMap<String, String> {
+  pub(crate) fn parameter_docs(&self, position: BytePos) -> BTreeMap<String, String> {
     let Some(raw) = self.read_raw(position) else {
       return BTreeMap::new();
     };

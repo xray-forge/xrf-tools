@@ -2,13 +2,13 @@ use xrf_math::EPS_L;
 use xrf_renderer::{RenderClouds, RenderFog, RenderLighting, RenderRainfall, RenderSky, RenderTreeWind, RenderWind};
 
 /// A fade between two lightings, a step of it at a time.
-pub struct WeatherFade;
+pub(crate) struct WeatherFade;
 
 impl WeatherFade {
   /// What a fade shows at one step: every value blended from what was shown to what the weather shows now, and the
   /// skies walked from one pair to the other in thirds, so the sky's two slots never show a cube they did not show a
   /// moment before.
-  pub fn blend(from: &RenderLighting, to: &RenderLighting, progress: f32) -> RenderLighting {
+  pub(crate) fn blend(from: &RenderLighting, to: &RenderLighting, progress: f32) -> RenderLighting {
     let t: f32 = progress.clamp(0.0, 1.0);
 
     if t >= 1.0 {

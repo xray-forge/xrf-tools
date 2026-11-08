@@ -2,4 +2,4 @@
 
 mod level_report;
 
-pub use level_report::LevelReport;
+pub(crate) use level_report::LevelReport;

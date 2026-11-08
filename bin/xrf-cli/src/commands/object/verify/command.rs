@@ -18,7 +18,7 @@ use crate::core::report::ReportVerdict;
 /// Compiles an SDK editable object in memory and checks the OGF against one it should stand in for, by what the
 /// engine reads of it.
 #[derive(Default)]
-pub struct VerifyCommand;
+pub(crate) struct VerifyCommand;
 
 impl GenericCommand for VerifyCommand {
   fn operation(&self) -> &'static str {

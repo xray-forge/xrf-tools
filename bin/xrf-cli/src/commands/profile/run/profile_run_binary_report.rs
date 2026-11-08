@@ -8,7 +8,7 @@ use crate::commands::profile::run::rounds::RoundStatistics;
 /// What one binary of a profiling session measured.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ProfileRunBinaryReport {
+pub(crate) struct ProfileRunBinaryReport {
   label: String,
   path: String,
   /// The binary's own `--version` long form, verbatim.
@@ -46,7 +46,7 @@ pub struct ProfileRunBinaryReport {
 }
 
 impl ProfileRunBinaryReport {
-  pub fn new(
+  pub(crate) fn new(
     label: String,
     path: &Path,
     version: Vec<String>,
@@ -69,12 +69,12 @@ impl ProfileRunBinaryReport {
     }
   }
 
-  pub fn median(&self) -> Duration {
+  pub(crate) fn median(&self) -> Duration {
     self.median
   }
 
   /// Records this binary's median against the session's first, which is the only comparison the protocol supports.
-  pub fn compare_to(&mut self, baseline: Duration) {
+  pub(crate) fn compare_to(&mut self, baseline: Duration) {
     let baseline_seconds: f64 = baseline.as_secs_f64();
 
     if baseline_seconds > 0.0 {
@@ -87,7 +87,7 @@ impl ProfileRunBinaryReport {
   }
 
   /// The binary's median as one line, with its difference from the baseline and its memory where they were measured.
-  pub fn describe(&self) -> String {
+  pub(crate) fn describe(&self) -> String {
     let delta: String = self
       .delta_percent
       .map_or_else(String::new, |delta| format!(" ({delta:+.2}%)"));

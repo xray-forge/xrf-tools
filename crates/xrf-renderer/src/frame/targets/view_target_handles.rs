@@ -7,7 +7,7 @@ use crate::frame::targets::view_targets::ViewTargets;
 /// G-buffer, depth, light and scene the view keeps, imported; and the targets each frame writes afresh, made in the
 /// graph where the frame writes them and a texel of nothing in their place where it does not.
 #[derive(Clone, Copy)]
-pub struct ViewTargetHandles {
+pub(crate) struct ViewTargetHandles {
   /// The targets' size, which a pass's own transients take.
   pub size: (u32, u32),
   pub albedo: GraphTexture,
@@ -35,7 +35,7 @@ pub struct ViewTargetHandles {
 
 impl ViewTargetHandles {
   /// Imports the targets the view keeps and makes the frame's own by `uses`, `none` standing in for what is not made.
-  pub fn import<'r>(
+  pub(crate) fn import<'r>(
     graph: &mut FrameGraph<'_>,
     bindings: &mut GraphBindings<'r>,
     targets: &'r ViewTargets,
@@ -100,7 +100,7 @@ impl ViewTargetHandles {
   }
 
   /// The G-buffer's colour targets, in the order its draws attach them.
-  pub fn get_gbuffer(&self) -> [GraphTexture; 5] {
+  pub(crate) fn get_gbuffer(&self) -> [GraphTexture; 5] {
     [self.albedo, self.normal, self.material, self.motion, self.relief]
   }
 }

@@ -15,7 +15,7 @@ pub(crate) struct GroupStamps {
 }
 
 impl GroupStamps {
-  pub fn new(
+  pub(crate) fn new(
     queries: wgpu::QuerySet,
     (start, capacity): (u32, u32),
     resolve: Option<(wgpu::Buffer, wgpu::Buffer, u32)>,
@@ -30,7 +30,7 @@ impl GroupStamps {
   }
 
   /// Writes a stamp ending an owner's pass by its name, or starting the group where `None`.
-  pub fn stamp(&mut self, encoder: &mut wgpu::CommandEncoder, name: Option<TimedPass>) {
+  pub(crate) fn stamp(&mut self, encoder: &mut wgpu::CommandEncoder, name: Option<TimedPass>) {
     let index: u32 = self.names.len() as u32;
 
     if index < self.capacity {
@@ -42,7 +42,7 @@ impl GroupStamps {
 
   /// Resolves the frame's stamps into its slot where this is the last group, after its own: the groups' command
   /// buffers are submitted in order, so every other group's stamps are written by then.
-  pub fn finish(&self, encoder: &mut wgpu::CommandEncoder) {
+  pub(crate) fn finish(&self, encoder: &mut wgpu::CommandEncoder) {
     if let Some((resolve, slot, count)) = &self.resolve {
       encoder.resolve_query_set(&self.queries, 0..*count, resolve, 0);
       encoder.copy_buffer_to_buffer(resolve, 0, slot, 0, u64::from(*count) * 8);
@@ -50,7 +50,7 @@ impl GroupStamps {
   }
 
   /// Stamps it asked for past its range.
-  pub fn get_overflow(&self) -> u32 {
+  pub(crate) fn get_overflow(&self) -> u32 {
     (self.names.len() as u32).saturating_sub(self.capacity)
   }
 }

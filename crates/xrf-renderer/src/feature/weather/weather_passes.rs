@@ -20,7 +20,7 @@ use crate::shader::generated_modules::GeneratedModules;
 
 /// The passes drawing the weather: the sky, its haze, motion, light and debanding, the sun's shafts, the fog and the
 /// volumetric light, the water, and the wet surfaces with their puddles.
-pub struct WeatherPasses {
+pub(crate) struct WeatherPasses {
   pub sky_haze: SkyHazePass,
   pub sky_motion: SkyMotionPass,
   pub sky_irradiance: SkyIrradiancePass,
@@ -42,7 +42,7 @@ impl WeatherPasses {
   /// # Errors
   ///
   /// Returns an error when a pass's shaders do not compose or compile.
-  pub fn new(build: PassBuild<'_>) -> XrfResult<Self> {
+  pub(crate) fn new(build: PassBuild<'_>) -> XrfResult<Self> {
     let PassBuild {
       source,
       queue,
@@ -87,7 +87,7 @@ impl WeatherPasses {
   }
 
   /// Rebuilds the pipelines a shader reload made stale, each pass keeping its last good ones where a rebuild fails.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     self.sky_haze.refresh(source);
     self.sky_motion.refresh(source);
     self.sky_irradiance.refresh(source);
@@ -110,7 +110,7 @@ impl WeatherPasses {
   ///
   /// Returns an error when passes sharing a module declare one of its bindings otherwise.
   #[cfg(test)]
-  pub fn declare_shaders(modules: &mut GeneratedModules) -> XrfResult<()> {
+  pub(crate) fn declare_shaders(modules: &mut GeneratedModules) -> XrfResult<()> {
     use crate::feature::weather::fog::fog_scattering_parameters::FogScatteringParameters;
     use crate::feature::weather::fog::fog_scattering_uniform::FogScatteringUniform;
     use crate::feature::weather::sky::deband::sky_deband_parameters::{

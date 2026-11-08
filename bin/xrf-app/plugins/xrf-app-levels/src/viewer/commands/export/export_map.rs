@@ -10,7 +10,7 @@ use crate::viewer::{LevelViewerFolder, LevelViewerReport};
 /// answers its size.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "export_map")]
-pub async fn levels_export_map(
+pub(crate) async fn levels_export_map(
   directories: State<'_, AppDirectories>,
   execution: State<'_, ExecutionState>,
   request: MapExportRequest,

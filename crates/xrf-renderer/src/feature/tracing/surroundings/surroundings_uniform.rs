@@ -6,7 +6,7 @@ use xrf_renderer_core::ShaderStruct;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Surroundings")]
-pub struct SurroundingsUniform {
+pub(crate) struct SurroundingsUniform {
   pub to_sun: Vec4,
   pub face: Vec4,
 }
@@ -14,7 +14,7 @@ pub struct SurroundingsUniform {
 impl SurroundingsUniform {
   /// Face `face` of a cube `size` texels a side, drawn into a G-buffer `drawn` texels a side, lit by a sun whose light
   /// comes from `to_sun`.
-  pub fn new(to_sun: glam::Vec3, face: u32, (size, drawn): (u32, u32)) -> Self {
+  pub(crate) fn new(to_sun: glam::Vec3, face: u32, (size, drawn): (u32, u32)) -> Self {
     Self {
       to_sun: to_sun.extend(0.0),
       face: Vec4::new(face as f32, size as f32, drawn as f32, 0.0),

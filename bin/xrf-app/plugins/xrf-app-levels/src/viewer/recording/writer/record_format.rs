@@ -6,7 +6,7 @@ use crate::viewer::recording::writer::RecordSoundFormat;
 /// frames as the file names its frame rate, which each frame's own time and duration override; and its sound's, where it
 /// has one.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct RecordFormat {
+pub(crate) struct RecordFormat {
   pub width: u32,
   pub height: u32,
   pub frame: Duration,

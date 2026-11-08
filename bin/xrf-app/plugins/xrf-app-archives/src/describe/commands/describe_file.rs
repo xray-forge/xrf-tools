@@ -10,7 +10,7 @@ use crate::describe::ArchiveFileDescription;
 /// describer may parse a whole level bundle or walk a large file by seeking.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_file")]
-pub async fn archives_describe_file(
+pub(crate) async fn archives_describe_file(
   session_id: SessionId,
   name: String,
   execution: State<'_, ExecutionState>,

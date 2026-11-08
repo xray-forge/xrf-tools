@@ -39,7 +39,7 @@ impl ResolveFeature {
   /// Copies the frame as it stands before the water, the composited surfaces and the particles draw, once for all that
   /// read it: the temporal resolve's reactive weight is what the rest change of it, and the `readers` besides. None
   /// where nothing reads it.
-  pub fn add_before_water(
+  pub(crate) fn add_before_water(
     &self,
     graph: &mut FrameGraph<'_>,
     handles: ViewTargetHandles,
@@ -62,7 +62,7 @@ impl ResolveFeature {
 
   /// Copies the frame once its transparent layers, the rain last, drew, before the flares, the fog and the bloom, into
   /// the `guides` ray reconstruction reads it by against the frame before them (`before_water`).
-  pub fn add_transparency_guide(
+  pub(crate) fn add_transparency_guide(
     graph: &mut FrameGraph<'_>,
     handles: ViewTargetHandles,
     guides: &mut Option<RayGuides>,
@@ -86,7 +86,7 @@ impl ResolveFeature {
   /// What the temporal resolve's reactive weight compares the finished frame with, the frame as it stood before the
   /// water and the blended surfaces drew: TAA reads the frame's copy `before_water`, answered; FSR copies it into its
   /// own target, which its passes read.
-  pub fn add_reactive_passes<'a>(
+  pub(crate) fn add_reactive_passes<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     scene: GraphTexture,
@@ -109,7 +109,7 @@ impl ResolveFeature {
   /// Adds the guides DLSS ray reconstruction reads, where it resolves this frame, at the drawn size: worked out from
   /// the G-buffer and `inputs`, the record's stand-ins for the reflections' trace and the indirect light's hit
   /// distances where they are not drawn, after combine.
-  pub fn add_guide_passes<'a>(
+  pub(crate) fn add_guide_passes<'a>(
     &self,
     graph: &mut FrameGraph<'a>,
     ViewRecord {
@@ -182,7 +182,7 @@ impl ResolveFeature {
   /// drawn size, the temporal resolve; then, at the viewport's, the upscale where nothing upscaled it and the
   /// sharpening. Answers the frame at the drawn size and the image the viewport shows, which the layers after the
   /// resolve are laid over.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration {
       graph,

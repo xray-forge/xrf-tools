@@ -5,7 +5,7 @@ use sysinfo::System;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct MachineUsage {
+pub(crate) struct MachineUsage {
   /// Physical memory in use across every process.
   pub used_memory: u64,
   /// Physical memory the machine reports as free for a new allocation, which is not `total - used`: the difference is
@@ -15,7 +15,7 @@ pub struct MachineUsage {
 
 impl MachineUsage {
   /// What the machine is using, off a refreshed view of it.
-  pub fn of(system: &System) -> Self {
+  pub(crate) fn of(system: &System) -> Self {
     Self {
       used_memory: system.used_memory(),
       available_memory: system.available_memory(),

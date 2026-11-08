@@ -7,7 +7,7 @@ use crate::feature::scene::grass::trace::trace_grass_uniform::TraceGrassUniform;
 /// the view stands near its eye, whose holes a ray passes; a buffer of nothing in place of what the frame holds none
 /// of.
 #[derive(Clone, Copy)]
-pub struct TracedGrass {
+pub(crate) struct TracedGrass {
   pub grid: GraphBuffer,
   pub slots: GraphBuffer,
   pub models: GraphBuffer,

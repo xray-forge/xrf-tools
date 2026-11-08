@@ -20,7 +20,7 @@ use crate::sound::LevelSoundFiles;
 /// What a level plays at points of its own whatever its weather: its static sounds (`level.snd_static`) and its zones'
 /// sounds (`CCustomZone`'s `idle_sound`, `CZoneCampfire`'s `disabled_sound`), each named by its level object's place in
 /// the level's listing, which its helper carries.
-pub struct LevelSoundEmitters {
+pub(crate) struct LevelSoundEmitters {
   pub statics: Vec<WorldStaticSound>,
   pub zones: Vec<WorldZoneSound>,
 }
@@ -34,7 +34,7 @@ impl LevelSoundEmitters {
 
   /// Reads the level's sound emitters through `files`, each named by its place among `objects`, none where the level's
   /// objects could not be listed; a level whose spawn or configs cannot be read sounds no zone.
-  pub fn read(
+  pub(crate) fn read(
     level: &SessionSnapshot<SelectedLevel>,
     search: &XraySearch,
     objects: Option<&LevelObjectsDescription>,
@@ -76,7 +76,7 @@ impl LevelSoundEmitters {
 
   /// Each emitter's spheres out to its sound's minimum and maximum distance where it stands, as the helpers the sound
   /// emitters' kind switches, named as its level object is; none for a sound whose file is missing.
-  pub fn to_helpers(&self) -> Vec<RenderHelperObject> {
+  pub(crate) fn to_helpers(&self) -> Vec<RenderHelperObject> {
     let statics = self
       .statics
       .iter()

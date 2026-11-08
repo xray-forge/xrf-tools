@@ -8,7 +8,7 @@ use crate::viewer::map::{MapExportAnnotations, MapExportFormat};
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct MapExportRequest {
+pub(crate) struct MapExportRequest {
   /// The capture's PNG in the screenshots folder, its coverage in alpha.
   pub path: PathBuf,
   pub target: PathBuf,

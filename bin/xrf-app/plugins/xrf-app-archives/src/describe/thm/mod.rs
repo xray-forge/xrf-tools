@@ -11,4 +11,4 @@ mod file;
 mod parameters;
 mod texture;
 
-pub use archive_thm_description::ArchiveThmDescription;
+pub(crate) use archive_thm_description::ArchiveThmDescription;

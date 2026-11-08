@@ -5,7 +5,7 @@ use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 /// What every water batch binds below its pass's own group: the view, the bindless textures, and each vertex layout's
 /// draw parameters.
 #[derive(Clone, Copy)]
-pub struct WaterGroups<'a> {
+pub(crate) struct WaterGroups<'a> {
   pub view: &'a ViewBinding,
   pub textures: &'a wgpu::BindGroup,
   pub layouts: [StaticDrawParameters; StaticLayout::COUNT],

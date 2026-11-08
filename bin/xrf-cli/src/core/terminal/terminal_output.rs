@@ -9,14 +9,14 @@ use crate::core::terminal::terminal_stream::TerminalStream;
 ///
 /// Verbosity is not a sink's concern - [`xrf_output::OutputOptions`] has already decided a message
 /// is visible. All this decides is which stream carries it, and in which colour.
-pub struct TerminalOutput {
+pub(crate) struct TerminalOutput {
   is_stdout_available: bool,
 }
 
 impl TerminalOutput {
   /// Renders to a terminal whose stdout is free for results, or holds every channel back to stderr
   /// when stdout carries the machine-readable document instead.
-  pub const fn new(is_stdout_available: bool) -> Self {
+  pub(crate) const fn new(is_stdout_available: bool) -> Self {
     Self { is_stdout_available }
   }
 

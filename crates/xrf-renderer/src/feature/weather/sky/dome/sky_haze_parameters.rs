@@ -6,7 +6,7 @@ use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 /// What the haze map's sky reads beside the sky: the frame's lighting and exposure.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct SkyHazeParameters {
+pub(crate) struct SkyHazeParameters {
   #[uniform]
   pub lighting: UniformBinding<LightingUniform>,
   #[storage]

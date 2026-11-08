@@ -6,7 +6,7 @@ use crate::feature::image::resolve::fsr::fsr_uniform::FsrUniform;
 /// change, the luma, the accumulation the frame before left, and the surface marks.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 0)]
-pub struct FsrPrepareReactivityParameters<'a> {
+pub(crate) struct FsrPrepareReactivityParameters<'a> {
   #[uniform]
   pub fsr: UniformBinding<FsrUniform>,
   #[texture(d2, unfilterable)]

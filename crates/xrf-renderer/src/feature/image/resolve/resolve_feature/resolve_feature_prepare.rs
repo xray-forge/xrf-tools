@@ -31,7 +31,7 @@ impl ResolveFeature {
   /// size while it is drawn or resolved at another. DLSS reconstructs rays where asked, the GPU has it and the scene
   /// holds linear light, with the model the light asks; else it upscales alone. The light is written at
   /// `pre_exposure`, which each resolve carries its history by. Answers what the units prepared after it read.
-  pub fn prepare(
+  pub(crate) fn prepare(
     &mut self,
     frame: &ViewPrepare<'_>,
     now: Instant,
@@ -371,7 +371,7 @@ impl ResolveFeature {
 
   /// The view and projection DLSS ray reconstruction places hits through: the frame's `view` as prepared, unjittered,
   /// since NGX takes the jitter apart.
-  pub fn get_ray_camera(view: &CameraView) -> (Mat4, Mat4) {
+  pub(crate) fn get_ray_camera(view: &CameraView) -> (Mat4, Mat4) {
     (view.view, view.projection)
   }
 }

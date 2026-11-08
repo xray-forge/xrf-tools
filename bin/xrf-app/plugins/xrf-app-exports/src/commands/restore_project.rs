@@ -10,7 +10,7 @@ use crate::ExportsProjects;
 /// reload.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "restore_project")]
-pub async fn exports_restore_project(
+pub(crate) async fn exports_restore_project(
   projects: State<'_, ExportsProjects>,
   window: InvokingWindow,
   tool: String,

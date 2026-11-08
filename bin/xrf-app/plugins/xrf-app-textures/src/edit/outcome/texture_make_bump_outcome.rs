@@ -7,7 +7,7 @@ use xrf_utils::to_portable_path_string;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TextureMakeBumpOutcome {
+pub(crate) struct TextureMakeBumpOutcome {
   /// Whether the pair was written or the run stopped because it was asked to.
   pub outcome: JobOutcome,
   /// The normals and gloss, written as `<bump>.dds`.
@@ -22,7 +22,7 @@ pub struct TextureMakeBumpOutcome {
 
 impl TextureMakeBumpOutcome {
   /// What a generation came to, its files named as the page addresses them.
-  pub fn of(result: &GenerateBumpResult) -> Self {
+  pub(crate) fn of(result: &GenerateBumpResult) -> Self {
     Self {
       outcome: result.outcome,
       bump: to_portable_path_string(&result.bump),

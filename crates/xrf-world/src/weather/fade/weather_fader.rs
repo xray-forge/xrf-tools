@@ -21,17 +21,17 @@ struct Fading {
 /// A fade from what was shown into what the weather shows now: it waits for the skies it fades into to go up, two
 /// seconds at most, then runs its time.
 #[derive(Default)]
-pub struct WeatherFader {
+pub(crate) struct WeatherFader {
   fading: Option<Fading>,
 }
 
 impl WeatherFader {
-  pub fn is_fading(&self) -> bool {
+  pub(crate) fn is_fading(&self) -> bool {
     self.fading.is_some()
   }
 
   /// Starts a fade, in place of any before it, which waits from the frame that first asks for it.
-  pub fn start(&mut self, from: RenderLighting, duration: Duration) {
+  pub(crate) fn start(&mut self, from: RenderLighting, duration: Duration) {
     self.fading = Some(Fading {
       from,
       asked_at: None,
@@ -40,19 +40,19 @@ impl WeatherFader {
     });
   }
 
-  pub fn stop(&mut self) {
+  pub(crate) fn stop(&mut self) {
     self.fading = None;
   }
 
   /// Notes a frame asking for the fade, which it waits for its skies from the first time.
-  pub fn ask(&mut self, now: Instant) {
+  pub(crate) fn ask(&mut self, now: Instant) {
     if let Some(fading) = &mut self.fading {
       fading.asked_at.get_or_insert(now);
     }
   }
 
   /// What to draw: the fade under way, or the weather where none is; a fade starts once its `skies` are up.
-  pub fn apply(&mut self, now: Instant, target: &RenderLighting, skies: FadeSkies) -> RenderLighting {
+  pub(crate) fn apply(&mut self, now: Instant, target: &RenderLighting, skies: FadeSkies) -> RenderLighting {
     let Some(fading) = &mut self.fading else {
       return target.clone();
     };

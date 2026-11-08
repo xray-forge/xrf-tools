@@ -5,7 +5,7 @@ use crate::resolve::dltx_diagnostic::DltxDiagnostic;
 
 /// Everything one load pass recorded, before any of it is resolved.
 #[derive(Debug, Default)]
-pub struct DltxLoadResult {
+pub(crate) struct DltxLoadResult {
   /// Plain sections, by lowercased name.
   pub(crate) base: BTreeMap<String, Vec<DltxItem>>,
   /// `![section]` and `@[section]` contents, by lowercased name.

@@ -9,7 +9,7 @@ use crate::execution::ExecutionState;
 /// listing plans and mounts the roots.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "list_assets")]
-pub async fn assets_list_assets(
+pub(crate) async fn assets_list_assets(
   roots: XrayRoots,
   kind: XrayAssetType,
   assets: State<'_, AssetMountState>,

@@ -9,7 +9,7 @@ const DERIVED_HEIGHT_MOST: u32 = 2048;
 
 /// A texture read off its file and laid out for upload: its mip chain as the GPU stores it, a cube's six faces each
 /// level, or a volume's slices as the layers of its top level alone.
-pub struct DecodedTexture {
+pub(crate) struct DecodedTexture {
   pub format: wgpu::TextureFormat,
   pub width: u32,
   pub height: u32,
@@ -27,26 +27,26 @@ pub struct DecodedTexture {
 
 impl DecodedTexture {
   /// Faces a cube holds.
-  pub const CUBE_FACES: u32 = 6;
+  pub(crate) const CUBE_FACES: u32 = 6;
 
   /// Levels a texture of these sides can hold, down to one texel: a header claiming more is read for these.
-  pub fn get_chain_length(width: u32, height: u32) -> u32 {
+  pub(crate) fn get_chain_length(width: u32, height: u32) -> u32 {
     u32::BITS - width.max(height).max(1).leading_zeros()
   }
 
   /// Whether a device can hold it, its sides within the largest two dimensional texture the device makes.
-  pub fn is_within(&self, limits: &wgpu::Limits) -> bool {
+  pub(crate) fn is_within(&self, limits: &wgpu::Limits) -> bool {
     self.width <= limits.max_texture_dimension_2d && self.height <= limits.max_texture_dimension_2d
   }
 
   /// Bytes the upload carries, which is what an upload budget spends.
-  pub fn get_size(&self) -> u64 {
+  pub(crate) fn get_size(&self) -> u64 {
     self.levels.iter().map(|level| level.len() as u64).sum()
   }
 
   /// Without its `count` largest levels, as the engine loads a texture coarser (`img_loaded_lod`): its smallest always
   /// kept, and a block compressed one's top level a whole number of blocks.
-  pub fn without_levels(mut self, count: u32) -> Self {
+  pub(crate) fn without_levels(mut self, count: u32) -> Self {
     let (block_width, block_height) = self.format.block_dimensions();
     let mut dropped: usize = 0;
 
@@ -74,7 +74,7 @@ impl DecodedTexture {
   /// # Errors
   ///
   /// Returns an error for a file that does not parse or decode, or one whose sides are not powers of two.
-  pub fn from_bump_heights(bytes: &[u8], dropped: u32) -> XrfResult<Self> {
+  pub(crate) fn from_bump_heights(bytes: &[u8], dropped: u32) -> XrfResult<Self> {
     let file: DdsFile = DdsFile::read_from_bytes(bytes)?;
     let metadata: DdsMetadata = file.metadata();
     let levels: u32 = metadata
@@ -117,7 +117,7 @@ impl DecodedTexture {
   }
 
   /// Heights from nought to one as a texture of one channel, each mip the average of the four texels above it.
-  pub fn from_heights(width: u32, height: u32, heights: Vec<f32>) -> Self {
+  pub(crate) fn from_heights(width: u32, height: u32, heights: Vec<f32>) -> Self {
     let mut levels: Vec<Vec<u8>> = Vec::new();
     let (mut level_width, mut level_height, mut level): (u32, u32, Vec<f32>) = (width, height, heights);
 
@@ -161,7 +161,7 @@ impl DecodedTexture {
 
   /// Makes a texture of it on the GPU, every level of every layer written, and answers its view: a cube's, a volume's
   /// slices as an array, or a two dimensional one.
-  pub fn upload(&self, device: &wgpu::Device, queue: &wgpu::Queue, label: &str) -> wgpu::TextureView {
+  pub(crate) fn upload(&self, device: &wgpu::Device, queue: &wgpu::Queue, label: &str) -> wgpu::TextureView {
     self
       .upload_layers(device, queue, label, self.layers)
       .create_view(&wgpu::TextureViewDescriptor {
@@ -171,13 +171,13 @@ impl DecodedTexture {
   }
 
   /// Whether it is one flat image, neither a cube nor a volume: what a two dimensional binding samples.
-  pub fn is_flat(&self) -> bool {
+  pub(crate) fn is_flat(&self) -> bool {
     !self.is_volume && self.layers == 1
   }
 
   /// Whether any texel of any level may hold some blue: a block compressed one's where a block's colour endpoints hold
   /// some, since each texel's colour lies between them; an eight bit one's where a texel does; any other layout may.
-  pub fn has_blue(&self) -> bool {
+  pub(crate) fn has_blue(&self) -> bool {
     // A block's bytes, and where its colour endpoints stand in it, each a little endian 5:6:5 colour, blue lowest.
     let block = |size: usize, colors: usize| {
       self.levels.iter().any(|level| {
@@ -208,7 +208,7 @@ impl DecodedTexture {
   }
 
   /// How a shader reads it: a volume's slices as an array, a cube's faces as a cube, anything else flat.
-  pub fn get_view_dimension(&self) -> wgpu::TextureViewDimension {
+  pub(crate) fn get_view_dimension(&self) -> wgpu::TextureViewDimension {
     if self.is_volume {
       wgpu::TextureViewDimension::D2Array
     } else if self.layers == Self::CUBE_FACES {
@@ -273,7 +273,7 @@ impl DecodedTexture {
   /// # Errors
   ///
   /// Returns an error for a file that does not parse, or a layout neither stored nor expandable.
-  pub fn from_dds(bytes: &[u8]) -> XrfResult<Self> {
+  pub(crate) fn from_dds(bytes: &[u8]) -> XrfResult<Self> {
     let file: DdsFile = DdsFile::read_from_bytes(bytes)?;
     let metadata: DdsMetadata = file.metadata();
     let levels: u32 = metadata

@@ -4,7 +4,7 @@ use xrf_renderer_core::ShaderStruct;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "ParticleSurface")]
-pub struct ParticleSurfaceRecord {
+pub(crate) struct ParticleSurfaceRecord {
   /// The sprite's base texture, by its bindless slot.
   pub texture: u32,
   pub flags: u32,
@@ -16,5 +16,5 @@ pub struct ParticleSurfaceRecord {
 
 impl ParticleSurfaceRecord {
   /// `Texture clamp`: sampled clamped to the edge rather than wrapped.
-  pub const IS_CLAMPED: u32 = 1 << 0;
+  pub(crate) const IS_CLAMPED: u32 = 1 << 0;
 }

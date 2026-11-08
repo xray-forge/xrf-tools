@@ -7,7 +7,7 @@ use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 /// depth the fog is measured by, the lighting and the stage's own uniform.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct FogScatteringParameters<'a> {
+pub(crate) struct FogScatteringParameters<'a> {
   #[texture(d2, float)]
   pub source: GraphTexture,
   #[texture(d2, float)]

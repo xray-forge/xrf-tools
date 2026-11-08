@@ -31,7 +31,7 @@ use crate::sound::schedule::zone_states::ZoneStates;
 /// emitter of the scene's; the weather's ambient effects and the wind they bring; its campfires' switching; and the
 /// object motions its moving zones follow. Its posts tell the scene what plays where; the scene simulates and draws it,
 /// and tells which effects finished.
-pub struct LevelEffects {
+pub(crate) struct LevelEffects {
   pending: LoaderOnce<Option<RenderLevelParticles>>,
   systems: Option<EffectSystems>,
   emitters: ProxyAllocator<ParticleEmitterProxy>,
@@ -55,7 +55,7 @@ struct EffectSystems {
 }
 
 impl LevelEffects {
-  pub fn start(source: &Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> Self {
+  pub(crate) fn start(source: &Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> Self {
     Self {
       pending: Self::read_particles(source, workers),
       systems: None,
@@ -87,7 +87,7 @@ impl LevelEffects {
   /// Reads the particles again from `source`: every placement's emitter and the ambient effect playing leave the scene
   /// with what plays at them, and the particles read are placed afresh. The wind, the campfires and the object motions
   /// go on as they were.
-  pub fn reload(
+  pub(crate) fn reload(
     &mut self,
     updates: &mut Vec<RenderSceneUpdate>,
     source: &Arc<dyn WorldLevelSource>,
@@ -106,29 +106,29 @@ impl LevelEffects {
 
   /// Reads its object motions from `source`, a next source of the same level, from now on, every one read again where
   /// `reload` names them.
-  pub fn follow_motions(&mut self, source: &Arc<dyn WorldLevelSource>, reload: LevelParts) {
+  pub(crate) fn follow_motions(&mut self, source: &Arc<dyn WorldLevelSource>, reload: LevelParts) {
     self.motions.follow(source, reload);
   }
 
   /// Whether its loader has answered, whatever it answered.
-  pub fn is_read(&self) -> bool {
+  pub(crate) fn is_read(&self) -> bool {
     !self.pending.is_pending()
   }
 
   /// Plays an ambient effect on the next frame, ending the one playing, without waiting.
-  pub fn play_ambient_now(&mut self) {
+  pub(crate) fn play_ambient_now(&mut self) {
     self.ambient.play_now();
   }
 
   /// Starts the ambient effects afresh, as at the level's first frame: what plays leaves the scene with its particles,
   /// and the next effect and the numbers it is drawn by start over, so what a burst plays depends on its own frames
   /// alone. The placed particles and the campfires go on as they were.
-  pub fn restart_ambient(&mut self, updates: &mut Vec<RenderSceneUpdate>) {
+  pub(crate) fn restart_ambient(&mut self, updates: &mut Vec<RenderSceneUpdate>) {
     self.ambient.restart(updates, &mut self.emitters);
   }
 
   /// Where the ambient effects stand as of the last frame, none until the particles are read.
-  pub fn report_ambient(&self) -> Option<WorldAmbientReport> {
+  pub(crate) fn report_ambient(&self) -> Option<WorldAmbientReport> {
     self.systems.as_ref().map(|systems| WorldAmbientReport {
       is_indoors: systems.hemi.is_indoors(),
       ..self.ambient.report(self.now)
@@ -136,7 +136,7 @@ impl LevelEffects {
   }
 
   /// Takes the effects the scene finished, which the ambient effects are told of on their next update.
-  pub fn note_finished(&mut self, finished: Vec<(ProxyHandle<ParticleEmitterProxy>, PlacedEffect)>) {
+  pub(crate) fn note_finished(&mut self, finished: Vec<(ProxyHandle<ParticleEmitterProxy>, PlacedEffect)>) {
     self.finished.extend(finished.into_iter().map(|(handle, _)| handle));
   }
 
@@ -147,7 +147,7 @@ impl LevelEffects {
   /// `light_campfires` and `light_motions` are the campfires and motions the level's lights follow. The wind blows and
   /// the camera's indoor estimate runs every frame; while particles are not drawn, or the ambient effects are switched
   /// off, the ambient effects play as though indoors: none starts, what plays stops, and the wind calms.
-  pub fn advance(
+  pub(crate) fn advance(
     &mut self,
     updates: &mut Vec<RenderSceneUpdate>,
     clocks: EffectClocks,

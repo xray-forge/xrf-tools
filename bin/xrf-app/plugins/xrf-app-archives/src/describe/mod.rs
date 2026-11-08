@@ -26,5 +26,5 @@ mod spawn;
 mod tests;
 mod thm;
 
-pub use description::ArchiveFileDescription;
-pub use source::ArchiveDescribeSource;
+pub(crate) use description::ArchiveFileDescription;
+pub(crate) use source::ArchiveDescribeSource;

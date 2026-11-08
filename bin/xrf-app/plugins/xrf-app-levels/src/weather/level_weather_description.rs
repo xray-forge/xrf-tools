@@ -11,7 +11,7 @@ use crate::weather::LevelWeatherTexture;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LevelWeatherDescription {
+pub(crate) struct LevelWeatherDescription {
   pub engine: XrayEngine,
   /// What the level's `weathers` resolves to.
   pub weather: LevelWeather,

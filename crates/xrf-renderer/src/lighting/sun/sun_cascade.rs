@@ -23,7 +23,7 @@ const TURN_TEXELS: f32 = 0.5;
 /// (`compute_caster_model_fixed`), then snapped to the map's own texels, so moving the camera slides the map a whole
 /// texel at a time and its edges do not shimmer.
 #[derive(Clone, Copy, Debug)]
-pub struct SunCascade {
+pub(crate) struct SunCascade {
   /// What the cascade is drawn from: looking along the light, the square's width across, depth reversed.
   pub view: CameraView,
   /// Metres one texel of its map is across.
@@ -64,7 +64,7 @@ impl SunCascade {
   /// `span` is how far along the light the level stands, nearest and farthest, which its casters and receivers stand
   /// within: measured from the level rather than the camera, a caster's shadow does not come and go as the camera moves
   /// along the light.
-  pub fn fit(
+  pub(crate) fn fit(
     &mut self,
     camera: &CameraView,
     rays: &mut SunViewRays,
@@ -131,13 +131,13 @@ impl SunCascade {
   /// resolution over the same level, strayed from it by a sixteenth of the width at most along each axis, and under a
   /// light turned by no more than moves a caster as far towards the sun as the map reaches `TURN_TEXELS` across. A
   /// sharp turn moves the square further, and its view would fall out of the map until the map's turn came.
-  pub fn is_held_by(&self, drawn: &Self) -> bool {
+  pub(crate) fn is_held_by(&self, drawn: &Self) -> bool {
     self.is_held_within(drawn, 1.0)
   }
 
   /// Whether a map drawn at `drawn` holds this fit within `share` of what `is_held_by` allows: a map about to stop
   /// holding has its successor drawn ahead.
-  pub fn is_held_within(&self, drawn: &Self, share: f32) -> bool {
+  pub(crate) fn is_held_within(&self, drawn: &Self, share: f32) -> bool {
     let [x, y, z, width, resolution, nearest, farthest, light @ ..] = self.key;
     let [
       drawn_x,
@@ -166,7 +166,7 @@ impl SunCascade {
 
   /// The camera rows `first` to `last` (past the end) of its map `resolution` texels across are drawn by: its own, its
   /// projection narrowed to those rows, so their texels land where the whole map's would.
-  pub fn get_rows_view(&self, (first, last): (u32, u32), resolution: u32) -> CameraView {
+  pub(crate) fn get_rows_view(&self, (first, last): (u32, u32), resolution: u32) -> CameraView {
     let width: f32 = self.key[3];
     let half: f32 = width / 2.0;
     let texel: f32 = width / resolution.max(1) as f32;

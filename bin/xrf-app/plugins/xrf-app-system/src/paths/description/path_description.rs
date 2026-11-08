@@ -9,7 +9,7 @@ use crate::paths::description::PathKind;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct PathDescription {
+pub(crate) struct PathDescription {
   pub kind: PathKind,
   /// Entries directly inside a directory.
   pub entry_count: Option<u64>,
@@ -21,7 +21,7 @@ impl PathDescription {
   /// # Errors
   ///
   /// Returns an error when the path exists but its metadata cannot be read.
-  pub fn read(target: &Path) -> io::Result<Self> {
+  pub(crate) fn read(target: &Path) -> io::Result<Self> {
     let metadata: fs::Metadata = match fs::metadata(target) {
       Ok(metadata) => metadata,
       Err(error) if error.kind() == io::ErrorKind::NotFound => {

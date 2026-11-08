@@ -10,7 +10,7 @@ use super::report::OmfDuplicateMotionReport;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct DuplicateMotionCommand;
+pub(crate) struct DuplicateMotionCommand;
 
 impl GenericCommand for DuplicateMotionCommand {
   fn operation(&self) -> &'static str {

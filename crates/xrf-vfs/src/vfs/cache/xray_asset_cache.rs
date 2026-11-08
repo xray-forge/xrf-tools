@@ -18,7 +18,7 @@ use crate::{XrayFileStamp, XrayRevision};
 /// requests a run made, which is a property of its inputs. Plain lookups do not count, so inspecting the store cannot
 /// change what a run reports about itself.
 #[derive(Debug, Default)]
-pub struct XrayAssetCache {
+pub(crate) struct XrayAssetCache {
   policy: XrayCachePolicy,
   entries: RwLock<XrayCacheEntries>,
   flights: XrayCacheFlights,
@@ -31,14 +31,14 @@ pub struct XrayAssetCache {
 }
 
 impl XrayAssetCache {
-  pub fn new(policy: XrayCachePolicy) -> Self {
+  pub(crate) fn new(policy: XrayCachePolicy) -> Self {
     Self {
       policy,
       ..Default::default()
     }
   }
 
-  pub fn get_policy(&self) -> &XrayCachePolicy {
+  pub(crate) fn get_policy(&self) -> &XrayCachePolicy {
     &self.policy
   }
 
@@ -58,7 +58,7 @@ impl XrayAssetCache {
   /// A plain lookup, outside the accounting: it reports what the store holds without changing what the run reports
   /// about itself. [`Self::get_or_load`] is the read that counts.
   #[cfg(test)]
-  pub fn get<T: Send + Sync + 'static>(&self, key: &XrayCacheKey) -> Option<Arc<T>> {
+  pub(crate) fn get<T: Send + Sync + 'static>(&self, key: &XrayCacheKey) -> Option<Arc<T>> {
     self.peek(key)
   }
 
@@ -74,7 +74,7 @@ impl XrayAssetCache {
   /// Returns whatever `load` answers with. Failures are not retained and are never shared: a waiter whose owner failed
   /// loads again and reports its own error, which is both what a sequential pair would have done and what keeps one
   /// reader's failure from being served to every reader behind it.
-  pub fn get_or_load<T, F>(&self, key: XrayCacheKey, kind: XrayAssetType, load: F) -> XrfResult<Arc<T>>
+  pub(crate) fn get_or_load<T, F>(&self, key: XrayCacheKey, kind: XrayAssetType, load: F) -> XrfResult<Arc<T>>
   where
     T: Send + Sync + 'static,
     F: FnOnce() -> XrfResult<(T, u64, Option<XrayFileStamp>)>,
@@ -119,13 +119,19 @@ impl XrayAssetCache {
 
   /// Retains a parsed value if the policy allows its kind and the budget has room.
   #[cfg(test)]
-  pub fn insert<T: Send + Sync + 'static>(&self, key: XrayCacheKey, kind: XrayAssetType, bytes: u64, value: Arc<T>) {
+  pub(crate) fn insert<T: Send + Sync + 'static>(
+    &self,
+    key: XrayCacheKey,
+    kind: XrayAssetType,
+    bytes: u64,
+    value: Arc<T>,
+  ) {
     self.retain(key, kind, bytes, None, value);
   }
 
   /// Drops everything retained for one copy, whatever type or revision held it.
   // todo: Index the keys by copy, so a change of many files stops scanning every retained value once per file.
-  pub fn forget_copy(&self, opening: u64, path: &str) -> usize {
+  pub(crate) fn forget_copy(&self, opening: u64, path: &str) -> usize {
     self.write_entries().retain(|key, _| !key.is_copy(opening, path))
   }
 
@@ -150,13 +156,13 @@ impl XrayAssetCache {
 
   /// Drops everything no caller is holding, and answers how many entries went.
   #[cfg(test)]
-  pub fn clean_unreferenced(&self) -> usize {
+  pub(crate) fn clean_unreferenced(&self) -> usize {
     self
       .write_entries()
       .retain(|_, entry| Arc::strong_count(&entry.value) > 1)
   }
 
-  pub fn get_stats(&self) -> XrayCacheStats {
+  pub(crate) fn get_stats(&self) -> XrayCacheStats {
     let entries = self.read_entries();
 
     XrayCacheStats {

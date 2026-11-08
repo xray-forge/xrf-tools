@@ -16,7 +16,7 @@ use crate::request::TranslationsBuildRequest;
 /// Compile translation sources into per-language string tables, one build at a time.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "build_project")]
-pub async fn translations_build_project(
+pub(crate) async fn translations_build_project(
   execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
   request: TranslationsBuildRequest,

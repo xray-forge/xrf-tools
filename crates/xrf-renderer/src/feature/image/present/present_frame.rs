@@ -4,7 +4,7 @@ use crate::contract::viewport::render_rect::RenderRect;
 /// What one frame's present shows and where: the view asked for, the viewport's rectangle it is drawn into, and what
 /// the scene it shows was drawn with.
 #[derive(Clone, Copy, Debug, Default)]
-pub struct PresentFrame {
+pub(crate) struct PresentFrame {
   pub view: RenderDebugView,
   pub output: RenderRect,
   /// Whether the scene was upscaled into the output.

@@ -10,7 +10,7 @@ use super::report::DdsCropReport;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct CropCommand;
+pub(crate) struct CropCommand;
 
 impl GenericCommand for CropCommand {
   fn operation(&self) -> &'static str {

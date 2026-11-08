@@ -7,7 +7,7 @@ use xrf_vfs::XrayRoots;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub struct DialogsOpenRequest {
+pub(crate) struct DialogsOpenRequest {
   pub session_id: SessionId,
   /// Trees to search, and how each is read.
   pub roots: XrayRoots,

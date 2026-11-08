@@ -9,7 +9,7 @@ use crate::pass::view::view_binding::ViewBinding;
 
 /// Fills the motion target where nothing was drawn with the motion the sky makes as the camera turns, so a resolve
 /// reading the target whole carries the sky's history with the view.
-pub struct SkyMotionPass {
+pub(crate) struct SkyMotionPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   pipeline: PipelineSet<wgpu::RenderPipeline>,
@@ -19,7 +19,7 @@ impl SkyMotionPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+  pub(crate) fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
     let device: &wgpu::Device = source.device;
 
     let layout: wgpu::BindGroupLayout = SkyMotionParameters::create_layout(device);
@@ -33,7 +33,7 @@ impl SkyMotionPass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipeline.refresh(source.cache, || {
       Self::create_pipeline(source, &self.view_layout, &self.layout)
     }) {
@@ -42,7 +42,7 @@ impl SkyMotionPass {
   }
 
   /// Writes the sky's motion into the motion target the pass draws into, where nothing was drawn.
-  pub fn record(&self, context: &mut RasterContext<'_>, view: &ViewBinding, parameters: &SkyMotionParameters) {
+  pub(crate) fn record(&self, context: &mut RasterContext<'_>, view: &ViewBinding, parameters: &SkyMotionParameters) {
     context.bind(parameters);
 
     let pass: &mut wgpu::RenderPass<'static> = context.get_pass();

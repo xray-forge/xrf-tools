@@ -7,7 +7,7 @@ use xrf_translation::{TranslationVerifyLanguageSummary, TranslationVerifyResult}
 /// checks carry the run's duration.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TranslationVerifyReport {
+pub(crate) struct TranslationVerifyReport {
   checked_translations: u32,
   /// One row per file and language, so "which languages are incomplete" is answerable without reading every finding:
   /// there are 149,979 of them for a two-language mod checked against eight.
@@ -20,7 +20,7 @@ pub struct TranslationVerifyReport {
 }
 
 impl TranslationVerifyReport {
-  pub fn new(result: &TranslationVerifyResult) -> Self {
+  pub(crate) fn new(result: &TranslationVerifyResult) -> Self {
     Self {
       checked_translations: result.checked_translations_count,
       languages: result.languages.clone(),
@@ -31,7 +31,7 @@ impl TranslationVerifyReport {
   }
 
   /// A source that could not be read as translations, judged as one finding: nothing in it was checked.
-  pub fn malformed(error: &XrfError) -> Self {
+  pub(crate) fn malformed(error: &XrfError) -> Self {
     Self {
       checked_translations: 0,
       languages: Vec::new(),

@@ -16,12 +16,12 @@ use crate::weather::LevelWorldAmbients;
 use crate::weather::render::{LevelLensFlares, LevelRain, LevelThunderbolts, LevelWetSurfaces};
 
 /// What a level's weathers play with as the world takes them, what the renderer draws them with among it.
-pub struct LevelWorldWeather;
+pub(crate) struct LevelWorldWeather;
 
 impl LevelWorldWeather {
   /// The level's weather as the world takes it, the environment's catalog read already and the rest read through
   /// `search`.
-  pub fn read(
+  pub(crate) fn read(
     level: &SessionSnapshot<SelectedLevel>,
     environment: &LevelEnvironment,
     search: &XraySearch,

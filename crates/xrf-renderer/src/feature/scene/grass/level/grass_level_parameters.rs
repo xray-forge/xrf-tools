@@ -7,7 +7,7 @@ use crate::feature::scene::grass::level::grass_model_record::GrassModelRecord;
 /// a model then the frame's total, where each model's range goes on filling, and one indexed draw a model.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 0)]
-pub struct GrassLevelParameters {
+pub(crate) struct GrassLevelParameters {
   #[storage]
   pub grid: StorageArray<u32>,
   #[storage]

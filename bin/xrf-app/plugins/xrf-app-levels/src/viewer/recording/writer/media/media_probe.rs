@@ -10,16 +10,16 @@
 /// loading each from System32 first is what every later call binds to, and a Windows without them (an N edition
 /// lacking the Media Feature Pack) answers why rather than failing on its first call. Elsewhere nothing writes video.
 #[derive(Clone, Copy, Debug)]
-pub struct MediaProbe {
+pub(crate) struct MediaProbe {
   libraries: &'static [&'static str],
 }
 
 impl MediaProbe {
   /// Media Foundation's: its platform, the Sink Writer and the media sinks.
-  pub const MEDIA_FOUNDATION: Self = Self::new(&["mfplat.dll", "mfreadwrite.dll", "mf.dll"]);
+  pub(crate) const MEDIA_FOUNDATION: Self = Self::new(&["mfplat.dll", "mfreadwrite.dll", "mf.dll"]);
 
   /// A probe of `libraries`, loaded from System32.
-  pub const fn new(libraries: &'static [&'static str]) -> Self {
+  pub(crate) const fn new(libraries: &'static [&'static str]) -> Self {
     Self { libraries }
   }
 
@@ -28,7 +28,7 @@ impl MediaProbe {
   /// # Errors
   ///
   /// Returns an error naming the first library that does not load, or, off Windows, that only Windows writes video.
-  pub fn load(&self) -> Result<(), String> {
+  pub(crate) fn load(&self) -> Result<(), String> {
     self
       .libraries
       .iter()

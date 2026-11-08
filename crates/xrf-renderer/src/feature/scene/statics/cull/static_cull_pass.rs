@@ -23,7 +23,7 @@ const ENTRIES: [&str; 6] = [
 
 /// Decides each frame which clusters are drawn, into every batch's run of the visible list: an early phase before the
 /// first draw, and a late one testing what the early phase set aside against the depth that draw left.
-pub struct StaticCullPass {
+pub(crate) struct StaticCullPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   pipelines: PipelineSet<StaticCullPipelines>,
@@ -34,7 +34,7 @@ impl StaticCullPass {
   /// Invocations a cull workgroup runs, as `shaders/static/cull.wgsl` declares them.
   pub(crate) const WORKGROUP: u32 = 64;
 
-  pub fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+  pub(crate) fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
     let device: &wgpu::Device = source.device;
 
     let layout: wgpu::BindGroupLayout = StaticCullParameters::create_layout(device);
@@ -49,7 +49,7 @@ impl StaticCullPass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipelines.refresh(source.cache, || {
       Self::create_pipelines(source, &self.view_layout, &self.layout)
     }) {
@@ -59,7 +59,7 @@ impl StaticCullPass {
 
   /// Decides each impostor's level of detail, culls every cluster and row by it, then clamps each batch's count to its
   /// run and sizes the late phase.
-  pub fn record_early(
+  pub(crate) fn record_early(
     &self,
     context: &mut ComputeContext<'_>,
     view: &ViewBinding,
@@ -87,7 +87,7 @@ impl StaticCullPass {
 
   /// Culls every cluster and row into a shadow's view, its own lists bound, then clamps each batch's count to its run,
   /// into a compute pass several shadows' culls may share.
-  pub fn record_shadow(
+  pub(crate) fn record_shadow(
     &self,
     context: &mut ComputeContext<'_>,
     view: &ViewBinding,
@@ -117,7 +117,12 @@ impl StaticCullPass {
 
   /// Copies how many workgroups the late phase takes, as many as the early phase set aside, where its dispatch reads
   /// them.
-  pub fn record_late_dispatch(&self, encoder: &mut wgpu::CommandEncoder, late: &wgpu::Buffer, dispatch: &wgpu::Buffer) {
+  pub(crate) fn record_late_dispatch(
+    &self,
+    encoder: &mut wgpu::CommandEncoder,
+    late: &wgpu::Buffer,
+    dispatch: &wgpu::Buffer,
+  ) {
     encoder.copy_buffer_to_buffer(
       late,
       StaticCullScratch::LATE_DISPATCH_OFFSET,
@@ -128,7 +133,7 @@ impl StaticCullPass {
   }
 
   /// Tests what the early phase set aside again, then clamps the late counts.
-  pub fn record_late(
+  pub(crate) fn record_late(
     &self,
     context: &mut ComputeContext<'_>,
     view: &ViewBinding,

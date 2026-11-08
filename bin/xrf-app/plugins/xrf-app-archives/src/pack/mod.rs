@@ -6,4 +6,4 @@ mod request;
 #[cfg(test)]
 mod tests;
 
-pub use request::ArchivesPackRequest;
+pub(crate) use request::ArchivesPackRequest;

@@ -22,7 +22,7 @@ use crate::pass::view::view_binding::ViewBinding;
 /// Bins the local lights in view into clusters of the view, marches the contact shadows towards the strongest at half
 /// the frame's size, finds how much of each shadowed light every pixel sees, from the shadow atlas or traced, then adds
 /// every light reaching each pixel to the light its frame accumulated after the sun.
-pub struct LightsPass {
+pub(crate) struct LightsPass {
   binning_layout: wgpu::BindGroupLayout,
   layout: wgpu::BindGroupLayout,
   contact_layout: wgpu::BindGroupLayout,
@@ -63,33 +63,33 @@ impl LightsPass {
 
   /// Clusters the view is cut into, sixteen across, nine down and twenty four along it, as `common/light_clusters`
   /// declares them.
-  pub const LIGHT_CLUSTERS: u32 = 16 * 9 * 24;
+  pub(crate) const LIGHT_CLUSTERS: u32 = 16 * 9 * 24;
 
   /// Lights one cluster holds at most; any more reaching it go unlit there.
-  pub const LIGHT_CLUSTER_CAPACITY: u32 = 64;
+  pub(crate) const LIGHT_CLUSTER_CAPACITY: u32 = 64;
 
   /// Where the traced visibility binds the texture cache's group, after the scene trace's.
   const TEXTURE_GROUP: u32 = 4;
 
   /// What the visibility is held in: a share a light, four lights a layer.
-  pub const VISIBILITY_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+  pub(crate) const VISIBILITY_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
   /// Layers of the visibility a pixel's slots fill.
-  pub const VISIBILITY_LAYERS: u32 = 2;
+  pub(crate) const VISIBILITY_LAYERS: u32 = 2;
 
   /// What the lights' contact shadows are held in: a light's record and the share of it kept a slot, four a layer.
-  pub const CONTACT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Uint;
+  pub(crate) const CONTACT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Uint;
 
   /// Slots of the lights' contact shadows a layer holds.
-  pub const CONTACT_LAYER_SLOTS: u32 = 4;
+  pub(crate) const CONTACT_LAYER_SLOTS: u32 = 4;
 
   /// What the weight a light must reach to be among those marched towards is held in.
-  pub const THRESHOLD_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
+  pub(crate) const THRESHOLD_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
 
   /// # Errors
   ///
   /// Returns an error when a shader does not compose or compile.
-  pub fn new(
+  pub(crate) fn new(
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
@@ -160,7 +160,7 @@ impl LightsPass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipelines.refresh(source.cache, || {
       Self::create_pipelines(
         source,
@@ -176,22 +176,22 @@ impl LightsPass {
   }
 
   /// What the lights pass reads for the visibility while no light in view is shadowed.
-  pub fn get_unshadowed(&self) -> &wgpu::TextureView {
+  pub(crate) fn get_unshadowed(&self) -> &wgpu::TextureView {
     &self.unshadowed
   }
 
   /// What the visibility reads for the contact shadows while none are marched.
-  pub fn get_uncontacted(&self) -> &wgpu::TextureView {
+  pub(crate) fn get_uncontacted(&self) -> &wgpu::TextureView {
     &self.uncontacted
   }
 
   /// What the visibility and the lights read for the marched lights' weight while none are marched.
-  pub fn get_unthresholded(&self) -> &wgpu::TextureView {
+  pub(crate) fn get_unthresholded(&self) -> &wgpu::TextureView {
     &self.unthresholded
   }
 
   /// Bins the view's light records into the 16×9×24 clusters the lights pass reads.
-  pub fn record_binning(&self, context: &mut ComputeContext<'_>, parameters: &LightBinningParameters) {
+  pub(crate) fn record_binning(&self, context: &mut ComputeContext<'_>, parameters: &LightBinningParameters) {
     context.bind(parameters);
 
     let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
@@ -202,7 +202,7 @@ impl LightsPass {
 
   /// Marches the contact shadows towards each texel's strongest lights into a target `size` texels across, half the
   /// frame's.
-  pub fn record_contact(
+  pub(crate) fn record_contact(
     &self,
     context: &mut ComputeContext<'_>,
     view: &ViewBinding,
@@ -226,7 +226,7 @@ impl LightsPass {
 
   /// Finds how much of each shadowed light every pixel of a `size` view sees, reading the contact shadows where they
   /// were marched.
-  pub fn record_visibility(
+  pub(crate) fn record_visibility(
     &self,
     context: &mut ComputeContext<'_>,
     view: &ViewBinding,
@@ -251,7 +251,7 @@ impl LightsPass {
 
   /// Traces how much of each shadowed light every pixel of a `size` view sees, the contact shadows not marched; nothing
   /// on a device without ray queries.
-  pub fn record_tracing(
+  pub(crate) fn record_tracing(
     &self,
     context: &mut ComputeContext<'_>,
     view: &ViewBinding,
@@ -281,7 +281,7 @@ impl LightsPass {
 
   /// Adds every light to the light target as `draw` says: with the contact shadows' marched shares where they were
   /// marched, and its specular split into the specular target the pass draws into second.
-  pub fn record_draw(
+  pub(crate) fn record_draw(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,

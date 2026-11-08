@@ -18,7 +18,7 @@ use crate::scene::level::shadow::shadow_frame::ShadowFrame;
 impl LevelShadows {
   /// Fits the cascades, offers those wanting a draw to `scheduler` while the sun lights anything, and takes what the
   /// sun samples them by.
-  pub fn prepare_cascades(
+  pub(crate) fn prepare_cascades(
     &mut self,
     device: &wgpu::Device,
     view_layout: &wgpu::BindGroupLayout,
@@ -107,7 +107,7 @@ impl LevelShadows {
 
   /// Readies the cascades and bands `scheduler` granted to be culled and drawn, marking each drawn; one not granted
   /// waits a frame more. `encoder` takes what readying them writes.
-  pub fn commit_cascades(
+  pub(crate) fn commit_cascades(
     &mut self,
     device: &wgpu::Device,
     encoder: &mut FrameEncoder,

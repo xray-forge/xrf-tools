@@ -7,27 +7,27 @@ use crate::host::render_bundle::RenderBundle;
 
 /// The helpers' icons as one texture: a cell each, [`RENDER_HELPER_ICONS`] row by row, white pictures outlined in
 /// black that a helper tints by its kind's colour, with mips down to an eighth of a cell.
-pub struct HelperIconAtlas {
+pub(crate) struct HelperIconAtlas {
   pub view: wgpu::TextureView,
   pub sampler: wgpu::Sampler,
 }
 
 impl HelperIconAtlas {
   /// The atlas's path in the renderer's bundle, which the generator writes (`cargo make generate-helper-icons`).
-  pub const PATH: &'static str = "helpers/icons.png";
+  pub(crate) const PATH: &'static str = "helpers/icons.png";
 
   /// Pixels a cell spans each way, cells a row, and the pixels a cell's picture leaves clear round it, so neither its
   /// outline nor a smaller mip reaches the next cell.
-  pub const CELL: u32 = 64;
-  pub const COLUMNS: u32 = 8;
+  pub(crate) const CELL: u32 = 64;
+  pub(crate) const COLUMNS: u32 = 8;
   #[cfg(test)]
-  pub const MARGIN: u32 = 8;
+  pub(crate) const MARGIN: u32 = 8;
 
   /// Mips it keeps, the smallest a cell of eight pixels.
   const MIPS: u32 = 4;
 
   /// The atlas's size in pixels for `count` icons.
-  pub fn get_size(count: usize) -> (u32, u32) {
+  pub(crate) fn get_size(count: usize) -> (u32, u32) {
     (
       Self::COLUMNS * Self::CELL,
       (count as u32).div_ceil(Self::COLUMNS) * Self::CELL,
@@ -39,7 +39,7 @@ impl HelperIconAtlas {
   /// # Errors
   ///
   /// Returns an error where the bundle does not hold it, it does not decode, or it is not the size its icons make.
-  pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, bundle: &dyn RenderBundle) -> XrfResult<Self> {
+  pub(crate) fn new(device: &wgpu::Device, queue: &wgpu::Queue, bundle: &dyn RenderBundle) -> XrfResult<Self> {
     let image: RgbaImage =
       image::load_from_memory_with_format(&bundle.read_bundled(Self::PATH)?, image::ImageFormat::Png)
         .map_err(|error| XrfError::new_unexpected_error(format!("The helper icon atlas does not decode: {error}")))?

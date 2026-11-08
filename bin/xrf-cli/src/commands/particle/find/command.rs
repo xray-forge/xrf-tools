@@ -16,7 +16,7 @@ const ACTION_ARGUMENT: &str = "action";
 const EFFECT_ARGUMENT: &str = "effect";
 
 #[derive(Default)]
-pub struct FindCommand;
+pub(crate) struct FindCommand;
 
 impl GenericCommand for FindCommand {
   fn operation(&self) -> &'static str {

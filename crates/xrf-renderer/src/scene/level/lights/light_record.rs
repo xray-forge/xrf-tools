@@ -4,7 +4,7 @@ use xrf_renderer_core::ShaderStruct;
 /// One local light standing in view this frame, in view space, as `shaders/common/light_clusters.wgsl` declares it.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
-pub struct LightRecord {
+pub(crate) struct LightRecord {
   /// Its position, then `1 / L_R²`, the falloff reaching zero at 95% of the range.
   pub position: Vec4,
   /// Its colour, then its specular weight.
@@ -29,8 +29,8 @@ pub struct LightRecord {
 
 impl LightRecord {
   /// What a spot without a projector writes as its slot.
-  pub const NO_PROJECTOR: f32 = -1.0;
+  pub(crate) const NO_PROJECTOR: f32 = -1.0;
 
   /// What a light without a cone writes as its cone's cosine: every point passes its test.
-  pub const NO_CONE: f32 = -2.0;
+  pub(crate) const NO_CONE: f32 = -2.0;
 }

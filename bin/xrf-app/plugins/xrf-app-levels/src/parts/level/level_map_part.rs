@@ -27,7 +27,7 @@ impl SessionPart for LevelMapPart {
 
 impl LevelMapPart {
   /// The level's own config, whose `[level_map]` places its map.
-  pub const FILE: &'static str = "level.ltx";
+  pub(crate) const FILE: &'static str = "level.ltx";
 
   /// The section of `level.ltx` placing the map.
   const SECTION: &'static str = "level_map";
@@ -38,19 +38,19 @@ impl LevelMapPart {
   const TEXTURE_FIELD: &'static str = "texture";
 
   /// The store with `map` kept as the level's map part, read from `inputs` as the level opened.
-  pub fn with(parts: SessionParts, map: Option<LevelMapDescription>, inputs: XrayInputRecord) -> SessionParts {
+  pub(crate) fn with(parts: SessionParts, map: Option<LevelMapDescription>, inputs: XrayInputRecord) -> SessionParts {
     parts.with::<Self>(map, inputs)
   }
 
   /// Where the open level's map lies, read the first time anything asks and kept; `None` where its config places none.
-  pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> Option<LevelMapDescription> {
+  pub(crate) fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> Option<LevelMapDescription> {
     current
       .parts
       .get_or_record::<Self>(search, |search| Self::read(&current.source, search))
   }
 
   /// The level's map, or `None` where its config is missing, places no map or cannot be read; a failure is logged.
-  pub fn read(source: &LevelSource, search: &XraySearch) -> Option<LevelMapDescription> {
+  pub(crate) fn read(source: &LevelSource, search: &XraySearch) -> Option<LevelMapDescription> {
     let bytes: Vec<u8> = source
       .read_optional_file(search, Self::FILE)
       .inspect_err(|error| LevelReport::unreadable_map(source, error))
@@ -70,7 +70,7 @@ impl LevelMapPart {
   /// # Errors
   ///
   /// Returns an error for text that is no config, or a `bound_rect` that is not four numbers spanning an area.
-  pub fn parse(text: &str) -> XrfResult<Option<LevelMapDescription>> {
+  pub(crate) fn parse(text: &str) -> XrfResult<Option<LevelMapDescription>> {
     let ltx: Ltx = Ltx::read_from_str(text)?;
     let Some(section) = ltx.section(Self::SECTION) else {
       return Ok(None);

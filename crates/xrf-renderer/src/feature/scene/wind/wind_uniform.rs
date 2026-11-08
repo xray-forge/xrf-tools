@@ -13,7 +13,7 @@ use crate::scene::level::level_time::LevelTime;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Wind")]
-pub struct WindUniform {
+pub(crate) struct WindUniform {
   /// The engine's `wind`: which way the trees lean, and how far, across the ground.
   pub wind: Vec4,
   /// The engine's `wave`: its direction through the level, and its phase in `w`, both over a turn.
@@ -35,7 +35,7 @@ pub struct WindUniform {
 impl WindUniform {
   /// The sway at a time, still for none or for no amplitude: the wind's turn taken within its rotation, and the wave's
   /// phase within the turn `shaders/static/sway.wgsl`'s `cyclic` repeats over.
-  pub fn new(trees: Option<&RenderTreeWind>, time: LevelTime) -> Self {
+  pub(crate) fn new(trees: Option<&RenderTreeWind>, time: LevelTime) -> Self {
     let Some(trees) = trees.filter(|trees| trees.amplitude > 0.0) else {
       return Self::default();
     };
@@ -59,7 +59,7 @@ impl WindUniform {
   }
 
   /// This sway after the one before it, or after itself for a first frame.
-  pub fn following(mut self, before: Option<&Self>) -> Self {
+  pub(crate) fn following(mut self, before: Option<&Self>) -> Self {
     if let Some(before) = before {
       self.previous_wind = before.wind;
       self.previous_wave = before.wave;
@@ -69,7 +69,7 @@ impl WindUniform {
   }
 
   /// This sway with the enhanced foliage motion's values.
-  pub fn with_foliage(mut self, foliage: &FoliageWindValues) -> Self {
+  pub(crate) fn with_foliage(mut self, foliage: &FoliageWindValues) -> Self {
     self.foliage_wind = foliage.wind;
     self.foliage_grass = foliage.grass;
     self.foliage_trees = foliage.trees;
@@ -82,12 +82,12 @@ impl WindUniform {
 
   /// Whether the trees move at all.
   #[cfg(test)]
-  pub fn is_swaying(&self) -> bool {
+  pub(crate) fn is_swaying(&self) -> bool {
     self.wind != Vec4::ZERO
   }
 
   /// How far the trees lean for each metre of a vertex's rigid reach from its foot.
-  pub fn get_amplitude(&self) -> f32 {
+  pub(crate) fn get_amplitude(&self) -> f32 {
     self.wind.length()
   }
 }

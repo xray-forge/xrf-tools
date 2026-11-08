@@ -15,7 +15,7 @@ use crate::lighting::weather::render_lighting::RenderLighting;
 /// (`anchored_light`); at the physical levels the weather's set so its sky lights a level surface as the
 /// world's does (`Daylight`), and the local lights' brought to real lamps'.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct LightUnits {
+pub(crate) struct LightUnits {
   /// The sky's, the clouds', the hemisphere's, the ambient's and the fog's, and at the authored levels the sun's.
   pub weather: f32,
   /// The lamps' and the self-lit surfaces'.
@@ -28,21 +28,21 @@ pub struct LightUnits {
 
 impl LightUnits {
   /// The engine's light, whose values have no units.
-  pub const NONE: Self = Self {
+  pub(crate) const NONE: Self = Self {
     weather: 1.0,
     local: 1.0,
     light_gain: 1.0,
   };
   /// The local lights' share of the unit at the physical levels: an engine lamp's 130 000 to 500 000 cd, from its range
   /// (`LIGHT_ENERGY_SHARE`), brought to a real lamp's 130 to 500.
-  pub const PHYSICAL_LOCAL: f32 = 1e-3;
+  pub(crate) const PHYSICAL_LOCAL: f32 = 1e-3;
   /// The least gain the weather's key light gives: the sRGB encoding's slope at black, under which a darkening key
   /// would take the night's fill with it.
-  pub const LEAST_KEY_GAIN: f32 = 1.0 / 12.92;
+  pub(crate) const LEAST_KEY_GAIN: f32 = 1.0 / 12.92;
 
   /// The units a view's light is in under `lighting`, its sky's irradiance `harmonics` as last projected and the
   /// world's light where the levels are physical.
-  pub fn of(
+  pub(crate) fn of(
     options: &RenderViewOptions,
     lighting: &RenderLighting,
     harmonics: &SkyHarmonics,
@@ -86,7 +86,7 @@ impl LightUnits {
   /// range follows the key light's decode, as the engine's display shows it: the key light itself stands at its
   /// decoded luminance, and a moon twenty times dimmer than the sun in display values shows hundreds of times darker.
   /// A key gone dark, between the sun's last keyframe and the moon's first, gives no less than `LEAST_KEY_GAIN`.
-  pub fn get_key_gain(key: Vec3) -> f32 {
+  pub(crate) fn get_key_gain(key: Vec3) -> f32 {
     let kept: f32 = luminance(authored_light(key, true));
 
     if kept <= 0.0 {

@@ -13,7 +13,7 @@ use crate::sound::{LevelSoundEmitters, LevelSoundFiles};
 /// What a level plays whatever its weather, as the world takes it (`CLevelSoundManager::Load`, `CCustomZone::Load`):
 /// its static sounds and zones' sounds (`LevelSoundEmitters`), and the music tracks of the section its `game.ltx`
 /// section names by `music_tracks`, each sound read for what its file says.
-pub struct LevelWorldSounds;
+pub(crate) struct LevelWorldSounds;
 
 impl LevelWorldSounds {
   /// The config the level's music is named in.
@@ -25,7 +25,7 @@ impl LevelWorldSounds {
   /// # Errors
   ///
   /// Returns an error when the game's configs cannot be opened.
-  pub fn read(level: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> XrfResult<WorldLevelSounds> {
+  pub(crate) fn read(level: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> XrfResult<WorldLevelSounds> {
     let objects: Option<LevelObjectsDescription> = LevelObjectsDescription::read(level, search).ok();
     let mut files: LevelSoundFiles<'_> = LevelSoundFiles::new(search);
     let emitters: LevelSoundEmitters = LevelSoundEmitters::read(level, search, objects.as_ref(), &mut files);

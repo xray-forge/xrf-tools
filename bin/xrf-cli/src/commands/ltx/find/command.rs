@@ -21,7 +21,7 @@ const FIELD_ARGUMENT: &str = "field";
 const VALUE_ARGUMENT: &str = "value";
 
 #[derive(Default)]
-pub struct FindCommand;
+pub(crate) struct FindCommand;
 
 impl GenericCommand for FindCommand {
   fn operation(&self) -> &'static str {

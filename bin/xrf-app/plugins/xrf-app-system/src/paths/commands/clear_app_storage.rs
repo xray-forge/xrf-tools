@@ -12,7 +12,7 @@ use crate::paths::AppStorageKind;
 /// refused.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "clear_app_storage")]
-pub async fn system_clear_app_storage(
+pub(crate) async fn system_clear_app_storage(
   directories: State<'_, AppDirectories>,
   execution: State<'_, ExecutionState>,
   kind: AppStorageKind,

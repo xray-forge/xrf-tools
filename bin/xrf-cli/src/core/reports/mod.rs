@@ -10,5 +10,5 @@
 mod file_conversion_report;
 mod skipped_mount_report;
 
-pub use file_conversion_report::FileConversionReport;
-pub use skipped_mount_report::SkippedMountReport;
+pub(crate) use file_conversion_report::FileConversionReport;
+pub(crate) use skipped_mount_report::SkippedMountReport;

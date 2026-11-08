@@ -6,7 +6,7 @@ use crate::pass::build::pipeline_source::PipelineSource;
 
 /// Smooths the sky's textures where their stored steps band into float copies (`frame/sky_deband_cube.wgsl`,
 /// `frame/sky_deband_flat.wgsl`): a cube's six faces, or a cloud texture.
-pub struct SkyDebandPass {
+pub(crate) struct SkyDebandPass {
   cube_layout: wgpu::BindGroupLayout,
   flat_layout: wgpu::BindGroupLayout,
   cube: PipelineSet<wgpu::ComputePipeline>,
@@ -20,7 +20,7 @@ impl SkyDebandPass {
   /// # Errors
   ///
   /// Returns an error when a shader does not compose or compile.
-  pub fn new(source: PipelineSource<'_>) -> XrfResult<Self> {
+  pub(crate) fn new(source: PipelineSource<'_>) -> XrfResult<Self> {
     let cube_layout: wgpu::BindGroupLayout = SkyDebandCubeParameters::create_layout(source.device);
     let flat_layout: wgpu::BindGroupLayout = SkyDebandFlatParameters::create_layout(source.device);
 
@@ -34,7 +34,7 @@ impl SkyDebandPass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping the last
   /// ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     let cube: XrfResult = self
       .cube
       .refresh(source.cache, || Self::create_cube(source, &self.cube_layout));
@@ -48,7 +48,12 @@ impl SkyDebandPass {
   }
 
   /// Smooths a cube into its copy, `size` texels a face side.
-  pub fn record_cube(&self, context: &mut ComputeContext<'_>, size: u32, parameters: &SkyDebandCubeParameters<'_>) {
+  pub(crate) fn record_cube(
+    &self,
+    context: &mut ComputeContext<'_>,
+    size: u32,
+    parameters: &SkyDebandCubeParameters<'_>,
+  ) {
     context.bind(parameters);
     context.get_pass().set_pipeline(&self.cube);
     context
@@ -57,7 +62,7 @@ impl SkyDebandPass {
   }
 
   /// Smooths a cloud texture into its copy, `size` texels across and down.
-  pub fn record_flat(
+  pub(crate) fn record_flat(
     &self,
     context: &mut ComputeContext<'_>,
     (width, height): (u32, u32),

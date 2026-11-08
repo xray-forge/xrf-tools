@@ -20,16 +20,16 @@ impl ExplosionAction {
   /// `ONEOVERSQRT2PI`.
   const ONE_OVER_SQRT_TWO_PI: f32 = 1.0 / 2.506_628_3;
 
-  pub fn transform(&mut self, matrix: &Mat4) {
+  pub(crate) fn transform(&mut self, matrix: &Mat4) {
     self.center = matrix.transform_point3(self.center_local);
   }
 
   /// `PlayEffect` starts the wave over.
-  pub fn play(&mut self) {
+  pub(crate) fn play(&mut self) {
     self.age = 0.0;
   }
 
-  pub fn execute(&mut self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
+  pub(crate) fn execute(&mut self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
     let radius: f32 = self.velocity * self.age;
     let magdt: f32 = self.magnitude * step.dt;
     let one_over_sigma: f32 = 1.0 / self.st_dev;

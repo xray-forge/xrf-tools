@@ -8,14 +8,14 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
 /// Resolves TypeScript modules using one project's compiler configuration.
-pub struct TypeScriptProject {
+pub(super) struct TypeScriptProject {
   compiler_options: TypeScriptCompilerOptions,
   root: PathBuf,
 }
 
 impl TypeScriptProject {
   /// Discover the nearest TypeScript configuration from `source_root`.
-  pub fn discover(source_root: &Path) -> XrfResult<Self> {
+  pub(super) fn discover(source_root: &Path) -> XrfResult<Self> {
     let config_path: Option<PathBuf> = source_root
       .ancestors()
       .map(|directory| directory.join("tsconfig.json"))
@@ -41,7 +41,7 @@ impl TypeScriptProject {
   }
 
   /// Resolve a module specifier from an importing TypeScript source file.
-  pub fn resolve_module_path(&self, source_file: &Path, specifier: &str) -> Option<PathBuf> {
+  pub(super) fn resolve_module_path(&self, source_file: &Path, specifier: &str) -> Option<PathBuf> {
     if specifier.starts_with('.') {
       return Self::find_module(&source_file.parent()?.join(specifier));
     }

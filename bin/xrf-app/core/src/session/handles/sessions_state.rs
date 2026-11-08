@@ -14,7 +14,7 @@ pub(super) struct SessionsState<T> {
 }
 
 impl<T> SessionsState<T> {
-  pub fn new(template: Session<T>) -> Self {
+  pub(super) fn new(template: Session<T>) -> Self {
     Self {
       template,
       handles: HashMap::new(),

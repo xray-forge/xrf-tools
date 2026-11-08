@@ -10,7 +10,7 @@ use crate::contract::viewport::page::render_page_plane::RenderPagePlane;
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable, ShaderStruct)]
 #[shader(name = "Backdrop")]
 #[expect(clippy::use_self, reason = "an array length in a field cannot name `Self`")]
-pub struct BackdropUniform {
+pub(crate) struct BackdropUniform {
   /// The wash's first and last colours, each premultiplied by its alpha, as CSS interpolates a gradient.
   pub first: Vec4,
   pub last: Vec4,
@@ -29,9 +29,9 @@ pub struct BackdropUniform {
 impl BackdropUniform {
   /// Planes `frame/backdrop.wgsl` holds room for; a page painting more keeps its outermost and its innermost ones,
   /// which are what show around a viewport.
-  pub const PLANES: usize = 4;
+  pub(crate) const PLANES: usize = 4;
 
-  pub fn new(backdrop: &RenderPageBackdrop) -> Self {
+  pub(crate) fn new(backdrop: &RenderPageBackdrop) -> Self {
     let mut uniform: Self = Self::default();
 
     if let Some(wash) = backdrop.wash.filter(|wash| wash.rect.width > 0 && wash.rect.height > 0) {
@@ -72,7 +72,7 @@ impl BackdropUniform {
   }
 
   /// The colour the window is cleared to: the first plane's, black where the page paints none.
-  pub fn get_clear(&self) -> wgpu::Color {
+  pub(crate) fn get_clear(&self) -> wgpu::Color {
     let [r, g, b, _] = self.colors[0].to_array();
 
     wgpu::Color {
@@ -84,7 +84,7 @@ impl BackdropUniform {
   }
 
   /// Whether the clear paints it all: one plane, and no wash over it.
-  pub fn is_flat(&self) -> bool {
+  pub(crate) fn is_flat(&self) -> bool {
     self.colors[0].w == 0.0 && self.boxes[1..].iter().all(|it| it.z <= 0.0 || it.w <= 0.0)
   }
 }

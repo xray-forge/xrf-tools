@@ -10,7 +10,7 @@ use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 /// leaves the scene pass while every pixel traces. Group 4, past the request list's.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 4)]
-pub struct WaterReflectionParameters<'a> {
+pub(crate) struct WaterReflectionParameters<'a> {
   #[uniform]
   pub lighting: UniformBinding<LightingUniform>,
   #[uniform]

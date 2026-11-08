@@ -16,7 +16,7 @@ enum FadeStep {
 /// The lens flare a viewport draws, faded out and the next one in when the keyframes name another, over its own
 /// `blend_down_time` and the next one's `blend_rise_time` in game seconds, as `CLensFlare::OnFrame` steps it.
 #[derive(Debug)]
-pub struct LensFlareFade {
+pub(crate) struct LensFlareFade {
   current: Option<String>,
   step: Option<FadeStep>,
   /// `m_StateBlend`.
@@ -25,7 +25,7 @@ pub struct LensFlareFade {
 }
 
 impl LensFlareFade {
-  pub fn new() -> Self {
+  pub(crate) fn new() -> Self {
     Self {
       current: None,
       step: None,
@@ -36,7 +36,13 @@ impl LensFlareFade {
 
   /// Steps the fade towards the lens flare named now, by the game seconds since the last step: real ones times `rate`;
   /// at a rate of zero, a paused clock, every fade completes at once. `times` gives a lens flare's rise and down times.
-  pub fn advance(&mut self, named: Option<&str>, times: impl Fn(&str) -> Option<(f32, f32)>, now: Instant, rate: f32) {
+  pub(crate) fn advance(
+    &mut self,
+    named: Option<&str>,
+    times: impl Fn(&str) -> Option<(f32, f32)>,
+    now: Instant,
+    rate: f32,
+  ) {
     let delta: f32 = self
       .last
       .map_or(0.0, |last| now.saturating_duration_since(last).as_secs_f32());
@@ -89,7 +95,7 @@ impl LensFlareFade {
   /// Settles at its next step on the lens flare named then, shown whole, as if it had stood since long before, and
   /// steps from that frame on: what it shows from then on follows from the frames since alone, without a fade from
   /// whatever stood before.
-  pub fn settle(&mut self) {
+  pub(crate) fn settle(&mut self) {
     self.current = None;
     self.step = None;
     self.blend = 1.0;
@@ -97,12 +103,12 @@ impl LensFlareFade {
   }
 
   /// The lens flare drawn now, if any.
-  pub fn get_shown(&self) -> Option<&str> {
+  pub(crate) fn get_shown(&self) -> Option<&str> {
     self.current.as_deref()
   }
 
   /// How far the lens flare drawn now has faded in.
-  pub fn get_blend(&self) -> f32 {
+  pub(crate) fn get_blend(&self) -> f32 {
     self.blend
   }
 }

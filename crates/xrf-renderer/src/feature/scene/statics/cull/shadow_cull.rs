@@ -4,7 +4,7 @@ use crate::feature::scene::statics::cull::static_cull_permutation::StaticCullPer
 /// overhead map of the level's water, which keeps its water alone, or a sun cascade whose trees are redrawn often enough
 /// to keep them only where their shadows can fall in the camera's view.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum ShadowCull {
+pub(crate) enum ShadowCull {
   Cascade,
   LightFace,
   Water,
@@ -12,12 +12,12 @@ pub enum ShadowCull {
 }
 
 impl ShadowCull {
-  pub const fn get_index(self) -> usize {
+  pub(crate) const fn get_index(self) -> usize {
     self as usize
   }
 
   /// The cull's variant its pipelines are built with.
-  pub const fn get_permutation(self) -> StaticCullPermutation {
+  pub(crate) const fn get_permutation(self) -> StaticCullPermutation {
     StaticCullPermutation {
       is_shadow: true,
       is_finest: matches!(self, Self::LightFace),

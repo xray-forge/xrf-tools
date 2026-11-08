@@ -5,5 +5,5 @@ pub(crate) mod commands;
 mod render;
 mod request;
 
-pub use render::TextureRenderSource;
-pub use request::{TextureSurfaceAlpha, TextureSurfaceShape, TexturesShowRequest};
+pub(crate) use render::TextureRenderSource;
+pub(crate) use request::{TextureSurfaceAlpha, TextureSurfaceShape, TexturesShowRequest};

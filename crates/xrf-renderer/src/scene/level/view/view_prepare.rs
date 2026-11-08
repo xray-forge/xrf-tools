@@ -12,7 +12,7 @@ use crate::scene::texture::weather_textures::WeatherTextures;
 
 /// What a view readies its frame from: the GPU and its passes, the camera, the sizes the frame is drawn, resolved and
 /// shown at, the options, and the weather's light, textures and clock rate.
-pub struct ViewPrepare<'a> {
+pub(crate) struct ViewPrepare<'a> {
   pub device: &'a wgpu::Device,
   pub queue: &'a wgpu::Queue,
   pub dlss: Option<&'a Dlss>,

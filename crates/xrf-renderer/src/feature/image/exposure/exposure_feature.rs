@@ -31,7 +31,7 @@ const LONGEST_STEP: Duration = Duration::from_millis(250);
 /// of the scene's light in place of the cells (at the authored levels reading the frame as the engine's cells do, for
 /// the engine's own step), or a fixed scale where it does not adapt, the scale read back as the one the next frames
 /// write their light at.
-pub struct ExposureFeature {
+pub(crate) struct ExposureFeature {
   /// The adapted scale, then each cell's luminance.
   pub state: wgpu::Buffer,
   /// The physical light's histogram, emptied by each frame's settling.
@@ -70,11 +70,11 @@ pub struct ExposureFeature {
 
 impl ExposureFeature {
   /// Cells a side the frame's luminance is measured over, as `rt_LUM_64` is.
-  pub const CELLS: u32 = 64;
+  pub(crate) const CELLS: u32 = 64;
   /// The adaptation's rate a view starts from, and starts again from when its light model changes or it restarts.
   const START_RATE: f32 = 0.5;
 
-  pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
     let state: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
       label: Some("exposure"),
       size: size_of::<ExposureState>() as u64,
@@ -117,7 +117,12 @@ impl ExposureFeature {
   /// off, the scale holds at its level's (`ExposureHistogramUniform::get_held_scale`); a change of light model starts
   /// the scale afresh, dropping what the other model metered. Then the scale the frame's light is written at: the
   /// physical light's last read back, one under the engine's. Answers what it decided, which every other unit reads.
-  pub fn prepare(&mut self, queue: &wgpu::Queue, options: &RenderViewOptions, now: Instant) -> ExposureDecisions {
+  pub(crate) fn prepare(
+    &mut self,
+    queue: &wgpu::Queue,
+    options: &RenderViewOptions,
+    now: Instant,
+  ) -> ExposureDecisions {
     self.advance(queue, options, now);
 
     ExposureDecisions {
@@ -286,12 +291,12 @@ impl ExposureFeature {
 
   /// How the physical light meters this frame.
   #[cfg(test)]
-  pub fn get_histogram(&self) -> &ExposureHistogramUniform {
+  pub(crate) fn get_histogram(&self) -> &ExposureHistogramUniform {
     &self.histogram
   }
 
   /// Holds the scale where it stands, or lets it adapt again.
-  pub fn set_frozen(&mut self, is_frozen: bool) {
+  pub(crate) fn set_frozen(&mut self, is_frozen: bool) {
     self.is_frozen = is_frozen;
     self.last = None;
   }
@@ -303,12 +308,12 @@ impl ExposureFeature {
   }
 
   /// Asks for the scale copied out with the frame just submitted.
-  pub fn request_readback(&self) {
+  pub(crate) fn request_readback(&self) {
     self.readback.request();
   }
 
   /// Drops the scale a frame that was never submitted copied out.
-  pub fn abandon_readback(&self) {
+  pub(crate) fn abandon_readback(&self) {
     self.readback.abandon();
   }
 
@@ -331,7 +336,7 @@ impl ExposureFeature {
   /// target and the scale moved towards it, or under the physical light the scene's light counted into the histogram
   /// and the scale settled from it, at the authored levels the frame read as the engine's meter reads it
   /// through the frame's lighting; nothing while it does not measure.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration {
       graph,

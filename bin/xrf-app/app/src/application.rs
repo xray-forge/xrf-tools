@@ -24,7 +24,7 @@ use crate::window::MainWindow;
 
 /// Assemble the application from its plugins and hand control to Tauri, logging from the moment its configuration
 /// names where; a failure before any window is said aloud and ends the process with failure.
-pub fn run() -> ExitCode {
+pub(crate) fn run() -> ExitCode {
   let context = tauri::generate_context!();
 
   // Recorded by this binary's build script, so it describes the binary rather than whichever crate reads it.

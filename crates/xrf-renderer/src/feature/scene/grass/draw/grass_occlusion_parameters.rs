@@ -6,7 +6,7 @@ use crate::feature::scene::statics::cull::static_occlusion_uniform::StaticOcclus
 /// view it was reduced through, its `has_history` none where the pyramid holds no depth of this frame.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 2)]
-pub struct GrassOcclusionParameters {
+pub(crate) struct GrassOcclusionParameters {
   #[texture(d2, unfilterable)]
   pub pyramid: GraphTexture,
   #[uniform]

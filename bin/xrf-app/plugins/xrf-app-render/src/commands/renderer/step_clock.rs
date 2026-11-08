@@ -13,7 +13,7 @@ const LONGEST_STEP: Duration = Duration::from_secs(3600);
 /// moves alike at any frame rate; none draws them at the time each is drawn again.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "step_clock")]
-pub fn render_step_clock(renderer: State<'_, Renderer>, seconds: Option<f32>) -> TauriResult {
+pub(crate) fn render_step_clock(renderer: State<'_, Renderer>, seconds: Option<f32>) -> TauriResult {
   let step: Option<Duration> = seconds
     .map(|seconds| {
       Duration::try_from_secs_f32(seconds)

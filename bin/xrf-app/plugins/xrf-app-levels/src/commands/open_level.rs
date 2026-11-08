@@ -18,7 +18,7 @@ use crate::report::LevelReport;
 /// Select a compiled level and report what it is built out of, without reading any of its geometry.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "open_level")]
-pub async fn levels_open_level(
+pub(crate) async fn levels_open_level(
   session_id: SessionId,
   request: LevelOpenRequest,
   levels: State<'_, SelectedLevels>,

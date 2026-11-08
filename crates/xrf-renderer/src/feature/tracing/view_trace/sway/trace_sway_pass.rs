@@ -7,7 +7,7 @@ use crate::pass::build::pipeline_source::PipelineSource;
 
 /// Sways the vertices of the trees a view's trace stands swayed (`static/trace_sway`), placed in the world, for their
 /// acceleration structures to be built over.
-pub struct TraceSwayPass {
+pub(crate) struct TraceSwayPass {
   layout: wgpu::BindGroupLayout,
   pipeline: PipelineSet<wgpu::ComputePipeline>,
   grid: ComputeGrid,
@@ -20,7 +20,7 @@ impl TraceSwayPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(source: PipelineSource<'_>) -> XrfResult<Self> {
+  pub(crate) fn new(source: PipelineSource<'_>) -> XrfResult<Self> {
     let device: &wgpu::Device = source.device;
 
     let layout: wgpu::BindGroupLayout = TraceSwayParameters::create_layout(device);
@@ -34,7 +34,7 @@ impl TraceSwayPass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self
       .pipeline
       .refresh(source.cache, || Self::create_pipeline(source, &self.layout))
@@ -44,7 +44,7 @@ impl TraceSwayPass {
   }
 
   /// Sways `vertices` vertices of the instances the parameters name.
-  pub fn record(&self, context: &mut ComputeContext<'_>, parameters: &TraceSwayParameters, vertices: u32) {
+  pub(crate) fn record(&self, context: &mut ComputeContext<'_>, parameters: &TraceSwayParameters, vertices: u32) {
     context.bind(parameters);
 
     let pass: &mut wgpu::ComputePass<'static> = context.get_pass();

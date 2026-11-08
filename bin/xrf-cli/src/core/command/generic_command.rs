@@ -3,7 +3,7 @@ use clap::{ArgMatches, Command};
 use crate::core::command::{CommandContext, CommandResult};
 
 /// One CLI operation.
-pub trait GenericCommand: Sync {
+pub(crate) trait GenericCommand: Sync {
   /// A boxed command, as the domain groups register it.
   fn new_box() -> Box<Self>
   where

@@ -1,12 +1,12 @@
 /// A two-dimensional texture a feature owns across frames, with the view its passes bind.
-pub struct FrameTexture {
+pub(crate) struct FrameTexture {
   pub texture: wgpu::Texture,
   pub view: wgpu::TextureView,
 }
 
 impl FrameTexture {
   /// A texture of one level, `width` by `height` (each at least one), bound and drawn into, with `usage` besides.
-  pub fn new(
+  pub(crate) fn new(
     device: &wgpu::Device,
     label: &str,
     (width, height): (u32, u32),
@@ -34,7 +34,7 @@ impl FrameTexture {
     }
   }
 
-  pub fn get_size(&self) -> (u32, u32) {
+  pub(crate) fn get_size(&self) -> (u32, u32) {
     let size: wgpu::Extent3d = self.texture.size();
 
     (size.width, size.height)

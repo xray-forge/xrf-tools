@@ -9,7 +9,7 @@ impl ExternHtmlRenderer {
   const HEAD: &'static str = "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <title>XRF extern reference</title>\n  <style>body{font:14px system-ui,sans-serif;margin:2rem;color:#202124}details{margin:1rem 0}summary{cursor:pointer;font-weight:600}table{border-collapse:collapse;width:100%;margin-top:.5rem}th,td{border:1px solid #dadce0;padding:.5rem;text-align:left;vertical-align:top}th{background:#f8f9fa}code{white-space:nowrap}.docs{white-space:pre-wrap}</style>\n</head>\n<body>\n  <h1>XRF extern reference</h1>";
 
   /// The manifest as a page, without a final newline.
-  pub fn render(manifest: &ExternManifest) -> String {
+  pub(crate) fn render(manifest: &ExternManifest) -> String {
     let mut groups: BTreeMap<String, Vec<(&String, &ExternExport)>> = BTreeMap::new();
 
     for (name, export) in &manifest.exports {

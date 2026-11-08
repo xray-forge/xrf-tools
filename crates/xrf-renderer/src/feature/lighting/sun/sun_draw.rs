@@ -1,6 +1,6 @@
 /// How one frame's sun lights the G-buffer.
 #[derive(Clone, Copy, Debug)]
-pub struct SunDraw {
+pub(crate) struct SunDraw {
   /// Whether it is shadowed by its traced shadow.
   pub is_traced: bool,
   /// Whether its specular is split into the specular target, drawn into third.

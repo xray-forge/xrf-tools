@@ -5,6 +5,6 @@ use xrf_renderer_core::ShaderStruct;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Smoothing")]
-pub struct SmoothingUniform {
+pub(crate) struct SmoothingUniform {
   pub linear: f32,
 }

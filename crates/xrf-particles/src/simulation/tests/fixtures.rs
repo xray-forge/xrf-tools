@@ -19,7 +19,7 @@ use crate::simulation::particle_library::ParticleLibrary;
 use crate::simulation::particle_update_context::ParticleUpdateContext;
 
 /// A point domain at a position.
-pub fn point(x: f32, y: f32, z: f32) -> ParticleDomain {
+pub(super) fn point(x: f32, y: f32, z: f32) -> ParticleDomain {
   ParticleDomain {
     domain_type: 0,
     coordinates: (Vector3d::new(x, y, z), Vector3d::new(0.0, 0.0, 0.0)),
@@ -32,12 +32,12 @@ pub fn point(x: f32, y: f32, z: f32) -> ParticleDomain {
 }
 
 /// A source at the origin emitting at a rate, rising at a metre a second, unit sized and white.
-pub fn source(rate: f32) -> ParticleAction {
+pub(super) fn source(rate: f32) -> ParticleAction {
   source_at(rate, [0.0, 0.0, 0.0], [0.0, 1.0, 0.0])
 }
 
 /// A source emitting at a rate from a point, at a velocity, unit sized and white.
-pub fn source_at(rate: f32, position: [f32; 3], velocity: [f32; 3]) -> ParticleAction {
+pub(super) fn source_at(rate: f32, position: [f32; 3], velocity: [f32; 3]) -> ParticleAction {
   ParticleAction::Source(Box::new(ParticleActionSource {
     action_flags: 0,
     action_type: ParticleActionType::Source,
@@ -55,14 +55,14 @@ pub fn source_at(rate: f32, position: [f32; 3], velocity: [f32; 3]) -> ParticleA
   }))
 }
 
-pub fn moving() -> ParticleAction {
+pub(super) fn moving() -> ParticleAction {
   ParticleAction::Move(Box::new(ParticleActionMove {
     action_flags: 0,
     action_type: ParticleActionType::Move,
   }))
 }
 
-pub fn kill_old(age_limit: f32) -> ParticleAction {
+pub(super) fn kill_old(age_limit: f32) -> ParticleAction {
   ParticleAction::KillOld(Box::new(ParticleActionKillOld {
     action_flags: 0,
     action_type: ParticleActionType::KillOld,
@@ -72,7 +72,7 @@ pub fn kill_old(age_limit: f32) -> ParticleAction {
 }
 
 /// A sprite effect of actions, with flags and a time limit.
-pub fn effect(name: &str, max_particles: u32, actions: Vec<ParticleAction>) -> ParticleEffect {
+pub(super) fn effect(name: &str, max_particles: u32, actions: Vec<ParticleAction>) -> ParticleEffect {
   ParticleEffect {
     version: 1,
     name: String::from(name),
@@ -94,7 +94,7 @@ pub fn effect(name: &str, max_particles: u32, actions: Vec<ParticleAction>) -> P
 }
 
 /// A group effect played from `time_0` to `time_1` with flags.
-pub fn group_effect(name: &str, time_0: f32, time_1: f32, flags: u32) -> ParticleGroupEffect {
+pub(super) fn group_effect(name: &str, time_0: f32, time_1: f32, flags: u32) -> ParticleGroupEffect {
   ParticleGroupEffect {
     name: String::from(name),
     on_play_child_name: String::new(),
@@ -106,7 +106,7 @@ pub fn group_effect(name: &str, time_0: f32, time_1: f32, flags: u32) -> Particl
   }
 }
 
-pub fn group(name: &str, time_limit: f32, effects: Vec<ParticleGroupEffect>) -> ParticleGroup {
+pub(super) fn group(name: &str, time_limit: f32, effects: Vec<ParticleGroupEffect>) -> ParticleGroup {
   ParticleGroup {
     version: 3,
     name: String::from(name),
@@ -118,7 +118,7 @@ pub fn group(name: &str, time_limit: f32, effects: Vec<ParticleGroupEffect>) -> 
   }
 }
 
-pub fn library(effects: Vec<ParticleEffect>, groups: Vec<ParticleGroup>) -> ParticleLibrary {
+pub(super) fn library(effects: Vec<ParticleEffect>, groups: Vec<ParticleGroup>) -> ParticleLibrary {
   ParticleLibrary::from(ParticlesFile {
     header: ParticlesHeaderChunk { version: 1 },
     effects: ParticlesEffectsChunk { effects },
@@ -127,7 +127,7 @@ pub fn library(effects: Vec<ParticleEffect>, groups: Vec<ParticleGroup>) -> Part
 }
 
 /// An update reading a library and the engine's rules, colliding with nothing.
-pub fn context<'a>(library: &'a ParticleLibrary, rules: &'a ParticleEngineRules) -> ParticleUpdateContext<'a> {
+pub(super) fn context<'a>(library: &'a ParticleLibrary, rules: &'a ParticleEngineRules) -> ParticleUpdateContext<'a> {
   ParticleUpdateContext {
     library,
     rules,

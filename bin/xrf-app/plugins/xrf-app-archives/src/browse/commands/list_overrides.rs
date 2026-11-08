@@ -8,7 +8,7 @@ use crate::browse::{ArchiveOverrideReport, ArchiveSubjects};
 /// What the open subject answers with more than one copy, and what it cannot reach at all.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "list_overrides")]
-pub async fn archives_list_overrides(
+pub(crate) async fn archives_list_overrides(
   session_id: SessionId,
   execution: State<'_, ExecutionState>,
   subjects: State<'_, ArchiveSubjects>,

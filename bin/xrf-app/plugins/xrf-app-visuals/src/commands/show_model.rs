@@ -20,7 +20,7 @@ use crate::{SelectedVisual, VisualModels, VisualPoses, VisualRenderSource};
   clippy::too_many_arguments,
   reason = "Tauri injects each managed state as an argument of its own"
 )]
-pub async fn visuals_show_model(
+pub(crate) async fn visuals_show_model(
   shows: State<'_, ViewportShows>,
   reloads: State<'_, TextureReloads>,
   models: State<'_, VisualModels>,

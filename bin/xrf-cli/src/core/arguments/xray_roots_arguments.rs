@@ -6,7 +6,7 @@ use xrf_vfs::{XrayMountMode, XrayRoots};
 
 /// Repeatable `--path`, `--source` and `--prefix`: the roots a command reads, in one vocabulary, so repeating `--path`
 /// layers a tree in front of an installation exactly as the desktop app does it, whichever command is asked.
-pub struct XrayRootsArguments;
+pub(crate) struct XrayRootsArguments;
 
 impl XrayRootsArguments {
   const PATH: &'static str = "path";
@@ -21,7 +21,7 @@ impl XrayRootsArguments {
 
   /// Declares the three on `command`: `path_help` says what a path holds, `prefix_help` what a prefix limits it to.
   /// The paths are read as their containing installation unless `--source` says otherwise.
-  pub fn declare(command: Command, path_help: &'static str, prefix_help: &'static str) -> Command {
+  pub(crate) fn declare(command: Command, path_help: &'static str, prefix_help: &'static str) -> Command {
     let command: Command = command.arg(
       Arg::new(Self::PATH)
         .help(path_help)
@@ -43,7 +43,7 @@ impl XrayRootsArguments {
   }
 
   /// Declares `--source` alone, defaulting to `default`, for a command that names its roots its own way.
-  pub fn declare_source(command: Command, default: XrayMountMode) -> Command {
+  pub(crate) fn declare_source(command: Command, default: XrayMountMode) -> Command {
     command.arg(
       Arg::new(Self::SOURCE)
         .help(Self::SOURCE_HELP)
@@ -58,7 +58,7 @@ impl XrayRootsArguments {
   /// # Errors
   ///
   /// Returns an error when `--source` names no mount mode.
-  pub fn of(matches: &ArgMatches) -> XrfResult<XrayRoots> {
+  pub(crate) fn of(matches: &ArgMatches) -> XrfResult<XrayRoots> {
     Ok(XrayRoots::from_paths(
       Self::list_paths(matches).into_iter().cloned(),
       Self::source_of(matches)?,
@@ -69,7 +69,7 @@ impl XrayRootsArguments {
   ///
   /// A VFS mounts a directory, never a file, so a command that also reads a single source keeps that convenience
   /// through this rather than through [`Self::of`]: one file and no roots is the case it exists for.
-  pub fn single_file_of(matches: &ArgMatches) -> Option<&PathBuf> {
+  pub(crate) fn single_file_of(matches: &ArgMatches) -> Option<&PathBuf> {
     match Self::list_paths(matches).as_slice() {
       [path] if path.is_file() => Some(path),
       _ => None,
@@ -89,7 +89,7 @@ impl XrayRootsArguments {
   /// # Errors
   ///
   /// Returns an error when `--source` names no mount mode.
-  pub fn source_of(matches: &ArgMatches) -> XrfResult<XrayMountMode> {
+  pub(crate) fn source_of(matches: &ArgMatches) -> XrfResult<XrayMountMode> {
     XrayMountMode::try_from(
       matches
         .get_one::<String>(Self::SOURCE)
@@ -99,7 +99,7 @@ impl XrayRootsArguments {
   }
 
   /// The logical subtree the command was limited to, if any.
-  pub fn prefix_of(matches: &ArgMatches) -> Option<&str> {
+  pub(crate) fn prefix_of(matches: &ArgMatches) -> Option<&str> {
     matches.get_one::<String>(Self::PREFIX).map(String::as_str)
   }
 }

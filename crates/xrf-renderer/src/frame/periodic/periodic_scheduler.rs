@@ -20,7 +20,7 @@ type FrameGrants = Vec<(&'static [&'static str], f32, f32)>;
 /// deadline they stand, while they fit. A job's cost is its units at the milliseconds a unit last cost: as the timer
 /// measured its passes where they are timed, else as the frames' GPU times show it, fitted over the jobs each frame was
 /// granted; its seed before either.
-pub struct PeriodicScheduler {
+pub(crate) struct PeriodicScheduler {
   /// Milliseconds of GPU time a frame's work that may wait fills.
   budget: f32,
   /// Frames begun, which tags the timed frames.
@@ -63,7 +63,7 @@ impl PeriodicScheduler {
   /// How far one frame moves a job's typical units.
   const UNITS_STEP: f32 = 0.1;
 
-  pub fn new() -> Self {
+  pub(crate) fn new() -> Self {
     Self {
       budget: RENDER_DEFAULT_PERIODIC_BUDGET,
       frame: 0,
@@ -84,7 +84,7 @@ impl PeriodicScheduler {
   /// the passes the timer read back since the last frame, and from the GPU's milliseconds on each frame read back
   /// (`spans`, by the frame's tag) where its passes were not timed. What is offered next is the scenes' own until a
   /// view is named.
-  pub fn begin(&mut self, budget: f32, times: &[GraphTaggedTime], spans: &[(u64, f32)]) {
+  pub(crate) fn begin(&mut self, budget: f32, times: &[GraphTaggedTime], spans: &[(u64, f32)]) {
     self.learn(times);
     self.fit(times, spans);
     self.budget = budget.max(0.0);
@@ -98,24 +98,24 @@ impl PeriodicScheduler {
   }
 
   /// The frame begun last, which tags it for the timer.
-  pub fn get_frame(&self) -> u64 {
+  pub(crate) fn get_frame(&self) -> u64 {
     self.frame
   }
 
   /// Milliseconds this frame's grants cost, as estimated: of what may wait, which the budget bounds, and of what must
   /// draw this frame.
   #[cfg(test)]
-  pub fn get_spent(&self) -> (f32, f32) {
+  pub(crate) fn get_spent(&self) -> (f32, f32) {
     (self.spent, self.now_spent)
   }
 
   /// Names who offers the jobs offered from now on, which `withdraw` takes back together.
-  pub fn set_owner(&mut self, owner: PeriodicOwner) {
+  pub(crate) fn set_owner(&mut self, owner: PeriodicOwner) {
     self.owner = owner;
   }
 
   /// Offers a job for this frame, granted or not once `grant` decides.
-  pub fn offer(&mut self, job: PeriodicJob) -> PeriodicTicket {
+  pub(crate) fn offer(&mut self, job: PeriodicJob) -> PeriodicTicket {
     self.offers.push(PeriodicOffer {
       owner: self.owner,
       job,
@@ -130,7 +130,7 @@ impl PeriodicScheduler {
   }
 
   /// Takes back what `owner` offered this frame: a view that does not draw this frame draws none of it.
-  pub fn withdraw(&mut self, owner: PeriodicOwner) {
+  pub(crate) fn withdraw(&mut self, owner: PeriodicOwner) {
     for offer in self.offers.iter_mut().filter(|offer| offer.owner == owner) {
       offer.is_withdrawn = true;
       offer.is_granted = false;
@@ -140,7 +140,7 @@ impl PeriodicScheduler {
   /// Decides the offers since the last round: every one that must be done, then the one most overdue unless the frame
   /// took one already (one only just at its deadline waits a frame where what must draw spent the budget), then the rest
   /// most urgent first while they fit what is left of the budget.
-  pub fn grant(&mut self) {
+  pub(crate) fn grant(&mut self) {
     let costs: Vec<f32> = self.offers.iter().map(|offer| self.get_cost(&offer.job)).collect();
     let open: Vec<usize> = (self.decided..self.offers.len())
       .filter(|index| !self.offers[*index].is_withdrawn)
@@ -226,13 +226,13 @@ impl PeriodicScheduler {
   }
 
   /// Whether a job offered this frame was granted.
-  pub fn is_granted(&self, ticket: PeriodicTicket) -> bool {
+  pub(crate) fn is_granted(&self, ticket: PeriodicTicket) -> bool {
     ticket.frame == self.frame && self.offers.get(ticket.index).is_some_and(|offer| offer.is_granted)
   }
 
   /// Milliseconds a job costs: its units at what a unit of its passes last cost, or at its seed before any was
   /// measured.
-  pub fn get_cost(&self, job: &PeriodicJob) -> f32 {
+  pub(crate) fn get_cost(&self, job: &PeriodicJob) -> f32 {
     let rate: f32 = job
       .passes
       .first()

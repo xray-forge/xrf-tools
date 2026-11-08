@@ -36,7 +36,7 @@ use crate::sound::weather::rain_sound::RainSound;
 /// Its schedules start at the first frame it plays, which its level gives it once its scene stands ready. A burst's
 /// first frame starts every schedule afresh at the burst's time, as that first frame does, and so does the first frame
 /// after a burst: what a burst plays depends on its own frames alone, so bursts from one time play alike.
-pub struct LevelSound {
+pub(crate) struct LevelSound {
   pending: LoaderOnce<WorldLevelSounds>,
   /// The level's own sounds as read, which a schedule starting afresh plays from again.
   read: Option<WorldLevelSounds>,
@@ -77,7 +77,7 @@ impl LevelSounds {
 }
 
 impl LevelSound {
-  pub fn start(source: &Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> Self {
+  pub(crate) fn start(source: &Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> Self {
     Self {
       pending: Self::read_sounds(source, workers),
       read: None,
@@ -98,7 +98,7 @@ impl LevelSound {
   /// Reads the level's own sounds again from `source`, a next source of the same level, whose spawn or helpers changed:
   /// once read, every schedule starts afresh at the clock's time as a burst's end starts them, so an edited zone plays
   /// as it now stands and each sounding emitter names its helper by the helpers' new order. What plays meanwhile plays on.
-  pub fn reload(&mut self, source: &Arc<dyn WorldLevelSource>, workers: &RenderWorkers) {
+  pub(crate) fn reload(&mut self, source: &Arc<dyn WorldLevelSource>, workers: &RenderWorkers) {
     // todo: Reopen the sink where the level's collision changed, so the acoustics' walls follow it; they stay as the
     // level opened, since a new sink builds Steam Audio's scene afresh, seconds on a large level.
     self.pending = Self::read_sounds(source, workers);
@@ -107,7 +107,7 @@ impl LevelSound {
   /// Plays on to `now` on the level's clock, as `drive` gives the frame over what the level's weathers play with and
   /// `zones` stand its zones, an ambient effect's sound starting with it where one does, and sends the scene's frame
   /// where one is due.
-  pub fn advance(
+  pub(crate) fn advance(
     &mut self,
     now: Duration,
     weather: Option<&WorldLevelWeather>,
@@ -172,7 +172,7 @@ impl LevelSound {
   }
 
   /// What the scene plays as the world schedules it; the host's audio fills how each is heard.
-  pub fn report(&self, weather: Option<&WorldLevelWeather>) -> WorldSoundReport {
+  pub(crate) fn report(&self, weather: Option<&WorldLevelWeather>) -> WorldSoundReport {
     let listener: Vec3 = Vec3::from(self.listener.position);
 
     WorldSoundReport {
@@ -214,7 +214,7 @@ impl LevelSound {
 
   /// Does what a viewer asks of the music at the last frame's clock, answering whether it could; none can before the
   /// level's sounds are read.
-  pub fn command_music(&mut self, command: &WorldMusicCommand) -> bool {
+  pub(crate) fn command_music(&mut self, command: &WorldMusicCommand) -> bool {
     self
       .level
       .as_mut()
@@ -222,7 +222,7 @@ impl LevelSound {
   }
 
   /// The level objects whose sounds play at the last frame, by the ids their helpers carry, ascending, each once.
-  pub fn list_sounding(&self) -> Vec<u32> {
+  pub(crate) fn list_sounding(&self) -> Vec<u32> {
     let mut objects: Vec<u32> = self
       .emitters
       .iter_playing(self.now)

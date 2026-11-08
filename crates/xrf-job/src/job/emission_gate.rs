@@ -10,7 +10,7 @@ pub(crate) struct EmissionGate {
 }
 
 impl EmissionGate {
-  pub fn new(interval: Duration) -> Self {
+  pub(crate) fn new(interval: Duration) -> Self {
     Self {
       started_at: Instant::now(),
       interval,
@@ -19,7 +19,7 @@ impl EmissionGate {
   }
 
   /// A gate on the same clock that has never emitted.
-  pub fn sharing_clock(&self) -> Self {
+  pub(crate) fn sharing_clock(&self) -> Self {
     Self {
       started_at: self.started_at,
       interval: self.interval,
@@ -28,17 +28,17 @@ impl EmissionGate {
   }
 
   /// How long the run has been going.
-  pub fn elapsed(&self) -> Duration {
+  pub(crate) fn elapsed(&self) -> Duration {
     self.started_at.elapsed()
   }
 
   /// Whether every unit is reported, which is what a test asserting the sequence asks for.
-  pub fn is_immediate(&self) -> bool {
+  pub(crate) fn is_immediate(&self) -> bool {
     self.interval.is_zero()
   }
 
   /// Whether this thread is the one that reports now.
-  pub fn claim(&self) -> bool {
+  pub(crate) fn claim(&self) -> bool {
     let elapsed: u64 = self.elapsed_millis();
     let last: u64 = self.last_emit.load(Ordering::Relaxed);
 
@@ -55,7 +55,7 @@ impl EmissionGate {
   }
 
   /// Take the current interval without contending for it, for an emission that is never throttled.
-  pub fn stamp(&self) {
+  pub(crate) fn stamp(&self) {
     self.last_emit.store(self.elapsed_millis(), Ordering::Relaxed);
   }
 

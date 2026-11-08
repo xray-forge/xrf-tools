@@ -4,7 +4,7 @@ use std::f64::consts::PI;
 /// 44.1 and 48 kHz): a windowed sinc low-passed under the lower rate's half, its taps centred on each output frame, so
 /// output frame `n` is the input at `n × from / 48 kHz` with nothing shifted in time. It streams: each call takes the
 /// next input and gives every output frame its taps reach, holding the rest for the next.
-pub struct RecordResampler {
+pub(crate) struct RecordResampler {
   from: u32,
   /// Input frames held for the taps, the stream's first preceded by silence.
   held: Vec<[f32; 2]>,
@@ -18,7 +18,7 @@ pub struct RecordResampler {
 
 impl RecordResampler {
   /// The rate it brings sound to.
-  pub const RATE: u32 = 48_000;
+  pub(crate) const RATE: u32 = 48_000;
 
   /// Input frames each side of an output frame its taps reach.
   const HALF_TAPS: usize = 16;
@@ -27,7 +27,7 @@ impl RecordResampler {
   const PASS: f64 = 0.9;
 
   /// A resampler from `rate`, none for a rate AAC takes as it is.
-  pub fn for_rate(rate: u32) -> Option<Self> {
+  pub(crate) fn for_rate(rate: u32) -> Option<Self> {
     if rate == 44_100 || rate == Self::RATE || rate == 0 {
       return None;
     }
@@ -44,19 +44,19 @@ impl RecordResampler {
   }
 
   /// The rate it takes sound at.
-  pub fn get_input_rate(&self) -> u32 {
+  pub(crate) fn get_input_rate(&self) -> u32 {
     self.from
   }
 
   /// Forgets what it holds, its next input the start of a stream again, preceded by silence.
-  pub fn restart(&mut self) {
+  pub(crate) fn restart(&mut self) {
     self.held.clear();
     self.held.resize(Self::HALF_TAPS, [0.0; 2]);
     self.position = Self::HALF_TAPS as f64;
   }
 
   /// Takes interleaved stereo `input`, appending to `output` every frame at 48 kHz its taps now reach.
-  pub fn push(&mut self, input: &[f32], output: &mut Vec<f32>) {
+  pub(crate) fn push(&mut self, input: &[f32], output: &mut Vec<f32>) {
     self.held.extend(input.as_chunks::<2>().0.iter().copied());
 
     while (self.position.floor() as usize) + Self::HALF_TAPS < self.held.len() {

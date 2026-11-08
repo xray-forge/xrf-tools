@@ -11,7 +11,7 @@ use crate::scene::static_scene::static_scene::StaticScene;
 
 impl StaticScene {
   /// The sector and shader table entry of a picked impostor.
-  pub fn resolve_impostor_pick(&self, impostor: u32) -> Option<(u32, u16)> {
+  pub(crate) fn resolve_impostor_pick(&self, impostor: u32) -> Option<(u32, u16)> {
     self
       .sectors
       .as_slice()
@@ -25,7 +25,7 @@ impl StaticScene {
   }
 
   /// What a pick's cluster and place were part of: its slot's part, and the place's instance where it is a mesh's.
-  pub fn resolve_pick(&self, cluster: u32, place: u32) -> Option<(StaticSlotInfo, Option<u32>)> {
+  pub(crate) fn resolve_pick(&self, cluster: u32, place: u32) -> Option<(StaticSlotInfo, Option<u32>)> {
     let (spans, slot_infos, cluster_slots): (&StaticSpans, &[StaticSlotInfo], &[u32]) = self
       .sectors
       .as_slice()
@@ -52,28 +52,28 @@ impl StaticScene {
   }
 
   /// The spawned object a picked place is, where it is one.
-  pub fn resolve_spawn_pick(&self, place: u32) -> Option<u32> {
+  pub(crate) fn resolve_spawn_pick(&self, place: u32) -> Option<u32> {
     self.objects.find_at(place).map(|object| object.object)
   }
 
   /// Whether a spawned object stands in the scene.
   #[cfg(test)]
-  pub fn has_object(&self, object: u32) -> bool {
+  pub(crate) fn has_object(&self, object: u32) -> bool {
     self.objects.contains(object)
   }
 
   /// A spawned object's bounding sphere in renderer space, while it stands in the scene.
-  pub fn get_object_sphere(&self, object: u32) -> Option<Vec4> {
+  pub(crate) fn get_object_sphere(&self, object: u32) -> Option<Vec4> {
     self.objects.find(object).map(|object| object.sphere)
   }
 
   /// The place a spawned object stands at, which its drawn clusters carry, while it stands in the scene.
-  pub fn get_object_place(&self, object: u32) -> Option<u32> {
+  pub(crate) fn get_object_place(&self, object: u32) -> Option<u32> {
     self.objects.find(object).map(|object| object.place.get_offset())
   }
 
   /// A spawned object's box as it stands, while it stands in the scene.
-  pub fn get_object_box(&self, object: u32) -> Option<StaticObjectBox> {
+  pub(crate) fn get_object_box(&self, object: u32) -> Option<StaticObjectBox> {
     let object: &StaticObjectProxy = self.objects.find(object)?;
     let [min, max]: [Vec3; 2] = self.models.get(object.model)?.bounds;
 
@@ -86,7 +86,7 @@ impl StaticScene {
 
   /// What a selection marks, once what it names is in the scene: a spawned object's place; a mesh's place; or the
   /// runs of clusters drawing a sector's baked geometry of one shader table entry.
-  pub fn resolve_selection(&self, target: &RenderSelectionTarget) -> Option<StaticSelection> {
+  pub(crate) fn resolve_selection(&self, target: &RenderSelectionTarget) -> Option<StaticSelection> {
     match *target {
       RenderSelectionTarget::Spawn { object } => Some(StaticSelection {
         place: Some(self.objects.find(object)?.place.get_offset()),

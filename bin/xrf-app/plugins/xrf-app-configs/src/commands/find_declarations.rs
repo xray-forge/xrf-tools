@@ -10,7 +10,7 @@ use crate::request::ConfigsFindDeclarationsRequest;
 /// Where the open project writes a section, a field or a value: declarations and patches alike, archived configs too.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "find_declarations")]
-pub async fn configs_find_declarations(
+pub(crate) async fn configs_find_declarations(
   execution: State<'_, ExecutionState>,
   projects: State<'_, ConfigsProjects>,
   request: ConfigsFindDeclarationsRequest,

@@ -7,9 +7,9 @@ mod archive_subjects;
 mod archive_world;
 mod archive_world_entry;
 
-pub use archive_name_index::ArchiveNameIndex;
-pub use archive_shadowed_copy::ArchiveShadowedCopy;
-pub use archive_subject::ArchiveSubject;
+pub(crate) use archive_name_index::ArchiveNameIndex;
+pub(crate) use archive_shadowed_copy::ArchiveShadowedCopy;
+pub(crate) use archive_subject::ArchiveSubject;
 pub use archive_subjects::ArchiveSubjects;
-pub use archive_world::ArchiveWorld;
-pub use archive_world_entry::ArchiveWorldEntry;
+pub(crate) use archive_world::ArchiveWorld;
+pub(crate) use archive_world_entry::ArchiveWorldEntry;

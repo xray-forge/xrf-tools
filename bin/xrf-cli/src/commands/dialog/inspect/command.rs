@@ -11,7 +11,7 @@ use crate::commands::dialog::dialog_project_opening::DialogProjectOpening;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct InspectCommand;
+pub(crate) struct InspectCommand;
 
 impl GenericCommand for InspectCommand {
   fn operation(&self) -> &'static str {

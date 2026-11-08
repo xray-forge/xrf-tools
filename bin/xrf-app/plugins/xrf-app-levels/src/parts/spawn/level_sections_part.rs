@@ -33,7 +33,7 @@ impl LevelSectionsPart {
   /// # Errors
   ///
   /// Returns the reason the spawn or the configs cannot be read, which every later ask answers with again.
-  pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> TauriResult<Arc<Ltx>> {
+  pub(crate) fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> TauriResult<Arc<Ltx>> {
     current.parts.get_or_record::<Self>(search, |search| {
       let spawn: Arc<LevelSpawn> = LevelSpawnPart::get(current, search)?;
 
@@ -42,12 +42,12 @@ impl LevelSectionsPart {
   }
 
   /// The open level's sections where they were read, as the open reads them; asking reads nothing.
-  pub fn find(current: &SessionSnapshot<SelectedLevel>) -> Option<Arc<Ltx>> {
+  pub(crate) fn find(current: &SessionSnapshot<SelectedLevel>) -> Option<Arc<Ltx>> {
     current.parts.get::<Self>()?.ok()
   }
 
   /// `parts` with the sections an open read from `inputs` kept as the level's.
-  pub fn with(parts: SessionParts, sections: TauriResult<Arc<Ltx>>, inputs: XrayInputRecord) -> SessionParts {
+  pub(crate) fn with(parts: SessionParts, sections: TauriResult<Arc<Ltx>>, inputs: XrayInputRecord) -> SessionParts {
     parts.with::<Self>(sections, inputs)
   }
 
@@ -58,7 +58,7 @@ impl LevelSectionsPart {
   /// # Errors
   ///
   /// Returns the reason the configs cannot be read.
-  pub fn read(
+  pub(crate) fn read(
     source: &LevelSource,
     search: &XraySearch,
     configs: &LevelConfigs,

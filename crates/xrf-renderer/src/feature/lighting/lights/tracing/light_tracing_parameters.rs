@@ -6,7 +6,7 @@ use crate::feature::lighting::lights::tracing::light_trace_uniform::LightTraceUn
 /// four slots a layer.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 2)]
-pub struct LightTracingParameters {
+pub(crate) struct LightTracingParameters {
   #[uniform]
   pub light_trace: UniformBinding<LightTraceUniform>,
   #[storage_texture(d2_array, rgba8unorm, write)]

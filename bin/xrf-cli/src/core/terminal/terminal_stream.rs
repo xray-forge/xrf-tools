@@ -1,6 +1,6 @@
 /// Which of the process streams a message is written to.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum TerminalStream {
+pub(super) enum TerminalStream {
   Stdout,
   Stderr,
 }

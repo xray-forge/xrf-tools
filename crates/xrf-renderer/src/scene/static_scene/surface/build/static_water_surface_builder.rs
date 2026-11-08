@@ -20,13 +20,13 @@ const ANOMALY_PROGRAMS: [(&str, [bool; 4]); 4] = [
 ];
 
 /// Builds a water surface from a water shader table entry.
-pub struct StaticWaterSurfaceBuilder;
+pub(crate) struct StaticWaterSurfaceBuilder;
 
 impl StaticWaterSurfaceBuilder {
   /// A water surface as its draws read it: the base, the normal map scrolled twice over, the foam laid in the shallows
   /// and the distortion, by the samplers its script binds them to, and its program's model; soft where its entry draws
   /// soft water.
-  pub fn build(
+  pub(crate) fn build(
     surface: &SectorSurface,
     descriptor: &XraySurfaceDescriptor,
     textures: &mut TextureCache,

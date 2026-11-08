@@ -23,7 +23,7 @@ impl GraphCompiler {
   /// # Errors
   ///
   /// Returns an error for a graph that cannot run, as `FrameGraph::compile` lists.
-  pub fn compile<'a>(graph: FrameGraph<'a>, options: &GraphCompileOptions) -> XrfResult<CompiledGraph<'a>> {
+  pub(crate) fn compile<'a>(graph: FrameGraph<'a>, options: &GraphCompileOptions) -> XrfResult<CompiledGraph<'a>> {
     let FrameGraph {
       textures,
       buffers,

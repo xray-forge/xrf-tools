@@ -3,7 +3,7 @@ use xrf_material::XraySurfaceDraw;
 /// The blend equation a particle effect composites its sprite with, one pipeline each (`CBlender_Particle`), and a
 /// thunderbolt its model and glows.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum ParticleBlend {
+pub(crate) enum ParticleBlend {
   /// Written over what is behind it.
   Opaque,
   /// `SET`: cut out at its reference and written over.
@@ -22,7 +22,7 @@ pub enum ParticleBlend {
 
 impl ParticleBlend {
   /// Every equation, in the order the pass keeps their pipelines.
-  pub const ALL: [Self; 7] = [
+  pub(crate) const ALL: [Self; 7] = [
     Self::Opaque,
     Self::CutOut,
     Self::Blend,
@@ -34,7 +34,7 @@ impl ParticleBlend {
 
   /// The equation a surface draws its colour with, none for one drawing no colour of its own: an `l_special` alone, or
   /// water no sprite is.
-  pub fn of(draw: XraySurfaceDraw) -> Option<Self> {
+  pub(crate) fn of(draw: XraySurfaceDraw) -> Option<Self> {
     match draw {
       XraySurfaceDraw::Opaque => Some(Self::Opaque),
       XraySurfaceDraw::AlphaTested { .. } => Some(Self::CutOut),
@@ -50,18 +50,18 @@ impl ParticleBlend {
   }
 
   /// Its pipeline's index among [`Self::ALL`].
-  pub fn get_index(self) -> usize {
+  pub(crate) fn get_index(self) -> usize {
     self as usize
   }
 
   /// Whether its source is a factor the scene is multiplied by, which is left as drawn rather than taken into the
   /// scene's light as a colour is.
-  pub fn is_multiplied(self) -> bool {
+  pub(crate) fn is_multiplied(self) -> bool {
     matches!(self, Self::Multiply | Self::MultiplyDoubled)
   }
 
   /// The colour equation over the scene; the scene's alpha is left as it is.
-  pub fn get_blend_state(self) -> wgpu::BlendState {
+  pub(crate) fn get_blend_state(self) -> wgpu::BlendState {
     wgpu::BlendState {
       color: self.get_component(),
       alpha: Self::to_component(wgpu::BlendFactor::Zero, wgpu::BlendFactor::One),
@@ -69,7 +69,7 @@ impl ParticleBlend {
   }
 
   /// The equation by its source and destination factors, added.
-  pub fn get_component(self) -> wgpu::BlendComponent {
+  pub(crate) fn get_component(self) -> wgpu::BlendComponent {
     match self {
       Self::Opaque | Self::CutOut => Self::to_component(wgpu::BlendFactor::One, wgpu::BlendFactor::Zero),
       Self::Blend => Self::to_component(wgpu::BlendFactor::SrcAlpha, wgpu::BlendFactor::OneMinusSrcAlpha),

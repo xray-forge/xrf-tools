@@ -12,7 +12,7 @@ use crate::weather::LevelWeatherDescription;
 /// the sun table and the level's own overrides.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_weather")]
-pub async fn levels_describe_weather(
+pub(crate) async fn levels_describe_weather(
   session_id: SessionId,
   levels: State<'_, SelectedLevels>,
   assets: State<'_, AssetMountState>,

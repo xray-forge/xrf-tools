@@ -14,7 +14,7 @@ use crate::browse::{ArchiveSubject, ArchiveSubjects};
 /// stopped at its start.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "open_audio_preview")]
-pub async fn archives_open_audio_preview(
+pub(crate) async fn archives_open_audio_preview(
   session_id: SessionId,
   name: String,
   window: InvokingWindow,

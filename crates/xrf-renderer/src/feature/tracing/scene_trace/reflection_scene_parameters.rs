@@ -11,7 +11,7 @@ use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 /// copied before the water for the water.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct ReflectionSceneParameters<'a> {
+pub(crate) struct ReflectionSceneParameters<'a> {
   #[uniform]
   pub lighting: UniformBinding<LightingUniform>,
   #[texture(d3, float)]

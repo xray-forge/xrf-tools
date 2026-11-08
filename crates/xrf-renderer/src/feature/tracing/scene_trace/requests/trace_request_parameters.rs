@@ -7,7 +7,7 @@ use crate::feature::tracing::scene_trace::requests::trace_request::TraceRequest;
 /// started, read plainly.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 3)]
-pub struct TraceRequestParameters {
+pub(crate) struct TraceRequestParameters {
   #[storage]
   pub trace_requests: StorageArrayMut<TraceRequest>,
   #[storage]

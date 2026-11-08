@@ -14,13 +14,13 @@ const HELD: f32 = 0.25;
 const HELD_MARGIN: f32 = 0.03;
 
 /// Where a sun cascade stands: the engine's `compute_caster_model_fixed`, held where the view allows.
-pub struct SunCascadePlacement;
+pub(crate) struct SunCascadePlacement;
 
 impl SunCascadePlacement {
   /// Places a cascade's square across the light as the engine does (`compute_caster_model_fixed`): the sides the view
   /// looks away from brought up to where the view's edges start, the first stretch of the view held in it, and the
   /// edges carried on to where they leave it, for the next cascade to start there. Returns the square's centre.
-  pub fn place(
+  pub(crate) fn place(
     center: Vec3,
     look: Vec3,
     rays: &mut [SunViewRay; 4],

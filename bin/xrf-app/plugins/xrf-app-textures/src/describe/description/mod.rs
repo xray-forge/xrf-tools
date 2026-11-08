@@ -4,6 +4,6 @@ mod texture_description;
 mod texture_files;
 mod texture_source;
 
-pub use texture_description::TextureDescription;
-pub use texture_files::TextureFiles;
-pub use texture_source::TextureSource;
+pub(crate) use texture_description::TextureDescription;
+pub(crate) use texture_files::TextureFiles;
+pub(crate) use texture_source::TextureSource;

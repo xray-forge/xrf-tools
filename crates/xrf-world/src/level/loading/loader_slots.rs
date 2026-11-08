@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::level::loading::loader_slot::LoaderSlot;
 
 /// Things read once each on the workers by name, the first time anything asks for one, and kept.
-pub struct LoaderSlots<T> {
+pub(crate) struct LoaderSlots<T> {
   slots: HashMap<String, LoaderSlot<T>>,
 }
 
@@ -16,7 +16,7 @@ impl<T> Default for LoaderSlots<T> {
 impl<T: Send + 'static> LoaderSlots<T> {
   /// The one named once it is read, starting its read through `spawn` the first time it is asked for; none while it
   /// is on its way or where it is not to be had.
-  pub fn get(&mut self, name: &str, spawn: impl FnOnce() -> LoaderSlot<T>) -> Option<&T> {
+  pub(crate) fn get(&mut self, name: &str, spawn: impl FnOnce() -> LoaderSlot<T>) -> Option<&T> {
     if !self.slots.contains_key(name) {
       self.slots.insert(name.to_owned(), spawn());
     }
@@ -26,7 +26,7 @@ impl<T: Send + 'static> LoaderSlots<T> {
 
   /// Whether the one named is asked for and its loader has not answered yet.
   #[cfg(test)]
-  pub fn is_pending(&self, name: &str) -> bool {
+  pub(crate) fn is_pending(&self, name: &str) -> bool {
     self.slots.get(name).is_some_and(LoaderSlot::is_pending)
   }
 }

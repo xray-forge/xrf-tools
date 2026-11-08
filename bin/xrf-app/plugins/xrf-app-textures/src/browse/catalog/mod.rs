@@ -7,7 +7,7 @@ mod texture_entry;
 mod texture_role;
 
 pub use texture_browses::TextureBrowses;
-pub use texture_catalog::TextureCatalog;
-pub use texture_catalog_mode::TextureCatalogMode;
-pub use texture_entry::TextureEntry;
-pub use texture_role::TextureRole;
+pub(crate) use texture_catalog::TextureCatalog;
+pub(crate) use texture_catalog_mode::TextureCatalogMode;
+pub(crate) use texture_entry::TextureEntry;
+pub(crate) use texture_role::TextureRole;

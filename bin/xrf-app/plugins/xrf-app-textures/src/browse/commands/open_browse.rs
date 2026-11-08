@@ -12,7 +12,7 @@ use crate::browse::{TextureBrowses, TextureCatalog, TextureCatalogMode};
 /// Open a root set and list every texture it holds, read fresh as an open a person makes is.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "open_browse")]
-pub async fn textures_open_browse(
+pub(crate) async fn textures_open_browse(
   session_id: SessionId,
   roots: XrayRoots,
   mode: TextureCatalogMode,

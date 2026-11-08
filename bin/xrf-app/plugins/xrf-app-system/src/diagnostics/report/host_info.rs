@@ -9,7 +9,7 @@ use sysinfo::{MemoryRefreshKind, System};
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct HostInfo {
+pub(crate) struct HostInfo {
   /// Tauri the application was linked against.
   pub tauri_version: &'static str,
   /// Webview actually serving the window, which is the runtime installed on the machine rather than a compiled-in
@@ -35,7 +35,7 @@ pub struct HostInfo {
 
 impl HostInfo {
   /// Reads what the application is running on and with.
-  pub fn read() -> Self {
+  pub(crate) fn read() -> Self {
     Self {
       tauri_version: tauri::VERSION,
       // The one reading that comes from the webview rather than from the operating system, and the one most worth

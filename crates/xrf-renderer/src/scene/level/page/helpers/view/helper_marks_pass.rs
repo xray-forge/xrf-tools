@@ -5,7 +5,7 @@ use crate::pass::view::view_binding::ViewBinding;
 
 /// What the helper marks pass draws with: the G-buffer pass whose pipelines draw the marked models again, the view's
 /// camera and its textures, the scene's draws, and the view's depth they are drawn over.
-pub struct HelperMarksPass<'a, 'h> {
+pub(crate) struct HelperMarksPass<'a, 'h> {
   pub gbuffer: &'a StaticGBufferPass,
   pub view: &'a ViewBinding,
   pub textures: &'a wgpu::BindGroup,

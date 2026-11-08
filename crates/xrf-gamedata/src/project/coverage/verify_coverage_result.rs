@@ -4,7 +4,7 @@ use crate::{Finding, GamedataCheckResult, GamedataVerificationStatus};
 
 /// How much of what the project declared the run could actually read.
 #[derive(Default)]
-pub struct GamedataCoverageVerificationResult {
+pub(crate) struct GamedataCoverageVerificationResult {
   pub(crate) duration: Duration,
   pub(crate) skipped_mounts_count: usize,
   pub(crate) findings: Vec<Finding>,

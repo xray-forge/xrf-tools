@@ -14,7 +14,7 @@ use crate::{DialogProjects, OpenedDialogProject};
 /// Open a dialog tree, reading every dialog file and string table it holds on the pool.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "open_project")]
-pub async fn dialogs_open_project(
+pub(crate) async fn dialogs_open_project(
   request: DialogsOpenRequest,
   projects: State<'_, DialogProjects>,
   assets: State<'_, AssetMountState>,

@@ -5,7 +5,7 @@ mod cube_export_format;
 mod cube_export_request;
 mod cube_exporter;
 
-pub use cube_capture_request::CubeCaptureRequest;
-pub use cube_export_format::CubeExportFormat;
-pub use cube_export_request::CubeExportRequest;
-pub use cube_exporter::CubeExporter;
+pub(crate) use cube_capture_request::CubeCaptureRequest;
+pub(crate) use cube_export_format::CubeExportFormat;
+pub(crate) use cube_export_request::CubeExportRequest;
+pub(crate) use cube_exporter::CubeExporter;

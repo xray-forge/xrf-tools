@@ -76,7 +76,7 @@ const STORAGE_FORMATS: &[(&str, &str, &str)] = &[
 
 /// Expands `#[derive(PassParameters)]`: one bind group's layout, WGSL declarations, graph accesses and bindings, a
 /// binding per field in order, each numbered one past the field before unless `#[binding(N)]` numbers it.
-pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
+pub(crate) fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
   let name: &Ident = &input.ident;
   let fields = match &input.data {
     Data::Struct(DataStruct {

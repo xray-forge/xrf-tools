@@ -7,7 +7,7 @@ use crate::contract::report::scene::render_meter_reading::RenderMeterReading;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "MeterSample")]
-pub struct MeterSample {
+pub(crate) struct MeterSample {
   pub luminance: f32,
   pub stops: f32,
   pub exposure: f32,
@@ -26,7 +26,7 @@ const REFLECTED_CALIBRATION: f32 = 12.5;
 
 impl MeterSample {
   /// What a reading says of it: the surfaces' values only where the spot covers any.
-  pub fn to_reading(self) -> RenderMeterReading {
+  pub(crate) fn to_reading(self) -> RenderMeterReading {
     let surface = |value: f32| (self.drawn > 0.0).then_some(value);
 
     RenderMeterReading {

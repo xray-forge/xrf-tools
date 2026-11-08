@@ -9,7 +9,7 @@ use serde::Serialize;
 /// `DialogElementKind` classifies.
 #[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct DialogSweepCensus {
+pub(crate) struct DialogSweepCensus {
   pub files: usize,
   pub unreadable_files: usize,
   pub archived_files: usize,
@@ -30,7 +30,7 @@ pub struct DialogSweepCensus {
 
 impl DialogSweepCensus {
   /// Counts one more `key` in `map`.
-  pub fn count(map: &mut BTreeMap<String, usize>, key: impl Into<String>) {
+  pub(crate) fn count(map: &mut BTreeMap<String, usize>, key: impl Into<String>) {
     *map.entry(key.into()).or_default() += 1;
   }
 }

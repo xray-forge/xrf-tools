@@ -127,7 +127,7 @@ const DEFAULT_NEAR: f32 = 0.1;
 
 /// The local lights' shadows: a square of an atlas a face, sized as the engine sizes its maps, drawn once and kept
 /// while the scene it casts from stays, a few faces a frame as the frame's scheduler grants them, the nearest first.
-pub struct LevelLightShadows {
+pub(crate) struct LevelLightShadows {
   /// The atlas, while a view casts the lights' shadows, and what is bound in its place while none does.
   atlas: Option<wgpu::TextureView>,
   none: wgpu::TextureView,
@@ -165,9 +165,9 @@ pub struct LevelLightShadows {
 
 impl LevelLightShadows {
   /// Texels the light shadow atlas is across.
-  pub const ATLAS_SIZE: u32 = 4096;
+  pub(crate) const ATLAS_SIZE: u32 = 4096;
 
-  pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout) -> Self {
     let alignment: u64 = u64::from(device.limits().min_storage_buffer_offset_alignment);
     let args_stride: u64 = StaticCullScratch::ARGS_SIZE.next_multiple_of(alignment);
     Self {
@@ -207,7 +207,7 @@ impl LevelLightShadows {
   }
 
   /// Texels of the atlas the lights' faces hold, of its whole.
-  pub fn get_atlas_use(&self) -> RenderPoolUse {
+  pub(crate) fn get_atlas_use(&self) -> RenderPoolUse {
     RenderPoolUse {
       used: self.allocator.get_used().min(u64::from(u32::MAX)) as u32,
       capacity: Self::ATLAS_SIZE * Self::ATLAS_SIZE,
@@ -215,7 +215,7 @@ impl LevelLightShadows {
   }
 
   /// The atlas the lights sample, or a texel of nothing while none is held, with the sampler comparing it.
-  pub fn get_atlas(&self) -> LightShadowAtlas<'_> {
+  pub(crate) fn get_atlas(&self) -> LightShadowAtlas<'_> {
     LightShadowAtlas {
       view: self.atlas.as_ref().unwrap_or(&self.none),
       sampler: &self.sampler,
@@ -223,17 +223,17 @@ impl LevelLightShadows {
   }
 
   /// Takes a view casting the lights' shadows this frame, which holds the atlas.
-  pub fn cast(&mut self) {
+  pub(crate) fn cast(&mut self) {
     self.is_cast = true;
   }
 
   /// Marks a light in view this frame before any view asks for faces, so no ask makes room from a light some view sees.
-  pub fn see(&mut self, handle: ProxyHandle<LightDescription>) {
+  pub(crate) fn see(&mut self, handle: ProxyHandle<LightDescription>) {
     self.entries.entry(handle).or_default().seen = self.frame;
   }
 
   /// Starts a frame's asks.
-  pub fn begin(&mut self) {
+  pub(crate) fn begin(&mut self) {
     self.frame += 1;
     self.candidates.clear();
     self.queue.clear();
@@ -242,13 +242,13 @@ impl LevelLightShadows {
   }
 
   /// The faces a light lights with this frame, every one drawn, or none where it has none whole.
-  pub fn get_set(&self, handle: ProxyHandle<LightDescription>) -> Option<&LightShadowSet> {
+  pub(crate) fn get_set(&self, handle: ProxyHandle<LightDescription>) -> Option<&LightShadowSet> {
     self.entries.get(&handle)?.shown.as_ref().filter(|set| set.is_drawn())
   }
 
   /// Forgets that the faces this frame drew were drawn, where its frame was not submitted: each draws again, and its
   /// light waits for it.
-  pub fn abandon_frame(&mut self) {
+  pub(crate) fn abandon_frame(&mut self) {
     for FaceDrawn { handle, tile } in std::mem::take(&mut self.drawn) {
       let Some(entry) = self.entries.get_mut(&handle) else {
         continue;
@@ -266,7 +266,7 @@ impl LevelLightShadows {
   }
 
   /// Lets every light's faces go, for lights that replace them: each light asked for after takes faces anew.
-  pub fn forget_lights(&mut self) {
+  pub(crate) fn forget_lights(&mut self) {
     self.entries.clear();
     self.drawn.clear();
     self.due.clear();

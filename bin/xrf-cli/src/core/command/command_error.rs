@@ -5,7 +5,7 @@ use std::io::Error as IoError;
 use xrf_error::XrfError;
 
 /// What a command answers: nothing, or what it is, on success; why it failed otherwise.
-pub type CommandResult<T = ()> = Result<T, CommandError>;
+pub(crate) type CommandResult<T = ()> = Result<T, CommandError>;
 
 /// Failure of a CLI command, classified for the process exit contract.
 ///
@@ -16,19 +16,19 @@ pub type CommandResult<T = ()> = Result<T, CommandError>;
 /// "fix your data" from "fix your environment". Commands never exit themselves: the command prints
 /// finding details, the exit point in `application.rs` prints the single final line via [`Display`].
 #[derive(Debug)]
-pub enum CommandError {
+pub(crate) enum CommandError {
   Execution(XrfError),
   CheckFailed { findings: usize },
 }
 
 impl CommandError {
   /// A check that judged its input invalid, with `findings` defects.
-  pub fn new_check_failed(findings: usize) -> Self {
+  pub(crate) fn new_check_failed(findings: usize) -> Self {
     Self::CheckFailed { findings }
   }
 
   /// The process exit code the failure ends the run with.
-  pub const fn exit_code(&self) -> u8 {
+  pub(crate) const fn exit_code(&self) -> u8 {
     match self {
       Self::Execution(_) => 1,
       Self::CheckFailed { .. } => 3,
@@ -39,7 +39,7 @@ impl CommandError {
   ///
   /// This is what a machine-readable report carries: `Error:` is how a terminal line announces a
   /// failure, not part of what failed.
-  pub fn message(&self) -> String {
+  pub(crate) fn message(&self) -> String {
     match self {
       Self::Execution(error) => error.to_string(),
       Self::CheckFailed { findings } => format!("Check failed: {findings} finding(s)"),

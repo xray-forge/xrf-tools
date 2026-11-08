@@ -6,7 +6,7 @@ use crate::feature::tracing::scene_trace::requests::trace_request::TraceRequest;
 /// pass keeps. Group 5, which the water's every-pixel rays leave empty.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 5)]
-pub struct SceneListParameters {
+pub(crate) struct SceneListParameters {
   #[storage]
   pub trace_requests: StorageArray<TraceRequest>,
   #[storage]

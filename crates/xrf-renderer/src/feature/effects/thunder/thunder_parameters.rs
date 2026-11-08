@@ -8,7 +8,7 @@ use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 /// lighting, whose display the bolt's pictures enter the scene through.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct ThunderParameters<'a> {
+pub(crate) struct ThunderParameters<'a> {
   #[uniform]
   pub thunder: UniformBinding<ThunderUniform>,
   #[texture(d2, float)]

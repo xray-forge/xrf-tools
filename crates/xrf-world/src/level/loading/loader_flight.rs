@@ -10,14 +10,14 @@ use xrf_renderer::RenderWorkers;
 /// Its owner starts the next jobs from the render thread as it takes answers, once a frame, rather than each job
 /// starting the next as it ends: a job spawned from a pool thread goes to that thread's own queue, which the pool runs
 /// before anything queued from outside, so the loader would again hold every other job back for the whole level.
-pub struct LoaderFlight {
+pub(crate) struct LoaderFlight {
   bound: u32,
   started: u32,
   finished: Arc<AtomicU32>,
 }
 
 impl LoaderFlight {
-  pub fn new(workers: &RenderWorkers) -> Self {
+  pub(crate) fn new(workers: &RenderWorkers) -> Self {
     Self {
       bound: u32::try_from(workers.get_width()).unwrap_or(u32::MAX).max(1),
       started: 0,
@@ -27,7 +27,7 @@ impl LoaderFlight {
 
   /// Counts one more job started, answering the count it adds itself to once finished, whatever it did; none while
   /// the pool's width of them are unfinished.
-  pub fn start(&mut self) -> Option<Arc<AtomicU32>> {
+  pub(crate) fn start(&mut self) -> Option<Arc<AtomicU32>> {
     if self.started - self.finished.load(Ordering::Acquire) >= self.bound {
       return None;
     }
@@ -38,12 +38,12 @@ impl LoaderFlight {
   }
 
   /// How many jobs it started.
-  pub fn get_started(&self) -> u32 {
+  pub(crate) fn get_started(&self) -> u32 {
     self.started
   }
 
   /// Whether every job it started has finished.
-  pub fn is_landed(&self) -> bool {
+  pub(crate) fn is_landed(&self) -> bool {
     self.finished.load(Ordering::Acquire) == self.started
   }
 }

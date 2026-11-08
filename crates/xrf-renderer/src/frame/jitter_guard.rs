@@ -7,7 +7,7 @@ use xrf_renderer_core::{GraphOwner, GraphPassReport, GraphReport};
 /// A pass after a view's temporal resolve that reads a texture the view drew before it, by their labels.
 #[cfg(debug_assertions)]
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct JitteredRead {
+pub(crate) struct JitteredRead {
   pub pass: String,
   pub texture: String,
 }
@@ -19,7 +19,7 @@ pub struct JitteredRead {
 /// it or only shows it carries that texture's `READS_*` tag, beside the reason it gives. Every build tags its passes;
 /// only a build with debug assertions watches.
 #[derive(Default)]
-pub struct JitterGuard {
+pub(crate) struct JitterGuard {
   /// What was last warned of, warned again only once it changes.
   #[cfg(debug_assertions)]
   warned: Vec<JitteredRead>,
@@ -28,28 +28,28 @@ pub struct JitterGuard {
 impl JitterGuard {
   /// The tag of a pass resolving a view's frame: TAA, DLSS, its ray reconstruction, or FSR's accumulation, after its
   /// stages preparing what it accumulates.
-  pub const RESOLVES: &'static str = "jitter resolves";
-  pub const READS_ALBEDO: &'static str = "jitter reads albedo";
-  pub const READS_AMBIENT_OCCLUSION: &'static str = "jitter reads ambient occlusion";
-  pub const READS_DEPTH: &'static str = "jitter reads depth";
-  pub const READS_DEPTH_WITH_WATER: &'static str = "jitter reads depth with water";
-  pub const READS_HIGH: &'static str = "jitter reads high";
-  pub const READS_INDIRECT_LIGHT: &'static str = "jitter reads indirect light";
-  pub const READS_INDIRECT_TRACED: &'static str = "jitter reads indirect traced";
-  pub const READS_LIGHT: &'static str = "jitter reads light";
-  pub const READS_MATERIAL: &'static str = "jitter reads material";
-  pub const READS_MOTION: &'static str = "jitter reads motion";
-  pub const READS_NORMAL: &'static str = "jitter reads normal";
-  pub const READS_REFLECTION_HISTORY_FULL: &'static str = "jitter reads reflection history full";
-  pub const READS_REFLECTIONS_ENDS: &'static str = "jitter reads reflections ends";
-  pub const READS_REFLECTIONS_TRACED: &'static str = "jitter reads reflections traced";
-  pub const READS_SCENE: &'static str = "jitter reads scene";
+  pub(crate) const RESOLVES: &'static str = "jitter resolves";
+  pub(crate) const READS_ALBEDO: &'static str = "jitter reads albedo";
+  pub(crate) const READS_AMBIENT_OCCLUSION: &'static str = "jitter reads ambient occlusion";
+  pub(crate) const READS_DEPTH: &'static str = "jitter reads depth";
+  pub(crate) const READS_DEPTH_WITH_WATER: &'static str = "jitter reads depth with water";
+  pub(crate) const READS_HIGH: &'static str = "jitter reads high";
+  pub(crate) const READS_INDIRECT_LIGHT: &'static str = "jitter reads indirect light";
+  pub(crate) const READS_INDIRECT_TRACED: &'static str = "jitter reads indirect traced";
+  pub(crate) const READS_LIGHT: &'static str = "jitter reads light";
+  pub(crate) const READS_MATERIAL: &'static str = "jitter reads material";
+  pub(crate) const READS_MOTION: &'static str = "jitter reads motion";
+  pub(crate) const READS_NORMAL: &'static str = "jitter reads normal";
+  pub(crate) const READS_REFLECTION_HISTORY_FULL: &'static str = "jitter reads reflection history full";
+  pub(crate) const READS_REFLECTIONS_ENDS: &'static str = "jitter reads reflections ends";
+  pub(crate) const READS_REFLECTIONS_TRACED: &'static str = "jitter reads reflections traced";
+  pub(crate) const READS_SCENE: &'static str = "jitter reads scene";
 
   /// What the present reads of the drawn targets, the window's or a capture's: the debug views show them as they are,
   /// the indirect light and the reflections traced raw for ray reconstruction among them; the drawn scene is bound
   /// beside the upscaled image the frame shows, read only by the luminance view. A capture's copy takes the depth or
   /// the marks for a tool.
-  pub const PRESENT_READS: [&'static str; 13] = [
+  pub(crate) const PRESENT_READS: [&'static str; 13] = [
     Self::READS_ALBEDO,
     Self::READS_AMBIENT_OCCLUSION,
     Self::READS_DEPTH,
@@ -72,7 +72,7 @@ impl JitterGuard {
   const READS: &'static str = "jitter reads ";
 
   /// Warns of the frame's reads after a resolve that are not allowed, once each time they change.
-  pub fn watch(&mut self, report: &GraphReport) {
+  pub(crate) fn watch(&mut self, report: &GraphReport) {
     let reads: Vec<JitteredRead> = Self::list_jittered_reads(report);
 
     if reads != self.warned {
@@ -87,7 +87,7 @@ impl JitterGuard {
   /// The reads after each view's resolve of what the view drew before it, its own passes' and the window's, but those
   /// a pass's tags allow; sorted, each once. A texture a pass after the resolve draws anew, reading none of it, is no
   /// longer the jittered one.
-  pub fn list_jittered_reads(report: &GraphReport) -> Vec<JitteredRead> {
+  pub(crate) fn list_jittered_reads(report: &GraphReport) -> Vec<JitteredRead> {
     // What each view drew before its resolve, and whether it has resolved.
     let mut views: HashMap<GraphOwner, (HashSet<usize>, bool)> = HashMap::new();
     let mut reads: Vec<JitteredRead> = Vec::new();

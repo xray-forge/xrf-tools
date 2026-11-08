@@ -13,14 +13,14 @@ use crate::{EnvironmentCatalog, EnvironmentFinding, EnvironmentReadOptions, Envi
 static NEXT_FIXTURE: AtomicU64 = AtomicU64::new(0);
 
 /// A config tree written for one test, rooted where the configs are, as `configs` is in a game.
-pub struct EnvironmentFixture {
+pub(super) struct EnvironmentFixture {
   root: PathBuf,
   is_dltx: bool,
 }
 
 impl EnvironmentFixture {
   /// A tree holding the definitions a clean keyframe names, and nothing else.
-  pub fn new() -> Self {
+  pub(super) fn new() -> Self {
     let unique: u64 = NEXT_FIXTURE.fetch_add(1, Ordering::Relaxed);
     // A panicking test never reaches a cleanup of its own, so a fixture must not open on what one left.
     let root: PathBuf = GeneratedResources::create_dir(&format!("environment/fixture-{unique}")).unwrap();
@@ -39,7 +39,7 @@ impl EnvironmentFixture {
   }
 
   /// Writes one config, named relative to the configs root.
-  pub fn with(self, relative: &str, contents: &str) -> Self {
+  pub(super) fn with(self, relative: &str, contents: &str) -> Self {
     let path: PathBuf = self.root.join(relative.replace('\\', "/"));
 
     fs::create_dir_all(path.parent().unwrap()).unwrap();
@@ -49,20 +49,20 @@ impl EnvironmentFixture {
   }
 
   /// Takes one config away again.
-  pub fn without(self, relative: &str) -> Self {
+  pub(super) fn without(self, relative: &str) -> Self {
     let _ = fs::remove_file(self.root.join(relative.replace('\\', "/")));
 
     self
   }
 
   /// Resolves the tree with DLTX, as Anomaly's is.
-  pub fn with_dltx(mut self) -> Self {
+  pub(super) fn with_dltx(mut self) -> Self {
     self.is_dltx = true;
 
     self
   }
 
-  pub fn open(&self) -> LtxProject {
+  pub(super) fn open(&self) -> LtxProject {
     let options: LtxProjectOptions = if self.is_dltx {
       LtxProjectOptions::new().with_dialect(Arc::new(DltxDialect))
     } else {
@@ -72,11 +72,11 @@ impl EnvironmentFixture {
     LtxProject::open_at_path_opt(&self.root, options).unwrap()
   }
 
-  pub fn read(&self, engine: XrayEngine) -> EnvironmentCatalog {
+  pub(super) fn read(&self, engine: XrayEngine) -> EnvironmentCatalog {
     EnvironmentReader::read(&self.open(), engine).unwrap()
   }
 
-  pub fn read_explained(&self, engine: XrayEngine) -> EnvironmentCatalog {
+  pub(super) fn read_explained(&self, engine: XrayEngine) -> EnvironmentCatalog {
     let options: EnvironmentReadOptions = EnvironmentReadOptions::default()
       .with_engine(engine)
       .with_explained(true);
@@ -92,7 +92,7 @@ impl Drop for EnvironmentFixture {
 }
 
 /// The messages of every finding of one rule, which is what most assertions read.
-pub fn messages(catalog: &EnvironmentCatalog, rule: EnvironmentRule) -> Vec<&str> {
+pub(super) fn messages(catalog: &EnvironmentCatalog, rule: EnvironmentRule) -> Vec<&str> {
   catalog
     .findings
     .iter()
@@ -102,7 +102,7 @@ pub fn messages(catalog: &EnvironmentCatalog, rule: EnvironmentRule) -> Vec<&str
 }
 
 /// A vanilla keyframe writing every key OpenXRay requires, naming the fixture's definitions.
-pub fn vanilla_keyframe(time: &str) -> String {
+pub(super) fn vanilla_keyframe(time: &str) -> String {
   format!(
     "[{time}]
 ambient = day
@@ -134,7 +134,7 @@ wind_velocity = 5
 }
 
 /// An extended keyframe writing every key Monolith requires, and none of the sun's angles, which it does not read.
-pub fn extended_keyframe(time: &str) -> String {
+pub(super) fn extended_keyframe(time: &str) -> String {
   format!(
     "[{time}]
 ambient = day
@@ -165,7 +165,7 @@ bloom_threshold = 2.5
 }
 
 /// Monolith's sun table, every hour written.
-pub fn sun_table() -> String {
+pub(super) fn sun_table() -> String {
   (0..24)
     .map(|hour| {
       format!(

@@ -9,9 +9,9 @@ mod recording_progress;
 mod viewport_recorder;
 pub(crate) mod writer;
 
-pub use level_recordings::LevelRecordings;
-pub use recording_availability::RecordingAvailability;
-pub use recording_outcome::RecordingOutcome;
-pub use recording_progress::RecordingProgress;
+pub(crate) use level_recordings::LevelRecordings;
+pub(crate) use recording_availability::RecordingAvailability;
+pub(crate) use recording_outcome::RecordingOutcome;
+pub(crate) use recording_progress::RecordingProgress;
 #[cfg(windows)]
-pub use viewport_recorder::ViewportRecorder;
+pub(crate) use viewport_recorder::ViewportRecorder;

@@ -5,7 +5,7 @@ use xrf_vfs::{XrayAssetContainer, XrayShadowingEntry};
 /// One engine path the set answers with more than one copy, as a report states it.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ArchiveVerifyOverrideReport {
+pub(crate) struct ArchiveVerifyOverrideReport {
   logical_path: String,
   /// Where the copy a lookup reaches sits.
   container: String,

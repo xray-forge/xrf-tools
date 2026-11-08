@@ -5,7 +5,7 @@ use crate::feature::weather::wet::puddles::puddle_sites_uniform::PuddleSitesUnif
 /// What taking the level surface's lowest heights reads and writes: its overhead depth, the heights, and its shape.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 0)]
-pub struct LowestHeightsParameters {
+pub(crate) struct LowestHeightsParameters {
   #[texture(d2, depth)]
   pub surface: GraphTexture,
   #[storage_texture(d2, r32float, write)]

@@ -18,7 +18,7 @@ use crate::report::LevelReport;
 
 /// Reads a level's spawned visuals within one search, opening the shader library once for all of them, and only if
 /// one is read at all.
-pub struct SpawnVisualReader {
+pub(crate) struct SpawnVisualReader {
   visuals: Arc<LevelSpawnVisuals>,
   search: XraySearch,
   /// The level's own directory, the engine's `$level$`, where the level's breakables are compiled to.
@@ -34,7 +34,11 @@ impl SpawnVisualReader {
 
   /// Runs `read` with a reader of the open level's spawned visuals, whatever it reads recorded as the visuals' part read
   /// it.
-  pub fn with<T>(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch, read: impl FnOnce(&Self) -> T) -> T {
+  pub(crate) fn with<T>(
+    current: &SessionSnapshot<SelectedLevel>,
+    search: &XraySearch,
+    read: impl FnOnce(&Self) -> T,
+  ) -> T {
     let visuals: Arc<LevelSpawnVisuals> = current
       .parts
       .get_or_init::<LevelSpawnVisualsPart>(|| Arc::new(LevelSpawnVisuals::new()));
@@ -55,7 +59,7 @@ impl SpawnVisualReader {
   /// # Errors
   ///
   /// Returns why it cannot be read, reported the once it is tried: it is not read again.
-  pub fn get(&self, name: &str) -> TauriResult<Arc<LevelSpawnVisual>> {
+  pub(crate) fn get(&self, name: &str) -> TauriResult<Arc<LevelSpawnVisual>> {
     self.visuals.get_or_read(name, || {
       self
         .read(name)

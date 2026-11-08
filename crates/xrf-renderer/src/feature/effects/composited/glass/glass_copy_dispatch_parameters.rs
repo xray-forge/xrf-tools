@@ -4,7 +4,7 @@ use xrf_renderer_core::{GraphTexture, PassParameters, StorageArray, StorageArray
 /// whether any glass draws this frame, the frame whose size the copy covers, and the dispatch it writes for the copy.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 0)]
-pub struct GlassCopyDispatchParameters {
+pub(crate) struct GlassCopyDispatchParameters {
   #[storage]
   pub early: StorageArray<u32>,
   #[storage]

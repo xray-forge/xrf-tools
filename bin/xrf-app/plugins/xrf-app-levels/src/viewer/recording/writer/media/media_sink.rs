@@ -26,7 +26,7 @@ use crate::viewer::recording::writer::{RecordFormat, RecordResampler, RecordSamp
 /// which the writer converts for the encoder, a hardware one where the GPU has it; and AAC from 16-bit PCM, sound at a
 /// rate AAC does not take brought to 48 kHz first. Each fragment is whole once written, so a recording cut short plays
 /// to its last. Made and used on the thread holding a `MediaSession`.
-pub struct MediaSink {
+pub(crate) struct MediaSink {
   writer: IMFSinkWriter,
   format: RecordFormat,
   video: u32,
@@ -76,7 +76,7 @@ impl MediaSink {
   ///
   /// Returns an error, naming the step, when the writer cannot be made or takes no stream of the format: an odd size,
   /// a size and rate past the encoder, or sound to resample in other than stereo.
-  pub fn open(file: &Path, format: RecordFormat) -> Result<Self, String> {
+  pub(crate) fn open(file: &Path, format: RecordFormat) -> Result<Self, String> {
     let fail = |step: &'static str| move |error: windows::core::Error| format!("{step}: {}", error.message());
     let path: HSTRING = HSTRING::from(file.as_os_str());
 
@@ -191,7 +191,7 @@ impl MediaSink {
   ///
   /// Returns an error when a frame is not the recording's size, sound comes to a recording without it or not in whole
   /// frames, or the writer refuses the sample.
-  pub fn write(&mut self, sample: RecordSample) -> Result<(), String> {
+  pub(crate) fn write(&mut self, sample: RecordSample) -> Result<(), String> {
     match sample {
       RecordSample::Frame { bgra, time, duration } => {
         let expected: usize = self.format.width as usize * self.format.height as usize * 4;
@@ -276,7 +276,7 @@ impl MediaSink {
   /// # Errors
   ///
   /// Returns an error when the writer cannot finish the file.
-  pub fn finish(self) -> Result<RecordSummary, String> {
+  pub(crate) fn finish(self) -> Result<RecordSummary, String> {
     // SAFETY: finalizes this sink's writer once; nothing is written after.
     unsafe { self.writer.Finalize() }.map_err(|error| format!("Finishing the recording: {}", error.message()))?;
 

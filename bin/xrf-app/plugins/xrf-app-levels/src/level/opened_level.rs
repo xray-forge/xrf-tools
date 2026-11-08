@@ -26,7 +26,7 @@ impl OpenedLevel {
   /// Reads the level `source` names through `search`, recording what the level itself is read from as its inputs and
   /// keeping its geometry, surfaces, textures, map, spawn, the sections it names and where it starts as parts with their
   /// own; `engine` decides the engine its configs are read as, through the same recording search.
-  pub fn read(
+  pub(crate) fn read(
     search: XraySearch,
     source: LevelSource,
     roots: XrayRoots,
@@ -59,7 +59,7 @@ impl OpenedLevel {
   }
 
   /// The open level read again over the source, roots and dialect it was opened with, as the engine it was read as.
-  pub fn derive(
+  pub(crate) fn derive(
     current: &SessionSnapshot<SelectedLevel>,
     assets: &AssetMountState,
   ) -> TauriResult<SessionDerived<SelectedLevel>> {

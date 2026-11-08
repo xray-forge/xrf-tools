@@ -17,14 +17,14 @@ const UNSEEN_SKY: f32 = 1.0 / 512.0;
 /// The combine: the G-buffer and its light finished into the scene and its high part, with the sky, the haze, the
 /// fog, the ambient occlusion, the indirect light, the reflections and the wet surfaces' gloss.
 #[derive(Default)]
-pub struct CombineFeature {
+pub(crate) struct CombineFeature {
   /// Whether the sky behind the fog can show this frame: the sky is drawn, and the fog at the far plane reaches it.
   is_sky_behind: bool,
 }
 
 impl CombineFeature {
   /// Takes this frame's `lighting`, through a lens reaching `far` metres.
-  pub fn prepare(&mut self, lighting: &LightingUniform, far: f32) {
+  pub(crate) fn prepare(&mut self, lighting: &LightingUniform, far: f32) {
     let fog: f32 = (far * lighting.fog.y + lighting.fog.x).clamp(0.0, 1.0) * lighting.fog_color.w;
 
     self.is_sky_behind = lighting.params.y > 0.5 && lighting.fog.w > 0.5 && fog * fog >= UNSEEN_SKY;
@@ -32,7 +32,7 @@ impl CombineFeature {
 
   /// Adds the combine into the scene and the high target, reading what the units before it answered (`inputs`), the
   /// record's stand-ins for what they did not draw.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     ViewRecord {

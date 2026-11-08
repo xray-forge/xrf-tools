@@ -7,7 +7,7 @@ use crate::feature::tracing::scene_trace::requests::water_rays_uniform::WaterRay
 /// rays leave empty.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 6)]
-pub struct WaterRayParameters {
+pub(crate) struct WaterRayParameters {
   #[storage]
   pub water_rays: StorageArray<u32>,
   #[uniform]

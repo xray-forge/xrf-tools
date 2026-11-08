@@ -22,7 +22,7 @@ impl GraphVertexLevels {
   /// # Errors
   ///
   /// Returns an error when the head of the chunk cannot be read.
-  pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub(crate) fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let header: GraphHeader = reader.read_xr::<T, _>()?;
 
     let mut levels: Vec<GraphLevel> = reader.new_bounded_vec(
@@ -50,12 +50,12 @@ impl GraphVertexLevels {
 
   /// The level a spawned object stands on, by its game vertex; `None` for a graph point, which has none, or a vertex
   /// the graph does not hold.
-  pub fn get_object_level(&self, object: &AlifeObject) -> Option<&GraphLevel> {
+  pub(crate) fn get_object_level(&self, object: &AlifeObject) -> Option<&GraphLevel> {
     self.get_level(object.inherited.get_abstract()?.game_vertex_id)
   }
 
   /// The level a game vertex stands on, or `None` for a vertex or level id the graph does not hold.
-  pub fn get_level(&self, game_vertex_id: u16) -> Option<&GraphLevel> {
+  pub(crate) fn get_level(&self, game_vertex_id: u16) -> Option<&GraphLevel> {
     let id: u8 = self.vertices.get(usize::from(game_vertex_id))?.level_id;
 
     self.levels.iter().find(|level| level.id == id)

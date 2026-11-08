@@ -5,7 +5,7 @@ use xrf_renderer_core::{GraphTexture, PassParameters};
 /// to be among them, and the visibility target, a share a slot, four slots a layer.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 3)]
-pub struct LightShadowingParameters<'a> {
+pub(crate) struct LightShadowingParameters<'a> {
   #[texture(d2, depth)]
   pub shadow_atlas: GraphTexture,
   #[sampler(comparison)]

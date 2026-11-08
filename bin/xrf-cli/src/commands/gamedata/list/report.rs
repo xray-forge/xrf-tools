@@ -11,7 +11,7 @@ use crate::core::reports::SkippedMountReport;
 /// What `gamedata list` resolved out of the roots it was given.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct GamedataListReport {
+pub(crate) struct GamedataListReport {
   /// Reported as the VFS records it, since one shape answers this wherever it is asked.
   collisions: Vec<XrayPathCollision>,
   #[serde(with = "xrf_utils::duration_ms")]
@@ -26,7 +26,7 @@ pub struct GamedataListReport {
 }
 
 impl GamedataListReport {
-  pub fn new(listing: &AssetListing, is_shadowed_included: bool) -> Self {
+  pub(crate) fn new(listing: &AssetListing, is_shadowed_included: bool) -> Self {
     Self {
       collisions: listing.collisions.clone(),
       duration: listing.duration,
