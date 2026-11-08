@@ -113,7 +113,7 @@ fn writes_an_ogf_the_reader_takes_whole() -> XrfResult {
 }
 
 #[test]
-fn decompiles_a_blender_xray_model_to_compile_back_with_mikktspace() -> XrfResult {
+fn decompiles_a_blender_export_to_compile_back_with_mikktspace() -> XrfResult {
   let exported_by = |convertor: &str| -> XrfResult<TangentMethod> {
     let source: ObjectCompileSource = ObjectCompileSource {
       source_file: String::from(SOURCE),
@@ -125,11 +125,12 @@ fn decompiles_a_blender_xray_model_to_compile_back_with_mikktspace() -> XrfResul
     Ok(ObjectDecompiler::decompile(&file)?.tangents)
   };
 
-  // The convertor `blender-xray` 2.37.0 writes.
+  // The convertor `blender-xray` 2.37.0 writes, and the plain one older Blender exports in GAMMA carry.
   assert_eq!(
     exported_by("program: blender v3.6.12, addon: blender-xray-v2.37.0")?,
     TangentMethod::MikkTSpace
   );
+  assert_eq!(exported_by("blender")?, TangentMethod::MikkTSpace);
   assert_eq!(exported_by("\\\\YURIY\\Yuriy")?, TangentMethod::ActorEditor);
 
   Ok(())

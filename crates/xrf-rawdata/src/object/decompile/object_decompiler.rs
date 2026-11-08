@@ -105,16 +105,17 @@ impl ObjectDecompiler {
     })
   }
 
-  /// The tangent method `file`'s basis was made with: MikkTSpace where its description's convertor names
-  /// `blender-xray`, whose export takes Blender's tangents, else the Actor Editor's. Over the enhanced editions' and
-  /// Gunslinger's 596 models naming it, MikkTSpace gives the stored basis back on 88 to 97% of vertices, the editor's
-  /// pass on under half; on every other model the editor's pass does better.
+  /// The tangent method `file`'s basis was made with: MikkTSpace where its description's convertor names Blender, whose
+  /// exports take Blender's tangents, else the Actor Editor's. On the models naming `blender-xray` MikkTSpace gives the
+  /// stored tangent back within a degree on 88 to 97% of vertices (enhanced editions, Gunslinger) and 65% (GAMMA, 3,565
+  /// models), the editor's pass on under 42%; on GAMMA's 669 naming plain `blender`, 76% against 39%. On every other
+  /// model the editor's pass does better.
   fn get_tangent_method(file: &OgfFile) -> TangentMethod {
-    let is_blender_xray: bool = file
+    let is_blender: bool = file
       .get_description()
-      .is_some_and(|description| description.convertor.to_ascii_lowercase().contains("blender-xray"));
+      .is_some_and(|description| description.convertor.to_ascii_lowercase().contains("blender"));
 
-    if is_blender_xray {
+    if is_blender {
       TangentMethod::MikkTSpace
     } else {
       TangentMethod::ActorEditor

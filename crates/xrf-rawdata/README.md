@@ -27,7 +27,7 @@ two-sided flag, and for an animated model its motions' curves between frames and
 more than it declares (`blender-xray`'s, for an action starting between frames), its length from its keys.
 `ObjectProvenance` is the sidecar written beside a decompiled file, so it is never taken for an authored one: the source
 path and SHA-256, the tool, the time, every inference, and the tangent method the source was made with (MikkTSpace
-where its description names `blender-xray`), which `ObjectCompileOptions::following` compiles it back with.
+where its description's convertor names Blender), which `ObjectCompileOptions::following` compiles it back with.
 
 An OGF that is not a skeleton, or a child with static vertices, is refused for now.
 
