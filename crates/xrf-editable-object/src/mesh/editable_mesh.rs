@@ -26,6 +26,9 @@ pub struct EditableMesh {
   pub faces: Vec<EditableFace>,
   /// One smoothing group mask per face, `None` where the mesh stores none.
   pub smoothing_groups: Option<Vec<u32>>,
+  /// Each face's corner normals, in corner order, which `blender-xray` writes beside the smoothing groups and the SDK
+  /// never reads (see [`Self::CORNER_NORMALS_CHUNK_ID`]). `None` where the mesh stores none.
+  pub corner_normals: Option<Vec<[Vector3d; 3]>>,
   pub vmap_references: Vec<EditableVMapReference>,
   pub surface_faces: Vec<EditableSurfaceFaces>,
   /// `None` where the mesh stores no `EMESH_CHUNK_VMAPS_2`.
@@ -50,6 +53,9 @@ impl EditableMesh {
   pub const OPTIONS_CHUNK_ID: u32 = 0x1010;
   pub const VMAPS_CHUNK_ID: u32 = 0x1012;
   pub const SMOOTHING_GROUPS_CHUNK_ID: u32 = 0x1013;
+  /// `blender-xray`'s per-corner normals (`Chunks.Mesh.NORMALS`): three per face, no count, which its importer applies
+  /// as custom split normals. `CEditableMesh::LoadMesh` reads no such chunk, so the SDK keeps smoothing by the groups.
+  pub const CORNER_NORMALS_CHUNK_ID: u32 = 0x1014;
 
   /// `flVisible`: the editor draws the mesh, as every mesh it saves for export is.
   pub const VISIBLE_FLAG: u8 = 1 << 0;
@@ -69,8 +75,8 @@ impl EditableMesh {
   /// # Errors
   ///
   /// Returns an error where the SDK fails or asserts: a version other than [`Self::VERSION`], or a required chunk
-  /// missing; and where a chunk holds more or less than its fields, a smoothing group list does not match the faces,
-  /// stored point face lists are not the ones the faces give, or a count runs past its chunk.
+  /// missing; and where a chunk holds more or less than its fields, smoothing groups or corner normals do not match the
+  /// faces, stored point face lists are not the ones the faces give, or a count runs past its chunk.
   pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let mut version: Option<u16> = None;
     let mut name: Option<String> = None;
@@ -80,6 +86,7 @@ impl EditableMesh {
     let mut points: Option<MeshPoints> = None;
     let mut faces: Option<Vec<EditableFace>> = None;
     let mut smoothing_groups: Option<Vec<u32>> = None;
+    let mut corner_normals: Option<Vec<[Vector3d; 3]>> = None;
     let mut vmap_references: Option<Vec<EditableVMapReference>> = None;
     let mut surface_faces: Option<Vec<EditableSurfaceFaces>> = None;
     let mut vmaps: Option<Vec<EditableVMap>> = None;
@@ -113,6 +120,9 @@ impl EditableMesh {
         }
         Self::SMOOTHING_GROUPS_CHUNK_ID if smoothing_groups.is_none() => {
           smoothing_groups = Some(Self::read_smoothing_groups::<T, D>(chunk)?);
+        }
+        Self::CORNER_NORMALS_CHUNK_ID if corner_normals.is_none() => {
+          corner_normals = Some(Self::read_corner_normals::<T, D>(chunk)?);
         }
         Self::VMAP_REFERENCES_CHUNK_ID if vmap_references.is_none() => {
           vmap_references = Some(EditableChunks::read_whole(chunk, "vertex map references", |chunk| {
@@ -165,13 +175,14 @@ impl EditableMesh {
       has_point_faces: points.point_faces.is_some(),
       faces: EditableChunks::require(faces, "mesh faces")?,
       smoothing_groups,
+      corner_normals,
       vmap_references: EditableChunks::require(vmap_references, "vertex map references")?,
       surface_faces: EditableChunks::require(surface_faces, "surface faces")?,
       vmaps,
       layout,
     };
 
-    mesh.assert_smoothing_groups_match()?;
+    mesh.assert_per_face_lists_match()?;
 
     if let Some(stored) = points.point_faces
       && stored != mesh.get_point_faces()?
@@ -190,11 +201,11 @@ impl EditableMesh {
   ///
   /// # Errors
   ///
-  /// Returns an error when a list is longer than its count field holds, the smoothing groups do not match the faces,
-  /// a face names a point the mesh does not have while its point faces are written, or a vertex map's lists disagree
-  /// on its entry count.
+  /// Returns an error when a list is longer than its count field holds, smoothing groups or corner normals do not match
+  /// the faces, a face names a point the mesh does not have while its point faces are written, or a vertex map's lists
+  /// disagree on its entry count.
   pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    self.assert_smoothing_groups_match()?;
+    self.assert_per_face_lists_match()?;
 
     let mut sequence: ChunkSequence = ChunkSequence::new();
 
@@ -235,6 +246,16 @@ impl EditableMesh {
       sequence.push(Self::SMOOTHING_GROUPS_CHUNK_ID, |writer| {
         for group in groups {
           writer.write_u32::<T>(*group)?;
+        }
+
+        Ok(())
+      })?;
+    }
+
+    if let Some(normals) = &self.corner_normals {
+      sequence.push(Self::CORNER_NORMALS_CHUNK_ID, |writer| {
+        for normal in normals.iter().flatten() {
+          normal.write::<T>(writer)?;
         }
 
         Ok(())
@@ -310,17 +331,55 @@ impl EditableMesh {
     Ok(point_faces)
   }
 
-  /// Refuses smoothing groups that are not one per face, which the editor reads straight off the chunk per face.
-  fn assert_smoothing_groups_match(&self) -> XrfResult {
-    match &self.smoothing_groups {
-      Some(groups) if groups.len() != self.faces.len() => Err(XrfError::new_invalid_error(format!(
-        "Mesh '{}' holds {} smoothing groups for {} faces, the editor stores one per face",
-        self.name,
-        groups.len(),
-        self.faces.len()
-      ))),
-      _ => Ok(()),
+  /// Refuses smoothing groups or corner normals that are not one entry per face, which their readers take straight off
+  /// the chunk per face.
+  fn assert_per_face_lists_match(&self) -> XrfResult {
+    let lists = [
+      ("smoothing groups", self.smoothing_groups.as_ref().map(Vec::len)),
+      ("corner normal triples", self.corner_normals.as_ref().map(Vec::len)),
+    ];
+
+    for (label, count) in lists {
+      if let Some(count) = count
+        && count != self.faces.len()
+      {
+        return Err(XrfError::new_invalid_error(format!(
+          "Mesh '{}' holds {count} {label} for {} faces, one per face",
+          self.name,
+          self.faces.len()
+        )));
+      }
     }
+
+    Ok(())
+  }
+
+  /// Reads the corner normals chunk, which stores no count: three normals per face, read until the chunk ends.
+  fn read_corner_normals<T: ByteOrder, D: ChunkDataSource>(
+    chunk: &mut ChunkReader<D>,
+  ) -> XrfResult<Vec<[Vector3d; 3]>> {
+    const TRIPLE_SIZE: u64 = 36;
+
+    let size: u64 = chunk.read_bytes_remain();
+
+    if !size.is_multiple_of(TRIPLE_SIZE) {
+      return Err(XrfError::new_parsing_error(format!(
+        "Unexpected corner normals chunk of {size} bytes, which does not divide into {TRIPLE_SIZE} byte triples"
+      )));
+    }
+
+    let mut normals: Vec<[Vector3d; 3]> =
+      chunk.new_bounded_vec(size / TRIPLE_SIZE, TRIPLE_SIZE, "corner normal triples")?;
+
+    for _ in 0..size / TRIPLE_SIZE {
+      normals.push([
+        chunk.read_xr::<T, _>()?,
+        chunk.read_xr::<T, _>()?,
+        chunk.read_xr::<T, _>()?,
+      ]);
+    }
+
+    Ok(normals)
   }
 
   /// Reads the smoothing group chunk, which stores no count: `LoadMesh` reads a mask per face straight off it.

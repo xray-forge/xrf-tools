@@ -74,6 +74,15 @@ impl MeshAssembler {
         has_point_faces: false,
         faces,
         smoothing_groups: Some(smoothing),
+        // The normals the OGF stores, which the smoothing only approximates where another exporter's rule made them:
+        // the compile takes them over the SDK's, and `blender-xray` imports them; the SDK reads only the smoothing.
+        corner_normals: Some(
+          welded
+            .faces
+            .iter()
+            .map(|face| face.corners.each_ref().map(|corner| corner.normal))
+            .collect(),
+        ),
         vmap_references: std::mem::take(&mut maps.references),
         surface_faces: layout
           .surfaces

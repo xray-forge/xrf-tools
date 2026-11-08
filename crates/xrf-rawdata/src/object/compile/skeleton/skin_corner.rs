@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::HashMap;
 
 use xrf_editable_object::{EditableMesh, EditableMeshNormals, EditableVMap, EditableVMapKind};
@@ -6,8 +7,8 @@ use xrf_math::{Vector2d, Vector3d};
 
 use crate::object::compile::skeleton::skeleton_vertex::SkeletonVertexBone;
 
-/// One face corner as `CEditableMesh::GenerateSVertices` gives it the export: its point, its normal, the texture
-/// coordinate and the bone weights its vertex map reference names.
+/// One face corner as `CEditableMesh::GenerateSVertices` gives it the export: its point, its normal (see
+/// [`Self::get_corner_normals`]), the texture coordinate and the bone weights its vertex map reference names.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct SkinCorner {
   pub(crate) position: Vector3d,
@@ -29,13 +30,13 @@ impl SkinCorner {
   /// Returns an error when a face names a point or a reference the mesh does not have, a reference names a vertex map
   /// or an entry it does not have, or a weight map belongs to no bone.
   pub(crate) fn of_mesh(mesh: &EditableMesh, bone_of_map: &HashMap<&str, u16>) -> XrfResult<Vec<[Self; 3]>> {
-    let normals: EditableMeshNormals = EditableMeshNormals::of(mesh)?;
+    let normals: Cow<[[Vector3d; 3]]> = Self::get_corner_normals(mesh)?;
     let vmaps: &[EditableVMap] = mesh.vmaps.as_deref().unwrap_or_default();
 
     mesh
       .faces
       .iter()
-      .zip(&normals.corners)
+      .zip(normals.iter())
       .map(|(face, corner_normals)| {
         let corner = |index: usize| -> XrfResult<Self> {
           let point = face.corners[index];
@@ -51,6 +52,22 @@ impl SkinCorner {
         Ok([corner(0)?, corner(1)?, corner(2)?])
       })
       .collect()
+  }
+
+  /// Each face's corner normals: those the mesh stores where it stores them, as `blender-xray` and the decompile do,
+  /// else the SDK's from the smoothing (`EditableMeshNormals`). The Actor Editor reads no stored normals, so an object
+  /// carrying them compiles here to the normals it was made with, and in the SDK to its smoothing's.
+  fn get_corner_normals(mesh: &EditableMesh) -> XrfResult<Cow<'_, [[Vector3d; 3]]>> {
+    match &mesh.corner_normals {
+      Some(stored) if stored.len() == mesh.faces.len() => Ok(Cow::Borrowed(stored)),
+      Some(stored) => Err(XrfError::new_invalid_error(format!(
+        "Mesh '{}' stores {} corner normal triples for {} faces",
+        mesh.name,
+        stored.len(),
+        mesh.faces.len()
+      ))),
+      None => Ok(Cow::Owned(EditableMeshNormals::of(mesh)?.corners)),
+    }
   }
 
   /// The texture coordinate, the last a reference names as the export keeps it, and the prepared weights.
