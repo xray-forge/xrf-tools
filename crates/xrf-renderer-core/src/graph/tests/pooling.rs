@@ -1,5 +1,7 @@
-use crate::graph::tests::fixtures::{color_texture, draw, present};
-use crate::graph::{FrameGraph, GraphCompileOptions, GraphTexture, GraphTextureDescriptor};
+use crate::graph::tests::fixtures::{clear, color_texture, draw, load, present};
+use crate::graph::{
+  FrameGraph, GraphBufferAccess, GraphBufferDescriptor, GraphCompileOptions, GraphTexture, GraphTextureDescriptor,
+};
 
 /// Three transients of one key, each drawn from the one before, the last sampled into an import: the first lives over
 /// passes 0-1, the second 1-2, the third 2-3, so the first and the third never overlap.
@@ -28,6 +30,49 @@ fn shares_a_slot_between_transients_that_never_overlap() {
     [0, 1, 0]
   );
   assert_eq!(compiled.describe().pooled_count, 2);
+}
+
+// A transient last used by a draw and one first written by the next draw of the same render pass would share a slot
+// inside that render pass, read and written by storage at once; the slot frees only once the render pass ends.
+#[test]
+fn frees_a_slot_only_once_the_render_pass_of_its_last_use_ends() {
+  let mut graph: FrameGraph<'_> = FrameGraph::new();
+  let scene = graph.create_texture(color_texture("scene"));
+  let [lights, marks] = ["lights", "marks"].map(|label| graph.create_buffer(GraphBufferDescriptor::new(label, 16)));
+
+  graph
+    .add_compute_pass("bin")
+    .buffer(lights, GraphBufferAccess::StorageWrite)
+    .record(|_| {});
+  graph
+    .add_raster_pass("lit")
+    .color(clear(scene))
+    .buffer(lights, GraphBufferAccess::StorageRead)
+    .record(|_| {});
+  graph
+    .add_raster_pass("marked")
+    .color(load(scene))
+    .buffer(marks, GraphBufferAccess::StorageWrite)
+    .record(|_| {});
+  graph
+    .add_raster_pass("outlined")
+    .color(load(scene))
+    .buffer(marks, GraphBufferAccess::StorageRead)
+    .record(|_| {});
+  present(&mut graph, scene);
+
+  let compiled = graph.compile(&GraphCompileOptions::default()).unwrap();
+  let report = compiled.describe();
+
+  assert_eq!(report.passes[1].render_pass, report.passes[2].render_pass);
+  assert_eq!(
+    compiled.get_buffer_slot(lights).unwrap().key,
+    compiled.get_buffer_slot(marks).unwrap().key
+  );
+  assert_ne!(
+    compiled.get_buffer_slot(lights).unwrap().ordinal,
+    compiled.get_buffer_slot(marks).unwrap().ordinal
+  );
 }
 
 #[test]
