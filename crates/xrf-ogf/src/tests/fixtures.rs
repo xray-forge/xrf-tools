@@ -124,13 +124,37 @@ pub(crate) fn truncated_chunk() -> XrfResult<Vec<u8>> {
   Ok(bytes)
 }
 
-/// Trailing bytes long enough to be a header and belonging to nothing, which nothing may accept.
+/// Trailing bytes headed as a user data chunk, which the engine opens, cut short: nothing may accept them.
 pub(crate) fn unexplained_residue() -> XrfResult<Vec<u8>> {
   let mut bytes: Vec<u8> = well_formed()?;
 
-  bytes.extend_from_slice(b"alker_scenario_animation\0");
+  bytes.extend(raw_oversized_chunk(17, 4343, b"[collide]"));
 
   Ok(bytes)
+}
+
+/// Text appended after the last chunk, as `clear_sky_skat_ua.ogf` carries it: its first bytes read as an id no loader
+/// asks for and a size past the file's end.
+pub(crate) const APPENDED_TEXT: &[u8] = b"[disable]\r\n\r\nlinear_factor = 0.3\r\nangular_factor = 0.3\r\n\r\n";
+
+pub(crate) fn appended_text() -> XrfResult<Vec<u8>> {
+  let mut bytes: Vec<u8> = well_formed()?;
+
+  bytes.extend_from_slice(APPENDED_TEXT);
+
+  Ok(bytes)
+}
+
+/// The `wpn_gp100` shape: a last LODs chunk declaring 4,343 bytes, of which the file holds its line and line end.
+pub(crate) fn overstated_lods() -> XrfResult<(Vec<u8>, Vec<u8>)> {
+  let line: &[u8] = b"dynamics\\weapons\\wpn_gp100\\wpn_gp100_lod\r\n";
+  let mut overstated: Vec<u8> = header_bytes()?;
+  let mut exact: Vec<u8> = header_bytes()?;
+
+  overstated.extend(raw_oversized_chunk(23, 4343, line));
+  exact.extend(raw_chunk(23, line));
+
+  Ok((overstated, exact))
 }
 
 /// The reference the `conserva_hud` shape cuts.

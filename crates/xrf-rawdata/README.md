@@ -22,8 +22,10 @@ opens. It undoes what the editor's `Export OGF` did:
 
 What the OGF does not store is inferred and listed in `ObjectDecompile::inferred`: surface names, compiler shaders and
 game materials (the Actor Editor's `default`), the mesh name (`skin`), bone lengths (the SDK's 0.5), smoothing, the
-two-sided flag, and for an animated model its motions' curves between frames. `ObjectProvenance` is the sidecar written beside a decompiled file, so it is never taken for an authored
-one: the source path and SHA-256, the tool, the time, and every inference.
+two-sided flag, and for an animated model its motions' curves between frames and, for a motion holding one key a bone
+more than it declares (`blender-xray`'s, for an action starting between frames), its length from its keys.
+`ObjectProvenance` is the sidecar written beside a decompiled file, so it is never taken for an authored one: the source
+path and SHA-256, the tool, the time, and every inference.
 
 An OGF that is not a skeleton, or a child with static vertices, is refused for now.
 

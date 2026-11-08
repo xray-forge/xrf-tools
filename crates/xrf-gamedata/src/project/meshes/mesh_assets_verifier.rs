@@ -599,6 +599,14 @@ impl<'a> MeshAssetsVerifier<'a> {
         "Mesh motion refs chunk declares {declared} bytes, more than the file holds, and the engine reads its \
          references from what is there"
       ),
+      OgfResidueCause::OverstatedLods { declared } => format!(
+        "Mesh LODs chunk declares {declared} bytes, more than the file holds, and the engine reads its line from what \
+         is there"
+      ),
+      OgfResidueCause::UnreadTrailingChunk { id } => format!(
+        "Mesh carries {ignored} bytes the engine never reads after its last chunk, headed by id {id:#010x}, which no \
+         loader asks for"
+      ),
     };
 
     vec![Self::new_mesh_finding(

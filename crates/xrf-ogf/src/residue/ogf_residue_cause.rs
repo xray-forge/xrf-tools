@@ -11,6 +11,12 @@ pub enum OgfResidueCause {
   /// A last motion refs chunk declares more bytes than the file holds, but its references end exactly where the file
   /// does, and the loader reads them off the visual's own reader whatever the size says.
   OverstatedMotionRefs { declared: u32 },
+  /// A last LODs chunk declares more bytes than the file holds, but its line ends within the file, where the loader's
+  /// `r_string` stops reading, past one more byte it looks at for a further line end.
+  OverstatedLods { declared: u32 },
+  /// Bytes after the last chunk, headed by an id no loader asks for and a size past the file's end: `find_chunk` skips
+  /// them by that size and ends its search, so they are never read. Text appended to a visual reads so.
+  UnreadTrailingChunk { id: u32 },
 }
 
 impl OgfResidueCause {
@@ -21,6 +27,8 @@ impl OgfResidueCause {
       Self::SplitMotionRef { .. } => "split-motion-ref",
       Self::UnderstatedMotionRefs { .. } => "understated-motion-refs",
       Self::OverstatedMotionRefs { .. } => "overstated-motion-refs",
+      Self::OverstatedLods { .. } => "overstated-lods",
+      Self::UnreadTrailingChunk { .. } => "unread-trailing-chunk",
     }
   }
 
@@ -28,7 +36,11 @@ impl OgfResidueCause {
   pub fn get_discarded_path(&self) -> Option<&str> {
     match self {
       Self::SplitMotionRef { path } => Some(path),
-      Self::TrailingFragment | Self::UnderstatedMotionRefs { .. } | Self::OverstatedMotionRefs { .. } => None,
+      Self::TrailingFragment
+      | Self::UnderstatedMotionRefs { .. }
+      | Self::OverstatedMotionRefs { .. }
+      | Self::OverstatedLods { .. }
+      | Self::UnreadTrailingChunk { .. } => None,
     }
   }
 }

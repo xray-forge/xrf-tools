@@ -17,6 +17,8 @@ pub(crate) struct MotionConverter;
 pub(crate) struct ConvertedMotions {
   pub(crate) motions: Vec<EditableMotion>,
   pub(crate) parts: Vec<EditableBonePart>,
+  /// Whether a motion is as long as its keys rather than as it declares (see [`MotionConverter::decode_runs`]).
+  pub(crate) is_lengthened: bool,
 }
 
 impl MotionConverter {
@@ -28,7 +30,7 @@ impl MotionConverter {
   /// # Errors
   ///
   /// Returns an error when the motions come without the parameters that say how they play, a part names a bone the
-  /// skeleton lacks, or a motion's keys do not decode for the skeleton's bones.
+  /// skeleton lacks, or a motion's keys do not decode for the skeleton's bones at its declared length or one key more.
   pub(crate) fn convert<T: ByteOrder>(file: &OgfFile, bone_names: &[String]) -> XrfResult<Option<ConvertedMotions>> {
     let Some(motions) = file.motions.as_ref().filter(|chunk| !chunk.motions.is_empty()) else {
       return Ok(None);
@@ -38,21 +40,29 @@ impl MotionConverter {
       .as_ref()
       .ok_or_else(|| XrfError::new_invalid_error("An OGF keeps motions but no parameters saying how they play"))?;
     let bone_of_run: Vec<usize> = Self::bone_of_run(parameters, bone_names)?;
+    let mut is_lengthened: bool = false;
+    let mut converted: Vec<EditableMotion> = Vec::with_capacity(motions.motions.len());
 
-    Ok(Some(ConvertedMotions {
-      motions: motions
+    for (index, motion) in motions.motions.iter().enumerate() {
+      let definition: Option<&SkeletonMotionDefinition> = parameters
         .motions
         .iter()
-        .enumerate()
-        .map(|(index, motion)| {
-          let definition: Option<&SkeletonMotionDefinition> = parameters
-            .motions
-            .iter()
-            .find(|definition| usize::from(definition.motion) == index);
+        .find(|definition| usize::from(definition.motion) == index);
+      let (runs, frames): (Vec<SkeletonBoneMotion>, u32) = Self::decode_runs::<T>(motion, bone_names.len())?;
 
-          Self::convert_motion::<T>(motion, definition, &bone_of_run, bone_names)
-        })
-        .collect::<XrfResult<_>>()?,
+      is_lengthened |= frames != motion.count;
+      converted.push(Self::convert_motion(
+        motion,
+        &runs,
+        frames,
+        definition,
+        &bone_of_run,
+        bone_names,
+      )?);
+    }
+
+    Ok(Some(ConvertedMotions {
+      motions: converted,
       parts: parameters
         .parts
         .iter()
@@ -61,6 +71,7 @@ impl MotionConverter {
           bones: part.bones.iter().map(|(name, _)| name.clone()).collect(),
         })
         .collect(),
+      is_lengthened,
     }))
   }
 
@@ -82,13 +93,44 @@ impl MotionConverter {
     Ok(bone_of_run)
   }
 
-  fn convert_motion<T: ByteOrder>(
+  /// A motion's key runs, one per bone, and the frames they span: those it declares, or one more where every run holds
+  /// one key more and only so do the runs fill the payload exactly.
+  ///
+  /// `blender-xray` declares `int(end - start + 1)` frames but samples `int(start)` to `int(end)`, one frame more for an
+  /// action starting between frames; `motions_value::load` then reads each run short, and the rest of the payload as
+  /// the next runs. The keys are whole, so the motion is read at their length, and compiled again it declares it.
+  ///
+  /// # Errors
+  ///
+  /// Returns the declared length's error when the keys decode at neither length.
+  fn decode_runs<T: ByteOrder>(motion: &SkeletonMotion, bones: usize) -> XrfResult<(Vec<SkeletonBoneMotion>, u32)> {
+    let error: XrfError = match motion.decode_bone_motions::<T>(bones) {
+      Ok(runs) => return Ok((runs, motion.count)),
+      Err(error) => error,
+    };
+    let Some(frames) = motion.count.checked_add(1) else {
+      return Err(error);
+    };
+    let lengthened: SkeletonMotion = SkeletonMotion {
+      count: frames,
+      ..motion.clone()
+    };
+
+    lengthened
+      .decode_bone_motions::<T>(bones)
+      .map(|runs| (runs, frames))
+      .map_err(|_| error)
+  }
+
+  fn convert_motion(
     motion: &SkeletonMotion,
+    runs: &[SkeletonBoneMotion],
+    frames: u32,
     definition: Option<&SkeletonMotionDefinition>,
     bone_of_run: &[usize],
     bone_names: &[String],
   ) -> XrfResult<EditableMotion> {
-    let frame_end: i32 = i32::try_from(motion.count)
+    let frame_end: i32 = i32::try_from(frames)
       .ok()
       .and_then(|count| count.checked_sub(1))
       .filter(|end| *end >= 0)
@@ -96,17 +138,16 @@ impl MotionConverter {
         XrfError::new_invalid_error(format!(
           "Motion '{}' declares {} frames, where the editor keys one to {}",
           motion.label,
-          motion.count,
+          frames,
           i32::MAX
         ))
       })?;
-    let runs: Vec<SkeletonBoneMotion> = motion.decode_bone_motions::<T>(bone_names.len())?;
     let mut bones: Vec<Option<EditableBoneMotion>> = vec![None; bone_names.len()];
 
     for (run, keys) in runs.iter().enumerate() {
       let bone: usize = bone_of_run.get(run).copied().unwrap_or(run);
 
-      bones[bone] = Some(Self::convert_bone(&bone_names[bone], keys, motion.count as usize));
+      bones[bone] = Some(Self::convert_bone(&bone_names[bone], keys, frames as usize));
     }
 
     // `CSMotion`'s own defaults, for a motion no definition describes.

@@ -62,8 +62,12 @@ impl ObjectDecompiler {
     let motions: Option<ConvertedMotions> = MotionConverter::convert::<XRayByteOrder>(file, &bone_names)?;
     let mut inferred: Vec<ObjectInference> = Self::INFERRED.to_vec();
 
-    if motions.is_some() {
+    if let Some(motions) = &motions {
       inferred.push(ObjectInference::MotionCurves);
+
+      if motions.is_lengthened {
+        inferred.push(ObjectInference::MotionLengths);
+      }
     }
 
     Ok(ObjectDecompile {

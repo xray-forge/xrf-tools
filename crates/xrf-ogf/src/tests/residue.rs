@@ -69,8 +69,8 @@ fn refuses_a_truncated_chunk() -> XrfResult {
     Err(error) => error.to_string(),
   };
 
-  // The engine reads this chunk through `open_chunk`, which would build a reader over bytes that are not there, so
-  // tolerating it would accept a file the engine itself cannot load.
+  // The engine opens this LODs chunk over bytes that are not there, and with no line end in the file its `r_string`
+  // reads on past it, so tolerating it would accept a file the engine itself cannot load.
   assert!(
     error.contains("declares 4343 bytes, 30 remain before source end"),
     "Unexpected error: {error}"
@@ -80,11 +80,10 @@ fn refuses_a_truncated_chunk() -> XrfResult {
 }
 
 #[test]
-fn refuses_trailing_bytes_that_belong_to_nothing() -> XrfResult {
-  // The guard that keeps the rule narrow. These bytes are the same bytes the split-reference fixture ends with, but no
-  // chunk was cut short to produce them, so nothing accounts for them and the strict error must survive.
+fn refuses_trailing_bytes_headed_as_a_chunk_the_engine_reads() -> XrfResult {
+  // The guard that keeps the rule narrow: a user data chunk cut short is one the engine opens and reads past the file.
   let strict: String = match OgfFile::read_from_bytes::<XRayByteOrder>(fixtures::unexplained_residue()?) {
-    Ok(_) => panic!("Expected unaccountable trailing bytes to be refused"),
+    Ok(_) => panic!("Expected trailing bytes the engine reads to be refused"),
     Err(error) => error.to_string(),
   };
 
@@ -92,6 +91,47 @@ fn refuses_trailing_bytes_that_belong_to_nothing() -> XrfResult {
     strict.contains("beyond source end") || strict.contains("remain before source end"),
     "Expect the error a strict walk always raised, unchanged: {strict}"
   );
+
+  Ok(())
+}
+
+#[test]
+fn reads_text_appended_after_the_last_chunk_and_normalizes_it_away() -> XrfResult {
+  // `find_chunk` takes the text's first bytes for an id it never looks for and a size past the end, and stops there.
+  let appended: Vec<u8> = fixtures::appended_text()?;
+  let residue = OgfFile::read_from_bytes::<XRayByteOrder>(appended.clone())?
+    .residue
+    .expect("Expect the appended text accounted for");
+
+  assert_eq!(
+    residue.cause,
+    OgfResidueCause::UnreadTrailingChunk {
+      id: u32::from_le_bytes(*b"[dis")
+    }
+  );
+  assert_eq!(residue.bytes, fixtures::APPENDED_TEXT);
+  assert_eq!(
+    OgfNormalization::normalize_bytes::<XRayByteOrder>(&appended)?,
+    fixtures::well_formed()?
+  );
+
+  Ok(())
+}
+
+#[test]
+fn reads_a_lods_chunk_declaring_more_than_the_file_holds_whose_line_ends_in_it() -> XrfResult {
+  let (overstated, exact) = fixtures::overstated_lods()?;
+  let file: OgfFile = OgfFile::read_from_bytes::<XRayByteOrder>(overstated.clone())?;
+
+  assert_eq!(
+    file.lods.map(|it| String::from(it.get_visual_name())),
+    Some(String::from("dynamics\\weapons\\wpn_gp100\\wpn_gp100_lod"))
+  );
+  assert_eq!(
+    file.residue.map(|it| it.cause),
+    Some(OgfResidueCause::OverstatedLods { declared: 4343 })
+  );
+  assert_eq!(OgfNormalization::normalize_bytes::<XRayByteOrder>(&overstated)?, exact);
 
   Ok(())
 }

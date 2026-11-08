@@ -5,6 +5,7 @@ const INFERENCE_LABELS: Readonly<Record<ObjectInference, string>> = {
   [EObjectInference.BONE_LENGTHS]: "Bone lengths: the SDK's 0.5, an OGF stores none",
   [EObjectInference.MESH_NAME]: "Mesh name: `skin`, as the SDK names a skinned mesh",
   [EObjectInference.MOTION_CURVES]: "Motion curves: keyed at every frame, the authored curves are not stored",
+  [EObjectInference.MOTION_LENGTHS]: "Motion lengths: one frame longer than declared, as the keys hold",
   [EObjectInference.SMOOTHING]: "Smoothing: where the stored normals agree",
   [EObjectInference.SURFACE_COMPILER_SHADERS]: "Compiler shaders: the Actor Editor's `default`",
   [EObjectInference.SURFACE_GAME_MATERIALS]: "Game materials: the Actor Editor's `default`",
