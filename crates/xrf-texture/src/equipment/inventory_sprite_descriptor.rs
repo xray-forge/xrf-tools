@@ -12,7 +12,7 @@ use crate::equipment::{
   EquipmentGridRect, EquipmentSlotClaim, INVENTORY_ICON_GRID_SQUARE_BASE, LTX_FIELD_INVENTORY_ICON_PATH,
 };
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct InventorySpriteDescriptor {

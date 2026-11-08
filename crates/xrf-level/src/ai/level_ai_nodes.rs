@@ -15,7 +15,7 @@ use crate::ai::level_ai_version::LevelAiVersion;
 /// compilers left behind the links, which makes [`Self::write`] give back the file it read.
 ///
 /// The decoders take the byte order because the bytes are held as the file stores them.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LevelAiNodes {
   version: LevelAiVersion,
   bytes: Vec<u8>,

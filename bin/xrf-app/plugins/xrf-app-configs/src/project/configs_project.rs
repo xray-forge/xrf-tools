@@ -161,9 +161,9 @@ impl ConfigsProject {
       })?;
 
     Ok(ConfigsDocument {
-      findings,
-      structure,
       text,
+      structure,
+      findings,
     })
   }
 

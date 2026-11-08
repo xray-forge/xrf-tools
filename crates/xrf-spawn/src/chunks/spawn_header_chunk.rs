@@ -8,7 +8,7 @@ use xrf_error::XrfResult;
 use xrf_ltx::{FileImportExport, Ltx, LtxRecordWriter, LtxSectionWrite, LtxWrite, Section};
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SpawnHeaderChunk {
   pub version: u32,

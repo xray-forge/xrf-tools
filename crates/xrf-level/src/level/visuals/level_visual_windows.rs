@@ -4,7 +4,7 @@ use crate::geom::window::level_geom_slide_window::LevelGeomSlideWindow;
 
 /// A progressive visual's slide windows, its levels of detail finest first, wherever it keeps them: a static
 /// progressive mesh in its own `OGF_SWIDATA`, a progressive tree in the table of `level.geom` its container names.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LevelVisualWindows<'a> {
   Own(&'a [OgfSlideWindow]),
   Table(&'a [LevelGeomSlideWindow]),

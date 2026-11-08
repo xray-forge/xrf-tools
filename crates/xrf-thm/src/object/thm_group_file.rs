@@ -19,7 +19,7 @@ use crate::thm_file::ThmFile;
 ///
 /// The SDK marks a group's thumbnail as an object's (`ETObject`), so its own version and objects chunk are what tell
 /// the two apart.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ThmGroupFile {
   /// The preview the group library shows, see [`ThmThumbnailChunk::decode`].

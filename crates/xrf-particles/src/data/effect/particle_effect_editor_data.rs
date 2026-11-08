@@ -13,7 +13,7 @@ use crate::data::editor::particle_editor_action::ParticleEditorAction;
 ///
 /// The engine never reads this chunk, so a library whose editor data does not decode still plays; the bytes are kept
 /// whole and decoded on request through [`Self::read_actions`]. Every shipped library's decodes.
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ParticleEffectEditorData {
   pub value: Vec<u8>,

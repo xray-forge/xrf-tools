@@ -13,7 +13,10 @@ use crate::progress::RecordingSink;
 fn recording() -> (JobHandle, Arc<RecordingSink>) {
   let sink: Arc<RecordingSink> = Arc::new(RecordingSink::default());
 
-  (JobHandle::with_interval(sink.clone(), Duration::ZERO), sink)
+  (
+    JobHandle::with_interval(Arc::<RecordingSink>::clone(&sink), Duration::ZERO),
+    sink,
+  )
 }
 
 /// The level ids of one snapshot, which is what most of these assertions are actually about.
@@ -206,7 +209,7 @@ fn the_interval_bounds_how_often_units_are_reported() {
   // The rule that keeps a hundred thousand entries from flooding whatever is watching. Entering still reports, so the
   // count below is that one snapshot and no more.
   let sink: Arc<RecordingSink> = Arc::new(RecordingSink::default());
-  let job: JobHandle = JobHandle::with_interval(sink.clone(), Duration::from_secs(3600));
+  let job: JobHandle = JobHandle::with_interval(Arc::<RecordingSink>::clone(&sink), Duration::from_secs(3600));
   let writing: JobScope = job.enter("write", Some(10_000));
 
   for _ in 0..10_000 {
@@ -222,7 +225,7 @@ fn a_phase_change_is_never_swallowed_by_the_interval() {
   // A throttled unit is one a later snapshot supersedes; a throttled phase change leaves the wrong phase on screen for
   // as long as the next phase lasts.
   let sink: Arc<RecordingSink> = Arc::new(RecordingSink::default());
-  let job: JobHandle = JobHandle::with_interval(sink.clone(), Duration::from_secs(3600));
+  let job: JobHandle = JobHandle::with_interval(Arc::<RecordingSink>::clone(&sink), Duration::from_secs(3600));
 
   {
     let preparing: JobScope = job.enter("prepare", Some(1));
@@ -244,7 +247,7 @@ fn a_phase_change_is_never_swallowed_by_the_interval() {
 fn one_throttle_governs_the_whole_stack() {
   // A fast leaf must not multiply the rate for the levels above it: the throttle belongs to the run, not to a level.
   let sink: Arc<RecordingSink> = Arc::new(RecordingSink::default());
-  let job: JobHandle = JobHandle::with_interval(sink.clone(), Duration::from_secs(3600));
+  let job: JobHandle = JobHandle::with_interval(Arc::<RecordingSink>::clone(&sink), Duration::from_secs(3600));
   let outer: JobScope = job.enter("outer", Some(1));
   let inner: JobScope = outer.enter("inner", Some(10_000));
 

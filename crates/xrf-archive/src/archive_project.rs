@@ -125,8 +125,8 @@ impl ArchiveProject {
     Ok(Self {
       archives,
       files,
-      root,
       shadowed,
+      root,
       size_real,
     })
   }

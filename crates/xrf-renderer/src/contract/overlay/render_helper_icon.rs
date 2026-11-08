@@ -24,7 +24,7 @@ pub enum RenderHelperIcon {
 /// One icon's row of the icon table: the icon, and the Material icon it is drawn from, by its `@mui/icons-material`
 /// module name.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderHelperIconEntry {
   pub icon: RenderHelperIcon,

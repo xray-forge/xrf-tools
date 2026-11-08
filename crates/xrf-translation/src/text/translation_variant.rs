@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 /// One translation's text, which is a single line or a run of them joined on build.
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(untagged)]
 pub enum TranslationVariant {

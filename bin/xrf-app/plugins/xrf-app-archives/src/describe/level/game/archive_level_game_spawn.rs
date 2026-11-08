@@ -5,7 +5,7 @@ use xrf_level::LevelGameRPoint;
 
 /// One kind of respawn point a level declares, and how many of them there are.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ArchiveLevelGameSpawn {
   /// What the points spawn, named where the engine names the kind.

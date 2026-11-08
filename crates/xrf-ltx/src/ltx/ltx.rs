@@ -10,7 +10,7 @@ use crate::document::LtxCheck;
 use crate::ltx::{LtxInheritConvertor, LtxSections, Section, SectionEntry, SectionSetter};
 use crate::syntax::ROOT_SECTION;
 
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Ltx {
   pub(crate) includes: Vec<String>,
   pub(crate) skipped_checks: Vec<LtxCheck>,

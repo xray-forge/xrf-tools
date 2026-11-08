@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 /// Where a level's music stands: the track playing, how far into it and how long it is, or how long until the next is
 /// picked, and whether a track was chosen by hand.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WorldSoundMusicReport {
   /// The track playing, by its entry's name, none between tracks.

@@ -13,7 +13,7 @@ use crate::syntax::read_engine_float;
 /// Both are private, as [`crate::Ltx`]'s section map is, because a field's text is shared with every section that
 /// inherited it - see [`Self::insert`]. Read through [`Self::get`], [`Self::iter`] and [`Self::inherits_section`];
 /// write through [`Self::insert`], [`Self::remove`] and [`Self::inherit`].
-#[derive(Clone, Default, Debug, PartialEq)]
+#[derive(Clone, Default, Debug, PartialEq, Eq)]
 pub struct Section {
   pub(crate) inherited: Vec<String>,
   pub(crate) data: SectionData,

@@ -52,7 +52,7 @@ fn starts_a_stream_mid_file_at_the_frame_asked_for() {
 #[test]
 fn streams_an_ogg_sound_from_the_frame_asked_for() {
   let bytes: Arc<[u8]> = VorbisNoiseFixture::sound(1, 200).into();
-  let whole: DecodedSound = DecodedSound::decode(bytes.clone()).expect("the sound decodes");
+  let whole: DecodedSound = DecodedSound::decode(Arc::clone(&bytes)).expect("the sound decodes");
   let AudioEngineParts { mut engine, mixer } = engine(1);
   let mut render: OfflineRender = OfflineRender::new(mixer, RATE);
   let voice: AudioVoiceId = play(&mut engine, stream(bytes, 54_321, false));

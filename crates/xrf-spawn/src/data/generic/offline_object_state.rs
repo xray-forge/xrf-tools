@@ -11,7 +11,7 @@ use crate::data::generic::script_to_string::ScriptToString;
 /// was running. Neither class closes them with a save marker. A compiled spawn holds `nil` for both, which is what a
 /// new object starts with.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OfflineObjectState {
   pub level_vertex_id: Option<u32>,

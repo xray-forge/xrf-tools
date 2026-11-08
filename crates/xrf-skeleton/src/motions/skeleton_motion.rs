@@ -9,7 +9,7 @@ use xrf_utils::{assert_count_fits, new_bounded_vec};
 use crate::motions::{SkeletonBoneMotion, SkeletonMotionCursor};
 
 /// One motion's payload in the motions chunk, as `motions_value::load` reads chunk `n + 1`.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SkeletonMotion {
   /// Prefix the payload stores ahead of its keys, preserved verbatim and never an identity.
   pub label: String,

@@ -307,7 +307,7 @@ impl LtxProject {
 
     Ok(Self {
       counters,
-      dialect: options.dialect.clone(),
+      dialect: Arc::clone(&options.dialect),
       is_caching_resolutions: options.is_caching_resolutions,
       resolved: Mutex::default(),
       listings,

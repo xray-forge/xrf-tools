@@ -182,8 +182,8 @@ impl SpawnFile {
     )?;
 
     Ok(SpawnLevelObjects {
-      arrivals,
       objects,
+      arrivals,
       total,
       skipped,
     })

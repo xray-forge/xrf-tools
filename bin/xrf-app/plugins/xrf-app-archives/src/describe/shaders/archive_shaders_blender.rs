@@ -6,7 +6,7 @@ use crate::describe::source::ArchiveDescribeSource;
 
 /// One definition of the library: what a shader name resolves to.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ArchiveShadersBlender {
   /// The shader name a mesh, a level surface or a config declares to reach this definition.

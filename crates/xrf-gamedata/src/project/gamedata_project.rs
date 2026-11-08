@@ -131,7 +131,7 @@ impl GamedataProject {
       &search,
       Some(Self::CONFIGS_DIRECTORY),
       LtxProjectOptions {
-        dialect: options.dialect.clone(),
+        dialect: Arc::clone(&options.dialect),
         // Several verifiers read `system.ltx` and the same config roots, so resolving one twice would be paid work.
         is_caching_resolutions: true,
         is_with_schemes_check: true,

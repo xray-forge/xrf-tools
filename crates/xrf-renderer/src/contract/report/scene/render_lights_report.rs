@@ -4,7 +4,7 @@ use crate::contract::report::frame::render_pool_use::RenderPoolUse;
 
 /// What a level's local lights came to on the last frame counted.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderLightsReport {
   /// Lights standing in view and lit.

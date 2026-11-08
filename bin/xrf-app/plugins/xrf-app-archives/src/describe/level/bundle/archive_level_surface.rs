@@ -9,7 +9,7 @@ use crate::describe::source::ArchiveDescribeSource;
 
 /// One row of the level's shader table.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ArchiveLevelSurface {
   pub index: usize,

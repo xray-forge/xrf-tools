@@ -5,7 +5,7 @@ use crate::equipment::{EquipmentGridRect, EquipmentSlotClaim, LTX_FIELD_INVENTOR
 
 /// A section that occupies part of an equipment sheet, as the editor reads it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EquipmentSlotOccupant {
   pub section: String,

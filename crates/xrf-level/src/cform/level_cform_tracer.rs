@@ -91,10 +91,10 @@ impl LevelCformTracer {
     Self::bound(&mut nodes, &vertices, &triangles);
 
     Self {
-      nodes,
+      vertices,
       triangles,
       materials,
-      vertices,
+      nodes,
     }
   }
 

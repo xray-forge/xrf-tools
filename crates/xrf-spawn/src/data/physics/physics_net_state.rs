@@ -17,7 +17,7 @@ use crate::data::physics::raw_float::RawFloat;
 /// is `None` beside its other update fields rather than a state with dead fields. The SDK writes some states without
 /// initialising them, so each float keeps the bits it is stored in.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PhysicsNetState {
   /// The synchronised items, `m_u8NumItems`, at most the 31 its five bits hold.

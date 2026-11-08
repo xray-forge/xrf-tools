@@ -6,7 +6,7 @@ use crate::manifest::extern_value::ExternValue;
 
 /// One exported value. The JSON representation remains compatible with the
 /// existing tracked `extern.json` artifact.
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(untagged)]
 pub enum ExternExport {
   Callable(ExternCallable),

@@ -3,7 +3,7 @@ use crate::swc_common::{SourceMap, SourceMapper, Span};
 use crate::swc_ecma_ast::{Pat, TsTypeAnn};
 
 /// One parameter in a resolved TypeScript function signature.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeScriptFunctionParameter {
   pub name: String,
   pub optional: bool,

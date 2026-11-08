@@ -8,7 +8,7 @@ use crate::data::generic::time::Time;
 
 /// Trailing spawn time a fork's script class appends after the engine server class payload.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "value")]
 pub enum LastSpawnTime {
   /// The script class wrote nothing past the engine payload.

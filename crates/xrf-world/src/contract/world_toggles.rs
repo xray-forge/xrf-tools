@@ -8,7 +8,7 @@ use crate::level::streaming::spawn_filter::SpawnFilter;
 /// What of the level's world plays, rather than what is drawn of it: the weather's rain, bolts and wind, the campfires,
 /// the ambient effects, which groups of the spawned objects stream in, and what of its sound is heard.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WorldToggles {
   /// Whether the weather's rain falls and wets surfaces.

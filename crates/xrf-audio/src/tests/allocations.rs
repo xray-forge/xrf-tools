@@ -33,7 +33,7 @@ fn renders_starts_stops_and_retires_voices_without_allocating() {
     engine
       .play(AudioPlay::new(
         VoiceSource::Decoded {
-          sound: short.clone(),
+          sound: Arc::clone(&short),
           start_frame: 0,
           is_looped: false,
         },

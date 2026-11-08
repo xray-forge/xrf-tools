@@ -1,7 +1,7 @@
 use crate::object::compile::object_compile_options::TangentMethod;
 
 /// An editable object compiled: the file's bytes, an OGF or a detail model, and what the export made of the geometry.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ObjectCompile {
   pub bytes: Vec<u8>,
   pub children: usize,

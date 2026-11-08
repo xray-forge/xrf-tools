@@ -60,7 +60,7 @@ impl PreviewTransports {
   pub fn new(server: AudioServer, events: &PreviewEvents) -> Self {
     Self {
       server,
-      previews: events.previews.clone(),
+      previews: Arc::clone(&events.previews),
     }
   }
 
@@ -72,7 +72,7 @@ impl PreviewTransports {
   pub fn open(&self, bytes: Arc<[u8]>, window: &str) -> TauriResult<AudioTransportId> {
     let id: AudioTransportId = self
       .server
-      .open_transport(bytes.clone(), AudioBus::Previews)
+      .open_transport(Arc::clone(&bytes), AudioBus::Previews)
       .map_err(|error| format!("Cannot preview the sound: {error}"))?;
 
     lock(&self.previews).insert(
@@ -153,7 +153,7 @@ impl PreviewTransports {
   pub fn read_peaks(&self, id: AudioTransportId, count: usize) -> TauriResult<SoundPeaks> {
     let bytes: Arc<[u8]> = lock(&self.previews)
       .get(&id)
-      .map(|entry| entry.bytes.clone())
+      .map(|entry| Arc::clone(&entry.bytes))
       .ok_or_else(|| Self::new_missing(id))?;
 
     SoundPeaks::read(bytes, count).map_err(|error| format!("Cannot read the sound's waveform: {error}"))

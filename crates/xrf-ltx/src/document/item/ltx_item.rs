@@ -4,7 +4,7 @@ use crate::document::{LtxItemKind, LtxSpan};
 ///
 /// Statements are read in order off a [`crate::LtxDocument`], which also says what a statement cannot: which section a
 /// key belongs to is the nearest header above it. `S` is how its text is held, as [`LtxItemKind`] says.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LtxItem<S = Box<str>> {
   pub kind: LtxItemKind<S>,
   pub span: LtxSpan,

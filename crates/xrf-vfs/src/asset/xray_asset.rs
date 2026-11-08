@@ -21,8 +21,8 @@ impl XrayAsset {
   /// Creates a location from an engine path and a source-reported container.
   pub fn new(logical_path: XrayLogicalPath, container: XrayAssetContainer) -> Self {
     Self {
-      container,
       logical_path,
+      container,
     }
   }
 

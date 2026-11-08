@@ -8,7 +8,7 @@ use crate::text::translation_variant::TranslationVariant;
 /// quietly could not express what a JSON source already holds: an entry whose text is an array of
 /// lines. Editing one of those flattened it on save, and roughly 190 entries across ten files in the
 /// engine's own translations are that shape.
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum TranslationEdit {

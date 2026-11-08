@@ -7,7 +7,7 @@ use crate::describe::source::ArchiveDescribeSource;
 
 /// One material of a level's baked decals, as the viewer reads it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ArchiveLevelWallmarkSlot {
   /// The blender the decals draw through, which names a definition inside `shaders.xr` rather than a file.

@@ -109,10 +109,10 @@ impl<'a> ExternDeclarationParser<'a> {
     };
 
     Ok(Some(ExternStatement {
-      externs,
-      is_table,
       key,
       location,
+      is_table,
+      externs,
     }))
   }
 

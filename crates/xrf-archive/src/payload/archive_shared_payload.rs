@@ -38,7 +38,7 @@ impl ArchiveSharedPayload {
         groups
           .entry(Self::location_of(entry))
           .or_default()
-          .push(entry.name.clone());
+          .push(Arc::clone(&entry.name));
       }
     }
 

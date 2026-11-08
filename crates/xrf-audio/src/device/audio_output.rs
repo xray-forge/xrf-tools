@@ -28,7 +28,7 @@ impl AudioOutput {
   pub fn start(mixer: AudioMixer, choice: AudioOutputChoice) -> XrfResult<Self> {
     let (requests, receiver) = mpsc::channel();
     let status: Arc<Mutex<AudioOutputStatus>> = Arc::new(Mutex::new(AudioOutputStatus::default()));
-    let output_thread: OutputThread = OutputThread::new(mixer, choice, receiver, status.clone());
+    let output_thread: OutputThread = OutputThread::new(mixer, choice, receiver, Arc::clone(&status));
     let thread: JoinHandle<()> = thread::Builder::new()
       .name(String::from("xrf-audio-output"))
       .spawn(move || output_thread.run())

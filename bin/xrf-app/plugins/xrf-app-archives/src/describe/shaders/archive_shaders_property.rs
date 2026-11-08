@@ -10,7 +10,7 @@ const SLOT_PREFIX: char = '$';
 
 /// One value an author left in a blender's property grid.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ArchiveShadersProperty {
   pub name: String,

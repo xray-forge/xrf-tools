@@ -1,7 +1,7 @@
 /// The textures the game loads a step coarser at the same texture quality, as `system.ltx`'s
 /// `reduce_lod_texture_list` names them: a reference is reduced where it holds any part the list names, letter case
 /// aside.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct XrayReducedTextures {
   parts: Vec<String>,
 }

@@ -75,7 +75,9 @@ pub(crate) fn wav(rate: u32, channels: u16, samples: &[i16]) -> Arc<[u8]> {
 
 /// The sound in `bytes` streamed from `frame`, its format read from its header as a caller reads it.
 pub(crate) fn stream(bytes: Arc<[u8]>, frame: u64, is_looped: bool) -> StreamReader {
-  let format: SoundFormat = SoundDecoder::open(bytes.clone()).expect("the sound opens").get_format();
+  let format: SoundFormat = SoundDecoder::open(Arc::clone(&bytes))
+    .expect("the sound opens")
+    .get_format();
 
   SoundStream::start(bytes, format, SoundStreamStart { frame, is_looped }).expect("the stream starts")
 }
@@ -89,7 +91,7 @@ pub(crate) fn ramp(frames: usize) -> Vec<i16> {
 /// `sound` from its start, over and over.
 pub(crate) fn looped(sound: &Arc<DecodedSound>) -> VoiceSource {
   VoiceSource::Decoded {
-    sound: sound.clone(),
+    sound: Arc::clone(sound),
     start_frame: 0,
     is_looped: true,
   }
@@ -98,7 +100,7 @@ pub(crate) fn looped(sound: &Arc<DecodedSound>) -> VoiceSource {
 /// `sound` from its start, once.
 pub(crate) fn once(sound: &Arc<DecodedSound>) -> VoiceSource {
   VoiceSource::Decoded {
-    sound: sound.clone(),
+    sound: Arc::clone(sound),
     start_frame: 0,
     is_looped: false,
   }

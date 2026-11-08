@@ -13,7 +13,7 @@ use crate::data::physics::raw_float::RawFloat;
 /// The body an actor's update packet saves, behind the `u16` count `CSE_ALifeCreatureActor::UPDATE_Write` opens it with:
 /// nothing at zero, the living body's physics state at one, and a dead body's bones above that.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all_fields = "camelCase")]
 pub enum ActorPhysicsState {
   /// No body was saved.

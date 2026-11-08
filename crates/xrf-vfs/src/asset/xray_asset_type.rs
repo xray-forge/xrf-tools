@@ -84,9 +84,9 @@ impl XrayAssetType {
     };
 
     Some(XrayAssetRules {
-      authoring_extensions,
       directory,
       extension,
+      authoring_extensions,
     })
   }
 

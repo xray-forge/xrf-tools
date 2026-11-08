@@ -2,7 +2,7 @@ use std::time::Duration;
 
 /// An ambient a keyframe names by `ambient`, `CEnvAmbient`: the sound channels it plays, the effects it picks among
 /// near the camera and how long it waits between them.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct WorldAmbient {
   /// Its sound channels, by their sections' names, in its order.
   pub sound_channels: Vec<String>,

@@ -5,7 +5,7 @@ use crate::describe::thm::parameters::archive_thm_flag::ArchiveThmFlag;
 
 /// The conversion parameters a descriptor carries, `THM_CHUNK_TEXTUREPARAM`.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ArchiveThmParameters {
   pub format_label: String,

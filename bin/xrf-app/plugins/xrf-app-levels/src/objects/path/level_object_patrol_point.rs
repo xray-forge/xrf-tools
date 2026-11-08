@@ -4,7 +4,7 @@ use xrf_spawn::PatrolPoint;
 /// What the spawn records of one patrol point beyond its name and place: its flags, which a logic scheme reads, and
 /// the level and game graph vertices it stands at.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelObjectPatrolPoint {
   pub flags: u32,

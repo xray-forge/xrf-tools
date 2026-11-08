@@ -178,6 +178,7 @@ impl ChunkReadWrite for AlifeObject {
     reader.assert_read("Expect ALife object chunk to be read")?;
 
     Ok(Self {
+      id,
       net_action,
       section,
       clsid,
@@ -187,7 +188,6 @@ impl ChunkReadWrite for AlifeObject {
       position,
       direction,
       respawn_time,
-      id,
       parent_id,
       phantom_id,
       script_flags,

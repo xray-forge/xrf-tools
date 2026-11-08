@@ -2,7 +2,7 @@ use serde::Serialize;
 
 /// How an object compiled compares with an OGF it should stand in for: what differs, by what the engine reads it for,
 /// and how much of the geometry matched.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ObjectVerification {
   /// What the model is to the engine: its model type, user data, LODs and motion references.
   pub model: Vec<String>,

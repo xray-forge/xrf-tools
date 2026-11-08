@@ -8,7 +8,7 @@ use crate::describe::source::ArchiveDescribeSource;
 
 /// Everything the viewer says about a level's game data.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ArchiveLevelGameDescription {
   /// Respawn points, grouped by what they spawn.

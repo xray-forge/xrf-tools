@@ -10,7 +10,7 @@ use crate::document::{LtxKeyOperation, LtxSectionOperation};
 /// growth capacity a `String` carries is eight bytes per field that nothing can ever use. The parser reads each
 /// statement with its text borrowed from the input (`S = &str`), and only a document it is kept in owns a copy: a
 /// statement lowered as it is read never allocates its text twice.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LtxItemKind<S = Box<str>> {
   /// A whole-line comment, without its leading `;`.
   Comment { text: S },

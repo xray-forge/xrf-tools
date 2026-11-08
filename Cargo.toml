@@ -327,6 +327,11 @@ unnested_or_patterns = "warn"
 
 # Numbers convert the way that says what can happen: `u64::from` where nothing is lost, which stops compiling should
 # the source widen; `midpoint` where a sum could overflow; brackets where shifts and bit operations mix.
+# An `Rc` or `Arc` is cloned as `Arc::clone(&shared)`, so a shared handle never reads as a deep copy.
+clone_on_ref_ptr = "warn"
+derive_partial_eq_without_eq = "warn"
+inconsistent_struct_constructor = "warn"
+
 cast_lossless = "warn"
 # A signed and unsigned integer of one width reinterpret their bits with `cast_signed` / `cast_unsigned`, which say
 # so; any other cast that could wrap is checked with `try_from`.

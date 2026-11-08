@@ -115,10 +115,10 @@ impl XrayArchiveSource {
     } = Self::index(&project);
 
     Self {
-      collisions,
-      entries,
       label,
       project,
+      entries,
+      collisions,
       shadowed,
     }
   }
@@ -175,8 +175,8 @@ impl XrayArchiveSource {
     let (collisions, shadowed) = Self::classify(project, &entries, losers);
 
     XrayArchiveIndex {
-      collisions,
       entries,
+      collisions,
       shadowed,
     }
   }

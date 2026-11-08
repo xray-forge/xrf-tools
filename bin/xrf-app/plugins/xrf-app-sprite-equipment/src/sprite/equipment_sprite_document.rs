@@ -46,10 +46,10 @@ impl EquipmentSpriteDocument {
 
     Ok(Self {
       metadata: EquipmentSpriteMetadata {
-        config_error,
-        location,
-        occupants,
         open,
+        location,
+        config_error,
+        occupants,
       },
       preview: Bytes::from(preview.bytes),
     })
