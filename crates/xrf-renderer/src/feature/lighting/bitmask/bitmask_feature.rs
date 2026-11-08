@@ -21,6 +21,7 @@ use crate::feature::lighting::bitmask::vbao::vbao_uniform::VbaoUniform;
 use crate::feature::tracing::view_trace::traced_scene::TracedScene;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::view::view_frame_end::ViewFrameEnd;
+use crate::feature::view::view_restart::ViewRestart;
 use crate::frame::targets::frame_texture::FrameTexture;
 use crate::frame::targets::history::History;
 use crate::frame::targets::view_target_handles::ViewTargetHandles;
@@ -413,5 +414,16 @@ impl ViewFeature for BitmaskFeature {
   fn release(&mut self) {
     self.occlusion = None;
     self.light = None;
+  }
+
+  /// Its motion restarted, its accumulations start again as if just made, their noise from its first turn; a cut
+  /// leaves them nothing to read, the last place's occlusion and light leading nowhere true, their noise turning on.
+  fn restart(&mut self, restart: ViewRestart) {
+    for history in [&mut self.occlusion, &mut self.light].into_iter().flatten() {
+      match restart {
+        ViewRestart::Motion => history.restart(),
+        ViewRestart::Cut => history.invalidate(),
+      }
+    }
   }
 }
