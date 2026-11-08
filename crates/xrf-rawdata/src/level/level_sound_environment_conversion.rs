@@ -193,7 +193,11 @@ impl LevelSoundEnvironmentConversion {
       translation: corners[0].midpoint(&corners[6]),
     };
 
-    if let Some(transform) = Self::find_transform(&affine, corners) {
+    let natural: Option<EditableObjectTransform> = EditableObjectTransform::from_matrix(&Matrix4x4::from(&affine))
+      .ok()
+      .and_then(|transform| transform.find_saved(|transform| Self::is_placing(&transform.to_matrix(), corners)));
+
+    if let Some(transform) = natural {
       return (transform, EditableShape::new_unit_box());
     }
 
@@ -223,46 +227,6 @@ impl LevelSoundEnvironmentConversion {
         })],
       },
     )
-  }
-
-  /// The saved transform of the unit box that places the corners exactly, if one does. The angles and scales are
-  /// measured off corners that hold them a few units in the last place off, which can be a whole `%f` step (`16.000002`
-  /// for a scale of 16), so their saved neighbours are tried, the decomposed values first.
-  fn find_transform(affine: &Affine3d, corners: &[Vector3d; 8]) -> Option<EditableObjectTransform> {
-    let decomposed: EditableObjectTransform = EditableObjectTransform::from_matrix(&Matrix4x4::from(affine))
-      .ok()?
-      .round_as_saved();
-    let scales: Vec<Vector3d> = Self::get_saved_neighbours(&decomposed.scale);
-
-    Self::get_saved_neighbours(&decomposed.rotation)
-      .into_iter()
-      .find_map(|rotation| {
-        scales.iter().find_map(|scale| {
-          let transform: EditableObjectTransform = EditableObjectTransform {
-            position: decomposed.position,
-            rotation,
-            scale: *scale,
-          };
-
-          Self::is_placing(&transform.to_matrix(), corners).then_some(transform)
-        })
-      })
-  }
-
-  /// Every vector of each component's saved neighbours, the vector rounded first.
-  fn get_saved_neighbours(vector: &Vector3d) -> Vec<Vector3d> {
-    let [x, y, z] = vector.to_array().map(EditableLevelValue::get_saved_neighbours);
-    let mut vectors: Vec<Vector3d> = Vec::with_capacity(x.len() * y.len() * z.len());
-
-    for x in x {
-      for y in y {
-        for z in z {
-          vectors.push(Vector3d::new(x, y, z));
-        }
-      }
-    }
-
-    vectors
   }
 
   /// The saved values of the four rows' `axis` components that give every corner's `axis` exactly, as

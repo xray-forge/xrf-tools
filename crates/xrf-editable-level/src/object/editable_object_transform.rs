@@ -80,6 +80,63 @@ impl EditableObjectTransform {
     })
   }
 
+  /// The saved transform composing into `matrix`'s very bits: [`Self::from_matrix`], then [`Self::find_saved`] for
+  /// one whose [`Self::to_matrix`] is `matrix`, else the decomposed transform rounded as saved, as for a matrix the
+  /// editor composed from other angles (a pitch straight up or down) or no saved text gives.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error as [`Self::from_matrix`] does.
+  pub fn from_matrix_as_saved(matrix: &Matrix4x4) -> XrfResult<Self> {
+    let decomposed: Self = Self::from_matrix(matrix)?;
+    let bits: [u32; 16] = matrix.values.map(f32::to_bits);
+
+    Ok(
+      decomposed
+        .find_saved(|transform| transform.to_matrix().values.map(f32::to_bits) == bits)
+        .unwrap_or_else(|| decomposed.round_as_saved()),
+    )
+  }
+
+  /// The first saved transform near this one that `accepts`: this one rounded as saved, then each angle and scale a
+  /// `%f` step or two either way (`EditableLevelValue::get_saved_neighbours`). A transform decomposed from what the
+  /// editor computed off its saved text lands a few units in the last place off that text, which can be a whole step
+  /// (`16.000002` for a scale of 16); the position comes back exactly and is only rounded.
+  pub fn find_saved(&self, accepts: impl Fn(&Self) -> bool) -> Option<Self> {
+    let rounded: Self = self.round_as_saved();
+    let scales: Vec<Vector3d> = Self::get_saved_neighbours(&rounded.scale);
+
+    Self::get_saved_neighbours(&rounded.rotation)
+      .into_iter()
+      .find_map(|rotation| {
+        scales.iter().find_map(|scale| {
+          let transform: Self = Self {
+            position: rounded.position,
+            rotation,
+            scale: *scale,
+          };
+
+          accepts(&transform).then_some(transform)
+        })
+      })
+  }
+
+  /// Every vector of each component's saved neighbours, the vector itself first.
+  fn get_saved_neighbours(vector: &Vector3d) -> Vec<Vector3d> {
+    let [x, y, z] = vector.to_array().map(EditableLevelValue::get_saved_neighbours);
+    let mut vectors: Vec<Vector3d> = Vec::with_capacity(x.len() * y.len() * z.len());
+
+    for x in x {
+      for y in y {
+        for z in z {
+          vectors.push(Vector3d::new(x, y, z));
+        }
+      }
+    }
+
+    vectors
+  }
+
   /// The transform as it reads back once saved, each component rounded by [`EditableLevelValue::round_as_saved`].
   pub fn round_as_saved(&self) -> Self {
     Self {

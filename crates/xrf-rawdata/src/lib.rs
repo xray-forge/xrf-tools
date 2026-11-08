@@ -4,6 +4,7 @@ pub(crate) mod level;
 pub(crate) mod object;
 pub(crate) mod provenance;
 
+pub use crate::level::level_fog_volume_conversion::LevelFogVolumeConversion;
 pub use crate::level::level_object_names::LevelObjectNames;
 pub use crate::level::level_particle_conversion::LevelParticleConversion;
 pub use crate::level::level_sound_environment_conversion::LevelSoundEnvironmentConversion;

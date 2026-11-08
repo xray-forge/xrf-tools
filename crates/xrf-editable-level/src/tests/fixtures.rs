@@ -210,6 +210,47 @@ pub(super) fn sound_environment_part_text(guid: &EditableLevelGuid, fields: &[(&
   file.write_to_string_as(&IniFormat::XRAY_SAVE_AS)
 }
 
+/// A fog volume tool's part with an ungrouped emitter as the editor saves a new one, with that object's fields replaced
+/// or added.
+pub(super) fn fog_volume_part_text(guid: &EditableLevelGuid, fields: &[(&str, &str)]) -> XrfResult<String> {
+  let mut file: IniFile = IniFile::default();
+
+  guid.write_to_section(file.section_mut("guid"));
+  file.section_mut("main").set("objects_count", "1");
+  file.section_mut("main").set("version", "0");
+  file.section_mut("modif").set("name", "");
+  file.section_mut("modif").set("time", "0");
+
+  let section: &mut IniSection = file.section_mut("object_0");
+
+  for (key, value) in [
+    ("clsid", "15"),
+    ("co_flags", "0"),
+    ("folume_type", "0"),
+    ("group_id", "-1"),
+    ("name", "fog_volume_0000"),
+    ("position", "-20.000000, 1.500000, 33.250000"),
+    ("profile", "environment\\fog\\default.ltx"),
+    ("rotation", "0.000000, 1.250000, 0.000000"),
+    ("scale", "10.000000, 4.000000, 6.000000"),
+    ("shape_matrix_c_0", "0.000000, 0.000000, 0.000000"),
+    ("shape_matrix_i_0", "1.000000, 0.000000, 0.000000"),
+    ("shape_matrix_j_0", "0.000000, 1.000000, 0.000000"),
+    ("shape_matrix_k_0", "0.000000, 0.000000, 1.000000"),
+    ("shape_type", "0"),
+    ("shape_type_0", "1"),
+    ("shapes_count", "1"),
+    ("version", "2"),
+  ]
+  .into_iter()
+  .chain(fields.iter().copied())
+  {
+    section.set(key, value);
+  }
+
+  file.write_to_string_as(&IniFormat::XRAY_SAVE_AS)
+}
+
 /// A binary part as `EScene::SaveLTX` frames it, its chunks in the order given.
 pub(super) fn binary_part_bytes(chunks: &[ChunkPayload]) -> XrfResult<Vec<u8>> {
   let mut file: ChunkWriter = ChunkWriter::new();

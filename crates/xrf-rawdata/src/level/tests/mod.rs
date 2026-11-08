@@ -1,3 +1,4 @@
+mod fog_volume;
 mod particle;
 mod sound_environment;
 mod sound_source;
