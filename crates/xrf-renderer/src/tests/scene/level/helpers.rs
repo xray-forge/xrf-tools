@@ -126,7 +126,7 @@ fn draws_the_kinds_switched_on_less_the_hidden_and_marks_the_selected_unfaded() 
   assert_eq!(
     ids(HelpersFeature::to_vertices(
       &helpers,
-      &options(1 << 10 | 1 << 11),
+      &options((1 << 10) | (1 << 11)),
       &[],
       HelperPart::Every,
       no_boxes
@@ -243,7 +243,7 @@ fn marks_each_standing_model_by_its_place_and_boxes_the_hovered_and_selected() {
       max: Vec3::ONE,
     })
   };
-  let orange: u32 = 255 | 128 << 8 | 255 << 24;
+  let orange: u32 = 255 | (128 << 8) | (255 << 24);
 
   assert_eq!(helpers.segments.len(), 0);
   assert_eq!(

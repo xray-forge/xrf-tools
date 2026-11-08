@@ -11,8 +11,8 @@ fn cube_with_lattice() -> Vec<DVec3> {
     .map(|corner| {
       DVec3::new(
         f64::from(corner & 1),
-        f64::from(corner >> 1 & 1),
-        f64::from(corner >> 2 & 1),
+        f64::from((corner >> 1) & 1),
+        f64::from((corner >> 2) & 1),
       )
     })
     .collect();

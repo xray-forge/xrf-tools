@@ -90,7 +90,7 @@ impl SpawnALifeSpawnsChunk {
     let index: u16 = index_reader.read_u16::<T>()?;
 
     assert_equal(
-      index as u32,
+      u32::from(index),
       object_reader.id,
       "Expected index and chunk ID to be equal",
     )?;

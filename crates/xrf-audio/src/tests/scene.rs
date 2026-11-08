@@ -192,15 +192,18 @@ fn anchors_the_scene_clock_again_only_past_a_tenth_of_a_second() {
   let mut clock: SceneClock = SceneClock::default();
 
   assert!(clock.follow(Duration::from_secs(10), 0, RATE));
-  assert_eq!(clock.get_time(RATE as u64, RATE), Some(Duration::from_secs(11)));
+  assert_eq!(clock.get_time(u64::from(RATE), RATE), Some(Duration::from_secs(11)));
 
   // A frame 60 ms late, as a stalled render thread sends it, moves nothing.
   assert!(!clock.follow(Duration::from_secs(11), u64::from(RATE) + 2880, RATE));
-  assert_eq!(clock.get_time(RATE as u64, RATE), Some(Duration::from_secs(11)));
+  assert_eq!(clock.get_time(u64::from(RATE), RATE), Some(Duration::from_secs(11)));
 
   // A clock stepped 150 ms is anchored again.
   assert!(clock.follow(Duration::from_millis(11_150), u64::from(RATE), RATE));
-  assert_eq!(clock.get_time(RATE as u64, RATE), Some(Duration::from_millis(11_150)));
+  assert_eq!(
+    clock.get_time(u64::from(RATE), RATE),
+    Some(Duration::from_millis(11_150))
+  );
 }
 
 #[test]

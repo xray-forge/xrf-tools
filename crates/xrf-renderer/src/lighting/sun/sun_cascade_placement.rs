@@ -112,7 +112,7 @@ impl SunCascadePlacement {
     let lowest: f32 = most - half;
     let highest: f32 = least + half;
     let held: f32 = if lowest > highest {
-      (least + most) / 2.0
+      f32::midpoint(least, most)
     } else {
       at.clamp(lowest, highest)
     };

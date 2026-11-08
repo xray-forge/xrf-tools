@@ -171,11 +171,11 @@ fn serializes_an_engine_value_as_the_number_the_file_stores() {
 fn reports_the_flag_bits_the_sdk_has_no_name_for() {
   // The word is not a set of twelve booleans: a file may carry bits nothing names, and a surface saying so is better
   // than one that silently shows them as absent.
-  let flags: ThmTextureFlags = ThmTextureFlags::from(ThmTextureFlag::HasAlpha.bit() | 1 << 30);
+  let flags: ThmTextureFlags = ThmTextureFlags::from(ThmTextureFlag::HasAlpha.bit() | (1 << 30));
 
   assert_eq!(flags.named().collect::<Vec<_>>(), vec![ThmTextureFlag::HasAlpha]);
   assert_eq!(flags.unnamed(), 1 << 30);
-  assert_eq!(flags.raw(), ThmTextureFlag::HasAlpha.bit() | 1 << 30);
+  assert_eq!(flags.raw(), ThmTextureFlag::HasAlpha.bit() | (1 << 30));
 }
 
 #[test]

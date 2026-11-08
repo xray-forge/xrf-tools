@@ -49,5 +49,5 @@ pub(crate) fn to_light_shadow_tile_size(size: f32) -> u32 {
 
 /// What a view coordinate over its depth is scaled by to reach a face's clip space: `cot` of half the widened cone.
 pub(crate) fn to_light_shadow_scale(cone: f32) -> f32 {
-  1.0 / ((cone + LIGHT_SHADOW_WIDENING) / 2.0).tan()
+  1.0 / f32::midpoint(cone, LIGHT_SHADOW_WIDENING).tan()
 }

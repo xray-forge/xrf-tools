@@ -19,7 +19,7 @@ impl OgfChildrenLinkChunk {
 impl ChunkReadWrite for OgfChildrenLinkChunk {
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let count: u32 = reader.read_u32::<T>()?;
-    let mut children: Vec<u32> = reader.new_bounded_vec(count as u64, Self::CHILD_SIZE, "ogf linked children")?;
+    let mut children: Vec<u32> = reader.new_bounded_vec(u64::from(count), Self::CHILD_SIZE, "ogf linked children")?;
 
     for _ in 0..count {
       children.push(reader.read_u32::<T>()?);

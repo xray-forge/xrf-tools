@@ -121,7 +121,7 @@ impl ScreenTiles {
       let marked: u32 = *row;
 
       for step in 1..=columns.min(Self::COLUMNS - 1) {
-        *row |= marked << step | marked >> step;
+        *row |= (marked << step) | (marked >> step);
       }
 
       *row &= Self::ALL_COLUMNS;

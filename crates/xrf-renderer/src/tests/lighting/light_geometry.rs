@@ -279,7 +279,7 @@ fn light_intensity_averages_the_colours_mean_and_luminance() {
   assert!(near(LightBasis::to_light_intensity(Vec3::ONE), 1.0));
   assert!(near(
     LightBasis::to_light_intensity(Vec3::Y),
-    (1.0 / 3.0 + 0.7154) / 2.0
+    f32::midpoint(1.0 / 3.0, 0.7154)
   ));
 }
 

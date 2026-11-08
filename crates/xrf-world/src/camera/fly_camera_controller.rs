@@ -378,6 +378,6 @@ impl FlyCameraController {
   }
 
   fn axis(&self, positive: FlyKey, negative: FlyKey) -> f32 {
-    (self.held.contains(&positive) as i32 - self.held.contains(&negative) as i32) as f32
+    (i32::from(self.held.contains(&positive)) - i32::from(self.held.contains(&negative))) as f32
   }
 }

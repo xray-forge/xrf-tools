@@ -106,7 +106,7 @@ impl Shape {
       }
       Self::Box(transform) => (0..8)
         .map(|corner: u8| {
-          let [x, y, z] = [corner & 1, corner >> 1 & 1, corner >> 2 & 1].map(|bit: u8| f32::from(bit) - 0.5);
+          let [x, y, z] = [corner & 1, (corner >> 1) & 1, (corner >> 2) & 1].map(|bit: u8| f32::from(bit) - 0.5);
 
           transform.transform_point(&Vector3d::new(x, y, z))
         })

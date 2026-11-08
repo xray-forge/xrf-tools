@@ -124,7 +124,7 @@ impl LevelGeomFile {
   ) -> XrfResult<Vec<LevelGeomVertexBuffer>> {
     let count: u32 = reader.read_u32::<T>()?;
     let mut buffers: Vec<LevelGeomVertexBuffer> = reader.new_bounded_vec(
-      count as u64,
+      u64::from(count),
       LevelGeomVertexElement::SERIALIZED_SIZE + 4,
       "level render geometry vertex buffers",
     )?;
@@ -183,7 +183,7 @@ impl LevelGeomFile {
   ) -> XrfResult<Vec<LevelGeomIndexBuffer>> {
     let count: u32 = reader.read_u32::<T>()?;
     let mut buffers: Vec<LevelGeomIndexBuffer> =
-      reader.new_bounded_vec(count as u64, 4, "level render geometry index buffers")?;
+      reader.new_bounded_vec(u64::from(count), 4, "level render geometry index buffers")?;
 
     for _ in 0..count {
       let index_count: u32 = reader.read_u32::<T>()?;
@@ -207,7 +207,7 @@ impl LevelGeomFile {
   ) -> XrfResult<Vec<LevelGeomSlideWindowItem>> {
     let count: u32 = reader.read_u32::<T>()?;
     let mut items: Vec<LevelGeomSlideWindowItem> = reader.new_bounded_vec(
-      count as u64,
+      u64::from(count),
       LevelGeomSlideWindowItem::HEADER_SIZE,
       "level render geometry slide windows",
     )?;
@@ -222,7 +222,7 @@ impl LevelGeomFile {
 
       let count: u32 = reader.read_u32::<T>()?;
       let mut windows: Vec<LevelGeomSlideWindow> = reader.new_bounded_vec(
-        count as u64,
+        u64::from(count),
         LevelGeomSlideWindow::SERIALIZED_SIZE,
         "level render geometry detail levels",
       )?;
@@ -257,13 +257,17 @@ impl LevelGeomFile {
     self
       .vertex_buffers
       .iter()
-      .map(|buffer| buffer.vertex_count as u64)
+      .map(|buffer| u64::from(buffer.vertex_count))
       .sum()
   }
 
   /// Indices across every buffer.
   pub fn get_indices_count(&self) -> u64 {
-    self.index_buffers.iter().map(|buffer| buffer.index_count as u64).sum()
+    self
+      .index_buffers
+      .iter()
+      .map(|buffer| u64::from(buffer.index_count))
+      .sum()
   }
 
   /// Triangles the indices draw, taking them as triangle lists.
@@ -271,7 +275,7 @@ impl LevelGeomFile {
     self
       .index_buffers
       .iter()
-      .map(|buffer| buffer.get_triangles_count() as u64)
+      .map(|buffer| u64::from(buffer.get_triangles_count()))
       .sum()
   }
 

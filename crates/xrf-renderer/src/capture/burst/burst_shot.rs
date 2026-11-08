@@ -40,7 +40,7 @@ impl BurstShot {
     Ok(Self {
       frame,
       picture: FrameCapture::new_screenshot(device, format, size, drawn)?,
-      material: GpuReadback::new(device, "burst material", (material_row * material_size.1) as u64),
+      material: GpuReadback::new(device, "burst material", u64::from(material_row * material_size.1)),
       material_size,
       material_row,
     })

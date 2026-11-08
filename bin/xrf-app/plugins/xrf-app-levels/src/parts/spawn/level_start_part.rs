@@ -132,9 +132,9 @@ impl LevelStartPart {
   fn to_engine_centre(bounds: &VisualBounds) -> (f32, f32) {
     let VisualBounds { bounding_box, .. } = bounds;
     let centre: Vector3d = convert_vector(&Vector3d::new(
-      (bounding_box.min.x + bounding_box.max.x) / 2.0,
-      (bounding_box.min.y + bounding_box.max.y) / 2.0,
-      (bounding_box.min.z + bounding_box.max.z) / 2.0,
+      f32::midpoint(bounding_box.min.x, bounding_box.max.x),
+      f32::midpoint(bounding_box.min.y, bounding_box.max.y),
+      f32::midpoint(bounding_box.min.z, bounding_box.max.z),
     ));
 
     (centre.x, centre.z)

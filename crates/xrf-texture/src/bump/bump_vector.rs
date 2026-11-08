@@ -19,7 +19,7 @@ impl BumpVector {
 
   /// A direction in the range a byte covers, `[-1, 1]` mapped onto `0..=255`, `fpack`.
   pub(crate) fn pack_component(value: f32) -> u8 {
-    (((value + 1.0) * 0.5 * 255.0 + 0.5).floor() as i32).clamp(0, 255) as u8
+    (((value * 0.5 + 0.5) * 255.0 + 0.5).floor() as i32).clamp(0, 255) as u8
   }
 
   /// The direction a byte triple decodes to, before any normalization, `vunpack`.

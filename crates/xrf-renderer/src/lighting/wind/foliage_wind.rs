@@ -83,11 +83,11 @@ impl FoliageWind {
         settings.trees_speed,
         settings.trees_trunk,
         settings.trees_bend,
-        settings.is_enhanced() as u32 as f32,
+        u32::from(settings.is_enhanced()) as f32,
       ),
       anim: Self::to_anim(self.anim, settings.trees_trunk),
       previous_anim: Self::to_anim(self.previous, settings.trees_trunk),
-      flora: Vec4::new(0.0, 0.0, wetness, settings.is_enhanced() as u32 as f32),
+      flora: Vec4::new(0.0, 0.0, wetness, u32::from(settings.is_enhanced()) as f32),
     }
   }
 

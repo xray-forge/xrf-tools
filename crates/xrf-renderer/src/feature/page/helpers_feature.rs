@@ -175,7 +175,7 @@ impl HelpersFeature {
     helpers.objects.iter().filter(move |object| {
       options.is_shown
         && object.kind < u32::BITS
-        && options.kinds & 1 << object.kind != 0
+        && options.kinds & (1 << object.kind) != 0
         && options.hidden.binary_search(&object.id).is_err()
         && (part == HelperPart::Every || Self::get_singled(object, options, sounding) > 0.0)
     })
@@ -263,7 +263,7 @@ impl HelpersFeature {
           .color
           .map(|channel| (channel.clamp(0.0, 1.0) * 255.0).round() as u32);
 
-        Some([places(object.model?)?, r | g << 8 | b << 16 | 255 << 24])
+        Some([places(object.model?)?, r | (g << 8) | (b << 16) | (255 << 24)])
       })
       .collect();
 

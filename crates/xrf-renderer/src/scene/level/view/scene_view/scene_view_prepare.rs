@@ -210,7 +210,7 @@ impl SceneView {
     // never with parallax.
     self.shared.switches = Vec4::new(
       1.0,
-      options.mode.is_bumped as u32 as f32,
+      u32::from(options.mode.is_bumped) as f32,
       options.features.hemi_strength,
       0.0,
     );

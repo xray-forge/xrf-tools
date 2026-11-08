@@ -44,7 +44,7 @@ impl PickTarget {
       color: texture.create_view(&Default::default()),
       depth: depth.create_view(&Default::default()),
       readbacks: std::array::from_fn(|_| {
-        GpuReadback::new(device, "pick readback", wgpu::COPY_BYTES_PER_ROW_ALIGNMENT as u64)
+        GpuReadback::new(device, "pick readback", u64::from(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT))
       }),
       texture,
     }

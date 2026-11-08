@@ -49,7 +49,7 @@ impl SceneView {
           .resolve_impostor_pick(cluster)
           .map(|(sector, shader_id)| RenderLevelHit::Surface {
             sector,
-            shader_id: shader_id as u32,
+            shader_id: u32::from(shader_id),
             mesh: None,
             place: None,
             is_impostor: true,
@@ -71,7 +71,7 @@ impl SceneView {
 
     Some(RenderLevelHit::Surface {
       sector: info.sector,
-      shader_id: info.shader_id as u32,
+      shader_id: u32::from(info.shader_id),
       mesh: info.mesh,
       place: instance,
       is_impostor: false,

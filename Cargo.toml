@@ -324,3 +324,9 @@ semicolon_if_nothing_returned = "warn"
 uninlined_format_args = "warn"
 use_self = "warn"
 unnested_or_patterns = "warn"
+
+# Numbers convert the way that says what can happen: `u64::from` where nothing is lost, which stops compiling should
+# the source widen; `midpoint` where a sum could overflow; brackets where shifts and bit operations mix.
+cast_lossless = "warn"
+manual_midpoint = "warn"
+precedence_bits = "warn"

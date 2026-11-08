@@ -344,7 +344,7 @@ impl<'a> MeshAssetsVerifier<'a> {
         && let Some(index) = indices
           .iter()
           .take_while(|_| !self.options.job.is_cancelled())
-          .find(|index| **index as u32 >= vertex_count)
+          .find(|index| u32::from(**index) >= vertex_count)
       {
         findings.push(Self::new_mesh_finding(
           GamedataVerificationRule::MeshesValidation,

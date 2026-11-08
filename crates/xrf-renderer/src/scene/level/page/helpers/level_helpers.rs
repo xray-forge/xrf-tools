@@ -108,7 +108,7 @@ impl LevelHelpers {
       } => {
         let [i, j, k, center] = [i, j, k, center].map(|it| Vec3::from_array(*it));
         let corner = |index: usize| -> Vec3 {
-          let [x, y, z] = [index & 1, index >> 1 & 1, index >> 2 & 1].map(|bit| bit as f32 - 0.5);
+          let [x, y, z] = [index & 1, (index >> 1) & 1, (index >> 2) & 1].map(|bit| bit as f32 - 0.5);
 
           transform.transform_point3(center + i * x + j * y + k * z)
         };

@@ -237,7 +237,7 @@ impl NoiseBits {
         self.bytes.push(0);
       }
 
-      if value >> bit & 1 != 0 {
+      if (value >> bit) & 1 != 0 {
         *self.bytes.last_mut().expect("a byte was pushed for this bit") |= 1 << (self.bits_count % 8);
       }
 

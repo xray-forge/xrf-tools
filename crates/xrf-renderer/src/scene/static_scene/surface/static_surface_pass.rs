@@ -28,7 +28,7 @@ impl StaticSurfacePass {
     Self::ALL
       .into_iter()
       .filter(|pass| flags & pass.get_surface_flag() != 0)
-      .fold(0, |mask, pass| mask | 1 << pass.get_index())
+      .fold(0, |mask, pass| mask | (1 << pass.get_index()))
   }
 
   /// The surface flag that puts a surface into it.

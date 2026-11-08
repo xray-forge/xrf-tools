@@ -27,12 +27,12 @@ impl LevelGeomReport {
         .or_default();
 
       entry.0 += 1;
-      entry.1 += buffer.vertex_count as u64;
+      entry.1 += u64::from(buffer.vertex_count);
     }
 
     Self {
       index_buffers: geometry.index_buffers.len(),
-      indices: geometry.index_buffers.iter().map(|it| it.index_count as u64).sum(),
+      indices: geometry.index_buffers.iter().map(|it| u64::from(it.index_count)).sum(),
       layouts: layouts
         .into_iter()
         .map(|((declaration, stride), (buffers, vertices))| {

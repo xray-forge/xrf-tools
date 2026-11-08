@@ -32,7 +32,7 @@ impl WeatherModelBuffers {
           ]
         })
         .collect();
-      let indices = model.indices.iter().map(|index| *index as u32).collect();
+      let indices = model.indices.iter().map(|index| u32::from(*index)).collect();
 
       (vertices, indices)
     });

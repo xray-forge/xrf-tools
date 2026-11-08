@@ -86,7 +86,7 @@ impl ParticleObject {
 
       let (center, _) = self.instance.get_bounds().get_sphere();
 
-      self.next_scheduled = now + Self::get_schedule_interval(view.distance(center)) as u64;
+      self.next_scheduled = now + u64::from(Self::get_schedule_interval(view.distance(center)));
     }
 
     if is_in_view {
@@ -111,7 +111,7 @@ impl ParticleObject {
     let is_elapsed: bool = elapsed > 0;
 
     if is_elapsed {
-      self.instance.update(elapsed.min(u32::MAX as u64) as u32, context);
+      self.instance.update(elapsed.min(u64::from(u32::MAX)) as u32, context);
       self.last_time = now;
     }
 
