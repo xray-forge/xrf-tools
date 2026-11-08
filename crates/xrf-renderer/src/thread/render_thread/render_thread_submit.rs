@@ -21,6 +21,11 @@ use crate::window::window_frame::WindowFrame;
 use super::RenderThread;
 
 impl RenderThread {
+  /// What the frame failure log knows a frame its graph could not draw by, and the uploads such a frame could not
+  /// submit: failed where a frame is given up (`abandon_frame`), recovered once one draws (`draw_frame`).
+  pub(super) const UNDRAWN_FRAME: &'static str = "The frame cannot be drawn";
+  pub(super) const UNSUBMITTED_UPLOADS: &'static str = "The frame's uploads cannot be submitted";
+
   /// Gives up a frame its graph could not draw: what the frame's own encoder holds is not of the frame (the uploads and
   /// the acceleration structures the scenes built, which they count as done) and still goes up; the uniforms its graph
   /// pushed are dropped, as is what it copied out for reading back; its picks wait for the next frame, and its captures
@@ -35,7 +40,7 @@ impl RenderThread {
     FrameCopies { captures, records, .. }: FrameCopies,
     error: &XrfError,
   ) {
-    self.frame_failures.fail("The frame cannot be drawn", error);
+    self.frame_failures.fail(Self::UNDRAWN_FRAME, error);
 
     let RunningGpu {
       gpu,
@@ -53,9 +58,7 @@ impl RenderThread {
     *kept = Some(belt);
 
     if let Some(error) = pollster::block_on(scope.pop()) {
-      self
-        .frame_failures
-        .fail("The frame's uploads cannot be submitted", &error);
+      self.frame_failures.fail(Self::UNSUBMITTED_UPLOADS, &error);
     }
 
     let message: String = error.to_string();
