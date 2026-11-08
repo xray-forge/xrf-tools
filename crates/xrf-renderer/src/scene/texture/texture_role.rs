@@ -29,18 +29,18 @@ pub enum TextureRole {
 
 impl TextureRole {
   /// Every role, in declaration order, so `role as usize` indexes what is kept a role.
-  pub const ALL: [TextureRole; 11] = [
-    TextureRole::Base,
-    TextureRole::Detail,
-    TextureRole::Bump,
-    TextureRole::BumpCompanion,
-    TextureRole::Hemi,
-    TextureRole::ImpostorCompanion,
-    TextureRole::Projector,
-    TextureRole::TerrainMask,
-    TextureRole::TerrainHeight,
-    TextureRole::WaterNormal,
-    TextureRole::Distortion,
+  pub const ALL: [Self; 11] = [
+    Self::Base,
+    Self::Detail,
+    Self::Bump,
+    Self::BumpCompanion,
+    Self::Hemi,
+    Self::ImpostorCompanion,
+    Self::Projector,
+    Self::TerrainMask,
+    Self::TerrainHeight,
+    Self::WaterNormal,
+    Self::Distortion,
   ];
 
   /// What a terrain detail's height is named by beside the detail, as the third-party pack names it, and its bump.
@@ -50,12 +50,12 @@ impl TextureRole {
   /// The colour it is drawn as while its texture loads.
   pub const fn get_neutral(self) -> [u8; 4] {
     match self {
-      TextureRole::Base | TextureRole::Hemi | TextureRole::Projector | TextureRole::TerrainMask => [255, 255, 255, 255],
-      TextureRole::Detail | TextureRole::TerrainHeight | TextureRole::Distortion => [128, 128, 128, 128],
-      TextureRole::Bump => [23, 255, 128, 128],
-      TextureRole::BumpCompanion => [128, 128, 128, 0],
-      TextureRole::ImpostorCompanion => [128, 128, 0, 255],
-      TextureRole::WaterNormal => [128, 128, 255, 255],
+      Self::Base | Self::Hemi | Self::Projector | Self::TerrainMask => [255, 255, 255, 255],
+      Self::Detail | Self::TerrainHeight | Self::Distortion => [128, 128, 128, 128],
+      Self::Bump => [23, 255, 128, 128],
+      Self::BumpCompanion => [128, 128, 128, 0],
+      Self::ImpostorCompanion => [128, 128, 0, 255],
+      Self::WaterNormal => [128, 128, 255, 255],
     }
   }
 }

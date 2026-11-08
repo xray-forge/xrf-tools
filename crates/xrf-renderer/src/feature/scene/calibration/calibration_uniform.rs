@@ -9,6 +9,7 @@ use crate::lighting::srgb::srgb_encoded;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Calibration")]
+#[expect(clippy::use_self, reason = "an array length in a field cannot name `Self`")]
 pub struct CalibrationUniform {
   /// Each prop's centre in the world, and its radius (a sphere) or half its width (the chart).
   pub props: [Vec4; CalibrationUniform::PROPS],

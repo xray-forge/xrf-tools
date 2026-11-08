@@ -85,7 +85,7 @@ impl GamedataVerificationType {
     Self::Weapons,
   ];
 
-  pub fn get_all() -> Vec<GamedataVerificationType> {
+  pub fn get_all() -> Vec<Self> {
     Self::ALL.to_vec()
   }
 

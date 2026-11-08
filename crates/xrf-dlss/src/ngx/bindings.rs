@@ -8,6 +8,7 @@
   clippy::allow_attributes,
   clippy::allow_attributes_without_reason,
   clippy::undocumented_unsafe_blocks,
+  clippy::use_self,
   reason = "bindgen's output keeps the C names and its own attributes, and which of these it trips depends on the SDK"
 )]
 

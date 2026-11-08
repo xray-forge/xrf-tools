@@ -12,7 +12,7 @@ pub struct CondlistBranch {
 }
 
 impl CondlistBranch {
-  pub fn parse(branch: &str, branch_offset: usize) -> XrfResult<CondlistBranch> {
+  pub fn parse(branch: &str, branch_offset: usize) -> XrfResult<Self> {
     let (conditions, conditions_span): (Vec<CondlistCondition>, Option<SourceSpan>) =
       Self::parse_delimited_conditions(branch, branch_offset, b'{', b'}', "condition")?;
     let (effects, effects_span): (Vec<CondlistCondition>, Option<SourceSpan>) =
@@ -26,7 +26,7 @@ impl CondlistBranch {
       ));
     }
 
-    Ok(CondlistBranch {
+    Ok(Self {
       conditions,
       effects,
       result,

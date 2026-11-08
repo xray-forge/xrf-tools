@@ -196,48 +196,48 @@ impl AlifeObjectInherited {
   /// The server class whose `STATE_Read` this payload is shaped for.
   pub fn get_class(&self) -> AlifeClass {
     match self {
-      AlifeObjectInherited::SeActor(_) => AlifeClass::SeActor,
-      AlifeObjectInherited::SeStalker(_) => AlifeClass::SeStalker,
-      AlifeObjectInherited::SeMonster(_) => AlifeClass::SeMonster,
-      AlifeObjectInherited::CseAlifeObjectBreakable(_) => AlifeClass::CseAlifeObjectBreakable,
-      AlifeObjectInherited::CseAlifeObjectClimable(_) => AlifeClass::CseAlifeObjectClimable,
-      AlifeObjectInherited::CseAlifeGraphPoint(_) => AlifeClass::CseAlifeGraphPoint,
-      AlifeObjectInherited::CseAlifeSpaceRestrictor(_) => AlifeClass::CseAlifeSpaceRestrictor,
-      AlifeObjectInherited::SeSmartCover(_) => AlifeClass::SeSmartCover,
-      AlifeObjectInherited::CseAlifeAnomalousZone(_) => AlifeClass::CseAlifeAnomalousZone,
-      AlifeObjectInherited::CseAlifeTorridZone(_) => AlifeClass::CseAlifeTorridZone,
-      AlifeObjectInherited::SeSmartTerrain(_) => AlifeClass::SeSmartTerrain,
-      AlifeObjectInherited::SeLevelChanger(_) => AlifeClass::SeLevelChanger,
-      AlifeObjectInherited::CseAlifeZoneVisual(_) => AlifeClass::CseAlifeZoneVisual,
-      AlifeObjectInherited::CseAlifeCar(_) => AlifeClass::CseAlifeCar,
-      AlifeObjectInherited::CseAlifeTrader(_) => AlifeClass::CseAlifeTrader,
-      AlifeObjectInherited::CseAlifeObjectPhysic(_) => AlifeClass::CseAlifeObjectPhysic,
-      AlifeObjectInherited::CseAlifeHelicopter(_) => AlifeClass::CseAlifeHelicopter,
-      AlifeObjectInherited::CseAlifeInventoryBox(_) => AlifeClass::CseAlifeInventoryBox,
-      AlifeObjectInherited::CseAlifeObjectHangingLamp(_) => AlifeClass::CseAlifeObjectHangingLamp,
-      AlifeObjectInherited::CseAlifeItem(_) => AlifeClass::CseAlifeItem,
-      AlifeObjectInherited::CseAlifeItemExplosive(_) => AlifeClass::CseAlifeItemExplosive,
-      AlifeObjectInherited::CseAlifeItemPda(_) => AlifeClass::CseAlifeItemPda,
-      AlifeObjectInherited::CseAlifeItemAmmo(_) => AlifeClass::CseAlifeItemAmmo,
-      AlifeObjectInherited::CseAlifeItemGrenade(_) => AlifeClass::CseAlifeItemGrenade,
-      AlifeObjectInherited::CseAlifeItemArtefact(_) => AlifeClass::CseAlifeItemArtefact,
-      AlifeObjectInherited::CseAlifeItemWeapon(_) => AlifeClass::CseAlifeItemWeapon,
-      AlifeObjectInherited::CseAlifeItemDetector(_) => AlifeClass::CseAlifeItemDetector,
-      AlifeObjectInherited::CseAlifeItemHelmet(_) => AlifeClass::CseAlifeItemHelmet,
-      AlifeObjectInherited::CseAlifeItemCustomOutfit(_) => AlifeClass::CseAlifeItemCustomOutfit,
-      AlifeObjectInherited::CseAlifeItemWeaponShotgun(_) => AlifeClass::CseAlifeItemWeaponShotgun,
-      AlifeObjectInherited::CseAlifeItemWeaponMagazined(_) => AlifeClass::CseAlifeItemWeaponMagazined,
-      AlifeObjectInherited::CseAlifeItemWeaponMagazinedWGl(_) => AlifeClass::CseAlifeItemWeaponMagazinedWGl,
-      AlifeObjectInherited::CseAlifeItemBolt(_) => AlifeClass::CseAlifeItemBolt,
-      AlifeObjectInherited::CseAlifeItemTorch(_) => AlifeClass::CseAlifeItemTorch,
-      AlifeObjectInherited::CseAlifeItemDocument(_) => AlifeClass::CseAlifeItemDocument,
-      AlifeObjectInherited::CseAlifeCreatureCrow(_) => AlifeClass::CseAlifeCreatureCrow,
-      AlifeObjectInherited::CseAlifeCreaturePhantom(_) => AlifeClass::CseAlifeCreaturePhantom,
-      AlifeObjectInherited::CseAlifeDynamicObjectVisual(_) => AlifeClass::CseAlifeDynamicObjectVisual,
-      AlifeObjectInherited::CseAlifeObjectProjector(_) => AlifeClass::CseAlifeObjectProjector,
-      AlifeObjectInherited::CseAlifePhSkeletonObject(_) => AlifeClass::CseAlifePhSkeletonObject,
-      AlifeObjectInherited::CseAlifeStationaryMGun(_) => AlifeClass::CseAlifeStationaryMGun,
-      AlifeObjectInherited::SimSquadScripted(_) => AlifeClass::SimSquadScripted,
+      Self::SeActor(_) => AlifeClass::SeActor,
+      Self::SeStalker(_) => AlifeClass::SeStalker,
+      Self::SeMonster(_) => AlifeClass::SeMonster,
+      Self::CseAlifeObjectBreakable(_) => AlifeClass::CseAlifeObjectBreakable,
+      Self::CseAlifeObjectClimable(_) => AlifeClass::CseAlifeObjectClimable,
+      Self::CseAlifeGraphPoint(_) => AlifeClass::CseAlifeGraphPoint,
+      Self::CseAlifeSpaceRestrictor(_) => AlifeClass::CseAlifeSpaceRestrictor,
+      Self::SeSmartCover(_) => AlifeClass::SeSmartCover,
+      Self::CseAlifeAnomalousZone(_) => AlifeClass::CseAlifeAnomalousZone,
+      Self::CseAlifeTorridZone(_) => AlifeClass::CseAlifeTorridZone,
+      Self::SeSmartTerrain(_) => AlifeClass::SeSmartTerrain,
+      Self::SeLevelChanger(_) => AlifeClass::SeLevelChanger,
+      Self::CseAlifeZoneVisual(_) => AlifeClass::CseAlifeZoneVisual,
+      Self::CseAlifeCar(_) => AlifeClass::CseAlifeCar,
+      Self::CseAlifeTrader(_) => AlifeClass::CseAlifeTrader,
+      Self::CseAlifeObjectPhysic(_) => AlifeClass::CseAlifeObjectPhysic,
+      Self::CseAlifeHelicopter(_) => AlifeClass::CseAlifeHelicopter,
+      Self::CseAlifeInventoryBox(_) => AlifeClass::CseAlifeInventoryBox,
+      Self::CseAlifeObjectHangingLamp(_) => AlifeClass::CseAlifeObjectHangingLamp,
+      Self::CseAlifeItem(_) => AlifeClass::CseAlifeItem,
+      Self::CseAlifeItemExplosive(_) => AlifeClass::CseAlifeItemExplosive,
+      Self::CseAlifeItemPda(_) => AlifeClass::CseAlifeItemPda,
+      Self::CseAlifeItemAmmo(_) => AlifeClass::CseAlifeItemAmmo,
+      Self::CseAlifeItemGrenade(_) => AlifeClass::CseAlifeItemGrenade,
+      Self::CseAlifeItemArtefact(_) => AlifeClass::CseAlifeItemArtefact,
+      Self::CseAlifeItemWeapon(_) => AlifeClass::CseAlifeItemWeapon,
+      Self::CseAlifeItemDetector(_) => AlifeClass::CseAlifeItemDetector,
+      Self::CseAlifeItemHelmet(_) => AlifeClass::CseAlifeItemHelmet,
+      Self::CseAlifeItemCustomOutfit(_) => AlifeClass::CseAlifeItemCustomOutfit,
+      Self::CseAlifeItemWeaponShotgun(_) => AlifeClass::CseAlifeItemWeaponShotgun,
+      Self::CseAlifeItemWeaponMagazined(_) => AlifeClass::CseAlifeItemWeaponMagazined,
+      Self::CseAlifeItemWeaponMagazinedWGl(_) => AlifeClass::CseAlifeItemWeaponMagazinedWGl,
+      Self::CseAlifeItemBolt(_) => AlifeClass::CseAlifeItemBolt,
+      Self::CseAlifeItemTorch(_) => AlifeClass::CseAlifeItemTorch,
+      Self::CseAlifeItemDocument(_) => AlifeClass::CseAlifeItemDocument,
+      Self::CseAlifeCreatureCrow(_) => AlifeClass::CseAlifeCreatureCrow,
+      Self::CseAlifeCreaturePhantom(_) => AlifeClass::CseAlifeCreaturePhantom,
+      Self::CseAlifeDynamicObjectVisual(_) => AlifeClass::CseAlifeDynamicObjectVisual,
+      Self::CseAlifeObjectProjector(_) => AlifeClass::CseAlifeObjectProjector,
+      Self::CseAlifePhSkeletonObject(_) => AlifeClass::CseAlifePhSkeletonObject,
+      Self::CseAlifeStationaryMGun(_) => AlifeClass::CseAlifeStationaryMGun,
+      Self::SimSquadScripted(_) => AlifeClass::SimSquadScripted,
     }
   }
 
@@ -245,48 +245,48 @@ impl AlifeObjectInherited {
   /// for a graph point, which inherits none.
   pub fn get_abstract(&self) -> Option<&AlifeObjectAbstract> {
     match self {
-      AlifeObjectInherited::SeActor(object) => Some(&object.base.base.base.base),
-      AlifeObjectInherited::SeStalker(object) => Some(&object.base.base.base.base.base.base),
-      AlifeObjectInherited::SeMonster(object) => Some(&object.base.base.base.base.base),
-      AlifeObjectInherited::CseAlifeObjectBreakable(object) => Some(&object.base.base),
-      AlifeObjectInherited::CseAlifeObjectClimable(object) => Some(&object.base.base),
-      AlifeObjectInherited::CseAlifeGraphPoint(_) => None,
-      AlifeObjectInherited::CseAlifeSpaceRestrictor(object) => Some(&object.base),
-      AlifeObjectInherited::SeSmartCover(object) => Some(&object.base.base.base),
-      AlifeObjectInherited::CseAlifeAnomalousZone(object) => Some(&object.base.base.base.base),
-      AlifeObjectInherited::CseAlifeTorridZone(object) => Some(&object.base.base.base),
-      AlifeObjectInherited::SeSmartTerrain(object) => Some(&object.base.base.base),
-      AlifeObjectInherited::SeLevelChanger(object) => Some(&object.base.base),
-      AlifeObjectInherited::CseAlifeZoneVisual(object) => Some(&object.base.base.base.base),
-      AlifeObjectInherited::CseAlifeCar(object) => Some(&object.base.base),
-      AlifeObjectInherited::CseAlifeTrader(object) => Some(&object.base.base),
-      AlifeObjectInherited::CseAlifeObjectPhysic(object) => Some(&object.base.base),
-      AlifeObjectInherited::CseAlifeHelicopter(object) => Some(&object.base.base),
-      AlifeObjectInherited::CseAlifeInventoryBox(object) => Some(&object.base.base),
-      AlifeObjectInherited::CseAlifeObjectHangingLamp(object) => Some(&object.base.base),
-      AlifeObjectInherited::CseAlifeItem(object) => Some(&object.base.base),
-      AlifeObjectInherited::CseAlifeItemExplosive(object) => Some(&object.base.base.base),
-      AlifeObjectInherited::CseAlifeItemPda(object) => Some(&object.base.base.base),
-      AlifeObjectInherited::CseAlifeItemAmmo(object) => Some(&object.base.base.base),
-      AlifeObjectInherited::CseAlifeItemGrenade(object) => Some(&object.base.base.base),
-      AlifeObjectInherited::CseAlifeItemArtefact(object) => Some(&object.base.base.base),
-      AlifeObjectInherited::CseAlifeItemWeapon(object) => Some(&object.base.base.base),
-      AlifeObjectInherited::CseAlifeItemDetector(object) => Some(&object.base.base.base),
-      AlifeObjectInherited::CseAlifeItemHelmet(object) => Some(&object.base.base.base),
-      AlifeObjectInherited::CseAlifeItemCustomOutfit(object) => Some(&object.base.base.base),
-      AlifeObjectInherited::CseAlifeItemWeaponShotgun(object) => Some(&object.base.base.base.base.base),
-      AlifeObjectInherited::CseAlifeItemWeaponMagazined(object) => Some(&object.base.base.base.base),
-      AlifeObjectInherited::CseAlifeItemWeaponMagazinedWGl(object) => Some(&object.base.base.base.base.base),
-      AlifeObjectInherited::CseAlifeItemBolt(object) => Some(&object.base.base),
-      AlifeObjectInherited::CseAlifeItemTorch(object) => Some(&object.base.base.base),
-      AlifeObjectInherited::CseAlifeItemDocument(object) => Some(&object.base.base.base),
-      AlifeObjectInherited::CseAlifeCreatureCrow(object) => Some(&object.base.base),
-      AlifeObjectInherited::CseAlifeCreaturePhantom(object) => Some(&object.base.base),
-      AlifeObjectInherited::CseAlifeDynamicObjectVisual(object) => Some(&object.base),
-      AlifeObjectInherited::CseAlifeObjectProjector(object) => Some(&object.base),
-      AlifeObjectInherited::CseAlifePhSkeletonObject(object) => Some(&object.base.base),
-      AlifeObjectInherited::CseAlifeStationaryMGun(object) => Some(&object.base.base),
-      AlifeObjectInherited::SimSquadScripted(object) => Some(&object.base.base.base),
+      Self::SeActor(object) => Some(&object.base.base.base.base),
+      Self::SeStalker(object) => Some(&object.base.base.base.base.base.base),
+      Self::SeMonster(object) => Some(&object.base.base.base.base.base),
+      Self::CseAlifeObjectBreakable(object) => Some(&object.base.base),
+      Self::CseAlifeObjectClimable(object) => Some(&object.base.base),
+      Self::CseAlifeGraphPoint(_) => None,
+      Self::CseAlifeSpaceRestrictor(object) => Some(&object.base),
+      Self::SeSmartCover(object) => Some(&object.base.base.base),
+      Self::CseAlifeAnomalousZone(object) => Some(&object.base.base.base.base),
+      Self::CseAlifeTorridZone(object) => Some(&object.base.base.base),
+      Self::SeSmartTerrain(object) => Some(&object.base.base.base),
+      Self::SeLevelChanger(object) => Some(&object.base.base),
+      Self::CseAlifeZoneVisual(object) => Some(&object.base.base.base.base),
+      Self::CseAlifeCar(object) => Some(&object.base.base),
+      Self::CseAlifeTrader(object) => Some(&object.base.base),
+      Self::CseAlifeObjectPhysic(object) => Some(&object.base.base),
+      Self::CseAlifeHelicopter(object) => Some(&object.base.base),
+      Self::CseAlifeInventoryBox(object) => Some(&object.base.base),
+      Self::CseAlifeObjectHangingLamp(object) => Some(&object.base.base),
+      Self::CseAlifeItem(object) => Some(&object.base.base),
+      Self::CseAlifeItemExplosive(object) => Some(&object.base.base.base),
+      Self::CseAlifeItemPda(object) => Some(&object.base.base.base),
+      Self::CseAlifeItemAmmo(object) => Some(&object.base.base.base),
+      Self::CseAlifeItemGrenade(object) => Some(&object.base.base.base),
+      Self::CseAlifeItemArtefact(object) => Some(&object.base.base.base),
+      Self::CseAlifeItemWeapon(object) => Some(&object.base.base.base),
+      Self::CseAlifeItemDetector(object) => Some(&object.base.base.base),
+      Self::CseAlifeItemHelmet(object) => Some(&object.base.base.base),
+      Self::CseAlifeItemCustomOutfit(object) => Some(&object.base.base.base),
+      Self::CseAlifeItemWeaponShotgun(object) => Some(&object.base.base.base.base.base),
+      Self::CseAlifeItemWeaponMagazined(object) => Some(&object.base.base.base.base),
+      Self::CseAlifeItemWeaponMagazinedWGl(object) => Some(&object.base.base.base.base.base),
+      Self::CseAlifeItemBolt(object) => Some(&object.base.base),
+      Self::CseAlifeItemTorch(object) => Some(&object.base.base.base),
+      Self::CseAlifeItemDocument(object) => Some(&object.base.base.base),
+      Self::CseAlifeCreatureCrow(object) => Some(&object.base.base),
+      Self::CseAlifeCreaturePhantom(object) => Some(&object.base.base),
+      Self::CseAlifeDynamicObjectVisual(object) => Some(&object.base),
+      Self::CseAlifeObjectProjector(object) => Some(&object.base),
+      Self::CseAlifePhSkeletonObject(object) => Some(&object.base.base),
+      Self::CseAlifeStationaryMGun(object) => Some(&object.base.base),
+      Self::SimSquadScripted(object) => Some(&object.base.base.base),
     }
   }
 
@@ -294,48 +294,48 @@ impl AlifeObjectInherited {
   /// class drawn as nothing, and for an object naming no visual.
   pub fn get_visual(&self) -> Option<&str> {
     let name: &str = match self {
-      AlifeObjectInherited::SeActor(object) => object.base.base.base.visual_name.as_str(),
-      AlifeObjectInherited::SeStalker(object) => object.base.base.base.base.base.visual_name.as_str(),
-      AlifeObjectInherited::SeMonster(object) => object.base.base.base.base.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifeObjectBreakable(object) => object.base.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifeCar(object) => object.base.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifeTrader(object) => object.base.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifeObjectPhysic(object) => object.base.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifeHelicopter(object) => object.base.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifeInventoryBox(object) => object.base.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifeObjectHangingLamp(object) => object.base.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifeItem(object) => object.base.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifeItemExplosive(object) => object.base.base.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifeItemPda(object) => object.base.base.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifeItemAmmo(object) => object.base.base.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifeItemGrenade(object) => object.base.base.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifeItemArtefact(object) => object.base.base.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifeItemWeapon(object) => object.base.base.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifeItemDetector(object) => object.base.base.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifeItemHelmet(object) => object.base.base.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifeItemCustomOutfit(object) => object.base.base.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifeItemWeaponShotgun(object) => object.base.base.base.base.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifeItemWeaponMagazined(object) => object.base.base.base.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifeItemWeaponMagazinedWGl(object) => object.base.base.base.base.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifeZoneVisual(object) => object.visual.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifeItemBolt(object) => object.base.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifeItemTorch(object) => object.base.base.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifeItemDocument(object) => object.base.base.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifeCreatureCrow(object) => object.base.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifeCreaturePhantom(object) => object.base.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifeDynamicObjectVisual(object) => object.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifeObjectProjector(object) => object.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifePhSkeletonObject(object) => object.base.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifeStationaryMGun(object) => object.base.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifeObjectClimable(_)
-      | AlifeObjectInherited::CseAlifeGraphPoint(_)
-      | AlifeObjectInherited::CseAlifeSpaceRestrictor(_)
-      | AlifeObjectInherited::SeSmartCover(_)
-      | AlifeObjectInherited::CseAlifeAnomalousZone(_)
-      | AlifeObjectInherited::CseAlifeTorridZone(_)
-      | AlifeObjectInherited::SeSmartTerrain(_)
-      | AlifeObjectInherited::SeLevelChanger(_)
-      | AlifeObjectInherited::SimSquadScripted(_) => return None,
+      Self::SeActor(object) => object.base.base.base.visual_name.as_str(),
+      Self::SeStalker(object) => object.base.base.base.base.base.visual_name.as_str(),
+      Self::SeMonster(object) => object.base.base.base.base.visual_name.as_str(),
+      Self::CseAlifeObjectBreakable(object) => object.base.visual_name.as_str(),
+      Self::CseAlifeCar(object) => object.base.visual_name.as_str(),
+      Self::CseAlifeTrader(object) => object.base.visual_name.as_str(),
+      Self::CseAlifeObjectPhysic(object) => object.base.visual_name.as_str(),
+      Self::CseAlifeHelicopter(object) => object.base.visual_name.as_str(),
+      Self::CseAlifeInventoryBox(object) => object.base.visual_name.as_str(),
+      Self::CseAlifeObjectHangingLamp(object) => object.base.visual_name.as_str(),
+      Self::CseAlifeItem(object) => object.base.visual_name.as_str(),
+      Self::CseAlifeItemExplosive(object) => object.base.base.visual_name.as_str(),
+      Self::CseAlifeItemPda(object) => object.base.base.visual_name.as_str(),
+      Self::CseAlifeItemAmmo(object) => object.base.base.visual_name.as_str(),
+      Self::CseAlifeItemGrenade(object) => object.base.base.visual_name.as_str(),
+      Self::CseAlifeItemArtefact(object) => object.base.base.visual_name.as_str(),
+      Self::CseAlifeItemWeapon(object) => object.base.base.visual_name.as_str(),
+      Self::CseAlifeItemDetector(object) => object.base.base.visual_name.as_str(),
+      Self::CseAlifeItemHelmet(object) => object.base.base.visual_name.as_str(),
+      Self::CseAlifeItemCustomOutfit(object) => object.base.base.visual_name.as_str(),
+      Self::CseAlifeItemWeaponShotgun(object) => object.base.base.base.base.visual_name.as_str(),
+      Self::CseAlifeItemWeaponMagazined(object) => object.base.base.base.visual_name.as_str(),
+      Self::CseAlifeItemWeaponMagazinedWGl(object) => object.base.base.base.base.visual_name.as_str(),
+      Self::CseAlifeZoneVisual(object) => object.visual.visual_name.as_str(),
+      Self::CseAlifeItemBolt(object) => object.base.visual_name.as_str(),
+      Self::CseAlifeItemTorch(object) => object.base.base.visual_name.as_str(),
+      Self::CseAlifeItemDocument(object) => object.base.base.visual_name.as_str(),
+      Self::CseAlifeCreatureCrow(object) => object.base.visual_name.as_str(),
+      Self::CseAlifeCreaturePhantom(object) => object.base.visual_name.as_str(),
+      Self::CseAlifeDynamicObjectVisual(object) => object.visual_name.as_str(),
+      Self::CseAlifeObjectProjector(object) => object.visual_name.as_str(),
+      Self::CseAlifePhSkeletonObject(object) => object.base.visual_name.as_str(),
+      Self::CseAlifeStationaryMGun(object) => object.base.visual_name.as_str(),
+      Self::CseAlifeObjectClimable(_)
+      | Self::CseAlifeGraphPoint(_)
+      | Self::CseAlifeSpaceRestrictor(_)
+      | Self::SeSmartCover(_)
+      | Self::CseAlifeAnomalousZone(_)
+      | Self::CseAlifeTorridZone(_)
+      | Self::SeSmartTerrain(_)
+      | Self::SeLevelChanger(_)
+      | Self::SimSquadScripted(_) => return None,
     };
 
     (!name.is_empty()).then_some(name)
@@ -352,63 +352,63 @@ impl AlifeObjectInherited {
   /// position keeps none to move.
   pub fn move_to(&mut self, position: &Vector3d, direction: &Vector3d) {
     let state: Option<&mut PhysicsNetState> = match self {
-      AlifeObjectInherited::SeActor(object) => {
+      Self::SeActor(object) => {
         object.base.move_to(position, direction);
 
         return;
       }
-      AlifeObjectInherited::SeStalker(object) => {
+      Self::SeStalker(object) => {
         object.move_to(position, direction);
 
         return;
       }
-      AlifeObjectInherited::SeMonster(object) => {
+      Self::SeMonster(object) => {
         object.move_to(position, direction);
 
         return;
       }
-      AlifeObjectInherited::CseAlifeCreatureCrow(object) | AlifeObjectInherited::CseAlifeCreaturePhantom(object) => {
+      Self::CseAlifeCreatureCrow(object) | Self::CseAlifeCreaturePhantom(object) => {
         object.move_to(position, direction);
 
         return;
       }
-      AlifeObjectInherited::CseAlifeObjectPhysic(object) => object.update_state.as_mut(),
-      AlifeObjectInherited::CseAlifeItemBolt(object) => object.update_state.as_mut(),
-      AlifeObjectInherited::CseAlifeItemTorch(object) => object.base.update_state.as_mut(),
-      AlifeObjectInherited::CseAlifeItemDocument(object) => object.base.update_state.as_mut(),
-      AlifeObjectInherited::CseAlifeItem(object) => object.update_state.as_mut(),
-      AlifeObjectInherited::CseAlifeItemExplosive(object) => object.base.update_state.as_mut(),
-      AlifeObjectInherited::CseAlifeItemPda(object) => object.base.update_state.as_mut(),
-      AlifeObjectInherited::CseAlifeItemAmmo(object) => object.base.update_state.as_mut(),
-      AlifeObjectInherited::CseAlifeItemGrenade(object) => object.base.update_state.as_mut(),
-      AlifeObjectInherited::CseAlifeItemArtefact(object) => object.base.update_state.as_mut(),
-      AlifeObjectInherited::CseAlifeItemWeapon(object) => object.base.update_state.as_mut(),
-      AlifeObjectInherited::CseAlifeItemDetector(object) => object.base.update_state.as_mut(),
-      AlifeObjectInherited::CseAlifeItemHelmet(object) => object.base.update_state.as_mut(),
-      AlifeObjectInherited::CseAlifeItemCustomOutfit(object) => object.base.update_state.as_mut(),
-      AlifeObjectInherited::CseAlifeItemWeaponShotgun(object) => object.base.base.base.update_state.as_mut(),
-      AlifeObjectInherited::CseAlifeItemWeaponMagazined(object) => object.base.base.update_state.as_mut(),
-      AlifeObjectInherited::CseAlifeItemWeaponMagazinedWGl(object) => object.base.base.base.update_state.as_mut(),
-      AlifeObjectInherited::CseAlifeObjectBreakable(_)
-      | AlifeObjectInherited::CseAlifeObjectClimable(_)
-      | AlifeObjectInherited::CseAlifeGraphPoint(_)
-      | AlifeObjectInherited::CseAlifeSpaceRestrictor(_)
-      | AlifeObjectInherited::SeSmartCover(_)
-      | AlifeObjectInherited::CseAlifeAnomalousZone(_)
-      | AlifeObjectInherited::CseAlifeTorridZone(_)
-      | AlifeObjectInherited::SeSmartTerrain(_)
-      | AlifeObjectInherited::SeLevelChanger(_)
-      | AlifeObjectInherited::CseAlifeZoneVisual(_)
-      | AlifeObjectInherited::CseAlifeCar(_)
-      | AlifeObjectInherited::CseAlifeTrader(_)
-      | AlifeObjectInherited::CseAlifeHelicopter(_)
-      | AlifeObjectInherited::CseAlifeInventoryBox(_)
-      | AlifeObjectInherited::CseAlifeObjectHangingLamp(_)
-      | AlifeObjectInherited::CseAlifeDynamicObjectVisual(_)
-      | AlifeObjectInherited::CseAlifeObjectProjector(_)
-      | AlifeObjectInherited::CseAlifePhSkeletonObject(_)
-      | AlifeObjectInherited::CseAlifeStationaryMGun(_)
-      | AlifeObjectInherited::SimSquadScripted(_) => None,
+      Self::CseAlifeObjectPhysic(object) => object.update_state.as_mut(),
+      Self::CseAlifeItemBolt(object) => object.update_state.as_mut(),
+      Self::CseAlifeItemTorch(object) => object.base.update_state.as_mut(),
+      Self::CseAlifeItemDocument(object) => object.base.update_state.as_mut(),
+      Self::CseAlifeItem(object) => object.update_state.as_mut(),
+      Self::CseAlifeItemExplosive(object) => object.base.update_state.as_mut(),
+      Self::CseAlifeItemPda(object) => object.base.update_state.as_mut(),
+      Self::CseAlifeItemAmmo(object) => object.base.update_state.as_mut(),
+      Self::CseAlifeItemGrenade(object) => object.base.update_state.as_mut(),
+      Self::CseAlifeItemArtefact(object) => object.base.update_state.as_mut(),
+      Self::CseAlifeItemWeapon(object) => object.base.update_state.as_mut(),
+      Self::CseAlifeItemDetector(object) => object.base.update_state.as_mut(),
+      Self::CseAlifeItemHelmet(object) => object.base.update_state.as_mut(),
+      Self::CseAlifeItemCustomOutfit(object) => object.base.update_state.as_mut(),
+      Self::CseAlifeItemWeaponShotgun(object) => object.base.base.base.update_state.as_mut(),
+      Self::CseAlifeItemWeaponMagazined(object) => object.base.base.update_state.as_mut(),
+      Self::CseAlifeItemWeaponMagazinedWGl(object) => object.base.base.base.update_state.as_mut(),
+      Self::CseAlifeObjectBreakable(_)
+      | Self::CseAlifeObjectClimable(_)
+      | Self::CseAlifeGraphPoint(_)
+      | Self::CseAlifeSpaceRestrictor(_)
+      | Self::SeSmartCover(_)
+      | Self::CseAlifeAnomalousZone(_)
+      | Self::CseAlifeTorridZone(_)
+      | Self::SeSmartTerrain(_)
+      | Self::SeLevelChanger(_)
+      | Self::CseAlifeZoneVisual(_)
+      | Self::CseAlifeCar(_)
+      | Self::CseAlifeTrader(_)
+      | Self::CseAlifeHelicopter(_)
+      | Self::CseAlifeInventoryBox(_)
+      | Self::CseAlifeObjectHangingLamp(_)
+      | Self::CseAlifeDynamicObjectVisual(_)
+      | Self::CseAlifeObjectProjector(_)
+      | Self::CseAlifePhSkeletonObject(_)
+      | Self::CseAlifeStationaryMGun(_)
+      | Self::SimSquadScripted(_) => None,
     };
 
     if let Some(state) = state {
@@ -419,48 +419,48 @@ impl AlifeObjectInherited {
   /// Write the payload's spawn fields into `spawn` and its update fields into `update`.
   pub fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
     match self {
-      AlifeObjectInherited::SeActor(object) => object.write::<T>(spawn, update)?,
-      AlifeObjectInherited::SeStalker(object) => object.write::<T>(spawn, update)?,
-      AlifeObjectInherited::SeMonster(object) => object.write::<T>(spawn, update)?,
-      AlifeObjectInherited::CseAlifeObjectBreakable(object) => spawn.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeObjectClimable(object) => spawn.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeGraphPoint(object) => spawn.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeSpaceRestrictor(object) => spawn.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::SeSmartCover(object) => spawn.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeAnomalousZone(object) => spawn.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeTorridZone(object) => spawn.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::SeSmartTerrain(object) => spawn.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::SeLevelChanger(object) => spawn.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeZoneVisual(object) => spawn.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeCar(object) => spawn.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeTrader(object) => spawn.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeObjectPhysic(object) => object.write::<T>(spawn, update)?,
-      AlifeObjectInherited::CseAlifeHelicopter(object) => spawn.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeInventoryBox(object) => spawn.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeObjectHangingLamp(object) => spawn.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeItem(object) => object.write::<T>(spawn, update)?,
-      AlifeObjectInherited::CseAlifeItemExplosive(object) => object.write::<T>(spawn, update)?,
-      AlifeObjectInherited::CseAlifeItemPda(object) => object.write::<T>(spawn, update)?,
-      AlifeObjectInherited::CseAlifeItemAmmo(object) => object.write::<T>(spawn, update)?,
-      AlifeObjectInherited::CseAlifeItemGrenade(object) => object.write::<T>(spawn, update)?,
-      AlifeObjectInherited::CseAlifeItemArtefact(object) => object.write::<T>(spawn, update)?,
-      AlifeObjectInherited::CseAlifeItemWeapon(object) => object.write::<T>(spawn, update)?,
-      AlifeObjectInherited::CseAlifeItemDetector(object) => object.write::<T>(spawn, update)?,
-      AlifeObjectInherited::CseAlifeItemHelmet(object) => object.write::<T>(spawn, update)?,
-      AlifeObjectInherited::CseAlifeItemCustomOutfit(object) => object.write::<T>(spawn, update)?,
-      AlifeObjectInherited::CseAlifeItemWeaponShotgun(object) => object.write::<T>(spawn, update)?,
-      AlifeObjectInherited::CseAlifeItemWeaponMagazined(object) => object.write::<T>(spawn, update)?,
-      AlifeObjectInherited::CseAlifeItemWeaponMagazinedWGl(object) => object.write::<T>(spawn, update)?,
-      AlifeObjectInherited::CseAlifeItemBolt(object) => object.write::<T>(spawn, update)?,
-      AlifeObjectInherited::CseAlifeItemTorch(object) => object.write::<T>(spawn, update)?,
-      AlifeObjectInherited::CseAlifeItemDocument(object) => object.write::<T>(spawn, update)?,
-      AlifeObjectInherited::CseAlifeCreatureCrow(object) => object.write::<T>(spawn, update)?,
-      AlifeObjectInherited::CseAlifeCreaturePhantom(object) => object.write::<T>(spawn, update)?,
-      AlifeObjectInherited::CseAlifeDynamicObjectVisual(object) => spawn.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeObjectProjector(object) => spawn.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifePhSkeletonObject(object) => spawn.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeStationaryMGun(object) => object.write::<T>(spawn, update)?,
-      AlifeObjectInherited::SimSquadScripted(object) => spawn.write_xr::<T, _>(object.deref())?,
+      Self::SeActor(object) => object.write::<T>(spawn, update)?,
+      Self::SeStalker(object) => object.write::<T>(spawn, update)?,
+      Self::SeMonster(object) => object.write::<T>(spawn, update)?,
+      Self::CseAlifeObjectBreakable(object) => spawn.write_xr::<T, _>(object.deref())?,
+      Self::CseAlifeObjectClimable(object) => spawn.write_xr::<T, _>(object.deref())?,
+      Self::CseAlifeGraphPoint(object) => spawn.write_xr::<T, _>(object.deref())?,
+      Self::CseAlifeSpaceRestrictor(object) => spawn.write_xr::<T, _>(object.deref())?,
+      Self::SeSmartCover(object) => spawn.write_xr::<T, _>(object.deref())?,
+      Self::CseAlifeAnomalousZone(object) => spawn.write_xr::<T, _>(object.deref())?,
+      Self::CseAlifeTorridZone(object) => spawn.write_xr::<T, _>(object.deref())?,
+      Self::SeSmartTerrain(object) => spawn.write_xr::<T, _>(object.deref())?,
+      Self::SeLevelChanger(object) => spawn.write_xr::<T, _>(object.deref())?,
+      Self::CseAlifeZoneVisual(object) => spawn.write_xr::<T, _>(object.deref())?,
+      Self::CseAlifeCar(object) => spawn.write_xr::<T, _>(object.deref())?,
+      Self::CseAlifeTrader(object) => spawn.write_xr::<T, _>(object.deref())?,
+      Self::CseAlifeObjectPhysic(object) => object.write::<T>(spawn, update)?,
+      Self::CseAlifeHelicopter(object) => spawn.write_xr::<T, _>(object.deref())?,
+      Self::CseAlifeInventoryBox(object) => spawn.write_xr::<T, _>(object.deref())?,
+      Self::CseAlifeObjectHangingLamp(object) => spawn.write_xr::<T, _>(object.deref())?,
+      Self::CseAlifeItem(object) => object.write::<T>(spawn, update)?,
+      Self::CseAlifeItemExplosive(object) => object.write::<T>(spawn, update)?,
+      Self::CseAlifeItemPda(object) => object.write::<T>(spawn, update)?,
+      Self::CseAlifeItemAmmo(object) => object.write::<T>(spawn, update)?,
+      Self::CseAlifeItemGrenade(object) => object.write::<T>(spawn, update)?,
+      Self::CseAlifeItemArtefact(object) => object.write::<T>(spawn, update)?,
+      Self::CseAlifeItemWeapon(object) => object.write::<T>(spawn, update)?,
+      Self::CseAlifeItemDetector(object) => object.write::<T>(spawn, update)?,
+      Self::CseAlifeItemHelmet(object) => object.write::<T>(spawn, update)?,
+      Self::CseAlifeItemCustomOutfit(object) => object.write::<T>(spawn, update)?,
+      Self::CseAlifeItemWeaponShotgun(object) => object.write::<T>(spawn, update)?,
+      Self::CseAlifeItemWeaponMagazined(object) => object.write::<T>(spawn, update)?,
+      Self::CseAlifeItemWeaponMagazinedWGl(object) => object.write::<T>(spawn, update)?,
+      Self::CseAlifeItemBolt(object) => object.write::<T>(spawn, update)?,
+      Self::CseAlifeItemTorch(object) => object.write::<T>(spawn, update)?,
+      Self::CseAlifeItemDocument(object) => object.write::<T>(spawn, update)?,
+      Self::CseAlifeCreatureCrow(object) => object.write::<T>(spawn, update)?,
+      Self::CseAlifeCreaturePhantom(object) => object.write::<T>(spawn, update)?,
+      Self::CseAlifeDynamicObjectVisual(object) => spawn.write_xr::<T, _>(object.deref())?,
+      Self::CseAlifeObjectProjector(object) => spawn.write_xr::<T, _>(object.deref())?,
+      Self::CseAlifePhSkeletonObject(object) => spawn.write_xr::<T, _>(object.deref())?,
+      Self::CseAlifeStationaryMGun(object) => object.write::<T>(spawn, update)?,
+      Self::SimSquadScripted(object) => spawn.write_xr::<T, _>(object.deref())?,
     }
 
     Ok(())
@@ -570,48 +570,48 @@ impl AlifeObjectInherited {
 
   pub fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     match self {
-      AlifeObjectInherited::SeActor(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::SeStalker(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::SeMonster(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeObjectBreakable(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeObjectClimable(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeGraphPoint(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeSpaceRestrictor(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::SeSmartCover(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeAnomalousZone(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeTorridZone(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::SeSmartTerrain(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::SeLevelChanger(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeZoneVisual(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeCar(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeTrader(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeObjectPhysic(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeHelicopter(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeInventoryBox(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeObjectHangingLamp(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeItem(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeItemExplosive(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeItemPda(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeItemAmmo(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeItemGrenade(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeItemArtefact(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeItemWeapon(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeItemDetector(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeItemHelmet(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeItemCustomOutfit(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeItemWeaponShotgun(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeItemWeaponMagazined(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeItemWeaponMagazinedWGl(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeItemBolt(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeItemTorch(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeItemDocument(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeCreatureCrow(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeCreaturePhantom(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeDynamicObjectVisual(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeObjectProjector(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifePhSkeletonObject(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::CseAlifeStationaryMGun(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::SimSquadScripted(object) => object.export(section_name, ltx),
+      Self::SeActor(object) => object.export(section_name, ltx),
+      Self::SeStalker(object) => object.export(section_name, ltx),
+      Self::SeMonster(object) => object.export(section_name, ltx),
+      Self::CseAlifeObjectBreakable(object) => object.export(section_name, ltx),
+      Self::CseAlifeObjectClimable(object) => object.export(section_name, ltx),
+      Self::CseAlifeGraphPoint(object) => object.export(section_name, ltx),
+      Self::CseAlifeSpaceRestrictor(object) => object.export(section_name, ltx),
+      Self::SeSmartCover(object) => object.export(section_name, ltx),
+      Self::CseAlifeAnomalousZone(object) => object.export(section_name, ltx),
+      Self::CseAlifeTorridZone(object) => object.export(section_name, ltx),
+      Self::SeSmartTerrain(object) => object.export(section_name, ltx),
+      Self::SeLevelChanger(object) => object.export(section_name, ltx),
+      Self::CseAlifeZoneVisual(object) => object.export(section_name, ltx),
+      Self::CseAlifeCar(object) => object.export(section_name, ltx),
+      Self::CseAlifeTrader(object) => object.export(section_name, ltx),
+      Self::CseAlifeObjectPhysic(object) => object.export(section_name, ltx),
+      Self::CseAlifeHelicopter(object) => object.export(section_name, ltx),
+      Self::CseAlifeInventoryBox(object) => object.export(section_name, ltx),
+      Self::CseAlifeObjectHangingLamp(object) => object.export(section_name, ltx),
+      Self::CseAlifeItem(object) => object.export(section_name, ltx),
+      Self::CseAlifeItemExplosive(object) => object.export(section_name, ltx),
+      Self::CseAlifeItemPda(object) => object.export(section_name, ltx),
+      Self::CseAlifeItemAmmo(object) => object.export(section_name, ltx),
+      Self::CseAlifeItemGrenade(object) => object.export(section_name, ltx),
+      Self::CseAlifeItemArtefact(object) => object.export(section_name, ltx),
+      Self::CseAlifeItemWeapon(object) => object.export(section_name, ltx),
+      Self::CseAlifeItemDetector(object) => object.export(section_name, ltx),
+      Self::CseAlifeItemHelmet(object) => object.export(section_name, ltx),
+      Self::CseAlifeItemCustomOutfit(object) => object.export(section_name, ltx),
+      Self::CseAlifeItemWeaponShotgun(object) => object.export(section_name, ltx),
+      Self::CseAlifeItemWeaponMagazined(object) => object.export(section_name, ltx),
+      Self::CseAlifeItemWeaponMagazinedWGl(object) => object.export(section_name, ltx),
+      Self::CseAlifeItemBolt(object) => object.export(section_name, ltx),
+      Self::CseAlifeItemTorch(object) => object.export(section_name, ltx),
+      Self::CseAlifeItemDocument(object) => object.export(section_name, ltx),
+      Self::CseAlifeCreatureCrow(object) => object.export(section_name, ltx),
+      Self::CseAlifeCreaturePhantom(object) => object.export(section_name, ltx),
+      Self::CseAlifeDynamicObjectVisual(object) => object.export(section_name, ltx),
+      Self::CseAlifeObjectProjector(object) => object.export(section_name, ltx),
+      Self::CseAlifePhSkeletonObject(object) => object.export(section_name, ltx),
+      Self::CseAlifeStationaryMGun(object) => object.export(section_name, ltx),
+      Self::SimSquadScripted(object) => object.export(section_name, ltx),
     }
   }
 }

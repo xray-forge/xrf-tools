@@ -10,7 +10,7 @@ use crate::vector_3d::Vector3d;
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Matrix4x4 {
-  pub values: [f32; Matrix4x4::ELEMENTS],
+  pub values: [f32; Self::ELEMENTS],
 }
 
 impl Matrix4x4 {

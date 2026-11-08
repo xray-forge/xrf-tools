@@ -5,7 +5,7 @@ use crate::mixer::audio_mixer::AudioMixer;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct AudioTapBlock {
   pub frame: u64,
-  pub samples: [f32; AudioTapBlock::SAMPLES],
+  pub samples: [f32; Self::SAMPLES],
 }
 
 impl AudioTapBlock {

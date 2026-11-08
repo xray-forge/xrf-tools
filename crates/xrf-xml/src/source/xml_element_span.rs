@@ -17,7 +17,7 @@ pub struct XmlElementSpan {
   element: Range<usize>,
   content: Option<Range<usize>>,
   text: String,
-  children: Vec<XmlElementSpan>,
+  children: Vec<Self>,
 }
 
 impl XmlElementSpan {

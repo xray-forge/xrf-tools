@@ -22,14 +22,14 @@ pub enum ParticleBlend {
 
 impl ParticleBlend {
   /// Every equation, in the order the pass keeps their pipelines.
-  pub const ALL: [ParticleBlend; 7] = [
-    ParticleBlend::Opaque,
-    ParticleBlend::CutOut,
-    ParticleBlend::Blend,
-    ParticleBlend::Add,
-    ParticleBlend::AlphaAdd,
-    ParticleBlend::Multiply,
-    ParticleBlend::MultiplyDoubled,
+  pub const ALL: [Self; 7] = [
+    Self::Opaque,
+    Self::CutOut,
+    Self::Blend,
+    Self::Add,
+    Self::AlphaAdd,
+    Self::Multiply,
+    Self::MultiplyDoubled,
   ];
 
   /// The equation a surface draws its colour with, none for one drawing no colour of its own: an `l_special` alone, or

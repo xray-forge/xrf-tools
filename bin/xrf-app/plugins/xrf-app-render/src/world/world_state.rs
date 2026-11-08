@@ -39,7 +39,7 @@ impl WorldState {
     F: FnOnce(&World) -> T + Send + 'static,
     T: Send + 'static,
   {
-    let world: WorldState = self.clone();
+    let world: Self = self.clone();
 
     execution.run_blocking(what, move || read(&world.lock())).await
   }

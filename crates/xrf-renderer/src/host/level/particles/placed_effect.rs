@@ -12,7 +12,7 @@ pub enum PlacedEffect {
 
 impl PlacedEffect {
   /// Every one, in slot order.
-  pub const ALL: [PlacedEffect; 3] = [PlacedEffect::Idle, PlacedEffect::Disabled, PlacedEffect::Enabling];
+  pub const ALL: [Self; 3] = [Self::Idle, Self::Disabled, Self::Enabling];
 
   /// How many there are, which an emitter keeps a slot each for.
   pub const COUNT: usize = Self::ALL.len();

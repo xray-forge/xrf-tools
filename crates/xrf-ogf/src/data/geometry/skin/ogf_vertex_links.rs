@@ -41,7 +41,7 @@ impl OgfVertexLinks {
 
 impl<const N: usize> From<[OgfVertexLink; N]> for OgfVertexLinks {
   fn from(links: [OgfVertexLink; N]) -> Self {
-    const { assert!(N <= OgfVertexLinks::CAPACITY, "A vertex carries at most four links") };
+    const { assert!(N <= Self::CAPACITY, "A vertex carries at most four links") };
 
     Self::from_slice(&links)
   }

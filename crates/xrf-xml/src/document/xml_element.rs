@@ -3,7 +3,7 @@
 pub struct XmlElement {
   name: String,
   attributes: Vec<(String, String)>,
-  children: Vec<XmlElement>,
+  children: Vec<Self>,
   text: String,
 }
 

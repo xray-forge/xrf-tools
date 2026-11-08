@@ -39,7 +39,7 @@ impl HostRelativePath {
   }
 
   /// This path with `other` below it.
-  pub fn join_path(&self, other: &HostRelativePath) -> Self {
+  pub fn join_path(&self, other: &Self) -> Self {
     Self(self.0.join(&other.0))
   }
 

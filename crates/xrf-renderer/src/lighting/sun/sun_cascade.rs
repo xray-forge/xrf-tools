@@ -131,13 +131,13 @@ impl SunCascade {
   /// resolution over the same level, strayed from it by a sixteenth of the width at most along each axis, and under a
   /// light turned by no more than moves a caster as far towards the sun as the map reaches `TURN_TEXELS` across. A
   /// sharp turn moves the square further, and its view would fall out of the map until the map's turn came.
-  pub fn is_held_by(&self, drawn: &SunCascade) -> bool {
+  pub fn is_held_by(&self, drawn: &Self) -> bool {
     self.is_held_within(drawn, 1.0)
   }
 
   /// Whether a map drawn at `drawn` holds this fit within `share` of what `is_held_by` allows: a map about to stop
   /// holding has its successor drawn ahead.
-  pub fn is_held_within(&self, drawn: &SunCascade, share: f32) -> bool {
+  pub fn is_held_within(&self, drawn: &Self, share: f32) -> bool {
     let [x, y, z, width, resolution, nearest, farthest, light @ ..] = self.key;
     let [
       drawn_x,

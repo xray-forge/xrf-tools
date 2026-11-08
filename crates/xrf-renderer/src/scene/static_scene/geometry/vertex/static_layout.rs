@@ -12,7 +12,7 @@ pub enum StaticLayout {
 }
 
 impl StaticLayout {
-  pub const ALL: [StaticLayout; 3] = [StaticLayout::Baked, StaticLayout::Tree, StaticLayout::Model];
+  pub const ALL: [Self; 3] = [Self::Baked, Self::Tree, Self::Model];
 
   /// Layouts there are, which every per-layout array is sized by.
   pub const COUNT: usize = Self::ALL.len();
@@ -31,18 +31,18 @@ impl StaticLayout {
 
   pub const fn get_index(self) -> usize {
     match self {
-      StaticLayout::Baked => 0,
-      StaticLayout::Tree => 1,
-      StaticLayout::Model => 2,
+      Self::Baked => 0,
+      Self::Tree => 1,
+      Self::Model => 2,
     }
   }
 
   /// The static draws' vertex entry point that reads it.
   pub const fn get_vertex_entry(self) -> &'static str {
     match self {
-      StaticLayout::Baked => "vs_baked",
-      StaticLayout::Tree => "vs_tree",
-      StaticLayout::Model => "vs_model",
+      Self::Baked => "vs_baked",
+      Self::Tree => "vs_tree",
+      Self::Model => "vs_model",
     }
   }
 }

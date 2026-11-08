@@ -45,7 +45,7 @@ impl From<&ArchivePatchConfig> for Ltx {
   /// The inverse of [`ArchivePatchConfig::with_ltx`], covering the same sections and no others. A file written here
   /// reads back through `with_ltx` unchanged.
   fn from(config: &ArchivePatchConfig) -> Self {
-    let mut ltx: Ltx = Ltx::new();
+    let mut ltx: Self = Self::new();
 
     ArchiveConfigLtx::write_extensions(&mut ltx, &config.exclude_extensions);
     ArchiveConfigLtx::write_names(&mut ltx, ArchivePatchConfig::SECTION_INCLUDE, &config.include);

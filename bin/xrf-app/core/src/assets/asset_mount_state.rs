@@ -218,7 +218,7 @@ impl AssetMountState {
   /// for it, all in `ticket`'s turn. A subscriber that panics is said aloud and passed over, so the rest hear of the
   /// change and what the follows put off still starts.
   fn deliver(&self, ticket: AssetChangeTicket, event: AssetChangeEvent, fan_out: AssetFanOut) {
-    let state: AssetMountState = self.clone();
+    let state: Self = self.clone();
 
     ticket.deliver(move || {
       // Copied out, so a subscriber reading through this state never runs under the subscribers' lock.

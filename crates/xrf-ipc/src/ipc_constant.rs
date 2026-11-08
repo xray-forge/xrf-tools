@@ -20,8 +20,8 @@ inventory::collect!(IpcConstant);
 
 impl IpcConstant {
   /// Every constant registered in the binary, in no particular order.
-  pub fn list() -> impl Iterator<Item = &'static IpcConstant> {
-    inventory::iter::<IpcConstant>.into_iter()
+  pub fn list() -> impl Iterator<Item = &'static Self> {
+    inventory::iter::<Self>.into_iter()
   }
 
   /// A constant's value as it serializes, which is what the frontend's bindings declare it as; an error for one that

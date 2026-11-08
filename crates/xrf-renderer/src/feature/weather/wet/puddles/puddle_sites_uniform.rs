@@ -9,6 +9,7 @@ use xrf_renderer_core::ShaderStruct;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "PuddleSites")]
+#[expect(clippy::use_self, reason = "an array length in a field cannot name `Self`")]
 pub struct PuddleSitesUniform {
   pub window: Vec4,
   pub shape: Vec4,

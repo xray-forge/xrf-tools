@@ -59,12 +59,12 @@ impl FlyDrag {
   /// What a drag holding these buttons does, or none for buttons nothing is mapped to.
   fn of(buttons: WorldInputButtons, modifiers: WorldInputModifiers) -> Option<Self> {
     Some(match (modifiers.alt_key, buttons) {
-      (false, WorldInputButtons::SECONDARY) => FlyDrag::Fly,
-      (false, WorldInputButtons::MAIN) => FlyDrag::Walk,
-      (false, WorldInputButtons::MAIN_AND_SECONDARY | WorldInputButtons::AUXILIARY) => FlyDrag::Pan,
-      (true, WorldInputButtons::MAIN) => FlyDrag::Orbit,
-      (true, WorldInputButtons::SECONDARY) => FlyDrag::Dolly,
-      (true, WorldInputButtons::AUXILIARY) => FlyDrag::Track,
+      (false, WorldInputButtons::SECONDARY) => Self::Fly,
+      (false, WorldInputButtons::MAIN) => Self::Walk,
+      (false, WorldInputButtons::MAIN_AND_SECONDARY | WorldInputButtons::AUXILIARY) => Self::Pan,
+      (true, WorldInputButtons::MAIN) => Self::Orbit,
+      (true, WorldInputButtons::SECONDARY) => Self::Dolly,
+      (true, WorldInputButtons::AUXILIARY) => Self::Track,
       _ => return None,
     })
   }

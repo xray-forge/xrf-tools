@@ -122,7 +122,7 @@ impl Add for &Vector3d<f32> {
   }
 }
 
-impl AddAssign<&Vector3d<f32>> for Vector3d<f32> {
+impl AddAssign<&Self> for Vector3d<f32> {
   fn add_assign(&mut self, other: &Self) {
     self.x += other.x;
     self.y += other.y;
@@ -184,7 +184,7 @@ impl ChunkReadWrite for Vector3d<f32> {
 
 impl From<(f32, f32, f32)> for Vector3d<f32> {
   fn from(value: (f32, f32, f32)) -> Self {
-    Vector3d::new(value.0, value.1, value.2)
+    Self::new(value.0, value.1, value.2)
   }
 }
 

@@ -82,8 +82,8 @@ impl OverheadDraw {
   /// its strips.
   fn get_regions(self, resolution: u32) -> [Option<[u32; 4]>; 2] {
     match self {
-      OverheadDraw::Whole => [Some([0, 0, resolution, resolution]), None],
-      OverheadDraw::Shifted { strips, .. } => strips,
+      Self::Whole => [Some([0, 0, resolution, resolution]), None],
+      Self::Shifted { strips, .. } => strips,
     }
   }
 }

@@ -11,15 +11,15 @@ pub enum StaticSurfacePass {
 }
 
 impl StaticSurfacePass {
-  pub const ALL: [StaticSurfacePass; 2] = [StaticSurfacePass::Glass, StaticSurfacePass::Distortion];
+  pub const ALL: [Self; 2] = [Self::Glass, Self::Distortion];
 
   /// Passes there are, which every layout has a draw list of each of.
   pub const COUNT: usize = Self::ALL.len();
 
   pub const fn get_index(self) -> usize {
     match self {
-      StaticSurfacePass::Glass => 0,
-      StaticSurfacePass::Distortion => 1,
+      Self::Glass => 0,
+      Self::Distortion => 1,
     }
   }
 
@@ -34,8 +34,8 @@ impl StaticSurfacePass {
   /// The surface flag that puts a surface into it.
   const fn get_surface_flag(self) -> u32 {
     match self {
-      StaticSurfacePass::Glass => StaticSurface::IS_GLASS,
-      StaticSurfacePass::Distortion => StaticSurface::IS_DISTORTING,
+      Self::Glass => StaticSurface::IS_GLASS,
+      Self::Distortion => StaticSurface::IS_DISTORTING,
     }
   }
 }

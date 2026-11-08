@@ -22,7 +22,7 @@ pub struct SectionSetter<'a> {
 }
 
 impl<'a> SectionSetter<'a> {
-  pub fn new(ltx: &'a mut Ltx, section_name: String) -> SectionSetter<'a> {
+  pub fn new(ltx: &'a mut Ltx, section_name: String) -> Self {
     SectionSetter {
       ltx,
       section_name,
@@ -31,7 +31,7 @@ impl<'a> SectionSetter<'a> {
   }
 
   /// Remove a field from this section, if the section and the field exist.
-  pub fn delete(&'a mut self, key: &str) -> &'a mut SectionSetter<'a> {
+  pub fn delete(&'a mut self, key: &str) -> &'a mut Self {
     if let Some(index) = self.find() {
       self.ltx.sections[index].remove(key);
     }

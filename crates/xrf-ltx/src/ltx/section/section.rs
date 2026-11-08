@@ -170,7 +170,7 @@ impl Section {
 
 impl LtxSectionRead for Section {
   fn get(&self, key: &str) -> Option<&str> {
-    Section::get(self, key)
+    Self::get(self, key)
   }
 }
 

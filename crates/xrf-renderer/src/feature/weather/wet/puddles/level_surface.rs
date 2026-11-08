@@ -126,7 +126,7 @@ impl LevelSurface {
   /// Where the puddles stood last frame as the grass plants around them: a surface's puddles and the window they cover,
   /// or the dry stand-in (`dry`) where none is made; marked as puddles only where the `wet` surfaces draw any.
   pub fn get_grass_puddles<'a>(
-    surface: Option<&'a LevelSurface>,
+    surface: Option<&'a Self>,
     dry: &'a wgpu::TextureView,
     wet: &WetFeature,
   ) -> (&'a wgpu::TextureView, GrassPuddlesUniform) {
@@ -184,7 +184,7 @@ impl LevelSurface {
   /// uniform), `water` lifting the water's waves: its draws, what is placed from them, then this frame's puddles.
   /// Answers its lowest heights, its puddles and its water as the graph knows them; the dry stand-ins otherwise.
   pub fn add_surface_passes<'a>(
-    surface: Option<&'a LevelSurface>,
+    surface: Option<&'a Self>,
     GraphDeclaration {
       graph,
       bindings,

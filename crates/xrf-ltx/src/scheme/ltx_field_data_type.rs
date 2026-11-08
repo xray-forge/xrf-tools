@@ -21,7 +21,7 @@ pub enum LtxFieldDataType {
   TypeRgba,
   TypeSection,
   TypeString,
-  TypeTuple(Vec<LtxFieldDataType>, Vec<String>, TupleSeparator),
+  TypeTuple(Vec<Self>, Vec<String>, TupleSeparator),
   TypeU16,
   TypeU32,
   TypeU8,
@@ -85,7 +85,7 @@ impl LtxFieldDataType {
 }
 
 impl LtxFieldDataType {
-  fn parse_enum(field_name: &str, section_name: &str, value: &str) -> XrfResult<LtxFieldDataType> {
+  fn parse_enum(field_name: &str, section_name: &str, value: &str) -> XrfResult<Self> {
     let mut allowed_values: Vec<String> = Vec::new();
 
     match value.split_once(':') {
@@ -116,7 +116,7 @@ impl LtxFieldDataType {
     }
   }
 
-  fn parse_const(field_name: &str, section_name: &str, value: &str) -> XrfResult<LtxFieldDataType> {
+  fn parse_const(field_name: &str, section_name: &str, value: &str) -> XrfResult<Self> {
     match value.split_once(':') {
       None => Err(XrfError::new_read_error(format!(
         "Failed to read scheme const type for field '{section_name}', expected ':' prepended value"
@@ -137,8 +137,8 @@ impl LtxFieldDataType {
     }
   }
 
-  fn parse_tuple(field_name: &str, section_name: &str, value: &str) -> XrfResult<LtxFieldDataType> {
-    let mut types: Vec<LtxFieldDataType> = Vec::new();
+  fn parse_tuple(field_name: &str, section_name: &str, value: &str) -> XrfResult<Self> {
+    let mut types: Vec<Self> = Vec::new();
     let mut types_raw: Vec<String> = Vec::new();
 
     let (separator, allowed_values_string): (TupleSeparator, &str) = match value.split_once(':') {
@@ -158,7 +158,7 @@ impl LtxFieldDataType {
       let (tuple_entry, tuple_entry_raw): (&str, String) =
         Self::parse_tuple_entry(field_name, section_name, tuple_entry_raw)?;
 
-      let tuple_entry: XrfResult<LtxFieldDataType> = Self::from_field_data(field_name, section_name, tuple_entry);
+      let tuple_entry: XrfResult<Self> = Self::from_field_data(field_name, section_name, tuple_entry);
 
       match tuple_entry? {
         Self::TypeTuple(_, _, _) => {
@@ -259,11 +259,7 @@ impl LtxFieldDataType {
   }
 
   /// Parse data type enum variant from provided string option.
-  pub fn from_field_data_optional(
-    field_name: &str,
-    section_name: &str,
-    data: Option<&str>,
-  ) -> XrfResult<LtxFieldDataType> {
+  pub fn from_field_data_optional(field_name: &str, section_name: &str, data: Option<&str>) -> XrfResult<Self> {
     data.map_or(Ok(Self::TypeAny), |data| {
       Self::from_field_data(field_name, section_name, data)
     })

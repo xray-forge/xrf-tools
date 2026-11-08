@@ -420,7 +420,7 @@ impl RenderViewport {
 
   /// The view it draws: its capture's while it captures, else its own.
   pub fn get_drawn_view_mut(&mut self) -> Option<&mut SceneView> {
-    let RenderViewport { shown, capture, .. } = self;
+    let Self { shown, capture, .. } = self;
     let own: &mut SceneView = &mut shown.as_mut()?.view;
 
     match capture.as_mut().filter(|capture| !capture.is_ended()) {

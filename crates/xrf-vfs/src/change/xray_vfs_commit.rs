@@ -20,7 +20,7 @@ impl XrayVfs {
   ///
   /// Returns an error, with nothing on disk changed, when what the transaction expected moved, a path cannot be placed
   /// in a writable mount, a delete names a path no loose file answers for, or a file cannot be staged or swapped.
-  pub fn commit(&self, transaction: &XrayTransaction) -> XrfResult<(XrayVfs, XrayChangeSet)> {
+  pub fn commit(&self, transaction: &XrayTransaction) -> XrfResult<(Self, XrayChangeSet)> {
     transaction.check_expected(self)?;
 
     let mut swap: XrayDiskSwap = XrayDiskSwap::default();
@@ -53,7 +53,7 @@ impl XrayVfs {
   ///
   /// Returns an error, with nothing this snapshot retains dropped, when a change names a mount this snapshot does not
   /// have, a path outside the mount's base, or an archive, whose volumes cannot take a change in place.
-  pub fn apply(&self, changes: Vec<XrayChange>) -> XrfResult<(XrayVfs, XrayChangeSet)> {
+  pub fn apply(&self, changes: Vec<XrayChange>) -> XrfResult<(Self, XrayChangeSet)> {
     // todo: Let a change carry bytes, so an edit to an open buffer applies in memory with nothing on disk written.
     // Nothing changed is no change: the project revision moves only with a path that did.
     if changes.is_empty() {
@@ -62,7 +62,7 @@ impl XrayVfs {
 
     // Taken from the lineage, not counted from this snapshot, so a second change branched from it never reuses one.
     let revision: XrayRevision = self.get_cache().issue_revision(self.get_revision());
-    let mut next: XrayVfs = self.fork();
+    let mut next: Self = self.fork();
     let mut changed: Vec<(&XrayMount, &str)> = Vec::with_capacity(changes.len());
     let mut structural: BTreeMap<XrayMountId, (Vec<&str>, Vec<&str>)> = BTreeMap::new();
 

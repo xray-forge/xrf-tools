@@ -48,32 +48,30 @@ impl StaticBatch {
   }
 
   /// Every batch, each layout with each class, in the order their draw lists are kept.
-  pub fn list() -> impl Iterator<Item = StaticBatch> {
-    StaticLayout::ALL.into_iter().flat_map(|layout| {
-      StaticClass::ALL
-        .into_iter()
-        .map(move |class| StaticBatch { layout, class })
-    })
+  pub fn list() -> impl Iterator<Item = Self> {
+    StaticLayout::ALL
+      .into_iter()
+      .flat_map(|layout| StaticClass::ALL.into_iter().map(move |class| Self { layout, class }))
   }
 
   /// The batches drawn into the G-buffer and into shadows.
-  pub fn list_deferred() -> impl Iterator<Item = StaticBatch> {
+  pub fn list_deferred() -> impl Iterator<Item = Self> {
     Self::list().filter(|batch| batch.class.is_deferred())
   }
 
   /// The batches the water pass draws.
-  pub fn list_water() -> impl Iterator<Item = StaticBatch> {
+  pub fn list_water() -> impl Iterator<Item = Self> {
     Self::list().filter(|batch| batch.class == StaticClass::Water)
   }
 
   /// The batches the composited pass draws over the lit frame in the cull's order; the sorted ones it draws from the
   /// view's list.
-  pub fn list_composited() -> impl Iterator<Item = StaticBatch> {
+  pub fn list_composited() -> impl Iterator<Item = Self> {
     Self::list().filter(|batch| batch.class == StaticClass::Composited)
   }
 
   /// The batches the composited pass lays into the G-buffer's albedo.
-  pub fn list_wallmarks() -> impl Iterator<Item = StaticBatch> {
+  pub fn list_wallmarks() -> impl Iterator<Item = Self> {
     Self::list().filter(|batch| batch.class == StaticClass::Wallmark)
   }
 }

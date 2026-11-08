@@ -75,7 +75,7 @@ impl From<&ArchivePackConfig> for Ltx {
   /// destination, name, mode, and volume size stay with the caller, because a configuration file never
   /// carried them. A file written here reads back through `with_ltx` unchanged.
   fn from(config: &ArchivePackConfig) -> Self {
-    let mut ltx: Ltx = Ltx::new();
+    let mut ltx: Self = Self::new();
 
     ArchiveConfigLtx::write_extensions(&mut ltx, &config.exclude_extensions);
     ArchiveConfigLtx::write_names(

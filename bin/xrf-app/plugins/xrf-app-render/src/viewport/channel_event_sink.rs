@@ -22,12 +22,12 @@ impl ChannelEventSink {
 
 impl RenderEventSink for ChannelEventSink {
   fn send(&self, event: RenderViewportEvent) -> bool {
-    ChannelEventSink::send(self, ViewportEvent::Render(event))
+    Self::send(self, ViewportEvent::Render(event))
   }
 }
 
 impl WorldEventSink for ChannelEventSink {
   fn send(&self, event: WorldViewportEvent) {
-    ChannelEventSink::send(self, ViewportEvent::World(event));
+    Self::send(self, ViewportEvent::World(event));
   }
 }
