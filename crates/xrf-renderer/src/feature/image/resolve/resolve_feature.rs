@@ -49,9 +49,12 @@ pub struct ResolveFeature {
   is_light_physical: bool,
   /// The size the frame is resolved at, which a temporal resolve resolves into.
   resolved: (u32, u32),
-  /// The frame at the viewport's size while it is drawn or resolved at another: rescaled into the first, sharpened
-  /// into the second.
-  upscaled: Option<[FrameTexture; 2]>,
+  /// The viewport's size while the frame shown is one apart from the frame as drawn (`is_rescaled`).
+  shown_size: Option<(u32, u32)>,
+  /// The frame rescaled to the viewport's size, kept only while a frame rescales it (`is_upscale_written`).
+  upscaled: Option<FrameTexture>,
+  /// The frame shown sharpened at the viewport's size, kept only while the frames are sharpened.
+  sharpened: Option<FrameTexture>,
   /// The stage rescaling what was resolved, or the frame, to the viewport's size where it is of another.
   rescale: Option<UpscaleStage>,
   /// Whether the frame shown is sharpened: drawn smaller than the viewport or resolved temporally, with a sharpness
@@ -97,7 +100,9 @@ impl Default for ResolveFeature {
       upscaling: RenderUpscalingSettings::default(),
       is_light_physical: false,
       resolved: (1, 1),
+      shown_size: None,
       upscaled: None,
+      sharpened: None,
       rescale: None,
       is_sharpened: false,
       upscale: UpscaleUniform::default(),
@@ -272,7 +277,19 @@ impl ResolveFeature {
 
   /// Whether the frame shown is one at the viewport's size apart from the frame as drawn, which the present reads.
   pub fn is_rescaled(&self) -> bool {
-    self.upscaled.is_some()
+    self.shown_size.is_some()
+  }
+
+  /// Whether a frame drawn `render` texels across into a `viewport` writes the rescaled frame: where it is rescaled
+  /// (`rescale`), and where ray reconstruction resolves it at another size, since a frame it draws nothing for (before
+  /// its guides stand) leaves the frame at the drawn size for the rescale to take.
+  pub fn is_upscale_written(
+    rescale: Option<UpscaleStage>,
+    is_ray_reconstructed: bool,
+    render: (u32, u32),
+    viewport: (u32, u32),
+  ) -> bool {
+    rescale.is_some() || (is_ray_reconstructed && render != viewport)
   }
 
   /// The pass taking an image `source` texels across to the `viewport`'s size: up by EASU, down by the downsample;
@@ -287,24 +304,28 @@ impl ResolveFeature {
 
   /// The size of the image shown, that of the frame as drawn (`drawn`) unless it is rescaled.
   pub fn get_shown_size(&self, drawn: (u32, u32)) -> (u32, u32) {
-    self
-      .upscaled
-      .as_ref()
-      .map_or(drawn, |[upscaled, _]| upscaled.get_size())
+    self.shown_size.unwrap_or(drawn)
   }
 }
 
 impl ViewFeature for ResolveFeature {
   /// The temporal resolve's histories and FSR's targets, and the frame at the viewport's size.
   fn get_memory(&self) -> u64 {
-    let upscaled: u64 = self.upscaled.iter().flatten().map(|texture| texture.get_memory()).sum();
+    let shown: u64 = self
+      .upscaled
+      .iter()
+      .chain(&self.sharpened)
+      .map(FrameTexture::get_memory)
+      .sum();
 
-    self.resolve.as_ref().map_or(0, Resolve::get_memory) + upscaled
+    self.resolve.as_ref().map_or(0, Resolve::get_memory) + shown
   }
 
   fn release(&mut self) {
     self.resolve = None;
+    self.shown_size = None;
     self.upscaled = None;
+    self.sharpened = None;
   }
 
   /// The resolve's history this frame wrote becomes the one the next reads.

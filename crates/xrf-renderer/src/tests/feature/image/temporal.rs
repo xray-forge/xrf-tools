@@ -10,6 +10,7 @@ use crate::feature::image::resolve::resolve_feature::ResolveFeature;
 use crate::feature::image::resolve::temporal::temporal_frame::TemporalFrame;
 use crate::feature::image::resolve::temporal::temporal_uniform::TemporalUniform;
 use crate::feature::image::resolve::temporal_jitter::TemporalJitter;
+use crate::feature::image::resolve::upscale::upscale_stage::UpscaleStage;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::view::view_restart::ViewRestart;
 
@@ -98,6 +99,31 @@ fn reads_textures_sharper_by_what_the_upscale_loses() {
   assert_eq!(ResolveFeature::get_bias(Some(RenderAntialiasing::Taa), 1.0), 0.0);
   assert_eq!(ResolveFeature::get_bias(Some(RenderAntialiasing::Fsr), 1.0), -1.0);
   assert_eq!(ResolveFeature::get_bias(None, 2.0), 0.0);
+}
+
+// The rescaled frame is kept only where a frame writes it: a frame drawn at another size and rescaled, or one ray
+// reconstruction may leave at the drawn size; never one a resolve upscaled into the viewport's size.
+#[test]
+fn keeps_the_rescaled_frame_only_where_a_frame_writes_it() {
+  let (viewport, smaller): ((u32, u32), (u32, u32)) = ((1920, 1080), (1280, 720));
+
+  assert!(ResolveFeature::is_upscale_written(
+    Some(UpscaleStage::Easu),
+    false,
+    smaller,
+    viewport
+  ));
+  assert!(ResolveFeature::is_upscale_written(
+    Some(UpscaleStage::Downsample),
+    false,
+    (3840, 2160),
+    viewport
+  ));
+  assert!(ResolveFeature::is_upscale_written(None, true, smaller, viewport));
+  // DLSS or FSR resolving into the viewport's size, and a temporal resolve at it.
+  assert!(!ResolveFeature::is_upscale_written(None, false, smaller, viewport));
+  assert!(!ResolveFeature::is_upscale_written(None, false, viewport, viewport));
+  assert!(!ResolveFeature::is_upscale_written(None, true, viewport, viewport));
 }
 
 // A reference's samples stand at their own places of the sequence, unresolved, read as sharp as DLSS reads them, the
