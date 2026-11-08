@@ -29,6 +29,7 @@ impl VertexCacheOrder {
     let renumber = |position: usize| -> u16 {
       u16::try_from(position).expect("a child's vertices fit the 16-bit indices its faces use")
     };
+
     let ordered: Vec<[u16; 3]> = Self::order_faces(faces, vertices.len());
     let mut new_index: Vec<Option<u16>> = vec![None; vertices.len()];
     let mut order: Vec<usize> = Vec::with_capacity(vertices.len());
