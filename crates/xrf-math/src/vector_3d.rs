@@ -200,19 +200,17 @@ impl FromStr for Vector3d<f32> {
       ));
     }
 
+    let parse = |part: &str, axis: &str| {
+      part
+        .trim()
+        .parse::<f32>()
+        .map_err(|_| XrfError::new_parsing_error(format!("Failed to parse vector {axis} value '{}'", part.trim())))
+    };
+
     Ok(Self {
-      x: parts[0]
-        .trim()
-        .parse::<f32>()
-        .or(Err(XrfError::new_parsing_error("Failed to parse vector X value")))?,
-      y: parts[1]
-        .trim()
-        .parse::<f32>()
-        .or(Err(XrfError::new_parsing_error("Failed to parse vector Y value")))?,
-      z: parts[2]
-        .trim()
-        .parse::<f32>()
-        .or(Err(XrfError::new_parsing_error("Failed to parse vector Z value")))?,
+      x: parse(parts[0], "X")?,
+      y: parse(parts[1], "Y")?,
+      z: parse(parts[2], "Z")?,
     })
   }
 }

@@ -46,7 +46,7 @@ pub trait LtxSectionRead {
       .map(|value| {
         value.parse::<T>().map_err(|_| {
           XrfError::new_parsing_error(format!(
-            "Failed to parse optional ltx field '{key}' value, correct {:?} is expected",
+            "Failed to parse optional ltx field '{key}' value '{value}', valid {} is expected",
             type_name::<T>()
           ))
         })

@@ -62,7 +62,7 @@ impl FromStr for Vector2d {
       part
         .trim()
         .parse::<f32>()
-        .map_err(|_| XrfError::new_parsing_error(format!("Failed to parse vector {axis} value")))
+        .map_err(|_| XrfError::new_parsing_error(format!("Failed to parse vector {axis} value '{}'", part.trim())))
     };
 
     match string.split(',').collect::<Vec<&str>>().as_slice() {
