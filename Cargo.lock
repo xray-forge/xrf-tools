@@ -8207,6 +8207,7 @@ dependencies = [
  "xrf-audio-scene",
  "xrf-error",
  "xrf-sound",
+ "xrf-test-utils",
  "xrf-utils",
 ]
 

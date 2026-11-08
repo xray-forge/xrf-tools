@@ -4,6 +4,7 @@ use glam::{Mat4, Vec3};
 use xrf_renderer_core::{
   FrameGraph, GraphBindings, GraphCompileOptions, GraphDeclaration, GraphRuntime, GraphTexture, PipelineCache,
 };
+use xrf_test_utils::TestSkip;
 use xrf_visual::{DetailsDescription, DetailsModel, DetailsPackage, VisualSection};
 
 use crate::camera::camera_view::CameraView;
@@ -313,7 +314,7 @@ fn the_cards_stand_for_the_waters_trace_whether_or_not_they_shadow() {
   };
 
   if !can_trace(&context.device) {
-    eprintln!("skipped: the adapter traces no rays");
+    TestSkip::report("the adapter traces no rays");
 
     return;
   }

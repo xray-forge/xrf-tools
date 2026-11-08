@@ -1,5 +1,7 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+use xrf_test_utils::TestSkip;
+
 use crate::graph::tests::fixtures::{COLOR, color_texture, load};
 use crate::graph::{
   FrameGraph, GraphBindings, GraphBufferAccess, GraphBufferDescriptor, GraphColorAttachment, GraphCompileOptions,
@@ -187,7 +189,7 @@ fn times_each_pass_and_render_pass_on_the_gpu() {
   runtime.timer.set_enabled(true);
 
   if !runtime.timer.is_timing() {
-    eprintln!("Skipped: the device writes no timestamps inside encoders");
+    TestSkip::report("the device writes no timestamps inside encoders");
 
     return;
   }
@@ -237,7 +239,7 @@ fn sums_each_owners_passes_apart() {
   runtime.timer.set_enabled(true);
 
   if !runtime.timer.is_timing() {
-    eprintln!("Skipped: the device writes no timestamps inside encoders");
+    TestSkip::report("the device writes no timestamps inside encoders");
 
     return;
   }
@@ -434,7 +436,7 @@ fn times_each_encode_group_in_a_range_of_its_own() {
   runtime.timer.set_enabled(true);
 
   if !runtime.timer.is_timing() {
-    eprintln!("Skipped: the device writes no timestamps inside encoders");
+    TestSkip::report("the device writes no timestamps inside encoders");
 
     return;
   }

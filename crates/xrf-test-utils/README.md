@@ -1,8 +1,8 @@
 # xrf-test-utils
 
 Shared support for XRF Rust tests: where generated test files live, writing and reading them, checking what a refused
-publication left, filesystem links and non-UTF-8 names for path tests, and skipping GPU tests on hosts without a device.
-Add it as a dev-dependency.
+publication left, filesystem links and non-UTF-8 names for path tests, and skipping a test the host cannot run, a GPU
+test on a host without a device among them. Add it as a dev-dependency.
 
 ## Write a generated fixture
 
@@ -57,6 +57,7 @@ directory; operations ending in `path` or `root` answer absolute paths.
 | `HostFilesystem::non_unicode_file_name`       | A file name the host accepts and `Path::to_str` refuses          |
 | `RefusedPublication::assert_left_previous`    | Assert a refused staged write left the previous file and no more |
 | `GpuRequirement::skip_without_device`         | Skip a GPU test that found no device                             |
+| `TestSkip::report`                            | Say why a test skips before it returns                           |
 
 `FileSlice` from the `fileslice` crate is re-exported for binary-format tests. The operations write the bytes they are
 given and validate no format. File operations return `std::io::Result`, keeping the error kind and naming the path. Read
@@ -69,11 +70,17 @@ file share a directory.
 create the Windows form, so a test that writes the file gates itself on `cfg(unix)`; a test about paths alone runs
 everywhere.
 
-`link_directory` and `link_file` return `false`, after printing why, when the host cannot create the link; the test
-then skips. On Windows, `link_directory` falls back to a junction when symlinks need a privilege the account lacks,
+`TestSkip::report(reason)` prints `Skipped: <reason>` to stderr, which the test harness captures and shows with
+`cargo test -- --nocapture` or when the test fails; it is the one place a test prints, since the workspace lints
+printing everywhere else. Use it where the host lacks a capability the test
+checks (timestamps, ray queries, an audio device) and the test returns early.
+
+`link_directory` and `link_file` return `false`, after reporting the skip, when the host cannot create the link; the
+test then skips. On Windows, `link_directory` falls back to a junction when symlinks need a privilege the account lacks,
 while `link_file` has no fallback.
 
-`GpuRequirement::skip_without_device(reason)` prints the reason and returns, so the test can return early. When the
+`GpuRequirement::skip_without_device(reason)` reports the skip through `TestSkip` and returns, so the test can return
+early. When the
 test-only variable `GpuRequirement::VARIABLE` (`XRF_TEST_REQUIRE_GPU`) is set to anything but `0`, as Windows CI does
 with WARP, it panics instead, so a missing device fails the run.
 
@@ -81,4 +88,5 @@ with WARP, it panics instead, so a missing device fails the run.
 
 Run `cargo test --locked -p xrf-test-utils` from the repository root. See the
 [generated resources](src/generated_resources.rs), [host filesystem](src/host_filesystem.rs),
-[refused publication](src/refused_publication.rs) and [GPU requirement](src/gpu_requirement.rs).
+[refused publication](src/refused_publication.rs), [GPU requirement](src/gpu_requirement.rs) and
+[test skip](src/test_skip.rs).
