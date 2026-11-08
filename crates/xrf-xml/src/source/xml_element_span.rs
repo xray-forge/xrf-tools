@@ -23,7 +23,7 @@ pub struct XmlElementSpan {
 impl XmlElementSpan {
   /// The root of `parsable`, a same-length copy of `input`, its ranges and values addressing `input`.
   pub(crate) fn parse(input: &str, parsable: &str) -> XrfResult<Self> {
-    let document: roxmltree::Document = XmlParseOptions::default().parse(parsable)?;
+    let document: roxmltree::Document<'_> = XmlParseOptions::default().parse(parsable)?;
 
     Ok(Self::from_node(input, parsable, document.root_element()))
   }

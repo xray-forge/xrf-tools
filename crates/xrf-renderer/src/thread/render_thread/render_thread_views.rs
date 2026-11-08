@@ -439,7 +439,7 @@ impl RenderThread {
 
     view_state.sample_reference(reference);
 
-    let framing: SceneViewFraming = SceneViewFraming {
+    let framing: SceneViewFraming<'_> = SceneViewFraming {
       view,
       rect: *rect,
       resolved,

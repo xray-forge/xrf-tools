@@ -94,7 +94,7 @@ impl CameraFeature {
         height.max(1),
         CameraEffectsPass::TARGET,
       ));
-      let parameters: CameraEffectsParameters = CameraEffectsParameters {
+      let parameters: CameraEffectsParameters<'_> = CameraEffectsParameters {
         camera_effects,
         source,
         beside,

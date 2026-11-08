@@ -21,7 +21,7 @@ impl ArchiveFindReport {
     project: &ArchiveProject,
     query: &str,
     entries: &[&ArchiveFileDescriptor],
-    shared: &ArchiveSharedPayloadIndex,
+    shared: &ArchiveSharedPayloadIndex<'_>,
   ) -> Self {
     Self {
       entries: ArchiveEntryReport::list(project, entries, shared),

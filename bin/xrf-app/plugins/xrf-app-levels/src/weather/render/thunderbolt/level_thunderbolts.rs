@@ -26,9 +26,9 @@ pub struct LevelThunderbolts {
 
 impl LevelThunderbolts {
   /// Every collection and bolt of the catalog, their models read and their textures found in the level's search.
-  pub fn read(source: &LevelWeatherSource) -> Self {
+  pub fn read(source: &LevelWeatherSource<'_>) -> Self {
     let catalog = source.catalog;
-    let mut reader: LevelBoltReader = LevelBoltReader::open(source);
+    let mut reader: LevelBoltReader<'_, '_> = LevelBoltReader::open(source);
     let mut bolts: Vec<LevelThunderbolt> = Vec::new();
 
     for name in catalog

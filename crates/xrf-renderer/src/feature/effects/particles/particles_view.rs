@@ -186,7 +186,7 @@ impl ParticlesView {
     };
     let pass: &'a ParticlePass = &passes.effects.particles;
     let lighting: UniformBinding<LightingUniform> = lit.lighting;
-    let parameters: ParticleParameters = ParticleParameters {
+    let parameters: ParticleParameters<'_> = ParticleParameters {
       vertices: StorageArray::new(bindings.import_buffer(&mut *graph, "particle vertices", vertex_buffer)),
       surfaces: StorageArray::new(bindings.import_buffer(&mut *graph, "particle surfaces", surfaces)),
       lighting,

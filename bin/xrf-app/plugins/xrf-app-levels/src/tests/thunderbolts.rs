@@ -40,7 +40,7 @@ fn new_catalog(collections: Vec<ThunderboltCollection>, thunderbolts: Vec<Thunde
 
 fn read(catalog: &EnvironmentCatalog) -> LevelThunderbolts {
   let search: XraySearch = fixtures::mount_search(&FixtureTree::new("level_thunderbolts"));
-  let source: LevelWeatherSource = LevelWeatherSource {
+  let source: LevelWeatherSource<'_> = LevelWeatherSource {
     catalog,
     search: &search,
     scope: XrayTextureScope::shared(),

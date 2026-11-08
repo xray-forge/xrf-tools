@@ -45,7 +45,7 @@ impl DdsEncoding {
   }
 
   /// Writes a surface of one layer, or of six as a cube.
-  fn write(&self, levels: &DdsSurfaceLevels) -> XrfResult<DdsFile> {
+  fn write(&self, levels: &DdsSurfaceLevels<'_>) -> XrfResult<DdsFile> {
     let base: &RgbaImage = levels.base();
     let surface: Surface<Vec<u8>> = Surface {
       width: base.width(),

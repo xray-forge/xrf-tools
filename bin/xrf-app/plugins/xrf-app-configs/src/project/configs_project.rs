@@ -44,7 +44,7 @@ impl ConfigsProject {
   pub fn with_reader<T>(
     &self,
     entry: &XrayLogicalPath,
-    consumer: impl FnOnce(&LtxRootReader, &ConfigsResolvedRoot) -> TauriResult<T>,
+    consumer: impl FnOnce(&LtxRootReader<'_>, &ConfigsResolvedRoot) -> TauriResult<T>,
   ) -> TauriResult<T> {
     self.with_resolution_reader(entry, true, consumer)
   }
@@ -172,12 +172,12 @@ impl ConfigsProject {
     &self,
     entry: &XrayLogicalPath,
     is_explaining: bool,
-    consumer: impl FnOnce(&LtxRootReader, &ConfigsResolvedRoot) -> TauriResult<T>,
+    consumer: impl FnOnce(&LtxRootReader<'_>, &ConfigsResolvedRoot) -> TauriResult<T>,
   ) -> TauriResult<T> {
     let resolved: Arc<ConfigsResolvedRoot> = self.resolve(entry, is_explaining)?;
     let source = self.project.document_source();
 
-    let reader: LtxRootReader = LtxRootReader::new(
+    let reader: LtxRootReader<'_> = LtxRootReader::new(
       resolved.entry.as_str(),
       self.project.get_dialect().get_name(),
       &resolved.resolution,

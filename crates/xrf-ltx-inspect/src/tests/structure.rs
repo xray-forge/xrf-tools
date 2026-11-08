@@ -170,7 +170,7 @@ fn a_wildcard_include_reports_what_it_matched_without_reading_any_of_it() -> Xrf
   ]);
 
   let resolution: LtxResolution = source.resolve("system.ltx")?;
-  let reader: LtxRootReader = LtxRootReader::new("system.ltx", "ltx", &resolution, &source);
+  let reader: LtxRootReader<'_> = LtxRootReader::new("system.ltx", "ltx", &resolution, &source);
 
   let resolved_at: usize = source.reads();
   let structure: LtxFileStructure = reader.read_structure("system.ltx", &[])?;

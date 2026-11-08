@@ -35,7 +35,7 @@ impl<'a> ExternDeclarationParser<'a> {
     source_path: &'a str,
     symbol_resolver: &'a TypeScriptSymbolResolver,
   ) -> Self {
-    let diagnostic: ExternDiagnostic = ExternDiagnostic::new(source_map, source_path);
+    let diagnostic: ExternDiagnostic<'_> = ExternDiagnostic::new(source_map, source_path);
 
     Self {
       diagnostic,

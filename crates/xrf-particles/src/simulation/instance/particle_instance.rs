@@ -34,7 +34,7 @@ impl ParticleInstance {
   }
 
   /// `OnFrame`.
-  pub fn update(&mut self, frame_milliseconds: u32, context: &ParticleUpdateContext) {
+  pub fn update(&mut self, frame_milliseconds: u32, context: &ParticleUpdateContext<'_>) {
     match self {
       Self::Effect(effect) => effect.update(frame_milliseconds, context),
       Self::Group(group) => group.update(frame_milliseconds, context),

@@ -265,8 +265,8 @@ impl ObjectVerifier {
 
     // The export orders children by where their surfaces sat in the editor's memory, which nothing records, and where a
     // surface's faces fall among children is the exporter's choice, so each texture and shader is compared whole.
-    let materials: Vec<OgfMaterialGeometry> = OgfMaterialGeometry::collect(compiled);
-    let reference_materials: Vec<OgfMaterialGeometry> = OgfMaterialGeometry::collect(reference);
+    let materials: Vec<OgfMaterialGeometry<'_>> = OgfMaterialGeometry::collect(compiled);
+    let reference_materials: Vec<OgfMaterialGeometry<'_>> = OgfMaterialGeometry::collect(reference);
     let mut census: ObjectGeometryCensus = ObjectGeometryCensus {
       children: materials.iter().map(|it| it.children).sum(),
       reference_children: reference_materials.iter().map(|it| it.children).sum(),
@@ -305,8 +305,8 @@ impl ObjectVerifier {
   }
 
   fn compare_material(
-    material: &OgfMaterialGeometry,
-    other: &OgfMaterialGeometry,
+    material: &OgfMaterialGeometry<'_>,
+    other: &OgfMaterialGeometry<'_>,
     census: &mut ObjectGeometryCensus,
     differences: &mut Vec<String>,
   ) {

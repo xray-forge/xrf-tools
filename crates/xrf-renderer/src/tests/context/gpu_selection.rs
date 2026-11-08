@@ -30,7 +30,7 @@ fn draws_on_the_chosen_gpu_and_falls_back_to_the_automatic_one() {
   };
   let RenderBackendAvailability { backend, gpus, .. } = availability;
   let dxc: Option<PathBuf> = checkout_dxc();
-  let libraries: GpuLibraries = GpuLibraries {
+  let libraries: GpuLibraries<'_> = GpuLibraries {
     dxc: dxc.as_deref(),
     dlss: None,
   };

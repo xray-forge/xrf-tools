@@ -233,7 +233,7 @@ impl ReflectionFeature {
     let read: [GraphTexture; 3] = frames.as_ref().map_or([empty; 3], |frames| {
       [frames.radiance[0], frames.surface[0], frames.held[0]]
     });
-    let parameters: ReflectionParameters = ReflectionParameters {
+    let parameters: ReflectionParameters<'_> = ReflectionParameters {
       albedo_target: targets.albedo,
       normal_target: targets.normal,
       material_target: targets.material,

@@ -141,7 +141,7 @@ impl AmbientScene {
       Duration::from_millis(now),
     );
 
-    let context: ParticleUpdateContext = ParticleUpdateContext {
+    let context: ParticleUpdateContext<'_> = ParticleUpdateContext {
       library: &self.library,
       rules: &self.rules,
       collider: None,
@@ -246,7 +246,7 @@ fn list_starts(engine: XrayEngine, names: &[&str], span: u64) -> Vec<(u64, Strin
   let particles: Vec<String> = names.iter().map(|name| format!("nature\\{name}")).collect();
   let mut scene: AmbientScene = AmbientScene::new(engine, &particles.iter().map(String::as_str).collect::<Vec<_>>());
   let (weather, ambients) = (weather(names), day());
-  let frame: AmbientFrame = AmbientFrame {
+  let frame: AmbientFrame<'_> = AmbientFrame {
     ambients: &ambients,
     level: &weather,
   };
@@ -316,7 +316,7 @@ fn the_same_level_plays_the_same_effects_at_the_same_moments() {
 fn an_effect_stops_once_its_life_is_up_and_goes_once_it_has_died() {
   let mut scene: AmbientScene = AmbientScene::new(XrayEngine::Vanilla, &["nature\\fog"]);
   let (weather, ambients) = (weather(&["fog"]), day());
-  let frame: AmbientFrame = AmbientFrame {
+  let frame: AmbientFrame<'_> = AmbientFrame {
     ambients: &ambients,
     level: &weather,
   };
@@ -336,7 +336,7 @@ fn an_effect_stops_once_its_life_is_up_and_goes_once_it_has_died() {
 fn indoors_no_effect_starts_and_one_playing_stops() {
   let mut scene: AmbientScene = AmbientScene::new(XrayEngine::Vanilla, &["nature\\fog"]);
   let (weather, ambients) = (weather(&["fog"]), day());
-  let frame: AmbientFrame = AmbientFrame {
+  let frame: AmbientFrame<'_> = AmbientFrame {
     ambients: &ambients,
     level: &weather,
   };
@@ -371,7 +371,7 @@ fn an_ambient_without_effects_plays_none() {
 fn playing_one_now_ends_the_one_playing_and_starts_without_waiting() {
   let mut scene: AmbientScene = AmbientScene::new(XrayEngine::Vanilla, &["nature\\fog", "nature\\leaves"]);
   let (weather, ambients) = (weather(&["fog", "leaves"]), day());
-  let frame: AmbientFrame = AmbientFrame {
+  let frame: AmbientFrame<'_> = AmbientFrame {
     ambients: &ambients,
     level: &weather,
   };
@@ -419,7 +419,7 @@ fn a_restart_ends_what_plays_and_plays_on_as_from_the_first_frame() {
     &particles.iter().map(String::as_str).collect::<Vec<_>>(),
   );
   let (weather, ambients) = (weather(&names), day());
-  let frame: AmbientFrame = AmbientFrame {
+  let frame: AmbientFrame<'_> = AmbientFrame {
     ambients: &ambients,
     level: &weather,
   };

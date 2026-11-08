@@ -144,7 +144,7 @@ impl VolumetricFeature {
       height,
       ViewTargets::DEPTH,
     ));
-    let parameters: LightVolumeParameters = LightVolumeParameters {
+    let parameters: LightVolumeParameters<'_> = LightVolumeParameters {
       light_volumes: StorageArray::new(bindings.import_buffer(&mut *graph, "light volumes", &lights.volume_buffer)),
       records: StorageArray::new(bindings.import_buffer(&mut *graph, "light records", &lights.record_buffer)),
       shadow_atlas: bindings.import_view(&mut *graph, "light shadow atlas", atlas.view),

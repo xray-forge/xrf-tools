@@ -19,7 +19,7 @@ impl LtxStandardDialect {
   /// Returns an error when a section is declared twice, an include is named twice, or the file carries a DLTX
   /// operation, which standard mode cannot evaluate.
   pub(crate) fn lower_with(document: &LtxDocument, interner: &mut LtxTextInterner) -> XrfResult<Ltx> {
-    let mut lowering: LtxStandardLowering = LtxStandardLowering::sharing_keys_and_values(interner);
+    let mut lowering: LtxStandardLowering<'_> = LtxStandardLowering::sharing_keys_and_values(interner);
 
     for item in &document.items {
       lowering.push(item)?;
@@ -38,9 +38,9 @@ impl LtxStandardDialect {
   ///
   /// Returns an error when the text does not parse, or for what [`Self::lower_with`] refuses.
   pub(crate) fn parse_and_lower(text: &str) -> XrfResult<Ltx> {
-    let mut parser: LtxParser = LtxParser::new(text.chars());
+    let mut parser: LtxParser<'_> = LtxParser::new(text.chars());
     let mut keys: LtxTextInterner = LtxTextInterner::default();
-    let mut lowering: LtxStandardLowering = LtxStandardLowering::sharing_keys(&mut keys);
+    let mut lowering: LtxStandardLowering<'_> = LtxStandardLowering::sharing_keys(&mut keys);
     let mut refusal: Option<XrfError> = None;
 
     while let Some(item) = parser.parse_next_item()? {

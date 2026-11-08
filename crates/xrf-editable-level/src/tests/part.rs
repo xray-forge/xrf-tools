@@ -9,7 +9,7 @@ use crate::{EditableBinaryPart, EditableLevelPart, EditablePartObject, EditableT
 fn reads_a_text_parts_objects_with_their_own_sections() -> XrfResult {
   let text: String = spawn_part_text(&GUID, 2)?;
   let part: EditableTextPart = EditableTextPart::read_from_bytes(text.as_bytes())?;
-  let objects: Vec<EditablePartObject> = part.get_objects()?;
+  let objects: Vec<EditablePartObject<'_>> = part.get_objects()?;
 
   assert_eq!(part.get_guid()?, GUID);
   assert_eq!(objects.len(), 2);
@@ -35,7 +35,7 @@ fn takes_only_sections_named_after_a_counted_object() -> XrfResult {
   part.ini.section_mut("object_01").set("name", "padded");
   part.ini.section_mut("object_2_spawndata").set("000001", "1");
 
-  let objects: Vec<EditablePartObject> = part.get_objects()?;
+  let objects: Vec<EditablePartObject<'_>> = part.get_objects()?;
 
   assert_eq!(objects.len(), 2);
   assert_eq!(objects[0].children.len(), 1);

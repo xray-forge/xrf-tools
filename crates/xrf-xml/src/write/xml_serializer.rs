@@ -22,7 +22,7 @@ impl XmlSerializer {
     T: Serialize,
   {
     let mut output: String = String::new();
-    let mut serializer: Serializer<String> = Serializer::new(&mut output);
+    let mut serializer: Serializer<'_, '_, String> = Serializer::new(&mut output);
 
     serializer.expand_empty_elements(true);
     serializer.indent(' ', Self::INDENT);

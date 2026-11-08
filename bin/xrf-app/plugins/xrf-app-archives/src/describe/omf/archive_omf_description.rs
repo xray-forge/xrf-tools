@@ -26,7 +26,7 @@ impl ArchiveOmfDescription {
   ///
   /// Returns an error when the entry's bytes cannot be read, or when they are not a bank this reader can walk - a
   /// version it does not implement, or two lists that disagree about how many motions there are.
-  pub fn read(source: &ArchiveDescribeSource, name: &str) -> XrfResult<Self> {
+  pub fn read(source: &ArchiveDescribeSource<'_>, name: &str) -> XrfResult<Self> {
     let file: OmfFile = OmfFile::read_from_bytes::<XRayByteOrder>(source.read_bytes(name)?)?;
 
     let motions: Vec<ArchiveOmfMotion> = file

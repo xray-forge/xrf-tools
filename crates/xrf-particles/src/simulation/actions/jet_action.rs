@@ -24,7 +24,7 @@ impl JetAction {
       .transform_direction_from(&self.acceleration_local, matrix);
   }
 
-  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep) {
+  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
     let magdt: f32 = self.magnitude * step.dt;
     let max_radius_sqr: f32 = self.max_radius * self.max_radius;
     let is_limited: bool = max_radius_sqr < ParticleActionStep::MAX_FLOAT;

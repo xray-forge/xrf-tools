@@ -262,7 +262,7 @@ impl ResolveFeature {
         let target: GraphTexture = bindings.import_view(&mut *graph, "temporal history", &history.get_written().view);
         let flickered: GraphTexture =
           bindings.import_view(&mut *graph, "temporal flicker", &flicker.get_written().view);
-        let parameters: TemporalParameters = TemporalParameters {
+        let parameters: TemporalParameters<'_> = TemporalParameters {
           frame,
           depth_target: handles.depth,
           history: bindings.import_view(&mut *graph, "temporal history", &history.get_read().view),

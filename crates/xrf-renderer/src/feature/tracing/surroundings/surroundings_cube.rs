@@ -518,7 +518,7 @@ impl SurroundingsCube {
 
     let settings: UniformBinding<SurroundingsUniform> =
       runtime.push_uniform(&SurroundingsUniform::new(self.to_sun, self.face, (size, drawn)));
-    let parameters: SurroundingsParameters = SurroundingsParameters {
+    let parameters: SurroundingsParameters<'_> = SurroundingsParameters {
       depth_target: depth,
       albedo_target: albedo,
       normal_target: normal,

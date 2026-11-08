@@ -27,7 +27,7 @@ impl ArchiveLevelGameDescription {
   /// # Errors
   ///
   /// Returns an error when the entry's bytes cannot be read, or are not level game data this reader can walk.
-  pub fn read(source: &ArchiveDescribeSource, name: &str) -> XrfResult<Self> {
+  pub fn read(source: &ArchiveDescribeSource<'_>, name: &str) -> XrfResult<Self> {
     let file: LevelGameFile = LevelGameFile::read_from_bytes::<XRayByteOrder>(source.read_bytes(name)?)?;
 
     Ok(Self {

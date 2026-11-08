@@ -29,7 +29,7 @@ impl ArchiveLevelAiDescription {
   /// # Errors
   ///
   /// Returns an error when the entry cannot be opened, or holds fewer bytes than the header occupies.
-  pub fn read(source: &ArchiveDescribeSource, name: &str) -> XrfResult<Self> {
+  pub fn read(source: &ArchiveDescribeSource<'_>, name: &str) -> XrfResult<Self> {
     let mut reader: ArchiveEntryReader = source.open_entry(name)?;
     let size: u64 = reader.size();
     let header: LevelAiHeader = reader.read_leading()?;

@@ -182,7 +182,7 @@ impl BloomFeature {
                    (source, coarser): (GraphTexture, GraphTexture),
                    written: GraphTexture,
                    uniform: EnhancedBloomUniform| {
-      let parameters: EnhancedBloomParameters = EnhancedBloomParameters {
+      let parameters: EnhancedBloomParameters<'_> = EnhancedBloomParameters {
         source,
         coarser,
         source_sampler: pass.get_sampler(),
@@ -286,7 +286,7 @@ impl BloomFeature {
       (handles.bloom[0], handles.bloom[1]),
       (handles.bloom[1], handles.bloom[0]),
     ]) {
-      let parameters: BloomParameters = BloomParameters {
+      let parameters: BloomParameters<'_> = BloomParameters {
         source: read,
         source_sampler: passes.image.bloom.get_sampler(),
         bloom: runtime.push_uniform(&stages[stage.get_index()]),

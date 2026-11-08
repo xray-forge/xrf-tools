@@ -210,7 +210,7 @@ impl LevelParticles {
     let (Some(systems), Some(emitter)) = (&self.systems, self.emitters.get_mut(handle)) else {
       return;
     };
-    let context: ParticleUpdateContext = ParticleUpdateContext {
+    let context: ParticleUpdateContext<'_> = ParticleUpdateContext {
       library: &systems.library,
       rules: &systems.rules,
       collider: systems.collider.as_deref(),
@@ -282,7 +282,7 @@ impl LevelParticles {
       profiling::scope!("particles");
 
       let started: Instant = Instant::now();
-      let context: ParticleUpdateContext = ParticleUpdateContext {
+      let context: ParticleUpdateContext<'_> = ParticleUpdateContext {
         library: &library,
         rules: &rules,
         collider: collider.as_deref(),

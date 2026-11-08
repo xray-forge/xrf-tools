@@ -116,7 +116,7 @@ mod tests {
   #[test]
   fn lays_a_chain_out_as_one_layer_base_first() -> XrfResult {
     let chain: DdsMipChain = chain(4, 4)?;
-    let surface: DdsSurfaceLevels = DdsSurfaceLevels::of_chain(&chain)?;
+    let surface: DdsSurfaceLevels<'_> = DdsSurfaceLevels::of_chain(&chain)?;
 
     assert_eq!((surface.layers(), surface.mipmaps()), (1, 3));
     assert_eq!(surface.base().dimensions(), (4, 4));
@@ -135,7 +135,7 @@ mod tests {
   #[test]
   fn lays_six_faces_out_as_one_cube_and_refuses_anything_else() -> XrfResult {
     let faces: Vec<DdsMipChain> = (0..6).map(|_| chain(4, 4)).collect::<XrfResult<_>>()?;
-    let cube: DdsSurfaceLevels = DdsSurfaceLevels::of_cube(&faces)?;
+    let cube: DdsSurfaceLevels<'_> = DdsSurfaceLevels::of_cube(&faces)?;
 
     assert_eq!((cube.layers(), cube.mipmaps(), cube.levels().len()), (6, 3, 18));
     assert!(DdsSurfaceLevels::of_cube(&faces[..5]).is_err());

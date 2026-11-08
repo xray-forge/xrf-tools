@@ -266,7 +266,7 @@ impl JobRegistry {
 
     let reporting: Arc<dyn ProgressSink> = Arc::clone(&sink) as Arc<dyn ProgressSink>;
     let handle: JobHandle = JobHandle::with_interval(reporting, self.interval);
-    let mut state: MutexGuard<RegistryState> = self.lock();
+    let mut state: MutexGuard<'_, RegistryState> = self.lock();
 
     if state.is_known(id) {
       return Err(JobRefusal::Repeated);
@@ -310,7 +310,7 @@ impl JobRegistry {
 
   /// Report a running job's progress to `channel` from now on.
   pub fn attach(&self, id: Uuid, channel: Channel<JobProgress>) -> bool {
-    let state: MutexGuard<RegistryState> = self.lock();
+    let state: MutexGuard<'_, RegistryState> = self.lock();
 
     let Some(job) = state.live.get(&id) else {
       return false;
@@ -324,7 +324,7 @@ impl JobRegistry {
   /// Ask a job to stop, whether or not it has registered yet; answers whether one running was asked, a cancel held for
   /// a job still on its way answering no.
   pub fn cancel(&self, id: Uuid) -> bool {
-    let mut state: MutexGuard<RegistryState> = self.lock();
+    let mut state: MutexGuard<'_, RegistryState> = self.lock();
 
     if let Some(job) = state.live.get_mut(&id) {
       job.is_cancel_requested = true;
@@ -379,7 +379,7 @@ impl JobRegistry {
   /// Asks every running job to say where it has got to.
   pub(super) fn report_live(&self) {
     let live: Vec<JobHandle> = {
-      let state: MutexGuard<RegistryState> = self.lock();
+      let state: MutexGuard<'_, RegistryState> = self.lock();
 
       state.live.values().map(|job| job.handle.clone()).collect()
     };
@@ -391,7 +391,7 @@ impl JobRegistry {
 
   /// Every job, running first and newest finished after them.
   pub fn list(&self) -> Vec<JobDescription> {
-    let state: MutexGuard<RegistryState> = self.lock();
+    let state: MutexGuard<'_, RegistryState> = self.lock();
     let mut running: Vec<JobDescription> = state.live.iter().map(|(id, job)| job.describe(*id, None)).collect();
 
     // A map has no order of its own, and a listing that reshuffled itself on every read would be unreadable.
@@ -404,7 +404,7 @@ impl JobRegistry {
 
   /// Release a job's leases and move it into the retained listing.
   pub(super) fn finish(&self, id: Uuid, ending: JobEnding) {
-    let mut state: MutexGuard<RegistryState> = self.lock();
+    let mut state: MutexGuard<'_, RegistryState> = self.lock();
 
     let Some(job) = state.live.remove(&id) else {
       return;

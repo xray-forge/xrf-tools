@@ -73,7 +73,7 @@ impl JobState {
 
   /// Leave a level, showing whatever now sits below it.
   pub(crate) fn leave(&self, level: &Arc<LevelState>) {
-    let mut levels: RwLockWriteGuard<Vec<Arc<LevelState>>> = self.write_levels();
+    let mut levels: RwLockWriteGuard<'_, Vec<Arc<LevelState>>> = self.write_levels();
 
     // By identity rather than by position: scopes are dropped in the order they were entered, but a caller holding one
     // longer than the code around it suggests must remove its own level rather than somebody else's.

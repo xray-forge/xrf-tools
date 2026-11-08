@@ -231,7 +231,7 @@ impl<T: ChunkDataSource> ChunkReader<T> {
     let mut chunks: Vec<Self> = Vec::new();
     let mut consumed: u64 = 0;
     let mut failure: Option<XrfError> = None;
-    let iterator: ChunkIterator<T> = match is_compression_accepted {
+    let iterator: ChunkIterator<'_, T> = match is_compression_accepted {
       true => ChunkIterator::from_start_including_compressed(self)?,
       false => ChunkIterator::from_start(self)?,
     };

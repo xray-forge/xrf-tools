@@ -104,7 +104,7 @@ impl ArchivePacker {
   fn pack_into(config: &ArchivePackConfig, options: &ArchivePackOptions) -> XrfResult<ArchivePackResult> {
     let started_at: Instant = Instant::now();
     let job: &JobHandle = &options.job;
-    let narrator: ArchivePackNarrator = ArchivePackNarrator::new(&options.output);
+    let narrator: ArchivePackNarrator<'_> = ArchivePackNarrator::new(&options.output);
 
     narrator.describe_settings(config);
 
@@ -172,7 +172,7 @@ impl ArchivePacker {
   /// table, and a window holding no text never reaches the pool at all.
   fn prepare_text(
     config: &ArchivePackConfig,
-    payloads: &ArchivePackPayloads,
+    payloads: &ArchivePackPayloads<'_>,
     window: &[ArchivePackEntry],
   ) -> Vec<Option<XrfResult<ArchivePreparedEntry>>> {
     if !window
@@ -202,9 +202,9 @@ impl ArchivePacker {
   pub(crate) fn write_set(
     config: &ArchivePackConfig,
     names: &ArchivePackNameTable,
-    payloads: &ArchivePackPayloads,
+    payloads: &ArchivePackPayloads<'_>,
     job: &JobHandle,
-    narrator: &ArchivePackNarrator,
+    narrator: &ArchivePackNarrator<'_>,
     write_phase: &'static str,
   ) -> XrfResult<ArchivePackResult> {
     // Both are measured before anything is created, because an unsatisfiable cap is a property of the archive rather
@@ -214,7 +214,8 @@ impl ArchivePacker {
 
     fs::create_dir_all(&config.destination)?;
 
-    let mut writer: ArchiveVolumeWriter = ArchiveVolumeWriter::open(config, narrator, payloads, layout, descriptors)?;
+    let mut writer: ArchiveVolumeWriter<'_> =
+      ArchiveVolumeWriter::open(config, narrator, payloads, layout, descriptors)?;
 
     {
       let writing: JobScope = job.enter(write_phase, Some(names.get_files().len() as u64));

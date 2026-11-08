@@ -201,7 +201,7 @@ impl DynamicHuffmanTree {
   }
 
   /// Walk from the root to a leaf, one stream bit per branch, and account for the value read.
-  pub(crate) fn read_code(&mut self, reader: &mut BitReader) -> XrfResult<u16> {
+  pub(crate) fn read_code(&mut self, reader: &mut BitReader<'_>) -> XrfResult<u16> {
     let mut index: usize = 0;
 
     loop {
@@ -636,7 +636,7 @@ mod tests {
     const CODE_COUNT: usize = 20_000;
 
     let source: Vec<u8> = pseudo_random_source(64 * 1024);
-    let mut reader: BitReader = BitReader::new(&source);
+    let mut reader: BitReader<'_> = BitReader::new(&source);
     let mut tree: DynamicHuffmanTree = DynamicHuffmanTree::new();
     let mut digest: u64 = 0xcbf2_9ce4_8422_2325;
 

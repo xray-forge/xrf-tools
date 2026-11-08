@@ -55,7 +55,7 @@ impl LevelLightsPart {
       .and_then(LightAnimFile::read_from_bytes::<XRayByteOrder>)
       .inspect_err(|error| LevelReport::unreadable_animations(LightAnimFile::FILE_NAME, error))
       .ok();
-    let mut packer: LightsPacker = LightsPacker::new(animations.as_ref());
+    let mut packer: LightsPacker<'_> = LightsPacker::new(animations.as_ref());
 
     if let Some(sections) = sections {
       packer = packer.with_sections(sections);

@@ -38,7 +38,7 @@ impl ArchiveThmDescription {
   ///
   /// Returns an error when the entry's bytes cannot be read, or when they are not a descriptor this reader can walk.
   /// A chunk it does not recognise is not a failure: [`ThmFile`] keeps it, and it is reported as an extra chunk.
-  pub fn read(source: &ArchiveDescribeSource, name: &str) -> XrfResult<Self> {
+  pub fn read(source: &ArchiveDescribeSource<'_>, name: &str) -> XrfResult<Self> {
     // todo: Describe the SDK's object, group and sound thumbnails as their own kinds through `ThmKind::detect` and
     //  their readers, rather than as a texture descriptor whose chunk ids they reuse.
     let file: ThmFile = ThmFile::read_from_bytes::<XRayByteOrder>(source.read_bytes(name)?)?;

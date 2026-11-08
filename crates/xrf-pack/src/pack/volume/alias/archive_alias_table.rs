@@ -16,7 +16,7 @@ impl<'e> ArchiveAliasTable<'e> {
   /// Find an identical payload already in this volume, confirming the match byte for byte.
   pub(crate) fn find(
     &self,
-    payloads: &ArchivePackPayloads,
+    payloads: &ArchivePackPayloads<'_>,
     contents: &[u8],
     size_real: u32,
     crc: u32,
@@ -79,7 +79,13 @@ mod tests {
   }
 
   /// The alias a lookup found, with the match itself proven by the name it points back to.
-  fn find(table: &ArchiveAliasTable, contents: &[u8], size_real: u32, crc: u32, source: &str) -> Option<ArchiveAlias> {
+  fn find(
+    table: &ArchiveAliasTable<'_>,
+    contents: &[u8],
+    size_real: u32,
+    crc: u32,
+    source: &str,
+  ) -> Option<ArchiveAlias> {
     table
       .find(&ArchivePackPayloads::Host, contents, size_real, crc)
       .expect("lookup")
@@ -97,7 +103,7 @@ mod tests {
   fn an_identical_payload_points_at_the_copy_already_written() {
     let scope: &str = "an_identical_payload_points_at_the_copy_already_written";
     let first: ArchivePackEntry = write(scope, "first.bin", FIRST);
-    let mut table: ArchiveAliasTable = ArchiveAliasTable::default();
+    let mut table: ArchiveAliasTable<'_> = ArchiveAliasTable::default();
 
     table.record(&first, 17, 42, alias(64));
 
@@ -113,7 +119,7 @@ mod tests {
     let scope: &str = "a_key_two_payloads_share_is_resolved_by_the_bytes";
     let first: ArchivePackEntry = write(scope, "first.bin", FIRST);
     let second: ArchivePackEntry = write(scope, "second.bin", SECOND);
-    let mut table: ArchiveAliasTable = ArchiveAliasTable::default();
+    let mut table: ArchiveAliasTable<'_> = ArchiveAliasTable::default();
 
     table.record(&first, 17, 42, alias(64));
 
@@ -137,7 +143,7 @@ mod tests {
   fn a_new_volume_shares_nothing_with_the_one_before_it() {
     let scope: &str = "a_new_volume_shares_nothing_with_the_one_before_it";
     let first: ArchivePackEntry = write(scope, "first.bin", FIRST);
-    let mut table: ArchiveAliasTable = ArchiveAliasTable::default();
+    let mut table: ArchiveAliasTable<'_> = ArchiveAliasTable::default();
 
     table.record(&first, 17, 42, alias(64));
     table.reset();

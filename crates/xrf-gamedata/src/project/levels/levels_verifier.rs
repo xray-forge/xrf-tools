@@ -47,7 +47,7 @@ impl<'a> GamedataCheck<'a> for LevelsVerifier<'a> {
       return Ok(GamedataLevelsVerificationResult::skipped(started_at.elapsed()));
     }
 
-    let reconciliation: LevelReconciliationVerifier = LevelReconciliationVerifier::new(self.project, self.options);
+    let reconciliation: LevelReconciliationVerifier<'_> = LevelReconciliationVerifier::new(self.project, self.options);
     let bundles: BTreeSet<String> = reconciliation.bundle_names()?;
 
     let mut findings: Vec<Finding> = std::mem::take(&mut roster.findings);
@@ -66,7 +66,7 @@ impl<'a> GamedataCheck<'a> for LevelsVerifier<'a> {
 
       xrf_output::verbose!(self.options.output, "Verify level bundle: {name}");
 
-      let bundle: LevelBundle = LevelBundle::new(self.project, name, &self.options.job);
+      let bundle: LevelBundle<'_> = LevelBundle::new(self.project, name, &self.options.job);
       let level = roster.find(name);
 
       let mut bundle_findings: Vec<Finding> = LevelManifestVerifier::new(&bundle).verify(level);

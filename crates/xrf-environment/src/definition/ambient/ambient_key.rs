@@ -32,7 +32,7 @@ declare_environment_keys! {
 
 impl AmbientKey {
   /// Reads one ambient and says what its engine would refuse.
-  pub(crate) fn read(reader: &mut EnvironmentSectionReader, name: &str, section: &Section) -> Ambient {
+  pub(crate) fn read(reader: &mut EnvironmentSectionReader<'_>, name: &str, section: &Section) -> Ambient {
     let engine: XrayEngine = reader.get_engine();
     let ambient: Ambient = reader.read::<Self>(name, section);
 

@@ -101,7 +101,7 @@ impl<T> Session<T> {
   /// Reserves publication before doing work, without invalidating the committed value's readers, answering the
   /// reservation's token.
   pub(crate) fn begin_open(&self, id: SessionId) -> u64 {
-    let mut state: MutexGuard<SessionState<T>> = self.lock();
+    let mut state: MutexGuard<'_, SessionState<T>> = self.lock();
 
     state.reservations += 1;
     state.opening = Some((id, state.reservations));
@@ -111,7 +111,7 @@ impl<T> Session<T> {
 
   /// Gives up the reservation `token` names, keeping whatever the slot committed before it; one made since is left.
   pub(crate) fn give_up_open(&self, id: SessionId, token: u64) {
-    let mut state: MutexGuard<SessionState<T>> = self.lock();
+    let mut state: MutexGuard<'_, SessionState<T>> = self.lock();
 
     if state.opening == Some((id, token)) {
       state.opening = None;
@@ -153,7 +153,7 @@ impl<T> Session<T> {
       ..SessionSnapshot::new(id, value)
     });
 
-    let mut state: MutexGuard<SessionState<T>> = self.lock();
+    let mut state: MutexGuard<'_, SessionState<T>> = self.lock();
 
     if state.opening.map(|(opening, _)| opening) != Some(id) {
       return Err(self.superseded());
@@ -215,7 +215,7 @@ impl<T> Session<T> {
 
   /// Detaches ownership so a caller can dispose a large value on its execution pool.
   pub(crate) fn detach(&self, ids: &[SessionId]) -> Option<Arc<SessionSnapshot<T>>> {
-    let mut state: MutexGuard<SessionState<T>> = self.lock();
+    let mut state: MutexGuard<'_, SessionState<T>> = self.lock();
 
     if state.opening.is_some_and(|(id, _)| ids.contains(&id)) {
       state.opening = None;
@@ -352,7 +352,7 @@ impl<T: Send + Sync + 'static> Session<T> {
 
   /// Remembers `current` as reported stale while it is still the committed snapshot, answering whether it was.
   fn mark_stale(&self, current: &Arc<SessionSnapshot<T>>) -> bool {
-    let mut state: MutexGuard<SessionState<T>> = self.lock();
+    let mut state: MutexGuard<'_, SessionState<T>> = self.lock();
 
     if !state.opened.as_ref().is_some_and(|opened| Arc::ptr_eq(opened, current)) {
       return false;
@@ -374,7 +374,7 @@ impl<T: Send + Sync + 'static> Session<T> {
     assets: &AssetMountState,
     fan_out: &AssetFanOut,
   ) -> SessionChange {
-    let mut state: MutexGuard<SessionState<T>> = self.lock();
+    let mut state: MutexGuard<'_, SessionState<T>> = self.lock();
     let is_under_way: bool = state
       .deriving
       .as_ref()
@@ -459,7 +459,7 @@ impl<T: Send + Sync + 'static> Session<T> {
   /// answers whether it was.
   fn settle(&self, current: &Arc<SessionSnapshot<T>>, next: Option<SessionSnapshot<T>>) -> bool {
     let next: Option<Arc<SessionSnapshot<T>>> = next.map(Arc::new);
-    let mut state: MutexGuard<SessionState<T>> = self.lock();
+    let mut state: MutexGuard<'_, SessionState<T>> = self.lock();
 
     Self::end_deriving(&mut state, current);
 
@@ -478,7 +478,7 @@ impl<T: Send + Sync + 'static> Session<T> {
   /// Publishes `next` only while `current` is still the committed snapshot, answering whether it did.
   fn publish_next(&self, current: &Arc<SessionSnapshot<T>>, next: SessionSnapshot<T>) -> bool {
     let next: Arc<SessionSnapshot<T>> = Arc::new(next);
-    let mut state: MutexGuard<SessionState<T>> = self.lock();
+    let mut state: MutexGuard<'_, SessionState<T>> = self.lock();
 
     if !state.opened.as_ref().is_some_and(|opened| Arc::ptr_eq(opened, current)) {
       return false;

@@ -36,7 +36,7 @@ declare_environment_keys! {
 
 impl AmbientEffectKey {
   /// Reads one effect and says what its engine would refuse.
-  pub(crate) fn read(reader: &mut EnvironmentSectionReader, name: &str, section: &Section) -> AmbientEffect {
+  pub(crate) fn read(reader: &mut EnvironmentSectionReader<'_>, name: &str, section: &Section) -> AmbientEffect {
     let engine: XrayEngine = reader.get_engine();
     let effect: AmbientEffect = reader.read::<Self>(name, section);
 

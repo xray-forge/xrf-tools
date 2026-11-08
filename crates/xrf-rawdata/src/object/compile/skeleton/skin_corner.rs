@@ -35,7 +35,7 @@ impl SkinCorner {
   }
 
   /// The corner with the last UV its reference names, as the export keeps it, and its weights prepared.
-  fn of_corner(corner: MeshCorner, bone_of_map: &HashMap<&str, u16>) -> XrfResult<Self> {
+  fn of_corner(corner: MeshCorner<'_>, bone_of_map: &HashMap<&str, u16>) -> XrfResult<Self> {
     let mut texture_coordinate: Vector2d = Vector2d::ZERO;
     let mut weights: Vec<ExportVertexBone> = Vec::with_capacity(corner.entries.len());
 

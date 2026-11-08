@@ -59,7 +59,7 @@ impl ParticleObject {
   }
 
   /// `Play`: plays at once and takes a first update as if 33 ms had passed.
-  pub fn play(&mut self, now: u64, context: &ParticleUpdateContext) {
+  pub fn play(&mut self, now: u64, context: &ParticleUpdateContext<'_>) {
     self.instance.play();
     self.last_time = now.saturating_sub(Self::PLAY_BACKDATE);
     self.perform(now, context);
@@ -78,7 +78,7 @@ impl ParticleObject {
 
   /// The scheduler's update when due, then the drawn update when in view (`shedule_Update`, `renderable_Render`);
   /// whether either took any time.
-  pub fn advance(&mut self, now: u64, view: Vec3, is_in_view: bool, context: &ParticleUpdateContext) -> bool {
+  pub fn advance(&mut self, now: u64, view: Vec3, is_in_view: bool, context: &ParticleUpdateContext<'_>) -> bool {
     let mut is_updated: bool = false;
 
     if now >= self.next_scheduled {
@@ -106,7 +106,7 @@ impl ParticleObject {
   }
 
   /// `PerformAllTheWork`: an update by the milliseconds since the last one, if any passed.
-  fn perform(&mut self, now: u64, context: &ParticleUpdateContext) -> bool {
+  fn perform(&mut self, now: u64, context: &ParticleUpdateContext<'_>) -> bool {
     let elapsed: u64 = now.saturating_sub(self.last_time);
     let is_elapsed: bool = elapsed > 0;
 

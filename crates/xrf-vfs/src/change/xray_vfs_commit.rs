@@ -194,7 +194,7 @@ impl XrayVfs {
       .list_writable_holding(scopes, file)
       .into_iter()
       .map(|(mount, source_path)| {
-        let path: Cow<str> = mount.to_logical_path(&source_path)?;
+        let path: Cow<'_, str> = mount.to_logical_path(&source_path)?;
 
         if mount.get_source().contains(&source_path) {
           XrayChange::modified(mount.get_id(), &path)

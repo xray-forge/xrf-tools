@@ -33,7 +33,7 @@ impl ArchivePpeDescription {
   ///
   /// Returns an error when the entry's bytes cannot be read, or when they are not an effect this reader can walk - a
   /// version it does not implement, or a payload the fixed parameter run does not account for.
-  pub fn read(source: &ArchiveDescribeSource, name: &str) -> XrfResult<Self> {
+  pub fn read(source: &ArchiveDescribeSource<'_>, name: &str) -> XrfResult<Self> {
     let file: PpeFile = PpeFile::read_from_bytes::<XRayByteOrder>(source.read_bytes(name)?)?;
 
     Ok(Self {

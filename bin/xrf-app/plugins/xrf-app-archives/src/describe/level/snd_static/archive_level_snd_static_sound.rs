@@ -23,12 +23,12 @@ pub struct ArchiveLevelSndStaticSound {
 
 impl ArchiveLevelSndStaticSound {
   /// Every sound a level plants, with the file each names resolved.
-  pub fn of_all(source: &ArchiveDescribeSource, sounds: &[LevelSndStaticSound]) -> Vec<Self> {
+  pub fn of_all(source: &ArchiveDescribeSource<'_>, sounds: &[LevelSndStaticSound]) -> Vec<Self> {
     sounds.iter().map(|sound| Self::of(source, sound)).collect()
   }
 
   /// One sound, taken over what it plays and when.
-  fn of(source: &ArchiveDescribeSource, sound: &LevelSndStaticSound) -> Self {
+  fn of(source: &ArchiveDescribeSource<'_>, sound: &LevelSndStaticSound) -> Self {
     Self {
       sound: (!sound.sound.is_empty()).then(|| ArchiveReference::resolve(source, XrayAssetType::Ogg, &sound.sound)),
       volume: sound.volume,

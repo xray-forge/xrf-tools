@@ -19,7 +19,7 @@ pub struct ArchiveLevelSurface {
 impl ArchiveLevelSurface {
   /// Every row of a shader table, with its textures resolved and its shader asked of the library.
   pub fn of_all(
-    source: &ArchiveDescribeSource,
+    source: &ArchiveDescribeSource<'_>,
     entries: &[LevelShaderEntry],
     library: Option<&ShaderLibraryFile>,
   ) -> Vec<Self> {

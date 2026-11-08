@@ -110,7 +110,7 @@ impl FogFeature {
     .into_iter()
     .enumerate()
     {
-      let parameters: FogScatteringParameters = FogScatteringParameters {
+      let parameters: FogScatteringParameters<'_> = FogScatteringParameters {
         source,
         blurred,
         source_sampler: passes.weather.fog_scattering.get_sampler(),

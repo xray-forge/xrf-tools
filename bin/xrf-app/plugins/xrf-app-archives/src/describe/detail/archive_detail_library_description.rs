@@ -33,7 +33,7 @@ impl ArchiveDetailLibraryDescription {
   ///
   /// Returns an error when the entry's bytes cannot be read, or when they are not a detail library this reader can
   /// walk - a version it does not implement, or a grid the header does not account for.
-  pub fn read(source: &ArchiveDescribeSource, name: &str) -> XrfResult<Self> {
+  pub fn read(source: &ArchiveDescribeSource<'_>, name: &str) -> XrfResult<Self> {
     let file: LevelDetailsFile = LevelDetailsFile::read_from_bytes::<XRayByteOrder>(source.read_bytes(name)?)?;
     let (covers_x, covers_z): (f32, f32) = file.get_covered_meters();
     let usage: Vec<u64> = file.get_object_usage();

@@ -22,7 +22,7 @@ impl AvoidAction {
     self.position.transform_from(&self.position_local, matrix);
   }
 
-  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep) {
+  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
     let magdt: f32 = self.magnitude * step.dt;
     let domain: &ParticleVolume = &self.position;
     let particles: &mut [Particle] = pool.get_particles_mut();

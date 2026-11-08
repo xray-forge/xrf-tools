@@ -215,7 +215,7 @@ pub(crate) fn to_host_relative(logical_path: &str) -> PathBuf {
 }
 
 pub(crate) fn join(prefix: &str, path: &str) -> XrfResult<String> {
-  let joined: Cow<str> = match (prefix.is_empty(), path.is_empty()) {
+  let joined: Cow<'_, str> = match (prefix.is_empty(), path.is_empty()) {
     (true, true) => normalize("")?,
     (true, false) => normalize(path)?,
     (false, true) => normalize(prefix)?,

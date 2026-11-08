@@ -18,7 +18,7 @@ impl TargetColorAction {
   /// Monolith's `STEP_DEFAULT`: the step its colour shift is measured against.
   const STEP_DEFAULT: f32 = 0.033;
 
-  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep) {
+  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
     let from: f32 = self.time_from * step.kill_old_time;
     let to: f32 = self.time_to * step.kill_old_time;
 
@@ -119,7 +119,7 @@ mod tests {
   fn leaves_particles_outside_the_age_window() {
     let rules: ParticleEngineRules = ParticleEngineRules::default();
     let mut pool: ParticlePool = ParticlePool::new(1, 1);
-    let mut step: ParticleActionStep = ParticleActionStep::new(0.033, &rules);
+    let mut step: ParticleActionStep<'_> = ParticleActionStep::new(0.033, &rules);
 
     step.kill_old_time = 0.25;
     pool.add(Particle {

@@ -112,7 +112,7 @@ mod tests {
 
   /// Record every position up to `position`, the way the encoder does as it advances.
   fn finder_primed_to(source: &[u8], position: usize) -> MatchFinder<'_> {
-    let mut finder: MatchFinder = MatchFinder::new(source);
+    let mut finder: MatchFinder<'_> = MatchFinder::new(source);
 
     for index in 0..position {
       finder.insert(index);
@@ -124,7 +124,7 @@ mod tests {
   #[test]
   fn finds_a_repeat_and_measures_the_distance_the_decoder_expects() {
     let source: &[u8] = b"abcdef__abcdef";
-    let finder: MatchFinder = finder_primed_to(source, 8);
+    let finder: MatchFinder<'_> = finder_primed_to(source, 8);
     let found = finder.find(8).expect("repeat of the opening bytes");
 
     assert_eq!(found.length, 6);
@@ -135,7 +135,7 @@ mod tests {
   #[test]
   fn ignores_repeats_too_short_to_code() {
     let source: &[u8] = b"ab_ab";
-    let finder: MatchFinder = finder_primed_to(source, 3);
+    let finder: MatchFinder<'_> = finder_primed_to(source, 3);
 
     assert!(finder.find(3).is_none(), "two bytes never beat the threshold");
     const { assert!(MATCH_LENGTH_MIN > 2) };
@@ -144,7 +144,7 @@ mod tests {
   #[test]
   fn codes_a_run_as_one_overlapping_match() {
     let source: Vec<u8> = vec![b'z'; 100];
-    let finder: MatchFinder = finder_primed_to(&source, 1);
+    let finder: MatchFinder<'_> = finder_primed_to(&source, 1);
     let found = finder.find(1).expect("run of identical bytes");
 
     // The match reaches into bytes it produces itself, which is how a run costs one command.
@@ -168,7 +168,7 @@ mod tests {
     let distance: usize = RING_BUFFER_SIZE - 1;
     let source: Vec<u8> = source_repeating_at_distance(distance);
     let position: usize = distance + 1;
-    let finder: MatchFinder = finder_primed_to(&source, position);
+    let finder: MatchFinder<'_> = finder_primed_to(&source, position);
     let found = finder.find(position).expect("repeat still inside the window");
 
     assert_eq!(found.distance, distance);
@@ -179,7 +179,7 @@ mod tests {
     let distance: usize = RING_BUFFER_SIZE;
     let source: Vec<u8> = source_repeating_at_distance(distance);
     let position: usize = distance + 1;
-    let finder: MatchFinder = finder_primed_to(&source, position);
+    let finder: MatchFinder<'_> = finder_primed_to(&source, position);
 
     assert!(finder.find(position).is_none(), "one byte too far to reference");
   }
@@ -187,7 +187,7 @@ mod tests {
   #[test]
   fn finds_nothing_at_the_tail_of_the_source() {
     let source: &[u8] = b"aaaaaa";
-    let finder: MatchFinder = finder_primed_to(source, source.len() - 1);
+    let finder: MatchFinder<'_> = finder_primed_to(source, source.len() - 1);
 
     assert!(finder.find(source.len() - 1).is_none(), "one byte left to code");
   }

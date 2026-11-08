@@ -59,7 +59,7 @@ impl LightVolumePass {
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
-    parameters: &LightVolumeParameters,
+    parameters: &LightVolumeParameters<'_>,
     textures: &wgpu::BindGroup,
     slices: &[u32],
   ) {
@@ -83,7 +83,7 @@ impl LightVolumePass {
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
-    parameters: &LightVolumeParameters,
+    parameters: &LightVolumeParameters<'_>,
     textures: &wgpu::BindGroup,
   ) {
     context.bind(parameters);

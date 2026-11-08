@@ -51,7 +51,7 @@ impl<'a> TextureBumpsVerifier<'a> {
       .enumerate()
       .filter(|_| !self.options.job.is_cancelled())
       .map(|(index, descriptor)| {
-        let slot: OutputSlot = sequence.new_slot(index);
+        let slot: OutputSlot<'_> = sequence.new_slot(index);
         let output: &OutputOptions = slot.get_output();
         let path: &str = descriptor.get_logical_path().as_str();
 

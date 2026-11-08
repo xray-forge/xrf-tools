@@ -76,7 +76,7 @@ impl ParticleGroupItem {
     &mut self,
     frame_milliseconds: u32,
     definition: &ParticleGroupEffect,
-    context: &ParticleUpdateContext,
+    context: &ParticleUpdateContext<'_>,
     bounds: &mut Option<ParticleBounds>,
   ) -> bool {
     let flags: ParticleGroupEffectFlags = ParticleGroupEffectFlags(definition.flags);

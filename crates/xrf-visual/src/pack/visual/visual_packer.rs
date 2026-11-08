@@ -373,7 +373,7 @@ impl VisualPacker {
     model_type: u8,
   ) -> Result<Vec<VisualDrawRange>, VisualSkip> {
     let is_progressive: bool = OgfModelType::from_raw(model_type).is_some_and(OgfModelType::is_progressive);
-    let run: VisualIndexRun = VisualIndexRun::new(indices, u32::try_from(vertex_count).unwrap_or(u32::MAX));
+    let run: VisualIndexRun<'_> = VisualIndexRun::new(indices, u32::try_from(vertex_count).unwrap_or(u32::MAX));
 
     if !is_progressive {
       let whole: VisualDrawRange = VisualDrawRange {
@@ -423,7 +423,7 @@ impl VisualPacker {
   }
 
   /// Refuses a range that leaves the index buffer or addresses a vertex the submesh does not have, saying why.
-  fn check_level(run: &VisualIndexRun, range: VisualDrawRange) -> Result<(), String> {
+  fn check_level(run: &VisualIndexRun<'_>, range: VisualDrawRange) -> Result<(), String> {
     run
       .check(VisualIndexWindow {
         count: range.count,

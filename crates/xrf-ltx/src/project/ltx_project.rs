@@ -171,7 +171,7 @@ impl LtxProject {
   ) -> XrfResult<Self> {
     let counters: Arc<LtxReadCounters> = LtxReadCounters::new_shared();
     let listings: LtxListingCache = LtxListingCache::default();
-    let source: LtxVfsSource = LtxVfsSource::new_counted(search.clone(), &counters).with_listings(&listings);
+    let source: LtxVfsSource<'_> = LtxVfsSource::new_counted(search.clone(), &counters).with_listings(&listings);
 
     let ltx_files: Vec<XrayLogicalPath> = Self::collect_logical_paths(&search);
 
@@ -426,7 +426,7 @@ impl LtxProject {
 
   /// Reads one root and applies this project's dialect to it, retaining nothing.
   fn resolve(&self, logical_path: &XrayLogicalPath) -> XrfResult<LtxResolution> {
-    let source: LtxVfsSource = self.source();
+    let source: LtxVfsSource<'_> = self.source();
 
     self
       .dialect
@@ -439,7 +439,7 @@ impl LtxProject {
   ///
   /// Returns an error if the config is outside the scope or cannot be read or resolved.
   pub fn resolve_explained(&self, logical_path: &XrayLogicalPath) -> XrfResult<LtxResolution> {
-    let source: LtxVfsSource = self.source();
+    let source: LtxVfsSource<'_> = self.source();
 
     self.counters.record_resolution();
 
@@ -480,7 +480,7 @@ impl LtxProject {
   ///
   /// Returns an error if the config cannot be read or resolved.
   pub fn read_full_in_search(&self, search: &XraySearch, logical_path: &str) -> XrfResult<Ltx> {
-    let source: LtxVfsSource = LtxVfsSource::new_counted(search.clone(), &self.counters);
+    let source: LtxVfsSource<'_> = LtxVfsSource::new_counted(search.clone(), &self.counters);
 
     self.counters.record_resolution();
 

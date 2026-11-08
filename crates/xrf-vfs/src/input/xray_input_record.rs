@@ -35,7 +35,7 @@ impl XrayInputRecord {
 
     // Copied out first, so the two locks are never held together whichever way round two records join.
     let other: Vec<(XrayInput, XrayInputAnswer)> = other.list();
-    let mut inputs: MutexGuard<HashMap<XrayInput, XrayInputAnswer>> = self.lock();
+    let mut inputs: MutexGuard<'_, HashMap<XrayInput, XrayInputAnswer>> = self.lock();
 
     for (input, answer) in other {
       inputs.entry(input).or_insert(answer);

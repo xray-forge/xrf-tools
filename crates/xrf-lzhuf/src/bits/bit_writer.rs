@@ -100,7 +100,7 @@ mod tests {
     }
 
     let written: Vec<u8> = writer.finish();
-    let mut reader: BitReader = BitReader::new(&written);
+    let mut reader: BitReader<'_> = BitReader::new(&written);
 
     for (value, count) in runs {
       // The reader tops out at sixteen bits, so a wide run reads back in halves.

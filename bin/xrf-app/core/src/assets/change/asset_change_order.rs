@@ -20,7 +20,7 @@ impl AssetChangeOrder {
     self: &Arc<Self>,
     publish: impl FnOnce() -> Result<(T, bool), E>,
   ) -> Result<(T, Option<AssetChangeTicket>), E> {
-    let mut state: MutexGuard<AssetChangeOrderState> = self.lock();
+    let mut state: MutexGuard<'_, AssetChangeOrderState> = self.lock();
     let (published, is_changed) = publish()?;
 
     Ok((published, is_changed.then(|| self.take_place(&mut state))))
@@ -40,7 +40,7 @@ impl AssetChangeOrder {
   /// Files a delivery in its place and runs every one whose turn has come, unless another thread is running them,
   /// which then runs this one too.
   pub(crate) fn file(&self, number: u64, delivery: Option<AssetChangeWork>) {
-    let mut state: MutexGuard<AssetChangeOrderState> = self.lock();
+    let mut state: MutexGuard<'_, AssetChangeOrderState> = self.lock();
 
     state.ready.insert(number, delivery);
 

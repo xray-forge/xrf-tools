@@ -235,7 +235,7 @@ impl CommandModuleWriter {
   /// # Errors
   ///
   /// When the module cannot be written.
-  pub(crate) fn write_signatures(path: &Path, plugins: &[PluginModules], imports: &MirrorImports) -> XrfResult {
+  pub(crate) fn write_signatures(path: &Path, plugins: &[PluginModules<'_>], imports: &MirrorImports) -> XrfResult {
     let mut import_lines: Vec<String> = Vec::new();
     let mut commands: Vec<String> = Vec::new();
     let mut routes: Vec<String> = Vec::new();

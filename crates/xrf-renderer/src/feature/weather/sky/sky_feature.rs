@@ -344,7 +344,7 @@ impl SkyFeature {
       (None, Some(unfiltered)) => unfiltered,
       (None, None) => return None,
     };
-    let sky: SkyParameters = passes.sky.import(views, cube, &mut *graph, &mut *bindings);
+    let sky: SkyParameters<'_> = passes.sky.import(views, cube, &mut *graph, &mut *bindings);
 
     if let Some(irradiance) = &self.irradiance {
       irradiance.add_passes(GraphDeclaration::new(graph, bindings, runtime), passes, &sky, &lit);
@@ -440,7 +440,7 @@ impl SkyFeature {
         prefilter.probe.get_size(),
         SkyPrefilterPass::SAMPLES,
       ));
-      let parameters: SkyPrefilterParameters = SkyPrefilterParameters {
+      let parameters: SkyPrefilterParameters<'_> = SkyPrefilterParameters {
         sky_cube_0: sky.sky_cube_0,
         sky_cube_1: sky.sky_cube_1,
         sky_clouds_0: sky.sky_clouds_0,

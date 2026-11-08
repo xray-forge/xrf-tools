@@ -93,7 +93,7 @@ impl XrayVfsHost {
   /// As [`XrayVfs::apply`], with nothing in the host changed.
   pub fn apply_changed_on_disk(&self, search: &XraySearch) -> XrfResult<XrayChangeSet> {
     let scopes: Vec<XrayLookupScope> = search.get_steps().iter().map(|step| step.get_scope().clone()).collect();
-    let _mounting: MutexGuard<()> = self.recover(self.mounting.lock());
+    let _mounting: MutexGuard<'_, ()> = self.recover(self.mounting.lock());
     let current: Arc<XrayVfs> = self.get_vfs();
     let changes: Vec<XrayChange> = current.list_changed_on_disk(&scopes);
 
@@ -130,7 +130,7 @@ impl XrayVfsHost {
 
   /// Runs a change against the newest snapshot under the mount lock and publishes the snapshot it answers.
   fn change(&self, change: impl FnOnce(&XrayVfs) -> XrfResult<(XrayVfs, XrayChangeSet)>) -> XrfResult<XrayChangeSet> {
-    let _mounting: MutexGuard<()> = self.recover(self.mounting.lock());
+    let _mounting: MutexGuard<'_, ()> = self.recover(self.mounting.lock());
     let (next, changes): (XrayVfs, XrayChangeSet) = change(&self.get_vfs())?;
 
     *self.recover(self.current.write()) = Arc::new(next);
@@ -160,7 +160,7 @@ impl XrayVfsHost {
       return Ok(found);
     }
 
-    let _mounting: MutexGuard<()> = self.recover(self.mounting.lock());
+    let _mounting: MutexGuard<'_, ()> = self.recover(self.mounting.lock());
     // Another mount may have settled the plan while this one waited for its turn.
     let current: Arc<XrayVfs> = self.get_vfs();
 

@@ -24,7 +24,7 @@ impl SunTable {
   pub const HOURS: usize = 24;
 
   /// Reads the twenty-four `[HH:00:00]` sections.
-  pub(crate) fn read(reader: &mut EnvironmentSectionReader, ltx: &Ltx) -> Self {
+  pub(crate) fn read(reader: &mut EnvironmentSectionReader<'_>, ltx: &Ltx) -> Self {
     let hours: Vec<EnvironmentSection<SunPositionKey>> = (0..Self::HOURS)
       .map(|hour| {
         let name: String = format!("{hour:02}:00:00");

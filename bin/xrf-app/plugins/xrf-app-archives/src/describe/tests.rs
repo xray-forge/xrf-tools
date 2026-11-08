@@ -92,7 +92,7 @@ fn a_spawn_read_whole_as_a_level_list_answers_to_the_ceiling() {
 #[test]
 fn a_world_lookup_finds_an_entry_however_a_reference_spells_it() {
   let world: ArchiveWorld = world("spelling", &[("textures\\act\\act_arm_1.dds", b"dds")]);
-  let source: ArchiveDescribeSource = ArchiveDescribeSource::World { world: &world };
+  let source: ArchiveDescribeSource<'_> = ArchiveDescribeSource::World { world: &world };
 
   assert_eq!(
     source.find_entry("Textures/Act/ACT_arm_1.DDS").as_deref(),
@@ -110,7 +110,7 @@ fn a_volume_set_describes_an_entry_however_a_reference_spells_it() {
   ))
   .expect("the volumes open");
   let names: ArchiveNameIndex = ArchiveNameIndex::default();
-  let source: ArchiveDescribeSource = ArchiveDescribeSource::Volumes {
+  let source: ArchiveDescribeSource<'_> = ArchiveDescribeSource::Volumes {
     project: &project,
     names: &names,
   };

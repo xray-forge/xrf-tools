@@ -29,7 +29,7 @@ pub struct WeatherCycle {
 
 impl WeatherCycle {
   /// Reads every section of a resolved cycle config as a keyframe.
-  pub(crate) fn read(reader: &mut EnvironmentSectionReader, id: &WeatherCycleId, ltx: &Ltx) -> Self {
+  pub(crate) fn read(reader: &mut EnvironmentSectionReader<'_>, id: &WeatherCycleId, ltx: &Ltx) -> Self {
     let mut keyframes: Vec<WeatherKeyframe> = ltx
       .iter()
       .filter(|(section_name, _)| !section_name.is_empty())
@@ -77,7 +77,7 @@ impl WeatherCycle {
     textures
   }
 
-  fn judge(&self, reader: &mut EnvironmentSectionReader) {
+  fn judge(&self, reader: &mut EnvironmentSectionReader<'_>) {
     // `load_weathers` asserts a day has two keyframes to blend between; an effect is bracketed by two of the engine's.
     if self.kind == WeatherCycleKind::Cycle && self.keyframes.len() < 2 {
       reader.report_file(

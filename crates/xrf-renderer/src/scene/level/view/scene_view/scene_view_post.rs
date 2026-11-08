@@ -52,7 +52,7 @@ impl SceneView {
       ..
     } = lit_frame;
     let is_drawn: bool = !self.shared.is_wireframe;
-    let composited_draw: Option<(CompositedDraw, SkyParameters)> = sky
+    let composited_draw: Option<(CompositedDraw<'_>, SkyParameters<'_>)> = sky
       .filter(|_| is_drawn && self.features.sky.get_views().is_some())
       .map(|sky| {
         (

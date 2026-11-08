@@ -87,7 +87,7 @@ impl CombineFeature {
     } else {
       bindings.import_view(graph, "sky behind unseen", passes.weather.sky_behind.get_unseen())
     };
-    let parameters: CombineParameters = CombineParameters {
+    let parameters: CombineParameters<'_> = CombineParameters {
       albedo_target: handles.albedo,
       normal_target: handles.normal,
       material_target: handles.material,

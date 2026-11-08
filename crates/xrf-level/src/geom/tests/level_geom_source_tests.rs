@@ -373,7 +373,7 @@ fn test_reads_each_element_of_a_stored_vertex_as_it_is_stored() -> XrfResult {
     &[0],
   )?)?;
   let payload: LevelVertexPayload = source.read_vertex_payload(0, 0, 1)?;
-  let vertex: LevelVertexBytes = payload.vertices().next().expect("one vertex");
+  let vertex: LevelVertexBytes<'_> = payload.vertices().next().expect("one vertex");
 
   assert_eq!(vertex.get_position::<XRayByteOrder>(), Vector3d::new(1.5, 2.5, 3.5));
   assert_eq!(vertex.get_normal(), Some([0, 128, 255, 77]));

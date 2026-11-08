@@ -107,7 +107,7 @@ impl SkyDeband {
       let (width, height) = slot.size;
 
       if index < 2 {
-        let parameters: SkyDebandCubeParameters = SkyDebandCubeParameters {
+        let parameters: SkyDebandCubeParameters<'_> = SkyDebandCubeParameters {
           cube: sources[index],
           cube_sampler: sky.sky_clamp,
           faces: written,
@@ -118,7 +118,7 @@ impl SkyDeband {
           .parameters(&parameters)
           .record(move |context| pass.record_cube(context, width, &parameters));
       } else {
-        let parameters: SkyDebandFlatParameters = SkyDebandFlatParameters {
+        let parameters: SkyDebandFlatParameters<'_> = SkyDebandFlatParameters {
           clouds: sources[index],
           clouds_sampler: sky.sky_repeat,
           smoothed: written,

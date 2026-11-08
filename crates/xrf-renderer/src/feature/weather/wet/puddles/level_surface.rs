@@ -197,7 +197,7 @@ impl LevelSurface {
     let passes: LevelPasses<'a> = record.passes;
 
     if let (Some(surface), Some(wet)) = (surface, wet) {
-      let keep: PuddleKeepInputs = PuddleKeepInputs {
+      let keep: PuddleKeepInputs<'_> = PuddleKeepInputs {
         wet,
         noise: &passes.weather.water.get_maps().perlin,
         sampler: passes.weather.wet.get_sampler(),

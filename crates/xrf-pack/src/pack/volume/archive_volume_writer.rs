@@ -159,7 +159,7 @@ impl<'a> ArchiveVolumeWriter<'a> {
   fn place(
     &mut self,
     entry: &ArchivePackEntry,
-    outcome: ArchivePackEntryOutcome,
+    outcome: ArchivePackEntryOutcome<'_>,
     size_real: u32,
     size_compressed: u32,
   ) {

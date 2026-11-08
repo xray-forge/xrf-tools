@@ -206,7 +206,7 @@ impl GrassFrames {
         ViewTargetUses::default(),
         &self.targets.light,
       );
-      let source: GrassSource = GrassSource {
+      let source: GrassSource<'_> = GrassSource {
         pass,
         level: Some(level),
       };

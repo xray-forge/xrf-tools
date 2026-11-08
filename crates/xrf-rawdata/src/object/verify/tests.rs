@@ -257,8 +257,8 @@ fn compares_no_face_that_draws_nothing_on_either_side() {
     vertices: vertices.iter().map(MaterialVertex::from).collect(),
     faces,
   };
-  let with_flat: OgfMaterialGeometry = material(vec![[0, 1, 2], [0, 3, 1]]);
-  let without: OgfMaterialGeometry = material(vec![[0, 1, 2]]);
+  let with_flat: OgfMaterialGeometry<'_> = material(vec![[0, 1, 2], [0, 3, 1]]);
+  let without: OgfMaterialGeometry<'_> = material(vec![[0, 1, 2]]);
 
   for (compiled, reference) in [(&with_flat, &without), (&without, &with_flat)] {
     let comparison: OgfMaterialComparison = compiled.compare(reference);
@@ -279,7 +279,7 @@ fn compares_no_face_that_draws_nothing_on_either_side() {
 #[test]
 fn leaves_out_a_face_naming_a_vertex_it_lacks() {
   let vertices: [OgfVertex; 3] = [vertex(0.0), vertex(1.0), vertex(2.0)];
-  let material: OgfMaterialGeometry = OgfMaterialGeometry {
+  let material: OgfMaterialGeometry<'_> = OgfMaterialGeometry {
     texture: "wood",
     shader: "models\\model",
     children: 1,
@@ -303,9 +303,9 @@ fn compares_each_face_once_and_its_mirror_apart() {
     faces,
   };
   // The static export's second walk of a two-sided surface: each face and its mirror written again.
-  let repeated: OgfMaterialGeometry = material(vec![[0, 1, 2], [2, 1, 0], [1, 2, 0], [0, 2, 1]]);
-  let once: OgfMaterialGeometry = material(vec![[0, 1, 2], [2, 1, 0]]);
-  let one_side: OgfMaterialGeometry = material(vec![[0, 1, 2]]);
+  let repeated: OgfMaterialGeometry<'_> = material(vec![[0, 1, 2], [2, 1, 0], [1, 2, 0], [0, 2, 1]]);
+  let once: OgfMaterialGeometry<'_> = material(vec![[0, 1, 2], [2, 1, 0]]);
+  let one_side: OgfMaterialGeometry<'_> = material(vec![[0, 1, 2]]);
   let counts = |comparison: OgfMaterialComparison| {
     (
       comparison.faces_matched,

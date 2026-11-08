@@ -79,7 +79,7 @@ impl SunShaftsFeature {
       uniform: runtime.push_uniform(&FroxelUniform::default()),
       integrated: no_froxels,
     });
-    let march: SunShaftsParameters = SunShaftsParameters {
+    let march: SunShaftsParameters<'_> = SunShaftsParameters {
       depth_target: handles.depth,
       shadow_maps: lit.shadow_maps,
       shadows: lit.shadows,
@@ -92,7 +92,7 @@ impl SunShaftsFeature {
       froxel_integrated: no_froxels,
       froxel_sampler: passes.weather.froxels.get_sampler(),
     };
-    let mut parameters: SunShaftsParameters = SunShaftsParameters {
+    let mut parameters: SunShaftsParameters<'_> = SunShaftsParameters {
       light_volumes: light_volumes.unwrap_or(empty),
       froxel_integrated,
       ..march

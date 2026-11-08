@@ -104,7 +104,7 @@ impl ParticleGroupInstance {
   }
 
   /// `OnFrame`: plays and stops effects whose times this frame crosses, then steps every item.
-  pub fn update(&mut self, frame_milliseconds: u32, context: &ParticleUpdateContext) {
+  pub fn update(&mut self, frame_milliseconds: u32, context: &ParticleUpdateContext<'_>) {
     if !self.is_playing {
       self.bounds = ParticleBounds::around_point(self.initial_position);
 

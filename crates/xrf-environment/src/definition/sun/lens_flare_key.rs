@@ -68,7 +68,7 @@ impl LensFlareKey {
   ];
 
   /// Reads one lens flare and says what its engine would refuse.
-  pub(crate) fn read(reader: &mut EnvironmentSectionReader, name: &str, section: &Section) -> LensFlare {
+  pub(crate) fn read(reader: &mut EnvironmentSectionReader<'_>, name: &str, section: &Section) -> LensFlare {
     let engine: XrayEngine = reader.get_engine();
     let flare: LensFlare = reader.read::<Self>(name, section);
 
@@ -99,7 +99,7 @@ impl LensFlareKey {
   }
 
   /// Requires the keys a switch turns on, where it is on.
-  fn require_parts(reader: &mut EnvironmentSectionReader, flare: &LensFlare, switch: Self, parts: &[Self]) {
+  fn require_parts(reader: &mut EnvironmentSectionReader<'_>, flare: &LensFlare, switch: Self, parts: &[Self]) {
     if flare.get_flag(switch, reader.get_engine()) {
       for part in parts {
         reader.require(flare, *part);
@@ -108,7 +108,7 @@ impl LensFlareKey {
   }
 
   /// The engine reads a radius, an opacity and a position for each texture, a zero for any it does not find.
-  fn judge_flare_lists(reader: &mut EnvironmentSectionReader, flare: &EnvironmentSection<Self>) {
+  fn judge_flare_lists(reader: &mut EnvironmentSectionReader<'_>, flare: &EnvironmentSection<Self>) {
     let textures: usize = flare.get_list(Self::FlareTextures).len();
 
     for key in [Self::FlareRadius, Self::FlareOpacity, Self::FlarePosition] {

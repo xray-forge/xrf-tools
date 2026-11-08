@@ -36,7 +36,7 @@ impl SoundChannelKey {
   const PERIODS: [Self; 4] = [Self::Period0, Self::Period1, Self::Period2, Self::Period3];
 
   /// Reads one sound channel and says what its engine would refuse.
-  pub(crate) fn read(reader: &mut EnvironmentSectionReader, name: &str, section: &Section) -> SoundChannel {
+  pub(crate) fn read(reader: &mut EnvironmentSectionReader<'_>, name: &str, section: &Section) -> SoundChannel {
     let channel: SoundChannel = reader.read::<Self>(name, section);
 
     Self::judge(reader, &channel);
@@ -44,7 +44,7 @@ impl SoundChannelKey {
     channel
   }
 
-  fn judge(reader: &mut EnvironmentSectionReader, channel: &SoundChannel) {
+  fn judge(reader: &mut EnvironmentSectionReader<'_>, channel: &SoundChannel) {
     let engine: XrayEngine = reader.get_engine();
     let name: &str = &channel.name;
     let is_distance_pair: bool = engine == XrayEngine::Extended || !channel.has(Self::SoundDist);

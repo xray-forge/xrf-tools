@@ -291,7 +291,7 @@ impl SceneView {
     }
 
     // The scene's trace, which RTAO, the reflections and the water trace their rays through.
-    let traced: Option<TracedScene> = self.features.view_trace.add_scene_trace(
+    let traced: Option<TracedScene<'_>> = self.features.view_trace.add_scene_trace(
       scene,
       GraphDeclaration::new(graph, bindings, runtime),
       record,
@@ -320,7 +320,7 @@ impl SceneView {
       .statics
       .add_overdraw_pass(&mut *graph, record, handles.light);
     let surroundings: &SurroundingsCube = &self.features.surroundings;
-    let sky: Option<SkyParameters> = self.features.sky.add_passes(
+    let sky: Option<SkyParameters<'_>> = self.features.sky.add_passes(
       GraphDeclaration::new(graph, bindings, runtime),
       record,
       surroundings.is_active().then_some(surroundings),
@@ -358,7 +358,7 @@ impl SceneView {
       );
 
       // The sky as drawn: its textures smoothed where they band, while the debanding is enhanced.
-      let drawn: SkyParameters =
+      let drawn: SkyParameters<'_> =
         self
           .features
           .sky

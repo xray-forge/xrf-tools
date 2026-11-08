@@ -9,7 +9,7 @@ pub(crate) struct KillOldAction {
 }
 
 impl KillOldAction {
-  pub fn execute(&self, pool: &mut ParticlePool, step: &mut ParticleActionStep) {
+  pub fn execute(&self, pool: &mut ParticlePool, step: &mut ParticleActionStep<'_>) {
     step.kill_old_time = self.age_limit;
 
     // Backwards, so the particle moved into a removed one's place has been tested already.
@@ -44,7 +44,7 @@ mod tests {
   fn kills_particles_at_or_past_the_limit_and_hands_it_on() {
     let rules: ParticleEngineRules = ParticleEngineRules::default();
     let mut pool: ParticlePool = ParticlePool::new(3, 1);
-    let mut step: ParticleActionStep = ParticleActionStep::new(0.033, &rules);
+    let mut step: ParticleActionStep<'_> = ParticleActionStep::new(0.033, &rules);
 
     for age in [0.5, 2.0, 1.0] {
       pool.add(Particle {

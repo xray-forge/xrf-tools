@@ -15,7 +15,7 @@ pub struct WebviewExtensions;
 
 impl WebviewExtensions {
   /// Installs every unpacked extension the local extensions directory holds.
-  pub fn apply<R: Runtime, M: Manager<R>>(builder: WebviewWindowBuilder<R, M>) -> WebviewWindowBuilder<R, M> {
+  pub fn apply<R: Runtime, M: Manager<R>>(builder: WebviewWindowBuilder<'_, R, M>) -> WebviewWindowBuilder<'_, R, M> {
     match Self::resolve_directory() {
       Some(directory) => {
         log::info!("Loading webview extensions from '{}'", format_path(&directory));

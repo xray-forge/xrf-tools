@@ -22,7 +22,7 @@ impl TurbulenceAction {
     self.age = 0.0;
   }
 
-  pub fn execute(&mut self, pool: &mut ParticlePool, step: &ParticleActionStep) {
+  pub fn execute(&mut self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
     self.age += step.dt;
 
     if pool.is_empty() {

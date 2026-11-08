@@ -164,7 +164,7 @@ impl ObjectDecompiler {
 
   /// `surfaces` welded into one mesh of `kind`, faces written again dropped, mirrored copies folded into two-sided
   /// faces and smoothing inferred.
-  fn assemble(surfaces: &[OgfSurface], kind: MeshKind) -> XrfResult<AssembledMesh> {
+  fn assemble(surfaces: &[OgfSurface], kind: MeshKind<'_>) -> XrfResult<AssembledMesh> {
     let mut welded: WeldedMesh = WeldedMesh::weld(surfaces)?;
 
     welded.faces = TwoSidedPairs::fold(RepeatedFaces::drop_repeats(std::mem::take(&mut welded.faces)));

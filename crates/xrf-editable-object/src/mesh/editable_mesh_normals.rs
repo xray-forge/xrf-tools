@@ -46,7 +46,7 @@ impl EditableMeshNormals {
       .map(|(index, face)| {
         face.corners.map(|corner| {
           let around: &[u32] = &point_faces[corner.point as usize];
-          let mut walk: FanWalk = FanWalk {
+          let mut walk: FanWalk<'_> = FanWalk {
             faces: &mesh.faces,
             flags: &flags,
             face_normals: &faces,

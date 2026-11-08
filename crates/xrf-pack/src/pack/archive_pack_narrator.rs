@@ -100,7 +100,7 @@ impl<'o> ArchivePackNarrator<'o> {
   pub(crate) fn describe_entry(
     &self,
     name: &str,
-    outcome: ArchivePackEntryOutcome,
+    outcome: ArchivePackEntryOutcome<'_>,
     size_real: u32,
     size_compressed: u32,
   ) {

@@ -83,7 +83,7 @@ fn reads_mounted_roots_while_others_mount() {
   host.search(&roots(&mounted)).expect("the roots mount");
 
   thread::scope(|scope| {
-    let readers: Vec<thread::ScopedJoinHandle<bool>> = (0..4)
+    let readers: Vec<thread::ScopedJoinHandle<'_, bool>> = (0..4)
       .map(|_| {
         scope.spawn(|| {
           (0..50).all(|_| {
@@ -95,7 +95,7 @@ fn reads_mounted_roots_while_others_mount() {
         })
       })
       .collect();
-    let mounters: Vec<thread::ScopedJoinHandle<bool>> = others
+    let mounters: Vec<thread::ScopedJoinHandle<'_, bool>> = others
       .iter()
       .map(|other| {
         scope.spawn(|| {

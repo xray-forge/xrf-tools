@@ -5,7 +5,7 @@ use crate::simulation::pool::particle_pool::ParticlePool;
 pub(crate) struct MoveAction;
 
 impl MoveAction {
-  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep) {
+  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
     for m in pool.get_particles_mut() {
       m.age += step.dt;
       m.previous_position = m.position;

@@ -41,7 +41,7 @@ impl WeatherKeyframe {
   ];
 
   /// Reads one keyframe and says everything its engine would refuse, misread or warn about.
-  pub(crate) fn read(reader: &mut EnvironmentSectionReader, name: &str, section: &Section) -> Self {
+  pub(crate) fn read(reader: &mut EnvironmentSectionReader<'_>, name: &str, section: &Section) -> Self {
     let engine: XrayEngine = reader.get_engine();
     let keyframe: Self = Self {
       section: reader.read::<WeatherKey>(name, section),
@@ -55,7 +55,7 @@ impl WeatherKeyframe {
     keyframe
   }
 
-  fn judge_time(&self, reader: &mut EnvironmentSectionReader) {
+  fn judge_time(&self, reader: &mut EnvironmentSectionReader<'_>) {
     let name: &str = &self.section.name;
 
     if self.time.is_none() {
@@ -76,7 +76,7 @@ impl WeatherKeyframe {
     }
   }
 
-  fn judge_conditional_keys(&self, reader: &mut EnvironmentSectionReader) {
+  fn judge_conditional_keys(&self, reader: &mut EnvironmentSectionReader<'_>) {
     let section: &EnvironmentSection<WeatherKey> = &self.section;
     let engine: XrayEngine = reader.get_engine();
 
@@ -99,7 +99,7 @@ impl WeatherKeyframe {
     }
   }
 
-  fn judge_values(&self, reader: &mut EnvironmentSectionReader) {
+  fn judge_values(&self, reader: &mut EnvironmentSectionReader<'_>) {
     self.judge_colors(reader);
     self.judge_signs(reader);
     self.judge_clamped(reader);
@@ -119,7 +119,7 @@ impl WeatherKeyframe {
   }
 
   /// `C_CHECK`: a colour component past what the engine takes for valid, which it warns about.
-  fn judge_colors(&self, reader: &mut EnvironmentSectionReader) {
+  fn judge_colors(&self, reader: &mut EnvironmentSectionReader<'_>) {
     let section: &EnvironmentSection<WeatherKey> = &self.section;
     let engine: XrayEngine = reader.get_engine();
     let name: &str = &section.name;
@@ -152,7 +152,7 @@ impl WeatherKeyframe {
   }
 
   /// A value that means nothing below zero.
-  fn judge_signs(&self, reader: &mut EnvironmentSectionReader) {
+  fn judge_signs(&self, reader: &mut EnvironmentSectionReader<'_>) {
     let name: &str = &self.section.name;
 
     for key in Self::NON_NEGATIVE {
@@ -167,7 +167,7 @@ impl WeatherKeyframe {
   }
 
   /// A value the engine clamps into its range as it loads the keyframe.
-  fn judge_clamped(&self, reader: &mut EnvironmentSectionReader) {
+  fn judge_clamped(&self, reader: &mut EnvironmentSectionReader<'_>) {
     let section: &EnvironmentSection<WeatherKey> = &self.section;
     let name: &str = &section.name;
 

@@ -280,7 +280,7 @@ impl CompositedFeature {
           passes.effects.glass.record_copy(context, &copied, dispatch);
         });
 
-      let parameters: GlassParameters = GlassParameters {
+      let parameters: GlassParameters<'_> = GlassParameters {
         lighting: lit.lighting,
         exposure: StorageValue::new(lit.exposure),
         material_lut: lit.material_lut,

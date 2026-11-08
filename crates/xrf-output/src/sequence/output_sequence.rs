@@ -125,14 +125,14 @@ mod tests {
 
     {
       let sequence: OutputSequence = OutputSequence::new(&options, 4);
-      let slots: Vec<OutputSlot> = (0..4).map(|index| sequence.new_slot(index)).collect();
+      let slots: Vec<OutputSlot<'_>> = (0..4).map(|index| sequence.new_slot(index)).collect();
 
       for (index, slot) in slots.iter().enumerate() {
         crate::info!(slot.get_output(), "position {index}");
       }
 
       // Finish them in an order no scheduler would have produced.
-      let mut slots: Vec<Option<OutputSlot>> = slots.into_iter().map(Some).collect();
+      let mut slots: Vec<Option<OutputSlot<'_>>> = slots.into_iter().map(Some).collect();
 
       for index in [3, 1, 0, 2] {
         drop(slots[index].take());
@@ -155,14 +155,14 @@ mod tests {
     let (recorded, options) = recording();
     let sequence: OutputSequence = OutputSequence::new(&options, 3);
 
-    let first: OutputSlot = sequence.new_slot(0);
+    let first: OutputSlot<'_> = sequence.new_slot(0);
     crate::info!(first.get_output(), "first");
 
     {
-      let third: OutputSlot = sequence.new_slot(2);
+      let third: OutputSlot<'_> = sequence.new_slot(2);
       crate::info!(third.get_output(), "third");
 
-      let second: OutputSlot = sequence.new_slot(1);
+      let second: OutputSlot<'_> = sequence.new_slot(1);
       crate::info!(second.get_output(), "second");
     }
 
@@ -189,7 +189,7 @@ mod tests {
           let sequence: &OutputSequence = &sequence;
 
           scope.spawn(move || {
-            let slot: OutputSlot = sequence.new_slot(index);
+            let slot: OutputSlot<'_> = sequence.new_slot(index);
 
             crate::info!(slot.get_output(), "position {index}");
 
@@ -214,7 +214,7 @@ mod tests {
     drop(sequence.new_slot(0));
 
     {
-      let second: OutputSlot = sequence.new_slot(1);
+      let second: OutputSlot<'_> = sequence.new_slot(1);
       crate::info!(second.get_output(), "second");
     }
 
@@ -227,7 +227,7 @@ mod tests {
     let sequence: OutputSequence = OutputSequence::new(&options, 2);
 
     let panicked: thread::Result<()> = panic::catch_unwind(AssertUnwindSafe(|| {
-      let slot: OutputSlot = sequence.new_slot(0);
+      let slot: OutputSlot<'_> = sequence.new_slot(0);
 
       crate::error!(slot.get_output(), "said before failing");
 
@@ -237,7 +237,7 @@ mod tests {
     assert!(panicked.is_err());
 
     {
-      let second: OutputSlot = sequence.new_slot(1);
+      let second: OutputSlot<'_> = sequence.new_slot(1);
       crate::info!(second.get_output(), "second");
     }
 
@@ -254,7 +254,7 @@ mod tests {
     {
       let sequence: OutputSequence = OutputSequence::new(&options, 2);
       // Position 0 is never taken, so position 1 cannot be released while the sequence lives.
-      let second: OutputSlot = sequence.new_slot(1);
+      let second: OutputSlot<'_> = sequence.new_slot(1);
 
       crate::info!(second.get_output(), "second");
 
@@ -273,7 +273,7 @@ mod tests {
 
     {
       let sequence: OutputSequence = OutputSequence::new(&options, 1);
-      let slot: OutputSlot = sequence.new_slot(0);
+      let slot: OutputSlot<'_> = sequence.new_slot(0);
 
       crate::verbose!(slot.get_output(), "detail");
       crate::error!(slot.get_output(), "failure");

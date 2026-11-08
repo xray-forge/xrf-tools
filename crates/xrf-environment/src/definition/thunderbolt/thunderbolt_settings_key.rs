@@ -34,7 +34,7 @@ impl ThunderboltSettingsKey {
   pub const MAX_DIST_FACTOR: f32 = 0.95;
 
   /// Reads the strike settings and says what the engine would refuse, misread or clamp.
-  pub(crate) fn read(reader: &mut EnvironmentSectionReader, name: &str, section: &Section) -> ThunderboltSettings {
+  pub(crate) fn read(reader: &mut EnvironmentSectionReader<'_>, name: &str, section: &Section) -> ThunderboltSettings {
     let settings: ThunderboltSettings = reader.read::<Self>(name, section);
 
     // `r_float` takes the first number of a range, and ignores the rest.
