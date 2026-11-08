@@ -65,6 +65,22 @@ fn advance_until_read(
   }
 }
 
+/// Advances the world's scenes until `is_posted` holds of the updates posted meanwhile, answering them.
+fn advance_until_posted(world: &mut World, is_posted: fn(&[RenderSceneUpdate]) -> bool) -> Vec<RenderSceneUpdate> {
+  let started: Instant = Instant::now();
+  let mut posted: Vec<RenderSceneUpdate> = Vec::new();
+
+  while !is_posted(&posted) && started.elapsed() <= WAIT {
+    for frame in world.advance_scenes(Instant::now(), HashMap::new()).values_mut() {
+      posted.append(&mut frame.updates);
+    }
+
+    std::thread::sleep(Duration::from_millis(2));
+  }
+
+  posted
+}
+
 /// Whether `updates` replace the scene's grass.
 fn is_grass_posted(updates: &[RenderSceneUpdate]) -> bool {
   updates
@@ -72,21 +88,42 @@ fn is_grass_posted(updates: &[RenderSceneUpdate]) -> bool {
     .any(|update| matches!(update, RenderSceneUpdate::SetPart(RenderLevelPart::Grass(_))))
 }
 
-/// A world with one viewport showing the level, its first reads done: lights, weather, spawn, particles and grass once
-/// each.
+/// Whether `updates` replace the scene's helpers.
+fn is_helpers_posted(updates: &[RenderSceneUpdate]) -> bool {
+  updates
+    .iter()
+    .any(|update| matches!(update, RenderSceneUpdate::SetPart(RenderLevelPart::Helpers(_))))
+}
+
+/// A world with one viewport showing the level, its first reads done and posted: lights, weather, spawn, particles and
+/// grass once each, and the helpers.
 fn show(reads: &Arc<TestLevelReads>) -> (World, RenderViewportId, RenderSceneId) {
+  show_from(reads, source(reads))
+}
+
+/// A world with one viewport showing the level `source` reads, counting into `reads`, its first reads done and posted.
+///
+/// The helpers are waited for apart: the scene's progress names only the parts it waits on to stand ready, and the
+/// helpers are not one, so a worker slow to read them would otherwise post them into whatever frame a test reads next.
+fn show_from(
+  reads: &Arc<TestLevelReads>,
+  source: Arc<dyn WorldLevelSource>,
+) -> (World, RenderViewportId, RenderSceneId) {
   let mut world: World = World::new(create_workers());
   let viewport: RenderViewportId = RenderViewportId(1);
 
   world.attach(viewport, Box::new(SilentSink));
 
-  let scene: RenderSceneId = world
-    .show_level(viewport, Some(source(reads)))
-    .expect("the level shown");
-  let (_, posted) = advance_until_read(&mut world, reads, [1, 1, 1, 1, 1]);
+  let scene: RenderSceneId = world.show_level(viewport, Some(source)).expect("the level shown");
+  let (_, mut posted) = advance_until_read(&mut world, reads, [1, 1, 1, 1, 1]);
+
+  if !is_helpers_posted(&posted) {
+    posted.extend(advance_until_posted(&mut world, is_helpers_posted));
+  }
 
   assert_eq!(reads.count(), [1, 1, 1, 1, 1]);
   assert!(is_grass_posted(&posted), "the grass is posted once read");
+  assert!(is_helpers_posted(&posted), "the helpers are posted once read");
 
   (world, viewport, scene)
 }
@@ -115,6 +152,35 @@ fn a_next_source_keeps_the_scene_its_viewers_and_everything_drawn() {
   assert!(frames[&scene].updates.is_empty());
   // An unaffected commit reads nothing again.
   assert_eq!(reads.count(), [1, 1, 1, 1, 1]);
+}
+
+#[test]
+fn a_reload_naming_nothing_posts_nothing_however_late_the_helpers_came() {
+  // The helpers are read beside the parts a scene waits on and nothing waits on them, so a worker a loaded machine is
+  // slow to run posts them after the rest; read late on purpose here, as a loaded gate made them by chance. Later than
+  // the other parts but sooner than `QUIET`, so they land between the show and the frame this test reads.
+  let reads: Arc<TestLevelReads> = Arc::default();
+  let slow: Arc<dyn WorldLevelSource> = Arc::new(TestLevelSource {
+    key: Some(String::from("zaton")),
+    reads: Arc::clone(&reads),
+    helpers_delay: QUIET / 2,
+    ..TestLevelSource::default()
+  });
+  let (mut world, _, scene) = show_from(&reads, slow);
+
+  assert_eq!(
+    world.reload_scene("zaton", source(&reads), LevelParts::NONE),
+    Some(scene)
+  );
+
+  std::thread::sleep(QUIET);
+
+  let frames: HashMap<RenderSceneId, RenderSceneFrame> = world.advance_scenes(Instant::now(), HashMap::new());
+
+  assert!(
+    frames[&scene].updates.is_empty(),
+    "the first show's helpers were drained before the reload"
+  );
 }
 
 #[test]
