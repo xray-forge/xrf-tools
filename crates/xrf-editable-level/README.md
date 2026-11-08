@@ -1,9 +1,12 @@
 # xrf-editable-level
 
-Reads and writes the Level Editor's scenes, the source a compiled level is built from: the `.level` main file under
-`$maps$` and, in the directory beside it named after it, one part file per tool. "Editable level" is this crate's
-name for what the editor calls its scene (`EScene`), after [xrf-editable-object](../xrf-editable-object/README.md),
-which holds the `.object` files a scene places.
+Reads and writes the Level Editor's scenes, the source a compiled level is built from.
+
+A scene is a `.level` main file under `$maps$` plus a directory beside it, named after it, with one part file per
+editor tool. The editor calls it `EScene`; this crate says "editable level", after
+[xrf-editable-object](../xrf-editable-object/README.md), which reads the `.object` files a scene places.
+
+Saved files come back byte for byte.
 
 ## Read a scene
 
@@ -28,67 +31,102 @@ fn main() -> xrf_error::XrfResult {
 }
 ```
 
-## What is read
+## Files and types
 
-| Type                 | File                                   | Holds                                                                 |
-| -------------------- | -------------------------------------- | --------------------------------------------------------------------- |
-| `EditableLevelFile`  | `<name>.level`                         | Version, GUID, level options, build parameters, camera, owner tag     |
-| `EditableTextPart`   | `<name>\<tool>.part`, saved as text    | GUID, `[main]`, `[modif]`, `[object_N]` and the sections named after it |
-| `EditableBinaryPart` | `<name>\<tool>.part`, saved as chunks  | GUID chunk `0x7000`, the tool's stream in chunk `0x8000` plus its class |
-| `EditableLevelScene` | the `.level` and its part directory    | The main file and each tool's parts                                   |
+| Type                 | File                                  | Holds                                                                   |
+| -------------------- | ------------------------------------- | ----------------------------------------------------------------------- |
+| `EditableLevelFile`  | `<name>.level`                        | Version, GUID, level options, build parameters, camera, owner tag       |
+| `EditableTextPart`   | `<name>\<tool>.part`, saved as text   | GUID, `[main]`, `[modif]`, `[object_N]` and the sections named after it |
+| `EditableBinaryPart` | `<name>\<tool>.part`, saved as chunks | GUID chunk `0x7000`, the tool's stream in chunk `0x8000`, and its class |
+| `EditableLevelScene` | The `.level` and its part directory   | The main file and each tool's parts                                     |
 
-The `.level` and the text parts are text as `CInifile::save_as` writes it, read and written through
-[xrf-ini](../xrf-ini/README.md)'s `IniFormat::XRAY_SAVE_AS`, so a file the editor saved comes back byte for byte. Each
-keeps the whole `IniFile` as its `ini` field, and typed getters and setters read and write its sections in the editor's
-layout: `EditableLevelOptions`, `EditableBuildParams`, `EditablePartHeader`, and each object's class, name and transform
-through `EditablePartObject`. A spawn's data is its `[object_N_spawndata]` section: one numbered field per value its
-packet holds, as the editor's ini stream writes them, multi-line custom data included. `EditableLevelValue` formats
-values as the editor does: `%f` floats and `x, y, z` vectors. Not every number a saved scene holds is an `f32` printed
-that way (`labx8.level`'s camera stands at `-80.052984`, which no `f32` prints as), so typed values are for use and a
-file writes back exactly through the text it keeps.
+A scene is found as the editor finds it:
 
-The AI map, detail objects and wall marks save as chunks. A binary part keeps the tool's stream as its bytes, and its
-chunks' stored order and any chunk the editor never writes in its `ChunkLayout`, so it too comes back byte for byte.
+- A part file starting with `[` is text; any other is chunks.
+- A tool's numbered files (`group.part1`, `group.part2`) follow its first until one is missing.
+- Files with other names, such as the editor's `.~part` backups, are not part of the scene.
 
-A scene is read as the editor reads it: a part file opening with `[` is text and any other is chunks, a tool's
-numbered files (`group.part1`, `group.part2`) follow its first until one is missing, and files of other names, such as
-the editor's `.~part` copies of an earlier save, are no part of the scene.
+### Text files
+
+The `.level` and text parts are written as `CInifile::save_as` writes them, read and written through
+[xrf-ini](../xrf-ini/README.md)'s `IniFormat::XRAY_SAVE_AS`.
+
+- Each keeps the whole `IniFile` as its `ini` field. Typed getters and setters work on top of it:
+  `EditableLevelOptions`, `EditableBuildParams`, `EditablePartHeader`, and `EditablePartObject` for each object's
+  class, name and transform.
+- A spawn's data is its `[object_N_spawndata]` section: one numbered field per value its packet holds, multi-line
+  custom data included.
+- `EditableLevelValue` formats values as the editor does: `%f` floats and `x, y, z` vectors.
+
+Typed values are for use; the kept text is what writes back. Not every saved number is an `f32` printed with `%f`:
+`labx8.level`'s camera stands at `-80.052984`, which no `f32` prints as.
+
+### Binary parts
+
+The AI map, detail objects and wall marks are saved as chunks. A binary part keeps the tool's stream as bytes, and its
+chunk order and any chunk the editor never writes in a `ChunkLayout`.
 
 ## Typed objects
 
-An object tool's part reads typed as an `EditableObjectPart<T>`: the GUID, `[main]`'s version and, for the tools that
-keep them, flags, `[modif]`, and the objects `[object_N]` numbers, each an `EditableToolObject` that reads its sections
-and writes them as the editor's `SaveLTX` does. A part refuses an object of another tool's class.
+An object tool's part reads as an `EditableObjectPart<T>`: the GUID, `[main]`'s version, flags and `[modif]` for the
+tools that keep them, and the objects `[object_N]` numbers. Each object is an `EditableToolObject` that reads its
+sections and writes them as the editor's `SaveLTX` does. A part refuses an object of another tool's class.
 
-| Type                             | Editor              | Holds                                                                         |
-| -------------------------------- | ------------------- | ----------------------------------------------------------------------------- |
-| `EditableCustomObject`           | `CCustomObject`     | Every object's flags, name and transform                                      |
-| `EditableObjectTransform`        | `CCustomObject`     | Position, rotation angles and scale, and the matrix they compose              |
-| `EditableShape`                  | `CEditShape`        | A shape object's usage and its spheres and boxes, in the object's own space   |
-| `EditableParticleObject`         | `EParticlesObject`  | An effect the scene plants: its `particles.xr` name and game modes            |
-| `EditableSoundSourceObject`      | `ESoundSource`      | A sound the scene plants: its file, own position, volume, distances, windows |
-| `EditableSoundEnvironmentObject` | `ESoundEnvironment` | A reverb volume: a shape whose first box parts an inner environment from outer |
+| Type                             | Editor              | Holds                                                                              |
+| -------------------------------- | ------------------- | ---------------------------------------------------------------------------------- |
+| `EditableCustomObject`           | `CCustomObject`     | Every object's flags, name and transform                                           |
+| `EditableObjectTransform`        | `CCustomObject`     | Position, rotation angles and scale, and the matrix they compose                   |
+| `EditableShape`                  | `CEditShape`        | A shape's usage and its spheres and boxes, in the object's own space               |
+| `EditableParticleObject`         | `EParticlesObject`  | A placed effect: its `particles.xr` name and game modes                            |
+| `EditableSoundSourceObject`      | `ESoundSource`      | A placed sound: file, own position, volume, distances, play windows                |
+| `EditableSoundEnvironmentObject` | `ESoundEnvironment` | A reverb volume: a shape whose first box separates an inner environment from outer |
+| `EditableFogVolumeObject`        | `EFogVolume`        | A fog body: a shape placed by its transform, an emitter or occlusion, a group      |
 
-A sound source stands at its own `snd_position`: `ESoundSource` overrides `SetPosition`, so its object transform never
-moves. `EditableLevelValue::read_u32` reads a field `w_u32` printed through `%d`, as `r_u32` does, so the uninitialised
-high bits in GSC's sound source `flags` read and write back as saved. A sound environment writes its own `version` (18)
-over the shape's (2), and `CEditShape::LoadLTX` then reads the shape's fields under whichever it finds.
+Editor quirks kept:
 
-`EditableObjectTransform::to_matrix` composes as `CCustomObject::OnUpdateTransform` does, scaled, then turned by
-`setXYZi` of the negated angles, then moved, through `Fmatrix::mul` in the editor's order of sums, so it gives the bits
-the editor exported. `from_matrix` decomposes one, and `round_as_saved` rounds a transform as its `%f` text reads back,
-which is what the editor composed from. The editor's own `%f` is not exact: it prints some floats a unit off in the last
-digit (`-25.461156` where the float is nearer `-25.461157`), so a typed write differs from its file there and reads back
-the same.
+- A sound source stands at its own `snd_position`. `ESoundSource` overrides `SetPosition`, so its object transform
+  never moves.
+- `EditableLevelValue::read_u32` reads a `w_u32` field printed with `%d`, as `r_u32` does, so the uninitialised high
+  bits in GSC's sound source `flags` survive a round trip.
+- A sound environment writes its own `version` (18) over the shape's (2); `CEditShape::LoadLTX` reads the shape's fields
+  under whichever it finds.
 
-## Errors and checks
+### Transforms
 
-Reads refuse what the editor refuses or skips: a `.level` of a version other than 5, a scene or text part with no GUID,
-a binary part with no GUID chunk, a GUID chunk of other than 16 bytes, or no tool data chunk, and a part whose GUID is
-not its scene's. `EditableTextPart::get_objects` refuses an object `[main]` counts but no section holds. Writes refuse
-what [xrf-ini](../xrf-ini/README.md) refuses, text that would not read back as itself, and a scene refuses to write,
-before writing anything, into a part directory holding a part file it would not write: a tool it no longer has or a
-numbered file past its last, which the editor would read as part of the scene.
+`EditableObjectTransform::to_matrix` composes exactly as `CCustomObject::OnUpdateTransform` does: scale, then rotate by
+`setXYZi` of the negated angles, then translate, through `Fmatrix::mul` in the editor's order of sums. It produces the
+same bits the editor exported.
 
-Run `cargo test --locked -p xrf-editable-level` from the repository root. See the
-[scene](src/scene/editable_level_scene.rs), the [parts](src/part/) and the [tests](src/tests/).
+Going back from a matrix:
+
+- `from_matrix` decomposes it.
+- `round_as_saved` rounds a transform as its `%f` text reads back, which is what the editor composed from.
+- A decomposed transform can land a whole `%f` step off the saved text. `find_saved` tries each angle and scale a step
+  or two either way until the caller's test passes.
+- `from_matrix_as_saved` finds the saved transform that composes into the matrix's exact bits, or rounds when none does.
+
+The editor's own `%f` prints some floats one unit off in the last digit (`-25.461156` where the float is nearer
+`-25.461157`). A typed write differs from the file there but reads back the same.
+
+## Errors
+
+Reads refuse what the editor refuses or skips:
+
+- a `.level` of a version other than 5;
+- a scene or text part with no GUID;
+- a binary part with no GUID chunk, a GUID chunk not 16 bytes long, or no tool data chunk;
+- a part whose GUID is not its scene's.
+
+`EditableTextPart::get_objects` refuses an object `[main]` counts but no section holds.
+
+Writes refuse:
+
+- what [xrf-ini](../xrf-ini/README.md) refuses, and text that would not read back as itself;
+- a scene whose part directory holds a part file it would not write (a removed tool, or a numbered file past its last),
+  since the editor would read it as part of the scene. Nothing is written in that case.
+
+## Checks
+
+Run `cargo test --locked -p xrf-editable-level` from the repository root.
+
+Sources: the [scene](src/scene/editable_level_scene.rs), the [parts](src/part/) and the [tests](src/tests/).

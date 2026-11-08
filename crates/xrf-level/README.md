@@ -1,49 +1,17 @@
 # xrf-level
 
-Reads the compiled level of the X-Ray engine: the files xrLC and the level editor leave in a `levels\<name>\` directory,
-one module per file the game ships. `level` is the render bundle itself and `geom` its geometry; the rest are the files
-beside them, each named for the one it reads. The file name is the only vocabulary the engine, the SDK, the modding
-community, and the shipped data all share, so no module groups files under a name of its own.
+Reads compiled X-Ray levels: the files xrLC and the Level Editor leave in a `levels\<name>\` directory.
 
-The crate reads formats and nothing more. Finding a level's files across loose trees and archives is
-[xrf-vfs](../xrf-vfs/README.md)'s job; packing what a renderer draws is `xrf-visual`'s. A level visual is an OGF, so
-this crate reads the visuals run through [xrf-ogf](../xrf-ogf/README.md)'s chunk types.
+There is one module per file the game ships, named after the file: `level` is the render bundle, `geom` its geometry,
+and the rest are the files beside them. File names are the one vocabulary the engine, the SDK, modders and the data all
+share.
 
-## Files and entry points
+This crate reads formats only:
 
-| File                        | Type                 | Reads                                                 | Writer |
-| --------------------------- | -------------------- | ----------------------------------------------------- | ------ |
-| `level`                     | `LevelFile`          | Header, shader table, sectors, portals, lights, glows | No     |
-| `level`                     | `LevelVisualsChunk`  | The visuals run, through `LevelFile::read_visuals_*`  | No     |
-| `level.geom`, `level.geomx` | `LevelGeomFile`      | Buffer declarations and counts, slide windows         | No     |
-| `level.geom`, `level.geomx` | `LevelGeomSource`    | The same, plus the vertices and indices of a range    | No     |
-| `level.cform`               | `LevelCformFile`     | The 36-byte header; geometry or face materials        | Header |
-| `level.ai`                  | `LevelAiFile`        | The 56-byte header; with `LevelAiNodes`, every node   | Yes    |
-| `level.details`             | `LevelDetailsFile`   | Detail object library and planting grid               | Yes    |
-| `.dm`                       | `DetailModel`        | One detail object, also a library entry               | Yes    |
-| `level.hom`                 | `LevelHomFile`       | Hierarchical occlusion mesh                           | Yes    |
-| `level.som`                 | `LevelSomFile`       | Sound occlusion mesh                                  | Yes    |
-| `level.snd_env`             | `LevelSndEnvFile`    | Sound environment volumes                             | Yes    |
-| `level.env_mod`             | `LevelEnvModFile`    | Local weather modifiers                               | Yes    |
-| `level.fog_vol`             | `LevelFogVolFile`    | Volumetric fog bodies                                 | Yes    |
-| `level.ps_static`           | `LevelPsStaticFile`  | Planted particle effects                              | Yes    |
-| `level.snd_static`          | `LevelSndStaticFile` | Planted sounds                                        | Yes    |
-| `level.game`                | `LevelGameFile`      | Patrol paths and respawn points                       | Yes    |
-| `build.lights`              | `LevelLightsFile`    | The compiler's light list                             | Yes    |
-| `level.wallmarks`           | `LevelWallmarksFile` | Editor-only baked decals                              | Yes    |
-| `build.prj`                 | `BuildPrjFile`       | The scene the level editor hands xrLC                 | Yes    |
-| `build.aimap`               | `BuildAimapFile`     | The AI map the level editor hands xrAI                | Yes    |
-| `build.cform`               | `BuildCformFile`     | The collision form xrLC leaves for xrAI               | Yes    |
-
-The file types share their doors, generic over the byte order (`xrf_chunk::XRayByteOrder` for every shipped file):
-`read_from_path`, `read_from_file`, `read_from_chunk` over any chunk data source, and, for most, `read_from_bytes` for
-bytes already in hand, which is how an archived level arrives. Each names the file it reads as `FILE_NAME`. Most files
-are chunk trees; `level.cform`, `level.ai` and `level.fog_vol` are flat, which their readers handle. Writers take a
-`ChunkWriter` and fill its `buffer`.
-
-The three `build.*` files besides `build.lights` are compiler inputs no game loads: the level editor writes `build.prj`
-and `build.aimap`, xrLC writes `build.cform`, and xrCompress leaves all three out of archives. Not read here:
-`level.spawn`, which [xrf-spawn](../xrf-spawn/README.md) reads as `LevelSpawnFile`.
+- [xrf-vfs](../xrf-vfs/README.md) finds a level's files across loose trees and archives.
+- `xrf-visual` packs what a renderer draws.
+- Level visuals are OGF, read through [xrf-ogf](../xrf-ogf/README.md)'s chunk types.
+- `level.spawn` is read by [xrf-spawn](../xrf-spawn/README.md) as `LevelSpawnFile`.
 
 ## Read a level
 
@@ -76,58 +44,121 @@ if level.shaders.is_none() {
 # }
 ```
 
-A level composes by link: a sector names one root visual, a hierarchy visual names its children by index in the visuals
-run, and a drawable visual carries no vertices of its own, only an `OgfGeometryContainerChunk` naming a buffer and range
-in `level.geom` (and, for its fast path, `level.geomx`). `LevelGeomSource::read_vertices` and `read_indices` serve such
-a range, refusing one that reaches past what its buffer declares. Every vertex decodes through one decoder,
-`LevelVertexBytes`, so verification and the renderer read the same thing.
+Every file type has the same entry points, generic over byte order (`xrf_chunk::XRayByteOrder` for every shipped file):
+
+- `read_from_path`, `read_from_file`, `read_from_chunk` over any chunk source;
+- for most, `read_from_bytes`, which is how an archived level arrives;
+- `FILE_NAME`, the file it reads;
+- `write`, filling a `ChunkWriter`'s `buffer`, where a writer exists.
+
+Most files are chunk trees; `level.cform`, `level.ai` and `level.fog_vol` are flat.
+
+## Files
+
+| File                        | Type                 | Reads                                                 | Writer |
+| --------------------------- | -------------------- | ----------------------------------------------------- | ------ |
+| `level`                     | `LevelFile`          | Header, shader table, sectors, portals, lights, glows | No     |
+| `level`                     | `LevelVisualsChunk`  | The visuals run, through `LevelFile::read_visuals_*`  | No     |
+| `level.geom`, `level.geomx` | `LevelGeomFile`      | Buffer declarations and counts, slide windows         | No     |
+| `level.geom`, `level.geomx` | `LevelGeomSource`    | The same, plus the vertices and indices of a range    | No     |
+| `level.cform`               | `LevelCformFile`     | The 36-byte header; geometry or face materials        | Header |
+| `level.ai`                  | `LevelAiFile`        | The 56-byte header; with `LevelAiNodes`, every node   | Yes    |
+| `level.details`             | `LevelDetailsFile`   | Detail object library and planting grid               | Yes    |
+| `.dm`                       | `DetailModel`        | One detail object, also a library entry               | Yes    |
+| `level.hom`                 | `LevelHomFile`       | Hierarchical occlusion mesh                           | Yes    |
+| `level.som`                 | `LevelSomFile`       | Sound occlusion mesh                                  | Yes    |
+| `level.snd_env`             | `LevelSndEnvFile`    | Sound environment volumes                             | Yes    |
+| `level.env_mod`             | `LevelEnvModFile`    | Local weather modifiers                               | Yes    |
+| `level.fog_vol`             | `LevelFogVolFile`    | Volumetric fog bodies                                 | Yes    |
+| `level.ps_static`           | `LevelPsStaticFile`  | Placed particle effects                               | Yes    |
+| `level.snd_static`          | `LevelSndStaticFile` | Placed sounds                                         | Yes    |
+| `level.game`                | `LevelGameFile`      | Patrol paths and respawn points                       | Yes    |
+| `build.lights`              | `LevelLightsFile`    | The compiler's light list                             | Yes    |
+| `level.wallmarks`           | `LevelWallmarksFile` | Editor-only baked decals                              | Yes    |
+| `build.prj`                 | `BuildPrjFile`       | The scene the Level Editor hands xrLC                 | Yes    |
+| `build.aimap`               | `BuildAimapFile`     | The AI map the Level Editor hands xrAI                | Yes    |
+| `build.cform`               | `BuildCformFile`     | The collision form xrLC leaves for xrAI               | Yes    |
+
+`build.prj`, `build.aimap` and `build.cform` are compiler inputs no game loads. The Level Editor writes the first two,
+xrLC the third, and xrCompress leaves all three out of archives.
+
+## How a level fits together
+
+A level links its parts by reference:
+
+- A sector names one root visual.
+- A hierarchy visual names its children by index in the visuals run.
+- A drawable visual has no vertices of its own, only an `OgfGeometryContainerChunk` naming a buffer and range in
+  `level.geom` (and, for its fast path, `level.geomx`).
+
+`LevelGeomSource::read_vertices` and `read_indices` serve such a range, refusing one that reaches past its buffer. Every
+vertex decodes through `LevelVertexBytes`, so verification and the renderer read the same thing.
 
 ## Contracts
 
-- `LevelFile` reports what the engine would refuse as data rather than as an error: an absent shader table is
-  `shaders: None`, the case the renderer stops on. The visuals run is read separately because it is the bundle's bulk.
-- `LevelGeomFile` keeps a level's geometry to its shape. A median `level.geom` is 45 MB, so buffers are stepped over,
-  and a declaration misread by a byte fails `assert_read` at the chunk end instead of answering. A vertex size is the
-  furthest an element of stream 0 reaches, not the sum of the elements.
-- A visual's optional chunks fail only themselves: `LevelVisual::lod`, `swi` and `swi_container` hold the read result,
-  so one malformed impostor or window table costs that visual the part, not the level.
-- `level.cform` and `level.ai` are headers the engine casts its file pointer onto; only the header is read by default,
-  which is what makes a 36- or 56-byte read off a file of up to 191 MB legal. The `level.ai` guid is the graph identity
-  a spawn set carries. `LevelCformFile::read_with_materials_from_chunk` walks the faces for the `gamemtl.xr` ids they
-  name (`LevelCformMaterials`), keeping nothing else, which is what checking a level against the material library
-  wants.
-- `LevelCformTracer` holds the whole form in a bounding volume hierarchy for the engine's static ray tests, each
-  triangle's game material beside it: `get_nearest_hit` names the material of the front face it picks, and
-  `get_nearest_material` the material of the nearest face a ray crosses from either side.
-- `LevelSurfaceMaterials::survey` tells what each shader table entry's surfaces are made of, which the compiled level
-  records nowhere: every drawable visual's triangles (placed, impostors left out) are looked up by a ray five
-  centimetres either side of each centre along its normal, and their area tallied per entry against the material
-  beneath, or as lying on no collision face. A render face and the collision face built from it coincide, so the ray
-  finds the one face under it. Zaton's 917 entries take two seconds.
-- `LevelAiFile::read_with_nodes_*` takes the map's nodes as `LevelAiNodes`, kept packed as the file stores them and
-  decoded one at a time (`LevelAiNode`) in any layout the engine loads, versions 8 to 13. Keeping the bytes is what
-  makes the writer give back the file it read; `LevelAiHeader::get_node_position` turns a node into the world position
-  `CLevelGraph` gives it.
-- The record chunks the engine casts onto an array - portals, static lights, glows, the occlusion meshes - read through
-  `ChunkReader::read_xr_records`, which refuses a chunk that does not divide into whole records.
-- `LevelDetailsFile` keeps its slot grid packed as the file's 16-byte words, up to 667,489 slots a level, and answers
-  totals by folding over it; `LevelDetailsSlot` is a view built per slot. A `.dm` is one `CDetail`, so `DetailModel`
-  reads both a library entry and a whole `.dm`.
-- File-derived counts are bounded by the bytes that remain before anything is reserved.
+### Level bundle and geometry
+
+- `LevelFile` reports what the engine would refuse as data, not as an error: a missing shader table is `shaders: None`,
+  the case the renderer stops on. The visuals run is read separately because it is most of the bundle.
+- `LevelGeomFile` reads a level's geometry layout without its contents. A median `level.geom` is 45 MB, so buffers are
+  skipped, and a declaration misread by one byte fails `assert_read` at the chunk end.
+- A vertex size is the furthest any element of stream 0 reaches, not the sum of the elements.
+- A visual's optional chunks fail on their own: `LevelVisual::lod`, `swi` and `swi_container` hold the read result, so a
+  malformed impostor or window table costs only that part of that visual.
+
+### Collision form and AI map
+
+- The engine casts its file pointer onto the `level.cform` and `level.ai` headers. By default only the header is read:
+  36 or 56 bytes from a file of up to 191 MB.
+- The `level.ai` GUID is the graph identity a spawn set carries.
+- `LevelCformFile::read_with_materials_from_chunk` walks the faces for the `gamemtl.xr` ids they name
+  (`LevelCformMaterials`), keeping nothing else, for checking a level against the material library.
+- `LevelCformTracer` holds the whole form in a bounding volume hierarchy for the engine's static ray tests, with each
+  triangle's material. `get_nearest_hit` names the material of the front face it hits; `get_nearest_material` the
+  material of the nearest face a ray crosses from either side.
+- `LevelAiFile::read_with_nodes_*` reads the nodes as `LevelAiNodes`, packed as stored and decoded one at a time
+  (`LevelAiNode`) in any layout the engine loads, versions 8 to 13. Keeping the bytes is what lets the writer
+  reproduce the file. `LevelAiHeader::get_node_position` gives a node's world position as `CLevelGraph` does.
+
+### Surface materials
+
+`LevelSurfaceMaterials::survey` finds what each shader table entry's surfaces are made of, which the compiled level
+does not record.
+
+- Every placed drawable visual's triangles (impostors excluded) are probed with a ray from five centimetres either side
+  of each centre, along its normal.
+- Their area is tallied per entry against the material found beneath, or as lying on no collision face.
+- A render face and the collision face built from it coincide, so the ray finds the one face under it.
+- Zaton's 917 entries take two seconds.
+
+### Records and details
+
+- Record chunks the engine casts onto an array (portals, static lights, glows, occlusion meshes) are read through
+  `ChunkReader::read_xr_records`, which refuses a chunk that is not whole records.
+- `LevelDetailsFile` keeps its slot grid packed as the file's 16-byte words (up to 667,489 slots per level) and
+  computes totals by folding over it. `LevelDetailsSlot` is a view built per slot.
+- A `.dm` is one `CDetail`, so `DetailModel` reads both a library entry and a whole `.dm`.
+- Counts read from a file are checked against the bytes remaining before anything is reserved.
 
 ## Byte-for-byte writers
 
-Every companion file with a writer reads and writes back byte for byte: each was checked against every shipped file of
-the workspace's game trees, and the crate's tests pin the round trip on built fixtures. Several formats are written in
-an order their own documentation contradicts, and the writers follow the shipped files: `level.details` writes
-objects, grid, then header; a patrol path's chunks are 1, 5, 2, 3; `build.lights` keeps a chunk that is not whole light
-records verbatim. `level.env_mod` and `level.ps_static` tell a version chunk from a first record by its size, as the
-engine does. Do not reorder a writer to match a format's comments: a writer that parses back fine can still differ on
-every byte.
+Every file with a writer reads and writes back byte for byte. Each was checked against every shipped file in the
+reference game trees, and the tests pin the round trip on built fixtures.
 
-The compiler inputs are checked against the workspace's one sample of each, Gunslinger's `l01_test`. The editor blits
-its structs whole, so `BuildPrjName` keeps the stale bytes past a name's terminator, and the records keep their pack
-padding and the unused `svector` slots; `build.prj` writes its smoothing groups after the faces, as `SaveBuild` does.
+Some formats are written in an order their own documentation contradicts; the writers follow the shipped files:
+
+- `level.details` writes objects, grid, then header.
+- A patrol path's chunks are 1, 5, 2, 3.
+- `build.lights` keeps a chunk that is not whole light records as is.
+- `level.env_mod` and `level.ps_static` tell a version chunk from a first record by its size, as the engine does.
+
+Do not reorder a writer to match a format's comments: a file that parses back fine can still differ on every byte.
+
+The compiler inputs were checked against the one sample of each available, Gunslinger's `l01_test`:
+
+- The editor writes its structs whole, so `BuildPrjName` keeps the stale bytes after a name's terminator, and records
+  keep their padding and unused `svector` slots.
+- `build.prj` writes its smoothing groups after the faces, as `SaveBuild` does.
 
 ```rust
 use xrf_chunk::{ChunkWriter, XRayByteOrder};
@@ -147,17 +178,12 @@ assert_eq!(LevelHomFile::read_from_bytes::<XRayByteOrder>(writer.buffer.clone())
 # }
 ```
 
-`LevelFile`, `LevelGeomFile`, and the body of `level.cform` have no writer: assume they are not byte-faithful.
+`LevelFile`, `LevelGeomFile` and the body of `level.cform` have no writer; do not assume they preserve bytes.
 
 ## Checks
 
-From the repository root:
+Run `cargo test --locked -p xrf-level` from the repository root.
 
-```sh
-cargo test --locked -p xrf-level
-```
-
-The README is the crate documentation, so its Rust examples run as doctests. See the
-[level bundle](src/level/level_file.rs), [render geometry](src/geom/level_geom_file.rs),
+Sources: the [level bundle](src/level/level_file.rs), [render geometry](src/geom/level_geom_file.rs),
 [geometry ranges](src/geom/level_geom_source.rs), [detail library](src/details/level_details_file.rs), and
 [public exports](src/lib.rs).

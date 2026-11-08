@@ -1,8 +1,13 @@
 # xrf-output
 
-Caller-controlled live output for XRF workflows: the messages a long operation says while it runs, routed to a sink the
-caller chooses and filtered by one verbosity rule. An operation takes `OutputOptions` (usually in its options struct)
-and never prints; `xrf-cli` renders the messages on the terminal, and tests record them.
+Live output for long-running XRF operations: the messages an operation sends while it runs, routed to a sink the
+caller chooses and filtered by one verbosity rule.
+
+An operation takes `OutputOptions` (usually in its options struct) and never prints. `xrf-cli` renders the messages on
+the terminal; tests record them.
+
+Output carries messages, not results: a failure message neither returns an error nor marks a report failed. Progress and
+cancellation belong to [xrf-job](../xrf-job/README.md); final findings to [xrf-report](../xrf-report/README.md).
 
 ## Send messages
 
@@ -35,21 +40,23 @@ without allocating a `String` first. Options clone cheaply and share the sink.
 | `Normal`           | Error, failure, heading, success, warning, info |
 | `Verbose`          | All channels, including verbose detail          |
 
-Errors and failures are delivered at every verbosity, so a failing run is never silent. Check
-`is_visible(channel)` before building an expensive message. `OutputOptions::default()` is silent and writes to
-`NoopOutput`; `with_output` keeps the verbosity and swaps the sink.
+- Errors and failures are delivered at every verbosity, so a failing run is never silent.
+- Check `is_visible(channel)` before building an expensive message.
+- `OutputOptions::default()` is silent and writes to `NoopOutput`. `with_output` keeps the verbosity and swaps the sink.
 
 ## Sinks
 
-Implement the `Output` trait (`Send + Sync`, one `write(channel, message)` method) for a terminal, UI, or another
-destination; the CLI's terminal sink is one. `RecordingOutput` keeps `OutputRecord`s (channel and rendered message) for
-tests and replay (`list_records`, `take_records`), and `NoopOutput` discards everything.
+- Implement the `Output` trait (`Send + Sync`, one `write(channel, message)` method) for a terminal, a UI, or anything
+  else; the CLI's terminal sink is one.
+- `RecordingOutput` keeps `OutputRecord`s (channel and rendered message) for tests and replay (`list_records`,
+  `take_records`).
+- `NoopOutput` discards everything.
 
 ## Keep parallel output in input order
 
-Workers finish in any order. `OutputSequence` gives each unit of work an `OutputSlot` at its input position; messages
-sent through the slot are held until the slot is dropped and every earlier position has been released, then written in
-position order. Early positions that finish first print at once.
+Workers finish in any order. `OutputSequence` gives each unit of work an `OutputSlot` at its input position. Messages
+sent through a slot are held until the slot is dropped and every earlier position is released, then written in
+position order. Positions that are already next print at once.
 
 ```rust
 use std::sync::Arc;
@@ -76,15 +83,14 @@ let messages: Vec<String> = sink.list_records().iter().map(|it| it.get_message()
 assert_eq!(messages, ["first", "second"]);
 ```
 
-Take the slot as the first thing a unit of work does, before anything that can return early: a position nobody takes
-holds back every later one until the sequence is dropped, which then writes the rest in order. A slot commits on drop,
-so a unit that fails or panics still releases its position. Slots inherit the sequence's verbosity, so muted messages
-are never held. The sequence orders output only; it does not schedule or limit the workers.
+- Take the slot first in each unit of work, before anything that can return early. A position nobody takes holds back
+  every later one until the sequence is dropped, which then writes the rest in order.
+- A slot commits on drop, so a unit that fails or panics still releases its position.
+- Slots inherit the sequence's verbosity, so muted messages are never held.
+- The sequence only orders output; it does not schedule or limit workers.
 
-## Checks and related crates
+## Checks
 
-Run `cargo test --locked -p xrf-output` from the repository root. Output carries messages, not results: a failure
-message neither returns an error nor marks a report as failed. Progress and cancellation belong to
-[xrf-job](../xrf-job/README.md); final findings belong to [xrf-report](../xrf-report/README.md).
+Run `cargo test --locked -p xrf-output` from the repository root.
 
-See the [options](src/output_options.rs), [sinks](src/sink/output.rs) and [ordered output](src/sequence/output_sequence.rs).
+Sources: the [options](src/output_options.rs), [sinks](src/sink/output.rs) and [ordered output](src/sequence/output_sequence.rs).

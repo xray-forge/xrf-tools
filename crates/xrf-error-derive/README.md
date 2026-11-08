@@ -1,8 +1,10 @@
 # xrf-error-derive
 
 Provides `#[derive(ErrorConstructors)]`, which generates a constructor for each marked message-only variant of an
-error enum. [`XrfError`](../xrf-error/src/xrf_error.rs) uses it for its `new_*_error` constructors; depend on `xrf-error`
-rather than on this crate unless you are defining another error enum.
+error enum.
+
+[`XrfError`](../xrf-error/src/xrf_error.rs) uses it for its `new_*_error` constructors. Depend on `xrf-error` instead,
+unless you are defining another error enum.
 
 ## Generate constructors
 
@@ -33,9 +35,7 @@ fn main() {
 }
 ```
 
-The example is not run as a doc test; [tests/ui/pass.rs](tests/ui/pass.rs) compiles the same shape. Each generated
-method is a `pub` associated function taking `impl Into<String>`, so borrowed text and an owned
-`String` both work.
+The example is not run as a doc test; [tests/ui/pass.rs](tests/ui/pass.rs) compiles the same shape.
 
 | Attribute                   | Method generated for `NotFound` |
 | --------------------------- | ------------------------------- |
@@ -43,16 +43,26 @@ method is a `pub` associated function taking `impl Into<String>`, so borrowed te
 | `#[constructor("missing")]` | `missing`                       |
 | No attribute                | No method                       |
 
-The default name is `new_<variant in snake_case>_error`. A marked variant must have exactly one named field,
-`message: String`; unmarked variants may take any shape, as `Cancelled` does above. A generic enum gets its constructors
-in an `impl` over the same parameters and bounds. Each constructor is documented as the variant it builds. The derive
-writes constructors only, so derive `Display`, `Error` and conversions separately, and pick custom names that do not
-collide with handwritten methods.
+- The default name is `new_<variant in snake_case>_error`.
+- Each method is a `pub` associated function taking `impl Into<String>`, so borrowed and owned text both work.
+- A marked variant must have exactly one named field, `message: String`. Unmarked variants may have any shape, like
+  `Cancelled` above.
+- A generic enum gets its constructors in an `impl` with the same parameters and bounds.
+- Each constructor is documented as the variant it builds.
+- The derive writes constructors only. Derive `Display`, `Error` and conversions separately, and pick custom names that
+  do not collide with handwritten methods.
 
-## Diagnostics and checks
+## Compile errors
 
-The derive rejects a non-enum input, a repeated `#[constructor]`, an attribute that is not `#[constructor]` or
-`#[constructor("name")]`, a name that is not a Rust identifier, and a marked variant with tuple, unit or extra fields.
+The derive rejects:
+
+- input that is not an enum;
+- a repeated `#[constructor]`;
+- an attribute other than `#[constructor]` or `#[constructor("name")]`;
+- a name that is not a Rust identifier;
+- a marked variant with tuple, unit or extra fields.
+
+## Checks
 
 Run `cargo test --locked -p xrf-error-derive` from the repository root. Its [trybuild tests](tests/ui.rs) compile an
-accepted declaration and check rejected ones against the `.stderr` snapshots. See the [implementation](src/lib.rs).
+accepted declaration and check rejected ones against `.stderr` snapshots. See the [implementation](src/lib.rs).

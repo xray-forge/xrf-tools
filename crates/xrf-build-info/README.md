@@ -1,14 +1,17 @@
 # xrf-build-info
 
-Embeds build metadata in XRF binaries, so a built binary can state its own provenance: package version, source commit,
-build kind, compiler settings, build time, and workflow run. `xrf-cli` prints it for `--version` and in its reports;
-the desktop app logs it at startup, shows it in Settings, About, and colours its executable icon by the build kind.
+Embeds build provenance in XRF binaries: package version, source commit, build kind, compiler settings, build time and
+CI run.
 
-The crate has two halves. `BuildInfoEmitter::emit()` runs in a consuming package's build script and records the
-metadata as compile-time environment variables; the `build_info!()` macro reads them back into a `BuildInfo` in that package. Everything is
-fixed at compile time: reading or displaying the record runs no Git command and reads no runtime environment.
+- `xrf-cli` prints it for `--version` and in its reports.
+- The desktop app logs it at startup, shows it in Settings and About, and colours its icon by build kind.
+
+Everything is fixed at compile time. Reading the record runs no Git command and reads no runtime environment.
 
 ## Record a build
+
+The crate has two halves: `BuildInfoEmitter::emit()` records the metadata from a build script, and the `build_info!()`
+macro reads it back into a `BuildInfo`.
 
 Add the crate as both a normal and a build dependency of the binary:
 
@@ -46,73 +49,75 @@ fn main() {
 }
 ```
 
-Call the macro in the package whose build script ran the emitter. Called from a shared library, it would read that
-library's compile-time environment and version instead.
+Call the macro in the package whose build script ran the emitter. Called from a library, it reads that library's
+version and compile-time environment instead.
 
 ## Read the record
 
-`version`, `kind` and `is_dirty` are always present; every other field is an optional static string. Values describe the
-build, not the machine running the binary.
+`version`, `kind` and `is_dirty` are always present; every other field is an optional static string. The values
+describe the build, not the machine running it.
 
-| Field          | Source                                                                             |
-| -------------- | ---------------------------------------------------------------------------------- |
-| `version`      | The consuming package's `CARGO_PKG_VERSION`                                        |
-| `kind`         | `XRF_BUILD_KIND`, as described below                                               |
-| `commit`       | `GITHUB_SHA`, falling back to `git rev-parse HEAD` when unset                      |
-| `reference`    | `GITHUB_REF_NAME`, falling back to `git rev-parse --abbrev-ref HEAD` when unset    |
-| `is_dirty`     | Whether `git status --porcelain` prints anything                                   |
-| `built_at`     | `XRF_BUILD_TIMESTAMP`, or the emitter's current UTC time rounded to a whole second |
-| `target`       | Cargo's `TARGET` triple                                                            |
-| `rustc`        | Output of `$RUSTC --version`, using `rustc` when `RUSTC` is unset                  |
-| `profile`      | Cargo's `PROFILE`                                                                  |
-| `optimization` | `opt-level=<OPT_LEVEL>, lto=<value>, codegen-units=<value>`, described below       |
-| `run_id`       | `GITHUB_RUN_ID`                                                                    |
+| Field          | Source                                                                   |
+| -------------- | ------------------------------------------------------------------------ |
+| `version`      | The consuming package's `CARGO_PKG_VERSION`                              |
+| `kind`         | `XRF_BUILD_KIND` (see below)                                             |
+| `commit`       | `GITHUB_SHA`, else `git rev-parse HEAD`                                  |
+| `reference`    | `GITHUB_REF_NAME`, else `git rev-parse --abbrev-ref HEAD`                |
+| `is_dirty`     | Whether `git status --porcelain` prints anything                         |
+| `built_at`     | `XRF_BUILD_TIMESTAMP`, else the emitter's current UTC time to the second |
+| `target`       | Cargo's `TARGET` triple                                                  |
+| `rustc`        | `$RUSTC --version`, or `rustc --version`                                 |
+| `profile`      | Cargo's `PROFILE`                                                        |
+| `optimization` | `opt-level=<OPT_LEVEL>, lto=<value>, codegen-units=<value>` (see below)  |
+| `run_id`       | `GITHUB_RUN_ID`                                                          |
 
-`Display` writes `<version> (<kind>)`, then one labelled line per present field. The commit line carries the full
-commit, ` on <reference>` when known, and `(dirty)`; without a commit, the reference and dirty flag are not printed.
-Every line ends with a newline, so use `print!`, not `println!`.
+Output helpers:
 
-`short_commit()` returns the first seven characters of the commit, the whole value if shorter, or `None` without one.
-A `GITHUB_SHA` override is not validated as a hash, so a non-hash value is cut at a character boundary all the same.
-
-`BuildInfo` and `BuildKind` serialize with Serde in camelCase (`builtAt`, `"development"`). The `typescript-bindings`
-feature derives Specta types for the frontend bindings.
+- `Display` writes `<version> (<kind>)`, then one labelled line per present field. The commit line adds
+  ` on <reference>` and `(dirty)` when known; without a commit, neither is printed. Every line ends with a newline, so
+  use `print!`.
+- `short_commit()` returns the first seven characters of the commit, or `None`. A `GITHUB_SHA` override is not checked
+  to be a hash.
+- `BuildInfo` and `BuildKind` serialize in camelCase (`builtAt`, `"development"`). The `typescript-bindings` feature
+  adds Specta types for the frontend.
 
 ## Set build metadata
 
-Set overrides in the environment that runs Cargo; [ENVIRONMENT.md](../../ENVIRONMENT.md) lists them.
+Set these in the environment that runs Cargo; [ENVIRONMENT.md](../../ENVIRONMENT.md) lists them.
 
-- `XRF_BUILD_KIND` takes exactly `development` or `optimized`, case-sensitive; unset, empty or anything else is
-  `BuildKind::Local`. It is a label only: it selects no Cargo profile and detects nothing. `cargo make` and CI set it;
+- `XRF_BUILD_KIND`: exactly `development` or `optimized`, case-sensitive. Anything else, empty or unset, is
+  `BuildKind::Local`. It is only a label and selects no Cargo profile. `cargo make` and CI set it, and
   `BuildKind::from_recorded` maps it the same way for other build scripts.
-- `XRF_BUILD_TIMESTAMP` is copied unparsed; use RFC 3339. Unset, the emitter records when the build script runs.
-- `GITHUB_SHA`, `GITHUB_REF_NAME` and `GITHUB_RUN_ID` are set by GitHub Actions.
+- `XRF_BUILD_TIMESTAMP`: copied as is; use RFC 3339.
+- `GITHUB_SHA`, `GITHUB_REF_NAME`, `GITHUB_RUN_ID`: set by GitHub Actions.
 
-Unset `GITHUB_SHA`, `GITHUB_REF_NAME` and `XRF_BUILD_TIMESTAMP` fall back as the table shows; an explicitly empty value
-leaves the field absent instead. A failed Git or compiler query also leaves its field absent rather than failing the
-build.
+An unset variable falls back as the table shows; an explicitly empty one leaves the field absent. A failed Git or
+compiler query also leaves its field absent rather than failing the build.
 
-In the optimization summary, `lto` and `codegen-units` are `CARGO_PROFILE_RELEASE_LTO` and
-`CARGO_PROFILE_RELEASE_CODEGEN_UNITS`, or `profile default` when unset; the emitter does not read `Cargo.toml`. A
-missing `OPT_LEVEL` is `unknown`. The release variables are reported whenever set, even in a non-release build, so the
-summary is not a full account of the compiler's effective settings.
+The optimization summary is a hint, not a full account:
+
+- `lto` and `codegen-units` come from `CARGO_PROFILE_RELEASE_LTO` and `CARGO_PROFILE_RELEASE_CODEGEN_UNITS`, or read
+  `profile default` when unset. `Cargo.toml` is not read.
+- They are reported whenever set, even in a non-release build.
+- A missing `OPT_LEVEL` reads `unknown`.
 
 ## Git state and rebuilds
 
-Git is optional: a build from a source archive or without Git still records version, time and Cargo metadata. A
-detached checkout reports `HEAD` as its reference. Neither full history nor a revision count is needed.
+Git is optional. Without it, a build still records version, time and Cargo metadata. A detached checkout reports `HEAD`
+as its reference; no history or revision count is needed.
 
-Dirty state always comes from the local checkout, even when the commit and reference come from GitHub variables, so it
-can be true in CI, and it counts untracked files whether or not they reach the binary. If Git cannot answer, `is_dirty`
-is false, which alone does not prove a clean checkout.
+The dirty flag always comes from the local checkout:
 
-The emitter tells Cargo to rerun it when one of its environment inputs changes, or when the Git directory's `HEAD` or
-`logs/HEAD` changes (a checkout or a commit). It does not watch the index or working tree, so a source-only edit can
-keep the previous dirty flag and time. When a fresh snapshot matters, change `XRF_BUILD_TIMESTAMP` or touch the
-consuming package's `build.rs`.
+- It can be true in CI, even when the commit comes from GitHub variables.
+- It counts untracked files, whether or not they reach the binary.
+- It is false when Git cannot answer, so `false` alone does not prove a clean checkout.
 
-Without the emitter, the macro still compiles under Cargo and reads the version; other fields come from any `XRF_BUILD_*`
-values present at compilation, otherwise absent, with `kind: Local` and `is_dirty: false`.
+The emitter reruns when one of its environment inputs changes or when Git's `HEAD` or `logs/HEAD` changes (a checkout
+or a commit). It does not watch the working tree, so a source-only edit can keep the old dirty flag and time. For a
+fresh record, change `XRF_BUILD_TIMESTAMP` or touch the package's `build.rs`.
+
+Without the emitter, the macro still compiles and reads the version. Other fields come from any `XRF_BUILD_*` values
+present at compilation, with `kind: Local` and `is_dirty: false`.
 
 ## Checks
 
@@ -123,7 +128,6 @@ cargo test --locked -p xrf-build-info
 cargo doc --locked -p xrf-build-info --no-deps
 ```
 
-Source: the [emitter](src/build_info_emitter.rs), the [record, display and macro](src/build_info.rs), and the
-[kind mapping](src/build_kind.rs). The [CLI build script](../../bin/xrf-cli/build.rs) and the
-[desktop build-info command](../../bin/xrf-app/plugins/xrf-app-system/src/diagnostics/commands/get_build_info.rs) show the two
-halves in use.
+Sources: the [emitter](src/build_info_emitter.rs), the [record, display and macro](src/build_info.rs), and the
+[kind mapping](src/build_kind.rs). In use: the [CLI build script](../../bin/xrf-cli/build.rs) and the
+[desktop build-info command](../../bin/xrf-app/plugins/xrf-app-system/src/diagnostics/commands/get_build_info.rs).

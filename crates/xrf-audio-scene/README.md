@@ -1,13 +1,27 @@
 # xrf-audio-scene
 
-What a host tells `xrf-audio` of a scene's sound, with no device, decoder or acoustics behind it: an `AudioSceneFrame`
-of a moment on the scene's clock, holding where it is heard from (`AudioListener`), whose game's voice rules it plays by
-(`AudioSceneRules`), which of its buses (`AudioBus`) are heard, and every `AudioSceneEmitter` it plays. A host builds
-frames on its own thread and hands them to the audio's control thread through an `AudioSceneInbox`, whose other end,
-the `AudioSceneMailbox`, hands each back to be filled again, so a warm scene allocates nothing.
+The messages a host sends to describe a scene's sound, with no audio device, decoder or acoustics attached.
 
-`xrf-world` fills frames as it schedules a level's sound, and `xrf-audio` plays them and re-exports these types; a crate
-that only schedules sound depends on this one rather than on the audio's device and decoders.
+[xrf-world](../xrf-world/README.md) fills them as it schedules a level's sound; [xrf-audio](../xrf-audio/README.md)
+plays them and re-exports these types. A crate that only schedules sound depends on this one and stays free of the
+device and decoders.
+
+## What a frame holds
+
+An `AudioSceneFrame` describes one moment on the scene's clock:
+
+| Part                | Meaning                              |
+| ------------------- | ------------------------------------ |
+| `AudioListener`     | Where the scene is heard from        |
+| `AudioSceneRules`   | Which game's voice rules it plays by |
+| `AudioBus`          | Which of the scene's buses are heard |
+| `AudioSceneEmitter` | Every sound playing                  |
+
+## Send frames
+
+The host builds frames on its own thread and sends them through an `AudioSceneInbox`. The audio control thread takes
+them from the other end, the `AudioSceneMailbox`, and gives each back to be filled again, so a running scene allocates
+nothing.
 
 ```rust
 use xrf_audio_scene::{AudioSceneFrame, AudioSceneInbox};
@@ -21,5 +35,7 @@ let frame: Box<AudioSceneFrame> = mailbox.take().expect("the frame came through"
 mailbox.give_back(frame);
 assert!(inbox.take_spent().is_some());
 ```
+
+## Checks
 
 Run `cargo test --locked -p xrf-audio-scene` from the repository root.

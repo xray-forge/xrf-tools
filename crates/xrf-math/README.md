@@ -1,14 +1,26 @@
 # xrf-math
 
-The engine's basic math types as the format crates read and write them: `Vector2d` and `Vector3d` (the engine's
-`Fvector2` and `Fvector`), `Matrix4x4` (its full `Fmatrix`) and `Affine3d` (an `Fmatrix` without its fourth column),
-`Quaternion` (`Fquaternion`), `Color` (`Fcolor`), the shapes `Aabb`, `Obb`, `Sphere` and `Cylinder`, and the engine's
-float epsilons. It sits at the bottom of the format crates, depending only on `xrf-chunk` and `xrf-error`; spawn, level,
-skeleton, visual, OGF and particle crates build on it. A format holds these rather than a field pair, a tuple or a
-struct of its own. Every type a file stores as floats reads and writes through `xrf_chunk::ChunkReadWrite` in the byte
-order the caller names, and all serialize with Serde in camelCase.
+The engine's basic math types, as the format crates read and write them.
 
-## Read, write and place
+| Type                                | Engine                                 | Bytes                 |
+| ----------------------------------- | -------------------------------------- | --------------------- |
+| `Vector2d`                          | `Fvector2`                             | 8                     |
+| `Vector3d`                          | `Fvector`                              | 12                    |
+| `Matrix4x4`                         | `Fmatrix`                              | 64                    |
+| `Affine3d`                          | `Fmatrix`, without its fourth column   | 48                    |
+| `Quaternion`                        | `Fquaternion`                          | —                     |
+| `Color`                             | `Fcolor`                               | 16                    |
+| `Aabb`, `Obb`, `Sphere`, `Cylinder` | `Fbox`, `Fobb`, `Fsphere`, `Fcylinder` | see [Shapes](#shapes) |
+
+It also holds the engine's float epsilons and the display-colour helpers.
+
+- It depends only on `xrf-chunk` and `xrf-error`. The spawn, level, skeleton, visual, OGF and particle crates build on
+  it.
+- Formats use these types rather than their own tuples or structs.
+- Every type stored as floats reads and writes through `xrf_chunk::ChunkReadWrite`, in the caller's byte order.
+- All serialize with Serde in camelCase.
+
+## Read, write and transform
 
 ```rust
 use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
@@ -42,94 +54,109 @@ fn main() -> xrf_error::XrfResult {
 }
 ```
 
-## Vector3d
+## Vectors
 
-`Vector3d<T = f32>` is three named components; the math is defined for `f32`. It has `new`, the constants `ZERO`, `X`,
-`Y` and `Z`, `dot`, `cross`, `length`, `distance` (and their squared forms), `normalize_or_zero` (zero for a zero
-vector), the component-wise `min` and `max` a bounding box grows by, `midpoint`, `to_array`, and operators on references
-(`&a + &b`, `&a - &b`, `&a * 2.0`, `&a / 2.0`, `-&a`, `sum += &a`). It
-converts from `[f32; 3]` and `(f32, f32, f32)`, displays as `x,y,z`, and parses that form back with `FromStr`
-(whitespace around each number allowed), failing with `XrfError::Parsing`. On the wire it is three `f32`s, 12 bytes.
+`Vector3d<T = f32>` has three named components; the math is defined for `f32`.
 
-`Vector2d` is the same for two components and `f32` alone: `new`, `ZERO`, `to_array`, `x,y` through `Display` and
-`FromStr`, 8 bytes (`SERIALIZED_SIZE`). It holds a texture coordinate or a sprite's size on its sheet.
+- Constructors and constants: `new`, `ZERO`, `X`, `Y`, `Z`.
+- Math: `dot`, `cross`, `length`, `distance` and their squared forms, `normalize_or_zero` (zero for a zero vector),
+  component-wise `min` and `max`, `midpoint`, `to_array`.
+- Operators on references: `&a + &b`, `&a - &b`, `&a * 2.0`, `&a / 2.0`, `-&a`, `sum += &a`.
+- Converts from `[f32; 3]` and `(f32, f32, f32)`.
+- Displays as `x,y,z` and parses that back with `FromStr` (whitespace around numbers allowed), failing with
+  `XrfError::Parsing`.
 
-## Matrix4x4
+`Vector2d` is the same for two `f32` components: `new`, `ZERO`, `to_array`, and `x,y` through `Display` and `FromStr`.
+It holds a texture coordinate or a sprite's size on its sheet.
 
-`Matrix4x4` is the engine's full `Fmatrix`: sixteen `f32`s, row major, 64 bytes (`ELEMENTS`, `SERIALIZED_SIZE`), read
-and written as the engine copies it in and out of a file. The fourth row is the translation (`get_translation`, the
-engine's `Fmatrix::c`). `transform_point` applies the translation; `transform_direction` uses only the upper three rows,
-so normals and other directions are not moved.
+## Matrices
 
-`multiply` is `Fmatrix::mul`, the inner matrix applied first, each element summed in the engine's order so that a
-transform composed as the engine composes it has the same bits, zeros' signs included. `IDENTITY`, `from_translation`
-(`translate`), `from_scale` (`scale`) and `From<&Affine3d>` build the factors with their fourth column `0, 0, 0, 1`;
-`to_affine` and `get_fourth_column` split a matrix back.
+`Matrix4x4` is the engine's full `Fmatrix`: sixteen `f32`s, row major, read and written as the engine copies it
+(`ELEMENTS`, `SERIALIZED_SIZE`).
 
-`Affine3d` is the same matrix as `NET_Packet::w_matrix` writes it: its rows `i`, `j`, `k` and `c` as `x_axis`, `y_axis`,
-`z_axis` and `translation`, without the fourth column the reader fixes at `0, 0, 0, 1`, 48 bytes. `transform_point` is
-`Fmatrix::transform_tiny`. A spawn shape's box is one. Where the engine reads `sizeof(Fmatrix)`, use `Matrix4x4`: the
-narrower type reads 48 of the 64 bytes and can still parse, leaving every later read misaligned.
+- The fourth row is the translation (`get_translation`, the engine's `Fmatrix::c`).
+- `transform_point` applies the translation; `transform_direction` uses only the upper three rows, so directions and
+  normals are not moved.
+- `multiply` is `Fmatrix::mul`, the inner matrix applied first. Each element is summed in the engine's order, so a
+  transform composed as the engine composes it has identical bits, signs of zeros included.
+- `IDENTITY`, `from_translation` (`translate`), `from_scale` (`scale`) and `From<&Affine3d>` build matrices with a
+  fourth column of `0, 0, 0, 1`. `to_affine` and `get_fourth_column` split one back.
 
-## Color
+`Affine3d` is the same matrix as `NET_Packet::w_matrix` writes it: rows `i`, `j`, `k`, `c` as `x_axis`, `y_axis`,
+`z_axis` and `translation`, with the fourth column fixed at `0, 0, 0, 1` and not stored. `transform_point` is
+`Fmatrix::transform_tiny`. A spawn shape's box is one.
 
-`Color` is the engine's `Fcolor`: four `f32`s stored red, green, blue, alpha, 16 bytes; a level's static lights carry
-three. It is not a packed `D3DCOLOR`, which is four bytes in another order.
+Where the engine reads `sizeof(Fmatrix)`, use `Matrix4x4`. `Affine3d` reads only 48 of the 64 bytes and may still
+parse, misaligning every later read.
 
-## Quaternion
+## Colour and rotation
 
-`Quaternion` is the engine's `Fquaternion`, `x`, `y`, `z` and then `w`, with `IDENTITY` for no rotation. A skeleton
-motion stores its rotations quantised, so `xrf-skeleton` decodes each key into one rather than reading floats.
+- `Color` is the engine's `Fcolor`: four `f32`s stored red, green, blue, alpha. A level's static lights carry three.
+  It is not a packed four-byte `D3DCOLOR`.
+- `Quaternion` is the engine's `Fquaternion`: `x`, `y`, `z`, then `w`, with `IDENTITY` for no rotation. Skeleton motions
+  store rotations quantised, so `xrf-skeleton` decodes each key into one.
 
 ## Shapes
 
-Each is named for what it is and lays out as the engine's own type, read and written field by field in the engine's
-order (`SERIALIZED_SIZE` on each):
+Each lays out as the engine's own type, field by field in the engine's order (`SERIALIZED_SIZE` on each):
 
-| Type       | Engine      | Fields                                                                   | Bytes |
-| ---------- | ----------- | ------------------------------------------------------------------------ | ----- |
-| `Aabb`     | `Fbox`      | `min`, `max`                                                             | 24    |
-| `Obb`      | `Fobb`      | `rotation` (`m_rotate`, rows are its axes), `center`, `half_extents`     | 60    |
-| `Sphere`   | `Fsphere`   | `center` (`P`), `radius` (`R`)                                           | 16    |
-| `Cylinder` | `Fcylinder` | `center`, `direction`, `height` (the full height along the axis), `radius` | 32  |
+| Type       | Engine      | Fields                                                                 | Bytes |
+| ---------- | ----------- | ---------------------------------------------------------------------- | ----- |
+| `Aabb`     | `Fbox`      | `min`, `max`                                                           | 24    |
+| `Obb`      | `Fobb`      | `rotation` (`m_rotate`, rows are its axes), `center`, `half_extents`   | 60    |
+| `Sphere`   | `Fsphere`   | `center` (`P`), `radius` (`R`)                                         | 16    |
+| `Cylinder` | `Fcylinder` | `center`, `direction`, `height` (full height along the axis), `radius` | 32    |
 
-An OGF's header bounds its visual by an `Aabb` and a `Sphere`, its bone names carry an `Obb` each, and a bone's
-collision shape (`xrf-skeleton`'s `SkeletonBoneShape`) holds one of each of the last three. An editable object's mesh,
-a level's collision form, AI map and sound environment, and the compilers' `build.cform` and `build.aimap` are bounded
-by an `Aabb`; a spawn shape's sphere is a `Sphere`. A shape carries no space: `xrf-visual`'s `VisualBounds` holds an
-`Aabb` and a `Sphere` in renderer space, and says so, as a field of engine space would.
+Where they appear:
 
-`Aabb::from_points` is the box holding a run of points, `None` for none, where the engine's inverted box would stand for
-nothing; one grown point by point starts at `of_point` and takes each next through `include_point` (`Fbox::modify`,
-keeping a side on a tie as `std::min` and `std::max` do, so a zero of the other sign leaves its bits), or a whole box
-through `include_box` (`Fbox::merge`). `transform` is `Fbox::xform`, the box holding one placed by a matrix, summed in
-the engine's order. `get_size`, `get_center` and `get_bounding_sphere` are `Fbox::getsize`, `getcenter` and
-`getsphere`.
+- An OGF header bounds its visual by an `Aabb` and a `Sphere`; each bone name carries an `Obb`.
+- A bone's collision shape (`xrf-skeleton`'s `SkeletonBoneShape`) holds an `Obb`, a `Sphere` and a `Cylinder`.
+- Editable meshes, a level's collision form, AI map and sound environment, and `build.cform` and `build.aimap` are
+  bounded by an `Aabb`. A spawn shape's sphere is a `Sphere`.
+
+A shape carries no coordinate space. `xrf-visual`'s `VisualBounds`, for example, holds an `Aabb` and a `Sphere` in
+renderer space and says so.
+
+`Aabb` operations:
+
+- `from_points` is the box around a run of points; `None` for no points (the engine uses an inverted box).
+- To grow one point by point, start with `of_point` and add each with `include_point` (`Fbox::modify`). Ties keep the
+  existing side, as `std::min` and `std::max` do, so a zero of the other sign keeps its bits.
+- `include_box` adds a whole box (`Fbox::merge`).
+- `transform` is `Fbox::xform`: the box around one placed by a matrix, summed in the engine's order.
+- `get_size`, `get_center` and `get_bounding_sphere` are `Fbox::getsize`, `getcenter` and `getsphere`.
 
 ## Epsilons
 
 `EPS_S` (`0.0000001`), `EPS` (`0.00001`) and `EPS_L` (`0.001`) are the engine's epsilons from
-`xrCore/math_constants.h`, under the engine's names; `EPS_S` is what `fis_zero` compares against by default. Never
-redefine one locally: give it a local name that says what it means there (`const GROWTH: f32 = EPS_L`). A value the
-engine writes as a literal stays a literal. The UI has the same constants in `@xrf/math`.
+`xrCore/math_constants.h`, under the engine's names. `EPS_S` is what `fis_zero` compares against by default.
+
+- Never redefine one locally. Give it a name that says what it means there: `const GROWTH: f32 = EPS_L`.
+- A value the engine writes as a literal stays a literal.
+- The UI has the same constants in `@xrf/math`.
 
 ## Display colour
 
-`srgb_decoded` and `srgb_encoded` turn a colour stored for the display into linear light and back, by the 2.2 power of
-the sRGB reference display (`SRGB_DISPLAY_POWER`), and `luminance` weighs linear light by Rec. 709 (`LUMINANCE_WEIGHTS`).
-The renderer lights with them (its `lighting/srgb.rs` and `lighting/luminance.rs` mirror `common/srgb.wgsl` and
-`common/luminance.wgsl` through them), and `xrf-texture`'s albedo measure reads textures by them, so a measure always
+- `srgb_decoded` and `srgb_encoded` convert a display colour to linear light and back, with the sRGB reference
+  display's 2.2 power (`SRGB_DISPLAY_POWER`).
+- `luminance` weights linear light by Rec. 709 (`LUMINANCE_WEIGHTS`).
+
+The renderer lights with these (its `lighting/srgb.rs` and `lighting/luminance.rs` mirror `common/srgb.wgsl` and
+`common/luminance.wgsl` through them), and `xrf-texture`'s albedo measure reads textures with them, so the measure
 agrees with what the renderer draws.
 
-## Features and checks
+## Features
 
-`typescript-bindings` derives Specta types for every type here but `Matrix4x4`. `fixtures` exports
-`Vector3d::new_mock()`, the vector this crate's tests use, for dependants' tests. `glam` converts `Vector3d` and
-`Vector2d` to and from `glam`'s `Vec3` and `Vec2` with `From`, for the runtime crates that compute with `glam` over
-stored values (particles, world, renderer, the levels plugin): a component-wise copy that changes no space, so a
-conversion between spaces stays where it is written.
+- `typescript-bindings` derives Specta types for every type except `Matrix4x4`.
+- `fixtures` exports `Vector3d::new_mock()`, the vector this crate's tests use, for dependants' tests.
+- `glam` converts `Vector3d` and `Vector2d` to and from `glam`'s `Vec3` and `Vec2` with `From`, for runtime crates that
+  compute with `glam` (particles, world, renderer, the levels plugin). The copy is component-wise and changes no space,
+  so any change of space stays visible where it is written.
 
-Run `cargo test --locked -p xrf-math` from the repository root. See [Vector2d](src/vector_2d.rs),
-[Vector3d](src/vector_3d.rs), [Matrix4x4](src/matrix_4x4.rs), [Affine3d](src/affine_3d.rs),
-[Quaternion](src/quaternion.rs), [Color](src/color.rs), the [shapes](src/shape/), the
+## Checks
+
+Run `cargo test --locked -p xrf-math` from the repository root.
+
+Sources: [Vector2d](src/vector_2d.rs), [Vector3d](src/vector_3d.rs), [Matrix4x4](src/matrix_4x4.rs),
+[Affine3d](src/affine_3d.rs), [Quaternion](src/quaternion.rs), [Color](src/color.rs), the [shapes](src/shape/), the
 [glam conversions](src/glam_conversions.rs) and the [epsilons](src/math_constants.rs).

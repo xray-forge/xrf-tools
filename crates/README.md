@@ -81,9 +81,10 @@ README is also its crate's rustdoc page.
 
 ### Sound
 
-| Crate                            | Purpose                                                                  |
-| -------------------------------- | ------------------------------------------------------------------------ |
-| [xrf-audio](xrf-audio/README.md) | Play sounds through a lock-free mixer of preallocated voices on a device |
+| Crate                                        | Purpose                                                                  |
+| -------------------------------------------- | ------------------------------------------------------------------------ |
+| [xrf-audio](xrf-audio/README.md)             | Play sounds through a lock-free mixer of preallocated voices on a device |
+| [xrf-audio-scene](xrf-audio-scene/README.md) | Describe a scene's sound to the audio thread without its device          |
 
 ### Frontend bindings
 
