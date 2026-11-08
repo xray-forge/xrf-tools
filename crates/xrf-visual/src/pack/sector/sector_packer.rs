@@ -5,13 +5,10 @@ use byteorder::ByteOrder;
 use xrf_chunk::ChunkDataSource;
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{
-  LevelGeomSlideWindowItem, LevelGeomSource, LevelSectorComposition, LevelShadersChunk, LevelVertexLayout,
-  LevelVertexPayload, LevelVisual, LevelVisualsChunk,
+  LevelGeomSource, LevelSectorComposition, LevelShadersChunk, LevelVertexLayout, LevelVertexPayload, LevelVisual,
+  LevelVisualsChunk,
 };
-use xrf_ogf::{
-  OgfGeometryContainerChunk, OgfLodDefinitionChunk, OgfModelType, OgfSwiContainerChunk, OgfSwiDataChunk,
-  OgfTreeDefinitionChunk,
-};
+use xrf_ogf::{OgfGeometryContainerChunk, OgfLodDefinitionChunk, OgfTreeDefinitionChunk};
 
 use crate::data::sector::instance::sector_instance_group::SectorInstanceGroup;
 use crate::data::sector::instance::sector_progressive::SectorProgressive;
@@ -420,90 +417,33 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     })
   }
 
-  /// A progressive visual's slide windows, the whole detail first, or `None` for a visual of one detail.
+  /// A progressive visual's slide windows, the whole detail first, or `None` for a visual of one detail
+  /// (`LevelVisual::get_windows`).
   ///
   /// # Errors
   ///
-  /// Returns an error when the visual's windows, or which table of the level's it draws them from, cannot be read.
+  /// Returns an error where `LevelVisual::get_windows` does: windows that cannot be read, a table the level does not
+  /// hold, or a progressive visual without a window, whose whole index run lays every window end to end.
   fn get_windows(&self, visual: &LevelVisual) -> XrfResult<Option<Vec<VisualIndexWindow>>> {
-    Ok(
-      self
-        .with_windows(visual, |windows| windows.collect::<Vec<VisualIndexWindow>>())?
-        .filter(|windows| !windows.is_empty()),
-    )
+    Ok(visual.get_windows(self.source.get_file())?.map(|windows| {
+      windows
+        .iter()
+        .map(|window| VisualIndexWindow::of_triangles(window.offset, window.triangles))
+        .collect()
+    }))
   }
 
   /// A progressive visual's first window, its whole detail, without collecting the rest.
   ///
   /// # Errors
   ///
-  /// Returns an error when the visual's windows cannot be read.
+  /// As [`Self::get_windows`].
   fn get_first_window(&self, visual: &LevelVisual) -> XrfResult<Option<VisualIndexWindow>> {
-    Ok(self.with_windows(visual, |windows| windows.next())?.flatten())
-  }
-
-  /// Hands a visual's slide windows to `take`: its own, or those of the level's table it names; `None` for a visual
-  /// naming none.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when the windows cannot be read, the table named is not one the level holds, or a progressive
-  /// visual has no window, whose whole index run lays every window end to end.
-  fn with_windows<R>(
-    &self,
-    visual: &LevelVisual,
-    take: impl FnOnce(&mut dyn Iterator<Item = VisualIndexWindow>) -> R,
-  ) -> XrfResult<Option<R>> {
-    if let Some(swi) = &visual.swi {
-      let swi: &OgfSwiDataChunk = swi.as_ref().map_err(|error| Self::unreadable("slide windows", error))?;
-
-      Self::require_windows(visual, swi.windows.len())?;
-
-      return Ok(Some(take(
-        &mut swi
-          .windows
-          .iter()
-          .map(|window| VisualIndexWindow::of_triangles(window.offset, window.num_tris)),
-      )));
-    }
-
-    let Some(container) = &visual.swi_container else {
-      return Self::require_windows(visual, 0).map(|()| None);
-    };
-    let container: &OgfSwiContainerChunk = container
-      .as_ref()
-      .map_err(|error| Self::unreadable("slide window table", error))?;
-    let tables: &[LevelGeomSlideWindowItem] = &self.source.get_file().slide_windows;
-    // `CRender::getSWI` indexes the level's tables unchecked.
-    let table: &LevelGeomSlideWindowItem = tables.get(container.ext_swib_index as usize).ok_or_else(|| {
-      XrfError::new_invalid_error(format!(
-        "draws from slide window table {} of the {} the level holds",
-        container.ext_swib_index,
-        tables.len()
-      ))
-    })?;
-
-    Self::require_windows(visual, table.windows.len())?;
-
-    Ok(Some(take(&mut table.windows.iter().map(|window| {
-      VisualIndexWindow::of_triangles(window.offset, window.triangles)
-    }))))
-  }
-
-  /// Refuses a progressive visual without a window to draw: the engine asserts it has them (`FProgressive::Load`,
-  /// `FTreeVisual_PM::Load`), and drawing its whole run instead draws every window at once.
-  fn require_windows(visual: &LevelVisual, windows: usize) -> XrfResult {
-    let is_progressive: bool =
-      OgfModelType::from_raw(visual.header.model_type).is_some_and(OgfModelType::is_progressive);
-
-    if is_progressive && windows == 0 {
-      return Err(XrfError::new_invalid_error(format!(
-        "is {} and carries no slide window, so its whole detail is unknown",
-        OgfModelType::label(visual.header.model_type)
-      )));
-    }
-
-    Ok(())
+    Ok(
+      visual
+        .get_full_detail_window(self.source.get_file())?
+        .map(|window| VisualIndexWindow::of_triangles(window.offset, window.triangles)),
+    )
   }
 
   /// What of a tree mesh's indices is packed, and the bands its places pick among: the whole run of its windows with
