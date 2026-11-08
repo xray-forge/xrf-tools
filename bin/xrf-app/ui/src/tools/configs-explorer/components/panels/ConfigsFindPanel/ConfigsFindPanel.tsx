@@ -2,7 +2,6 @@ import { useInjection } from "@wirestate/react";
 import { formatCount } from "@xrf/format";
 import { ConfigsDeclarationSearch } from "@xrf/ipc/types/xrf-app-configs";
 import { LtxDeclaration } from "@xrf/ipc/types/xrf-ltx-inspect";
-import { getPathName } from "@xrf/path";
 import { Nullable } from "@xrf/types";
 import { EditorFilterInput } from "@xrf/ui/editor/filter-input";
 import { EditorPanelEmpty } from "@xrf/ui/editor/panel";
@@ -11,18 +10,17 @@ import { MyLocationIcon } from "@xrf/ui/icons/my-location";
 import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
 import { ErrorState } from "@xrf/ui/layout/error-state";
 import { Button } from "@xrf/ui/material/button";
-import { Chip } from "@xrf/ui/material/chip";
 import { IconButton } from "@xrf/ui/material/icon-button";
-import { List, ListItem, ListItemButton } from "@xrf/ui/material/list";
+import { List } from "@xrf/ui/material/list";
 import { Tooltip } from "@xrf/ui/material/tooltip";
-import { Typography } from "@xrf/ui/material/typography";
-import { KeyboardEvent, ReactElement, ReactNode, useCallback } from "react";
+import { KeyboardEvent, ReactElement, useCallback } from "react";
 
 import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
+import { inline } from "@/lib/callbacks/inline";
 import { ConfigsDocumentService } from "@/tools/configs-explorer/services/configs-document";
 import { ConfigsFindService, IConfigsFindQuery } from "@/tools/configs-explorer/services/configs-find";
 
-import { toStatementText } from "./ConfigsFindPanel.utils";
+import { ConfigsFindRow } from "./ConfigsFindRow";
 
 /**
  * Where the open project writes a section, a field or a value, each row opening the config at its line.
@@ -66,79 +64,6 @@ export function ConfigsFindPanel({
     (declaration: LtxDeclaration) => void documentService.openAt(declaration.path, declaration.line),
     [documentService]
   );
-
-  let body: ReactNode;
-
-  if (findService.results.isFailed) {
-    body = (
-      <ErrorState
-        title={"Cannot search the configs"}
-        description={findService.results.error?.message ?? "The search failed."}
-        onRetry={onFind}
-      />
-    );
-  } else if (findService.results.isLoading) {
-    body = <DelayedProgress />;
-  } else if (!found) {
-    body = <EditorPanelEmpty label={"Name a section, a field or a value, then press Enter."} />;
-  } else if (!found.search.declarations.length) {
-    body = <EditorPanelEmpty label={"Nothing in this project writes that."} />;
-  } else {
-    body = (
-      <>
-        {found.total > found.search.declarations.length ? (
-          <EditorPanelEmpty
-            data-testid={"configs-find-truncated"}
-            label={`Showing the first ${formatCount(found.search.declarations.length)} of ${formatCount(found.total)}; narrow the search to see the rest.`}
-          />
-        ) : null}
-
-        {found.search.unreadable.length ? (
-          <EditorPanelEmpty
-            label={`${formatCount(found.search.unreadable.length)} configs do not parse and were not searched.`}
-          />
-        ) : null}
-
-        <List dense disablePadding aria-label={"Found statements"}>
-          {found.search.declarations.map((declaration: LtxDeclaration) => (
-            <ListItem
-              key={`${declaration.path}:${declaration.line}`}
-              data-testid={"configs-find-row"}
-              className={"block"}
-              divider
-              disablePadding
-            >
-              <ListItemButton className={"block"} onClick={() => onOpen(declaration)}>
-                <div className={"flex min-w-0 flex-wrap items-center gap-1.5"}>
-                  <Chip size={"small"} variant={"outlined"} label={declaration.isPatch ? "patch" : "declaration"} />
-
-                  <Typography
-                    className={"monospace min-w-0 wrap-anywhere text-text-secondary"}
-                    component={"span"}
-                    variant={"caption"}
-                    title={`${declaration.path} (${declaration.source})`}
-                  >
-                    {`${getPathName(declaration.path) || declaration.path}:${declaration.line}`}
-                  </Typography>
-
-                  {/* Said only where it is true: an archived config reads like a loose one and only cannot be written. */}
-                  {declaration.isPhysical ? null : (
-                    <Typography className={"text-text-secondary"} component={"span"} variant={"caption"}>
-                      archived
-                    </Typography>
-                  )}
-                </div>
-
-                <Typography className={"monospace mt-1 wrap-anywhere"} variant={"body2"}>
-                  {toStatementText(declaration)}
-                </Typography>
-              </ListItemButton>
-            </ListItem>
-          ))}
-        </List>
-      </>
-    );
-  }
 
   return (
     <EditorPanel
@@ -186,7 +111,56 @@ export function ConfigsFindPanel({
         </Button>
       </div>
 
-      {body}
+      {inline(() => {
+        if (findService.results.isFailed) {
+          return (
+            <ErrorState
+              title={"Cannot search the configs"}
+              description={findService.results.error?.message ?? "The search failed."}
+              onRetry={onFind}
+            />
+          );
+        }
+
+        if (findService.results.isLoading) {
+          return <DelayedProgress />;
+        }
+
+        if (!found) {
+          return <EditorPanelEmpty label={"Name a section, a field or a value, then press Enter."} />;
+        }
+
+        if (!found.search.declarations.length) {
+          return <EditorPanelEmpty label={"Nothing in this project writes that."} />;
+        }
+
+        return (
+          <>
+            {found.total > found.search.declarations.length ? (
+              <EditorPanelEmpty
+                data-testid={"configs-find-truncated"}
+                label={`Showing the first ${formatCount(found.search.declarations.length)} of ${formatCount(found.total)}; narrow the search to see the rest.`}
+              />
+            ) : null}
+
+            {found.search.unreadable.length ? (
+              <EditorPanelEmpty
+                label={`${formatCount(found.search.unreadable.length)} configs do not parse and were not searched.`}
+              />
+            ) : null}
+
+            <List dense disablePadding aria-label={"Found statements"}>
+              {found.search.declarations.map((declaration: LtxDeclaration) => (
+                <ConfigsFindRow
+                  key={`${declaration.path}:${declaration.line}`}
+                  declaration={declaration}
+                  onOpen={onOpen}
+                />
+              ))}
+            </List>
+          </>
+        );
+      })}
     </EditorPanel>
   );
 }
