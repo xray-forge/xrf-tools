@@ -34,6 +34,6 @@ impl LevelGeomVertexBuffer {
 
   /// Bytes of vertices the buffer carries, which is what a reader of its shape alone steps over.
   pub fn get_payload_size(&self) -> Option<u64> {
-    Some(self.vertex_count as u64 * self.get_vertex_size()? as u64)
+    Some(u64::from(self.vertex_count) * u64::from(self.get_vertex_size()?))
   }
 }

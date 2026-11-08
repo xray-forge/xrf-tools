@@ -276,7 +276,7 @@ fn to_texel(view: &CameraView, point: Vec3, (first, rows): (u32, u32), resolutio
   let ndc: Vec3 = clip.truncate() / clip.w;
 
   Vec3::new(
-    (ndc.x + 1.0) / 2.0 * resolution as f32,
+    (ndc.x * 0.5 + 0.5) * resolution as f32,
     first as f32 + (1.0 - ndc.y) / 2.0 * rows as f32,
     ndc.z,
   )

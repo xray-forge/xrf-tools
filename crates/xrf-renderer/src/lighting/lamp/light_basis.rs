@@ -122,6 +122,6 @@ impl LightBasis {
 
   /// `(mean + luminance) / 2`, which `compute_xf_spot` sizes a brighter light's maps larger by.
   pub(crate) fn to_light_intensity(color: Vec3) -> f32 {
-    (color.element_sum() / 3.0 + color.dot(Vec3::new(0.2125, 0.7154, 0.0721))) / 2.0
+    f32::midpoint(color.element_sum() / 3.0, color.dot(Vec3::new(0.2125, 0.7154, 0.0721)))
   }
 }

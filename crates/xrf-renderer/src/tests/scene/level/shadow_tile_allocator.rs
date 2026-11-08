@@ -66,7 +66,10 @@ fn shadow_tile_allocator_keeps_its_squares_apart_through_any_order_of_takes_and_
       allocator.release(live.swap_remove(index));
     }
 
-    let used: u64 = live.iter().map(|tile| (tile.size as u64) * (tile.size as u64)).sum();
+    let used: u64 = live
+      .iter()
+      .map(|tile| u64::from(tile.size) * u64::from(tile.size))
+      .sum();
 
     assert_eq!(allocator.get_used(), used);
 

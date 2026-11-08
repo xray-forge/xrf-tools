@@ -99,7 +99,7 @@ impl<'a> MatchFinder<'a> {
 
   fn hash_at(&self, position: usize) -> Option<usize> {
     let window: &[u8] = self.source.get(position..position + MATCH_LENGTH_MIN)?;
-    let key: u32 = u32::from(window[0]) << 16 | u32::from(window[1]) << 8 | u32::from(window[2]);
+    let key: u32 = (u32::from(window[0]) << 16) | (u32::from(window[1]) << 8) | u32::from(window[2]);
 
     Some((key.wrapping_mul(0x9E37_79B1) >> (u32::BITS - HASH_BITS)) as usize)
   }

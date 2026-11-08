@@ -42,7 +42,7 @@ impl StaticBatch {
     std::iter::once(self.get_index() as usize).chain(
       StaticSurfacePass::ALL
         .into_iter()
-        .filter(move |pass| passes & 1 << pass.get_index() != 0)
+        .filter(move |pass| passes & (1 << pass.get_index()) != 0)
         .map(move |pass| Self::get_pass_list(self.layout, pass) as usize),
     )
   }

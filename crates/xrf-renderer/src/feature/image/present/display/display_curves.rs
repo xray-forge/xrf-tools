@@ -101,7 +101,7 @@ pub(crate) fn get_least_shown(transform: fn(Vec3) -> Vec3, hue: Vec3) -> f32 {
   let (mut low, mut high): (f32, f32) = (-30.0, 0.0);
 
   for _ in 0..40 {
-    let middle: f32 = 0.5 * (low + high);
+    let middle: f32 = f32::midpoint(low, high);
 
     if luminance(transform(unit * middle.exp2())) < first {
       low = middle;
@@ -110,7 +110,7 @@ pub(crate) fn get_least_shown(transform: fn(Vec3) -> Vec3, hue: Vec3) -> f32 {
     }
   }
 
-  (0.5 * (low + high)).exp2()
+  f32::midpoint(low, high).exp2()
 }
 
 /// The stops a colour of `hue` at luminance `key` is lifted by for `transform` to show it as bright as the engine's curve
@@ -121,7 +121,7 @@ pub(crate) fn get_key_match(transform: fn(Vec3) -> Vec3, (key, hue): (f32, Vec3)
   let (mut low, mut high): (f32, f32) = (least, most);
 
   for _ in 0..40 {
-    let middle: f32 = 0.5 * (low + high);
+    let middle: f32 = f32::midpoint(low, high);
 
     if luminance(transform(colour * middle.exp2())) < wanted {
       low = middle;
@@ -130,5 +130,5 @@ pub(crate) fn get_key_match(transform: fn(Vec3) -> Vec3, (key, hue): (f32, Vec3)
     }
   }
 
-  0.5 * (low + high)
+  f32::midpoint(low, high)
 }

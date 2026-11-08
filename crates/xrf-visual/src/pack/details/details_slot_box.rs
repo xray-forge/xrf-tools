@@ -30,7 +30,7 @@ impl DetailsSlotBox {
     ];
 
     Self {
-      center: [0, 1, 2].map(|axis| (minimum[axis] + maximum[axis]) * 0.5),
+      center: [0, 1, 2].map(|axis| f32::midpoint(minimum[axis], maximum[axis])),
       extents: [0, 1, 2].map(|axis| (maximum[axis] - minimum[axis]) * 0.5),
     }
   }

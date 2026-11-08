@@ -62,7 +62,7 @@ fn is_as_loud_as_each_engine_makes_it() {
 
   assert!((vanilla.volume - 0.1 * 0.5).abs() < 1e-3, "{}", vanilla.volume);
   assert!(
-    (extended.volume - (0.05 * 0.5 + 0.6 * 0.5) * 0.5).abs() < 1e-3,
+    (extended.volume - f32::midpoint(0.05 * 0.5, 0.6 * 0.5)).abs() < 1e-3,
     "{}",
     extended.volume
   );

@@ -104,7 +104,7 @@ impl StaticSurfaceBuilder {
       StaticSurface {
         tiling: 1.0,
         detail_scale: plan.detail_scale,
-        alpha_reference: plan.alpha_reference as f32 / 255.0,
+        alpha_reference: f32::from(plan.alpha_reference) / 255.0,
         slice: material_slice(plan.material),
         color: Self::to_surface_color(surface.shader_id),
         flags: plan.flags,
@@ -440,7 +440,7 @@ impl StaticSurfaceBuilder {
 
   /// A stable colour per shader table entry, from a hue its id decides, so a surface reads the same in every sector.
   fn to_surface_color(shader_id: u16) -> Vec3 {
-    let hue: f32 = (shader_id as f32 * HUE_STEP) % 360.0;
+    let hue: f32 = (f32::from(shader_id) * HUE_STEP) % 360.0;
     let (saturation, lightness): (f32, f32) = (0.45, 0.6);
     let reach: f32 = saturation * lightness.min(1.0 - lightness);
     let channel = |offset: f32| -> f32 {

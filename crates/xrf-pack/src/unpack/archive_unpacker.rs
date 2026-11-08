@@ -144,7 +144,7 @@ impl ArchiveUnpacker {
     Ok(ArchiveExtractResult {
       name: descriptor.name.to_string(),
       destination: format_path(destination.as_ref()).to_string(),
-      size: descriptor.size_real as u64,
+      size: u64::from(descriptor.size_real),
     })
   }
 

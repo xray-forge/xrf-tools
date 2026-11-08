@@ -50,11 +50,11 @@ fn holds_a_still_bone_in_one_rotation_and_its_mean_position() -> XrfResult {
 fn quantises_a_short_move_to_8_bits_and_a_long_one_to_16() -> XrfResult {
   let rotations: [[i16; 4]; 3] = [MotionKeys::quantize_rotation(&Quaternion::IDENTITY); 3];
 
-  for (values, flags) in [([0.0, 0.5, 1.0], 1), ([0.0, 2.0, 4.0], 1 | 1 << 2)] {
+  for (values, flags) in [([0.0, 0.5, 1.0], 1), ([0.0, 2.0, 4.0], 1 | (1 << 2))] {
     let (written, bone): (u8, SkeletonBoneMotion) = run(&rotations, &along_x(&values))?;
-    let step: f32 = values[2] / 2.0 / if flags & 1 << 2 != 0 { 32767.0 } else { 127.0 };
+    let step: f32 = values[2] / 2.0 / if flags & (1 << 2) != 0 { 32767.0 } else { 127.0 };
 
-    assert_eq!(written, flags | 1 << 1);
+    assert_eq!(written, flags | (1 << 1));
 
     for (decoded, value) in bone.translations.iter().zip(values) {
       assert!((decoded.x - value).abs() <= step, "{} against {value}", decoded.x);

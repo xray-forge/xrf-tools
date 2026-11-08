@@ -80,7 +80,7 @@ impl SunCascade {
     let center: Vec3 = if camera.is_orthographic() {
       let (near_plane, far_plane): (f32, f32) = camera.get_depth_range();
 
-      camera.position + look * ((near_plane + far_plane) / 2.0)
+      camera.position + look * f32::midpoint(near_plane, far_plane)
     } else {
       SunCascadePlacement::place(camera.position, look, &mut rays.rays, &near, &basis, width)
     };

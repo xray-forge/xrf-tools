@@ -119,7 +119,7 @@ impl LightingUniform {
       .normalize_or_zero();
     let fog = lighting.fog.filter(|_| options.show.is_fogged);
     let (offset, scale) = fog.map_or((0.0, 0.0), |fog| fog.get_params());
-    let flag = |is: bool| is as u32 as f32;
+    let flag = |is: bool| u32::from(is) as f32;
     let occlusion: &RenderAmbientOcclusionSettings = &options.features.ambient_occlusion;
     let height_fog: &RenderFogSettings = &options.features.fog;
     // Searched only where the view is lit and solid.

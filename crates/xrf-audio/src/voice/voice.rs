@@ -223,7 +223,7 @@ impl Voice {
     if channels == 2 {
       // Each frame lands at or before where it was read, so averaging in place reads every pair before it is written.
       for frame in 0..frames {
-        block[frame] = (block[frame * 2] + block[frame * 2 + 1]) * 0.5;
+        block[frame] = f32::midpoint(block[frame * 2], block[frame * 2 + 1]);
       }
     }
 

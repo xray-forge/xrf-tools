@@ -56,7 +56,7 @@ impl LightAnimItem {
     let mut keys: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::KEYS_CHUNK_ID)?;
     let count: u32 = keys.read_u32::<T>()?;
     let mut read: Vec<LightAnimKey> =
-      keys.new_bounded_vec(count as u64, LightAnimKey::SERIALIZED_SIZE, "light animation keys")?;
+      keys.new_bounded_vec(u64::from(count), LightAnimKey::SERIALIZED_SIZE, "light animation keys")?;
 
     for _ in 0..count {
       read.push(LightAnimKey {

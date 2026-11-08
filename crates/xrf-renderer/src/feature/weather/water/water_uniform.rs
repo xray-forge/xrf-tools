@@ -50,8 +50,8 @@ impl WaterUniform {
       ripple: settings.ripple,
       reflection: settings.reflection,
       intensity,
-      soft: settings.is_soft as u32 as f32,
-      distorted: settings.is_distorted as u32 as f32,
+      soft: u32::from(settings.is_soft) as f32,
+      distorted: u32::from(settings.is_distorted) as f32,
     }
   }
 

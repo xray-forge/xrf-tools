@@ -31,8 +31,11 @@ impl OgfLodDefinitionChunk {
     extents.sort_by(f32::total_cmp);
 
     let middle: f32 = extents[1].min(radius);
-    let band: f32 =
-      4.0 * (0.5 * (radius * radius * (middle / radius).asin() + middle * (radius * radius - middle * middle).sqrt()));
+    let band: f32 = 4.0
+      * f32::midpoint(
+        radius * radius * (middle / radius).asin(),
+        middle * (radius * radius - middle * middle).sqrt(),
+      );
 
     band / (std::f32::consts::PI * radius * radius)
   }
@@ -143,7 +146,7 @@ mod tests {
     };
     let radius: f32 = 2.0;
     // Half extents 1, 1 and 2: the middle is 1. The band two across a disc of radius two.
-    let expected: f32 = 4.0 * (0.5 * (4.0 * (0.5f32).asin() + 3.0f32.sqrt())) / (std::f32::consts::PI * 4.0);
+    let expected: f32 = 4.0 * f32::midpoint(4.0 * (0.5f32).asin(), 3.0f32.sqrt()) / (std::f32::consts::PI * 4.0);
 
     assert!((OgfLodDefinitionChunk::get_lod_factor(&bounding_box, radius) - expected).abs() < 1e-6);
   }

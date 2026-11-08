@@ -250,7 +250,7 @@ impl RainUniform {
 
   /// Streaks drawn at a density, `0.5 * (1 + factor) * max_desired_items`.
   pub(crate) fn get_count(density: f32) -> u32 {
-    (0.5 * (1.0 + density.clamp(0.0, 1.0)) * Self::STREAKS as f32) as u32
+    ((0.5 + density.clamp(0.0, 1.0) * 0.5) * Self::STREAKS as f32) as u32
   }
 
   /// The same rain drawn over an image `size` texels across and down, which the enhanced streaks place themselves on.

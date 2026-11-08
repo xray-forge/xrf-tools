@@ -145,7 +145,7 @@ impl<'a, F: EnvelopeAnimation> EnvelopeAnimationsVerifier<'a, F> {
     let mut times: Vec<f32> = envelope
       .keys
       .windows(2)
-      .map(|span| (span[0].time + span[1].time) * 0.5)
+      .map(|span| f32::midpoint(span[0].time, span[1].time))
       .chain(envelope.keys.iter().map(|key| key.time))
       .chain([first.time - reach, last.time + reach])
       .collect();

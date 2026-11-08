@@ -95,7 +95,7 @@ impl<T: ChunkDataSource> Iterator for ChunkIterator<'_, T> {
       )));
     }
 
-    let end_position: u64 = match position.checked_add(size as u64) {
+    let end_position: u64 = match position.checked_add(u64::from(size)) {
       Some(end_position) => end_position,
       None => {
         return self.fail(XrfError::new_invalid_error(format!(
@@ -112,13 +112,13 @@ impl<T: ChunkDataSource> Iterator for ChunkIterator<'_, T> {
       )));
     }
 
-    if let Err(error) = self.reader.data.set_seek(SeekFrom::Current(size as i64)) {
+    if let Err(error) = self.reader.data.set_seek(SeekFrom::Current(i64::from(size))) {
       return self.fail(error.into());
     }
 
     Some(Ok(ChunkReader {
       id,
-      size: size as u64,
+      size: u64::from(size),
       position,
       data: self.reader.data.slice(position..end_position),
     }))

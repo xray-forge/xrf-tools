@@ -54,7 +54,7 @@ impl ShadowTileAllocator {
       self.free[parent - 1].insert((x + half, y + half));
     }
 
-    self.used += (side as u64) * (side as u64);
+    self.used += u64::from(side) * u64::from(side);
 
     Some(ShadowTile { x, y, size: side })
   }
@@ -68,7 +68,7 @@ impl ShadowTileAllocator {
       "{tile:?} released twice"
     );
 
-    self.used = self.used.saturating_sub((side as u64) * (side as u64));
+    self.used = self.used.saturating_sub(u64::from(side) * u64::from(side));
 
     while side < self.size {
       let parent: u32 = side * 2;

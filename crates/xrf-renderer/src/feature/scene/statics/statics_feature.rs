@@ -123,10 +123,10 @@ impl StaticsFeature {
       glod_end: threshold(options.features.lod.ssa_glod_end),
       discard_below: options.features.lod.ssa_discard.powi(2) / screen,
       candidate_capacity: statics.cull.get_list_capacity(),
-      is_occluding: options.features.is_occlusion_culled as u32,
+      is_occluding: u32::from(options.features.is_occlusion_culled),
       lod_a: threshold(options.features.lod.ssa_a),
       lod_b: threshold(options.features.lod.ssa_b),
-      is_impostors: options.features.lod.is_impostors as u32,
+      is_impostors: u32::from(options.features.lod.is_impostors),
       pad: UVec4::ZERO,
       lod_origin: view.position.extend(if view.is_orthographic() { 0.0 } else { 1.0 }),
       receivers: Self::get_receivers(view),
@@ -146,7 +146,7 @@ impl StaticsFeature {
         projection: history_projection,
         size: Vec2::new(pyramid.width as f32, pyramid.height as f32),
         levels: pyramid.levels,
-        has_history: self.history.is_some() as u32,
+        has_history: u32::from(self.history.is_some()),
       };
     }
   }

@@ -73,8 +73,8 @@ impl LevelVisualsReport {
         .or_default() += 1;
 
       if let Some(geometry) = &visual.geometry {
-        vertices += geometry.vertex_count as u64;
-        indices += geometry.index_count as u64;
+        vertices += u64::from(geometry.vertex_count);
+        indices += u64::from(geometry.index_count);
 
         ranges.insert((
           geometry.vertex_buffer_id,

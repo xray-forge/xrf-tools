@@ -81,16 +81,16 @@ impl CameraUniform {
   pub(crate) fn get_switches(options: &RenderViewOptions) -> Vec4 {
     Vec4::new(
       f32::from(u8::from(options.mode.surface_color == RenderSurfaceColor::Textured)),
-      options.mode.is_bumped as u32 as f32,
+      u32::from(options.mode.is_bumped) as f32,
       options.features.hemi_strength,
       f32::from(
         u8::from(options.features.parallax.is_steep)
-          | u8::from(options.mode.debug_view == RenderDebugView::Parallax) << 1
-          | u8::from(options.mode.debug_view == RenderDebugView::Bumps) << 2
-          | u8::from(options.mode.debug_view == RenderDebugView::Heights) << 3
-          | u8::from(options.features.parallax.is_enhanced()) << 4
-          | u8::from(options.mode.debug_view == RenderDebugView::SampledMip) << 5
-          | u8::from(options.features.terrain.is_varied()) << 6,
+          | (u8::from(options.mode.debug_view == RenderDebugView::Parallax) << 1)
+          | (u8::from(options.mode.debug_view == RenderDebugView::Bumps) << 2)
+          | (u8::from(options.mode.debug_view == RenderDebugView::Heights) << 3)
+          | (u8::from(options.features.parallax.is_enhanced()) << 4)
+          | (u8::from(options.mode.debug_view == RenderDebugView::SampledMip) << 5)
+          | (u8::from(options.features.terrain.is_varied()) << 6),
       ),
     )
   }

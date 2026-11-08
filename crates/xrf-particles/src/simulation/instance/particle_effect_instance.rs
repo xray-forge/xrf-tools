@@ -227,7 +227,7 @@ impl ParticleEffectInstance {
     let advance: f32 = self.frame_speed * dt;
 
     for m in self.pool.get_particles_mut() {
-      let mut frame: f32 = m.frame as f32 / 255.0 + if m.is_reversed { -advance } else { advance };
+      let mut frame: f32 = f32::from(m.frame) / 255.0 + if m.is_reversed { -advance } else { advance };
 
       if frame > count {
         frame -= count;

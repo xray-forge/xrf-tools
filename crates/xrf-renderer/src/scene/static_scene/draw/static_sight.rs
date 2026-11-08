@@ -29,7 +29,7 @@ impl StaticSight {
   }
 
   pub fn has_pass(self, pass: StaticSurfacePass) -> bool {
-    self.0 & 1 << pass.get_index() != 0
+    self.0 & (1 << pass.get_index()) != 0
   }
 }
 

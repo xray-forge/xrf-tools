@@ -171,7 +171,7 @@ pub(crate) fn progressive_child_with_windows(windows: Vec<OgfSlideWindow>) -> Og
     geometry: Some(geometry(
       (0..6)
         .map(|index| {
-          let offset: f32 = index as f32;
+          let offset: f32 = f32::from(index);
           let position: Vector3d = match index == PROGRESSIVE_COARSE_ONLY_VERTEX {
             true => vector(100.0, 100.0, 100.0),
             false => vector(offset, offset * 2.0, offset * 3.0),

@@ -96,7 +96,7 @@ impl WetFeature {
     self.uniform = WetUniform {
       density,
       time: LevelTime::wrap(clock.splashes, RainUniform::CLOCK_PERIOD),
-      is_extended: (lighting.engine == XrayEngine::Extended) as u32 as f32,
+      is_extended: u32::from(lighting.engine == XrayEngine::Extended) as f32,
       is_enhanced: f32::from(u8::from(is_enhanced)),
       cover: windows.cover,
       cover_state: Vec4::new(

@@ -171,7 +171,7 @@ impl LevelLightShadows {
 
     self.is_swaying |= sway.amplitude * swaying > 0.0;
     // How wide a face's texels are, for each metre from the light, times the square's side.
-    let spread: f32 = 2.0 * ((cone + LIGHT_SHADOW_WIDENING) * 0.5).tan();
+    let spread: f32 = 2.0 * f32::midpoint(cone, LIGHT_SHADOW_WIDENING).tan();
 
     for (set_kind, set) in [(FaceSet::Shown, &mut entry.shown), (FaceSet::Next, &mut entry.next)] {
       if let Some(set) = set {

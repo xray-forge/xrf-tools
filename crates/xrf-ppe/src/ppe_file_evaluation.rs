@@ -81,7 +81,7 @@ impl PpeFile {
     let length: f32 = self.get_length_seconds();
     let mut times: Vec<f32> = keys
       .windows(2)
-      .map(|span| (span[0].time + span[1].time) * 0.5)
+      .map(|span| f32::midpoint(span[0].time, span[1].time))
       .chain(keys.iter().map(|key| key.time))
       .chain([0.0, length])
       .filter(|time| (0.0..=length).contains(time))

@@ -96,7 +96,7 @@ impl ChunkReadWrite for AlifeObject {
     let data_length: u16 = spawn_reader.read_u16::<T>()?;
 
     assert_equal(
-      data_length as u64 + 2,
+      u64::from(data_length) + 2,
       spawn_reader.size,
       "Expect correct data size for ALife object",
     )?;
@@ -160,7 +160,7 @@ impl ChunkReadWrite for AlifeObject {
     let update_action: u16 = update_reader.read_u16::<T>()?;
 
     assert_equal(
-      update_data_length as u64 + 2,
+      u64::from(update_data_length) + 2,
       update_reader.size,
       "Expect correct size of ALife object update data",
     )?;
