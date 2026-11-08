@@ -54,8 +54,11 @@ impl GraphCompiler {
 
     Self::validate_order(&kept, &textures, &buffers)?;
 
+    let (render_passes, render_pass_count) = Self::merge(&kept, options.is_merging);
+    let freed: Vec<usize> = Self::list_freed(&render_passes);
     let texture_slots: Vec<Option<TransientSlot<TransientTextureKey>>> = Self::assign_slots(
       &kept,
+      &freed,
       textures.len(),
       |pass| pass.list_textures().map(GraphTexture::get_index).collect(),
       |index| {
@@ -67,6 +70,7 @@ impl GraphCompiler {
     );
     let buffer_slots: Vec<Option<TransientSlot<TransientBufferKey>>> = Self::assign_slots(
       &kept,
+      &freed,
       buffers.len(),
       |pass| pass.list_buffers().map(GraphBuffer::get_index).collect(),
       |index| {
@@ -79,7 +83,6 @@ impl GraphCompiler {
       },
       options.is_pooling,
     );
-    let (render_passes, render_pass_count) = Self::merge(&kept, options.is_merging);
     let encode_groups: Vec<EncodeGroup> = Self::group(&kept, &groups, options.is_grouping);
     let passes: Vec<CompiledPass<'a>> = kept
       .into_iter()
@@ -264,10 +267,25 @@ impl GraphCompiler {
     Ok(())
   }
 
-  /// Gives every transient a surviving pass names a slot of its key: pooled, the first whose last user came before
-  /// its own first; otherwise one of its own.
+  /// Each surviving pass's position, or the last of the render pass it draws in: what a slot used by that pass is held
+  /// until, since the passes of one render pass touch their resources with no barrier between them.
+  fn list_freed(render_passes: &[Option<usize>]) -> Vec<usize> {
+    let mut freed: Vec<usize> = (0..render_passes.len()).collect();
+
+    for position in (0..render_passes.len().saturating_sub(1)).rev() {
+      if render_passes[position].is_some() && render_passes[position] == render_passes[position + 1] {
+        freed[position] = freed[position + 1];
+      }
+    }
+
+    freed
+  }
+
+  /// Gives every transient a surviving pass names a slot of its key: pooled, the first held by none past the render
+  /// pass of its last user (`freed`) before its own first; otherwise one of its own.
   fn assign_slots<K: Copy + Eq + Hash>(
     passes: &[GraphPass<'_>],
+    freed: &[usize],
     count: usize,
     list: impl Fn(&GraphPass<'_>) -> Vec<usize>,
     key_of: impl Fn(usize) -> Option<K>,
@@ -297,11 +315,11 @@ impl GraphCompiler {
       let key_ends: &mut Vec<usize> = ends.entry(key).or_default();
       let ordinal: usize = match key_ends.iter().position(|end| is_pooling && *end < first) {
         Some(ordinal) => {
-          key_ends[ordinal] = last;
+          key_ends[ordinal] = freed[last];
           ordinal
         }
         None => {
-          key_ends.push(last);
+          key_ends.push(freed[last]);
           key_ends.len() - 1
         }
       };
