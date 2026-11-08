@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use xrf_error::XrfResult;
+use xrf_error::{XrfError, XrfResult};
 use xrf_renderer_core::{PassParameters, PipelineCache};
 
 use crate::context::gpu_context::GpuContext;
@@ -57,6 +57,8 @@ pub struct GpuState {
   pub overlay: OverlayPass,
   /// The grid pass for each target format drawn into.
   grids: HashMap<wgpu::TextureFormat, GridPass>,
+  /// Why the grid pass for a format would not build, built again only once a shader reloads.
+  grid_failures: HashMap<wgpu::TextureFormat, String>,
   /// The name the driver's pipelines are kept under for this adapter and driver, none where its backend keeps none.
   driver_cache_key: Option<String>,
   /// How many bytes of them are kept now, which a save must pass to be worth writing.
@@ -132,6 +134,7 @@ impl GpuState {
         weather_textures: WeatherTextureCache::new(&device, &queue, workers),
         windows: HashMap::new(),
         grids: HashMap::new(),
+        grid_failures: HashMap::new(),
         pipelines,
         sky,
         textures,
@@ -182,16 +185,34 @@ impl GpuState {
   ///
   /// # Errors
   ///
-  /// Returns an error when its shader does not compose or compile.
+  /// Returns an error when its shader does not compose or compile, the same one without building it again until a
+  /// shader reloads.
   pub fn ensure_grid(&mut self, shaders: &ShaderLibrary, format: wgpu::TextureFormat) -> XrfResult {
-    if !self.grids.contains_key(&format) {
-      let source: PipelineSource<'_> = self.get_pipeline_source(shaders);
-      let grid: GridPass = GridPass::new(source, &self.view_layout, format)?;
-
-      self.grids.insert(format, grid);
+    if self.grids.contains_key(&format) {
+      return Ok(());
     }
 
-    Ok(())
+    if !self.grid_failures.contains_key(&format) {
+      let source: PipelineSource<'_> = self.get_pipeline_source(shaders);
+
+      match GridPass::new(source, &self.view_layout, format) {
+        Ok(grid) => {
+          self.grids.insert(format, grid);
+
+          return Ok(());
+        }
+        Err(error) => {
+          self.grid_failures.insert(format, error.to_string());
+        }
+      }
+    }
+
+    // The same error at every frame it is asked, so a log that skips a repeated failure logs it once.
+    let reason: &str = self.grid_failures.get(&format).map_or("", String::as_str);
+
+    Err(XrfError::new_unexpected_error(format!(
+      "The grid cannot be built: {reason}"
+    )))
   }
 
   /// The grid pass drawing into a format, once [`GpuState::ensure_grid`] built it.
@@ -212,12 +233,14 @@ impl GpuState {
     }
   }
 
-  /// Rebuilds the pipelines made from the modules a reload `changed`, or from any module importing one; every other
-  /// pipeline stays as it was made.
+  /// Rebuilds the pipelines made from the modules a reload `changed`, or from any module importing one, and tries the
+  /// grids that would not build again; every other pipeline stays as it was made.
   pub fn refresh(&mut self, shaders: &ShaderLibrary, changed: &[&str]) {
     for module in shaders.list_dependents(changed) {
       self.pipelines.invalidate_module(module);
     }
+
+    self.grid_failures.clear();
 
     let device: &wgpu::Device = &self.context.device;
     let source: PipelineSource<'_> = PipelineSource {

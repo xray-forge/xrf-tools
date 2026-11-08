@@ -102,10 +102,12 @@ impl RenderThread {
       let format: wgpu::TextureFormat = target.format;
 
       if let Err(error) = gpu.ensure_grid(&self.shaders, format) {
-        log::error!("Viewport cannot be drawn: {error}");
+        self.frame_failures.fail("Viewport cannot be drawn", &error);
 
         continue;
       }
+
+      self.frame_failures.succeed("Viewport cannot be drawn");
 
       let Some(window) = gpu.windows.get_mut(key) else {
         continue;
@@ -184,12 +186,8 @@ impl RenderThread {
             window.get_backdrop_slot(),
             &backdrop,
           )
-          .inspect_err(|error| {
-            self
-              .composition_failures
-              .fail("The page's backdrop cannot be drawn", error)
-          })
-          .inspect(|()| self.composition_failures.succeed("The page's backdrop cannot be drawn"))
+          .inspect_err(|error| self.frame_failures.fail("The page's backdrop cannot be drawn", error))
+          .inspect(|()| self.frame_failures.succeed("The page's backdrop cannot be drawn"))
           .is_ok();
 
       windows.push(WindowFrame {
@@ -294,7 +292,12 @@ impl RenderThread {
     self.retry_captures(retried);
 
     let executed: ExecutedGraph = match recorded {
-      Ok(executed) => executed,
+      Ok(executed) => {
+        self.frame_failures.succeed("The frame cannot be drawn");
+        self.frame_failures.succeed("The frame's uploads cannot be submitted");
+
+        executed
+      }
       Err(error) => {
         self.abandon_frame(running, encoder, frames, &recorders, copies, &error);
 
@@ -389,10 +392,8 @@ impl RenderThread {
         },
         format,
       ) {
-        Ok(()) => self.composition_failures.succeed("Level viewport cannot be presented"),
-        Err(error) => self
-          .composition_failures
-          .fail("Level viewport cannot be presented", &error),
+        Ok(()) => self.frame_failures.succeed("Level viewport cannot be presented"),
+        Err(error) => self.frame_failures.fail("Level viewport cannot be presented", &error),
       }
 
       match gpu.overlay.prepare(
@@ -403,8 +404,8 @@ impl RenderThread {
         },
         format,
       ) {
-        Ok(()) => self.composition_failures.succeed("Level overlays cannot be drawn"),
-        Err(error) => self.composition_failures.fail("Level overlays cannot be drawn", &error),
+        Ok(()) => self.frame_failures.succeed("Level overlays cannot be drawn"),
+        Err(error) => self.frame_failures.fail("Level overlays cannot be drawn", &error),
       }
     }
   }

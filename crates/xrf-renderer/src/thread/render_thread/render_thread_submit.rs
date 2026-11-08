@@ -22,9 +22,10 @@ use super::RenderThread;
 
 impl RenderThread {
   /// Gives up a frame its graph could not draw: what the frame's own encoder holds is not of the frame (the uploads and
-  /// the acceleration structures the scenes built, which they count as done) and still goes up; what the graph copied
-  /// out for reading back is dropped, its picks wait for the next frame, and its captures and bursts are refused, a
-  /// burst's frames no longer following one another; a recording's frame is dropped, its buffer freed.
+  /// the acceleration structures the scenes built, which they count as done) and still goes up; the uniforms its graph
+  /// pushed are dropped, as is what it copied out for reading back; its picks wait for the next frame, and its captures
+  /// and bursts are refused, a burst's frames no longer following one another; a recording's frame is dropped, its
+  /// buffer freed.
   pub(super) fn abandon_frame(
     &mut self,
     running: &mut RunningGpu,
@@ -34,9 +35,16 @@ impl RenderThread {
     FrameCopies { captures, records, .. }: FrameCopies,
     error: &XrfError,
   ) {
-    log::error!("The frame cannot be drawn: {error}");
+    self.frame_failures.fail("The frame cannot be drawn", error);
 
-    let RunningGpu { gpu, belt: kept, .. } = running;
+    let RunningGpu {
+      gpu,
+      runtime,
+      belt: kept,
+      ..
+    } = running;
+
+    runtime.uploads.discard();
 
     let scope: wgpu::ErrorScopeGuard = gpu.context.device.push_error_scope(wgpu::ErrorFilter::Validation);
     let (commands, belt): (wgpu::CommandBuffer, StagingBelt) = encoder.finish();
@@ -45,7 +53,9 @@ impl RenderThread {
     *kept = Some(belt);
 
     if let Some(error) = pollster::block_on(scope.pop()) {
-      log::error!("The frame's uploads cannot be submitted: {error}");
+      self
+        .frame_failures
+        .fail("The frame's uploads cannot be submitted", &error);
     }
 
     let message: String = error.to_string();
