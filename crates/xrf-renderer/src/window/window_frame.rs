@@ -25,6 +25,8 @@ pub struct WindowFrame {
   /// Whether it shows anything this frame: one minimised or sized to nothing draws only its viewports' captures, which
   /// draw into textures of their own, and takes no image.
   pub is_shown: bool,
+  /// Whether its image may be copied out of (`RenderWindow::is_copyable`), which a capture of what it shows needs.
+  pub is_copyable: bool,
   pub drawn: Vec<WindowViewport>,
   pub clear: wgpu::Color,
   pub is_backdrop_painted: bool,

@@ -143,6 +143,7 @@ impl RenderThread {
             key: *key,
             target,
             is_shown: false,
+            is_copyable: window.is_copyable(),
             drawn,
             clear: wgpu::Color::TRANSPARENT,
             is_backdrop_painted: false,
@@ -194,6 +195,7 @@ impl RenderThread {
         key: *key,
         target,
         is_shown: true,
+        is_copyable: window.is_copyable(),
         drawn,
         clear: backdrop.get_clear(),
         is_backdrop_painted,
@@ -207,27 +209,31 @@ impl RenderThread {
 
   /// Draws every window's viewports: `update` is what the frame spent before any window, `span` the GPU's milliseconds
   /// on the latest frame read back, where one came back. The running GPU is taken out for the frame, so each phase is a
-  /// method of the thread's own.
-  pub(super) fn draw_windows(&mut self, update: Duration, span: Option<f32>, mut encoder: FrameEncoder) {
+  /// method of the thread's own. Answers whether the windows were presented, which paces the next frame.
+  pub(super) fn draw_windows(&mut self, update: Duration, span: Option<f32>, mut encoder: FrameEncoder) -> bool {
     let windows: Vec<WindowFrame> = self.ready_windows(&mut encoder);
 
     self.answer_unseen_picks(&windows);
 
     let Some(mut running) = self.running.take() else {
-      return;
+      return false;
     };
 
     // With nothing to draw into, what the scenes took in still goes up.
-    if windows.is_empty() {
+    let is_presented: bool = if windows.is_empty() {
       let (commands, belt): (wgpu::CommandBuffer, StagingBelt) = encoder.finish();
 
       running.gpu.context.queue.submit([commands]);
       running.belt = Some(belt);
+
+      false
     } else {
-      self.draw_frame(&mut running, update, span, windows, encoder);
-    }
+      self.draw_frame(&mut running, update, span, windows, encoder)
+    };
 
     self.running = Some(running);
+
+    is_presented
   }
 
   /// Answers the picks of every viewport no window draws this frame, laid out nowhere or in a window with no image:
@@ -247,7 +253,8 @@ impl RenderThread {
 
   /// The frame proper, over windows to draw into: the views readied, the periodic work committed, the composition's
   /// pipelines readied, the captures and bursts' frames taken, the graph recorded and executed, the frame submitted,
-  /// each view's frame ended and each window presented.
+  /// each view's frame ended and each window presented. Answers whether it got as far as presenting, not where the
+  /// frame was abandoned.
   fn draw_frame(
     &mut self,
     running: &mut RunningGpu,
@@ -255,7 +262,7 @@ impl RenderThread {
     span: Option<f32>,
     mut windows: Vec<WindowFrame>,
     mut encoder: FrameEncoder,
-  ) {
+  ) -> bool {
     let started: Instant = Instant::now();
     let mut phases: FramePhases = FramePhases {
       update,
@@ -301,7 +308,7 @@ impl RenderThread {
       Err(error) => {
         self.abandon_frame(running, encoder, frames, &recorders, copies, &error);
 
-        return;
+        return false;
       }
     };
     let waited: Duration = windows.iter().map(|window| window.acquire).sum();
@@ -314,6 +321,8 @@ impl RenderThread {
     self.present_windows(&running.gpu.context.queue, windows, phases, cpu, span, &groups);
 
     profiling::finish_frame!();
+
+    true
   }
 
   /// Grants the frame's periodic work: each scene's light faces offered as every view of it asked for them, under the

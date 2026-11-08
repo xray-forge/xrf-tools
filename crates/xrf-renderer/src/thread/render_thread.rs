@@ -235,7 +235,16 @@ impl RenderThread {
       }
 
       self.ensure_gpu();
-      self.frame();
+
+      // A frame presenting nothing waited on no display: without a GPU, a window or a graph wgpu took, the next would
+      // follow at once and spin the thread, so it waits for a command or the idle wait, as a thread drawing nothing.
+      if !self.frame() {
+        match self.receiver.recv_timeout(IDLE_WAIT) {
+          Ok(command) => self.handle(command),
+          Err(RecvTimeoutError::Timeout) => {}
+          Err(RecvTimeoutError::Disconnected) => break 'running,
+        }
+      }
     }
 
     // Answered once everything the thread made on the GPU is let go: its scenes hold the device as long as the GPU

@@ -89,6 +89,12 @@ impl RenderWindow {
     DisplayTarget { format: self.format }
   }
 
+  /// Whether its images may be copied out of, which a capture of what the window shows needs: as far as the platform's
+  /// swapchain allows.
+  pub fn is_copyable(&self) -> bool {
+    self.usages.contains(wgpu::TextureUsages::COPY_SRC)
+  }
+
   /// Whether the surface was lost: the window is then drawn into through a new one.
   pub fn is_lost(&self) -> bool {
     self.is_lost.get()
