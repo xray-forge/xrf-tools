@@ -4,7 +4,7 @@ use crate::contract::report::frame::render_pool_use::RenderPoolUse;
 
 /// How full a level's static draws' pools are, and what the camera's cull kept and occlusion hid.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderStaticReport {
   /// Slots, a draw each.

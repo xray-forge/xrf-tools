@@ -8,7 +8,7 @@ use crate::describe::source::ArchiveDescribeSource;
 
 /// Everything the viewer says about the blender library.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ArchiveShadersDescription {
   pub library: ArchiveShadersLibrary,

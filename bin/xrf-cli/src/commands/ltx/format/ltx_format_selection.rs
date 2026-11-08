@@ -42,7 +42,7 @@ impl LtxFormatSelection {
     declined.sort();
     files.sort();
 
-    Ok(Self { declined, files })
+    Ok(Self { files, declined })
   }
 
   /// Returns `true` when neither loose nor archived configs were selected.

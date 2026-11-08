@@ -4,7 +4,7 @@ use crate::host::level::part::level_parts::LevelParts;
 
 /// How far the world has streamed a level into its scene, which its load report is made from with what the renderer
 /// knows of its textures.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct RenderStreamingProgress {
   /// When the world began opening the level, which its load is timed from.
   pub started: Option<Instant>,

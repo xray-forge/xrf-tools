@@ -11,7 +11,7 @@ pub(crate) const RENDER_CUBE_MOST_SUPERSAMPLING: u32 = 4;
 /// A cubemap asked of a viewport: the six faces around where its camera stands, world-aligned in the engine's order
 /// `+x -x +y -y +z -z`, each `size` pixels square at exactly 90 degrees.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderCubeCapture {
   /// A face's pixels on a side.

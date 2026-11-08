@@ -141,7 +141,7 @@ impl XrayVfsHost {
   /// The search plan of some roots, planned from disk only the first time it is asked for.
   fn plan(&self, roots: &XrayRoots) -> XrfResult<Arc<XraySearchPlan>> {
     if let Some(plan) = self.plans().get(roots) {
-      return Ok(plan.clone());
+      return Ok(Arc::clone(plan));
     }
 
     let plan: Arc<XraySearchPlan> = Arc::new(
@@ -150,7 +150,7 @@ impl XrayVfsHost {
         .map_err(|error| XrfError::new_asset_error(format!("Failed to plan the asset roots: {error}")))?,
     );
 
-    Ok(self.plans().entry(roots.clone()).or_insert(plan).clone())
+    Ok(Arc::clone(self.plans().entry(roots.clone()).or_insert(plan)))
   }
 
   /// The snapshot a plan is searched in and its steps: the newest one where it settles every source the plan names,
@@ -180,7 +180,7 @@ impl XrayVfsHost {
       .map_err(|error| XrfError::new_asset_error(format!("Failed to mount the asset roots: {error}")))?;
     let published: Arc<XrayVfs> = Arc::new(fork);
 
-    *self.recover(self.current.write()) = published.clone();
+    *self.recover(self.current.write()) = Arc::clone(&published);
 
     Ok((published, steps))
   }
@@ -195,7 +195,7 @@ impl XrayVfsHost {
     plan
       .find_mounted(vfs)
       .filter(|_| !is_retrying || !plan.has_failed_in(vfs))
-      .map(|steps| (vfs.clone(), steps))
+      .map(|steps| (Arc::clone(vfs), steps))
   }
 
   fn plans(&self) -> MutexGuard<'_, HashMap<XrayRoots, Arc<XraySearchPlan>>> {

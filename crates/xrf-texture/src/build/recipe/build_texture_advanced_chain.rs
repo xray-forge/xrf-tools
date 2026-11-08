@@ -9,7 +9,7 @@ use xrf_thm::{ThmTextureFlag, ThmTextureParamChunk};
 /// Each level is the 2x2 average of the one above, faded towards `fade_color` once `fade_delay` levels are past, and
 /// its alpha raised by an eighth, which keeps an alpha-tested surface from thinning away at a distance. The chain stops
 /// when the shorter side reaches one texel, so an oblong texture carries fewer levels than a full chain.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BuildTextureAdvancedChain {
   /// `fade_color` as the descriptor stores it, `0xAARRGGBB`; its alpha is the target of an alpha fade.
   pub fade_color: u32,

@@ -199,7 +199,7 @@ fn a_cancelled_run_leaves_the_destination_as_it_found_it() {
     .collect();
 
   let sink: Arc<CancelOnFirstEntry> = Arc::new(CancelOnFirstEntry::default());
-  let job: JobHandle = JobHandle::with_interval(sink.clone(), Duration::ZERO);
+  let job: JobHandle = JobHandle::with_interval(Arc::<CancelOnFirstEntry>::clone(&sink), Duration::ZERO);
 
   assert!(sink.job.set(job.clone()).is_ok(), "the sink is given its job once");
 

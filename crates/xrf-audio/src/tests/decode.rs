@@ -49,7 +49,7 @@ fn seeks_to_the_exact_frame_asked_for() {
 fn decodes_an_ogg_sound_to_the_length_the_engine_counts() -> XrfResult {
   let bytes: Arc<[u8]> = VorbisNoiseFixture::sound(2, 300).into();
   let file: SoundFile = SoundFile::read_from_bytes(&bytes)?;
-  let decoder: SoundDecoder = SoundDecoder::open(bytes.clone())?;
+  let decoder: SoundDecoder = SoundDecoder::open(Arc::clone(&bytes))?;
   let sound: DecodedSound = DecodedSound::decode(bytes)?;
 
   assert_eq!(decoder.get_sample_rate(), VorbisNoiseFixture::SAMPLE_RATE);
@@ -63,7 +63,7 @@ fn decodes_an_ogg_sound_to_the_length_the_engine_counts() -> XrfResult {
 #[test]
 fn seeks_an_ogg_sound_forward_and_back_to_the_frames_a_whole_decode_gives() -> XrfResult {
   let bytes: Arc<[u8]> = VorbisNoiseFixture::sound(2, 500).into();
-  let whole: DecodedSound = DecodedSound::decode(bytes.clone())?;
+  let whole: DecodedSound = DecodedSound::decode(Arc::clone(&bytes))?;
   let mut decoder: SoundDecoder = SoundDecoder::open(bytes)?;
   let frames_count: u64 = decoder.get_frames_count();
   let mut packet: Vec<f32> = Vec::new();
@@ -102,8 +102,8 @@ fn refuses_what_it_cannot_play() {
   let garbage: Arc<[u8]> = Arc::from(&b"OggS this is no sound at all"[..]);
 
   for bytes in [three_channels, garbage, Arc::from(&[][..])] {
-    assert!(DecodedSound::decode(bytes.clone()).is_err());
-    assert!(SoundDecoder::open(bytes.clone()).is_err());
+    assert!(DecodedSound::decode(Arc::clone(&bytes)).is_err());
+    assert!(SoundDecoder::open(Arc::clone(&bytes)).is_err());
     assert!(SoundPeaks::read(bytes, 16).is_err());
   }
 }

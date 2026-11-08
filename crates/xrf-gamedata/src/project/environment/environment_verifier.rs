@@ -80,10 +80,10 @@ impl<'a> GamedataCheck<'a> for EnvironmentVerifier<'a> {
     );
 
     Ok(GamedataEnvironmentVerificationResult {
-      checked_configs_count,
       duration,
-      findings,
+      checked_configs_count,
       invalid_configs_count,
+      findings,
     })
   }
 }

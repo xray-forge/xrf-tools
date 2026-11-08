@@ -157,7 +157,7 @@ mod tests {
       phase: JobPhase::PREPARE,
       completed: None,
     });
-    let job = JobHandle::new(sink.clone());
+    let job = JobHandle::new(Arc::<CancelAtPhase>::clone(&sink));
     *sink.job.lock().expect("test job lock") = Some(job.clone());
 
     let summary =
@@ -178,7 +178,7 @@ mod tests {
       completed: Some(1),
     });
     // Only phase transitions report: the final snapshot comes as the completed check scope is dropped.
-    let job = JobHandle::with_interval(sink.clone(), Duration::MAX);
+    let job = JobHandle::with_interval(Arc::<CancelAtPhase>::clone(&sink), Duration::MAX);
     *sink.job.lock().expect("test job lock") = Some(job.clone());
 
     let summary = GamedataVerifySummary::run(request(root), &job).expect("verification finishes");

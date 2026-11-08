@@ -56,9 +56,9 @@ impl XrayAssetIndex {
     }
 
     Ok(Self {
+      directory,
       assets,
       collisions,
-      directory,
       ignored,
     })
   }

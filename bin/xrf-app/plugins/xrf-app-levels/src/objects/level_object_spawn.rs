@@ -6,7 +6,7 @@ use crate::spawn::LevelSpawnRelease;
 /// What the spawn records of a level object it places: its section, class and story id, why a new game releases it,
 /// and the visual it is drawn as.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelObjectSpawn {
   pub section: String,

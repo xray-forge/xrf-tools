@@ -10,7 +10,7 @@ use crate::part::editable_text_part::EditableTextPart;
 
 /// An object tool's text part, typed: its scene's GUID, the tool's `[main]` and `[modif]`, and its objects in the
 /// order `[object_N]` numbers them (`ESceneCustomOTool::SaveLTX`).
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EditableObjectPart<T> {
   pub guid: EditableLevelGuid,
   /// The tool's version in `[main]`, such as `PS_TOOLS_VERSION`.

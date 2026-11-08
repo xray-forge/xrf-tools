@@ -3,7 +3,7 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
 /// Link to a sliding window table stored outside the visual, `OGF_SWICONTAINER`: an index into the level's `fsL_SWIS`.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct OgfSwiContainerChunk {
   pub ext_swib_index: u32,
 }

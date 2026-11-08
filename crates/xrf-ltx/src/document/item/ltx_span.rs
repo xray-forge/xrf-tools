@@ -11,7 +11,7 @@ pub struct LtxSpan {
 
 impl LtxSpan {
   pub(crate) fn new(line: u32, column: u32) -> Self {
-    Self { column, line }
+    Self { line, column }
   }
 
   /// The line as a diagnostic takes it.

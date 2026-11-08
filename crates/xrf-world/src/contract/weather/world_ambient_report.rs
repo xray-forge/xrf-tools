@@ -6,7 +6,7 @@ use crate::contract::weather::world_ambient_effect_report::WorldAmbientEffectRep
 
 /// Where the weather's ambient effects near a viewport's camera stand.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WorldAmbientReport {
   /// The effect playing, or none.

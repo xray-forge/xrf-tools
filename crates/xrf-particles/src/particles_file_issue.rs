@@ -4,7 +4,7 @@ use crate::data::group::particle_group_child::ParticleGroupChild;
 
 /// A fault the SDK's particle editor refuses to save a library over (`CParticleTool::Validate`), as
 /// [`crate::ParticlesFile::validate`] finds it.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ParticlesFileIssue {
   /// `CPEDef::Validate`: the effect has no `KillOld` action, so its particles live as long as it plays.
   MissingKillOld { effect: String },

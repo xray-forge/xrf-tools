@@ -5,7 +5,7 @@ use xrf_level::LevelPsStaticPlacement;
 
 /// One particle effect a level plants, and how widely.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ArchiveLevelPsStaticEffect {
   /// The effect played, which names a definition inside `particles.xr` rather than a file, so it crosses as text.

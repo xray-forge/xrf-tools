@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 /// One explicitly typed callable argument.
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 pub struct ExternParameter {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub doc: Option<String>,

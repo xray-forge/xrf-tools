@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 /// What of a scene a view shows, each feeding which passes its frame graph declares: the sky and what crosses it, the
 /// fog, the sun's flares and shafts, the wall marks, the particles, and the surfaces that cut out or blend.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderShowFlags {
   /// Whether the weather's sky is drawn behind the level, rather than a plain backdrop.

@@ -3,7 +3,7 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{assert_length, to_format_size};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SkeletonPart {
   pub name: String,
   pub bones: Vec<(String, u32)>, // name + index.

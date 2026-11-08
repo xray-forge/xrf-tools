@@ -98,7 +98,7 @@ mod tests {
   #[test]
   fn filters_messages_by_verbosity() {
     let output: Arc<RecordingOutput> = Arc::new(RecordingOutput::default());
-    let options: OutputOptions = OutputOptions::new(output.clone(), OutputVerbosity::Normal);
+    let options: OutputOptions = OutputOptions::new(Arc::<RecordingOutput>::clone(&output), OutputVerbosity::Normal);
 
     options.heading("heading");
     options.success("success");
@@ -124,7 +124,7 @@ mod tests {
   #[test]
   fn answers_visibility_the_way_write_decides_it() {
     let output: Arc<RecordingOutput> = Arc::new(RecordingOutput::default());
-    let normal: OutputOptions = OutputOptions::new(output.clone(), OutputVerbosity::Normal);
+    let normal: OutputOptions = OutputOptions::new(Arc::<RecordingOutput>::clone(&output), OutputVerbosity::Normal);
     let silent: OutputOptions = OutputOptions::new(output, OutputVerbosity::Silent);
 
     assert!(normal.is_visible(OutputChannel::Info));
@@ -136,7 +136,7 @@ mod tests {
   #[test]
   fn silent_verbosity_mutes_chatter_but_never_failures() {
     let output: Arc<RecordingOutput> = Arc::new(RecordingOutput::default());
-    let options: OutputOptions = OutputOptions::new(output.clone(), OutputVerbosity::Silent);
+    let options: OutputOptions = OutputOptions::new(Arc::<RecordingOutput>::clone(&output), OutputVerbosity::Silent);
 
     options.heading("heading");
     options.success("success");
@@ -155,7 +155,7 @@ mod tests {
   #[test]
   fn forwards_every_message_at_verbose_verbosity() {
     let output: Arc<RecordingOutput> = Arc::new(RecordingOutput::default());
-    let options: OutputOptions = OutputOptions::new(output.clone(), OutputVerbosity::Verbose);
+    let options: OutputOptions = OutputOptions::new(Arc::<RecordingOutput>::clone(&output), OutputVerbosity::Verbose);
 
     options.info("normal");
     options.error("error");
@@ -174,7 +174,7 @@ mod tests {
   #[test]
   fn replays_a_record_without_re_deciding_visibility() {
     let output: Arc<RecordingOutput> = Arc::new(RecordingOutput::default());
-    let options: OutputOptions = OutputOptions::new(output.clone(), OutputVerbosity::Silent);
+    let options: OutputOptions = OutputOptions::new(Arc::<RecordingOutput>::clone(&output), OutputVerbosity::Silent);
 
     options.write_record(&OutputRecord::new(OutputChannel::Verbose, "detail"));
 
@@ -185,8 +185,8 @@ mod tests {
   fn keeps_its_verbosity_when_redirected_to_another_sink() {
     let first: Arc<RecordingOutput> = Arc::new(RecordingOutput::default());
     let second: Arc<RecordingOutput> = Arc::new(RecordingOutput::default());
-    let options: OutputOptions = OutputOptions::new(first.clone(), OutputVerbosity::Normal);
-    let redirected: OutputOptions = options.with_output(second.clone());
+    let options: OutputOptions = OutputOptions::new(Arc::<RecordingOutput>::clone(&first), OutputVerbosity::Normal);
+    let redirected: OutputOptions = options.with_output(Arc::<RecordingOutput>::clone(&second));
 
     redirected.info("normal");
     redirected.verbose("verbose");

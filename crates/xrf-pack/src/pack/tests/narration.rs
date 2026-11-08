@@ -25,7 +25,7 @@ fn pack_saying(
 
   let recorded: Arc<RecordingOutput> = Arc::new(RecordingOutput::default());
   let options: ArchivePackOptions =
-    ArchivePackOptions::default().with_output(OutputOptions::new(recorded.clone(), verbosity));
+    ArchivePackOptions::default().with_output(OutputOptions::new(Arc::<RecordingOutput>::clone(&recorded), verbosity));
   let result: ArchivePackResult = ArchivePacker::pack_opt(&config, options).expect("source tree packs");
 
   let lines: Vec<String> = recorded

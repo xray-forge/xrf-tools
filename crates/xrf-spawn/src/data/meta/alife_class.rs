@@ -8,7 +8,7 @@ use crate::data::meta::map::CLS_ID_TO_CLASS;
 
 /// The server class a spawned object is read as: those Call of Pripyat creates from a spawn, by the engine's
 /// `object_factory_register.cpp` and the scripts' `class_registrator.script`.
-#[derive(Clone, Debug, Enum, PartialEq, FromStr, Display)]
+#[derive(Clone, Debug, Enum, PartialEq, Eq, FromStr, Display)]
 pub enum AlifeClass {
   #[display("CseAlifeAnomalousZone")]
   CseAlifeAnomalousZone,

@@ -48,7 +48,7 @@ impl AudioTransport {
   ///
   /// Returns an error when the bytes are not a sound [`SoundDecoder`] opens.
   pub fn open(bytes: Arc<[u8]>, bus: AudioBus) -> XrfResult<Self> {
-    let format: SoundFormat = SoundDecoder::open(bytes.clone())?.get_format();
+    let format: SoundFormat = SoundDecoder::open(Arc::clone(&bytes))?.get_format();
 
     Ok(Self {
       bytes,
@@ -188,7 +188,7 @@ impl AudioTransport {
       frame,
       is_looped: self.is_looped,
     };
-    let reader = SoundStream::start(self.bytes.clone(), self.format, start).inspect_err(|error| {
+    let reader = SoundStream::start(Arc::clone(&self.bytes), self.format, start).inspect_err(|error| {
       self.failure = Some(error.to_string());
     })?;
     let control: StreamControl = reader.get_control();

@@ -4,7 +4,7 @@ use crate::data::sector::sector_surface::SectorSurface;
 use crate::data::visual::geometry::visual_section::VisualSection;
 
 /// One mesh a sector draws many times, packed once with the places it stands.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SectorInstanceGroup {
   pub surface: SectorSurface,
   /// The drawables this group stands in for, by their index in the visuals run.

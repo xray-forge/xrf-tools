@@ -9,7 +9,7 @@ use xrf_error::{XrfError, XrfResult};
 use crate::constants::NIL;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Display)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Display)]
 #[serde(rename_all = "camelCase")]
 #[display("{year},{month},{day},{hour},{minute},{second},{millis}")]
 pub struct Time {

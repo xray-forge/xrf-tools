@@ -54,7 +54,7 @@ impl WeatherGraphs {
       _ => Vec::new(),
     };
 
-    Self { atmosfear, graphs }
+    Self { graphs, atmosfear }
   }
 
   /// The graph of a name, where there is one.

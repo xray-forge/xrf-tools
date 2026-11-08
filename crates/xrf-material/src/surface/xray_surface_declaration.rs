@@ -2,7 +2,7 @@ use serde::Serialize;
 
 /// What the shader library says about a surface, as the renderer would read it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum XraySurfaceDeclaration {
   /// The surface names no shader at all, so there is nothing to look up.

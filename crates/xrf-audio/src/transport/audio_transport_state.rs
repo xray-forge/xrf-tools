@@ -6,7 +6,7 @@ use crate::transport::audio_transport_playback::AudioTransportPlayback;
 
 /// Where a transport is, for a player to show.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AudioTransportState {
   pub playback: AudioTransportPlayback,

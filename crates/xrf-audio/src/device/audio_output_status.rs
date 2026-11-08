@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 /// What the output plays on now.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AudioOutputStatus {
   /// The device playing, or `None` while none could be opened.

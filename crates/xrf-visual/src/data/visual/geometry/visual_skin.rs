@@ -5,7 +5,7 @@ use crate::data::visual::geometry::visual_section::VisualSection;
 /// Where one submesh's skinning links sit in the geometry buffer: [`VisualSkin::LINKS`] bone indices and as many
 /// weights a vertex, a vertex of fewer links padded with bone nought at no weight.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VisualSkin {
   pub indices: VisualSection,

@@ -7,7 +7,7 @@ use crate::swc_ecma_ast::{
 };
 
 /// The TypeScript contract resolved for one source symbol.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TypeScriptSymbol {
   Callable(TypeScriptFunctionSignature),
   Value(String),

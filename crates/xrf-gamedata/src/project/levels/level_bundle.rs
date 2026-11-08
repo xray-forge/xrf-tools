@@ -16,7 +16,7 @@ pub(crate) struct LevelBundle<'a> {
 
 impl<'a> LevelBundle<'a> {
   pub(crate) fn new(project: &'a GamedataProject, name: &'a str, job: &'a JobHandle) -> Self {
-    Self { project, name, job }
+    Self { job, project, name }
   }
 
   pub(crate) fn job(&self) -> &JobHandle {

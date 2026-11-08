@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 /// How a viewport's skinned models stand: a frame of a motion of theirs, or their bind pose, and the bones collapsed.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WorldModelPose {
   /// The motion, by its name, or none for the bind pose.

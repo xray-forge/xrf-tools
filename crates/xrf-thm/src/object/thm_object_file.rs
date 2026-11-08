@@ -16,7 +16,7 @@ use crate::thm_file::ThmFile;
 
 /// An object's thumbnail, `EObjectThumbnail` (`ECore/Editor/EThumbnailObject.cpp`): the `.thm` beside an `.object`
 /// under the SDK's `$objects$`, its preview picture and size. Only the SDK reads it.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ThmObjectFile {
   /// The preview the object library shows, see [`ThmThumbnailChunk::decode`].

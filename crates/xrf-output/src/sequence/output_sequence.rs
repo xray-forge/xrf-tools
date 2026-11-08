@@ -32,7 +32,7 @@ impl OutputSequence {
     let recorder: Arc<RecordingOutput> = Arc::new(RecordingOutput::default());
 
     OutputSlot {
-      output: self.sink.with_output(recorder.clone()),
+      output: self.sink.with_output(Arc::<RecordingOutput>::clone(&recorder)),
       recorder,
       sequence: self,
       index,
@@ -106,7 +106,7 @@ mod tests {
 
   fn recording() -> (Arc<RecordingOutput>, OutputOptions) {
     let output: Arc<RecordingOutput> = Arc::new(RecordingOutput::default());
-    let options: OutputOptions = OutputOptions::new(output.clone(), OutputVerbosity::Verbose);
+    let options: OutputOptions = OutputOptions::new(Arc::<RecordingOutput>::clone(&output), OutputVerbosity::Verbose);
 
     (output, options)
   }
@@ -269,7 +269,7 @@ mod tests {
   #[test]
   fn holds_nothing_a_muted_verbosity_would_not_have_printed() {
     let output: Arc<RecordingOutput> = Arc::new(RecordingOutput::default());
-    let options: OutputOptions = OutputOptions::new(output.clone(), OutputVerbosity::Silent);
+    let options: OutputOptions = OutputOptions::new(Arc::<RecordingOutput>::clone(&output), OutputVerbosity::Silent);
 
     {
       let sequence: OutputSequence = OutputSequence::new(&options, 1);

@@ -7,7 +7,7 @@ use xrf_error::XrfResult;
 
 use crate::data::particle_action::ParticleAction;
 
-#[derive(Copy, Clone, Debug, Enum, PartialEq, FromStr, Display, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Enum, PartialEq, Eq, FromStr, Display, Serialize, Deserialize)]
 pub enum ParticleActionType {
   #[display("Avoid")]
   Avoid = 0,

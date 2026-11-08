@@ -64,8 +64,8 @@ impl LevelTextureReference {
     located
       .into_iter()
       .chain(bumps.into_iter().map(|(reference, logical_path)| Self {
-        logical_path,
         reference,
+        logical_path,
       }))
       .collect()
   }

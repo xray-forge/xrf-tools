@@ -7,7 +7,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{FileImportExport, Ltx, LtxRecordWriter, LtxSectionWrite, LtxWrite, META_TYPE_FIELD, Section};
 use xrf_utils::{assert_equal, format_path};
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ParticlesHeaderChunk {
   pub version: u16,

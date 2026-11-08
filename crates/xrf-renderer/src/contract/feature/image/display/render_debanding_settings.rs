@@ -5,7 +5,7 @@ use crate::contract::feature::image::display::render_debanding_mode::RenderDeban
 
 /// Whether the sky's colour bands are smoothed.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, RenderSettingSchema, Serialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Eq, RenderSettingSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderDebandingSettings {
   pub mode: RenderDebandingMode,

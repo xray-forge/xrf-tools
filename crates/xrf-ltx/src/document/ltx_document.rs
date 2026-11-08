@@ -9,7 +9,7 @@ use crate::document::{LtxCheck, LtxItem};
 /// Permissive: it records statements, never judges them. Rejecting a duplicate section or a duplicate
 /// include belongs to whatever resolves the document, because those are dialect rules - DLTX makes a duplicate across
 /// files legal through `![section]`. Nothing here performs I/O or knows what a VFS is.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct LtxDocument {
   /// Every statement, including comments and blank lines, in the order written.
   pub(crate) items: Vec<LtxItem>,

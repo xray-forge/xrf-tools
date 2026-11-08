@@ -85,7 +85,7 @@ fn cancellation_inside_a_check_stops_its_remaining_items() {
     let options = GamedataProjectVerifyOptions {
       job,
       checks: vec![check],
-      output: OutputOptions::new(sink.clone(), OutputVerbosity::Verbose),
+      output: OutputOptions::new(Arc::<CancelAfterFirstItem>::clone(&sink), OutputVerbosity::Verbose),
       ..Default::default()
     };
 

@@ -34,7 +34,7 @@ fn verify(project: &GamedataProject, checks: Vec<GamedataVerificationType>) -> V
 
   project
     .verify(&GamedataProjectVerifyOptions {
-      job: JobHandle::with_interval(sink.clone(), Duration::ZERO),
+      job: JobHandle::with_interval(Arc::<RecordingSink>::clone(&sink), Duration::ZERO),
       checks,
       ..Default::default()
     })

@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 /// One thing of a level a selection names, as a pick names it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum RenderSelectionTarget {
   /// An object the level's spawn places, by its index among them.

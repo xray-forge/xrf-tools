@@ -7,7 +7,7 @@ use crate::describe::source::ArchiveDescribeSource;
 
 /// One volumetric fog body of a level, as the viewer reads it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ArchiveLevelFogVolume {
   /// The config its simulation settings come from, which is an LTX under `$game_config$` rather than anything the

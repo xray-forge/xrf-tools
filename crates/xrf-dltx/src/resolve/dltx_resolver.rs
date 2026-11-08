@@ -254,7 +254,7 @@ impl<'a> DltxResolver<'a> {
           merged.remove(&item.key);
         }
         _ => {
-          merged.insert(item.key.clone(), item);
+          merged.insert(Arc::clone(&item.key), item);
         }
       }
     }
@@ -275,7 +275,7 @@ impl<'a> DltxResolver<'a> {
             .insert(Arc::clone(&item.key));
         }
         _ => {
-          merged.insert(item.key.clone(), item);
+          merged.insert(Arc::clone(&item.key), item);
         }
       }
     }

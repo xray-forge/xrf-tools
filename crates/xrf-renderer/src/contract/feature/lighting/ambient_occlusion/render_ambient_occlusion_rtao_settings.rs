@@ -3,7 +3,7 @@ use xrf_renderer_derive::RenderSettingSchema;
 
 /// RTAO's trace: the rays each point casts a frame.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, RenderSettingSchema, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, RenderSettingSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderAmbientOcclusionRtaoSettings {
   #[setting(min = 1, max = 8, recommended = [2, 8], wasted_above = 4)]

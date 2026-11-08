@@ -1,5 +1,5 @@
 /// Two sections whose inventory icon rectangles cover a common cell.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EquipmentGridOverlap {
   pub first: String,
   pub second: String,

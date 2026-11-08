@@ -4,7 +4,7 @@ use crate::data::visual::geometry::visual_draw_range::VisualDrawRange;
 
 /// The bands a progressive mesh is drawn in: a few of the engine's slide windows, one of which each place draws.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SectorProgressive {
   /// Windows the engine's table has, which a place's detail picks among (`FTreeVisual_PM::Render`).

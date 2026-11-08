@@ -1,7 +1,7 @@
 /// A burst frame's G-buffer marks: each texel's byte of the marks the material target holds in its alpha
 /// (`shaders/common/marks.wgsl`), rows top to bottom at the size the scene was drawn at, which a temporal upscale draws
 /// smaller than the frame.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct BurstMarks {
   pub width: u32,
   pub height: u32,

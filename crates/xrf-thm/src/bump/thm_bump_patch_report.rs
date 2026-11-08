@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::bump::thm_bump_mode::ThmBumpMode;
 
 /// Outcome of a guarded thm bump patch.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ThmBumpPatchReport {
   /// Size of the source file before patching.

@@ -3,7 +3,7 @@ use xrf_efd::{EfdPattern, EfdVariable};
 
 /// One term of an evaluation function, as the viewer reads it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ArchiveEfdPattern {
   /// Inputs the term reads, by their positions in the function's own variable list.

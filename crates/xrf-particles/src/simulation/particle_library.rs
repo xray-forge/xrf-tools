@@ -37,7 +37,7 @@ impl ParticleLibrary {
     self
       .effects
       .get(name)
-      .map(|effect| ParticleEffectInstance::new(effect.clone(), seed))
+      .map(|effect| ParticleEffectInstance::new(Arc::clone(effect), seed))
   }
 
   /// `model_CreateParticles`: a stopped copy of the effect by that name, or else of the group.
@@ -49,7 +49,7 @@ impl ParticleLibrary {
     self
       .groups
       .get(name)
-      .map(|group| ParticleInstance::Group(ParticleGroupInstance::new(group.clone(), self, seed)))
+      .map(|group| ParticleInstance::Group(ParticleGroupInstance::new(Arc::clone(group), self, seed)))
   }
 }
 

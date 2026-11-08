@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
@@ -40,7 +41,7 @@ impl SoundEmitters {
     self.live.push(LiveEmitter {
       emitter: AudioSceneEmitter {
         id,
-        sound: play.sound.reference.clone(),
+        sound: Arc::clone(&play.sound.reference),
         bus: play.kind.get_category().get_bus(),
         position,
         start: play.start,

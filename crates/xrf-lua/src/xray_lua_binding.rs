@@ -1,7 +1,7 @@
 use crate::xray_lua_value::XRayLuaValue;
 
 /// What a bare name means where a script uses it, by Lua's own scoping: the innermost local or parameter of that name.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum XRayLuaBinding {
   /// A local bound to a literal string, `local tex_base = "water\\water_water"`.
   String(String),

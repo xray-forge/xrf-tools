@@ -11,7 +11,7 @@ use crate::{
 fn server() -> (AudioServer, OfflineRender, Arc<Mutex<Vec<AudioEvent>>>) {
   let AudioEngineParts { engine, mixer } = engine(4);
   let events: Arc<Mutex<Vec<AudioEvent>>> = Arc::default();
-  let sent: Arc<Mutex<Vec<AudioEvent>>> = events.clone();
+  let sent: Arc<Mutex<Vec<AudioEvent>>> = Arc::clone(&events);
   let server: AudioServer = AudioServer::start_on(engine, None, move |event| {
     sent.lock().unwrap_or_else(PoisonError::into_inner).push(event);
   })

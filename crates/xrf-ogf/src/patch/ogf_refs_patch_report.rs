@@ -1,7 +1,7 @@
 use serde::Serialize;
 
 /// Outcome of a guarded ogf refs patch.
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OgfRefsPatchReport {
   /// Size of the source file before patching.

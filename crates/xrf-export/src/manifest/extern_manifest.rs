@@ -12,7 +12,7 @@ use crate::render::extern_html_renderer::ExternHtmlRenderer;
 use crate::render::extern_xml_renderer::ExternXmlRenderer;
 
 /// The public, stable manifest of names exported to X-Ray configuration data.
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
 pub struct ExternManifest {
   pub exports: BTreeMap<String, ExternExport>,
 }

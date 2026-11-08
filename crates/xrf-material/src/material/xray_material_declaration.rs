@@ -8,7 +8,7 @@ use crate::material::XrayBumpMode;
 /// into "no bump" is what leaves a modder opening a hex editor: a descriptor that looks complete and is skipped for
 /// its type, and a descriptor that is simply absent, are the same surface in the viewport and opposite fixes.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum XrayMaterialDeclaration {
   /// No `.thm` sits beside the texture in any searched root.

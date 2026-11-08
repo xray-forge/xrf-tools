@@ -5,7 +5,7 @@ use xrf_error::XrfResult;
 use crate::build::recipe::build_texture_advanced_chain::BuildTextureAdvancedChain;
 
 /// What a texture carries below its base level, and who reduces it.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum BuildTextureMipmaps {
   /// The base alone, for a descriptor without `flGenerateMipMaps`.
   Disabled,

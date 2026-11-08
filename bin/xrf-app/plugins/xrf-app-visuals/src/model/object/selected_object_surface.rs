@@ -4,7 +4,7 @@ use xrf_editable_object::{EditableMesh, EditableSurface};
 /// One surface of an object as it was authored, with what its OGF keeps only part of: the compiler shader and game
 /// material the export drops, and whether it is drawn from both sides.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SelectedObjectSurface {
   pub name: String,

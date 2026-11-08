@@ -6,7 +6,7 @@ use xrf_lua::{XRayLuaMethodCall, XRayLuaScript};
 use crate::script::{XRayShaderPass, XRayShaderSampler};
 
 /// An X-Ray renderer shader script and the literal passes it declares.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct XRayShaderScript {
   passes: Vec<XRayShaderPass>,
   path: PathBuf,

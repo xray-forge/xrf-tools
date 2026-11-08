@@ -29,7 +29,7 @@ impl StreamReader {
 
   /// A handle the control side keeps to loop the stream or read why it failed.
   pub fn get_control(&self) -> StreamControl {
-    StreamControl::new(self.shared.clone())
+    StreamControl::new(Arc::clone(&self.shared))
   }
 
   pub(crate) fn get_sample_rate(&self) -> u32 {
