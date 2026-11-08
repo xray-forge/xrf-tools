@@ -195,12 +195,14 @@ impl ResolveFeature {
     opaque: Option<GraphTexture>,
     guides: Option<RayGuides>,
   ) -> ImageChain {
-    let upscaled: Option<[GraphTexture; 2]> = self.upscaled.as_ref().map(|[upscaled, sharpened]| {
-      [
-        bindings.import_view(&mut *graph, "upscaled", &upscaled.view),
-        bindings.import_view(&mut *graph, "sharpened", &sharpened.view),
-      ]
-    });
+    let upscaled: Option<GraphTexture> = self
+      .upscaled
+      .as_ref()
+      .map(|upscaled| bindings.import_view(&mut *graph, "upscaled", &upscaled.view));
+    let sharpened: Option<GraphTexture> = self
+      .sharpened
+      .as_ref()
+      .map(|sharpened| bindings.import_view(&mut *graph, "sharpened", &sharpened.view));
     let upscale: UniformBinding<UpscaleUniform> = runtime.push_uniform(&self.upscale);
     let resolved: Option<GraphTexture> = match &self.resolve {
       Some(Resolve::Fsr { targets, uniform }) => {
@@ -289,7 +291,7 @@ impl ResolveFeature {
       (rescale, _) => rescale,
     };
     let (frame, mut shown): (GraphTexture, Option<GraphTexture>) = match (rescale, upscaled, resolved) {
-      (Some(stage), Some([upscaled, _]), resolved) => {
+      (Some(stage), Some(upscaled), resolved) => {
         let parameters: UpscaleParameters = UpscaleParameters {
           source: resolved.unwrap_or(frame),
           upscale,
@@ -306,13 +308,13 @@ impl ResolveFeature {
 
         (frame, Some(upscaled))
       }
-      (_, Some(_), Some(resolved)) => (frame, Some(resolved)),
-      (_, None, Some(resolved)) => (resolved, None),
+      (_, _, Some(resolved)) if self.is_rescaled() => (frame, Some(resolved)),
+      (_, _, Some(resolved)) => (resolved, None),
       _ => (frame, None),
     };
 
     // The sharpening reads what this frame wrote: the upscaled or resolved image, else the frame at the viewport's size.
-    if let (true, Some([_, sharpened])) = (self.is_sharpened, upscaled) {
+    if let (true, Some(sharpened)) = (self.is_sharpened, sharpened) {
       let parameters: UpscaleParameters = UpscaleParameters {
         source: shown.unwrap_or(frame),
         upscale,
