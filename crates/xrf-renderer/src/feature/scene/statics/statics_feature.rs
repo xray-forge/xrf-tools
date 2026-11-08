@@ -12,6 +12,7 @@ use crate::feature::scene::pyramid::pyramid_reduction::PyramidReduction;
 use crate::feature::scene::statics::cull::static_cull_parameters::StaticCullParameters;
 use crate::feature::scene::statics::cull::static_cull_uniform::StaticCullUniform;
 use crate::feature::scene::statics::cull::static_occlusion_uniform::StaticOcclusionUniform;
+use crate::feature::scene::statics::cull::static_view_cull::StaticViewCull;
 use crate::feature::scene::statics::draw::static_draw_bindings::StaticDrawBindings;
 use crate::feature::scene::statics::draw::static_draw_parameters::StaticDrawParameters;
 use crate::feature::scene::statics::draw::static_draws::StaticDraws;
@@ -36,11 +37,14 @@ const RECEIVER_WIDEN: f32 = 0.6;
 const GBUFFER_PASSES: [&str; 3] = ["g-buffer depth", "g-buffer", "impostors"];
 const LATE_GBUFFER_PASSES: [&str; 2] = ["late g-buffer depth", "late g-buffer"];
 
-/// The static scene as the view culls and draws it: the cull's parameters this frame, the depth pyramid the next
-/// frame's occlusion is tested against and the camera it was reduced through, the counts the cull read back, whether
-/// the wall marks are drawn, and whether its surfaces are counted for the overdraw's debug view.
+/// The static scene as the view culls and draws it: the cull's parameters this frame and the lists and arguments it
+/// fills, the depth pyramid the next frame's occlusion is tested against and the camera it was reduced through, the
+/// counts the cull read back, whether the wall marks are drawn, and whether its surfaces are counted for the overdraw's
+/// debug view.
 pub struct StaticsFeature {
   cull: StaticCullUniform,
+  /// The camera cull's lists and arguments, the view's own, made with its first cull and as large as the scene's lists.
+  camera: Option<StaticViewCull>,
   occlusion: StaticOcclusionUniform,
   /// The farthest depth's pyramid over the frame's targets.
   pyramid: Option<DepthPyramid>,
@@ -62,6 +66,7 @@ impl StaticsFeature {
   pub fn new(device: &wgpu::Device) -> Self {
     Self {
       cull: StaticCullUniform::default(),
+      camera: None,
       occlusion: bytemuck::Zeroable::zeroed(),
       pyramid: None,
       history: None,
@@ -86,10 +91,11 @@ impl StaticsFeature {
     self.history = None;
   }
 
-  /// Takes this frame's cull of `statics` through `view` over a frame `width` by `height`, and what the occlusion tests
-  /// against.
+  /// Takes this frame's cull of `statics` through `view` over a frame `width` by `height`, the lists it fills made as
+  /// large as the scene's, and what the occlusion tests against.
   pub fn prepare(
     &mut self,
+    device: &wgpu::Device,
     statics: &StaticScene,
     options: &RenderViewOptions,
     view: &CameraView,
@@ -98,6 +104,8 @@ impl StaticsFeature {
     if !options.features.is_occlusion_culled {
       self.history = None;
     }
+
+    StaticViewCull::fit(&mut self.camera, device, statics.cull.get_list_bytes());
 
     // The engine's screen: the viewport's pixels, widened for a lens narrower than its 90 degrees; parallel rays are
     // drawn at their finest whatever it is.
@@ -194,8 +202,9 @@ impl StaticsFeature {
     }
   }
 
-  /// The static scene's handles for this frame: its buffers, the pyramid, the cull's parameters, what the occlusion
-  /// tests against and the trees' sway pushed; none before the pyramid is made.
+  /// The static scene's handles for this frame: its buffers, the view's lists and arguments, the pyramid, the cull's
+  /// parameters, what the occlusion tests against and the trees' sway pushed; none before the pyramid is made or the
+  /// view first culled.
   pub fn import<'a>(
     &'a self,
     GraphDeclaration {
@@ -211,6 +220,7 @@ impl StaticsFeature {
     Some(StaticSceneHandles::import(
       GraphDeclaration::new(graph, bindings, runtime),
       statics,
+      self.camera.as_ref()?,
       &pyramid.view,
       &self.cull,
       &self.occlusion,
@@ -348,7 +358,7 @@ impl StaticsFeature {
       }
     };
 
-    // Every view of a shared scene culls into the scene's one set of camera arguments, so each starts them empty.
+    // The view's arguments start each frame's cull empty, from the scene's templates.
     let reset: [GraphBuffer; 4] = [scene.args_template, scene.args, scene.late_template, scene.late];
 
     graph
@@ -464,6 +474,12 @@ impl StaticsFeature {
     });
   }
 
+  /// The camera cull's draw arguments, its counts after them (`StaticCullScratch::STATS_OFFSET`), once it first culled.
+  #[cfg(test)]
+  pub fn get_camera_args(&self) -> Option<&wgpu::Buffer> {
+    self.camera.as_ref().map(|camera| &camera.args)
+  }
+
   /// Asks for the counts recorded with the frame just submitted.
   pub fn request_stats(&self) {
     self.stats.request();
@@ -481,12 +497,14 @@ impl StaticsFeature {
 }
 
 impl ViewFeature for StaticsFeature {
-  /// The depth pyramid.
+  /// The depth pyramid, and the camera cull's lists and arguments.
   fn get_memory(&self) -> u64 {
     self.pyramid.as_ref().map_or(0, DepthPyramid::get_memory)
+      + self.camera.as_ref().map_or(0, StaticViewCull::get_memory)
   }
 
   fn release(&mut self) {
+    self.camera = None;
     self.pyramid = None;
     self.history = None;
   }

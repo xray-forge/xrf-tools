@@ -6,6 +6,7 @@ use xrf_renderer_core::{
 use crate::feature::scene::statics::cull::static_cull_parameters::StaticCullParameters;
 use crate::feature::scene::statics::cull::static_cull_uniform::StaticCullUniform;
 use crate::feature::scene::statics::cull::static_occlusion_uniform::StaticOcclusionUniform;
+use crate::feature::scene::statics::cull::static_view_cull::StaticViewCull;
 use crate::feature::scene::statics::draw::static_draw_parameters::StaticDrawParameters;
 use crate::feature::scene::statics::draw::static_draws::StaticDraws;
 use crate::feature::scene::statics::draw::static_impostor_parameters::StaticImpostorParameters;
@@ -14,8 +15,9 @@ use crate::scene::static_scene::geometry::static_geometry::StaticGeometry;
 use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 use crate::scene::static_scene::static_scene::StaticScene;
 
-/// The static scene's buffers as a frame graph imports them, once a frame, with the uniforms its culls and draws read
-/// pushed: what every cull and static draw of the frame binds, each view adding its own list and draw arguments.
+/// The static scene's buffers as a view's frame graph imports them, with the uniforms its culls and draws read pushed:
+/// what every cull and static draw of the view binds, the camera's lists and arguments its own (`StaticViewCull`), and
+/// each shadow cull adding its own.
 #[derive(Clone, Copy)]
 pub struct StaticSceneHandles {
   pub clusters: GraphBuffer,
@@ -33,8 +35,8 @@ pub struct StaticSceneHandles {
   pub corners: GraphBuffer,
   pub terms: GraphBuffer,
   pub impostor_list: GraphBuffer,
-  /// The camera's visible list and draw arguments, its late phase's, and what a cull's arguments and the camera's late
-  /// ones start from.
+  /// The view's camera's visible list and draw arguments, its late phase's, and what a cull's arguments and the
+  /// camera's late ones start from.
   pub lists: GraphBuffer,
   pub args: GraphBuffer,
   pub candidates: GraphBuffer,
@@ -50,8 +52,9 @@ pub struct StaticSceneHandles {
 }
 
 impl StaticSceneHandles {
-  /// Imports the static scene into a frame's graph once: its buffers, the camera's lists, arguments and candidates, the
-  /// occlusion pyramid, and the cull's, occlusion's and wind's uniforms pushed, for every cull and static draw to bind.
+  /// Imports the static scene into a view's frame graph: its buffers, the view's camera lists, arguments and candidates
+  /// (`camera`), the occlusion pyramid, and the cull's, occlusion's and wind's uniforms pushed, for every cull and
+  /// static draw of the view to bind.
   pub fn import<'r>(
     GraphDeclaration {
       graph,
@@ -59,6 +62,7 @@ impl StaticSceneHandles {
       runtime,
     }: GraphDeclaration<'_, 'r>,
     scene: &'r StaticScene,
+    camera: &'r StaticViewCull,
     pyramid: &'r wgpu::TextureView,
     cull: &StaticCullUniform,
     occlusion: &StaticOcclusionUniform,
@@ -103,11 +107,11 @@ impl StaticSceneHandles {
       ),
     ];
     let culled: [GraphBuffer; 7] = [
-      import("static lists", scene.cull.lists.get_buffer()),
-      import("static draw arguments", &scene.cull.args),
-      import("static candidates", scene.cull.candidates.get_buffer()),
-      import("static late arguments", &scene.cull.late),
-      import("static late dispatch", &scene.cull.late_dispatch),
+      import("static lists", &camera.lists),
+      import("static draw arguments", &camera.args),
+      import("static candidates", &camera.candidates),
+      import("static late arguments", &camera.late),
+      import("static late dispatch", &camera.late_dispatch),
       import("static draw arguments template", &scene.cull.args_template),
       import("static late arguments template", &scene.cull.late_template),
     ];
@@ -169,7 +173,7 @@ impl StaticSceneHandles {
     }
   }
 
-  /// The camera's cull, into the scene's own list and arguments.
+  /// The camera's cull, into the view's own list and arguments.
   pub fn get_camera_cull(&self) -> StaticCullParameters {
     self.get_cull_parameters(StorageArrayMut::new(self.lists), StorageArrayMut::new(self.args))
   }
