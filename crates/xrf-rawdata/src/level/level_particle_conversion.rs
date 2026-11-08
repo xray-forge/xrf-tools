@@ -38,10 +38,9 @@ impl LevelParticleConversion {
               placement.effect
             ))
           })?;
-        let stem: &str = placement.effect.rsplit(['\\', '/']).next().unwrap_or_default();
 
         Ok(EditableParticleObject {
-          object: EditableCustomObject::new(names.get_next(stem), transform.round_as_saved()),
+          object: EditableCustomObject::new(names.get_next_after_file(&placement.effect), transform.round_as_saved()),
           reference: placement.effect.clone(),
           game_types: placement.game_types.unwrap_or(EditableParticleObject::ALL_GAME_TYPES),
         })

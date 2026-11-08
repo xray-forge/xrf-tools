@@ -78,7 +78,7 @@ The Level Editor's Build writes some of a level's files straight from the scene'
 (`BuilderGame.cpp`), so each comes back as the part it was exported from and exports again as the editor exports it.
 Each conversion takes the scene's typed part from `xrf-editable-level` and the compiled file from `xrf-level`.
 `LevelObjectNames` names the objects of one scene, `<prefix>_0000` upwards as the editor numbers a new object, since a
-compiled level keeps no names.
+compiled level keeps no names; `get_next_after_file` takes the prefix from the file an object plays or shows.
 
 `LevelParticleConversion` converts `level.ps_static` and `ps.part`: `decompile` gives each placement an object named
 after its effect, its matrix decomposed into the editor's position, angles and scale and rounded as the part's text
@@ -87,6 +87,14 @@ build writes none. Each of vanilla CoP's 18 `level.ps_static` files comes back b
 both directly and through the part's text. A particle pitched straight up or down is the exception: there the editor's
 `getHPB` takes no bank, the angles it decomposes into are not the ones saved, and the matrix comes back a few units in
 the last place off.
+
+`LevelSoundSourceConversion` converts `level.snd_static` and `sound_src.part`: `decompile` gives each sound an object
+named after its file, looped, with the distances a new sound source takes (the editor reads the file's own on load,
+and the export drops them), and each window in the seconds whose `%f` text exports to the same milliseconds
+(`u32(seconds * 1000)` truncates, so 511 ms saves as `0.511001`); `export` writes what `ESoundSource::ExportGame`
+does, and no file for a part of no sounds. Every tree's 91 `level.snd_static` files (1,303 sounds) come back byte for
+byte from the part in memory, and all but one through its text: SGM 2.2's `l04u_labx18` holds positions off the `%f`
+grid, as a build from an unsaved editor session would, which the text rounds within a unit of its sixth decimal.
 
 ## Compiling an editable object into an OGF
 

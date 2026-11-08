@@ -60,11 +60,16 @@ An object tool's part reads typed as an `EditableObjectPart<T>`: the GUID, `[mai
 keep them, flags, `[modif]`, and the objects `[object_N]` numbers, each an `EditableToolObject` that reads its sections
 and writes them as the editor's `SaveLTX` does. A part refuses an object of another tool's class.
 
-| Type                      | Editor                   | Holds                                                              |
-| ------------------------- | ------------------------ | ------------------------------------------------------------------ |
-| `EditableCustomObject`    | `CCustomObject`          | Every object's flags, name and transform                           |
-| `EditableObjectTransform` | `CCustomObject`          | Position, rotation angles and scale, and the matrix they compose   |
-| `EditableParticleObject`  | `EParticlesObject`       | An effect the scene plants: its `particles.xr` name and game modes |
+| Type                        | Editor             | Holds                                                                         |
+| --------------------------- | ------------------ | ----------------------------------------------------------------------------- |
+| `EditableCustomObject`      | `CCustomObject`    | Every object's flags, name and transform                                      |
+| `EditableObjectTransform`   | `CCustomObject`    | Position, rotation angles and scale, and the matrix they compose              |
+| `EditableParticleObject`    | `EParticlesObject` | An effect the scene plants: its `particles.xr` name and game modes            |
+| `EditableSoundSourceObject` | `ESoundSource`     | A sound the scene plants: its file, own position, volume, distances, windows |
+
+A sound source stands at its own `snd_position`: `ESoundSource` overrides `SetPosition`, so its object transform never
+moves. `EditableLevelValue::read_u32` reads a field `w_u32` printed through `%d`, as `r_u32` does, so the uninitialised
+high bits in GSC's sound source `flags` read and write back as saved.
 
 `EditableObjectTransform::to_matrix` composes as `CCustomObject::OnUpdateTransform` does, scaled, then turned by
 `setXYZi` of the negated angles, then moved, through `Fmatrix::mul` in the editor's order of sums, so it gives the bits
