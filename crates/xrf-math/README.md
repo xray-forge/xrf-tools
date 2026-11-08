@@ -61,6 +61,11 @@ and written as the engine copies it in and out of a file. The fourth row is the 
 engine's `Fmatrix::c`). `transform_point` applies the translation; `transform_direction` uses only the upper three rows,
 so normals and other directions are not moved.
 
+`multiply` is `Fmatrix::mul`, the inner matrix applied first, each element summed in the engine's order so that a
+transform composed as the engine composes it has the same bits, zeros' signs included. `IDENTITY`, `from_translation`
+(`translate`), `from_scale` (`scale`) and `From<&Affine3d>` build the factors with their fourth column `0, 0, 0, 1`;
+`to_affine` and `get_fourth_column` split a matrix back.
+
 `Affine3d` is the same matrix as `NET_Packet::w_matrix` writes it: its rows `i`, `j`, `k` and `c` as `x_axis`, `y_axis`,
 `z_axis` and `translation`, without the fourth column the reader fixes at `0, 0, 0, 1`, 48 bytes. `transform_point` is
 `Fmatrix::transform_tiny`. A spawn shape's box is one. Where the engine reads `sizeof(Fmatrix)`, use `Matrix4x4`: the
