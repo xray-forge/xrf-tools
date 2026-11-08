@@ -270,7 +270,7 @@ impl AudioEngine {
   ///
   /// # Errors
   ///
-  /// Refuses when the audio thread has not taken its commands, or holds [`Self::TAPS_MOST`] taps this side has not had
+  /// Refuses when the audio thread has not taken its commands, or holds `Self::TAPS_MOST` taps this side has not had
   /// back: each one the mixer lets go of comes back through a ring of that many, which must never be full.
   pub fn open_tap(&mut self, length: Duration) -> Result<AudioTap, AudioRefusal> {
     self.collect();

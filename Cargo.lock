@@ -7825,7 +7825,6 @@ dependencies = [
  "tauri-specta",
  "xrf-app-core",
  "xrf-audio",
- "xrf-error",
 ]
 
 [[package]]
@@ -8284,8 +8283,6 @@ dependencies = [
  "xrf-particles",
  "xrf-rawdata",
  "xrf-report",
- "xrf-shaders",
- "xrf-sound",
  "xrf-spawn",
  "xrf-test-utils",
  "xrf-texture",
@@ -8680,7 +8677,6 @@ dependencies = [
  "xrf-chunk",
  "xrf-error",
  "xrf-extension",
- "xrf-particles",
  "xrf-shaders",
  "xrf-test-utils",
  "xrf-thm",
@@ -8988,8 +8984,6 @@ dependencies = [
  "xrf-ltx",
  "xrf-math",
  "xrf-output",
- "xrf-particles",
- "xrf-spawn",
  "xrf-test-utils",
  "xrf-thm",
  "xrf-utils",
@@ -9096,7 +9090,6 @@ dependencies = [
  "xrf-math",
  "xrf-ogf",
  "xrf-omf",
- "xrf-particles",
  "xrf-skeleton",
  "xrf-spawn",
  "xrf-test-utils",

@@ -21,7 +21,7 @@ use crate::scene::report::audio_scene_report::AudioSceneReport;
 use xrf_audio_scene::AudioSceneInbox;
 
 /// The audio's whole runtime without a device or a thread, on a clock of the frames it renders: the control side ticks
-/// every [`Self::TICK`] of them however the renders are cut, sounds are read and streams decode before each tick, so a
+/// every `Self::TICK` of them however the renders are cut, sounds are read and streams decode before each tick, so a
 /// render with scenes and streams comes out the same every time. What tests and captures play scenes through.
 pub struct OfflineSession {
   control: AudioControl,
@@ -125,7 +125,7 @@ impl OfflineSession {
     out
   }
 
-  /// Fills `out` with the next stereo frames, interleaved: the control side ticks every [`Self::TICK`] of the
+  /// Fills `out` with the next stereo frames, interleaved: the control side ticks every `Self::TICK` of the
   /// session's frames, the streams filling before each, wherever a render begins or ends.
   pub fn render_into(&mut self, out: &mut [f32]) {
     let mut written: usize = 0;

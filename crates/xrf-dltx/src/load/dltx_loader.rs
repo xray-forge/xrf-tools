@@ -15,7 +15,7 @@ use crate::resolve::dltx_diagnostic::DltxDiagnostic;
 ///
 /// One walk of the root file, its includes, and then its mod files, which is the order the engine loads them in and the
 /// reason a mod file may patch a section declared anywhere: nothing is resolved until every file has been read. The
-/// deciding is [`crate::resolve::DltxResolver`]'s.
+/// deciding is [`DltxResolver`](crate::resolve::dltx_resolver::DltxResolver)'s.
 pub(crate) struct DltxLoader<'a> {
   source: &'a dyn LtxDocumentSource,
   records: DltxLoadResult,

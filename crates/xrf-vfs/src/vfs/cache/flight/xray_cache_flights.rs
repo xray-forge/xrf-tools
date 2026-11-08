@@ -8,7 +8,9 @@ use crate::vfs::cache::flight::{XrayCacheFlight, XrayCacheFlightClaim, XrayCache
 /// The loads a store has in progress, so concurrent requesters of one key produce one load instead of one each.
 ///
 /// This is coordination alone. Whether a key is worth coordinating, what a wait means for reported statistics, and what
-/// a released waiter does next are the store's questions, answered in [`crate::XrayAssetCache`].
+/// a released waiter does next are the store's questions, answered in [`XrayAssetCache`].
+///
+/// [`XrayAssetCache`]: crate::vfs::cache::xray_asset_cache::XrayAssetCache
 #[derive(Debug, Default)]
 pub(crate) struct XrayCacheFlights {
   in_progress: Mutex<HashMap<XrayCacheKey, Arc<XrayCacheFlight>>>,

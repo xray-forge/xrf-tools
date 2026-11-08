@@ -19,7 +19,7 @@ impl WindowReveals {
   /// How long a window stays hidden waiting for its page.
   const TIMEOUT: Duration = Duration::from_secs(1);
 
-  /// Holds `window` hidden until its page reveals it, and reveals it anyway once [`Self::TIMEOUT`] has passed, so a page
+  /// Holds `window` hidden until its page reveals it, and reveals it anyway once `Self::TIMEOUT` has passed, so a page
   /// that never boots still leaves something on screen.
   pub fn hold<R: Runtime>(&self, window: WebviewWindow<R>) {
     self.hold_for(window.label().to_owned(), Box::new(window), Self::TIMEOUT);

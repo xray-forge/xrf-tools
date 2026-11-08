@@ -53,8 +53,6 @@ xrf-visual = { workspace = true }
 xrf-pack = { workspace = true }
 xrf-omf = { workspace = true }
 xrf-thm = { workspace = true }
-xrf-shaders = { workspace = true }
-xrf-sound = { workspace = true }
 xrf-spawn = { workspace = true }
 xrf-particles = { workspace = true }
 xrf-chunk = { workspace = true }
