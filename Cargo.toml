@@ -328,5 +328,8 @@ unnested_or_patterns = "warn"
 # Numbers convert the way that says what can happen: `u64::from` where nothing is lost, which stops compiling should
 # the source widen; `midpoint` where a sum could overflow; brackets where shifts and bit operations mix.
 cast_lossless = "warn"
+# A signed and unsigned integer of one width reinterpret their bits with `cast_signed` / `cast_unsigned`, which say
+# so; any other cast that could wrap is checked with `try_from`.
+cast_possible_wrap = "warn"
 manual_midpoint = "warn"
 precedence_bits = "warn"

@@ -359,8 +359,8 @@ impl SurroundingsCube {
           &CameraUniform::new(
             &band,
             RenderRect {
-              x: x as i32,
-              y: y as i32,
+              x: x.cast_signed(),
+              y: y.cast_signed(),
               width,
               height,
             },

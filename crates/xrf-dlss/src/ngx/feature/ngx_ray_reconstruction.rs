@@ -77,7 +77,7 @@ impl NgxRayReconstruction {
       // SAFETY: `create` lends the SDK's parameters under NGX's lock and a fresh command list; the device handle and
       // `parameters` outlive the call.
       |commands, ngx, handle| unsafe {
-        NgxFeature::set_preset_hints(ngx, &Self::PRESET_HINTS, preset.to_hint() as u32);
+        NgxFeature::set_preset_hints(ngx, &Self::PRESET_HINTS, preset.to_hint().cast_unsigned());
 
         match commands {
           NgxCommands::Vulkan(list) => {

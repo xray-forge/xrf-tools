@@ -156,8 +156,8 @@ impl ScreenTiles {
 
       for (left, right, top) in closed {
         rects.push(RenderRect {
-          x: x_of(left) as i32,
-          y: y_of(top) as i32,
+          x: x_of(left).cast_signed(),
+          y: y_of(top).cast_signed(),
           width: x_of(right) - x_of(left),
           height: y_of(row) - y_of(top),
         });

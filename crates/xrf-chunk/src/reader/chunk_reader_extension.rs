@@ -170,7 +170,9 @@ impl<D: ChunkDataSource> ChunkReader<D> {
   /// Returns an error, before moving, when fewer than `count` bytes remain in the chunk.
   pub fn skip_bytes(&mut self, count: usize) -> XrfResult {
     self.assert_bytes_remain(count)?;
-    self.data.set_seek(SeekFrom::Current(count as i64))?;
+    let offset: i64 = i64::try_from(count).expect("bytes left in a chunk fit a seek offset");
+
+    self.data.set_seek(SeekFrom::Current(offset))?;
 
     Ok(())
   }

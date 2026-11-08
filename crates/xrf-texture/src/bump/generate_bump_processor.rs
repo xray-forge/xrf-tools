@@ -264,7 +264,7 @@ impl GenerateBumpProcessor {
     let lowest: u32 = u32::from(*scaled.iter().min().unwrap_or(&0));
     let highest: u32 = u32::from(*scaled.iter().max().unwrap_or(&0));
     let median: u32 = (9 * average + (highest - lowest) / 2 + lowest) / 10;
-    let correction: i32 = HEIGHT_CENTER - median as i32;
+    let correction: i32 = HEIGHT_CENTER - median.cast_signed();
 
     scaled
       .into_iter()

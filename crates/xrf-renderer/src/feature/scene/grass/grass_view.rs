@@ -175,8 +175,8 @@ impl GrassView {
     let steps: i32 = (SLOT_METERS / density).ceil() as i32;
     let jitter: f32 = density / 1.7;
     let wanted: GrassBuildSize = GrassBuildSize::wanted(
-      reach as u32,
-      ((steps + 1) * (steps + 1)) as u32,
+      reach.cast_unsigned(),
+      ((steps + 1) * (steps + 1)).cast_unsigned(),
       device.limits().max_storage_buffer_binding_size,
     );
 
@@ -232,7 +232,7 @@ impl GrassView {
       slope_limit,
       card_reach,
       card_fade,
-      card_slots: GrassCards::get_slots(card_reach) as i32,
+      card_slots: GrassCards::get_slots(card_reach).cast_signed(),
       ..self.values
     };
     self.sway = wind;
@@ -407,7 +407,7 @@ impl GrassView {
       card_count: StorageValueMut::new(count),
       card_draw: StorageValueMut::new(draw),
     };
-    let tufts: u32 = GrassCards::get_window_cells(self.values.card_slots as u32) * build.size.per_cell;
+    let tufts: u32 = GrassCards::get_window_cells(self.values.card_slots.cast_unsigned()) * build.size.per_cell;
 
     graph
       .add_compute_pass("grass cards")
@@ -495,9 +495,9 @@ impl GrassView {
 
   fn get_applied(&self, settings: &RenderGrassSettings) -> Option<RenderAppliedGrass> {
     let build = self.build.as_ref().filter(|_| self.is_drawn)?;
-    let line: u32 = self.values.reach as u32 * 2 + 1;
+    let line: u32 = self.values.reach.cast_unsigned() * 2 + 1;
     let cells: u32 = line * line;
-    let candidates: u32 = ((self.values.steps + 1) * (self.values.steps + 1)) as u32;
+    let candidates: u32 = ((self.values.steps + 1) * (self.values.steps + 1)).cast_unsigned();
 
     Some(RenderAppliedGrass {
       radius: self.values.reach as f32 * SLOT_METERS,
@@ -656,7 +656,7 @@ impl GrassView {
 
   /// What the planting and the cull dispatch over: the ring's cells, its bands, the models and the items.
   fn get_dispatch(&self, level: &GrassLevel, build: &GrassBuild) -> GrassDispatch {
-    let line: u32 = self.values.reach as u32 * 2 + 1;
+    let line: u32 = self.values.reach.cast_unsigned() * 2 + 1;
 
     GrassDispatch {
       cells: line * line,

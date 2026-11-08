@@ -114,7 +114,12 @@ impl WindowFrame {
           0.0,
           1.0,
         );
-        pass.set_scissor_rect(shown.x as u32, shown.y as u32, shown.width, shown.height);
+        pass.set_scissor_rect(
+          shown.x.cast_unsigned(),
+          shown.y.cast_unsigned(),
+          shown.width,
+          shown.height,
+        );
 
         match &view.present {
           Some(parameters) => present.draw(context, format, binding, parameters),

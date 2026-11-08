@@ -53,9 +53,9 @@ impl DltxDiscovery {
 
     matched
       .into_iter()
-      .enumerate()
-      .map(|(index, name)| DltxAttachment {
-        depth: Self::MOD_DEPTH_STEP * (index as i32 + 1),
+      .zip(1_i32..)
+      .map(|(name, rank)| DltxAttachment {
+        depth: Self::MOD_DEPTH_STEP * rank,
         name: name.clone(),
       })
       .collect()

@@ -378,7 +378,7 @@ fn light_animation_draws_what_the_engines_light_animation_computes() {
   for item in &items {
     let animator: LightAnimatorDescription = LightAnimatorDescription::of(item, false);
 
-    for frame in 0..=item.frame_count as i32 {
+    for frame in 0..=item.frame_count.cast_signed() {
       assert_matches_the_engine(
         to_interpolated_color(&animator, frame as f32),
         item

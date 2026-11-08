@@ -27,6 +27,7 @@ impl ParticleNoise {
   /// `noise3Init`.
   fn new() -> Self {
     let table: usize = Self::TABLE;
+    let signed_table: i32 = i32::try_from(table).expect("the lattice period fits the engine's `int`");
     let mut random: ParticleRandom = ParticleRandom::new(1);
     let mut permutation: [usize; Self::TABLE + Self::TABLE + 2] = [0; Self::TABLE + Self::TABLE + 2];
     let mut gradients: [[f32; 3]; Self::TABLE + Self::TABLE + 2] = [[0.0; 3]; Self::TABLE + Self::TABLE + 2];
@@ -39,7 +40,7 @@ impl ParticleNoise {
         vector = [0.0; 3];
 
         for component in &mut vector {
-          *component = ((random.next_integer() % (2 * table as i32)) - table as i32) as f32 / table as f32;
+          *component = ((random.next_integer() % (2 * signed_table)) - signed_table) as f32 / table as f32;
         }
 
         length_squared = vector[0] * vector[0] + vector[1] * vector[1] + vector[2] * vector[2];
@@ -134,7 +135,8 @@ impl ParticleNoise {
   fn setup(coordinate: f32) -> (usize, usize, f32, f32) {
     let shifted: f32 = coordinate + 10_000.0;
     let truncated: i32 = shifted as i32;
-    let b0: usize = (truncated & (Self::TABLE as i32 - 1)) as usize;
+    // Masking the bits as unsigned keeps the low ones exactly as the engine's `int` mask does, negative or not.
+    let b0: usize = truncated.cast_unsigned() as usize & (Self::TABLE - 1);
     let b1: usize = (b0 + 1) & (Self::TABLE - 1);
     let r0: f32 = shifted - truncated as f32;
 

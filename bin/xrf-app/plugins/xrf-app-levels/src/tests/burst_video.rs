@@ -138,8 +138,8 @@ fn write_and_read(name: &str, width: u32, height: u32) {
   drop(sound);
 
   let outcome: BurstVideoOutcome = video.finish().expect("the video to be written");
-  let video: ReadStream = read_stream(&outcome.file, MF_SOURCE_READER_FIRST_VIDEO_STREAM.0 as u32);
-  let audio: ReadStream = read_stream(&outcome.file, MF_SOURCE_READER_FIRST_AUDIO_STREAM.0 as u32);
+  let video: ReadStream = read_stream(&outcome.file, MF_SOURCE_READER_FIRST_VIDEO_STREAM.0.cast_unsigned());
+  let audio: ReadStream = read_stream(&outcome.file, MF_SOURCE_READER_FIRST_AUDIO_STREAM.0.cast_unsigned());
   let burst_end: i64 = i64::from(BURST.frames) * TICKS / 60;
 
   assert_eq!(outcome.file, folder.join("burst.mp4"));
@@ -200,7 +200,7 @@ fn writes_the_viewers_widest_burst_at_its_default_step() {
   }
 
   let summary: RecordSummary = writer.finish().expect("the video to be finished");
-  let video: ReadStream = read_stream(&file, MF_SOURCE_READER_FIRST_VIDEO_STREAM.0 as u32);
+  let video: ReadStream = read_stream(&file, MF_SOURCE_READER_FIRST_VIDEO_STREAM.0.cast_unsigned());
 
   assert_eq!(summary.frames, 12, "{summary:?}");
   assert_eq!((video.samples, video.first), (12, Some(0)), "{summary:?} {video:?}");
@@ -252,7 +252,7 @@ fn writes_sound_from_a_rate_aac_does_not_take() {
 
   writer.finish().expect("the video to be finished");
 
-  let audio: ReadStream = read_stream(&file, MF_SOURCE_READER_FIRST_AUDIO_STREAM.0 as u32);
+  let audio: ReadStream = read_stream(&file, MF_SOURCE_READER_FIRST_AUDIO_STREAM.0.cast_unsigned());
 
   assert_eq!(audio.first, Some(0), "{audio:?}");
   assert!((audio.end - TICKS / 2).abs() <= 1024 * TICKS / 48_000, "{audio:?}");
@@ -301,8 +301,8 @@ fn writes_frames_handed_over_seconds_ahead_of_their_sound() {
 
   writer.finish().expect("the video to be finished");
 
-  let video: ReadStream = read_stream(&file, MF_SOURCE_READER_FIRST_VIDEO_STREAM.0 as u32);
-  let audio: ReadStream = read_stream(&file, MF_SOURCE_READER_FIRST_AUDIO_STREAM.0 as u32);
+  let video: ReadStream = read_stream(&file, MF_SOURCE_READER_FIRST_VIDEO_STREAM.0.cast_unsigned());
+  let audio: ReadStream = read_stream(&file, MF_SOURCE_READER_FIRST_AUDIO_STREAM.0.cast_unsigned());
 
   assert_eq!(
     (video.samples, video.first, audio.first),

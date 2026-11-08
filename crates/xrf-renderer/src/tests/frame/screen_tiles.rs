@@ -57,10 +57,10 @@ fn bounds_a_small_quad_ahead_to_the_tiles_about_the_frames_centre() {
   assert_eq!(rects.len(), 1);
 
   let rect: RenderRect = rects[0];
-  let (center_x, center_y) = (SIZE.0 as i32 / 2, SIZE.1 as i32 / 2);
+  let (center_x, center_y) = (SIZE.0.cast_signed() / 2, SIZE.1.cast_signed() / 2);
 
-  assert!(rect.x < center_x && rect.x + rect.width as i32 > center_x);
-  assert!(rect.y < center_y && rect.y + rect.height as i32 > center_y);
+  assert!(rect.x < center_x && rect.x + rect.width.cast_signed() > center_x);
+  assert!(rect.y < center_y && rect.y + rect.height.cast_signed() > center_y);
   assert!(rect.width * rect.height < SIZE.0 * SIZE.1 / 50);
 }
 
@@ -85,7 +85,7 @@ fn bounds_a_quad_across_the_eye_by_its_part_before_it() {
   assert!(
     rects
       .iter()
-      .all(|rect| rect.x >= SIZE.0 as i32 / 2 && rect.y >= SIZE.1 as i32 / 2)
+      .all(|rect| rect.x >= SIZE.0.cast_signed() / 2 && rect.y >= SIZE.1.cast_signed() / 2)
   );
 }
 
@@ -105,7 +105,7 @@ fn grows_a_tile_into_its_neighbours_within_the_frame() {
   let grown: RenderRect = tile.grown(1, 1).get_rects(SIZE)[0];
   let (tile_width, tile_height) = (SIZE.0 / ScreenTiles::COLUMNS, SIZE.1 / ScreenTiles::ROWS);
 
-  assert!(grown.x <= rect.x - tile_width as i32 && grown.y <= rect.y - tile_height as i32);
+  assert!(grown.x <= rect.x - tile_width.cast_signed() && grown.y <= rect.y - tile_height.cast_signed());
   assert!(grown.width >= rect.width + 2 * tile_width && grown.height >= rect.height + 2 * tile_height);
   assert_eq!(ScreenTiles::new_whole().grown(3, 3), ScreenTiles::new_whole());
 }

@@ -152,8 +152,8 @@ impl GrassLevel {
     Self {
       key: Self::next_key(),
       grid: [
-        description.size_x as i32,
-        description.size_z as i32,
+        description.size_x.cast_signed(),
+        description.size_z.cast_signed(),
         description.offset_x,
         description.offset_z,
       ],

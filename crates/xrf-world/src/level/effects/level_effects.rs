@@ -268,15 +268,15 @@ impl LevelEffects {
 
     let placed: Vec<PlacedEmitter> = placements
       .into_iter()
-      .enumerate()
-      .map(|(index, placement)| {
+      .zip(1_i32..)
+      .map(|(placement, seed)| {
         let handle: ProxyHandle<ParticleEmitterProxy> = self.emitters.allocate();
         let transform: Mat4 = Mat4::from_cols_array(&placement.transform);
 
         updates.push(RenderSceneUpdate::AddEmitter {
           handle,
           transform,
-          seed: index as i32 + 1,
+          seed,
         });
 
         PlacedEmitter::new(

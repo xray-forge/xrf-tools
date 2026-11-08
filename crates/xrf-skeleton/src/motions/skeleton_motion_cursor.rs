@@ -67,9 +67,9 @@ impl<'a> SkeletonMotionCursor<'a> {
     let bytes: &[u8] = self.take(Self::TRANSLATION_KEY_8_SIZE)?;
 
     Ok([
-      f32::from(bytes[0] as i8),
-      f32::from(bytes[1] as i8),
-      f32::from(bytes[2] as i8),
+      f32::from(bytes[0].cast_signed()),
+      f32::from(bytes[1].cast_signed()),
+      f32::from(bytes[2].cast_signed()),
     ])
   }
 
