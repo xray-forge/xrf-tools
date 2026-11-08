@@ -55,35 +55,34 @@ impl HelpersFeature {
       options,
       marks_layout,
     } = sources;
+    let boxes = |object: u32| statics.get_object_box(object);
+
+    // Each part is compared with what it was built from before anything is copied, as most frames change nothing.
+    if !HelperBuild::is_current(&self.singled, sources, HelperPart::Singled) {
+      self.singled = Some(HelperBuild::new(
+        device,
+        HelperBuildKey::of(sources, options.clone(), sounding),
+        HelperBuild::build(helpers, options, sounding, HelperPart::Singled, boxes),
+      ));
+    }
+
+    if HelperBuild::is_current(&self.every, sources, HelperPart::Every) {
+      return;
+    }
+
     let unsingled: RenderHelperOptions = RenderHelperOptions {
       selected: Vec::new(),
       hovered: None,
       ..options.clone()
     };
-    let boxes = |object: u32| statics.get_object_box(object);
-    let singled_key: HelperBuildKey = HelperBuildKey::of(sources, options, sounding);
-
-    if !HelperBuild::is_current(&self.singled, &singled_key) {
-      self.singled = Some(HelperBuild::new(
-        device,
-        singled_key,
-        HelperBuild::build(helpers, options, sounding, HelperPart::Singled, boxes),
-      ));
-    }
-
-    let every_key: HelperBuildKey = HelperBuildKey::of(sources, &unsingled, &[]);
-
-    if HelperBuild::is_current(&self.every, &every_key) {
-      return;
-    }
-
     let marks: Vec<[u32; 2]> = Self::to_marks(helpers, &unsingled, |object| statics.get_object_place(object));
+    let geometry: HelperGeometry = HelperBuild::build(helpers, &unsingled, &[], HelperPart::Every, boxes);
 
     self.is_rest_faded = options.is_shown && options.is_rest_faded;
     self.every = Some(HelperBuild::new(
       device,
-      every_key,
-      HelperBuild::build(helpers, &unsingled, &[], HelperPart::Every, boxes),
+      HelperBuildKey::of(sources, unsingled, &[]),
+      geometry,
     ));
     self.marks = (!marks.is_empty()).then(|| HelperMarks::new(device, &marks, marks_layout));
   }
@@ -291,7 +290,7 @@ impl ViewFeature for HelpersFeature {
 
 /// What a part of a view's helpers was built from: the scene's set by its version, the scene's spawned objects by how
 /// many were added and removed so far, the options it was built under, and the objects it drew sounding.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug)]
 struct HelperBuildKey {
   version: u64,
   contents: usize,
@@ -301,13 +300,48 @@ struct HelperBuildKey {
 
 impl HelperBuildKey {
   /// What `sources` hold, under `options`, with `sounding` drawn lit.
-  fn of(sources: HelperSources<'_>, options: &RenderHelperOptions, sounding: &[u32]) -> Self {
+  fn of(sources: HelperSources<'_>, options: RenderHelperOptions, sounding: &[u32]) -> Self {
     Self {
       version: sources.helpers.version,
       contents: sources.statics.get_contents(),
-      options: options.clone(),
+      options,
       sounding: sounding.to_vec(),
     }
+  }
+
+  /// Whether `part` built from it would be built from `sources` alike, copying nothing: the singled out objects' under
+  /// the options and sounds as they are, every kept object's under the options with nothing selected or hovered and
+  /// nothing sounding.
+  fn is_of(&self, sources: HelperSources<'_>, part: HelperPart) -> bool {
+    self.version == sources.helpers.version
+      && self.contents == sources.statics.get_contents()
+      && match part {
+        HelperPart::Singled => self.options == *sources.options && self.sounding == sources.sounding,
+        HelperPart::Every => Self::is_unsingled_of(&self.options, sources.options) && self.sounding.is_empty(),
+      }
+  }
+
+  /// Whether `built` is `options` with nothing selected or hovered.
+  fn is_unsingled_of(built: &RenderHelperOptions, options: &RenderHelperOptions) -> bool {
+    let RenderHelperOptions {
+      is_shown,
+      kinds,
+      hidden,
+      selected: _,
+      hovered: _,
+      occluded_strength,
+      distance_scale,
+      is_rest_faded,
+    } = options;
+
+    built.selected.is_empty()
+      && built.hovered.is_none()
+      && built.is_shown == *is_shown
+      && built.kinds == *kinds
+      && built.hidden == *hidden
+      && built.occluded_strength == *occluded_strength
+      && built.distance_scale == *distance_scale
+      && built.is_rest_faded == *is_rest_faded
   }
 }
 
@@ -343,9 +377,9 @@ impl HelperBuild {
     }
   }
 
-  /// Whether `built` was built from `key`.
-  fn is_current(built: &Option<Self>, key: &HelperBuildKey) -> bool {
-    built.as_ref().is_some_and(|built| built.key == *key)
+  /// Whether `built` stands for `part` of what `sources` hold now.
+  fn is_current(built: &Option<Self>, sources: HelperSources<'_>, part: HelperPart) -> bool {
+    built.as_ref().is_some_and(|built| built.key.is_of(sources, part))
   }
 
   /// What `built` draws, nothing where it was never built.
