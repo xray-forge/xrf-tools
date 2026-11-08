@@ -26,6 +26,9 @@ impl VertexCacheOrder {
   /// The vertices and faces of one child, the faces reordered for the cache and the vertices renumbered in the order
   /// the faces first use them, so the GPU fetches them in sequence.
   pub(crate) fn apply(vertices: Vec<ExportVertex>, faces: &[[u16; 3]]) -> (Vec<ExportVertex>, Vec<[u16; 3]>) {
+    let renumber = |position: usize| -> u16 {
+      u16::try_from(position).expect("a child's vertices fit the 16-bit indices its faces use")
+    };
     let ordered: Vec<[u16; 3]> = Self::order_faces(faces, vertices.len());
     let mut new_index: Vec<Option<u16>> = vec![None; vertices.len()];
     let mut order: Vec<usize> = Vec::with_capacity(vertices.len());
@@ -34,7 +37,7 @@ impl VertexCacheOrder {
       let slot: &mut Option<u16> = &mut new_index[usize::from(*vertex)];
 
       if slot.is_none() {
-        *slot = Some(order.len() as u16);
+        *slot = Some(renumber(order.len()));
         order.push(usize::from(*vertex));
       }
     }
@@ -42,7 +45,7 @@ impl VertexCacheOrder {
     // A vertex no face uses keeps a place after the used ones.
     for (vertex, slot) in new_index.iter_mut().enumerate() {
       if slot.is_none() {
-        *slot = Some(order.len() as u16);
+        *slot = Some(renumber(order.len()));
         order.push(vertex);
       }
     }
