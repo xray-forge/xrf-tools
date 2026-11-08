@@ -48,6 +48,10 @@ impl RainPass {
   /// How many times smaller the enhanced drops' blurred image is than the image, as `rt_ssfx_rain` is.
   pub const BLUR_SCALE: u32 = 8;
 
+  /// Vertices a near drop's rings take, as `vs_ring` lays them out: its fall's ring and its last fall's, each copied
+  /// four times about the rings' tile, each copy a quad of two triangles.
+  pub const RING_VERTICES: u32 = 2 * 4 * 6;
+
   /// What the enhanced streaks draw over: the shown image copied, at the scene's own precision.
   pub const LAYER: wgpu::TextureFormat = ViewTargets::SCENE;
 
@@ -193,7 +197,7 @@ impl RainPass {
 
         pass.set_bind_group(0, &view.bind_group, &[]);
         pass.set_pipeline(&self.pipelines[4]);
-        pass.draw(0..near * 24, 0..1);
+        pass.draw(0..near * Self::RING_VERTICES, 0..1);
       });
 
     let reduce: RainRingsReduceParameters = RainRingsReduceParameters {

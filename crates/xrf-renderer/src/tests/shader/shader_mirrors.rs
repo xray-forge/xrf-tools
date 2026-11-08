@@ -5,6 +5,7 @@ use xrf_renderer_core::{ShaderAddressSpace, ShaderLayoutVerifier};
 use crate::contract::feature::lighting::render_contact_shadow_settings::RENDER_MAX_CONTACT_SHADOW_LIGHTS;
 use crate::contract::view::output::render_debug_view::RenderDebugView;
 use crate::feature::effects::flares::draw::flare_pass::FlarePass;
+use crate::feature::effects::rain::draw::rain_pass::RainPass;
 use crate::feature::effects::rain::rain_uniform::RainUniform;
 use crate::feature::image::camera::camera_effects_uniform::CameraEffectsUniform;
 use crate::feature::image::exposure::exposure_feature::ExposureFeature;
@@ -247,6 +248,18 @@ fn the_calibration_draws_its_spheres_as_rust_counts_them() {
   assert_eq!(
     get_constant(&library, "frame/calibration", "SPHERES"),
     CalibrationUniform::SPHERES
+  );
+}
+
+/// The rain rings' draw takes as many vertices a near drop as `vs_ring` lays its two falls' copies out over, so every
+/// near drop rings.
+#[test]
+fn the_rain_rings_draw_every_near_drops_vertices() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+
+  assert_eq!(
+    get_constant(&library, "frame/rain", "RING_VERTICES"),
+    RainPass::RING_VERTICES
   );
 }
 
