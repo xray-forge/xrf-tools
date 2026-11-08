@@ -3,7 +3,7 @@
 Turns an [xrf-ltx](../xrf-ltx/README.md) project into serializable records for config browsers: inventory, structure,
 resolved fields, scheme reports, source lines, and anchored findings.
 
-The records feed the desktop app's configs explorer and `xrf-cli ltx inspect`. Inspection sits on top of `xrf-ltx`
+The records feed the desktop app's configs explorer and `xrf-cli ltx list`, `find` and `inspect`. Inspection sits on top of `xrf-ltx`
 rather than inside it: the core is the shared reader every app and command resolves configs through, and nothing there
 should grow a field because a viewer wants one. Every record is serialized camelCase, anchored to source lines, and
 carries the `entry` point it was computed against, so a consumer can key a cache by it and never computes a line number
@@ -54,6 +54,8 @@ findings from that reader.
   `read_section_scheme` for scheme reports, and `read_findings` for diagnostics. It is one reader rather than one per
   question because every question needs the same entry point, resolution and source, and a surface showing a file
   beside its findings is one screen.
+- `LtxDeclarationReader` searches every config an inventory holds for the statements that write a section or field. It
+  reads documents only, never a resolution, so it answers where something is written rather than what survives.
 - `LtxTextReader` returns source lines without requiring a project or resolution.
 
 Resolve with `LtxProject::resolve_explained` when field provenance is needed; a plain resolution reports origins as
@@ -80,6 +82,17 @@ config once however many questions it answers, so keep a reader for a root rathe
 
 Pass the project's `ltx_scheme_declarations` to `with_declared_schemes` before `read_section_scheme`. Without them the
 reader reports every binding as undeclared rather than assuming a scheme exists because a config names it.
+
+## Find where something is written
+
+`LtxDeclarationReader::new` borrows an `LtxInventory` and a document source; `search` takes an `LtxDeclarationQuery` of
+an optional section, field and value. Section and field names match whole and case-sensitively, as resolution compares
+them, so a found section is the one `read_sections` resolves under the same name. A value matches as a case-sensitive
+substring. A query naming only a section answers headers; one naming a field or value answers field lines.
+
+Each `LtxDeclaration` keeps the operation prefixes as written, on the statement and on its header, and `is_patch` marks
+either. It is authored text: several declarations of one field can exist, and only a resolution says which one wins. A
+config that will not parse is recorded in `unreadable` and the search goes on.
 
 ## Read source lines
 
@@ -113,6 +126,7 @@ results because a shared config can resolve differently under another root.
 The record groups are named for the question each answers:
 
 - `inventory`: what the project contains, and which role each config plays in it.
+- `declaration`: where a section or field is written, across every config a project holds.
 - `structure`: one config as written, minus what a syntax highlighter can already see.
 - `resolved`: one resolution, indexed and sliceable a page of sections at a time.
 - `scheme`: what judges one section, and how the section measures against it.

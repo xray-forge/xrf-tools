@@ -2,6 +2,7 @@
 
 pub(crate) mod ltx_map_source;
 
+mod declaration;
 mod findings;
 mod inventory;
 mod resolved;
