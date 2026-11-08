@@ -141,10 +141,6 @@ impl OrbitCameraController {
 
   pub fn update(&mut self, _delta: Duration) {}
 
-  pub fn get_description(&self) -> WorldCamera {
-    self.description
-  }
-
   pub fn get_pose(&self) -> WorldCameraPose {
     WorldCameraPose {
       position: self.position.to_array(),

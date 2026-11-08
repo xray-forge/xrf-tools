@@ -39,12 +39,4 @@ impl FrameTexture {
 
     (size.width, size.height)
   }
-
-  /// Bytes its texels take.
-  pub fn get_memory(&self) -> u64 {
-    let size: wgpu::Extent3d = self.texture.size();
-    let texel: u64 = u64::from(self.texture.format().block_copy_size(None).unwrap_or(4));
-
-    u64::from(size.width) * u64::from(size.height) * u64::from(size.depth_or_array_layers) * texel
-  }
 }

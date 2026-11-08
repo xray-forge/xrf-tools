@@ -44,6 +44,7 @@ impl RetryBackoff {
     self.failed.elapsed() >= self.wait
   }
 
+  #[cfg(test)]
   pub fn get_wait(&self) -> Duration {
     self.wait
   }

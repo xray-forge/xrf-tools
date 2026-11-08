@@ -47,6 +47,7 @@ impl Default for ShaderLibrary {
 
 impl ShaderLibrary {
   /// The names of every module.
+  #[cfg(test)]
   pub fn list_modules(&self) -> impl Iterator<Item = &'static str> + '_ {
     self.modules.keys().copied()
   }
@@ -56,6 +57,7 @@ impl ShaderLibrary {
   /// # Errors
   ///
   /// Returns an error for an unknown module or import.
+  #[cfg(test)]
   pub fn compose(&self, entry: &str) -> XrfResult<String> {
     self.compose_for(entry, wgpu::Features::all())
   }

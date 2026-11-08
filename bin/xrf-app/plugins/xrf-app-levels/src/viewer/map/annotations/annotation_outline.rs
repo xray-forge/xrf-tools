@@ -51,11 +51,6 @@ impl AnnotationOutline {
     }
   }
 
-  /// A point of engine space from above.
-  pub fn to_point(point: &Vector3d) -> AnnotationPoint {
-    [point.x, point.z]
-  }
-
   /// A point of renderer space from above, in engine space: mirrored back through `z`.
   pub fn from_renderer_point(point: &Vector3d) -> AnnotationPoint {
     [point.x, -point.z]

@@ -8,9 +8,6 @@ pub enum WetStage {
 }
 
 impl WetStage {
-  pub const ALL: [Self; 2] = [Self::Patch, Self::Apply];
-  pub const COUNT: usize = Self::ALL.len();
-
   /// Its place among the stages, which its pipeline is kept at.
   pub const fn get_index(self) -> usize {
     self as usize

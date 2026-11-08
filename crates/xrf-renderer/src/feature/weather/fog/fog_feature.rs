@@ -134,11 +134,6 @@ impl FogFeature {
 }
 
 impl ViewFeature for FogFeature {
-  /// Its targets are the frame's own, made and let go within it.
-  fn get_memory(&self) -> u64 {
-    0
-  }
-
   fn release(&mut self) {
     *self = Self::default();
   }

@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use xrf_ltx::LtxKeyOperation;
 
-use crate::discovery::dltx_discovery::DltxDiscovery;
 use crate::load::dltx_item::DltxItem;
 
 /// Where one resolved field came from.
@@ -31,7 +30,10 @@ impl DltxFieldOrigin {
   /// Whether a mod file rather than the base tree set this value.
   ///
   /// The engine answers the same question by testing the file name for a `mod_` prefix.
+  #[cfg(test)]
   pub fn is_from_mod_file(&self) -> bool {
+    use crate::discovery::dltx_discovery::DltxDiscovery;
+
     self.file.starts_with(DltxDiscovery::MOD_PREFIX)
   }
 }

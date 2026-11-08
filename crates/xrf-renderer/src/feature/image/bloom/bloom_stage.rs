@@ -11,7 +11,6 @@ pub enum BloomStage {
 
 impl BloomStage {
   pub const ALL: [Self; 3] = [Self::Build, Self::Across, Self::Down];
-  pub const COUNT: usize = Self::ALL.len();
 
   /// Its place among the stages, which its pipeline is kept at.
   pub const fn get_index(self) -> usize {

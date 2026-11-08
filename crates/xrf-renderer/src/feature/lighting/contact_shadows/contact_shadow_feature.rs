@@ -123,10 +123,5 @@ impl ContactShadowFeature {
 }
 
 impl ViewFeature for ContactShadowFeature {
-  /// Its target is the frame's own.
-  fn get_memory(&self) -> u64 {
-    0
-  }
-
   fn release(&mut self) {}
 }

@@ -10,12 +10,3 @@ pub struct ReflectionFrame {
   pub held: FrameTexture,
   pub full: FrameTexture,
 }
-
-impl ReflectionFrame {
-  pub fn get_memory(&self) -> u64 {
-    [&self.radiance, &self.surface, &self.held, &self.full]
-      .iter()
-      .map(|texture| texture.get_memory())
-      .sum()
-  }
-}

@@ -385,12 +385,6 @@ impl FallingRainFeature {
 }
 
 impl ViewFeature for FallingRainFeature {
-  /// The splash's model, kept for the level's weather, and the enhanced drops' rings.
-  fn get_memory(&self) -> u64 {
-    self.splash.as_ref().map_or(0, |model| model.get().get_memory())
-      + self.rings.as_ref().map_or(0, RainRings::get_memory)
-  }
-
   fn release(&mut self) {
     *self = Self::default();
   }

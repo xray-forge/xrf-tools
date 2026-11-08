@@ -272,7 +272,6 @@ strip = false
 inherits = "profiling"
 
 [workspace.lints.rust]
-dead_code = "allow"
 # A crate that needs `unsafe` opts in at its root with `#![expect(unsafe_code, reason = "...")]`.
 unsafe_code = "deny"
 unused_qualifications = "warn"

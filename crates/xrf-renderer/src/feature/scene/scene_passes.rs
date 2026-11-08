@@ -1,34 +1,14 @@
 use xrf_error::XrfResult;
 
-use crate::feature::scene::calibration::calibration_parameters::CalibrationParameters;
 use crate::feature::scene::calibration::calibration_pass::CalibrationPass;
-use crate::feature::scene::calibration::calibration_uniform::CalibrationUniform;
-use crate::feature::scene::grass::build::grass_build_parameters::GrassBuildParameters;
-use crate::feature::scene::grass::build::grass_sort_parameters::GrassSortParameters;
-use crate::feature::scene::grass::cards::grass_card_shadow_parameters::GrassCardShadowParameters;
-use crate::feature::scene::grass::cards::grass_cards_parameters::GrassCardsParameters;
-use crate::feature::scene::grass::colour::grass_colour_parameters::GrassColourParameters;
 use crate::feature::scene::grass::colour::grass_colour_pass::GrassColourPass;
-use crate::feature::scene::grass::draw::grass_draw_parameters::GrassDrawParameters;
-use crate::feature::scene::grass::draw::grass_occlusion_parameters::GrassOcclusionParameters;
-use crate::feature::scene::grass::draw::grass_wind_uniform::GrassWindUniform;
 use crate::feature::scene::grass::grass_pass::GrassPass;
-use crate::feature::scene::grass::grass_uniform::GrassUniform;
-use crate::feature::scene::grass::level::grass_level_parameters::GrassLevelParameters;
-use crate::feature::scene::grass::level::grass_model_record::GrassModelRecord;
-use crate::feature::scene::grass::trace::trace_grass_uniform::TraceGrassUniform;
-use crate::feature::scene::pyramid::cover_pyramid_depth_parameters::CoverPyramidDepthParameters;
-use crate::feature::scene::pyramid::cover_pyramid_level_parameters::CoverPyramidLevelParameters;
 use crate::feature::scene::pyramid::depth_pyramid_pass::DepthPyramidPass;
-use crate::feature::scene::pyramid::pyramid_depth_parameters::PyramidDepthParameters;
-use crate::feature::scene::pyramid::pyramid_level_parameters::PyramidLevelParameters;
-use crate::feature::scene::statics::cull::static_cull_parameters::StaticCullParameters;
 use crate::feature::scene::statics::cull::static_cull_pass::StaticCullPass;
-use crate::feature::scene::statics::draw::static_draw_parameters::StaticDrawParameters;
-use crate::feature::scene::statics::draw::static_impostor_parameters::StaticImpostorParameters;
 use crate::feature::scene::statics::gbuffer::static_gbuffer_pass::StaticGBufferPass;
 use crate::pass::build::pass_build::PassBuild;
 use crate::pass::build::pipeline_source::PipelineSource;
+#[cfg(test)]
 use crate::shader::generated_modules::GeneratedModules;
 
 /// The passes drawing the scene into the G-buffer: the static scene's cull, its depth pyramid and its draws, the grass
@@ -88,7 +68,30 @@ impl ScenePasses {
   /// # Errors
   ///
   /// Returns an error when passes sharing a module declare one of its bindings otherwise.
+  #[cfg(test)]
   pub fn declare_shaders(modules: &mut GeneratedModules) -> XrfResult<()> {
+    use crate::feature::scene::calibration::calibration_parameters::CalibrationParameters;
+    use crate::feature::scene::calibration::calibration_uniform::CalibrationUniform;
+    use crate::feature::scene::grass::build::grass_build_parameters::GrassBuildParameters;
+    use crate::feature::scene::grass::build::grass_sort_parameters::GrassSortParameters;
+    use crate::feature::scene::grass::cards::grass_card_shadow_parameters::GrassCardShadowParameters;
+    use crate::feature::scene::grass::cards::grass_cards_parameters::GrassCardsParameters;
+    use crate::feature::scene::grass::colour::grass_colour_parameters::GrassColourParameters;
+    use crate::feature::scene::grass::draw::grass_draw_parameters::GrassDrawParameters;
+    use crate::feature::scene::grass::draw::grass_occlusion_parameters::GrassOcclusionParameters;
+    use crate::feature::scene::grass::draw::grass_wind_uniform::GrassWindUniform;
+    use crate::feature::scene::grass::grass_uniform::GrassUniform;
+    use crate::feature::scene::grass::level::grass_level_parameters::GrassLevelParameters;
+    use crate::feature::scene::grass::level::grass_model_record::GrassModelRecord;
+    use crate::feature::scene::grass::trace::trace_grass_uniform::TraceGrassUniform;
+    use crate::feature::scene::pyramid::cover_pyramid_depth_parameters::CoverPyramidDepthParameters;
+    use crate::feature::scene::pyramid::cover_pyramid_level_parameters::CoverPyramidLevelParameters;
+    use crate::feature::scene::pyramid::pyramid_depth_parameters::PyramidDepthParameters;
+    use crate::feature::scene::pyramid::pyramid_level_parameters::PyramidLevelParameters;
+    use crate::feature::scene::statics::cull::static_cull_parameters::StaticCullParameters;
+    use crate::feature::scene::statics::draw::static_draw_parameters::StaticDrawParameters;
+    use crate::feature::scene::statics::draw::static_impostor_parameters::StaticImpostorParameters;
+
     modules
       .declare::<GrassModelRecord>()
       .declare::<GrassUniform>()

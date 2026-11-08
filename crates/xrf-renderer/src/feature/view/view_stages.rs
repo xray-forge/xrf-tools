@@ -24,23 +24,6 @@ impl ViewStages {
     }
   }
 
-  /// Every stage's units, as what each answers alike.
-  pub fn list(&self) -> impl Iterator<Item = &dyn ViewFeature> {
-    let Self {
-      scene,
-      lighting,
-      effects,
-      image,
-    } = self;
-
-    scene
-      .list()
-      .into_iter()
-      .chain(lighting.list())
-      .chain(effects.list())
-      .chain(image.list())
-  }
-
   /// Every stage's units, to let go of or change alike.
   pub fn list_mut(&mut self) -> impl Iterator<Item = &mut dyn ViewFeature> {
     let Self {

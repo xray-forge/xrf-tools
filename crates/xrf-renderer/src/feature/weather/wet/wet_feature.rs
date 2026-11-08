@@ -295,11 +295,6 @@ impl WetFeature {
 }
 
 impl ViewFeature for WetFeature {
-  /// Its targets are the frame's own; the textures are the weather's.
-  fn get_memory(&self) -> u64 {
-    0
-  }
-
   fn release(&mut self) {
     self.views = None;
   }

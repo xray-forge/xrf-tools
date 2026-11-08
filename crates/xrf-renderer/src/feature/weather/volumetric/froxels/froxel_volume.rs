@@ -37,11 +37,4 @@ impl FroxelVolume {
       integrated: create("froxels integrated"),
     }
   }
-
-  /// Bytes its three grids take: two histories and the integrated one, at half floats.
-  pub fn get_memory(&self) -> u64 {
-    let [width, height, depth] = Self::SIZE.map(u64::from);
-
-    3 * width * height * depth * 8
-  }
 }

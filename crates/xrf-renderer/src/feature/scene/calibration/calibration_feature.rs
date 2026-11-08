@@ -54,11 +54,6 @@ impl CalibrationFeature {
 }
 
 impl ViewFeature for CalibrationFeature {
-  /// Nothing: the props are a uniform pushed each frame.
-  fn get_memory(&self) -> u64 {
-    0
-  }
-
   fn release(&mut self) {
     self.props = None;
   }

@@ -198,21 +198,6 @@ impl<T> Session<T> {
     drop(self.detach(ids));
   }
 
-  /// Opens `value` as `id` at `revision` with the inputs and parts it was read with, for a test following a slot
-  /// through commits without a registry or a scope.
-  #[cfg(test)]
-  pub(crate) fn commit_fixture(
-    &self,
-    id: SessionId,
-    value: T,
-    revision: XrayRevision,
-    inputs: XrayInputRecord,
-    parts: SessionParts,
-  ) -> TauriResult<Arc<SessionSnapshot<T>>> {
-    self.begin_open(id);
-    self.commit_open_with(id, value, revision, inputs, parts)
-  }
-
   /// Detaches ownership so a caller can dispose a large value on its execution pool.
   pub(crate) fn detach(&self, ids: &[SessionId]) -> Option<Arc<SessionSnapshot<T>>> {
     let mut state: MutexGuard<'_, SessionState<T>> = self.lock();

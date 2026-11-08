@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use xrf_error::{XrfError, XrfResult};
 use xrf_xml::{XmlElementSpan, XmlSourceDocument};
 
@@ -28,7 +26,8 @@ impl TranslationXmlReader {
   ///
   /// Returns an IO error when the file cannot be read, an encoding error when its bytes do not decode, and a parsing
   /// error when the document is malformed beyond what the engine accepts.
-  pub(crate) fn read(path: &Path) -> XrfResult<Vec<(String, String)>> {
+  #[cfg(test)]
+  pub(crate) fn read(path: &std::path::Path) -> XrfResult<Vec<(String, String)>> {
     Self::parse_decoded(DecodedTranslation::read(path)?)
   }
 

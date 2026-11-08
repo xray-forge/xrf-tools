@@ -116,13 +116,6 @@ impl MeterFeature {
 }
 
 impl ViewFeature for MeterFeature {
-  fn get_memory(&self) -> u64 {
-    self
-      .sample
-      .as_ref()
-      .map_or(0, |(buffer, readback)| buffer.size() + readback.get_buffer().size())
-  }
-
   fn release(&mut self) {
     self.sample = None;
     self.reading = None;

@@ -81,6 +81,7 @@ impl WindUniform {
   }
 
   /// Whether the trees move at all.
+  #[cfg(test)]
   pub fn is_swaying(&self) -> bool {
     self.wind != Vec4::ZERO
   }

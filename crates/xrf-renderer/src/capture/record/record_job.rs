@@ -152,6 +152,7 @@ impl RecordJob {
   }
 
   /// Frames dropped so far, every buffer on its way or held.
+  #[cfg(test)]
   pub fn get_dropped(&self) -> u64 {
     self.dropped
   }

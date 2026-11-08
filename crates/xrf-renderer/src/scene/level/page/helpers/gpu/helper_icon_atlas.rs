@@ -20,6 +20,7 @@ impl HelperIconAtlas {
   /// outline nor a smaller mip reaches the next cell.
   pub const CELL: u32 = 64;
   pub const COLUMNS: u32 = 8;
+  #[cfg(test)]
   pub const MARGIN: u32 = 8;
 
   /// Mips it keeps, the smallest a cell of eight pixels.

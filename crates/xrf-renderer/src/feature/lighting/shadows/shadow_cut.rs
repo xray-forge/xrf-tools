@@ -57,9 +57,4 @@ impl ShadowCut {
   pub fn release_lists(&mut self) {
     self.lists = None;
   }
-
-  /// The lists' bytes, while it holds them.
-  pub fn get_memory(&self) -> u64 {
-    self.lists.as_ref().map_or(0, wgpu::Buffer::size)
-  }
 }

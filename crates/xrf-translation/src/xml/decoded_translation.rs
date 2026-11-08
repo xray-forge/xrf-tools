@@ -1,6 +1,3 @@
-use std::fs;
-use std::path::Path;
-
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{XRayEncoding, decode_bytes_to_string_without_bom_handling, encode_string_to_bytes, new_utf8_encoder};
 
@@ -46,8 +43,9 @@ impl DecodedTranslation {
   /// # Errors
   ///
   /// Returns an IO error when the file cannot be read, and an encoding error when its bytes do not decode.
-  pub(crate) fn read(path: &Path) -> XrfResult<Self> {
-    Self::decode(TranslationIdentity::from_path(path), &fs::read(path)?)
+  #[cfg(test)]
+  pub(crate) fn read(path: &std::path::Path) -> XrfResult<Self> {
+    Self::decode(TranslationIdentity::from_path(path), &std::fs::read(path)?)
   }
 
   /// The bytes `text` is written back as: this table's byte order mark, then `text` in this table's encoding.

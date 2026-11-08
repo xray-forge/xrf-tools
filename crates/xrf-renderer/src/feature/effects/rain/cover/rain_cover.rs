@@ -75,17 +75,6 @@ impl RainCover {
     RainCoverShape::of(OverheadShape::RAIN_COVER)
   }
 
-  /// Bytes its map and its pyramid take.
-  pub fn get_memory(&self) -> u64 {
-    let shape: OverheadShape = self.map.get_shape();
-    let map: u64 = u64::from(shape.resolution).pow(2) * 4;
-    let pyramid: u64 = (0..self.pyramid.levels)
-      .map(|level| u64::from((self.pyramid.size >> level).max(1)).pow(2) * 8)
-      .sum();
-
-    map + pyramid
-  }
-
   pub fn get_shape(&self) -> RainCoverShape {
     RainCoverShape::of(self.map.get_shape())
   }

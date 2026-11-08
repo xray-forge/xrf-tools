@@ -305,11 +305,6 @@ impl BloomFeature {
 }
 
 impl ViewFeature for BloomFeature {
-  /// Its targets are the view's (the high target and the two bloom targets) or the frame's own.
-  fn get_memory(&self) -> u64 {
-    0
-  }
-
   fn release(&mut self) {
     *self = Self::default();
   }

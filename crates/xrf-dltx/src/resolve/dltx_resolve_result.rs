@@ -15,6 +15,7 @@ pub struct DltxResolveResult {
 
 impl DltxResolveResult {
   /// One field's resolved value.
+  #[cfg(test)]
   pub fn get(&self, section: &str, key: &str) -> Option<&str> {
     self
       .sections
@@ -24,6 +25,7 @@ impl DltxResolveResult {
   }
 
   /// Section names, sorted.
+  #[cfg(test)]
   pub fn list_sections(&self) -> Vec<&str> {
     self.sections.keys().map(|section| &**section).collect()
   }

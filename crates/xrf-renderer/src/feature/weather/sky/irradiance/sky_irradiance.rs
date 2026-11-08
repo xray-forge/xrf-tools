@@ -95,9 +95,4 @@ impl SkyIrradiance {
   pub fn abandon(&self) {
     self.readback.abandon();
   }
-
-  /// Its buffer and readback.
-  pub fn get_memory(&self) -> u64 {
-    self.buffer.size() + self.readback.get_buffer().size()
-  }
 }

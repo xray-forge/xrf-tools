@@ -8,12 +8,3 @@ pub struct FsrFrame {
   pub luma_history: FrameTexture,
   pub history: FrameTexture,
 }
-
-impl FsrFrame {
-  pub fn get_memory(&self) -> u64 {
-    [&self.luma, &self.accumulation, &self.luma_history, &self.history]
-      .iter()
-      .map(|texture| texture.get_memory())
-      .sum()
-  }
-}

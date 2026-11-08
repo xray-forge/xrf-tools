@@ -273,16 +273,6 @@ impl HelpersFeature {
 }
 
 impl ViewFeature for HelpersFeature {
-  /// The wires' vertices, the icons and the marks.
-  fn get_memory(&self) -> u64 {
-    [&self.every, &self.singled]
-      .into_iter()
-      .flatten()
-      .map(HelperBuild::get_memory)
-      .sum::<u64>()
-      + self.marks.as_ref().map_or(0, |marks| marks.buffer.size())
-  }
-
   fn release(&mut self) {
     *self = Self::default();
   }
@@ -389,14 +379,6 @@ impl HelperBuild {
       icons: built.icons.as_ref(),
     })
   }
-
-  fn get_memory(&self) -> u64 {
-    [&self.wires, &self.icons]
-      .into_iter()
-      .flatten()
-      .map(|buffer| buffer.buffer.size())
-      .sum()
-  }
 }
 
 /// One part's helpers before they are uploaded: its wires' ends, two a segment, and its icons, an instance each.
@@ -405,9 +387,8 @@ struct HelperGeometry {
   icons: Vec<HelperIconInstance>,
 }
 
-/// The marked models' places and colours, and their bind group as the helper marks pass reads them.
+/// The marked models' places and colours, bound as the helper marks pass reads them; the bind group keeps the buffer.
 struct HelperMarks {
-  buffer: wgpu::Buffer,
   group: wgpu::BindGroup,
 }
 
@@ -428,7 +409,7 @@ impl HelperMarks {
       }],
     });
 
-    Self { buffer, group }
+    Self { group }
   }
 }
 

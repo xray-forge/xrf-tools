@@ -104,6 +104,7 @@ impl PeriodicScheduler {
 
   /// Milliseconds this frame's grants cost, as estimated: of what may wait, which the budget bounds, and of what must
   /// draw this frame.
+  #[cfg(test)]
   pub fn get_spent(&self) -> (f32, f32) {
     (self.spent, self.now_spent)
   }

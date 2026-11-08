@@ -97,15 +97,6 @@ impl SceneFeatures {
       present: PresentFeature::default(),
     }
   }
-
-  /// Bytes the units hold on the GPU between frames, with the overhead maps.
-  pub fn get_memory(&self) -> u64 {
-    let units: u64 = self.list().iter().map(|feature| feature.get_memory()).sum();
-
-    units
-      + self.rain_cover.as_ref().map_or(0, RainCover::get_memory)
-      + self.level_surface.as_ref().map_or(0, LevelSurface::get_memory)
-  }
 }
 
 view_units!(SceneFeatures {

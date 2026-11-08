@@ -23,7 +23,6 @@ use crate::viewer::recording::{RecordingOutcome, RecordingProgress};
 pub struct ViewportRecorder {
   renderer: Renderer,
   viewport: RenderViewportId,
-  file: PathBuf,
   is_stopped: Arc<AtomicBool>,
   thread: Option<JoinHandle<TauriResult<RecordingOutcome>>>,
 }
@@ -105,7 +104,7 @@ impl ViewportRecorder {
       meter: server.get_meter().clone(),
       writer,
       size,
-      file: file.clone(),
+      file,
       progress,
       is_stopped: Arc::clone(&is_stopped),
     };
@@ -117,20 +116,9 @@ impl ViewportRecorder {
     Ok(Self {
       renderer: renderer.clone(),
       viewport,
-      file,
       is_stopped,
       thread: Some(thread),
     })
-  }
-
-  /// The viewport recorded.
-  pub fn get_viewport(&self) -> RenderViewportId {
-    self.viewport
-  }
-
-  /// Where it is written.
-  pub fn get_file(&self) -> &PathBuf {
-    &self.file
   }
 
   /// Whether it ended by itself, and is only to be collected.

@@ -376,15 +376,6 @@ impl GamedataProject {
     self.resolve(XrayAssetType::Ogf, reference)
   }
 
-  /// Resolves an OMF reference under the `meshes` namespace.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when the reference is not a valid X-Ray path.
-  pub(crate) fn omf(&self, reference: &str) -> XrfResult<Option<XrayAsset>> {
-    self.resolve(XrayAssetType::Omf, reference)
-  }
-
   /// Resolves a texture reference, appending `.dds` or replacing its authoring extension.
   ///
   /// # Errors

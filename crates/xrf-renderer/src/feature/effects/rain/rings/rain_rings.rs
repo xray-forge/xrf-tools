@@ -65,11 +65,4 @@ impl RainRings {
       level_views,
     }
   }
-
-  /// Bytes its levels hold.
-  pub fn get_memory(&self) -> u64 {
-    (0..Self::LEVELS)
-      .map(|level| u64::from((self.size >> level).pow(2)) * 8)
-      .sum()
-  }
 }

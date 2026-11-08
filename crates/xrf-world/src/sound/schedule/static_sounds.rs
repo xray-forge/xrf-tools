@@ -44,10 +44,6 @@ impl StaticSounds {
     }
   }
 
-  pub fn len(&self) -> usize {
-    self.sounds.len()
-  }
-
   /// The records, in the order the level holds them.
   pub fn iter_records(&self) -> impl Iterator<Item = &WorldStaticSound> {
     self.sounds.iter().map(|sound| &sound.record)

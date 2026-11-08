@@ -23,9 +23,6 @@ pub(super) const SPLIT_REF: &str = "actors\\stalker_scenario_animation";
 /// Where the declared chunk size cuts that fifth reference, leaving `actors\st` inside the chunk.
 const SPLIT_AT: usize = 9;
 
-/// Bytes both fragments of the split reference add up to, terminator included.
-pub(super) const SPLIT_SIZE: usize = 34;
-
 fn raw_chunk(id: u32, payload: &[u8]) -> Vec<u8> {
   let mut bytes: Vec<u8> = Vec::with_capacity(8 + payload.len());
 

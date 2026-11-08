@@ -430,12 +430,6 @@ impl ExposureFeature {
 }
 
 impl ViewFeature for ExposureFeature {
-  /// Its state, the histogram's bins and the readback, which every lit pass reads its scale from, one while it is off;
-  /// so they are kept whatever the settings.
-  fn get_memory(&self) -> u64 {
-    self.state.size() + self.bins.size() + self.readback.get_buffer().size()
-  }
-
   /// Nothing to let go of on its own: its state goes with it.
   fn release(&mut self) {}
 

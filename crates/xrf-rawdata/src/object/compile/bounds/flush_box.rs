@@ -54,6 +54,7 @@ impl FlushBox {
     Some(Self::along(points, best.axes))
   }
 
+  #[cfg(test)]
   pub(crate) fn volume(&self) -> f64 {
     8.0 * self.half_extents.element_product()
   }

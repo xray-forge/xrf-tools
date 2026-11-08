@@ -241,11 +241,6 @@ impl VolumetricFeature {
 }
 
 impl ViewFeature for VolumetricFeature {
-  /// The froxels' grids, while they draw.
-  fn get_memory(&self) -> u64 {
-    self.froxels.as_ref().map_or(0, FroxelVolume::get_memory)
-  }
-
   fn release(&mut self) {
     self.uniform = None;
     self.froxels = None;

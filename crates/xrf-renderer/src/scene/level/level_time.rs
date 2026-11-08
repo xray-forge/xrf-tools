@@ -12,11 +12,6 @@ impl LevelTime {
     Self(elapsed)
   }
 
-  /// The same time whole.
-  pub fn get_duration(self) -> Duration {
-    self.0
-  }
-
   /// The same time as seconds, at `f64`'s precision.
   pub fn get_seconds(self) -> f64 {
     self.0.as_secs_f64()

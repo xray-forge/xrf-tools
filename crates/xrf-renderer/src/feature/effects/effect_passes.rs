@@ -1,33 +1,15 @@
 use xrf_error::XrfResult;
 
-use crate::feature::effects::composited::composited_parameters::CompositedParameters;
 use crate::feature::effects::composited::composited_pass::CompositedPass;
-use crate::feature::effects::composited::glass::glass_copy_dispatch_parameters::GlassCopyDispatchParameters;
-use crate::feature::effects::composited::glass::glass_copy_parameters::GlassCopyParameters;
-use crate::feature::effects::composited::glass::glass_parameters::GlassParameters;
 use crate::feature::effects::composited::glass::glass_pass::GlassPass;
-use crate::feature::effects::composited::glass::glass_uniform::GlassUniform;
-use crate::feature::effects::distort::distort_parameters::DistortParameters;
 use crate::feature::effects::distort::distort_pass::DistortPass;
-use crate::feature::effects::distort::distort_uniform::DistortUniform;
-use crate::feature::effects::flares::draw::flare_draw_parameters::FlareDrawParameters;
-use crate::feature::effects::flares::draw::flare_measure_parameters::FlareMeasureParameters;
 use crate::feature::effects::flares::draw::flare_pass::FlarePass;
-use crate::feature::effects::flares::draw::flare_texture_parameters::FlareTextureParameters;
-use crate::feature::effects::flares::flare_uniform::FlareUniform;
-use crate::feature::effects::particles::particle_parameters::ParticleParameters;
 use crate::feature::effects::particles::particle_pass::ParticlePass;
-use crate::feature::effects::rain::draw::rain_parameters::RainParameters;
 use crate::feature::effects::rain::draw::rain_pass::RainPass;
-use crate::feature::effects::rain::enhanced::rain_blur_parameters::RainBlurParameters;
-use crate::feature::effects::rain::enhanced::rain_look_parameters::RainLookParameters;
-use crate::feature::effects::rain::rain_uniform::RainUniform;
-use crate::feature::effects::rain::rings::rain_rings_reduce_parameters::RainRingsReduceParameters;
-use crate::feature::effects::thunder::thunder_parameters::ThunderParameters;
 use crate::feature::effects::thunder::thunder_pass::ThunderPass;
-use crate::feature::effects::thunder::thunder_uniform::ThunderUniform;
 use crate::pass::build::pass_build::PassBuild;
 use crate::pass::build::pipeline_source::PipelineSource;
+#[cfg(test)]
 use crate::shader::generated_modules::GeneratedModules;
 
 /// The passes blending over the lit scene: the composited surfaces and the glass, the particles and the distortion
@@ -96,7 +78,28 @@ impl EffectPasses {
   /// # Errors
   ///
   /// Returns an error when passes sharing a module declare one of its bindings otherwise.
+  #[cfg(test)]
   pub fn declare_shaders(modules: &mut GeneratedModules) -> XrfResult<()> {
+    use crate::feature::effects::composited::composited_parameters::CompositedParameters;
+    use crate::feature::effects::composited::glass::glass_copy_dispatch_parameters::GlassCopyDispatchParameters;
+    use crate::feature::effects::composited::glass::glass_copy_parameters::GlassCopyParameters;
+    use crate::feature::effects::composited::glass::glass_parameters::GlassParameters;
+    use crate::feature::effects::composited::glass::glass_uniform::GlassUniform;
+    use crate::feature::effects::distort::distort_parameters::DistortParameters;
+    use crate::feature::effects::distort::distort_uniform::DistortUniform;
+    use crate::feature::effects::flares::draw::flare_draw_parameters::FlareDrawParameters;
+    use crate::feature::effects::flares::draw::flare_measure_parameters::FlareMeasureParameters;
+    use crate::feature::effects::flares::draw::flare_texture_parameters::FlareTextureParameters;
+    use crate::feature::effects::flares::flare_uniform::FlareUniform;
+    use crate::feature::effects::particles::particle_parameters::ParticleParameters;
+    use crate::feature::effects::rain::draw::rain_parameters::RainParameters;
+    use crate::feature::effects::rain::enhanced::rain_blur_parameters::RainBlurParameters;
+    use crate::feature::effects::rain::enhanced::rain_look_parameters::RainLookParameters;
+    use crate::feature::effects::rain::rain_uniform::RainUniform;
+    use crate::feature::effects::rain::rings::rain_rings_reduce_parameters::RainRingsReduceParameters;
+    use crate::feature::effects::thunder::thunder_parameters::ThunderParameters;
+    use crate::feature::effects::thunder::thunder_uniform::ThunderUniform;
+
     modules
       .declare::<GlassUniform>()
       .declare::<DistortUniform>()

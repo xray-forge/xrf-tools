@@ -387,16 +387,6 @@ impl BitmaskFeature {
 }
 
 impl ViewFeature for BitmaskFeature {
-  /// Its accumulations.
-  fn get_memory(&self) -> u64 {
-    [&self.occlusion, &self.light]
-      .into_iter()
-      .flatten()
-      .flat_map(History::get_sides)
-      .map(FrameTexture::get_memory)
-      .sum()
-  }
-
   /// The accumulations this frame wrote become the ones the next reads; one it did not write holds nothing to read.
   fn end_frame(&mut self, _end: &mut ViewFrameEnd<'_>) {
     for (history, is_written) in [&mut self.occlusion, &mut self.light]

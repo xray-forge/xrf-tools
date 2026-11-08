@@ -39,10 +39,6 @@ impl ZoneSounds {
     }
   }
 
-  pub fn len(&self) -> usize {
-    self.zones.len()
-  }
-
   /// The records, in the spawn's order.
   pub fn iter_records(&self) -> impl Iterator<Item = &WorldZoneSound> {
     self.zones.iter().map(|zone| &zone.record)
