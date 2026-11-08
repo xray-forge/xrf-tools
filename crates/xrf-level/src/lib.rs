@@ -99,6 +99,7 @@ pub use crate::level::shaders::level_shader_entry::*;
 pub use crate::level::shaders::level_shader_reference::*;
 pub use crate::level::shaders::level_shaders_chunk::*;
 pub use crate::level::visuals::level_visual::*;
+pub use crate::level::visuals::level_visual_windows::*;
 pub use crate::level::visuals::level_visuals_chunk::*;
 pub use crate::lights::level_light::*;
 pub use crate::lights::level_lights_chunk::*;

@@ -113,6 +113,56 @@ fn takes_a_progressive_trees_first_window_from_the_table_it_names() -> XrfResult
 }
 
 #[test]
+fn hands_out_every_window_finest_first_from_the_visual_or_its_table() -> XrfResult {
+  let geometry: LevelGeomFile = geometry();
+  let mut tree: LevelVisual = visual(OgfModelType::TreePm);
+  let mut progressive: LevelVisual = visual(OgfModelType::Progressive);
+
+  tree.swi_container = Some(Ok(OgfSwiContainerChunk { ext_swib_index: 0 }));
+  progressive.swi = Some(Ok(OgfSwiDataChunk {
+    reserved: [0; 4],
+    windows: vec![
+      OgfSlideWindow {
+        offset: 0,
+        num_tris: 4,
+        num_verts: 6,
+      },
+      OgfSlideWindow {
+        offset: 12,
+        num_tris: 2,
+        num_verts: 4,
+      },
+    ],
+  }));
+
+  let offsets = |visual: &LevelVisual| -> XrfResult<Vec<(u32, u16)>> {
+    Ok(
+      visual
+        .get_windows(&geometry)?
+        .expect("Expect windows")
+        .iter()
+        .map(|window| (window.offset, window.triangles))
+        .collect(),
+    )
+  };
+
+  assert_eq!(offsets(&tree)?, [(0, 120), (360, 60)]);
+  assert_eq!(offsets(&progressive)?, [(0, 4), (12, 2)]);
+
+  // A visual of one detail whose table is empty draws every index, as one without a table does.
+  let mut flat: LevelVisual = visual(OgfModelType::Normal);
+
+  flat.swi = Some(Ok(OgfSwiDataChunk {
+    reserved: [0; 4],
+    windows: Vec::new(),
+  }));
+
+  assert!(flat.get_windows(&geometry)?.is_none());
+
+  Ok(())
+}
+
+#[test]
 fn refuses_a_progressive_visual_without_a_window_and_takes_none_for_a_plain_one() -> XrfResult {
   // Its whole run lays every level of detail end to end, so drawing it whole draws them all at once.
   assert!(
