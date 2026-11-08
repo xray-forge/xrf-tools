@@ -328,6 +328,11 @@ unnested_or_patterns = "warn"
 # Numbers convert the way that says what can happen: `u64::from` where nothing is lost, which stops compiling should
 # the source widen; `midpoint` where a sum could overflow; brackets where shifts and bit operations mix.
 # An `Rc` or `Arc` is cloned as `Arc::clone(&shared)`, so a shared handle never reads as a deep copy.
+# A string that reads as a format string is formatted; a lock taken in a `match` or `if let` head is released before
+# the arms run, rather than held through them.
+literal_string_with_formatting_args = "warn"
+significant_drop_in_scrutinee = "warn"
+
 clone_on_ref_ptr = "warn"
 derive_partial_eq_without_eq = "warn"
 inconsistent_struct_constructor = "warn"

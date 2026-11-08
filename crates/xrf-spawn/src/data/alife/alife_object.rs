@@ -6,9 +6,7 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_math::Vector3d;
-use xrf_utils::{
-  assert, assert_equal, assert_not_equal, decode_bytes_from_base64, encode_bytes_to_base64, to_format_size,
-};
+use xrf_utils::{assert_equal, assert_not_equal, decode_bytes_from_base64, encode_bytes_to_base64, to_format_size};
 
 use crate::constants::{NET_ACTION_SPAWN, NET_ACTION_UPDATE};
 use crate::data::alife::alife_object_inherited::AlifeObjectInherited;
@@ -128,10 +126,11 @@ impl ChunkReadWrite for AlifeObject {
       spawn_reader.read_u16::<T>()?
     };
 
-    assert(
-      version > Self::MAX_UNSUPPORTED_VERSION,
-      "Unexpected version of ALife object in spawn file, flag is {script_flags}",
-    )?;
+    if version <= Self::MAX_UNSUPPORTED_VERSION {
+      return Err(XrfError::new_assertion_error(format!(
+        "Unexpected version {version} of ALife object in spawn file, script flags {script_flags}"
+      )));
+    }
 
     let game_type: u16 = spawn_reader.read_u16::<T>()?;
     let script_version: u16 = spawn_reader.read_u16::<T>()?;

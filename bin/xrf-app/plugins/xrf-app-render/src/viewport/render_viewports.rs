@@ -114,7 +114,9 @@ impl RenderViewports {
 
   /// Lets a hold its page took go.
   pub fn release_hold(&self, hold: RenderHoldId) {
-    match self.lock_windows().remove_hold(hold) {
+    let window: Option<String> = self.lock_windows().remove_hold(hold);
+
+    match window {
       Some(window) => log::info!("Released renderer hold {hold} of window '{window}'"),
       None => log::info!("Released renderer hold {hold}, which no window held"),
     }

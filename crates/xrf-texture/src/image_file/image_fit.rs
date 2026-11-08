@@ -2,8 +2,8 @@ use std::path::Path;
 
 use image::imageops::FilterType;
 use image::{DynamicImage, GenericImage, ImageBuffer, Rgba, RgbaImage};
-use xrf_error::XrfResult;
-use xrf_utils::{assert, format_path};
+use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 /// Makes an image exactly the size something else needs it.
 pub(crate) struct ImageFit;
@@ -49,14 +49,11 @@ impl ImageFit {
 
     let mut centered: ImageBuffer<Rgba<u8>, Vec<u8>> = RgbaImage::new(width, height);
 
-    assert(
-      rescaled_width <= width,
-      "Unexpected width {rescaled_width} > {width} when rescaling",
-    )?;
-    assert(
-      rescaled_height <= height,
-      "Unexpected height {rescaled_height} > {height} when rescaling",
-    )?;
+    if rescaled_width > width || rescaled_height > height {
+      return Err(XrfError::new_assertion_error(format!(
+        "Unexpected size {rescaled_width}x{rescaled_height} over {width}x{height} when rescaling"
+      )));
+    }
 
     centered.copy_from(
       &rescaled_image,
