@@ -35,9 +35,11 @@ impl XrayCacheFlights {
     }
   }
 
-  /// Ends one flight and releases everyone waiting on it.
+  /// Ends one flight and releases everyone waiting on it, the map unlocked first so a woken waiter can claim at once.
   pub(super) fn release(&self, key: &XrayCacheKey) {
-    if let Some(flight) = self.lock().remove(key) {
+    let flight: Option<Arc<XrayCacheFlight>> = self.lock().remove(key);
+
+    if let Some(flight) = flight {
       flight.finish();
     }
   }

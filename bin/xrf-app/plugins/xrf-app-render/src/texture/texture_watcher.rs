@@ -68,11 +68,12 @@ impl TextureWatcher {
         continue;
       }
 
-      match watcher
+      let started: notify::Result<()> = watcher
         .lock()
         .unwrap_or_else(PoisonError::into_inner)
-        .watch(&root.path, RecursiveMode::Recursive)
-      {
+        .watch(&root.path, RecursiveMode::Recursive);
+
+      match started {
         Ok(()) => {
           watched.insert(root.path.clone());
         }
