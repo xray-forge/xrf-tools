@@ -8,7 +8,7 @@ use xrf_editable_object::EditableObjectFile;
 use xrf_error::{XrfError, XrfResult};
 use xrf_output::OutputOptions;
 use xrf_rawdata::{
-  ObjectCompileOptions, ObjectCompileSource, ObjectCompiler, ObjectProvenance, SkeletonGeometry, TangentMethod,
+  ObjectCompile, ObjectCompileOptions, ObjectCompileSource, ObjectCompiler, ObjectProvenance, TangentMethod,
 };
 use xrf_utils::{StagedFile, format_path};
 
@@ -26,7 +26,7 @@ impl GenericCommand for CompileCommand {
 
   fn declare(&self, command: Command) -> Command {
     command
-      .about("Compile a skeleton SDK .object into the OGF the engine loads")
+      .about("Compile an SDK .object into the OGF the engine loads: a skeleton with bones, else a static visual")
       .arg(
         Arg::new("path")
           .help("Path to the .object to compile")
@@ -53,8 +53,9 @@ impl GenericCommand for CompileCommand {
       .arg(
         Arg::new("tangents")
           .help(
-            "Tangent method: auto follows the provenance sidecar beside a decompiled object (MikkTSpace for a \
-             model exported from Blender) and the Actor Editor's otherwise; actor-editor or mikktspace forces one",
+            "Tangent method of a skeleton: auto follows the provenance sidecar beside a decompiled object \
+             (MikkTSpace for a model exported from Blender) and the Actor Editor's otherwise; actor-editor or \
+             mikktspace forces one. A static visual stores no tangents",
           )
           .long("tangents")
           .value_parser([Self::AUTO, Self::ACTOR_EDITOR, Self::MIKKTSPACE])
@@ -114,11 +115,9 @@ impl CompileCommand {
 
     let options: ObjectCompileOptions = Self::get_options(source, tangents)?;
     let object: EditableObjectFile = EditableObjectFile::read_from_path::<XRayByteOrder, _>(&source)?;
-    let geometry: SkeletonGeometry = ObjectCompiler::build_skeleton_geometry_with(&object, &options)?;
     let build: BuildInfo = build_info!();
-    let bytes: Vec<u8> = ObjectCompiler::write_skeleton(
+    let compiled: ObjectCompile = ObjectCompiler::compile_with(
       &object,
-      &geometry,
       &ObjectCompileSource {
         source_file: format_path(source).to_string(),
         convertor: match build.short_commit() {
@@ -129,9 +128,10 @@ impl CompileCommand {
           .duration_since(UNIX_EPOCH)
           .map_or(0, |elapsed| elapsed.as_secs()),
       },
+      &options,
     )?;
 
-    StagedFile::write_creating_directories(destination, &bytes).map_err(|error| {
+    StagedFile::write_creating_directories(destination, &compiled.ogf).map_err(|error| {
       XrfError::new_io_error(
         format!("{} was not written: {error}", format_path(destination)),
         error.kind(),
@@ -141,18 +141,18 @@ impl CompileCommand {
     let report: ObjectCompileReport = ObjectCompileReport {
       source: format_path(source).to_string(),
       destination: format_path(destination).to_string(),
-      children: geometry.splits.len(),
-      vertices: geometry.splits.iter().map(|split| split.vertices.len()).sum(),
-      faces: geometry.splits.iter().map(|split| split.faces.len()).sum(),
-      dropped_faces: geometry.dropped_faces,
+      children: compiled.children,
+      vertices: compiled.vertices,
+      faces: compiled.faces,
+      dropped_faces: compiled.dropped_faces,
       bones: object.bones.as_ref().map_or(0, Vec::len),
-      bytes: bytes.len(),
-      tangents: options.tangents,
+      bytes: compiled.ogf.len(),
+      tangents: compiled.tangents,
     };
 
     xrf_output::success!(
       output,
-      "Compiled {} into {}: {} children, {} vertices, {} faces ({} dropped), {} bones, {} tangents",
+      "Compiled {} into {}: {} children, {} vertices, {} faces ({} dropped), {} bones, {}",
       report.source,
       report.destination,
       report.children,
@@ -161,8 +161,9 @@ impl CompileCommand {
       report.dropped_faces,
       report.bones,
       match report.tangents {
-        TangentMethod::ActorEditor => "Actor Editor",
-        TangentMethod::MikkTSpace => "MikkTSpace",
+        Some(TangentMethod::ActorEditor) => "Actor Editor tangents",
+        Some(TangentMethod::MikkTSpace) => "MikkTSpace tangents",
+        None => "a static visual without tangents",
       }
     );
 

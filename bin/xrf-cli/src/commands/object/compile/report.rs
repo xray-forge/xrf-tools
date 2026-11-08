@@ -10,10 +10,11 @@ pub(crate) struct ObjectCompileReport {
   pub(crate) children: usize,
   pub(crate) vertices: usize,
   pub(crate) faces: usize,
-  /// Faces the export drops: degenerate once packed, or repeating one already kept.
+  /// Faces the export drops: degenerate once packed, or, in a skeleton, repeating one already kept.
   pub(crate) dropped_faces: usize,
   pub(crate) bones: usize,
   pub(crate) bytes: usize,
-  /// The tangent method the vertices were given, `actorEditor` or `mikkTSpace`.
-  pub(crate) tangents: TangentMethod,
+  /// The tangent method the vertices were given, `actorEditor` or `mikkTSpace`, or `null` for a static visual, which
+  /// stores no tangents.
+  pub(crate) tangents: Option<TangentMethod>,
 }

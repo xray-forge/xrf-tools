@@ -40,9 +40,18 @@ impl EditableSurface {
   /// of case.
   pub const UV_MAP_NAME: &'static str = "Texture";
 
+  /// `D3DFVF_TEXCOUNT_MASK` and `D3DFVF_TEXCOUNT_SHIFT`.
+  const FVF_TEXTURE_COUNT_MASK: u32 = 0xF00;
+  const FVF_TEXTURE_COUNT_SHIFT: u32 = 8;
+
   /// Whether both of its sides are drawn.
   pub const fn is_two_sided(&self) -> bool {
     self.flags & Self::TWO_SIDED_FLAG != 0
+  }
+
+  /// The texture coordinate sets its vertex format names, which both OGF exports require to be one.
+  pub const fn get_fvf_texture_sets(&self) -> u32 {
+    (self.fvf & Self::FVF_TEXTURE_COUNT_MASK) >> Self::FVF_TEXTURE_COUNT_SHIFT
   }
 }
 

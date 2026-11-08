@@ -2,20 +2,21 @@ use std::collections::VecDeque;
 
 use xrf_math::{Vector2d, Vector3d};
 
-use crate::object::compile::skeleton::skeleton_vertex::{SkeletonVertex, SkeletonVertexBone};
+use crate::object::compile::geometry::export_vertex::ExportVertex;
+use crate::object::compile::geometry::export_vertex_bone::ExportVertexBone;
 use crate::object::compile::skeleton::vertex_cache_order::VertexCacheOrder;
 
 /// A grid of `size` by `size` quads, two triangles each, its vertices numbered row by row.
-fn grid(size: u16) -> (Vec<SkeletonVertex>, Vec<[u16; 3]>) {
-  let vertices: Vec<SkeletonVertex> = (0..=size)
+fn grid(size: u16) -> (Vec<ExportVertex>, Vec<[u16; 3]>) {
+  let vertices: Vec<ExportVertex> = (0..=size)
     .flat_map(|row| (0..=size).map(move |column| (row, column)))
-    .map(|(row, column)| SkeletonVertex {
+    .map(|(row, column)| ExportVertex {
       position: Vector3d::new(f32::from(column), 0.0, f32::from(row)),
       normal: Vector3d::Y,
       tangent: Vector3d::X,
       binormal: Vector3d::Z,
       texture_coordinate: Vector2d::ZERO,
-      bones: vec![SkeletonVertexBone { bone: 0, weight: 1.0 }],
+      bones: vec![ExportVertexBone { bone: 0, weight: 1.0 }],
     })
     .collect();
   let at = |row: u16, column: u16| row * (size + 1) + column;
@@ -61,7 +62,7 @@ fn misses_a_triangle(faces: &[[u16; 3]]) -> f32 {
 }
 
 /// A face by its corners' positions, so faces compare across renumbering, its winding kept.
-fn by_position(vertices: &[SkeletonVertex], face: &[u16; 3]) -> [[u32; 3]; 3] {
+fn by_position(vertices: &[ExportVertex], face: &[u16; 3]) -> [[u32; 3]; 3] {
   face.map(|vertex| vertices[usize::from(vertex)].position.to_array().map(f32::to_bits))
 }
 

@@ -2,12 +2,14 @@ use xrf_editable_object::EditableObjectFile;
 use xrf_error::XrfResult;
 use xrf_math::{Aabb, Vector2d, Vector3d};
 
+use crate::object::compile::geometry::export_vertex::ExportVertex;
+use crate::object::compile::geometry::export_vertex_bone::ExportVertexBone;
+use crate::object::compile::geometry::vertex_packer::VertexPacker;
+use crate::object::compile::geometry::vertex_packing::VertexPacking;
 use crate::object::compile::object_compiler::ObjectCompiler;
 use crate::object::compile::skeleton::breakable_parts::BreakableParts;
 use crate::object::compile::skeleton::skeleton_geometry::SkeletonGeometry;
 use crate::object::compile::skeleton::skeleton_split::SkeletonSplit;
-use crate::object::compile::skeleton::skeleton_vertex::{SkeletonVertex, SkeletonVertexBone};
-use crate::object::compile::skeleton::vertex_packer::VertexPacker;
 use crate::object::decompile::geometry::ogf_corner::OgfCorner;
 use crate::object::decompile::tests::fixtures::{
   BONES, DOWN, UP, assemble, bone, chain, corner, object, surface, with_links,
@@ -44,8 +46,8 @@ fn packs_a_smooth_quad_into_four_vertices_padded_to_two_links() -> XrfResult {
   assert_eq!(split.used_bones, [0]);
   assert!(split.vertices.iter().all(|vertex| vertex.bones
     == [
-      SkeletonVertexBone { bone: 0, weight: 1.0 },
-      SkeletonVertexBone { bone: 0, weight: 0.0 }
+      ExportVertexBone { bone: 0, weight: 1.0 },
+      ExportVertexBone { bone: 0, weight: 0.0 }
     ]));
 
   Ok(())
@@ -70,12 +72,12 @@ fn keeps_a_corner_of_a_one_link_face_apart_from_the_same_corner_of_a_blended_one
 
   assert_eq!((split.vertices.len(), split.link_count), (6, 2));
   assert_eq!(split.used_bones, [0, 1]);
-  assert_eq!(split.vertices[3].bones, [SkeletonVertexBone { bone: 0, weight: 1.0 }]);
+  assert_eq!(split.vertices[3].bones, [ExportVertexBone { bone: 0, weight: 1.0 }]);
   assert_eq!(
     split.vertices[5].bones,
     [
-      SkeletonVertexBone { bone: 0, weight: 0.5 },
-      SkeletonVertexBone { bone: 1, weight: 0.5 }
+      ExportVertexBone { bone: 0, weight: 0.5 },
+      ExportVertexBone { bone: 1, weight: 0.5 }
     ]
   );
 
@@ -140,18 +142,21 @@ fn numbers_breakable_parts_down_from_the_root() {
 
 #[test]
 fn snaps_a_near_corner_onto_a_vertex_and_drops_degenerate_and_repeated_faces() -> XrfResult {
-  let vertex = |position: [f32; 3], normal: [f32; 3]| SkeletonVertex {
+  let vertex = |position: [f32; 3], normal: [f32; 3]| ExportVertex {
     position: Vector3d::from(position),
     normal: Vector3d::from(normal),
     tangent: Vector3d::X,
     binormal: Vector3d::Z,
     texture_coordinate: Vector2d::ZERO,
-    bones: vec![SkeletonVertexBone { bone: 0, weight: 1.0 }],
+    bones: vec![ExportVertexBone { bone: 0, weight: 1.0 }],
   };
-  let mut packer: VertexPacker = VertexPacker::new(&Aabb {
-    min: Vector3d::new(-1.0, -1.0, -1.0),
-    max: Vector3d::new(1.0, 1.0, 1.0),
-  });
+  let mut packer: VertexPacker = VertexPacker::new(
+    &Aabb {
+      min: Vector3d::new(-1.0, -1.0, -1.0),
+      max: Vector3d::new(1.0, 1.0, 1.0),
+    },
+    &VertexPacking::SKELETON,
+  );
   let face = |first: [f32; 3], normal: [f32; 3]| {
     [
       vertex(first, normal),

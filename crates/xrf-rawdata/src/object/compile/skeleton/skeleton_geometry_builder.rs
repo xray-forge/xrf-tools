@@ -1,20 +1,23 @@
 use std::collections::HashMap;
 
-use xrf_editable_object::{EditableBone, EditableMesh, EditableObjectFile, EditableSurface, EditableSurfaceFaces};
+use xrf_editable_object::{EditableBone, EditableMesh, EditableObjectFile, EditableSurface};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::{Aabb, Vector3d};
 
+use crate::object::compile::geometry::export_vertex::ExportVertex;
+use crate::object::compile::geometry::export_vertex_bone::ExportVertexBone;
+use crate::object::compile::geometry::source::mesh_surface_faces::MeshSurfaceFaces;
+use crate::object::compile::geometry::split_partition::SplitPartition;
+use crate::object::compile::geometry::tangent_basis::TangentBasis;
+use crate::object::compile::geometry::vertex_packer::VertexPacker;
+use crate::object::compile::geometry::vertex_packing::VertexPacking;
 use crate::object::compile::object_compile_options::{ObjectCompileOptions, TangentMethod};
 use crate::object::compile::skeleton::breakable_parts::BreakableParts;
 use crate::object::compile::skeleton::mikktspace_basis::MikkTSpaceBasis;
 use crate::object::compile::skeleton::skeleton_geometry::SkeletonGeometry;
 use crate::object::compile::skeleton::skeleton_split::SkeletonSplit;
-use crate::object::compile::skeleton::skeleton_vertex::{SkeletonVertex, SkeletonVertexBone};
 use crate::object::compile::skeleton::skin_corner::SkinCorner;
-use crate::object::compile::skeleton::split_partition::SplitPartition;
-use crate::object::compile::skeleton::tangent_basis::TangentBasis;
 use crate::object::compile::skeleton::vertex_cache_order::VertexCacheOrder;
-use crate::object::compile::skeleton::vertex_packer::VertexPacker;
 
 /// Builds a skeleton object's splits as `CExportSkeleton::PrepareGeometry` does, its tangent pass included.
 ///
@@ -37,10 +40,6 @@ impl SkeletonGeometryBuilder {
   /// Bones a skeleton object can hold (`PrepareGeometry`).
   const MAX_BONES: usize = 64;
 
-  /// `D3DFVF_TEXCOUNT_MASK` and `D3DFVF_TEXCOUNT_SHIFT`: the texture coordinate sets a surface's vertex format names.
-  const TEXTURE_COUNT_MASK: u32 = 0xF00;
-  const TEXTURE_COUNT_SHIFT: u32 = 8;
-
   /// The splits of `object`.
   ///
   /// # Errors
@@ -53,9 +52,9 @@ impl SkeletonGeometryBuilder {
     let bones: &[EditableBone] = object.bones.as_deref().unwrap_or_default();
     let surfaces: &[EditableSurface] = object.surfaces.as_deref().unwrap_or_default();
 
-    if meshes.is_empty() {
+    let Some(bounds) = VertexPacker::get_object_bounds(meshes) else {
       return Err(XrfError::new_invalid_error("A skeleton object holds no mesh to export"));
-    }
+    };
 
     if bones.is_empty() || bones.len() > Self::MAX_BONES {
       return Err(XrfError::new_invalid_error(format!(
@@ -74,72 +73,22 @@ impl SkeletonGeometryBuilder {
     let parts: Vec<u16> = BreakableParts::of(bones);
     let mut builder: Self = Self {
       splits: Vec::new(),
-      bounds: Self::get_object_bounds(meshes),
+      bounds,
       is_breakable: parts.iter().any(|part| *part != 0),
       parts,
     };
 
     for mesh in meshes {
       let corners: Vec<[SkinCorner; 3]> = SkinCorner::of_mesh(mesh, &bone_of_map)?;
-      let mut mesh_surfaces: Vec<(usize, &EditableSurfaceFaces)> = mesh
-        .surface_faces
-        .iter()
-        .map(|surface_faces| {
-          surfaces
-            .iter()
-            .position(|surface| surface.name == surface_faces.surface)
-            .map(|index| (index, surface_faces))
-            .ok_or_else(|| {
-              XrfError::new_invalid_error(format!(
-                "Mesh '{}' names surface '{}', which the object does not have",
-                mesh.name, surface_faces.surface
-              ))
-            })
-        })
-        .collect::<XrfResult<_>>()?;
 
-      // The editor keys a mesh's faces by surface pointer, so walks them in the order it allocated the surfaces: the
-      // object's.
-      mesh_surfaces.sort_by_key(|(index, _)| *index);
-
-      for (surface_index, surface_faces) in mesh_surfaces {
-        let surface: &EditableSurface = &surfaces[surface_index];
-
-        if (surface.fvf & Self::TEXTURE_COUNT_MASK) >> Self::TEXTURE_COUNT_SHIFT != 1 {
-          return Err(XrfError::new_invalid_error(format!(
-            "Surface '{}' names other than one texture coordinate set, which the export requires",
-            surface.name
-          )));
-        }
-
-        for face in &surface_faces.faces {
-          let face_corners: &[SkinCorner; 3] = corners.get(*face as usize).ok_or_else(|| {
-            XrfError::new_invalid_error(format!(
-              "Surface '{}' names face {face} of mesh '{}'",
-              surface.name, mesh.name
-            ))
-          })?;
-
-          builder.add_face(surface, face_corners)?;
+      for walked in MeshSurfaceFaces::in_export_order(mesh, surfaces)? {
+        for face in walked.faces {
+          builder.add_face(walked.surface, &corners[*face as usize])?;
         }
       }
     }
 
     builder.finish(options.tangents)
-  }
-
-  /// The object's box, `CEditableObject::UpdateBox`: every mesh's stored bounds together.
-  fn get_object_bounds(meshes: &[EditableMesh]) -> Aabb {
-    let mut bounds: Aabb = meshes[0].bounds;
-
-    for mesh in &meshes[1..] {
-      bounds = Aabb {
-        min: bounds.min.min(&mesh.bounds.min),
-        max: bounds.max.max(&mesh.bounds.max),
-      };
-    }
-
-    bounds
   }
 
   fn add_face(&mut self, surface: &EditableSurface, corners: &[SkinCorner; 3]) -> XrfResult {
@@ -152,7 +101,7 @@ impl SkeletonGeometryBuilder {
       )));
     }
 
-    let mut vertices: [SkeletonVertex; 3] = corners.clone().map(|corner| Self::to_vertex(corner, link_count == 1));
+    let mut vertices: [ExportVertex; 3] = corners.clone().map(|corner| Self::to_vertex(corner, link_count == 1));
     let part: u16 = self.get_part(&vertices)?;
     let split: usize = self.find_split(surface, part);
     let (split, packer) = &mut self.splits[split];
@@ -180,14 +129,14 @@ impl SkeletonGeometryBuilder {
 
   /// A corner as the export sets its vertex: its bones sorted by bone, one bone padded with its weightless copy in a
   /// face whose every corner follows one.
-  fn to_vertex(corner: SkinCorner, is_one_link: bool) -> SkeletonVertex {
-    let mut bones: Vec<SkeletonVertexBone> = if is_one_link {
+  fn to_vertex(corner: SkinCorner, is_one_link: bool) -> ExportVertex {
+    let mut bones: Vec<ExportVertexBone> = if is_one_link {
       vec![
-        SkeletonVertexBone {
+        ExportVertexBone {
           bone: corner.weights[0].bone,
           weight: 1.0,
         },
-        SkeletonVertexBone {
+        ExportVertexBone {
           bone: corner.weights[0].bone,
           weight: 0.0,
         },
@@ -198,7 +147,7 @@ impl SkeletonGeometryBuilder {
 
     bones.sort_by_key(|bone| bone.bone);
 
-    SkeletonVertex {
+    ExportVertex {
       position: corner.position,
       normal: corner.normal,
       // What `SSkelVert` starts with, until the tangent pass.
@@ -210,7 +159,7 @@ impl SkeletonGeometryBuilder {
   }
 
   /// The breakable part a face's bones belong to, all of them one part or the export refuses the object.
-  fn get_part(&self, vertices: &[SkeletonVertex; 3]) -> XrfResult<u16> {
+  fn get_part(&self, vertices: &[ExportVertex; 3]) -> XrfResult<u16> {
     if !self.is_breakable {
       return Ok(0);
     }
@@ -252,7 +201,7 @@ impl SkeletonGeometryBuilder {
           vertices: Vec::new(),
           faces: Vec::new(),
         },
-        VertexPacker::new(&self.bounds),
+        VertexPacker::new(&self.bounds, &VertexPacking::SKELETON),
       ));
 
       self.splits.len() - 1
@@ -277,7 +226,7 @@ impl SkeletonGeometryBuilder {
         TangentMethod::ActorEditor => TangentBasis::mend(packer.vertices, &packer.faces)?,
         TangentMethod::MikkTSpace => MikkTSpaceBasis::generate(packer.vertices, &packer.faces)?,
       };
-      let children: Vec<(Vec<SkeletonVertex>, Vec<[u16; 3]>)> = SplitPartition::cut(vertices, &faces);
+      let children: Vec<(Vec<ExportVertex>, Vec<[u16; 3]>)> = SplitPartition::cut(vertices, &faces);
       let is_cut: bool = children.len() > 1;
 
       split.used_bones.sort_unstable();

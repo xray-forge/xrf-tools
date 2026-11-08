@@ -166,31 +166,62 @@ impl OgfGeometry {
       ));
     }
 
-    let count = |length: usize, what: &str| {
-      u32::try_from(length)
-        .map_err(|_| XrfError::new_invalid_error(format!("A child holds more {what} than a u32 counts")))
-    };
     let mut vertices_chunk: ChunkWriter = ChunkWriter::new();
 
-    vertices_chunk.write_u32::<T>(count(links, "links")?)?;
-    vertices_chunk.write_u32::<T>(count(vertices.len(), "vertices")?)?;
+    vertices_chunk.write_u32::<T>(Self::count(links, "links")?)?;
+    vertices_chunk.write_u32::<T>(Self::count(vertices.len(), "vertices")?)?;
 
     for vertex in vertices {
       vertex.write::<T>(&mut vertices_chunk)?;
     }
 
+    vertices_chunk.flush_chunk_into::<T>(writer, Self::VERTICES_CHUNK_ID)?;
+    Self::write_indices::<T>(writer, indices)
+  }
+
+  /// Writes a static visual's vertices and indices as the static export writes them: the vertices chunk tagged with
+  /// `format`'s flexible vertex format, then the indices chunk, its count first.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a vertex does not hold what `format` declares, or a count outgrows a `u32`.
+  pub fn write_static<T: ByteOrder>(
+    writer: &mut ChunkWriter,
+    format: &OgfFvf,
+    vertices: &[OgfStaticVertex],
+    indices: &[u16],
+  ) -> XrfResult {
+    let mut vertices_chunk: ChunkWriter = ChunkWriter::new();
+
+    vertices_chunk.write_u32::<T>(format.raw)?;
+    vertices_chunk.write_u32::<T>(Self::count(vertices.len(), "vertices")?)?;
+
+    for vertex in vertices {
+      vertex.write::<T>(&mut vertices_chunk, format)?;
+    }
+
+    vertices_chunk.flush_chunk_into::<T>(writer, Self::VERTICES_CHUNK_ID)?;
+    Self::write_indices::<T>(writer, indices)
+  }
+
+  /// The indices chunk, its count first.
+  fn write_indices<T: ByteOrder>(writer: &mut ChunkWriter, indices: &[u16]) -> XrfResult {
     let mut indices_chunk: ChunkWriter = ChunkWriter::new();
 
-    indices_chunk.write_u32::<T>(count(indices.len(), "indices")?)?;
+    indices_chunk.write_u32::<T>(Self::count(indices.len(), "indices")?)?;
 
     for index in indices {
       indices_chunk.write_u16::<T>(*index)?;
     }
 
-    vertices_chunk.flush_chunk_into::<T>(writer, Self::VERTICES_CHUNK_ID)?;
     indices_chunk.flush_chunk_into::<T>(writer, Self::INDICES_CHUNK_ID)?;
 
     Ok(())
+  }
+
+  fn count(length: usize, what: &str) -> XrfResult<u32> {
+    u32::try_from(length)
+      .map_err(|_| XrfError::new_invalid_error(format!("A child holds more {what} than a u32 counts")))
   }
 
   fn read_indices<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<u16>> {
@@ -212,6 +243,7 @@ mod tests {
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use super::OgfGeometry;
+  use crate::data::geometry::ogf_fvf::OgfFvf;
   use crate::data::geometry::ogf_static_vertex::OgfStaticVertex;
   use crate::data::geometry::skin::ogf_vertex::OgfVertex;
   use crate::data::geometry::skin::ogf_vertex_link::OgfVertexLink;
@@ -325,6 +357,43 @@ mod tests {
     assert_eq!(vertex.texture_coordinates, vec![vec![0.25, 0.75]]);
     assert_eq!((vertex.diffuse, vertex.specular, vertex.point_size), (None, None, None));
     assert!(geometry.skin_bone_indices.is_empty());
+
+    Ok(())
+  }
+
+  #[test]
+  fn writes_static_vertices_in_their_format_that_read_back_alike() -> XrfResult {
+    let format: OgfFvf = OgfFvf::from_raw(0x112).expect("the SDK's static format decodes");
+    let vertices: Vec<OgfStaticVertex> = vec![OgfStaticVertex {
+      position: Vector3d::new(1.0, 2.0, 3.0),
+      normal: Some(Vector3d::Y),
+      point_size: None,
+      diffuse: None,
+      specular: None,
+      texture_coordinates: vec![vec![0.25, 0.75]],
+    }];
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    OgfGeometry::write_static::<XRayByteOrder>(&mut writer, &format, &vertices, &[0, 0, 0])?;
+
+    let bytes: Vec<u8> = writer.flush_raw_into_buffer()?;
+    let chunks = ChunkReader::from_bytes(&bytes)?.read_children()?;
+    let geometry: OgfGeometry = OgfGeometry::read_from_chunks::<XRayByteOrder, _>(&chunks, Some(OgfModelType::Normal))?
+      .expect("geometry chunks are present");
+
+    assert_eq!(geometry.vertex_format, Some(0x112));
+    assert_eq!(geometry.get_static_vertices(), Some(vertices.as_slice()));
+    assert_eq!(geometry.indices, Some(vec![0, 0, 0]));
+
+    // A vertex lacking the declared normal does not write.
+    let without_normal: OgfStaticVertex = OgfStaticVertex {
+      normal: None,
+      ..vertices[0].clone()
+    };
+
+    assert!(
+      OgfGeometry::write_static::<XRayByteOrder>(&mut ChunkWriter::new(), &format, &[without_normal], &[]).is_err()
+    );
 
     Ok(())
   }

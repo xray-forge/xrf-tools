@@ -1,21 +1,23 @@
 use byteorder::ByteOrder;
-use xrf_chunk::{ChunkReadWrite, ChunkWriter};
-use xrf_editable_object::{EditableBone, EditableObjectFile, EditableTimeWidth};
+use xrf_chunk::ChunkWriter;
+use xrf_editable_object::{EditableBone, EditableObjectFile};
 use xrf_error::XrfResult;
-use xrf_math::{Aabb, Sphere, Vector3d};
+use xrf_math::{Aabb, Vector3d};
 use xrf_ogf::{
-  OgfBone, OgfBoneIkData, OgfBonesChunk, OgfChildrenChunk, OgfDescriptionChunk, OgfDescriptionTimeWidth, OgfGeometry,
-  OgfHeaderChunk, OgfIkDataChunk, OgfJointIkData, OgfKinematicsChunk, OgfLodsChunk, OgfModelType, OgfTextureChunk,
-  OgfUserDataChunk, OgfVertex, OgfVertexLink, OgfVertexLinks,
+  OgfBone, OgfBoneIkData, OgfBonesChunk, OgfChildrenChunk, OgfDescriptionChunk, OgfGeometry, OgfHeaderChunk,
+  OgfIkDataChunk, OgfJointIkData, OgfKinematicsChunk, OgfLodsChunk, OgfModelType, OgfTextureChunk, OgfUserDataChunk,
+  OgfVertex, OgfVertexLink, OgfVertexLinks,
 };
 use xrf_skeleton::{SkeletonMotionParametersChunk, SkeletonMotionsChunk};
 
 use crate::object::compile::bounds::bone_boxes::BoneBoxes;
+use crate::object::compile::geometry::export_vertex::ExportVertex;
+use crate::object::compile::geometry::export_vertex_bone::ExportVertexBone;
 use crate::object::compile::motion::motion_export::MotionExport;
 use crate::object::compile::object_compile_source::ObjectCompileSource;
+use crate::object::compile::ogf_export_chunks::OgfExportChunks;
 use crate::object::compile::skeleton::skeleton_geometry::SkeletonGeometry;
 use crate::object::compile::skeleton::skeleton_split::SkeletonSplit;
-use crate::object::compile::skeleton::skeleton_vertex::{SkeletonVertex, SkeletonVertexBone};
 use crate::object::joint_limit_sense::JointLimitSense;
 
 /// Writes a skeleton object's OGF as `CExportSkeleton::ExportGeometry` and `ExportMotions` do: the header, the
@@ -24,9 +26,6 @@ use crate::object::joint_limit_sense::JointLimitSense;
 pub(crate) struct SkeletonOgfWriter;
 
 impl SkeletonOgfWriter {
-  /// `xrOGF_FormatVersion`.
-  const FORMAT_VERSION: u8 = 4;
-
   /// `OGF_IKDATA_VERSION`: a record carrying the joint's friction.
   const IK_DATA_VERSION: u32 = 1;
 
@@ -49,10 +48,10 @@ impl SkeletonOgfWriter {
     let motions: Option<MotionExport> = MotionExport::of::<T>(object)?;
     let mut file: ChunkWriter = ChunkWriter::new();
 
-    Self::write_chunk::<T, _>(
+    OgfExportChunks::write_chunk::<T, _>(
       &mut file,
       OgfHeaderChunk::CHUNK_ID,
-      &Self::header(
+      &OgfExportChunks::header(
         if motion_references.is_empty() && motions.is_none() {
           OgfModelType::SkeletonRigid
         } else {
@@ -61,10 +60,10 @@ impl SkeletonOgfWriter {
         &Self::get_bounds(geometry.splits.iter().flat_map(|split| &split.vertices)),
       ),
     )?;
-    Self::write_chunk::<T, _>(
+    OgfExportChunks::write_chunk::<T, _>(
       &mut file,
       OgfDescriptionChunk::CHUNK_ID,
-      &Self::description(object, source),
+      &OgfExportChunks::description(object, source),
     )?;
 
     let children: Vec<Vec<u8>> = geometry
@@ -75,7 +74,7 @@ impl SkeletonOgfWriter {
 
     OgfChildrenChunk::write_nested::<T>(&mut file, &children)?;
 
-    Self::write_chunk::<T, _>(
+    OgfExportChunks::write_chunk::<T, _>(
       &mut file,
       OgfBonesChunk::CHUNK_ID,
       &OgfBonesChunk {
@@ -101,7 +100,7 @@ impl SkeletonOgfWriter {
 
     // The class script is written terminated (`w_stringZ`), the LODs as a line (`w_string`).
     if let Some(script) = object.class_script.as_deref().filter(|script| !script.is_empty()) {
-      Self::write_chunk::<T, _>(
+      OgfExportChunks::write_chunk::<T, _>(
         &mut file,
         OgfUserDataChunk::CHUNK_ID,
         &OgfUserDataChunk {
@@ -111,7 +110,7 @@ impl SkeletonOgfWriter {
     }
 
     if let Some(lods) = object.lods.as_deref().filter(|lods| !lods.is_empty()) {
-      Self::write_chunk::<T, _>(
+      OgfExportChunks::write_chunk::<T, _>(
         &mut file,
         OgfLodsChunk::CHUNK_ID,
         &OgfLodsChunk {
@@ -122,8 +121,8 @@ impl SkeletonOgfWriter {
 
     // An object referencing motion files plays those and writes none of its own (`ExportMotionKeys`).
     if let Some(motions) = &motions {
-      Self::write_chunk::<T, _>(&mut file, SkeletonMotionsChunk::CHUNK_ID, &motions.motions)?;
-      Self::write_chunk::<T, _>(&mut file, SkeletonMotionParametersChunk::CHUNK_ID, &motions.parameters)?;
+      OgfExportChunks::write_chunk::<T, _>(&mut file, SkeletonMotionsChunk::CHUNK_ID, &motions.motions)?;
+      OgfExportChunks::write_chunk::<T, _>(&mut file, SkeletonMotionParametersChunk::CHUNK_ID, &motions.parameters)?;
     } else if !motion_references.is_empty() {
       let mut kinematics: ChunkWriter = ChunkWriter::new();
 
@@ -144,12 +143,12 @@ impl SkeletonOgfWriter {
   fn write_child<T: ByteOrder>(split: &SkeletonSplit) -> XrfResult<Vec<u8>> {
     let mut child: ChunkWriter = ChunkWriter::new();
 
-    Self::write_chunk::<T, _>(
+    OgfExportChunks::write_chunk::<T, _>(
       &mut child,
       OgfHeaderChunk::CHUNK_ID,
-      &Self::header(OgfModelType::SkeletonGeomdefSt, &Self::get_bounds(&split.vertices)),
+      &OgfExportChunks::header(OgfModelType::SkeletonGeomdefSt, &Self::get_bounds(&split.vertices)),
     )?;
-    Self::write_chunk::<T, _>(
+    OgfExportChunks::write_chunk::<T, _>(
       &mut child,
       OgfTextureChunk::CHUNK_ID,
       &OgfTextureChunk {
@@ -173,13 +172,13 @@ impl SkeletonOgfWriter {
 
   /// A vertex laid out in its split's `link_count` as `Save` lays it: bones strongest first, a two-link vertex
   /// storing the second bone's share of the two, padding repeating the first bone weightless.
-  fn to_ogf_vertex(vertex: &SkeletonVertex, link_count: u8) -> OgfVertex {
-    let mut bones: Vec<SkeletonVertexBone> = vertex.bones.clone();
+  fn to_ogf_vertex(vertex: &ExportVertex, link_count: u8) -> OgfVertex {
+    let mut bones: Vec<ExportVertexBone> = vertex.bones.clone();
 
     // Strongest first, equals as they came: the export's `sort_by_weight` over a handful of bones.
     bones.sort_by(|first, second| second.weight.total_cmp(&first.weight));
 
-    let first: SkeletonVertexBone = bones[0];
+    let first: ExportVertexBone = bones[0];
     let link = |bone: u16, weight: f32| OgfVertexLink { bone, weight };
     let links: Vec<OgfVertexLink> = match link_count {
       1 => vec![link(first.bone, 1.0)],
@@ -240,69 +239,7 @@ impl SkeletonOgfWriter {
     }
   }
 
-  /// The description `CEditableObject::PrepareOGFDesc` fills: the source, what built it when, and who made and last
-  /// changed the object when.
-  fn description(object: &EditableObjectFile, source: &ObjectCompileSource) -> OgfDescriptionChunk {
-    let authored = object.description.as_ref();
-
-    OgfDescriptionChunk {
-      source_file: source.source_file.clone(),
-      convertor: source.convertor.clone(),
-      built_at: source.built_at,
-      creator: authored.map(|it| it.creator.clone()).unwrap_or_default(),
-      created_at: authored.map_or(0, |it| it.created_at),
-      editor: authored.map(|it| it.modifier.clone()).unwrap_or_default(),
-      edited_at: authored.map_or(0, |it| it.modified_at),
-      time_width: match authored.map(|it| it.time_width) {
-        Some(EditableTimeWidth::Seconds64) => OgfDescriptionTimeWidth::Wide,
-        _ => OgfDescriptionTimeWidth::Narrow,
-      },
-    }
-  }
-
-  fn header(model_type: OgfModelType, bounds: &Aabb) -> OgfHeaderChunk {
-    let center: Vector3d = bounds.min.midpoint(&bounds.max);
-
-    OgfHeaderChunk {
-      version: Self::FORMAT_VERSION,
-      model_type: model_type.to_raw(),
-      shader_id: 0,
-      bounding_box: *bounds,
-      // `Fbox::getsphere`: the centre, out to the box's upper corner.
-      bounding_sphere: Sphere {
-        center,
-        radius: center.distance(&bounds.max),
-      },
-    }
-  }
-
-  fn get_bounds<'a>(vertices: impl IntoIterator<Item = &'a SkeletonVertex>) -> Aabb {
-    let mut vertices = vertices.into_iter();
-    let Some(first) = vertices.next() else {
-      return Aabb {
-        min: Vector3d::ZERO,
-        max: Vector3d::ZERO,
-      };
-    };
-
-    vertices.fold(
-      Aabb {
-        min: first.position,
-        max: first.position,
-      },
-      |bounds, vertex| Aabb {
-        min: bounds.min.min(&vertex.position),
-        max: bounds.max.max(&vertex.position),
-      },
-    )
-  }
-
-  fn write_chunk<T: ByteOrder, C: ChunkReadWrite>(writer: &mut ChunkWriter, id: u32, chunk: &C) -> XrfResult {
-    let mut contents: ChunkWriter = ChunkWriter::new();
-
-    chunk.write::<T>(&mut contents)?;
-    contents.flush_chunk_into::<T>(writer, id)?;
-
-    Ok(())
+  fn get_bounds<'a>(vertices: impl IntoIterator<Item = &'a ExportVertex>) -> Aabb {
+    OgfExportChunks::get_bounds(vertices.into_iter().map(|vertex| &vertex.position))
   }
 }

@@ -19,6 +19,12 @@ impl BoneInfluences {
   /// Bones a vertex can follow, as many as the widest skin layout stores.
   pub(crate) const CAPACITY: usize = 4;
 
+  /// A static vertex's: it follows no bone.
+  pub(crate) const NONE: Self = Self {
+    influences: [(0, 0.0); Self::CAPACITY],
+    count: 0,
+  };
+
   /// A summed weight at or below which a bone is padding the export wrote, not an influence: the remainder of weights
   /// that already sum to one differs from nought by rounding alone.
   const NEGLIGIBLE_WEIGHT: f32 = 1e-6;

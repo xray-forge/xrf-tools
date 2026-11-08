@@ -92,12 +92,12 @@ fn get_error(verdict: CommandResult) -> String {
 
 #[test]
 fn refuses_an_object_the_compile_refuses() -> XrfResult {
-  let (source, reference) = write_pair("static", &empty_object(0))?;
+  let (source, reference) = write_pair("empty", &empty_object(0))?;
   let error: String = get_error(verify(&source, &reference));
 
   assert!(
-    error.contains("static object"),
-    "Expect the refusal to name the static object: {error}"
+    error.contains("no mesh"),
+    "Expect the refusal to name the missing mesh: {error}"
   );
 
   Ok(())

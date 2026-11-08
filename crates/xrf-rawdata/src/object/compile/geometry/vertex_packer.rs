@@ -1,31 +1,36 @@
 use std::collections::HashSet;
 
+use xrf_editable_object::EditableMesh;
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::{Aabb, Vector3d};
 
-use crate::object::compile::skeleton::skeleton_vertex::SkeletonVertex;
+use crate::object::compile::geometry::export_vertex::ExportVertex;
+use crate::object::compile::geometry::vertex_packing::VertexPacking;
 
-/// Packs one split's corners into vertices as `CSkeletonCollectorPacked` does.
+/// Packs one split's corners into vertices as `CSkeletonCollectorPacked` and `CObjectOGFCollectorPacked` do, by the
+/// grid and repeat rule of the [`VertexPacking`] given.
 ///
 /// A corner reuses a vertex already packed when the two are similar: positions and normals within
 /// [`Self::POSITION_DELTA`] per component, texture coordinates within [`Self::TEXTURE_DELTA`], and the same bones at
-/// weights within [`Self::POSITION_DELTA`]. Candidates come from a grid over the object's box: a vertex is filed under
-/// its own cell and the cells one [`Self::POSITION_DELTA`] above it on each axis, and a corner looks in its own cell
-/// only, so the grid decides which near vertices a corner can meet, and is kept as the export lays it out. A corner
-/// matching none takes the position of the last vertex it stood within the delta of, then is packed as a vertex of
-/// its own.
+/// weights within [`Self::POSITION_DELTA`], a static vertex following none. Candidates come from a grid over the
+/// object's box: a vertex is filed under its own cell and the cells one [`Self::POSITION_DELTA`] above it on each axis,
+/// and a corner looks in its own cell only, so the grid decides which near vertices a corner can meet, and is kept as
+/// the export lays it out. A corner matching none takes the position of the last vertex it stood within the delta of,
+/// then is packed as a vertex of its own.
 ///
-/// Indices are 32-bit here, where the export's are 16-bit and overflow silently past 65,535 vertices: a split too big
-/// for one OGF child is cut into several once its tangents are known (`SplitPartition`).
+/// Indices are 32-bit here, where the export's are 16-bit: a split too big for one OGF child is cut into several once
+/// its tangents are known (`SplitPartition`).
 pub(crate) struct VertexPacker {
-  pub(crate) vertices: Vec<SkeletonVertex>,
+  pub(crate) vertices: Vec<ExportVertex>,
   pub(crate) faces: Vec<[u32; 3]>,
-  /// Faces left out: degenerate, or repeating a face already added.
+  /// Faces left out: degenerate, or repeating a face already added where the packing drops repeats.
   pub(crate) dropped_faces: usize,
-  /// Each face's vertices sorted, which a face in any winding shares with every other winding of it.
-  face_sets: HashSet<[u32; 3]>,
+  /// Each face's vertices sorted, which a face in any winding shares with every other winding of it; filled only
+  /// where the packing drops repeats.
+  face_sets: Option<HashSet<[u32; 3]>>,
   /// The vertices filed under each cell, in the order they were packed.
   cells: Vec<Vec<u32>>,
+  cell_counts: [u32; 3],
   minimum: Vector3d,
   scale: Vector3d,
   /// How far above itself on each axis a vertex is filed.
@@ -33,36 +38,44 @@ pub(crate) struct VertexPacker {
 }
 
 impl VertexPacker {
-  /// Cells along each axis, past the first (`clpSMX`, `clpSMY`, `clpSMZ`).
-  const CELLS: [u32; 3] = [28, 16, 28];
-
   /// `g_EpsSkelPositionDelta`, `EPS_L`: how close positions, normals and weights pack together.
   const POSITION_DELTA: f32 = 1e-3;
   /// `EPS_S`: how close texture coordinates pack together.
   const TEXTURE_DELTA: f32 = 1e-7;
   /// `EPS`: how close two corners of one face stand before the face is degenerate, and how far the grid reaches past
-  /// the object's box grown by [`Self::POSITION_DELTA`].
+  /// the object's box and its growth.
   const EPSILON: f32 = 1e-5;
 
-  /// A packer over `bounds`, the object's box.
-  pub(crate) fn new(bounds: &Aabb) -> Self {
-    let grow: Vector3d = Vector3d::new(Self::POSITION_DELTA, Self::POSITION_DELTA, Self::POSITION_DELTA);
+  /// The object's box the grid spans, `CEditableObject::UpdateBox`: every mesh's stored bounds together, or `None`
+  /// for an object without meshes.
+  pub(crate) fn get_object_bounds(meshes: &[EditableMesh]) -> Option<Aabb> {
+    meshes.iter().map(|mesh| mesh.bounds).reduce(|bounds, other| Aabb {
+      min: bounds.min.min(&other.min),
+      max: bounds.max.max(&other.max),
+    })
+  }
+
+  /// A packer over `bounds`, the object's box, by `packing`'s grid and repeat rule.
+  pub(crate) fn new(bounds: &Aabb, packing: &VertexPacking) -> Self {
+    let grow: Vector3d = Vector3d::new(packing.growth, packing.growth, packing.growth);
     let epsilon: Vector3d = Vector3d::new(Self::EPSILON, Self::EPSILON, Self::EPSILON);
     let (low, high): (Vector3d, Vector3d) = (&bounds.min - &grow, &bounds.max + &grow);
     let scale: Vector3d = &(&high - &low) + &epsilon;
     let reach = |extent: f32, cells: u32| (extent / cells as f32 / 2.0).min(Self::POSITION_DELTA);
+    let [cells_x, cells_y, cells_z] = packing.cells;
 
     Self {
       vertices: Vec::new(),
       faces: Vec::new(),
       dropped_faces: 0,
-      face_sets: HashSet::new(),
-      cells: vec![Vec::new(); Self::CELLS.iter().map(|cells| *cells as usize + 1).product()],
+      face_sets: packing.drops_repeated_faces.then(HashSet::new),
+      cells: vec![Vec::new(); packing.cells.iter().map(|cells| *cells as usize + 1).product()],
+      cell_counts: packing.cells,
       minimum: &low - &epsilon,
       reach: Vector3d::new(
-        reach(scale.x, Self::CELLS[0]),
-        reach(scale.y, Self::CELLS[1]),
-        reach(scale.z, Self::CELLS[2]),
+        reach(scale.x, cells_x),
+        reach(scale.y, cells_y),
+        reach(scale.z, cells_z),
       ),
       scale,
     }
@@ -74,7 +87,7 @@ impl VertexPacker {
   /// # Errors
   ///
   /// Returns an error when a corner stands outside the object's box, or the split outgrows 32-bit indices.
-  pub(crate) fn add_face(&mut self, corners: &mut [SkeletonVertex; 3]) -> XrfResult {
+  pub(crate) fn add_face(&mut self, corners: &mut [ExportVertex; 3]) -> XrfResult {
     let is_near = |first: &Vector3d, second: &Vector3d| Self::is_within(first, second, Self::EPSILON);
 
     if is_near(&corners[0].position, &corners[1].position)
@@ -95,7 +108,12 @@ impl VertexPacker {
 
     sorted.sort_unstable();
 
-    if sorted[0] == sorted[1] || sorted[1] == sorted[2] || !self.face_sets.insert(sorted) {
+    let is_repeat: bool = self
+      .face_sets
+      .as_mut()
+      .is_some_and(|face_sets| !face_sets.insert(sorted));
+
+    if sorted[0] == sorted[1] || sorted[1] == sorted[2] || is_repeat {
       self.dropped_faces += 1;
     } else {
       self.faces.push(face);
@@ -105,12 +123,12 @@ impl VertexPacker {
   }
 
   /// `VPack`: the vertex `corner` is, packed now when no similar one is.
-  fn pack(&mut self, corner: &mut SkeletonVertex) -> XrfResult<u32> {
+  fn pack(&mut self, corner: &mut ExportVertex) -> XrfResult<u32> {
     let cell: [u32; 3] = self.get_cell(&corner.position)?;
     let mut near: Option<u32> = None;
 
     for candidate in &self.cells[self.get_cell_index(cell)] {
-      let vertex: &SkeletonVertex = &self.vertices[*candidate as usize];
+      let vertex: &ExportVertex = &self.vertices[*candidate as usize];
 
       if Self::is_within(&vertex.position, &corner.position, Self::POSITION_DELTA) {
         if Self::is_similar(vertex, corner) {
@@ -186,20 +204,20 @@ impl VertexPacker {
     };
 
     Ok([
-      axis(position.x, self.minimum.x, self.scale.x, Self::CELLS[0])?,
-      axis(position.y, self.minimum.y, self.scale.y, Self::CELLS[1])?,
-      axis(position.z, self.minimum.z, self.scale.z, Self::CELLS[2])?,
+      axis(position.x, self.minimum.x, self.scale.x, self.cell_counts[0])?,
+      axis(position.y, self.minimum.y, self.scale.y, self.cell_counts[1])?,
+      axis(position.z, self.minimum.z, self.scale.z, self.cell_counts[2])?,
     ])
   }
 
   fn get_cell_index(&self, [x, y, z]: [u32; 3]) -> usize {
-    let [_, cells_y, cells_z] = Self::CELLS.map(|cells| cells as usize + 1);
+    let [_, cells_y, cells_z] = self.cell_counts.map(|cells| cells as usize + 1);
 
     (x as usize * cells_y + y as usize) * cells_z + z as usize
   }
 
   /// `SSkelVert::similar`.
-  fn is_similar(first: &SkeletonVertex, second: &SkeletonVertex) -> bool {
+  fn is_similar(first: &ExportVertex, second: &ExportVertex) -> bool {
     first.bones.len() == second.bones.len()
       && first
         .bones

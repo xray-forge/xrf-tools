@@ -24,7 +24,9 @@ impl GenericCommand for DecompileCommand {
 
   fn declare(&self, command: Command) -> Command {
     command
-      .about("Decompile a skeleton OGF into an SDK .object, with a .object.xrf.json provenance sidecar beside it")
+      .about(
+        "Decompile a skeleton or static OGF into an SDK .object, with a .object.xrf.json provenance sidecar beside it",
+      )
       .arg(
         Arg::new("path")
           .help("Path to the OGF to decompile")

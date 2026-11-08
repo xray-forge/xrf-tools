@@ -28,14 +28,17 @@ impl ObjectVerifier {
   ///
   /// Returns an error where the compile does, or where its OGF does not read back.
   pub fn verify(object: &EditableObjectFile, reference: &OgfFile) -> XrfResult<ObjectVerification> {
-    let compiled: OgfFile = OgfFile::read_from_bytes::<XRayByteOrder>(ObjectCompiler::compile(
-      object,
-      &ObjectCompileSource {
-        source_file: String::new(),
-        convertor: String::new(),
-        built_at: 0,
-      },
-    )?)?;
+    let compiled: OgfFile = OgfFile::read_from_bytes::<XRayByteOrder>(
+      ObjectCompiler::compile(
+        object,
+        &ObjectCompileSource {
+          source_file: String::new(),
+          convertor: String::new(),
+          built_at: 0,
+        },
+      )?
+      .ogf,
+    )?;
 
     Ok(Self::compare(&compiled, reference))
   }
@@ -272,7 +275,7 @@ impl ObjectVerifier {
 
     for material in &materials {
       census.vertices += material.vertices.len();
-      census.faces += material.faces.len();
+      census.faces += material.triangles().len();
 
       match reference_materials
         .iter()
@@ -291,7 +294,7 @@ impl ObjectVerifier {
         .iter()
         .any(|it| it.texture == other.texture && it.shader == other.shader)
     }) {
-      census.reference_faces += other.faces.len();
+      census.reference_faces += other.triangles().len();
       differences.push(format!(
         "the reference's {} / {} is not compiled",
         other.texture, other.shader
@@ -311,7 +314,7 @@ impl ObjectVerifier {
 
     census.vertices_matched += comparison.vertices_matched;
     census.vertices_normal_only += comparison.vertices_normal_only;
-    census.reference_faces += other.faces.len();
+    census.reference_faces += other.triangles().len();
     census.faces_matched += comparison.faces_matched;
     census.reference_flat_faces += comparison.reference_flat_faces;
 

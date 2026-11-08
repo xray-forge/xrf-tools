@@ -1,19 +1,20 @@
 use xrf_error::XrfResult;
 use xrf_math::{Vector2d, Vector3d};
 
+use crate::object::compile::geometry::export_vertex::ExportVertex;
+use crate::object::compile::geometry::export_vertex_bone::ExportVertexBone;
+use crate::object::compile::geometry::tangent_basis::TangentBasis;
 use crate::object::compile::skeleton::mikktspace_basis::MikkTSpaceBasis;
-use crate::object::compile::skeleton::skeleton_vertex::{SkeletonVertex, SkeletonVertexBone};
-use crate::object::compile::skeleton::tangent_basis::TangentBasis;
 
 /// A vertex on the floor, facing up, at `position` and mapped at `uv`.
-fn vertex(position: [f32; 3], uv: [f32; 2]) -> SkeletonVertex {
-  SkeletonVertex {
+fn vertex(position: [f32; 3], uv: [f32; 2]) -> ExportVertex {
+  ExportVertex {
     position: Vector3d::from(position),
     normal: Vector3d::Y,
     tangent: Vector3d::X,
     binormal: Vector3d::Z,
     texture_coordinate: Vector2d::from(uv),
-    bones: vec![SkeletonVertexBone { bone: 0, weight: 1.0 }],
+    bones: vec![ExportVertexBone { bone: 0, weight: 1.0 }],
   }
 }
 

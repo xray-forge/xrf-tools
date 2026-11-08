@@ -28,8 +28,8 @@ fn decompile(source: &Path, destination: &Path, extra: &[&str]) -> CommandResult
   run_command(&DecompileCommand, &arguments)
 }
 
-/// `MT_NORMAL` and `MT_SKELETON_RIGID` as a header stores them.
-const NORMAL: u8 = 0;
+/// `MT_PARTICLE_EFFECT` and `MT_SKELETON_RIGID` as a header stores them.
+const PARTICLE_EFFECT: u8 = 8;
 const SKELETON_RIGID: u8 = 10;
 
 /// An OGF holding only a header of `model_type`.
@@ -82,17 +82,17 @@ fn refuses_to_replace_an_object_without_force() -> XrfResult {
 }
 
 #[test]
-fn refuses_a_model_that_is_not_a_skeleton_and_writes_nothing() -> XrfResult {
-  let root: PathBuf = GeneratedResources::create_dir("object-decompile/static")?;
+fn refuses_a_model_no_object_exports_to_and_writes_nothing() -> XrfResult {
+  let root: PathBuf = GeneratedResources::create_dir("object-decompile/particles")?;
   let source: PathBuf = root.join("model.ogf");
   let destination: PathBuf = root.join("model.object");
 
-  fs::write(&source, header_only(NORMAL)?)?;
+  fs::write(&source, header_only(PARTICLE_EFFECT)?)?;
 
   let error: String = get_error(decompile(&source, &destination, &["--force"]));
 
   assert!(
-    error.contains("MT_NORMAL"),
+    error.contains("MT_PARTICLE_EFFECT"),
     "Expect the refusal to name the model type: {error}"
   );
   assert!(!destination.exists());
