@@ -13,6 +13,7 @@ path = "src/lib.rs"
 fxhash = "0.2.1"
 hashbrown = { version = "0.17.1", default-features = false }
 indexmap = { workspace = true }
+profiling = { workspace = true }
 rayon = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }

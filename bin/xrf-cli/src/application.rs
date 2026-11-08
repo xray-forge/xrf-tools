@@ -87,7 +87,11 @@ pub(crate) fn run() -> ExitCode {
   // A pool that cannot start is the command failing to run, not the command failing: it is reported
   // as an execution error and the command never sees it.
   let outcome: CommandResult = plan
-    .install(|| command.execute(arguments, &mut context))
+    .install(|| {
+      profiling::scope!("command", &format!("{domain} {operation}"));
+
+      command.execute(arguments, &mut context)
+    })
     .unwrap_or_else(|error| Err(CommandError::Execution(error)));
   let duration: Duration = started_at.elapsed();
 

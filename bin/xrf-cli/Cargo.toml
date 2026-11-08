@@ -21,6 +21,7 @@ indexmap = { workspace = true }
 log = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+profiling = { workspace = true }
 rayon = { workspace = true }
 walkdir = { workspace = true }
 xrf-archive = { workspace = true }
@@ -50,6 +51,7 @@ xrf-translation = { workspace = true }
 xrf-utils = { workspace = true }
 xrf-visual = { workspace = true }
 xrf-pack = { workspace = true }
+xrf-profiler = { workspace = true }
 xrf-omf = { workspace = true }
 xrf-thm = { workspace = true }
 xrf-spawn = { workspace = true }
@@ -60,6 +62,12 @@ xrf-chunk = { workspace = true }
 xrf-test-utils = { workspace = true }
 # Publication tests arm a staged write to fail; the feature reaches no normal build.
 xrf-utils = { workspace = true, features = ["staging-faults"] }
+
+[features]
+# Every crate's zones in a Tracy capture; built with the `tracy` profile.
+tracy = ["xrf-profiler/tracy"]
+# Every allocation in the capture too, with its call stack: for finding what holds memory, never for timing.
+tracy-memory = ["tracy", "xrf-profiler/tracy-memory"]
 
 [lints]
 workspace = true

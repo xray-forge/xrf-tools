@@ -118,8 +118,8 @@ device without timestamps inside encoders times nothing.
 A bridge recording several stages times each through `EncoderContext::split`'s `PassMarker`: each `mark` ends a stage
 named for it, and a pass that marks is timed by its marks alone.
 
-The `tracy` feature streams CPU zones, frame marks and the timed passes as GPU zones to a Tracy capture;
-`start_profiler` starts the client and `send_profiler_message` marks the timeline. Without the feature both do nothing.
+The `tracy` feature adds the timed passes as GPU zones to a Tracy capture, beside the CPU zones and frame marks every
+crate streams through `xrf-profiler`, which starts the client. Without the feature the GPU zones do nothing.
 
 ## Pass parameters
 

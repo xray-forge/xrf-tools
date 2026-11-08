@@ -20,7 +20,6 @@ mod tests;
 
 pub use raw_window_handle;
 pub use wgpu::SurfaceTargetUnsafe;
-pub use xrf_renderer_core::{send_profiler_message, start_profiler};
 
 pub use crate::camera::camera_frame::CameraFrame;
 pub use crate::camera::camera_view::CameraView;

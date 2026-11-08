@@ -7766,6 +7766,7 @@ dependencies = [
  "xrf-error",
  "xrf-ipc-typescript",
  "xrf-job",
+ "xrf-profiler",
  "xrf-renderer",
  "xrf-test-utils",
  "xrf-utils",
@@ -7943,6 +7944,7 @@ dependencies = [
  "glam",
  "image",
  "log",
+ "profiling",
  "rayon",
  "resvg",
  "serde",
@@ -8009,6 +8011,7 @@ dependencies = [
  "xrf-extension",
  "xrf-job",
  "xrf-material",
+ "xrf-profiler",
  "xrf-renderer",
  "xrf-test-utils",
  "xrf-utils",
@@ -8251,6 +8254,7 @@ dependencies = [
  "env_logger",
  "indexmap 2.14.2",
  "log",
+ "profiling",
  "rayon",
  "serde",
  "serde_json",
@@ -8280,6 +8284,7 @@ dependencies = [
  "xrf-output",
  "xrf-pack",
  "xrf-particles",
+ "xrf-profiler",
  "xrf-rawdata",
  "xrf-report",
  "xrf-spawn",
@@ -8341,6 +8346,7 @@ dependencies = [
 name = "xrf-dltx"
 version = "0.1.0"
 dependencies = [
+ "profiling",
  "xrf-error",
  "xrf-extension",
  "xrf-ltx",
@@ -8478,6 +8484,7 @@ version = "0.1.0"
 dependencies = [
  "criterion",
  "derive_more 2.1.1",
+ "profiling",
  "rayon",
  "serde",
  "serde_json",
@@ -8627,6 +8634,7 @@ dependencies = [
  "fxhash",
  "hashbrown 0.17.1",
  "indexmap 2.14.2",
+ "profiling",
  "rayon",
  "serde",
  "specta",
@@ -8787,6 +8795,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "xrf-profiler"
+version = "0.1.0"
+dependencies = [
+ "profiling",
+ "tracy-client",
+ "tracy-client-sys",
+]
+
+[[package]]
 name = "xrf-rawdata"
 version = "0.1.0"
 dependencies = [
@@ -8867,9 +8884,9 @@ dependencies = [
  "serde",
  "serde_json",
  "tracy-client",
- "tracy-client-sys",
  "wgpu",
  "xrf-error",
+ "xrf-profiler",
  "xrf-renderer-derive",
  "xrf-test-utils",
 ]
@@ -9062,6 +9079,7 @@ version = "0.1.0"
 dependencies = [
  "criterion",
  "log",
+ "profiling",
  "serde",
  "serde_json",
  "specta",

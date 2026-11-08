@@ -13,8 +13,8 @@ use xrf_visual::SectorOutline;
 
 use crate::level::{LevelBundle, LevelConfigs, LevelSource, SelectedLevel};
 use crate::parts::{
-  LevelGeometryPart, LevelMapPart, LevelSectionsPart, LevelSpawn, LevelSpawnPart, LevelStart, LevelStartPart,
-  LevelSurfacesPart, LevelTextureReference, LevelTexturesPart,
+  LevelGeometryPart, LevelMapDescription, LevelMapPart, LevelSectionsPart, LevelSpawn, LevelSpawnPart, LevelStart,
+  LevelStartPart, LevelSurfacesPart, LevelTextureReference, LevelTexturesPart,
 };
 use crate::report::LevelReport;
 
@@ -33,6 +33,8 @@ impl OpenedLevel {
     dialect: Arc<dyn LtxDialect>,
     engine: impl FnOnce(&XraySearch, &XrayRoots) -> XrayEngineResolution,
   ) -> TauriResult<SessionDerived<SelectedLevel>> {
+    profiling::scope!("level open");
+
     let inputs: XrayInputRecord = XrayInputRecord::new();
     let search: XraySearch = search.with_recording(&inputs);
     let configs: LevelConfigs = LevelConfigs {
@@ -97,11 +99,21 @@ impl OpenedLevel {
     let ((dressed, geometry), (spawn, open, sections)) = rayon::join(
       || {
         let (bundle, geometry) = rayon::join(
-          || LevelBundle::read(source, search),
-          || LevelGeometryPart::read(source, &search.clone().with_recording(&geometry_inputs)),
+          || {
+            profiling::scope!("level bundle");
+
+            LevelBundle::read(source, search)
+          },
+          || {
+            profiling::scope!("level geometry");
+
+            LevelGeometryPart::read(source, &search.clone().with_recording(&geometry_inputs))
+          },
         );
         let dressed: TauriResult<(LevelBundle, Vec<XraySurfaceDescriptor>, Vec<LevelTextureReference>)> =
           bundle.map(|bundle| {
+            profiling::scope!("level surfaces and textures");
+
             let surfaces: Vec<XraySurfaceDescriptor> =
               LevelSurfacesPart::resolve(&bundle.level, &search.clone().with_recording(&surfaces_inputs), &scope);
 
@@ -121,8 +133,11 @@ impl OpenedLevel {
         (dressed, geometry)
       },
       || {
-        let spawn: TauriResult<Arc<LevelSpawn>> =
-          LevelSpawnPart::read(source, &search.clone().with_recording(&spawn_inputs));
+        let spawn: TauriResult<Arc<LevelSpawn>> = {
+          profiling::scope!("level spawn");
+
+          LevelSpawnPart::read(source, &search.clone().with_recording(&spawn_inputs))
+        };
 
         // Where the level starts is decided over its spawn, and the sections are those the spawn names.
         start_inputs.extend_from(&spawn_inputs);
@@ -132,8 +147,16 @@ impl OpenedLevel {
           return (spawn, Vec::new(), None);
         };
         let (open, sections): (Vec<bool>, TauriResult<Arc<Ltx>>) = rayon::join(
-          || LevelStartPart::find_open(source, &search.clone().with_recording(&start_inputs), found),
-          || LevelSectionsPart::read(source, &search.clone().with_recording(&sections_inputs), configs, found),
+          || {
+            profiling::scope!("level start");
+
+            LevelStartPart::find_open(source, &search.clone().with_recording(&start_inputs), found)
+          },
+          || {
+            profiling::scope!("level sections");
+
+            LevelSectionsPart::read(source, &search.clone().with_recording(&sections_inputs), configs, found)
+          },
         );
 
         (spawn, open, Some(sections))
@@ -163,11 +186,13 @@ impl OpenedLevel {
     parts = LevelGeometryPart::with(parts, geometry, geometry_inputs);
     parts = LevelSurfacesPart::with(parts, Arc::new(surfaces), surfaces_inputs);
     parts = LevelTexturesPart::with(parts, Arc::new(textures), textures_inputs);
-    parts = LevelMapPart::with(
-      parts,
-      LevelMapPart::read(source, &search.clone().with_recording(&map_inputs)),
-      map_inputs,
-    );
+    let map: Option<LevelMapDescription> = {
+      profiling::scope!("level map");
+
+      LevelMapPart::read(source, &search.clone().with_recording(&map_inputs))
+    };
+
+    parts = LevelMapPart::with(parts, map, map_inputs);
 
     if let Some(sections) = sections {
       parts = LevelSectionsPart::with(parts, sections, sections_inputs);

@@ -40,6 +40,7 @@ xrf-build-info = { workspace = true }
 xrf-env-flags = { workspace = true }
 xrf-ipc-typescript = { workspace = true, optional = true }
 xrf-job = { workspace = true, features = ["rayon"] }
+xrf-profiler = { workspace = true }
 xrf-renderer = { workspace = true }
 xrf-utils = { workspace = true }
 
@@ -59,8 +60,10 @@ xrf-test-utils = { workspace = true }
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!
 custom-protocol = ["tauri/custom-protocol"]
-# Zones, GPU zones and frame marks for a Tracy capture; built with the `tracy` profile.
-tracy = ["xrf-renderer/tracy"]
+# Every crate's zones, the renderer's GPU zones and frame marks for a Tracy capture; built with the `tracy` profile.
+tracy = ["xrf-profiler/tracy", "xrf-renderer/tracy"]
+# Every allocation in the capture too, with its call stack: for finding what holds memory, never for timing.
+tracy-memory = ["tracy", "xrf-profiler/tracy-memory"]
 # Upscales with NVIDIA DLSS on Vulkan and D3D12, built against its SDK as DEVELOPMENT.md sets it up.
 dlss = ["xrf-renderer/dlss"]
 # Emits TypeScript mirrors and command bindings. Nothing in a normal build turns this on.

@@ -7,7 +7,6 @@ mod alloc;
 mod graph;
 mod param;
 mod pipeline;
-mod profiler;
 mod shader;
 mod store;
 
@@ -35,7 +34,6 @@ pub use crate::pipeline::{
   ComputePipelineDescription, PipelineCache, PipelineConstants, PipelineMap, PipelineSet, RenderPipelineDescription,
   ShaderLines, ShaderOverride, ShaderPermutation, ShaderSource, VertexLayout,
 };
-pub use crate::profiler::{send_profiler_message, start_profiler};
 pub use crate::shader::{
   GeneratedShaderFile, ShaderAddressSpace, ShaderAtomicU32, ShaderDeclarations, ShaderLayoutVerifier, ShaderMember,
   ShaderStruct, ShaderType, max_of, round_up,

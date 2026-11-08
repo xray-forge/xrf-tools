@@ -10,6 +10,7 @@ license = "MIT"
 path = "src/lib.rs"
 
 [dependencies]
+profiling = { workspace = true }
 xrf-error = { workspace = true }
 xrf-extension = { workspace = true }
 xrf-ltx = { workspace = true }
