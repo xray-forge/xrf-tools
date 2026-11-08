@@ -566,11 +566,6 @@ impl ReflectionFeature {
 }
 
 impl ViewFeature for ReflectionFeature {
-  /// Their history, the pyramid and the kept scene and depth.
-  fn get_memory(&self) -> u64 {
-    self.history.as_ref().map_or(0, ReflectionHistory::get_memory)
-  }
-
   fn release(&mut self) {
     self.history = None;
   }

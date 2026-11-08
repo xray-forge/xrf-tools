@@ -14,10 +14,6 @@ impl DrawableKinds {
     self.0 & Self::get_bit(kind) != 0
   }
 
-  pub fn is_empty(self) -> bool {
-    self.0 == 0
-  }
-
   /// The kinds in this set or in `other`.
   pub fn union(self, other: Self) -> Self {
     Self(self.0 | other.0)

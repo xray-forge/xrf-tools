@@ -376,11 +376,6 @@ impl CompositedFeature {
 }
 
 impl ViewFeature for CompositedFeature {
-  /// The sorted list's buffer, grown to the most sorted clusters seen in view.
-  fn get_memory(&self) -> u64 {
-    self.sorted.as_ref().map_or(0, wgpu::Buffer::size)
-  }
-
   fn release(&mut self) {
     self.sorted = None;
     self.sorted_count = 0;

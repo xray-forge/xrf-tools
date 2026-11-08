@@ -12,13 +12,4 @@ impl ThunderModels {
   pub fn get(&self, index: Option<usize>) -> &WeatherModelBuffers {
     index.and_then(|index| self.bolts.get(index)).unwrap_or(&self.empty)
   }
-
-  pub fn get_memory(&self) -> u64 {
-    self
-      .bolts
-      .iter()
-      .chain([&self.empty])
-      .map(WeatherModelBuffers::get_memory)
-      .sum()
-  }
 }

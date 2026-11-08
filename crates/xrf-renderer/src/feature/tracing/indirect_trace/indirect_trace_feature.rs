@@ -97,10 +97,5 @@ impl IndirectTraceFeature {
 }
 
 impl ViewFeature for IndirectTraceFeature {
-  /// Nothing between frames: its targets are the frame's own.
-  fn get_memory(&self) -> u64 {
-    0
-  }
-
   fn release(&mut self) {}
 }

@@ -243,16 +243,6 @@ impl LevelShadows {
 }
 
 impl ViewFeature for LevelShadows {
-  /// The maps and the static layers, and the cascades' lists, while held.
-  fn get_memory(&self) -> u64 {
-    [&self.maps, &self.statics, &self.kept]
-      .into_iter()
-      .flatten()
-      .map(|maps| u64::from(maps.resolution).pow(2) * maps.layers.len() as u64 * 4)
-      .chain(self.cascades.iter().map(ShadowCascadeView::get_memory))
-      .sum()
-  }
-
   fn release(&mut self) {
     self.maps = None;
     self.statics = None;

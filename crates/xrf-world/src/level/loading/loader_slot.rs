@@ -28,6 +28,7 @@ impl<T: Send + 'static> LoaderSlot<T> {
   }
 
   /// Whether its loader has not answered yet.
+  #[cfg(test)]
   pub fn is_pending(&self) -> bool {
     self.loader.is_pending()
   }

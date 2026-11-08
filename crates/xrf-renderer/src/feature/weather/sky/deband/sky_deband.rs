@@ -139,22 +139,6 @@ impl SkyDeband {
       ..sky
     }
   }
-
-  /// The copies' memory: eight bytes a texel, a cube's six faces.
-  pub fn get_memory(&self) -> u64 {
-    self
-      .slots
-      .iter()
-      .enumerate()
-      .filter_map(|(index, slot)| {
-        let faces: u64 = if index < 2 { 6 } else { 1 };
-
-        slot
-          .as_ref()
-          .map(|slot| u64::from(slot.size.0) * u64::from(slot.size.1) * 8 * faces)
-      })
-      .sum()
-  }
 }
 
 impl SkyDebandSlot {

@@ -46,6 +46,7 @@ impl LtxFormatSelection {
   }
 
   /// Returns `true` when neither loose nor archived configs were selected.
+  #[cfg(test)]
   pub fn is_empty(&self) -> bool {
     self.files.is_empty() && self.declined.is_empty()
   }

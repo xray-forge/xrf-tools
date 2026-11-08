@@ -163,18 +163,6 @@ impl LevelSurface {
     Vec4::new(shape.resolution as f32, shape.depth, Self::SITE_CELL, 0.0)
   }
 
-  /// Bytes its two maps, its lowest heights, its sites and its puddles take.
-  pub fn get_memory(&self) -> u64 {
-    let maps: u64 = [self.map.get_shape(), self.water.get_shape()]
-      .iter()
-      .map(|shape| u64::from(shape.resolution).pow(2) * 4)
-      .sum();
-    let lowest: u64 = u64::from(self.map.get_shape().resolution).pow(2) * 4;
-    let cells: u64 = u64::from(Self::get_cells(self.map.get_shape())).pow(2);
-
-    maps + lowest + cells * 16 * 2
-  }
-
   /// The water map's centre in `x` and `z`, its half width and the height it is seen from, its shape the surface's.
   pub fn get_water_window(&self) -> Vec4 {
     self.water.get_window()

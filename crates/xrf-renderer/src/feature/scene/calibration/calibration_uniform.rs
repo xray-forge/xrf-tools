@@ -27,6 +27,7 @@ impl CalibrationUniform {
   /// The props drawn: the spheres, then the chart.
   pub const PROPS: usize = 4;
   /// The props drawn as spheres, by their index; the chart follows them.
+  #[cfg(test)]
   pub const SPHERES: u32 = 3;
   /// The grey card's albedo, middle grey.
   pub const GREY: f32 = 0.18;

@@ -187,11 +187,6 @@ impl CameraFeature {
 }
 
 impl ViewFeature for CameraFeature {
-  /// Its targets are the frame's transients.
-  fn get_memory(&self) -> u64 {
-    0
-  }
-
   fn release(&mut self) {
     *self = Self::default();
   }

@@ -405,14 +405,6 @@ impl ViewTraceFeature {
 }
 
 impl ViewFeature for ViewTraceFeature {
-  /// Its swayed vertices and slots, without the structures, whose size the driver keeps.
-  fn get_memory(&self) -> u64 {
-    self
-      .trace
-      .as_ref()
-      .map_or(0, |trace| trace.vertices.size() + trace.slots.size())
-  }
-
   fn release(&mut self) {
     self.trace = None;
   }

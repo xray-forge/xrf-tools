@@ -74,20 +74,4 @@ impl SurroundingsFaces {
   pub fn swap(&mut self, face: u32) {
     std::mem::swap(&mut self.slots[face as usize], &mut self.spare);
   }
-
-  /// Bytes every layer takes.
-  pub fn get_memory(&self) -> u64 {
-    let texel: u64 = Self::FORMATS
-      .iter()
-      .map(|(_, format)| {
-        let bytes: Option<u32> = format
-          .block_copy_size(None)
-          .or_else(|| format.block_copy_size(Some(wgpu::TextureAspect::DepthOnly)));
-
-        u64::from(bytes.unwrap_or(4))
-      })
-      .sum();
-
-    u64::from(self.drawn).pow(2) * Self::LAYERS as u64 * texel
-  }
 }

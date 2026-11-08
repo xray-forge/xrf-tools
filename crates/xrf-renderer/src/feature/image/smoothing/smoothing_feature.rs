@@ -126,11 +126,6 @@ impl SmoothingFeature {
 }
 
 impl ViewFeature for SmoothingFeature {
-  /// Its targets are the frame's own.
-  fn get_memory(&self) -> u64 {
-    0
-  }
-
   fn release(&mut self) {
     *self = Self::default();
   }

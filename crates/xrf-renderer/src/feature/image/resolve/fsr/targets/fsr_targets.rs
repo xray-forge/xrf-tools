@@ -105,27 +105,4 @@ impl FsrTargets {
   pub fn is_sized(&self, render: (u32, u32), display: (u32, u32)) -> bool {
     self.render == render && self.display == display
   }
-
-  /// Bytes its targets, both frames and the reconstructed depth take.
-  pub fn get_memory(&self) -> u64 {
-    let singles: u64 = [
-      &self.opaque,
-      &self.reactive,
-      &self.dilated_depth,
-      &self.dilated_motion,
-      &self.farthest_depth,
-      &self.half_farthest_depth,
-      &self.shading_change,
-      &self.masks,
-      &self.new_locks,
-      &self.luma_instability,
-    ]
-    .into_iter()
-    .chain(&self.shading_pyramid)
-    .map(|texture| texture.get_memory())
-    .sum();
-    let frames: u64 = self.frames.get_sides().iter().map(|frame| frame.get_memory()).sum();
-
-    singles + frames + self.reconstructed.size()
-  }
 }

@@ -464,21 +464,6 @@ impl SkyFeature {
 }
 
 impl ViewFeature for SkyFeature {
-  /// The prefiltered cube, every mip of its six faces, and the sky's irradiance.
-  fn get_memory(&self) -> u64 {
-    let prefilter: u64 = self.prefilter.as_ref().map_or(0, |prefilter| {
-      let size: u64 = u64::from(prefilter.probe.get_size());
-
-      (0..prefilter.levels.len() as u32)
-        .map(|level| (size >> level).max(1).pow(2) * 6 * 8)
-        .sum()
-    });
-
-    prefilter
-      + self.irradiance.as_ref().map_or(0, SkyIrradiance::get_memory)
-      + self.deband.as_ref().map_or(0, SkyDeband::get_memory)
-  }
-
   fn release(&mut self) {
     self.prefilter = None;
     self.irradiance = None;

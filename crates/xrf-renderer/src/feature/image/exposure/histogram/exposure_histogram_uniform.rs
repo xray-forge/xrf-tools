@@ -53,6 +53,7 @@ impl ExposureHistogramUniform {
   pub const ENGINE_SLOTS: u32 = 2;
   /// The share of the frame under its bright end, which the display transforms never show brighter than the engine's
   /// curve does (`DisplayMode::get_lift`): the brightest few of what is lit, a night's moonlit metal over its dark land.
+  #[cfg(test)]
   pub const BRIGHT_SHARE: f32 = 0.99;
   /// The luminance the bins span, log2: about 1/16 000 cd/m², under starlight, to 65 000, sunlit snow and past it.
   pub const LEAST_LOG: f32 = -14.0;

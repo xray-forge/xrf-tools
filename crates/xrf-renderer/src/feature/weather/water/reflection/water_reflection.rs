@@ -66,11 +66,4 @@ impl WaterReflection {
     );
     self.rays.fit(device, if is_fully_traced { pixels } else { 0 });
   }
-
-  /// Bytes its histories, its request list, its rays and its pyramid take.
-  pub fn get_memory(&self) -> u64 {
-    let histories: u64 = self.histories.get_sides().iter().map(|side| side.get_memory()).sum();
-
-    histories + self.requests.get_memory() + self.rays.get_memory() + self.pyramid.get_memory()
-  }
 }

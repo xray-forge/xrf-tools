@@ -75,6 +75,7 @@ impl DisplayMode {
   /// shows the land's colour (`ANCHOR_HUE`) at the frame's exposed `key` (`ExposureHead::key`), graded by `contrast`,
   /// at the display value the engine's curve shows it at, and nothing else of the engine's look, so each keeps its own
   /// contrast about it. None for the engine's curve and the engine's own showing.
+  #[cfg(test)]
   pub fn get_anchor_stops(self, key: f32, contrast: f32) -> f32 {
     self.get_bounded(key, None, contrast)
   }

@@ -29,6 +29,7 @@ impl DltxProvenance {
   }
 
   /// Every field a mod file is responsible for, as `(section, key)`.
+  #[cfg(test)]
   pub fn list_patched_fields(&self) -> Vec<(&str, &str)> {
     self
       .origins

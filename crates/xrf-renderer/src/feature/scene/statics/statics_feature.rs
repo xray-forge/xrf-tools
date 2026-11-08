@@ -497,12 +497,6 @@ impl StaticsFeature {
 }
 
 impl ViewFeature for StaticsFeature {
-  /// The depth pyramid, and the camera cull's lists and arguments.
-  fn get_memory(&self) -> u64 {
-    self.pyramid.as_ref().map_or(0, DepthPyramid::get_memory)
-      + self.camera.as_ref().map_or(0, StaticViewCull::get_memory)
-  }
-
   fn release(&mut self) {
     self.camera = None;
     self.pyramid = None;

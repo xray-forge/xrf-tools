@@ -233,6 +233,7 @@ impl XrayMountPlan {
   }
 
   /// Returns whether the plan contains no mounts.
+  #[cfg(test)]
   pub fn is_empty(&self) -> bool {
     self.mounts.is_empty()
   }

@@ -656,11 +656,6 @@ impl SurroundingsCube {
 }
 
 impl ViewFeature for SurroundingsCube {
-  /// The faces' G-buffers and their spare, and its cuts' lists, while the cube is in use.
-  fn get_memory(&self) -> u64 {
-    self.faces.as_ref().map_or(0, SurroundingsFaces::get_memory) + self.cut.get_memory() + self.band.get_memory()
-  }
-
   fn release(&mut self) {
     self.rest();
   }

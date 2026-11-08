@@ -51,8 +51,4 @@ impl WeatherModelBuffers {
       index_count,
     }
   }
-
-  pub fn get_memory(&self) -> u64 {
-    self.vertices.size() + self.indices.size()
-  }
 }

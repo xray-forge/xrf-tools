@@ -244,11 +244,6 @@ impl ParticlesView {
 }
 
 impl ViewFeature for ParticlesView {
-  /// Its quads' buffer.
-  fn get_memory(&self) -> u64 {
-    self.vertex_buffer.as_ref().map_or(0, wgpu::Buffer::size)
-  }
-
   fn release(&mut self) {
     self.clear();
     self.vertex_buffer = None;

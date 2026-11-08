@@ -117,12 +117,6 @@ impl Ltx {
     self.skipped_checks.contains(&check)
   }
 
-  pub(crate) fn skip_check(&mut self, check: LtxCheck) {
-    if !self.is_check_skipped(check) {
-      self.skipped_checks.push(check);
-    }
-  }
-
   pub fn get_included(&self) -> &Vec<String> {
     &self.includes
   }

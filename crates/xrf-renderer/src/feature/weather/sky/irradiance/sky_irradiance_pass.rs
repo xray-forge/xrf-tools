@@ -12,6 +12,7 @@ pub struct SkyIrradiancePass {
 
 impl SkyIrradiancePass {
   /// Invocations the workgroup runs, as `shaders/frame/sky_irradiance.wgsl` declares them.
+  #[cfg(test)]
   pub(crate) const WORKGROUP: u32 = 64;
 
   /// # Errors

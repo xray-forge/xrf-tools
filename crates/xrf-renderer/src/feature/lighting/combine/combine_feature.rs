@@ -125,10 +125,5 @@ impl CombineFeature {
 }
 
 impl ViewFeature for CombineFeature {
-  /// Its targets are the view's scene and high part.
-  fn get_memory(&self) -> u64 {
-    0
-  }
-
   fn release(&mut self) {}
 }

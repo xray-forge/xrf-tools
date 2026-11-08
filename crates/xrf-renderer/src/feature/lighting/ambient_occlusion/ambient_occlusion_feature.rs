@@ -96,10 +96,5 @@ impl AmbientOcclusionFeature {
 }
 
 impl ViewFeature for AmbientOcclusionFeature {
-  /// Its targets are the view's occlusion pair.
-  fn get_memory(&self) -> u64 {
-    0
-  }
-
   fn release(&mut self) {}
 }

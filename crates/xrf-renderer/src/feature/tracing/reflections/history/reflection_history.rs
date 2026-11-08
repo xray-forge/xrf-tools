@@ -159,18 +159,4 @@ impl ReflectionHistory {
 
     self.is_source_valid = false;
   }
-
-  /// Bytes its textures and the pyramid take.
-  pub fn get_memory(&self) -> u64 {
-    let frames: u64 = self
-      .frames
-      .iter()
-      .flat_map(History::get_sides)
-      .map(ReflectionFrame::get_memory)
-      .sum();
-    let (width, height) = self.scene.get_size();
-    let depth: u64 = u64::from(width) * u64::from(height) * 4;
-
-    frames + self.scene.get_memory() + depth + self.pyramid.get_memory()
-  }
 }

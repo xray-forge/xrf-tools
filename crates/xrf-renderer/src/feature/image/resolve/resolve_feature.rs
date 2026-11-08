@@ -244,6 +244,7 @@ impl ResolveFeature {
   }
 
   /// Frames a temporal resolve gathered, or a reference's sample, which the screen-space effects turn their noise by.
+  #[cfg(test)]
   pub fn get_noise_frame(&self) -> u32 {
     self.noise_frame
   }
@@ -307,11 +308,6 @@ impl ResolveFeature {
 }
 
 impl ViewFeature for ResolveFeature {
-  /// The temporal resolve's histories and FSR's targets.
-  fn get_memory(&self) -> u64 {
-    self.resolve.as_ref().map_or(0, Resolve::get_memory)
-  }
-
   fn release(&mut self) {
     self.resolve = None;
     self.shown_size = None;

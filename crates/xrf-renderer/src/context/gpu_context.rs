@@ -119,6 +119,7 @@ impl GpuContext {
   /// # Errors
   ///
   /// Returns an error when neither a hardware nor a software adapter can be had with the required features.
+  #[cfg(test)]
   pub fn create_headless(backend: RenderBackend, dxc: Option<&Path>) -> XrfResult<Self> {
     let libraries: GpuLibraries<'_> = GpuLibraries { dxc, dlss: None };
 

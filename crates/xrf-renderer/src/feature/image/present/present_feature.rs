@@ -122,10 +122,5 @@ impl PresentFeature {
 }
 
 impl ViewFeature for PresentFeature {
-  /// Its targets are the window's own.
-  fn get_memory(&self) -> u64 {
-    0
-  }
-
   fn release(&mut self) {}
 }

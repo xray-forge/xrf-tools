@@ -131,11 +131,6 @@ impl ThunderFeature {
 }
 
 impl ViewFeature for ThunderFeature {
-  /// The bolt models and the empty model, kept for the level's weather.
-  fn get_memory(&self) -> u64 {
-    self.models.as_ref().map_or(0, |models| models.get().get_memory())
-  }
-
   fn release(&mut self) {
     *self = Self::default();
   }

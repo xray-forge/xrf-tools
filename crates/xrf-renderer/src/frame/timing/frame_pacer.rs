@@ -28,10 +28,12 @@ impl FramePacer {
   }
 
   /// When the frame drawn now is due to present, none without a limit.
+  #[cfg(test)]
   pub fn get_due(&self) -> Option<Instant> {
     self.due
   }
 
+  #[cfg(test)]
   pub fn get_lead(&self) -> Duration {
     self.lead
   }

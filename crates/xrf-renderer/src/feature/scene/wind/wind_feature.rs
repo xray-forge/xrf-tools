@@ -70,11 +70,6 @@ impl WindFeature {
 }
 
 impl ViewFeature for WindFeature {
-  /// Nothing: the wind is values a frame.
-  fn get_memory(&self) -> u64 {
-    0
-  }
-
   fn release(&mut self) {}
 
   /// Its motion restarted, the foliage's drift and the trees' sway start again from nothing, as at a view's first

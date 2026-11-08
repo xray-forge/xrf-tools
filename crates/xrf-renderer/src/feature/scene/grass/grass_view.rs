@@ -708,11 +708,6 @@ impl GrassView {
 }
 
 impl ViewFeature for GrassView {
-  /// The ring, lists and cards while it plants.
-  fn get_memory(&self) -> u64 {
-    self.build.as_ref().map_or(0, GrassBuild::get_memory) + self.cards.as_ref().map_or(0, GrassCards::get_memory)
-  }
-
   fn release(&mut self) {
     self.build = None;
     self.puddles = None;

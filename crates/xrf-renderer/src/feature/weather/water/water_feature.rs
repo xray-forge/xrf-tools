@@ -229,11 +229,6 @@ impl WaterFeature {
 }
 
 impl ViewFeature for WaterFeature {
-  /// The enhanced water's reflection histories and request list, while it reflects.
-  fn get_memory(&self) -> u64 {
-    self.reflection.as_ref().map_or(0, WaterReflection::get_memory)
-  }
-
   fn release(&mut self) {
     self.reflection = None;
   }

@@ -59,23 +59,3 @@ impl GrassBuild {
     }
   }
 }
-
-impl GrassBuild {
-  /// Bytes its ring's and lists' buffers take.
-  pub fn get_memory(&self) -> u64 {
-    [
-      &self.keys,
-      &self.shapes,
-      &self.cached,
-      &self.band_counts,
-      &self.schedule,
-      &self.planted,
-      &self.planted_models,
-      &self.sorted,
-      &self.sort_dispatch,
-    ]
-    .into_iter()
-    .map(wgpu::Buffer::size)
-    .sum()
-  }
-}

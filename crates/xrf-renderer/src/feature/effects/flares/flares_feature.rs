@@ -259,11 +259,6 @@ impl FlaresFeature {
 }
 
 impl ViewFeature for FlaresFeature {
-  /// The sun's visibility, eased from frame to frame while the flares draw; the textures are the weather's.
-  fn get_memory(&self) -> u64 {
-    self.state.as_ref().map_or(0, wgpu::Buffer::size)
-  }
-
   /// Lets go of its views of the weather's textures too, which would hold them past the weather textures' own
   /// eviction.
   fn release(&mut self) {

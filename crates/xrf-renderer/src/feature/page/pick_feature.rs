@@ -237,11 +237,6 @@ struct HelperPick<'a> {
 }
 
 impl ViewFeature for PickFeature {
-  /// Nothing counted: one texel and its readbacks are all it holds.
-  fn get_memory(&self) -> u64 {
-    0
-  }
-
   fn release(&mut self) {
     self.target = None;
     self.view = None;

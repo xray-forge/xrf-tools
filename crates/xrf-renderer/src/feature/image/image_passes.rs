@@ -1,39 +1,18 @@
 use xrf_error::XrfResult;
 
-use crate::feature::image::bloom::bloom_parameters::BloomParameters;
 use crate::feature::image::bloom::bloom_pass::BloomPass;
-use crate::feature::image::bloom::bloom_uniform::BloomUniform;
-use crate::feature::image::bloom::enhanced::enhanced_bloom_parameters::EnhancedBloomParameters;
 use crate::feature::image::bloom::enhanced::enhanced_bloom_pass::EnhancedBloomPass;
-use crate::feature::image::bloom::enhanced::enhanced_bloom_uniform::EnhancedBloomUniform;
-use crate::feature::image::camera::camera_effects_parameters::CameraEffectsParameters;
 use crate::feature::image::camera::camera_effects_pass::CameraEffectsPass;
-use crate::feature::image::camera::camera_effects_uniform::CameraEffectsUniform;
-use crate::feature::image::exposure::exposure_parameters::ExposureParameters;
 use crate::feature::image::exposure::exposure_pass::ExposurePass;
-use crate::feature::image::exposure::exposure_state::ExposureState;
-use crate::feature::image::exposure::exposure_uniform::ExposureUniform;
-use crate::feature::image::exposure::histogram::exposure_histogram_parameters::ExposureHistogramParameters;
-use crate::feature::image::exposure::histogram::exposure_histogram_uniform::ExposureHistogramUniform;
-use crate::feature::image::exposure::reading::exposure_head::ExposureHead;
-use crate::feature::image::meter::meter_parameters::MeterParameters;
 use crate::feature::image::meter::meter_pass::MeterPass;
-use crate::feature::image::meter::meter_sample::MeterSample;
 use crate::feature::image::resolve::fsr::fsr_pass::FsrPass;
-use crate::feature::image::resolve::fsr::fsr_uniform::FsrUniform;
-use crate::feature::image::resolve::temporal::temporal_parameters::TemporalParameters;
 use crate::feature::image::resolve::temporal::temporal_pass::TemporalPass;
-use crate::feature::image::resolve::temporal::temporal_uniform::TemporalUniform;
-use crate::feature::image::resolve::upscale::upscale_parameters::UpscaleParameters;
 use crate::feature::image::resolve::upscale::upscale_pass::UpscalePass;
-use crate::feature::image::resolve::upscale::upscale_uniform::UpscaleUniform;
-use crate::feature::image::smoothing::fxaa_parameters::FxaaParameters;
 use crate::feature::image::smoothing::fxaa_pass::FxaaPass;
-use crate::feature::image::smoothing::smaa_parameters::SmaaParameters;
 use crate::feature::image::smoothing::smaa_pass::SmaaPass;
-use crate::feature::image::smoothing::smoothing_uniform::SmoothingUniform;
 use crate::pass::build::pass_build::PassBuild;
 use crate::pass::build::pipeline_source::PipelineSource;
+#[cfg(test)]
 use crate::shader::generated_modules::GeneratedModules;
 
 /// The passes turning the lit frame into the image shown: the bloom, the smoothing, the temporal resolves and the
@@ -116,7 +95,31 @@ impl ImagePasses {
   /// # Errors
   ///
   /// Returns an error when passes sharing a module declare one of its bindings otherwise.
+  #[cfg(test)]
   pub fn declare_shaders(modules: &mut GeneratedModules) -> XrfResult<()> {
+    use crate::feature::image::bloom::bloom_parameters::BloomParameters;
+    use crate::feature::image::bloom::bloom_uniform::BloomUniform;
+    use crate::feature::image::bloom::enhanced::enhanced_bloom_parameters::EnhancedBloomParameters;
+    use crate::feature::image::bloom::enhanced::enhanced_bloom_uniform::EnhancedBloomUniform;
+    use crate::feature::image::camera::camera_effects_parameters::CameraEffectsParameters;
+    use crate::feature::image::camera::camera_effects_uniform::CameraEffectsUniform;
+    use crate::feature::image::exposure::exposure_parameters::ExposureParameters;
+    use crate::feature::image::exposure::exposure_state::ExposureState;
+    use crate::feature::image::exposure::exposure_uniform::ExposureUniform;
+    use crate::feature::image::exposure::histogram::exposure_histogram_parameters::ExposureHistogramParameters;
+    use crate::feature::image::exposure::histogram::exposure_histogram_uniform::ExposureHistogramUniform;
+    use crate::feature::image::exposure::reading::exposure_head::ExposureHead;
+    use crate::feature::image::meter::meter_parameters::MeterParameters;
+    use crate::feature::image::meter::meter_sample::MeterSample;
+    use crate::feature::image::resolve::fsr::fsr_uniform::FsrUniform;
+    use crate::feature::image::resolve::temporal::temporal_parameters::TemporalParameters;
+    use crate::feature::image::resolve::temporal::temporal_uniform::TemporalUniform;
+    use crate::feature::image::resolve::upscale::upscale_parameters::UpscaleParameters;
+    use crate::feature::image::resolve::upscale::upscale_uniform::UpscaleUniform;
+    use crate::feature::image::smoothing::fxaa_parameters::FxaaParameters;
+    use crate::feature::image::smoothing::smaa_parameters::SmaaParameters;
+    use crate::feature::image::smoothing::smoothing_uniform::SmoothingUniform;
+
     modules
       .declare::<SmoothingUniform>()
       .declare::<UpscaleUniform>()

@@ -57,6 +57,7 @@ impl StaticScene {
   }
 
   /// Whether a spawned object stands in the scene.
+  #[cfg(test)]
   pub fn has_object(&self, object: u32) -> bool {
     self.objects.contains(object)
   }

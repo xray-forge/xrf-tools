@@ -117,18 +117,6 @@ impl OverlaysFeature {
 }
 
 impl ViewFeature for OverlaysFeature {
-  /// The overlays' lines, points, sun and skeleton.
-  fn get_memory(&self) -> u64 {
-    self.overlays.as_ref().map_or(0, |overlays| {
-      [&overlays.lines, &overlays.points, &overlays.skeleton_lines]
-        .into_iter()
-        .flatten()
-        .map(|(buffer, _)| buffer.size())
-        .chain(overlays.sun.as_ref().map(wgpu::Buffer::size))
-        .sum()
-    })
-  }
-
   fn release(&mut self) {
     self.overlays = None;
     self.overlays_box = None;

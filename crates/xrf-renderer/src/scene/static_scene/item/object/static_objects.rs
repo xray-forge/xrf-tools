@@ -29,6 +29,7 @@ impl StaticObjects {
     self.store.get(*self.by_place.get(&place)?)
   }
 
+  #[cfg(test)]
   pub fn contains(&self, object: u32) -> bool {
     self.by_object.contains_key(&object)
   }

@@ -32,11 +32,6 @@ impl WaterRays {
     }
   }
 
-  /// Bytes its records take.
-  pub fn get_memory(&self) -> u64 {
-    self.records.size()
-  }
-
   fn create_records(device: &wgpu::Device, label: &str, pixels: u32) -> wgpu::Buffer {
     device.create_buffer(&wgpu::BufferDescriptor {
       label: Some(&format!("{label} rays")),

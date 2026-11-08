@@ -29,11 +29,6 @@ impl OmfRepackStatistics {
     self.checked
   }
 
-  /// Count of files that were read but serialized into different bytes.
-  pub fn mismatched(&self) -> u32 {
-    self.mismatched
-  }
-
   /// Count of files that were read but would not parse.
   pub fn malformed(&self) -> u32 {
     self.malformed

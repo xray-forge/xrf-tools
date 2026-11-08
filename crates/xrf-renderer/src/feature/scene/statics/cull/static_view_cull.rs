@@ -59,20 +59,6 @@ impl StaticViewCull {
     }
   }
 
-  /// Bytes its buffers take.
-  pub fn get_memory(&self) -> u64 {
-    [
-      &self.lists,
-      &self.candidates,
-      &self.args,
-      &self.late,
-      &self.late_dispatch,
-    ]
-    .iter()
-    .map(|buffer| buffer.size())
-    .sum()
-  }
-
   /// The bytes the lists are made at for `list_bytes`, aligned so a growing level remakes them seldom.
   fn get_list_size(list_bytes: u64) -> u64 {
     list_bytes.max(1).next_multiple_of(wgpu::COPY_BUFFER_ALIGNMENT * 64)

@@ -78,10 +78,5 @@ impl SunTraceFeature {
 }
 
 impl ViewFeature for SunTraceFeature {
-  /// Its target is the frame's own.
-  fn get_memory(&self) -> u64 {
-    0
-  }
-
   fn release(&mut self) {}
 }

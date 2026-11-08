@@ -84,19 +84,11 @@ impl OgfTextureResolver {
     };
 
     let Some(path) = asset.to_physical_path() else {
-      return TextureResolution::Located {
-        step,
-        container: asset.format_container(),
-      };
+      return TextureResolution::Located { step };
     };
 
     match self.header(&path) {
-      Ok((format, metadata)) => TextureResolution::Resolved {
-        step,
-        path,
-        format,
-        metadata,
-      },
+      Ok((format, metadata)) => TextureResolution::Resolved { step, format, metadata },
       Err(reason) => TextureResolution::Unreadable { path, reason },
     }
   }

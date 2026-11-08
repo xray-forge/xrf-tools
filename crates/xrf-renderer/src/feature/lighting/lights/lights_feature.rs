@@ -485,14 +485,6 @@ impl LightsFeature {
 }
 
 impl ViewFeature for LightsFeature {
-  /// Its records, shafts and clusters, sized for the most lights a view takes whatever the settings.
-  fn get_memory(&self) -> u64 {
-    [&self.record_buffer, &self.volume_buffer, &self.counts, &self.items]
-      .into_iter()
-      .map(wgpu::Buffer::size)
-      .sum()
-  }
-
   fn release(&mut self) {
     self.records.clear();
     self.volumes.clear();

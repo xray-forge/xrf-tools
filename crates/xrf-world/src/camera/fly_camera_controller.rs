@@ -234,12 +234,9 @@ impl FlyCameraController {
   }
 
   /// Whether a key or a drag is held.
+  #[cfg(test)]
   pub fn is_moving(&self) -> bool {
     !self.held.is_empty() || self.drag.is_some()
-  }
-
-  pub fn get_description(&self) -> WorldCamera {
-    self.description
   }
 
   pub fn get_pose(&self) -> WorldCameraPose {
