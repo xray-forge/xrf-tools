@@ -183,7 +183,7 @@ fn refuses_a_face_drawn_at_another_size() -> XrfResult {
 }
 
 #[test]
-fn draws_a_face_with_the_whole_look_but_its_lens_flare_and_a_tile_with_its_coverage() -> XrfResult {
+fn draws_a_face_with_the_whole_look_but_its_lens_flare_and_camera_and_a_tile_with_its_coverage() -> XrfResult {
   let face: CaptureShot = CapturePlan::new_cube(cube(256, 1), &camera(), f32::INFINITY, 8192)?.shots[0];
   let tile: CaptureShot = CaptureShot::Tile(
     MapTilePlan::new(
@@ -207,10 +207,18 @@ fn draws_a_face_with_the_whole_look_but_its_lens_flare_and_a_tile_with_its_cover
   let mut options: RenderViewOptions = RenderViewOptions::default();
 
   options.output.upscaling.scale = RenderScale::Quality;
+  options.features.camera.is_vignetted = true;
+  options.features.camera.is_defocused = true;
 
   let look: RenderViewOptions = face.apply_look(&options);
 
   assert!(look.show.is_sky_visible && look.show.is_fogged && !look.show.is_lens_flared);
+  // Each face's vignette and focus would part the cubemap at its seams.
+  assert!(!look.features.camera.is_vignetted && !look.features.camera.is_defocused);
+  assert_eq!(
+    look.features.camera.vignette_strength,
+    options.features.camera.vignette_strength
+  );
   assert_eq!(look.features.grass.is_enabled, options.features.grass.is_enabled);
   assert_eq!(look.output.upscaling.scale, RenderScale::Native);
   assert!(

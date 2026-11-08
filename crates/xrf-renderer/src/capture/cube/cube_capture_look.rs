@@ -9,11 +9,13 @@ const METERING_ADAPTATION: f32 = 3.0;
 pub struct CubeCaptureLook;
 
 impl CubeCaptureLook {
-  /// The options a face is drawn with, from the viewport's `options`: a lens flare would end at the face's edge.
+  /// The options a face is drawn with, from the viewport's `options`: a lens flare would end at the face's edge, and
+  /// the camera's vignette, blur, grain and aberration are each face's own, which would part the faces at every seam.
   pub fn apply(options: &RenderViewOptions) -> RenderViewOptions {
     let mut look: RenderViewOptions = options.clone();
 
     look.show.is_lens_flared = false;
+    look.features.camera = look.features.camera.without_effects();
     look.show.is_calibration_visible = false;
     look.output.upscaling.scale = RenderScale::Native;
     look.output.upscaling.is_ray_reconstructed = false;

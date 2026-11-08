@@ -79,4 +79,17 @@ impl RenderCameraSettings {
   pub fn is_blurred(&self) -> bool {
     self.is_motion_blurred || self.is_defocused
   }
+
+  /// The same with every effect off, as a picture made of several views (a cubemap's faces, a map's tiles) is drawn:
+  /// each view's own lens, blur and grain would part it at every seam.
+  pub fn without_effects(&self) -> Self {
+    Self {
+      is_motion_blurred: false,
+      is_defocused: false,
+      is_vignetted: false,
+      is_grained: false,
+      is_aberrated: false,
+      ..*self
+    }
+  }
 }
