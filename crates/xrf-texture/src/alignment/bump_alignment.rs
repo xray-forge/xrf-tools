@@ -5,7 +5,8 @@ use xrf_dds::RgbaImage;
 
 use crate::alignment::{BumpAlignmentLevel, BumpAlignmentVerdict};
 
-/// One value a texel, as both textures are brought to before they are compared.
+/// One value a texel, as both textures are brought to before they are compared: `f32` storage for a texture-sized
+/// buffer, the correlation over it taken in `f64`.
 type Field = ImageBuffer<Luma<f32>, Vec<f32>>;
 
 /// Whether a bump belongs to its diffuse: how closely the bump's edges follow the diffuse's, against how closely they
@@ -25,11 +26,11 @@ pub struct BumpAlignment {
   pub bump_size: [u32; 2],
   /// The correlation of the diffuse's edges with the bump's, texel for texel; `None` where one carries nothing to
   /// compare.
-  pub correlation: Option<f32>,
+  pub correlation: Option<f64>,
   /// The highest correlation of the bump shifted along the tile, what the two share by chance.
-  pub chance: Option<f32>,
+  pub chance: Option<f64>,
   /// How far the correlation rises over chance, which the verdict judges.
-  pub lift: Option<f32>,
+  pub lift: Option<f64>,
   pub verdict: BumpAlignmentVerdict,
 }
 
@@ -42,7 +43,7 @@ impl BumpAlignment {
   /// times across the tile does not line up with itself.
   pub const CHANCE_SHIFTS: u32 = 8;
   /// The spread a field's values stay under when it carries nothing to compare.
-  const FEATURELESS_SPREAD: f32 = 1e-3;
+  const FEATURELESS_SPREAD: f64 = 1e-3;
   /// Correlations a comparison takes: the tile as it lies, and each shift measuring chance.
   const SHIFTS: usize = Self::CHANCE_SHIFTS as usize + 1;
 
@@ -96,8 +97,8 @@ impl BumpAlignment {
     let Some(correlation) = aligned else {
       return featureless();
     };
-    let chance: f32 = shifted.into_iter().flatten().fold(f32::MIN, f32::max);
-    let lift: f32 = correlation - chance;
+    let chance: f64 = shifted.into_iter().flatten().fold(f64::MIN, f64::max);
+    let lift: f64 = correlation - chance;
 
     Self {
       diffuse_size,
@@ -202,7 +203,7 @@ impl BumpAlignment {
   ///
   /// One pass serves every shift, each one's sums kept apart and taken texel by texel in the order a pass of its own
   /// would take them, so each answer is what correlating at that shift alone gives.
-  fn correlations(first: &Field, second: &Field, shifts: [(u32, u32); Self::SHIFTS]) -> [Option<f32>; Self::SHIFTS] {
+  fn correlations(first: &Field, second: &Field, shifts: [(u32, u32); Self::SHIFTS]) -> [Option<f64>; Self::SHIFTS] {
     let (width, height): (u32, u32) = first.dimensions();
     let count: f64 = f64::from(width) * f64::from(height);
     let mean = |field: &Field| field.pixels().map(|it| f64::from(it[0])).sum::<f64>() / count;
@@ -233,14 +234,14 @@ impl BumpAlignment {
       }
     }
 
-    let spread: f64 = f64::from(Self::FEATURELESS_SPREAD).powi(2) * count;
+    let spread: f64 = Self::FEATURELESS_SPREAD.powi(2) * count;
 
     std::array::from_fn(|shift| {
       if first_variance < spread || second_variances[shift] < spread {
         return None;
       }
 
-      Some((covariances[shift] / (first_variance * second_variances[shift]).sqrt()) as f32)
+      Some(covariances[shift] / (first_variance * second_variances[shift]).sqrt())
     })
   }
 }
