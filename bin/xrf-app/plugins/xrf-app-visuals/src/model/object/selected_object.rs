@@ -46,7 +46,7 @@ impl SelectedObject {
       },
       &ObjectCompileOptions::following(provenance.as_ref()),
     )
-    .and_then(|compiled| OgfFile::read_from_bytes::<XRayByteOrder>(compiled.ogf))
+    .and_then(|compiled| OgfFile::read_from_bytes::<XRayByteOrder>(compiled.bytes))
     .map_err(|error| format!("Failed to compile object '{label}': {error}"))?;
 
     Ok((file, SelectedObjectDescription::of(&object, provenance.as_ref())))

@@ -47,6 +47,16 @@ impl<'a> MeshCorners<'a> {
     })
   }
 
+  /// The corners of `mesh` for an export that reads no normal, as `EDetail::Update` reads none: each corner's normal is
+  /// zero, and the smoothing is never walked.
+  pub(crate) fn without_normals(mesh: &'a EditableMesh) -> Self {
+    Self {
+      mesh,
+      vmaps: mesh.vmaps.as_deref().unwrap_or_default(),
+      normals: Cow::Owned(vec![[Vector3d::ZERO; 3]; mesh.faces.len()]),
+    }
+  }
+
   /// Each face's three corners, each as `read` takes it.
   ///
   /// # Errors

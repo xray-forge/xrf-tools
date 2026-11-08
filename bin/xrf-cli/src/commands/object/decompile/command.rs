@@ -5,6 +5,8 @@ use xrf_build_info::{BuildInfo, build_info};
 use xrf_chunk::XRayByteOrder;
 use xrf_editable_object::{EditableMesh, EditableSurface};
 use xrf_error::{XrfError, XrfResult};
+use xrf_extension::XrayExtension;
+use xrf_level::DetailModel;
 use xrf_ogf::OgfFile;
 use xrf_output::OutputOptions;
 use xrf_rawdata::{ObjectDecompile, ObjectDecompiler, ObjectProvenance};
@@ -25,11 +27,12 @@ impl GenericCommand for DecompileCommand {
   fn declare(&self, command: Command) -> Command {
     command
       .about(
-        "Decompile a skeleton or static OGF into an SDK .object, with a .object.xrf.json provenance sidecar beside it",
+        "Decompile a skeleton or static OGF, or a .dm detail model, into an SDK .object, with a .object.xrf.json \
+         provenance sidecar beside it",
       )
       .arg(
         Arg::new("path")
-          .help("Path to the OGF to decompile")
+          .help("Path to the OGF or .dm to decompile")
           .short('p')
           .long("path")
           .required(true)
@@ -83,8 +86,11 @@ impl DecompileCommand {
 
     let bytes: Vec<u8> = std::fs::read(source)
       .map_err(|error| XrfError::new_read_error(format!("{} was not read: {error}", format_path(source))))?;
-    let decompile: ObjectDecompile =
-      ObjectDecompiler::decompile(&OgfFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?)?;
+    let decompile: ObjectDecompile = if XrayExtension::Dm.matches_path(source) {
+      ObjectDecompiler::decompile_detail(&DetailModel::read_from_bytes::<XRayByteOrder>(bytes.clone())?)?
+    } else {
+      ObjectDecompiler::decompile(&OgfFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?)?
+    };
     let build: BuildInfo = build_info!();
     let provenance: ObjectProvenance = ObjectProvenance::new(
       format_path(source).to_string(),
@@ -96,7 +102,8 @@ impl DecompileCommand {
       },
       decompile.inferred.clone(),
       decompile.tangents,
-    );
+    )
+    .with_detail(decompile.detail);
 
     // The sidecar first: an object that failed to publish leaves a stray sidecar, never a decompile taken for an
     // authored file.

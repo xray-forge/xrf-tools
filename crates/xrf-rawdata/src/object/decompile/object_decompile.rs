@@ -2,6 +2,7 @@ use xrf_editable_object::EditableObjectFile;
 
 use crate::object::compile::object_compile_options::TangentMethod;
 use crate::object::decompile::object_inference::ObjectInference;
+use crate::object::detail_parameters::DetailParameters;
 
 /// An OGF decompiled into an editable object, and what in it was inferred rather than read.
 #[derive(Clone, Debug, PartialEq)]
@@ -12,4 +13,7 @@ pub struct ObjectDecompile {
   /// The tangent method the OGF's basis was made with, by the exporter its description names, which a compile follows
   /// to give the basis back.
   pub tangents: TangentMethod,
+  /// What a detail model decompiled carried beside its geometry, which a compile back into a `.dm` writes again; `None`
+  /// for an OGF.
+  pub detail: Option<DetailParameters>,
 }

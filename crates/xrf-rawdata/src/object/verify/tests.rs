@@ -43,7 +43,7 @@ fn compiled(object: &EditableObjectFile) -> XrfResult<OgfFile> {
     built_at: 1_000,
   };
 
-  OgfFile::read_from_bytes::<XRayByteOrder>(ObjectCompiler::compile(object, &source)?.ogf)
+  OgfFile::read_from_bytes::<XRayByteOrder>(ObjectCompiler::compile(object, &source)?.bytes)
 }
 
 /// How the quad verifies against a reference compiled from it after `change`.

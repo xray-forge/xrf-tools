@@ -2,6 +2,7 @@ use xrf_chunk::XRayByteOrder;
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::XrfResult;
 
+use crate::object::compile::detail::detail_model_builder::DetailModelBuilder;
 use crate::object::compile::object_compile::ObjectCompile;
 use crate::object::compile::object_compile_options::ObjectCompileOptions;
 use crate::object::compile::object_compile_source::ObjectCompileSource;
@@ -11,6 +12,7 @@ use crate::object::compile::rigid::rigid_ogf_writer::RigidOgfWriter;
 use crate::object::compile::skeleton::skeleton_geometry::SkeletonGeometry;
 use crate::object::compile::skeleton::skeleton_geometry_builder::SkeletonGeometryBuilder;
 use crate::object::compile::skeleton::skeleton_ogf_writer::SkeletonOgfWriter;
+use crate::object::detail_parameters::DetailParameters;
 
 /// Turns an editable object into what the Actor Editor's `Export OGF` writes, for the engine to load: see the crate's
 /// documentation for what matches the editor's output and what only matches what the engine draws.
@@ -43,7 +45,7 @@ impl ObjectCompiler {
       let geometry: SkeletonGeometry = Self::build_skeleton_geometry_with(object, options)?;
 
       Ok(ObjectCompile {
-        ogf: Self::write_skeleton(object, &geometry, source)?,
+        bytes: Self::write_skeleton(object, &geometry, source)?,
         children: geometry.splits.len(),
         vertices: geometry.splits.iter().map(|split| split.vertices.len()).sum(),
         faces: geometry.splits.iter().map(|split| split.faces.len()).sum(),
@@ -54,7 +56,7 @@ impl ObjectCompiler {
       let geometry: RigidGeometry = RigidGeometryBuilder::build(object)?;
 
       Ok(ObjectCompile {
-        ogf: RigidOgfWriter::write::<XRayByteOrder>(object, &geometry, source)?,
+        bytes: RigidOgfWriter::write::<XRayByteOrder>(object, &geometry, source)?,
         children: geometry.splits.len(),
         vertices: geometry.splits.iter().map(|split| split.vertices.len()).sum(),
         faces: geometry.splits.iter().map(|split| split.faces.len()).sum(),
@@ -62,6 +64,18 @@ impl ObjectCompiler {
         tangents: None,
       })
     }
+  }
+
+  /// The detail model (`.dm`) of an object of one surface, as the Level Editor's `EDetail` exports it, with
+  /// `parameters` for the flags and scale range the object does not hold (the ones its decompile recorded, or
+  /// `DetailParameters::default`).
+  ///
+  /// # Errors
+  ///
+  /// Returns an error where `EDetail::Update` refuses the object: other than one surface, no mesh, a face corner whose
+  /// reference names no texture coordinate first; past 65,535 vertices; and where the mesh does not hold together.
+  pub fn compile_detail(object: &EditableObjectFile, parameters: &DetailParameters) -> XrfResult<ObjectCompile> {
+    DetailModelBuilder::build::<XRayByteOrder>(object, parameters)
   }
 
   /// The OGF of a skeleton object whose `geometry` [`Self::build_skeleton_geometry`] built, as bytes.

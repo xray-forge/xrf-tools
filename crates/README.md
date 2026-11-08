@@ -26,7 +26,7 @@ README is also its crate's rustdoc page.
 | [xrf-omf](xrf-omf/README.md)                               | Read and write `.omf` motion libraries                                         |
 | [xrf-particles](xrf-particles/README.md)                   | Read and write `particles.xr` effects, groups, and the actions that drive them |
 | [xrf-ppe](xrf-ppe/README.md)                               | Read, write and evaluate animated post-process effects (`.ppe`)                |
-| [xrf-rawdata](xrf-rawdata/README.md)                       | Decompile OGFs and level visuals into SDK `.object` files and compile back     |
+| [xrf-rawdata](xrf-rawdata/README.md)                       | Decompile OGFs, `.dm` and level visuals into SDK `.object` files and back      |
 | [xrf-skeleton](xrf-skeleton/README.md)                     | Skeleton motions and bone physics two formats share                            |
 | [xrf-sound](xrf-sound/README.md)                           | Read and edit sound parameters, validate audio, edit `senvironment.xr`         |
 | [xrf-spawn](xrf-spawn/README.md)                           | Read and write spawn sets, alife records, graphs, patrols, and artefact points |

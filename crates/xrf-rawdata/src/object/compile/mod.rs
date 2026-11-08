@@ -1,4 +1,5 @@
 pub(crate) mod bounds;
+pub(crate) mod detail;
 pub(crate) mod geometry;
 pub(crate) mod motion;
 pub(crate) mod object_compile;

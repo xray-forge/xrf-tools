@@ -3,6 +3,7 @@ use xrf_editable_object::{EditableFace, EditableFaceCorner, EditableMesh, Editab
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Aabb;
 
+use crate::object::decompile::geometry::source::ogf_corner::OgfCorner;
 use crate::object::decompile::geometry::source::ogf_surface::OgfSurface;
 use crate::object::decompile::geometry::welded_mesh::WeldedMesh;
 use crate::object::decompile::mesh::assembled_mesh::AssembledMesh;
@@ -70,14 +71,19 @@ impl MeshAssembler {
         faces,
         smoothing_groups: Some(smoothing),
         // The normals the OGF stores, which the smoothing only approximates where another exporter's rule made them:
-        // the compile takes them over the SDK's, and `blender-xray` imports them; the SDK reads only the smoothing.
-        corner_normals: Some(
-          welded
-            .faces
-            .iter()
-            .map(|face| face.corners.each_ref().map(|corner| corner.normal))
-            .collect(),
-        ),
+        // the compile takes them over the SDK's, and `blender-xray` imports them; the SDK reads only the smoothing. A
+        // detail model stores none, so its object leaves them to the smoothing.
+        corner_normals: welded
+          .faces
+          .iter()
+          .all(|face| face.corners.iter().all(OgfCorner::has_normal))
+          .then(|| {
+            welded
+              .faces
+              .iter()
+              .map(|face| face.corners.each_ref().map(|corner| corner.normal))
+              .collect()
+          }),
         vmap_references: std::mem::take(&mut maps.references),
         surface_faces: layout
           .surfaces

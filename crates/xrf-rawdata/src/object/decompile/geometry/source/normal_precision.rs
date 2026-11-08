@@ -11,6 +11,9 @@ pub(crate) enum NormalPrecision {
   /// 11,692,886 mirrored corners stand one step from their mirror's negation and 36 at none. Corners sharing a position
   /// either agree exactly (2,599,789) or differ by over 20 steps (8,370,887), but for 5,372 a step apart.
   Byte,
+  /// No normal at all, as a detail model's vertices (`fvfVertexIn`: a position and a texture coordinate): nothing tells
+  /// a hard edge from a soft one or a face from its mirror, and `EDetail::Update` drops a mirrored copy anyway.
+  Unstored,
 }
 
 impl NormalPrecision {
@@ -20,16 +23,13 @@ impl NormalPrecision {
   /// One quantisation step, `1 / 127.5`, and the float error its decoding leaves.
   const BYTE_TOLERANCE: f32 = 1.0 / 127.5 + 1e-5;
 
-  /// How far, component by component, two normals stored at this precision may differ and still be one.
-  pub(crate) const fn get_tolerance(self) -> f32 {
-    match self {
-      Self::Float => Self::FLOAT_TOLERANCE,
-      Self::Byte => Self::BYTE_TOLERANCE,
+  /// How far, component by component, two normals of `self` and `other` precision may differ and still be one: the
+  /// coarser one's tolerance, or `None` where either stores no normal to compare.
+  pub(crate) fn get_tolerance_with(self, other: Self) -> Option<f32> {
+    match (self, other) {
+      (Self::Unstored, _) | (_, Self::Unstored) => None,
+      (Self::Byte, _) | (_, Self::Byte) => Some(Self::BYTE_TOLERANCE),
+      (Self::Float, Self::Float) => Some(Self::FLOAT_TOLERANCE),
     }
-  }
-
-  /// The tolerance of comparing normals of `self` and `other` precision: the coarser one's.
-  pub(crate) fn get_tolerance_with(self, other: Self) -> f32 {
-    self.get_tolerance().max(other.get_tolerance())
   }
 }

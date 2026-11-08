@@ -1,6 +1,7 @@
 use xrf_chunk::{ChunkLayout, XRayByteOrder};
 use xrf_editable_object::{EditableBone, EditableDescription, EditableMotion, EditableObjectFile, EditableTimeWidth};
 use xrf_error::{XrfError, XrfResult};
+use xrf_level::DetailModel;
 use xrf_ogf::{OgfDescriptionChunk, OgfDescriptionTimeWidth, OgfFile, OgfModelType};
 
 use crate::level::level_visual_geometry::LevelVisualGeometry;
@@ -17,6 +18,7 @@ use crate::object::decompile::object_decompile::ObjectDecompile;
 use crate::object::decompile::object_inference::ObjectInference;
 use crate::object::decompile::skeleton::bone_converter::BoneConverter;
 use crate::object::decompile::skeleton::motion_converter::{ConvertedMotions, MotionConverter};
+use crate::object::detail_parameters::DetailParameters;
 
 /// Turns an OGF the Actor Editor exported back into the editable object it was exported from, as near as the OGF
 /// allows: see the crate's documentation for what is recovered and what inferred.
@@ -87,6 +89,34 @@ impl ObjectDecompiler {
     ))
   }
 
+  /// Decompiles a detail model (`.dm`, `CDetail`) into a static object of one mesh and one surface, as `EDetail::Update`
+  /// reads one: its shader and texture, and its triangles over vertices of a position and a texture coordinate. Its
+  /// flags and scale range, which the object cannot hold, come back in [`ObjectDecompile::detail`]. A model stores no
+  /// normal and no mirrored copy, so every edge comes back smooth and no surface two-sided.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for a model of no triangle, or an index past its vertices.
+  pub fn decompile_detail(model: &DetailModel) -> XrfResult<ObjectDecompile> {
+    let surface: OgfSurface = OgfSurface::of_detail(model)?;
+    // The object is static and compiles without tangents, so the method recorded for its compile is moot.
+    let decompile: ObjectDecompile = Self::to_static_decompile(
+      Self::assemble(std::slice::from_ref(&surface), MeshKind::Static)?,
+      0,
+      None,
+      TangentMethod::ActorEditor,
+    );
+
+    Ok(ObjectDecompile {
+      detail: Some(DetailParameters {
+        flags: model.flags,
+        min_scale: model.min_scale,
+        max_scale: model.max_scale,
+      }),
+      ..decompile
+    })
+  }
+
   /// A static visual's object: its children's surfaces in one mesh, no bones.
   fn decompile_static(file: &OgfFile) -> XrfResult<ObjectDecompile> {
     let surfaces: Vec<OgfSurface> = OgfSurface::collect(file)?;
@@ -128,6 +158,7 @@ impl ObjectDecompiler {
       },
       inferred: Self::INFERRED.to_vec(),
       tangents,
+      detail: None,
     }
   }
 
@@ -200,6 +231,7 @@ impl ObjectDecompiler {
       },
       inferred,
       tangents: Self::get_tangent_method(file),
+      detail: None,
     })
   }
 
