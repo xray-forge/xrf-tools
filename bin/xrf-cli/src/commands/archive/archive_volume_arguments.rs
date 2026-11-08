@@ -119,14 +119,14 @@ impl ArchiveVolumeArguments {
         .map(|entries| ArchivePackHeaderEntry::over_default(&entries)),
       is_stored: matches.get_flag(Self::STORE),
       is_xdb: matches.get_flag(Self::XDB),
-      max_volume_size: Self::to_volume_size(matches, is_oversized_allowed)?,
+      max_volume_size: Self::parse_volume_size(matches, is_oversized_allowed)?,
       is_oversized_allowed,
       is_forced: matches.get_flag(Self::FORCE),
     })
   }
 
   /// The volume cap asked for, in bytes; none where `--max-size` was not given.
-  fn to_volume_size(matches: &ArgMatches, is_oversized_allowed: bool) -> XrfResult<Option<u64>> {
+  fn parse_volume_size(matches: &ArgMatches, is_oversized_allowed: bool) -> XrfResult<Option<u64>> {
     let Some(megabytes) = matches.get_one::<u64>(Self::MAX_SIZE) else {
       return Ok(None);
     };

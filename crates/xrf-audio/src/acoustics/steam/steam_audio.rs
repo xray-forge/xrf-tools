@@ -97,7 +97,7 @@ impl SteamAudio {
   /// How much of each band the air lets through between `source` and `listener`, in the game's space, by its default
   /// model.
   pub(crate) fn get_air_absorption(&self, source: [f32; 3], listener: [f32; 3]) -> [f32; 3] {
-    let (source, listener) = (SteamSpace::to_point(source), SteamSpace::to_point(listener));
+    let (source, listener) = (SteamSpace::convert_point(source), SteamSpace::convert_point(listener));
 
     // SAFETY: the default model takes no callback, which is what the call cannot take safely.
     unsafe { audionimbus::model::air_absorption(&self.context, source, listener, &AirAbsorptionModel::Default) }.0

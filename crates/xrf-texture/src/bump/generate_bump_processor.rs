@@ -186,7 +186,7 @@ impl GenerateBumpProcessor {
       GenerateBumpGloss::Constant(level) => Ok(GreyPlane::filled(
         options.height.width(),
         options.height.height(),
-        Self::to_byte(*level * 255.0),
+        Self::quantize_byte(*level * 255.0),
       )),
     }
   }
@@ -215,7 +215,7 @@ impl GenerateBumpProcessor {
       let original = bump.get_pixel(x, y).0;
       let decoded = restored.get_pixel(x, y).0;
       let error = |channel: usize| {
-        Self::to_byte_from_int(ERROR_BIAS + 2 * (i32::from(original[channel]) - i32::from(decoded[channel])) / 3)
+        Self::clamp_byte(ERROR_BIAS + 2 * (i32::from(original[channel]) - i32::from(decoded[channel])) / 3)
       };
 
       // Reversed once more, so the error lines up channel for channel with the normal the shader rebuilds.
@@ -256,7 +256,7 @@ impl GenerateBumpProcessor {
     let scaled: Vec<u8> = GreyPlane::from_channel(&options.height, 0)
       .get_bytes()
       .iter()
-      .map(|level| Self::to_byte((f32::from(*level) * scale + EPS_S).floor()))
+      .map(|level| Self::quantize_byte((f32::from(*level) * scale + EPS_S).floor()))
       .collect();
 
     let total: u32 = scaled.iter().map(|level| u32::from(*level)).sum();
@@ -268,17 +268,17 @@ impl GenerateBumpProcessor {
 
     scaled
       .into_iter()
-      .map(|level| Self::to_byte_from_int(i32::from(level) + correction))
+      .map(|level| Self::clamp_byte(i32::from(level) + correction))
       .collect()
   }
 
   /// Rounds a computed level into a byte, clamping rather than wrapping at either end.
-  fn to_byte(value: f32) -> u8 {
+  fn quantize_byte(value: f32) -> u8 {
     value.clamp(0.0, 255.0) as u8
   }
 
   /// The same clamp for a value that is already whole, which is where the error and the centring land.
-  fn to_byte_from_int(value: i32) -> u8 {
+  fn clamp_byte(value: i32) -> u8 {
     value.clamp(0, 255) as u8
   }
 

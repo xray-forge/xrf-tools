@@ -5,7 +5,7 @@ use std::path::Path;
 use byteorder::{ByteOrder, WriteBytesExt};
 use xrf_chunk::{ChunkDataSource, ChunkLayout, ChunkReadWrite, ChunkReader, ChunkSequence, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{StagedFile, format_path, to_format_size};
+use xrf_utils::{StagedFile, format_path, narrow_format_size};
 
 use crate::editable_chunks::EditableChunks;
 use crate::{
@@ -347,7 +347,7 @@ impl EditableObjectFile {
 
     if let Some(references) = &self.motion_references {
       sequence.push(Self::MOTION_REFERENCES_CHUNK_ID, |writer| {
-        writer.write_u32::<T>(to_format_size(references.len(), "Motion references")?)?;
+        writer.write_u32::<T>(narrow_format_size(references.len(), "Motion references")?)?;
 
         for reference in references {
           writer.write_w1251_string(reference)?;

@@ -57,14 +57,14 @@ impl BuildTextureRecipe {
 
     Ok(Self {
       layout,
-      format: Self::to_image_format(param.format)?,
-      omissions: Self::to_omissions(param, &mipmaps),
+      format: Self::resolve_image_format(param.format)?,
+      omissions: Self::list_omissions(param, &mipmaps),
       mipmaps,
     })
   }
 
   /// The layout the descriptor's format names, for the four this build can write.
-  fn to_image_format(format: ThmFormat) -> XrfResult<ImageFormat> {
+  fn resolve_image_format(format: ThmFormat) -> XrfResult<ImageFormat> {
     match format {
       // BC1 with no alpha, which is what the descriptor asked for: the encoder discards the source's own.
       ThmFormat::Dxt1 => Ok(ImageFormat::BC1RgbaUnorm),
@@ -88,7 +88,7 @@ impl BuildTextureRecipe {
   /// writes, and its header says even that is disabled (`xray/trunk/xrDXT/nvdxt_options.h`), so a dithered descriptor
   /// was built undithered by the SDK as well. A fade is nvDXT's own only for a chain it reduces; the `Advanced` chain
   /// fades as the SDK does, and a texture without mip maps has nothing to fade.
-  fn to_omissions(param: &ThmTextureParamChunk, mipmaps: &BuildTextureMipmaps) -> Vec<BuildTextureOmission> {
+  fn list_omissions(param: &ThmTextureParamChunk, mipmaps: &BuildTextureMipmaps) -> Vec<BuildTextureOmission> {
     let is_filtered: bool = matches!(mipmaps, BuildTextureMipmaps::Filtered(_));
 
     [

@@ -717,7 +717,7 @@ impl RenderViewport {
   /// since it was last told.
   fn publish_applied(&mut self, mut applied: RenderAppliedReport) {
     if self.options.asset.lighting.is_none() {
-      applied.environment = Some(Self::to_applied_environment(
+      applied.environment = Some(Self::get_applied_environment(
         &self.world.lighting,
         &self.options.features.light_scales,
       ));
@@ -764,7 +764,7 @@ impl RenderViewport {
   }
 
   /// What `lighting` lights a scene with, as the passes bind it.
-  fn to_applied_environment(lighting: &RenderLighting, scales: &RenderLightScales) -> RenderAppliedEnvironment {
+  fn get_applied_environment(lighting: &RenderLighting, scales: &RenderLightScales) -> RenderAppliedEnvironment {
     RenderAppliedEnvironment {
       sun_direction: lighting.get_sun_direction().to_array(),
       sun_color: lighting.get_sun_color(scales).to_array(),

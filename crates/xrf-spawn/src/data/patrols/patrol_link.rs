@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
-use xrf_utils::{assert_length, to_format_size};
+use xrf_utils::{assert_length, narrow_format_size};
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -69,7 +69,7 @@ impl ChunkReadWrite for PatrolLink {
   /// Write patrol link data into chunk writer.
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_u32::<T>(self.index)?;
-    writer.write_u32::<T>(to_format_size(self.links.len(), "patrol links")?)?;
+    writer.write_u32::<T>(narrow_format_size(self.links.len(), "patrol links")?)?;
 
     for (to, weight) in &self.links {
       writer.write_u32::<T>(*to)?;

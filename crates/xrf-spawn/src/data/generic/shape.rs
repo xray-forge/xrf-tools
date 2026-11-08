@@ -4,7 +4,7 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_math::{Aabb, Affine3d, Sphere, Vector3d};
-use xrf_utils::{assert_length, to_format_size};
+use xrf_utils::{assert_length, narrow_format_size};
 
 /// One shape of an object's volume, `CShapeData::shape_def`, in the object's own space.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -74,7 +74,7 @@ impl ChunkReadWriteList for Shape {
 
   /// Write list of shapes data into the chunk reader.
   fn write_list<T: ByteOrder>(writer: &mut ChunkWriter, shapes: &[Self]) -> XrfResult {
-    writer.write_u8(to_format_size(shapes.len(), "shapes")?)?;
+    writer.write_u8(narrow_format_size(shapes.len(), "shapes")?)?;
 
     for shape in shapes {
       shape.write::<T>(writer)?;

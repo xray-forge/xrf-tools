@@ -23,7 +23,7 @@ impl NgxApplication {
   pub(crate) fn new(runtime: Option<&Path>) -> Self {
     Self {
       runtime: runtime
-        .map(Self::to_plain)
+        .map(Self::strip_verbatim_prefix)
         .into_iter()
         .chain([PathBuf::from(env!("XRF_DLSS_RUNTIME"))])
         .collect(),
@@ -45,11 +45,11 @@ impl NgxApplication {
     callback: impl FnOnce(&NVSDK_NGX_FeatureDiscoveryInfo) -> T,
   ) -> T {
     let engine_version: CString = self.get_engine_version();
-    let data_path: Vec<wchar_t> = Self::to_wide(std::env::temp_dir().as_os_str());
+    let data_path: Vec<wchar_t> = Self::encode_wide(std::env::temp_dir().as_os_str());
     let runtime: Vec<Vec<wchar_t>> = self
       .runtime
       .iter()
-      .map(|path| Self::to_wide(path.as_os_str()))
+      .map(|path| Self::encode_wide(path.as_os_str()))
       .collect();
     let runtime_pointers: Vec<*const wchar_t> = runtime.iter().map(|path| path.as_ptr()).collect();
     let common = NVSDK_NGX_FeatureCommonInfo {
@@ -90,7 +90,7 @@ impl NgxApplication {
   }
 
   /// A path as NGX reads it: a local one without Windows' `\\?\` verbatim prefix, which NGX finds nothing under.
-  fn to_plain(path: &Path) -> PathBuf {
+  fn strip_verbatim_prefix(path: &Path) -> PathBuf {
     let text = path.to_string_lossy();
 
     match text.strip_prefix(r"\\?\") {
@@ -117,7 +117,7 @@ impl NgxApplication {
 
   /// A string as NGX's wide strings hold it, zero-terminated: UTF-16 on Windows, UTF-32 elsewhere.
   #[cfg(target_os = "windows")]
-  fn to_wide(text: &OsStr) -> Vec<wchar_t> {
+  fn encode_wide(text: &OsStr) -> Vec<wchar_t> {
     use std::os::windows::ffi::OsStrExt;
 
     text.encode_wide().chain([0]).collect()
@@ -125,7 +125,7 @@ impl NgxApplication {
 
   /// A string as NGX's wide strings hold it, zero-terminated: UTF-16 on Windows, UTF-32 elsewhere.
   #[cfg(not(target_os = "windows"))]
-  fn to_wide(text: &OsStr) -> Vec<wchar_t> {
+  fn encode_wide(text: &OsStr) -> Vec<wchar_t> {
     text
       .to_string_lossy()
       .chars()
@@ -144,11 +144,11 @@ mod tests {
   #[test]
   fn drops_the_verbatim_prefix_ngx_finds_nothing_under() {
     assert_eq!(
-      NgxApplication::to_plain(Path::new(r"\\?\C:\Games\xrf\dlss")),
+      NgxApplication::strip_verbatim_prefix(Path::new(r"\\?\C:\Games\xrf\dlss")),
       PathBuf::from(r"C:\Games\xrf\dlss")
     );
     assert_eq!(
-      NgxApplication::to_plain(Path::new(r"C:\Games\xrf\dlss")),
+      NgxApplication::strip_verbatim_prefix(Path::new(r"C:\Games\xrf\dlss")),
       PathBuf::from(r"C:\Games\xrf\dlss"),
       "a plain path is kept as it is"
     );
@@ -158,14 +158,14 @@ mod tests {
   fn keeps_a_verbatim_network_path_whole() {
     // `\\?\UNC\server\share` has no plain spelling that strips to a drive, so it is handed over as it came.
     assert_eq!(
-      NgxApplication::to_plain(Path::new(r"\\?\UNC\server\share\dlss")),
+      NgxApplication::strip_verbatim_prefix(Path::new(r"\\?\UNC\server\share\dlss")),
       PathBuf::from(r"\\?\UNC\server\share\dlss")
     );
   }
 
   #[test]
   fn ends_a_wide_string_with_a_zero() {
-    let wide = NgxApplication::to_wide(std::ffi::OsStr::new("dlss"));
+    let wide = NgxApplication::encode_wide(std::ffi::OsStr::new("dlss"));
 
     assert_eq!(wide.len(), 5);
     assert_eq!(wide.last().copied(), Some(0));

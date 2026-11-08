@@ -4,7 +4,7 @@ use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_math::Vector3d;
-use xrf_utils::{to_format_size, vector_from_string, vector_to_string};
+use xrf_utils::{narrow_format_size, vector_from_string, vector_to_string};
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_monster_abstract::AlifeObjectMonsterAbstract;
@@ -39,7 +39,7 @@ impl AlifeObjectHumanAbstract {
   }
 
   fn write_preferences<T: ByteOrder>(writer: &mut ChunkWriter, preferences: &[u8]) -> XrfResult {
-    writer.write_u32::<T>(to_format_size(preferences.len(), "human preferences")?)?;
+    writer.write_u32::<T>(narrow_format_size(preferences.len(), "human preferences")?)?;
     writer.buffer.extend_from_slice(preferences);
 
     Ok(())

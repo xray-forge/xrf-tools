@@ -137,8 +137,8 @@ impl AudioMixer {
 
     self.output_rate = rate;
     self.meter.set_rate(self.output_rate);
-    self.ramp_frames = Self::to_frames(Self::RAMP_SECONDS, self.output_rate);
-    self.fade_frames = Self::to_frames(Self::FADE_SECONDS, self.output_rate);
+    self.ramp_frames = Self::get_frames(Self::RAMP_SECONDS, self.output_rate);
+    self.fade_frames = Self::get_frames(Self::FADE_SECONDS, self.output_rate);
   }
 
   /// Fills `out`, interleaved frames of `channels`, with the next frames of every voice: the first two channels carry
@@ -375,7 +375,7 @@ impl AudioMixer {
     }
   }
 
-  fn to_frames(seconds: f64, rate: u32) -> u32 {
+  fn get_frames(seconds: f64, rate: u32) -> u32 {
     (seconds * f64::from(rate)).round() as u32
   }
 }

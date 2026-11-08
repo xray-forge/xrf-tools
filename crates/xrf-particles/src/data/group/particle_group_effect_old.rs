@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite, META_TYPE_FIELD};
-use xrf_utils::{assert_equal, assert_length, to_format_size};
+use xrf_utils::{assert_equal, assert_length, narrow_format_size};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -52,7 +52,7 @@ impl ChunkReadWriteList for ParticleGroupEffectOld {
 
   /// Write old effects list data into the writer.
   fn write_list<T: ByteOrder>(writer: &mut ChunkWriter, list: &[Self]) -> XrfResult {
-    writer.write_u32::<T>(to_format_size(list.len(), "old particle group effects")?)?;
+    writer.write_u32::<T>(narrow_format_size(list.len(), "old particle group effects")?)?;
 
     for effect in list {
       effect.write::<T>(writer)?;

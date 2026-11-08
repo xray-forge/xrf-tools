@@ -93,7 +93,7 @@ fn reads_a_channels_periods_and_distances_in_each_shape() {
     ),
   ];
 
-  let channels = LevelWorldAmbients::to_world_channels(&catalog, &mut read_sound);
+  let channels = LevelWorldAmbients::read_channels(&catalog, &mut read_sound);
 
   assert_eq!(
     channels.get("cop"),
@@ -145,7 +145,7 @@ fn takes_a_levels_own_ambient_over_the_shared_one() {
   let catalog: EnvironmentCatalog = new_catalog();
 
   assert_eq!(
-    LevelWorldAmbients::to_world(&catalog, "zaton").get("day"),
+    LevelWorldAmbients::read_ambients(&catalog, "zaton").get("day"),
     Some(&WorldAmbient {
       sound_channels: Vec::new(),
       effects: vec![String::from("fog")],
@@ -154,7 +154,7 @@ fn takes_a_levels_own_ambient_over_the_shared_one() {
     })
   );
   assert_eq!(
-    LevelWorldAmbients::to_world(&catalog, "jupiter")
+    LevelWorldAmbients::read_ambients(&catalog, "jupiter")
       .get("day")
       .map(|it| it.effects.len()),
     Some(2)
@@ -164,7 +164,7 @@ fn takes_a_levels_own_ambient_over_the_shared_one() {
 // `iFloor(life_time * 1000)`: the life in whole milliseconds; a blast only where its strength is written.
 #[test]
 fn reads_an_effects_life_and_wind_as_the_engine_does() {
-  let effects = LevelWorldAmbients::to_world_effects(&new_catalog(), &mut read_sound);
+  let effects = LevelWorldAmbients::read_effects(&new_catalog(), &mut read_sound);
 
   assert_eq!(
     effects.get("fog"),
@@ -200,7 +200,7 @@ fn reads_an_unbounded_wind_blast_ramp_as_an_hour() {
     ],
   ));
 
-  let blast: WorldWindBlast = LevelWorldAmbients::to_world_effects(&catalog, &mut read_sound)
+  let blast: WorldWindBlast = LevelWorldAmbients::read_effects(&catalog, &mut read_sound)
     .get("endless")
     .map(|it| it.wind_blast)
     .unwrap_or_default();

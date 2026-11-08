@@ -42,7 +42,7 @@ fn leaf(parameters: &DetailParameters) -> DetailModel {
   }
 }
 
-fn to_bytes(model: &DetailModel) -> XrfResult<Vec<u8>> {
+fn encode_model(model: &DetailModel) -> XrfResult<Vec<u8>> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
   model.write::<XRayByteOrder>(&mut writer)?;
@@ -87,7 +87,7 @@ fn decompiles_a_detail_model_and_compiles_it_back_byte_for_byte() -> XrfResult {
     EditableObjectFile::read_from_bytes::<XRayByteOrder>(decompile.object.write_to_bytes::<XRayByteOrder>()?)?;
   let compiled: ObjectCompile = ObjectCompiler::compile_detail(&object, &parameters)?;
 
-  assert_eq!(compiled.bytes, to_bytes(&model)?);
+  assert_eq!(compiled.bytes, encode_model(&model)?);
   assert_eq!((compiled.vertices, compiled.faces, compiled.dropped_faces), (5, 2, 0));
 
   Ok(())

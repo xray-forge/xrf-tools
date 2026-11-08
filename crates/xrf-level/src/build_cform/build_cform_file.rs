@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::{Aabb, Vector3d};
-use xrf_utils::{format_path, to_format_size};
+use xrf_utils::{format_path, narrow_format_size};
 
 use crate::build_cform::build_cform_face::BuildCformFace;
 use crate::build_cform::build_cform_raycast_face::BuildCformRaycastFace;
@@ -154,8 +154,8 @@ impl BuildCformFile {
 
     LevelCformHeader {
       version: self.version,
-      vertex_count: to_format_size(self.vertices.len(), "build collision form vertices")?,
-      face_count: to_format_size(self.faces.len(), "build collision form faces")?,
+      vertex_count: narrow_format_size(self.vertices.len(), "build collision form vertices")?,
+      face_count: narrow_format_size(self.faces.len(), "build collision form faces")?,
       bounds: self.bounds,
     }
     .write::<T>(&mut geometry)?;

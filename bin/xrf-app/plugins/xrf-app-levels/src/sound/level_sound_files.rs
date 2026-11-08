@@ -20,7 +20,7 @@ impl<'a> LevelSoundFiles<'a> {
   }
 
   /// Where the engine finds a sound by its reference: `$game_sounds$`, as an Ogg file.
-  pub(crate) fn to_path(reference: &str) -> String {
+  pub(crate) fn resolve_path(reference: &str) -> String {
     format!("sounds\\{}.ogg", reference.trim())
   }
 
@@ -42,7 +42,7 @@ impl<'a> LevelSoundFiles<'a> {
   }
 
   fn read_info(&self, reference: &str) -> Option<WorldSoundInfo> {
-    let path: String = Self::to_path(reference);
+    let path: String = Self::resolve_path(reference);
     let bytes: Vec<u8> = match self.search.find(&path) {
       Ok(Some(asset)) => self
         .search

@@ -35,7 +35,7 @@ impl DialogProjectOpening {
   ///
   /// Returns an error when the roots cannot be mounted or hold no dialog files under the prefix.
   pub(crate) fn open(matches: &ArgMatches) -> XrfResult<DialogProject> {
-    DialogProject::open(&XrayRootsArguments::of(matches)?, &Self::to_layout(matches))
+    DialogProject::open(&XrayRootsArguments::of(matches)?, &Self::parse_layout(matches))
   }
 
   /// The project as [`Self::open`] opens it, without its text tree, for a command reporting keys alone.
@@ -46,7 +46,7 @@ impl DialogProjectOpening {
   pub(crate) fn open_keys(matches: &ArgMatches) -> XrfResult<DialogProject> {
     let layout: DialogProjectLayout = DialogProjectLayout {
       is_text_skipped: true,
-      ..Self::to_layout(matches)
+      ..Self::parse_layout(matches)
     };
 
     DialogProject::open(&XrayRootsArguments::of(matches)?, &layout)
@@ -66,7 +66,7 @@ impl DialogProjectOpening {
   }
 
   /// The layout the command's prefix names, as shipped gamedata.
-  fn to_layout(matches: &ArgMatches) -> DialogProjectLayout {
+  fn parse_layout(matches: &ArgMatches) -> DialogProjectLayout {
     DialogProjectLayout {
       dialogs_prefix: XrayRootsArguments::prefix_of(matches).map(str::to_owned),
       ..DialogProjectLayout::default()

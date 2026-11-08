@@ -108,7 +108,7 @@ impl AnnotationCanvas {
   }
 
   /// A kind's group id in the SVG: its label in kebab case.
-  fn to_group_id(entry: &LevelObjectKindEntry) -> String {
+  fn format_group_id(entry: &LevelObjectKindEntry) -> String {
     entry.label.to_lowercase().replace(' ', "-")
   }
 
@@ -142,7 +142,7 @@ impl AnnotationCanvas {
       let _ = write!(
         svg,
         r#"<g id="{}" fill="{colour}" stroke="{colour}" stroke-width="{stroke:.2}">"#,
-        Self::to_group_id(entry)
+        Self::format_group_id(entry)
       );
 
       for volume in annotations.volumes.iter().filter(|volume| volume.kind == kind) {

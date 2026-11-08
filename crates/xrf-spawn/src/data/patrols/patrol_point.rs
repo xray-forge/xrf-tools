@@ -6,7 +6,7 @@ use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReadWrite, ChunkReadWriteLi
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_math::Vector3d;
-use xrf_utils::{assert_equal, to_format_size};
+use xrf_utils::{assert_equal, narrow_format_size};
 
 /// `CPatrolPoint::load_raw`, `CPatrolPoint::load` in xray codebase.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -56,7 +56,7 @@ impl ChunkReadWriteList for PatrolPoint {
   /// Write list of patrol points into chunk writer.
   fn write_list<T: ByteOrder>(writer: &mut ChunkWriter, list: &[Self]) -> XrfResult {
     for (index, point) in list.iter().enumerate() {
-      let index: u32 = to_format_size(index, "patrol point index")?;
+      let index: u32 = narrow_format_size(index, "patrol point index")?;
 
       let mut point_chunk_writer: ChunkWriter = ChunkWriter::new();
 

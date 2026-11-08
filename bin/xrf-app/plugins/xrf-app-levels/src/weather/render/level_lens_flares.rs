@@ -8,7 +8,7 @@ pub(crate) struct LevelLensFlares;
 impl LevelLensFlares {
   /// One lens flare as `CLensFlareDescriptor` reads it: OpenXRay takes the sprite from `source` where it is written and
   /// from `sun` over it where that is written too; a flare short of a radius, opacity or position takes zero.
-  pub(crate) fn to_render(sun: &LensFlare, engine: XrayEngine) -> RenderLensFlare {
+  pub(crate) fn read_flare(sun: &LensFlare, engine: XrayEngine) -> RenderLensFlare {
     let sprite_keys: [[LensFlareKey; 4]; 2] = [
       [
         LensFlareKey::Source,

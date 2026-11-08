@@ -29,13 +29,13 @@ impl WeatherLighting {
         far_plane: mix.far_plane,
       }),
       sky: RenderSky {
-        textures: [Self::to_named(&a.sky_texture), Self::to_named(&b.sky_texture)],
-        environments: [Self::to_environment(a), Self::to_environment(b)],
+        textures: [Self::find_named(&a.sky_texture), Self::find_named(&b.sky_texture)],
+        environments: [Self::find_environment(a), Self::find_environment(b)],
         blend: mix.weight,
         color: Vec3::from(mix.sky_color),
         rotation: mix.sky_rotation,
         clouds: RenderClouds {
-          textures: [Self::to_named(&a.clouds_texture), Self::to_named(&b.clouds_texture)],
+          textures: [Self::find_named(&a.clouds_texture), Self::find_named(&b.clouds_texture)],
           color: Vec4::from(mix.clouds_color),
           rotation: mix.clouds_rotation,
         },
@@ -68,20 +68,20 @@ impl WeatherLighting {
   /// clouds' layer, each only where the keyframe names it.
   pub(crate) fn list_sky_textures(keyframe: &WeatherDescriptor) -> impl Iterator<Item = (String, WeatherTextureKind)> {
     [
-      (Self::to_named(&keyframe.sky_texture), WeatherTextureKind::Cube),
-      (Self::to_environment(keyframe), WeatherTextureKind::Cube),
-      (Self::to_named(&keyframe.clouds_texture), WeatherTextureKind::Flat),
+      (Self::find_named(&keyframe.sky_texture), WeatherTextureKind::Cube),
+      (Self::find_environment(keyframe), WeatherTextureKind::Cube),
+      (Self::find_named(&keyframe.clouds_texture), WeatherTextureKind::Flat),
     ]
     .into_iter()
     .filter_map(|(reference, kind)| Some((reference?, kind)))
   }
 
-  fn to_named(reference: &str) -> Option<String> {
+  fn find_named(reference: &str) -> Option<String> {
     Some(reference.to_owned()).filter(|it| !it.is_empty())
   }
 
   /// A keyframe's irradiance cube; one without a sky names only its suffix, which nothing answers to.
-  fn to_environment(keyframe: &WeatherDescriptor) -> Option<String> {
-    Self::to_named(&keyframe.sky_texture).and_then(|_| Self::to_named(&keyframe.sky_texture_env))
+  fn find_environment(keyframe: &WeatherDescriptor) -> Option<String> {
+    Self::find_named(&keyframe.sky_texture).and_then(|_| Self::find_named(&keyframe.sky_texture_env))
   }
 }

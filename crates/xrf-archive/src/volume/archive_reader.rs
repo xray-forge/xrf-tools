@@ -151,7 +151,7 @@ impl ArchiveReader {
       self.read_name_table(&stored, is_compressed, root_path.is_some())?;
 
     Ok(ArchiveHeader {
-      mount_root: ArchiveMetadata::to_mount_root(root_path.as_deref()),
+      mount_root: ArchiveMetadata::resolve_mount_root(root_path.as_deref()),
       output_root_path: root_path.map(PathBuf::from).unwrap_or_default(),
       files,
     })

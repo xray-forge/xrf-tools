@@ -4,7 +4,7 @@ use glam::Vec3;
 ///
 /// The engine calls `sun_dir.setHP(sun_altitude, sun_longitude)`, so `sun_altitude` is the heading and `sun_longitude`
 /// the pitch, the other way round from what the names say.
-pub(crate) fn to_renderer_sun_direction(heading: f32, pitch: f32) -> Vec3 {
+pub(crate) fn get_renderer_sun_direction(heading: f32, pitch: f32) -> Vec3 {
   let heading: f32 = heading.to_radians();
   let pitch: f32 = pitch.to_radians();
 

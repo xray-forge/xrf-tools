@@ -93,7 +93,7 @@ impl XrayArchiveSource {
 
           let asset: XrayAsset = XrayAsset::new(
             XrayLogicalPath::from_normalized(logical_path.to_string()),
-            Self::to_volume_container(project, winner.volume),
+            Self::resolve_volume_container(project, winner.volume),
           );
           let mut entry: XrayShadowingEntry = XrayShadowingEntry::new(asset, u64::from(winner.size_real));
 
@@ -135,7 +135,7 @@ impl XrayArchiveSource {
         continue;
       }
 
-      let Some(normalized) = Self::to_identity(project, descriptor) else {
+      let Some(normalized) = Self::find_identity(project, descriptor) else {
         continue;
       };
 
@@ -167,7 +167,7 @@ impl XrayArchiveSource {
         continue;
       }
 
-      if let Some(normalized) = Self::to_identity(project, descriptor) {
+      if let Some(normalized) = Self::find_identity(project, descriptor) {
         losers.push((normalized, descriptor));
       }
     }
@@ -212,14 +212,14 @@ impl XrayArchiveSource {
 
         if ahead.volume == loser.volume {
           collisions.push(XrayPathCollision {
-            kept: Self::to_site(project, ahead),
+            kept: Self::resolve_site(project, ahead),
             logical_path: XrayLogicalPath::from_normalized(logical_path.clone()),
-            unreachable: Self::to_site(project, loser),
+            unreachable: Self::resolve_site(project, loser),
           });
         } else {
           let asset: XrayAsset = XrayAsset::new(
             XrayLogicalPath::from_normalized(logical_path.clone()),
-            Self::to_volume_container(project, loser.volume),
+            Self::resolve_volume_container(project, loser.volume),
           );
 
           shadowed.push(XrayShadowedCopy::new(asset, u64::from(loser.size_real)));
@@ -238,7 +238,7 @@ impl XrayArchiveSource {
   /// its volume's entry point inside `gamedata`.
   // todo: Mount an entry whose volume's entry point lies outside `gamedata` where the engine registers it, rather than as
   // though its authored name were a path under `gamedata`.
-  fn to_identity(project: &ArchiveProject, descriptor: &ArchiveFileDescriptor) -> Option<String> {
+  fn find_identity(project: &ArchiveProject, descriptor: &ArchiveFileDescriptor) -> Option<String> {
     let below_gamedata: String = project
       .get_volume_of(descriptor)
       .ok()
@@ -264,7 +264,7 @@ impl XrayArchiveSource {
   }
 
   /// The volume one copy sits in, which is what a person needs to act on it.
-  fn to_volume_container(project: &ArchiveProject, volume: u32) -> XrayAssetContainer {
+  fn resolve_volume_container(project: &ArchiveProject, volume: u32) -> XrayAssetContainer {
     XrayAssetContainer::Archive {
       path: project
         .archives
@@ -275,7 +275,7 @@ impl XrayArchiveSource {
   }
 
   /// Where an authored entry sits, for a collision diagnostic.
-  fn to_site(project: &ArchiveProject, descriptor: &ArchiveFileDescriptor) -> XrayCollisionSite {
+  fn resolve_site(project: &ArchiveProject, descriptor: &ArchiveFileDescriptor) -> XrayCollisionSite {
     XrayCollisionSite::Archived {
       name: descriptor.name.to_string(),
       volume: project
@@ -334,7 +334,7 @@ impl XrayAssetSource for XrayArchiveSource {
     self
       .entries
       .get(path)
-      .map(|entry| Self::to_volume_container(&self.project, entry.volume))
+      .map(|entry| Self::resolve_volume_container(&self.project, entry.volume))
   }
 
   fn read(&self, path: &str) -> XrfResult<Vec<u8>> {

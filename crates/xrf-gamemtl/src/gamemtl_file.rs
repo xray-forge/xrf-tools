@@ -6,7 +6,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{format_path, to_format_size};
+use xrf_utils::{format_path, narrow_format_size};
 
 use crate::gamemtl_material::GameMtlMaterial;
 use crate::gamemtl_pair::GameMtlPair;
@@ -145,7 +145,7 @@ impl GameMtlFile {
       let mut chunk: ChunkWriter = ChunkWriter::new();
 
       material.write::<T>(&mut chunk)?;
-      chunk.flush_chunk_into::<T>(&mut materials.buffer, to_format_size(index, "game material chunk")?)?;
+      chunk.flush_chunk_into::<T>(&mut materials.buffer, narrow_format_size(index, "game material chunk")?)?;
     }
 
     materials.flush_chunk_into::<T>(&mut writer.buffer, Self::MATERIALS_CHUNK_ID)?;
@@ -156,7 +156,10 @@ impl GameMtlFile {
       let mut chunk: ChunkWriter = ChunkWriter::new();
 
       pair.write::<T>(&mut chunk)?;
-      chunk.flush_chunk_into::<T>(&mut pairs.buffer, to_format_size(index, "game material pair chunk")?)?;
+      chunk.flush_chunk_into::<T>(
+        &mut pairs.buffer,
+        narrow_format_size(index, "game material pair chunk")?,
+      )?;
     }
 
     pairs.flush_chunk_into::<T>(&mut writer.buffer, Self::PAIRS_CHUNK_ID)?;

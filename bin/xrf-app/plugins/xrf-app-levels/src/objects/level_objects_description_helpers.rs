@@ -14,7 +14,7 @@ impl HelperLook {
 
   /// A link from `from` to `to` as its line and an arrowhead's two barbs at `to`, turned about the vertical; none for
   /// a link of no length.
-  fn to_link(from: Vec3, to: Vec3) -> Vec<[[f32; 3]; 2]> {
+  fn list_link_lines(from: Vec3, to: Vec3) -> Vec<[[f32; 3]; 2]> {
     let span: Vec3 = to - from;
     let length: f32 = span.length();
 
@@ -40,7 +40,7 @@ impl HelperLook {
   }
 
   /// What `object` is drawn as, in its own space; none for an object drawing no helper.
-  fn to_shapes(object: &LevelObject) -> Vec<RenderHelperShape> {
+  fn list_shapes(object: &LevelObject) -> Vec<RenderHelperShape> {
     if let (LevelObjectId::Spawn { index }, Some(spawn)) = (object.id, &object.spawn)
       && object.kind.get_entry().is_drawn
       && spawn.visual.is_some()
@@ -58,7 +58,7 @@ impl HelperLook {
       let ends: Vec<[[f32; 3]; 2]> = patrol
         .links
         .iter()
-        .filter_map(|link| Some(Self::to_link(point(link.from)?, point(link.to)?)))
+        .filter_map(|link| Some(Self::list_link_lines(point(link.from)?, point(link.to)?)))
         .flatten()
         .collect();
 
@@ -84,7 +84,7 @@ impl From<&LevelObjectsDescription> for RenderLevelHelpers {
         .iter()
         .enumerate()
         .filter_map(|(index, object): (usize, &LevelObject)| {
-          let shapes: Vec<RenderHelperShape> = HelperLook::to_shapes(object);
+          let shapes: Vec<RenderHelperShape> = HelperLook::list_shapes(object);
           let entry: &LevelObjectKindEntry = object.kind.get_entry();
 
           (!shapes.is_empty()).then(|| RenderHelperObject {

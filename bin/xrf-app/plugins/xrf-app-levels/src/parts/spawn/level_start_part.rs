@@ -81,12 +81,12 @@ impl LevelStartPart {
     bounds: Option<&VisualBounds>,
     open: &[bool],
   ) -> Option<LevelStart> {
-    let (x, z): (f32, f32) = Self::to_engine_centre(bounds?);
+    let (x, z): (f32, f32) = Self::get_engine_centre(bounds?);
 
     Self::list_candidates(spawn?)
       .zip(open)
       .filter_map(|(candidate, is_open)| is_open.then_some(candidate))
-      .min_by(|(left, _, _), (right, _, _)| Self::to_distance(left, x, z).total_cmp(&Self::to_distance(right, x, z)))
+      .min_by(|(left, _, _), (right, _, _)| Self::get_distance(left, x, z).total_cmp(&Self::get_distance(right, x, z)))
       .map(|(eye, heading, origin)| LevelStart::of(&eye, heading, origin))
   }
 
@@ -94,7 +94,7 @@ impl LevelStartPart {
   fn list_candidates(spawn: &LevelSpawn) -> impl Iterator<Item = (Vector3d, f32, LevelStartOrigin)> {
     let arrivals = spawn.arrivals.iter().map(|arrival| {
       (
-        Self::to_eye(&arrival.position),
+        Self::get_eye(&arrival.position),
         arrival.angles.y,
         LevelStartOrigin::Arrival,
       )
@@ -104,7 +104,7 @@ impl LevelStartPart {
       .filter(|object| matches!(object.inherited, AlifeObjectInherited::SeActor(_)))
       .map(|actor| {
         (
-          Self::to_eye(&actor.position),
+          Self::get_eye(&actor.position),
           actor.direction.y,
           LevelStartOrigin::Actor,
         )
@@ -114,12 +114,12 @@ impl LevelStartPart {
   }
 
   /// An actor's eye above a place, in the engine's space.
-  fn to_eye(position: &Vector3d) -> Vector3d {
+  fn get_eye(position: &Vector3d) -> Vector3d {
     Vector3d::new(position.x, position.y + Self::ACTOR_EYE_HEIGHT, position.z)
   }
 
   /// The middle of an extent in the renderer's space, as the engine's x and z: the conversion is its own inverse.
-  fn to_engine_centre(bounds: &VisualBounds) -> (f32, f32) {
+  fn get_engine_centre(bounds: &VisualBounds) -> (f32, f32) {
     let VisualBounds { bounding_box, .. } = bounds;
     let centre: Vector3d = convert_vector(&Vector3d::new(
       f32::midpoint(bounding_box.min.x, bounding_box.max.x),
@@ -130,7 +130,7 @@ impl LevelStartPart {
     (centre.x, centre.z)
   }
 
-  fn to_distance(position: &Vector3d, x: f32, z: f32) -> f32 {
+  fn get_distance(position: &Vector3d, x: f32, z: f32) -> f32 {
     (position.x - x).powi(2) + (position.z - z).powi(2)
   }
 }

@@ -10,7 +10,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{HostDestination, HostRelativePath, format_path};
 use xrf_vfs::XrayLogicalPath;
 
-use crate::path::{relative_to_prefix, to_host_relative};
+use crate::path::{parse_host_relative, relative_to_prefix};
 use crate::unpack::{
   ArchiveExtractDirectoryResult, ArchiveExtractOptions, ArchiveExtractResult, ArchiveUnpackResult, TreeEntry,
   TreeWriteSummary, TreeWriter,
@@ -93,7 +93,7 @@ impl ArchiveUnpacker {
       .map(|(descriptor, relative)| {
         Ok(TreeEntry {
           source: descriptor,
-          relative: to_host_relative(relative)?,
+          relative: parse_host_relative(relative)?,
           is_directory: descriptor.is_directory,
         })
       })
@@ -234,7 +234,7 @@ impl ArchiveUnpacker {
   /// Where one archived entry lands, relative to a destination root: its authored name under its own volume's root,
   /// which already holds the part of the entry point the project's name adds.
   fn build_relative_path(unpack_root: &Path, descriptor: &ArchiveFileDescriptor) -> XrfResult<HostRelativePath> {
-    Ok(to_host_relative(&unpack_root.to_string_lossy())?.join_path(&to_host_relative(&descriptor.authored_name)?))
+    Ok(parse_host_relative(&unpack_root.to_string_lossy())?.join_path(&parse_host_relative(&descriptor.authored_name)?))
   }
 }
 

@@ -3,7 +3,7 @@ use std::io::Write;
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::to_format_size;
+use xrf_utils::narrow_format_size;
 
 #[derive(Debug)]
 pub struct OgfKinematicsChunk {
@@ -52,7 +52,7 @@ impl OgfKinematicsChunk {
   /// Writes the chunk back exactly as read, trailing bytes included.
   pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     if self.source_chunk_id == Self::CHUNK_ID {
-      writer.write_u32::<T>(to_format_size(self.motion_refs.len(), "ogf motion refs")?)?;
+      writer.write_u32::<T>(narrow_format_size(self.motion_refs.len(), "ogf motion refs")?)?;
 
       for motion_ref in &self.motion_refs {
         writer.write_w1251_string(motion_ref)?;

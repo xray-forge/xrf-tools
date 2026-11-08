@@ -8,9 +8,9 @@ use xrf_visual::{LightAnimatorDescription, LightAnimatorKey, LightDescription, L
 
 use crate::contract::feature::lighting::lights::render_lights_settings::RenderLightsSettings;
 use crate::contract::feature::weather::render_light_shafts::RenderLightShafts;
-use crate::lighting::lamp::light_animation::{to_animated_color, to_interpolated_color};
+use crate::lighting::lamp::light_animation::{get_animated_color, get_interpolated_color};
 use crate::lighting::lamp::light_basis::LightBasis;
-use crate::lighting::lamp::light_shadow_size::to_light_shadow_tile_size;
+use crate::lighting::lamp::light_shadow_size::get_light_shadow_tile_size;
 use crate::scene::level::lights::level_lights::LevelLights;
 use crate::tests::support::test_time::at;
 
@@ -22,7 +22,7 @@ fn an_idle_lights_jitter_leaves_its_inverse_square_strength_alone() {
   let range: f32 = 4.0;
   let distance: f32 = 1.5;
   let given =
-    |jittered: f32| LevelLights::to_jitter_hold(range, jittered) * jittered * jittered / (distance * distance);
+    |jittered: f32| LevelLights::get_jitter_hold(range, jittered) * jittered * jittered / (distance * distance);
 
   for jittered in [3.0_f32, 4.0, 5.0] {
     assert!(
@@ -31,8 +31,8 @@ fn an_idle_lights_jitter_leaves_its_inverse_square_strength_alone() {
     );
   }
 
-  assert_eq!(LevelLights::to_jitter_hold(range, range), 1.0);
-  assert_eq!(LevelLights::to_jitter_hold(range, 0.0), 1.0);
+  assert_eq!(LevelLights::get_jitter_hold(range, range), 1.0);
+  assert_eq!(LevelLights::get_jitter_hold(range, 0.0), 1.0);
 }
 
 fn point() -> LightDescription {
@@ -140,7 +140,7 @@ fn light_shafts_scatter_what_the_engines_slices_add_a_metre() {
     ..point()
   };
   let density = |light: &LightDescription, eye: Vec3, engine: XrayEngine| {
-    LevelLights::to_shafts(
+    LevelLights::find_shafts(
       light,
       &LightBasis::of(light),
       eye,
@@ -177,7 +177,7 @@ fn light_shafts_follow_the_views_choice_and_strength() {
     ..point()
   };
   let density = |light: &LightDescription, settings: RenderLightsSettings| {
-    LevelLights::to_shafts(
+    LevelLights::find_shafts(
       light,
       &LightBasis::of(light),
       Vec3::ZERO,
@@ -267,28 +267,28 @@ fn light_fades_by_get_lod_between_the_thresholds() {
   let area: f32 = 0.5 * 2.0 / 100.0;
 
   assert!(near(
-    LightBasis::to_light_lod(sphere, Vec3::ZERO, 0.02, 0.001),
+    LightBasis::get_light_lod(sphere, Vec3::ZERO, 0.02, 0.001),
     ((area - 0.001) / (0.02 - 0.001)).sqrt()
   ));
-  assert_eq!(LightBasis::to_light_lod(sphere, Vec3::ZERO, 0.002, 0.001), 1.0);
-  assert_eq!(LightBasis::to_light_lod(sphere, Vec3::ZERO, 0.5, 0.1), 0.0);
+  assert_eq!(LightBasis::get_light_lod(sphere, Vec3::ZERO, 0.002, 0.001), 1.0);
+  assert_eq!(LightBasis::get_light_lod(sphere, Vec3::ZERO, 0.5, 0.1), 0.0);
 }
 
 #[test]
 fn light_intensity_averages_the_colours_mean_and_luminance() {
-  assert!(near(LightBasis::to_light_intensity(Vec3::ONE), 1.0));
+  assert!(near(LightBasis::get_light_intensity(Vec3::ONE), 1.0));
   assert!(near(
-    LightBasis::to_light_intensity(Vec3::Y),
+    LightBasis::get_light_intensity(Vec3::Y),
     f32::midpoint(1.0 / 3.0, 0.7154)
   ));
 }
 
 #[test]
 fn light_shadow_tiles_take_the_nearest_power_of_two_within_bounds() {
-  assert_eq!(to_light_shadow_tile_size(700.0), 512);
-  assert_eq!(to_light_shadow_tile_size(800.0), 1024);
-  assert_eq!(to_light_shadow_tile_size(1536.0), 1024);
-  assert_eq!(to_light_shadow_tile_size(5.0), 32);
+  assert_eq!(get_light_shadow_tile_size(700.0), 512);
+  assert_eq!(get_light_shadow_tile_size(800.0), 1024);
+  assert_eq!(get_light_shadow_tile_size(1536.0), 1024);
+  assert_eq!(get_light_shadow_tile_size(5.0), 32);
 }
 
 fn animator() -> LightAnimatorDescription {
@@ -314,17 +314,20 @@ fn animator() -> LightAnimatorDescription {
 
 #[test]
 fn light_animation_holds_a_keys_colour_and_blends_between_keys() {
-  assert_eq!(to_interpolated_color(&animator(), 10.0), Vec3::new(200.0, 100.0, 50.0));
-  assert_eq!(to_interpolated_color(&animator(), 5.0), Vec3::new(100.0, 50.0, 25.0));
-  assert_eq!(to_interpolated_color(&animator(), 12.0), Vec3::new(160.0, 100.0, 70.0));
-  assert_eq!(to_interpolated_color(&animator(), 19.0), Vec3::new(100.0, 100.0, 100.0));
+  assert_eq!(get_interpolated_color(&animator(), 10.0), Vec3::new(200.0, 100.0, 50.0));
+  assert_eq!(get_interpolated_color(&animator(), 5.0), Vec3::new(100.0, 50.0, 25.0));
+  assert_eq!(get_interpolated_color(&animator(), 12.0), Vec3::new(160.0, 100.0, 70.0));
+  assert_eq!(
+    get_interpolated_color(&animator(), 19.0),
+    Vec3::new(100.0, 100.0, 100.0)
+  );
 }
 
 #[test]
 fn light_animation_steps_time_to_frames_and_loops() {
-  assert_eq!(to_animated_color(&animator(), at(0.55)), Vec3::new(100.0, 50.0, 25.0));
-  assert_eq!(to_animated_color(&animator(), at(2.55)), Vec3::new(100.0, 50.0, 25.0));
-  assert_eq!(to_animated_color(&animator(), at(1.0)), Vec3::new(200.0, 100.0, 50.0));
+  assert_eq!(get_animated_color(&animator(), at(0.55)), Vec3::new(100.0, 50.0, 25.0));
+  assert_eq!(get_animated_color(&animator(), at(2.55)), Vec3::new(100.0, 50.0, 25.0));
+  assert_eq!(get_animated_color(&animator(), at(1.0)), Vec3::new(200.0, 100.0, 50.0));
 }
 
 /// The renderer's colour is the engine's before `color_argb_f` floors it to a byte, so the two never differ by more
@@ -380,7 +383,7 @@ fn light_animation_draws_what_the_engines_light_animation_computes() {
 
     for frame in 0..=item.frame_count.cast_signed() {
       assert_matches_the_engine(
-        to_interpolated_color(&animator, frame as f32),
+        get_interpolated_color(&animator, frame as f32),
         item
           .interpolate_rgb(frame)
           .expect("every frame from zero is keyed at or before"),
@@ -393,7 +396,7 @@ fn light_animation_draws_what_the_engines_light_animation_computes() {
       let (_, color) = item.calculate_rgb(seconds).expect("the animation advances");
 
       assert_matches_the_engine(
-        to_animated_color(&animator, at(f64::from(seconds))),
+        get_animated_color(&animator, at(f64::from(seconds))),
         color,
         &format!("{} at {seconds} s", item.name),
       );

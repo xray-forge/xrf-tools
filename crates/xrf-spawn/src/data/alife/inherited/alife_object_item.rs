@@ -5,7 +5,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 #[cfg(test)]
 use xrf_math::Vector3d;
-use xrf_utils::{to_format_size, vector_from_string, vector_to_string};
+use xrf_utils::{narrow_format_size, vector_from_string, vector_to_string};
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 #[cfg(test)]
@@ -61,7 +61,7 @@ impl AlifePacketsReadWrite for AlifeObjectItem {
   fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
     spawn.write_xr::<T, _>(&self.base)?;
     spawn.write_f32::<T>(self.condition)?;
-    spawn.write_u32::<T>(to_format_size(self.upgrades.len(), "item upgrades")?)?;
+    spawn.write_u32::<T>(narrow_format_size(self.upgrades.len(), "item upgrades")?)?;
 
     for upgrade in &self.upgrades {
       spawn.write_w1251_string(upgrade)?;

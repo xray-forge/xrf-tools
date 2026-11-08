@@ -9,7 +9,7 @@ use crate::tests::fixtures::{RATE, ramp, wav};
 use crate::{DecodedSound, SoundChannels, SoundDecoder, SoundPeaks};
 
 /// A ramp sample read back as the frame it was written at.
-fn to_frame(sample: f32) -> i64 {
+fn get_frame(sample: f32) -> i64 {
   (sample * 32768.0).round() as i64
 }
 
@@ -31,7 +31,7 @@ fn seeks_to_the_exact_frame_asked_for() {
   for frame in [0, 1, 4095, 4096, 7777, 9999] {
     decoder.seek(frame).expect("the decoder seeks");
     assert!(decoder.decode_next(&mut packet).expect("the sound decodes"));
-    assert_eq!(to_frame(packet[0]), frame.cast_signed(), "seek to {frame}");
+    assert_eq!(get_frame(packet[0]), frame.cast_signed(), "seek to {frame}");
   }
 
   for end in [10_000, 20_000] {
@@ -42,7 +42,7 @@ fn seeks_to_the_exact_frame_asked_for() {
 
   decoder.seek(3).expect("a seek back from the end");
   assert!(decoder.decode_next(&mut packet).expect("the sound decodes again"));
-  assert_eq!(to_frame(packet[0]), 3);
+  assert_eq!(get_frame(packet[0]), 3);
 }
 
 #[test]

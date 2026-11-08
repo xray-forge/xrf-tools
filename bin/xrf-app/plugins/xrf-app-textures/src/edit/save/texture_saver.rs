@@ -52,7 +52,7 @@ impl TextureSaver {
     FileStamp::check_unchanged(&path, descriptor.target.expected)?;
 
     prepared.push(PreparedFile {
-      bytes: Self::to_descriptor_bytes(descriptor, &path, synced_format)?,
+      bytes: Self::encode_descriptor(descriptor, &path, synced_format)?,
       path,
     });
 
@@ -70,7 +70,7 @@ impl TextureSaver {
   }
 
   /// The descriptor as bytes, built onto whatever is on disk so every chunk the form does not model survives.
-  fn to_descriptor_bytes(
+  fn encode_descriptor(
     save: &TextureDescriptorSave,
     path: &Path,
     synced_format: Option<ThmFormat>,

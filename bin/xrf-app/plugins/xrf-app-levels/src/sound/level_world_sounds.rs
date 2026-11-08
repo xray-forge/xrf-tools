@@ -73,7 +73,7 @@ impl LevelWorldSounds {
         .map(|tracks| {
           tracks
             .iter()
-            .map(|(track, parameters)| Self::to_track(track, parameters, files))
+            .map(|(track, parameters)| Self::read_track(track, parameters, files))
             .collect()
         })
         .unwrap_or_default(),
@@ -82,7 +82,7 @@ impl LevelWorldSounds {
 
   /// `SMusicTrack::Load`: `from_hour, to_hour, volume, pause_from_s, pause_to_s` read as `sscanf` reads them, each value
   /// it cannot read left at its default; a pause whose two ends are equal widens by one.
-  fn to_track(track: &str, parameters: &str, files: &mut LevelSoundFiles<'_>) -> WorldMusicTrack {
+  fn read_track(track: &str, parameters: &str, files: &mut LevelSoundFiles<'_>) -> WorldMusicTrack {
     let values: Vec<&str> = parameters.split(',').map(str::trim).collect();
     let integer = |index: usize| values.get(index).and_then(|value| value.parse::<i64>().ok());
     let from_hour: i64 = integer(0).unwrap_or(0);

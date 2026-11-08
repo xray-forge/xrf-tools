@@ -436,7 +436,7 @@ impl RenderThread {
     let uniform: UniformBinding<PresentUniform> = runtime.push_uniform(&shown);
     let parameters: PresentParameters<'a> = PresentParameters {
       present: uniform,
-      ..Self::to_present_parameters(gpu, output)
+      ..Self::get_present_parameters(gpu, output)
     };
     // The helpers are read against the frame's depth, placed by the capture's own size, as the window's are.
     let overlay_parameters: Option<OverlayParameters> = helpers.map(|_| OverlayParameters {

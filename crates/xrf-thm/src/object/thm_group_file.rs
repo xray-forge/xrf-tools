@@ -6,7 +6,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{StagedFile, format_path, to_format_size};
+use xrf_utils::{StagedFile, format_path, narrow_format_size};
 
 use crate::chunks::thm_chunks::ThmChunks;
 use crate::chunks::thm_extra_chunk::ThmExtraChunk;
@@ -162,7 +162,7 @@ impl ThmGroupFile {
       Ok(writer.write_u32::<T>(Self::THUMBNAIL_TYPE)?)
     })?;
     ThmChunks::write::<T>(destination, Self::OBJECTS_CHUNK_ID, trailing, |writer| {
-      writer.write_u32::<T>(to_format_size(self.objects.len(), "group thumbnail objects")?)?;
+      writer.write_u32::<T>(narrow_format_size(self.objects.len(), "group thumbnail objects")?)?;
 
       for object in &self.objects {
         writer.write_w1251_string(object)?;

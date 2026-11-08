@@ -7,12 +7,12 @@ use xrf_audio_scene::AudioListener;
 pub(crate) struct SteamSpace;
 
 impl SteamSpace {
-  pub(crate) fn to_point([x, y, z]: [f32; 3]) -> Point {
+  pub(crate) fn convert_point([x, y, z]: [f32; 3]) -> Point {
     Point::new(x, y, -z)
   }
 
   /// The listener's position and axes.
-  pub(crate) fn to_listener(listener: &AudioListener) -> CoordinateSystem {
+  pub(crate) fn convert_listener(listener: &AudioListener) -> CoordinateSystem {
     let [ux, uy, uz] = listener.up;
     let [fx, fy, fz] = listener.forward;
     // In the game's space, up crossed with ahead points right.
@@ -22,14 +22,14 @@ impl SteamSpace {
       right: Vector3::new(right[0], right[1], -right[2]),
       up: Vector3::new(ux, uy, -uz),
       ahead: Vector3::new(fx, fy, -fz),
-      origin: Self::to_point(listener.position),
+      origin: Self::convert_point(listener.position),
     }
   }
 
   /// A source at `position`, its axes Steam Audio's own.
-  pub(crate) fn to_source(position: [f32; 3]) -> CoordinateSystem {
+  pub(crate) fn convert_source(position: [f32; 3]) -> CoordinateSystem {
     CoordinateSystem {
-      origin: Self::to_point(position),
+      origin: Self::convert_point(position),
       ..CoordinateSystem::default()
     }
   }

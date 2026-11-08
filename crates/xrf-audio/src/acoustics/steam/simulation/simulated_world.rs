@@ -71,7 +71,7 @@ impl SimulatedWorld {
     let vertices: Vec<Point> = mesh
       .vertices
       .iter()
-      .map(|vertex| SteamSpace::to_point(*vertex))
+      .map(|vertex| SteamSpace::convert_point(*vertex))
       .collect();
     // Flipping `z` mirrors the space, so two corners swap to keep each face's front where the game has it.
     let triangles: Vec<Triangle> = mesh
@@ -205,7 +205,7 @@ impl SimulatedWorld {
       if let Some(source) = self.sources.get(&simulated.id) {
         let [x, y, z] = simulated.position;
         let inputs = SimulationInputs {
-          source: SteamSpace::to_source([x, y + Self::OCCLUSION_LIFT, z]),
+          source: SteamSpace::convert_source([x, y + Self::OCCLUSION_LIFT, z]),
           parameters: parameters.clone(),
         };
 
@@ -217,7 +217,7 @@ impl SimulatedWorld {
 
     if let Err(error) = self
       .direct
-      .set_shared_direct_inputs(&SimulationSharedInputs::new(SteamSpace::to_listener(listener)).with_direct())
+      .set_shared_direct_inputs(&SimulationSharedInputs::new(SteamSpace::convert_listener(listener)).with_direct())
     {
       log::warn!("The sounds' ways through the walls are not simulated: {error:?}");
 
@@ -249,7 +249,7 @@ impl SimulatedWorld {
 
   /// Each band's reverb time around `listener`, none where the simulation fails.
   pub(crate) fn run_reflections(&mut self, listener: &AudioListener) -> Option<[f32; 3]> {
-    let at: CoordinateSystem = SteamSpace::to_listener(listener);
+    let at: CoordinateSystem = SteamSpace::convert_listener(listener);
     let inputs = SimulationInputs {
       source: at,
       parameters: SimulationParameters::new().with_reflections(ParametricParameters::default()),

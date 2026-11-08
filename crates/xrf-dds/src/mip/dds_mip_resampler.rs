@@ -134,12 +134,12 @@ impl DdsMipResampler {
     }
 
     for (byte, sum) in row.iter_mut().zip(sums.iter()) {
-      *byte = Self::to_byte(*sum);
+      *byte = Self::quantize_byte(*sum);
     }
   }
 
   /// Rounds a resampled value back into a byte, clamping the overshoot a kernel with negative lobes produces.
-  fn to_byte(value: f64) -> u8 {
+  fn quantize_byte(value: f64) -> u8 {
     value.round().clamp(0.0, f64::from(u8::MAX)) as u8
   }
 }
@@ -262,7 +262,7 @@ mod tests {
       let horizontal: &DdsMipTaps = &resampler.horizontal[x as usize];
 
       Rgba(std::array::from_fn(|channel| {
-        DdsMipResampler::to_byte(weigh(vertical, &|row| {
+        DdsMipResampler::quantize_byte(weigh(vertical, &|row| {
           weigh(horizontal, &|column| {
             f64::from(source.get_pixel(column as u32, row as u32).0[channel])
           })
@@ -334,9 +334,9 @@ mod tests {
   fn rounds_and_clamps_a_resampled_value_into_a_byte() {
     // Where a kernel with negative lobes lands: Catrom undershoots at a hard edge and overshoots after it, and both
     // are outside a byte before this. Halves round away from zero, which is what decides the middle grey.
-    assert_eq!(DdsMipResampler::to_byte(-12.5), 0);
-    assert_eq!(DdsMipResampler::to_byte(300.0), u8::MAX);
-    assert_eq!(DdsMipResampler::to_byte(127.5), 128);
-    assert_eq!(DdsMipResampler::to_byte(126.5), 127);
+    assert_eq!(DdsMipResampler::quantize_byte(-12.5), 0);
+    assert_eq!(DdsMipResampler::quantize_byte(300.0), u8::MAX);
+    assert_eq!(DdsMipResampler::quantize_byte(127.5), 128);
+    assert_eq!(DdsMipResampler::quantize_byte(126.5), 127);
   }
 }

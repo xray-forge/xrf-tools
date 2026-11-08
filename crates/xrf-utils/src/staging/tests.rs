@@ -105,7 +105,7 @@ fn creates_the_directories_above_a_new_file() -> IoResult<()> {
 #[test]
 fn names_a_sibling_after_its_target_and_knows_it_again() -> IoResult<()> {
   let target: PathBuf = get_test_directory("siblings")?.join("config.json");
-  let sibling: PathBuf = StagedFile::to_sibling(&target, "staged")?;
+  let sibling: PathBuf = StagedFile::name_sibling(&target, "staged")?;
   let name = sibling.file_name().expect("a sibling has a name");
 
   assert_eq!(sibling.parent(), target.parent());
@@ -116,7 +116,7 @@ fn names_a_sibling_after_its_target_and_knows_it_again() -> IoResult<()> {
   ));
   assert_ne!(
     sibling,
-    StagedFile::to_sibling(&target, "staged")?,
+    StagedFile::name_sibling(&target, "staged")?,
     "two siblings never share a name"
   );
 

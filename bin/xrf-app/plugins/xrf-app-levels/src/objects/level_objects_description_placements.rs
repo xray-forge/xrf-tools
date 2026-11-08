@@ -33,7 +33,7 @@ impl LevelObjectsDescription {
           index,
           kind: LevelObjectKind::StaticParticles,
           name: planted.effect.clone(),
-          space: PlacementSpace::at(Self::to_place(&planted.get_position())),
+          space: PlacementSpace::at(Self::get_place(&planted.get_position())),
           details: LevelPlacementDetails::Particles {
             effect: planted.effect.clone(),
           },
@@ -47,7 +47,7 @@ impl LevelObjectsDescription {
         index,
         kind: LevelObjectKind::StaticSounds,
         name: sound.sound.clone(),
-        space: PlacementSpace::at(Self::to_place(&sound.position)),
+        space: PlacementSpace::at(Self::get_place(&sound.position)),
         details: LevelPlacementDetails::Sound {
           sound: sound.sound.clone(),
           volume: sound.volume,
@@ -67,7 +67,7 @@ impl LevelObjectsDescription {
         .iter()
         .enumerate()
       {
-        let Some(corner_box) = Self::to_corner_box(corners) else {
+        let Some(corner_box) = Self::find_corner_box(corners) else {
           continue;
         };
         let SoundEnvironmentPair { outer, inner } = SoundEnvironmentPair::of(file, index);
@@ -78,7 +78,7 @@ impl LevelObjectsDescription {
           kind: LevelObjectKind::SoundEnvironments,
           name: format!("{outer} / {inner}"),
           space: PlacementSpace {
-            transform: Self::to_renderer_place(corner_box.center),
+            transform: Self::get_renderer_place(corner_box.center),
             shapes: vec![LevelObjectShape::Box {
               axes: corner_box.axes,
               center: Vector3d::new(0.0, 0.0, 0.0),
@@ -99,7 +99,7 @@ impl LevelObjectsDescription {
         index,
         kind: LevelObjectKind::FogVolumes,
         name: volume.profile.clone(),
-        space: Self::to_fog_volume(volume),
+        space: Self::place_fog_volume(volume),
         details: LevelPlacementDetails::FogVolume {
           profile: volume.profile.clone(),
           obstacles: volume.obstacles.len() as u32,
@@ -118,7 +118,7 @@ impl LevelObjectsDescription {
         kind: LevelObjectKind::EnvModifiers,
         name: format!("modifier {index}"),
         space: PlacementSpace {
-          transform: Self::to_place(&modifier.position),
+          transform: Self::get_place(&modifier.position),
           shapes: vec![LevelObjectShape::Sphere {
             center: Vector3d::new(0.0, 0.0, 0.0),
             radius: modifier.radius,
@@ -142,7 +142,7 @@ impl LevelObjectsDescription {
         } else {
           point.profile.clone()
         },
-        space: PlacementSpace::at(Self::to_place(&point.position)),
+        space: PlacementSpace::at(Self::get_place(&point.position)),
         details: LevelPlacementDetails::RespawnPoint {
           role,
           team: point.team,
@@ -166,7 +166,7 @@ impl LevelObjectsDescription {
             LevelObjectId::Light { index: index as u32 },
             LevelObjectKind::Lights,
             format!("light {index}"),
-            Self::to_place(&light.position),
+            Self::get_place(&light.position),
           )
         }),
     );
@@ -174,10 +174,10 @@ impl LevelObjectsDescription {
 
   /// A box from its eight corners in engine space: the two shortest edges from a corner, and the corner standing most
   /// squarely off both; `None` for corners spanning no box.
-  fn to_corner_box(corners: &[Vector3d]) -> Option<CornerBox> {
+  fn find_corner_box(corners: &[Vector3d]) -> Option<CornerBox> {
     let points: Vec<Vec3> = corners
       .iter()
-      .map(|corner| Vec3::from(LevelObject::to_renderer_space(corner)))
+      .map(|corner| Vec3::from(LevelObject::convert_to_renderer_space(corner)))
       .collect();
     let first: Vec3 = *points.first()?;
     let mut spans: Vec<Vec3> = points.iter().skip(1).map(|point| *point - first).collect();
@@ -199,22 +199,22 @@ impl LevelObjectsDescription {
   }
 
   /// A fog volume: the unit cube its matrix stands, and each obstacle's cube cutting it, about the volume's centre.
-  fn to_fog_volume(volume: &LevelFogVolume) -> PlacementSpace {
-    let center: Vec3 = Vec3::from(LevelObject::to_renderer_space(&Self::get_matrix_row(
+  fn place_fog_volume(volume: &LevelFogVolume) -> PlacementSpace {
+    let center: Vec3 = Vec3::from(LevelObject::convert_to_renderer_space(&Self::get_matrix_row(
       &volume.transform,
       3,
     )));
     let to_box = |matrix: &Matrix4x4| -> LevelObjectShape {
-      let at: Vec3 = Vec3::from(LevelObject::to_renderer_space(&Self::get_matrix_row(matrix, 3)));
+      let at: Vec3 = Vec3::from(LevelObject::convert_to_renderer_space(&Self::get_matrix_row(matrix, 3)));
 
       LevelObjectShape::Box {
-        axes: [0, 1, 2].map(|row| LevelObject::to_renderer_space(&Self::get_matrix_row(matrix, row))),
+        axes: [0, 1, 2].map(|row| LevelObject::convert_to_renderer_space(&Self::get_matrix_row(matrix, row))),
         center: Vector3d::from(at - center),
       }
     };
 
     PlacementSpace {
-      transform: Self::to_renderer_place(center),
+      transform: Self::get_renderer_place(center),
       shapes: std::iter::once(&volume.transform)
         .chain(&volume.obstacles)
         .map(to_box)
@@ -230,10 +230,10 @@ impl LevelObjectsDescription {
   }
 
   /// Unturned at a point already in renderer space.
-  fn to_renderer_place(center: Vec3) -> VisualTransform {
+  fn get_renderer_place(center: Vec3) -> VisualTransform {
     VisualTransform {
       c: Vector3d::from(center),
-      ..Self::to_place(&Vector3d::new(0.0, 0.0, 0.0))
+      ..Self::get_place(&Vector3d::new(0.0, 0.0, 0.0))
     }
   }
 }

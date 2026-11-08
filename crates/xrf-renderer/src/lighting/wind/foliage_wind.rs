@@ -85,15 +85,15 @@ impl FoliageWind {
         settings.trees_bend,
         u32::from(settings.is_enhanced()) as f32,
       ),
-      anim: Self::to_anim(self.anim, settings.trees_trunk),
-      previous_anim: Self::to_anim(self.previous, settings.trees_trunk),
+      anim: Self::get_anim(self.anim, settings.trees_trunk),
+      previous_anim: Self::get_anim(self.previous, settings.trees_trunk),
       flora: Vec4::new(0.0, 0.0, wetness, u32::from(settings.is_enhanced()) as f32),
     }
   }
 
   /// The drift as `shaders/common/foliage_wind.wgsl` reads it: the trunks' clock taken within the turn their swing
   /// repeats over at `trunk_speed`, `cos(phase) * sin(phase * 5)` with the phase the clock times that speed.
-  fn to_anim(anim: DVec4, trunk_speed: f32) -> Vec4 {
+  fn get_anim(anim: DVec4, trunk_speed: f32) -> Vec4 {
     let swing: f64 = std::f64::consts::TAU / f64::from(trunk_speed);
 
     // todo: Keep the flow fields' drift in `xy` precise past some hours of wind: the gradient noise it moves through

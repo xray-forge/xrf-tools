@@ -38,7 +38,7 @@ impl LightFades {
   /// How far a shadowed light has faded from `eye` over the cull's levels of detail, `start` to `end` metres.
   pub(crate) fn of(light: &LightDescription, basis: &LightBasis, eye: Vec3, (start, end): (f32, f32)) -> Self {
     if matches!(light.kind, LightKind::Spot) {
-      let fade: f32 = LightBasis::to_light_lod(basis.get_spatial_sphere(light), eye, start, end);
+      let fade: f32 = LightBasis::get_light_lod(basis.get_spatial_sphere(light), eye, start, end);
 
       return Self {
         whole: fade,
@@ -48,7 +48,7 @@ impl LightFades {
     }
 
     let faces: [f32; 6] = LIGHT_SHADOW_POINT_FACES
-      .map(|(direction, _)| LightBasis::to_light_lod(basis.get_face_sphere(light, direction), eye, start, end));
+      .map(|(direction, _)| LightBasis::get_light_lod(basis.get_face_sphere(light, direction), eye, start, end));
 
     Self {
       whole: 1.0,

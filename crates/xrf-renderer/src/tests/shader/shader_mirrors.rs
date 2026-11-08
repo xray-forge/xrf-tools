@@ -753,7 +753,7 @@ fn get_signed_constant(library: &ShaderLibrary, name: &str, constant: &str) -> i
 fn get_float_constant(library: &ShaderLibrary, name: &str, constant: &str) -> f32 {
   let module: naga::Module = parse(library, name);
 
-  to_float(&module, name, get_declared(&module, name, constant).init)
+  read_float(&module, name, get_declared(&module, name, constant).init)
 }
 
 /// The components a module declares a float vector constant with.
@@ -763,7 +763,7 @@ fn get_vector_constant(library: &ShaderLibrary, name: &str, constant: &str) -> V
   match module.global_expressions[get_declared(&module, name, constant).init] {
     naga::Expression::Compose { ref components, .. } => components
       .iter()
-      .map(|component| to_float(&module, name, *component))
+      .map(|component| read_float(&module, name, *component))
       .collect(),
     ref other => panic!("'{name}' declares {constant} as {other:?}"),
   }
@@ -784,7 +784,7 @@ fn get_declared<'m>(module: &'m naga::Module, name: &str, constant: &str) -> &'m
     .unwrap_or_else(|| panic!("'{name}' declares no {constant}"))
 }
 
-fn to_float(module: &naga::Module, name: &str, expression: naga::Handle<naga::Expression>) -> f32 {
+fn read_float(module: &naga::Module, name: &str, expression: naga::Handle<naga::Expression>) -> f32 {
   match module.global_expressions[expression] {
     naga::Expression::Literal(naga::Literal::F32(value)) => value,
     ref other => panic!("'{name}' holds {other:?} where a float stands"),

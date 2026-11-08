@@ -57,12 +57,12 @@ impl WindowGeometry {
 
     let width: u32 = Self::fit_length(
       Self::scale_length(self.width, ratio),
-      Self::to_physical(min_width, target.scale),
+      Self::get_physical(min_width, target.scale),
       target.width,
     );
     let height: u32 = Self::fit_length(
       Self::scale_length(self.height, ratio),
-      Self::to_physical(min_height, target.scale),
+      Self::get_physical(min_height, target.scale),
       target.height,
     );
 
@@ -166,7 +166,7 @@ impl WindowGeometry {
   }
 
   /// Physical length of a size the window configuration states in logical pixels.
-  fn to_physical(length: f64, scale: f64) -> u32 {
+  fn get_physical(length: f64, scale: f64) -> u32 {
     let physical: f64 = (length * scale).round();
 
     if physical > 0.0 {

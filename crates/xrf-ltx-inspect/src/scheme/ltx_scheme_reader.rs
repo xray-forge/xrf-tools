@@ -54,7 +54,7 @@ impl LtxSchemeReader {
 
         fields.push(LtxSchemeFieldReport {
           declared: Some(LtxSchemeFieldDeclaration::of(declared, false)),
-          resolved: Self::to_resolved(resolution, name, section, field),
+          resolved: Self::find_resolved(resolution, name, section, field),
           name: String::from(field),
         });
       }
@@ -69,7 +69,7 @@ impl LtxSchemeReader {
 
       fields.push(LtxSchemeFieldReport {
         declared: any.map(|declared| LtxSchemeFieldDeclaration::of(declared, true)),
-        resolved: Self::to_resolved(resolution, name, section, field),
+        resolved: Self::find_resolved(resolution, name, section, field),
         name: String::from(field),
       });
     }
@@ -89,7 +89,7 @@ impl LtxSchemeReader {
   }
 
   /// What the section holds for one field, with where that value was written.
-  fn to_resolved(resolution: &LtxResolution, name: &str, section: &Section, field: &str) -> Option<LtxResolvedField> {
+  fn find_resolved(resolution: &LtxResolution, name: &str, section: &Section, field: &str) -> Option<LtxResolvedField> {
     section.get(field).map(|value| LtxResolvedField {
       key: String::from(field),
       origin: resolution.get_origin(name, field).into(),

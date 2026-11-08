@@ -503,7 +503,7 @@ impl StaticTrace {
         place: *place,
         pad: [0; 2],
       });
-      instances.push((Structure::Model(*model), StaticTraceGroup::to_transform(transform)));
+      instances.push((Structure::Model(*model), StaticTraceGroup::pack_transform(transform)));
     }
 
     (table, records, instances, swaying)

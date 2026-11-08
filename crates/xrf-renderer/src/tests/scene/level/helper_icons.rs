@@ -15,7 +15,7 @@ fn get_sources() -> PathBuf {
 
 /// The manifest the icons make: each by the name it serialises to, the Material icon it is drawn from and the file its
 /// picture is exported to, in the atlas's order, as the picture exporter reads it.
-fn to_manifest() -> String {
+fn format_manifest() -> String {
   let icons: Vec<Value> = RENDER_HELPER_ICONS
     .iter()
     .map(|entry| {
@@ -53,7 +53,7 @@ fn names_each_icon_as_it_serialises() {
 #[test]
 fn the_manifest_names_every_icon_in_the_atlas_order() {
   let path: PathBuf = get_sources().join("manifest.json");
-  let manifest: String = to_manifest();
+  let manifest: String = format_manifest();
 
   if std::fs::read_to_string(&path).ok().as_deref() != Some(manifest.as_str()) {
     std::fs::create_dir_all(get_sources()).expect("the icons' folder is made");

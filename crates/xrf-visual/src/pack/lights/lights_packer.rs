@@ -171,7 +171,7 @@ impl<'a> LightsPacker<'a> {
     self.lights.push(LightDescription {
       kind: if is_spot { LightKind::Spot } else { LightKind::Point },
       position: main.c,
-      direction: Self::to_direction(&main),
+      direction: Self::get_direction(&main),
       right: main.i,
       color,
       range: lamp.main_range,
@@ -200,7 +200,7 @@ impl<'a> LightsPacker<'a> {
       self.lights.push(LightDescription {
         kind: LightKind::Point,
         position: ambient.c,
-        direction: Self::to_direction(&ambient),
+        direction: Self::get_direction(&ambient),
         right: ambient.i,
         color: color.map(|channel| channel * lamp.ambient_power),
         range: lamp.ambient_radius,
@@ -360,7 +360,7 @@ impl<'a> LightsPacker<'a> {
 
   /// The engine's `xf.k`, where a light points, in the renderer's space: mirroring a transform negates the `x` and `y` of
   /// its third axis, so negating that axis gives the converted `k` back.
-  fn to_direction(transform: &VisualTransform) -> Vector3d {
+  fn get_direction(transform: &VisualTransform) -> Vector3d {
     Vector3d::new(-transform.k.x, -transform.k.y, -transform.k.z)
   }
 

@@ -68,5 +68,5 @@ Test-only and benchmark-only variables such as `XRF_BENCH_CORPUS` stay with thei
 `ALL`'s order: its `value` as set, the `applied` value in the table's spelling, and `is_set` and `is_refused` (set but
 invalid). The desktop app logs the set ones at startup and lists them in Settings, About. `EnvFlags::list_read_by`
 returns the runtime and passed-through variables one reader reads; `xrf-cli --help` ends with them.
-`EnvFlags::to_markdown` renders `ENVIRONMENT.md`. The `typescript-bindings` feature derives Specta types for
+`EnvFlags::format_markdown` renders `ENVIRONMENT.md`. The `typescript-bindings` feature derives Specta types for
 `EnvFlagKind` and `EnvFlagReading`.

@@ -19,7 +19,7 @@ impl LevelRenderParts {
   pub(crate) const VIEW_PARTS: &'static [&'static str] = &[LevelGeometryPart::NAME, LevelSurfacesPart::NAME];
 
   /// What every source of a session's level shares its scene by, whichever of its snapshots it draws.
-  pub(crate) fn to_scene_key(session_id: SessionId) -> String {
+  pub(crate) fn format_scene_key(session_id: SessionId) -> String {
     format!("level {session_id}")
   }
 
@@ -27,7 +27,7 @@ impl LevelRenderParts {
   /// for any of them, or recorded what it read as one of them. The sectors stream afresh instead, on their geometry or
   /// surfaces (`VIEW_PARTS`); the map and the textures' list are the page's, and the start only matters where a viewer
   /// first stands.
-  pub(crate) fn to_reload(stale_parts: &[&str]) -> LevelParts {
+  pub(crate) fn select_reload(stale_parts: &[&str]) -> LevelParts {
     LevelPart::ALL
       .into_iter()
       .filter(|part| {

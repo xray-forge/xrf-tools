@@ -59,7 +59,7 @@ impl StaticScene {
     let slots: Vec<(u32, u32, StaticBatch, u32)> = proxy.slots.clone();
     let (sphere, vertex_start, skin): (Vec4, u32, Option<(u32, u32)>) = (proxy.sphere, proxy.vertex_start, proxy.skin);
     let matrix: Mat4 = place.transform;
-    let scale: f32 = Self::to_scale(&matrix);
+    let scale: f32 = Self::get_scale(&matrix);
     let placed: Vec4 = matrix.transform_point3(sphere.truncate()).extend(sphere.w * scale);
     let mut capacities: [u32; StaticBatch::LIST_COUNT] = [0; StaticBatch::LIST_COUNT];
 
@@ -264,7 +264,7 @@ impl StaticScene {
 
     for instance in 0..instances {
       let matrix: Mat4 = Mat4::from_cols_slice(&transforms[instance * 16..][..16]);
-      let scale: f32 = Self::to_scale(&matrix);
+      let scale: f32 = Self::get_scale(&matrix);
       let (hemi_scale, hemi_bias): (f32, f32) = (
         hemi.get(instance * 2).copied().unwrap_or(1.0),
         hemi.get(instance * 2 + 1).copied().unwrap_or(0.0),
@@ -283,7 +283,7 @@ impl StaticScene {
         .unwrap_or(StaticRow::NO_LOD);
 
       if let Some(traced) = &mut traced {
-        traced.transforms.push(StaticTraceGroup::to_transform(&matrix));
+        traced.transforms.push(StaticTraceGroup::pack_transform(&matrix));
       }
 
       if !sight.is_empty() {

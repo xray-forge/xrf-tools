@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Aabb;
-use xrf_utils::{format_path, to_format_size};
+use xrf_utils::{format_path, narrow_format_size};
 
 use crate::details::detail_vertex::DetailVertex;
 
@@ -161,8 +161,8 @@ impl ChunkReadWrite for DetailModel {
     writer.write_u32::<T>(self.flags)?;
     writer.write_f32::<T>(self.min_scale)?;
     writer.write_f32::<T>(self.max_scale)?;
-    writer.write_u32::<T>(to_format_size(self.vertices.len(), "detail vertices")?)?;
-    writer.write_u32::<T>(to_format_size(self.indices.len(), "detail indices")?)?;
+    writer.write_u32::<T>(narrow_format_size(self.vertices.len(), "detail vertices")?)?;
+    writer.write_u32::<T>(narrow_format_size(self.indices.len(), "detail indices")?)?;
 
     for vertex in &self.vertices {
       writer.write_xr::<T, _>(vertex)?;

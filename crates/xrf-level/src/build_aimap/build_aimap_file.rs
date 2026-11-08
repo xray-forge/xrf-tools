@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::{Aabb, Vector3d};
-use xrf_utils::{format_path, to_format_size};
+use xrf_utils::{format_path, narrow_format_size};
 
 use crate::build_aimap::build_aimap_node::BuildAimapNode;
 use crate::build_aimap::build_aimap_params::BuildAimapParams;
@@ -152,7 +152,7 @@ impl BuildAimapFile {
 
     let mut nodes: ChunkWriter = ChunkWriter::new();
 
-    nodes.write_u32::<T>(to_format_size(self.nodes.len(), "build AI map nodes")?)?;
+    nodes.write_u32::<T>(narrow_format_size(self.nodes.len(), "build AI map nodes")?)?;
 
     for node in &self.nodes {
       node.write::<T>(&mut nodes, has_wide_links)?;

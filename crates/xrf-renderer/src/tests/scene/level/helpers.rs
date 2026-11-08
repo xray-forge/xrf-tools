@@ -124,7 +124,7 @@ fn draws_the_kinds_switched_on_less_the_hidden_and_marks_the_selected_unfaded() 
   };
 
   assert_eq!(
-    ids(HelpersFeature::to_vertices(
+    ids(HelpersFeature::list_vertices(
       &helpers,
       &options((1 << 10) | (1 << 11)),
       &[],
@@ -134,7 +134,7 @@ fn draws_the_kinds_switched_on_less_the_hidden_and_marks_the_selected_unfaded() 
     vec![3, 7]
   );
   assert_eq!(
-    ids(HelpersFeature::to_vertices(
+    ids(HelpersFeature::list_vertices(
       &helpers,
       &options(1 << 11),
       &[],
@@ -144,7 +144,7 @@ fn draws_the_kinds_switched_on_less_the_hidden_and_marks_the_selected_unfaded() 
     vec![3]
   );
   assert!(
-    HelpersFeature::to_vertices(
+    HelpersFeature::list_vertices(
       &helpers,
       &RenderHelperOptions {
         is_shown: false,
@@ -157,7 +157,7 @@ fn draws_the_kinds_switched_on_less_the_hidden_and_marks_the_selected_unfaded() 
     .is_empty()
   );
   assert_eq!(
-    ids(HelpersFeature::to_vertices(
+    ids(HelpersFeature::list_vertices(
       &helpers,
       &RenderHelperOptions {
         hidden: vec![3],
@@ -176,9 +176,9 @@ fn draws_the_kinds_switched_on_less_the_hidden_and_marks_the_selected_unfaded() 
     distance_scale: 2.0,
     ..options(u32::MAX)
   };
-  let every: Vec<HelperVertex> = HelpersFeature::to_vertices(&helpers, &selecting, &[], HelperPart::Every, no_boxes);
+  let every: Vec<HelperVertex> = HelpersFeature::list_vertices(&helpers, &selecting, &[], HelperPart::Every, no_boxes);
   let singled: Vec<HelperVertex> =
-    HelpersFeature::to_vertices(&helpers, &selecting, &[], HelperPart::Singled, no_boxes);
+    HelpersFeature::list_vertices(&helpers, &selecting, &[], HelperPart::Singled, no_boxes);
 
   assert_eq!(ids(every.clone()), vec![3, 7]);
   assert!(every.iter().all(|it| it.color[3] == 0.0 && it.fade[0] == 200.0));
@@ -194,9 +194,10 @@ fn lights_the_sounding_objects_apart_still_fading() {
     selected: vec![7],
     ..options(u32::MAX)
   };
-  let every: Vec<HelperVertex> = HelpersFeature::to_vertices(&helpers, &options, &[3, 7], HelperPart::Every, no_boxes);
+  let every: Vec<HelperVertex> =
+    HelpersFeature::list_vertices(&helpers, &options, &[3, 7], HelperPart::Every, no_boxes);
   let singled: Vec<HelperVertex> =
-    HelpersFeature::to_vertices(&helpers, &options, &[3, 7], HelperPart::Singled, no_boxes);
+    HelpersFeature::list_vertices(&helpers, &options, &[3, 7], HelperPart::Singled, no_boxes);
 
   assert!(every.iter().all(|it| it.color[3] == 0.0));
   assert!(
@@ -247,13 +248,13 @@ fn marks_each_standing_model_by_its_place_and_boxes_the_hovered_and_selected() {
 
   assert_eq!(helpers.segments.len(), 0);
   assert_eq!(
-    HelpersFeature::to_marks(&helpers, &options(1 << 2), places),
+    HelpersFeature::list_marks(&helpers, &options(1 << 2), places),
     vec![[300, orange], [900, orange]]
   );
-  assert!(HelpersFeature::to_marks(&helpers, &options(1 << 3), places).is_empty());
-  assert!(HelpersFeature::to_vertices(&helpers, &options(1 << 2), &[], HelperPart::Every, boxes).is_empty());
+  assert!(HelpersFeature::list_marks(&helpers, &options(1 << 3), places).is_empty());
+  assert!(HelpersFeature::list_vertices(&helpers, &options(1 << 2), &[], HelperPart::Every, boxes).is_empty());
 
-  let singled: Vec<HelperVertex> = HelpersFeature::to_vertices(
+  let singled: Vec<HelperVertex> = HelpersFeature::list_vertices(
     &helpers,
     &RenderHelperOptions {
       selected: vec![4],
@@ -308,7 +309,7 @@ fn stands_each_icon_at_its_point_by_its_cell_drawn_as_its_object() {
     },
     1,
   );
-  let icons: Vec<HelperIconInstance> = HelpersFeature::to_icons(
+  let icons: Vec<HelperIconInstance> = HelpersFeature::list_icons(
     &helpers,
     &RenderHelperOptions {
       selected: vec![8],

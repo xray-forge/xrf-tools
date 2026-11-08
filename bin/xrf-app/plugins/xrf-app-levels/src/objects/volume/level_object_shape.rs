@@ -26,12 +26,12 @@ impl From<&Shape> for LevelObjectShape {
   fn from(shape: &Shape) -> Self {
     match shape {
       Shape::Sphere(sphere) => Self::Sphere {
-        center: LevelObject::to_renderer_space(&sphere.center),
+        center: LevelObject::convert_to_renderer_space(&sphere.center),
         radius: sphere.radius,
       },
       Shape::Box(transform) => Self::Box {
-        axes: [&transform.x_axis, &transform.y_axis, &transform.z_axis].map(LevelObject::to_renderer_space),
-        center: LevelObject::to_renderer_space(&transform.translation),
+        axes: [&transform.x_axis, &transform.y_axis, &transform.z_axis].map(LevelObject::convert_to_renderer_space),
+        center: LevelObject::convert_to_renderer_space(&transform.translation),
       },
     }
   }

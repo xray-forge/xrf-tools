@@ -6,7 +6,7 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_math::Vector3d;
-use xrf_utils::{assert_equal, assert_not_equal, decode_bytes_from_base64, encode_bytes_to_base64, to_format_size};
+use xrf_utils::{assert_equal, assert_not_equal, decode_bytes_from_base64, encode_bytes_to_base64, narrow_format_size};
 
 use crate::constants::{NET_ACTION_SPAWN, NET_ACTION_UPDATE};
 use crate::data::alife::alife_object_inherited::AlifeObjectInherited;
@@ -233,7 +233,7 @@ impl ChunkReadWrite for AlifeObject {
 
     object_data_writer.write_u16::<T>(self.game_type)?;
     object_data_writer.write_u16::<T>(self.script_version)?;
-    object_data_writer.write_u16::<T>(to_format_size(self.client_data.len(), "alife object client data")?)?;
+    object_data_writer.write_u16::<T>(narrow_format_size(self.client_data.len(), "alife object client data")?)?;
     object_data_writer.write_all(&self.client_data)?;
     object_data_writer.write_u16::<T>(self.spawn_id)?;
 
@@ -241,13 +241,13 @@ impl ChunkReadWrite for AlifeObject {
       .inherited
       .write::<T>(&mut inherited_data_writer, &mut inherited_update_writer)?;
 
-    object_data_writer.write_u16::<T>(to_format_size(
+    object_data_writer.write_u16::<T>(narrow_format_size(
       inherited_data_writer.bytes_written() + 2,
       "alife object inherited data",
     )?)?;
     object_data_writer.write_all(inherited_data_writer.flush_raw_into_buffer()?.as_slice())?;
 
-    data_spawn_writer.write_u16::<T>(to_format_size(
+    data_spawn_writer.write_u16::<T>(narrow_format_size(
       object_data_writer.bytes_written(),
       "alife object spawn data",
     )?)?;
@@ -256,7 +256,7 @@ impl ChunkReadWrite for AlifeObject {
     updated_data_writer.write_u16::<T>(NET_ACTION_UPDATE)?;
     updated_data_writer.write_all(inherited_update_writer.flush_raw_into_buffer()?.as_slice())?;
 
-    data_update_writer.write_u16::<T>(to_format_size(
+    data_update_writer.write_u16::<T>(narrow_format_size(
       updated_data_writer.bytes_written(),
       "alife object update data",
     )?)?;

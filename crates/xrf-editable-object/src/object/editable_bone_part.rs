@@ -1,7 +1,7 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_utils::to_format_size;
+use xrf_utils::narrow_format_size;
 
 /// One bone part of a skeleton, `SBonePart` as `EOBJ_CHUNK_BONEPARTS2` stores it: a named group of bones a motion
 /// can play on alone, the legs apart from the torso.
@@ -32,7 +32,7 @@ impl ChunkReadWrite for EditableBonePart {
 
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_w1251_string(&self.alias)?;
-    writer.write_u32::<T>(to_format_size(self.bones.len(), "Bone part bones")?)?;
+    writer.write_u32::<T>(narrow_format_size(self.bones.len(), "Bone part bones")?)?;
 
     for bone in &self.bones {
       writer.write_w1251_string(bone)?;

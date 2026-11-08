@@ -8,7 +8,7 @@ use crate::feature::scene::drawable::drawable_kinds::DrawableKinds;
 use crate::lighting::lamp::light_basis::LightBasis;
 use crate::lighting::lamp::light_shadow_size::{
   LIGHT_SHADOW_MIN_SIZE, LIGHT_SHADOW_POINT_CONE, LIGHT_SHADOW_POINT_FACES, LIGHT_SHADOW_WIDENING,
-  to_light_shadow_size, to_light_shadow_tile_size,
+  get_light_shadow_size, get_light_shadow_tile_size,
 };
 use crate::scene::level::level_time::LevelTime;
 use crate::scene::level::lights::atlas::level_light_shadows::{
@@ -44,7 +44,13 @@ impl LevelLightShadows {
     };
     let cone: f32 = if is_spot { light.cone } else { LIGHT_SHADOW_POINT_CONE };
     let color: Vec3 = Vec3::from(light.color);
-    let wanted: f32 = to_light_shadow_size(light.range, distance, LightBasis::to_light_intensity(color), duel, cone);
+    let wanted: f32 = get_light_shadow_size(
+      light.range,
+      distance,
+      LightBasis::get_light_intensity(color),
+      duel,
+      cone,
+    );
     let Some(asked) = self.choose_size(ask, wanted) else {
       return;
     };
@@ -73,7 +79,7 @@ impl LevelLightShadows {
     let current: Option<u32> = entry.next.as_ref().or(entry.shown.as_ref()).map(|set| set.size);
     let asked: u32 = match current {
       Some(size) if !ask.is_in_view || (wanted <= size as f32 * GROW && wanted >= size as f32 * SHRINK) => size,
-      _ => to_light_shadow_tile_size(wanted),
+      _ => get_light_shadow_tile_size(wanted),
     };
 
     // Another view of the scene asked for it this frame already: the size the nearer one wants stands.
@@ -186,7 +192,7 @@ impl LevelLightShadows {
           let is_moved: bool = state.view.position != basis.position;
 
           if is_moved {
-            state.view = Self::to_face_view(light, basis, face, set.near, set.far);
+            state.view = Self::get_face_view(light, basis, face, set.near, set.far);
             state.drawn_static = None;
           }
 
@@ -246,7 +252,7 @@ impl LevelLightShadows {
           .enumerate()
           .map(|(face, tile)| LightShadowFace {
             tile,
-            view: Self::to_face_view(light, basis, face, near, far),
+            view: Self::get_face_view(light, basis, face, near, far),
             drawn: None,
             drawn_static: None,
             drawn_at: LevelTime::default(),
@@ -325,7 +331,7 @@ impl LevelLightShadows {
 
   /// A face's camera, built as `compute_xf_spot` builds its own: at the light, down its direction or the face's axis,
   /// the cone widened, its depth reversed.
-  fn to_face_view(light: &LightDescription, basis: &LightBasis, face: usize, near: f32, far: f32) -> CameraView {
+  fn get_face_view(light: &LightDescription, basis: &LightBasis, face: usize, near: f32, far: f32) -> CameraView {
     let (direction, up, cone): (Vec3, Vec3, f32) = match light.kind {
       LightKind::Spot => (basis.direction, basis.up, light.cone),
       LightKind::Point => {

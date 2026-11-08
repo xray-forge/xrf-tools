@@ -109,7 +109,7 @@ impl LightBasis {
 
   /// `light::get_LOD`: how far a shadowed light has faded, by its sphere's share of the screen, one whole and zero
   /// gone, against the progressive meshes' own `start` and `end` thresholds.
-  pub(crate) fn to_light_lod(sphere: Vec4, eye: Vec3, start: f32, end: f32) -> f32 {
+  pub(crate) fn get_light_lod(sphere: Vec4, eye: Vec3, start: f32, end: f32) -> f32 {
     // `EPS` added to the squared distance, so a camera inside the light divides by no zero.
     let area: f32 = SHADOWED_FADE * sphere.w / (eye.distance_squared(sphere.truncate()) + EPS);
 
@@ -121,7 +121,7 @@ impl LightBasis {
   }
 
   /// `(mean + luminance) / 2`, which `compute_xf_spot` sizes a brighter light's maps larger by.
-  pub(crate) fn to_light_intensity(color: Vec3) -> f32 {
+  pub(crate) fn get_light_intensity(color: Vec3) -> f32 {
     f32::midpoint(color.element_sum() / 3.0, color.dot(Vec3::new(0.2125, 0.7154, 0.0721)))
   }
 }

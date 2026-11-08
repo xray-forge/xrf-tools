@@ -74,7 +74,8 @@ impl SpawnVisualReader {
       .read_file(name)
       .map_err(|error| format!("Failed to read visual '{name}': {error}"))?;
     let package: VisualPackage = VisualPacker::pack(&file);
-    let rest: Option<Arc<VisualRestPose>> = Self::to_rest_pose(search, name, &file, &package.description).map(Arc::new);
+    let rest: Option<Arc<VisualRestPose>> =
+      Self::find_rest_pose(search, name, &file, &package.description).map(Arc::new);
     let resolver: &XraySurfaceResolver = self
       .resolver
       .get_or_init(|| XraySurfaceResolver::open(search, self.scope.clone()));
@@ -129,7 +130,7 @@ impl SpawnVisualReader {
 
   /// `PlayCycle("idle")` then `CalculateBones`: the first frame of the visual's idle cycle where it has one, its bind
   /// pose where it does not.
-  fn to_rest_pose(
+  fn find_rest_pose(
     search: &XraySearch,
     name: &str,
     file: &OgfFile,

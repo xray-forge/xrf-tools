@@ -27,7 +27,7 @@ impl AudioAssetSource for LevelSoundAssets {
   fn read_sound(&self, reference: &str) -> XrfResult<Option<Vec<u8>>> {
     let search: XraySearch = self.assets.search(&self.roots).map_err(XrfError::new_asset_error)?;
 
-    match search.find(&LevelSoundFiles::to_path(reference))? {
+    match search.find(&LevelSoundFiles::resolve_path(reference))? {
       Some(asset) => search.read_asset(&asset).map(Some),
       None => Ok(None),
     }

@@ -94,7 +94,7 @@ impl ParticlePass {
 
     for batch in batches {
       pass.set_pipeline(&self.pipelines.colour[batch.blend.get_index()]);
-      pass.draw(Self::to_vertices(batch.first..batch.first + batch.count), 0..1);
+      pass.draw(Self::get_vertices(batch.first..batch.first + batch.count), 0..1);
     }
   }
 
@@ -111,7 +111,7 @@ impl ParticlePass {
     pass.set_pipeline(&self.pipelines.distortion);
 
     for run in runs {
-      pass.draw(Self::to_vertices(run.clone()), 0..1);
+      pass.draw(Self::get_vertices(run.clone()), 0..1);
     }
   }
 
@@ -131,7 +131,7 @@ impl ParticlePass {
   }
 
   /// The vertices drawing a run of quads, six a quad as `QuadIB` indexes them.
-  fn to_vertices(quads: Range<u32>) -> Range<u32> {
+  fn get_vertices(quads: Range<u32>) -> Range<u32> {
     quads.start * 6..quads.end * 6
   }
 

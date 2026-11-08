@@ -205,11 +205,11 @@ impl MediaSink {
           ));
         }
 
-        let start: i64 = Self::to_ticks(time);
+        let start: i64 = Self::get_ticks(time);
 
         // SAFETY: a sample of this sink's own to its video stream.
         unsafe {
-          let sample: IMFSample = Self::new_sample(&bgra, start, Self::to_ticks(time + duration) - start)
+          let sample: IMFSample = Self::new_sample(&bgra, start, Self::get_ticks(time + duration) - start)
             .map_err(|error| format!("Making a frame's sample: {}", error.message()))?;
 
           self
@@ -258,11 +258,11 @@ impl MediaSink {
       .iter()
       .flat_map(|sample| ((sample.clamp(-1.0, 1.0) * f32::from(i16::MAX)).round() as i16).to_le_bytes())
       .collect();
-    let start: i64 = Self::to_sound_ticks(at, sound.encoded);
+    let start: i64 = Self::get_sound_ticks(at, sound.encoded);
 
     // SAFETY: a sample of this sink's own to its sound stream.
     unsafe {
-      let sample: IMFSample = Self::new_sample(&pcm, start, Self::to_sound_ticks(at + frames, sound.encoded) - start)
+      let sample: IMFSample = Self::new_sample(&pcm, start, Self::get_sound_ticks(at + frames, sound.encoded) - start)
         .map_err(|error| format!("Making a sound's sample: {}", error.message()))?;
 
       writer
@@ -288,18 +288,18 @@ impl MediaSink {
   }
 
   /// `time` on Media Foundation's clock, to the nearest tick.
-  fn to_ticks(time: Duration) -> i64 {
+  fn get_ticks(time: Duration) -> i64 {
     ((time.as_nanos() + 50) / 100) as i64
   }
 
   /// The sound's frame `at` on Media Foundation's clock.
-  fn to_sound_ticks(at: u64, sound: RecordSoundFormat) -> i64 {
+  fn get_sound_ticks(at: u64, sound: RecordSoundFormat) -> i64 {
     (u128::from(at) * u128::from(Self::TICKS) / u128::from(sound.rate)) as i64
   }
 
   /// Frames a second of `format`'s frames.
   fn get_frames_per_second(format: &RecordFormat) -> f64 {
-    Self::TICKS as f64 / Self::to_ticks(format.frame).max(1) as f64
+    Self::TICKS as f64 / Self::get_ticks(format.frame).max(1) as f64
   }
 
   /// The frame rate the file names for `format`, its frames' own: whole where it is within a thousandth of one, else as
@@ -310,7 +310,7 @@ impl MediaSink {
     if (rate - rate.round()).abs() < 1e-3 {
       (rate.round() as u32, 1)
     } else {
-      (Self::TICKS as u32, Self::to_ticks(format.frame).max(1) as u32)
+      (Self::TICKS as u32, Self::get_ticks(format.frame).max(1) as u32)
     }
   }
 

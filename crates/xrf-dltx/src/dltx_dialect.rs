@@ -81,13 +81,13 @@ impl LtxDialect for DltxDialect {
       .resolve_all()?;
 
     Ok(LtxResolution {
-      diagnostics: Self::to_diagnostics(&resolved),
-      ltx: Self::to_ltx(&resolved, &loaded, root),
+      diagnostics: Self::lower_diagnostics(&resolved),
+      ltx: Self::lower_ltx(&resolved, &loaded, root),
       // The resolver tracks the winning statement either way - it has to, to pick one - but folding that into a map
       // over every field of the tree is the caller's cost to ask for. An Anomaly sweep resolves thousands of roots
       // and reads none of it.
       provenance: if request.is_with_provenance() {
-        Self::to_provenance(&resolved)
+        Self::lower_provenance(&resolved)
       } else {
         LtxProvenance::default()
       },
@@ -111,7 +111,7 @@ impl DltxDialect {
   ///
   /// Sections arrive sorted by name and fields by key, which is the order the engine's own container ends up in and
   /// therefore part of matching it. Standard LTX keeps the authored order instead.
-  fn to_ltx(resolved: &DltxResolveResult, loaded: &DltxLoadResult, root: &str) -> Ltx {
+  fn lower_ltx(resolved: &DltxResolveResult, loaded: &DltxLoadResult, root: &str) -> Ltx {
     let mut ltx: Ltx = Ltx::new();
     // One handle per declaring file rather than one per section: a config commonly declares hundreds.
     let mut origins: BTreeMap<&str, Arc<str>> = BTreeMap::new();
@@ -148,7 +148,7 @@ impl DltxDialect {
   /// Every field gets one, not only a patched one: the point of the record is that a value can be accounted for, and
   /// "the base file wrote it and nothing contested it" is as much an answer as naming a `mod_*.ltx`. Winning files are
   /// shared by name, because one file commonly wins hundreds of fields.
-  fn to_provenance(resolved: &DltxResolveResult) -> LtxProvenance {
+  fn lower_provenance(resolved: &DltxResolveResult) -> LtxProvenance {
     let mut provenance: LtxProvenance = LtxProvenance::default();
 
     // Every name here is already a handle the loader interned - the section, the key, and the winning file - so this
@@ -173,7 +173,7 @@ impl DltxDialect {
   }
 
   /// Warnings only. Anything the engine refuses to start on already came back as an error.
-  fn to_diagnostics(resolved: &DltxResolveResult) -> Vec<LtxResolutionDiagnostic> {
+  fn lower_diagnostics(resolved: &DltxResolveResult) -> Vec<LtxResolutionDiagnostic> {
     resolved
       .diagnostics
       .iter()

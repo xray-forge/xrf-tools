@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{FileImportExport, LtxImportExport, LtxRecordReader, LtxRecordWriter};
-use xrf_utils::{assert_count_fits, assert_equal, assert_length, to_format_size};
+use xrf_utils::{assert_count_fits, assert_equal, assert_length, narrow_format_size};
 
 use crate::data::alife::alife_object::AlifeObject;
 
@@ -140,13 +140,13 @@ impl ChunkReadWrite for SpawnALifeSpawnsChunk {
     let mut objects_writer: ChunkWriter = ChunkWriter::new();
     let vertex_writer: ChunkWriter = ChunkWriter::new();
 
-    count_writer.write_u32::<T>(to_format_size(self.objects.len(), "alife objects")?)?;
+    count_writer.write_u32::<T>(narrow_format_size(self.objects.len(), "alife objects")?)?;
 
     for (index, object) in self.objects.iter().enumerate() {
       let mut object_writer: ChunkWriter = ChunkWriter::new();
 
       let mut index_writer: ChunkWriter = ChunkWriter::new();
-      index_writer.write_u16::<T>(to_format_size(index, "alife object index")?)?;
+      index_writer.write_u16::<T>(narrow_format_size(index, "alife object index")?)?;
       object_writer.write_all(
         index_writer
           .flush_chunk_into_buffer::<T>(Self::OBJECT_INDEX_CHUNK_ID)?
@@ -163,7 +163,7 @@ impl ChunkReadWrite for SpawnALifeSpawnsChunk {
 
       objects_writer.write_all(
         object_writer
-          .flush_chunk_into_buffer::<T>(to_format_size(index, "alife object chunk id")?)?
+          .flush_chunk_into_buffer::<T>(narrow_format_size(index, "alife object chunk id")?)?
           .as_slice(),
       )?;
     }

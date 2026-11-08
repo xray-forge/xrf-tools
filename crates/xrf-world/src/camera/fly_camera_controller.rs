@@ -167,7 +167,7 @@ impl FlyCameraController {
       WorldInputEvent::Wheel {
         delta_y, delta_mode, ..
       } => {
-        let pixels: f32 = WheelDelta::to_pixels(*delta_y, *delta_mode, self.height);
+        let pixels: f32 = WheelDelta::get_pixels(*delta_y, *delta_mode, self.height);
 
         // While the secondary button flies the camera, the wheel asks for its speed rather than moving it.
         if self.drag == Some(FlyDrag::Fly) {

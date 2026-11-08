@@ -114,7 +114,7 @@ impl LevelObjectsDescription {
           LevelObjectId::GraphPoint { vertex: *vertex },
           LevelObjectKind::GraphPoints,
           format!("vertex {vertex}"),
-          Self::to_place(position),
+          Self::get_place(position),
         )
       }));
     }
@@ -132,8 +132,8 @@ impl LevelObjectsDescription {
   fn add_patrol(objects: &mut Vec<LevelObject>, path: u32, patrol: &Patrol) {
     let id: LevelObjectId = LevelObjectId::Patrol { path };
     let place: VisualTransform = patrol.points.first().map_or_else(
-      || Self::to_place(&Vector3d::new(0.0, 0.0, 0.0)),
-      |first| Self::to_place(&first.position),
+      || Self::get_place(&Vector3d::new(0.0, 0.0, 0.0)),
+      |first| Self::get_place(&first.position),
     );
 
     objects.push(LevelObject {
@@ -150,18 +150,18 @@ impl LevelObjectsDescription {
         },
         LevelObjectKind::Patrols,
         at.name.clone(),
-        Self::to_place(&at.position),
+        Self::get_place(&at.position),
       )
     }));
   }
 
   /// Unturned at a point of engine space, in renderer space.
-  pub(super) fn to_place(position: &Vector3d) -> VisualTransform {
+  pub(super) fn get_place(position: &Vector3d) -> VisualTransform {
     VisualTransform {
       i: Vector3d::new(1.0, 0.0, 0.0),
       j: Vector3d::new(0.0, 1.0, 0.0),
       k: Vector3d::new(0.0, 0.0, 1.0),
-      c: LevelObject::to_renderer_space(position),
+      c: LevelObject::convert_to_renderer_space(position),
     }
   }
 }

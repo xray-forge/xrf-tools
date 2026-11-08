@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_ltx::{FileImportExport, LtxImportExport, LtxRecordReader, LtxRecordWriter};
-use xrf_utils::{assert_length, to_format_size};
+use xrf_utils::{assert_length, narrow_format_size};
 
 use crate::data::artefact_spawn::artefact_spawn_point::ArtefactSpawnPoint;
 
@@ -50,7 +50,7 @@ impl ChunkReadWrite for SpawnArtefactSpawnsChunk {
   /// Write artefact spawns into chunk writer.
   /// Writes artefact spawns data in binary format.
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(to_format_size(self.nodes.len(), "artefact spawn nodes")?)?;
+    writer.write_u32::<T>(narrow_format_size(self.nodes.len(), "artefact spawn nodes")?)?;
 
     for node in &self.nodes {
       node.write::<T>(writer)?;

@@ -40,7 +40,7 @@ impl MeshAssembler {
     let mut surface_faces: Vec<Vec<u32>> = vec![Vec::new(); layout.surfaces.len()];
 
     for (face_index, face) in welded.faces.iter().enumerate() {
-      let face_number: u32 = Self::to_index(face_index, "faces")?;
+      let face_number: u32 = Self::narrow_index(face_index, "faces")?;
       let mut corners: [EditableFaceCorner; 3] = [EditableFaceCorner {
         point: 0,
         vmap_reference: 0,
@@ -106,7 +106,7 @@ impl MeshAssembler {
   /// # Errors
   ///
   /// Returns an error when it does not fit, naming `what` it counts.
-  pub(crate) fn to_index(value: usize, what: &str) -> XrfResult<u32> {
+  pub(crate) fn narrow_index(value: usize, what: &str) -> XrfResult<u32> {
     u32::try_from(value)
       .map_err(|_| XrfError::new_invalid_error(format!("A decompiled mesh has more {what} than a u32 indexes")))
   }

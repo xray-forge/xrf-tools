@@ -36,7 +36,7 @@ impl PackedFileDestination {
       return export(dest);
     }
 
-    let staged: PathBuf = StagedFile::to_sibling(dest, "staged")?;
+    let staged: PathBuf = StagedFile::name_sibling(dest, "staged")?;
 
     if let Err(error) = export(&staged) {
       let _ = fs::remove_dir_all(&staged);

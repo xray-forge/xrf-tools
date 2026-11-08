@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use xrf_chunk::{ChunkDataSource, ChunkLayout, ChunkReadWrite, ChunkReader, ChunkSequence, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::{Aabb, Vector3d};
-use xrf_utils::to_format_size;
+use xrf_utils::narrow_format_size;
 
 use crate::editable_chunks::EditableChunks;
 use crate::{EditableFace, EditableSurfaceFaces, EditableVMap, EditableVMapReference};
@@ -266,7 +266,7 @@ impl EditableMesh {
       EditableChunks::write_counted::<T, _>(writer, &self.vmap_references, "Vertex map references")
     })?;
     sequence.push(Self::SURFACE_FACES_CHUNK_ID, |writer| {
-      writer.write_u16::<T>(to_format_size(self.surface_faces.len(), "Surface face lists")?)?;
+      writer.write_u16::<T>(narrow_format_size(self.surface_faces.len(), "Surface face lists")?)?;
 
       for list in &self.surface_faces {
         list.write::<T>(writer)?;
@@ -311,7 +311,7 @@ impl EditableMesh {
     let mut point_faces: Vec<Vec<u32>> = vec![Vec::new(); self.points.len()];
 
     for (index, face) in self.faces.iter().enumerate() {
-      let face_index: u32 = to_format_size(index, "Mesh faces")?;
+      let face_index: u32 = narrow_format_size(index, "Mesh faces")?;
 
       for corner in &face.corners {
         point_faces
@@ -446,7 +446,7 @@ impl MeshPoints {
   /// Writes a count byte and the face indices for each point.
   fn write_faces<T: ByteOrder>(writer: &mut ChunkWriter, point_faces: &[Vec<u32>]) -> XrfResult {
     for faces in point_faces {
-      writer.write_u8(to_format_size(faces.len(), "Point faces")?)?;
+      writer.write_u8(narrow_format_size(faces.len(), "Point faces")?)?;
 
       for face in faces {
         writer.write_u32::<T>(*face)?;

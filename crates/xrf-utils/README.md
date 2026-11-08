@@ -15,13 +15,13 @@ A count read from a file is untrusted: reserving from a hostile one aborts the p
   `new_bounded_vec` also reserves it, fallibly. `budget` and `min_record_size` share a unit (bytes for a binary reader);
   understate the minimum, since overstating it rejects valid input. `new_declared_vec` is for a length nothing bounds,
   such as a decompressed size.
-- `to_format_size::<u8 | u16 | u32>(value, what)` narrows a length into its format field on write, where a bare `as`
+- `narrow_format_size::<u8 | u16 | u32>(value, what)` narrows a length into its format field on write, where a bare `as`
   would truncate silently.
 - `assert`, `assert_equal`, `assert_not_equal` and `assert_length` return `XrfError::Assertion` for format checks.
 - `read_exact_at` reads at an offset without moving the file's cursor, so one handle can serve several threads.
 
 ```rust
-use xrf_utils::{new_bounded_vec, to_format_size};
+use xrf_utils::{new_bounded_vec, narrow_format_size};
 
 fn main() -> xrf_error::XrfResult {
   // Four records of at least 8 bytes fit in 32 remaining bytes; five do not.
@@ -30,10 +30,10 @@ fn main() -> xrf_error::XrfResult {
   assert!(records.is_empty());
   assert!(new_bounded_vec::<u64>(5, 32, 8, "test records").is_err());
 
-  let count: u16 = to_format_size(300, "test records")?;
+  let count: u16 = narrow_format_size(300, "test records")?;
 
   assert_eq!(count, 300);
-  assert!(to_format_size::<u8>(300, "test records").is_err());
+  assert!(narrow_format_size::<u8>(300, "test records").is_err());
 
   Ok(())
 }
@@ -100,7 +100,7 @@ existing file, so the caller enforces any overwrite policy. Both return `std::io
 artifact and keep the `ErrorKind`.
 
 A caller publishing several files together stages each with `StagedFile::stage(target, sibling, contents)`, naming the
-sibling with `StagedFile::to_sibling(target, purpose)`, and calls `publish` on each once all are staged; a `StagedFile`
+sibling with `StagedFile::name_sibling(target, purpose)`, and calls `publish` on each once all are staged; a `StagedFile`
 dropped unpublished removes its sibling. `StagedFile::is_sibling` recognizes any `.<name>.xrf-…` name, so a directory
 walk can skip what a staged write left beside its target.
 
@@ -139,7 +139,7 @@ assert_eq!(names, ["item1", "item2", "item10"]);
   `read_as_string_from_w1251_encoded` keep an ASCII buffer as it is instead of copying it, which matters for a document
   of tens of megabytes. Base64 helpers use the URL-safe alphabet without padding.
 - `read_engine_integer` reads an integer as the engine's `atoi` does: the longest leading integer, or zero, saturated
-  to `i32`. `vector_from_string(_sep)(_sized)` parse separated lists, `to_camel_case` turns a snake or kebab name into a
+  to `i32`. `vector_from_string(_sep)(_sized)` parse separated lists, `format_camel_case` turns a snake or kebab name into a
   JavaScript identifier.
 
 ## Durations, sizes and time

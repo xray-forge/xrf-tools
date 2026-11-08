@@ -59,7 +59,7 @@ impl SunCascadePlacement {
     for side in &behind {
       let nearest: f32 = rays
         .iter()
-        .map(|ray| Self::to_inside(*side, ray.origin, center, half))
+        .map(|ray| Self::get_inside(*side, ray.origin, center, half))
         .fold(FAR_BEHIND, f32::min);
 
       translation += *side * nearest;
@@ -132,7 +132,7 @@ impl SunCascadePlacement {
         let mut distance: f32 = width;
 
         if along <= -0.1 {
-          let leave: f32 = -Self::to_inside(normal, ray.origin, center, half) / along;
+          let leave: f32 = -Self::get_inside(normal, ray.origin, center, half) / along;
 
           distance = if leave > 0.0 || leave.abs() < EPS_S { leave } else { 0.0 };
         }
@@ -148,7 +148,7 @@ impl SunCascadePlacement {
   }
 
   /// How far inside a side of a square the point stands: the engine's `classify` against it.
-  fn to_inside(normal: Vec3, point: Vec3, center: Vec3, half: f32) -> f32 {
+  fn get_inside(normal: Vec3, point: Vec3, center: Vec3, half: f32) -> f32 {
     normal.dot(point) - normal.dot(center) + half
   }
 }

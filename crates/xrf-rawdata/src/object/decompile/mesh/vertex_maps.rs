@@ -73,10 +73,10 @@ impl VertexMaps {
           .expect("every bone a point follows has a weight map");
 
         entries.push(EditableVMapPoint {
-          vmap: Self::FIRST_WEIGHT_MAP + MeshAssembler::to_index(map, "weight maps")?,
-          index: MeshAssembler::to_index(weight_points[map].len(), "weights")?,
+          vmap: Self::FIRST_WEIGHT_MAP + MeshAssembler::narrow_index(map, "weight maps")?,
+          index: MeshAssembler::narrow_index(weight_points[map].len(), "weights")?,
         });
-        weight_points[map].push(MeshAssembler::to_index(point, "points")?);
+        weight_points[map].push(MeshAssembler::narrow_index(point, "points")?);
         weight_values[map].push(weight);
       }
 
@@ -120,7 +120,7 @@ impl VertexMaps {
         index: point,
       },
       Some(_) => {
-        let index: u32 = MeshAssembler::to_index(self.polygon_points.len(), "polygon UVs")?;
+        let index: u32 = MeshAssembler::narrow_index(self.polygon_points.len(), "polygon UVs")?;
 
         self.polygon_uvs.extend(uv.to_array());
         self.polygon_points.push(point);
@@ -139,7 +139,7 @@ impl VertexMaps {
       return Ok(*reference);
     }
 
-    let reference: u32 = MeshAssembler::to_index(self.references.len(), "vertex map references")?;
+    let reference: u32 = MeshAssembler::narrow_index(self.references.len(), "vertex map references")?;
     let mut entries: Vec<EditableVMapPoint> = Vec::with_capacity(1 + self.point_weights[point_index].len());
 
     entries.push(uv_entry);
@@ -193,6 +193,6 @@ impl VertexMaps {
 
   /// The polygon UV map's place, after every weight map.
   fn get_polygon_map(&self) -> XrfResult<u32> {
-    Ok(Self::FIRST_WEIGHT_MAP + MeshAssembler::to_index(self.weight_bones.len(), "weight maps")?)
+    Ok(Self::FIRST_WEIGHT_MAP + MeshAssembler::narrow_index(self.weight_bones.len(), "weight maps")?)
   }
 }

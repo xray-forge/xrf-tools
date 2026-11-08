@@ -129,7 +129,7 @@ impl BurstSound {
       .map_err(|_| String::from("The burst's sound stopped on a panic"))??;
     let file = folder.join("sound.wav");
 
-    std::fs::write(&file, Self::to_wave(&samples))
+    std::fs::write(&file, Self::encode_wave(&samples))
       .map_err(|error| format!("The burst's sound cannot be written to {}: {error}", file.display()))?;
 
     Ok(BurstSoundOutcome {
@@ -141,7 +141,7 @@ impl BurstSound {
   }
 
   /// A WAV file of interleaved stereo 32-bit float `samples` at [`Self::RATE`].
-  fn to_wave(samples: &[f32]) -> Vec<u8> {
+  fn encode_wave(samples: &[f32]) -> Vec<u8> {
     const CHANNELS: u16 = 2;
     const FLOAT: u16 = 3;
     let data_length: u32 = (samples.len() * 4) as u32;

@@ -48,7 +48,7 @@ impl OgfSurface {
       surfaces.push(Self {
         texture: texture.texture_name.clone(),
         shader: texture.shader_name.clone(),
-        triangles: Self::to_triangles(&corners, indices)?,
+        triangles: Self::list_triangles(&corners, indices)?,
       });
     }
 
@@ -71,7 +71,7 @@ impl OgfSurface {
     Ok(Self {
       texture: geometry.texture.clone(),
       shader: geometry.shader.clone(),
-      triangles: Self::to_triangles(&corners, &geometry.indices)?,
+      triangles: Self::list_triangles(&corners, &geometry.indices)?,
     })
   }
 
@@ -87,12 +87,12 @@ impl OgfSurface {
     Ok(Self {
       texture: model.texture.clone(),
       shader: model.shader.clone(),
-      triangles: Self::to_triangles(&corners, &model.indices)?,
+      triangles: Self::list_triangles(&corners, &model.indices)?,
     })
   }
 
   /// The triangles `indices` make of `corners`, three a triangle.
-  fn to_triangles(corners: &[OgfCorner], indices: &[u16]) -> XrfResult<Vec<[OgfCorner; 3]>> {
+  fn list_triangles(corners: &[OgfCorner], indices: &[u16]) -> XrfResult<Vec<[OgfCorner; 3]>> {
     let corner = |index: u16| -> XrfResult<OgfCorner> {
       corners.get(usize::from(index)).copied().ok_or_else(|| {
         XrfError::new_invalid_error(format!("Index {index} is past its visual's {} vertices", corners.len()))

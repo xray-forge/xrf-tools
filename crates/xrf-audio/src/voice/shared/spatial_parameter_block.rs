@@ -38,14 +38,14 @@ impl SpatialParameterBlock {
       direction[0],
       direction[1],
       direction[2],
-      Self::to_share(parameters.attenuation),
-      Self::to_share(parameters.air_absorption[0]),
-      Self::to_share(parameters.air_absorption[1]),
-      Self::to_share(parameters.air_absorption[2]),
-      Self::to_share(parameters.occlusion),
-      Self::to_share(parameters.transmission[0]),
-      Self::to_share(parameters.transmission[1]),
-      Self::to_share(parameters.transmission[2]),
+      Self::sanitize_share(parameters.attenuation),
+      Self::sanitize_share(parameters.air_absorption[0]),
+      Self::sanitize_share(parameters.air_absorption[1]),
+      Self::sanitize_share(parameters.air_absorption[2]),
+      Self::sanitize_share(parameters.occlusion),
+      Self::sanitize_share(parameters.transmission[0]),
+      Self::sanitize_share(parameters.transmission[1]),
+      Self::sanitize_share(parameters.transmission[2]),
       if parameters.reverb_send.is_finite() {
         parameters.reverb_send.max(0.0)
       } else {
@@ -59,7 +59,7 @@ impl SpatialParameterBlock {
     }
   }
 
-  fn to_share(value: f32) -> f32 {
+  fn sanitize_share(value: f32) -> f32 {
     if value.is_finite() { value.clamp(0.0, 1.0) } else { 0.0 }
   }
 }

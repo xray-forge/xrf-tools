@@ -45,7 +45,7 @@ impl MainWindow {
 
     let builder: WebviewWindowBuilder<'_, R, AppHandle<R>> =
       WebviewWindowBuilder::from_config(application.handle(), config)?
-        .background_color(Self::to_see_through(config.background_color));
+        .background_color(Self::get_see_through(config.background_color));
     let builder: WebviewWindowBuilder<'_, R, AppHandle<R>> = match &opened {
       Some(geometry) => geometry.open(builder),
       None => builder,
@@ -75,7 +75,7 @@ impl MainWindow {
   /// The configured background with its alpha taken away, which only the webview honours: its pixels the page leaves
   /// transparent show the native viewport drawn on the window under it, and the window keeps the colour wherever no
   /// viewport draws.
-  fn to_see_through(color: Option<Color>) -> Color {
+  fn get_see_through(color: Option<Color>) -> Color {
     let Color(red, green, blue, _) = color.unwrap_or(Color(0, 0, 0, 255));
 
     Color(red, green, blue, 0)

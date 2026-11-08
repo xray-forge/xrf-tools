@@ -4,7 +4,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::to_format_size;
+use xrf_utils::narrow_format_size;
 
 use crate::light_anim_key::LightAnimKey;
 
@@ -90,7 +90,7 @@ impl LightAnimItem {
 
     let mut keys: ChunkWriter = ChunkWriter::new();
 
-    keys.write_u32::<T>(to_format_size(self.keys.len(), "light animation keys")?)?;
+    keys.write_u32::<T>(narrow_format_size(self.keys.len(), "light animation keys")?)?;
 
     for key in &self.keys {
       keys.write_i32::<T>(key.frame)?;
@@ -316,8 +316,8 @@ impl LightAnimItem {
     let remaining: f32 = 1.0 - blend;
 
     [24, 16, 8, 0].into_iter().fold(0, |color, shift| {
-      let start: f32 = Self::to_unit_channel(from >> shift);
-      let end: f32 = Self::to_unit_channel(to >> shift);
+      let start: f32 = Self::get_unit_channel(from >> shift);
+      let end: f32 = Self::get_unit_channel(to >> shift);
       let mixed: i32 = ((start * remaining + end * blend) * 255.0).floor() as i32;
 
       color | ((mixed.clamp(0, 255) as u32) << shift)
@@ -325,7 +325,7 @@ impl LightAnimItem {
   }
 
   /// `Fcolor::set`: one byte of a colour as a channel in `[0, 1]`.
-  fn to_unit_channel(byte: u32) -> f32 {
+  fn get_unit_channel(byte: u32) -> f32 {
     const SCALE: f32 = 1.0 / 255.0;
 
     SCALE * (byte & 0xFF) as f32

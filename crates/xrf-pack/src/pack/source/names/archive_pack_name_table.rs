@@ -52,7 +52,7 @@ impl ArchivePackNameTable {
   fn register_files(files: Vec<ArchivePackEntry>) -> XrfResult<(Vec<ArchivePackEntry>, Vec<ArchivePackNameCollision>)> {
     let mut keyed: Vec<(String, ArchivePackEntry)> = files
       .into_iter()
-      .map(|file| Ok((Self::to_engine_name(&file.name)?, file)))
+      .map(|file| Ok((Self::fold_engine_name(&file.name)?, file)))
       .collect::<XrfResult<_>>()?;
 
     keyed.sort_unstable_by(|left, right| left.0.cmp(&right.0).then_with(|| left.1.name.cmp(&right.1.name)));
@@ -70,7 +70,7 @@ impl ArchivePackNameTable {
   fn register_directories(directories: Vec<String>) -> XrfResult<Vec<String>> {
     let mut keyed: Vec<(String, String)> = directories
       .into_iter()
-      .map(|directory| Ok((Self::to_engine_name(&directory)?, directory)))
+      .map(|directory| Ok((Self::fold_engine_name(&directory)?, directory)))
       .collect::<XrfResult<_>>()?;
 
     keyed.sort_unstable_by(|left, right| left.0.cmp(&right.0).then_with(|| left.1.cmp(&right.1)));
@@ -80,7 +80,7 @@ impl ArchivePackNameTable {
   }
 
   /// The name `Register` folds an authored one to.
-  fn to_engine_name(name: &str) -> XrfResult<String> {
+  fn fold_engine_name(name: &str) -> XrfResult<String> {
     XrayLogicalPath::normalize(name).map_err(|error| {
       XrfError::new_invalid_error(format!(
         "Packing source entry '{name}' is not a name the engine can address: {error}"

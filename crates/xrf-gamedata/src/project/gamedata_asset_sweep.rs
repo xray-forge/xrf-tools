@@ -46,13 +46,13 @@ impl<'a> GamedataAssetSweep<'a> {
     findings.sort_by(GamedataFindingFactory::cmp_by_asset_path_rule_and_message);
 
     Ok(GamedataAssetSweepOutcome {
-      checked_count: Self::to_count(items.len())?,
-      invalid_count: Self::to_count(invalid_count)?,
+      checked_count: Self::narrow_count(items.len())?,
+      invalid_count: Self::narrow_count(invalid_count)?,
       findings,
     })
   }
 
-  fn to_count(count: usize) -> XrfResult<u32> {
+  fn narrow_count(count: usize) -> XrfResult<u32> {
     u32::try_from(count).map_err(|_| XrfError::new_verify_error("Item count exceeds the supported result range"))
   }
 }

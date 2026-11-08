@@ -33,7 +33,7 @@ impl LevelWorldWeather {
     let modifiers: Vec<LevelEnvModifier> = LevelEnvironment::read_modifiers(level, search);
     let mut files: LevelSoundFiles<'_> = LevelSoundFiles::new(search);
     let thunder_sounds: HashMap<String, WorldSound> =
-      Self::to_thunder_sounds(&environment.catalog, &thunder, &mut files);
+      Self::read_thunder_sounds(&environment.catalog, &thunder, &mut files);
 
     WorldLevelWeather {
       render: Arc::new(RenderLevelWeather {
@@ -46,7 +46,7 @@ impl LevelWorldWeather {
           flow: wet.flow.reference,
         }),
         thunder: Some(thunder.into()),
-        suns: Self::to_suns(&environment.catalog),
+        suns: Self::read_suns(&environment.catalog),
       }),
       engine: environment.catalog.engine,
       effects: environment
@@ -55,15 +55,15 @@ impl LevelWorldWeather {
         .iter()
         .map(|effect| (effect.name.clone(), effect.list_descriptors(environment.catalog.engine)))
         .collect(),
-      modifiers: modifiers.iter().map(Self::to_modifier).collect(),
+      modifiers: modifiers.iter().map(Self::get_modifier).collect(),
       sun_table: environment
         .catalog
         .sun_table
         .as_ref()
         .map(|table| table.list_positions()),
-      ambients: LevelWorldAmbients::to_world(&environment.catalog, &level.source.get_name().unwrap_or_default()),
-      ambient_effects: LevelWorldAmbients::to_world_effects(&environment.catalog, &mut |sound| files.get(sound)),
-      sound_channels: LevelWorldAmbients::to_world_channels(&environment.catalog, &mut |sound| files.get(sound)),
+      ambients: LevelWorldAmbients::read_ambients(&environment.catalog, &level.source.get_name().unwrap_or_default()),
+      ambient_effects: LevelWorldAmbients::read_effects(&environment.catalog, &mut |sound| files.get(sound)),
+      sound_channels: LevelWorldAmbients::read_channels(&environment.catalog, &mut |sound| files.get(sound)),
       rain_sound: Some(files.get(Self::RAIN_SOUND)),
       thunder_sounds,
     }
@@ -73,7 +73,7 @@ impl LevelWorldWeather {
   const RAIN_SOUND: &'static str = "ambient\\rain";
 
   /// Each bolt's `sound` that names one, by the bolt's section.
-  fn to_thunder_sounds(
+  fn read_thunder_sounds(
     catalog: &EnvironmentCatalog,
     thunder: &LevelThunderbolts,
     files: &mut LevelSoundFiles<'_>,
@@ -93,7 +93,7 @@ impl LevelWorldWeather {
 
   /// A `level.env_mod` volume as the mixer weighs it: one from a file before the flag word adds every value, as the
   /// engine's `use_flags.one()` before the read leaves it.
-  fn to_modifier(modifier: &LevelEnvModifier) -> WeatherModifier {
+  fn get_modifier(modifier: &LevelEnvModifier) -> WeatherModifier {
     let to_array = |vector: &Vector3d<f32>| [vector.x, vector.y, vector.z];
 
     WeatherModifier {
@@ -111,11 +111,11 @@ impl LevelWorldWeather {
   }
 
   /// Every lens flare of the game as the renderer draws it, by section, each read as its engine reads it.
-  fn to_suns(catalog: &EnvironmentCatalog) -> HashMap<String, RenderLensFlare> {
+  fn read_suns(catalog: &EnvironmentCatalog) -> HashMap<String, RenderLensFlare> {
     catalog
       .suns
       .iter()
-      .map(|sun| (sun.name.clone(), LevelLensFlares::to_render(sun, catalog.engine)))
+      .map(|sun| (sun.name.clone(), LevelLensFlares::read_flare(sun, catalog.engine)))
       .collect()
   }
 }

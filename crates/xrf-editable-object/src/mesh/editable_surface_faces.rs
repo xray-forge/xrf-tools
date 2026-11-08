@@ -1,7 +1,7 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_utils::to_format_size;
+use xrf_utils::narrow_format_size;
 
 /// The faces of a mesh one surface covers, one entry of `EMESH_CHUNK_SFACE`.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -32,7 +32,7 @@ impl ChunkReadWrite for EditableSurfaceFaces {
 
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_w1251_string(&self.surface)?;
-    writer.write_u32::<T>(to_format_size(self.faces.len(), "Surface faces")?)?;
+    writer.write_u32::<T>(narrow_format_size(self.faces.len(), "Surface faces")?)?;
 
     for face in &self.faces {
       writer.write_u32::<T>(*face)?;

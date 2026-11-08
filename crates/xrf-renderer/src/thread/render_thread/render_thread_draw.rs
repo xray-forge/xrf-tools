@@ -631,7 +631,7 @@ impl RenderThread {
 
     Some(ComposedView {
       binding: viewport.get_binding()?,
-      present: output.map(|output| Self::to_present_parameters(gpu, output)),
+      present: output.map(|output| Self::get_present_parameters(gpu, output)),
       overlays: output
         .zip(level.and_then(SceneView::get_overlays))
         .map(|(output, overlays)| ComposedOverlays {
@@ -649,7 +649,7 @@ impl RenderThread {
   }
 
   /// What the present pass reads of a viewport's frame (`output`).
-  pub(super) fn to_present_parameters<'a>(gpu: &'a GpuState, output: &SceneOutput) -> PresentParameters<'a> {
+  pub(super) fn get_present_parameters<'a>(gpu: &'a GpuState, output: &SceneOutput) -> PresentParameters<'a> {
     PresentParameters {
       scene: output.scene,
       depth_target: output.targets.depth,
