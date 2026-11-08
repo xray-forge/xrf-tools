@@ -162,6 +162,13 @@ fn composited(pixel: vec2<f32>, is_display_added: bool) -> Composited {
 @fragment
 fn fs_sun_shafts(in: FullscreenVarying) -> ShaftsOutput {
   let light: vec3<f32> = composited(in.clip.xy, false).light;
+
+  // A pixel it adds nothing to is left out: the blend would read and write both targets over the whole frame for a few
+  // lamps' cones.
+  if (max(light.r, max(light.g, light.b)) <= 0.0) {
+    discard;
+  }
+
   let scale: f32 = frame_scale(lighting, exposure);
 
   return ShaftsOutput(vec4<f32>(scene_from_light(light, scale), 0.0), vec4<f32>(tonemap_high(light, scale), 0.0));
