@@ -10,11 +10,14 @@ use crate::feature::effects::rain::rain_uniform::RainUniform;
 use crate::feature::effects::rain::rings::drop_rings::DropRings;
 use crate::feature::view::overhead_windows::OverheadWindows;
 use crate::feature::view::view_feature::ViewFeature;
+use crate::feature::view::view_restart::ViewRestart;
 use crate::feature::weather::water::enhanced::enhanced_water_maps::EnhancedWaterMaps;
 use crate::feature::weather::wet::draw::wet_apply_parameters::WetApplyParameters;
 use crate::feature::weather::wet::draw::wet_draw::WetDraw;
 use crate::feature::weather::wet::draw::wet_pass::WetPass;
 use crate::feature::weather::wet::draw::wet_patch_parameters::WetPatchParameters;
+use crate::feature::weather::wet::wet_clock::WetClock;
+use crate::feature::weather::wet::wet_drift::WetDrift;
 use crate::feature::weather::wet::wet_stage::WetStage;
 use crate::feature::weather::wet::wet_targets::WetTargets;
 use crate::feature::weather::wet::wet_uniform::WetUniform;
@@ -33,13 +36,16 @@ pub struct WetFeature {
   uniform: WetUniform,
   /// The splash volume and the flow, as the weather textures hold them, while the surfaces are wetted.
   views: Option<[wgpu::TextureView; 2]>,
+  /// How far the gusts and the calm waves have moved across the puddles, stepped every frame wet or dry, so the wet
+  /// surfaces come back where they would stand.
+  drift: WetDrift,
 }
 
 impl WetFeature {
-  /// Takes this frame's wetting from the level's wetness (`level`) at `clock`, in seconds, the rain's clock while it
-  /// falls and the level's else: with the falling rain's uniform where it falls, over the overhead maps where they
-  /// stand (`windows`), its cover's noise turned by
-  /// `noise_frame`; dry for an orthographic view, which has no eye for the overhead maps to stand about.
+  /// Takes this frame's wetting from the level's wetness (`level`) on `clock`: with the falling rain's uniform where it
+  /// falls, over the overhead maps where they stand (`windows`), its cover's noise turned by `noise_frame`; dry for an
+  /// orthographic view, which has no eye for the overhead maps to stand about. The drift moves on by the view's step
+  /// whatever it draws.
   pub fn prepare(
     &mut self,
     &ViewPrepare {
@@ -52,11 +58,16 @@ impl WetFeature {
     }: &ViewPrepare<'_>,
     level: &LevelWetness,
     falling: Option<&RainUniform>,
-    clock: f64,
+    clock: WetClock,
     windows: OverheadWindows,
     noise_frame: u32,
   ) {
     self.views = None;
+
+    let density: f32 = falling.map_or(0.0, |_| lighting.rain.map_or(0.0, |rain| rain.density.clamp(0.0, 1.0)));
+    let gust: Vec2 = WetUniform::get_gust(lighting.wind.direction, lighting.wind.velocity);
+
+    self.drift.advance(clock.view, gust, density);
 
     let has_eye: bool = !view.is_orthographic();
 
@@ -81,12 +92,10 @@ impl WetFeature {
     };
 
     let RainCoverShape { texels, reach } = windows.cover_shape;
-    let density: f32 = falling.map_or(0.0, |_| lighting.rain.map_or(0.0, |rain| rain.density.clamp(0.0, 1.0)));
-    let gust: Vec2 = WetUniform::get_gust(lighting.wind.direction, lighting.wind.velocity);
 
     self.uniform = WetUniform {
       density,
-      time: LevelTime::wrap(clock, RainUniform::CLOCK_PERIOD),
+      time: LevelTime::wrap(clock.splashes, RainUniform::CLOCK_PERIOD),
       is_extended: (lighting.engine == XrayEngine::Extended) as u32 as f32,
       is_enhanced: f32::from(u8::from(is_enhanced)),
       cover: windows.cover,
@@ -107,7 +116,7 @@ impl WetFeature {
         0.0,
         0.0,
       ),
-      drift: WetUniform::get_drift(gust, clock, density),
+      drift: self.drift.get(),
       relief: Vec4::new(f32::from(u8::from(settings.is_relief_flooded)), 0.0, 0.0, 0.0),
       drying: Vec4::new(drying.get_peak(), drying.get_left(), 0.0, 0.0),
       rings: Vec4::ZERO,
@@ -293,5 +302,13 @@ impl ViewFeature for WetFeature {
 
   fn release(&mut self) {
     self.views = None;
+  }
+
+  /// Its motion restarted, the drift starts again from nothing, as at a view's first frame; a cut leaves it, which
+  /// follows the time and not the camera.
+  fn restart(&mut self, restart: ViewRestart) {
+    if restart == ViewRestart::Motion {
+      self.drift = WetDrift::default();
+    }
   }
 }

@@ -2,7 +2,6 @@ use glam::{Vec2, Vec4};
 use xrf_renderer_core::ShaderStruct;
 
 use crate::pass::view::noise_turn::NoiseTurn;
-use crate::scene::level::level_time::LevelTime;
 
 /// What `shaders/common/wet.wgsl` declares as `Wet`: how hard it rains, the clock, the engine, the cover, and the
 /// enhanced wetting's state.
@@ -61,9 +60,6 @@ impl WetUniform {
   /// Metres the gusts' drift repeats over: the regional noise is read over 70 m with the whole drift and over 29 m with
   /// half of it (`GUST_TILES` in `shaders/frame/wet_patch.wgsl`), each a whole number of repeats in it.
   pub const GUST_REPEAT: f64 = 2030.0;
-  /// The puddles' calm waves' scroll a second of the rain's clock, and what the rain's density adds to it, 1.5 times
-  /// over and held to one.
-  const WAVE_PACE: (f64, f64, f64) = (0.01, 0.008, 1.5);
 
   /// Metres the wetness creeps under a cover from its wet edges once a long rain has soaked the level through.
   pub const CREEP_MOST: f32 = 1.5;
@@ -74,20 +70,6 @@ impl WetUniform {
     let speed: f32 = (velocity * scale).clamp(least, most);
 
     Vec2::new(-direction.sin() * speed, -direction.cos() * speed)
-  }
-
-  /// How far gusts blowing `gust` have drifted at the rain's `clock`, and how far the calm waves have scrolled under a
-  /// rain of `density`: each taken within the repeat the shader reads it over.
-  pub fn get_drift(gust: Vec2, clock: f64, density: f32) -> Vec4 {
-    let (pace, rain_pace, rain_share): (f64, f64, f64) = Self::WAVE_PACE;
-    let waves: f64 = clock * (pace + (f64::from(density) * rain_share).clamp(0.0, 1.0) * rain_pace);
-
-    Vec4::new(
-      LevelTime::wrap(f64::from(gust.x) * clock, Self::GUST_REPEAT),
-      LevelTime::wrap(f64::from(gust.y) * clock, Self::GUST_REPEAT),
-      LevelTime::wrap(waves, 1.0),
-      0.0,
-    )
   }
 
   /// The pixels the cover's noise is moved by on the noise's `frame`.
