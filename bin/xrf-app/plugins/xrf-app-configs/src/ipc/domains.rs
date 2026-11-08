@@ -7,6 +7,7 @@ macro_rules! for_each_configs_domain {
       configs => "configs" {
         check_directory_format => crate::commands::check_directory_format::configs_check_directory_format,
         close_project => crate::commands::close_project::configs_close_project,
+        find_declarations => crate::commands::find_declarations::configs_find_declarations,
         format_directory => crate::commands::format_directory::configs_format_directory,
         list_findings => crate::commands::list_findings::configs_list_findings,
         list_resolved_sections => crate::commands::list_resolved_sections::configs_list_resolved_sections,

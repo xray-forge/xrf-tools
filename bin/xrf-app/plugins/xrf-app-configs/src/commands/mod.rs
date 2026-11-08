@@ -1,5 +1,6 @@
 pub(crate) mod check_directory_format;
 pub(crate) mod close_project;
+pub(crate) mod find_declarations;
 pub(crate) mod format_directory;
 pub(crate) mod list_findings;
 pub(crate) mod list_resolved_sections;

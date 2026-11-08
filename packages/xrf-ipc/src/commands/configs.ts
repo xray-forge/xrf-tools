@@ -5,7 +5,9 @@ import { Channel } from "@tauri-apps/api/core";
 import { invoke as __TAURI_INVOKE } from "#/invoke";
 import { IIpcCommandSignature } from "#/signature";
 import {
+  ConfigsDeclarationSearch,
   ConfigsDocument,
+  ConfigsFindDeclarationsRequest,
   ConfigsFormatRequest,
   ConfigsListRequest,
   ConfigsOpenRequest,
@@ -29,6 +31,7 @@ import {
 export enum EConfigsCommand {
   CHECK_DIRECTORY_FORMAT = "plugin:configs|check_directory_format",
   CLOSE_PROJECT = "plugin:configs|close_project",
+  FIND_DECLARATIONS = "plugin:configs|find_declarations",
   FORMAT_DIRECTORY = "plugin:configs|format_directory",
   LIST_FINDINGS = "plugin:configs|list_findings",
   LIST_RESOLVED_SECTIONS = "plugin:configs|list_resolved_sections",
@@ -50,6 +53,9 @@ export const configsCommands = {
     __TAURI_INVOKE<LtxProjectFormatResult>(EConfigsCommand.CHECK_DIRECTORY_FORMAT, { request, jobId, progress }),
   /** Close the configs projects `session_ids` name, committed or opening, and whatever each had resolved. */
   closeProject: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<void>(EConfigsCommand.CLOSE_PROJECT, { sessionIds }),
+  /** Where the open project writes a section, a field or a value: declarations and patches alike, archived configs too. */
+  findDeclarations: (request: ConfigsFindDeclarationsRequest) =>
+    __TAURI_INVOKE<SessionSnapshot<ConfigsDeclarationSearch>>(EConfigsCommand.FIND_DECLARATIONS, { request }),
   /** Rewrite the LTX configs roots exposes, as one commit, one format or format check at a time. */
   formatDirectory: (request: ConfigsFormatRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<LtxProjectFormatResult>(EConfigsCommand.FORMAT_DIRECTORY, { request, jobId, progress }),
@@ -92,6 +98,7 @@ export interface IConfigsCommandSignatures {
     ["request", "jobId", "progress"]
   >;
   [EConfigsCommand.CLOSE_PROJECT]: IIpcCommandSignature<typeof configsCommands.closeProject, ["sessionIds"]>;
+  [EConfigsCommand.FIND_DECLARATIONS]: IIpcCommandSignature<typeof configsCommands.findDeclarations, ["request"]>;
   [EConfigsCommand.FORMAT_DIRECTORY]: IIpcCommandSignature<
     typeof configsCommands.formatDirectory,
     ["request", "jobId", "progress"]
