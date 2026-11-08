@@ -34,7 +34,7 @@ impl WaterFlow {
     settings: &RenderEnhancedWaterSettings,
     WaterWeather { wind, rain }: WaterWeather,
   ) {
-    let step: f64 = time.get_step().map_or(0.0, |step| step.max(0.0));
+    let step: f64 = time.get_advance();
     let elapsed: f64 = step * f64::from(settings.flow);
     let strength: f64 = (f64::from(wind.velocity) * Self::WIND_SHARE).clamp(0.0, 1.0);
     let calm_flow: f64 = f64::from(settings.calm_flow);

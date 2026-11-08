@@ -38,7 +38,7 @@ impl FoliageWind {
     wetness: f32,
   ) -> FoliageWindValues {
     let is_windy: bool = motion == FoliageMotion::Blowing;
-    let elapsed: f64 = time.get_step().map_or(0.0, |step| step.max(0.0));
+    let elapsed: f64 = time.get_advance();
     let velocity: f32 = wind
       .velocity
       .max(settings.min_speed / Self::VELOCITY_SHARE)
