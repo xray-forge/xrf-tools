@@ -10,7 +10,7 @@ use crate::paths::storage::app_storage_kind::AppStorageKind;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AppStorageArea {
+pub(crate) struct AppStorageArea {
   pub kind: AppStorageKind,
   pub bytes: u64,
   pub files: u64,
@@ -24,7 +24,7 @@ pub struct AppStorageArea {
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AppStorageUsage {
+pub(crate) struct AppStorageUsage {
   pub root: String,
   pub bytes: u64,
   pub areas: Vec<AppStorageArea>,
@@ -32,7 +32,7 @@ pub struct AppStorageUsage {
 
 impl AppStorageUsage {
   /// Measures every file under `root`, the application's data directory; one that cannot be read counts nothing.
-  pub fn measure(root: &Path) -> Self {
+  pub(crate) fn measure(root: &Path) -> Self {
     let mut areas: Vec<AppStorageArea> = AppStorageKind::ALL
       .map(|kind| AppStorageArea {
         kind,

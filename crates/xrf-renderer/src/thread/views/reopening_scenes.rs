@@ -9,28 +9,28 @@ use crate::scene::texture::texture_cache::TextureCache;
 /// shows the level at once rather than streaming in; held at most `WAIT_MOST` from when it was first asked for made
 /// again, after which it is shown as it is. The GPU's start and its retries count none of that wait.
 #[derive(Default)]
-pub struct ReopeningScenes {
+pub(crate) struct ReopeningScenes {
   /// Each held scene, by when it was first asked for once made again; none until it is.
   held: HashMap<RenderSceneId, Option<Instant>>,
 }
 
 impl ReopeningScenes {
   /// The longest a scene made again is held back for being whole.
-  pub const WAIT_MOST: Duration = Duration::from_secs(10);
+  pub(crate) const WAIT_MOST: Duration = Duration::from_secs(10);
 
   /// Holds `scenes` back, the GPU they were shown on let go.
-  pub fn hold(&mut self, scenes: impl IntoIterator<Item = RenderSceneId>) {
+  pub(crate) fn hold(&mut self, scenes: impl IntoIterator<Item = RenderSceneId>) {
     self.held.extend(scenes.into_iter().map(|scene| (scene, None)));
   }
 
-  pub fn is_held(&self, scene: RenderSceneId) -> bool {
+  pub(crate) fn is_held(&self, scene: RenderSceneId) -> bool {
     self.held.contains_key(&scene)
   }
 
   /// Whether a held scene, made again as `level`, may be shown now: once it is whole, or once it was held `WAIT_MOST`
   /// since it was first asked for made again, letting it go then and logging how long it was held and, where it is not
   /// whole, what it still waits for.
-  pub fn release(&mut self, scene: RenderSceneId, level: &LevelScene, textures: &TextureCache) -> bool {
+  pub(crate) fn release(&mut self, scene: RenderSceneId, level: &LevelScene, textures: &TextureCache) -> bool {
     let Some(asked) = self.held.get_mut(&scene) else {
       return true;
     };
@@ -59,7 +59,7 @@ impl ReopeningScenes {
   }
 
   /// Lets go of the scenes the world no longer streams.
-  pub fn retain(&mut self, live: &HashSet<RenderSceneId>) {
+  pub(crate) fn retain(&mut self, live: &HashSet<RenderSceneId>) {
     self.held.retain(|scene, _| live.contains(scene));
   }
 }

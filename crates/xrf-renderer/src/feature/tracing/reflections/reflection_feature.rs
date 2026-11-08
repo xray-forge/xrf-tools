@@ -45,7 +45,7 @@ use crate::scene::level::view::view_prepare::ViewPrepare;
 /// The screen-space reflections, while they are traced: their settings and trace this frame, what their passes read,
 /// and what they keep from frame to frame.
 #[derive(Default)]
-pub struct ReflectionFeature {
+pub(crate) struct ReflectionFeature {
   settings: RenderReflectionSettings,
   trace: Option<ReflectionTrace>,
   uniform: ReflectionUniform,
@@ -59,7 +59,7 @@ impl ReflectionFeature {
   /// rays, the dry surfaces left untraced unless asked where the level is not wet (`wet`): the history at the size they
   /// trace at and the pyramid over the frame's depth made or kept while they are traced, dropped otherwise, the
   /// trace's request list fitted, and what their passes read.
-  pub fn prepare(
+  pub(crate) fn prepare(
     &mut self,
     &ViewPrepare {
       device,
@@ -125,18 +125,18 @@ impl ReflectionFeature {
     );
   }
 
-  pub fn get_settings(&self) -> RenderReflectionSettings {
+  pub(crate) fn get_settings(&self) -> RenderReflectionSettings {
     self.settings
   }
 
   /// How they are traced this frame, none where they are not.
-  pub fn get_trace(&self) -> Option<ReflectionTrace> {
+  pub(crate) fn get_trace(&self) -> Option<ReflectionTrace> {
     self.trace
   }
 
   /// Writes into `applied` how they are traced this frame, none where they are not: their strength, the share of the
   /// frame traced, full where the raw signal is, and the steps a ray walks.
-  pub fn describe(&self, applied: &mut RenderAppliedReport) {
+  pub(crate) fn describe(&self, applied: &mut RenderAppliedReport) {
     applied.reflections = self.trace.map(|trace| RenderAppliedReflections {
       intensity: trace.intensity,
       trace_size: if trace.is_raw {
@@ -151,7 +151,7 @@ impl ReflectionFeature {
   /// Reduces the frame's `depth` as it stands now (before or after the grass drew) to its nearest, level by level, the
   /// first level the depth itself: what the rays are walked over, so a bush's billboards stand in for the volume they
   /// are and never stop a ray going for what lies behind them. Nothing where they are not traced.
-  pub fn add_pyramid_passes<'a>(
+  pub(crate) fn add_pyramid_passes<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
@@ -171,7 +171,7 @@ impl ReflectionFeature {
 
   /// The last frame's scene and depth they keep, read by this frame's hits: the scene copied again after the particles
   /// draw, the depth the target the last frame drew into.
-  pub fn import_source<'a>(
+  pub(crate) fn import_source<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
   ) -> Option<ReflectionSource> {
@@ -185,7 +185,7 @@ impl ReflectionFeature {
   /// depth's pyramid, then, denoised, the last frame's reflection reprojected, an eighth-size average, the trace
   /// filtered across the surface and resolved over time into the view's history. Answers what they hand on, none where
   /// they are not traced.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -551,14 +551,14 @@ impl ReflectionFeature {
   }
 
   /// Asks for the rays asked recorded with the frame just submitted.
-  pub fn request_demand(&self) {
+  pub(crate) fn request_demand(&self) {
     if let Some(demand) = &self.demand {
       demand.request();
     }
   }
 
   /// Drops the rays asked recorded with a frame that was never submitted.
-  pub fn abandon_demand(&self) {
+  pub(crate) fn abandon_demand(&self) {
     if let Some(demand) = &self.demand {
       demand.abandon();
     }

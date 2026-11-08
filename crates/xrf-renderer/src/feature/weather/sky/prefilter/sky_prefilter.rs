@@ -4,7 +4,7 @@ use crate::feature::weather::sky::prefilter::sky_prefilter_level::SkyPrefilterLe
 /// The sky as drawn, prefiltered by roughness into a cube's mips: the first mip the sky itself, each after it the sky
 /// blurred by the lobe of a rougher surface, so a reflection that meets nothing reads the cube at the mip its
 /// roughness names. Filled again every frame, as the keyframes blend.
-pub struct SkyPrefilter {
+pub(crate) struct SkyPrefilter {
   /// The whole cube, every mip, which the sky group binds.
   pub cube: wgpu::TextureView,
   /// Each mip as the pass fills it, the first first.
@@ -14,13 +14,13 @@ pub struct SkyPrefilter {
 }
 
 impl SkyPrefilter {
-  pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub(crate) const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   /// The most mips a size holds, which the pass names its dispatches by.
-  pub const MOST_LEVELS: u32 = 9;
+  pub(crate) const MOST_LEVELS: u32 = 9;
 
   /// A cube `probe` texels a side with its mips, the first the surroundings as drawn, or the sky; the last at roughness
   /// one.
-  pub fn new(device: &wgpu::Device, probe: RenderReflectionProbe) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, probe: RenderReflectionProbe) -> Self {
     let size: u32 = probe.get_size();
     let levels_count: u32 = probe.get_levels();
     let texture: wgpu::Texture = device.create_texture(&wgpu::TextureDescriptor {

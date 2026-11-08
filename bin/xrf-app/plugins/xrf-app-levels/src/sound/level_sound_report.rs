@@ -2,11 +2,11 @@ use xrf_audio::{AudioAcousticsReport, AudioEmitterReport, AudioSceneReport};
 use xrf_world::{WorldSoundAcousticsReport, WorldSoundRefusal, WorldSoundReport};
 
 /// A level's sound as a viewer is told of it: what the world schedules, with how the audio hears it.
-pub struct LevelSoundReport;
+pub(crate) struct LevelSoundReport;
 
 impl LevelSoundReport {
   /// The world's report with how the audio hears each sound, what it refused, and how its acoustics run.
-  pub fn join(mut report: WorldSoundReport, heard: AudioSceneReport) -> WorldSoundReport {
+  pub(crate) fn join(mut report: WorldSoundReport, heard: AudioSceneReport) -> WorldSoundReport {
     for voice in &mut report.voices {
       if let Some(emitter) = heard.emitters.iter().find(|emitter| emitter.id == voice.id) {
         let AudioEmitterReport {

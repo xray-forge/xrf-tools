@@ -14,7 +14,7 @@ use crate::pass::view::view_binding::ViewBinding;
 /// The ambient occlusion at half the frame's size, which combine multiplies the hemisphere and ambient light by: GTAO's
 /// own search and denoise here, or VBAO's or RTAO's in the bitmask search's place.
 #[derive(Default)]
-pub struct AmbientOcclusionFeature {
+pub(crate) struct AmbientOcclusionFeature {
   settings: RenderAmbientOcclusionSettings,
   /// Whether the view draws it at all: lit, solid and asked for.
   is_drawn: bool,
@@ -23,24 +23,24 @@ pub struct AmbientOcclusionFeature {
 
 impl AmbientOcclusionFeature {
   /// Takes this frame's occlusion, searched over `size`, half the frame's, through `projection`.
-  pub fn prepare(&mut self, options: &RenderViewOptions, projection: Mat4, size: (u32, u32)) {
+  pub(crate) fn prepare(&mut self, options: &RenderViewOptions, projection: Mat4, size: (u32, u32)) {
     self.settings = options.features.ambient_occlusion;
     self.is_drawn = options.mode.is_lit && !options.mode.is_wireframe && self.settings.is_enabled;
     self.uniform = AmbientOcclusionUniform::new(&self.settings, projection, size);
   }
 
   /// Whether the view draws an ambient occlusion this frame, GTAO's, VBAO's or RTAO's.
-  pub fn is_drawn(&self) -> bool {
+  pub(crate) fn is_drawn(&self) -> bool {
     self.is_drawn
   }
 
-  pub fn get_settings(&self) -> &RenderAmbientOcclusionSettings {
+  pub(crate) fn get_settings(&self) -> &RenderAmbientOcclusionSettings {
     &self.settings
   }
 
   /// Adds GTAO's search and its denoise to and fro between the occlusion targets, the first holding it finished;
   /// nothing where it is not drawn or the bitmask search's place finds it.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &self,
     GraphDeclaration {
       graph,

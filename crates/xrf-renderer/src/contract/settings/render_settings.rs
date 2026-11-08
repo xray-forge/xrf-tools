@@ -10,7 +10,7 @@ use crate::contract::view::render_texture_filtering::RenderTextureFiltering;
 /// GPU milliseconds a frame gives the work drawn once in so many frames that may wait, unless the settings say
 /// otherwise.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
-pub const RENDER_DEFAULT_PERIODIC_BUDGET: f32 = 0.5;
+pub(crate) const RENDER_DEFAULT_PERIODIC_BUDGET: f32 = 0.5;
 
 /// What every viewport of the renderer draws with.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

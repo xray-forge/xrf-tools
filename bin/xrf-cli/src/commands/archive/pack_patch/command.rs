@@ -13,7 +13,7 @@ use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 const SELECTION_ARGUMENTS: [&str; 4] = ["include", "ignore", "exclude-extension", ArchiveVolumeArguments::HEADER];
 
 #[derive(Default)]
-pub struct PackPatchCommand;
+pub(crate) struct PackPatchCommand;
 
 impl GenericCommand for PackPatchCommand {
   fn operation(&self) -> &'static str {

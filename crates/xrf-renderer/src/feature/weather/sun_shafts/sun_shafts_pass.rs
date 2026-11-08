@@ -9,7 +9,7 @@ use crate::pass::view::view_binding::ViewBinding;
 
 /// Adds the sun's light shafts to a viewport's frame after its forward surfaces, as `phase_combine_volumetric` adds
 /// what `accum_direct_volumetric` gathered: `one, one`; marched at half the frame's size first.
-pub struct SunShaftsPass {
+pub(crate) struct SunShaftsPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   /// Each draw's pipeline, by `SunShaftsDraw`.
@@ -20,7 +20,7 @@ pub struct SunShaftsPass {
 /// authored levels, the composite writing the frame over from a copy of it, the shafts added to its display values as
 /// the engine adds them (`fs_sun_shafts_over`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum SunShaftsDraw {
+pub(crate) enum SunShaftsDraw {
   March,
   Added,
   Over,
@@ -28,12 +28,12 @@ pub enum SunShaftsDraw {
 
 impl SunShaftsPass {
   /// What the half-size march gathers: how much of the shafts' light each texel's ray takes.
-  pub const MARCHED: wgpu::TextureFormat = wgpu::TextureFormat::R16Float;
+  pub(crate) const MARCHED: wgpu::TextureFormat = wgpu::TextureFormat::R16Float;
 
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+  pub(crate) fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
     let device: &wgpu::Device = source.device;
 
     let layout: wgpu::BindGroupLayout = SunShaftsParameters::create_layout(device);
@@ -47,7 +47,7 @@ impl SunShaftsPass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipelines.refresh(source.cache, || {
       Self::create_pipelines(source, &self.view_layout, &self.layout)
     }) {
@@ -56,7 +56,7 @@ impl SunShaftsPass {
   }
 
   /// Draws the shafts as `draw` asks.
-  pub fn record(
+  pub(crate) fn record(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,

@@ -1,6 +1,6 @@
 /// The indirect light the occlusion's search gathers beside it; the default gathers none.
 #[derive(Clone, Copy, Debug, Default)]
-pub struct VbaoLight {
+pub(crate) struct VbaoLight {
   /// How strong it is; none gathers no light.
   pub intensity: f32,
   /// The metres around it is gathered from, at least the occlusion's radius.

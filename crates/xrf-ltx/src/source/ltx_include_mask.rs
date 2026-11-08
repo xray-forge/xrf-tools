@@ -5,7 +5,7 @@ pub(crate) struct LtxIncludeMask;
 
 impl LtxIncludeMask {
   /// Whether a statement is a mask over a directory rather than one file's name.
-  pub fn is_mask(statement: &str) -> bool {
+  pub(crate) fn is_mask(statement: &str) -> bool {
     statement.contains(LTX_SYMBOL_INCLUDE_WILDCARD)
   }
 
@@ -14,7 +14,7 @@ impl LtxIncludeMask {
   /// Bytes rather than `str` because a filename is not required to be valid Unicode: a Unix name is bytes, and such a
   /// file is a config the engine would load. Both encodings are self-synchronizing supersets of UTF-8, so searching a
   /// mask part cannot match inside a multi-byte sequence.
-  pub fn matches(file_name: &[u8], mask: &[u8]) -> bool {
+  pub(crate) fn matches(file_name: &[u8], mask: &[u8]) -> bool {
     let wildcard: u8 = LTX_SYMBOL_INCLUDE_WILDCARD as u8;
     let mut remaining: &[u8] = file_name;
     let mut is_first_part: bool = true;

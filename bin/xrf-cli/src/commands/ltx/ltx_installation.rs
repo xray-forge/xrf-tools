@@ -4,11 +4,11 @@ use xrf_error::XrfResult;
 use xrf_vfs::{XrayCachePolicy, XrayMountMode, XraySearch, XraySearchPlan, XrayVfs};
 
 /// How every LTX command tells a game installation from a folder of configs, and mounts one.
-pub struct LtxInstallation;
+pub(crate) struct LtxInstallation;
 
 impl LtxInstallation {
   /// What `--path` accepts, for every LTX command that reads an installation.
-  pub const PATH_HELP: &'static str = concat!(
+  pub(crate) const PATH_HELP: &'static str = concat!(
     "Path to a folder with ltx files, or to a game installation root holding fsgame.ltx ",
     "(fsgame_<game>.ltx in an Enhanced Edition)"
   );
@@ -23,7 +23,7 @@ impl LtxInstallation {
   ///
   /// Returns an error when an fsgame file is present but cannot be read, decoded, or parsed, or when a declared source
   /// cannot be mounted.
-  pub fn mount(path: &Path) -> XrfResult<Option<XraySearch>> {
+  pub(crate) fn mount(path: &Path) -> XrfResult<Option<XraySearch>> {
     if !XrayMountMode::declares_installation(path) {
       return Ok(None);
     }

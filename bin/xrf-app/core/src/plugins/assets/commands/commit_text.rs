@@ -9,7 +9,7 @@ use crate::execution::ExecutionState;
 /// development build's way for a driver to change a file no editor writes yet. A release build refuses.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "commit_text")]
-pub async fn assets_commit_text(
+pub(crate) async fn assets_commit_text(
   roots: XrayRoots,
   logical_path: String,
   text: String,

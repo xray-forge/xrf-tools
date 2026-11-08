@@ -25,7 +25,13 @@ impl WrapperModule {
   /// # Errors
   ///
   /// When a wrapper names a type declared outside the workspace, or the module cannot be written.
-  pub fn write(self, path: &Path, plugin: &str, ownership: &TypeOwnership, enumerations: &Enumerations) -> XrfResult {
+  pub(super) fn write(
+    self,
+    path: &Path,
+    plugin: &str,
+    ownership: &TypeOwnership,
+    enumerations: &Enumerations,
+  ) -> XrfResult {
     // The registry spells these argument types by hand, so they take the same retyping as a Specta signature.
     let wrappers: String = enumerations.rewrite_parameters(&self.wrappers)?;
 

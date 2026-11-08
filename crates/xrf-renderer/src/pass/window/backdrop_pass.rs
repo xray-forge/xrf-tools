@@ -10,14 +10,14 @@ use crate::window::window_backdrop::WindowBackdrop;
 
 /// Paints the page's backdrop over a window where it is transparent, under its viewports: each box the page paints
 /// there, and its wash. Each window keeps its own backdrop's uniform.
-pub struct BackdropPass {
+pub(crate) struct BackdropPass {
   layout: wgpu::BindGroupLayout,
   /// One a window format, built on first use.
   pipelines: PipelineMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
 }
 
 impl BackdropPass {
-  pub fn new(source: PipelineSource<'_>) -> Self {
+  pub(crate) fn new(source: PipelineSource<'_>) -> Self {
     let device: &wgpu::Device = source.device;
 
     let layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -33,7 +33,7 @@ impl BackdropPass {
 
   /// Builds the pipelines again from a library reloaded since they were built, one a window format each; a broken edit
   /// keeps the last good ones.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipelines.refresh(source.cache, |format| {
       Self::create_pipeline(source, &self.layout, format)
     }) {
@@ -47,7 +47,7 @@ impl BackdropPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn prepare(
+  pub(crate) fn prepare(
     &mut self,
     device: &wgpu::Device,
     encoder: &mut FrameEncoder,
@@ -98,7 +98,7 @@ impl BackdropPass {
   }
 
   /// Paints a window's backdrop over the whole window, before its viewports are drawn.
-  pub fn draw(&self, pass: &mut wgpu::RenderPass<'_>, format: wgpu::TextureFormat, window: &WindowBackdrop) {
+  pub(crate) fn draw(&self, pass: &mut wgpu::RenderPass<'_>, format: wgpu::TextureFormat, window: &WindowBackdrop) {
     if let Some(pipeline) = self.pipelines.get(&format) {
       pass.set_pipeline(pipeline);
       pass.set_bind_group(0, &window.bind_group, &[]);

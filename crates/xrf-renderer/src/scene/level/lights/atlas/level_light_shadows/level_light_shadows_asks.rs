@@ -26,7 +26,7 @@ impl LevelLightShadows {
   /// Takes a shadowed light in view this frame, nearest first, or one out of view kept ready, after every one in view:
   /// gives it faces where it has none at the size it wants, and puts forward those of its faces wanting a draw. One
   /// kept ready keeps the faces it has, and takes new ones only from free room.
-  pub fn ask(&mut self, ask: &LightShadowAsk<'_>) {
+  pub(crate) fn ask(&mut self, ask: &LightShadowAsk<'_>) {
     let LightShadowAsk {
       light,
       basis,

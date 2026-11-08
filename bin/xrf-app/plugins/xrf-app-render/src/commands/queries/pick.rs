@@ -8,7 +8,7 @@ use crate::{RenderPickRequest, Renderer};
 /// pick passes it by.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "pick")]
-pub async fn render_pick(
+pub(crate) async fn render_pick(
   renderer: State<'_, Renderer>,
   viewport: RenderViewportId,
   request: RenderPickRequest,

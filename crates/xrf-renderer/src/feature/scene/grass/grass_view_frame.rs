@@ -6,7 +6,7 @@ use crate::scene::level::view::view_time::ViewTime;
 /// What a view's grass plants and draws by this frame beside its settings: the camera, the static cull's discard, the
 /// wind, the puddles no tuft is planted in, and how its cards cast shadows.
 #[derive(Clone, Copy)]
-pub struct GrassViewFrame<'a> {
+pub(crate) struct GrassViewFrame<'a> {
   pub camera: &'a CameraView,
   /// `r_ssaDISCARD` as the static cull compares it.
   pub discard_below: f32,

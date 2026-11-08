@@ -36,7 +36,7 @@ impl StaticScene {
   ///
   /// Returns an error for a handle that holds an object already, a model no longer in the scene, or when a buffer would
   /// outgrow what the device allows; the scene is left as it was.
-  pub fn add_object(
+  pub(crate) fn add_object(
     &mut self,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
@@ -151,7 +151,7 @@ impl StaticScene {
   }
 
   /// Takes a spawned object out of the scene: its place, bone matrices and rows; false for one already gone.
-  pub fn remove_object(&mut self, handle: ProxyHandle<StaticObjectProxy>) -> bool {
+  pub(crate) fn remove_object(&mut self, handle: ProxyHandle<StaticObjectProxy>) -> bool {
     let Some(object) = self.objects.remove(handle) else {
       return false;
     };

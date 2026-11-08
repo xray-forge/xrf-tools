@@ -10,7 +10,7 @@ const INFO_ARGUMENT: &str = "info";
 const FUNCTOR_ARGUMENT: &str = "functor";
 
 #[derive(Default)]
-pub struct FindCommand;
+pub(crate) struct FindCommand;
 
 impl GenericCommand for FindCommand {
   fn operation(&self) -> &'static str {

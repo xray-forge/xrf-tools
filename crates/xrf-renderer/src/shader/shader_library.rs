@@ -21,7 +21,7 @@ const FALLBACKS: &[(&str, wgpu::Features, &str)] = &[(
 /// The renderer's WGSL modules: embedded in a release build, read from the crate's `shaders/` directory in a debug
 /// one so an edited file is drawn with on the next reload.
 #[derive(Clone, Debug)]
-pub struct ShaderLibrary {
+pub(crate) struct ShaderLibrary {
   modules: BTreeMap<&'static str, String>,
   /// When each module's file last changed, for a debug build's reload.
   stamps: BTreeMap<&'static str, Option<SystemTime>>,
@@ -48,7 +48,7 @@ impl Default for ShaderLibrary {
 impl ShaderLibrary {
   /// The names of every module.
   #[cfg(test)]
-  pub fn list_modules(&self) -> impl Iterator<Item = &'static str> + '_ {
+  pub(crate) fn list_modules(&self) -> impl Iterator<Item = &'static str> + '_ {
     self.modules.keys().copied()
   }
 
@@ -58,7 +58,7 @@ impl ShaderLibrary {
   ///
   /// Returns an error for an unknown module or import.
   #[cfg(test)]
-  pub fn compose(&self, entry: &str) -> XrfResult<String> {
+  pub(crate) fn compose(&self, entry: &str) -> XrfResult<String> {
     self.compose_for(entry, wgpu::Features::all())
   }
 
@@ -68,7 +68,7 @@ impl ShaderLibrary {
   /// # Errors
   ///
   /// Returns an error for an unknown module or import.
-  pub fn compose_for(&self, entry: &str, features: wgpu::Features) -> XrfResult<String> {
+  pub(crate) fn compose_for(&self, entry: &str, features: wgpu::Features) -> XrfResult<String> {
     ShaderComposer::compose(entry, &|name: &str| {
       let name: &str = FALLBACKS
         .iter()
@@ -84,14 +84,14 @@ impl ShaderLibrary {
   }
 
   /// Where a debug build reads the modules' sources from: the crate's own `shaders` folder.
-  pub fn get_source_root() -> PathBuf {
+  pub(crate) fn get_source_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("shaders")
   }
 
   /// The modules that compose from any of `changed`, themselves included: those whose pipelines a reload of them
   /// stales. A changed fallback stands for the module it replaces too; a module that no longer composes is taken as
   /// stale, so its pipelines are asked again and report why.
-  pub fn list_dependents(&self, changed: &[&str]) -> Vec<&'static str> {
+  pub(crate) fn list_dependents(&self, changed: &[&str]) -> Vec<&'static str> {
     let changed: BTreeSet<&str> = changed
       .iter()
       .copied()
@@ -122,7 +122,7 @@ impl ShaderLibrary {
   }
 
   /// Reads again every module whose file changed since it was last read, in a debug build; answers which did.
-  pub fn reload(&mut self) -> Vec<&'static str> {
+  pub(crate) fn reload(&mut self) -> Vec<&'static str> {
     if !cfg!(debug_assertions) {
       return Vec::new();
     }

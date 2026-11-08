@@ -9,7 +9,7 @@ use xrf_renderer_core::ShaderStruct;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "TraceGrass")]
-pub struct TraceGrassUniform {
+pub(crate) struct TraceGrassUniform {
   pub grid: IVec4,
   pub steps: i32,
   pub fade: f32,

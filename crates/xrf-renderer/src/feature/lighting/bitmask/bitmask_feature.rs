@@ -34,7 +34,7 @@ use crate::scene::level::view::view_prepare::ViewPrepare;
 /// tracing the occlusion in its place where asked: what it searches for this frame, what its passes read, and its
 /// accumulations over frames, the occlusion's and, while it gathers light, the light's.
 #[derive(Default)]
-pub struct BitmaskFeature {
+pub(crate) struct BitmaskFeature {
   search: Option<BitmaskSearch>,
   indirect_light: RenderIndirectLightSettings,
   uniform: VbaoUniform,
@@ -52,7 +52,7 @@ impl BitmaskFeature {
   /// while it gathers light too, dropped otherwise, and what its passes read. A reference's sample turns the noise by
   /// `reference_sample`, so each instant's samples cycle the same turns through the accumulation and their mean is its
   /// settled value; the accumulation's own frames turn it otherwise.
-  pub fn prepare(
+  pub(crate) fn prepare(
     &mut self,
     &ViewPrepare {
       device, view, options, ..
@@ -130,12 +130,12 @@ impl BitmaskFeature {
   }
 
   /// What it searches for this frame, none where it does not run.
-  pub fn get_search(&self) -> Option<BitmaskSearch> {
+  pub(crate) fn get_search(&self) -> Option<BitmaskSearch> {
     self.search
   }
 
   /// The indirect light as asked for, which it gathers while its search is lit.
-  pub fn get_indirect_light(&self) -> RenderIndirectLightSettings {
+  pub(crate) fn get_indirect_light(&self) -> RenderIndirectLightSettings {
     self.indirect_light
   }
 
@@ -145,7 +145,7 @@ impl BitmaskFeature {
   /// filtered (into the second occlusion target, which combine reads). Answers the indirect light filtered while lit;
   /// nothing where it does not run. RTAO asked for before the scene's trace is built searches as VBAO does meanwhile.
   /// Where the indirect light is traced in its place (`is_light_traced`), it searches for the occlusion alone.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration {
       graph,

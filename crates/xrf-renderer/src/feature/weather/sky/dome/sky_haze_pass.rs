@@ -9,7 +9,7 @@ use crate::pass::build::pipeline_source::PipelineSource;
 
 /// Draws the sky as the frame shows it, clouds and all, blurred into a viewport's haze map, which the distance fades
 /// into: a few thousand texels a frame, since the skies blend as the clock moves and the clouds drift.
-pub struct SkyHazePass {
+pub(crate) struct SkyHazePass {
   layout: wgpu::BindGroupLayout,
   sky_layout: wgpu::BindGroupLayout,
   pipeline: PipelineSet<wgpu::RenderPipeline>,
@@ -19,7 +19,7 @@ impl SkyHazePass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(source: PipelineSource<'_>, sky_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+  pub(crate) fn new(source: PipelineSource<'_>, sky_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
     let device: &wgpu::Device = source.device;
 
     let layout: wgpu::BindGroupLayout = SkyHazeParameters::create_layout(device);
@@ -33,7 +33,7 @@ impl SkyHazePass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipeline.refresh(source.cache, || {
       Self::create_pipeline(source, &self.layout, &self.sky_layout)
     }) {
@@ -42,7 +42,12 @@ impl SkyHazePass {
   }
 
   /// Blurs the sky into the haze map the fog's horizon and the sky behind read.
-  pub fn record(&self, context: &mut RasterContext<'_>, parameters: &SkyHazeParameters, sky: &SkyParameters<'_>) {
+  pub(crate) fn record(
+    &self,
+    context: &mut RasterContext<'_>,
+    parameters: &SkyHazeParameters,
+    sky: &SkyParameters<'_>,
+  ) {
     context.bind(parameters);
     context.bind(sky);
 

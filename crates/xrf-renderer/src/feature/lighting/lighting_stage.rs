@@ -28,7 +28,7 @@ use crate::scene::level::view::view_prepare::ViewPrepare;
 /// occlusion and the bitmask search, the traced indirect light and the combine. The lights, the sky, the reflections,
 /// the resolve's guides and the water record between them.
 #[derive(Default)]
-pub struct LightingStage {
+pub(crate) struct LightingStage {
   sun: SunFeature,
   sun_trace: SunTraceFeature,
   contact_shadows: ContactShadowFeature,
@@ -42,7 +42,7 @@ impl LightingStage {
   /// Takes this frame's units from what the view decided (`shared`): the occlusion and the bitmask search at half the
   /// frame's size, the indirect light traced where ray reconstruction denoises it and the search gathers light, the
   /// combine, and the sun's contact shadows and trace by the frame's lighting.
-  pub fn prepare(&mut self, frame: &ViewPrepare<'_>, shared: &ViewFrame) {
+  pub(crate) fn prepare(&mut self, frame: &ViewPrepare<'_>, shared: &ViewFrame) {
     let (options, view) = (frame.options, frame.view);
     let (width, height) = frame.drawn;
     let half: (u32, u32) = (width.div_ceil(2), height.div_ceil(2));
@@ -66,17 +66,17 @@ impl LightingStage {
   }
 
   /// Whether the screen's occlusion is drawn this frame.
-  pub fn is_occluded(&self) -> bool {
+  pub(crate) fn is_occluded(&self) -> bool {
     self.ambient_occlusion.is_drawn()
   }
 
   /// Whether the bitmask search gathers indirect light this frame.
-  pub fn is_indirect(&self) -> bool {
+  pub(crate) fn is_indirect(&self) -> bool {
     self.bitmask.get_search().is_some_and(|search| search.is_lit)
   }
 
   /// Writes into `applied` what it draws this frame: the occlusion and how it is found, and the indirect light.
-  pub fn describe(&self, applied: &mut RenderAppliedReport) {
+  pub(crate) fn describe(&self, applied: &mut RenderAppliedReport) {
     let is_occluded: bool = self.is_occluded();
 
     applied.ambient_occlusion = is_occluded.then_some(*self.ambient_occlusion.get_settings());
@@ -99,7 +99,7 @@ impl LightingStage {
   /// Adds the sun's light: its contact shadows, its trace where DLSS ray reconstruction denoises it, then the sun drawn
   /// into the light target, shadowed by its cascades where it is not traced. Answers how much of the sun reaches each
   /// pixel and what the lights march their contact shadows by.
-  pub fn add_direct<'a>(
+  pub(crate) fn add_direct<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -148,7 +148,7 @@ impl LightingStage {
   /// Adds the occlusion and the indirect light searched over the screen: GTAO on its own, or VBAO, the indirect light
   /// or both from one bitmask search, RTAO through the scene's trace (`traced`). Answers the indirect light filtered,
   /// none where it is not gathered.
-  pub fn add_occlusion<'a>(
+  pub(crate) fn add_occlusion<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -179,7 +179,7 @@ impl LightingStage {
   }
 
   /// Adds the indirect light traced in the search's place where it is this frame, against the `sky` a missed ray reads.
-  pub fn add_indirect_trace<'a>(
+  pub(crate) fn add_indirect_trace<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -196,7 +196,7 @@ impl LightingStage {
   }
 
   /// Adds the combine: the frame's light, the indirect light and the reflections over the G-buffer under the `sky`.
-  pub fn add_combine<'a>(
+  pub(crate) fn add_combine<'a>(
     &'a self,
     GraphDeclaration {
       graph,

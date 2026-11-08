@@ -12,7 +12,7 @@ use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 /// the authored levels' composite writes over from (`SunShaftsDraw::Over`), nothing elsewhere.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct SunShaftsParameters<'a> {
+pub(crate) struct SunShaftsParameters<'a> {
   #[texture(d2, depth)]
   pub depth_target: GraphTexture,
   #[texture(d2_array, depth)]

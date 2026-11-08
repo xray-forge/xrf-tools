@@ -14,7 +14,7 @@ use crate::scene::level::view::view_prepare::ViewPrepare;
 
 /// The smoothing pass over the frame as drawn, FXAA or SMAA, while one smooths it.
 #[derive(Default)]
-pub struct SmoothingFeature {
+pub(crate) struct SmoothingFeature {
   mode: Option<RenderAntialiasing>,
   /// What its passes read: whether the frame holds linear light.
   uniform: SmoothingUniform,
@@ -23,7 +23,7 @@ pub struct SmoothingFeature {
 impl SmoothingFeature {
   /// Takes this frame's smoothing, where the antialiasing asked for is FXAA or SMAA and the view shows its final
   /// frame; SMAA whose lookup textures could not be read smooths as FXAA does, which needs none.
-  pub fn prepare(&mut self, &ViewPrepare { passes, options, .. }: &ViewPrepare<'_>) {
+  pub(crate) fn prepare(&mut self, &ViewPrepare { passes, options, .. }: &ViewPrepare<'_>) {
     let is_shown: bool = options.mode.debug_view == RenderDebugView::Final;
 
     self.uniform = SmoothingUniform {
@@ -40,13 +40,13 @@ impl SmoothingFeature {
   }
 
   /// The pass smoothing the frame, where one does.
-  pub fn get_mode(&self) -> Option<RenderAntialiasing> {
+  pub(crate) fn get_mode(&self) -> Option<RenderAntialiasing> {
     self.mode
   }
 
   /// Adds the smoothing of `frame`, `width` by `height`, answering the target holding the smoothed frame; the frame
   /// itself where nothing smooths it.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &self,
     GraphDeclaration {
       graph,

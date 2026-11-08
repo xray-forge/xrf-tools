@@ -5,7 +5,7 @@ use xrf_ltx::LtxProjectFormatResult;
 /// run over an installation cannot rewrite in place.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LtxFormatReport<'a> {
+pub(crate) struct LtxFormatReport<'a> {
   #[serde(flatten)]
   result: &'a LtxProjectFormatResult,
   declined: &'a [String],
@@ -13,7 +13,7 @@ pub struct LtxFormatReport<'a> {
 
 impl<'a> LtxFormatReport<'a> {
   /// The report of `result`, having declined `declined`.
-  pub fn new(result: &'a LtxProjectFormatResult, declined: &'a [String]) -> Self {
+  pub(crate) fn new(result: &'a LtxProjectFormatResult, declined: &'a [String]) -> Self {
     Self { result, declined }
   }
 }

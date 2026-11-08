@@ -8,13 +8,13 @@ use crate::commands::archive::ArchiveVolumeRequest;
 
 /// The volume flags `archive pack` and `archive pack-patch` share, declared and read in one place so the two cannot
 /// drift: `--dest`, `--name`, `--header`, `--store`, `--max-size`, `--oversized-volumes`, `--xdb` and `--force`.
-pub struct ArchiveVolumeArguments;
+pub(crate) struct ArchiveVolumeArguments;
 
 impl ArchiveVolumeArguments {
   const DEST: &'static str = "dest";
   const NAME: &'static str = "name";
   /// A header entry, which a configuration file also carries.
-  pub const HEADER: &'static str = "header";
+  pub(crate) const HEADER: &'static str = "header";
   const STORE: &'static str = "store";
   const MAX_SIZE: &'static str = "max-size";
   const OVERSIZED: &'static str = "oversized-volumes";
@@ -22,7 +22,7 @@ impl ArchiveVolumeArguments {
   const FORCE: &'static str = "force";
 
   /// Declares the flags on `command`, the volumes named `default_name` unless `--name` says otherwise.
-  pub fn declare(command: Command, default_name: &'static str) -> Command {
+  pub(crate) fn declare(command: Command, default_name: &'static str) -> Command {
     command
       .arg(
         Arg::new(Self::DEST)
@@ -93,7 +93,7 @@ impl ArchiveVolumeArguments {
   ///
   /// Returns an error when the destination cannot be made absolute, a header entry is not `<key>=<value>`, or the
   /// volume size needs `--oversized-volumes`.
-  pub fn of(matches: &ArgMatches) -> XrfResult<ArchiveVolumeRequest> {
+  pub(crate) fn of(matches: &ArgMatches) -> XrfResult<ArchiveVolumeRequest> {
     let is_oversized_allowed: bool = matches.get_flag(Self::OVERSIZED);
 
     Ok(ArchiveVolumeRequest {

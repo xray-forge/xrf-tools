@@ -34,7 +34,7 @@ use crate::describe::thm::ArchiveThmDescription;
 
 /// Which describer answers for an entry.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ArchiveDescribedFormat {
+pub(crate) enum ArchiveDescribedFormat {
   /// An object motion, `.anm` and `.anm1`, which the two spellings of share a format.
   Anm,
   /// A standalone detail object, `.dm`.
@@ -114,7 +114,7 @@ impl ArchiveDescribedFormat {
   ];
 
   /// The describer for an entry name, or `None` when no describer claims it.
-  pub fn of(name: &str) -> Option<Self> {
+  pub(crate) fn of(name: &str) -> Option<Self> {
     match XrayExtensionOf::of(name).known() {
       Some(XrayExtension::Anm | XrayExtension::Anm1) => Some(Self::Anm),
       Some(XrayExtension::EnvMod) => Some(Self::LevelEnvMod),
@@ -146,7 +146,7 @@ impl ArchiveDescribedFormat {
   }
 
   /// Whether this describer reads by seeking rather than by holding the entry, and so answers to no size ceiling.
-  pub const fn reads_by_seeking(self) -> bool {
+  pub(crate) const fn reads_by_seeking(self) -> bool {
     matches!(
       self,
       Self::Spawn | Self::LevelAi | Self::LevelCollision | Self::LevelGeom | Self::LevelGeomDetail
@@ -159,7 +159,7 @@ impl ArchiveDescribedFormat {
   /// # Errors
   ///
   /// Returns an error when the entry's bytes cannot be read, or when they are not the format this claimed them as.
-  pub fn describe(
+  pub(crate) fn describe(
     self,
     source: &ArchiveDescribeSource<'_>,
     name: &str,

@@ -11,7 +11,7 @@ use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 use crate::core::terminal::CliJob;
 
 #[derive(Default)]
-pub struct ExtractCommand;
+pub(crate) struct ExtractCommand;
 
 impl GenericCommand for ExtractCommand {
   fn operation(&self) -> &'static str {

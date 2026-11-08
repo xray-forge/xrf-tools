@@ -31,7 +31,7 @@ use crate::scene::static_scene::item::object::static_object_box::StaticObjectBox
 /// drawn over them, so the pointer moving over the scene, or a sound starting, rebuilds a handful of wires rather than
 /// every helper.
 #[derive(Default)]
-pub struct HelpersFeature {
+pub(crate) struct HelpersFeature {
   /// Every kept object's wires and icons, none singled out.
   every: Option<HelperBuild>,
   /// The selected, hovered and sounding objects' wires, the selected and hovered models' boxes among them, and icons,
@@ -47,7 +47,7 @@ impl HelpersFeature {
   /// Builds the wires, icons and marks again where the scene's helpers, the objects standing in its scene or the view's
   /// options moved since: the objects of the kinds switched on and not hidden, none while helpers are off, every kept
   /// object's apart from the singled out ones'.
-  pub fn set(&mut self, device: &wgpu::Device, sources: HelperSources<'_>) {
+  pub(crate) fn set(&mut self, device: &wgpu::Device, sources: HelperSources<'_>) {
     let HelperSources {
       helpers,
       sounding,
@@ -88,7 +88,7 @@ impl HelpersFeature {
   }
 
   /// The wires and icons to draw: every kept object's, then the singled out ones' over them.
-  pub fn get_draws(&self) -> HelperDraws<'_> {
+  pub(crate) fn get_draws(&self) -> HelperDraws<'_> {
     HelperDraws {
       every: HelperBuild::get_draws(self.every.as_ref()),
       singled: HelperBuild::get_draws(self.singled.as_ref()),
@@ -96,12 +96,12 @@ impl HelpersFeature {
   }
 
   /// The marked models' places and colours as the helper marks pass binds them; none where no model is marked.
-  pub fn get_marks(&self) -> Option<&wgpu::BindGroup> {
+  pub(crate) fn get_marks(&self) -> Option<&wgpu::BindGroup> {
     self.marks.as_ref().map(|marks| &marks.group)
   }
 
   /// What the present lays over the frame of the marks: whether any model is marked, and whether the rest fades.
-  pub fn get_present_marks(&self) -> PresentMarks {
+  pub(crate) fn get_present_marks(&self) -> PresentMarks {
     PresentMarks {
       is_marked: self.marks.is_some(),
       is_rest_faded: self.is_rest_faded,
@@ -111,7 +111,7 @@ impl HelpersFeature {
   /// Adds the helper marks pass where the view marks models: the spawned models' visible clusters drawn again over the
   /// view's depth into a marks target of the drawn size, each in its helper's colour where its fragment is the one kept;
   /// answers the target, none where no model is marked.
-  pub fn add_marks_pass<'a>(
+  pub(crate) fn add_marks_pass<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
     pass: HelperMarksPass<'a, '_>,
@@ -197,7 +197,7 @@ impl HelpersFeature {
 
   /// The ends of every wire `options` keeps of `helpers` for `part`, `sounding` the objects whose sounds play, a
   /// selected or hovered model's box among them where `boxes` stands it (`StaticScene::get_object_box`).
-  pub fn to_vertices(
+  pub(crate) fn to_vertices(
     helpers: &LevelHelpers,
     options: &RenderHelperOptions,
     sounding: &[u32],
@@ -225,7 +225,7 @@ impl HelpersFeature {
   }
 
   /// Every icon `options` keeps of `helpers` for `part`, drawn as its object's wires are.
-  pub fn to_icons(
+  pub(crate) fn to_icons(
     helpers: &LevelHelpers,
     options: &RenderHelperOptions,
     sounding: &[u32],
@@ -252,7 +252,7 @@ impl HelpersFeature {
   /// The models `options` marks of `helpers`, those standing at a place in the scene (`places`,
   /// `StaticScene::get_object_place`): each place and its colour packed as `unpack4x8unorm` reads it, by place
   /// ascending, as `fs_helper_mark` searches them.
-  pub fn to_marks(
+  pub(crate) fn to_marks(
     helpers: &LevelHelpers,
     options: &RenderHelperOptions,
     places: impl Fn(u32) -> Option<u32>,

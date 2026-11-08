@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub struct RecordingProgress {
+pub(crate) struct RecordingProgress {
   pub elapsed: f64,
   pub frames: u32,
   pub dropped_frames: u64,

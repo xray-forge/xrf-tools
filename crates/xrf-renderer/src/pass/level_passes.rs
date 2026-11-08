@@ -9,7 +9,7 @@ use crate::pass::build::pipeline_source::PipelineSource;
 
 /// The passes a level's frame runs, borrowed from the GPU state together, by the part of the frame they draw.
 #[derive(Clone, Copy)]
-pub struct LevelPasses<'a> {
+pub(crate) struct LevelPasses<'a> {
   /// Where the feature units ask for their pipelines.
   pub pipelines: PipelineSource<'a>,
   /// The sky's textures, which the lit and traced passes bind.

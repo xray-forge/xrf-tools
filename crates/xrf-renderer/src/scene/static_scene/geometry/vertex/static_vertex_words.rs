@@ -4,21 +4,21 @@ use crate::scene::section_bytes::{get_section_bytes, read_pods};
 use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 
 /// Packs geometry into the static arenas' vertex words, and measures how far it sways.
-pub struct StaticVertexWords;
+pub(crate) struct StaticVertexWords;
 
 impl StaticVertexWords {
   /// The normal a geometry carries none of: straight along `z`, packed as `pack_direction` packs one.
-  pub const NEUTRAL_NORMAL: u32 = 0x0080_80FF;
+  pub(crate) const NEUTRAL_NORMAL: u32 = 0x0080_80FF;
   /// The tangent a geometry carries none of: along `x`, square to the neutral normal and binormal.
-  pub const NEUTRAL_TANGENT: u32 = 0x00FF_8080;
+  pub(crate) const NEUTRAL_TANGENT: u32 = 0x00FF_8080;
   /// The binormal a geometry carries none of: along `y`, square to the neutral normal and tangent.
-  pub const NEUTRAL_BINORMAL: u32 = 0x0080_FF80;
+  pub(crate) const NEUTRAL_BINORMAL: u32 = 0x0080_FF80;
 
   /// A packed geometry's vertices as its arena holds them, `StaticLayout::STRIDE` words each.
   ///
   /// The shorts and bytes travel as the words they were packed into, decoded in the vertex shader; an attribute the
   /// pack left out is filled neutral, so every geometry of a layout shares one arena and one program.
-  pub fn pack_vertex_words(layout: StaticLayout, geometry: &SectorGeometry, buffer: &[u8]) -> Vec<u32> {
+  pub(crate) fn pack_vertex_words(layout: StaticLayout, geometry: &SectorGeometry, buffer: &[u8]) -> Vec<u32> {
     let count: usize = geometry.vertex_count as usize;
     let words = |section: &Option<VisualSection>| -> Option<&[u8]> {
       section.as_ref().map(|section| get_section_bytes(buffer, section))
@@ -63,7 +63,7 @@ impl StaticVertexWords {
   /// A spawned model's posed vertices as the model arena holds them: binormal, normal and tangent packed as a sector's
   /// are, `z` then `y` then `x` a byte each with nothing in the fourth, after the position, then the base coordinate as
   /// two floats. Its attributes are already in renderer space.
-  pub fn pack_model_words(geometry: &VisualGeometry, buffer: &[u8]) -> Vec<u32> {
+  pub(crate) fn pack_model_words(geometry: &VisualGeometry, buffer: &[u8]) -> Vec<u32> {
     let floats = |section: &VisualSection| -> Vec<f32> { read_pods(buffer, section) };
     let (positions, normals, tangents, binormals, uvs) = (
       floats(&geometry.positions),
@@ -99,7 +99,7 @@ impl StaticVertexWords {
   }
 
   /// A unit direction as a `D3DCOLOR` packs one: `z`, `y` and `x` from `-1..1` to a byte each, nothing in the fourth.
-  pub fn pack_direction([x, y, z]: [f32; 3]) -> u32 {
+  pub(crate) fn pack_direction([x, y, z]: [f32; 3]) -> u32 {
     let byte = |value: f32| -> u32 { ((value.clamp(-1.0, 1.0) * 0.5 + 0.5) * 255.0).round() as u32 };
 
     byte(z) | (byte(y) << 8) | (byte(x) << 16)
@@ -107,7 +107,7 @@ impl StaticVertexWords {
 
   /// How far a tree geometry's vertices reach from its foot, each weighted by its rigidity: what the wind's amplitude
   /// is multiplied by to give the farthest any of them leans, before the place's scale.
-  pub fn measure_sway_reach(geometry: &SectorGeometry, buffer: &[u8]) -> f32 {
+  pub(crate) fn measure_sway_reach(geometry: &SectorGeometry, buffer: &[u8]) -> f32 {
     let uv_words: usize = (geometry.uv_components as usize / 2).max(1);
     let uvs: Option<&[u8]> = geometry.uvs.as_ref().map(|section| get_section_bytes(buffer, section));
     let positions: &[u8] = get_section_bytes(buffer, &geometry.positions);

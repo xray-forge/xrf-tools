@@ -11,7 +11,7 @@ use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 use crate::core::reports::FileConversionReport;
 
 /// Reads one packed file and writes it packed again, which proves the round trip.
-pub struct RepackCommand<F>(PhantomData<F>);
+pub(crate) struct RepackCommand<F>(PhantomData<F>);
 
 impl<F> Default for RepackCommand<F> {
   fn default() -> Self {

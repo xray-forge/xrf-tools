@@ -4,6 +4,7 @@
   non_snake_case,
   unused,
   unsafe_op_in_unsafe_fn,
+  unreachable_pub,
   clippy::all,
   clippy::allow_attributes,
   clippy::allow_attributes_without_reason,

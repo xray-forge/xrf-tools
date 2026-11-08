@@ -19,7 +19,7 @@ use crate::request::SpriteEquipmentPackRequest;
 /// Draw every declared inventory icon into one equipment sprite sheet.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "pack_sprite")]
-pub async fn sprite_equipment_pack_sprite(
+pub(crate) async fn sprite_equipment_pack_sprite(
   execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
   request: SpriteEquipmentPackRequest,

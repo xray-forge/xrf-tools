@@ -29,17 +29,17 @@ pub(crate) struct XrayMountPlan {
 
 impl XrayMountPlan {
   /// Creates an empty mount plan.
-  pub fn new() -> Self {
+  pub(crate) fn new() -> Self {
     Self::default()
   }
 
   /// Plans one directory as a complete X-Ray root.
-  pub fn root(path: impl AsRef<Path>) -> XrfResult<Self> {
+  pub(crate) fn root(path: impl AsRef<Path>) -> XrfResult<Self> {
     Self::new().with(path, "", "root")
   }
 
   /// Plans the root implied by an asset path, or returns an empty plan when none is found.
-  pub fn implied(asset: impl AsRef<Path>) -> XrfResult<Self> {
+  pub(crate) fn implied(asset: impl AsRef<Path>) -> XrfResult<Self> {
     match XrayRootProbe::implied_root(asset) {
       Some(root) => Self::new().with(root, "", "implied"),
       None => Ok(Self::new()),
@@ -51,7 +51,7 @@ impl XrayMountPlan {
   /// # Errors
   ///
   /// Returns an error when an installation is found but its fsgame file cannot be read, decoded, or parsed.
-  pub fn implied_install(asset: impl AsRef<Path>) -> XrfResult<Self> {
+  pub(crate) fn implied_install(asset: impl AsRef<Path>) -> XrfResult<Self> {
     match XrayRootProbe::implied_installation(asset.as_ref()) {
       Some(install) => Self::from_fsgame(install),
       None => Ok(Self::new()),
@@ -63,7 +63,7 @@ impl XrayMountPlan {
   /// # Errors
   ///
   /// Returns an error when the mount cannot be planned at the root base.
-  pub fn volumes(path: impl AsRef<Path>) -> XrfResult<Self> {
+  pub(crate) fn volumes(path: impl AsRef<Path>) -> XrfResult<Self> {
     Self::new().with_kind(path, "", "volumes", XraySourceKind::Archive)
   }
 
@@ -72,7 +72,7 @@ impl XrayMountPlan {
   /// # Errors
   ///
   /// Returns an error when a descendant of the path cannot be walked, or a mount cannot be planned at the root base.
-  pub fn nested_volumes(path: impl AsRef<Path>) -> XrfResult<Self> {
+  pub(crate) fn nested_volumes(path: impl AsRef<Path>) -> XrfResult<Self> {
     Self::new().with_volumes_beneath(path.as_ref(), "volumes")
   }
 
@@ -97,12 +97,12 @@ impl XrayMountPlan {
   /// # Errors
   ///
   /// Returns an error when the installation holds no fsgame file, or it cannot be read, decoded, or parsed.
-  pub fn from_fsgame(install: impl AsRef<Path>) -> XrfResult<Self> {
+  pub(crate) fn from_fsgame(install: impl AsRef<Path>) -> XrfResult<Self> {
     Self::from_fsgame_file(&FsgameFile::read(install)?)
   }
 
   /// Plans mounts from a parsed fsgame file and the current filesystem contents.
-  pub fn from_fsgame_file(fsgame: &FsgameFile) -> XrfResult<Self> {
+  pub(crate) fn from_fsgame_file(fsgame: &FsgameFile) -> XrfResult<Self> {
     let mut plan: Self = Self::new();
 
     // Reversed: last declared wins, so it must be searched first.
@@ -173,7 +173,7 @@ impl XrayMountPlan {
   /// # Errors
   ///
   /// Returns an error when `base` is not a valid X-Ray logical path.
-  pub fn with(self, path: impl AsRef<Path>, base: &str, origin: &str) -> XrfResult<Self> {
+  pub(crate) fn with(self, path: impl AsRef<Path>, base: &str, origin: &str) -> XrfResult<Self> {
     self.with_kind(path, base, origin, XraySourceKind::Directory)
   }
 
@@ -182,7 +182,7 @@ impl XrayMountPlan {
   /// # Errors
   ///
   /// Returns an error when `base` is not a valid X-Ray logical path.
-  pub fn with_kind(
+  pub(crate) fn with_kind(
     mut self,
     path: impl AsRef<Path>,
     base: &str,
@@ -205,7 +205,7 @@ impl XrayMountPlan {
   /// # Errors
   ///
   /// Returns an error when a prefix is not a valid X-Ray logical path.
-  pub fn ignoring(mut self, ignored: &[String]) -> XrfResult<Self> {
+  pub(crate) fn ignoring(mut self, ignored: &[String]) -> XrfResult<Self> {
     let ignored: Vec<String> = ignored
       .iter()
       .map(|prefix| normalize(prefix).map(Cow::into_owned))
@@ -221,12 +221,12 @@ impl XrayMountPlan {
   }
 
   /// Returns mounts in priority order.
-  pub fn get_mounts(&self) -> &[XrayPlannedMount] {
+  pub(crate) fn get_mounts(&self) -> &[XrayPlannedMount] {
     &self.mounts
   }
 
   /// The mounts of one source kind, in the order this plan holds them.
-  pub fn of_kind(&self, kind: XraySourceKind) -> Self {
+  pub(crate) fn of_kind(&self, kind: XraySourceKind) -> Self {
     Self {
       mounts: self.mounts.iter().filter(|mount| mount.kind == kind).cloned().collect(),
     }
@@ -234,12 +234,12 @@ impl XrayMountPlan {
 
   /// Returns whether the plan contains no mounts.
   #[cfg(test)]
-  pub fn is_empty(&self) -> bool {
+  pub(crate) fn is_empty(&self) -> bool {
     self.mounts.is_empty()
   }
 
   /// Returns the number of planned mounts.
-  pub fn len(&self) -> usize {
+  pub(crate) fn len(&self) -> usize {
     self.mounts.len()
   }
 

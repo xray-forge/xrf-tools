@@ -18,7 +18,7 @@ use crate::core::terminal::CliJob;
 const HOTTEST_READ_PATHS_REPORTED: usize = 25;
 
 #[derive(Default)]
-pub struct VerifyCommand;
+pub(crate) struct VerifyCommand;
 
 impl GenericCommand for VerifyCommand {
   fn operation(&self) -> &'static str {

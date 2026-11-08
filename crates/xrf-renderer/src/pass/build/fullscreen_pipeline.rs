@@ -5,7 +5,7 @@ use crate::pass::build::pipeline_source::PipelineSource;
 
 /// A pass drawing one triangle over its whole target, its vertices from `common/fullscreen`, into one target: a format,
 /// or a format with a blend.
-pub fn create_fullscreen_pipeline(
+pub(crate) fn create_fullscreen_pipeline(
   source: PipelineSource<'_>,
   module: &'static str,
   fragment: &'static str,
@@ -16,7 +16,7 @@ pub fn create_fullscreen_pipeline(
 }
 
 /// The same, drawing into several targets at once.
-pub fn create_fullscreen_pipeline_into(
+pub(crate) fn create_fullscreen_pipeline_into(
   source: PipelineSource<'_>,
   module: &'static str,
   fragment: &'static str,
@@ -27,7 +27,7 @@ pub fn create_fullscreen_pipeline_into(
 }
 
 /// `create_fullscreen_pipeline_into` with the fragment's variant, its override constants, given by `permutation`.
-pub fn create_fullscreen_pipeline_with<P: ShaderPermutation>(
+pub(crate) fn create_fullscreen_pipeline_with<P: ShaderPermutation>(
   source: PipelineSource<'_>,
   module: &'static str,
   fragment: &'static str,

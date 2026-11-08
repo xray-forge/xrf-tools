@@ -15,7 +15,7 @@ const SEARCH_TEXTURE: &str = "smaa/search.png";
 
 /// SMAA 1x over a viewport's scene as drawn: its edges, their blending weights, then the scene blended across them into
 /// a target of its own, which the frame goes on from.
-pub struct SmaaPass {
+pub(crate) struct SmaaPass {
   layout: wgpu::BindGroupLayout,
   /// The edges', the weights' and the blend's.
   pipelines: PipelineSet<[wgpu::RenderPipeline; SmaaStage::COUNT]>,
@@ -29,12 +29,12 @@ pub struct SmaaPass {
 
 impl SmaaPass {
   /// The edges' and the blend weights' format.
-  pub const TARGET_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+  pub(crate) const TARGET_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile, or a lookup texture cannot be read or decoded.
-  pub fn new(queue: &wgpu::Queue, source: PipelineSource<'_>, bundle: &dyn RenderBundle) -> XrfResult<Self> {
+  pub(crate) fn new(queue: &wgpu::Queue, source: PipelineSource<'_>, bundle: &dyn RenderBundle) -> XrfResult<Self> {
     let device: &wgpu::Device = source.device;
 
     let layout: wgpu::BindGroupLayout = SmaaParameters::create_layout(device);
@@ -81,7 +81,7 @@ impl SmaaPass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self
       .pipelines
       .refresh(source.cache, || Self::create_pipelines(source, &self.layout))
@@ -91,17 +91,17 @@ impl SmaaPass {
   }
 
   /// The area and search lookups, and the empty texture a stage reads in place of what it writes or precedes.
-  pub fn get_lookups(&self) -> [&wgpu::TextureView; 3] {
+  pub(crate) fn get_lookups(&self) -> [&wgpu::TextureView; 3] {
     [&self.area, &self.search, &self.empty]
   }
 
   /// The linear and point samplers its stages read with.
-  pub fn get_samplers(&self) -> [&wgpu::Sampler; 2] {
+  pub(crate) fn get_samplers(&self) -> [&wgpu::Sampler; 2] {
     [&self.linear, &self.point]
   }
 
   /// Draws one of its three stages into the target the pass draws into: the edges, the blend weights, then the blend.
-  pub fn record(&self, context: &mut RasterContext<'_>, stage: SmaaStage, parameters: &SmaaParameters<'_>) {
+  pub(crate) fn record(&self, context: &mut RasterContext<'_>, stage: SmaaStage, parameters: &SmaaParameters<'_>) {
     context.get_pass().set_pipeline(&self.pipelines[stage.get_index()]);
     context.bind(parameters);
     context.get_pass().draw(0..3, 0..1);

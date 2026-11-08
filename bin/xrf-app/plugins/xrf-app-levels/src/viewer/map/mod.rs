@@ -8,9 +8,9 @@ mod map_export_outcome;
 mod map_export_request;
 mod map_exporter;
 
-pub use map_capture_request::MapCaptureRequest;
-pub use map_export_annotations::MapExportAnnotations;
-pub use map_export_format::MapExportFormat;
-pub use map_export_outcome::MapExportOutcome;
-pub use map_export_request::MapExportRequest;
-pub use map_exporter::MapExporter;
+pub(crate) use map_capture_request::MapCaptureRequest;
+pub(crate) use map_export_annotations::MapExportAnnotations;
+pub(crate) use map_export_format::MapExportFormat;
+pub(crate) use map_export_outcome::MapExportOutcome;
+pub(crate) use map_export_request::MapExportRequest;
+pub(crate) use map_exporter::MapExporter;

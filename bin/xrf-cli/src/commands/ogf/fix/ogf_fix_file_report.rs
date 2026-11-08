@@ -6,7 +6,7 @@ use xrf_ogf::OgfResidue;
 /// One visual whose bytes `ogf fix` changed, or would change on a dry run.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct OgfFixFileReport {
+pub(crate) struct OgfFixFileReport {
   /// Why the residue was inert to the engine: `split-motion-ref`, `trailing-fragment` or `unread-trailing-chunk` for
   /// bytes dropped, `understated-motion-refs`, `overstated-motion-refs` or `overstated-lods` for a size corrected.
   /// Absent when the only discarded bytes sat inside the motion refs chunk, past its count.
@@ -20,7 +20,7 @@ pub struct OgfFixFileReport {
 }
 
 impl OgfFixFileReport {
-  pub fn new(
+  pub(crate) fn new(
     source: &Path,
     destination: &Path,
     original_size: usize,
@@ -40,7 +40,7 @@ impl OgfFixFileReport {
   }
 
   /// Bytes the source carried that the engine never read, inside the motion refs chunk and after the last chunk.
-  pub fn discarded_size(&self) -> usize {
+  pub(crate) fn discarded_size(&self) -> usize {
     self.original_size.saturating_sub(self.normalized_size)
   }
 }

@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub struct ArchivesUnpackRequest {
+pub(crate) struct ArchivesUnpackRequest {
   /// Archive or directory of archives to read.
   pub from: PathBuf,
   /// Directory to write the contents into.

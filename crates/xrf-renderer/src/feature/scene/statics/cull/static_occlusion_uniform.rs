@@ -5,7 +5,7 @@ use xrf_renderer_core::ShaderStruct;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Occlusion")]
-pub struct StaticOcclusionUniform {
+pub(crate) struct StaticOcclusionUniform {
   pub view: Mat4,
   pub projection: Mat4,
   /// The pyramid's first level's size.
@@ -17,7 +17,7 @@ pub struct StaticOcclusionUniform {
 
 impl StaticOcclusionUniform {
   /// The same, holding depth drawn through its view where `is_held`.
-  pub fn with_history(self, is_held: bool) -> Self {
+  pub(crate) fn with_history(self, is_held: bool) -> Self {
     Self {
       has_history: u32::from(is_held),
       ..self

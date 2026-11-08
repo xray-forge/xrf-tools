@@ -7,13 +7,13 @@ use xrf_particles::{ParticleCollider, ParticleContact};
 
 /// The level's collision form as colliding particle effects meet it: `CObjectSpace::RayPick` over the level's static
 /// form, in engine space as the simulation runs.
-pub struct LevelParticleCollider {
+pub(crate) struct LevelParticleCollider {
   tracer: Arc<LevelCformTracer>,
 }
 
 impl LevelParticleCollider {
   /// Effects colliding with the form `tracer` traces.
-  pub fn new(tracer: Arc<LevelCformTracer>) -> Self {
+  pub(crate) fn new(tracer: Arc<LevelCformTracer>) -> Self {
     Self { tracer }
   }
 }

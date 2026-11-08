@@ -11,13 +11,13 @@ use crate::scene::level::view::scene_view::SceneView;
 
 impl SceneView {
   /// Holds its exposure where it stands, metered no more, or lets it adapt again.
-  pub fn freeze_exposure(&mut self, is_frozen: bool) {
+  pub(crate) fn freeze_exposure(&mut self, is_frozen: bool) {
     self.features.exposure.set_frozen(is_frozen);
   }
 
   /// Draws its frames `step` apart, however long each takes, or, none, at the time each is drawn: what adapts or fades
   /// over its frames moves by it.
-  pub fn step_clock(&mut self, step: Option<Duration>) {
+  pub(crate) fn step_clock(&mut self, step: Option<Duration>) {
     self.clock.set_step(step);
   }
 
@@ -25,21 +25,21 @@ impl SceneView {
   /// frame's time, which every unit steps on from, and each unit's clocks, easings, noise turns and histories
   /// (`ViewRestart::Motion`). What it draws from then on follows from its frames since alone, as two bursts from one
   /// time must.
-  pub fn restart_motion(&mut self) {
+  pub(crate) fn restart_motion(&mut self) {
     self.last_time = None;
     self.restart_units(ViewRestart::Motion);
   }
 
   /// Draws its next frames as a reference's `sample` of `samples`: unresolved, at that place of the jitter's
   /// sequence; none resolves them again.
-  pub fn sample_reference(&mut self, reference: Option<(u32, u32)>) {
+  pub(crate) fn sample_reference(&mut self, reference: Option<(u32, u32)>) {
     self.features.resolve.set_reference(reference);
   }
 
   /// What this frame, seen through `view` and drawn by the `jittered` view projection, measures its motion and
   /// reprojects by; none moved across a cut, after which no unit reads a history of the place the camera left
   /// (`ViewRestart::Cut`).
-  pub fn next_motion(&mut self, view: &CameraView, jittered: Mat4) -> ViewMotion {
+  pub(crate) fn next_motion(&mut self, view: &CameraView, jittered: Mat4) -> ViewMotion {
     let motion: ViewMotion = self.features.resolve.next_motion(view, jittered);
 
     if self.features.resolve.is_camera_cut() {
@@ -58,18 +58,18 @@ impl SceneView {
 
   /// Where the next frame's samples sit within their pixels, in drawn pixels, `y` down, on a GPU that has DLSS where
   /// `dlss` gives it: jittered while it resolves frames temporally and shows the finished frame, still otherwise.
-  pub fn next_jitter(&mut self, options: &RenderViewOptions, ratio: f32, dlss: Option<&Dlss>) -> Vec2 {
+  pub(crate) fn next_jitter(&mut self, options: &RenderViewOptions, ratio: f32, dlss: Option<&Dlss>) -> Vec2 {
     self.features.resolve.next_jitter(options, ratio, dlss)
   }
 
   /// The mip bias the surfaces' textures are read at this frame, as `next_jitter` decided it.
-  pub fn get_texture_bias(&self) -> f32 {
+  pub(crate) fn get_texture_bias(&self) -> f32 {
     self.features.resolve.get_texture_bias()
   }
 
   /// Drops what a frame that was never submitted copied out for reading back, its counts and its pick, and forgets the
   /// periodic work it drew, which draws again.
-  pub fn abandon_frame(&mut self) {
+  pub(crate) fn abandon_frame(&mut self) {
     self.features.statics.abandon_stats();
     self.features.statics.abandon_frame();
     self.features.resolve.abandon_frame();

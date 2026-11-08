@@ -19,7 +19,7 @@ use crate::scene::static_scene::static_scene::StaticScene;
 /// what every cull and static draw of the view binds, the camera's lists and arguments its own (`StaticViewCull`), and
 /// each shadow cull adding its own.
 #[derive(Clone, Copy)]
-pub struct StaticSceneHandles {
+pub(crate) struct StaticSceneHandles {
   pub clusters: GraphBuffer,
   pub spheres: GraphBuffer,
   pub slots: GraphBuffer,
@@ -55,7 +55,7 @@ impl StaticSceneHandles {
   /// Imports the static scene into a view's frame graph: its buffers, the view's camera lists, arguments and candidates
   /// (`camera`), the occlusion pyramid, and the cull's, occlusion's and wind's uniforms pushed, for every cull and
   /// static draw of the view to bind.
-  pub fn import<'r>(
+  pub(crate) fn import<'r>(
     GraphDeclaration {
       graph,
       bindings,
@@ -148,7 +148,7 @@ impl StaticSceneHandles {
   }
 
   /// A cull into a view's own visible list and draw arguments: the camera's, or a shadow's.
-  pub fn get_cull_parameters(
+  pub(crate) fn get_cull_parameters(
     &self,
     lists: StorageArrayMut<UVec2>,
     args: StorageArrayMut<ShaderAtomicU32>,
@@ -174,12 +174,12 @@ impl StaticSceneHandles {
   }
 
   /// The camera's cull, into the view's own list and arguments.
-  pub fn get_camera_cull(&self) -> StaticCullParameters {
+  pub(crate) fn get_camera_cull(&self) -> StaticCullParameters {
     self.get_cull_parameters(StorageArrayMut::new(self.lists), StorageArrayMut::new(self.args))
   }
 
   /// Each layout's draws of what a view's visible list holds, by `StaticLayout::get_index`.
-  pub fn get_layout_draws(&self, lists: StorageArray<UVec2>) -> [StaticDrawParameters; StaticLayout::COUNT] {
+  pub(crate) fn get_layout_draws(&self, lists: StorageArray<UVec2>) -> [StaticDrawParameters; StaticLayout::COUNT] {
     self.words.map(|words| StaticDrawParameters {
       clusters: StorageArray::new(self.clusters),
       slots: StorageArray::new(self.slots),
@@ -195,7 +195,7 @@ impl StaticSceneHandles {
   }
 
   /// The camera's draws of what its cull listed, the impostors' too.
-  pub fn get_camera_draws(&self) -> StaticDraws {
+  pub(crate) fn get_camera_draws(&self) -> StaticDraws {
     StaticDraws {
       layouts: self.get_layout_draws(StorageArray::new(self.lists)),
       impostors: StaticImpostorParameters {

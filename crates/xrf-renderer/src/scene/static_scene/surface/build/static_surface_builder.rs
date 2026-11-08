@@ -52,15 +52,15 @@ const GLASS_TEXTURES: [&str; 3] = ["glas\\", "wind\\", "glass"];
 const HUE_STEP: f32 = 137.508;
 
 /// Builds the surfaces the static draws wear from shader table entries.
-pub struct StaticSurfaceBuilder;
+pub(crate) struct StaticSurfaceBuilder;
 
 impl StaticSurfaceBuilder {
   /// The material whose slice `lod.ps` writes: the default lighting model.
-  pub const IMPOSTOR_MATERIAL: f32 = 0.0;
+  pub(crate) const IMPOSTOR_MATERIAL: f32 = 0.0;
 
   /// A shader table entry as the static draws wear it, asking for its textures; `None` for an invisible one, which no
   /// static draw draws. A composited wall mark is laid into the G-buffer's albedo rather than over the lit frame.
-  pub fn build(
+  pub(crate) fn build(
     surface: &SectorSurface,
     descriptor: Option<&XraySurfaceDescriptor>,
     textures: &mut TextureCache,
@@ -120,7 +120,7 @@ impl StaticSurfaceBuilder {
   /// What a shader table entry decides of a surface before its textures are asked for: its class, alpha reference and
   /// flags, and the textures it names; `None` for water, which `StaticWaterSurfaceBuilder` builds, and for an
   /// invisible one.
-  pub fn plan<'a>(
+  pub(crate) fn plan<'a>(
     surface: &'a SectorSurface,
     descriptor: Option<&'a XraySurfaceDescriptor>,
   ) -> Option<StaticSurfacePlan<'a>> {
@@ -354,7 +354,7 @@ impl StaticSurfaceBuilder {
   }
 
   /// A run of impostors' surface, asking for its atlas and the atlas's `_nm` companion.
-  pub fn build_impostor(
+  pub(crate) fn build_impostor(
     surface: &SectorSurface,
     textures: &mut TextureCache,
     source: &Arc<dyn RenderAssetSource>,

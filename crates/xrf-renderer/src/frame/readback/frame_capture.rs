@@ -8,13 +8,13 @@ use crate::contract::viewport::render_rect::RenderRect;
 use crate::frame::readback::gpu_readback::GpuReadback;
 
 /// Where a capture's reply goes.
-pub type CaptureReply = Sender<XrfResult<RenderCapture>>;
+pub(crate) type CaptureReply = Sender<XrfResult<RenderCapture>>;
 
 /// A viewport's rectangle of a presented frame on its way back, for a capture asked of the renderer rather than of the
 /// screen, which another window may cover: copied out with the frame, read once a later frame's poll finds it mapped.
 /// A screenshot's is the viewport's finished frame whole, drawn apart from the window without its overlays, its level
 /// object helpers over it where asked.
-pub struct FrameCapture {
+pub(crate) struct FrameCapture {
   readback: GpuReadback,
   rect: RenderRect,
   format: wgpu::TextureFormat,
@@ -35,7 +35,12 @@ impl FrameCapture {
   /// # Errors
   ///
   /// Returns an error for a frame of a format a capture cannot read.
-  pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat, rect: RenderRect, frame: u64) -> XrfResult<Self> {
+  pub(crate) fn new(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    rect: RenderRect,
+    frame: u64,
+  ) -> XrfResult<Self> {
     if !matches!(
       format,
       wgpu::TextureFormat::Bgra8Unorm | wgpu::TextureFormat::Rgba8Unorm
@@ -64,7 +69,7 @@ impl FrameCapture {
   /// # Errors
   ///
   /// Returns an error for a frame of a format a capture cannot read.
-  pub fn new_screenshot(
+  pub(crate) fn new_screenshot(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     (width, height): (u32, u32),
@@ -85,7 +90,7 @@ impl FrameCapture {
 
   /// The same, a shot `width` by `height` pixels across, its depth's coverage waiting for its copy too, as a map's tile's
   /// is.
-  pub fn with_coverage(self, device: &wgpu::Device, (width, height): (u32, u32)) -> Self {
+  pub(crate) fn with_coverage(self, device: &wgpu::Device, (width, height): (u32, u32)) -> Self {
     let row: u32 = (width * 4).next_multiple_of(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
 
     Self {
@@ -98,32 +103,32 @@ impl FrameCapture {
   }
 
   /// The same, drawn as `screenshot` asks.
-  pub fn with_screenshot(self, screenshot: RenderScreenshot) -> Self {
+  pub(crate) fn with_screenshot(self, screenshot: RenderScreenshot) -> Self {
     Self { screenshot, ..self }
   }
 
   /// Whether it is a screenshot, which its viewport's own pass copies out rather than the window's.
-  pub fn is_screenshot(&self) -> bool {
+  pub(crate) fn is_screenshot(&self) -> bool {
     self.is_screenshot
   }
 
   /// Whether its view's level object helpers are drawn over it.
-  pub fn is_helped(&self) -> bool {
+  pub(crate) fn is_helped(&self) -> bool {
     self.screenshot.is_helped
   }
 
   /// The pixels it copies across and down.
-  pub fn get_size(&self) -> (u32, u32) {
+  pub(crate) fn get_size(&self) -> (u32, u32) {
     (self.rect.width, self.rect.height)
   }
 
   /// The format it reads.
-  pub fn get_format(&self) -> wgpu::TextureFormat {
+  pub(crate) fn get_format(&self) -> wgpu::TextureFormat {
     self.format
   }
 
   /// Copies its rectangle out of `texture`, the frame drawn; asked for once the copy is submitted.
-  pub fn encode(&self, encoder: &mut wgpu::CommandEncoder, texture: &wgpu::Texture) {
+  pub(crate) fn encode(&self, encoder: &mut wgpu::CommandEncoder, texture: &wgpu::Texture) {
     let rect: RenderRect = self.rect;
 
     encoder.copy_texture_to_buffer(
@@ -155,7 +160,7 @@ impl FrameCapture {
   }
 
   /// Copies a level map's tile's depth out of `depth`, the frame's depth target, beside its picture.
-  pub fn encode_coverage(&self, encoder: &mut wgpu::CommandEncoder, depth: &wgpu::Texture) {
+  pub(crate) fn encode_coverage(&self, encoder: &mut wgpu::CommandEncoder, depth: &wgpu::Texture) {
     let Some((readback, row)) = &self.coverage else {
       return;
     };
@@ -186,7 +191,7 @@ impl FrameCapture {
   }
 
   /// Whether its copies were recorded with the frame, which a frame that drew nothing of it did not.
-  pub fn is_recorded(&self) -> bool {
+  pub(crate) fn is_recorded(&self) -> bool {
     self.readback.is_recorded()
       && self
         .coverage
@@ -195,7 +200,7 @@ impl FrameCapture {
   }
 
   /// Asks for the copy back, after the frame copying it is submitted.
-  pub fn request(&self) {
+  pub(crate) fn request(&self) {
     self.readback.request();
 
     if let Some((readback, _)) = &self.coverage {
@@ -205,7 +210,7 @@ impl FrameCapture {
 
   /// The capture once it is back, as eight bit RGBA rows top to bottom, a map tile's alpha its coverage; nothing while
   /// it, or a map tile's depth, is on its way.
-  pub fn take(&self) -> Option<XrfResult<RenderCapture>> {
+  pub(crate) fn take(&self) -> Option<XrfResult<RenderCapture>> {
     match &self.coverage {
       Some((readback, row)) if self.readback.is_back() && readback.is_back() => {
         let capture: XrfResult<RenderCapture> = self.take_picture()?;

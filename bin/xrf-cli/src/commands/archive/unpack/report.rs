@@ -13,7 +13,7 @@ use xrf_archive::ArchiveProject;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ArchiveUnpackDryReport {
+pub(crate) struct ArchiveUnpackDryReport {
   archives: usize,
   destination: String,
   /// Directory records, which a run creates as folders rather than writes as files.
@@ -26,7 +26,7 @@ pub struct ArchiveUnpackDryReport {
 }
 
 impl ArchiveUnpackDryReport {
-  pub fn new(project: &ArchiveProject, source: &str, destination: &str) -> Self {
+  pub(crate) fn new(project: &ArchiveProject, source: &str, destination: &str) -> Self {
     Self {
       archives: project.archives.len(),
       destination: String::from(destination),

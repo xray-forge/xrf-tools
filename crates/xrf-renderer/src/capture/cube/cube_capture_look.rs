@@ -6,12 +6,12 @@ use crate::contract::view::render_view_options::RenderViewOptions;
 const METERING_ADAPTATION: f32 = 3.0;
 
 /// What a cubemap's face is drawn with: the viewport's whole look at the face's own size.
-pub struct CubeCaptureLook;
+pub(crate) struct CubeCaptureLook;
 
 impl CubeCaptureLook {
   /// The options a face is drawn with, from the viewport's `options`: a lens flare would end at the face's edge, and
   /// the camera's vignette, blur, grain and aberration are each face's own, which would part the faces at every seam.
-  pub fn apply(options: &RenderViewOptions) -> RenderViewOptions {
+  pub(crate) fn apply(options: &RenderViewOptions) -> RenderViewOptions {
     let mut look: RenderViewOptions = options.clone();
 
     look.show.is_lens_flared = false;
@@ -26,7 +26,7 @@ impl CubeCaptureLook {
   }
 
   /// The options the faces are metered with: a face's, its exposure adapting slowly over all six.
-  pub fn apply_metering(options: &RenderViewOptions) -> RenderViewOptions {
+  pub(crate) fn apply_metering(options: &RenderViewOptions) -> RenderViewOptions {
     let mut look: RenderViewOptions = Self::apply(options);
 
     look.features.exposure.adaptation = METERING_ADAPTATION;

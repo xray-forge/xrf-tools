@@ -20,9 +20,9 @@ pub(crate) use environment::{LevelEnvironment, LevelEnvironmentPart, LevelWeathe
 pub(crate) use level::{
   LevelCollisionPart, LevelGeometryPart, LevelMapPart, LevelPlacementsPart, LevelSurfacesPart, LevelTexturesPart,
 };
-pub use level::{LevelMapArea, LevelMapDescription, LevelPlacements, LevelTextureReference};
+pub(crate) use level::{LevelMapArea, LevelMapDescription, LevelPlacements, LevelTextureReference};
 pub(crate) use spawn::{
   LevelGraphPart, LevelHemiPart, LevelSectionsPart, LevelSpawn, LevelSpawnPart, LevelSpawnVisual, LevelSpawnVisuals,
   LevelSpawnVisualsPart, LevelStartPart, NamedSpawnVisual, SpawnVisualReader,
 };
-pub use spawn::{LevelSpawnObjectHemi, LevelStart, LevelStartOrigin};
+pub(crate) use spawn::{LevelSpawnObjectHemi, LevelStart, LevelStartOrigin};

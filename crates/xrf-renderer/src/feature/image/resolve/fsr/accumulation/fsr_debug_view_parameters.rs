@@ -5,7 +5,7 @@ use crate::feature::image::resolve::fsr::fsr_uniform::FsrUniform;
 /// FSR's debug views: the masks, the new locks, the luma instability, and this frame's history.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 0)]
-pub struct FsrDebugViewParameters {
+pub(crate) struct FsrDebugViewParameters {
   #[uniform]
   pub fsr: UniformBinding<FsrUniform>,
   #[texture(d2, unfilterable)]

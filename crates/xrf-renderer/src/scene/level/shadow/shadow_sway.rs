@@ -11,7 +11,7 @@ const SWAY_TEXELS: f32 = 0.5;
 
 /// How the trees sway this frame, as the shadows see it: how far they lean, and where they stand.
 #[derive(Clone, Copy, Debug)]
-pub struct ShadowSway<'a> {
+pub(crate) struct ShadowSway<'a> {
   /// The wind's amplitude, which a tree's reach is multiplied by to give how far it leans; zero while trees stand
   /// still.
   pub amplitude: f32,
@@ -26,17 +26,17 @@ pub struct ShadowSway<'a> {
 impl ShadowSway<'_> {
   /// Seconds between a shadow's draws for what sways alone, at most sixty a second: the sway is slow, and each draw
   /// over the trees costs a light face's or a cascade's cull and draw.
-  pub const INTERVAL: f32 = 1.0 / 60.0;
+  pub(crate) const INTERVAL: f32 = 1.0 / 60.0;
 
   /// Whether a map drawn at `drawn_at` draws again for the sway alone: once its interval passed, and only where a tree
   /// reaching `reach` leans across enough of a texel `texel` wide to show. Both are metres, or both are per metre of
   /// distance from a light.
-  pub fn is_redrawn(&self, reach: f32, texel: f32, drawn_at: LevelTime) -> bool {
+  pub(crate) fn is_redrawn(&self, reach: f32, texel: f32, drawn_at: LevelTime) -> bool {
     self.is_redrawn_every(reach, texel, drawn_at, Self::INTERVAL)
   }
 
   /// `is_redrawn` with an interval of its own, `interval` seconds.
-  pub fn is_redrawn_every(&self, reach: f32, texel: f32, drawn_at: LevelTime, interval: f32) -> bool {
+  pub(crate) fn is_redrawn_every(&self, reach: f32, texel: f32, drawn_at: LevelTime, interval: f32) -> bool {
     self.amplitude * reach > texel * SWAY_TEXELS && self.time.get_since(drawn_at) >= interval * (1.0 - SWAY_SLACK)
   }
 }

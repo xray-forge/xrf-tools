@@ -10,7 +10,7 @@ pub fn get_section_bytes<'a>(buffer: &'a [u8], section: &VisualSection) -> &'a [
 }
 
 /// A section's values copied out, so a pack's alignment never matters; a trailing partial value is dropped.
-pub fn read_pods<T: bytemuck::Pod>(buffer: &[u8], section: &VisualSection) -> Vec<T> {
+pub(crate) fn read_pods<T: bytemuck::Pod>(buffer: &[u8], section: &VisualSection) -> Vec<T> {
   let bytes: &[u8] = get_section_bytes(buffer, section);
 
   bytemuck::pod_collect_to_vec(&bytes[..bytes.len() - bytes.len() % size_of::<T>()])

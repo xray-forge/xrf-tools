@@ -4,7 +4,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_renderer_core::ShaderLines;
 
 /// Composes a WGSL module with its imports inlined.
-pub struct ShaderComposer;
+pub(crate) struct ShaderComposer;
 
 impl ShaderComposer {
   /// Inlines `#import "module"` lines, each module once. Directives sit alone on their line; WGSL's `enable` lines are
@@ -14,7 +14,7 @@ impl ShaderComposer {
   /// # Errors
   ///
   /// Returns an error for a module `read` cannot give, or a directive it does not know.
-  pub fn compose<'a>(entry: &str, read: &dyn Fn(&str) -> XrfResult<&'a str>) -> XrfResult<String> {
+  pub(crate) fn compose<'a>(entry: &str, read: &dyn Fn(&str) -> XrfResult<&'a str>) -> XrfResult<String> {
     let mut output: String = String::new();
     let mut imported: BTreeSet<String> = BTreeSet::new();
     let mut enables: BTreeSet<String> = BTreeSet::new();
@@ -29,7 +29,10 @@ impl ShaderComposer {
   /// # Errors
   ///
   /// Returns an error for a module `read` cannot give, or a directive it does not know.
-  pub fn list_modules<'a>(entry: &str, read: &dyn Fn(&str) -> XrfResult<&'a str>) -> XrfResult<BTreeSet<String>> {
+  pub(crate) fn list_modules<'a>(
+    entry: &str,
+    read: &dyn Fn(&str) -> XrfResult<&'a str>,
+  ) -> XrfResult<BTreeSet<String>> {
     let mut imported: BTreeSet<String> = BTreeSet::new();
     let mut enables: BTreeSet<String> = BTreeSet::new();
     let mut output: String = String::new();

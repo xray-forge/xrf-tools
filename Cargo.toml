@@ -277,6 +277,8 @@ unsafe_code = "deny"
 unused_qualifications = "warn"
 # A path type that borrows says so: `BitReader<'_>`, not `BitReader`.
 elided_lifetimes_in_paths = "warn"
+# An item no other crate can reach says so: `pub(crate)`, so `pub` marks a crate's real surface.
+unreachable_pub = "warn"
 
 [workspace.lints.clippy]
 extra_unused_type_parameters = "allow"

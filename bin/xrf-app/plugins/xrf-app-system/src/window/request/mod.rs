@@ -2,4 +2,4 @@
 
 mod leave_decision;
 
-pub use leave_decision::LeaveDecision;
+pub(crate) use leave_decision::LeaveDecision;

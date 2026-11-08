@@ -4,7 +4,7 @@ use xrf_particles::{ParticleActionType, ParticleEffect, ParticleGroup};
 /// One effect or group of a library, with what tells it apart at a glance.
 #[derive(Debug, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
-pub enum ParticleListEntry {
+pub(crate) enum ParticleListEntry {
   /// An effect: the sprite it draws, how many particles it holds, what acts on them and how long it plays.
   Effect {
     name: String,
@@ -30,7 +30,7 @@ pub enum ParticleListEntry {
 }
 
 impl ParticleListEntry {
-  pub fn of_effect(effect: &ParticleEffect) -> Self {
+  pub(crate) fn of_effect(effect: &ParticleEffect) -> Self {
     Self::Effect {
       name: effect.name.clone(),
       shader: effect.sprite.as_ref().map(|sprite| sprite.shader_name.clone()),
@@ -45,7 +45,7 @@ impl ParticleListEntry {
     }
   }
 
-  pub fn of_group(group: &ParticleGroup) -> Self {
+  pub(crate) fn of_group(group: &ParticleGroup) -> Self {
     let mut children: Vec<String> = Vec::new();
 
     for (_, child) in group.effects.iter().flat_map(|effect| effect.list_children()) {
@@ -62,14 +62,14 @@ impl ParticleListEntry {
     }
   }
 
-  pub fn get_name(&self) -> &str {
+  pub(crate) fn get_name(&self) -> &str {
     match self {
       Self::Effect { name, .. } | Self::Group { name, .. } => name,
     }
   }
 
   /// The entry as a line: its kind, name, and what tells it apart.
-  pub fn describe(&self) -> String {
+  pub(crate) fn describe(&self) -> String {
     match self {
       Self::Effect {
         name,

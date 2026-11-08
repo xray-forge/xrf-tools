@@ -5,7 +5,7 @@ use crate::lighting::wind::render_wind::RenderWind;
 /// What the enhanced water plays with this frame besides its settings: the weather's wind and rain, where its map reads
 /// have scrolled to, and its reflection.
 #[derive(Clone, Copy, Debug)]
-pub struct EnhancedWaterFrame {
+pub(crate) struct EnhancedWaterFrame {
   pub wind: RenderWind,
   /// How hard it rains on it.
   pub rain: f32,

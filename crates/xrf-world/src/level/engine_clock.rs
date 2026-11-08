@@ -9,7 +9,7 @@ use std::time::Duration;
 /// motions) reads the level's clock itself, so a burst places it exactly. A level keeps one (`WorldLevel`), which its
 /// effects step by and its scene's particles too (`RenderSceneFrame::engine_time`).
 #[derive(Clone, Copy, Debug, Default)]
-pub struct EngineClock {
+pub(crate) struct EngineClock {
   /// The level's clock at the last step, none before the first.
   last: Option<Duration>,
   now: Duration,
@@ -17,11 +17,11 @@ pub struct EngineClock {
 
 impl EngineClock {
   /// The longest step a frame takes, `fTimeDelta`'s clamp.
-  pub const LONGEST_STEP: Duration = Duration::from_millis(100);
+  pub(crate) const LONGEST_STEP: Duration = Duration::from_millis(100);
 
   /// Moves on to the level's clock standing at `level`, by the time passed since the last step within `LONGEST_STEP`,
   /// none where the level's clock went back; answers the engine's time then.
-  pub fn advance(&mut self, level: Duration) -> Duration {
+  pub(crate) fn advance(&mut self, level: Duration) -> Duration {
     if let Some(last) = self.last {
       self.now += level.saturating_sub(last).min(Self::LONGEST_STEP);
     }

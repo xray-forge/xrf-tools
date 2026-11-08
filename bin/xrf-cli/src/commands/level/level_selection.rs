@@ -10,7 +10,7 @@ use crate::commands::level::level_assets::LevelAssets;
 use crate::core::arguments::XrayRootsArguments;
 
 /// A level named either as a directory on disk or as one of an installation's.
-pub struct LevelSelection {
+pub(crate) struct LevelSelection {
   path: Option<PathBuf>,
   roots: Vec<PathBuf>,
   source: XrayMountMode,
@@ -19,7 +19,7 @@ pub struct LevelSelection {
 
 impl LevelSelection {
   /// Declares the arguments on a command of the domain, so every one of them names a level the same way.
-  pub fn declare(command: Command) -> Command {
+  pub(crate) fn declare(command: Command) -> Command {
     let command: Command = command
       .arg(
         Arg::new("path")
@@ -56,7 +56,7 @@ impl LevelSelection {
   /// # Errors
   ///
   /// Returns an error when the source mode is not one a root can be mounted in.
-  pub fn of(matches: &ArgMatches) -> XrfResult<Self> {
+  pub(crate) fn of(matches: &ArgMatches) -> XrfResult<Self> {
     Ok(Self {
       name: matches.get_one::<String>("level").cloned(),
       path: matches.get_one::<PathBuf>("path").cloned(),
@@ -74,7 +74,7 @@ impl LevelSelection {
   ///
   /// Returns an error when the roots cannot be mounted, no level was named among them, or the named one holds no
   /// `level` file.
-  pub fn open(&self) -> XrfResult<LevelAssets> {
+  pub(crate) fn open(&self) -> XrfResult<LevelAssets> {
     if let Some(path) = &self.path {
       return Ok(LevelAssets::open_directory(path));
     }

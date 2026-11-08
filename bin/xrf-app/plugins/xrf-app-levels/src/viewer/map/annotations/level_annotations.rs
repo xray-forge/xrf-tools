@@ -13,7 +13,7 @@ use crate::viewer::map::annotations::{AnnotationMarker, AnnotationPatrol, Annota
 /// Everything a level map's annotations can draw of a level's objects, engine space seen from above: what covers a
 /// space by its outlines, the patrol paths by their links, and what stands at a point by a dot.
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct LevelAnnotations {
+pub(crate) struct LevelAnnotations {
   pub volumes: Vec<AnnotationVolume>,
   pub patrols: Vec<AnnotationPatrol>,
   pub markers: Vec<AnnotationMarker>,
@@ -26,7 +26,7 @@ impl LevelAnnotations {
   /// # Errors
   ///
   /// Returns why the level has no name to find its share by, or why its spawn or graph cannot be read.
-  pub fn read(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> TauriResult<Self> {
+  pub(crate) fn read(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> TauriResult<Self> {
     let graph: Arc<SpawnLevelGraph> = LevelGraphPart::get(current, search)?;
 
     Ok(Self::of(
@@ -37,7 +37,7 @@ impl LevelAnnotations {
   }
 
   /// What `objects` hold of the level named `level`, `graph` placing the levels a changer leads to.
-  pub fn of(objects: &LevelObjectsDescription, graph: &SpawnLevelGraph, level: &str) -> Self {
+  pub(crate) fn of(objects: &LevelObjectsDescription, graph: &SpawnLevelGraph, level: &str) -> Self {
     Self {
       volumes: objects
         .objects

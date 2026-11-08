@@ -11,13 +11,13 @@ use crate::parts::LevelSpawnVisual;
 type Cell = Arc<PoolOnceLock<TauriResult<Arc<LevelSpawnVisual>>>>;
 
 /// The visuals a level's spawned objects stand as, each read the first time anything asks and kept.
-pub struct LevelSpawnVisuals {
+pub(crate) struct LevelSpawnVisuals {
   cells: Mutex<HashMap<String, Cell>>,
 }
 
 impl LevelSpawnVisuals {
   /// No visual read yet.
-  pub fn new() -> Self {
+  pub(crate) fn new() -> Self {
     Self {
       cells: Mutex::new(HashMap::new()),
     }
@@ -28,7 +28,7 @@ impl LevelSpawnVisuals {
   /// # Errors
   ///
   /// Returns why the visual cannot be read, which every later ask answers with again.
-  pub fn get_or_read(
+  pub(crate) fn get_or_read(
     &self,
     name: &str,
     read: impl FnOnce() -> TauriResult<Arc<LevelSpawnVisual>> + Send,

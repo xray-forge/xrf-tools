@@ -4,13 +4,13 @@ use xrf_ini::{IniFile, IniFormat, IniSection};
 
 use crate::{EditableLevelGuid, EditablePartHeader};
 
-pub const GUID: EditableLevelGuid = EditableLevelGuid {
+pub(super) const GUID: EditableLevelGuid = EditableLevelGuid {
   g0: 5065284203709945560,
   g1: 13177767572218497455,
 };
 
 /// A scene's main file with every section `EScene::SaveLTX` writes, as the CoP SDK saved `labx8.level`.
-pub fn level_text(guid: &EditableLevelGuid) -> XrfResult<String> {
+pub(super) fn level_text(guid: &EditableLevelGuid) -> XrfResult<String> {
   let mut file: IniFile = IniFile::default();
   let build: &mut IniSection = file.section_mut("build_params");
 
@@ -57,7 +57,7 @@ pub fn level_text(guid: &EditableLevelGuid) -> XrfResult<String> {
 
 /// A spawn tool's part with two objects: a restrictor with an attached shape, and a box whose spawn data carries custom
 /// data spanning lines.
-pub fn spawn_part_text(guid: &EditableLevelGuid, objects_count: u32) -> XrfResult<String> {
+pub(super) fn spawn_part_text(guid: &EditableLevelGuid, objects_count: u32) -> XrfResult<String> {
   let mut file: IniFile = IniFile::default();
 
   guid.write_to_section(file.section_mut("guid"));
@@ -96,7 +96,7 @@ pub fn spawn_part_text(guid: &EditableLevelGuid, objects_count: u32) -> XrfResul
 
 /// A particle tool's part as the CoP SDK saved `labx8`'s: a `[main]` with no flags, and one effect of the version
 /// `fields` gives, with that object's fields replaced or added.
-pub fn particle_part_text(guid: &EditableLevelGuid, fields: &[(&str, &str)]) -> XrfResult<String> {
+pub(super) fn particle_part_text(guid: &EditableLevelGuid, fields: &[(&str, &str)]) -> XrfResult<String> {
   let mut file: IniFile = IniFile::default();
 
   guid.write_to_section(file.section_mut("guid"));
@@ -128,7 +128,7 @@ pub fn particle_part_text(guid: &EditableLevelGuid, fields: &[(&str, &str)]) -> 
 }
 
 /// A binary part as `EScene::SaveLTX` frames it, its chunks in the order given.
-pub fn binary_part_bytes(chunks: &[ChunkPayload]) -> XrfResult<Vec<u8>> {
+pub(super) fn binary_part_bytes(chunks: &[ChunkPayload]) -> XrfResult<Vec<u8>> {
   let mut file: ChunkWriter = ChunkWriter::new();
 
   for chunk in chunks {
@@ -138,7 +138,7 @@ pub fn binary_part_bytes(chunks: &[ChunkPayload]) -> XrfResult<Vec<u8>> {
   Ok(file.buffer)
 }
 
-pub fn chunk(id: u32, bytes: &[u8]) -> ChunkPayload {
+pub(super) fn chunk(id: u32, bytes: &[u8]) -> ChunkPayload {
   ChunkPayload {
     id,
     bytes: bytes.to_vec(),
@@ -146,7 +146,7 @@ pub fn chunk(id: u32, bytes: &[u8]) -> ChunkPayload {
 }
 
 /// The 16 bytes a binary part stores its GUID as.
-pub fn guid_bytes(guid: &EditableLevelGuid) -> XrfResult<Vec<u8>> {
+pub(super) fn guid_bytes(guid: &EditableLevelGuid) -> XrfResult<Vec<u8>> {
   let mut bytes: Vec<u8> = Vec::new();
 
   guid.write::<XRayByteOrder>(&mut bytes)?;

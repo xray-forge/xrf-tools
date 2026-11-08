@@ -10,7 +10,7 @@ use crate::pass::view::view_binding::ViewBinding;
 
 /// Ambient occlusion at half the frame's size: searched into its first target, denoised across into the second and
 /// down back into the first, which combine reads.
-pub struct AmbientOcclusionPass {
+pub(crate) struct AmbientOcclusionPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   pipelines: PipelineSet<AmbientOcclusionPipelines>,
@@ -23,7 +23,7 @@ impl AmbientOcclusionPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+  pub(crate) fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
     let device: &wgpu::Device = source.device;
 
     let layout: wgpu::BindGroupLayout = AmbientOcclusionParameters::create_layout(device);
@@ -37,7 +37,7 @@ impl AmbientOcclusionPass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipelines.refresh(source.cache, || {
       Self::create_pipelines(source, &self.view_layout, &self.layout)
     }) {
@@ -46,7 +46,7 @@ impl AmbientOcclusionPass {
   }
 
   /// Draws one of its stages into the target the pass draws into: the search, or a denoise.
-  pub fn record(
+  pub(crate) fn record(
     &self,
     context: &mut RasterContext<'_>,
     stage: AmbientOcclusionStage,

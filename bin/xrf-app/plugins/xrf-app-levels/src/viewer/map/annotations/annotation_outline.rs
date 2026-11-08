@@ -6,7 +6,7 @@ use crate::viewer::map::annotations::AnnotationPoint;
 
 /// What a volume's shape covers seen from above.
 #[derive(Clone, Debug, PartialEq)]
-pub enum AnnotationOutline {
+pub(crate) enum AnnotationOutline {
   Circle {
     center: AnnotationPoint,
     radius: f32,
@@ -17,7 +17,7 @@ pub enum AnnotationOutline {
 
 impl AnnotationOutline {
   /// `shape` from above, through its object's transform `to_world`, both in renderer space.
-  pub fn of(shape: &LevelObjectShape, to_world: &VisualTransform) -> Self {
+  pub(crate) fn of(shape: &LevelObjectShape, to_world: &VisualTransform) -> Self {
     match shape {
       LevelObjectShape::Sphere { center, radius } => Self::Circle {
         center: Self::from_renderer_point(&to_world.apply_to_point(center)),
@@ -52,12 +52,12 @@ impl AnnotationOutline {
   }
 
   /// A point of renderer space from above, in engine space: mirrored back through `z`.
-  pub fn from_renderer_point(point: &Vector3d) -> AnnotationPoint {
+  pub(crate) fn from_renderer_point(point: &Vector3d) -> AnnotationPoint {
     [point.x, -point.z]
   }
 
   /// The convex hull of `points`, counterclockwise from the leftmost, by Andrew's monotone chain.
-  pub fn to_convex_hull(mut points: Vec<AnnotationPoint>) -> Vec<AnnotationPoint> {
+  pub(crate) fn to_convex_hull(mut points: Vec<AnnotationPoint>) -> Vec<AnnotationPoint> {
     points.sort_by(|a, b| a[0].total_cmp(&b[0]).then(a[1].total_cmp(&b[1])));
     points.dedup();
 
@@ -96,7 +96,7 @@ impl AnnotationOutline {
   }
 
   /// Its middle: a circle's centre, a polygon's mean corner.
-  pub fn get_center(&self) -> AnnotationPoint {
+  pub(crate) fn get_center(&self) -> AnnotationPoint {
     match self {
       Self::Circle { center, .. } => *center,
       Self::Polygon(points) => {

@@ -14,7 +14,7 @@ impl ScriptSaveMarker {
   /// # Errors
   ///
   /// Returns an error when `write` fails, or when the fields outgrow the marker's `u16`.
-  pub fn write<T: ByteOrder>(
+  pub(crate) fn write<T: ByteOrder>(
     writer: &mut ChunkWriter,
     owner: &str,
     write: impl FnOnce(&mut ChunkWriter) -> XrfResult,
@@ -32,7 +32,7 @@ impl ScriptSaveMarker {
   /// # Errors
   ///
   /// Returns an error when `read` fails, the marker is missing, or it does not count the bytes `read` took.
-  pub fn read<T: ByteOrder, D: ChunkDataSource, R>(
+  pub(crate) fn read<T: ByteOrder, D: ChunkDataSource, R>(
     reader: &mut ChunkReader<D>,
     owner: &str,
     read: impl FnOnce(&mut ChunkReader<D>) -> XrfResult<R>,

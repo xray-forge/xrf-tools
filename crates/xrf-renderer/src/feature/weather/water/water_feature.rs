@@ -29,7 +29,7 @@ use crate::scene::level::view::record::view_record::ViewRecord;
 /// A view's water as it lasts between frames: its settings and what they make its uniforms this frame, how far the
 /// enhanced water's maps have scrolled, and its reflection histories, kept only while it is asked to reflect.
 #[derive(Default)]
-pub struct WaterFeature {
+pub(crate) struct WaterFeature {
   settings: RenderWaterSettings,
   /// Whether this frame draws the water at all: it is on, some is in sight, and the view is not wireframe.
   is_drawn: bool,
@@ -51,7 +51,7 @@ impl WaterFeature {
   /// rippled by the enhanced drops' rings and shone on by the sun where it reaches the bottom, its rays the screen left
   /// traced where the scene's trace is built. Answers the G-buffer's depth with the nearest water's over it where the
   /// water draws.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -96,7 +96,7 @@ impl WaterFeature {
   }
 
   /// Takes this frame's settings: makes or drops the reflection's histories, and works out the uniforms.
-  pub fn prepare(&mut self, device: &wgpu::Device, options: &RenderViewOptions, frame: WaterFrame<'_>) {
+  pub(crate) fn prepare(&mut self, device: &wgpu::Device, options: &RenderViewOptions, frame: WaterFrame<'_>) {
     let settings: RenderWaterSettings = options.features.water;
 
     self.settings = settings;
@@ -180,32 +180,32 @@ impl WaterFeature {
     );
   }
 
-  pub fn is_drawn(&self) -> bool {
+  pub(crate) fn is_drawn(&self) -> bool {
     self.is_drawn
   }
 
   /// Whether this frame's enhanced water draws and traces every pixel's reflected ray, which the grass's cards stand
   /// in.
-  pub fn is_fully_traced(&self) -> bool {
+  pub(crate) fn is_fully_traced(&self) -> bool {
     self.is_fully_traced
   }
 
   /// Whether the enhanced water draws, reading the scene before it to refract.
-  pub fn is_enhanced(&self) -> bool {
+  pub(crate) fn is_enhanced(&self) -> bool {
     self.is_drawn && self.settings.mode == RenderWaterMode::Enhanced
   }
 
   /// The tiles of the frame the water in sight may touch.
-  pub fn get_tiles(&self) -> &ScreenTiles {
+  pub(crate) fn get_tiles(&self) -> &ScreenTiles {
     &self.tiles
   }
 
-  pub fn get_uniform(&self) -> &WaterUniform {
+  pub(crate) fn get_uniform(&self) -> &WaterUniform {
     &self.uniform
   }
 
   /// Follows the enhanced drops' rings this frame.
-  pub fn follow_rings(&mut self, rings: DropRings) {
+  pub(crate) fn follow_rings(&mut self, rings: DropRings) {
     self.enhanced.rings_tile = rings.tile;
     self.enhanced.rings_reach = rings.reach;
     self.enhanced.rings_strength = rings.strength;
@@ -214,16 +214,16 @@ impl WaterFeature {
   /// Follows the grass's cards this frame, readied after the water: the metres from the eye within which the trace
   /// stands every tuft whole (`TraceGrassUniform::card_reach`, none where it traces none), so the screen leaves the
   /// plants there to the trace while every pixel traces, and answers them where the trace would meet nothing.
-  pub fn follow_grass_cards(&mut self, card_reach: f32) {
+  pub(crate) fn follow_grass_cards(&mut self, card_reach: f32) {
     self.enhanced.plant_reach = if self.is_fully_traced { card_reach } else { 0.0 };
   }
 
-  pub fn get_enhanced_uniform(&self) -> &EnhancedWaterUniform {
+  pub(crate) fn get_enhanced_uniform(&self) -> &EnhancedWaterUniform {
     &self.enhanced
   }
 
   /// The enhanced water's reflection, while it reflects.
-  pub fn get_reflection(&self) -> Option<&WaterReflection> {
+  pub(crate) fn get_reflection(&self) -> Option<&WaterReflection> {
     self.reflection.as_ref()
   }
 }

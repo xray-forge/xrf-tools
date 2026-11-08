@@ -25,7 +25,7 @@ use crate::ipc::textures::TEXTURES_JOB_SAVE;
   clippy::too_many_arguments,
   reason = "Tauri injects each managed state as an argument of its own"
 )]
-pub async fn textures_save(
+pub(crate) async fn textures_save(
   request: TexturesSaveRequest,
   job_id: Uuid,
   progress: Channel<JobProgress>,

@@ -8,7 +8,7 @@ use crate::commands::dds::convert::dds_convert_compatibility_report::DdsConvertC
 /// What one candidate format cost, whether it was written or only weighed.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct DdsConvertCandidateReport {
+pub(crate) struct DdsConvertCandidateReport {
   format: String,
   /// Bytes on disk, header included.
   file_bytes: u64,
@@ -25,7 +25,7 @@ pub struct DdsConvertCandidateReport {
 }
 
 impl DdsConvertCandidateReport {
-  pub fn new(attempt: &DdsEncodeAttempt) -> Self {
+  pub(crate) fn new(attempt: &DdsEncodeAttempt) -> Self {
     Self {
       format: attempt.candidate.label().to_owned(),
       file_bytes: attempt.file_bytes,

@@ -11,15 +11,15 @@ use crate::viewer::ViewerImage;
 use crate::viewer::cube::{CubeExportFormat, CubeExportRequest};
 
 /// A cubemap's capture written again: its faces resized, as one cube DDS, six uncompressed TGAs or six PNGs.
-pub struct CubeExporter;
+pub(crate) struct CubeExporter;
 
 impl CubeExporter {
   /// Each face's name as six PNGs name it, in the engine's order `+x -x +y -y +z -z`.
-  pub const FACE_NAMES: [&str; 6] = ["px", "nx", "py", "ny", "pz", "nz"];
+  pub(crate) const FACE_NAMES: [&str; 6] = ["px", "nx", "py", "ny", "pz", "nz"];
 
   /// The files the export `request` asks for: one DDS at its target, or a file a face in its target folder, the TGAs
   /// `1.tga` to `6.tga` as `CDemoRecord` names its faces and the PNGs the capture's name and the face's.
-  pub fn list_paths(request: &CubeExportRequest) -> Vec<PathBuf> {
+  pub(crate) fn list_paths(request: &CubeExportRequest) -> Vec<PathBuf> {
     let CubeExportRequest {
       path, target, format, ..
     } = request;
@@ -47,7 +47,7 @@ impl CubeExporter {
   /// # Errors
   ///
   /// Returns an error when the capture cannot be read or split, or the export cannot be encoded or written.
-  pub fn export(request: &CubeExportRequest) -> TauriResult<Vec<PathBuf>> {
+  pub(crate) fn export(request: &CubeExportRequest) -> TauriResult<Vec<PathBuf>> {
     let CubeExportRequest {
       path: source,
       format,

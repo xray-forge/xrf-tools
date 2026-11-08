@@ -20,7 +20,7 @@ use crate::viewer::recording::{RecordingOutcome, RecordingProgress};
 /// is the first frame's present; the sound from the mixer's frame its anchor places there, each block at its own frame
 /// on from it, so a block the tap had no room for is a gap, not a shift. It ends when stopped, or by itself where the
 /// renderer stops recording or the audio goes on at another rate, the file finished to there either way.
-pub struct ViewportRecorder {
+pub(crate) struct ViewportRecorder {
   renderer: Renderer,
   viewport: RenderViewportId,
   is_stopped: Arc<AtomicBool>,
@@ -75,7 +75,7 @@ impl ViewportRecorder {
   /// # Errors
   ///
   /// Returns an error when the mix cannot be tapped, the video cannot be written, or the thread cannot start.
-  pub fn start(
+  pub(crate) fn start(
     renderer: &Renderer,
     server: &AudioServer,
     viewport: RenderViewportId,
@@ -122,7 +122,7 @@ impl ViewportRecorder {
   }
 
   /// Whether it ended by itself, and is only to be collected.
-  pub fn is_ended(&self) -> bool {
+  pub(crate) fn is_ended(&self) -> bool {
     self.thread.as_ref().is_none_or(JoinHandle::is_finished)
   }
 
@@ -132,7 +132,7 @@ impl ViewportRecorder {
   /// # Errors
   ///
   /// Returns an error when the file could not be finished, or its thread stopped on a panic.
-  pub fn stop(mut self) -> TauriResult<RecordingOutcome> {
+  pub(crate) fn stop(mut self) -> TauriResult<RecordingOutcome> {
     self.is_stopped.store(true, Ordering::Release);
     self.renderer.stop_record(self.viewport);
 

@@ -7,7 +7,7 @@ use xrf_report::Report;
 /// What `externs export --check` judged an artifact against the declarations, with how many externs those declare.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ExternsCheckReport {
+pub(crate) struct ExternsCheckReport {
   /// The artifact judged.
   destination: String,
   /// Externs the declarations declare: none where they did not parse.
@@ -20,7 +20,7 @@ pub struct ExternsCheckReport {
 }
 
 impl ExternsCheckReport {
-  pub fn new(source: &Path, destination: &Path, format: ExternFormat, externs: usize, report: Report) -> Self {
+  pub(crate) fn new(source: &Path, destination: &Path, format: ExternFormat, externs: usize, report: Report) -> Self {
     Self {
       destination: xrf_utils::to_portable_path_string(destination),
       externs,

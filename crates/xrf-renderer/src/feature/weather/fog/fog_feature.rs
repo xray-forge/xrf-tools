@@ -19,7 +19,7 @@ const INDOOR_HEMI_FADE: (f32, f32) = (0.03, 0.1);
 
 /// The enhanced fog: its height fog as applied this frame, and the scattering's three stages over the scene.
 #[derive(Default)]
-pub struct FogFeature {
+pub(crate) struct FogFeature {
   height: Option<RenderAppliedHeightFog>,
   stages: Option<[FogScatteringUniform; 3]>,
 }
@@ -27,7 +27,7 @@ pub struct FogFeature {
 impl FogFeature {
   /// The share of the enhanced fog's height fog a camera standing at a hemi (`camera_hemi`, none where the level gives
   /// none) sees: none indoors, rising smoothly to whole outdoors, by its hemi as the engine tells indoors.
-  pub fn get_indoor_share(camera_hemi: Option<f32>) -> f32 {
+  pub(crate) fn get_indoor_share(camera_hemi: Option<f32>) -> f32 {
     camera_hemi.map_or(1.0, |hemi| {
       let share: f32 = ((hemi - INDOOR_HEMI_FADE.0) / (INDOOR_HEMI_FADE.1 - INDOOR_HEMI_FADE.0)).clamp(0.0, 1.0);
 
@@ -37,7 +37,7 @@ impl FogFeature {
 
   /// Takes this frame's fog: the enhanced height fog where the view draws the weather's fog, faded indoors by the
   /// camera's hemi (`camera_hemi`), and the scattering's stages for a frame `size` texels across.
-  pub fn prepare(
+  pub(crate) fn prepare(
     &mut self,
     options: &RenderViewOptions,
     lighting: &RenderLighting,
@@ -61,13 +61,13 @@ impl FogFeature {
   }
 
   /// The height fog as applied this frame, where the enhanced fog draws.
-  pub fn get_applied(&self) -> Option<RenderAppliedHeightFog> {
+  pub(crate) fn get_applied(&self) -> Option<RenderAppliedHeightFog> {
     self.height
   }
 
   /// Adds the scattering over the scene: the blurs to a quarter and to half its size, the scattering at its size, and
   /// the scattered frame copied back over the scene; nothing where it does not scatter.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &self,
     GraphDeclaration {
       graph,

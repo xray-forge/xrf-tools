@@ -26,7 +26,7 @@ use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 /// The units laid over a view's lit frame before it is resolved, each alone in that part of it: the light volumes and
 /// the sun shafts, the thunder's strike, the lens flares, the scattering fog, and the spot meter reading the frame
 /// they leave. The composited surfaces, the particles, the rain and the engine's bloom record between them.
-pub struct EffectStage {
+pub(crate) struct EffectStage {
   volumetric: VolumetricFeature,
   sun_shafts: SunShaftsFeature,
   thunder: ThunderFeature,
@@ -37,7 +37,7 @@ pub struct EffectStage {
 
 impl EffectStage {
   /// The stage, nothing of it drawn yet.
-  pub fn new() -> Self {
+  pub(crate) fn new() -> Self {
     Self {
       volumetric: VolumetricFeature::default(),
       sun_shafts: SunShaftsFeature::default(),
@@ -49,7 +49,7 @@ impl EffectStage {
   }
 
   /// Asks for the textures of the lens flares the `weather` shows now and fades to.
-  pub fn request_textures(
+  pub(crate) fn request_textures(
     &self,
     lighting: &RenderLighting,
     weather: Option<&Arc<RenderLevelWeather>>,
@@ -62,7 +62,7 @@ impl EffectStage {
   /// Takes this frame's units at the view's clock `now` and what the `level` gives it: the flares, the strike, the
   /// shafts and the light volumes, the fog over the drawn frame at the level's time, and the meter. Answers the sun's
   /// sprite as the sky draws it, none where no sprite is drawn.
-  pub fn prepare(&mut self, frame: &ViewPrepare<'_>, level: &LevelPrepare, now: Instant) -> Option<SunSprite> {
+  pub(crate) fn prepare(&mut self, frame: &ViewPrepare<'_>, level: &LevelPrepare, now: Instant) -> Option<SunSprite> {
     let (device, options, lighting) = (frame.device, frame.options, frame.lighting);
     let sun_sprite: Option<SunSprite> = self.flares.prepare(frame, now);
 
@@ -79,7 +79,7 @@ impl EffectStage {
 
   /// Writes into `applied` what it draws this frame: the enhanced height fog, and the lens flare it shows where the sky
   /// draws the sun (`is_sun_drawn`).
-  pub fn describe(&self, applied: &mut RenderAppliedReport, is_sun_drawn: bool) {
+  pub(crate) fn describe(&self, applied: &mut RenderAppliedReport, is_sun_drawn: bool) {
     applied.height_fog = self.fog.get_applied();
     applied.sun = self.get_shown_flare().filter(|_| is_sun_drawn).map(str::to_owned);
   }
@@ -90,23 +90,23 @@ impl EffectStage {
   }
 
   /// Asks for the spot meter's reading recorded with the frame just submitted.
-  pub fn request_readbacks(&self) {
+  pub(crate) fn request_readbacks(&self) {
     self.meter.request();
   }
 
   /// Drops the reading a frame that was never submitted copied out.
-  pub fn abandon_frame(&self) {
+  pub(crate) fn abandon_frame(&self) {
     self.meter.abandon();
   }
 
   /// What the spot meter last read; none while the view does not meter.
-  pub fn take_meter_reading(&mut self) -> Option<RenderMeterReading> {
+  pub(crate) fn take_meter_reading(&mut self) -> Option<RenderMeterReading> {
     self.meter.take_reading()
   }
 
   /// Adds the shafts: the shadowed lights' volumes, or the enhanced froxels in place of them, then the sun's shafts
   /// composited from them over the scene.
-  pub fn add_shafts<'a>(
+  pub(crate) fn add_shafts<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -134,7 +134,7 @@ impl EffectStage {
   }
 
   /// Adds the thunder's strike over the scene, while a bolt strikes.
-  pub fn add_thunder<'a>(
+  pub(crate) fn add_thunder<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -150,7 +150,7 @@ impl EffectStage {
 
   /// Adds what is laid over the frame after its transparent layers: the lens flares and the scattering fog, then the
   /// spot meter reading what they leave.
-  pub fn add_over_lit<'a>(
+  pub(crate) fn add_over_lit<'a>(
     &'a self,
     GraphDeclaration {
       graph,

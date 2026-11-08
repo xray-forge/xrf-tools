@@ -3,7 +3,7 @@
 /// the ray's direction, what the screen answered and its distance and the frame it was written on, the ray's start
 /// read back from the water's own depth. A third of a request's bytes, never cleared: a record another frame wrote is
 /// passed over by its stamp. A record of nothing while the water does not trace every pixel.
-pub struct WaterRays {
+pub(crate) struct WaterRays {
   label: String,
   pixels: u32,
   pub records: wgpu::Buffer,
@@ -11,11 +11,11 @@ pub struct WaterRays {
 
 impl WaterRays {
   /// Words a pixel's record takes.
-  pub const WORDS: u32 = 4;
+  pub(crate) const WORDS: u32 = 4;
   /// The side of the square of pixels a workgroup of the scene pass reads.
-  pub const WORKGROUP: u32 = 8;
+  pub(crate) const WORKGROUP: u32 = 8;
 
-  pub fn new(device: &wgpu::Device, label: &str, pixels: u32) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, label: &str, pixels: u32) -> Self {
     Self {
       label: label.to_string(),
       pixels,
@@ -25,7 +25,7 @@ impl WaterRays {
 
   /// Makes the records anew where they hold another number of pixels: the drawn size's while every pixel traces, none
   /// otherwise.
-  pub fn fit(&mut self, device: &wgpu::Device, pixels: u32) {
+  pub(crate) fn fit(&mut self, device: &wgpu::Device, pixels: u32) {
     if pixels != self.pixels {
       self.pixels = pixels;
       self.records = Self::create_records(device, &self.label, pixels);

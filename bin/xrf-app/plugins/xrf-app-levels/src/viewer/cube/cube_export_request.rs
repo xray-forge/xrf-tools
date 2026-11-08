@@ -8,7 +8,7 @@ use crate::viewer::cube::CubeExportFormat;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CubeExportRequest {
+pub(crate) struct CubeExportRequest {
   /// The capture's cross PNG in the screenshots folder.
   pub path: PathBuf,
   /// The DDS written, or the folder six faces are written into.

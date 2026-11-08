@@ -18,7 +18,7 @@ impl TextureCache {
   /// Loads again every texture of these file names (lowercase, without folder or extension), whatever its scope, and a
   /// terrain's heights where its bump is among them, their sources first forgetting where they resolved: their files
   /// changed. Each keeps what it shows until its new levels land.
-  pub fn reload(&mut self, names: &[String]) {
+  pub(crate) fn reload(&mut self, names: &[String]) {
     let mut forgotten: Vec<Arc<dyn RenderAssetSource>> = Vec::new();
 
     for slot in 1..self.views.len() {
@@ -151,7 +151,7 @@ impl TextureCache {
   /// Takes what the loaders finished and uploads it at `pace`, then rebinds the array if a slot changed: up to
   /// `UPLOAD_BYTES` a frame while a level opens, and as `scheduler` grants them, in a round of their own, once every
   /// level stands.
-  pub fn update(
+  pub(crate) fn update(
     &mut self,
     device: &wgpu::Device,
     queue: &wgpu::Queue,

@@ -7,14 +7,14 @@ use crate::pass::view::noise_turn::NoiseTurn;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "LightTrace")]
-pub struct LightTraceUniform {
+pub(crate) struct LightTraceUniform {
   /// What this frame turns each pixel's noise by, each way, then nothing.
   pub noise: Vec4,
 }
 
 impl LightTraceUniform {
   /// On the noise's `frame`.
-  pub fn new(frame: u32) -> Self {
+  pub(crate) fn new(frame: u32) -> Self {
     let [x, y] = NoiseTurn::get_r2(frame, NoiseTurn::FRAMES);
 
     Self {

@@ -4,7 +4,7 @@ use xrf_renderer_core::ShaderStruct;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Region")]
-pub struct StaticRegion {
+pub(crate) struct StaticRegion {
   pub base: u32,
   pub capacity: u32,
 }

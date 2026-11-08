@@ -1,6 +1,6 @@
 /// How the enhanced water's reflection is traced this frame.
 #[derive(Clone, Copy, Debug)]
-pub struct WaterReflectionTrace {
+pub(crate) struct WaterReflectionTrace {
   /// How far its misses are traced, none for not.
   pub distance: f32,
   /// How many frames a pixel waits between its rays.

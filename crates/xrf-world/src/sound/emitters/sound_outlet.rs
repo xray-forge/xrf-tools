@@ -11,7 +11,7 @@ const INTERVAL: Duration = Duration::from_nanos(1_000_000_000 / 60);
 
 /// Where a scene's sound frames leave the world: its sink, and the frames it handed back, filled again rather than
 /// allocated, at most every [`INTERVAL`] of the level's clock.
-pub struct SoundOutlet {
+pub(crate) struct SoundOutlet {
   sink: Box<dyn WorldSoundSink>,
   /// Frames to fill before the sink has handed any back.
   #[expect(
@@ -23,7 +23,7 @@ pub struct SoundOutlet {
 }
 
 impl SoundOutlet {
-  pub fn new(sink: Box<dyn WorldSoundSink>) -> Self {
+  pub(crate) fn new(sink: Box<dyn WorldSoundSink>) -> Self {
     Self {
       sink,
       spare: Vec::new(),
@@ -32,17 +32,17 @@ impl SoundOutlet {
   }
 
   /// Whether a frame is due at `now`, the level's clock.
-  pub fn is_due(&self, now: Duration) -> bool {
+  pub(crate) fn is_due(&self, now: Duration) -> bool {
     self.sent_at.is_none_or(|at| now < at || now - at >= INTERVAL)
   }
 
   /// Sends the next frame whenever it comes, as on the scene's first.
-  pub fn restart(&mut self) {
+  pub(crate) fn restart(&mut self) {
     self.sent_at = None;
   }
 
   /// Sends a frame `fill` fills at `now`, out of those handed back where there are any, emptied of what they held.
-  pub fn send(&mut self, now: Duration, fill: impl FnOnce(&mut WorldSoundFrame)) {
+  pub(crate) fn send(&mut self, now: Duration, fill: impl FnOnce(&mut WorldSoundFrame)) {
     while let Some(spent) = self.sink.take_spent() {
       self.spare.push(spent);
     }

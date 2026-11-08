@@ -16,7 +16,7 @@ use crate::core::report::{CommandBuild, CommandExecution, ReportDestination};
 /// `exitCode` is the verdict: 0 success, 3 a check that failed, 1 or 2 a run that could not finish. Nothing restates it.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CommandEnvelope {
+pub(crate) struct CommandEnvelope {
   /// Identity of the binary that produced the run, as recorded when it was compiled.
   build: CommandBuild,
   /// The command path as it was dispatched, so a consumer never splits a string to learn it.
@@ -37,7 +37,7 @@ pub struct CommandEnvelope {
 impl CommandEnvelope {
   /// The envelope of a run of `command` that ended in `outcome` after `duration`, bounded by `execution`, carrying the
   /// result the command deposited.
-  pub fn new(
+  pub(crate) fn new(
     build: &BuildInfo,
     command: Vec<String>,
     outcome: &CommandResult,
@@ -64,7 +64,7 @@ impl CommandEnvelope {
   /// A requested report is part of what the caller asked for rather than a courtesy, so failing to deliver it fails
   /// the run: a CI job that reads the destination afterwards must never take a previous run's document for this one's
   /// answer.
-  pub fn publish(&self, destination: &ReportDestination) -> CommandResult {
+  pub(crate) fn publish(&self, destination: &ReportDestination) -> CommandResult {
     match destination {
       ReportDestination::None => Ok(()),
       ReportDestination::Stdout => {

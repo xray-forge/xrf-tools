@@ -41,7 +41,7 @@ struct Strike {
 /// `CEffect_Thunderbolt`: a strike every period while the weather names a collection, a random bolt of it each time,
 /// across the sky from the sun, at the far plane, down to the ground; and, while it strikes, the colour it lights the
 /// frame with. It runs on real time, as the engine's global time does, so bolts strike on a paused clock too.
-pub struct WeatherThunder {
+pub(crate) struct WeatherThunder {
   random: WeatherRandom,
   /// Whether the weather struck last frame, `bEnabled`.
   is_enabled: bool,
@@ -54,7 +54,7 @@ pub struct WeatherThunder {
 }
 
 impl WeatherThunder {
-  pub fn new(seed: u64) -> Self {
+  pub(crate) fn new(seed: u64) -> Self {
     Self {
       random: WeatherRandom::new(seed),
       is_enabled: false,
@@ -66,12 +66,12 @@ impl WeatherThunder {
   }
 
   /// Takes the strikes that thundered since the last take.
-  pub fn take_thunders(&mut self) -> std::vec::Drain<'_, StrikeThunder> {
+  pub(crate) fn take_thunders(&mut self) -> std::vec::Drain<'_, StrikeThunder> {
     self.thunders.drain(..)
   }
 
   /// Forgets any strike and when the next was due, as a weather taken afresh does.
-  pub fn reset(&mut self) {
+  pub(crate) fn reset(&mut self) {
     self.is_enabled = false;
     self.strike = None;
     self.advanced_at = None;
@@ -81,7 +81,7 @@ impl WeatherThunder {
   /// `OnFrame`: schedules a strike as the weather starts to name a collection while `play` lets it strike, strikes
   /// when one is due, and plays the strike under way. `now` is its real clock and `view` in engine space; none while no
   /// strike is under way.
-  pub fn advance(
+  pub(crate) fn advance(
     &mut self,
     thunder: &RenderThunder,
     mix: &WeatherMix,

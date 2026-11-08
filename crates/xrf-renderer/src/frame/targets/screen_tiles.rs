@@ -6,15 +6,15 @@ use crate::contract::viewport::render_rect::RenderRect;
 /// rectangles they make: where the distortion target is written, where the water may draw. Each input marks the tiles
 /// its screen bounds touch, clipped at the near plane, or every tile where it cannot say.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub struct ScreenTiles {
+pub(crate) struct ScreenTiles {
   /// A row's marked tiles a bit each, the lowest bit the left column, the first row the top.
   rows: [u32; Self::ROWS as usize],
 }
 
 impl ScreenTiles {
   /// Columns and rows the frame is cut into, near square at a wide frame.
-  pub const COLUMNS: u32 = 32;
-  pub const ROWS: u32 = 18;
+  pub(crate) const COLUMNS: u32 = 32;
+  pub(crate) const ROWS: u32 = 18;
 
   /// A row with every column marked.
   const ALL_COLUMNS: u32 = u32::MAX >> (32 - Self::COLUMNS);
@@ -22,19 +22,19 @@ impl ScreenTiles {
   const MARGIN: f32 = 0.002;
 
   /// Every tile.
-  pub fn new_whole() -> Self {
+  pub(crate) fn new_whole() -> Self {
     Self {
       rows: [Self::ALL_COLUMNS; Self::ROWS as usize],
     }
   }
 
   /// Whether no tile is marked.
-  pub fn is_empty(&self) -> bool {
+  pub(crate) fn is_empty(&self) -> bool {
     self.rows.iter().all(|row| *row == 0)
   }
 
   /// Marks every tile another marks too.
-  pub fn cover_tiles(&mut self, other: &Self) {
+  pub(crate) fn cover_tiles(&mut self, other: &Self) {
     for (row, other) in self.rows.iter_mut().zip(other.rows) {
       *row |= other;
     }
@@ -42,7 +42,7 @@ impl ScreenTiles {
 
   /// Marks the tiles the convex hull of `points` touches on the screen of `view_projection`, a lens of reversed depth,
   /// clipped at its near plane: none where it stands wholly before it.
-  pub fn cover_hull(&mut self, view_projection: Mat4, points: &[Vec3]) {
+  pub(crate) fn cover_hull(&mut self, view_projection: Mat4, points: &[Vec3]) {
     let mut low: Vec2 = Vec2::splat(f32::MAX);
     let mut high: Vec2 = Vec2::splat(f32::MIN);
     let mut take = |clip: Vec4| {
@@ -75,7 +75,7 @@ impl ScreenTiles {
 
   /// Marks the tiles a sphere (`xyz` its centre, `w` its radius) touches on the screen of `view_projection`, by the box
   /// about it.
-  pub fn cover_sphere(&mut self, view_projection: Mat4, sphere: Vec4) {
+  pub(crate) fn cover_sphere(&mut self, view_projection: Mat4, sphere: Vec4) {
     let (center, radius) = (sphere.truncate(), Vec3::splat(sphere.w));
     let corners: [Vec3; 8] = std::array::from_fn(|index| {
       let side: Vec3 = Vec3::new(
@@ -114,7 +114,7 @@ impl ScreenTiles {
   }
 
   /// These tiles and those within `columns` across and `rows` down of a marked one.
-  pub fn grown(&self, columns: u32, rows: u32) -> Self {
+  pub(crate) fn grown(&self, columns: u32, rows: u32) -> Self {
     let mut across: [u32; Self::ROWS as usize] = self.rows;
 
     for row in &mut across {
@@ -141,7 +141,7 @@ impl ScreenTiles {
 
   /// The marked tiles as pixel rectangles of a frame of `size`, each run of marked tiles along a row joined with the
   /// same run in the rows under it.
-  pub fn get_rects(&self, (width, height): (u32, u32)) -> Vec<RenderRect> {
+  pub(crate) fn get_rects(&self, (width, height): (u32, u32)) -> Vec<RenderRect> {
     let x_of = |column: u32| column * width / Self::COLUMNS;
     let y_of = |row: u32| row * height / Self::ROWS;
     let mut rects: Vec<RenderRect> = Vec::new();

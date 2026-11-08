@@ -6,7 +6,7 @@ use crate::feature::image::smoothing::smoothing_uniform::SmoothingUniform;
 /// writes them or comes before them), the area and search lookups, and its two samplers.
 #[derive(PassParameters)]
 #[parameters(group = 0)]
-pub struct SmaaParameters<'a> {
+pub(crate) struct SmaaParameters<'a> {
   #[texture(d2, float)]
   pub source: GraphTexture,
   #[texture(d2, float)]

@@ -13,7 +13,7 @@ use crate::pass::view::view_binding::ViewBinding;
 
 /// Measures how much of the sun shows and draws the lens flares and the gradient over a viewport's finished frame, as
 /// `CEnvironment::RenderFlares` does after combine: each a quad added by its alpha, `srcalpha, one`, with no depth.
-pub struct FlarePass {
+pub(crate) struct FlarePass {
   measure_layout: wgpu::BindGroupLayout,
   draw_layout: wgpu::BindGroupLayout,
   texture_layout: wgpu::BindGroupLayout,
@@ -24,12 +24,12 @@ pub struct FlarePass {
 
 impl FlarePass {
   /// The instance the gradient is drawn as, as `shaders/frame/flare.wgsl` reads it.
-  pub const GRADIENT_INSTANCE: u32 = FlareUniform::SLOTS as u32;
+  pub(crate) const GRADIENT_INSTANCE: u32 = FlareUniform::SLOTS as u32;
 
   /// # Errors
   ///
   /// Returns an error when a shader does not compose or compile.
-  pub fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+  pub(crate) fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
     let device: &wgpu::Device = source.device;
 
     let measure_layout: wgpu::BindGroupLayout = FlareMeasureParameters::create_layout(device);
@@ -56,7 +56,7 @@ impl FlarePass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipelines.refresh(source.cache, || {
       Self::create_pipelines(
         source,
@@ -69,12 +69,12 @@ impl FlarePass {
   }
 
   /// The sampler the flares' textures are read through, which their parameters bind.
-  pub fn get_sampler(&self) -> &wgpu::Sampler {
+  pub(crate) fn get_sampler(&self) -> &wgpu::Sampler {
     &self.sampler
   }
 
   /// Measures how much of the sun shows this frame, eased from the last.
-  pub fn record_measure(
+  pub(crate) fn record_measure(
     &self,
     context: &mut ComputeContext<'_>,
     view: &ViewBinding,
@@ -90,7 +90,7 @@ impl FlarePass {
   }
 
   /// Draws each flare, by instance, with its texture's group; the gradient is `Self::GRADIENT_INSTANCE`.
-  pub fn record_draw(
+  pub(crate) fn record_draw(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,

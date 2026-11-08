@@ -12,7 +12,7 @@ use crate::scene::static_scene::draw::static_batch::StaticBatch;
 
 impl SceneView {
   /// Asks for the counts recorded with the frame just submitted, which `take_reports` reads once they are back.
-  pub fn request_stats(&self) {
+  pub(crate) fn request_stats(&self) {
     self.features.statics.request_stats();
     self.features.grass.request_stats();
     self.features.lights.request_report();
@@ -25,7 +25,12 @@ impl SceneView {
   /// Takes what it reports of its recent frames: the counts read back since the last report, its scene's particles'
   /// simulation, whose mean only the scene's driving view starts again (`is_driving`), and what it draws with as
   /// resolved from `options`.
-  pub fn take_reports(&mut self, scene: &mut LevelScene, options: &RenderViewOptions, is_driving: bool) -> ViewReports {
+  pub(crate) fn take_reports(
+    &mut self,
+    scene: &mut LevelScene,
+    options: &RenderViewOptions,
+    is_driving: bool,
+  ) -> ViewReports {
     let antialiasing: RenderAntialiasing = self
       .features
       .resolve
@@ -50,12 +55,12 @@ impl SceneView {
   }
 
   /// The size its scene is rendered at, once its targets are made.
-  pub fn get_render_size(&self) -> Option<(u32, u32)> {
+  pub(crate) fn get_render_size(&self) -> Option<(u32, u32)> {
     self.targets.as_ref().map(|it| (it.width, it.height))
   }
 
   /// What its window's present pass reads this frame.
-  pub fn get_present_uniform(&self) -> &PresentUniform {
+  pub(crate) fn get_present_uniform(&self) -> &PresentUniform {
     self.features.present.get_uniform()
   }
 

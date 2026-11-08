@@ -10,7 +10,7 @@ use crate::parts::LevelMapArea;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct MapAnnotationsWriteRequest {
+pub(crate) struct MapAnnotationsWriteRequest {
   pub path: PathBuf,
   pub area: LevelMapArea,
   pub kinds: Vec<LevelObjectKind>,

@@ -1,6 +1,6 @@
 /// What a key does to a flying camera.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub enum FlyKey {
+pub(crate) enum FlyKey {
   Forward,
   Back,
   Left,
@@ -18,7 +18,7 @@ pub enum FlyKey {
 impl FlyKey {
   /// What a `KeyboardEvent.code` does: WASD and the numpad move the camera, `E` and `Q` or the page keys raise and lower
   /// it, and the arrow keys turn it.
-  pub fn from_code(code: &str) -> Option<Self> {
+  pub(crate) fn from_code(code: &str) -> Option<Self> {
     Some(match code {
       "ArrowDown" => Self::LookDown,
       "ArrowLeft" => Self::TurnLeft,

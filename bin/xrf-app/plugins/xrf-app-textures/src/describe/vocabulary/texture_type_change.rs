@@ -6,7 +6,7 @@ use xrf_thm::ThmTextureType;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TextureTypeChange {
+pub(crate) struct TextureTypeChange {
   pub texture_type: u32,
   /// Bits cleared from the flag word, before the set ones are set.
   pub cleared_flags: u32,
@@ -19,7 +19,7 @@ pub struct TextureTypeChange {
 
 impl TextureTypeChange {
   /// The change for every type the SDK names, in the order it lists them.
-  pub fn of_all() -> Vec<Self> {
+  pub(crate) fn of_all() -> Vec<Self> {
     ThmTextureType::NAMED
       .into_iter()
       .map(|texture_type| Self {

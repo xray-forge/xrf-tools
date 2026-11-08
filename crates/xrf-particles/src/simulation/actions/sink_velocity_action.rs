@@ -12,11 +12,11 @@ pub(crate) struct SinkVelocityAction {
 }
 
 impl SinkVelocityAction {
-  pub fn transform(&mut self, matrix: &Mat4) {
+  pub(crate) fn transform(&mut self, matrix: &Mat4) {
     self.velocity.transform_direction_from(&self.velocity_local, matrix);
   }
 
-  pub fn execute(&self, pool: &mut ParticlePool) {
+  pub(crate) fn execute(&self, pool: &mut ParticlePool) {
     for index in (0..pool.len()).rev() {
       let velocity = pool.get_particles()[index].velocity;
 

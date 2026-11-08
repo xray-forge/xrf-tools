@@ -8,7 +8,7 @@ use crate::{SpawnChunk, SpawnChunkKind, SpawnFiles};
 /// One large chunk of the spawn `session_id` holds, copied on the pool.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "read_chunk")]
-pub async fn spawn_read_chunk(
+pub(crate) async fn spawn_read_chunk(
   session_id: SessionId,
   chunk: SpawnChunkKind,
   files: State<'_, SpawnFiles>,

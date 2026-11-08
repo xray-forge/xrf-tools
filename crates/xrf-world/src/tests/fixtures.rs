@@ -21,11 +21,11 @@ use crate::host::world_level_source::WorldLevelSource;
 use crate::host::world_level_weather::WorldLevelWeather;
 
 /// How a test level packs a sector.
-pub type TestSectorPack = Box<dyn Fn(u32) -> XrfResult<SectorPackage> + Send + Sync>;
+pub(crate) type TestSectorPack = Box<dyn Fn(u32) -> XrfResult<SectorPackage> + Send + Sync>;
 
 /// How many times each read of a test level, or of the sources sharing its count, was asked for.
 #[derive(Default)]
-pub struct TestLevelReads {
+pub(crate) struct TestLevelReads {
   pub lights: AtomicU32,
   pub weather: AtomicU32,
   pub spawn: AtomicU32,
@@ -35,7 +35,7 @@ pub struct TestLevelReads {
 
 impl TestLevelReads {
   /// The lights, weather, spawn, particles and grass reads asked for so far.
-  pub fn count(&self) -> [u32; 5] {
+  pub(crate) fn count(&self) -> [u32; 5] {
     [&self.lights, &self.weather, &self.spawn, &self.particles, &self.details].map(|count| count.load(Ordering::SeqCst))
   }
 }
@@ -43,7 +43,7 @@ impl TestLevelReads {
 /// A level holding nothing but what a test gives it: the key its scene is shared by, its sectors, each packed as
 /// `pack` says, its object motions by name, its sounds and where their frames go; everything else it is asked for is
 /// not there, each ask counted.
-pub struct TestLevelSource {
+pub(crate) struct TestLevelSource {
   pub key: Option<String>,
   pub sectors: u32,
   pub pack: TestSectorPack,
@@ -74,7 +74,7 @@ impl Default for TestLevelSource {
 
 impl TestLevelSource {
   /// What it answers for whatever it does not hold.
-  pub fn none() -> XrfError {
+  pub(crate) fn none() -> XrfError {
     XrfError::new_not_found_error("nothing")
   }
 }
@@ -167,7 +167,7 @@ impl WorldLevelSource for TestLevelSource {
 }
 
 /// A viewport's world events sent nowhere, for a test attaching a viewport only to show it a level.
-pub struct SilentSink;
+pub(crate) struct SilentSink;
 
 impl WorldEventSink for SilentSink {
   fn send(&self, _: WorldViewportEvent) {}

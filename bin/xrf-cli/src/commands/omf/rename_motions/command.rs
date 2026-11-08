@@ -13,7 +13,7 @@ use super::report::OmfRenameMotionsReport;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct RenameMotionsCommand;
+pub(crate) struct RenameMotionsCommand;
 
 impl GenericCommand for RenameMotionsCommand {
   fn operation(&self) -> &'static str {

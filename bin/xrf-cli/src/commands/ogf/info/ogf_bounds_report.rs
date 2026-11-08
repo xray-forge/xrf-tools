@@ -4,7 +4,7 @@ use xrf_math::{Aabb, Sphere};
 /// A bounding volume, reported as the numbers the file carries rather than as debug text.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct OgfBoundsReport {
+pub(crate) struct OgfBoundsReport {
   maximum: [f32; 3],
   minimum: [f32; 3],
   radius: f32,
@@ -12,7 +12,7 @@ pub struct OgfBoundsReport {
 }
 
 impl OgfBoundsReport {
-  pub fn new(bounding_box: &Aabb, bounding_sphere: &Sphere) -> Self {
+  pub(crate) fn new(bounding_box: &Aabb, bounding_sphere: &Sphere) -> Self {
     Self {
       maximum: [bounding_box.max.x, bounding_box.max.y, bounding_box.max.z],
       minimum: [bounding_box.min.x, bounding_box.min.y, bounding_box.min.z],

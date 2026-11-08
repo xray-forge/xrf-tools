@@ -10,7 +10,7 @@ pub(crate) struct RestoreAction {
 }
 
 impl RestoreAction {
-  pub fn execute(&mut self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
+  pub(crate) fn execute(&mut self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
     let dt: f32 = step.dt;
 
     if self.time_left <= 0.0 {

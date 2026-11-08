@@ -7,7 +7,7 @@ use crate::scene::level::wetness::rain_wetness::RainWetness;
 /// The level's wetness and its puddles' fill: the scene's own, moved on once a frame by its driving viewport's rain and
 /// clock, which every view of it wets its surfaces by.
 #[derive(Clone, Copy, Default)]
-pub struct LevelWetness {
+pub(crate) struct LevelWetness {
   wetness: RainWetness,
   puddle_fill: PuddleFill,
 }
@@ -15,7 +15,7 @@ pub struct LevelWetness {
 impl LevelWetness {
   /// Moves both on to the scene's real clock `time` under the rain `lighting` holds, at the rain's `settings`' pace times
   /// the game's own whatever the weather's clock runs at, building up as they say.
-  pub fn advance(&mut self, lighting: &RenderLighting, settings: &RenderRainSettings, time: LevelTime) {
+  pub(crate) fn advance(&mut self, lighting: &RenderLighting, settings: &RenderRainSettings, time: LevelTime) {
     let density: f32 = lighting.rain.map_or(0.0, |rain| rain.density);
     let build_up: f32 = if settings.is_enhanced() {
       RainWetness::ENHANCED_BUILD_UP
@@ -28,12 +28,12 @@ impl LevelWetness {
   }
 
   /// How wet the level is, from nothing to one.
-  pub fn get_wetness(&self) -> &RainWetness {
+  pub(crate) fn get_wetness(&self) -> &RainWetness {
     &self.wetness
   }
 
   /// How full its puddles are, how stormy the rain has been and how soaked the level is.
-  pub fn get_puddles(&self) -> (f32, f32, f32) {
+  pub(crate) fn get_puddles(&self) -> (f32, f32, f32) {
     self.puddle_fill.get()
   }
 }

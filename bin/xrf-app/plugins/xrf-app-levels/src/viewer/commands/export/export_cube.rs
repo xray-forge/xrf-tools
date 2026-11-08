@@ -11,7 +11,7 @@ use crate::viewer::{LevelViewerFolder, LevelViewerReport};
 /// Write a cubemap of the screenshots folder again as a cube DDS, six TGAs or six PNGs; answers the files written.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "export_cube")]
-pub async fn levels_export_cube(
+pub(crate) async fn levels_export_cube(
   directories: State<'_, AppDirectories>,
   execution: State<'_, ExecutionState>,
   request: CubeExportRequest,

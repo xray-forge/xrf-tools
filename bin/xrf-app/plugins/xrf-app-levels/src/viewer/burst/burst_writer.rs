@@ -44,7 +44,7 @@ struct BurstSample {
 /// The renderer waits on the writer while it holds as many frames as it keeps in flight, so the writer keeps each
 /// frame's work off its own thread where it can: a frame drawn once is its picture as it came, a reference's samples are
 /// summed and averaged across the pool, and the PNGs are encoded there, a few frames at once ([`BurstFiles`]).
-pub struct BurstWriter {
+pub(crate) struct BurstWriter {
   folder: PathBuf,
   /// Samples each frame is drawn at, one but for a reference, and what its frames' files are named.
   samples: u32,
@@ -65,7 +65,7 @@ impl BurstWriter {
   const SILENCE: Duration = Duration::from_secs(60);
 
   /// A writer of `burst` into `folder`, which is there.
-  pub fn new(folder: PathBuf, burst: &RenderBurst) -> Self {
+  pub(crate) fn new(folder: PathBuf, burst: &RenderBurst) -> Self {
     Self {
       outcome: BurstOutcome {
         folder: folder.clone(),
@@ -82,7 +82,7 @@ impl BurstWriter {
   }
 
   /// The writer recording `sound` beside the frames.
-  pub fn with_sound(self, sound: BurstSound) -> Self {
+  pub(crate) fn with_sound(self, sound: BurstSound) -> Self {
     Self {
       sound: Some(sound),
       ..self
@@ -90,7 +90,7 @@ impl BurstWriter {
   }
 
   /// The writer making `video` of the frames and their sound.
-  pub fn with_video(self, video: BurstVideo) -> Self {
+  pub(crate) fn with_video(self, video: BurstVideo) -> Self {
     Self {
       video: Some(video),
       ..self
@@ -104,7 +104,7 @@ impl BurstWriter {
   ///
   /// Returns an error when the burst stops, the renderer tells nothing for `SILENCE`, its frames come out of order, or
   /// a picture, the sound or the video cannot be written.
-  pub fn receive(mut self, events: &Receiver<BurstEvent>) -> TauriResult<BurstOutcome> {
+  pub(crate) fn receive(mut self, events: &Receiver<BurstEvent>) -> TauriResult<BurstOutcome> {
     loop {
       match events.recv_timeout(Self::SILENCE) {
         Ok(BurstEvent::Shot {

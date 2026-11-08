@@ -17,7 +17,7 @@ use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 /// Decompiles an OGF into the SDK editable object it was exported from, with a provenance sidecar beside it.
 #[derive(Default)]
-pub struct DecompileCommand;
+pub(crate) struct DecompileCommand;
 
 impl GenericCommand for DecompileCommand {
   fn operation(&self) -> &'static str {

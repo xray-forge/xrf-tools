@@ -7,7 +7,7 @@ use crate::commands::thm::bump_alignment::bump_alignment_survey::BumpAlignmentSu
 /// What `thm bump-alignment` compared: the sets at a glance, then every set.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct BumpAlignmentReport<'a> {
+pub(crate) struct BumpAlignmentReport<'a> {
   summary: BumpAlignmentSummary,
   sets: &'a [BumpAlignmentSet],
 }
@@ -15,7 +15,7 @@ pub struct BumpAlignmentReport<'a> {
 /// The sets counted by what comparing them came to.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct BumpAlignmentSummary {
+pub(crate) struct BumpAlignmentSummary {
   /// The lifts over chance the verdicts judge by.
   pub aligned_lift: f32,
   pub mismatched_lift: f32,
@@ -36,7 +36,7 @@ pub struct BumpAlignmentSummary {
 }
 
 impl<'a> BumpAlignmentReport<'a> {
-  pub fn new(survey: &'a BumpAlignmentSurvey, summary: BumpAlignmentSummary) -> Self {
+  pub(crate) fn new(survey: &'a BumpAlignmentSurvey, summary: BumpAlignmentSummary) -> Self {
     Self {
       summary,
       sets: &survey.sets,
@@ -45,7 +45,7 @@ impl<'a> BumpAlignmentReport<'a> {
 }
 
 impl BumpAlignmentSummary {
-  pub fn of(survey: &BumpAlignmentSurvey) -> Self {
+  pub(crate) fn of(survey: &BumpAlignmentSurvey) -> Self {
     let measured: Vec<&BumpAlignment> = survey.sets.iter().filter_map(BumpAlignmentSet::get_alignment).collect();
     let count = |verdict: BumpAlignmentVerdict| measured.iter().filter(|it| it.verdict == verdict).count();
     let count_outcome = |is: fn(&BumpAlignmentOutcome) -> bool| survey.sets.iter().filter(|it| is(&it.outcome)).count();

@@ -11,11 +11,13 @@ use tauri::{Manager, Runtime};
 use xrf_utils::format_path;
 
 /// Browser extensions a developer supplied locally, loaded into the application window.
-pub struct WebviewExtensions;
+pub(super) struct WebviewExtensions;
 
 impl WebviewExtensions {
   /// Installs every unpacked extension the local extensions directory holds.
-  pub fn apply<R: Runtime, M: Manager<R>>(builder: WebviewWindowBuilder<'_, R, M>) -> WebviewWindowBuilder<'_, R, M> {
+  pub(super) fn apply<R: Runtime, M: Manager<R>>(
+    builder: WebviewWindowBuilder<'_, R, M>,
+  ) -> WebviewWindowBuilder<'_, R, M> {
     match Self::resolve_directory() {
       Some(directory) => {
         log::info!("Loading webview extensions from '{}'", format_path(&directory));

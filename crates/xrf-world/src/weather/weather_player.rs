@@ -32,7 +32,7 @@ const VIEW_STEP: f32 = 0.5;
 
 /// The weather a viewport plays by itself: its clock, the engine's pair of keyframes kept from frame to frame, the
 /// effect over it, the mix seen from the view, and a fade from what was shown when another weather is handed over.
-pub struct WeatherPlayer {
+pub(crate) struct WeatherPlayer {
   weather: Option<PlayedWeather>,
   control: WorldWeatherControl,
   /// Seconds since midnight.
@@ -90,19 +90,19 @@ impl WeatherPlayer {
   const THUNDER_SEED: u64 = 0x7B0_17ED;
 
   /// Whether a weather plays, lighting the scene in place of the default lighting.
-  pub fn is_playing(&self) -> bool {
+  pub(crate) fn is_playing(&self) -> bool {
     self.weather.is_some()
   }
 
   /// The keyframe the pair walks to next, whose skies are fetched before the clock reaches it.
-  pub fn get_next(&self) -> Option<&WeatherPlayedKeyframe> {
+  pub(crate) fn get_next(&self) -> Option<&WeatherPlayedKeyframe> {
     let [_, to] = self.pair.get()?;
 
     WeatherPair::select_next(self.get_keyframes()?, to.time + 0.5)
   }
 
   /// Plays a weather from now on, or nothing; it takes over from what was shown as the transition says.
-  pub fn take(&mut self, weather: Option<PlayedWeather>, transition: WorldWeatherTransition) {
+  pub(crate) fn take(&mut self, weather: Option<PlayedWeather>, transition: WorldWeatherTransition) {
     let duration: Duration = transition.get_duration();
 
     match &self.shown {
@@ -125,32 +125,32 @@ impl WeatherPlayer {
   }
 
   /// What the ambient effects play from: the ambients the keyframes played between name, none while nothing plays.
-  pub fn get_ambients(&self) -> &WeatherAmbients {
+  pub(crate) fn get_ambients(&self) -> &WeatherAmbients {
     &self.ambients
   }
 
   /// The weather as last mixed, none while nothing plays.
-  pub fn get_mix(&self) -> Option<&WeatherMix> {
+  pub(crate) fn get_mix(&self) -> Option<&WeatherMix> {
     self.weather.as_ref().and(self.mix.as_ref())
   }
 
   /// Seconds since midnight.
-  pub fn get_time(&self) -> f32 {
+  pub(crate) fn get_time(&self) -> f32 {
     self.time
   }
 
   /// The strikes that thundered since the last take.
-  pub fn take_thunders(&mut self) -> std::vec::Drain<'_, StrikeThunder> {
+  pub(crate) fn take_thunders(&mut self) -> std::vec::Drain<'_, StrikeThunder> {
     self.thunder.take_thunders()
   }
 
-  pub fn set_control(&mut self, control: WorldWeatherControl) {
+  pub(crate) fn set_control(&mut self, control: WorldWeatherControl) {
     self.control = control;
     self.is_changed = true;
   }
 
   /// Game seconds the clock runs a real second: its factor, or zero while it is paused.
-  pub fn get_clock_rate(&self) -> f32 {
+  pub(crate) fn get_clock_rate(&self) -> f32 {
     if self.control.is_paused {
       0.0
     } else {
@@ -159,7 +159,7 @@ impl WeatherPlayer {
   }
 
   /// A forced start from a time of day, which ends the effect playing.
-  pub fn seek(&mut self, time: f32) {
+  pub(crate) fn seek(&mut self, time: f32) {
     self.time = WeatherTime::of_day(time);
     self.effect = None;
     self.pair.reset();
@@ -168,7 +168,7 @@ impl WeatherPlayer {
   }
 
   /// `SetWeatherFX`, or `StopWFX` for none: an effect already playing gives the cycle back first.
-  pub fn play_effect(&mut self, name: Option<&str>) {
+  pub(crate) fn play_effect(&mut self, name: Option<&str>) {
     self.stop_effect();
 
     let (Some(name), Some(weather)) = (name, &self.weather) else {
@@ -210,7 +210,7 @@ impl WeatherPlayer {
   ///
   /// Returns what the scene is lit by now, or none where that did not change or nothing plays. `is_up` says whether a
   /// lighting's skies are up, which a fade waits for.
-  pub fn advance(
+  pub(crate) fn advance(
     &mut self,
     now: Instant,
     view: [f32; 3],
@@ -283,7 +283,7 @@ impl WeatherPlayer {
   }
 
   /// Where the weather stands, or none while nothing plays.
-  pub fn report(&self) -> Option<WorldWeatherReport> {
+  pub(crate) fn report(&self) -> Option<WorldWeatherReport> {
     let (mix, pair, weather) = (self.mix.as_ref()?, self.pair.get()?, self.weather.as_ref()?);
     let current: WeatherMix = WeatherMixer {
       engine: weather.get_engine(),

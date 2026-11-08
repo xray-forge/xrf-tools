@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub struct TranslationsFormatRequest {
+pub(crate) struct TranslationsFormatRequest {
   /// Project directory to format.
   pub directory: PathBuf,
   /// Line endings to write, or nothing to keep what each file already uses.

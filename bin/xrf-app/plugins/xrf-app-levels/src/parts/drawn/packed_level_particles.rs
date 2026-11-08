@@ -7,7 +7,7 @@ use xrf_renderer::RenderParticlePlacement;
 use crate::parts::LevelTextureReference;
 
 /// A level's particle systems as the renderer takes them.
-pub struct PackedLevelParticles {
+pub(crate) struct PackedLevelParticles {
   pub library: ParticleLibrary,
   pub placements: Vec<RenderParticlePlacement>,
   /// How each effect a placement can play draws, by its name.

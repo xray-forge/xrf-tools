@@ -24,7 +24,7 @@ use crate::core::host_walk::HostWalk;
 const BOUNDS_TOLERANCE_RATIO: f32 = 0.01;
 const BOUNDS_TOLERANCE_FLOOR: f32 = 0.001;
 
-pub struct OgfVerifier<'a> {
+pub(crate) struct OgfVerifier<'a> {
   root: &'a Path,
   /// Roots layered behind each visual's own tree, so an overlay is measured the way the engine reads it.
   roots: Vec<PathBuf>,
@@ -35,11 +35,11 @@ impl<'a> OgfVerifier<'a> {
   /// judgement about the file.
   const SKIN_WEIGHT_TOLERANCE: f32 = 1e-3;
 
-  pub fn new(root: &'a Path, roots: Vec<PathBuf>) -> Self {
+  pub(crate) fn new(root: &'a Path, roots: Vec<PathBuf>) -> Self {
     Self { root, roots }
   }
 
-  pub fn run(&self) -> OgfVerificationResult {
+  pub(crate) fn run(&self) -> OgfVerificationResult {
     let started_at: Instant = Instant::now();
 
     let mut census: OgfVerificationCensus = OgfVerificationCensus::default();

@@ -10,12 +10,12 @@ use crate::commands::archive::list::archive_shared_payload_index::ArchiveSharedP
 /// so detail a human would have asked for belongs here unconditionally.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ArchiveListReport {
+pub(crate) struct ArchiveListReport {
   entries: Vec<ArchiveEntryReport>,
 }
 
 impl ArchiveListReport {
-  pub fn new(
+  pub(crate) fn new(
     project: &ArchiveProject,
     entries: &[&ArchiveFileDescriptor],
     shared: &ArchiveSharedPayloadIndex<'_>,

@@ -3,7 +3,7 @@ use crate::feature::view::view_restart::ViewRestart;
 
 /// What every feature unit of a view answers alike, whatever its own frame looks like: letting all it holds go, its
 /// history moving on as a frame ends, and what it carries from frame to frame started again.
-pub trait ViewFeature {
+pub(crate) trait ViewFeature {
   /// Lets go of everything it holds, as when its view goes.
   fn release(&mut self);
 

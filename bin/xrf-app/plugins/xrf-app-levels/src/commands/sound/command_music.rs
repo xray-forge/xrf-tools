@@ -8,7 +8,7 @@ use xrf_world::WorldMusicCommand;
 /// does not have, or a seek between tracks.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "command_music")]
-pub fn levels_command_music(
+pub(crate) fn levels_command_music(
   world: State<'_, WorldState>,
   viewport: RenderViewportId,
   command: WorldMusicCommand,

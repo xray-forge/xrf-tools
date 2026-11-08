@@ -8,7 +8,7 @@ use crate::Renderer;
 /// before its view is made.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_load")]
-pub async fn render_describe_load(
+pub(crate) async fn render_describe_load(
   renderer: State<'_, Renderer>,
   viewport: RenderViewportId,
 ) -> TauriResult<Option<RenderLoadReport>> {

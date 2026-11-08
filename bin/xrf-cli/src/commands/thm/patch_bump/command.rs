@@ -10,7 +10,7 @@ use xrf_utils::format_path;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct PatchBumpCommand;
+pub(crate) struct PatchBumpCommand;
 
 impl GenericCommand for PatchBumpCommand {
   fn operation(&self) -> &'static str {

@@ -6,7 +6,7 @@ use crate::commands::spawn::info::spawn_graph_report::SpawnGraphReport;
 /// What `spawn info` read out of a spawn file.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SpawnInfoReport {
+pub(crate) struct SpawnInfoReport {
   artefact_spawn_points: usize,
   graph: SpawnGraphReport,
   guid: String,
@@ -17,7 +17,7 @@ pub struct SpawnInfoReport {
 }
 
 impl SpawnInfoReport {
-  pub fn new(file: &SpawnFile) -> Self {
+  pub(crate) fn new(file: &SpawnFile) -> Self {
     Self {
       artefact_spawn_points: file.artefact_spawn.nodes.len(),
       graph: SpawnGraphReport::new(&file.graphs),

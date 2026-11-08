@@ -7,7 +7,7 @@ use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 /// exposure's state, the material table, the BRDF's split-sum table and the sun's shadow maps as imported, and the
 /// material table's sampler.
 #[derive(Clone, Copy)]
-pub struct LightingHandles<'a> {
+pub(crate) struct LightingHandles<'a> {
   pub lighting: UniformBinding<LightingUniform>,
   pub exposure: GraphBuffer,
   pub material_lut: GraphTexture,

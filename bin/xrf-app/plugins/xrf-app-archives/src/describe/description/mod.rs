@@ -8,10 +8,10 @@ mod archive_format_description;
 mod archive_reference;
 mod archive_reference_status;
 
-pub use archive_bounds::ArchiveBounds;
-pub use archive_describe_refusal::ArchiveDescribeRefusal;
-pub use archive_describe_scope::ArchiveDescribeScope;
-pub use archive_file_description::ArchiveFileDescription;
-pub use archive_format_description::ArchiveFormatDescription;
-pub use archive_reference::ArchiveReference;
-pub use archive_reference_status::ArchiveReferenceStatus;
+pub(crate) use archive_bounds::ArchiveBounds;
+pub(crate) use archive_describe_refusal::ArchiveDescribeRefusal;
+pub(crate) use archive_describe_scope::ArchiveDescribeScope;
+pub(crate) use archive_file_description::ArchiveFileDescription;
+pub(crate) use archive_format_description::ArchiveFormatDescription;
+pub(crate) use archive_reference::ArchiveReference;
+pub(crate) use archive_reference_status::ArchiveReferenceStatus;

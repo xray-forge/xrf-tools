@@ -16,7 +16,7 @@ use crate::resolve::dltx_diagnostic::DltxDiagnostic;
 /// One walk of the root file, its includes, and then its mod files, which is the order the engine loads them in and the
 /// reason a mod file may patch a section declared anywhere: nothing is resolved until every file has been read. The
 /// deciding is [`crate::resolve::DltxResolver`]'s.
-pub struct DltxLoader<'a> {
+pub(crate) struct DltxLoader<'a> {
   source: &'a dyn LtxDocumentSource,
   records: DltxLoadResult,
   /// One allocation per distinct key, value and file name across the whole tree.
@@ -24,7 +24,7 @@ pub struct DltxLoader<'a> {
 }
 
 impl<'a> DltxLoader<'a> {
-  pub fn new(source: &'a dyn LtxDocumentSource) -> Self {
+  pub(crate) fn new(source: &'a dyn LtxDocumentSource) -> Self {
     Self {
       records: DltxLoadResult::default(),
       source,
@@ -37,7 +37,7 @@ impl<'a> DltxLoader<'a> {
   /// # Errors
   ///
   /// Returns an error when the source cannot answer, or when a statement is one the engine would refuse to start on.
-  pub fn load(mut self, root: &str) -> XrfResult<DltxLoadResult> {
+  pub(crate) fn load(mut self, root: &str) -> XrfResult<DltxLoadResult> {
     self.load_file(root, DltxDiscovery::BASE_DEPTH)?;
 
     // After the whole base tree, so every section a mod file patches already exists to be patched. Only the root is

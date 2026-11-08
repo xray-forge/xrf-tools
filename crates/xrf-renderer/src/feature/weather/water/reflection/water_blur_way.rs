@@ -5,7 +5,7 @@ use crate::feature::weather::water::reflection::water_blur_uniform::WaterBlurUni
 
 /// One way of the reflection's blur: its pass's name, the texture it blurs, the size it blurs into, which way, and the
 /// rectangles of its target it blurs within.
-pub struct WaterBlurWay {
+pub(crate) struct WaterBlurWay {
   pub name: &'static str,
   pub source: GraphTexture,
   pub size: (u32, u32),

@@ -19,7 +19,7 @@ pub(crate) struct LtxVfsSource<'a> {
 }
 
 impl<'a> LtxVfsSource<'a> {
-  pub fn new(search: XraySearch) -> Self {
+  pub(crate) fn new(search: XraySearch) -> Self {
     Self {
       counters: None,
       listings: None,
@@ -28,7 +28,7 @@ impl<'a> LtxVfsSource<'a> {
   }
 
   /// A source that reports every read and parse it performs.
-  pub fn new_counted(search: XraySearch, counters: &'a LtxReadCounters) -> Self {
+  pub(crate) fn new_counted(search: XraySearch, counters: &'a LtxReadCounters) -> Self {
     Self {
       counters: Some(counters),
       listings: None,
@@ -37,13 +37,13 @@ impl<'a> LtxVfsSource<'a> {
   }
 
   /// This source, answering directory listings from a cache shared with other sources over the same search.
-  pub fn with_listings(mut self, listings: &'a LtxListingCache) -> Self {
+  pub(crate) fn with_listings(mut self, listings: &'a LtxListingCache) -> Self {
     self.listings = Some(listings);
     self
   }
 
   /// Reads one logical path as a document, through whatever the VFS snapshot retains.
-  pub fn read_document(&self, logical_path: &str) -> XrfResult<Arc<LtxDocument>> {
+  pub(crate) fn read_document(&self, logical_path: &str) -> XrfResult<Arc<LtxDocument>> {
     let Some(asset) = self.search.find(logical_path)? else {
       // Absence is `NotFound`, as a VFS read answers it, so a caller can tell a missing config from a broken one.
       return Err(XrfError::new_not_found_error(format!(
@@ -62,7 +62,7 @@ impl<'a> LtxVfsSource<'a> {
   }
 
   /// Reads only a config's include statements, without lowering its sections.
-  pub fn read_included(&self, logical_path: &str) -> XrfResult<Vec<String>> {
+  pub(crate) fn read_included(&self, logical_path: &str) -> XrfResult<Vec<String>> {
     if let Some(counters) = self.counters {
       counters.record_include_scan();
     }

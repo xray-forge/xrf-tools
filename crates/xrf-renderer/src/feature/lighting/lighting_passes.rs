@@ -17,7 +17,7 @@ use crate::shader::generated_modules::GeneratedModules;
 /// The passes lighting the G-buffer and shadowing it: the static scene's shadow draws, the sun and its contact
 /// shadows, the local lights, the screen's occlusion and the bitmask search, the combine, and the tables every lit pass
 /// reads.
-pub struct LightingPasses {
+pub(crate) struct LightingPasses {
   pub shadow: StaticShadowPass,
   pub sun: SunPass,
   pub contact_shadows: ContactShadowPass,
@@ -35,7 +35,7 @@ impl LightingPasses {
   /// # Errors
   ///
   /// Returns an error when a pass's shaders do not compose or compile.
-  pub fn new(build: PassBuild<'_>) -> XrfResult<Self> {
+  pub(crate) fn new(build: PassBuild<'_>) -> XrfResult<Self> {
     let PassBuild {
       source,
       queue,
@@ -70,7 +70,7 @@ impl LightingPasses {
   }
 
   /// Rebuilds the pipelines a shader reload made stale, each pass keeping its last good ones where a rebuild fails.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     self.shadow.refresh(source);
     self.sun.refresh(source);
     self.contact_shadows.refresh(source);
@@ -86,7 +86,7 @@ impl LightingPasses {
   ///
   /// Returns an error when passes sharing a module declare one of its bindings otherwise.
   #[cfg(test)]
-  pub fn declare_shaders(modules: &mut GeneratedModules) -> XrfResult<()> {
+  pub(crate) fn declare_shaders(modules: &mut GeneratedModules) -> XrfResult<()> {
     use crate::feature::lighting::ambient_occlusion::ambient_occlusion_parameters::AmbientOcclusionParameters;
     use crate::feature::lighting::ambient_occlusion::ambient_occlusion_uniform::AmbientOcclusionUniform;
     use crate::feature::lighting::bitmask::vbao::vbao_parameters::VbaoParameters;

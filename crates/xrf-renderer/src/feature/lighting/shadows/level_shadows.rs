@@ -144,7 +144,7 @@ struct SeenPoint {
 /// copy at the sway's interval, and the drawable kinds' casters moving every frame (the grass's cards) over a kept layer
 /// each frame.
 #[derive(Default)]
-pub struct LevelShadows {
+pub(crate) struct LevelShadows {
   /// The maps, while any cascade is drawn.
   maps: Option<SunShadowMaps>,
   /// The cascades' static layers, while any cascade is drawn and the trees sway or anything moves every frame.
@@ -183,12 +183,12 @@ impl LevelShadows {
   }
 
   /// The maps, while any cascade is drawn.
-  pub fn get_maps(&self) -> Option<&SunShadowMaps> {
+  pub(crate) fn get_maps(&self) -> Option<&SunShadowMaps> {
     self.maps.as_ref()
   }
 
   /// Writes into `applied` the cascades `settings` ask for this frame and the maps' resolution, none without a cascade.
-  pub fn describe(&self, applied: &mut RenderAppliedReport, settings: &RenderShadowSettings) {
+  pub(crate) fn describe(&self, applied: &mut RenderAppliedReport, settings: &RenderShadowSettings) {
     let cascades: usize = settings.get_cascade_count();
 
     applied.shadows = (cascades > 0).then(|| RenderAppliedShadows {
@@ -199,13 +199,13 @@ impl LevelShadows {
   }
 
   /// What the passes lit by the sun sample its cascades by, as this frame fitted them.
-  pub fn get_values(&self) -> &ShadowUniform {
+  pub(crate) fn get_values(&self) -> &ShadowUniform {
     &self.values
   }
 
   /// Makes the maps at the `resolution` the settings ask for while any cascade is drawn, again where it changed, so the
   /// sun binds them before the frame draws; lets them go while none is (no `resolution`).
-  pub fn prepare(&mut self, device: &wgpu::Device, resolution: Option<u32>) {
+  pub(crate) fn prepare(&mut self, device: &wgpu::Device, resolution: Option<u32>) {
     let Some(resolution) = resolution else {
       self.release();
 
@@ -227,7 +227,7 @@ impl LevelShadows {
 
   /// Forgets that the cascades this frame drew were drawn, where its frame was not submitted: each draws again, and a
   /// static layer drawn ahead starts again.
-  pub fn abandon_frame(&mut self) {
+  pub(crate) fn abandon_frame(&mut self) {
     for (index, _) in std::mem::take(&mut self.due) {
       self.cascades[index].drawn = None;
       self.cascades[index].drawn_static = None;

@@ -7,7 +7,7 @@ use xrf_renderer::{RenderCubeCapture, RenderViewportId};
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub struct CubeCaptureRequest {
+pub(crate) struct CubeCaptureRequest {
   pub viewport: RenderViewportId,
   pub capture: RenderCubeCapture,
   pub path: PathBuf,

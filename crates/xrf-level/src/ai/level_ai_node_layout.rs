@@ -27,7 +27,7 @@ impl LevelAiNodeLayout {
   const LINKS_26: [(usize, u32); 4] = [(0, 0), (3, 2), (6, 4), (9, 6)];
 
   /// `NodeCompressed7`: 12 link bytes, one cover, a plane and a 5-byte position.
-  pub const NODE_7: Self = Self {
+  pub(crate) const NODE_7: Self = Self {
     size: 21,
     link_bits: 23,
     links: Self::LINKS_23,
@@ -39,7 +39,7 @@ impl LevelAiNodeLayout {
   };
 
   /// `NodeCompressed10`: 12 link bytes, high and low cover, a plane and a 5-byte position.
-  pub const NODE_10: Self = Self {
+  pub(crate) const NODE_10: Self = Self {
     size: 23,
     link_bits: 23,
     links: Self::LINKS_23,
@@ -51,7 +51,7 @@ impl LevelAiNodeLayout {
   };
 
   /// `NodeCompressed11`: 13 link bytes, high and low cover, a plane and a 5-byte position.
-  pub const NODE_11: Self = Self {
+  pub(crate) const NODE_11: Self = Self {
     size: 24,
     link_bits: 25,
     links: Self::LINKS_25,
@@ -63,7 +63,7 @@ impl LevelAiNodeLayout {
   };
 
   /// `NodeCompressed12`: as [`Self::NODE_11`] with a 6-byte position.
-  pub const NODE_12: Self = Self {
+  pub(crate) const NODE_12: Self = Self {
     size: 25,
     link_bits: 25,
     links: Self::LINKS_25,
@@ -75,7 +75,7 @@ impl LevelAiNodeLayout {
   };
 
   /// `NodeCompressed13`: as [`Self::NODE_12`] with 26-bit links.
-  pub const NODE_13: Self = Self {
+  pub(crate) const NODE_13: Self = Self {
     size: 25,
     link_bits: 26,
     links: Self::LINKS_26,

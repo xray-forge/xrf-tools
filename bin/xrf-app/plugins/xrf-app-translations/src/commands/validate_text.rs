@@ -9,7 +9,7 @@ use crate::TranslationProjects;
 /// load — or nothing when the value is writable.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "validate_text")]
-pub async fn translations_validate_text(
+pub(crate) async fn translations_validate_text(
   session_id: SessionId,
   language: &str,
   text: &str,

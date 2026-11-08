@@ -3,7 +3,7 @@ use xrf_renderer_derive::RenderSettingSchema;
 
 /// Frames VBAO accumulates over at most.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
-pub const RENDER_MAX_AMBIENT_OCCLUSION_ACCUMULATION: u32 = 32;
+pub(crate) const RENDER_MAX_AMBIENT_OCCLUSION_ACCUMULATION: u32 = 32;
 
 /// VBAO's search and strengths: the slices it turns about a pixel and the steps along each, how deep an occluder is
 /// taken to be, how much light bounces back off a surface into its own creases, and over how many frames it is

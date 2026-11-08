@@ -15,7 +15,7 @@ use crate::pass::view::view_binding::ViewBinding;
 /// The sun's shadow traced, where DLSS ray reconstruction resolves a lit, solid frame and the scene's trace is built:
 /// one ray a pixel towards the sun's disc, raw, which the sun's pass takes in its cascades' place.
 #[derive(Default)]
-pub struct SunTraceFeature {
+pub(crate) struct SunTraceFeature {
   /// Whether it traces this frame, the scene's trace allowing.
   is_traced: bool,
   uniform: SunTraceUniform,
@@ -24,20 +24,20 @@ pub struct SunTraceFeature {
 impl SunTraceFeature {
   /// Takes this frame's trace towards the sun as the frame's `lighting` gives it, where DLSS ray reconstruction resolves
   /// the frame, its noise turned as the `resolve` decided.
-  pub fn prepare(&mut self, options: &RenderViewOptions, lighting: &LightingUniform, resolve: ResolveDecisions) {
+  pub(crate) fn prepare(&mut self, options: &RenderViewOptions, lighting: &LightingUniform, resolve: ResolveDecisions) {
     self.is_traced = Self::is_asked(options, resolve);
     self.uniform = SunTraceUniform::new(lighting.to_sun, resolve.noise_frame);
   }
 
   /// Whether a view traces the sun's shadow, the scene's trace allowing: where DLSS ray reconstruction resolves its
   /// frame, as its `resolve` decided, lit and solid.
-  pub fn is_asked(options: &RenderViewOptions, resolve: ResolveDecisions) -> bool {
+  pub(crate) fn is_asked(options: &RenderViewOptions, resolve: ResolveDecisions) -> bool {
     resolve.is_ray_reconstructed && options.mode.is_lit && !options.mode.is_wireframe
   }
 
   /// Traces the sun's shadow where it does this frame and the scene's trace is built (`traced`), answering what the sun
   /// sees at each pixel; none otherwise, the sun's cascades shadowing the frame.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &self,
     GraphDeclaration { graph, runtime, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,

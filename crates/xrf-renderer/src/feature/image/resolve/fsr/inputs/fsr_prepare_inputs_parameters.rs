@@ -5,7 +5,7 @@ use crate::feature::image::resolve::fsr::fsr_uniform::FsrUniform;
 /// FSR's input preparation: the depth, motion and colour drawn.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 0)]
-pub struct FsrPrepareInputsParameters {
+pub(crate) struct FsrPrepareInputsParameters {
   #[uniform]
   pub fsr: UniformBinding<FsrUniform>,
   #[texture(d2, depth)]

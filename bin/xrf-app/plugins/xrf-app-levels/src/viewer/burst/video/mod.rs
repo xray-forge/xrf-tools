@@ -3,5 +3,5 @@
 mod burst_video;
 mod burst_video_outcome;
 
-pub use burst_video::BurstVideo;
-pub use burst_video_outcome::BurstVideoOutcome;
+pub(crate) use burst_video::BurstVideo;
+pub(crate) use burst_video_outcome::BurstVideoOutcome;

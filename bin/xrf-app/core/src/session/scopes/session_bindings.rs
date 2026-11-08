@@ -17,23 +17,23 @@ pub(crate) struct SessionBindings {
 
 impl SessionBindings {
   /// Bindings whose closed documents are dropped on `pool`.
-  pub fn new(pool: Arc<ThreadPool>) -> Self {
+  pub(crate) fn new(pool: Arc<ThreadPool>) -> Self {
     Self {
       bindings: Arc::default(),
       pool: Some(pool),
     }
   }
 
-  pub fn bind(&self, id: SessionId, scope: SessionScope) {
+  pub(crate) fn bind(&self, id: SessionId, scope: SessionScope) {
     self.lock().insert(id, scope);
   }
 
-  pub fn is_bound(&self, id: SessionId) -> bool {
+  pub(crate) fn is_bound(&self, id: SessionId) -> bool {
     self.lock().contains_key(&id)
   }
 
   /// Forgets the bindings of openings closed one by one, so a later release does not name them again.
-  pub fn unbind(&self, ids: &[SessionId]) {
+  pub(crate) fn unbind(&self, ids: &[SessionId]) {
     let mut bindings: MutexGuard<'_, HashMap<SessionId, SessionScope>> = self.lock();
 
     for id in ids {
@@ -42,7 +42,7 @@ impl SessionBindings {
   }
 
   /// The openings bound to `scope`, in no particular order.
-  pub fn list(&self, scope: &SessionScope) -> Vec<SessionId> {
+  pub(crate) fn list(&self, scope: &SessionScope) -> Vec<SessionId> {
     self
       .lock()
       .iter()
@@ -52,7 +52,7 @@ impl SessionBindings {
   }
 
   /// Unbinds the openings bound to a scope `is_released` names, answering them.
-  pub fn take_where(&self, is_released: impl Fn(&SessionScope) -> bool) -> Vec<SessionId> {
+  pub(crate) fn take_where(&self, is_released: impl Fn(&SessionScope) -> bool) -> Vec<SessionId> {
     let mut ids: Vec<SessionId> = Vec::new();
 
     self.lock().retain(|id, bound| {
@@ -69,7 +69,7 @@ impl SessionBindings {
   }
 
   /// Drops what closed openings held on the pool, or here without one.
-  pub fn dispose(&self, held: impl Send + 'static) {
+  pub(crate) fn dispose(&self, held: impl Send + 'static) {
     match &self.pool {
       Some(pool) => pool.spawn(move || drop(held)),
       None => drop(held),

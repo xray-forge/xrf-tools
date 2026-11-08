@@ -17,11 +17,11 @@ pub(crate) struct BounceAction {
 }
 
 impl BounceAction {
-  pub fn transform(&mut self, matrix: &Mat4) {
+  pub(crate) fn transform(&mut self, matrix: &Mat4) {
     self.position.transform_from(&self.position_local, matrix);
   }
 
-  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
+  pub(crate) fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
     let domain: &ParticleVolume = &self.position;
     let (particles, random) = pool.split_mut();
 

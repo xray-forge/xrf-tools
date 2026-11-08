@@ -41,7 +41,7 @@ const LATE_GBUFFER_PASSES: [&str; 2] = ["late g-buffer depth", "late g-buffer"];
 /// fills, the depth pyramid the next frame's occlusion is tested against and the camera it was reduced through, the
 /// counts the cull read back, whether the wall marks are drawn, and whether its surfaces are counted for the overdraw's
 /// debug view.
-pub struct StaticsFeature {
+pub(crate) struct StaticsFeature {
   cull: StaticCullUniform,
   /// The camera cull's lists and arguments, the view's own, made with its first cull and as large as the scene's lists.
   camera: Option<StaticViewCull>,
@@ -63,7 +63,7 @@ pub struct StaticsFeature {
 }
 
 impl StaticsFeature {
-  pub fn new(device: &wgpu::Device) -> Self {
+  pub(crate) fn new(device: &wgpu::Device) -> Self {
     Self {
       cull: StaticCullUniform::default(),
       camera: None,
@@ -81,19 +81,19 @@ impl StaticsFeature {
 
   /// Makes the depth pyramid over targets `width` by `height`, after they were made again: a pyramid of another size
   /// holds no depth this frame can be tested against.
-  pub fn fit(&mut self, device: &wgpu::Device, (width, height): (u32, u32)) {
+  pub(crate) fn fit(&mut self, device: &wgpu::Device, (width, height): (u32, u32)) {
     self.pyramid = Some(DepthPyramid::new(device, width, height));
     self.history = None;
   }
 
   /// Forgets the camera a frame that was never submitted kept as the pyramid's: the pyramid never reduced its depth.
-  pub fn abandon_frame(&mut self) {
+  pub(crate) fn abandon_frame(&mut self) {
     self.history = None;
   }
 
   /// Takes this frame's cull of `statics` through `view` over a frame `width` by `height`, the lists it fills made as
   /// large as the scene's, and what the occlusion tests against.
-  pub fn prepare(
+  pub(crate) fn prepare(
     &mut self,
     device: &wgpu::Device,
     statics: &StaticScene,
@@ -175,13 +175,13 @@ impl StaticsFeature {
   }
 
   /// The cull's parameters this frame, which every cull of the view's own views reads.
-  pub fn get_cull(&self) -> &StaticCullUniform {
+  pub(crate) fn get_cull(&self) -> &StaticCullUniform {
     &self.cull
   }
 
   /// What this frame's depth pyramid holds, for a cull after the G-buffer to test against: this frame's view, the
   /// pyramid's shape, and whether it was reduced this frame at all, which only an occlusion cull does.
-  pub fn get_frame_occlusion(&self) -> StaticOcclusionUniform {
+  pub(crate) fn get_frame_occlusion(&self) -> StaticOcclusionUniform {
     StaticOcclusionUniform {
       view: self.matrices.0,
       projection: self.matrices.1,
@@ -191,12 +191,12 @@ impl StaticsFeature {
   }
 
   /// Whether a frame can be drawn: the pyramid is made with the targets.
-  pub fn is_ready(&self) -> bool {
+  pub(crate) fn is_ready(&self) -> bool {
     self.pyramid.is_some()
   }
 
   /// Keeps this frame's camera as what the pyramid it reduces holds, while it culls occlusion.
-  pub fn begin_frame(&mut self) {
+  pub(crate) fn begin_frame(&mut self) {
     if self.cull.is_occluding != 0 {
       self.history = Some(self.matrices);
     }
@@ -205,7 +205,7 @@ impl StaticsFeature {
   /// The static scene's handles for this frame: its buffers, the view's lists and arguments, the pyramid, the cull's
   /// parameters, what the occlusion tests against and the trees' sway pushed; none before the pyramid is made or the
   /// view first culled.
-  pub fn import<'a>(
+  pub(crate) fn import<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -229,7 +229,7 @@ impl StaticsFeature {
   }
 
   /// The draw arguments a forward pass replays: the early phase's, and the late phase's where occlusion culls.
-  pub fn list_draw_args(&self, scene: &StaticSceneHandles) -> Vec<GraphBuffer> {
+  pub(crate) fn list_draw_args(&self, scene: &StaticSceneHandles) -> Vec<GraphBuffer> {
     if self.cull.is_occluding != 0 {
       vec![scene.args, scene.late]
     } else {
@@ -239,7 +239,7 @@ impl StaticsFeature {
 
   /// Declares the overdraw's count where the view shows it: the frame's draws replayed into `light`, which the sun and
   /// the lamps left nought, each surface adding one over every pixel it covers.
-  pub fn add_overdraw_pass<'a>(
+  pub(crate) fn add_overdraw_pass<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
     ViewRecord {
@@ -278,7 +278,7 @@ impl StaticsFeature {
   /// Declares the scene's culls and G-buffer draws: what last frame's depth does not hide, culled and drawn; then,
   /// while it culls occlusion, this frame's depth reduced and what the first draw does not hide of the rest culled and
   /// drawn.
-  pub fn add_gbuffer_passes<'a>(
+  pub(crate) fn add_gbuffer_passes<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     ViewRecord {
@@ -417,7 +417,7 @@ impl StaticsFeature {
   }
 
   /// Adds the cull's counts read back, for a report a frame or more later: an effect the graph cannot see.
-  pub fn add_stats_pass<'a>(&'a self, graph: &mut FrameGraph<'a>, scene: &StaticSceneHandles) {
+  pub(crate) fn add_stats_pass<'a>(&'a self, graph: &mut FrameGraph<'a>, scene: &StaticSceneHandles) {
     let args: GraphBuffer = scene.args;
 
     graph
@@ -434,7 +434,7 @@ impl StaticsFeature {
   }
 
   /// Adds the wall marks into the G-buffer's albedo before any light, where they are drawn.
-  pub fn add_wallmark_passes<'a>(
+  pub(crate) fn add_wallmark_passes<'a>(
     &self,
     graph: &mut FrameGraph<'a>,
     ViewRecord {
@@ -476,22 +476,22 @@ impl StaticsFeature {
 
   /// The camera cull's draw arguments, its counts after them (`StaticCullScratch::STATS_OFFSET`), once it first culled.
   #[cfg(test)]
-  pub fn get_camera_args(&self) -> Option<&wgpu::Buffer> {
+  pub(crate) fn get_camera_args(&self) -> Option<&wgpu::Buffer> {
     self.camera.as_ref().map(|camera| &camera.args)
   }
 
   /// Asks for the counts recorded with the frame just submitted.
-  pub fn request_stats(&self) {
+  pub(crate) fn request_stats(&self) {
     self.stats.request();
   }
 
   /// Drops the counts a frame that was never submitted copied out.
-  pub fn abandon_stats(&self) {
+  pub(crate) fn abandon_stats(&self) {
     self.stats.abandon();
   }
 
   /// What the latest counted frame's cull kept and hid: clusters and triangles kept, then occluded.
-  pub fn take_stats(&mut self) -> [u32; 4] {
+  pub(crate) fn take_stats(&mut self) -> [u32; 4] {
     self.stats.take()
   }
 }

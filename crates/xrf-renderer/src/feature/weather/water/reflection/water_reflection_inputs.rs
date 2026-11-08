@@ -7,7 +7,7 @@ use crate::feature::weather::water::reflection::water_reflection::WaterReflectio
 /// water, the empty texture standing in for what is not drawn, the reflection's targets, and its two histories as the
 /// frame's graph holds them (written, then read).
 #[derive(Clone, Copy)]
-pub struct WaterReflectionInputs<'a> {
+pub(crate) struct WaterReflectionInputs<'a> {
   pub enhanced: UniformBinding<EnhancedWaterUniform>,
   pub scene: GraphTexture,
   pub nothing: GraphTexture,

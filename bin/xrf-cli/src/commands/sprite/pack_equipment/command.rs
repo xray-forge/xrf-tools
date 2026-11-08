@@ -14,7 +14,7 @@ use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 use crate::core::terminal::CliJob;
 
 #[derive(Default)]
-pub struct PackEquipmentCommand;
+pub(crate) struct PackEquipmentCommand;
 
 impl GenericCommand for PackEquipmentCommand {
   fn operation(&self) -> &'static str {

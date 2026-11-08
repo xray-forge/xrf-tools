@@ -9,7 +9,7 @@ use crate::contract::feature::lighting::lights::render_light_shadow_filter::Rend
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Lights")]
-pub struct LightsUniform {
+pub(crate) struct LightsUniform {
   pub count: u32,
   pub near: f32,
   pub far: f32,
@@ -24,7 +24,7 @@ pub struct LightsUniform {
 
 impl LightsUniform {
   /// What `count` lights in view are binned and lit by through `camera`.
-  pub fn new(count: u32, camera: &CameraView, filter: RenderLightShadowFilter) -> Self {
+  pub(crate) fn new(count: u32, camera: &CameraView, filter: RenderLightShadowFilter) -> Self {
     let projection: Mat4 = camera.projection;
     let is_orthographic: bool = camera.is_orthographic();
     let (near, far): (f32, f32) = camera.get_depth_range();

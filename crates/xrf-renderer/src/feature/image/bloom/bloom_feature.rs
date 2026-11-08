@@ -26,7 +26,7 @@ use crate::scene::level::view::record::view_record::ViewRecord;
 /// The bloom, the engine's or the enhanced one in its place: the engine's build and blurs at its fixed size, read by
 /// the present; or the enhanced chain from the resolved image, its finish handed to the present.
 #[derive(Default)]
-pub struct BloomFeature {
+pub(crate) struct BloomFeature {
   /// What the engine's build and its two blurs read this frame, where the engine's bloom is built: where it is shown,
   /// or under the enhanced bloom where the frame's distortion blurs towards it.
   engine: Option<[BloomUniform; 3]>,
@@ -41,7 +41,7 @@ pub struct BloomFeature {
 impl BloomFeature {
   /// Takes this frame's bloom for a frame `size` texels across, drawn where the view is lit and not wireframe; the
   /// enhanced bloom's pipelines asked of the cache when it draws and the cache has changed since they were.
-  pub fn prepare(
+  pub(crate) fn prepare(
     &mut self,
     passes: LevelPasses<'_>,
     options: &RenderViewOptions,
@@ -90,29 +90,29 @@ impl BloomFeature {
 
   /// Builds the engine's bloom under the enhanced one only where the frame's distortion may blur it (`is_blurring`),
   /// which blurs towards the engine's bloom as `combine_2`'s does; once every unit knows what it draws.
-  pub fn keep_for_distortion(&mut self, is_blurring: bool) {
+  pub(crate) fn keep_for_distortion(&mut self, is_blurring: bool) {
     if !self.is_engine_shown && !is_blurring {
       self.engine = None;
     }
   }
 
   /// Whether the engine's bloom is shown this frame, which the present adds.
-  pub fn is_engine_drawn(&self) -> bool {
+  pub(crate) fn is_engine_drawn(&self) -> bool {
     self.is_engine_shown && self.engine.is_some()
   }
 
   /// Whether the engine's bloom is built this frame, shown or under the enhanced one for the distortion's blur.
-  pub fn is_engine_built(&self) -> bool {
+  pub(crate) fn is_engine_built(&self) -> bool {
     self.engine.is_some()
   }
 
   /// Whether the enhanced bloom draws this frame in the engine's place.
-  pub fn is_enhanced_drawn(&self) -> bool {
+  pub(crate) fn is_enhanced_drawn(&self) -> bool {
     self.enhanced.is_some()
   }
 
   /// Writes into `applied` which bloom it shows this frame, none where neither is.
-  pub fn describe(&self, applied: &mut RenderAppliedReport) {
+  pub(crate) fn describe(&self, applied: &mut RenderAppliedReport) {
     applied.bloom = if self.is_enhanced_drawn() {
       Some(RenderBloomMode::Enhanced)
     } else {
@@ -125,7 +125,7 @@ impl BloomFeature {
   /// finish; none where the enhanced bloom does not draw. Built after the resolve, as the major engines build theirs: from
   /// the frame as drawn, a glint that comes and goes with the jitter bloomed into a halo nothing smoothed. Its sizes
   /// and the depth and marks it reads are the frame's as drawn.
-  pub fn add_enhanced_passes<'a>(
+  pub(crate) fn add_enhanced_passes<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -271,7 +271,7 @@ impl BloomFeature {
   /// into the first; nothing where it does not draw. The high part is the engine's own (the opaque surfaces, the sky
   /// and the sun shafts), drawn before the resolve and never resolved, so the build averages the whole footprint of each
   /// texel, the same light however the jitter falls.
-  pub fn add_engine_passes<'a>(
+  pub(crate) fn add_engine_passes<'a>(
     &self,
     GraphDeclaration { graph, runtime, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,

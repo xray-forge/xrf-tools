@@ -6,7 +6,7 @@ use xrf_omf::OmfFile;
 /// What `omf rename-motions` renamed.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct OmfRenameMotionsReport {
+pub(crate) struct OmfRenameMotionsReport {
   destination: String,
   is_dry_run: bool,
   motions: Vec<String>,
@@ -15,7 +15,7 @@ pub struct OmfRenameMotionsReport {
 }
 
 impl OmfRenameMotionsReport {
-  pub fn new(source: &Path, destination: &Path, file: &OmfFile, renamed: usize, is_dry_run: bool) -> Self {
+  pub(crate) fn new(source: &Path, destination: &Path, file: &OmfFile, renamed: usize, is_dry_run: bool) -> Self {
     Self {
       destination: xrf_utils::to_portable_path_string(destination),
       is_dry_run,

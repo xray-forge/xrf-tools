@@ -7,7 +7,7 @@ use crate::contract::feature::image::render_exposure_settings::RenderExposureSet
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "ExposureParams")]
-pub struct ExposureUniform {
+pub(crate) struct ExposureUniform {
   pub target_gray: f32,
   pub weight: f32,
   pub floor_luminance: f32,
@@ -16,7 +16,7 @@ pub struct ExposureUniform {
 
 impl ExposureUniform {
   /// `(1, 0, 1)` lerped towards `(middle gray, 1, low luminance)` by the amount, as `phase_luminance` sets it.
-  pub fn new(settings: &RenderExposureSettings, blend: f32) -> Self {
+  pub(crate) fn new(settings: &RenderExposureSettings, blend: f32) -> Self {
     let amount: f32 = settings.amount;
 
     Self {

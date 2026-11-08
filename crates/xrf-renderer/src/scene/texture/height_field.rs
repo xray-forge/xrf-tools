@@ -15,22 +15,22 @@ const LEAST_FACING: f32 = 0.2;
 const OUTLIER_SHARE: f32 = 0.01;
 
 /// Heights integrated from a tiling normal map, and scaled to the unit range.
-pub struct HeightField;
+pub(crate) struct HeightField;
 
 impl HeightField {
   /// Texels a wave of relief spans at least before it is faded out of a bump's heights: the grain a normal map shades a
   /// texel at a time raises, under parallax, a fur of thin columns at a glance along the ground.
-  pub const BUMP_GRAIN_TEXELS: f32 = 16.0;
+  pub(crate) const BUMP_GRAIN_TEXELS: f32 = 16.0;
 
   /// Waves across the texture below which relief is faded out of a bump's heights: a normal map's slight bias over its
   /// width, which no eye reads in its shading, integrates to swells across the whole tile that parallax would raise.
-  pub const BUMP_LOW_CUT: f32 = 8.0;
+  pub(crate) const BUMP_LOW_CUT: f32 = 8.0;
 
   /// The heights under a tiling normal map `width` by `height` texels, both powers of two, each normal in tangent space
   /// (`x` along the texture's width, `y` along its height, `z` out of it): in texels, their mean at nought, relief of
   /// fewer than about `low_cut` waves across the texture and of more than about `high_cut` faded out (neither at
   /// nought). A normal map's `y` may run either way down the texture; the one whose slopes are integrable is taken.
-  pub fn integrate_normals(
+  pub(crate) fn integrate_normals(
     width: usize,
     height: usize,
     normals: &[[f32; 3]],
@@ -119,7 +119,7 @@ impl HeightField {
 
   /// Heights scaled into nought to one about a half: the mean at a half, the larger of the farthest above and below it,
   /// short of `OUTLIER_SHARE` at each end, reaching nought or one.
-  pub fn to_unit_heights(heights: &[f32]) -> Vec<f32> {
+  pub(crate) fn to_unit_heights(heights: &[f32]) -> Vec<f32> {
     let mean: f32 = heights.iter().sum::<f32>() / heights.len().max(1) as f32;
     // Every sixteenth height is enough to find where the ends lie.
     let mut sampled: Vec<f32> = heights.iter().step_by(16).map(|it| it - mean).collect();

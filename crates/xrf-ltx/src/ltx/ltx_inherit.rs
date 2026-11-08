@@ -15,7 +15,7 @@ type SectionAttribution = HashMap<Arc<str>, Arc<str>, FxBuildHasher>;
 
 /// Converter object to process and inject all inherit section statements.
 #[derive(Default)]
-pub struct LtxInheritConvertor {
+pub(crate) struct LtxInheritConvertor {
   /// Which section writes each field, per resolved section, or nothing when no caller asked.
   ///
   /// Built alongside the fields rather than reconstructed afterwards, because after inheritance a copied field is
@@ -36,7 +36,7 @@ impl LtxInheritConvertor {
   }
 
   /// Cast LTX file to fully parsed with include sections.
-  pub fn convert(ltx: Ltx) -> XrfResult<Ltx> {
+  pub(crate) fn convert(ltx: Ltx) -> XrfResult<Ltx> {
     Ok(Self::new().convert_ltx(ltx)?.0)
   }
 

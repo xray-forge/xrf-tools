@@ -33,7 +33,7 @@ impl LevelLightsPart {
   /// Collects the open level's lights, what they are read from recorded as its lights part. Where its spawn cannot be
   /// read the level keeps its own lights alone, and without configs its zones light nothing and its lamps keep their
   /// spawned flags.
-  pub fn pack(
+  pub(crate) fn pack(
     current: &SessionSnapshot<SelectedLevel>,
     search: &XraySearch,
     sections: Option<&Ltx>,

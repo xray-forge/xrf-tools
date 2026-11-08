@@ -33,14 +33,14 @@ impl SessionPart for LevelHemiPart {
 
 impl LevelHemiPart {
   /// The compiled lights, whose point lights light the level's dynamic objects (`CLight_DB::LoadHemi`).
-  pub const LIGHTS_FILE: &'static str = "build.lights";
+  pub(crate) const LIGHTS_FILE: &'static str = "build.lights";
 
   /// The open level's estimator, built the first time anything asks and kept.
   ///
   /// # Errors
   ///
   /// Returns why the collision form cannot be read, which every later ask answers with again.
-  pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> TauriResult<Arc<HemiEstimator>> {
+  pub(crate) fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> TauriResult<Arc<HemiEstimator>> {
     current.parts.get_or_record::<Self>(search, |search| {
       Self::read(current, search).inspect_err(|error| LevelReport::missing_hemi(&current.source, error))
     })
@@ -48,7 +48,7 @@ impl LevelHemiPart {
 
   /// The cube of every spawned object the viewer draws standing as one of `spheres`' visuals, where it stands, in
   /// renderer space.
-  pub fn estimate_spawn(
+  pub(crate) fn estimate_spawn(
     estimator: &HemiEstimator,
     spawn: &LevelSpawn,
     spheres: &HashMap<&str, &Sphere>,
@@ -75,7 +75,7 @@ impl LevelHemiPart {
   }
 
   /// How the level lights each object standing as one of the visuals read, none where its spawn cannot be read.
-  pub fn estimate_visuals(
+  pub(crate) fn estimate_visuals(
     current: &SessionSnapshot<SelectedLevel>,
     search: &XraySearch,
     estimator: &HemiEstimator,

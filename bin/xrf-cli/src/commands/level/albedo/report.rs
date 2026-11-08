@@ -7,7 +7,7 @@ use crate::commands::level::albedo::level_albedo_survey::LevelAlbedoSurvey;
 /// What `level albedo` measured: the level's albedo at a glance, then every texture.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LevelAlbedoReport<'a> {
+pub(crate) struct LevelAlbedoReport<'a> {
   level: String,
   summary: LevelAlbedoSummary,
   textures: &'a [AlbedoTexture],
@@ -16,7 +16,7 @@ pub struct LevelAlbedoReport<'a> {
 /// The level's textures taken together, each counted once whatever area it covers.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LevelAlbedoSummary {
+pub(crate) struct LevelAlbedoSummary {
   /// The range the verdicts judge by, linear luminance.
   pub floor: f32,
   pub ceiling: f32,
@@ -37,7 +37,7 @@ pub struct LevelAlbedoSummary {
 }
 
 impl<'a> LevelAlbedoReport<'a> {
-  pub fn new(level: String, survey: &'a LevelAlbedoSurvey, summary: LevelAlbedoSummary) -> Self {
+  pub(crate) fn new(level: String, survey: &'a LevelAlbedoSurvey, summary: LevelAlbedoSummary) -> Self {
     Self {
       level,
       summary,
@@ -47,7 +47,7 @@ impl<'a> LevelAlbedoReport<'a> {
 }
 
 impl LevelAlbedoSummary {
-  pub fn of(survey: &LevelAlbedoSurvey) -> Self {
+  pub(crate) fn of(survey: &LevelAlbedoSurvey) -> Self {
     let measured: Vec<&TextureAlbedo> = survey.textures.iter().filter_map(AlbedoTexture::get_albedo).collect();
     let count = |verdict: AlbedoVerdict| measured.iter().filter(|it| it.verdict == verdict).count();
     let mean = |share: fn(&TextureAlbedo) -> f32| {

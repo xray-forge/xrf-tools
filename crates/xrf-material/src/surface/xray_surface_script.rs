@@ -12,12 +12,12 @@ use crate::surface::{XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceD
 use crate::texture::XrayTextureScope;
 
 /// The renderer shader script a surface's name resolves to, which the engine prefers over the blender library.
-pub struct XraySurfaceScript;
+pub(crate) struct XraySurfaceScript;
 
 impl XraySurfaceScript {
   /// Where the DX10 and DX11 renderers load their scripts from, `getShaderPath()`'s `r3\` under `$game_shaders$`
   /// (`xrRender_R2/r2.h`): the renderer OpenXRay runs by default, and the one a surface is described for.
-  pub const SHADER_SCRIPT_DIRECTORY: &'static str = "shaders\\r3";
+  pub(crate) const SHADER_SCRIPT_DIRECTORY: &'static str = "shaders\\r3";
 
   /// The positions of `t_base` and `t_second` in a script function's parameters, after the compiler.
   const FIRST_TEXTURE_PARAMETER: usize = 1;
@@ -36,7 +36,7 @@ impl XraySurfaceScript {
 
   /// The logical path of the script a shader of this name would be read from: an `.s` file, the extension `LS_Load`
   /// filters the directory by.
-  pub fn to_logical_path(shader_name: &str) -> String {
+  pub(crate) fn to_logical_path(shader_name: &str) -> String {
     format!(
       "{}\\{}.{}",
       Self::SHADER_SCRIPT_DIRECTORY,
@@ -47,7 +47,7 @@ impl XraySurfaceScript {
 
   /// How a surface naming this shader is drawn, for a shader the roots answer with a script, its textures read within
   /// `scope`.
-  pub fn describe(
+  pub(crate) fn describe(
     search: &XraySearch,
     scope: &XrayTextureScope,
     shader_name: &str,

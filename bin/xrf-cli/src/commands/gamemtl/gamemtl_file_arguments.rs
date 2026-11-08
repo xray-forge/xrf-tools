@@ -6,13 +6,13 @@ use xrf_error::XrfResult;
 use xrf_gamemtl::GameMtlFile;
 
 /// `-p/--path` to a `gamemtl.xr`: what opening a game material library takes.
-pub struct GameMtlFileArguments;
+pub(crate) struct GameMtlFileArguments;
 
 impl GameMtlFileArguments {
   const PATH: &'static str = "path";
 
   /// Declares the required library path on `command`.
-  pub fn declare(command: Command) -> Command {
+  pub(crate) fn declare(command: Command) -> Command {
     command.arg(
       Arg::new(Self::PATH)
         .help("Path to the game material library, gamemtl.xr")
@@ -24,7 +24,7 @@ impl GameMtlFileArguments {
   }
 
   /// The library file a command names.
-  pub fn path_of(matches: &ArgMatches) -> &PathBuf {
+  pub(crate) fn path_of(matches: &ArgMatches) -> &PathBuf {
     matches
       .get_one::<PathBuf>(Self::PATH)
       .expect("Expected the required game material library path")
@@ -35,7 +35,7 @@ impl GameMtlFileArguments {
   /// # Errors
   ///
   /// Returns an error when the file cannot be read or is no game material library the engine loads.
-  pub fn open(matches: &ArgMatches) -> XrfResult<GameMtlFile> {
+  pub(crate) fn open(matches: &ArgMatches) -> XrfResult<GameMtlFile> {
     GameMtlFile::read_from_path::<XRayByteOrder, _>(Self::path_of(matches))
   }
 }

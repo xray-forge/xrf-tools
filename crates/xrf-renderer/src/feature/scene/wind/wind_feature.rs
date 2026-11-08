@@ -16,7 +16,7 @@ const FOLIAGE_SHADOW_AMPLITUDE: f32 = 0.02;
 /// How the wind moves the view's trees and grass: the enhanced foliage motion stepped from frame to frame, the trees'
 /// sway following the last frame's, which every static draw reads, and the amplitude the shadows sway by.
 #[derive(Default)]
-pub struct WindFeature {
+pub(crate) struct WindFeature {
   foliage: FoliageWind,
   values: FoliageWindValues,
   uniform: WindUniform,
@@ -28,7 +28,7 @@ pub struct WindFeature {
 
 impl WindFeature {
   /// Steps the foliage motion to `time` in the weather's wind and rain, and takes this frame's sway.
-  pub fn prepare(&mut self, options: &RenderViewOptions, lighting: &RenderLighting, time: ViewTime) {
+  pub(crate) fn prepare(&mut self, options: &RenderViewOptions, lighting: &RenderLighting, time: ViewTime) {
     let settings: RenderFoliageSettings = options.features.grass.foliage;
     let foliage: FoliageWindValues = self.foliage.advance(
       time,
@@ -54,17 +54,17 @@ impl WindFeature {
   }
 
   /// How the trees sway this frame, which every static draw reads.
-  pub fn get_uniform(&self) -> &WindUniform {
+  pub(crate) fn get_uniform(&self) -> &WindUniform {
     &self.uniform
   }
 
   /// What the foliage motion reads this frame, which the grass takes as the trees do.
-  pub fn get_values(&self) -> &FoliageWindValues {
+  pub(crate) fn get_values(&self) -> &FoliageWindValues {
     &self.values
   }
 
   /// The wind's amplitude, which a tree's reach is multiplied by to give how far it leans.
-  pub fn get_sway_amplitude(&self) -> f32 {
+  pub(crate) fn get_sway_amplitude(&self) -> f32 {
     self.sway_amplitude
   }
 }

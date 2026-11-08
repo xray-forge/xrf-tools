@@ -1,15 +1,15 @@
 /// How the particle commands compare names a person types with names a library holds, alike in every command.
-pub struct ParticleNames;
+pub(crate) struct ParticleNames;
 
 impl ParticleNames {
   /// A name as the engine compares it: in any case, with either slash.
-  pub fn name_key(name: &str) -> String {
+  pub(crate) fn name_key(name: &str) -> String {
     name.trim().replace('/', "\\").to_lowercase()
   }
 
   /// A texture as the engine finds it: a name compared as [`Self::name_key`] does, with any extension dropped, as the
   /// texture loader drops one a sprite names (`pfx\pfx_ani-fire01.bmp`).
-  pub fn texture_key(texture: &str) -> String {
+  pub(crate) fn texture_key(texture: &str) -> String {
     let key: String = Self::name_key(texture);
 
     match key.rfind('.') {

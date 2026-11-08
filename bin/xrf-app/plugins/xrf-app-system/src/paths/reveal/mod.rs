@@ -2,4 +2,4 @@
 
 mod path_reveal;
 
-pub use path_reveal::PathReveal;
+pub(crate) use path_reveal::PathReveal;

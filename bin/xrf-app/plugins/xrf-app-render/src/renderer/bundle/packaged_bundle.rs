@@ -5,15 +5,15 @@ use xrf_renderer::{RENDER_BUNDLE_SOURCE, RenderBundle};
 
 /// The renderer's bundle as the application ships it: `resources/renderer` in its resources, or the renderer's
 /// checkout where nothing was packaged, as a development build runs.
-pub struct PackagedBundle {
+pub(crate) struct PackagedBundle {
   root: PathBuf,
 }
 
 impl PackagedBundle {
   /// Where a packaged application keeps the bundle in its resources, as `tauri.conf.json` maps it.
-  pub const PACKAGED: &'static str = "resources/renderer";
+  pub(crate) const PACKAGED: &'static str = "resources/renderer";
 
-  pub fn locate(resource_dir: Option<&Path>) -> Self {
+  pub(crate) fn locate(resource_dir: Option<&Path>) -> Self {
     let root: PathBuf = resource_dir
       .map(|dir| dir.join(Self::PACKAGED))
       .filter(|dir| dir.is_dir())

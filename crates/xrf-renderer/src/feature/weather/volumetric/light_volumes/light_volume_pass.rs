@@ -9,7 +9,7 @@ use crate::pass::view::view_binding::ViewBinding;
 /// Draws the shadowed local lights' shafts (`accum_volumetric`) into a target of their own at half the frame's size,
 /// slices added where the scene stands behind them, tested against its depth taken at that size without writing it,
 /// for the shafts' composite to bring up and add to the frame with the sun's.
-pub struct LightVolumePass {
+pub(crate) struct LightVolumePass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   texture_layout: wgpu::BindGroupLayout,
@@ -19,12 +19,12 @@ pub struct LightVolumePass {
 
 impl LightVolumePass {
   /// What the shafts add up in, as `rt_Generic_2` holds them.
-  pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub(crate) const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(
+  pub(crate) fn new(
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
@@ -46,7 +46,7 @@ impl LightVolumePass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipelines.refresh(source.cache, || {
       Self::create_pipelines(source, [&self.view_layout, &self.layout, &self.texture_layout])
     }) {
@@ -55,7 +55,7 @@ impl LightVolumePass {
   }
 
   /// Draws each volume's slices, `slices` a volume in the parameters' order.
-  pub fn record(
+  pub(crate) fn record(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
@@ -79,7 +79,7 @@ impl LightVolumePass {
   }
 
   /// Takes the frame's depth at half its size into the depth target the slices are tested against.
-  pub fn record_depth(
+  pub(crate) fn record_depth(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,

@@ -4,7 +4,7 @@ use crate::contract::sound::world_sound_kind::WorldSoundKind;
 use crate::host::sound::world_sound::WorldSound;
 
 /// How one sound starts.
-pub struct SoundPlay<'a> {
+pub(crate) struct SoundPlay<'a> {
   pub sound: &'a WorldSound,
   pub kind: WorldSoundKind,
   /// The level object it plays at, by the id its helper carries.
@@ -26,7 +26,7 @@ pub struct SoundPlay<'a> {
 
 impl<'a> SoundPlay<'a> {
   /// A sound played once at its own volume and speed, 3D unless its file is stereo.
-  pub fn new(sound: &'a WorldSound, kind: WorldSoundKind, position: [f32; 3], start: Duration) -> Self {
+  pub(crate) fn new(sound: &'a WorldSound, kind: WorldSoundKind, position: [f32; 3], start: Duration) -> Self {
     Self {
       sound,
       kind,

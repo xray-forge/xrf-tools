@@ -13,7 +13,7 @@ use crate::shader::generated_modules::GeneratedModules;
 
 /// The passes drawing the scene into the G-buffer: the static scene's cull, its depth pyramid and its draws, the grass
 /// and its colours, and the calibration props.
-pub struct ScenePasses {
+pub(crate) struct ScenePasses {
   pub cull: StaticCullPass,
   pub gbuffer: StaticGBufferPass,
   pub pyramid: DepthPyramidPass,
@@ -28,7 +28,7 @@ impl ScenePasses {
   /// # Errors
   ///
   /// Returns an error when a pass's shaders do not compose or compile.
-  pub fn new(build: PassBuild<'_>) -> XrfResult<Self> {
+  pub(crate) fn new(build: PassBuild<'_>) -> XrfResult<Self> {
     let PassBuild {
       source, view, texture, ..
     } = build;
@@ -53,7 +53,7 @@ impl ScenePasses {
   }
 
   /// Rebuilds the pipelines a shader reload made stale, each pass keeping its last good ones where a rebuild fails.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     self.cull.refresh(source);
     self.gbuffer.refresh(source);
     self.pyramid.refresh(source);
@@ -69,7 +69,7 @@ impl ScenePasses {
   ///
   /// Returns an error when passes sharing a module declare one of its bindings otherwise.
   #[cfg(test)]
-  pub fn declare_shaders(modules: &mut GeneratedModules) -> XrfResult<()> {
+  pub(crate) fn declare_shaders(modules: &mut GeneratedModules) -> XrfResult<()> {
     use crate::feature::scene::calibration::calibration_parameters::CalibrationParameters;
     use crate::feature::scene::calibration::calibration_uniform::CalibrationUniform;
     use crate::feature::scene::grass::build::grass_build_parameters::GrassBuildParameters;

@@ -8,7 +8,7 @@ use crate::settings::{AudioSettings, AudioSettingsStore};
 /// Play with `settings` from now on and keep them for the next run, answering them as kept, every volume in range.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "set_settings")]
-pub fn audio_set_settings(
+pub(crate) fn audio_set_settings(
   store: State<'_, AudioSettingsStore>,
   server: State<'_, AudioServer>,
   focus: State<'_, AudioFocus>,

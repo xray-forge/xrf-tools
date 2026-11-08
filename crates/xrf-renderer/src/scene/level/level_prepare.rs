@@ -11,7 +11,7 @@ use crate::scene::static_scene::draw::static_sight::StaticSight;
 /// driving camera stands. The scene's stores (its statics, grass, lights, particles and trace) stay the scene's, read by
 /// the units drawing them; what the level places for every view to read, such as fog volumes, joins these values.
 #[derive(Clone, Copy)]
-pub struct LevelPrepare {
+pub(crate) struct LevelPrepare {
   /// How long the level has lived at this frame, on the frames' clock, and at the view's last frame: what its clouds,
   /// sway, water, lights and effects move by, each by its own phase of it, and what is stepped on from frame to frame
   /// steps by.
@@ -27,7 +27,7 @@ pub struct LevelPrepare {
 
 impl LevelPrepare {
   /// What `scene` gives a view seeing it through `view` this frame, its last frame drawn at `previous`.
-  pub fn of(scene: &LevelScene, view: &CameraView, previous: Option<LevelTime>) -> Self {
+  pub(crate) fn of(scene: &LevelScene, view: &CameraView, previous: Option<LevelTime>) -> Self {
     Self {
       time: ViewTime {
         now: scene.get_time(),

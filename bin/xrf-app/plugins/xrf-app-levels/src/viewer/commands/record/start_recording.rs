@@ -22,7 +22,7 @@ use crate::viewer::recording::{LevelRecordings, RecordingProgress};
   clippy::too_many_arguments,
   reason = "Tauri injects each managed state as an argument of its own"
 )]
-pub async fn levels_start_recording(
+pub(crate) async fn levels_start_recording(
   renderer: State<'_, Renderer>,
   shown: State<'_, ShownLevels>,
   world: State<'_, WorldState>,

@@ -34,7 +34,7 @@ fn cs_probe(@builtin(global_invocation_id) id: vec3<u32>) {{
 
 /// Runs `body` over each case after `module`'s functions (`probe`), answering each case's `answer`; none without a GPU
 /// to run it on (`create_test_context`). Panics where the probe does not validate.
-pub fn run_gpu_probe(module: &str, body: &str, cases: &[(Vec4, Vec4)]) -> Option<Vec<Vec3>> {
+pub(crate) fn run_gpu_probe(module: &str, body: &str, cases: &[(Vec4, Vec4)]) -> Option<Vec<Vec3>> {
   let context = create_test_context(&format!("to run {module}'s functions"))?;
   let (device, queue) = (&context.device, &context.queue);
   let scope: wgpu::ErrorScopeGuard = device.push_error_scope(wgpu::ErrorFilter::Validation);

@@ -22,7 +22,7 @@ use crate::contract::settings::gpu::render_gpu::RenderGpu;
 use crate::contract::settings::gpu::render_gpu_description::RenderGpuDescription;
 
 /// The GPU the renderer draws with: one per process, owned by the render thread.
-pub struct GpuContext {
+pub(crate) struct GpuContext {
   pub instance: wgpu::Instance,
   pub adapter: wgpu::Adapter,
   pub device: wgpu::Device,
@@ -41,12 +41,12 @@ pub struct GpuContext {
 impl GpuContext {
   /// Where the renderer's bundle keeps DXC's library, which D3D12 compiles shaders with for shader model 6 (ray
   /// queries among what it brings); FXC, which Windows carries, stops at 5.1.
-  pub const DXC_LIBRARY: &'static str = "dxc/dxcompiler.dll";
+  pub(crate) const DXC_LIBRARY: &'static str = "dxc/dxcompiler.dll";
   /// Where the renderer's bundle keeps DLSS's runtime library, where a build with DLSS ships it.
-  pub const DLSS_DIRECTORY: &'static str = "dlss";
+  pub(crate) const DLSS_DIRECTORY: &'static str = "dlss";
   /// Bytes of each memory block the allocator places resources in, a larger resource taking a block of its own: small,
   /// so the holes textures streaming in and out leave in the blocks hold little.
-  pub const MEMORY_BLOCK: u64 = 16 * 1024 * 1024;
+  pub(crate) const MEMORY_BLOCK: u64 = 16 * 1024 * 1024;
 
   /// Starts the GPU on a hardware adapter of a backend: the GPU `gpu` names where the backend has it, else the one the
   /// backend picks automatically. D3D12 compiles with the DXC library `libraries` names where it loads, and Vulkan
@@ -56,7 +56,7 @@ impl GpuContext {
   ///
   /// Returns an error when no adapter of that backend exists, when it lacks a required feature, or when its device
   /// cannot be created.
-  pub fn create(backend: RenderBackend, gpu: Option<RenderGpu>, libraries: GpuLibraries<'_>) -> XrfResult<Self> {
+  pub(crate) fn create(backend: RenderBackend, gpu: Option<RenderGpu>, libraries: GpuLibraries<'_>) -> XrfResult<Self> {
     Self::create_with(backend, gpu, GpuInstanceUse::Hardware, libraries)
   }
 
@@ -66,7 +66,7 @@ impl GpuContext {
   /// # Errors
   ///
   /// Returns an error, every backend's reason in it, when none starts.
-  pub fn create_preferred(
+  pub(crate) fn create_preferred(
     asked: Option<RenderBackend>,
     gpu: Option<RenderGpu>,
     libraries: GpuLibraries<'_>,
@@ -94,7 +94,7 @@ impl GpuContext {
 
   /// Whether the renderer can draw with a backend here: every hardware GPU of it with the features the renderer needs,
   /// without starting a device on any.
-  pub fn probe(backend: RenderBackend) -> RenderBackendAvailability {
+  pub(crate) fn probe(backend: RenderBackend) -> RenderBackendAvailability {
     let is_forced: bool = RenderBackend::get_forced() == Some(backend);
 
     match Self::list_gpus(backend) {
@@ -120,7 +120,7 @@ impl GpuContext {
   ///
   /// Returns an error when neither a hardware nor a software adapter can be had with the required features.
   #[cfg(test)]
-  pub fn create_headless(backend: RenderBackend, dxc: Option<&Path>) -> XrfResult<Self> {
+  pub(crate) fn create_headless(backend: RenderBackend, dxc: Option<&Path>) -> XrfResult<Self> {
     let libraries: GpuLibraries<'_> = GpuLibraries { dxc, dlss: None };
 
     Self::create_with(backend, None, GpuInstanceUse::Hardware, libraries)
@@ -128,7 +128,7 @@ impl GpuContext {
   }
 
   /// Whether the device was lost, after which nothing it made draws again.
-  pub fn is_lost(&self) -> bool {
+  pub(crate) fn is_lost(&self) -> bool {
     self.lost.load(Ordering::Acquire)
   }
 

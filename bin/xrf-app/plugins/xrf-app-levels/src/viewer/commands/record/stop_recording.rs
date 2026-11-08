@@ -9,7 +9,7 @@ use crate::viewer::recording::{LevelRecordings, RecordingOutcome};
 /// Answers what was written.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "stop_recording")]
-pub async fn levels_stop_recording(
+pub(crate) async fn levels_stop_recording(
   world: State<'_, WorldState>,
   execution: State<'_, ExecutionState>,
   recordings: State<'_, LevelRecordings>,

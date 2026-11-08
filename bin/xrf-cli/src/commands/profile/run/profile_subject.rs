@@ -11,7 +11,7 @@ use crate::commands::profile::run::sampled_run::SampledRun;
 use crate::core::command::CommandResult;
 
 /// One binary as the session measures it, and what its rounds have measured so far.
-pub struct ProfileSubject {
+pub(crate) struct ProfileSubject {
   pub label: String,
   pub path: PathBuf,
   version: Vec<String>,
@@ -27,7 +27,7 @@ impl ProfileSubject {
   /// # Errors
   ///
   /// Returns an error when nothing is there to run, or it cannot be asked its version.
-  pub fn new(path: PathBuf, rounds: usize) -> CommandResult<Self> {
+  pub(crate) fn new(path: PathBuf, rounds: usize) -> CommandResult<Self> {
     if !path.is_file() {
       return Err(XrfError::new_not_found_error(format!("No binary to measure at '{}'", format_path(&path))).into());
     }
@@ -44,7 +44,7 @@ impl ProfileSubject {
   }
 
   /// Keeps one measured round.
-  pub fn record(&mut self, measured: &SampledRun) {
+  pub(crate) fn record(&mut self, measured: &SampledRun) {
     self.runs.push(measured.elapsed);
 
     if let Some(peak) = measured.peak_bytes {
@@ -61,7 +61,7 @@ impl ProfileSubject {
   }
 
   /// What the rounds came to, or `None` before any was measured.
-  pub fn into_report(self) -> Option<ProfileRunBinaryReport> {
+  pub(crate) fn into_report(self) -> Option<ProfileRunBinaryReport> {
     let statistics: RoundStatistics = RoundStatistics::of(&self.runs, &self.peaks, &self.means)?;
 
     Some(ProfileRunBinaryReport::new(

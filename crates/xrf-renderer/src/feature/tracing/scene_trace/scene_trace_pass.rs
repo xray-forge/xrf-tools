@@ -39,7 +39,7 @@ struct SceneTraceLayouts {
 /// level's static geometry by hardware ray query (`frame/reflection_scene`), as many workgroups as were counted, and
 /// writes each that meets something into the list's target; the water tracing every pixel leaves a record at each
 /// pixel instead (`WaterRays`), which the pass traces a thread a pixel. Nothing traces on a device without ray queries.
-pub struct SceneTracePass {
+pub(crate) struct SceneTracePass {
   view_layout: wgpu::BindGroupLayout,
   sky_layout: wgpu::BindGroupLayout,
   layouts: Option<SceneTraceLayouts>,
@@ -57,7 +57,7 @@ impl SceneTracePass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(
+  pub(crate) fn new(
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     sky_layout: &wgpu::BindGroupLayout,
@@ -107,7 +107,7 @@ impl SceneTracePass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipelines.refresh(source.cache, || {
       Self::create_pipelines(source, &self.view_layout, &self.sky_layout, self.layouts.as_ref())
     }) {
@@ -116,17 +116,17 @@ impl SceneTracePass {
   }
 
   /// Whether it traces rays: a device with ray queries.
-  pub fn is_traced(&self) -> bool {
+  pub(crate) fn is_traced(&self) -> bool {
     self.layouts.is_some()
   }
 
   /// What a list keeping no ends binds for them.
-  pub fn get_no_ends(&self) -> &wgpu::TextureView {
+  pub(crate) fn get_no_ends(&self) -> &wgpu::TextureView {
     &self.no_ends
   }
 
   /// Imports a list into the frame's graph and empties it for the pass that fills it, which binds what this answers.
-  pub fn add_reset<'a>(
+  pub(crate) fn add_reset<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
     bindings: &mut GraphBindings<'a>,
@@ -176,7 +176,7 @@ impl SceneTracePass {
 
   /// Traces the rays a `request`'s list holds once the pass filling it has run: its dispatch copied out of its head,
   /// then the scene pass over the list and the `bindings`, whose parameters name the targets its hits write.
-  pub fn add_trace<'a>(
+  pub(crate) fn add_trace<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
     request: SceneTraceRequest,
@@ -218,7 +218,7 @@ impl SceneTracePass {
 
   /// Traces the water's every-pixel rays (`rays`) once the pass writing them has run, as `label`: a thread a pixel of
   /// the drawn `size`, over the `bindings`, a record another frame wrote passed over.
-  pub fn add_trace_pixels<'a>(
+  pub(crate) fn add_trace_pixels<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
     label: &'static str,

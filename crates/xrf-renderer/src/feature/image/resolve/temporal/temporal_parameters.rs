@@ -7,7 +7,7 @@ use crate::feature::image::resolve::temporal::temporal_uniform::TemporalUniform;
 /// surfaces and the particles drew over it, which tells what of it those changed, and how much each pixel flickered.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct TemporalParameters<'a> {
+pub(crate) struct TemporalParameters<'a> {
   #[texture(d2, unfilterable)]
   pub frame: GraphTexture,
   #[texture(d2, depth)]

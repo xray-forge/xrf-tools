@@ -16,7 +16,7 @@ const GPU_ANSWER_TIMEOUT: Duration = Duration::from_millis(500);
 /// the application holds on the GPU while its renderer runs one.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "get_memory_usage")]
-pub async fn system_get_memory_usage(
+pub(crate) async fn system_get_memory_usage(
   probe: State<'_, WebviewProcessProbe>,
   renderer: State<'_, Renderer>,
 ) -> TauriResult<Option<MemoryUsage>> {

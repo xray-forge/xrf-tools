@@ -3,5 +3,5 @@
 mod archive_level_wallmark_slot;
 mod archive_level_wallmarks_description;
 
-pub use archive_level_wallmark_slot::ArchiveLevelWallmarkSlot;
-pub use archive_level_wallmarks_description::ArchiveLevelWallmarksDescription;
+pub(crate) use archive_level_wallmark_slot::ArchiveLevelWallmarkSlot;
+pub(crate) use archive_level_wallmarks_description::ArchiveLevelWallmarksDescription;

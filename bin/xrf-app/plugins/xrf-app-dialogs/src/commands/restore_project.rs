@@ -12,7 +12,7 @@ use crate::{DialogProjects, OpenedDialogProject};
 /// reload.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "restore_project")]
-pub async fn dialogs_restore_project(
+pub(crate) async fn dialogs_restore_project(
   projects: State<'_, DialogProjects>,
   window: InvokingWindow,
   tool: String,

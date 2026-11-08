@@ -7,8 +7,8 @@ mod burst_sound_frame;
 mod burst_sound_outcome;
 mod burst_sound_tee;
 
-pub use burst_sound::BurstSound;
-pub use burst_sound_chunk::BurstSoundChunk;
-pub use burst_sound_frame::BurstSoundFrame;
-pub use burst_sound_outcome::BurstSoundOutcome;
-pub use burst_sound_tee::BurstSoundTee;
+pub(crate) use burst_sound::BurstSound;
+pub(crate) use burst_sound_chunk::BurstSoundChunk;
+pub(crate) use burst_sound_frame::BurstSoundFrame;
+pub(crate) use burst_sound_outcome::BurstSoundOutcome;
+pub(crate) use burst_sound_tee::BurstSoundTee;

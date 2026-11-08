@@ -8,7 +8,7 @@ use syn::{
 
 /// Expands `#[derive(RenderSettingSchema)]`: a struct describes each field it does not skip under its serialized name,
 /// a unit enum is a choice of its variants as they serialize.
-pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
+pub(crate) fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
   let name: &Ident = &input.ident;
 
   if !input.generics.params.is_empty() {

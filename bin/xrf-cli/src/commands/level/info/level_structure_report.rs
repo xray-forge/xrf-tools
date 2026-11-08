@@ -4,7 +4,7 @@ use xrf_level::{LevelFile, LevelSector};
 /// What the level is built out of beside its geometry: the sectors it culls by and the lights it loads.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LevelStructureReport {
+pub(crate) struct LevelStructureReport {
   sectors: usize,
   portals: usize,
   /// Portals named by a sector, which is twice the portals when every one joins two of them.
@@ -15,7 +15,7 @@ pub struct LevelStructureReport {
 }
 
 impl LevelStructureReport {
-  pub fn of(level: &LevelFile) -> Self {
+  pub(crate) fn of(level: &LevelFile) -> Self {
     let sectors: &[LevelSector] = level.get_sectors();
 
     Self {

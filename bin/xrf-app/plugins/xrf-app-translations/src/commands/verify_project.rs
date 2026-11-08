@@ -15,7 +15,7 @@ use crate::request::TranslationsVerifyRequest;
 /// Report which translations are missing from which languages, and what the game would refuse or mangle in them.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "verify_project")]
-pub async fn translations_verify_project(
+pub(crate) async fn translations_verify_project(
   execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
   request: TranslationsVerifyRequest,

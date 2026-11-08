@@ -9,7 +9,7 @@ use crate::load::dltx_item::DltxItem;
 /// The engine keeps this per item and exposes it to Lua, because in a patched install the only way to explain a value
 /// is to name the file that won it (`xr_ini.h`).
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct DltxFieldOrigin {
+pub(crate) struct DltxFieldOrigin {
   /// Lowercased base name of the winning file, as the handle the loader interned.
   pub file: Arc<str>,
   /// Load rank of the winning statement. Negative means a mod file.
@@ -19,7 +19,7 @@ pub struct DltxFieldOrigin {
 }
 
 impl DltxFieldOrigin {
-  pub fn of(item: &DltxItem) -> Self {
+  pub(crate) fn of(item: &DltxItem) -> Self {
     Self {
       depth: item.depth,
       file: Arc::clone(&item.filename),
@@ -31,7 +31,7 @@ impl DltxFieldOrigin {
   ///
   /// The engine answers the same question by testing the file name for a `mod_` prefix.
   #[cfg(test)]
-  pub fn is_from_mod_file(&self) -> bool {
+  pub(crate) fn is_from_mod_file(&self) -> bool {
     use crate::discovery::dltx_discovery::DltxDiscovery;
 
     self.file.starts_with(DltxDiscovery::MOD_PREFIX)

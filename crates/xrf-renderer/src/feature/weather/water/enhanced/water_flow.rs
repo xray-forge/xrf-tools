@@ -8,7 +8,7 @@ use crate::scene::level::view::view_time::ViewTime;
 /// frame's few milliseconds still add to a day's sum, and read through `EnhancedWaterScroll`, which wraps each read by
 /// its map's repeat.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct WaterFlow {
+pub(crate) struct WaterFlow {
   /// Seconds at the flow, which the caustics scroll by.
   pub seconds: f64,
   /// Seconds at the normals' pace, `clamp(0.97 * wind, 0.45, 0.97)` with its floor at the calm flow.
@@ -28,7 +28,7 @@ impl WaterFlow {
   const RIPPLE_RAIN: (f64, f64, f64) = (1.6, 0.65, 1.0);
 
   /// Moves the maps on by the seconds since the view's last frame, never back, at this frame's settings and weather.
-  pub fn advance(
+  pub(crate) fn advance(
     &mut self,
     time: ViewTime,
     settings: &RenderEnhancedWaterSettings,

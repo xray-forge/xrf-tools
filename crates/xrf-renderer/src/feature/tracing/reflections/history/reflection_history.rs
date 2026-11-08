@@ -12,7 +12,7 @@ use crate::frame::targets::view_targets::ViewTargets;
 /// frame's size, the frame's depth reduced to its nearest, which each frame rebuilds from the depth as it stood before
 /// the grass drew, and the last frame's scene as it stood before the sun shafts and the flares, with the depth target
 /// it was drawn over, which a hit reads its colour from; and the rays the trace leaves to the scene pass.
-pub struct ReflectionHistory {
+pub(crate) struct ReflectionHistory {
   pub frames: Option<History<ReflectionFrame>>,
   /// Frames swapped since it was made, which turns each pixel's noise from one frame to the next.
   pub frame: u32,
@@ -30,15 +30,15 @@ pub struct ReflectionHistory {
 }
 
 impl ReflectionHistory {
-  pub const RADIANCE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
-  pub const SURFACE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
-  pub const HELD_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
+  pub(crate) const RADIANCE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub(crate) const SURFACE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub(crate) const HELD_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
   /// Traced pixels a request the list holds stands for at most: a ray more than that leaves its pixel what it reflected
   /// the frame before, or the sky.
-  pub const REQUEST_SHARE: u32 = 4;
+  pub(crate) const REQUEST_SHARE: u32 = 4;
   /// The same, traced raw: every pixel traces every frame and nothing is held, so the list takes twice the share at
   /// the least, and grows to what the frames ask (`get_raw_capacity`).
-  pub const RAW_REQUEST_SHARE: u32 = 2;
+  pub(crate) const RAW_REQUEST_SHARE: u32 = 2;
   /// How much more room than a raw frame asked its list is given, and the requests it grows or shrinks by at a time.
   const RAW_REQUEST_MARGIN: f32 = 1.25;
   const RAW_REQUEST_STEP: u32 = 65_536;
@@ -48,7 +48,7 @@ impl ReflectionHistory {
   /// once and shrunk only once that falls to half its room, so a frame asking a little less never makes it anew.
   /// Raw, a pixel past the list has nothing held to show, and the list fills in the order pixels are drawn: the last
   /// rows of the screen reflected the sky.
-  pub fn get_raw_capacity(traced: u32, current: u32, asked: u32) -> u32 {
+  pub(crate) fn get_raw_capacity(traced: u32, current: u32, asked: u32) -> u32 {
     let least: u32 = traced.div_ceil(Self::RAW_REQUEST_SHARE);
     let wanted: u32 = ((asked as f32 * Self::RAW_REQUEST_MARGIN) as u32)
       .div_ceil(Self::RAW_REQUEST_STEP)
@@ -64,7 +64,7 @@ impl ReflectionHistory {
 
   /// The history at the size `trace` traces at, its denoiser's frames where it is denoised, and the pyramid and the
   /// kept scene over the frame's size.
-  pub fn new(device: &wgpu::Device, trace: ReflectionTrace, frame_size: (u32, u32)) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, trace: ReflectionTrace, frame_size: (u32, u32)) -> Self {
     let (size, is_denoised): ((u32, u32), bool) = (Self::get_traced_size(trace, frame_size), !trace.is_raw);
     let create = |label: &str, size: (u32, u32), format: wgpu::TextureFormat, usage: wgpu::TextureUsages| {
       FrameTexture::new(device, label, size, format, usage)
@@ -112,27 +112,27 @@ impl ReflectionHistory {
   }
 
   /// Whether it is traced as `trace` traces over a frame of `frame_size`, denoised or not as it asks.
-  pub fn is_sized(&self, trace: ReflectionTrace, frame_size: (u32, u32)) -> bool {
+  pub(crate) fn is_sized(&self, trace: ReflectionTrace, frame_size: (u32, u32)) -> bool {
     self.size == Self::get_traced_size(trace, frame_size)
       && (self.pyramid.width, self.pyramid.height) == frame_size
       && self.frames.is_some() != trace.is_raw
   }
 
   /// The size `trace` traces a frame of `frame_size` at.
-  pub fn get_traced_size(trace: ReflectionTrace, (width, height): (u32, u32)) -> (u32, u32) {
+  pub(crate) fn get_traced_size(trace: ReflectionTrace, (width, height): (u32, u32)) -> (u32, u32) {
     let ratio: u32 = trace.get_ratio();
 
     (width.div_ceil(ratio), height.div_ceil(ratio))
   }
 
   /// Whether the denoiser's side this frame reads holds the frame before.
-  pub fn has_history(&self) -> bool {
+  pub(crate) fn has_history(&self) -> bool {
     self.frames.as_ref().is_some_and(History::is_valid)
   }
 
   /// The written set becomes the one read, the scene copied this frame the one the next reads, and the depth target
   /// this frame drew into (`depth`, the view's) the one it keeps, the view drawing into the other next.
-  pub fn swap(&mut self, depth: &mut wgpu::TextureView) {
+  pub(crate) fn swap(&mut self, depth: &mut wgpu::TextureView) {
     if let Some(frames) = &mut self.frames {
       frames.swap();
     }
@@ -145,7 +145,7 @@ impl ReflectionHistory {
   /// Starts again what it keeps, as `restart` asks: the denoiser's frames and the scene and depth kept left nothing to
   /// read, the last place's leading nowhere true; its motion restarted, the frames counted and the noise turning from
   /// none again too, as if just made.
-  pub fn restart(&mut self, restart: ViewRestart) {
+  pub(crate) fn restart(&mut self, restart: ViewRestart) {
     if let Some(frames) = &mut self.frames {
       match restart {
         ViewRestart::Motion => frames.restart(),

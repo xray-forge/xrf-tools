@@ -32,7 +32,7 @@ use crate::scene::texture::texture_cache::TextureCache;
 impl LevelLights {
   /// Writes out the lights a view picked into its own, nearest first, animated and faded as the engine would, in the
   /// camera's view space; a shadowed one only once its faces are drawn, with their squares of the atlas.
-  pub fn write(&self, encoder: &mut FrameEncoder, into: &mut LightsFeature, asks: &LightAsks) {
+  pub(crate) fn write(&self, encoder: &mut FrameEncoder, into: &mut LightsFeature, asks: &LightAsks) {
     let LightsFrame {
       camera,
       settings,

@@ -20,7 +20,7 @@ use crate::scene::static_scene::trace::static_trace_group::StaticTraceGroup;
 /// What one scene item adds, gathered before its ranges are taken: its records name each other by their indices in
 /// here, and `relocate` moves them to where its ranges put them, so each buffer gets one range an item.
 #[derive(Default)]
-pub struct StaticSceneWriter {
+pub(crate) struct StaticSceneWriter {
   pub words: [Vec<u32>; StaticLayout::COUNT],
   pub indices: Vec<u32>,
   pub clusters: Vec<StaticCluster>,
@@ -53,7 +53,7 @@ pub struct StaticSceneWriter {
 
 impl StaticSceneWriter {
   /// Appends a geometry's vertex words to its layout's and its indices to the shared ones.
-  pub fn put_words(&mut self, layout: StaticLayout, words: &[u32], indices: &[u32]) -> StaticGeometryBase {
+  pub(crate) fn put_words(&mut self, layout: StaticLayout, words: &[u32], indices: &[u32]) -> StaticGeometryBase {
     let base: StaticGeometryBase = StaticGeometryBase {
       vertex_start: (self.words[layout.get_index()].len() / StaticLayout::STRIDE as usize) as u32,
       index_start: self.indices.len() as u32,
@@ -66,7 +66,7 @@ impl StaticSceneWriter {
   }
 
   /// Puts the clusters covering one index range as one slot; answers its index and how many clusters it took.
-  pub fn put_slot(
+  pub(crate) fn put_slot(
     &mut self,
     base: &StaticGeometryBase,
     clusters: Vec<(u32, u32, Vec4)>,
@@ -112,7 +112,7 @@ impl StaticSceneWriter {
 
   /// Moves every record's references from indices in here to where the item's ranges put them; the CPU's cluster slots
   /// stay counted from the item's own first.
-  pub fn relocate(&mut self, spans: &StaticSpans) {
+  pub(crate) fn relocate(&mut self, spans: &StaticSpans) {
     let words: [u32; StaticLayout::COUNT] =
       std::array::from_fn(|layout| StaticSpans::get_offset(spans.words[layout].as_ref()));
     let indices: u32 = StaticSpans::get_offset(spans.indices.as_ref());

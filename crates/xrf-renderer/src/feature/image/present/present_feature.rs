@@ -18,7 +18,7 @@ use crate::pass::view::view_binding::ViewBinding;
 /// What the window pass puts the view's finished frame into its rectangle by: the debug view shown, the distortion,
 /// the corrections, the bloom laid over it, the selection's outline and the tonemap where the scene holds linear light.
 #[derive(Default)]
-pub struct PresentFeature {
+pub(crate) struct PresentFeature {
   uniform: PresentUniform,
   /// How far the distortion target moves the frame before the resolve and whether it blurs it, and the tiles of the
   /// frame it was written in; none where nothing wrote it this frame.
@@ -27,7 +27,7 @@ pub struct PresentFeature {
 
 impl PresentFeature {
   /// Takes this frame's present into `output`, once every other unit has decided what it reads (`inputs`).
-  pub fn prepare(&mut self, options: &RenderViewOptions, output: RenderRect, inputs: PresentInputs) {
+  pub(crate) fn prepare(&mut self, options: &RenderViewOptions, output: RenderRect, inputs: PresentInputs) {
     let water = &options.features.water;
 
     // `combine_2` blurs towards the engine's bloom, which is built under the enhanced one where a writer may blur.
@@ -67,7 +67,7 @@ impl PresentFeature {
   }
 
   /// What the window pass reads this frame.
-  pub fn get_uniform(&self) -> &PresentUniform {
+  pub(crate) fn get_uniform(&self) -> &PresentUniform {
     &self.uniform
   }
 
@@ -75,7 +75,7 @@ impl PresentFeature {
   /// surfaces wrote the distortion target, and blurs it towards the engine's bloom by its `z` where a bloom draws,
   /// before the resolve, so the resolve smooths it as it smooths the rest: a copy of the frame read where the target
   /// says, drawn back into it, both only about the tiles the target was written in. Nothing where nothing distorts.
-  pub fn add_distortion_pass<'a>(
+  pub(crate) fn add_distortion_pass<'a>(
     &self,
     GraphDeclaration { graph, runtime, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,

@@ -9,7 +9,7 @@ use crate::browse::{ArchiveSubject, ArchiveSubjects};
 /// instead of asking for it again.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "restore_subject")]
-pub async fn archives_restore_subject(
+pub(crate) async fn archives_restore_subject(
   subjects: State<'_, ArchiveSubjects>,
   window: InvokingWindow,
   tool: String,

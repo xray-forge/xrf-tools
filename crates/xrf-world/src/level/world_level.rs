@@ -36,7 +36,7 @@ use crate::sound::weather::rain_frame::RainFrame;
 /// its effects and its scene's particles step by (`EngineClock`, `RenderSceneFrame::engine_time`). Its sound waits for
 /// the scene to stand ready, then starts every schedule at that frame, as the game starts a level's sound once it has
 /// loaded; a burst is heard whether or not it stands ready, as it starts its schedules afresh itself.
-pub struct WorldLevel {
+pub(crate) struct WorldLevel {
   streaming: LevelStreaming,
   animation: LevelAnimation,
   effects: LevelEffects,
@@ -53,7 +53,7 @@ pub struct WorldLevel {
 }
 
 impl WorldLevel {
-  pub fn start(source: Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> Self {
+  pub(crate) fn start(source: Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> Self {
     Self {
       effects: LevelEffects::start(&source, workers),
       weather: Self::read_weather(&source, workers),
@@ -80,19 +80,19 @@ impl WorldLevel {
     })
   }
 
-  pub fn get_source(&self) -> &Arc<dyn WorldLevelSource> {
+  pub(crate) fn get_source(&self) -> &Arc<dyn WorldLevelSource> {
     self.streaming.get_source()
   }
 
   /// What every weather of the level plays with, once read; none while it is read, again on a reload too, or where it
   /// cannot be.
-  pub fn get_weather(&mut self) -> Option<&Arc<WorldLevelWeather>> {
+  pub(crate) fn get_weather(&mut self) -> Option<&Arc<WorldLevelWeather>> {
     self.weather.poll()
   }
 
   /// Plays on from `source`, a next source of the same level, reading again what `reload` names from it: what that
   /// replaces leaves the scene with the next frame's posts, and everything else stays as it is drawn. The clock runs on.
-  pub fn reload(&mut self, source: Arc<dyn WorldLevelSource>, reload: LevelParts, workers: &RenderWorkers) {
+  pub(crate) fn reload(&mut self, source: Arc<dyn WorldLevelSource>, reload: LevelParts, workers: &RenderWorkers) {
     if reload.contains(LevelPart::Particles) {
       self.effects.reload(&mut self.queued, &source, workers);
     }
@@ -114,23 +114,23 @@ impl WorldLevel {
       .follow(&mut self.queued, &mut self.animation, source, reload, workers);
   }
 
-  pub fn set_pose(&mut self, pose: &WorldModelPose) {
+  pub(crate) fn set_pose(&mut self, pose: &WorldModelPose) {
     self.animation.set_pose(pose);
   }
 
   /// Plays an ambient effect on the next frame, ending the one playing, without waiting.
-  pub fn play_ambient_now(&mut self) {
+  pub(crate) fn play_ambient_now(&mut self) {
     self.effects.play_ambient_now();
   }
 
   /// Where the weather's ambient effects stand, none until the particles are read.
-  pub fn report_ambient(&self) -> Option<WorldAmbientReport> {
+  pub(crate) fn report_ambient(&self) -> Option<WorldAmbientReport> {
     self.effects.report_ambient()
   }
 
   /// Takes what the level's scene told of the last frame, whether or not a viewport drives it now: the sectors and the
   /// spawned models it could not take in of the posts before, the effects it finished, and whether it stood ready.
-  pub fn take_feedback(
+  pub(crate) fn take_feedback(
     &mut self,
     RenderSceneFeedback {
       sector_failures,
@@ -151,7 +151,7 @@ impl WorldLevel {
   ///
   /// Its sound plays on as `sound` gives the frame, the viewport it is heard by, once the scene stands ready or a burst
   /// draws it.
-  pub fn advance(&mut self, now: Instant, drive: LevelDrive<'_>, sound: &SoundDrive<'_>) -> RenderSceneFrame {
+  pub(crate) fn advance(&mut self, now: Instant, drive: LevelDrive<'_>, sound: &SoundDrive<'_>) -> RenderSceneFrame {
     let mut updates: Vec<RenderSceneUpdate> = std::mem::take(&mut self.queued);
     let opened: Instant = *self.opened.get_or_insert(now);
     let clock: Duration = now.saturating_duration_since(opened);
@@ -218,12 +218,12 @@ impl WorldLevel {
   }
 
   /// Does what a viewer asks of the level's music, answering whether it could.
-  pub fn command_music(&mut self, command: &WorldMusicCommand) -> bool {
+  pub(crate) fn command_music(&mut self, command: &WorldMusicCommand) -> bool {
     self.sound.command_music(command)
   }
 
   /// What its sound plays as the world schedules it.
-  pub fn report_sound(&mut self) -> WorldSoundReport {
+  pub(crate) fn report_sound(&mut self) -> WorldSoundReport {
     let weather: Option<Arc<WorldLevelWeather>> = self.weather.poll().cloned();
 
     self.sound.report(weather.as_deref())
@@ -239,11 +239,11 @@ impl WorldLevel {
     }
   }
 
-  pub fn measure_surfaces(&self) -> Vec<WorldSurfaceGeometry> {
+  pub(crate) fn measure_surfaces(&self) -> Vec<WorldSurfaceGeometry> {
     self.streaming.measure_surfaces()
   }
 
-  pub fn describe_problems(&self) -> WorldLevelProblems {
+  pub(crate) fn describe_problems(&self) -> WorldLevelProblems {
     self.streaming.describe_problems()
   }
 }

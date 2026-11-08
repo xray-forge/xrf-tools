@@ -8,7 +8,7 @@ use crate::lighting::weather::render_fog::RenderFog;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "FogScattering")]
-pub struct FogScatteringUniform {
+pub(crate) struct FogScatteringUniform {
   /// The target the stage draws into, in texels.
   pub size: Vec2,
   /// How readily the frame's bright parts are blurred into the fog.
@@ -23,11 +23,11 @@ pub struct FogScatteringUniform {
 impl FogScatteringUniform {
   /// Seconds the debanding noise's clock repeats over: any span will do, as the noise follows no pattern in time that a
   /// repeat would break; an hour keeps a level's first hour as it always was.
-  pub const NOISE_PERIOD: f64 = 3600.0;
+  pub(crate) const NOISE_PERIOD: f64 = 3600.0;
 
   /// What a view scatters a frame `size` texels across with, or none: the engine's fog asked for, a scattering of none,
   /// no weather's `fog` drawn, unlit or wireframe.
-  pub fn for_view(
+  pub(crate) fn for_view(
     options: &RenderViewOptions,
     fog: Option<&RenderFog>,
     size: (u32, u32),
@@ -45,7 +45,7 @@ impl FogScatteringUniform {
 
   /// The quarter-size blur, the half-size blur, then the scattering at the frame's own size; the first blur reads the
   /// scene, so the blurs hold it as shown and their eight bits clip nothing the tonemap would have kept.
-  pub fn stages((width, height): (u32, u32), intensity: f32, time: f32) -> [Self; 3] {
+  pub(crate) fn stages((width, height): (u32, u32), intensity: f32, time: f32) -> [Self; 3] {
     [4, 2, 1].map(|ratio: u32| Self {
       size: Vec2::new(width.div_ceil(ratio) as f32, height.div_ceil(ratio) as f32),
       intensity: intensity.clamp(0.0, 1.0),

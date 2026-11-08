@@ -9,7 +9,7 @@ use xrf_renderer_core::ShaderStruct;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "TraceRequest")]
-pub struct TraceRequest {
+pub(crate) struct TraceRequest {
   pub origin: Vec4,
   pub cone: Vec2,
   pub toward: u32,
@@ -23,17 +23,17 @@ pub struct TraceRequest {
 impl TraceRequest {
   /// Words of the request list's head a frame starts from: requests made, then the scene pass's dispatch (workgroups
   /// across, down, deep), one workgroup more than the requests take so the scene pass always keeps the wait.
-  pub const HEAD: [u32; 4] = [0, 1, 1, 1];
+  pub(crate) const HEAD: [u32; 4] = [0, 1, 1, 1];
   /// Words the head holds: `HEAD`'s, then the wait its pixels' turns are stretched by, which a frame keeps from the
   /// last.
-  pub const HEAD_WORDS: usize = Self::HEAD.len() + 1;
+  pub(crate) const HEAD_WORDS: usize = Self::HEAD.len() + 1;
   /// Where the wait stands in the head.
-  pub const HEAD_WAIT_OFFSET: u64 = (Self::HEAD.len() * size_of::<u32>()) as u64;
+  pub(crate) const HEAD_WAIT_OFFSET: u64 = (Self::HEAD.len() * size_of::<u32>()) as u64;
   /// Where the scene pass's dispatch starts in the head: after the count of requests made.
-  pub const HEAD_DISPATCH_OFFSET: u64 = size_of::<u32>() as u64;
+  pub(crate) const HEAD_DISPATCH_OFFSET: u64 = size_of::<u32>() as u64;
   /// Bytes an indirect dispatch takes.
-  pub const DISPATCH_BYTES: u64 = size_of::<wgpu::util::DispatchIndirectArgs>() as u64;
+  pub(crate) const DISPATCH_BYTES: u64 = size_of::<wgpu::util::DispatchIndirectArgs>() as u64;
 
   /// Requests a workgroup of the scene pass traces.
-  pub const WORKGROUP: u32 = 64;
+  pub(crate) const WORKGROUP: u32 = 64;
 }

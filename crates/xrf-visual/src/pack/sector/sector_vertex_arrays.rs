@@ -29,7 +29,7 @@ pub(crate) struct SectorVertexArrays {
 
 impl SectorVertexArrays {
   /// Shorts a baked base coordinate takes a vertex.
-  pub const BAKED_UV_COMPONENTS: u32 = LevelVertexLayout::BASE_COORDINATE_SHORTS as u32;
+  pub(crate) const BAKED_UV_COMPONENTS: u32 = LevelVertexLayout::BASE_COORDINATE_SHORTS as u32;
 
   /// What a vertex whose declaration carries no such direction packs: as near no direction as a byte comes, and
   /// nothing riding in the fourth byte, which is exact for a coordinate's low byte.
@@ -41,7 +41,7 @@ impl SectorVertexArrays {
   /// What a vertex whose declaration carries no lightmap coordinate packs.
   const NEUTRAL_LIGHTMAP: [i16; 2] = [0, 0];
 
-  pub fn new(attributes: SectorAttributes, uv_components: u32) -> Self {
+  pub(crate) fn new(attributes: SectorAttributes, uv_components: u32) -> Self {
     Self {
       attributes,
       binormals: Vec::new(),
@@ -56,12 +56,12 @@ impl SectorVertexArrays {
   }
 
   /// Shorts a base coordinate of this declaration takes a vertex.
-  pub const fn uv_components_of(layout: &LevelVertexLayout) -> u32 {
+  pub(crate) const fn uv_components_of(layout: &LevelVertexLayout) -> u32 {
     layout.get_texture_coordinate_shorts() as u32
   }
 
   /// Vertices packed so far, which is the base the next range is rebased onto.
-  pub fn get_vertex_count(&self) -> u32 {
+  pub(crate) fn get_vertex_count(&self) -> u32 {
     (self.positions.len() / 3) as u32
   }
 
@@ -73,7 +73,7 @@ impl SectorVertexArrays {
   ///
   /// Returns an error, packing nothing, when the range stores its base coordinate in another width than the arrays
   /// do: a tree's four shorts cannot share one array with a baked surface's two.
-  pub fn push<T: ByteOrder>(&mut self, payload: &LevelVertexPayload) -> XrfResult {
+  pub(crate) fn push<T: ByteOrder>(&mut self, payload: &LevelVertexPayload) -> XrfResult {
     let layout: &LevelVertexLayout = payload.get_layout();
     let uv_components: usize = self.uv_components as usize;
 
@@ -144,12 +144,12 @@ impl SectorVertexArrays {
   }
 
   /// Every packed position, three floats in renderer space.
-  pub fn get_positions(&self) -> &[[f32; 3]] {
+  pub(crate) fn get_positions(&self) -> &[[f32; 3]] {
     self.positions.as_chunks::<3>().0
   }
 
   /// The extent the packed positions span, or `None` when nothing was packed.
-  pub fn get_bounds(&self) -> Option<VisualBounds> {
+  pub(crate) fn get_bounds(&self) -> Option<VisualBounds> {
     VisualBounds::from_positions(self.positions.as_chunks::<3>().0.iter().map(|[x, y, z]| Vector3d {
       x: *x,
       y: *y,
@@ -158,7 +158,7 @@ impl SectorVertexArrays {
   }
 
   /// The extent the positions a run of indices reaches, or `None` when it reaches none.
-  pub fn get_indexed_bounds(&self, indices: &[u32]) -> Option<VisualBounds> {
+  pub(crate) fn get_indexed_bounds(&self, indices: &[u32]) -> Option<VisualBounds> {
     let positions: &[[f32; 3]] = self.positions.as_chunks::<3>().0;
 
     VisualBounds::from_positions(
@@ -170,7 +170,7 @@ impl SectorVertexArrays {
   }
 
   /// Writes every declared array and the indices into the buffer, and says where each landed.
-  pub fn write_into(
+  pub(crate) fn write_into(
     &self,
     indices: &[u32],
     clusters: &VisualClusterTable,

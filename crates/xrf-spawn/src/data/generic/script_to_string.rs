@@ -8,7 +8,7 @@ pub(crate) struct ScriptToString;
 
 impl ScriptToString {
   /// Parse an id the script wrote, `None` for `nil`.
-  pub fn parse_id(value: &str, what: &str) -> XrfResult<Option<u32>> {
+  pub(crate) fn parse_id(value: &str, what: &str) -> XrfResult<Option<u32>> {
     if value == NIL {
       return Ok(None);
     }
@@ -22,17 +22,17 @@ impl ScriptToString {
   }
 
   /// The string the script writes for an id.
-  pub fn format_id(value: Option<u32>) -> String {
+  pub(crate) fn format_id(value: Option<u32>) -> String {
     value.map_or_else(|| String::from(NIL), |id| id.to_string())
   }
 
   /// Parse text the script wrote, `None` for `nil`.
-  pub fn parse_text(value: String) -> Option<String> {
+  pub(crate) fn parse_text(value: String) -> Option<String> {
     (value != NIL).then_some(value)
   }
 
   /// The string the script writes for text.
-  pub fn format_text(value: Option<&str>) -> &str {
+  pub(crate) fn format_text(value: Option<&str>) -> &str {
     value.unwrap_or(NIL)
   }
 }

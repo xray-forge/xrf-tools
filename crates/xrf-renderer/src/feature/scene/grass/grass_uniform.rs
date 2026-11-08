@@ -6,7 +6,7 @@ use xrf_renderer_core::ShaderStruct;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "GrassParams")]
-pub struct GrassUniform {
+pub(crate) struct GrassUniform {
   /// The eye, in the engine's space: renderer space with `z` negated; `w` one where the tufts shrink with their
   /// distance from it, nought under a lens of parallel rays, where every slot of the ring is measured flat and none
   /// shrinks, so a level map's tiles meet.

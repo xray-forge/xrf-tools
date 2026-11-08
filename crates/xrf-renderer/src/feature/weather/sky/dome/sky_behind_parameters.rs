@@ -7,7 +7,7 @@ use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 /// which says where the fog shows it.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct SkyBehindParameters {
+pub(crate) struct SkyBehindParameters {
   #[uniform]
   pub lighting: UniformBinding<LightingUniform>,
   #[storage]

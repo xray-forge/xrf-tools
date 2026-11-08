@@ -15,18 +15,18 @@ mod record_summary;
 #[cfg(windows)]
 mod record_writer;
 
-pub use media::MediaProbe;
+pub(crate) use media::MediaProbe;
 #[cfg(windows)]
-pub use media::{MediaSession, MediaSink};
+pub(crate) use media::{MediaSession, MediaSink};
 #[cfg(windows)]
-pub use record_format::RecordFormat;
+pub(crate) use record_format::RecordFormat;
 #[cfg(windows)]
-pub use record_resampler::RecordResampler;
+pub(crate) use record_resampler::RecordResampler;
 #[cfg(windows)]
-pub use record_sample::RecordSample;
+pub(crate) use record_sample::RecordSample;
 #[cfg(windows)]
-pub use record_sound_format::RecordSoundFormat;
+pub(crate) use record_sound_format::RecordSoundFormat;
 #[cfg(windows)]
-pub use record_summary::RecordSummary;
+pub(crate) use record_summary::RecordSummary;
 #[cfg(windows)]
-pub use record_writer::RecordWriter;
+pub(crate) use record_writer::RecordWriter;

@@ -8,7 +8,7 @@ use xrf_app_core::session::SessionId;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub struct ConfigsFindDeclarationsRequest {
+pub(crate) struct ConfigsFindDeclarationsRequest {
   /// The open this search is addressed to; a search naming one closed is refused rather than answered.
   pub session_id: SessionId,
   /// Section name without brackets or operation prefix.

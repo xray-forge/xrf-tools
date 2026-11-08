@@ -8,7 +8,7 @@ use xrf_vfs::XrayRoots;
 /// Report which layout roots looks like, for the open form to preselect; on the pool, since it looks through the roots.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "detect_mode")]
-pub async fn dialogs_detect_mode(
+pub(crate) async fn dialogs_detect_mode(
   roots: XrayRoots,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<DialogProjectMode> {

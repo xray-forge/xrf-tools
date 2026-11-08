@@ -7,7 +7,7 @@ use xrf_renderer_core::ShaderStruct;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "GrassModel")]
-pub struct GrassModelRecord {
+pub(crate) struct GrassModelRecord {
   pub shape: Vec4,
   pub is_waving: f32,
   pub texture: u32,

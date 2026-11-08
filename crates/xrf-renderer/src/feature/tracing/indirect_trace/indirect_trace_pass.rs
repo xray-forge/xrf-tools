@@ -15,7 +15,7 @@ use crate::pass::view::view_binding::ViewBinding;
 /// level's geometry by hardware ray query and lit where it meets something as the reflections light a hit, written as
 /// the screen-space bounce's filter writes its light, which combine and the debug view read alike. Nothing traces on a
 /// device without ray queries.
-pub struct IndirectTracePass {
+pub(crate) struct IndirectTracePass {
   view_layout: wgpu::BindGroupLayout,
   sky_layout: wgpu::BindGroupLayout,
   /// Its own, the trace's and the texture cache's layouts, on a device with ray queries.
@@ -25,7 +25,7 @@ pub struct IndirectTracePass {
 
 impl IndirectTracePass {
   /// Metres each point's ray went, none where it met nothing.
-  pub const HITS: wgpu::TextureFormat = wgpu::TextureFormat::R16Float;
+  pub(crate) const HITS: wgpu::TextureFormat = wgpu::TextureFormat::R16Float;
 
   /// Where the pass binds the sky's group, the trace's and the texture cache's.
   const SKY_GROUP: u32 = 2;
@@ -35,7 +35,7 @@ impl IndirectTracePass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(
+  pub(crate) fn new(
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     sky_layout: &wgpu::BindGroupLayout,
@@ -64,7 +64,7 @@ impl IndirectTracePass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipeline.refresh(source.cache, || {
       Self::create_pipeline(source, &self.view_layout, &self.sky_layout, self.layouts.as_ref())
     }) {
@@ -73,12 +73,12 @@ impl IndirectTracePass {
   }
 
   /// Whether it traces: a device with ray queries.
-  pub fn is_traced(&self) -> bool {
+  pub(crate) fn is_traced(&self) -> bool {
     self.layouts.is_some()
   }
 
   /// Traces the frame's points into the light and hit targets the pass draws into.
-  pub fn record(
+  pub(crate) fn record(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,

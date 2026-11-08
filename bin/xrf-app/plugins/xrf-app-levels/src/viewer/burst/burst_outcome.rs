@@ -9,7 +9,7 @@ use crate::viewer::burst::{BurstSoundOutcome, BurstVideoOutcome};
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub struct BurstOutcome {
+pub(crate) struct BurstOutcome {
   pub folder: PathBuf,
   pub times: Vec<f64>,
   pub width: u32,

@@ -14,7 +14,7 @@ use crate::commands::dialog::dialog_project_opening::DialogProjectOpening;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct ListCommand;
+pub(crate) struct ListCommand;
 
 impl GenericCommand for ListCommand {
   fn operation(&self) -> &'static str {

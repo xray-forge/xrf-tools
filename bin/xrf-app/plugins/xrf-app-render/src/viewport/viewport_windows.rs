@@ -11,37 +11,37 @@ pub(crate) struct ViewportWindows {
 
 impl ViewportWindows {
   /// Records that a viewport draws into a window.
-  pub fn insert(&mut self, viewport: RenderViewportId, window: &str) {
+  pub(crate) fn insert(&mut self, viewport: RenderViewportId, window: &str) {
     self.viewports.insert(viewport, window.to_string());
   }
 
   /// Forgets a viewport, answering the window it drew into, if any held it.
-  pub fn remove(&mut self, viewport: RenderViewportId) -> Option<String> {
+  pub(crate) fn remove(&mut self, viewport: RenderViewportId) -> Option<String> {
     self.viewports.remove(&viewport)
   }
 
   /// Records that a window's page holds the renderer.
-  pub fn insert_hold(&mut self, hold: RenderHoldId, window: &str) {
+  pub(crate) fn insert_hold(&mut self, hold: RenderHoldId, window: &str) {
     self.holds.insert(hold, window.to_string());
   }
 
   /// Forgets a hold, answering the window it was taken for, if any held it.
-  pub fn remove_hold(&mut self, hold: RenderHoldId) -> Option<String> {
+  pub(crate) fn remove_hold(&mut self, hold: RenderHoldId) -> Option<String> {
     self.holds.remove(&hold)
   }
 
   /// Forgets every viewport drawn into a window, answering them in the order they were attached.
-  pub fn take_window(&mut self, window: &str) -> Vec<RenderViewportId> {
+  pub(crate) fn take_window(&mut self, window: &str) -> Vec<RenderViewportId> {
     Self::take_where(&mut self.viewports, |label| label == window)
   }
 
   /// Forgets every hold a window's page took, answering them in the order they were taken.
-  pub fn take_window_holds(&mut self, window: &str) -> Vec<RenderHoldId> {
+  pub(crate) fn take_window_holds(&mut self, window: &str) -> Vec<RenderHoldId> {
     Self::take_where(&mut self.holds, |label| label == window)
   }
 
   /// Forgets every viewport and hold, answering each in the order it was attached or taken.
-  pub fn take_all(&mut self) -> (Vec<RenderViewportId>, Vec<RenderHoldId>) {
+  pub(crate) fn take_all(&mut self) -> (Vec<RenderViewportId>, Vec<RenderHoldId>) {
     (
       Self::take_where(&mut self.viewports, |_| true),
       Self::take_where(&mut self.holds, |_| true),

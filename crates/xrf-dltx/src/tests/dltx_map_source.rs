@@ -12,7 +12,7 @@ use crate::load::dltx_source_path::DltxSourcePath;
 /// strings and one expected resolution. Also the shape an integration reads against, so a caller can check its own
 /// wiring against the same behaviour.
 #[derive(Debug, Default)]
-pub struct DltxMapSource {
+pub(crate) struct DltxMapSource {
   documents: BTreeMap<String, Arc<LtxDocument>>,
 }
 
@@ -24,7 +24,7 @@ impl DltxMapSource {
   /// # Errors
   ///
   /// Returns an error when any of the contents will not parse.
-  pub fn new(files: &[(&str, &str)]) -> XrfResult<Self> {
+  pub(crate) fn new(files: &[(&str, &str)]) -> XrfResult<Self> {
     let mut documents: BTreeMap<String, Arc<LtxDocument>> = BTreeMap::new();
 
     for (path, contents) in files {

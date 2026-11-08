@@ -28,7 +28,7 @@ use crate::scene::texture::weather_textures::WeatherTextures;
 
 /// The sun a level's viewport draws as `CLensFlare` does: the lens flare its keyframes name, faded between them, its
 /// sprite in the sky and its flares and gradient over the frame, each shown as much as the sun is.
-pub struct FlaresFeature {
+pub(crate) struct FlaresFeature {
   fade: LensFlareFade,
   /// What the flares draw this frame by.
   values: FlareUniform,
@@ -43,7 +43,7 @@ pub struct FlaresFeature {
 }
 
 impl FlaresFeature {
-  pub fn new() -> Self {
+  pub(crate) fn new() -> Self {
     Self {
       fade: LensFlareFade::new(),
       values: FlareUniform::default(),
@@ -56,7 +56,7 @@ impl FlaresFeature {
   }
 
   /// Asks for the textures of the lens flare drawn now and of the one the keyframes name, so a fade has both.
-  pub fn request(
+  pub(crate) fn request(
     &self,
     lighting: &RenderLighting,
     weather: Option<&Arc<RenderLevelWeather>>,
@@ -85,7 +85,7 @@ impl FlaresFeature {
   /// Steps the fade and notes what the flares draw by and with, their visibility made while they draw and let go of
   /// while they do not; answers the sun's sprite as the sky draws it, its texture and its colour and radius, none where
   /// no sprite is drawn.
-  pub fn prepare(&mut self, frame: &ViewPrepare<'_>, now: Instant) -> Option<SunSprite> {
+  pub(crate) fn prepare(&mut self, frame: &ViewPrepare<'_>, now: Instant) -> Option<SunSprite> {
     let sprite: Option<SunSprite> = self.prepare_drawn(frame, now);
     let device: &wgpu::Device = frame.device;
 
@@ -168,12 +168,12 @@ impl FlaresFeature {
   }
 
   /// The lens flare drawn now, faded in or out, if any.
-  pub fn get_shown(&self) -> Option<&str> {
+  pub(crate) fn get_shown(&self) -> Option<&str> {
     self.fade.get_shown()
   }
 
   /// Measures how much of the sun shows and draws the flares and the gradient, where this frame draws them.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration {
       graph,

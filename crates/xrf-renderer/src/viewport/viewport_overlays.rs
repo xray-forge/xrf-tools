@@ -3,7 +3,7 @@ use crate::host::world::render_scene_id::RenderSceneId;
 
 /// What a viewport draws over its frame, and how many sets it has been given, which its level's vertices follow.
 #[derive(Default)]
-pub struct ViewportOverlays {
+pub(crate) struct ViewportOverlays {
   pub overlays: Vec<RenderOverlay>,
   pub version: u64,
   /// A set given for a scene the viewport does not show yet, drawn from the frame it does: a model's grid sized to it
@@ -14,7 +14,12 @@ pub struct ViewportOverlays {
 impl ViewportOverlays {
   /// Takes another set, the latest given winning: at once where it is for no scene or the one `shown`, else once that
   /// scene is shown.
-  pub fn set(&mut self, overlays: Vec<RenderOverlay>, scene: Option<RenderSceneId>, shown: Option<RenderSceneId>) {
+  pub(crate) fn set(
+    &mut self,
+    overlays: Vec<RenderOverlay>,
+    scene: Option<RenderSceneId>,
+    shown: Option<RenderSceneId>,
+  ) {
     self.waiting = None;
 
     match scene {
@@ -24,7 +29,7 @@ impl ViewportOverlays {
   }
 
   /// Draws the set waiting for `scene`, now shown, if one does.
-  pub fn show(&mut self, scene: RenderSceneId) {
+  pub(crate) fn show(&mut self, scene: RenderSceneId) {
     if let Some((_, overlays)) = self.waiting.take_if(|(waiting, _)| *waiting == scene) {
       self.replace(overlays);
     }

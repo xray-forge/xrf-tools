@@ -6,7 +6,7 @@ use xrf_dds::DdsMetadata;
 /// What `sprite unpack-equipment` sliced apart, and out of which sheet.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SpriteEquipmentUnpackReport {
+pub(crate) struct SpriteEquipmentUnpackReport {
   declared_mipmap_levels: Option<u32>,
   destination: String,
   format: String,
@@ -17,7 +17,7 @@ pub struct SpriteEquipmentUnpackReport {
 }
 
 impl SpriteEquipmentUnpackReport {
-  pub fn new(source: &Path, system_ltx: &Path, destination: &Path, metadata: &DdsMetadata) -> Self {
+  pub(crate) fn new(source: &Path, system_ltx: &Path, destination: &Path, metadata: &DdsMetadata) -> Self {
     Self {
       declared_mipmap_levels: metadata.declared_mipmap_levels,
       destination: xrf_utils::to_portable_path_string(destination),

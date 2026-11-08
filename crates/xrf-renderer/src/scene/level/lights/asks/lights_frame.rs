@@ -9,7 +9,7 @@ use crate::scene::level::level_time::LevelTime;
 /// What a view's frame hands its scene's local lights: the camera and settings, the engine whose rules give out their
 /// shafts, what has their shadow faces drawn again, and how its lights are lit.
 #[derive(Clone, Copy)]
-pub struct LightsFrame {
+pub(crate) struct LightsFrame {
   pub camera: CameraView,
   pub settings: RenderLightsSettings,
   pub engine: XrayEngine,
@@ -39,7 +39,7 @@ pub struct LightsFrame {
 
 impl LightsFrame {
   /// Whether it casts the lights' shadows, its faces asked for.
-  pub fn is_shadowing(&self) -> bool {
+  pub(crate) fn is_shadowing(&self) -> bool {
     self.settings.is_enabled && self.settings.is_shadowed
   }
 }

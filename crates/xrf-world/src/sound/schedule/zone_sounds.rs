@@ -15,7 +15,7 @@ use crate::sound::schedule::zone_states::ZoneStates;
 /// A level's zones' sounds as `CCustomZone` plays them: its `idle_sound` looped with its idle (`PlayIdleParticles`,
 /// `StopIdleParticles`), a torrid zone's following its motion, and a campfire's idle through its turn's gates and its
 /// `disabled_sound` looped while it is out (`CZoneCampfire`).
-pub struct ZoneSounds {
+pub(crate) struct ZoneSounds {
   zones: Vec<ZoneSound>,
 }
 
@@ -26,7 +26,7 @@ struct ZoneSound {
 }
 
 impl ZoneSounds {
-  pub fn new(records: Vec<WorldZoneSound>) -> Self {
+  pub(crate) fn new(records: Vec<WorldZoneSound>) -> Self {
     Self {
       zones: records
         .into_iter()
@@ -40,12 +40,12 @@ impl ZoneSounds {
   }
 
   /// The records, in the spawn's order.
-  pub fn iter_records(&self) -> impl Iterator<Item = &WorldZoneSound> {
+  pub(crate) fn iter_records(&self) -> impl Iterator<Item = &WorldZoneSound> {
     self.zones.iter().map(|zone| &zone.record)
   }
 
   /// Plays each on to `now`, the level's clock, as `states` stand its zones, heard from `eye` in engine space.
-  pub fn update(
+  pub(crate) fn update(
     &mut self,
     emitters: &mut SoundEmitters,
     engine: XrayEngine,

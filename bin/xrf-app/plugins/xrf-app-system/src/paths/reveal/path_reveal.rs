@@ -6,7 +6,7 @@ use std::process::Command;
 use xrf_utils::format_path;
 
 /// Showing a path in whatever file manager the desktop provides.
-pub struct PathReveal;
+pub(crate) struct PathReveal;
 
 impl PathReveal {
   /// Opens the file manager at a directory, or at a file with the file selected.
@@ -15,7 +15,7 @@ impl PathReveal {
   ///
   /// Returns an error when the file manager cannot be started.
   #[cfg(target_os = "windows")]
-  pub fn reveal(target: &Path) -> io::Result<()> {
+  pub(crate) fn reveal(target: &Path) -> io::Result<()> {
     use std::os::windows::process::CommandExt;
 
     let mut command: Command = Command::new("explorer");

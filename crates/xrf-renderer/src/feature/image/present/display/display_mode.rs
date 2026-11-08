@@ -13,7 +13,7 @@ use crate::feature::image::present::display::display_curves::{
 /// light is physical, by a display transform and encoded for the display.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(u32)]
-pub enum DisplayMode {
+pub(crate) enum DisplayMode {
   AsIs = 0,
   Tonemapped = 1,
   EngineEncoded = 2,
@@ -24,7 +24,7 @@ pub enum DisplayMode {
 impl DisplayMode {
   /// The land's colour a transform is anchored on, a warm earth: AgX's response depends on the hue it is shown, so the
   /// anchor matches the land as it is rather than a grey.
-  pub const ANCHOR_HUE: Vec3 = Vec3::new(1.0, 0.75, 0.45);
+  pub(crate) const ANCHOR_HUE: Vec3 = Vec3::new(1.0, 0.75, 0.45);
   /// The keys an anchor is solved within: from the least the engine's curve shows above the display's first level,
   /// `(1/255)^2.2`, under which there is nothing shown to match, or the least the transform itself shows there
   /// (`get_least_shown`), under which its toe would be lifted from black and whatever the night lights above the key
@@ -37,7 +37,7 @@ impl DisplayMode {
   const BRIGHT_FADE_STOPS: f32 = 2.0;
 
   /// The mode a view's options ask for.
-  pub fn of(options: &RenderViewOptions) -> Self {
+  pub(crate) fn of(options: &RenderViewOptions) -> Self {
     if !options.is_scene_linear() {
       return Self::AsIs;
     }
@@ -54,7 +54,7 @@ impl DisplayMode {
   }
 
   /// The number the shaders tell it by.
-  pub fn get_index(self) -> u32 {
+  pub(crate) fn get_index(self) -> u32 {
     self as u32
   }
 
@@ -62,7 +62,7 @@ impl DisplayMode {
   /// game's pictures): its number, `grading`'s contrast and saturation, and its lift for the frame's exposed key and
   /// bright end as `metering` read them (`get_lift`). The present and the lighting take it alike, so a picture entering
   /// the scene through the inverse is shown by the very display it was inverted for.
-  pub fn get_display(self, grading: &RenderGradingSettings, metering: &ExposureMetering) -> Vec4 {
+  pub(crate) fn get_display(self, grading: &RenderGradingSettings, metering: &ExposureMetering) -> Vec4 {
     Vec4::new(
       self.get_index() as f32,
       grading.contrast,
@@ -76,7 +76,7 @@ impl DisplayMode {
   /// at the display value the engine's curve shows it at, and nothing else of the engine's look, so each keeps its own
   /// contrast about it. None for the engine's curve and the engine's own showing.
   #[cfg(test)]
-  pub fn get_anchor_stops(self, key: f32, contrast: f32) -> f32 {
+  pub(crate) fn get_anchor_stops(self, key: f32, contrast: f32) -> f32 {
     self.get_bounded(key, None, contrast)
   }
 
@@ -86,7 +86,7 @@ impl DisplayMode {
   /// lift, through AgX's steeper middle, into its shoulder; matched there, the bright end shows as the engine's and the
   /// land, which AgX cannot show as the engine does, sinks towards its black. Over the transform's range the key rules
   /// alone: a dusk's bright end is its fires and glints, which would sink the land with them.
-  pub fn get_lift(self, key: f32, bright: Option<f32>, contrast: f32) -> f32 {
+  pub(crate) fn get_lift(self, key: f32, bright: Option<f32>, contrast: f32) -> f32 {
     self.get_bounded(key, bright, contrast)
   }
 

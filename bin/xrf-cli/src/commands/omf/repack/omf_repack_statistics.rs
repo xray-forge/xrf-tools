@@ -4,7 +4,7 @@ use crate::commands::omf::repack::OmfRepackOutcome;
 
 /// How the round trips of many omf files came out, counted.
 #[derive(Default)]
-pub struct OmfRepackStatistics {
+pub(crate) struct OmfRepackStatistics {
   checked: u32,
   failed: u32,
   malformed: u32,
@@ -13,7 +13,7 @@ pub struct OmfRepackStatistics {
 
 impl OmfRepackStatistics {
   /// Counts one file's round trip.
-  pub fn register(&mut self, outcome: OmfRepackOutcome) {
+  pub(crate) fn register(&mut self, outcome: OmfRepackOutcome) {
     self.checked += 1;
 
     match outcome {
@@ -25,33 +25,33 @@ impl OmfRepackStatistics {
   }
 
   /// Count of files verified so far.
-  pub fn checked(&self) -> u32 {
+  pub(crate) fn checked(&self) -> u32 {
     self.checked
   }
 
   /// Count of files that were read but would not parse.
-  pub fn malformed(&self) -> u32 {
+  pub(crate) fn malformed(&self) -> u32 {
     self.malformed
   }
 
   /// Count of files that could not be read or written.
-  pub fn failed(&self) -> u32 {
+  pub(crate) fn failed(&self) -> u32 {
     self.failed
   }
 
   /// Count of files judged defective: read, and either malformed or mismatched.
-  pub fn judged_defective(&self) -> u32 {
+  pub(crate) fn judged_defective(&self) -> u32 {
     self.malformed + self.mismatched
   }
 
   /// Count of files that serialized back into identical bytes.
-  pub fn identical(&self) -> u32 {
+  pub(crate) fn identical(&self) -> u32 {
     self.checked - self.judged_defective() - self.failed
   }
 
   /// What the round trips came to: skipped where nothing was checked, an error where a file could not be read, failed
   /// where one was judged defective.
-  pub fn status(&self) -> Status {
+  pub(crate) fn status(&self) -> Status {
     if self.checked == 0 {
       Status::Skipped
     } else if self.failed > 0 {

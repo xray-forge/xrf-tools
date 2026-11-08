@@ -3,5 +3,5 @@
 mod archive_level_snd_static_description;
 mod archive_level_snd_static_sound;
 
-pub use archive_level_snd_static_description::ArchiveLevelSndStaticDescription;
-pub use archive_level_snd_static_sound::ArchiveLevelSndStaticSound;
+pub(crate) use archive_level_snd_static_description::ArchiveLevelSndStaticDescription;
+pub(crate) use archive_level_snd_static_sound::ArchiveLevelSndStaticSound;

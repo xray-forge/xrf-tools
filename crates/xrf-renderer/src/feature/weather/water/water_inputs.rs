@@ -9,7 +9,7 @@ use crate::feature::weather::sky::sky_views::SkyViews;
 /// before it, which the enhanced water refracts and reflects; the cull's argument buffers; ray reconstruction's guides
 /// where it reads them; the rings the enhanced drops leave; how much of the sun reaches each pixel; and the sky's group
 /// and the scene's trace, which its rays the screen left are traced through where both are made.
-pub struct WaterInputs<'a> {
+pub(crate) struct WaterInputs<'a> {
   pub views: Option<&'a SkyViews>,
   pub before_water: Option<GraphTexture>,
   pub args: Vec<GraphBuffer>,

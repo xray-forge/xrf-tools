@@ -35,26 +35,26 @@ pub(crate) struct EnvironmentReadPass<'a> {
 }
 
 impl<'a> EnvironmentReadPass<'a> {
-  pub const WEATHERS: &'static str = "environment\\weathers";
-  pub const WEATHER_EFFECTS: &'static str = "environment\\weather_effects";
-  pub const SUNS: &'static str = "environment\\suns.ltx";
-  pub const SUN_POSITIONS: &'static str = "environment\\sun_positions.ltx";
-  pub const THUNDERBOLT_COLLECTIONS: &'static str = "environment\\thunderbolt_collections.ltx";
-  pub const THUNDERBOLTS: &'static str = "environment\\thunderbolts.ltx";
-  pub const ENVIRONMENT: &'static str = "environment\\environment.ltx";
-  pub const AMBIENTS: &'static str = "environment\\ambients.ltx";
-  pub const LEVEL_AMBIENTS: &'static str = "environment\\ambients";
-  pub const SOUND_CHANNELS: &'static str = "environment\\sound_channels.ltx";
-  pub const EFFECTS: &'static str = "environment\\effects.ltx";
-  pub const GRAPHS: &'static str = "environment\\dynamic_weather_graphs.ltx";
-  pub const SYSTEM: &'static str = "system.ltx";
+  pub(crate) const WEATHERS: &'static str = "environment\\weathers";
+  pub(crate) const WEATHER_EFFECTS: &'static str = "environment\\weather_effects";
+  pub(crate) const SUNS: &'static str = "environment\\suns.ltx";
+  pub(crate) const SUN_POSITIONS: &'static str = "environment\\sun_positions.ltx";
+  pub(crate) const THUNDERBOLT_COLLECTIONS: &'static str = "environment\\thunderbolt_collections.ltx";
+  pub(crate) const THUNDERBOLTS: &'static str = "environment\\thunderbolts.ltx";
+  pub(crate) const ENVIRONMENT: &'static str = "environment\\environment.ltx";
+  pub(crate) const AMBIENTS: &'static str = "environment\\ambients.ltx";
+  pub(crate) const LEVEL_AMBIENTS: &'static str = "environment\\ambients";
+  pub(crate) const SOUND_CHANNELS: &'static str = "environment\\sound_channels.ltx";
+  pub(crate) const EFFECTS: &'static str = "environment\\effects.ltx";
+  pub(crate) const GRAPHS: &'static str = "environment\\dynamic_weather_graphs.ltx";
+  pub(crate) const SYSTEM: &'static str = "system.ltx";
 
   /// The section `environment.ltx` holds the strike settings in, and the one OpenXRay reads from `system.ltx` without
   /// it.
   pub(super) const THUNDERBOLT_SETTINGS: &'static str = "environment";
   pub(super) const THUNDERBOLT_COMMON: &'static str = "thunderbolt_common";
 
-  pub fn new(project: &'a LtxProject, options: &'a EnvironmentReadOptions) -> Self {
+  pub(crate) fn new(project: &'a LtxProject, options: &'a EnvironmentReadOptions) -> Self {
     Self {
       configs: Vec::new(),
       findings: Vec::new(),
@@ -65,7 +65,7 @@ impl<'a> EnvironmentReadPass<'a> {
     }
   }
 
-  pub fn run(mut self) -> XrfResult<EnvironmentCatalog> {
+  pub(crate) fn run(mut self) -> XrfResult<EnvironmentCatalog> {
     let cycles: Vec<WeatherCycle> = self.read_cycles(WeatherCycleKind::Cycle)?;
     let effects: Vec<WeatherCycle> = self.read_cycles(WeatherCycleKind::Effect)?;
     let mut suns: Vec<LensFlare> = self.read_definitions(Self::SUNS, "Sun", LensFlareKey::read)?;
@@ -139,7 +139,7 @@ impl<'a> EnvironmentReadPass<'a> {
   }
 
   /// One cycle or effect by name, and what its own config says about it; none where there is no such config.
-  pub fn run_cycle(mut self, id: &WeatherCycleId) -> XrfResult<Option<(WeatherCycle, Vec<EnvironmentFinding>)>> {
+  pub(crate) fn run_cycle(mut self, id: &WeatherCycleId) -> XrfResult<Option<(WeatherCycle, Vec<EnvironmentFinding>)>> {
     let path: XrayLogicalPath = self
       .project
       .config_path(Self::directory_of(id.kind))?

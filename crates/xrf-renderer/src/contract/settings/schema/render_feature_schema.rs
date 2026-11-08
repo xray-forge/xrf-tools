@@ -9,7 +9,7 @@ use crate::contract::view::render_view_features::RenderViewFeatures;
 /// Every setting a tool chooses its viewports' features by, what it takes and between which bounds: the view's
 /// features the settings set, the output's upscaling, and the textures' filtering and quality every viewport shares.
 #[xrf_ipc::constant]
-pub fn render_feature_schema() -> RenderSettingNode {
+pub(crate) fn render_feature_schema() -> RenderSettingNode {
   let mut group: BTreeMap<String, RenderSettingNode> = BTreeMap::new();
 
   for part in [
@@ -30,18 +30,18 @@ pub fn render_feature_schema() -> RenderSettingNode {
 /// Each feature as a view draws it until the settings set it: the engine's own, with the enhanced features' strengths
 /// for when each is drawn.
 #[xrf_ipc::constant]
-pub fn render_default_view_features() -> RenderViewFeatures {
+pub(crate) fn render_default_view_features() -> RenderViewFeatures {
   RenderViewFeatures::default()
 }
 
 /// What a view's frame is resolved at and upscaled by until the settings set it.
 #[xrf_ipc::constant]
-pub fn render_default_view_output() -> RenderViewOutput {
+pub(crate) fn render_default_view_output() -> RenderViewOutput {
   RenderViewOutput::default()
 }
 
 /// What every viewport draws with until the settings set it.
 #[xrf_ipc::constant]
-pub fn render_default_settings() -> RenderSettings {
+pub(crate) fn render_default_settings() -> RenderSettings {
   RenderSettings::default()
 }

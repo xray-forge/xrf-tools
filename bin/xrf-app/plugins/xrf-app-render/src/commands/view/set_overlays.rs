@@ -7,7 +7,7 @@ use crate::Renderer;
 /// load report names it, so helpers sized to a model never stand over the one it replaces.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "set_overlays")]
-pub fn render_set_overlays(
+pub(crate) fn render_set_overlays(
   renderer: State<'_, Renderer>,
   viewport: RenderViewportId,
   overlays: Vec<RenderOverlay>,

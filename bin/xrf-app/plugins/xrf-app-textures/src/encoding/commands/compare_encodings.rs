@@ -18,7 +18,7 @@ use crate::lease::TEXTURE_ENCODE_GROUP;
 /// Weigh every candidate format against one texture, and keep the encodes with the texture they were made of.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "compare_encodings")]
-pub async fn textures_compare_encodings(
+pub(crate) async fn textures_compare_encodings(
   request: TexturesCompareRequest,
   job_id: Uuid,
   progress: Channel<JobProgress>,

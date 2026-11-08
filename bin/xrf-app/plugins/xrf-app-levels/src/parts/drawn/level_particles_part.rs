@@ -48,7 +48,7 @@ impl LevelParticlesPart {
   /// # Errors
   ///
   /// Returns why the library cannot be read; a level without `level.ps_static` or a spawn plants nothing of it.
-  pub fn pack(
+  pub(crate) fn pack(
     current: &SessionSnapshot<SelectedLevel>,
     search: &XraySearch,
     sections: Option<&Ltx>,
@@ -59,7 +59,7 @@ impl LevelParticlesPart {
   }
 
   /// One system `level.ps_static` plants, lifted off the ground it stands on.
-  pub fn place_planted(placement: &LevelPsStaticPlacement) -> RenderParticlePlacement {
+  pub(crate) fn place_planted(placement: &LevelPsStaticPlacement) -> RenderParticlePlacement {
     let mut transform: [f32; 16] = placement.transform.values;
 
     // The `Fmatrix` rows are the columns of a column-major matrix; the translation is the last.

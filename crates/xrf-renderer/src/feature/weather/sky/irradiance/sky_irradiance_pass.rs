@@ -5,7 +5,7 @@ use crate::feature::weather::sky::irradiance::sky_irradiance_parameters::SkyIrra
 use crate::pass::build::pipeline_source::PipelineSource;
 
 /// Projects the sky's irradiance into spherical harmonics for the physical light, one workgroup a frame.
-pub struct SkyIrradiancePass {
+pub(crate) struct SkyIrradiancePass {
   layout: wgpu::BindGroupLayout,
   pipeline: PipelineSet<wgpu::ComputePipeline>,
 }
@@ -18,7 +18,7 @@ impl SkyIrradiancePass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(source: PipelineSource<'_>) -> XrfResult<Self> {
+  pub(crate) fn new(source: PipelineSource<'_>) -> XrfResult<Self> {
     let layout: wgpu::BindGroupLayout = SkyIrradianceParameters::create_layout(source.device);
 
     Ok(Self {
@@ -29,7 +29,7 @@ impl SkyIrradiancePass {
 
   /// Makes its pipeline again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last one where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self
       .pipeline
       .refresh(source.cache, || Self::create_pipeline(source, &self.layout))
@@ -39,7 +39,7 @@ impl SkyIrradiancePass {
   }
 
   /// Projects the sky once.
-  pub fn record(&self, context: &mut ComputeContext<'_>, parameters: &SkyIrradianceParameters<'_>) {
+  pub(crate) fn record(&self, context: &mut ComputeContext<'_>, parameters: &SkyIrradianceParameters<'_>) {
     context.bind(parameters);
     context.get_pass().set_pipeline(&self.pipeline);
     context.get_pass().dispatch_workgroups(1, 1, 1);

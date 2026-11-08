@@ -9,18 +9,18 @@ use crate::scene::level::view::record::view_record::ViewRecord;
 /// The units of a view's scene that draw in it alone: the calibration props drawn into the G-buffer. The statics, the
 /// grass, the reflections' depth and the sky's motion record around them.
 #[derive(Default)]
-pub struct SceneStage {
+pub(crate) struct SceneStage {
   calibration: CalibrationFeature,
 }
 
 impl SceneStage {
   /// Takes this frame's units as `options` ask, looking through `camera`.
-  pub fn prepare(&mut self, options: &RenderViewOptions, camera: &CameraView) {
+  pub(crate) fn prepare(&mut self, options: &RenderViewOptions, camera: &CameraView) {
     self.calibration.prepare(options, camera);
   }
 
   /// Draws into the G-buffer over what the static scene drew: the calibration props, while they are shown.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &self,
     GraphDeclaration {
       graph,

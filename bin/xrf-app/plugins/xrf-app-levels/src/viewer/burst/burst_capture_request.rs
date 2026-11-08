@@ -7,7 +7,7 @@ use xrf_renderer::{RenderBurst, RenderViewportId};
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub struct BurstCaptureRequest {
+pub(crate) struct BurstCaptureRequest {
   pub viewport: RenderViewportId,
   pub burst: RenderBurst,
   pub name: String,

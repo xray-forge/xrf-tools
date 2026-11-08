@@ -13,7 +13,7 @@ use crate::pass::build::pipeline_source::PipelineSource;
 
 /// Blurs the enhanced water's reflection one way at a time into half-size targets. Its owner, the water pass, refreshes
 /// it.
-pub struct WaterBlurPass {
+pub(crate) struct WaterBlurPass {
   /// Its parameters' layout, made once, so a pipeline made again keys the cache as the last did.
   layout: wgpu::BindGroupLayout,
   pipeline: PipelineSet<wgpu::RenderPipeline>,
@@ -24,7 +24,7 @@ impl WaterBlurPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(source: PipelineSource<'_>) -> XrfResult<Self> {
+  pub(crate) fn new(source: PipelineSource<'_>) -> XrfResult<Self> {
     let device: &wgpu::Device = source.device;
     let layout: wgpu::BindGroupLayout = WaterBlurParameters::create_layout(device);
 
@@ -45,7 +45,7 @@ impl WaterBlurPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile, keeping the last pipeline.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) -> XrfResult {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) -> XrfResult {
     self
       .pipeline
       .refresh(source.cache, || Self::create_pipeline(source, &self.layout))
@@ -53,7 +53,7 @@ impl WaterBlurPass {
 
   /// Declares one way of the blur, from its source into a transient of its size within its rectangles, and answers that
   /// transient, cleared outside them.
-  pub fn add<'a>(
+  pub(crate) fn add<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
     runtime: &mut GraphRuntime,

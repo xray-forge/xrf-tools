@@ -7,7 +7,7 @@ use xrf_spawn::{SpawnFile, XRayByteOrder};
 /// A file the game reads packed into one binary, which the tools unpack into a folder of text files and pack back: a
 /// particle library or a spawn file. The `pack`, `unpack`, `repack`, `re-unpack` and `verify` commands are written once
 /// over it.
-pub trait PackedFileFormat: Sized + Send + Sync + 'static {
+pub(crate) trait PackedFileFormat: Sized + Send + Sync + 'static {
   /// What one is called in messages and help, such as `particles file`.
   const NOUN: &'static str;
 

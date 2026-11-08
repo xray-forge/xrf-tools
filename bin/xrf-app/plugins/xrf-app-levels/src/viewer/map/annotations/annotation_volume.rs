@@ -5,7 +5,7 @@ use crate::viewer::map::annotations::{AnnotationOutline, AnnotationPoint};
 
 /// One object of the level covering a space, seen from above: a logic volume, or a placement covering one.
 #[derive(Clone, Debug, PartialEq)]
-pub struct AnnotationVolume {
+pub(crate) struct AnnotationVolume {
   pub kind: LevelObjectKind,
   pub name: String,
   pub outlines: Vec<AnnotationOutline>,
@@ -18,7 +18,7 @@ pub struct AnnotationVolume {
 
 impl AnnotationVolume {
   /// `object`'s space from above on the level named `level`, or `None` for an object covering none.
-  pub fn of(object: &LevelObject, graph: &SpawnLevelGraph, level: &str) -> Option<Self> {
+  pub(crate) fn of(object: &LevelObject, graph: &SpawnLevelGraph, level: &str) -> Option<Self> {
     let shapes: &[LevelObjectShape] = object.get_shapes()?;
     let volume: Option<&LevelObjectVolume> = object.volume.as_ref();
 

@@ -15,7 +15,7 @@ const SEED: u64 = 0x57A7_1C50;
 /// one with no pause loops for ever; any other plays once its next time comes, through once where it has no play
 /// window, else looped until a drawn stop, and waits a drawn pause after; one playing past its stop, or outside its
 /// window, stops deferred.
-pub struct StaticSounds {
+pub(crate) struct StaticSounds {
   sounds: Vec<StaticSound>,
   random: SoundRandom,
 }
@@ -29,7 +29,7 @@ struct StaticSound {
 }
 
 impl StaticSounds {
-  pub fn new(records: Vec<WorldStaticSound>) -> Self {
+  pub(crate) fn new(records: Vec<WorldStaticSound>) -> Self {
     Self {
       sounds: records
         .into_iter()
@@ -45,12 +45,12 @@ impl StaticSounds {
   }
 
   /// The records, in the order the level holds them.
-  pub fn iter_records(&self) -> impl Iterator<Item = &WorldStaticSound> {
+  pub(crate) fn iter_records(&self) -> impl Iterator<Item = &WorldStaticSound> {
     self.sounds.iter().map(|sound| &sound.record)
   }
 
   /// Plays each on to `now`, the level's clock, at `game_time`, milliseconds of the day.
-  pub fn update(&mut self, emitters: &mut SoundEmitters, engine: XrayEngine, game_time: u32, now: Duration) {
+  pub(crate) fn update(&mut self, emitters: &mut SoundEmitters, engine: XrayEngine, game_time: u32, now: Duration) {
     for sound in &mut self.sounds {
       let record: &WorldStaticSound = &sound.record;
       let is_playing: bool = sound.emitter.is_some_and(|id| emitters.is_playing(id, now));

@@ -15,7 +15,7 @@ use xrf_renderer::{CaptureEvent, RenderViewportId};
 use crate::viewer::{LevelViewerFolder, ViewerAssembly};
 
 /// A viewport's capture run as a job into a PNG of the screenshots folder: the one run a level map and a cubemap share.
-pub struct ViewerCaptureJob {
+pub(crate) struct ViewerCaptureJob {
   pub viewport: RenderViewportId,
   pub path: PathBuf,
   pub job_id: Uuid,
@@ -28,7 +28,7 @@ impl ViewerCaptureJob {
   /// # Errors
   ///
   /// Returns an error where the path is not a screenshot's, the job is refused, or the capture fails or is not written.
-  pub async fn run<A: ViewerAssembly>(
+  pub(crate) async fn run<A: ViewerAssembly>(
     self,
     plan: A::Plan,
     renderer: &Renderer,

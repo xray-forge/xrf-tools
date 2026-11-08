@@ -3,7 +3,7 @@ use crate::contract::view::render_view_options::RenderViewOptions;
 
 /// Whether a frame traces its screen-space reflections, and how: none skips every pass and drops the histories.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct ReflectionTrace {
+pub(crate) struct ReflectionTrace {
   /// The size the settings trace at, full where ray reconstruction takes the trace raw.
   pub trace_size: RenderTraceSize,
   /// What scales how much of a surface's reflection a traced one replaces, and how much a puddle's coat reflects.
@@ -16,21 +16,21 @@ pub struct ReflectionTrace {
 }
 
 impl ReflectionTrace {
-  pub const PYRAMID_PASS: &'static str = "reflection pyramid";
-  pub const TRACE_PASS: &'static str = "reflection trace";
-  pub const SCENE_PASS: &'static str = "reflection scene";
-  pub const REPROJECT_PASS: &'static str = "reflection reproject";
-  pub const AVERAGE_PASS: &'static str = "reflection average";
-  pub const PREFILTER_PASS: &'static str = "reflection prefilter";
-  pub const RESOLVE_PASS: &'static str = "reflection resolve";
-  pub const UPSCALE_PASS: &'static str = "reflection upscale";
-  pub const GUIDE_PASS: &'static str = "reflection guide";
+  pub(crate) const PYRAMID_PASS: &'static str = "reflection pyramid";
+  pub(crate) const TRACE_PASS: &'static str = "reflection trace";
+  pub(crate) const SCENE_PASS: &'static str = "reflection scene";
+  pub(crate) const REPROJECT_PASS: &'static str = "reflection reproject";
+  pub(crate) const AVERAGE_PASS: &'static str = "reflection average";
+  pub(crate) const PREFILTER_PASS: &'static str = "reflection prefilter";
+  pub(crate) const RESOLVE_PASS: &'static str = "reflection resolve";
+  pub(crate) const UPSCALE_PASS: &'static str = "reflection upscale";
+  pub(crate) const GUIDE_PASS: &'static str = "reflection guide";
   /// The least and the most the sky's highlights are scaled by as light.
-  pub const SKY_GAIN_LEAST: f32 = 0.5;
-  pub const SKY_GAIN_MOST: f32 = 3.0;
+  pub(crate) const SKY_GAIN_LEAST: f32 = 0.5;
+  pub(crate) const SKY_GAIN_MOST: f32 = 3.0;
 
   /// What the view traces, or none: unlit, wireframe, or the engine's own reflections asked for.
-  pub fn new(options: &RenderViewOptions) -> Option<Self> {
+  pub(crate) fn new(options: &RenderViewOptions) -> Option<Self> {
     let settings = &options.features.reflections;
 
     if !options.mode.is_lit || options.mode.is_wireframe || !settings.is_drawn() {
@@ -46,7 +46,7 @@ impl ReflectionTrace {
   }
 
   /// The same trace, taken raw where DLSS ray reconstruction resolves the frame (`is_reconstructed`).
-  pub fn with_raw(self, is_reconstructed: bool) -> Self {
+  pub(crate) fn with_raw(self, is_reconstructed: bool) -> Self {
     Self {
       is_raw: is_reconstructed,
       ..self
@@ -54,7 +54,7 @@ impl ReflectionTrace {
   }
 
   /// The frame's pixels a traced pixel stands for each way: one taken raw, whatever the size asked.
-  pub fn get_ratio(self) -> u32 {
+  pub(crate) fn get_ratio(self) -> u32 {
     if self.is_raw { 1 } else { self.trace_size.get_ratio() }
   }
 }

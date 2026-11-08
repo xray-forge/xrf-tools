@@ -8,17 +8,17 @@ use wgpu::util::DeviceExt;
 /// once (Karis, "Real Shading in Unreal Engine 4", SIGGRAPH 2013) and uploaded for every pass that lights by it. Karis's
 /// mobile fit of the same table (`split_sum`) stands up to a fifth under it at middle roughness, which the multiple
 /// scattering's gift, divided by it, turned into light a white metal does not reflect.
-pub struct BrdfTable {
+pub(crate) struct BrdfTable {
   pub view: wgpu::TextureView,
 }
 
 impl BrdfTable {
   /// Texels each way: the cosine of the view to the normal across, the roughness down, each at its texel's centre.
-  pub const SIZE: u32 = 32;
+  pub(crate) const SIZE: u32 = 32;
   /// Samples of the lobe a texel is integrated over.
   const SAMPLES: u32 = 1024;
 
-  pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
     let view: wgpu::TextureView = device
       .create_texture_with_data(
         queue,
@@ -45,7 +45,7 @@ impl BrdfTable {
   }
 
   /// The table, row by roughness, column by the view's cosine, each texel the scale and the bias.
-  pub fn create_table() -> Vec<[f32; 2]> {
+  pub(crate) fn create_table() -> Vec<[f32; 2]> {
     (0..Self::SIZE * Self::SIZE)
       .map(|texel| {
         let at = |index: u32| (index as f32 + 0.5) / Self::SIZE as f32;
@@ -57,7 +57,7 @@ impl BrdfTable {
 
   /// The scale and the bias at the cosine of the view to the normal (`facing`) and a roughness: GGX's lobe drawn by
   /// importance over a Hammersley set, each sample weighed by its visibility and split by Schlick's Fresnel weight.
-  pub fn integrate(facing: f32, roughness: f32) -> Vec2 {
+  pub(crate) fn integrate(facing: f32, roughness: f32) -> Vec2 {
     let alpha: f32 = roughness * roughness;
     let alpha_squared: f32 = alpha * alpha;
     let to_eye: Vec3 = Vec3::new((1.0 - facing * facing).max(0.0).sqrt(), 0.0, facing);

@@ -14,7 +14,7 @@ use crate::level::loading::loader_slots::LoaderSlots;
 /// The object motions a level's moving zones follow, each read once on a loader thread the first time something it
 /// carries asks, and played looping from when the level began opening (`CObjectAnimator::Play(true)` at spawn), one
 /// clock for every zone, so a zone's idle effect and its idle light move together.
-pub struct LevelObjectMotions {
+pub(crate) struct LevelObjectMotions {
   source: Arc<dyn WorldLevelSource>,
   workers: RenderWorkers,
   motions: LoaderSlots<AnmFile>,
@@ -24,7 +24,7 @@ pub struct LevelObjectMotions {
 }
 
 impl LevelObjectMotions {
-  pub fn new(source: &Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> Self {
+  pub(crate) fn new(source: &Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> Self {
     Self {
       source: Arc::clone(source),
       workers: workers.clone(),
@@ -36,7 +36,7 @@ impl LevelObjectMotions {
 
   /// Reads from `source`, a next source of the same level, from now on: where `reload` names the motions, every motion
   /// read before is let go and read again from it the next time something asks, else each stays as it was read.
-  pub fn follow(&mut self, source: &Arc<dyn WorldLevelSource>, reload: LevelParts) {
+  pub(crate) fn follow(&mut self, source: &Arc<dyn WorldLevelSource>, reload: LevelParts) {
     self.source = Arc::clone(source);
 
     if reload.contains(LevelPart::Motions) {
@@ -45,14 +45,14 @@ impl LevelObjectMotions {
   }
 
   /// Moves on to `now`, the level's clock.
-  pub fn prepare(&mut self, now: Duration) {
+  pub(crate) fn prepare(&mut self, now: Duration) {
     self.previous = self.now;
     self.now = now;
   }
 
   /// Where a motion has its object this frame, in engine space, and how fast it moved since the frame before
   /// (`CCustomZone::OnMove`); none while the motion is read, or where it cannot be, which leaves the object standing.
-  pub fn get_pose(&mut self, name: &str) -> Option<RenderMotionPose> {
+  pub(crate) fn get_pose(&mut self, name: &str) -> Option<RenderMotionPose> {
     let (now, previous) = (self.now, self.previous);
     let motion: &AnmFile = self.get(name)?;
     let (looped, looped_before): (f32, f32) = (

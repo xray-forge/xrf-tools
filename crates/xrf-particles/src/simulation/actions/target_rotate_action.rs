@@ -9,7 +9,7 @@ pub(crate) struct TargetRotateAction {
 }
 
 impl TargetRotateAction {
-  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
+  pub(crate) fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
     let share: f32 = self.scale * step.dt;
     let target: f32 = self.rotation.abs();
 

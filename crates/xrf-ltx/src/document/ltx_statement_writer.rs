@@ -1,11 +1,11 @@
 use crate::syntax::{DEFAULT_KV_SEPARATOR, EMPTY_VALUE_KV_SEPARATOR, LTX_LINE_SEPARATOR};
 
 /// Formatter of LTX statements.
-pub struct LtxStatementWriter {}
+pub(crate) struct LtxStatementWriter {}
 
 impl LtxStatementWriter {
   /// Write comment statement.
-  pub fn write_comment(destination: &mut String, comment: &str) {
+  pub(crate) fn write_comment(destination: &mut String, comment: &str) {
     let comment: &str = comment.trim();
 
     destination.push(';');
@@ -19,7 +19,7 @@ impl LtxStatementWriter {
   }
 
   /// Write include statement.
-  pub fn write_include(destination: &mut String, included_path: &str, comment: Option<&str>) {
+  pub(crate) fn write_include(destination: &mut String, included_path: &str, comment: Option<&str>) {
     destination.push_str(&format!("#include \"{included_path}\""));
 
     if let Some(comment) = comment {
@@ -33,7 +33,7 @@ impl LtxStatementWriter {
   /// Write a section statement carrying a DLTX operation prefix.
   ///
   /// The prefix sits outside the brackets - `![section]`, not `[!section]` - so it cannot be folded into the name.
-  pub fn write_section_with_prefix(
+  pub(crate) fn write_section_with_prefix(
     destination: &mut String,
     prefix: &str,
     section: &str,
@@ -58,7 +58,7 @@ impl LtxStatementWriter {
   }
 
   /// Write section statement.
-  pub fn write_key_value(destination: &mut String, key: &str, value: Option<&str>, comment: Option<&str>) {
+  pub(crate) fn write_key_value(destination: &mut String, key: &str, value: Option<&str>, comment: Option<&str>) {
     destination.push_str(key);
 
     if let Some(value) = value {

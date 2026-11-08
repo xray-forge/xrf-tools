@@ -15,7 +15,7 @@ use crate::pass::view::view_binding::ViewBinding;
 /// reaches near the camera its normals patched into the light target, borrowed before the sun clears it, then in one
 /// pass written back with the albedo darkened and the gloss raised by how wet it is. Enhanced, the same two stages wet
 /// the surfaces out to the distance and gather puddles on terrain.
-pub struct WetPass {
+pub(crate) struct WetPass {
   view_layout: wgpu::BindGroupLayout,
   /// The patch's, then the write back's and the wetting's.
   layouts: [wgpu::BindGroupLayout; 2],
@@ -30,22 +30,22 @@ impl WetPass {
   /// What the enhanced patch writes beside the light target, for the wet look, the reflections and combine to read: how
   /// much of the surface a puddle's clear coat of water covers, how much a puddle, the water's height over the ground
   /// in metres, and the variance of the ripples' tilt the patch's filtering folded away.
-  pub const SURFACE: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub(crate) const SURFACE: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   /// What both patches write beside the light target for combine: the gloss the reflections' wet reach added beyond
   /// the engine's own wetting, which the lights' specular leaves out, then, enhanced and where the reflections trace, the
   /// gloss a puddle's water gives, which it takes only as far as the water reflects; and the gloss the wetting added in
   /// all, which the anchored levels read a surface's dry gloss under and its water film by.
-  pub const REACH: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+  pub(crate) const REACH: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
   /// The level's surface where none is made, its lowest heights, its puddles and its water, each of nothing.
-  pub fn get_dry(&self) -> [&wgpu::TextureView; 3] {
+  pub(crate) fn get_dry(&self) -> [&wgpu::TextureView; 3] {
     [&self.dry[0], &self.dry[1], &self.dry[2]]
   }
 
   /// # Errors
   ///
   /// Returns an error when a shader does not compose or compile.
-  pub fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+  pub(crate) fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
     let device: &wgpu::Device = source.device;
 
     let patch: wgpu::BindGroupLayout = WetPatchParameters::create_layout(device);
@@ -94,7 +94,7 @@ impl WetPass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipelines.refresh(source.cache, || {
       Self::create_pipelines(source, &self.view_layout, &self.layouts)
     }) {
@@ -103,13 +103,13 @@ impl WetPass {
   }
 
   /// The sampler the splash volume and the flow are read through, which the patch's parameters bind.
-  pub fn get_sampler(&self) -> &wgpu::Sampler {
+  pub(crate) fn get_sampler(&self) -> &wgpu::Sampler {
     &self.sampler
   }
 
   /// Draws one stage, the engine's or the enhanced: the patches, bound by `P` as [`WetPatchParameters`], or a wet look,
   /// as [`WetApplyParameters`].
-  pub fn record<P: PassParameters>(
+  pub(crate) fn record<P: PassParameters>(
     &self,
     context: &mut RasterContext<'_>,
     draw: WetDraw,

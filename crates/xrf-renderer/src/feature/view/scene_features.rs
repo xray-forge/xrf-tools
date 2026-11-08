@@ -29,7 +29,7 @@ use crate::feature::weather::wet::wet_feature::WetFeature;
 /// present every part's decision reaches, and the page's overlays, helpers and picks; and what it draws from views of
 /// its own: the sun's shadows, the rain cover and the level's surface seen from overhead, and the level around the
 /// camera as a cube. The units drawing in one part alone are its stages' (`ViewStages`).
-pub struct SceneFeatures {
+pub(crate) struct SceneFeatures {
   pub shadows: LevelShadows,
   /// The rain cover, while it rains or the surfaces are wet.
   pub rain_cover: Option<RainCover>,
@@ -69,7 +69,7 @@ pub struct SceneFeatures {
 
 impl SceneFeatures {
   /// The units of a view whose views bind by `view_layout`.
-  pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, view_layout: &wgpu::BindGroupLayout) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, queue: &wgpu::Queue, view_layout: &wgpu::BindGroupLayout) -> Self {
     Self {
       shadows: LevelShadows::default(),
       rain_cover: None,

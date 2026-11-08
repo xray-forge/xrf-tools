@@ -20,7 +20,7 @@ use crate::core::command::CommandGroup;
 
 impl CommandGroup {
   /// Every public CLI domain, each declaring its own operations, for dispatch and for `docs generate`.
-  pub fn list_all() -> Vec<Self> {
+  pub(crate) fn list_all() -> Vec<Self> {
     vec![
       ArchiveGroup::declare(),
       DdsGroup::declare(),

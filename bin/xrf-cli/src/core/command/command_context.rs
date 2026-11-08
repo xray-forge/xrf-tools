@@ -15,7 +15,7 @@ use crate::core::report::ReportingOptions;
 /// Parallel work never receives the context. Workers take [`OutputOptions`] clones or
 /// [`xrf_output::OutputSequence`] slots, which already order what they say; the thread coordinating
 /// them deposits the one result after joining.
-pub struct CommandContext {
+pub(crate) struct CommandContext {
   is_result_requested: bool,
   output: OutputOptions,
   result: Option<Value>,
@@ -23,7 +23,7 @@ pub struct CommandContext {
 
 impl CommandContext {
   /// The context of a run started with `reporting`, holding no result yet.
-  pub fn new(reporting: &ReportingOptions) -> Self {
+  pub(crate) fn new(reporting: &ReportingOptions) -> Self {
     Self {
       is_result_requested: reporting.destination.is_requested(),
       output: reporting.output.clone(),
@@ -32,13 +32,13 @@ impl CommandContext {
   }
 
   /// Where this run's human-facing messages go.
-  pub const fn get_output(&self) -> &OutputOptions {
+  pub(crate) const fn get_output(&self) -> &OutputOptions {
     &self.output
   }
 
   /// Whether the run asked for verbose output, for a command whose line itself changes shape when it did; a line that
   /// only adds detail goes out through `xrf_output::verbose!` instead.
-  pub fn is_verbose(&self) -> bool {
+  pub(crate) fn is_verbose(&self) -> bool {
     self.output.is_visible(OutputChannel::Verbose)
   }
 
@@ -49,7 +49,7 @@ impl CommandContext {
   /// for, and a caller never repeats that condition at the call site. Call it whenever the payload
   /// can be built - before returning a check verdict as much as before returning success, since a
   /// failed check is exactly when its findings are worth reporting.
-  pub fn set_result<T: Serialize>(&mut self, build: impl FnOnce() -> T) -> CommandResult {
+  pub(crate) fn set_result<T: Serialize>(&mut self, build: impl FnOnce() -> T) -> CommandResult {
     if self.is_result_requested {
       self.result = Some(serde_json::to_value(build())?);
     }
@@ -58,7 +58,7 @@ impl CommandContext {
   }
 
   /// Takes the deposited result for the envelope, leaving the context empty.
-  pub fn take_result(&mut self) -> Option<Value> {
+  pub(crate) fn take_result(&mut self) -> Option<Value> {
     self.result.take()
   }
 }

@@ -1,7 +1,7 @@
 /// A rain cover reduced level by level, from half its size down to a texel: each texel the lowest and the highest depth
 /// of the cover under it, which the wetting tells by whether anything, or everything, stands over a point's
 /// surroundings before it looks closer.
-pub struct CoverPyramid {
+pub(crate) struct CoverPyramid {
   /// Texels its first level is across.
   pub size: u32,
   pub levels: u32,
@@ -12,10 +12,10 @@ pub struct CoverPyramid {
 }
 
 impl CoverPyramid {
-  pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg32Float;
+  pub(crate) const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg32Float;
 
   /// The pyramid of a cover `resolution` texels across, a power of two.
-  pub fn new(device: &wgpu::Device, label: &str, resolution: u32) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, label: &str, resolution: u32) -> Self {
     let size: u32 = (resolution / 2).max(1);
     let levels: u32 = size.ilog2() + 1;
     let texture: wgpu::Texture = device.create_texture(&wgpu::TextureDescriptor {
@@ -51,7 +51,7 @@ impl CoverPyramid {
   }
 
   /// Texels one level is across.
-  pub fn get_level_size(&self, level: u32) -> u32 {
+  pub(crate) fn get_level_size(&self, level: u32) -> u32 {
     (self.size >> level).max(1)
   }
 }

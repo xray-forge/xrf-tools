@@ -26,15 +26,15 @@ impl SessionPart for LevelStartPart {
 
 impl LevelStartPart {
   /// Metres an actor's eye stands above the ground under it.
-  pub const ACTOR_EYE_HEIGHT: f32 = 1.7;
+  pub(crate) const ACTOR_EYE_HEIGHT: f32 = 1.7;
 
   /// The store with `start` kept as the level's start part, decided from `inputs` as the level opened.
-  pub fn with(parts: SessionParts, start: Option<LevelStart>, inputs: XrayInputRecord) -> SessionParts {
+  pub(crate) fn with(parts: SessionParts, start: Option<LevelStart>, inputs: XrayInputRecord) -> SessionParts {
     parts.with::<Self>(start, inputs)
   }
 
   /// Where the open level opens, decided the first time anything asks and kept; `None` leaves it to the viewer.
-  pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> Option<LevelStart> {
+  pub(crate) fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> Option<LevelStart> {
     current.parts.get_or_record::<Self>(search, |search| {
       let spawn = LevelSpawnPart::get(current, search).ok();
       let open: Vec<bool> = spawn
@@ -51,7 +51,7 @@ impl LevelStartPart {
 
   /// Whether nothing of the collision form stands over each eye `list_eyes` lists of `spawn`; every one for a level
   /// without a readable form, which covers nothing.
-  pub fn find_open(source: &LevelSource, search: &XraySearch, spawn: &LevelSpawn) -> Vec<bool> {
+  pub(crate) fn find_open(source: &LevelSource, search: &XraySearch, spawn: &LevelSpawn) -> Vec<bool> {
     let eyes: Vec<Vector3d> = Self::list_eyes(spawn);
 
     source
@@ -70,13 +70,17 @@ impl LevelStartPart {
   }
 
   /// The eyes a level may open at, in the engine's space: where each of its arrivals and its actor's spawn stand.
-  pub fn list_eyes(spawn: &LevelSpawn) -> Vec<Vector3d> {
+  pub(crate) fn list_eyes(spawn: &LevelSpawn) -> Vec<Vector3d> {
     Self::list_candidates(spawn).map(|(eye, _, _)| eye).collect()
   }
 
   /// The start of a level: of the eyes `list_eyes` lists, the one nearest its centre that `open` says is under the open
   /// sky; none of them leaves it to the viewer.
-  pub fn resolve(spawn: Option<&LevelSpawn>, bounds: Option<&VisualBounds>, open: &[bool]) -> Option<LevelStart> {
+  pub(crate) fn resolve(
+    spawn: Option<&LevelSpawn>,
+    bounds: Option<&VisualBounds>,
+    open: &[bool],
+  ) -> Option<LevelStart> {
     let (x, z): (f32, f32) = Self::to_engine_centre(bounds?);
 
     Self::list_candidates(spawn?)

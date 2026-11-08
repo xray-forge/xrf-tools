@@ -7,7 +7,7 @@ use xrf_renderer_core::ShaderStruct;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "GrassPuddles")]
-pub struct GrassPuddlesUniform {
+pub(crate) struct GrassPuddlesUniform {
   pub surface: Vec4,
   pub shape: Vec4,
   pub state: Vec4,
@@ -16,7 +16,7 @@ pub struct GrassPuddlesUniform {
 impl GrassPuddlesUniform {
   /// The level surface's window as `LevelSurface::get_window` gives it, its `surface` and its `shape`, with no puddles
   /// drawn.
-  pub fn new(surface: Vec4, shape: Vec4) -> Self {
+  pub(crate) fn new(surface: Vec4, shape: Vec4) -> Self {
     Self {
       surface,
       shape,
@@ -25,7 +25,7 @@ impl GrassPuddlesUniform {
   }
 
   /// The same with the wet surfaces' puddles drawn, which the grass plants around.
-  pub fn with_puddles(self) -> Self {
+  pub(crate) fn with_puddles(self) -> Self {
     Self {
       state: Vec4::new(1.0, 0.0, 0.0, 0.0),
       ..self

@@ -9,14 +9,14 @@ use xrf_report::Report;
 /// not say what passed.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct PackedFileVerifyReport {
+pub(crate) struct PackedFileVerifyReport {
   path: String,
   #[serde(flatten)]
   report: Report,
 }
 
 impl PackedFileVerifyReport {
-  pub fn new(path: &Path, report: Report) -> Self {
+  pub(crate) fn new(path: &Path, report: Report) -> Self {
     Self {
       path: xrf_utils::to_portable_path_string(path),
       report,

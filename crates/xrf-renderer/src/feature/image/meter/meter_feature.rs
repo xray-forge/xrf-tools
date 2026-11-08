@@ -11,14 +11,14 @@ use crate::scene::level::view::record::view_record::ViewRecord;
 /// A view's spot meter, while it meters a lit view: the sample its pass writes, the readback the sample is copied into
 /// without waiting, and the last reading that came back.
 #[derive(Default)]
-pub struct MeterFeature {
+pub(crate) struct MeterFeature {
   sample: Option<(wgpu::Buffer, GpuReadback)>,
   reading: Option<RenderMeterReading>,
 }
 
 impl MeterFeature {
   /// Makes its sample and readback while the view meters a lit scene; lets them and the last reading go otherwise.
-  pub fn prepare(&mut self, device: &wgpu::Device, options: &RenderViewOptions) {
+  pub(crate) fn prepare(&mut self, device: &wgpu::Device, options: &RenderViewOptions) {
     if !(options.mode.is_metered && options.mode.is_lit) {
       self.release();
 
@@ -42,7 +42,7 @@ impl MeterFeature {
 
   /// Meters the scene finished so far at the view's centre and copies the sample out, unless an earlier copy is still on
   /// its way; nothing while it does not meter.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     ViewRecord {
@@ -88,21 +88,21 @@ impl MeterFeature {
   }
 
   /// Asks for the sample recorded with the frame just submitted.
-  pub fn request(&self) {
+  pub(crate) fn request(&self) {
     if let Some((_, readback)) = &self.sample {
       readback.request();
     }
   }
 
   /// Drops the sample a frame that was never submitted copied out.
-  pub fn abandon(&self) {
+  pub(crate) fn abandon(&self) {
     if let Some((_, readback)) = &self.sample {
       readback.abandon();
     }
   }
 
   /// The latest reading, refreshed once a sample is back; none while it does not meter or before its first.
-  pub fn take_reading(&mut self) -> Option<RenderMeterReading> {
+  pub(crate) fn take_reading(&mut self) -> Option<RenderMeterReading> {
     let (_, readback) = self.sample.as_ref()?;
 
     if let Some(Ok(sample)) =

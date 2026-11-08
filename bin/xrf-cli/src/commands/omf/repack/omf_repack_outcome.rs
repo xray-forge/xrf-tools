@@ -1,6 +1,6 @@
 /// How the round trip of one omf file came out.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum OmfRepackOutcome {
+pub(crate) enum OmfRepackOutcome {
   Identical,
   /// Read and parsed, but serialized into different bytes.
   Mismatched,

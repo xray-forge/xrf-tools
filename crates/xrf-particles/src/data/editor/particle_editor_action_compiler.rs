@@ -47,7 +47,7 @@ impl ParticleEditorActionCompiler {
   /// # Errors
   ///
   /// Returns an error when the action lacks a property its kind needs, or is of a kind nothing compiles.
-  pub fn compile(action: &ParticleEditorAction) -> XrfResult<ParticleAction> {
+  pub(crate) fn compile(action: &ParticleEditorAction) -> XrfResult<ParticleAction> {
     let flags: u32 = Self::read_rotate_flag(action)?;
 
     Ok(match action.action_type {

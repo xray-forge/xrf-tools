@@ -3,5 +3,5 @@
 mod archive_level_geom_description;
 mod archive_level_geom_layout;
 
-pub use archive_level_geom_description::ArchiveLevelGeomDescription;
-pub use archive_level_geom_layout::ArchiveLevelGeomLayout;
+pub(crate) use archive_level_geom_description::ArchiveLevelGeomDescription;
+pub(crate) use archive_level_geom_layout::ArchiveLevelGeomLayout;

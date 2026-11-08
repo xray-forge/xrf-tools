@@ -16,7 +16,7 @@ use crate::core::report::ReportVerdict;
 
 /// Generate or verify a stable extern manifest from TypeScript declarations.
 #[derive(Default)]
-pub struct ExportCommand;
+pub(crate) struct ExportCommand;
 
 impl GenericCommand for ExportCommand {
   fn operation(&self) -> &'static str {

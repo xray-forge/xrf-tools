@@ -18,7 +18,7 @@ const NEAR_TURN: f32 = 0.00001;
 /// noise gives at the playing effect's gust factor, then, over that, the blast rising from what the strength was to the
 /// effect's own while its direction turns, falling back to nothing once its life is up, and nothing after the fall,
 /// until the next effect starts.
-pub struct AmbientWind {
+pub(crate) struct AmbientWind {
   noise: WindNoise,
   gust: AmbientGust,
   /// `wind_gust_factor`.
@@ -55,12 +55,12 @@ impl Default for AmbientWind {
 }
 
 impl AmbientWind {
-  pub fn get_gust(&self) -> AmbientGust {
+  pub(crate) fn get_gust(&self) -> AmbientGust {
     self.gust
   }
 
   /// `CEnvironment::OnFrame`: the strength the noise gives at the gust factor of the moment.
-  pub fn blow(&mut self, time: Duration) {
+  pub(crate) fn blow(&mut self, time: Duration) {
     let noise: f32 = self.noise.read(time, self.gust_factor * MAX_NOISE_FREQUENCY);
 
     self.gust.strength = (noise + 0.5).clamp(0.0, 1.0);
@@ -68,7 +68,7 @@ impl AmbientWind {
 
   /// An effect starts: its gusts, and its blast rising from the strength of the moment and turning from the blast's
   /// direction, or from its own where the wind was still.
-  pub fn start(&mut self, effect: &WorldAmbientEffect, time: Duration) {
+  pub(crate) fn start(&mut self, effect: &WorldAmbientEffect, time: Duration) {
     let blast = &effect.wind_blast;
     let life: Duration = effect.life_time;
     // `wind_blast_direction.setHP(deg2rad(wind_blast_longitude), 0)`.
@@ -92,12 +92,12 @@ impl AmbientWind {
   }
 
   /// The effect is stopped, or the camera indoors: no more gusts.
-  pub fn calm(&mut self) {
+  pub(crate) fn calm(&mut self) {
     self.gust_factor = 0.0;
   }
 
   /// The blast while it rises, over the noise.
-  pub fn rise(&mut self, time: Duration) {
+  pub(crate) fn rise(&mut self, time: Duration) {
     if !self.is_on || time < self.start || time > self.rise_end {
       return;
     }
@@ -110,7 +110,7 @@ impl AmbientWind {
   }
 
   /// The blast once the effect's life is up: falling from where it stands to nothing, and nothing once it has fallen.
-  pub fn fall(&mut self, time: Duration) {
+  pub(crate) fn fall(&mut self, time: Duration) {
     if self.is_on && time >= self.end {
       self.strengths = (self.gust.strength, 0.0);
       self.is_on = false;

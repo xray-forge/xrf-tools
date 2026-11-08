@@ -13,7 +13,7 @@ use crate::{SpawnFiles, SpawnSession};
 /// Write the spawn `session_id` holds into the directory `path` as unpacked chunks, on the pool.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "save_unpacked_directory")]
-pub async fn spawn_save_unpacked_directory(
+pub(crate) async fn spawn_save_unpacked_directory(
   path: PathBuf,
   session_id: SessionId,
   files: State<'_, SpawnFiles>,

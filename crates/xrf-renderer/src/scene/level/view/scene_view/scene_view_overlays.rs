@@ -10,7 +10,7 @@ use crate::scene::static_scene::draw::static_selection::StaticSelection;
 impl SceneView {
   /// Makes what it draws over its frame where the page's overlays or the selection's box changed: the page's, then a
   /// selected spawned object's box.
-  pub fn set_overlays(
+  pub(crate) fn set_overlays(
     &mut self,
     scene: &LevelScene,
     device: &wgpu::Device,
@@ -23,7 +23,7 @@ impl SceneView {
 
   /// What a selection marks in the scene now, resolved again only once the target or the scene changed; none where
   /// nothing is selected or what it names is not in the scene yet.
-  pub fn resolve_selection(
+  pub(crate) fn resolve_selection(
     &mut self,
     scene: &LevelScene,
     selection: Option<&RenderSelection>,
@@ -32,18 +32,18 @@ impl SceneView {
   }
 
   /// What it draws over its frame, once made.
-  pub fn get_overlays(&self) -> Option<&LevelOverlays> {
+  pub(crate) fn get_overlays(&self) -> Option<&LevelOverlays> {
     self.features.overlays.get_overlays()
   }
 
   /// Builds its helpers' wires and marks again where the scene's helpers, its spawned objects or the options `sources`
   /// hold moved since.
-  pub fn set_helpers(&mut self, device: &wgpu::Device, sources: HelperSources<'_>) {
+  pub(crate) fn set_helpers(&mut self, device: &wgpu::Device, sources: HelperSources<'_>) {
     self.features.helpers.set(device, sources);
   }
 
   /// The helpers' wires and icons it draws over its frame.
-  pub fn get_helper_draws(&self) -> HelperDraws<'_> {
+  pub(crate) fn get_helper_draws(&self) -> HelperDraws<'_> {
     self.features.helpers.get_draws()
   }
 }

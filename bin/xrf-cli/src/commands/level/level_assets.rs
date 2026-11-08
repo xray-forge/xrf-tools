@@ -12,7 +12,7 @@ use xrf_vfs::XraySearch;
 const LEVELS_DIRECTORY: &str = "levels";
 
 /// One compiled level's files, addressed however the level is stored.
-pub enum LevelAssets {
+pub(crate) enum LevelAssets {
   /// A level directory on the host filesystem, read by joining paths.
   Directory(PathBuf),
   /// A level of mounted roots, read by its engine identity, `levels\<name>\<file>`.
@@ -21,7 +21,7 @@ pub enum LevelAssets {
 
 impl LevelAssets {
   /// Takes a level directory as it sits on disk.
-  pub fn open_directory(path: &Path) -> Self {
+  pub(crate) fn open_directory(path: &Path) -> Self {
     Self::Directory(path.to_path_buf())
   }
 
@@ -31,7 +31,7 @@ impl LevelAssets {
   ///
   /// Returns an error when the level holds no `level` file, which is what tells a name that exists from one that
   /// does not - a directory of only lightmaps is not a level.
-  pub fn open_asset(search: XraySearch, name: &str) -> XrfResult<Self> {
+  pub(crate) fn open_asset(search: XraySearch, name: &str) -> XrfResult<Self> {
     let assets: Self = Self::Asset {
       name: name.to_owned(),
       search,
@@ -55,7 +55,7 @@ impl LevelAssets {
   /// # Errors
   ///
   /// Returns an error when the file is there and cannot be read.
-  pub fn read(&self, file: &str) -> XrfResult<Option<Vec<u8>>> {
+  pub(crate) fn read(&self, file: &str) -> XrfResult<Option<Vec<u8>>> {
     match self {
       Self::Directory(path) => {
         let path: PathBuf = path.join(file);
@@ -79,7 +79,7 @@ impl LevelAssets {
   }
 
   /// The level as a subject a report names.
-  pub fn describe(&self) -> String {
+  pub(crate) fn describe(&self) -> String {
     match self {
       Self::Directory(path) => format_path(path).to_string(),
       Self::Asset { name, .. } => format!("{LEVELS_DIRECTORY}\\{name}"),
@@ -87,7 +87,7 @@ impl LevelAssets {
   }
 
   /// One of the level's files, spelled the way the subject is.
-  pub fn describe_file(&self, file: &str) -> String {
+  pub(crate) fn describe_file(&self, file: &str) -> String {
     match self {
       Self::Directory(path) => format_path(&path.join(file)).to_string(),
       Self::Asset { name, .. } => format!("{LEVELS_DIRECTORY}\\{name}\\{file}"),
@@ -99,7 +99,7 @@ impl LevelAssets {
   /// # Errors
   ///
   /// Returns an error when the levels directory cannot be listed.
-  pub fn list_names(search: &XraySearch) -> XrfResult<Vec<String>> {
+  pub(crate) fn list_names(search: &XraySearch) -> XrfResult<Vec<String>> {
     let mut names: Vec<String> = Vec::new();
 
     for child in search.list_children(LEVELS_DIRECTORY)?.directories {

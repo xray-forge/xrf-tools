@@ -10,7 +10,7 @@ use crate::scene::level::lights::light_volumes_uniform::LightVolumesUniform;
 /// lighting, at whose authored levels they gather display values.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct LightVolumeParameters<'a> {
+pub(crate) struct LightVolumeParameters<'a> {
   #[storage]
   pub light_volumes: StorageArray<LightVolumeRecord>,
   #[storage]

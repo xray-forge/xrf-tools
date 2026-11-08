@@ -13,7 +13,7 @@ use crate::viewer::{LevelViewerFolder, ViewerImage};
 
 /// A level map's capture written again: resized, flattened or not, as a PNG, an uncompressed TGA or a DDS, or its
 /// annotations alone as their SVG.
-pub struct MapExporter;
+pub(crate) struct MapExporter;
 
 impl MapExporter {
   /// Writes the export `request` asks for, answering its pixels across and down.
@@ -21,7 +21,7 @@ impl MapExporter {
   /// # Errors
   ///
   /// Returns an error when the capture cannot be read, or the export cannot be encoded or written.
-  pub fn export(request: &MapExportRequest) -> TauriResult<MapExportOutcome> {
+  pub(crate) fn export(request: &MapExportRequest) -> TauriResult<MapExportOutcome> {
     let MapExportRequest {
       path: source,
       target,

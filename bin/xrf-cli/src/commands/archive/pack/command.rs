@@ -23,7 +23,7 @@ const SELECTION_ARGUMENTS: [&str; 7] = [
 ];
 
 #[derive(Default)]
-pub struct PackCommand;
+pub(crate) struct PackCommand;
 
 impl GenericCommand for PackCommand {
   fn operation(&self) -> &'static str {

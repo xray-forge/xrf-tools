@@ -36,7 +36,7 @@ use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 /// how high the first thing over that column stands. It moves a whole step at a time. Moved at the same height with
 /// nothing changed under it, it keeps what it holds, shifted, and draws only the strips it did not cover before;
 /// otherwise it is drawn again whole, by the level's shadow casters.
-pub struct OverheadMap {
+pub(crate) struct OverheadMap {
   /// Reversed: one at the height it is seen from, nought where nothing stands.
   pub depth: wgpu::TextureView,
   /// What culls and draws it whole or its first strip, and its second strip.
@@ -90,11 +90,11 @@ impl OverheadDraw {
 
 impl OverheadMap {
   /// Frames a map drawn before waits at most for a draw it wants.
-  pub const WAIT_MOST: u32 = 8;
+  pub(crate) const WAIT_MOST: u32 = 8;
   /// What shifting the whole map costs, as texels of a draw.
   const SHIFT_SHARE: f32 = 1.0 / 8.0;
 
-  pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout, shape: OverheadShape) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout, shape: OverheadShape) -> Self {
     let cut = || ShadowCut::new(device, view_layout, shape.label);
 
     Self {
@@ -128,12 +128,12 @@ impl OverheadMap {
   }
 
   /// How it is laid out.
-  pub fn get_shape(&self) -> OverheadShape {
+  pub(crate) fn get_shape(&self) -> OverheadShape {
     self.shape
   }
 
   /// Makes it `width` metres across, its step a whole 64 texels of it, drawn again where that changes it.
-  pub fn fit_width(&mut self, width: f32) {
+  pub(crate) fn fit_width(&mut self, width: f32) {
     if width == self.shape.width {
       return;
     }
@@ -144,13 +144,13 @@ impl OverheadMap {
   }
 
   /// Whether this frame draws it, as `commit` took it.
-  pub fn is_due(&self) -> bool {
+  pub(crate) fn is_due(&self) -> bool {
     self.is_due
   }
 
   /// Its centre in `x` and `z`, its half width, and the height it is seen from; seen from under everything before it
   /// was drawn, so nothing is covered.
-  pub fn get_window(&self) -> Vec4 {
+  pub(crate) fn get_window(&self) -> Vec4 {
     match self.drawn {
       Some((center, _)) => Vec4::new(center.x, center.z, self.shape.width / 2.0, center.y),
       None => Self::get_unmade_window(self.shape),
@@ -158,14 +158,14 @@ impl OverheadMap {
   }
 
   /// The window of a map of `shape` not drawn yet: centred nowhere, seen from far below.
-  pub fn get_unmade_window(shape: OverheadShape) -> Vec4 {
+  pub(crate) fn get_unmade_window(shape: OverheadShape) -> Vec4 {
     Vec4::new(0.0, 0.0, shape.width / 2.0, -1e9)
   }
 
   /// The strips a map `resolution` texels across did not cover before it moved so a texel reads its old self
   /// `(across, down)` texels away: the columns it moved into, every row of them, and the rows it moved into, of the
   /// other columns. Each a region of texels across, down, wide and high.
-  pub fn get_strips((across, down): (i32, i32), resolution: u32) -> [Option<[u32; 4]>; 2] {
+  pub(crate) fn get_strips((across, down): (i32, i32), resolution: u32) -> [Option<[u32; 4]>; 2] {
     let size: i32 = resolution as i32;
     let columns: Option<[u32; 4]> = match across {
       0 => None,
@@ -185,7 +185,7 @@ impl OverheadMap {
   /// Centres it over the camera, a whole step at a time, and offers a draw to `scheduler` where it moved or the scene
   /// changed under it: at once where it was never drawn, else within `WAIT_MOST` frames, as it holds what it covers by
   /// a margin past a step. Moved alone, it is offered shifted, its uncovered strips drawn.
-  pub fn offer(&mut self, frame: &ShadowFrame<'_>, scheduler: &mut PeriodicScheduler) {
+  pub(crate) fn offer(&mut self, frame: &ShadowFrame<'_>, scheduler: &mut PeriodicScheduler) {
     let position: Vec3 = frame.camera.position;
     let step: f32 = self.shape.step;
     let center: Vec3 = Vec3::new(
@@ -248,7 +248,7 @@ impl OverheadMap {
 
   /// Readies the draw `offer` offered, where `scheduler` granted it; one not granted waits a frame more. `encoder`
   /// takes what readying it writes.
-  pub fn commit(
+  pub(crate) fn commit(
     &mut self,
     device: &wgpu::Device,
     encoder: &mut FrameEncoder,
@@ -298,7 +298,7 @@ impl OverheadMap {
   }
 
   /// Forgets that this frame drew it, where its frame was not submitted: it draws again.
-  pub fn abandon_frame(&mut self) {
+  pub(crate) fn abandon_frame(&mut self) {
     if self.is_due {
       self.is_due = false;
       self.drawn = None;
@@ -308,7 +308,7 @@ impl OverheadMap {
   /// Declares its draw into `depth`, where this frame's `commit` took it: whole, culled and drawn; or shifted from a
   /// copy of itself, its strips culled and drawn over. Drawn of the level's shadow casters, or of its water, its waves
   /// lifted by `water`, where it is a map of the water.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration {
       graph,

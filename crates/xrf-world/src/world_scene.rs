@@ -8,7 +8,7 @@ use crate::world_viewport::WorldViewport;
 /// A level as the world plays it for every viewport showing it: its streaming, posing and effects, the key sources of
 /// the same level share, and the viewports showing it in the order they began to, the first driving what it simulates
 /// by its camera as the game's one actor would.
-pub struct WorldScene {
+pub(crate) struct WorldScene {
   pub level: WorldLevel,
   /// What another source of the same level names, none for one no other shares.
   pub key: Option<String>,
@@ -17,12 +17,12 @@ pub struct WorldScene {
 
 impl WorldScene {
   /// The viewport driving what it simulates: the first still showing it.
-  pub fn get_driver(&self) -> Option<RenderViewportId> {
+  pub(crate) fn get_driver(&self) -> Option<RenderViewportId> {
     self.viewers.first().copied()
   }
 
   /// Stands its skinned objects as its driver asks, as every other choice of a viewport reaches a shared scene.
-  pub fn follow_driver(&mut self, viewports: &HashMap<RenderViewportId, WorldViewport>) {
+  pub(crate) fn follow_driver(&mut self, viewports: &HashMap<RenderViewportId, WorldViewport>) {
     if let Some(driving) = self.get_driver().and_then(|driver| viewports.get(&driver)) {
       self.level.set_pose(&driving.pose);
     }

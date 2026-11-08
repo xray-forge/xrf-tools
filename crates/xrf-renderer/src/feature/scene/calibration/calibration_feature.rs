@@ -12,13 +12,13 @@ use crate::pass::view::view_binding::ViewBinding;
 /// A view's calibration props while it shows them: stood ahead of the camera in the frame they are first shown, and
 /// kept there, so the camera can move about them.
 #[derive(Default)]
-pub struct CalibrationFeature {
+pub(crate) struct CalibrationFeature {
   props: Option<CalibrationUniform>,
 }
 
 impl CalibrationFeature {
   /// Stands the props ahead of `camera` when the view first shows them; forgets them once it does not.
-  pub fn prepare(&mut self, options: &RenderViewOptions, camera: &CameraView) {
+  pub(crate) fn prepare(&mut self, options: &RenderViewOptions, camera: &CameraView) {
     if !options.show.is_calibration_visible {
       self.props = None;
     } else if self.props.is_none() {
@@ -27,7 +27,7 @@ impl CalibrationFeature {
   }
 
   /// Draws the props into the G-buffer over what the scene drew; nothing while they are not shown.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &self,
     GraphDeclaration { graph, runtime, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,

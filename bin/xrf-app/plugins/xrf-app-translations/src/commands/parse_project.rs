@@ -16,7 +16,7 @@ use crate::request::TranslationsParseRequest;
 /// Import one language's raw XML string tables into JSON sources, one import at a time.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "parse_project")]
-pub async fn translations_parse_project(
+pub(crate) async fn translations_parse_project(
   execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
   request: TranslationsParseRequest,

@@ -16,7 +16,7 @@ impl SceneView {
   /// Offers `scheduler` what the view draws once in so many frames and wants this frame: the sun's cascades, the
   /// surroundings' face, the rain cover, the level's surface and the sky's refill. `commit_periodic` then readies what
   /// was granted.
-  pub fn offer_periodic(
+  pub(crate) fn offer_periodic(
     &mut self,
     scene: &LevelScene,
     device: &wgpu::Device,
@@ -81,7 +81,7 @@ impl SceneView {
 
   /// Readies what `scheduler` granted of what `offer_periodic` offered, which the frame's passes then draw, and writes
   /// where the overhead maps now stand; `encoder` takes what readying them writes.
-  pub fn commit_periodic(
+  pub(crate) fn commit_periodic(
     &mut self,
     scene: &LevelScene,
     device: &wgpu::Device,
@@ -131,7 +131,7 @@ impl SceneView {
 
   /// Readies the scene's light shadow faces `scheduler` granted of those every view of it asked for this frame, from
   /// this view's culling; `encoder` takes the copies a list growing makes.
-  pub fn commit_scene_shadows(
+  pub(crate) fn commit_scene_shadows(
     &self,
     scene: &mut LevelScene,
     device: &wgpu::Device,

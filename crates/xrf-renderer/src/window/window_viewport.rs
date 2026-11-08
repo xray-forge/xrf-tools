@@ -5,7 +5,7 @@ use crate::contract::viewport::render_viewport_id::RenderViewportId;
 /// of it the window shows, which its picture is cropped to; both empty for a capture laid out nowhere, which draws into
 /// a texture of its own.
 #[derive(Clone, Copy)]
-pub struct WindowViewport {
+pub(crate) struct WindowViewport {
   pub id: RenderViewportId,
   pub rect: RenderRect,
   pub shown: RenderRect,

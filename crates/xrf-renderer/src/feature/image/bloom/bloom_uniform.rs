@@ -11,7 +11,7 @@ const TAPS: usize = 7;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Bloom")]
-pub struct BloomUniform {
+pub(crate) struct BloomUniform {
   /// The build: the threshold in `z`. A filter: one texel of the target along its way, then one where only the side
   /// behind is read.
   pub params: Vec4,
@@ -21,7 +21,7 @@ pub struct BloomUniform {
 
 impl BloomUniform {
   /// `bloom_build.ps`, losing `threshold` of the summed brightness.
-  pub fn build(threshold: f32) -> Self {
+  pub(crate) fn build(threshold: f32) -> Self {
     Self {
       params: Vec4::new(0.0, 0.0, threshold, 0.0),
       weights: [Vec4::ZERO; 2],
@@ -30,7 +30,7 @@ impl BloomUniform {
 
   /// `bloom_filter.ps` across the target, its radius `kernel_g` texels: the same radius down, by the frame's height
   /// over its width, as the engine blurs it.
-  pub fn filter(filter: BloomFilter) -> Self {
+  pub(crate) fn filter(filter: BloomFilter) -> Self {
     let (width, height) = ViewTargets::BLOOM_SIZE;
     let (along, radius): ([f32; 2], f32) = if filter.is_across {
       ([1.0 / width as f32, 0.0], filter.radius)
@@ -45,7 +45,7 @@ impl BloomUniform {
   }
 
   /// `CalcGauss_wave`: two kernels added, one of the radius and one of a third of it, each of the strength.
-  pub fn get_wave(radius: f32, strength: f32) -> [Vec4; 2] {
+  pub(crate) fn get_wave(radius: f32, strength: f32) -> [Vec4; 2] {
     let [base, detail] = [radius, radius / 3.0].map(|it| Self::get_kernel(it, strength));
     let weights: [f32; TAPS + 1] = std::array::from_fn(|tap| base[tap] + detail[tap]);
 

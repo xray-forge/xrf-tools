@@ -32,7 +32,7 @@ impl StaticScene {
   ///
   /// Returns an error for a handle that holds a model already, or when a buffer would outgrow what the device allows;
   /// none of it stands in the scene, though the surfaces it put and the texture slots they asked for stay.
-  pub fn add_model(
+  pub(crate) fn add_model(
     &mut self,
     context: &mut StaticItemContext<'_>,
     handle: ProxyHandle<StaticModelProxy>,
@@ -164,7 +164,7 @@ impl StaticScene {
 
   /// Takes a model out of the scene with every object standing as it, its ranges cleared and freed; false for one
   /// already gone.
-  pub fn remove_model(&mut self, handle: ProxyHandle<StaticModelProxy>) -> bool {
+  pub(crate) fn remove_model(&mut self, handle: ProxyHandle<StaticModelProxy>) -> bool {
     if !self.models.contains(handle) {
       return false;
     }

@@ -1,7 +1,7 @@
 use clap::{Arg, ArgAction};
 
 /// Documentation model of one argument, as its reference table row shows it.
-pub struct ArgumentReference {
+pub(crate) struct ArgumentReference {
   pub display: String,
   pub help: Option<String>,
   pub is_required: bool,
@@ -11,7 +11,7 @@ pub struct ArgumentReference {
 }
 
 impl ArgumentReference {
-  pub fn from_argument(argument: &Arg) -> Self {
+  pub(crate) fn from_argument(argument: &Arg) -> Self {
     let takes_value: bool = matches!(argument.get_action(), ArgAction::Set | ArgAction::Append);
 
     let value_name: String = argument

@@ -12,7 +12,7 @@ pub(crate) struct ExternDiagnostic<'a> {
 }
 
 impl<'a> ExternDiagnostic<'a> {
-  pub fn new(source_map: &'a SourceMap, source_path: &'a str) -> Self {
+  pub(crate) fn new(source_map: &'a SourceMap, source_path: &'a str) -> Self {
     Self {
       source_map,
       source_path,
@@ -20,7 +20,7 @@ impl<'a> ExternDiagnostic<'a> {
   }
 
   /// The source location of one position, spanning its line alone.
-  pub fn location(&self, position: BytePos) -> ExternSourceLocation {
+  pub(crate) fn location(&self, position: BytePos) -> ExternSourceLocation {
     let location = self.source_map.lookup_char_pos(position);
 
     ExternSourceLocation {
@@ -32,7 +32,7 @@ impl<'a> ExternDiagnostic<'a> {
   }
 
   /// The source location of a span, covering every line of it.
-  pub fn span_location(&self, span: Span) -> ExternSourceLocation {
+  pub(crate) fn span_location(&self, span: Span) -> ExternSourceLocation {
     ExternSourceLocation {
       end_line: self.source_map.lookup_char_pos(span.hi).line,
       ..self.location(span.lo)
@@ -40,7 +40,7 @@ impl<'a> ExternDiagnostic<'a> {
   }
 
   /// A declaration that cannot be read, placed where it goes wrong.
-  pub fn invalid_at(&self, position: BytePos, reason: &str) -> XrfError {
+  pub(crate) fn invalid_at(&self, position: BytePos, reason: &str) -> XrfError {
     XrfError::new_invalid_error(format!(
       "Invalid extern declaration at {}: {reason}.",
       self.location(position)
@@ -48,7 +48,7 @@ impl<'a> ExternDiagnostic<'a> {
   }
 
   /// A value no stable contract can be read from, with what to write instead.
-  pub fn invalid_value(&self, value: &Expr, export_name: &str) -> XrfError {
+  pub(crate) fn invalid_value(&self, value: &Expr, export_name: &str) -> XrfError {
     let expression: String = self
       .source_map
       .span_to_snippet(value.span())
@@ -68,11 +68,11 @@ impl<'a> ExternDiagnostic<'a> {
     self.invalid_at(value.span().lo, &reason)
   }
 
-  pub fn get_source_map(&self) -> &'a SourceMap {
+  pub(crate) fn get_source_map(&self) -> &'a SourceMap {
     self.source_map
   }
 
-  pub fn get_source_path(&self) -> &'a str {
+  pub(crate) fn get_source_path(&self) -> &'a str {
     self.source_path
   }
 }

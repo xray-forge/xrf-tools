@@ -1,7 +1,7 @@
 /// One of the grass's swings (`CDetailManager::swing_desc`): each wave's amplitude, the seconds each wind takes to turn
 /// once, and how fast the waves run.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct GrassSwing {
+pub(crate) struct GrassSwing {
   pub amp1: f32,
   pub amp2: f32,
   pub rot1: f32,
@@ -11,7 +11,7 @@ pub struct GrassSwing {
 
 impl GrassSwing {
   /// `system.ltx`'s `[details]` normal swing.
-  pub const NORMAL: Self = Self {
+  pub(crate) const NORMAL: Self = Self {
     amp1: 0.1,
     amp2: 0.05,
     rot1: 30.0,
@@ -20,7 +20,7 @@ impl GrassSwing {
   };
 
   /// Its fast swing.
-  pub const FAST: Self = Self {
+  pub(crate) const FAST: Self = Self {
     amp1: 0.35,
     amp2: 0.2,
     rot1: 5.0,
@@ -29,7 +29,7 @@ impl GrassSwing {
   };
 
   /// `swing_current.lerp`: between this and another by a share.
-  pub fn mix(&self, other: &Self, by: f32) -> Self {
+  pub(crate) fn mix(&self, other: &Self, by: f32) -> Self {
     let lerp = |from: f32, to: f32| from + (to - from) * by;
 
     Self {

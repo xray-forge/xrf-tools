@@ -7,7 +7,7 @@ use crate::scene::static_scene::surface::build::static_terrain_slots::StaticTerr
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Surface")]
-pub struct StaticSurface {
+pub(crate) struct StaticSurface {
   /// Times every texture repeats across the base coordinate.
   pub tiling: f32,
   /// Times the detail texture repeats per base repeat.
@@ -30,72 +30,72 @@ pub struct StaticSurface {
 }
 
 impl StaticSurface {
-  pub const HAS_BASE: u32 = 1;
-  pub const HAS_DETAIL: u32 = 1 << 1;
-  pub const HAS_BUMP: u32 = 1 << 2;
-  pub const HAS_DETAIL_BUMP: u32 = 1 << 3;
+  pub(crate) const HAS_BASE: u32 = 1;
+  pub(crate) const HAS_DETAIL: u32 = 1 << 1;
+  pub(crate) const HAS_BUMP: u32 = 1 << 2;
+  pub(crate) const HAS_DETAIL_BUMP: u32 = 1 << 3;
   /// A lightmap: hemisphere in alpha and sun in green, at the lightmap coordinate.
-  pub const HAS_HEMI: u32 = 1 << 4;
-  pub const IS_CUT_OUT: u32 = 1 << 5;
+  pub(crate) const HAS_HEMI: u32 = 1 << 4;
+  pub(crate) const IS_CUT_OUT: u32 = 1 << 5;
   /// Water's: one blending over the depth behind it, as `water_soft` and every Anomaly program does.
-  pub const IS_SOFT_WATER: u32 = 1 << 6;
+  pub(crate) const IS_SOFT_WATER: u32 = 1 << 6;
   /// Water drawn by one of Anomaly's programs, and the switches it defines.
-  pub const IS_ANOMALY_WATER: u32 = 1 << 7;
-  pub const IS_REFLECTING: u32 = 1 << 8;
-  pub const IS_SPECULAR: u32 = 1 << 9;
-  pub const IS_TRANSPARENT: u32 = 1 << 10;
-  pub const IS_FOAMED: u32 = 1 << 11;
+  pub(crate) const IS_ANOMALY_WATER: u32 = 1 << 7;
+  pub(crate) const IS_REFLECTING: u32 = 1 << 8;
+  pub(crate) const IS_SPECULAR: u32 = 1 << 9;
+  pub(crate) const IS_TRANSPARENT: u32 = 1 << 10;
+  pub(crate) const IS_FOAMED: u32 = 1 << 11;
   /// Water's normal map, foam and distortion, in the slots a bumped surface binds its detail and bump pair.
-  pub const HAS_WATER_NORMAL: u32 = 1 << 12;
-  pub const HAS_FOAM: u32 = 1 << 13;
-  pub const HAS_DISTORTION: u32 = 1 << 14;
+  pub(crate) const HAS_WATER_NORMAL: u32 = 1 << 12;
+  pub(crate) const HAS_FOAM: u32 = 1 << 13;
+  pub(crate) const HAS_DISTORTION: u32 = 1 << 14;
   /// A composited surface's blend: over what is behind it by its alpha where none is set, added to it (by its alpha
   /// where weighted), or multiplied into it (twice over where doubled).
-  pub const IS_ADDED: u32 = 1 << 15;
-  pub const IS_WEIGHTED: u32 = 1 << 16;
-  pub const IS_MULTIPLIED: u32 = 1 << 17;
-  pub const IS_DOUBLED: u32 = 1 << 18;
+  pub(crate) const IS_ADDED: u32 = 1 << 15;
+  pub(crate) const IS_WEIGHTED: u32 = 1 << 16;
+  pub(crate) const IS_MULTIPLIED: u32 = 1 << 17;
+  pub(crate) const IS_DOUBLED: u32 = 1 << 18;
   /// A spawned model's: a blended one is drawn forward as `model_def_lq` lights it.
-  pub const IS_MODEL: u32 = 1 << 19;
+  pub(crate) const IS_MODEL: u32 = 1 << 19;
   /// An environment-mapped class's, whose blended model is drawn as `model_env_lq` instead.
-  pub const IS_ENVIRONMENT_MAPPED: u32 = 1 << 20;
+  pub(crate) const IS_ENVIRONMENT_MAPPED: u32 = 1 << 20;
   /// An object the level stores as a tree, which `tree_s` draws without the wind.
-  pub const IS_STILL: u32 = 1 << 21;
+  pub(crate) const IS_STILL: u32 = 1 << 21;
   /// A terrain's, which lays four details and their bumps over its base by its mask, and is lit by its base's alpha.
-  pub const IS_TERRAIN: u32 = 1 << 22;
+  pub(crate) const IS_TERRAIN: u32 = 1 << 22;
   /// A self-lit surface's, whose light the sun pass fills as `accum_emissive` does.
-  pub const IS_EMISSIVE: u32 = 1 << 23;
+  pub(crate) const IS_EMISSIVE: u32 = 1 << 23;
   /// A surface casting no shadow, whose script declares no shadow element.
-  pub const IS_SHADOWLESS: u32 = 1 << 24;
+  pub(crate) const IS_SHADOWLESS: u32 = 1 << 24;
   /// A level surface the engines' steep parallax reaches: its base's descriptor asks for parallax, its class is one of
   /// the level's flat or alpha-tested ones (`canUseSteepParallax`), and it binds its bump pair, whose second's alpha is
   /// the height.
-  pub const IS_STEEP: u32 = 1 << 25;
+  pub(crate) const IS_STEEP: u32 = 1 << 25;
   /// A blended level surface's own lightmap, its baked light in colour and the sun's share in alpha, which `lmapE`
   /// lights it by forward, bound in the detail slot a forward pass reads no detail from; a blended level surface
   /// without one is lit by its vertices, as `vert` lights it.
-  pub const HAS_LIGHTMAP: u32 = 1 << 26;
+  pub(crate) const HAS_LIGHTMAP: u32 = 1 << 26;
   /// A composited surface whose script's special pass distorts what is behind it (`models\xwindows`,
   /// `models\xdistort*`), drawn into the distortion target too.
-  pub const IS_DISTORTING: u32 = 1 << 27;
+  pub(crate) const IS_DISTORTING: u32 = 1 << 27;
   /// Glass: a blended surface of one of the engines' glass shaders, which the enhanced glass draws.
-  pub const IS_GLASS: u32 = 1 << 28;
+  pub(crate) const IS_GLASS: u32 = 1 << 28;
   /// A level surface the engines leave flat whose bump pair carries a height in its second's alpha, which the enhanced
   /// parallax marches: an opaque one of the level's flat classes, not steep, not terrain.
-  pub const IS_RELIEF_BUMPED: u32 = 1 << 29;
+  pub(crate) const IS_RELIEF_BUMPED: u32 = 1 << 29;
 
-  pub const BASE: usize = 0;
-  pub const DETAIL: usize = 1;
-  pub const BUMP: usize = 2;
-  pub const BUMP_COMPANION: usize = 3;
-  pub const DETAIL_BUMP: usize = 4;
-  pub const DETAIL_BUMP_COMPANION: usize = 5;
-  pub const HEMI: usize = 6;
+  pub(crate) const BASE: usize = 0;
+  pub(crate) const DETAIL: usize = 1;
+  pub(crate) const BUMP: usize = 2;
+  pub(crate) const BUMP_COMPANION: usize = 3;
+  pub(crate) const DETAIL_BUMP: usize = 4;
+  pub(crate) const DETAIL_BUMP_COMPANION: usize = 5;
+  pub(crate) const HEMI: usize = 6;
   /// An environment-mapped model's cube, in the environment slots rather than the textures'.
-  pub const ENVIRONMENT: usize = 7;
+  pub(crate) const ENVIRONMENT: usize = 7;
   /// A blended level surface's lightmap, in its detail slot.
-  pub const LIGHTMAP: usize = 1;
-  pub const WATER_NORMAL: usize = 1;
-  pub const FOAM: usize = 2;
-  pub const DISTORTION: usize = 3;
+  pub(crate) const LIGHTMAP: usize = 1;
+  pub(crate) const WATER_NORMAL: usize = 1;
+  pub(crate) const FOAM: usize = 2;
+  pub(crate) const DISTORTION: usize = 3;
 }

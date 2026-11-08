@@ -8,7 +8,7 @@ use crate::pass::view::view_binding::ViewBinding;
 
 /// Works out the guides DLSS ray reconstruction reads beside the frame, at the frame's size: each surface's diffuse and
 /// specular albedo, its world normal with its roughness, and how far its reflection ray and its indirect light ray went.
-pub struct RayGuidesPass {
+pub(crate) struct RayGuidesPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   pipeline: PipelineSet<wgpu::RenderPipeline>,
@@ -16,21 +16,21 @@ pub struct RayGuidesPass {
 
 impl RayGuidesPass {
   /// The share of the light around it each surface reflects.
-  pub const SPECULAR_ALBEDO: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+  pub(crate) const SPECULAR_ALBEDO: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
   /// The world normal, and the linear roughness in the fourth channel.
-  pub const NORMALS: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub(crate) const NORMALS: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   /// Metres the reflection ray went, and the indirect light's.
-  pub const HIT_DISTANCE: wgpu::TextureFormat = wgpu::TextureFormat::R16Float;
+  pub(crate) const HIT_DISTANCE: wgpu::TextureFormat = wgpu::TextureFormat::R16Float;
   /// How far a pixel is reconstructed from this frame alone.
-  pub const BIAS: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
+  pub(crate) const BIAS: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
   /// The surface's colour as the frame lights with it: half floats, as a dark leaf's linear channels fall below what
   /// eight bits tell apart.
-  pub const DIFFUSE_ALBEDO: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub(crate) const DIFFUSE_ALBEDO: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+  pub(crate) fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
     let device: &wgpu::Device = source.device;
 
     let layout: wgpu::BindGroupLayout = RayGuidesParameters::create_layout(device);
@@ -44,7 +44,7 @@ impl RayGuidesPass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipeline.refresh(source.cache, || {
       Self::create_pipeline(source, &self.view_layout, &self.layout)
     }) {
@@ -54,7 +54,7 @@ impl RayGuidesPass {
 
   /// Writes the guides DLSS ray reconstruction reads: the specular albedo, the normal with the reflections' roughness,
   /// the specular and the diffuse hit distances, the bias mask, and the diffuse albedo.
-  pub fn record(&self, context: &mut RasterContext<'_>, view: &ViewBinding, parameters: &RayGuidesParameters) {
+  pub(crate) fn record(&self, context: &mut RasterContext<'_>, view: &ViewBinding, parameters: &RayGuidesParameters) {
     context.bind(parameters);
 
     let pass: &mut wgpu::RenderPass<'static> = context.get_pass();

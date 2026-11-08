@@ -13,7 +13,7 @@ use crate::core::command::CommandResult;
 
 /// What one measured invocation cost.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct SampledRun {
+pub(crate) struct SampledRun {
   pub elapsed: Duration,
   pub exit_code: i32,
   /// Largest resident set seen while the process lived, or `None` when it ended before a sample landed.
@@ -32,7 +32,7 @@ impl SampledRun {
   /// # Errors
   ///
   /// Returns an error when the binary cannot be started, or when waiting on it fails.
-  pub fn measure(path: &Path, arguments: &[String]) -> CommandResult<Self> {
+  pub(crate) fn measure(path: &Path, arguments: &[String]) -> CommandResult<Self> {
     // Discarded rather than inherited or piped: inherited streams put the child's logging into this run's, and a pipe
     // nobody drains can fill its buffer and block the very work being timed.
     let mut child: Child = ChildCommand::new(path)

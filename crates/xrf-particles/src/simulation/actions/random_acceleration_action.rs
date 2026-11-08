@@ -12,13 +12,13 @@ pub(crate) struct RandomAccelerationAction {
 }
 
 impl RandomAccelerationAction {
-  pub fn transform(&mut self, matrix: &Mat4) {
+  pub(crate) fn transform(&mut self, matrix: &Mat4) {
     self
       .acceleration
       .transform_direction_from(&self.acceleration_local, matrix);
   }
 
-  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
+  pub(crate) fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
     let (particles, random) = pool.split_mut();
 
     for m in particles {

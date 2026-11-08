@@ -9,7 +9,7 @@ use crate::viewport::viewport_overlays::ViewportOverlays;
 
 /// A viewport taken apart for readying its frame (`RenderViewport::split`): what it is drawn with, read-only, and its
 /// own view, its camera's binding and its capture, which readying writes.
-pub struct ViewportParts<'a> {
+pub(crate) struct ViewportParts<'a> {
   pub options: &'a RenderViewOptions,
   /// What its world gave it this frame.
   pub world: &'a RenderViewFrame,

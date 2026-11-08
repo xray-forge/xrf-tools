@@ -1,39 +1,39 @@
 /// `CRandom`: the Microsoft C runtime's generator, which `drand48` and `NRand` draw from.
 #[derive(Clone, Debug)]
-pub struct ParticleRandom {
+pub(crate) struct ParticleRandom {
   hold: i32,
 }
 
 impl ParticleRandom {
   /// `CRandom::maxI`, the largest number `next_integer` returns.
-  pub const MAX_INTEGER: i32 = 32_767;
+  pub(crate) const MAX_INTEGER: i32 = 32_767;
 
   /// `ONE_OVER_SIGMA_EXP`, `NRand`'s scale from its exponential draw to a unit deviation.
   const ONE_OVER_SIGMA_EXP: f32 = 1.0 / 0.7975;
 
-  pub const fn new(seed: i32) -> Self {
+  pub(crate) const fn new(seed: i32) -> Self {
     Self { hold: seed }
   }
 
   /// `randI()`: the next number in `0..=32767`.
-  pub fn next_integer(&mut self) -> i32 {
+  pub(crate) fn next_integer(&mut self) -> i32 {
     self.hold = self.hold.wrapping_mul(214_013).wrapping_add(2_531_011);
 
     (self.hold >> 16) & Self::MAX_INTEGER
   }
 
   /// `randI(max)`: the next number in `0..max`.
-  pub fn next_below(&mut self, max: i32) -> i32 {
+  pub(crate) fn next_below(&mut self, max: i32) -> i32 {
     self.next_integer() % max
   }
 
   /// `randF()`, `drand48()`: the next fraction in `0..=1`.
-  pub fn next_fraction(&mut self) -> f32 {
+  pub(crate) fn next_fraction(&mut self) -> f32 {
     self.next_integer() as f32 / Self::MAX_INTEGER as f32
   }
 
   /// `NRand(sigma)`: a normally distributed number by rejection from an exponential draw.
-  pub fn next_normal(&mut self, sigma: f32) -> f32 {
+  pub(crate) fn next_normal(&mut self, sigma: f32) -> f32 {
     if sigma == 0.0 {
       return 0.0;
     }

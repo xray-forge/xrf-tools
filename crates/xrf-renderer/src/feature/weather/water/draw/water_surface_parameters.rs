@@ -6,7 +6,7 @@ use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 /// What the engine's water reads beside the scene: the frame's lighting and depth, both skies, and the nearest water.
 #[derive(PassParameters)]
 #[parameters(group = 3)]
-pub struct WaterSurfaceParameters<'a> {
+pub(crate) struct WaterSurfaceParameters<'a> {
   #[uniform]
   pub lighting: UniformBinding<LightingUniform>,
   #[uniform]

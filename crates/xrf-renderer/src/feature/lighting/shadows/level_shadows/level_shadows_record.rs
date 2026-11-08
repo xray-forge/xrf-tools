@@ -46,7 +46,7 @@ impl LevelShadows {
   /// Declares the cascades due this frame and the bands drawn ahead: every one culled into its own lists in one compute
   /// pass, then each cascade drawn into its layer of the maps, whole or over its static layer's copy with what of the
   /// drawable `kinds` moves every frame over those it lands in, and each band into its cascade's hidden static layer.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     record: ViewRecord<'a>,

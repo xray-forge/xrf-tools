@@ -3,5 +3,5 @@
 mod archive_level_lights_description;
 mod archive_level_lights_group;
 
-pub use archive_level_lights_description::ArchiveLevelLightsDescription;
-pub use archive_level_lights_group::ArchiveLevelLightsGroup;
+pub(crate) use archive_level_lights_description::ArchiveLevelLightsDescription;
+pub(crate) use archive_level_lights_group::ArchiveLevelLightsGroup;

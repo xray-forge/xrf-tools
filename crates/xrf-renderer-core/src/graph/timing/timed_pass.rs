@@ -12,7 +12,7 @@ impl TimedPass {
   const SEPARATOR: &'static str = " + ";
 
   /// The name timings and profiles report it by: its passes' names joined.
-  pub fn to_name(&self) -> String {
+  pub(crate) fn to_name(&self) -> String {
     self.passes.join(Self::SEPARATOR)
   }
 }

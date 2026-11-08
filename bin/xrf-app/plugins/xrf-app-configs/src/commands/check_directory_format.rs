@@ -17,7 +17,7 @@ use crate::request::ConfigsFormatRequest;
 /// rewrite.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "check_directory_format")]
-pub async fn configs_check_directory_format(
+pub(crate) async fn configs_check_directory_format(
   execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
   request: ConfigsFormatRequest,

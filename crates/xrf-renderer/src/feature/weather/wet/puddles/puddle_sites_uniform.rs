@@ -10,7 +10,7 @@ use xrf_renderer_core::ShaderStruct;
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "PuddleSites")]
 #[expect(clippy::use_self, reason = "an array length in a field cannot name `Self`")]
-pub struct PuddleSitesUniform {
+pub(crate) struct PuddleSitesUniform {
   pub window: Vec4,
   pub shape: Vec4,
   pub water_window: Vec4,
@@ -19,7 +19,7 @@ pub struct PuddleSitesUniform {
 
 impl PuddleSitesUniform {
   /// Vectors of fires it holds, two a vector.
-  pub const FIRE_PAIRS: usize = 32;
+  pub(crate) const FIRE_PAIRS: usize = 32;
   /// Where an empty fire stands, metres along both axes: further than any site.
-  pub const NO_FIRE: f32 = 1e9;
+  pub(crate) const NO_FIRE: f32 = 1e9;
 }

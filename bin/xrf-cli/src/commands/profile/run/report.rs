@@ -9,7 +9,7 @@ use crate::commands::profile::run::profile_run_binary_report::ProfileRunBinaryRe
 /// than a stopwatch and a note.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ProfileRunReport {
+pub(crate) struct ProfileRunReport {
   /// The argument vector handed to every binary, so a reader never reconstructs it from prose.
   command: Vec<String>,
   rounds: usize,
@@ -19,7 +19,7 @@ pub struct ProfileRunReport {
 }
 
 impl ProfileRunReport {
-  pub fn new(command: Vec<String>, rounds: usize, warmup: usize, binaries: Vec<ProfileRunBinaryReport>) -> Self {
+  pub(crate) fn new(command: Vec<String>, rounds: usize, warmup: usize, binaries: Vec<ProfileRunBinaryReport>) -> Self {
     Self {
       command,
       rounds,

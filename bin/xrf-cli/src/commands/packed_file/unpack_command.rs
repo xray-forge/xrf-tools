@@ -11,7 +11,7 @@ use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 use crate::core::reports::FileConversionReport;
 
 /// Unpacks one file into a folder of text files.
-pub struct UnpackCommand<F>(PhantomData<F>);
+pub(crate) struct UnpackCommand<F>(PhantomData<F>);
 
 impl<F> Default for UnpackCommand<F> {
   fn default() -> Self {

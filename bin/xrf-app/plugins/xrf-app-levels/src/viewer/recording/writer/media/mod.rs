@@ -7,8 +7,8 @@ mod media_session;
 #[cfg(windows)]
 mod media_sink;
 
-pub use media_probe::MediaProbe;
+pub(crate) use media_probe::MediaProbe;
 #[cfg(windows)]
-pub use media_session::MediaSession;
+pub(crate) use media_session::MediaSession;
 #[cfg(windows)]
-pub use media_sink::MediaSink;
+pub(crate) use media_sink::MediaSink;

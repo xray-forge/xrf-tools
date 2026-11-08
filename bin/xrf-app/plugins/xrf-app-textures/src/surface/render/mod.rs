@@ -2,4 +2,4 @@
 
 mod texture_render_source;
 
-pub use texture_render_source::TextureRenderSource;
+pub(crate) use texture_render_source::TextureRenderSource;

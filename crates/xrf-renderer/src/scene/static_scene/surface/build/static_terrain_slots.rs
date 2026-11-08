@@ -5,7 +5,7 @@ use xrf_renderer_core::ShaderStruct;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "TerrainSlots")]
-pub struct StaticTerrainSlots {
+pub(crate) struct StaticTerrainSlots {
   /// The details the mask's red, green, blue and alpha weigh.
   pub details: UVec4,
   /// Their bumps, in the same order.
@@ -18,7 +18,7 @@ pub struct StaticTerrainSlots {
 
 impl StaticTerrainSlots {
   /// Every texture slot it samples: the details, their bumps and heights, and the mask.
-  pub fn iter_slots(&self) -> impl Iterator<Item = u32> + '_ {
+  pub(crate) fn iter_slots(&self) -> impl Iterator<Item = u32> + '_ {
     self
       .details
       .to_array()

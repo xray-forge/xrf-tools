@@ -18,7 +18,7 @@ type ResolvedSection = BTreeMap<Arc<str>, DltxItem>;
 ///
 /// A depth-first walk with a memo, matching `EvaluateSection`: parents first, then the section's own base merged with
 /// its overrides, then list operations, then section deletions.
-pub struct DltxResolver<'a> {
+pub(crate) struct DltxResolver<'a> {
   /// What the load pass recorded, which this walk decides but never changes.
   loaded: &'a DltxLoadResult,
   resolved: HashMap<Arc<str>, ResolvedSection>,
@@ -39,7 +39,7 @@ pub struct DltxResolver<'a> {
 }
 
 impl<'a> DltxResolver<'a> {
-  pub fn new(loaded: &'a DltxLoadResult) -> Self {
+  pub(crate) fn new(loaded: &'a DltxLoadResult) -> Self {
     Self {
       deleted_fields: HashMap::new(),
       diagnostics: Vec::new(),
@@ -58,7 +58,7 @@ impl<'a> DltxResolver<'a> {
   ///
   /// Off by default because it is not free: an origin is one entry per resolved field, which on an Anomaly
   /// `system.ltx` is 527,000 of them, and a sweep that only wants values reads none of it.
-  pub fn with_provenance(mut self, is_recording: bool) -> Self {
+  pub(crate) fn with_provenance(mut self, is_recording: bool) -> Self {
     self.is_recording_provenance = is_recording;
 
     self
@@ -72,7 +72,7 @@ impl<'a> DltxResolver<'a> {
   /// # Errors
   ///
   /// Returns an error for anything the engine would refuse to start on, which is an inheritance cycle here.
-  pub fn resolve_all(mut self) -> XrfResult<DltxResolveResult> {
+  pub(crate) fn resolve_all(mut self) -> XrfResult<DltxResolveResult> {
     for section in self.loaded.base.keys().cloned().collect::<Vec<String>>() {
       self.resolve_section(&section)?;
     }

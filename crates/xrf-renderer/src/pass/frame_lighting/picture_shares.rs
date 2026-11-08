@@ -24,7 +24,7 @@ use crate::pass::frame_lighting::lighting_frame::LightingFrame;
 /// pre-exposure (`is_pre_exposed`), a frame's exposure snapping ahead of its read-back copy (the first frame, a cut)
 /// cannot carry the sky with it for the frames until the copy is back.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct PictureShares {
+pub(crate) struct PictureShares {
   pub share: f32,
   /// Whether the share is of the pre-exposure rather than of the frame's exposure.
   pub is_pre_exposed: bool,
@@ -32,13 +32,13 @@ pub struct PictureShares {
 
 impl PictureShares {
   /// The whole exposure, under the engine's light and wherever nothing has been metered.
-  pub const WHOLE: Self = Self {
+  pub(crate) const WHOLE: Self = Self {
     share: 1.0,
     is_pre_exposed: false,
   };
 
   /// The share for a view's `options`, the weather's `lighting` and what its `frame` metered.
-  pub fn of(options: &RenderViewOptions, lighting: &RenderLighting, frame: &LightingFrame) -> Self {
+  pub(crate) fn of(options: &RenderViewOptions, lighting: &RenderLighting, frame: &LightingFrame) -> Self {
     if !options.is_light_physical() {
       return Self::WHOLE;
     }
@@ -64,7 +64,7 @@ impl PictureShares {
   }
 
   /// As `LightingUniform::pictures` holds it: the share, then one where it is of the pre-exposure.
-  pub fn to_vec4(self) -> Vec4 {
+  pub(crate) fn to_vec4(self) -> Vec4 {
     Vec4::new(self.share, f32::from(u8::from(self.is_pre_exposed)), 0.0, 0.0)
   }
 }

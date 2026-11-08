@@ -14,7 +14,7 @@ use crate::pass::view::view_binding::ViewBinding;
 /// writes its visibility, for its accumulation and filter, under DLSS ray reconstruction too: a ray or few a point
 /// multiplied straight into the frame are not a signal it reconstructs, and left dotted the frame. Nothing traces on a
 /// device without ray queries.
-pub struct RtaoPass {
+pub(crate) struct RtaoPass {
   view_layout: wgpu::BindGroupLayout,
   /// The search's, the trace's and the texture cache's layouts, on a device with ray queries.
   layouts: Option<[wgpu::BindGroupLayout; 3]>,
@@ -32,7 +32,7 @@ impl RtaoPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(
+  pub(crate) fn new(
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
@@ -59,7 +59,7 @@ impl RtaoPass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipeline.refresh(source.cache, || {
       Self::create_pipelines(source, &self.view_layout, self.layouts.as_ref())
     }) {
@@ -68,7 +68,7 @@ impl RtaoPass {
   }
 
   /// Traces the frame's points into the target the pass draws into, as many rays a point as the uniform says.
-  pub fn record(
+  pub(crate) fn record(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,

@@ -8,7 +8,7 @@ use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 /// the sun's shadow cascades.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 3)]
-pub struct CompositedParameters<'a> {
+pub(crate) struct CompositedParameters<'a> {
   #[uniform]
   pub lighting: UniformBinding<LightingUniform>,
   #[storage]

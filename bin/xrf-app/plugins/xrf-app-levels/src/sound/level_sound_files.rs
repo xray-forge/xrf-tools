@@ -6,13 +6,13 @@ use xrf_world::{WorldSound, WorldSoundInfo};
 
 /// The sounds a level's reads name, each file's headers read once through the level's search for what the engine reads
 /// of it as it loads a sound: its length, its channels and its source parameters.
-pub struct LevelSoundFiles<'a> {
+pub(crate) struct LevelSoundFiles<'a> {
   search: &'a XraySearch,
   read: HashMap<String, Option<WorldSoundInfo>>,
 }
 
 impl<'a> LevelSoundFiles<'a> {
-  pub fn new(search: &'a XraySearch) -> Self {
+  pub(crate) fn new(search: &'a XraySearch) -> Self {
     Self {
       search,
       read: HashMap::new(),
@@ -20,12 +20,12 @@ impl<'a> LevelSoundFiles<'a> {
   }
 
   /// Where the engine finds a sound by its reference: `$game_sounds$`, as an Ogg file.
-  pub fn to_path(reference: &str) -> String {
+  pub(crate) fn to_path(reference: &str) -> String {
     format!("sounds\\{}.ogg", reference.trim())
   }
 
   /// The sound `reference` names, with what its file says, none where it is missing or not a sound the engine loads.
-  pub fn get(&mut self, reference: &str) -> WorldSound {
+  pub(crate) fn get(&mut self, reference: &str) -> WorldSound {
     let reference: &str = reference.trim();
     let info: Option<WorldSoundInfo> = match self.read.get(reference) {
       Some(info) => *info,

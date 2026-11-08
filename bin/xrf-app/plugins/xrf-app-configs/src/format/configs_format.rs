@@ -6,7 +6,7 @@ use xrf_utils::error_to_string;
 use xrf_vfs::{XrayRoots, XraySearch, XrayTransaction};
 
 /// Formatting the configs a set of roots holds, or checking that they are formatted.
-pub struct ConfigsFormat;
+pub(crate) struct ConfigsFormat;
 
 impl ConfigsFormat {
   /// Formats the configs `roots` hold below `prefix` and commits every rewrite as one change of the shared snapshot, all
@@ -17,7 +17,7 @@ impl ConfigsFormat {
   ///
   /// Returns an error, with nothing written, when the roots cannot be mounted, a config is archived, cannot be read or
   /// will not parse, or the rewrite cannot be committed.
-  pub fn format(
+  pub(crate) fn format(
     assets: &AssetMountState,
     roots: &XrayRoots,
     prefix: Option<&str>,
@@ -46,7 +46,7 @@ impl ConfigsFormat {
   /// # Errors
   ///
   /// Returns an error when the roots cannot be mounted, or a config cannot be read or will not parse.
-  pub fn check(
+  pub(crate) fn check(
     roots: &XrayRoots,
     prefix: Option<&str>,
     options: LtxFormatOptions,

@@ -31,7 +31,7 @@ const MODEL_ROW_CLUSTERS: usize = 32;
 /// A level's static geometry on the GPU, as sectors, spawned models and the objects standing as them are added and
 /// removed: the geometry's buffers each item takes ranges of, the surfaces every item shares, what a frame's culls
 /// write into, and the items themselves, found by handle.
-pub struct StaticScene {
+pub(crate) struct StaticScene {
   pub geometry: StaticGeometry,
   pub surfaces: StaticSurfaces,
   pub cull: StaticCullScratch,
@@ -57,7 +57,7 @@ impl StaticScene {
   /// Where an item standing nowhere of its own changes the scene: no sphere reaches it.
   const NOWHERE: Vec4 = Vec4::new(0.0, 0.0, 0.0, -1.0);
 
-  pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
     Self {
       geometry: StaticGeometry::new(device, queue),
       surfaces: StaticSurfaces::new(device, queue),
@@ -74,7 +74,7 @@ impl StaticScene {
   }
 
   /// How full the scene's pools are: what a report of its static draws starts from.
-  pub fn get_pools(&self) -> RenderStaticReport {
+  pub(crate) fn get_pools(&self) -> RenderStaticReport {
     RenderStaticReport {
       surface_list: RenderPoolUse {
         used: 0,
@@ -86,7 +86,12 @@ impl StaticScene {
 
   /// Stands a skinned object in a pose: each bone's matrix as three rows, from its bind to where it stands, this frame
   /// and the last, as many as its model has bones each; written with the scene's other changes.
-  pub fn write_pose(&mut self, handle: ProxyHandle<StaticObjectProxy>, current: &[[Vec4; 3]], previous: &[[Vec4; 3]]) {
+  pub(crate) fn write_pose(
+    &mut self,
+    handle: ProxyHandle<StaticObjectProxy>,
+    current: &[[Vec4; 3]],
+    previous: &[[Vec4; 3]],
+  ) {
     let Some((span, bones)) = self.objects.get(handle).and_then(|object| object.bones.as_ref()) else {
       return;
     };
@@ -105,13 +110,13 @@ impl StaticScene {
   }
 
   /// Whether the device traces rays, so the vertices and indices are acceleration structures' input.
-  pub fn is_traced(&self) -> bool {
+  pub(crate) fn is_traced(&self) -> bool {
     self.geometry.is_traced()
   }
 
   /// Every sector in the scene with its deferred baked sections and instanced meshes, which the level's acceleration
   /// structures take.
-  pub fn list_trace_sectors(&self) -> impl Iterator<Item = (u32, &[StaticTraceGeometry], &[StaticTraceGroup])> {
+  pub(crate) fn list_trace_sectors(&self) -> impl Iterator<Item = (u32, &[StaticTraceGeometry], &[StaticTraceGroup])> {
     self.sectors.iter().map(|(_, sector)| {
       (
         sector.sector,
@@ -123,7 +128,9 @@ impl StaticScene {
 
   /// Every spawned model the scene's objects stand as that the level's acceleration structures take, with its traced
   /// parts.
-  pub fn list_trace_models(&self) -> impl Iterator<Item = (ProxyHandle<StaticModelProxy>, &[StaticTraceGeometry])> {
+  pub(crate) fn list_trace_models(
+    &self,
+  ) -> impl Iterator<Item = (ProxyHandle<StaticModelProxy>, &[StaticTraceGeometry])> {
     self
       .models
       .iter()
@@ -132,7 +139,7 @@ impl StaticScene {
   }
 
   /// Every spawned object standing as a traced model: its model, its place and its transform.
-  pub fn list_trace_objects(&self) -> impl Iterator<Item = (ProxyHandle<StaticModelProxy>, u32, &Mat4)> {
+  pub(crate) fn list_trace_objects(&self) -> impl Iterator<Item = (ProxyHandle<StaticModelProxy>, u32, &Mat4)> {
     self
       .objects
       .iter()
@@ -146,13 +153,13 @@ impl StaticScene {
   }
 
   /// Items added and removed so far: what a cache notes it was drawn with, and asks `is_changed_since` about.
-  pub fn get_contents(&self) -> usize {
+  pub(crate) fn get_contents(&self) -> usize {
     self.contents
   }
 
   /// Whether an item added or removed since the scene held `since` changes stands where `touches` says a sphere in the
   /// world reaches what a cache holds; anything did where the log no longer reaches back that far.
-  pub fn is_changed_since(&self, since: usize, touches: impl Fn(Vec4) -> bool) -> bool {
+  pub(crate) fn is_changed_since(&self, since: usize, touches: impl Fn(Vec4) -> bool) -> bool {
     if since >= self.contents {
       return false;
     }
@@ -180,19 +187,19 @@ impl StaticScene {
   }
 
   /// Uploads what was added, changed and removed since the last frame, and readies the culls' buffers for the frame.
-  pub fn prepare_draws(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, encoder: &mut FrameEncoder) {
+  pub(crate) fn prepare_draws(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, encoder: &mut FrameEncoder) {
     self.geometry.flush(device, queue);
     self.cull.prepare(encoder);
   }
 
   /// The bounding sphere of every place that sways, and how far it reaches from its foot, weighted by its rigidity.
-  pub fn list_swaying(&self) -> &[(Vec4, f32)] {
+  pub(crate) fn list_swaying(&self) -> &[(Vec4, f32)] {
     &self.swaying
   }
 
   /// How far along `direction`, normalized, the level's sectors stand: the nearest and the farthest any reaches, none
   /// while it holds no sector.
-  pub fn get_span(&self, direction: Vec3) -> Option<(f32, f32)> {
+  pub(crate) fn get_span(&self, direction: Vec3) -> Option<(f32, f32)> {
     self
       .sectors
       .as_slice()
@@ -206,12 +213,12 @@ impl StaticScene {
   }
 
   /// What the wind's amplitude is multiplied by to give the farthest any tree leans, in metres.
-  pub fn get_sway_reach(&self) -> f32 {
+  pub(crate) fn get_sway_reach(&self) -> f32 {
     self.sway_reach
   }
 
   /// What of the scene drawn by passes of its own may be seen through a view's `frustum`.
-  pub fn get_sight(&self, frustum: &CameraFrustum) -> StaticSight {
+  pub(crate) fn get_sight(&self, frustum: &CameraFrustum) -> StaticSight {
     let mut seen: StaticSight = StaticSight::default();
 
     for (sphere, sight) in self.list_sights() {
@@ -229,7 +236,7 @@ impl StaticScene {
 
   /// The spheres about the sectors' slots and the objects that bring what `is_wanted` asks for into sight, of those that
   /// stand within a view's `frustum`.
-  pub fn list_seen_spheres<'s>(
+  pub(crate) fn list_seen_spheres<'s>(
     &'s self,
     frustum: &'s CameraFrustum,
     is_wanted: impl Fn(StaticSight) -> bool + 's,
@@ -259,7 +266,7 @@ impl StaticScene {
 
   /// The spawned objects with composited surfaces and the level's strictly sorted composited runs, which a view draws
   /// back to front itself.
-  pub fn list_sorted_places(&self) -> impl Iterator<Item = StaticSortedPlace<'_>> {
+  pub(crate) fn list_sorted_places(&self) -> impl Iterator<Item = StaticSortedPlace<'_>> {
     let objects = self.objects.as_slice().iter().filter_map(|object| {
       let model: &StaticModelProxy = self.models.get(object.model)?;
 

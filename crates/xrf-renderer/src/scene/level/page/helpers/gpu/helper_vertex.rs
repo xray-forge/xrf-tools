@@ -2,7 +2,7 @@
 /// it fades and how strongly it shows hidden, and the id a pick of it answers.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct HelperVertex {
+pub(crate) struct HelperVertex {
   pub position: [f32; 3],
   /// sRGB, then how its object is singled out: [`Self::SELECTED`], [`Self::HOVERED`], [`Self::SOUNDING`] or nought.
   pub color: [f32; 4],
@@ -14,20 +14,20 @@ pub struct HelperVertex {
 
 impl HelperVertex {
   /// Bytes a vertex takes.
-  pub const SIZE: u64 = size_of::<Self>() as u64;
+  pub(crate) const SIZE: u64 = size_of::<Self>() as u64;
 
   /// The colour's last channel for an object selected, for one hovered and for one whose sound plays, which `fs_helper`
   /// lifts toward white by; a sounding one still fades with distance.
-  pub const SELECTED: f32 = 1.0;
-  pub const HOVERED: f32 = 0.5;
-  pub const SOUNDING: f32 = 0.75;
+  pub(crate) const SELECTED: f32 = 1.0;
+  pub(crate) const HOVERED: f32 = 0.5;
+  pub(crate) const SOUNDING: f32 = 0.75;
 
   /// The vertex attributes, by location: position, colour, fade, object.
-  pub const ATTRIBUTES: [wgpu::VertexAttribute; 4] =
+  pub(crate) const ATTRIBUTES: [wgpu::VertexAttribute; 4] =
     wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4, 2 => Float32x2, 3 => Uint32];
 
   /// A segment's two ends read as one instance: the first end's position and object, then the second end's position.
-  pub const SEGMENT_ATTRIBUTES: [wgpu::VertexAttribute; 3] = [
+  pub(crate) const SEGMENT_ATTRIBUTES: [wgpu::VertexAttribute; 3] = [
     wgpu::VertexAttribute {
       format: wgpu::VertexFormat::Float32x3,
       offset: 0,

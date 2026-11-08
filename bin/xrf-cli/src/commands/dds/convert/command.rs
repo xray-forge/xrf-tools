@@ -11,7 +11,7 @@ use crate::commands::dds::dds_encode_arguments::DdsEncodeArguments;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct ConvertCommand;
+pub(crate) struct ConvertCommand;
 
 impl GenericCommand for ConvertCommand {
   fn operation(&self) -> &'static str {

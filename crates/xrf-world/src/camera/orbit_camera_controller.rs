@@ -47,7 +47,7 @@ impl OrbitDrag {
 /// A camera orbiting a target: the main button turns it around the target, the others pan, and the wheel dollies; with
 /// Alt, the main button turns, the secondary dollies and the auxiliary pans.
 #[derive(Clone, Debug)]
-pub struct OrbitCameraController {
+pub(crate) struct OrbitCameraController {
   description: WorldCamera,
   position: Vec3,
   target: Vec3,
@@ -71,7 +71,7 @@ impl Default for OrbitCameraController {
 }
 
 impl OrbitCameraController {
-  pub fn new(description: WorldCamera) -> Self {
+  pub(crate) fn new(description: WorldCamera) -> Self {
     let (position, target) = description.get_start();
 
     Self {
@@ -85,7 +85,7 @@ impl OrbitCameraController {
   }
 
   /// Takes a new description, answering whether the camera jumped to its start rather than keeping where it stands.
-  pub fn describe(&mut self, description: WorldCamera) -> bool {
+  pub(crate) fn describe(&mut self, description: WorldCamera) -> bool {
     let is_moved: bool = description.get_start() != self.description.get_start();
 
     self.description = description;
@@ -97,7 +97,7 @@ impl OrbitCameraController {
     is_moved
   }
 
-  pub fn command(&mut self, command: WorldCameraCommand) {
+  pub(crate) fn command(&mut self, command: WorldCameraCommand) {
     match command {
       WorldCameraCommand::Reset => self.reset(),
       WorldCameraCommand::Dolly { step } => self.dolly(step),
@@ -105,11 +105,11 @@ impl OrbitCameraController {
   }
 
   /// The viewport's height in CSS pixels, against which drags are measured.
-  pub fn resize(&mut self, height: f32) {
+  pub(crate) fn resize(&mut self, height: f32) {
     self.height = height.max(1.0);
   }
 
-  pub fn input(&mut self, event: &WorldInputEvent) {
+  pub(crate) fn input(&mut self, event: &WorldInputEvent) {
     match event {
       WorldInputEvent::DragStart { buttons, modifiers } => {
         self.modifiers = *modifiers;
@@ -139,9 +139,9 @@ impl OrbitCameraController {
     }
   }
 
-  pub fn update(&mut self, _delta: Duration) {}
+  pub(crate) fn update(&mut self, _delta: Duration) {}
 
-  pub fn get_pose(&self) -> WorldCameraPose {
+  pub(crate) fn get_pose(&self) -> WorldCameraPose {
     WorldCameraPose {
       position: self.position.to_array(),
       target: self.target.to_array(),
@@ -149,7 +149,7 @@ impl OrbitCameraController {
   }
 
   /// Where it stands and what its lens is this frame.
-  pub fn get_frame(&self) -> CameraFrame {
+  pub(crate) fn get_frame(&self) -> CameraFrame {
     let (field_of_view, near, far) = self.description.get_lens();
 
     CameraFrame {

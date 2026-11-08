@@ -7,7 +7,7 @@ use crate::feature::lighting::bitmask::vbao::vbao_uniform::VbaoUniform;
 /// material and light, the light copied for the search, the stage before's light and the last frame's.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct VbaoParameters {
+pub(crate) struct VbaoParameters {
   #[texture(d2, unfilterable)]
   pub normal_target: GraphTexture,
   #[texture(d2, depth)]

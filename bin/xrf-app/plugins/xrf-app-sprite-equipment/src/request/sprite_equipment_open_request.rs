@@ -7,7 +7,7 @@ use crate::EquipmentSpriteOpen;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub struct SpriteEquipmentOpenRequest {
+pub(crate) struct SpriteEquipmentOpenRequest {
   pub session_id: SessionId,
   /// What to read, which the opened document keeps so a reload can repeat it.
   #[serde(flatten)]

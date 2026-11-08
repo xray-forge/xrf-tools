@@ -5,7 +5,7 @@ use xrf_renderer_core::ShaderStruct;
 /// in renderer space, its colour, its texture coordinate and the surface its effect draws with.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
-pub struct ParticleVertex {
+pub(crate) struct ParticleVertex {
   pub position: Vec3,
   /// Red, green, blue and alpha bytes, red lowest, as `unpack4x8unorm` reads them.
   pub color: u32,
@@ -17,5 +17,5 @@ pub struct ParticleVertex {
 
 impl ParticleVertex {
   /// Corners a quad writes, which `QuadIB` draws as two triangles.
-  pub const CORNERS: u32 = 4;
+  pub(crate) const CORNERS: u32 = 4;
 }

@@ -8,10 +8,10 @@ mod configs_projects;
 mod configs_resolved_root;
 mod opened_configs_project;
 
-pub use configs_declaration_search::ConfigsDeclarationSearch;
-pub use configs_document::ConfigsDocument;
-pub use configs_project::ConfigsProject;
-pub use configs_project_descriptor::ConfigsProjectDescriptor;
+pub(crate) use configs_declaration_search::ConfigsDeclarationSearch;
+pub(crate) use configs_document::ConfigsDocument;
+pub(crate) use configs_project::ConfigsProject;
+pub(crate) use configs_project_descriptor::ConfigsProjectDescriptor;
 pub use configs_projects::ConfigsProjects;
-pub use configs_resolved_root::ConfigsResolvedRoot;
-pub use opened_configs_project::OpenedConfigsProject;
+pub(crate) use configs_resolved_root::ConfigsResolvedRoot;
+pub(crate) use opened_configs_project::OpenedConfigsProject;

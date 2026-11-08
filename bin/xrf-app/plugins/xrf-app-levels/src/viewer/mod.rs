@@ -11,7 +11,7 @@ pub(crate) mod map;
 pub(crate) mod recording;
 pub(crate) mod routes;
 
-pub use capture::{
+pub(crate) use capture::{
   LevelViewerReport, ScreenshotSaveRequest, ViewerAssembly, ViewerCaptureJob, ViewerDdsExport, ViewerImage,
 };
-pub use folder::LevelViewerFolder;
+pub(crate) use folder::LevelViewerFolder;

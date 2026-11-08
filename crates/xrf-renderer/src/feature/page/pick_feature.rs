@@ -22,7 +22,7 @@ use crate::scene::level::page::helpers::gpu::helper_vertex::HelperVertex;
 /// camera the frame's visible clusters and its helpers' wires and icons are drawn again through, both made on the first
 /// pick.
 #[derive(Default)]
-pub struct PickFeature {
+pub(crate) struct PickFeature {
   target: Option<PickTarget>,
   view: Option<ViewBinding>,
   /// The layout the narrowed camera binds by, which the wires' and icons' pipelines are made with.
@@ -32,7 +32,7 @@ pub struct PickFeature {
 impl PickFeature {
   /// Readies a pick's `camera` and target, and answers the readback it will be copied into; none while every readback
   /// is on its way.
-  pub fn ready(
+  pub(crate) fn ready(
     &mut self,
     device: &wgpu::Device,
     encoder: &mut FrameEncoder,
@@ -56,7 +56,7 @@ impl PickFeature {
   /// Adds a pick into its readback slot: the frame's visible clusters drawn again into its texel, through its narrowed
   /// camera, after every cull of the frame, passing the composited surfaces by where it is through, then the helpers'
   /// wires wide and icons whole over them; then the texel copied out into its readback.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
     bindings: &mut GraphBindings<'a>,
@@ -199,14 +199,14 @@ impl PickFeature {
   }
 
   /// Asks for a pick's texel back, its frame just submitted.
-  pub fn request(&self, slot: usize) {
+  pub(crate) fn request(&self, slot: usize) {
     if let Some(target) = &self.target {
       target.request(slot);
     }
   }
 
   /// A pick's texel once it is back; a view made since the pick has no readback for it, and it met nothing still drawn.
-  pub fn take(&self, slot: usize) -> Option<XrfResult<[u32; 4]>> {
+  pub(crate) fn take(&self, slot: usize) -> Option<XrfResult<[u32; 4]>> {
     match &self.target {
       Some(target) => target.take(slot),
       None => Some(Ok([0; 4])),
@@ -214,7 +214,7 @@ impl PickFeature {
   }
 
   /// Drops the pick a frame that was never submitted copied out.
-  pub fn abandon(&self) {
+  pub(crate) fn abandon(&self) {
     if let Some(target) = &self.target {
       target.abandon();
     }

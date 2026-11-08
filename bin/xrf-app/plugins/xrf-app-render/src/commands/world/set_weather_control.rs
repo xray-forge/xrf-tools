@@ -7,7 +7,7 @@ use crate::WorldState;
 /// Set how a viewport's weather clock runs.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "set_weather_control")]
-pub fn render_set_weather_control(
+pub(crate) fn render_set_weather_control(
   world: State<'_, WorldState>,
   viewport: RenderViewportId,
   control: WorldWeatherControl,

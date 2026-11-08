@@ -6,7 +6,7 @@ use xrf_visual::{VisualPackage, VisualRestPose};
 use crate::parts::LevelTextureReference;
 
 /// A visual a spawned object stands as: packed, posed as it stands still, and dressed.
-pub struct LevelSpawnVisual {
+pub(crate) struct LevelSpawnVisual {
   pub package: VisualPackage,
   /// Its bones as the object stands: the `idle` cycle's first frame, or the bind pose; `None` for a visual without
   /// bones.

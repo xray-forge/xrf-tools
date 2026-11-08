@@ -3,7 +3,7 @@ use xrf_renderer_core::{GraphTexture, PassParameters};
 /// What reducing the depth into the pyramid's first level reads and writes.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 0)]
-pub struct PyramidDepthParameters {
+pub(crate) struct PyramidDepthParameters {
   #[texture(d2, depth)]
   pub source_depth: GraphTexture,
   #[binding(2)]

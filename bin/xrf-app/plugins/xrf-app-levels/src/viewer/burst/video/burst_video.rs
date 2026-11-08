@@ -19,7 +19,7 @@ use crate::viewer::recording::writer::{RecordFormat, RecordSample, RecordSoundFo
 /// it, so each frame plays with what its camera heard. The writer waits on neither: the sound comes seconds behind the
 /// frames where a level's walls take that long to build, and is put in before each frame as far as it has come. A
 /// frame of an odd size loses its last column or row, which H.264 does not take.
-pub struct BurstVideo {
+pub(crate) struct BurstVideo {
   file: PathBuf,
   step: f64,
   /// The sound's way in, kept for the sound until it takes it, and what it sends.
@@ -34,14 +34,14 @@ pub struct BurstVideo {
 
 impl BurstVideo {
   /// The video's file in the burst's folder.
-  pub const FILE: &'static str = "burst.mp4";
+  pub(crate) const FILE: &'static str = "burst.mp4";
 
   /// A video of `burst`'s frames into `folder`, where `probe` finds what writes one.
   ///
   /// # Errors
   ///
   /// Returns why no video can be written here: the probe's answer.
-  pub fn new(burst: &RenderBurst, probe: &MediaProbe, folder: &Path) -> TauriResult<Self> {
+  pub(crate) fn new(burst: &RenderBurst, probe: &MediaProbe, folder: &Path) -> TauriResult<Self> {
     probe.load()?;
 
     let (sound, heard) = channel();
@@ -60,7 +60,7 @@ impl BurstVideo {
 
   /// Where the burst's sound sends what it renders, taken once; a video whose sound is not taken before its first frame
   /// is silent.
-  pub fn take_sound(&mut self) -> Option<Sender<BurstSoundChunk>> {
+  pub(crate) fn take_sound(&mut self) -> Option<Sender<BurstSoundChunk>> {
     let sound: Option<Sender<BurstSoundChunk>> = self.sound.take();
 
     self.is_heard |= sound.is_some();
@@ -74,7 +74,7 @@ impl BurstVideo {
   /// # Errors
   ///
   /// Returns an error when the frame is too small or differs in size from the first, or the video cannot be written.
-  pub fn write_frame(&mut self, index: u32, picture: &RgbaImage) -> TauriResult {
+  pub(crate) fn write_frame(&mut self, index: u32, picture: &RgbaImage) -> TauriResult {
     #[cfg(windows)]
     {
       self.write_frame_windows(index, picture)
@@ -93,7 +93,7 @@ impl BurstVideo {
   /// # Errors
   ///
   /// Returns an error when no frame came, or the video cannot be finished.
-  pub fn finish(self) -> TauriResult<BurstVideoOutcome> {
+  pub(crate) fn finish(self) -> TauriResult<BurstVideoOutcome> {
     #[cfg(windows)]
     {
       self.finish_windows()

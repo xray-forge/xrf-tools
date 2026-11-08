@@ -12,7 +12,7 @@ use crate::scene::static_scene::item::object::static_object_box::StaticObjectBox
 /// A level's helpers as wires and icons: each helped object, its segments and the icons it stands in renderer space,
 /// built once a set is read, which every view of the scene draws from.
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct LevelHelpers {
+pub(crate) struct LevelHelpers {
   /// Moved on with every set read, so a view builds its wires again.
   pub version: u64,
   /// By id, ascending.
@@ -28,7 +28,7 @@ impl LevelHelpers {
   const CIRCLE_SEGMENTS: usize = 32;
 
   /// The wires and icons of `helpers`, numbered `version`.
-  pub fn new(helpers: RenderLevelHelpers, version: u64) -> Self {
+  pub(crate) fn new(helpers: RenderLevelHelpers, version: u64) -> Self {
     let mut segments: Vec<[Vec3; 2]> = Vec::new();
     let mut icons: Vec<LevelHelperIcon> = Vec::new();
     let mut objects: Vec<LevelHelperObject> = helpers
@@ -76,7 +76,7 @@ impl LevelHelpers {
   }
 
   /// The helped object of `id`, if the scene has it.
-  pub fn find(&self, id: u32) -> Option<&LevelHelperObject> {
+  pub(crate) fn find(&self, id: u32) -> Option<&LevelHelperObject> {
     self
       .objects
       .binary_search_by_key(&id, |object| object.id)

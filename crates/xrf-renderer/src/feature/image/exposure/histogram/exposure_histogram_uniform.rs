@@ -15,7 +15,7 @@ use crate::lighting::unit::light_unit::PHYSICAL_LIGHT_UNIT;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "ExposureHistogram")]
-pub struct ExposureHistogramUniform {
+pub(crate) struct ExposureHistogramUniform {
   pub least_log: f32,
   pub span_log: f32,
   pub aim: f32,
@@ -48,55 +48,55 @@ pub struct ExposureHistogramUniform {
 
 impl ExposureHistogramUniform {
   /// Bins the frame's log2 luminance is counted in.
-  pub const BINS: u32 = 128;
+  pub(crate) const BINS: u32 = 128;
   /// The bins' slots after the histogram's: the engine meter's sum and its count.
-  pub const ENGINE_SLOTS: u32 = 2;
+  pub(crate) const ENGINE_SLOTS: u32 = 2;
   /// The share of the frame under its bright end, which the display transforms never show brighter than the engine's
   /// curve does (`DisplayMode::get_lift`): the brightest few of what is lit, a night's moonlit metal over its dark land.
   #[cfg(test)]
-  pub const BRIGHT_SHARE: f32 = 0.99;
+  pub(crate) const BRIGHT_SHARE: f32 = 0.99;
   /// The luminance the bins span, log2: about 1/16 000 cd/m², under starlight, to 65 000, sunlit snow and past it.
-  pub const LEAST_LOG: f32 = -14.0;
-  pub const MOST_LOG: f32 = 16.0;
+  pub(crate) const LEAST_LOG: f32 = -14.0;
+  pub(crate) const MOST_LOG: f32 = 16.0;
   /// The luminance the compensation's aim stands at: middle grey.
-  pub const MIDDLE_GREY: f32 = 0.18;
+  pub(crate) const MIDDLE_GREY: f32 = 0.18;
   /// The log2 luminance of a daylit exterior's average as the level meters it, the sky left out (about 510 cd/m²).
-  pub const DAYLIT_LOG: f32 = 9.0;
+  pub(crate) const DAYLIT_LOG: f32 = 9.0;
   /// The stops under the aim a daylit exterior's average is shown at, as the engine's display shows the game's noon.
-  pub const DAYLIT_STOPS: f32 = -1.21;
+  pub(crate) const DAYLIT_STOPS: f32 = -1.21;
   /// The share of a scene's distance from a daylit exterior it keeps, as the engine's own exposure adapts only a
   /// little of the way.
-  pub const KEPT_SHARE: f32 = 0.81;
+  pub(crate) const KEPT_SHARE: f32 = 0.81;
   /// Stops under the aim the physical light levels show the darkest scene at most, so a moonlit night shows dark but
   /// readable; the authored levels' dark never reaches it.
-  pub const PHYSICAL_DARKEST_STOPS: f32 = 4.0;
+  pub(crate) const PHYSICAL_DARKEST_STOPS: f32 = 4.0;
   /// Stops a second the scale moves: faster darkening a brighter frame than brightening a darker one, as the eye does,
   /// and quick enough that a night under the physical levels, eleven stops under noon, settles in about three seconds.
-  pub const DARKENING: f32 = 12.0;
-  pub const BRIGHTENING: f32 = 4.0;
+  pub(crate) const DARKENING: f32 = 12.0;
+  pub(crate) const BRIGHTENING: f32 = 4.0;
   /// The darkest and the brightest shares of the frame the average leaves out.
-  pub const LOW_SHARE: f32 = 0.1;
-  pub const HIGH_SHARE: f32 = 0.9;
+  pub(crate) const LOW_SHARE: f32 = 0.1;
+  pub(crate) const HIGH_SHARE: f32 = 0.9;
   /// The scale's bounds, log2: middle grey shown at about 47 000 cd/m², or at about 1/1 400.
-  pub const LEAST_SCALE_LOG: f32 = -18.0;
-  pub const MOST_SCALE_LOG: f32 = 8.0;
+  pub(crate) const LEAST_SCALE_LOG: f32 = -18.0;
+  pub(crate) const MOST_SCALE_LOG: f32 = 8.0;
 
   /// The scale a daylit exterior is shown at, raised by `compensation` stops: the physical light's first, the one it
   /// holds while it does not adapt.
-  pub fn get_daylight_scale(compensation: f32) -> f32 {
+  pub(crate) fn get_daylight_scale(compensation: f32) -> f32 {
     (Self::MIDDLE_GREY.log2() + compensation + Self::DAYLIT_STOPS - Self::DAYLIT_LOG).exp2()
   }
 
   /// A daylit exterior's average as `scale` exposes it, the key the display transforms' anchors stand at where nothing
   /// is metered: at `get_daylight_scale`, middle grey `DAYLIT_STOPS` under, raised by the compensation.
-  pub fn get_daylit_key(scale: f32) -> f32 {
+  pub(crate) fn get_daylit_key(scale: f32) -> f32 {
     scale * Self::DAYLIT_LOG.exp2()
   }
 
   /// The scale the law exposes a frame whose `land` averages so much (log2 at a scale of one) at, raised by
   /// `compensation`, as `cs_settle` settles it with no dark's limit: a daylit exterior's average brought `DAYLIT_STOPS`
   /// under the aim, the frame keeping `KEPT_SHARE` of its distance from it, within the scale's bounds.
-  pub fn get_law_scale(compensation: f32, land: f32) -> f32 {
+  pub(crate) fn get_law_scale(compensation: f32, land: f32) -> f32 {
     let aim: f32 = Self::MIDDLE_GREY.log2() + compensation + Self::DAYLIT_STOPS;
     let shown: f32 = aim + Self::KEPT_SHARE * (land - Self::DAYLIT_LOG);
 
@@ -107,13 +107,13 @@ impl ExposureHistogramUniform {
   /// engine's display values decoded at the light's unit, so the engine's scale is raised to the display's power and
   /// taken over the unit, as `engine_scale` in `frame/exposure_histogram` brings it back. The unit is the authored
   /// levels' weather unit (`LightUnits::of`), which the shader reads from the lighting.
-  pub fn get_engine_scale(engine: f32, compensation: f32) -> f32 {
+  pub(crate) fn get_engine_scale(engine: f32, compensation: f32) -> f32 {
     engine.powf(SRGB_DISPLAY_POWER) * compensation.exp2() / PHYSICAL_LIGHT_UNIT
   }
 
   /// The scale the light's `level` holds where its exposure does not adapt, raised by `compensation`: at the authored
   /// and anchored levels the engine's, one; at the physical levels a daylit exterior's.
-  pub fn get_held_scale(level: RenderLightLevel, compensation: f32) -> f32 {
+  pub(crate) fn get_held_scale(level: RenderLightLevel, compensation: f32) -> f32 {
     match level {
       RenderLightLevel::Authored | RenderLightLevel::Anchored => Self::get_engine_scale(1.0, compensation),
       RenderLightLevel::Physical => Self::get_daylight_scale(compensation),
@@ -122,7 +122,7 @@ impl ExposureHistogramUniform {
 
   /// The metering for a frame at the light's `level`, moved one `step` on: straight to its target where it snaps; at
   /// the authored and anchored levels the engine's adaptation, moving its blend of the way.
-  pub fn new(settings: &RenderExposureSettings, level: RenderLightLevel, step: ExposureStep) -> Self {
+  pub(crate) fn new(settings: &RenderExposureSettings, level: RenderLightLevel, step: ExposureStep) -> Self {
     let aim: f32 = Self::MIDDLE_GREY.log2() + settings.compensation;
     let engine: ExposureUniform = ExposureUniform::new(settings, step.engine_blend);
 

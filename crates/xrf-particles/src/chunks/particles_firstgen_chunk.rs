@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ParticlesFirstgenChunk {}
+pub(crate) struct ParticlesFirstgenChunk {}
 
 impl ParticlesFirstgenChunk {
-  pub const CHUNK_ID: u32 = 2;
+  pub(crate) const CHUNK_ID: u32 = 2;
 }

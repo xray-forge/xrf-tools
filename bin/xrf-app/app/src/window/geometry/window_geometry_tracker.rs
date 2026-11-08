@@ -12,7 +12,7 @@ use crate::window::geometry::window_geometry::WindowGeometry;
 use crate::window::geometry::window_geometry_state::WindowGeometryState;
 
 /// Follows the main window so the next run can open where this one left it.
-pub struct WindowGeometryTracker {
+pub(crate) struct WindowGeometryTracker {
   preferences: Preferences,
   state: Mutex<WindowGeometryState>,
 }
@@ -25,7 +25,7 @@ impl WindowGeometryTracker {
   const SETTLE_DELAY: Duration = Duration::from_secs(1);
 
   /// Where the last run left the window, fitted to the monitors attached now, when they still have room for it.
-  pub fn restore<R: Runtime>(
+  pub(crate) fn restore<R: Runtime>(
     application: &AppHandle<R>,
     preferences: &Preferences,
     config: &WindowConfig,
@@ -50,7 +50,7 @@ impl WindowGeometryTracker {
   }
 
   /// Follow `window`, starting from what it was opened at.
-  pub fn track<R: Runtime>(window: &WebviewWindow<R>, preferences: Preferences, opened: Option<WindowGeometry>) {
+  pub(crate) fn track<R: Runtime>(window: &WebviewWindow<R>, preferences: Preferences, opened: Option<WindowGeometry>) {
     let opened: WindowGeometry = WindowGeometry::measure(window, opened.unwrap_or_default());
 
     let tracker: Arc<Self> = Arc::new(Self {

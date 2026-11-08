@@ -1,6 +1,6 @@
 /// A viewport's depth reduced level by level: to the farthest depth under each texel for occlusion tests, or to the
 /// nearest for reflected rays to skip empty space by.
-pub struct DepthPyramid {
+pub(crate) struct DepthPyramid {
   pub width: u32,
   pub height: u32,
   pub levels: u32,
@@ -11,14 +11,14 @@ pub struct DepthPyramid {
 }
 
 impl DepthPyramid {
-  pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
+  pub(crate) const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
   /// Levels of a nearest depth's pyramid a reflected ray climbs through: the depth itself and six halvings, up to
   /// `common/reflection_trace`'s `RAY_TOP_LEVEL`.
-  pub const RAY_LEVELS: u32 = 7;
+  pub(crate) const RAY_LEVELS: u32 = 7;
 
   /// The farthest depth's pyramid over a depth of this size: its first level the largest power of two within it each
   /// way, down to a texel.
-  pub fn new(device: &wgpu::Device, depth_width: u32, depth_height: u32) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, depth_width: u32, depth_height: u32) -> Self {
     let width: u32 = Self::previous_power_of_two(depth_width);
     let height: u32 = Self::previous_power_of_two(depth_height);
 
@@ -27,7 +27,7 @@ impl DepthPyramid {
 
   /// The nearest depth's pyramid over a depth of this size: its first level the depth itself, each next half the last
   /// rounded down, at most `levels` of them.
-  pub fn new_nearest(device: &wgpu::Device, depth_width: u32, depth_height: u32, levels: u32) -> Self {
+  pub(crate) fn new_nearest(device: &wgpu::Device, depth_width: u32, depth_height: u32, levels: u32) -> Self {
     let (width, height): (u32, u32) = (depth_width.max(1), depth_height.max(1));
 
     Self::create(
@@ -73,7 +73,7 @@ impl DepthPyramid {
   }
 
   /// The size of one level.
-  pub fn get_level_size(&self, level: u32) -> (u32, u32) {
+  pub(crate) fn get_level_size(&self, level: u32) -> (u32, u32) {
     ((self.width >> level).max(1), (self.height >> level).max(1))
   }
 

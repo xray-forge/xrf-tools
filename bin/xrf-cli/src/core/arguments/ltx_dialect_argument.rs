@@ -7,13 +7,13 @@ use xrf_ltx::LtxDialect;
 use crate::core::arguments::OptionalArgument;
 
 /// `--dltx`, on a command that resolves game configs.
-pub struct LtxDialectArgument;
+pub(crate) struct LtxDialectArgument;
 
 impl LtxDialectArgument {
   const NAME: &'static str = "dltx";
 
   /// Declares `--dltx` on `command`.
-  pub fn declare(command: Command) -> Command {
+  pub(crate) fn declare(command: Command) -> Command {
     command.arg(
       Arg::new(Self::NAME)
         .help("Resolve configs with the Monolith/Anomaly DLTX patch dialect, applying mod_<base>_*.ltx files")
@@ -25,12 +25,12 @@ impl LtxDialectArgument {
 
   /// The dialect the command was asked to resolve configs under: standard LTX for a command that never declared the
   /// flag, which is what it would have used anyway.
-  pub fn of(matches: &ArgMatches) -> Arc<dyn LtxDialect> {
+  pub(crate) fn of(matches: &ArgMatches) -> Arc<dyn LtxDialect> {
     DltxDialect::select(Self::is_dltx(matches))
   }
 
   /// Whether the command was asked for the patch dialect, false for a command that never declared the flag.
-  pub fn is_dltx(matches: &ArgMatches) -> bool {
+  pub(crate) fn is_dltx(matches: &ArgMatches) -> bool {
     OptionalArgument::read::<bool>(matches, Self::NAME) == Some(&true)
   }
 }

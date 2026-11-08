@@ -11,7 +11,9 @@ use crate::transport::{TransportAnswer, TransportRoutes};
 /// A domain declaring every kind of entry, since no real domain declares a raw command today.
 #[expect(
   dead_code,
-  reason = "the macro expands every item a crate's domains carry, and the tests read only some"
+  unreachable_pub,
+  reason = "the macro expands every item a crate's domains carry, public for the app to gather, and the tests read \
+            only some from a private module"
 )]
 mod fixture_registry {
   define_runtime_domains! {

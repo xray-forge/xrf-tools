@@ -9,7 +9,7 @@ use crate::simulation::domain::particle_volume_kind::ParticleVolumeKind;
 
 /// `pDomain`: a region particles are generated in or tested against, its fields as the file stores them.
 #[derive(Clone, Debug, PartialEq)]
-pub struct ParticleVolume {
+pub(crate) struct ParticleVolume {
   pub kind: ParticleVolumeKind,
   pub p1: Vec3,
   pub p2: Vec3,
@@ -23,7 +23,7 @@ pub struct ParticleVolume {
 
 impl ParticleVolume {
   /// `Within`: whether a point is inside. Kinds with no inside answer false, and a blob answers by chance.
-  pub fn is_within(&self, position: Vec3, random: &mut ParticleRandom) -> bool {
+  pub(crate) fn is_within(&self, position: Vec3, random: &mut ParticleRandom) -> bool {
     match self.kind {
       ParticleVolumeKind::Box => {
         !(position.x < self.p1.x
@@ -72,7 +72,7 @@ impl ParticleVolume {
   }
 
   /// `Generate`: a random point inside.
-  pub fn generate(&self, random: &mut ParticleRandom) -> Vec3 {
+  pub(crate) fn generate(&self, random: &mut ParticleRandom) -> Vec3 {
     match self.kind {
       ParticleVolumeKind::Point => self.p1,
       ParticleVolumeKind::Line => self.p1 + self.p2 * random.next_fraction(),
@@ -143,7 +143,7 @@ impl ParticleVolume {
   }
 
   /// `s1` and `s2`: the rows reading a point's `u` and `v` coordinates in a rectangle's or triangle's plane.
-  pub fn get_plane_inverse_basis(&self) -> (Vec3, Vec3) {
+  pub(crate) fn get_plane_inverse_basis(&self) -> (Vec3, Vec3) {
     let (u, v) = (self.u, self.v);
     let wx: f32 = u.y * v.z - u.z * v.y;
     let wy: f32 = u.z * v.x - u.x * v.z;
@@ -157,7 +157,7 @@ impl ParticleVolume {
   }
 
   /// `transform`: the source volume placed by a matrix; a box takes its turned corners' bounds (`Fbox::xform`).
-  pub fn transform_from(&mut self, source: &Self, matrix: &Mat4) {
+  pub(crate) fn transform_from(&mut self, source: &Self, matrix: &Mat4) {
     match self.kind {
       ParticleVolumeKind::Box => {
         let extent: Vec3 = source.p2 - source.p1;
@@ -209,7 +209,7 @@ impl ParticleVolume {
   }
 
   /// `transform_dir`: as `transform_from` with the matrix's translation dropped, for a volume of directions.
-  pub fn transform_direction_from(&mut self, source: &Self, matrix: &Mat4) {
+  pub(crate) fn transform_direction_from(&mut self, source: &Self, matrix: &Mat4) {
     let mut turning: Mat4 = *matrix;
 
     turning.w_axis = glam::Vec4::W;

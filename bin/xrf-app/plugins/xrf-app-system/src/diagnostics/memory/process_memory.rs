@@ -9,7 +9,7 @@ use serde::Serialize;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ProcessMemory {
+pub(crate) struct ProcessMemory {
   /// Private commit: memory charged to this process alone, resident or not.
   pub committed: u64,
   /// Working set: physical memory the process occupies, shared pages included.
@@ -22,7 +22,7 @@ pub struct ProcessMemory {
 impl ProcessMemory {
   /// Read one process's memory, or nothing for a process that has exited or cannot be opened.
   #[cfg(windows)]
-  pub fn read(pid: u32) -> Option<Self> {
+  pub(crate) fn read(pid: u32) -> Option<Self> {
     use windows::Win32::Foundation::{CloseHandle, HANDLE};
     use windows::Win32::System::ProcessStatus::{PROCESS_MEMORY_COUNTERS_EX, PROCESS_MEMORY_COUNTERS_EX2};
     use windows::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION};

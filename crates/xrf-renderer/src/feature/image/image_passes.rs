@@ -17,7 +17,7 @@ use crate::shader::generated_modules::GeneratedModules;
 
 /// The passes turning the lit frame into the image shown: the bloom, the smoothing, the temporal resolves and the
 /// upscale, the camera's effects, the exposure and the spot meter.
-pub struct ImagePasses {
+pub(crate) struct ImagePasses {
   pub bloom: BloomPass,
   pub enhanced_bloom: EnhancedBloomPass,
   pub fxaa: FxaaPass,
@@ -38,7 +38,7 @@ impl ImagePasses {
   /// # Errors
   ///
   /// Returns an error when a pass's shaders do not compose or compile.
-  pub fn new(build: PassBuild<'_>) -> XrfResult<Self> {
+  pub(crate) fn new(build: PassBuild<'_>) -> XrfResult<Self> {
     let PassBuild {
       source,
       queue,
@@ -75,7 +75,7 @@ impl ImagePasses {
   }
 
   /// Rebuilds the pipelines a shader reload made stale, each pass keeping its last good ones where a rebuild fails.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     self.bloom.refresh(source);
     self.fxaa.refresh(source);
 
@@ -96,7 +96,7 @@ impl ImagePasses {
   ///
   /// Returns an error when passes sharing a module declare one of its bindings otherwise.
   #[cfg(test)]
-  pub fn declare_shaders(modules: &mut GeneratedModules) -> XrfResult<()> {
+  pub(crate) fn declare_shaders(modules: &mut GeneratedModules) -> XrfResult<()> {
     use crate::feature::image::bloom::bloom_parameters::BloomParameters;
     use crate::feature::image::bloom::bloom_uniform::BloomUniform;
     use crate::feature::image::bloom::enhanced::enhanced_bloom_parameters::EnhancedBloomParameters;

@@ -11,7 +11,7 @@ use crate::viewer::LevelViewerFolder;
 /// Write a screenshot's report beside it in the screenshots folder, as its JSON text; answers where it was written.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "write_screenshot_report")]
-pub async fn levels_write_screenshot_report(
+pub(crate) async fn levels_write_screenshot_report(
   directories: State<'_, AppDirectories>,
   execution: State<'_, ExecutionState>,
   path: PathBuf,

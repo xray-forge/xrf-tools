@@ -5,7 +5,7 @@ mod archive_described_format;
 mod archive_entry_container;
 mod archive_entry_reader;
 
-pub use archive_describe_source::ArchiveDescribeSource;
-pub use archive_described_format::ArchiveDescribedFormat;
-pub use archive_entry_container::ArchiveEntryContainer;
-pub use archive_entry_reader::ArchiveEntryReader;
+pub(crate) use archive_describe_source::ArchiveDescribeSource;
+pub(crate) use archive_described_format::ArchiveDescribedFormat;
+pub(crate) use archive_entry_container::ArchiveEntryContainer;
+pub(crate) use archive_entry_reader::ArchiveEntryReader;

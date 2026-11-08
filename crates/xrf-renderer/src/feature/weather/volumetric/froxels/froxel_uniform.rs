@@ -7,7 +7,7 @@ use xrf_renderer_core::ShaderStruct;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Froxels")]
-pub struct FroxelUniform {
+pub(crate) struct FroxelUniform {
   pub size: Vec4,
   pub params: Vec4,
 }

@@ -22,7 +22,7 @@ enum StatementOperation<'a> {
 }
 
 /// Ltx parser.
-pub struct LtxParser<'a> {
+pub(crate) struct LtxParser<'a> {
   char: Option<char>,
   /// The input from `char` on, so a line can be taken as a slice of it rather than rebuilt a character at a time.
   at_char: &'a str,
@@ -62,7 +62,7 @@ impl<'a> LtxParser<'a> {
   const INCLUDE_DIRECTIVE: &'static str = "#include";
 
   /// Create new parser based on characters stream.
-  pub fn new(reader: Chars<'a>) -> Self {
+  pub(crate) fn new(reader: Chars<'a>) -> Self {
     let mut parser: Self = Self {
       reader,
       ..Self::default()
@@ -77,7 +77,7 @@ impl<'a> LtxParser<'a> {
   ///
   /// For an editor that must write a file back with untouched lines byte-identical. Verification and formatting do not
   /// ask for it, so they do not pay the second copy of every line.
-  pub fn new_preserving_source(reader: Chars<'a>) -> Self {
+  pub(crate) fn new_preserving_source(reader: Chars<'a>) -> Self {
     let mut parser: Self = Self::new(reader);
 
     parser.is_preserving_source = true;
@@ -91,7 +91,7 @@ impl<'a> LtxParser<'a> {
   /// command that verifies and reformats no longer scans twice.
   ///
   /// Every statement keeps its line, and each is exactly one line, so a gap between consecutive spans is a blank run.
-  pub fn parse_document(&mut self) -> XrfResult<LtxDocument> {
+  pub(crate) fn parse_document(&mut self) -> XrfResult<LtxDocument> {
     let mut items: Vec<LtxItem> = Vec::new();
 
     while let Some(item) = self.parse_next_item()? {

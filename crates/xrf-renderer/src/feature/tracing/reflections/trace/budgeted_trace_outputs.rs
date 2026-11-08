@@ -3,7 +3,7 @@ use crate::feature::tracing::scene_trace::requests::trace_request_parameters::Tr
 
 /// What the reflections' budgeted trace writes: the list of rays it leaves to the scene pass, and its targets.
 #[derive(Clone, Copy)]
-pub struct BudgetedTraceOutputs<'a> {
+pub(crate) struct BudgetedTraceOutputs<'a> {
   pub requests: &'a TraceRequestParameters,
   pub out: &'a ReflectionTraceOutParameters,
 }

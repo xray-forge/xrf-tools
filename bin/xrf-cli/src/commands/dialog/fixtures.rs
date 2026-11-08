@@ -56,7 +56,7 @@ const STRINGS: &str = r#"<string_table>
 "#;
 
 /// Lay out the tree under a root of its own, since tests run in parallel.
-pub fn create_tree(name: &str) -> XrfResult<PathBuf> {
+pub(crate) fn create_tree(name: &str) -> XrfResult<PathBuf> {
   let root: PathBuf = GeneratedResources::create_dir(&format!("dialog_commands/{name}"))?;
   let gameplay: PathBuf = root.join("configs").join("gameplay");
   let text: PathBuf = root.join("configs").join("text").join("eng");
@@ -75,7 +75,7 @@ pub fn create_tree(name: &str) -> XrfResult<PathBuf> {
 }
 
 /// Run a dialog command over a tree, as the process would, and read back the result it deposited.
-pub fn run_for_result<T: GenericCommand>(command: &T, root: &Path, extra: &[&str]) -> CommandResult<Value> {
+pub(crate) fn run_for_result<T: GenericCommand>(command: &T, root: &Path, extra: &[&str]) -> CommandResult<Value> {
   let mut arguments: Vec<String> = vec![
     String::from(command.operation()),
     String::from("--path"),

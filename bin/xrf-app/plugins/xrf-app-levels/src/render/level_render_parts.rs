@@ -9,17 +9,17 @@ use crate::parts::{
 
 /// How a level's session parts feed the scene the renderer draws it as: the scene each session shares, the parts whose
 /// going stale streams it afresh, and the renderer's parts read again for the rest.
-pub struct LevelRenderParts;
+pub(crate) struct LevelRenderParts;
 
 impl LevelRenderParts {
   /// The parts a level's scene is built from, whose going stale streams it afresh rather than reloading packages
   /// (`SessionChange::is_view_renewed`): its sectors are packed from its geometry and drawn with its surfaces, which no
   /// package reload replaces. Textures alone keep the scene, a file come or gone being loaded afresh by the texture
   /// watcher.
-  pub const VIEW_PARTS: &'static [&'static str] = &[LevelGeometryPart::NAME, LevelSurfacesPart::NAME];
+  pub(crate) const VIEW_PARTS: &'static [&'static str] = &[LevelGeometryPart::NAME, LevelSurfacesPart::NAME];
 
   /// What every source of a session's level shares its scene by, whichever of its snapshots it draws.
-  pub fn to_scene_key(session_id: SessionId) -> String {
+  pub(crate) fn to_scene_key(session_id: SessionId) -> String {
     format!("level {session_id}")
   }
 
@@ -27,7 +27,7 @@ impl LevelRenderParts {
   /// for any of them, or recorded what it read as one of them. The sectors stream afresh instead, on their geometry or
   /// surfaces (`VIEW_PARTS`); the map and the textures' list are the page's, and the start only matters where a viewer
   /// first stands.
-  pub fn to_reload(stale_parts: &[&str]) -> LevelParts {
+  pub(crate) fn to_reload(stale_parts: &[&str]) -> LevelParts {
     LevelPart::ALL
       .into_iter()
       .filter(|part| {

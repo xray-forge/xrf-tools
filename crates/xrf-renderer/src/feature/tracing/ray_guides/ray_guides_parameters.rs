@@ -6,7 +6,7 @@ use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 /// reflections' trace, whose alpha holds how far each traced ray went, and how far the indirect light's rays went.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct RayGuidesParameters {
+pub(crate) struct RayGuidesParameters {
   #[texture(d2, unfilterable)]
   pub albedo_target: GraphTexture,
   #[texture(d2, unfilterable)]

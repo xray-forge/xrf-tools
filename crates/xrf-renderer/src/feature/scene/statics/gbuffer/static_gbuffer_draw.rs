@@ -1,6 +1,6 @@
 /// How one G-buffer draw of the static scene goes.
 #[derive(Clone, Copy, Debug, Default)]
-pub struct StaticGbufferDraw {
+pub(crate) struct StaticGbufferDraw {
   /// Whether the frame is drawn for an inspection view, through its own pipelines.
   pub is_inspected: bool,
   /// Whether the opaque surfaces' depth is drawn ahead of their shading.
@@ -11,7 +11,7 @@ pub struct StaticGbufferDraw {
 
 /// One of a G-buffer draw's passes, each a raster pass of its own so the frame times them apart.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub enum StaticGbufferPart {
+pub(crate) enum StaticGbufferPart {
   /// The cut-out surfaces' depth, and the opaque ones' where it prepasses, ahead of their shading.
   #[default]
   Depth,

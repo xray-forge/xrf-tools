@@ -16,12 +16,12 @@ pub(crate) struct OrbitLineAction {
 }
 
 impl OrbitLineAction {
-  pub fn transform(&mut self, matrix: &Mat4) {
+  pub(crate) fn transform(&mut self, matrix: &Mat4) {
     self.position = matrix.transform_point3(self.position_local);
     self.axis = matrix.transform_vector3(self.axis_local);
   }
 
-  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
+  pub(crate) fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
     let magdt: f32 = self.magnitude * step.dt;
     let max_radius_sqr: f32 = self.max_radius * self.max_radius;
     let is_limited: bool = max_radius_sqr < ParticleActionStep::MAX_FLOAT;

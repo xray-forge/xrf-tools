@@ -4,14 +4,14 @@ use xrf_particles::ParticlesFile;
 /// What `particle info` read out of a particle library.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ParticleInfoReport {
+pub(crate) struct ParticleInfoReport {
   effects: usize,
   groups: usize,
   version: u16,
 }
 
 impl ParticleInfoReport {
-  pub fn new(file: &ParticlesFile) -> Self {
+  pub(crate) fn new(file: &ParticlesFile) -> Self {
     Self {
       effects: file.effects.effects.len(),
       groups: file.groups.groups.len(),

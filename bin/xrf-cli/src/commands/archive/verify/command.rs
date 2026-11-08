@@ -16,7 +16,7 @@ use crate::core::report::ReportVerdict;
 use crate::core::terminal::SourceReachability;
 
 #[derive(Default)]
-pub struct VerifyCommand;
+pub(crate) struct VerifyCommand;
 
 impl VerifyCommand {
   /// The one check this command runs: every payload the set names reads back.

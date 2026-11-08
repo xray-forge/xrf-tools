@@ -9,7 +9,7 @@ use crate::execution::ExecutionState;
 /// Detect which engine roots target, as an open left to detection would read them.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "detect_engine")]
-pub async fn assets_detect_engine(
+pub(crate) async fn assets_detect_engine(
   roots: XrayRoots,
   assets: State<'_, AssetMountState>,
   execution: State<'_, ExecutionState>,

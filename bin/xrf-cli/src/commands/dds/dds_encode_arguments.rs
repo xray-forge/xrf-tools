@@ -3,21 +3,21 @@ use clap::{Arg, ArgMatches, Command};
 use xrf_dds::{DdsMipFilter, Quality};
 
 /// `--mip-filter` and `--quality`: the encoder knobs both writing commands take, declared and parsed once.
-pub struct DdsEncodeArguments;
+pub(crate) struct DdsEncodeArguments;
 
 impl DdsEncodeArguments {
   const MIP_FILTER: &'static str = "mip-filter";
   const QUALITY: &'static str = "quality";
 
   /// The filter a conversion reduces with when nothing says otherwise.
-  pub const CONVERT_MIP_FILTER: DdsMipFilter = DdsMipFilter::Kaiser;
+  pub(crate) const CONVERT_MIP_FILTER: DdsMipFilter = DdsMipFilter::Kaiser;
 
   /// The filter a bump pair reduces with when nothing says otherwise.
   ///
   /// Box, because that is what the SDK's generator uses: `DXTCompressBump` builds its `STextureParams` and overrides
   /// only the flags, the type and the format, leaving `mip_filter` at the `kMIPFilterBox` the constructor set
   /// (`xrDXT/NormalMapGen.cpp`, `editors/ECore/Editor/ETextureParams.h`).
-  pub const BUMP_MIP_FILTER: DdsMipFilter = DdsMipFilter::Box;
+  pub(crate) const BUMP_MIP_FILTER: DdsMipFilter = DdsMipFilter::Box;
 
   /// Quality levels the encoder offers, cheapest first, each by the name the command line spells it.
   const QUALITIES: [(&'static str, Quality); 3] = [
@@ -30,7 +30,7 @@ impl DdsEncodeArguments {
   ///
   /// Each value is parsed into its type by clap, so a name outside the family is a usage error and the readers below
   /// cannot meet one.
-  pub fn declare(command: Command, default_filter: DdsMipFilter) -> Command {
+  pub(crate) fn declare(command: Command, default_filter: DdsMipFilter) -> Command {
     command
       .arg(
         Arg::new(Self::MIP_FILTER)
@@ -60,14 +60,14 @@ impl DdsEncodeArguments {
   }
 
   /// The kernel a run asked for, or the default it was declared with.
-  pub fn mip_filter_of(matches: &ArgMatches) -> DdsMipFilter {
+  pub(crate) fn mip_filter_of(matches: &ArgMatches) -> DdsMipFilter {
     *matches
       .get_one::<DdsMipFilter>(Self::MIP_FILTER)
       .expect("Expected the mip filter to have a default")
   }
 
   /// The quality a run asked for, or the default.
-  pub fn quality_of(matches: &ArgMatches) -> Quality {
+  pub(crate) fn quality_of(matches: &ArgMatches) -> Quality {
     *matches
       .get_one::<Quality>(Self::QUALITY)
       .expect("Expected the quality to have a default")

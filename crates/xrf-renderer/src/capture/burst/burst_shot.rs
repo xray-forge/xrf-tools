@@ -8,7 +8,7 @@ use crate::frame::readback::gpu_readback::GpuReadback;
 
 /// A burst's frame on its way back: the finished frame as a screenshot draws it, and the G-buffer's material target
 /// beside it, whose alpha holds the marks.
-pub struct BurstShot {
+pub(crate) struct BurstShot {
   /// Its place among the frames read back, its sample where a reference draws it, and the scene's seconds it is drawn
   /// at.
   frame: (u32, Option<u32>, f64),
@@ -26,7 +26,7 @@ impl BurstShot {
   /// # Errors
   ///
   /// Returns an error for a frame of a format a capture cannot read.
-  pub fn new(
+  pub(crate) fn new(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     size: (u32, u32),
@@ -47,12 +47,12 @@ impl BurstShot {
   }
 
   /// The finished frame's copy, which the present draws into.
-  pub fn get_picture(&self) -> &FrameCapture {
+  pub(crate) fn get_picture(&self) -> &FrameCapture {
     &self.picture
   }
 
   /// Copies the marks out of `material`, the frame's material target, beside the picture.
-  pub fn encode_marks(&self, encoder: &mut wgpu::CommandEncoder, material: &wgpu::Texture) {
+  pub(crate) fn encode_marks(&self, encoder: &mut wgpu::CommandEncoder, material: &wgpu::Texture) {
     let (width, height): (u32, u32) = self.material_size;
 
     encoder.copy_texture_to_buffer(
@@ -80,18 +80,18 @@ impl BurstShot {
   }
 
   /// Whether both copies were recorded with the frame, which a frame that drew nothing of it did not.
-  pub fn is_recorded(&self) -> bool {
+  pub(crate) fn is_recorded(&self) -> bool {
     self.picture.is_recorded() && self.material.is_recorded()
   }
 
   /// Asks for both copies back, after the frame copying them is submitted.
-  pub fn request(&self) {
+  pub(crate) fn request(&self) {
     self.picture.request();
     self.material.request();
   }
 
   /// The frame once both copies are back, as its burst tells it; nothing while either is on its way.
-  pub fn take(&self) -> Option<XrfResult<BurstEvent>> {
+  pub(crate) fn take(&self) -> Option<XrfResult<BurstEvent>> {
     if !self.material.is_back() {
       return None;
     }

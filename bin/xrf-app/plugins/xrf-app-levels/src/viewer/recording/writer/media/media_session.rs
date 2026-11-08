@@ -8,7 +8,7 @@ use windows::Win32::System::Com::{COINIT_MULTITHREADED, CoInitializeEx, CoUninit
 
 /// COM and Media Foundation started on the calling thread, which a recording's own thread holds for its life; dropped,
 /// both shut down. Every Media Foundation object the thread made must be released first.
-pub struct MediaSession;
+pub(crate) struct MediaSession;
 
 impl MediaSession {
   /// Starts both on this thread, after `MediaProbe` loaded the libraries.
@@ -16,7 +16,7 @@ impl MediaSession {
   /// # Errors
   ///
   /// Returns an error when COM or Media Foundation does not start.
-  pub fn start() -> Result<Self, String> {
+  pub(crate) fn start() -> Result<Self, String> {
     // SAFETY: a thread of the recording's own joins the multithreaded apartment once, leaving it as the session drops
     // or below.
     unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) }

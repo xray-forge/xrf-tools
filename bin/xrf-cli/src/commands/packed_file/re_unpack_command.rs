@@ -11,7 +11,7 @@ use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 use crate::core::reports::FileConversionReport;
 
 /// Reads one unpacked folder and writes it unpacked again, which proves the text round trip.
-pub struct ReUnpackCommand<F>(PhantomData<F>);
+pub(crate) struct ReUnpackCommand<F>(PhantomData<F>);
 
 impl<F> Default for ReUnpackCommand<F> {
   fn default() -> Self {

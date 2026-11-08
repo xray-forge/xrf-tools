@@ -12,7 +12,7 @@ use crate::contract::capture::render_map_capture::RenderMapCapture;
 /// What a capture draws: views metered in turn until their exposure settles, then each of its shots in order, the
 /// exposure held for all of them.
 #[derive(Clone, Debug, PartialEq)]
-pub struct CapturePlan {
+pub(crate) struct CapturePlan {
   pub shots: Vec<CaptureShot>,
   /// The views its exposure is metered over, one a frame in turn.
   pub meters: Vec<CaptureShot>,
@@ -24,21 +24,21 @@ pub struct CapturePlan {
 
 impl CapturePlan {
   /// Frames a map meters its whole area, as long as a fast adaptation takes to settle.
-  pub const MAP_METER_FRAMES: u32 = 60;
+  pub(crate) const MAP_METER_FRAMES: u32 = 60;
 
   /// Frames a cubemap's faces are metered in turn: forty rounds of six, as long as the slow adaptation over all six
   /// takes to settle.
-  pub const CUBE_METER_FRAMES: u32 = 240;
+  pub(crate) const CUBE_METER_FRAMES: u32 = 240;
 
   /// Pixels a cubemap's face is metered at on a side.
-  pub const CUBE_METER: u32 = 128;
+  pub(crate) const CUBE_METER: u32 = 128;
 
   /// A level map's tiles, row by row from its top left, after a view of the whole area.
   ///
   /// # Errors
   ///
   /// Returns an error where [`MapTilePlan::new`] does.
-  pub fn new_map(capture: RenderMapCapture, most_texture: u32) -> XrfResult<Self> {
+  pub(crate) fn new_map(capture: RenderMapCapture, most_texture: u32) -> XrfResult<Self> {
     let plan: MapTilePlan = MapTilePlan::new(capture, most_texture)?;
 
     Ok(Self {
@@ -55,7 +55,7 @@ impl CapturePlan {
   /// # Errors
   ///
   /// Returns an error for a face or supersampling past what is drawn.
-  pub fn new_cube(
+  pub(crate) fn new_cube(
     capture: RenderCubeCapture,
     camera: &CameraFrame,
     far_limit: f32,
@@ -110,7 +110,7 @@ impl CapturePlan {
   }
 
   /// The view metered on the `frame`th metering frame.
-  pub fn get_meter(&self, frame: u32) -> Option<CaptureShot> {
+  pub(crate) fn get_meter(&self, frame: u32) -> Option<CaptureShot> {
     self.meters.get(frame as usize % self.meters.len().max(1)).copied()
   }
 }

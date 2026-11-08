@@ -37,7 +37,7 @@ impl LevelDetailsPart {
   /// # Errors
   ///
   /// Returns why the detail library or the collision form it is planted onto cannot be read.
-  pub fn pack(
+  pub(crate) fn pack(
     current: &SessionSnapshot<SelectedLevel>,
     search: &XraySearch,
   ) -> TauriResult<Option<PackedLevelDetails>> {

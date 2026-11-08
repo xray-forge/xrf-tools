@@ -9,7 +9,7 @@ use crate::host::weather::flares::render_lens_flare::RenderLensFlare;
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Flares")]
 #[expect(clippy::use_self, reason = "an array length in a field cannot name `Self`")]
-pub struct FlareUniform {
+pub(crate) struct FlareUniform {
   pub to_sun: Vec4,
   pub sun: Vec4,
   pub color: Vec4,
@@ -19,10 +19,10 @@ pub struct FlareUniform {
 
 impl FlareUniform {
   /// Flares `shaders/common/flares.wgsl` holds room for; a section with more draws its first ones.
-  pub const SLOTS: usize = 16;
+  pub(crate) const SLOTS: usize = 16;
 
   /// The lens `flare` drawn in one `frame`.
-  pub fn new(flare: &RenderLensFlare, frame: FlareFrame) -> Self {
+  pub(crate) fn new(flare: &RenderLensFlare, frame: FlareFrame) -> Self {
     let mut flares: [Vec4; Self::SLOTS] = [Vec4::ZERO; Self::SLOTS];
 
     for (slot, it) in flares.iter_mut().zip(&flare.flares) {

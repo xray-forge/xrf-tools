@@ -7,7 +7,7 @@ use crate::scene::level::lights::light_record::LightRecord;
 /// is cut.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 0)]
-pub struct LightBinningParameters {
+pub(crate) struct LightBinningParameters {
   #[storage]
   pub records: StorageArray<LightRecord>,
   #[storage]

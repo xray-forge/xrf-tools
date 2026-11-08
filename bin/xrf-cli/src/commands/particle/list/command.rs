@@ -15,7 +15,7 @@ const KIND_EFFECT: &str = "effect";
 const KIND_GROUP: &str = "group";
 
 #[derive(Default)]
-pub struct ListCommand;
+pub(crate) struct ListCommand;
 
 impl GenericCommand for ListCommand {
   fn operation(&self) -> &'static str {

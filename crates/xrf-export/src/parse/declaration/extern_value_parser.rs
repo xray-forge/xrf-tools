@@ -19,7 +19,7 @@ pub(crate) struct ExternValueParser<'a> {
 
 impl<'a> ExternValueParser<'a> {
   /// Create a parser for one declaration source file.
-  pub fn new(
+  pub(crate) fn new(
     diagnostic: ExternDiagnostic<'a>,
     source_file: &'a Path,
     symbol_resolver: &'a TypeScriptSymbolResolver,
@@ -33,7 +33,7 @@ impl<'a> ExternValueParser<'a> {
   }
 
   /// Parse one extern value into its canonical manifest representation.
-  pub fn parse(
+  pub(crate) fn parse(
     &self,
     program: &Program,
     value: &Expr,

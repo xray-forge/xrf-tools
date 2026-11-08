@@ -7,7 +7,7 @@ use xrf_ogf::OgfModelType;
 /// The visuals run, counted by what the visuals are and what they draw.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LevelVisualsReport {
+pub(crate) struct LevelVisualsReport {
   total: usize,
   /// Visuals naming a range in the level's shared buffers. A hierarchy visual names none.
   drawable: usize,
@@ -27,7 +27,7 @@ pub struct LevelVisualsReport {
 
 impl LevelVisualsReport {
   /// One visual as a line for verbose output, naming what it is and where it draws from.
-  pub fn describe_visual(index: usize, visual: &LevelVisual) -> String {
+  pub(crate) fn describe_visual(index: usize, visual: &LevelVisual) -> String {
     let geometry: String = match &visual.geometry {
       Some(container) => format!(
         "vb {} [{}..{}), ib {} [{}..{}), {} tris",
@@ -61,7 +61,7 @@ impl LevelVisualsReport {
     }
   }
 
-  pub fn of(visuals: &LevelVisualsChunk) -> Self {
+  pub(crate) fn of(visuals: &LevelVisualsChunk) -> Self {
     let mut model_types: BTreeMap<String, usize> = BTreeMap::new();
     let mut ranges: BTreeSet<(u32, u32, u32, u32, u32, u32)> = BTreeSet::new();
     let mut vertices: u64 = 0;

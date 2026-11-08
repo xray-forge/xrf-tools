@@ -18,11 +18,11 @@ pub(crate) struct AvoidAction {
 }
 
 impl AvoidAction {
-  pub fn transform(&mut self, matrix: &Mat4) {
+  pub(crate) fn transform(&mut self, matrix: &Mat4) {
     self.position.transform_from(&self.position_local, matrix);
   }
 
-  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
+  pub(crate) fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
     let magdt: f32 = self.magnitude * step.dt;
     let domain: &ParticleVolume = &self.position;
     let particles: &mut [Particle] = pool.get_particles_mut();

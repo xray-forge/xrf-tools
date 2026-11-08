@@ -5,7 +5,7 @@ use crate::contract::feature::lighting::render_contact_shadow_mode::RenderContac
 
 /// Local lights a pixel marches contact shadows towards at most: the lights' shader keeps their weights in an array.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
-pub const RENDER_MAX_CONTACT_SHADOW_LIGHTS: u32 = 8;
+pub(crate) const RENDER_MAX_CONTACT_SHADOW_LIGHTS: u32 = 8;
 
 /// Contact shadows: the small shadows the sun's cascades and the lights' maps are too coarse to cast, or the lights
 /// without a map do not cast at all, found in the frame's depth.

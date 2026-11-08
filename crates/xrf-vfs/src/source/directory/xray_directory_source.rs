@@ -14,7 +14,7 @@ use crate::{XrayAssetContainer, XrayAssetSource, XrayFileStamp, XrayPathCollisio
 /// Two files inside it normalizing to one logical path are reported through [`XrayAssetSource::get_collisions`] rather than
 /// refused, since only shadowing *between* mounts has a priority order to appeal to.
 #[derive(Debug)]
-pub struct XrayDirectorySource {
+pub(crate) struct XrayDirectorySource {
   label: String,
   index: XrayAssetIndex,
 }
@@ -25,7 +25,7 @@ impl XrayDirectorySource {
   /// # Errors
   ///
   /// Returns an error when traversal fails or a path is not a valid X-Ray logical path.
-  pub fn read(root: impl AsRef<Path>) -> XrfResult<Self> {
+  pub(crate) fn read(root: impl AsRef<Path>) -> XrfResult<Self> {
     Self::read_ignoring(root, &[])
   }
 
@@ -37,7 +37,7 @@ impl XrayDirectorySource {
   /// # Errors
   ///
   /// Returns an error when traversal fails, or a prefix or path is not a valid X-Ray logical path.
-  pub fn read_ignoring(root: impl AsRef<Path>, ignored: &[String]) -> XrfResult<Self> {
+  pub(crate) fn read_ignoring(root: impl AsRef<Path>, ignored: &[String]) -> XrfResult<Self> {
     let root: &Path = root.as_ref();
 
     Ok(Self {

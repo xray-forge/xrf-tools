@@ -3,7 +3,7 @@ use crate::viewer::map::annotations::{AnnotationOutline, AnnotationPoint};
 
 /// One object of the level standing at a point, seen from above: a dot where it stands.
 #[derive(Clone, Debug, PartialEq)]
-pub struct AnnotationMarker {
+pub(crate) struct AnnotationMarker {
   pub kind: LevelObjectKind,
   pub name: String,
   pub point: AnnotationPoint,
@@ -14,7 +14,7 @@ pub struct AnnotationMarker {
 impl AnnotationMarker {
   /// `object` as a dot, or `None` for an object drawn otherwise: one covering a space, a patrol path, or a part
   /// drawn with what it belongs to, as a patrol's points are.
-  pub fn of(object: &LevelObject) -> Option<Self> {
+  pub(crate) fn of(object: &LevelObject) -> Option<Self> {
     if object.get_shapes().is_some() || object.patrol.is_some() || object.parent.is_some() {
       return None;
     }

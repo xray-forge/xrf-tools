@@ -11,7 +11,7 @@ use crate::weather::weather_ambients::WeatherAmbients;
 /// What the viewport a scene is heard by gives its sound for a frame: one drawing a burst of the scene, else the
 /// listening viewport where it shows the scene, else the one driving it.
 #[derive(Clone, Copy)]
-pub struct SoundDrive<'a> {
+pub(crate) struct SoundDrive<'a> {
   pub scene: RenderSceneId,
   /// The frame's moment, which strikes are stamped by.
   pub at: Instant,

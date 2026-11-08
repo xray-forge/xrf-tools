@@ -10,7 +10,7 @@ use crate::{CaptureFile, Renderer};
 /// Write a viewport's next presented frame to a PNG file, as the renderer drew it rather than as the screen shows it.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "save_capture")]
-pub async fn render_save_capture(
+pub(crate) async fn render_save_capture(
   renderer: State<'_, Renderer>,
   execution: State<'_, ExecutionState>,
   viewport: RenderViewportId,

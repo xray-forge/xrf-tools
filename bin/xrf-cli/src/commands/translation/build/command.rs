@@ -13,7 +13,7 @@ use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 use crate::core::terminal::CliJob;
 
 #[derive(Default)]
-pub struct BuildCommand;
+pub(crate) struct BuildCommand;
 
 impl GenericCommand for BuildCommand {
   fn operation(&self) -> &'static str {

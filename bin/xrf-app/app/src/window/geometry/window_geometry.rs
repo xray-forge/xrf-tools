@@ -7,7 +7,7 @@ use crate::window::geometry::monitor_work_area::MonitorWorkArea;
 /// Where the main window was last left, in the physical pixels the desktop addresses its monitors with.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
-pub struct WindowGeometry {
+pub(crate) struct WindowGeometry {
   pub x: i32,
   pub y: i32,
   pub width: u32,
@@ -33,13 +33,13 @@ impl Default for WindowGeometry {
 
 impl WindowGeometry {
   /// Whether the rectangle describes a window at all, which a hand-edited or truncated file need not.
-  pub fn is_measured(&self) -> bool {
+  pub(crate) fn is_measured(&self) -> bool {
     self.width > 0 && self.height > 0 && self.scale.is_finite() && self.scale > 0.0
   }
 
   /// Read the rectangle against the monitors attached now, as a window no smaller than `min_width` by `min_height`
   /// logical pixels.
-  pub fn fit(self, monitors: &[MonitorWorkArea], min_width: f64, min_height: f64) -> Option<Self> {
+  pub(crate) fn fit(self, monitors: &[MonitorWorkArea], min_width: f64, min_height: f64) -> Option<Self> {
     if !self.is_measured() {
       return None;
     }
@@ -77,7 +77,7 @@ impl WindowGeometry {
   }
 
   /// Build the window at this rectangle, a fitted one, and in its state.
-  pub fn open<'a, R: Runtime, M: Manager<R>>(
+  pub(crate) fn open<'a, R: Runtime, M: Manager<R>>(
     &self,
     builder: WebviewWindowBuilder<'a, R, M>,
   ) -> WebviewWindowBuilder<'a, R, M> {
@@ -90,7 +90,7 @@ impl WindowGeometry {
   /// Move a window [`Self::open`] built onto this rectangle when it was built elsewhere. The builder's logical position
   /// is placed on the first monitor that reads it as one of its own pixels, so a monitor scaled otherwise than the one
   /// the rectangle was fitted to can claim it, and only such a monitor, which the window's own scale then tells.
-  pub fn confirm<R: Runtime>(&self, window: &WebviewWindow<R>) {
+  pub(crate) fn confirm<R: Runtime>(&self, window: &WebviewWindow<R>) {
     let scale: f64 = match window.scale_factor() {
       Ok(scale) => scale,
       Err(error) => {
@@ -120,7 +120,7 @@ impl WindowGeometry {
   }
 
   /// Read the window's own rectangle, keeping `previous` for what a window in that state cannot report.
-  pub fn measure<R: Runtime>(window: &WebviewWindow<R>, previous: Self) -> Self {
+  pub(crate) fn measure<R: Runtime>(window: &WebviewWindow<R>, previous: Self) -> Self {
     let is_maximized: bool = Self::read_window_state(window.is_maximized(), "maximized");
 
     // A maximized or minimized window occupies a rectangle nobody chose; the one it restores down to is already held.

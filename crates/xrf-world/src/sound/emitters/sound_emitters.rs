@@ -20,7 +20,7 @@ const STOP_FADE: Duration = Duration::from_millis(100);
 /// What a scene plays: each sound started and not yet over, by when it ends on the level's clock, which is what says
 /// whether it still plays (`_feedback()`), never what was heard.
 #[derive(Default)]
-pub struct SoundEmitters {
+pub(crate) struct SoundEmitters {
   /// Ascending by id, as ids only grow and each play is pushed last, so an emitter is found by halving rather than by
   /// walking every one: each schedule asks after its own emitters every frame.
   live: Vec<LiveEmitter>,
@@ -28,7 +28,7 @@ pub struct SoundEmitters {
 
 impl SoundEmitters {
   /// Starts a sound, answering its emitter, none for a sound whose file is missing, which the engine plays as nothing.
-  pub fn play(&mut self, engine: XrayEngine, play: SoundPlay<'_>) -> Option<u64> {
+  pub(crate) fn play(&mut self, engine: XrayEngine, play: SoundPlay<'_>) -> Option<u64> {
     let info: WorldSoundInfo = play.sound.info?;
     let id: u64 = NEXT_EMITTER.fetch_add(1, Ordering::Relaxed);
     // A two-channel file always plays 2D, from the listener (`set_position`, `switch_to_2D`).
@@ -67,12 +67,12 @@ impl SoundEmitters {
   }
 
   /// Whether the emitter still plays at `now`, `_feedback()`: started, not played out, and not faded out after a stop.
-  pub fn is_playing(&self, id: u64, now: Duration) -> bool {
+  pub(crate) fn is_playing(&self, id: u64, now: Duration) -> bool {
     self.find(id).is_some_and(|live| Self::is_alive(live, now))
   }
 
   /// `stop_deferred`: fades it out from `now`; one stopping already fades on.
-  pub fn stop_deferred(&mut self, id: u64, now: Duration) {
+  pub(crate) fn stop_deferred(&mut self, id: u64, now: Duration) {
     if let Some(live) = self.find_mut(id)
       && live.emitter.stop.is_none()
     {
@@ -81,20 +81,20 @@ impl SoundEmitters {
   }
 
   /// `stop`: ends it at once.
-  pub fn stop(&mut self, id: u64) {
+  pub(crate) fn stop(&mut self, id: u64) {
     if let Ok(index) = self.live.binary_search_by_key(&id, |live| live.emitter.id) {
       self.live.remove(index);
     }
   }
 
-  pub fn set_volume(&mut self, id: u64, volume: f32) {
+  pub(crate) fn set_volume(&mut self, id: u64, volume: f32) {
     if let Some(live) = self.find_mut(id) {
       live.emitter.volume = volume;
     }
   }
 
   /// `set_position`: moves a placed sound, in engine space; a 2D one stays at the listener.
-  pub fn set_position(&mut self, id: u64, position: [f32; 3]) {
+  pub(crate) fn set_position(&mut self, id: u64, position: [f32; 3]) {
     if let Some(live) = self.find_mut(id)
       && !live.emitter.is_2d
     {
@@ -103,13 +103,13 @@ impl SoundEmitters {
   }
 
   /// Lets go of what no longer plays at `now`, keeping what no frame has carried yet.
-  pub fn retire(&mut self, now: Duration) {
+  pub(crate) fn retire(&mut self, now: Duration) {
     self.live.retain(|live| live.is_new || Self::is_alive(live, now));
   }
 
   /// Every emitter a frame at `now` carries: what plays, and what started since the last frame however short; each is
   /// marked carried.
-  pub fn fill(&mut self, out: &mut Vec<AudioSceneEmitter>, now: Duration) {
+  pub(crate) fn fill(&mut self, out: &mut Vec<AudioSceneEmitter>, now: Duration) {
     for live in &mut self.live {
       if live.is_new || Self::is_alive(live, now) {
         out.push(live.emitter.clone());
