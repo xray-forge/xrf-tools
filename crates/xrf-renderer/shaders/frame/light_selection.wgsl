@@ -7,8 +7,8 @@
 
 // Which of a pixel's lights are shadowed, found alike by the visibility pass that shadows them and by the lights pass
 // that reads what it found: each light of the pixel's cluster, in the cluster's order, that reaches the pixel and
-// either casts a shadow or is among the strongest the contact shadows march towards takes the next of the pixel's
-// visibility slots, four to a layer of the visibility target.
+// either casts a shadow or is among the strongest the contact shadows march towards (`take_contact`, as many as the
+// pixel marches at most) takes the next of the pixel's visibility slots, four to a layer of the visibility target.
 
 // Lights a pixel marches contact shadows towards at most, as `RENDER_MAX_CONTACT_SHADOW_LIGHTS` caps them.
 const MAX_CONTACT_LIGHTS: u32 = 8u;
@@ -96,13 +96,26 @@ fn is_reaching(record: LightRecord, light: ReachingLight) -> bool {
   return light.falloff > 0.0 && !is_outside_cone(record, light.to_point);
 }
 
-// Whether a light reaching a pixel takes a visibility slot: it casts a shadow, or the contact shadows may march to it.
-fn takes_slot(pixel: LitPixel, light: ReachingLight) -> bool {
-  return light.is_shadowed || is_contact_marched(pixel, light);
+// Whether a light reaching a pixel takes a visibility slot: it casts a shadow, or the contact shadows march to it
+// (`is_contacted`, as `take_contact` answered for it).
+fn takes_slot(light: ReachingLight, is_contacted: bool) -> bool {
+  return light.is_shadowed || is_contacted;
 }
 
-// Whether a light is among the strongest at a pixel, which the contact shadows march towards while they have marches
-// left.
+// Whether the contact shadows march towards a light reaching a pixel, counting it in `contacted`, the lights of the
+// pixel's walk over its cluster taken so far: one reaching the strongest's weight while fewer than the pixel marches
+// at most were taken before it in the cluster's order. A pixel's own weights pass more of its lights than the weight
+// found beside it allows where its normal turns from its neighbours', and the count holds them to as many; every pass
+// walking the cluster asks each reaching light alike, so all take the same lights and the same slots.
+fn take_contact(pixel: LitPixel, light: ReachingLight, contacted: ptr<function, u32>) -> bool {
+  let is_taken: bool = *contacted < pixel.contact_count && is_contact_marched(pixel, light);
+
+  *contacted += select(0u, 1u, is_taken);
+
+  return is_taken;
+}
+
+// Whether a light is among the strongest at a pixel, reaching the weight the contact shadows march towards.
 fn is_contact_marched(pixel: LitPixel, light: ReachingLight) -> bool {
   return light.weight > 0.0 && light.weight >= pixel.threshold;
 }

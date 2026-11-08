@@ -71,6 +71,7 @@ fn light_lights(in: FullscreenVarying, is_split: bool) -> LightsSplitTargets {
   let is_flora: bool = has_mark(material_texel.a, MARK_FLORA);
   let to_eye: vec3<f32> = -camera_view_ray(pixel.position);
   var slot: u32 = 0u;
+  var contacted: u32 = 0u;
   var total: vec4<f32> = vec4<f32>(0.0);
   var specular: vec3<f32> = vec3<f32>(0.0);
   // The one BRDF's surface where the specular is split, as every path takes it, its water film from the wet surface
@@ -118,7 +119,7 @@ fn light_lights(in: FullscreenVarying, is_split: bool) -> LightsSplitTargets {
       projected = vec4<f32>(authored_colour(sampled.rgb), sampled.a);
     }
 
-    if (takes_slot(pixel, light)) {
+    if (takes_slot(light, take_contact(pixel, light, &contacted))) {
       if (slot < VISIBILITY_SLOTS) {
         visible = slot_visibility(texel, slot);
       }
