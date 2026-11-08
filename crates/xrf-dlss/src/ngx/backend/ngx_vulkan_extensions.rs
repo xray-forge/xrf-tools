@@ -20,6 +20,7 @@ impl NgxVulkanExtensions {
     application: &NgxApplication,
     args: &mut CreateInstanceCallbackArgs<'_, '_, '_>,
   ) -> XrfResult<bool> {
+    // SAFETY: the loader's entry wgpu hands the callback, asked only for the extensions it lists.
     let supported = unsafe { args.entry.enumerate_instance_extension_properties(None) }
       .map_err(|error| XrfError::new_unexpected_error(format!("Vulkan lists no extensions: {error}")))?;
     let has = |names: &[&'static CStr]| {
@@ -95,6 +96,8 @@ impl NgxVulkanExtensions {
 
   /// The instance extensions NGX names for a feature.
   fn list_for_instance(application: &NgxApplication, feature: NVSDK_NGX_Feature) -> XrfResult<Vec<&'static CStr>> {
+    // SAFETY: NGX is asked under its lock, the feature info lives for the call, and NGX answers `count` extensions
+    // it keeps for the process's life.
     application.with_feature_info(feature, |info| unsafe {
       let _ngx: MutexGuard<'static, ()> = NgxLock::hold();
       let mut extensions: *mut ash::vk::ExtensionProperties = ptr::null_mut();
@@ -118,6 +121,7 @@ impl NgxVulkanExtensions {
     let instance: ash::vk::Instance = adapter.shared_instance().raw_instance().handle();
     let physical_device: ash::vk::PhysicalDevice = adapter.raw_physical_device();
 
+    // SAFETY: as for the instance's, with the live instance and physical device the adapter was enumerated from.
     application.with_feature_info(feature, |info| unsafe {
       let _ngx: MutexGuard<'static, ()> = NgxLock::hold();
       let mut extensions: *mut ash::vk::ExtensionProperties = ptr::null_mut();
@@ -157,8 +161,10 @@ impl NgxVulkanExtensions {
       return Vec::new();
     }
 
+    // SAFETY: the caller's contract: `count` initialised extensions NGX keeps for the process's life.
     unsafe { slice::from_raw_parts(extensions, count as usize) }
       .iter()
+      // SAFETY: Vulkan terminates an extension's name within its fixed array.
       .map(|extension| unsafe { CStr::from_ptr(extension.extension_name.as_ptr()) })
       .collect()
   }

@@ -138,7 +138,7 @@ impl GamedataProject {
         is_strict_check: false,
       },
     )
-    .map_err(|error| XrfError::new_asset_error(format!("Failed to open gamedata project ltx configs: {}", error)))?;
+    .map_err(|error| XrfError::new_asset_error(format!("Failed to open gamedata project ltx configs: {error}")))?;
 
     Ok(Self {
       engine,

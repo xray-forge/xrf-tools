@@ -13,10 +13,12 @@ pub(crate) enum NgxApi {
 impl NgxApi {
   /// The API `device` draws with, none where NGX has none of it.
   pub(crate) fn of(device: &wgpu::Device) -> Option<Self> {
+    // SAFETY: the raw device is only asked whether it is there, and its guard dropped at once.
     if unsafe { device.as_hal::<Vulkan>() }.is_some() {
       return Some(Self::Vulkan);
     }
 
+    // SAFETY: as above.
     #[cfg(windows)]
     if unsafe { device.as_hal::<Dx12>() }.is_some() {
       return Some(Self::D3d12);

@@ -18,7 +18,6 @@ pub struct JitteredRead {
 /// resolved. It reads the passes' tags: the resolves carry `RESOLVES`, and a pass whose read of a drawn texture averages
 /// it or only shows it carries that texture's `READS_*` tag, beside the reason it gives. Every build tags its passes;
 /// only a build with debug assertions watches.
-#[cfg_attr(not(debug_assertions), allow(dead_code))]
 #[derive(Default)]
 pub struct JitterGuard {
   /// What was last warned of, warned again only once it changes.

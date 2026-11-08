@@ -95,7 +95,7 @@ impl ChunkReadWriteList for ParticleAction {
       actions.push(
         reader
           .read_xr::<T, _>()
-          .map_err(|error| XrfError::new_parsing_error(format!("Failed to read particle effect action: {}", error)))?,
+          .map_err(|error| XrfError::new_parsing_error(format!("Failed to read particle effect action: {error}")))?,
       );
     }
 
@@ -161,8 +161,7 @@ impl ChunkReadWrite for ParticleAction {
       ParticleActionType::Scatter => Self::Scatter(Box::new(reader.read_xr::<T, _>()?)),
       ParticleActionType::Unknown | ParticleActionType::CallActionList => {
         return Err(XrfError::new_unexpected_error(format!(
-          "Unexpected action type provided for reading: {}",
-          action_type
+          "Unexpected action type provided for reading: {action_type}"
         )));
       }
     })
@@ -293,8 +292,7 @@ impl LtxImportExport for ParticleAction {
       ParticleActionType::Scatter => Self::Scatter(Box::new(ParticleActionScatter::import(section_name, ltx)?)),
       ParticleActionType::Unknown | ParticleActionType::CallActionList => {
         return Err(XrfError::new_unexpected_error(format!(
-          "Unexpected action type provided for reading: {}",
-          action_type
+          "Unexpected action type provided for reading: {action_type}"
         )));
       }
     })

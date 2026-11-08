@@ -280,7 +280,7 @@ fn picks_the_nearer_of_two_floors() -> XrfResult {
     .get_vertices()
     .iter()
     .chain(upper.get_vertices())
-    .cloned()
+    .copied()
     .collect();
   let faces: Vec<LevelCformFace> = vec![face([0, 2, 1]), face([0, 3, 2]), face([4, 6, 5]), face([4, 7, 6])];
   let tracer: LevelCformTracer = LevelCformTracer::new(&LevelCformGeometry::new(vertices, faces)?);

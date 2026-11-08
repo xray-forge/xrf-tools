@@ -214,7 +214,7 @@ impl MaterialsVerifier<'_> {
   }
 
   fn verify_ltx(library: &GameMtlFile, ltx: &Ltx, path: &Path, result: &mut GamedataMaterialsVerificationResult) {
-    for (section_name, section) in ltx.iter() {
+    for (section_name, section) in ltx {
       let Some(value) = section.get(Self::MATERIAL_KEY) else {
         continue;
       };

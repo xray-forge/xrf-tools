@@ -1,3 +1,5 @@
+#![expect(unsafe_code, reason = "serves Steam Audio's C allocation callbacks")]
+
 use std::alloc::Layout;
 use std::ffi::c_void;
 
@@ -11,7 +13,7 @@ impl SteamAllocator {
   const HEADER: usize = 64;
 
   pub(crate) unsafe extern "C" fn allocate(size: usize, alignment: usize) -> *mut c_void {
-    let alignment: usize = alignment.max(std::mem::align_of::<usize>()).next_power_of_two();
+    let alignment: usize = alignment.max(align_of::<usize>()).next_power_of_two();
     let header: usize = Self::HEADER.max(alignment);
     let Ok(layout) = Layout::from_size_align(size + header, alignment) else {
       return std::ptr::null_mut();

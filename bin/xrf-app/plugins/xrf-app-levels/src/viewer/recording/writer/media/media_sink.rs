@@ -1,3 +1,8 @@
+#![expect(
+  unsafe_code,
+  reason = "writes the recording through Media Foundation, whose COM calls the `windows` crate exposes as unsafe"
+)]
+
 use std::path::Path;
 use std::time::Duration;
 

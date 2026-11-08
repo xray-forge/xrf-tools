@@ -365,7 +365,7 @@ impl WorldLevelSource for LevelRenderSource {
           Err(error) => {
             failures.push(RenderLoadFailure {
               name: name.clone(),
-              reason: error.to_string(),
+              reason: error,
             });
 
             None

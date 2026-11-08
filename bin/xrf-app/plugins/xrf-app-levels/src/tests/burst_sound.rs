@@ -155,7 +155,7 @@ fn record(name: &str, emitters: impl Fn(Duration) -> Vec<AudioSceneEmitter>) -> 
   let bytes: Vec<u8> = fs::read(&outcome.file).expect("the sound to be read back");
   let mut sent: Vec<f32> = Vec::new();
 
-  for chunk in heard.iter() {
+  for chunk in &heard {
     assert_eq!(chunk.at, (sent.len() / 2) as u64, "each stretch follows the last");
     sent.extend(chunk.samples);
   }

@@ -128,7 +128,7 @@ fn a_reload_answers_the_previous_snapshot_and_opens_a_new_handle() {
   let previous: SessionId = open(&sessions, &scopes, &tool, "previous");
   let reloaded: SessionId = SessionId::generate();
 
-  scopes.bind(reloaded, tool.clone());
+  scopes.bind(reloaded, tool);
 
   let (opening, held) = sessions.begin_reload(reloaded, previous).unwrap();
 

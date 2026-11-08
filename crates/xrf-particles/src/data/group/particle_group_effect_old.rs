@@ -100,7 +100,7 @@ impl ParticleGroupEffectOld {
 
       if ltx.has_section(&action_section_name) {
         effects.push(Self::import(&action_section_name, ltx)?);
-        effect_index += 1
+        effect_index += 1;
       } else {
         break;
       }
@@ -145,7 +145,7 @@ impl ParticleGroupEffectOld {
   /// Export list of particles group effect data into provided path.
   pub fn export_list(effects_old: &[Self], section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     for (index, effect) in effects_old.iter().enumerate() {
-      effect.export(&Self::get_effect_old_section(section_name, index), ltx)?
+      effect.export(&Self::get_effect_old_section(section_name, index), ltx)?;
     }
 
     Ok(())

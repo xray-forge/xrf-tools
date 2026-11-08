@@ -1,3 +1,8 @@
+#![cfg_attr(
+  windows,
+  expect(unsafe_code, reason = "reads process memory counters through Win32 process handles")
+)]
+
 use serde::Serialize;
 
 /// What one process holds in memory.

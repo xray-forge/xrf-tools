@@ -113,7 +113,7 @@ impl XmlDescriptionCollection {
 
                 existing.sprites.extend(description.sprites);
               }
-            })
+            });
         }
       }
 

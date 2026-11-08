@@ -46,7 +46,7 @@ fn rewriting_existing_refs_lands_on_the_normalized_source() -> XrfResult {
 #[test]
 fn patching_a_split_reference_visual_is_allowed_and_reports_what_it_dropped() -> XrfResult {
   let source: Vec<u8> = fixtures::split_motion_ref()?;
-  let path: PathBuf = write_fixture("patch_split_reference.ogf", source.clone())?;
+  let path: PathBuf = write_fixture("patch_split_reference.ogf", source)?;
   let replacement: Vec<String> = vec![String::from("actors\\replacement_animation")];
 
   // The whole point of the issue: this call used to fail before it could reach the chunk it edits.

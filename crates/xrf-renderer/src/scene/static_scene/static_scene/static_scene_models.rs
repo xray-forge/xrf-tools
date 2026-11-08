@@ -125,8 +125,8 @@ impl StaticScene {
       .put(context.device, context.queue, context.encoder, &writer);
 
     let spans: StaticSpans = self.geometry.allocate(context.device, context.queue, &writer)?;
-    let first_slot: u32 = StaticSpans::get_offset(&spans.slots);
-    let first_cluster: u32 = StaticSpans::get_offset(&spans.clusters);
+    let first_slot: u32 = StaticSpans::get_offset(spans.slots.as_ref());
+    let first_cluster: u32 = StaticSpans::get_offset(spans.clusters.as_ref());
 
     writer.relocate(&spans);
     self.geometry.write(&spans, &writer);
@@ -148,11 +148,12 @@ impl StaticScene {
         cluster_slots: writer.cluster_slots,
         sphere: model.sphere,
         bounds: model.bounds,
-        vertex_start: StaticSpans::get_offset(&spans.words[StaticLayout::Model.get_index()]) + base.vertex_start,
+        vertex_start: StaticSpans::get_offset(spans.words[StaticLayout::Model.get_index()].as_ref())
+          + base.vertex_start,
         skin: model
           .skin
           .as_ref()
-          .map(|skin| (StaticSpans::get_offset(&spans.skins), skin.bones)),
+          .map(|skin| (StaticSpans::get_offset(spans.skins.as_ref()), skin.bones)),
         trace_geometries: writer.trace_geometries,
         spans,
       },

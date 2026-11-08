@@ -1,4 +1,5 @@
-#![allow(dead_code)]
+#![allow(dead_code, reason = "names every engine class, including ones no tool reads yet")]
+
 use enum_map::Enum;
 use serde::{Deserialize, Serialize};
 use xrf_error::{XrfError, XrfResult};

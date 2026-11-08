@@ -254,7 +254,7 @@ impl BitmaskFeature {
           passes
             .lighting
             .vbao
-            .record_search(context, VbaoGathering::of(is_lit), view, &searching)
+            .record_search(context, VbaoGathering::of(is_lit), view, &searching);
         });
     }
 
@@ -360,7 +360,7 @@ impl BitmaskFeature {
             passes
               .lighting
               .vbao
-              .record_accumulate(context, gathering, view, &accumulate)
+              .record_accumulate(context, gathering, view, &accumulate);
           });
 
         (written, written_light.or(lit_searched))

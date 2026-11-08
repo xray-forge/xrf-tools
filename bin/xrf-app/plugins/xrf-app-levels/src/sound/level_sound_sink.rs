@@ -14,8 +14,10 @@ pub struct LevelSoundSink {
   assets: Arc<dyn AudioAssetSource>,
   geometry: Arc<dyn AudioSceneGeometry>,
   /// Frames the inbox had no room for, back to the world first; the next frame carries everything again.
-  // Boxed as the inbox's rings carry them, so a frame moves between the threads by its pointer.
-  #[allow(clippy::vec_box)]
+  #[expect(
+    clippy::vec_box,
+    reason = "boxed as the inbox's rings carry them, so a frame moves between threads by its pointer"
+  )]
   refused: Vec<Box<AudioSceneFrame>>,
 }
 

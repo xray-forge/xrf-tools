@@ -84,12 +84,9 @@ fn a_texture_outside_every_root_is_described_from_its_own_path() {
   std::fs::write(&texture, to_dds_bytes(8)).expect("texture is writable");
 
   let (vfs, id) = mount(&FixtureTree::new("textures_standalone_roots"));
-  let description: TextureDescription = TextureDescription::describe(
-    &search_over(vfs, id),
-    file_source(texture.clone()),
-    XrayRoots::default(),
-  )
-  .expect("a loose texture is described");
+  let description: TextureDescription =
+    TextureDescription::describe(&search_over(vfs, id), file_source(texture), XrayRoots::default())
+      .expect("a loose texture is described");
 
   assert_eq!(
     description.reference, "wall",

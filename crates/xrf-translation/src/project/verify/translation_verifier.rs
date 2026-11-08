@@ -135,7 +135,7 @@ impl TranslationVerifier {
 
     let path_display: String = format_path(path.as_ref()).to_string();
 
-    log::info!("Verifying JSON file {}", path_display);
+    log::info!("Verifying JSON file {path_display}");
 
     let started_at: Instant = Instant::now();
     let parsed: TranslationJson = TranslationJsonReader::read(path.as_ref())?;

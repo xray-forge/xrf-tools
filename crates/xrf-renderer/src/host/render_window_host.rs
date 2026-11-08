@@ -1,3 +1,8 @@
+#![expect(
+  unsafe_code,
+  reason = "declares the window-host contract the render thread relies on as an unsafe trait"
+)]
+
 /// A native window viewports are drawn into, as the application hosting the renderer knows it.
 ///
 /// The renderer polls it rather than being told of changes: the client size each frame, so the swapchain follows a

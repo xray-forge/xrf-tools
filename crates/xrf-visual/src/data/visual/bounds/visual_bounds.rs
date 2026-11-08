@@ -17,7 +17,7 @@ impl VisualBounds {
     Self::from_positions(
       indices
         .iter()
-        .filter_map(|index| positions.get(*index as usize).cloned()),
+        .filter_map(|index| positions.get(*index as usize).copied()),
     )
   }
 

@@ -1,6 +1,11 @@
 //! A burst's video: its frames and its sound written as one MP4 through Media Foundation as they come, read back
 //! through its Source Reader, and refused where Media Foundation does not load.
 
+#![expect(
+  unsafe_code,
+  reason = "reads the written video back through Media Foundation's COM calls"
+)]
+
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;

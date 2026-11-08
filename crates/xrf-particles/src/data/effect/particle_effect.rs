@@ -290,7 +290,7 @@ impl LtxImportExport for ParticleEffect {
 
       if ltx.has_section(&action_section_name) {
         actions.push(ParticleAction::import(&action_section_name, ltx)?);
-        action_index += 1
+        action_index += 1;
       } else {
         break;
       }
@@ -336,7 +336,7 @@ impl LtxImportExport for ParticleEffect {
     ParticleEffectSprite::export_optional(&Self::get_sprite_section(section_name), ltx, self.sprite.as_ref())?;
 
     for (index, action) in self.actions.iter().enumerate() {
-      action.export(&Self::get_action_section(section_name, index), ltx)?
+      action.export(&Self::get_action_section(section_name, index), ltx)?;
     }
 
     ParticleEffectFrame::export_optional(&Self::get_frame_section(section_name), ltx, self.frame.as_ref())?;

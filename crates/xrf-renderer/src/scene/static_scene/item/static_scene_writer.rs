@@ -113,12 +113,13 @@ impl StaticSceneWriter {
   /// Moves every record's references from indices in here to where the item's ranges put them; the CPU's cluster slots
   /// stay counted from the item's own first.
   pub fn relocate(&mut self, spans: &StaticSpans) {
-    let words: [u32; StaticLayout::COUNT] = std::array::from_fn(|layout| StaticSpans::get_offset(&spans.words[layout]));
-    let indices: u32 = StaticSpans::get_offset(&spans.indices);
-    let clusters: u32 = StaticSpans::get_offset(&spans.clusters);
-    let slots: u32 = StaticSpans::get_offset(&spans.slots);
-    let places: u32 = StaticSpans::get_offset(&spans.places);
-    let impostors: u32 = StaticSpans::get_offset(&spans.impostors);
+    let words: [u32; StaticLayout::COUNT] =
+      std::array::from_fn(|layout| StaticSpans::get_offset(spans.words[layout].as_ref()));
+    let indices: u32 = StaticSpans::get_offset(spans.indices.as_ref());
+    let clusters: u32 = StaticSpans::get_offset(spans.clusters.as_ref());
+    let slots: u32 = StaticSpans::get_offset(spans.slots.as_ref());
+    let places: u32 = StaticSpans::get_offset(spans.places.as_ref());
+    let impostors: u32 = StaticSpans::get_offset(spans.impostors.as_ref());
 
     for (cluster, layout) in self.clusters.iter_mut().zip(&self.cluster_layouts) {
       cluster.first_index += indices;

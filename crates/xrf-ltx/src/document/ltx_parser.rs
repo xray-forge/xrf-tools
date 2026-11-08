@@ -349,13 +349,10 @@ impl LtxParser<'_> {
       return self.error("Failed to parse empty section statement");
     }
 
-    let closing_bracket_position: Option<usize> = line.find(LTX_SYMBOL_SECTION_CLOSE);
-
-    if closing_bracket_position.is_none() {
+    let Some(section_ends_at) = line.find(LTX_SYMBOL_SECTION_CLOSE) else {
       return self.error("Failed to parse section statement without closing bracket ']'");
-    }
+    };
 
-    let section_ends_at: usize = closing_bracket_position.unwrap();
     let section: &str = &line[1..section_ends_at];
     let remainder: &str = line[section_ends_at + 1..].trim();
 

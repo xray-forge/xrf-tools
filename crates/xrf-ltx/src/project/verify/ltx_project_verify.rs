@@ -48,9 +48,8 @@ impl LtxProject {
       // Do not check scheme definitions for scheme files - makes no sense.
       if Self::is_ltx_scheme_path(entry) {
         continue;
-      } else {
-        result.total_files += 1;
       }
+      result.total_files += 1;
 
       // One unreadable config must not end the run.
       // Not retained: a sweep reads every root once, and holding them all is what `is_caching_resolutions` exists to
@@ -132,7 +131,7 @@ impl LtxProject {
     // Rendered once per entry point and only when someone reads it: rendering asks the VFS where the file sits.
     let reported: Option<String> = output.map(|_| self.report_path(entry.as_str()));
 
-    for (section_name, section) in ltx.iter() {
+    for (section_name, section) in ltx {
       found.total_sections += 1;
 
       // The file a person has to open, which the entry point stays beside.

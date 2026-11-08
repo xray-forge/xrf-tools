@@ -245,7 +245,7 @@ fn writing_nodes_the_header_does_not_count_is_refused() -> XrfResult {
   let (file, nodes): (LevelAiFile, LevelAiNodes) = LevelAiFile::read_with_nodes_from_bytes::<XRayByteOrder>(
     map_bytes(&header(LevelAiVersion::CsCop, 1), &[sample_node(0)])?,
   )?;
-  let mut other: LevelAiFile = file.clone();
+  let mut other: LevelAiFile = file;
 
   other.header.count = 2;
 

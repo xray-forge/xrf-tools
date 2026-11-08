@@ -36,21 +36,21 @@ impl AlifeSmartCoverLoophole {
     for it in value.split(',').map(|it| it.trim()) {
       let partial: Vec<&str> = it.split(':').map(|it| it.trim()).collect::<Vec<&str>>();
 
-      if partial.len() == 2 {
-        loopholes.push(Self {
-          name: String::from(*partial.first().unwrap()),
-          enabled: match partial.last().unwrap().parse::<u8>() {
-            Ok(parsed) => parsed,
-            Err(_) => {
-              return Err(XrfError::new_parsing_error("Failed to parse loophole enabled status"));
-            }
-          },
-        })
-      } else {
+      let [name, enabled] = partial.as_slice() else {
         return Err(XrfError::new_parsing_error(
           "Invalid value provided for loopholes parsing, ':' separated values expected",
         ));
-      }
+      };
+
+      loopholes.push(Self {
+        name: String::from(*name),
+        enabled: match enabled.parse::<u8>() {
+          Ok(parsed) => parsed,
+          Err(_) => {
+            return Err(XrfError::new_parsing_error("Failed to parse loophole enabled status"));
+          }
+        },
+      });
     }
 
     Ok(loopholes)

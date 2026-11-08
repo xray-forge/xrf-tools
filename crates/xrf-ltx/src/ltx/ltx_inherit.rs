@@ -194,7 +194,13 @@ impl LtxInheritConvertor {
       // Shared, not copied: a parent's fields end up in every child that inherits it, and on a weapon tree that is the
       // same text stored dozens of times over.
       for inherited in &section.inherited {
-        new_props.extend_shared(destination.get(inherited).unwrap());
+        let parent: &Section = destination.get(inherited).ok_or_else(|| {
+          XrfError::new_convert_error(format!(
+            "Failed to inherit section '{inherited}' in '{section_name}', it was not resolved before its child"
+          ))
+        })?;
+
+        new_props.extend_shared(parent);
       }
 
       new_props.extend_shared(section);

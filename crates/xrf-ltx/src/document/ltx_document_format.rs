@@ -14,7 +14,7 @@ impl LtxDocument {
       match &item.kind {
         LtxItemKind::Comment { text } => LtxStatementWriter::write_comment(&mut formatted, text),
         LtxItemKind::Include { path, comment } => {
-          LtxStatementWriter::write_include(&mut formatted, path, comment.as_deref())
+          LtxStatementWriter::write_include(&mut formatted, path, comment.as_deref());
         }
         LtxItemKind::Section {
           comment,

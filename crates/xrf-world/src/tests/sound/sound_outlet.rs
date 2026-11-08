@@ -17,7 +17,7 @@ use crate::tests::sound::found;
 #[derive(Clone, Default)]
 struct ReturningSink {
   sent: Arc<Mutex<Vec<(Duration, usize, usize)>>>,
-  #[allow(clippy::vec_box)]
+  #[expect(clippy::vec_box, reason = "keeps the frames boxed as the sink hands them over")]
   spent: Arc<Mutex<Vec<Box<AudioSceneFrame>>>>,
 }
 

@@ -31,7 +31,7 @@ impl VisualPoser {
           VisualSubmeshContent::Packed { geometry } => VisualSubmeshContent::Packed {
             geometry: Self::pose_geometry(geometry, package, skins.as_deref(), &mut builder),
           },
-          skipped => skipped.clone(),
+          skipped @ VisualSubmeshContent::Skipped { .. } => skipped.clone(),
         },
         ..submesh.clone()
       })

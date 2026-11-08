@@ -19,7 +19,7 @@ impl AudioFocus {
   /// background.
   pub fn set_window_focused(&self, label: &str, is_focused: bool) -> bool {
     let mut windows: MutexGuard<'_, Option<HashSet<String>>> = self.lock();
-    let was_in_background: bool = Self::is_background(&windows);
+    let was_in_background: bool = Self::is_background(windows.as_ref());
     let focused: &mut HashSet<String> = windows.get_or_insert_default();
 
     if is_focused {
@@ -28,12 +28,12 @@ impl AudioFocus {
       focused.remove(label);
     }
 
-    Self::is_background(&windows) != was_in_background
+    Self::is_background(windows.as_ref()) != was_in_background
   }
 
   /// Whether no window has the focus.
   pub fn is_in_background(&self) -> bool {
-    Self::is_background(&self.lock())
+    Self::is_background(self.lock().as_ref())
   }
 
   /// Plays at the stored volumes, silent in the background where the settings say so. The focus stays locked while
@@ -41,11 +41,11 @@ impl AudioFocus {
   pub fn apply(&self, server: &AudioServer, store: &AudioSettingsStore) {
     let windows: MutexGuard<'_, Option<HashSet<String>>> = self.lock();
 
-    server.set_gains(store.get().get_gains(Self::is_background(&windows)));
+    server.set_gains(store.get().get_gains(Self::is_background(windows.as_ref())));
   }
 
-  fn is_background(windows: &Option<HashSet<String>>) -> bool {
-    windows.as_ref().is_some_and(HashSet::is_empty)
+  fn is_background(windows: Option<&HashSet<String>>) -> bool {
+    windows.is_some_and(HashSet::is_empty)
   }
 
   fn lock(&self) -> MutexGuard<'_, Option<HashSet<String>>> {

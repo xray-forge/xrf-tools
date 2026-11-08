@@ -16,8 +16,10 @@ use crate::{SelectedVisual, VisualModels, VisualPoses, VisualRenderSource};
 /// show is, its ticket taken first so a model asked for later is never replaced by this one.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "show_model")]
-// Tauri injects each managed state as an argument of its own.
-#[allow(clippy::too_many_arguments)]
+#[expect(
+  clippy::too_many_arguments,
+  reason = "Tauri injects each managed state as an argument of its own"
+)]
 pub async fn visuals_show_model(
   shows: State<'_, ViewportShows>,
   reloads: State<'_, TextureReloads>,

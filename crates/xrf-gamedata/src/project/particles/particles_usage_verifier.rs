@@ -246,12 +246,12 @@ impl ParticlesUsageVerifier<'_> {
     path: &Path,
     result: &mut GamedataParticlesUsageVerificationResult,
   ) {
-    for (section_name, section) in ltx.iter() {
+    for (section_name, section) in ltx {
       if self.options.job.is_cancelled() {
         break;
       }
 
-      for (key, value) in section.iter() {
+      for (key, value) in section {
         if !Self::is_particle_reference_key(section_name, key) {
           continue;
         }

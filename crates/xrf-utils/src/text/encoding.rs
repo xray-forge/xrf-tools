@@ -194,7 +194,7 @@ pub fn encode_bytes_to_base64(bytes: &[u8]) -> String {
 pub fn decode_bytes_from_base64(string: &str) -> XrfResult<Vec<u8>> {
   BASE64_ENGINE
     .decode(string)
-    .map_err(|error| XrfError::new_parsing_error(format!("Failed to decode bytes value from base 64: {}", error)))
+    .map_err(|error| XrfError::new_parsing_error(format!("Failed to decode bytes value from base 64: {error}")))
 }
 
 /// Decodes URL-safe Base64 without padding into text, refusing bytes that are not UTF-8.

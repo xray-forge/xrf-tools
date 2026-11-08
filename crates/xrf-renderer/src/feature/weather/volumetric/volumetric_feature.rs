@@ -163,7 +163,7 @@ impl VolumetricFeature {
         passes
           .weather
           .light_volumes
-          .record_depth(context, view, &parameters, textures)
+          .record_depth(context, view, &parameters, textures);
       });
     graph
       .add_raster_pass("light volumes")
@@ -177,7 +177,7 @@ impl VolumetricFeature {
         passes
           .weather
           .light_volumes
-          .record(context, view, &parameters, textures, slices)
+          .record(context, view, &parameters, textures, slices);
       });
 
     Some(target)

@@ -77,7 +77,7 @@ mod test {
       (SectionValueText::of(""), String::new()),
       (SectionValueText::of("x".repeat(64)), "x".repeat(64)),
       (SectionValueText::of("x".repeat(65)), "x".repeat(65)),
-      (SectionValueText::of(&long), long.clone()),
+      (SectionValueText::of(&long), long),
       (
         SectionValueText::of(format_args!("{}{}", "a".repeat(60), "bbbbbbbb")),
         format!("{}bbbbbbbb", "a".repeat(60)),

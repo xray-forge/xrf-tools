@@ -297,7 +297,7 @@ impl Display for LtxFieldDataType {
       Self::TypeVector => String::from("vector"),
     };
 
-    write!(formatter, "{}", type_string)
+    write!(formatter, "{type_string}")
   }
 }
 

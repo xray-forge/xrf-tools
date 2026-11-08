@@ -25,7 +25,7 @@ pub struct RawFloat(pub u32);
 #[derive(specta::Type, Serialize)]
 #[specta(inline)]
 #[serde(untagged)]
-#[allow(dead_code)]
+#[expect(dead_code, reason = "declared for the TypeScript mirror alone and never built")]
 enum RawFloatValue {
   Value(i32),
   Bits(String),

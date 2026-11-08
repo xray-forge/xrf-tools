@@ -73,6 +73,8 @@ impl NgxSdk {
     let mut is_available: i32 = 0;
 
     NgxResult::check(
+      // SAFETY: NGX was started on the device under the lock the caller holds, and writes the parameters' pointer into
+      // the field it is handed.
       unsafe {
         match self.api {
           NgxApi::Vulkan => NVSDK_NGX_VULKAN_GetCapabilityParameters(&mut self.parameters),
@@ -84,6 +86,8 @@ impl NgxSdk {
     )?;
 
     NgxResult::check(
+      // SAFETY: the parameters are the ones NGX just answered, the name is a terminated SDK constant, and the value is
+      // written into a live `i32`.
       unsafe {
         NVSDK_NGX_Parameter_GetI(
           self.parameters,
@@ -101,6 +105,7 @@ impl NgxSdk {
     }
 
     let mut is_reconstructing: i32 = 0;
+    // SAFETY: as above, for the ray reconstruction capability.
     let asked: NVSDK_NGX_Result = unsafe {
       NVSDK_NGX_Parameter_GetI(
         self.parameters,
@@ -116,6 +121,8 @@ impl NgxSdk {
 
   /// Starts NGX on a Vulkan device, through the instance and the physical device it was opened on.
   fn init_vulkan(application: &NgxApplication, device: &wgpu::Device) -> XrfResult<()> {
+    // SAFETY: the raw handles are only read and handed to NGX, which the caller starts under NGX's lock; the device
+    // outlives NGX, which `Drop` shuts down before letting it go. The strings are terminated and outlive the call.
     unsafe {
       let hal = device
         .as_hal::<Vulkan>()
@@ -148,6 +155,7 @@ impl NgxSdk {
   /// Starts NGX on a D3D12 device.
   #[cfg(windows)]
   fn init_d3d12(application: &NgxApplication, device: &wgpu::Device) -> XrfResult<()> {
+    // SAFETY: as for Vulkan, with the D3D12 device's raw interface.
     unsafe {
       let hal = device
         .as_hal::<Dx12>()
@@ -187,6 +195,7 @@ impl NgxSdk {
           NVSDK_NGX_Feature_NVSDK_NGX_Feature_SuperSampling,
           NVSDK_NGX_Feature_NVSDK_NGX_Feature_RayReconstruction,
         ] {
+          // SAFETY: NGX's lock is held, and the feature info lives for the call.
           application.with_feature_info(feature, |info| unsafe {
             NVSDK_NGX_UpdateFeature(&info.Identifier, info.FeatureID);
           });
@@ -213,6 +222,7 @@ impl NgxSdk {
         return true;
       }
 
+      // SAFETY: the caller holds NGX's lock, and the feature's work is done on the device.
       unsafe { Self::release(api, feature.handle) };
 
       false
@@ -225,6 +235,7 @@ impl NgxSdk {
   ///
   /// NGX's lock is held, and nothing recorded with the feature is still running on the device.
   unsafe fn release(api: NgxApi, handle: *mut NVSDK_NGX_Handle) {
+    // SAFETY: the caller's contract: NGX's lock is held and the feature is idle.
     let result: NVSDK_NGX_Result = unsafe {
       match api {
         NgxApi::Vulkan => NVSDK_NGX_VULKAN_ReleaseFeature(handle),
@@ -244,6 +255,8 @@ impl NgxSdk {
   ///
   /// Nothing NGX recorded is still running on the device.
   unsafe fn shut_down(&mut self) {
+    // SAFETY: the caller's contract: the device is idle; the parameters are NGX's own, released once, and the device
+    // handle is the one NGX was started on.
     unsafe {
       if !self.parameters.is_null()
         && let Err(error) = NgxResult::check(
@@ -290,9 +303,11 @@ impl Drop for NgxSdk {
     let _ngx: MutexGuard<'static, ()> = NgxLock::hold();
 
     for feature in self.retired.drain(..) {
+      // SAFETY: NGX's lock is held, and the device finished all its work in the poll above.
       unsafe { Self::release(self.api, feature.handle) };
     }
 
+    // SAFETY: as above.
     unsafe { self.shut_down() };
   }
 }

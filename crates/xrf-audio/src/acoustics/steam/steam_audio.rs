@@ -1,3 +1,8 @@
+#![expect(
+  unsafe_code,
+  reason = "calls Steam Audio's air absorption model, which audionimbus exposes as unsafe"
+)]
+
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::path::Path;

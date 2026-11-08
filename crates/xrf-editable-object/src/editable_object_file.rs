@@ -174,7 +174,7 @@ impl EditableObjectFile {
           );
         }
         Self::CLASS_SCRIPT_CHUNK_ID if class_script.is_none() => {
-          class_script = Some(chunk.read_w1251_string_payload()?)
+          class_script = Some(chunk.read_w1251_string_payload()?);
         }
         Self::LODS_CHUNK_ID if lods.is_none() => lods = Some(chunk.read_w1251_string_payload()?),
         Self::MESHES_CHUNK_ID if meshes.is_none() => {
@@ -195,7 +195,7 @@ impl EditableObjectFile {
           })?);
         }
         Self::EMBEDDED_MOTIONS_CHUNK_ID if embedded_motions.is_none() => {
-          embedded_motions = Some(chunk.read_remaining()?)
+          embedded_motions = Some(chunk.read_remaining()?);
         }
         Self::MOTION_REFERENCES_CHUNK_ID if motion_references.is_none() => {
           motion_references = Some(EditableChunks::read_whole(chunk, "motion references", |chunk| {

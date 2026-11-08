@@ -126,7 +126,7 @@ fn flips_a_joint_limit_between_the_stored_and_the_authored_sense() {
     SkeletonJointLimit {
       min: -0.2,
       max: 0.5,
-      ..stored.clone()
+      ..stored
     }
   );
   assert_eq!(JointLimitSense::flip(authored), stored);

@@ -10,7 +10,7 @@ use xrf_ltx::{Ltx, LtxSectionWrite};
 use xrf_output::{Output, OutputChannel, OutputOptions, OutputVerbosity};
 use xrf_test_utils::GeneratedResources;
 
-use crate::equipment::{EquipmentSpritePackOptions, EquipmentSpritePacker};
+use crate::equipment::{EquipmentSpritePackOptions, EquipmentSpritePacker, InventorySpriteDescriptor};
 use crate::image_file::ImageFileWriter;
 
 struct CancelOnOutput {
@@ -154,6 +154,24 @@ fn completed_pack_publishes_every_icon() {
         assert_eq!(pixel.0[3], 0);
       }
     }
+  }
+}
+
+/// A marker without its separator, or a path relative to a config that was not read from a directory, names no root
+/// the icon can be found under; the packer refuses it as the icon's error rather than panicking mid-pack.
+#[test]
+fn refuses_a_custom_icon_path_it_cannot_resolve() {
+  for (custom, is_from_directory) in [("~ui\\icon", true), ("#ui\\icon", true), ("ui\\icon", false)] {
+    let mut options = options("unresolvable-custom-icon", 1, false);
+    options.ltx.with_section("icon_0").set("$inventory_icon_path", custom);
+    options.ltx.directory = is_from_directory.then(|| options.source.clone());
+
+    let descriptors: Vec<InventorySpriteDescriptor> = InventorySpriteDescriptor::new_list_from_ltx(&options.ltx);
+
+    assert!(
+      EquipmentSpritePacker::read_sprite_path(&options, &descriptors[0]).is_err(),
+      "{custom}"
+    );
   }
 }
 

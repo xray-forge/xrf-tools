@@ -1,3 +1,8 @@
+#![expect(
+  unsafe_code,
+  reason = "implements the renderer's unsafe window-host contract over AppKit views"
+)]
+
 use std::ffi::c_void;
 use std::num::NonZeroIsize;
 

@@ -71,7 +71,7 @@ impl ChunkReadWrite for SpawnGraphsChunk {
     )?;
 
     for _ in 0..header.levels_count {
-      levels.push(reader.read_xr::<T, _>()?)
+      levels.push(reader.read_xr::<T, _>()?);
     }
 
     let mut vertices: Vec<GraphVertex> = reader.new_bounded_vec(

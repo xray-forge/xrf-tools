@@ -249,7 +249,7 @@ impl LtxProject {
     let mut ltx_file_entries_failures: Vec<(XrayLogicalPath, XrayLogicalPath)> = Vec::new();
 
     // Filter our entries not included in other files and consider them entry-points.
-    for ltx_file_path in ltx_files.iter() {
+    for ltx_file_path in &ltx_files {
       // An unreadable config is an entry point whatever else says, because its own include list is unknown and the
       // verifier has to reach it to report why.
       if unreadable.contains(ltx_file_path) {
@@ -283,7 +283,7 @@ impl LtxProject {
         "Cannot read LTX project safely, detected case-insensitive #include statements:\n{}",
         ltx_file_entries_failures
           .iter()
-          .map(|(first, second)| format!("  - {} incorrectly imported as {}", first, second))
+          .map(|(first, second)| format!("  - {first} incorrectly imported as {second}"))
           .collect::<Vec<_>>()
           .join("\n")
       )));

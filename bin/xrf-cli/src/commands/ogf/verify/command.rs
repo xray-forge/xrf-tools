@@ -60,7 +60,7 @@ impl GenericCommand for VerifyCommand {
 
     OgfTextureResolver::check_roots(&roots)?;
 
-    let result: OgfVerificationResult = OgfVerifier::new(path, roots.clone()).run();
+    let result: OgfVerificationResult = OgfVerifier::new(path, roots).run();
 
     Self::print_census(&output, &result);
     ReportVerdict::print_findings(&output, &result.report);

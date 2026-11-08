@@ -18,7 +18,10 @@ use crate::viewer::recording::{LevelRecordings, RecordingProgress};
 /// where it stands a few times a second, and why where it ends by itself. Answers the file.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "start_recording")]
-#[allow(clippy::too_many_arguments)]
+#[expect(
+  clippy::too_many_arguments,
+  reason = "Tauri injects each managed state as an argument of its own"
+)]
 pub async fn levels_start_recording(
   renderer: State<'_, Renderer>,
   shown: State<'_, ShownLevels>,

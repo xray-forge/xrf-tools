@@ -111,7 +111,7 @@ impl VisualBufferBuilder {
   /// Offsets are `u32` on the wire. A visual's packed geometry is megabytes, so the ceiling is four
   /// thousand times the largest file measured across the reference trees.
   fn usize_to_u32(value: usize) -> u32 {
-    debug_assert!(value <= u32::MAX as usize, "a geometry buffer must fit a u32 offset");
+    debug_assert!(u32::try_from(value).is_ok(), "a geometry buffer must fit a u32 offset");
 
     value as u32
   }

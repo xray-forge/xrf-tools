@@ -151,7 +151,12 @@ impl GenerateCommand {
     entries
       .flatten()
       .filter_map(|entry| entry.file_name().into_string().ok())
-      .filter(|name| name.ends_with(".md") && !pages.iter().any(|(page, _)| page == name))
+      .filter(|name| {
+        Path::new(name)
+          .extension()
+          .is_some_and(|extension| extension.eq_ignore_ascii_case("md"))
+          && !pages.iter().any(|(page, _)| page == name)
+      })
       .collect()
   }
 }

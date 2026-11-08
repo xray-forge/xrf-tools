@@ -270,7 +270,7 @@ impl WetFeature {
           is_enhanced,
         };
 
-        passes.weather.wet.record(context, draw, view, &patch)
+        passes.weather.wet.record(context, draw, view, &patch);
       });
 
     graph
@@ -284,7 +284,7 @@ impl WetFeature {
           is_enhanced,
         };
 
-        passes.weather.wet.record(context, draw, view, &apply)
+        passes.weather.wet.record(context, draw, view, &apply);
       });
 
     WetTargets {

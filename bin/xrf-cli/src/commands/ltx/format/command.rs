@@ -61,10 +61,7 @@ impl GenericCommand for FormatCommand {
 
     Self::report_selection(&output, &selection, is_check, paths.len());
 
-    let options: LtxFormatOptions = LtxFormatOptions {
-      output: output.clone(),
-      job,
-    };
+    let options: LtxFormatOptions = LtxFormatOptions { output, job };
     let result: LtxProjectFormatResult = if is_check {
       LtxFilesFormatter::check_format_opt(&selection.files, options)?
     } else {

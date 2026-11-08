@@ -31,7 +31,7 @@ impl ExportsProject {
       .declarations
       .iter()
       .find(|declaration: &&ExportDescriptor| declaration.name == name)
-      .ok_or_else(|| XrfError::new_not_found_error(format!("Export '{}' is not part of this project.", name)))?;
+      .ok_or_else(|| XrfError::new_not_found_error(format!("Export '{name}' is not part of this project.")))?;
 
     let source: &ExportSourceDescriptor = &declaration.source;
     // Stored with `/` separators regardless of platform, which `join` handles on both.

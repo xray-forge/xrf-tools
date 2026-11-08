@@ -1,3 +1,5 @@
+#![expect(clippy::print_stdout, reason = "a build script speaks to Cargo through stdout")]
+
 use std::env;
 use std::process::{Command, Output};
 

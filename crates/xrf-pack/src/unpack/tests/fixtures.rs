@@ -85,7 +85,7 @@ pub(crate) fn create_project(directory: &Path, entries: &[Entry]) -> ArchiveProj
       modified_at: None,
       output_root_path: PathBuf::new(),
       mount_root: String::from("gamedata"),
-      path: source.clone(),
+      path: source,
       size_compressed: payload.len() as u64,
       size_real: payload.len() as u64,
     }],

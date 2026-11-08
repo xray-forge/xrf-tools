@@ -127,7 +127,7 @@ impl ThunderFeature {
         passes
           .effects
           .thunder
-          .record(context, view, &entries, draws, model_indices)
+          .record(context, view, &entries, draws, model_indices);
       });
   }
 }

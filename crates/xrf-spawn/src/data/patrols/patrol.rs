@@ -212,12 +212,7 @@ impl Patrol {
             ))
           })?;
 
-        log::warn!(
-          "Patrol point '{}' of patrol '{}' recovered from padded section '{}'",
-          listed,
-          name,
-          padded
-        );
+        log::warn!("Patrol point '{listed}' of patrol '{name}' recovered from padded section '{padded}'");
 
         padded
       };
@@ -230,7 +225,7 @@ impl Patrol {
     }
 
     for index in 0..links_count {
-      links.push(PatrolLink::import(&format!("{}.{}", name, index), patrol_links_ltx)?);
+      links.push(PatrolLink::import(&format!("{name}.{index}"), patrol_links_ltx)?);
     }
 
     assert_length(&links, links_count, "Expect defined count of patrols to be imported")?;

@@ -78,12 +78,12 @@ impl ChunkReadWrite for SkeletonMotionParametersChunk {
 
     let parts: Vec<SkeletonPart> = reader
       .read_xr_list::<T, _>()
-      .map_err(|error| XrfError::new_read_error(format!("Failed to read skeleton parts: {}", error)))?;
+      .map_err(|error| XrfError::new_read_error(format!("Failed to read skeleton parts: {error}")))?;
 
     Self::assert_parts(&parts)?;
 
     let motions: Vec<SkeletonMotionDefinition> = SkeletonMotionDefinition::read_list::<T, _>(reader, version)
-      .map_err(|error| XrfError::new_read_error(format!("Failed to read skeleton motion definitions: {}", error)))?;
+      .map_err(|error| XrfError::new_read_error(format!("Failed to read skeleton motion definitions: {error}")))?;
 
     reader.assert_read("Expect all data to be read from skeleton motion parameters chunk")?;
 

@@ -12,7 +12,7 @@ use crate::{
 pub struct GamedataVerificationReport {
   checks: Vec<GamedataVerificationCheckReport>,
   duration: Duration,
-  outcome: xrf_job::JobOutcome,
+  outcome: JobOutcome,
 }
 
 impl GamedataVerificationReport {
@@ -35,11 +35,11 @@ impl GamedataVerificationReport {
   ///
   /// What separates a clean verdict from a partial one: the checks that never ran report nothing, and nothing about
   /// their silence says they would have passed.
-  pub const fn get_outcome(&self) -> xrf_job::JobOutcome {
+  pub const fn get_outcome(&self) -> JobOutcome {
     self.outcome
   }
 
-  pub(crate) fn set_outcome(&mut self, outcome: xrf_job::JobOutcome) {
+  pub(crate) fn set_outcome(&mut self, outcome: JobOutcome) {
     self.outcome = outcome;
   }
 

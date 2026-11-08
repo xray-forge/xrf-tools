@@ -210,7 +210,7 @@ fn reads_a_located_asset_and_a_path_through_the_searched_vfs() {
     .resolve(XrayAssetType::Ogf, "wpn\\wpn_ak74")
     .expect("lookup succeeds");
 
-  let asset: &crate::XrayAsset = resolution.get_asset().expect("model resolves");
+  let asset: &XrayAsset = resolution.get_asset().expect("model resolves");
 
   assert_eq!(
     search.read_asset(asset).expect("bytes are readable"),
@@ -299,12 +299,12 @@ fn lists_assets_of_a_kind_once_per_identity_with_the_earlier_step_winning() {
     &["meshes/wpn/wpn_ak74.ogf", "meshes/wpn/wpn_abakan.ogf"],
   );
 
-  let assets: Vec<crate::XrayAsset> = XraySearch::new(vfs)
+  let assets: Vec<XrayAsset> = XraySearch::new(vfs)
     .with_step("near", XrayLookupScope::only([near_id]))
     .with_step("far", XrayLookupScope::only([far_id]))
     .list_assets(XrayAssetType::Ogf);
 
-  let mut listed: Vec<(&str, Option<&std::path::Path>)> = assets
+  let mut listed: Vec<(&str, Option<&Path>)> = assets
     .iter()
     .map(|it| (it.get_logical_path().as_str(), it.get_root()))
     .collect();

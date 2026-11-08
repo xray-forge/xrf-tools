@@ -23,6 +23,10 @@ pub(crate) fn locate_dlss_runtime(bundle: &dyn RenderBundle) -> Option<PathBuf> 
 
 /// Reads a Windows library's file version (`major.minor.build.revision`) from its version resource; none if absent.
 #[cfg(windows)]
+#[expect(
+  unsafe_code,
+  reason = "reads the library's version resource through Win32, which has no safe binding"
+)]
 pub(crate) fn read_file_version(path: &Path) -> Option<String> {
   use std::os::windows::ffi::OsStrExt;
 

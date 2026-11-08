@@ -13,6 +13,7 @@ impl NgxD3d12Resource {
   ///
   /// The texture is a D3D12 one, alive while NGX records with the resource.
   pub(crate) unsafe fn of(view: &wgpu::TextureView) -> *mut ID3D12Resource {
+    // SAFETY: the caller's contract keeps the resource alive while NGX holds its pointer; it is only read here.
     unsafe {
       view
         .texture()

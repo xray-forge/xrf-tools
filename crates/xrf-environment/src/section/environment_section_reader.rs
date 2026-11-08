@@ -37,7 +37,7 @@ impl<'a> EnvironmentSectionReader<'a> {
   pub fn read<K: EnvironmentKey>(&mut self, name: &str, section: &Section) -> EnvironmentSection<K> {
     let mut read: EnvironmentSection<K> = EnvironmentSection::new(name, self.file);
 
-    for (key_name, raw) in section.iter() {
+    for (key_name, raw) in section {
       if let Some(origin) = self.provenance.and_then(|provenance| provenance.get(name, key_name)) {
         read
           .origins

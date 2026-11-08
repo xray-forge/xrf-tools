@@ -103,7 +103,7 @@ fn reports_a_project_as_editable_only_when_every_source_has_a_file() {
   project.files.insert(
     String::from("st_a.xml"),
     TranslationFile {
-      sources: [(String::from("eng"), loose.clone())].into_iter().collect(),
+      sources: [(String::from("eng"), loose)].into_iter().collect(),
       ..Default::default()
     },
   );

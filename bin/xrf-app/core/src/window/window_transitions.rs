@@ -1,3 +1,11 @@
+#![cfg_attr(
+  windows,
+  expect(
+    unsafe_code,
+    reason = "sets a window's DWM attribute through Win32, which has no safe binding"
+  )
+)]
+
 use tauri::Runtime;
 use tauri::webview::WebviewWindow;
 

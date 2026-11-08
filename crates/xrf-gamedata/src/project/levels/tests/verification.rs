@@ -409,7 +409,7 @@ fn fails_the_check_when_the_game_graph_cannot_be_read() {
   fs::write(root.join("spawns").join("all.spawn"), [1, 2, 3, 4, 5, 6, 7, 8]).unwrap();
 
   let project: GamedataProject = GamedataProject::open(&GamedataProjectReadOptions {
-    root: root.clone(),
+    root,
     output: xrf_output::OutputOptions::default(),
     ..Default::default()
   })

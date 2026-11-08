@@ -118,7 +118,7 @@ impl SunShaftsFeature {
           passes
             .weather
             .sun_shafts
-            .record(context, view, &march, SunShaftsDraw::March)
+            .record(context, view, &march, SunShaftsDraw::March);
         });
     }
 

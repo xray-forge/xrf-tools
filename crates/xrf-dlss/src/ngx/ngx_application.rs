@@ -109,6 +109,7 @@ impl NgxApplication {
       return;
     }
 
+    // SAFETY: NGX hands its callback a terminated message, checked not null above, for the call's length.
     let text = unsafe { CStr::from_ptr(message) }.to_string_lossy();
 
     log::debug!(target: Self::LOG_TARGET, "{}", text.trim_end());

@@ -1,3 +1,5 @@
+#![expect(unsafe_code, reason = "creates a wgpu surface from a host's raw window handle")]
+
 use std::cell::Cell;
 use std::sync::Arc;
 

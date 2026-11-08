@@ -265,7 +265,7 @@ impl WeatherPlayer {
     let Some(thunder) = &weather.level.render.thunder else {
       return lighting;
     };
-    let flash = self.thunder.advance(thunder, mix, play, clock, glam::Vec3::from(view));
+    let flash = self.thunder.advance(thunder, mix, play, clock, Vec3::from(view));
 
     if let (Some(flash), Some(settings)) = (flash, thunder.settings) {
       self.is_flashing = true;

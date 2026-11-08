@@ -134,12 +134,7 @@ impl FromStr for GamedataVerificationType {
     Self::ALL
       .into_iter()
       .find(|verification_type| verification_type.to_string() == string)
-      .ok_or_else(|| {
-        XrfError::new_unexpected_error(format!(
-          "Unexpected verification type '{verification}' provided",
-          verification = string
-        ))
-      })
+      .ok_or_else(|| XrfError::new_unexpected_error(format!("Unexpected verification type '{string}' provided")))
   }
 }
 
