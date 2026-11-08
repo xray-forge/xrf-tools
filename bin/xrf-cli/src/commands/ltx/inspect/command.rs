@@ -1,9 +1,11 @@
+use std::collections::HashSet;
 use std::path::PathBuf;
 
 use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxDocumentSource, LtxProject, LtxResolution};
 use xrf_ltx_inspect::{
+  LtxDeclarationQuery, LtxDeclarationReader, LtxDeclarationSearch, LtxInventory, LtxInventoryReader,
   LtxResolvedDiagnostic, LtxResolvedField, LtxResolvedFieldOrigin, LtxResolvedSection, LtxRootReader,
 };
 use xrf_output::OutputOptions;
@@ -111,10 +113,16 @@ impl InspectCommand {
   /// Searched through the project's plain resolutions, which are cached and record nothing, so the one resolution that
   /// pays for provenance is the one that answers. `--entry` skips the search.
   ///
-  /// Every entry point is tried rather than stopping at the first, because a section name is not unique across a tree
-  /// and stopping would answer about a different section without ever saying so - a real case in an Anomaly install,
-  /// where `configs\plugins\actor_effects.ltx` declares a `[wpn_ak74]` of its own that has nothing to do with the
-  /// weapon. The first is still the answer; the others are named so a person can ask again with `--entry`.
+  /// Every entry point that can hold the section is tried rather than stopping at the first, because a section name is
+  /// not unique across a tree and stopping would answer about a different section without ever saying so - a real case
+  /// in an Anomaly install, where `configs\plugins\actor_effects.ltx` declares a `[wpn_ak74]` of its own that has
+  /// nothing to do with the weapon. The first is still the answer; the others are named so a person can ask again with
+  /// `--entry`.
+  ///
+  /// Which entry points can hold it comes from the headers written for it, read without resolving anything, so only
+  /// the roots above a declaring config are resolved. Where an attachment could create the section, nothing bounds
+  /// that and every entry point is tried. The order is the project's either way, so the answer does not depend on
+  /// which search found it.
   ///
   /// # Errors
   ///
@@ -138,15 +146,26 @@ impl InspectCommand {
       return Ok(requested);
     }
 
+    let holding: Option<HashSet<String>> = Self::list_holding_entry_points(project, section)?;
     let mut declaring: Vec<&XrayLogicalPath> = Vec::new();
+    let mut searched: usize = 0;
 
     for entry in &project.ltx_file_entries {
       if LtxProject::is_ltx_scheme_path(entry) {
         continue;
       }
 
-      // Not retained: this walks every entry point of the tree, and holding each resolution to answer one question
-      // about it would end the search holding the whole project resolved.
+      if holding
+        .as_ref()
+        .is_some_and(|holding| !holding.contains(entry.as_str()))
+      {
+        continue;
+      }
+
+      searched += 1;
+
+      // Not retained: where nothing bounds the search this walks every entry point of the tree, and holding each
+      // resolution to answer one question about it would end the search holding the whole project resolved.
       let Ok(resolved) = project.read_resolution(entry) else {
         continue;
       };
@@ -158,8 +177,7 @@ impl InspectCommand {
 
     let Some(first) = declaring.first() else {
       return Err(XrfError::new_read_error(format!(
-        "No entry point of this project declares section '[{section}]', searched {} of them",
-        project.ltx_file_entries.len()
+        "No entry point of this project declares section '[{section}]', resolved {searched} that could"
       )));
     };
 
@@ -178,6 +196,27 @@ impl InspectCommand {
     }
 
     Ok((*first).clone())
+  }
+
+  /// The entry points whose resolution can hold `section`, or `None` when nothing bounds them and all must be tried.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the project's configs cannot be listed or read.
+  fn list_holding_entry_points(project: &LtxProject, section: &str) -> XrfResult<Option<HashSet<String>>> {
+    let source = project.document_source();
+    let inventory: LtxInventory = LtxInventoryReader::new(project, &source as &dyn LtxDocumentSource).read()?;
+    let search: LtxDeclarationSearch = LtxDeclarationReader::new(&inventory, &source as &dyn LtxDocumentSource)
+      .search(&LtxDeclarationQuery {
+        section: Some(String::from(section)),
+        ..LtxDeclarationQuery::default()
+      })?;
+
+    Ok(
+      search
+        .list_holding_entry_points(&inventory)
+        .map(|holding| holding.into_iter().collect()),
+    )
   }
 
   /// Prints the section the way a person reads it: the value first, then why it says that.
