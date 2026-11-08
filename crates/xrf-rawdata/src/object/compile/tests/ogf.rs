@@ -64,7 +64,7 @@ pub(super) fn compile(object: &EditableObjectFile) -> XrfResult<OgfFile> {
     built_at: 3_000,
   };
 
-  OgfFile::read_from_bytes::<XRayByteOrder>(ObjectCompiler::compile(object, &source)?.ogf)
+  OgfFile::read_from_bytes::<XRayByteOrder>(ObjectCompiler::compile(object, &source)?.bytes)
 }
 
 #[test]
@@ -120,7 +120,8 @@ fn decompiles_a_blender_export_to_compile_back_with_mikktspace() -> XrfResult {
       convertor: String::from(convertor),
       built_at: 3_000,
     };
-    let file: OgfFile = OgfFile::read_from_bytes::<XRayByteOrder>(ObjectCompiler::compile(&authored()?, &source)?.ogf)?;
+    let file: OgfFile =
+      OgfFile::read_from_bytes::<XRayByteOrder>(ObjectCompiler::compile(&authored()?, &source)?.bytes)?;
 
     Ok(ObjectDecompiler::decompile(&file)?.tangents)
   };

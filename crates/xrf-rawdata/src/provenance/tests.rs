@@ -6,6 +6,7 @@ use xrf_test_utils::GeneratedResources;
 
 use crate::object::compile::object_compile_options::{ObjectCompileOptions, TangentMethod};
 use crate::object::decompile::object_inference::ObjectInference;
+use crate::object::detail_parameters::DetailParameters;
 use crate::provenance::object_provenance::ObjectProvenance;
 
 /// An empty directory of generated resources for one test.
@@ -75,6 +76,46 @@ fn compiles_with_the_tangent_method_a_sidecar_records_and_the_editors_without_on
     ObjectCompileOptions::following(None).tangents,
     TangentMethod::ActorEditor
   );
+
+  Ok(())
+}
+
+#[test]
+fn keeps_a_detail_models_parameters_and_none_for_an_ogf() -> XrfResult {
+  let object: PathBuf = directory("detail").join("leaf.object");
+  let detail: DetailParameters = DetailParameters {
+    flags: 1,
+    min_scale: 0.8,
+    max_scale: 1.3,
+  };
+  let provenance: ObjectProvenance = ObjectProvenance::new(
+    "meshes/dm/leaf.dm",
+    b"dm bytes",
+    "xrf-cli object decompile",
+    "1.0.0",
+    Vec::new(),
+    TangentMethod::ActorEditor,
+  )
+  .with_detail(Some(detail));
+
+  fs::write(ObjectProvenance::sidecar_path(&object), provenance.to_json()?).expect("sidecar is writable");
+
+  assert_eq!(
+    ObjectProvenance::read_beside(&object)?.and_then(|it| it.detail),
+    Some(detail)
+  );
+
+  // An OGF's sidecar writes no field for it, and reads back none.
+  let ogf: ObjectProvenance = ObjectProvenance::new(
+    "meshes/crate.ogf",
+    b"ogf",
+    "tool",
+    "1.0.0",
+    Vec::new(),
+    TangentMethod::ActorEditor,
+  );
+
+  assert!(!ogf.to_json()?.contains("detail"));
 
   Ok(())
 }

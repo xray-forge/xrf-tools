@@ -8,10 +8,11 @@ use xrf_error::{XrfError, XrfResult};
 
 use crate::object::compile::object_compile_options::TangentMethod;
 use crate::object::decompile::object_inference::ObjectInference;
+use crate::object::detail_parameters::DetailParameters;
 
 /// The sidecar written beside a decompiled `.object`, so it is never taken for an authored one: where it came from,
 /// what made it and when, and what in it was inferred rather than read.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ObjectProvenance {
   /// The compiled file it was decompiled from, as the tool was given it.
@@ -28,6 +29,10 @@ pub struct ObjectProvenance {
   /// recorded read as the Actor Editor's.
   #[serde(default)]
   pub tangents: TangentMethod,
+  /// What a detail model it was decompiled from carried beside its geometry, which a compile of the object back into
+  /// a `.dm` writes again; absent for an object decompiled from an OGF.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub detail: Option<DetailParameters>,
 }
 
 impl ObjectProvenance {
@@ -57,7 +62,13 @@ impl ObjectProvenance {
         .map_or(0, |elapsed| elapsed.as_secs()),
       inferred,
       tangents,
+      detail: None,
     }
+  }
+
+  /// The same provenance recording `detail`, the parameters of the detail model the object was decompiled from.
+  pub fn with_detail(self, detail: Option<DetailParameters>) -> Self {
+    Self { detail, ..self }
   }
 
   /// The sidecar's text.

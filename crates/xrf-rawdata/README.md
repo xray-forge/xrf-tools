@@ -39,6 +39,21 @@ where its description's convertor names Blender), which `ObjectCompileOptions::f
 
 An OGF of any other model type (trees, LODs, particles) is refused.
 
+## Detail models
+
+`ObjectDecompiler::decompile_detail` turns a `.dm` detail model (`xrf-level`'s `DetailModel`) into a static object of
+one mesh and one surface: its engine shader and texture, and its triangles over vertices of a position and a texture
+coordinate, welded by position. A model stores no normal and keeps no mirrored copy, so every edge comes back smooth,
+no surface two-sided, and the mesh writes no corner normals. Its flags and scale range, which the Level Editor keeps
+with its `EDetail` entry rather than in the object, come back in `ObjectDecompile::detail` and the sidecar's `detail`.
+
+`ObjectCompiler::compile_detail` writes a `.dm` as `EDetail::Update` and `Export` do (`compile/detail/`): an object of
+one surface, the faces of its first mesh in order, each corner the texture coordinate of its reference's first entry,
+a vertex reused within `EPS_L` of position and coordinate else appended, a face dropped when two of its corners are one
+vertex or it repeats a kept face in any order, a mirrored copy among them, and the flags and scale range given
+(`DetailParameters`, the editor's defaults `0` and `0.5..2`). The SDK's 12 lightning sources compile byte for byte to
+vanilla's `.dm`, and each of vanilla's 12 lightning `.dm` decompiles and compiles back byte for byte.
+
 ## Decompiling a level's visuals
 
 `ObjectDecompiler::decompile_level_geometry` turns visuals of a compiled level into one static object through the same
@@ -59,7 +74,8 @@ takes a static progressive visual's own first window and a progressive tree's fr
 
 ## Compiling an editable object into an OGF
 
-`ObjectCompiler::compile` writes an object's OGF and reports what the export made of it (`ObjectCompile`). As the
+`ObjectCompiler::compile` writes an object's OGF and reports what the export made of it (`ObjectCompile`, its
+`bytes` and counts, which `compile_detail` fills for a `.dm` alike). As the
 editor's `PrepareOGF` does, an object with bones exports as a skeleton and any other as a static visual, whatever its
 dynamic flag says.
 

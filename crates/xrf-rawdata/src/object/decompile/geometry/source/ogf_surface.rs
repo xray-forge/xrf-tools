@@ -1,4 +1,5 @@
 use xrf_error::{XrfError, XrfResult};
+use xrf_level::DetailModel;
 use xrf_math::{Vector2d, Vector3d};
 use xrf_ogf::{OgfFile, OgfStaticVertex, OgfVertex, OgfVertexData};
 
@@ -86,6 +87,32 @@ impl OgfSurface {
       texture: geometry.texture.clone(),
       shader: geometry.shader.clone(),
       triangles: Self::to_triangles(&corners, &geometry.indices)?,
+    })
+  }
+
+  /// A detail model's surface: its triangles over its vertices, which store a position and a texture coordinate and no
+  /// normal.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for an index past the model's vertices.
+  pub(crate) fn of_detail(model: &DetailModel) -> XrfResult<Self> {
+    let corners: Vec<OgfCorner> = model
+      .vertices
+      .iter()
+      .map(|vertex| OgfCorner {
+        position: vertex.position,
+        normal: Vector3d::ZERO,
+        normal_precision: NormalPrecision::Unstored,
+        texture_coordinate: Vector2d::new(vertex.u, vertex.v),
+        influences: BoneInfluences::NONE,
+      })
+      .collect();
+
+    Ok(Self {
+      texture: model.texture.clone(),
+      shader: model.shader.clone(),
+      triangles: Self::to_triangles(&corners, &model.indices)?,
     })
   }
 

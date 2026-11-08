@@ -37,7 +37,7 @@ impl ObjectVerifier {
           built_at: 0,
         },
       )?
-      .ogf,
+      .bytes,
     )?;
 
     Ok(Self::compare(&compiled, reference))

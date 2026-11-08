@@ -6,16 +6,19 @@ use xrf_build_info::{BuildInfo, build_info};
 use xrf_chunk::XRayByteOrder;
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::{XrfError, XrfResult};
+use xrf_extension::XrayExtension;
 use xrf_output::OutputOptions;
 use xrf_rawdata::{
-  ObjectCompile, ObjectCompileOptions, ObjectCompileSource, ObjectCompiler, ObjectProvenance, TangentMethod,
+  DetailParameters, ObjectCompile, ObjectCompileOptions, ObjectCompileSource, ObjectCompiler, ObjectProvenance,
+  TangentMethod,
 };
 use xrf_utils::{StagedFile, format_path};
 
 use crate::commands::object::compile::report::ObjectCompileReport;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
-/// Compiles an SDK editable object into the OGF the engine loads, as the Actor Editor's export does.
+/// Compiles an SDK editable object into the OGF the engine loads, as the Actor Editor's export does, or into a detail
+/// model as the Level Editor's `EDetail` exports one.
 #[derive(Default)]
 pub struct CompileCommand;
 
@@ -26,7 +29,10 @@ impl GenericCommand for CompileCommand {
 
   fn declare(&self, command: Command) -> Command {
     command
-      .about("Compile an SDK .object into the OGF the engine loads: a skeleton with bones, else a static visual")
+      .about(
+        "Compile an SDK .object into the OGF the engine loads (a skeleton with bones, else a static visual), or into a \
+         .dm detail model where the destination is one",
+      )
       .arg(
         Arg::new("path")
           .help("Path to the .object to compile")
@@ -37,7 +43,10 @@ impl GenericCommand for CompileCommand {
       )
       .arg(
         Arg::new("dest")
-          .help("Path of the OGF to write")
+          .help(
+            "Path of the OGF to write, or of a .dm, whose flags and scale range come from the sidecar of an object \
+             decompiled from one and are the editor's defaults otherwise",
+          )
           .short('d')
           .long("dest")
           .required(true)
@@ -113,25 +122,34 @@ impl CompileCommand {
       )));
     }
 
-    let options: ObjectCompileOptions = Self::get_options(source, tangents)?;
     let object: EditableObjectFile = EditableObjectFile::read_from_path::<XRayByteOrder, _>(&source)?;
-    let build: BuildInfo = build_info!();
-    let compiled: ObjectCompile = ObjectCompiler::compile_with(
-      &object,
-      &ObjectCompileSource {
-        source_file: format_path(source).to_string(),
-        convertor: match build.short_commit() {
-          Some(commit) => format!("xrf-cli object compile {} ({commit})", build.version),
-          None => format!("xrf-cli object compile {}", build.version),
-        },
-        built_at: SystemTime::now()
-          .duration_since(UNIX_EPOCH)
-          .map_or(0, |elapsed| elapsed.as_secs()),
-      },
-      &options,
-    )?;
+    // A `.dm` destination is a detail model, whose flags and scale range a decompiled object's sidecar keeps.
+    let compiled: ObjectCompile = if XrayExtension::Dm.matches_path(destination) {
+      let parameters: DetailParameters = ObjectProvenance::read_beside(source)?
+        .and_then(|provenance| provenance.detail)
+        .unwrap_or_default();
 
-    StagedFile::write_creating_directories(destination, &compiled.ogf).map_err(|error| {
+      ObjectCompiler::compile_detail(&object, &parameters)?
+    } else {
+      let build: BuildInfo = build_info!();
+
+      ObjectCompiler::compile_with(
+        &object,
+        &ObjectCompileSource {
+          source_file: format_path(source).to_string(),
+          convertor: match build.short_commit() {
+            Some(commit) => format!("xrf-cli object compile {} ({commit})", build.version),
+            None => format!("xrf-cli object compile {}", build.version),
+          },
+          built_at: SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_or(0, |elapsed| elapsed.as_secs()),
+        },
+        &Self::get_options(source, tangents)?,
+      )?
+    };
+
+    StagedFile::write_creating_directories(destination, &compiled.bytes).map_err(|error| {
       XrfError::new_io_error(
         format!("{} was not written: {error}", format_path(destination)),
         error.kind(),
@@ -146,7 +164,7 @@ impl CompileCommand {
       faces: compiled.faces,
       dropped_faces: compiled.dropped_faces,
       bones: object.bones.as_ref().map_or(0, Vec::len),
-      bytes: compiled.ogf.len(),
+      bytes: compiled.bytes.len(),
       tangents: compiled.tangents,
     };
 
@@ -163,7 +181,7 @@ impl CompileCommand {
       match report.tangents {
         Some(TangentMethod::ActorEditor) => "Actor Editor tangents",
         Some(TangentMethod::MikkTSpace) => "MikkTSpace tangents",
-        None => "a static visual without tangents",
+        None => "no tangents",
       }
     );
 
