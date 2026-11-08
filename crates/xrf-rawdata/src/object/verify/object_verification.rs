@@ -10,7 +10,8 @@ pub struct ObjectVerification {
   pub skeleton: Vec<String>,
   /// Its own motions by name and length, and the parameters they play by.
   pub motions: Vec<String>,
-  /// Its children by texture and shader, their vertices and faces, and the bounds around them.
+  /// What it draws with each texture and shader, over every child drawing with them: the vertices and faces, and the
+  /// bounds around them.
   pub geometry: Vec<String>,
   /// The children of each side and the vertices and faces matched between them.
   pub census: ObjectGeometryCensus,

@@ -67,9 +67,10 @@ refused for now.
 
 `ObjectVerifier::verify` compiles an object and compares the OGF with one it should stand in for, by what the engine
 reads: the model type, user data, LODs and motion references; each bone's name, parent, order and physics; the own
-motions by name and length with their parameters; and the geometry, each child paired by texture and shader, its
-vertices by position, normal, texture coordinate and weights, and its triangles by their corners' positions. The orders
-the compile chooses, tangents, bone boxes and authoring stamps are left out. `ObjectVerification` lists the differences
+motions by name and length with their parameters; and the geometry, what each texture and shader draws over all the
+children drawing with them, its vertices by position, normal, texture coordinate and weights, and its triangles by their
+corners' positions. The orders the compile chooses, how a surface's faces fall among children (the export splits one by
+breakable part, other tools spread one over several), tangents, bone boxes and authoring stamps are left out. `ObjectVerification` lists the differences
 of each area and counts what matched, telling a vertex that differs in its normal alone from one that differs more.
 
 ## Checks

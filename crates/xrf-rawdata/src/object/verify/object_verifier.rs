@@ -9,7 +9,7 @@ use xrf_ogf::{OgfBoneIkData, OgfFile, OgfJointIkData, OgfModelType};
 use crate::object::compile::object_compile_source::ObjectCompileSource;
 use crate::object::compile::object_compiler::ObjectCompiler;
 use crate::object::verify::object_verification::{ObjectGeometryCensus, ObjectVerification};
-use crate::object::verify::ogf_child_geometry::{OgfChildComparison, OgfChildGeometry};
+use crate::object::verify::ogf_material_geometry::{OgfMaterialComparison, OgfMaterialGeometry};
 
 /// Compiles an object and compares the OGF with one it should stand in for, by what the engine reads: the model, the
 /// skeleton and its physics, the motions, and the geometry.
@@ -260,46 +260,40 @@ impl ObjectVerifier {
       differences.push(format!("bounds {bounds:?}, the reference's {reference_bounds:?}"));
     }
 
-    let children: Vec<OgfChildGeometry> = OgfChildGeometry::collect(compiled);
-    let reference_children: Vec<OgfChildGeometry> = OgfChildGeometry::collect(reference);
+    // The export orders children by where their surfaces sat in the editor's memory, which nothing records, and where a
+    // surface's faces fall among children is the exporter's choice, so each texture and shader is compared whole.
+    let materials: Vec<OgfMaterialGeometry> = OgfMaterialGeometry::collect(compiled);
+    let reference_materials: Vec<OgfMaterialGeometry> = OgfMaterialGeometry::collect(reference);
     let mut census: ObjectGeometryCensus = ObjectGeometryCensus {
-      children: children.len(),
-      reference_children: reference_children.len(),
+      children: materials.iter().map(|it| it.children).sum(),
+      reference_children: reference_materials.iter().map(|it| it.children).sum(),
       ..ObjectGeometryCensus::default()
     };
-    let mut is_paired: Vec<bool> = vec![false; reference_children.len()];
 
-    // The export orders children by where their surfaces sat in the editor's memory, which nothing records, so a child
-    // pairs with the reference's of its texture and shader.
-    for child in &children {
-      census.vertices += child.vertices.len();
-      census.faces += child.faces.len();
+    for material in &materials {
+      census.vertices += material.vertices.len();
+      census.faces += material.faces.len();
 
-      let paired: Option<usize> = reference_children
+      match reference_materials
         .iter()
-        .enumerate()
-        .position(|(index, other)| !is_paired[index] && other.texture == child.texture && other.shader == child.shader);
-
-      match paired {
-        Some(index) => {
-          is_paired[index] = true;
-          Self::compare_child(child, &reference_children[index], &mut census, differences);
-        }
+        .find(|other| other.texture == material.texture && other.shader == material.shader)
+      {
+        Some(other) => Self::compare_material(material, other, &mut census, differences),
         None => differences.push(format!(
-          "child {} / {} has no reference child",
-          child.texture, child.shader
+          "{} / {} is not drawn by the reference",
+          material.texture, material.shader
         )),
       }
     }
 
-    for (other, _) in reference_children
-      .iter()
-      .zip(&is_paired)
-      .filter(|(_, is_paired)| !**is_paired)
-    {
+    for other in reference_materials.iter().filter(|other| {
+      !materials
+        .iter()
+        .any(|it| it.texture == other.texture && it.shader == other.shader)
+    }) {
       census.reference_faces += other.faces.len();
       differences.push(format!(
-        "the reference's child {} / {} is not compiled",
+        "the reference's {} / {} is not compiled",
         other.texture, other.shader
       ));
     }
@@ -307,13 +301,13 @@ impl ObjectVerifier {
     census
   }
 
-  fn compare_child(
-    child: &OgfChildGeometry,
-    other: &OgfChildGeometry,
+  fn compare_material(
+    material: &OgfMaterialGeometry,
+    other: &OgfMaterialGeometry,
     census: &mut ObjectGeometryCensus,
     differences: &mut Vec<String>,
   ) {
-    let comparison: OgfChildComparison = child.compare(other);
+    let comparison: OgfMaterialComparison = material.compare(other);
 
     census.vertices_matched += comparison.vertices_matched;
     census.vertices_normal_only += comparison.vertices_normal_only;
@@ -321,22 +315,21 @@ impl ObjectVerifier {
     census.faces_matched += comparison.faces_matched;
     census.reference_flat_faces += comparison.reference_flat_faces;
 
-    if comparison.vertices_matched != child.vertices.len() {
+    if comparison.vertices_matched != material.vertices.len() {
       differences.push(format!(
-        "child {} / {}: {} of {} vertices have no reference vertex like them, {} of them differing in their normal \
-         alone",
-        child.texture,
-        child.shader,
-        child.vertices.len() - comparison.vertices_matched,
-        child.vertices.len(),
+        "{} / {}: {} of {} vertices have no reference vertex like them, {} of them differing in their normal alone",
+        material.texture,
+        material.shader,
+        material.vertices.len() - comparison.vertices_matched,
+        material.vertices.len(),
         comparison.vertices_normal_only
       ));
     }
 
     if comparison.faces_missing > 0 || comparison.faces_extra > 0 {
       differences.push(format!(
-        "child {} / {}: {} reference faces not drawn, {} drawn the reference does not",
-        child.texture, child.shader, comparison.faces_missing, comparison.faces_extra
+        "{} / {}: {} reference faces not drawn, {} drawn the reference does not",
+        material.texture, material.shader, comparison.faces_missing, comparison.faces_extra
       ));
     }
   }

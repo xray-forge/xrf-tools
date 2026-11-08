@@ -7,18 +7,26 @@ use xrf_ogf::{OgfFile, OgfVertex};
 /// compiled vertex with a reference one and never merge two that are merely close.
 pub(crate) type PositionKey = [u32; 3];
 
-/// One drawn child of an OGF as the comparison reads it: what it is drawn with, its vertices, and the faces it draws at
-/// full detail.
-pub(crate) struct OgfChildGeometry<'a> {
+/// Everything an OGF draws with one texture and shader, over every child drawing with them, as the comparison reads it:
+/// its vertices and the faces it draws at full detail.
+///
+/// Where one surface's faces fall among children is the exporter's choice: the export splits a surface by breakable
+/// part, the compile cuts one past 16-bit indices, and other tools spread one over several children. The engine draws
+/// any of these alike, so the comparison takes a texture and shader's children together.
+pub(crate) struct OgfMaterialGeometry<'a> {
   pub(crate) texture: &'a str,
   pub(crate) shader: &'a str,
-  pub(crate) vertices: &'a [OgfVertex],
-  pub(crate) faces: Vec<[u16; 3]>,
+  /// The children drawing with them.
+  pub(crate) children: usize,
+  /// Their vertices, child after child.
+  pub(crate) vertices: Vec<&'a OgfVertex>,
+  /// Their faces over [`Self::vertices`].
+  pub(crate) faces: Vec<[u32; 3]>,
 }
 
-/// How a compiled child compares with the reference child it pairs with.
+/// How a compiled texture and shader's geometry compares with the reference's.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub(crate) struct OgfChildComparison {
+pub(crate) struct OgfMaterialComparison {
   /// Compiled vertices one of the reference's stands in for.
   pub(crate) vertices_matched: usize,
   /// Compiled vertices that would match but for their normal.
@@ -32,7 +40,7 @@ pub(crate) struct OgfChildComparison {
   pub(crate) faces_extra: usize,
 }
 
-impl<'a> OgfChildGeometry<'a> {
+impl<'a> OgfMaterialGeometry<'a> {
   /// Normals within this of each other are one normal.
   const NORMAL_TOLERANCE: f32 = 1e-3;
   /// Texture coordinates this close to a whole number of tiles apart are one coordinate.
@@ -40,16 +48,17 @@ impl<'a> OgfChildGeometry<'a> {
   /// Weights within this of each other are one weight.
   const WEIGHT_TOLERANCE: f32 = 1e-3;
 
-  /// Every skinned child of `file` and of its children, in the order stored.
+  /// The geometry of each texture and shader that `file` and its children draw skinned, in the order each is first
+  /// stored.
   pub(crate) fn collect(file: &'a OgfFile) -> Vec<Self> {
-    let mut children: Vec<Self> = Vec::new();
+    let mut materials: Vec<Self> = Vec::new();
 
-    Self::collect_into(file, &mut children);
+    Self::collect_into(file, &mut materials);
 
-    children
+    materials
   }
 
-  fn collect_into(file: &'a OgfFile, children: &mut Vec<Self>) {
+  fn collect_into(file: &'a OgfFile, materials: &mut Vec<Self>) {
     if let (Some(texture), Some(geometry)) = (&file.texture, &file.geometry)
       && let Some(vertices) = geometry.get_skinned_vertices()
     {
@@ -65,30 +74,51 @@ impl<'a> OgfChildGeometry<'a> {
           indices.get(start..start + usize::from(window.num_tris) * 3)
         })
         .unwrap_or(indices);
+      let index: usize = materials
+        .iter()
+        .position(|it| it.texture == texture.texture_name && it.shader == texture.shader_name)
+        .unwrap_or_else(|| {
+          materials.push(Self {
+            texture: &texture.texture_name,
+            shader: &texture.shader_name,
+            children: 0,
+            vertices: Vec::new(),
+            faces: Vec::new(),
+          });
 
-      children.push(Self {
-        texture: &texture.texture_name,
-        shader: &texture.shader_name,
-        vertices,
-        faces: drawn.as_chunks::<3>().0.to_vec(),
-      });
+          materials.len() - 1
+        });
+      let material: &mut Self = &mut materials[index];
+      let first: u32 = u32::try_from(material.vertices.len()).expect("an OGF's vertices are numbered in 32 bits");
+
+      material.children += 1;
+      // A face naming a vertex its child lacks draws nothing, and would name another child's once numbered after it.
+      material.faces.extend(
+        drawn
+          .as_chunks::<3>()
+          .0
+          .iter()
+          .filter(|face| face.iter().all(|vertex| usize::from(*vertex) < vertices.len()))
+          .map(|face| face.map(|vertex| first + u32::from(vertex))),
+      );
+      material.vertices.extend(vertices);
     }
 
     for child in file.children.iter().flat_map(|children| &children.nested) {
-      Self::collect_into(child, children);
+      Self::collect_into(child, materials);
     }
   }
 
-  /// How this compiled child compares with `reference`: its vertices by position, normal, texture coordinate and
+  /// How this compiled geometry compares with `reference`: its vertices by position, normal, texture coordinate and
   /// weights, and the faces either draws by their corners' positions, each as often as it is drawn.
   ///
   /// A face with two corners at one position draws nothing, so it is compared on neither side: the export leaves one
   /// where `VPack` moved a corner onto another, which either side may have done where the other did not.
-  pub(crate) fn compare(&self, reference: &Self) -> OgfChildComparison {
-    let mut comparison: OgfChildComparison = OgfChildComparison::default();
+  pub(crate) fn compare(&self, reference: &Self) -> OgfMaterialComparison {
+    let mut comparison: OgfMaterialComparison = OgfMaterialComparison::default();
     let by_position: HashMap<PositionKey, Vec<&OgfVertex>> = reference.by_position();
 
-    for vertex in self.vertices {
+    for vertex in &self.vertices {
       let candidates: &[&OgfVertex] = by_position
         .get(&Self::position_key(&vertex.position))
         .map_or(&[], Vec::as_slice);
@@ -143,7 +173,7 @@ impl<'a> OgfChildGeometry<'a> {
   fn by_position(&self) -> HashMap<PositionKey, Vec<&'a OgfVertex>> {
     let mut by_position: HashMap<PositionKey, Vec<&'a OgfVertex>> = HashMap::new();
 
-    for vertex in self.vertices {
+    for vertex in &self.vertices {
       by_position
         .entry(Self::position_key(&vertex.position))
         .or_default()
@@ -154,7 +184,7 @@ impl<'a> OgfChildGeometry<'a> {
   }
 
   /// Its faces as the positions of their corners, each face's corners sorted, so a face matches whatever its winding
-  /// start and its vertices' numbering; a face naming a vertex the child lacks is left out.
+  /// start and its vertices' numbering; a face naming a vertex past them is left out.
   pub(crate) fn triangles(&self) -> Vec<[PositionKey; 3]> {
     self
       .faces
@@ -163,7 +193,7 @@ impl<'a> OgfChildGeometry<'a> {
         let [a, b, c] = face.map(|index| {
           self
             .vertices
-            .get(usize::from(index))
+            .get(index as usize)
             .map(|vertex| Self::position_key(&vertex.position))
         });
         let mut corners: [PositionKey; 3] = [a?, b?, c?];
