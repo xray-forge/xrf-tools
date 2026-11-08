@@ -4,6 +4,7 @@
 use std::collections::BTreeSet;
 use std::path::Path;
 
+use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
 use crate::collected::{PluginCommands, SpectaCommand};
@@ -27,9 +28,10 @@ impl CommandModuleWriter {
   /// `invoke` is the counted wrapper rather than Tauri's own: it counts every call, which is why it is imported here
   /// rather than left to every call site to remember, so a command added later is measured by existing.
   ///
-  /// # Panics
+  /// # Errors
   ///
-  /// Panics on a plugin with no typed commands, and when the module cannot be written.
+  /// On a plugin with no typed commands, a wrapper naming a type declared outside the workspace, and when the module
+  /// cannot be written.
   pub(crate) fn write(
     path: &Path,
     plugin: &str,
@@ -37,19 +39,20 @@ impl CommandModuleWriter {
     ownership: &TypeOwnership,
     enumerations: &Enumerations,
     imports: &MirrorImports,
-  ) {
+  ) -> XrfResult {
     let commands: &[SpectaCommand] = &exported.commands;
 
-    assert!(
-      !commands.is_empty(),
-      "Plugin `{plugin}` exports no typed commands, so {} would declare none",
-      format_path(path)
-    );
+    if commands.is_empty() {
+      return Err(XrfError::new_invalid_error(format!(
+        "Plugin `{plugin}` exports no typed commands, so {} would declare none",
+        format_path(path)
+      )));
+    }
 
     let symbols: PluginSymbols = PluginSymbols::new(plugin);
-    let wrappers: String = enumerations.rewrite_parameters(&exported.wrappers);
+    let wrappers: String = enumerations.rewrite_parameters(&exported.wrappers)?;
 
-    ownership.assert_no_foreign_references(&wrappers, plugin);
+    ownership.assert_no_foreign_references(&wrappers, plugin)?;
 
     let type_imports: String = ownership.imports_for(&wrappers);
     let channel_import: String = if exported.uses_channel {
@@ -89,7 +92,7 @@ impl CommandModuleWriter {
         imports.invoke(),
         symbols.commands(),
       ),
-    );
+    )
   }
 
   /// Writes the wrappers for one domain's raw commands.
@@ -97,6 +100,10 @@ impl CommandModuleWriter {
   /// Specta cannot collect a command returning `tauri::ipc::Response`, so these are generated from the registry
   /// instead of written by hand. The registry carries each argument's TypeScript type for exactly this reason;
   /// the return is always `ArrayBuffer`, which is what the raw response arrives as.
+  ///
+  /// # Errors
+  ///
+  /// When two commands fold to one enum member, and as [`WrapperModule::write`] fails.
   pub(crate) fn write_raw(
     path: &Path,
     plugin: &str,
@@ -104,12 +111,12 @@ impl CommandModuleWriter {
     ownership: &TypeOwnership,
     enumerations: &Enumerations,
     imports: &MirrorImports,
-  ) {
+  ) -> XrfResult {
     if commands.is_empty() {
-      return;
+      return Ok(());
     }
 
-    Self::assert_distinct(path, commands.iter().map(|(wire_name, _)| *wire_name));
+    Self::assert_distinct(path, commands.iter().map(|(wire_name, _)| *wire_name))?;
 
     let symbols: PluginSymbols = PluginSymbols::new(plugin);
     let wrappers: String = commands
@@ -153,7 +160,7 @@ impl CommandModuleWriter {
         Self::declared_arguments(commands),
       ),
     }
-    .write(path, plugin, ownership, enumerations);
+    .write(path, plugin, ownership, enumerations)
   }
 
   /// Writes the wrappers for one domain's bulk routes.
@@ -161,6 +168,10 @@ impl CommandModuleWriter {
   /// A route is not a command and Specta never sees it, so these are generated from the registry instead of written
   /// by hand; the registry carries each argument's TypeScript type for exactly this reason. A wrapper answers the call
   /// as data, its route and arguments, so the page can fetch it or hand it to another thread to fetch.
+  ///
+  /// # Errors
+  ///
+  /// When two routes fold to one enum member, and as [`WrapperModule::write`] fails.
   pub(crate) fn write_bulk(
     path: &Path,
     plugin: &str,
@@ -168,12 +179,12 @@ impl CommandModuleWriter {
     ownership: &TypeOwnership,
     enumerations: &Enumerations,
     imports: &MirrorImports,
-  ) {
+  ) -> XrfResult {
     if routes.is_empty() {
-      return;
+      return Ok(());
     }
 
-    Self::assert_distinct(path, routes.iter().map(|(route, _)| *route));
+    Self::assert_distinct(path, routes.iter().map(|(route, _)| *route))?;
 
     let symbols: PluginSymbols = PluginSymbols::new(plugin);
     let wrappers: String = routes
@@ -215,12 +226,16 @@ impl CommandModuleWriter {
         Self::declared_arguments(routes),
       ),
     }
-    .write(path, plugin, ownership, enumerations);
+    .write(path, plugin, ownership, enumerations)
   }
 
   /// Writes `signatures.ts`: every plugin's command signatures merged into one interface, and every plugin's bulk
   /// route signatures into another, so a test or a tool names any command by its enum and gets its types.
-  pub(crate) fn write_signatures(path: &Path, plugins: &[PluginModules], imports: &MirrorImports) {
+  ///
+  /// # Errors
+  ///
+  /// When the module cannot be written.
+  pub(crate) fn write_signatures(path: &Path, plugins: &[PluginModules], imports: &MirrorImports) -> XrfResult {
     let mut import_lines: Vec<String> = Vec::new();
     let mut commands: Vec<String> = Vec::new();
     let mut routes: Vec<String> = Vec::new();
@@ -274,7 +289,7 @@ impl CommandModuleWriter {
         Self::render_extends(&commands),
         Self::render_extends(&routes)
       ),
-    );
+    )
   }
 
   /// A registry declaration's arguments as a TypeScript parameter list and the object shorthand passing them on.
@@ -351,16 +366,19 @@ impl CommandModuleWriter {
 
   /// Fails when two declarations of one module fold to one enum member, which TypeScript would reject as a duplicate
   /// identifier only once the frontend compiles.
-  fn assert_distinct<'a>(path: &Path, names: impl Iterator<Item = &'a str>) {
+  fn assert_distinct<'a>(path: &Path, names: impl Iterator<Item = &'a str>) -> XrfResult {
     let mut members: BTreeSet<String> = BTreeSet::new();
 
     for name in names {
-      assert!(
-        members.insert(PluginSymbols::member(name)),
-        "{} declares `{name}` twice",
-        format_path(path)
-      );
+      if !members.insert(PluginSymbols::member(name)) {
+        return Err(XrfError::new_invalid_error(format!(
+          "{} declares `{name}` twice",
+          format_path(path)
+        )));
+      }
     }
+
+    Ok(())
   }
 }
 
@@ -370,6 +388,7 @@ mod tests {
   use std::path::PathBuf;
 
   use specta::Types;
+  use xrf_error::XrfResult;
   use xrf_test_utils::GeneratedResources;
 
   use crate::collected::{PluginCommands, SpectaCommand};
@@ -380,17 +399,28 @@ mod tests {
   const IMPORTS: MirrorImports = MirrorImports::new("#");
 
   /// Writes one kind of wrapper module with nothing collected, answering where it went.
-  fn written(name: &str, write: impl FnOnce(&PathBuf, &TypeOwnership, &Enumerations)) -> PathBuf {
+  fn written(
+    name: &str,
+    write: impl FnOnce(&PathBuf, &TypeOwnership, &Enumerations) -> XrfResult,
+  ) -> XrfResult<PathBuf> {
     let types: Types = Types::default();
-    let (ownership, _): (TypeOwnership, _) = TypeOwnership::resolve(&types, &TypeModules::default(), &IMPORTS);
-    let enumerations: Enumerations = Enumerations::resolve(&types, &types);
-    let path: PathBuf = GeneratedResources::path("command-module-writer").join(name);
+    let (ownership, _): (TypeOwnership, _) = TypeOwnership::resolve(&types, &TypeModules::default(), &IMPORTS)?;
+    let enumerations: Enumerations = Enumerations::resolve(&types, &types)?;
+    let directory: PathBuf = GeneratedResources::path("command-module-writer");
+    let path: PathBuf = directory.join(name);
 
-    fs::create_dir_all(path.parent().expect("module to have a directory")).expect("directory to be created");
+    fs::create_dir_all(&directory)?;
+    write(&path, &ownership, &enumerations)?;
 
-    write(&path, &ownership, &enumerations);
+    Ok(path)
+  }
 
-    path
+  /// Why writing `name` through `write` was refused, or nothing where it was written.
+  fn refusal(name: &str, write: impl FnOnce(&PathBuf, &TypeOwnership, &Enumerations) -> XrfResult) -> String {
+    written(name, write)
+      .err()
+      .map(|error| error.to_string())
+      .unwrap_or_default()
   }
 
   /// The commands a fixture plugin exports, its wrappers as the export renders them.
@@ -415,13 +445,13 @@ mod tests {
   }
 
   #[test]
-  fn a_typed_module_names_its_commands_by_enum_and_declares_their_signatures() {
+  fn a_typed_module_names_its_commands_by_enum_and_declares_their_signatures() -> XrfResult {
     let path: PathBuf = written("fixture.ts", |path, ownership, enumerations| {
-      CommandModuleWriter::write(path, "fixture", &exported(false), ownership, enumerations, &IMPORTS);
-    });
+      CommandModuleWriter::write(path, "fixture", &exported(false), ownership, enumerations, &IMPORTS)
+    })?;
 
     assert_eq!(
-      fs::read_to_string(&path).expect("module to be written"),
+      fs::read_to_string(&path)?,
       "// Auto-generated rust bindings. Do not edit it manually.\n\n\
        import { IIpcCommandSignature } from \"#/signature\";\n\
        import { invoke as __TAURI_INVOKE } from \"#/invoke\";\n\n\
@@ -441,21 +471,25 @@ mod tests {
        [EFixtureCommand.LIST_THINGS]: IIpcCommandSignature<typeof fixtureCommands.listThings, []>;\n\
        }\n"
     );
+
+    Ok(())
   }
 
   #[test]
-  fn a_module_whose_wrappers_carry_a_channel_imports_it_from_tauri() {
+  fn a_module_whose_wrappers_carry_a_channel_imports_it_from_tauri() -> XrfResult {
     let path: PathBuf = written("channel.ts", |path, ownership, enumerations| {
-      CommandModuleWriter::write(path, "fixture", &exported(true), ownership, enumerations, &IMPORTS);
-    });
+      CommandModuleWriter::write(path, "fixture", &exported(true), ownership, enumerations, &IMPORTS)
+    })?;
 
-    assert!(fs::read_to_string(&path).expect("module to be written").contains(
+    assert!(fs::read_to_string(&path)?.contains(
       "import { Channel } from \"@tauri-apps/api/core\";\nimport { invoke as __TAURI_INVOKE } from \"#/invoke\";\n"
     ));
+
+    Ok(())
   }
 
   #[test]
-  fn a_raw_command_is_written_as_a_wrapper_invoking_it_raw() {
+  fn a_raw_command_is_written_as_a_wrapper_invoking_it_raw() -> XrfResult {
     let path: PathBuf = written("fixture-raw.ts", |path, ownership, enumerations| {
       CommandModuleWriter::write_raw(
         path,
@@ -464,11 +498,11 @@ mod tests {
         ownership,
         enumerations,
         &IMPORTS,
-      );
-    });
+      )
+    })?;
 
     assert_eq!(
-      fs::read_to_string(&path).expect("module to be written"),
+      fs::read_to_string(&path)?,
       "// Auto-generated rust bindings. Do not edit it manually.\n\n\
        import { invokeRaw } from \"#/raw\";\n\
        import { IIpcCommandSignature } from \"#/signature\";\n\n\
@@ -486,10 +520,12 @@ mod tests {
        [EFixtureRawCommand.READ_BYTES]: IIpcCommandSignature<typeof fixtureRawCommands.readBytes, [\"sessionId\", \"length\"]>;\n\
        }\n"
     );
+
+    Ok(())
   }
 
   #[test]
-  fn a_bulk_route_is_written_as_a_wrapper_answering_the_call() {
+  fn a_bulk_route_is_written_as_a_wrapper_answering_the_call() -> XrfResult {
     let path: PathBuf = written("fixture-bulk.ts", |path, ownership, enumerations| {
       CommandModuleWriter::write_bulk(
         path,
@@ -498,11 +534,11 @@ mod tests {
         ownership,
         enumerations,
         &IMPORTS,
-      );
-    });
+      )
+    })?;
 
     assert_eq!(
-      fs::read_to_string(&path).expect("module to be written"),
+      fs::read_to_string(&path)?,
       "// Auto-generated rust bindings. Do not edit it manually.\n\n\
        import { IBulkCall } from \"#/bulk/bulk-call\";\n\
        import { IIpcBulkRouteSignature } from \"#/signature\";\n\n\
@@ -519,12 +555,13 @@ mod tests {
        [EFixtureBulkRoute.READ_BYTES]: IIpcBulkRouteSignature<typeof fixtureBulkRoutes.readBytes, [\"length\"]>;\n\
        }\n"
     );
+
+    Ok(())
   }
 
   #[test]
-  #[should_panic(expected = "declares `read_bytes` twice")]
   fn a_route_declared_twice_fails_rather_than_writing_one_member_twice() {
-    written("twice-bulk.ts", |path, ownership, enumerations| {
+    let error: String = refusal("twice-bulk.ts", |path, ownership, enumerations| {
       CommandModuleWriter::write_bulk(
         path,
         "fixture",
@@ -532,35 +569,40 @@ mod tests {
         ownership,
         enumerations,
         &IMPORTS,
-      );
+      )
     });
+
+    assert!(error.contains("declares `read_bytes` twice"), "{error}");
   }
 
   #[test]
-  #[should_panic(expected = "Plugin `fixture` exports no typed commands")]
   fn a_plugin_without_typed_commands_fails_rather_than_writing_an_empty_module() {
-    written("empty.ts", |path, ownership, enumerations| {
+    let error: String = refusal("empty.ts", |path, ownership, enumerations| {
       let empty: PluginCommands = PluginCommands {
         commands: Vec::new(),
         wrappers: String::from("{}"),
         uses_channel: false,
       };
 
-      CommandModuleWriter::write(path, "fixture", &empty, ownership, enumerations, &IMPORTS);
+      CommandModuleWriter::write(path, "fixture", &empty, ownership, enumerations, &IMPORTS)
     });
+
+    assert!(error.contains("Plugin `fixture` exports no typed commands"), "{error}");
   }
 
   #[test]
-  fn a_plugin_without_raw_commands_gets_no_raw_module() {
+  fn a_plugin_without_raw_commands_gets_no_raw_module() -> XrfResult {
     let path: PathBuf = written("empty-raw.ts", |path, ownership, enumerations| {
-      CommandModuleWriter::write_raw(path, "empty", &[], ownership, enumerations, &IMPORTS);
-    });
+      CommandModuleWriter::write_raw(path, "empty", &[], ownership, enumerations, &IMPORTS)
+    })?;
 
     assert!(!path.exists());
+
+    Ok(())
   }
 
   #[test]
-  fn the_signatures_merge_every_plugin_s_modules() {
+  fn the_signatures_merge_every_plugin_s_modules() -> XrfResult {
     let path: PathBuf = written("signatures.ts", |path, _, _| {
       CommandModuleWriter::write_signatures(
         path,
@@ -577,11 +619,11 @@ mod tests {
           },
         ],
         &IMPORTS,
-      );
-    });
+      )
+    })?;
 
     assert_eq!(
-      fs::read_to_string(&path).expect("module to be written"),
+      fs::read_to_string(&path)?,
       "// Auto-generated rust bindings. Do not edit it manually.\n\n\
        import { IArchivesBulkRouteSignatures } from \"#/commands/archives-bulk\";\n\
        import { IArchivesCommandSignatures } from \"#/commands/archives\";\n\
@@ -591,5 +633,7 @@ mod tests {
        /** Every bulk route any plugin serves, keyed by its route. */\n\
        export interface IIpcBulkRouteSignatures extends IArchivesBulkRouteSignatures {}\n"
     );
+
+    Ok(())
   }
 }

@@ -4,6 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use specta::Types;
 use specta::datatype::NamedDataType;
+use xrf_error::{XrfError, XrfResult};
 
 use crate::input::{MirrorImports, TypeModules};
 use crate::typescript::source::{for_each_identifier, without_comments_and_strings};
@@ -25,12 +26,14 @@ impl TypeOwnership {
   /// Resolves every collected type to its module as `modules` groups the crates, grouping the declarations each module
   /// has to render; an import of one names it as `imports` addresses it.
   ///
-  /// Fails when one name resolves to two modules, which would put the same declaration in two files again.
+  /// # Errors
+  ///
+  /// When one name resolves to two modules, which would put the same declaration in two files again.
   pub(crate) fn resolve<'a>(
     types: &'a Types,
     modules: &TypeModules,
     imports: &MirrorImports,
-  ) -> (Self, BTreeMap<String, Vec<&'a NamedDataType>>) {
+  ) -> XrfResult<(Self, BTreeMap<String, Vec<&'a NamedDataType>>)> {
     let mut ownership: Self = Self {
       owners: BTreeMap::new(),
       foreign: BTreeMap::new(),
@@ -51,30 +54,27 @@ impl TypeOwnership {
         continue;
       };
 
-      if let Some(previous) = ownership.owners.insert(named.name.to_string(), module.clone()) {
-        assert_eq!(
-          previous, module,
-          "`{}` is declared by both `{previous}` and `{module}`",
-          named.name
-        );
-      }
-
+      ownership.declare(named.name.to_string(), &module)?;
       declared.entry(module).or_default().push(named);
     }
 
-    (ownership, declared)
+    Ok((ownership, declared))
   }
 
   /// Records a further name a module declares, so a consumer of it imports from the right module.
   ///
   /// An enum rendered beside the union of a data-free type is not a collected type of its own, yet a command
   /// module naming one still has to import it from wherever that union was written.
-  pub(crate) fn declare(&mut self, name: String, module: &str) {
-    if let Some(previous) = self.owners.insert(name.clone(), module.to_string()) {
-      assert_eq!(
-        previous, module,
+  ///
+  /// # Errors
+  ///
+  /// When another module declares the name already.
+  pub(crate) fn declare(&mut self, name: String, module: &str) -> XrfResult {
+    match self.owners.insert(name.clone(), module.to_string()) {
+      Some(previous) if previous != module => Err(XrfError::new_invalid_error(format!(
         "`{name}` is declared by both `{previous}` and `{module}`"
-      );
+      ))),
+      _ => Ok(()),
     }
   }
 
@@ -83,14 +83,14 @@ impl TypeOwnership {
     self.owners.get(name).map(String::as_str)
   }
 
-  /// Names `source` references, excluding the ones `owner` declares itself.
-  pub(crate) fn references(&self, source: &str, owner: &str) -> BTreeSet<&str> {
+  /// Names `source` references, each beside the module declaring it, excluding the ones `owner` declares itself.
+  pub(crate) fn references(&self, source: &str, owner: &str) -> BTreeMap<&str, &str> {
     Self::referenced_types(source, &self.owners, owner)
   }
 
   /// The modules that have to be imported to satisfy `referenced`.
-  pub(crate) fn modules_of(&self, referenced: &BTreeSet<&str>) -> BTreeSet<String> {
-    referenced.iter().map(|name| self.owners[*name].clone()).collect()
+  pub(crate) fn modules_of(referenced: &BTreeMap<&str, &str>) -> BTreeSet<String> {
+    referenced.values().map(|module| (*module).to_string()).collect()
   }
 
   /// The import statements a module carrying `source` needs, where `owner` declares nothing of its own.
@@ -99,29 +99,37 @@ impl TypeOwnership {
   }
 
   /// Fails when generated source names a type declared outside the workspace.
-  pub(crate) fn assert_no_foreign_references(&self, source: &str, context: &str) {
-    let referenced: BTreeSet<&str> = Self::referenced_types(source, &self.foreign, "");
+  ///
+  /// # Errors
+  ///
+  /// When `source` references such a type; `context` names where the source was generated for.
+  pub(crate) fn assert_no_foreign_references(&self, source: &str, context: &str) -> XrfResult {
+    let referenced: BTreeMap<&str, &str> = Self::referenced_types(source, &self.foreign, "");
 
-    assert!(
-      referenced.is_empty(),
-      "{context} references {referenced:?}, declared outside the workspace. Give them a module before use.",
-    );
+    if referenced.is_empty() {
+      return Ok(());
+    }
+
+    Err(XrfError::new_invalid_error(format!(
+      "{context} references {:?}, declared outside the workspace. Give them a module before use.",
+      referenced.keys().collect::<Vec<_>>()
+    )))
   }
 
-  /// Names of generated types that `source` references and `owner` does not itself declare.
+  /// Names of generated types that `source` references and `owner` does not itself declare, each beside its module.
   pub(crate) fn referenced_types<'a>(
     source: &str,
     owners: &'a BTreeMap<String, String>,
     owner: &str,
-  ) -> BTreeSet<&'a str> {
+  ) -> BTreeMap<&'a str, &'a str> {
     let blanked: String = without_comments_and_strings(source);
-    let mut referenced: BTreeSet<&str> = BTreeSet::new();
+    let mut referenced: BTreeMap<&str, &str> = BTreeMap::new();
 
     for_each_identifier(&blanked, |_, _, identifier| {
       if let Some((name, module)) = owners.get_key_value(identifier)
         && module != owner
       {
-        referenced.insert(name.as_str());
+        referenced.insert(name.as_str(), module.as_str());
       }
     });
 
@@ -129,20 +137,11 @@ impl TypeOwnership {
   }
 
   /// Import statements pulling every referenced type from the module that declares it.
-  pub(crate) fn imports(&self, referenced: &BTreeSet<&str>) -> String {
+  pub(crate) fn imports(&self, referenced: &BTreeMap<&str, &str>) -> String {
     let mut grouped: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
 
-    for name in referenced {
-      grouped
-        .entry(
-          self
-            .owners
-            .get(*name)
-            .unwrap_or_else(|| panic!("`{name}` is referenced but has no owning module"))
-            .as_str(),
-        )
-        .or_default()
-        .push(name);
+    for (name, module) in referenced {
+      grouped.entry(module).or_default().push(name);
     }
 
     grouped
@@ -158,12 +157,18 @@ impl TypeOwnership {
   }
 
   /// Fails when type modules would import each other.
-  pub(crate) fn assert_no_import_cycles(graph: &BTreeMap<String, BTreeSet<String>>) {
+  ///
+  /// # Errors
+  ///
+  /// When `graph` holds a cycle, naming the path that closes it.
+  pub(crate) fn assert_no_import_cycles(graph: &BTreeMap<String, BTreeSet<String>>) -> XrfResult {
     let mut settled: BTreeSet<String> = BTreeSet::new();
 
     for module in graph.keys() {
-      Self::walk_imports(module, graph, &mut Vec::new(), &mut settled);
+      Self::walk_imports(module, graph, &mut Vec::new(), &mut settled)?;
     }
+
+    Ok(())
   }
 
   /// Walks the modules `module` imports depth first, failing on one already on `path`.
@@ -172,25 +177,28 @@ impl TypeOwnership {
     graph: &BTreeMap<String, BTreeSet<String>>,
     path: &mut Vec<String>,
     settled: &mut BTreeSet<String>,
-  ) {
+  ) -> XrfResult {
     if settled.contains(module) {
-      return;
+      return Ok(());
     }
 
-    assert!(
-      !path.iter().any(|visited| visited == module),
-      "Type modules import each other: {} -> {module}",
-      path.join(" -> ")
-    );
+    if path.iter().any(|visited| visited == module) {
+      return Err(XrfError::new_invalid_error(format!(
+        "Type modules import each other: {} -> {module}",
+        path.join(" -> ")
+      )));
+    }
 
     path.push(module.to_string());
 
     for imported in graph.get(module).into_iter().flatten() {
-      Self::walk_imports(imported, graph, path, settled);
+      Self::walk_imports(imported, graph, path, settled)?;
     }
 
     path.pop();
     settled.insert(module.to_string());
+
+    Ok(())
   }
 
   /// The bindings module owning a type, taken from the crate that declares it, as `modules` groups the crates.

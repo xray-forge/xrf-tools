@@ -1,5 +1,7 @@
 use std::path::Path;
 
+use xrf_error::XrfResult;
+
 use crate::enumerations::Enumerations;
 use crate::write::{GeneratedOutput, TypeOwnership};
 
@@ -19,11 +21,15 @@ pub(crate) struct WrapperModule {
 
 impl WrapperModule {
   /// Writes the module at `path`, importing the types its wrappers name from the modules declaring them.
-  pub fn write(self, path: &Path, plugin: &str, ownership: &TypeOwnership, enumerations: &Enumerations) {
+  ///
+  /// # Errors
+  ///
+  /// When a wrapper names a type declared outside the workspace, or the module cannot be written.
+  pub fn write(self, path: &Path, plugin: &str, ownership: &TypeOwnership, enumerations: &Enumerations) -> XrfResult {
     // The registry spells these argument types by hand, so they take the same retyping as a Specta signature.
-    let wrappers: String = enumerations.rewrite_parameters(&self.wrappers);
+    let wrappers: String = enumerations.rewrite_parameters(&self.wrappers)?;
 
-    ownership.assert_no_foreign_references(&wrappers, plugin);
+    ownership.assert_no_foreign_references(&wrappers, plugin)?;
 
     GeneratedOutput::write(
       path,
@@ -36,6 +42,6 @@ impl WrapperModule {
         self.declaration,
         self.signatures
       ),
-    );
+    )
   }
 }

@@ -1,8 +1,9 @@
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, PoisonError};
 
 use tauri::Runtime;
+use xrf_error::{XrfError, XrfResult};
 
 use crate::collected::{CollectedCommands, CollectedConstants, CommandTypescript};
 use crate::enumerations::Enumerations;
@@ -21,41 +22,40 @@ impl IpcBindingsGenerator {
   /// in the module `type_modules` gives its crate, every module addressing the others and the runtime as `imports`
   /// says.
   ///
-  /// # Panics
+  /// # Errors
   ///
-  /// Panics when the output cannot be written, or when a generated module no longer satisfies an invariant the
-  /// mirrors rest on — a type owned by two modules, a type module importing another, a foreign declaration with
-  /// nowhere to live, two surfaces or declarations of one name, or a builder configured otherwise than its wrappers
-  /// are rendered for.
+  /// When the output cannot be written, or when a generated module no longer satisfies an invariant the mirrors rest
+  /// on — a type owned by two modules, a type module importing another, a foreign declaration with nowhere to live,
+  /// two surfaces or declarations of one name, or a builder configured otherwise than its wrappers are rendered for.
   pub fn generate<R: Runtime>(
     output: &Path,
     surfaces: &[IpcCommandSurface<R>],
     type_modules: &TypeModules,
     imports: &MirrorImports,
-  ) {
-    Self::assert_distinct_names(surfaces);
+  ) -> XrfResult {
+    Self::assert_distinct_names(surfaces)?;
 
     let types: PathBuf = output.join(GeneratedOutput::TYPES_DIRECTORY);
     let commands: PathBuf = output.join(GeneratedOutput::COMMANDS_DIRECTORY);
 
-    GeneratedOutput::reset_directory(&types);
-    GeneratedOutput::reset_directory(&commands);
+    GeneratedOutput::reset_directory(&types)?;
+    GeneratedOutput::reset_directory(&commands)?;
 
-    let mut collected: CollectedCommands = Self::export_commands(&commands, surfaces);
-    let constants: CollectedConstants = CollectedConstants::collect(type_modules, &mut collected.types);
+    let mut collected: CollectedCommands = Self::export_commands(&commands, surfaces)?;
+    let constants: CollectedConstants = CollectedConstants::collect(type_modules, &mut collected.types)?;
     let (ownership, enumerations): (TypeOwnership, Enumerations) =
-      TypeModuleWriter::write_all(&types, &collected.types, &constants, type_modules, imports);
+      TypeModuleWriter::write_all(&types, &collected.types, &constants, type_modules, imports)?;
     let mut plugins: Vec<PluginModules> = Vec::with_capacity(surfaces.len());
 
     for surface in surfaces {
       CommandModuleWriter::write(
         &Self::module_path(&commands, surface.name),
         surface.name,
-        collected.of(surface.name),
+        collected.of(surface.name)?,
         &ownership,
         &enumerations,
         imports,
-      );
+      )?;
 
       if !surface.raw.is_empty() {
         CommandModuleWriter::write_raw(
@@ -65,7 +65,7 @@ impl IpcBindingsGenerator {
           &ownership,
           &enumerations,
           imports,
-        );
+        )?;
       }
 
       if !surface.bulk.is_empty() {
@@ -76,7 +76,7 @@ impl IpcBindingsGenerator {
           &ownership,
           &enumerations,
           imports,
-        );
+        )?;
       }
 
       plugins.push(PluginModules {
@@ -86,31 +86,31 @@ impl IpcBindingsGenerator {
       });
     }
 
-    CommandModuleWriter::write_signatures(&commands.join(Self::SIGNATURES_MODULE), &plugins, imports);
+    CommandModuleWriter::write_signatures(&commands.join(Self::SIGNATURES_MODULE), &plugins, imports)
   }
 
   /// Generates into `scratch` and reports how the mirrors committed at `committed` differ from it.
   ///
-  /// # Panics
+  /// # Errors
   ///
-  /// Panics on anything [`Self::generate`] panics on, and when either tree cannot be read back as TypeScript.
+  /// On anything [`Self::generate`] fails on, and when either tree cannot be read back as TypeScript.
   pub fn verify<R: Runtime>(
     committed: &Path,
     scratch: &Path,
     surfaces: &[IpcCommandSurface<R>],
     type_modules: &TypeModules,
     imports: &MirrorImports,
-  ) -> SurfaceDrift {
-    Self::generate(scratch, surfaces, type_modules, imports);
+  ) -> XrfResult<SurfaceDrift> {
+    Self::generate(scratch, surfaces, type_modules, imports)?;
 
-    Surface::read(committed).compare_to(&Surface::read(scratch))
+    Ok(Surface::read(committed)?.compare_to(&Surface::read(scratch)?))
   }
 
   /// Exports every plugin's commands, answering with the commands and the types those commands referenced.
   ///
   /// The exporter writes nothing: each command module is written once the type modules say what it imports, and
   /// every type exactly once, into the module of the crate declaring it.
-  fn export_commands<R: Runtime>(commands: &Path, surfaces: &[IpcCommandSurface<R>]) -> CollectedCommands {
+  fn export_commands<R: Runtime>(commands: &Path, surfaces: &[IpcCommandSurface<R>]) -> XrfResult<CollectedCommands> {
     let collected: Arc<Mutex<CollectedCommands>> = Arc::new(Mutex::new(CollectedCommands::default()));
 
     for surface in surfaces {
@@ -120,27 +120,32 @@ impl IpcBindingsGenerator {
           CommandTypescript::collecting(Arc::clone(&collected)),
           Self::module_path(commands, surface.name),
         )
-        .unwrap_or_else(|error| panic!("Failed to export {} commands: {error}", surface.name));
+        .map_err(|error| {
+          XrfError::new_serialization_error(format!("Failed to export {} commands: {error}", surface.name))
+        })?;
     }
 
+    // Each exporter is consumed by its export, so by now this is the one holder left.
     Arc::try_unwrap(collected)
-      .unwrap_or_else(|_| panic!("An exporter still holds the collected commands"))
-      .into_inner()
-      .expect("Collected commands lock is poisoned")
+      .map(|collected| collected.into_inner().unwrap_or_else(PoisonError::into_inner))
+      .map_err(|_| XrfError::new_unexpected_error("An exporter still holds the collected commands"))
   }
 
   /// Fails when two surfaces carry one name: both would write one command module, and the commands exported second
   /// would be the only ones collected for it.
-  fn assert_distinct_names<R: Runtime>(surfaces: &[IpcCommandSurface<R>]) {
+  fn assert_distinct_names<R: Runtime>(surfaces: &[IpcCommandSurface<R>]) -> XrfResult {
     let mut names: BTreeSet<&str> = BTreeSet::new();
 
     for surface in surfaces {
-      assert!(
-        names.insert(surface.name),
-        "Two command surfaces are named `{}`",
-        surface.name
-      );
+      if !names.insert(surface.name) {
+        return Err(XrfError::new_invalid_error(format!(
+          "Two command surfaces are named `{}`",
+          surface.name
+        )));
+      }
     }
+
+    Ok(())
   }
 
   /// Where one plugin's command module is written.
