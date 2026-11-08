@@ -27,7 +27,10 @@ impl PlacedObjects {
     }
 
     // Each effect a sequence of its own, so a campfire's effects do not repeat one another.
-    let Some(instance) = context.library.create(name, seed ^ ((effect.get_index() as i32) << 16)) else {
+    let Some(instance) = context
+      .library
+      .create(name, seed ^ ((effect.get_index() as u32).cast_signed() << 16))
+    else {
       return;
     };
     let mut object: ParticleObject = ParticleObject::new(instance);

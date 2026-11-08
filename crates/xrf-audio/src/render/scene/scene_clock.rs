@@ -16,7 +16,7 @@ impl SceneClock {
   /// Takes a frame stamped `time` on the scene's clock arriving at mixer frame `frame` of `rate`, answering whether the
   /// clock was anchored again.
   pub(crate) fn follow(&mut self, time: Duration, frame: u64, rate: u32) -> bool {
-    let anchored: i64 = frame as i64 - Self::to_frames(time, rate);
+    let anchored: i64 = frame.cast_signed() - Self::to_frames(time, rate);
     let drift: i64 = Self::to_frames(Self::DRIFT, rate);
 
     match self.offset {
@@ -31,7 +31,7 @@ impl SceneClock {
   /// The scene's time mixer frame `frame` of `rate` plays, none before the first frame anchored it.
   pub(crate) fn get_time(&self, frame: u64, rate: u32) -> Option<Duration> {
     let offset: i64 = self.offset?;
-    let frames: i64 = (frame as i64 - offset).max(0);
+    let frames: i64 = (frame.cast_signed() - offset).max(0);
 
     Some(Duration::from_secs_f64(frames as f64 / f64::from(rate.max(1))))
   }
@@ -40,7 +40,7 @@ impl SceneClock {
   pub(crate) fn get_frame(&self, time: Duration, rate: u32) -> Option<u64> {
     let offset: i64 = self.offset?;
 
-    Some((offset + Self::to_frames(time, rate)).max(0) as u64)
+    Some((offset + Self::to_frames(time, rate)).max(0).cast_unsigned())
   }
 
   fn to_frames(time: Duration, rate: u32) -> i64 {

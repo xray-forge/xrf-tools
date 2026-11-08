@@ -31,7 +31,7 @@ fn seeks_to_the_exact_frame_asked_for() {
   for frame in [0, 1, 4095, 4096, 7777, 9999] {
     decoder.seek(frame).expect("the decoder seeks");
     assert!(decoder.decode_next(&mut packet).expect("the sound decodes"));
-    assert_eq!(to_frame(packet[0]), frame as i64, "seek to {frame}");
+    assert_eq!(to_frame(packet[0]), frame.cast_signed(), "seek to {frame}");
   }
 
   for end in [10_000, 20_000] {

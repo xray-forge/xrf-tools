@@ -160,7 +160,7 @@ impl LevelAmbientEffects {
       }),
       is_indoors: false,
       wait: self.next_time.saturating_sub(now),
-      played: self.played as u32,
+      played: self.played.cast_unsigned(),
     }
   }
 

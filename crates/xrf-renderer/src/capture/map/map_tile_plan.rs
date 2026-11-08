@@ -79,8 +79,8 @@ impl MapTilePlan {
     for y in (0..height).step_by(RENDER_MAP_TILE as usize) {
       for x in (0..width).step_by(RENDER_MAP_TILE as usize) {
         let placed: RenderRect = RenderRect {
-          x: x as i32,
-          y: y as i32,
+          x: x.cast_signed(),
+          y: y.cast_signed(),
           width: RENDER_MAP_TILE.min(width - x),
           height: RENDER_MAP_TILE.min(height - y),
         };

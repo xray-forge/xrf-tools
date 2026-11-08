@@ -136,8 +136,8 @@ impl FrameCapture {
         texture,
         mip_level: 0,
         origin: wgpu::Origin3d {
-          x: rect.x as u32,
-          y: rect.y as u32,
+          x: rect.x.cast_unsigned(),
+          y: rect.y.cast_unsigned(),
           z: 0,
         },
         aspect: wgpu::TextureAspect::All,

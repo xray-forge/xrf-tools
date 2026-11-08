@@ -59,8 +59,8 @@ unsafe impl RenderWindowHost for Win32WindowHost {
     // SAFETY: `rect` outlives the call; a handle no longer naming a window fails, answered as an empty area.
     match unsafe { GetClientRect(self.get_hwnd(), &mut rect) } {
       Ok(()) => (
-        (rect.right - rect.left).max(0) as u32,
-        (rect.bottom - rect.top).max(0) as u32,
+        (rect.right - rect.left).max(0).cast_unsigned(),
+        (rect.bottom - rect.top).max(0).cast_unsigned(),
       ),
       Err(_) => (0, 0),
     }

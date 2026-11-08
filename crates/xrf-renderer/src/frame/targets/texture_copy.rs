@@ -42,8 +42,8 @@ pub(crate) fn add_texture_rects_copy(
 
       for rect in &rects {
         let origin: wgpu::Origin3d = wgpu::Origin3d {
-          x: rect.x as u32,
-          y: rect.y as u32,
+          x: rect.x.cast_unsigned(),
+          y: rect.y.cast_unsigned(),
           z: 0,
         };
 

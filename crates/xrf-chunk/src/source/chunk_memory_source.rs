@@ -94,8 +94,8 @@ impl ChunkDataSource for InMemoryChunkDataSource {
 
         return Ok(offset);
       }
-      SeekFrom::End(offset) => self.length() as i64 + offset,
-      SeekFrom::Current(offset) => self.position as i64 + offset,
+      SeekFrom::End(offset) => self.length().cast_signed() + offset,
+      SeekFrom::Current(offset) => self.position.cast_signed() + offset,
     };
 
     if target < 0 {
@@ -105,7 +105,7 @@ impl ChunkDataSource for InMemoryChunkDataSource {
       ));
     }
 
-    self.position = target as u64;
+    self.position = target.cast_unsigned();
 
     Ok(self.position)
   }

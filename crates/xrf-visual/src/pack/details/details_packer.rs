@@ -169,8 +169,10 @@ impl<'a> DetailsPacker<'a> {
       .map(|(cell, slot)| {
         slot.is_planted().then(|| {
           // `CDetailManager::QueryDB` read backwards: a cell's world slot.
-          let x: i32 = ((cell % size_x) as i64 - i64::from(header.offset_x)) as i32;
-          let z: i32 = ((cell / size_x) as i64 - i64::from(header.offset_z)) as i32;
+          let column: i64 = i64::try_from(cell % size_x).expect("a column lies within the grid");
+          let row: i64 = i64::try_from(cell / size_x).expect("a row lies within the grid");
+          let x: i32 = (column - i64::from(header.offset_x)) as i32;
+          let z: i32 = (row - i64::from(header.offset_z)) as i32;
 
           DetailsSlotBox::of(x, z, slot.base_height, slot.height)
         })

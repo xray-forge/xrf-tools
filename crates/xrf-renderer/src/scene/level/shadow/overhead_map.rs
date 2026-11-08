@@ -166,17 +166,27 @@ impl OverheadMap {
   /// `(across, down)` texels away: the columns it moved into, every row of them, and the rows it moved into, of the
   /// other columns. Each a region of texels across, down, wide and high.
   pub(crate) fn get_strips((across, down): (i32, i32), resolution: u32) -> [Option<[u32; 4]>; 2] {
-    let size: i32 = resolution as i32;
+    let size: i32 = resolution.cast_signed();
     let columns: Option<[u32; 4]> = match across {
       0 => None,
-      across if across > 0 => Some([(size - across) as u32, 0, across as u32, resolution]),
-      across => Some([0, 0, (-across) as u32, resolution]),
+      across if across > 0 => Some([(size - across).cast_unsigned(), 0, across.cast_unsigned(), resolution]),
+      across => Some([0, 0, across.unsigned_abs(), resolution]),
     };
     let (first, last): (i32, i32) = (across.min(0).abs(), size - across.max(0));
     let rows: Option<[u32; 4]> = match down {
       0 => None,
-      down if down > 0 => Some([first as u32, (size - down) as u32, (last - first) as u32, down as u32]),
-      down => Some([first as u32, 0, (last - first) as u32, (-down) as u32]),
+      down if down > 0 => Some([
+        first.cast_unsigned(),
+        (size - down).cast_unsigned(),
+        (last - first).cast_unsigned(),
+        down.cast_unsigned(),
+      ]),
+      down => Some([
+        first.cast_unsigned(),
+        0,
+        (last - first).cast_unsigned(),
+        down.unsigned_abs(),
+      ]),
     };
 
     [columns, rows]
@@ -280,8 +290,8 @@ impl OverheadMap {
         &CameraUniform::new(
           &Self::create_view(self.shape, center, region),
           RenderRect {
-            x: x as i32,
-            y: y as i32,
+            x: x.cast_signed(),
+            y: y.cast_signed(),
             width,
             height,
           },
@@ -456,7 +466,7 @@ impl OverheadMap {
     let texel: f32 = self.shape.width / self.shape.resolution as f32;
     let across: i32 = ((center.x - drawn.x) / texel).round() as i32;
     let down: i32 = ((center.z - drawn.z) / texel).round() as i32;
-    let size: i32 = self.shape.resolution as i32;
+    let size: i32 = self.shape.resolution.cast_signed();
 
     (drawn.y == center.y && across.abs() < size && down.abs() < size).then_some((across, down))
   }

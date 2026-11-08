@@ -113,7 +113,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
         gathering.impostors.push(
           parents
             .get(drawable)
-            .map_or(SectorInstanceGroup::NO_IMPOSTOR, |index| *index as i32),
+            .map_or(SectorInstanceGroup::NO_IMPOSTOR, |index| (*index).cast_signed()),
         );
 
         continue;

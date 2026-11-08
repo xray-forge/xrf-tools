@@ -115,7 +115,7 @@ impl StaticVertexWords {
     (0..geometry.vertex_count as usize)
       .map(|vertex| {
         let rigidity: f32 =
-          Self::read_word(uvs, vertex, uv_words, 1).map_or(0.0, |word| f32::from(word as u16 as i16) / 2048.0);
+          Self::read_word(uvs, vertex, uv_words, 1).map_or(0.0, |word| f32::from((word as u16).cast_signed()) / 2048.0);
         let position: [f32; 3] =
           [0, 1, 2].map(|axis| f32::from_bits(Self::read_word(Some(positions), vertex, 3, axis).unwrap_or(0)));
         let length: f32 = position.iter().map(|it| it * it).sum::<f32>().sqrt();

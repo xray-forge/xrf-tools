@@ -524,9 +524,9 @@ impl SceneRender {
       AudioVoiceState::Ended => true,
       AudioVoiceState::Starting => false,
       AudioVoiceState::Playing | AudioVoiceState::Paused => {
-        let frames: i64 = place.frames.max(1) as i64;
+        let frames: i64 = place.frames.max(1).cast_signed();
         let due: i64 = voice.get_due(tick.mixer_frame, place.sample_rate, tick.rate) as i64;
-        let behind: i64 = (due - playback.frame as i64).rem_euclid(frames);
+        let behind: i64 = (due - playback.frame.cast_signed()).rem_euclid(frames);
         let allowed: f64 = SceneClock::DRIFT.as_secs_f64() * f64::from(place.sample_rate) * f64::from(voice.rate);
 
         // A lag past half the sound is the voice ahead across the loop seam, not behind.

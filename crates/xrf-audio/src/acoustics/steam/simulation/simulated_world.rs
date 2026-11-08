@@ -77,7 +77,7 @@ impl SimulatedWorld {
     let triangles: Vec<Triangle> = mesh
       .triangles
       .iter()
-      .map(|[a, b, c]| Triangle::new(*a as i32, *c as i32, *b as i32))
+      .map(|[a, b, c]| Triangle::new((*a).cast_signed(), (*c).cast_signed(), (*b).cast_signed()))
       .collect();
     let material_indices: Vec<usize> = mesh.material_indices.iter().map(|index| *index as usize).collect();
     let materials: Vec<Material> = mesh

@@ -204,21 +204,19 @@ mod tests {
       // Rotation: a checksum the engine caches by, then one key per frame.
       bytes.write_u32::<LittleEndian>(0xDEAD_BEEF).unwrap();
 
-      for frame in 0..count {
-        for component in 0..4 {
-          bytes
-            .write_i16::<LittleEndian>((frame as i16 + 1) * (component as i16 + 1))
-            .unwrap();
+      let frames: i16 = i16::try_from(count).unwrap();
+
+      for frame in 0..frames {
+        for component in 0..4_i16 {
+          bytes.write_i16::<LittleEndian>((frame + 1) * (component + 1)).unwrap();
         }
       }
 
       bytes.write_u32::<LittleEndian>(0xFEED_FACE).unwrap();
 
-      for frame in 0..count {
-        for component in 0..3 {
-          bytes
-            .write_i16::<LittleEndian>(frame as i16 * 10 + component as i16)
-            .unwrap();
+      for frame in 0..frames {
+        for component in 0..3_i16 {
+          bytes.write_i16::<LittleEndian>(frame * 10 + component).unwrap();
         }
       }
 

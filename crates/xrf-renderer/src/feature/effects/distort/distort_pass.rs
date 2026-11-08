@@ -56,7 +56,7 @@ impl DistortPass {
     pass.set_bind_group(0, &view.bind_group, &[]);
 
     for rect in rects {
-      pass.set_scissor_rect(rect.x as u32, rect.y as u32, rect.width, rect.height);
+      pass.set_scissor_rect(rect.x.cast_unsigned(), rect.y.cast_unsigned(), rect.width, rect.height);
       pass.draw(0..3, 0..1);
     }
   }

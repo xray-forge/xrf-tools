@@ -63,7 +63,7 @@ impl NgxSuperResolution {
       // SAFETY: `create` lends the SDK's parameters under NGX's lock and a fresh command list; `parameters` outlives
       // the call.
       |commands, ngx, handle| unsafe {
-        NgxFeature::set_preset_hints(ngx, &Self::PRESET_HINTS, preset.to_hint() as u32);
+        NgxFeature::set_preset_hints(ngx, &Self::PRESET_HINTS, preset.to_hint().cast_unsigned());
 
         match commands {
           NgxCommands::Vulkan(list) => NGX_VULKAN_CREATE_DLSS_EXT(list, 1, 1, handle, ngx, &mut parameters),

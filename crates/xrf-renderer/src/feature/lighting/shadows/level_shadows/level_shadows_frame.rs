@@ -142,8 +142,8 @@ impl LevelShadows {
             encoder,
             &offer.fit.get_rows_view((y, y + height), resolution),
             RenderRect {
-              x: x as i32,
-              y: y as i32,
+              x: x.cast_signed(),
+              y: y.cast_signed(),
               width,
               height,
             },
@@ -228,8 +228,8 @@ impl LevelShadows {
         encoder,
         &prefetch.fit.get_rows_view((y, y + height), resolution),
         RenderRect {
-          x: x as i32,
-          y: y as i32,
+          x: x.cast_signed(),
+          y: y.cast_signed(),
           width,
           height,
         },

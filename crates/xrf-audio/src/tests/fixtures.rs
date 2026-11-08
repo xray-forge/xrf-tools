@@ -80,9 +80,10 @@ pub(crate) fn stream(bytes: Arc<[u8]>, frame: u64, is_looped: bool) -> StreamRea
   SoundStream::start(bytes, format, SoundStreamStart { frame, is_looped }).expect("the stream starts")
 }
 
-/// A mono ramp of `frames` samples, each its own index, so a frame read back names where it came from.
+/// A mono ramp of `frames` samples, each its own index wrapped to 16 bits, so a frame read back names where it came
+/// from.
 pub(crate) fn ramp(frames: usize) -> Vec<i16> {
-  (0..frames).map(|frame| frame as i16).collect()
+  (0..frames).map(|frame| (frame as u16).cast_signed()).collect()
 }
 
 /// `sound` from its start, over and over.

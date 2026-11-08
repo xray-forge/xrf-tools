@@ -174,8 +174,8 @@ impl DecodedCursor {
 
   /// The frame `offset` from `index`, across the loop seam for a looped sound and silence past either end otherwise.
   fn read_around(&self, index: usize, offset: isize) -> StereoFrame {
-    let frames: isize = self.sound.get_frames_count() as isize;
-    let at: isize = index as isize + offset;
+    let frames: isize = self.sound.get_frames_count().cast_signed();
+    let at: isize = index.cast_signed() + offset;
     let at: Option<isize> = if (0..frames).contains(&at) {
       Some(at)
     } else if self.is_looped {
@@ -188,7 +188,7 @@ impl DecodedCursor {
       StereoFrame::read(
         self.sound.get_samples(),
         self.sound.get_channels().get_count(),
-        at as usize,
+        at.cast_unsigned(),
       )
     })
   }

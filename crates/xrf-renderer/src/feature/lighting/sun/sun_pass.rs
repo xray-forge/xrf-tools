@@ -146,9 +146,9 @@ impl SunPass {
       Some(Self::SEEN_FORMAT.into()),
       Some(ViewTargets::LIGHT.into()),
     ];
-    let create = |entry: &'static str, is_split: bool, reach: usize| {
+    let create = |entry: &'static str, is_split: bool, reach: i32| {
       let permutation: SunFilterPermutation = SunFilterPermutation {
-        sun_filter_reach: reach as i32,
+        sun_filter_reach: reach,
       };
 
       create_fullscreen_pipeline_with(
@@ -160,7 +160,7 @@ impl SunPass {
         &targets[..if is_split { 3 } else { 2 }],
       )
     };
-    let variants = |reach: usize| -> XrfResult<[wgpu::RenderPipeline; 4]> {
+    let variants = |reach: i32| -> XrfResult<[wgpu::RenderPipeline; 4]> {
       Ok([
         create("fs_sun", false, reach)?,
         create("fs_sun_traced", false, reach)?,

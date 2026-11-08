@@ -313,11 +313,11 @@ fn the_camera_effects_reduce_over_the_tiles_rust_sizes() {
 
   assert_eq!(
     get_signed_constant(&library, module, "MOTION_BLOCK"),
-    CameraEffectsUniform::MOTION_BLOCK as i32
+    CameraEffectsUniform::MOTION_BLOCK.cast_signed()
   );
   assert_eq!(
     get_signed_constant(&library, module, "FOCUS_TILE_TEXELS") * 2,
-    CameraEffectsUniform::FOCUS_TILE as i32
+    CameraEffectsUniform::FOCUS_TILE.cast_signed()
   );
   assert_eq!(
     get_float_constant(&library, module, "FOCUS_TILE_PIXELS"),
@@ -599,7 +599,7 @@ fn the_rays_climb_the_pyramid_as_high_as_rust_makes_it() {
 
   assert_eq!(
     get_signed_constant(&library, "common/reflection_trace", "RAY_TOP_LEVEL") + 1,
-    DepthPyramid::RAY_LEVELS as i32
+    DepthPyramid::RAY_LEVELS.cast_signed()
   );
 }
 

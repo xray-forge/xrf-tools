@@ -101,7 +101,7 @@ impl<T: ChunkDataSource> Iterator for ChunkSizePackedIterator<'_, T> {
     if let Err(error) = self
       .reader
       .data
-      .set_seek(SeekFrom::Current((size - CHUNK_SIZE_FIELD_SIZE) as i64))
+      .set_seek(SeekFrom::Current((size - CHUNK_SIZE_FIELD_SIZE).cast_signed()))
     {
       return self.fail(error.into());
     }
