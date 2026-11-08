@@ -11,7 +11,7 @@ pub(crate) struct GpuZones {
 impl GpuZones {
   /// Sends one frame's passes: each stamp after the first ends the pass it names, which began at the stamp before.
   #[cfg(feature = "tracy")]
-  pub fn send(&mut self, stamps: &[u64], names: &[Option<TimedPass>], period: f32) {
+  pub(super) fn send(&mut self, stamps: &[u64], names: &[Option<TimedPass>], period: f32) {
     let Some(first) = stamps.first() else {
       return;
     };
@@ -23,7 +23,7 @@ impl GpuZones {
           .new_gpu_context(
             Some("GPU"),
             tracy_client::GpuContextType::Invalid,
-            *first as i64,
+            first.cast_signed(),
             period,
           )
           .ok()
@@ -41,8 +41,8 @@ impl GpuZones {
 
       if let Ok(mut span) = context.span_alloc(&pass.to_name(), "", "", 0) {
         span.end_zone();
-        span.upload_timestamp_start(stamps[index - 1] as i64);
-        span.upload_timestamp_end(stamps[index].max(stamps[index - 1]) as i64);
+        span.upload_timestamp_start(stamps[index - 1].cast_signed());
+        span.upload_timestamp_end(stamps[index].max(stamps[index - 1]).cast_signed());
       }
     }
   }
