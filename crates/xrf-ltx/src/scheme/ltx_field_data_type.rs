@@ -300,7 +300,6 @@ impl Display for LtxFieldDataType {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::scheme::TupleSeparator;
 
   #[test]
   fn parses_pipe_tuple_with_grouped_enum() {

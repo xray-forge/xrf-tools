@@ -1,7 +1,6 @@
 //! Pins what the packing-configuration commands read and write, and that neither depends on which format a path names.
 
 use std::fs;
-use std::future::Future;
 use std::path::PathBuf;
 
 use xrf_app_core::TauriResult;

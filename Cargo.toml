@@ -279,6 +279,18 @@ unused_qualifications = "warn"
 elided_lifetimes_in_paths = "warn"
 # An item no other crate can reach says so: `pub(crate)`, so `pub` marks a crate's real surface.
 unreachable_pub = "warn"
+# A cast to the type a value already has says nothing, and an import or lifetime nothing uses is noise.
+trivial_numeric_casts = "warn"
+redundant_imports = "warn"
+unused_import_braces = "warn"
+unused_lifetimes = "warn"
+redundant_lifetimes = "warn"
+impl_trait_redundant_captures = "warn"
+unused_macro_rules = "warn"
+meta_variable_misuse = "warn"
+unit_bindings = "warn"
+ambiguous_negative_literals = "warn"
+deref_into_dyn_supertrait = "warn"
 
 [workspace.lints.clippy]
 extra_unused_type_parameters = "allow"

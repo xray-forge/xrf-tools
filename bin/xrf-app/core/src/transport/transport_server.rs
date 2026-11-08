@@ -1,6 +1,5 @@
 use std::convert::Infallible;
 use std::error::Error;
-use std::future::Future;
 use std::io;
 use std::net::{Ipv4Addr, SocketAddr, TcpListener as StdTcpListener};
 use std::sync::Arc;

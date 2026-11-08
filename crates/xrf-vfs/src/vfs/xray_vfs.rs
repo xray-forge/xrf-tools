@@ -273,10 +273,7 @@ impl XrayVfs {
 
   /// Iterates over mounts selected by a scope in its priority order: named mounts in the order named, once each, and
   /// every other selection in mount order.
-  pub(crate) fn mounts_in<'a, 's>(
-    &'a self,
-    scope: &'s XrayLookupScope,
-  ) -> impl Iterator<Item = &'a XrayMount> + use<'a, 's> {
+  pub(crate) fn mounts_in<'a>(&'a self, scope: &XrayLookupScope) -> impl Iterator<Item = &'a XrayMount> {
     let named: Option<&[XrayMountId]> = match scope.get_selection() {
       XrayMountSelection::Only(ids) => Some(ids),
       _ => None,
