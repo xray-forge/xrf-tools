@@ -11,20 +11,15 @@ pub enum RenderSpawnCategory {
 }
 
 impl RenderSpawnCategory {
-  pub const ALL: [RenderSpawnCategory; 4] = [
-    RenderSpawnCategory::Props,
-    RenderSpawnCategory::Items,
-    RenderSpawnCategory::Weapons,
-    RenderSpawnCategory::Lamps,
-  ];
+  pub const ALL: [Self; 4] = [Self::Props, Self::Items, Self::Weapons, Self::Lamps];
 
   /// The spawn group its objects are shown and hidden by, from one.
   pub const fn get_group(self) -> u32 {
     match self {
-      RenderSpawnCategory::Props => 1,
-      RenderSpawnCategory::Items => 2,
-      RenderSpawnCategory::Weapons => 3,
-      RenderSpawnCategory::Lamps => 4,
+      Self::Props => 1,
+      Self::Items => 2,
+      Self::Weapons => 3,
+      Self::Lamps => 4,
     }
   }
 

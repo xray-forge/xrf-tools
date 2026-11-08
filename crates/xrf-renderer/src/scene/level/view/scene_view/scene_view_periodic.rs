@@ -23,7 +23,7 @@ impl SceneView {
     scheduler: &mut PeriodicScheduler,
     view_layout: &wgpu::BindGroupLayout,
   ) {
-    let SceneView { shared, features, .. } = self;
+    let Self { shared, features, .. } = self;
     let SceneFeatures {
       shadows,
       rain_cover,
@@ -88,7 +88,7 @@ impl SceneView {
     encoder: &mut FrameEncoder,
     scheduler: &PeriodicScheduler,
   ) {
-    let SceneView { shared, features, .. } = self;
+    let Self { shared, features, .. } = self;
     let SceneFeatures {
       shadows,
       rain_cover,

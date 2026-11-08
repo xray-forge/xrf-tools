@@ -114,7 +114,7 @@ impl XRayShader {
     let mut resolved_imports: Vec<XRayShaderImport> = Vec::with_capacity(imports.len());
 
     for import in imports {
-      let shader: XRayShader = Self::load_import(path, &import, renderer, shaders_root, loader, active_paths)?;
+      let shader: Self = Self::load_import(path, &import, renderer, shaders_root, loader, active_paths)?;
 
       resolved_imports.push(XRayShaderImport::from_reference(import, shader));
     }

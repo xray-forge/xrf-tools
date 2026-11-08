@@ -119,7 +119,7 @@ impl LevelAssets {
 
 impl LevelFileSource for LevelAssets {
   fn read(&self, name: &str) -> XrfResult<Option<Vec<u8>>> {
-    LevelAssets::read(self, name)
+    Self::read(self, name)
   }
 
   fn describe(&self, name: &str) -> String {

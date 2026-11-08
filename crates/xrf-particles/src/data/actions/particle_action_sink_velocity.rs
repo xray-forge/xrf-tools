@@ -17,7 +17,7 @@ pub struct ParticleActionSinkVelocity {
 }
 
 impl ChunkReadWrite for ParticleActionSinkVelocity {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<ParticleActionSinkVelocity> {
+  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
       action_flags: reader.read_u32::<T>()?,
       action_type: reader.read_xr::<T, _>()?,

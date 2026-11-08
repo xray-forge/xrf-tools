@@ -28,7 +28,7 @@ impl XrayInputRecord {
   }
 
   /// Adds what another record holds, keeping the answers this one has already.
-  pub fn extend_from(&self, other: &XrayInputRecord) {
+  pub fn extend_from(&self, other: &Self) {
     if Arc::ptr_eq(&self.inputs, &other.inputs) {
       return;
     }
@@ -49,7 +49,7 @@ impl XrayInputRecord {
 
   /// A record of the inputs `keep` picks, with the answers this one holds for them: what one change depends on, out of
   /// everything its author read, so a commit is refused only when that moved.
-  pub fn to_filtered(&self, keep: impl Fn(&XrayInput) -> bool) -> XrayInputRecord {
+  pub fn to_filtered(&self, keep: impl Fn(&XrayInput) -> bool) -> Self {
     let inputs: HashMap<XrayInput, XrayInputAnswer> = self
       .lock()
       .iter()
@@ -64,7 +64,7 @@ impl XrayInputRecord {
 
   /// A copy of every input and answer this record holds, sharing nothing with it: a clone shares the record, so what
   /// either records later the other sees, which a snapshot keeping its own account must not.
-  pub fn to_detached(&self) -> XrayInputRecord {
+  pub fn to_detached(&self) -> Self {
     self.to_filtered(|_| true)
   }
 

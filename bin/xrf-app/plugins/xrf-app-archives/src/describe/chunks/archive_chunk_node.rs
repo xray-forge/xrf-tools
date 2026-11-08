@@ -19,6 +19,10 @@ pub struct ArchiveChunkNode {
   /// Whether the id carried `CFS_CompressMark`, in which case the payload stands for data it is not and is not walked.
   pub is_compressed: bool,
   /// Chunks the payload is made of, empty for one holding data rather than a container.
+  #[expect(
+    clippy::use_self,
+    reason = "Specta's derive copies the type where `Self` names another"
+  )]
   pub children: Vec<ArchiveChunkNode>,
 }
 

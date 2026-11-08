@@ -14,14 +14,14 @@ pub(crate) trait PreferenceStore: Send + Sync {
 
 impl<R: Runtime> PreferenceStore for Store<R> {
   fn get(&self, key: &str) -> Option<Value> {
-    Store::get(self, key)
+    Self::get(self, key)
   }
 
   fn set(&self, key: &str, value: Value) {
-    Store::set(self, key, value);
+    Self::set(self, key, value);
   }
 
   fn save(&self) -> tauri_plugin_store::Result<()> {
-    Store::save(self)
+    Self::save(self)
   }
 }

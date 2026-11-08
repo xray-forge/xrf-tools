@@ -21,37 +21,31 @@ pub enum LevelPart {
 
 impl LevelPart {
   /// Every part, in declaration order.
-  pub const ALL: [LevelPart; 8] = [
-    LevelPart::Sectors,
-    LevelPart::Spawn,
-    LevelPart::Lights,
-    LevelPart::Grass,
-    LevelPart::Helpers,
-    LevelPart::Particles,
-    LevelPart::Weather,
-    LevelPart::Motions,
+  pub const ALL: [Self; 8] = [
+    Self::Sectors,
+    Self::Spawn,
+    Self::Lights,
+    Self::Grass,
+    Self::Helpers,
+    Self::Particles,
+    Self::Weather,
+    Self::Motions,
   ];
 
   /// The parts a level's load waits for beside its textures, in the order its report names them.
-  pub const LOADED: [LevelPart; 5] = [
-    LevelPart::Sectors,
-    LevelPart::Spawn,
-    LevelPart::Lights,
-    LevelPart::Particles,
-    LevelPart::Grass,
-  ];
+  pub const LOADED: [Self; 5] = [Self::Sectors, Self::Spawn, Self::Lights, Self::Particles, Self::Grass];
 
   /// Its name, as logs and reports say it.
   pub fn get_name(self) -> &'static str {
     match self {
-      LevelPart::Sectors => "sectors",
-      LevelPart::Spawn => "spawn",
-      LevelPart::Lights => "lights",
-      LevelPart::Grass => "grass",
-      LevelPart::Helpers => "helpers",
-      LevelPart::Particles => "particles",
-      LevelPart::Weather => "weather",
-      LevelPart::Motions => "motions",
+      Self::Sectors => "sectors",
+      Self::Spawn => "spawn",
+      Self::Lights => "lights",
+      Self::Grass => "grass",
+      Self::Helpers => "helpers",
+      Self::Particles => "particles",
+      Self::Weather => "weather",
+      Self::Motions => "motions",
     }
   }
 

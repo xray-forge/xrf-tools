@@ -13,7 +13,7 @@ pub struct U32Bytes(pub u8, pub u8, pub u8, pub u8);
 
 impl ChunkReadWrite for U32Bytes {
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    Ok(U32Bytes(
+    Ok(Self(
       reader.read_u8()?,
       reader.read_u8()?,
       reader.read_u8()?,

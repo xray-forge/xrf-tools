@@ -34,12 +34,12 @@ impl OrbitDrag {
   /// button rotate, Alt and the secondary dolly, Alt and the auxiliary pan.
   fn of(buttons: WorldInputButtons, modifiers: WorldInputModifiers) -> Option<Self> {
     Some(match (modifiers.alt_key, buttons) {
-      (true, WorldInputButtons::MAIN) => OrbitDrag::Rotate,
-      (true, WorldInputButtons::SECONDARY) => OrbitDrag::Dolly,
-      (true, WorldInputButtons::AUXILIARY) => OrbitDrag::Pan,
+      (true, WorldInputButtons::MAIN) => Self::Rotate,
+      (true, WorldInputButtons::SECONDARY) => Self::Dolly,
+      (true, WorldInputButtons::AUXILIARY) => Self::Pan,
       (true, _) => return None,
-      (false, WorldInputButtons::MAIN) if !modifiers.shift_key && !modifiers.ctrl_key => OrbitDrag::Rotate,
-      (false, _) => OrbitDrag::Pan,
+      (false, WorldInputButtons::MAIN) if !modifiers.shift_key && !modifiers.ctrl_key => Self::Rotate,
+      (false, _) => Self::Pan,
     })
   }
 }

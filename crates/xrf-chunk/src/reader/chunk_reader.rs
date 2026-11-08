@@ -171,7 +171,7 @@ impl<T: ChunkDataSource> ChunkReader<T> {
   /// Returns an error when child iteration fails or no child sits at that position.
   pub fn read_child_by_index(&mut self, index: u32) -> XrfResult<Self> {
     for (position, chunk) in ChunkIterator::from_start(self)?.enumerate() {
-      let chunk: ChunkReader<T> = chunk?;
+      let chunk: Self = chunk?;
 
       if index as usize == position {
         return Ok(chunk);

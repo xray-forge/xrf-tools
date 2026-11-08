@@ -18,7 +18,7 @@ pub enum CameraController {
 
 impl Default for CameraController {
   fn default() -> Self {
-    CameraController::Fly(FlyCameraController::default())
+    Self::Fly(FlyCameraController::default())
   }
 }
 
@@ -26,39 +26,39 @@ impl CameraController {
   /// Takes a description, switching controllers when it asks for the other kind.
   pub fn describe(&mut self, description: WorldCamera) {
     match (self, description) {
-      (CameraController::Fly(controller), WorldCamera::Fly { .. }) => {
+      (Self::Fly(controller), WorldCamera::Fly { .. }) => {
         controller.describe(description);
       }
-      (CameraController::Orbit(controller), WorldCamera::Orbit { .. }) => {
+      (Self::Orbit(controller), WorldCamera::Orbit { .. }) => {
         controller.describe(description);
       }
-      (this, WorldCamera::Fly { .. }) => *this = CameraController::Fly(FlyCameraController::new(description)),
-      (this, WorldCamera::Orbit { .. }) => *this = CameraController::Orbit(OrbitCameraController::new(description)),
+      (this, WorldCamera::Fly { .. }) => *this = Self::Fly(FlyCameraController::new(description)),
+      (this, WorldCamera::Orbit { .. }) => *this = Self::Orbit(OrbitCameraController::new(description)),
     }
   }
 
   pub fn command(&mut self, command: WorldCameraCommand) {
     match self {
-      CameraController::Fly(controller) => controller.command(command),
-      CameraController::Orbit(controller) => controller.command(command),
+      Self::Fly(controller) => controller.command(command),
+      Self::Orbit(controller) => controller.command(command),
     }
   }
 
   pub fn input(&mut self, event: &WorldInputEvent) {
     match self {
-      CameraController::Fly(controller) => controller.input(event),
-      CameraController::Orbit(controller) => controller.input(event),
+      Self::Fly(controller) => controller.input(event),
+      Self::Orbit(controller) => controller.input(event),
     }
   }
 
   /// Advances the camera by a frame's time; `height` is the viewport's in CSS pixels.
   pub fn update(&mut self, delta: Duration, height: f32) {
     match self {
-      CameraController::Fly(controller) => {
+      Self::Fly(controller) => {
         controller.resize(height);
         controller.update(delta);
       }
-      CameraController::Orbit(controller) => {
+      Self::Orbit(controller) => {
         controller.resize(height);
         controller.update(delta);
       }
@@ -68,23 +68,23 @@ impl CameraController {
   /// The steps of speed the wheel asked for since they were last taken, positive faster; an orbit camera has none.
   pub fn take_speed_steps(&mut self) -> i32 {
     match self {
-      CameraController::Fly(controller) => controller.take_speed_steps(),
-      CameraController::Orbit(_) => 0,
+      Self::Fly(controller) => controller.take_speed_steps(),
+      Self::Orbit(_) => 0,
     }
   }
 
   pub fn get_pose(&self) -> WorldCameraPose {
     match self {
-      CameraController::Fly(controller) => controller.get_pose(),
-      CameraController::Orbit(controller) => controller.get_pose(),
+      Self::Fly(controller) => controller.get_pose(),
+      Self::Orbit(controller) => controller.get_pose(),
     }
   }
 
   /// Where it stands and what its lens is this frame.
   pub fn get_frame(&self) -> CameraFrame {
     match self {
-      CameraController::Fly(controller) => controller.get_frame(),
-      CameraController::Orbit(controller) => controller.get_frame(),
+      Self::Fly(controller) => controller.get_frame(),
+      Self::Orbit(controller) => controller.get_frame(),
     }
   }
 }

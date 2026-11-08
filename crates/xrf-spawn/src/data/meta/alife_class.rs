@@ -100,7 +100,7 @@ pub enum AlifeClass {
 }
 
 impl AlifeClass {
-  pub fn from_cls_id(cls_id: &ClsId) -> AlifeClass {
+  pub fn from_cls_id(cls_id: &ClsId) -> Self {
     // todo: Implement with From<T> trait?
     CLS_ID_TO_CLASS.index(cls_id.clone()).clone()
   }

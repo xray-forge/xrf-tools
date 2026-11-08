@@ -20,17 +20,17 @@ impl FlyKey {
   /// it, and the arrow keys turn it.
   pub fn from_code(code: &str) -> Option<Self> {
     Some(match code {
-      "ArrowDown" => FlyKey::LookDown,
-      "ArrowLeft" => FlyKey::TurnLeft,
-      "ArrowRight" => FlyKey::TurnRight,
-      "ArrowUp" => FlyKey::LookUp,
-      "KeyA" | "Numpad4" => FlyKey::Left,
-      "KeyD" | "Numpad6" => FlyKey::Right,
-      "KeyE" | "Numpad9" | "PageUp" => FlyKey::Up,
-      "KeyQ" | "Numpad7" | "PageDown" => FlyKey::Down,
-      "KeyS" | "Numpad2" => FlyKey::Back,
-      "KeyW" | "Numpad8" => FlyKey::Forward,
-      "ShiftLeft" | "ShiftRight" => FlyKey::Fast,
+      "ArrowDown" => Self::LookDown,
+      "ArrowLeft" => Self::TurnLeft,
+      "ArrowRight" => Self::TurnRight,
+      "ArrowUp" => Self::LookUp,
+      "KeyA" | "Numpad4" => Self::Left,
+      "KeyD" | "Numpad6" => Self::Right,
+      "KeyE" | "Numpad9" | "PageUp" => Self::Up,
+      "KeyQ" | "Numpad7" | "PageDown" => Self::Down,
+      "KeyS" | "Numpad2" => Self::Back,
+      "KeyW" | "Numpad8" => Self::Forward,
+      "ShiftLeft" | "ShiftRight" => Self::Fast,
       _ => return None,
     })
   }

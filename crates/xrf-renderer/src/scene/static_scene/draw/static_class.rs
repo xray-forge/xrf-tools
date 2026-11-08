@@ -17,33 +17,33 @@ pub enum StaticClass {
 }
 
 impl StaticClass {
-  pub const ALL: [StaticClass; 6] = [
-    StaticClass::Opaque,
-    StaticClass::CutOut,
-    StaticClass::Water,
-    StaticClass::Composited,
-    StaticClass::Wallmark,
-    StaticClass::Sorted,
+  pub const ALL: [Self; 6] = [
+    Self::Opaque,
+    Self::CutOut,
+    Self::Water,
+    Self::Composited,
+    Self::Wallmark,
+    Self::Sorted,
   ];
 
   pub const fn get_index(self) -> usize {
     match self {
-      StaticClass::Opaque => 0,
-      StaticClass::CutOut => 1,
-      StaticClass::Water => 2,
-      StaticClass::Composited => 3,
-      StaticClass::Wallmark => 4,
-      StaticClass::Sorted => 5,
+      Self::Opaque => 0,
+      Self::CutOut => 1,
+      Self::Water => 2,
+      Self::Composited => 3,
+      Self::Wallmark => 4,
+      Self::Sorted => 5,
     }
   }
 
   /// Whether it is composited over the lit frame, in the cull's order or the view's sorted one.
   pub const fn is_composited(self) -> bool {
-    matches!(self, StaticClass::Composited | StaticClass::Sorted)
+    matches!(self, Self::Composited | Self::Sorted)
   }
 
   /// Whether it is drawn into the G-buffer and casts shadows.
   pub const fn is_deferred(self) -> bool {
-    matches!(self, StaticClass::Opaque | StaticClass::CutOut)
+    matches!(self, Self::Opaque | Self::CutOut)
   }
 }

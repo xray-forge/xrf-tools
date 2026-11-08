@@ -25,7 +25,7 @@ impl<R: Runtime> HeldWindow for WebviewWindow<R> {
 
     // Queued behind the show on the event loop, so the window is shown, and its animation decided, before it may
     // animate again.
-    let shown: WebviewWindow<R> = self.clone();
+    let shown: Self = self.clone();
 
     if let Err(error) = self.run_on_main_thread(move || WindowTransitions::enable(&shown)) {
       log::error!("Failed to let window '{label}' animate again once shown: {error}");

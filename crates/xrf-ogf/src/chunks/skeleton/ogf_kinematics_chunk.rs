@@ -30,7 +30,7 @@ impl OgfKinematicsChunk {
 
     let mut motion_refs: Vec<String> = Vec::new();
 
-    if chunk_id == OgfKinematicsChunk::CHUNK_ID {
+    if chunk_id == Self::CHUNK_ID {
       for _ in 0..reader.read_u32::<T>()? {
         motion_refs.push(reader.read_w1251_string()?);
       }
@@ -51,7 +51,7 @@ impl OgfKinematicsChunk {
 
   /// Writes the chunk back exactly as read, trailing bytes included.
   pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    if self.source_chunk_id == OgfKinematicsChunk::CHUNK_ID {
+    if self.source_chunk_id == Self::CHUNK_ID {
       writer.write_u32::<T>(to_format_size(self.motion_refs.len(), "ogf motion refs")?)?;
 
       for motion_ref in &self.motion_refs {

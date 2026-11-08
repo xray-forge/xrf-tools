@@ -10,6 +10,6 @@ pub(crate) trait SessionFollower: Send + Sync {
 
 impl<T: Send + Sync + 'static> SessionFollower for Session<T> {
   fn follow_in(&self, assets: &AssetMountState, fan_out: &AssetFanOut) -> Vec<SessionChange> {
-    Session::follow_in(self, assets, fan_out).into_iter().collect()
+    Self::follow_in(self, assets, fan_out).into_iter().collect()
   }
 }

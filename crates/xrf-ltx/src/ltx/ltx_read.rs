@@ -16,11 +16,11 @@ impl LtxRead for Ltx {
   type Section = Section;
 
   fn section(&self, name: &str) -> Option<&Section> {
-    Ltx::section(self, name)
+    Self::section(self, name)
   }
 
   fn has_section(&self, name: &str) -> bool {
-    Ltx::has_section(self, name)
+    Self::has_section(self, name)
   }
 }
 

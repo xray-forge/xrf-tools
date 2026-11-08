@@ -9,6 +9,7 @@ use crate::contract::viewport::page::render_page_plane::RenderPagePlane;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable, ShaderStruct)]
 #[shader(name = "Backdrop")]
+#[expect(clippy::use_self, reason = "an array length in a field cannot name `Self`")]
 pub struct BackdropUniform {
   /// The wash's first and last colours, each premultiplied by its alpha, as CSS interpolates a gradient.
   pub first: Vec4,

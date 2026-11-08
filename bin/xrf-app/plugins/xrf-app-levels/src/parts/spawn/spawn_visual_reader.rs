@@ -34,17 +34,13 @@ impl SpawnVisualReader {
 
   /// Runs `read` with a reader of the open level's spawned visuals, whatever it reads recorded as the visuals' part read
   /// it.
-  pub fn with<T>(
-    current: &SessionSnapshot<SelectedLevel>,
-    search: &XraySearch,
-    read: impl FnOnce(&SpawnVisualReader) -> T,
-  ) -> T {
+  pub fn with<T>(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch, read: impl FnOnce(&Self) -> T) -> T {
     let visuals: Arc<LevelSpawnVisuals> = current
       .parts
       .get_or_init::<LevelSpawnVisualsPart>(|| Arc::new(LevelSpawnVisuals::new()));
 
     current.parts.record::<LevelSpawnVisualsPart, T>(search, |search| {
-      read(&SpawnVisualReader {
+      read(&Self {
         visuals,
         search: search.clone(),
         level: current.source.get_logical_directory(),

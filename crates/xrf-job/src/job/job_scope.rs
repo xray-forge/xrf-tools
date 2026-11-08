@@ -26,7 +26,7 @@ impl JobScope {
   }
 
   /// Enter a level inside this one.
-  pub fn enter(&self, id: impl Into<String>, total: Option<u64>) -> JobScope {
+  pub fn enter(&self, id: impl Into<String>, total: Option<u64>) -> Self {
     JobState::enter(&self.state, id, total)
   }
 

@@ -8,6 +8,7 @@ use crate::host::weather::flares::render_lens_flare::RenderLensFlare;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Flares")]
+#[expect(clippy::use_self, reason = "an array length in a field cannot name `Self`")]
 pub struct FlareUniform {
   pub to_sun: Vec4,
   pub sun: Vec4,
