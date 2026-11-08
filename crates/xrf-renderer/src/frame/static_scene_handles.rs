@@ -33,13 +33,15 @@ pub struct StaticSceneHandles {
   pub corners: GraphBuffer,
   pub terms: GraphBuffer,
   pub impostor_list: GraphBuffer,
-  /// The camera's visible list and draw arguments, its late phase's, and what a cull's arguments start from.
+  /// The camera's visible list and draw arguments, its late phase's, and what a cull's arguments and the camera's late
+  /// ones start from.
   pub lists: GraphBuffer,
   pub args: GraphBuffer,
   pub candidates: GraphBuffer,
   pub late: GraphBuffer,
   pub late_dispatch: GraphBuffer,
   pub args_template: GraphBuffer,
+  pub late_template: GraphBuffer,
   /// The camera's depth pyramid, which its early cull tests against and its late cull after reducing it again.
   pub pyramid: GraphTexture,
   pub cull: UniformBinding<StaticCullUniform>,
@@ -100,13 +102,14 @@ impl StaticSceneHandles {
         scene.geometry.impostors.get_lane(StaticGeometry::IMPOSTOR_LIST),
       ),
     ];
-    let culled: [GraphBuffer; 6] = [
+    let culled: [GraphBuffer; 7] = [
       import("static lists", scene.cull.lists.get_buffer()),
       import("static draw arguments", &scene.cull.args),
       import("static candidates", scene.cull.candidates.get_buffer()),
       import("static late arguments", &scene.cull.late),
       import("static late dispatch", &scene.cull.late_dispatch),
       import("static draw arguments template", &scene.cull.args_template),
+      import("static late arguments template", &scene.cull.late_template),
     ];
     let (clusters, spheres, slots, places, rows, regions, surfaces, indices) = handles;
 
@@ -132,6 +135,7 @@ impl StaticSceneHandles {
       late: culled[3],
       late_dispatch: culled[4],
       args_template: culled[5],
+      late_template: culled[6],
       pyramid: bindings.import_view(graph, "depth pyramid", pyramid),
       cull: runtime.push_uniform(cull),
       occlusion: runtime.push_uniform(occlusion),

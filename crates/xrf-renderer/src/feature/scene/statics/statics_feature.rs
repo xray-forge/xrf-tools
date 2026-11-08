@@ -348,6 +348,22 @@ impl StaticsFeature {
       }
     };
 
+    // Every view of a shared scene culls into the scene's one set of camera arguments, so each starts them empty.
+    let reset: [GraphBuffer; 4] = [scene.args_template, scene.args, scene.late_template, scene.late];
+
+    graph
+      .add_encoder_pass("cull reset")
+      .buffer(reset[0], GraphBufferAccess::CopySource)
+      .buffer(reset[1], GraphBufferAccess::CopyDestination)
+      .buffer(reset[2], GraphBufferAccess::CopySource)
+      .buffer(reset[3], GraphBufferAccess::CopyDestination)
+      .record(move |context| {
+        let [args_template, args, late_template, late] = reset.map(|buffer| context.get_buffer(buffer));
+        let encoder: &mut wgpu::CommandEncoder = context.get_encoder();
+
+        encoder.copy_buffer_to_buffer(args_template, 0, args, 0, StaticCullScratch::ARGS_SIZE);
+        encoder.copy_buffer_to_buffer(late_template, 0, late, 0, StaticCullScratch::LATE_SIZE);
+      });
     graph
       .add_compute_pass("cull")
       .parameters(&cull)
