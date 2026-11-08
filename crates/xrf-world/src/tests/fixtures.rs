@@ -1,13 +1,15 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
+use std::time::Duration;
 
 use xrf_anm::AnmFile;
 use xrf_environment::WeatherDescriptor;
 use xrf_error::{XrfError, XrfResult};
 use xrf_material::XraySurfaceDescriptor;
 use xrf_renderer::{
-  RenderAssetSource, RenderLevelDetails, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn, RenderSpawnModels,
+  RenderAssetSource, RenderLevelDetails, RenderLevelHelpers, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn,
+  RenderSpawnModels,
 };
 use xrf_visual::{LightsDescription, SectorPackage};
 
@@ -50,6 +52,9 @@ pub struct TestLevelSource {
   /// The sink the scene's sound frames go to, taken by the first scene asking.
   pub sound_sink: Mutex<Option<Box<dyn WorldSoundSink>>>,
   pub reads: Arc<TestLevelReads>,
+  /// How long reading its helpers takes, standing for a worker a loaded machine is slow to run: nothing waits on the
+  /// helpers, so they can be posted after every part a scene waits on has answered.
+  pub helpers_delay: Duration,
 }
 
 impl Default for TestLevelSource {
@@ -62,6 +67,7 @@ impl Default for TestLevelSource {
       sounds: WorldLevelSounds::default(),
       sound_sink: Mutex::new(None),
       reads: Arc::default(),
+      helpers_delay: Duration::ZERO,
     }
   }
 }
@@ -122,6 +128,13 @@ impl WorldLevelSource for TestLevelSource {
     self.reads.spawn.fetch_add(1, Ordering::SeqCst);
 
     Err(Self::none())
+  }
+
+  /// No level objects, as the source's own default answers, but only once `helpers_delay` has passed.
+  fn read_helpers(&self) -> XrfResult<RenderLevelHelpers> {
+    std::thread::sleep(self.helpers_delay);
+
+    Ok(RenderLevelHelpers::default())
   }
 
   fn read_spawn_models(&self, _: &[String]) -> XrfResult<RenderSpawnModels> {
