@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use fxhash::FxBuildHasher;
+use rustc_hash::FxBuildHasher;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path_or;
 

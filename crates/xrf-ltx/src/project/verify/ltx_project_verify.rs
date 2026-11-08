@@ -1,8 +1,8 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use fxhash::FxBuildHasher;
 use indexmap::IndexSet;
+use rustc_hash::FxBuildHasher;
 use xrf_error::XrfResult;
 use xrf_job::{JobOutcome, JobScope};
 use xrf_output::OutputOptions;
