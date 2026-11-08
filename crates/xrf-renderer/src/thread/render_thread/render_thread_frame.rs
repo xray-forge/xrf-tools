@@ -375,18 +375,23 @@ impl RenderThread {
       ray_reconstruction,
     };
 
-    let allocator: Option<&GpuMemory> = Self::read_allocator_report(
-      &mut self.allocator_report,
-      &gpu.context.adapter,
-      &gpu.context.device,
-      now,
-    );
+    // The windows' own passes, composition and captures, are every viewport's: taken once a round any report is due in,
+    // and handed to each viewport reporting, rather than to whichever reports first. Only a report due reads the
+    // allocator, which lists every allocation it holds.
+    let is_any_due: bool = self.viewports.values().any(|viewport| viewport.is_report_due(now));
+    let allocator: Option<&GpuMemory> = if is_any_due {
+      Self::read_allocator_report(
+        &mut self.allocator_report,
+        &gpu.context.adapter,
+        &gpu.context.device,
+        now,
+      )
+    } else {
+      None
+    };
 
     profiling::scope!("frame report");
 
-    // The windows' own passes, composition and captures, are every viewport's: taken once a round any report is due in,
-    // and handed to each viewport reporting, rather than to whichever reports first.
-    let is_any_due: bool = self.viewports.values().any(|viewport| viewport.is_report_due(now));
     let composition: Vec<GraphPassTime> = if is_any_due {
       runtime.timer.take(GraphOwner::Frame)
     } else {
