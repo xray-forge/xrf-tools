@@ -19,7 +19,6 @@ use crate::feature::image::resolve::temporal::temporal_frame::TemporalFrame;
 use crate::feature::image::resolve::temporal::temporal_pass::TemporalPass;
 use crate::feature::image::resolve::temporal::temporal_resolve::TemporalResolve;
 use crate::feature::image::resolve::temporal::temporal_uniform::TemporalUniform;
-use crate::feature::image::resolve::upscale::upscale_pass::UpscalePass;
 use crate::feature::image::resolve::upscale::upscale_uniform::UpscaleUniform;
 use crate::frame::targets::frame_texture::FrameTexture;
 use crate::frame::targets::history::History;
@@ -110,18 +109,7 @@ impl ResolveFeature {
       upscaling.sharpening > 0.0 && (render.0 < viewport.0 || self.resolve.is_some()) && self.fsr_view.is_none();
 
     self.shown_size = (render != viewport || self.rescale.is_some() || self.is_sharpened).then_some(viewport);
-
-    // Each viewport-size target is kept only while the frames write it: a resolve upscaling into the viewport's size
-    // writes neither unless it is sharpened, and a temporal resolve at it writes only the sharpened frame.
-    let is_upscaled: bool = Self::is_upscale_written(self.rescale, self.is_ray_reconstructed(), render, viewport);
-
-    Self::keep_shown_target(device, &mut self.upscaled, is_upscaled.then_some(viewport), "upscaled");
-    Self::keep_shown_target(
-      device,
-      &mut self.sharpened,
-      self.is_sharpened.then_some(viewport),
-      "sharpened",
-    );
+    self.is_upscaled = Self::is_upscale_written(self.rescale, self.is_ray_reconstructed(), render, viewport);
 
     self.upscale = UpscaleUniform {
       output_size: Vec2::new(viewport.0 as f32, viewport.1 as f32),
@@ -130,28 +118,6 @@ impl ResolveFeature {
     };
 
     self.get_decisions()
-  }
-
-  /// A viewport-size target of the frame shown, made `size` pixels where it is not yet; none where `size` is none.
-  fn keep_shown_target(
-    device: &wgpu::Device,
-    target: &mut Option<FrameTexture>,
-    size: Option<(u32, u32)>,
-    label: &str,
-  ) {
-    match size {
-      None => *target = None,
-      Some(size) if target.as_ref().is_none_or(|texture| texture.get_size() != size) => {
-        *target = Some(FrameTexture::new(
-          device,
-          label,
-          size,
-          UpscalePass::FORMAT,
-          wgpu::TextureUsages::COPY_DST,
-        ));
-      }
-      Some(_) => {}
-    }
   }
 
   fn get_decisions(&self) -> ResolveDecisions {

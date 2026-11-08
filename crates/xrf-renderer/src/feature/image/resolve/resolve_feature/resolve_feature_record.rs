@@ -17,6 +17,7 @@ use crate::feature::image::resolve::resolve_feature::ResolveFeature;
 use crate::feature::image::resolve::temporal::temporal_parameters::TemporalParameters;
 use crate::feature::image::resolve::temporal::temporal_resolve::TemporalResolve;
 use crate::feature::image::resolve::upscale::upscale_parameters::UpscaleParameters;
+use crate::feature::image::resolve::upscale::upscale_pass::UpscalePass;
 use crate::feature::image::resolve::upscale::upscale_stage::UpscaleStage;
 use crate::feature::image::resolve::upscale::upscale_uniform::UpscaleUniform;
 use crate::feature::tracing::ray_guides::ray_guide_inputs::RayGuideInputs;
@@ -195,14 +196,20 @@ impl ResolveFeature {
     opaque: Option<GraphTexture>,
     guides: Option<RayGuides>,
   ) -> ImageChain {
-    let upscaled: Option<GraphTexture> = self
-      .upscaled
-      .as_ref()
-      .map(|upscaled| bindings.import_view(&mut *graph, "upscaled", &upscaled.view));
-    let sharpened: Option<GraphTexture> = self
-      .sharpened
-      .as_ref()
-      .map(|sharpened| bindings.import_view(&mut *graph, "sharpened", &sharpened.view));
+    // The frames at the viewport's size are this frame's own, read by its passes alone, so the graph pools them with
+    // its other textures of their kind.
+    let mut shown_texture = |label: &'static str, is_written: bool| {
+      self.shown_size.filter(|_| is_written).map(|(width, height)| {
+        graph.create_texture(GraphTextureDescriptor::new_2d(
+          label,
+          width,
+          height,
+          UpscalePass::FORMAT,
+        ))
+      })
+    };
+    let upscaled: Option<GraphTexture> = shown_texture("upscaled", self.is_upscaled);
+    let sharpened: Option<GraphTexture> = shown_texture("sharpened", self.is_sharpened);
     let upscale: UniformBinding<UpscaleUniform> = runtime.push_uniform(&self.upscale);
     let resolved: Option<GraphTexture> = match &self.resolve {
       Some(Resolve::Fsr { targets, uniform }) => {
