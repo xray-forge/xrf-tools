@@ -8351,6 +8351,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "xrf-editable-level"
+version = "0.1.0"
+dependencies = [
+ "byteorder",
+ "xrf-chunk",
+ "xrf-error",
+ "xrf-ini",
+ "xrf-math",
+ "xrf-test-utils",
+ "xrf-utils",
+]
+
+[[package]]
 name = "xrf-editable-object"
 version = "0.1.0"
 dependencies = [
@@ -8511,6 +8524,15 @@ dependencies = [
  "serde",
  "xrf-chunk",
  "xrf-error",
+ "xrf-utils",
+]
+
+[[package]]
+name = "xrf-ini"
+version = "0.1.0"
+dependencies = [
+ "xrf-error",
+ "xrf-test-utils",
  "xrf-utils",
 ]
 

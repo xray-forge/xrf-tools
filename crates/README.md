@@ -15,6 +15,7 @@ README is also its crate's rustdoc page.
 | [xrf-animation-envelope](xrf-animation-envelope/README.md) | Read, write, and evaluate the scalar animation envelopes ANM and PPE share     |
 | [xrf-anm](xrf-anm/README.md)                               | Read and write object and camera motions (`.anm`, `.anm1`)                     |
 | [xrf-dds](xrf-dds/README.md)                               | Decode, encode, and compare DDS textures and mipmaps                           |
+| [xrf-editable-level](xrf-editable-level/README.md)         | Read and write the Level Editor's `.level` scenes and their `.part` files      |
 | [xrf-editable-object](xrf-editable-object/README.md)       | Read and write SDK `.object` editable objects, the source an OGF exports from  |
 | [xrf-efd](xrf-efd/README.md)                               | Read and write `.efd` evaluation function data                                 |
 | [xrf-gamemtl](xrf-gamemtl/README.md)                       | Read and write `gamemtl.xr` game materials and the pairs between them          |
@@ -49,6 +50,7 @@ README is also its crate's rustdoc page.
 | [xrf-engine-target](xrf-engine-target/README.md) | Name which engine a game data tree targets: vanilla or extended               |
 | [xrf-environment](xrf-environment/README.md)     | Read weather, suns, thunderbolts and ambients as the target engine reads them |
 | [xrf-export](xrf-export/README.md)               | Extract TypeScript extern contracts and render documentation                  |
+| [xrf-ini](xrf-ini/README.md)                     | Read and write INI files, plain or as `CInifile::save_as` writes them         |
 | [xrf-ltx](xrf-ltx/README.md)                     | Parse, resolve, format, and verify LTX configs                                |
 | [xrf-ltx-inspect](xrf-ltx-inspect/README.md)     | Produce config browser records and anchored findings                          |
 | [xrf-lua](xrf-lua/README.md)                     | Check LuaJIT syntax and inspect method calls                                  |
