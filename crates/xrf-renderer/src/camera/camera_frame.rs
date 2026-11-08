@@ -29,7 +29,7 @@ impl Default for CameraFrame {
 
 impl CameraFrame {
   /// The view through the lens at a viewport's aspect, its far plane no farther than `far_limit` and past the near one.
-  pub fn to_view(&self, aspect: f32, far_limit: f32) -> CameraView {
+  pub fn to_view(self, aspect: f32, far_limit: f32) -> CameraView {
     CameraView::new(
       self.position,
       self.view,

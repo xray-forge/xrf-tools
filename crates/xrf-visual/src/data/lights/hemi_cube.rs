@@ -28,7 +28,7 @@ impl HemiCube {
   }
 
   /// The same cube in renderer space, whose `z` runs the other way: the faces toward `+z` and `-z` swap.
-  pub fn to_renderer_space(&self) -> Self {
+  pub fn to_renderer_space(self) -> Self {
     let [px, py, pz, nx, ny, nz] = self.faces;
 
     Self {

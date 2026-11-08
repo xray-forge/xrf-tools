@@ -26,7 +26,7 @@ impl Vector2d {
     Self { x, y }
   }
 
-  pub const fn to_array(&self) -> [f32; 2] {
+  pub const fn to_array(self) -> [f32; 2] {
     [self.x, self.y]
   }
 }

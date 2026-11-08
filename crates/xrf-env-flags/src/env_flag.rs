@@ -25,7 +25,7 @@ impl EnvFlag {
   }
 
   /// Its state in this process: whether it is set, and the value that applies.
-  pub fn to_reading(&self) -> EnvFlagReading {
+  pub fn to_reading(self) -> EnvFlagReading {
     let value: Option<String> = self.get_raw();
 
     EnvFlagReading {

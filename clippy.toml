@@ -1,1 +1,4 @@
 allow-unwrap-in-tests = true
+# Every crate is the workspace's own, so public items follow the same conventions as private ones: a `to_*` method
+# takes `self`, an acronym is cased as a word, and so on.
+avoid-breaking-exported-api = false

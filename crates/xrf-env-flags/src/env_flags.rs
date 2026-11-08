@@ -253,7 +253,7 @@ impl EnvFlags {
     Self::ALL
       .iter()
       .filter(|flag| flag.kind.is_read_at_run())
-      .map(EnvFlag::to_reading)
+      .map(|flag| flag.to_reading())
       .collect()
   }
 

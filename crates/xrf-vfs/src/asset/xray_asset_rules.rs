@@ -15,7 +15,7 @@ pub struct XrayAssetRules {
 
 impl XrayAssetRules {
   /// Converts a raw engine reference into the logical path below the kind's directory.
-  pub fn to_logical_path(&self, reference: &str) -> String {
+  pub fn to_logical_path(self, reference: &str) -> String {
     if let Some((stem, extension)) = reference.rsplit_once('.') {
       if XrayExtension::parse(extension).is_some_and(|authored| self.authoring_extensions.contains(&authored)) {
         return format!("{stem}.{}", self.extension);
@@ -30,7 +30,7 @@ impl XrayAssetRules {
   }
 
   /// Converts a logical path below this kind's directory back into the reference the engine names it by.
-  pub fn to_reference(&self, logical_path: &XrayLogicalPath) -> Option<String> {
+  pub fn to_reference(self, logical_path: &XrayLogicalPath) -> Option<String> {
     let below: &str = logical_path.strip_prefix(self.directory).ok()??;
 
     if !self.extension.matches(below) {
