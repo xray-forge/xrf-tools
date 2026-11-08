@@ -64,7 +64,7 @@ pub fn spawn_part_text(guid: &EditableLevelGuid, objects_count: u32) -> XrfResul
   EditablePartHeader {
     version: 0,
     objects_count,
-    flags: 0,
+    flags: Some(0),
   }
   .write_to_section(file.section_mut("main"));
   file.section_mut("modif").set("name", "");
@@ -90,6 +90,39 @@ pub fn spawn_part_text(guid: &EditableLevelGuid, objects_count: u32) -> XrfResul
     "000024",
     "\"[logic]\r\ncfg = scripts\\labx8\\box.ltx\r\n\r\n[story_object]\r\nstory_id = box\"",
   );
+
+  file.write_to_string_as(&IniFormat::XRAY_SAVE_AS)
+}
+
+/// A particle tool's part as the CoP SDK saved `labx8`'s: a `[main]` with no flags, and one effect of the version
+/// `fields` gives, with that object's fields replaced or added.
+pub fn particle_part_text(guid: &EditableLevelGuid, fields: &[(&str, &str)]) -> XrfResult<String> {
+  let mut file: IniFile = IniFile::default();
+
+  guid.write_to_section(file.section_mut("guid"));
+  file.section_mut("main").set("objects_count", "1");
+  file.section_mut("main").set("version", "0");
+  file.section_mut("modif").set("name", "");
+  file.section_mut("modif").set("time", "0");
+
+  let section: &mut IniSection = file.section_mut("object_0");
+
+  for (key, value) in [
+    ("clsid", "11"),
+    ("co_flags", "0"),
+    ("game_type", "65535"),
+    ("name", "industrial_0000"),
+    ("position", "-76.429192, -25.461156, 70.090608"),
+    ("ref_name", "industrial_particles\\exhaust_isparenie_blue_down"),
+    ("rotation", "1.221731, 0.000000, 0.000000"),
+    ("scale", "1.000000, 1.000000, 1.000000"),
+    ("version", "19"),
+  ]
+  .into_iter()
+  .chain(fields.iter().copied())
+  {
+    section.set(key, value);
+  }
 
   file.write_to_string_as(&IniFormat::XRAY_SAVE_AS)
 }

@@ -54,6 +54,25 @@ A scene is read as the editor reads it: a part file opening with `[` is text and
 numbered files (`group.part1`, `group.part2`) follow its first until one is missing, and files of other names, such as
 the editor's `.~part` copies of an earlier save, are no part of the scene.
 
+## Typed objects
+
+An object tool's part reads typed as an `EditableObjectPart<T>`: the GUID, `[main]`'s version and, for the tools that
+keep them, flags, `[modif]`, and the objects `[object_N]` numbers, each an `EditableToolObject` that reads its sections
+and writes them as the editor's `SaveLTX` does. A part refuses an object of another tool's class.
+
+| Type                      | Editor                   | Holds                                                              |
+| ------------------------- | ------------------------ | ------------------------------------------------------------------ |
+| `EditableCustomObject`    | `CCustomObject`          | Every object's flags, name and transform                           |
+| `EditableObjectTransform` | `CCustomObject`          | Position, rotation angles and scale, and the matrix they compose   |
+| `EditableParticleObject`  | `EParticlesObject`       | An effect the scene plants: its `particles.xr` name and game modes |
+
+`EditableObjectTransform::to_matrix` composes as `CCustomObject::OnUpdateTransform` does, scaled, then turned by
+`setXYZi` of the negated angles, then moved, through `Fmatrix::mul` in the editor's order of sums, so it gives the bits
+the editor exported. `from_matrix` decomposes one, and `round_as_saved` rounds a transform as its `%f` text reads back,
+which is what the editor composed from. The editor's own `%f` is not exact: it prints some floats a unit off in the last
+digit (`-25.461156` where the float is nearer `-25.461157`), so a typed write differs from its file there and reads back
+the same.
+
 ## Errors and checks
 
 Reads refuse what the editor refuses or skips: a `.level` of a version other than 5, a scene or text part with no GUID,

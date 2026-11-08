@@ -16,6 +16,26 @@ impl EditableLevelValue {
     format!("{value:.6}")
   }
 
+  /// The value a float reads back as once saved with [`Self::format_f32`], a zero of either sign as a positive one,
+  /// which is how the editor's own files print it (`0.000000`).
+  ///
+  /// A transform decomposed from a compiled matrix is a few units in the last place off the angles the editor composed
+  /// it from; rounded this way it composes into the same bits again, as the scene's text would.
+  pub fn round_as_saved(value: f32) -> f32 {
+    let saved: f32 = Self::format_f32(value).parse::<f32>().unwrap_or(value);
+
+    if saved == 0.0 { 0.0 } else { saved }
+  }
+
+  /// A vector rounded as [`Self::round_as_saved`] rounds each component.
+  pub fn round_vector3_as_saved(value: &Vector3d) -> Vector3d {
+    Vector3d::new(
+      Self::round_as_saved(value.x),
+      Self::round_as_saved(value.y),
+      Self::round_as_saved(value.z),
+    )
+  }
+
   /// A vector as `w_fvector3` writes it and `_decorate` spaces it: `x, y, z`.
   pub fn format_vector3(value: &Vector3d) -> String {
     format!(

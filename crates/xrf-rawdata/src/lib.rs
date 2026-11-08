@@ -4,6 +4,8 @@ pub(crate) mod level;
 pub(crate) mod object;
 pub(crate) mod provenance;
 
+pub use crate::level::level_object_names::LevelObjectNames;
+pub use crate::level::level_particle_conversion::LevelParticleConversion;
 pub use crate::level::level_visual_geometry::LevelVisualGeometry;
 pub use crate::object::compile::geometry::export_vertex::ExportVertex;
 pub use crate::object::compile::geometry::export_vertex_bone::ExportVertexBone;

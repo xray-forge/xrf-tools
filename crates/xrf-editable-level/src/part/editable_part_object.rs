@@ -1,8 +1,7 @@
 use xrf_error::XrfResult;
 use xrf_ini::IniSection;
-use xrf_math::Vector3d;
 
-use crate::level::editable_level_value::EditableLevelValue;
+use crate::object::editable_object_transform::EditableObjectTransform;
 
 /// One object of a text part: its `[object_N]` section and the sections named after it, such as a spawn's
 /// `[object_N_spawndata]` or an attached shape's `[object_N_attached_0]`. What every object writes first is
@@ -40,27 +39,13 @@ impl EditablePartObject<'_> {
     self.section.get_required("name")
   }
 
-  /// # Errors
-  ///
-  /// Returns an error when the field is missing or not three floats.
-  pub fn get_position(&self) -> XrfResult<Vector3d> {
-    EditableLevelValue::read_vector3(self.section, "position")
-  }
-
-  /// Heading, pitch and bank, in radians.
+  /// The object's position, rotation and scale.
   ///
   /// # Errors
   ///
-  /// Returns an error when the field is missing or not three floats.
-  pub fn get_rotation(&self) -> XrfResult<Vector3d> {
-    EditableLevelValue::read_vector3(self.section, "rotation")
-  }
-
-  /// # Errors
-  ///
-  /// Returns an error when the field is missing or not three floats.
-  pub fn get_scale(&self) -> XrfResult<Vector3d> {
-    EditableLevelValue::read_vector3(self.section, "scale")
+  /// Returns an error naming the field that is missing or not three floats.
+  pub fn get_transform(&self) -> XrfResult<EditableObjectTransform> {
+    EditableObjectTransform::read_from_section(self.section)
   }
 
   /// A section named after the object, such as `spawndata` for `[object_N_spawndata]`.

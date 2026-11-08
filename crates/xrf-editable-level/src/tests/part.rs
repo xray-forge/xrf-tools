@@ -15,7 +15,7 @@ fn reads_a_text_parts_objects_with_their_own_sections() -> XrfResult {
   assert_eq!(objects.len(), 2);
   assert_eq!(objects[0].get_name()?, "lx8_restrictor");
   assert_eq!(objects[0].get_class_id()?, 6);
-  assert_eq!(objects[0].get_scale()?, Vector3d { x: 1.0, y: 1.0, z: 1.0 });
+  assert_eq!(objects[0].get_transform()?.scale, Vector3d::ONE);
   assert!(objects[0].get_child("attached_0").is_some());
   assert!(objects[0].get_child("spawndata").is_none());
   assert_eq!(

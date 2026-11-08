@@ -72,6 +72,22 @@ apart.
 its shader table row, its vertices, and its full-detail indices through `xrf-level`'s `read_full_detail_indices`, which
 takes a static progressive visual's own first window and a progressive tree's from the table of `level.geom` it names.
 
+## A level's pass-through parts
+
+The Level Editor's Build writes some of a level's files straight from the scene's parts, with no compiler between
+(`BuilderGame.cpp`), so each comes back as the part it was exported from and exports again as the editor exports it.
+Each conversion takes the scene's typed part from `xrf-editable-level` and the compiled file from `xrf-level`.
+`LevelObjectNames` names the objects of one scene, `<prefix>_0000` upwards as the editor numbers a new object, since a
+compiled level keeps no names.
+
+`LevelParticleConversion` converts `level.ps_static` and `ps.part`: `decompile` gives each placement an object named
+after its effect, its matrix decomposed into the editor's position, angles and scale and rounded as the part's text
+holds them; `export` writes what `EParticlesObject::ExportGame` does, and no file for a part of no particles, as the
+build writes none. Each of vanilla CoP's 18 `level.ps_static` files comes back byte for byte, decompiled and exported
+both directly and through the part's text. A particle pitched straight up or down is the exception: there the editor's
+`getHPB` takes no bank, the angles it decomposes into are not the ones saved, and the matrix comes back a few units in
+the last place off.
+
 ## Compiling an editable object into an OGF
 
 `ObjectCompiler::compile` writes an object's OGF and reports what the export made of it (`ObjectCompile`, its
