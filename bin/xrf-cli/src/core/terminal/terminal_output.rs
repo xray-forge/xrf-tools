@@ -39,6 +39,11 @@ impl TerminalOutput {
     }
   }
 
+  #[expect(
+    clippy::print_stdout,
+    clippy::print_stderr,
+    reason = "the terminal sink is where `xrf-output` reaches the process's streams"
+  )]
   fn write_line(&self, channel: OutputChannel, message: &dyn Display) {
     match self.stream_of(channel) {
       TerminalStream::Stdout => println!("{message}"),

@@ -4,7 +4,11 @@
   non_snake_case,
   unused,
   unsafe_op_in_unsafe_fn,
-  clippy::all
+  clippy::all,
+  clippy::allow_attributes,
+  clippy::allow_attributes_without_reason,
+  clippy::undocumented_unsafe_blocks,
+  reason = "bindgen's output keeps the C names and its own attributes, and which of these it trips depends on the SDK"
 )]
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));

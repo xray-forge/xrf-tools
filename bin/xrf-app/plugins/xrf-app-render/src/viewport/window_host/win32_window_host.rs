@@ -1,3 +1,8 @@
+#![expect(
+  unsafe_code,
+  reason = "implements the renderer's unsafe window-host contract over Win32 window handles"
+)]
+
 use std::num::NonZeroIsize;
 
 use windows::Win32::Foundation::{HWND, RECT};

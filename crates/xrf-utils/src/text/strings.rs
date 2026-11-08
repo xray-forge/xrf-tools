@@ -43,8 +43,7 @@ fn vector_from_string_sep<T: FromStr>(string: &str, sep: &str) -> XrfResult<Vec<
       Ok(value) => value,
       _ => {
         return Err(XrfError::new_parsing_error(format!(
-          "Failed to parse vector from string value \"{}\"",
-          it
+          "Failed to parse vector from string value \"{it}\""
         )));
       }
     });

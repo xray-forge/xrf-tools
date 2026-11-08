@@ -22,8 +22,7 @@ impl ChunkReadWrite for OgfHeaderChunk {
 
     if version != 4 {
       return Err(XrfError::new_not_implemented_error(format!(
-        "Unexpected version '{}' of OGF file, only version 4 is supported",
-        version
+        "Unexpected version '{version}' of OGF file, only version 4 is supported"
       )));
     }
 

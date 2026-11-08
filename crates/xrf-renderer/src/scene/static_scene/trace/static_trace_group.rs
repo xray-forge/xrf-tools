@@ -15,7 +15,7 @@ pub struct StaticTraceGroup {
 impl StaticTraceGroup {
   /// A matrix as an instance's transform: rows of its linear part, each closed by the translation's coordinate.
   pub fn to_transform(matrix: &Mat4) -> [f32; 12] {
-    let rows: [glam::Vec4; 3] = [matrix.row(0), matrix.row(1), matrix.row(2)];
+    let rows: [Vec4; 3] = [matrix.row(0), matrix.row(1), matrix.row(2)];
 
     std::array::from_fn(|at| rows[at / 4][at % 4])
   }

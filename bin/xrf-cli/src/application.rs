@@ -113,6 +113,10 @@ pub fn run() -> ExitCode {
 
   match result {
     Ok(()) => ExitCode::SUCCESS,
+    #[expect(
+      clippy::print_stderr,
+      reason = "the report was not published, so stderr is all that is left to say why"
+    )]
     Err(error) => {
       eprintln!("{error}");
 

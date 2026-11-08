@@ -1,3 +1,8 @@
+#![expect(
+  unsafe_code,
+  reason = "restores the driver's pipeline cache from bytes wgpu cannot fully validate"
+)]
+
 use std::collections::HashMap;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicU64, Ordering};

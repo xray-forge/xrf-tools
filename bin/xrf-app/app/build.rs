@@ -1,3 +1,8 @@
+#![expect(
+  unsafe_code,
+  reason = "edition 2024 makes `env::set_var` unsafe, and the build script sets `TAURI_CONFIG` on its one thread"
+)]
+
 use std::path::PathBuf;
 use std::{env, fs, io};
 
@@ -70,7 +75,7 @@ fn main() {
       .codegen(tauri_build::CodegenContext::new())
       .windows_attributes(resolve_windows_attributes()),
   ))
-  .expect("failed to run tauri-build")
+  .expect("failed to run tauri-build");
 }
 
 /// The executable's own icon, which Explorer and shortcuts show, carries the build kind in its core colour.

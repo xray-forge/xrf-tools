@@ -18,14 +18,12 @@ pub struct StaticSpans {
 
 impl StaticSpans {
   /// Where a range starts, zero for one not held, which is what a record's local index is moved by.
-  pub fn get_offset(span: &Option<Span>) -> u32 {
-    span.as_ref().map_or(0, Span::get_offset)
+  pub fn get_offset(span: Option<&Span>) -> u32 {
+    span.map_or(0, Span::get_offset)
   }
 
   /// Whether a range holds an element of the buffer, by its index there.
-  pub fn contains(span: &Option<Span>, index: u32) -> bool {
-    span
-      .as_ref()
-      .is_some_and(|span| (span.get_offset()..span.get_offset() + span.get_count()).contains(&index))
+  pub fn contains(span: Option<&Span>, index: u32) -> bool {
+    span.is_some_and(|span| (span.get_offset()..span.get_offset() + span.get_count()).contains(&index))
   }
 }

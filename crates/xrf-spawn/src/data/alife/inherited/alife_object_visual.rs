@@ -114,7 +114,7 @@ mod tests {
     };
 
     let second: AlifeObjectVisual = AlifeObjectVisual {
-      visual_name: String::from(""),
+      visual_name: String::new(),
       visual_flags: 33,
     };
 

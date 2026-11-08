@@ -56,7 +56,7 @@ fn raised() -> VisualRestPose {
   };
   let child: VisualTransform = VisualTransform {
     c: vector(0.0, 1.0, 0.0),
-    ..raised.clone()
+    ..raised
   };
 
   VisualRestPose::new(vec![String::from("root"), String::from("child")], vec![raised, child])

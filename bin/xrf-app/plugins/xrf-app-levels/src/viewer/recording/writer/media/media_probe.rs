@@ -1,3 +1,11 @@
+#![cfg_attr(
+  windows,
+  expect(
+    unsafe_code,
+    reason = "loads Media Foundation's library through Win32, which has no safe binding"
+  )
+)]
+
 /// Libraries a recording's video is written through, linked lazily: on Windows Media Foundation's are delay-loaded, so
 /// loading each from System32 first is what every later call binds to, and a Windows without them (an N edition
 /// lacking the Media Feature Pack) answers why rather than failing on its first call. Elsewhere nothing writes video.

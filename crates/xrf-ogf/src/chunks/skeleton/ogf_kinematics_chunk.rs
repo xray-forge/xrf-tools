@@ -32,7 +32,7 @@ impl OgfKinematicsChunk {
 
     if chunk_id == OgfKinematicsChunk::CHUNK_ID {
       for _ in 0..reader.read_u32::<T>()? {
-        motion_refs.push(reader.read_w1251_string()?)
+        motion_refs.push(reader.read_w1251_string()?);
       }
     } else {
       motion_refs.push(reader.read_w1251_string()?);
@@ -58,13 +58,13 @@ impl OgfKinematicsChunk {
         writer.write_w1251_string(motion_ref)?;
       }
     } else {
-      if self.motion_refs.len() != 1 {
+      let [motion_ref] = self.motion_refs.as_slice() else {
         return Err(XrfError::new_unexpected_error(
           "Motions ref chunk writing error, expected vector with 1 value",
         ));
-      }
+      };
 
-      writer.write_w1251_string(self.motion_refs.first().unwrap())?;
+      writer.write_w1251_string(motion_ref)?;
     }
 
     writer.write_all(&self.trailing)?;

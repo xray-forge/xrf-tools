@@ -52,7 +52,7 @@ impl FromStr for TranslationLanguage {
       "ger" => Ok(Self::German),
       "ita" => Ok(Self::Italian),
       "spa" => Ok(Self::Spanish),
-      _ => Err(format!("Unknown language: {}", s)),
+      _ => Err(format!("Unknown language: {s}")),
     }
   }
 }

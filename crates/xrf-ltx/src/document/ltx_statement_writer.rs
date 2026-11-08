@@ -23,7 +23,7 @@ impl LtxStatementWriter {
     destination.push_str(&format!("#include \"{included_path}\""));
 
     if let Some(comment) = comment {
-      destination.push_str(&format!(" ; {}", comment));
+      destination.push_str(&format!(" ; {comment}"));
     }
 
     destination.push_str(LTX_LINE_SEPARATOR);
@@ -41,7 +41,7 @@ impl LtxStatementWriter {
     comment: Option<&str>,
   ) {
     if !destination.is_empty() {
-      destination.push_str(LTX_LINE_SEPARATOR)
+      destination.push_str(LTX_LINE_SEPARATOR);
     }
 
     destination.push_str(&format!("{prefix}[{section}]"));
@@ -51,7 +51,7 @@ impl LtxStatementWriter {
     }
 
     if let Some(comment) = comment {
-      destination.push_str(&format!(" ; {}", comment));
+      destination.push_str(&format!(" ; {comment}"));
     }
 
     destination.push_str(LTX_LINE_SEPARATOR);

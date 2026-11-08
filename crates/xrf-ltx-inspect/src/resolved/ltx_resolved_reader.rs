@@ -24,7 +24,7 @@ impl LtxResolvedReader {
   ) -> XrfResult<LtxResolvedIndex> {
     let mut sections: Vec<LtxResolvedIndexEntry> = Vec::with_capacity(resolution.ltx.len());
 
-    for (name, section) in resolution.ltx.iter() {
+    for (name, section) in &resolution.ltx {
       sections.push(LtxResolvedIndexEntry {
         field_count: section.len(),
         origin: section.get_origin().map(String::from),

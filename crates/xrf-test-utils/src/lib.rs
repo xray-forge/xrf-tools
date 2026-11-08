@@ -1,4 +1,8 @@
 #![doc = include_str!("../README.md")]
+#![expect(
+  clippy::print_stderr,
+  reason = "a test that skips tells the test harness why on stderr"
+)]
 
 mod generated_resources;
 mod gpu_requirement;

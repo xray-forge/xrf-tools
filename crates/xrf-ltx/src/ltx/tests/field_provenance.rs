@@ -104,7 +104,7 @@ fn a_parent_field_the_child_overrides_is_declared_by_the_child() -> XrfResult {
 fn every_resolved_field_of_every_section_is_accounted_for() -> XrfResult {
   let resolved: LtxResolution = resolve_explained("field_provenance/complete")?;
 
-  for (section_name, section) in resolved.ltx.iter() {
+  for (section_name, section) in &resolved.ltx {
     for (key, _) in section {
       assert!(
         resolved.get_origin(section_name, key).is_some(),

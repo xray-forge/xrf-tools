@@ -191,7 +191,7 @@ mod tests {
       direct_control: 421,
       level_vertex_id: 75486,
       flags: 6,
-      custom_data: String::from(""),
+      custom_data: String::new(),
       story_id: 2345,
       spawn_story_id: 255,
     };

@@ -25,7 +25,7 @@ impl EquipmentSlotOccupant {
   pub fn new_list_from_ltx(ltx: &Ltx) -> Vec<Self> {
     let mut occupants: Vec<Self> = Vec::new();
 
-    for (section_name, section) in ltx.iter() {
+    for (section_name, section) in ltx {
       if let Some(occupant) = Self::new_optional_from_section(section_name, section) {
         occupants.push(occupant);
       }

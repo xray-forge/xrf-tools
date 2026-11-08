@@ -30,7 +30,7 @@ fn type_modules() -> TypeModules {
 
 /// Rewrite the committed mirrors in place.
 #[test]
-#[ignore]
+#[ignore = "rewrites the committed mirrors; run through `cargo make generate-typescript-bindings`"]
 fn export_typescript_bindings() {
   IpcBindingsGenerator::generate(
     &bindings_output_path(),

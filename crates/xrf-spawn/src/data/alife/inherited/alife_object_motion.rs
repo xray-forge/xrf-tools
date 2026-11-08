@@ -62,7 +62,7 @@ impl LtxImportExport for AlifeObjectMotion {
 mod tests {
   #[test]
   fn test_get_name_names_none_for_an_empty_motion() {
-    let motion = |name: &str| super::AlifeObjectMotion {
+    let motion = |name: &str| AlifeObjectMotion {
       motion_name: name.to_owned(),
     };
 

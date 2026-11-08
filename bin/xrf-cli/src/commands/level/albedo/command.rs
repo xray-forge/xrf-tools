@@ -107,7 +107,7 @@ impl AlbedoCommand {
         AlbedoOutcome::Missing => xrf_output::warning!(output, "{}: no root holds it", texture.reference),
         AlbedoOutcome::Unread { reason } => xrf_output::warning!(output, "{}: {}", texture.reference, reason),
         AlbedoOutcome::Empty => {
-          xrf_output::verbose!(output, "{}: its alpha test keeps no texel", texture.reference)
+          xrf_output::verbose!(output, "{}: its alpha test keeps no texel", texture.reference);
         }
       }
     }

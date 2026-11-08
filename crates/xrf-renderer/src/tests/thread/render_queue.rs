@@ -1,3 +1,8 @@
+#![expect(
+  unsafe_code,
+  reason = "implements the renderer's unsafe window-host contract for a hidden test window"
+)]
+
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender, channel};

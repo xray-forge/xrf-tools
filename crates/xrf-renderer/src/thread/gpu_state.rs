@@ -94,7 +94,7 @@ impl GpuState {
     let cache: Arc<PipelineCache> = Arc::clone(&pipelines);
     let (view, scene, texture, sky_layout) = (
       view_layout.clone(),
-      scene_layout.clone(),
+      scene_layout,
       textures.get_layout().clone(),
       sky.get_layout().clone(),
     );

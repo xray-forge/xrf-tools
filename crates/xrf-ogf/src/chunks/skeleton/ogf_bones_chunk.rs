@@ -39,7 +39,7 @@ impl ChunkReadWrite for OgfBonesChunk {
     writer.write_u32::<T>(to_format_size(self.bones.len(), "ogf bones")?)?;
 
     for bone in &self.bones {
-      writer.write_xr::<T, _>(bone)?
+      writer.write_xr::<T, _>(bone)?;
     }
 
     Ok(())

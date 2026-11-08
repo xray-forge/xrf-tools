@@ -31,6 +31,7 @@ pub(crate) struct NgxFeature {
 // SAFETY: the handle is private and reaches NGX only through `evaluate` and `drop`, both holding NGX's lock, and NGX's
 // parameters only under the SDK's mutex as well.
 unsafe impl Send for NgxFeature {}
+// SAFETY: as for `Send`: a shared feature reaches NGX only through those same locked paths.
 unsafe impl Sync for NgxFeature {}
 
 impl NgxFeature {
@@ -79,6 +80,7 @@ impl NgxFeature {
 
     // Taken before the encoder's hal guard: two at once are a recursive read lock.
     let vulkan: Option<ash::Device> = match self.api {
+      // SAFETY: the raw device is only cloned for recording barriers, never destroyed or used past wgpu's device.
       NgxApi::Vulkan => unsafe { self.device.as_hal::<Vulkan>() }.map(|device| device.raw_device().clone()),
       #[cfg(windows)]
       NgxApi::D3d12 => None,
@@ -90,12 +92,14 @@ impl NgxFeature {
       // NGX clears and writes its output with transfer and compute commands that wgpu's barriers around it, made for
       // the states its inputs and output are declared in, do not order.
       if let (Some(device), NgxCommands::Vulkan(buffer)) = (&vulkan, list) {
+        // SAFETY: `buffer` is the fresh encoder's, recording on this device outside any pass.
         unsafe { Self::record_vulkan_barrier(device, buffer) };
       }
 
       let result: XrfResult<NVSDK_NGX_Result> = evaluate(list, &sdk, self.handle);
 
       if let (Some(device), NgxCommands::Vulkan(buffer)) = (&vulkan, list) {
+        // SAFETY: as above, after NGX's commands.
         unsafe { Self::record_vulkan_barrier(device, buffer) };
       }
 
@@ -134,6 +138,7 @@ impl NgxFeature {
     let mut sharpness: f32 = 0.0;
 
     NgxResult::check(
+      // SAFETY: the parameters are NGX's, read under the SDK's lock, and every answer is written into a live local.
       unsafe {
         query(
           locked.parameters,
@@ -170,6 +175,7 @@ impl NgxFeature {
   /// `parameters` are NGX's, and NGX's lock is held.
   pub(crate) unsafe fn set_preset_hints(parameters: *mut NVSDK_NGX_Parameter, hints: &[&[u8]], preset: u32) {
     for hint in hints {
+      // SAFETY: the caller's contract, and each hint is a terminated SDK name.
       unsafe { NVSDK_NGX_Parameter_SetUI(parameters, hint.as_ptr().cast(), preset) };
     }
   }
@@ -208,6 +214,7 @@ impl NgxFeature {
       .src_access_mask(vk::AccessFlags::MEMORY_WRITE)
       .dst_access_mask(vk::AccessFlags::MEMORY_READ | vk::AccessFlags::MEMORY_WRITE);
 
+    // SAFETY: the caller's contract; a global memory barrier names no resource that could be gone.
     unsafe {
       device.cmd_pipeline_barrier(
         buffer,
@@ -223,6 +230,8 @@ impl NgxFeature {
 
   /// Runs `record` with `encoder`'s command list as NGX takes it on `api`.
   fn record<T>(api: NgxApi, encoder: &mut wgpu::CommandEncoder, record: impl FnOnce(NgxCommands) -> T) -> XrfResult<T> {
+    // SAFETY: the list is the encoder's own, fresh and used for nothing else, and lent to `record` only while wgpu's
+    // guard holds it.
     unsafe {
       match api {
         NgxApi::Vulkan => encoder.as_hal_mut::<Vulkan, _, _>(|encoder| {

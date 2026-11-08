@@ -112,7 +112,7 @@ impl Ltx {
         emit(LTX_LINE_SEPARATOR);
       }
 
-      for (key, value) in props.iter() {
+      for (key, value) in props {
         emit(key);
         emit(if value.is_empty() {
           EMPTY_VALUE_KV_SEPARATOR
@@ -271,7 +271,7 @@ a3 = n3
   /// back to the same text. Characters outside that encoding are refused rather than silently mangled.
   #[test]
   fn write_non_ascii_as_windows_1251() {
-    let input: String = format!("some-key = мова{}", LTX_LINE_SEPARATOR);
+    let input: String = format!("some-key = мова{LTX_LINE_SEPARATOR}");
     let ltx: Ltx = Ltx::read_from_str(&input).unwrap();
 
     let mut output: Vec<u8> = Vec::new();
@@ -283,7 +283,7 @@ a3 = n3
 
   #[test]
   fn refuse_values_outside_windows_1251() {
-    let ltx: Ltx = Ltx::read_from_str(&format!("some-key = åäö{}", LTX_LINE_SEPARATOR)).unwrap();
+    let ltx: Ltx = Ltx::read_from_str(&format!("some-key = åäö{LTX_LINE_SEPARATOR}")).unwrap();
 
     assert!(ltx.write_to(&mut Vec::new()).is_err());
   }

@@ -90,7 +90,7 @@ impl BumpAlignmentCommand {
             set.descriptor,
             alignment.correlation.unwrap_or_default(),
             alignment.chance.unwrap_or_default()
-          )
+          );
         }
         BumpAlignmentOutcome::Measured { alignment } => xrf_output::verbose!(
           output,
@@ -104,10 +104,10 @@ impl BumpAlignmentCommand {
         ),
         BumpAlignmentOutcome::Unread { reason } => xrf_output::warning!(output, "{}: {}", set.descriptor, reason),
         BumpAlignmentOutcome::MissingDiffuse => {
-          xrf_output::verbose!(output, "{}: no root holds its diffuse", set.descriptor)
+          xrf_output::verbose!(output, "{}: no root holds its diffuse", set.descriptor);
         }
         BumpAlignmentOutcome::MissingBump => {
-          xrf_output::verbose!(output, "{}: no root holds its bump {}", set.descriptor, set.bump)
+          xrf_output::verbose!(output, "{}: no root holds its bump {}", set.descriptor, set.bump);
         }
       }
     }

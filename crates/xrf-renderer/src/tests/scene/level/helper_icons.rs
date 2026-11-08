@@ -92,7 +92,7 @@ fn the_bundled_atlas_holds_a_cell_for_every_icon() {
 /// Rasterises the exported pictures into the bundled atlas, each white outlined in black, centred in its cell within
 /// its margin; run by `cargo make generate-helper-icons` after the pictures are exported.
 #[test]
-#[ignore]
+#[ignore = "rewrites the bundled atlas; run through `cargo make generate-helper-icons`"]
 fn generate_helper_icon_atlas() {
   let (width, height) = HelperIconAtlas::get_size(RENDER_HELPER_ICONS.len());
   let drawn: u32 = HelperIconAtlas::CELL - HelperIconAtlas::MARGIN * 2;

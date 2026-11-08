@@ -1,3 +1,8 @@
+#![expect(
+  unsafe_code,
+  reason = "reads Steam Audio's simulation outputs through the raw pointer it answers"
+)]
+
 use std::collections::HashMap;
 
 use audionimbus::{

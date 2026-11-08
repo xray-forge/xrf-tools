@@ -9,7 +9,7 @@ use crate::jobs::JobRegistry;
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "cancel")]
 pub fn jobs_cancel(registry: State<'_, Arc<JobRegistry>>, id: Uuid) -> bool {
-  log::info!("Cancelling job: {}", id);
+  log::info!("Cancelling job: {id}");
 
   registry.cancel(id)
 }

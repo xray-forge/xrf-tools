@@ -182,7 +182,7 @@ impl<S: AsRef<str>> Index<S> for Section {
 
     match self.get(section) {
       Some(property) => property,
-      None => panic!("Key `{}` does not exist", section),
+      None => panic!("Key `{section}` does not exist"),
     }
   }
 }

@@ -83,7 +83,7 @@ impl Ltx {
 
   /// Sets the source path on sections without an origin, preserving included sections' origins.
   pub(crate) fn set_section_origins(&mut self, origin: &Arc<str>) {
-    for (_, section) in self.sections.iter_mut() {
+    for (_, section) in &mut self.sections {
       if section.origin.is_none() {
         section.origin = Some(Arc::clone(origin));
       }
@@ -129,7 +129,7 @@ impl Ltx {
 
   /// Clear all entries
   pub fn clear(&mut self) {
-    self.sections.clear()
+    self.sections.clear();
   }
 
   /// Iterate with sections
@@ -159,7 +159,7 @@ impl Ltx {
   pub fn shrink_to_fit(&mut self) {
     self.sections.shrink_to_fit();
 
-    for (_, section) in self.sections.iter_mut() {
+    for (_, section) in &mut self.sections {
       section.shrink_to_fit();
     }
   }
@@ -230,7 +230,7 @@ impl<'q> Index<&'q str> for Ltx {
   fn index<'a>(&'a self, index: &'q str) -> &'a Section {
     match self.section(index) {
       Some(section) => section,
-      None => panic!("Section '{}' does not exist", index),
+      None => panic!("Section '{index}' does not exist"),
     }
   }
 }
@@ -239,7 +239,7 @@ impl<'q> IndexMut<&'q str> for Ltx {
   fn index_mut<'a>(&'a mut self, index: &'q str) -> &'a mut Section {
     match self.section_mut(index) {
       Some(section) => section,
-      None => panic!("Section '{}' does not exist", index),
+      None => panic!("Section '{index}' does not exist"),
     }
   }
 }
@@ -641,7 +641,7 @@ Key = 'Value   # This is not a comment ; at all'
     assert!(sec1.contains_key(&key1));
     let key2: String = "key2".into();
     assert!(sec1.contains_key(&key2));
-    let val1: String = "".into();
+    let val1: String = String::new();
     assert_eq!(sec1[&key1], val1);
     let val2: String = "val2".into();
     assert_eq!(sec1[&key2], val2);
@@ -763,7 +763,7 @@ a3 = n3
     let ltx: Ltx = Ltx::read_from_str(input).unwrap();
     let section: &Section = ltx.section("s").unwrap();
     let keys: Vec<&str> = section.iter().map(|(k, _)| k).collect();
-    assert_eq!(keys, vec!["x2", "xb", "a3"])
+    assert_eq!(keys, vec!["x2", "xb", "a3"]);
   }
 
   #[test]

@@ -1,3 +1,8 @@
+#![cfg_attr(
+  windows,
+  expect(unsafe_code, reason = "lists WebView2's processes through its COM interfaces")
+)]
+
 use tauri::async_runtime::{Receiver, Sender, channel};
 use tauri::{AppHandle, Runtime};
 use xrf_app_core::TauriResult;
@@ -104,6 +109,8 @@ impl WebviewProcessProbe {
 
         // SAFETY: as above; `index` is below the collection's own count, and both outputs outlive the calls.
         let info: ICoreWebView2ProcessInfo = unsafe { collection.GetValueAtIndex(index)? };
+
+        // SAFETY: as above, for the one process's identity and kind.
         unsafe {
           info.ProcessId(&mut pid)?;
           info.Kind(&mut kind)?;

@@ -345,7 +345,7 @@ impl ReflectionFeature {
               out: &out,
             },
             size,
-          )
+          );
         });
     } else {
       graph
@@ -359,7 +359,7 @@ impl ReflectionFeature {
           passes
             .tracing
             .reflections
-            .record_trace(context, view, &parameters, &sky, &requests)
+            .record_trace(context, view, &parameters, &sky, &requests);
         });
     }
 
@@ -447,7 +447,7 @@ impl ReflectionFeature {
         passes
           .tracing
           .reflections
-          .record_stage(context, view, &parameters, ReflectionStage::Guide)
+          .record_stage(context, view, &parameters, ReflectionStage::Guide);
       });
 
     let parameters: ReflectionParameters<'a> = ReflectionParameters { guide, ..parameters };
@@ -521,7 +521,7 @@ impl ReflectionFeature {
           passes
             .tracing
             .reflections
-            .record_stage(context, view, &stage_parameters, stage)
+            .record_stage(context, view, &stage_parameters, stage);
         });
     }
 

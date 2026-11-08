@@ -1,3 +1,8 @@
+#![expect(
+  unsafe_code,
+  reason = "opts into wgpu's experimental ray queries, which wgpu marks unsafe"
+)]
+
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -325,11 +330,11 @@ impl GpuContext {
           label: Some("xrf-renderer"),
           required_features: REQUIRED_FEATURES | (OPTIONAL_FEATURES & adapter.features()) | ray_query,
           required_limits: adapter.limits(),
-          // SAFETY: only ray queries are asked for of the experimental features, and only where the adapter has them;
-          // wgpu's own validation stands between them and the driver as for any other feature.
           experimental_features: if ray_query.is_empty() {
             wgpu::ExperimentalFeatures::disabled()
           } else {
+            // SAFETY: only ray queries are asked for of the experimental features, and only where the adapter has
+            // them; wgpu's own validation stands between them and the driver as for any other feature.
             unsafe { wgpu::ExperimentalFeatures::enabled() }
           },
           memory_hints: wgpu::MemoryHints::Manual {

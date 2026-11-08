@@ -240,7 +240,7 @@ fn a_save_into_a_mounted_tree_commits_so_its_retained_descriptor_and_sessions_fo
   let inputs: XrayInputRecord = XrayInputRecord::new();
   let id: SessionId = SessionId::generate();
 
-  read(&search.clone().with_recording(&inputs));
+  read(&search.with_recording(&inputs));
   sessions
     .begin_fixture_open(id)
     .expect("the session opens")

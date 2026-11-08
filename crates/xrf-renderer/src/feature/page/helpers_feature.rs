@@ -58,7 +58,7 @@ impl HelpersFeature {
     let boxes = |object: u32| statics.get_object_box(object);
 
     // Each part is compared with what it was built from before anything is copied, as most frames change nothing.
-    if !HelperBuild::is_current(&self.singled, sources, HelperPart::Singled) {
+    if !HelperBuild::is_current(self.singled.as_ref(), sources, HelperPart::Singled) {
       self.singled = Some(HelperBuild::new(
         device,
         HelperBuildKey::of(sources, options.clone(), sounding),
@@ -66,7 +66,7 @@ impl HelpersFeature {
       ));
     }
 
-    if HelperBuild::is_current(&self.every, sources, HelperPart::Every) {
+    if HelperBuild::is_current(self.every.as_ref(), sources, HelperPart::Every) {
       return;
     }
 
@@ -90,8 +90,8 @@ impl HelpersFeature {
   /// The wires and icons to draw: every kept object's, then the singled out ones' over them.
   pub fn get_draws(&self) -> HelperDraws<'_> {
     HelperDraws {
-      every: HelperBuild::get_draws(&self.every),
-      singled: HelperBuild::get_draws(&self.singled),
+      every: HelperBuild::get_draws(self.every.as_ref()),
+      singled: HelperBuild::get_draws(self.singled.as_ref()),
     }
   }
 
@@ -378,18 +378,16 @@ impl HelperBuild {
   }
 
   /// Whether `built` stands for `part` of what `sources` hold now.
-  fn is_current(built: &Option<Self>, sources: HelperSources<'_>, part: HelperPart) -> bool {
-    built.as_ref().is_some_and(|built| built.key.is_of(sources, part))
+  fn is_current(built: Option<&Self>, sources: HelperSources<'_>, part: HelperPart) -> bool {
+    built.is_some_and(|built| built.key.is_of(sources, part))
   }
 
   /// What `built` draws, nothing where it was never built.
-  fn get_draws(built: &Option<Self>) -> HelperPartDraws<'_> {
-    built
-      .as_ref()
-      .map_or_else(HelperPartDraws::default, |built| HelperPartDraws {
-        wires: built.wires.as_ref(),
-        icons: built.icons.as_ref(),
-      })
+  fn get_draws(built: Option<&Self>) -> HelperPartDraws<'_> {
+    built.map_or_else(HelperPartDraws::default, |built| HelperPartDraws {
+      wires: built.wires.as_ref(),
+      icons: built.icons.as_ref(),
+    })
   }
 
   fn get_memory(&self) -> u64 {

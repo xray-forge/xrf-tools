@@ -89,7 +89,7 @@ impl IndirectTraceFeature {
         passes
           .tracing
           .indirect_trace
-          .record(context, view, &parameters, &sky, &trace, textures)
+          .record(context, view, &parameters, &sky, &trace, textures);
       });
 
     Some(IndirectTraced { light, hits })

@@ -14,6 +14,7 @@ impl ApplicationFailure {
       use windows::Win32::UI::WindowsAndMessaging::{MB_ICONERROR, MB_OK, MessageBoxW};
       use windows::core::HSTRING;
 
+      #[expect(unsafe_code, reason = "Win32's message box has no safe binding")]
       // SAFETY: both strings outlive the call, and it names no owner window.
       unsafe {
         MessageBoxW(

@@ -137,12 +137,9 @@ fn declares_the_accesses_its_bindings_make() {
 
   let storage = (StorageArray::<u32>::new(input), StorageArrayMut::<u32>::new(output));
 
+  assert_eq!(StorageField::get_access(&storage.0), GraphBufferAccess::StorageRead);
   assert_eq!(
-    crate::StorageField::get_access(&storage.0),
-    GraphBufferAccess::StorageRead
-  );
-  assert_eq!(
-    crate::StorageField::get_access(&storage.1),
+    StorageField::get_access(&storage.1),
     GraphBufferAccess::StorageReadWrite
   );
 }

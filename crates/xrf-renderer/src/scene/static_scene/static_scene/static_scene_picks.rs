@@ -16,9 +16,9 @@ impl StaticScene {
       .sectors
       .as_slice()
       .iter()
-      .find(|sector| StaticSpans::contains(&sector.spans.impostors, impostor))
+      .find(|sector| StaticSpans::contains(sector.spans.impostors.as_ref(), impostor))
       .and_then(|sector| {
-        let local: u32 = impostor - StaticSpans::get_offset(&sector.spans.impostors);
+        let local: u32 = impostor - StaticSpans::get_offset(sector.spans.impostors.as_ref());
 
         Some((sector.sector, *sector.impostor_shaders.get(local as usize)?))
       })
@@ -44,8 +44,8 @@ impl StaticScene {
           model.cluster_slots.as_slice(),
         )
       }))
-      .find(|(spans, _, _)| StaticSpans::contains(&spans.clusters, cluster))?;
-    let local: u32 = cluster - StaticSpans::get_offset(&spans.clusters);
+      .find(|(spans, _, _)| StaticSpans::contains(spans.clusters.as_ref(), cluster))?;
+    let local: u32 = cluster - StaticSpans::get_offset(spans.clusters.as_ref());
     let info: StaticSlotInfo = *slot_infos.get(*cluster_slots.get(local as usize)? as usize)?;
 
     Some((info, info.mesh.map(|_| place.saturating_sub(info.first_place))))
@@ -110,7 +110,7 @@ impl StaticScene {
       }
       RenderSelectionTarget::Surface { sector, shader_id, .. } => {
         let proxy: &StaticSectorProxy = self.find_sector(sector)?;
-        let first: u32 = StaticSpans::get_offset(&proxy.spans.clusters);
+        let first: u32 = StaticSpans::get_offset(proxy.spans.clusters.as_ref());
         let mut runs: Vec<[u32; 2]> = Vec::new();
 
         for (local, slot) in proxy.cluster_slots.iter().enumerate() {

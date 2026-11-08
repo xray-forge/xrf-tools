@@ -14,8 +14,10 @@ const INTERVAL: Duration = Duration::from_nanos(1_000_000_000 / 60);
 pub struct SoundOutlet {
   sink: Box<dyn WorldSoundSink>,
   /// Frames to fill before the sink has handed any back.
-  // Boxed as the audio's rings carry them, so a frame moves between the threads by its pointer.
-  #[allow(clippy::vec_box)]
+  #[expect(
+    clippy::vec_box,
+    reason = "boxed as the audio's rings carry them, so a frame moves between threads by its pointer"
+  )]
   spare: Vec<Box<AudioSceneFrame>>,
   sent_at: Option<Duration>,
 }

@@ -70,7 +70,7 @@ impl SunTraceFeature {
         passes
           .tracing
           .sun_trace
-          .record(context, view, &parameters, &trace, textures)
+          .record(context, view, &parameters, &trace, textures);
       });
 
     Some(seen)

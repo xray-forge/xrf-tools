@@ -343,5 +343,5 @@ fn opening_a_missing_root_afresh_publishes_nothing() {
 
   host.search_fresh(&spec).expect("the roots are found afresh");
 
-  assert!(std::sync::Arc::ptr_eq(&before, &host.get_vfs()));
+  assert!(Arc::ptr_eq(&before, &host.get_vfs()));
 }

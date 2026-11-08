@@ -91,7 +91,7 @@ impl LevelParticlesPart {
     // Without the configs no zone names its particles; their reader has said why.
     match (LevelSpawnPart::get(current, search), sections) {
       (Ok(spawn), Some(sections)) => {
-        placements.extend(spawn.list_kept().filter_map(|it| Self::place_zone(it, sections)))
+        placements.extend(spawn.list_kept().filter_map(|it| Self::place_zone(it, sections)));
       }
       (Err(error), _) => LevelReport::missing_zone_particles(&current.source, &error),
       (Ok(_), None) => {}

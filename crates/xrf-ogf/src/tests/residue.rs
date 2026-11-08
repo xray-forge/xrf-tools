@@ -41,7 +41,7 @@ fn reads_a_visual_whose_fifth_reference_is_split() -> XrfResult {
 #[test]
 fn reads_motion_refs_through_the_narrow_path() -> XrfResult {
   // The route `ogf patch-motion-refs` takes, which failed on these files even though it reads only chunk 24.
-  let mut reader = xrf_chunk::ChunkReader::from_vec(fixtures::split_motion_ref()?)?;
+  let mut reader = ChunkReader::from_vec(fixtures::split_motion_ref()?)?;
 
   assert_eq!(
     OgfFile::read_motion_refs_from_chunk::<XRayByteOrder, _>(&mut reader)?,

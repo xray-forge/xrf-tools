@@ -1,3 +1,8 @@
+#![expect(
+  unsafe_code,
+  reason = "reads the driver's memory budget through wgpu-hal's raw adapters"
+)]
+
 /// The GPU's own memory as its driver tells it: all of it, what the system lets this process hold there now, and what
 /// the process holds there, everything counted, DLSS's and the driver's with the renderer's.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]

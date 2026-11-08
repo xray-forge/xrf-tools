@@ -25,7 +25,7 @@ impl BankedSound {
   /// The bytes it holds in memory.
   pub(crate) fn get_size(&self) -> usize {
     match self {
-      Self::Decoded(sound) => std::mem::size_of_val(sound.get_samples()),
+      Self::Decoded(sound) => size_of_val(sound.get_samples()),
       Self::Streamed { bytes, .. } => bytes.len(),
       Self::Loading | Self::Refused(_) => 0,
     }

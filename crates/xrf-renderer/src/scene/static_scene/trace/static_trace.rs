@@ -432,7 +432,10 @@ impl StaticTrace {
   /// The instance table, the records and every top-level instance (its structure and its transform), in one order: an
   /// instance's custom index is its place in the table. A model's records are listed once, its objects' instances
   /// sharing them. And the instances of trees' geometry among them.
-  #[allow(clippy::type_complexity)]
+  #[expect(
+    clippy::type_complexity,
+    reason = "borrowed views of three scene tables, each used once"
+  )]
   fn list_instances(
     sectors: &[(u32, &[StaticTraceGeometry], &[StaticTraceGroup])],
     models: &[(ProxyHandle<StaticModelProxy>, &[StaticTraceGeometry])],

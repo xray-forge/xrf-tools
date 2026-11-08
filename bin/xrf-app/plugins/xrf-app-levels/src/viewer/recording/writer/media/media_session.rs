@@ -1,3 +1,8 @@
+#![expect(
+  unsafe_code,
+  reason = "starts and stops Media Foundation, whose COM calls the `windows` crate exposes as unsafe"
+)]
+
 use windows::Win32::Media::MediaFoundation::{MF_VERSION, MFSTARTUP_LITE, MFShutdown, MFStartup};
 use windows::Win32::System::Com::{COINIT_MULTITHREADED, CoInitializeEx, CoUninitialize};
 

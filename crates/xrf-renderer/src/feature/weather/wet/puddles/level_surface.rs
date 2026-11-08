@@ -315,7 +315,7 @@ impl LevelSurface {
         passes
           .weather
           .puddle_sites
-          .record(context, shape.resolution, cells, &heights, &placing)
+          .record(context, shape.resolution, cells, &heights, &placing);
       });
   }
 

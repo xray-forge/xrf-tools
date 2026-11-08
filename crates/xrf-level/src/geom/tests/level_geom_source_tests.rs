@@ -350,7 +350,7 @@ fn test_reads_a_range_of_vertices_as_stored_beside_its_layout() -> XrfResult {
 
   let source: LevelGeomSource<_> = LevelGeomSource::open_from_bytes::<XRayByteOrder>(new_geometry(
     &new_lightmapped_declaration(),
-    &[first.clone(), second.clone()].concat(),
+    &[first, second.clone()].concat(),
     2,
     &[0],
   )?)?;

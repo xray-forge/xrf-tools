@@ -21,8 +21,10 @@ use crate::ipc::textures::TEXTURES_JOB_SAVE;
 /// that candidate's comparison was made of, whose descriptor the request has to name.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "save")]
-// Tauri injects each managed state as an argument of its own.
-#[allow(clippy::too_many_arguments)]
+#[expect(
+  clippy::too_many_arguments,
+  reason = "Tauri injects each managed state as an argument of its own"
+)]
 pub async fn textures_save(
   request: TexturesSaveRequest,
   job_id: Uuid,

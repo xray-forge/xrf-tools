@@ -273,8 +273,38 @@ inherits = "profiling"
 
 [workspace.lints.rust]
 dead_code = "allow"
+# A crate that needs `unsafe` opts in at its root with `#![expect(unsafe_code, reason = "...")]`.
+unsafe_code = "deny"
+unused_qualifications = "warn"
 
 [workspace.lints.clippy]
 extra_unused_type_parameters = "allow"
 doc_lazy_continuation = "allow"
 module_inception = "allow"
+
+# A suppression is an `#[expect(lint, reason = "...")]`, which also reports itself once the lint stops firing.
+allow_attributes = "warn"
+allow_attributes_without_reason = "warn"
+# Game data and command input are untrusted: return an error rather than unwrap (tests may unwrap, `clippy.toml`).
+unwrap_used = "warn"
+# Output goes through `xrf-output`, logging, or typed command results.
+print_stdout = "warn"
+print_stderr = "warn"
+dbg_macro = "warn"
+todo = "warn"
+unimplemented = "warn"
+undocumented_unsafe_blocks = "warn"
+
+case_sensitive_file_extension_comparisons = "warn"
+checked_conversions = "warn"
+cloned_instead_of_copied = "warn"
+explicit_iter_loop = "warn"
+ignore_without_reason = "warn"
+manual_string_new = "warn"
+match_wildcard_for_single_variants = "warn"
+redundant_clone = "warn"
+redundant_else = "warn"
+ref_option = "warn"
+semicolon_if_nothing_returned = "warn"
+uninlined_format_args = "warn"
+unnested_or_patterns = "warn"

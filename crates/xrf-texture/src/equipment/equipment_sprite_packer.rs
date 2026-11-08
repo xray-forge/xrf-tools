@@ -37,7 +37,7 @@ impl EquipmentSpritePacker {
       Some(options.ltx.len() as u64),
     );
 
-    for (section_name, section) in options.ltx.iter() {
+    for (section_name, section) in &options.ltx {
       // Between sections: the sheet is one image written once at the end, so stopping here leaves nothing on disk
       // rather than a half-drawn sprite atlas.
       if options.job.is_cancelled() {
@@ -234,7 +234,7 @@ impl EquipmentSpritePacker {
           if custom_path.starts_with(LTX_PATH_GAMEDATA_MARKER) {
             Self::resolve_logical_path(
               gamedata,
-              custom_path.strip_prefix(LTX_PATH_GAMEDATA_MARKER_PREFIX).unwrap(),
+              Self::strip_marker(custom_path, LTX_PATH_GAMEDATA_MARKER_PREFIX)?,
             )
           } else {
             Self::resolve_logical_path(&gamedata.join(TEXTURES_DIRECTORY), custom_path)
@@ -242,36 +242,24 @@ impl EquipmentSpritePacker {
           // Handle ~ path for xrf / system.ltx
         } else if custom_path.starts_with(LTX_PATH_GAMEDATA_MARKER) {
           Self::resolve_logical_path(
-            &options
-              .ltx
-              .directory
-              .as_ref()
-              .unwrap()
+            &Self::get_config_directory(options, custom_path)?
               .join("..")
               .join("..")
               .join(RESOURCES_DIRECTORY),
-            custom_path.strip_prefix(LTX_PATH_GAMEDATA_MARKER_PREFIX).unwrap(),
+            Self::strip_marker(custom_path, LTX_PATH_GAMEDATA_MARKER_PREFIX)?,
           )
           // Handle relative path for xrf / system.ltx extensions
         } else if custom_path.starts_with(LTX_PATH_EXTENSION_MARKER) {
           Self::resolve_logical_path(
-            &options
-              .ltx
-              .directory
-              .as_ref()
-              .unwrap()
+            &Self::get_config_directory(options, custom_path)?
               .join("..")
               .join(EXTENSIONS_DIRECTORY),
-            custom_path.strip_prefix(LTX_PATH_EXTENSION_MARKER_PREFIX).unwrap(),
+            Self::strip_marker(custom_path, LTX_PATH_EXTENSION_MARKER_PREFIX)?,
           )
           // Handle relative path for xrf / system.ltx
         } else {
           Self::resolve_logical_path(
-            &options
-              .ltx
-              .directory
-              .as_ref()
-              .unwrap()
+            &Self::get_config_directory(options, custom_path)?
               .join("..")
               .join("..")
               .join(RESOURCES_DIRECTORY)
@@ -281,6 +269,24 @@ impl EquipmentSpritePacker {
         }
       }
     }
+  }
+
+  /// The path a marker leads, which must follow the marker's separator.
+  fn strip_marker<'a>(custom_path: &'a str, prefix: &str) -> XrfResult<&'a str> {
+    custom_path.strip_prefix(prefix).ok_or_else(|| {
+      XrfError::new_invalid_error(format!(
+        "Icon path '{custom_path}' names its root without the '{prefix}' that has to start it"
+      ))
+    })
+  }
+
+  /// The directory the config was read from, which an icon path without a gamedata root resolves against.
+  fn get_config_directory<'a>(options: &'a EquipmentSpritePackOptions, custom_path: &str) -> XrfResult<&'a Path> {
+    options.ltx.directory.as_deref().ok_or_else(|| {
+      XrfError::new_invalid_error(format!(
+        "Icon path '{custom_path}' is relative to the config, which was not read from a directory"
+      ))
+    })
   }
 
   /// Resolves an X-Ray path below a trusted host root without letting engine separators leak into host I/O.

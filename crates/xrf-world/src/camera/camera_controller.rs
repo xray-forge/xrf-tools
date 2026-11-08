@@ -56,11 +56,11 @@ impl CameraController {
     match self {
       CameraController::Fly(controller) => {
         controller.resize(height);
-        controller.update(delta)
+        controller.update(delta);
       }
       CameraController::Orbit(controller) => {
         controller.resize(height);
-        controller.update(delta)
+        controller.update(delta);
       }
     }
   }

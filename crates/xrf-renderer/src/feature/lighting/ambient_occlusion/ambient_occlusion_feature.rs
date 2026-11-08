@@ -89,7 +89,7 @@ impl AmbientOcclusionFeature {
           passes
             .lighting
             .ambient_occlusion
-            .record(context, stage, view, &parameters)
+            .record(context, stage, view, &parameters);
         });
     }
   }

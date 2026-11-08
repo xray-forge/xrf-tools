@@ -35,7 +35,7 @@ impl ChunkReadWrite for AlifeSmartCover {
       let name: String = reader.read_w1251_string()?;
       let enabled: u8 = reader.read_u8()?;
 
-      loopholes.push(AlifeSmartCoverLoophole { name, enabled })
+      loopholes.push(AlifeSmartCoverLoophole { name, enabled });
     }
 
     Ok(Self {

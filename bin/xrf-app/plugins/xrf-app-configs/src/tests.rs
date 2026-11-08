@@ -99,14 +99,14 @@ fn an_open_project_lists_a_config_committed_beside_it_once_read_again() {
   fs::write(root.join("configs/system.ltx"), "[a]\nkey = value\n").expect("config written");
   fs::write(root.join("configs/game.ltx"), "[b]\nkey = value\n").expect("config written");
 
-  let roots: XrayRoots = XrayRoots::one(root.clone(), XrayMountMode::Directory);
+  let roots: XrayRoots = XrayRoots::one(root, XrayMountMode::Directory);
   let assets: AssetMountState = AssetMountState::new();
   // Derived inline rather than on a pool, so the commit below has read the project again by the time it returns.
   let projects: ConfigsProjects = ConfigsProjects::new("configs project", &SessionScopes::default())
     .with_derivation(&assets, OpenedConfigsProject::derive);
   let search: XraySearch = assets.search(&roots).expect("the tree mounts");
   let id: SessionId = SessionId::generate();
-  let read = OpenedConfigsProject::read(&search, roots.clone(), None, false).expect("it opens");
+  let read = OpenedConfigsProject::read(&search, roots, None, false).expect("it opens");
 
   assert_eq!(read.value.descriptor.inventory.files.len(), 2);
 
@@ -145,7 +145,7 @@ fn a_declaration_search_compares_sections_as_the_dialect_does_and_caps_its_answe
   fs::write(root.join("configs/system.ltx"), format!("[wpn_ak74]\ncost = 1\n{many}")).expect("config written");
   fs::write(root.join("configs/mod_system_a.ltx"), "![WPN_AK74]\ncost = 2\n").expect("config written");
 
-  let roots: XrayRoots = XrayRoots::one(root.clone(), XrayMountMode::Directory);
+  let roots: XrayRoots = XrayRoots::one(root, XrayMountMode::Directory);
   let search: XraySearch = AssetMountState::new().search(&roots).expect("the tree mounts");
 
   let find = |is_dltx: bool, query: LtxDeclarationQuery| {

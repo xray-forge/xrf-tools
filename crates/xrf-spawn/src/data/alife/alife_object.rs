@@ -790,7 +790,7 @@ mod tests {
       (
         "device_flare",
         ClsId::DFlare,
-        AlifeObjectInherited::CseAlifeItem(Box::new(item.clone())),
+        AlifeObjectInherited::CseAlifeItem(Box::new(item)),
       ),
       (
         "m_crow",

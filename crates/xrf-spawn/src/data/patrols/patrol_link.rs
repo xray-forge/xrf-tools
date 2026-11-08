@@ -100,7 +100,7 @@ impl LtxImportExport for PatrolLink {
       links.push((
         section.read_field(&format!("from.{link}"))?,
         section.read_field(&format!("weight.{link}"))?,
-      ))
+      ));
     }
 
     assert_length(&links, count, "Expected to import exact count of patrol links")?;

@@ -14,7 +14,7 @@ pub async fn system_reveal_path(path: &str) -> TauriResult<()> {
     return Err(format!("Cannot show a path that does not exist: {path}"));
   }
 
-  log::info!("Revealing path: {}", path);
+  log::info!("Revealing path: {path}");
 
   PathReveal::reveal(target).map_err(|error| format!("Could not show {path}: {error}"))
 }

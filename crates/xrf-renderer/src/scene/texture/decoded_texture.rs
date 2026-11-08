@@ -338,7 +338,7 @@ impl DecodedTexture {
       layers: 1,
       is_volume: false,
       levels: chain,
-      layout: metadata.get_format_label().to_string(),
+      layout: metadata.get_format_label(),
       is_expanded: false,
     })
   }
@@ -364,7 +364,7 @@ impl DecodedTexture {
       layers: slices,
       is_volume: true,
       levels: vec![bytes.to_vec()],
-      layout: metadata.get_format_label().to_string(),
+      layout: metadata.get_format_label(),
       is_expanded: false,
     })
   }
@@ -423,7 +423,7 @@ impl DecodedTexture {
       layers: Self::CUBE_FACES,
       is_volume: false,
       levels: chain,
-      layout: metadata.get_format_label().to_string(),
+      layout: metadata.get_format_label(),
       is_expanded: false,
     })
   }
@@ -447,7 +447,7 @@ impl DecodedTexture {
       layers: 1,
       is_volume: false,
       levels: chain,
-      layout: metadata.get_format_label().to_string(),
+      layout: metadata.get_format_label(),
       is_expanded: true,
     })
   }

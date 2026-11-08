@@ -1,3 +1,8 @@
+#![expect(
+  unsafe_code,
+  reason = "makes Steam Audio's library callable through the platform loader's C API"
+)]
+
 use std::path::{Path, PathBuf};
 
 use crate::acoustics::audio_acoustics::AudioAcoustics;

@@ -688,7 +688,7 @@ impl XrayVfs {
     for (asset, size) in self.locate_sized_in(scope) {
       match entries.last_mut() {
         Some(previous) if previous.get_logical_path() == asset.get_logical_path().as_str() => {
-          previous.shadowed.push(XrayShadowedCopy::new(asset, size))
+          previous.shadowed.push(XrayShadowedCopy::new(asset, size));
         }
         _ => entries.push(XrayShadowingEntry::new(asset, size)),
       }

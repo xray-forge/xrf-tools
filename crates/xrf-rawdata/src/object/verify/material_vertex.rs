@@ -26,7 +26,7 @@ impl From<&OgfVertex> for MaterialVertex {
   fn from(vertex: &OgfVertex) -> Self {
     let mut summed: BTreeMap<u16, f32> = BTreeMap::new();
 
-    for link in vertex.links.iter() {
+    for link in &vertex.links {
       *summed.entry(link.bone).or_default() += link.weight;
     }
 

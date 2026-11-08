@@ -166,7 +166,7 @@ impl BurstVideo {
     let (width, height) = self.size.map_or((0, 0), |(width, height)| (width & !1, height & !1));
 
     // What the sound's thread rendered after the last frame, to its end; its way in goes with the thread.
-    for chunk in self.heard.iter() {
+    for chunk in &self.heard {
       Self::write_sound(&mut writer, chunk)?;
     }
 

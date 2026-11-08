@@ -232,7 +232,7 @@ impl FallingRainFeature {
       passes
         .effects
         .rain
-        .record(context, view, &parameters, look.as_ref(), counts)
+        .record(context, view, &parameters, look.as_ref(), counts);
     });
   }
 
@@ -283,7 +283,7 @@ impl FallingRainFeature {
         passes
           .effects
           .rain
-          .record_over(context, view, &parameters, &look, streaks)
+          .record_over(context, view, &parameters, &look, streaks);
       });
 
     Some(layer)

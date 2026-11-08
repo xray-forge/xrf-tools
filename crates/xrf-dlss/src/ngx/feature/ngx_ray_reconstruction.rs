@@ -74,6 +74,8 @@ impl NgxRayReconstruction {
       sdk,
       (device, queue),
       "DLSS cannot reconstruct rays into the output",
+      // SAFETY: `create` lends the SDK's parameters under NGX's lock and a fresh command list; the device handle and
+      // `parameters` outlive the call.
       |commands, ngx, handle| unsafe {
         NgxFeature::set_preset_hints(ngx, &Self::PRESET_HINTS, preset.to_hint() as u32);
 
@@ -126,6 +128,7 @@ impl NgxRayReconstruction {
     (world_to_view, view_to_clip): (*mut f32, *mut f32),
   ) -> NVSDK_NGX_Result {
     // NGX reads these through pointers while it records, so they live until it is done.
+    // SAFETY: the inputs are Vulkan views of the device NGX runs on, borrowed past the evaluation.
     let resource = |view: &wgpu::TextureView| unsafe { NgxVulkanResource::of(view, adapter) };
     let mut color = resource(inputs.color);
     let mut output = resource(inputs.output);
@@ -140,6 +143,7 @@ impl NgxRayReconstruction {
     let mut transparency = inputs
       .transparency
       .map(|(before, after)| (resource(before), resource(after)));
+    // SAFETY: a plain C struct of pointers and scalars, for which all zeros is "left out".
     let mut parameters: NVSDK_NGX_VK_DLSSD_Eval_Params = unsafe { std::mem::zeroed() };
 
     parameters.pInColor = &mut color;
@@ -179,6 +183,8 @@ impl NgxRayReconstruction {
     parameters.InPreExposure = inputs.pre_exposure;
     parameters.pInRoughness = ptr::null_mut();
 
+    // SAFETY: `evaluate` lends the feature's handle, the SDK's parameters under NGX's lock and a fresh command list,
+    // and every resource and matrix the parameters point at lives until the call returns.
     unsafe { NGX_VULKAN_EVALUATE_DLSSD_EXT(list, handle, sdk.parameters, &mut parameters) }
   }
 
@@ -190,6 +196,8 @@ impl NgxRayReconstruction {
     inputs: &DlssRayInputs<'_>,
     (world_to_view, view_to_clip): (*mut f32, *mut f32),
   ) -> NVSDK_NGX_Result {
+    // SAFETY: as on Vulkan: zeroed is "left out" for the C struct, the inputs are D3D12 textures alive past the call,
+    // and `evaluate` lends the handle, the parameters under NGX's lock and a fresh command list.
     unsafe {
       // The optional inputs left out: null resources and zero scalars.
       let mut parameters: NVSDK_NGX_D3D12_DLSSD_Eval_Params = std::mem::zeroed();

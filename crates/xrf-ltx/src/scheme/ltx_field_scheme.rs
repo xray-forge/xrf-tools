@@ -1,5 +1,3 @@
-use std::cmp;
-
 use crate::condlist::Condlist;
 use crate::ltx::Ltx;
 use crate::scheme::LtxFieldDataType;
@@ -304,15 +302,13 @@ impl LtxFieldScheme {
               types_raw.join(", ")
             ))
           } else {
-            let loop_length: usize = cmp::max(values.len(), types.len());
-
-            // Validate all provided values.
-            for it in 0..loop_length {
-              let current_type: &LtxFieldDataType = types.get(it).unwrap();
+            // Every type is checked, a value missing from the end standing as empty; there are never more values
+            // than types, as checked above.
+            for (it, (current_type, current_raw)) in types.iter().zip(types_raw).enumerate() {
               let current_value: &str = values.get(it).copied().unwrap_or("");
 
               // Skip optional values with empty data, do not validate.
-              if current_value.is_empty() && LtxFieldDataType::is_field_data_optional(types_raw.get(it).unwrap()) {
+              if current_value.is_empty() && LtxFieldDataType::is_field_data_optional(current_raw) {
                 continue;
               }
 

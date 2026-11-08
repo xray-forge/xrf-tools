@@ -162,7 +162,6 @@ impl<'a, S: LevelFileSource + ?Sized> LevelGeometryVerifier<'a, S> {
   }
 
   /// Reads one visual's range the way the renderer addresses it, and reports what could not be read.
-  #[allow(clippy::too_many_arguments)]
   fn verify_container<D: ChunkDataSource>(
     &self,
     index: usize,
@@ -285,7 +284,10 @@ impl<'a, S: LevelFileSource + ?Sized> LevelGeometryVerifier<'a, S> {
   }
 
   /// Judges what a decoded range holds, once it is known to be readable.
-  #[allow(clippy::too_many_arguments)]
+  #[expect(
+    clippy::too_many_arguments,
+    reason = "one visual's coordinates and decoded range, judged in one pass"
+  )]
   fn verify_geometry(
     &self,
     index: usize,

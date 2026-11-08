@@ -230,12 +230,12 @@ impl<'a> SoundReferencesVerifier<'a> {
     path: &Path,
     result: &mut GamedataSoundReferencesVerificationResult,
   ) {
-    for (section_name, section) in ltx.iter() {
+    for (section_name, section) in ltx {
       if self.options.job.is_cancelled() {
         break;
       }
 
-      for (key, value) in section.iter() {
+      for (key, value) in section {
         if self.options.job.is_cancelled() {
           break;
         }

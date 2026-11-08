@@ -225,7 +225,7 @@ fn records_a_read_served_from_the_cache() {
   search.read_parsed(&asset, parse).expect("first read parses");
 
   let record: XrayInputRecord = XrayInputRecord::new();
-  let recording: XraySearch = search.clone().with_recording(&record);
+  let recording: XraySearch = search.with_recording(&record);
 
   recording.read_parsed(&asset, parse).expect("second read is served");
 

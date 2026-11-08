@@ -207,7 +207,7 @@ impl ParticlesView {
         .color(GraphColorAttachment::new(targets.distortion, wgpu::LoadOp::Load))
         .depth(GraphDepthAttachment::new_read_only(targets.depth))
         .record(move |context| {
-          pass.record_distortion(context, view, &parameters, texture_group, &self.distortion_runs)
+          pass.record_distortion(context, view, &parameters, texture_group, &self.distortion_runs);
         });
     }
   }

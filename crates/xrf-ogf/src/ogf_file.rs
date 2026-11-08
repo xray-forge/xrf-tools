@@ -135,7 +135,7 @@ impl OgfFile {
         None => None,
       };
 
-    Self::assert_motions_are_paired(&motions, &motion_parameters)?;
+    Self::assert_motions_are_paired(motions.as_ref(), motion_parameters.as_ref())?;
 
     let header: OgfHeaderChunk =
       ChunkReader::find_required_by_id(chunks, OgfHeaderChunk::CHUNK_ID)?.read_xr::<T, _>()?;
@@ -244,8 +244,8 @@ impl OgfFile {
 
   /// Rejects embedded motion chunks that cannot be paired by ordinal.
   fn assert_motions_are_paired(
-    motions: &Option<SkeletonMotionsChunk>,
-    motion_parameters: &Option<SkeletonMotionParametersChunk>,
+    motions: Option<&SkeletonMotionsChunk>,
+    motion_parameters: Option<&SkeletonMotionParametersChunk>,
   ) -> XrfResult {
     match (motions, motion_parameters) {
       (Some(motions), Some(parameters)) if motions.motions.len() != parameters.motions.len() => {

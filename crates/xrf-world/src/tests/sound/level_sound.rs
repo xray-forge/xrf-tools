@@ -35,7 +35,7 @@ use crate::world::World;
 #[derive(Clone, Default)]
 struct KeepingSink {
   sent: Arc<Mutex<Vec<WorldSoundFrame>>>,
-  #[allow(clippy::vec_box)]
+  #[expect(clippy::vec_box, reason = "keeps the frames boxed as the sink hands them over")]
   spent: Vec<Box<AudioSceneFrame>>,
 }
 

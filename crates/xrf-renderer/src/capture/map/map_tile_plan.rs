@@ -53,15 +53,13 @@ impl MapTilePlan {
 
     if width == 0 || height == 0 || width > RENDER_MAP_MOST_PIXELS || height > RENDER_MAP_MOST_PIXELS {
       return Err(XrfError::new_invalid_error(format!(
-        "A map must be 1 to {} pixels a side, not {width} by {height}",
-        RENDER_MAP_MOST_PIXELS
+        "A map must be 1 to {RENDER_MAP_MOST_PIXELS} pixels a side, not {width} by {height}"
       )));
     }
 
     if supersampling == 0 || supersampling > RENDER_MAP_MOST_SUPERSAMPLING {
       return Err(XrfError::new_invalid_error(format!(
-        "A map is drawn 1 to {} times over, not {supersampling}",
-        RENDER_MAP_MOST_SUPERSAMPLING
+        "A map is drawn 1 to {RENDER_MAP_MOST_SUPERSAMPLING} times over, not {supersampling}"
       )));
     }
 

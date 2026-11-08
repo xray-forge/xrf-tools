@@ -147,8 +147,8 @@ mod tests {
         visual_name: String::from("name"),
         visual_flags: 65,
       },
-      idle_animation: String::from(""),
-      attack_animation: String::from(""),
+      idle_animation: String::new(),
+      attack_animation: String::new(),
       last_spawn_time: LastSpawnTime::Unset,
     };
 

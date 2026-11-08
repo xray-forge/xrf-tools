@@ -23,11 +23,13 @@ impl XRayShaderSamplerTexture {
   /// What a texture argument binds, read through what its name means where the script passes it.
   pub fn of(value: Option<&XRayLuaValue>) -> Self {
     match value {
-      Some(XRayLuaValue::String(value))
-      | Some(XRayLuaValue::Local {
-        binding: XRayLuaBinding::String(value),
-        ..
-      }) => Self::Named(value.clone()),
+      Some(
+        XRayLuaValue::String(value)
+        | XRayLuaValue::Local {
+          binding: XRayLuaBinding::String(value),
+          ..
+        },
+      ) => Self::Named(value.clone()),
       Some(XRayLuaValue::Local {
         binding: XRayLuaBinding::Parameter { index },
         name,

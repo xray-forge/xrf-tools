@@ -355,7 +355,7 @@ impl LightsFeature {
           passes
             .lighting
             .lights
-            .record_contact(context, view, &parameters, &marching, size)
+            .record_contact(context, view, &parameters, &marching, size);
         });
 
       (Some(marched), threshold)
@@ -396,7 +396,7 @@ impl LightsFeature {
               textures,
             },
             targets.size,
-          )
+          );
         });
 
       visibility
@@ -427,7 +427,7 @@ impl LightsFeature {
             &shadowing,
             targets.size,
             LightContact::of(is_contact),
-          )
+          );
         });
 
       visibility
@@ -461,7 +461,7 @@ impl LightsFeature {
           contact: LightContact::of(is_contact),
           is_split,
         },
-      )
+      );
     });
   }
 

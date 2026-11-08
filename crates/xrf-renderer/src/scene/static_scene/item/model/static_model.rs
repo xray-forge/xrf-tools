@@ -120,7 +120,7 @@ impl StaticModel {
     geometry
       .detail_levels
       .get(chosen)
-      .cloned()
+      .copied()
       .unwrap_or_else(|| geometry.get_default_level())
   }
 
