@@ -92,10 +92,14 @@ impl TestView {
   }
 
   /// Readies its cull of `scene` and writes its camera.
-  fn prepare(&mut self, scene: &StaticScene, encoder: &mut FrameEncoder) {
-    self
-      .statics
-      .prepare(scene, &RenderViewOptions::default(), &self.camera, (WIDTH, HEIGHT));
+  fn prepare(&mut self, device: &wgpu::Device, scene: &StaticScene, encoder: &mut FrameEncoder) {
+    self.statics.prepare(
+      device,
+      scene,
+      &RenderViewOptions::default(),
+      &self.camera,
+      (WIDTH, HEIGHT),
+    );
     self.binding.write(
       encoder,
       &CameraUniform::new(
@@ -113,7 +117,7 @@ impl TestView {
 }
 
 /// Culls and draws `scene` through each of `views` in turn in one frame's graph, as a frame draws the viewports showing
-/// one level, and answers what the camera's arguments count once the last view culled: its clusters and triangles kept,
+/// one level, and answers what the last view's camera arguments count once it culled: its clusters and triangles kept,
 /// then occluded.
 fn draw_views(
   gpu: &GpuState,
@@ -130,7 +134,7 @@ fn draw_views(
   let scene: &StaticScene = scene;
 
   for view in views.iter_mut() {
-    view.prepare(scene, &mut encoder);
+    view.prepare(device, scene, &mut encoder);
   }
 
   queue.submit([encoder.finish().0]);
@@ -210,7 +214,12 @@ fn draw_views(
   });
   let mut encoder: wgpu::CommandEncoder = device.create_command_encoder(&Default::default());
 
-  encoder.copy_buffer_to_buffer(&scene.cull.args, StaticCullScratch::STATS_OFFSET, &readback, 0, 16);
+  let args: &wgpu::Buffer = views
+    .last()
+    .and_then(|view| view.statics.get_camera_args())
+    .expect("the last view culled");
+
+  encoder.copy_buffer_to_buffer(args, StaticCullScratch::STATS_OFFSET, &readback, 0, 16);
   queue.submit([encoder.finish()]);
   readback.slice(..).map_async(wgpu::MapMode::Read, |_| ());
   device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
@@ -220,8 +229,8 @@ fn draw_views(
   counts
 }
 
-/// Two viewports showing one level cull into the scene's one set of camera arguments: the second view's cull counts
-/// what it sees alone, not what the first saw as well. Skipped, and says so, on a machine with no adapter at all.
+/// Two viewports showing one level each cull into lists and arguments of their own: the second view's cull counts what
+/// it sees alone, not what the first saw as well. Skipped, and says so, on a machine with no adapter at all.
 #[test]
 fn a_second_view_of_a_shared_scene_counts_its_own_cull_alone() {
   let Some(context) = create_test_context("to draw with") else {

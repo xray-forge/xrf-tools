@@ -182,7 +182,7 @@ impl StaticScene {
   /// Uploads what was added, changed and removed since the last frame, and readies the culls' buffers for the frame.
   pub fn prepare_draws(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, encoder: &mut FrameEncoder) {
     self.geometry.flush(device, queue);
-    self.cull.prepare(device, encoder);
+    self.cull.prepare(encoder);
   }
 
   /// The bounding sphere of every place that sways, and how far it reaches from its foot, weighted by its rigidity.

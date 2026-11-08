@@ -137,7 +137,7 @@ impl SceneView {
     self
       .features
       .statics
-      .prepare(&scene.statics, options, view, frame.drawn);
+      .prepare(device, &scene.statics, options, view, frame.drawn);
 
     let is_scene_traced: bool = frame.passes.tracing.scene_trace.is_traced() && scene.trace.is_some();
     let is_traced: bool = options.is_light_traced() && is_scene_traced;
