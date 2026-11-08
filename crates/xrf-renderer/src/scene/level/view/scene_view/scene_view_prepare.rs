@@ -24,6 +24,7 @@ use crate::feature::weather::fog::fog_feature::FogFeature;
 use crate::feature::weather::water::water_frame::WaterFrame;
 use crate::feature::weather::wet::puddles::level_surface::LevelSurface;
 use crate::feature::weather::wet::puddles::surface_window::SurfaceWindow;
+use crate::feature::weather::wet::wet_clock::WetClock;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::targets::screen_tiles::ScreenTiles;
 use crate::pass::frame_lighting::lighting_frame::LightingFrame;
@@ -81,10 +82,13 @@ impl SceneView {
     let falling: Option<RainUniform> = self.features.rain.prepare(frame, level.gust, time, windows);
 
     self.features.rain.follow_display(self.shared.display);
-    // The wet surfaces' splashes, flow and ripples run on the rain's clock while it falls.
-    let wet_clock: f64 = match falling {
-      Some(_) => self.features.rain.get_clock(),
-      None => time.now.get_seconds(),
+    // The wet surfaces' splashes, flow and ripples run on the rain's clock while it falls; their drift on the view's.
+    let wet_clock: WetClock = WetClock {
+      splashes: match falling {
+        Some(_) => self.features.rain.get_clock(),
+        None => time.now.get_seconds(),
+      },
+      view: time,
     };
 
     self.features.wet.prepare(
