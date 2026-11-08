@@ -17,6 +17,7 @@ members = [
   "crates/xrf-dialog",
   "crates/xrf-dlss",
   "crates/xrf-dltx",
+  "crates/xrf-editable-level",
   "crates/xrf-editable-object",
   "crates/xrf-efd",
   "crates/xrf-engine-target",
@@ -28,6 +29,7 @@ members = [
   "crates/xrf-extension",
   "crates/xrf-gamedata",
   "crates/xrf-gamemtl",
+  "crates/xrf-ini",
   "crates/xrf-ipc",
   "crates/xrf-ipc-derive",
   "crates/xrf-ipc-typescript",
@@ -140,6 +142,7 @@ xrf-dds = { path = "crates/xrf-dds" }
 xrf-dialog = { path = "crates/xrf-dialog" }
 xrf-dlss = { path = "crates/xrf-dlss" }
 xrf-dltx = { path = "crates/xrf-dltx" }
+xrf-editable-level = { path = "crates/xrf-editable-level" }
 xrf-editable-object = { path = "crates/xrf-editable-object" }
 xrf-efd = { path = "crates/xrf-efd" }
 xrf-error = { path = "crates/xrf-error" }
@@ -151,6 +154,7 @@ xrf-environment = { path = "crates/xrf-environment" }
 xrf-extension = { path = "crates/xrf-extension" }
 xrf-gamedata = { path = "crates/xrf-gamedata" }
 xrf-gamemtl = { path = "crates/xrf-gamemtl" }
+xrf-ini = { path = "crates/xrf-ini" }
 xrf-ipc = { path = "crates/xrf-ipc" }
 xrf-ipc-derive = { path = "crates/xrf-ipc-derive" }
 xrf-ipc-typescript = { path = "crates/xrf-ipc-typescript" }
