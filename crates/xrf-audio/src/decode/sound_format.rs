@@ -17,12 +17,12 @@ impl SoundFormat {
   }
 
   /// How long `frame` frames play at the sound's own rate.
-  pub fn to_duration(&self, frame: u64) -> Duration {
+  pub fn to_duration(self, frame: u64) -> Duration {
     Duration::from_secs_f64(frame as f64 / f64::from(self.sample_rate.max(1)))
   }
 
   /// The frame `position` falls on, clamped to the sound.
-  pub fn to_frame(&self, position: Duration) -> u64 {
+  pub fn to_frame(self, position: Duration) -> u64 {
     ((position.as_secs_f64() * f64::from(self.sample_rate)) as u64).min(self.frames_count)
   }
 }

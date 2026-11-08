@@ -26,7 +26,7 @@ impl Default for EditableObjectTransform {
 impl EditableObjectTransform {
   /// The world transform, `CCustomObject::OnUpdateTransform`: scaled first, then turned by `setXYZi` of the negated
   /// angles (heading `y`, pitch `x`, bank `z`), then moved, composed with `Fmatrix::mul` in the editor's order.
-  pub fn to_matrix(&self) -> Matrix4x4 {
+  pub fn to_matrix(self) -> Matrix4x4 {
     let rotation: Affine3d = Affine3d::from_xyz_inverse(&-&self.rotation);
 
     Matrix4x4::from_translation(&self.position)

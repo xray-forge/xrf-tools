@@ -51,7 +51,7 @@ impl Matrix4x4 {
   }
 
   /// The three axis rows and the translation, the fourth column left out.
-  pub const fn to_affine(&self) -> Affine3d {
+  pub const fn to_affine(self) -> Affine3d {
     let values: &[f32; Self::ELEMENTS] = &self.values;
 
     Affine3d {

@@ -42,6 +42,10 @@ pub mod optional_duration_ms {
 
   use serde::{Deserialize, Deserializer, Serializer};
 
+  #[expect(
+    clippy::ref_option,
+    reason = "serde's `serialize_with` hands the field over as `&Option<Duration>`"
+  )]
   pub fn serialize<S: Serializer>(duration: &Option<Duration>, serializer: S) -> Result<S::Ok, S::Error> {
     match duration {
       Some(duration) => serializer.serialize_some(&super::duration_to_millis(*duration)),

@@ -78,7 +78,7 @@ impl Vector3d<f32> {
     &(self + other) * 0.5
   }
 
-  pub fn to_array(&self) -> [f32; 3] {
+  pub fn to_array(self) -> [f32; 3] {
     [self.x, self.y, self.z]
   }
 
