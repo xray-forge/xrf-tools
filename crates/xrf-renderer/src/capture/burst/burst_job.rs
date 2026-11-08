@@ -30,6 +30,9 @@ impl BurstJob {
   /// Frames a burst reads back at most, and samples a reference draws each at.
   pub const MOST_FRAMES: u32 = 480;
   pub const MOST_SAMPLES: u32 = 256;
+  /// The scene's latest second a burst's frame may be drawn at, a year of it: far past any level left open, and far
+  /// short of what the platform's clock can stand for past the level's start.
+  pub const LATEST_SECONDS: f64 = 365.0 * 24.0 * 3600.0;
 
   /// Frames on their way back at most: the next waits, its clock held, rather than hold more of them.
   const MOST_IN_FLIGHT: usize = 8;
@@ -39,8 +42,8 @@ impl BurstJob {
   /// # Errors
   ///
   /// Returns an error for a burst that reads back no frame or more than `MOST_FRAMES`, a lead-in longer than that, a
-  /// reference of no sample or more than `MOST_SAMPLES`, a step that is not a positive time, or a start that is not a
-  /// time of the scene's.
+  /// reference of no sample or more than `MOST_SAMPLES`, a step that is not a positive time, a start that is not a
+  /// time of the scene's, or a last frame drawn past `LATEST_SECONDS`.
   pub fn new(burst: RenderBurst, events: Sender<BurstEvent>) -> XrfResult<Self> {
     if !(1..=Self::MOST_FRAMES).contains(&burst.frames) || burst.lead_in > Self::MOST_FRAMES {
       return Err(XrfError::new_invalid_error(format!(
@@ -65,6 +68,15 @@ impl BurstJob {
       return Err(XrfError::new_invalid_error(format!(
         "A burst steps by a positive time from one of the scene's, not {} from {}",
         burst.step, burst.at
+      )));
+    }
+
+    let last: f64 = Self::get_seconds(&burst, burst.lead_in + burst.frames - 1);
+
+    if last > Self::LATEST_SECONDS {
+      return Err(XrfError::new_invalid_error(format!(
+        "A burst draws its frames within the scene's first {} s, not up to {last} s",
+        Self::LATEST_SECONDS
       )));
     }
 
@@ -105,9 +117,12 @@ impl BurstJob {
       return None;
     };
 
-    Some(Duration::from_secs_f64(
-      f64::from(self.burst.at) + f64::from(frame) * f64::from(self.burst.step),
-    ))
+    Duration::try_from_secs_f64(Self::get_seconds(&self.burst, frame)).ok()
+  }
+
+  /// The scene's seconds `burst`'s frame `frame` is drawn at, the lead-in's counted.
+  fn get_seconds(burst: &RenderBurst, frame: u32) -> f64 {
+    f64::from(burst.at) + f64::from(frame) * f64::from(burst.step)
   }
 
   /// Which of its frames read back this turn's is, with its sample and the scene's seconds, none for a lead-in's.

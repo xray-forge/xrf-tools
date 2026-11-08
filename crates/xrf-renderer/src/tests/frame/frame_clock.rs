@@ -33,3 +33,15 @@ fn frames_draw_at_the_wall_clock_until_stepped_then_a_step_a_frame() {
     start + Duration::from_secs(11)
   );
 }
+
+#[test]
+fn a_step_past_the_platforms_latest_time_holds_the_clock() {
+  let start: Instant = Instant::now();
+  let mut clock: FrameClock = FrameClock::default();
+
+  clock.tick(start);
+  clock.set_step(Some(Duration::MAX));
+
+  assert_eq!(clock.tick(start), start);
+  assert_eq!(clock.tick(start), start);
+}

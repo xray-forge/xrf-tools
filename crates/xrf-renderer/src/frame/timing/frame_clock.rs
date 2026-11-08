@@ -16,10 +16,11 @@ impl FrameClock {
     self.step = step;
   }
 
-  /// The time the frame begun at `wall` is drawn at: `wall` itself, or its step after the last one stepped.
+  /// The time the frame begun at `wall` is drawn at: `wall` itself, or its step after the last one stepped, held at the
+  /// last where that step would pass the latest time the platform's clock can stand for.
   pub fn tick(&mut self, wall: Instant) -> Instant {
     let now: Instant = match (self.last, self.step) {
-      (Some(last), Some(step)) => last + step,
+      (Some(last), Some(step)) => last.checked_add(step).unwrap_or(last),
       _ => wall,
     };
 

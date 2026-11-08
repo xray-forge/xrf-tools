@@ -38,6 +38,36 @@ fn refuses_a_burst_that_reads_nothing_back_or_steps_by_no_time() {
   }
 }
 
+// Its last frame's time is bounded, so no frame's time passes what the platform's clock can stand for.
+#[test]
+fn refuses_a_burst_drawn_past_the_latest_time() {
+  for burst in [
+    RenderBurst { at: 1e20, ..BURST },
+    RenderBurst { step: 1e17, ..BURST },
+    RenderBurst {
+      at: f32::MAX,
+      step: f32::MAX,
+      ..BURST
+    },
+  ] {
+    assert!(BurstJob::new(burst, channel().0).is_err(), "{burst:?}");
+  }
+
+  let latest: f32 = BurstJob::LATEST_SECONDS as f32;
+
+  assert!(
+    BurstJob::new(
+      RenderBurst {
+        at: latest - 10.0,
+        step: 1.0,
+        ..BURST
+      },
+      channel().0
+    )
+    .is_ok()
+  );
+}
+
 // Its lead-in restarts the view and reads nothing back; each frame after is a step on, whatever it took to draw.
 #[test]
 fn draws_its_lead_in_then_its_frames_a_step_apart() {
