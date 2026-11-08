@@ -2,7 +2,7 @@ use xrf_editable_object::{EditableSurface, EditableVMap, EditableVMapKind, Edita
 use xrf_error::XrfResult;
 use xrf_skeleton::SkeletonJointLimit;
 
-use crate::object::decompile::geometry::ogf_corner::OgfCorner;
+use crate::object::decompile::geometry::source::ogf_corner::OgfCorner;
 use crate::object::decompile::mesh::assembled_mesh::AssembledMesh;
 use crate::object::decompile::tests::fixtures::{DOWN, UP, assemble, corner, surface, with_links, with_uv};
 use crate::object::joint_limit_sense::JointLimitSense;

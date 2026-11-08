@@ -2,11 +2,14 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_math::{Vector2d, Vector3d};
 use xrf_ogf::{OgfFile, OgfStaticVertex, OgfVertex, OgfVertexData};
 
-use crate::object::decompile::geometry::bone_influences::BoneInfluences;
-use crate::object::decompile::geometry::ogf_corner::OgfCorner;
+use crate::level::level_visual_geometry::LevelVisualGeometry;
+use crate::object::decompile::geometry::source::bone_influences::BoneInfluences;
+use crate::object::decompile::geometry::source::normal_precision::NormalPrecision;
+use crate::object::decompile::geometry::source::ogf_corner::OgfCorner;
 
-/// One OGF child read back as the surface it was exported from: its texture and engine shader, and its full-detail
-/// triangles. The export writes one child per surface (`CExportSkeleton::SSplit`), merging surfaces that share both.
+/// One OGF visual read back as the surface it was compiled from: its texture and engine shader, and its full-detail
+/// triangles. The export writes one child per surface (`CExportSkeleton::SSplit`), merging surfaces that share both; a
+/// level's visual stores its vertices in `level.geom` instead.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct OgfSurface {
   pub(crate) texture: String,
@@ -45,21 +48,11 @@ impl OgfSurface {
       };
 
       let indices: &[u16] = Self::get_full_detail_indices(file, geometry.indices.as_deref().unwrap_or_default())?;
-      let corner = |index: u16| -> XrfResult<OgfCorner> {
-        corners.get(usize::from(index)).copied().ok_or_else(|| {
-          XrfError::new_invalid_error(format!("OGF index {index} is past its {} vertices", corners.len()))
-        })
-      };
 
       surfaces.push(Self {
         texture: texture.texture_name.clone(),
         shader: texture.shader_name.clone(),
-        triangles: indices
-          .as_chunks::<3>()
-          .0
-          .iter()
-          .map(|[a, b, c]| Ok([corner(*a)?, corner(*b)?, corner(*c)?]))
-          .collect::<XrfResult<_>>()?,
+        triangles: Self::to_triangles(&corners, indices)?,
       });
     }
 
@@ -70,10 +63,53 @@ impl OgfSurface {
     Ok(())
   }
 
+  /// A level visual's surface: its full-detail triangles over the vertices `level.geom` stores for it, their normals a
+  /// byte a component.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for an index past the visual's vertices.
+  pub(crate) fn of_level(geometry: &LevelVisualGeometry) -> XrfResult<Self> {
+    let corners: Vec<OgfCorner> = geometry
+      .vertices
+      .iter()
+      .map(|vertex| OgfCorner {
+        position: vertex.position,
+        normal: vertex.normal,
+        normal_precision: NormalPrecision::Byte,
+        texture_coordinate: vertex.texture_coordinate,
+        influences: BoneInfluences::NONE,
+      })
+      .collect();
+
+    Ok(Self {
+      texture: geometry.texture.clone(),
+      shader: geometry.shader.clone(),
+      triangles: Self::to_triangles(&corners, &geometry.indices)?,
+    })
+  }
+
+  /// The triangles `indices` make of `corners`, three a triangle.
+  fn to_triangles(corners: &[OgfCorner], indices: &[u16]) -> XrfResult<Vec<[OgfCorner; 3]>> {
+    let corner = |index: u16| -> XrfResult<OgfCorner> {
+      corners.get(usize::from(index)).copied().ok_or_else(|| {
+        XrfError::new_invalid_error(format!("Index {index} is past its visual's {} vertices", corners.len()))
+      })
+    };
+
+    indices
+      .as_chunks::<3>()
+      .0
+      .iter()
+      .map(|[a, b, c]| Ok([corner(*a)?, corner(*b)?, corner(*c)?]))
+      .collect()
+  }
+
   fn to_skinned_corner(vertex: &OgfVertex) -> OgfCorner {
     OgfCorner {
       position: vertex.position,
       normal: vertex.normal,
+      normal_precision: NormalPrecision::Float,
       texture_coordinate: Vector2d::new(vertex.texture_u, vertex.texture_v),
       influences: BoneInfluences::of_links(&vertex.links),
     }
@@ -102,6 +138,7 @@ impl OgfSurface {
     Ok(OgfCorner {
       position: vertex.position,
       normal,
+      normal_precision: NormalPrecision::Float,
       texture_coordinate,
       influences: BoneInfluences::NONE,
     })

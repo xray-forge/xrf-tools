@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 
-use crate::object::decompile::geometry::bone_influences::BoneInfluences;
-use crate::object::decompile::geometry::ogf_surface::OgfSurface;
+use crate::object::decompile::geometry::source::bone_influences::BoneInfluences;
+use crate::object::decompile::geometry::source::ogf_surface::OgfSurface;
 use crate::object::decompile::geometry::welded_face::WeldedFace;
 
 /// The exported triangles of every surface welded back into one mesh: a point for each distinct position and set of

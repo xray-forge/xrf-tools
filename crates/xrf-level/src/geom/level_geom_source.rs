@@ -14,6 +14,7 @@ use crate::geom::vertex::level_vertex::LevelVertex;
 use crate::geom::vertex::level_vertex_bytes::LevelVertexBytes;
 use crate::geom::vertex::level_vertex_layout::LevelVertexLayout;
 use crate::geom::vertex::level_vertex_payload::LevelVertexPayload;
+use crate::level::visuals::level_visual::LevelVisual;
 
 /// A level's render geometry with its payloads still where they were, able to serve any range a visual names.
 pub struct LevelGeomSource<D: ChunkDataSource> {
@@ -160,6 +161,32 @@ impl<D: ChunkDataSource> LevelGeomSource<D> {
           .collect()
       },
     )
+  }
+
+  /// Reads the indices `visual` draws at full detail: its whole index range, cut to its first slide window where it is
+  /// progressive (see [`LevelVisual::get_full_detail_window`]); `None` for a visual drawing nothing from the buffers.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error where the indices or the window cannot be read, or the window reaches past the visual's indices.
+  pub fn read_full_detail_indices<T: ByteOrder>(&self, visual: &LevelVisual) -> XrfResult<Option<Vec<u16>>> {
+    let Some(container) = &visual.geometry else {
+      return Ok(None);
+    };
+    let indices: Vec<u16> =
+      self.read_indices::<T>(container.index_buffer_id, container.index_base, container.index_count)?;
+    let Some(window) = visual.get_full_detail_window(&self.file)? else {
+      return Ok(Some(indices));
+    };
+    let start: usize = window.offset as usize;
+    let end: usize = start + usize::from(window.triangles) * 3;
+
+    indices.get(start..end).map(|run| Some(run.to_vec())).ok_or_else(|| {
+      XrfError::new_invalid_error(format!(
+        "A visual's full-detail window [{start}..{end}) reaches past its {} indices",
+        indices.len()
+      ))
+    })
   }
 
   /// Hands the bytes of one payload that a range covers to `visit`, leaving the chunk where it was.

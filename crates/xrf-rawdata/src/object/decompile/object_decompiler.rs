@@ -3,10 +3,11 @@ use xrf_editable_object::{EditableBone, EditableDescription, EditableMotion, Edi
 use xrf_error::{XrfError, XrfResult};
 use xrf_ogf::{OgfDescriptionChunk, OgfDescriptionTimeWidth, OgfFile, OgfModelType};
 
+use crate::level::level_visual_geometry::LevelVisualGeometry;
 use crate::object::compile::object_compile_options::TangentMethod;
-use crate::object::decompile::geometry::ogf_surface::OgfSurface;
 use crate::object::decompile::geometry::repeated_faces::RepeatedFaces;
 use crate::object::decompile::geometry::smoothing_inference::SmoothingInference;
+use crate::object::decompile::geometry::source::ogf_surface::OgfSurface;
 use crate::object::decompile::geometry::two_sided_pairs::TwoSidedPairs;
 use crate::object::decompile::geometry::welded_mesh::WeldedMesh;
 use crate::object::decompile::mesh::assembled_mesh::AssembledMesh;
@@ -54,18 +55,64 @@ impl ObjectDecompiler {
     }
   }
 
+  /// Decompiles visuals of a compiled level into one static object: the visuals drawn with one texture and shader are
+  /// one surface, and every triangle is welded into one mesh, so faces of different visuals that met in the source
+  /// meet again. Level normals are stored a byte a component, which the weld, the two-sided folding and the smoothing
+  /// allow one quantisation step for.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for no visual, or one whose indices reach past its vertices.
+  pub fn decompile_level_geometry(geometry: &[LevelVisualGeometry]) -> XrfResult<ObjectDecompile> {
+    let mut surfaces: Vec<OgfSurface> = Vec::new();
+
+    for visual in geometry {
+      let surface: OgfSurface = OgfSurface::of_level(visual)?;
+
+      match surfaces
+        .iter_mut()
+        .find(|it| it.texture == surface.texture && it.shader == surface.shader)
+      {
+        Some(existing) => existing.triangles.extend(surface.triangles),
+        None => surfaces.push(surface),
+      }
+    }
+
+    // The object is static and compiles without tangents, so the method recorded for its compile is moot.
+    Ok(Self::to_static_decompile(
+      Self::assemble(&surfaces, MeshKind::Static)?,
+      0,
+      None,
+      TangentMethod::ActorEditor,
+    ))
+  }
+
   /// A static visual's object: its children's surfaces in one mesh, no bones.
   fn decompile_static(file: &OgfFile) -> XrfResult<ObjectDecompile> {
     let surfaces: Vec<OgfSurface> = OgfSurface::collect(file)?;
-    let assembled: AssembledMesh = Self::assemble(&surfaces, MeshKind::Static)?;
 
-    Ok(ObjectDecompile {
+    Ok(Self::to_static_decompile(
+      Self::assemble(&surfaces, MeshKind::Static)?,
+      if Self::is_progressive(file) {
+        EditableObjectFile::PROGRESSIVE_FLAG
+      } else {
+        0
+      },
+      file.get_description().map(Self::to_description),
+      Self::get_tangent_method(file),
+    ))
+  }
+
+  /// A static object of `assembled`'s mesh and surfaces, with `flags` and `description`, and no bones.
+  fn to_static_decompile(
+    assembled: AssembledMesh,
+    flags: u32,
+    description: Option<EditableDescription>,
+    tangents: TangentMethod,
+  ) -> ObjectDecompile {
+    ObjectDecompile {
       object: EditableObjectFile {
-        flags: if Self::is_progressive(file) {
-          EditableObjectFile::PROGRESSIVE_FLAG
-        } else {
-          0
-        },
+        flags,
         flags_size: EditableObjectFile::FLAGS_SIZE,
         class_script: None,
         lods: None,
@@ -76,12 +123,12 @@ impl ObjectDecompiler {
         motion_references: None,
         bone_parts: None,
         actor_transform: None,
-        description: file.get_description().map(Self::to_description),
+        description,
         layout: ChunkLayout::default(),
       },
       inferred: Self::INFERRED.to_vec(),
-      tangents: Self::get_tangent_method(file),
-    })
+      tangents,
+    }
   }
 
   /// `surfaces` welded into one mesh of `kind`, faces written again dropped, mirrored copies folded into two-sided

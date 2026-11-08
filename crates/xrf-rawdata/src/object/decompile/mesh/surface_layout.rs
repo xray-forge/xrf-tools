@@ -1,6 +1,6 @@
 use xrf_editable_object::EditableSurface;
 
-use crate::object::decompile::geometry::ogf_surface::OgfSurface;
+use crate::object::decompile::geometry::source::ogf_surface::OgfSurface;
 use crate::object::decompile::geometry::welded_face::WeldedFace;
 use crate::object::decompile::mesh::mesh_assembler::MeshAssembler;
 

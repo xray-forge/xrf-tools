@@ -21,6 +21,7 @@ xrf-animation-envelope = { workspace = true }
 xrf-chunk = { workspace = true }
 xrf-editable-object = { workspace = true }
 xrf-error = { workspace = true }
+xrf-level = { workspace = true }
 xrf-math = { workspace = true, features = ["glam"] }
 xrf-ogf = { workspace = true }
 xrf-skeleton = { workspace = true }
