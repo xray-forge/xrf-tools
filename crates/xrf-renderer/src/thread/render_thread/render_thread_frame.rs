@@ -32,8 +32,10 @@ use super::{ALLOCATOR_REPORT_EVERY, RenderThread, TEXTURE_SWEEP};
 impl RenderThread {
   /// One frame: the world advanced to the frames' clock, the shaders reloaded where they changed, the scenes fed what
   /// the world posted (whether or not any window can be drawn, so no post is lost), each viewport shown the scene it
-  /// asks for, the scenes no one needs let go, the textures kept, every window drawn, then the reports.
-  pub(super) fn frame(&mut self) {
+  /// asks for, the scenes no one needs let go, the textures kept, every window drawn, then the reports. Answers whether
+  /// the windows were presented: a frame without a GPU, a window or a graph wgpu took presents nothing, and nothing
+  /// waits for the display after it.
+  pub(super) fn frame(&mut self) -> bool {
     profiling::scope!("frame");
 
     let now: Instant = Instant::now();
@@ -56,16 +58,20 @@ impl RenderThread {
     }
 
     let Some((mut encoder, span)) = self.begin_frame_work(delta) else {
-      return;
+      return false;
     };
     let live: HashSet<RenderSceneId> = self.ingest_scenes(scene_frames, &mut encoder);
 
     self.show_asked_scenes();
     self.retain_scenes(&live);
     self.keep_textures(now);
-    self.draw_windows(now.elapsed(), span, encoder);
+
+    let is_presented: bool = self.draw_windows(now.elapsed(), span, encoder);
+
     self.report_viewports(now);
     self.save_level_pipelines();
+
+    is_presented
   }
 
   /// The time the frame begun at `wall` is drawn at, and how far that is from the last frame's: the time a burst draws

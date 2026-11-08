@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::time::Instant;
 
-use xrf_error::XrfError;
+use xrf_error::{XrfError, XrfResult};
 use xrf_renderer_core::{
   FrameGraph, GraphColorAttachment, GraphDeclaration, GraphRuntime, GraphTexture, GraphTextureAccess,
   GraphTextureDescriptor, UniformBinding,
@@ -54,7 +54,17 @@ impl RenderThread {
         };
 
         if let Some(reply) = viewport.take_capture() {
-          match FrameCapture::new(device, window.target.format, *shown, viewport.get_frame()) {
+          // A swapchain the platform allows no copy out of is refused here, rather than failing the frame's every
+          // window as the graph refuses the copy.
+          let capture: XrfResult<FrameCapture> = if window.is_copyable {
+            FrameCapture::new(device, window.target.format, *shown, viewport.get_frame())
+          } else {
+            Err(XrfError::new_not_implemented_error(
+              "Capturing a window whose swapchain the platform allows no copy out of",
+            ))
+          };
+
+          match capture {
             Ok(capture) => captures.push(CaptureCopy {
               viewport: *id,
               capture,
