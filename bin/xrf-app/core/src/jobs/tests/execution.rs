@@ -1,4 +1,3 @@
-use std::future::Future;
 use std::num::NonZeroUsize;
 use std::sync::{Arc, mpsc};
 use std::task::{Context, Poll, Waker};

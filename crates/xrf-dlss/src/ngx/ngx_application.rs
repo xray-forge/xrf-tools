@@ -120,7 +120,7 @@ impl NgxApplication {
   fn to_wide(text: &OsStr) -> Vec<wchar_t> {
     use std::os::windows::ffi::OsStrExt;
 
-    text.encode_wide().chain([0]).map(|unit| unit as wchar_t).collect()
+    text.encode_wide().chain([0]).collect()
   }
 
   /// A string as NGX's wide strings hold it, zero-terminated: UTF-16 on Windows, UTF-32 elsewhere.
