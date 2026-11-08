@@ -11,7 +11,7 @@ use crate::viewer::burst::{BurstSoundOutcome, BurstVideoOutcome};
 #[serde(rename_all = "camelCase")]
 pub struct BurstOutcome {
   pub folder: PathBuf,
-  pub times: Vec<f32>,
+  pub times: Vec<f64>,
   pub width: u32,
   pub height: u32,
   pub marks_width: u32,

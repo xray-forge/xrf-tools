@@ -11,7 +11,7 @@ pub enum BurstEvent {
   Shot {
     index: u32,
     sample: Option<u32>,
-    time: f32,
+    time: f64,
     picture: RenderCapture,
     marks: BurstMarks,
   },

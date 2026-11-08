@@ -122,11 +122,11 @@ impl BurstJob {
 
   /// The scene's seconds `burst`'s frame `frame` is drawn at, the lead-in's counted.
   fn get_seconds(burst: &RenderBurst, frame: u32) -> f64 {
-    f64::from(burst.at) + f64::from(frame) * f64::from(burst.step)
+    burst.at + f64::from(frame) * f64::from(burst.step)
   }
 
   /// Which of its frames read back this turn's is, with its sample and the scene's seconds, none for a lead-in's.
-  pub fn get_kept_frame(&self) -> Option<(u32, Option<u32>, f32)> {
+  pub fn get_kept_frame(&self) -> Option<(u32, Option<u32>, f64)> {
     let BurstStage::Drawing { frame, sample } = self.stage else {
       return None;
     };
@@ -135,7 +135,7 @@ impl BurstJob {
     Some((
       index,
       self.burst.samples.map(|_| sample),
-      self.get_time()?.as_secs_f32(),
+      self.get_time()?.as_secs_f64(),
     ))
   }
 
