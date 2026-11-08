@@ -7,7 +7,7 @@ use xrf_ogf::{
   OgfTextureChunk,
 };
 
-use crate::object::decompile::geometry::ogf_corner::OgfCorner;
+use crate::object::decompile::geometry::source::ogf_corner::OgfCorner;
 use crate::object::decompile::mesh::assembled_mesh::AssembledMesh;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
 use crate::object::decompile::tests::fixtures::{DOWN, UP, assemble, corner, surface, with_uv};

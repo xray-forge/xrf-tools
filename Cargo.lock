@@ -8804,6 +8804,7 @@ dependencies = [
  "xrf-chunk",
  "xrf-editable-object",
  "xrf-error",
+ "xrf-level",
  "xrf-math",
  "xrf-ogf",
  "xrf-skeleton",

@@ -2,10 +2,10 @@ use xrf_editable_object::EditableMesh;
 use xrf_error::XrfResult;
 use xrf_ogf::OgfVertexLink;
 
-use crate::object::decompile::geometry::bone_influences::BoneInfluences;
-use crate::object::decompile::geometry::ogf_corner::OgfCorner;
 use crate::object::decompile::geometry::repeated_faces::RepeatedFaces;
 use crate::object::decompile::geometry::smoothing_inference::SmoothingInference;
+use crate::object::decompile::geometry::source::bone_influences::BoneInfluences;
+use crate::object::decompile::geometry::source::ogf_corner::OgfCorner;
 use crate::object::decompile::geometry::two_sided_pairs::TwoSidedPairs;
 use crate::object::decompile::geometry::welded_face::WeldedFace;
 use crate::object::decompile::geometry::welded_mesh::WeldedMesh;

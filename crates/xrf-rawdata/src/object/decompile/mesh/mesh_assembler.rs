@@ -3,7 +3,7 @@ use xrf_editable_object::{EditableFace, EditableFaceCorner, EditableMesh, Editab
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Aabb;
 
-use crate::object::decompile::geometry::ogf_surface::OgfSurface;
+use crate::object::decompile::geometry::source::ogf_surface::OgfSurface;
 use crate::object::decompile::geometry::welded_mesh::WeldedMesh;
 use crate::object::decompile::mesh::assembled_mesh::AssembledMesh;
 use crate::object::decompile::mesh::mesh_kind::MeshKind;

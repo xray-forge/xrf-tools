@@ -7,10 +7,11 @@ use xrf_math::{Cylinder, Obb, Sphere, Vector2d, Vector3d};
 use xrf_ogf::OgfVertexLink;
 use xrf_skeleton::{SkeletonBoneShape, SkeletonBoneShapeKind, SkeletonJointKind, SkeletonJointLimit};
 
-use crate::object::decompile::geometry::bone_influences::BoneInfluences;
-use crate::object::decompile::geometry::ogf_corner::OgfCorner;
-use crate::object::decompile::geometry::ogf_surface::OgfSurface;
 use crate::object::decompile::geometry::smoothing_inference::SmoothingInference;
+use crate::object::decompile::geometry::source::bone_influences::BoneInfluences;
+use crate::object::decompile::geometry::source::normal_precision::NormalPrecision;
+use crate::object::decompile::geometry::source::ogf_corner::OgfCorner;
+use crate::object::decompile::geometry::source::ogf_surface::OgfSurface;
 use crate::object::decompile::geometry::two_sided_pairs::TwoSidedPairs;
 use crate::object::decompile::geometry::welded_mesh::WeldedMesh;
 use crate::object::decompile::mesh::assembled_mesh::AssembledMesh;
@@ -152,6 +153,7 @@ pub(crate) fn corner(position: [f32; 3], normal: [f32; 3]) -> OgfCorner {
   OgfCorner {
     position: Vector3d::from(position),
     normal: Vector3d::from(normal),
+    normal_precision: NormalPrecision::Float,
     texture_coordinate: Vector2d::ZERO,
     influences: BoneInfluences::of_bone(0),
   }

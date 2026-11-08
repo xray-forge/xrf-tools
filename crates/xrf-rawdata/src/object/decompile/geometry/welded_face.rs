@@ -1,4 +1,4 @@
-use crate::object::decompile::geometry::ogf_corner::OgfCorner;
+use crate::object::decompile::geometry::source::ogf_corner::OgfCorner;
 
 /// One triangle with its corners welded into the mesh's points: which points, the corners as the OGF stored them, the
 /// surface it was exported in, and whether it stands for a two-sided face.

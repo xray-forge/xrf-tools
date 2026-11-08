@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::object::decompile::geometry::ogf_corner::OgfCorner;
+use crate::object::decompile::geometry::source::ogf_corner::OgfCorner;
 use crate::object::decompile::geometry::welded_face::WeldedFace;
 
 /// Drops the faces an export wrote again: a face of the same surface on the same points, wound the same way, with the

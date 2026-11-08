@@ -39,6 +39,24 @@ where its description's convertor names Blender), which `ObjectCompileOptions::f
 
 An OGF of any other model type (trees, LODs, particles) is refused.
 
+## Decompiling a level's visuals
+
+`ObjectDecompiler::decompile_level_geometry` turns visuals of a compiled level into one static object through the same
+weld, repeat dropping, two-sided folding and smoothing inference. Each `LevelVisualGeometry` is a visual's texture and
+shader, the vertices `xrf-level` decodes from `level.geom` and its full-detail indices (`LevelVisualGeometry::read`,
+below), in the space they are stored in, a tree's own until its placement is applied. Visuals of one texture and
+shader become one surface, and corners welded by position across visuals, so faces that met in the source meet again.
+
+A level stores a normal a byte a component, `(n + 1) * 127.5` truncated, so a two-sided face's mirror comes back one
+step (1/127.5) off the exact negation, and the decompile compares level normals within one step, where it compares an
+OGF's float normals within `1e-3`. Over vanilla CoP's 22 levels at full detail, 11,692,886 mirrored corners stand one
+step off and 36 at none; corners sharing a position agree exactly or differ by over 20 steps but for 5,372 one step
+apart.
+
+`LevelVisualGeometry::read` resolves a visual for the decompile: its texture and shader from its own texture chunk or
+its shader table row, its vertices, and its full-detail indices through `xrf-level`'s `read_full_detail_indices`, which
+takes a static progressive visual's own first window and a progressive tree's from the table of `level.geom` it names.
+
 ## Compiling an editable object into an OGF
 
 `ObjectCompiler::compile` writes an object's OGF and reports what the export made of it (`ObjectCompile`). As the

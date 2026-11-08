@@ -10,7 +10,7 @@ use crate::object::compile::object_compiler::ObjectCompiler;
 use crate::object::compile::skeleton::breakable_parts::BreakableParts;
 use crate::object::compile::skeleton::skeleton_geometry::SkeletonGeometry;
 use crate::object::compile::skeleton::skeleton_split::SkeletonSplit;
-use crate::object::decompile::geometry::ogf_corner::OgfCorner;
+use crate::object::decompile::geometry::source::ogf_corner::OgfCorner;
 use crate::object::decompile::tests::fixtures::{
   BONES, DOWN, UP, assemble, bone, chain, corner, object, surface, with_links,
 };

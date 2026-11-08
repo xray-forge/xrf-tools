@@ -1,31 +1,28 @@
 use xrf_math::{Vector2d, Vector3d};
 
-use crate::object::decompile::geometry::bone_influences::BoneInfluences;
+use crate::object::decompile::geometry::source::bone_influences::BoneInfluences;
+use crate::object::decompile::geometry::source::normal_precision::NormalPrecision;
 
-/// One corner of an exported triangle as the OGF stores it: where it stands, the normal the export gave it, its
-/// texture coordinate and the bones it follows.
+/// One corner of a compiled triangle as an OGF or a level stores it: where it stands, the normal the export gave it and
+/// how precisely that is stored, its texture coordinate and the bones it follows.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct OgfCorner {
   pub(crate) position: Vector3d,
   pub(crate) normal: Vector3d,
+  pub(crate) normal_precision: NormalPrecision,
   pub(crate) texture_coordinate: Vector2d,
   pub(crate) influences: BoneInfluences,
 }
 
 impl OgfCorner {
-  /// How far two exported normals may differ, component by component, and still be one smoothed normal: the export
-  /// sums a fan's face normals once per corner, starting from a different face each time, so equal normals can differ
-  /// in their last bits. A hard edge differs by far more.
-  pub(crate) const NORMAL_TOLERANCE: f32 = 1e-3;
-
   /// Whether the two corners carry one smoothed normal.
   pub(crate) fn has_normal_of(&self, other: &Self) -> bool {
-    Self::is_near(&self.normal, &other.normal)
+    self.is_near(&self.normal, &other.normal, other)
   }
 
   /// Whether this corner's normal is the other's turned around, as a two-sided copy's are.
   pub(crate) fn has_normal_opposite(&self, other: &Self) -> bool {
-    Self::is_near(&self.normal, &-&other.normal)
+    self.is_near(&self.normal, &-&other.normal, other)
   }
 
   /// The position's bits and the bones followed, which narrow a welded point to those standing there: the export copied
@@ -46,9 +43,12 @@ impl OgfCorner {
     ]
   }
 
-  fn is_near(first: &Vector3d, second: &Vector3d) -> bool {
-    (first.x - second.x).abs() <= Self::NORMAL_TOLERANCE
-      && (first.y - second.y).abs() <= Self::NORMAL_TOLERANCE
-      && (first.z - second.z).abs() <= Self::NORMAL_TOLERANCE
+  /// Whether `first` and `second` are one normal within the coarser precision of this corner and `other`.
+  fn is_near(&self, first: &Vector3d, second: &Vector3d, other: &Self) -> bool {
+    let tolerance: f32 = self.normal_precision.get_tolerance_with(other.normal_precision);
+
+    (first.x - second.x).abs() <= tolerance
+      && (first.y - second.y).abs() <= tolerance
+      && (first.z - second.z).abs() <= tolerance
   }
 }
