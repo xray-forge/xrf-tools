@@ -38,6 +38,7 @@ use crate::feature::scene::grass::trace::grass_trace_source::GrassTraceSource;
 use crate::feature::scene::grass::trace::trace_grass_uniform::TraceGrassUniform;
 use crate::feature::scene::grass::trace::traced_grass::TracedGrass;
 use crate::feature::view::view_feature::ViewFeature;
+use crate::feature::view::view_restart::ViewRestart;
 use crate::feature::weather::wet::puddles::grass_puddles_uniform::GrassPuddlesUniform;
 use crate::frame::readback::stats_readback::StatsReadback;
 use crate::frame::targets::view_target_handles::ViewTargetHandles;
@@ -103,11 +104,6 @@ impl GrassView {
       stats: StatsReadback::new(device),
       card_demand: StatsReadback::new(device),
     }
-  }
-
-  /// Starts the engine's sway again from nothing, as at a view's first frame.
-  pub fn restart_wind(&mut self) {
-    self.wind = GrassWind::default();
   }
 
   /// Fits the planting to the settings and the camera, building the ring and lists again where the settings outgrow
@@ -722,5 +718,13 @@ impl ViewFeature for GrassView {
     self.puddles = None;
     self.planted = None;
     self.cards = None;
+  }
+
+  /// Its motion restarted, the engine's sway starts again from nothing, as at a view's first frame; a cut leaves it,
+  /// which follows the time and not the camera.
+  fn restart(&mut self, restart: ViewRestart) {
+    if restart == ViewRestart::Motion {
+      self.wind = GrassWind::default();
+    }
   }
 }

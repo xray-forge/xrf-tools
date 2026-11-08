@@ -21,6 +21,7 @@ use crate::feature::effects::weather_model_buffers::WeatherModelBuffers;
 use crate::feature::image::image_chain::ImageChain;
 use crate::feature::view::overhead_windows::OverheadWindows;
 use crate::feature::view::view_feature::ViewFeature;
+use crate::feature::view::view_restart::ViewRestart;
 use crate::host::weather::render_level_weather::RenderLevelWeather;
 use crate::host::weather::render_rain::RenderRain;
 use crate::lighting::weather::render_rainfall::RenderRainfall;
@@ -142,13 +143,6 @@ impl FallingRainFeature {
     });
 
     Some(uniform)
-  }
-
-  /// Starts its clock, its drops' square and its eased pace and lean again from nothing, as at a view's first frame.
-  pub fn restart(&mut self) {
-    self.clock = 0.0;
-    self.aim = None;
-    self.eased = None;
   }
 
   /// The rain's clock in seconds, as it last fell: what the wet surfaces' splashes, flow and ripples run by while it
@@ -399,5 +393,15 @@ impl ViewFeature for FallingRainFeature {
 
   fn release(&mut self) {
     *self = Self::default();
+  }
+
+  /// Its motion restarted, its clock, its drops' square and its eased pace and lean start again from nothing, as at a
+  /// view's first frame; a cut leaves them, the drops falling on around the camera wherever it stands.
+  fn restart(&mut self, restart: ViewRestart) {
+    if restart == ViewRestart::Motion {
+      self.clock = 0.0;
+      self.aim = None;
+      self.eased = None;
+    }
   }
 }

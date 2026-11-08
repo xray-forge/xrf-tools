@@ -16,6 +16,7 @@ use crate::feature::image::resolve::upscale::upscale_stage::UpscaleStage;
 use crate::feature::image::resolve::upscale::upscale_uniform::UpscaleUniform;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::view::view_frame_end::ViewFrameEnd;
+use crate::feature::view::view_restart::ViewRestart;
 use crate::frame::targets::frame_texture::FrameTexture;
 use crate::pass::view::view_motion::ViewMotion;
 
@@ -206,17 +207,9 @@ impl ResolveFeature {
     is_cut
   }
 
-  /// Starts again from nothing at the next frame: no history, made anew; the jitter's sequence from its first place;
-  /// no last frame's cameras; and the noise from its first turn. Its frames from then on follow from those alone.
-  pub fn restart(&mut self) {
-    self.resolve = None;
-    self.jitter = TemporalJitter::default();
-    self.motion_previous = None;
-    self.view_projection_previous = None;
-    self.prepared_at = None;
-    self.noise_frame = 0;
-    self.last_camera = None;
-    self.is_camera_cut = false;
+  /// Whether this frame's camera cut away from the last one's, as `next_motion` found it, until the prepare takes it.
+  pub fn is_camera_cut(&self) -> bool {
+    self.is_camera_cut
   }
 
   /// Draws the next frames as a reference's `sample` of `samples`, unresolved; none resolves them again.
@@ -318,6 +311,22 @@ impl ViewFeature for ResolveFeature {
   fn end_frame(&mut self, _end: &mut ViewFrameEnd<'_>) {
     if let Some(resolve) = &mut self.resolve {
       resolve.swap();
+    }
+  }
+
+  /// Its motion restarted, it starts again from nothing at the next frame: no history, made anew; the jitter's
+  /// sequence from its first place; no last frame's cameras; and the noise from its first turn. Its frames from then on
+  /// follow from those alone. A cut it found itself (`is_cut`), and its prepare resets the history for it.
+  fn restart(&mut self, restart: ViewRestart) {
+    if restart == ViewRestart::Motion {
+      self.resolve = None;
+      self.jitter = TemporalJitter::default();
+      self.motion_previous = None;
+      self.view_projection_previous = None;
+      self.prepared_at = None;
+      self.noise_frame = 0;
+      self.last_camera = None;
+      self.is_camera_cut = false;
     }
   }
 }
