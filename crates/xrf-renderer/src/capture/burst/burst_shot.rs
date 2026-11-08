@@ -11,7 +11,7 @@ use crate::frame::readback::gpu_readback::GpuReadback;
 pub struct BurstShot {
   /// Its place among the frames read back, its sample where a reference draws it, and the scene's seconds it is drawn
   /// at.
-  frame: (u32, Option<u32>, f32),
+  frame: (u32, Option<u32>, f64),
   picture: FrameCapture,
   material: GpuReadback,
   /// The material target's texels across and down, and the bytes a row of its copy takes.
@@ -32,7 +32,7 @@ impl BurstShot {
     size: (u32, u32),
     drawn: u64,
     material_size: (u32, u32),
-    frame: (u32, Option<u32>, f32),
+    frame: (u32, Option<u32>, f64),
   ) -> XrfResult<Self> {
     // The material target is four bytes a texel, as the frame is.
     let material_row: u32 = (material_size.0 * 4).next_multiple_of(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);

@@ -45,7 +45,7 @@ fn refuses_a_burst_drawn_past_the_latest_time() {
     RenderBurst { at: 1e20, ..BURST },
     RenderBurst { step: 1e17, ..BURST },
     RenderBurst {
-      at: f32::MAX,
+      at: f64::MAX,
       step: f32::MAX,
       ..BURST
     },
@@ -53,12 +53,10 @@ fn refuses_a_burst_drawn_past_the_latest_time() {
     assert!(BurstJob::new(burst, channel().0).is_err(), "{burst:?}");
   }
 
-  let latest: f32 = BurstJob::LATEST_SECONDS as f32;
-
   assert!(
     BurstJob::new(
       RenderBurst {
-        at: latest - 10.0,
+        at: BurstJob::LATEST_SECONDS - 10.0,
         step: 1.0,
         ..BURST
       },
@@ -86,6 +84,21 @@ fn draws_its_lead_in_then_its_frames_a_step_apart() {
 
   assert_eq!(job.get_kept_frame(), Some((0, None, 600.5)));
   assert_eq!(job.get_reference(), None);
+}
+
+// Hours into a level, a burst still starts at the millisecond asked and reports its frames' times as finely.
+#[test]
+fn keeps_its_time_to_the_millisecond_hours_into_a_level() {
+  let (job, _events) = start(RenderBurst {
+    at: 40_000.001,
+    lead_in: 0,
+    ..BURST
+  });
+  let Some((_, _, time)) = job.get_kept_frame() else {
+    panic!("its first frame is read back");
+  };
+
+  assert!((time - 40_000.001).abs() < 1e-6, "{time}");
 }
 
 // A frame read back but never copied out ends it: the frames after would no longer follow one another.

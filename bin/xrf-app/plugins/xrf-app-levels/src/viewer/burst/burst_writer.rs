@@ -13,7 +13,7 @@ use crate::viewer::burst::{BurstFiles, BurstOutcome, BurstSound, BurstVideo};
 /// how many samples of its marks held each of `BurstWriter::MARKS`, at theirs.
 struct BurstSum {
   index: u32,
-  time: f32,
+  time: f64,
   size: BurstSize,
   colour: Vec<u32>,
   marks_size: BurstSize,
@@ -144,7 +144,7 @@ impl BurstWriter {
 
   /// Takes sample `sample` of frame `index`, drawn at the scene's `time` in seconds: a frame drawn once is written as it
   /// came, a reference's added to its sum, the first starting it, and written once its last is in.
-  fn take(&mut self, index: u32, sample: u32, time: f32, picture: RenderCapture, marks: &BurstMarks) -> TauriResult {
+  fn take(&mut self, index: u32, sample: u32, time: f64, picture: RenderCapture, marks: &BurstMarks) -> TauriResult {
     let due: BurstSample = self.sum.as_ref().map_or_else(
       || BurstSample {
         index: self.outcome.times.len() as u32,
@@ -235,7 +235,7 @@ impl BurstWriter {
   }
 
   /// Writes frame `index`'s picture and its marks' shares, hands the picture to the video, and notes it in the outcome.
-  fn write(&mut self, index: u32, time: f32, picture: RgbaImage, shares: RgbaImage) -> TauriResult {
+  fn write(&mut self, index: u32, time: f64, picture: RgbaImage, shares: RgbaImage) -> TauriResult {
     if let Some(video) = &mut self.video {
       video.write_frame(index, &picture)?;
     }
