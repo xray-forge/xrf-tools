@@ -86,6 +86,16 @@ impl LensFlareFade {
     self.blend = self.blend.clamp(0.0, 1.0);
   }
 
+  /// Settles at its next step on the lens flare named then, shown whole, as if it had stood since long before, and
+  /// steps from that frame on: what it shows from then on follows from the frames since alone, without a fade from
+  /// whatever stood before.
+  pub fn settle(&mut self) {
+    self.current = None;
+    self.step = None;
+    self.blend = 1.0;
+    self.last = None;
+  }
+
   /// The lens flare drawn now, if any.
   pub fn get_shown(&self) -> Option<&str> {
     self.current.as_deref()

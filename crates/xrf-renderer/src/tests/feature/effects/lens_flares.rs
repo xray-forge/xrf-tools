@@ -91,6 +91,25 @@ fn completes_every_fade_at_once_while_the_clock_is_paused() {
   assert_eq!((fade.get_shown(), fade.get_blend()), (Some("day"), 1.0));
 }
 
+// A restarted view's fade settles on the lens flare named then, shown whole, wherever the fade stood before: two bursts
+// from one time show the same sun however the frames before them faded it.
+#[test]
+fn settles_on_the_lens_flare_named_next_shown_whole() {
+  let start: Instant = Instant::now();
+  let mut fade: LensFlareFade = LensFlareFade::new();
+
+  fade.advance(Some("day"), find, start, 10.0);
+  fade.advance(Some("day"), find, start + Duration::from_millis(500), 10.0);
+  fade.settle();
+  fade.advance(Some("moon"), find, start + Duration::from_secs(60), 10.0);
+
+  assert_eq!((fade.get_shown(), fade.get_blend()), (Some("moon"), 1.0));
+
+  fade.advance(Some("moon"), find, start + Duration::from_secs(61), 10.0);
+
+  assert_eq!((fade.get_shown(), fade.get_blend()), (Some("moon"), 1.0));
+}
+
 #[test]
 fn writes_the_flares_and_gradient_a_lens_flare_draws() {
   let flare: RenderLensFlare = new_flare(1.0, 1.0, FlareUniform::SLOTS + 4);
