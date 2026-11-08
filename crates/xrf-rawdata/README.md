@@ -26,7 +26,8 @@ game materials (the Actor Editor's `default`), the mesh name (`skin`), bone leng
 two-sided flag, and for an animated model its motions' curves between frames and, for a motion holding one key a bone
 more than it declares (`blender-xray`'s, for an action starting between frames), its length from its keys.
 `ObjectProvenance` is the sidecar written beside a decompiled file, so it is never taken for an authored one: the source
-path and SHA-256, the tool, the time, and every inference.
+path and SHA-256, the tool, the time, every inference, and the tangent method the source was made with (MikkTSpace
+where its description names `blender-xray`), which `ObjectCompileOptions::following` compiles it back with.
 
 An OGF that is not a skeleton, or a child with static vertices, is refused for now.
 
@@ -46,7 +47,9 @@ prepares them, so the engine draws what the editor's export would give it:
 - a split's link count is its widest vertex's, a corner of a face that follows one bone padded with a weightless copy;
 - tangents and binormals come from the export's tangent pass (NVIDIA's MeshMender as the SDK calls it), which splits a
   vertex where the faces around it map the texture in disagreeing directions, then the vertices are ordered by first
-  use and the texture coordinates moved by whole tiles towards the origin;
+  use and the texture coordinates moved by whole tiles towards the origin; `ObjectCompileOptions` can ask for
+  MikkTSpace instead (`TangentMethod`, `bevy_mikktspace`), the basis `blender-xray` exports and normal map bakers
+  assume, split and ordered the same way;
 - a split past 65,535 vertices is cut, its faces in order, into children 16-bit indices reach (`SplitPartition`),
   where the export would overflow them: high-poly models other tools exported spread a surface over several children.
 

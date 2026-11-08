@@ -1,4 +1,5 @@
 pub(crate) mod breakable_parts;
+pub(crate) mod mikktspace_basis;
 pub(crate) mod skeleton_geometry;
 pub(crate) mod skeleton_geometry_builder;
 pub(crate) mod skeleton_hierarchy;

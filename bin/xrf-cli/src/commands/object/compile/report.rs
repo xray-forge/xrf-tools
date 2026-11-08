@@ -1,4 +1,5 @@
 use serde::Serialize;
+use xrf_rawdata::TangentMethod;
 
 /// What `object compile` wrote, as its JSON report says it.
 #[derive(Debug, Serialize)]
@@ -13,4 +14,6 @@ pub(crate) struct ObjectCompileReport {
   pub(crate) dropped_faces: usize,
   pub(crate) bones: usize,
   pub(crate) bytes: usize,
+  /// The tangent method the vertices were given, `actorEditor` or `mikkTSpace`.
+  pub(crate) tangents: TangentMethod,
 }

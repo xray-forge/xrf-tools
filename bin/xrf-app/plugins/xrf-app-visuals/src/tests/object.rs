@@ -6,7 +6,7 @@ use xrf_app_core::assets::AssetSource;
 use xrf_chunk::ChunkLayout;
 use xrf_editable_object::{EditableFace, EditableMesh, EditableObjectFile, EditableSurface, EditableSurfaceFaces};
 use xrf_math::{Aabb, Vector3d};
-use xrf_rawdata::{ObjectInference, ObjectProvenance};
+use xrf_rawdata::{ObjectInference, ObjectProvenance, TangentMethod};
 
 use crate::{SelectedObject, SelectedObjectDescription, SelectedObjectSurface};
 
@@ -84,6 +84,7 @@ fn describes_what_only_the_object_holds() {
     "xrf-cli object decompile",
     "1.0.0",
     vec![ObjectInference::SurfaceCompilerShaders],
+    TangentMethod::ActorEditor,
   );
   let description: SelectedObjectDescription = SelectedObjectDescription::of(&object(), Some(&provenance));
 

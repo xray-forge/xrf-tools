@@ -353,20 +353,25 @@ impl TangentBasis {
         } else if binormal_length > 0.5 {
           vertex.tangent = vertex.binormal.cross(&normal);
         } else {
-          // The axis further from the normal starts the basis.
-          let start: Vector3d = if Vector3d::X.dot(&normal) < Vector3d::Y.dot(&normal) {
-            Vector3d::X
-          } else {
-            Vector3d::Y
-          };
-
-          vertex.tangent = normal.cross(&start);
-          vertex.binormal = normal.cross(&vertex.tangent);
+          (vertex.tangent, vertex.binormal) = Self::get_basis_from_normal(&normal);
         }
       } else if vertex.binormal.dot(&vertex.tangent) > 0.999 {
         vertex.binormal = normal.cross(&vertex.tangent);
       }
     }
+  }
+
+  /// A tangent and binormal built from `normal` alone, for a vertex whose texture mapping gives it none: the axis
+  /// further from the normal starts the basis.
+  pub(crate) fn get_basis_from_normal(normal: &Vector3d) -> (Vector3d, Vector3d) {
+    let start: Vector3d = if Vector3d::X.dot(normal) < Vector3d::Y.dot(normal) {
+      Vector3d::X
+    } else {
+      Vector3d::Y
+    };
+    let tangent: Vector3d = normal.cross(&start);
+
+    (tangent, normal.cross(&tangent))
   }
 
   /// `t_remove_isolated_verts`: the vertices the faces use, in the order the faces first reach them.
@@ -403,7 +408,7 @@ impl TangentBasis {
   /// `OptimizeTextureCoordinates`: moves every texture coordinate by the whole tiles nearest the middle of the split's
   /// span, so they lie near the origin. The span's upper end starts from the smallest positive float, as the export's
   /// does, not from the lowest.
-  fn shift_texture_coordinates(vertices: &mut [SkeletonVertex]) {
+  pub(crate) fn shift_texture_coordinates(vertices: &mut [SkeletonVertex]) {
     let mut low: Vector2d = Vector2d::new(f32::MAX, f32::MAX);
     let mut high: Vector2d = Vector2d::new(f32::MIN_POSITIVE, f32::MIN_POSITIVE);
 

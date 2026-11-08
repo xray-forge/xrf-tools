@@ -4,7 +4,7 @@ use xrf_chunk::XRayByteOrder;
 use xrf_editable_object::EditableObjectFile;
 use xrf_extension::XrayExtension;
 use xrf_ogf::OgfFile;
-use xrf_rawdata::{ObjectCompileSource, ObjectCompiler, ObjectProvenance};
+use xrf_rawdata::{ObjectCompileOptions, ObjectCompileSource, ObjectCompiler, ObjectProvenance};
 use xrf_vfs::XraySearch;
 
 use crate::model::object::selected_object_description::SelectedObjectDescription;
@@ -30,22 +30,24 @@ impl SelectedObject {
       .read(search)
       .and_then(EditableObjectFile::read_from_bytes::<XRayByteOrder>)
       .map_err(|error| format!("Failed to read object '{label}': {error}"))?;
-    let file: OgfFile = ObjectCompiler::compile(
-      &object,
-      &ObjectCompileSource {
-        source_file: String::from(label),
-        convertor: String::from("xrf-app visuals"),
-        built_at: 0,
-      },
-    )
-    .and_then(OgfFile::read_from_bytes::<XRayByteOrder>)
-    .map_err(|error| format!("Failed to compile object '{label}': {error}"))?;
     let provenance: Option<ObjectProvenance> = source.physical_path().and_then(|path| {
       ObjectProvenance::read_beside(path)
         .inspect_err(|error| log::warn!("Object '{label}' has a sidecar that does not read: {error}"))
         .ok()
         .flatten()
     });
+    // A decompiled object compiles back with the tangent method its source was made with, as the CLI's default does.
+    let file: OgfFile = ObjectCompiler::compile_with(
+      &object,
+      &ObjectCompileSource {
+        source_file: String::from(label),
+        convertor: String::from("xrf-app visuals"),
+        built_at: 0,
+      },
+      &ObjectCompileOptions::following(provenance.as_ref()),
+    )
+    .and_then(OgfFile::read_from_bytes::<XRayByteOrder>)
+    .map_err(|error| format!("Failed to compile object '{label}': {error}"))?;
 
     Ok((file, SelectedObjectDescription::of(&object, provenance.as_ref())))
   }

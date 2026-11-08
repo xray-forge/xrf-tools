@@ -4,7 +4,9 @@ use xrf_editable_object::{EditableBone, EditableMesh, EditableObjectFile, Editab
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::{Aabb, Vector3d};
 
+use crate::object::compile::object_compile_options::{ObjectCompileOptions, TangentMethod};
 use crate::object::compile::skeleton::breakable_parts::BreakableParts;
+use crate::object::compile::skeleton::mikktspace_basis::MikkTSpaceBasis;
 use crate::object::compile::skeleton::skeleton_geometry::SkeletonGeometry;
 use crate::object::compile::skeleton::skeleton_split::SkeletonSplit;
 use crate::object::compile::skeleton::skeleton_vertex::{SkeletonVertex, SkeletonVertexBone};
@@ -22,7 +24,8 @@ use crate::object::compile::skeleton::vertex_packer::VertexPacker;
 /// weightless, and any other corner lists its own bones, each sorted by bone. The face goes to the split of its
 /// surface's engine shader and texture and its bones' breakable part, made in the order first needed, and a two-sided
 /// surface's face goes again mirrored, its normals turned around. Each split then goes through the tangent pass
-/// ([`TangentBasis`]), and its triangles and vertices are ordered for the vertex cache ([`VertexCacheOrder`]).
+/// ([`TangentBasis`], or [`MikkTSpaceBasis`] where the options ask), and its triangles and vertices are ordered for the
+/// vertex cache ([`VertexCacheOrder`]).
 pub(crate) struct SkeletonGeometryBuilder {
   splits: Vec<(SkeletonSplit, VertexPacker)>,
   bounds: Aabb,
@@ -45,7 +48,7 @@ impl SkeletonGeometryBuilder {
   /// Returns an error where the export fails: no mesh, no bone or more than [`Self::MAX_BONES`], a surface the object
   /// does not have or with other than one texture coordinate set, a corner following no bone, a face spanning two
   /// breakable parts; and where a mesh does not hold together.
-  pub(crate) fn build(object: &EditableObjectFile) -> XrfResult<SkeletonGeometry> {
+  pub(crate) fn build(object: &EditableObjectFile, options: &ObjectCompileOptions) -> XrfResult<SkeletonGeometry> {
     let meshes: &[EditableMesh] = object.meshes.as_deref().unwrap_or_default();
     let bones: &[EditableBone] = object.bones.as_deref().unwrap_or_default();
     let surfaces: &[EditableSurface] = object.surfaces.as_deref().unwrap_or_default();
@@ -122,7 +125,7 @@ impl SkeletonGeometryBuilder {
       }
     }
 
-    builder.finish()
+    builder.finish(options.tangents)
   }
 
   /// The object's box, `CEditableObject::UpdateBox`: every mesh's stored bounds together.
@@ -256,10 +259,10 @@ impl SkeletonGeometryBuilder {
     })
   }
 
-  /// The splits that kept a face, each through the tangent pass (see [`TangentBasis`]), cut where it outgrows one
-  /// child (see [`SplitPartition`]), each child ordered for the vertex cache (see [`VertexCacheOrder`]) and with its
-  /// bones listed once.
-  fn finish(self) -> XrfResult<SkeletonGeometry> {
+  /// The splits that kept a face, each through the tangent pass `tangents` names (see [`TangentBasis`] and
+  /// [`MikkTSpaceBasis`]), cut where it outgrows one child (see [`SplitPartition`]), each child ordered for the vertex
+  /// cache (see [`VertexCacheOrder`]) and with its bones listed once.
+  fn finish(self, tangents: TangentMethod) -> XrfResult<SkeletonGeometry> {
     let mut dropped_faces: usize = 0;
     let mut splits: Vec<SkeletonSplit> = Vec::with_capacity(self.splits.len());
 
@@ -270,7 +273,10 @@ impl SkeletonGeometryBuilder {
         continue;
       }
 
-      let (vertices, faces) = TangentBasis::mend(packer.vertices, &packer.faces)?;
+      let (vertices, faces) = match tangents {
+        TangentMethod::ActorEditor => TangentBasis::mend(packer.vertices, &packer.faces)?,
+        TangentMethod::MikkTSpace => MikkTSpaceBasis::generate(packer.vertices, &packer.faces)?,
+      };
       let children: Vec<(Vec<SkeletonVertex>, Vec<[u16; 3]>)> = SplitPartition::cut(vertices, &faces);
       let is_cut: bool = children.len() > 1;
 

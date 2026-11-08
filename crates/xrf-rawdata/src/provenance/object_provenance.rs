@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use xrf_error::{XrfError, XrfResult};
 
+use crate::object::compile::object_compile_options::TangentMethod;
 use crate::object::decompile::object_inference::ObjectInference;
 
 /// The sidecar written beside a decompiled `.object`, so it is never taken for an authored one: where it came from,
@@ -22,19 +23,26 @@ pub struct ObjectProvenance {
   /// Seconds since the Unix epoch.
   pub decompiled_at: u64,
   pub inferred: Vec<ObjectInference>,
+  /// The tangent method the source's basis was made with, which a compile of the object follows unless told otherwise
+  /// (see [`ObjectCompileOptions::following`](crate::ObjectCompileOptions::following)). Sidecars written before it was
+  /// recorded read as the Actor Editor's.
+  #[serde(default)]
+  pub tangents: TangentMethod,
 }
 
 impl ObjectProvenance {
   /// What the sidecar's name adds to its object's, `<name>.object.xrf.json`.
   pub const SIDECAR_SUFFIX: &'static str = ".xrf.json";
 
-  /// The provenance of an object decompiled now from `source_bytes`, read from `source`.
+  /// The provenance of an object decompiled now from `source_bytes`, read from `source`, with what the decompile
+  /// inferred and the tangent method it found the source made with.
   pub fn new(
     source: impl Into<String>,
     source_bytes: &[u8],
     tool: impl Into<String>,
     tool_version: impl Into<String>,
     inferred: Vec<ObjectInference>,
+    tangents: TangentMethod,
   ) -> Self {
     Self {
       source: source.into(),
@@ -48,6 +56,7 @@ impl ObjectProvenance {
         .duration_since(UNIX_EPOCH)
         .map_or(0, |elapsed| elapsed.as_secs()),
       inferred,
+      tangents,
     }
   }
 
