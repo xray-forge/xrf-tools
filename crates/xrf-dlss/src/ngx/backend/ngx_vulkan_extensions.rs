@@ -104,7 +104,7 @@ impl NgxVulkanExtensions {
       let mut count: u32 = 0;
 
       NgxResult::check(
-        NVSDK_NGX_VULKAN_GetFeatureInstanceExtensionRequirements(info, &mut count, &mut extensions),
+        NVSDK_NGX_VULKAN_GetFeatureInstanceExtensionRequirements(info, &raw mut count, &raw mut extensions),
         "NGX names no instance extensions",
       )?;
 
@@ -132,8 +132,8 @@ impl NgxVulkanExtensions {
           instance,
           physical_device,
           info,
-          &mut count,
-          &mut extensions,
+          &raw mut count,
+          &raw mut extensions,
         ),
         "NGX names no device extensions",
       )?;

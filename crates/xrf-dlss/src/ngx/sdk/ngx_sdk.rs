@@ -77,9 +77,9 @@ impl NgxSdk {
       // the field it is handed.
       unsafe {
         match self.api {
-          NgxApi::Vulkan => NVSDK_NGX_VULKAN_GetCapabilityParameters(&mut self.parameters),
+          NgxApi::Vulkan => NVSDK_NGX_VULKAN_GetCapabilityParameters(&raw mut self.parameters),
           #[cfg(windows)]
-          NgxApi::D3d12 => NVSDK_NGX_D3D12_GetCapabilityParameters(&mut self.parameters),
+          NgxApi::D3d12 => NVSDK_NGX_D3D12_GetCapabilityParameters(&raw mut self.parameters),
         }
       },
       "NGX has no parameters",
@@ -92,7 +92,7 @@ impl NgxSdk {
         NVSDK_NGX_Parameter_GetI(
           self.parameters,
           NVSDK_NGX_Parameter_SuperSampling_Available.as_ptr().cast(),
-          &mut is_available,
+          &raw mut is_available,
         )
       },
       "NGX does not say whether it offers super resolution",
@@ -110,7 +110,7 @@ impl NgxSdk {
       NVSDK_NGX_Parameter_GetI(
         self.parameters,
         NVSDK_NGX_Parameter_SuperSamplingDenoising_Available.as_ptr().cast(),
-        &mut is_reconstructing,
+        &raw mut is_reconstructing,
       )
     };
 
@@ -197,7 +197,7 @@ impl NgxSdk {
         ] {
           // SAFETY: NGX's lock is held, and the feature info lives for the call.
           application.with_feature_info(feature, |info| unsafe {
-            NVSDK_NGX_UpdateFeature(&info.Identifier, info.FeatureID);
+            NVSDK_NGX_UpdateFeature(&raw const info.Identifier, info.FeatureID);
           });
         }
 
