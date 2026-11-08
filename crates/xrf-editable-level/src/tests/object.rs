@@ -1,12 +1,12 @@
 use std::f32::consts::FRAC_PI_2;
 
 use xrf_error::XrfResult;
-use xrf_math::{Matrix4x4, Vector2d, Vector3d};
+use xrf_math::{Affine3d, Matrix4x4, Vector2d, Vector3d};
 
-use crate::tests::fixtures::{GUID, particle_part_text, sound_source_part_text};
+use crate::tests::fixtures::{GUID, particle_part_text, sound_environment_part_text, sound_source_part_text};
 use crate::{
-  EditableLevelValue, EditableObjectPart, EditableObjectTransform, EditableParticleObject, EditableSoundSourceObject,
-  EditableTextPart, EditableToolObject,
+  EditableLevelValue, EditableObjectPart, EditableObjectTransform, EditableParticleObject, EditableShapeElement,
+  EditableSoundEnvironmentObject, EditableSoundSourceObject, EditableTextPart, EditableToolObject,
 };
 
 fn read_part<T: EditableToolObject>(text: &str) -> XrfResult<EditableObjectPart<T>> {
@@ -19,6 +19,81 @@ fn read_particles(text: &str) -> XrfResult<EditableObjectPart<EditableParticleOb
 
 fn read_sound_sources(text: &str) -> XrfResult<EditableObjectPart<EditableSoundSourceObject>> {
   read_part(text)
+}
+
+fn read_sound_environments(text: &str) -> XrfResult<EditableObjectPart<EditableSoundEnvironmentObject>> {
+  read_part(text)
+}
+
+#[test]
+fn reads_a_sound_environment_part_typed_and_writes_it_back_as_the_editor_saved_it() -> XrfResult {
+  let text: String = sound_environment_part_text(&GUID, &[])?;
+  let part: EditableObjectPart<EditableSoundEnvironmentObject> = read_sound_environments(&text)?;
+  let volume: &EditableSoundEnvironmentObject = &part.objects[0];
+
+  assert_eq!((volume.inner.as_str(), volume.outer.as_str()), ("cave", "default"));
+  assert_eq!(volume.shape.usage, 0);
+  assert_eq!(volume.shape.elements, [EditableShapeElement::Box(Affine3d::IDENTITY)]);
+  assert!(volume.is_exported());
+  // The unit box, placed by the object's own transform alone.
+  assert_eq!(volume.get_box(), Some(volume.object.transform.to_matrix()));
+  assert_eq!(String::from_utf8_lossy(&part.to_text_part()?.write_to_bytes()?), text);
+
+  Ok(())
+}
+
+#[test]
+fn reads_a_shapes_spheres_and_boxes_in_their_order() -> XrfResult {
+  let text: String = sound_environment_part_text(
+    &GUID,
+    &[
+      ("shapes_count", "2"),
+      ("shape_type_1", "0"),
+      ("shape_center_1", "1.000000, 2.000000, 3.000000"),
+      ("shape_radius_1", "0.500000"),
+    ],
+  )?;
+  let part: EditableObjectPart<EditableSoundEnvironmentObject> = read_sound_environments(&text)?;
+
+  assert_eq!(
+    part.objects[0].shape.elements[1],
+    EditableShapeElement::Sphere {
+      center: Vector3d::new(1.0, 2.0, 3.0),
+      radius: 0.5
+    }
+  );
+  assert_eq!(String::from_utf8_lossy(&part.to_text_part()?.write_to_bytes()?), text);
+
+  Ok(())
+}
+
+#[test]
+fn a_sound_environment_starting_with_a_sphere_has_no_box() -> XrfResult {
+  let part = read_sound_environments(&sound_environment_part_text(
+    &GUID,
+    &[
+      ("shape_type_0", "0"),
+      ("shape_center_0", "0.000000, 0.000000, 0.000000"),
+      ("shape_radius_0", "1.000000"),
+    ],
+  )?)?;
+
+  assert_eq!(part.objects[0].get_box(), None);
+
+  Ok(())
+}
+
+#[test]
+fn refuses_a_sound_environment_the_editor_does_not_load() -> XrfResult {
+  // The shape's own version left unwritten over, and an element neither a sphere nor a box.
+  for field in [("version", "2"), ("shape_type_0", "3")] {
+    assert!(
+      read_sound_environments(&sound_environment_part_text(&GUID, &[field])?).is_err(),
+      "{field:?} was read"
+    );
+  }
+
+  Ok(())
 }
 
 fn is_near(first: &Vector3d, second: &Vector3d) -> bool {

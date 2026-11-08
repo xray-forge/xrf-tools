@@ -16,6 +16,8 @@ pub use crate::level::editable_level_value::EditableLevelValue;
 pub use crate::object::editable_custom_object::EditableCustomObject;
 pub use crate::object::editable_object_transform::EditableObjectTransform;
 pub use crate::object::editable_particle_object::EditableParticleObject;
+pub use crate::object::editable_shape::{EditableShape, EditableShapeElement};
+pub use crate::object::editable_sound_environment_object::EditableSoundEnvironmentObject;
 pub use crate::object::editable_sound_source_object::EditableSoundSourceObject;
 pub use crate::object::editable_tool_object::EditableToolObject;
 pub use crate::part::editable_binary_part::EditableBinaryPart;

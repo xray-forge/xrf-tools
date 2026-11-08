@@ -96,6 +96,16 @@ does, and no file for a part of no sounds. Every tree's 91 `level.snd_static` fi
 byte from the part in memory, and all but one through its text: SGM 2.2's `l04u_labx18` holds positions off the `%f`
 grid, as a build from an unsaved editor session would, which the text rounds within a unit of its sixth decimal.
 
+`LevelSoundEnvironmentConversion` converts `level.snd_env` and `sound_env.part`. The CoP SDK writes no such file (its
+`MakeEnvGeometry` is commented out; IX-Ray's editor runs the same code), so `export` ports that code: environments in
+the order volumes first name them, inner first; each exported volume's 8 box corners, merged within `EPS` as
+`CDB::Collector::VPack` merges them, and 12 faces; bounds from every volume's `GetBox`, a volume skipped for equal or
+empty environments included. `decompile` refuses a mesh not laid out that way and gives each box a volume named
+`sound_env_NNNN`, as the editor's unit box placed by a saved transform whose corners are the same bits (the angles and
+scales tried a `%f` step either way), else standing at the origin with its own saved box matrix. Of the 20 shipped
+files, 15 come back byte for byte, GSC's `l12u_sarcofag` among them; five of GAMMA's hold boxes whose matrices no saved
+text gives, and come back within 6.1e-5 with the same environments and faces.
+
 ## Compiling an editable object into an OGF
 
 `ObjectCompiler::compile` writes an object's OGF and reports what the export made of it (`ObjectCompile`, its

@@ -100,8 +100,11 @@ by an `Aabb`; a spawn shape's sphere is a `Sphere`. A shape carries no space: `x
 `Aabb` and a `Sphere` in renderer space, and says so, as a field of engine space would.
 
 `Aabb::from_points` is the box holding a run of points, `None` for none, where the engine's inverted box would stand for
-nothing; one grown point by point starts at `of_point` and takes each next through `include_point` (`Fbox::modify`).
-`get_size`, `get_center` and `get_bounding_sphere` are `Fbox::getsize`, `getcenter` and `getsphere`.
+nothing; one grown point by point starts at `of_point` and takes each next through `include_point` (`Fbox::modify`,
+keeping a side on a tie as `std::min` and `std::max` do, so a zero of the other sign leaves its bits), or a whole box
+through `include_box` (`Fbox::merge`). `transform` is `Fbox::xform`, the box holding one placed by a matrix, summed in
+the engine's order. `get_size`, `get_center` and `get_bounding_sphere` are `Fbox::getsize`, `getcenter` and
+`getsphere`.
 
 ## Epsilons
 

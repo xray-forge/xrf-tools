@@ -107,14 +107,10 @@ impl LevelSoundSourceConversion {
   }
 
   /// The quotient rounded to six decimals can land under the millisecond the export truncates to (`0.511` exports as
-  /// 510), so its neighbours on the coarser of the `%f` step and the float's own are tried too.
+  /// 510), so its saved neighbours are tried too.
   fn get_saved_seconds(milliseconds: u32) -> Option<f32> {
-    let seconds: f32 = (f64::from(milliseconds) / 1000.0) as f32;
-    let step: f32 = (seconds.next_up() - seconds).max(1e-6);
-
-    [0.0, 1.0, -1.0, 2.0, -2.0]
+    EditableLevelValue::get_saved_neighbours((f64::from(milliseconds) / 1000.0) as f32)
       .into_iter()
-      .map(|steps: f32| EditableLevelValue::round_as_saved(seconds + steps * step))
       .find(|seconds| Self::get_milliseconds(*seconds) == milliseconds)
   }
 }
