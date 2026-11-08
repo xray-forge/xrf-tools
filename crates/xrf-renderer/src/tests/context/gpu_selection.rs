@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use xrf_test_utils::TestSkip;
+
 use crate::context::gpu_context::GpuContext;
 use crate::context::gpu_libraries::GpuLibraries;
 use crate::contract::settings::gpu::render_backend::RenderBackend;
@@ -22,7 +24,7 @@ fn draws_on_the_chosen_gpu_and_falls_back_to_the_automatic_one() {
     .map(GpuContext::probe)
     .find(|it| !it.gpus.is_empty())
   else {
-    eprintln!("Skipped: no hardware GPU");
+    TestSkip::report("no hardware GPU");
 
     return;
   };

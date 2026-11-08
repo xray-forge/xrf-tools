@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use crate::test_skip::TestSkip;
+
 /// Whether a GPU test may skip on a host without a device, or must fail there.
 pub struct GpuRequirement;
 
@@ -17,6 +19,6 @@ impl GpuRequirement {
       panic!("No GPU, though {} requires one: {reason}", Self::VARIABLE);
     }
 
-    eprintln!("Skipped: {reason}");
+    TestSkip::report(reason);
   }
 }

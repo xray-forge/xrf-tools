@@ -5,6 +5,8 @@ use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use xrf_test_utils::TestSkip;
+
 use crate::device::stream::output_thread::OutputThread;
 use crate::tests::fixtures::{RATE, engine, looped, once, sine};
 use crate::{
@@ -268,7 +270,7 @@ fn places_a_click_at_its_flash_on_a_device() {
   }
 
   if output.get_status().device_name.is_none() {
-    eprintln!("No audio device: {:?}", output.get_status().failure);
+    TestSkip::report(format_args!("no audio device: {:?}", output.get_status().failure));
     return;
   }
 

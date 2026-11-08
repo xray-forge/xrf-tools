@@ -2,6 +2,8 @@ use std::ffi::OsString;
 use std::io::Result as IoResult;
 use std::path::Path;
 
+use crate::test_skip::TestSkip;
+
 /// What the host's filesystem accepts, for tests that pin containment, non-text path and unreadable-tree rules: links it
 /// may refuse to create, a file name it holds but `Path::to_str` refuses, and a directory it can be told not to list.
 pub struct HostFilesystem;
@@ -68,10 +70,10 @@ impl HostFilesystem {
     Self::set_listing_denied(directory, true);
 
     if std::fs::read_dir(directory).is_ok() {
-      eprintln!(
-        "skipping: '{}' stays readable for the account running this",
+      TestSkip::report(format_args!(
+        "'{}' stays readable for the account running this",
         directory.display()
-      );
+      ));
 
       Self::allow_listing(directory);
 
@@ -142,10 +144,10 @@ impl HostFilesystem {
     match result {
       Ok(()) => true,
       Err(error) => {
-        eprintln!(
-          "skipping: this host cannot create the link '{}': {error}",
+        TestSkip::report(format_args!(
+          "this host cannot create the link '{}': {error}",
           link.display()
-        );
+        ));
 
         false
       }
