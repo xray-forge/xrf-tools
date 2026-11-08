@@ -16,7 +16,6 @@ lazy_static = "1.5.0"
 log = { workspace = true }
 phf = { version = "0.14.0", features = ["macros"] }
 serde = { workspace = true }
-serde_json = { workspace = true }
 specta = { workspace = true, optional = true }
 uuid = { workspace = true, features = ["v4", "serde"] }
 xrf-chunk = { workspace = true }
@@ -30,6 +29,7 @@ xrf-utils = { workspace = true }
 typescript-bindings = ["specta", "xrf-math/typescript-bindings"]
 
 [dev-dependencies]
+serde_json = { workspace = true }
 xrf-math = { workspace = true, features = ["fixtures"] }
 xrf-test-utils = { workspace = true }
 xrf-utils = { workspace = true, features = ["staging-faults"] }

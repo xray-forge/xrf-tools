@@ -12,7 +12,6 @@ serde = { workspace = true }
 specta = { workspace = true, optional = true }
 uuid = { workspace = true, features = ["v4"] }
 xrf-chunk = { workspace = true }
-xrf-math = { workspace = true }
 xrf-ogf = { workspace = true }
 xrf-dds = { workspace = true }
 xrf-engine-target = { workspace = true }
@@ -44,6 +43,7 @@ xrf-ppe = { workspace = true }
 criterion = { workspace = true }
 serde_json = { workspace = true }
 xrf-material = { workspace = true, features = ["fixtures"] }
+xrf-math = { workspace = true }
 xrf-test-utils = { workspace = true }
 
 # Measures the pattern rather than the private call site, which is what the decision needs: whether the linear scan is

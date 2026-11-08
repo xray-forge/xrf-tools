@@ -18,7 +18,6 @@ xrf-test-utils = { workspace = true, optional = true }
 xrf-vfs = { workspace = true }
 xrf-thm = { workspace = true }
 xrf-shaders = { workspace = true }
-xrf-particles = { workspace = true }
 
 [dev-dependencies]
 xrf-shaders = { workspace = true, features = ["fixtures"] }
