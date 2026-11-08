@@ -11,7 +11,6 @@ use crate::commands::object::ObjectGroup;
 use crate::commands::ogf::OgfGroup;
 use crate::commands::omf::OmfGroup;
 use crate::commands::particle::ParticleGroup;
-use crate::commands::profile::ProfileGroup;
 use crate::commands::spawn::SpawnGroup;
 use crate::commands::sprite::SpriteGroup;
 use crate::commands::thm::ThmGroup;
@@ -35,7 +34,6 @@ impl CommandGroup {
       OgfGroup::declare(),
       OmfGroup::declare(),
       ParticleGroup::declare(),
-      ProfileGroup::declare(),
       SpawnGroup::declare(),
       SpriteGroup::declare(),
       ThmGroup::declare(),

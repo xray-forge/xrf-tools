@@ -8254,7 +8254,6 @@ dependencies = [
  "rayon",
  "serde",
  "serde_json",
- "sysinfo",
  "walkdir",
  "xrf-archive",
  "xrf-build-info",
