@@ -86,70 +86,30 @@ impl FromStr for ParticleDomain {
       ));
     }
 
+    let invalid = |index: usize, what: &str| {
+      XrfError::new_parsing_error(format!(
+        "Failed to parse particle domain {what} value '{}'",
+        parts[index]
+      ))
+    };
+    let number =
+      |index: usize, what: &str| -> XrfResult<f32> { parts[index].parse::<f32>().map_err(|_| invalid(index, what)) };
+    let vector = |first: usize, what: &str| -> XrfResult<Vector3d> {
+      Ok(Vector3d {
+        x: number(first, &format!("{what} x"))?,
+        y: number(first + 1, &format!("{what} y"))?,
+        z: number(first + 2, &format!("{what} z"))?,
+      })
+    };
+
     Ok(Self {
-      domain_type: parts[0].parse::<u32>().or(Err(XrfError::new_parsing_error(
-        "Failed to parse vector domain_type value",
-      )))?,
-      coordinates: (
-        Vector3d {
-          x: parts[1].parse::<f32>().or(Err(XrfError::new_parsing_error(
-            "Failed to parse coordinates 0 vector x value",
-          )))?,
-          y: parts[2].parse::<f32>().or(Err(XrfError::new_parsing_error(
-            "Failed to parse coordinates 0 vector y value",
-          )))?,
-          z: parts[3].parse::<f32>().or(Err(XrfError::new_parsing_error(
-            "Failed to parse coordinates 0 vector z value",
-          )))?,
-        },
-        Vector3d {
-          x: parts[4].parse::<f32>().or(Err(XrfError::new_parsing_error(
-            "Failed to parse coordinates 1 vector x value",
-          )))?,
-          y: parts[5].parse::<f32>().or(Err(XrfError::new_parsing_error(
-            "Failed to parse coordinates 1 vector y value",
-          )))?,
-          z: parts[6].parse::<f32>().or(Err(XrfError::new_parsing_error(
-            "Failed to parse coordinates 1 vector z value",
-          )))?,
-        },
-      ),
-      basis: (
-        Vector3d {
-          x: parts[7].parse::<f32>().or(Err(XrfError::new_parsing_error(
-            "Failed to parse basis 0 vector x value",
-          )))?,
-          y: parts[8].parse::<f32>().or(Err(XrfError::new_parsing_error(
-            "Failed to parse basis 0 vector y value",
-          )))?,
-          z: parts[9].parse::<f32>().or(Err(XrfError::new_parsing_error(
-            "Failed to parse basis 0 vector z value",
-          )))?,
-        },
-        Vector3d {
-          x: parts[10].parse::<f32>().or(Err(XrfError::new_parsing_error(
-            "Failed to parse basis 1 vector x value",
-          )))?,
-          y: parts[11].parse::<f32>().or(Err(XrfError::new_parsing_error(
-            "Failed to parse basis 1 vector y value",
-          )))?,
-          z: parts[12].parse::<f32>().or(Err(XrfError::new_parsing_error(
-            "Failed to parse basis 1 vector z value",
-          )))?,
-        },
-      ),
-      radius1: parts[13]
-        .parse::<f32>()
-        .or(Err(XrfError::new_parsing_error("Failed to parse vector radius1 value")))?,
-      radius2: parts[14]
-        .parse::<f32>()
-        .or(Err(XrfError::new_parsing_error("Failed to parse vector radius2 value")))?,
-      radius1_sqr: parts[15].parse::<f32>().or(Err(XrfError::new_parsing_error(
-        "Failed to parse vector radius1_sqr value",
-      )))?,
-      radius2_sqr: parts[16].parse::<f32>().or(Err(XrfError::new_parsing_error(
-        "Failed to parse vector radius2_sqr value",
-      )))?,
+      domain_type: parts[0].parse::<u32>().map_err(|_| invalid(0, "domain_type"))?,
+      coordinates: (vector(1, "coordinates 0")?, vector(4, "coordinates 1")?),
+      basis: (vector(7, "basis 0")?, vector(10, "basis 1")?),
+      radius1: number(13, "radius1")?,
+      radius2: number(14, "radius2")?,
+      radius1_sqr: number(15, "radius1_sqr")?,
+      radius2_sqr: number(16, "radius2_sqr")?,
     })
   }
 }

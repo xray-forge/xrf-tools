@@ -230,9 +230,12 @@ impl LtxImportExport for ParticleAction {
       "Expected corrected meta type field for particle action import",
     )?;
 
-    let action_type: ParticleActionType =
-      ParticleActionType::from_str(section.read_field::<String>("action_type")?.as_str())
-        .map_err(|_| XrfError::new_parsing_error("Failed to parse particle action type from LTX field"))?;
+    let action_type_name: String = section.read_field::<String>("action_type")?;
+    let action_type: ParticleActionType = ParticleActionType::from_str(&action_type_name).map_err(|_| {
+      XrfError::new_parsing_error(format!(
+        "Particle action type '{action_type_name}' is not one the engine knows"
+      ))
+    })?;
 
     Ok(match action_type {
       ParticleActionType::Avoid => Self::Avoid(Box::new(ParticleActionAvoid::import(section_name, ltx)?)),
