@@ -81,7 +81,7 @@ impl SceneFeatures {
       helpers: HelpersFeature::default(),
       wind: WindFeature::default(),
       grass: GrassView::new(device),
-      particles: ParticlesView::new(device),
+      particles: ParticlesView::default(),
       bloom: BloomFeature::default(),
       exposure: ExposureFeature::new(device, queue),
       rain: FallingRainFeature::default(),

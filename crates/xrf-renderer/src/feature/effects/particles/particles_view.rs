@@ -25,6 +25,7 @@ const INITIAL_QUADS: u64 = 4096;
 /// A level's particles as one view draws them: the quads of the effects in its camera, far to near, filled by the
 /// scene's `LevelParticles::fill` each frame, the batches drawing their colour and the runs drawing their distortion
 /// where it reaches the screen.
+#[derive(Default)]
 pub struct ParticlesView {
   vertices: Vec<ParticleVertex>,
   /// The blending effects' quads, far to near, a batch each run of one equation.
@@ -37,24 +38,13 @@ pub struct ParticlesView {
   distortion_slots: Vec<u32>,
   /// How many effects it draws this frame.
   drawn: u32,
-  vertex_buffer: wgpu::Buffer,
+  /// The quads drawn, made with the first quads to draw; none until then, or once let go.
+  vertex_buffer: Option<wgpu::Buffer>,
 }
 
 impl ParticlesView {
-  pub fn new(device: &wgpu::Device) -> Self {
-    Self {
-      vertices: Vec::new(),
-      batches: Vec::new(),
-      distortion_runs: Vec::new(),
-      distortion_tiles: ScreenTiles::default(),
-      distortion_slots: Vec::new(),
-      drawn: 0,
-      vertex_buffer: Self::create_storage(
-        device,
-        INITIAL_QUADS * u64::from(ParticleVertex::CORNERS) * size_of::<ParticleVertex>() as u64,
-      ),
-    }
-  }
+  /// Bytes one quad takes in the vertex buffer.
+  const QUAD_BYTES: u64 = ParticleVertex::CORNERS as u64 * size_of::<ParticleVertex>() as u64;
 
   /// Forgets last frame's quads.
   pub fn clear(&mut self) {
@@ -130,17 +120,50 @@ impl ParticlesView {
     self.drawn
   }
 
-  /// Writes the quads filled this frame, growing the buffer past them.
+  /// Writes the quads filled this frame, growing the buffer past them up to the most one binding may hold; the nearest
+  /// quads past that are not drawn.
   pub fn upload(&mut self, device: &wgpu::Device, encoder: &mut FrameEncoder) {
+    let most_quads: u64 = device.limits().max_storage_buffer_binding_size / Self::QUAD_BYTES;
+
+    self.keep_quads(u32::try_from(most_quads).unwrap_or(u32::MAX));
+
+    if self.vertices.is_empty() {
+      return;
+    }
+
     let size: u64 = (self.vertices.len() * size_of::<ParticleVertex>()) as u64;
 
-    if size > self.vertex_buffer.size() {
-      self.vertex_buffer = Self::create_storage(device, size.next_power_of_two());
+    if self.vertex_buffer.as_ref().is_none_or(|buffer| size > buffer.size()) {
+      let capacity: u64 = size
+        .next_power_of_two()
+        .max(INITIAL_QUADS * Self::QUAD_BYTES)
+        .min(most_quads * Self::QUAD_BYTES);
+
+      self.vertex_buffer = Some(Self::create_storage(device, capacity));
     }
 
-    if !self.vertices.is_empty() {
-      encoder.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&self.vertices));
+    if let Some(buffer) = &self.vertex_buffer {
+      encoder.write_buffer(buffer, 0, bytemuck::cast_slice(&self.vertices));
     }
+  }
+
+  /// Keeps the first `most` quads, far to near, cutting the batches and the distortion runs at them.
+  fn keep_quads(&mut self, most: u32) {
+    if self.vertices.len() <= most as usize * ParticleVertex::CORNERS as usize {
+      return;
+    }
+
+    self.vertices.truncate(most as usize * ParticleVertex::CORNERS as usize);
+    self.batches.retain_mut(|batch| {
+      batch.count = batch.count.min(most.saturating_sub(batch.first));
+
+      batch.count > 0
+    });
+    self.distortion_runs.retain_mut(|run| {
+      run.end = run.end.min(most);
+
+      run.start < run.end
+    });
   }
 
   /// Draws the quads filled this frame over the scene, then the distorting ones into the distortion target, each
@@ -158,10 +181,13 @@ impl ParticlesView {
     }: ViewRecord<'a>,
     surfaces: &'a wgpu::Buffer,
   ) {
+    let Some(vertex_buffer) = &self.vertex_buffer else {
+      return;
+    };
     let pass: &'a ParticlePass = &passes.effects.particles;
     let lighting: UniformBinding<LightingUniform> = lit.lighting;
     let parameters: ParticleParameters = ParticleParameters {
-      vertices: StorageArray::new(bindings.import_buffer(&mut *graph, "particle vertices", &self.vertex_buffer)),
+      vertices: StorageArray::new(bindings.import_buffer(&mut *graph, "particle vertices", vertex_buffer)),
       surfaces: StorageArray::new(bindings.import_buffer(&mut *graph, "particle surfaces", surfaces)),
       lighting,
       depth_target: targets.depth,
@@ -220,10 +246,11 @@ impl ParticlesView {
 impl ViewFeature for ParticlesView {
   /// Its quads' buffer.
   fn get_memory(&self) -> u64 {
-    self.vertex_buffer.size()
+    self.vertex_buffer.as_ref().map_or(0, wgpu::Buffer::size)
   }
 
   fn release(&mut self) {
     self.clear();
+    self.vertex_buffer = None;
   }
 }
