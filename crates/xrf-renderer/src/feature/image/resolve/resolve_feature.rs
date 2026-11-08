@@ -17,7 +17,6 @@ use crate::feature::image::resolve::upscale::upscale_uniform::UpscaleUniform;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::view::view_frame_end::ViewFrameEnd;
 use crate::feature::view::view_restart::ViewRestart;
-use crate::frame::targets::frame_texture::FrameTexture;
 use crate::pass::view::view_motion::ViewMotion;
 
 mod resolve_feature_prepare;
@@ -49,12 +48,12 @@ pub struct ResolveFeature {
   is_light_physical: bool,
   /// The size the frame is resolved at, which a temporal resolve resolves into.
   resolved: (u32, u32),
-  /// The viewport's size while the frame shown is one apart from the frame as drawn (`is_rescaled`).
+  /// The viewport's size while the frame shown is one apart from the frame as drawn (`is_rescaled`): rescaled into a
+  /// frame graph texture of that size where `is_upscaled`, sharpened into another where `is_sharpened`, each made by the
+  /// frame that writes it and read within it alone.
   shown_size: Option<(u32, u32)>,
-  /// The frame rescaled to the viewport's size, kept only while a frame rescales it (`is_upscale_written`).
-  upscaled: Option<FrameTexture>,
-  /// The frame shown sharpened at the viewport's size, kept only while the frames are sharpened.
-  sharpened: Option<FrameTexture>,
+  /// Whether this frame may write the rescaled frame (`is_upscale_written`).
+  is_upscaled: bool,
   /// The stage rescaling what was resolved, or the frame, to the viewport's size where it is of another.
   rescale: Option<UpscaleStage>,
   /// Whether the frame shown is sharpened: drawn smaller than the viewport or resolved temporally, with a sharpness
@@ -101,8 +100,7 @@ impl Default for ResolveFeature {
       is_light_physical: false,
       resolved: (1, 1),
       shown_size: None,
-      upscaled: None,
-      sharpened: None,
+      is_upscaled: false,
       rescale: None,
       is_sharpened: false,
       upscale: UpscaleUniform::default(),
@@ -309,23 +307,15 @@ impl ResolveFeature {
 }
 
 impl ViewFeature for ResolveFeature {
-  /// The temporal resolve's histories and FSR's targets, and the frame at the viewport's size.
+  /// The temporal resolve's histories and FSR's targets.
   fn get_memory(&self) -> u64 {
-    let shown: u64 = self
-      .upscaled
-      .iter()
-      .chain(&self.sharpened)
-      .map(FrameTexture::get_memory)
-      .sum();
-
-    self.resolve.as_ref().map_or(0, Resolve::get_memory) + shown
+    self.resolve.as_ref().map_or(0, Resolve::get_memory)
   }
 
   fn release(&mut self) {
     self.resolve = None;
     self.shown_size = None;
-    self.upscaled = None;
-    self.sharpened = None;
+    self.is_upscaled = false;
   }
 
   /// The resolve's history this frame wrote becomes the one the next reads.
