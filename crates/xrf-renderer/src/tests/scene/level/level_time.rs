@@ -9,6 +9,10 @@ fn steps_a_views_frame_from_its_last() {
   assert_eq!(frame_at(600.0, Some(900.0)).get_step(), Some(-300.0));
   assert_eq!(frame_at(10.0, None).get_step(), None);
   assert_eq!(frame_at(10.0, None).get_previous(), at(10.0));
+  // A summed clock moves on only by a step forward.
+  assert_eq!(frame_at(10.5, Some(10.0)).get_advance(), 0.5);
+  assert_eq!(frame_at(600.0, Some(900.0)).get_advance(), 0.0);
+  assert_eq!(frame_at(10.0, None).get_advance(), 0.0);
 }
 
 /// A phase taken within its period is the time itself until the first repeat, then what is left of it.

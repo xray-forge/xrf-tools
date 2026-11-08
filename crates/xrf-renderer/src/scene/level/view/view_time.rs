@@ -19,6 +19,12 @@ impl ViewTime {
       .map(|previous| self.now.get_seconds() - previous.get_seconds())
   }
 
+  /// Seconds a sum stepped every frame moves on by: the step forward, none where the clock ran back or on a first
+  /// frame, so a summed clock never runs back and starts again where the view does.
+  pub fn get_advance(&self) -> f64 {
+    self.get_step().map_or(0.0, |step| step.max(0.0))
+  }
+
   /// The time the last frame was drawn at, this frame's on a first frame, where something stood still since.
   pub fn get_previous(&self) -> LevelTime {
     self.previous.unwrap_or(self.now)

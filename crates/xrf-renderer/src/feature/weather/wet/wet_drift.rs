@@ -23,7 +23,7 @@ impl WetDrift {
   /// Moves on by the seconds since the view's last frame, never back, the gusts blowing `gust` (`WetUniform::get_gust`)
   /// under a rain of `density`.
   pub fn advance(&mut self, time: ViewTime, gust: Vec2, density: f32) {
-    let step: f64 = time.get_step().map_or(0.0, |step| step.max(0.0));
+    let step: f64 = time.get_advance();
     let (pace, rain_pace, rain_share): (f64, f64, f64) = Self::WAVE_PACE;
 
     self.gusts[0] += step * f64::from(gust.x);
