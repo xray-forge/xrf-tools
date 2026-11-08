@@ -11,18 +11,22 @@ writing `packages/xrf-ipc/src/`; `cargo make generate-typescript` regenerates an
 ```rust,no_run
 use std::path::Path;
 
+use xrf_error::XrfResult;
 use xrf_ipc_typescript::{IpcBindingsGenerator, IpcCommandSurface, MirrorImports, SurfaceDrift, TypeModules};
 
 const IMPORTS: MirrorImports = MirrorImports::new("#");
 
-fn generate<R: tauri::Runtime>(output: &Path, surfaces: &[IpcCommandSurface<R>]) {
-  IpcBindingsGenerator::generate(output, surfaces, &TypeModules::default(), &IMPORTS);
+fn generate<R: tauri::Runtime>(output: &Path, surfaces: &[IpcCommandSurface<R>]) -> XrfResult {
+  IpcBindingsGenerator::generate(output, surfaces, &TypeModules::default(), &IMPORTS)
 }
 
-fn verify<R: tauri::Runtime>(committed: &Path, scratch: &Path, surfaces: &[IpcCommandSurface<R>]) {
-  let drift: SurfaceDrift = IpcBindingsGenerator::verify(committed, scratch, surfaces, &TypeModules::default(), &IMPORTS);
+fn verify<R: tauri::Runtime>(committed: &Path, scratch: &Path, surfaces: &[IpcCommandSurface<R>]) -> XrfResult {
+  let drift: SurfaceDrift =
+    IpcBindingsGenerator::verify(committed, scratch, surfaces, &TypeModules::default(), &IMPORTS)?;
 
   assert!(!drift.is_breaking(), "{}", drift.describe());
+
+  Ok(())
 }
 ```
 
@@ -36,11 +40,11 @@ An `IpcCommandSurface` is one plugin: its name (the wire namespace and the comma
 `tauri_specta::Builder`, and the raw commands and bulk routes that builder cannot hold, each declared by hand as a name
 and `(argument, TypeScript type)` pairs.
 
-`generate` deletes and rewrites `types/` and `commands/` under `output`. It panics rather than returning an error: when
-the output cannot be written, or when an invariant the mirror rests on breaks (a type owned by two modules, type
-modules importing each other, a referenced type declared outside the workspace, two surfaces or declarations of one
-name, a builder configured otherwise than its wrappers are rendered for). The app runs it as an ignored `#[test]`,
-because the test harness is what links the Specta builders in.
+`generate` deletes and rewrites `types/` and `commands/` under `output`. It returns an error when the output cannot be
+written, or when an invariant the mirror rests on breaks (a type owned by two modules, type modules importing each
+other, a referenced type declared outside the workspace, two surfaces or declarations of one name, a builder configured
+otherwise than its wrappers are rendered for); what it wrote before stopping is left as it is, for the next run to
+replace. The app runs it as an ignored `#[test]`, because the test harness is what links the Specta builders in.
 
 The order of its steps belongs to the generator, not the caller: commands are exported first, because that collects the
 types they reference and renders the commands' wrappers; the type modules are written next, because only then is it
@@ -140,7 +144,7 @@ silently.
 canonical form (parsed and re-emitted, so the frontend formatter's layout does not count), and compares them.
 `SurfaceDrift::is_breaking` is true when a declaration was removed or changed shape; an addition alone is listed in
 `describe` as context. That lets a consumer keep its mirror in version control and fail a test when the Rust sources
-move past it. `verify` panics on anything `generate` does, and when either tree does not parse as TypeScript.
+move past it. `verify` fails on anything `generate` does, and when either tree does not parse as TypeScript.
 
 Run `cargo test --locked -p xrf-ipc-typescript`.
 

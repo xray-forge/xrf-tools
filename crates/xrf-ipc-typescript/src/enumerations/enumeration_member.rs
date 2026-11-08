@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 use specta::datatype::{DataType, Deprecated, NamedDataType, Variant};
+use xrf_error::{XrfError, XrfResult};
 
 /// One member of a generated TypeScript enum.
 pub(crate) struct EnumerationMember {
@@ -18,40 +19,42 @@ pub(crate) struct EnumerationMember {
 impl EnumerationMember {
   /// The members of one enum, pairing each Rust variant with the spelling it serializes as.
   ///
-  /// # Panics
+  /// # Errors
   ///
-  /// Panics when `source` is no longer an enum, or no longer declares as many variants as `named` serializes — either
-  /// of which means the two views can no longer be paired at all.
-  pub fn pair(named: &NamedDataType, source: &NamedDataType, spellings: Vec<&str>) -> Vec<Self> {
+  /// When `source` is no longer an enum, or no longer declares as many variants as `named` serializes — either of
+  /// which means the two views can no longer be paired at all.
+  pub fn pair(named: &NamedDataType, source: &NamedDataType, spellings: Vec<&str>) -> XrfResult<Vec<Self>> {
     let Some(DataType::Enum(rust)) = source.ty.as_ref() else {
-      panic!(
+      return Err(XrfError::new_invalid_error(format!(
         "`{}` renders as a list of identities but was collected as another shape",
         named.name
-      )
+      )));
     };
     let variants: Vec<&(Cow<'static, str>, Variant)> =
       rust.variants.iter().filter(|(_, variant)| !variant.skip).collect();
 
-    assert_eq!(
-      variants.len(),
-      spellings.len(),
-      "`{}` declares {} variants in Rust and serializes {}; they can no longer be paired by position",
-      named.name,
-      variants.len(),
-      spellings.len()
-    );
+    if variants.len() != spellings.len() {
+      return Err(XrfError::new_invalid_error(format!(
+        "`{}` declares {} variants in Rust and serializes {}; they can no longer be paired by position",
+        named.name,
+        variants.len(),
+        spellings.len()
+      )));
+    }
 
-    variants
-      .into_iter()
-      .zip(spellings)
-      .map(|((variant, declared), spelling)| Self {
-        name: Self::member_name(variant),
-        variant: variant.to_string(),
-        value: spelling.to_string(),
-        docs: declared.docs.clone(),
-        deprecated: declared.deprecated.clone(),
-      })
-      .collect()
+    Ok(
+      variants
+        .into_iter()
+        .zip(spellings)
+        .map(|((variant, declared), spelling)| Self {
+          name: Self::member_name(variant),
+          variant: variant.to_string(),
+          value: spelling.to_string(),
+          docs: declared.docs.clone(),
+          deprecated: declared.deprecated.clone(),
+        })
+        .collect(),
+    )
   }
 
   /// The TypeScript member name a Rust variant is written as.
@@ -80,23 +83,31 @@ impl EnumerationMember {
   }
 
   /// Fails when two variants of one type fold to a single member name.
-  pub fn assert_distinct(name: &str, members: &[Self]) {
+  ///
+  /// # Errors
+  ///
+  /// When two of `members` share a name, naming both Rust variants.
+  pub fn assert_distinct(name: &str, members: &[Self]) -> XrfResult {
     let mut claimed: BTreeMap<&str, &str> = BTreeMap::new();
 
     for member in members {
       if let Some(previous) = claimed.insert(&member.name, &member.variant) {
-        panic!(
+        return Err(XrfError::new_invalid_error(format!(
           "`{name}` variants `{previous}` and `{}` both name the member `{}`. Rename one of the Rust variants.",
           member.variant, member.name
-        );
+        )));
       }
     }
+
+    Ok(())
   }
 }
 
 #[cfg(test)]
 mod tests {
   use std::borrow::Cow;
+
+  use xrf_error::XrfResult;
 
   use super::EnumerationMember;
 
@@ -155,16 +166,23 @@ mod tests {
   }
 
   #[test]
-  fn distinct_members_are_accepted() {
-    EnumerationMember::assert_distinct("XrayExtension", &[member("EnvMod", "env_mod"), member("Ogf", "ogf")]);
+  fn distinct_members_are_accepted() -> XrfResult {
+    EnumerationMember::assert_distinct("XrayExtension", &[member("EnvMod", "env_mod"), member("Ogf", "ogf")])
   }
 
   #[test]
-  #[should_panic(expected = "`XrayExtension` variants `EnvMod` and `Env_Mod` both name the member `ENV_MOD`.")]
   fn a_collision_names_the_rust_variants_rather_than_the_spellings_they_serialize_as() {
-    EnumerationMember::assert_distinct(
+    let error: String = EnumerationMember::assert_distinct(
       "XrayExtension",
       &[member("EnvMod", "env_mod"), member("Env_Mod", "envmod")],
+    )
+    .err()
+    .map(|error| error.to_string())
+    .unwrap_or_default();
+
+    assert!(
+      error.contains("`XrayExtension` variants `EnvMod` and `Env_Mod` both name the member `ENV_MOD`."),
+      "{error}"
     );
   }
 }

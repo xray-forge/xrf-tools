@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use xrf_error::{XrfError, XrfResult};
 use xrf_typescript::swc_common::SourceMap;
 use xrf_typescript::swc_common::sync::Lrc;
 use xrf_typescript::swc_ecma_ast::{Decl, ModuleDecl, ModuleItem, Pat, Program};
@@ -20,19 +21,19 @@ pub(crate) struct Surface {
 impl Surface {
   /// Reads every exported declaration of a bindings tree into its canonical form.
   ///
-  /// # Panics
+  /// # Errors
   ///
-  /// Panics when a directory cannot be read, or a module in it does not parse as TypeScript.
-  pub(crate) fn read(root: &Path) -> Self {
+  /// When a directory cannot be read, or a module in it does not parse as a TypeScript module.
+  pub(crate) fn read(root: &Path) -> XrfResult<Self> {
     let mut surface: Self = Self {
       declarations: BTreeMap::new(),
     };
 
     for directory in [GeneratedOutput::TYPES_DIRECTORY, GeneratedOutput::COMMANDS_DIRECTORY] {
-      surface.read_directory(&root.join(directory), directory);
+      surface.read_directory(&root.join(directory), directory)?;
     }
 
-    surface
+    Ok(surface)
   }
 
   /// How this surface differs from a freshly generated one.
@@ -65,35 +66,38 @@ impl Surface {
   }
 
   /// Reads one generated directory, keying every declaration by the module it is exported from.
-  fn read_directory(&mut self, path: &Path, directory: &str) {
-    let entries = fs::read_dir(path).unwrap_or_else(|error| panic!("Failed to read {}: {error}", format_path(path)));
+  fn read_directory(&mut self, path: &Path, directory: &str) -> XrfResult {
+    let entries = fs::read_dir(path).map_err(|error| GeneratedOutput::describe_io("read", path, &error))?;
 
     for entry in entries {
-      let entry = entry.unwrap_or_else(|error| panic!("Failed to read an entry of {}: {error}", format_path(path)));
+      let entry = entry.map_err(|error| GeneratedOutput::describe_io("read an entry of", path, &error))?;
       let file: PathBuf = entry.path();
 
       if !file.extension().is_some_and(|extension| extension == "ts") {
         continue;
       }
 
-      let name: String = file
-        .file_name()
-        .unwrap_or_else(|| panic!("Failed to name {}", format_path(&file)))
-        .to_string_lossy()
-        .into_owned();
-
       // Joined with `/` rather than the platform separator so a reported key reads the same on every host.
-      self.read_module(&file, &format!("{directory}/{name}"));
+      self.read_module(&file, &format!("{directory}/{}", entry.file_name().to_string_lossy()))?;
     }
+
+    Ok(())
   }
 
   /// Reads one module, canonicalizing each exported declaration.
-  fn read_module(&mut self, path: &Path, module: &str) {
-    let source: TypeScriptSource = TypeScriptSource::parse_file(path)
-      .unwrap_or_else(|error| panic!("Failed to parse bindings module {}: {error}", format_path(path)));
+  fn read_module(&mut self, path: &Path, module: &str) -> XrfResult {
+    let source: TypeScriptSource = TypeScriptSource::parse_file(path).map_err(|error| {
+      XrfError::new_parsing_error(format!(
+        "Failed to parse bindings module {}: {error}",
+        format_path(path)
+      ))
+    })?;
 
     let Program::Module(parsed) = &source.program else {
-      panic!("Bindings module {} did not parse as a module", format_path(path));
+      return Err(XrfError::new_parsing_error(format!(
+        "Bindings module {} did not parse as a module",
+        format_path(path)
+      )));
     };
 
     for item in &parsed.body {
@@ -101,7 +105,7 @@ impl Surface {
         continue;
       };
 
-      let declaration: String = Self::canonicalize(item, &source.source_map);
+      let declaration: String = Self::canonicalize(item, &source.source_map)?;
 
       for name in Self::list_names(&export.decl) {
         self
@@ -109,6 +113,8 @@ impl Surface {
           .insert(format!("{module}::{name}"), declaration.clone());
       }
     }
+
+    Ok(())
   }
 
   /// Names an export declaration introduces, which is what a frontend module imports it by.
@@ -136,13 +142,13 @@ impl Surface {
   ///
   /// Normalizing first is what makes the rendering answer only to shape: the frontend toolchain rewrites
   /// syntax as well as whitespace, so two spellings of one type reach here as different trees.
-  fn canonicalize(item: &ModuleItem, source_map: &Lrc<SourceMap>) -> String {
+  fn canonicalize(item: &ModuleItem, source_map: &Lrc<SourceMap>) -> XrfResult<String> {
     let mut normalized: ModuleItem = item.clone();
 
     normalize_module_item(&mut normalized);
 
     TypeScriptItemRenderer::render(&normalized, source_map)
-      .unwrap_or_else(|error| panic!("Failed to render a bindings declaration: {error}"))
+      .map_err(|error| XrfError::new_serialization_error(format!("Failed to render a bindings declaration: {error}")))
   }
 }
 
@@ -151,53 +157,67 @@ mod tests {
   use std::fs;
   use std::path::PathBuf;
 
+  use xrf_error::XrfResult;
   use xrf_test_utils::GeneratedResources;
 
   use crate::verify::{Surface, SurfaceDrift};
   use crate::write::GeneratedOutput;
 
   /// The surface of a bindings tree whose one type module holds `source`.
-  fn read(name: &str, source: &str) -> Surface {
+  fn read(name: &str, source: &str) -> XrfResult<Surface> {
     let root: PathBuf = GeneratedResources::path("bindings-surface").join(name);
 
     for directory in [GeneratedOutput::TYPES_DIRECTORY, GeneratedOutput::COMMANDS_DIRECTORY] {
-      fs::create_dir_all(root.join(directory)).expect("directory to be created");
+      fs::create_dir_all(root.join(directory))?;
     }
 
     fs::write(
       root.join(GeneratedOutput::TYPES_DIRECTORY).join("xrf-fixture.ts"),
       source,
-    )
-    .expect("module to be written");
+    )?;
 
     Surface::read(&root)
   }
 
   #[test]
-  fn reads_an_exported_constant_and_breaks_on_its_value() {
-    let committed: Surface = read("committed", "export const LIMIT: number = 4;\n");
-    let documented: Surface = read("documented", "/** The most. */\nexport const LIMIT: number = 4;\n");
-    let changed: SurfaceDrift = committed.compare_to(&read("changed", "export const LIMIT: number = 8;\n"));
+  fn reads_an_exported_constant_and_breaks_on_its_value() -> XrfResult {
+    let committed: Surface = read("committed", "export const LIMIT: number = 4;\n")?;
+    let documented: Surface = read("documented", "/** The most. */\nexport const LIMIT: number = 4;\n")?;
+    let changed: SurfaceDrift = committed.compare_to(&read("changed", "export const LIMIT: number = 8;\n")?);
 
     assert!(!committed.compare_to(&documented).is_breaking());
     assert_eq!(changed.changed, ["types/xrf-fixture.ts::LIMIT"]);
     assert!(changed.is_breaking());
+
+    Ok(())
   }
 
   // The generator writes an array constant's type as `Entry[]`, which the formatter rewrites as `Array<Entry>`.
   #[test]
-  fn reads_an_array_constant_alike_in_both_spellings_of_its_type() {
+  fn reads_an_array_constant_alike_in_both_spellings_of_its_type() -> XrfResult {
     let committed: Surface = read(
       "array-committed",
       "export const KINDS: Array<Entry> = [\n  {\n    kind: \"props\",\n  },\n];\n",
-    );
-    let fresh: Surface = read("array-fresh", "export const KINDS: Entry[] = [{ kind: \"props\" }];\n");
+    )?;
+    let fresh: Surface = read("array-fresh", "export const KINDS: Entry[] = [{ kind: \"props\" }];\n")?;
     let retyped: SurfaceDrift = committed.compare_to(&read(
       "array-retyped",
       "export const KINDS: Array<Other> = [{ kind: \"props\" }];\n",
-    ));
+    )?);
 
     assert!(!committed.compare_to(&fresh).is_breaking());
     assert_eq!(retyped.changed, ["types/xrf-fixture.ts::KINDS"]);
+
+    Ok(())
+  }
+
+  #[test]
+  fn refuses_a_module_that_does_not_parse_rather_than_panicking() {
+    let error: String = read("unparsed", "export const = ;\n")
+      .err()
+      .map(|error| error.to_string())
+      .unwrap_or_default();
+
+    assert!(error.contains("Failed to parse bindings module"), "{error}");
   }
 }

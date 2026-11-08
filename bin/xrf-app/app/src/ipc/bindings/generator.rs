@@ -9,6 +9,7 @@
 
 use std::path::PathBuf;
 
+use xrf_error::XrfResult;
 use xrf_ipc_typescript::{IpcBindingsGenerator, MirrorImports, SurfaceDrift, TypeModules};
 use xrf_test_utils::GeneratedResources;
 
@@ -31,25 +32,27 @@ fn type_modules() -> TypeModules {
 /// Rewrite the committed mirrors in place.
 #[test]
 #[ignore = "rewrites the committed mirrors; run through `cargo make generate-typescript-bindings`"]
-fn export_typescript_bindings() {
+fn export_typescript_bindings() -> XrfResult {
   IpcBindingsGenerator::generate(
     &bindings_output_path(),
     &command_surfaces::<tauri::Wry>(),
     &type_modules(),
     &MIRROR_IMPORTS,
-  );
+  )
 }
 
 /// Fail only where the committed mirrors no longer describe what the Rust sources produce.
 #[test]
-fn verify_typescript_bindings() {
+fn verify_typescript_bindings() -> XrfResult {
   let drift: SurfaceDrift = IpcBindingsGenerator::verify(
     &bindings_output_path(),
     &GeneratedResources::path("bindings"),
     &command_surfaces::<tauri::Wry>(),
     &type_modules(),
     &MIRROR_IMPORTS,
-  );
+  )?;
 
   assert!(!drift.is_breaking(), "{}", drift.describe());
+
+  Ok(())
 }

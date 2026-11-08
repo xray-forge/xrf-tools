@@ -1,5 +1,5 @@
 use std::path::Path;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, PoisonError};
 
 use specta_typescript::{Exporter, Typescript};
 use tauri_specta::{BuilderConfiguration, LanguageExt};
@@ -19,7 +19,7 @@ impl LanguageExt for CommandTypescript {
   /// type modules say what it imports.
   fn export(self, config: &BuilderConfiguration, _path: &Path) -> Result<(), Self::Error> {
     let commands = CommandWrappers::render(config)?;
-    let mut collected = self.collected.lock().expect("Collected commands lock is poisoned");
+    let mut collected = self.collected.lock().unwrap_or_else(PoisonError::into_inner);
 
     collected.types.extend(&config.types);
     collected

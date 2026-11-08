@@ -53,6 +53,7 @@ windows = { workspace = true, features = ["Win32_UI_WindowsAndMessaging"] }
 tauri = { workspace = true, features = ["test"] }
 xrf-app-core = { workspace = true, features = ["fixtures"] }
 xrf-audio = { workspace = true }
+xrf-error = { workspace = true }
 xrf-test-utils = { workspace = true }
 
 [features]

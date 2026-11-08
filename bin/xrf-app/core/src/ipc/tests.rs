@@ -102,6 +102,7 @@ mod bindings {
   use std::fs;
   use std::path::PathBuf;
 
+  use xrf_error::XrfResult;
   use xrf_ipc_typescript::{IpcBindingsGenerator, IpcCommandSurface, MirrorImports, TypeModules};
   use xrf_test_utils::GeneratedResources;
 
@@ -114,7 +115,7 @@ mod bindings {
   }
 
   #[test]
-  fn a_domain_with_raw_commands_is_generated_a_raw_module() {
+  fn a_domain_with_raw_commands_is_generated_a_raw_module() -> XrfResult {
     let output: PathBuf = GeneratedResources::path("registry-fixture-bindings");
 
     IpcBindingsGenerator::generate(
@@ -127,14 +128,12 @@ mod bindings {
       )],
       &TypeModules::default(),
       &MirrorImports::new("#"),
-    );
+    )?;
 
-    let read = |name: &str| -> String {
-      fs::read_to_string(output.join("commands").join(name)).unwrap_or_else(|error| panic!("{name}: {error}"))
-    };
-    let typed: String = read("fixture.ts");
-    let raw: String = read("fixture-raw.ts");
-    let bulk: String = read("fixture-bulk.ts");
+    let read = |name: &str| fs::read_to_string(output.join("commands").join(name));
+    let typed: String = read("fixture.ts")?;
+    let raw: String = read("fixture-raw.ts")?;
+    let bulk: String = read("fixture-bulk.ts")?;
 
     assert!(typed.contains("ping"), "{typed}");
     assert!(!typed.contains("read_bytes"), "{typed}");
@@ -149,5 +148,7 @@ mod bindings {
       bulk.contains("READ_ROUTE = \"fixture/read_route\",") && bulk.contains("route: EFixtureBulkRoute.READ_ROUTE"),
       "{bulk}"
     );
+
+    Ok(())
   }
 }

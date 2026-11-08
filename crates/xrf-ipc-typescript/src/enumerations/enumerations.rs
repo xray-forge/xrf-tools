@@ -3,6 +3,7 @@ use std::panic::Location;
 
 use specta::Types;
 use specta::datatype::NamedDataType;
+use xrf_error::{XrfError, XrfResult};
 
 use crate::enumerations::enumeration::Enumeration;
 use crate::enumerations::enumeration_member::EnumerationMember;
@@ -17,10 +18,11 @@ pub(crate) struct Enumerations {
 impl Enumerations {
   /// Resolves which collected types declare an enum, pairing the Rust variant names with the wire ones.
   ///
-  /// # Panics
+  /// # Errors
   ///
-  /// Panics when a mapped type has no Rust source, which means the two views can no longer be related at all.
-  pub(crate) fn resolve(collected: &Types, types: &Types) -> Self {
+  /// When a mapped type has no Rust source, which means the two views can no longer be related at all, or its members
+  /// cannot be paired or collide ([`EnumerationMember::pair`], [`EnumerationMember::assert_distinct`]).
+  pub(crate) fn resolve(collected: &Types, types: &Types) -> XrfResult<Self> {
     let sources: BTreeMap<(&str, Location<'static>), &NamedDataType> = collected
       .into_sorted_iter()
       .map(|named| ((named.module_path.as_ref(), named.location), named))
@@ -35,14 +37,14 @@ impl Enumerations {
       // Located by declaration site rather than by name: a rename leaves the two views agreeing on nothing else.
       let source: &NamedDataType = sources
         .get(&(named.module_path.as_ref(), named.location))
-        .unwrap_or_else(|| panic!("`{}` was mapped from no collected type", named.name));
-      let members: Vec<EnumerationMember> = EnumerationMember::pair(named, source, spellings);
+        .ok_or_else(|| XrfError::new_invalid_error(format!("`{}` was mapped from no collected type", named.name)))?;
+      let members: Vec<EnumerationMember> = EnumerationMember::pair(named, source, spellings)?;
 
-      EnumerationMember::assert_distinct(&named.name, &members);
+      EnumerationMember::assert_distinct(&named.name, &members)?;
       declared.insert(named.name.to_string(), Enumeration { subject, members });
     }
 
-    Self { declared }
+    Ok(Self { declared })
   }
 
   /// The enum `name` declares, or `None` for a type that declares none.
@@ -70,14 +72,18 @@ impl Enumerations {
 
   /// Scan the imports are computed from, so a reference is rewritten exactly when it would have been imported,
   /// and prose naming a type in a doc comment is left alone.
-  pub(crate) fn rewrite_parameters(&self, source: &str) -> String {
+  ///
+  /// # Errors
+  ///
+  /// When a command's return type in `source` opens a type argument it never closes.
+  pub(crate) fn rewrite_parameters(&self, source: &str) -> XrfResult<String> {
     Self::rewrite_parameters_in(source, &self.references())
   }
 
   /// The rewrite itself, which the renames are handed to rather than looked up.
-  fn rewrite_parameters_in(source: &str, renames: &BTreeMap<String, String>) -> String {
+  fn rewrite_parameters_in(source: &str, renames: &BTreeMap<String, String>) -> XrfResult<String> {
     let blanked: String = without_comments_and_strings(source);
-    let returns: Vec<(usize, usize)> = Self::invoke_return_ranges(&blanked);
+    let returns: Vec<(usize, usize)> = Self::invoke_return_ranges(&blanked)?;
     let mut rewritten: String = String::with_capacity(source.len());
     let mut copied: usize = 0;
 
@@ -94,11 +100,12 @@ impl Enumerations {
     });
 
     rewritten.push_str(&source[copied..]);
-    rewritten
+
+    Ok(rewritten)
   }
 
   /// Byte ranges of `blanked` that hold a command's return type.
-  fn invoke_return_ranges(blanked: &str) -> Vec<(usize, usize)> {
+  fn invoke_return_ranges(blanked: &str) -> XrfResult<Vec<(usize, usize)>> {
     const INVOKE: &str = "__TAURI_INVOKE";
 
     let mut ranges: Vec<(usize, usize)> = Vec::new();
@@ -126,18 +133,24 @@ impl Enumerations {
           }
           _ => None,
         })
-        .unwrap_or_else(|| panic!("`{INVOKE}` at byte {call} opens a type argument that is never closed"));
+        .ok_or_else(|| {
+          XrfError::new_parsing_error(format!(
+            "`{INVOKE}` at byte {call} opens a type argument that is never closed"
+          ))
+        })?;
 
       ranges.push((arguments + 1, end));
     }
 
-    ranges
+    Ok(ranges)
   }
 }
 
 #[cfg(test)]
 mod tests {
   use std::collections::BTreeMap;
+
+  use xrf_error::XrfResult;
 
   use super::Enumerations;
 
@@ -149,25 +162,29 @@ mod tests {
   }
 
   #[test]
-  fn a_parameter_is_rewritten_to_the_enum() {
+  fn a_parameter_is_rewritten_to_the_enum() -> XrfResult {
     assert_eq!(
       Enumerations::rewrite_parameters_in(
         "  listAssets: (roots: XrayRoots, kind: XrayAssetType) =>\n    __TAURI_INVOKE<Array<XrayAsset>>(\"plugin:assets|list_assets\", { roots, kind }),\n",
         &renames()
-      ),
+      )?,
       "  listAssets: (roots: XrayRoots, kind: EXrayAssetType) =>\n    __TAURI_INVOKE<Array<XrayAsset>>(\"plugin:assets|list_assets\", { roots, kind }),\n"
     );
+
+    Ok(())
   }
 
   #[test]
-  fn a_return_keeps_the_union_it_is_read_back_as() {
+  fn a_return_keeps_the_union_it_is_read_back_as() -> XrfResult {
     let source: &str = "  detectMode: (roots: XrayRoots) => __TAURI_INVOKE<DialogProjectMode>(\"plugin:dialogs|detect_mode\", { roots }),\n";
 
-    assert_eq!(Enumerations::rewrite_parameters_in(source, &renames()), source);
+    assert_eq!(Enumerations::rewrite_parameters_in(source, &renames())?, source);
+
+    Ok(())
   }
 
   #[test]
-  fn a_nested_return_type_is_excluded_to_its_closing_bracket() {
+  fn a_nested_return_type_is_excluded_to_its_closing_bracket() -> XrfResult {
     // Depth-counted rather than read to the first `>`, or everything after `SessionSnapshot<` would be rewritten
     // again — including the arguments of the next command in the module.
     let source: &str = concat!(
@@ -176,16 +193,18 @@ mod tests {
     );
 
     assert_eq!(
-      Enumerations::rewrite_parameters_in(source, &renames()),
+      Enumerations::rewrite_parameters_in(source, &renames())?,
       concat!(
         "  getProject: () => __TAURI_INVOKE<SessionRestore<Array<DialogProjectMode>>>(\"plugin:dialogs|get_project\"),\n",
         "  openProject: (mode: EDialogProjectMode) => __TAURI_INVOKE<null>(\"plugin:dialogs|open_project\", { mode }),\n",
       )
     );
+
+    Ok(())
   }
 
   #[test]
-  fn the_import_binding_the_invoke_name_opens_no_return() {
+  fn the_import_binding_the_invoke_name_opens_no_return() -> XrfResult {
     // `import { invoke as __TAURI_INVOKE }` is the one occurrence with no type argument after it. Treating it as one
     // would exclude the rest of the module from the rewrite.
     let source: &str = concat!(
@@ -194,45 +213,53 @@ mod tests {
     );
 
     assert_eq!(
-      Enumerations::rewrite_parameters_in(source, &renames()),
+      Enumerations::rewrite_parameters_in(source, &renames())?,
       concat!(
         "import { invoke as __TAURI_INVOKE } from \"@/core/ipc/invoke\";\n",
         "  listAssets: (kind: EXrayAssetType) => __TAURI_INVOKE<null>(\"plugin:assets|list_assets\", { kind }),\n",
       )
     );
+
+    Ok(())
   }
 
   #[test]
-  fn a_raw_wrapper_has_no_invoke_call_and_is_rewritten_whole() {
+  fn a_raw_wrapper_has_no_invoke_call_and_is_rewritten_whole() -> XrfResult {
     // `Promise<ArrayBuffer>` is every raw wrapper's return and names no enum, so nothing there needs excluding.
     assert_eq!(
       Enumerations::rewrite_parameters_in(
         "  readCandidate: (kind: XrayAssetType): Promise<ArrayBuffer> =>\n    invokeRaw(\"plugin:textures|read_candidate\", { kind }),\n",
         &renames()
-      ),
+      )?,
       "  readCandidate: (kind: EXrayAssetType): Promise<ArrayBuffer> =>\n    invokeRaw(\"plugin:textures|read_candidate\", { kind }),\n"
     );
+
+    Ok(())
   }
 
   #[test]
-  fn a_bulk_wrapper_has_no_invoke_call_and_is_rewritten_whole() {
+  fn a_bulk_wrapper_has_no_invoke_call_and_is_rewritten_whole() -> XrfResult {
     // `IBulkCall` is every bulk wrapper's return and names no enum, so nothing there needs excluding.
     assert_eq!(
       Enumerations::rewrite_parameters_in(
         "  readCandidate: (kind: XrayAssetType): IBulkCall => ({ args: { kind }, route: \"textures/read_candidate\" }),\n",
         &renames()
-      ),
+      )?,
       "  readCandidate: (kind: EXrayAssetType): IBulkCall => ({ args: { kind }, route: \"textures/read_candidate\" }),\n"
     );
+
+    Ok(())
   }
 
   #[test]
-  fn prose_naming_a_type_in_a_doc_comment_is_left_alone() {
+  fn prose_naming_a_type_in_a_doc_comment_is_left_alone() -> XrfResult {
     let source: &str = "  /** Answers a DialogProjectMode. */\n  detectMode: (mode: DialogProjectMode) => null,\n";
 
     assert_eq!(
-      Enumerations::rewrite_parameters_in(source, &renames()),
+      Enumerations::rewrite_parameters_in(source, &renames())?,
       "  /** Answers a DialogProjectMode. */\n  detectMode: (mode: EDialogProjectMode) => null,\n"
     );
+
+    Ok(())
   }
 }
