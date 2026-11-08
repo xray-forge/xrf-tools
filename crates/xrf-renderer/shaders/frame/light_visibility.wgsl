@@ -91,7 +91,8 @@ fn cs_visibility(@builtin(global_invocation_id) id: vec3<u32>) {
   let layers: u32 = textureNumLayers(light_contact);
   var seen: array<f32, VISIBILITY_SLOTS> = array<f32, VISIBILITY_SLOTS>(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
   var slot: u32 = 0u;
-  var marched: u32 = 0u;
+  var contacted: u32 = 0u;
+  var has_neighbours: bool = false;
   var neighbours: ContactNeighbours;
 
   for (var index: u32 = 0u; index < counts[pixel.cluster] && slot < VISIBILITY_SLOTS; index++) {
@@ -99,7 +100,13 @@ fn cs_visibility(@builtin(global_invocation_id) id: vec3<u32>) {
     let record: LightRecord = records[item];
     let light: ReachingLight = reaching_light(pixel, record);
 
-    if (!is_reaching(record, light) || !takes_slot(pixel, light)) {
+    if (!is_reaching(record, light)) {
+      continue;
+    }
+
+    let is_contacted: bool = take_contact(pixel, light, &contacted);
+
+    if (!takes_slot(light, is_contacted)) {
       continue;
     }
 
@@ -111,12 +118,12 @@ fn cs_visibility(@builtin(global_invocation_id) id: vec3<u32>) {
     }
 
     // Among the strongest at the pixel and still reaching it past its shadow: what its march met.
-    if (marched < pixel.contact_count && visible > 0.0 && is_contact_marched(pixel, light)) {
-      if (marched == 0u) {
+    if (is_contacted && visible > 0.0) {
+      if (!has_neighbours) {
         neighbours = contact_neighbours(floor(clip), -pixel.position.z);
+        has_neighbours = true;
       }
 
-      marched++;
       visible *= contact_seen(neighbours, item, layers);
     }
 
