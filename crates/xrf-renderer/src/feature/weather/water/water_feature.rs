@@ -16,6 +16,7 @@ use crate::feature::weather::water::enhanced::enhanced_water_frame::EnhancedWate
 use crate::feature::weather::water::enhanced::enhanced_water_scroll::EnhancedWaterScroll;
 use crate::feature::weather::water::enhanced::enhanced_water_uniform::EnhancedWaterUniform;
 use crate::feature::weather::water::enhanced::water_flow::WaterFlow;
+use crate::feature::weather::water::enhanced::water_weather::WaterWeather;
 use crate::feature::weather::water::reflection::water_reflection::WaterReflection;
 use crate::feature::weather::water::reflection::water_reflection_trace::WaterReflectionTrace;
 use crate::feature::weather::water::water_frame::WaterFrame;
@@ -104,7 +105,14 @@ impl WaterFeature {
     // The wave's motion runs from where it stood the last frame; still on a first frame.
     self.uniform = WaterUniform::new(&settings, frame.intensity, frame.time.now).following(frame.time.get_previous());
     // Advanced while the engine's water draws too, so switching back does not lurch the maps by the time between.
-    self.flow.advance(frame.time, &settings.enhanced, frame.wind);
+    self.flow.advance(
+      frame.time,
+      &settings.enhanced,
+      WaterWeather {
+        wind: frame.wind,
+        rain: frame.rain,
+      },
+    );
     self.is_fully_traced = false;
 
     // Kept while the enhanced water is asked for, though none is in sight, so water coming back into view takes no new
@@ -146,12 +154,7 @@ impl WaterFeature {
       EnhancedWaterFrame {
         wind: frame.wind,
         rain: frame.rain,
-        scroll: EnhancedWaterScroll::new(
-          &self.flow,
-          frame.time.now,
-          frame.rain,
-          settings.enhanced.parallax_height > 0.0,
-        ),
+        scroll: EnhancedWaterScroll::new(&self.flow, settings.enhanced.parallax_height > 0.0),
         is_reflected: self.reflection.is_some(),
         has_history: self
           .reflection

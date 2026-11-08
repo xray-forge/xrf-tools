@@ -3,13 +3,18 @@
 use crate::contract::feature::weather::water::render_enhanced_water_settings::RenderEnhancedWaterSettings;
 use crate::feature::weather::water::enhanced::enhanced_water_scroll::EnhancedWaterScroll;
 use crate::feature::weather::water::enhanced::water_flow::WaterFlow;
+use crate::feature::weather::water::enhanced::water_weather::WaterWeather;
 use crate::lighting::wind::render_wind::RenderWind;
-use crate::tests::support::test_time::{at, frame_at};
+use crate::tests::support::test_time::frame_at;
 
-fn wind(velocity: f32) -> RenderWind {
-  RenderWind {
-    direction: 0.0,
-    velocity,
+/// A wind of `velocity` from the north, under a rain of half its density.
+fn wind(velocity: f32) -> WaterWeather {
+  WaterWeather {
+    wind: RenderWind {
+      direction: 0.0,
+      velocity,
+    },
+    rain: 0.5,
   }
 }
 
@@ -48,6 +53,29 @@ fn the_flow_scales_every_scroll_and_none_stills_them() {
     [flow.seconds, flow.waves, flow.heights, flow.gusts[0], flow.gusts[1]],
     [0.0; 5]
   );
+  // The rain ripples on whatever the water's flow, as the rain falls.
+  assert!(flow.ripples > 0.0);
+}
+
+/// The rain ripples run by each frame's seconds at that frame's rain, so a rain thickening late in a long level
+/// changes how fast they run from then on, never where they stand; before, the whole level's time times the new
+/// rain's pace spun them several times too fast for as long as the rain changed.
+#[test]
+fn a_change_of_rain_changes_how_fast_the_ripples_run_not_where_they_stand() {
+  let settings: RenderEnhancedWaterSettings = RenderEnhancedWaterSettings::default();
+  let mut flow: WaterFlow = WaterFlow::default();
+  let rain = |rain: f32| WaterWeather { rain, ..wind(0.0) };
+
+  flow.advance(frame_at(36_000.0, None), &settings, rain(0.4));
+  flow.advance(frame_at(36_100.0, Some(36_000.0)), &settings, rain(0.4));
+
+  let light: WaterFlow = flow;
+
+  flow.advance(frame_at(36_100.1, Some(36_100.0)), &settings, rain(0.625));
+
+  // A hundred seconds at the light rain's pace, its density 1.6 times over; then a tenth of a second at the heavy's.
+  assert!((light.ripples - 100.0 * 0.64_f64.max(0.65)).abs() < 1e-6);
+  assert!((flow.ripples - light.ripples - 0.1 * 1.0).abs() < 1e-6);
 }
 
 /// A frame's step after a day of flowing moves the maps as far as one in the first minute: the sums keep it, and each
@@ -61,7 +89,7 @@ fn a_frame_moves_the_maps_alike_after_a_day() {
     flow.advance(frame_at(start, None), &settings, wind(400.0));
     flow.advance(frame_at(start + 60.0, Some(start)), &settings, wind(400.0));
 
-    let before: EnhancedWaterScroll = EnhancedWaterScroll::new(&flow, at(start + 60.0), 0.5, false);
+    let before: EnhancedWaterScroll = EnhancedWaterScroll::new(&flow, false);
 
     flow.advance(
       frame_at(start + 60.0 + 1.0 / 160.0, Some(start + 60.0)),
@@ -69,7 +97,7 @@ fn a_frame_moves_the_maps_alike_after_a_day() {
       wind(400.0),
     );
 
-    let after: EnhancedWaterScroll = EnhancedWaterScroll::new(&flow, at(start + 60.0 + 1.0 / 160.0), 0.5, false);
+    let after: EnhancedWaterScroll = EnhancedWaterScroll::new(&flow, false);
     let moved = |from: f32, to: f32| {
       let change: f32 = (to - from).rem_euclid(1.0);
 
@@ -97,10 +125,10 @@ fn a_frame_moves_the_maps_alike_after_a_day() {
 fn each_read_stands_where_the_sums_put_it() {
   let mut flow: WaterFlow = WaterFlow::default();
 
-  (flow.seconds, flow.waves, flow.heights, flow.gusts) = (12.5, 7.25, 3.5, [0.75, -1.5]);
+  (flow.seconds, flow.waves, flow.heights, flow.gusts, flow.ripples) = (12.5, 7.25, 3.5, [0.75, -1.5], 8.0);
 
-  let scroll: EnhancedWaterScroll = EnhancedWaterScroll::new(&flow, at(10.0), 0.5, false);
-  let marched: EnhancedWaterScroll = EnhancedWaterScroll::new(&flow, at(10.0), 0.5, true);
+  let scroll: EnhancedWaterScroll = EnhancedWaterScroll::new(&flow, false);
+  let marched: EnhancedWaterScroll = EnhancedWaterScroll::new(&flow, true);
   let wrap = |value: f64| value.rem_euclid(1.0) as f32;
   let (across, down): (f64, f64) = (7.25 * 0.065, 7.25 * 0.445);
   let (cos, sin, tile): (f64, f64, f64) = (0.484810, 0.874620, f64::from(EnhancedWaterScroll::WAVE_TILES[1]));
@@ -114,6 +142,7 @@ fn each_read_stands_where_the_sums_put_it() {
   assert!((scroll.map_offsets[1].z - wrap((across + 0.75) * 0.1)).abs() < 1e-6);
   assert!((marched.map_offsets[1].w - wrap(-1.5 * 0.1)).abs() < 1e-6);
   assert!((scroll.flow_scrolls.y - wrap(12.5 * 0.07)).abs() < 1e-6);
-  // The ripples' clocks at the rain's pace, 1.6 times its density held to 0.65 and one.
-  assert!((scroll.ripple_clocks.x - wrap(10.0 * 1.05 * 0.8)).abs() < 1e-6);
+  // The ripples' clocks at their layers' speeds over the seconds at the ripples' pace.
+  assert!((scroll.ripple_clocks.x - wrap(8.0 * 1.05)).abs() < 1e-6);
+  assert!((scroll.ripple_clocks.z - wrap(8.0 * 1.58)).abs() < 1e-6);
 }

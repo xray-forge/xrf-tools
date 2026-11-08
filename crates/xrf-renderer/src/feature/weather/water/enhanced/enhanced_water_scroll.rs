@@ -4,10 +4,10 @@ use crate::feature::weather::water::enhanced::water_flow::WaterFlow;
 use crate::scene::level::level_time::LevelTime;
 
 /// Where each of the enhanced water's map reads stands this frame, as `shaders/static/water_enhanced.wgsl` adds it to
-/// its unscrolled coordinates: the flow's sums and the clock multiplied out in `f64` and taken within the map's repeat
-/// of one, so each read moves as finely after a day as in a level's first minute, where the sums themselves as `f32`
-/// would step and stall. The waves' scroll moves every read off the waves' coordinates by its own share, turned and
-/// tiled as that read is, so it is worked out here for each read.
+/// its unscrolled coordinates: the flow's sums multiplied out in `f64` and taken within the map's repeat of one, so
+/// each read moves as finely after a day as in a level's first minute, where the sums themselves as `f32` would step
+/// and stall. The waves' scroll moves every read off the waves' coordinates by its own share, turned and tiled as that
+/// read is, so it is worked out here for each read.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct EnhancedWaterScroll {
   /// The heights' two scrolls, the first in `xy`, the second (read backwards) in `zw`.
@@ -42,14 +42,12 @@ impl EnhancedWaterScroll {
   const HEIGHT_SCROLLS: [f64; 4] = [0.065, 0.445, 0.105, 0.241];
   /// The caustics' two scrolls and the calm patches' drift a second of the flow.
   const FLOW_SCROLLS: [f64; 4] = [0.1, 0.07, 0.0021, 0.0013];
-  /// How fast each of the rain ripples' three layers ripples, times the rain's own pace (`RIPPLE_RAIN`).
+  /// How fast each of the rain ripples' three layers ripples, a second at the ripples' pace (`WaterFlow::ripples`).
   const RIPPLE_SPEEDS: [f64; 3] = [1.05, 1.31, 1.58];
-  /// The rain's pace for its ripples by its density: its density 1.6 times over, held between these.
-  const RIPPLE_RAIN: (f64, f64, f64) = (1.6, 0.65, 1.0);
 
-  /// The reads at the `flow`'s sums and the clock `time`, under a rain of `rain`; the waves' scroll moves none where
-  /// the parallax is `is_marched`, as its march sets the waves' coordinates in its place.
-  pub fn new(flow: &WaterFlow, time: LevelTime, rain: f32, is_marched: bool) -> Self {
+  /// The reads at the `flow`'s sums; the waves' scroll moves none where the parallax is `is_marched`, as its march sets
+  /// the waves' coordinates in its place.
+  pub fn new(flow: &WaterFlow, is_marched: bool) -> Self {
     let wrap = |value: f64| LevelTime::wrap(value, 1.0);
     let scroll: [f64; 2] = if is_marched {
       [0.0; 2]
@@ -77,9 +75,7 @@ impl EnhancedWaterScroll {
       scrolled(ripple_scale * third_scale),
     );
     let gust: [f32; 2] = [0, 1].map(|axis| wrap((scroll[axis] + flow.gusts[axis]) * gust_scale));
-    let (factor, least, most) = Self::RIPPLE_RAIN;
-    let pace: f64 = (f64::from(rain) * factor).clamp(least, most);
-    let [ripple_1, ripple_2, ripple_3] = Self::RIPPLE_SPEEDS.map(|speed| time.get_turns(speed * pace));
+    let [ripple_1, ripple_2, ripple_3] = Self::RIPPLE_SPEEDS.map(|speed| wrap(flow.ripples * speed));
     let [layer_0, layer_1, layer_2, layer_3] = [0, 1, 2, 3].map(layer);
 
     Self {
