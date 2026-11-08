@@ -17,6 +17,11 @@ impl LtxDialect for LtxStandardDialect {
     "ltx"
   }
 
+  /// No: a section is looked up by its name exactly as bracketed.
+  fn is_folding_section_names(&self) -> bool {
+    false
+  }
+
   /// Nothing. Standard LTX has no notion of one config patching another, so every config stands on its own.
   fn plan_attachments(&self, _roots: &[String], _source: &dyn LtxDocumentSource) -> XrfResult<Vec<String>> {
     Ok(Vec::new())

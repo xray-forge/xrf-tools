@@ -41,7 +41,10 @@ impl GenericCommand for FindCommand {
       )
       .arg(
         Arg::new(SECTION_ARGUMENT)
-          .help("Section to find, without brackets or operation prefix. Matches the whole name, case-sensitively")
+          .help(
+            "Section to find, without brackets or operation prefix. Matches the whole name, case-sensitively, except \
+             under --dltx, which lowercases section names as the engine does",
+          )
           .long(SECTION_ARGUMENT)
           .value_parser(Self::parse_section),
       )
@@ -84,6 +87,7 @@ impl GenericCommand for FindCommand {
       section: matches.get_one::<String>(SECTION_ARGUMENT).cloned(),
       field: matches.get_one::<String>(FIELD_ARGUMENT).cloned(),
       value: matches.get_one::<String>(VALUE_ARGUMENT).cloned(),
+      is_section_case_folded: project.get_dialect().is_folding_section_names(),
     };
     let search: LtxDeclarationSearch =
       LtxDeclarationReader::new(&inventory, &source as &dyn LtxDocumentSource).search(&query)?;
