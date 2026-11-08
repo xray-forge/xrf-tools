@@ -16,6 +16,10 @@ specta = { workspace = true, optional = true }
 xrf-error = { workspace = true }
 xrf-utils = { workspace = true }
 
+# The process's affinity, which the standard library's processor count ignores on Windows.
+[target.'cfg(windows)'.dependencies]
+windows = { workspace = true, features = ["Win32_Foundation", "Win32_System_Threading"] }
+
 [dev-dependencies]
 criterion = { workspace = true }
 serde_json = { workspace = true }
