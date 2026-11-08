@@ -1,7 +1,7 @@
 # xrf-cli
 
 The XRF command line: one binary over the workspace crates, grouped by domain (`archive`, `dds`, `dialog`, `docs`,
-`externs`, `gamedata`, `level`, `ltx`, `ogf`, `omf`, `particle`, `profile`, `spawn`, `sprite`, `thm`, `translation`).
+`externs`, `gamedata`, `level`, `ltx`, `ogf`, `omf`, `particle`, `spawn`, `sprite`, `thm`, `translation`).
 It holds no format or asset rule of its own: a command parses its arguments, calls a crate, tells a person what
 happened and deposits a typed result for `--json` or `--report`.
 

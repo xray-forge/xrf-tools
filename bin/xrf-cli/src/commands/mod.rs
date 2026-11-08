@@ -12,7 +12,6 @@ pub(crate) mod ogf;
 pub(crate) mod omf;
 pub(crate) mod packed_file;
 pub(crate) mod particle;
-pub(crate) mod profile;
 pub(crate) mod spawn;
 pub(crate) mod sprite;
 pub(crate) mod thm;
