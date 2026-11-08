@@ -23,31 +23,37 @@ impl SpanWrites {
 
   /// The writes as runs of contiguous bytes, in offset order, emptying them; a later write to the same bytes wins.
   pub fn take_runs(&mut self) -> Vec<(u64, Vec<u8>)> {
-    let mut entries: Vec<(usize, (u64, Range<usize>))> =
-      std::mem::take(&mut self.entries).into_iter().enumerate().collect();
+    let entries: Vec<(u64, Range<usize>)> = std::mem::take(&mut self.entries);
     let data: Vec<u8> = std::mem::take(&mut self.data);
+    // The runs' extents, from the writes' in offset order, each write joining the run it touches.
+    let mut spans: Vec<(u64, u64)> = entries
+      .iter()
+      .map(|(offset, range)| (*offset, *offset + range.len() as u64))
+      .collect();
 
-    // Stable by offset and then by order pushed, so an overlapping later write is applied over an earlier one.
-    entries.sort_by_key(|(order, (offset, _))| (*offset, *order));
+    spans.sort_unstable();
 
-    let mut runs: Vec<(u64, Vec<u8>)> = Vec::new();
+    let mut extents: Vec<(u64, u64)> = Vec::new();
 
-    for (_, (offset, range)) in entries {
-      let bytes: &[u8] = &data[range];
-
-      match runs.last_mut() {
-        Some((start, run)) if offset <= *start + run.len() as u64 => {
-          let at: usize = (offset - *start) as usize;
-          let end: usize = at + bytes.len();
-
-          if end > run.len() {
-            run.resize(end, 0);
-          }
-
-          run[at..end].copy_from_slice(bytes);
-        }
-        _ => runs.push((offset, bytes.to_vec())),
+    for (start, end) in spans {
+      match extents.last_mut() {
+        Some((_, last)) if start <= *last => *last = (*last).max(end),
+        _ => extents.push((start, end)),
       }
+    }
+
+    let mut runs: Vec<(u64, Vec<u8>)> = extents
+      .iter()
+      .map(|(start, end)| (*start, vec![0; (end - start) as usize]))
+      .collect();
+
+    // Each write laid over its run in the order it was pushed, so a later one wins wherever two overlap, whichever
+    // starts first.
+    for (offset, range) in entries {
+      let (start, run) = &mut runs[extents.partition_point(|(start, _)| *start <= offset) - 1];
+      let at: usize = (offset - *start) as usize;
+
+      run[at..at + range.len()].copy_from_slice(&data[range]);
     }
 
     runs
