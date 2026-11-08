@@ -59,8 +59,9 @@ impl PresentUniform {
   /// The frames the grain is drawn anew for before it repeats, few enough that a float holds each whole.
   const GRAIN_FRAMES: u32 = 1 << 16;
 
-  /// A `frame`'s present, its image corrected by `corrections`.
+  /// A `frame`'s present, its image corrected by `corrections`, held within the ranges the engine takes them in.
   pub fn new(frame: PresentFrame, corrections: &RenderImageCorrections) -> Self {
+    let corrections: RenderImageCorrections = corrections.clamped();
     let [r, g, b] = corrections.grading;
     let output: RenderRect = frame.output;
 

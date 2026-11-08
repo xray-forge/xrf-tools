@@ -1,3 +1,5 @@
+use std::ops::RangeInclusive;
+
 use serde::{Deserialize, Serialize};
 
 /// Anomaly's `img_corrections`, which `combine_2` applies to the finished frame: `r__exposure`, `r__gamma`,
@@ -14,6 +16,28 @@ pub struct RenderImageCorrections {
   pub saturation: f32,
   /// The colour the mid tones are graded towards; black grades nothing.
   pub grading: [f32; 3],
+}
+
+impl RenderImageCorrections {
+  /// The same, each held within the range Anomaly's console takes it in (`xrRender_console.cpp`), and a value that is
+  /// no finite number taken as nothing corrected: no gamma of nought for the present to divide by.
+  pub fn clamped(&self) -> Self {
+    let neutral: Self = Self::default();
+    let hold = |value: f32, otherwise: f32, range: RangeInclusive<f32>| {
+      if value.is_finite() {
+        value.clamp(*range.start(), *range.end())
+      } else {
+        otherwise
+      }
+    };
+
+    Self {
+      exposure: hold(self.exposure, neutral.exposure, 0.5..=4.0),
+      gamma: hold(self.gamma, neutral.gamma, 0.5..=2.2),
+      saturation: hold(self.saturation, neutral.saturation, 0.0..=2.0),
+      grading: std::array::from_fn(|channel| hold(self.grading[channel], neutral.grading[channel], 0.0..=1.0)),
+    }
+  }
 }
 
 impl Default for RenderImageCorrections {
