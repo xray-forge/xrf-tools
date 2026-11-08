@@ -1,15 +1,16 @@
 use std::collections::HashMap;
 
-use crate::object::compile::skeleton::skeleton_vertex::SkeletonVertex;
+use crate::object::compile::geometry::export_vertex::ExportVertex;
 
 /// One split cut into children an OGF's 16-bit indices reach.
 ///
-/// The export keeps a split whole and its `VPack` overflows silently past 65,535 vertices, so no editor-made OGF has a
-/// split that big; high-poly models other tools exported do, one surface spread over several children of one texture
-/// and shader, which a decompile welds back into one. The engine draws any number of children alike, so a split past
-/// [`Self::MAX_VERTICES`] once its tangents are known is cut, its faces taken in order into one child until the next
-/// would carry it past the bound, its vertices numbered by first use in each. A split within the bound comes back as
-/// one child, as it was.
+/// The skeleton export keeps a split whole and its `VPack` overflows silently past 65,535 vertices; the static export
+/// starts a new part where `VPack` reaches the bound, losing the face it was packing, and its tangent pass can then
+/// carry a part past it again. High-poly models other tools exported spread one surface over several children of one
+/// texture and shader, which a decompile welds back into one. The engine draws any number of children alike, so a split
+/// past [`Self::MAX_VERTICES`] once its tangents are known is cut, its faces taken in order into one child until the
+/// next would carry it past the bound, its vertices numbered by first use in each. A split within the bound comes back
+/// as one child, as it was.
 pub(crate) struct SplitPartition;
 
 impl SplitPartition {
@@ -17,16 +18,16 @@ impl SplitPartition {
   pub(crate) const MAX_VERTICES: usize = u16::MAX as usize;
 
   /// The children `vertices` and `faces` cut into, each its vertices and its faces over them.
-  pub(crate) fn cut(vertices: Vec<SkeletonVertex>, faces: &[[u32; 3]]) -> Vec<(Vec<SkeletonVertex>, Vec<[u16; 3]>)> {
+  pub(crate) fn cut(vertices: Vec<ExportVertex>, faces: &[[u32; 3]]) -> Vec<(Vec<ExportVertex>, Vec<[u16; 3]>)> {
     Self::cut_at(vertices, faces, Self::MAX_VERTICES)
   }
 
   /// [`Self::cut`] at a bound of `max_vertices`, which tests set low, and never past [`Self::MAX_VERTICES`].
   pub(crate) fn cut_at(
-    vertices: Vec<SkeletonVertex>,
+    vertices: Vec<ExportVertex>,
     faces: &[[u32; 3]],
     max_vertices: usize,
-  ) -> Vec<(Vec<SkeletonVertex>, Vec<[u16; 3]>)> {
+  ) -> Vec<(Vec<ExportVertex>, Vec<[u16; 3]>)> {
     let max_vertices: usize = max_vertices.min(Self::MAX_VERTICES);
 
     // Every vertex is one a face uses, so a split within the bound keeps its numbering, narrowed.
@@ -36,8 +37,8 @@ impl SplitPartition {
       return vec![(vertices, faces)];
     }
 
-    let mut children: Vec<(Vec<SkeletonVertex>, Vec<[u16; 3]>)> = Vec::new();
-    let mut child_vertices: Vec<SkeletonVertex> = Vec::new();
+    let mut children: Vec<(Vec<ExportVertex>, Vec<[u16; 3]>)> = Vec::new();
+    let mut child_vertices: Vec<ExportVertex> = Vec::new();
     let mut child_faces: Vec<[u16; 3]> = Vec::new();
     let mut numbers: HashMap<u32, u16> = HashMap::new();
 

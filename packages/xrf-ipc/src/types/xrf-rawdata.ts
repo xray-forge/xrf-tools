@@ -8,7 +8,10 @@ export enum EObjectInference {
   SURFACE_COMPILER_SHADERS = "surfaceCompilerShaders",
   /** Every surface's game material is the Actor Editor's `default`. */
   SURFACE_GAME_MATERIALS = "surfaceGameMaterials",
-  /** The mesh is named `skin`, as the SDK names a skinned object's mesh. */
+  /**
+   * The mesh is named `skin`, as the SDK names a skinned object's mesh, or `mesh` in a static object, whose mesh the
+   * SDK names after the object.
+   */
   MESH_NAME = "meshName",
   /** Every bone is the SDK's default 0.5 long; an OGF stores no length. */
   BONE_LENGTHS = "boneLengths",

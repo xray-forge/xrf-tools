@@ -27,7 +27,7 @@ impl GenericCommand for VerifyCommand {
 
   fn declare(&self, command: Command) -> Command {
     command
-      .about("Compile a skeleton SDK .object in memory and compare it with the OGF it should stand in for")
+      .about("Compile an SDK .object in memory and compare it with the OGF it should stand in for")
       .arg(
         Arg::new("path")
           .help("Path to the .object to compile")

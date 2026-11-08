@@ -100,8 +100,8 @@ fn takes_the_tangent_method_a_sidecar_records_unless_told_otherwise() -> XrfResu
 }
 
 #[test]
-fn refuses_a_static_object_and_writes_nothing() -> XrfResult {
-  let root: PathBuf = GeneratedResources::create_dir("object-compile/static")?;
+fn refuses_an_object_without_a_mesh_and_writes_nothing() -> XrfResult {
+  let root: PathBuf = GeneratedResources::create_dir("object-compile/empty")?;
   let source: PathBuf = root.join("model.object");
   let destination: PathBuf = root.join("model.ogf");
 
@@ -110,8 +110,8 @@ fn refuses_a_static_object_and_writes_nothing() -> XrfResult {
   let error: String = get_error(compile(&source, &destination, &["--force"]));
 
   assert!(
-    error.contains("static object"),
-    "Expect the refusal to name the static object: {error}"
+    error.contains("no mesh"),
+    "Expect the refusal to name the missing mesh: {error}"
   );
   assert!(!destination.exists());
 

@@ -1,4 +1,4 @@
-use crate::object::compile::skeleton::skeleton_vertex::SkeletonVertex;
+use crate::object::compile::geometry::export_vertex::ExportVertex;
 
 /// Orders a child's triangles for the GPU's post-transform vertex cache, and its vertices by first use, where the
 /// Actor Editor's export took D3DX's closed `D3DXOptimizeFaces` and `D3DXOptimizeVertices` (`MakeStripify`).
@@ -25,7 +25,7 @@ impl VertexCacheOrder {
 
   /// The vertices and faces of one child, the faces reordered for the cache and the vertices renumbered in the order
   /// the faces first use them, so the GPU fetches them in sequence.
-  pub(crate) fn apply(vertices: Vec<SkeletonVertex>, faces: &[[u16; 3]]) -> (Vec<SkeletonVertex>, Vec<[u16; 3]>) {
+  pub(crate) fn apply(vertices: Vec<ExportVertex>, faces: &[[u16; 3]]) -> (Vec<ExportVertex>, Vec<[u16; 3]>) {
     let ordered: Vec<[u16; 3]> = Self::order_faces(faces, vertices.len());
     let mut new_index: Vec<Option<u16>> = vec![None; vertices.len()];
     let mut order: Vec<usize> = Vec::with_capacity(vertices.len());
@@ -47,8 +47,8 @@ impl VertexCacheOrder {
       }
     }
 
-    let mut taken: Vec<Option<SkeletonVertex>> = vertices.into_iter().map(Some).collect();
-    let reordered: Vec<SkeletonVertex> = order
+    let mut taken: Vec<Option<ExportVertex>> = vertices.into_iter().map(Some).collect();
+    let reordered: Vec<ExportVertex> = order
       .iter()
       .map(|vertex| taken[*vertex].take().expect("each vertex is placed once"))
       .collect();

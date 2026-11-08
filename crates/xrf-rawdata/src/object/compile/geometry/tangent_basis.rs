@@ -4,13 +4,15 @@ use std::collections::{BTreeMap, HashSet};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::{Vector2d, Vector3d};
 
-use crate::object::compile::skeleton::skeleton_vertex::SkeletonVertex;
+use crate::object::compile::geometry::export_vertex::ExportVertex;
 
-/// Gives a split's vertices tangents and binormals as the skeleton export's tangent pass does, splitting a vertex where
-/// the faces around it disagree, then orders and shifts the vertices as the export leaves them.
+/// Gives a split's vertices tangents and binormals as both exports' tangent pass does, splitting a vertex where the
+/// faces around it disagree, then orders and shifts the vertices as the export leaves them.
 ///
-/// `CExportSkeleton::SSplit::CalculateTB` runs NVIDIA's MeshMender (2003) over the split, keeping the normals and the
-/// existing vertex splits, at a smoothing cosine of 0.5 for tangents and binormals. Each face gets a tangent and a
+/// `CExportSkeleton::SSplit::CalculateTB` and the static export's `CObjectOGFCollectorPacked::CalculateTB` run NVIDIA's
+/// MeshMender (2003) over the split with the same arguments, keeping the normals and the existing vertex splits, at a
+/// smoothing cosine of 0.5 for tangents and binormals. The static export then writes no tangents, but its vertices are
+/// the ones the pass split and ordered. Each face gets a tangent and a
 /// binormal from how its texture coordinates run across it (Lengyel's gradients). Then, position by position in `x`, `y`,
 /// `z` order, the faces at a position are grouped: a face joins the group of the first or the second face sharing an
 /// edge with it, by vertex, when their tangents are within the cosine, or starts a group of its own. A vertex a second
@@ -26,7 +28,7 @@ use crate::object::compile::skeleton::skeleton_vertex::SkeletonVertex;
 /// One difference is deliberate: where the mender divides by a zero length into infinity or NaN and ships it, a zero
 /// length here leaves a zero vector, and the collapsed-basis fallback then builds a valid one.
 pub(crate) struct TangentBasis {
-  vertices: Vec<SkeletonVertex>,
+  vertices: Vec<ExportVertex>,
   triangles: Vec<Triangle>,
 }
 
@@ -100,10 +102,7 @@ impl TangentBasis {
   /// # Errors
   ///
   /// Returns an error when the split outgrows 32-bit indices.
-  pub(crate) fn mend(
-    vertices: Vec<SkeletonVertex>,
-    faces: &[[u32; 3]],
-  ) -> XrfResult<(Vec<SkeletonVertex>, Vec<[u32; 3]>)> {
+  pub(crate) fn mend(vertices: Vec<ExportVertex>, faces: &[[u32; 3]]) -> XrfResult<(Vec<ExportVertex>, Vec<[u32; 3]>)> {
     let mut basis: Self = Self {
       triangles: faces
         .iter()
@@ -148,7 +147,7 @@ impl TangentBasis {
   }
 
   /// `GetGradients`: the directions `s` and `t` run in across a face, solved from its edges and their texture deltas.
-  fn get_gradients([first, second, third]: [&SkeletonVertex; 3]) -> (Vector3d, Vector3d) {
+  fn get_gradients([first, second, third]: [&ExportVertex; 3]) -> (Vector3d, Vector3d) {
     let along: Vector3d = &second.position - &first.position;
     let across: Vector3d = &third.position - &first.position;
     let (s1, t1): (f32, f32) = (
@@ -216,7 +215,7 @@ impl TangentBasis {
           }
 
           let index: usize = if taken.contains(&index) {
-            let mut split: SkeletonVertex = self.vertices[index].clone();
+            let mut split: ExportVertex = self.vertices[index].clone();
             let split_index: usize = self.vertices.len();
 
             Self::set_direction(&mut split, direction, smoothed);
@@ -326,7 +325,7 @@ impl TangentBasis {
     }
   }
 
-  fn set_direction(vertex: &mut SkeletonVertex, direction: Direction, value: Vector3d) {
+  fn set_direction(vertex: &mut ExportVertex, direction: Direction, value: Vector3d) {
     match direction {
       Direction::Tangent => vertex.tangent = value,
       Direction::Binormal => vertex.binormal = value,
@@ -375,9 +374,9 @@ impl TangentBasis {
   }
 
   /// `t_remove_isolated_verts`: the vertices the faces use, in the order the faces first reach them.
-  fn order_by_first_use(self) -> XrfResult<(Vec<SkeletonVertex>, Vec<[u32; 3]>)> {
+  fn order_by_first_use(self) -> XrfResult<(Vec<ExportVertex>, Vec<[u32; 3]>)> {
     let mut renumbered: Vec<Option<u32>> = vec![None; self.vertices.len()];
-    let mut ordered: Vec<SkeletonVertex> = Vec::with_capacity(self.vertices.len());
+    let mut ordered: Vec<ExportVertex> = Vec::with_capacity(self.vertices.len());
     let mut faces: Vec<[u32; 3]> = Vec::with_capacity(self.triangles.len());
 
     for triangle in &self.triangles {
@@ -408,7 +407,7 @@ impl TangentBasis {
   /// `OptimizeTextureCoordinates`: moves every texture coordinate by the whole tiles nearest the middle of the split's
   /// span, so they lie near the origin. The span's upper end starts from the smallest positive float, as the export's
   /// does, not from the lowest.
-  pub(crate) fn shift_texture_coordinates(vertices: &mut [SkeletonVertex]) {
+  pub(crate) fn shift_texture_coordinates(vertices: &mut [ExportVertex]) {
     let mut low: Vector2d = Vector2d::new(f32::MAX, f32::MAX);
     let mut high: Vector2d = Vector2d::new(f32::MIN_POSITIVE, f32::MIN_POSITIVE);
 

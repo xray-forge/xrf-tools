@@ -6,23 +6,18 @@ use xrf_math::Aabb;
 use crate::object::decompile::geometry::ogf_surface::OgfSurface;
 use crate::object::decompile::geometry::welded_mesh::WeldedMesh;
 use crate::object::decompile::mesh::assembled_mesh::AssembledMesh;
+use crate::object::decompile::mesh::mesh_kind::MeshKind;
 use crate::object::decompile::mesh::surface_layout::SurfaceLayout;
 use crate::object::decompile::mesh::vertex_maps::VertexMaps;
 
-/// Builds the editable mesh and its surfaces from welded faces, laid out as the SDK lays out a skinned object.
+/// Builds the editable mesh and its surfaces from welded faces, laid out as the SDK lays out an object of `kind`.
 ///
-/// One mesh, `skin`, whose every corner refers to its UV and to its point's weight for each bone the point follows: a
-/// point UV map `texture`, a weight map named after each bone, and a polygon-mapped `texture` for the corners whose UV
-/// is not their point's, which is how a seam gives one point two UVs.
+/// One mesh, whose every corner refers to its UV and, in a skinned mesh, to its point's weight for each bone the point
+/// follows: a point UV map, a weight map named after each bone, and a polygon-mapped UV map for the corners whose UV is
+/// not their point's, which is how a seam gives one point two UVs.
 pub(crate) struct MeshAssembler;
 
 impl MeshAssembler {
-  /// The name the SDK gives a skinned object's mesh.
-  pub(crate) const MESH_NAME: &'static str = "skin";
-
-  /// The name of the mesh's UV maps.
-  pub(crate) const UV_MAP_NAME: &'static str = "texture";
-
   /// The Actor Editor's compiler shader and game material for a new surface, which the OGF does not keep.
   pub(crate) const DEFAULT_SURFACE_SETTING: &'static str = "default";
 
@@ -30,16 +25,16 @@ impl MeshAssembler {
   ///
   /// # Errors
   ///
-  /// Returns an error when the mesh holds no point, a point's bone is past `bone_names`, or an index outgrows the
-  /// `u32` an `.object` stores it as.
+  /// Returns an error when the mesh holds no point, a point's bone is past those `kind` names, or an index outgrows
+  /// the `u32` an `.object` stores it as.
   pub(crate) fn assemble(
     surfaces: &[OgfSurface],
     welded: &WeldedMesh,
     smoothing: Vec<u32>,
-    bone_names: &[String],
+    kind: MeshKind,
   ) -> XrfResult<AssembledMesh> {
     let layout: SurfaceLayout = SurfaceLayout::of(surfaces, &welded.faces);
-    let mut maps: VertexMaps = VertexMaps::new(welded, bone_names)?;
+    let mut maps: VertexMaps = VertexMaps::new(welded, kind)?;
     let mut faces: Vec<EditableFace> = Vec::with_capacity(welded.faces.len());
     let mut surface_faces: Vec<Vec<u32>> = vec![Vec::new(); layout.surfaces.len()];
 
@@ -66,7 +61,7 @@ impl MeshAssembler {
 
     Ok(AssembledMesh {
       mesh: EditableMesh {
-        name: String::from(Self::MESH_NAME),
+        name: String::from(kind.get_mesh_name()),
         bounds,
         flags: EditableMesh::VISIBLE_FLAG,
         options: Some([0, 0]),

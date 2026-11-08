@@ -4,11 +4,12 @@ use xrf_ogf::OgfVertexLink;
 
 use crate::object::decompile::geometry::bone_influences::BoneInfluences;
 use crate::object::decompile::geometry::ogf_corner::OgfCorner;
+use crate::object::decompile::geometry::repeated_faces::RepeatedFaces;
 use crate::object::decompile::geometry::smoothing_inference::SmoothingInference;
 use crate::object::decompile::geometry::two_sided_pairs::TwoSidedPairs;
 use crate::object::decompile::geometry::welded_face::WeldedFace;
 use crate::object::decompile::geometry::welded_mesh::WeldedMesh;
-use crate::object::decompile::tests::fixtures::{DOWN, OUT, UP, corner, link, surface, with_links};
+use crate::object::decompile::tests::fixtures::{DOWN, OUT, UP, corner, link, surface, with_links, with_uv};
 
 /// Two triangles of a flat quad, `a b c` and `a c d`, each triangle's corners carrying its own normal.
 fn quad(first_normal: [f32; 3], second_normal: [f32; 3]) -> Vec<[OgfCorner; 3]> {
@@ -133,6 +134,29 @@ fn folds_a_mirrored_copy_into_one_two_sided_face_and_keeps_a_plain_duplicate() -
 
   assert_eq!(doubled.len(), 2);
   assert!(doubled.iter().all(|it| !it.is_two_sided));
+
+  Ok(())
+}
+
+#[test]
+fn drops_the_copies_a_second_walk_of_a_two_sided_surface_wrote() -> XrfResult {
+  // The static export's second walk writes the face and its mirror again, starting at another corner here, onto the
+  // vertices the first walk packed.
+  let [a, b, c] = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]];
+  let face: [OgfCorner; 3] = [corner(a, UP), corner(b, UP), corner(c, UP)];
+  let mirror: [OgfCorner; 3] = [corner(c, DOWN), corner(b, DOWN), corner(a, DOWN)];
+  let again: [OgfCorner; 3] = [corner(b, UP), corner(c, UP), corner(a, UP)];
+  let faces: Vec<WeldedFace> = WeldedMesh::weld(&[surface(vec![face, mirror, again, mirror])])?.faces;
+  let folded: Vec<WeldedFace> = TwoSidedPairs::fold(RepeatedFaces::drop_repeats(faces));
+
+  assert_eq!(folded.len(), 1);
+  assert!(folded[0].is_two_sided);
+
+  // A face on the same points with another UV is no repeat.
+  let mapped: [OgfCorner; 3] = [with_uv(corner(a, UP), [0.5, 0.5]), corner(b, UP), corner(c, UP)];
+  let kept: Vec<WeldedFace> = RepeatedFaces::drop_repeats(WeldedMesh::weld(&[surface(vec![face, mapped])])?.faces);
+
+  assert_eq!(kept.len(), 2);
 
   Ok(())
 }

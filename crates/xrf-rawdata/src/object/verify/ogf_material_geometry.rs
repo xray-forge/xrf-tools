@@ -1,7 +1,9 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{HashMap, HashSet};
 
 use xrf_math::Vector3d;
-use xrf_ogf::{OgfFile, OgfVertex};
+use xrf_ogf::{OgfFile, OgfVertexData};
+
+use crate::object::verify::material_vertex::MaterialVertex;
 
 /// A vertex's position bits: the export copies one source point into every vertex standing at it, so equal bits pair a
 /// compiled vertex with a reference one and never merge two that are merely close.
@@ -19,7 +21,7 @@ pub(crate) struct OgfMaterialGeometry<'a> {
   /// The children drawing with them.
   pub(crate) children: usize,
   /// Their vertices, child after child.
-  pub(crate) vertices: Vec<&'a OgfVertex>,
+  pub(crate) vertices: Vec<MaterialVertex>,
   /// Their faces over [`Self::vertices`].
   pub(crate) faces: Vec<[u32; 3]>,
 }
@@ -48,8 +50,8 @@ impl<'a> OgfMaterialGeometry<'a> {
   /// Weights within this of each other are one weight.
   const WEIGHT_TOLERANCE: f32 = 1e-3;
 
-  /// The geometry of each texture and shader that `file` and its children draw skinned, in the order each is first
-  /// stored.
+  /// The geometry of each texture and shader that `file` and its children draw, skinned or static, in the order each
+  /// is first stored.
   pub(crate) fn collect(file: &'a OgfFile) -> Vec<Self> {
     let mut materials: Vec<Self> = Vec::new();
 
@@ -59,9 +61,12 @@ impl<'a> OgfMaterialGeometry<'a> {
   }
 
   fn collect_into(file: &'a OgfFile, materials: &mut Vec<Self>) {
-    if let (Some(texture), Some(geometry)) = (&file.texture, &file.geometry)
-      && let Some(vertices) = geometry.get_skinned_vertices()
-    {
+    if let (Some(texture), Some(geometry)) = (&file.texture, &file.geometry) {
+      let vertices: Vec<MaterialVertex> = match &geometry.vertices {
+        Some(OgfVertexData::Skinned(vertices)) => vertices.iter().map(MaterialVertex::from).collect(),
+        Some(OgfVertexData::Static(vertices)) => vertices.iter().map(MaterialVertex::from).collect(),
+        None => Vec::new(),
+      };
       let indices: &[u16] = geometry.indices.as_deref().unwrap_or_default();
       // A progressive child draws its full detail through its first sliding window.
       let drawn: &[u16] = file
@@ -110,16 +115,18 @@ impl<'a> OgfMaterialGeometry<'a> {
   }
 
   /// How this compiled geometry compares with `reference`: its vertices by position, normal, texture coordinate and
-  /// weights, and the faces either draws by their corners' positions, each as often as it is drawn.
+  /// weights, and the faces either draws by their corners' positions in winding order.
   ///
-  /// A face with two corners at one position draws nothing, so it is compared on neither side: the export leaves one
-  /// where `VPack` moved a corner onto another, which either side may have done where the other did not.
+  /// Each face is compared once: a face drawn twice draws nothing more, as the static export's second walk of a
+  /// two-sided surface writes every face again, while its mirror, wound the other way, is a face of its own. A face
+  /// with two corners at one position draws nothing, so it is compared on neither side: the export leaves one where
+  /// `VPack` moved a corner onto another, which either side may have done where the other did not.
   pub(crate) fn compare(&self, reference: &Self) -> OgfMaterialComparison {
     let mut comparison: OgfMaterialComparison = OgfMaterialComparison::default();
-    let by_position: HashMap<PositionKey, Vec<&OgfVertex>> = reference.by_position();
+    let by_position: HashMap<PositionKey, Vec<&MaterialVertex>> = reference.by_position();
 
     for vertex in &self.vertices {
-      let candidates: &[&OgfVertex] = by_position
+      let candidates: &[&MaterialVertex] = by_position
         .get(&Self::position_key(&vertex.position))
         .map_or(&[], Vec::as_slice);
 
@@ -136,33 +143,26 @@ impl<'a> OgfMaterialGeometry<'a> {
       }
     }
 
-    let mut drawn: HashMap<[PositionKey; 3], usize> = HashMap::new();
-
-    for triangle in self.triangles().into_iter().filter(|it| !Self::is_flat(it)) {
-      *drawn.entry(triangle).or_default() += 1;
-    }
+    let mut drawn: HashSet<[PositionKey; 3]> = self.triangles().into_iter().filter(|it| !Self::is_flat(it)).collect();
 
     for triangle in reference.triangles() {
       if Self::is_flat(&triangle) {
         comparison.reference_flat_faces += 1;
-      } else if let Some(count) = drawn.get_mut(&triangle)
-        && *count > 0
-      {
-        *count -= 1;
+      } else if drawn.remove(&triangle) {
         comparison.faces_matched += 1;
       } else {
         comparison.faces_missing += 1;
       }
     }
 
-    comparison.faces_extra = drawn.values().sum();
+    comparison.faces_extra = drawn.len();
 
     comparison
   }
 
-  /// Whether a triangle of sorted corners has two at one position, so draws nothing.
+  /// Whether a triangle has two corners at one position, so draws nothing.
   fn is_flat(triangle: &[PositionKey; 3]) -> bool {
-    triangle[0] == triangle[1] || triangle[1] == triangle[2]
+    triangle[0] == triangle[1] || triangle[1] == triangle[2] || triangle[0] == triangle[2]
   }
 
   pub(crate) fn position_key(position: &Vector3d) -> PositionKey {
@@ -170,8 +170,8 @@ impl<'a> OgfMaterialGeometry<'a> {
   }
 
   /// Its vertices by where they stand.
-  fn by_position(&self) -> HashMap<PositionKey, Vec<&'a OgfVertex>> {
-    let mut by_position: HashMap<PositionKey, Vec<&'a OgfVertex>> = HashMap::new();
+  fn by_position(&self) -> HashMap<PositionKey, Vec<&MaterialVertex>> {
+    let mut by_position: HashMap<PositionKey, Vec<&MaterialVertex>> = HashMap::new();
 
     for vertex in &self.vertices {
       by_position
@@ -183,9 +183,12 @@ impl<'a> OgfMaterialGeometry<'a> {
     by_position
   }
 
-  /// Its faces as the positions of their corners, each face's corners sorted, so a face matches whatever its winding
-  /// start and its vertices' numbering; a face naming a vertex past them is left out.
+  /// Its distinct faces as the positions of their corners in winding order, each turned to start at its lowest
+  /// position, so a face matches whatever corner it starts at and its vertices' numbering, and its mirror does not; a
+  /// face naming a vertex past them is left out. In the order first drawn.
   pub(crate) fn triangles(&self) -> Vec<[PositionKey; 3]> {
+    let mut seen: HashSet<[PositionKey; 3]> = HashSet::new();
+
     self
       .faces
       .iter()
@@ -196,18 +199,18 @@ impl<'a> OgfMaterialGeometry<'a> {
             .get(index as usize)
             .map(|vertex| Self::position_key(&vertex.position))
         });
-        let mut corners: [PositionKey; 3] = [a?, b?, c?];
+        let corners: [PositionKey; 3] = [a?, b?, c?];
+        let start: usize = (0..3).min_by_key(|index| corners[*index]).unwrap_or(0);
+        let rotated: [PositionKey; 3] = std::array::from_fn(|index| corners[(start + index) % 3]);
 
-        corners.sort_unstable();
-
-        Some(corners)
+        seen.insert(rotated).then_some(rotated)
       })
       .collect()
   }
 
   /// Whether two vertices standing at one position are one vertex to the engine: the same normal, and alike
   /// [apart from it](Self::is_same_vertex_apart_from_normal).
-  pub(crate) fn is_same_vertex(first: &OgfVertex, second: &OgfVertex) -> bool {
+  pub(crate) fn is_same_vertex(first: &MaterialVertex, second: &MaterialVertex) -> bool {
     first
       .normal
       .to_array()
@@ -217,36 +220,22 @@ impl<'a> OgfMaterialGeometry<'a> {
       && Self::is_same_vertex_apart_from_normal(first, second)
   }
 
-  /// Whether two vertices standing at one position have the same texture coordinate modulo whole tiles, and bones with
-  /// their weights once each vertex's padding links are summed away: drawn and moved alike, perhaps shaded otherwise.
-  pub(crate) fn is_same_vertex_apart_from_normal(first: &OgfVertex, second: &OgfVertex) -> bool {
+  /// Whether two vertices standing at one position have the same texture coordinate modulo whole tiles, and the same
+  /// bones with their weights: drawn and moved alike, perhaps shaded otherwise.
+  pub(crate) fn is_same_vertex_apart_from_normal(first: &MaterialVertex, second: &MaterialVertex) -> bool {
     let is_whole_tiles = |first: f32, second: f32| {
       let delta: f32 = first - second;
 
       (delta - delta.round()).abs() <= Self::TEXTURE_TOLERANCE
     };
-    let (bones, other_bones) = (Self::collapse(first), Self::collapse(second));
 
-    is_whole_tiles(first.texture_u, second.texture_u)
-      && is_whole_tiles(first.texture_v, second.texture_v)
-      && bones.len() == other_bones.len()
-      && bones
+    is_whole_tiles(first.texture_coordinate.x, second.texture_coordinate.x)
+      && is_whole_tiles(first.texture_coordinate.y, second.texture_coordinate.y)
+      && first.bones.len() == second.bones.len()
+      && first
+        .bones
         .iter()
-        .zip(&other_bones)
-        .all(|((bone, weight), (other_bone, other_weight))| {
-          bone == other_bone && (weight - other_weight).abs() <= Self::WEIGHT_TOLERANCE
-        })
-  }
-
-  /// A vertex's bones summed per bone, those of no weight dropped: a layout pads a narrower vertex with repeated or
-  /// empty links, which the engine blends to the same pose.
-  fn collapse(vertex: &OgfVertex) -> Vec<(u16, f32)> {
-    let mut summed: BTreeMap<u16, f32> = BTreeMap::new();
-
-    for link in vertex.links.iter() {
-      *summed.entry(link.bone).or_default() += link.weight;
-    }
-
-    summed.into_iter().filter(|(_, weight)| *weight > 1e-6).collect()
+        .zip(&second.bones)
+        .all(|(own, other)| own.bone == other.bone && (own.weight - other.weight).abs() <= Self::WEIGHT_TOLERANCE)
   }
 }

@@ -15,6 +15,7 @@ use crate::object::decompile::geometry::two_sided_pairs::TwoSidedPairs;
 use crate::object::decompile::geometry::welded_mesh::WeldedMesh;
 use crate::object::decompile::mesh::assembled_mesh::AssembledMesh;
 use crate::object::decompile::mesh::mesh_assembler::MeshAssembler;
+use crate::object::decompile::mesh::mesh_kind::MeshKind;
 
 /// The bones of the skeleton the fixtures' corners follow, by index.
 pub(crate) const BONES: [&str; 3] = ["link", "lid", "hinge"];
@@ -106,13 +107,44 @@ pub(crate) fn object(assembled: AssembledMesh, bones: Vec<EditableBone>) -> Edit
 
 /// The editable mesh and surfaces the decompiler builds from `surfaces`, on a skeleton of [`BONES`].
 pub(crate) fn assemble(surfaces: &[OgfSurface]) -> XrfResult<AssembledMesh> {
+  assemble_as(
+    surfaces,
+    MeshKind::Skinned {
+      bone_names: &BONES.map(String::from),
+    },
+  )
+}
+
+/// The editable mesh and surfaces the decompiler builds from `surfaces` of [`unweighted`] corners, for a static object.
+pub(crate) fn assemble_static(surfaces: &[OgfSurface]) -> XrfResult<AssembledMesh> {
+  assemble_as(surfaces, MeshKind::Static)
+}
+
+fn assemble_as(surfaces: &[OgfSurface], kind: MeshKind) -> XrfResult<AssembledMesh> {
   let mut welded: WeldedMesh = WeldedMesh::weld(surfaces)?;
 
   welded.faces = TwoSidedPairs::fold(std::mem::take(&mut welded.faces));
 
   let smoothing: Vec<u32> = SmoothingInference::infer(&welded.faces);
 
-  MeshAssembler::assemble(surfaces, &welded, smoothing, &BONES.map(String::from))
+  MeshAssembler::assemble(surfaces, &welded, smoothing, kind)
+}
+
+/// A static object of `assembled`'s mesh and surfaces: no bones, neither dynamic nor progressive.
+pub(crate) fn static_object(assembled: AssembledMesh) -> EditableObjectFile {
+  EditableObjectFile {
+    flags: 0,
+    bones: None,
+    ..object(assembled, Vec::new())
+  }
+}
+
+/// The same corner following no bone, as a static vertex's does.
+pub(crate) fn unweighted(corner: OgfCorner) -> OgfCorner {
+  OgfCorner {
+    influences: BoneInfluences::NONE,
+    ..corner
+  }
 }
 
 /// A corner at `position` facing `normal`, following bone 0 alone, mapped at the origin of its texture.

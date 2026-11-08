@@ -11,7 +11,8 @@ pub enum ObjectInference {
   SurfaceCompilerShaders,
   /// Every surface's game material is the Actor Editor's `default`.
   SurfaceGameMaterials,
-  /// The mesh is named `skin`, as the SDK names a skinned object's mesh.
+  /// The mesh is named `skin`, as the SDK names a skinned object's mesh, or `mesh` in a static object, whose mesh the
+  /// SDK names after the object.
   MeshName,
   /// Every bone is the SDK's default 0.5 long; an OGF stores no length.
   BoneLengths,

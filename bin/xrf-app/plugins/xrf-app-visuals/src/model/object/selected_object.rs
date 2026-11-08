@@ -23,7 +23,7 @@ impl SelectedObject {
   ///
   /// # Errors
   ///
-  /// Returns an error when the object cannot be read, or is not one the compile writes: a skeleton object.
+  /// Returns an error when the object cannot be read or does not compile.
   pub fn read(source: &AssetSource, search: &XraySearch) -> TauriResult<(OgfFile, SelectedObjectDescription)> {
     let label: &str = source.label();
     let object: EditableObjectFile = source
@@ -46,7 +46,7 @@ impl SelectedObject {
       },
       &ObjectCompileOptions::following(provenance.as_ref()),
     )
-    .and_then(OgfFile::read_from_bytes::<XRayByteOrder>)
+    .and_then(|compiled| OgfFile::read_from_bytes::<XRayByteOrder>(compiled.ogf))
     .map_err(|error| format!("Failed to compile object '{label}': {error}"))?;
 
     Ok((file, SelectedObjectDescription::of(&object, provenance.as_ref())))

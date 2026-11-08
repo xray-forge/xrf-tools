@@ -6,10 +6,13 @@ the format crates rather than inside one: a conversion reads one format and writ
 
 ## Decompiling an OGF into an editable object
 
-`ObjectDecompiler::decompile` turns a skeleton OGF into an `xrf-editable-object` `EditableObjectFile` the Actor Editor
-opens. It undoes what the editor's `Export OGF` did:
+`ObjectDecompiler::decompile` turns a skeleton OGF, or a static one (`MT_NORMAL`, `MT_PROGRESSIVE`, or `MT_HIERRARHY`
+holding them), into an `xrf-editable-object` `EditableObjectFile` the Actor Editor opens. It undoes what the editor's
+`Export OGF` did:
 
 - every OGF child is a surface (texture and engine shader) and takes only its full-detail sliding window;
+- a face the export wrote again on the same points, wound the same way, is dropped: the static export walks a two-sided
+  surface's faces twice and writes each face and its mirror again;
 - each vertex's links, padded to its child's layout, come back as the bones its point follows and their weights,
   normalised as the export left them, which become one weight map per bone;
 - corners split at seams and hard edges are welded back into points, by bit-equal position, the bones followed and
@@ -21,17 +24,26 @@ opens. It undoes what the editor's `Export OGF` did:
 - the OGF's own motions come back as the object's, each bone keyed at every frame, its rotation turned back into the
   angles the editor keys, with how each motion plays and the bone parts they play on.
 
+A static OGF comes back as a static object laid out as the SDK lays one out: object flags `0` (progressive where the
+OGF has sliding windows), no bones, one mesh whose UV maps are named `Texture` and which holds no weight map, its
+vertices following no bone.
+
 What the OGF does not store is inferred and listed in `ObjectDecompile::inferred`: surface names, compiler shaders and
-game materials (the Actor Editor's `default`), the mesh name (`skin`), bone lengths (the SDK's 0.5), smoothing, the
-two-sided flag, and for an animated model its motions' curves between frames and, for a motion holding one key a bone
-more than it declares (`blender-xray`'s, for an action starting between frames), its length from its keys.
+game materials (the Actor Editor's `default`), the mesh name (`skin`, or `mesh` for a static object), a skeleton's bone
+lengths (the SDK's 0.5), smoothing, the two-sided flag, and for an animated model its motions' curves between frames
+and, for a motion holding one key a bone more than it declares (`blender-xray`'s, for an action starting between
+frames), its length from its keys.
 `ObjectProvenance` is the sidecar written beside a decompiled file, so it is never taken for an authored one: the source
 path and SHA-256, the tool, the time, every inference, and the tangent method the source was made with (MikkTSpace
 where its description's convertor names Blender), which `ObjectCompileOptions::following` compiles it back with.
 
-An OGF that is not a skeleton, or a child with static vertices, is refused for now.
+An OGF of any other model type (trees, LODs, particles) is refused.
 
 ## Compiling an editable object into an OGF
+
+`ObjectCompiler::compile` writes an object's OGF and reports what the export made of it (`ObjectCompile`). As the
+editor's `PrepareOGF` does, an object with bones exports as a skeleton and any other as a static visual, whatever its
+dynamic flag says.
 
 `ObjectCompiler::build_skeleton_geometry` builds a skeleton object's children as the Actor Editor's `Export OGF`
 prepares them, so the engine draws what the editor's export would give it:
@@ -68,6 +80,15 @@ hold better. Bullet hits do not read these boxes: they test the bones' physics s
 are ordered for the vertex cache (Forsyth's linear-speed optimisation, `VertexCacheOrder`) and its vertices numbered by
 first use, where the export took D3DX's closed optimiser: as few cache misses as vanilla's order, not its bytes.
 
+A static object is built as `CExportObjectOGF` builds it (`compile/rigid/`): a child per surface rather than per texture
+and shader, packed over the static export's grid of the object's box, a face dropped only where degenerate, the corners'
+first texture coordinate, and the same tangent pass, which splits and orders the vertices though the OGF stores no
+tangent. One child is written as the visual itself (`MT_NORMAL`), several as a hierarchy (`MT_HIERRARHY`) carrying the
+description, then the collision mesh the export adds. Two of the export's slips are not followed: a two-sided surface's
+faces are written once, where its second walk writes them all again, and a surface past 65,535 vertices is cut after
+the tangent pass, where the export starts a new part mid-surface and loses a face. A progressive object is written at
+full detail, without sliding windows.
+
 An object's own motions are written as `ExportMotions` writes them: every bone posed at each frame from its channels,
 its rotation quantised to 16 bits and its translation to 8 or 16 within its range, or held where it never changes,
 then how each motion plays and the bone parts it plays on. A motion moving the whole object through its root bone is
@@ -76,8 +97,8 @@ refused for now.
 `ObjectVerifier::verify` compiles an object and compares the OGF with one it should stand in for, by what the engine
 reads: the model type, user data, LODs and motion references; each bone's name, parent, order and physics; the own
 motions by name and length with their parameters; and the geometry, what each texture and shader draws over all the
-children drawing with them, its vertices by position, normal, texture coordinate and weights, and its triangles by their
-corners' positions. The orders the compile chooses, how a surface's faces fall among children (the export splits one by
+children drawing with them, skinned or static, its vertices by position, normal, texture coordinate and weights, and its
+distinct triangles by their corners' positions in winding order, a face drawn twice counted once and its mirror apart. The orders the compile chooses, how a surface's faces fall among children (the export splits one by
 breakable part, other tools spread one over several), tangents, bone boxes and authoring stamps are left out. `ObjectVerification` lists the differences
 of each area and counts what matched, telling a vertex that differs in its normal alone from one that differs more.
 

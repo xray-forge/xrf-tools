@@ -2,20 +2,21 @@
 
 use xrf_math::{Vector2d, Vector3d};
 
-use crate::object::compile::skeleton::skeleton_vertex::{SkeletonVertex, SkeletonVertexBone};
-use crate::object::compile::skeleton::split_partition::SplitPartition;
+use crate::object::compile::geometry::export_vertex::ExportVertex;
+use crate::object::compile::geometry::export_vertex_bone::ExportVertexBone;
+use crate::object::compile::geometry::split_partition::SplitPartition;
 
 /// A strip of `count` triangles over `count + 2` vertices, numbered by first use, the last two vertices following
 /// another bone than the rest.
-fn strip(count: u32) -> (Vec<SkeletonVertex>, Vec<[u32; 3]>) {
-  let vertices: Vec<SkeletonVertex> = (0..count + 2)
-    .map(|index| SkeletonVertex {
+fn strip(count: u32) -> (Vec<ExportVertex>, Vec<[u32; 3]>) {
+  let vertices: Vec<ExportVertex> = (0..count + 2)
+    .map(|index| ExportVertex {
       position: Vector3d::new(index as f32, 0.0, (index % 2) as f32),
       normal: Vector3d::Y,
       tangent: Vector3d::X,
       binormal: Vector3d::Z,
       texture_coordinate: Vector2d::ZERO,
-      bones: vec![SkeletonVertexBone {
+      bones: vec![ExportVertexBone {
         bone: u16::from(index >= count),
         weight: 1.0,
       }],
@@ -27,7 +28,7 @@ fn strip(count: u32) -> (Vec<SkeletonVertex>, Vec<[u32; 3]>) {
 }
 
 /// Each child's faces as the positions of their corners, all children in order.
-fn positions(children: &[(Vec<SkeletonVertex>, Vec<[u16; 3]>)]) -> Vec<[[u32; 3]; 3]> {
+fn positions(children: &[(Vec<ExportVertex>, Vec<[u16; 3]>)]) -> Vec<[[u32; 3]; 3]> {
   children
     .iter()
     .flat_map(|(vertices, faces)| {
@@ -58,7 +59,7 @@ fn leaves_a_split_within_the_bound_as_it_was() {
 fn cuts_a_split_past_the_bound_into_children_keeping_every_face() {
   let (vertices, faces) = strip(10);
   let children = SplitPartition::cut_at(vertices.clone(), &faces, 5);
-  let whole: Vec<(Vec<SkeletonVertex>, Vec<[u16; 3]>)> = SplitPartition::cut_at(vertices, &faces, usize::MAX);
+  let whole: Vec<(Vec<ExportVertex>, Vec<[u16; 3]>)> = SplitPartition::cut_at(vertices, &faces, usize::MAX);
 
   // Five vertices hold three strip triangles; the next triangle shares two of them with the child before.
   assert_eq!(

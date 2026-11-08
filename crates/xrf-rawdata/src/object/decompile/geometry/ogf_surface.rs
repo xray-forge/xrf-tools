@@ -1,6 +1,6 @@
 use xrf_error::{XrfError, XrfResult};
-use xrf_math::Vector2d;
-use xrf_ogf::{OgfFile, OgfVertex, OgfVertexData};
+use xrf_math::{Vector2d, Vector3d};
+use xrf_ogf::{OgfFile, OgfStaticVertex, OgfVertex, OgfVertexData};
 
 use crate::object::decompile::geometry::bone_influences::BoneInfluences;
 use crate::object::decompile::geometry::ogf_corner::OgfCorner;
@@ -15,12 +15,13 @@ pub(crate) struct OgfSurface {
 }
 
 impl OgfSurface {
-  /// Every child of `file` that draws geometry, depth first, as the export wrote them.
+  /// Every child of `file` that draws geometry, depth first, as the export wrote them: a skeleton's skinned children,
+  /// or a static visual's own geometry and its hierarchy's children.
   ///
   /// # Errors
   ///
-  /// Returns an error for a child with static vertices, which this does not decompile yet, and for an index past its
-  /// child's vertices.
+  /// Returns an error for a child whose vertex layout is not decoded or stores no normal or texture coordinate, and for
+  /// an index past its child's vertices.
   pub(crate) fn collect(file: &OgfFile) -> XrfResult<Vec<Self>> {
     let mut surfaces: Vec<Self> = Vec::new();
 
@@ -31,12 +32,10 @@ impl OgfSurface {
 
   fn collect_into(file: &OgfFile, surfaces: &mut Vec<Self>) -> XrfResult {
     if let (Some(texture), Some(geometry)) = (&file.texture, &file.geometry) {
-      let vertices: &[OgfVertex] = match &geometry.vertices {
-        Some(OgfVertexData::Skinned(vertices)) => vertices,
-        Some(OgfVertexData::Static(_)) => {
-          return Err(XrfError::new_not_implemented_error(
-            "An OGF child with static vertices is not decompiled yet; only skeletons are",
-          ));
+      let corners: Vec<OgfCorner> = match &geometry.vertices {
+        Some(OgfVertexData::Skinned(vertices)) => vertices.iter().map(Self::to_skinned_corner).collect(),
+        Some(OgfVertexData::Static(vertices)) => {
+          vertices.iter().map(Self::to_static_corner).collect::<XrfResult<_>>()?
         }
         None => {
           return Err(XrfError::new_not_implemented_error(
@@ -47,15 +46,8 @@ impl OgfSurface {
 
       let indices: &[u16] = Self::get_full_detail_indices(file, geometry.indices.as_deref().unwrap_or_default())?;
       let corner = |index: u16| -> XrfResult<OgfCorner> {
-        let vertex: &OgfVertex = vertices.get(usize::from(index)).ok_or_else(|| {
-          XrfError::new_invalid_error(format!("OGF index {index} is past its {} vertices", vertices.len()))
-        })?;
-
-        Ok(OgfCorner {
-          position: vertex.position,
-          normal: vertex.normal,
-          texture_coordinate: Vector2d::new(vertex.texture_u, vertex.texture_v),
-          influences: BoneInfluences::of_links(&vertex.links),
+        corners.get(usize::from(index)).copied().ok_or_else(|| {
+          XrfError::new_invalid_error(format!("OGF index {index} is past its {} vertices", corners.len()))
         })
       };
 
@@ -76,6 +68,43 @@ impl OgfSurface {
     }
 
     Ok(())
+  }
+
+  fn to_skinned_corner(vertex: &OgfVertex) -> OgfCorner {
+    OgfCorner {
+      position: vertex.position,
+      normal: vertex.normal,
+      texture_coordinate: Vector2d::new(vertex.texture_u, vertex.texture_v),
+      influences: BoneInfluences::of_links(&vertex.links),
+    }
+  }
+
+  /// A static vertex's corner, from its normal and first texture coordinate set: the export writes position, normal and
+  /// one coordinate pair (`D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1`).
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for a layout without a normal or a two-component first coordinate set, which no editable object
+  /// was exported to.
+  fn to_static_corner(vertex: &OgfStaticVertex) -> XrfResult<OgfCorner> {
+    let normal: Vector3d = vertex
+      .normal
+      .ok_or_else(|| XrfError::new_not_implemented_error("A static OGF child whose vertices store no normal"))?;
+    let texture_coordinate: Vector2d = match vertex.texture_coordinates.first().map(Vec::as_slice) {
+      Some([u, v]) => Vector2d::new(*u, *v),
+      _ => {
+        return Err(XrfError::new_not_implemented_error(
+          "A static OGF child whose vertices store no two-component texture coordinate",
+        ));
+      }
+    };
+
+    Ok(OgfCorner {
+      position: vertex.position,
+      normal,
+      texture_coordinate,
+      influences: BoneInfluences::NONE,
+    })
   }
 
   /// The indices of the most detailed sliding window where the child is progressive, `FProgressive`'s window 0, which

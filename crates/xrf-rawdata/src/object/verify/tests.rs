@@ -9,9 +9,10 @@ use xrf_ogf::{OgfFile, OgfVertex, OgfVertexLinks};
 use crate::object::compile::object_compile_source::ObjectCompileSource;
 use crate::object::compile::object_compiler::ObjectCompiler;
 use crate::object::decompile::tests::fixtures::{UP, assemble, chain, corner, object, surface, with_links};
+use crate::object::verify::material_vertex::MaterialVertex;
 use crate::object::verify::object_verification::{ObjectGeometryCensus, ObjectVerification};
 use crate::object::verify::object_verifier::ObjectVerifier;
-use crate::object::verify::ogf_material_geometry::{OgfMaterialComparison, OgfMaterialGeometry, PositionKey};
+use crate::object::verify::ogf_material_geometry::{OgfMaterialComparison, OgfMaterialGeometry};
 
 /// A quad on a chain of three bones, one corner blended between the first two, with LODs and motion references.
 fn quad() -> XrfResult<EditableObjectFile> {
@@ -42,7 +43,7 @@ fn compiled(object: &EditableObjectFile) -> XrfResult<OgfFile> {
     built_at: 1_000,
   };
 
-  OgfFile::read_from_bytes::<XRayByteOrder>(ObjectCompiler::compile(object, &source)?)
+  OgfFile::read_from_bytes::<XRayByteOrder>(ObjectCompiler::compile(object, &source)?.ogf)
 }
 
 /// How the quad verifies against a reference compiled from it after `change`.
@@ -253,7 +254,7 @@ fn compares_no_face_that_draws_nothing_on_either_side() {
     texture: "wood",
     shader: "models\\model",
     children: 1,
-    vertices: vertices.iter().collect(),
+    vertices: vertices.iter().map(MaterialVertex::from).collect(),
     faces,
   };
   let with_flat: OgfMaterialGeometry = material(vec![[0, 1, 2], [0, 3, 1]]);
@@ -282,13 +283,38 @@ fn leaves_out_a_face_naming_a_vertex_it_lacks() {
     texture: "wood",
     shader: "models\\model",
     children: 1,
-    vertices: vertices.iter().collect(),
+    vertices: vertices.iter().map(MaterialVertex::from).collect(),
     faces: vec![[2, 0, 1], [0, 1, 3]],
   };
   let key = |x: f32| OgfMaterialGeometry::position_key(&Vector3d::new(x, 0.0, 0.0));
-  let mut expected: [PositionKey; 3] = [key(0.0), key(1.0), key(2.0)];
 
-  expected.sort_unstable();
+  // Turned to start at its lowest corner, its winding kept.
+  assert_eq!(material.triangles(), [[key(0.0), key(1.0), key(2.0)]]);
+}
 
-  assert_eq!(material.triangles(), [expected]);
+#[test]
+fn compares_each_face_once_and_its_mirror_apart() {
+  let vertices: [OgfVertex; 3] = [vertex(0.0), vertex(1.0), vertex(2.0)];
+  let material = |faces: Vec<[u32; 3]>| OgfMaterialGeometry {
+    texture: "wood",
+    shader: "models\\model",
+    children: 1,
+    vertices: vertices.iter().map(MaterialVertex::from).collect(),
+    faces,
+  };
+  // The static export's second walk of a two-sided surface: each face and its mirror written again.
+  let repeated: OgfMaterialGeometry = material(vec![[0, 1, 2], [2, 1, 0], [1, 2, 0], [0, 2, 1]]);
+  let once: OgfMaterialGeometry = material(vec![[0, 1, 2], [2, 1, 0]]);
+  let one_side: OgfMaterialGeometry = material(vec![[0, 1, 2]]);
+  let counts = |comparison: OgfMaterialComparison| {
+    (
+      comparison.faces_matched,
+      comparison.faces_missing,
+      comparison.faces_extra,
+    )
+  };
+
+  assert_eq!(repeated.triangles().len(), 2);
+  assert_eq!(counts(once.compare(&repeated)), (2, 0, 0));
+  assert_eq!(counts(one_side.compare(&repeated)), (1, 1, 0));
 }

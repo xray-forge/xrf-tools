@@ -6,6 +6,7 @@ use xrf_math::Vector2d;
 
 use crate::object::decompile::geometry::welded_mesh::WeldedMesh;
 use crate::object::decompile::mesh::mesh_assembler::MeshAssembler;
+use crate::object::decompile::mesh::mesh_kind::MeshKind;
 
 /// A mesh's vertex maps as they fill, and the references its corners make into them.
 ///
@@ -26,6 +27,7 @@ pub(crate) struct VertexMaps {
   /// Each point's entries in the weight maps of the bones it follows.
   point_weights: Vec<Vec<EditableVMapPoint>>,
   bone_names: Vec<String>,
+  uv_map_name: &'static str,
   pub(crate) references: Vec<EditableVMapReference>,
   /// The reference of each UV entry and point a corner has referred to.
   reference_of: HashMap<[u32; 3], u32>,
@@ -35,12 +37,13 @@ impl VertexMaps {
   const POINT_UV_MAP: u32 = 0;
   const FIRST_WEIGHT_MAP: u32 = 1;
 
-  /// The maps of `welded`'s points, each weighed to the bones it follows.
+  /// The maps of `welded`'s points, each weighed to the bones it follows, named as the SDK names a mesh of `kind`'s.
   ///
   /// # Errors
   ///
-  /// Returns an error when a point's bone is past `bone_names`, or a count outgrows a `u32`.
-  pub(crate) fn new(welded: &WeldedMesh, bone_names: &[String]) -> XrfResult<Self> {
+  /// Returns an error when a point's bone is past those `kind` names, or a count outgrows a `u32`.
+  pub(crate) fn new(welded: &WeldedMesh, kind: MeshKind) -> XrfResult<Self> {
+    let bone_names: &[String] = kind.get_bone_names();
     let mut weight_bones: Vec<u16> = welded
       .point_influences
       .iter()
@@ -90,6 +93,7 @@ impl VertexMaps {
       weight_values,
       point_weights,
       bone_names: bone_names.to_vec(),
+      uv_map_name: kind.get_uv_map_name(),
       references: Vec::new(),
       reference_of: HashMap::new(),
     })
@@ -150,7 +154,7 @@ impl VertexMaps {
   /// The maps, in their fixed order.
   pub(crate) fn into_vmaps(self) -> Vec<EditableVMap> {
     let mut vmaps: Vec<EditableVMap> = vec![EditableVMap {
-      name: String::from(MeshAssembler::UV_MAP_NAME),
+      name: String::from(self.uv_map_name),
       dimension: 2,
       kind: EditableVMapKind::Uv,
       values: self
@@ -175,7 +179,7 @@ impl VertexMaps {
 
     if !self.polygon_points.is_empty() {
       vmaps.push(EditableVMap {
-        name: String::from(MeshAssembler::UV_MAP_NAME),
+        name: String::from(self.uv_map_name),
         dimension: 2,
         kind: EditableVMapKind::Uv,
         values: self.polygon_uvs,
