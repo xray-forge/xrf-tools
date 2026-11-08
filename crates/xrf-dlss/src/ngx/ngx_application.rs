@@ -83,7 +83,7 @@ impl NgxApplication {
         },
       },
       ApplicationDataPath: data_path.as_ptr(),
-      FeatureInfo: &common,
+      FeatureInfo: &raw const common,
     };
 
     callback(&info)

@@ -81,10 +81,10 @@ impl NgxRayReconstruction {
 
         match commands {
           NgxCommands::Vulkan(list) => {
-            NGX_VULKAN_CREATE_DLSSD_EXT1(vulkan_device, list, 1, 1, handle, ngx, &mut parameters)
+            NGX_VULKAN_CREATE_DLSSD_EXT1(vulkan_device, list, 1, 1, handle, ngx, &raw mut parameters)
           }
           #[cfg(windows)]
-          NgxCommands::D3d12(list) => NGX_D3D12_CREATE_DLSSD_EXT(list, 1, 1, handle, ngx, &mut parameters),
+          NgxCommands::D3d12(list) => NGX_D3D12_CREATE_DLSSD_EXT(list, 1, 1, handle, ngx, &raw mut parameters),
         }
       },
     )?;
@@ -146,14 +146,14 @@ impl NgxRayReconstruction {
     // SAFETY: a plain C struct of pointers and scalars, for which all zeros is "left out".
     let mut parameters: NVSDK_NGX_VK_DLSSD_Eval_Params = unsafe { std::mem::zeroed() };
 
-    parameters.pInColor = &mut color;
-    parameters.pInOutput = &mut output;
-    parameters.pInDepth = &mut depth;
-    parameters.pInMotionVectors = &mut motion;
-    parameters.pInDiffuseAlbedo = &mut diffuse_albedo;
-    parameters.pInSpecularAlbedo = &mut specular_albedo;
-    parameters.pInNormals = &mut normals;
-    parameters.pInSpecularHitDistance = &mut hit_distance;
+    parameters.pInColor = &raw mut color;
+    parameters.pInOutput = &raw mut output;
+    parameters.pInDepth = &raw mut depth;
+    parameters.pInMotionVectors = &raw mut motion;
+    parameters.pInDiffuseAlbedo = &raw mut diffuse_albedo;
+    parameters.pInSpecularAlbedo = &raw mut specular_albedo;
+    parameters.pInNormals = &raw mut normals;
+    parameters.pInSpecularHitDistance = &raw mut hit_distance;
 
     if let Some(diffuse) = &mut diffuse_hit_distance {
       parameters.pInDiffuseHitDistance = diffuse;
@@ -185,7 +185,7 @@ impl NgxRayReconstruction {
 
     // SAFETY: `evaluate` lends the feature's handle, the SDK's parameters under NGX's lock and a fresh command list,
     // and every resource and matrix the parameters point at lives until the call returns.
-    unsafe { NGX_VULKAN_EVALUATE_DLSSD_EXT(list, handle, sdk.parameters, &mut parameters) }
+    unsafe { NGX_VULKAN_EVALUATE_DLSSD_EXT(list, handle, sdk.parameters, &raw mut parameters) }
   }
 
   /// NGX's reconstruction of `inputs` recorded into a D3D12 command list.
@@ -238,7 +238,7 @@ impl NgxRayReconstruction {
       parameters.InToneMapperType = NVSDK_NGX_ToneMapperType_NVSDK_NGX_TONEMAPPER_STRING;
       parameters.InPreExposure = inputs.pre_exposure;
 
-      NGX_D3D12_EVALUATE_DLSSD_EXT(list, handle, sdk.parameters, &mut parameters)
+      NGX_D3D12_EVALUATE_DLSSD_EXT(list, handle, sdk.parameters, &raw mut parameters)
     }
   }
 }

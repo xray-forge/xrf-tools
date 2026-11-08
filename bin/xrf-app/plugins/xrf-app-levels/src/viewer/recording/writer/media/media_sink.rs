@@ -333,7 +333,7 @@ impl MediaSink {
       let mut transform: Option<IMFTransform> = None;
 
       // SAFETY: both out-pointers are valid for the call.
-      if unsafe { writer.GetTransformForStream(stream, index, Some(&mut category), &mut transform) }.is_err() {
+      if unsafe { writer.GetTransformForStream(stream, index, Some(&raw mut category), &raw mut transform) }.is_err() {
         break;
       }
 
@@ -366,7 +366,7 @@ impl MediaSink {
     let mut length: u32 = 0;
 
     // SAFETY: the buffer is as long as the length it is given.
-    unsafe { attributes.GetString(key, &mut buffer, Some(&mut length)) }.ok()?;
+    unsafe { attributes.GetString(key, &mut buffer, Some(&raw mut length)) }.ok()?;
 
     Some(String::from_utf16_lossy(&buffer[..length as usize]))
   }
@@ -375,7 +375,7 @@ impl MediaSink {
     let mut attributes: Option<IMFAttributes> = None;
 
     // SAFETY: the out-pointer is valid.
-    unsafe { MFCreateAttributes(&mut attributes, count)? };
+    unsafe { MFCreateAttributes(&raw mut attributes, count)? };
 
     attributes.ok_or_else(windows::core::Error::empty)
   }
@@ -479,7 +479,7 @@ impl MediaSink {
       let buffer: IMFMediaBuffer = MFCreateMemoryBuffer(data.len() as u32)?;
       let mut target: *mut u8 = std::ptr::null_mut();
 
-      buffer.Lock(&mut target, None, None)?;
+      buffer.Lock(&raw mut target, None, None)?;
       std::ptr::copy_nonoverlapping(data.as_ptr(), target, data.len());
       buffer.Unlock()?;
       buffer.SetCurrentLength(data.len() as u32)?;

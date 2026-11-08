@@ -99,7 +99,7 @@ impl WebviewProcessProbe {
       let collection: ICoreWebView2ProcessInfoCollection = unsafe { environment.GetProcessInfos()? };
 
       // SAFETY: as above; `count` outlives the call.
-      unsafe { collection.Count(&mut count)? };
+      unsafe { collection.Count(&raw mut count)? };
 
       let mut processes: Vec<WebviewProcess> = Vec::with_capacity(count as usize);
 
@@ -112,8 +112,8 @@ impl WebviewProcessProbe {
 
         // SAFETY: as above, for the one process's identity and kind.
         unsafe {
-          info.ProcessId(&mut pid)?;
-          info.Kind(&mut kind)?;
+          info.ProcessId(&raw mut pid)?;
+          info.Kind(&raw mut kind)?;
         }
 
         if let Ok(pid) = u32::try_from(pid) {

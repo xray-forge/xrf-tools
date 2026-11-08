@@ -74,7 +74,14 @@ fn read_stream(file: &Path, stream: u32) -> ReadStream {
       let mut sample: Option<IMFSample> = None;
 
       reader
-        .ReadSample(stream, 0, None, Some(&mut flags), Some(&mut time), Some(&mut sample))
+        .ReadSample(
+          stream,
+          0,
+          None,
+          Some(&raw mut flags),
+          Some(&raw mut time),
+          Some(&raw mut sample),
+        )
         .expect("a sample to be read");
 
       if let Some(sample) = sample {

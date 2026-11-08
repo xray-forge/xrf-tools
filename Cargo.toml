@@ -345,6 +345,13 @@ unnecessary_safety_comment = "warn"
 unnecessary_safety_doc = "warn"
 unused_peekable = "warn"
 unused_result_ok = "warn"
+# A raw pointer is taken with `&raw const` / `&raw mut` and converted with `cast`, `cast_mut` and `cast_const`, never
+# through `as`, which changes type and mutability in one silent step.
+as_ptr_cast_mut = "warn"
+borrow_as_ptr = "warn"
+ptr_as_ptr = "warn"
+ptr_cast_constness = "warn"
+ref_as_ptr = "warn"
 
 clone_on_ref_ptr = "warn"
 derive_partial_eq_without_eq = "warn"
