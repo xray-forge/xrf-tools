@@ -300,8 +300,8 @@ impl RenderThread {
 
     let executed: ExecutedGraph = match recorded {
       Ok(executed) => {
-        self.frame_failures.succeed("The frame cannot be drawn");
-        self.frame_failures.succeed("The frame's uploads cannot be submitted");
+        self.frame_failures.succeed(Self::UNDRAWN_FRAME);
+        self.frame_failures.succeed(Self::UNSUBMITTED_UPLOADS);
 
         executed
       }
