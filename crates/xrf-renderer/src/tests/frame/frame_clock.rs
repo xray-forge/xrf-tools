@@ -34,6 +34,36 @@ fn frames_draw_at_the_wall_clock_until_stepped_then_a_step_a_frame() {
   );
 }
 
+// Frames drawn faster than their step run the clock ahead of the wall; once the step is cleared it keeps that lead and
+// follows the wall from where it stood, never going back to it.
+#[test]
+fn a_cleared_step_keeps_the_lead_its_frames_ran_ahead_by() {
+  let start: Instant = Instant::now();
+  let step: Duration = Duration::from_secs(1);
+  let mut clock: FrameClock = FrameClock::default();
+
+  clock.tick(start);
+  clock.set_step(Some(step));
+
+  for frame in 1..=10 {
+    clock.tick(start + Duration::from_millis(frame * 10));
+  }
+
+  // Ten frames a hundredth of a second apart stood ten seconds on: nine point nine ahead of the wall.
+  let stepped: Instant = start + step * 10;
+
+  clock.set_step(None);
+
+  assert_eq!(
+    clock.tick(start + Duration::from_millis(120)),
+    stepped + Duration::from_millis(20)
+  );
+  assert_eq!(
+    clock.tick(start + Duration::from_millis(150)),
+    stepped + Duration::from_millis(50)
+  );
+}
+
 #[test]
 fn a_step_past_the_platforms_latest_time_holds_the_clock() {
   let start: Instant = Instant::now();
