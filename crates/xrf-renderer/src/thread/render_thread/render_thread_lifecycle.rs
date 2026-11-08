@@ -116,10 +116,12 @@ impl RenderThread {
       .unwrap_or_else(PoisonError::into_inner)
       .restart_scenes();
 
+    // The captures are told the GPU went before the viewport leaves its view, which would tell them it shows another
+    // scene.
     for viewport in self.viewports.values_mut() {
       viewport.forget_binding();
-      viewport.hide();
       viewport.release_captures();
+      viewport.hide();
     }
   }
 
