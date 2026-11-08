@@ -47,7 +47,7 @@ impl BloomUniform {
   /// `CalcGauss_wave`: two kernels added, one of the radius and one of a third of it, each of the strength.
   pub fn get_wave(radius: f32, strength: f32) -> [Vec4; 2] {
     let [base, detail] = [radius, radius / 3.0].map(|it| Self::get_kernel(it, strength));
-    let weights: Vec<f32> = (0..=TAPS).map(|tap| base[tap] + detail[tap]).collect();
+    let weights: [f32; TAPS + 1] = std::array::from_fn(|tap| base[tap] + detail[tap]);
 
     [
       Vec4::new(weights[1], weights[2], weights[3], weights[4]),
