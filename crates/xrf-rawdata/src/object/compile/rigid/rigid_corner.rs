@@ -23,7 +23,7 @@ impl RigidCorner {
   /// Returns an error where [`MeshCorners`] refuses the mesh, and for a reference naming no UV map, which the export
   /// asserts against, or a UV entry of too few values.
   pub(crate) fn of_mesh(mesh: &EditableMesh) -> XrfResult<Vec<[Self; 3]>> {
-    let corners: MeshCorners = MeshCorners::of(mesh)?;
+    let corners: MeshCorners<'_> = MeshCorners::of(mesh)?;
 
     corners.read_faces(|corner| Self::of_corner(corner, corners.get_mesh_name()))
   }
@@ -42,7 +42,7 @@ impl RigidCorner {
   }
 
   /// The corner with the first UV entry its reference names, past any other kind of entry.
-  fn of_corner(corner: MeshCorner, mesh_name: &str) -> XrfResult<Self> {
+  fn of_corner(corner: MeshCorner<'_>, mesh_name: &str) -> XrfResult<Self> {
     let entry = corner
       .entries
       .iter()

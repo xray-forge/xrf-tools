@@ -23,7 +23,7 @@ pub struct ArchiveThmTexture {
 impl ArchiveThmTexture {
   /// The texture an entry's descriptor describes, resolved against the subject being browsed.
   pub fn of(
-    source: &ArchiveDescribeSource,
+    source: &ArchiveDescribeSource<'_>,
     name: &str,
     texture_type: ThmTextureType,
     parameters: Option<&ThmTextureParamChunk>,

@@ -29,7 +29,7 @@ pub struct ArchiveParticlesEffect {
 
 impl ArchiveParticlesEffect {
   /// Every effect of a library, each with its texture resolved.
-  pub fn of_all(source: &ArchiveDescribeSource, effects: &[ParticleEffect]) -> Vec<Self> {
+  pub fn of_all(source: &ArchiveDescribeSource<'_>, effects: &[ParticleEffect]) -> Vec<Self> {
     effects
       .iter()
       .map(|effect| Self {

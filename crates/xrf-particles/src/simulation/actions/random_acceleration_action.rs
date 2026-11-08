@@ -18,7 +18,7 @@ impl RandomAccelerationAction {
       .transform_direction_from(&self.acceleration_local, matrix);
   }
 
-  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep) {
+  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
     let (particles, random) = pool.split_mut();
 
     for m in particles {

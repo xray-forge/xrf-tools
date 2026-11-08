@@ -91,7 +91,7 @@ mod tests {
 
   #[test]
   fn reads_bits_most_significant_first() {
-    let mut reader: BitReader = BitReader::new(&[0b1011_0010, 0b0100_0001]);
+    let mut reader: BitReader<'_> = BitReader::new(&[0b1011_0010, 0b0100_0001]);
 
     assert_eq!(reader.read_bits(1).expect("bit"), 0b1);
     assert_eq!(reader.read_bits(3).expect("bits"), 0b011);
@@ -101,7 +101,7 @@ mod tests {
 
   #[test]
   fn reads_runs_that_span_byte_boundaries() {
-    let mut reader: BitReader = BitReader::new(&[0b1111_0000, 0b1010_1010]);
+    let mut reader: BitReader<'_> = BitReader::new(&[0b1111_0000, 0b1010_1010]);
 
     assert_eq!(reader.read_bits(6).expect("bits"), 0b111100);
     // Two bits left in the first byte, then the whole second byte, taken most significant first.
@@ -110,7 +110,7 @@ mod tests {
 
   #[test]
   fn zero_bit_read_yields_zero_without_consuming() {
-    let mut reader: BitReader = BitReader::new(&[0b1000_0000]);
+    let mut reader: BitReader<'_> = BitReader::new(&[0b1000_0000]);
 
     assert_eq!(reader.read_bits(0).expect("bits"), 0);
     assert_eq!(reader.read_bits(1).expect("bit"), 1);
@@ -118,7 +118,7 @@ mod tests {
 
   #[test]
   fn pads_a_short_tail_the_way_the_engine_does() {
-    let mut reader: BitReader = BitReader::new(&[0b1100_0000]);
+    let mut reader: BitReader<'_> = BitReader::new(&[0b1100_0000]);
 
     assert_eq!(reader.read_bits(2).expect("bits"), 0b11);
     assert_eq!(reader.read_bits(16).expect("padded bits"), 0);
@@ -126,7 +126,7 @@ mod tests {
 
   #[test]
   fn rejects_a_stream_that_runs_out_for_good() {
-    let mut reader: BitReader = BitReader::new(&[]);
+    let mut reader: BitReader<'_> = BitReader::new(&[]);
 
     for _ in 0..(PHANTOM_BIT_BUDGET / 8) {
       assert_eq!(reader.read_bits(8).expect("padded bits"), 0);

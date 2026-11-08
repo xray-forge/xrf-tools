@@ -163,8 +163,8 @@ impl WeatherPasses {
       .add::<SkyMotionParameters>("generated/frame/sky_motion")?
       .add::<SkyBehindParameters>("generated/frame/sky_behind")?
       .add::<SkyHazeParameters>("generated/frame/sky_haze")?
-      .add::<SunShaftsParameters>("generated/frame/sun_shafts")?
-      .add::<LightVolumeParameters>("generated/frame/light_volumes")?
+      .add::<SunShaftsParameters<'_>>("generated/frame/sun_shafts")?
+      .add::<LightVolumeParameters<'_>>("generated/frame/light_volumes")?
       .add::<FroxelInjectParameters<'_>>("generated/frame/froxel_inject")?
       .add::<FroxelIntegrateParameters>("generated/frame/froxel_integrate")?
       .add::<WetPatchParameters<'_>>("generated/frame/wet_patch")?

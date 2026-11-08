@@ -102,7 +102,7 @@ impl<'a> EnvironmentReadPass<'a> {
       self.resolve_ambient_references(ambient, &sound_channels, &ambient_effects);
     }
 
-    let definitions: EnvironmentDefinitions = EnvironmentDefinitions {
+    let definitions: EnvironmentDefinitions<'_> = EnvironmentDefinitions {
       ambient_effects: &ambient_effects,
       ambients: &ambients,
       cycles: cycles.iter().chain(&effects).collect(),
@@ -147,7 +147,7 @@ impl<'a> EnvironmentReadPass<'a> {
     let Some(config) = self.open(&path)? else {
       return Ok(None);
     };
-    let mut reader: EnvironmentSectionReader = self.reader(id.kind.get_subject(), &config);
+    let mut reader: EnvironmentSectionReader<'_> = self.reader(id.kind.get_subject(), &config);
     let cycle: WeatherCycle = WeatherCycle::read(&mut reader, id, config.get_ltx());
 
     self.findings.sort();

@@ -120,7 +120,7 @@ impl GpuContext {
   ///
   /// Returns an error when neither a hardware nor a software adapter can be had with the required features.
   pub fn create_headless(backend: RenderBackend, dxc: Option<&Path>) -> XrfResult<Self> {
-    let libraries: GpuLibraries = GpuLibraries { dxc, dlss: None };
+    let libraries: GpuLibraries<'_> = GpuLibraries { dxc, dlss: None };
 
     Self::create_with(backend, None, GpuInstanceUse::Hardware, libraries)
       .or_else(|_| Self::create_with(backend, None, GpuInstanceUse::Software, libraries))

@@ -19,7 +19,7 @@ pub struct ThunderboltCollection {
 
 impl ThunderboltCollection {
   /// Reads one collection's bolt names.
-  pub(crate) fn read(reader: &mut EnvironmentSectionReader, name: &str, section: &Section) -> Self {
+  pub(crate) fn read(reader: &mut EnvironmentSectionReader<'_>, name: &str, section: &Section) -> Self {
     let thunderbolts: Vec<String> = section.iter().map(|(bolt, _)| bolt.to_owned()).collect();
 
     if thunderbolts.is_empty() {

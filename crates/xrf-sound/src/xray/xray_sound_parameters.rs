@@ -45,7 +45,7 @@ impl XRaySoundParameters {
     let Some(version) = XRaySoundCommentVersion::read(comment) else {
       return Ok(None);
     };
-    let mut reader: VorbisPacketReader = VorbisPacketReader::new(&comment[XRaySoundCommentVersion::SIZE..]);
+    let mut reader: VorbisPacketReader<'_> = VorbisPacketReader::new(&comment[XRaySoundCommentVersion::SIZE..]);
 
     let min_distance: f32 = reader.read_f32("minimum distance")?;
     let max_distance: f32 = reader.read_f32("maximum distance")?;

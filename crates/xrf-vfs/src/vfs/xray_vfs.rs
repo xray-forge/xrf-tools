@@ -304,7 +304,7 @@ impl XrayVfs {
   ///
   /// Returns an error when the path is not a valid X-Ray logical path. Absence is `Ok(None)`, not an error.
   pub(crate) fn find_in(&self, scope: &XrayLookupScope, logical_path: &str) -> XrfResult<Option<XrayAsset>> {
-    let logical_path: Cow<str> = normalize(logical_path)?;
+    let logical_path: Cow<'_, str> = normalize(logical_path)?;
 
     Ok(
       self
@@ -321,7 +321,7 @@ impl XrayVfs {
   /// X-Ray logical path, or the source's own error when the bytes cannot be read.
   #[cfg(test)]
   pub(crate) fn read_in(&self, scope: &XrayLookupScope, logical_path: &str) -> XrfResult<Vec<u8>> {
-    let logical_path: Cow<str> = normalize(logical_path)?;
+    let logical_path: Cow<'_, str> = normalize(logical_path)?;
     let (mount, source_path) = self.require_winner_in_scope(scope, &logical_path)?;
 
     self.read_from_mount(mount, source_path, &logical_path)
@@ -366,7 +366,7 @@ impl XrayVfs {
     T: Send + Sync + 'static,
     F: FnOnce(Vec<u8>) -> XrfResult<T>,
   {
-    let logical_path: Cow<str> = normalize(logical_path)?;
+    let logical_path: Cow<'_, str> = normalize(logical_path)?;
     let (mount, source_path) = self.require_winner_in_scope(scope, &logical_path)?;
 
     self.read_parsed_at(mount, source_path, &logical_path, kind, parse)
@@ -491,7 +491,7 @@ impl XrayVfs {
 
   /// Size in bytes of the winning entry within a scope, without reading it.
   pub(crate) fn read_size_in(&self, scope: &XrayLookupScope, logical_path: &str) -> Option<u64> {
-    let logical_path: Cow<str> = normalize(logical_path).ok()?;
+    let logical_path: Cow<'_, str> = normalize(logical_path).ok()?;
     let (mount, source_path) = self.get_winner_in_scope(scope, &logical_path)?;
 
     mount.get_source().get_size(source_path)
@@ -499,7 +499,7 @@ impl XrayVfs {
 
   /// CRC32 of the winning entry's payload within a scope, when its source already knows it without reading anything.
   pub(crate) fn read_recorded_crc_in(&self, scope: &XrayLookupScope, logical_path: &str) -> Option<u32> {
-    let logical_path: Cow<str> = normalize(logical_path).ok()?;
+    let logical_path: Cow<'_, str> = normalize(logical_path).ok()?;
     let (mount, source_path) = self.get_winner_in_scope(scope, &logical_path)?;
 
     mount.get_source().get_recorded_crc(source_path)
@@ -532,7 +532,7 @@ impl XrayVfs {
   ///
   /// Returns an error when `directory` is not a valid X-Ray logical path. An empty `directory` lists the logical root.
   pub(crate) fn list_children_in(&self, scope: &XrayLookupScope, directory: &str) -> XrfResult<XrayDirectoryListing> {
-    let directory: Cow<str> = if directory.is_empty() {
+    let directory: Cow<'_, str> = if directory.is_empty() {
       Cow::Borrowed("")
     } else {
       normalize(directory)?

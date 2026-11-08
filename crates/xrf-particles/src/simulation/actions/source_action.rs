@@ -43,7 +43,7 @@ impl SourceAction {
     }
   }
 
-  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep) {
+  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
     if self.flags & Self::SILENT != 0 {
       return;
     }

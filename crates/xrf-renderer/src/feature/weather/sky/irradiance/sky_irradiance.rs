@@ -52,7 +52,7 @@ impl SkyIrradiance {
     lit: &LightingHandles<'a>,
   ) {
     let buffer: GraphBuffer = bindings.import_buffer(&mut *graph, "sky harmonics", &self.buffer);
-    let parameters: SkyIrradianceParameters = SkyIrradianceParameters {
+    let parameters: SkyIrradianceParameters<'_> = SkyIrradianceParameters {
       sky_cube_0: sky.sky_cube_0,
       sky_cube_1: sky.sky_cube_1,
       sky_environment_0: sky.sky_environment_0,

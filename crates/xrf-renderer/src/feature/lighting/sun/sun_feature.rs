@@ -34,7 +34,7 @@ impl SunFeature {
     filter_reach: u32,
   ) -> GraphTexture {
     let is_traced: bool = sun_traced.is_some();
-    let sun: SunParameters = SunParameters {
+    let sun: SunParameters<'_> = SunParameters {
       albedo_target: targets.albedo,
       normal_target: targets.normal,
       material_target: targets.material,

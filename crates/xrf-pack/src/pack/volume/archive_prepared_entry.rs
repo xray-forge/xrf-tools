@@ -44,7 +44,7 @@ impl ArchivePreparedEntry {
   /// # Errors
   ///
   /// Returns the read error of its payload, and an invalid error for a file larger than an entry can describe.
-  pub(crate) fn read(payloads: &ArchivePackPayloads, entry: &ArchivePackEntry) -> XrfResult<Self> {
+  pub(crate) fn read(payloads: &ArchivePackPayloads<'_>, entry: &ArchivePackEntry) -> XrfResult<Self> {
     let contents: Vec<u8> = payloads.read(entry)?;
     let size_real: u32 = u32::try_from(contents.len()).map_err(|_| {
       XrfError::new_invalid_error(format!(
@@ -70,7 +70,7 @@ impl ArchivePreparedEntry {
   /// Returns what [`Self::read`] answers with, and an unexpected error when compression fails.
   pub(crate) fn read_coded(
     config: &ArchivePackConfig,
-    payloads: &ArchivePackPayloads,
+    payloads: &ArchivePackPayloads<'_>,
     entry: &ArchivePackEntry,
     dict: &mut Dict,
   ) -> XrfResult<Self> {

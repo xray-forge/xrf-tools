@@ -19,7 +19,7 @@ impl DecodedTranslation {
   /// # Errors
   ///
   /// Returns an encoding error when the bytes are UTF-16 or do not decode as the encoding they resolve to.
-  pub(crate) fn decode(identity: TranslationIdentity, data: &[u8]) -> XrfResult<Self> {
+  pub(crate) fn decode(identity: TranslationIdentity<'_>, data: &[u8]) -> XrfResult<Self> {
     let (mark, body) = Self::split_byte_order_mark(identity.file_name, data)?;
 
     // A byte order mark decides the encoding and outranks everything else, because it is the one statement about the

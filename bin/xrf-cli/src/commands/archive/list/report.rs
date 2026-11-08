@@ -15,7 +15,11 @@ pub struct ArchiveListReport {
 }
 
 impl ArchiveListReport {
-  pub fn new(project: &ArchiveProject, entries: &[&ArchiveFileDescriptor], shared: &ArchiveSharedPayloadIndex) -> Self {
+  pub fn new(
+    project: &ArchiveProject,
+    entries: &[&ArchiveFileDescriptor],
+    shared: &ArchiveSharedPayloadIndex<'_>,
+  ) -> Self {
     Self {
       entries: ArchiveEntryReport::list(project, entries, shared),
     }

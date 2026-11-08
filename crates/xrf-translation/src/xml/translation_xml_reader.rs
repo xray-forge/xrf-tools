@@ -41,7 +41,7 @@ impl TranslationXmlReader {
   ///
   /// Returns an encoding error when the bytes do not decode, and a parsing error when the document is malformed beyond
   /// what the engine accepts.
-  pub(crate) fn parse(identity: TranslationIdentity, data: &[u8]) -> XrfResult<Vec<(String, String)>> {
+  pub(crate) fn parse(identity: TranslationIdentity<'_>, data: &[u8]) -> XrfResult<Vec<(String, String)>> {
     Self::parse_decoded(DecodedTranslation::decode(identity, data)?)
   }
 
@@ -57,7 +57,7 @@ impl TranslationXmlReader {
   ///
   /// Returns an encoding error when the bytes do not decode, a parsing error when the document is malformed, and an
   /// invalid error when its root is not `string_table`.
-  pub(crate) fn parse_required(identity: TranslationIdentity, data: &[u8]) -> XrfResult<Vec<(String, String)>> {
+  pub(crate) fn parse_required(identity: TranslationIdentity<'_>, data: &[u8]) -> XrfResult<Vec<(String, String)>> {
     let decoded: DecodedTranslation = DecodedTranslation::decode(identity, data)?;
     let document: XmlSourceDocument = XmlSourceDocument::parse(decoded.text)?;
     let root: &XmlElementSpan = document.root();

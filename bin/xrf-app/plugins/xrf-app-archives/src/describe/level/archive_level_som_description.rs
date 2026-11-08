@@ -30,7 +30,7 @@ impl ArchiveLevelSomDescription {
   /// # Errors
   ///
   /// Returns an error when the entry's bytes cannot be read, or are not a sound occlusion mesh this reader can walk.
-  pub fn read(source: &ArchiveDescribeSource, name: &str) -> XrfResult<Self> {
+  pub fn read(source: &ArchiveDescribeSource<'_>, name: &str) -> XrfResult<Self> {
     let file: LevelSomFile = LevelSomFile::read_from_bytes::<XRayByteOrder>(source.read_bytes(name)?)?;
 
     Ok(Self {

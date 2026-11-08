@@ -201,7 +201,7 @@ impl FlaresFeature {
       shadow_maps: lit.shadow_maps,
       shadows: lit.shadows,
     };
-    let draw: FlareDrawParameters = FlareDrawParameters {
+    let draw: FlareDrawParameters<'_> = FlareDrawParameters {
       flares,
       state: StorageValue::new(state),
       flare_sampler: pass.get_sampler(),

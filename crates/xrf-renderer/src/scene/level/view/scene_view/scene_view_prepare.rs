@@ -233,7 +233,7 @@ impl SceneView {
       .features
       .reflections
       .prepare(frame, self.shared.resolve, &self.features.wet);
-    let trace_instances: Vec<DrawableTraceInstance> =
+    let trace_instances: Vec<DrawableTraceInstance<'_>> =
       DrawableKindSource::list(&self.features.grass, scene, frame.passes)
         .iter()
         .filter_map(DrawableKindSource::get_trace_instance)

@@ -161,7 +161,7 @@ impl ArchiveDescribedFormat {
   /// Returns an error when the entry's bytes cannot be read, or when they are not the format this claimed them as.
   pub fn describe(
     self,
-    source: &ArchiveDescribeSource,
+    source: &ArchiveDescribeSource<'_>,
     name: &str,
     policy: &ArchiveReadPolicy,
   ) -> XrfResult<Option<ArchiveFormatDescription>> {
@@ -206,7 +206,7 @@ impl ArchiveDescribedFormat {
   ///
   /// Returns an error when the entry's bytes cannot be read.
   fn describe_spawn(
-    source: &ArchiveDescribeSource,
+    source: &ArchiveDescribeSource<'_>,
     name: &str,
     policy: &ArchiveReadPolicy,
   ) -> XrfResult<Option<ArchiveFormatDescription>> {

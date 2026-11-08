@@ -35,13 +35,13 @@ impl TypeScriptSource {
     })?;
     let comments: SingleThreadedComments = Default::default();
 
-    let lexer: Lexer = Lexer::new(
+    let lexer: Lexer<'_> = Lexer::new(
       Syntax::Typescript(Default::default()),
       Default::default(),
       StringInput::from(source_file.as_ref()),
       Some(&comments),
     );
-    let mut parser: Parser<Lexer> = Parser::new_from(lexer);
+    let mut parser: Parser<Lexer<'_>> = Parser::new_from(lexer);
 
     // A diagnostic exists only once the parser has run, so the fatal one is read before the recovered ones.
     let program: Program = parser
@@ -66,7 +66,7 @@ impl TypeScriptSource {
     let described: Vec<String> = errors
       .iter()
       .map(|error| {
-        let message: Cow<str> = error.kind().msg();
+        let message: Cow<'_, str> = error.kind().msg();
         // SWC terminates some of its messages and not others; the joined line terminates each once.
         let message: &str = message.trim_end_matches('.');
 

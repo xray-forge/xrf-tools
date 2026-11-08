@@ -81,7 +81,7 @@ impl XrayAssetIndex {
     let mut next: Self = self.clone();
 
     for path in deleted {
-      let logical_path: Cow<str> = normalize(path)?;
+      let logical_path: Cow<'_, str> = normalize(path)?;
 
       if next.assets.remove(logical_path.as_ref()).is_some() {
         next.promote_unreachable(&logical_path);

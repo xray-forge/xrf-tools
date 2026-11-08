@@ -105,7 +105,7 @@ impl<'a> OgfFixer<'a> {
       .par_iter()
       .enumerate()
       .map(|(index, file)| {
-        let slot: OutputSlot = sequence.new_slot(index);
+        let slot: OutputSlot<'_> = sequence.new_slot(index);
 
         self.fix_visual(slot.get_output(), file, file)
       })

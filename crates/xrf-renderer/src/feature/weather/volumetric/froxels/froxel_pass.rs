@@ -88,7 +88,7 @@ impl FroxelPass {
     &self,
     context: &mut ComputeContext<'_>,
     view: &ViewBinding,
-    parameters: &FroxelInjectParameters,
+    parameters: &FroxelInjectParameters<'_>,
   ) {
     context.bind(parameters);
 

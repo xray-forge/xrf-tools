@@ -201,8 +201,8 @@ fn read_described(field: &Field) -> syn::Result<Described> {
     } else if meta.path.is_ident("wasted_above") {
       wasted_above = Some(meta.value()?.parse()?);
     } else if meta.path.is_ident("recommended") {
-      let value: syn::parse::ParseStream = meta.value()?;
-      let range: syn::parse::ParseBuffer;
+      let value: syn::parse::ParseStream<'_> = meta.value()?;
+      let range: syn::parse::ParseBuffer<'_>;
 
       syn::bracketed!(range in value);
       let bounds: Vec<Expr> = Punctuated::<Expr, Token![,]>::parse_terminated(&range)?
@@ -292,7 +292,7 @@ fn read_serde_string(attrs: &[Attribute], key: &str) -> syn::Result<Option<LitSt
         // Another key's value, read past so the next key parses.
         meta.value()?.parse::<Expr>()?;
       } else if meta.input.peek(syn::token::Paren) {
-        let _nested: syn::parse::ParseBuffer;
+        let _nested: syn::parse::ParseBuffer<'_>;
 
         syn::parenthesized!(_nested in meta.input);
       }

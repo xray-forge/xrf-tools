@@ -72,7 +72,7 @@ impl GenericCommand for FindCommand {
 
     // Over the whole table, not the matches: a match shares its payload with entries the query did not name.
     let shared: Vec<ArchiveSharedPayload> = project.list_shared_payloads();
-    let shared: ArchiveSharedPayloadIndex = ArchiveSharedPayloadIndex::new(&shared);
+    let shared: ArchiveSharedPayloadIndex<'_> = ArchiveSharedPayloadIndex::new(&shared);
 
     for entry in &entries {
       let size: String = xrf_utils::format_bytes(u64::from(entry.size_real));

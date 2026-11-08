@@ -32,7 +32,7 @@ impl MeshAssembler {
     surfaces: &[OgfSurface],
     welded: &WeldedMesh,
     smoothing: Vec<u32>,
-    kind: MeshKind,
+    kind: MeshKind<'_>,
   ) -> XrfResult<AssembledMesh> {
     let layout: SurfaceLayout = SurfaceLayout::of(surfaces, &welded.faces);
     let mut maps: VertexMaps = VertexMaps::new(welded, kind)?;

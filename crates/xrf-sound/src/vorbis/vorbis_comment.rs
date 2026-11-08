@@ -21,7 +21,7 @@ impl VorbisComment {
       return Err(String::from("Ogg stream does not contain a Vorbis comment packet"));
     }
 
-    let mut reader: VorbisPacketReader = VorbisPacketReader::new(&packet[Self::MAGIC.len()..]);
+    let mut reader: VorbisPacketReader<'_> = VorbisPacketReader::new(&packet[Self::MAGIC.len()..]);
     let vendor_length: usize = reader.read_length("vendor length")?;
     let vendor: Vec<u8> = reader.read_bytes(vendor_length, "vendor string")?.to_vec();
     let comments_count: u32 = reader.read_u32("comments count")?;

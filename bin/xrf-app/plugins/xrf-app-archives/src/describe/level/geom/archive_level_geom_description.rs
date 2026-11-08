@@ -34,7 +34,7 @@ impl ArchiveLevelGeomDescription {
   /// # Errors
   ///
   /// Returns an error when the entry cannot be opened, or is not render geometry this reader can walk.
-  pub fn read(source: &ArchiveDescribeSource, name: &str, is_detail: bool) -> XrfResult<Self> {
+  pub fn read(source: &ArchiveDescribeSource<'_>, name: &str, is_detail: bool) -> XrfResult<Self> {
     let mut reader: ArchiveEntryReader = source.open_entry(name)?;
     let size: u64 = reader.size();
     let file: LevelGeomFile = reader.read_container()?;

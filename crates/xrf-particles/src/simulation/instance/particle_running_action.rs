@@ -132,7 +132,7 @@ impl ParticleRunningAction {
   }
 
   /// `Execute`.
-  pub fn execute(&mut self, pool: &mut ParticlePool, step: &mut ParticleActionStep) {
+  pub fn execute(&mut self, pool: &mut ParticlePool, step: &mut ParticleActionStep<'_>) {
     match &mut self.kind {
       RunningKind::Avoid(action) => action.execute(pool, step),
       RunningKind::Bounce(action) => action.execute(pool, step),

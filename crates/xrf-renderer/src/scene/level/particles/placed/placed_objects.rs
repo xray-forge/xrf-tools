@@ -17,7 +17,7 @@ impl PlacedObjects {
     name: &str,
     transform: &Mat4,
     seed: i32,
-    context: &ParticleUpdateContext,
+    context: &ParticleUpdateContext<'_>,
     now: u64,
   ) {
     let slot: &mut Option<(ParticleObject, bool)> = &mut self.0[effect.get_index()];

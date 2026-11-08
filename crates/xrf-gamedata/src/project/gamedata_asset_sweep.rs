@@ -34,7 +34,7 @@ impl<'a> GamedataAssetSweep<'a> {
       .filter(|_| !self.options.job.is_cancelled())
       .map(|(index, item)| {
         // Held until the item is done: the slot releases its position when dropped.
-        let slot: OutputSlot = sequence.new_slot(index);
+        let slot: OutputSlot<'_> = sequence.new_slot(index);
 
         verify(&self.options.with_output(slot.get_output().clone()), item)
       })

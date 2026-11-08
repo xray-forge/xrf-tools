@@ -29,7 +29,7 @@ impl ExplosionAction {
     self.age = 0.0;
   }
 
-  pub fn execute(&mut self, pool: &mut ParticlePool, step: &ParticleActionStep) {
+  pub fn execute(&mut self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
     let radius: f32 = self.velocity * self.age;
     let magdt: f32 = self.magnitude * step.dt;
     let one_over_sigma: f32 = 1.0 / self.st_dev;

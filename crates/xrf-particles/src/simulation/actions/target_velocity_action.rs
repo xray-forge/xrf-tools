@@ -16,7 +16,7 @@ impl TargetVelocityAction {
     self.velocity = matrix.transform_vector3(self.velocity_local);
   }
 
-  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep) {
+  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
     let share: f32 = self.scale * step.dt;
 
     for m in pool.get_particles_mut() {

@@ -51,7 +51,7 @@ impl LtxRecordReader {
   pub fn read_path<P, V>(path: P, visit: V) -> XrfResult
   where
     P: AsRef<Path>,
-    V: FnMut(&LtxRecord) -> XrfResult,
+    V: FnMut(&LtxRecord<'_>) -> XrfResult,
   {
     Self::read_str(
       &read_as_string_from_w1251_encoded(&mut File::open(path.as_ref())?)?,
@@ -68,10 +68,10 @@ impl LtxRecordReader {
   /// answers with.
   pub fn read_str<V>(text: &str, visit: V) -> XrfResult
   where
-    V: FnMut(&LtxRecord) -> XrfResult,
+    V: FnMut(&LtxRecord<'_>) -> XrfResult,
   {
-    let mut parser: LtxParser = LtxParser::new(text.chars());
-    let mut reading: LtxRecordReading<V> = LtxRecordReading::new(visit);
+    let mut parser: LtxParser<'_> = LtxParser::new(text.chars());
+    let mut reading: LtxRecordReading<'_, V> = LtxRecordReading::new(visit);
     let mut refusal: Option<XrfError> = None;
 
     while let Some(item) = parser.parse_next_item()? {
@@ -180,10 +180,10 @@ impl LtxRecordReader {
 
 impl<'t, V> LtxRecordReading<'t, V>
 where
-  V: FnMut(&LtxRecord) -> XrfResult,
+  V: FnMut(&LtxRecord<'_>) -> XrfResult,
 {
   fn new(visit: V) -> Self {
-    let mut record: LtxRecord = LtxRecord::default();
+    let mut record: LtxRecord<'_> = LtxRecord::default();
 
     record.open_root();
 

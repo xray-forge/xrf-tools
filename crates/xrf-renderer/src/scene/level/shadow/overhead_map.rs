@@ -426,7 +426,7 @@ impl OverheadMap {
             let parameters: WaterDepthParameters = WaterDepthParameters { water };
 
             StaticShadowPass::set_region(context, *region);
-            let groups: WaterGroups = WaterGroups {
+            let groups: WaterGroups<'_> = WaterGroups {
               view: &cut.view,
               textures,
               layouts: *layouts,

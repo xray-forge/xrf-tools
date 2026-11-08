@@ -42,7 +42,7 @@ impl VertexMaps {
   /// # Errors
   ///
   /// Returns an error when a point's bone is past those `kind` names, or a count outgrows a `u32`.
-  pub(crate) fn new(welded: &WeldedMesh, kind: MeshKind) -> XrfResult<Self> {
+  pub(crate) fn new(welded: &WeldedMesh, kind: MeshKind<'_>) -> XrfResult<Self> {
     let bone_names: &[String] = kind.get_bone_names();
     let mut weight_bones: Vec<u16> = welded
       .point_influences

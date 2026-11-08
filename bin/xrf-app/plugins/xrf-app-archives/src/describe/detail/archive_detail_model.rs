@@ -37,7 +37,7 @@ impl ArchiveDetailModel {
   ///
   /// Returns an error when the entry's bytes cannot be read, or when they are not a detail object this reader can
   /// walk - a mesh the payload does not account for, or an index count that is not whole triangles.
-  pub fn read(source: &ArchiveDescribeSource, name: &str) -> XrfResult<Self> {
+  pub fn read(source: &ArchiveDescribeSource<'_>, name: &str) -> XrfResult<Self> {
     Ok(Self::of(
       source,
       &DetailModel::read_from_bytes::<XRayByteOrder>(source.read_bytes(name)?)?,
@@ -45,7 +45,7 @@ impl ArchiveDetailModel {
   }
 
   /// One object as the viewer reads it, with the texture it names resolved.
-  pub fn of(source: &ArchiveDescribeSource, model: &DetailModel) -> Self {
+  pub fn of(source: &ArchiveDescribeSource<'_>, model: &DetailModel) -> Self {
     Self {
       shader: model.shader.clone(),
       texture: (!model.texture.is_empty())

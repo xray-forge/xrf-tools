@@ -45,7 +45,7 @@ impl DescriptionSpriteUnpacker {
       .par_iter()
       .enumerate()
       .map(|(index, file)| {
-        let slot: OutputSlot = sequence.new_slot(index);
+        let slot: OutputSlot<'_> = sequence.new_slot(index);
         let unpacked: DescriptionSpriteResult = Self::unpack_xml_description(options, slot.get_output(), file)?;
 
         unpacking.advance();

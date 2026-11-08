@@ -157,7 +157,7 @@ impl ParticleEffectInstance {
   }
 
   /// `OnFrame`: accumulates the milliseconds passed and takes whole steps of the engine's length, at most three.
-  pub fn update(&mut self, frame_milliseconds: u32, context: &ParticleUpdateContext) {
+  pub fn update(&mut self, frame_milliseconds: u32, context: &ParticleUpdateContext<'_>) {
     if !self.is_playing {
       self.bounds = ParticleBounds::around_point(self.initial_position);
 
@@ -189,7 +189,7 @@ impl ParticleEffectInstance {
         }
       }
 
-      let mut step: ParticleActionStep = ParticleActionStep::new(step_seconds, context.rules);
+      let mut step: ParticleActionStep<'_> = ParticleActionStep::new(step_seconds, context.rules);
 
       for action in &mut self.actions {
         action.execute(&mut self.pool, &mut step);

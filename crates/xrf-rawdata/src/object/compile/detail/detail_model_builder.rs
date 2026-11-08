@@ -90,7 +90,7 @@ impl DetailModelBuilder {
   }
 
   /// A corner's vertex: its position and the texture coordinate of its reference's first entry, whatever map it is in.
-  fn to_vertex(corner: MeshCorner) -> XrfResult<DetailVertex> {
+  fn to_vertex(corner: MeshCorner<'_>) -> XrfResult<DetailVertex> {
     match corner.entries.first().map(|entry| entry.values) {
       Some([u, v, ..]) => Ok(DetailVertex {
         position: corner.position,

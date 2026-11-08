@@ -18,7 +18,7 @@ impl ScatterAction {
     self.center = matrix.transform_point3(self.center_local);
   }
 
-  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep) {
+  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
     let magdt: f32 = self.magnitude * step.dt;
     let max_radius_sqr: f32 = self.max_radius * self.max_radius;
     let is_limited: bool = max_radius_sqr < ParticleActionStep::MAX_FLOAT;

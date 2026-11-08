@@ -143,7 +143,7 @@ impl EnvironmentReadPass<'_> {
     name: &str,
     subject: &'static str,
     list: &mut Vec<T>,
-    read: impl Fn(&mut EnvironmentSectionReader, &str, &Section) -> T,
+    read: impl Fn(&mut EnvironmentSectionReader<'_>, &str, &Section) -> T,
   ) -> XrfResult<bool>
   where
     T: EnvironmentNamed,
@@ -166,7 +166,7 @@ impl EnvironmentReadPass<'_> {
     let Some(section) = system.get_ltx().section(name) else {
       return Ok(false);
     };
-    let mut reader: EnvironmentSectionReader = self.reader(subject, &system);
+    let mut reader: EnvironmentSectionReader<'_> = self.reader(subject, &system);
 
     list.push(read(&mut reader, name, section));
 

@@ -28,7 +28,7 @@ pub struct ArchiveEntryReport {
 }
 
 impl ArchiveEntryReport {
-  pub fn new(project: &ArchiveProject, entry: &ArchiveFileDescriptor, shared: &ArchiveSharedPayloadIndex) -> Self {
+  pub fn new(project: &ArchiveProject, entry: &ArchiveFileDescriptor, shared: &ArchiveSharedPayloadIndex<'_>) -> Self {
     Self {
       is_directory: entry.is_directory,
       name: entry.name.to_string(),
@@ -48,7 +48,7 @@ impl ArchiveEntryReport {
   pub fn list(
     project: &ArchiveProject,
     entries: &[&ArchiveFileDescriptor],
-    shared: &ArchiveSharedPayloadIndex,
+    shared: &ArchiveSharedPayloadIndex<'_>,
   ) -> Vec<Self> {
     entries.iter().map(|entry| Self::new(project, entry, shared)).collect()
   }

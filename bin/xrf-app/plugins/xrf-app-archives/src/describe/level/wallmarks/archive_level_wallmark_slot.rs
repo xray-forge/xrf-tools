@@ -22,12 +22,12 @@ pub struct ArchiveLevelWallmarkSlot {
 
 impl ArchiveLevelWallmarkSlot {
   /// Every slot of a level, with the texture each names resolved.
-  pub fn of_all(source: &ArchiveDescribeSource, slots: &[LevelWallmarkSlot]) -> Vec<Self> {
+  pub fn of_all(source: &ArchiveDescribeSource<'_>, slots: &[LevelWallmarkSlot]) -> Vec<Self> {
     slots.iter().map(|slot| Self::of(source, slot)).collect()
   }
 
   /// One slot, taken over the decals it holds.
-  fn of(source: &ArchiveDescribeSource, slot: &LevelWallmarkSlot) -> Self {
+  fn of(source: &ArchiveDescribeSource<'_>, slot: &LevelWallmarkSlot) -> Self {
     Self {
       shader: slot.shader.clone(),
       texture: (!slot.texture.is_empty()).then(|| ArchiveReference::resolve(source, XrayAssetType::Dds, &slot.texture)),

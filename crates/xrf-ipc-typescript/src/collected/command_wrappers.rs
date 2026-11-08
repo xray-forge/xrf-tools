@@ -40,7 +40,7 @@ impl CommandWrappers {
       let functions: Arc<Vec<Function>> = Arc::clone(&functions);
       let rendered: Arc<Mutex<Option<(String, bool)>>> = Arc::clone(&rendered);
 
-      move |exporter: FrameworkExporter| {
+      move |exporter: FrameworkExporter<'_>| {
         let wrappers: (String, bool) = Self::render_object(&functions, &command_enum, &exporter)?;
 
         *rendered.lock().unwrap_or_else(PoisonError::into_inner) = Some(wrappers);
@@ -74,7 +74,7 @@ impl CommandWrappers {
   fn render_object(
     functions: &[Function],
     command_enum: &str,
-    exporter: &FrameworkExporter,
+    exporter: &FrameworkExporter<'_>,
   ) -> Result<(String, bool), Error> {
     let mut object = Struct::named();
     let mut uses_channel: bool = false;
@@ -124,7 +124,7 @@ impl CommandWrappers {
 
   /// A type as a wrapper spells it: Tauri's channel as `Channel<Payload>`, anything else as Specta references it,
   /// which inlines a type without a name.
-  fn render_type(data_type: &DataType, exporter: &FrameworkExporter) -> Result<String, Error> {
+  fn render_type(data_type: &DataType, exporter: &FrameworkExporter<'_>) -> Result<String, Error> {
     if let Some(channel) = Self::channel_of(data_type, exporter.types) {
       let payload: String = match &channel.inner {
         NamedReferenceType::Reference { generics, .. } => match generics.first() {

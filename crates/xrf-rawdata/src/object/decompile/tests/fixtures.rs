@@ -121,7 +121,7 @@ pub(crate) fn assemble_static(surfaces: &[OgfSurface]) -> XrfResult<AssembledMes
   assemble_as(surfaces, MeshKind::Static)
 }
 
-fn assemble_as(surfaces: &[OgfSurface], kind: MeshKind) -> XrfResult<AssembledMesh> {
+fn assemble_as(surfaces: &[OgfSurface], kind: MeshKind<'_>) -> XrfResult<AssembledMesh> {
   let mut welded: WeldedMesh = WeldedMesh::weld(surfaces)?;
 
   welded.faces = TwoSidedPairs::fold(std::mem::take(&mut welded.faces));

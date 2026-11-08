@@ -79,7 +79,7 @@ impl GenericCommand for InspectCommand {
     let source = project.document_source();
 
     let dialect: &str = project.get_dialect().get_name();
-    let reader: LtxRootReader =
+    let reader: LtxRootReader<'_> =
       LtxRootReader::new(entry.as_str(), dialect, &resolution, &source as &dyn LtxDocumentSource);
 
     let Some(resolved) = reader.read_sections(&[section.as_str()])?.pop() else {

@@ -109,7 +109,7 @@ mod test {
     ltx.with_section("first").set("a", 1).set("b", 2);
     ltx.with_section("second").set("a", 3);
 
-    let mut setter: SectionSetter = ltx.with_section("first");
+    let mut setter: SectionSetter<'_> = ltx.with_section("first");
 
     setter.set("a", 10).set("c", 30).delete("b");
     ltx.with_section("third").set_optional("a", None::<u32>);
@@ -135,7 +135,7 @@ mod test {
       "neither a read nor a delete to create the section"
     );
 
-    let mut setter: SectionSetter = ltx.with_section("absent");
+    let mut setter: SectionSetter<'_> = ltx.with_section("absent");
 
     assert_eq!(setter.set("key", "value").get("key"), Some("value"));
   }

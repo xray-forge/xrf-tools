@@ -21,7 +21,7 @@ impl BounceAction {
     self.position.transform_from(&self.position_local, matrix);
   }
 
-  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep) {
+  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
     let domain: &ParticleVolume = &self.position;
     let (particles, random) = pool.split_mut();
 

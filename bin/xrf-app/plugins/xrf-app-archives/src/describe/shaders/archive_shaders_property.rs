@@ -24,7 +24,7 @@ pub struct ArchiveShadersProperty {
 
 impl ArchiveShadersProperty {
   /// Every property of one blender, with the texture names among them resolved.
-  pub fn of_all(source: &ArchiveDescribeSource, properties: &[ShaderBlenderProperty]) -> Vec<Self> {
+  pub fn of_all(source: &ArchiveDescribeSource<'_>, properties: &[ShaderBlenderProperty]) -> Vec<Self> {
     properties
       .iter()
       .map(|property| Self {
@@ -92,7 +92,7 @@ impl ArchiveShadersProperty {
   }
 
   /// The file a texture property names, or `None` for a property that is not one or names a slot.
-  fn to_texture(source: &ArchiveDescribeSource, value: &ShaderBlenderPropertyValue) -> Option<ArchiveReference> {
+  fn to_texture(source: &ArchiveDescribeSource<'_>, value: &ShaderBlenderPropertyValue) -> Option<ArchiveReference> {
     let name: &String = match value {
       ShaderBlenderPropertyValue::Texture(name) => name,
       _ => return None,

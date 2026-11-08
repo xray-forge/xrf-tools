@@ -45,7 +45,7 @@ impl IpcBindingsGenerator {
     let constants: CollectedConstants = CollectedConstants::collect(type_modules, &mut collected.types)?;
     let (ownership, enumerations): (TypeOwnership, Enumerations) =
       TypeModuleWriter::write_all(&types, &collected.types, &constants, type_modules, imports)?;
-    let mut plugins: Vec<PluginModules> = Vec::with_capacity(surfaces.len());
+    let mut plugins: Vec<PluginModules<'_>> = Vec::with_capacity(surfaces.len());
 
     for surface in surfaces {
       CommandModuleWriter::write(

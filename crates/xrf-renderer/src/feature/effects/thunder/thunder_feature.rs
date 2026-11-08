@@ -104,16 +104,14 @@ impl ThunderFeature {
     };
     let models: &ThunderModels = models.get();
     let thunder: UniformBinding<ThunderUniform> = runtime.push_uniform(&self.uniform);
-    let entries: [ThunderParameters; 3] =
-      [(0, models.get(strike.model)), (1, &models.empty), (2, &models.empty)].map(|(entry, buffers)| {
-        ThunderParameters {
-          thunder,
-          thunder_texture: bindings.import_view(&mut *graph, "thunder texture", &strike.textures[entry]),
-          thunder_sampler: passes.effects.thunder.get_sampler(),
-          model_vertices: StorageArray::new(bindings.import_buffer(&mut *graph, "thunder vertices", &buffers.vertices)),
-          model_indices: StorageArray::new(bindings.import_buffer(&mut *graph, "thunder indices", &buffers.indices)),
-          lighting,
-        }
+    let entries: [ThunderParameters<'_>; 3] = [(0, models.get(strike.model)), (1, &models.empty), (2, &models.empty)]
+      .map(|(entry, buffers)| ThunderParameters {
+        thunder,
+        thunder_texture: bindings.import_view(&mut *graph, "thunder texture", &strike.textures[entry]),
+        thunder_sampler: passes.effects.thunder.get_sampler(),
+        model_vertices: StorageArray::new(bindings.import_buffer(&mut *graph, "thunder vertices", &buffers.vertices)),
+        model_indices: StorageArray::new(bindings.import_buffer(&mut *graph, "thunder indices", &buffers.indices)),
+        lighting,
       });
     let (draws, model_indices) = (strike.draws, strike.model_indices);
 

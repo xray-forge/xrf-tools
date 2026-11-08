@@ -238,7 +238,7 @@ impl<'a> ShadersVerifier<'a> {
     path: &Path,
     renderer: ShaderRenderer,
     result: &mut GamedataShadersVerificationResult,
-    source_loader: &GamedataShaderSourceLoader,
+    source_loader: &GamedataShaderSourceLoader<'_>,
     checked_sources: &mut HashSet<PathBuf>,
   ) {
     if checked_sources.contains(path) {

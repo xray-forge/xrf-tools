@@ -45,14 +45,14 @@ impl<'t> LtxRecord<'t> {
 
   /// Set a field, replacing the value of a key already set and keeping its place.
   pub(crate) fn set(&mut self, key: &'t str, value: &'t str) {
-    let fields: &[LtxRecordField] = &self.fields;
+    let fields: &[LtxRecordField<'_>] = &self.fields;
 
     match self.keys.find(key, |index| fields[index].key) {
       Some(index) => self.fields[index].value = value,
       None => {
         self.fields.push(LtxRecordField { key, value });
 
-        let fields: &[LtxRecordField] = &self.fields;
+        let fields: &[LtxRecordField<'_>] = &self.fields;
 
         self.keys.push(|index| fields[index].key);
       }

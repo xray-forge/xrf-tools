@@ -146,7 +146,7 @@ impl FsrPass {
     self.add_reconstruction(graph, targets, textures, uniform, fsr.render);
     self.add_shading_change(graph, textures, uniform);
 
-    let accumulate: FsrAccumulateParameters = self.add_accumulation(graph, targets, textures, uniform);
+    let accumulate: FsrAccumulateParameters<'_> = self.add_accumulation(graph, targets, textures, uniform);
 
     if let Some((view, shown)) = debug {
       self.add_debug_view(graph, view, shown, textures, uniform, accumulate);
@@ -331,7 +331,7 @@ impl FsrPass {
       },
     );
 
-    let accumulate: FsrAccumulateParameters = FsrAccumulateParameters {
+    let accumulate: FsrAccumulateParameters<'_> = FsrAccumulateParameters {
       fsr: uniform,
       color: targets.scene,
       dilated_motion: textures.dilated_motion,

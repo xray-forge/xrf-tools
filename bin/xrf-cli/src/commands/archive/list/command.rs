@@ -58,7 +58,7 @@ impl GenericCommand for ListCommand {
     // Derived over the whole table once, whatever the selection: a filtered listing still says what each of its
     // entries shares with entries it left out.
     let shared: Vec<ArchiveSharedPayload> = project.list_shared_payloads();
-    let shared: ArchiveSharedPayloadIndex = ArchiveSharedPayloadIndex::new(&shared);
+    let shared: ArchiveSharedPayloadIndex<'_> = ArchiveSharedPayloadIndex::new(&shared);
 
     for entry in &entries {
       if context.is_verbose() {

@@ -24,7 +24,10 @@ pub struct ArchiveShadersBlender {
 
 impl ArchiveShadersBlender {
   /// Every blender of a library, in name order.
-  pub fn of_all<'a>(source: &ArchiveDescribeSource, blenders: impl Iterator<Item = &'a ShaderBlender>) -> Vec<Self> {
+  pub fn of_all<'a>(
+    source: &ArchiveDescribeSource<'_>,
+    blenders: impl Iterator<Item = &'a ShaderBlender>,
+  ) -> Vec<Self> {
     let mut described: Vec<Self> = blenders
       .map(|blender| Self {
         name: blender.name.clone(),

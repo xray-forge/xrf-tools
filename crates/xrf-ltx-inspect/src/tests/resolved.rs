@@ -145,7 +145,7 @@ fn one_reader_reads_each_declaring_config_once_however_many_questions_it_answers
   ]);
 
   let resolution: LtxResolution = source.resolve("system.ltx")?;
-  let reader: LtxRootReader = LtxRootReader::new("system.ltx", "ltx", &resolution, &source);
+  let reader: LtxRootReader<'_> = LtxRootReader::new("system.ltx", "ltx", &resolution, &source);
 
   // Resolving did its own reading; only what the reader adds is this test's subject.
   let resolved_at: usize = source.reads();

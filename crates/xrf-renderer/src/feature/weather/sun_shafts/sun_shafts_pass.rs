@@ -60,7 +60,7 @@ impl SunShaftsPass {
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
-    parameters: &SunShaftsParameters,
+    parameters: &SunShaftsParameters<'_>,
     draw: SunShaftsDraw,
   ) {
     context.bind(parameters);

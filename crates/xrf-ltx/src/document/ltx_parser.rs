@@ -495,7 +495,7 @@ mod test {
 
   #[test]
   fn test_read_section() {
-    let parser: LtxParser = Default::default();
+    let parser: LtxParser<'_> = Default::default();
 
     assert_eq!(
       parser.parse_section_from_line("[section]").unwrap(),
@@ -505,7 +505,7 @@ mod test {
 
   #[test]
   fn test_read_section_with_inherited() {
-    let parser: LtxParser = Default::default();
+    let parser: LtxParser<'_> = Default::default();
 
     assert_eq!(
       parser.parse_section_from_line("[section] : a,   b, c").unwrap(),
@@ -515,7 +515,7 @@ mod test {
 
   #[test]
   fn test_read_section_with_empty_inherited() {
-    let parser: LtxParser = Default::default();
+    let parser: LtxParser<'_> = Default::default();
 
     assert_eq!(
       parser.parse_section_from_line("[section] :  ").unwrap(),
@@ -525,7 +525,7 @@ mod test {
 
   #[test]
   fn test_read_section_with_empty_inherited_comment() {
-    let parser: LtxParser = Default::default();
+    let parser: LtxParser<'_> = Default::default();
 
     assert_eq!(
       parser.parse_section_from_line("[section] :  ;;;; test").unwrap(),
@@ -535,7 +535,7 @@ mod test {
 
   #[test]
   fn test_read_section_with_inherited_comment() {
-    let parser: LtxParser = Default::default();
+    let parser: LtxParser<'_> = Default::default();
 
     assert_eq!(
       parser
@@ -547,7 +547,7 @@ mod test {
 
   #[test]
   fn test_read_section_with_comment() {
-    let parser: LtxParser = Default::default();
+    let parser: LtxParser<'_> = Default::default();
 
     assert_eq!(
       parser.parse_section_from_line("[section];commented phrase ").unwrap(),
@@ -559,7 +559,7 @@ mod test {
   /// `[m_dog_step_params]   fwdleftleg` becomes a comment reading `fwdleftleg`, not `wdleftleg`.
   #[test]
   fn keeps_text_after_a_header_whole_as_its_comment() {
-    let parser: LtxParser = Default::default();
+    let parser: LtxParser<'_> = Default::default();
 
     assert_eq!(
       parser
@@ -576,7 +576,7 @@ mod test {
   /// A header followed by a character wider than a byte is read, never sliced inside that character.
   #[test]
   fn reads_a_header_followed_by_non_ascii_text() {
-    let parser: LtxParser = Default::default();
+    let parser: LtxParser<'_> = Default::default();
 
     assert_eq!(
       parser.parse_section_from_line("[marsh_20]Жовтий").unwrap(),
@@ -586,7 +586,7 @@ mod test {
 
   #[test]
   fn names_the_file_between_the_first_two_quotes_of_an_include() {
-    let parser: LtxParser = Default::default();
+    let parser: LtxParser<'_> = Default::default();
 
     for line in [
       "#include \"file.ltx\"",
@@ -610,7 +610,7 @@ mod test {
   /// A malformed include is refused with an error, whatever characters follow the directive.
   #[test]
   fn refuses_an_unquoted_include_rather_than_aborting() {
-    let parser: LtxParser = Default::default();
+    let parser: LtxParser<'_> = Default::default();
 
     assert!(parser.parse_include_from_line("#include ЖЖ.ltx").is_err());
     assert!(Ltx::read_from_str("#include ЖЖЖЖЖ.ltx\n").is_err());
@@ -618,7 +618,7 @@ mod test {
 
   #[test]
   fn test_read_key_value() {
-    let parser: LtxParser = Default::default();
+    let parser: LtxParser<'_> = Default::default();
 
     assert_eq!(
       parser.parse_key_value_from_line("  key   =   value").unwrap(),
@@ -628,7 +628,7 @@ mod test {
 
   #[test]
   fn test_read_key_value_comment() {
-    let parser: LtxParser = Default::default();
+    let parser: LtxParser<'_> = Default::default();
 
     assert_eq!(
       parser
@@ -640,7 +640,7 @@ mod test {
 
   #[test]
   fn test_read_key_only() {
-    let parser: LtxParser = Default::default();
+    let parser: LtxParser<'_> = Default::default();
 
     assert_eq!(
       parser.parse_key_value_from_line("  key   ").unwrap(),

@@ -35,7 +35,7 @@ impl SectorImpostorArrays {
     &mut self,
     visual: &LevelVisual,
     definition: &OgfLodDefinitionChunk,
-    surfaces: &SectorSurfaceTable,
+    surfaces: &SectorSurfaceTable<'_>,
   ) {
     let radius: f32 = visual.header.bounding_sphere.radius;
     let center: Vector3d = convert_vector(&visual.header.bounding_sphere.center);

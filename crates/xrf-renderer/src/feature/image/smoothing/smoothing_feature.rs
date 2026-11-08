@@ -82,7 +82,7 @@ impl SmoothingFeature {
           ((edges, no_weights), weights),
           ((edges, weights), target),
         ]) {
-          let parameters: SmaaParameters = SmaaParameters {
+          let parameters: SmaaParameters<'_> = SmaaParameters {
             source: frame,
             smoothing,
             edges_texture,
@@ -104,7 +104,7 @@ impl SmoothingFeature {
         }
       }
       _ => {
-        let parameters: FxaaParameters = FxaaParameters {
+        let parameters: FxaaParameters<'_> = FxaaParameters {
           frame,
           smoothing,
           frame_sampler: passes.image.fxaa.get_sampler(),

@@ -32,7 +32,7 @@ impl LevelEnvironment {
   fn describe_recorded(&self, current: &SelectedLevel, search: &XraySearch) -> LevelWeatherDescription {
     let catalog: &EnvironmentCatalog = &self.catalog;
     let offered: Vec<&WeatherCycle> = self.list_offered();
-    let source: LevelWeatherSource = self.get_source(current, search);
+    let source: LevelWeatherSource<'_> = self.get_source(current, search);
 
     LevelWeatherDescription {
       cycles: catalog
@@ -83,7 +83,7 @@ impl LevelEnvironment {
   }
 
   /// Every texture of one kind the catalog's cycles and effects name, each once by name, with how many keyframes do.
-  fn list_textures(&self, source: &LevelWeatherSource, key: WeatherKey) -> Vec<LevelWeatherTexture> {
+  fn list_textures(&self, source: &LevelWeatherSource<'_>, key: WeatherKey) -> Vec<LevelWeatherTexture> {
     self
       .catalog
       .count_texts(key)

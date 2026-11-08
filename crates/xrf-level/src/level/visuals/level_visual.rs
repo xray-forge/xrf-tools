@@ -107,7 +107,7 @@ impl LevelVisual {
   /// visual carries no window: the engine asserts it has them (`FProgressive::Load`, `FTreeVisual_PM::Load`), and its
   /// whole index run lays every level of detail end to end.
   pub fn get_windows<'a>(&'a self, geometry: &'a LevelGeomFile) -> XrfResult<Option<LevelVisualWindows<'a>>> {
-    let windows: Option<LevelVisualWindows> = match (&self.swi, &self.swi_container) {
+    let windows: Option<LevelVisualWindows<'_>> = match (&self.swi, &self.swi_container) {
       (Some(swi), _) => {
         let swi: &OgfSwiDataChunk = swi
           .as_ref()

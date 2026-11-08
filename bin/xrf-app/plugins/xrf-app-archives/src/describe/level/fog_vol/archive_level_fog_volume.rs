@@ -19,12 +19,12 @@ pub struct ArchiveLevelFogVolume {
 
 impl ArchiveLevelFogVolume {
   /// Every body of a level, with the config each names resolved.
-  pub fn of_all(source: &ArchiveDescribeSource, volumes: &[LevelFogVolume]) -> Vec<Self> {
+  pub fn of_all(source: &ArchiveDescribeSource<'_>, volumes: &[LevelFogVolume]) -> Vec<Self> {
     volumes.iter().map(|volume| Self::of(source, volume)).collect()
   }
 
   /// One body, taken over what it names and what it avoids.
-  fn of(source: &ArchiveDescribeSource, volume: &LevelFogVolume) -> Self {
+  fn of(source: &ArchiveDescribeSource<'_>, volume: &LevelFogVolume) -> Self {
     Self {
       profile: (!volume.profile.is_empty())
         .then(|| ArchiveReference::resolve(source, XrayAssetType::Ltx, &volume.profile)),

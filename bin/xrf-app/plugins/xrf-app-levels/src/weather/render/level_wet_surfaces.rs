@@ -18,7 +18,7 @@ impl LevelWetSurfaces {
   pub const FLOW_TEXTURE: &'static str = "water\\water_flowing_nmap";
 
   /// Finds both in the level's search.
-  pub fn read(source: &LevelWeatherSource) -> Self {
+  pub fn read(source: &LevelWeatherSource<'_>) -> Self {
     Self {
       flow: source.locate(Self::FLOW_TEXTURE),
       splash: source.locate(Self::SPLASH_TEXTURE),

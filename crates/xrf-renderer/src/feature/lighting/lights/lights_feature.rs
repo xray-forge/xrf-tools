@@ -311,7 +311,7 @@ impl LightsFeature {
     // Traced, the shadowed lights' rays find what the contact shadows would, so none are marched.
     let contact_lights: u32 = if traced.is_some() { 0 } else { contact_lights };
 
-    let parameters: LightsParameters = LightsParameters {
+    let parameters: LightsParameters<'_> = LightsParameters {
       albedo_target: targets.albedo,
       normal_target: targets.normal,
       material_target: targets.material,
@@ -407,7 +407,7 @@ impl LightsFeature {
         GraphTextureDescriptor::new_2d("light visibility", width, height, LightsPass::VISIBILITY_FORMAT)
           .with_array_layer_count(LightsPass::VISIBILITY_LAYERS),
       );
-      let shadowing: LightShadowingParameters = LightShadowingParameters {
+      let shadowing: LightShadowingParameters<'_> = LightShadowingParameters {
         shadow_atlas: bindings.import_view(graph, "light shadow atlas", atlas.view),
         shadow_sampler: atlas.sampler,
         light_contact,

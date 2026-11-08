@@ -88,7 +88,7 @@ impl GamedataProject {
             return None;
           }
 
-          let slot: OutputSlot = sequence.new_slot(index);
+          let slot: OutputSlot<'_> = sequence.new_slot(index);
 
           schedule.enter(&options.job, index, *check);
 

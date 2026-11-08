@@ -84,7 +84,7 @@ impl MikkTSpaceBasis {
       ));
     }
 
-    let mut geometry: SplitGeometry = SplitGeometry {
+    let mut geometry: SplitGeometry<'_> = SplitGeometry {
       vertices: &vertices,
       faces,
       bases: vec![[None; 3]; faces.len()],

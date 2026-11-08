@@ -216,7 +216,7 @@ impl WetFeature {
     } else {
       bindings.import_view(&mut *graph, "wet surface none", passes.tracing.reflections.get_empty())
     };
-    let patch: WetPatchParameters = WetPatchParameters {
+    let patch: WetPatchParameters<'_> = WetPatchParameters {
       depth_target: handles.depth,
       albedo_target: handles.albedo,
       normal_target: handles.normal,
