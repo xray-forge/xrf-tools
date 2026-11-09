@@ -86,6 +86,22 @@ impl EditableLevelValue {
       })
   }
 
+  /// A flag as `w_bool` writes it: `on` or `off`.
+  pub fn format_bool(value: bool) -> &'static str {
+    if value { "on" } else { "off" }
+  }
+
+  /// A flag as `r_bool` reads it: `on`, `yes`, `true` or `1` in any case is set, anything else clear.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error naming the section and key when the field is missing.
+  pub fn read_bool(section: &IniSection, key: &str) -> XrfResult<bool> {
+    let value: String = section.get_required(key)?.to_lowercase();
+
+    Ok(matches!(value.as_str(), "on" | "yes" | "true" | "1"))
+  }
+
   /// A field holding two comma-separated floats.
   ///
   /// # Errors

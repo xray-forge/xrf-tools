@@ -5,6 +5,7 @@ pub(crate) mod level_sound_environment_conversion;
 pub(crate) mod level_sound_source_conversion;
 pub(crate) mod level_visual_geometry;
 pub(crate) mod level_wallmark_conversion;
+pub(crate) mod level_way_conversion;
 
 #[cfg(test)]
 mod tests;

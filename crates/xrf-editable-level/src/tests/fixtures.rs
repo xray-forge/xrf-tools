@@ -251,6 +251,54 @@ pub(super) fn fog_volume_part_text(guid: &EditableLevelGuid, fields: &[(&str, &s
   file.write_to_string_as(&IniFormat::XRAY_SAVE_AS)
 }
 
+/// A way tool's part with one way of three points, linked there and back and to itself not at all, its link keys
+/// padded as `link_wp_%4d_%4d` writes them, with that object's fields replaced or added.
+pub(super) fn way_part_text(guid: &EditableLevelGuid, fields: &[(&str, &str)]) -> XrfResult<String> {
+  let mut file: IniFile = IniFile::default();
+
+  guid.write_to_section(file.section_mut("guid"));
+  file.section_mut("main").set("objects_count", "1");
+  file.section_mut("main").set("version", "0");
+  file.section_mut("modif").set("name", "");
+  file.section_mut("modif").set("time", "0");
+
+  let section: &mut IniSection = file.section_mut("object_0");
+
+  for (key, value) in [
+    ("clsid", "7"),
+    ("co_flags", "0"),
+    ("link_wp_   0_   0", "1.000000, 1.000000"),
+    ("link_wp_   0_   1", "2.000000, 0.500000"),
+    ("link_wp_   1_   0", "0.000000, 1.000000"),
+    ("name", "lx8_patrol_walk"),
+    ("position", "0.000000, 0.000000, 0.000000"),
+    ("rotation", "0.000000, 0.000000, 0.000000"),
+    ("scale", "1.000000, 1.000000, 1.000000"),
+    ("type", "0"),
+    ("version", "19"),
+    ("wp_0_flags", "1"),
+    ("wp_0_name", "wp00"),
+    ("wp_0_pos", "-91.750000, -24.312500, 83.125000"),
+    ("wp_0_selected", "on"),
+    ("wp_1_flags", "-2147483648"),
+    ("wp_1_name", "wp01"),
+    ("wp_1_pos", "-90.500000, -24.250000, 80.000000"),
+    ("wp_1_selected", "off"),
+    ("wp_2_flags", "0"),
+    ("wp_2_name", "wp02"),
+    ("wp_2_pos", "-88.000000, -24.000000, 78.500000"),
+    ("wp_2_selected", "off"),
+    ("wp_count", "3"),
+  ]
+  .into_iter()
+  .chain(fields.iter().copied())
+  {
+    section.set(key, value);
+  }
+
+  file.write_to_string_as(&IniFormat::XRAY_SAVE_AS)
+}
+
 /// A binary part as `EScene::SaveLTX` frames it, its chunks in the order given.
 pub(super) fn binary_part_bytes(chunks: &[ChunkPayload]) -> XrfResult<Vec<u8>> {
   let mut file: ChunkWriter = ChunkWriter::new();

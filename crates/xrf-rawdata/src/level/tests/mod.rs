@@ -3,6 +3,7 @@ mod particle;
 mod sound_environment;
 mod sound_source;
 mod wallmark;
+mod way;
 
 use xrf_editable_level::EditableLevelGuid;
 
