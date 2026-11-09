@@ -10,10 +10,13 @@ use xrf_editable_level::{
 };
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::{XrfError, XrfResult};
+use xrf_gamemtl::GameMtlFile;
 use xrf_level::{
-  LevelEnvModFile, LevelFile, LevelFogVolFile, LevelGameFile, LevelGameRPoint, LevelGeomFile, LevelGeomSource,
-  LevelLightsFile, LevelPsStaticFile, LevelSndEnvFile, LevelSndStaticFile, LevelVisualsChunk, LevelWallmarksFile,
+  LevelCformFile, LevelEnvModFile, LevelFile, LevelFogVolFile, LevelGameFile, LevelGameRPoint, LevelGeomFile,
+  LevelGeomSource, LevelLightsFile, LevelPsStaticFile, LevelSndEnvFile, LevelSndStaticFile, LevelVisualsChunk,
+  LevelWallmarksFile,
 };
+use xrf_shaders::ShaderCompilerFile;
 use xrf_spawn::{AlifeObject, LevelSpawnFile, SpawnFile, SpawnLevelObjects};
 use xrf_utils::{StagedFile, format_path};
 
@@ -27,11 +30,12 @@ use crate::level::level_particle_conversion::LevelParticleConversion;
 use crate::level::level_sound_environment_conversion::LevelSoundEnvironmentConversion;
 use crate::level::level_sound_source_conversion::LevelSoundSourceConversion;
 use crate::level::level_spawn_point_conversion::LevelSpawnPointConversion;
+use crate::level::level_surface_inference::{LevelShaderPairings, LevelSurfaceInference, LevelSurfaces};
 use crate::level::level_wallmark_conversion::LevelWallmarkConversion;
 use crate::level::level_way_conversion::LevelWayConversion;
 use crate::provenance::level_scene_provenance::{
   LevelSceneFile, LevelSceneGeometry, LevelSceneInference, LevelSceneProvenance, LevelSceneRefusal,
-  LevelSceneRootSpawn, LevelSceneSource,
+  LevelSceneRootSpawn, LevelSceneSource, LevelSceneSurfaceLibraries, LevelSceneSurfaces,
 };
 use crate::provenance::object_provenance::ObjectProvenance;
 use crate::provenance::sidecar::Sidecar;
@@ -49,6 +53,33 @@ pub struct LevelDecompileOptions {
   /// A root spawn (`all.spawn`) whose objects on this level stand in for `level.spawn`'s entities (decision 10). The
   /// level is found in it by its directory's name.
   pub root_spawn: Option<PathBuf>,
+  /// How the static geometry's surfaces are dressed (decision 14). Inferring reads the level's `level.cform` where the
+  /// directory holds one, and needs both libraries below.
+  pub surfaces: LevelSurfaces,
+  /// The game material library (`gamemtl.xr`) naming the collision form's materials.
+  pub game_materials: Option<PathBuf>,
+  /// The compiler shader library (`shaders_xrlc.xr`) the inferred compiler shaders are chosen from.
+  pub compiler_shaders: Option<PathBuf>,
+  /// Object library roots (decision 13) whose surfaces' pairings of engine and compiler shaders break ties between
+  /// compiler shaders that fit.
+  pub libraries: Vec<PathBuf>,
+}
+
+impl LevelDecompileOptions {
+  /// The options of a decompile of the level `name` by `tool` at `tool_version`, taking everything else by default:
+  /// entities from the spawn lists, surfaces inferred, no library named.
+  pub fn new(name: impl Into<String>, tool: impl Into<String>, tool_version: impl Into<String>) -> Self {
+    Self {
+      name: name.into(),
+      tool: tool.into(),
+      tool_version: tool_version.into(),
+      root_spawn: None,
+      surfaces: LevelSurfaces::default(),
+      game_materials: None,
+      compiler_shaders: None,
+      libraries: Vec::new(),
+    }
+  }
 }
 
 /// A root spawn read for one level: what the sidecar records of it, and its objects on the level.
@@ -162,9 +193,10 @@ impl LevelSceneDecompiler {
   /// the compiled bundle (`level`, for its sectors, portals, visuals, glows and dynamic lights), the geometry its
   /// visuals draw (`level.geom`) and the level compiler's `build.lights`, then the files
   /// [`crate::LevelSceneExporter::FILE_NAMES`] the build writes from the scene's parts and the export writes back.
-  pub const SOURCE_FILES: [&'static str; 12] = [
+  pub const SOURCE_FILES: [&'static str; 13] = [
     LevelFile::FILE_NAME,
     LevelGeomFile::FILE_NAME,
+    LevelCformFile::FILE_NAME,
     LevelLightsFile::FILE_NAME,
     LevelEnvModFile::FILE_NAME,
     LevelFogVolFile::FILE_NAME,
@@ -204,7 +236,7 @@ impl LevelSceneDecompiler {
     );
     let mut draft: LevelSceneDraft = LevelSceneDraft::new(guid, &options.name);
 
-    Self::decompile_bundle::<T>(&mut sources, &options.name, &mut draft)?;
+    Self::decompile_bundle::<T>(&mut sources, options, &mut draft)?;
     Self::decompile_companions::<T>(&mut sources, &mut draft)?;
 
     let game_types: u16 = Self::decompile_game::<T>(&mut sources, root.as_mut(), &mut draft)?;
@@ -241,7 +273,7 @@ impl LevelSceneDecompiler {
   /// the level options; and with `level.geom`, the static geometry of the level `name`, its sectors and its portals.
   fn decompile_bundle<T: ByteOrder>(
     sources: &mut LevelSceneSources,
-    name: &str,
+    options: &LevelDecompileOptions,
     draft: &mut LevelSceneDraft,
   ) -> XrfResult {
     let Some(level) = sources.take(LevelFile::FILE_NAME) else {
@@ -253,8 +285,9 @@ impl LevelSceneDecompiler {
     if let Some(geom) = sources.take(LevelGeomFile::FILE_NAME)
       && let Some(visuals) = LevelFile::read_visuals_from_chunks::<T, _>(&chunks)?
     {
-      Self::decompile_geometry::<T>(&level, &visuals, geom, name, sources, draft)?;
+      Self::decompile_geometry::<T>(&level, &visuals, geom, options, sources, draft)?;
     }
+
     let lights: Option<LevelLightsFile> = sources
       .take(LevelLightsFile::FILE_NAME)
       .map(LevelLightsFile::read_from_bytes::<T>)
@@ -295,21 +328,38 @@ impl LevelSceneDecompiler {
   }
 
   /// The objects of the level's static geometry and the parts placing them, sectors and portals
-  /// ([`LevelGeometryConversion`]).
+  /// ([`LevelGeometryConversion`]), their surfaces dressed from `level.cform` where the options ask it and the
+  /// directory holds one.
   fn decompile_geometry<T: ByteOrder>(
     level: &LevelFile,
     visuals: &LevelVisualsChunk,
     geom: Vec<u8>,
-    name: &str,
-    sources: &LevelSceneSources,
+    options: &LevelDecompileOptions,
+    sources: &mut LevelSceneSources,
     draft: &mut LevelSceneDraft,
   ) -> XrfResult {
     let source: LevelGeomSource<InMemoryChunkDataSource> = LevelGeomSource::open_from_bytes::<T>(geom)?;
-    let geometry = LevelGeometryConversion::decompile::<T, _>(name, level, visuals, &source, &mut draft.context)?;
-    let files: [&'static str; 2] = [LevelFile::FILE_NAME, LevelGeomFile::FILE_NAME];
+    let mut surfaces: Option<(LevelSurfaceInference, LevelSceneSurfaceLibraries)> =
+      match (options.surfaces, sources.take(LevelCformFile::FILE_NAME)) {
+        (LevelSurfaces::Infer, Some(cform)) => Some(Self::read_surface_inference::<T>(cform, options)?),
+        _ => None,
+      };
+    let geometry = LevelGeometryConversion::decompile::<T, _>(
+      &options.name,
+      level,
+      visuals,
+      &source,
+      surfaces.as_mut().map(|(inference, _)| inference),
+      &mut draft.context,
+    )?;
+    let files: Vec<&'static str> = std::iter::once(LevelFile::FILE_NAME)
+      .chain(std::iter::once(LevelGeomFile::FILE_NAME))
+      .chain(surfaces.is_some().then_some(LevelCformFile::FILE_NAME))
+      .collect();
 
     if !geometry.objects.is_empty() {
       draft.inferred.push(LevelSceneInference::SectorShells);
+      draft.infer_if(surfaces.is_some(), &[LevelSceneInference::SurfaceDress]);
       draft.add(geometry.scene_objects.to_scene_tool()?, &files, sources);
       draft.add(geometry.sectors.to_scene_tool()?, &files, sources);
     }
@@ -322,10 +372,63 @@ impl LevelSceneDecompiler {
     draft.geometry = Some(LevelSceneGeometry {
       objects: geometry.objects.iter().map(|object| object.reference.clone()).collect(),
       census: geometry.census,
+      surfaces: surfaces.map(|(inference, libraries)| LevelSceneSurfaces {
+        libraries,
+        census: inference.into_census(),
+      }),
     });
     draft.objects = geometry.objects;
 
     Ok(())
+  }
+
+  /// What dresses the surfaces: the collision form, and the libraries the options name, each recorded with its hash.
+  fn read_surface_inference<T: ByteOrder>(
+    cform: Vec<u8>,
+    options: &LevelDecompileOptions,
+  ) -> XrfResult<(LevelSurfaceInference, LevelSceneSurfaceLibraries)> {
+    let read = |path: Option<&PathBuf>, what: &str| -> XrfResult<(Vec<u8>, LevelSceneSource)> {
+      let path: &PathBuf = path.ok_or_else(|| {
+        XrfError::new_invalid_error(format!(
+          "Inferring surfaces needs the {what}; name it, or dress surfaces with the editor's defaults"
+        ))
+      })?;
+      let bytes: Vec<u8> = std::fs::read(path)
+        .map_err(|error| XrfError::new_read_error(format!("{} was not read: {error}", format_path(path))))?;
+      let record: LevelSceneSource = LevelSceneSource {
+        file: format_path(path).to_string(),
+        sha256: Sidecar::get_sha256_hex(&bytes),
+      };
+
+      Ok((bytes, record))
+    };
+    let (game_materials, game_materials_record) =
+      read(options.game_materials.as_ref(), "game material library (gamemtl.xr)")?;
+    let (compiler_shaders, compiler_shaders_record) = read(
+      options.compiler_shaders.as_ref(),
+      "compiler shader library (shaders_xrlc.xr)",
+    )?;
+    let pairings: LevelShaderPairings = LevelShaderPairings::read_from_roots::<T>(&options.libraries)?;
+    let libraries: LevelSceneSurfaceLibraries = LevelSceneSurfaceLibraries {
+      game_materials: game_materials_record,
+      compiler_shaders: compiler_shaders_record,
+      object_roots: options
+        .libraries
+        .iter()
+        .map(|root| format_path(root).to_string())
+        .collect(),
+      unread_objects: pairings.unread_objects,
+    };
+
+    Ok((
+      LevelSurfaceInference::new(
+        &LevelCformFile::read_geometry_from_bytes::<T>(cform)?,
+        GameMtlFile::read_from_bytes::<T>(game_materials)?,
+        ShaderCompilerFile::read_from_bytes::<T>(compiler_shaders)?,
+        pairings,
+      ),
+      libraries,
+    ))
   }
 
   /// The parts of the files the build writes each from one part: particles, sounds, sound environments, fog volumes

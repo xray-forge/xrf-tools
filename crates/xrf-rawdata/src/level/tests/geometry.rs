@@ -1,15 +1,21 @@
 use xrf_chunk::{ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_editable_level::{EditableObjectTransform, EditableSectorItem};
 use xrf_error::XrfResult;
+use xrf_gamemtl::{GameMtlFile, GameMtlMaterial};
 use xrf_level::{
-  LevelFile, LevelGeomFile, LevelGeomSource, LevelHeaderChunk, LevelPortal, LevelPortalsChunk, LevelSector,
-  LevelSectorsChunk, LevelShaderEntry, LevelShaderReference, LevelShadersChunk, LevelVisual, LevelVisualsChunk,
+  LevelCformFace, LevelCformGeometry, LevelFile, LevelGeomFile, LevelGeomSource, LevelHeaderChunk, LevelPortal,
+  LevelPortalsChunk, LevelSector, LevelSectorsChunk, LevelShaderEntry, LevelShaderReference, LevelShadersChunk,
+  LevelVisual, LevelVisualsChunk,
 };
 use xrf_math::{Aabb, Sphere, Vector3d};
 use xrf_ogf::{OgfGeometryContainerChunk, OgfHeaderChunk};
+use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 
 use crate::level::tests::GUID;
-use crate::{LevelDecompileContext, LevelGeometryCensus, LevelGeometryConversion, LevelGeometryDecompile};
+use crate::{
+  LevelCompilerShaderReason, LevelDecompileContext, LevelGeometryCensus, LevelGeometryConversion,
+  LevelGeometryDecompile, LevelShaderPairings, LevelSurfaceCensus, LevelSurfaceInference, SurfaceDress,
+};
 
 /// A square of render geometry two metres across on the ground, centred on `x`.
 fn square(x: f32) -> [[f32; 3]; 4] {
@@ -163,6 +169,7 @@ fn decompile(level: &LevelFile) -> XrfResult<LevelGeometryDecompile> {
       visuals: vec![drawable(0), drawable(1), hierarchy(vec![0])],
     },
     &geometry(&[square(-4.0), square(4.0)])?,
+    None,
     &mut LevelDecompileContext::new(GUID),
   )
 }
@@ -254,6 +261,7 @@ fn leaves_sectors_and_portals_out_where_a_sector_draws_no_static_geometry() -> X
       visuals: vec![drawable(0), drawable(1), hierarchy(vec![0]), hierarchy(Vec::new())],
     },
     &geometry(&[square(-4.0), square(4.0)])?,
+    None,
     &mut LevelDecompileContext::new(GUID),
   )?;
 
@@ -267,6 +275,148 @@ fn leaves_sectors_and_portals_out_where_a_sector_draws_no_static_geometry() -> X
   assert!(decompiled.portals.objects.is_empty());
   assert_eq!(decompiled.refused.len(), 1);
   assert_eq!(decompiled.refused[0].object, "sector 1");
+
+  Ok(())
+}
+
+const STONE: u16 = 3;
+const EARTH: u16 = 5;
+
+/// What dresses the two squares: the west one's own triangles as collision faces of stone, and where `with_earth`, a
+/// larger face of earth beneath the east one, which only a ray finds.
+fn inference(with_earth: bool) -> XrfResult<LevelSurfaceInference> {
+  let face = |vertices: [u32; 3], material: u16| LevelCformFace {
+    vertices,
+    material,
+    is_shadow_suppressed: false,
+    is_wallmark_suppressed: false,
+    sector: 0,
+  };
+  let [a, b, c, d] = square(-4.0).map(|[x, y, z]| Vector3d::new(x, y, z));
+  let mut vertices: Vec<Vector3d> = vec![a, b, c, d];
+  let mut faces: Vec<LevelCformFace> = vec![face([0, 2, 1], STONE), face([0, 3, 2], STONE)];
+
+  if with_earth {
+    vertices.extend([
+      Vector3d::new(2.0, 0.0, -3.0),
+      Vector3d::new(2.0, 0.0, 6.0),
+      Vector3d::new(11.0, 0.0, -3.0),
+    ]);
+    faces.push(face([4, 5, 6], EARTH));
+  }
+
+  let shader = |name: &str, flags: u32| ShaderCompilerShader {
+    name: String::from(name),
+    name_trailing: Vec::new(),
+    flags,
+    vertex_translucency: 0.0,
+    vertex_ambient: 0.0,
+    lightmap_density: 1.0,
+  };
+
+  Ok(LevelSurfaceInference::new(
+    &LevelCformGeometry::new(vertices, faces)?,
+    GameMtlFile::new(
+      vec![
+        GameMtlMaterial::new(u32::from(STONE), "materials\\stone"),
+        GameMtlMaterial::new(u32::from(EARTH), "materials\\earth"),
+      ],
+      Vec::new(),
+    ),
+    ShaderCompilerFile {
+      shaders: vec![
+        shader("default", 0b0011),
+        shader("def_shaders\\def_vertex", 0b1011),
+        shader("def_shaders\\def_vertex_ghost", 0b1010),
+      ],
+    },
+    LevelShaderPairings::default(),
+  ))
+}
+
+/// Each shell's surfaces, as compiler shader and game material.
+fn dress_of(decompiled: &LevelGeometryDecompile) -> Vec<Vec<(String, String)>> {
+  decompiled
+    .objects
+    .iter()
+    .map(|object| {
+      object
+        .decompile
+        .object
+        .surfaces
+        .as_deref()
+        .unwrap_or_default()
+        .iter()
+        .map(|surface| (surface.compiler_shader.clone(), surface.game_material.clone()))
+        .collect()
+    })
+    .collect()
+}
+
+fn decompile_dressed(inference: &mut LevelSurfaceInference) -> XrfResult<LevelGeometryDecompile> {
+  LevelGeometryConversion::decompile::<XRayByteOrder, _>(
+    "test",
+    &level((0, 1)),
+    &LevelVisualsChunk {
+      visuals: vec![drawable(0), drawable(1), hierarchy(vec![0])],
+    },
+    &geometry(&[square(-4.0), square(4.0)])?,
+    Some(inference),
+    &mut LevelDecompileContext::new(GUID),
+  )
+}
+
+#[test]
+fn dresses_surfaces_from_the_collision_faces_they_lie_on() -> XrfResult {
+  let mut inference: LevelSurfaceInference = inference(true)?;
+  let decompiled: LevelGeometryDecompile = decompile_dressed(&mut inference)?;
+  let vertex = String::from("def_shaders\\def_vertex");
+
+  assert_eq!(
+    dress_of(&decompiled),
+    [
+      vec![(vertex.clone(), String::from("materials\\stone"))],
+      vec![(vertex, String::from("materials\\earth"))]
+    ],
+    "vertex lit, as their vertices keep no lightmap coordinates, and colliding"
+  );
+
+  let census: LevelSurfaceCensus = inference.into_census();
+
+  assert_eq!(
+    (
+      census.exact_triangles,
+      census.traced_triangles,
+      census.uncollided_triangles
+    ),
+    (2, 2, 0)
+  );
+  assert_eq!(
+    census.compiler_shaders.len(),
+    1,
+    "one engine shader, one kind of evidence"
+  );
+  assert_eq!(
+    census.compiler_shaders[0].reason,
+    LevelCompilerShaderReason::CommonestFit
+  );
+
+  Ok(())
+}
+
+#[test]
+fn gives_a_surface_on_no_collision_face_a_compiler_shader_of_no_collision() -> XrfResult {
+  let mut inference: LevelSurfaceInference = inference(false)?;
+  let decompiled: LevelGeometryDecompile = decompile_dressed(&mut inference)?;
+
+  assert_eq!(
+    dress_of(&decompiled)[1],
+    [(
+      String::from("def_shaders\\def_vertex_ghost"),
+      String::from(SurfaceDress::DEFAULT_SETTING)
+    )]
+  );
+  assert_eq!(inference.into_census().uncollided_triangles, 2);
 
   Ok(())
 }

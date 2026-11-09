@@ -336,6 +336,22 @@ origin and open seams between sectors. A sector per compiled sector names its ob
 joins two of them; the Build numbers sectors in the order the scene lists them, so the compiled indices come back. A
 sector drawing no static geometry would leave no object to name, and the editor drops a sector of no item, renumbering
 the rest: such a level keeps its shells but no sector or portal, each empty sector refused.
+
+With a `LevelSurfaceInference` (decision 14, `LevelSurfaces::Infer`), each visual is split by the game material its
+triangles lie on before the decompile, so each surface carries one `SurfaceDress` (compiler shader and game material,
+the editor's `default` otherwise):
+
+- the game material is the collision face's on the triangle's very points, else the one a short ray from just above its
+  centre meets (xrLC splits render faces it keeps whole in `level.cform`), else none; `level.cform` stores the
+  material's `gamemtl.xr` ID, as the editor wrote it into `build.prj`;
+- the compiler shader is one of `shaders_xrlc.xr` that renders and fits the evidence, collision and vertex lighting
+  (vertices without lightmap coordinates), ranked by how often an object library pairs it with the surface's engine
+  shader (`LevelShaderPairings`), then the one GSC's objects use most for that evidence, then library order;
+- `LevelSurfaceCensus` counts exact, traced and uncollided triangles and lists every choice with its reason.
+
+Over vanilla CoP's 22 levels, 7,189,838 static triangles lie exactly on a collision face, 2,036,780 are traced to one
+and 601,675 lie on none. Where the SDK's objects dress the same texture and engine shader, the compiler shader is one
+GSC used for 95.2% of faces (96.0% with the SDK's objects as the library) and the game material for 87.0%.
 `LevelGeometryCensus` counts the triangles read, the faces written, the two-sided folds, the repeats dropped and the
 tree triangles left. Over every tree's 202 levels, every static triangle is a face, a fold or a repeat, and every
 written point is a position the level's vertices hold, bit for bit.

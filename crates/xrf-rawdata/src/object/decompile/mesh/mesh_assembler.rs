@@ -19,9 +19,6 @@ use crate::object::decompile::mesh::vertex_maps::VertexMaps;
 pub(crate) struct MeshAssembler;
 
 impl MeshAssembler {
-  /// The Actor Editor's compiler shader and game material for a new surface, which the OGF does not keep.
-  pub(crate) const DEFAULT_SURFACE_SETTING: &'static str = "default";
-
   /// Assembles the mesh.
   ///
   /// # Errors

@@ -3,6 +3,8 @@ use xrf_chunk::ChunkDataSource;
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{LevelGeomSource, LevelShaderEntry, LevelShadersChunk, LevelVertex, LevelVisual};
 
+use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
+
 /// One visual of a compiled level, as the decompile takes it: what it is dressed with, and its full-detail triangles
 /// over the vertices `level.geom` stores for it, in the space they are stored in, the level's for static geometry and a
 /// tree's own until its placement is applied.
@@ -10,6 +12,9 @@ use xrf_level::{LevelGeomSource, LevelShaderEntry, LevelShadersChunk, LevelVerte
 pub struct LevelVisualGeometry {
   pub texture: String,
   pub shader: String,
+  /// The compiler shader and game material its surface takes: the editor's defaults as read, which the level's
+  /// collision form and lighting may dress.
+  pub dress: SurfaceDress,
   pub vertices: Vec<LevelVertex>,
   /// Three a triangle, into [`Self::vertices`].
   pub indices: Vec<u16>,
@@ -60,6 +65,7 @@ impl LevelVisualGeometry {
     Ok(Some(Self {
       texture,
       shader,
+      dress: SurfaceDress::default(),
       vertices,
       indices,
     }))

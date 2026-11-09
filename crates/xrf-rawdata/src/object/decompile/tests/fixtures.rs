@@ -12,6 +12,7 @@ use crate::object::decompile::geometry::source::bone_influences::BoneInfluences;
 use crate::object::decompile::geometry::source::normal_precision::NormalPrecision;
 use crate::object::decompile::geometry::source::ogf_corner::OgfCorner;
 use crate::object::decompile::geometry::source::ogf_surface::OgfSurface;
+use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 use crate::object::decompile::geometry::two_sided_pairs::TwoSidedPairs;
 use crate::object::decompile::geometry::welded_mesh::WeldedMesh;
 use crate::object::decompile::mesh::assembled_mesh::AssembledMesh;
@@ -189,6 +190,7 @@ pub(crate) fn surface(triangles: Vec<[OgfCorner; 3]>) -> OgfSurface {
   OgfSurface {
     texture: String::from("wood\\wood_plank6"),
     shader: String::from("models\\model"),
+    dress: SurfaceDress::default(),
     triangles,
   }
 }

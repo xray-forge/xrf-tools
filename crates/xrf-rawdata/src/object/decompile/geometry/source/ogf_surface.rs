@@ -4,6 +4,7 @@ use xrf_ogf::{OgfFile, OgfVertexData};
 
 use crate::level::level_visual_geometry::LevelVisualGeometry;
 use crate::object::decompile::geometry::source::ogf_corner::OgfCorner;
+use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 
 /// One OGF visual read back as the surface it was compiled from: its texture and engine shader, and its full-detail
 /// triangles. The export writes one child per surface (`CExportSkeleton::SSplit`), merging surfaces that share both; a
@@ -12,6 +13,9 @@ use crate::object::decompile::geometry::source::ogf_corner::OgfCorner;
 pub(crate) struct OgfSurface {
   pub(crate) texture: String,
   pub(crate) shader: String,
+  /// The compiler shader and game material: the editor's defaults, unless a level's visual was dressed from what the
+  /// level shows of them.
+  pub(crate) dress: SurfaceDress,
   pub(crate) triangles: Vec<[OgfCorner; 3]>,
 }
 
@@ -48,6 +52,7 @@ impl OgfSurface {
       surfaces.push(Self {
         texture: texture.texture_name.clone(),
         shader: texture.shader_name.clone(),
+        dress: SurfaceDress::default(),
         triangles: Self::list_triangles(&corners, indices)?,
       });
     }
@@ -71,6 +76,7 @@ impl OgfSurface {
     Ok(Self {
       texture: geometry.texture.clone(),
       shader: geometry.shader.clone(),
+      dress: geometry.dress.clone(),
       triangles: Self::list_triangles(&corners, &geometry.indices)?,
     })
   }
@@ -87,6 +93,7 @@ impl OgfSurface {
     Ok(Self {
       texture: model.texture.clone(),
       shader: model.shader.clone(),
+      dress: SurfaceDress::default(),
       triangles: Self::list_triangles(&corners, &model.indices)?,
     })
   }
