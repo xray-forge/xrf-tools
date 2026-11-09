@@ -10,6 +10,7 @@ pub(crate) mod tool;
 mod tests;
 
 pub use crate::level::editable_build_params::EditableBuildParams;
+pub use crate::level::editable_level_camera::EditableLevelCamera;
 pub use crate::level::editable_level_file::EditableLevelFile;
 pub use crate::level::editable_level_guid::EditableLevelGuid;
 pub use crate::level::editable_level_options::EditableLevelOptions;

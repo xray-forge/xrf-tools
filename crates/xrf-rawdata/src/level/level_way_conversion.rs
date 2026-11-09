@@ -1,9 +1,11 @@
 use xrf_editable_level::{
-  EditableCustomObject, EditableLevelGuid, EditableObjectPart, EditableObjectTransform, EditableWayLink,
-  EditableWayObject, EditableWayPoint,
+  EditableCustomObject, EditableObjectPart, EditableObjectTransform, EditableWayLink, EditableWayObject,
+  EditableWayPoint,
 };
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{LevelGameWay, LevelGameWayLink, LevelGameWayPoint};
+
+use crate::level::level_decompile_context::LevelDecompileContext;
 
 /// A level's patrol paths, between the scene's `way.part` and the patrol path table of `level.game`, which
 /// `CWayObject::ExportGame` (`WayPoint.cpp:854`) fills. The file's respawn point table comes from the spawn tool.
@@ -17,7 +19,10 @@ impl LevelWayConversion {
   /// # Errors
   ///
   /// Returns an error naming a path whose link names a point it does not hold.
-  pub fn decompile(ways: &[LevelGameWay], guid: EditableLevelGuid) -> XrfResult<EditableObjectPart<EditableWayObject>> {
+  pub fn decompile(
+    ways: &[LevelGameWay],
+    context: &mut LevelDecompileContext,
+  ) -> XrfResult<EditableObjectPart<EditableWayObject>> {
     let objects: Vec<EditableWayObject> = ways
       .iter()
       .map(|way| {
@@ -58,7 +63,7 @@ impl LevelWayConversion {
       })
       .collect::<XrfResult<Vec<EditableWayObject>>>()?;
 
-    Ok(EditableObjectPart::new(guid, objects))
+    Ok(EditableObjectPart::new(context.guid, objects))
   }
 
   /// The patrol paths `ExportGame` writes from the part, one per way in the part's order: `WAYOBJECT_VERSION`, the

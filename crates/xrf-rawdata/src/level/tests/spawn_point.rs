@@ -5,7 +5,7 @@ use xrf_level::{LevelEnvModFile, LevelEnvModifier, LevelGameRPoint};
 use xrf_math::Vector3d;
 
 use crate::level::tests::GUID;
-use crate::{LevelObjectNames, LevelSpawnPointConversion};
+use crate::{LevelDecompileContext, LevelSpawnPointConversion};
 
 fn respawn_point(team: u8, profile: &str) -> LevelGameRPoint {
   LevelGameRPoint {
@@ -55,7 +55,7 @@ fn decompile(
   respawn_points: &[LevelGameRPoint],
   environment: &LevelEnvModFile,
 ) -> XrfResult<EditableObjectPart<EditableSpawnPointObject>> {
-  LevelSpawnPointConversion::decompile(respawn_points, environment, GUID, &mut LevelObjectNames::default())
+  LevelSpawnPointConversion::decompile(respawn_points, environment, &mut LevelDecompileContext::new(GUID))
 }
 
 #[test]

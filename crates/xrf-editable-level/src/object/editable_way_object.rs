@@ -63,6 +63,7 @@ impl EditableWayObject {
 impl EditableToolObject for EditableWayObject {
   /// `OBJCLASS_WAY`.
   const CLASS_ID: i32 = 7;
+  const TOOL_NAME: &'static str = "way";
 
   /// As `CWayObject::LoadLTX` reads it: another version or an empty name refused, the points, then each link in the
   /// order its key sorts, appended to its point.

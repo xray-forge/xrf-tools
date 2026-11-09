@@ -54,6 +54,7 @@ impl EditableSoundSourceObject {
 impl EditableToolObject for EditableSoundSourceObject {
   /// `OBJCLASS_SOUND_SRC`.
   const CLASS_ID: i32 = 5;
+  const TOOL_NAME: &'static str = "sound_src";
 
   /// As `ESoundSource::LoadLTX` reads it, refusing another version or kind as it does.
   fn read_from_object(object: &EditablePartObject<'_>) -> XrfResult<Self> {

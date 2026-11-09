@@ -5,7 +5,7 @@ use xrf_level::{LevelSndStaticFile, LevelSndStaticSound, LevelSndStaticWindow};
 use xrf_math::{Vector2d, Vector3d};
 
 use crate::level::tests::GUID;
-use crate::{LevelObjectNames, LevelSoundSourceConversion};
+use crate::{LevelDecompileContext, LevelSoundSourceConversion};
 
 fn sound(name: &str, active: (u32, u32), play: (u32, u32), pause: (u32, u32)) -> LevelSndStaticSound {
   let window = |(from, to): (u32, u32)| LevelSndStaticWindow { from, to };
@@ -39,7 +39,7 @@ fn sounds_come_back_to_the_same_file_through_the_parts_text() -> XrfResult {
       sound("ambient\\underground\\steam_2", (0, 0), (0, 0), (10_000, 30_000)),
     ],
   };
-  let part = LevelSoundSourceConversion::decompile(&file, GUID, &mut LevelObjectNames::default())?;
+  let part = LevelSoundSourceConversion::decompile(&file, &mut LevelDecompileContext::new(GUID))?;
   let text: Vec<u8> = part.to_text_part()?.write_to_bytes()?;
   let read: EditableObjectPart<EditableSoundSourceObject> =
     EditableObjectPart::read_from_text_part(&EditableTextPart::read_from_bytes(&text)?)?;
@@ -67,7 +67,7 @@ fn every_millisecond_of_the_first_minutes_has_saved_seconds_exporting_to_it() ->
       .map(|&it| sound("ambient\\air_2", (0, 0), (it, it), (0, 0)))
       .collect(),
   };
-  let part = LevelSoundSourceConversion::decompile(&file, GUID, &mut LevelObjectNames::default())?;
+  let part = LevelSoundSourceConversion::decompile(&file, &mut LevelDecompileContext::new(GUID))?;
 
   assert_eq!(LevelSoundSourceConversion::export(&part).unwrap(), file);
 
@@ -78,8 +78,7 @@ fn every_millisecond_of_the_first_minutes_has_saved_seconds_exporting_to_it() ->
 fn a_part_of_no_sounds_exports_no_file() -> XrfResult {
   let part = LevelSoundSourceConversion::decompile(
     &LevelSndStaticFile { sounds: Vec::new() },
-    GUID,
-    &mut LevelObjectNames::default(),
+    &mut LevelDecompileContext::new(GUID),
   )?;
 
   assert!(LevelSoundSourceConversion::export(&part).is_none());
@@ -95,8 +94,7 @@ fn refuses_a_window_no_saved_seconds_export_to() {
     &LevelSndStaticFile {
       sounds: vec![sound("ambient\\air_2", (0, 86_399_999), (0, 0), (0, 0))],
     },
-    GUID,
-    &mut LevelObjectNames::default(),
+    &mut LevelDecompileContext::new(GUID),
   )
   .unwrap_err()
   .to_string();

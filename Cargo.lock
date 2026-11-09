@@ -8817,6 +8817,7 @@ dependencies = [
  "xrf-ogf",
  "xrf-skeleton",
  "xrf-test-utils",
+ "xrf-utils",
 ]
 
 [[package]]

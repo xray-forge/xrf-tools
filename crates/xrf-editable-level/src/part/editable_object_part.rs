@@ -3,10 +3,12 @@ use xrf_ini::{IniFile, IniSection};
 
 use crate::level::editable_level_guid::EditableLevelGuid;
 use crate::object::editable_tool_object::EditableToolObject;
+use crate::part::editable_level_part::EditableLevelPart;
 use crate::part::editable_part_header::EditablePartHeader;
 use crate::part::editable_part_modification::EditablePartModification;
 use crate::part::editable_part_object::EditablePartObject;
 use crate::part::editable_text_part::EditableTextPart;
+use crate::scene::editable_scene_tool::EditableSceneTool;
 
 /// An object tool's text part, typed: its scene's GUID, the tool's `[main]` and `[modif]`, and its objects in the
 /// order `[object_N]` numbers them (`ESceneCustomOTool::SaveLTX`). The `[main]` version is the tool's own
@@ -113,5 +115,35 @@ impl<T: EditableToolObject> EditableObjectPart<T> {
     part.set_guid(&self.guid);
 
     Ok(part)
+  }
+
+  /// The part a scene's tool holds, read as [`Self::read_from_text_part`] reads it.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the tool is not this one ([`EditableToolObject::TOOL_NAME`]), holds other than one part, or
+  /// holds a binary part, or as [`Self::read_from_text_part`] does.
+  pub fn read_from_scene_tool(tool: &EditableSceneTool) -> XrfResult<Self> {
+    match tool.parts.as_slice() {
+      [EditableLevelPart::Text(part)] if tool.name == T::TOOL_NAME => Self::read_from_text_part(part),
+      _ => Err(XrfError::new_parsing_error(format!(
+        "Scene tool '{}' of {} parts is not the one text part of tool '{}'",
+        tool.name,
+        tool.parts.len(),
+        T::TOOL_NAME
+      ))),
+    }
+  }
+
+  /// The tool's place in a scene: its one text part under its name ([`EditableToolObject::TOOL_NAME`]).
+  ///
+  /// # Errors
+  ///
+  /// Returns an error as [`Self::to_text_part`] does.
+  pub fn to_scene_tool(&self) -> XrfResult<EditableSceneTool> {
+    Ok(EditableSceneTool {
+      name: T::TOOL_NAME.to_owned(),
+      parts: vec![EditableLevelPart::Text(self.to_text_part()?)],
+    })
   }
 }

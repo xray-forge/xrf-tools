@@ -8,7 +8,7 @@ use xrf_level::LevelFogVolFile;
 use xrf_math::Vector3d;
 
 use crate::level::tests::GUID;
-use crate::{LevelFogVolumeConversion, LevelObjectNames};
+use crate::{LevelDecompileContext, LevelFogVolumeConversion};
 
 fn volume(kind: EditableFogVolumeKind, group: u32, position: [f32; 3], rotation: [f32; 3]) -> EditableFogVolumeObject {
   EditableFogVolumeObject {
@@ -67,7 +67,7 @@ fn fog_comes_back_to_the_same_file_through_the_parts_text() -> XrfResult {
     emitter("environment\\fog\\cave.ltx", 2, [40.0, -3.0, 12.25]),
     occlusion(7, [4.0, 5.0, 6.0]),
   ]))?;
-  let decompiled = LevelFogVolumeConversion::decompile(&file, GUID, &mut LevelObjectNames::default())?;
+  let decompiled = LevelFogVolumeConversion::decompile(&file, &mut LevelDecompileContext::new(GUID))?;
   let text: Vec<u8> = decompiled.to_text_part()?.write_to_bytes()?;
   let read: EditableObjectPart<EditableFogVolumeObject> =
     EditableObjectPart::read_from_text_part(&EditableTextPart::read_from_bytes(&text)?)?;
@@ -112,7 +112,7 @@ fn a_scene_of_no_fog_exports_a_file_of_no_body() -> XrfResult {
 
   assert_eq!(bytes_of(&file)?, [3, 0, 0, 0, 0, 0]);
   assert!(
-    LevelFogVolumeConversion::decompile(&file, GUID, &mut LevelObjectNames::default())?
+    LevelFogVolumeConversion::decompile(&file, &mut LevelDecompileContext::new(GUID))?
       .objects
       .is_empty()
   );
@@ -146,7 +146,7 @@ fn refuses_a_profile_line_the_export_does_not_end_so() -> XrfResult {
 
   file.volumes[0].terminator = String::from("\n");
 
-  assert!(LevelFogVolumeConversion::decompile(&file, GUID, &mut LevelObjectNames::default()).is_err());
+  assert!(LevelFogVolumeConversion::decompile(&file, &mut LevelDecompileContext::new(GUID)).is_err());
 
   Ok(())
 }

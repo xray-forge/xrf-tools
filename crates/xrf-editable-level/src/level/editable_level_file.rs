@@ -2,10 +2,10 @@ use std::path::Path;
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_ini::{IniFile, IniFormat};
-use xrf_math::Vector3d;
 use xrf_utils::format_path;
 
 use crate::level::editable_build_params::EditableBuildParams;
+use crate::level::editable_level_camera::EditableLevelCamera;
 use crate::level::editable_level_guid::EditableLevelGuid;
 use crate::level::editable_level_options::EditableLevelOptions;
 use crate::level::editable_level_value::EditableLevelValue;
@@ -26,6 +26,41 @@ impl EditableLevelFile {
 
   /// The extension of a scene's main file.
   pub const EXTENSION: &str = "level";
+
+  /// A new scene's main file with every section `EScene::SaveLTX` writes and `EScene::LoadLTX` reads: the version, the
+  /// GUID its parts carry, the level options and build parameters (their reserved fields zero), the camera, and the
+  /// owner tag.
+  pub fn new(
+    guid: &EditableLevelGuid,
+    options: &EditableLevelOptions,
+    build_params: &EditableBuildParams,
+    camera: &EditableLevelCamera,
+    owner: &str,
+    create_time: u32,
+  ) -> Self {
+    let mut file: Self = Self::default();
+
+    file.ini.section_mut("version").set("value", Self::VERSION.to_string());
+    file.set_guid(guid);
+    file.set_level_options(options);
+    file.set_build_params(build_params);
+
+    // `b_params::LoadLTX` reads the reserved fields too; SDK 0.7 writes the quality's and the first float's only, as
+    // GSC's `labx8.level` holds them.
+    let build = file.ini.section_mut(EditableBuildParams::SECTION);
+
+    build.set("light_quality_reserved", "0");
+    build.set("reserved_0", EditableLevelValue::format_f32(0.0));
+
+    camera.write_to_section(file.ini.section_mut(EditableLevelCamera::SECTION));
+
+    let section = file.ini.section_mut("level_tag");
+
+    section.set("owner", owner);
+    section.set("create_time", create_time.to_string());
+
+    file
+  }
 
   /// # Errors
   ///
@@ -127,17 +162,8 @@ impl EditableLevelFile {
   ///
   /// # Errors
   ///
-  /// Returns an error when `[camera] pos` is missing or not three floats.
-  pub fn get_camera_position(&self) -> XrfResult<Vector3d> {
-    EditableLevelValue::read_vector3(self.ini.section_required("camera")?, "pos")
-  }
-
-  /// The camera's heading, pitch and bank, in radians.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when `[camera] hpb` is missing or not three floats.
-  pub fn get_camera_rotation(&self) -> XrfResult<Vector3d> {
-    EditableLevelValue::read_vector3(self.ini.section_required("camera")?, "hpb")
+  /// Returns an error when `[camera]` is missing, or its `pos` or `hpb` is not three floats.
+  pub fn get_camera(&self) -> XrfResult<EditableLevelCamera> {
+    EditableLevelCamera::read_from_section(self.ini.section_required(EditableLevelCamera::SECTION)?)
   }
 }

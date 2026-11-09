@@ -1,7 +1,8 @@
 use xrf_error::XrfResult;
+use xrf_math::Vector3d;
 
 use crate::tests::fixtures::{GUID, level_text};
-use crate::{EditableBuildParams, EditableLevelFile, EditableLevelOptions, EditableLevelValue};
+use crate::{EditableBuildParams, EditableLevelCamera, EditableLevelFile, EditableLevelOptions, EditableLevelValue};
 
 #[test]
 fn reads_a_scenes_main_file_and_writes_it_back_as_it_was() -> XrfResult {
@@ -25,9 +26,9 @@ fn reads_a_scenes_main_file_and_writes_it_back_as_it_was() -> XrfResult {
   assert_eq!(level.get_build_params()?.weld_distance, 0.005);
   // The editor wrote -80.052984, which no f32 prints as with `%f` (the nearest print as -80.052986 and -80.052979), so
   // a typed read is close, and only the kept text writes back exactly.
-  assert!((level.get_camera_position()?.x - (-80.052_98)).abs() < 1e-4);
+  assert!((level.get_camera()?.position.x - (-80.052_98)).abs() < 1e-4);
   assert_eq!(
-    EditableLevelValue::format_vector3(&level.get_camera_position()?),
+    EditableLevelValue::format_vector3(&level.get_camera()?.position),
     "-80.052986, -6.285084, 75.509567"
   );
   assert_eq!(level.write_to_bytes()?, text.as_bytes());
@@ -61,6 +62,44 @@ fn writes_build_parameters_and_options_in_the_editors_layout() -> XrfResult {
 
   assert_eq!(restored.get_build_params()?, params);
   assert_eq!(restored.get_level_options()?, options);
+
+  Ok(())
+}
+
+/// Each section's name and its keys, in the order the file holds them.
+fn layout(level: &EditableLevelFile) -> Vec<(String, Vec<String>)> {
+  level
+    .ini
+    .sections
+    .iter()
+    .map(|section| {
+      (
+        section.name.clone(),
+        section.fields.iter().map(|field| field.key.clone()).collect(),
+      )
+    })
+    .collect()
+}
+
+#[test]
+fn makes_a_new_scenes_main_file_of_every_key_the_editor_writes() -> XrfResult {
+  let options: EditableLevelOptions = EditableLevelOptions::new("test_level", EditableLevelOptions::SINGLE_PLAYER);
+  let camera: EditableLevelCamera = EditableLevelCamera {
+    position: Vector3d::new(1.5, -2.0, 30.25),
+    rotation: Vector3d::new(0.5, -0.25, 0.0),
+  };
+  let level: EditableLevelFile = EditableLevelFile::read_from_bytes(
+    &EditableLevelFile::new(&GUID, &options, &EditableBuildParams::DEFAULT, &camera, "xrf", 0).write_to_bytes()?,
+  )?;
+  let shipped: EditableLevelFile = EditableLevelFile::read_from_bytes(level_text(&GUID)?.as_bytes())?;
+
+  assert_eq!(layout(&level), layout(&shipped));
+  assert_eq!(level.get_guid()?, GUID);
+  assert_eq!(level.get_level_options()?, options);
+  assert_eq!(level.get_build_params()?, EditableBuildParams::DEFAULT);
+  assert_eq!(level.get_camera()?, camera);
+  assert_eq!(level.ini.get("level_tag", "owner"), Some("xrf"));
+  assert_eq!(level.ini.get("build_params", "reserved_0"), Some("0.000000"));
 
   Ok(())
 }

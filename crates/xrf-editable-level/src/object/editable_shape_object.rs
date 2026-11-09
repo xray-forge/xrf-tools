@@ -37,6 +37,7 @@ impl EditableShapeObject {
 impl EditableToolObject for EditableShapeObject {
   /// `OBJCLASS_SHAPE`.
   const CLASS_ID: i32 = 4;
+  const TOOL_NAME: &'static str = "shape";
 
   fn read_from_object(object: &EditablePartObject<'_>) -> XrfResult<Self> {
     Self::read_from_section(object.section)

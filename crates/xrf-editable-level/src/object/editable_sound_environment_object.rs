@@ -47,6 +47,7 @@ impl EditableSoundEnvironmentObject {
 impl EditableToolObject for EditableSoundEnvironmentObject {
   /// `OBJCLASS_SOUND_ENV`.
   const CLASS_ID: i32 = 10;
+  const TOOL_NAME: &'static str = "sound_env";
 
   /// As `ESoundEnvironment::LoadLTX` reads it, refusing another version as it does.
   fn read_from_object(object: &EditablePartObject<'_>) -> XrfResult<Self> {

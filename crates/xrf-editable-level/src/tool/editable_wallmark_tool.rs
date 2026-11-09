@@ -5,6 +5,8 @@ use xrf_utils::narrow_format_size;
 
 use crate::level::editable_level_guid::EditableLevelGuid;
 use crate::part::editable_binary_part::EditableBinaryPart;
+use crate::part::editable_level_part::EditableLevelPart;
+use crate::scene::editable_scene_tool::EditableSceneTool;
 use crate::tool::editable_wallmark::EditableWallmark;
 
 /// Every decal of one shader and texture, `ESceneWallmarkTool::wm_slot`.
@@ -36,6 +38,9 @@ pub struct EditableWallmarkTool {
 impl EditableWallmarkTool {
   /// `OBJCLASS_WM`, which names the part's data chunk.
   pub const CLASS_ID: u32 = 14;
+
+  /// The tool's `ClassName`, which names its part file.
+  pub const TOOL_NAME: &'static str = "wallmark";
 
   /// `WM_VERSION`, which the editor writes; it reads [`Self::OLD_VERSION`] too.
   pub const VERSION: u16 = 4;
@@ -196,6 +201,36 @@ impl EditableWallmarkTool {
       class_id: Self::CLASS_ID,
       data: self.write_to_bytes::<T>()?,
       layout: ChunkLayout::default(),
+    })
+  }
+
+  /// The tool a scene's wall mark tool holds, read as [`Self::read_from_part`] reads it.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the tool is not [`Self::TOOL_NAME`], holds other than one part, or holds a text part, or as
+  /// [`Self::read_from_part`] does.
+  pub fn read_from_scene_tool<T: ByteOrder>(tool: &EditableSceneTool) -> XrfResult<Self> {
+    match tool.parts.as_slice() {
+      [EditableLevelPart::Binary(part)] if tool.name == Self::TOOL_NAME => Self::read_from_part::<T>(part),
+      _ => Err(XrfError::new_parsing_error(format!(
+        "Scene tool '{}' of {} parts is not the one binary part of tool '{}'",
+        tool.name,
+        tool.parts.len(),
+        Self::TOOL_NAME
+      ))),
+    }
+  }
+
+  /// The tool's place in a scene: its one binary part under [`Self::TOOL_NAME`].
+  ///
+  /// # Errors
+  ///
+  /// Returns an error as [`Self::write_to_bytes`] does.
+  pub fn to_scene_tool<T: ByteOrder>(&self, guid: EditableLevelGuid) -> XrfResult<EditableSceneTool> {
+    Ok(EditableSceneTool {
+      name: Self::TOOL_NAME.to_owned(),
+      parts: vec![EditableLevelPart::Binary(self.to_part::<T>(guid)?)],
     })
   }
 

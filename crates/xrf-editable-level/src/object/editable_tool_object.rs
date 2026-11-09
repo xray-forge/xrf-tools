@@ -10,6 +10,9 @@ pub trait EditableToolObject: Sized {
   /// The editor's `ObjClassID` of the tool's objects, written as each object's `clsid`.
   const CLASS_ID: i32;
 
+  /// The tool's `ClassName`, which names its part: `<name>.part` in the scene's directory (`EScene::LevelPartName`).
+  const TOOL_NAME: &'static str;
+
   /// The tool's `*_TOOLS_VERSION`, its part's `[main]` `version`, which its `LoadLTX` refuses another of. Every object
   /// tool of the CoP SDK writes 0.
   const TOOL_VERSION: u32 = 0;

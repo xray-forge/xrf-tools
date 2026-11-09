@@ -1,14 +1,14 @@
 use std::collections::BTreeMap;
 
 use xrf_editable_level::{
-  EditableCustomObject, EditableFogVolumeKind, EditableFogVolumeObject, EditableLevelGuid, EditableObjectPart,
-  EditableObjectTransform, EditableShape,
+  EditableCustomObject, EditableFogVolumeKind, EditableFogVolumeObject, EditableObjectPart, EditableObjectTransform,
+  EditableShape,
 };
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{LevelFogVolFile, LevelFogVolume};
 use xrf_math::Matrix4x4;
 
-use crate::level::level_object_names::LevelObjectNames;
+use crate::level::level_decompile_context::LevelDecompileContext;
 
 /// A level's volumetric fog, between the scene's `fog_volume.part` and the compiled `level.fog_vol`, which the build
 /// writes for every level (`BuilderGame.cpp:90`), with no group for a scene of none.
@@ -31,8 +31,7 @@ impl LevelFogVolumeConversion {
   /// stands at.
   pub fn decompile(
     file: &LevelFogVolFile,
-    guid: EditableLevelGuid,
-    names: &mut LevelObjectNames,
+    context: &mut LevelDecompileContext,
   ) -> XrfResult<EditableObjectPart<EditableFogVolumeObject>> {
     let mut objects: Vec<EditableFogVolumeObject> = Vec::new();
 
@@ -44,7 +43,7 @@ impl LevelFogVolumeConversion {
         )));
       }
 
-      let volume = |kind: EditableFogVolumeKind, matrix: &Matrix4x4, names: &mut LevelObjectNames| {
+      let volume = |kind: EditableFogVolumeKind, matrix: &Matrix4x4, context: &mut LevelDecompileContext| {
         let transform: EditableObjectTransform =
           EditableObjectTransform::from_matrix_as_saved(matrix).map_err(|error| {
             XrfError::new_invalid_error(format!(
@@ -54,7 +53,7 @@ impl LevelFogVolumeConversion {
           })?;
 
         Ok::<_, XrfError>(EditableFogVolumeObject {
-          object: EditableCustomObject::new(names.get_next(Self::NAME_PREFIX), transform),
+          object: EditableCustomObject::new(context.names.get_next(Self::NAME_PREFIX), transform),
           shape: EditableShape::new_unit_box(),
           kind,
           group,
@@ -66,15 +65,15 @@ impl LevelFogVolumeConversion {
           profile: body.profile.clone(),
         },
         &body.transform,
-        names,
+        context,
       )?);
 
       for obstacle in &body.obstacles {
-        objects.push(volume(EditableFogVolumeKind::Occlusion, obstacle, names)?);
+        objects.push(volume(EditableFogVolumeKind::Occlusion, obstacle, context)?);
       }
     }
 
-    Ok(EditableObjectPart::new(guid, objects))
+    Ok(EditableObjectPart::new(context.guid, objects))
   }
 
   /// The `level.fog_vol` the build writes from the part: version 3, then per group in ascending number its emitter's

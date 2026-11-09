@@ -5,8 +5,8 @@ use xrf_math::{Aabb, Sphere, Vector3d};
 
 use crate::tests::fixtures::GUID;
 use crate::{
-  EditableBinaryPart, EditableLevelPart, EditableWallmark, EditableWallmarkSlot, EditableWallmarkTool,
-  EditableWallmarkVertex,
+  EditableBinaryPart, EditableLevelPart, EditableSceneTool, EditableWallmark, EditableWallmarkSlot,
+  EditableWallmarkTool, EditableWallmarkVertex,
 };
 
 fn fan() -> Vec<EditableWallmarkVertex> {
@@ -70,6 +70,23 @@ fn a_wall_mark_tool_saved_as_its_part_reads_back_the_same() -> XrfResult {
   assert_eq!(
     read.to_part::<XRayByteOrder>(GUID)?.write_to_bytes::<XRayByteOrder>()?,
     bytes
+  );
+
+  Ok(())
+}
+
+#[test]
+fn a_wall_mark_tool_becomes_the_scene_tool_of_its_part() -> XrfResult {
+  let scene_tool: EditableSceneTool = tool().to_scene_tool::<XRayByteOrder>(GUID)?;
+
+  assert_eq!(scene_tool.get_file_name(0), "wallmark.part");
+  assert_eq!(
+    scene_tool.parts,
+    [EditableLevelPart::Binary(tool().to_part::<XRayByteOrder>(GUID)?)]
+  );
+  assert_eq!(
+    EditableWallmarkTool::read_from_scene_tool::<XRayByteOrder>(&scene_tool)?,
+    tool()
   );
 
   Ok(())

@@ -26,6 +26,7 @@ xrf-level = { workspace = true }
 xrf-math = { workspace = true, features = ["glam"] }
 xrf-ogf = { workspace = true }
 xrf-skeleton = { workspace = true }
+xrf-utils = { workspace = true }
 
 [dev-dependencies]
 xrf-test-utils = { workspace = true }

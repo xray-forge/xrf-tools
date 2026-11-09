@@ -1,12 +1,11 @@
 use xrf_editable_level::{
-  EditableCustomObject, EditableLevelGuid, EditableObjectPart, EditableObjectTransform, EditableSpawnPointKind,
-  EditableSpawnPointObject,
+  EditableCustomObject, EditableObjectPart, EditableObjectTransform, EditableSpawnPointKind, EditableSpawnPointObject,
 };
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{LevelEnvModFile, LevelEnvModifier, LevelGameRPoint};
 use xrf_math::Vector3d;
 
-use crate::level::level_object_names::LevelObjectNames;
+use crate::level::level_decompile_context::LevelDecompileContext;
 
 /// A level's respawn points and environment modifiers, between the scene's `spawn.part` and the respawn point table of
 /// `level.game` and `level.env_mod`, which `CSpawnPoint::ExportGame` (`SpawnPoint.cpp:1328`) fills. The part's entity
@@ -28,14 +27,13 @@ impl LevelSpawnPointConversion {
   pub fn decompile(
     respawn_points: &[LevelGameRPoint],
     environment: &LevelEnvModFile,
-    guid: EditableLevelGuid,
-    names: &mut LevelObjectNames,
+    context: &mut LevelDecompileContext,
   ) -> XrfResult<EditableObjectPart<EditableSpawnPointObject>> {
     let mut objects: Vec<EditableSpawnPointObject> = respawn_points
       .iter()
       .map(|point| EditableSpawnPointObject {
         object: EditableCustomObject::new(
-          names.get_next(Self::RESPAWN_POINT_PREFIX),
+          context.names.get_next(Self::RESPAWN_POINT_PREFIX),
           EditableObjectTransform {
             position: point.position,
             rotation: point.rotation,
@@ -63,7 +61,7 @@ impl LevelSpawnPointConversion {
 
       objects.push(EditableSpawnPointObject {
         object: EditableCustomObject::new(
-          names.get_next(Self::ENVIRONMENT_MODIFIER_PREFIX),
+          context.names.get_next(Self::ENVIRONMENT_MODIFIER_PREFIX),
           EditableObjectTransform {
             position: modifier.position,
             ..EditableObjectTransform::default()
@@ -86,7 +84,7 @@ impl LevelSpawnPointConversion {
       });
     }
 
-    Ok(EditableObjectPart::new(guid, objects))
+    Ok(EditableObjectPart::new(context.guid, objects))
   }
 
   /// The respawn point table `ExportGame` fills from the part, a record per respawn point in the part's order: its
