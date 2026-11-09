@@ -121,6 +121,8 @@ impl LevelSceneDecompiler {
     let sources: BTreeMap<&'static str, Vec<u8>> = Self::read_sources(directory)?;
     let mut context: LevelDecompileContext = LevelDecompileContext::new(Self::get_guid(&sources));
     let mut tools: Vec<(EditableSceneTool, Vec<&'static str>)> = Vec::new();
+    let mut level_options: EditableLevelOptions =
+      EditableLevelOptions::new(&options.name, EditableLevelOptions::SINGLE_PLAYER);
     let mut inferred: Vec<LevelSceneInference> = vec![
       LevelSceneInference::ObjectNames,
       LevelSceneInference::LevelOptions,
@@ -135,6 +137,14 @@ impl LevelSceneDecompiler {
       let lights: Option<LevelLightsFile> = bytes(LevelLightsFile::FILE_NAME)
         .map(LevelLightsFile::read_from_bytes::<T>)
         .transpose()?;
+
+      if let Some(lights) = &lights {
+        level_options.light_hemi_quality =
+          LevelLightConversion::get_hemi_quality(lights).unwrap_or(level_options.light_hemi_quality);
+        level_options.light_sun_quality =
+          LevelLightConversion::get_sun_quality(lights).unwrap_or(level_options.light_sun_quality);
+      }
+
       let light_sources: Vec<&'static str> = [LevelFile::FILE_NAME, LevelLightsFile::FILE_NAME]
         .into_iter()
         .filter(|name| sources.contains_key(name))
@@ -250,7 +260,10 @@ impl LevelSceneDecompiler {
     .collect();
     let level: EditableLevelFile = EditableLevelFile::new(
       &context.guid,
-      &EditableLevelOptions::new(&options.name, Self::get_game_types(respawn_points)),
+      &EditableLevelOptions {
+        game_type: Self::get_game_types(respawn_points),
+        ..level_options
+      },
       &EditableBuildParams {
         weld_distance: 0.0,
         ..EditableBuildParams::DEFAULT

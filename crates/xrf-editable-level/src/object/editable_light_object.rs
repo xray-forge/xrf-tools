@@ -92,6 +92,10 @@ impl EditableLightObject {
   /// `ELight::ltPoint`, the only kind the build exports.
   pub const POINT: u32 = 1;
 
+  /// The light tool's `[main]` key of the sun's direction, pitch then heading in radians, which the build points the
+  /// sun along (`SceneBuilder::BuildSun`).
+  pub const SUN_DIRECTION_KEY: &'static str = "sun_shadow_dir";
+
   /// Writes the light tool's own data as a new scene's tool saves it (`ESceneLightTool::Clear`,
   /// `ESceneLightTools.cpp:27`): the controls `$static`, `$hemi` and `$sun` at 0, 1 and 2, the next control index 3, and
   /// the default sun shadow direction, -25 and 292 degrees.
@@ -108,7 +112,7 @@ impl EditableLightObject {
 
     main.set("lcontrol_last_idx", "3");
     main.set(
-      "sun_shadow_dir",
+      Self::SUN_DIRECTION_KEY,
       // `deg2rad` multiplies by `PI / 180` in double precision; GSC's scenes hold `-0.436332, 5.096362`.
       EditableLevelValue::format_vector2(&Vector2d::new(
         (-25.0_f64).to_radians() as f32,

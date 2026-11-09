@@ -251,6 +251,16 @@ What the compiled files keep none of is inferred and recorded:
 GSC's `labx8` lights, built as the editor and compiler build them, give its compiled ones exactly, and every level's
 decompiled lights build back to its own exactly.
 
+The sun and sky the build generates fold back into the scene's settings:
+
+- `get_hemi_quality` reads the level options' hemisphere quality from chunk 1's generated sky (1, 26, 91 or 196 lights
+  for 0 to 3);
+- `get_sun_quality` reads the sun quality from chunk 2's samples (1, 9, 16 or 49);
+- the light tool's `sun_shadow_dir` is the dynamic sun's heading and pitch, its heading within one turn up from 0.
+
+`labx8` gives back GSC's own hemisphere quality 3, sun quality 0 and sun direction text. CS-era suns of other sample
+counts keep a new level's quality, and a direction may come back one unit off in its sixth decimal.
+
 ### A whole scene
 
 `LevelSceneDecompiler::decompile` reads every pass-through file a level's directory holds, and the `level` bundle and

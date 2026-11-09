@@ -1,6 +1,8 @@
-use xrf_editable_level::{EditableCustomObject, EditableLightObject, EditableObjectPart, EditableObjectTransform};
+use xrf_editable_level::{
+  EditableCustomObject, EditableLevelValue, EditableLightObject, EditableObjectPart, EditableObjectTransform,
+};
 use xrf_level::{LevelDynamicLight, LevelFile, LevelLight, LevelLightsFile};
-use xrf_math::Vector3d;
+use xrf_math::{Vector2d, Vector3d};
 
 use crate::level::level_decompile_context::LevelDecompileContext;
 
@@ -51,9 +53,7 @@ impl LevelLightConversion {
     for (chunk, control) in Self::LAYERS {
       let compiled = lights
         .into_iter()
-        .flat_map(|file| &file.chunks)
-        .filter(|layer| layer.get_id() == chunk)
-        .flat_map(|layer| layer.get_lights())
+        .flat_map(|file| Self::get_chunk_lights(file, chunk))
         .filter(|light| light.kind == LevelLight::KIND_POINT);
 
       for light in compiled {
@@ -101,7 +101,63 @@ impl LevelLightConversion {
 
     EditableLightObject::write_new_tool_data(&mut part.tool_data);
 
+    if let Some(direction) = Self::get_sun_direction(level) {
+      part.tool_data.section_mut("main").set(
+        EditableLightObject::SUN_DIRECTION_KEY,
+        EditableLevelValue::format_vector2(&direction),
+      );
+    }
+
     part
+  }
+
+  /// The level options' hemisphere quality the build generated `build.lights` chunk 1's sky with
+  /// (`SceneBuilder::BuildHemiLights`, `BuilderRemote.cpp:946`): one light for 0, else `xrHemisphereBuild`'s 26, 91 or
+  /// 196 for 1 to 3. None for a sky of another count.
+  pub fn get_hemi_quality(lights: &LevelLightsFile) -> Option<u8> {
+    let sky: usize = Self::get_chunk_lights(lights, 1)
+      .filter(|light| light.kind != LevelLight::KIND_POINT)
+      .count();
+
+    [1, 26, 91, 196]
+      .into_iter()
+      .position(|count| count == sky)
+      .map(|quality| quality as u8)
+  }
+
+  /// The level options' sun quality the build spread chunk 2's sun with (`SceneBuilder::BuildSun`,
+  /// `BuilderRemote.cpp:981`): 1, 3, 4 or 7 samples a side for 0 to 3. None for a sun of another count.
+  pub fn get_sun_quality(lights: &LevelLightsFile) -> Option<u8> {
+    let sun: usize = Self::get_chunk_lights(lights, 2).count();
+
+    [1, 9, 16, 49]
+      .into_iter()
+      .position(|count| count == sun)
+      .map(|quality| quality as u8)
+  }
+
+  /// The light tool's `sun_shadow_dir`, pitch then heading, that the build pointed the dynamic sun along
+  /// (`direction.setHP(dir.y, dir.x)`), its heading within a turn upwards of 0 as the editor's default 292 degrees is.
+  fn get_sun_direction(level: &LevelFile) -> Option<Vector2d> {
+    let sun: &LevelDynamicLight = level.lights.as_ref()?.lights.iter().find(|light| light.is_sun())?;
+    let heading: f32 = (-sun.direction.x).atan2(sun.direction.z);
+
+    Some(Vector2d::new(
+      sun.direction.y.clamp(-1.0, 1.0).asin(),
+      if heading < 0.0 {
+        heading + std::f32::consts::TAU
+      } else {
+        heading
+      },
+    ))
+  }
+
+  fn get_chunk_lights(lights: &LevelLightsFile, chunk: u32) -> impl Iterator<Item = &LevelLight> {
+    lights
+      .chunks
+      .iter()
+      .filter(move |layer| layer.get_id() == chunk)
+      .flat_map(|layer| layer.get_lights())
   }
 
   fn get_diffuse(light: &LevelDynamicLight) -> Vector3d {

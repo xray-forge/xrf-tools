@@ -29,7 +29,8 @@ pub struct LevelSceneFile {
 pub enum LevelSceneInference {
   /// Objects are named as the editor names new ones, `<prefix>_NNNN`, the prefix their file's name or their tool's.
   ObjectNames,
-  /// The level options are a new level's, built into and prefixed by the level's name.
+  /// The level options are a new level's, built into and prefixed by the level's name, but for the light qualities,
+  /// which the count of `build.lights`' generated sky and sun gives.
   LevelOptions,
   /// The level serves the game modes its respawn points answer to, or single player where it has none.
   GameTypes,
