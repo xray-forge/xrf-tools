@@ -21,17 +21,51 @@ pub struct EditableObjectPart<T> {
   pub flags: Option<u32>,
   pub modification: EditablePartModification,
   pub objects: Vec<T>,
+  /// What the tool itself saves beyond its header, kept as stored: further `[main]` keys and sections of its own, such
+  /// as the light tool's `sun_shadow_dir`, `lcontrol_last_idx` and `[lcontrols]` (`ESceneLightTool::SaveLTX`). Empty for
+  /// a tool saving nothing more.
+  pub tool: IniFile,
 }
 
 impl<T: EditableToolObject> EditableObjectPart<T> {
-  /// A part of no modification holding `objects`, its flags clear where the tool keeps any.
+  /// A part of no modification holding `objects`, its flags clear where the tool keeps any, and no tool data.
   pub fn new(guid: EditableLevelGuid, objects: Vec<T>) -> Self {
     Self {
       guid,
       flags: T::KEEPS_FLAGS.then_some(0),
       modification: EditablePartModification::default(),
       objects,
+      tool: IniFile::default(),
     }
+  }
+
+  /// The part's sections and `[main]` keys that neither the header, `[guid]`, `[modif]` nor an object holds.
+  fn read_tool_data(part: &EditableTextPart) -> IniFile {
+    let mut tool: IniFile = IniFile::default();
+
+    for section in &part.ini.sections {
+      match section.name.as_str() {
+        EditableLevelGuid::SECTION | EditablePartModification::SECTION => {}
+        EditablePartHeader::SECTION => {
+          for field in section.fields.iter().filter(|field| {
+            ![
+              T::TOOL_VERSION_KEY,
+              EditablePartHeader::OBJECTS_COUNT_KEY,
+              EditablePartHeader::FLAGS_KEY,
+            ]
+            .contains(&field.key.as_str())
+          }) {
+            tool
+              .section_mut(EditablePartHeader::SECTION)
+              .set(field.key.clone(), field.value.clone());
+          }
+        }
+        name if name.starts_with(EditablePartObject::SECTION_PREFIX) => {}
+        _ => tool.sections.push(section.clone()),
+      }
+    }
+
+    tool
   }
 
   /// # Errors
@@ -80,6 +114,7 @@ impl<T: EditableToolObject> EditableObjectPart<T> {
         part.ini.section_required(EditablePartModification::SECTION)?,
       )?,
       objects,
+      tool: Self::read_tool_data(part),
     })
   }
 
@@ -101,6 +136,14 @@ impl<T: EditableToolObject> EditableObjectPart<T> {
     self
       .modification
       .write_to_section(ini.section_mut(EditablePartModification::SECTION));
+
+    for section in &self.tool.sections {
+      let written: &mut IniSection = ini.section_mut(&section.name);
+
+      for field in &section.fields {
+        written.set(field.key.clone(), field.value.clone());
+      }
+    }
 
     for (index, object) in self.objects.iter().enumerate() {
       let name: String = EditablePartObject::get_section_name(index);

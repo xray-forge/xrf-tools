@@ -25,6 +25,9 @@ impl EditablePartHeader {
   /// The key `ESceneCustomOTool::SaveLTX` writes the count under.
   pub const OBJECTS_COUNT_KEY: &str = "objects_count";
 
+  /// The key the tools keeping flags write them under.
+  pub const FLAGS_KEY: &str = "flags";
+
   /// Reads the header of a tool writing its version under `version_key`.
   ///
   /// # Errors
@@ -35,8 +38,8 @@ impl EditablePartHeader {
       version: section.get_parsed::<u32>(version_key)?,
       objects_count: section.get_parsed::<u32>(Self::OBJECTS_COUNT_KEY)?,
       flags: section
-        .get("flags")
-        .map(|_| EditableLevelValue::read_u32(section, "flags"))
+        .get(Self::FLAGS_KEY)
+        .map(|_| EditableLevelValue::read_u32(section, Self::FLAGS_KEY))
         .transpose()?,
     })
   }
@@ -47,7 +50,7 @@ impl EditablePartHeader {
     section.set(Self::OBJECTS_COUNT_KEY, self.objects_count.to_string());
 
     if let Some(flags) = self.flags {
-      section.set("flags", EditableLevelValue::format_u32(flags));
+      section.set(Self::FLAGS_KEY, EditableLevelValue::format_u32(flags));
     }
   }
 }
