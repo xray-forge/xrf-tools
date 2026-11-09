@@ -81,9 +81,9 @@ Each conversion takes the scene's typed part from `xrf-editable-level` and the c
 compiled level keeps no names; `get_next_after_file` takes the prefix from the file an object plays or shows.
 
 `LevelParticleConversion` converts `level.ps_static` and `ps.part`: `decompile` gives each placement an object named
-after its effect, its matrix decomposed into the editor's position, angles and scale and rounded as the part's text
-holds them; `export` writes what `EParticlesObject::ExportGame` does, and no file for a part of no particles, as the
-build writes none. Each of vanilla CoP's 18 `level.ps_static` files comes back byte for byte, decompiled and exported
+after its effect, at the saved position, angles and scale composing into its matrix
+(`EditableObjectTransform::from_matrix_as_saved`); `export` writes what `EParticlesObject::ExportGame` does, and no
+file for a part of no particles, as the build writes none. Each of vanilla CoP's 18 `level.ps_static` files comes back byte for byte, decompiled and exported
 both directly and through the part's text. A particle pitched straight up or down is the exception: there the editor's
 `getHPB` takes no bank, the angles it decomposes into are not the ones saved, and the matrix comes back a few units in
 the last place off.
@@ -101,10 +101,19 @@ grid, as a build from an unsaved editor session would, which the text rounds wit
 the order volumes first name them, inner first; each exported volume's 8 box corners, merged within `EPS` as
 `CDB::Collector::VPack` merges them, and 12 faces; bounds from every volume's `GetBox`, a volume skipped for equal or
 empty environments included. `decompile` refuses a mesh not laid out that way and gives each box a volume named
-`sound_env_NNNN`, as the editor's unit box placed by a saved transform whose corners are the same bits (the angles and
-scales tried a `%f` step either way), else standing at the origin with its own saved box matrix. Of the 20 shipped
+`sound_env_NNNN`, as the editor's unit box placed by a saved transform whose corners are the same bits
+(`EditableObjectTransform::find_saved`), else standing at the origin with its own saved box matrix. Of the 20 shipped
 files, 15 come back byte for byte, GSC's `l12u_sarcofag` among them; five of GAMMA's hold boxes whose matrices no saved
 text gives, and come back within 6.1e-5 with the same environments and faces.
+
+`LevelFogVolumeConversion` converts `level.fog_vol` and `fog_volume.part`. `export` writes what `BuildGame` does for
+every level: version 3, then per group in ascending number (the ungrouped last) its emitter's profile line and
+transform and its occlusion volumes' transforms, refusing a group that is not one emitter and its occlusions, on which
+the build fails; it keeps the part's order among occlusions, which the editor's `std::sort` by type leaves unspecified.
+`decompile` gives each body a group numbered from 1, its emitter and an occlusion volume per obstacle named
+`fog_volume_NNNN`, each at the saved transform composing into its matrix. Every tree's 174 files come back byte for
+byte through the part's text: 172 of no body, and CS's `agroprom_underground` (4 bodies, 144 obstacles) with SGM
+2.2's copy.
 
 ## Compiling an editable object into an OGF
 

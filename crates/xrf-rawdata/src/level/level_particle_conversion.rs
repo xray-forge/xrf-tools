@@ -15,8 +15,9 @@ impl LevelParticleConversion {
   pub const TOOL_VERSION: u32 = 0;
 
   /// The particle part a `level.ps_static` was exported from, each placement an object named after its effect, its
-  /// transform rounded as the part's text holds it. A file of version 0 keeps no game modes, so its effects play in all
-  /// of them.
+  /// transform the saved one composing into the placement's matrix
+  /// ([`EditableObjectTransform::from_matrix_as_saved`]). A file of version 0 keeps no game modes, so its effects play
+  /// in all of them.
   ///
   /// # Errors
   ///
@@ -31,8 +32,8 @@ impl LevelParticleConversion {
       .iter()
       .enumerate()
       .map(|(index, placement)| {
-        let transform: EditableObjectTransform =
-          EditableObjectTransform::from_matrix(&placement.transform).map_err(|error| {
+        let transform: EditableObjectTransform = EditableObjectTransform::from_matrix_as_saved(&placement.transform)
+          .map_err(|error| {
             XrfError::new_invalid_error(format!(
               "Static particle {index} '{}' does not stand as an object: {error}",
               placement.effect
@@ -40,7 +41,7 @@ impl LevelParticleConversion {
           })?;
 
         Ok(EditableParticleObject {
-          object: EditableCustomObject::new(names.get_next_after_file(&placement.effect), transform.round_as_saved()),
+          object: EditableCustomObject::new(names.get_next_after_file(&placement.effect), transform),
           reference: placement.effect.clone(),
           game_types: placement.game_types.unwrap_or(EditableParticleObject::ALL_GAME_TYPES),
         })

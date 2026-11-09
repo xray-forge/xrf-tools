@@ -3,14 +3,21 @@ use std::f32::consts::FRAC_PI_2;
 use xrf_error::XrfResult;
 use xrf_math::{Affine3d, Matrix4x4, Vector2d, Vector3d};
 
-use crate::tests::fixtures::{GUID, particle_part_text, sound_environment_part_text, sound_source_part_text};
+use crate::tests::fixtures::{
+  GUID, fog_volume_part_text, particle_part_text, sound_environment_part_text, sound_source_part_text,
+};
 use crate::{
-  EditableLevelValue, EditableObjectPart, EditableObjectTransform, EditableParticleObject, EditableShapeElement,
-  EditableSoundEnvironmentObject, EditableSoundSourceObject, EditableTextPart, EditableToolObject,
+  EditableFogVolumeKind, EditableFogVolumeObject, EditableLevelValue, EditableObjectPart, EditableObjectTransform,
+  EditableParticleObject, EditableShapeElement, EditableSoundEnvironmentObject, EditableSoundSourceObject,
+  EditableTextPart, EditableToolObject,
 };
 
 fn read_part<T: EditableToolObject>(text: &str) -> XrfResult<EditableObjectPart<T>> {
   EditableObjectPart::read_from_text_part(&EditableTextPart::read_from_bytes(text.as_bytes())?)
+}
+
+fn read_fog_volumes(text: &str) -> XrfResult<EditableObjectPart<EditableFogVolumeObject>> {
+  read_part(text)
 }
 
 fn read_particles(text: &str) -> XrfResult<EditableObjectPart<EditableParticleObject>> {
@@ -23,6 +30,85 @@ fn read_sound_sources(text: &str) -> XrfResult<EditableObjectPart<EditableSoundS
 
 fn read_sound_environments(text: &str) -> XrfResult<EditableObjectPart<EditableSoundEnvironmentObject>> {
   read_part(text)
+}
+
+#[test]
+fn reads_a_fog_volume_part_typed_and_writes_it_back_as_the_editor_saved_it() -> XrfResult {
+  let text: String = fog_volume_part_text(&GUID, &[])?;
+  let part: EditableObjectPart<EditableFogVolumeObject> = read_fog_volumes(&text)?;
+  let volume: &EditableFogVolumeObject = &part.objects[0];
+
+  assert_eq!(
+    volume.group,
+    EditableFogVolumeObject::UNGROUPED,
+    "`u32(-1)` printed through `%d`"
+  );
+  assert_eq!(volume.get_profile(), Some(EditableFogVolumeObject::DEFAULT_PROFILE));
+  assert_eq!(String::from_utf8_lossy(&part.to_text_part()?.write_to_bytes()?), text);
+
+  Ok(())
+}
+
+#[test]
+fn writes_no_profile_for_an_occlusion_volume() -> XrfResult {
+  let text: String = fog_volume_part_text(&GUID, &[("folume_type", "1"), ("group_id", "3")])?;
+  let part: EditableObjectPart<EditableFogVolumeObject> = read_fog_volumes(&text)?;
+  let written: String = String::from_utf8_lossy(&part.to_text_part()?.write_to_bytes()?).into_owned();
+
+  assert_eq!(part.objects[0].kind, EditableFogVolumeKind::Occlusion);
+  assert_eq!(part.objects[0].group, 3);
+  assert!(!written.contains("profile"), "{written}");
+
+  Ok(())
+}
+
+#[test]
+fn takes_an_older_fog_volume_as_the_editor_does() -> XrfResult {
+  // Version 1 keeps no profile and version 0 no type or group: an ungrouped emitter of the default profile.
+  let older = read_fog_volumes(&fog_volume_part_text(
+    &GUID,
+    &[("version", "1"), ("profile", "environment\\fog\\swamp.ltx")],
+  )?)?;
+  let oldest = read_fog_volumes(&fog_volume_part_text(&GUID, &[("version", "0"), ("group_id", "4")])?)?;
+
+  assert_eq!(
+    older.objects[0].get_profile(),
+    Some(EditableFogVolumeObject::DEFAULT_PROFILE)
+  );
+  assert_eq!(oldest.objects[0].group, EditableFogVolumeObject::UNGROUPED);
+  assert!(read_fog_volumes(&fog_volume_part_text(&GUID, &[("folume_type", "2")])?).is_err());
+
+  Ok(())
+}
+
+#[test]
+fn finds_the_saved_transform_a_step_off_a_decomposed_one() -> XrfResult {
+  let saved: EditableObjectTransform = EditableObjectTransform {
+    position: Vector3d::new(12.5, -3.25, 40.0),
+    rotation: Vector3d::new(0.0, 0.812_345, -0.25),
+    scale: Vector3d::new(8.0, 4.0, 16.0),
+  };
+  let bits: [u32; 16] = saved.to_matrix().values.map(f32::to_bits);
+  // As a box's corners measure them: the long axis a `%f` step over, an angle two under.
+  let measured: EditableObjectTransform = EditableObjectTransform {
+    rotation: Vector3d::new(0.0, 0.812_343, -0.25),
+    scale: Vector3d::new(8.0, 4.0, 16.000_002),
+    ..saved
+  };
+
+  assert_eq!(
+    measured.find_saved(|transform| transform.to_matrix().values.map(f32::to_bits) == bits),
+    Some(saved)
+  );
+  assert_eq!(
+    EditableObjectTransform::from_matrix_as_saved(&saved.to_matrix())?
+      .to_matrix()
+      .values
+      .map(f32::to_bits),
+    bits
+  );
+
+  Ok(())
 }
 
 #[test]
