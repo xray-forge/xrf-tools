@@ -9,14 +9,15 @@ use xrf_editable_level::{
 };
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{
-  LevelEnvModFile, LevelFile, LevelFogVolFile, LevelGameFile, LevelGameRPoint, LevelPsStaticFile, LevelSndEnvFile,
-  LevelSndStaticFile, LevelWallmarksFile,
+  LevelEnvModFile, LevelFile, LevelFogVolFile, LevelGameFile, LevelGameRPoint, LevelLightsFile, LevelPsStaticFile,
+  LevelSndEnvFile, LevelSndStaticFile, LevelWallmarksFile,
 };
 use xrf_utils::{StagedFile, format_path};
 
 use crate::level::level_decompile_context::LevelDecompileContext;
 use crate::level::level_fog_volume_conversion::LevelFogVolumeConversion;
 use crate::level::level_glow_conversion::LevelGlowConversion;
+use crate::level::level_light_conversion::LevelLightConversion;
 use crate::level::level_particle_conversion::LevelParticleConversion;
 use crate::level::level_sound_environment_conversion::LevelSoundEnvironmentConversion;
 use crate::level::level_sound_source_conversion::LevelSoundSourceConversion;
@@ -92,10 +93,11 @@ pub struct LevelSceneDecompiler;
 
 impl LevelSceneDecompiler {
   /// The files of a level's directory the decompile reads, in the order their bytes are hashed into the scene's GUID:
-  /// the compiled bundle (`level`, for its glows), and the files [`crate::LevelSceneExporter::FILE_NAMES`] the build writes
-  /// from the scene's parts and the export writes back.
-  pub const SOURCE_FILES: [&'static str; 8] = [
+  /// the compiled bundle (`level`, for its glows and dynamic lights) and the level compiler's `build.lights`, then the
+  /// files [`crate::LevelSceneExporter::FILE_NAMES`] the build writes from the scene's parts and the export writes back.
+  pub const SOURCE_FILES: [&'static str; 9] = [
     LevelFile::FILE_NAME,
+    LevelLightsFile::FILE_NAME,
     LevelEnvModFile::FILE_NAME,
     LevelFogVolFile::FILE_NAME,
     LevelGameFile::FILE_NAME,
@@ -128,13 +130,29 @@ impl LevelSceneDecompiler {
     ];
     let bytes = |name: &str| sources.get(name).cloned();
 
-    if let Some(bytes) = bytes(LevelFile::FILE_NAME) {
-      let level: LevelFile = LevelFile::read_from_bytes::<T>(bytes)?;
+    if let Some(level_bytes) = bytes(LevelFile::FILE_NAME) {
+      let level: LevelFile = LevelFile::read_from_bytes::<T>(level_bytes)?;
+      let lights: Option<LevelLightsFile> = bytes(LevelLightsFile::FILE_NAME)
+        .map(LevelLightsFile::read_from_bytes::<T>)
+        .transpose()?;
+      let light_sources: Vec<&'static str> = [LevelFile::FILE_NAME, LevelLightsFile::FILE_NAME]
+        .into_iter()
+        .filter(|name| sources.contains_key(name))
+        .collect();
 
-      inferred.push(LevelSceneInference::GlowTransformsAndFlags);
+      inferred.extend([
+        LevelSceneInference::GlowTransformsAndFlags,
+        LevelSceneInference::LightBrightness,
+        LevelSceneInference::LightFuzzyPoints,
+        LevelSceneInference::LightControls,
+      ]);
       tools.push((
         LevelGlowConversion::decompile(&level, &mut context)?.to_scene_tool()?,
         vec![LevelFile::FILE_NAME],
+      ));
+      tools.push((
+        LevelLightConversion::decompile(lights.as_ref(), &level, &mut context).to_scene_tool()?,
+        light_sources,
       ));
     }
 
