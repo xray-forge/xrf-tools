@@ -8256,6 +8256,7 @@ dependencies = [
  "xrf-dds",
  "xrf-dialog",
  "xrf-dltx",
+ "xrf-editable-level",
  "xrf-editable-object",
  "xrf-engine-target",
  "xrf-env-flags",

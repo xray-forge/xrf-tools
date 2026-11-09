@@ -150,7 +150,8 @@ Writes refuse:
 
 - what [xrf-ini](../xrf-ini/README.md) refuses, and text that would not read back as itself;
 - a scene whose part directory holds a part file it would not write (a removed tool, or a numbered file past its last),
-  since the editor would read it as part of the scene. Nothing is written in that case.
+  since the editor would read it as part of the scene. Nothing is written in that case; `check_writable` runs that
+  check alone, for a caller writing something else first.
 
 ## Checks
 

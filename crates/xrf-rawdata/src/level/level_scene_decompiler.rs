@@ -52,9 +52,13 @@ impl LevelSceneDecompile {
   ///
   /// # Errors
   ///
-  /// Returns an error when the sidecar cannot be written, or as [`EditableLevelScene::write_to_path`] does.
+  /// Returns an error, writing nothing, when [`EditableLevelScene::check_writable`] refuses the scene; when the sidecar
+  /// cannot be written; or as [`EditableLevelScene::write_to_path`] does.
   pub fn write_to_path<T: ByteOrder>(&self, level_path: &Path) -> XrfResult {
     let sidecar: PathBuf = LevelSceneProvenance::sidecar_path(level_path);
+
+    // Refused before the sidecar is written, so a sidecar never lands beside an authored scene left as it was.
+    self.scene.check_writable(level_path)?;
 
     StagedFile::write_creating_directories(&sidecar, self.provenance.to_json()?.as_bytes()).map_err(|error| {
       XrfError::new_io_error(
