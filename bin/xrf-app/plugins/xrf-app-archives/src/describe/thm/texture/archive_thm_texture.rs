@@ -28,7 +28,7 @@ impl ArchiveThmTexture {
     texture_type: ThmTextureType,
     parameters: Option<&ThmTextureParamChunk>,
   ) -> Self {
-    let reference: ArchiveReference = match Self::to_sibling_path(name) {
+    let reference: ArchiveReference = match Self::find_sibling_path(name) {
       Some(path) => ArchiveReference::of_path(source, &path),
       None => ArchiveReference::unresolvable(name),
     };
@@ -45,7 +45,7 @@ impl ArchiveThmTexture {
   }
 
   /// The `.dds` beside a descriptor, addressed by where it sits rather than by a name the descriptor carries.
-  fn to_sibling_path(name: &str) -> Option<String> {
+  fn find_sibling_path(name: &str) -> Option<String> {
     let path: XrayLogicalPath = XrayLogicalPath::new(name).ok()?;
 
     path.as_str().strip_suffix(".thm").map(|stem| format!("{stem}.dds"))
@@ -59,11 +59,11 @@ mod tests {
   #[test]
   fn a_descriptor_names_the_texture_it_sits_beside() {
     assert_eq!(
-      ArchiveThmTexture::to_sibling_path("textures\\act\\act_arm_1.thm").as_deref(),
+      ArchiveThmTexture::find_sibling_path("textures\\act\\act_arm_1.thm").as_deref(),
       Some("textures\\act\\act_arm_1.dds")
     );
     assert_eq!(
-      ArchiveThmTexture::to_sibling_path("Textures\\Act\\ACT_ARM_1.THM").as_deref(),
+      ArchiveThmTexture::find_sibling_path("Textures\\Act\\ACT_ARM_1.THM").as_deref(),
       Some("textures\\act\\act_arm_1.dds")
     );
   }

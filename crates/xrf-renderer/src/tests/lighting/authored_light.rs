@@ -1,6 +1,6 @@
 use glam::{Vec3, Vec4};
 
-use crate::lighting::lamp::light_specular::to_light_specular;
+use crate::lighting::lamp::light_specular::get_light_specular;
 use crate::lighting::srgb::{anchored_light, authored_light, srgb_decoded};
 use crate::tests::shader::gpu_probe::run_gpu_probe;
 
@@ -101,7 +101,7 @@ fn the_authored_specular_joins_the_diffuse_as_the_engine_adds_it() {
   let unit: f32 = scale * gain;
   let moon: Vec3 = Vec3::splat(0.1);
   let gloss: f32 = 0.8;
-  let glossed: f32 = gloss * to_light_specular(moon, false) * unit;
+  let glossed: f32 = gloss * get_light_specular(moon, false) * unit;
   let shade: f32 = 0.05;
   let lit: Vec3 = Vec3::splat(srgb_decoded(shade) * scale);
   let light: Vec3 = authored_light(moon, true) * unit;

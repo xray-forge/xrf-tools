@@ -56,7 +56,7 @@ impl LevelSoundEmitters {
           index: index as u32,
         };
 
-        Self::to_static(sound, places.get(&id).copied(), files)
+        Self::read_static(sound, places.get(&id).copied(), files)
       })
       .collect();
     let zones: Vec<WorldZoneSound> = match (
@@ -114,7 +114,11 @@ impl LevelSoundEmitters {
     helpers
   }
 
-  fn to_static(sound: &LevelSndStaticSound, object: Option<u32>, files: &mut LevelSoundFiles<'_>) -> WorldStaticSound {
+  fn read_static(
+    sound: &LevelSndStaticSound,
+    object: Option<u32>,
+    files: &mut LevelSoundFiles<'_>,
+  ) -> WorldStaticSound {
     let window = |window: &LevelSndStaticWindow| [window.from, window.to];
 
     WorldStaticSound {
@@ -145,12 +149,12 @@ impl LevelSoundEmitters {
       .filter_map(|(index, object)| {
         let id: LevelObjectId = LevelObjectId::Spawn { index: index as u32 };
 
-        Self::to_zone(object, sections, places.get(&id).copied(), files)
+        Self::find_zone(object, sections, places.get(&id).copied(), files)
       })
       .collect()
   }
 
-  fn to_zone(
+  fn find_zone(
     object: &AlifeObject,
     sections: &Ltx,
     place: Option<u32>,

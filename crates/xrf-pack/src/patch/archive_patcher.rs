@@ -96,7 +96,7 @@ impl ArchivePatcher {
     let size_carried: u64 = comparison.get_carried_size();
 
     let result: ArchivePatchResult = ArchivePatchResult {
-      outcome: Self::to_outcome(job, &publication),
+      outcome: Self::get_outcome(job, &publication),
       added: comparison.added,
       modified: comparison.modified,
       unchanged: comparison.unchanged,
@@ -201,7 +201,7 @@ impl ArchivePatcher {
   }
 
   /// Returns the publication outcome, with cancellation taking precedence.
-  fn to_outcome(job: &JobHandle, publication: &ArchivePatchPublication) -> JobOutcome {
+  fn get_outcome(job: &JobHandle, publication: &ArchivePatchPublication) -> JobOutcome {
     if job.is_cancelled() {
       return JobOutcome::Cancelled;
     }

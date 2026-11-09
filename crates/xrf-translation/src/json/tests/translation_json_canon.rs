@@ -21,7 +21,7 @@ fn sorts_ids_and_language_keys_naturally() {
 #[test]
 fn renders_two_space_indentation_and_a_trailing_newline() -> XrfResult {
   let rendered: Vec<u8> =
-    TranslationJsonCanon::to_bytes("test", &document(r#"{"st_a":{"eng":"A"}}"#), LineEndings::Lf)?;
+    TranslationJsonCanon::encode_document("test", &document(r#"{"st_a":{"eng":"A"}}"#), LineEndings::Lf)?;
 
   assert_eq!(
     String::from_utf8(rendered).expect("Expected UTF-8"),
@@ -34,7 +34,7 @@ fn renders_two_space_indentation_and_a_trailing_newline() -> XrfResult {
 #[test]
 fn renders_the_requested_line_endings() -> XrfResult {
   let rendered: Vec<u8> =
-    TranslationJsonCanon::to_bytes("test", &document(r#"{"st_a":{"eng":"A"}}"#), LineEndings::Crlf)?;
+    TranslationJsonCanon::encode_document("test", &document(r#"{"st_a":{"eng":"A"}}"#), LineEndings::Crlf)?;
 
   assert_eq!(
     String::from_utf8(rendered).expect("Expected UTF-8"),
@@ -47,7 +47,7 @@ fn renders_the_requested_line_endings() -> XrfResult {
 #[test]
 fn a_null_placeholder_survives_serialization() -> XrfResult {
   let rendered: Vec<u8> =
-    TranslationJsonCanon::to_bytes("test", &document(r#"{"st_a":{"eng":null}}"#), LineEndings::Lf)?;
+    TranslationJsonCanon::encode_document("test", &document(r#"{"st_a":{"eng":null}}"#), LineEndings::Lf)?;
 
   assert!(String::from_utf8(rendered).expect("Expected UTF-8").contains("null"));
 

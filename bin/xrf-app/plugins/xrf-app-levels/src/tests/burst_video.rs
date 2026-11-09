@@ -327,7 +327,7 @@ fn hands_a_frame_over_blue_first_at_its_even_size() {
   let picture: RgbaImage = RgbaImage::from_fn(3, 3, |x, y| Rgba([x as u8, y as u8, 10 + x as u8, 255]));
 
   assert_eq!(
-    BurstVideo::to_bgra(&picture, 2, 2),
+    BurstVideo::copy_bgra(&picture, 2, 2),
     [10, 0, 0, 255, 11, 0, 1, 255, 10, 1, 0, 255, 11, 1, 1, 255]
   );
 }

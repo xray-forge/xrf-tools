@@ -175,7 +175,7 @@ impl BurstWriter {
     if self.samples == 1 {
       let picture: RgbaImage = RgbaImage::from_raw(size.width, size.height, picture.pixels)
         .ok_or_else(|| format!("The burst's frame {index} does not fill its size"))?;
-      let shares: RgbaImage = Self::to_shares(index, marks_size, 1, &Self::count_once(&marks.marks))?;
+      let shares: RgbaImage = Self::draw_shares(index, marks_size, 1, &Self::count_once(&marks.marks))?;
 
       return self.write(index, time, picture, shares);
     }
@@ -226,7 +226,7 @@ impl BurstWriter {
           .collect();
         let picture: RgbaImage = RgbaImage::from_raw(size.width, size.height, mean)
           .ok_or_else(|| format!("The burst's frame {index} does not fill its size"))?;
-        let shares: RgbaImage = Self::to_shares(index, marks_size, samples, &marks)?;
+        let shares: RgbaImage = Self::draw_shares(index, marks_size, samples, &marks)?;
 
         self.write(index, time, picture, shares)
       }
@@ -262,7 +262,7 @@ impl BurstWriter {
   }
 
   /// The marks' image of `counts` over `samples`: each mark's share of the samples in its channel, alpha whole.
-  fn to_shares(index: u32, size: BurstSize, samples: u32, counts: &[[u16; 3]]) -> TauriResult<RgbaImage> {
+  fn draw_shares(index: u32, size: BurstSize, samples: u32, counts: &[[u16; 3]]) -> TauriResult<RgbaImage> {
     let mut shares: Vec<u8> = vec![0; counts.len() * 4];
 
     shares

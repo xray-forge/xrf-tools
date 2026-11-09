@@ -25,7 +25,7 @@ impl XrayDiskJournal {
   /// Returns an error when `target` names no file a sibling can sit beside.
   pub(crate) fn beside(target: &Path) -> XrfResult<Self> {
     Ok(Self {
-      path: StagedFile::to_sibling(target, "commit")?,
+      path: StagedFile::name_sibling(target, "commit")?,
     })
   }
 
@@ -42,9 +42,13 @@ impl XrayDiskJournal {
       text.push('\n');
     }
 
-    StagedFile::stage(&self.path, &StagedFile::to_sibling(&self.path, "tmp")?, text.as_bytes())
-      .and_then(StagedFile::publish)
-      .map_err(|error| XrfError::new_asset_error(format!("failed to journal a commit: {error}")))
+    StagedFile::stage(
+      &self.path,
+      &StagedFile::name_sibling(&self.path, "tmp")?,
+      text.as_bytes(),
+    )
+    .and_then(StagedFile::publish)
+    .map_err(|error| XrfError::new_asset_error(format!("failed to journal a commit: {error}")))
   }
 
   /// Removes the journal once what it names is settled.

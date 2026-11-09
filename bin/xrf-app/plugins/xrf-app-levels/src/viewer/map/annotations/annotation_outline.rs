@@ -46,7 +46,7 @@ impl AnnotationOutline {
           .map(|local| Self::from_renderer_point(&to_world.apply_to_point(&local)))
           .collect();
 
-        Self::Polygon(Self::to_convex_hull(corners))
+        Self::Polygon(Self::build_convex_hull(corners))
       }
     }
   }
@@ -57,7 +57,7 @@ impl AnnotationOutline {
   }
 
   /// The convex hull of `points`, counterclockwise from the leftmost, by Andrew's monotone chain.
-  pub(crate) fn to_convex_hull(mut points: Vec<AnnotationPoint>) -> Vec<AnnotationPoint> {
+  pub(crate) fn build_convex_hull(mut points: Vec<AnnotationPoint>) -> Vec<AnnotationPoint> {
     points.sort_by(|a, b| a[0].total_cmp(&b[0]).then(a[1].total_cmp(&b[1])));
     points.dedup();
 

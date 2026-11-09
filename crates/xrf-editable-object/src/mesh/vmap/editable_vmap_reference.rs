@@ -1,7 +1,7 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_utils::to_format_size;
+use xrf_utils::narrow_format_size;
 
 use crate::EditableVMapPoint;
 
@@ -31,7 +31,7 @@ impl ChunkReadWrite for EditableVMapReference {
   }
 
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u8(to_format_size(self.points.len(), "Vertex map points")?)?;
+    writer.write_u8(narrow_format_size(self.points.len(), "Vertex map points")?)?;
 
     for point in &self.points {
       point.write::<T>(writer)?;

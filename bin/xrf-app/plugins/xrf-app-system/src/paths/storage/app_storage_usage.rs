@@ -63,7 +63,7 @@ impl AppStorageUsage {
         let Some(kind) = AppStorageKind::of(path.strip_prefix(root).unwrap_or(&path)) else {
           continue;
         };
-        let modified: Option<u64> = metadata.modified().ok().and_then(Self::to_milliseconds);
+        let modified: Option<u64> = metadata.modified().ok().and_then(Self::get_milliseconds);
 
         if let Some(area) = areas.iter_mut().find(|area| area.kind == kind) {
           area.bytes += metadata.len();
@@ -80,7 +80,7 @@ impl AppStorageUsage {
     }
   }
 
-  fn to_milliseconds(time: SystemTime) -> Option<u64> {
+  fn get_milliseconds(time: SystemTime) -> Option<u64> {
     time
       .duration_since(UNIX_EPOCH)
       .ok()

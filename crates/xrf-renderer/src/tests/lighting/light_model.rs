@@ -21,7 +21,7 @@ use crate::feature::image::exposure::reading::exposure_metering::ExposureMeterin
 use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
 use crate::feature::image::present::display::display_mode::DisplayMode;
 use crate::feature::weather::sky::irradiance::sky_harmonics::SkyHarmonics;
-use crate::lighting::lamp::light_specular::to_light_specular;
+use crate::lighting::lamp::light_specular::get_light_specular;
 use crate::lighting::srgb::{anchored_light, authored_colour, authored_light, srgb_decoded, srgb_encoded};
 use crate::lighting::unit::daylight::Daylight;
 use crate::lighting::unit::light_unit::PHYSICAL_LIGHT_UNIT;
@@ -186,7 +186,7 @@ fn only_the_physical_levels_weigh_the_specular_by_the_light() {
   );
   assert!(
     weight
-      > to_light_specular(
+      > get_light_specular(
         authored_light(lighting.get_sun_color(&engine.features.light_scales), true),
         true
       )

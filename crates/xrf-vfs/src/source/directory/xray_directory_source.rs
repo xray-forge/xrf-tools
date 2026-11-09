@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
-use crate::path::{is_component_prefix, to_host_relative};
+use crate::path::{is_component_prefix, resolve_host_relative};
 use crate::source::directory::{DirectoryAssetIndex, XrayAssetIndex};
 use crate::{XrayAssetContainer, XrayAssetSource, XrayFileStamp, XrayPathCollision, XraySourceKind, label_from_path};
 
@@ -122,7 +122,7 @@ impl XrayAssetSource for XrayDirectorySource {
   fn get_writable_path(&self, path: &str) -> Option<PathBuf> {
     match self.index.find(path).ok()? {
       Some(asset) => Some(asset.absolute_path()),
-      None => Some(self.get_root_path().join(to_host_relative(path))),
+      None => Some(self.get_root_path().join(resolve_host_relative(path))),
     }
   }
 

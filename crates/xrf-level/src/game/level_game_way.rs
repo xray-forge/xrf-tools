@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_utils::to_format_size;
+use xrf_utils::narrow_format_size;
 
 use crate::game::level_game_way_link::LevelGameWayLink;
 use crate::game::level_game_way_point::LevelGameWayPoint;
@@ -78,7 +78,7 @@ impl LevelGameWay {
 
     let mut points: ChunkWriter = ChunkWriter::new();
 
-    points.write_u16::<T>(to_format_size(self.points.len(), "patrol path points")?)?;
+    points.write_u16::<T>(narrow_format_size(self.points.len(), "patrol path points")?)?;
 
     for point in &self.points {
       points.write_xr::<T, _>(point)?;
@@ -88,7 +88,7 @@ impl LevelGameWay {
 
     let mut links: ChunkWriter = ChunkWriter::new();
 
-    links.write_u16::<T>(to_format_size(self.links.len(), "patrol path links")?)?;
+    links.write_u16::<T>(narrow_format_size(self.links.len(), "patrol path links")?)?;
 
     for link in &self.links {
       links.write_xr::<T, _>(link)?;

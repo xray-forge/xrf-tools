@@ -33,7 +33,7 @@ impl TranslationJsonRender {
       Err(error) => return Err(XrfError::from(error)),
     };
 
-    let bytes: Vec<u8> = TranslationJsonCanon::to_bytes(
+    let bytes: Vec<u8> = TranslationJsonCanon::encode_document(
       &format_path(path).to_string(),
       document,
       TranslationJsonCanon::resolve_line_endings(line_endings, existing.as_deref()),

@@ -119,7 +119,7 @@ impl LevelSurface {
   pub(crate) fn get_window(&self) -> SurfaceWindow {
     SurfaceWindow {
       window: self.map.get_window(),
-      shape: Self::to_shape(self.map.get_shape()),
+      shape: Self::pack_shape(self.map.get_shape()),
     }
   }
 
@@ -149,7 +149,7 @@ impl LevelSurface {
 
     SurfaceWindow {
       window: OverheadMap::get_unmade_window(shape),
-      shape: Self::to_shape(shape),
+      shape: Self::pack_shape(shape),
     }
   }
 
@@ -159,7 +159,7 @@ impl LevelSurface {
   }
 
   /// A surface map's texels across and the metres it reaches down, beside the metres a cell of sites is across.
-  fn to_shape(shape: OverheadShape) -> Vec4 {
+  fn pack_shape(shape: OverheadShape) -> Vec4 {
     Vec4::new(shape.resolution as f32, shape.depth, Self::SITE_CELL, 0.0)
   }
 

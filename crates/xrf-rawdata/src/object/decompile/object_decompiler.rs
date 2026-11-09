@@ -81,7 +81,7 @@ impl ObjectDecompiler {
     }
 
     // The object is static and compiles without tangents, so the method recorded for its compile is moot.
-    Ok(Self::to_static_decompile(
+    Ok(Self::assemble_static(
       Self::assemble(&surfaces, MeshKind::Static)?,
       0,
       None,
@@ -100,7 +100,7 @@ impl ObjectDecompiler {
   pub fn decompile_detail(model: &DetailModel) -> XrfResult<ObjectDecompile> {
     let surface: OgfSurface = OgfSurface::of_detail(model)?;
     // The object is static and compiles without tangents, so the method recorded for its compile is moot.
-    let decompile: ObjectDecompile = Self::to_static_decompile(
+    let decompile: ObjectDecompile = Self::assemble_static(
       Self::assemble(std::slice::from_ref(&surface), MeshKind::Static)?,
       0,
       None,
@@ -121,20 +121,20 @@ impl ObjectDecompiler {
   fn decompile_static(file: &OgfFile) -> XrfResult<ObjectDecompile> {
     let surfaces: Vec<OgfSurface> = OgfSurface::collect(file)?;
 
-    Ok(Self::to_static_decompile(
+    Ok(Self::assemble_static(
       Self::assemble(&surfaces, MeshKind::Static)?,
       if Self::is_progressive(file) {
         EditableObjectFile::PROGRESSIVE_FLAG
       } else {
         0
       },
-      file.get_description().map(Self::to_description),
+      file.get_description().map(Self::copy_description),
       Self::get_tangent_method(file),
     ))
   }
 
   /// A static object of `assembled`'s mesh and surfaces, with `flags` and `description`, and no bones.
-  fn to_static_decompile(
+  fn assemble_static(
     assembled: AssembledMesh,
     flags: u32,
     description: Option<EditableDescription>,
@@ -209,7 +209,7 @@ impl ObjectDecompiler {
             0
           },
         flags_size: EditableObjectFile::FLAGS_SIZE,
-        class_script: file.user_data.as_ref().map(|chunk| Self::to_text(&chunk.user_data)),
+        class_script: file.user_data.as_ref().map(|chunk| Self::trim_text(&chunk.user_data)),
         // Exported as a line (`w_string`), so its first line, as the engine reads it.
         lods: file.lods.as_ref().map(|chunk| String::from(chunk.get_visual_name())),
         meshes: Some(vec![assembled.mesh]),
@@ -226,7 +226,7 @@ impl ObjectDecompiler {
           .filter(|references| !references.is_empty()),
         bone_parts: motions.map(|it| it.parts),
         actor_transform: None,
-        description: file.get_description().map(Self::to_description),
+        description: file.get_description().map(Self::copy_description),
         layout: ChunkLayout::default(),
       },
       inferred,
@@ -254,7 +254,7 @@ impl ObjectDecompiler {
 
   /// The text of a string chunk the OGF keeps whole, up to the terminator the export wrote: the object stores it as a
   /// string of its own, terminated again on write.
-  pub(crate) fn to_text(stored: &str) -> String {
+  pub(crate) fn trim_text(stored: &str) -> String {
     String::from(stored.split('\0').next().unwrap_or_default())
   }
 
@@ -270,7 +270,7 @@ impl ObjectDecompiler {
   }
 
   /// The object's own description, which the OGF's description copied.
-  fn to_description(description: &OgfDescriptionChunk) -> EditableDescription {
+  fn copy_description(description: &OgfDescriptionChunk) -> EditableDescription {
     EditableDescription {
       creator: description.creator.clone(),
       created_at: description.created_at,

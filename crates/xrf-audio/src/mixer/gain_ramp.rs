@@ -11,7 +11,7 @@ pub(crate) struct GainRamp {
 
 impl GainRamp {
   pub(crate) fn new(value: f32) -> Self {
-    let value: f32 = Self::to_gain(value);
+    let value: f32 = Self::sanitize_gain(value);
 
     Self {
       value,
@@ -23,7 +23,7 @@ impl GainRamp {
 
   /// Moves towards `target` over `frames` frames, from wherever the ramp is now; zero frames jumps.
   pub(crate) fn set_target(&mut self, target: f32, frames: u32) {
-    let target: f32 = Self::to_gain(target);
+    let target: f32 = Self::sanitize_gain(target);
 
     self.target = target;
 
@@ -45,7 +45,7 @@ impl GainRamp {
     self.value
   }
 
-  fn to_gain(gain: f32) -> f32 {
+  fn sanitize_gain(gain: f32) -> f32 {
     if gain.is_finite() { gain.max(0.0) } else { 0.0 }
   }
 

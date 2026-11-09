@@ -30,15 +30,15 @@ fn parse_nested(root: &[&str], operation: &[&str]) -> ArgMatches {
 #[test]
 fn reads_the_destination_a_caller_selected() {
   assert_eq!(
-    ReportingArguments::to_destination(&parse_reporting(&[]).unwrap()),
+    ReportingArguments::parse_destination(&parse_reporting(&[]).unwrap()),
     ReportDestination::None
   );
   assert_eq!(
-    ReportingArguments::to_destination(&parse_reporting(&["--json"]).unwrap()),
+    ReportingArguments::parse_destination(&parse_reporting(&["--json"]).unwrap()),
     ReportDestination::Stdout
   );
   assert_eq!(
-    ReportingArguments::to_destination(&parse_reporting(&["--report", "out.json"]).unwrap()),
+    ReportingArguments::parse_destination(&parse_reporting(&["--report", "out.json"]).unwrap()),
     ReportDestination::File(PathBuf::from("out.json"))
   );
 }
@@ -71,9 +71,9 @@ fn names_a_conflicting_pair_however_it_was_written() {
 
 #[test]
 fn maps_the_verbosity_flags() {
-  assert_eq!(ReportingArguments::to_verbosity(true, false), OutputVerbosity::Silent);
-  assert_eq!(ReportingArguments::to_verbosity(false, true), OutputVerbosity::Verbose);
-  assert_eq!(ReportingArguments::to_verbosity(false, false), OutputVerbosity::Normal);
+  assert_eq!(ReportingArguments::get_verbosity(true, false), OutputVerbosity::Silent);
+  assert_eq!(ReportingArguments::get_verbosity(false, true), OutputVerbosity::Verbose);
+  assert_eq!(ReportingArguments::get_verbosity(false, false), OutputVerbosity::Normal);
 }
 
 #[test]

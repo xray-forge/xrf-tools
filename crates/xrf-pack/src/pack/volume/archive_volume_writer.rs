@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use xrf_archive::{CHUNK_ID_DATA, CHUNK_ID_METADATA};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::to_format_size;
+use xrf_utils::narrow_format_size;
 
 use crate::pack::config::ArchivePackConfig;
 use crate::pack::source::{ArchivePackEntry, ArchivePackPayloads};
@@ -100,7 +100,7 @@ impl<'a> ArchiveVolumeWriter<'a> {
     }
 
     let payload: &[u8] = prepared.get_payload();
-    let size_compressed: u32 = to_format_size(payload.len(), "archive entry payload")?;
+    let size_compressed: u32 = narrow_format_size(payload.len(), "archive entry payload")?;
 
     self.make_room_for(&entry.name, payload.len() as u64, name.get_row_size())?;
 
@@ -214,7 +214,7 @@ impl<'a> ArchiveVolumeWriter<'a> {
 
     if let Some(header) = self.layout.get_header() {
       file.write_all(&CHUNK_ID_METADATA.to_le_bytes())?;
-      file.write_all(&to_format_size::<u32>(header.len(), "archive header chunk")?.to_le_bytes())?;
+      file.write_all(&narrow_format_size::<u32>(header.len(), "archive header chunk")?.to_le_bytes())?;
       file.write_all(header)?;
     }
 

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkLine, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_math::Matrix4x4;
-use xrf_utils::to_format_size;
+use xrf_utils::narrow_format_size;
 
 /// One volumetric fog body of a level, `dx113DFluidData::Load`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -49,7 +49,7 @@ impl ChunkReadWrite for LevelFogVolume {
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_w1251_line(&self.profile, &self.terminator)?;
     writer.write_xr::<T, _>(&self.transform)?;
-    writer.write_u32::<T>(to_format_size(self.obstacles.len(), "fog volume obstacles")?)?;
+    writer.write_u32::<T>(narrow_format_size(self.obstacles.len(), "fog volume obstacles")?)?;
 
     for obstacle in &self.obstacles {
       writer.write_xr::<T, _>(obstacle)?;

@@ -75,7 +75,7 @@ impl HelpersFeature {
       hovered: None,
       ..options.clone()
     };
-    let marks: Vec<[u32; 2]> = Self::to_marks(helpers, &unsingled, |object| statics.get_object_place(object));
+    let marks: Vec<[u32; 2]> = Self::list_marks(helpers, &unsingled, |object| statics.get_object_place(object));
     let geometry: HelperGeometry = HelperBuild::build(helpers, &unsingled, &[], HelperPart::Every, boxes);
 
     self.is_rest_faded = options.is_shown && options.is_rest_faded;
@@ -197,7 +197,7 @@ impl HelpersFeature {
 
   /// The ends of every wire `options` keeps of `helpers` for `part`, `sounding` the objects whose sounds play, a
   /// selected or hovered model's box among them where `boxes` stands it (`StaticScene::get_object_box`).
-  pub(crate) fn to_vertices(
+  pub(crate) fn list_vertices(
     helpers: &LevelHelpers,
     options: &RenderHelperOptions,
     sounding: &[u32],
@@ -225,7 +225,7 @@ impl HelpersFeature {
   }
 
   /// Every icon `options` keeps of `helpers` for `part`, drawn as its object's wires are.
-  pub(crate) fn to_icons(
+  pub(crate) fn list_icons(
     helpers: &LevelHelpers,
     options: &RenderHelperOptions,
     sounding: &[u32],
@@ -252,7 +252,7 @@ impl HelpersFeature {
   /// The models `options` marks of `helpers`, those standing at a place in the scene (`places`,
   /// `StaticScene::get_object_place`): each place and its colour packed as `unpack4x8unorm` reads it, by place
   /// ascending, as `fs_helper_mark` searches them.
-  pub(crate) fn to_marks(
+  pub(crate) fn list_marks(
     helpers: &LevelHelpers,
     options: &RenderHelperOptions,
     places: impl Fn(u32) -> Option<u32>,
@@ -362,8 +362,8 @@ impl HelperBuild {
     boxes: impl Fn(u32) -> Option<StaticObjectBox>,
   ) -> HelperGeometry {
     HelperGeometry {
-      wires: HelpersFeature::to_vertices(helpers, options, sounding, part, boxes),
-      icons: HelpersFeature::to_icons(helpers, options, sounding, part),
+      wires: HelpersFeature::list_vertices(helpers, options, sounding, part, boxes),
+      icons: HelpersFeature::list_icons(helpers, options, sounding, part),
     }
   }
 

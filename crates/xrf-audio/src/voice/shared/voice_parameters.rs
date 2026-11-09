@@ -25,7 +25,7 @@ impl VoiceParameters {
 
   /// Sets the gain; one below zero or not a number is silence.
   pub(crate) fn set_gain(&self, gain: f32) {
-    self.gain.store(Self::to_gain(gain).to_bits(), Ordering::Relaxed);
+    self.gain.store(Self::sanitize_gain(gain).to_bits(), Ordering::Relaxed);
   }
 
   pub(crate) fn get_rate(&self) -> f32 {
@@ -50,7 +50,7 @@ impl VoiceParameters {
   /// Sets the left and right gains; one below zero or not a number is silence on that side.
   pub(crate) fn set_pan(&self, pan: [f32; 2]) {
     for (gain, value) in self.pan.iter().zip(pan) {
-      gain.store(Self::to_gain(value).to_bits(), Ordering::Relaxed);
+      gain.store(Self::sanitize_gain(value).to_bits(), Ordering::Relaxed);
     }
   }
 
@@ -62,7 +62,7 @@ impl VoiceParameters {
     self.spatial.set(parameters);
   }
 
-  fn to_gain(gain: f32) -> f32 {
+  fn sanitize_gain(gain: f32) -> f32 {
     if gain.is_finite() { gain.max(0.0) } else { 0.0 }
   }
 }

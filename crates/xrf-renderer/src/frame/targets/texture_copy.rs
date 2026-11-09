@@ -88,8 +88,8 @@ pub(crate) fn add_layer_copy(
       };
 
       context.get_encoder().copy_texture_to_texture(
-        TextureLayer::to_copy(from.texture, source.layer),
-        TextureLayer::to_copy(into.texture, destination.layer),
+        TextureLayer::get_copy(from.texture, source.layer),
+        TextureLayer::get_copy(into.texture, destination.layer),
         size,
       );
     });

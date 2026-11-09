@@ -33,9 +33,9 @@ impl AnimationEnvelope {
       match behavior {
         AnimationBehavior::Reset => return 0.0,
         AnimationBehavior::Constant => return if is_before { start.value } else { end.value },
-        AnimationBehavior::Repeat => time = Self::to_range(time, start.time, end.time).0,
+        AnimationBehavior::Repeat => time = Self::wrap_into_range(time, start.time, end.time).0,
         AnimationBehavior::Oscillate => {
-          let (ranged, wavelengths) = Self::to_range(time, start.time, end.time);
+          let (ranged, wavelengths) = Self::wrap_into_range(time, start.time, end.time);
 
           // As the engine writes it: the span's length less the time, not its end.
           time = if wavelengths % 2 != 0 {
@@ -45,7 +45,7 @@ impl AnimationEnvelope {
           };
         }
         AnimationBehavior::Offset => {
-          let (ranged, wavelengths) = Self::to_range(time, start.time, end.time);
+          let (ranged, wavelengths) = Self::wrap_into_range(time, start.time, end.time);
 
           time = ranged;
           offset = wavelengths as f32 * (end.value - start.value);
@@ -104,7 +104,7 @@ impl AnimationEnvelope {
   }
 
   /// `range`: the time brought into `[low, high]`, and how many spans it was moved by.
-  fn to_range(value: f32, low: f32, high: f32) -> (f32, i32) {
+  fn wrap_into_range(value: f32, low: f32, high: f32) -> (f32, i32) {
     let span: f32 = high - low;
 
     if span == 0.0 {

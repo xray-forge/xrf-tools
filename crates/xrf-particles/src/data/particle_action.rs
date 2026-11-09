@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite, META_TYPE_FIELD};
-use xrf_utils::{assert_equal, assert_length, to_format_size};
+use xrf_utils::{assert_equal, assert_length, narrow_format_size};
 
 use crate::data::actions::particle_action_avoid::ParticleActionAvoid;
 use crate::data::actions::particle_action_bounce::ParticleActionBounce;
@@ -111,7 +111,7 @@ impl ChunkReadWriteList for ParticleAction {
 
   /// Write particle action data into chunk writer.
   fn write_list<T: ByteOrder>(writer: &mut ChunkWriter, actions: &[Self]) -> XrfResult {
-    writer.write_u32::<T>(to_format_size(actions.len(), "particle actions")?)?;
+    writer.write_u32::<T>(narrow_format_size(actions.len(), "particle actions")?)?;
 
     for action in actions {
       writer.write_xr::<T, _>(action)?;

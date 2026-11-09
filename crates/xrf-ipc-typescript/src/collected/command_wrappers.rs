@@ -5,7 +5,7 @@ use specta::Types;
 use specta::datatype::{DataType, Field, Function, NamedReference, NamedReferenceType, Reference, Struct};
 use specta_typescript::{Error, Exporter, FrameworkExporter, define};
 use tauri_specta::{BuilderConfiguration, ErrorHandlingMode};
-use xrf_utils::to_camel_case;
+use xrf_utils::format_camel_case;
 
 use crate::collected::{CommandTypescript, PluginCommands, SpectaCommand};
 use crate::typescript::format::TypeScriptFormat;
@@ -84,7 +84,7 @@ impl CommandWrappers {
       let mut names: Vec<String> = Vec::with_capacity(function.args().len());
 
       for (name, data_type) in function.args() {
-        let name: String = to_camel_case(name);
+        let name: String = format_camel_case(name);
 
         uses_channel |= Self::channel_of(data_type, exporter.types).is_some();
         parameters.push(format!("{name}: {}", Self::render_type(data_type, exporter)?));

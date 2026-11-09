@@ -43,7 +43,7 @@ impl RenderViewOptions {
     self.features.light_model == RenderLightModel::Physical && self.mode.is_lit && !self.mode.is_wireframe
   }
 
-  /// Whether the lights' specular weight follows their light as their diffuse does (`to_light_specular`): at the
+  /// Whether the lights' specular weight follows their light as their diffuse does (`get_light_specular`): at the
   /// anchored and the physical levels. Under the engine's light and at the authored levels it is the engine's, over the
   /// authored colour.
   pub fn is_specular_linear(&self) -> bool {

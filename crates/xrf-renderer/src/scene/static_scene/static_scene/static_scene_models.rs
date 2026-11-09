@@ -244,7 +244,7 @@ impl StaticScene {
   }
 
   /// The largest scale a matrix stands anything at, which a sphere it moves grows by.
-  pub(super) fn to_scale(matrix: &Mat4) -> f32 {
+  pub(super) fn get_scale(matrix: &Mat4) -> f32 {
     [matrix.x_axis, matrix.y_axis, matrix.z_axis]
       .iter()
       .map(|axis| axis.truncate().length())

@@ -271,7 +271,7 @@ fn sun_cascade_is_not_held_by_a_map_drawn_at_other_settings() {
 
 /// Where a point lands on a map `resolution` texels across drawn by `view` into the rows from `first`: its texel's
 /// column and row, and its depth.
-fn to_texel(view: &CameraView, point: Vec3, (first, rows): (u32, u32), resolution: u32) -> Vec3 {
+fn get_texel(view: &CameraView, point: Vec3, (first, rows): (u32, u32), resolution: u32) -> Vec3 {
   let clip: Vec4 = view.get_view_projection() * point.extend(1.0);
   let ndc: Vec3 = clip.truncate() / clip.w;
 
@@ -296,13 +296,13 @@ fn sun_cascade_rows_land_where_the_whole_map_s_would() {
 
     for (across, down) in [(-60.0, -70.0), (10.0, 0.0), (75.0, 40.0), (-20.0, 79.0)] {
       let point: Vec3 = center + right * across - up * down;
-      let whole: Vec3 = to_texel(&cascade.view, point, (0, 2048), 2048);
+      let whole: Vec3 = get_texel(&cascade.view, point, (0, 2048), 2048);
 
       if whole.y < first as f32 || whole.y >= last as f32 {
         continue;
       }
 
-      let banded: Vec3 = to_texel(&band, point, (first, last - first), 2048);
+      let banded: Vec3 = get_texel(&band, point, (first, last - first), 2048);
 
       assert!(whole.distance(banded) < 1e-2, "{whole} against {banded}");
       tested += 1;

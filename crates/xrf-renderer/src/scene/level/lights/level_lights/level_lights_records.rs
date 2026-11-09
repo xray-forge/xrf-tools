@@ -7,9 +7,9 @@ use crate::contract::feature::lighting::lights::render_lights_settings::RenderLi
 use crate::contract::feature::weather::render_light_shafts::RenderLightShafts;
 use crate::feature::lighting::lights::lights_feature::LightsFeature;
 use crate::frame::frame_encoder::FrameEncoder;
-use crate::lighting::lamp::light_animation::to_animated_color;
+use crate::lighting::lamp::light_animation::get_animated_color;
 use crate::lighting::lamp::light_basis::LightBasis;
-use crate::lighting::lamp::light_specular::to_light_specular;
+use crate::lighting::lamp::light_specular::get_light_specular;
 use crate::lighting::srgb::{anchored_light, authored_light};
 use crate::scene::level::level_time::LevelTime;
 use crate::scene::level::lights::asks::light_asks::LightAsks;
@@ -70,23 +70,23 @@ impl LevelLights {
         // as the weather's lights keep theirs, or at the anchored levels anchored over the ambient. Its specular weight
         // follows the light at the anchored and physical levels, else the engine's over the authored colour, which the
         // authored levels add to the diffuse in display values as the engine does (`hmodel_terms`).
-        let authored: Vec3 = Self::to_color(&self.animators, light, time) * it.fades.whole * it.share;
+        let authored: Vec3 = Self::get_color(&self.animators, light, time) * it.fades.whole * it.share;
         let color: Vec3 = match anchor {
           Some(under) => anchored_light(authored, under),
           None => authored_light(authored, is_physical),
         };
         let specular: f32 = if is_specular_linear {
-          to_light_specular(color, true)
+          get_light_specular(color, true)
         } else {
-          to_light_specular(authored, false)
+          get_light_specular(authored, false)
         };
-        let jittered: f32 = Self::to_frame_range(light, || into.next_random());
+        let jittered: f32 = Self::roll_frame_range(light, || into.next_random());
         let range: f32 = jittered * it.share * FALLOFF_RANGE;
         // Under the inverse square a light's intensity follows its range squared: its strength is held to its own
         // range, so an idle light's jitter strays only the window's edge, as under the engine's falloff, rather than
         // flash the whole pool each frame by the square of its stray.
         let held: f32 = if is_falloff_inverse_square {
-          Self::to_jitter_hold(light.range, jittered)
+          Self::get_jitter_hold(light.range, jittered)
         } else {
           1.0
         };
@@ -101,10 +101,10 @@ impl LevelLights {
         );
 
         // The colour and its specular weight at the light's scale: under the engine's light the weight is a curve over
-        // the light itself (`to_light_specular`), so it is taken before the scale.
+        // the light itself (`get_light_specular`), so it is taken before the scale.
         record.color *= light_scale;
 
-        let shafts: Option<LightShafts> = set.and_then(|_| Self::to_shafts(light, &it.basis, eye, engine, &settings));
+        let shafts: Option<LightShafts> = set.and_then(|_| Self::find_shafts(light, &it.basis, eye, engine, &settings));
 
         if let Some(set) = set {
           let atlas: f32 = LevelLightShadows::ATLAS_SIZE as f32;
@@ -134,7 +134,7 @@ impl LevelLights {
         };
 
         if let Some(shafts) = &shafts
-          && let Some((volume, slices)) = Self::to_volume(
+          && let Some((volume, slices)) = Self::find_volume(
             shafts,
             &it.basis,
             &record,
@@ -156,7 +156,11 @@ impl LevelLights {
   /// ask under vanilla and every described one under the extended engine, whose Monolith forces them on; or, where the
   /// view asks for every shadowed light's (`RenderLightShafts::Shadowed`), the engine's defaults for any that does not
   /// ask.
-  fn to_volumetric(light: &LightDescription, engine: XrayEngine, shafts: RenderLightShafts) -> Option<LightVolumetric> {
+  fn find_volumetric(
+    light: &LightDescription,
+    engine: XrayEngine,
+    shafts: RenderLightShafts,
+  ) -> Option<LightVolumetric> {
     match &light.volumetric {
       Some(volumetric) if volumetric.is_asked || engine == XrayEngine::Extended => Some(volumetric.clone()),
       _ if shafts == RenderLightShafts::Shadowed => Some(VOLUME_DEFAULTS),
@@ -165,16 +169,16 @@ impl LevelLights {
   }
 
   /// Its colour this frame: animated where it names an animation.
-  fn to_color(animators: &[LightAnimatorDescription], light: &LightDescription, time: LevelTime) -> Vec3 {
+  fn get_color(animators: &[LightAnimatorDescription], light: &LightDescription, time: LevelTime) -> Vec3 {
     match light.animator.and_then(|animator| animators.get(animator as usize)) {
-      Some(animator) => to_animated_color(animator, time) * light.animator_scale,
+      Some(animator) => get_animated_color(animator, time) * light.animator_scale,
       None => Vec3::from(light.color),
     }
   }
 
   /// What a light's colour is multiplied by under the inverse square to give at its `jittered` range what it gives at
   /// its own `range`: their squares' ratio, one for a light that does not stray.
-  pub(crate) fn to_jitter_hold(range: f32, jittered: f32) -> f32 {
+  pub(crate) fn get_jitter_hold(range: f32, jittered: f32) -> f32 {
     if jittered > 0.0 && range > 0.0 {
       (range / jittered).powi(2)
     } else {
@@ -183,7 +187,7 @@ impl LevelLights {
   }
 
   /// `UpdateIdleLight`: a light's range this frame, strayed by its jitter at the next of the view's `random` numbers.
-  fn to_frame_range(light: &LightDescription, random: impl FnOnce() -> u64) -> f32 {
+  fn roll_frame_range(light: &LightDescription, random: impl FnOnce() -> u64) -> f32 {
     if light.range_jitter == 0.0 {
       return light.range;
     }
@@ -196,7 +200,7 @@ impl LevelLights {
   /// The shafts a shadowed light draws this frame, seen from `eye`, as the view's engine gives them out
   /// (`r3_rendertarget_accum_spot.cpp`, `accum_volumetric`) to the lights the `settings` pick, at their strength: none
   /// where the settings turn shafts off or it is given none, or where Monolith's have faded.
-  pub(crate) fn to_shafts(
+  pub(crate) fn find_shafts(
     light: &LightDescription,
     basis: &LightBasis,
     eye: Vec3,
@@ -207,7 +211,7 @@ impl LevelLights {
       return None;
     }
 
-    let volumetric: LightVolumetric = Self::to_volumetric(light, engine, settings.shafts)?;
+    let volumetric: LightVolumetric = Self::find_volumetric(light, engine, settings.shafts)?;
     let is_spot: bool = matches!(light.kind, LightKind::Spot);
     // The slices drawn, the share of the buffer the volume's depth is stretched over, the colour's scale and the
     // distance.
@@ -263,7 +267,7 @@ impl LevelLights {
   }
 
   /// A shadowed light's `shafts` as volume `index` draws them, and its slices, in the `view`'s space.
-  fn to_volume(
+  fn find_volume(
     shafts: &LightShafts,
     basis: &LightBasis,
     record: &LightRecord,

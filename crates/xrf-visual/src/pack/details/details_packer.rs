@@ -139,9 +139,9 @@ impl<'a> DetailsPacker<'a> {
       }
 
       let columns: RangeInclusive<i64> =
-        Self::to_cell_span(triangle.map(|corner| corner[0]), header.offset_x, header.size_x);
+        Self::get_cell_span(triangle.map(|corner| corner[0]), header.offset_x, header.size_x);
       let rows: RangeInclusive<i64> =
-        Self::to_cell_span(triangle.map(|corner| corner[2]), header.offset_z, header.size_z);
+        Self::get_cell_span(triangle.map(|corner| corner[2]), header.offset_z, header.size_z);
 
       for z in rows {
         for x in columns.clone() {
@@ -182,7 +182,7 @@ impl<'a> DetailsPacker<'a> {
 
   /// The grid cells along one axis a span of finite values touches, with the room the slot boxes grow by, cut to the
   /// grid: empty for a span wholly outside it.
-  fn to_cell_span(values: [f32; 3], offset: i32, size: u32) -> RangeInclusive<i64> {
+  fn get_cell_span(values: [f32; 3], offset: i32, size: u32) -> RangeInclusive<i64> {
     let minimum: f32 = values[0].min(values[1]).min(values[2]);
     let maximum: f32 = values[0].max(values[1]).max(values[2]);
     // Saturating casts, so a span reaching past `i64` still cuts to the grid.

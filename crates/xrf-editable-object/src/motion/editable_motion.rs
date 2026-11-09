@@ -3,7 +3,7 @@ use xrf_animation_envelope::AnimationEnvelope;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
 use xrf_skeleton::SkeletonMotionMark;
-use xrf_utils::to_format_size;
+use xrf_utils::narrow_format_size;
 
 use crate::motion::editable_bone_motion::EditableBoneMotion;
 
@@ -90,7 +90,7 @@ impl EditableMotion {
   pub fn write_list<T: ByteOrder>(motions: &[Self]) -> XrfResult<Vec<u8>> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    writer.write_u32::<T>(to_format_size(motions.len(), "embedded motions")?)?;
+    writer.write_u32::<T>(narrow_format_size(motions.len(), "embedded motions")?)?;
 
     for motion in motions {
       motion.write::<T>(&mut writer)?;
@@ -124,7 +124,7 @@ impl EditableMotion {
       }
     }
 
-    writer.write_u32::<T>(to_format_size(self.marks.len(), "motion marks")?)?;
+    writer.write_u32::<T>(narrow_format_size(self.marks.len(), "motion marks")?)?;
 
     for mark in &self.marks {
       mark.write::<T>(writer)?;

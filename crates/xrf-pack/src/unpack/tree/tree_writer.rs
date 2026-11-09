@@ -56,7 +56,7 @@ impl TreeWriter {
           // A directory record carries no payload, and the tree it names was created during preparation; an entry the
           // host stores in the same file as a later one is passed over. Both are counted anyway, so the progress total
           // stays the entry count the caller selected.
-          if !entry.is_directory && written_by.get(&Self::to_host_key(&entry.relative)) == Some(&index) {
+          if !entry.is_directory && written_by.get(&Self::format_host_key(&entry.relative)) == Some(&index) {
             let written: u64 = write(
               &entry.source,
               &mut Self::create_file(destination, &prepared, &entry.relative)?,
@@ -99,12 +99,12 @@ impl TreeWriter {
       .iter()
       .enumerate()
       .filter(|(_, entry)| !entry.is_directory)
-      .map(|(index, entry)| (Self::to_host_key(&entry.relative), index))
+      .map(|(index, entry)| (Self::format_host_key(&entry.relative), index))
       .collect()
   }
 
   /// The file `relative` lands in as the host tells files apart: Windows names a file regardless of case.
-  fn to_host_key(relative: &HostRelativePath) -> String {
+  fn format_host_key(relative: &HostRelativePath) -> String {
     let path: String = relative.as_path().to_string_lossy().into_owned();
 
     if cfg!(windows) { path.to_lowercase() } else { path }

@@ -10,7 +10,7 @@ use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
 use crate::feature::lighting::bitmask::bitmask_search::BitmaskSearch;
 use crate::feature::tracing::reflections::trace::reflection_trace::ReflectionTrace;
-use crate::lighting::lamp::light_specular::to_light_specular;
+use crate::lighting::lamp::light_specular::get_light_specular;
 use crate::lighting::srgb::{anchored_light, authored_light};
 use crate::lighting::weather::render_lighting::RenderLighting;
 use crate::pass::frame_lighting::light_encoding::LightEncoding;
@@ -146,7 +146,7 @@ impl LightingUniform {
       Some(daylight) => {
         let sun: Vec3 = daylight.sun / std::f32::consts::PI;
 
-        (sun * pre_exposure.current).extend(to_light_specular(sun, true) * pre_exposure.current)
+        (sun * pre_exposure.current).extend(get_light_specular(sun, true) * pre_exposure.current)
       }
       None if is_anchored => {
         // The hemisphere's zenith as the irradiance pass last looked it up, the weather's stand-in cube's before.
@@ -156,7 +156,7 @@ impl LightingUniform {
           .unwrap_or_else(|| (environment * lighting.sky_irradiance).powf(2.0));
         let sun: Vec3 = anchored_light(lighting.get_sun_color(scales), zenith + ambient);
 
-        (sun * light_scale).extend(to_light_specular(sun, true) * light_scale)
+        (sun * light_scale).extend(get_light_specular(sun, true) * light_scale)
       }
       None => light(lighting.get_sun_color(scales)).extend(lighting.get_sun_specular(scales) * gain * light_scale),
     };

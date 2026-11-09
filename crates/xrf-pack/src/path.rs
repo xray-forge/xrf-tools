@@ -14,7 +14,7 @@ const SEPARATORS: [char; 2] = ['\\', '/'];
 /// # Errors
 ///
 /// Returns an invalid error when a component would leave the destination.
-pub(crate) fn to_host_relative(name: &str) -> XrfResult<HostRelativePath> {
+pub(crate) fn parse_host_relative(name: &str) -> XrfResult<HostRelativePath> {
   HostRelativePath::new(name, "Archive entry path")
 }
 
@@ -24,7 +24,7 @@ pub(crate) fn to_host_relative(name: &str) -> XrfResult<HostRelativePath> {
 ///
 /// Returns an error when the path is not below the source root, which would mean the walk left it, and when the host
 /// path is not valid Unicode, which leaves no name to write: the archive has to say so rather than drop the file.
-pub(crate) fn to_archive_name(source: &Path, path: &Path) -> XrfResult<String> {
+pub(crate) fn resolve_archive_name(source: &Path, path: &Path) -> XrfResult<String> {
   let relative: &Path = path.strip_prefix(source).map_err(|_| {
     XrfError::new_unexpected_error(format!(
       "Packing source '{}' is not below its root '{}'",
@@ -88,8 +88,8 @@ fn strip_name_prefix<'a>(name: &'a str, prefix: &str) -> Option<&'a str> {
 
 /// Whether `path` names `root` itself or something inside it.
 pub(crate) fn is_inside_directory(path: &Path, root: &Path) -> bool {
-  let path: String = to_comparable(path);
-  let root: String = to_comparable(root);
+  let path: String = normalize_comparable(path);
+  let root: String = normalize_comparable(root);
 
   path == root
     || path
@@ -98,7 +98,7 @@ pub(crate) fn is_inside_directory(path: &Path, root: &Path) -> bool {
 }
 
 /// A path in the spelling two names for one place share.
-fn to_comparable(path: &Path) -> String {
+fn normalize_comparable(path: &Path) -> String {
   let mut missing: Vec<&OsStr> = Vec::new();
   let mut cursor: &Path = path;
 
@@ -131,7 +131,7 @@ mod tests {
   use std::ffi::OsString;
   use std::path::{Path, PathBuf};
 
-  use super::{is_component_prefix, is_same_name, relative_to_prefix, to_archive_name, to_host_relative};
+  use super::{is_component_prefix, is_same_name, parse_host_relative, relative_to_prefix, resolve_archive_name};
 
   /// A file name the host accepts and UTF-8 cannot spell: raw bytes on Unix, a lone surrogate on Windows.
   fn unrepresentable_name() -> OsString {
@@ -153,14 +153,14 @@ mod tests {
   #[test]
   fn an_entry_name_crosses_into_host_components_rather_than_one_name() {
     assert_eq!(
-      to_host_relative("configs\\system.ltx")
+      parse_host_relative("configs\\system.ltx")
         .expect("safe archive path")
         .as_path(),
       Path::new("configs").join("system.ltx")
     );
     // A volume's entry point carries a trailing separator, which must not become an empty component.
     assert_eq!(
-      to_host_relative("gamedata\\").expect("safe archive path").as_path(),
+      parse_host_relative("gamedata\\").expect("safe archive path").as_path(),
       Path::new("gamedata")
     );
   }
@@ -168,7 +168,10 @@ mod tests {
   #[test]
   fn rejects_archive_path_components_that_could_escape_the_destination() {
     for path in ["..\\system.ltx", "configs/./system.ltx", "C:/system.ltx"] {
-      assert!(to_host_relative(path).is_err(), "'{path}' must not become a host path");
+      assert!(
+        parse_host_relative(path).is_err(),
+        "'{path}' must not become a host path"
+      );
     }
   }
 
@@ -177,7 +180,7 @@ mod tests {
     let source: &Path = Path::new("gamedata");
 
     assert_eq!(
-      to_archive_name(source, &source.join("configs").join("system.ltx")).expect("a name below the root"),
+      resolve_archive_name(source, &source.join("configs").join("system.ltx")).expect("a name below the root"),
       "configs\\system.ltx"
     );
   }
@@ -186,7 +189,7 @@ mod tests {
   fn a_path_outside_the_source_root_is_refused() {
     // Only reachable if the walk left the root it was given, which is worth saying rather than passing over.
     assert!(
-      to_archive_name(
+      resolve_archive_name(
         Path::new("gamedata"),
         Path::new("elsewhere").join("system.ltx").as_path()
       )
@@ -201,7 +204,7 @@ mod tests {
 
     // There is no archive name to write for it, and dropping it would leave a successful pack one file short.
     assert!(
-      to_archive_name(source, &path).is_err(),
+      resolve_archive_name(source, &path).is_err(),
       "an unnameable file is reported"
     );
   }

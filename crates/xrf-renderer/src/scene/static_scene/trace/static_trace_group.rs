@@ -14,14 +14,14 @@ pub struct StaticTraceGroup {
 
 impl StaticTraceGroup {
   /// A matrix as an instance's transform: rows of its linear part, each closed by the translation's coordinate.
-  pub fn to_transform(matrix: &Mat4) -> [f32; 12] {
+  pub fn pack_transform(matrix: &Mat4) -> [f32; 12] {
     let rows: [Vec4; 3] = [matrix.row(0), matrix.row(1), matrix.row(2)];
 
     std::array::from_fn(|at| rows[at / 4][at % 4])
   }
 
-  /// An instance's transform as the matrix it was made from (`to_transform`).
-  pub fn to_matrix(transform: &[f32; 12]) -> Mat4 {
+  /// An instance's transform as the matrix it was made from (`pack_transform`).
+  pub fn unpack_transform(transform: &[f32; 12]) -> Mat4 {
     Mat4::from_cols(
       Vec4::new(transform[0], transform[4], transform[8], 0.0),
       Vec4::new(transform[1], transform[5], transform[9], 0.0),

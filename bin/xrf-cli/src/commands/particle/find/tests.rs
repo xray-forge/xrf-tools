@@ -8,7 +8,7 @@ use crate::core::command::CommandResult;
 use crate::core::command::command_testing::run_command_for_result;
 
 /// Each match's name and reasons, in order.
-fn to_found(result: &Value) -> Vec<(String, Value)> {
+fn list_found(result: &Value) -> Vec<(String, Value)> {
   result["matches"]
     .as_array()
     .unwrap()
@@ -28,7 +28,7 @@ fn finds_effects_by_texture_in_any_case_and_extension_and_by_shader() -> Command
 
   assert_eq!(result["textures"], json!(["PFX/pfx_flame"]));
   assert_eq!(
-    to_found(&result),
+    list_found(&result),
     [
       (
         String::from(r"fx\flame"),
@@ -53,7 +53,7 @@ fn finds_the_effects_running_an_action() -> CommandResult {
   let result: Value = run_for_result(&FindCommand, &library, &["--action", "TargetColor"])?;
 
   assert_eq!(
-    to_found(&result),
+    list_found(&result),
     [(
       String::from(r"fx\flame"),
       json!([{ "kind": "action", "value": "TargetColor" }])
@@ -73,7 +73,7 @@ fn finds_the_groups_playing_an_effect_or_spawning_it_as_a_child() -> CommandResu
   )?;
 
   assert_eq!(
-    to_found(&result),
+    list_found(&result),
     [
       (
         String::from(r"fx\campfire"),

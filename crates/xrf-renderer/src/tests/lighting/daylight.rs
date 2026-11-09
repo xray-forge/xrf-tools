@@ -1,7 +1,7 @@
 use glam::Vec3;
 
 use crate::lighting::luminance::luminance;
-use crate::lighting::sun::sun_direction::to_renderer_sun_direction;
+use crate::lighting::sun::sun_direction::get_renderer_sun_direction;
 use crate::lighting::unit::daylight::Daylight;
 use crate::lighting::weather::render_lighting::RenderLighting;
 use crate::lighting::weather::render_rainfall::RenderRainfall;
@@ -9,7 +9,7 @@ use crate::lighting::weather::render_rainfall::RenderRainfall;
 /// A weather at a time of day with its sun or moon a height up, its sprite and colour.
 fn weather(hours: f32, height: f32, sprite: &str, colour: f32) -> RenderLighting {
   let mut lighting: RenderLighting = RenderLighting {
-    sun_direction: to_renderer_sun_direction(0.0, -height),
+    sun_direction: get_renderer_sun_direction(0.0, -height),
     sun_color: Vec3::splat(colour),
     time_of_day: hours * 3600.0,
     ..RenderLighting::default()

@@ -39,7 +39,7 @@ impl TextureResolver {
   /// A resolver over `roots` and `scope`, the references in `known` already resolved to their logical paths.
   pub fn new(roots: XrayRoots, scope: XrayTextureScope, known: impl IntoIterator<Item = ResolvedTexture>) -> Self {
     Self {
-      scope_key: Self::to_scope_key(&roots, &scope),
+      scope_key: Self::format_scope_key(&roots, &scope),
       roots,
       scope,
       located: RwLock::new(Self::locate_known(known).collect()),
@@ -122,7 +122,7 @@ impl TextureResolver {
 
   /// Its roots and scope as one key: the subject asset, each root's path and how it mounts, in order, then the level's
   /// directory. Paths are written as the host holds them, so two keys match only where every part reads alike.
-  fn to_scope_key(roots: &XrayRoots, scope: &XrayTextureScope) -> String {
+  fn format_scope_key(roots: &XrayRoots, scope: &XrayTextureScope) -> String {
     let mut key: String = format!("{:?}", roots.asset);
 
     for root in &roots.roots {

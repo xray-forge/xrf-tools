@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_utils::to_format_size;
+use xrf_utils::narrow_format_size;
 
 use crate::{AnimationBehavior, AnimationKey};
 
@@ -149,7 +149,7 @@ impl AnimationEnvelope {
   pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_u8(self.behavior_before.into())?;
     writer.write_u8(self.behavior_after.into())?;
-    writer.write_u16::<T>(to_format_size(self.keys.len(), "animation keys")?)?;
+    writer.write_u16::<T>(narrow_format_size(self.keys.len(), "animation keys")?)?;
 
     for key in &self.keys {
       key.write::<T>(writer)?;

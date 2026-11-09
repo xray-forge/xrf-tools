@@ -70,7 +70,7 @@ impl HeightField {
 
     for row in 0..height {
       let (across_y, along_y): (f32, f32) = Self::difference(row, height);
-      let waves_y: f32 = Self::to_waves(row, height);
+      let waves_y: f32 = Self::get_waves(row, height);
 
       for column in 0..width {
         let index: usize = row * width + column;
@@ -89,7 +89,7 @@ impl HeightField {
         // conj(d_x) P + conj(d_y) Q over |d_x|² + |d_y|², the broadest and the finest waves faded by Gaussian passes.
         let (px, py) = (slope_x.0[index], slope_x.1[index]);
         let (qx, qy) = (slope_y.0[index], slope_y.1[index]);
-        let waves: f32 = Self::to_waves(column, width).hypot(waves_y);
+        let waves: f32 = Self::get_waves(column, width).hypot(waves_y);
         let broad: f32 = if low_cut > 0.0 {
           1.0 - (-(waves / low_cut).powi(2)).exp()
         } else {
@@ -119,7 +119,7 @@ impl HeightField {
 
   /// Heights scaled into nought to one about a half: the mean at a half, the larger of the farthest above and below it,
   /// short of `OUTLIER_SHARE` at each end, reaching nought or one.
-  pub(crate) fn to_unit_heights(heights: &[f32]) -> Vec<f32> {
+  pub(crate) fn normalize_heights(heights: &[f32]) -> Vec<f32> {
     let mean: f32 = heights.iter().sum::<f32>() / heights.len().max(1) as f32;
     // Every sixteenth height is enough to find where the ends lie.
     let mut sampled: Vec<f32> = heights.iter().step_by(16).map(|it| it - mean).collect();
@@ -162,7 +162,7 @@ impl HeightField {
   }
 
   /// Waves across the texture frequency `index` of `size` stands for, either way.
-  fn to_waves(index: usize, size: usize) -> f32 {
+  fn get_waves(index: usize, size: usize) -> f32 {
     index.min(size - index) as f32
   }
 

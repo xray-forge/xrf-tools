@@ -69,7 +69,7 @@ impl StaticSurfaceBuilder {
     if let Some(descriptor) = descriptor
       && let XraySurfaceDraw::Water { .. } = descriptor.draw
     {
-      let color: Vec3 = Self::to_surface_color(surface.shader_id);
+      let color: Vec3 = Self::get_surface_color(surface.shader_id);
 
       return Some((
         StaticWaterSurfaceBuilder::build(surface, descriptor, textures, source, color),
@@ -106,7 +106,7 @@ impl StaticSurfaceBuilder {
         detail_scale: plan.detail_scale,
         alpha_reference: f32::from(plan.alpha_reference) / 255.0,
         slice: material_slice(plan.material),
-        color: Self::to_surface_color(surface.shader_id),
+        color: Self::get_surface_color(surface.shader_id),
         flags: plan.flags,
         textures: texture_slots,
         terrain,
@@ -188,7 +188,7 @@ impl StaticSurfaceBuilder {
     );
     name(StaticSurface::HEMI, surface.hemi.as_deref(), TextureRole::Hemi);
 
-    let mut flags: u32 = Self::to_flags(descriptor, &slots.map(|it| it.is_some()), class, reference, blend);
+    let mut flags: u32 = Self::get_flags(descriptor, &slots.map(|it| it.is_some()), class, reference, blend);
 
     let terrain: Option<&'a XraySurfaceTerrain> = descriptor
       .and_then(|it| it.terrain.as_ref())
@@ -247,7 +247,7 @@ impl StaticSurfaceBuilder {
 
   /// A surface's flags by what its shader entry (`descriptor`) asks for and which of its own slots name a texture
   /// (`named`): its class and alpha `reference` deciding its test, and its `blend`.
-  fn to_flags(
+  fn get_flags(
     descriptor: Option<&XraySurfaceDescriptor>,
     named: &[bool; 7],
     class: StaticClass,
@@ -377,7 +377,7 @@ impl StaticSurfaceBuilder {
       detail_scale: 1.0,
       alpha_reference: 0.0,
       slice: material_slice(Self::IMPOSTOR_MATERIAL),
-      color: Self::to_surface_color(surface.shader_id),
+      color: Self::get_surface_color(surface.shader_id),
       flags,
       textures: texture_slots,
       terrain: StaticTerrainSlots::default(),
@@ -439,7 +439,7 @@ impl StaticSurfaceBuilder {
   }
 
   /// A stable colour per shader table entry, from a hue its id decides, so a surface reads the same in every sector.
-  fn to_surface_color(shader_id: u16) -> Vec3 {
+  fn get_surface_color(shader_id: u16) -> Vec3 {
     let hue: f32 = (f32::from(shader_id) * HUE_STEP) % 360.0;
     let (saturation, lightness): (f32, f32) = (0.45, 0.6);
     let reach: f32 = saturation * lightness.min(1.0 - lightness);

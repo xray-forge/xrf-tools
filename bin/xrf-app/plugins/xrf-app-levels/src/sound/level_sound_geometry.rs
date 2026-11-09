@@ -46,7 +46,7 @@ impl LevelSoundGeometry {
     }
   }
 
-  fn to_material(acoustics: GameMtlAcoustics) -> AudioMaterial {
+  fn get_material(acoustics: GameMtlAcoustics) -> AudioMaterial {
     AudioMaterial {
       absorption: acoustics.absorption,
       scattering: acoustics.scattering,
@@ -87,7 +87,7 @@ impl AudioSceneGeometry for LevelSoundGeometry {
         mesh
           .materials
           .push(material.map_or_else(AudioMaterial::default, |material| {
-            Self::to_material(material.get_acoustics())
+            Self::get_material(material.get_acoustics())
           }));
 
         mesh.materials.len() as u32 - 1

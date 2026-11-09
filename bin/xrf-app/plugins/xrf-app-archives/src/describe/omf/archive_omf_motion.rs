@@ -57,7 +57,7 @@ impl ArchiveOmfMotion {
   }
 
   /// The seconds a motion's frames span, for a caller totalling a bank without joining its two lists again.
-  pub fn to_duration_seconds(frames: u32) -> f32 {
+  pub fn get_duration_seconds(frames: u32) -> f32 {
     frames as f32 / SkeletonMotion::SAMPLE_FPS
   }
 }

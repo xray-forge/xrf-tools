@@ -29,14 +29,14 @@ impl EquipmentSheetLocation {
   /// Locates a sheet the roots resolved.
   pub fn of_asset(asset: XrayAsset) -> Self {
     Self {
-      path: Self::to_display_path(asset.to_physical_path()),
-      write_target: Self::to_display_path(asset.to_writable_path().ok()),
+      path: Self::format_display_path(asset.to_physical_path()),
+      write_target: Self::format_display_path(asset.to_writable_path().ok()),
       asset: Some(asset),
     }
   }
 
   /// Spells a path the way the rest of the editor shows one.
-  fn to_display_path(path: Option<PathBuf>) -> Option<String> {
+  fn format_display_path(path: Option<PathBuf>) -> Option<String> {
     path.map(|path| path.display().to_string())
   }
 }

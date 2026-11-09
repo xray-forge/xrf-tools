@@ -221,7 +221,7 @@ pub use crate::host::world::render_view_burst::RenderViewBurst;
 pub use crate::host::world::render_view_frame::RenderViewFrame;
 pub use crate::host::world::render_view_input::RenderViewInput;
 pub use crate::host::world::render_world::RenderWorld;
-pub use crate::lighting::lamp::light_animation::to_interpolated_color;
+pub use crate::lighting::lamp::light_animation::get_interpolated_color;
 pub use crate::lighting::weather::render_clouds::RenderClouds;
 pub use crate::lighting::weather::render_fog::RenderFog;
 pub use crate::lighting::weather::render_lighting::RenderLighting;

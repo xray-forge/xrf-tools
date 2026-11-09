@@ -71,7 +71,7 @@ impl VisualRenderSource {
 
   /// A model's skeleton as the renderer poses it, where every bone carries its bind and a submesh hangs from them; none
   /// for one drawn as stored.
-  fn to_skeleton(description: &VisualDescription) -> Option<RenderModelSkeleton> {
+  fn find_skeleton(description: &VisualDescription) -> Option<RenderModelSkeleton> {
     let is_skinned: bool = description
       .submeshes
       .iter()
@@ -165,7 +165,7 @@ impl WorldLevelSource for VisualRenderSource {
 
   fn read_spawn_models(&self, names: &[String]) -> XrfResult<RenderSpawnModels> {
     let package: &VisualPackage = &self.visual.package;
-    let skeleton: Option<RenderModelSkeleton> = Self::to_skeleton(&package.description);
+    let skeleton: Option<RenderModelSkeleton> = Self::find_skeleton(&package.description);
 
     Ok(RenderSpawnModels {
       models: names

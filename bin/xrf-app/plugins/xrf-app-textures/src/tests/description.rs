@@ -11,7 +11,7 @@ use xrf_vfs::{XrayRoots, XraySearch};
 use crate::describe::{TextureDescription, TextureSource};
 use crate::edit::TextureDescriptorForm;
 use crate::tests::fixtures::{
-  BASE, BUMP, COMPANION, bumped_tree, file_source, loose_directory, mount, roots_of, search_over, to_dds_bytes,
+  BASE, BUMP, COMPANION, bumped_tree, encode_dds, file_source, loose_directory, mount, roots_of, search_over,
 };
 
 #[test]
@@ -81,7 +81,7 @@ fn a_texture_outside_every_root_is_described_from_its_own_path() {
   let root: PathBuf = loose_directory("plain");
   let texture: PathBuf = root.join("wall.dds");
 
-  std::fs::write(&texture, to_dds_bytes(8)).expect("texture is writable");
+  std::fs::write(&texture, encode_dds(8)).expect("texture is writable");
 
   let (vfs, id) = mount(&FixtureTree::new("textures_standalone_roots"));
   let description: TextureDescription =
@@ -113,7 +113,7 @@ fn a_standalone_texture_reads_the_descriptor_beside_it_and_offers_to_author_one(
   let texture: PathBuf = root.join("wall.dds");
   let descriptor: PathBuf = root.join("wall.thm");
 
-  std::fs::write(&texture, to_dds_bytes(8)).expect("texture is writable");
+  std::fs::write(&texture, encode_dds(8)).expect("texture is writable");
 
   let (vfs, id) = mount(&FixtureTree::new("textures_standalone_descriptor_roots"));
   let search: XraySearch = search_over(vfs, id);
@@ -163,7 +163,7 @@ fn a_descriptor_opened_on_its_own_outside_a_root_finds_its_texture() {
   // Either half of the pair may be picked, exactly as inside a tree.
   let root: PathBuf = loose_directory("from_thm");
 
-  std::fs::write(root.join("wall.dds"), to_dds_bytes(8)).expect("texture is writable");
+  std::fs::write(root.join("wall.dds"), encode_dds(8)).expect("texture is writable");
   std::fs::write(root.join("wall.thm"), ThmFixture::image().to_bytes()).expect("descriptor is writable");
 
   let (vfs, id) = mount(&FixtureTree::new("textures_standalone_thm_roots"));
@@ -189,7 +189,7 @@ fn a_standalone_description_is_readable_back_by_its_own_path_with_nothing_mounte
   let root: PathBuf = loose_directory("readable_back");
   let texture: PathBuf = root.join("wall.dds");
 
-  std::fs::write(&texture, to_dds_bytes(8)).expect("texture is writable");
+  std::fs::write(&texture, encode_dds(8)).expect("texture is writable");
 
   let (vfs, id) = mount(&FixtureTree::new("textures_readable_back_roots"));
   let description: TextureDescription = TextureDescription::describe(
@@ -217,7 +217,7 @@ fn a_standalone_description_is_readable_back_by_its_own_path_with_nothing_mounte
 
   assert_eq!(
     source.read_in(&assets, &description.roots).expect("the texture reads"),
-    to_dds_bytes(8)
+    encode_dds(8)
   );
   assert_eq!(
     assets.get_vfs().get_mounts().len(),

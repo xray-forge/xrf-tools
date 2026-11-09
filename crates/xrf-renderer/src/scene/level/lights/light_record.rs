@@ -4,7 +4,7 @@ use xrf_visual::{LightDescription, LightKind};
 
 use crate::lighting::lamp::light_basis::LightBasis;
 use crate::lighting::lamp::light_bulb::get_bulb_radius;
-use crate::lighting::lamp::light_shadow_size::to_light_shadow_scale;
+use crate::lighting::lamp::light_shadow_size::get_light_shadow_scale;
 use crate::scene::level::lights::asks::light_in_view::LightInView;
 use crate::scene::texture::texture_cache::TextureCache;
 
@@ -71,7 +71,7 @@ impl LightRecord {
         Self::NO_CONE
       }),
       right: view.transform_vector3(basis.right).extend(if is_spot {
-        to_light_shadow_scale(light.cone)
+        get_light_shadow_scale(light.cone)
       } else {
         0.0
       }),

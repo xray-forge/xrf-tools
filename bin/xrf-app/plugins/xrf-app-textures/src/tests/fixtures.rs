@@ -96,12 +96,12 @@ pub(crate) fn file_source(path: PathBuf) -> TextureSource {
 
 /// A scratch directory of its own per case, so a save that writes files cannot reach another's.
 pub(crate) fn editing_directory(case: &str) -> PathBuf {
-  to_scratch_directory("textures_editing", case)
+  create_scratch_directory("textures_editing", case)
 }
 
 /// A scratch directory outside every X-Ray root, which is the case a standalone description exists for.
 pub(crate) fn loose_directory(case: &str) -> PathBuf {
-  to_scratch_directory("textures_standalone", case)
+  create_scratch_directory("textures_standalone", case)
 }
 
 /// The target a save carries for a file, stamped as the editor would have stamped it.
@@ -140,7 +140,7 @@ pub(crate) fn source_image(size: u32) -> RgbaImage {
 }
 
 /// A real uncompressed dds, so a standalone description has a header to read rather than a placeholder.
-pub(crate) fn to_dds_bytes(size: u32) -> Vec<u8> {
+pub(crate) fn encode_dds(size: u32) -> Vec<u8> {
   let base: RgbaImage = RgbaImage::from_fn(size, size, |x, y| Rgba([(x * 8) as u8, (y * 8) as u8, 0, u8::MAX]));
 
   DdsEncoding::new(ImageFormat::Rgba8Unorm, Quality::Fast)
@@ -151,7 +151,7 @@ pub(crate) fn to_dds_bytes(size: u32) -> Vec<u8> {
 }
 
 /// A directory this run owns, emptied on the way in so a case starts from nothing whatever the last run left.
-fn to_scratch_directory(prefix: &str, case: &str) -> PathBuf {
+fn create_scratch_directory(prefix: &str, case: &str) -> PathBuf {
   let root: PathBuf = GeneratedResources::path(&format!("{prefix}/{case}"));
 
   let _ = fs::remove_dir_all(&root);

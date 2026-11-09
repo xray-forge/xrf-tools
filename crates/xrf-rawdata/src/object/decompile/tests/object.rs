@@ -15,11 +15,11 @@ use crate::object::decompile::tests::fixtures::{DOWN, UP, assemble, corner, surf
 #[test]
 fn cuts_an_ogf_string_at_the_terminator_it_kept() {
   assert_eq!(
-    ObjectDecompiler::to_text("[collide]\nignore_static\n\0"),
+    ObjectDecompiler::trim_text("[collide]\nignore_static\n\0"),
     "[collide]\nignore_static\n"
   );
-  assert_eq!(ObjectDecompiler::to_text("lods\\tree"), "lods\\tree");
-  assert_eq!(ObjectDecompiler::to_text(""), "");
+  assert_eq!(ObjectDecompiler::trim_text("lods\\tree"), "lods\\tree");
+  assert_eq!(ObjectDecompiler::trim_text(""), "");
 }
 
 #[test]
@@ -35,7 +35,7 @@ fn writes_an_object_that_reads_back_and_rewrites_alike() -> XrfResult {
   let object: EditableObjectFile = EditableObjectFile {
     flags: EditableObjectFile::DYNAMIC_FLAG | EditableObjectFile::PROGRESSIVE_FLAG,
     flags_size: EditableObjectFile::FLAGS_SIZE,
-    class_script: Some(ObjectDecompiler::to_text("[collide]\n\0")),
+    class_script: Some(ObjectDecompiler::trim_text("[collide]\n\0")),
     lods: None,
     meshes: Some(vec![assembled.mesh]),
     surfaces: Some(assembled.surfaces),

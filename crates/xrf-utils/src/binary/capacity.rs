@@ -44,7 +44,7 @@ pub fn new_declared_vec(size: usize, what: &str) -> XrfResult<Vec<u8>> {
 }
 
 /// Narrow an in-memory length into the fixed-width field its format stores it in.
-pub fn to_format_size<T: FormatWidth>(value: usize, what: &str) -> XrfResult<T> {
+pub fn narrow_format_size<T: FormatWidth>(value: usize, what: &str) -> XrfResult<T> {
   T::try_from(value).map_err(|_| XrfError::new_invalid_error(format!("{what} exceeds the {} format limit", T::LABEL)))
 }
 
@@ -52,7 +52,7 @@ pub fn to_format_size<T: FormatWidth>(value: usize, what: &str) -> XrfResult<T> 
 mod tests {
   use xrf_error::XrfResult;
 
-  use super::{assert_count_fits, new_bounded_vec, to_format_size};
+  use super::{assert_count_fits, narrow_format_size, new_bounded_vec};
 
   #[test]
   fn accepts_count_that_fits_the_budget() -> XrfResult {
@@ -110,9 +110,9 @@ mod tests {
 
   #[test]
   fn narrows_a_length_that_fits_its_format_field() -> XrfResult {
-    assert_eq!(to_format_size::<u8>(255, "test records")?, 255u8);
-    assert_eq!(to_format_size::<u16>(65535, "test records")?, 65535u16);
-    assert_eq!(to_format_size::<u32>(u32::MAX as usize, "test records")?, u32::MAX);
+    assert_eq!(narrow_format_size::<u8>(255, "test records")?, 255u8);
+    assert_eq!(narrow_format_size::<u16>(65535, "test records")?, 65535u16);
+    assert_eq!(narrow_format_size::<u32>(u32::MAX as usize, "test records")?, u32::MAX);
 
     Ok(())
   }
@@ -120,14 +120,14 @@ mod tests {
   #[test]
   fn rejects_a_length_past_its_format_field() {
     assert_eq!(
-      to_format_size::<u8>(256, "test records")
+      narrow_format_size::<u8>(256, "test records")
         .expect_err("expect the length to exceed its format field")
         .to_string(),
       "Invalid error: test records exceeds the u8 format limit"
     );
 
     assert_eq!(
-      to_format_size::<u16>(65536, "test records")
+      narrow_format_size::<u16>(65536, "test records")
         .expect_err("expect the length to exceed its format field")
         .to_string(),
       "Invalid error: test records exceeds the u16 format limit"
@@ -135,7 +135,7 @@ mod tests {
 
     // The u32 boundary is reachable here and nowhere else: the helper takes a length rather than a collection.
     assert_eq!(
-      to_format_size::<u32>(u32::MAX as usize + 1, "test records")
+      narrow_format_size::<u32>(u32::MAX as usize + 1, "test records")
         .expect_err("expect the length to exceed its format field")
         .to_string(),
       "Invalid error: test records exceeds the u32 format limit"

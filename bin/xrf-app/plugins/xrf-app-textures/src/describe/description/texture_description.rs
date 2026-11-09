@@ -138,7 +138,7 @@ impl TextureDescription {
     } = TextureFiles::of(&path);
     let texture: Option<XrayAsset> = texture_path
       .is_file()
-      .then(|| Self::to_loose_asset(&texture_path))
+      .then(|| Self::find_loose_asset(&texture_path))
       .flatten();
     let descriptor: Option<ThmFile> = Self::read_descriptor_from_path(&descriptor_path);
 
@@ -165,7 +165,7 @@ impl TextureDescription {
   }
 
   /// A loose file as the VFS would report it, rooted at its own directory.
-  fn to_loose_asset(path: &Path) -> Option<XrayAsset> {
+  fn find_loose_asset(path: &Path) -> Option<XrayAsset> {
     let name: &str = path.file_name()?.to_str()?;
 
     Some(XrayAsset::new(

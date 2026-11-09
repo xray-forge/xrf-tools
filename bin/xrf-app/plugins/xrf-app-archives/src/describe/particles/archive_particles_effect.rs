@@ -41,7 +41,7 @@ impl ArchiveParticlesEffect {
           .sprite
           .as_ref()
           .map(|sprite| ArchiveReference::resolve(source, XrayAssetType::Dds, &sprite.texture_name)),
-        actions: Self::to_action_kinds(effect),
+        actions: Self::list_action_kinds(effect),
         actions_count: effect.actions.len(),
         flags: effect.flags,
       })
@@ -49,7 +49,7 @@ impl ArchiveParticlesEffect {
   }
 
   /// The action kinds an effect holds, each named once, in first use order.
-  fn to_action_kinds(effect: &ParticleEffect) -> Vec<String> {
+  fn list_action_kinds(effect: &ParticleEffect) -> Vec<String> {
     let mut kinds: Vec<String> = Vec::new();
 
     for action in &effect.actions {

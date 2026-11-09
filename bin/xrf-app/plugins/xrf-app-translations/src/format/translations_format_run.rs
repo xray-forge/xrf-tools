@@ -20,7 +20,7 @@ impl TranslationsFormatRun {
     directory: PathBuf,
     line_endings: Option<String>,
   ) -> TauriResult<TranslationFormatResult> {
-    TranslationFormatter::format_opt(&[directory], Self::to_options(job, line_endings)?).map_err(error_to_string)
+    TranslationFormatter::format_opt(&[directory], Self::parse_options(job, line_endings)?).map_err(error_to_string)
   }
 
   /// Reports which sources under `directory` are not normalized, writing nothing.
@@ -33,10 +33,11 @@ impl TranslationsFormatRun {
     directory: PathBuf,
     line_endings: Option<String>,
   ) -> TauriResult<TranslationFormatResult> {
-    TranslationFormatter::check_format_opt(&[directory], Self::to_options(job, line_endings)?).map_err(error_to_string)
+    TranslationFormatter::check_format_opt(&[directory], Self::parse_options(job, line_endings)?)
+      .map_err(error_to_string)
   }
 
-  fn to_options(job: JobHandle, line_endings: Option<String>) -> TauriResult<TranslationFormatOptions> {
+  fn parse_options(job: JobHandle, line_endings: Option<String>) -> TauriResult<TranslationFormatOptions> {
     let line_endings: Option<LineEndings> = line_endings
       .as_deref()
       .map(LineEndings::from_str)

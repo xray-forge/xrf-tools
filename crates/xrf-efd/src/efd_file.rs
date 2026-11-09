@@ -5,7 +5,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{format_path, to_format_size};
+use xrf_utils::{format_path, narrow_format_size};
 
 use crate::efd_data_format::EfdDataFormat;
 use crate::efd_pattern::EfdPattern;
@@ -162,7 +162,7 @@ impl EfdFile {
 
     writer.write_u32::<T>(self.builder_version)?;
     writer.write_u32::<T>(self.data_format.to_value())?;
-    writer.write_u32::<T>(to_format_size(self.variables.len(), "efd variables")?)?;
+    writer.write_u32::<T>(narrow_format_size(self.variables.len(), "efd variables")?)?;
 
     for variable in &self.variables {
       writer.write_u32::<T>(variable.range)?;
@@ -175,10 +175,10 @@ impl EfdFile {
     writer.write_u32::<T>(self.function_type)?;
     self.data_format.write_real::<T>(writer, self.minimum_result)?;
     self.data_format.write_real::<T>(writer, self.maximum_result)?;
-    writer.write_u32::<T>(to_format_size(self.patterns.len(), "efd patterns")?)?;
+    writer.write_u32::<T>(narrow_format_size(self.patterns.len(), "efd patterns")?)?;
 
     for pattern in &self.patterns {
-      writer.write_u32::<T>(to_format_size(pattern.variables.len(), "efd pattern variables")?)?;
+      writer.write_u32::<T>(narrow_format_size(pattern.variables.len(), "efd pattern variables")?)?;
 
       for index in &pattern.variables {
         writer.write_u32::<T>(*index)?;

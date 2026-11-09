@@ -9,7 +9,7 @@ pub(crate) struct TextureLayer {
 
 impl TextureLayer {
   /// Its layer of `texture`, whole, as a copy reads or writes it.
-  pub(crate) fn to_copy(texture: &wgpu::Texture, layer: u32) -> wgpu::TexelCopyTextureInfo<'_> {
+  pub(crate) fn get_copy(texture: &wgpu::Texture, layer: u32) -> wgpu::TexelCopyTextureInfo<'_> {
     wgpu::TexelCopyTextureInfo {
       texture,
       mip_level: 0,

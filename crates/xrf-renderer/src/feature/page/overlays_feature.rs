@@ -39,7 +39,7 @@ impl OverlaysFeature {
       RenderSelectionTarget::Spawn { object } => scene
         .statics
         .get_object_box(object)
-        .map(|object_box| Self::to_box_lines(object_box, selection.color)),
+        .map(|object_box| Self::outline_box(object_box, selection.color)),
       RenderSelectionTarget::Surface { .. } => None,
     });
 
@@ -100,7 +100,7 @@ impl OverlaysFeature {
   }
 
   /// A box's twelve edges as lines in one colour, seen through what is in front.
-  fn to_box_lines(object_box: StaticObjectBox, color: [f32; 3]) -> RenderOverlay {
+  fn outline_box(object_box: StaticObjectBox, color: [f32; 3]) -> RenderOverlay {
     let segments: Vec<RenderOverlaySegment> = object_box
       .to_edges()
       .map(|[from, to]: [Vec3; 2]| RenderOverlaySegment {

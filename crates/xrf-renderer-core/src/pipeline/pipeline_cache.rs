@@ -82,11 +82,11 @@ impl PipelineCache {
       .driver
       .as_ref()
       .and_then(wgpu::PipelineCache::get_data)
-      .map(|data| Self::to_checked(&data))
+      .map(|data| Self::prepend_checksum(&data))
   }
 
   /// The driver's data behind its checksum.
-  pub(crate) fn to_checked(data: &[u8]) -> Vec<u8> {
+  pub(crate) fn prepend_checksum(data: &[u8]) -> Vec<u8> {
     let mut checked: Vec<u8> = Vec::with_capacity(data.len() + 4);
 
     checked.extend_from_slice(&crc32fast::hash(data).to_le_bytes());
@@ -95,7 +95,7 @@ impl PipelineCache {
     checked
   }
 
-  /// The driver's data behind a checksum `to_checked` wrote, where the checksum holds.
+  /// The driver's data behind a checksum `prepend_checksum` wrote, where the checksum holds.
   pub(crate) fn read_checked(data: &[u8]) -> Option<&[u8]> {
     let (checksum, data): (&[u8; 4], &[u8]) = data.split_first_chunk::<4>()?;
 

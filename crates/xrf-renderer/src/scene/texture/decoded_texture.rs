@@ -103,7 +103,7 @@ impl DecodedTexture {
         [unit(texel[3]), unit(texel[2]), unit(texel[1])]
       })
       .collect();
-    let heights: Vec<f32> = HeightField::to_unit_heights(&HeightField::integrate_normals(
+    let heights: Vec<f32> = HeightField::normalize_heights(&HeightField::integrate_normals(
       width as usize,
       height as usize,
       &normals,
@@ -280,10 +280,10 @@ impl DecodedTexture {
       .mipmap_levels
       .clamp(1, Self::get_chain_length(metadata.width, metadata.height));
 
-    match Self::to_block_format(&metadata.format) {
+    match Self::find_block_format(&metadata.format) {
       Some(format) if metadata.is_volume => Self::from_volume_blocks(&file, &metadata, format),
       Some(format) if metadata.is_cubemap => Self::from_cube_blocks(&file, &metadata, format, levels),
-      None if metadata.is_cubemap => match Self::to_texel_cube_format(&metadata.format) {
+      None if metadata.is_cubemap => match Self::find_texel_cube_format(&metadata.format) {
         Some(format) => Self::from_cube_blocks(&file, &metadata, format, levels),
         None => Err(XrfError::new_texture_processing_error(format!(
           "A {} cube cannot be expanded",
@@ -453,7 +453,7 @@ impl DecodedTexture {
   }
 
   /// The GPU format a block compressed layout uploads as, raw; `None` for a layout that is expanded instead.
-  fn to_block_format(format: &DdsFormat) -> Option<wgpu::TextureFormat> {
+  fn find_block_format(format: &DdsFormat) -> Option<wgpu::TextureFormat> {
     use wgpu::TextureFormat as Gpu;
 
     Some(match format {
@@ -484,7 +484,7 @@ impl DecodedTexture {
 
   /// The GPU format a cube of texels four bytes each uploads as, raw, the way an irradiance cube is stored; `None` for
   /// any other texel layout.
-  fn to_texel_cube_format(format: &DdsFormat) -> Option<wgpu::TextureFormat> {
+  fn find_texel_cube_format(format: &DdsFormat) -> Option<wgpu::TextureFormat> {
     Some(match format {
       DdsFormat::D3d(D3DFormat::A8R8G8B8 | D3DFormat::X8R8G8B8) => wgpu::TextureFormat::Bgra8Unorm,
       DdsFormat::D3d(D3DFormat::A8B8G8R8 | D3DFormat::X8B8G8R8) => wgpu::TextureFormat::Rgba8Unorm,

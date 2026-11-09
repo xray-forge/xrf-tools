@@ -15,7 +15,7 @@ pub(crate) struct ArchiveVerifyOverrideReport {
 
 impl ArchiveVerifyOverrideReport {
   /// Where a container sits, spelled the one way every report spells a path.
-  fn to_portable_container(container: &XrayAssetContainer) -> String {
+  fn format_portable_container(container: &XrayAssetContainer) -> String {
     match container {
       XrayAssetContainer::Directory { root, relative_path } => to_portable_path_string(root.join(relative_path)),
       XrayAssetContainer::Archive { path } => to_portable_path_string(path),
@@ -26,11 +26,11 @@ impl ArchiveVerifyOverrideReport {
 impl From<&XrayShadowingEntry> for ArchiveVerifyOverrideReport {
   fn from(entry: &XrayShadowingEntry) -> Self {
     Self {
-      container: Self::to_portable_container(entry.get_asset().get_container()),
+      container: Self::format_portable_container(entry.get_asset().get_container()),
       hidden: entry
         .shadowed
         .iter()
-        .map(|copy| Self::to_portable_container(copy.asset.get_container()))
+        .map(|copy| Self::format_portable_container(copy.asset.get_container()))
         .collect(),
       logical_path: entry.get_logical_path().to_string(),
     }

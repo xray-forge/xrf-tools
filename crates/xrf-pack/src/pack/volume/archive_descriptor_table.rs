@@ -7,7 +7,7 @@ use xrf_archive::{
 };
 use xrf_error::XrfResult;
 use xrf_lzhuf::LzhufEncoder;
-use xrf_utils::to_format_size;
+use xrf_utils::narrow_format_size;
 
 use crate::pack::volume::DescriptorName;
 
@@ -77,7 +77,7 @@ impl ArchiveDescriptorTable {
     let (chunk_id, payload): (u32, Cow<'_, [u8]>) = self.to_chunk()?;
 
     writer.write_all(&chunk_id.to_le_bytes())?;
-    writer.write_all(&to_format_size::<u32>(payload.len(), "archive descriptor chunk")?.to_le_bytes())?;
+    writer.write_all(&narrow_format_size::<u32>(payload.len(), "archive descriptor chunk")?.to_le_bytes())?;
     writer.write_all(&payload)?;
 
     Ok(CHUNK_HEADER_SIZE + payload.len() as u64)

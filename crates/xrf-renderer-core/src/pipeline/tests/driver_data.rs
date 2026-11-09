@@ -2,7 +2,7 @@ use crate::PipelineCache;
 
 #[test]
 fn hands_the_driver_only_data_whose_checksum_holds() {
-  let checked: Vec<u8> = PipelineCache::to_checked(b"driver pipelines");
+  let checked: Vec<u8> = PipelineCache::prepend_checksum(b"driver pipelines");
 
   assert_eq!(PipelineCache::read_checked(&checked), Some(&b"driver pipelines"[..]));
 

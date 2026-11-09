@@ -127,7 +127,7 @@ impl OrbitCameraController {
       WorldInputEvent::Wheel {
         delta_y, delta_mode, ..
       } => {
-        let pixels: f32 = WheelDelta::to_pixels(*delta_y, *delta_mode, self.height);
+        let pixels: f32 = WheelDelta::get_pixels(*delta_y, *delta_mode, self.height);
         let scale: f32 = ZOOM_BASE.powf((pixels * 0.01).abs());
 
         self.dolly(if pixels > 0.0 { 1.0 / scale } else { scale });

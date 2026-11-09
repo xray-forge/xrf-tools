@@ -63,7 +63,7 @@ impl LevelObject {
   }
 
   /// A point or vector of engine space in renderer space, mirrored through `z` as an object's transform is.
-  pub(crate) fn to_renderer_space(vector: &Vector3d) -> Vector3d {
+  pub(crate) fn convert_to_renderer_space(vector: &Vector3d) -> Vector3d {
     Vector3d::new(vector.x, vector.y, -vector.z)
   }
 }

@@ -30,7 +30,7 @@ impl TextureWatcher {
       };
 
       if matches!(event.kind, EventKind::Create(_) | EventKind::Modify(_)) {
-        for name in event.paths.iter().filter_map(|path| Self::to_texture_name(path)) {
+        for name in event.paths.iter().filter_map(|path| Self::find_texture_name(path)) {
           let _ = sender.send(name);
         }
       }
@@ -91,7 +91,7 @@ impl TextureWatcher {
   }
 
   /// A written file's texture name, where it is a texture: a `.dds` file's name, lowercase, without its extension.
-  pub(crate) fn to_texture_name(path: &Path) -> Option<String> {
+  pub(crate) fn find_texture_name(path: &Path) -> Option<String> {
     XrayExtension::Dds
       .matches_path(path)
       .then(|| path.file_stem())

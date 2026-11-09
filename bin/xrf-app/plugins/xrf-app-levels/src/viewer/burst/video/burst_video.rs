@@ -155,7 +155,7 @@ impl BurstVideo {
     }
 
     writer.write(RecordSample::Frame {
-      bgra: Self::to_bgra(picture, width, height),
+      bgra: Self::copy_bgra(picture, width, height),
       time,
       duration: end - time,
     })
@@ -196,7 +196,7 @@ impl BurstVideo {
 
   /// `picture`'s top left `width` by `height`, blue first: each row copied whole, then red and blue swapped in place,
   /// which the compiler vectorizes, a fullscreen frame being 29 MB.
-  pub(crate) fn to_bgra(picture: &RgbaImage, width: u32, height: u32) -> Vec<u8> {
+  pub(crate) fn copy_bgra(picture: &RgbaImage, width: u32, height: u32) -> Vec<u8> {
     let (row, kept) = (picture.width() as usize * 4, width as usize * 4);
     let mut bgra: Vec<u8> = Vec::with_capacity(kept * height as usize);
 

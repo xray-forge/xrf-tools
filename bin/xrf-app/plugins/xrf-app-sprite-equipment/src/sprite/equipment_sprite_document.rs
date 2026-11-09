@@ -86,7 +86,7 @@ impl EquipmentSpriteDocument {
   ) -> TauriResult<(DdsPng, EquipmentSheetLocation)> {
     match source {
       EquipmentSheetSource::File { path } => Ok((
-        Self::to_preview(DdsFile::read_from_path(path))?,
+        Self::decode_preview(DdsFile::read_from_path(path))?,
         EquipmentSheetLocation::of_file(path),
       )),
       EquipmentSheetSource::Asset { reference } => Self::read_located_sheet(Self::require(search)?, reference),
@@ -102,7 +102,7 @@ impl EquipmentSpriteDocument {
       .cloned()
       .ok_or_else(|| format!("Equipment sheet '{reference}' resolves to nothing in the mounted roots"))?;
 
-    let preview: DdsPng = Self::to_preview(
+    let preview: DdsPng = Self::decode_preview(
       search
         .read_asset(&asset)
         .and_then(|bytes| DdsFile::read_from_bytes(&bytes)),
@@ -112,7 +112,7 @@ impl EquipmentSpriteDocument {
   }
 
   /// Decodes whatever the sheet turned out to be.
-  fn to_preview(read: XrfResult<DdsFile>) -> TauriResult<DdsPng> {
+  fn decode_preview(read: XrfResult<DdsFile>) -> TauriResult<DdsPng> {
     read.and_then(|dds| dds.to_png()).map_err(error_to_string)
   }
 

@@ -87,9 +87,9 @@ impl MacosWindowHost {
 
     Ok(Self {
       window,
-      view: Self::to_handle(Retained::as_ptr(&view).cast()),
+      view: Self::get_handle(Retained::as_ptr(&view).cast()),
       // The view keeps it while it is in the window; its class makes every backing layer a Metal one.
-      layer: Self::to_handle(Retained::as_ptr(&layer).cast()),
+      layer: Self::get_handle(Retained::as_ptr(&layer).cast()),
     })
   }
 
@@ -115,7 +115,7 @@ impl MacosWindowHost {
     Retained::into_super(view)
   }
 
-  fn to_handle(pointer: *const c_void) -> NonZeroIsize {
+  fn get_handle(pointer: *const c_void) -> NonZeroIsize {
     NonZeroIsize::new(pointer as isize).expect("A retained object is never at null")
   }
 

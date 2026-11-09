@@ -29,15 +29,15 @@ impl ArchiveShadersProperty {
       .iter()
       .map(|property| Self {
         name: property.name.clone(),
-        kind: Self::to_kind_label(property.value.kind()).to_owned(),
-        value: Self::to_value(&property.value),
-        texture: Self::to_texture(source, &property.value),
+        kind: Self::get_kind_label(property.value.kind()).to_owned(),
+        value: Self::format_value(&property.value),
+        texture: Self::find_texture(source, &property.value),
       })
       .collect()
   }
 
   /// The engine's own name for a payload type.
-  const fn to_kind_label(kind: ShaderBlenderPropertyKind) -> &'static str {
+  const fn get_kind_label(kind: ShaderBlenderPropertyKind) -> &'static str {
     match kind {
       ShaderBlenderPropertyKind::Marker => "Marker",
       ShaderBlenderPropertyKind::Matrix => "Matrix",
@@ -57,7 +57,7 @@ impl ArchiveShadersProperty {
   ///
   /// A bounded number keeps its range: the editor's clamp is what says whether an authored value sits at the end of
   /// what the class accepts, which the number alone does not.
-  fn to_value(value: &ShaderBlenderPropertyValue) -> String {
+  fn format_value(value: &ShaderBlenderPropertyValue) -> String {
     match value {
       ShaderBlenderPropertyValue::Marker => String::new(),
       ShaderBlenderPropertyValue::Matrix(text)
@@ -76,7 +76,7 @@ impl ArchiveShadersProperty {
         maximum,
       } => format!("{value} ({minimum} to {maximum})"),
       ShaderBlenderPropertyValue::Bool(value) => String::from(if *value { "true" } else { "false" }),
-      ShaderBlenderPropertyValue::Token { selected, items } => Self::to_token_value(*selected, items),
+      ShaderBlenderPropertyValue::Token { selected, items } => Self::format_token_value(*selected, items),
       ShaderBlenderPropertyValue::ClassId { selected, items } => {
         format!("{selected} of {} classes", items.len())
       }
@@ -84,7 +84,7 @@ impl ArchiveShadersProperty {
   }
 
   /// The label a token property selected, falling back to the number for a selection nothing in the list carries.
-  fn to_token_value(selected: u32, items: &[ShaderBlenderToken]) -> String {
+  fn format_token_value(selected: u32, items: &[ShaderBlenderToken]) -> String {
     items
       .iter()
       .find(|token| token.id == selected)
@@ -92,7 +92,7 @@ impl ArchiveShadersProperty {
   }
 
   /// The file a texture property names, or `None` for a property that is not one or names a slot.
-  fn to_texture(source: &ArchiveDescribeSource<'_>, value: &ShaderBlenderPropertyValue) -> Option<ArchiveReference> {
+  fn find_texture(source: &ArchiveDescribeSource<'_>, value: &ShaderBlenderPropertyValue) -> Option<ArchiveReference> {
     let name: &String = match value {
       ShaderBlenderPropertyValue::Texture(name) => name,
       _ => return None,
@@ -115,7 +115,7 @@ mod tests {
   #[test]
   fn a_bounded_number_keeps_the_range_the_editor_clamps_it_to() {
     assert_eq!(
-      ArchiveShadersProperty::to_value(&ShaderBlenderPropertyValue::Integer {
+      ArchiveShadersProperty::format_value(&ShaderBlenderPropertyValue::Integer {
         value: 4,
         minimum: 0,
         maximum: 8,
@@ -140,7 +140,7 @@ mod tests {
       ],
     };
 
-    assert_eq!(ArchiveShadersProperty::to_value(&value), "Blend");
+    assert_eq!(ArchiveShadersProperty::format_value(&value), "Blend");
   }
 
   #[test]
@@ -150,13 +150,13 @@ mod tests {
       items: Vec::new(),
     };
 
-    assert_eq!(ArchiveShadersProperty::to_value(&value), "9");
+    assert_eq!(ArchiveShadersProperty::format_value(&value), "9");
   }
 
   #[test]
   fn a_marker_carries_no_value_at_all() {
     assert_eq!(
-      ArchiveShadersProperty::to_value(&ShaderBlenderPropertyValue::Marker),
+      ArchiveShadersProperty::format_value(&ShaderBlenderPropertyValue::Marker),
       ""
     );
   }

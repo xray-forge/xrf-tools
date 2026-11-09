@@ -5,9 +5,9 @@ use xrf_math::EPS;
 use crate::contract::feature::lighting::model::render_light_scales::RenderLightScales;
 use crate::contract::feature::weather::render_sun_shafts::RenderSunShafts;
 use crate::contract::view::asset::render_asset_lighting::RenderAssetLighting;
-use crate::lighting::lamp::light_specular::to_light_specular;
+use crate::lighting::lamp::light_specular::get_light_specular;
 use crate::lighting::luminance::luminance;
-use crate::lighting::sun::sun_direction::to_renderer_sun_direction;
+use crate::lighting::sun::sun_direction::get_renderer_sun_direction;
 use crate::lighting::weather::render_clouds::RenderClouds;
 use crate::lighting::weather::render_fog::RenderFog;
 use crate::lighting::weather::render_rainfall::RenderRainfall;
@@ -71,7 +71,7 @@ impl RenderLighting {
   /// `Ldynamic_color.w`: what the sun contributes to specular, `u_diffuse2s` of its scaled colour (`r2_types.h`), as
   /// the engine's light and the authored levels weigh it; the physical levels' sun is the world's daylight.
   pub fn get_sun_specular(&self, scales: &RenderLightScales) -> f32 {
-    to_light_specular(self.get_sun_color(scales), false)
+    get_light_specular(self.get_sun_color(scales), false)
   }
 
   /// The density the sun's shafts are drawn with: the keyframes', lifted by `r2_sunshafts_min` after the mix.
@@ -131,7 +131,7 @@ impl Default for RenderLighting {
   /// `sky_7_cube#small`.
   fn default() -> Self {
     Self {
-      sun_direction: to_renderer_sun_direction(-68.999985, -30.0),
+      sun_direction: get_renderer_sun_direction(-68.999985, -30.0),
       sun_color: Vec3::new(0.905882, 0.839216, 0.694118),
       hemisphere_color: Vec3::new(0.470588, 0.368627, 0.329412),
       ambient_color: Vec3::splat(0.02),

@@ -36,7 +36,7 @@ impl XraySurfaceScript {
 
   /// The logical path of the script a shader of this name would be read from: an `.s` file, the extension `LS_Load`
   /// filters the directory by.
-  pub(crate) fn to_logical_path(shader_name: &str) -> String {
+  pub(crate) fn resolve_logical_path(shader_name: &str) -> String {
     format!(
       "{}\\{}.{}",
       Self::SHADER_SCRIPT_DIRECTORY,
@@ -53,7 +53,7 @@ impl XraySurfaceScript {
     shader_name: &str,
     textures: &[String],
   ) -> Option<XraySurfaceDescriptor> {
-    let logical_path: String = Self::to_logical_path(shader_name);
+    let logical_path: String = Self::resolve_logical_path(shader_name);
     let asset: XrayAsset = search.find(&logical_path).ok()??;
     let source: Arc<String> = search
       .read_parsed(&asset, |bytes| Ok(String::from_utf8_lossy(&bytes).into_owned()))
@@ -68,7 +68,7 @@ impl XraySurfaceScript {
     let samplers: Vec<XraySurfaceSampler> = base
       .into_iter()
       .chain(special)
-      .flat_map(|pass| Self::to_samplers(pass, textures))
+      .flat_map(|pass| Self::list_samplers(pass, textures))
       .collect();
 
     Some(XraySurfaceDescriptor {
@@ -85,7 +85,7 @@ impl XraySurfaceScript {
         script: logical_path,
       },
       draw: base.map_or(XraySurfaceDraw::Invisible, |base| {
-        Self::to_water_draw(base).unwrap_or_else(|| Self::to_draw(base.state()))
+        Self::find_water_draw(base).unwrap_or_else(|| Self::get_draw(base.state()))
       }),
       // A script binds its own samplers by name, so nothing here is the detail texture the library's classes bind.
       detail: None,
@@ -126,7 +126,7 @@ impl XraySurfaceScript {
   }
 
   /// The texture files one pass binds, each by its sampler, a parameter read from the surface's textures by position.
-  fn to_samplers(pass: &XRayShaderPass, textures: &[String]) -> Vec<XraySurfaceSampler> {
+  fn list_samplers(pass: &XRayShaderPass, textures: &[String]) -> Vec<XraySurfaceSampler> {
     let element: &str = pass.function().unwrap_or_default();
 
     pass
@@ -134,7 +134,7 @@ impl XraySurfaceScript {
       .iter()
       .filter_map(|sampler: &XRayShaderSampler| {
         let texture: &str = match sampler.texture() {
-          XRayShaderSamplerTexture::Parameter { index, .. } => Self::to_parameter_texture(*index, textures)?,
+          XRayShaderSamplerTexture::Parameter { index, .. } => Self::find_parameter_texture(*index, textures)?,
           texture => texture.file()?,
         };
 
@@ -148,7 +148,7 @@ impl XraySurfaceScript {
   }
 
   /// `_lua_Compile`'s first two texture arguments, by position; the detail texture after them is not resolved.
-  fn to_parameter_texture(index: usize, textures: &[String]) -> Option<&str> {
+  fn find_parameter_texture(index: usize, textures: &[String]) -> Option<&str> {
     match index {
       Self::FIRST_TEXTURE_PARAMETER | Self::SECOND_TEXTURE_PARAMETER => textures
         .get(index - Self::FIRST_TEXTURE_PARAMETER)
@@ -161,7 +161,7 @@ impl XraySurfaceScript {
   /// Water, for a pass drawn by a water program, which no blend state tells apart from a plain surface. Soft where
   /// it blends: `water_soft` is vanilla's one blended program and the only one reading the depth behind it, while
   /// vanilla's plain `water` draws `blend(false)`.
-  fn to_water_draw(pass: &XRayShaderPass) -> Option<XraySurfaceDraw> {
+  fn find_water_draw(pass: &XRayShaderPass) -> Option<XraySurfaceDraw> {
     let program: &str = pass.vertex_shader();
 
     (program == Self::WATER_PROGRAM || program.starts_with(Self::WATER_VARIANT_PREFIX)).then_some(
@@ -172,7 +172,7 @@ impl XraySurfaceScript {
   }
 
   /// The pass the script declares, as the draw the renderer compiles from it.
-  fn to_draw(state: &XRayShaderPassState) -> XraySurfaceDraw {
+  fn get_draw(state: &XRayShaderPassState) -> XraySurfaceDraw {
     let reference: u8 = state.alpha_reference.unwrap_or(0);
 
     if !state.is_blended {

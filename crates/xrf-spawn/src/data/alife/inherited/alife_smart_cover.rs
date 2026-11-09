@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
-use xrf_utils::to_format_size;
+use xrf_utils::narrow_format_size;
 
 use crate::data::alife::inherited::alife_object_smart_cover::AlifeObjectSmartCover;
 use crate::data::alife::inherited::alife_smart_cover_loophole::AlifeSmartCoverLoophole;
@@ -49,7 +49,7 @@ impl ChunkReadWrite for AlifeSmartCover {
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_xr::<T, _>(&self.base)?;
     writer.write_w1251_string(&self.last_description)?;
-    writer.write_u8(to_format_size(self.loopholes.len(), "smart cover loopholes")?)?;
+    writer.write_u8(narrow_format_size(self.loopholes.len(), "smart cover loopholes")?)?;
 
     for loophole in &self.loopholes {
       writer.write_w1251_string(&loophole.name)?;

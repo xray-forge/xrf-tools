@@ -16,7 +16,7 @@ impl LevelWorldAmbients {
   const LONGEST_BLAST_RAMP: f32 = 3600.0;
 
   /// Every ambient a keyframe may name, as it plays on a level: its own file's section over a shared one of the name.
-  pub(crate) fn to_world(catalog: &EnvironmentCatalog, level: &str) -> HashMap<String, WorldAmbient> {
+  pub(crate) fn read_ambients(catalog: &EnvironmentCatalog, level: &str) -> HashMap<String, WorldAmbient> {
     catalog
       .ambients
       .iter()
@@ -32,8 +32,8 @@ impl LevelWorldAmbients {
               .map(str::to_owned)
               .collect(),
             effects: ambient.get_list(AmbientKey::Effects).to_vec(),
-            least_period: Self::to_milliseconds(least),
-            most_period: Self::to_milliseconds(most),
+            least_period: Self::floor_milliseconds(least),
+            most_period: Self::floor_milliseconds(most),
           },
         )
       })
@@ -41,7 +41,7 @@ impl LevelWorldAmbients {
   }
 
   /// Every effect an ambient may play, `CEnvAmbient::create_effect`, its sound read by `read_sound`.
-  pub(crate) fn to_world_effects(
+  pub(crate) fn read_effects(
     catalog: &EnvironmentCatalog,
     read_sound: &mut dyn FnMut(&str) -> WorldSound,
   ) -> HashMap<String, WorldAmbientEffect> {
@@ -52,7 +52,7 @@ impl LevelWorldAmbients {
         let sound: &str = effect.get_text(AmbientEffectKey::Sound, catalog.engine);
         let world: WorldAmbientEffect = WorldAmbientEffect {
           sound: (!sound.trim().is_empty()).then(|| read_sound(sound)),
-          ..Self::to_world_effect(effect, catalog)
+          ..Self::read_effect(effect, catalog)
         };
 
         (effect.name.clone(), world)
@@ -61,7 +61,7 @@ impl LevelWorldAmbients {
   }
 
   /// Every sound channel an ambient may play, `CEnvAmbient::SSndChannel::load`, its sounds read by `read_sound`.
-  pub(crate) fn to_world_channels(
+  pub(crate) fn read_channels(
     catalog: &EnvironmentCatalog,
     read_sound: &mut dyn FnMut(&str) -> WorldSound,
   ) -> HashMap<String, WorldSoundChannel> {
@@ -75,8 +75,8 @@ impl LevelWorldAmbients {
             .iter()
             .map(|sound| read_sound(sound))
             .collect(),
-          distance: Self::to_channel_distance(channel, catalog.engine),
-          period: Self::to_channel_period(channel, catalog.engine),
+          distance: Self::get_channel_distance(channel, catalog.engine),
+          period: Self::get_channel_period(channel, catalog.engine),
         };
 
         (channel.name.clone(), world)
@@ -85,7 +85,7 @@ impl LevelWorldAmbients {
   }
 
   /// `m_sound_dist`: OpenXRay's `sound_dist`, nearest first, which either key still overrides, else the two keys.
-  fn to_channel_distance(channel: &SoundChannel, engine: XrayEngine) -> [f32; 2] {
+  fn get_channel_distance(channel: &SoundChannel, engine: XrayEngine) -> [f32; 2] {
     if engine == XrayEngine::Vanilla && channel.has(SoundChannelKey::SoundDist) {
       let [a, b] = channel.get_vector::<2>(SoundChannelKey::SoundDist, engine);
       let mut distance: [f32; 2] = [a.min(b), a.max(b)];
@@ -110,7 +110,7 @@ impl LevelWorldAmbients {
   /// `m_sound_period` in milliseconds: OpenXRay's `sound_period` in seconds, four values (pre-Clear Sky) or two for
   /// both halves (Shadow of Chernobyl), each `period0`..`period3` written beside it overriding its value in seconds;
   /// else the four keys in milliseconds, as Call of Pripyat and Monolith write them.
-  fn to_channel_period(channel: &SoundChannel, engine: XrayEngine) -> [u32; 4] {
+  fn get_channel_period(channel: &SoundChannel, engine: XrayEngine) -> [u32; 4] {
     const KEYS: [SoundChannelKey; 4] = [
       SoundChannelKey::Period0,
       SoundChannelKey::Period1,
@@ -160,7 +160,7 @@ impl LevelWorldAmbients {
 
   /// One effect: its life in whole milliseconds as the engine floors it, and a blast only where `wind_blast_strength`
   /// is written, which otherwise stands at none from straight ahead.
-  fn to_world_effect(effect: &AmbientEffect, catalog: &EnvironmentCatalog) -> WorldAmbientEffect {
+  fn read_effect(effect: &AmbientEffect, catalog: &EnvironmentCatalog) -> WorldAmbientEffect {
     let engine: XrayEngine = catalog.engine;
     let wind_blast: WorldWindBlast = if effect.has(AmbientEffectKey::WindBlastStrength) {
       WorldWindBlast {
@@ -168,8 +168,8 @@ impl LevelWorldAmbients {
         longitude: effect
           .get_number(AmbientEffectKey::WindBlastLongitude, engine)
           .to_radians(),
-        in_time: Self::to_seconds(effect.get_number(AmbientEffectKey::WindBlastInTime, engine)),
-        out_time: Self::to_seconds(effect.get_number(AmbientEffectKey::WindBlastOutTime, engine)),
+        in_time: Self::get_ramp_duration(effect.get_number(AmbientEffectKey::WindBlastInTime, engine)),
+        out_time: Self::get_ramp_duration(effect.get_number(AmbientEffectKey::WindBlastOutTime, engine)),
       }
     } else {
       WorldWindBlast::default()
@@ -177,7 +177,7 @@ impl LevelWorldAmbients {
 
     WorldAmbientEffect {
       particles: effect.get_text(AmbientEffectKey::Particles, engine).to_owned(),
-      life_time: Self::to_milliseconds(effect.get_number(AmbientEffectKey::LifeTime, engine)),
+      life_time: Self::floor_milliseconds(effect.get_number(AmbientEffectKey::LifeTime, engine)),
       offset: effect.get_vector::<3>(AmbientEffectKey::Offset, engine),
       wind_gust_factor: effect.get_number(AmbientEffectKey::WindGustFactor, engine),
       wind_blast,
@@ -186,12 +186,12 @@ impl LevelWorldAmbients {
   }
 
   /// Seconds as the engine keeps them in whole milliseconds, `iFloor(seconds * 1000)`.
-  fn to_milliseconds(seconds: f32) -> Duration {
+  fn floor_milliseconds(seconds: f32) -> Duration {
     Duration::from_millis((seconds * 1000.0).floor().max(0.0) as u64)
   }
 
   /// Seconds of a wind blast's ramp, none for a negative or unreadable value.
-  fn to_seconds(seconds: f32) -> Duration {
+  fn get_ramp_duration(seconds: f32) -> Duration {
     if seconds.is_nan() {
       Duration::ZERO
     } else {

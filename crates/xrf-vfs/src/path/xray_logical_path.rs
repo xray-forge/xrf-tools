@@ -42,7 +42,7 @@ impl XrayLogicalPath {
 
   /// Converts this engine identity to a host path relative to a trusted root.
   pub fn to_host_relative_path(&self) -> PathBuf {
-    to_host_relative(&self.0)
+    resolve_host_relative(&self.0)
   }
 
   /// Appends a component below this path.
@@ -210,7 +210,7 @@ pub(crate) fn normalize_host_relative(path: &Path) -> XrfResult<String> {
 }
 
 /// Converts an engine identity into a host path relative to a source root.
-pub(crate) fn to_host_relative(logical_path: &str) -> PathBuf {
+pub(crate) fn resolve_host_relative(logical_path: &str) -> PathBuf {
   logical_path.split('\\').collect()
 }
 
@@ -229,7 +229,7 @@ pub(crate) fn join(prefix: &str, path: &str) -> XrfResult<String> {
 mod tests {
   use std::path::{Path, PathBuf};
 
-  use super::{XrayExtension, XrayLogicalPath, join, normalize, normalize_host_relative, to_host_relative};
+  use super::{XrayExtension, XrayLogicalPath, join, normalize, normalize_host_relative, resolve_host_relative};
 
   #[test]
   fn normalizes_case_and_separators() {
@@ -279,7 +279,7 @@ mod tests {
       Path::new("system.ltx")
     );
     assert_eq!(
-      normalize_host_relative(&to_host_relative("configs\\weapons\\ak74.ltx")).expect("valid"),
+      normalize_host_relative(&resolve_host_relative("configs\\weapons\\ak74.ltx")).expect("valid"),
       "configs\\weapons\\ak74.ltx",
       "crossing to a host path and back is lossless"
     );

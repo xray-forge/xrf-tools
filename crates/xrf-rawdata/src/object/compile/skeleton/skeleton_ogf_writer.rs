@@ -161,7 +161,7 @@ impl SkeletonOgfWriter {
     let vertices: Vec<OgfVertex> = split
       .vertices
       .iter()
-      .map(|vertex| Self::to_ogf_vertex(vertex, split.link_count))
+      .map(|vertex| Self::pack_ogf_vertex(vertex, split.link_count))
       .collect();
     let indices: Vec<u16> = split.faces.iter().flatten().copied().collect();
 
@@ -172,7 +172,7 @@ impl SkeletonOgfWriter {
 
   /// A vertex laid out in its split's `link_count` as `Save` lays it: bones strongest first, a two-link vertex
   /// storing the second bone's share of the two, padding repeating the first bone weightless.
-  fn to_ogf_vertex(vertex: &ExportVertex, link_count: u8) -> OgfVertex {
+  fn pack_ogf_vertex(vertex: &ExportVertex, link_count: u8) -> OgfVertex {
     let mut bones: Vec<ExportVertexBone> = vertex.bones.clone();
 
     // Strongest first, equals as they came: the export's `sort_by_weight` over a handful of bones.

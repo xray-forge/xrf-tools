@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::{Aabb, Vector3d};
-use xrf_utils::{format_path, to_format_size};
+use xrf_utils::{format_path, narrow_format_size};
 
 use crate::cform::level_cform_file::LevelCformHeader;
 use crate::snd_env::level_snd_env_face::LevelSndEnvFace;
@@ -146,8 +146,8 @@ impl LevelSndEnvFile {
 
     LevelCformHeader {
       version: self.version,
-      vertex_count: to_format_size(self.vertices.len(), "sound environment vertices")?,
-      face_count: to_format_size(self.faces.len(), "sound environment faces")?,
+      vertex_count: narrow_format_size(self.vertices.len(), "sound environment vertices")?,
+      face_count: narrow_format_size(self.faces.len(), "sound environment faces")?,
       bounds: self.bounds,
     }
     .write::<T>(&mut geometry)?;

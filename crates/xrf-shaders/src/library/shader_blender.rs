@@ -98,7 +98,7 @@ impl ShaderBlender {
   pub fn base_texture<'a>(&'a self, textures: &'a [String]) -> Option<&'a str> {
     let declared: &str = self.texture(Self::BASE_TEXTURE_MARKER, Self::TEXTURE_NAME_PROPERTY)?;
 
-    match Self::to_base_slot(declared) {
+    match Self::parse_base_slot(declared) {
       Some(slot) => textures.get(slot).map(String::as_str),
       None => Some(declared).filter(|name| !name.is_empty() && *name != Self::NULL_TEXTURE),
     }
@@ -108,7 +108,7 @@ impl ShaderBlender {
   ///
   /// `ParseName` compares against exactly `$base0` to `$base7` (`Layers/xrRender/Blender_Recorder.cpp`), so `$base8`,
   /// `$base01` or `$base+1` name a texture of that spelling rather than a slot.
-  fn to_base_slot(declared: &str) -> Option<usize> {
+  fn parse_base_slot(declared: &str) -> Option<usize> {
     match declared.strip_prefix(Self::BASE_SLOT_PREFIX)?.as_bytes() {
       [digit @ b'0'..=b'7'] => Some(usize::from(digit - b'0')),
       _ => None,

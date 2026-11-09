@@ -62,9 +62,9 @@ impl ReportingArguments {
 
   /// The two things a run needs of the four: where humans read it, and where machines do.
   pub(crate) fn of(matches: &ArgMatches) -> ReportingOptions {
-    let destination: ReportDestination = Self::to_destination(matches);
+    let destination: ReportDestination = Self::parse_destination(matches);
     let verbosity: OutputVerbosity =
-      Self::to_verbosity(matches.get_flag(Self::SILENT), matches.get_flag(Self::VERBOSE));
+      Self::get_verbosity(matches.get_flag(Self::SILENT), matches.get_flag(Self::VERBOSE));
     let output: OutputOptions = OutputOptions::new(
       Arc::new(TerminalOutput::new(destination.is_stdout_available())),
       verbosity,
@@ -93,7 +93,7 @@ impl ReportingArguments {
   }
 
   /// Where the run's report goes; clap has already refused an incompatible pair.
-  pub(super) fn to_destination(matches: &ArgMatches) -> ReportDestination {
+  pub(super) fn parse_destination(matches: &ArgMatches) -> ReportDestination {
     if matches.get_flag(Self::JSON) {
       ReportDestination::Stdout
     } else {
@@ -105,7 +105,7 @@ impl ReportingArguments {
 
   /// The verbosity the flags ask for. Silent wins; the contradictory pair never gets here, since
   /// [`Self::find_conflicting_selection`] refuses it.
-  pub(super) fn to_verbosity(is_silent: bool, is_verbose: bool) -> OutputVerbosity {
+  pub(super) fn get_verbosity(is_silent: bool, is_verbose: bool) -> OutputVerbosity {
     match (is_silent, is_verbose) {
       (true, _) => OutputVerbosity::Silent,
       (false, true) => OutputVerbosity::Verbose,

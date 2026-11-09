@@ -52,7 +52,7 @@ impl LtxVerifyReport {
         result
           .findings
           .iter()
-          .map(|finding| Self::to_finding(project, finding))
+          .map(|finding| Self::describe_finding(project, finding))
           .collect(),
       )]),
     }
@@ -64,7 +64,7 @@ impl LtxVerifyReport {
 
   /// One finding as the shared report holds it: the config to open as its subject, the section and field it is about
   /// leading its message.
-  fn to_finding(project: &LtxProject, finding: &LtxFinding) -> Finding {
+  fn describe_finding(project: &LtxProject, finding: &LtxFinding) -> Finding {
     let reported: LtxFinding = project.with_reported_paths(finding);
 
     Finding::new(

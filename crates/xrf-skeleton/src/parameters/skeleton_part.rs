@@ -1,7 +1,7 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{assert_length, to_format_size};
+use xrf_utils::{assert_length, narrow_format_size};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SkeletonPart {
@@ -50,7 +50,7 @@ impl ChunkReadWriteList for SkeletonPart {
   }
 
   fn write_list<T: ByteOrder>(writer: &mut ChunkWriter, parts: &[Self]) -> XrfResult {
-    writer.write_u16::<T>(to_format_size(parts.len(), "skeleton parts")?)?;
+    writer.write_u16::<T>(narrow_format_size(parts.len(), "skeleton parts")?)?;
 
     for part in parts {
       part
@@ -79,7 +79,7 @@ impl ChunkReadWrite for SkeletonPart {
 
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_w1251_string(&self.name)?;
-    writer.write_u16::<T>(to_format_size(self.bones.len(), "skeleton part bones")?)?;
+    writer.write_u16::<T>(narrow_format_size(self.bones.len(), "skeleton part bones")?)?;
 
     for (name, index) in &self.bones {
       writer.write_w1251_string(name)?;

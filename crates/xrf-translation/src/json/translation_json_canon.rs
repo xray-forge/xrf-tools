@@ -22,7 +22,11 @@ impl TranslationJsonCanon {
   /// # Errors
   ///
   /// Returns a serialization error when the document cannot be rendered as JSON.
-  pub(crate) fn to_bytes(subject: &str, document: &TranslationJson, line_endings: LineEndings) -> XrfResult<Vec<u8>> {
+  pub(crate) fn encode_document(
+    subject: &str,
+    document: &TranslationJson,
+    line_endings: LineEndings,
+  ) -> XrfResult<Vec<u8>> {
     let rendered: String = serde_json::to_string_pretty(document).map_err(|error| {
       XrfError::new_serialization_error(format!("Failed to serialize translation JSON '{subject}': {error}"))
     })?;

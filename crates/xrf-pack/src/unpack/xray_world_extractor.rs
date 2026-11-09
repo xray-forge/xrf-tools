@@ -5,7 +5,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{HostDestination, StagedFile, format_path};
 use xrf_vfs::{XrayAsset, XrayMountedEntry, XraySearch};
 
-use crate::path::{relative_to_prefix, to_host_relative};
+use crate::path::{parse_host_relative, relative_to_prefix};
 use crate::unpack::{
   ArchiveExtractDirectoryResult, ArchiveExtractOptions, ArchiveExtractResult, TreeEntry, TreeWriteSummary, TreeWriter,
 };
@@ -59,7 +59,7 @@ impl XrayWorldExtractor {
       .map(|(entry, relative)| {
         Ok(TreeEntry {
           source: entry,
-          relative: to_host_relative(&relative)?,
+          relative: parse_host_relative(&relative)?,
           is_directory: false,
         })
       })

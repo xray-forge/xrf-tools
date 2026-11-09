@@ -64,23 +64,23 @@ impl ParticleBlend {
   pub(crate) fn get_blend_state(self) -> wgpu::BlendState {
     wgpu::BlendState {
       color: self.get_component(),
-      alpha: Self::to_component(wgpu::BlendFactor::Zero, wgpu::BlendFactor::One),
+      alpha: Self::compose_component(wgpu::BlendFactor::Zero, wgpu::BlendFactor::One),
     }
   }
 
   /// The equation by its source and destination factors, added.
   pub(crate) fn get_component(self) -> wgpu::BlendComponent {
     match self {
-      Self::Opaque | Self::CutOut => Self::to_component(wgpu::BlendFactor::One, wgpu::BlendFactor::Zero),
-      Self::Blend => Self::to_component(wgpu::BlendFactor::SrcAlpha, wgpu::BlendFactor::OneMinusSrcAlpha),
-      Self::Add => Self::to_component(wgpu::BlendFactor::One, wgpu::BlendFactor::One),
-      Self::AlphaAdd => Self::to_component(wgpu::BlendFactor::SrcAlpha, wgpu::BlendFactor::One),
-      Self::Multiply => Self::to_component(wgpu::BlendFactor::Dst, wgpu::BlendFactor::Zero),
-      Self::MultiplyDoubled => Self::to_component(wgpu::BlendFactor::Dst, wgpu::BlendFactor::Src),
+      Self::Opaque | Self::CutOut => Self::compose_component(wgpu::BlendFactor::One, wgpu::BlendFactor::Zero),
+      Self::Blend => Self::compose_component(wgpu::BlendFactor::SrcAlpha, wgpu::BlendFactor::OneMinusSrcAlpha),
+      Self::Add => Self::compose_component(wgpu::BlendFactor::One, wgpu::BlendFactor::One),
+      Self::AlphaAdd => Self::compose_component(wgpu::BlendFactor::SrcAlpha, wgpu::BlendFactor::One),
+      Self::Multiply => Self::compose_component(wgpu::BlendFactor::Dst, wgpu::BlendFactor::Zero),
+      Self::MultiplyDoubled => Self::compose_component(wgpu::BlendFactor::Dst, wgpu::BlendFactor::Src),
     }
   }
 
-  fn to_component(src_factor: wgpu::BlendFactor, dst_factor: wgpu::BlendFactor) -> wgpu::BlendComponent {
+  fn compose_component(src_factor: wgpu::BlendFactor, dst_factor: wgpu::BlendFactor) -> wgpu::BlendComponent {
     wgpu::BlendComponent {
       src_factor,
       dst_factor,

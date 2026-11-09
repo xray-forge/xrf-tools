@@ -196,7 +196,7 @@ impl WorldLevelSource for LevelRenderSource {
   /// The level's session: every source of one opening shares a scene, its next snapshots' included, and a level opened
   /// again streams afresh.
   fn get_scene_key(&self) -> Option<String> {
-    Some(LevelRenderParts::to_scene_key(self.level.session_id))
+    Some(LevelRenderParts::format_scene_key(self.level.session_id))
   }
 
   fn pack_sector(&self, sector: u32) -> XrfResult<SectorPackage> {

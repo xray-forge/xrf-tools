@@ -118,7 +118,7 @@ impl ViewTraceFeature {
       .iter()
       .map(|swaying| {
         let slot: TraceSwaySlot = TraceSwaySlot {
-          to_local: StaticTraceGroup::to_matrix(&swaying.transform).inverse(),
+          to_local: StaticTraceGroup::unpack_transform(&swaying.transform).inverse(),
           vertex_start: swaying.geometry.vertex_start,
           vertex_count: swaying.geometry.vertex_count,
           place: swaying.place,

@@ -5,7 +5,7 @@ use std::path::Path;
 
 use xrf_error::XrfResult;
 
-use crate::path::{XrayLogicalPath, is_component_prefix, normalize, normalize_host_relative, to_host_relative};
+use crate::path::{XrayLogicalPath, is_component_prefix, normalize, normalize_host_relative, resolve_host_relative};
 use crate::source::directory::{DirectoryAssetIndex, IndexedAsset};
 use crate::{XrayCollisionSite, XrayPathCollision};
 
@@ -95,7 +95,7 @@ impl XrayAssetIndex {
         continue;
       }
 
-      let index: usize = next.directory.push(to_host_relative(&logical_path));
+      let index: usize = next.directory.push(resolve_host_relative(&logical_path));
 
       next.assets.insert(logical_path, index);
     }

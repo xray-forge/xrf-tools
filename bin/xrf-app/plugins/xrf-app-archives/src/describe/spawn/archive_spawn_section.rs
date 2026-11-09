@@ -21,14 +21,14 @@ impl ArchiveSpawnSection {
       .iter()
       .map(|(id, size)| Self {
         id: *id,
-        label: Self::to_label(*id).map(ToOwned::to_owned),
+        label: Self::find_label(*id).map(ToOwned::to_owned),
         size: *size,
       })
       .collect()
   }
 
   /// The name the format gives a section id.
-  const fn to_label(id: u32) -> Option<&'static str> {
+  const fn find_label(id: u32) -> Option<&'static str> {
     match id {
       SpawnHeaderChunk::CHUNK_ID => Some("Header"),
       SpawnALifeSpawnsChunk::CHUNK_ID => Some("ALife objects"),

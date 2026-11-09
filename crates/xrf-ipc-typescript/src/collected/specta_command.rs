@@ -1,5 +1,5 @@
 use specta::datatype::Function;
-use xrf_utils::to_camel_case;
+use xrf_utils::format_camel_case;
 
 /// One typed command as Tauri Specta exports it: its wire name, and its arguments named as the wrapper names them.
 #[derive(Clone, Debug)]
@@ -14,7 +14,11 @@ impl From<&Function> for SpectaCommand {
   fn from(function: &Function) -> Self {
     Self {
       name: function.name().to_string(),
-      arguments: function.args().iter().map(|(name, _)| to_camel_case(name)).collect(),
+      arguments: function
+        .args()
+        .iter()
+        .map(|(name, _)| format_camel_case(name))
+        .collect(),
     }
   }
 }

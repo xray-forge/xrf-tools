@@ -1,7 +1,7 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::to_format_size;
+use xrf_utils::narrow_format_size;
 
 /// The chunk handling every container of an editable object shares: one framed child at a time on write, and on read
 /// each child either folded into a field or kept as it was stored.
@@ -30,7 +30,7 @@ impl EditableChunks {
     write: impl Fn(&I, &mut ChunkWriter) -> XrfResult,
   ) -> XrfResult {
     for (index, item) in items.iter().enumerate() {
-      Self::write::<T>(destination, to_format_size(index, "Numbered chunk")?, |writer| {
+      Self::write::<T>(destination, narrow_format_size(index, "Numbered chunk")?, |writer| {
         write(item, writer)
       })?;
     }
@@ -98,7 +98,7 @@ impl EditableChunks {
     records: &[R],
     what: &str,
   ) -> XrfResult {
-    writer.write_u32::<T>(to_format_size(records.len(), what)?)?;
+    writer.write_u32::<T>(narrow_format_size(records.len(), what)?)?;
 
     for record in records {
       record.write::<T>(writer)?;

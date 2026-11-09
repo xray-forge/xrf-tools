@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_ltx::{FileImportExport, Ltx, LtxRecordWriter};
-use xrf_utils::{assert_length, to_format_size};
+use xrf_utils::{assert_length, narrow_format_size};
 
 use crate::data::patrols::patrol::Patrol;
 
@@ -49,7 +49,7 @@ impl ChunkReadWrite for SpawnPatrolsChunk {
     let mut meta_writer: ChunkWriter = ChunkWriter::new();
     let mut data_writer: ChunkWriter = ChunkWriter::new();
 
-    meta_writer.write_u32::<T>(to_format_size(self.patrols.len(), "spawn patrols")?)?;
+    meta_writer.write_u32::<T>(narrow_format_size(self.patrols.len(), "spawn patrols")?)?;
     data_writer.write_xr_list::<T, _>(&self.patrols)?;
 
     writer.write_all(

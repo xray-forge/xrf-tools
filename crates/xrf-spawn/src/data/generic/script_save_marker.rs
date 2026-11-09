@@ -1,7 +1,7 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::to_format_size;
+use xrf_utils::narrow_format_size;
 
 /// The check a script server class closes its own fields with: a `u16` counting the bytes written since the marker
 /// opened (`set_save_marker` in vanilla scripts, `closeSaveMarker` in xrf-engine). Both loaders assert it, so it is
@@ -22,7 +22,7 @@ impl ScriptSaveMarker {
     let opened: usize = writer.bytes_written();
 
     write(writer)?;
-    writer.write_u16::<T>(to_format_size(writer.bytes_written() - opened, owner)?)?;
+    writer.write_u16::<T>(narrow_format_size(writer.bytes_written() - opened, owner)?)?;
 
     Ok(())
   }

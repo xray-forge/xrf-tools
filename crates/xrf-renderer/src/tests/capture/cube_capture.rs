@@ -46,7 +46,7 @@ fn faces(plan: &CapturePlan) -> Vec<CubeFace> {
 
 /// The engine-space direction a face sees through the point `(u, v)` of its picture, each from -1 to 1, `u` right
 /// and `v` down.
-fn to_direction(face: &CubeFace, u: f32, v: f32) -> Vec3 {
+fn get_direction(face: &CubeFace, u: f32, v: f32) -> Vec3 {
   let inverse: Mat4 = face.get_view().get_view_projection().inverse();
   let point: Vec4 = inverse * Vec4::new(u, -v, 0.5, 1.0);
 
@@ -69,7 +69,7 @@ fn faces_look_down_the_engine_axes_as_a_cube_texture_lays_them() -> XrfResult {
 
   for (face, expected) in faces(&plan).iter().zip(expected) {
     for (u, v) in [(0.0, 0.0), (0.9, 0.0), (0.0, 0.9), (-0.5, 0.7)] {
-      let seen: Vec3 = to_direction(face, u, v);
+      let seen: Vec3 = get_direction(face, u, v);
 
       assert!(
         seen.abs_diff_eq(expected(u, v).normalize(), 1e-4),

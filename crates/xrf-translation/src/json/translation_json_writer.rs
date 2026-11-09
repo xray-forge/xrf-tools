@@ -47,7 +47,7 @@ impl TranslationJsonWriter {
 
     Self::edit(&mut parsed, language, edits);
 
-    TranslationJsonCanon::to_bytes(
+    TranslationJsonCanon::encode_document(
       subject,
       &parsed,
       TranslationJsonCanon::resolve_line_endings(None, Some(existing)),

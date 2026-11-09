@@ -5,7 +5,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{format_path, to_format_size};
+use xrf_utils::{format_path, narrow_format_size};
 
 use crate::environment::sound_environment::SoundEnvironment;
 
@@ -104,7 +104,10 @@ impl SoundEnvironmentFile {
       let mut chunk: ChunkWriter = ChunkWriter::new();
 
       environment.write::<T>(&mut chunk)?;
-      chunk.flush_chunk_into::<T>(&mut writer.buffer, to_format_size(index, "sound environment chunk")?)?;
+      chunk.flush_chunk_into::<T>(
+        &mut writer.buffer,
+        narrow_format_size(index, "sound environment chunk")?,
+      )?;
     }
 
     Ok(())

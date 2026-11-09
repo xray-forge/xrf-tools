@@ -1,4 +1,4 @@
-use xrf_utils::to_camel_case;
+use xrf_utils::format_camel_case;
 
 /// The names a plugin's generated modules declare, spelled in one place so a module and the merged signatures that
 /// import it cannot disagree.
@@ -11,7 +11,7 @@ pub(crate) struct PluginSymbols {
 
 impl PluginSymbols {
   pub(crate) fn new(plugin: &str) -> Self {
-    let camel: String = to_camel_case(plugin);
+    let camel: String = format_camel_case(plugin);
     let mut characters = camel.chars();
     let pascal: String = characters
       .next()
@@ -73,7 +73,7 @@ impl PluginSymbols {
 
   /// A wrapper's key for the command or route `name` (`open_level` is `openLevel`).
   pub(crate) fn wrapper(name: &str) -> String {
-    to_camel_case(name)
+    format_camel_case(name)
   }
 }
 

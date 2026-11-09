@@ -103,12 +103,12 @@ fn seeks_while_playing_and_while_held() {
   // on from the frame the transport reports.
   let deadline: Instant = Instant::now() + Duration::from_secs(2);
 
-  while to_frame(state(&mut transport, &engine).position) <= 14_400 && Instant::now() < deadline {
+  while get_frame(state(&mut transport, &engine).position) <= 14_400 && Instant::now() < deadline {
     render.render(256);
     std::thread::sleep(Duration::from_millis(1));
   }
 
-  let at: i64 = to_frame(state(&mut transport, &engine).position);
+  let at: i64 = get_frame(state(&mut transport, &engine).position);
   let out: Vec<f32> = render.render(256);
 
   assert!(at > 14_400 && at < 16_000, "{at}");
@@ -173,6 +173,6 @@ fn loops_while_asked_and_stops_back_at_the_start() {
   assert!(render.render(256).iter().all(|sample| *sample == 0.0));
 }
 
-fn to_frame(position: Duration) -> i64 {
+fn get_frame(position: Duration) -> i64 {
   (position.as_secs_f64() * f64::from(RATE)).round() as i64
 }

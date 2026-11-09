@@ -15,5 +15,6 @@ pub use encoding::{
 pub use line_endings::LineEndings;
 pub use natural_order::natural_cmp;
 pub use strings::{
-  error_to_string, read_engine_integer, to_camel_case, vector_from_string, vector_from_string_sized, vector_to_string,
+  error_to_string, format_camel_case, read_engine_integer, vector_from_string, vector_from_string_sized,
+  vector_to_string,
 };

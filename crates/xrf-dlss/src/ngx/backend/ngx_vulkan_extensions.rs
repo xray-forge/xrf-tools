@@ -108,7 +108,7 @@ impl NgxVulkanExtensions {
         "NGX names no instance extensions",
       )?;
 
-      Ok(Self::to_names(extensions, count))
+      Ok(Self::list_names(extensions, count))
     })
   }
 
@@ -138,7 +138,7 @@ impl NgxVulkanExtensions {
         "NGX names no device extensions",
       )?;
 
-      Ok(Self::to_names(extensions, count))
+      Ok(Self::list_names(extensions, count))
     })
   }
 
@@ -156,7 +156,7 @@ impl NgxVulkanExtensions {
   /// # Safety
   ///
   /// `extensions` is `count` extensions NGX returned.
-  unsafe fn to_names(extensions: *mut ash::vk::ExtensionProperties, count: u32) -> Vec<&'static CStr> {
+  unsafe fn list_names(extensions: *mut ash::vk::ExtensionProperties, count: u32) -> Vec<&'static CStr> {
     if count == 0 {
       return Vec::new();
     }

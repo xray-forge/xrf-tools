@@ -22,7 +22,7 @@ impl LtxTextReader {
     match Ltx::read_document_from_str_preserving_source(contents) {
       Ok(document) => LtxFileText {
         is_normalized: true,
-        lines: Self::to_lines(&document, contents),
+        lines: Self::list_lines(&document, contents),
         path: String::from(path),
       },
       Err(_) => LtxFileText {
@@ -68,7 +68,7 @@ impl LtxTextReader {
   ///
   /// The document holds no blank-line statement - a gap between consecutive spans is the blank run - so the lines are
   /// rebuilt by position rather than by iteration order.
-  fn to_lines(document: &LtxDocument, contents: &str) -> Vec<String> {
+  fn list_lines(document: &LtxDocument, contents: &str) -> Vec<String> {
     let mut lines: Vec<String> = Vec::with_capacity(Self::count_lines(contents));
 
     for (item, source) in document.get_items().iter().zip(document.get_source_lines()) {

@@ -30,7 +30,7 @@ impl LevelSceneFollower {
     let step: SceneStep = match &change.root {
       SessionRootChange::Kept | SessionRootChange::Derived if change.is_view_renewed => SceneStep::Afresh,
       SessionRootChange::Kept | SessionRootChange::Derived => {
-        SceneStep::Reload(LevelRenderParts::to_reload(&change.stale_parts))
+        SceneStep::Reload(LevelRenderParts::select_reload(&change.stale_parts))
       }
       SessionRootChange::Deriving => {
         LevelReport::follow_deriving(&shown.get_level().source);
@@ -52,7 +52,7 @@ impl LevelSceneFollower {
     else {
       return;
     };
-    let key: String = LevelRenderParts::to_scene_key(change.session_id);
+    let key: String = LevelRenderParts::format_scene_key(change.session_id);
     let source: Arc<LevelRenderSource> = match step {
       SceneStep::Afresh => Arc::new(self.shown.build_source(next, assets)),
       SceneStep::Reload(_) => Arc::new(shown.follow(next)),

@@ -137,8 +137,8 @@ impl SceneAcoustics {
     let mut report: AudioAcousticsReport = AudioAcousticsReport {
       failure: self.failure.clone(),
       reverb_times: self.latest.reverb_times,
-      direct_ms: Self::to_ms(self.latest.direct_time),
-      reflections_ms: Self::to_ms(self.latest.reflections_time),
+      direct_ms: Self::get_milliseconds(self.latest.direct_time),
+      reflections_ms: Self::get_milliseconds(self.latest.reflections_time),
       ..AudioAcousticsReport::default()
     };
     let is_running: bool = self.failure.is_none();
@@ -150,7 +150,7 @@ impl SceneAcoustics {
       SceneGeometryState::Absent | SceneGeometryState::Building => {}
       SceneGeometryState::Ready { triangles, build_time } => {
         report.triangles = Some(*triangles);
-        report.build_ms = Self::to_ms(*build_time);
+        report.build_ms = Self::get_milliseconds(*build_time);
       }
       SceneGeometryState::Failed(reason) => report.geometry_failure = Some(reason.clone()),
     }
@@ -158,7 +158,7 @@ impl SceneAcoustics {
     report
   }
 
-  fn to_ms(time: Duration) -> f32 {
+  fn get_milliseconds(time: Duration) -> f32 {
     time.as_secs_f32() * 1000.0
   }
 }

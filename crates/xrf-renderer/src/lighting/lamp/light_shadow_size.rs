@@ -27,7 +27,7 @@ pub(crate) const LIGHT_SHADOW_POINT_FACES: [(Vec3, Vec3); 6] = [
 /// `compute_xf_spot`'s map size, in texels: larger for a light nearer, brighter, facing the camera, longer and wider.
 ///
 /// `distance` is the eye's to the light's spatial sphere; `duel` how far a spot faces the camera, one for a point.
-pub(crate) fn to_light_shadow_size(range: f32, distance: f32, intensity: f32, duel: f32, cone: f32) -> f32 {
+pub(crate) fn get_light_shadow_size(range: f32, distance: f32, intensity: f32, duel: f32, cone: f32) -> f32 {
   let area: f32 = (range * range / (1.0 + distance * distance)).clamp(0.0, 1.0);
   let factor: f32 = area.sqrt()
     * intensity.max(0.0).powf(1.0 / 16.0)
@@ -41,13 +41,13 @@ pub(crate) fn to_light_shadow_size(range: f32, distance: f32, intensity: f32, du
 }
 
 /// The square a face is asked at: the power of two nearest its size, between the least and the largest a face takes.
-pub(crate) fn to_light_shadow_tile_size(size: f32) -> u32 {
+pub(crate) fn get_light_shadow_tile_size(size: f32) -> u32 {
   let side: u32 = 1 << size.max(1.0).log2().round() as u32;
 
   side.clamp(LIGHT_SHADOW_MIN_SIZE, LIGHT_SHADOW_MAX_TILE)
 }
 
 /// What a view coordinate over its depth is scaled by to reach a face's clip space: `cot` of half the widened cone.
-pub(crate) fn to_light_shadow_scale(cone: f32) -> f32 {
+pub(crate) fn get_light_shadow_scale(cone: f32) -> f32 {
   1.0 / f32::midpoint(cone, LIGHT_SHADOW_WIDENING).tan()
 }

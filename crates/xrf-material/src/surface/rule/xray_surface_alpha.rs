@@ -14,7 +14,7 @@ impl XraySurfaceAlpha {
   pub(crate) fn read(blender: &ShaderBlender, switch: Option<&str>, reference: Option<(&str, u8)>) -> Self {
     Self {
       is_used: switch.map(|property| blender.boolean(property).unwrap_or(false)),
-      reference: reference.map(|(property, default)| blender.integer(property).map_or(default, Self::to_reference)),
+      reference: reference.map(|(property, default)| blender.integer(property).map_or(default, Self::clamp_reference)),
       is_strict_sorting: blender.is_strict_sorting(),
     }
   }
@@ -25,7 +25,7 @@ impl XraySurfaceAlpha {
   }
 
   /// The authored reference as a render state value.
-  fn to_reference(authored: i32) -> u8 {
+  fn clamp_reference(authored: i32) -> u8 {
     authored.clamp(0, i32::from(u8::MAX)) as u8
   }
 }

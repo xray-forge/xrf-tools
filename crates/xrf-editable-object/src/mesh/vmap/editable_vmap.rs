@@ -1,7 +1,7 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{assert_count_fits, to_format_size};
+use xrf_utils::{assert_count_fits, narrow_format_size};
 
 use crate::EditableVMapKind;
 
@@ -119,7 +119,7 @@ impl ChunkReadWrite for EditableVMap {
     writer.write_u8(self.dimension)?;
     writer.write_u8(u8::from(self.polygon_indices.is_some()))?;
     writer.write_u8(u8::from(self.kind))?;
-    writer.write_u32::<T>(to_format_size(self.get_count(), "Vertex map entries")?)?;
+    writer.write_u32::<T>(narrow_format_size(self.get_count(), "Vertex map entries")?)?;
 
     for value in &self.values {
       writer.write_f32::<T>(*value)?;

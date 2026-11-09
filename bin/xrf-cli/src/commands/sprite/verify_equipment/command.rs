@@ -26,7 +26,7 @@ impl VerifyEquipmentCommand {
   const RULE_LTX: &'static str = "equipment.ltx";
 
   /// What two overlapping rects are found as: the pair is the subject, the cells they share the message.
-  fn to_finding(overlap: &EquipmentGridOverlap) -> Finding {
+  fn describe_finding(overlap: &EquipmentGridOverlap) -> Finding {
     Finding::new(
       RuleId::of_static(Self::RULE_OVERLAP),
       Some(format!("{} / {}", overlap.first, overlap.second)),
@@ -76,7 +76,7 @@ impl GenericCommand for VerifyEquipmentCommand {
     {
       Ok(ltx) => EquipmentGridVerifier::find_overlaps(&ltx)
         .iter()
-        .map(Self::to_finding)
+        .map(Self::describe_finding)
         .collect(),
       Err(error @ XrfError::Io { .. }) => return Err(error.into()),
       Err(error) => vec![Finding::new(

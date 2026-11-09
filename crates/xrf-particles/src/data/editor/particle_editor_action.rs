@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
-use xrf_utils::to_format_size;
+use xrf_utils::narrow_format_size;
 
 use crate::data::editor::particle_editor_action_compiler::ParticleEditorActionCompiler;
 use crate::data::editor::particle_editor_domain::ParticleEditorDomain;
@@ -244,7 +244,7 @@ impl ChunkReadWriteList for ParticleEditorAction {
   }
 
   fn write_list<T: ByteOrder>(writer: &mut ChunkWriter, list: &[Self]) -> XrfResult {
-    writer.write_u32::<T>(to_format_size(list.len(), "particle editor actions")?)?;
+    writer.write_u32::<T>(narrow_format_size(list.len(), "particle editor actions")?)?;
 
     for action in list {
       writer.write_xr::<T, _>(action)?;

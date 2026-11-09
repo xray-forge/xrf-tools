@@ -1,7 +1,7 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{assert_length, to_format_size};
+use xrf_utils::{assert_length, narrow_format_size};
 
 use crate::parameters::{SkeletonMotionFlag, SkeletonMotionMark};
 
@@ -173,7 +173,7 @@ impl SkeletonMotionDefinition {
   }
 
   pub fn write_list<T: ByteOrder>(writer: &mut ChunkWriter, definitions: &[Self], version: u16) -> XrfResult {
-    writer.write_u16::<T>(to_format_size(definitions.len(), "skeleton motion definitions")?)?;
+    writer.write_u16::<T>(narrow_format_size(definitions.len(), "skeleton motion definitions")?)?;
 
     for definition in definitions {
       definition
@@ -195,7 +195,7 @@ impl SkeletonMotionDefinition {
     writer.write_f32::<T>(self.falloff)?;
 
     if version >= Self::MARKS_VERSION {
-      writer.write_u32::<T>(to_format_size(self.marks.len(), "skeleton motion marks")?)?;
+      writer.write_u32::<T>(narrow_format_size(self.marks.len(), "skeleton motion marks")?)?;
 
       for mark in &self.marks {
         mark.write::<T>(writer).map_err(|error| {
