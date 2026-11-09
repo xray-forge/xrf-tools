@@ -35,14 +35,16 @@ pub struct EditableLightObject {
   pub cone: f32,
   pub virtual_size: f32,
   pub use_in_d3d: bool,
-  /// [`Self::AFFECT_STATIC`], [`Self::AFFECT_DYNAMIC`], [`Self::PROCEDURAL`] and [`Self::POINT_FUZZY`].
+  /// [`Self::AFFECT_STATIC`], [`Self::AFFECT_DYNAMIC`], [`Self::PROCEDURAL`] and any bit the editor does not name,
+  /// without [`Self::POINT_FUZZY`]: [`Self::fuzzy`] stands for it, so a fuzzy flag without points (which `LoadLTX`
+  /// would fail on) cannot be written.
   pub flags: u32,
   /// The light control it answers to, by its index in the light tool's `[lcontrols]`.
   pub control: u32,
   /// The light animation it plays, empty for none.
   pub animation: String,
   pub falloff_texture: String,
-  /// Present exactly when [`Self::POINT_FUZZY`] is set.
+  /// The points of a fuzzy point light, saved with [`Self::POINT_FUZZY`] in its flags.
   pub fuzzy: Option<EditableLightFuzzy>,
 }
 
@@ -58,6 +60,15 @@ impl EditableLightObject {
   pub const PROCEDURAL: u32 = 1 << 2;
   /// `ELight::flPointFuzzy`: spread over [`Self::fuzzy`]'s points.
   pub const POINT_FUZZY: u32 = 1 << 4;
+
+  /// The flags as the editor saves them, [`Self::POINT_FUZZY`] set for a light holding fuzzy points.
+  pub fn get_saved_flags(&self) -> u32 {
+    if self.fuzzy.is_some() {
+      self.flags | Self::POINT_FUZZY
+    } else {
+      self.flags
+    }
+  }
 
   fn read_fuzzy(section: &IniSection) -> XrfResult<EditableLightFuzzy> {
     let count: u32 = EditableLevelValue::read_u32(section, "fuzzy_point_count")?;
@@ -130,7 +141,7 @@ impl EditableToolObject for EditableLightObject {
       cone: section.get_parsed::<f32>("cone")?,
       virtual_size: section.get_parsed::<f32>("virtual_size")?,
       use_in_d3d: EditableLevelValue::read_bool(section, "use_in_d3d")?,
-      flags,
+      flags: flags & !Self::POINT_FUZZY,
       control: EditableLevelValue::read_u32(section, "light_control")?,
       animation: section.get_required("anim_ref_name")?.to_owned(),
       falloff_texture: section.get_required("fallof_texture")?.to_owned(),
@@ -171,7 +182,7 @@ impl EditableToolObject for EditableLightObject {
     section.set("cone", EditableLevelValue::format_f32(self.cone));
     section.set("virtual_size", EditableLevelValue::format_f32(self.virtual_size));
     section.set("use_in_d3d", EditableLevelValue::format_bool(self.use_in_d3d));
-    section.set("light_flags", EditableLevelValue::format_u32(self.flags));
+    section.set("light_flags", EditableLevelValue::format_u32(self.get_saved_flags()));
     section.set("light_control", EditableLevelValue::format_u32(self.control));
     section.set("anim_ref_name", self.animation.clone());
     section.set("fallof_texture", self.falloff_texture.clone());

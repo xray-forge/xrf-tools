@@ -77,7 +77,7 @@ An object tool's part reads as an `EditableObjectPart<T>`: the GUID, `[main]`'s 
 `[modif]`, and the objects `[object_N]` numbers. Each object is an `EditableToolObject` that reads its sections and
 writes them as the editor's `SaveLTX` does, and names its tool's class, part name (`ClassName`), `[main]` version and
 the key it is under (`version`, or the glow tool's `glow_tool_version`), and whether it keeps flags. A part refuses what the tool's `LoadLTX` refuses: another version, missing flags where the tool
-keeps them, an object of another class. What a tool saves beyond that is kept as stored in the part's `tool`: the
+keeps them, an object of another class. What a tool saves beyond that is kept as stored in the part's `tool_data`: the
 light tool's `sun_shadow_dir`, `lcontrol_last_idx` and `[lcontrols]`.
 
 | Type                             | Editor              | Holds                                                                              |
