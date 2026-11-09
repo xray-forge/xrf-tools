@@ -26,12 +26,12 @@ impl GenericCommand for DecompileCommand {
       .about(
         "Decompile a compiled level's directory into an SDK Level Editor scene (.level and its parts), with a \
          .level.xrf.json provenance sidecar beside it. The scene holds the parts the build passes through (particles, \
-         sounds, sound environments, fog volumes, wall marks, patrol paths, respawn points and environment modifiers); \
-         no geometry yet",
+         sounds, sound environments, fog volumes, wall marks, patrol paths, respawn points and environment modifiers) \
+         and the level's glows; no geometry yet",
       )
       .arg(
         Arg::new("path")
-          .help("Path to the level's directory, holding level.game, level.ps_static and the rest")
+          .help("Path to the level's directory, holding level, level.game, level.ps_static and the rest")
           .short('p')
           .long("path")
           .required(true)

@@ -41,7 +41,7 @@ impl<T: EditableToolObject> EditableObjectPart<T> {
   /// an object needs is missing or malformed.
   pub fn read_from_text_part(part: &EditableTextPart) -> XrfResult<Self> {
     let header: EditablePartHeader = part
-      .get_header()?
+      .get_header(T::TOOL_VERSION_KEY)?
       .ok_or_else(|| XrfError::new_parsing_error(format!("Part has no section [{}]", EditablePartHeader::SECTION)))?;
 
     if header.version != T::TOOL_VERSION || (T::KEEPS_FLAGS && header.flags.is_none()) {
@@ -97,7 +97,7 @@ impl<T: EditableToolObject> EditableObjectPart<T> {
         .map_err(|_| XrfError::new_invalid_error(format!("Part holds {} objects", self.objects.len())))?,
       flags: self.flags,
     }
-    .write_to_section(ini.section_mut(EditablePartHeader::SECTION));
+    .write_to_section(ini.section_mut(EditablePartHeader::SECTION), T::TOOL_VERSION_KEY);
     self
       .modification
       .write_to_section(ini.section_mut(EditablePartModification::SECTION));

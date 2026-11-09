@@ -41,6 +41,8 @@ pub enum LevelSceneInference {
   SoundSourceDistances,
   /// The wall mark tool takes a new tool's brush, and each decal the brush's size and turn.
   WallmarkBrush,
+  /// Glows stand unturned with no fixed-size flag, which the compiled level does not keep.
+  GlowTransformsAndFlags,
   /// The spawn part holds no entity: `level.spawn` is not decompiled yet.
   EntitiesNotDecompiled,
 }
