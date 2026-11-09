@@ -8,7 +8,8 @@ use crate::level::editable_level_guid::EditableLevelGuid;
 /// map, the detail objects and the wall marks. The file is the scene's GUID under [`Self::GUID_CHUNK_ID`] and the
 /// tool's own stream under [`Self::DATA_CHUNK_ID`] plus its class id, as `EScene::LoadLevelPart` finds them.
 ///
-/// The tool's stream is kept as its bytes: what each tool writes into it is read where that tool is converted.
+/// The tool's stream is kept as its bytes, read by the tool's own type where one exists (`EditableWallmarkTool`) and
+/// otherwise where that tool is converted.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EditableBinaryPart {
   pub guid: EditableLevelGuid,
