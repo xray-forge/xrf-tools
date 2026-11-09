@@ -109,6 +109,7 @@ fn decompile(directory: &Path) -> XrfResult<LevelSceneDecompile> {
       name: String::from("test_level"),
       tool: String::from("test"),
       tool_version: String::from("1.0.0"),
+      root_spawn: None,
     },
   )
 }

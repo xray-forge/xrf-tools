@@ -70,6 +70,43 @@ pub struct LevelSceneRefusal {
   pub reason: String,
 }
 
+/// The root spawn a scene's entities were decompiled from (decision 10): taken for the level it holds in place of
+/// `level.spawn`'s entities, with what the two disagree on and what the scene cannot carry.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LevelSceneRootSpawn {
+  /// Its path as given, such as `../../spawns/all.spawn`.
+  pub file: String,
+  /// Its SHA-256, lowercase hex.
+  pub sha256: String,
+  /// Its objects standing on the level, which the scene takes; none where it does not hold the level, whose entities
+  /// then come from `level.spawn`.
+  pub objects: usize,
+  /// Its objects of the whole spawn that did not read, on whichever level they stand, which cannot be told.
+  pub unread: usize,
+  pub disagreements: Vec<LevelSceneDisagreement>,
+  pub update_packets: Vec<LevelSceneUpdatePacket>,
+}
+
+/// An object the root spawn and `level.spawn` disagree on, past the fields xrAI fills in.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LevelSceneDisagreement {
+  pub object: String,
+  /// What differs: only one of the two holds it, or their spawn packets differ.
+  pub reason: String,
+}
+
+/// An object's update packet as the root spawn stores it, where it differs from the one a fresh entity read from its
+/// spawn packet holds: the scene keeps the spawn packet alone, so this is what a root spawn rebuilt from it would lose.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LevelSceneUpdatePacket {
+  pub object: String,
+  /// The packet's bytes past its length and `M_UPDATE`, lowercase hex.
+  pub bytes: String,
+}
+
 /// The sidecar written beside a decompiled scene, `<name>.level.xrf.json` (decision 22): the compiled files it came
 /// from, what made it and when, every file it wrote and from what, and what in it was chosen rather than read.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -86,22 +123,16 @@ pub struct LevelSceneProvenance {
   pub files: Vec<LevelSceneFile>,
   pub inferred: Vec<LevelSceneInference>,
   pub refused: Vec<LevelSceneRefusal>,
+  /// The root spawn read, where one was given.
+  pub root_spawn: Option<LevelSceneRootSpawn>,
 }
 
 impl LevelSceneProvenance {
   /// What the sidecar's name adds to its scene's main file's, `<name>.level.xrf.json`.
   pub const SIDECAR_SUFFIX: &'static str = Sidecar::SUFFIX;
 
-  /// The provenance of a scene of `level` decompiled now by `tool`.
-  pub fn new(
-    level: impl Into<String>,
-    tool: impl Into<String>,
-    tool_version: impl Into<String>,
-    sources: Vec<LevelSceneSource>,
-    files: Vec<LevelSceneFile>,
-    inferred: Vec<LevelSceneInference>,
-    refused: Vec<LevelSceneRefusal>,
-  ) -> Self {
+  /// The provenance of a scene of `level` decompiled now by `tool`, recording no source, file or finding yet.
+  pub fn new(level: impl Into<String>, tool: impl Into<String>, tool_version: impl Into<String>) -> Self {
     Self {
       level: level.into(),
       tool: tool.into(),
@@ -109,10 +140,11 @@ impl LevelSceneProvenance {
       decompiled_at: SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_or(0, |elapsed| elapsed.as_secs()),
-      sources,
-      files,
-      inferred,
-      refused,
+      sources: Vec::new(),
+      files: Vec::new(),
+      inferred: Vec::new(),
+      refused: Vec::new(),
+      root_spawn: None,
     }
   }
 

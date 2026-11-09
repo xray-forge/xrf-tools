@@ -11,6 +11,7 @@ use xrf_math::Vector3d;
 use xrf_utils::{assert_equal, assert_not_equal, narrow_format_size};
 
 use crate::constants::NET_ACTION_UPDATE;
+use crate::data::alife::alife_built_fields::AlifeBuiltFields;
 use crate::data::alife::alife_object_inherited::AlifeObjectInherited;
 use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 use crate::data::alife::zeroed_update_fields::ZeroedUpdateFields;
@@ -47,6 +48,43 @@ impl AlifeObject {
     self.inherited.move_to(&position, &direction);
     self.header.position = position;
     self.header.direction = direction;
+  }
+
+  /// The fields xrAI fills in when it builds the object into a root spawn ([`AlifeBuiltFields`]).
+  pub fn get_built_fields(&self) -> AlifeBuiltFields {
+    self.inherited.get_built_fields(self.header.spawn_id)
+  }
+
+  /// Sets the fields xrAI fills in, such as another packet of the object holds them or as
+  /// [`AlifeBuiltFields::UNBUILT`] before any build; the update packet is left as it is.
+  pub fn set_built_fields(&mut self, fields: &AlifeBuiltFields) {
+    self.header.spawn_id = fields.spawn_id;
+    self.inherited.set_built_fields(fields);
+  }
+
+  /// Write the object's update packet alone, its class's update fields, as a root spawn stores it after its length and
+  /// `M_UPDATE`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the payload is not its section's class, or the writer refuses a value.
+  pub fn write_update_packet<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    self.write_packets::<T, _, _>(&mut ChunkWriter::new(), writer)
+  }
+
+  /// The object as a fresh server entity holds it, read from its own spawn packet ([`Self::read_spawn_packet`]): its
+  /// update fields derived from the spawn packet, or zero where the engine leaves them uninitialised. A root spawn xrAI
+  /// builds anew stores this object's update packet.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the object's spawn packet does not write, or does not read back as its class.
+  pub fn get_fresh_entity<T: ByteOrder>(&self) -> XrfResult<Self> {
+    let mut spawn: ChunkWriter = ChunkWriter::new();
+
+    self.write_spawn_packet::<T, _>(&mut spawn)?;
+
+    Self::read_spawn_packet::<T, _>(&mut ChunkReader::from_bytes(&spawn.buffer)?)
   }
 
   /// Refuse an object whose payload is shaped for another class than its section's, which the engine would read
@@ -227,6 +265,7 @@ mod tests {
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::constants::NET_ACTION_UPDATE;
+  use crate::data::alife::alife_built_fields::AlifeBuiltFields;
   use crate::data::alife::alife_object::AlifeObject;
   use crate::data::alife::alife_object_inherited::AlifeObjectInherited;
   use crate::data::alife::inherited::alife_actor::AlifeActor;
@@ -636,6 +675,7 @@ mod tests {
 
     assert!(reader.is_ended());
     assert_eq!(read.header, original.header);
+    assert_eq!(original.get_fresh_entity::<XRayByteOrder>()?, read);
     assert_eq!(creature.update_position, Vector3d::new(-40.0, 5.5, 120.0));
     assert_eq!((creature.update_torso_yaw, creature.update_torso_pitch), (1.25, -0.1));
     assert_eq!(creature.update_health, creature.health);
@@ -825,6 +865,41 @@ mod tests {
       item.update_state.as_ref().map(PhysicsNetState::get_position),
       Some(Vector3d::new(7.0, 8.0, 9.0))
     );
+  }
+
+  /// The fields xrAI fills in go back to a fresh entity's, and back again from another packet, nothing else changing.
+  #[test]
+  fn sets_the_fields_a_root_spawn_build_fills() {
+    let mut original: AlifeObject = new_graph_point_object();
+
+    original.header.section = String::from("medkit");
+    original.clsid = ClsId::SFood;
+    original.inherited =
+      AlifeObjectInherited::CseAlifeItem(Box::new(AlifeObjectItem::new_mock(original.header.position)));
+
+    let mut unbuilt: AlifeObject = original.clone();
+
+    unbuilt.set_built_fields(&AlifeBuiltFields::UNBUILT);
+
+    let base: &AlifeObjectAbstract = unbuilt.inherited.get_abstract().expect("an abstract object");
+
+    assert_eq!(unbuilt.header.spawn_id, u16::MAX);
+    assert_eq!(
+      (base.game_vertex_id, base.distance, base.level_vertex_id),
+      (u16::MAX, 0.0, u32::MAX)
+    );
+    assert_eq!(
+      (
+        unbuilt.get_built_fields().destination,
+        unbuilt.get_built_fields().artefact_position_offset
+      ),
+      (None, None),
+      "an item has no destination or artefact offset"
+    );
+
+    unbuilt.set_built_fields(&original.get_built_fields());
+
+    assert_eq!(unbuilt, original, "nothing else changed");
   }
 
   /// A class storing no position in its update packet moves in its spawn packet alone.

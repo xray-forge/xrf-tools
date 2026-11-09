@@ -247,6 +247,27 @@ rounded, as the editor's own save rounds them (mostly climbable and breakable sh
 Breakable and climbable objects stay entities for now. The editor builds them from scene geometry, so they leave
 `spawn.part` once static geometry is decompiled.
 
+#### From a root spawn
+
+A game starts from its root spawn (`all.spawn`), not from `level.spawn`, and modders often edit the root spawn after it
+was built. Given a root spawn's objects standing on the level (`LevelEntitySources::root`, which
+`LevelDecompileOptions::root_spawn` reads), the decompile takes them instead:
+
+- Each takes the place of its `level.spawn` packet of the same name, in `level.spawn`'s order. Objects only the root
+  spawn holds follow in its order.
+- The fields xrAI fills in when it builds the root spawn (`AlifeBuiltFields`: the spawn id, game and level vertices,
+  distance, a level changer's destination, a zone's artefact spawn offset) come from that `level.spawn` packet, since
+  xrAI overwrites whatever the editor wrote there. An object `level.spawn` lacks takes a fresh entity's.
+- Graph points come from `level.spawn`: a root spawn keeps them as graph vertices.
+- A `level.spawn` packet the root spawn lacks is left out.
+
+The sidecar's `rootSpawn` records the file and its hash, and each disagreement: an object only one of the two holds, or
+whose packet differs. It also keeps each update packet that differs from a fresh entity's (uninitialised physics states,
+edited conditions) as hex, since the scene keeps spawn packets alone.
+
+Over vanilla's `all.spawn`, all 6,464 objects agree with their `level.spawn` packets. Every other root spawn differs
+from its own spawn lists where it was edited; each difference is a recorded disagreement.
+
 ### Glows
 
 Glows are not passed through: the build hands each to the level compiler as a `b_glow` (`SceneBuilder::BuildGlow`),

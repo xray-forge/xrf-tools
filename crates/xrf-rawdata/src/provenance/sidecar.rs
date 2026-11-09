@@ -23,7 +23,12 @@ impl Sidecar {
 
   /// The SHA-256 of `bytes`, lowercase hex, as a sidecar names a source by.
   pub(crate) fn get_sha256_hex(bytes: &[u8]) -> String {
-    Sha256::digest(bytes).iter().map(|byte| format!("{byte:02x}")).collect()
+    Self::format_hex(&Sha256::digest(bytes))
+  }
+
+  /// Bytes as a sidecar keeps them, lowercase hex.
+  pub(crate) fn format_hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
   }
 
   /// A sidecar's text.
