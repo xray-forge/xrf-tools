@@ -9,7 +9,7 @@ use xrf_output::OutputOptions;
 use xrf_rawdata::{LevelDecompileOptions, LevelSceneDecompile, LevelSceneDecompiler, LevelSceneProvenance};
 use xrf_utils::format_path;
 
-use crate::commands::level::decompile::report::{LevelDecompileReport, LevelDecompileTool};
+use crate::commands::level::decompile::report::{LevelDecompileReport, LevelDecompileRootSpawn, LevelDecompileTool};
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 /// Decompiles a compiled level's directory into a Level Editor scene, with a provenance sidecar beside it.
@@ -49,6 +49,15 @@ impl GenericCommand for DecompileCommand {
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
+        Arg::new("spawn")
+          .help(
+            "Root spawn whose objects on the level replace level.spawn's entities, read from spawns/<spawn>.spawn \
+             beside the level's levels directory; all.spawn by default where it exists",
+          )
+          .long("spawn")
+          .value_parser(value_parser!(String)),
+      )
+      .arg(
         Arg::new("force")
           .help("Overwrite an existing .level, its parts and its sidecar")
           .short('f')
@@ -62,7 +71,10 @@ impl GenericCommand for DecompileCommand {
     let destination: &PathBuf = matches.get_one::<PathBuf>("dest").expect("the destination is required");
     let output: OutputOptions = context.get_output().clone();
 
-    let report: LevelDecompileReport = Self::decompile(&output, source, destination, matches.get_flag("force"))?;
+    let root_spawn: Option<PathBuf> =
+      Self::get_root_spawn(source, matches.get_one::<String>("spawn").map(String::as_str))?;
+    let report: LevelDecompileReport =
+      Self::decompile(&output, source, destination, root_spawn, matches.get_flag("force"))?;
 
     context.set_result(|| &report)?;
 
@@ -71,10 +83,36 @@ impl GenericCommand for DecompileCommand {
 }
 
 impl DecompileCommand {
+  /// The root spawn a new game starts from, which a decompile reads by default (decision 10).
+  const DEFAULT_ROOT_SPAWN: &'static str = "all";
+
+  /// The root spawn named `name` beside the level's `levels` directory, `<level>/../../spawns/<name>.spawn`. Without a
+  /// name, `all.spawn` where it exists, else none.
+  fn get_root_spawn(source: &Path, name: Option<&str>) -> XrfResult<Option<PathBuf>> {
+    // The `gamedata` directory holding `levels\<level>`, named by the level path's parents where it has them.
+    let gamedata: PathBuf = match source.parent().and_then(Path::parent) {
+      Some(gamedata) if !gamedata.as_os_str().is_empty() => gamedata.to_path_buf(),
+      _ => source.join("..").join(".."),
+    };
+    let path: PathBuf = gamedata
+      .join("spawns")
+      .join(format!("{}.spawn", name.unwrap_or(Self::DEFAULT_ROOT_SPAWN)));
+
+    match (path.is_file(), name) {
+      (true, _) => Ok(Some(path)),
+      (false, None) => Ok(None),
+      (false, Some(_)) => Err(XrfError::new_not_found_error(format!(
+        "{} does not exist",
+        format_path(&path)
+      ))),
+    }
+  }
+
   fn decompile(
     output: &OutputOptions,
     source: &Path,
     destination: &Path,
+    root_spawn: Option<PathBuf>,
     is_forced: bool,
   ) -> XrfResult<LevelDecompileReport> {
     let name: String = Self::get_level_name(destination)?;
@@ -97,6 +135,7 @@ impl DecompileCommand {
           Some(commit) => format!("{} ({commit})", build.version),
           None => build.version.to_string(),
         },
+        root_spawn,
       },
     )?;
 
@@ -128,7 +167,24 @@ impl DecompileCommand {
         .collect::<XrfResult<Vec<LevelDecompileTool>>>()?,
       inferred: decompiled.provenance.inferred,
       refused: decompiled.provenance.refused,
+      root_spawn: decompiled.provenance.root_spawn.map(|root| LevelDecompileRootSpawn {
+        file: root.file,
+        objects: root.objects,
+        disagreements: root.disagreements.len(),
+        update_packets: root.update_packets.len(),
+      }),
     };
+
+    if let Some(root) = report.root_spawn.as_ref().filter(|root| root.objects > 0) {
+      xrf_output::info!(
+        output,
+        "Entities from {} ({} objects): {} disagreements with level.spawn and {} update packets recorded in the sidecar",
+        root.file,
+        root.objects,
+        root.disagreements,
+        root.update_packets
+      );
+    }
 
     if !report.refused.is_empty() {
       xrf_output::warning!(

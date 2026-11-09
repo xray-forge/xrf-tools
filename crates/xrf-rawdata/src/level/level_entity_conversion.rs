@@ -1,5 +1,7 @@
+use std::collections::HashMap;
+
 use byteorder::ByteOrder;
-use xrf_chunk::{ChunkFieldRecorder, ChunkFieldReplay};
+use xrf_chunk::{ChunkFieldRecorder, ChunkFieldReplay, ChunkWriter};
 use xrf_editable_level::{
   EditableCustomObject, EditableObjectPart, EditableObjectTransform, EditableShape, EditableShapeElement,
   EditableShapeObject, EditableSpawnPointKind, EditableSpawnPointObject,
@@ -7,11 +9,12 @@ use xrf_editable_level::{
 use xrf_error::{XrfError, XrfResult};
 use xrf_ini::IniSection;
 use xrf_math::{Sphere, Vector3d};
-use xrf_spawn::{AlifeObject, LevelSpawnFile, LevelSpawnObject, Shape};
+use xrf_spawn::{AlifeBuiltFields, AlifeObject, AlifeObjectInherited, LevelSpawnFile, LevelSpawnObject, Shape};
 
 use crate::level::level_decompile_context::LevelDecompileContext;
 use crate::level::level_spawn_data_fields::LevelSpawnDataFields;
-use crate::provenance::level_scene_provenance::LevelSceneRefusal;
+use crate::provenance::level_scene_provenance::{LevelSceneDisagreement, LevelSceneRefusal, LevelSceneUpdatePacket};
+use crate::provenance::sidecar::Sidecar;
 
 /// A level's server entities, between the scene's `spawn.part` and the spawn lists `CSpawnPoint::SSpawnData::
 /// ExportGame` (`SpawnPoint.cpp:374`) fills: `level.spawn`, and `level_rs.spawn` for entities marked to respawn in
@@ -22,12 +25,24 @@ use crate::provenance::level_scene_provenance::LevelSceneRefusal;
 /// class with a volume the packet's shapes as an attached shape.
 pub struct LevelEntityConversion;
 
-/// A level's entities decompiled: the spawn points of those typed, and those refused, each named with its section in
-/// the reason.
-#[derive(Clone, Debug, PartialEq)]
+/// What a level's entities are decompiled from.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct LevelEntitySources<'a> {
+  pub spawn: Option<&'a LevelSpawnFile>,
+  pub respawn: Option<&'a LevelSpawnFile>,
+  /// The root spawn's objects standing on the level (decision 10). Where it holds any, they stand in for `spawn`'s
+  /// entities but its graph points, which a root spawn keeps as graph vertices instead.
+  pub root: &'a [AlifeObject],
+}
+
+/// A level's entities decompiled: the spawn points of those typed, those refused (each named with its section in the
+/// reason), and, from a root spawn, what it and `level.spawn` disagree on and the update packets the scene cannot keep.
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct LevelEntityDecompile {
   pub entities: Vec<EditableSpawnPointObject>,
   pub refused: Vec<LevelSceneRefusal>,
+  pub disagreements: Vec<LevelSceneDisagreement>,
+  pub update_packets: Vec<LevelSceneUpdatePacket>,
 }
 
 /// The spawn lists a scene's entities export to, each `None` where no entity goes there, as the build then writes none.
@@ -45,60 +60,197 @@ impl LevelEntityConversion {
   /// The prefix the decompile names an entity's attached shape after.
   pub const SHAPE_PREFIX: &'static str = "shape";
 
-  /// The spawn points of a level's entities: those of `spawn` first, then those of `respawn` marked to respawn, each
-  /// in its list's order. Every packet's name is reserved before any other is generated, as the export keeps it.
+  /// The spawn points of a level's entities: those of `spawn` (or the root spawn's) first, then those of `respawn`
+  /// marked to respawn. Every name is reserved before any other is generated, as the export keeps it.
+  ///
+  /// From a root spawn, each object takes the place of its `level.spawn` packet of the same name, the fields xrAI fills
+  /// in (`AlifeBuiltFields`) taken from that packet, and the objects only the root spawn holds follow in its order with
+  /// a fresh entity's (`AlifeBuiltFields::UNBUILT`), as does an object whose `level.spawn` packet does not read. A disagreement is recorded for each of those, for each packet only
+  /// `level.spawn` holds (left out), and for each object whose packet then is not `level.spawn`'s; an update packet is
+  /// kept where it differs from a fresh entity's.
   ///
   /// # Errors
   ///
-  /// Returns an error when a typed packet's fields cannot be saved, a string holding a double quote; a packet whose
-  /// class is not known is refused one by one instead.
+  /// Returns an error when a typed packet's fields cannot be saved, a string holding a double quote, or a root spawn
+  /// object does not write; a packet whose class is not known is refused one by one instead.
   pub fn decompile<T: ByteOrder>(
-    spawn: Option<&LevelSpawnFile>,
-    respawn: Option<&LevelSpawnFile>,
+    sources: &LevelEntitySources<'_>,
     context: &mut LevelDecompileContext,
   ) -> XrfResult<LevelEntityDecompile> {
-    let lists: [(Option<&LevelSpawnFile>, &'static str, u8); 2] = [
-      (spawn, Self::SPAWN_FILE_NAME, 0),
-      (
-        respawn,
-        Self::RESPAWN_FILE_NAME,
-        EditableSpawnPointObject::RESPAWN_ENTITY,
-      ),
-    ];
-    let mut decompile: LevelEntityDecompile = LevelEntityDecompile {
-      entities: Vec::new(),
-      refused: Vec::new(),
-    };
+    let spawn: &[LevelSpawnObject] = sources.spawn.map(|list| list.objects.as_slice()).unwrap_or_default();
+    let respawn: &[LevelSpawnObject] = sources.respawn.map(|list| list.objects.as_slice()).unwrap_or_default();
+    let mut decompile: LevelEntityDecompile = LevelEntityDecompile::default();
 
-    for object in lists
+    for name in spawn
       .iter()
-      .filter_map(|(list, _, _)| *list)
-      .flat_map(|list| &list.objects)
+      .chain(respawn)
+      .map(|object| object.name.as_str())
+      .chain(sources.root.iter().map(|object| object.header.name.as_str()))
     {
-      context.names.reserve(&object.name);
+      context.names.reserve(name);
     }
 
-    for (list, file, flags) in lists {
-      for object in list.map(|list| list.objects.as_slice()).unwrap_or_default() {
-        let entity: AlifeObject = match object.read_alife_object::<T>() {
-          Ok(entity) => entity,
-          Err(error) => {
-            decompile.refused.push(LevelSceneRefusal {
-              file: file.to_owned(),
-              object: object.name.clone(),
-              reason: format!("section '{}': {error}", object.section),
-            });
-            continue;
-          }
-        };
+    if sources.root.is_empty() {
+      Self::decompile_listed::<T>(spawn, Self::SPAWN_FILE_NAME, 0, &mut decompile, context)?;
+    } else {
+      Self::decompile_root::<T>(spawn, sources.root, &mut decompile, context)?;
+    }
 
-        decompile
+    Self::decompile_listed::<T>(
+      respawn,
+      Self::RESPAWN_FILE_NAME,
+      EditableSpawnPointObject::RESPAWN_ENTITY,
+      &mut decompile,
+      context,
+    )?;
+
+    Ok(decompile)
+  }
+
+  /// A spawn list's packets as spawn points of `flags`, those of no known class refused.
+  fn decompile_listed<T: ByteOrder>(
+    objects: &[LevelSpawnObject],
+    file: &str,
+    flags: u8,
+    decompile: &mut LevelEntityDecompile,
+    context: &mut LevelDecompileContext,
+  ) -> XrfResult {
+    for object in objects {
+      match object.read_alife_object::<T>() {
+        Ok(entity) => decompile
           .entities
-          .push(Self::decompile_entity::<T>(&entity, flags, context)?);
+          .push(Self::decompile_entity::<T>(&entity, flags, context)?),
+        Err(error) => decompile.refused.push(Self::refuse(object, file, &error)),
       }
     }
 
-    Ok(decompile)
+    Ok(())
+  }
+
+  /// `level.spawn`'s packets in its order, each replaced by the root spawn's object of its name, then the root spawn's
+  /// objects `level.spawn` lacks; its graph points kept, its other packets the root spawn lacks left out.
+  fn decompile_root<T: ByteOrder>(
+    listed: &[LevelSpawnObject],
+    root: &[AlifeObject],
+    decompile: &mut LevelEntityDecompile,
+    context: &mut LevelDecompileContext,
+  ) -> XrfResult {
+    let mut by_name: HashMap<&str, usize> = HashMap::with_capacity(root.len());
+    let mut taken: Vec<bool> = vec![false; root.len()];
+
+    for (index, object) in root.iter().enumerate() {
+      by_name.entry(object.header.name.as_str()).or_insert(index);
+    }
+
+    for object in listed {
+      if let Some(index) = by_name.remove(object.name.as_str()) {
+        taken[index] = true;
+        Self::decompile_built::<T>(&root[index], Some(object), decompile, context)?;
+        continue;
+      }
+
+      match object.read_alife_object::<T>() {
+        Ok(entity) if matches!(entity.inherited, AlifeObjectInherited::CseAlifeGraphPoint(_)) => {
+          decompile
+            .entities
+            .push(Self::decompile_entity::<T>(&entity, 0, context)?);
+        }
+        Ok(_) => decompile.disagreements.push(LevelSceneDisagreement {
+          object: object.name.clone(),
+          reason: String::from("only in level.spawn, so left out: the root spawn holds the level"),
+        }),
+        Err(error) => decompile
+          .refused
+          .push(Self::refuse(object, Self::SPAWN_FILE_NAME, &error)),
+      }
+    }
+
+    for (object, _) in root.iter().zip(taken).filter(|(_, taken)| !taken) {
+      Self::decompile_built::<T>(object, None, decompile, context)?;
+    }
+
+    Ok(())
+  }
+
+  /// One root spawn object as a spawn point, compared with its `level.spawn` packet where there is one.
+  fn decompile_built<T: ByteOrder>(
+    built: &AlifeObject,
+    listed: Option<&LevelSpawnObject>,
+    decompile: &mut LevelEntityDecompile,
+    context: &mut LevelDecompileContext,
+  ) -> XrfResult {
+    let name: &str = &built.header.name;
+    let mut entity: AlifeObject = built.clone();
+    // xrAI overwrites these whatever the editor wrote, so they come from the editor's own packet where `level.spawn`
+    // holds one that reads, and are a fresh entity's otherwise.
+    let editor_fields: AlifeBuiltFields = listed
+      .and_then(|listed| listed.read_alife_object::<T>().ok())
+      .map_or(AlifeBuiltFields::UNBUILT, |listed| listed.get_built_fields());
+
+    entity.set_built_fields(&editor_fields);
+
+    let disagreement: Option<&str> = match listed {
+      None => Some("only in the root spawn"),
+      // Compared as bytes: as floats, a negative zero would equal a positive one.
+      Some(listed) if Self::get_spawn_packet::<T>(&entity)? != Self::get_listed_packet::<T>(listed)? => {
+        Some("its spawn packet differs from level.spawn's past the fields xrAI fills in")
+      }
+      Some(_) => None,
+    };
+
+    if let Some(reason) = disagreement {
+      decompile.disagreements.push(LevelSceneDisagreement {
+        object: name.to_owned(),
+        reason: reason.to_owned(),
+      });
+    }
+
+    let stored: Vec<u8> = Self::get_update_packet::<T>(built)?;
+
+    if stored != Self::get_update_packet::<T>(&built.get_fresh_entity::<T>()?)? {
+      decompile.update_packets.push(LevelSceneUpdatePacket {
+        object: name.to_owned(),
+        bytes: Sidecar::format_hex(&stored),
+      });
+    }
+
+    decompile
+      .entities
+      .push(Self::decompile_entity::<T>(&entity, 0, context)?);
+
+    Ok(())
+  }
+
+  fn get_update_packet<T: ByteOrder>(object: &AlifeObject) -> XrfResult<Vec<u8>> {
+    let mut bytes: ChunkWriter = ChunkWriter::new();
+
+    object.write_update_packet::<T, _>(&mut bytes)?;
+
+    Ok(bytes.buffer)
+  }
+
+  fn get_spawn_packet<T: ByteOrder>(object: &AlifeObject) -> XrfResult<Vec<u8>> {
+    let mut bytes: ChunkWriter = ChunkWriter::new();
+
+    object.write_spawn_packet::<T, _>(&mut bytes)?;
+
+    Ok(bytes.buffer)
+  }
+
+  fn get_listed_packet<T: ByteOrder>(object: &LevelSpawnObject) -> XrfResult<Vec<u8>> {
+    let mut bytes: ChunkWriter = ChunkWriter::new();
+
+    object.write::<T>(&mut bytes)?;
+
+    Ok(bytes.buffer)
+  }
+
+  fn refuse(object: &LevelSpawnObject, file: &str, error: &XrfError) -> LevelSceneRefusal {
+    LevelSceneRefusal {
+      file: file.to_owned(),
+      object: object.name.clone(),
+      reason: format!("section '{}': {error}", object.section),
+    }
   }
 
   /// The spawn lists the part's entities export to, each entity at the place, under the name and with the shape its

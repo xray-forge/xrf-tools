@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 
 use byteorder::ByteOrder;
 use sha2::{Digest, Sha256};
+use xrf_chunk::ChunkReader;
 use xrf_editable_level::{
   EditableBuildParams, EditableLevelCamera, EditableLevelFile, EditableLevelGuid, EditableLevelOptions,
   EditableLevelScene, EditableSceneTool, EditableSpawnPointObject,
@@ -12,11 +13,11 @@ use xrf_level::{
   LevelEnvModFile, LevelFile, LevelFogVolFile, LevelGameFile, LevelGameRPoint, LevelLightsFile, LevelPsStaticFile,
   LevelSndEnvFile, LevelSndStaticFile, LevelWallmarksFile,
 };
-use xrf_spawn::LevelSpawnFile;
+use xrf_spawn::{AlifeObject, LevelSpawnFile, SpawnFile, SpawnLevelObjects};
 use xrf_utils::{StagedFile, format_path};
 
 use crate::level::level_decompile_context::LevelDecompileContext;
-use crate::level::level_entity_conversion::{LevelEntityConversion, LevelEntityDecompile};
+use crate::level::level_entity_conversion::{LevelEntityConversion, LevelEntityDecompile, LevelEntitySources};
 use crate::level::level_fog_volume_conversion::LevelFogVolumeConversion;
 use crate::level::level_glow_conversion::LevelGlowConversion;
 use crate::level::level_light_conversion::LevelLightConversion;
@@ -27,12 +28,12 @@ use crate::level::level_spawn_point_conversion::LevelSpawnPointConversion;
 use crate::level::level_wallmark_conversion::LevelWallmarkConversion;
 use crate::level::level_way_conversion::LevelWayConversion;
 use crate::provenance::level_scene_provenance::{
-  LevelSceneFile, LevelSceneInference, LevelSceneProvenance, LevelSceneRefusal, LevelSceneSource,
+  LevelSceneFile, LevelSceneInference, LevelSceneProvenance, LevelSceneRefusal, LevelSceneRootSpawn, LevelSceneSource,
 };
 use crate::provenance::sidecar::Sidecar;
 
-/// What a level's decompile takes besides the level's directory (decision 21's one options type; the root spawn,
-/// libraries, surfaces mode and output root join it as their stages land).
+/// What a level's decompile takes besides the level's directory (decision 21's one options type; libraries, surfaces
+/// mode and output root join it as their stages land).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LevelDecompileOptions {
   /// The level's name: its scene's main file is `<name>.level`, its parts are in `<name>/`, and its level options
@@ -41,6 +42,15 @@ pub struct LevelDecompileOptions {
   /// The front-end decompiling, such as `xrf-cli level decompile`, and its version, which the sidecar records.
   pub tool: String,
   pub tool_version: String,
+  /// A root spawn (`all.spawn`) whose objects on this level stand in for `level.spawn`'s entities (decision 10). The
+  /// level is found in it by its directory's name.
+  pub root_spawn: Option<PathBuf>,
+}
+
+/// A root spawn read for one level: what the sidecar records of it, and its objects on the level.
+struct LevelRootSpawnSource {
+  record: LevelSceneRootSpawn,
+  objects: Vec<AlifeObject>,
 }
 
 /// A decompiled level: its scene and the provenance written beside it.
@@ -121,17 +131,55 @@ impl LevelSceneDecompiler {
   /// # Errors
   ///
   /// Returns an error when the directory holds none of [`Self::SOURCE_FILES`], one cannot be read or is not the file
-  /// its name says, or a conversion refuses what it holds.
+  /// its name says, the root spawn given cannot be read or holds no objects chunk or graph, or a conversion refuses what
+  /// it holds.
   pub fn decompile<T: ByteOrder>(directory: &Path, options: &LevelDecompileOptions) -> XrfResult<LevelSceneDecompile> {
     let mut sources: LevelSceneSources = LevelSceneSources::read(directory)?;
-    let mut draft: LevelSceneDraft = LevelSceneDraft::new(Self::get_guid(&sources.files), &options.name);
+    let mut root: Option<LevelRootSpawnSource> = options
+      .root_spawn
+      .as_deref()
+      .map(|path| Self::read_root_spawn::<T>(path, directory))
+      .transpose()?;
+    let guid: EditableLevelGuid = Self::get_guid(
+      &sources.files,
+      root
+        .as_ref()
+        .filter(|root| !root.objects.is_empty())
+        .map(|root| root.record.sha256.as_str()),
+    );
+    let mut draft: LevelSceneDraft = LevelSceneDraft::new(guid, &options.name);
 
     Self::decompile_bundle::<T>(&mut sources, &mut draft)?;
     Self::decompile_companions::<T>(&mut sources, &mut draft)?;
 
-    let game_types: u16 = Self::decompile_game::<T>(&mut sources, &mut draft)?;
+    let game_types: u16 = Self::decompile_game::<T>(&mut sources, root.as_mut(), &mut draft)?;
 
-    Ok(draft.finish(options, game_types, &sources))
+    Ok(draft.finish(options, game_types, &sources, root.map(|root| root.record)))
+  }
+
+  /// The objects of the root spawn at `path` standing on the level `directory` is named after, by their game vertices.
+  fn read_root_spawn<T: ByteOrder>(path: &Path, directory: &Path) -> XrfResult<LevelRootSpawnSource> {
+    let bytes: Vec<u8> = std::fs::read(path)
+      .map_err(|error| XrfError::new_read_error(format!("{} was not read: {error}", format_path(path))))?;
+    let sha256: String = Sidecar::get_sha256_hex(&bytes);
+    let level: &str = directory
+      .file_name()
+      .and_then(|name| name.to_str())
+      .ok_or_else(|| XrfError::new_invalid_error(format!("{} names no level", format_path(directory))))?;
+    let chunks = ChunkReader::from_vec(bytes)?.read_children()?;
+    let objects: SpawnLevelObjects = SpawnFile::read_level_objects_from_chunks::<T, _>(&chunks, level)?;
+
+    Ok(LevelRootSpawnSource {
+      record: LevelSceneRootSpawn {
+        file: format_path(path).to_string(),
+        sha256,
+        objects: objects.objects.len(),
+        unread: objects.skipped.len(),
+        disagreements: Vec::new(),
+        update_packets: Vec::new(),
+      },
+      objects: objects.objects,
+    })
   }
 
   /// The parts the compiled bundle and the level compiler's light list give: glows, lights, and the light qualities of
@@ -226,8 +274,12 @@ impl LevelSceneDecompiler {
 
   /// The parts `level.game`, `level.env_mod` and the spawn lists give, ways and spawn points, and the game modes the
   /// respawn points serve. Entities are decompiled first, so that no name generated for another spawn point takes
-  /// theirs.
-  fn decompile_game<T: ByteOrder>(sources: &mut LevelSceneSources, draft: &mut LevelSceneDraft) -> XrfResult<u16> {
+  /// theirs; from the root spawn where it holds the level, its disagreements and update packets recorded with it.
+  fn decompile_game<T: ByteOrder>(
+    sources: &mut LevelSceneSources,
+    root: Option<&mut LevelRootSpawnSource>,
+    draft: &mut LevelSceneDraft,
+  ) -> XrfResult<u16> {
     let game: Option<LevelGameFile> = sources
       .take(LevelGameFile::FILE_NAME)
       .map(LevelGameFile::read_from_bytes::<T>)
@@ -241,14 +293,25 @@ impl LevelSceneDecompiler {
     };
     let spawn: Option<LevelSpawnFile> = spawn_list(sources, LevelEntityConversion::SPAWN_FILE_NAME)?;
     let respawn: Option<LevelSpawnFile> = spawn_list(sources, LevelEntityConversion::RESPAWN_FILE_NAME)?;
-    let entities: LevelEntityDecompile =
-      LevelEntityConversion::decompile::<T>(spawn.as_ref(), respawn.as_ref(), &mut draft.context)?;
+    let entities: LevelEntityDecompile = LevelEntityConversion::decompile::<T>(
+      &LevelEntitySources {
+        spawn: spawn.as_ref(),
+        respawn: respawn.as_ref(),
+        root: root.as_deref().map(|root| root.objects.as_slice()).unwrap_or_default(),
+      },
+      &mut draft.context,
+    )?;
 
     draft.infer_if(
       entities.entities.iter().any(|entity| entity.attached.is_some()),
       &[LevelSceneInference::EntityShapes],
     );
     draft.refused.extend(entities.refused);
+
+    if let Some(root) = root {
+      root.record.disagreements = entities.disagreements;
+      root.record.update_packets = entities.update_packets;
+    }
 
     if let Some(game) = &game {
       let ways = LevelWayConversion::decompile(&game.ways, &mut draft.context)?;
@@ -282,8 +345,8 @@ impl LevelSceneDecompiler {
   }
 
   /// The scene's GUID: the first 16 bytes of the SHA-256 of each source's name, a zero, its length and its bytes, in
-  /// [`Self::SOURCE_FILES`]' order.
-  fn get_guid(sources: &BTreeMap<&'static str, Vec<u8>>) -> EditableLevelGuid {
+  /// [`Self::SOURCE_FILES`]' order, then the hash of the root spawn the entities came from, where they did.
+  fn get_guid(sources: &BTreeMap<&'static str, Vec<u8>>, root_sha256: Option<&str>) -> EditableLevelGuid {
     let mut hash = Sha256::new();
 
     for name in Self::SOURCE_FILES {
@@ -293,6 +356,10 @@ impl LevelSceneDecompiler {
         hash.update((bytes.len() as u64).to_le_bytes());
         hash.update(bytes);
       }
+    }
+
+    if let Some(root_sha256) = root_sha256 {
+      hash.update(root_sha256.as_bytes());
     }
 
     let digest = hash.finalize();
@@ -421,6 +488,7 @@ impl LevelSceneDraft {
     options: &LevelDecompileOptions,
     game_types: u16,
     sources: &LevelSceneSources,
+    root_spawn: Option<LevelSceneRootSpawn>,
   ) -> LevelSceneDecompile {
     self
       .tools
@@ -459,15 +527,14 @@ impl LevelSceneDraft {
         level,
         tools: self.tools.into_iter().map(|(tool, _)| tool).collect(),
       },
-      provenance: LevelSceneProvenance::new(
-        options.name.clone(),
-        options.tool.clone(),
-        options.tool_version.clone(),
-        sources.recorded.clone(),
+      provenance: LevelSceneProvenance {
+        sources: sources.recorded.clone(),
         files,
-        self.inferred,
-        self.refused,
-      ),
+        inferred: self.inferred,
+        refused: self.refused,
+        root_spawn,
+        ..LevelSceneProvenance::new(options.name.clone(), options.tool.clone(), options.tool_version.clone())
+      },
     }
   }
 }

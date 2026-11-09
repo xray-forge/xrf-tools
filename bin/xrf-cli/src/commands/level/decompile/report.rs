@@ -23,4 +23,17 @@ pub(crate) struct LevelDecompileReport {
   pub(crate) inferred: Vec<LevelSceneInference>,
   /// What the scene leaves out, such as an entity of a class the decompile cannot type.
   pub(crate) refused: Vec<LevelSceneRefusal>,
+  /// The root spawn read, where one was; the sidecar lists what is counted here.
+  pub(crate) root_spawn: Option<LevelDecompileRootSpawn>,
+}
+
+/// The root spawn `level decompile` read, counted.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct LevelDecompileRootSpawn {
+  pub(crate) file: String,
+  /// Its objects on the level, which the scene's entities came from; none where it does not hold the level.
+  pub(crate) objects: usize,
+  pub(crate) disagreements: usize,
+  pub(crate) update_packets: usize,
 }

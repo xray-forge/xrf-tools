@@ -7,6 +7,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxWrite};
 use xrf_math::Vector3d;
 
+use crate::data::alife::alife_built_fields::{AlifeBuiltDestination, AlifeBuiltFields};
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_actor::AlifeActor;
 use crate::data::alife::inherited::alife_anomalous_zone::AlifeAnomalousZone;
@@ -293,6 +294,103 @@ impl AlifeObjectInherited {
       Self::CseAlifePhSkeletonObject(object) => Some(&object.base.base),
       Self::CseAlifeStationaryMGun(object) => Some(&object.base.base),
       Self::SimSquadScripted(object) => Some(&object.base.base.base),
+    }
+  }
+
+  /// The abstract object [`Self::get_abstract`] reads, to change.
+  pub fn get_abstract_mut(&mut self) -> Option<&mut AlifeObjectAbstract> {
+    match self {
+      Self::SeActor(object) => Some(&mut object.base.base.base.base),
+      Self::SeStalker(object) => Some(&mut object.base.base.base.base.base.base),
+      Self::SeMonster(object) => Some(&mut object.base.base.base.base.base),
+      Self::CseAlifeObjectBreakable(object) => Some(&mut object.base.base),
+      Self::CseAlifeObjectClimable(object) => Some(&mut object.base.base),
+      Self::CseAlifeGraphPoint(_) => None,
+      Self::CseAlifeSpaceRestrictor(object) => Some(&mut object.base),
+      Self::SeSmartCover(object) => Some(&mut object.base.base.base),
+      Self::CseAlifeAnomalousZone(object) => Some(&mut object.base.base.base.base),
+      Self::CseAlifeTorridZone(object) => Some(&mut object.base.base.base),
+      Self::SeSmartTerrain(object) => Some(&mut object.base.base.base),
+      Self::SeLevelChanger(object) => Some(&mut object.base.base),
+      Self::CseAlifeZoneVisual(object) => Some(&mut object.base.base.base.base),
+      Self::CseAlifeCar(object) => Some(&mut object.base.base),
+      Self::CseAlifeTrader(object) => Some(&mut object.base.base),
+      Self::CseAlifeObjectPhysic(object) => Some(&mut object.base.base),
+      Self::CseAlifeHelicopter(object) => Some(&mut object.base.base),
+      Self::CseAlifeInventoryBox(object) => Some(&mut object.base.base),
+      Self::CseAlifeObjectHangingLamp(object) => Some(&mut object.base.base),
+      Self::CseAlifeItem(object) => Some(&mut object.base.base),
+      Self::CseAlifeItemExplosive(object) => Some(&mut object.base.base.base),
+      Self::CseAlifeItemPda(object) => Some(&mut object.base.base.base),
+      Self::CseAlifeItemAmmo(object) => Some(&mut object.base.base.base),
+      Self::CseAlifeItemGrenade(object) => Some(&mut object.base.base.base),
+      Self::CseAlifeItemArtefact(object) => Some(&mut object.base.base.base),
+      Self::CseAlifeItemWeapon(object) => Some(&mut object.base.base.base),
+      Self::CseAlifeItemDetector(object) => Some(&mut object.base.base.base),
+      Self::CseAlifeItemHelmet(object) => Some(&mut object.base.base.base),
+      Self::CseAlifeItemCustomOutfit(object) => Some(&mut object.base.base.base),
+      Self::CseAlifeItemWeaponShotgun(object) => Some(&mut object.base.base.base.base.base),
+      Self::CseAlifeItemWeaponMagazined(object) => Some(&mut object.base.base.base.base),
+      Self::CseAlifeItemWeaponMagazinedWGl(object) => Some(&mut object.base.base.base.base.base),
+      Self::CseAlifeItemBolt(object) => Some(&mut object.base.base),
+      Self::CseAlifeItemTorch(object) => Some(&mut object.base.base.base),
+      Self::CseAlifeItemDocument(object) => Some(&mut object.base.base.base),
+      Self::CseAlifeCreatureCrow(object) => Some(&mut object.base.base),
+      Self::CseAlifeCreaturePhantom(object) => Some(&mut object.base.base),
+      Self::CseAlifeDynamicObjectVisual(object) => Some(&mut object.base),
+      Self::CseAlifeObjectProjector(object) => Some(&mut object.base),
+      Self::CseAlifePhSkeletonObject(object) => Some(&mut object.base.base),
+      Self::CseAlifeStationaryMGun(object) => Some(&mut object.base.base),
+      Self::SimSquadScripted(object) => Some(&mut object.base.base.base),
+    }
+  }
+
+  /// The payload's fields of those xrAI fills in when it builds a root spawn, `spawn_id` aside: the game and level
+  /// vertices and the distance to the game vertex, a level changer's destination, an anomalous zone's artefact spawn
+  /// offset.
+  pub(crate) fn get_built_fields(&self, spawn_id: u16) -> AlifeBuiltFields {
+    let base: Option<&AlifeObjectAbstract> = self.get_abstract();
+
+    AlifeBuiltFields {
+      spawn_id,
+      game_vertex_id: base.map(|base| base.game_vertex_id),
+      distance: base.map(|base| base.distance),
+      level_vertex_id: base.map(|base| base.level_vertex_id),
+      destination: match self {
+        Self::SeLevelChanger(changer) => Some(AlifeBuiltDestination {
+          game_vertex_id: changer.dest_game_vertex_id,
+          level_vertex_id: changer.dest_level_vertex_id,
+          position: changer.dest_position,
+          direction: changer.dest_direction,
+        }),
+        _ => None,
+      },
+      artefact_position_offset: match self {
+        Self::CseAlifeAnomalousZone(zone) => Some(zone.base.artefact_position_offset),
+        Self::CseAlifeZoneVisual(zone) => Some(zone.base.artefact_position_offset),
+        _ => None,
+      },
+    }
+  }
+
+  /// Sets the fields [`Self::get_built_fields`] reads, each that both `fields` and the class have.
+  pub(crate) fn set_built_fields(&mut self, fields: &AlifeBuiltFields) {
+    if let Some(base) = self.get_abstract_mut() {
+      base.game_vertex_id = fields.game_vertex_id.unwrap_or(base.game_vertex_id);
+      base.distance = fields.distance.unwrap_or(base.distance);
+      base.level_vertex_id = fields.level_vertex_id.unwrap_or(base.level_vertex_id);
+    }
+
+    match (self, fields.destination, fields.artefact_position_offset) {
+      (Self::SeLevelChanger(changer), Some(destination), _) => {
+        changer.dest_game_vertex_id = destination.game_vertex_id;
+        changer.dest_level_vertex_id = destination.level_vertex_id;
+        changer.dest_position = destination.position;
+        changer.dest_direction = destination.direction;
+      }
+      (Self::CseAlifeAnomalousZone(zone), _, Some(offset)) => zone.base.artefact_position_offset = offset,
+      (Self::CseAlifeZoneVisual(zone), _, Some(offset)) => zone.base.artefact_position_offset = offset,
+      _ => {}
     }
   }
 

@@ -19,6 +19,7 @@ pub use crate::chunks::spawn_artefact_spawns_chunk::SpawnArtefactSpawnsChunk;
 pub use crate::chunks::spawn_graphs_chunk::SpawnGraphsChunk;
 pub use crate::chunks::spawn_header_chunk::SpawnHeaderChunk;
 pub use crate::chunks::spawn_patrols_chunk::SpawnPatrolsChunk;
+pub use crate::data::alife::alife_built_fields::{AlifeBuiltDestination, AlifeBuiltFields};
 pub use crate::data::alife::alife_object::AlifeObject;
 pub use crate::data::alife::alife_object_inherited::AlifeObjectInherited;
 pub use crate::data::alife::inherited::alife_actor::AlifeActor;

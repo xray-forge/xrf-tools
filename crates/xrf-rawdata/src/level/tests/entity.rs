@@ -3,12 +3,15 @@ use xrf_editable_level::{EditableObjectPart, EditableShapeElement, EditableSpawn
 use xrf_error::XrfResult;
 use xrf_math::{Sphere, Vector3d};
 use xrf_spawn::{
-  AlifeGraphPoint, AlifeObjectSpaceRestrictor, LevelSpawnFile, LevelSpawnObject, Shape, SpawnPacket, SpawnPacketHeader,
+  AlifeGraphPoint, AlifeObject, AlifeObjectSpaceRestrictor, LevelSpawnFile, LevelSpawnObject, Shape, SpawnPacket,
+  SpawnPacketHeader,
 };
 
 use crate::level::tests::GUID;
 use crate::level::tests::spawn_data::restrictor;
-use crate::{LevelDecompileContext, LevelEntityConversion, LevelEntityDecompile, LevelEntityExport};
+use crate::{
+  LevelDecompileContext, LevelEntityConversion, LevelEntityDecompile, LevelEntityExport, LevelEntitySources,
+};
 
 /// A packet as a spawn list holds it, under chunk `id`.
 fn listed<S: ChunkReadWrite>(packet: &S, id: u32) -> XrfResult<LevelSpawnObject> {
@@ -60,7 +63,35 @@ fn lists() -> XrfResult<(LevelSpawnFile, LevelSpawnFile)> {
 }
 
 fn decompile(spawn: &LevelSpawnFile, respawn: &LevelSpawnFile) -> XrfResult<LevelEntityDecompile> {
-  LevelEntityConversion::decompile::<XRayByteOrder>(Some(spawn), Some(respawn), &mut LevelDecompileContext::new(GUID))
+  decompile_with_root(spawn, respawn, &[])
+}
+
+fn decompile_with_root(
+  spawn: &LevelSpawnFile,
+  respawn: &LevelSpawnFile,
+  root: &[AlifeObject],
+) -> XrfResult<LevelEntityDecompile> {
+  LevelEntityConversion::decompile::<XRayByteOrder>(
+    &LevelEntitySources {
+      spawn: Some(spawn),
+      respawn: Some(respawn),
+      root,
+    },
+    &mut LevelDecompileContext::new(GUID),
+  )
+}
+
+/// A restrictor as xrAI builds it into a root spawn: its spawn id, vertices and distance filled in.
+fn built(packet: &SpawnPacket<AlifeObjectSpaceRestrictor>) -> XrfResult<AlifeObject> {
+  let mut object: AlifeObject = listed(packet, 0)?.read_alife_object::<XRayByteOrder>()?;
+  let base = object.inherited.get_abstract_mut().expect("an abstract object");
+
+  base.game_vertex_id = 17;
+  base.distance = 2.5;
+  base.level_vertex_id = 99;
+  object.header.spawn_id = 5;
+
+  Ok(object)
 }
 
 fn bytes_of(list: Option<&LevelSpawnFile>) -> XrfResult<Vec<u8>> {
@@ -213,6 +244,82 @@ fn refuses_to_export_an_entity_of_a_volume_without_a_shape() -> XrfResult {
     error.contains("'test_restrictor'") && error.contains("must hold a shape attached"),
     "{error}"
   );
+
+  Ok(())
+}
+
+/// Where the root spawn holds the level, its objects stand in for `level.spawn`'s in that list's order, the fields xrAI
+/// filled in reset, so an object as built exports to the editor's packet; the graph points stay, and every object only
+/// one of the two holds is recorded, kept from the root spawn and left out from `level.spawn`.
+#[test]
+fn takes_a_root_spawns_objects_in_place_of_the_level_spawn_list() -> XrfResult {
+  let (mut spawn, respawn) = lists()?;
+
+  spawn.objects.push(listed(&restrictor_named("test_removed"), 2)?);
+
+  let root: [AlifeObject; 2] = [built(&restrictor_named("test_added"))?, built(&restrictor())?];
+  let decompiled: LevelEntityDecompile = decompile_with_root(&spawn, &respawn, &root)?;
+  let names: Vec<&str> = decompiled
+    .entities
+    .iter()
+    .map(|entity| entity.object.name.as_str())
+    .collect();
+
+  assert_eq!(names, ["test_restrictor", "shape_0000", "test_added", "test_respawned"]);
+  assert_eq!(
+    decompiled
+      .disagreements
+      .iter()
+      .map(|disagreement| (
+        disagreement.object.as_str(),
+        disagreement.reason.split(',').next().unwrap_or_default()
+      ))
+      .collect::<Vec<_>>(),
+    [
+      ("test_removed", "only in level.spawn"),
+      ("test_added", "only in the root spawn"),
+    ]
+  );
+  assert!(
+    decompiled.update_packets.is_empty(),
+    "a restrictor's update packet is empty"
+  );
+
+  let exported: LevelEntityExport =
+    LevelEntityConversion::export::<XRayByteOrder>(&EditableObjectPart::new(GUID, decompiled.entities))?;
+  let objects: Vec<LevelSpawnObject> = exported.spawn.expect("level.spawn").objects;
+
+  assert_eq!(
+    objects[..2],
+    spawn.objects[..2],
+    "the built restrictor exports as the editor wrote it"
+  );
+  assert_eq!(objects[2], listed(&restrictor_named("test_added"), 2)?);
+
+  Ok(())
+}
+
+/// An object whose packet differs from `level.spawn`'s past what xrAI fills in is taken from the root spawn and
+/// recorded.
+#[test]
+fn records_an_object_the_root_spawn_changed_past_its_build() -> XrfResult {
+  let (spawn, respawn) = lists()?;
+  let mut edited: SpawnPacket<AlifeObjectSpaceRestrictor> = restrictor();
+
+  edited.state.restrictor_type = 2;
+
+  let decompiled: LevelEntityDecompile = decompile_with_root(&spawn, &respawn, &[built(&edited)?])?;
+
+  assert_eq!(decompiled.entities[0].object.name, "test_restrictor");
+  assert_eq!(
+    decompiled
+      .disagreements
+      .iter()
+      .map(|disagreement| disagreement.object.as_str())
+      .collect::<Vec<_>>(),
+    ["test_restrictor"]
+  );
+  assert!(decompiled.disagreements[0].reason.contains("spawn packet differs"));
 
   Ok(())
 }

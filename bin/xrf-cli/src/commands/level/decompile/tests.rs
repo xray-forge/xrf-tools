@@ -124,6 +124,42 @@ fn refuses_with_force_a_scene_whose_parts_it_would_not_all_replace() -> XrfResul
   Ok(())
 }
 
+/// With no `spawns/all.spawn` beside the levels, the entities come from the level's own lists and no root is recorded.
+#[test]
+fn reads_no_root_spawn_where_the_default_one_is_absent() -> XrfResult {
+  let root: PathBuf = level_root("no_root")?;
+  let destination: PathBuf = root.join("scenes").join("test_level.level");
+
+  decompile(&root.join("level"), &destination, &[]).expect("the level decompiles");
+
+  let sidecar: LevelSceneProvenance =
+    serde_json::from_slice(&fs::read(root.join("scenes/test_level.level.xrf.json"))?)?;
+
+  assert_eq!(sidecar.root_spawn, None);
+
+  Ok(())
+}
+
+/// A root spawn asked for by name must exist, so a mistyped name is not taken for a level of no root spawn.
+#[test]
+fn refuses_a_named_root_spawn_that_does_not_exist() -> XrfResult {
+  let root: PathBuf = level_root("missing_root")?;
+  let destination: PathBuf = root.join("scenes").join("test_level.level");
+  let error: String = get_error(decompile(
+    &root.join("level"),
+    &destination,
+    &["--spawn", "test_missing"],
+  ));
+
+  assert!(
+    error.contains("test_missing.spawn"),
+    "Expect the refusal to name the file: {error}"
+  );
+  assert!(!destination.exists());
+
+  Ok(())
+}
+
 #[test]
 fn refuses_a_destination_that_is_not_a_level() -> XrfResult {
   let root: PathBuf = level_root("named")?;

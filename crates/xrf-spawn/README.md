@@ -153,6 +153,12 @@ position, direction) and keeps the rest of the packet as is in `payload`. A list
 whatever spawn version or server class wrote it. `read_alife_object` types one as its section's class through its
 spawn packet alone, refusing bytes the class does not read, and `from_alife_object` lists a typed object back.
 
+xrAI builds a root spawn from these lists and fills some fields in on the way: the spawn id, the game and level
+vertices with the distance between them, a level changer's destination, and an anomalous zone's artefact spawn offset.
+`AlifeObject::get_built_fields` and `set_built_fields` read and write them together as `AlifeBuiltFields`, whose
+`UNBUILT` holds a fresh entity's values. Past these fields, vanilla's `all.spawn` holds every object exactly as its
+`level.spawn` does.
+
 ```rust
 use xrf_chunk::ChunkWriter;
 use xrf_math::Vector3d;

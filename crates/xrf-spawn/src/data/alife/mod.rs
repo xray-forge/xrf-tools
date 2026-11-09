@@ -1,3 +1,4 @@
+pub(crate) mod alife_built_fields;
 pub(crate) mod alife_object;
 pub(crate) mod alife_object_inherited;
 pub(crate) mod alife_packets_read_write;
