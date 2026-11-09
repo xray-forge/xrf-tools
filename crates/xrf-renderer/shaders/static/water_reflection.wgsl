@@ -377,6 +377,13 @@ fn fresh_bounds(pixel: vec2<i32>) -> FreshBounds {
   return bounds;
 }
 
+// Where a pixel reads its history this frame, from nothing to one each way: hashed from the pixel and the trace's
+// frame as whole numbers, so it stays a pixel's own however long the view runs; a clock in seconds scaled up to hash
+// steps coarser than a pixel late in its period.
+fn resolve_jitter(pixel: vec2<u32>) -> vec2<f32> {
+  return vec2<f32>(pcg3d(vec3<u32>(pixel, enhanced.trace_frame)).xy >> vec2<u32>(8u)) / 16777216.0;
+}
+
 // This frame's reflection, its traced hits written in, kept over the frames before, read where this one's point stood
 // in the last: along this pixel's view as far as what the ray met, or far off at the sky, or for a held pixel as far
 // as the history kept; with that distance, which the next frame's held pixels follow.
@@ -407,7 +414,7 @@ fn fs_water_resolve(in: WaterVarying) -> @location(0) vec4<f32> {
   let kept: f32 =
     pow(saturate(REFLECTION_HISTORY - select(0.0, REFLECTION_SKY_HISTORY, met_distance <= 0.0) - f32(is_off)), frames) *
     enhanced.history;
-  let jitter: vec2<f32> = (hash22(uv * 100.0 + water.time * 100.0) * 2.0 - 1.0) / size * 0.25;
+  let jitter: vec2<f32> = (resolve_jitter(vec2<u32>(in.clip.xy)) * 2.0 - 1.0) / size * 0.25;
   let sampled: vec3<f32> = textureSampleLevel(reflection_history, sky_clamp, previous + jitter, 0.0).rgb;
   // The history held within what this frame's fresh pixels about it show, so a reflection that moved onto a pixel,
   // which its history never had, stands at once rather than when its turn comes.
