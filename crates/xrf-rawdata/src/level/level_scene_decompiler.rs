@@ -9,15 +9,15 @@ use xrf_editable_level::{
 };
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{
-  LevelEnvModFile, LevelFogVolFile, LevelGameFile, LevelGameRPoint, LevelPsStaticFile, LevelSndEnvFile,
+  LevelEnvModFile, LevelFile, LevelFogVolFile, LevelGameFile, LevelGameRPoint, LevelPsStaticFile, LevelSndEnvFile,
   LevelSndStaticFile, LevelWallmarksFile,
 };
 use xrf_utils::{StagedFile, format_path};
 
 use crate::level::level_decompile_context::LevelDecompileContext;
 use crate::level::level_fog_volume_conversion::LevelFogVolumeConversion;
+use crate::level::level_glow_conversion::LevelGlowConversion;
 use crate::level::level_particle_conversion::LevelParticleConversion;
-use crate::level::level_scene_exporter::LevelSceneExporter;
 use crate::level::level_sound_environment_conversion::LevelSoundEnvironmentConversion;
 use crate::level::level_sound_source_conversion::LevelSoundSourceConversion;
 use crate::level::level_spawn_point_conversion::LevelSpawnPointConversion;
@@ -91,9 +91,19 @@ impl LevelSceneDecompile {
 pub struct LevelSceneDecompiler;
 
 impl LevelSceneDecompiler {
-  /// The files of a level's directory the decompile reads, the ones [`LevelSceneExporter`] writes back, in the order
-  /// their bytes are hashed into the scene's GUID.
-  pub const SOURCE_FILES: [&'static str; 7] = LevelSceneExporter::FILE_NAMES;
+  /// The files of a level's directory the decompile reads, in the order their bytes are hashed into the scene's GUID:
+  /// the compiled bundle (`level`, for its glows), and the files [`crate::LevelSceneExporter::FILE_NAMES`] the build writes
+  /// from the scene's parts and the export writes back.
+  pub const SOURCE_FILES: [&'static str; 8] = [
+    LevelFile::FILE_NAME,
+    LevelEnvModFile::FILE_NAME,
+    LevelFogVolFile::FILE_NAME,
+    LevelGameFile::FILE_NAME,
+    LevelPsStaticFile::FILE_NAME,
+    LevelSndEnvFile::FILE_NAME,
+    LevelSndStaticFile::FILE_NAME,
+    LevelWallmarksFile::FILE_NAME,
+  ];
 
   /// The owner the scene's `[level_tag]` names.
   pub const OWNER: &'static str = "xrf";
@@ -117,6 +127,16 @@ impl LevelSceneDecompiler {
       LevelSceneInference::Camera,
     ];
     let bytes = |name: &str| sources.get(name).cloned();
+
+    if let Some(bytes) = bytes(LevelFile::FILE_NAME) {
+      let level: LevelFile = LevelFile::read_from_bytes::<T>(bytes)?;
+
+      inferred.push(LevelSceneInference::GlowTransformsAndFlags);
+      tools.push((
+        LevelGlowConversion::decompile(&level, &mut context)?.to_scene_tool()?,
+        vec![LevelFile::FILE_NAME],
+      ));
+    }
 
     if let Some(bytes) = bytes(LevelPsStaticFile::FILE_NAME) {
       let file: LevelPsStaticFile = LevelPsStaticFile::read_from_bytes::<T>(bytes)?;

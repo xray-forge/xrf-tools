@@ -51,16 +51,17 @@ impl EditableTextPart {
     guid.write_to_section(self.ini.section_mut(EditableLevelGuid::SECTION));
   }
 
-  /// The tool's `[main]`, none for a part that writes no objects.
+  /// The tool's `[main]`, its version under `version_key` ([`EditablePartHeader::VERSION_KEY`] for most tools); none
+  /// for a part that writes no objects.
   ///
   /// # Errors
   ///
   /// Returns an error when the section is present but malformed.
-  pub fn get_header(&self) -> XrfResult<Option<EditablePartHeader>> {
+  pub fn get_header(&self, version_key: &str) -> XrfResult<Option<EditablePartHeader>> {
     self
       .ini
       .section(EditablePartHeader::SECTION)
-      .map(EditablePartHeader::read_from_section)
+      .map(|section| EditablePartHeader::read_from_section(section, version_key))
       .transpose()
   }
 
@@ -69,12 +70,12 @@ impl EditableTextPart {
   ///
   /// # Errors
   ///
-  /// Returns an error when `[main]` is malformed or an object it counts has no section.
+  /// Returns an error when `[main]`'s count is malformed or an object it counts has no section.
   pub fn get_objects(&self) -> XrfResult<Vec<EditablePartObject<'_>>> {
-    let Some(header) = self.get_header()? else {
+    let Some(main) = self.ini.section(EditablePartHeader::SECTION) else {
       return Ok(Vec::new());
     };
-    let count: usize = header.objects_count as usize;
+    let count: usize = main.get_parsed::<u32>(EditablePartHeader::OBJECTS_COUNT_KEY)? as usize;
     let mut sections: Vec<Option<&IniSection>> = vec![None; count];
     let mut children: Vec<Vec<&IniSection>> = vec![Vec::new(); count];
 

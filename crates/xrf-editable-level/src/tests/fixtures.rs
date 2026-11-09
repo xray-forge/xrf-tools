@@ -66,7 +66,7 @@ pub(super) fn spawn_part_text(guid: &EditableLevelGuid, objects_count: u32) -> X
     objects_count,
     flags: Some(0),
   }
-  .write_to_section(file.section_mut("main"));
+  .write_to_section(file.section_mut("main"), EditablePartHeader::VERSION_KEY);
   file.section_mut("modif").set("name", "");
   file.section_mut("modif").set("time", "0");
 

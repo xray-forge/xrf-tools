@@ -135,6 +135,7 @@ The Level Editor's Build writes some level files straight from the scene's parts
 | `LevelWallmarkConversion`         | `level.wallmarks` ↔ `wallmark.part`   | All 74 files through the binary part; `labx8`'s part exact    |
 | `LevelWayConversion`              | `level.game` paths ↔ `way.part`       | 202 files from memory; all but two through text               |
 | `LevelSpawnPointConversion`       | `level.game` respawn points, `level.env_mod` ↔ `spawn.part` | 200 of 202 levels through text |
+| `LevelGlowConversion`             | `level`'s glows → `glow.part`         | 4,563 glows over 202 levels; `labx8`'s 29 exactly GSC's       |
 
 ### Particles
 
@@ -213,10 +214,22 @@ All 174 files across the game trees round-trip through the part's text: 172 with
 - 4,951 respawn points and 25 modifiers over every tree; CS's `mp_training_camp` holds positions off the `%f` grid, and
   SGM 2.2's `l04u_labx18` an older `env_mod` that keeps no flags. Entity spawns, `level.spawn`, are not converted yet.
 
+### Glows
+
+Glows are not passed through: the build hands each to the level compiler as a `b_glow` (`SceneBuilder::BuildGlow`),
+which keeps its position, radius and the shader table row of its shader and texture in the compiled `level`
+(`fsL_GLOWS`). `decompile` gives back a glow per record, unturned, named after its texture, with no fixed-size flag,
+which the compiled level drops. Their export goes into `build.prj`, not yet written.
+
+- GSC's `labx8` holds its 29 glows inside groups: each matches a decompiled glow at distance 0 with the same radius,
+  shader and texture.
+- 198 of the 202 levels round-trip through the part's text; four (CS's `mp_autostation`, `mp_bath`, `mp_garbage` and
+  SGM 2.2's `l04u_labx18`) hold positions off the `%f` grid, which the text rounds within 7e-7.
+
 ### A whole scene
 
-`LevelSceneDecompiler::decompile` reads every pass-through file a level's directory holds and decompiles each through
-one context into a scene (`LevelSceneDecompile`), with no geometry yet:
+`LevelSceneDecompiler::decompile` reads every pass-through file a level's directory holds, and the `level` bundle for
+its glows, and decompiles each through one context into a scene (`LevelSceneDecompile`), with no geometry yet:
 
 - a part per tool, sorted by name; the spawn part from `level.game` and `level.env_mod` together;
 - a main file of a new level named after `LevelDecompileOptions::name`, serving its respawn points' game modes (single

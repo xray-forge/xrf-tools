@@ -76,7 +76,7 @@ does). An empty slot stays as stored; the editor drops it on load.
 An object tool's part reads as an `EditableObjectPart<T>`: the GUID, `[main]`'s flags for the tools that keep them,
 `[modif]`, and the objects `[object_N]` numbers. Each object is an `EditableToolObject` that reads its sections and
 writes them as the editor's `SaveLTX` does, and names its tool's class, part name (`ClassName`), `[main]` version and
-whether it keeps flags. A part refuses what the tool's `LoadLTX` refuses: another version, missing flags where the tool
+the key it is under (`version`, or the glow tool's `glow_tool_version`), and whether it keeps flags. A part refuses what the tool's `LoadLTX` refuses: another version, missing flags where the tool
 keeps them, an object of another class.
 
 | Type                             | Editor              | Holds                                                                              |
@@ -88,6 +88,7 @@ keeps them, an object of another class.
 | `EditableSoundSourceObject`      | `ESoundSource`      | A placed sound: file, own position, volume, distances, play windows                |
 | `EditableSoundEnvironmentObject` | `ESoundEnvironment` | A reverb volume: a shape whose first box separates an inner environment from outer |
 | `EditableFogVolumeObject`        | `EFogVolume`        | A fog body: a shape placed by its transform, an emitter or occlusion, a group      |
+| `EditableGlowObject`             | `CGlow`             | A light flare: radius, shader, texture and the fixed-size flag                     |
 | `EditableShapeObject`            | `CEditShape`        | A shape tool's object, and what a spawn point attaches                             |
 | `EditableWayObject`              | `CWayObject`        | A patrol path: points with flags and names, each one's links                       |
 | `EditableSpawnPointObject`       | `CSpawnPoint`       | A respawn point, an environment modifier, or an entity with its spawn data as kept |
