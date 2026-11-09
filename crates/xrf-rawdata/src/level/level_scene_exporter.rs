@@ -1,4 +1,6 @@
 use std::collections::BTreeMap;
+use std::io::ErrorKind;
+use std::path::{Path, PathBuf};
 
 use byteorder::ByteOrder;
 use xrf_chunk::ChunkWriter;
@@ -7,12 +9,14 @@ use xrf_editable_level::{
   EditableSoundEnvironmentObject, EditableSoundSourceObject, EditableSpawnPointObject, EditableToolObject,
   EditableWallmarkTool, EditableWayObject,
 };
-use xrf_error::XrfResult;
+use xrf_error::{XrfError, XrfResult};
 use xrf_level::{
   LevelEnvModFile, LevelFogVolFile, LevelGameFile, LevelPsStaticFile, LevelSndEnvFile, LevelSndStaticFile,
   LevelWallmarksFile,
 };
+use xrf_utils::{StagedFile, format_path};
 
+use crate::level::level_exported_file::{LevelExportedFile, LevelExportedPrevious};
 use crate::level::level_fog_volume_conversion::LevelFogVolumeConversion;
 use crate::level::level_particle_conversion::LevelParticleConversion;
 use crate::level::level_sound_environment_conversion::LevelSoundEnvironmentConversion;
@@ -114,6 +118,60 @@ impl LevelSceneExporter {
     }
 
     Ok(files)
+  }
+
+  /// Writes an export's files into a level directory, each staged, saying of each what it replaced.
+  ///
+  /// The editor's Build moves every file it may write aside as a `.~` backup first (`EFS_Utils::MarkFile`,
+  /// `xray-16/src/xrCore/FileSystem_borland.cpp:65`), so a file the scene no longer builds does not stay to be read by the
+  /// game. This writer deletes and moves nothing, so it refuses such a directory instead. Whether files already there
+  /// may be replaced is the caller's to ask before calling.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error, writing nothing, when the directory holds a file of [`Self::FILE_NAMES`] that `files` lacks;
+  /// returns an error when a file there cannot be read or one cannot be written.
+  pub fn write_to_directory(
+    files: &BTreeMap<&'static str, Vec<u8>>,
+    directory: &Path,
+  ) -> XrfResult<Vec<LevelExportedFile>> {
+    if let Some(stale) = Self::FILE_NAMES
+      .into_iter()
+      .find(|name| !files.contains_key(name) && directory.join(name).exists())
+    {
+      return Err(XrfError::new_invalid_error(format!(
+        "{} holds {stale}, which the scene does not build and the game would still read; move it away first",
+        format_path(directory)
+      )));
+    }
+
+    let mut written: Vec<LevelExportedFile> = Vec::with_capacity(files.len());
+
+    for (name, bytes) in files {
+      let path: PathBuf = directory.join(name);
+      let previous: LevelExportedPrevious = match std::fs::read(&path) {
+        Ok(existing) if existing == *bytes => LevelExportedPrevious::Same,
+        Ok(_) => LevelExportedPrevious::Changed,
+        Err(error) if error.kind() == ErrorKind::NotFound => LevelExportedPrevious::New,
+        Err(error) => {
+          return Err(XrfError::new_read_error(format!(
+            "{} was not read: {error}",
+            format_path(&path)
+          )));
+        }
+      };
+
+      StagedFile::write_creating_directories(&path, bytes).map_err(|error| {
+        XrfError::new_io_error(format!("{} was not written: {error}", format_path(&path)), error.kind())
+      })?;
+      written.push(LevelExportedFile {
+        name: (*name).to_owned(),
+        size: bytes.len(),
+        previous,
+      });
+    }
+
+    Ok(written)
   }
 
   /// The scene's part of tool `O`, or an empty one where the scene has no such tool, as the editor holds every tool.

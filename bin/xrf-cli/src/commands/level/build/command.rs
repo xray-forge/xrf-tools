@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
@@ -7,10 +6,10 @@ use xrf_chunk::XRayByteOrder;
 use xrf_editable_level::EditableLevelScene;
 use xrf_error::{XrfError, XrfResult};
 use xrf_output::OutputOptions;
-use xrf_rawdata::LevelSceneExporter;
-use xrf_utils::{StagedFile, format_path};
+use xrf_rawdata::{LevelExportedPrevious, LevelSceneExporter};
+use xrf_utils::format_path;
 
-use crate::commands::level::build::report::{LevelBuildFile, LevelBuildPrevious, LevelBuildReport};
+use crate::commands::level::build::report::LevelBuildReport;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 /// Builds a Level Editor scene's game files into a level directory, as the editor's Build writes them.
@@ -72,18 +71,6 @@ impl BuildCommand {
     let scene: EditableLevelScene = EditableLevelScene::read_from_path::<XRayByteOrder, _>(&source)?;
     let files: BTreeMap<&'static str, Vec<u8>> = LevelSceneExporter::export::<XRayByteOrder>(&scene)?;
 
-    // The editor's Build moves every file it may write aside as a `.~` backup first (`EFS_Utils::MarkFile`), so one the
-    // scene no longer writes does not stay. This command deletes and moves nothing: it refuses instead, naming the file.
-    if let Some(stale) = LevelSceneExporter::FILE_NAMES
-      .into_iter()
-      .find(|name| !files.contains_key(name) && destination.join(name).exists())
-    {
-      return Err(XrfError::new_invalid_error(format!(
-        "{} holds {stale}, which the scene does not build and the game would still read; move it away first",
-        format_path(destination)
-      )));
-    }
-
     if !is_forced && let Some(existing) = files.keys().find(|name| destination.join(name).exists()) {
       return Err(XrfError::new_invalid_error(format!(
         "{} already exists; pass --force to overwrite the files the build writes",
@@ -91,36 +78,10 @@ impl BuildCommand {
       )));
     }
 
-    let mut written: Vec<LevelBuildFile> = Vec::with_capacity(files.len());
-
-    for (name, bytes) in &files {
-      let path: PathBuf = destination.join(name);
-      let previous: LevelBuildPrevious = match std::fs::read(&path) {
-        Ok(existing) if existing == *bytes => LevelBuildPrevious::Same,
-        Ok(_) => LevelBuildPrevious::Changed,
-        Err(error) if error.kind() == ErrorKind::NotFound => LevelBuildPrevious::New,
-        Err(error) => {
-          return Err(XrfError::new_read_error(format!(
-            "{} was not read: {error}",
-            format_path(&path)
-          )));
-        }
-      };
-
-      StagedFile::write_creating_directories(&path, bytes).map_err(|error| {
-        XrfError::new_io_error(format!("{} was not written: {error}", format_path(&path)), error.kind())
-      })?;
-      written.push(LevelBuildFile {
-        name: (*name).to_owned(),
-        size: bytes.len(),
-        previous,
-      });
-    }
-
     let report: LevelBuildReport = LevelBuildReport {
       source: format_path(source).to_string(),
       destination: format_path(destination).to_string(),
-      files: written,
+      files: LevelSceneExporter::write_to_directory(&files, destination)?,
     };
 
     xrf_output::success!(
@@ -135,9 +96,9 @@ impl BuildCommand {
           "{} ({})",
           file.name,
           match file.previous {
-            LevelBuildPrevious::New => "new",
-            LevelBuildPrevious::Same => "same",
-            LevelBuildPrevious::Changed => "changed",
+            LevelExportedPrevious::New => "new",
+            LevelExportedPrevious::Same => "same",
+            LevelExportedPrevious::Changed => "changed",
           }
         ))
         .collect::<Vec<_>>()

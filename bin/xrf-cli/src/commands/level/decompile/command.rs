@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_build_info::{BuildInfo, build_info};
 use xrf_chunk::XRayByteOrder;
-use xrf_editable_level::{EditableLevelFile, EditableLevelPart, EditableLevelScene};
+use xrf_editable_level::{EditableLevelFile, EditableLevelPart};
 use xrf_error::{XrfError, XrfResult};
 use xrf_output::OutputOptions;
 use xrf_rawdata::{LevelDecompileOptions, LevelSceneDecompile, LevelSceneDecompiler, LevelSceneProvenance};
@@ -79,13 +79,8 @@ impl DecompileCommand {
   ) -> XrfResult<LevelDecompileReport> {
     let name: String = Self::get_level_name(destination)?;
     let sidecar: PathBuf = LevelSceneProvenance::sidecar_path(destination);
-    let parts: PathBuf = EditableLevelScene::get_parts_directory(destination);
 
-    if !is_forced
-      && let Some(existing) = [destination, parts.as_path(), sidecar.as_path()]
-        .into_iter()
-        .find(|path| path.exists())
-    {
+    if !is_forced && let Some(existing) = LevelSceneDecompile::get_existing_paths(destination).first() {
       return Err(XrfError::new_invalid_error(format!(
         "{} already exists; pass --force to overwrite the scene",
         format_path(existing)
