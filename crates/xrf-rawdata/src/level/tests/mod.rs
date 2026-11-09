@@ -2,6 +2,7 @@ mod fog_volume;
 mod particle;
 mod sound_environment;
 mod sound_source;
+mod wallmark;
 
 use xrf_editable_level::EditableLevelGuid;
 

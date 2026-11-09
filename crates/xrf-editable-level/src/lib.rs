@@ -4,6 +4,7 @@ pub(crate) mod level;
 pub(crate) mod object;
 pub(crate) mod part;
 pub(crate) mod scene;
+pub(crate) mod tool;
 
 #[cfg(test)]
 mod tests;
@@ -30,3 +31,6 @@ pub use crate::part::editable_part_object::EditablePartObject;
 pub use crate::part::editable_text_part::EditableTextPart;
 pub use crate::scene::editable_level_scene::EditableLevelScene;
 pub use crate::scene::editable_scene_tool::EditableSceneTool;
+pub use crate::tool::editable_wallmark::EditableWallmark;
+pub use crate::tool::editable_wallmark_tool::{EditableWallmarkSlot, EditableWallmarkTool};
+pub use crate::tool::editable_wallmark_vertex::EditableWallmarkVertex;
