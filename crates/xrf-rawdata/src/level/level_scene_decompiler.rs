@@ -17,6 +17,7 @@ use xrf_utils::{StagedFile, format_path};
 use crate::level::level_decompile_context::LevelDecompileContext;
 use crate::level::level_fog_volume_conversion::LevelFogVolumeConversion;
 use crate::level::level_particle_conversion::LevelParticleConversion;
+use crate::level::level_scene_exporter::LevelSceneExporter;
 use crate::level::level_sound_environment_conversion::LevelSoundEnvironmentConversion;
 use crate::level::level_sound_source_conversion::LevelSoundSourceConversion;
 use crate::level::level_spawn_point_conversion::LevelSpawnPointConversion;
@@ -77,16 +78,9 @@ impl LevelSceneDecompile {
 pub struct LevelSceneDecompiler;
 
 impl LevelSceneDecompiler {
-  /// The files of a level's directory the decompile reads, in the order their bytes are hashed into the scene's GUID.
-  pub const SOURCE_FILES: [&'static str; 7] = [
-    LevelEnvModFile::FILE_NAME,
-    LevelFogVolFile::FILE_NAME,
-    LevelGameFile::FILE_NAME,
-    LevelPsStaticFile::FILE_NAME,
-    LevelSndEnvFile::FILE_NAME,
-    LevelSndStaticFile::FILE_NAME,
-    LevelWallmarksFile::FILE_NAME,
-  ];
+  /// The files of a level's directory the decompile reads, the ones [`LevelSceneExporter`] writes back, in the order
+  /// their bytes are hashed into the scene's GUID.
+  pub const SOURCE_FILES: [&'static str; 7] = LevelSceneExporter::FILE_NAMES;
 
   /// The owner the scene's `[level_tag]` names.
   pub const OWNER: &'static str = "xrf";

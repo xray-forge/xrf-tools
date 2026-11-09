@@ -28,6 +28,17 @@ use crate::level::level_way_conversion::LevelWayConversion;
 pub struct LevelSceneExporter;
 
 impl LevelSceneExporter {
+  /// Every file [`Self::export`] may write, sorted by name.
+  pub const FILE_NAMES: [&'static str; 7] = [
+    LevelEnvModFile::FILE_NAME,
+    LevelFogVolFile::FILE_NAME,
+    LevelGameFile::FILE_NAME,
+    LevelPsStaticFile::FILE_NAME,
+    LevelSndEnvFile::FILE_NAME,
+    LevelSndStaticFile::FILE_NAME,
+    LevelWallmarksFile::FILE_NAME,
+  ];
+
   /// Each file the build writes from the scene, by name, as written in `T`'s byte order:
   ///
   /// - `level.game`, `level.env_mod` and `level.fog_vol` for every scene, from its way and spawn parts and its fog

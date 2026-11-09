@@ -13,6 +13,7 @@ impl LevelGroup {
       about: "Compiled level tools",
       commands: vec![
         level::albedo::AlbedoCommand::new_box(),
+        level::build::BuildCommand::new_box(),
         level::decompile::DecompileCommand::new_box(),
         level::info::InfoCommand::new_box(),
         level::materials::MaterialsCommand::new_box(),
