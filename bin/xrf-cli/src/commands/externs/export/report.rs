@@ -17,10 +17,10 @@ pub(crate) struct ExternsExportReport {
 impl ExternsExportReport {
   pub(crate) fn new(source: &Path, destination: &Path, format: ExternFormat, externs: usize) -> Self {
     Self {
-      destination: xrf_utils::to_portable_path_string(destination),
+      destination: xrf_utils::format_portable_path(destination),
       externs,
       format: format.as_str(),
-      source: xrf_utils::to_portable_path_string(source),
+      source: xrf_utils::format_portable_path(source),
     }
   }
 }

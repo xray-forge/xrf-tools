@@ -99,11 +99,11 @@ fn reports_every_unopened_source_with_its_alias_and_reason() {
     findings,
     vec![
       (
-        Some(xrf_utils::to_portable_path_string(&volumes).as_str()),
+        Some(xrf_utils::format_portable_path(&volumes).as_str()),
         "coverage.skipped-mount"
       ),
       (
-        Some(xrf_utils::to_portable_path_string(&patches).as_str()),
+        Some(xrf_utils::format_portable_path(&patches).as_str()),
         "coverage.skipped-mount"
       ),
     ]

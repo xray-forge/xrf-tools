@@ -49,12 +49,12 @@ impl GenericCommand for UnpackCommand {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: PathBuf = xrf_utils::to_absolute_path(
+    let path: PathBuf = xrf_utils::resolve_absolute_path(
       matches
         .get_one::<PathBuf>("path")
         .expect("Expected valid path to be provided"),
     )?;
-    let destination: PathBuf = xrf_utils::to_absolute_path(
+    let destination: PathBuf = xrf_utils::resolve_absolute_path(
       matches
         .get_one::<PathBuf>("dest")
         .expect("Expected valid output path to be provided"),

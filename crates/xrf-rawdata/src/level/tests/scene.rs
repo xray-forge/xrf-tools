@@ -156,6 +156,13 @@ fn decompiles_a_level_into_a_scene_of_its_parts() -> XrfResult {
       .inferred
       .contains(&LevelSceneInference::EntitiesNotDecompiled)
   );
+  assert!(
+    !decompiled
+      .provenance
+      .inferred
+      .contains(&LevelSceneInference::LightBrightness),
+    "a scene holding no light records no light inference"
+  );
 
   Ok(())
 }

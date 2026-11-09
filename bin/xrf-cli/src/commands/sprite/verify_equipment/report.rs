@@ -15,7 +15,7 @@ pub(crate) struct SpriteVerifyEquipmentReport {
 impl SpriteVerifyEquipmentReport {
   pub(crate) fn new(system_ltx: &Path, report: Report) -> Self {
     Self {
-      system_ltx: xrf_utils::to_portable_path_string(system_ltx),
+      system_ltx: xrf_utils::format_portable_path(system_ltx),
       report,
     }
   }

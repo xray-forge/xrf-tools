@@ -7,7 +7,7 @@ use xrf_ltx::Ltx;
 use xrf_output::OutputOptions;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
 use xrf_texture::{EquipmentGridOverlap, EquipmentGridVerifier};
-use xrf_utils::to_portable_path_string;
+use xrf_utils::format_portable_path;
 
 use crate::commands::sprite::verify_equipment::SpriteVerifyEquipmentReport;
 use crate::core::arguments::LtxDialectArgument;
@@ -81,7 +81,7 @@ impl GenericCommand for VerifyEquipmentCommand {
       Err(error @ XrfError::Io { .. }) => return Err(error.into()),
       Err(error) => vec![Finding::new(
         RuleId::of_static(Self::RULE_LTX),
-        Some(to_portable_path_string(path)),
+        Some(format_portable_path(path)),
         error.to_string(),
       )],
     };

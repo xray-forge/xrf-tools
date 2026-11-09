@@ -80,8 +80,8 @@ impl ArchiveStatisticsCollector {
       overview: self.to_overview(sources),
       compression: self.to_compression(),
       sizes: self.to_size_bands(),
-      extensions: Self::into_extension_usage(self.extensions),
-      folders: Self::into_folder_usage(self.folders),
+      extensions: Self::list_extension_usage(self.extensions),
+      folders: Self::list_folder_usage(self.folders),
       largest: self.largest,
       volumes,
       origins,
@@ -189,8 +189,8 @@ impl ArchiveStatisticsCollector {
     })
   }
 
-  fn into_extension_usage(groups: HashMap<Option<String>, ArchiveGroup>) -> Vec<ArchiveExtensionUsage> {
-    Self::into_heaviest_first(groups)
+  fn list_extension_usage(groups: HashMap<Option<String>, ArchiveGroup>) -> Vec<ArchiveExtensionUsage> {
+    Self::sort_heaviest_first(groups)
       .map(|(extension, group)| ArchiveExtensionUsage {
         is_declared: extension
           .as_deref()
@@ -202,8 +202,8 @@ impl ArchiveStatisticsCollector {
       .collect()
   }
 
-  fn into_folder_usage(groups: HashMap<Option<String>, ArchiveGroup>) -> Vec<ArchiveFolderUsage> {
-    Self::into_heaviest_first(groups)
+  fn list_folder_usage(groups: HashMap<Option<String>, ArchiveGroup>) -> Vec<ArchiveFolderUsage> {
+    Self::sort_heaviest_first(groups)
       .map(|(folder, group)| ArchiveFolderUsage {
         folder,
         measure: group.measure,
@@ -213,7 +213,7 @@ impl ArchiveStatisticsCollector {
   }
 
   /// Heaviest first, with the key breaking ties so two readings of one subject order equal groups the same way.
-  fn into_heaviest_first(
+  fn sort_heaviest_first(
     groups: HashMap<Option<String>, ArchiveGroup>,
   ) -> impl Iterator<Item = (Option<String>, ArchiveGroup)> {
     let mut groups: Vec<(Option<String>, ArchiveGroup)> = groups.into_iter().collect();

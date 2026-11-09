@@ -44,7 +44,7 @@ impl ArchiveEntryReport {
       // failing a listing over a diagnostic field.
       source: project
         .get_volume_of(entry)
-        .map(|volume| xrf_utils::to_portable_path_string(&volume.path))
+        .map(|volume| xrf_utils::format_portable_path(&volume.path))
         .unwrap_or_default(),
     }
   }

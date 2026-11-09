@@ -6,7 +6,7 @@ use clap::{Arg, ArgAction, ArgMatches, Command};
 use xrf_error::{XrfError, XrfResult};
 use xrf_output::OutputOptions;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
-use xrf_utils::{format_path, to_portable_path_string};
+use xrf_utils::{format_path, format_portable_path};
 
 use crate::commands::packed_file::{PackedFileArguments, PackedFileFormat, PackedFileVerifyReport};
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
@@ -62,7 +62,7 @@ impl<F: PackedFileFormat> GenericCommand for VerifyCommand<F> {
       Err(error @ XrfError::Io { .. }) => return Err(error.into()),
       Err(error) => vec![Finding::new(
         RuleId::of_static(F::READ_CHECK),
-        Some(to_portable_path_string(path)),
+        Some(format_portable_path(path)),
         error.to_string(),
       )],
     };

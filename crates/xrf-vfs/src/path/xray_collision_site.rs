@@ -2,7 +2,7 @@ use std::fmt::{Display, Formatter, Result as FormatResult};
 use std::path::PathBuf;
 
 use serde::{Serialize, Serializer};
-use xrf_utils::{format_path, to_portable_path_string};
+use xrf_utils::{format_path, format_portable_path};
 
 /// Separator between a volume and the entry inside it.
 const ENTRY_SEPARATOR: &str = "::";
@@ -22,14 +22,14 @@ pub enum XrayCollisionSite {
 }
 
 impl XrayCollisionSite {
-  /// Portable rendering for a report field, matching what [`xrf_utils::to_portable_path_string`] answers for a path.
+  /// Portable rendering for a report field, matching what [`xrf_utils::format_portable_path`] answers for a path.
   pub fn to_portable_string(&self) -> String {
     match self {
-      Self::Loose(path) => to_portable_path_string(path),
+      Self::Loose(path) => format_portable_path(path),
       Self::Archived { volume, name } => {
         format!(
           "{}{ENTRY_SEPARATOR}{}",
-          to_portable_path_string(volume),
+          format_portable_path(volume),
           name.replace('\\', "/")
         )
       }

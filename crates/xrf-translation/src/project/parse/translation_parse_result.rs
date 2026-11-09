@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use serde::Serialize;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
-use xrf_utils::to_portable_path_string;
+use xrf_utils::format_portable_path;
 
 use crate::project::parse::translation_parse_census::TranslationParseCensus;
 
@@ -95,6 +95,6 @@ impl TranslationParseResult {
 
   /// Record something about a file on the host, whose path is formatted for showing.
   pub(crate) fn record_path_finding(&mut self, rule: &'static str, path: &Path, message: impl Into<String>) {
-    self.record_finding(rule, &to_portable_path_string(path), message);
+    self.record_finding(rule, &format_portable_path(path), message);
   }
 }

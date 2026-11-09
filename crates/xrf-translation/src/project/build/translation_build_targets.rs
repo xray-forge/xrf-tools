@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
-use xrf_utils::{HostFileName, HostRelativePath, format_path, to_absolute_path, to_portable_path_string};
+use xrf_utils::{HostFileName, HostRelativePath, format_path, format_portable_path, resolve_absolute_path};
 use xrf_vfs::XrayRoots;
 
 use crate::json::translation_source_name::TranslationSourceName;
@@ -73,7 +73,7 @@ impl TranslationBuildTargets {
       for language in Self::languages_for(source, language) {
         let target: HostRelativePath = Self::target_path(source, language)?;
         // Without case, because the game's file system finds a table whatever case it was named in.
-        let target_key: String = to_portable_path_string(target.as_path()).to_lowercase();
+        let target_key: String = format_portable_path(target.as_path()).to_lowercase();
 
         if let Some(existing) = target_sources.insert(target_key, source)
           && existing != source
@@ -124,8 +124,8 @@ impl TranslationBuildTargets {
   ///
   /// Returns an invalid error when the output directory is inside the source directory.
   pub(crate) fn ensure_output_outside_source(source: &Path, output: &Path) -> XrfResult {
-    let source_lexical: PathBuf = to_absolute_path(source)?;
-    let output_lexical: PathBuf = to_absolute_path(output)?;
+    let source_lexical: PathBuf = resolve_absolute_path(source)?;
+    let output_lexical: PathBuf = resolve_absolute_path(output)?;
     let source_resolved: PathBuf = fs::canonicalize(source).unwrap_or_else(|_| source_lexical.clone());
     let output_resolved: PathBuf = fs::canonicalize(output).unwrap_or_else(|_| output_lexical.clone());
 

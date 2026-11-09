@@ -17,11 +17,11 @@ pub(crate) struct OmfRenameMotionsReport {
 impl OmfRenameMotionsReport {
   pub(crate) fn new(source: &Path, destination: &Path, file: &OmfFile, renamed: usize, is_dry_run: bool) -> Self {
     Self {
-      destination: xrf_utils::to_portable_path_string(destination),
+      destination: xrf_utils::format_portable_path(destination),
       is_dry_run,
       motions: file.get_motion_names().into_iter().map(String::from).collect(),
       renamed,
-      source: xrf_utils::to_portable_path_string(source),
+      source: xrf_utils::format_portable_path(source),
     }
   }
 }

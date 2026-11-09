@@ -33,8 +33,8 @@ impl DdsConvertReport {
     let metadata = written.file.metadata();
 
     Self {
-      source: xrf_utils::to_portable_path_string(source),
-      destination: xrf_utils::to_portable_path_string(destination),
+      source: xrf_utils::format_portable_path(source),
+      destination: xrf_utils::format_portable_path(destination),
       width: metadata.width,
       height: metadata.height,
       mipmap_levels: metadata.mipmap_levels,

@@ -22,9 +22,9 @@ pub(crate) struct DdsMakeBumpReport {
 impl DdsMakeBumpReport {
   pub(crate) fn new(source: &Path, result: &GenerateBumpResult) -> Self {
     Self {
-      source: xrf_utils::to_portable_path_string(source),
-      bump: xrf_utils::to_portable_path_string(&result.bump),
-      companion: xrf_utils::to_portable_path_string(&result.companion),
+      source: xrf_utils::format_portable_path(source),
+      bump: xrf_utils::format_portable_path(&result.bump),
+      companion: xrf_utils::format_portable_path(&result.companion),
       gloss_power: result.gloss_power,
       is_gloss_too_dark: result.is_gloss_too_dark(),
     }

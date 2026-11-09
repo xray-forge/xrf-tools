@@ -18,9 +18,9 @@ pub(crate) struct FileConversionReport {
 impl FileConversionReport {
   pub(crate) fn new(source: &Path, destination: &Path, read_duration: Duration, write_duration: Duration) -> Self {
     Self {
-      destination: xrf_utils::to_portable_path_string(destination),
+      destination: xrf_utils::format_portable_path(destination),
       read_duration,
-      source: xrf_utils::to_portable_path_string(source),
+      source: xrf_utils::format_portable_path(source),
       write_duration,
     }
   }

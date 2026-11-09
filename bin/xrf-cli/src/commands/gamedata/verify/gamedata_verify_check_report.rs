@@ -3,7 +3,7 @@ use std::path::Path;
 use serde::Serialize;
 use xrf_gamedata::GamedataVerificationCheckReport;
 use xrf_report::{CheckReport, Finding};
-use xrf_utils::to_portable_path_string;
+use xrf_utils::format_portable_path;
 
 /// One check of a `gamedata verify` run: the shared check shape, its findings naming assets relative to the verified
 /// root, and the check's own one-line summary.
@@ -28,7 +28,7 @@ impl GamedataVerifyCheckReport {
           finding.subject().map(|subject| {
             let path: &Path = Path::new(subject);
 
-            to_portable_path_string(path.strip_prefix(root).unwrap_or(path))
+            format_portable_path(path.strip_prefix(root).unwrap_or(path))
           }),
           finding.message(),
         )

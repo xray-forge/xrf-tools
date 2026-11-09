@@ -157,7 +157,7 @@ impl ExportCommand {
   fn finding(rule: &'static str, subject: &Path, error: &XrfError) -> Finding {
     Finding::new(
       RuleId::of_static(rule),
-      Some(xrf_utils::to_portable_path_string(subject)),
+      Some(xrf_utils::format_portable_path(subject)),
       error.to_string(),
     )
   }

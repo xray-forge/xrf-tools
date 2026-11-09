@@ -1,7 +1,7 @@
 use serde::Serialize;
 use xrf_job::JobOutcome;
 use xrf_texture::GenerateBumpResult;
-use xrf_utils::to_portable_path_string;
+use xrf_utils::format_portable_path;
 
 /// What a generated pair came to.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -25,8 +25,8 @@ impl TextureMakeBumpOutcome {
   pub(crate) fn of(result: &GenerateBumpResult) -> Self {
     Self {
       outcome: result.outcome,
-      bump: to_portable_path_string(&result.bump),
-      companion: to_portable_path_string(&result.companion),
+      bump: format_portable_path(&result.bump),
+      companion: format_portable_path(&result.companion),
       gloss_power: result.gloss_power,
       is_gloss_too_dark: result.is_gloss_too_dark(),
     }

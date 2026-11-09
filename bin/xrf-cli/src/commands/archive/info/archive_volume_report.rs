@@ -16,8 +16,8 @@ impl ArchiveVolumeReport {
   pub(crate) fn new(archive: &ArchiveDescriptor) -> Self {
     Self {
       entries: archive.entries,
-      path: xrf_utils::to_portable_path_string(&archive.path),
-      root: xrf_utils::to_portable_path_string(&archive.output_root_path),
+      path: xrf_utils::format_portable_path(&archive.path),
+      root: xrf_utils::format_portable_path(&archive.output_root_path),
       size_compressed: archive.get_compressed_size(),
       size_real: archive.get_real_size(),
     }

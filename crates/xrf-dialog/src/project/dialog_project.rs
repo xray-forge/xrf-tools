@@ -2,7 +2,7 @@ use indexmap::IndexMap;
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
 use xrf_translation::{TranslationGamedataReader, TranslationSourceReader};
-use xrf_utils::to_portable_path_string;
+use xrf_utils::format_portable_path;
 use xrf_vfs::{XrayAsset, XrayLogicalPath, XrayRoots, XraySearch};
 
 use crate::conversation::dialog::Dialog;
@@ -299,7 +299,7 @@ impl DialogProject {
       files.insert(
         entry.get_logical_path().to_owned(),
         DialogFileDescriptor {
-          physical_path: entry.get_physical_path().map(to_portable_path_string),
+          physical_path: entry.get_physical_path().map(format_portable_path),
           is_editable: entry.is_editable(),
           encoding: String::from(entry.get_file().get_encoding().name()),
           dialogs: entry

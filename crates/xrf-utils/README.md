@@ -87,8 +87,8 @@ fn main() -> xrf_error::XrfResult {
 Display helpers are lossy and must never be used as addresses:
 
 - `format_path` renders a host path for people; `format_path_or` names an absent one with the caller's word.
-- `to_portable_path_string` gives a `/`-separated report key.
-- `to_absolute_path` resolves against the current directory lexically, without touching the filesystem or following
+- `format_portable_path` gives a `/`-separated report key.
+- `resolve_absolute_path` resolves against the current directory lexically, without touching the filesystem or following
   links.
 
 Engine logical paths and mounted lookup belong to [xrf-vfs](../xrf-vfs/README.md); file extensions to

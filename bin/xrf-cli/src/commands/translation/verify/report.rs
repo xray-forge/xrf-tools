@@ -94,7 +94,7 @@ mod tests {
     assert_eq!(json["checks"][0]["findings"][0]["ruleId"], "translations.missing");
     assert_eq!(
       json["checks"][0]["findings"][0]["subject"],
-      xrf_utils::to_portable_path_string(&translation_path)
+      xrf_utils::format_portable_path(&translation_path)
     );
     assert_eq!(json["checks"][1]["id"], "translations.engine");
     assert_eq!(json["checks"][1]["status"], "passed");

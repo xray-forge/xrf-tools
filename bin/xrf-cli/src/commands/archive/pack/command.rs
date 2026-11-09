@@ -109,7 +109,7 @@ impl GenericCommand for PackCommand {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: PathBuf = xrf_utils::to_absolute_path(
+    let path: PathBuf = xrf_utils::resolve_absolute_path(
       matches
         .get_one::<PathBuf>("path")
         .expect("Expected valid source path to be provided"),
