@@ -13,7 +13,7 @@ use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 
 use crate::level::tests::GUID;
 use crate::{
-  LevelCompilerShaderReason, LevelDecompileContext, LevelGeometryCensus, LevelGeometryConversion,
+  LevelCollisionIndex, LevelCompilerShaderReason, LevelDecompileContext, LevelGeometryCensus, LevelGeometryConversion,
   LevelGeometryDecompile, LevelShaderPairings, LevelSurfaceCensus, LevelSurfaceInference, SurfaceDress,
 };
 
@@ -170,6 +170,7 @@ fn decompile(level: &LevelFile) -> XrfResult<LevelGeometryDecompile> {
     },
     &geometry(&[square(-4.0), square(4.0)])?,
     None,
+    None,
     &mut LevelDecompileContext::new(GUID),
   )
 }
@@ -262,6 +263,7 @@ fn leaves_sectors_and_portals_out_where_a_sector_draws_no_static_geometry() -> X
     },
     &geometry(&[square(-4.0), square(4.0)])?,
     None,
+    None,
     &mut LevelDecompileContext::new(GUID),
   )?;
 
@@ -282,19 +284,20 @@ fn leaves_sectors_and_portals_out_where_a_sector_draws_no_static_geometry() -> X
 const STONE: u16 = 3;
 const EARTH: u16 = 5;
 
-/// What dresses the two squares: the west one's own triangles as collision faces of stone, and where `with_earth`, a
-/// larger face of earth beneath the east one, which only a ray finds.
-fn inference(with_earth: bool) -> XrfResult<LevelSurfaceInference> {
-  let face = |vertices: [u32; 3], material: u16| LevelCformFace {
+/// The two squares' collision form: the west one's own triangles as faces of stone, where `with_earth` a larger face of
+/// earth beneath the east one, which only a ray finds, and where `with_wall` a wall of stone in the second sector no
+/// render triangle draws.
+fn collision(with_earth: bool, with_wall: bool) -> XrfResult<LevelCollisionIndex> {
+  let face = |vertices: [u32; 3], material: u16, sector: u16| LevelCformFace {
     vertices,
     material,
     is_shadow_suppressed: false,
     is_wallmark_suppressed: false,
-    sector: 0,
+    sector,
   };
   let [a, b, c, d] = square(-4.0).map(|[x, y, z]| Vector3d::new(x, y, z));
   let mut vertices: Vec<Vector3d> = vec![a, b, c, d];
-  let mut faces: Vec<LevelCformFace> = vec![face([0, 2, 1], STONE), face([0, 3, 2], STONE)];
+  let mut faces: Vec<LevelCformFace> = vec![face([0, 2, 1], STONE, 0), face([0, 3, 2], STONE, 0)];
 
   if with_earth {
     vertices.extend([
@@ -302,9 +305,25 @@ fn inference(with_earth: bool) -> XrfResult<LevelSurfaceInference> {
       Vector3d::new(2.0, 0.0, 6.0),
       Vector3d::new(11.0, 0.0, -3.0),
     ]);
-    faces.push(face([4, 5, 6], EARTH));
+    faces.push(face([4, 5, 6], EARTH, 1));
   }
 
+  if with_wall {
+    let base: u32 = vertices.len() as u32;
+
+    vertices.extend([
+      Vector3d::new(20.0, 0.0, 0.0),
+      Vector3d::new(20.0, 3.0, 0.0),
+      Vector3d::new(24.0, 0.0, 0.0),
+    ]);
+    faces.push(face([base, base + 1, base + 2], STONE, 1));
+  }
+
+  Ok(LevelCollisionIndex::new(LevelCformGeometry::new(vertices, faces)?))
+}
+
+/// What names the materials and offers compiler shaders.
+fn inference() -> LevelSurfaceInference {
   let shader = |name: &str, flags: u32| ShaderCompilerShader {
     name: String::from(name),
     name_trailing: Vec::new(),
@@ -314,8 +333,7 @@ fn inference(with_earth: bool) -> XrfResult<LevelSurfaceInference> {
     lightmap_density: 1.0,
   };
 
-  Ok(LevelSurfaceInference::new(
-    &LevelCformGeometry::new(vertices, faces)?,
+  LevelSurfaceInference::new(
     GameMtlFile::new(
       vec![
         GameMtlMaterial::new(u32::from(STONE), "materials\\stone"),
@@ -331,7 +349,7 @@ fn inference(with_earth: bool) -> XrfResult<LevelSurfaceInference> {
       ],
     },
     LevelShaderPairings::default(),
-  ))
+  )
 }
 
 /// Each shell's surfaces, as compiler shader and game material.
@@ -353,7 +371,10 @@ fn dress_of(decompiled: &LevelGeometryDecompile) -> Vec<Vec<(String, String)>> {
     .collect()
 }
 
-fn decompile_dressed(inference: &mut LevelSurfaceInference) -> XrfResult<LevelGeometryDecompile> {
+fn decompile_dressed(
+  collision: &mut LevelCollisionIndex,
+  inference: &mut LevelSurfaceInference,
+) -> XrfResult<LevelGeometryDecompile> {
   LevelGeometryConversion::decompile::<XRayByteOrder, _>(
     "test",
     &level((0, 1)),
@@ -361,6 +382,7 @@ fn decompile_dressed(inference: &mut LevelSurfaceInference) -> XrfResult<LevelGe
       visuals: vec![drawable(0), drawable(1), hierarchy(vec![0])],
     },
     &geometry(&[square(-4.0), square(4.0)])?,
+    Some(collision),
     Some(inference),
     &mut LevelDecompileContext::new(GUID),
   )
@@ -368,8 +390,8 @@ fn decompile_dressed(inference: &mut LevelSurfaceInference) -> XrfResult<LevelGe
 
 #[test]
 fn dresses_surfaces_from_the_collision_faces_they_lie_on() -> XrfResult {
-  let mut inference: LevelSurfaceInference = inference(true)?;
-  let decompiled: LevelGeometryDecompile = decompile_dressed(&mut inference)?;
+  let mut inference: LevelSurfaceInference = inference();
+  let decompiled: LevelGeometryDecompile = decompile_dressed(&mut collision(true, false)?, &mut inference)?;
   let vertex = String::from("def_shaders\\def_vertex");
 
   assert_eq!(
@@ -406,8 +428,8 @@ fn dresses_surfaces_from_the_collision_faces_they_lie_on() -> XrfResult {
 
 #[test]
 fn gives_a_surface_on_no_collision_face_a_compiler_shader_of_no_collision() -> XrfResult {
-  let mut inference: LevelSurfaceInference = inference(false)?;
-  let decompiled: LevelGeometryDecompile = decompile_dressed(&mut inference)?;
+  let mut inference: LevelSurfaceInference = inference();
+  let decompiled: LevelGeometryDecompile = decompile_dressed(&mut collision(false, false)?, &mut inference)?;
 
   assert_eq!(
     dress_of(&decompiled)[1],
@@ -417,6 +439,53 @@ fn gives_a_surface_on_no_collision_face_a_compiler_shader_of_no_collision() -> X
     )]
   );
   assert_eq!(inference.into_census().uncollided_triangles, 2);
+
+  Ok(())
+}
+
+#[test]
+fn gathers_collision_no_render_triangle_draws_into_its_own_object_by_sector() -> XrfResult {
+  let decompiled: LevelGeometryDecompile = decompile_dressed(&mut collision(true, true)?, &mut inference())?;
+  let collision = decompiled.objects.last().expect("the collision object is written last");
+  let meshes = collision.decompile.object.meshes.as_deref().unwrap_or_default();
+
+  assert_eq!(collision.reference, "levels\\test\\test_collision");
+  assert_eq!(
+    meshes
+      .iter()
+      .map(|mesh| (mesh.name.as_str(), mesh.faces.len()))
+      .collect::<Vec<_>>(),
+    [("collision_1", 1)]
+  );
+  assert_eq!(
+    dress_of(&decompiled).last().cloned().unwrap_or_default(),
+    [(
+      String::from(LevelGeometryConversion::COLLISION_COMPILER_SHADER),
+      String::from("materials\\stone")
+    )]
+  );
+  assert_eq!(
+    decompiled.sectors.objects[1].items.last(),
+    Some(&EditableSectorItem {
+      object: collision.reference.clone(),
+      mesh: String::from("collision_1"),
+    }),
+    "the sector its faces lie in names its mesh"
+  );
+  assert_eq!(
+    (
+      decompiled.census.collision_faces,
+      decompiled.census.collision_only_faces
+    ),
+    (4, 1)
+  );
+  assert!(
+    decompiled
+      .scene_objects
+      .objects
+      .iter()
+      .any(|placed| placed.reference == collision.reference)
+  );
 
   Ok(())
 }

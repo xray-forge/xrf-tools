@@ -6,11 +6,11 @@ use serde::{Deserialize, Serialize};
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::{XrfError, XrfResult};
 use xrf_gamemtl::GameMtlFile;
-use xrf_level::{LevelCformGeometry, LevelCformTracer, LevelSurfaceMaterials};
 use xrf_math::Vector3d;
 use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 use xrf_utils::format_path;
 
+use crate::level::level_collision_index::{LevelCollisionIndex, LevelCollisionLookup};
 use crate::level::level_visual_geometry::LevelVisualGeometry;
 use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 
@@ -157,12 +157,10 @@ pub struct LevelSurfaceCensus {
   pub compiler_shaders: Vec<LevelCompilerShaderChoice>,
 }
 
-/// What dresses a level's surfaces (decision 14): its collision form, the libraries naming game materials and compiler
-/// shaders, and an object library's pairings.
+/// What dresses a level's surfaces (decision 14) from where their triangles lie on its collision form
+/// ([`LevelCollisionIndex`]): the libraries naming game materials and compiler shaders, and an object library's
+/// pairings.
 pub struct LevelSurfaceInference {
-  /// The material of the collision face on each set of three exact points.
-  faces: HashMap<[[u32; 3]; 3], u16>,
-  tracer: LevelCformTracer,
   game_materials: GameMtlFile,
   compiler_shaders: ShaderCompilerFile,
   pairings: LevelShaderPairings,
@@ -191,23 +189,8 @@ impl LevelSurfaceInference {
   const RENDERING_FLAG: u32 = ShaderCompilerShader::FLAGS[1].0;
   const VERTEX_LIGHTING_FLAG: u32 = ShaderCompilerShader::FLAGS[3].0;
 
-  pub fn new(
-    cform: &LevelCformGeometry,
-    game_materials: GameMtlFile,
-    compiler_shaders: ShaderCompilerFile,
-    pairings: LevelShaderPairings,
-  ) -> Self {
-    let mut faces: HashMap<[[u32; 3]; 3], u16> = HashMap::with_capacity(cform.get_faces().len());
-
-    for face in cform.get_faces() {
-      faces
-        .entry(Self::get_key(&cform.get_triangle(face)))
-        .or_insert(face.material);
-    }
-
+  pub fn new(game_materials: GameMtlFile, compiler_shaders: ShaderCompilerFile, pairings: LevelShaderPairings) -> Self {
     Self {
-      faces,
-      tracer: LevelCformTracer::new(cform),
       game_materials,
       compiler_shaders,
       pairings,
@@ -227,7 +210,11 @@ impl LevelSurfaceInference {
   /// `geometry` split by the game material each of its triangles lies on, each part dressed with that material and a
   /// compiler shader fitting it: collision where it lies on one, vertex lighting where its vertices keep no lightmap
   /// coordinates.
-  pub fn dress(&mut self, geometry: LevelVisualGeometry) -> Vec<LevelVisualGeometry> {
+  pub fn dress(
+    &mut self,
+    collision: &mut LevelCollisionIndex,
+    geometry: LevelVisualGeometry,
+  ) -> Vec<LevelVisualGeometry> {
     let vertex_lighting: bool = geometry
       .vertices
       .first()
@@ -240,7 +227,16 @@ impl LevelSurfaceInference {
         .map(|index| geometry.vertices.get(usize::from(*index)).map(|vertex| vertex.position))
         .collect::<Option<Vec<Vector3d>>>()
         .and_then(|points| points.try_into().ok());
-      let material: Option<u16> = points.and_then(|points| self.get_material(&points));
+      let lookup: LevelCollisionLookup =
+        points.map_or(LevelCollisionLookup::None, |points| collision.find_static(&points));
+
+      match lookup {
+        LevelCollisionLookup::Exact(_) => self.census.exact_triangles += 1,
+        LevelCollisionLookup::Traced(_) => self.census.traced_triangles += 1,
+        LevelCollisionLookup::None => self.census.uncollided_triangles += 1,
+      }
+
+      let material: Option<u16> = lookup.get_material();
 
       parts.entry(material).or_default().extend_from_slice(triangle);
     }
@@ -260,44 +256,8 @@ impl LevelSurfaceInference {
       .collect()
   }
 
-  /// The collision material under a triangle: the face on its very points, else the face a short ray from just above
-  /// its centre meets, else none.
-  fn get_material(&mut self, points: &[Vector3d; 3]) -> Option<u16> {
-    if let Some(material) = self.faces.get(&Self::get_key(points)) {
-      self.census.exact_triangles += 1;
-
-      return Some(*material);
-    }
-
-    let [a, b, c] = points;
-    let cross: Vector3d = (b - a).cross(&(c - a));
-    let length: f32 = cross.length();
-    // A degenerate triangle faces nowhere, so no ray finds what it lies on. A ray from the front, then one from behind,
-    // for a triangle lying on a collision face wound the other way (56 of vanilla's, which the first ray misses).
-    let material: Option<u16> = if length.is_normal() {
-      let normal: Vector3d = &cross / length;
-      let centre: Vector3d = &(&(a + b) + c) / 3.0;
-      let lift: Vector3d = &normal * LevelSurfaceMaterials::RAY_LIFT;
-      let range: f32 = LevelSurfaceMaterials::RAY_LIFT * 2.0;
-
-      self
-        .tracer
-        .get_nearest_material(&(&centre + &lift), &-&normal, range)
-        .or_else(|| self.tracer.get_nearest_material(&(&centre - &lift), &normal, range))
-    } else {
-      None
-    };
-
-    match material {
-      Some(_) => self.census.traced_triangles += 1,
-      None => self.census.uncollided_triangles += 1,
-    }
-
-    material
-  }
-
   /// The game material numbered `material` by name, or `default` for no collision or a number the library lacks.
-  fn get_material_name(&mut self, material: Option<u16>) -> String {
+  pub fn get_material_name(&mut self, material: Option<u16>) -> String {
     let Some(material) = material else {
       return String::from(SurfaceDress::DEFAULT_SETTING);
     };
@@ -371,13 +331,5 @@ impl LevelSurfaceInference {
     self.choices.insert(key, choice);
 
     name
-  }
-
-  /// A triangle by its three points' bits, in a fixed order, so a face matches whatever corner it starts from.
-  fn get_key(points: &[Vector3d; 3]) -> [[u32; 3]; 3] {
-    let mut key: [[u32; 3]; 3] = points.map(|point| [point.x.to_bits(), point.y.to_bits(), point.z.to_bits()]);
-
-    key.sort_unstable();
-    key
   }
 }

@@ -20,6 +20,7 @@ use xrf_shaders::ShaderCompilerFile;
 use xrf_spawn::{AlifeObject, LevelSpawnFile, SpawnFile, SpawnLevelObjects};
 use xrf_utils::{StagedFile, format_path};
 
+use crate::level::level_collision_index::LevelCollisionIndex;
 use crate::level::level_decompile_context::LevelDecompileContext;
 use crate::level::level_entity_conversion::{LevelEntityConversion, LevelEntityDecompile, LevelEntitySources};
 use crate::level::level_fog_volume_conversion::LevelFogVolumeConversion;
@@ -339,27 +340,36 @@ impl LevelSceneDecompiler {
     draft: &mut LevelSceneDraft,
   ) -> XrfResult {
     let source: LevelGeomSource<InMemoryChunkDataSource> = LevelGeomSource::open_from_bytes::<T>(geom)?;
-    let mut surfaces: Option<(LevelSurfaceInference, LevelSceneSurfaceLibraries)> =
-      match (options.surfaces, sources.take(LevelCformFile::FILE_NAME)) {
-        (LevelSurfaces::Infer, Some(cform)) => Some(Self::read_surface_inference::<T>(cform, options)?),
-        _ => None,
-      };
+    let mut collision: Option<LevelCollisionIndex> = sources
+      .take(LevelCformFile::FILE_NAME)
+      .map(|bytes| LevelCformFile::read_geometry_from_bytes::<T>(bytes).map(LevelCollisionIndex::new))
+      .transpose()?;
+    let mut surfaces: Option<(LevelSurfaceInference, LevelSceneSurfaceLibraries)> = match (options.surfaces, &collision)
+    {
+      (LevelSurfaces::Infer, Some(_)) => Some(Self::read_surface_inference::<T>(options)?),
+      _ => None,
+    };
     let geometry = LevelGeometryConversion::decompile::<T, _>(
       &options.name,
       level,
       visuals,
       &source,
+      collision.as_mut(),
       surfaces.as_mut().map(|(inference, _)| inference),
       &mut draft.context,
     )?;
     let files: Vec<&'static str> = std::iter::once(LevelFile::FILE_NAME)
       .chain(std::iter::once(LevelGeomFile::FILE_NAME))
-      .chain(surfaces.is_some().then_some(LevelCformFile::FILE_NAME))
+      .chain(collision.is_some().then_some(LevelCformFile::FILE_NAME))
       .collect();
 
     if !geometry.objects.is_empty() {
       draft.inferred.push(LevelSceneInference::SectorShells);
       draft.infer_if(surfaces.is_some(), &[LevelSceneInference::SurfaceDress]);
+      draft.infer_if(
+        geometry.census.collision_only_faces > 0,
+        &[LevelSceneInference::CollisionObject],
+      );
       draft.add(geometry.scene_objects.to_scene_tool()?, &files, sources);
       draft.add(geometry.sectors.to_scene_tool()?, &files, sources);
     }
@@ -382,9 +392,8 @@ impl LevelSceneDecompiler {
     Ok(())
   }
 
-  /// What dresses the surfaces: the collision form, and the libraries the options name, each recorded with its hash.
+  /// What dresses the surfaces: the libraries the options name, each recorded with its hash.
   fn read_surface_inference<T: ByteOrder>(
-    cform: Vec<u8>,
     options: &LevelDecompileOptions,
   ) -> XrfResult<(LevelSurfaceInference, LevelSceneSurfaceLibraries)> {
     let read = |path: Option<&PathBuf>, what: &str| -> XrfResult<(Vec<u8>, LevelSceneSource)> {
@@ -422,7 +431,6 @@ impl LevelSceneDecompiler {
 
     Ok((
       LevelSurfaceInference::new(
-        &LevelCformFile::read_geometry_from_bytes::<T>(cform)?,
         GameMtlFile::read_from_bytes::<T>(game_materials)?,
         ShaderCompilerFile::read_from_bytes::<T>(compiler_shaders)?,
         pairings,

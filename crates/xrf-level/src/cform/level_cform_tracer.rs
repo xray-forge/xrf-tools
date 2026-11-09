@@ -19,8 +19,9 @@ const PARALLEL_EPSILON: f32 = 1e-12;
 /// `EPS`: the least determinant `CDB`'s culled ray test takes a front face to have.
 const FRONT_EPSILON: f32 = xrf_math::EPS;
 
-/// A triangle as the hierarchy is built: its corners, its centre, which the splits order it by, and its material.
-type TracerEntry = ([u32; 3], [f32; 3], u16);
+/// A triangle as the hierarchy is built: its corners, its centre, which the splits order it by, its material, and its
+/// face's index in the collision form.
+type TracerEntry = ([u32; 3], [f32; 3], u16, u32);
 
 /// The collision form's triangles in a bounding volume hierarchy, for the engine's static ray tests and picks.
 pub struct LevelCformTracer {
@@ -29,6 +30,8 @@ pub struct LevelCformTracer {
   triangles: Vec<[u32; 3]>,
   /// Each triangle's game material, by its `gamemtl.xr` id, in the same order.
   materials: Vec<u16>,
+  /// Each triangle's face index in the collision form it was built from, in the same order.
+  faces: Vec<u32>,
   /// Depth first, the root first, each inner node's first child right after it.
   nodes: Vec<LevelCformTracerNode>,
 }
@@ -43,13 +46,15 @@ impl LevelCformTracer {
     let mut entries: Vec<TracerEntry> = geometry
       .get_faces()
       .iter()
-      .map(|face| {
+      .zip(0u32..)
+      .map(|(face, index)| {
         let [a, b, c] = face.vertices.map(|index| &vertices[index as usize]);
 
         (
           face.vertices,
           (&(a + b) + c).to_array().map(|axis| axis / 3.0),
           face.material,
+          index,
         )
       })
       .collect();
@@ -83,10 +88,15 @@ impl LevelCformTracer {
       }
     }
 
-    let (triangles, materials): (Vec<[u32; 3]>, Vec<u16>) = entries
-      .into_iter()
-      .map(|(triangle, _, material)| (triangle, material))
-      .unzip();
+    let mut triangles: Vec<[u32; 3]> = Vec::with_capacity(entries.len());
+    let mut materials: Vec<u16> = Vec::with_capacity(entries.len());
+    let mut faces: Vec<u32> = Vec::with_capacity(entries.len());
+
+    for (triangle, _, material, face) in entries {
+      triangles.push(triangle);
+      materials.push(material);
+      faces.push(face);
+    }
 
     Self::bound(&mut nodes, &vertices, &triangles);
 
@@ -94,6 +104,7 @@ impl LevelCformTracer {
       vertices,
       triangles,
       materials,
+      faces,
       nodes,
     }
   }
@@ -115,6 +126,21 @@ impl LevelCformTracer {
   /// The game material of the nearest face a ray crosses within `range` of its origin, from either side: what a
   /// surface lying on the form is made of, read along its own normal whichever way its collision faces were wound.
   pub fn get_nearest_material(&self, origin: &Vector3d<f32>, direction: &Vector3d<f32>, range: f32) -> Option<u16> {
+    self
+      .get_nearest_triangle(origin, direction, range)
+      .map(|index| self.materials[index])
+  }
+
+  /// The nearest face a ray crosses within `range` of its origin, from either side, by its index in the collision form
+  /// the tracer was built from, with its game material.
+  pub fn get_nearest_face(&self, origin: &Vector3d<f32>, direction: &Vector3d<f32>, range: f32) -> Option<(u32, u16)> {
+    self
+      .get_nearest_triangle(origin, direction, range)
+      .map(|index| (self.faces[index], self.materials[index]))
+  }
+
+  /// The nearest triangle a ray crosses within `range`, from either side, by its place in the hierarchy's order.
+  fn get_nearest_triangle(&self, origin: &Vector3d<f32>, direction: &Vector3d<f32>, range: f32) -> Option<usize> {
     let mut nearest: Option<usize> = None;
 
     self.walk(origin, direction, range, |index, reach| {
@@ -128,7 +154,7 @@ impl LevelCformTracer {
       false
     });
 
-    nearest.map(|index| self.materials[index])
+    nearest
   }
 
   /// `CObjectSpace::RayPick` over `rqtStatic` (`OPT_ONLYNEAREST | OPT_CULL`): the nearest front face a ray meets.
@@ -329,7 +355,7 @@ impl LevelCformTracer {
     let mut min: [f32; 3] = [f32::INFINITY; 3];
     let mut max: [f32; 3] = [f32::NEG_INFINITY; 3];
 
-    for (_, centre, _) in entries {
+    for (_, centre, _, _) in entries {
       for axis in 0..3 {
         min[axis] = min[axis].min(centre[axis]);
         max[axis] = max[axis].max(centre[axis]);

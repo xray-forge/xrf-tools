@@ -67,6 +67,10 @@ pub enum LevelSceneInference {
   /// on different ones or none; its compiler shader is one of `shaders_xrlc.xr` fitting what the level shows
   /// (collision, vertex lighting), chosen as the sidecar's `geometry.surfaces` records.
   SurfaceDress,
+  /// The collision faces no render triangle lies on come back as one object, `<level>_collision`, a mesh per sector,
+  /// dressed as GSC dressed its collision-only props (`prop\prop_fake_kollision`, `def_shaders\def_trans_v`,
+  /// `def_shaders\def_kolizion_vertex`).
+  CollisionObject,
 }
 
 /// The objects a scene's static geometry came back as, and what the decompile counted of it.
