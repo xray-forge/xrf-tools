@@ -15,6 +15,7 @@ pub use crate::level::level_scene_decompiler::{LevelDecompileOptions, LevelScene
 pub use crate::level::level_scene_exporter::LevelSceneExporter;
 pub use crate::level::level_sound_environment_conversion::LevelSoundEnvironmentConversion;
 pub use crate::level::level_sound_source_conversion::LevelSoundSourceConversion;
+pub use crate::level::level_spawn_data_fields::LevelSpawnDataFields;
 pub use crate::level::level_spawn_point_conversion::LevelSpawnPointConversion;
 pub use crate::level::level_visual_geometry::LevelVisualGeometry;
 pub use crate::level::level_wallmark_conversion::LevelWallmarkConversion;

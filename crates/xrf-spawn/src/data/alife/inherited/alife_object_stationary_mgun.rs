@@ -1,6 +1,6 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_utils::vector_to_string;
@@ -24,24 +24,21 @@ pub struct AlifeObjectStationaryMgun {
 
 impl AlifePacketsReadWrite for AlifeObjectStationaryMgun {
   /// Read the gun from both packets.
-  fn read<T: ByteOrder, D: ChunkDataSource>(
-    spawn: &mut ChunkReader<D>,
-    update: &mut ChunkReader<D>,
-  ) -> XrfResult<Self> {
+  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
     Ok(Self {
       base: spawn.read_xr::<T, _>()?,
       update_working: update.read_u8()?,
-      update_enemy_direction: RawFloat::read_array::<T, D, 3>(update)?,
+      update_enemy_direction: RawFloat::read_array::<T, _, 3>(update)?,
     })
   }
 
   /// Write the gun into both packets.
-  fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
+  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(&self, spawn: &mut S, update: &mut U) -> XrfResult {
     spawn.write_xr::<T, _>(&self.base)?;
 
     update.write_u8(self.update_working)?;
 
-    RawFloat::write_array::<T>(update, &self.update_enemy_direction)
+    RawFloat::write_array::<T, _>(update, &self.update_enemy_direction)
   }
 }
 

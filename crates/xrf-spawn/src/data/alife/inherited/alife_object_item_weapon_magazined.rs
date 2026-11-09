@@ -1,6 +1,6 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 #[cfg(test)]
@@ -20,19 +20,16 @@ pub struct AlifeObjectItemWeaponMagazined {
 
 impl AlifePacketsReadWrite for AlifeObjectItemWeaponMagazined {
   /// Read a magazined weapon from both packets; its fire mode ends the update packet's weapon fields.
-  fn read<T: ByteOrder, D: ChunkDataSource>(
-    spawn: &mut ChunkReader<D>,
-    update: &mut ChunkReader<D>,
-  ) -> XrfResult<Self> {
+  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
     Ok(Self {
-      base: AlifeObjectItemWeapon::read::<T, _>(spawn, update)?,
+      base: AlifeObjectItemWeapon::read::<T, _, _>(spawn, update)?,
       update_fire_mode: update.read_u8()?,
     })
   }
 
   /// Write a magazined weapon into both packets.
-  fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
-    self.base.write::<T>(spawn, update)?;
+  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(&self, spawn: &mut S, update: &mut U) -> XrfResult {
+    self.base.write::<T, _, _>(spawn, update)?;
     update.write_u8(self.update_fire_mode)?;
 
     Ok(())

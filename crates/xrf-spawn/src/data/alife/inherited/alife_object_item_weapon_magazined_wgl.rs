@@ -1,6 +1,6 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
@@ -19,23 +19,20 @@ pub struct AlifeObjectItemWeaponMagazinedWgl {
 impl AlifePacketsReadWrite for AlifeObjectItemWeaponMagazinedWgl {
   /// Read a magazined weapon with a launcher from both packets. Its grenade mode opens the update packet, ahead of
   /// every field it inherits, as `CSE_ALifeItemWeaponMagazinedWGL::UPDATE_Read` takes it first.
-  fn read<T: ByteOrder, D: ChunkDataSource>(
-    spawn: &mut ChunkReader<D>,
-    update: &mut ChunkReader<D>,
-  ) -> XrfResult<Self> {
+  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
     let update_grenade_mode: u8 = update.read_u8()?;
 
     Ok(Self {
-      base: AlifeObjectItemWeaponMagazined::read::<T, _>(spawn, update)?,
+      base: AlifeObjectItemWeaponMagazined::read::<T, _, _>(spawn, update)?,
       update_grenade_mode,
     })
   }
 
   /// Write a magazined weapon with a launcher into both packets, its grenade mode first in the update packet.
-  fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
+  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(&self, spawn: &mut S, update: &mut U) -> XrfResult {
     update.write_u8(self.update_grenade_mode)?;
 
-    self.base.write::<T>(spawn, update)
+    self.base.write::<T, _, _>(spawn, update)
   }
 }
 
@@ -103,7 +100,7 @@ mod tests {
     let mut spawn: xrf_chunk::ChunkWriter = xrf_chunk::ChunkWriter::new();
     let mut update: xrf_chunk::ChunkWriter = xrf_chunk::ChunkWriter::new();
 
-    original.write::<XRayByteOrder>(&mut spawn, &mut update)?;
+    original.write::<XRayByteOrder, _, _>(&mut spawn, &mut update)?;
 
     // Grenade mode, then ten items, enabled, with both velocities left out.
     assert_eq!(update.buffer[..2], [1, 0b1110_1010]);

@@ -166,7 +166,7 @@ impl LevelSoundEmitters {
       AlifeObjectInherited::CseAlifeTorridZone(zone) => (Some(&zone.motion), &zone.base),
       _ => return None,
     };
-    let section: &Section = sections.section(&object.section)?;
+    let section: &Section = sections.section(&object.header.section)?;
     let read = |key: &str| section.get(key).map(str::trim).filter(|value| !value.is_empty());
     let is_campfire: bool = read("class").and_then(ClsId::from_class_name) == Some(ClsId::ZCFire);
     let idle: Option<WorldSound> = read("idle_sound").map(|sound| files.get(sound));
@@ -179,14 +179,18 @@ impl LevelSoundEmitters {
     }
 
     Some(WorldZoneSound {
-      id: object.id,
+      id: object.header.id,
       object: place,
-      position: [object.position.x, object.position.y, object.position.z],
+      position: [
+        object.header.position.x,
+        object.header.position.y,
+        object.header.position.z,
+      ],
       idle,
       is_campfire,
       disabled,
       motion: motion.and_then(AlifeObjectMotion::get_name).map(str::to_owned),
-      zone_sphere: ZoneSphere::of_custom_zone(zone, (&object.position, &object.direction)),
+      zone_sphere: ZoneSphere::of_custom_zone(zone, (&object.header.position, &object.header.direction)),
     })
   }
 }

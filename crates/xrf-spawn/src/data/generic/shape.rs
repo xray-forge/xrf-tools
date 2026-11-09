@@ -1,10 +1,10 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReadWriteList, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_math::{Aabb, Affine3d, Sphere, Vector3d};
-use xrf_utils::{assert_length, narrow_format_size};
+use xrf_utils::narrow_format_size;
 
 /// One shape of an object's volume, `CShapeData::shape_def`, in the object's own space.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -24,60 +24,43 @@ impl Shape {
   pub const BOX_TYPE: u8 = 1;
 }
 
-impl ChunkReadWrite for Shape {
-  /// Read shape from the chunk reader.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    Ok(match reader.read_u8()? {
-      Self::SPHERE_TYPE => Self::Sphere(reader.read_xr::<T, _>()?),
-      Self::BOX_TYPE => Self::Box(reader.read_xr::<T, _>()?),
-      _ => {
-        return Err(XrfError::new_parsing_error("Unexpected shape type provided"));
-      }
-    })
+/// As `CSE_Shape::cform_write` writes one shape: its type, then the sphere or the box's matrix.
+impl ChunkFieldReadWrite for Shape {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+    match reader.read_u8()? {
+      Self::SPHERE_TYPE => Ok(Self::Sphere(reader.read_xr::<T, _>()?)),
+      Self::BOX_TYPE => Ok(Self::Box(reader.read_xr::<T, _>()?)),
+      kind => Err(XrfError::new_parsing_error(format!("Unexpected shape type {kind}"))),
+    }
   }
 
-  /// Write shape data into the chunk reader.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     match self {
       Self::Sphere(sphere) => {
         writer.write_u8(Self::SPHERE_TYPE)?;
-        sphere.write::<T>(writer)?;
+        writer.write_xr::<T, _>(sphere)
       }
       Self::Box(transform) => {
         writer.write_u8(Self::BOX_TYPE)?;
-        transform.write::<T>(writer)?;
+        writer.write_xr::<T, _>(transform)
       }
     }
-
-    Ok(())
   }
 }
 
-impl ChunkReadWriteList for Shape {
-  /// Read list of shapes from the chunk reader.
-  fn read_list<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<Self>> {
-    let mut shapes: Vec<Self> = Vec::new();
+/// As `CSE_Shape::cform_write` writes an object's shapes: their `u8` count, then each.
+impl ChunkFieldReadWriteList for Shape {
+  fn read_field_list<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Vec<Self>> {
     let count: u8 = reader.read_u8()?;
 
-    for _ in 0..count {
-      shapes.push(Self::read::<T, _>(reader)?);
-    }
-
-    assert_length(
-      &shapes,
-      count as usize,
-      "Declared and read shapes count should be equal",
-    )?;
-
-    Ok(shapes)
+    (0..count).map(|_| reader.read_xr::<T, _>()).collect()
   }
 
-  /// Write list of shapes data into the chunk reader.
-  fn write_list<T: ByteOrder>(writer: &mut ChunkWriter, shapes: &[Self]) -> XrfResult {
+  fn write_field_list<T: ByteOrder, W: ChunkFieldWriter>(writer: &mut W, shapes: &[Self]) -> XrfResult {
     writer.write_u8(narrow_format_size(shapes.len(), "shapes")?)?;
 
     for shape in shapes {
-      shape.write::<T>(writer)?;
+      writer.write_xr::<T, _>(shape)?;
     }
 
     Ok(())

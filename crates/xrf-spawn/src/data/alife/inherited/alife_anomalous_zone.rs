@@ -1,6 +1,6 @@
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
@@ -15,9 +15,9 @@ pub struct AlifeAnomalousZone {
   pub last_spawn_time: LastSpawnTime,
 }
 
-impl ChunkReadWrite for AlifeAnomalousZone {
+impl ChunkFieldReadWrite for AlifeAnomalousZone {
   /// Read anomalous zone object data from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       base: reader.read_xr::<T, _>()?,
       last_spawn_time: reader.read_xr::<T, _>()?,
@@ -25,7 +25,7 @@ impl ChunkReadWrite for AlifeAnomalousZone {
   }
 
   /// Write ALife anomalous zone data to the writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_xr::<T, _>(&self.base)?;
     writer.write_xr::<T, _>(&self.last_spawn_time)?;
 

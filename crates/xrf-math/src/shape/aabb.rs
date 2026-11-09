@@ -2,7 +2,7 @@ use std::borrow::Borrow;
 
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
 
 use crate::affine_3d::Affine3d;
@@ -114,19 +114,20 @@ impl Aabb {
   }
 }
 
-impl ChunkReadWrite for Aabb {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+/// `Fbox`: the lowest corner, then the highest.
+impl ChunkFieldReadWrite for Aabb {
+  #[inline]
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       min: reader.read_xr::<T, _>()?,
       max: reader.read_xr::<T, _>()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    self.min.write::<T>(writer)?;
-    self.max.write::<T>(writer)?;
-
-    Ok(())
+  #[inline]
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    writer.write_xr::<T, _>(&self.min)?;
+    writer.write_xr::<T, _>(&self.max)
   }
 }
 

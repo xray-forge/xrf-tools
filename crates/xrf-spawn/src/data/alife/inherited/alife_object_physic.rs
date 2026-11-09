@@ -1,6 +1,6 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
@@ -28,10 +28,7 @@ impl AlifePacketsReadWrite for AlifeObjectPhysic {
   ///
   /// An empty update packet reads as no physics state, as `CSE_ALifeObjectPhysic::UPDATE_Read` reads it; it is
   /// written back as the zero byte the engine writes for one.
-  fn read<T: ByteOrder, D: ChunkDataSource>(
-    spawn: &mut ChunkReader<D>,
-    update: &mut ChunkReader<D>,
-  ) -> XrfResult<Self> {
+  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
     Ok(Self {
       base: spawn.read_xr::<T, _>()?,
       skeleton: spawn.read_xr::<T, _>()?,
@@ -41,20 +38,20 @@ impl AlifePacketsReadWrite for AlifeObjectPhysic {
       update_state: if update.is_ended() {
         None
       } else {
-        PhysicsNetState::read_optional::<T, _>(update)?
+        update.read_xr_optional::<T, _>()?
       },
     })
   }
 
   /// Write a physic object into both packets.
-  fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
+  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(&self, spawn: &mut S, update: &mut U) -> XrfResult {
     spawn.write_xr::<T, _>(&self.base)?;
     spawn.write_xr::<T, _>(&self.skeleton)?;
     spawn.write_u32::<T>(self.physic_type)?;
     spawn.write_f32::<T>(self.mass)?;
     spawn.write_w1251_string(&self.fixed_bones)?;
 
-    PhysicsNetState::write_optional::<T>(self.update_state.as_ref(), update)
+    update.write_xr_optional::<T, _>(self.update_state.as_ref())
   }
 }
 
@@ -167,7 +164,7 @@ mod tests {
     let mut update: xrf_chunk::ChunkWriter = xrf_chunk::ChunkWriter::new();
 
     expected.update_state = None;
-    expected.write::<XRayByteOrder>(&mut spawn, &mut update)?;
+    expected.write::<XRayByteOrder, _, _>(&mut spawn, &mut update)?;
 
     let mut spawn_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&spawn.buffer)?;
     // The packet's length and `M_UPDATE` action, which `AlifeObject` reads, leaving nothing behind them.
@@ -176,7 +173,7 @@ mod tests {
     update_reader.read_u32::<XRayByteOrder>()?;
 
     assert_eq!(
-      AlifeObjectPhysic::read::<XRayByteOrder, _>(&mut spawn_reader, &mut update_reader)?,
+      AlifeObjectPhysic::read::<XRayByteOrder, _, _>(&mut spawn_reader, &mut update_reader)?,
       expected
     );
 

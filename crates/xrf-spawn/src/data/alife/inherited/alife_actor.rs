@@ -1,6 +1,6 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 #[cfg(test)]
@@ -37,26 +37,19 @@ impl AlifeActor {
 
 impl AlifePacketsReadWrite for AlifeActor {
   /// Read actor data from both packets; the script class adds to the spawn packet alone.
-  fn read<T: ByteOrder, D: ChunkDataSource>(
-    spawn: &mut ChunkReader<D>,
-    update: &mut ChunkReader<D>,
-  ) -> XrfResult<Self> {
+  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
     Ok(Self {
-      base: AlifeObjectActor::read::<T, _>(spawn, update)?,
-      start_position_filled: ScriptSaveMarker::read::<T, _, _>(spawn, Self::SCRIPT_CLASS, |reader| {
-        Ok(reader.read_u8()?)
-      })?,
+      base: AlifeObjectActor::read::<T, _, _>(spawn, update)?,
+      start_position_filled: ScriptSaveMarker::read::<T, _, _>(spawn, Self::SCRIPT_CLASS, |reader| reader.read_u8())?,
     })
   }
 
   /// Write actor data into both packets.
-  fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
-    self.base.write::<T>(spawn, update)?;
+  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(&self, spawn: &mut S, update: &mut U) -> XrfResult {
+    self.base.write::<T, _, _>(spawn, update)?;
 
-    ScriptSaveMarker::write::<T>(spawn, Self::SCRIPT_CLASS, |writer| {
-      writer.write_u8(self.start_position_filled)?;
-
-      Ok(())
+    ScriptSaveMarker::write::<T, _>(spawn, Self::SCRIPT_CLASS, |writer| {
+      writer.write_u8(self.start_position_filled)
     })
   }
 }

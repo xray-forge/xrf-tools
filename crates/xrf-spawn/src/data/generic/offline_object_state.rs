@@ -1,6 +1,6 @@
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
 use xrf_ltx::{LtxSectionRead, LtxSectionWrite, LtxWrite};
 
@@ -48,9 +48,9 @@ impl OfflineObjectState {
   }
 }
 
-impl ChunkReadWrite for OfflineObjectState {
+impl ChunkFieldReadWrite for OfflineObjectState {
   /// Read the two strings the script class writes.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       level_vertex_id: ScriptToString::parse_id(&reader.read_w1251_string()?, Self::LEVEL_VERTEX)?,
       active_section: ScriptToString::parse_text(reader.read_w1251_string()?),
@@ -58,7 +58,7 @@ impl ChunkReadWrite for OfflineObjectState {
   }
 
   /// Write the two strings the script class reads.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_w1251_string(&ScriptToString::format_id(self.level_vertex_id))?;
     writer.write_w1251_string(ScriptToString::format_text(self.active_section.as_deref()))?;
 

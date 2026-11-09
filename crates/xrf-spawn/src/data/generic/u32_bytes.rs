@@ -1,9 +1,9 @@
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::vector_from_string_sized;
 
@@ -11,8 +11,8 @@ use xrf_utils::vector_from_string_sized;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct U32Bytes(pub u8, pub u8, pub u8, pub u8);
 
-impl ChunkReadWrite for U32Bytes {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+impl ChunkFieldReadWrite for U32Bytes {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self(
       reader.read_u8()?,
       reader.read_u8()?,
@@ -21,7 +21,7 @@ impl ChunkReadWrite for U32Bytes {
     ))
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_u8(self.0)?;
     writer.write_u8(self.1)?;
     writer.write_u8(self.2)?;

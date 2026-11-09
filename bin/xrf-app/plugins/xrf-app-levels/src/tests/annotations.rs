@@ -32,11 +32,12 @@ fn new_restrictor(shape: Vec<Shape>, restrictor_type: u8) -> AlifeObjectSpaceRes
 }
 
 fn new_object(name: &str, position: Vector3d, heading: f32, inherited: AlifeObjectInherited) -> AlifeObject {
-  AlifeObject {
-    position,
-    direction: Vector3d::new(0.0, heading, 0.0),
-    ..fixtures::new_object(name, "space_restrictor", ClsId::SpcRsS, inherited)
-  }
+  let mut object: AlifeObject = fixtures::new_object(name, "space_restrictor", ClsId::SpcRsS, inherited);
+
+  object.header.position = position;
+  object.header.direction = Vector3d::new(0.0, heading, 0.0);
+
+  object
 }
 
 fn new_level(id: u8, name: &str, offset: Vector3d) -> GraphLevel {

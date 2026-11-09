@@ -1,6 +1,6 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
@@ -21,9 +21,9 @@ pub struct AlifeObjectSmartCover {
   pub can_fire: u8,
 }
 
-impl ChunkReadWrite for AlifeObjectSmartCover {
+impl ChunkFieldReadWrite for AlifeObjectSmartCover {
   /// Read smart cover object data from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       base: reader.read_xr::<T, _>()?,
       shape: reader.read_xr_list::<T, Shape>()?,
@@ -37,7 +37,7 @@ impl ChunkReadWrite for AlifeObjectSmartCover {
   }
 
   /// Write smart cover object data into the writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_xr::<T, _>(&self.base)?;
     writer.write_xr_list::<T, Shape>(&self.shape)?;
     writer.write_w1251_string(&self.description)?;

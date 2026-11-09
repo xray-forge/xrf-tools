@@ -1,6 +1,6 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
@@ -16,9 +16,9 @@ pub struct AlifeObjectAnomalyZone {
   pub artefact_position_offset: u32,
 }
 
-impl ChunkReadWrite for AlifeObjectAnomalyZone {
+impl ChunkFieldReadWrite for AlifeObjectAnomalyZone {
   /// Read anomaly zone object data from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       base: reader.read_xr::<T, _>()?,
       offline_interactive_radius: reader.read_f32::<T>()?,
@@ -28,7 +28,7 @@ impl ChunkReadWrite for AlifeObjectAnomalyZone {
   }
 
   /// Write anomaly zone object data into the writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_xr::<T, _>(&self.base)?;
     writer.write_f32::<T>(self.offline_interactive_radius)?;
     writer.write_u16::<T>(self.artefact_spawn_count)?;

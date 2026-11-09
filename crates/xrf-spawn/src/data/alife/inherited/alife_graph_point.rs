@@ -1,6 +1,6 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
@@ -19,9 +19,9 @@ pub struct AlifeGraphPoint {
   pub location3: u8,
 }
 
-impl ChunkReadWrite for AlifeGraphPoint {
+impl ChunkFieldReadWrite for AlifeGraphPoint {
   /// Read graph point data from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       connection_point_name: reader.read_w1251_string()?,
       connection_level_name: reader.read_w1251_string()?,
@@ -33,7 +33,7 @@ impl ChunkReadWrite for AlifeGraphPoint {
   }
 
   /// Write graph point data into the writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_w1251_string(&self.connection_point_name)?;
     writer.write_w1251_string(&self.connection_level_name)?;
     writer.write_u8(self.location0)?;

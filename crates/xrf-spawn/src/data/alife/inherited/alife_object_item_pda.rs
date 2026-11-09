@@ -1,6 +1,6 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
@@ -19,12 +19,9 @@ pub struct AlifeObjectItemPda {
 
 impl AlifePacketsReadWrite for AlifeObjectItemPda {
   /// Read pda object data from both packets; its own fields are all in the spawn packet.
-  fn read<T: ByteOrder, D: ChunkDataSource>(
-    spawn: &mut ChunkReader<D>,
-    update: &mut ChunkReader<D>,
-  ) -> XrfResult<Self> {
+  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
     Ok(Self {
-      base: AlifeObjectItem::read::<T, _>(spawn, update)?,
+      base: AlifeObjectItem::read::<T, _, _>(spawn, update)?,
       owner: spawn.read_u16::<T>()?,
       character: spawn.read_w1251_string()?,
       info_portion: spawn.read_w1251_string()?,
@@ -32,8 +29,8 @@ impl AlifePacketsReadWrite for AlifeObjectItemPda {
   }
 
   /// Write pda object data into both packets.
-  fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
-    self.base.write::<T>(spawn, update)?;
+  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(&self, spawn: &mut S, update: &mut U) -> XrfResult {
+    self.base.write::<T, _, _>(spawn, update)?;
     spawn.write_u16::<T>(self.owner)?;
     spawn.write_w1251_string(&self.character)?;
     spawn.write_w1251_string(&self.info_portion)?;

@@ -23,7 +23,7 @@ impl LevelSpawnObjectDetails {
     let base: Option<&AlifeObjectAbstract> = object.inherited.get_abstract();
 
     Self {
-      id: object.id,
+      id: object.header.id,
       game_vertex_id: base.map(|it| it.game_vertex_id),
       level_vertex_id: base.map(|it| it.level_vertex_id),
       custom_data: base.map(|it| it.custom_data.clone()).unwrap_or_default(),

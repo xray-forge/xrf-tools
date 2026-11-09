@@ -1,9 +1,9 @@
 use std::str::FromStr;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 
 /// Two named components, the engine's `Fvector2`: a texture coordinate, a sprite's size on its sheet.
@@ -37,19 +37,20 @@ impl From<[f32; 2]> for Vector2d {
   }
 }
 
-impl ChunkReadWrite for Vector2d {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+/// An `Fvector2`: two floats, as the engine writes one with two `w_float`.
+impl ChunkFieldReadWrite for Vector2d {
+  #[inline]
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       x: reader.read_f32::<T>()?,
       y: reader.read_f32::<T>()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  #[inline]
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_f32::<T>(self.x)?;
-    writer.write_f32::<T>(self.y)?;
-
-    Ok(())
+    writer.write_f32::<T>(self.y)
   }
 }
 

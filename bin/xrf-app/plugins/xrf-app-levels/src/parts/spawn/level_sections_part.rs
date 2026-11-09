@@ -72,7 +72,7 @@ impl LevelSectionsPart {
     let names: BTreeSet<&str> = spawn
       .objects
       .iter()
-      .map(|object| object.section.as_str())
+      .map(|object| object.header.section.as_str())
       .chain([XrayReducedTextures::SECTION])
       .collect();
     let mut kept: Ltx = Ltx::new();

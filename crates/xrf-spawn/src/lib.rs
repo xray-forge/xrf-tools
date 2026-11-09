@@ -78,6 +78,8 @@ pub use crate::data::alife::inherited::alife_stalker::AlifeStalker;
 pub use crate::data::alife::inherited::alife_zone_visual::AlifeZoneVisual;
 pub use crate::data::alife::spawn_level_arrival::SpawnLevelArrival;
 pub use crate::data::alife::spawn_level_objects::SpawnLevelObjects;
+pub use crate::data::alife::spawn_packet::SpawnPacket;
+pub use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 pub use crate::data::alife::spawn_skipped_object::SpawnSkippedObject;
 pub use crate::data::artefact_spawn::artefact_spawn_point::ArtefactSpawnPoint;
 pub use crate::data::generic::last_spawn_time::LastSpawnTime;

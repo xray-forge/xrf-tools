@@ -95,34 +95,18 @@ export type AlifeMonster = {
   offlineState: OfflineObjectState;
 };
 
-/** Generic abstract ALife object base. */
+/**
+ * An object of a spawn set (`all.spawn`): its spawn packet, the spawn packet header's fields then the class's spawn
+ * fields, and its update packet, the class's update fields, each in a chunk of its own behind a `u16` length.
+ */
 export type AlifeObject = {
-  id: number;
-  netAction: number;
-  section: string;
   clsid: ClsId;
-  name: string;
-  scriptGameId: number;
-  scriptRp: number;
-  position: Vector3d;
-  direction: Vector3d;
-  respawnTime: number;
-  parentId: number;
-  phantomId: number;
-  /** `s_flags`; the spawn version is stored only while `M_SPAWN_VERSION` is set. */
-  scriptFlags: number;
-  version: number;
-  gameType: number;
-  scriptVersion: number;
-  /** The client object's saved state (`CSE_Abstract::client_data`), carried as stored. */
-  clientData: Array<number>;
-  spawnId: number;
   /**
    * The server class payload, its fields from both packets. The engine applies the update packet over the spawn
    * packet when it creates the object, so where both carry a field the update packet's is the one the game uses.
    */
   inherited: AlifeObjectInherited;
-};
+} & SpawnPacketHeader;
 
 /** Generic ALife object abstraction data. */
 export type AlifeObjectAbstract = {
@@ -1072,6 +1056,38 @@ export type SpawnHeaderChunk = {
   graphGuid: string;
   objectsCount: number;
   levelsCount: number;
+};
+
+/**
+ * What every server entity's spawn packet opens with, `CSE_Abstract::Spawn_Write` (`xrServer_Object_Base.cpp:156`),
+ * up to the size it patches in once its class's own fields, the state, are written.
+ */
+export type SpawnPacketHeader = {
+  id: number;
+  /** `M_SPAWN`, which the engine asserts on before reading anything else. */
+  netAction: number;
+  /** The config section the entity is built from. */
+  section: string;
+  /** The name the level gives this one, `s_name_replace`. */
+  name: string;
+  scriptGameId: number;
+  scriptRp: number;
+  position: Vector3d;
+  direction: Vector3d;
+  respawnTime: number;
+  parentId: number;
+  phantomId: number;
+  /** `s_flags`; the spawn version is stored only while `M_SPAWN_VERSION` is set. */
+  scriptFlags: number;
+  version: number;
+  gameType: number;
+  scriptVersion: number;
+  /**
+   * The client object's saved state (`CSE_Abstract::client_data`), raw bytes carried as stored, which fields cannot
+   * hold.
+   */
+  clientData: Array<number>;
+  spawnId: number;
 };
 
 /** `CPatrolPathStorage::load` in xray engine. */

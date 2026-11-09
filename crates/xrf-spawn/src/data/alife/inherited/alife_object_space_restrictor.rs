@@ -1,6 +1,6 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
@@ -16,22 +16,20 @@ pub struct AlifeObjectSpaceRestrictor {
   pub restrictor_type: u8,
 }
 
-impl ChunkReadWrite for AlifeObjectSpaceRestrictor {
-  /// Read generic space restrictor data from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+/// As `CSE_ALifeSpaceRestrictor::STATE_Write` writes it: the object, its shapes, then its type.
+impl ChunkFieldReadWrite for AlifeObjectSpaceRestrictor {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
-      base: reader.read_xr::<T, _>()?,
-      shape: reader.read_xr_list::<T, Shape>()?,
+      base: reader.read_xr::<T, AlifeObjectAbstract>()?,
+      shape: reader.read_xr_list::<T, _>()?,
       restrictor_type: reader.read_u8()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_xr::<T, _>(&self.base)?;
-    writer.write_xr_list::<T, Shape>(&self.shape)?;
-    writer.write_u8(self.restrictor_type)?;
-
-    Ok(())
+    writer.write_xr_list::<T, _>(&self.shape)?;
+    writer.write_u8(self.restrictor_type)
   }
 }
 

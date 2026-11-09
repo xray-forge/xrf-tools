@@ -171,7 +171,7 @@ impl LevelParticlesPart {
       _ => return None,
     };
 
-    let section: &Section = sections.section(&object.section)?;
+    let section: &Section = sections.section(&object.header.section)?;
     let read = |key: &str| {
       section
         .get(key)
@@ -186,7 +186,7 @@ impl LevelParticlesPart {
       read("enabling_particles"),
     ) {
       (true, Some(disabled), Some(enabling)) => RenderParticleSource::Campfire {
-        id: object.id,
+        id: object.header.id,
         idle,
         disabled,
         enabling,
@@ -196,11 +196,11 @@ impl LevelParticlesPart {
 
     Some(RenderParticlePlacement {
       source,
-      transform: VisualTransform::of_spawn(&object.position, &object.direction)
+      transform: VisualTransform::of_spawn(&object.header.position, &object.header.direction)
         .mirrored()
         .to_matrix(),
       motion: motion.and_then(AlifeObjectMotion::get_name).map(str::to_owned),
-      zone_sphere: ZoneSphere::of_custom_zone(zone, (&object.position, &object.direction)),
+      zone_sphere: ZoneSphere::of_custom_zone(zone, (&object.header.position, &object.header.direction)),
     })
   }
 

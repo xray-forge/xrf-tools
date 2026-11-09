@@ -1,6 +1,6 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
@@ -32,9 +32,9 @@ impl AlifeObjectSkeleton {
   }
 }
 
-impl ChunkReadWrite for AlifeObjectSkeleton {
+impl ChunkFieldReadWrite for AlifeObjectSkeleton {
   /// Read skeleton data from the chunk reader.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     let object = Self {
       name: reader.read_w1251_string()?,
       flags: reader.read_u8()?,
@@ -47,7 +47,7 @@ impl ChunkReadWrite for AlifeObjectSkeleton {
   }
 
   /// Write skeleton data into the chunk writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     self.assert_no_saved_bone_data()?;
 
     writer.write_w1251_string(&self.name)?;

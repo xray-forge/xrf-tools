@@ -4,40 +4,27 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxWrite};
 use xrf_math::Vector3d;
-use xrf_utils::{assert_equal, assert_not_equal, decode_bytes_from_base64, encode_bytes_to_base64, narrow_format_size};
+use xrf_utils::{assert_equal, assert_not_equal, narrow_format_size};
 
-use crate::constants::{NET_ACTION_SPAWN, NET_ACTION_UPDATE};
+use crate::constants::NET_ACTION_UPDATE;
 use crate::data::alife::alife_object_inherited::AlifeObjectInherited;
+use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 use crate::data::meta::alife_class::AlifeClass;
 use crate::data::meta::cls_id::ClsId;
 
-/// Generic abstract ALife object base.
+/// An object of a spawn set (`all.spawn`): its spawn packet, the spawn packet header's fields then the class's spawn
+/// fields, and its update packet, the class's update fields, each in a chunk of its own behind a `u16` length.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AlifeObject {
-  pub id: u16,
-  pub net_action: u16,
-  pub section: String,
+  /// What the spawn packet opens with, `CSE_Abstract::Spawn_Write`'s own fields; they sit beside the object's in
+  /// every serialized form.
+  #[serde(flatten)]
+  pub header: SpawnPacketHeader,
   pub clsid: ClsId,
-  pub name: String,
-  pub script_game_id: u8,
-  pub script_rp: u8,
-  pub position: Vector3d,
-  pub direction: Vector3d,
-  pub respawn_time: u16,
-  pub parent_id: u16,
-  pub phantom_id: u16,
-  /// `s_flags`; the spawn version is stored only while `M_SPAWN_VERSION` is set.
-  pub script_flags: u16,
-  pub version: u16,
-  pub game_type: u16,
-  pub script_version: u16,
-  /// The client object's saved state (`CSE_Abstract::client_data`), carried as stored.
-  pub client_data: Vec<u8>,
-  pub spawn_id: u16,
   /// The server class payload, its fields from both packets. The engine applies the update packet over the spawn
   /// packet when it creates the object, so where both carry a field the update packet's is the one the game uses.
   pub inherited: AlifeObjectInherited,
@@ -50,33 +37,26 @@ impl AlifeObject {
   /// One framed object chunk: its own header, plus the header and payload of the index chunk it must carry.
   pub const MIN_SERIALIZED_SIZE: u64 = 8 + 8 + 2;
 
-  /// `M_SPAWN_VERSION`: the packet stores its spawn version after the flags.
-  pub const FLAG_SPAWN_VERSION: u16 = 1 << 5;
-
-  /// The highest spawn version refused: `CSE_Abstract::Spawn_Read` reads the game type only above it, and the payloads
-  /// here are laid out as Call of Pripyat and the forks built on it write them, at 128.
-  pub const MAX_UNSUPPORTED_VERSION: u16 = 120;
-
   /// Move the object to `position`, facing `direction` as the spawn packet's angles give it, in every packet that
   /// stores where it stands. `CALifeSimulatorBase::create` reads the update packet over the spawn packet, so an object
   /// moved in the spawn packet alone would start where its update packet still says.
   pub fn move_to(&mut self, position: Vector3d, direction: Vector3d) {
     self.inherited.move_to(&position, &direction);
-    self.position = position;
-    self.direction = direction;
+    self.header.position = position;
+    self.header.direction = direction;
   }
 
   /// Refuse an object whose payload is shaped for another class than its section's, which the engine would read
   /// with the section's class.
   fn assert_class_matches_section(&self) -> XrfResult {
-    let clsid: ClsId = ClsId::from_section(&self.section)?;
+    let clsid: ClsId = ClsId::from_section(&self.header.section)?;
     let class: AlifeClass = AlifeClass::from_cls_id(&clsid);
 
     if clsid != self.clsid || class != self.inherited.get_class() {
       return Err(XrfError::new_invalid_error(format!(
         "ALife object '{}' of section '{}' ({clsid:?}, {class}) carries {:?} and a {} payload",
-        self.name,
-        self.section,
+        self.header.name,
+        self.header.section,
         self.clsid,
         self.inherited.get_class()
       )));
@@ -87,10 +67,10 @@ impl AlifeObject {
 }
 
 impl ChunkReadWrite for AlifeObject {
-  /// Read generic ALife object data from the chunk.
+  /// Read the object's two chunks: the spawn packet behind its length, then the update packet behind its length and
+  /// `M_UPDATE`, each read whole.
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let mut spawn_reader: ChunkReader<D> = reader.read_child_by_index(Self::DATA_SPAWN_CHUNK_ID)?;
-
     let data_length: u16 = spawn_reader.read_u16::<T>()?;
 
     assert_equal(
@@ -99,58 +79,9 @@ impl ChunkReadWrite for AlifeObject {
       "Expect correct data size for ALife object",
     )?;
 
-    let net_action: u16 = spawn_reader.read_u16::<T>()?;
-
-    assert_equal(
-      net_action,
-      NET_ACTION_SPAWN,
-      "Expect only net_spawn actions in ALife object data",
-    )?;
-
-    let section: String = spawn_reader.read_w1251_string()?;
-    let clsid: ClsId = ClsId::from_section(&section)?;
+    let header: SpawnPacketHeader = spawn_reader.read_xr::<T, _>()?;
+    let clsid: ClsId = ClsId::from_section(&header.section)?;
     let class: AlifeClass = AlifeClass::from_cls_id(&clsid);
-    let name: String = spawn_reader.read_w1251_string()?;
-    let script_game_id: u8 = spawn_reader.read_u8()?;
-    let script_rp: u8 = spawn_reader.read_u8()?;
-    let position: Vector3d = spawn_reader.read_xr::<T, _>()?;
-    let direction: Vector3d = spawn_reader.read_xr::<T, _>()?;
-    let respawn_time: u16 = spawn_reader.read_u16::<T>()?;
-    let id: u16 = spawn_reader.read_u16::<T>()?;
-    let parent_id: u16 = spawn_reader.read_u16::<T>()?;
-    let phantom_id: u16 = spawn_reader.read_u16::<T>()?;
-    let script_flags: u16 = spawn_reader.read_u16::<T>()?;
-    let version: u16 = if script_flags & Self::FLAG_SPAWN_VERSION == 0 {
-      0
-    } else {
-      spawn_reader.read_u16::<T>()?
-    };
-
-    if version <= Self::MAX_UNSUPPORTED_VERSION {
-      return Err(XrfError::new_assertion_error(format!(
-        "Unexpected version {version} of ALife object in spawn file, script flags {script_flags}"
-      )));
-    }
-
-    let game_type: u16 = spawn_reader.read_u16::<T>()?;
-    let script_version: u16 = spawn_reader.read_u16::<T>()?;
-    let client_data_size: u16 = spawn_reader.read_u16::<T>()?;
-    let client_data: Vec<u8> = spawn_reader.read_bytes(client_data_size.into())?;
-    let spawn_id: u16 = spawn_reader.read_u16::<T>()?;
-    let inherited_size: u16 = spawn_reader.read_u16::<T>()?;
-
-    // Checked: a prefix smaller than its own two-byte field must be an error, not an underflow.
-    let inherited_data_size: u64 = u64::from(inherited_size).checked_sub(2).ok_or_else(|| {
-      XrfError::new_invalid_error(format!(
-        "ALife object inherited size {inherited_size} is less than its own two-byte prefix"
-      ))
-    })?;
-
-    assert_equal(
-      inherited_data_size,
-      spawn_reader.read_bytes_remain(),
-      "Expect correct size of inherited data for ALife object",
-    )?;
 
     assert_not_equal(&class, &AlifeClass::Unknown, "Expect known ALife object clsid")?;
 
@@ -169,109 +100,46 @@ impl ChunkReadWrite for AlifeObject {
       "Expect only net_update actions in ALife object update data",
     )?;
 
-    let inherited: AlifeObjectInherited =
-      AlifeObjectInherited::read::<T, _>(&mut spawn_reader, &mut update_reader, &class)?;
+    let inherited: AlifeObjectInherited = header.read_state::<T, _, _>(&mut spawn_reader, |spawn| {
+      AlifeObjectInherited::read::<T, _, _>(spawn, &mut update_reader, &class)
+    })?;
 
     spawn_reader.assert_read("Expect ALife object spawn data to be read")?;
     update_reader.assert_read("Expect ALife object update data to hold only its class's update fields")?;
     reader.assert_read("Expect ALife object chunk to be read")?;
 
     Ok(Self {
-      id,
-      net_action,
-      section,
+      header,
       clsid,
-      name,
-      script_game_id,
-      script_rp,
-      position,
-      direction,
-      respawn_time,
-      parent_id,
-      phantom_id,
-      script_flags,
-      version,
-      game_type,
-      script_version,
-      client_data,
-      spawn_id,
       inherited,
     })
   }
 
-  /// Write ALife object data into the writer.
+  /// Write the object's two chunks: the spawn packet, `Spawn_Write`'s header and state, and the update packet, each
+  /// behind its length.
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     self.assert_class_matches_section()?;
 
-    let mut data_spawn_writer: ChunkWriter = ChunkWriter::new();
-    let mut data_update_writer: ChunkWriter = ChunkWriter::new();
+    let mut spawn: ChunkWriter = ChunkWriter::new();
+    let mut update: ChunkWriter = ChunkWriter::new();
 
-    let mut object_data_writer: ChunkWriter = ChunkWriter::new();
-    let mut inherited_data_writer: ChunkWriter = ChunkWriter::new();
-    let mut inherited_update_writer: ChunkWriter = ChunkWriter::new();
-    let mut updated_data_writer: ChunkWriter = ChunkWriter::new();
+    spawn.write_xr::<T, _>(&self.header)?;
+    SpawnPacketHeader::write_state::<T, _>(&mut spawn, |spawn| self.inherited.write::<T, _, _>(spawn, &mut update))?;
 
-    object_data_writer.write_u16::<T>(self.net_action)?;
+    let mut spawn_chunk: ChunkWriter = ChunkWriter::new();
+    let mut update_chunk: ChunkWriter = ChunkWriter::new();
 
-    object_data_writer.write_w1251_string(&self.section)?;
-    object_data_writer.write_w1251_string(&self.name)?;
-    object_data_writer.write_u8(self.script_game_id)?;
-    object_data_writer.write_u8(self.script_rp)?;
-
-    object_data_writer.write_xr::<T, Vector3d>(&self.position)?;
-    object_data_writer.write_xr::<T, Vector3d>(&self.direction)?;
-
-    object_data_writer.write_u16::<T>(self.respawn_time)?;
-    object_data_writer.write_u16::<T>(self.id)?;
-    object_data_writer.write_u16::<T>(self.parent_id)?;
-    object_data_writer.write_u16::<T>(self.phantom_id)?;
-    object_data_writer.write_u16::<T>(self.script_flags)?;
-
-    if self.script_flags & Self::FLAG_SPAWN_VERSION != 0 {
-      object_data_writer.write_u16::<T>(self.version)?;
-    }
-
-    object_data_writer.write_u16::<T>(self.game_type)?;
-    object_data_writer.write_u16::<T>(self.script_version)?;
-    object_data_writer.write_u16::<T>(narrow_format_size(self.client_data.len(), "alife object client data")?)?;
-    object_data_writer.write_all(&self.client_data)?;
-    object_data_writer.write_u16::<T>(self.spawn_id)?;
-
-    self
-      .inherited
-      .write::<T>(&mut inherited_data_writer, &mut inherited_update_writer)?;
-
-    object_data_writer.write_u16::<T>(narrow_format_size(
-      inherited_data_writer.bytes_written() + 2,
-      "alife object inherited data",
-    )?)?;
-    object_data_writer.write_all(inherited_data_writer.flush_raw_into_buffer()?.as_slice())?;
-
-    data_spawn_writer.write_u16::<T>(narrow_format_size(
-      object_data_writer.bytes_written(),
-      "alife object spawn data",
-    )?)?;
-    data_spawn_writer.write_all(object_data_writer.flush_raw_into_buffer()?.as_slice())?;
-
-    updated_data_writer.write_u16::<T>(NET_ACTION_UPDATE)?;
-    updated_data_writer.write_all(inherited_update_writer.flush_raw_into_buffer()?.as_slice())?;
-
-    data_update_writer.write_u16::<T>(narrow_format_size(
-      updated_data_writer.bytes_written(),
+    spawn_chunk.write_u16::<T>(narrow_format_size(spawn.bytes_written(), "alife object spawn data")?)?;
+    spawn_chunk.write_all(&spawn.buffer)?;
+    update_chunk.write_u16::<T>(narrow_format_size(
+      update.bytes_written() + size_of::<u16>(),
       "alife object update data",
     )?)?;
-    data_update_writer.write_all(updated_data_writer.flush_raw_into_buffer()?.as_slice())?;
+    update_chunk.write_u16::<T>(NET_ACTION_UPDATE)?;
+    update_chunk.write_all(&update.buffer)?;
 
-    writer.write_all(
-      data_spawn_writer
-        .flush_chunk_into_buffer::<T>(Self::DATA_SPAWN_CHUNK_ID)?
-        .as_slice(),
-    )?;
-    writer.write_all(
-      data_update_writer
-        .flush_chunk_into_buffer::<T>(Self::DATA_UPDATE_CHUNK_ID)?
-        .as_slice(),
-    )?;
+    writer.write_all(&spawn_chunk.flush_chunk_into_buffer::<T>(Self::DATA_SPAWN_CHUNK_ID)?)?;
+    writer.write_all(&update_chunk.flush_chunk_into_buffer::<T>(Self::DATA_UPDATE_CHUNK_ID)?)?;
 
     Ok(())
   }
@@ -280,62 +148,21 @@ impl ChunkReadWrite for AlifeObject {
 impl LtxImportExport for AlifeObject {
   /// Import ALife object data from ltx file section.
   fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
-    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
-      XrfError::new_parsing_error(format!(
-        "ALife object base '{}' should be defined in ltx file ({})",
-        section_name,
-        file!()
-      ))
-    })?;
-
-    let object_section: String = section.read_field("section")?;
-    let clsid: ClsId = ClsId::from_section(&object_section)?;
+    let header: SpawnPacketHeader = SpawnPacketHeader::import(section_name, ltx)?;
+    let clsid: ClsId = ClsId::from_section(&header.section)?;
+    let inherited: AlifeObjectInherited =
+      AlifeObjectInherited::import(section_name, ltx, &AlifeClass::from_cls_id(&clsid))?;
 
     Ok(Self {
-      id: section.read_field("id")?,
-      net_action: section.read_field("net_action")?,
-      clsid: clsid.clone(),
-      section: object_section,
-      name: section.read_field("name")?,
-      script_game_id: section.read_field("script_game_id")?,
-      script_rp: section.read_field("script_rp")?,
-      position: section.read_field("position")?,
-      direction: section.read_field("direction")?,
-      respawn_time: section.read_field("respawn_time")?,
-      parent_id: section.read_field("parent_id")?,
-      phantom_id: section.read_field("phantom_id")?,
-      script_flags: section.read_field("script_flags")?,
-      version: section.read_field("version")?,
-      game_type: section.read_field("game_type")?,
-      script_version: section.read_field("script_version")?,
-      client_data: decode_bytes_from_base64(&section.read_field::<String>("client_data")?)?,
-      spawn_id: section.read_field("spawn_id")?,
-      inherited: AlifeObjectInherited::import(section_name, ltx, &AlifeClass::from_cls_id(&clsid))?,
+      header,
+      clsid,
+      inherited,
     })
   }
 
   /// Export ALife object data into ltx file.
   fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
-    ltx
-      .with_section(section_name)
-      .set("id", self.id)
-      .set("net_action", self.net_action)
-      .set("section", &self.section)
-      .set("name", &self.name)
-      .set("script_game_id", self.script_game_id)
-      .set("script_rp", self.script_rp)
-      .set("position", self.position)
-      .set("direction", self.direction)
-      .set("respawn_time", self.respawn_time)
-      .set("parent_id", self.parent_id)
-      .set("phantom_id", self.phantom_id)
-      .set("script_flags", self.script_flags)
-      .set("version", self.version)
-      .set("game_type", self.game_type)
-      .set("script_version", self.script_version)
-      .set("client_data", encode_bytes_to_base64(&self.client_data))
-      .set("spawn_id", self.spawn_id);
-
+    self.header.export(section_name, ltx)?;
     self.inherited.export(section_name, ltx)
   }
 }
@@ -350,7 +177,7 @@ mod tests {
   use serde_json::to_string_pretty;
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::{XrfError, XrfResult};
-  use xrf_ltx::{Ltx, LtxImportExport, LtxSectionWrite};
+  use xrf_ltx::{Ltx, LtxImportExport};
   use xrf_math::Vector3d;
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
@@ -372,15 +199,25 @@ mod tests {
   use crate::data::alife::inherited::alife_object_stationary_mgun::AlifeObjectStationaryMgun;
   use crate::data::alife::inherited::alife_squad::AlifeSquad;
   use crate::data::alife::inherited::alife_stalker::AlifeStalker;
+  use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
   use crate::data::meta::cls_id::ClsId;
   use crate::data::physics::physics_net_state::PhysicsNetState;
   use crate::data::physics::raw_float::RawFloat;
 
+  /// A whole spawn packet header naming a section no class reads.
+  fn new_unknown_section_header() -> SpawnPacketHeader {
+    let mut header: SpawnPacketHeader = new_graph_point_object().header;
+
+    header.section = String::from("unknown_section");
+
+    header
+  }
+
   #[test]
   fn binary_read_returns_error_for_unknown_section() -> XrfResult {
     let mut object_data_writer: ChunkWriter = ChunkWriter::new();
-    object_data_writer.write_u16::<XRayByteOrder>(1)?;
-    object_data_writer.write_w1251_string("unknown_section")?;
+
+    new_unknown_section_header().write::<XRayByteOrder>(&mut object_data_writer)?;
 
     let mut spawn_data_writer: ChunkWriter = ChunkWriter::new();
     spawn_data_writer.write_u16::<XRayByteOrder>(object_data_writer.bytes_written() as u16)?;
@@ -406,9 +243,10 @@ mod tests {
   }
 
   #[test]
-  fn ltx_import_returns_error_for_unknown_section() {
+  fn ltx_import_returns_error_for_unknown_section() -> XrfResult {
     let mut ltx: Ltx = Ltx::new();
-    ltx.with_section("object").set("section", "unknown_section");
+
+    new_unknown_section_header().export("object", &mut ltx)?;
 
     let error: XrfError = AlifeObject::import("object", &ltx).unwrap_err();
 
@@ -416,6 +254,8 @@ mod tests {
       error.to_string(),
       "Parsing error: Unknown ALife object section 'unknown_section', no CLSID mapping exists"
     );
+
+    Ok(())
   }
 
   #[test]
@@ -424,24 +264,26 @@ mod tests {
     let filename: String = GeneratedResources::sample_name(file!(), "read_write.chunk");
 
     let original: AlifeObject = AlifeObject {
-      id: 340,
-      net_action: 1,
-      section: String::from("dolg_heavy_outfit"),
+      header: SpawnPacketHeader {
+        id: 340,
+        net_action: 1,
+        section: String::from("dolg_heavy_outfit"),
+        name: String::from("test-outfit-object"),
+        script_game_id: 2,
+        script_rp: 3,
+        position: Vector3d::new(1.0, 2.0, 3.0),
+        direction: Vector3d::new(3.0, 2.0, 1.0),
+        respawn_time: 50000,
+        parent_id: 2143,
+        phantom_id: 0,
+        script_flags: 33,
+        version: 128,
+        game_type: 1,
+        script_version: 10,
+        client_data: Vec::new(),
+        spawn_id: 2354,
+      },
       clsid: ClsId::EStlk,
-      name: String::from("test-outfit-object"),
-      script_game_id: 2,
-      script_rp: 3,
-      position: Vector3d::new(1.0, 2.0, 3.0),
-      direction: Vector3d::new(3.0, 2.0, 1.0),
-      respawn_time: 50000,
-      parent_id: 2143,
-      phantom_id: 0,
-      script_flags: 33,
-      version: 128,
-      game_type: 1,
-      script_version: 10,
-      client_data: Vec::new(),
-      spawn_id: 2354,
       inherited: AlifeObjectInherited::CseAlifeItemCustomOutfit(Box::new(AlifeObjectItemCustomOutfit {
         base: AlifeObjectItem {
           base: AlifeObjectDynamicVisual {
@@ -493,24 +335,26 @@ mod tests {
     let mut ltx: Ltx = Ltx::new();
 
     let original: AlifeObject = AlifeObject {
-      id: 345,
-      net_action: 1,
-      section: String::from("dolg_heavy_outfit"),
+      header: SpawnPacketHeader {
+        id: 345,
+        net_action: 1,
+        section: String::from("dolg_heavy_outfit"),
+        name: String::from("test-outfit-object"),
+        script_game_id: 3,
+        script_rp: 3,
+        position: Vector3d::new(1.0, 2.0, 3.0),
+        direction: Vector3d::new(3.0, 2.0, 1.0),
+        respawn_time: 50000,
+        parent_id: 2143,
+        phantom_id: 0,
+        script_flags: 33,
+        version: 128,
+        game_type: 1,
+        script_version: 10,
+        client_data: Vec::new(),
+        spawn_id: 2354,
+      },
       clsid: ClsId::EStlk,
-      name: String::from("test-outfit-object"),
-      script_game_id: 3,
-      script_rp: 3,
-      position: Vector3d::new(1.0, 2.0, 3.0),
-      direction: Vector3d::new(3.0, 2.0, 1.0),
-      respawn_time: 50000,
-      parent_id: 2143,
-      phantom_id: 0,
-      script_flags: 33,
-      version: 128,
-      game_type: 1,
-      script_version: 10,
-      client_data: Vec::new(),
-      spawn_id: 2354,
       inherited: AlifeObjectInherited::CseAlifeItemCustomOutfit(Box::new(AlifeObjectItemCustomOutfit {
         base: AlifeObjectItem {
           base: AlifeObjectDynamicVisual {
@@ -549,24 +393,26 @@ mod tests {
   #[test]
   fn test_serialize_deserialize() -> XrfResult {
     let original: AlifeObject = AlifeObject {
-      id: 341,
-      net_action: 1,
-      section: String::from("dolg_heavy_outfit"),
+      header: SpawnPacketHeader {
+        id: 341,
+        net_action: 1,
+        section: String::from("dolg_heavy_outfit"),
+        name: String::from("test-outfit-object"),
+        script_game_id: 2,
+        script_rp: 3,
+        position: Vector3d::new_mock(),
+        direction: Vector3d::new_mock(),
+        respawn_time: 50000,
+        parent_id: 2143,
+        phantom_id: 0,
+        script_flags: 33,
+        version: 128,
+        game_type: 1,
+        script_version: 10,
+        client_data: Vec::new(),
+        spawn_id: 2354,
+      },
       clsid: ClsId::EStlk,
-      name: String::from("test-outfit-object"),
-      script_game_id: 2,
-      script_rp: 3,
-      position: Vector3d::new_mock(),
-      direction: Vector3d::new_mock(),
-      respawn_time: 50000,
-      parent_id: 2143,
-      phantom_id: 0,
-      script_flags: 33,
-      version: 128,
-      game_type: 1,
-      script_version: 10,
-      client_data: Vec::new(),
-      spawn_id: 2354,
       inherited: AlifeObjectInherited::CseAlifeItemCustomOutfit(Box::new(AlifeObjectItemCustomOutfit {
         base: AlifeObjectItem {
           base: AlifeObjectDynamicVisual {
@@ -608,24 +454,26 @@ mod tests {
   /// The smallest object the reader accepts: a graph point carries two strings and four bytes.
   fn new_graph_point_object() -> AlifeObject {
     AlifeObject {
-      id: 342,
-      net_action: 1,
-      section: String::from("graph_point"),
+      header: SpawnPacketHeader {
+        id: 342,
+        net_action: 1,
+        section: String::from("graph_point"),
+        name: String::from("test-graph-point"),
+        script_game_id: 2,
+        script_rp: 3,
+        position: Vector3d::new(1.0, 2.0, 3.0),
+        direction: Vector3d::new(3.0, 2.0, 1.0),
+        respawn_time: 0,
+        parent_id: 2143,
+        phantom_id: 0,
+        script_flags: 33,
+        version: 128,
+        game_type: 1,
+        script_version: 10,
+        client_data: Vec::new(),
+        spawn_id: 2355,
+      },
       clsid: ClsId::AiGraph,
-      name: String::from("test-graph-point"),
-      script_game_id: 2,
-      script_rp: 3,
-      position: Vector3d::new(1.0, 2.0, 3.0),
-      direction: Vector3d::new(3.0, 2.0, 1.0),
-      respawn_time: 0,
-      parent_id: 2143,
-      phantom_id: 0,
-      script_flags: 33,
-      version: 128,
-      game_type: 1,
-      script_version: 10,
-      client_data: Vec::new(),
-      spawn_id: 2355,
       inherited: AlifeObjectInherited::CseAlifeGraphPoint(Box::new(AlifeGraphPoint {
         connection_point_name: String::from("connection-point"),
         connection_level_name: String::from("connection-level"),
@@ -657,7 +505,7 @@ mod tests {
         .write::<XRayByteOrder>(&mut writer)
         .expect_err("expect the inherited data to exceed its size field")
         .to_string(),
-      "Invalid error: alife object inherited data exceeds the u16 format limit"
+      "Invalid error: spawn packet state exceeds the u16 format limit"
     );
   }
 
@@ -665,7 +513,7 @@ mod tests {
   fn rejects_spawn_data_past_its_size_field() {
     let mut original: AlifeObject = new_graph_point_object();
 
-    original.name = "x".repeat(70000);
+    original.header.name = "x".repeat(70000);
 
     let mut writer: ChunkWriter = ChunkWriter::new();
 
@@ -683,7 +531,7 @@ mod tests {
   fn moves_an_actor_in_both_packets() -> XrfResult {
     let mut original: AlifeObject = new_graph_point_object();
 
-    original.section = String::from("actor");
+    original.header.section = String::from("actor");
     original.clsid = ClsId::SActor;
     original.inherited = AlifeObjectInherited::SeActor(Box::new(AlifeActor::new_mock(Vector3d::new(1.0, 2.0, 3.0))));
     original.move_to(Vector3d::new(-40.0, 5.5, 120.0), Vector3d::new(-0.1, 1.25, 0.0));
@@ -699,8 +547,8 @@ mod tests {
       panic!("Expected an actor payload");
     };
 
-    assert_eq!(read.position, Vector3d::new(-40.0, 5.5, 120.0));
-    assert_eq!(read.direction, Vector3d::new(-0.1, 1.25, 0.0));
+    assert_eq!(read.header.position, Vector3d::new(-40.0, 5.5, 120.0));
+    assert_eq!(read.header.direction, Vector3d::new(-0.1, 1.25, 0.0));
     assert_eq!(actor.base.base.update_position, Vector3d::new(-40.0, 5.5, 120.0));
     assert_eq!(actor.base.base.update_torso_yaw, 1.25);
     assert_eq!(actor.base.base.update_torso_pitch, -0.1);
@@ -725,7 +573,7 @@ mod tests {
     ] {
       let mut original: AlifeObject = new_graph_point_object();
 
-      original.section = String::from(section);
+      original.header.section = String::from(section);
       original.clsid = clsid;
       original.inherited = inherited;
       original.move_to(Vector3d::new(-40.0, 5.5, 120.0), Vector3d::new(-0.1, 1.25, 0.0));
@@ -842,7 +690,7 @@ mod tests {
     ] {
       let mut original: AlifeObject = new_graph_point_object();
 
-      original.section = String::from(section);
+      original.header.section = String::from(section);
       original.clsid = clsid;
       original.inherited = inherited;
 
@@ -868,16 +716,17 @@ mod tests {
   fn moves_an_item_and_its_physics_state() {
     let mut original: AlifeObject = new_graph_point_object();
 
-    original.section = String::from("medkit");
+    original.header.section = String::from("medkit");
     original.clsid = ClsId::SFood;
-    original.inherited = AlifeObjectInherited::CseAlifeItem(Box::new(AlifeObjectItem::new_mock(original.position)));
+    original.inherited =
+      AlifeObjectInherited::CseAlifeItem(Box::new(AlifeObjectItem::new_mock(original.header.position)));
     original.move_to(Vector3d::new(7.0, 8.0, 9.0), Vector3d::new(0.0, 0.5, 0.0));
 
     let AlifeObjectInherited::CseAlifeItem(item) = &original.inherited else {
       panic!("Expected an item payload");
     };
 
-    assert_eq!(original.position, Vector3d::new(7.0, 8.0, 9.0));
+    assert_eq!(original.header.position, Vector3d::new(7.0, 8.0, 9.0));
     assert_eq!(
       item.update_state.as_ref().map(PhysicsNetState::get_position),
       Some(Vector3d::new(7.0, 8.0, 9.0))
@@ -892,8 +741,8 @@ mod tests {
 
     original.move_to(Vector3d::new(7.0, 8.0, 9.0), Vector3d::new(0.0, 0.5, 0.0));
 
-    assert_eq!(original.position, Vector3d::new(7.0, 8.0, 9.0));
-    assert_eq!(original.direction, Vector3d::new(0.0, 0.5, 0.0));
+    assert_eq!(original.header.position, Vector3d::new(7.0, 8.0, 9.0));
+    assert_eq!(original.header.direction, Vector3d::new(0.0, 0.5, 0.0));
     assert_eq!(original.inherited, inherited);
   }
 
@@ -905,7 +754,7 @@ mod tests {
 
     original
       .inherited
-      .write::<XRayByteOrder>(&mut inherited_writer, &mut ChunkWriter::new())?;
+      .write::<XRayByteOrder, _, _>(&mut inherited_writer, &mut ChunkWriter::new())?;
 
     let inherited_length: usize = inherited_writer.bytes_written();
 
@@ -939,7 +788,9 @@ mod tests {
 
       assert_eq!(
         error.to_string(),
-        format!("Invalid error: ALife object inherited size {size} is less than its own two-byte prefix")
+        format!(
+          "Invalid error: Spawn packet 'test-graph-point' state size {size} is less than its own two-byte prefix"
+        )
       );
     }
 
@@ -951,7 +802,7 @@ mod tests {
   fn carries_client_data_through_a_round_trip() -> XrfResult {
     let mut original: AlifeObject = new_graph_point_object();
 
-    original.client_data = vec![4, 8, 15, 16, 23, 42];
+    original.header.client_data = vec![4, 8, 15, 16, 23, 42];
 
     let mut writer: ChunkWriter = ChunkWriter::new();
 
@@ -970,7 +821,7 @@ mod tests {
   fn refuses_to_write_a_payload_its_section_does_not_read() {
     let mut original: AlifeObject = new_graph_point_object();
 
-    original.section = String::from("medkit");
+    original.header.section = String::from("medkit");
 
     let error: String = original
       .write::<XRayByteOrder>(&mut ChunkWriter::new())

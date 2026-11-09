@@ -98,7 +98,7 @@ impl LevelSpawnPart {
     let releases: HashMap<usize, LevelSpawnRelease> = objects
       .iter()
       .enumerate()
-      .filter_map(|(index, object)| released.get(&object.name).map(|release| (index, *release)))
+      .filter_map(|(index, object)| released.get(&object.header.name).map(|release| (index, *release)))
       // Anomaly's `game_setup.script` replaces no inventory box's item: a box only goes when it is removed outright.
       .filter(|(index, release)| *release != LevelSpawnRelease::ReplaceItems || objects[*index].clsid != ClsId::SInvBox)
       .collect();

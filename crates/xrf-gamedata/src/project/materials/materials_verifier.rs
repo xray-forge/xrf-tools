@@ -272,7 +272,7 @@ impl MaterialsVerifier<'_> {
             spawn_path,
             format!(
               "Climable object '{}' is made of unknown game material '{}'",
-              object.name, climable.game_material
+              object.header.name, climable.game_material
             ),
           ));
         }

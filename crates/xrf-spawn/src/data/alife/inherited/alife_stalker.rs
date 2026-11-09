@@ -1,6 +1,6 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_math::Vector3d;
@@ -47,20 +47,17 @@ impl AlifeStalker {
 
 impl AlifePacketsReadWrite for AlifeStalker {
   /// Read the stalker from both packets; the script class adds to the spawn packet alone.
-  fn read<T: ByteOrder, D: ChunkDataSource>(
-    spawn: &mut ChunkReader<D>,
-    update: &mut ChunkReader<D>,
-  ) -> XrfResult<Self> {
+  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
     Ok(Self {
-      base: AlifeObjectHumanStalker::read::<T, _>(spawn, update)?,
+      base: AlifeObjectHumanStalker::read::<T, _, _>(spawn, update)?,
       offline_state: spawn.read_xr::<T, _>()?,
       loot_dropped: spawn.read_u8()?,
     })
   }
 
   /// Write the stalker into both packets.
-  fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
-    self.base.write::<T>(spawn, update)?;
+  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(&self, spawn: &mut S, update: &mut U) -> XrfResult {
+    self.base.write::<T, _, _>(spawn, update)?;
 
     spawn.write_xr::<T, _>(&self.offline_state)?;
     spawn.write_u8(self.loot_dropped)?;
@@ -119,7 +116,7 @@ mod tests {
     let update: Vec<u8> = GameWrittenPackets::bytes(GameWrittenPackets::STALKER_UPDATE);
     let mut spawn_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&spawn)?;
     let mut update_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&update)?;
-    let stalker: AlifeStalker = AlifeStalker::read::<XRayByteOrder, _>(&mut spawn_reader, &mut update_reader)?;
+    let stalker: AlifeStalker = AlifeStalker::read::<XRayByteOrder, _, _>(&mut spawn_reader, &mut update_reader)?;
 
     spawn_reader.assert_read("Expect the game's spawn packet to be read whole")?;
     update_reader.assert_read("Expect the game's update packet to be read whole")?;
@@ -144,7 +141,7 @@ mod tests {
     let mut spawn_writer: ChunkWriter = ChunkWriter::new();
     let mut update_writer: ChunkWriter = ChunkWriter::new();
 
-    stalker.write::<XRayByteOrder>(&mut spawn_writer, &mut update_writer)?;
+    stalker.write::<XRayByteOrder, _, _>(&mut spawn_writer, &mut update_writer)?;
 
     assert_eq!((spawn_writer.buffer, update_writer.buffer), (spawn, update));
 
@@ -159,12 +156,12 @@ mod tests {
     let mut spawn: ChunkWriter = ChunkWriter::new();
     let mut update: ChunkWriter = ChunkWriter::new();
 
-    original.base.write::<XRayByteOrder>(&mut spawn, &mut update)?;
+    original.base.write::<XRayByteOrder, _, _>(&mut spawn, &mut update)?;
     spawn.buffer.extend_from_slice(b"435\0test_section\0\x01");
 
     let mut spawn_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&spawn.buffer)?;
     let mut update_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&update.buffer)?;
-    let read: AlifeStalker = AlifeStalker::read::<XRayByteOrder, _>(&mut spawn_reader, &mut update_reader)?;
+    let read: AlifeStalker = AlifeStalker::read::<XRayByteOrder, _, _>(&mut spawn_reader, &mut update_reader)?;
 
     spawn_reader.assert_read("Expect the tail to close the spawn packet")?;
 
@@ -189,7 +186,7 @@ mod tests {
     let (base_spawn_size, base_update_size, _) = original.base.read_back::<XRayByteOrder>()?;
     let mut spawn: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder>(&mut spawn, &mut ChunkWriter::new())?;
+    original.write::<XRayByteOrder, _, _>(&mut spawn, &mut ChunkWriter::new())?;
 
     assert_eq!(&spawn.buffer[base_spawn_size..], b"nil\0nil\0\0");
     assert_eq!(

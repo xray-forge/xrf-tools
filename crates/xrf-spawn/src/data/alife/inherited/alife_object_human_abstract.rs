@@ -1,6 +1,6 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_math::Vector3d;
@@ -31,43 +31,49 @@ impl AlifeObjectHumanAbstract {
     self.base.move_to(position, direction);
   }
 
-  /// Read a preference list as `load_data` reads an `xr_vector<u8>`: a `u32` count, then a byte each.
-  fn read_preferences<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<u8>> {
+  /// Read a preference list as `load_data` reads an `xr_vector<u8>`: a `u32` count, then a byte each. The brain reads
+  /// it from bytes alone (`CALifeHumanBrain::on_state_read`): fields hold none, and the editor keeps the values its
+  /// constructor drew at random, which here read as none.
+  fn read_preferences<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Vec<u8>> {
+    if reader.is_field_form() {
+      return Ok(Vec::new());
+    }
+
     let count: u32 = reader.read_u32::<T>()?;
 
     reader.read_bytes(count as usize)
   }
 
-  fn write_preferences<T: ByteOrder>(writer: &mut ChunkWriter, preferences: &[u8]) -> XrfResult {
-    writer.write_u32::<T>(narrow_format_size(preferences.len(), "human preferences")?)?;
-    writer.buffer.extend_from_slice(preferences);
+  /// Write a preference list as `save_data` writes it, to bytes alone (`CALifeHumanBrain::on_state_write`).
+  fn write_preferences<T: ByteOrder, W: ChunkFieldWriter>(writer: &mut W, preferences: &[u8]) -> XrfResult {
+    if writer.is_field_form() {
+      return Ok(());
+    }
 
-    Ok(())
+    writer.write_u32::<T>(narrow_format_size(preferences.len(), "human preferences")?)?;
+    writer.write_bytes(preferences)
   }
 }
 
 impl AlifePacketsReadWrite for AlifeObjectHumanAbstract {
   /// Read the human from both packets.
-  fn read<T: ByteOrder, D: ChunkDataSource>(
-    spawn: &mut ChunkReader<D>,
-    update: &mut ChunkReader<D>,
-  ) -> XrfResult<Self> {
+  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
     Ok(Self {
       trader: spawn.read_xr::<T, _>()?,
-      base: AlifeObjectMonsterAbstract::read::<T, _>(spawn, update)?,
+      base: AlifeObjectMonsterAbstract::read::<T, _, _>(spawn, update)?,
       equipment_preferences: Self::read_preferences::<T, _>(spawn)?,
       main_weapon_preferences: Self::read_preferences::<T, _>(spawn)?,
     })
   }
 
   /// Write the human into both packets.
-  fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
+  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(&self, spawn: &mut S, update: &mut U) -> XrfResult {
     spawn.write_xr::<T, _>(&self.trader)?;
 
-    self.base.write::<T>(spawn, update)?;
+    self.base.write::<T, _, _>(spawn, update)?;
 
-    Self::write_preferences::<T>(spawn, &self.equipment_preferences)?;
-    Self::write_preferences::<T>(spawn, &self.main_weapon_preferences)
+    Self::write_preferences::<T, _>(spawn, &self.equipment_preferences)?;
+    Self::write_preferences::<T, _>(spawn, &self.main_weapon_preferences)
   }
 }
 
@@ -170,7 +176,7 @@ mod tests {
     let mut update: ChunkWriter = ChunkWriter::new();
 
     original.trader.money = 0x0102_0304;
-    original.write::<XRayByteOrder>(&mut spawn, &mut update)?;
+    original.write::<XRayByteOrder, _, _>(&mut spawn, &mut update)?;
 
     assert_eq!(&spawn.buffer[..4], &[4, 3, 2, 1]);
 
@@ -178,7 +184,7 @@ mod tests {
     let mut monster_update: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&update.buffer)?;
 
     assert_eq!(
-      AlifeObjectMonsterAbstract::read::<XRayByteOrder, _>(&mut monster, &mut monster_update)?,
+      AlifeObjectMonsterAbstract::read::<XRayByteOrder, _, _>(&mut monster, &mut monster_update)?,
       original.base
     );
 

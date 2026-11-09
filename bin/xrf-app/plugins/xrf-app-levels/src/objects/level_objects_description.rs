@@ -88,7 +88,7 @@ impl LevelObjectsDescription {
 
       objects.push(LevelObject {
         spawn: Some(LevelObjectSpawn {
-          section: object.section.clone(),
+          section: object.header.section.clone(),
           clsid: object.clsid.clone(),
           story_id: object.inherited.get_abstract().and_then(|it| it.get_story_id()),
           release: spawn.get_release(index),
@@ -98,8 +98,8 @@ impl LevelObjectsDescription {
         ..LevelObject::new(
           LevelObjectId::Spawn { index: index as u32 },
           kind,
-          object.name.clone(),
-          VisualTransform::of_spawn(&object.position, &object.direction),
+          object.header.name.clone(),
+          VisualTransform::of_spawn(&object.header.position, &object.header.direction),
         )
       });
     }

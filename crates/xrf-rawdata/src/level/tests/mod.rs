@@ -5,6 +5,7 @@ mod particle;
 mod scene;
 mod sound_environment;
 mod sound_source;
+mod spawn_data;
 mod spawn_point;
 mod wallmark;
 mod way;

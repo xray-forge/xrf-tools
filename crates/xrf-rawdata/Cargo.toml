@@ -22,6 +22,7 @@ xrf-chunk = { workspace = true }
 xrf-editable-level = { workspace = true }
 xrf-editable-object = { workspace = true }
 xrf-error = { workspace = true }
+xrf-ini = { workspace = true }
 xrf-level = { workspace = true }
 xrf-math = { workspace = true, features = ["glam"] }
 xrf-ogf = { workspace = true }
@@ -29,6 +30,7 @@ xrf-skeleton = { workspace = true }
 xrf-utils = { workspace = true }
 
 [dev-dependencies]
+xrf-spawn = { workspace = true }
 xrf-test-utils = { workspace = true }
 
 [features]

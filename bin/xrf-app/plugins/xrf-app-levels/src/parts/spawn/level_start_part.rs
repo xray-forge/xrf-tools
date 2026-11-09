@@ -104,8 +104,8 @@ impl LevelStartPart {
       .filter(|object| matches!(object.inherited, AlifeObjectInherited::SeActor(_)))
       .map(|actor| {
         (
-          Self::get_eye(&actor.position),
-          actor.direction.y,
+          Self::get_eye(&actor.header.position),
+          actor.header.direction.y,
           LevelStartOrigin::Actor,
         )
       });

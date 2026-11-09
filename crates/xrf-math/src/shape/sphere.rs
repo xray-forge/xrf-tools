@@ -1,6 +1,6 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
 
 use crate::vector_3d::Vector3d;
@@ -19,18 +19,20 @@ impl Sphere {
   pub const SERIALIZED_SIZE: u64 = 16;
 }
 
-impl ChunkReadWrite for Sphere {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+/// The centre, then the radius: as bytes, the raw run the engine writes an `Fsphere` as; as fields, the vector and
+/// float `CSE_Shape::cform_write` gives an ini stream.
+impl ChunkFieldReadWrite for Sphere {
+  #[inline]
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       center: reader.read_xr::<T, _>()?,
       radius: reader.read_f32::<T>()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    self.center.write::<T>(writer)?;
-    writer.write_f32::<T>(self.radius)?;
-
-    Ok(())
+  #[inline]
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    writer.write_xr::<T, _>(&self.center)?;
+    writer.write_f32::<T>(self.radius)
   }
 }

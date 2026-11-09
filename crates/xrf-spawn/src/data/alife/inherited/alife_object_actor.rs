@@ -1,6 +1,6 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_math::Vector3d;
@@ -42,12 +42,9 @@ impl AlifeObjectActor {
 
 impl AlifePacketsReadWrite for AlifeObjectActor {
   /// Read the actor from both packets.
-  fn read<T: ByteOrder, D: ChunkDataSource>(
-    spawn: &mut ChunkReader<D>,
-    update: &mut ChunkReader<D>,
-  ) -> XrfResult<Self> {
+  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
     Ok(Self {
-      base: AlifeObjectCreature::read::<T, _>(spawn, update)?,
+      base: AlifeObjectCreature::read::<T, _, _>(spawn, update)?,
       trader: spawn.read_xr::<T, _>()?,
       skeleton: spawn.read_xr::<T, _>()?,
       holder_id: spawn.read_u16::<T>()?,
@@ -56,13 +53,13 @@ impl AlifePacketsReadWrite for AlifeObjectActor {
       update_velocity: update.read_xr::<T, _>()?,
       update_radiation: update.read_f32::<T>()?,
       update_weapon: update.read_u8()?,
-      update_body: ActorPhysicsState::read::<T, _>(update)?,
+      update_body: update.read_xr::<T, ActorPhysicsState>()?,
     })
   }
 
   /// Write the actor into both packets.
-  fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
-    self.base.write::<T>(spawn, update)?;
+  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(&self, spawn: &mut S, update: &mut U) -> XrfResult {
+    self.base.write::<T, _, _>(spawn, update)?;
 
     spawn.write_xr::<T, _>(&self.trader)?;
     spawn.write_xr::<T, _>(&self.skeleton)?;
@@ -74,7 +71,7 @@ impl AlifePacketsReadWrite for AlifeObjectActor {
     update.write_f32::<T>(self.update_radiation)?;
     update.write_u8(self.update_weapon)?;
 
-    self.update_body.write::<T>(update)
+    update.write_xr::<T, _>(&self.update_body)
   }
 }
 
