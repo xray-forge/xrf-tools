@@ -24,7 +24,7 @@ pub struct EditableObjectPart<T> {
   /// What the tool itself saves beyond its header, kept as stored: further `[main]` keys and sections of its own, such
   /// as the light tool's `sun_shadow_dir`, `lcontrol_last_idx` and `[lcontrols]` (`ESceneLightTool::SaveLTX`). Empty for
   /// a tool saving nothing more.
-  pub tool: IniFile,
+  pub tool_data: IniFile,
 }
 
 impl<T: EditableToolObject> EditableObjectPart<T> {
@@ -35,7 +35,7 @@ impl<T: EditableToolObject> EditableObjectPart<T> {
       flags: T::KEEPS_FLAGS.then_some(0),
       modification: EditablePartModification::default(),
       objects,
-      tool: IniFile::default(),
+      tool_data: IniFile::default(),
     }
   }
 
@@ -114,7 +114,7 @@ impl<T: EditableToolObject> EditableObjectPart<T> {
         part.ini.section_required(EditablePartModification::SECTION)?,
       )?,
       objects,
-      tool: Self::read_tool_data(part),
+      tool_data: Self::read_tool_data(part),
     })
   }
 
@@ -137,7 +137,7 @@ impl<T: EditableToolObject> EditableObjectPart<T> {
       .modification
       .write_to_section(ini.section_mut(EditablePartModification::SECTION));
 
-    for section in &self.tool.sections {
+    for section in &self.tool_data.sections {
       let written: &mut IniSection = ini.section_mut(&section.name);
 
       for field in &section.fields {

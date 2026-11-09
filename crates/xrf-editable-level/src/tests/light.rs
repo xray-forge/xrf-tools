@@ -82,6 +82,11 @@ fn reads_a_light_part_typed_and_writes_it_back_with_the_tools_own_data() -> XrfR
 
   assert_eq!(
     light.flags,
+    EditableLightObject::AFFECT_STATIC,
+    "the fuzzy bit stands as `fuzzy`"
+  );
+  assert_eq!(
+    light.get_saved_flags(),
     EditableLightObject::AFFECT_STATIC | EditableLightObject::POINT_FUZZY
   );
   assert_eq!(light.color, [1.0, 0.75, 0.5, 0.0]);
@@ -91,10 +96,10 @@ fn reads_a_light_part_typed_and_writes_it_back_with_the_tools_own_data() -> XrfR
     light.fuzzy.as_ref().map(|fuzzy| fuzzy.points.clone()),
     Some(vec![Vector3d::ZERO, Vector3d::new(0.000_488, 0.000_244, -0.093_75)])
   );
-  assert_eq!(part.tool.get("lcontrols", "$sun"), Some("2"));
-  assert_eq!(part.tool.get("main", "lcontrol_last_idx"), Some("3"));
+  assert_eq!(part.tool_data.get("lcontrols", "$sun"), Some("2"));
+  assert_eq!(part.tool_data.get("main", "lcontrol_last_idx"), Some("3"));
   assert_eq!(
-    part.tool.get("main", "version"),
+    part.tool_data.get("main", "version"),
     None,
     "the header's own keys stay the header's"
   );
