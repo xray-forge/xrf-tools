@@ -1,4 +1,5 @@
 use serde::Serialize;
+use xrf_level::LevelEnvModifier;
 
 use crate::objects::LevelSoundWindow;
 
@@ -44,4 +45,19 @@ pub enum LevelPlacementDetails {
     game_types: u16,
     profile: String,
   },
+}
+
+impl From<&LevelEnvModifier> for LevelPlacementDetails {
+  fn from(modifier: &LevelEnvModifier) -> Self {
+    Self::EnvModifier {
+      power: modifier.power,
+      far_plane: modifier.far_plane,
+      fog_color: modifier.fog_color.to_array(),
+      fog_density: modifier.fog_density,
+      ambient: modifier.ambient.to_array(),
+      sky_color: modifier.sky_color.to_array(),
+      hemi_color: modifier.hemi_color.to_array(),
+      affects: modifier.get_used_parameters().into_iter().map(str::to_owned).collect(),
+    }
+  }
 }

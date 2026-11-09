@@ -1,5 +1,5 @@
 use glam::Vec3;
-use xrf_level::{LevelDynamicLight, LevelEnvModifier, LevelFogVolume, LevelSndEnvFile};
+use xrf_level::{LevelDynamicLight, LevelFogVolume, LevelSndEnvFile};
 use xrf_math::{Matrix4x4, Vector3d};
 use xrf_visual::VisualTransform;
 
@@ -124,7 +124,7 @@ impl LevelObjectsDescription {
             radius: modifier.radius,
           }],
         },
-        details: Self::to_env_modifier(modifier),
+        details: LevelPlacementDetails::from(modifier),
       }));
     }
 
@@ -230,21 +230,6 @@ impl LevelObjectsDescription {
         .chain(&volume.obstacles)
         .map(to_box)
         .collect(),
-    }
-  }
-
-  fn to_env_modifier(modifier: &LevelEnvModifier) -> LevelPlacementDetails {
-    let to_array = |vector: &Vector3d| [vector.x, vector.y, vector.z];
-
-    LevelPlacementDetails::EnvModifier {
-      power: modifier.power,
-      far_plane: modifier.far_plane,
-      fog_color: to_array(&modifier.fog_color),
-      fog_density: modifier.fog_density,
-      ambient: to_array(&modifier.ambient),
-      sky_color: to_array(&modifier.sky_color),
-      hemi_color: to_array(&modifier.hemi_color),
-      affects: modifier.get_used_parameters().into_iter().map(str::to_owned).collect(),
     }
   }
 
