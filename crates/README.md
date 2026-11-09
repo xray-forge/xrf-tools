@@ -104,6 +104,7 @@ README is also its crate's rustdoc page.
 | [xrf-job](xrf-job/README.md)                   | Report progress, request cancellation, and plan worker limits     |
 | [xrf-math](xrf-math/README.md)                 | Vectors, matrices and shapes in the engine's layout               |
 | [xrf-output](xrf-output/README.md)             | Route live messages and ordered worker output                     |
+| [xrf-profiler](xrf-profiler/README.md)         | Start the Tracy client a profiling build streams its zones to     |
 | [xrf-report](xrf-report/README.md)             | Finalize checks and findings into deterministic reports           |
 | [xrf-test-utils](xrf-test-utils/README.md)     | Share test resources and assertions                               |
 | [xrf-utils](xrf-utils/README.md)               | Share encoding, file publication, and formatting helpers          |

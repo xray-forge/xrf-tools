@@ -160,7 +160,13 @@ impl XrayVfsHost {
       return Ok(found);
     }
 
-    let _mounting: MutexGuard<'_, ()> = self.recover(self.mounting.lock());
+    profiling::scope!("vfs mount");
+
+    let _mounting: MutexGuard<'_, ()> = {
+      profiling::scope!("vfs mount lock wait");
+
+      self.recover(self.mounting.lock())
+    };
     // Another mount may have settled the plan while this one waited for its turn.
     let current: Arc<XrayVfs> = self.get_vfs();
 

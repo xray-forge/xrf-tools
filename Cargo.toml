@@ -48,6 +48,7 @@ members = [
   "crates/xrf-pack",
   "crates/xrf-particles",
   "crates/xrf-ppe",
+  "crates/xrf-profiler",
   "crates/xrf-rawdata",
   "crates/xrf-renderer-core",
   "crates/xrf-renderer-derive",
@@ -173,6 +174,7 @@ xrf-output = { path = "crates/xrf-output" }
 xrf-pack = { path = "crates/xrf-pack" }
 xrf-particles = { path = "crates/xrf-particles" }
 xrf-ppe = { path = "crates/xrf-ppe" }
+xrf-profiler = { path = "crates/xrf-profiler" }
 xrf-rawdata = { path = "crates/xrf-rawdata" }
 xrf-renderer-core = { path = "crates/xrf-renderer-core" }
 xrf-renderer-derive = { path = "crates/xrf-renderer-derive" }

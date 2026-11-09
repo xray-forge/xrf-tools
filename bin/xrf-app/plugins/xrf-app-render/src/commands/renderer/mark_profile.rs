@@ -2,5 +2,5 @@
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "mark_profile")]
 pub(crate) fn render_mark_profile(text: String) {
-  xrf_renderer::send_profiler_message(&text);
+  xrf_profiler::send_message(&text);
 }

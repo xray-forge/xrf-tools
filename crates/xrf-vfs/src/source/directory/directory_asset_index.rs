@@ -55,6 +55,7 @@ impl DirectoryAssetIndex {
 
   /// Indexes the files below `root`, answering the commit journals found beside them too.
   fn walk(root: &Path) -> XrfResult<(Self, Vec<PathBuf>)> {
+    profiling::scope!("vfs walk loose tree");
     log::debug!("reading directory assets from {}", format_path(root));
 
     let mut assets: Vec<PathBuf> = Vec::new();

@@ -23,6 +23,7 @@ xrf-error = { workspace = true }
 xrf-extension = { workspace = true }
 xrf-job = { workspace = true, features = ["rayon"] }
 xrf-material = { workspace = true }
+xrf-profiler = { workspace = true }
 xrf-renderer = { workspace = true }
 xrf-utils = { workspace = true }
 xrf-vfs = { workspace = true }
