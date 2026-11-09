@@ -7,6 +7,7 @@ use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrit
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
 use crate::data::alife::inherited::alife_object_skeleton::AlifeObjectSkeleton;
+use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 use crate::data::physics::physics_net_state::PhysicsNetState;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -24,6 +25,9 @@ pub struct AlifeObjectPhysic {
 }
 
 impl AlifePacketsReadWrite for AlifeObjectPhysic {
+  /// Nothing to set: the physic object leaves its physics state's count uninitialised, so no state stands for it.
+  fn set_spawned_update(&mut self, _: &SpawnPacketHeader) {}
+
   /// Read a physic object from both packets.
   ///
   /// An empty update packet reads as no physics state, as `CSE_ALifeObjectPhysic::UPDATE_Read` reads it; it is

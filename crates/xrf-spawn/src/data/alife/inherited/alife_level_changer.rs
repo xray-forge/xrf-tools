@@ -28,6 +28,9 @@ pub struct AlifeLevelChanger {
 impl AlifeLevelChanger {
   /// The script class the trailing fields belong to, named in a refused save marker.
   const SCRIPT_CLASS: &'static str = "se_level_changer";
+
+  /// The hint the script class's constructor sets, with `enabled` true.
+  const CONSTRUCTED_HINT: &'static str = "level_changer_invitation";
 }
 
 impl ChunkFieldReadWrite for AlifeLevelChanger {
@@ -46,9 +49,12 @@ impl ChunkFieldReadWrite for AlifeLevelChanger {
     let dest_level_name: String = reader.read_w1251_string()?;
     let dest_graph_point: String = reader.read_w1251_string()?;
     let silent_mode: u8 = reader.read_u8()?;
-    let (enabled, hint): (u8, String) = ScriptSaveMarker::read::<T, _, _>(reader, Self::SCRIPT_CLASS, |reader| {
-      Ok((reader.read_u8()?, reader.read_w1251_string()?))
-    })?;
+    let (enabled, hint): (u8, String) = ScriptSaveMarker::read_or_constructed::<T, _, _>(
+      reader,
+      Self::SCRIPT_CLASS,
+      || (1, String::from(Self::CONSTRUCTED_HINT)),
+      |reader| Ok((reader.read_u8()?, reader.read_w1251_string()?)),
+    )?;
 
     Ok(Self {
       base,

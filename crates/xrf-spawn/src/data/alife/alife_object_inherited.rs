@@ -48,6 +48,7 @@ use crate::data::alife::inherited::alife_smart_terrain::AlifeSmartTerrain;
 use crate::data::alife::inherited::alife_squad::AlifeSquad;
 use crate::data::alife::inherited::alife_stalker::AlifeStalker;
 use crate::data::alife::inherited::alife_zone_visual::AlifeZoneVisual;
+use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 use crate::data::meta::alife_class::AlifeClass;
 use crate::data::physics::physics_net_state::PhysicsNetState;
 
@@ -417,6 +418,53 @@ impl AlifeObjectInherited {
 
     if let Some(state) = state {
       state.set_position(position);
+    }
+  }
+
+  /// Set the update fields as the server entity holds them right after `Spawn_Read`, as each class's
+  /// `AlifePacketsReadWrite::set_spawned_update` does; a class with an empty update packet has none.
+  pub fn set_spawned_update(&mut self, header: &SpawnPacketHeader) {
+    match self {
+      Self::SeActor(object) => object.set_spawned_update(header),
+      Self::SeStalker(object) => object.set_spawned_update(header),
+      Self::SeMonster(object) => object.set_spawned_update(header),
+      Self::CseAlifeObjectPhysic(object) => object.set_spawned_update(header),
+      Self::CseAlifeItem(object) | Self::CseAlifeItemBolt(object) => object.set_spawned_update(header),
+      Self::CseAlifeItemExplosive(object) => object.set_spawned_update(header),
+      Self::CseAlifeItemPda(object) => object.set_spawned_update(header),
+      Self::CseAlifeItemAmmo(object) => object.set_spawned_update(header),
+      Self::CseAlifeItemGrenade(object) => object.set_spawned_update(header),
+      Self::CseAlifeItemArtefact(object) => object.set_spawned_update(header),
+      Self::CseAlifeItemWeapon(object) => object.set_spawned_update(header),
+      Self::CseAlifeItemDetector(object) => object.set_spawned_update(header),
+      Self::CseAlifeItemHelmet(object) => object.set_spawned_update(header),
+      Self::CseAlifeItemCustomOutfit(object) => object.set_spawned_update(header),
+      Self::CseAlifeItemWeaponShotgun(object) => object.set_spawned_update(header),
+      Self::CseAlifeItemWeaponMagazined(object) => object.set_spawned_update(header),
+      Self::CseAlifeItemWeaponMagazinedWGl(object) => object.set_spawned_update(header),
+      Self::CseAlifeItemTorch(object) => object.set_spawned_update(header),
+      Self::CseAlifeItemDocument(object) => object.set_spawned_update(header),
+      Self::CseAlifeCreatureCrow(object) | Self::CseAlifeCreaturePhantom(object) => object.set_spawned_update(header),
+      Self::CseAlifeStationaryMGun(object) => object.set_spawned_update(header),
+      Self::CseAlifeObjectBreakable(_)
+      | Self::CseAlifeObjectClimable(_)
+      | Self::CseAlifeGraphPoint(_)
+      | Self::CseAlifeSpaceRestrictor(_)
+      | Self::SeSmartCover(_)
+      | Self::CseAlifeAnomalousZone(_)
+      | Self::CseAlifeTorridZone(_)
+      | Self::SeSmartTerrain(_)
+      | Self::SeLevelChanger(_)
+      | Self::CseAlifeZoneVisual(_)
+      | Self::CseAlifeCar(_)
+      | Self::CseAlifeTrader(_)
+      | Self::CseAlifeHelicopter(_)
+      | Self::CseAlifeInventoryBox(_)
+      | Self::CseAlifeObjectHangingLamp(_)
+      | Self::CseAlifeDynamicObjectVisual(_)
+      | Self::CseAlifeObjectProjector(_)
+      | Self::CseAlifePhSkeletonObject(_)
+      | Self::SimSquadScripted(_) => {}
     }
   }
 

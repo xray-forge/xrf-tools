@@ -6,6 +6,7 @@ use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrit
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
+use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -18,6 +19,12 @@ pub struct AlifeObjectItemAmmo {
 }
 
 impl AlifePacketsReadWrite for AlifeObjectItemAmmo {
+  /// The item's, then the rounds left the spawn packet holds, which `STATE_Read` reads over the constructor's box size.
+  fn set_spawned_update(&mut self, header: &SpawnPacketHeader) {
+    self.base.set_spawned_update(header);
+    self.update_ammo_left = self.ammo_left;
+  }
+
   /// Read ammo from both packets, each carrying the rounds left.
   fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
     Ok(Self {

@@ -7,6 +7,7 @@ use xrf_math::Vector3d;
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_human_stalker::AlifeObjectHumanStalker;
+use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 use crate::data::generic::offline_object_state::OfflineObjectState;
 
 /// A stalker as its script class `se_stalker` saves one: vanilla's `se_stalker.script` and xrf-engine's `Stalker.ts`
@@ -46,6 +47,10 @@ impl AlifeStalker {
 }
 
 impl AlifePacketsReadWrite for AlifeStalker {
+  fn set_spawned_update(&mut self, header: &SpawnPacketHeader) {
+    self.base.set_spawned_update(header);
+  }
+
   /// Read the stalker from both packets; the script class adds to the spawn packet alone.
   fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
     Ok(Self {

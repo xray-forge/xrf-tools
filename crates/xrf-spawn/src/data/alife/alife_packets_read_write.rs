@@ -4,6 +4,8 @@ use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::XrfResult;
 
+use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
+
 /// A server class payload whose update packet is not empty, read and written across both of an object's packets.
 ///
 /// Each class takes its spawn fields from the spawn packet and its update fields from the update packet, after its
@@ -16,6 +18,12 @@ pub(crate) trait AlifePacketsReadWrite: Sized {
 
   /// Write the payload's spawn fields into `spawn` and its update fields into `update`.
   fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(&self, spawn: &mut S, update: &mut U) -> XrfResult;
+
+  /// Set the update fields as the server entity holds them right after `Spawn_Read`, the state xrAI writes into a root
+  /// spawn's update packet: what `STATE_Read` takes from the spawn packet, and the constructor's values. Read first
+  /// from [`crate::data::alife::zeroed_update_fields::ZeroedUpdateFields`], every field the engine leaves
+  /// uninitialised stays zero, as a clean rebuild writes it.
+  fn set_spawned_update(&mut self, header: &SpawnPacketHeader);
 
   /// Write the payload and read it back, refusing a byte of either packet left unread, with the sizes of the spawn
   /// and update fields written.

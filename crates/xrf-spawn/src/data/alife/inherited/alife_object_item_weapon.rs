@@ -8,6 +8,7 @@ use xrf_math::Vector3d;
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
+use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 
 /// A weapon, `CSE_ALifeItemWeapon`. Its update packet repeats the rounds loaded, weapon state, addons and ammo type the
 /// spawn packet stores, and the engine reads them over the spawn packet's, so those are what the game starts with.
@@ -41,6 +42,19 @@ impl AlifeObjectItemWeapon {
 }
 
 impl AlifePacketsReadWrite for AlifeObjectItemWeapon {
+  /// The item's, then what `CSE_ALifeItemWeapon::STATE_Read` reads (`xrServer_Objects_ALife_Items.cpp:556-563`): the
+  /// condition quantised, the rounds loaded, the state, the addons and the ammo type; no weapon flags, as the
+  /// constructor leaves them. Whether it aims is uninitialised.
+  fn set_spawned_update(&mut self, header: &SpawnPacketHeader) {
+    self.base.set_spawned_update(header);
+    self.update_condition = AlifeObjectItem::quantize_condition(self.base.condition);
+    self.update_weapon_flags = 0;
+    self.update_ammo_elapsed = self.ammo_elapsed;
+    self.update_addon_flags = self.addon_flags;
+    self.update_ammo_type = self.ammo_type;
+    self.update_weapon_state = self.weapon_state;
+  }
+
   /// Read a weapon from both packets.
   fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
     Ok(Self {

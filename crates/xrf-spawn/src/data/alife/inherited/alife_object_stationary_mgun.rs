@@ -7,6 +7,7 @@ use xrf_utils::vector_to_string;
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
+use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 use crate::data::physics::raw_float::RawFloat;
 
 /// A stationary machine gun, `CSE_ALifeStationaryMgun`: a visual whose update packet carries whether it fires and
@@ -23,6 +24,9 @@ pub struct AlifeObjectStationaryMgun {
 }
 
 impl AlifePacketsReadWrite for AlifeObjectStationaryMgun {
+  /// Nothing to set: whether it fires and where it aims are uninitialised in a new gun.
+  fn set_spawned_update(&mut self, _: &SpawnPacketHeader) {}
+
   /// Read the gun from both packets.
   fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
     Ok(Self {

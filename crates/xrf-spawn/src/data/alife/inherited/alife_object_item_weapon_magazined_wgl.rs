@@ -6,6 +6,7 @@ use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrit
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_item_weapon_magazined::AlifeObjectItemWeaponMagazined;
+use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -17,6 +18,10 @@ pub struct AlifeObjectItemWeaponMagazinedWgl {
 }
 
 impl AlifePacketsReadWrite for AlifeObjectItemWeaponMagazinedWgl {
+  fn set_spawned_update(&mut self, header: &SpawnPacketHeader) {
+    self.base.set_spawned_update(header);
+  }
+
   /// Read a magazined weapon with a launcher from both packets. Its grenade mode opens the update packet, ahead of
   /// every field it inherits, as `CSE_ALifeItemWeaponMagazinedWGL::UPDATE_Read` takes it first.
   fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {

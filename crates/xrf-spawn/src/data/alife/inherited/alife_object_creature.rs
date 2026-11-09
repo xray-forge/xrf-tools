@@ -10,6 +10,7 @@ use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 #[cfg(test)]
 use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
 use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
+use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 
 /// A creature, `CSE_ALifeCreatureAbstract`. Its update packet repeats its health, team, squad and group, and carries
 /// where it stands and which way its torso faces; the engine reads them over the spawn packet's, so a creature starts
@@ -55,6 +56,22 @@ impl AlifeObjectCreature {
 }
 
 impl AlifePacketsReadWrite for AlifeObjectCreature {
+  /// As `CSE_ALifeCreatureAbstract::STATE_Read` leaves them (`xrServer_Objects_ALife_Monsters.cpp:916-938`): health,
+  /// team, squad and group from the spawn packet, the position, the torso's pitch and heading from its angles. The
+  /// model's heading is taken from the torso before the torso is set, so it stays the constructor's zero, as does the
+  /// roll; the timestamp and flags are uninitialised.
+  fn set_spawned_update(&mut self, header: &SpawnPacketHeader) {
+    self.update_health = self.health;
+    self.update_position = header.position;
+    self.update_model_yaw = 0.0;
+    self.update_torso_yaw = header.direction.y;
+    self.update_torso_pitch = header.direction.x;
+    self.update_torso_roll = 0.0;
+    self.update_team = self.team;
+    self.update_squad = self.squad;
+    self.update_group = self.group;
+  }
+
   /// Read a creature from both packets.
   fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
     Ok(Self {

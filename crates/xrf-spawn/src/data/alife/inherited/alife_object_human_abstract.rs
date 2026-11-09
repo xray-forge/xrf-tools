@@ -9,6 +9,7 @@ use xrf_utils::{narrow_format_size, vector_from_string, vector_to_string};
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_monster_abstract::AlifeObjectMonsterAbstract;
 use crate::data::alife::inherited::alife_object_trader_abstract::AlifeObjectTraderAbstract;
+use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 
 /// A human, `CSE_ALifeHumanAbstract`: a trader and a monster, in that order, so unlike the actor's its spawn packet
 /// opens with the trader's fields, ahead of every field the object inherits. The human brain follows them with the
@@ -56,6 +57,10 @@ impl AlifeObjectHumanAbstract {
 }
 
 impl AlifePacketsReadWrite for AlifeObjectHumanAbstract {
+  fn set_spawned_update(&mut self, header: &SpawnPacketHeader) {
+    self.base.set_spawned_update(header);
+  }
+
   /// Read the human from both packets.
   fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
     Ok(Self {
