@@ -170,6 +170,46 @@ pub(super) fn sound_source_part_text(guid: &EditableLevelGuid, fields: &[(&str, 
   file.write_to_string_as(&IniFormat::XRAY_SAVE_AS)
 }
 
+/// A sound environment tool's part with one volume as the editor saves a new one, moved and scaled, its `version` the
+/// environment's over the shape's, with that object's fields replaced or added.
+pub(super) fn sound_environment_part_text(guid: &EditableLevelGuid, fields: &[(&str, &str)]) -> XrfResult<String> {
+  let mut file: IniFile = IniFile::default();
+
+  guid.write_to_section(file.section_mut("guid"));
+  file.section_mut("main").set("objects_count", "1");
+  file.section_mut("main").set("version", "0");
+  file.section_mut("modif").set("name", "");
+  file.section_mut("modif").set("time", "0");
+
+  let section: &mut IniSection = file.section_mut("object_0");
+
+  for (key, value) in [
+    ("clsid", "10"),
+    ("co_flags", "0"),
+    ("env_inner", "cave"),
+    ("env_outer", "default"),
+    ("name", "sound_env_0000"),
+    ("position", "12.500000, -3.250000, 40.000000"),
+    ("rotation", "0.000000, 0.785398, 0.000000"),
+    ("scale", "8.000000, 4.000000, 16.000000"),
+    ("shape_matrix_c_0", "0.000000, 0.000000, 0.000000"),
+    ("shape_matrix_i_0", "1.000000, 0.000000, 0.000000"),
+    ("shape_matrix_j_0", "0.000000, 1.000000, 0.000000"),
+    ("shape_matrix_k_0", "0.000000, 0.000000, 1.000000"),
+    ("shape_type", "0"),
+    ("shape_type_0", "1"),
+    ("shapes_count", "1"),
+    ("version", "18"),
+  ]
+  .into_iter()
+  .chain(fields.iter().copied())
+  {
+    section.set(key, value);
+  }
+
+  file.write_to_string_as(&IniFormat::XRAY_SAVE_AS)
+}
+
 /// A binary part as `EScene::SaveLTX` frames it, its chunks in the order given.
 pub(super) fn binary_part_bytes(chunks: &[ChunkPayload]) -> XrfResult<Vec<u8>> {
   let mut file: ChunkWriter = ChunkWriter::new();

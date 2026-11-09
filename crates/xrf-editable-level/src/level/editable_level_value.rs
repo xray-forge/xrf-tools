@@ -27,6 +27,15 @@ impl EditableLevelValue {
     if saved == 0.0 { 0.0 } else { saved }
   }
 
+  /// The saved values nearest `value`, it rounded first, then a step either way and two, the step the coarser of the
+  /// `%f` grid and the float's own: where a value is recovered from what the editor computed from it, the rounded one
+  /// can land a step off the one it saved.
+  pub fn get_saved_neighbours(value: f32) -> [f32; 5] {
+    let step: f32 = (value.next_up() - value).max(1e-6);
+
+    [0.0, 1.0, -1.0, 2.0, -2.0].map(|steps: f32| Self::round_as_saved(value + steps * step))
+  }
+
   /// A vector rounded as [`Self::round_as_saved`] rounds each component.
   pub fn round_vector3_as_saved(value: &Vector3d) -> Vector3d {
     Vector3d::new(
