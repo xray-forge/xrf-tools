@@ -442,14 +442,12 @@ fn cs_cull(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups
     let kept: vec4<f32> = cached[source + 1u];
     let model: u32 = u32(kept.y);
     let shape: vec4<f32> = models[model].shape;
-    let look: vec4<f32> = ring_tuft_look(ring, kept);
+    // Nothing grows under a puddle's water where the wetting draws it, a tuft at its shore shrunk.
+    let from_eye: f32 = distance(placed.xyz, vec3<f32>(params.eye.x, params.eye.y, -params.eye.z));
+    let ringed: vec4<f32> = ring_tuft_look(ring, kept);
+    let look: vec4<f32> = vec4<f32>(ringed.x * puddle_kept(placed.xyz, from_eye), ringed.yzw);
 
     if (look.x <= 0.0 || is_outside(placed.xyz + vec3<f32>(0.0, shape.w * look.x * 0.5, 0.0), shape.z * look.x)) {
-      continue;
-    }
-
-    // Nothing grows under a puddle's water.
-    if (is_in_puddle(placed.xyz)) {
       continue;
     }
 

@@ -3,7 +3,8 @@ use xrf_renderer_core::ShaderStruct;
 
 /// Where the puddles stand, as the grass's planting reads them (`shaders/grass/puddles.wgsl`) to plant no tuft in a
 /// puddle's water: the level surface's window (its centre in `x` and `z`, its half width, the height it is seen from),
-/// its shape (texels across, metres down, a site cell's metres), and one where puddles are drawn.
+/// its shape (texels across, metres down, a site cell's metres), and one where puddles are drawn with the metres from
+/// the eye they are drawn to.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "GrassPuddles")]
@@ -24,10 +25,11 @@ impl GrassPuddlesUniform {
     }
   }
 
-  /// The same with the wet surfaces' puddles drawn, which the grass plants around.
-  pub(crate) fn with_puddles(self) -> Self {
+  /// The same with the wet surfaces' puddles drawn out to `distance` metres from the eye, which the grass plants around
+  /// as far as they are drawn.
+  pub(crate) fn with_puddles(self, distance: f32) -> Self {
     Self {
-      state: Vec4::new(1.0, 0.0, 0.0, 0.0),
+      state: Vec4::new(1.0, distance, 0.0, 0.0),
       ..self
     }
   }

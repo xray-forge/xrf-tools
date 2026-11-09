@@ -163,6 +163,11 @@ impl WetFeature {
     self.is_enhanced() && self.uniform.puddle_state.y > 0.0
   }
 
+  /// Metres from the eye the puddles are drawn to, where they stand this frame (`has_puddles`).
+  pub(crate) fn get_puddle_distance(&self) -> Option<f32> {
+    self.has_puddles().then_some(self.uniform.puddle_state.x)
+  }
+
   /// How far the rain cover reaches for the traced reflections' wet gloss, where it reaches past the engine's.
   pub(crate) fn get_reach(&self) -> Option<f32> {
     (self.is_wet() && self.uniform.reach.x > 0.5).then_some(self.uniform.reach.y)
