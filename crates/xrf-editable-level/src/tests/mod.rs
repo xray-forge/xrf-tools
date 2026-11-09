@@ -6,6 +6,7 @@ mod object;
 mod part;
 mod portal;
 mod scene;
+mod scene_object;
 mod sector;
 mod spawn;
 mod tool;
