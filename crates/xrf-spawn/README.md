@@ -150,7 +150,8 @@ editor need not know which classes repeat it:
 
 A list's object carries the version-independent start of `CSE_Abstract::Spawn_Write` (section, name, two script bytes,
 position, direction) and keeps the rest of the packet as is in `payload`. A list therefore rewrites byte for byte,
-whatever spawn version or server class wrote it.
+whatever spawn version or server class wrote it. `read_alife_object` types one as its section's class through its
+spawn packet alone, refusing bytes the class does not read, and `from_alife_object` lists a typed object back.
 
 ```rust
 use xrf_chunk::ChunkWriter;

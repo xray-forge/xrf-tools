@@ -5,6 +5,7 @@ pub(crate) mod object;
 pub(crate) mod provenance;
 
 pub use crate::level::level_decompile_context::LevelDecompileContext;
+pub use crate::level::level_entity_conversion::{LevelEntityConversion, LevelEntityDecompile, LevelEntityExport};
 pub use crate::level::level_exported_file::{LevelExportedFile, LevelExportedPrevious};
 pub use crate::level::level_fog_volume_conversion::LevelFogVolumeConversion;
 pub use crate::level::level_glow_conversion::LevelGlowConversion;
@@ -35,6 +36,6 @@ pub use crate::object::detail_parameters::DetailParameters;
 pub use crate::object::verify::object_verification::{ObjectGeometryCensus, ObjectVerification};
 pub use crate::object::verify::object_verifier::ObjectVerifier;
 pub use crate::provenance::level_scene_provenance::{
-  LevelSceneFile, LevelSceneInference, LevelSceneProvenance, LevelSceneSource,
+  LevelSceneFile, LevelSceneInference, LevelSceneProvenance, LevelSceneRefusal, LevelSceneSource,
 };
 pub use crate::provenance::object_provenance::ObjectProvenance;

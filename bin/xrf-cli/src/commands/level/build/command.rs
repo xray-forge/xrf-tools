@@ -25,8 +25,9 @@ impl GenericCommand for BuildCommand {
     command
       .about(
         "Build an SDK Level Editor scene's game files into a level directory, as the editor's Build writes them from \
-         the scene's parts: level.game, level.env_mod, level.fog_vol, and level.ps_static, level.snd_static, \
-         level.snd_env and level.wallmarks where the scene holds them. No geometry, spawns or build.prj yet",
+         the scene's parts: level.game, level.env_mod, level.fog_vol, and level.spawn, level_rs.spawn, \
+         level.ps_static, level.snd_static, level.snd_env and level.wallmarks where the scene holds them. No geometry \
+         or build.prj yet",
       )
       .arg(
         Arg::new("path")

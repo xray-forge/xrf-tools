@@ -1,4 +1,5 @@
 pub(crate) mod level_decompile_context;
+pub(crate) mod level_entity_conversion;
 pub(crate) mod level_exported_file;
 pub(crate) mod level_fog_volume_conversion;
 pub(crate) mod level_glow_conversion;

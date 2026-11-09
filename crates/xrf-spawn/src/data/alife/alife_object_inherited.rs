@@ -49,6 +49,7 @@ use crate::data::alife::inherited::alife_squad::AlifeSquad;
 use crate::data::alife::inherited::alife_stalker::AlifeStalker;
 use crate::data::alife::inherited::alife_zone_visual::AlifeZoneVisual;
 use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
+use crate::data::generic::shape::Shape;
 use crate::data::meta::alife_class::AlifeClass;
 use crate::data::physics::physics_net_state::PhysicsNetState;
 
@@ -292,6 +293,38 @@ impl AlifeObjectInherited {
       Self::CseAlifePhSkeletonObject(object) => Some(&object.base.base),
       Self::CseAlifeStationaryMGun(object) => Some(&object.base.base),
       Self::SimSquadScripted(object) => Some(&object.base.base.base),
+    }
+  }
+
+  /// The volume the object encloses, for a class whose `shape()` returns it to the Level Editor: space restrictors
+  /// with every class built on them (zones, smart terrains, level changers), climbable objects and smart covers. A
+  /// breakable object keeps its shape in its visual and has none here.
+  pub fn get_shapes(&self) -> Option<&[Shape]> {
+    match self {
+      Self::CseAlifeSpaceRestrictor(object) => Some(&object.shape),
+      Self::SeLevelChanger(object) => Some(&object.base.shape),
+      Self::SeSmartTerrain(object) => Some(&object.base.base.shape),
+      Self::CseAlifeTorridZone(object) => Some(&object.base.base.shape),
+      Self::CseAlifeAnomalousZone(object) => Some(&object.base.base.base.shape),
+      Self::CseAlifeZoneVisual(object) => Some(&object.base.base.base.shape),
+      Self::CseAlifeObjectClimable(object) => Some(&object.base.shape),
+      Self::SeSmartCover(object) => Some(&object.base.shape),
+      _ => None,
+    }
+  }
+
+  /// The volume [`Self::get_shapes`] reads, to replace.
+  pub fn get_shapes_mut(&mut self) -> Option<&mut Vec<Shape>> {
+    match self {
+      Self::CseAlifeSpaceRestrictor(object) => Some(&mut object.shape),
+      Self::SeLevelChanger(object) => Some(&mut object.base.shape),
+      Self::SeSmartTerrain(object) => Some(&mut object.base.base.shape),
+      Self::CseAlifeTorridZone(object) => Some(&mut object.base.base.shape),
+      Self::CseAlifeAnomalousZone(object) => Some(&mut object.base.base.base.shape),
+      Self::CseAlifeZoneVisual(object) => Some(&mut object.base.base.base.shape),
+      Self::CseAlifeObjectClimable(object) => Some(&mut object.base.shape),
+      Self::SeSmartCover(object) => Some(&mut object.base.shape),
+      _ => None,
     }
   }
 

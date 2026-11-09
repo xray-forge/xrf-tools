@@ -1,8 +1,9 @@
 use xrf_error::XrfResult;
 use xrf_ini::{IniFile, IniSection};
+use xrf_math::{Matrix4x4, Vector3d};
 
 use crate::object::editable_custom_object::EditableCustomObject;
-use crate::object::editable_shape::EditableShape;
+use crate::object::editable_shape::{EditableShape, EditableShapeElement};
 use crate::object::editable_tool_object::EditableToolObject;
 use crate::part::editable_part_object::EditablePartObject;
 
@@ -31,6 +32,36 @@ impl EditableShapeObject {
   pub fn write_to_section(&self, section: &mut IniSection) {
     self.object.write_to_section(section);
     self.shape.write_to_section(section);
+  }
+
+  /// The elements with the object's scale applied, `CEditShape::ApplyScale`, which the build gives an entity holding
+  /// the shape attached: a sphere's centre placed by the scale and its radius times the scale along x, a box's matrix
+  /// scaled after itself (`mulA_43`). The object's position and turn are not applied.
+  ///
+  /// A unit scale leaves the elements as stored. Summed as `mul_43` sums them, a box's negative zero would turn
+  /// positive, yet GSC's build kept it: vanilla `zaton`'s `zat_surge_hide_a2` and `zat_a2_sr_light` hold such zeros in
+  /// `level.spawn`.
+  pub fn get_scaled_elements(&self) -> Vec<EditableShapeElement> {
+    if self.object.transform.scale == Vector3d::ONE {
+      return self.shape.elements.clone();
+    }
+
+    let scale: Matrix4x4 = Matrix4x4::from_scale(&self.object.transform.scale);
+
+    self
+      .shape
+      .elements
+      .iter()
+      .map(|element| match element {
+        EditableShapeElement::Sphere { center, radius } => EditableShapeElement::Sphere {
+          center: scale.transform_point(center),
+          radius: radius * self.object.transform.scale.x,
+        },
+        EditableShapeElement::Box(matrix) => {
+          EditableShapeElement::Box(scale.multiply_affine(&Matrix4x4::from(matrix)).to_affine())
+        }
+      })
+      .collect()
   }
 }
 

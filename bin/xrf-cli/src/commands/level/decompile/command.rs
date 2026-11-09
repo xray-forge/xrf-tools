@@ -26,8 +26,8 @@ impl GenericCommand for DecompileCommand {
       .about(
         "Decompile a compiled level's directory into an SDK Level Editor scene (.level and its parts), with a \
          .level.xrf.json provenance sidecar beside it. The scene holds the parts the build passes through (particles, \
-         sounds, sound environments, fog volumes, wall marks, patrol paths, respawn points and environment modifiers) \
-         and the level's glows and lights; no geometry yet",
+         sounds, sound environments, fog volumes, wall marks, patrol paths, respawn points, environment modifiers and \
+         entity spawns) and the level's glows and lights; no geometry yet",
       )
       .arg(
         Arg::new("path")
@@ -127,7 +127,16 @@ impl DecompileCommand {
         })
         .collect::<XrfResult<Vec<LevelDecompileTool>>>()?,
       inferred: decompiled.provenance.inferred,
+      refused: decompiled.provenance.refused,
     };
+
+    if !report.refused.is_empty() {
+      xrf_output::warning!(
+        output,
+        "Left out {} objects the scene cannot hold, each named with its reason in the sidecar",
+        report.refused.len()
+      );
+    }
 
     xrf_output::success!(
       output,

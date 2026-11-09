@@ -34,9 +34,16 @@ pub enum EditableSpawnPointKind {
     /// Which values the engine mixes in, one bit each.
     flags: u16,
   },
-  /// `ptSpawnPoint`: a server entity, its `[object_N_spawndata]` kept as stored: the entity's section `name`, its
-  /// flags `fl`, and a numbered field per value its packet writes. The build exports it into `level.spawn`.
-  Entity { data: IniSection },
+  /// `ptSpawnPoint`: a server entity, `SSpawnData` as `[object_N_spawndata]` saves it. The build exports its packet
+  /// into `level.spawn`, or `level_rs.spawn` when [`EditableSpawnPointObject::RESPAWN_ENTITY`] is set.
+  Entity {
+    /// The section the entity is created from, `name`.
+    section: String,
+    /// `fl`: whether the entity respawns in multiplayer.
+    flags: u8,
+    /// The packet `Spawn_Write` puts through `SIniFileStream`, a numbered field per value, kept as stored.
+    data: IniSection,
+  },
 }
 
 /// A spawn point, `CSpawnPoint`: an object of `spawn.part`, with a shape attached where its entity needs a volume.
@@ -68,6 +75,13 @@ impl EditableSpawnPointObject {
 
   /// The values of a new environment modifier (`CSpawnPoint::Construct`), its flags all set.
   pub const DEFAULT_ENVIRONMENT_FLAGS: u16 = u16::MAX;
+
+  /// `eSDTypeRespawn`, the entity flag (the editor's "MP respawn") that exports it into `level_rs.spawn`.
+  pub const RESPAWN_ENTITY: u8 = 1;
+
+  /// The keys `SSpawnData::SaveLTX` writes beside the packet's numbered fields: the entity's section and its flags.
+  const ENTITY_SECTION: &'static str = "name";
+  const ENTITY_FLAGS: &'static str = "fl";
 
   /// What the attached objects' section names and count take, `SaveObjectsLTX(..., "attached", ...)`.
   const ATTACHED: &'static str = "attached";
@@ -120,12 +134,28 @@ impl EditableSpawnPointObject {
           Self::DEFAULT_ENVIRONMENT_FLAGS
         },
       }),
-      Self::ENTITY => Ok(EditableSpawnPointKind::Entity {
-        data: object
+      Self::ENTITY => {
+        let mut data: IniSection = object
           .get_child("spawndata")
           .cloned()
-          .ok_or_else(|| XrfError::new_parsing_error(format!("Spawn point [{}] has no spawn data", section.name)))?,
-      }),
+          .ok_or_else(|| XrfError::new_parsing_error(format!("Spawn point [{}] has no spawn data", section.name)))?;
+        let entity: String = data.get_required(Self::ENTITY_SECTION)?.to_owned();
+        // `LoadLTX` keeps a new entity's flags where an older scene saved none.
+        let flags: u8 = if data.get(Self::ENTITY_FLAGS).is_some() {
+          data.get_parsed::<u8>(Self::ENTITY_FLAGS)?
+        } else {
+          0
+        };
+
+        data.remove(Self::ENTITY_SECTION);
+        data.remove(Self::ENTITY_FLAGS);
+
+        Ok(EditableSpawnPointKind::Entity {
+          section: entity,
+          flags,
+          data,
+        })
+      }
       kind => Err(XrfError::new_parsing_error(format!(
         "Spawn point [{}] is of type {kind}, which the editor does not know",
         section.name
@@ -206,12 +236,20 @@ impl EditableToolObject for EditableSpawnPointObject {
       attached.write_to_section(attached_section);
     }
 
-    if let EditableSpawnPointKind::Entity { data } = &self.kind {
+    if let EditableSpawnPointKind::Entity {
+      section: entity,
+      flags,
+      data,
+    } = &self.kind
+    {
       let spawn_data: &mut IniSection = ini.section_mut(&format!("{section}_spawndata"));
 
       for field in &data.fields {
         spawn_data.set(field.key.clone(), field.value.clone());
       }
+
+      spawn_data.set(Self::ENTITY_FLAGS, flags.to_string());
+      spawn_data.set(Self::ENTITY_SECTION, entity.clone());
     }
 
     let object: &mut IniSection = ini.section_mut(section);
