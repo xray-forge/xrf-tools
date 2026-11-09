@@ -86,6 +86,32 @@ impl Matrix4x4 {
     Self { values }
   }
 
+  /// `inner` applied first, then this, as affine transforms, `Fmatrix::mul_43(self, inner)`: the fourth column left
+  /// out of every sum and set to [`Self::AFFINE_COLUMN`], each element summed in the engine's order.
+  pub fn multiply_affine(&self, inner: &Self) -> Self {
+    let outer: &[f32; Self::ELEMENTS] = &self.values;
+    let inner: &[f32; Self::ELEMENTS] = &inner.values;
+    let mut values: [f32; Self::ELEMENTS] = [0.0; Self::ELEMENTS];
+
+    for row in 0..4 {
+      for column in 0..3 {
+        let rotated: f32 = outer[column] * inner[row * 4]
+          + outer[4 + column] * inner[row * 4 + 1]
+          + outer[8 + column] * inner[row * 4 + 2];
+
+        values[row * 4 + column] = if row == 3 {
+          rotated + outer[12 + column]
+        } else {
+          rotated
+        };
+      }
+
+      values[row * 4 + 3] = Self::AFFINE_COLUMN[row];
+    }
+
+    Self { values }
+  }
+
   /// Where the fourth row points, which is the translation the engine reads as `Fmatrix::c`.
   pub const fn get_translation(&self) -> Vector3d<f32> {
     Vector3d {
@@ -227,6 +253,30 @@ mod tests {
     let product: Matrix4x4 = Matrix4x4::IDENTITY.multiply(&negative_zero);
 
     assert!(product.values[1].is_sign_positive());
+  }
+
+  #[test]
+  fn test_an_affine_product_leaves_the_fourth_column_out() {
+    // A projective inner matrix: `mul_43` ignores its fourth column, which `mul` would sum into every row.
+    let mut projective: Matrix4x4 = placed();
+
+    projective.values[3] = 5.0;
+
+    let scaled: Matrix4x4 = Matrix4x4::from_scale(&Vector3d::new(1.0, 3.0, 1.0)).multiply_affine(&projective);
+
+    assert_eq!(
+      scaled.values,
+      [
+        2.0, 0.0, 0.0, 0.0, //
+        0.0, 3.0, 0.0, 0.0, //
+        0.0, 0.0, 1.0, 0.0, //
+        10.0, 60.0, 30.0, 1.0,
+      ]
+    );
+    assert_eq!(
+      Matrix4x4::IDENTITY.multiply_affine(&placed()),
+      Matrix4x4::IDENTITY.multiply(&placed())
+    );
   }
 
   #[test]

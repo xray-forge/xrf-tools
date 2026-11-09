@@ -37,12 +37,17 @@ fn reads_a_spawn_part_typed_and_writes_it_back_as_the_editor_saved_it() -> XrfRe
     }
   ));
 
-  let EditableSpawnPointKind::Entity { data } = &entity.kind else {
+  let EditableSpawnPointKind::Entity { section, flags, data } = &entity.kind else {
     panic!("an entity");
   };
   let attached = entity.attached.as_ref().expect("a shape attached");
 
-  assert_eq!(data.get("name"), Some("space_restrictor"));
+  assert_eq!((section.as_str(), *flags), ("space_restrictor", 0));
+  assert_eq!(
+    data.get("name"),
+    None,
+    "the section is kept apart from the packet's fields"
+  );
   assert_eq!(
     attached.shape.elements,
     [EditableShapeElement::Sphere {

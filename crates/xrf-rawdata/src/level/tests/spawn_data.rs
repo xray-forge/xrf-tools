@@ -12,7 +12,7 @@ use crate::LevelSpawnDataFields;
 const SECTION: &str = "object_1_spawndata";
 
 /// A restrictor as a designer places one, its script settings two lines of custom data.
-fn restrictor() -> SpawnPacket<AlifeObjectSpaceRestrictor> {
+pub(super) fn restrictor() -> SpawnPacket<AlifeObjectSpaceRestrictor> {
   SpawnPacket {
     header: SpawnPacketHeader {
       id: u16::MAX,

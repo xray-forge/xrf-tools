@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_rawdata::LevelSceneInference;
+use xrf_rawdata::{LevelSceneInference, LevelSceneRefusal};
 
 /// One tool of the scene `level decompile` wrote, and what its part holds.
 #[derive(Debug, Serialize)]
@@ -21,4 +21,6 @@ pub(crate) struct LevelDecompileReport {
   pub(crate) sources: Vec<String>,
   pub(crate) tools: Vec<LevelDecompileTool>,
   pub(crate) inferred: Vec<LevelSceneInference>,
+  /// What the scene leaves out, such as an entity of a class the decompile cannot type.
+  pub(crate) refused: Vec<LevelSceneRefusal>,
 }

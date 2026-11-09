@@ -80,23 +80,23 @@ the key it is under (`version`, or the glow tool's `glow_tool_version`), and whe
 keeps them, an object of another class. What a tool saves beyond that is kept as stored in the part's `tool_data`: the
 light tool's `sun_shadow_dir`, `lcontrol_last_idx` and `[lcontrols]`, the scene object tool's `[appendrandom]`.
 
-| Type                             | Editor              | Holds                                                                              |
-| -------------------------------- | ------------------- | ---------------------------------------------------------------------------------- |
-| `EditableCustomObject`           | `CCustomObject`     | Every object's flags, name and transform                                           |
-| `EditableObjectTransform`        | `CCustomObject`     | Position, rotation angles and scale, and the matrix they compose                   |
-| `EditableShape`                  | `CEditShape`        | A shape's usage and its spheres and boxes, in the object's own space               |
-| `EditableParticleObject`         | `EParticlesObject`  | A placed effect: its `particles.xr` name and game modes                            |
-| `EditableSoundSourceObject`      | `ESoundSource`      | A placed sound: file, own position, volume, distances, play windows                |
-| `EditableSoundEnvironmentObject` | `ESoundEnvironment` | A reverb volume: a shape whose first box separates an inner environment from outer |
-| `EditableFogVolumeObject`        | `EFogVolume`        | A fog body: a shape placed by its transform, an emitter or occlusion, a group      |
-| `EditableGlowObject`             | `CGlow`             | A light flare: radius, shader, texture and the fixed-size flag                     |
-| `EditableLightObject`            | `CLight`            | A light: colour and brightness, range, attenuation, flags, control, fuzzy points   |
-| `EditableSceneObject`            | `CSceneObject`      | A placed library object: its `$objects$` reference and flags                       |
-| `EditableSectorObject`           | `CSector`           | A sector: colour, default flag, the object meshes it holds, map index              |
-| `EditablePortalObject`           | `CPortal`           | A portal: the sectors in front and behind, and its polygon                         |
-| `EditableShapeObject`            | `CEditShape`        | A shape tool's object, and what a spawn point attaches                             |
-| `EditableWayObject`              | `CWayObject`        | A patrol path: points with flags and names, each one's links                       |
-| `EditableSpawnPointObject`       | `CSpawnPoint`       | A respawn point, an environment modifier, or an entity with its spawn data as kept |
+| Type                             | Editor              | Holds                                                                                  |
+| -------------------------------- | ------------------- | -------------------------------------------------------------------------------------- |
+| `EditableCustomObject`           | `CCustomObject`     | Every object's flags, name and transform                                               |
+| `EditableObjectTransform`        | `CCustomObject`     | Position, rotation angles and scale, and the matrix they compose                       |
+| `EditableShape`                  | `CEditShape`        | A shape's usage and its spheres and boxes, in the object's own space                   |
+| `EditableParticleObject`         | `EParticlesObject`  | A placed effect: its `particles.xr` name and game modes                                |
+| `EditableSoundSourceObject`      | `ESoundSource`      | A placed sound: file, own position, volume, distances, play windows                    |
+| `EditableSoundEnvironmentObject` | `ESoundEnvironment` | A reverb volume: a shape whose first box separates an inner environment from outer     |
+| `EditableFogVolumeObject`        | `EFogVolume`        | A fog body: a shape placed by its transform, an emitter or occlusion, a group          |
+| `EditableGlowObject`             | `CGlow`             | A light flare: radius, shader, texture and the fixed-size flag                         |
+| `EditableLightObject`            | `CLight`            | A light: colour and brightness, range, attenuation, flags, control, fuzzy points       |
+| `EditableSceneObject`            | `CSceneObject`      | A placed library object: its `$objects$` reference and flags                           |
+| `EditableSectorObject`           | `CSector`           | A sector: colour, default flag, the object meshes it holds, map index                  |
+| `EditablePortalObject`           | `CPortal`           | A portal: the sectors in front and behind, and its polygon                             |
+| `EditableShapeObject`            | `CEditShape`        | A shape tool's object, and what a spawn point attaches                                 |
+| `EditableWayObject`              | `CWayObject`        | A patrol path: points with flags and names, each one's links                           |
+| `EditableSpawnPointObject`       | `CSpawnPoint`       | A respawn point, an environment modifier, or an entity: its section, flags, spawn data |
 
 Editor quirks kept:
 
@@ -108,7 +108,10 @@ Editor quirks kept:
   under whichever it finds.
 - A way's links are keyed `link_wp_%4d_%4d`; the padding sorts them in their numbers' order, which is the order the
   editor appends them in.
-- An entity's `[object_N_spawndata]` is kept as stored until its packet's fields are typed.
+- An entity's `[object_N_spawndata]` keeps its section (`name`) and flags (`fl`) apart, and its packet's numbered fields
+  as stored; `xrf-rawdata` reads them as the entity's class.
+- `EditableShapeObject::get_scaled_elements` is `ApplyScale`, which the build gives an entity's attached shape. A unit
+  scale leaves the elements as stored: GSC's build kept a box's negative zero where `mul_43`'s sums would not.
 
 ### Transforms
 

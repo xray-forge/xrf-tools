@@ -1,3 +1,4 @@
+mod entity;
 mod fog_volume;
 mod glow;
 mod light;

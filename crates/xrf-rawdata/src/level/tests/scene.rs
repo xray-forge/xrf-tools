@@ -150,12 +150,7 @@ fn decompiles_a_level_into_a_scene_of_its_parts() -> XrfResult {
     ["level.env_mod", "level.fog_vol", "level.game"]
   );
   assert_eq!(decompiled.provenance.tool, "test");
-  assert!(
-    decompiled
-      .provenance
-      .inferred
-      .contains(&LevelSceneInference::EntitiesNotDecompiled)
-  );
+  assert!(decompiled.provenance.refused.is_empty());
   assert!(
     !decompiled
       .provenance

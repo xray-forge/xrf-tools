@@ -16,6 +16,7 @@ use xrf_level::{
 };
 use xrf_utils::{StagedFile, format_path};
 
+use crate::level::level_entity_conversion::{LevelEntityConversion, LevelEntityExport};
 use crate::level::level_exported_file::{LevelExportedFile, LevelExportedPrevious};
 use crate::level::level_fog_volume_conversion::LevelFogVolumeConversion;
 use crate::level::level_particle_conversion::LevelParticleConversion;
@@ -33,20 +34,23 @@ pub struct LevelSceneExporter;
 
 impl LevelSceneExporter {
   /// Every file [`Self::export`] may write, sorted by name.
-  pub const FILE_NAMES: [&'static str; 7] = [
+  pub const FILE_NAMES: [&'static str; 9] = [
     LevelEnvModFile::FILE_NAME,
     LevelFogVolFile::FILE_NAME,
     LevelGameFile::FILE_NAME,
     LevelPsStaticFile::FILE_NAME,
     LevelSndEnvFile::FILE_NAME,
     LevelSndStaticFile::FILE_NAME,
+    LevelEntityConversion::SPAWN_FILE_NAME,
     LevelWallmarksFile::FILE_NAME,
+    LevelEntityConversion::RESPAWN_FILE_NAME,
   ];
 
   /// Each file the build writes from the scene, by name, as written in `T`'s byte order:
   ///
   /// - `level.game`, `level.env_mod` and `level.fog_vol` for every scene, from its way and spawn parts and its fog
   ///   volumes, each empty where the scene has no such tool;
+  /// - `level.spawn` and `level_rs.spawn` where the spawn part places an entity there;
   /// - `level.ps_static` and `level.snd_static` where the scene places a particle or a sound;
   /// - `level.snd_env` where it holds a sound environment;
   /// - `level.wallmarks` where its wall mark tool exports a slot (the build exports only a tool holding slots).
@@ -73,6 +77,17 @@ impl LevelSceneExporter {
       LevelEnvModFile::FILE_NAME,
       Self::encode(|writer| LevelSpawnPointConversion::export_environment_modifiers(&spawn).write::<T>(writer))?,
     );
+
+    let entities: LevelEntityExport = LevelEntityConversion::export::<T>(&spawn)?;
+
+    for (name, list) in [
+      (LevelEntityConversion::SPAWN_FILE_NAME, entities.spawn),
+      (LevelEntityConversion::RESPAWN_FILE_NAME, entities.respawn),
+    ] {
+      if let Some(list) = list {
+        files.insert(name, Self::encode(|writer| list.write::<T>(writer))?);
+      }
+    }
 
     let fog: LevelFogVolFile =
       LevelFogVolumeConversion::export(&Self::get_part::<EditableFogVolumeObject>(scene, guid)?)?;

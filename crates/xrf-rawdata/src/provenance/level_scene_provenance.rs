@@ -54,8 +54,20 @@ pub enum LevelSceneInference {
   LightFuzzyPoints,
   /// A light only dynamic answers to `$static`; the compiled level keeps no control's name.
   LightControls,
-  /// The spawn part holds no entity: `level.spawn` is not decompiled yet.
-  EntitiesNotDecompiled,
+  /// An entity's volume comes back as a shape attached to it at its position, unturned and unscaled, under a generated
+  /// name; the spawn list keeps only the shapes.
+  EntityShapes,
+}
+
+/// What the decompile read but left out of the scene, with why.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LevelSceneRefusal {
+  /// The compiled file holding it, such as `level.spawn`.
+  pub file: String,
+  /// Its name there, such as an entity's.
+  pub object: String,
+  pub reason: String,
 }
 
 /// The sidecar written beside a decompiled scene, `<name>.level.xrf.json` (decision 22): the compiled files it came
@@ -73,6 +85,7 @@ pub struct LevelSceneProvenance {
   pub sources: Vec<LevelSceneSource>,
   pub files: Vec<LevelSceneFile>,
   pub inferred: Vec<LevelSceneInference>,
+  pub refused: Vec<LevelSceneRefusal>,
 }
 
 impl LevelSceneProvenance {
@@ -87,6 +100,7 @@ impl LevelSceneProvenance {
     sources: Vec<LevelSceneSource>,
     files: Vec<LevelSceneFile>,
     inferred: Vec<LevelSceneInference>,
+    refused: Vec<LevelSceneRefusal>,
   ) -> Self {
     Self {
       level: level.into(),
@@ -98,6 +112,7 @@ impl LevelSceneProvenance {
       sources,
       files,
       inferred,
+      refused,
     }
   }
 

@@ -12,9 +12,11 @@ use xrf_level::{
   LevelEnvModFile, LevelFile, LevelFogVolFile, LevelGameFile, LevelGameRPoint, LevelLightsFile, LevelPsStaticFile,
   LevelSndEnvFile, LevelSndStaticFile, LevelWallmarksFile,
 };
+use xrf_spawn::LevelSpawnFile;
 use xrf_utils::{StagedFile, format_path};
 
 use crate::level::level_decompile_context::LevelDecompileContext;
+use crate::level::level_entity_conversion::{LevelEntityConversion, LevelEntityDecompile};
 use crate::level::level_fog_volume_conversion::LevelFogVolumeConversion;
 use crate::level::level_glow_conversion::LevelGlowConversion;
 use crate::level::level_light_conversion::LevelLightConversion;
@@ -25,7 +27,7 @@ use crate::level::level_spawn_point_conversion::LevelSpawnPointConversion;
 use crate::level::level_wallmark_conversion::LevelWallmarkConversion;
 use crate::level::level_way_conversion::LevelWayConversion;
 use crate::provenance::level_scene_provenance::{
-  LevelSceneFile, LevelSceneInference, LevelSceneProvenance, LevelSceneSource,
+  LevelSceneFile, LevelSceneInference, LevelSceneProvenance, LevelSceneRefusal, LevelSceneSource,
 };
 use crate::provenance::sidecar::Sidecar;
 
@@ -96,7 +98,7 @@ impl LevelSceneDecompiler {
   /// The files of a level's directory the decompile reads, in the order their bytes are hashed into the scene's GUID:
   /// the compiled bundle (`level`, for its glows and dynamic lights) and the level compiler's `build.lights`, then the
   /// files [`crate::LevelSceneExporter::FILE_NAMES`] the build writes from the scene's parts and the export writes back.
-  pub const SOURCE_FILES: [&'static str; 9] = [
+  pub const SOURCE_FILES: [&'static str; 11] = [
     LevelFile::FILE_NAME,
     LevelLightsFile::FILE_NAME,
     LevelEnvModFile::FILE_NAME,
@@ -105,14 +107,16 @@ impl LevelSceneDecompiler {
     LevelPsStaticFile::FILE_NAME,
     LevelSndEnvFile::FILE_NAME,
     LevelSndStaticFile::FILE_NAME,
+    LevelEntityConversion::SPAWN_FILE_NAME,
     LevelWallmarksFile::FILE_NAME,
+    LevelEntityConversion::RESPAWN_FILE_NAME,
   ];
 
   /// The owner the scene's `[level_tag]` names.
   pub const OWNER: &'static str = "xrf";
 
   /// The scene of the level in `directory`: a part per tool whose compiled file the directory holds (the spawn tool's
-  /// from `level.game` and `level.env_mod`), and the main file its name and those files give.
+  /// from `level.game`, `level.env_mod` and the spawn lists), and the main file its name and those files give.
   ///
   /// # Errors
   ///
@@ -220,8 +224,9 @@ impl LevelSceneDecompiler {
     Ok(())
   }
 
-  /// The parts `level.game` and `level.env_mod` give, ways and spawn points, and the game modes the respawn points
-  /// serve.
+  /// The parts `level.game`, `level.env_mod` and the spawn lists give, ways and spawn points, and the game modes the
+  /// respawn points serve. Entities are decompiled first, so that no name generated for another spawn point takes
+  /// theirs.
   fn decompile_game<T: ByteOrder>(sources: &mut LevelSceneSources, draft: &mut LevelSceneDraft) -> XrfResult<u16> {
     let game: Option<LevelGameFile> = sources
       .take(LevelGameFile::FILE_NAME)
@@ -231,6 +236,19 @@ impl LevelSceneDecompiler {
       .take(LevelEnvModFile::FILE_NAME)
       .map(LevelEnvModFile::read_from_bytes::<T>)
       .transpose()?;
+    let spawn_list = |sources: &mut LevelSceneSources, name: &str| {
+      sources.take(name).map(LevelSpawnFile::read_from_bytes::<T>).transpose()
+    };
+    let spawn: Option<LevelSpawnFile> = spawn_list(sources, LevelEntityConversion::SPAWN_FILE_NAME)?;
+    let respawn: Option<LevelSpawnFile> = spawn_list(sources, LevelEntityConversion::RESPAWN_FILE_NAME)?;
+    let entities: LevelEntityDecompile =
+      LevelEntityConversion::decompile::<T>(spawn.as_ref(), respawn.as_ref(), &mut draft.context)?;
+
+    draft.infer_if(
+      entities.entities.iter().any(|entity| entity.attached.is_some()),
+      &[LevelSceneInference::EntityShapes],
+    );
+    draft.refused.extend(entities.refused);
 
     if let Some(game) = &game {
       let ways = LevelWayConversion::decompile(&game.ways, &mut draft.context)?;
@@ -240,17 +258,22 @@ impl LevelSceneDecompiler {
 
     let respawn_points: &[LevelGameRPoint] = game.as_ref().map(|game| game.rpoints.as_slice()).unwrap_or_default();
 
-    if game.is_some() || environment.is_some() {
+    if game.is_some() || environment.is_some() || !entities.entities.is_empty() {
       let environment: LevelEnvModFile = environment.unwrap_or(LevelEnvModFile {
         version: EditableSpawnPointObject::VERSION,
         modifiers: Vec::new(),
       });
-      let spawns = LevelSpawnPointConversion::decompile(respawn_points, &environment, &mut draft.context)?;
+      let mut spawns = LevelSpawnPointConversion::decompile(respawn_points, &environment, &mut draft.context)?;
 
-      draft.inferred.push(LevelSceneInference::EntitiesNotDecompiled);
+      spawns.objects.extend(entities.entities);
       draft.add(
         spawns.to_scene_tool()?,
-        &[LevelGameFile::FILE_NAME, LevelEnvModFile::FILE_NAME],
+        &[
+          LevelGameFile::FILE_NAME,
+          LevelEnvModFile::FILE_NAME,
+          LevelEntityConversion::SPAWN_FILE_NAME,
+          LevelEntityConversion::RESPAWN_FILE_NAME,
+        ],
         sources,
       );
     }
@@ -356,6 +379,7 @@ struct LevelSceneDraft {
   level_options: EditableLevelOptions,
   tools: Vec<(EditableSceneTool, Vec<&'static str>)>,
   inferred: Vec<LevelSceneInference>,
+  refused: Vec<LevelSceneRefusal>,
 }
 
 impl LevelSceneDraft {
@@ -372,6 +396,7 @@ impl LevelSceneDraft {
         LevelSceneInference::BuildParameters,
         LevelSceneInference::Camera,
       ],
+      refused: Vec::new(),
     }
   }
 
@@ -441,6 +466,7 @@ impl LevelSceneDraft {
         sources.recorded.clone(),
         files,
         self.inferred,
+        self.refused,
       ),
     }
   }

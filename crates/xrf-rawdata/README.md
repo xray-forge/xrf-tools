@@ -126,17 +126,18 @@ The Level Editor's Build writes some level files straight from the scene's parts
 - A compiled level keeps no object names. `LevelObjectNames` names a scene's objects `<prefix>_0000` upwards, as the
   editor numbers new objects; `get_next_after_file` takes the prefix from the file an object plays or shows.
 
-| Conversion                        | Files                                 | Round trip                                                    |
-| --------------------------------- | ------------------------------------- | ------------------------------------------------------------- |
-| `LevelParticleConversion`         | `level.ps_static` ↔ `ps.part`         | All 18 of vanilla CoP's files, byte for byte                  |
-| `LevelSoundSourceConversion`      | `level.snd_static` ↔ `sound_src.part` | 91 files (1,303 sounds) from memory; all but one through text |
-| `LevelSoundEnvironmentConversion` | `level.snd_env` ↔ `sound_env.part`    | 15 of 20 byte for byte; 5 within 6.1e-5                       |
-| `LevelFogVolumeConversion`        | `level.fog_vol` ↔ `fog_volume.part`   | All 174 files through text                                    |
-| `LevelWallmarkConversion`         | `level.wallmarks` ↔ `wallmark.part`   | All 74 files through the binary part; `labx8`'s part exact    |
-| `LevelWayConversion`              | `level.game` paths ↔ `way.part`       | 202 files from memory; all but two through text               |
-| `LevelSpawnPointConversion`       | `level.game` respawn points, `level.env_mod` ↔ `spawn.part` | 200 of 202 levels through text |
-| `LevelGlowConversion`             | `level`'s glows → `glow.part`         | 4,563 glows over 202 levels; `labx8`'s 29 exactly GSC's       |
-| `LevelLightConversion`            | `build.lights`, `level`'s lights → `light.part` | Built back exactly over all 186 levels with `build.lights` |
+| Conversion                        | Files                                                       | Round trip                                                     |
+| --------------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------- |
+| `LevelParticleConversion`         | `level.ps_static` ↔ `ps.part`                               | All 18 of vanilla CoP's files, byte for byte                   |
+| `LevelSoundSourceConversion`      | `level.snd_static` ↔ `sound_src.part`                       | 91 files (1,303 sounds) from memory; all but one through text  |
+| `LevelSoundEnvironmentConversion` | `level.snd_env` ↔ `sound_env.part`                          | 15 of 20 byte for byte; 5 within 6.1e-5                        |
+| `LevelFogVolumeConversion`        | `level.fog_vol` ↔ `fog_volume.part`                         | All 174 files through text                                     |
+| `LevelWallmarkConversion`         | `level.wallmarks` ↔ `wallmark.part`                         | All 74 files through the binary part; `labx8`'s part exact     |
+| `LevelWayConversion`              | `level.game` paths ↔ `way.part`                             | 202 files from memory; all but two through text                |
+| `LevelSpawnPointConversion`       | `level.game` respawn points, `level.env_mod` ↔ `spawn.part` | 200 of 202 levels through text                                 |
+| `LevelEntityConversion`           | `level.spawn`, `level_rs.spawn` ↔ `spawn.part`              | Every packet read comes back; floats off the `%f` grid rounded |
+| `LevelGlowConversion`             | `level`'s glows → `glow.part`                               | 4,563 glows over 202 levels; `labx8`'s 29 exactly GSC's        |
+| `LevelLightConversion`            | `build.lights`, `level`'s lights → `light.part`             | Built back exactly over all 186 levels with `build.lights`     |
 
 ### Particles
 
@@ -221,8 +222,30 @@ All 174 files across the game trees round-trip through the part's text: 172 with
 `ChunkField`s a spawn packet records from `000001` and prints each as `CInifile` prints its kind (`%d` integers, a
 `u32` past `i32::MAX` negative, `%f` floats, `x, y, z` vectors, quoted strings), refusing a string holding `"`, which
 `SIniFileStream` writes unescaped. As a `ChunkFieldSource` it reads them back as the packet asks; `assert_read` refuses
-a field past the packet's last. Entities are not yet converted between `spawn.part` and `level.spawn`: only the
-classes `xrf-spawn` writes as fields can be.
+a field past the packet's last.
+
+### Entities
+
+`LevelEntityConversion` converts the server entities between `spawn.part` and the spawn lists the build writes:
+`level.spawn`, and `level_rs.spawn` for entities marked to respawn in multiplayer (`fl` 1).
+
+- `export` writes what `CSpawnPoint::SSpawnData::ExportGame` does. It reads each entity's spawn data as its section's
+  class, then takes the name, position and angles from the spawn point. A class with a volume (restrictors, zones,
+  smart terrains, level changers, climbable objects, smart covers) takes its shapes from the attached shape with that
+  shape's scale applied, and is refused without one, as the build refuses it.
+- `decompile` gives each packet a spawn point at its position and angles under its name, its spawn packet as spawn
+  data, and a class's volume as a shape attached at the entity, unturned. Packet names are reserved first, so no
+  generated name takes one.
+- A packet `xrf-spawn` cannot read is left out and returned with its reason; the scene's sidecar lists it. These are
+  multiplayer sections the section table does not map, Clear Sky and Shadow of Chernobyl packets, and SGM 2.2's own
+  classes.
+
+Over every game tree's spawn lists, each packet read comes back byte for byte, or with only floats off the `%f` grid
+rounded, as the editor's own save rounds them (mostly climbable and breakable shapes). GSC's `labx8` scene exports its
+318 entities byte for byte against the shipped `level.spawn`.
+
+Breakable and climbable objects stay entities for now. The editor builds them from scene geometry, so they leave
+`spawn.part` once static geometry is decompiled.
 
 ### Glows
 
