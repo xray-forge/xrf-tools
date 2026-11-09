@@ -22,6 +22,7 @@ pub use crate::object::editable_light_object::{EditableLightFuzzy, EditableLight
 pub use crate::object::editable_object_transform::EditableObjectTransform;
 pub use crate::object::editable_particle_object::EditableParticleObject;
 pub use crate::object::editable_portal_object::EditablePortalObject;
+pub use crate::object::editable_scene_object::EditableSceneObject;
 pub use crate::object::editable_sector_object::{EditableSectorItem, EditableSectorObject};
 pub use crate::object::editable_shape::{EditableShape, EditableShapeElement};
 pub use crate::object::editable_shape_object::EditableShapeObject;

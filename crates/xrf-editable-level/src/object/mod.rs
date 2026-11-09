@@ -7,6 +7,7 @@ pub(crate) mod editable_light_object;
 pub(crate) mod editable_object_transform;
 pub(crate) mod editable_particle_object;
 pub(crate) mod editable_portal_object;
+pub(crate) mod editable_scene_object;
 pub(crate) mod editable_sector_object;
 pub(crate) mod editable_shape;
 pub(crate) mod editable_shape_object;

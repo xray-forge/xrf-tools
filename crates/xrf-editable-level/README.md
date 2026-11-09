@@ -78,7 +78,7 @@ An object tool's part reads as an `EditableObjectPart<T>`: the GUID, `[main]`'s 
 writes them as the editor's `SaveLTX` does, and names its tool's class, part name (`ClassName`), `[main]` version and
 the key it is under (`version`, or the glow tool's `glow_tool_version`), and whether it keeps flags. A part refuses what the tool's `LoadLTX` refuses: another version, missing flags where the tool
 keeps them, an object of another class. What a tool saves beyond that is kept as stored in the part's `tool_data`: the
-light tool's `sun_shadow_dir`, `lcontrol_last_idx` and `[lcontrols]`.
+light tool's `sun_shadow_dir`, `lcontrol_last_idx` and `[lcontrols]`, the scene object tool's `[appendrandom]`.
 
 | Type                             | Editor              | Holds                                                                              |
 | -------------------------------- | ------------------- | ---------------------------------------------------------------------------------- |
@@ -91,6 +91,7 @@ light tool's `sun_shadow_dir`, `lcontrol_last_idx` and `[lcontrols]`.
 | `EditableFogVolumeObject`        | `EFogVolume`        | A fog body: a shape placed by its transform, an emitter or occlusion, a group      |
 | `EditableGlowObject`             | `CGlow`             | A light flare: radius, shader, texture and the fixed-size flag                     |
 | `EditableLightObject`            | `CLight`            | A light: colour and brightness, range, attenuation, flags, control, fuzzy points   |
+| `EditableSceneObject`            | `CSceneObject`      | A placed library object: its `$objects$` reference and flags                       |
 | `EditableSectorObject`           | `CSector`           | A sector: colour, default flag, the object meshes it holds, map index              |
 | `EditablePortalObject`           | `CPortal`           | A portal: the sectors in front and behind, and its polygon                         |
 | `EditableShapeObject`            | `CEditShape`        | A shape tool's object, and what a spawn point attaches                             |
