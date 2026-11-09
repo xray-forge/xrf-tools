@@ -1,12 +1,14 @@
 # xrf-gamedata
 
-Validates assembled X-Ray game data across configs and the assets they reference, reading loose files and archives
-through one VFS.
+Validates assembled X-Ray game data: configs and the assets they reference, read from loose files and archives through
+one VFS.
 
-A `GamedataProject` is a game data tree, or a whole installation with its archive volumes, opened as the engine would
-see it. Each check reads what one kind of asset needs (configs, meshes, textures, levels, scripts and so on) through
-the owning format crate and reports findings by rule. `xrf-cli gamedata verify` and the desktop app's verifier are
-built on it. The crate validates static data; it does not launch the game or execute its scripts.
+A `GamedataProject` is a game data tree, or a whole installation with its archives, opened as the engine would see it.
+Each check reads one kind of asset (configs, meshes, textures, levels, scripts and so on) through its format crate and
+reports findings by rule.
+
+- `xrf-cli gamedata verify` and the desktop app's verifier are built on it.
+- It checks static data only. It does not launch the game or run its scripts.
 
 ## Verify a project
 
@@ -48,109 +50,125 @@ fn main() -> xrf_error::XrfResult {
 }
 ```
 
-An `Ok` report can contain failed checks. Inspect the report's verdict and execution outcome, or `is_valid`, which
-holds only for a completed run that passed: cancellation can leave checks unperformed, and their silence is not a pass.
+An `Ok` report can still hold failed checks. Look at the verdict and the execution outcome, or call `is_valid`, which
+is true only for a completed run that passed. A cancelled run can leave checks unperformed, and their silence is not a
+pass.
 
 ## Open a project
 
-Set `GamedataProjectReadOptions::root`, then call `GamedataProject::open`, which treats the path as an installation
-only when it declares one (`XrayMountMode::Auto`), or `open_with_mode` for an explicit `XrayMountMode`. The root must be
-an existing directory, and something in it must resolve `configs\system.ltx`; otherwise opening fails before any report
-exists. `ignored` takes logical prefixes that loose directories leave out of every check (archive volumes are
-unaffected), without changing what identifies the project.
+Set `GamedataProjectReadOptions::root`, then call:
 
-The read options also choose how configs are read:
+- `GamedataProject::open`, which treats the path as an installation only when it declares one (`XrayMountMode::Auto`);
+- or `open_with_mode`, for an explicit `XrayMountMode`.
 
-- `dialect`: standard LTX by default. Supply [xrf-dltx](../xrf-dltx/README.md)'s dialect to check a DLTX installation.
-- `engine`: an `XrayEngineChoice` ([xrf-engine-target](../xrf-engine-target/README.md)), detected from the tree on
-  `auto`, the default. `get_engine` answers the engine chosen and what decided it; the environment check reads configs
-  as that engine.
-- `is_tracing_reads`: accounts for every asset physically read, for diagnosing repeated reads through
-  `get_read_trace_summary`. It adds work on the read path and is off by default.
+Opening fails, before any report exists, unless the root is an existing directory in which `configs\system.ltx`
+resolves.
 
-The project's config tree is an [xrf-ltx](../xrf-ltx/README.md) `LtxProject` over the same search as every check, with
-section schemes loaded and resolutions cached, so checks that read `system.ltx` share one resolution. The VFS retains
-what its verification cache policy keeps (motions among them, so a shared animation bank is read once);
-`get_cache_stats` reports how well that served. Inspect `skipped_mounts` and `collisions` when diagnosing incomplete or
-conflicting inputs.
+Read options:
+
+| Option             | Effect                                                                                         |
+| ------------------ | ---------------------------------------------------------------------------------------------- |
+| `ignored`          | Logical prefixes left out of every check in loose directories; archives are unaffected         |
+| `dialect`          | Standard LTX by default; pass [xrf-dltx](../xrf-dltx/README.md)'s dialect for a DLTX install   |
+| `engine`           | An `XrayEngineChoice` ([xrf-engine-target](../xrf-engine-target/README.md)); `auto` detects it |
+| `is_tracing_reads` | Records every physical read, for `get_read_trace_summary`. Off by default; it costs read time  |
+
+`get_engine` answers the engine chosen and what decided it; the environment check reads configs as that engine.
+
+Shared state:
+
+- The config tree is one [xrf-ltx](../xrf-ltx/README.md) `LtxProject` over the same search as every check, with section
+  schemes loaded and resolutions cached, so checks reading `system.ltx` share one resolution.
+- The VFS keeps what its verification cache policy retains (motions among them, so a shared animation bank is read
+  once). `get_cache_stats` reports how well that worked.
+- `skipped_mounts` and `collisions` explain incomplete or conflicting inputs.
 
 ## Select checks
 
-`GamedataProjectVerifyOptions::checks` names the `GamedataVerificationType`s to run; `GamedataVerificationType::ALL`
-and `get_all()` list every selectable check, and each parses from its CLI name:
+`GamedataProjectVerifyOptions::checks` names the `GamedataVerificationType`s to run. `GamedataVerificationType::ALL`
+and `get_all()` list them; each parses from its CLI name.
 
-- `animations`: HUD item and player HUD animations, motion collisions, object motions, and post-process effects.
-- `environment`: everything under `configs\environment` the engine reads, and the textures its keyframes name.
-- `levels`: compiled level bundles, their companion files, the level roster, and the game materials collision faces
-  are made of.
-- `ltx`: config resolution, section schemes, and formatting.
-- `materials`: the game material library, `gamemtl.xr`, against what the engine asserts on while loading it, the
-  materials the engine looks up by names of its own, wallmark textures, and materials configs and climable spawn
-  objects name.
-- `meshes`: OGF visuals, their motions, shaders, and the game materials their bones are made of.
-- `particles`: the particle library and its textures.
-- `particles-usage`: particle references from configs, spawns and material pairs.
-- `scripts`: script paths, reads and syntax.
-- `shaders`: shader sources, includes and Lua shader scripts.
-- `sounds`: sound files and the references to them, material pairs' among them.
-- `spawns`: spawn files.
-- `textures`: DDS textures, `.thm` descriptors and bump companions.
-- `weapons`: weapon sections.
+| Check             | Covers                                                                                                                                                     |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `animations`      | HUD and player HUD animations, motion collisions, object motions, post-process effects                                                                     |
+| `environment`     | Everything under `configs\environment` the engine reads, and the textures its keyframes name                                                               |
+| `levels`          | Compiled level bundles, their companion files, the level roster, collision face materials                                                                  |
+| `ltx`             | Config resolution, section schemes, and formatting                                                                                                         |
+| `materials`       | `gamemtl.xr` against the engine's load-time asserts, engine-named materials, wallmark textures, and materials named by configs and climbable spawn objects |
+| `meshes`          | OGF visuals, their motions, shaders, and bone materials                                                                                                    |
+| `particles`       | The particle library and its textures                                                                                                                      |
+| `particles-usage` | Particle references from configs, spawns and material pairs                                                                                                |
+| `scripts`         | Script paths, reads and syntax                                                                                                                             |
+| `shaders`         | Shader sources, includes and Lua shader scripts                                                                                                            |
+| `sounds`          | Sound files and references to them, including material pairs'                                                                                              |
+| `spawns`          | Spawn files                                                                                                                                                |
+| `textures`        | DDS textures, `.thm` descriptors and bump companions                                                                                                       |
+| `weapons`         | Weapon sections                                                                                                                                            |
 
-Only `materials` fails on a tree without a readable material library; `levels`, `meshes`, `particles-usage` and
-`sounds` then leave out what they would resolve against it.
+- An empty selection is an error. Default options do not mean "all checks".
+- A check named twice runs once, at its first position.
+- Without a readable material library, only `materials` fails; `levels`, `meshes`, `particles-usage` and `sounds` skip
+  what they would resolve against it.
+- The options also carry strictness, live output, and a job handle.
 
-Passing an empty selection is an error; default verify options do not mean all checks. A check named twice runs once,
-in first-requested order. The options also carry strictness, live output, and a job handle.
+Two checks always run first and cannot be deselected:
 
-Input coverage and name collisions always run first, in addition to the selected checks, and are not selectable.
-Coverage reports sources the installation declared that could not be opened; collisions report files a mounted source
-holds but the engine cannot reach, because another file claims their engine identity. Neither is replaced by checking
-only the assets that happened to load.
+- **Input coverage** reports sources the installation declares but that could not be opened.
+- **Name collisions** report files a source holds that the engine cannot reach, because another file claims their
+  engine identity.
 
 ## Read the report
 
-`GamedataVerificationReport` keeps one `GamedataVerificationCheckReport` per check, in selection order however the
-checks were scheduled: its status, findings, summary, and duration. Each finding carries a stable rule id prefixed by
-its check, such as `scripts.syntax` or `animations.post-process-value` (`GamedataVerificationRule`). `get_status`
-aggregates the checks; `to_report` converts to the shared `xrf_report::Report` model, without the per-check summaries.
+`GamedataVerificationReport` keeps one `GamedataVerificationCheckReport` per check, in selection order: status,
+findings, summary and duration.
 
-A failed content check (`Failed`) and a failure to perform a check (`Error`, with a `checks.execution` finding) are
-different verdicts, and a check stopped by cancellation is `Incomplete`. Preserve those distinctions when converting
-the result to an exit code or UI message.
+- Each finding has a stable rule id prefixed by its check, such as `scripts.syntax` or `animations.post-process-value`
+  (`GamedataVerificationRule`).
+- `get_status` aggregates the checks.
+- `to_report` converts to the shared `xrf_report::Report` model, without the per-check summaries.
 
-## How the checks are built
+Keep these verdicts apart when turning a result into an exit code or a UI message:
 
-`verify` is the only way in: each check is a crate-private verifier type of its own (`ScriptsVerifier`,
-`WeaponsVerifier` and so on) built over the project and the options through one trait, and `GamedataVerificationType::run`
-builds and runs any of them the same way. The project only lends a check what every check reads through: its search,
-its config tree, its spawn files and its material library.
+| Status       | Meaning                                                        |
+| ------------ | -------------------------------------------------------------- |
+| `Failed`     | The check ran and found problems                               |
+| `Error`      | The check could not run; a `checks.execution` finding says why |
+| `Incomplete` | Cancellation stopped the check                                 |
 
-A check that verifies many independent assets or sections runs them through one sweep, which verifies each in parallel,
-releases each one's output in item order, counts the items that raised a finding, and orders the findings by asset. A
-problem is a finding of its own, naming what is wrong and where; a check does not log a reason and report a bare
-"invalid".
+## How checks are built
+
+- `verify` is the only entry point. Each check is a crate-private verifier type (`ScriptsVerifier`, `WeaponsVerifier`
+  and so on) built through one trait; `GamedataVerificationType::run` builds and runs any of them.
+- The project lends each check only what all checks share: the search, the config tree, the spawn files and the
+  material library.
+- A check over many independent assets runs one sweep: it verifies each in parallel, releases output in item order,
+  counts items with findings, and orders findings by asset.
+- Every problem is a finding naming what is wrong and where, never a logged reason with a bare "invalid".
 
 ## Progress and execution
 
-Pass a job handle through the verify options for progress and cooperative cancellation; after cancellation no further
-check starts, and running checks stop at their own iteration boundaries. Progress is one `checks` level advanced once
-per finished check. A check running alone reports its own levels beneath it; checks running beside each other report
-none, since one stack would show them nested in each other. Checks run together on the caller's
-Rayon pool, a few at a time while output is being read, all at once when output is silent; an execution limit belongs
-around the whole operation, as described in [xrf-job](../xrf-job/README.md). Live messages go through `OutputOptions`,
-and each check's output is released in selection order, so a run says the same things in the same order however its
-workers were scheduled.
+- Pass a job handle in the verify options for progress and cancellation. After cancellation, no further check starts
+  and running checks stop at their next iteration.
+- Progress is one `checks` level, advanced per finished check. A check running alone reports its own levels beneath it;
+  checks running together report none.
+- Checks run together on the caller's Rayon pool: a few at a time while output is being read, all at once when output
+  is silent. Put an execution limit around the whole operation, as [xrf-job](../xrf-job/README.md) describes.
+- Live messages go through `OutputOptions`. Each check's output is released in selection order, so a run reports the
+  same things in the same order however its workers were scheduled.
 
-## Errors and checks
+## Errors
 
-Opening can fail before any report exists. `verify` returns `Err` only for an invalid invocation, such as an empty
-selection; a check that fails to run becomes an `Error` check report instead.
+- Opening can fail before any report exists.
+- `verify` returns `Err` only for an invalid call, such as an empty selection. A check that cannot run becomes an
+  `Error` check report instead.
+
+## Checks
 
 Run `cargo test --locked -p xrf-gamedata` from the repository root.
 
-See the [opening API](src/project/gamedata_project.rs), options for [reading](src/project/gamedata_project_read_options.rs)
-and [verifying](src/project/gamedata_project_verify_options.rs),
+Sources: the [opening API](src/project/gamedata_project.rs), options for
+[reading](src/project/gamedata_project_read_options.rs) and
+[verifying](src/project/gamedata_project_verify_options.rs), the
 [verification API](src/project/gamedata_project_verify.rs),
 [check selection](src/project/gamedata_verification_type.rs), the [check trait](src/project/gamedata_check.rs) and
 [sweep](src/project/gamedata_asset_sweep.rs), and [rule ids](src/project/gamedata_verification_rule.rs).

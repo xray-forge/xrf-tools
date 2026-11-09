@@ -1,16 +1,18 @@
 # xrf-translation
 
-Reads, edits, verifies, and builds S.T.A.L.K.E.R. translations as multilingual JSON sources and per-language XML string
+Reads, edits, verifies and builds S.T.A.L.K.E.R. translations, as multilingual JSON sources and per-language XML string
 tables.
 
 The game shows text through string tables: XML files under `configs\text\<language>`, each mapping a string ID to one
-language's text. XRF authors the same text as JSON sources, one file per table carrying every language, and builds
-the string tables from them. This crate owns both formats, the import from game tables to sources, and the read model
-the desktop app's translation editor and [xrf-dialog](../xrf-dialog/README.md) resolve text through.
+language's text. XRF authors the same text as JSON sources, one file per table holding every language, and builds the
+string tables from them.
 
-## Source and game formats
+This crate owns both formats, the import from game tables into sources, and the read model the desktop app's
+translation editor and [xrf-dialog](../xrf-dialog/README.md) resolve text through.
 
-A JSON source maps each string ID to language variants. A variant can be a string, an array of lines, or `null`:
+## Source format
+
+A JSON source maps each string ID to language variants. A variant is a string, an array of lines, or `null`:
 
 ```json
 {
@@ -24,7 +26,10 @@ A JSON source maps each string ID to language variants. A variant can be a strin
 }
 ```
 
-Arrays become the engine's literal `\n` line-break sequence on build:
+- An array becomes the engine's literal `\n` line-break sequence on build.
+- A missing or `null` translation is not an empty string: the game shows the ID itself.
+- Language keys are `TranslationLanguage` codes: `eng`, `fra`, `ger`, `ita`, `pol`, `rus`, `spa`, `ukr`.
+- A source file is any `*.json` (any case). Reading one refuses a repeated ID or language.
 
 ```rust
 use xrf_translation::TranslationVariant;
@@ -34,14 +39,18 @@ let lines = TranslationVariant::MultiString(vec![String::from("Find the guide.")
 assert_eq!(lines.to_single_line(), "Find the guide.\\nReturn before dark.");
 ```
 
-A missing or `null` translation is different from an empty string: the engine shows the ID itself for it. Language
-keys are the codes of `TranslationLanguage`: `eng`, `fra`, `ger`, `ita`, `pol`, `rus`, `spa`, and `ukr`. A source file
-is any `*.json` (matched without case), and reading one refuses a repeated ID or language.
+## Code pages
 
 Each language's string table is written in the code page the game draws it with. The engine never decodes a table: the
-font maps each byte to a glyph. The font is picked by prefix, `_west` for `fra`, `ger`, `ita` and `spa`
-(Windows-1252), `_cent` for `pol` (Windows-1250), and the unprefixed fonts for `eng`, `rus` and `ukr` (Windows-1251).
-`TranslationLanguage::get_encoding` answers it. Not every Unicode character can be saved in every language.
+font maps each byte to a glyph, and the font is chosen by prefix.
+
+| Languages                  | Font prefix | Code page    |
+| -------------------------- | ----------- | ------------ |
+| `fra`, `ger`, `ita`, `spa` | `_west`     | Windows-1252 |
+| `pol`                      | `_cent`     | Windows-1250 |
+| `eng`, `rus`, `ukr`        | none        | Windows-1251 |
+
+`TranslationLanguage::get_encoding` returns it. Not every Unicode character can be saved in every language.
 
 ## Choose an operation
 
@@ -55,10 +64,11 @@ font maps each byte to a glyph. The font is picked by prefix, `_west` for `fra`,
 | `TranslationSourceReader`, `TranslationGamedataReader` | Either layout through roots | Describe a project, with findings           |
 | `TranslationEditor`                                    | One file of either kind     | Saves edits in place or as a transaction    |
 
-Each roots-based operation has an `_in` twin (`build_roots_in`, `verify_roots_in`, `parse_in`, the readers' `read_in`)
-that takes an `XraySearch` the caller already opened, so archived tables read like loose ones.
-`build_file` and `verify_file` take one host file. Options carry a `JobHandle` for progress and cancellation; a
-cancelled run reports `JobOutcome::Cancelled` in its result, so read the outcome before reporting a run as complete.
+- Each roots-based operation has an `_in` twin (`build_roots_in`, `verify_roots_in`, `parse_in`, the readers' `read_in`)
+  taking an `XraySearch` you already opened, so archived tables read like loose ones.
+- `build_file` and `verify_file` take one host file.
+- Options carry a `JobHandle` for progress and cancellation. A cancelled run reports `JobOutcome::Cancelled`; check the
+  outcome before reporting a run as complete.
 
 ## Build game string tables
 
@@ -88,85 +98,123 @@ fn main() -> xrf_error::XrfResult {
 }
 ```
 
-This reads sources below `sources/translations` and writes `output/text/eng/<source name>.xml` for each, whatever
-directory the source sits in. `CStringTable::Init` lists `text\<language>\*.xml` and opens each table by its bare name
-in the language directory, so a nested table would stop the game with "Can't find specified xml file". Use
-`TranslationLanguage::All` to build every supported language. `is_sorted` orders entries by ID, naturally as a formatted
-source does; otherwise they keep the source's order. Missing translations build to the ID itself, so run the verifier
-when completeness matters rather than treating a successful build as proof that every string is translated.
+This reads sources below `sources/translations` and writes `output/text/eng/<source name>.xml` for each.
 
-A build refuses output inside its source roots and two sources that would write the same table, which includes two of
-one name in different directories, before writing anything. Two kinds of entry fail the build, with the entry named. One
-holds a value its language's code page cannot hold. The other is longer than the game's XML reader takes: 4094 bytes a
-line, the stricter of xray-16's 4095 and Anomaly's 4094, and a longer one is fatal. A cancelled build leaves the tables
-it had written valid and the rest absent.
+- Tables are written flat, whatever directory a source sits in. `CStringTable::Init` lists `text\<language>\*.xml` and
+  opens each by bare name, so a nested table would stop the game with "Can't find specified xml file".
+- `TranslationLanguage::All` builds every supported language.
+- `is_sorted` orders entries naturally by ID, as a formatted source does; otherwise they keep the source's order.
+- Missing translations build to the ID itself. A successful build does not prove every string is translated; run the
+  verifier for that.
+
+Before writing anything, a build refuses:
+
+- output inside its source roots;
+- two sources that would write the same table, including two with one name in different directories.
+
+These entries fail the build, naming the entry:
+
+- a value the language's code page cannot hold;
+- a line longer than the game's XML reader accepts: 4094 bytes, the stricter of xray-16's 4095 and Anomaly's 4094. A
+  longer one is fatal in game.
+
+A cancelled build leaves the tables it wrote valid and the rest absent.
 
 ## Verify
 
-`TranslationVerifier` judges two things, as two checks of its report. The `translations` check is completeness: every
-ID a requested language has no text for, counted always and itemised when `is_detailed`. The `translations.engine`
-check is what the game would refuse or show wrong. Those are in `problems`, listed in full:
+`TranslationVerifier` reports two checks:
 
-- `translations.unencodable`: a character a language's code page lacks.
-- `translations.overlong`: a line past the XML reader's limit.
-- `translations.duplicate-across-files`: an ID two sources define, which xray-16 resolves by a parallel load.
-- `translations.collision`: two sources that build to one table.
+- **`translations`** (completeness): every ID a requested language has no text for, counted always and listed when
+  `is_detailed`.
+- **`translations.engine`**: what the game would refuse or show wrong, listed in full in `problems`:
 
-`to_report` holds both checks and `to_engine_report` the engine check alone. The CLI concludes on the engine check, or
-on both under `--strict`, because the game shows a missing translation as its ID but does not load an overlong line.
+| Rule                                  | Meaning                                                             |
+| ------------------------------------- | ------------------------------------------------------------------- |
+| `translations.unencodable`            | A character the language's code page lacks                          |
+| `translations.overlong`               | A line past the XML reader's limit                                  |
+| `translations.duplicate-across-files` | An ID two sources define, which xray-16 resolves by a parallel load |
+| `translations.collision`              | Two sources that build to one table                                 |
 
-## Import and edit
+`to_report` holds both checks; `to_engine_report` only the engine check. The CLI decides on the engine check (both
+under `--strict`), because the game shows a missing translation as its ID but does not load an overlong line.
 
-`TranslationParser::parse` imports one explicitly selected language from raw XML. `TranslationParseOptions` carries
-the roots, optional prefix and file name, output directory, overwrite policy, and dry-run flag. `All` is not a valid
-import language. Existing different text is preserved unless `is_overwrite` is enabled. A run that finds no tables is
-an error rather than an empty success.
+## Import
 
-Use `is_dry_run` to inspect the merge result before writing. Individual unreadable tables become findings; failure to
-mount the roots or write a target still returns an error. Inspect `get_status` and `get_findings` on the result even
-when the call returns `Ok`.
+`TranslationParser::parse` imports one explicitly chosen language from raw XML.
 
-`TranslationInitializer` scaffolds `null` entries; it does not generate translated text, and it rewrites only a source
-that gained something. `TranslationFormatter` writes the canonical form every writer here shares: IDs and languages in
-natural order, two-space indentation, a trailing newline, and the file's own line endings unless the options name
-others. Its check mode reports whether a rewrite is needed without changing files.
+- `TranslationParseOptions` carries the roots, optional prefix and file name, output directory, overwrite policy, and
+  dry-run flag.
+- `All` is not a valid import language.
+- Existing different text is kept unless `is_overwrite` is on.
+- `is_dry_run` shows the merge result without writing.
+- A run that finds no tables is an error, not an empty success.
+- Individual unreadable tables become findings; failing to mount the roots or write a target is still an error. Check
+  `get_status` and `get_findings` even when the call returns `Ok`.
 
-Edits are `TranslationEdit::Set` or `Remove`, applied to one language. `TranslationEditor::apply_edits` rewrites a host
-file in place. `render_edits` returns the edited bytes for a file addressed by logical path. `build_save_transaction`
-gathers a file's edits for every language into one `XrayTransaction` over a search, refusing an archived copy. An XML
-edit that would leave a line the game's reader refuses is refused; a long line the file already held is not.
-`TranslationProjectDescriptor::find_unwritable` says why a value cannot be written in a language: a character its code
-page lacks, or a text too long for its line.
+## Scaffold and format
+
+- `TranslationInitializer` adds `null` entries for missing languages. It does not translate, and rewrites only a source
+  that gained something.
+- `TranslationFormatter` writes the canonical form every writer here shares: IDs and languages in natural order,
+  two-space indentation, a trailing newline, and the file's own line endings unless the options name others. Check mode
+  reports whether a rewrite is needed without changing files.
+
+## Edit
+
+Edits are `TranslationEdit::Set` or `Remove`, applied to one language.
+
+- `TranslationEditor::apply_edits` rewrites a host file in place.
+- `render_edits` returns the edited bytes for a file addressed by logical path.
+- `build_save_transaction` gathers a file's edits for every language into one `XrayTransaction` over a search, refusing
+  an archived copy.
+- An XML edit that would leave a line the game refuses is refused; a long line already in the file is not.
+- `TranslationProjectDescriptor::find_unwritable` says why a value cannot be written in a language: a character its
+  code page lacks, or a line too long.
 
 ## Project layouts
 
-`TranslationSourceReader` describes an XRF source tree (`TranslationProjectMode::Source`, JSON under `translations`) and
-`TranslationGamedataReader` a shipped one (`Gamedata`, XML under `configs\text\<language>`). Both report unreadable
-files and duplicate IDs as findings and keep reading. The gamedata reader also reports a language directory it does not
-know, and a table nested below a language directory (`translations.nested`), whose strings never load. A descriptor
-records each language's copy of each file by logical path and, when it is loose, by physical path; the physical path is
-for display, and its absence means the copy is archived and cannot be edited. `TranslationProjectMode::detect` suggests
-a layout; the caller still chooses it.
+| Reader                      | Mode       | Reads                               |
+| --------------------------- | ---------- | ----------------------------------- |
+| `TranslationSourceReader`   | `Source`   | JSON under `translations`           |
+| `TranslationGamedataReader` | `Gamedata` | XML under `configs\text\<language>` |
 
-Game string tables are read the way the engine tolerates them. A byte order mark decides the encoding. Otherwise a
-language directory XRF knows decides it, whatever the file declares, because no engine reads the declaration and shipped
-tables contradict theirs: Clear Sky's Polish, Czech, Hungarian and German tables all declare Windows-1251. For another
-language the declaration decides, then the unprefixed fonts' Windows-1251. UTF-16 is refused. Writes keep the encoding
-and byte order mark a file was read with.
+- Both report unreadable files and duplicate IDs as findings and keep reading.
+- The gamedata reader also reports an unknown language directory, and a table nested below a language directory
+  (`translations.nested`), whose strings never load.
+- A descriptor records each language's copy of each file by logical path and, when loose, by physical path. The
+  physical path is for display; its absence means the copy is archived and cannot be edited.
+- `TranslationProjectMode::detect` suggests a layout; the caller still chooses.
 
-## Errors and checks
+### Reading game tables
 
-Source parse, encoding, and publication failures are returned through `XrfResult`; per-file problems in a whole-tree
-read or import are findings beside the result.
+Game tables are read as tolerantly as the engine reads them. The encoding is chosen by:
+
+1. a byte order mark;
+2. otherwise, a language directory XRF knows, whatever the file declares. No engine reads the declaration, and shipped
+   tables contradict theirs: Clear Sky's Polish, Czech, Hungarian and German tables all declare Windows-1251;
+3. otherwise, the file's declaration;
+4. otherwise, Windows-1251, the unprefixed fonts' code page.
+
+UTF-16 is refused. Writes keep the encoding and byte order mark a file was read with.
+
+## Errors
+
+- Source parse, encoding and publication failures return `Err`.
+- Per-file problems in a whole-tree read or import are findings beside the result.
+
+## Module map
+
+| Module     | Holds                                                                                                     |
+| ---------- | --------------------------------------------------------------------------------------------------------- |
+| `text`     | What a translation is, whichever file holds it                                                            |
+| `language` | The languages and the code pages they are drawn in                                                        |
+| `xml`      | The XML format end to end, including the line limit                                                       |
+| `json`     | The JSON format end to end                                                                                |
+| `project`  | Whole trees: `describe`, the `build`, `verify`, `parse`, `initialize` and `format` passes, and the editor |
+
+## Checks
 
 Run `cargo test --locked -p xrf-translation` from the repository root. The optional `typescript-bindings` feature
 derives `specta` types for the frontend's generated bindings.
 
-## Module map
-
-The modules follow the data rather than the operations. `text` holds what a translation is, whichever file holds it,
-and `language` the languages and the code pages they are drawn in. `xml` and `json` each own one file format end to end,
-the XML line limit included. `project` owns whole trees of them: `describe` reads and describes them, and `build`,
-`verify`, `parse`, `initialize` and `format` are the passes, beside the editor.
-
-See the [public API](src/lib.rs), [operations](src/project), and [language definitions](src/language).
+Sources: the [public API](src/lib.rs), [operations](src/project), and [language definitions](src/language).

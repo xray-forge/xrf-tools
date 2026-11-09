@@ -1,10 +1,11 @@
 # xrf-omf
 
-Reads, edits and writes `.omf` motion libraries, the shared animation banks a skinned visual references by name: a
-weapon's hand animations, a stalker's walk cycles. `OmfFile` holds one bank as the two chunks
-[xrf-skeleton](../xrf-skeleton/README.md) owns, which a self-animated OGF also embeds. The CLI's `omf` commands, the
-weapon, HUD animation and mesh verifiers, and the desktop app's model viewer and archive describer read banks through
-it.
+Reads, edits and writes `.omf` motion libraries: the shared animation banks a skinned visual references by name, such
+as a weapon's hand animations or a stalker's walk cycles.
+
+`OmfFile` holds one bank as the two chunks [xrf-skeleton](../xrf-skeleton/README.md) owns, which a self-animated OGF
+also embeds. The CLI's `omf` commands, the weapon, HUD animation and mesh verifiers, and the desktop app's model viewer
+and archive describer read banks through it.
 
 ## Read, edit and write a bank
 
@@ -66,20 +67,22 @@ fn main() -> xrf_error::XrfResult {
 }
 ```
 
-Read a bank with `read_from_path`, `read_from_file`, `read_from_bytes` for an archived entry, `read_from_chunk`, or
-`read_from_chunks` over children already read. Write one with `write_to_path`, which creates missing parent
-directories, or `write_to` for any writer. A bank is exactly two top-level chunks: the motion payloads
-(`SkeletonMotionsChunk`, ID 14) and the parameters (`SkeletonMotionParametersChunk`, ID 15). The writer emits them in
-that order; the reader finds them by ID.
+- Read with `read_from_path`, `read_from_file`, `read_from_bytes` (for an archived entry), `read_from_chunk`, or
+  `read_from_chunks` over children already read.
+- Write with `write_to_path`, which creates missing parent directories, or `write_to` for any writer.
+
+A bank is exactly two top-level chunks: the motion payloads (`SkeletonMotionsChunk`, ID 14) and the parameters
+(`SkeletonMotionParametersChunk`, ID 15). The writer emits them in that order; the reader finds them by ID.
 
 ## Motion identity
 
-A motion is its definition paired with the key payload at the same ordinal, as the engine resolves it. Use
-`get_motions`, `get_motion_by_name` and `get_motion_names`, which read names from the definitions. The payload's
-`label` and the definition's `motion` field are kept as the file stores them but are not identities: third-party banks
-carry labels that no longer name their motion and `motion` values that address nothing, and both survive a rewrite.
-`get_diverging_labels_count` counts payloads whose label no longer matches its motion's name, ignoring case.
-`get_bones` and `get_bones_count` list the bones the partitions name.
+A motion is its definition paired with the key payload at the same position, as the engine resolves it.
+
+- Use `get_motions`, `get_motion_by_name` and `get_motion_names`, which take names from the definitions.
+- The payload's `label` and the definition's `motion` field are kept as stored, but are not identities. Third-party
+  banks carry labels that no longer name their motion and `motion` values that point nowhere; both survive a rewrite.
+- `get_diverging_labels_count` counts payloads whose label no longer matches its motion's name, ignoring case.
+- `get_bones` and `get_bones_count` list the bones the partitions name.
 
 ## Edit motions
 
@@ -90,21 +93,35 @@ carry labels that no longer name their motion and `motion` values that address n
 - `duplicate_motion` copies a motion under a new name, optionally setting `FLAG_PLAY_ONCE` (`esmStopAtEnd`) so the copy
   stops at its end rather than looping.
 
-A payload label follows a rename or copy only where it matched the old name; a label that never named its motion stays
-as stored. Where every `motion` field equals its ordinal, filtering and copying renumber them to stay ordinal;
-otherwise they are left untouched. Every operation fails when definitions and payloads are unpaired, and renaming and
-copying fail when a name they introduce would share another motion's name ignoring case: the engine maps motions by
-their lowercased names and keeps the first, so the later would be unreachable. A collision the bank already holds does
-not block an edit, and a refused edit changes nothing.
+Rules:
 
-## Errors and checks
+- A payload label follows a rename or copy only if it matched the old name; otherwise it stays as stored.
+- If every `motion` field equals its position, filtering and copying renumber them to keep it so; otherwise they are
+  left alone.
+- Every operation fails when definitions and payloads are unpaired.
+- Renaming and copying fail when a new name would equal another motion's name ignoring case. The engine maps motions by
+  lowercased name and keeps the first, so the other would be unreachable. A collision already in the bank does not
+  block an edit.
+- A refused edit changes nothing.
 
-Reads reject a file that cannot be opened, any number of top-level chunks other than two, a missing chunk, a parameters
-version newer than 4, and unequal definition and payload counts. As the engine does, they accept every older version,
-reading marks from version 4 on, and find each motion payload by its chunk id, one more than its index, rather than by
-position. A bank holding 16383 motions or more is refused, since a motion id addresses fewer. Writes reject unequal
-counts, those motion counts, and versions newer than 4.
+## Errors
+
+Reads reject:
+
+- a file that cannot be opened;
+- a number of top-level chunks other than two, or a missing chunk;
+- a parameters version newer than 4;
+- unequal definition and payload counts;
+- 16383 motions or more, more than a motion id can address.
+
+Like the engine, reads accept every older version (marks are read from version 4 on) and find each payload by its chunk
+id, one more than its index, rather than by position.
+
+Writes reject unequal counts, too many motions, and versions newer than 4.
+
 Two shipped Anomaly HUD banks are truncated and refuse to read.
+
+## Checks
 
 Run `cargo test --locked -p xrf-omf` from the repository root. See the [bank](src/omf_file.rs) and the
 [motion editor](src/omf_motions_processor.rs).

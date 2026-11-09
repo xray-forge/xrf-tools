@@ -54,23 +54,29 @@ The defaults are the engine's constructors: an envelope with no keys, constant e
 zeros with the TCB shape (`st_Key`). Shapes and behaviours the engine does not name are kept as `Unknown(raw)`, so a
 file written back says what it said; both serialize as their stored `u8`.
 
-`get_duration_seconds` subtracts the first key's time from the last key's time. It returns `None` for no keys and zero
-for one key. It neither sorts keys nor finds the minimum and maximum times; keep keys in chronological order when
-constructing an envelope.
+Keep keys in chronological order: nothing sorts them. `get_duration_seconds` is the last key's time minus the first
+key's, `None` with no keys and zero with one.
 
-An editor changes keys as the engine's `CEnvelope` does:
+## Edit keys
+
+The editing methods match the engine's `CEnvelope`:
+
 - `find_key(time, epsilon)` finds a key near a time in key order, stopping at the first key past it (`FindKey`).
 - `insert_key(time, value)` sets the value of a key within `KEY_TIME_EPSILON` (`EPS_L`) of the time. Otherwise it
   inserts a TCB key in time order, which also turns both behaviours constant (`InsertKey`).
 - `delete_key(time)` takes out the first key within that distance (`DeleteKey`).
 
-`evaluate(time)` reads the channel's value at a time as the engine's `evalEnvelope` (`xrCore/Animation/interp.cpp`)
-does: zero without keys, the one key's value with one, the keys' curve by each span's shape (TCB, Hermite, Bezier,
-line, step, `BEZ2`), and outside the keys the before/after behaviour (reset, constant, repeat, oscillate, offset,
-linear). It ports the engine's own arithmetic, quirks included: `range` wraps by `low + time - span * floor(time /
-span)`, so a span not starting at zero repeats from where that lands, and oscillation reads the span's length less the
-time. An unknown shape reads as the offset alone, as the engine's `default` does; an unknown behaviour leaves the time
-outside the keys, and the first or last span carries on where the engine would read past them.
+## Evaluate
+
+`evaluate(time)` ports the engine's `evalEnvelope` (`xrCore/Animation/interp.cpp`), quirks included:
+
+- No keys reads zero; one key reads its value.
+- Between keys, each span follows its shape: TCB, Hermite, Bezier, line, step or `BEZ2`.
+- Outside the keys, the before or after behaviour applies: reset, constant, repeat, oscillate, offset or linear.
+- Repeat (the engine's `range`) wraps by `low + time - span * floor(time / span)`, so a span not starting at zero repeats from where that
+  lands. Oscillation reads the span's length less the time.
+- An unknown shape reads as the offset alone, as the engine's `default` case does. An unknown behaviour leaves the time
+  outside the keys, and the first or last span extrapolates where the engine would read past them.
 
 ## Encoding
 
@@ -94,6 +100,6 @@ Run `cargo test --locked -p xrf-animation-envelope`, `cargo test --locked -p xrf
 `cargo test --locked -p xrf-ppe` from the repository root. The format crates exercise shared envelope encoding,
 including quantized parameters, stepped keys, and byte-for-byte round trips.
 
-See the [envelope](src/animation_envelope.rs), its [evaluation](src/animation_envelope_evaluation.rs), the
+Sources: the [envelope](src/animation_envelope.rs), its [evaluation](src/animation_envelope_evaluation.rs), the
 [key](src/animation_key.rs), its [shape](src/animation_shape.rs), the [behaviour](src/animation_behavior.rs), and the
 [interpolation parameters](src/animation_interpolation.rs).

@@ -1,9 +1,10 @@
 # xrf-dds
 
-DDS textures as this workspace reads, writes and weighs them: the header facts a surface reports, the pixels behind
-them, the X-Ray converter's mip kernels, and which renderer path will load what. Texture building, sprite sheets, the
-CLI's `dds` commands, the desktop app's texture views and the renderer's texture upload all decode and encode through
-it; there is no second DDS reader.
+Reads, writes, encodes and compares DDS textures, and says which renderer path can load each one.
+
+It is the workspace's only DDS reader: texture building, sprite sheets, the CLI's `dds` commands, the desktop app's
+texture views and the renderer's texture upload all go through it. For texture recipes and sprite sheets, use
+[xrf-texture](../xrf-texture/README.md).
 
 ## Inspect a texture
 
@@ -29,28 +30,36 @@ fn main() -> xrf_error::XrfResult {
 }
 ```
 
-Metadata inspection reads at most the 148-byte header and derives the payload size from the file length. Full reading
-loads the payload; decoding produces RGBA pixels for the requested mip level, a flat texture's block-compressed level in
-stripes of rows on rayon's pool, the same pixels as one pass. These are different amounts of work and
-provide different validation guarantees: a successful metadata read does not validate the texture.
+These are three different amounts of work:
+
+| Call                   | Work                                                                       |
+| ---------------------- | -------------------------------------------------------------------------- |
+| `read_metadata_from_*` | Reads at most the 148-byte header; the payload size comes from file length |
+| `read_from_*`          | Loads the whole payload                                                    |
+| `decode_rgba(level)`   | Decodes one mip level to RGBA                                              |
+
+A successful metadata read does not validate the texture.
 
 ## Choose an operation
 
-- Read a DDS with `DdsFile::read_from_path`, `read_from_bytes`, or `read_from_vec`, which keeps the bytes it is handed
-  as the payload instead of copying them; header facts alone with `read_metadata_from_path` or
-  `read_metadata_from_bytes`.
-- Decode with `decode_rgba` for one mip level, or `to_png` for a PNG of the base level. `get_data` is the payload as
-  stored, every layer's chain largest level first.
-- Write with `write_to_path` or `write_to_bytes`.
-- Build a `DdsMipChain`, then pass it to `DdsEncoding::encode`, or six square chains to `encode_cube`
-  (`+x -x +y -y +z -z`). Reuse the chain when comparing encoding candidates.
-- Ask `renderer_support` with a `DdsRenderer` for one rendering path, or `is_xray_compatible` for the D3D9 path, the
-  narrowest of the three.
+- **Read:** `DdsFile::read_from_path`, `read_from_bytes`, or `read_from_vec`, which keeps the bytes it is given instead
+  of copying them.
+- **Decode:** `decode_rgba` for one mip level, `to_png` for a PNG of the base level. `get_data` is the payload as
+  stored, each layer's chain largest level first.
+- **Write:** `write_to_path` or `write_to_bytes`.
+- **Encode:** build a `DdsMipChain`, then call `DdsEncoding::encode`, or `encode_cube` with six square chains
+  (`+x -x +y -y +z -z`).
+- **Check support:** `renderer_support` with a `DdsRenderer`, or `is_xray_compatible` for D3D9, the narrowest path.
 
-`DdsMetadata` reports the format as `DdsFormat::D3d`, `Dxgi` or `Unknown`; `get_format_label` keeps an unrecognised
-format's FourCC visible rather than treating it as a supported encoding. `get_level_within(side)` names the largest
-level whose longer side holds `side` texels at most, the smallest the file carries where none does, for a measure that
-reads a coarser level instead of decoding the base.
+About the metadata:
+
+- `DdsMetadata` reports the format as `DdsFormat::D3d`, `Dxgi` or `Unknown`.
+- `get_format_label` shows an unrecognised format's FourCC rather than passing it off as supported.
+- `get_level_within(side)` names the largest level whose longer side is at most `side` texels, or the smallest level
+  when none fits. Use it to measure a coarser level instead of decoding the base.
+
+Decoding a block-compressed level of a flat texture runs in stripes of rows on rayon's pool and gives the same pixels as
+one pass.
 
 ## Encode pixels and mipmaps
 
@@ -69,39 +78,59 @@ fn main() -> xrf_error::XrfResult {
 }
 ```
 
-`DdsMipmaps::Disabled` writes the base level alone; `DdsMipmaps::Filtered(DdsMipFilter::Box)` or another kernel writes
-a full chain down to one pixel. Every level is reduced from the base rather than from the level above, channels are
-resampled independently, and alpha is never premultiplied, because a bump pair packs unrelated planes into the four
-channels. `DdsMipFilter::from_label` matches a kernel by the SDK's name, ignoring case. Encoding consumes the prepared
-levels without generating a second chain. Both run on rayon's pool, reducing a level in slabs of rows and encoding it
-in stripes of whole blocks, and answer the same bytes whatever the split. Block compression can change pixel values, so compare decoded output with a
-tolerance rather than assuming lossless equality. Sides need not be multiples of `DdsEncoding::BLOCK_SIZE`; the
-encoder pads whole blocks and records the unpadded size.
+Mip chains:
+
+- `DdsMipmaps::Disabled` writes the base level alone. `DdsMipmaps::Filtered(DdsMipFilter::Box)`, or another kernel,
+  writes a full chain down to one pixel. `DdsMipFilter::from_label` matches the SDK's kernel names, ignoring case.
+- Every level is reduced from the base, not from the level above.
+- Channels are resampled independently and alpha is never premultiplied, because a bump pair packs unrelated planes
+  into the four channels.
+- The filters implement the published kernels. They are not bit-exact with the closed NVIDIA library the X-Ray
+  converter used.
+
+Encoding:
+
+- It consumes the prepared chain without building another, so one chain can be reused to compare candidates.
+- Sides need not be multiples of `DdsEncoding::BLOCK_SIZE`; the encoder pads whole blocks and records the real size.
+- Block compression is lossy. Compare decoded output with a tolerance.
+- Reducing and encoding both run on rayon's pool and give the same bytes however the work is split.
+
+## Compare encodings
 
 `DdsEncodeCandidate` lists the five formats worth offering (BC1, BC2, BC3, RGBA8, BC7) with their cost and renderer
-support. `DdsEncodeAttempt::measure` encodes a chain as one candidate and reports file and GPU bytes, encode time, and a
-`DdsImageDifference` (per-channel and overall RMSE, PSNR) against the chain's base level. That difference is loss on top
-of the pixels passed in, not distance from an original, and describes the tested texture and settings rather than a
-universal quality ranking.
+support.
 
-## Compatibility and limitations
+`DdsEncodeAttempt::measure` encodes a chain as one candidate and reports file and GPU bytes, encode time, and a
+`DdsImageDifference` (per-channel and overall RMSE, PSNR) against the chain's base level. The difference is loss on top
+of the pixels passed in, not distance from some original, and it ranks settings for that texture only.
 
-Encoding writes legacy DDS headers for BC1, BC2, BC3 and RGBA8, which the D3D9 loader requires; BC7 is written with a
-DX10 header. `DdsFormatSupport` has three answers: `Supported`, `Unsupported`, and `Unverified`, which means nobody has
-read that loader. D3D9 loads every legacy D3D9 format and the DXGI legacy block and uncompressed layouts, and refuses
-BC4, BC5 and BC7. DX11 loads every block-compressed and uncompressed DXGI layout and the DXT families, and leaves other
-legacy layouts unverified. OpenGL answers `Unverified` for everything.
+## Renderer support
 
-The mip filters implement their published mathematical kernels; they do not promise bit-exact output from the closed
-NVIDIA library the original X-Ray converter used. Header metadata may be readable even when the payload cannot be
-decoded.
+Encoding writes legacy DDS headers for BC1, BC2, BC3 and RGBA8, which the D3D9 loader requires, and a DX10 header for
+BC7.
 
-## Errors and checks
+`DdsFormatSupport` answers `Supported`, `Unsupported`, or `Unverified` (nobody has checked that loader):
 
-Read, decode, and encode methods return `XrfResult`. Decoding fails for a layout neither decoder reads, a cubemap or
-volume, or a mip level the file lacks; building a chain fails for an image with no pixels; encoding a cube fails unless
-there are six square faces alike in size and levels. Run `cargo test --locked -p xrf-dds` from the repository root.
+| Path   | Loads                                                         | Refuses or unverified           |
+| ------ | ------------------------------------------------------------- | ------------------------------- |
+| D3D9   | Every legacy D3D9 format; DXGI legacy block and plain layouts | Refuses BC4, BC5 and BC7        |
+| DX11   | Every DXGI block-compressed and plain layout; the DXT family  | Other legacy layouts unverified |
+| OpenGL | —                                                             | Everything unverified           |
 
-See the [file API](src/file/dds_file.rs), [metadata](src/file/dds_metadata.rs), [encoder](src/encode/dds_encoding.rs),
-[mip chain](src/mip/dds_mip_chain.rs), and [renderer support](src/renderer/dds_renderer.rs). For sprite sheets and
-texture recipes, use [xrf-texture](../xrf-texture/README.md).
+## Errors
+
+Read, decode and encode return `XrfResult`.
+
+- Decoding fails for a layout neither decoder reads, a cubemap or volume, or a missing mip level.
+- Building a chain fails for an image with no pixels.
+- `encode_cube` fails unless there are six square faces of equal size and level count.
+
+A header can be readable even when the payload cannot be decoded.
+
+## Checks
+
+Run `cargo test --locked -p xrf-dds` from the repository root.
+
+Sources: the [file API](src/file/dds_file.rs), [metadata](src/file/dds_metadata.rs),
+[encoder](src/encode/dds_encoding.rs), [mip chain](src/mip/dds_mip_chain.rs), and
+[renderer support](src/renderer/dds_renderer.rs).

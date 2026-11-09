@@ -1,23 +1,24 @@
 # xrf-job
 
-Progress reporting, cooperative cancellation, and worker limits for long-running XRF operations. An operation takes a
-`JobHandle` (usually through its options struct) and an installed thread pool; the CLI and the desktop app decide where
-progress goes, when to cancel, and how wide to run.
+Progress reporting, cooperative cancellation and worker limits for long-running XRF operations.
 
-## Progress and cancellation
+An operation takes a `JobHandle` (usually in its options struct) and runs on an installed thread pool. The CLI and the
+desktop app decide where progress goes, when to cancel, and how many workers to use.
 
-A `JobHandle` is one run's progress and cancellation together. Clones share the run: the app hands one clone to the
-blocking thread doing the work and keeps another to call `cancel` on.
+Live messages belong to [xrf-output](../xrf-output/README.md), and final findings to [xrf-report](../xrf-report/README.md).
 
-| Constructor                       | Use                                                                                 |
-| --------------------------------- | ----------------------------------------------------------------------------------- |
-| `JobHandle::inert()` or `default` | Reports nowhere, though it can still be cancelled; the CLI and most tests pass it   |
-| `JobHandle::new(sink)`            | Reports to a `ProgressSink` at most once per `JobHandle::DEFAULT_PROGRESS_INTERVAL` |
-| `JobHandle::with_interval(..)`    | Same, with another interval; `Duration::ZERO` reports every unit, for tests         |
+## Report progress
 
-`JobHandle::DEFAULT_PROGRESS_INTERVAL` is 100 ms; the desktop app uses it.
+A `JobHandle` is one run's progress and cancellation. Clones share the run: the app gives one clone to the thread doing
+the work and keeps another to call `cancel` on.
 
-The operation enters levels and counts work, and checks for cancellation between units:
+| Constructor                       | Use                                                                               |
+| --------------------------------- | --------------------------------------------------------------------------------- |
+| `JobHandle::inert()` or `default` | Reports nowhere but can still be cancelled; the CLI and most tests use it         |
+| `JobHandle::new(sink)`            | Reports to a `ProgressSink` at most once per `DEFAULT_PROGRESS_INTERVAL` (100 ms) |
+| `JobHandle::with_interval(..)`    | The same with another interval; `Duration::ZERO` reports every unit, for tests    |
+
+The operation enters levels, counts work, and checks for cancellation between units:
 
 ```rust
 use xrf_job::{JobHandle, JobScope};
@@ -39,38 +40,60 @@ for entry in entries() {
 # }
 ```
 
-`enter(id, total)` pushes a level and returns a `JobScope`, which leaves the level when dropped. Use `None` for a total
-not known in advance and `enter_bytes` for a level counting bytes (`ProgressUnit::Bytes`). A scope counts with `advance`
-or `advance_by(units)`, nests with its own `enter`, and reads its count with `get_completed`. Scopes are `Send` and
-`Sync` through shared state, so a pool's workers can all advance one level. `set_detail` names what a sequential job is
-on; leave it empty for parallel work.
+### Scopes
 
-Each `JobProgress` snapshot carries the whole active stack, outermost first, plus `duration` since the handle was
-created and the current `detail`. Every level counts what its owner advances — checks for a parent, units for a leaf —
-and leaving a child counts nothing against its parent. The stack describes nesting, not siblings: work running beside
-other work of one job takes `without_progress`, a handle sharing the job's cancellation and clock whose levels and
-detail reach no sink. Entering and leaving a level are reported at once; `advance` reports only when the interval has
-passed, from whichever worker gets there first, so a sink is called from arbitrary threads and blocking in it blocks
-that worker. `report_if_due` lets a phase with nothing to count still report, and `get_progress` reads the current
-snapshot on demand.
+- `enter(id, total)` pushes a level and returns a `JobScope`, which leaves the level when dropped. Pass `None` for an
+  unknown total.
+- `enter_bytes` enters a level counting bytes (`ProgressUnit::Bytes`).
+- A scope counts with `advance` or `advance_by(units)`, nests with its own `enter`, and reads its count with
+  `get_completed`.
+- Scopes are `Send` and `Sync`, so a pool's workers can all advance one level.
+- `set_detail` names what a sequential job is working on; leave it empty for parallel work.
 
-Sinks: `NoopSink` discards and `RecordingSink` keeps every snapshot for tests (`list_reported`, `take_reported`). A
-consumer renders progress through a sink of its own: the CLI's `TerminalProgressSink` writes a line to stderr at a
-coarse interval, the app forwards snapshots to the window.
+### Snapshots
 
-Cancellation is cooperative. `cancel` sets a flag; `is_cancelled` reads it before expensive work, and `check_cancelled`
-returns `XrfError::Cancelled` so a loop or a parallel `try_for_each` stops with `?`. Nothing is interrupted or rolled
-back. The operation catches its own `Cancelled` and returns its normal result with an `outcome` of
-`JobOutcome::Cancelled`, so the caller still learns which files were written; that result's counts describe the work
-done before the stop, never a finished total.
+Each `JobProgress` snapshot carries the whole active stack (outermost first), the `duration` since the handle was
+created, and the current `detail`.
 
-## Execution limits
+- Each level counts what its owner advances: checks for a parent, units for a leaf. Leaving a child adds nothing to its
+  parent.
+- The stack shows nesting, not siblings. Work running beside other work in one job uses `without_progress`: a handle
+  sharing the job's cancellation and clock whose levels reach no sink.
+- Entering and leaving a level report at once. `advance` reports only when the interval has passed, from whichever
+  worker gets there first, so a sink is called from any thread and blocking in it blocks that worker.
+- `report_if_due` lets a phase with nothing to count still report; `get_progress` reads the current snapshot.
 
-`ExecutionRequest` is what a caller asked for, parsed from text: `auto` (any case), a worker count from 1 to
-`ExecutionRequest::MAX_WORKERS` (1024), or a share of the host from `1%` to `100%`. Anything else is `XrfError::Invalid`
-with a message naming the accepted forms. `resolve` turns it into an `ExecutionPlan` for this host: `auto` uses
-`std::thread::available_parallelism`, a share rounds down with a floor of one worker, and `get_origin` says whether the
-count was `ExecutionOrigin::Auto` or `Requested`.
+### Sinks
+
+- `NoopSink` discards snapshots.
+- `RecordingSink` keeps every snapshot for tests (`list_reported`, `take_reported`).
+- Consumers write their own: the CLI's `TerminalProgressSink` writes a line to stderr at a coarse interval; the app
+  forwards snapshots to the window.
+
+## Cancel
+
+Cancellation is cooperative; nothing is interrupted or rolled back.
+
+- `cancel` sets a flag.
+- `is_cancelled` reads it, before expensive work.
+- `check_cancelled` returns `XrfError::Cancelled`, so a loop or a parallel `try_for_each` stops with `?`.
+
+The operation catches its own `Cancelled` and returns its normal result with `outcome` set to `JobOutcome::Cancelled`,
+so the caller still learns which files were written. That result's counts describe the work done before the stop, not
+a finished total.
+
+## Limit workers
+
+`ExecutionRequest` is what a caller asked for, parsed from text:
+
+- `auto` (any case);
+- a worker count from 1 to `ExecutionRequest::MAX_WORKERS` (1024);
+- a share of the host, from `1%` to `100%`.
+
+Anything else is `XrfError::Invalid`, naming the accepted forms.
+
+`resolve` turns it into an `ExecutionPlan` for this host. `auto` uses `std::thread::available_parallelism`; a share
+rounds down, to at least one worker. `get_origin` says whether the count was `ExecutionOrigin::Auto` or `Requested`.
 
 ```rust
 use std::str::FromStr;
@@ -90,25 +113,36 @@ assert_eq!(plan.get_origin(), ExecutionOrigin::Requested);
 # }
 ```
 
-The plan's worker count is a ceiling on the whole operation. With the `rayon` feature, a binary runs one operation in
-`plan.install(..)` or keeps one pool from `plan.build_pool()` and installs every operation into it; nested Rayon work,
-including a dependency's, inherits that pool. Library crates call `par_iter` on whatever pool their caller installed
-and build none of their own. An operation may use fewer workers than the plan only under `ExecutionOrigin::Auto`, and
-only when a measurement justifies it; a `Requested` count was named by a person.
+The plan's worker count is a ceiling for the whole operation.
+
+- With the `rayon` feature, a binary runs one operation in `plan.install(..)`, or keeps one pool from
+  `plan.build_pool()` and installs every operation into it. Nested Rayon work, including a dependency's, inherits that
+  pool.
+- Library crates call `par_iter` on whatever pool their caller installed and build none of their own.
+- An operation may use fewer workers than planned only under `ExecutionOrigin::Auto`, and only when a measurement
+  justifies it. A `Requested` count was chosen by a person.
+
+### `PoolOnceLock`
 
 `PoolOnceLock` (feature `rayon`) is a value built once that pool workers may wait on while its build fans out over
-Rayon. A plain `OnceLock` deadlocks there: the worker building it takes other jobs while it waits inside its own
-`join`, and one of those waits on the lock that worker is filling. `PoolOnceLock::get_or_init` builds on a one-thread
-pool of its own while the caller's worker sleeps, so the build stays within the plan but is not parallel. Keep a plain
-`OnceLock` for a value whose build never reaches Rayon, since each build starts a thread.
+Rayon.
 
-The `typescript-bindings` feature derives Specta types for the snapshot, outcome and plan types; `JobProgress` sends
-`duration` as whole milliseconds.
+A plain `OnceLock` deadlocks there: the worker building it takes other jobs while waiting in its own `join`, and one of
+those waits on the lock it is filling. `PoolOnceLock::get_or_init` builds on a one-thread pool of its own while the
+caller's worker sleeps, so the build stays within the plan but is not parallel.
+
+Use a plain `OnceLock` for a value whose build never reaches Rayon, since each `PoolOnceLock` build starts a thread.
+
+## Features
+
+- `rayon`: `ExecutionPlan::install`, `build_pool`, and `PoolOnceLock`.
+- `typescript-bindings`: Specta types for the snapshot, outcome and plan types. `JobProgress` sends `duration` as whole
+  milliseconds.
 
 ## Checks
 
-Run `cargo test --locked -p xrf-job --features rayon` from the repository root; this page's examples run as doc tests.
-See the [handle](src/job/job_handle.rs), [scope](src/job/job_scope.rs) and
-[execution plan](src/execution/execution_plan.rs). The sources group into `job/`, `progress/` and `execution/`; every
-type is exported from the crate root. Live
-messages belong to [xrf-output](../xrf-output/README.md), and final findings to [xrf-report](../xrf-report/README.md).
+Run `cargo test --locked -p xrf-job --features rayon` from the repository root.
+
+Sources: the [handle](src/job/job_handle.rs), [scope](src/job/job_scope.rs) and
+[execution plan](src/execution/execution_plan.rs). They are grouped into `job/`, `progress/` and `execution/`; every
+type is exported from the crate root.

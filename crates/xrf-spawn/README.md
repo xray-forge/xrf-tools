@@ -1,12 +1,14 @@
 # xrf-spawn
 
-Reads and writes the `.spawn` formats: spawn sets and the alife records inside them, with the game graph, patrols and
-artefact points they reference, and the per-level spawn lists a level ships. A spawn set such as `all.spawn` is what
-the engine's alife simulation starts a new game from; a level spawn list is what a level's server spawns on load.
+Reads and writes the game's `.spawn` files:
 
-The crate depends on `xrf-chunk`, `xrf-math`, and `xrf-ltx`, which supplies the LTX binding a set is unpacked through.
-Consumers are the CLI's `spawn` commands, the desktop app's spawn descriptions and level view, and `xrf-visual`, which
-places spawned lamps. It also re-exports `XRayByteOrder`, the byte order every reader here is called with.
+- **Spawn sets** such as `all.spawn`, which the alife simulation starts a new game from: alife objects, plus the game
+  graph, patrols and artefact points they reference.
+- **Level spawn lists**, which a level's server spawns on load.
+
+It depends on `xrf-chunk`, `xrf-math` and `xrf-ltx` (for the LTX form a set is unpacked into). Users: the CLI's `spawn`
+commands, the desktop app's spawn descriptions and level view, and `xrf-visual`, which places spawned lamps. It
+re-exports `XRayByteOrder`, the byte order every reader here takes.
 
 ## Two formats share `.spawn`
 
@@ -15,107 +17,139 @@ places spawned lamps. It also re-exports `XRayByteOrder`, the byte order every r
 | Spawn set        | `SpawnFile`      | Header (0), alife objects (1), artefacts (2), patrols (3), game graph (4) |
 | Level spawn list | `LevelSpawnFile` | A flat run of chunks from zero, each one `M_SPAWN` packet; no header      |
 
-Most `.spawn` files in a game tree are level lists; only a few carry a header. Each reader refuses the other format:
-`SpawnFile` requires exactly its five root chunks, and `LevelSpawnFile` requires every chunk to open with an `M_SPAWN`
+Most `.spawn` files in a game tree are level lists; only a few have a header. Each reader refuses the other format:
+`SpawnFile` requires exactly its five root chunks, and `LevelSpawnFile` requires every chunk to start with an `M_SPAWN`
 packet, which a set's header never does.
 
 ## Read a spawn set
 
-`SpawnFile::read_from_path` (and `read_from_file`, `read_from_chunk`) reads the whole set and checks that the header's
-object and level counts match what the chunks hold. A whole read is large: the game graph is most of a set's bytes. Read
-less when less is needed:
+`SpawnFile::read_from_path` (and `read_from_file`, `read_from_chunk`) reads the whole set and checks the header's object
+and level counts against the chunks. The game graph is most of a set's bytes, so read less when you can:
 
-- `read_graphs_from_path` reads only the game graph (`SpawnGraphsChunk`): levels, vertices, edges, level points and
-  cross tables. It parses no alife object, so it also works on a set holding an object class this crate has no reader
-  for.
-- `read_level_objects_from_chunks` reads the objects one level places, keeping going past an object it cannot read: the
-  result lists each one skipped with its index and reason, and the level changers arriving at that level.
-- `read_level_graph_from_chunks` reads one level's game vertices and the patrols whose first point stands on it.
+| Method                           | Reads                                                                                                                                                                          |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `read_graphs_from_path`          | Only the game graph (`SpawnGraphsChunk`): levels, vertices, edges, level points, cross tables. Parses no alife object, so it works on sets with classes this crate cannot read |
+| `read_level_objects_from_chunks` | The objects one level places, continuing past unreadable ones (each listed with its index and reason), plus the level changers arriving there                                  |
+| `read_level_graph_from_chunks`   | One level's game vertices, and the patrols whose first point is on it                                                                                                          |
 
-An alife object is chunk-framed and its reader asserts full consumption, so a misread class fails that object rather
-than desynchronizing the next one. `ClsId::from_section` maps a section to its class, which gives the object's identity
-and so which server-class reader (`AlifeObjectInherited`) parses its payload; scripted fields at the tail are read from
-the object's remaining byte budget. Every class Call of Pripyat creates from a spawn has a reader, by its engine
-registry (`object_factory_register.cpp`) and its scripts' (`class_registrator.script`), and those no shipped spawn
-holds are checked against packets a running game wrote for a new object of each; a rocket's section maps to
-`AlifeClass::Unknown`, since `CSE_Temporary` is no alife object, and multiplayer and Shadow of Chernobyl sections
-(spectator, team base, rat, flesh and spawn groups, the mounted weapon) map to no class at all. An object at spawn version 120 or below is refused (Call of Pripyat and Anomaly
-write 128), and so is a section with no known class. Stored values are kept as written rather than normalized the way
-the engine's `STATE_Read` would, and `LastSpawnTime` keeps its three states (`Absent`, `Unset`, `Set`) apart. An
-object's client data and an item's upgrade sections are read as the engine reads them.
+### Alife objects
 
-A script class closes its own fields with a save marker counting their bytes, which both vanilla and xrf-engine
-scripts assert on load. The marker is not a field here: reading checks it against what was read, and writing derives
-it, so an edited level changer hint still loads.
+- An alife object is chunk-framed and its reader checks it consumed everything, so a misread class fails that object
+  instead of corrupting the next.
+- `ClsId::from_section` maps a section to its class, which selects the server-class reader (`AlifeObjectInherited`) for
+  its payload. Script fields at the end are read from the object's remaining bytes.
+- Stored values are kept as written, not normalized the way the engine's `STATE_Read` would. `LastSpawnTime` keeps its
+  three states (`Absent`, `Unset`, `Set`) apart.
+- An object's client data and an item's upgrade sections are read as the engine reads them.
+
+Coverage:
+
+- Every class Call of Pripyat creates from a spawn has a reader, taken from the engine registry
+  (`object_factory_register.cpp`) and the scripts' (`class_registrator.script`). Classes no shipped spawn contains were
+  checked against packets a running game wrote for a new object of each.
+- A rocket's section maps to `AlifeClass::Unknown`, since `CSE_Temporary` is not an alife object.
+- Multiplayer and Shadow of Chernobyl sections (spectator, team base, rat, flesh and spawn groups, the mounted weapon)
+  map to no class.
+
+Refused: an object at spawn version 120 or below (Call of Pripyat and Anomaly write 128), and a section with no known
+class.
+
+### Save markers
+
+A script class ends its fields with a save marker counting their bytes, which both vanilla and xrf-engine scripts check
+on load. Here the marker is not a field: reading checks it, and writing derives it, so an edited level changer hint
+still loads.
 
 ## Stalkers and monsters
 
-Call of Pripyat spawns its NPCs at runtime from squads, so no shipped spawn set holds one, but an editor can place them:
-a `stalker` section reads as `AlifeStalker` and a monster section (`dog_weak`, `bloodsucker_normal`) as `AlifeMonster`.
-A stalker's spawn packet opens with its trader fields (`AlifeObjectHumanAbstract`), ahead of the alife object and the
-creature, unlike the actor's. Both script classes end with an `OfflineObjectState` - the level vertex and logic section
-as the strings `se_stalker` and `se_monster` write, `None` for their `nil` - and the stalker with its loot byte; neither
-closes them with a marker. A new object holds `None`, `None` and `0`, as a compiled spawn does. The tails mirror
-`STATE_Write` in xrf-engine's `Stalker.ts` and `Monster.ts`, whose own tests pin their write order, so a change to
-either side changes the other in the same work. The layout is checked against packets the game itself wrote for a new
-stalker and monster.
+Call of Pripyat spawns its NPCs at runtime from squads, so no shipped spawn set holds one, but an editor can place them.
 
-`export_to_path` unpacks a set into a directory of LTX files a person can edit, and
-`import_from_path` reads that directory back; `write_to_path` and `write_to` write the binary set. Unpacking and packing
-again is meant to reproduce the original bytes.
+- A `stalker` section reads as `AlifeStalker`; a monster section (`dog_weak`, `bloodsucker_normal`) as `AlifeMonster`.
+- A stalker's spawn packet starts with its trader fields (`AlifeObjectHumanAbstract`), ahead of the alife object and
+  creature fields, unlike the actor's.
+- Both script classes end with an `OfflineObjectState`: the level vertex and logic section as the strings `se_stalker`
+  and `se_monster` write (`None` for their `nil`). The stalker adds its loot byte. Neither closes these with a marker.
+- A new object holds `None`, `None` and `0`, as a compiled spawn does.
 
-Writing refuses what the engine would misread rather than writing it: header counts that differ from the objects and
-levels the set holds, graph counts that differ from its tables, an object whose payload class is not its section's, a
-patrol link to a point the patrol lacks, a smart terrain or skeleton declaring state this crate cannot carry, a
-physics state whose opening byte would not hold it, a shotgun loading more shells than a byte counts, and an actor's
-dead body whose bones disagree with its counts or overrun the engine's buffer. Reading
-refuses update bytes past what the object's class reads, which a rewrite would drop.
+These tails mirror `STATE_Write` in xrf-engine's `Stalker.ts` and `Monster.ts`, whose own tests pin their write order.
+A change on either side must change the other in the same work. The layout was checked against packets the game wrote
+for a new stalker and monster.
+
+## Unpack, edit and write
+
+- `export_to_path` unpacks a set into a directory of editable LTX files; `import_from_path` reads it back. Unpacking and
+  packing again should reproduce the original bytes.
+- `write_to_path` and `write_to` write the binary set.
+
+Writing refuses what the engine would misread:
+
+- header counts that differ from the objects and levels the set holds;
+- graph counts that differ from its tables;
+- an object whose payload class is not its section's;
+- a patrol link to a point the patrol lacks;
+- a smart terrain or skeleton declaring state this crate cannot carry;
+- a physics state whose opening byte cannot hold it;
+- a shotgun loading more shells than a byte counts;
+- an actor's dead body whose bones disagree with its counts, or overrun the engine's buffer.
+
+Reading refuses update bytes beyond what the object's class reads, since a rewrite would drop them.
 
 ## The update packet
 
 Each object's chunk carries a second packet, which the engine applies over the spawn packet when it creates the object
-(`CALifeSimulatorBase::create`), so where both store a field the update packet's is what the game uses. A payload owns
-its update fields beside its spawn fields, named `update_*`, up the same inheritance chain its `UPDATE_Read` follows; a
-class whose update packet is empty owns none, and its reader refuses bytes there. A payload with update fields reads
-and writes both packets together (`AlifePacketsReadWrite`).
+(`CALifeSimulatorBase::create`). Where both store a field, the update packet's value is what the game uses.
 
-| Class                     | Update fields                                                                       |
-| ------------------------- | ----------------------------------------------------------------------------------- |
-| Every item                | `update_state`: the physics state, `None` for the zero byte standing in for none    |
-| Physic object             | `update_state`, as an item's, which a single player game never applies             |
-| Outfit, helmet            | `update_condition` after the item's                                                 |
-| Torch                     | `update_flags` after the item's: light, night vision and attached                   |
-| Stationary machine gun    | `update_working` and `update_enemy_direction`, which a new gun leaves uninitialised |
-| Ammo                      | `update_ammo_left` after the item's                                                 |
-| Weapon                    | condition, weapon flags, rounds loaded, addons, ammo type, state and zoom           |
-| Magazined weapon          | `update_fire_mode` after the weapon's                                               |
-| With a grenade launcher   | `update_grenade_mode`, which opens the packet ahead of every inherited field        |
-| Shotgun (magazined)       | `update_ammo_ids`, a byte counting the shells loaded, after the magazined weapon's  |
-| Creature, crow, phantom   | health, timestamp, flags, position, model and torso angles, team, squad and group   |
-| Monster, human            | the game vertices it walks between and its distances along that edge, after those   |
-| Stalker                   | `update_start_dialog` after the monster's                                           |
-| Actor                     | movement state, two `ScaledDirection`s, radiation, weapon, then `update_body`       |
+- A payload owns its update fields beside its spawn fields, named `update_*`, following the same inheritance chain as
+  its `UPDATE_Read`.
+- A class with an empty update packet owns none, and its reader refuses bytes there.
+- A payload with update fields reads and writes both packets together (`AlifePacketsReadWrite`).
 
-`PhysicsNetState` models the state's mask: its opening byte packs the item count beside whether the body is enabled
-and whether each velocity is left out, so a velocity left out is `None`. The engine reads a physic object's empty
-packet as no state and a state ending before its closing byte as awake, and writes the zero byte and the closing byte;
-those two shapes, which no shipped spawn holds, are read as the engine reads them and written as it writes them. A
-quantised field keeps the byte it is stored in, and the float the engine reads is a derived reader
-(`get_update_condition`). The SDK writes some states without initialising them, so their floats are `RawFloat`s that
-keep their bits: vanilla's spawn holds 5,286 floats of `0xffffffff` and NaNs with payloads, which LTX and JSON carry as
-hex (`0xffffffff`) and every finite value as its number. The actor's `ActorPhysicsState` is the body behind its count:
-none, the living body's state, or a dead body's two corners and the bones quantised within them, refused past the
-1,024 bytes the engine holds one in.
+| Class                   | Update fields                                                                       |
+| ----------------------- | ----------------------------------------------------------------------------------- |
+| Every item              | `update_state`: the physics state, `None` for the zero byte standing in for none    |
+| Physic object           | `update_state`, as an item's, which a single-player game never applies              |
+| Outfit, helmet          | `update_condition` after the item's                                                 |
+| Torch                   | `update_flags` after the item's: light, night vision and attached                   |
+| Stationary machine gun  | `update_working` and `update_enemy_direction`, which a new gun leaves uninitialised |
+| Ammo                    | `update_ammo_left` after the item's                                                 |
+| Weapon                  | Condition, weapon flags, rounds loaded, addons, ammo type, state and zoom           |
+| Magazined weapon        | `update_fire_mode` after the weapon's                                               |
+| With a grenade launcher | `update_grenade_mode`, which opens the packet ahead of every inherited field        |
+| Shotgun (magazined)     | `update_ammo_ids`, a byte counting the shells loaded, after the magazined weapon's  |
+| Creature, crow, phantom | Health, timestamp, flags, position, model and torso angles, team, squad and group   |
+| Monster, human          | After those: the game vertices it walks between, and its distances along that edge  |
+| Stalker                 | `update_start_dialog` after the monster's                                           |
+| Actor                   | Movement state, two `ScaledDirection`s, radiation, weapon, then `update_body`       |
+
+### Physics state
+
+`PhysicsNetState` models the state's mask. Its opening byte packs the item count with whether the body is enabled and
+whether each velocity is omitted; an omitted velocity is `None`.
+
+- The engine reads a physic object's empty packet as no state, and a state ending before its closing byte as awake. It
+  writes the zero byte and the closing byte. These two shapes, which no shipped spawn contains, are read and written as
+  the engine does.
+- A quantised field keeps its stored byte; the float the engine reads is a derived accessor (`get_update_condition`).
+- The SDK writes some states uninitialised, so their floats are `RawFloat`s that keep their bits. Vanilla's spawn holds
+  5,286 floats of `0xffffffff` and NaNs with payloads; LTX and JSON carry those as hex (`0xffffffff`) and every finite
+  value as a number.
+- The actor's `ActorPhysicsState` is the body behind its count: none, the living body's state, or a dead body's two
+  corners with bones quantised between them. It is refused past the 1,024 bytes the engine holds one in.
+
+### Moving an object
 
 `AlifeObject::move_to` moves an object to a position and direction in every packet that stores where it stands, so an
-editor need not know which classes repeat it: the spawn packet's, a creature's position and torso (pitch from the
-direction's x, heading from its y, as `STATE_Read` derives them), an item's or physic object's physics state, and the
-actor's saved body, carried by as far as the actor moves.
+editor need not know which classes repeat it:
+
+- the spawn packet's position;
+- a creature's position and torso (pitch from the direction's x, heading from its y, as `STATE_Read` derives them);
+- an item's or physic object's physics state;
+- the actor's saved body, shifted by as far as the actor moves.
 
 ## Read a level spawn list
 
-A list's object carries the version-independent head of `CSE_Abstract::Spawn_Write` - section, name, two script bytes,
-position, and direction - and keeps the rest of the packet verbatim in `payload`, so a list rewrites byte for byte
+A list's object carries the version-independent start of `CSE_Abstract::Spawn_Write` (section, name, two script bytes,
+position, direction) and keeps the rest of the packet as is in `payload`. A list therefore rewrites byte for byte,
 whatever spawn version or server class wrote it.
 
 ```rust
@@ -153,12 +187,7 @@ assert_eq!(read.get_sections().get("medkit"), Some(&1));
 
 ## Checks
 
-From the repository root:
+Run `cargo test --locked -p xrf-spawn` from the repository root.
 
-```sh
-cargo test --locked -p xrf-spawn
-```
-
-The README is the crate documentation, so its Rust examples run as doctests. See the [spawn set](src/spawn_file.rs),
-[alife objects](src/chunks/spawn_alife_spawns_chunk.rs), [level spawn list](src/level_spawn_file.rs), and
-[public exports](src/lib.rs).
+Sources: the [spawn set](src/spawn_file.rs), [alife objects](src/chunks/spawn_alife_spawns_chunk.rs),
+[level spawn list](src/level_spawn_file.rs), and [public exports](src/lib.rs).

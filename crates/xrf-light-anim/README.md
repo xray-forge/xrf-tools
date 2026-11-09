@@ -1,9 +1,10 @@
 # xrf-light-anim
 
-Reads and writes `.xr` light animation libraries, `lanims.xr` in the game: named colour animations, each a run of
-colour keys over frames, which lamps and other lights name to pulse or flicker. `LightAnimFile` holds the library;
-[xrf-visual](../xrf-visual/README.md)'s light packer resolves level lights' animations against it, and the desktop app's
-level viewer and archive describer read it.
+Reads, writes, evaluates and edits light animation libraries (`lanims.xr` in the game): named colour animations that
+lamps and other lights use to pulse or flicker.
+
+`LightAnimFile` holds the library. [xrf-visual](../xrf-visual/README.md)'s light packer resolves level lights'
+animations against it, and the desktop app's level viewer and archive describer read it.
 
 ## Read and write a library
 
@@ -40,33 +41,44 @@ fn main() -> xrf_error::XrfResult {
 }
 ```
 
-Read a library with `read_from_path`, `read_from_file`, `read_from_bytes` for an archived entry, or `read_from_chunk`.
-`write` emits the library as top-level chunks in the writer's buffer.
+- Read with `read_from_path`, `read_from_file`, `read_from_bytes` (for an archived entry), or `read_from_chunk`.
+- `write` emits the library as top-level chunks in the writer's buffer.
 
-## Library, items and keys
+## The data
 
-The library is a chunk tree: a `u16` version (chunk 0) and an items chunk (1) holding one child per animation, numbered
-from zero. A file with no version chunk reads as version 0, as `ELightAnimLibrary::Load` treats one. Animations are
-read as the engine opens them, chunk 0, 1, 2 and on until the first number the list lacks, so one numbered past a gap
-is not read. `find_item(name)` is `FindItem`: the first animation of exactly that name, case included, and none for an
-empty name.
+| Type            | Engine              | Holds                                                  |
+| --------------- | ------------------- | ------------------------------------------------------ |
+| `LightAnimFile` | `ELightAnimLibrary` | A `u16` version (chunk 0) and the animations (chunk 1) |
+| `LightAnimItem` | `CLAItem`           | Name, its own frames per second, frame count, and keys |
+| `LightAnimKey`  | —                   | A signed frame and a stored `u32` colour               |
 
-`LightAnimItem` is `CLAItem`: a name, its own frames per second, a frame count, and its keys as the file lists them,
-from a common chunk (1) and a keys chunk (2). `get_duration_seconds` is the frame count over the rate, or `None` for a
-rate that is not positive. `LightAnimKey` is a signed frame and a stored `u32` colour. Frames are the engine's `int`,
-and every shipped library keys some before zero: `svet_01` at `-1`, GAMMA's `koster_00_old` at `-2`.
+Library:
 
-The engine holds an animation's keys in a map, so `to_loaded_keys(is_bgr)` returns them as it does after load: by
-frame, a frame listed twice keeping the colour read last. `normalize_keys(is_bgr)` stores them that way.
+- A file with no version chunk reads as version 0, as `ELightAnimLibrary::Load` treats it.
+- Animations are children numbered from zero. They are read as the engine reads them, until the first missing number,
+  so one numbered past a gap is not read.
+- `find_item(name)` is `FindItem`: the first animation with exactly that name, case included; none for an empty name.
+- `get_keys_count` counts keys across every animation.
 
-The colour's channels are read as the engine leaves them after load: alpha, red, green and blue from the high byte
-down, through `get_alpha`, `get_red`, `get_green` and `get_blue`. A version 0 library stores red and blue swapped,
-which the engine corrects on load and then saves as version 1. `is_bgr` reports such a library; the crate keeps the
-stored value and the stored version, and `to_loaded_keys(file.is_bgr())` (or `LightAnimKey::to_swapped_red_blue`)
-gives the colours the engine uses. `LightAnimFile::normalize` turns the whole library into what `Load` holds and `Save`
-writes: version 1, colours as RGB, every animation's keys by frame.
+Animations and keys:
 
-`get_keys_count` counts keys across every animation.
+- An animation is a common chunk (1) and a keys chunk (2).
+- `get_duration_seconds` is frame count over rate, or `None` for a rate that is not positive.
+- Frames are the engine's `int`, and every shipped library keys some before zero: `svet_01` at `-1`, GAMMA's
+  `koster_00_old` at `-2`.
+- The engine keeps keys in a map. `to_loaded_keys(is_bgr)` returns them as it holds them after load: by frame, a frame
+  listed twice keeping the colour read last. `normalize_keys(is_bgr)` stores them that way.
+
+### Colours
+
+Channels are read as the engine has them after load, high byte down: `get_alpha`, `get_red`, `get_green`, `get_blue`.
+
+A version 0 library stores red and blue swapped; the engine fixes them on load and saves version 1.
+
+- `is_bgr` reports such a library. The crate keeps the stored colours and version.
+- `to_loaded_keys(file.is_bgr())`, or `LightAnimKey::to_swapped_red_blue`, gives the colours the engine uses.
+- `LightAnimFile::normalize` converts the whole library to what `Load` holds and `Save` writes: version 1, RGB colours,
+  keys by frame.
 
 ## Evaluate an animation
 
@@ -84,47 +96,71 @@ assert_eq!(item.calculate_rgb(0.5), Some((7, item.interpolate_rgb(7).unwrap())))
 assert_eq!(item.get_length_ms(), Some(666));
 ```
 
-These are `CLAItem`'s own functions, in its `f32` arithmetic, over the keys as loaded:
+These port `CLAItem`'s own functions, in its `f32` arithmetic, over the keys as loaded:
 
-- `interpolate_rgb(frame)` is `InterpolateRGB`: a key's colour on its frame, the last key's past the last, and between
-  two keys both blended, alpha included, each channel taken to `byte / 255`, mixed linearly and floored back to a byte.
-  `interpolate_bgr` exchanges red and blue in the result, as lamps take it.
-- `calculate_rgb(seconds)` and `calculate_bgr` are `CalculateRGB` and `CalculateBGR`: the frame
-  `floor((seconds mod length) * fps)`, looping and negative for a negative time, and its colour.
-- `get_length_ms` is `Length_ms`, what the script class `color_animator` answers from `length()`.
+| Method                                    | Engine                         | Returns                                                        |
+| ----------------------------------------- | ------------------------------ | -------------------------------------------------------------- |
+| `interpolate_rgb(frame)`                  | `InterpolateRGB`               | The colour at a frame                                          |
+| `interpolate_bgr(frame)`                  | —                              | The same with red and blue exchanged, as lamps take it         |
+| `calculate_rgb(seconds)`, `calculate_bgr` | `CalculateRGB`, `CalculateBGR` | The frame `floor((seconds mod length) * fps)` and its colour   |
+| `get_length_ms`                           | `Length_ms`                    | What the script class `color_animator` answers from `length()` |
 
-Where the engine asserts or reads past its keys, these answer `None`: a frame past the frame count, an animation with no
-keys, a frame before every key, and a rate that is not positive. They read colours as stored, so a version 0 library is
-normalized first. The renderer draws lights with its own `f32` copy of this, which its tests hold to these within the
-one step the engine's final floor takes.
+- On a key's frame the colour is the key's; past the last key it is the last key's.
+- Between two keys, every channel (alpha included) becomes `byte / 255`, is mixed linearly, and is floored back to a
+  byte.
+- `calculate_*` loops, and gives a negative frame for a negative time.
+- Where the engine asserts or reads past its keys, these answer `None`: a frame past the frame count, no keys, a frame
+  before every key, or a rate that is not positive.
+- They read colours as stored, so normalize a version 0 library first.
+
+The renderer draws lights with its own `f32` copy of this; its tests keep it within one floor step of these results.
 
 ## Edit a library
 
-The editing operations are the SDK editor's (`TfrmEditLightAnim` over `CLAItem` and `ELightAnimLibrary`), and each
-stores the keys as loaded, by frame and one a frame:
+The editing operations match the SDK editor (`TfrmEditLightAnim` over `CLAItem` and `ELightAnimLibrary`). Each keeps
+keys as loaded: by frame, one per frame.
 
-- `LightAnimItem::new(name)` starts an animation as `AppendItem` does: 15 frames a second, one frame, and a transparent
-  black key at frame 0.
-- `insert_key(frame, color)` keys a frame, replacing a key there; `delete_key(frame)` removes one, never the key at
-  frame 0; `move_key(from, to)` moves one over whatever `to` held. Each refuses a frame past the frame count, which the
-  engine asserts on. A move onto its own frame changes nothing, where the engine would erase the key.
-- `resize(frame_count)` grows by moving the key at the old last frame to the new one, and shrinks by dropping every key
-  from the new count on; it refuses zero frames.
-- `get_previous_key_frame` and `get_next_key_frame` step between keys as the editor's buttons do.
+Animations:
+
+- `LightAnimItem::new(name)` starts one as `AppendItem` does: 15 frames a second, one frame, and a transparent black key
+  at frame 0.
+- `resize(frame_count)` grows by moving the key at the old last frame to the new last frame, and shrinks by dropping
+  every key from the new count on. It refuses zero frames.
+
+Keys:
+
+- `insert_key(frame, color)` keys a frame, replacing a key already there.
+- `delete_key(frame)` removes one, never the key at frame 0.
+- `move_key(from, to)` moves one over whatever `to` held. Moving onto its own frame changes nothing (the engine would
+  erase the key).
+- All three refuse a frame past the frame count, which the engine asserts on.
+- `get_previous_key_frame` and `get_next_key_frame` step between keys like the editor's buttons.
+
+Library:
+
 - `LightAnimFile::append_item(name)`, `clone_item(source, name)`, `rename_item(from, to)` and `remove_item(name)` keep
-  names unique, since `FindItem` only ever reaches the first animation of a name; `find_item_mut` edits one in place.
+  names unique, since `FindItem` only reaches the first animation with a name.
+- `find_item_mut` edits one in place.
 
-Write the result with `write`, which keeps whatever version the library carries; `normalize` first to save as the
-engine does.
+`write` keeps the library's version. Call `normalize` first to save as the engine does.
 
-## Errors and checks
+## Errors
 
-Reads reject a file that cannot be opened, a missing items chunk, an animation missing its common or keys chunk, a key
-count the keys chunk cannot hold, and bytes left in a keys chunk. A library read and written back is byte for byte the
-file it came from when it carries a version chunk and numbers its animations from zero without a gap; the writer
-always writes a version and renumbers from zero. Every `lanims.xr` in the reference trees (vanilla, CoC, CS, Enhanced
-Edition, Anomaly, GAMMA, Gunslinger) is version 1, numbered without a gap, and holds no frame twice.
+Reads reject:
 
-Run `cargo test --locked -p xrf-light-anim` from the repository root. See the [library](src/light_anim_file.rs),
-[animation](src/light_anim_item.rs), [key](src/light_anim_key.rs), and the tests of the [format](src/tests/format.rs),
-[evaluation](src/tests/evaluation.rs) and [editing](src/tests/editing.rs).
+- a file that cannot be opened;
+- a missing items chunk;
+- an animation missing its common or keys chunk;
+- a key count the keys chunk cannot hold, or bytes left over in it.
+
+A library writes back byte for byte when it has a version chunk and numbers its animations from zero without a gap; the
+writer always writes a version and renumbers from zero. Every `lanims.xr` in the reference trees (vanilla, CoC, CS,
+Enhanced Edition, Anomaly, GAMMA, Gunslinger) is version 1, numbered without a gap, with no frame keyed twice.
+
+## Checks
+
+Run `cargo test --locked -p xrf-light-anim` from the repository root.
+
+Sources: the [library](src/light_anim_file.rs), [animation](src/light_anim_item.rs), [key](src/light_anim_key.rs), and
+the tests of the [format](src/tests/format.rs), [evaluation](src/tests/evaluation.rs) and
+[editing](src/tests/editing.rs).

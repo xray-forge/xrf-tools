@@ -46,11 +46,11 @@ Volumes merge in path order. When two volumes mount the same entry at the same p
 directory named `patches` has no special priority here. To apply the archive-directory declaration order from
 `fsgame.ltx`, open the installation through `xrf-vfs`.
 
-The engine registers an entry under its volume's entry point, so two volumes holding `common.ltx` under
-`$fs_root$\gamedata\configs\` and `$fs_root$\gamedata\scripts\` hold two files. An entry's `name` within the project is
-its authored name behind the directories of its volume's entry point that the set's other volumes do not share:
-`configs\common.ltx` and `scripts\common.ltx` there. A set mounted at one directory, as nearly every set is, names each
-entry exactly as authored. `entry.authored_name` keeps the row as the volume records it.
+An entry's `name` is its authored name as stored, except when the set's volumes mount at different entry points. The
+engine registers each entry under its volume's entry point, so `common.ltx` in a volume mounted at
+`$fs_root$\gamedata\configs\` and in another mounted at `$fs_root$\gamedata\scripts\` are two files. The project then
+prefixes each name with the entry-point directories the volumes do not share: `configs\common.ltx` and
+`scripts\common.ltx`. `entry.authored_name` always keeps the name as the volume records it.
 
 Entry names are decoded from Windows-1251. Reads by name use an exact lookup: they do not fold case, replace
 separators, or add a volume's unpack root. Use a name from `project.files` when its spelling is unknown; use `xrf-vfs`
@@ -73,14 +73,16 @@ owns them: a volume index refers to a position in that project's `archives` coll
 Use `entry.is_directory` to distinguish directory rows from files. Directory names end in a separator; a zero-byte entry
 without one is an empty file. Thus `project.files.len()` counts entries, including directories.
 
-`ArchiveDescriptor::output_root_path` comes from the volume metadata's `[header] entry_point`, with the leading alias
-removed as the engine removes it, everything up to its first `\` whatever it spells (`$fs_root$\gamedata\` becomes
-`gamedata\`). `ArchiveMetadata::read_header` reads the metadata as the engine's
-INI loader does: `;` and `//` comments outside quotes are dropped, a section is named up to its first `]` without case,
-and a value loses all whitespace outside quotes. It is empty for a volume with no metadata chunk, and a metadata
-chunk without an `entry_point` fails the open. It describes an unpack root, not an additional prefix to pass to
-`read_file_bytes`. `ArchiveDescriptor::mount_root` is where the engine registers the volume under `$fs_root$`: the same
-directories, or `gamedata` for a volume without metadata, which `output_root_path` cannot tell from `$fs_root$\`.
+Each volume records where it unpacks to:
+
+- `ArchiveDescriptor::output_root_path` is the metadata's `[header] entry_point` without its leading alias: everything
+  up to the first `\` is removed, whatever it spells, so `$fs_root$\gamedata\` becomes `gamedata\`. It is empty for a
+  volume with no metadata chunk. It is an unpack root, not a prefix to pass to `read_file_bytes`.
+- `ArchiveDescriptor::mount_root` is where the engine registers the volume under `$fs_root$`: the same directories, or
+  `gamedata` for a volume without metadata, which `output_root_path` cannot tell apart from `$fs_root$\`.
+- `ArchiveMetadata::read_header` reads the metadata as the engine's INI loader does: `;` and `//` comments outside
+  quotes are dropped, a section name ends at its first `]` and ignores case, and a value loses all whitespace outside
+  quotes. A metadata chunk without an `entry_point` fails the open.
 
 ### Understand size totals
 
@@ -120,10 +122,10 @@ fn main() -> xrf_error::XrfResult {
 }
 ```
 
-`ARCHIVE_READ_POLICY` is the archive viewers' policy, and it is also generated into the frontend's bindings as their
-preview rules. Its text limit is 10 MiB. Allowed extensions include LTX, XML, INI, JSON, scripts, and shader sources;
-extension checks ignore case. `ArchiveReadPolicy::is_text_file` checks only the extension, while `assert_can_read_as_text` also
-checks the unpacked size. A size exactly equal to the limit is allowed.
+`ARCHIVE_READ_POLICY` is the archive viewers' policy; the frontend's generated bindings carry it as their preview rules.
+Its text limit is 10 MiB, inclusive. Allowed extensions include LTX, XML, INI, JSON, scripts, and shader sources,
+compared without case. `ArchiveReadPolicy::is_text_file` checks only the extension; `assert_can_read_as_text` also
+checks the unpacked size.
 
 The policy also carries texture, image, audio, format-description, and chunk-tree preview limits for consumers. Those
 fields do not automatically constrain byte reads or copies; consumers must apply the relevant limits themselves. See the
@@ -164,16 +166,19 @@ Stored entries are copied through a bounded buffer; compressed entries are decom
 method copies a payload out of an archive. Archive creation and extraction-path handling belong to `xrf-pack`. A failed
 copy can leave a partially written target.
 
-## Validation and checks
+## Validation and errors
 
-Header reads check chunk bounds, descriptor row sizes, and that each entry name fits the engine's 520-byte buffer with
-its terminator. Payload reads and copies check that the stored byte range fits
-its volume. When stored and unpacked sizes differ, the payload is LZO-decompressed, and both the resulting size and
-CRC32 are checked. When the sizes are equal, the payload is treated as uncompressed and its CRC is not checked.
+- Header reads check chunk bounds, descriptor row sizes, and that each entry name fits the engine's 520-byte buffer
+  with its terminator.
+- Payload reads and copies check that the stored byte range fits its volume.
+- When stored and unpacked sizes differ, the payload is LZO-decompressed and both the resulting size and CRC32 are
+  checked. When they are equal, the payload is stored uncompressed and its CRC is not checked.
 
-Missing entry names, invalid volume indexes, out-of-bounds payloads, decompression failures, and failed size or CRC
-checks return `XrfError`. File operations also propagate I/O failures. The crate validates archive structure and payload
-decoding; interpreting a mesh, texture, configuration, or other unpacked asset belongs to its format crate.
+Missing entry names, invalid volume indexes, out-of-bounds payloads, decompression failures, failed size or CRC checks,
+and I/O failures return `XrfError`. The crate checks archive structure and payload decoding only; the unpacked asset's
+own format crate interprets it.
+
+## Checks
 
 From the repository root:
 
@@ -182,6 +187,5 @@ cargo test --locked -p xrf-archive
 cargo doc --locked -p xrf-archive --no-deps
 ```
 
-The README is included in the crate documentation, so its Rust examples are checked as doctests. See the
-[project operations](src/archive_project.rs), [payload reads and copies](src/payload/archive_open_volumes.rs),
+Sources: the [project operations](src/archive_project.rs), [payload reads and copies](src/payload/archive_open_volumes.rs),
 and [public exports](src/lib.rs).

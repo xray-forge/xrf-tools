@@ -34,12 +34,14 @@ and refuses to resolve it, with an error that names the DLTX option.
 
 ## Select the dialect
 
-Call `DltxDialect::select(true)` to obtain an `Arc<dyn LtxDialect>` for DLTX, or pass `false` for standard LTX, and set
-it with `LtxProjectOptions::with_dialect` before opening a project. Select it once, where a binary reads its `--dltx`
-flag: a directory layout alone does not say whether patches should apply, and downstream crates use resolved values
-without depending on this crate. `DltxDialect` is also usable directly; it names itself `dltx`.
+`DltxDialect::select(true)` returns an `Arc<dyn LtxDialect>` for DLTX; `false` returns standard LTX. Pass it to
+`LtxProjectOptions::with_dialect` before opening a project.
 
-DLTX is not standard LTX plus a patch step. It resolves base data differently even when no patch file exists, so never
+Select the dialect once, where a binary reads its `--dltx` flag. A directory layout alone does not say whether patches
+should apply, and downstream crates use resolved values without depending on this crate. `DltxDialect` is also usable
+directly; it names itself `dltx`.
+
+DLTX is not standard LTX plus a patch step: it resolves base data differently even when no patch file exists. Never
 resolve as standard LTX first and apply DLTX to the result. Differences that change values:
 
 | Behaviour               | Standard LTX          | DLTX                                                    |
@@ -56,10 +58,11 @@ missing parent that contributes no fields.
 
 ## Patch files
 
-A patch for a root is `mod_<stem>_*.ltx` in the root's own directory, matched without ASCII case; only the root gets
-patch files, not the configs it includes. When a longer base exists, it claims the names that read as its own: with
-`system.ltx` and `system_foo.ltx` both present, `mod_system_foo_bar.ltx` patches only `system_foo.ltx`. Patches apply in
-ascending name order and the alphabetically last file wins a conflict.
+- A patch for a root is `mod_<stem>_*.ltx` in the root's own directory, matched without ASCII case.
+- Only the root gets patch files, not the configs it includes.
+- A longer base claims the names that read as its own: with `system.ltx` and `system_foo.ltx` both present,
+  `mod_system_foo_bar.ltx` patches only `system_foo.ltx`.
+- Patches apply in ascending name order; the alphabetically last file wins a conflict.
 
 Given this section in the base tree:
 
@@ -95,21 +98,24 @@ split on commas and trimmed, so an edited list is written back without spaces.
 
 ## Provenance and failures
 
-Plain project reads return the resolved config without field provenance. `LtxProject::resolve_explained`, or
-`LtxResolveRequest::with_provenance` on the dialect directly, records for every field an `LtxFieldOrigin::Loaded` with
-the winning file, its load depth, and the operation prefix.
+Plain project reads return the resolved config without field provenance. To get it, use
+`LtxProject::resolve_explained`, or `LtxResolveRequest::with_provenance` on the dialect directly: every field then
+carries an `LtxFieldOrigin::Loaded` with the winning file, its load depth, and the operation prefix.
 
-Diagnostics report what the engine does silently (an orphan override, a missing parent, a field before any section) and
-sit beside a successful result. Conditions the engine refuses to start on, such as a duplicate plain section or an
-inheritance cycle, return `Err`.
+Two kinds of failure:
 
-The dialect reads documents and directory listings through `xrf_ltx::LtxDocumentSource` and performs no file I/O itself,
-so the same rules run over loose files, archives, or test documents held in a map. It splits a path at either slash, so
-a host path handed over by `Ltx::read_from_file_with_dialect` finds its patch files and includes as a VFS path does.
+- **Diagnostics** sit beside a successful result and report what the engine does silently: an orphan override, a
+  missing parent, a field before any section.
+- **Errors** (`Err`) are conditions the engine refuses to start on, such as a duplicate plain section or an
+  inheritance cycle.
+
+The dialect does no file I/O itself. It reads documents and listings through `xrf_ltx::LtxDocumentSource`, so the same
+rules run over loose files, archives, or test documents in a map. It splits paths at either slash, so a host path from
+`Ltx::read_from_file_with_dialect` finds its patches and includes as a VFS path does.
 
 ## Checks
 
 Run `cargo test --locked -p xrf-dltx` from the repository root.
 
-See the [dialect](src/dltx_dialect.rs), [patch discovery](src/discovery/dltx_discovery.rs), and
+Sources: the [dialect](src/dltx_dialect.rs), [patch discovery](src/discovery/dltx_discovery.rs), and
 [compatibility tests](src/tests).

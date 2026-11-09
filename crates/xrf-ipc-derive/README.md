@@ -5,7 +5,7 @@ The `#[constant]` attribute that [xrf-ipc](../xrf-ipc/README.md) re-exports. Dep
 
 ## `#[constant]`
 
-On a module-level `const` item, public or private and of any name, it keeps the item as written and adds a hidden
+Put it on a module-level `const` item, public or private, of any name. It keeps the item as written and adds a hidden
 module beside it, `__xrf_ipc_constant_<NAME>`, that submits an `xrf_ipc::IpcConstant` to `inventory`:
 
 | Field         | Value                                                                                          |
@@ -16,9 +16,11 @@ module beside it, `__xrf_ipc_constant_<NAME>`, that submits an `xrf_ipc::IpcCons
 | `value`       | A function serializing it through `IpcConstant::serialize_value`, so its type must `Serialize` |
 | `data_type`   | Its type's definition through `IpcConstant::define_type`, so its type must be a `specta::Type` |
 
-A value Rust cannot write as a `const`, one holding a `Vec` or a `String`, is a module-level function of no arguments
-computing it, not generic, async or unsafe; it is called as the bindings are generated and exported under its name in
-upper case (`render_feature_schema` as `RENDER_FEATURE_SCHEMA`).
+### Computed values
+
+For a value Rust cannot write as a `const` (one holding a `Vec` or `String`), mark a module-level function that
+computes it instead. It must take no arguments and not be generic, async or unsafe. It is called when the bindings are
+generated and exported under its name in upper case: `render_feature_schema` becomes `RENDER_FEATURE_SCHEMA`.
 
 ```rust
 /// The engine's cascade widths in metres.
@@ -32,7 +34,9 @@ fn main() {
 }
 ```
 
-Inner indentation of a doc line survives; `#[doc(hidden)]` and other list-form doc attributes are skipped.
+### Doc comments
+
+Inner indentation of a doc line survives. `#[doc(hidden)]` and other list-form doc attributes are skipped.
 
 ```rust
 /// Frames VBAO accumulates over at most.
@@ -61,6 +65,9 @@ static RENDER_MAX_SHADOW_FILTER: u32 = 3;
 
 ## Checks
 
-Run `cargo test --locked -p xrf-ipc-derive`. The trybuild cases are in `tests/ui`: `pass/` compiles and runs, `fail/`
-holds each refused form with the diagnostic it must produce in its `.stderr`. The expansion is `ConstantAttribute`, in
-[`constant_attribute.rs`](src/constant_attribute.rs).
+Run `cargo test --locked -p xrf-ipc-derive`. The trybuild cases are in `tests/ui`:
+
+- `pass/` compiles and runs;
+- `fail/` holds each refused form, with the diagnostic it must produce in its `.stderr`.
+
+The expansion is `ConstantAttribute`, in [`constant_attribute.rs`](src/constant_attribute.rs).

@@ -1,10 +1,17 @@
 # xrf-ipc-typescript
 
-Generates the TypeScript mirror of a Tauri command surface and the Rust types it carries, and checks a committed mirror
-against the Rust sources. The crate knows nothing of any one application: the caller supplies each plugin's Specta
-builder, the output directory, which crates share a types module, and how the generated modules address one another and
-the runtime beside them (`MirrorImports`). The desktop app drives it from `bin/xrf-app/app/src/ipc/bindings/generator.rs`,
-writing `packages/xrf-ipc/src/`; `cargo make generate-typescript` regenerates and then formats that tree.
+Generates the frontend's TypeScript mirror of a Tauri command surface and the Rust types it carries, and checks a
+committed mirror against the Rust sources.
+
+The crate knows no particular application. The caller supplies:
+
+- each plugin's Specta builder;
+- the output directory;
+- which crates share a types module (`TypeModules`);
+- how generated modules import one another and the runtime beside them (`MirrorImports`).
+
+The desktop app drives it from `bin/xrf-app/app/src/ipc/bindings/generator.rs` and writes `packages/xrf-ipc/src/`.
+`cargo make generate-typescript` regenerates that tree and formats it.
 
 ## Generate and verify
 
@@ -30,26 +37,47 @@ fn verify<R: tauri::Runtime>(committed: &Path, scratch: &Path, surfaces: &[IpcCo
 }
 ```
 
-`MirrorImports::new(root)` names the output directory as its modules import it: `@/core/ipc` under an application's
-alias, `#` inside a package mapping `"#/*"` to its own sources. The runtime beside the mirror provides `invoke` (the
-counted `invoke`), `raw` (`invokeRaw`), `bulk/bulk-call` (`IBulkCall`; a file, since a package's `#/*` resolves no
-directory barrel) and `signature` (`IIpcCommandSignature`, `IIpcBulkRouteSignature`). The desktop app's mirror lives in
-the `@xrf/ipc` package (`packages/xrf-ipc/src/`), generated with the root `#`.
+The app runs generation as an ignored `#[test]`, because the test harness is what links the Specta builders in.
 
-An `IpcCommandSurface` is one plugin: its name (the wire namespace and the command module's file stem), its
-`tauri_specta::Builder`, and the raw commands and bulk routes that builder cannot hold, each declared by hand as a name
-and `(argument, TypeScript type)` pairs.
+### Inputs
 
-`generate` deletes and rewrites `types/` and `commands/` under `output`. It returns an error when the output cannot be
-written, or when an invariant the mirror rests on breaks (a type owned by two modules, type modules importing each
-other, a referenced type declared outside the workspace, two surfaces or declarations of one name, a builder configured
-otherwise than its wrappers are rendered for); what it wrote before stopping is left as it is, for the next run to
-replace. The app runs it as an ignored `#[test]`, because the test harness is what links the Specta builders in.
+An `IpcCommandSurface` is one plugin:
 
-The order of its steps belongs to the generator, not the caller: commands are exported first, because that collects the
-types they reference and renders the commands' wrappers; the type modules are written next, because only then is it
-known which module declares what; each command module is written after, because the type modules say what its wrappers
-import; and the merged signatures last, because they import every command module.
+- its name, which is the wire namespace and the command module's file stem;
+- its `tauri_specta::Builder`;
+- the raw commands and bulk routes the builder cannot hold, each declared by hand as a name and
+  `(argument, TypeScript type)` pairs.
+
+`MirrorImports::new(root)` names the output directory as its modules import it: `@/core/ipc` under an application
+alias, or `#` inside a package that maps `"#/*"` to its own sources. The desktop app's mirror is the `@xrf/ipc` package,
+generated with the root `#`.
+
+The runtime beside the mirror must provide:
+
+| Module           | Provides                                                         |
+| ---------------- | ---------------------------------------------------------------- |
+| `invoke`         | The counting `invoke`                                            |
+| `raw`            | `invokeRaw`                                                      |
+| `bulk/bulk-call` | `IBulkCall` (a file, because `#/*` resolves no directory barrel) |
+| `signature`      | `IIpcCommandSignature`, `IIpcBulkRouteSignature`                 |
+
+### What `generate` does
+
+It deletes and rewrites `types/` and `commands/` under `output`, in a fixed order:
+
+1. Export the commands, collecting the types they reference and rendering their wrappers.
+2. Write the type modules, which settles which module declares what.
+3. Write each command module, importing from the type modules.
+4. Write the merged signatures, which import every command module.
+
+It fails when the output cannot be written or an invariant breaks:
+
+- a type owned by two modules, or type modules importing each other;
+- a referenced type declared outside the workspace;
+- two surfaces or declarations with one name;
+- a builder configured differently from what its wrappers are rendered for.
+
+Whatever it wrote before failing stays for the next run to replace.
 
 ## What it writes
 
@@ -61,59 +89,91 @@ import; and the merged signatures last, because they import every command module
 | `commands/<plugin>-bulk.ts` | `E<Plugin>BulkRoute`, `<plugin>BulkRoutes` and their signatures, where it has any |
 | `commands/signatures.ts`    | `IIpcCommandSignatures` and `IIpcBulkRouteSignatures`, every plugin's merged      |
 
-A type is written once, into the module of the crate that declares it, read off the first segment of its
-`module_path!()` (`xrf_renderer` becomes `xrf-renderer.ts`) rather than from any hand-written list. A caller may group a
-family of crates into one module (`TypeModules::with_family("xrf_app", "xrf-app")` puts `xrf_app` and every
-`xrf_app_<part>` into `xrf-app.ts`), so one surface split into crates stays one module to the frontend. Only `xrf_*`
-crates have modules; a command referencing a type declared anywhere else fails generation. Modules import one another as
-`<root>/types/<module>`, the root `MirrorImports` was given.
+### Type modules
 
-A command module is written from data, never from text Specta wrote: `CommandWrappers` renders each wrapper from the
-builder's own function data through Specta's exporter, `(arguments) => __TAURI_INVOKE<Return>(member, { arguments })`,
-as Tauri Specta does for a builder that throws on error, keeps no serde phases, casts big integers to numbers and
-declares no events, semantic types or constants, which it asserts every builder does. The object is
-`<plugin>Commands`, its `invoke` the counting wrapper from `<root>/invoke`, and `Channel` comes from Tauri for a module
-whose wrappers carry one. A Specta upgrade therefore shows up as a compile error on its datatype API rather than as a
-layout the generator no longer recognises. Raw command wrappers call `invokeRaw` from `<root>/raw` and return
-`Promise<ArrayBuffer>`, a raw command being a Tauri command answering `tauri::ipc::Response`. Bulk route wrappers are
-served outside IPC, so they answer the call as data, an `IBulkCall` holding its route and arguments.
+- A type is written once, into the module of the crate that declares it, taken from the first segment of its
+  `module_path!()`: `xrf_renderer` becomes `xrf-renderer.ts`. There is no hand-written list.
+- A family of crates can share one module: `TypeModules::with_family("xrf_app", "xrf-app")` puts `xrf_app` and every
+  `xrf_app_<part>` into `xrf-app.ts`.
+- Only `xrf_*` crates get modules. A command referencing a type declared elsewhere fails generation.
+- Modules import one another as `<root>/types/<module>`.
 
-Each module names what it wraps in a string enum, so a caller or a test names a command by a member the compiler checks
-instead of quoting its wire name: `EJobsCommand.ATTACH = "plugin:jobs|attach"`, `EArchivesBulkRoute.READ_ENTRY =
-"archives/read_entry"`, members named after the Rust command (`open_level` is `OPEN_LEVEL`). The wrappers invoke the
-members. Beside the wrappers,
-`I<Plugin>CommandSignatures` keys each member to `IIpcCommandSignature<typeof <plugin>Commands.<wrapper>, [<argument
-names>]>`: the record the command is invoked with and what it resolves to, read off the wrapper in TypeScript, so a
-signature is the wrapper's own types, retyped enum parameters included. The argument names come from Specta's function
-data, camel-cased as Tauri Specta writes them. `signatures.ts` merges every plugin's command and raw signatures into
-`IIpcCommandSignatures` and every bulk route's into `IIpcBulkRouteSignatures`, which a typed mock keys by member.
+### Command modules
 
-A constant marked `#[xrf_ipc::constant]` where it is declared (see [xrf-ipc](../xrf-ipc/README.md)) lands in its
-crate's module by the same rule. The generator reads every `xrf_ipc::IpcConstant` linked into the binary and writes a
-module's constants after its imports and before its types, sorted by name, each under its doc comment as JSDoc:
-`export const NAME: number = 4;`. A crate with constants and no types still gets a module. The TypeScript type follows
-the serialized value: `number` (an `f32` in its own shortest form), the string's own literal (`export const
-ARCHIVES_JOB_PACK = "archives.pack" as const;`, so a kind of value is the union of its constants) or `boolean`. An object
-or an array is typed as Specta names the constant's Rust type and written as a literal with bare identifier keys
-(`export const ARCHIVE_READ_POLICY: ArchiveReadPolicy = { ... };`). Every constant's type joins the collected types
-before ownership is resolved, so a type only a constant carries is declared in its crate's module, and a module imports
-what its constants reference. Generation fails, naming the constant, on a value that does not serialize or is a bare
-`null`, an integer past ±(2^53−1) at any depth, a type Specta cannot name, two constants of one name in a module, or a
-constant named as a type of its module.
+`CommandWrappers` renders each wrapper from the builder's function data through Specta's exporter, never from text
+Specta wrote:
+
+```ts
+(arguments) => __TAURI_INVOKE<Return>(member, { arguments });
+```
+
+- This matches Tauri Specta for a builder that throws on error, keeps no serde phases, casts big integers to numbers,
+  and declares no events, semantic types or constants. The generator asserts every builder is configured that way.
+- The object is `<plugin>Commands`; its `invoke` is the counting wrapper from `<root>/invoke`. `Channel` is imported
+  from Tauri where a wrapper carries one.
+- Raw command wrappers call `invokeRaw` from `<root>/raw` and return `Promise<ArrayBuffer>`; a raw command is a Tauri
+  command answering `tauri::ipc::Response`.
+- Bulk route wrappers are served outside IPC, so they return the call as data: an `IBulkCall` with its route and
+  arguments.
+
+A Specta upgrade therefore shows up as a compile error on its datatype API, not as output the generator silently
+misreads.
+
+### Command enums and signatures
+
+Each module names what it wraps in a string enum, so code names a command by a checked member instead of its wire name:
+
+- `EJobsCommand.ATTACH = "plugin:jobs|attach"`;
+- `EArchivesBulkRoute.READ_ENTRY = "archives/read_entry"`;
+- members are named after the Rust command: `open_level` is `OPEN_LEVEL`.
+
+`I<Plugin>CommandSignatures` maps each member to
+`IIpcCommandSignature<typeof <plugin>Commands.<wrapper>, [<argument names>]>`. The signature is read off the wrapper in
+TypeScript, so it carries the wrapper's own types, retyped enum parameters included. Argument names come from Specta's
+function data, camel-cased as Tauri Specta writes them.
+
+`signatures.ts` merges every plugin's command and raw signatures into `IIpcCommandSignatures`, and every bulk route's
+into `IIpcBulkRouteSignatures`; a typed mock keys by member.
+
+### Constants
+
+A constant marked `#[xrf_ipc::constant]` (see [xrf-ipc](../xrf-ipc/README.md)) lands in its crate's module by the same
+rule. The generator reads every `xrf_ipc::IpcConstant` linked into the binary.
+
+- Constants are written after the imports and before the types, sorted by name, each under its doc comment as JSDoc.
+- A crate with constants and no types still gets a module.
+- Each constant's type joins the collected types, so a type only a constant carries is declared in its crate's module.
+
+The TypeScript type follows the serialized value:
+
+| Value           | Written as                                                                                                     |
+| --------------- | -------------------------------------------------------------------------------------------------------------- |
+| Number          | `export const NAME: number = 4;` (an `f32` in its shortest form)                                               |
+| String          | Its literal: `export const ARCHIVES_JOB_PACK = "archives.pack" as const;`                                      |
+| Boolean         | `boolean`                                                                                                      |
+| Object or array | Its Specta type, as a literal with bare keys: `export const ARCHIVE_READ_POLICY: ArchiveReadPolicy = { ... };` |
+
+String constants keep their literal type, so a kind of value is the union of its constants.
+
+Generation fails, naming the constant, on:
+
+- a value that does not serialize, or a bare `null`;
+- an integer beyond ±(2^53−1) at any depth;
+- a type Specta cannot name;
+- two constants with one name in a module, or a constant named like a type in its module.
 
 ## Enumerations
 
-Every exported Rust enum gains a TypeScript enum named `E<Type>`, so a frontend comparison names a member the compiler
-resolves instead of quoting a spelling nothing checks. One of two shapes applies:
+Every exported Rust enum also gets a TypeScript enum, `E<Type>`, so frontend comparisons use checked members instead of
+quoted spellings. There are two shapes:
 
-- A closed set of identities (variants carrying no data) gets an enum **replacing** the union, with the union derived
-  from it beside it. Only these may stand in for the type itself, which is what a command _parameter_ is rewritten to.
-  A return keeps the union: what arrives is a raw string off the IPC channel, and naming it as a nominal enum would
-  assert about it rather than check it.
-- An internally tagged union keeps its object shapes and gains an enum of its **discriminants**, declared before it.
-  That enum stands in for the tag and never for the value.
+- **Variants without data** get an enum that replaces the union, plus a union derived from it. A command parameter is
+  rewritten to the enum. A return keeps the union: what arrives is a raw string off IPC, and typing it as the enum
+  would assert rather than check.
+- **Internally tagged unions** keep their object shapes and gain an enum of their tags, declared before them. The enum
+  types the tag, never the value.
 
-For `enum Shading { Flat, PerPixel }` serialized in camelCase, the generator writes:
+For `enum Shading { Flat, PerPixel }` serialized in camelCase:
 
 ```ts
 export enum EShading {
@@ -125,47 +185,41 @@ export enum EShading {
 export type Shading = `${EShading}`;
 ```
 
-Tagging is detected from the mapped shape (an internally tagged variant renders as named fields whose tag field is a
-one-member literal carrying that variant's own spelling), because `specta-serde` keeps `EnumRepr` private. Externally
-tagged, adjacently tagged and untagged unions have no discriminant to name and gain nothing.
+- Tagging is detected from the shape: an internally tagged variant renders as named fields with a one-member literal
+  tag. (`specta-serde` keeps `EnumRepr` private.) Externally tagged, adjacently tagged and untagged unions have no tag
+  to name and get nothing.
+- Member names come from the Rust identifier, not the wire spelling: `AiCrow` gives `AI_CROW`, not `AICROW`. Two
+  variants that fold to one name fail generation, naming both; rename one.
+- A variant's doc comment carries over to its member.
 
-A member name comes from the Rust identifier rather than the wire spelling, which carries no word boundaries:
-upper-casing `AiCrow`'s spelling gives `AICROW` where the identifier gives `AI_CROW`. Two variants folding onto one
-member name fail generation, naming the Rust identifiers, because renaming one of those is the only fix. A variant's
-doc comment travels onto its member.
+Caveat for consumers: a `switch` over enum members narrows the union but does not prove it exhaustive. Add an
+`assertExhaustive`-style default, or a variant added in Rust compiles silently.
 
-A consumer should know one caveat: an enum member `case` narrows a union in TypeScript but does not prove it exhausted,
-so a `switch` written with members needs an `assertExhaustive`-style default, or a variant added in Rust compiles
-silently.
+## Verify a committed mirror
 
-## Verifying committed mirrors
+`IpcBindingsGenerator::verify` generates into a scratch tree, parses every exported declaration of both trees into a
+canonical form (so the frontend formatter's layout does not matter), and compares them.
 
-`IpcBindingsGenerator::verify` generates into a scratch tree, reads every exported declaration of both trees into a
-canonical form (parsed and re-emitted, so the frontend formatter's layout does not count), and compares them.
-`SurfaceDrift::is_breaking` is true when a declaration was removed or changed shape; an addition alone is listed in
-`describe` as context. That lets a consumer keep its mirror in version control and fail a test when the Rust sources
-move past it. `verify` fails on anything `generate` does, and when either tree does not parse as TypeScript.
+- `SurfaceDrift::is_breaking` is true when a declaration was removed or changed shape. Additions alone are listed in
+  `describe` as context.
+- `verify` fails on anything `generate` fails on, and when either tree does not parse as TypeScript.
 
-Run `cargo test --locked -p xrf-ipc-typescript`.
+This lets a consumer keep its mirror in version control and fail a test when the Rust sources move past it.
 
 ## Layout
 
-One type per file, named for it. [`IpcBindingsGenerator`](src/ipc_bindings_generator.rs) owns the run, in the order
-above; the steps live in one directory each:
+One type per file, named for it. [`IpcBindingsGenerator`](src/ipc_bindings_generator.rs) runs the steps above; each
+lives in its own directory:
 
-- [`input/`](src/input/): what the caller hands it, `IpcCommandSurface`, `TypeModules` naming a crate's module and
-  `MirrorImports` addressing one.
-- [`collected/`](src/collected/): what the run gathers before it writes anything. `CommandTypescript` is the exporter
-  recording into `CollectedCommands` each plugin's `PluginCommands`, its commands (`SpectaCommand`) and the wrappers
-  `CommandWrappers` rendered for them; `CollectedConstants` is every marked constant beside its type, added to the same
-  collection.
-- [`write/`](src/write/): `TypeModuleWriter` and `CommandModuleWriter` write the two directories through
-  `GeneratedOutput`, which owns the tree's layout and header; `TypeOwnership` answers which module declares what,
-  `PluginSymbols` spells a plugin's generated names and `PluginModules` says which of its modules exist. The writers of
-  `types/` and `commands/` share ownership, enumerations, output and the exporter, so they are one layer, not two.
-- [`verify/`](src/verify/): `Surface` reads a generated tree back, and `SurfaceDrift` is how two differ.
-- [`enumerations/`](src/enumerations/): the `E*` enums, each an `Enumeration` of its `EnumerationSubject`.
-- [`typescript/`](src/typescript/): vocabulary rather than a layer. `source` reads generated text, `syntax` emits it,
-  `normalization` canonicalizes a parsed declaration, and `format` is the Specta shape the frontend expects. Every
-  module in it is a leaf, depended on from above and depending on nothing else here, which is why it is free functions
-  rather than types.
+| Directory                            | Holds                                                                                                                                                                                                              |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [`input/`](src/input/)               | What the caller passes: `IpcCommandSurface`, `TypeModules`, `MirrorImports`                                                                                                                                        |
+| [`collected/`](src/collected/)       | What the run gathers first: `CommandTypescript` records each plugin's `PluginCommands` (its `SpectaCommand`s and their `CommandWrappers`) into `CollectedCommands`; `CollectedConstants` adds the marked constants |
+| [`write/`](src/write/)               | `TypeModuleWriter` and `CommandModuleWriter` writing through `GeneratedOutput`; `TypeOwnership`, `PluginSymbols`, `PluginModules`                                                                                  |
+| [`verify/`](src/verify/)             | `Surface` reads a generated tree back; `SurfaceDrift` compares two                                                                                                                                                 |
+| [`enumerations/`](src/enumerations/) | The `E*` enums: `Enumeration` and `EnumerationSubject`                                                                                                                                                             |
+| [`typescript/`](src/typescript/)     | Leaf helpers: `source` reads generated text, `syntax` emits it, `normalization` canonicalizes, `format` is the expected Specta shape                                                                               |
+
+## Checks
+
+Run `cargo test --locked -p xrf-ipc-typescript` from the repository root.

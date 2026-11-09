@@ -1,8 +1,10 @@
 # xrf-chunk
 
-Reads and writes X-Ray binary chunks, the framing most engine formats share: a `u32` ID and a `u32` payload size
-followed by the payload bytes, with children nested inside a parent's payload. Every chunked format crate (OGF, OMF,
-THM, level, spawn, material and the rest) reads and writes through this one; it knows no format itself.
+Reads and writes X-Ray binary chunks, the framing most engine formats share: a `u32` ID, a `u32` payload size, then the
+payload bytes. Children nest inside a parent's payload.
+
+Every chunked format crate (OGF, OMF, THM, level, spawn, material and the rest) reads and writes through this one. It
+knows no format itself.
 
 ## Write and read a chunk
 
@@ -30,11 +32,22 @@ The outer reader spans the whole buffer. The child's ID is `7`, while its positi
 
 ## Sources and readers
 
-- Open owned bytes with `ChunkReader::from_vec`, bytes the caller keeps reading as a slice with `from_shared` (an
-  `Arc<Vec<u8>>`, so several passes share one buffer), copied bytes with `from_bytes`, an `InMemoryChunkDataSource` with
-  `from_source`, a file window with `from_slice`, or a path with `from_path`, which reads positionally rather than
-  holding the file. `from_file` loads the whole file into memory. Every constructor rejects an empty source; an empty
-  child chunk is ordinary.
+Open a reader from:
+
+| Constructor   | Source                                                 |
+| ------------- | ------------------------------------------------------ |
+| `from_vec`    | Owned bytes                                            |
+| `from_shared` | An `Arc<Vec<u8>>`, so several passes share one buffer  |
+| `from_bytes`  | A slice, copied                                        |
+| `from_source` | An `InMemoryChunkDataSource`                           |
+| `from_slice`  | A window of a file                                     |
+| `from_path`   | A path, read positionally rather than holding the file |
+| `from_file`   | A file, loaded whole into memory                       |
+
+Every constructor rejects an empty source; an empty child chunk is ordinary.
+
+Then:
+
 - Locate children with `read_children` or `ChunkIterator`, then pick one with `ChunkReader::find_required_by_id`,
   `find_optional_by_id` or their `find_one_of_*` forms, which match the stored ID exactly and take a preference order
   of IDs. `ChunkSizePackedIterator` walks a payload stored as `[size][content]` records, where each size counts its own
@@ -102,5 +115,5 @@ must interpret the compressed payload explicitly. X-Ray's codec for it is [xrf-l
 Run `cargo test --locked -p xrf-chunk` from the repository root. Typed format tests belong to the crate implementing the
 payload, while this crate checks framing, boundaries, sources, and primitive I/O.
 
-See the [reader](src/reader/chunk_reader.rs), [child iterator](src/iterator/chunk_iterator.rs),
+Sources: the [reader](src/reader/chunk_reader.rs), [child iterator](src/iterator/chunk_iterator.rs),
 [writer](src/writer/chunk_writer.rs), [in-memory source](src/source/chunk_memory_source.rs), and [exports](src/lib.rs).
