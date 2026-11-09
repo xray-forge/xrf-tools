@@ -279,7 +279,10 @@ each written file and its sources, and what the decompile chose rather than read
 
 `LevelSceneExporter::export` goes back: the files the Build writes from a scene's parts (`BuildGame`,
 `BuildWallmarks`), by name. `level.game`, `level.env_mod` and `level.fog_vol` are written for every scene, empty where
-it has no such tool; the rest only where their tool exports something. `write_to_directory` writes them, each staged,
+it has no such tool; the rest only where their tool exports something. All 22 vanilla CoP levels decompile and export
+every such file byte for byte. Across the other trees the differences are the ones each conversion above names, plus
+nine Anomaly and GAMMA underground levels that ship no `level.env_mod` or `level.fog_vol`, which CoP's Build always
+writes. `write_to_directory` writes them, each staged,
 saying of each whether it is new, the same or changed. Since the editor's Build moves every file it may write aside
 first, it refuses a directory holding one the scene does not build rather than delete it. Whether existing files may be
 replaced is the front-end's to ask (`--force`, a confirmation), as `LevelSceneDecompile::get_existing_paths` lets it ask
