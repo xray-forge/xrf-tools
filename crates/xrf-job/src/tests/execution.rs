@@ -1,10 +1,10 @@
 use std::num::NonZeroUsize;
 use std::str::FromStr;
-use std::thread;
 
 use crate::execution::ExecutionOrigin;
 use crate::execution::ExecutionPlan;
 use crate::execution::ExecutionRequest;
+use crate::execution::HostProcessors;
 
 fn read(text: &str) -> ExecutionRequest {
   ExecutionRequest::from_str(text).expect("the request is readable")
@@ -22,7 +22,7 @@ fn workers(count: usize) -> NonZeroUsize {
 }
 
 fn host() -> NonZeroUsize {
-  thread::available_parallelism().unwrap_or(NonZeroUsize::MIN)
+  HostProcessors::count()
 }
 
 #[test]

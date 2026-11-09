@@ -8583,6 +8583,7 @@ dependencies = [
  "serde",
  "serde_json",
  "specta",
+ "windows",
  "xrf-error",
  "xrf-utils",
 ]

@@ -1,11 +1,9 @@
 use std::num::NonZeroUsize;
 use std::str::FromStr;
-use std::thread;
 
 use xrf_error::{XrfError, XrfResult};
 
-use crate::execution::ExecutionOrigin;
-use crate::execution::ExecutionPlan;
+use crate::execution::{ExecutionOrigin, ExecutionPlan, HostProcessors};
 
 /// How much of the machine a caller asked for, before the machine has been consulted.
 ///
@@ -44,12 +42,12 @@ impl ExecutionRequest {
     }
   }
 
-  /// What the host offers, or one worker where it will not say.
+  /// What the host offers this process, or one worker where it will not say.
   ///
-  /// Uncapped, and the same answer Rayon reaches on its own, so asking for `auto` changes how work is bounded without
-  /// changing how wide it runs.
+  /// Uncapped, and the processors the process may run on: Rayon's own default, on Windows, counts the whole machine even
+  /// for a process confined to part of it ([`HostProcessors`]).
   fn available_parallelism() -> NonZeroUsize {
-    thread::available_parallelism().unwrap_or(NonZeroUsize::MIN)
+    HostProcessors::count()
   }
 
   /// A percentage of the host, rounded down, never rounded away, and never larger than the host.
