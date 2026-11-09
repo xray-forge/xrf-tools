@@ -53,7 +53,7 @@ impl LtxSchemeReader {
         }
 
         fields.push(LtxSchemeFieldReport {
-          declared: Some(Self::to_declaration(declared, false)),
+          declared: Some(LtxSchemeFieldDeclaration::of(declared, false)),
           resolved: Self::to_resolved(resolution, name, section, field),
           name: String::from(field),
         });
@@ -68,7 +68,7 @@ impl LtxSchemeReader {
       }
 
       fields.push(LtxSchemeFieldReport {
-        declared: any.map(|declared| Self::to_declaration(declared, true)),
+        declared: any.map(|declared| LtxSchemeFieldDeclaration::of(declared, true)),
         resolved: Self::to_resolved(resolution, name, section, field),
         name: String::from(field),
       });
@@ -85,16 +85,6 @@ impl LtxSchemeReader {
     match resolution.get_origin(name, LTX_SCHEME_FIELD).into() {
       LtxResolvedFieldOrigin::Inherited { section, .. } => Some(section),
       _ => None,
-    }
-  }
-
-  /// One declared field, as a record something outside Rust can render.
-  fn to_declaration(declared: &LtxFieldScheme, is_any: bool) -> LtxSchemeFieldDeclaration {
-    LtxSchemeFieldDeclaration {
-      data_type: declared.data_type.to_string(),
-      is_any,
-      is_array: declared.is_array,
-      is_optional: declared.is_optional,
     }
   }
 

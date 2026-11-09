@@ -1,8 +1,7 @@
-use xrf_dds::{DdsMipFilter, ImageFormat};
+use xrf_dds::ImageFormat;
 use xrf_error::{XrfError, XrfResult};
-use xrf_thm::{ThmFile, ThmFormat, ThmMipFilter, ThmTextureFlag, ThmTextureParamChunk, ThmTextureType};
+use xrf_thm::{ThmFile, ThmFormat, ThmTextureFlag, ThmTextureParamChunk, ThmTextureType};
 
-use crate::build::recipe::build_texture_advanced_chain::BuildTextureAdvancedChain;
 use crate::build::recipe::build_texture_bump_pair::BuildTextureBumpPair;
 use crate::build::recipe::build_texture_layout::BuildTextureLayout;
 use crate::build::recipe::build_texture_mipmaps::BuildTextureMipmaps;
@@ -54,7 +53,7 @@ impl BuildTextureRecipe {
     let param: &ThmTextureParamChunk = file.texture_param.as_ref().ok_or_else(|| {
       XrfError::new_texture_processing_error("Cannot build from a descriptor carrying no texture parameters")
     })?;
-    let mipmaps: BuildTextureMipmaps = Self::to_mipmaps(param, file.fade_delay);
+    let mipmaps: BuildTextureMipmaps = BuildTextureMipmaps::of(param, file.fade_delay);
 
     Ok(Self {
       layout,
@@ -81,39 +80,6 @@ impl BuildTextureRecipe {
         other.label()
       ))),
     }
-  }
-
-  /// What the texture carries below its base level.
-  fn to_mipmaps(param: &ThmTextureParamChunk, fade_delay: Option<u8>) -> BuildTextureMipmaps {
-    if !param.flags.has(ThmTextureFlag::GenerateMipMaps) {
-      return BuildTextureMipmaps::Disabled;
-    }
-
-    let filter: DdsMipFilter = match param.mip_filter {
-      // Not a filter: `DXTCompressImage` reduces this chain itself and hands nvDXT the levels.
-      ThmMipFilter::Advanced => {
-        return BuildTextureMipmaps::Advanced(BuildTextureAdvancedChain::of(param, fade_delay));
-      }
-      ThmMipFilter::Box => DdsMipFilter::Box,
-      ThmMipFilter::Point => DdsMipFilter::Point,
-      ThmMipFilter::Triangle => DdsMipFilter::Triangle,
-      ThmMipFilter::Quadratic => DdsMipFilter::Quadratic,
-      ThmMipFilter::Cubic => DdsMipFilter::Cubic,
-      ThmMipFilter::Catrom => DdsMipFilter::Catrom,
-      ThmMipFilter::Mitchell => DdsMipFilter::Mitchell,
-      ThmMipFilter::Gaussian => DdsMipFilter::Gaussian,
-      ThmMipFilter::Sinc => DdsMipFilter::Sinc,
-      ThmMipFilter::Bessel => DdsMipFilter::Bessel,
-      ThmMipFilter::Hanning => DdsMipFilter::Hanning,
-      ThmMipFilter::Hamming => DdsMipFilter::Hamming,
-      ThmMipFilter::Blackman => DdsMipFilter::Blackman,
-      ThmMipFilter::Kaiser => DdsMipFilter::Kaiser,
-      // A filter the SDK has no name for is one nvDXT was never told about either: its `switch` has no case for it,
-      // so the library kept whatever it defaults to. Box is the closest thing to that this build can state.
-      ThmMipFilter::Unknown(_) => DdsMipFilter::Box,
-    };
-
-    BuildTextureMipmaps::Filtered(filter)
   }
 
   /// Every recipe field the descriptor sets that this build does not carry out.

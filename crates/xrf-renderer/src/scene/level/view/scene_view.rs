@@ -9,7 +9,6 @@ use crate::feature::effects::rain::cover::rain_covers::RainCovers;
 use crate::feature::image::exposure::reading::exposure_decisions::ExposureDecisions;
 use crate::feature::image::present::display::display_mode::DisplayMode;
 use crate::feature::scene::drawable::draw::drawable_kind_readied::DrawableKindReadied;
-use crate::feature::scene::wind::wind_feature::WindFeature;
 use crate::feature::view::scene_features::SceneFeatures;
 use crate::feature::view::view_frame_end::ViewFrameEnd;
 use crate::feature::view::view_stages::ViewStages;
@@ -33,7 +32,6 @@ use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::level_time::LevelTime;
 use crate::scene::level::lights::asks::light_asks::LightAsks;
 use crate::scene::level::page::helpers::view::helper_marks_pass::HelperMarksPass;
-use crate::scene::level::shadow::shadow_sway::ShadowSway;
 use crate::scene::level::view::record::lighting_recorded::LightingRecorded;
 use crate::scene::level::view::record::readied_frame::ReadiedFrame;
 use crate::scene::level::view::record::shadows_recorded::ShadowsRecorded;
@@ -43,7 +41,6 @@ use crate::scene::level::view::scene_output::SceneOutput;
 use crate::scene::level::view::view_frame::ViewFrame;
 use crate::scene::level::view::view_pick::ViewPick;
 use crate::scene::level::view::view_prepare::ViewPrepare;
-use crate::scene::static_scene::static_scene::StaticScene;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
@@ -434,16 +431,5 @@ impl SceneView {
     }
 
     Some(output)
-  }
-
-  /// The sway the shadows see this frame at the level's clock `time`: the `wind`, the trees' reach, and where they
-  /// stand.
-  fn to_sway<'s>(scene: &'s StaticScene, wind: &WindFeature, time: LevelTime) -> ShadowSway<'s> {
-    ShadowSway {
-      amplitude: wind.get_sway_amplitude(),
-      reach: scene.get_sway_reach(),
-      time,
-      places: scene.list_swaying(),
-    }
   }
 }

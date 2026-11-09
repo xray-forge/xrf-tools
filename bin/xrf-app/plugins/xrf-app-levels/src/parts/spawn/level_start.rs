@@ -1,5 +1,6 @@
 use serde::Serialize;
 use xrf_math::Vector3d;
+use xrf_visual::convert_vector;
 
 use crate::parts::LevelStartOrigin;
 
@@ -16,4 +17,16 @@ pub(crate) struct LevelStart {
   #[serde(skip)]
   #[cfg_attr(feature = "typescript-bindings", specta(skip))]
   pub origin: LevelStartOrigin,
+}
+
+impl LevelStart {
+  /// An `eye` of the engine's space in the renderer's, turned to `heading` as `CActor::MoveActor` turns it: the forward
+  /// axis of `setHP` of the heading.
+  pub(crate) fn of(eye: &Vector3d, heading: f32, origin: LevelStartOrigin) -> Self {
+    Self {
+      direction: convert_vector(&Vector3d::new(-heading.sin(), 0.0, heading.cos())),
+      origin,
+      position: convert_vector(eye),
+    }
+  }
 }

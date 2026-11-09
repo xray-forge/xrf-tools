@@ -9,13 +9,10 @@ use crate::feature::lighting::lights::lights_feature::LightsFeature;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::lighting::lamp::light_animation::to_animated_color;
 use crate::lighting::lamp::light_basis::LightBasis;
-use crate::lighting::lamp::light_bulb::get_bulb_radius;
-use crate::lighting::lamp::light_shadow_size::{LIGHT_SHADOW_POINT_FACES, to_light_shadow_scale};
 use crate::lighting::lamp::light_specular::to_light_specular;
 use crate::lighting::srgb::{anchored_light, authored_light};
 use crate::scene::level::level_time::LevelTime;
 use crate::scene::level::lights::asks::light_asks::LightAsks;
-use crate::scene::level::lights::asks::light_in_view::{LightFades, LightInView};
 use crate::scene::level::lights::asks::lights_frame::LightsFrame;
 use crate::scene::level::lights::atlas::level_light_shadows::LevelLightShadows;
 use crate::scene::level::lights::atlas::light_shadow_set::LightShadowSet;
@@ -93,7 +90,7 @@ impl LevelLights {
         } else {
           1.0
         };
-        let mut record: LightRecord = Self::to_record(
+        let mut record: LightRecord = LightRecord::of(
           &self.projectors,
           light,
           it,
@@ -153,76 +150,6 @@ impl LevelLights {
     }
 
     into.write(encoder, &camera, settings.shadow_filter, self.shadows.get_atlas_use());
-  }
-
-  /// How far a shadowed light has faded from `eye` over the cull's levels of detail, `start` to `end` metres.
-  pub(super) fn to_shadow_fades(
-    light: &LightDescription,
-    basis: &LightBasis,
-    eye: Vec3,
-    (start, end): (f32, f32),
-  ) -> LightFades {
-    if matches!(light.kind, LightKind::Spot) {
-      let fade: f32 = LightBasis::to_light_lod(basis.get_spatial_sphere(light), eye, start, end);
-
-      return LightFades {
-        whole: fade,
-        faces: [1.0; 6],
-        shown: fade,
-      };
-    }
-
-    let faces: [f32; 6] = LIGHT_SHADOW_POINT_FACES
-      .map(|(direction, _)| LightBasis::to_light_lod(basis.get_face_sphere(light, direction), eye, start, end));
-
-    LightFades {
-      whole: 1.0,
-      faces,
-      shown: faces.into_iter().fold(0.0, f32::max),
-    }
-  }
-
-  /// A light's record, in view space: standing as `it` sees it, of `color` and `specular` weight, out to `range`.
-  fn to_record(
-    projectors: &[u32],
-    light: &LightDescription,
-    it: &LightInView,
-    color: Vec3,
-    specular: f32,
-    range: f32,
-    view: Mat4,
-  ) -> LightRecord {
-    let (basis, bound): (&LightBasis, Vec4) = (&it.basis, it.bound);
-    let is_spot: bool = matches!(light.kind, LightKind::Spot);
-    let projector: f32 = light
-      .projector
-      .and_then(|projector| projectors.get(projector as usize))
-      .filter(|slot| **slot != TextureCache::MISSING_SLOT)
-      .map_or(LightRecord::NO_PROJECTOR, |slot| *slot as f32);
-
-    LightRecord {
-      position: view
-        .transform_point3(basis.position)
-        .extend(if range > 0.0 { 1.0 / (range * range) } else { 0.0 }),
-      color: color.extend(specular),
-      axis: view.transform_vector3(basis.direction).extend(if is_spot {
-        (light.cone / 2.0).cos()
-      } else {
-        LightRecord::NO_CONE
-      }),
-      right: view.transform_vector3(basis.right).extend(if is_spot {
-        to_light_shadow_scale(light.cone)
-      } else {
-        0.0
-      }),
-      up: view
-        .transform_vector3(basis.up)
-        .extend(if is_spot { projector } else { LightRecord::NO_PROJECTOR }),
-      sphere: view.transform_point3(bound.truncate()).extend(bound.w),
-      shadow: Vec4::new(0.0, 0.0, 0.0, get_bulb_radius(light).powi(2)),
-      faces: [Vec4::ZERO; 6],
-      scatter: Vec4::ZERO,
-    }
   }
 
   /// The shaft values a light draws by, where it draws any: as the view's engine reads its description, the ones that

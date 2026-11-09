@@ -283,7 +283,7 @@ impl LevelLights {
         }
 
         let fades: LightFades = if is_shadowing && light.is_shadowed {
-          Self::to_shadow_fades(light, &basis, eye, lod)
+          LightFades::of(light, &basis, eye, lod)
         } else {
           LightFades::WHOLE
         };

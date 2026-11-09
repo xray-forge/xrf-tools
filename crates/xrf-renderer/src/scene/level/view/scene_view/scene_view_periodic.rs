@@ -9,6 +9,7 @@ use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::level_time::LevelTime;
 use crate::scene::level::shadow::shadow_frame::ShadowFrame;
+use crate::scene::level::shadow::shadow_sway::ShadowSway;
 use crate::scene::level::view::scene_view::SceneView;
 use crate::scene::static_scene::static_scene::StaticScene;
 
@@ -45,7 +46,7 @@ impl SceneView {
       sun_direction: shared.sun_direction,
       is_sunlit: shared.lighting.sun.truncate() != Vec3::ZERO,
       switches: shared.switches,
-      sway: Self::to_sway(statics, &features.wind, scene.get_time()),
+      sway: ShadowSway::of(statics, &features.wind, scene.get_time()),
       casters: casters.as_slice(),
     };
 
@@ -107,7 +108,7 @@ impl SceneView {
       sun_direction: shared.sun_direction,
       is_sunlit: shared.lighting.sun.truncate() != Vec3::ZERO,
       switches: shared.switches,
-      sway: Self::to_sway(statics, &features.wind, scene.get_time()),
+      sway: ShadowSway::of(statics, &features.wind, scene.get_time()),
       casters: casters.as_slice(),
     };
 
@@ -148,7 +149,7 @@ impl SceneView {
       sun_direction: self.shared.sun_direction,
       is_sunlit: self.shared.lighting.sun.truncate() != Vec3::ZERO,
       switches: self.shared.switches,
-      sway: Self::to_sway(statics, &self.features.wind, time),
+      sway: ShadowSway::of(statics, &self.features.wind, time),
       casters: casters.as_slice(),
     };
 

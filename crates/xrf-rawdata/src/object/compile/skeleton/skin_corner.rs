@@ -4,6 +4,7 @@ use xrf_editable_object::{EditableMesh, EditableVMapKind};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::{Vector2d, Vector3d};
 
+use crate::object::compile::geometry::export_vertex::ExportVertex;
 use crate::object::compile::geometry::export_vertex_bone::ExportVertexBone;
 use crate::object::compile::geometry::source::mesh_corner::MeshCorner;
 use crate::object::compile::geometry::source::mesh_corners::MeshCorners;
@@ -73,5 +74,36 @@ impl SkinCorner {
       texture_coordinate,
       weights,
     })
+  }
+
+  /// The corner as the export sets its vertex: its bones sorted by bone, one bone padded with its weightless copy in a
+  /// face whose every corner follows one (`is_one_link`).
+  pub(crate) fn into_vertex(self, is_one_link: bool) -> ExportVertex {
+    let mut bones: Vec<ExportVertexBone> = if is_one_link {
+      vec![
+        ExportVertexBone {
+          bone: self.weights[0].bone,
+          weight: 1.0,
+        },
+        ExportVertexBone {
+          bone: self.weights[0].bone,
+          weight: 0.0,
+        },
+      ]
+    } else {
+      self.weights
+    };
+
+    bones.sort_by_key(|bone| bone.bone);
+
+    ExportVertex {
+      position: self.position,
+      normal: self.normal,
+      // What `SSkelVert` starts with, until the tangent pass.
+      tangent: Vector3d::X,
+      binormal: Vector3d::Z,
+      texture_coordinate: self.texture_coordinate,
+      bones,
+    }
   }
 }
