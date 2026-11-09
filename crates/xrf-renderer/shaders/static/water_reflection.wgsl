@@ -117,7 +117,7 @@ fn water_trace_turns(world: vec3<f32>, normal: vec3<f32>, wait: u32) -> u32 {
 // (`trace_turn_of`), so every frame traces pixels spread over the whole water and a held pixel has fresh ones about it.
 // The scene pass traces the listed rays packed, so scattered turns cost its waves nothing.
 fn is_water_trace_turn(pixel: vec2<f32>, turns: u32) -> bool {
-  return (trace_turn_of(vec2<u32>(pixel), turns) + enhanced.trace_frame) % turns == 0u;
+  return is_on_trace_turn(vec2<u32>(pixel), turns, enhanced.trace_frame);
 }
 
 // The ray a water's pixel leaves to the scene pass where the screen answers it only in part or not at all: from its
