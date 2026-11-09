@@ -134,7 +134,7 @@ fn decompiles_a_level_into_a_scene_of_its_parts() -> XrfResult {
       .map(|file| (file.written.as_str(), file.sources.join(",")))
       .collect::<Vec<_>>(),
     [
-      ("test_level.level", String::new()),
+      ("test_level.level", String::from("level.game")),
       ("test_level/fog_volume.part", String::from("level.fog_vol")),
       ("test_level/spawn.part", String::from("level.game,level.env_mod")),
       ("test_level/way.part", String::from("level.game")),

@@ -249,9 +249,14 @@ impl LevelSceneDecompiler {
 
     tools.sort_by(|(first, _), (second, _)| first.name.cmp(&second.name));
 
+    // The main file's game types come from the respawn points, its light qualities from the generated sky and sun.
     let files: Vec<LevelSceneFile> = std::iter::once(LevelSceneFile {
       written: format!("{}.{}", options.name, EditableLevelFile::EXTENSION),
-      sources: Vec::new(),
+      sources: [LevelLightsFile::FILE_NAME, LevelGameFile::FILE_NAME]
+        .into_iter()
+        .filter(|name| sources.contains_key(name))
+        .map(str::to_owned)
+        .collect(),
     })
     .chain(tools.iter().map(|(tool, sources)| LevelSceneFile {
       written: format!("{}/{}", options.name, tool.get_file_name(0)),
