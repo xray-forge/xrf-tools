@@ -16,8 +16,8 @@ use xrf_test_utils::GeneratedResources;
 
 use crate::level::tests::GUID;
 use crate::{
-  LevelDecompileOptions, LevelFogVolumeConversion, LevelSceneDecompile, LevelSceneDecompiler, LevelSceneExporter,
-  LevelSceneInference, LevelSceneProvenance,
+  LevelDecompileOptions, LevelExportedPrevious, LevelFogVolumeConversion, LevelSceneDecompile, LevelSceneDecompiler,
+  LevelSceneExporter, LevelSceneInference, LevelSceneProvenance,
 };
 
 fn respawn_point(game_types: u16) -> LevelGameRPoint {
@@ -218,6 +218,52 @@ fn exports_the_scene_back_to_the_files_it_came_from() -> XrfResult {
   for (name, bytes) in &exported {
     assert_eq!(bytes, &std::fs::read(directory.join(name))?, "{name} exports otherwise");
   }
+
+  Ok(())
+}
+
+#[test]
+fn writes_an_export_saying_what_each_file_replaced() -> XrfResult {
+  let directory: PathBuf = level_directory("rewritten", 10.0)?;
+  let mut exported: BTreeMap<&str, Vec<u8>> =
+    LevelSceneExporter::export::<XRayByteOrder>(&decompile(&directory)?.scene)?;
+
+  exported.insert("level.game", b"other".to_vec());
+  std::fs::remove_file(directory.join("level.fog_vol"))?;
+
+  let previous: Vec<(String, LevelExportedPrevious)> = LevelSceneExporter::write_to_directory(&exported, &directory)?
+    .into_iter()
+    .map(|file| (file.name, file.previous))
+    .collect();
+
+  assert_eq!(
+    previous,
+    [
+      (String::from("level.env_mod"), LevelExportedPrevious::Same),
+      (String::from("level.fog_vol"), LevelExportedPrevious::New),
+      (String::from("level.game"), LevelExportedPrevious::Changed),
+    ]
+  );
+  assert_eq!(std::fs::read(directory.join("level.game"))?, b"other");
+
+  Ok(())
+}
+
+#[test]
+fn refuses_to_write_an_export_beside_a_file_it_does_not_build() -> XrfResult {
+  let directory: PathBuf = level_directory("stale", 10.0)?;
+  let exported: BTreeMap<&str, Vec<u8>> = BTreeMap::from([("level.game", b"other".to_vec())]);
+  let before: Vec<u8> = std::fs::read(directory.join("level.game"))?;
+  let error: String = LevelSceneExporter::write_to_directory(&exported, &directory)
+    .unwrap_err()
+    .to_string();
+
+  assert!(error.contains("level.env_mod"), "{error}");
+  assert_eq!(
+    std::fs::read(directory.join("level.game"))?,
+    before,
+    "a refusal writes nothing"
+  );
 
   Ok(())
 }

@@ -47,6 +47,19 @@ pub struct LevelSceneDecompile {
 }
 
 impl LevelSceneDecompile {
+  /// What a write to `level_path` would replace, of the scene's main file, its part directory and its sidecar: what a
+  /// front-end asks about before writing over an earlier decompile or an authored scene.
+  pub fn get_existing_paths(level_path: &Path) -> Vec<PathBuf> {
+    [
+      level_path.to_path_buf(),
+      EditableLevelScene::get_parts_directory(level_path),
+      LevelSceneProvenance::sidecar_path(level_path),
+    ]
+    .into_iter()
+    .filter(|path| path.exists())
+    .collect()
+  }
+
   /// Writes the scene's sidecar (`<level_path>.xrf.json`), then the scene: its main file at `level_path` and its parts
   /// in the directory beside it. The sidecar goes first, so a scene that fails to write leaves a stray sidecar, never a
   /// decompile taken for an authored scene.

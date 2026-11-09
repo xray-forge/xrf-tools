@@ -5,6 +5,7 @@ pub(crate) mod object;
 pub(crate) mod provenance;
 
 pub use crate::level::level_decompile_context::LevelDecompileContext;
+pub use crate::level::level_exported_file::{LevelExportedFile, LevelExportedPrevious};
 pub use crate::level::level_fog_volume_conversion::LevelFogVolumeConversion;
 pub use crate::level::level_object_names::LevelObjectNames;
 pub use crate::level::level_particle_conversion::LevelParticleConversion;
