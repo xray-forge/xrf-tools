@@ -91,6 +91,8 @@ light tool's `sun_shadow_dir`, `lcontrol_last_idx` and `[lcontrols]`.
 | `EditableFogVolumeObject`        | `EFogVolume`        | A fog body: a shape placed by its transform, an emitter or occlusion, a group      |
 | `EditableGlowObject`             | `CGlow`             | A light flare: radius, shader, texture and the fixed-size flag                     |
 | `EditableLightObject`            | `CLight`            | A light: colour and brightness, range, attenuation, flags, control, fuzzy points   |
+| `EditableSectorObject`           | `CSector`           | A sector: colour, default flag, the object meshes it holds, map index              |
+| `EditablePortalObject`           | `CPortal`           | A portal: the sectors in front and behind, and its polygon                         |
 | `EditableShapeObject`            | `CEditShape`        | A shape tool's object, and what a spawn point attaches                             |
 | `EditableWayObject`              | `CWayObject`        | A patrol path: points with flags and names, each one's links                       |
 | `EditableSpawnPointObject`       | `CSpawnPoint`       | A respawn point, an environment modifier, or an entity with its spawn data as kept |
