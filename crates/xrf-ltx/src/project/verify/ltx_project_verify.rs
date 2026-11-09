@@ -88,7 +88,7 @@ impl LtxProject {
       xrf_output::info!(
         options.output,
         "Verified {:.2}%, {} files, {} sections, {} fields",
-        (result.checked_sections as f32 * 100.0) / result.total_sections as f32,
+        (result.checked_sections as f64 * 100.0) / result.total_sections as f64,
         result.total_files,
         result.checked_sections,
         result.checked_fields

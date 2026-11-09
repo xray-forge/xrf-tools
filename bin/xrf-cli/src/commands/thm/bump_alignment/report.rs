@@ -17,8 +17,8 @@ pub(crate) struct BumpAlignmentReport<'a> {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct BumpAlignmentSummary {
   /// The lifts over chance the verdicts judge by.
-  pub aligned_lift: f32,
-  pub mismatched_lift: f32,
+  pub aligned_lift: f64,
+  pub mismatched_lift: f64,
   pub descriptors: usize,
   pub sets: usize,
   pub measured: usize,

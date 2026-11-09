@@ -20,9 +20,9 @@ pub enum BumpAlignmentVerdict {
 /// 0.03 that were looked at hold other art in their bump (other stones, a weapon's parts moved and relabelled).
 impl BumpAlignmentVerdict {
   /// The lift over chance an aligned set reaches at least.
-  pub const ALIGNED_LIFT: f32 = 0.1;
+  pub const ALIGNED_LIFT: f64 = 0.1;
   /// The lift over chance a mismatched set stays under.
-  pub const MISMATCHED_LIFT: f32 = 0.03;
+  pub const MISMATCHED_LIFT: f64 = 0.03;
 
   /// The verdict as a report spells it.
   pub fn label(self) -> &'static str {
@@ -35,7 +35,7 @@ impl BumpAlignmentVerdict {
   }
 
   /// The verdict of a correlation `lift` over the shifted bump's.
-  pub fn of(lift: f32) -> Self {
+  pub fn of(lift: f64) -> Self {
     if lift >= Self::ALIGNED_LIFT {
       Self::Aligned
     } else if lift < Self::MISMATCHED_LIFT {

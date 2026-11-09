@@ -4,8 +4,8 @@ use xrf_error::XrfResult;
 use crate::albedo::{AlbedoVerdict, TextureAlbedo};
 
 /// The linear value the renderer lights an encoded byte as.
-fn linear(value: u8) -> f32 {
-  xrf_math::srgb_decoded(f32::from(value) / 255.0)
+fn linear(value: u8) -> f64 {
+  f64::from(xrf_math::srgb_decoded(f32::from(value) / 255.0))
 }
 
 /// A flat grey texture `side` texels a side, its chain as `mipmaps` builds it.
@@ -90,7 +90,7 @@ fn large_scale_shade_widens_the_coarse_spread() {
     }
   });
 
-  let spread: f32 = TextureAlbedo::measure(&lit_and_shaded, None)
+  let spread: f64 = TextureAlbedo::measure(&lit_and_shaded, None)
     .expect("shaded")
     .coarse_spread;
 

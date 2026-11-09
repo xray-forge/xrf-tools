@@ -18,12 +18,12 @@ pub enum AlbedoVerdict {
 
 impl AlbedoVerdict {
   /// The darkest linear luminance an unlit material plausibly has.
-  pub const FLOOR: f32 = 0.03;
+  pub const FLOOR: f64 = 0.03;
   /// The brightest linear luminance an unlit material plausibly has.
-  pub const CEILING: f32 = 0.9;
+  pub const CEILING: f64 = 0.9;
 
   /// Where a linear luminance falls.
-  pub fn of(luminance: f32) -> Self {
+  pub fn of(luminance: f64) -> Self {
     if luminance < Self::FLOOR {
       Self::Dark
     } else if luminance > Self::CEILING {
