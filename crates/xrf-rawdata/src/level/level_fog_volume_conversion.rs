@@ -15,9 +15,6 @@ use crate::level::level_object_names::LevelObjectNames;
 pub struct LevelFogVolumeConversion;
 
 impl LevelFogVolumeConversion {
-  /// `FOG_VOL_TOOLS_VERSION`, the fog volume tool's `[main]` version.
-  pub const TOOL_VERSION: u32 = 0;
-
   /// The editor's prefix for a new volume's name, the tool's class name.
   pub const NAME_PREFIX: &'static str = "fog_volume";
 
@@ -77,7 +74,7 @@ impl LevelFogVolumeConversion {
       }
     }
 
-    Ok(EditableObjectPart::new(guid, Self::TOOL_VERSION, None, objects))
+    Ok(EditableObjectPart::new(guid, objects))
   }
 
   /// The `level.fog_vol` the build writes from the part: version 3, then per group in ascending number its emitter's

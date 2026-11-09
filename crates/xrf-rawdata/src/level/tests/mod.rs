@@ -2,6 +2,7 @@ mod fog_volume;
 mod particle;
 mod sound_environment;
 mod sound_source;
+mod spawn_point;
 mod wallmark;
 mod way;
 

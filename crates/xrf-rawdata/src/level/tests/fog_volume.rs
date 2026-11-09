@@ -42,7 +42,7 @@ fn occlusion(group: u32, position: [f32; 3]) -> EditableFogVolumeObject {
 }
 
 fn part(volumes: Vec<EditableFogVolumeObject>) -> EditableObjectPart<EditableFogVolumeObject> {
-  EditableObjectPart::new(GUID, LevelFogVolumeConversion::TOOL_VERSION, None, volumes)
+  EditableObjectPart::new(GUID, volumes)
 }
 
 fn bytes_of(file: &LevelFogVolFile) -> XrfResult<Vec<u8>> {

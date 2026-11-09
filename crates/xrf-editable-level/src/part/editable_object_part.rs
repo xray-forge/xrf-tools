@@ -9,25 +9,24 @@ use crate::part::editable_part_object::EditablePartObject;
 use crate::part::editable_text_part::EditableTextPart;
 
 /// An object tool's text part, typed: its scene's GUID, the tool's `[main]` and `[modif]`, and its objects in the
-/// order `[object_N]` numbers them (`ESceneCustomOTool::SaveLTX`).
+/// order `[object_N]` numbers them (`ESceneCustomOTool::SaveLTX`). The `[main]` version is the tool's own
+/// ([`EditableToolObject::TOOL_VERSION`]).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EditableObjectPart<T> {
   pub guid: EditableLevelGuid,
-  /// The tool's version in `[main]`, such as `PS_TOOLS_VERSION`.
-  pub version: u32,
-  /// The tool's flags in `[main]`, for the tools that keep them.
+  /// The tool's flags in `[main]`: present for a tool that keeps them ([`EditableToolObject::KEEPS_FLAGS`]), and for
+  /// another kept as its part stored them, which the editor ignores.
   pub flags: Option<u32>,
   pub modification: EditablePartModification,
   pub objects: Vec<T>,
 }
 
 impl<T: EditableToolObject> EditableObjectPart<T> {
-  /// A part of no modification, holding `objects`.
-  pub fn new(guid: EditableLevelGuid, version: u32, flags: Option<u32>, objects: Vec<T>) -> Self {
+  /// A part of no modification holding `objects`, its flags clear where the tool keeps any.
+  pub fn new(guid: EditableLevelGuid, objects: Vec<T>) -> Self {
     Self {
       guid,
-      version,
-      flags,
+      flags: T::KEEPS_FLAGS.then_some(0),
       modification: EditablePartModification::default(),
       objects,
     }
@@ -35,12 +34,25 @@ impl<T: EditableToolObject> EditableObjectPart<T> {
 
   /// # Errors
   ///
-  /// Returns an error when the part has no `[main]` or `[modif]`, an object is of another tool's class, or a field an
-  /// object needs is missing or malformed.
+  /// Returns an error, as the tool's `LoadLTX` refuses the part, when it has no `[main]` or `[modif]`, its version is
+  /// not the tool's, it keeps no flags where the tool requires them, an object is of another tool's class, or a field
+  /// an object needs is missing or malformed.
   pub fn read_from_text_part(part: &EditableTextPart) -> XrfResult<Self> {
     let header: EditablePartHeader = part
       .get_header()?
       .ok_or_else(|| XrfError::new_parsing_error(format!("Part has no section [{}]", EditablePartHeader::SECTION)))?;
+
+    if header.version != T::TOOL_VERSION || (T::KEEPS_FLAGS && header.flags.is_none()) {
+      return Err(XrfError::new_parsing_error(format!(
+        "Part of class {} holds tool version {}{}, where the tool reads version {}{}",
+        T::CLASS_ID,
+        header.version,
+        if header.flags.is_some() { " with flags" } else { "" },
+        T::TOOL_VERSION,
+        if T::KEEPS_FLAGS { " with flags" } else { "" }
+      )));
+    }
+
     let objects: Vec<T> = part
       .get_objects()?
       .iter()
@@ -61,7 +73,6 @@ impl<T: EditableToolObject> EditableObjectPart<T> {
 
     Ok(Self {
       guid: part.get_guid()?,
-      version: header.version,
       flags: header.flags,
       modification: EditablePartModification::read_from_section(
         part.ini.section_required(EditablePartModification::SECTION)?,
@@ -79,7 +90,7 @@ impl<T: EditableToolObject> EditableObjectPart<T> {
     let mut ini: IniFile = IniFile::default();
 
     EditablePartHeader {
-      version: self.version,
+      version: T::TOOL_VERSION,
       objects_count: u32::try_from(self.objects.len())
         .map_err(|_| XrfError::new_invalid_error(format!("Part holds {} objects", self.objects.len())))?,
       flags: self.flags,

@@ -299,6 +299,115 @@ pub(super) fn way_part_text(guid: &EditableLevelGuid, fields: &[(&str, &str)]) -
   file.write_to_string_as(&IniFormat::XRAY_SAVE_AS)
 }
 
+/// A spawn tool's part with one spawn point of each kind, as `CSpawnPoint::SaveLTX` writes them: a respawn point, an
+/// environment modifier, and an entity with a sphere attached and custom data spanning lines; each object's fields
+/// replaced or added by `fields`, keyed by the object's section.
+pub(super) fn spawn_point_part_text(guid: &EditableLevelGuid, fields: &[(&str, &str, &str)]) -> XrfResult<String> {
+  let mut file: IniFile = IniFile::default();
+
+  guid.write_to_section(file.section_mut("guid"));
+  file.section_mut("main").set("flags", "0");
+  file.section_mut("main").set("objects_count", "3");
+  file.section_mut("main").set("version", "0");
+  file.section_mut("modif").set("name", "");
+  file.section_mut("modif").set("time", "0");
+
+  let common = [
+    ("clsid", "6"),
+    ("co_flags", "0"),
+    ("rotation", "0.000000, -3.125000, 0.000000"),
+    ("scale", "1.000000, 1.000000, 1.000000"),
+    ("version", "23"),
+  ];
+  let objects: [(&str, Vec<(&str, &str)>); 5] = [
+    (
+      "object_0",
+      vec![
+        ("game_type", "4"),
+        ("name", "tdm_blue_0001"),
+        ("position", "12.250000, 1.000000, 11.625000"),
+        ("rp_profile", ""),
+        ("rp_type", "0"),
+        ("team_id", "2"),
+        ("type", "0"),
+      ],
+    ),
+    (
+      "object_1",
+      vec![
+        ("ambient_color", "0"),
+        ("em_flags", "63"),
+        ("em_power", "1.000000"),
+        ("em_radius", "10.000000"),
+        ("fog_color", "8421504"),
+        ("fog_density", "1.000000"),
+        ("hemi_color", "16777215"),
+        ("name", "env_mod_0000"),
+        ("position", "-4.500000, 2.000000, 7.250000"),
+        ("sky_color", "16777215"),
+        ("type", "1"),
+        ("view_dist", "300.000000"),
+      ],
+    ),
+    (
+      "object_2",
+      vec![
+        ("attached_count", "1"),
+        ("name", "lx8_restrictor"),
+        ("position", "-50.250000, -20.125000, 67.875000"),
+        ("type", "2"),
+      ],
+    ),
+    (
+      "object_2_attached_0",
+      vec![
+        ("clsid", "4"),
+        ("co_flags", "0"),
+        ("name", "lx8_restrictor_shape"),
+        ("position", "0.000000, 0.000000, 0.000000"),
+        ("rotation", "0.000000, 0.000000, 0.000000"),
+        ("scale", "1.000000, 1.000000, 1.000000"),
+        ("shape_center_0", "0.000000, 0.000000, 0.000000"),
+        ("shape_radius_0", "2.500000"),
+        ("shape_type", "0"),
+        ("shape_type_0", "0"),
+        ("shapes_count", "1"),
+        ("version", "2"),
+      ],
+    ),
+    (
+      "object_2_spawndata",
+      vec![
+        ("000001", "1"),
+        ("000002", "\"space_restrictor\""),
+        ("000024", "\"[logic]\r\ncfg = scripts\\labx8\\restrictor.ltx\""),
+        ("fl", "0"),
+        ("name", "space_restrictor"),
+      ],
+    ),
+  ];
+
+  for (name, values) in &objects {
+    let section: &mut IniSection = file.section_mut(name);
+    // A spawn point's own section opens with what every spawn point saves; its attachment and spawn data do not.
+    let shared: &[(&str, &str)] = if name.contains("_attached_") || name.ends_with("_spawndata") {
+      &[]
+    } else {
+      &common
+    };
+
+    for (key, value) in shared.iter().chain(values) {
+      section.set(*key, *value);
+    }
+  }
+
+  for (name, key, value) in fields {
+    file.section_mut(name).set(*key, *value);
+  }
+
+  file.write_to_string_as(&IniFormat::XRAY_SAVE_AS)
+}
+
 /// A binary part as `EScene::SaveLTX` frames it, its chunks in the order given.
 pub(super) fn binary_part_bytes(chunks: &[ChunkPayload]) -> XrfResult<Vec<u8>> {
   let mut file: ChunkWriter = ChunkWriter::new();

@@ -46,7 +46,7 @@ fn volume(
 }
 
 fn part(volumes: Vec<EditableSoundEnvironmentObject>) -> EditableObjectPart<EditableSoundEnvironmentObject> {
-  EditableObjectPart::new(GUID, LevelSoundEnvironmentConversion::TOOL_VERSION, None, volumes)
+  EditableObjectPart::new(GUID, volumes)
 }
 
 fn export(part: &EditableObjectPart<EditableSoundEnvironmentObject>) -> XrfResult<LevelSndEnvFile> {

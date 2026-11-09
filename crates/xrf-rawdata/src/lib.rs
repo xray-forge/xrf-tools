@@ -9,6 +9,7 @@ pub use crate::level::level_object_names::LevelObjectNames;
 pub use crate::level::level_particle_conversion::LevelParticleConversion;
 pub use crate::level::level_sound_environment_conversion::LevelSoundEnvironmentConversion;
 pub use crate::level::level_sound_source_conversion::LevelSoundSourceConversion;
+pub use crate::level::level_spawn_point_conversion::LevelSpawnPointConversion;
 pub use crate::level::level_visual_geometry::LevelVisualGeometry;
 pub use crate::level::level_wallmark_conversion::LevelWallmarkConversion;
 pub use crate::level::level_way_conversion::LevelWayConversion;

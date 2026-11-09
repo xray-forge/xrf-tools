@@ -194,7 +194,6 @@ fn reads_a_particle_part_typed_and_writes_it_back_as_the_editor_saved_it() -> Xr
   let effect: &EditableParticleObject = &part.objects[0];
 
   assert_eq!(part.guid, GUID);
-  assert_eq!(part.version, 0);
   assert_eq!(part.flags, None, "the particle tool keeps no flags");
   assert_eq!(part.objects.len(), 1);
   assert_eq!(effect.object.name, "industrial_0000");
@@ -222,6 +221,17 @@ fn takes_an_older_particle_as_playing_in_every_game_mode() -> XrfResult {
 #[test]
 fn refuses_an_object_of_another_tools_class() -> XrfResult {
   assert!(read_particles(&particle_part_text(&GUID, &[("clsid", "6")])?).is_err());
+
+  Ok(())
+}
+
+#[test]
+fn refuses_a_part_of_another_tool_version_as_the_tool_does() -> XrfResult {
+  let mut part: EditableTextPart = EditableTextPart::read_from_bytes(particle_part_text(&GUID, &[])?.as_bytes())?;
+
+  part.ini.section_mut("main").set("version", "1");
+
+  assert!(EditableObjectPart::<EditableParticleObject>::read_from_text_part(&part).is_err());
 
   Ok(())
 }

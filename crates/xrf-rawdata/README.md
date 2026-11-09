@@ -129,6 +129,9 @@ The Level Editor's Build writes some level files straight from the scene's parts
 | `LevelSoundSourceConversion`      | `level.snd_static` ↔ `sound_src.part` | 91 files (1,303 sounds) from memory; all but one through text |
 | `LevelSoundEnvironmentConversion` | `level.snd_env` ↔ `sound_env.part`    | 15 of 20 byte for byte; 5 within 6.1e-5                       |
 | `LevelFogVolumeConversion`        | `level.fog_vol` ↔ `fog_volume.part`   | All 174 files through text                                    |
+| `LevelWallmarkConversion`         | `level.wallmarks` ↔ `wallmark.part`   | All 74 files through the binary part; `labx8`'s part exact    |
+| `LevelWayConversion`              | `level.game` paths ↔ `way.part`       | 202 files from memory; all but two through text               |
+| `LevelSpawnPointConversion`       | `level.game` respawn points, `level.env_mod` ↔ `spawn.part` | 200 of 202 levels through text |
 
 ### Particles
 
@@ -180,6 +183,32 @@ saved text can produce; they come back within 6.1e-5 with the same environments 
 
 All 174 files across the game trees round-trip through the part's text: 172 with no body, plus CS's
 `agroprom_underground` (4 bodies, 144 obstacles) and SGM 2.2's copy.
+
+### Wall marks
+
+- `decompile` gives the wall mark tool a new tool's brush and a slot per stored slot; each decal keeps the file's sphere
+  and takes the box `AddWallmark` gives its fan, no selection (as every decal GSC saved) and the brush's size.
+- `export` writes what `ESceneWallmarkTool::Export` does from the tool as the editor loaded it: fans past 512 vertices
+  dropped, then the slots that leaves empty.
+- `labx8`'s own `wallmark.part` rewrites and exports byte for byte, and its 31 decals match the decompile in flags,
+  boxes, spheres and fans; only their recorded size differs.
+
+### Patrol paths
+
+- `decompile` gives each path a way under its name, its points unselected and each link on the point it leaves, in the
+  file's order; a type chunk, which none ships, becomes the way's type.
+- `export` writes what `CWayObject::ExportGame` does: points, then links point by point, and no type chunk.
+- `level.game`'s respawn points come from the spawn tool; CoC's `jupiter` and SGM 2.2's `l04u_labx18` hold positions off
+  the `%f` grid, which the text rounds.
+
+### Respawn points and environment modifiers
+
+- `decompile` gives each respawn point and each environment modifier a spawn point at the file's position (and turn),
+  named after its kind; a colour comes back as the packed word whose channels `u32_3f` gives the same float bits from.
+- `export_respawn_points` and `export_environment_modifiers` write what `CSpawnPoint::ExportGame` does, the latter
+  under `SPAWNPOINT_VERSION` for every level.
+- 4,951 respawn points and 25 modifiers over every tree; CS's `mp_training_camp` holds positions off the `%f` grid, and
+  SGM 2.2's `l04u_labx18` an older `env_mod` that keeps no flags. Entity spawns, `level.spawn`, are not converted yet.
 
 ## Compile an object into an OGF
 
