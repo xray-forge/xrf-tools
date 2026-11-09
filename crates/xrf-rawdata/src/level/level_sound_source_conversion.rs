@@ -13,9 +13,6 @@ use crate::level::level_object_names::LevelObjectNames;
 pub struct LevelSoundSourceConversion;
 
 impl LevelSoundSourceConversion {
-  /// `SOUND_SRC_TOOLS_VERSION`, the sound source tool's `[main]` version.
-  pub const TOOL_VERSION: u32 = 0;
-
   /// The sound source part a `level.snd_static` was exported from, each sound an object named after its file, standing
   /// where a new one does, looped, with the distances a new one takes until the editor reads the file's own. Each
   /// window becomes the seconds the part's text saves that export to the same milliseconds.
@@ -62,7 +59,7 @@ impl LevelSoundSourceConversion {
       })
       .collect::<XrfResult<Vec<EditableSoundSourceObject>>>()?;
 
-    Ok(EditableObjectPart::new(guid, Self::TOOL_VERSION, None, objects))
+    Ok(EditableObjectPart::new(guid, objects))
   }
 
   /// The `level.snd_static` the build writes from the part, `ESoundSource::ExportGame`: each object's sound, position,

@@ -11,9 +11,6 @@ use crate::level::level_object_names::LevelObjectNames;
 pub struct LevelParticleConversion;
 
 impl LevelParticleConversion {
-  /// `PS_TOOLS_VERSION`, the particle tool's `[main]` version.
-  pub const TOOL_VERSION: u32 = 0;
-
   /// The particle part a `level.ps_static` was exported from, each placement an object named after its effect, its
   /// transform the saved one composing into the placement's matrix
   /// ([`EditableObjectTransform::from_matrix_as_saved`]). A file of version 0 keeps no game modes, so its effects play
@@ -48,7 +45,7 @@ impl LevelParticleConversion {
       })
       .collect::<XrfResult<Vec<EditableParticleObject>>>()?;
 
-    Ok(EditableObjectPart::new(guid, Self::TOOL_VERSION, None, objects))
+    Ok(EditableObjectPart::new(guid, objects))
   }
 
   /// The `level.ps_static` the build writes from the part, `EParticlesObject::ExportGame`: version 1, then each

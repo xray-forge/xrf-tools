@@ -17,9 +17,6 @@ use crate::level::level_object_names::LevelObjectNames;
 pub struct LevelSoundEnvironmentConversion;
 
 impl LevelSoundEnvironmentConversion {
-  /// `SOUND_ENV_TOOLS_VERSION`, the sound environment tool's `[main]` version.
-  pub const TOOL_VERSION: u32 = 0;
-
   /// `CFORM_CURRENT_VERSION`, the mesh header's version.
   pub const MESH_VERSION: u32 = 4;
 
@@ -105,7 +102,7 @@ impl LevelSoundEnvironmentConversion {
       })
       .collect::<XrfResult<Vec<EditableSoundEnvironmentObject>>>()?;
 
-    Ok(EditableObjectPart::new(guid, Self::TOOL_VERSION, None, objects))
+    Ok(EditableObjectPart::new(guid, objects))
   }
 
   /// The `level.snd_env` the export writes from the part, `MakeEnvGeometry`: the environments in the order volumes

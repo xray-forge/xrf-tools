@@ -10,9 +10,6 @@ use xrf_level::{LevelGameWay, LevelGameWayLink, LevelGameWayPoint};
 pub struct LevelWayConversion;
 
 impl LevelWayConversion {
-  /// `WAY_TOOLS_VERSION`, the way tool's `[main]` version.
-  pub const TOOL_VERSION: u32 = 0;
-
   /// The way part the patrol paths were exported from: a way per path under its name, standing where a new object
   /// does, of the type a path keeps (none ships one, so a patrol path), each point unselected, and each link appended to
   /// the point it leaves, in the file's order.
@@ -61,7 +58,7 @@ impl LevelWayConversion {
       })
       .collect::<XrfResult<Vec<EditableWayObject>>>()?;
 
-    Ok(EditableObjectPart::new(guid, Self::TOOL_VERSION, None, objects))
+    Ok(EditableObjectPart::new(guid, objects))
   }
 
   /// The patrol paths `ExportGame` writes from the part, one per way in the part's order: `WAYOBJECT_VERSION`, the

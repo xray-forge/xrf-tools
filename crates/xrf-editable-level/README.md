@@ -66,11 +66,18 @@ Typed values are for use; the kept text is what writes back. Not every saved num
 The AI map, detail objects and wall marks are saved as chunks. A binary part keeps the tool's stream as bytes, and its
 chunk order and any chunk the editor never writes in a `ChunkLayout`.
 
+A tool's stream reads typed where its tool is typed. `EditableWallmarkTool` (`ESceneWallmarkTool`) holds the wall mark
+brush and its decals in slots, read as `LoadStream` reads versions 3 and 4 and written as `SaveStream` writes version
+4; each `EditableWallmark` keeps its fan's lit vertices, box and sphere (`get_bounds` gives the ones `AddWallmark`
+does). An empty slot stays as stored; the editor drops it on load.
+
 ## Typed objects
 
-An object tool's part reads as an `EditableObjectPart<T>`: the GUID, `[main]`'s version, flags and `[modif]` for the
-tools that keep them, and the objects `[object_N]` numbers. Each object is an `EditableToolObject` that reads its
-sections and writes them as the editor's `SaveLTX` does. A part refuses an object of another tool's class.
+An object tool's part reads as an `EditableObjectPart<T>`: the GUID, `[main]`'s flags for the tools that keep them,
+`[modif]`, and the objects `[object_N]` numbers. Each object is an `EditableToolObject` that reads its sections and
+writes them as the editor's `SaveLTX` does, and names its tool's class, `[main]` version and whether it keeps flags. A
+part refuses what the tool's `LoadLTX` refuses: another version, missing flags where the tool keeps them, an object of
+another class.
 
 | Type                             | Editor              | Holds                                                                              |
 | -------------------------------- | ------------------- | ---------------------------------------------------------------------------------- |
@@ -81,6 +88,9 @@ sections and writes them as the editor's `SaveLTX` does. A part refuses an objec
 | `EditableSoundSourceObject`      | `ESoundSource`      | A placed sound: file, own position, volume, distances, play windows                |
 | `EditableSoundEnvironmentObject` | `ESoundEnvironment` | A reverb volume: a shape whose first box separates an inner environment from outer |
 | `EditableFogVolumeObject`        | `EFogVolume`        | A fog body: a shape placed by its transform, an emitter or occlusion, a group      |
+| `EditableShapeObject`            | `CEditShape`        | A shape tool's object, and what a spawn point attaches                             |
+| `EditableWayObject`              | `CWayObject`        | A patrol path: points with flags and names, each one's links                       |
+| `EditableSpawnPointObject`       | `CSpawnPoint`       | A respawn point, an environment modifier, or an entity with its spawn data as kept |
 
 Editor quirks kept:
 
@@ -90,6 +100,9 @@ Editor quirks kept:
   bits in GSC's sound source `flags` survive a round trip.
 - A sound environment writes its own `version` (18) over the shape's (2); `CEditShape::LoadLTX` reads the shape's fields
   under whichever it finds.
+- A way's links are keyed `link_wp_%4d_%4d`; the padding sorts them in their numbers' order, which is the order the
+  editor appends them in.
+- An entity's `[object_N_spawndata]` is kept as stored until its packet's fields are typed.
 
 ### Transforms
 
