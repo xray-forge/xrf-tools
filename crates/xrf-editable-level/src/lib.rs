@@ -18,6 +18,7 @@ pub use crate::level::editable_level_value::EditableLevelValue;
 pub use crate::object::editable_custom_object::EditableCustomObject;
 pub use crate::object::editable_fog_volume_object::{EditableFogVolumeKind, EditableFogVolumeObject};
 pub use crate::object::editable_glow_object::EditableGlowObject;
+pub use crate::object::editable_light_object::{EditableLightFuzzy, EditableLightObject};
 pub use crate::object::editable_object_transform::EditableObjectTransform;
 pub use crate::object::editable_particle_object::EditableParticleObject;
 pub use crate::object::editable_shape::{EditableShape, EditableShapeElement};

@@ -3,6 +3,7 @@
 pub(crate) mod editable_custom_object;
 pub(crate) mod editable_fog_volume_object;
 pub(crate) mod editable_glow_object;
+pub(crate) mod editable_light_object;
 pub(crate) mod editable_object_transform;
 pub(crate) mod editable_particle_object;
 pub(crate) mod editable_shape;
