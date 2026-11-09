@@ -1,15 +1,24 @@
 use std::f32::consts::FRAC_PI_2;
 
 use xrf_error::XrfResult;
-use xrf_math::{Matrix4x4, Vector3d};
+use xrf_math::{Matrix4x4, Vector2d, Vector3d};
 
-use crate::tests::fixtures::{GUID, particle_part_text};
+use crate::tests::fixtures::{GUID, particle_part_text, sound_source_part_text};
 use crate::{
-  EditableLevelValue, EditableObjectPart, EditableObjectTransform, EditableParticleObject, EditableTextPart,
+  EditableLevelValue, EditableObjectPart, EditableObjectTransform, EditableParticleObject, EditableSoundSourceObject,
+  EditableTextPart, EditableToolObject,
 };
 
-fn read_particles(text: &str) -> XrfResult<EditableObjectPart<EditableParticleObject>> {
+fn read_part<T: EditableToolObject>(text: &str) -> XrfResult<EditableObjectPart<T>> {
   EditableObjectPart::read_from_text_part(&EditableTextPart::read_from_bytes(text.as_bytes())?)
+}
+
+fn read_particles(text: &str) -> XrfResult<EditableObjectPart<EditableParticleObject>> {
+  read_part(text)
+}
+
+fn read_sound_sources(text: &str) -> XrfResult<EditableObjectPart<EditableSoundSourceObject>> {
+  read_part(text)
 }
 
 fn is_near(first: &Vector3d, second: &Vector3d) -> bool {
@@ -52,6 +61,48 @@ fn takes_an_older_particle_as_playing_in_every_game_mode() -> XrfResult {
 #[test]
 fn refuses_an_object_of_another_tools_class() -> XrfResult {
   assert!(read_particles(&particle_part_text(&GUID, &[("clsid", "6")])?).is_err());
+
+  Ok(())
+}
+
+#[test]
+fn reads_a_sound_source_part_typed_and_writes_it_back_as_the_editor_saved_it() -> XrfResult {
+  let text: String = sound_source_part_text(&GUID, &[("active_time", "3600.000000, 7200.500000")])?;
+  let part: EditableObjectPart<EditableSoundSourceObject> = read_sound_sources(&text)?;
+  let sound: &EditableSoundSourceObject = &part.objects[0];
+  let written: String = String::from_utf8_lossy(&part.to_text_part()?.write_to_bytes()?).into_owned();
+
+  assert_eq!(part.flags, None, "the sound source tool keeps no flags");
+  assert_eq!(sound.object.flags, 2);
+  assert_eq!(
+    sound.object.transform.position,
+    Vector3d::ZERO,
+    "the sound stands at its own position"
+  );
+  assert_eq!(sound.sound, "ambient\\lamp_squeaks_1");
+  // Printed through `%d`, uninitialised bits above `flLooped` read as the same unsigned word.
+  assert_eq!(sound.flags, 0x9B2D_AAAB);
+  assert_eq!(sound.position, Vector3d::new(-79.4942, -8.32556, 57.494_964));
+  assert_eq!(sound.min_distance, 1.2);
+  assert_eq!(sound.active_time, Vector2d::new(3600.0, 7200.5));
+  // The editor's inexact `%f` again: the same floats, printed with other last digits.
+  assert_eq!(read_sound_sources(&written)?, part);
+  assert_eq!(
+    written,
+    text.replace("-79.494200, -8.325560, 57.494964", "-79.494202, -8.325560, 57.494965")
+  );
+
+  Ok(())
+}
+
+#[test]
+fn refuses_a_sound_source_the_editor_does_not_load() -> XrfResult {
+  for field in [("version", "19"), ("snd_type", "1"), ("active_time", "0.000000")] {
+    assert!(
+      read_sound_sources(&sound_source_part_text(&GUID, &[field])?).is_err(),
+      "{field:?} was read"
+    );
+  }
 
   Ok(())
 }

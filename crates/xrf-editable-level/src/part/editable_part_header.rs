@@ -1,6 +1,8 @@
 use xrf_error::XrfResult;
 use xrf_ini::IniSection;
 
+use crate::level::editable_level_value::EditableLevelValue;
+
 /// A text part's `[main]`, which every object tool writes before its objects (`ESceneCustomOTools::SaveLTX`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct EditablePartHeader {
@@ -24,7 +26,7 @@ impl EditablePartHeader {
       objects_count: section.get_parsed::<u32>("objects_count")?,
       flags: section
         .get("flags")
-        .map(|_| section.get_parsed::<u32>("flags"))
+        .map(|_| EditableLevelValue::read_u32(section, "flags"))
         .transpose()?,
     })
   }
@@ -34,7 +36,7 @@ impl EditablePartHeader {
     section.set("objects_count", self.objects_count.to_string());
 
     if let Some(flags) = self.flags {
-      section.set("flags", flags.to_string());
+      section.set("flags", EditableLevelValue::format_u32(flags));
     }
   }
 }

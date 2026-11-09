@@ -127,6 +127,49 @@ pub(super) fn particle_part_text(guid: &EditableLevelGuid, fields: &[(&str, &str
   file.write_to_string_as(&IniFormat::XRAY_SAVE_AS)
 }
 
+/// A sound source tool's part as the CoP SDK saved `labx8`'s: a `[main]` with no flags, and one sound, uninitialised
+/// bits in its `flags`, with that object's fields replaced or added.
+pub(super) fn sound_source_part_text(guid: &EditableLevelGuid, fields: &[(&str, &str)]) -> XrfResult<String> {
+  let mut file: IniFile = IniFile::default();
+
+  guid.write_to_section(file.section_mut("guid"));
+  file.section_mut("main").set("objects_count", "1");
+  file.section_mut("main").set("version", "0");
+  file.section_mut("modif").set("name", "");
+  file.section_mut("modif").set("time", "0");
+
+  let section: &mut IniSection = file.section_mut("object_0");
+
+  for (key, value) in [
+    ("active_time", "0.000000, 0.000000"),
+    ("clsid", "5"),
+    ("co_flags", "2"),
+    ("flags", "-1691506005"),
+    ("freq", "1.000000"),
+    ("max_ai_dist", "20.000000"),
+    ("max_dist", "50.000000"),
+    ("min_dist", "1.200000"),
+    ("name", "lamp_squeaks_0001"),
+    ("play_time", "0.000000, 0.000000"),
+    ("position", "0.000000, 0.000000, 0.000000"),
+    ("random_pause", "0.000000, 0.000000"),
+    ("rotation", "0.000000, -1.570796, -1.570796"),
+    ("scale", "1.000000, 1.000000, 1.000000"),
+    ("snd_name", "ambient\\lamp_squeaks_1"),
+    ("snd_position", "-79.494200, -8.325560, 57.494964"),
+    ("snd_type", "0"),
+    ("version", "20"),
+    ("volume", "1.000000"),
+  ]
+  .into_iter()
+  .chain(fields.iter().copied())
+  {
+    section.set(key, value);
+  }
+
+  file.write_to_string_as(&IniFormat::XRAY_SAVE_AS)
+}
+
 /// A binary part as `EScene::SaveLTX` frames it, its chunks in the order given.
 pub(super) fn binary_part_bytes(chunks: &[ChunkPayload]) -> XrfResult<Vec<u8>> {
   let mut file: ChunkWriter = ChunkWriter::new();

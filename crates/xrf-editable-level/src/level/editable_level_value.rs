@@ -1,9 +1,9 @@
 use xrf_error::{XrfError, XrfResult};
 use xrf_ini::IniSection;
-use xrf_math::Vector3d;
+use xrf_math::{Vector2d, Vector3d};
 
-/// How the editor writes and reads its typed values: `CInifile::w_float` and `w_fvector3` format with `%f`, and
-/// `save_as` puts a space after every comma outside quotes (`_decorate`).
+/// How the editor writes and reads its typed values: `CInifile::w_float`, `w_fvector2` and `w_fvector3` format with
+/// `%f`, `w_u32` with `%d`, and `save_as` puts a space after every comma outside quotes (`_decorate`).
 ///
 /// Not every number a saved scene holds is an `f32` printed with `%f`: `labx8.level`'s camera stands at `-80.052984`,
 /// which no `f32` prints as. A typed read is therefore close to the text rather than equal to it, and a file writes
@@ -36,6 +36,11 @@ impl EditableLevelValue {
     )
   }
 
+  /// A vector as `w_fvector2` writes it and `_decorate` spaces it: `x, y`.
+  pub fn format_vector2(value: &Vector2d) -> String {
+    format!("{}, {}", Self::format_f32(value.x), Self::format_f32(value.y))
+  }
+
   /// A vector as `w_fvector3` writes it and `_decorate` spaces it: `x, y, z`.
   pub fn format_vector3(value: &Vector3d) -> String {
     format!(
@@ -44,6 +49,41 @@ impl EditableLevelValue {
       Self::format_f32(value.y),
       Self::format_f32(value.z)
     )
+  }
+
+  /// An unsigned integer as `w_u32` writes it, through `%d`: a value past `i32::MAX` prints negative, as
+  /// uninitialised flag bits in GSC's sound sources do.
+  pub fn format_u32(value: u32) -> String {
+    value.cast_signed().to_string()
+  }
+
+  /// A field `w_u32` wrote, read as `r_u32` reads it (`u32(atoi(...))`), a negative print standing for the same bits.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error naming the section and key when the field is missing or not a 32-bit integer.
+  pub fn read_u32(section: &IniSection, key: &str) -> XrfResult<u32> {
+    let value: &str = section.get_required(key)?;
+
+    value
+      .parse::<i32>()
+      .map(i32::cast_unsigned)
+      .or_else(|_| value.parse::<u32>())
+      .map_err(|_| {
+        XrfError::new_parsing_error(format!(
+          "Field [{}] {key} = '{value}' is not a 32-bit integer",
+          section.name
+        ))
+      })
+  }
+
+  /// A field holding two comma-separated floats.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error naming the section and key when the field is missing or not exactly two floats.
+  pub fn read_vector2(section: &IniSection, key: &str) -> XrfResult<Vector2d> {
+    Ok(Vector2d::from(Self::read_floats::<2>(section, key)?))
   }
 
   /// A string as the editor writes a quoted one, such as the build options' text: `"text"`.
@@ -57,17 +97,9 @@ impl EditableLevelValue {
   ///
   /// Returns an error naming the section and key when the field is missing or not exactly three floats.
   pub fn read_vector3(section: &IniSection, key: &str) -> XrfResult<Vector3d> {
-    let value: &str = section.get_required(key)?;
-    let components: Vec<f32> = value
-      .split(',')
-      .map(|component| component.trim().parse::<f32>())
-      .collect::<Result<Vec<f32>, _>>()
-      .map_err(|_| Self::vector_error(&section.name, key, value))?;
+    let [x, y, z] = Self::read_floats::<3>(section, key)?;
 
-    match components.as_slice() {
-      [x, y, z] => Ok(Vector3d { x: *x, y: *y, z: *z }),
-      _ => Err(Self::vector_error(&section.name, key, value)),
-    }
+    Ok(Vector3d { x, y, z })
   }
 
   /// A field holding a quoted string, without its quotes.
@@ -90,7 +122,17 @@ impl EditableLevelValue {
       })
   }
 
-  fn vector_error(section: &str, key: &str, value: &str) -> XrfError {
-    XrfError::new_parsing_error(format!("Field [{section}] {key} = '{value}' is not three floats"))
+  /// A field holding exactly `N` comma-separated floats.
+  fn read_floats<const N: usize>(section: &IniSection, key: &str) -> XrfResult<[f32; N]> {
+    let value: &str = section.get_required(key)?;
+
+    value
+      .split(',')
+      .map(|component| component.trim().parse::<f32>().ok())
+      .collect::<Option<Vec<f32>>>()
+      .and_then(|components| <[f32; N]>::try_from(components).ok())
+      .ok_or_else(|| {
+        XrfError::new_parsing_error(format!("Field [{}] {key} = '{value}' is not {N} floats", section.name))
+      })
   }
 }

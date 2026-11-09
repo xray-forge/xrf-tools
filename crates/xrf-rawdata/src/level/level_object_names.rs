@@ -19,4 +19,9 @@ impl LevelObjectNames {
 
     name
   }
+
+  /// The next free name after the file a game path names, its last component: `ambient\air_2` gives `air_2_0000`.
+  pub fn get_next_after_file(&mut self, path: &str) -> String {
+    self.get_next(path.rsplit(['\\', '/']).next().unwrap_or_default())
+  }
 }
