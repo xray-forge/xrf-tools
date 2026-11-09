@@ -8,6 +8,7 @@ use xrf_math::Vector3d;
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_actor::AlifeObjectActor;
+use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 use crate::data::generic::script_save_marker::ScriptSaveMarker;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -36,11 +37,20 @@ impl AlifeActor {
 }
 
 impl AlifePacketsReadWrite for AlifeActor {
+  fn set_spawned_update(&mut self, header: &SpawnPacketHeader) {
+    self.base.set_spawned_update(header);
+  }
+
   /// Read actor data from both packets; the script class adds to the spawn packet alone.
   fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
     Ok(Self {
       base: AlifeObjectActor::read::<T, _, _>(spawn, update)?,
-      start_position_filled: ScriptSaveMarker::read::<T, _, _>(spawn, Self::SCRIPT_CLASS, |reader| reader.read_u8())?,
+      start_position_filled: ScriptSaveMarker::read_or_constructed::<T, _, _>(
+        spawn,
+        Self::SCRIPT_CLASS,
+        || 0,
+        |reader| reader.read_u8(),
+      )?,
     })
   }
 

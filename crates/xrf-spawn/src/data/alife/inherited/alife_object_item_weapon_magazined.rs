@@ -8,6 +8,7 @@ use xrf_math::Vector3d;
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_item_weapon::AlifeObjectItemWeapon;
+use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -19,6 +20,10 @@ pub struct AlifeObjectItemWeaponMagazined {
 }
 
 impl AlifePacketsReadWrite for AlifeObjectItemWeaponMagazined {
+  fn set_spawned_update(&mut self, header: &SpawnPacketHeader) {
+    self.base.set_spawned_update(header);
+  }
+
   /// Read a magazined weapon from both packets; its fire mode ends the update packet's weapon fields.
   fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
     Ok(Self {

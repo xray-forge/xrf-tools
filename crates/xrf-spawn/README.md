@@ -187,27 +187,30 @@ assert_eq!(read.get_sections().get("medkit"), Some(&1));
 
 ## The Level Editor's form
 
-The Level Editor saves an entity's spawn packet in `spawn.part` as `[object_N_spawndata]`: one numbered field per value,
-written by the same `Spawn_Write` that writes the bytes, through a `NET_Packet` whose primitives also feed an
-`SIniFileStream`. Here a class writes once for both forms, through
-[xrf-chunk's field traits](../xrf-chunk/README.md#values-as-bytes-and-as-fields):
+The Level Editor stores each entity of a scene in `spawn.part` as an `[object_N_spawndata]` section: the entity's spawn
+packet as numbered fields, one per value (`000001 = 1`, `000002 = "wpn_groza"`, ...). The editor fills them with the
+same `Spawn_Write` that writes the binary packet. This crate does the same: each class writes once, through
+[xrf-chunk's field traits](../xrf-chunk/README.md#values-as-bytes-and-as-fields), and the writer decides the form. A
+`ChunkWriter` gets the packet's bytes; a `ChunkFieldRecorder` gets the fields with their kinds.
 
-- Every class and value implements `ChunkFieldReadWrite` (a two-packet class `AlifePacketsReadWrite`, over any field
-  reader and writer for each packet), and its byte form comes from it: written to a `ChunkWriter` it is the packet's
-  bytes, to a `ChunkFieldRecorder` the editor's fields with their kinds.
-- `SpawnPacketHeader` is `CSE_Abstract::Spawn_Write`'s own fields, and frames a class's state behind the size it
-  patches over the bytes alone, as `NET_Packet::w_seek` does: fields keep the zero the editor writes, bytes must count
-  exactly. `SpawnPacket<S>` is a header and a state; `AlifeObject` holds the header flattened, so its JSON and LTX keys
-  are the header's beside its own. Client data is raw bytes, which fields cannot hold.
-- Where the engine writes otherwise to an ini stream, a class asks `is_field_form`: a monster's `task_reached` is a
-  raw byte or a `u16`, and a human's equipment and weapon preferences are written to bytes alone, the editor keeping
-  the ones its constructor drew. The level changer's destination is three floats ahead of one angles vector, as
-  `STATE_Write` puts them down.
+- `AlifeObject::write_spawn_packet` and `read_spawn_packet` handle the spawn packet alone, which is all a scene or a
+  `level.spawn` keeps, in either form. Reading fills the update fields the way the SDK's spawn builder does when it
+  writes `all.spawn`: from the spawn packet and each class's constructor, and zero where the engine leaves a value
+  uninitialised.
+- `SpawnPacketHeader` writes the state's byte size into bytes only; fields hold `0` there, as the editor writes it.
+  Client data has no field form. `AlifeObject` keeps the header's fields at its own top level in JSON and LTX.
+- Some classes write fields differently from bytes, as the engine does, and check `is_field_form` for it: a monster's
+  `task_reached` is a byte in bytes and a `u16` in fields, a human's equipment and weapon preferences are left out of
+  fields, and the level changer's destination position is three floats.
+- A scene may lack the fields a script class adds at the end of its packet, because the SDK's scripts skip them when
+  loading inside the editor. The actor, level changer and smart terrain then take their script constructor's values
+  (`ScriptSaveMarker::read_or_constructed`); a zone's last spawn time reads as `LastSpawnTime::Absent`.
+- A new class implements `ChunkFieldReadWrite`, or `AlifePacketsReadWrite` when it also has update fields, and gets
+  both forms from it.
 
-GSC's `labx8` scenes save their 31 restrictors in these kinds and this order; of the 15,102 Call of Pripyat restrictor
-packets over every tree's `level.spawn`, 15,036 come back byte for byte through the fields' text and 37 lose only floats
-off the `%f` grid, as the editor would. Classes GSC's scenes hold no instance of (stalkers, monsters, squads, smart
-covers) follow the engine's source, unproven against the editor.
+Every entity in GSC's own CoP SDK 0.7 scenes reads and writes back field for field, and every Call of Pripyat
+`level.spawn` packet of a known section comes back byte for byte through the text, apart from floats the editor's `%f`
+rounds. Stalkers, monsters and squads appear in no GSC scene, so their field form follows the engine's source only.
 
 ## Checks
 

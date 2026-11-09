@@ -6,6 +6,7 @@ use xrf_ltx::{LtxImportExport, LtxRead, LtxWrite};
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
+use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 
 /// A detector, `CSE_ALifeItemDetector`, which adds nothing to either packet of the item it is.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -16,6 +17,10 @@ pub struct AlifeObjectItemDetector {
 }
 
 impl AlifePacketsReadWrite for AlifeObjectItemDetector {
+  fn set_spawned_update(&mut self, header: &SpawnPacketHeader) {
+    self.base.set_spawned_update(header);
+  }
+
   /// Read a detector from both packets.
   fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
     Ok(Self {

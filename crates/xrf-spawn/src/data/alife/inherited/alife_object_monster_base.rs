@@ -8,6 +8,7 @@ use xrf_math::Vector3d;
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_monster_abstract::AlifeObjectMonsterAbstract;
 use crate::data::alife::inherited::alife_object_skeleton::AlifeObjectSkeleton;
+use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 
 /// A mutant, `CSE_ALifeMonsterBase`: a monster with a physics skeleton, which every monster class Call of Pripyat
 /// registers is, the psy dog's phantom included. Its update packet is the monster's; the skeleton adds none.
@@ -29,6 +30,10 @@ impl AlifeObjectMonsterBase {
 }
 
 impl AlifePacketsReadWrite for AlifeObjectMonsterBase {
+  fn set_spawned_update(&mut self, header: &SpawnPacketHeader) {
+    self.base.set_spawned_update(header);
+  }
+
   /// Read the monster from both packets.
   fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
     Ok(Self {

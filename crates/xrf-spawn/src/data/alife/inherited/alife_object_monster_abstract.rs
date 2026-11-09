@@ -7,6 +7,7 @@ use xrf_math::Vector3d;
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_creature::AlifeObjectCreature;
+use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 
 /// A creature the alife simulation moves offline, `CSE_ALifeMonsterAbstract`: every monster and every stalker. Its
 /// spawn packet adds the space restrictions it keeps to and the smart terrain it serves, and its update packet the game
@@ -61,6 +62,16 @@ impl AlifeObjectMonsterAbstract {
 }
 
 impl AlifePacketsReadWrite for AlifeObjectMonsterAbstract {
+  /// The creature's, then the graph vertices it walks between as the constructor sets them: none, copied from the
+  /// object's game vertex while that is still unset (`xrServer_Objects_ALife_Monsters.cpp:1017`), and no distance.
+  fn set_spawned_update(&mut self, header: &SpawnPacketHeader) {
+    self.base.set_spawned_update(header);
+    self.update_next_game_vertex_id = u16::MAX;
+    self.update_previous_game_vertex_id = u16::MAX;
+    self.update_distance_from_point = 0.0;
+    self.update_distance_to_point = 0.0;
+  }
+
   /// Read the monster from both packets.
   fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
     Ok(Self {

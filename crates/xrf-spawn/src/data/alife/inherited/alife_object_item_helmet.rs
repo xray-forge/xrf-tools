@@ -6,6 +6,7 @@ use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrit
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
+use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 
 /// A helmet, `CSE_ALifeItemHelmet`, whose update packet repeats its condition after the item's.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -25,6 +26,12 @@ impl AlifeObjectItemHelmet {
 }
 
 impl AlifePacketsReadWrite for AlifeObjectItemHelmet {
+  /// The item's, then the spawn packet's condition quantised.
+  fn set_spawned_update(&mut self, header: &SpawnPacketHeader) {
+    self.base.set_spawned_update(header);
+    self.update_condition = AlifeObjectItem::quantize_condition(self.base.condition);
+  }
+
   /// Read a helmet from both packets.
   fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
     Ok(Self {

@@ -7,6 +7,7 @@ use xrf_utils::{vector_from_string, vector_to_string};
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_item_weapon_magazined::AlifeObjectItemWeaponMagazined;
+use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 
 /// A shotgun, `CSE_ALifeItemWeaponShotGun`, which the engine derives from the magazined weapon.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -19,6 +20,10 @@ pub struct AlifeObjectItemWeaponShotgun {
 }
 
 impl AlifePacketsReadWrite for AlifeObjectItemWeaponShotgun {
+  fn set_spawned_update(&mut self, header: &SpawnPacketHeader) {
+    self.base.set_spawned_update(header);
+  }
+
   /// Read a shotgun from both packets; the shells loaded end its update packet.
   fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
     let base: AlifeObjectItemWeaponMagazined = AlifeObjectItemWeaponMagazined::read::<T, _, _>(spawn, update)?;

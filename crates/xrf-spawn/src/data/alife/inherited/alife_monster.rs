@@ -7,6 +7,7 @@ use xrf_math::Vector3d;
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_monster_base::AlifeObjectMonsterBase;
+use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 use crate::data::generic::offline_object_state::OfflineObjectState;
 
 /// A monster as its script class `se_monster` saves one: vanilla's `se_monster.script` and xrf-engine's `Monster.ts`
@@ -42,6 +43,10 @@ impl AlifeMonster {
 }
 
 impl AlifePacketsReadWrite for AlifeMonster {
+  fn set_spawned_update(&mut self, header: &SpawnPacketHeader) {
+    self.base.set_spawned_update(header);
+  }
+
   /// Read the monster from both packets; the script class adds to the spawn packet alone.
   fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
     Ok(Self {

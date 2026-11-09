@@ -52,17 +52,37 @@ impl ChunkFieldReadWrite for AlifeSmartTerrain {
   /// Read ALife smart terrain data from the chunk.
   fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     let base: AlifeSmartZone = reader.read_xr::<T, AlifeSmartZone>()?;
-    let object: Self = ScriptSaveMarker::read::<T, _, _>(reader, Self::SCRIPT_CLASS, |reader| {
-      Ok(Self {
-        base,
-        arriving_objects_count: reader.read_u8()?,
-        object_job_descriptors_count: reader.read_u8()?,
-        dead_objects_infos_count: reader.read_u8()?,
-        smart_terrain_actor_control: reader.read_u8()?,
-        respawn_point: reader.read_u8()?,
-        staying_objects_count: reader.read_u8()?,
-      })
-    })?;
+    let [
+      arriving_objects_count,
+      object_job_descriptors_count,
+      dead_objects_infos_count,
+      smart_terrain_actor_control,
+      respawn_point,
+      staying_objects_count,
+    ] = ScriptSaveMarker::read_or_constructed::<T, _, _>(
+      reader,
+      Self::SCRIPT_CLASS,
+      || [0; 6],
+      |reader| {
+        Ok([
+          reader.read_u8()?,
+          reader.read_u8()?,
+          reader.read_u8()?,
+          reader.read_u8()?,
+          reader.read_u8()?,
+          reader.read_u8()?,
+        ])
+      },
+    )?;
+    let object: Self = Self {
+      base,
+      arriving_objects_count,
+      object_job_descriptors_count,
+      dead_objects_infos_count,
+      smart_terrain_actor_control,
+      respawn_point,
+      staying_objects_count,
+    };
 
     object.assert_compiled_state()?;
 

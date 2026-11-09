@@ -11,6 +11,7 @@ use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 #[cfg(test)]
 use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
 use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
+use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 use crate::data::physics::physics_net_state::PhysicsNetState;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -31,9 +32,19 @@ impl AlifeObjectItem {
   pub fn dequantize_condition(stored: u8) -> f32 {
     f32::from(stored) / 255.0001
   }
+
+  /// The byte `NET_Packet::w_float_q8` stores a condition over `0..=1` as: `u8(iFloor(c * 255 + 0.5))`, wrapping as
+  /// the engine's cast does.
+  pub fn quantize_condition(condition: f32) -> u8 {
+    (condition * 255.0 + 0.5).floor() as i32 as u8
+  }
 }
 
 impl AlifePacketsReadWrite for AlifeObjectItem {
+  /// Nothing to set: a fresh item's physics state byte is zero, no state (`CSE_ALifeInventoryItem`'s constructor in
+  /// OpenXRay; GSC's leaves it uninitialised).
+  fn set_spawned_update(&mut self, _: &SpawnPacketHeader) {}
+
   /// Read the item's condition and upgrades, then the physics state of its update packet.
   fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
     let base: AlifeObjectDynamicVisual = spawn.read_xr::<T, _>()?;
@@ -182,6 +193,19 @@ mod tests {
     assert!(AlifeObjectItem::dequantize_condition(255) < 1.0);
     assert!((AlifeObjectItem::dequantize_condition(255) - 1.0).abs() < 1e-6);
     assert!((AlifeObjectItem::dequantize_condition(128) - 0.502).abs() < 1e-3);
+  }
+
+  /// Rounded to the nearest of 255 steps, and wrapped as the engine's `u8` cast wraps a value outside `0..=1`.
+  #[test]
+  fn quantizes_a_condition_as_the_engine_does() {
+    assert_eq!(AlifeObjectItem::quantize_condition(0.0), 0);
+    assert_eq!(AlifeObjectItem::quantize_condition(1.0), 255);
+    assert_eq!(AlifeObjectItem::quantize_condition(0.502), 128);
+    assert_eq!(AlifeObjectItem::quantize_condition(1.5), 127);
+    assert_eq!(
+      AlifeObjectItem::quantize_condition(AlifeObjectItem::dequantize_condition(37)),
+      37
+    );
   }
 
   #[test]

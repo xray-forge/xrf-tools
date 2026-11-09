@@ -8,6 +8,7 @@ use xrf_math::Vector3d;
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_human_abstract::AlifeObjectHumanAbstract;
 use crate::data::alife::inherited::alife_object_skeleton::AlifeObjectSkeleton;
+use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 
 /// A stalker, `CSE_ALifeHumanStalker`: a human with a physics skeleton, whose update packet closes with the dialog it
 /// starts a conversation with.
@@ -29,6 +30,10 @@ impl AlifeObjectHumanStalker {
 }
 
 impl AlifePacketsReadWrite for AlifeObjectHumanStalker {
+  fn set_spawned_update(&mut self, header: &SpawnPacketHeader) {
+    self.base.set_spawned_update(header);
+  }
+
   /// Read the stalker from both packets.
   fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
     Ok(Self {

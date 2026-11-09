@@ -1,8 +1,10 @@
 use std::io::Write;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{
+  ChunkDataSource, ChunkFieldReader, ChunkFieldReplay, ChunkFieldWriter, ChunkReadWrite, ChunkReader, ChunkWriter,
+};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxWrite};
 use xrf_math::Vector3d;
@@ -11,6 +13,7 @@ use xrf_utils::{assert_equal, assert_not_equal, narrow_format_size};
 use crate::constants::NET_ACTION_UPDATE;
 use crate::data::alife::alife_object_inherited::AlifeObjectInherited;
 use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
+use crate::data::alife::zeroed_update_fields::ZeroedUpdateFields;
 use crate::data::meta::alife_class::AlifeClass;
 use crate::data::meta::cls_id::ClsId;
 
@@ -64,6 +67,63 @@ impl AlifeObject {
 
     Ok(())
   }
+
+  /// Read an object from its spawn packet alone, as `level.spawn` holds it and the Level Editor saves it, bytes or
+  /// fields: the update fields as xrAI's freshly read server entity holds them when it writes a root spawn
+  /// (`AlifeObjectInherited::set_spawned_update`), the members the engine leaves uninitialised zero.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the packet is not a spawn packet of a known class, or its state does not read whole.
+  pub fn read_spawn_packet<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+    let mut object: Self = Self::read_packets::<T, _, _>(reader, &mut ChunkFieldReplay::new(&mut ZeroedUpdateFields))?;
+
+    object.inherited.set_spawned_update(&object.header);
+
+    Ok(object)
+  }
+
+  /// Write the object's spawn packet alone, as `level.spawn` holds it and the Level Editor saves it.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the payload is not its section's class, or the writer refuses a value.
+  pub fn write_spawn_packet<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    self.write_packets::<T, _, _>(writer, &mut ChunkWriter::new())
+  }
+
+  /// The spawn packet from `spawn`, its class's update fields from `update`.
+  fn read_packets<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+    spawn: &mut S,
+    update: &mut U,
+  ) -> XrfResult<Self> {
+    let header: SpawnPacketHeader = spawn.read_xr::<T, _>()?;
+    let clsid: ClsId = ClsId::from_section(&header.section)?;
+    let class: AlifeClass = AlifeClass::from_cls_id(&clsid);
+
+    assert_not_equal(&class, &AlifeClass::Unknown, "Expect known ALife object clsid")?;
+
+    let inherited: AlifeObjectInherited = header.read_state::<T, _, _>(spawn, |spawn| {
+      AlifeObjectInherited::read::<T, _, _>(spawn, update, &class)
+    })?;
+
+    Ok(Self {
+      header,
+      clsid,
+      inherited,
+    })
+  }
+
+  /// The spawn packet into `spawn`, its class's update fields into `update`.
+  fn write_packets<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+    &self,
+    spawn: &mut S,
+    update: &mut U,
+  ) -> XrfResult {
+    self.assert_class_matches_section()?;
+    spawn.write_xr::<T, _>(&self.header)?;
+    SpawnPacketHeader::write_state::<T, _>(spawn, |spawn| self.inherited.write::<T, _, _>(spawn, update))
+  }
 }
 
 impl ChunkReadWrite for AlifeObject {
@@ -78,12 +138,6 @@ impl ChunkReadWrite for AlifeObject {
       spawn_reader.size,
       "Expect correct data size for ALife object",
     )?;
-
-    let header: SpawnPacketHeader = spawn_reader.read_xr::<T, _>()?;
-    let clsid: ClsId = ClsId::from_section(&header.section)?;
-    let class: AlifeClass = AlifeClass::from_cls_id(&clsid);
-
-    assert_not_equal(&class, &AlifeClass::Unknown, "Expect known ALife object clsid")?;
 
     let mut update_reader: ChunkReader<D> = reader.read_child_by_index(Self::DATA_UPDATE_CHUNK_ID)?;
     let update_data_length: u16 = update_reader.read_u16::<T>()?;
@@ -100,31 +154,22 @@ impl ChunkReadWrite for AlifeObject {
       "Expect only net_update actions in ALife object update data",
     )?;
 
-    let inherited: AlifeObjectInherited = header.read_state::<T, _, _>(&mut spawn_reader, |spawn| {
-      AlifeObjectInherited::read::<T, _, _>(spawn, &mut update_reader, &class)
-    })?;
+    let object: Self = Self::read_packets::<T, _, _>(&mut spawn_reader, &mut update_reader)?;
 
     spawn_reader.assert_read("Expect ALife object spawn data to be read")?;
     update_reader.assert_read("Expect ALife object update data to hold only its class's update fields")?;
     reader.assert_read("Expect ALife object chunk to be read")?;
 
-    Ok(Self {
-      header,
-      clsid,
-      inherited,
-    })
+    Ok(object)
   }
 
   /// Write the object's two chunks: the spawn packet, `Spawn_Write`'s header and state, and the update packet, each
   /// behind its length.
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    self.assert_class_matches_section()?;
-
     let mut spawn: ChunkWriter = ChunkWriter::new();
     let mut update: ChunkWriter = ChunkWriter::new();
 
-    spawn.write_xr::<T, _>(&self.header)?;
-    SpawnPacketHeader::write_state::<T, _>(&mut spawn, |spawn| self.inherited.write::<T, _, _>(spawn, &mut update))?;
+    self.write_packets::<T, _, _>(&mut spawn, &mut update)?;
 
     let mut spawn_chunk: ChunkWriter = ChunkWriter::new();
     let mut update_chunk: ChunkWriter = ChunkWriter::new();
@@ -181,6 +226,7 @@ mod tests {
   use xrf_math::Vector3d;
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
+  use crate::constants::NET_ACTION_UPDATE;
   use crate::data::alife::alife_object::AlifeObject;
   use crate::data::alife::alife_object_inherited::AlifeObjectInherited;
   use crate::data::alife::inherited::alife_actor::AlifeActor;
@@ -223,7 +269,15 @@ mod tests {
     spawn_data_writer.write_u16::<XRayByteOrder>(object_data_writer.bytes_written() as u16)?;
     spawn_data_writer.write_all(&object_data_writer.flush_raw_into_buffer()?)?;
 
-    let bytes: Vec<u8> = spawn_data_writer.flush_chunk_into_buffer::<XRayByteOrder>(0)?;
+    // An empty update packet: its length, then `M_UPDATE`.
+    let mut update_data_writer: ChunkWriter = ChunkWriter::new();
+    update_data_writer.write_u16::<XRayByteOrder>(2)?;
+    update_data_writer.write_u16::<XRayByteOrder>(NET_ACTION_UPDATE)?;
+
+    let mut bytes: Vec<u8> = spawn_data_writer.flush_chunk_into_buffer::<XRayByteOrder>(0)?;
+
+    bytes.extend(update_data_writer.flush_chunk_into_buffer::<XRayByteOrder>(1)?);
+
     let path: PathBuf = GeneratedResources::write("alife_object/unknown_clsid.chunk", bytes)?;
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_file(File::open(&path)?)?;
@@ -552,6 +606,46 @@ mod tests {
     assert_eq!(actor.base.base.update_position, Vector3d::new(-40.0, 5.5, 120.0));
     assert_eq!(actor.base.base.update_torso_yaw, 1.25);
     assert_eq!(actor.base.base.update_torso_pitch, -0.1);
+
+    Ok(())
+  }
+
+  /// The spawn packet alone reads back with the update fields a fresh server entity holds: a creature stands where its
+  /// spawn packet places it, turned by its angles, with its own health and team, and the rest of the spawn packet whole.
+  #[test]
+  fn reads_a_spawn_packet_alone_as_a_fresh_entity() -> XrfResult {
+    let mut original: AlifeObject = new_graph_point_object();
+
+    original.header.section = String::from("stalker");
+    original.clsid = ClsId::AiStlS;
+    original.inherited =
+      AlifeObjectInherited::SeStalker(Box::new(AlifeStalker::new_mock(Vector3d::new(1.0, 2.0, 3.0))));
+    original.header.position = Vector3d::new(-40.0, 5.5, 120.0);
+    original.header.direction = Vector3d::new(-0.1, 1.25, 0.0);
+
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    original.write_spawn_packet::<XRayByteOrder, _>(&mut writer)?;
+
+    let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&writer.buffer)?;
+    let read: AlifeObject = AlifeObject::read_spawn_packet::<XRayByteOrder, _>(&mut reader)?;
+    let AlifeObjectInherited::SeStalker(stalker) = &read.inherited else {
+      panic!("Expected a stalker payload");
+    };
+    let creature: &AlifeObjectCreature = &stalker.base.base.base.base;
+
+    assert!(reader.is_ended());
+    assert_eq!(read.header, original.header);
+    assert_eq!(creature.update_position, Vector3d::new(-40.0, 5.5, 120.0));
+    assert_eq!((creature.update_torso_yaw, creature.update_torso_pitch), (1.25, -0.1));
+    assert_eq!(creature.update_health, creature.health);
+    assert_eq!(creature.update_team, creature.team);
+
+    let mut rewritten: ChunkWriter = ChunkWriter::new();
+
+    read.write_spawn_packet::<XRayByteOrder, _>(&mut rewritten)?;
+
+    assert_eq!(rewritten.buffer, writer.buffer);
 
     Ok(())
   }

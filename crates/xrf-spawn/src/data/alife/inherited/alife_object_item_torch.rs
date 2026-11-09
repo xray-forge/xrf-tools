@@ -6,6 +6,7 @@ use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrit
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
+use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 
 /// A torch, `CSE_ALifeItemTorch`, whose update packet closes with a byte of whether its light and night vision are on
 /// and whether it is attached; its spawn packet is the item's.
@@ -28,6 +29,10 @@ impl AlifeObjectItemTorch {
 }
 
 impl AlifePacketsReadWrite for AlifeObjectItemTorch {
+  fn set_spawned_update(&mut self, header: &SpawnPacketHeader) {
+    self.base.set_spawned_update(header);
+  }
+
   /// Read a torch from both packets.
   fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
     Ok(Self {

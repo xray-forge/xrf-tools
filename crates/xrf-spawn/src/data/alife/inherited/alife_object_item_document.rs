@@ -6,6 +6,7 @@ use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrit
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
+use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 
 /// A document, `CSE_ALifeItemDocument`: an item whose spawn packet closes with the info portion reading it gives; its
 /// update packet is the item's.
@@ -19,6 +20,10 @@ pub struct AlifeObjectItemDocument {
 }
 
 impl AlifePacketsReadWrite for AlifeObjectItemDocument {
+  fn set_spawned_update(&mut self, header: &SpawnPacketHeader) {
+    self.base.set_spawned_update(header);
+  }
+
   /// Read a document from both packets.
   fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
     Ok(Self {

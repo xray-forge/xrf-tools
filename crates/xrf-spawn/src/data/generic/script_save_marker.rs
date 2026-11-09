@@ -51,15 +51,38 @@ impl ScriptSaveMarker {
 
     Ok(fields)
   }
+
+  /// Reads the fields as [`Self::read`] does or, in the editor's form when the fields end where they would begin, takes
+  /// the values the script class's constructor gives them. For a class whose SDK script returns from `STATE_Read`
+  /// before its own fields under `editor()` (`se_actor`, `se_level_changer`, `se_smart_terrain`), so a scene the editor
+  /// saved without them still loads; `se_actor` never writes them there either, its `m_registred` gate staying shut.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error as [`Self::read`] does when the fields are there.
+  pub(crate) fn read_or_constructed<T: ByteOrder, R: ChunkFieldReader, V>(
+    reader: &mut R,
+    owner: &str,
+    constructed: impl FnOnce() -> V,
+    read: impl FnOnce(&mut R) -> XrfResult<V>,
+  ) -> XrfResult<V> {
+    if reader.is_field_form() && reader.is_ended() {
+      Ok(constructed())
+    } else {
+      Self::read::<T, _, _>(reader, owner, read)
+    }
+  }
 }
 
 #[cfg(test)]
 mod tests {
   use xrf_chunk::{
-    ChunkFieldReader, ChunkFieldWriter, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder,
+    ChunkFieldReader, ChunkFieldReplay, ChunkFieldWriter, ChunkReader, ChunkWriter, InMemoryChunkDataSource,
+    XRayByteOrder,
   };
   use xrf_error::XrfResult;
 
+  use crate::data::alife::zeroed_update_fields::ZeroedUpdateFields;
   use crate::data::generic::script_save_marker::ScriptSaveMarker;
 
   #[test]
@@ -87,6 +110,24 @@ mod tests {
       })?,
       (1, String::from("hint"))
     );
+
+    Ok(())
+  }
+
+  /// Fields that end where the script class's own begin take its constructor's values; bytes that end there are short.
+  #[test]
+  fn takes_constructed_values_only_where_fields_end() -> XrfResult {
+    fn read<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<u8> {
+      ScriptSaveMarker::read_or_constructed::<XRayByteOrder, _, _>(reader, "test", || 3, ChunkFieldReader::read_u8)
+    }
+
+    assert_eq!(read(&mut ChunkFieldReplay::new(&mut ZeroedUpdateFields))?, 3);
+
+    let mut bytes: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[7])?;
+
+    ChunkFieldReader::read_u8(&mut bytes)?;
+
+    assert!(read(&mut bytes).is_err());
 
     Ok(())
   }
