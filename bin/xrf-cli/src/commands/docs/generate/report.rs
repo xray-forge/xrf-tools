@@ -31,7 +31,7 @@ impl DocsGenerateReport {
   /// by the page name - so a consumer reading `result` alone knows which pages to regenerate.
   pub(crate) fn checked(directory: &Path, pages: usize, stale: Vec<String>) -> Self {
     Self {
-      directory: xrf_utils::to_portable_path_string(directory),
+      directory: xrf_utils::format_portable_path(directory),
       is_check: true,
       pages,
       removed: Vec::new(),
@@ -45,7 +45,7 @@ impl DocsGenerateReport {
   /// anyone learns those pages existed.
   pub(crate) fn written(directory: &Path, pages: usize, removed: Vec<String>) -> Self {
     Self {
-      directory: xrf_utils::to_portable_path_string(directory),
+      directory: xrf_utils::format_portable_path(directory),
       is_check: false,
       pages,
       removed,

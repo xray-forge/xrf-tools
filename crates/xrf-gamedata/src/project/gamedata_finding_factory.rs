@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 use std::path::Path;
 
 use xrf_report::RuleId;
-use xrf_utils::to_portable_path_string;
+use xrf_utils::format_portable_path;
 
 use crate::{Finding, GamedataVerificationRule};
 
@@ -15,7 +15,7 @@ impl GamedataFindingFactory {
     P: AsRef<Path>,
     M: Into<String>,
   {
-    Self::create(rule, Some(to_portable_path_string(asset_path)), message)
+    Self::create(rule, Some(format_portable_path(asset_path)), message)
   }
 
   pub(crate) fn without_asset<M>(rule: GamedataVerificationRule, message: M) -> Finding

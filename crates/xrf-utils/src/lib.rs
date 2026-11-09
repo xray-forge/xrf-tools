@@ -11,8 +11,8 @@ pub use crate::binary::{
   new_bounded_vec, new_declared_vec, read_exact_at,
 };
 pub use crate::host_path::{
-  HostDestination, HostFileName, HostLinkPolicy, HostRelativePath, format_path, format_path_or, to_absolute_path,
-  to_portable_path_string,
+  HostDestination, HostFileName, HostLinkPolicy, HostRelativePath, format_path, format_path_or, format_portable_path,
+  resolve_absolute_path,
 };
 pub use crate::staging::StagedFile;
 #[cfg(feature = "staging-faults")]

@@ -25,7 +25,7 @@ impl ArchiveInfoReport {
     Self {
       directories: project.count_directories(),
       files: project.count_files(),
-      root: xrf_utils::to_portable_path_string(&project.root),
+      root: xrf_utils::format_portable_path(&project.root),
       size_compressed: project.get_compressed_size(),
       size_real: project.get_real_size(),
       volumes: project.archives.iter().map(ArchiveVolumeReport::new).collect(),

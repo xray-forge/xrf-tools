@@ -9,7 +9,7 @@ use xrf_omf::OmfFile;
 use xrf_output::OutputOptions;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
 use xrf_spawn::XRayByteOrder;
-use xrf_utils::{format_duration, format_path, to_portable_path_string};
+use xrf_utils::{format_duration, format_path, format_portable_path};
 
 use crate::commands::omf::repack::{OmfRepackOutcome, OmfRepackStatistics, OmfRepackVerifyReport};
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
@@ -140,7 +140,7 @@ impl RepackCommand {
 
   /// What one file's round trip found.
   fn finding(rule: &'static str, path: &Path, message: String) -> Finding {
-    Finding::new(RuleId::of_static(rule), Some(to_portable_path_string(path)), message)
+    Finding::new(RuleId::of_static(rule), Some(format_portable_path(path)), message)
   }
 
   /// Reads `path` and writes it repacked to `destination`.

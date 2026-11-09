@@ -2,7 +2,9 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
-use xrf_error::{XrfError, XrfResult};
+use xrf_error::XrfResult;
+
+use crate::provenance::sidecar::Sidecar;
 
 /// One compiled file a scene was decompiled from.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -23,7 +25,8 @@ pub struct LevelSceneFile {
   pub sources: Vec<String>,
 }
 
-/// What a decompiled scene holds that its sources do not say, which the decompile chose.
+/// What a decompiled scene holds that its sources do not say, which the decompile chose; a part's inferences are
+/// recorded only where it holds what they were chosen for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum LevelSceneInference {
@@ -74,7 +77,7 @@ pub struct LevelSceneProvenance {
 
 impl LevelSceneProvenance {
   /// What the sidecar's name adds to its scene's main file's, `<name>.level.xrf.json`.
-  pub const SIDECAR_SUFFIX: &'static str = ".xrf.json";
+  pub const SIDECAR_SUFFIX: &'static str = Sidecar::SUFFIX;
 
   /// The provenance of a scene of `level` decompiled now by `tool`.
   pub fn new(
@@ -104,16 +107,11 @@ impl LevelSceneProvenance {
   ///
   /// Returns an error when the provenance does not serialise, which it always does.
   pub fn to_json(&self) -> XrfResult<String> {
-    serde_json::to_string_pretty(self)
-      .map_err(|error| XrfError::new_serialization_error(format!("Provenance did not serialise: {error}")))
+    Sidecar::format_json(self)
   }
 
   /// Where the sidecar of the scene whose main file is `level` stands: `<level>.xrf.json`, beside it.
   pub fn sidecar_path(level: &Path) -> PathBuf {
-    let mut name = level.as_os_str().to_owned();
-
-    name.push(Self::SIDECAR_SUFFIX);
-
-    PathBuf::from(name)
+    Sidecar::get_path(level)
   }
 }

@@ -18,7 +18,7 @@ pub(crate) struct PackedFileVerifyReport {
 impl PackedFileVerifyReport {
   pub(crate) fn new(path: &Path, report: Report) -> Self {
     Self {
-      path: xrf_utils::to_portable_path_string(path),
+      path: xrf_utils::format_portable_path(path),
       report,
     }
   }

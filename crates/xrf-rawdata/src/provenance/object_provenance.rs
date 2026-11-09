@@ -3,12 +3,12 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::object::compile::object_compile_options::TangentMethod;
 use crate::object::decompile::object_inference::ObjectInference;
 use crate::object::detail_parameters::DetailParameters;
+use crate::provenance::sidecar::Sidecar;
 
 /// The sidecar written beside a decompiled `.object`, so it is never taken for an authored one: where it came from,
 /// what made it and when, and what in it was inferred rather than read.
@@ -37,7 +37,7 @@ pub struct ObjectProvenance {
 
 impl ObjectProvenance {
   /// What the sidecar's name adds to its object's, `<name>.object.xrf.json`.
-  pub const SIDECAR_SUFFIX: &'static str = ".xrf.json";
+  pub const SIDECAR_SUFFIX: &'static str = Sidecar::SUFFIX;
 
   /// The provenance of an object decompiled now from `source_bytes`, read from `source`, with what the decompile
   /// inferred and the tangent method it found the source made with.
@@ -51,10 +51,7 @@ impl ObjectProvenance {
   ) -> Self {
     Self {
       source: source.into(),
-      source_sha256: Sha256::digest(source_bytes)
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect(),
+      source_sha256: Sidecar::get_sha256_hex(source_bytes),
       tool: tool.into(),
       tool_version: tool_version.into(),
       decompiled_at: SystemTime::now()
@@ -77,17 +74,12 @@ impl ObjectProvenance {
   ///
   /// Returns an error when the provenance does not serialise, which it always does.
   pub fn to_json(&self) -> XrfResult<String> {
-    serde_json::to_string_pretty(self)
-      .map_err(|error| XrfError::new_serialization_error(format!("Provenance did not serialise: {error}")))
+    Sidecar::format_json(self)
   }
 
   /// Where the sidecar of the object at `object` stands: `<object>.xrf.json`, beside it.
   pub fn sidecar_path(object: &Path) -> PathBuf {
-    let mut name = object.as_os_str().to_owned();
-
-    name.push(Self::SIDECAR_SUFFIX);
-
-    PathBuf::from(name)
+    Sidecar::get_path(object)
   }
 
   /// The provenance of the object at `object`, read from its sidecar, or `None` when it has none, as an authored object

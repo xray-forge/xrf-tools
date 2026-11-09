@@ -14,7 +14,7 @@ impl OgfFixFindingReport {
   pub(crate) fn new(source: &Path, message: String) -> Self {
     Self {
       message,
-      source: xrf_utils::to_portable_path_string(source),
+      source: xrf_utils::format_portable_path(source),
     }
   }
 }

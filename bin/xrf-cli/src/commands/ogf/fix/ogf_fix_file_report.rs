@@ -29,13 +29,13 @@ impl OgfFixFileReport {
   ) -> Self {
     Self {
       cause: residue.map(|residue| String::from(residue.cause.as_str())),
-      destination: xrf_utils::to_portable_path_string(destination),
+      destination: xrf_utils::format_portable_path(destination),
       discarded_reference: residue
         .and_then(|residue| residue.cause.get_discarded_path())
         .map(String::from),
       normalized_size,
       original_size,
-      source: xrf_utils::to_portable_path_string(source),
+      source: xrf_utils::format_portable_path(source),
     }
   }
 

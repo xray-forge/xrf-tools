@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_utils::to_portable_path_string;
+use xrf_utils::format_portable_path;
 use xrf_vfs::{XrayMount, XraySourceKind};
 
 /// One mount a `gamedata list` searched, in search order.
@@ -19,7 +19,7 @@ impl GamedataMountReport {
       .map(|mount| Self {
         kind: mount.get_kind(),
         label: mount.get_label().to_string(),
-        root: to_portable_path_string(mount.get_source().get_root_path()),
+        root: format_portable_path(mount.get_source().get_root_path()),
       })
       .collect()
   }

@@ -20,11 +20,11 @@ impl SpriteEquipmentUnpackReport {
   pub(crate) fn new(source: &Path, system_ltx: &Path, destination: &Path, metadata: &DdsMetadata) -> Self {
     Self {
       declared_mipmap_levels: metadata.declared_mipmap_levels,
-      destination: xrf_utils::to_portable_path_string(destination),
+      destination: xrf_utils::format_portable_path(destination),
       format: metadata.get_format_label(),
       height: metadata.height,
-      source: xrf_utils::to_portable_path_string(source),
-      system_ltx: xrf_utils::to_portable_path_string(system_ltx),
+      source: xrf_utils::format_portable_path(source),
+      system_ltx: xrf_utils::format_portable_path(system_ltx),
       width: metadata.width,
     }
   }

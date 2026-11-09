@@ -97,7 +97,7 @@ impl ArchiveVolumeArguments {
     let is_oversized_allowed: bool = matches.get_flag(Self::OVERSIZED);
 
     Ok(ArchiveVolumeRequest {
-      dest: xrf_utils::to_absolute_path(
+      dest: xrf_utils::resolve_absolute_path(
         matches
           .get_one::<PathBuf>(Self::DEST)
           .expect("Expected the destination to default"),

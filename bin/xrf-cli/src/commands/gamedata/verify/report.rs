@@ -246,7 +246,7 @@ mod tests {
       json["skippedMounts"][0],
       serde_json::json!({
         "origin": "$arch_dir$",
-        "path": xrf_utils::to_portable_path_string(root.join("db")),
+        "path": xrf_utils::format_portable_path(root.join("db")),
         "reason": "Failed to read archive volumes",
       })
     );

@@ -19,7 +19,7 @@ impl SkippedMountReport {
   pub(crate) fn new(skipped: &XraySkippedMount) -> Self {
     Self {
       origin: skipped.origin.clone(),
-      path: xrf_utils::to_portable_path_string(&skipped.path),
+      path: xrf_utils::format_portable_path(&skipped.path),
       reason: skipped.reason.clone(),
     }
   }

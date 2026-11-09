@@ -18,13 +18,13 @@ pub(crate) struct DdsCropReport {
 impl DdsCropReport {
   pub(crate) fn new(options: &CropTextureOptions, result: &CropTextureResult) -> Self {
     Self {
-      destination: xrf_utils::to_portable_path_string(&options.output_path),
+      destination: xrf_utils::format_portable_path(&options.output_path),
       height: result.height,
       region_height: options.height,
       region_width: options.width,
       region_x: options.x,
       region_y: options.y,
-      source: xrf_utils::to_portable_path_string(&options.source),
+      source: xrf_utils::format_portable_path(&options.source),
       width: result.width,
     }
   }

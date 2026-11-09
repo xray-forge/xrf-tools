@@ -275,7 +275,13 @@ with no geometry yet:
 
 `write_to_path` writes the sidecar, `<name>.level.xrf.json` (`LevelSceneProvenance`), then the scene, so a failed write
 never leaves a decompile that looks authored. The sidecar holds the front-end the options name, each source's SHA-256,
-each written file and its sources, and what the decompile chose rather than read (`LevelSceneInference`).
+each written file and its sources, and what the decompile chose rather than read (`LevelSceneInference`), recorded
+only for a part that holds what it was chosen for: a level of no light records no light inference. The object and
+scene sidecars share one convention, the `.xrf.json` suffix beside their file and sources named by SHA-256.
+
+`decompile` reads the sources once and hands each file's bytes to the step that decompiles it: the compiled bundle
+(glows, lights, the light qualities), the files built each from one part, then `level.game` and `level.env_mod` (ways,
+spawn points, the game modes). A new source joins as its own step.
 
 `LevelSceneExporter::export` goes back: the files the Build writes from a scene's parts (`BuildGame`,
 `BuildWallmarks`), by name. `level.game`, `level.env_mod` and `level.fog_vol` are written for every scene, empty where

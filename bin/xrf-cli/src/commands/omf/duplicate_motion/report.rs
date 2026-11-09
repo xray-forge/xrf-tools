@@ -27,12 +27,12 @@ impl OmfDuplicateMotionReport {
     is_dry_run: bool,
   ) -> Self {
     Self {
-      destination: xrf_utils::to_portable_path_string(destination),
+      destination: xrf_utils::format_portable_path(destination),
       from: String::from(from),
       is_dry_run,
       is_play_once,
       motions: file.parameters.motions.len(),
-      source: xrf_utils::to_portable_path_string(source),
+      source: xrf_utils::format_portable_path(source),
       to: String::from(to),
     }
   }

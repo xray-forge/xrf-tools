@@ -210,7 +210,7 @@ impl EquipmentSpritePacker {
       DdsFile::read_from_path(path)?.decode_rgba(0)?.into()
     };
 
-    ImageFit::into_bounds(image, width, height, path)
+    ImageFit::fit_to_bounds(image, width, height, path)
   }
 
   /// Read equipment icon from custom path defined in ltx config directory.

@@ -61,7 +61,7 @@ impl LevelSceneExporter {
 
     files.insert(
       LevelGameFile::FILE_NAME,
-      Self::to_bytes(|writer| {
+      Self::encode(|writer| {
         LevelGameFile {
           rpoints: LevelSpawnPointConversion::export_respawn_points(&spawn),
           ways: LevelWayConversion::export(&Self::get_part::<EditableWayObject>(scene, guid)?)?,
@@ -71,7 +71,7 @@ impl LevelSceneExporter {
     );
     files.insert(
       LevelEnvModFile::FILE_NAME,
-      Self::to_bytes(|writer| LevelSpawnPointConversion::export_environment_modifiers(&spawn).write::<T>(writer))?,
+      Self::encode(|writer| LevelSpawnPointConversion::export_environment_modifiers(&spawn).write::<T>(writer))?,
     );
 
     let fog: LevelFogVolFile =
@@ -79,20 +79,20 @@ impl LevelSceneExporter {
 
     files.insert(
       LevelFogVolFile::FILE_NAME,
-      Self::to_bytes(|writer| fog.write::<T>(writer))?,
+      Self::encode(|writer| fog.write::<T>(writer))?,
     );
 
     if let Some(file) = LevelParticleConversion::export(&Self::get_part::<EditableParticleObject>(scene, guid)?) {
       files.insert(
         LevelPsStaticFile::FILE_NAME,
-        Self::to_bytes(|writer| file.write::<T>(writer))?,
+        Self::encode(|writer| file.write::<T>(writer))?,
       );
     }
 
     if let Some(file) = LevelSoundSourceConversion::export(&Self::get_part::<EditableSoundSourceObject>(scene, guid)?) {
       files.insert(
         LevelSndStaticFile::FILE_NAME,
-        Self::to_bytes(|writer| file.write::<T>(writer))?,
+        Self::encode(|writer| file.write::<T>(writer))?,
       );
     }
 
@@ -101,7 +101,7 @@ impl LevelSceneExporter {
     {
       files.insert(
         LevelSndEnvFile::FILE_NAME,
-        Self::to_bytes(|writer| file.write::<T>(writer))?,
+        Self::encode(|writer| file.write::<T>(writer))?,
       );
     }
 
@@ -112,7 +112,7 @@ impl LevelSceneExporter {
       if !file.slots.is_empty() {
         files.insert(
           LevelWallmarksFile::FILE_NAME,
-          Self::to_bytes(|writer| file.write::<T>(writer))?,
+          Self::encode(|writer| file.write::<T>(writer))?,
         );
       }
     }
@@ -185,7 +185,8 @@ impl LevelSceneExporter {
     }
   }
 
-  fn to_bytes(write: impl FnOnce(&mut ChunkWriter) -> XrfResult) -> XrfResult<Vec<u8>> {
+  /// The bytes `write` puts into a new chunk writer.
+  fn encode(write: impl FnOnce(&mut ChunkWriter) -> XrfResult) -> XrfResult<Vec<u8>> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
     write(&mut writer)?;

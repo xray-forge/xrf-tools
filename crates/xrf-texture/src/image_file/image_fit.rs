@@ -13,7 +13,7 @@ impl ImageFit {
   ///
   /// Scaling preserves the aspect ratio, so an image whose proportions differ from the bounds ends up
   /// letterboxed rather than distorted. An image that already matches the bounds is returned untouched.
-  pub(crate) fn into_bounds(image: DynamicImage, width: u32, height: u32, source: &Path) -> XrfResult<DynamicImage> {
+  pub(crate) fn fit_to_bounds(image: DynamicImage, width: u32, height: u32, source: &Path) -> XrfResult<DynamicImage> {
     let image_width: u32 = image.width();
     let image_height: u32 = image.height();
 

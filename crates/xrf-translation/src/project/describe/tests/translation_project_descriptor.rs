@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use indexmap::IndexMap;
 use xrf_error::XrfResult;
-use xrf_utils::to_portable_path_string;
+use xrf_utils::format_portable_path;
 
 use crate::project::describe::translation_file::TranslationFile;
 use crate::project::describe::translation_project_descriptor::TranslationProjectDescriptor;
@@ -74,7 +74,7 @@ fn a_recorded_physical_path_is_a_display_form_and_not_a_write_address() {
   // Writing through this string would land elsewhere.
   let source: TranslationSource = TranslationSource::new(
     r"translations\st_a.json",
-    Some(to_portable_path_string(PathBuf::from("weird").join("a\\b.json"))),
+    Some(format_portable_path(PathBuf::from("weird").join("a\\b.json"))),
   );
 
   assert!(

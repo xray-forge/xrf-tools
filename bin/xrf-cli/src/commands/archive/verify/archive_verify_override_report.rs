@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_utils::to_portable_path_string;
+use xrf_utils::format_portable_path;
 use xrf_vfs::{XrayAssetContainer, XrayShadowingEntry};
 
 /// One engine path the set answers with more than one copy, as a report states it.
@@ -17,8 +17,8 @@ impl ArchiveVerifyOverrideReport {
   /// Where a container sits, spelled the one way every report spells a path.
   fn format_portable_container(container: &XrayAssetContainer) -> String {
     match container {
-      XrayAssetContainer::Directory { root, relative_path } => to_portable_path_string(root.join(relative_path)),
-      XrayAssetContainer::Archive { path } => to_portable_path_string(path),
+      XrayAssetContainer::Directory { root, relative_path } => format_portable_path(root.join(relative_path)),
+      XrayAssetContainer::Archive { path } => format_portable_path(path),
     }
   }
 }

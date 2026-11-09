@@ -27,6 +27,7 @@ use crate::level::level_way_conversion::LevelWayConversion;
 use crate::provenance::level_scene_provenance::{
   LevelSceneFile, LevelSceneInference, LevelSceneProvenance, LevelSceneSource,
 };
+use crate::provenance::sidecar::Sidecar;
 
 /// What a level's decompile takes besides the level's directory (decision 21's one options type; the root spawn,
 /// libraries, surfaces mode and output root join it as their stages land).
@@ -118,212 +119,143 @@ impl LevelSceneDecompiler {
   /// Returns an error when the directory holds none of [`Self::SOURCE_FILES`], one cannot be read or is not the file
   /// its name says, or a conversion refuses what it holds.
   pub fn decompile<T: ByteOrder>(directory: &Path, options: &LevelDecompileOptions) -> XrfResult<LevelSceneDecompile> {
-    let sources: BTreeMap<&'static str, Vec<u8>> = Self::read_sources(directory)?;
-    let mut context: LevelDecompileContext = LevelDecompileContext::new(Self::get_guid(&sources));
-    let mut tools: Vec<(EditableSceneTool, Vec<&'static str>)> = Vec::new();
-    let mut level_options: EditableLevelOptions =
-      EditableLevelOptions::new(&options.name, EditableLevelOptions::SINGLE_PLAYER);
-    let mut inferred: Vec<LevelSceneInference> = vec![
-      LevelSceneInference::ObjectNames,
-      LevelSceneInference::LevelOptions,
-      LevelSceneInference::GameTypes,
-      LevelSceneInference::BuildParameters,
-      LevelSceneInference::Camera,
-    ];
-    let bytes = |name: &str| sources.get(name).cloned();
+    let mut sources: LevelSceneSources = LevelSceneSources::read(directory)?;
+    let mut draft: LevelSceneDraft = LevelSceneDraft::new(Self::get_guid(&sources.files), &options.name);
 
-    if let Some(level_bytes) = bytes(LevelFile::FILE_NAME) {
-      let level: LevelFile = LevelFile::read_from_bytes::<T>(level_bytes)?;
-      let lights: Option<LevelLightsFile> = bytes(LevelLightsFile::FILE_NAME)
-        .map(LevelLightsFile::read_from_bytes::<T>)
-        .transpose()?;
+    Self::decompile_bundle::<T>(&mut sources, &mut draft)?;
+    Self::decompile_companions::<T>(&mut sources, &mut draft)?;
 
-      if let Some(lights) = &lights {
-        level_options.light_hemi_quality =
-          LevelLightConversion::get_hemi_quality(lights).unwrap_or(level_options.light_hemi_quality);
-        level_options.light_sun_quality =
-          LevelLightConversion::get_sun_quality(lights).unwrap_or(level_options.light_sun_quality);
-      }
+    let game_types: u16 = Self::decompile_game::<T>(&mut sources, &mut draft)?;
 
-      let light_sources: Vec<&'static str> = [LevelFile::FILE_NAME, LevelLightsFile::FILE_NAME]
-        .into_iter()
-        .filter(|name| sources.contains_key(name))
-        .collect();
+    Ok(draft.finish(options, game_types, &sources))
+  }
 
-      inferred.extend([
-        LevelSceneInference::GlowTransformsAndFlags,
+  /// The parts the compiled bundle and the level compiler's light list give: glows, lights, and the light qualities of
+  /// the level options.
+  fn decompile_bundle<T: ByteOrder>(sources: &mut LevelSceneSources, draft: &mut LevelSceneDraft) -> XrfResult {
+    let Some(level) = sources.take(LevelFile::FILE_NAME) else {
+      return Ok(());
+    };
+    let level: LevelFile = LevelFile::read_from_bytes::<T>(level)?;
+    let lights: Option<LevelLightsFile> = sources
+      .take(LevelLightsFile::FILE_NAME)
+      .map(LevelLightsFile::read_from_bytes::<T>)
+      .transpose()?;
+
+    if let Some(lights) = &lights {
+      let options: &mut EditableLevelOptions = &mut draft.level_options;
+
+      options.light_hemi_quality = LevelLightConversion::get_hemi_quality(lights).unwrap_or(options.light_hemi_quality);
+      options.light_sun_quality = LevelLightConversion::get_sun_quality(lights).unwrap_or(options.light_sun_quality);
+    }
+
+    let glows = LevelGlowConversion::decompile(&level, &mut draft.context)?;
+
+    draft.infer_if(
+      !glows.objects.is_empty(),
+      &[LevelSceneInference::GlowTransformsAndFlags],
+    );
+    draft.add(glows.to_scene_tool()?, &[LevelFile::FILE_NAME], sources);
+
+    let lights = LevelLightConversion::decompile(lights.as_ref(), &level, &mut draft.context);
+
+    draft.infer_if(
+      !lights.objects.is_empty(),
+      &[
         LevelSceneInference::LightBrightness,
         LevelSceneInference::LightFuzzyPoints,
         LevelSceneInference::LightControls,
-      ]);
-      tools.push((
-        LevelGlowConversion::decompile(&level, &mut context)?.to_scene_tool()?,
-        vec![LevelFile::FILE_NAME],
-      ));
-      tools.push((
-        LevelLightConversion::decompile(lights.as_ref(), &level, &mut context).to_scene_tool()?,
-        light_sources,
-      ));
+      ],
+    );
+    draft.add(
+      lights.to_scene_tool()?,
+      &[LevelFile::FILE_NAME, LevelLightsFile::FILE_NAME],
+      sources,
+    );
+
+    Ok(())
+  }
+
+  /// The parts of the files the build writes each from one part: particles, sounds, sound environments, fog volumes
+  /// and wall marks.
+  fn decompile_companions<T: ByteOrder>(sources: &mut LevelSceneSources, draft: &mut LevelSceneDraft) -> XrfResult {
+    if let Some(bytes) = sources.take(LevelPsStaticFile::FILE_NAME) {
+      let part =
+        LevelParticleConversion::decompile(&LevelPsStaticFile::read_from_bytes::<T>(bytes)?, &mut draft.context)?;
+
+      draft.add(part.to_scene_tool()?, &[LevelPsStaticFile::FILE_NAME], sources);
     }
 
-    if let Some(bytes) = bytes(LevelPsStaticFile::FILE_NAME) {
-      let file: LevelPsStaticFile = LevelPsStaticFile::read_from_bytes::<T>(bytes)?;
+    if let Some(bytes) = sources.take(LevelSndStaticFile::FILE_NAME) {
+      let part =
+        LevelSoundSourceConversion::decompile(&LevelSndStaticFile::read_from_bytes::<T>(bytes)?, &mut draft.context)?;
 
-      tools.push((
-        LevelParticleConversion::decompile(&file, &mut context)?.to_scene_tool()?,
-        vec![LevelPsStaticFile::FILE_NAME],
-      ));
+      draft.infer_if(!part.objects.is_empty(), &[LevelSceneInference::SoundSourceDistances]);
+      draft.add(part.to_scene_tool()?, &[LevelSndStaticFile::FILE_NAME], sources);
     }
 
-    if let Some(bytes) = bytes(LevelSndStaticFile::FILE_NAME) {
-      let file: LevelSndStaticFile = LevelSndStaticFile::read_from_bytes::<T>(bytes)?;
+    if let Some(bytes) = sources.take(LevelSndEnvFile::FILE_NAME) {
+      let part =
+        LevelSoundEnvironmentConversion::decompile(&LevelSndEnvFile::read_from_bytes::<T>(bytes)?, &mut draft.context)?;
 
-      inferred.push(LevelSceneInference::SoundSourceDistances);
-      tools.push((
-        LevelSoundSourceConversion::decompile(&file, &mut context)?.to_scene_tool()?,
-        vec![LevelSndStaticFile::FILE_NAME],
-      ));
+      draft.add(part.to_scene_tool()?, &[LevelSndEnvFile::FILE_NAME], sources);
     }
 
-    if let Some(bytes) = bytes(LevelSndEnvFile::FILE_NAME) {
-      let file: LevelSndEnvFile = LevelSndEnvFile::read_from_bytes::<T>(bytes)?;
+    if let Some(bytes) = sources.take(LevelFogVolFile::FILE_NAME) {
+      let part =
+        LevelFogVolumeConversion::decompile(&LevelFogVolFile::read_from_bytes::<T>(bytes)?, &mut draft.context)?;
 
-      tools.push((
-        LevelSoundEnvironmentConversion::decompile(&file, &mut context)?.to_scene_tool()?,
-        vec![LevelSndEnvFile::FILE_NAME],
-      ));
+      draft.add(part.to_scene_tool()?, &[LevelFogVolFile::FILE_NAME], sources);
     }
 
-    if let Some(bytes) = bytes(LevelFogVolFile::FILE_NAME) {
-      let file: LevelFogVolFile = LevelFogVolFile::read_from_bytes::<T>(bytes)?;
+    if let Some(bytes) = sources.take(LevelWallmarksFile::FILE_NAME) {
+      let tool = LevelWallmarkConversion::decompile(&LevelWallmarksFile::read_from_bytes::<T>(bytes)?)?;
 
-      tools.push((
-        LevelFogVolumeConversion::decompile(&file, &mut context)?.to_scene_tool()?,
-        vec![LevelFogVolFile::FILE_NAME],
-      ));
+      let scene_tool: EditableSceneTool = tool.to_scene_tool::<T>(draft.context.guid)?;
+
+      draft.infer_if(!tool.slots.is_empty(), &[LevelSceneInference::WallmarkBrush]);
+      draft.add(scene_tool, &[LevelWallmarksFile::FILE_NAME], sources);
     }
 
-    if let Some(bytes) = bytes(LevelWallmarksFile::FILE_NAME) {
-      let file: LevelWallmarksFile = LevelWallmarksFile::read_from_bytes::<T>(bytes)?;
+    Ok(())
+  }
 
-      inferred.push(LevelSceneInference::WallmarkBrush);
-      tools.push((
-        LevelWallmarkConversion::decompile(&file)?.to_scene_tool::<T>(context.guid)?,
-        vec![LevelWallmarksFile::FILE_NAME],
-      ));
-    }
-
-    let game: Option<LevelGameFile> = bytes(LevelGameFile::FILE_NAME)
+  /// The parts `level.game` and `level.env_mod` give, ways and spawn points, and the game modes the respawn points
+  /// serve.
+  fn decompile_game<T: ByteOrder>(sources: &mut LevelSceneSources, draft: &mut LevelSceneDraft) -> XrfResult<u16> {
+    let game: Option<LevelGameFile> = sources
+      .take(LevelGameFile::FILE_NAME)
       .map(LevelGameFile::read_from_bytes::<T>)
       .transpose()?;
-    let environment: Option<LevelEnvModFile> = bytes(LevelEnvModFile::FILE_NAME)
+    let environment: Option<LevelEnvModFile> = sources
+      .take(LevelEnvModFile::FILE_NAME)
       .map(LevelEnvModFile::read_from_bytes::<T>)
       .transpose()?;
 
     if let Some(game) = &game {
-      tools.push((
-        LevelWayConversion::decompile(&game.ways, &mut context)?.to_scene_tool()?,
-        vec![LevelGameFile::FILE_NAME],
-      ));
+      let ways = LevelWayConversion::decompile(&game.ways, &mut draft.context)?;
+
+      draft.add(ways.to_scene_tool()?, &[LevelGameFile::FILE_NAME], sources);
     }
 
-    let respawn_points = game.as_ref().map(|game| game.rpoints.as_slice()).unwrap_or_default();
+    let respawn_points: &[LevelGameRPoint] = game.as_ref().map(|game| game.rpoints.as_slice()).unwrap_or_default();
 
     if game.is_some() || environment.is_some() {
-      let empty: LevelEnvModFile = LevelEnvModFile {
+      let environment: LevelEnvModFile = environment.unwrap_or(LevelEnvModFile {
         version: EditableSpawnPointObject::VERSION,
         modifiers: Vec::new(),
-      };
-      let spawn_sources: Vec<&'static str> = [LevelGameFile::FILE_NAME, LevelEnvModFile::FILE_NAME]
-        .into_iter()
-        .filter(|name| sources.contains_key(name))
-        .collect();
+      });
+      let spawns = LevelSpawnPointConversion::decompile(respawn_points, &environment, &mut draft.context)?;
 
-      inferred.push(LevelSceneInference::EntitiesNotDecompiled);
-      tools.push((
-        LevelSpawnPointConversion::decompile(respawn_points, environment.as_ref().unwrap_or(&empty), &mut context)?
-          .to_scene_tool()?,
-        spawn_sources,
-      ));
+      draft.inferred.push(LevelSceneInference::EntitiesNotDecompiled);
+      draft.add(
+        spawns.to_scene_tool()?,
+        &[LevelGameFile::FILE_NAME, LevelEnvModFile::FILE_NAME],
+        sources,
+      );
     }
 
-    tools.sort_by(|(first, _), (second, _)| first.name.cmp(&second.name));
-
-    // The main file's game types come from the respawn points, its light qualities from the generated sky and sun.
-    let files: Vec<LevelSceneFile> = std::iter::once(LevelSceneFile {
-      written: format!("{}.{}", options.name, EditableLevelFile::EXTENSION),
-      sources: [LevelLightsFile::FILE_NAME, LevelGameFile::FILE_NAME]
-        .into_iter()
-        .filter(|name| sources.contains_key(name))
-        .map(str::to_owned)
-        .collect(),
-    })
-    .chain(tools.iter().map(|(tool, sources)| LevelSceneFile {
-      written: format!("{}/{}", options.name, tool.get_file_name(0)),
-      sources: sources.iter().map(|name| (*name).to_owned()).collect(),
-    }))
-    .collect();
-    let level: EditableLevelFile = EditableLevelFile::new(
-      &context.guid,
-      &EditableLevelOptions {
-        game_type: Self::get_game_types(respawn_points),
-        ..level_options
-      },
-      &EditableBuildParams {
-        weld_distance: 0.0,
-        ..EditableBuildParams::DEFAULT
-      },
-      &EditableLevelCamera::default(),
-      Self::OWNER,
-      0,
-    );
-
-    Ok(LevelSceneDecompile {
-      scene: EditableLevelScene {
-        level,
-        tools: tools.into_iter().map(|(tool, _)| tool).collect(),
-      },
-      provenance: LevelSceneProvenance::new(
-        options.name.clone(),
-        options.tool.clone(),
-        options.tool_version.clone(),
-        sources
-          .iter()
-          .map(|(name, bytes)| LevelSceneSource {
-            file: (*name).to_owned(),
-            sha256: Sha256::digest(bytes).iter().map(|byte| format!("{byte:02x}")).collect(),
-          })
-          .collect(),
-        files,
-        inferred,
-      ),
-    })
-  }
-
-  /// The source files the directory holds, by name.
-  fn read_sources(directory: &Path) -> XrfResult<BTreeMap<&'static str, Vec<u8>>> {
-    let mut sources: BTreeMap<&'static str, Vec<u8>> = BTreeMap::new();
-
-    for name in Self::SOURCE_FILES {
-      let path: PathBuf = directory.join(name);
-
-      if path.is_file() {
-        sources.insert(
-          name,
-          std::fs::read(&path)
-            .map_err(|error| XrfError::new_read_error(format!("{} was not read: {error}", format_path(&path))))?,
-        );
-      }
-    }
-
-    if sources.is_empty() {
-      return Err(XrfError::new_not_found_error(format!(
-        "{} holds none of the level files a scene decompiles from",
-        format_path(directory)
-      )));
-    }
-
-    Ok(sources)
+    Ok(Self::get_game_types(respawn_points))
   }
 
   /// The scene's GUID: the first 16 bytes of the SHA-256 of each source's name, a zero, its length and its bytes, in
@@ -361,5 +293,155 @@ impl LevelSceneDecompiler {
       .map(|point| point.game_types)
       .reduce(|types, point| types | point)
       .unwrap_or(EditableLevelOptions::SINGLE_PLAYER)
+  }
+}
+
+/// The source files a level's directory holds: their bytes until a decompile takes them, and what the sidecar records
+/// of each, hashed as they were read.
+struct LevelSceneSources {
+  files: BTreeMap<&'static str, Vec<u8>>,
+  recorded: Vec<LevelSceneSource>,
+}
+
+impl LevelSceneSources {
+  /// The files of [`LevelSceneDecompiler::SOURCE_FILES`] the directory holds.
+  fn read(directory: &Path) -> XrfResult<Self> {
+    let mut files: BTreeMap<&'static str, Vec<u8>> = BTreeMap::new();
+
+    for name in LevelSceneDecompiler::SOURCE_FILES {
+      let path: PathBuf = directory.join(name);
+
+      if path.is_file() {
+        files.insert(
+          name,
+          std::fs::read(&path)
+            .map_err(|error| XrfError::new_read_error(format!("{} was not read: {error}", format_path(&path))))?,
+        );
+      }
+    }
+
+    if files.is_empty() {
+      return Err(XrfError::new_not_found_error(format!(
+        "{} holds none of the level files a scene decompiles from",
+        format_path(directory)
+      )));
+    }
+
+    let recorded: Vec<LevelSceneSource> = files
+      .iter()
+      .map(|(name, bytes)| LevelSceneSource {
+        file: (*name).to_owned(),
+        sha256: Sidecar::get_sha256_hex(bytes),
+      })
+      .collect();
+
+    Ok(Self { files, recorded })
+  }
+
+  /// The bytes of `name`, handed over once, or none where the directory holds no such file.
+  fn take(&mut self, name: &str) -> Option<Vec<u8>> {
+    self.files.remove(name)
+  }
+
+  /// Whether the directory held `name`, taken or not.
+  fn holds(&self, name: &str) -> bool {
+    self.recorded.iter().any(|source| source.file == name)
+  }
+}
+
+/// A scene being decompiled: the context its parts share, its level options so far, each tool with the source files it
+/// came from, and what was inferred.
+struct LevelSceneDraft {
+  context: LevelDecompileContext,
+  level_options: EditableLevelOptions,
+  tools: Vec<(EditableSceneTool, Vec<&'static str>)>,
+  inferred: Vec<LevelSceneInference>,
+}
+
+impl LevelSceneDraft {
+  /// A scene of `guid` named `name`, holding no tool yet, with the inferences every decompiled scene makes.
+  fn new(guid: EditableLevelGuid, name: &str) -> Self {
+    Self {
+      context: LevelDecompileContext::new(guid),
+      level_options: EditableLevelOptions::new(name, EditableLevelOptions::SINGLE_PLAYER),
+      tools: Vec::new(),
+      inferred: vec![
+        LevelSceneInference::ObjectNames,
+        LevelSceneInference::LevelOptions,
+        LevelSceneInference::GameTypes,
+        LevelSceneInference::BuildParameters,
+        LevelSceneInference::Camera,
+      ],
+    }
+  }
+
+  /// Records `inferences` where a part holds what they were made for.
+  fn infer_if(&mut self, condition: bool, inferences: &[LevelSceneInference]) {
+    if condition {
+      self.inferred.extend_from_slice(inferences);
+    }
+  }
+
+  /// Adds a tool decompiled from those of `files` the directory held.
+  fn add(&mut self, tool: EditableSceneTool, files: &[&'static str], sources: &LevelSceneSources) {
+    self
+      .tools
+      .push((tool, files.iter().copied().filter(|name| sources.holds(name)).collect()));
+  }
+
+  /// The scene and its provenance: its tools sorted by name, and a main file serving `game_types`, whose game types
+  /// come from the respawn points and light qualities from the generated sky and sun.
+  fn finish(
+    mut self,
+    options: &LevelDecompileOptions,
+    game_types: u16,
+    sources: &LevelSceneSources,
+  ) -> LevelSceneDecompile {
+    self
+      .tools
+      .sort_by(|(first, _), (second, _)| first.name.cmp(&second.name));
+
+    let files: Vec<LevelSceneFile> = std::iter::once(LevelSceneFile {
+      written: format!("{}.{}", options.name, EditableLevelFile::EXTENSION),
+      sources: [LevelLightsFile::FILE_NAME, LevelGameFile::FILE_NAME]
+        .into_iter()
+        .filter(|name| sources.holds(name))
+        .map(str::to_owned)
+        .collect(),
+    })
+    .chain(self.tools.iter().map(|(tool, files)| LevelSceneFile {
+      written: format!("{}/{}", options.name, tool.get_file_name(0)),
+      sources: files.iter().map(|name| (*name).to_owned()).collect(),
+    }))
+    .collect();
+    let level: EditableLevelFile = EditableLevelFile::new(
+      &self.context.guid,
+      &EditableLevelOptions {
+        game_type: game_types,
+        ..self.level_options
+      },
+      &EditableBuildParams {
+        weld_distance: 0.0,
+        ..EditableBuildParams::DEFAULT
+      },
+      &EditableLevelCamera::default(),
+      LevelSceneDecompiler::OWNER,
+      0,
+    );
+
+    LevelSceneDecompile {
+      scene: EditableLevelScene {
+        level,
+        tools: self.tools.into_iter().map(|(tool, _)| tool).collect(),
+      },
+      provenance: LevelSceneProvenance::new(
+        options.name.clone(),
+        options.tool.clone(),
+        options.tool_version.clone(),
+        sources.recorded.clone(),
+        files,
+        self.inferred,
+      ),
+    }
   }
 }

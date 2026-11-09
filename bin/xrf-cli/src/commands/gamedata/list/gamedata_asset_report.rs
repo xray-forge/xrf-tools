@@ -20,7 +20,7 @@ impl GamedataAssetReport {
     };
 
     Self {
-      container: xrf_utils::to_portable_path_string(container),
+      container: xrf_utils::format_portable_path(container),
       is_archived,
       logical_path: String::from(asset.get_logical_path().as_str()),
     }

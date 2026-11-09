@@ -43,7 +43,7 @@ impl CropTextureProcessor {
           fit_height
         );
 
-        ImageFit::into_bounds(DynamicImage::from(cropped), fit_width, fit_height, &options.source)?.into()
+        ImageFit::fit_to_bounds(DynamicImage::from(cropped), fit_width, fit_height, &options.source)?.into()
       }
       _ => cropped,
     };
