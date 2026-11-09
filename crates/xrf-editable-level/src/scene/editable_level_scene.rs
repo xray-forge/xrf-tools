@@ -84,22 +84,8 @@ impl EditableLevelScene {
   /// Returns an error too when a file cannot be written as its own writer says.
   pub fn write_to_path<T: ByteOrder, P: AsRef<Path>>(&self, level_path: &P) -> XrfResult {
     let directory: PathBuf = Self::get_parts_directory(level_path.as_ref());
-    let written: HashSet<String> = self
-      .tools
-      .iter()
-      .flat_map(|tool| (0..tool.parts.len()).map(|index| tool.get_file_name(index)))
-      .collect();
 
-    if let Some(stale) = Self::list_part_file_names(&directory)?
-      .into_iter()
-      .find(|name| !written.contains(name))
-    {
-      return Err(XrfError::new_invalid_error(format!(
-        "Level scene was not written: {} holds {stale}, which the scene does not write and the editor would read",
-        format_path(&directory)
-      )));
-    }
-
+    self.check_writable(level_path.as_ref())?;
     self.level.write_to_path(level_path)?;
 
     for tool in &self.tools {
@@ -109,6 +95,33 @@ impl EditableLevelScene {
     }
 
     Ok(())
+  }
+
+  /// Checks, writing nothing, that [`Self::write_to_path`] would not refuse the scene at `level_path`: that the part
+  /// directory beside it holds no part file the scene would not write.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error naming the first such file, which the editor would read as part of the scene: a tool the scene
+  /// does not have, or a numbered file past a tool's last. Returns an error too when the directory cannot be listed.
+  pub fn check_writable(&self, level_path: &Path) -> XrfResult {
+    let directory: PathBuf = Self::get_parts_directory(level_path);
+    let written: HashSet<String> = self
+      .tools
+      .iter()
+      .flat_map(|tool| (0..tool.parts.len()).map(|index| tool.get_file_name(index)))
+      .collect();
+
+    match Self::list_part_file_names(&directory)?
+      .into_iter()
+      .find(|name| !written.contains(name))
+    {
+      Some(stale) => Err(XrfError::new_invalid_error(format!(
+        "Level scene was not written: {} holds {stale}, which the scene does not write and the editor would read",
+        format_path(&directory)
+      ))),
+      None => Ok(()),
+    }
   }
 
   pub fn get_tool(&self, name: &str) -> Option<&EditableSceneTool> {
