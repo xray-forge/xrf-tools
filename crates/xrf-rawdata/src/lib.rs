@@ -10,11 +10,16 @@ pub use crate::level::level_entity_conversion::{
 };
 pub use crate::level::level_exported_file::{LevelExportedFile, LevelExportedPrevious};
 pub use crate::level::level_fog_volume_conversion::LevelFogVolumeConversion;
+pub use crate::level::level_geometry_conversion::{
+  LevelDecompiledObject, LevelGeometryCensus, LevelGeometryConversion, LevelGeometryDecompile,
+};
 pub use crate::level::level_glow_conversion::LevelGlowConversion;
 pub use crate::level::level_light_conversion::LevelLightConversion;
 pub use crate::level::level_object_names::LevelObjectNames;
 pub use crate::level::level_particle_conversion::LevelParticleConversion;
-pub use crate::level::level_scene_decompiler::{LevelDecompileOptions, LevelSceneDecompile, LevelSceneDecompiler};
+pub use crate::level::level_scene_decompiler::{
+  LevelDecompileOptions, LevelSceneDecompile, LevelSceneDecompiler, LevelSceneObjectFile,
+};
 pub use crate::level::level_scene_exporter::LevelSceneExporter;
 pub use crate::level::level_sound_environment_conversion::LevelSoundEnvironmentConversion;
 pub use crate::level::level_sound_source_conversion::LevelSoundSourceConversion;
@@ -38,7 +43,7 @@ pub use crate::object::detail_parameters::DetailParameters;
 pub use crate::object::verify::object_verification::{ObjectGeometryCensus, ObjectVerification};
 pub use crate::object::verify::object_verifier::ObjectVerifier;
 pub use crate::provenance::level_scene_provenance::{
-  LevelSceneDisagreement, LevelSceneFile, LevelSceneInference, LevelSceneProvenance, LevelSceneRefusal,
-  LevelSceneRootSpawn, LevelSceneSource, LevelSceneUpdatePacket,
+  LevelSceneDisagreement, LevelSceneFile, LevelSceneGeometry, LevelSceneInference, LevelSceneProvenance,
+  LevelSceneRefusal, LevelSceneRootSpawn, LevelSceneSource, LevelSceneUpdatePacket,
 };
 pub use crate::provenance::object_provenance::ObjectProvenance;

@@ -9,7 +9,9 @@ use xrf_output::OutputOptions;
 use xrf_rawdata::{LevelDecompileOptions, LevelSceneDecompile, LevelSceneDecompiler, LevelSceneProvenance};
 use xrf_utils::format_path;
 
-use crate::commands::level::decompile::report::{LevelDecompileReport, LevelDecompileRootSpawn, LevelDecompileTool};
+use crate::commands::level::decompile::report::{
+  LevelDecompileGeometry, LevelDecompileReport, LevelDecompileRootSpawn, LevelDecompileTool,
+};
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 /// Decompiles a compiled level's directory into a Level Editor scene, with a provenance sidecar beside it.
@@ -27,7 +29,8 @@ impl GenericCommand for DecompileCommand {
         "Decompile a compiled level's directory into an SDK Level Editor scene (.level and its parts), with a \
          .level.xrf.json provenance sidecar beside it. The scene holds the parts the build passes through (particles, \
          sounds, sound environments, fog volumes, wall marks, patrol paths, respawn points, environment modifiers and \
-         entity spawns) and the level's glows and lights; no geometry yet",
+         entity spawns), the level's glows and lights, and its static geometry as one .object per sector with the \
+         sectors and portals",
       )
       .arg(
         Arg::new("path")
@@ -49,6 +52,16 @@ impl GenericCommand for DecompileCommand {
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
+        Arg::new("objects")
+          .help(
+            "Objects root ($objects$) the scene's .object files are written under, at levels/<level>/; by default the \
+             objects directory beside the destination's directory, as the SDK lays out rawdata/levels and \
+             rawdata/objects",
+          )
+          .long("objects")
+          .value_parser(value_parser!(PathBuf)),
+      )
+      .arg(
         Arg::new("spawn")
           .help(
             "Root spawn whose objects on the level replace level.spawn's entities, read from spawns/<spawn>.spawn \
@@ -59,7 +72,7 @@ impl GenericCommand for DecompileCommand {
       )
       .arg(
         Arg::new("force")
-          .help("Overwrite an existing .level, its parts and its sidecar")
+          .help("Overwrite an existing .level, its parts, its sidecar and its objects")
           .short('f')
           .long("force")
           .action(ArgAction::SetTrue),
@@ -73,8 +86,18 @@ impl GenericCommand for DecompileCommand {
 
     let root_spawn: Option<PathBuf> =
       Self::get_root_spawn(source, matches.get_one::<String>("spawn").map(String::as_str))?;
-    let report: LevelDecompileReport =
-      Self::decompile(&output, source, destination, root_spawn, matches.get_flag("force"))?;
+    let objects: PathBuf = matches
+      .get_one::<PathBuf>("objects")
+      .cloned()
+      .unwrap_or_else(|| Self::get_default_objects_root(destination));
+    let report: LevelDecompileReport = Self::decompile(
+      &output,
+      source,
+      destination,
+      &objects,
+      root_spawn,
+      matches.get_flag("force"),
+    )?;
 
     context.set_result(|| &report)?;
 
@@ -108,10 +131,25 @@ impl DecompileCommand {
     }
   }
 
+  /// The objects root beside the scene's directory, `<levels>/../objects`, as the SDK's `fs.ltx` puts `$maps$` and
+  /// `$objects$` side by side under its rawdata.
+  fn get_default_objects_root(destination: &Path) -> PathBuf {
+    let named = |path: &&Path| !path.as_os_str().is_empty();
+
+    match destination.parent().filter(named) {
+      Some(levels) => match levels.parent().filter(named) {
+        Some(rawdata) => rawdata.join("objects"),
+        None => levels.join("..").join("objects"),
+      },
+      None => Path::new("..").join("objects"),
+    }
+  }
+
   fn decompile(
     output: &OutputOptions,
     source: &Path,
     destination: &Path,
+    objects: &Path,
     root_spawn: Option<PathBuf>,
     is_forced: bool,
   ) -> XrfResult<LevelDecompileReport> {
@@ -139,7 +177,14 @@ impl DecompileCommand {
       },
     )?;
 
-    decompiled.write_to_path::<XRayByteOrder>(destination)?;
+    if !is_forced && let Some(existing) = decompiled.get_existing_object_paths(objects).first() {
+      return Err(XrfError::new_invalid_error(format!(
+        "{} already exists; pass --force to overwrite the scene's objects",
+        format_path(existing)
+      )));
+    }
+
+    decompiled.write_to_path::<XRayByteOrder>(destination, objects)?;
 
     let report: LevelDecompileReport = LevelDecompileReport {
       source: format_path(source).to_string(),
@@ -173,7 +218,27 @@ impl DecompileCommand {
         disagreements: root.disagreements.len(),
         update_packets: root.update_packets.len(),
       }),
+      objects_root: format_path(objects).to_string(),
+      geometry: decompiled.provenance.geometry.map(|geometry| LevelDecompileGeometry {
+        objects: geometry.objects.len(),
+        census: geometry.census,
+      }),
     };
+
+    if let Some(geometry) = &report.geometry {
+      xrf_output::info!(
+        output,
+        "Static geometry: {} objects under {}, {} faces from {} triangles ({} two-sided folds, {} repeats dropped); \
+         {} tree triangles left for their own objects",
+        geometry.objects,
+        report.objects_root,
+        geometry.census.faces,
+        geometry.census.static_triangles,
+        geometry.census.two_sided_faces,
+        geometry.census.repeated_triangles,
+        geometry.census.tree_triangles
+      );
+    }
 
     if let Some(root) = report.root_spawn.as_ref().filter(|root| root.objects > 0) {
       xrf_output::info!(

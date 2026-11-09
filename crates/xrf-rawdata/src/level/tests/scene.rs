@@ -185,7 +185,7 @@ fn writes_the_scene_and_its_sidecar_and_reads_them_back() -> XrfResult {
   let output: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "written_scene"))?;
   let level_path: PathBuf = output.join("test_level.level");
 
-  decompiled.write_to_path::<XRayByteOrder>(&level_path)?;
+  decompiled.write_to_path::<XRayByteOrder>(&level_path, &output.join("objects"))?;
 
   let read: EditableLevelScene = EditableLevelScene::read_from_path::<XRayByteOrder, _>(&level_path)?;
   let sidecar: LevelSceneProvenance =

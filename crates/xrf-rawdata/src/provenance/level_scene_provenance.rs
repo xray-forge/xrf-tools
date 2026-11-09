@@ -4,6 +4,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
 use xrf_error::XrfResult;
 
+use crate::level::level_geometry_conversion::LevelGeometryCensus;
 use crate::provenance::sidecar::Sidecar;
 
 /// One compiled file a scene was decompiled from.
@@ -57,6 +58,19 @@ pub enum LevelSceneInference {
   /// An entity's volume comes back as a shape attached to it at its position, unturned and unscaled, under a generated
   /// name; the spawn list keeps only the shapes.
   EntityShapes,
+  /// The static geometry comes back as one object per compiled sector, named after it, its points in the level's space
+  /// and placed at the origin; sectors take a new sector's colour, and sectors and portals are named as the editor
+  /// names new ones. The compiled level merged the authored objects into each sector.
+  SectorShells,
+}
+
+/// The objects a scene's static geometry came back as, and what the decompile counted of it.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LevelSceneGeometry {
+  /// Each object written, by its path under `$objects$` without the extension.
+  pub objects: Vec<String>,
+  pub census: LevelGeometryCensus,
 }
 
 /// What the decompile read but left out of the scene, with why.
@@ -125,6 +139,9 @@ pub struct LevelSceneProvenance {
   pub refused: Vec<LevelSceneRefusal>,
   /// The root spawn read, where one was given.
   pub root_spawn: Option<LevelSceneRootSpawn>,
+  /// The static geometry, where the level's directory held `level.geom`.
+  #[serde(default)]
+  pub geometry: Option<LevelSceneGeometry>,
 }
 
 impl LevelSceneProvenance {
@@ -145,6 +162,7 @@ impl LevelSceneProvenance {
       inferred: Vec::new(),
       refused: Vec::new(),
       root_spawn: None,
+      geometry: None,
     }
   }
 

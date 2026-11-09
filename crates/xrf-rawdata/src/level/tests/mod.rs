@@ -1,5 +1,6 @@
 mod entity;
 mod fog_volume;
+mod geometry;
 mod glow;
 mod light;
 mod particle;
