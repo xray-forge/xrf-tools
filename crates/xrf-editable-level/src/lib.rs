@@ -22,6 +22,7 @@ pub use crate::object::editable_shape::{EditableShape, EditableShapeElement};
 pub use crate::object::editable_sound_environment_object::EditableSoundEnvironmentObject;
 pub use crate::object::editable_sound_source_object::EditableSoundSourceObject;
 pub use crate::object::editable_tool_object::EditableToolObject;
+pub use crate::object::editable_way_object::{EditableWayLink, EditableWayObject, EditableWayPoint};
 pub use crate::part::editable_binary_part::EditableBinaryPart;
 pub use crate::part::editable_level_part::EditableLevelPart;
 pub use crate::part::editable_object_part::EditableObjectPart;

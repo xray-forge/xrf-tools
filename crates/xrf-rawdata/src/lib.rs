@@ -11,6 +11,7 @@ pub use crate::level::level_sound_environment_conversion::LevelSoundEnvironmentC
 pub use crate::level::level_sound_source_conversion::LevelSoundSourceConversion;
 pub use crate::level::level_visual_geometry::LevelVisualGeometry;
 pub use crate::level::level_wallmark_conversion::LevelWallmarkConversion;
+pub use crate::level::level_way_conversion::LevelWayConversion;
 pub use crate::object::compile::geometry::export_vertex::ExportVertex;
 pub use crate::object::compile::geometry::export_vertex_bone::ExportVertexBone;
 pub use crate::object::compile::object_compile::ObjectCompile;
