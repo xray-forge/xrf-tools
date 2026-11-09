@@ -8,6 +8,8 @@ Converts between the game's compiled assets and the SDK's rawdata, the tree the 
 | `.dm` detail model → `.object`       | `ObjectDecompiler::decompile_detail`         |
 | Level visuals → one static `.object` | `ObjectDecompiler::decompile_level_geometry` |
 | Level files ↔ Level Editor parts     | `Level*Conversion::decompile` and `export`   |
+| Level directory → Level Editor scene | `LevelSceneDecompiler::decompile`            |
+| Level Editor scene → its game files  | `LevelSceneExporter::export`                 |
 | `.object` → OGF                      | `ObjectCompiler::compile`                    |
 | `.object` → `.dm`                    | `ObjectCompiler::compile_detail`             |
 | Compare a compiled OGF with another  | `ObjectVerifier::verify`                     |
@@ -120,6 +122,7 @@ The Level Editor's Build writes some level files straight from the scene's parts
 (`BuilderGame.cpp`). Each such file decompiles back to the part it came from and exports again as the editor would.
 
 - Each conversion takes the scene's typed part from `xrf-editable-level` and the compiled file from `xrf-level`.
+- Every decompile takes the scene's `LevelDecompileContext`: the GUID its parts carry, and the names given so far.
 - A compiled level keeps no object names. `LevelObjectNames` names a scene's objects `<prefix>_0000` upwards, as the
   editor numbers new objects; `get_next_after_file` takes the prefix from the file an object plays or shows.
 
@@ -209,6 +212,27 @@ All 174 files across the game trees round-trip through the part's text: 172 with
   under `SPAWNPOINT_VERSION` for every level.
 - 4,951 respawn points and 25 modifiers over every tree; CS's `mp_training_camp` holds positions off the `%f` grid, and
   SGM 2.2's `l04u_labx18` an older `env_mod` that keeps no flags. Entity spawns, `level.spawn`, are not converted yet.
+
+### A whole scene
+
+`LevelSceneDecompiler::decompile` reads every pass-through file a level's directory holds and decompiles each through
+one context into a scene (`LevelSceneDecompile`), with no geometry yet:
+
+- a part per tool, sorted by name; the spawn part from `level.game` and `level.env_mod` together;
+- a main file of a new level named after `LevelDecompileOptions::name`, serving its respawn points' game modes (single
+  player where it has none), the editor's build parameters with a weld distance of 0, the camera at the origin;
+- a scene GUID from the SHA-256 over each source's name, length and bytes, so the same level always gives the same
+  scene.
+
+`write_to_path` writes the sidecar, `<name>.level.xrf.json` (`LevelSceneProvenance`), then the scene, so a failed write
+never leaves a decompile that looks authored. The sidecar holds the front-end the options name, each source's SHA-256,
+each written file and its sources, and what the decompile chose rather than read (`LevelSceneInference`).
+
+`LevelSceneExporter::export` goes back: the files the Build writes from a scene's parts (`BuildGame`,
+`BuildWallmarks`), by name. `level.game`, `level.env_mod` and `level.fog_vol` are written for every scene, empty where
+it has no such tool; the rest only where their tool exports something. Vanilla CoP's `labx8`, `zaton` and `mp_atp`,
+and CS's `agroprom_underground`, decompile, read back to the same bytes, and export every file byte for byte; so does
+GSC's own `labx8` scene.
 
 ## Compile an object into an OGF
 
@@ -321,4 +345,4 @@ only in its normal from one that differs more.
 Run `cargo test --locked -p xrf-rawdata` from the repository root.
 
 Sources: the [decompiler](src/object/decompile/), the [compiler](src/object/compile/), the
-[verifier](src/object/verify/) and the [provenance sidecar](src/provenance/).
+[verifier](src/object/verify/), the [level conversions](src/level/) and the [provenance sidecars](src/provenance/).

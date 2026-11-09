@@ -4,8 +4,8 @@ use xrf_error::XrfResult;
 use xrf_level::{LevelGameFile, LevelGameWay, LevelGameWayLink, LevelGameWayPoint};
 use xrf_math::Vector3d;
 
-use crate::LevelWayConversion;
 use crate::level::tests::GUID;
+use crate::{LevelDecompileContext, LevelWayConversion};
 
 fn way(name: &str, points: usize, links: &[(u16, u16, f32)]) -> LevelGameWay {
   LevelGameWay {
@@ -48,7 +48,7 @@ fn patrol_paths_come_back_to_the_same_file_through_the_parts_text() -> XrfResult
     ),
     way("lx8_patrol_look", 1, &[]),
   ];
-  let part = LevelWayConversion::decompile(&ways, GUID)?;
+  let part = LevelWayConversion::decompile(&ways, &mut LevelDecompileContext::new(GUID))?;
   let text: Vec<u8> = part.to_text_part()?.write_to_bytes()?;
   let read: EditableObjectPart<EditableWayObject> =
     EditableObjectPart::read_from_text_part(&EditableTextPart::read_from_bytes(&text)?)?;
@@ -76,7 +76,7 @@ fn exports_links_point_by_point_with_no_type() -> XrfResult {
 
   typed.kind = Some(3);
 
-  let part = LevelWayConversion::decompile(&[typed], GUID)?;
+  let part = LevelWayConversion::decompile(&[typed], &mut LevelDecompileContext::new(GUID))?;
   let exported: Vec<LevelGameWay> = LevelWayConversion::export(&part)?;
 
   assert_eq!(part.objects[0].kind, 3);
@@ -95,9 +95,10 @@ fn exports_links_point_by_point_with_no_type() -> XrfResult {
 
 #[test]
 fn refuses_a_link_to_a_point_the_path_does_not_hold() {
-  let error: String = LevelWayConversion::decompile(&[way("walk", 2, &[(0, 2, 1.0)])], GUID)
-    .unwrap_err()
-    .to_string();
+  let error: String =
+    LevelWayConversion::decompile(&[way("walk", 2, &[(0, 2, 1.0)])], &mut LevelDecompileContext::new(GUID))
+      .unwrap_err()
+      .to_string();
 
   assert!(error.contains("Patrol path 'walk' links point 0 to 2 of 2"), "{error}");
 }

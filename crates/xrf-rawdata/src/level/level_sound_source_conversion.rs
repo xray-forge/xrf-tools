@@ -1,12 +1,11 @@
 use xrf_editable_level::{
-  EditableCustomObject, EditableLevelGuid, EditableLevelValue, EditableObjectPart, EditableObjectTransform,
-  EditableSoundSourceObject,
+  EditableCustomObject, EditableLevelValue, EditableObjectPart, EditableObjectTransform, EditableSoundSourceObject,
 };
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{LevelSndStaticFile, LevelSndStaticSound, LevelSndStaticWindow};
 use xrf_math::Vector2d;
 
-use crate::level::level_object_names::LevelObjectNames;
+use crate::level::level_decompile_context::LevelDecompileContext;
 
 /// A level's planted sounds, between the scene's `sound_src.part` and the compiled `level.snd_static`, which the build
 /// passes through with no compiler (`BuilderGame.cpp:65`).
@@ -22,8 +21,7 @@ impl LevelSoundSourceConversion {
   /// Returns an error naming the sound whose window no saved seconds export to.
   pub fn decompile(
     file: &LevelSndStaticFile,
-    guid: EditableLevelGuid,
-    names: &mut LevelObjectNames,
+    context: &mut LevelDecompileContext,
   ) -> XrfResult<EditableObjectPart<EditableSoundSourceObject>> {
     let objects: Vec<EditableSoundSourceObject> = file
       .sounds
@@ -41,7 +39,7 @@ impl LevelSoundSourceConversion {
 
         Ok(EditableSoundSourceObject {
           object: EditableCustomObject::new(
-            names.get_next_after_file(&sound.sound),
+            context.names.get_next_after_file(&sound.sound),
             EditableObjectTransform::default(),
           ),
           sound: sound.sound.clone(),
@@ -59,7 +57,7 @@ impl LevelSoundSourceConversion {
       })
       .collect::<XrfResult<Vec<EditableSoundSourceObject>>>()?;
 
-    Ok(EditableObjectPart::new(guid, objects))
+    Ok(EditableObjectPart::new(context.guid, objects))
   }
 
   /// The `level.snd_static` the build writes from the part, `ESoundSource::ExportGame`: each object's sound, position,

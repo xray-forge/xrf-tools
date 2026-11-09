@@ -4,9 +4,12 @@ pub(crate) mod level;
 pub(crate) mod object;
 pub(crate) mod provenance;
 
+pub use crate::level::level_decompile_context::LevelDecompileContext;
 pub use crate::level::level_fog_volume_conversion::LevelFogVolumeConversion;
 pub use crate::level::level_object_names::LevelObjectNames;
 pub use crate::level::level_particle_conversion::LevelParticleConversion;
+pub use crate::level::level_scene_decompiler::{LevelDecompileOptions, LevelSceneDecompile, LevelSceneDecompiler};
+pub use crate::level::level_scene_exporter::LevelSceneExporter;
 pub use crate::level::level_sound_environment_conversion::LevelSoundEnvironmentConversion;
 pub use crate::level::level_sound_source_conversion::LevelSoundSourceConversion;
 pub use crate::level::level_spawn_point_conversion::LevelSpawnPointConversion;
@@ -27,4 +30,7 @@ pub use crate::object::decompile::object_inference::ObjectInference;
 pub use crate::object::detail_parameters::DetailParameters;
 pub use crate::object::verify::object_verification::{ObjectGeometryCensus, ObjectVerification};
 pub use crate::object::verify::object_verifier::ObjectVerifier;
+pub use crate::provenance::level_scene_provenance::{
+  LevelSceneFile, LevelSceneInference, LevelSceneProvenance, LevelSceneSource,
+};
 pub use crate::provenance::object_provenance::ObjectProvenance;

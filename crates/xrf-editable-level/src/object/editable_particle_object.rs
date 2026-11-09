@@ -30,6 +30,7 @@ impl EditableParticleObject {
 impl EditableToolObject for EditableParticleObject {
   /// `OBJCLASS_PS`.
   const CLASS_ID: i32 = 11;
+  const TOOL_NAME: &'static str = "ps";
 
   /// As `EParticlesObject::LoadLTX` reads it.
   fn read_from_object(object: &EditablePartObject<'_>) -> XrfResult<Self> {

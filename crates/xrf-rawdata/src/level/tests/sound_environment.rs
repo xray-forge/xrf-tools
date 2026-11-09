@@ -10,7 +10,7 @@ use xrf_level::LevelSndEnvFile;
 use xrf_math::{Affine3d, Vector3d};
 
 use crate::level::tests::GUID;
-use crate::{LevelObjectNames, LevelSoundEnvironmentConversion};
+use crate::{LevelDecompileContext, LevelSoundEnvironmentConversion};
 
 /// A box sheared by its own matrix, which no object transform of the unit box gives.
 const SHEARED: Affine3d = Affine3d {
@@ -62,7 +62,7 @@ fn bytes_of(file: &LevelSndEnvFile) -> XrfResult<Vec<u8>> {
 }
 
 fn decompile(file: &LevelSndEnvFile) -> XrfResult<EditableObjectPart<EditableSoundEnvironmentObject>> {
-  LevelSoundEnvironmentConversion::decompile(file, GUID, &mut LevelObjectNames::default())
+  LevelSoundEnvironmentConversion::decompile(file, &mut LevelDecompileContext::new(GUID))
 }
 
 #[test]

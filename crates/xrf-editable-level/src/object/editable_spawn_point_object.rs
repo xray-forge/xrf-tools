@@ -172,6 +172,7 @@ impl EditableSpawnPointObject {
 impl EditableToolObject for EditableSpawnPointObject {
   /// `OBJCLASS_SPAWNPOINT`.
   const CLASS_ID: i32 = 6;
+  const TOOL_NAME: &'static str = "spawn";
 
   /// The spawn tool keeps flags (`ESceneSpawnToolsIO.cpp:28`).
   const KEEPS_FLAGS: bool = true;

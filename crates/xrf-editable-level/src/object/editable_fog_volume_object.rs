@@ -54,6 +54,7 @@ impl EditableFogVolumeObject {
 impl EditableToolObject for EditableFogVolumeObject {
   /// `OBJCLASS_FOG_VOL`.
   const CLASS_ID: i32 = 15;
+  const TOOL_NAME: &'static str = "fog_volume";
 
   /// As `EFogVolume::LoadLTX` reads it: the type and group from version 1, an emitter's profile from version 2, else
   /// the default ones.

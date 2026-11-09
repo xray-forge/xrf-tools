@@ -1,12 +1,12 @@
 use xrf_editable_level::{
-  EditableCustomObject, EditableLevelGuid, EditableLevelValue, EditableObjectPart, EditableObjectTransform,
-  EditableShape, EditableShapeElement, EditableSoundEnvironmentObject,
+  EditableCustomObject, EditableLevelValue, EditableObjectPart, EditableObjectTransform, EditableShape,
+  EditableShapeElement, EditableSoundEnvironmentObject,
 };
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{LevelSndEnvFace, LevelSndEnvFile};
 use xrf_math::{Aabb, Affine3d, EPS, Matrix4x4, Vector3d};
 
-use crate::level::level_object_names::LevelObjectNames;
+use crate::level::level_decompile_context::LevelDecompileContext;
 
 /// A level's reverb volumes, between the scene's `sound_env.part` and the compiled `level.snd_env`.
 ///
@@ -51,8 +51,7 @@ impl LevelSoundEnvironmentConversion {
   /// environments.
   pub fn decompile(
     file: &LevelSndEnvFile,
-    guid: EditableLevelGuid,
-    names: &mut LevelObjectNames,
+    context: &mut LevelDecompileContext,
   ) -> XrfResult<EditableObjectPart<EditableSoundEnvironmentObject>> {
     let corner_count: usize = EditableShape::UNIT_BOX_CORNERS.len();
 
@@ -94,7 +93,7 @@ impl LevelSoundEnvironmentConversion {
         let (transform, shape) = Self::get_placement(&corners);
 
         Ok(EditableSoundEnvironmentObject {
-          object: EditableCustomObject::new(names.get_next(Self::NAME_PREFIX), transform),
+          object: EditableCustomObject::new(context.names.get_next(Self::NAME_PREFIX), transform),
           shape,
           inner: file.environments[usize::from(first.back)].clone(),
           outer: file.environments[usize::from(first.front)].clone(),
@@ -102,7 +101,7 @@ impl LevelSoundEnvironmentConversion {
       })
       .collect::<XrfResult<Vec<EditableSoundEnvironmentObject>>>()?;
 
-    Ok(EditableObjectPart::new(guid, objects))
+    Ok(EditableObjectPart::new(context.guid, objects))
   }
 
   /// The `level.snd_env` the export writes from the part, `MakeEnvGeometry`: the environments in the order volumes

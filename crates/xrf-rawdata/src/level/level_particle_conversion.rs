@@ -1,10 +1,8 @@
-use xrf_editable_level::{
-  EditableCustomObject, EditableLevelGuid, EditableObjectPart, EditableObjectTransform, EditableParticleObject,
-};
+use xrf_editable_level::{EditableCustomObject, EditableObjectPart, EditableObjectTransform, EditableParticleObject};
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{LevelPsStaticFile, LevelPsStaticPlacement};
 
-use crate::level::level_object_names::LevelObjectNames;
+use crate::level::level_decompile_context::LevelDecompileContext;
 
 /// A level's planted particle effects, between the scene's `ps.part` and the compiled `level.ps_static`, which the
 /// build passes through with no compiler (`BuilderGame.cpp:81`).
@@ -21,8 +19,7 @@ impl LevelParticleConversion {
   /// Returns an error naming the placement whose transform is not one an object can stand at.
   pub fn decompile(
     file: &LevelPsStaticFile,
-    guid: EditableLevelGuid,
-    names: &mut LevelObjectNames,
+    context: &mut LevelDecompileContext,
   ) -> XrfResult<EditableObjectPart<EditableParticleObject>> {
     let objects: Vec<EditableParticleObject> = file
       .placements
@@ -38,14 +35,14 @@ impl LevelParticleConversion {
           })?;
 
         Ok(EditableParticleObject {
-          object: EditableCustomObject::new(names.get_next_after_file(&placement.effect), transform),
+          object: EditableCustomObject::new(context.names.get_next_after_file(&placement.effect), transform),
           reference: placement.effect.clone(),
           game_types: placement.game_types.unwrap_or(EditableParticleObject::ALL_GAME_TYPES),
         })
       })
       .collect::<XrfResult<Vec<EditableParticleObject>>>()?;
 
-    Ok(EditableObjectPart::new(guid, objects))
+    Ok(EditableObjectPart::new(context.guid, objects))
   }
 
   /// The `level.ps_static` the build writes from the part, `EParticlesObject::ExportGame`: version 1, then each

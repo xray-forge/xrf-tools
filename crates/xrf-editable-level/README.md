@@ -52,8 +52,8 @@ The `.level` and text parts are written as `CInifile::save_as` writes them, read
 [xrf-ini](../xrf-ini/README.md)'s `IniFormat::XRAY_SAVE_AS`.
 
 - Each keeps the whole `IniFile` as its `ini` field. Typed getters and setters work on top of it:
-  `EditableLevelOptions`, `EditableBuildParams`, `EditablePartHeader`, and `EditablePartObject` for each object's
-  class, name and transform.
+  `EditableLevelOptions`, `EditableBuildParams`, `EditableLevelCamera`, `EditablePartHeader`, and `EditablePartObject`
+  for each object's class, name and transform.
 - A spawn's data is its `[object_N_spawndata]` section: one numbered field per value its packet holds, multi-line
   custom data included.
 - `EditableLevelValue` formats values as the editor does: `%f` floats and `x, y, z` vectors.
@@ -75,9 +75,9 @@ does). An empty slot stays as stored; the editor drops it on load.
 
 An object tool's part reads as an `EditableObjectPart<T>`: the GUID, `[main]`'s flags for the tools that keep them,
 `[modif]`, and the objects `[object_N]` numbers. Each object is an `EditableToolObject` that reads its sections and
-writes them as the editor's `SaveLTX` does, and names its tool's class, `[main]` version and whether it keeps flags. A
-part refuses what the tool's `LoadLTX` refuses: another version, missing flags where the tool keeps them, an object of
-another class.
+writes them as the editor's `SaveLTX` does, and names its tool's class, part name (`ClassName`), `[main]` version and
+whether it keeps flags. A part refuses what the tool's `LoadLTX` refuses: another version, missing flags where the tool
+keeps them, an object of another class.
 
 | Type                             | Editor              | Holds                                                                              |
 | -------------------------------- | ------------------- | ---------------------------------------------------------------------------------- |
@@ -120,6 +120,20 @@ Going back from a matrix:
 
 The editor's own `%f` prints some floats one unit off in the last digit (`-25.461156` where the float is nearer
 `-25.461157`). A typed write differs from the file there but reads back the same.
+
+## Make a scene
+
+A scene built in code takes the same types:
+
+- `EditableLevelFile::new` writes every key `EScene::SaveLTX` does: the version, the GUID, level options
+  (`EditableLevelOptions::new` gives a new level's), build parameters (`EditableBuildParams::DEFAULT` are the
+  editor's), the reserved build fields as zero, the camera, and the owner tag.
+- `EditableObjectPart::to_scene_tool` gives the tool a scene holds, named after the object's `TOOL_NAME`, with the part
+  as its one text file; `EditableWallmarkTool::to_scene_tool` does the same with its binary part. Each type's
+  `read_from_scene_tool` reads a scene's tool back, refusing another tool's or one of other than its one part.
+
+A scene's sections are kept in the order they were set, and a read one's in its file's; both save to the same bytes, so
+compare scenes by what they write.
 
 ## Errors
 

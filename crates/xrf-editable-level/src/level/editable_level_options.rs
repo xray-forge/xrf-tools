@@ -28,6 +28,23 @@ impl EditableLevelOptions {
   /// `CURRENT_LEVELOP_BP_VERSION`, the build parameters' layout.
   pub const BUILD_PARAMS_VERSION: u32 = 9;
 
+  /// `eGameIDSingle`, the game type of a single-player level.
+  pub const SINGLE_PLAYER: u16 = 1;
+
+  /// The options of a new level named `name` serving `game_type`, as `st_LevelOptions::Reset` gives them otherwise:
+  /// built into and prefixed by its name, no build options, map version 1.0, both light qualities 3.
+  pub fn new(name: &str, game_type: u16) -> Self {
+    Self {
+      level_path: name.to_owned(),
+      level_prefix: name.to_owned(),
+      build_options: String::new(),
+      map_version: String::from("1.0"),
+      game_type,
+      light_hemi_quality: 3,
+      light_sun_quality: 3,
+    }
+  }
+
   /// # Errors
   ///
   /// Returns an error naming the field that is missing or does not parse.

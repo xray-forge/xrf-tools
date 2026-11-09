@@ -9,7 +9,7 @@ use xrf_level::{LevelPsStaticFile, LevelPsStaticPlacement};
 use xrf_math::{Matrix4x4, Vector3d};
 
 use crate::level::tests::GUID;
-use crate::{LevelObjectNames, LevelParticleConversion};
+use crate::{LevelDecompileContext, LevelParticleConversion};
 
 /// A placement the editor exported from an object whose saved text held these values.
 fn placement(effect: &str, position: Vector3d, rotation: Vector3d) -> LevelPsStaticPlacement {
@@ -34,7 +34,7 @@ fn bytes_of(file: &LevelPsStaticFile) -> XrfResult<Vec<u8>> {
 }
 
 fn decompile(file: &LevelPsStaticFile) -> XrfResult<EditableObjectPart<EditableParticleObject>> {
-  LevelParticleConversion::decompile(file, GUID, &mut LevelObjectNames::default())
+  LevelParticleConversion::decompile(file, &mut LevelDecompileContext::new(GUID))
 }
 
 #[test]

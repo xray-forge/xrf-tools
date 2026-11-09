@@ -3,7 +3,10 @@ use xrf_ini::IniSection;
 use xrf_math::Vector3d;
 
 use crate::tests::fixtures::{GUID, way_part_text};
-use crate::{EditableLevelValue, EditableObjectPart, EditableTextPart, EditableWayLink, EditableWayObject};
+use crate::{
+  EditableLevelPart, EditableLevelValue, EditableObjectPart, EditableSceneTool, EditableSpawnPointObject,
+  EditableTextPart, EditableWayLink, EditableWayObject,
+};
 
 fn read_ways(text: &str) -> XrfResult<EditableObjectPart<EditableWayObject>> {
   EditableObjectPart::read_from_text_part(&EditableTextPart::read_from_bytes(text.as_bytes())?)
@@ -42,6 +45,20 @@ fn reads_a_way_part_typed_and_writes_it_back_as_the_editor_saved_it() -> XrfResu
   );
   assert!(way.points[2].links.is_empty());
   assert_eq!(String::from_utf8_lossy(&part.to_text_part()?.write_to_bytes()?), text);
+
+  Ok(())
+}
+
+#[test]
+fn becomes_the_scene_tool_its_part_is_saved_under() -> XrfResult {
+  let part: EditableObjectPart<EditableWayObject> = read_ways(&way_part_text(&GUID, &[])?)?;
+  let tool: EditableSceneTool = part.to_scene_tool()?;
+
+  assert_eq!(tool.name, "way");
+  assert_eq!(tool.get_file_name(0), "way.part");
+  assert_eq!(tool.parts, [EditableLevelPart::Text(part.to_text_part()?)]);
+  assert_eq!(EditableObjectPart::read_from_scene_tool(&tool)?, part);
+  assert!(EditableObjectPart::<EditableSpawnPointObject>::read_from_scene_tool(&tool).is_err());
 
   Ok(())
 }

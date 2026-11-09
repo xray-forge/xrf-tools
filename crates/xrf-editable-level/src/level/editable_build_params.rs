@@ -21,6 +21,17 @@ pub struct EditableBuildParams {
 impl EditableBuildParams {
   pub const SECTION: &str = "build_params";
 
+  /// `b_params::Init` then `setHighQuality`, what `st_LevelOptions::Reset` gives a new level.
+  pub const DEFAULT: Self = Self {
+    smooth_angle: 75.0,
+    weld_distance: 0.005,
+    light_pixel_per_meter: 10.0,
+    light_jitter_samples: 9,
+    light_rms_zero: 4,
+    light_rms: 4,
+    light_quality: 1,
+  };
+
   /// # Errors
   ///
   /// Returns an error naming the field that is missing or does not parse.
