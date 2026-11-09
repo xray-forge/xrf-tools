@@ -1,6 +1,6 @@
 use xrf_error::{XrfError, XrfResult};
 use xrf_ini::{IniFile, IniSection};
-use xrf_math::Vector3d;
+use xrf_math::{Vector2d, Vector3d};
 
 use crate::level::editable_level_value::EditableLevelValue;
 use crate::object::editable_custom_object::EditableCustomObject;
@@ -60,6 +60,62 @@ impl EditableLightObject {
   pub const PROCEDURAL: u32 = 1 << 2;
   /// `ELight::flPointFuzzy`: spread over [`Self::fuzzy`]'s points.
   pub const POINT_FUZZY: u32 = 1 << 4;
+
+  /// `$static`'s index in a new scene's light controls, baked into lightmaps by the level compiler's static layer.
+  pub const STATIC_CONTROL: u32 = 0;
+  /// `$hemi`'s index: the level compiler's hemisphere layer.
+  pub const HEMI_CONTROL: u32 = 1;
+  /// `$sun`'s index: the level compiler's sun layer.
+  pub const SUN_CONTROL: u32 = 2;
+
+  /// A new light as `CLight::Construct` makes one (`ELight.cpp:40`), standing at `object`: a white point light of
+  /// brightness 1, range 8, attenuation 1, 0, 0, a cone of `PI / 8`, affecting static lighting under `$static`.
+  pub fn new(object: EditableCustomObject) -> Self {
+    Self {
+      object,
+      kind: Self::POINT,
+      color: [1.0, 1.0, 1.0, 0.0],
+      brightness: 1.0,
+      range: 8.0,
+      attenuation: [1.0, 0.0, 0.0],
+      cone: std::f32::consts::FRAC_PI_8,
+      virtual_size: 0.0,
+      use_in_d3d: true,
+      flags: Self::AFFECT_STATIC,
+      control: Self::STATIC_CONTROL,
+      animation: String::new(),
+      falloff_texture: String::new(),
+      fuzzy: None,
+    }
+  }
+
+  /// `ELight::ltPoint`, the only kind the build exports.
+  pub const POINT: u32 = 1;
+
+  /// Writes the light tool's own data as a new scene's tool saves it (`ESceneLightTool::Clear`,
+  /// `ESceneLightTools.cpp:27`): the controls `$static`, `$hemi` and `$sun` at 0, 1 and 2, the next control index 3, and
+  /// the default sun shadow direction, -25 and 292 degrees.
+  pub fn write_new_tool_data(tool_data: &mut IniFile) {
+    for (name, index) in [
+      ("$static", Self::STATIC_CONTROL),
+      ("$hemi", Self::HEMI_CONTROL),
+      ("$sun", Self::SUN_CONTROL),
+    ] {
+      tool_data.section_mut("lcontrols").set(name, index.to_string());
+    }
+
+    let main: &mut IniSection = tool_data.section_mut("main");
+
+    main.set("lcontrol_last_idx", "3");
+    main.set(
+      "sun_shadow_dir",
+      // `deg2rad` multiplies by `PI / 180` in double precision; GSC's scenes hold `-0.436332, 5.096362`.
+      EditableLevelValue::format_vector2(&Vector2d::new(
+        (-25.0_f64).to_radians() as f32,
+        292.0_f64.to_radians() as f32,
+      )),
+    );
+  }
 
   /// The flags as the editor saves them, [`Self::POINT_FUZZY`] set for a light holding fuzzy points.
   pub fn get_saved_flags(&self) -> u32 {

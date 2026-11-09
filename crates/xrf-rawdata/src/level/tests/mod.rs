@@ -1,5 +1,6 @@
 mod fog_volume;
 mod glow;
+mod light;
 mod particle;
 mod scene;
 mod sound_environment;

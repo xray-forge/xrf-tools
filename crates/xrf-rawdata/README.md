@@ -136,6 +136,7 @@ The Level Editor's Build writes some level files straight from the scene's parts
 | `LevelWayConversion`              | `level.game` paths ↔ `way.part`       | 202 files from memory; all but two through text               |
 | `LevelSpawnPointConversion`       | `level.game` respawn points, `level.env_mod` ↔ `spawn.part` | 200 of 202 levels through text |
 | `LevelGlowConversion`             | `level`'s glows → `glow.part`         | 4,563 glows over 202 levels; `labx8`'s 29 exactly GSC's       |
+| `LevelLightConversion`            | `build.lights`, `level`'s lights → `light.part` | Built back exactly over all 186 levels with `build.lights` |
 
 ### Particles
 
@@ -226,10 +227,35 @@ which the compiled level drops. Their export goes into `build.prj`, not yet writ
 - 198 of the 202 levels round-trip through the part's text; four (CS's `mp_autostation`, `mp_bath`, `mp_garbage` and
   SGM 2.2's `l04u_labx18`) hold positions off the `%f` grid, which the text rounds within 7e-7.
 
+### Lights
+
+Lights are not passed through either. The build hands each to the level compiler as a static light, a dynamic one or
+both. The compiler writes the static ones into `build.lights` by their control's layer (chunk 0 for `$static`, 1 for
+`$hemi` beside the sky it generates), each diffuse divided by its energy and its range times 1.1, and the dynamic ones
+into `level`'s `fsL_LIGHT_DYNAMIC` as given.
+
+`decompile` gives back:
+
+- a light per compiled point light of an authored layer, under that layer's control;
+- one light affecting both static and dynamic lighting where a dynamic light stands at the same position with the same
+  diffuse;
+- a light under `$static` for each remaining dynamic point light.
+
+What the compiled files keep none of is inferred and recorded:
+
+- brightness is the diffuse channel of the largest magnitude, sign kept so a darkening light stays one, and the colour
+  the rest;
+- a fuzzy light comes back as one light per point;
+- the range is the float whose 1.1 times gives the compiled bits.
+
+GSC's `labx8` lights, built as the editor and compiler build them, give its compiled ones exactly, and every level's
+decompiled lights build back to its own exactly.
+
 ### A whole scene
 
-`LevelSceneDecompiler::decompile` reads every pass-through file a level's directory holds, and the `level` bundle for
-its glows, and decompiles each through one context into a scene (`LevelSceneDecompile`), with no geometry yet:
+`LevelSceneDecompiler::decompile` reads every pass-through file a level's directory holds, and the `level` bundle and
+`build.lights` for its glows and lights, and decompiles each through one context into a scene (`LevelSceneDecompile`),
+with no geometry yet:
 
 - a part per tool, sorted by name; the spawn part from `level.game` and `level.env_mod` together;
 - a main file of a new level named after `LevelDecompileOptions::name`, serving its respawn points' game modes (single

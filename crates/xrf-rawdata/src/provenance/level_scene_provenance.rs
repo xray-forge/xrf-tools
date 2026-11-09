@@ -43,6 +43,13 @@ pub enum LevelSceneInference {
   WallmarkBrush,
   /// Glows stand unturned with no fixed-size flag, which the compiled level does not keep.
   GlowTransformsAndFlags,
+  /// Each light's brightness is the channel of its diffuse of the largest magnitude, sign kept, and its colour the rest;
+  /// the compiled level keeps only their product.
+  LightBrightness,
+  /// A fuzzy light comes back as one light per point it was spread over.
+  LightFuzzyPoints,
+  /// A light only dynamic answers to `$static`; the compiled level keeps no control's name.
+  LightControls,
   /// The spawn part holds no entity: `level.spawn` is not decompiled yet.
   EntitiesNotDecompiled,
 }
