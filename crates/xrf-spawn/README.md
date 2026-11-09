@@ -185,9 +185,34 @@ assert_eq!(read.get_sections().get("medkit"), Some(&1));
 # }
 ```
 
+## The Level Editor's form
+
+The Level Editor saves an entity's spawn packet in `spawn.part` as `[object_N_spawndata]`: one numbered field per value,
+written by the same `Spawn_Write` that writes the bytes, through a `NET_Packet` whose primitives also feed an
+`SIniFileStream`. Here a class writes once for both forms, through
+[xrf-chunk's field traits](../xrf-chunk/README.md#values-as-bytes-and-as-fields):
+
+- Every class and value implements `ChunkFieldReadWrite` (a two-packet class `AlifePacketsReadWrite`, over any field
+  reader and writer for each packet), and its byte form comes from it: written to a `ChunkWriter` it is the packet's
+  bytes, to a `ChunkFieldRecorder` the editor's fields with their kinds.
+- `SpawnPacketHeader` is `CSE_Abstract::Spawn_Write`'s own fields, and frames a class's state behind the size it
+  patches over the bytes alone, as `NET_Packet::w_seek` does: fields keep the zero the editor writes, bytes must count
+  exactly. `SpawnPacket<S>` is a header and a state; `AlifeObject` holds the header flattened, so its JSON and LTX keys
+  are the header's beside its own. Client data is raw bytes, which fields cannot hold.
+- Where the engine writes otherwise to an ini stream, a class asks `is_field_form`: a monster's `task_reached` is a
+  raw byte or a `u16`, and a human's equipment and weapon preferences are written to bytes alone, the editor keeping
+  the ones its constructor drew. The level changer's destination is three floats ahead of one angles vector, as
+  `STATE_Write` puts them down.
+
+GSC's `labx8` scenes save their 31 restrictors in these kinds and this order; of the 15,102 Call of Pripyat restrictor
+packets over every tree's `level.spawn`, 15,036 come back byte for byte through the fields' text and 37 lose only floats
+off the `%f` grid, as the editor would. Classes GSC's scenes hold no instance of (stalkers, monsters, squads, smart
+covers) follow the engine's source, unproven against the editor.
+
 ## Checks
 
 Run `cargo test --locked -p xrf-spawn` from the repository root.
 
 Sources: the [spawn set](src/spawn_file.rs), [alife objects](src/chunks/spawn_alife_spawns_chunk.rs),
-[level spawn list](src/level_spawn_file.rs), and [public exports](src/lib.rs).
+[level spawn list](src/level_spawn_file.rs), [spawn packet header](src/data/alife/spawn_packet_header.rs), and
+[public exports](src/lib.rs).

@@ -1,6 +1,6 @@
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
 use xrf_ltx::{LtxImportExport, LtxRead, LtxWrite};
 
@@ -15,12 +15,12 @@ pub struct AlifeObjectTrader {
   pub trader: AlifeObjectTraderAbstract,
 }
 
-impl ChunkReadWrite for AlifeObjectTrader {
+impl ChunkFieldReadWrite for AlifeObjectTrader {
   /// Read trader data from the chunk.
   ///
   /// `CSE_ALifeTrader::STATE_Read` follows its two bases with three blocks gated below version 118,
   /// none of which the supported versions reach.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       base: reader.read_xr::<T, _>()?,
       trader: reader.read_xr::<T, _>()?,
@@ -28,7 +28,7 @@ impl ChunkReadWrite for AlifeObjectTrader {
   }
 
   /// Write trader data into the chunk.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_xr::<T, _>(&self.base)?;
     writer.write_xr::<T, _>(&self.trader)?;
 

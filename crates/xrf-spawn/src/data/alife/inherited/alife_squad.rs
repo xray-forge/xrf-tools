@@ -1,6 +1,6 @@
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
@@ -36,9 +36,9 @@ impl AlifeSquad {
   const ASSIGNED_TERRAIN: &'static str = "Squad smart terrain";
 }
 
-impl ChunkReadWrite for AlifeSquad {
+impl ChunkFieldReadWrite for AlifeSquad {
   /// Read the squad from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     let base: AlifeObjectOnlineOfflineGroup = reader.read_xr::<T, _>()?;
 
     ScriptSaveMarker::read::<T, _, _>(reader, Self::SCRIPT_CLASS, |reader| {
@@ -53,10 +53,10 @@ impl ChunkReadWrite for AlifeSquad {
   }
 
   /// Write the squad into the chunk.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_xr::<T, _>(&self.base)?;
 
-    ScriptSaveMarker::write::<T>(writer, Self::SCRIPT_CLASS, |writer| {
+    ScriptSaveMarker::write::<T, _>(writer, Self::SCRIPT_CLASS, |writer| {
       writer.write_w1251_string(&ScriptToString::format_id(self.current_target_id))?;
       writer.write_w1251_string(&ScriptToString::format_id(self.respawn_point_id))?;
       writer.write_w1251_string(ScriptToString::format_text(self.respawn_point_section.as_deref()))?;

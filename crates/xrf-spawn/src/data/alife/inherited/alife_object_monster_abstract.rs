@@ -1,6 +1,6 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_math::Vector3d;
@@ -39,18 +39,36 @@ impl AlifeObjectMonsterAbstract {
   }
 }
 
+impl AlifeObjectMonsterAbstract {
+  /// `m_task_reached`, a `bool` the bytes hold raw and fields as a `u16` of 0 or 1
+  /// (`CSE_ALifeMonsterAbstract::STATE_Read`, `xrServer_Objects_ALife_Monsters.cpp:1126`).
+  fn read_task_reached<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<u8> {
+    if reader.is_field_form() {
+      Ok(u8::from(reader.read_u16::<T>()? != 0))
+    } else {
+      reader.read_u8()
+    }
+  }
+
+  /// As `CSE_ALifeMonsterAbstract::STATE_Write` writes it (`xrServer_Objects_ALife_Monsters.cpp:1105`).
+  fn write_task_reached<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    if writer.is_field_form() {
+      writer.write_u16::<T>(u16::from(self.task_reached != 0))
+    } else {
+      writer.write_u8(self.task_reached)
+    }
+  }
+}
+
 impl AlifePacketsReadWrite for AlifeObjectMonsterAbstract {
   /// Read the monster from both packets.
-  fn read<T: ByteOrder, D: ChunkDataSource>(
-    spawn: &mut ChunkReader<D>,
-    update: &mut ChunkReader<D>,
-  ) -> XrfResult<Self> {
+  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
     Ok(Self {
-      base: AlifeObjectCreature::read::<T, _>(spawn, update)?,
+      base: AlifeObjectCreature::read::<T, _, _>(spawn, update)?,
       out_space_restrictors: spawn.read_w1251_string()?,
       in_space_restrictors: spawn.read_w1251_string()?,
       smart_terrain_id: spawn.read_u16::<T>()?,
-      task_reached: spawn.read_u8()?,
+      task_reached: Self::read_task_reached::<T, _>(spawn)?,
       update_next_game_vertex_id: update.read_u16::<T>()?,
       update_previous_game_vertex_id: update.read_u16::<T>()?,
       update_distance_from_point: update.read_f32::<T>()?,
@@ -59,13 +77,13 @@ impl AlifePacketsReadWrite for AlifeObjectMonsterAbstract {
   }
 
   /// Write the monster into both packets.
-  fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
-    self.base.write::<T>(spawn, update)?;
+  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(&self, spawn: &mut S, update: &mut U) -> XrfResult {
+    self.base.write::<T, _, _>(spawn, update)?;
 
     spawn.write_w1251_string(&self.out_space_restrictors)?;
     spawn.write_w1251_string(&self.in_space_restrictors)?;
     spawn.write_u16::<T>(self.smart_terrain_id)?;
-    spawn.write_u8(self.task_reached)?;
+    self.write_task_reached::<T, _>(spawn)?;
 
     update.write_u16::<T>(self.update_next_game_vertex_id)?;
     update.write_u16::<T>(self.update_previous_game_vertex_id)?;

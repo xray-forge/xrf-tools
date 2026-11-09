@@ -1,6 +1,6 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
 
 /// A colour of four floats, the engine's `Fcolor`, stored red, green, blue, alpha. Not a packed `D3DCOLOR`, which is
@@ -24,8 +24,10 @@ impl Color {
   }
 }
 
-impl ChunkReadWrite for Color {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+/// Four floats, red first.
+impl ChunkFieldReadWrite for Color {
+  #[inline]
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       r: reader.read_f32::<T>()?,
       g: reader.read_f32::<T>()?,
@@ -34,13 +36,12 @@ impl ChunkReadWrite for Color {
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  #[inline]
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_f32::<T>(self.r)?;
     writer.write_f32::<T>(self.g)?;
     writer.write_f32::<T>(self.b)?;
-    writer.write_f32::<T>(self.a)?;
-
-    Ok(())
+    writer.write_f32::<T>(self.a)
   }
 }
 

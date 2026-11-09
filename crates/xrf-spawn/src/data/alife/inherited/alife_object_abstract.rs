@@ -1,6 +1,6 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_utils::{decode_string_from_base64, encode_string_to_base64};
@@ -30,9 +30,9 @@ impl AlifeObjectAbstract {
   }
 }
 
-impl ChunkReadWrite for AlifeObjectAbstract {
-  /// Read generic ALife object base data from the chunk reader.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+/// As `CSE_ALifeObject::STATE_Write` writes it.
+impl ChunkFieldReadWrite for AlifeObjectAbstract {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       game_vertex_id: reader.read_u16::<T>()?,
       distance: reader.read_f32::<T>()?,
@@ -45,8 +45,7 @@ impl ChunkReadWrite for AlifeObjectAbstract {
     })
   }
 
-  /// Write abstract object data into the chunk writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_u16::<T>(self.game_vertex_id)?;
     writer.write_f32::<T>(self.distance)?;
     writer.write_u32::<T>(self.direct_control)?;
@@ -54,9 +53,7 @@ impl ChunkReadWrite for AlifeObjectAbstract {
     writer.write_u32::<T>(self.flags)?;
     writer.write_w1251_string(&self.custom_data)?;
     writer.write_u32::<T>(self.story_id)?;
-    writer.write_u32::<T>(self.spawn_story_id)?;
-
-    Ok(())
+    writer.write_u32::<T>(self.spawn_story_id)
   }
 }
 

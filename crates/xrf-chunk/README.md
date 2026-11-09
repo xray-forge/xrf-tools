@@ -85,6 +85,31 @@ quantised into a `u16` over a range the format supplies; a write clamps a value 
 not the float, survive a round trip. `new_bounded_vec` reserves for a declared record count only after checking it
 against the bytes remaining.
 
+## Values as bytes and as fields
+
+The engine's `NET_Packet` writes each value through a primitive (`w_u16`, `w_float`, `w_vec3`, `w_stringZ`); with an
+ini stream attached it also saves one field per primitive, which is how the Level Editor keeps an entity's spawn data.
+Here those primitives are `ChunkFieldWriter` and `ChunkFieldReader`: `u8`, `u16`, `u32`, `u64`, `f32`, a three-float
+vector, a Windows-1251 string, raw bytes, the position (`w_tell`), a patch (`w_seek`), the end (`r_eof`), and the
+packet's own question, `is_field_form` (`inistream != nullptr`), for a value the engine writes otherwise to an ini
+stream. Provided methods build on them under `ChunkReader`'s and `ChunkWriter`'s own names (`read_xr`, `read_xr_list`,
+`read_xr_optional`, `read_u16_vector`, `new_bounded_vec` and their writer twins), so a value's code reads the same over
+either form.
+
+- `ChunkWriter` and `ChunkReader` implement them as bytes.
+- `ChunkFieldRecorder` records each value as a `ChunkField` of its `ChunkFieldKind`; `ChunkFieldReplay` reads them back
+  from any `ChunkFieldSource`, asking each field as the kind it reads. Both count the bytes the values take, as the
+  packet does, so a size or a save marker taken from their position is the binary one. A patch changes the bytes alone
+  and leaves a field as written; raw bytes make no field and are refused unless empty. A count is bounded by the bytes
+  left only in bytes, which fields do not carry.
+- A type implementing `ChunkFieldReadWrite` (or `ChunkFieldReadWriteList`, `ChunkFieldReadWriteOptional`) writes itself
+  once against the traits and gets `ChunkReadWrite` (or `ChunkReadWriteList`, `ChunkReadWriteOptional`) from a blanket
+  impl: its bytes are its fields over a `ChunkWriter`, so the two forms cannot drift, and a hand-written byte impl for
+  it would not compile.
+
+The traits' methods share their names with `byteorder`'s (`write_u16::<T>`), so a file using both on a `ChunkWriter`
+must call one through its trait. Users: every `xrf-math` chunk type and every `xrf-spawn` ALife class and value.
+
 ## Layout of a container
 
 `ChunkLayout` keeps how a container's children were laid out in a file, apart from what a format reads out of them:
@@ -116,4 +141,5 @@ Run `cargo test --locked -p xrf-chunk` from the repository root. Typed format te
 payload, while this crate checks framing, boundaries, sources, and primitive I/O.
 
 Sources: the [reader](src/reader/chunk_reader.rs), [child iterator](src/iterator/chunk_iterator.rs),
-[writer](src/writer/chunk_writer.rs), [in-memory source](src/source/chunk_memory_source.rs), and [exports](src/lib.rs).
+[writer](src/writer/chunk_writer.rs), [in-memory source](src/source/chunk_memory_source.rs),
+[field read-write](src/read_write/chunk_field_read_write.rs), and [exports](src/lib.rs).

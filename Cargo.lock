@@ -8813,10 +8813,12 @@ dependencies = [
  "xrf-editable-level",
  "xrf-editable-object",
  "xrf-error",
+ "xrf-ini",
  "xrf-level",
  "xrf-math",
  "xrf-ogf",
  "xrf-skeleton",
+ "xrf-spawn",
  "xrf-test-utils",
  "xrf-utils",
 ]

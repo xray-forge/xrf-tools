@@ -62,7 +62,7 @@ impl LevelHemiPart {
         let sphere: &Sphere = spheres.get(visual)?;
         // The visual's sphere is in renderer space, and so is where the object stands it; the form is the engine's.
         let centre: Vector3d =
-          VisualTransform::of_spawn(&object.position, &object.direction).apply_to_point(&sphere.center);
+          VisualTransform::of_spawn(&object.header.position, &object.header.direction).apply_to_point(&sphere.center);
         let estimate = estimator.estimate(&Vector3d::new(centre.x, centre.y, -centre.z), sphere.radius);
 
         Some(LevelSpawnObjectHemi {

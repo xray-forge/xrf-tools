@@ -4,4 +4,6 @@ pub(crate) mod alife_packets_read_write;
 pub(crate) mod inherited;
 pub(crate) mod spawn_level_arrival;
 pub(crate) mod spawn_level_objects;
+pub(crate) mod spawn_packet;
+pub(crate) mod spawn_packet_header;
 pub(crate) mod spawn_skipped_object;

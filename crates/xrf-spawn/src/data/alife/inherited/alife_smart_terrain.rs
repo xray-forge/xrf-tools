@@ -1,6 +1,6 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
@@ -48,10 +48,10 @@ impl AlifeSmartTerrain {
   }
 }
 
-impl ChunkReadWrite for AlifeSmartTerrain {
+impl ChunkFieldReadWrite for AlifeSmartTerrain {
   /// Read ALife smart terrain data from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let base: AlifeSmartZone = AlifeSmartZone::read::<T, _>(reader)?;
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+    let base: AlifeSmartZone = reader.read_xr::<T, AlifeSmartZone>()?;
     let object: Self = ScriptSaveMarker::read::<T, _, _>(reader, Self::SCRIPT_CLASS, |reader| {
       Ok(Self {
         base,
@@ -70,12 +70,12 @@ impl ChunkReadWrite for AlifeSmartTerrain {
   }
 
   /// Write smart terrain data into the writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     self.assert_compiled_state()?;
 
     writer.write_xr::<T, _>(&self.base)?;
 
-    ScriptSaveMarker::write::<T>(writer, Self::SCRIPT_CLASS, |writer| {
+    ScriptSaveMarker::write::<T, _>(writer, Self::SCRIPT_CLASS, |writer| {
       writer.write_u8(self.arriving_objects_count)?;
       writer.write_u8(self.object_job_descriptors_count)?;
       writer.write_u8(self.dead_objects_infos_count)?;

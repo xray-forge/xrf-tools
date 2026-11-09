@@ -1,6 +1,6 @@
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_utils::{vector_from_string, vector_to_string};
@@ -20,9 +20,9 @@ pub struct AlifeObjectOnlineOfflineGroup {
   pub members: Vec<u16>,
 }
 
-impl ChunkReadWrite for AlifeObjectOnlineOfflineGroup {
+impl ChunkFieldReadWrite for AlifeObjectOnlineOfflineGroup {
   /// Read the group from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       base: reader.read_xr::<T, _>()?,
       members: reader.read_u16_vector::<T>()?,
@@ -30,7 +30,7 @@ impl ChunkReadWrite for AlifeObjectOnlineOfflineGroup {
   }
 
   /// Write the group into the chunk.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_xr::<T, _>(&self.base)?;
     writer.write_u16_vector::<T>(&self.members)?;
 

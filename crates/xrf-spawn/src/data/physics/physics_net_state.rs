@@ -1,6 +1,6 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWriteOptional, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_math::Vector3d;
@@ -61,74 +61,6 @@ impl PhysicsNetState {
     self.position = [position.x, position.y, position.z].map(RawFloat::from);
   }
 
-  /// Read the state an update packet carries, or `None` for the zero byte standing in for one.
-  ///
-  /// A state ending its packet before the closing byte reads as awake, as the engine reads it.
-  pub fn read_optional<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Option<Self>> {
-    let packed: u8 = reader.read_u8()?;
-
-    if packed == 0 {
-      return Ok(None);
-    }
-
-    Ok(Some(Self {
-      item_count: packed & Self::MAX_ITEM_COUNT,
-      enabled: packed & Self::FLAG_ENABLED != 0,
-      force: RawFloat::read_array::<T, D, 3>(reader)?,
-      torque: RawFloat::read_array::<T, D, 3>(reader)?,
-      position: RawFloat::read_array::<T, D, 3>(reader)?,
-      rotation: RawFloat::read_array::<T, D, 4>(reader)?,
-      angular_velocity: if packed & Self::FLAG_ANGULAR_NULL == 0 {
-        Some(RawFloat::read_array::<T, D, 3>(reader)?)
-      } else {
-        None
-      },
-      linear_velocity: if packed & Self::FLAG_LINEAR_NULL == 0 {
-        Some(RawFloat::read_array::<T, D, 3>(reader)?)
-      } else {
-        None
-      },
-      awake: if reader.is_ended() {
-        Self::AWAKE
-      } else {
-        reader.read_u8()?
-      },
-    }))
-  }
-
-  /// Write the state, or the zero byte standing in for none.
-  ///
-  /// # Errors
-  ///
-  /// Refuses a count past [`Self::MAX_ITEM_COUNT`], and a state that would pack into the zero byte, which reads back
-  /// as no state at all.
-  pub fn write_optional<T: ByteOrder>(state: Option<&Self>, writer: &mut ChunkWriter) -> XrfResult {
-    let Some(state) = state else {
-      writer.write_u8(0)?;
-
-      return Ok(());
-    };
-
-    writer.write_u8(state.get_packed()?)?;
-
-    RawFloat::write_array::<T>(writer, &state.force)?;
-    RawFloat::write_array::<T>(writer, &state.torque)?;
-    RawFloat::write_array::<T>(writer, &state.position)?;
-    RawFloat::write_array::<T>(writer, &state.rotation)?;
-
-    if let Some(velocity) = &state.angular_velocity {
-      RawFloat::write_array::<T>(writer, velocity)?;
-    }
-
-    if let Some(velocity) = &state.linear_velocity {
-      RawFloat::write_array::<T>(writer, velocity)?;
-    }
-
-    writer.write_u8(state.awake)?;
-
-    Ok(())
-  }
-
   /// The byte opening the state: its item count, and the mask of what follows. A byte packing to zero would read
   /// back as no state at all.
   fn get_packed(&self) -> XrfResult<u8> {
@@ -161,7 +93,72 @@ impl PhysicsNetState {
 
     Ok(packed)
   }
+}
 
+/// The state an update packet carries, or the zero byte standing in for none.
+impl ChunkFieldReadWriteOptional for PhysicsNetState {
+  /// A state ending its packet before the closing byte reads as awake, as the engine reads it (`r_eof`).
+  fn read_field_optional<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Option<Self>> {
+    let packed: u8 = reader.read_u8()?;
+
+    if packed == 0 {
+      return Ok(None);
+    }
+
+    Ok(Some(Self {
+      item_count: packed & Self::MAX_ITEM_COUNT,
+      enabled: packed & Self::FLAG_ENABLED != 0,
+      force: RawFloat::read_array::<T, _, 3>(reader)?,
+      torque: RawFloat::read_array::<T, _, 3>(reader)?,
+      position: RawFloat::read_array::<T, _, 3>(reader)?,
+      rotation: RawFloat::read_array::<T, _, 4>(reader)?,
+      angular_velocity: if packed & Self::FLAG_ANGULAR_NULL == 0 {
+        Some(RawFloat::read_array::<T, _, 3>(reader)?)
+      } else {
+        None
+      },
+      linear_velocity: if packed & Self::FLAG_LINEAR_NULL == 0 {
+        Some(RawFloat::read_array::<T, _, 3>(reader)?)
+      } else {
+        None
+      },
+      awake: if reader.is_ended() {
+        Self::AWAKE
+      } else {
+        reader.read_u8()?
+      },
+    }))
+  }
+
+  /// Refuses a count past [`Self::MAX_ITEM_COUNT`], and a state that would pack into the zero byte, which reads back
+  /// as no state at all.
+  fn write_field_optional<T: ByteOrder, W: ChunkFieldWriter>(writer: &mut W, state: Option<&Self>) -> XrfResult {
+    let Some(state) = state else {
+      writer.write_u8(0)?;
+
+      return Ok(());
+    };
+
+    writer.write_u8(state.get_packed()?)?;
+
+    RawFloat::write_array::<T, _>(writer, &state.force)?;
+    RawFloat::write_array::<T, _>(writer, &state.torque)?;
+    RawFloat::write_array::<T, _>(writer, &state.position)?;
+    RawFloat::write_array::<T, _>(writer, &state.rotation)?;
+
+    if let Some(velocity) = &state.angular_velocity {
+      RawFloat::write_array::<T, _>(writer, velocity)?;
+    }
+
+    if let Some(velocity) = &state.linear_velocity {
+      RawFloat::write_array::<T, _>(writer, velocity)?;
+    }
+
+    writer.write_u8(state.awake)
+  }
+}
+
+impl PhysicsNetState {
   /// Import the state kept under `prefix`, where `prefix = nil` stands for none.
   pub fn import_optional(section: &impl LtxSectionRead, prefix: &str) -> XrfResult<Option<Self>> {
     if section.get(prefix).map(str::trim) == Some(NIL) {
@@ -247,7 +244,7 @@ impl PhysicsNetState {
 #[cfg(test)]
 mod tests {
   use byteorder::WriteBytesExt;
-  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWriteOptional, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
@@ -258,7 +255,7 @@ mod tests {
   fn read_back(state: Option<&PhysicsNetState>) -> XrfResult<(usize, Option<PhysicsNetState>)> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    PhysicsNetState::write_optional::<XRayByteOrder>(state, &mut writer)?;
+    PhysicsNetState::write_optional::<XRayByteOrder>(&mut writer, state)?;
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&writer.buffer)?;
     let read: Option<PhysicsNetState> = PhysicsNetState::read_optional::<XRayByteOrder, _>(&mut reader)?;
@@ -382,7 +379,7 @@ mod tests {
     let state: PhysicsNetState = PhysicsNetState::new_mock(Vector3d::new(4.0, 5.0, 6.0));
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    PhysicsNetState::write_optional::<XRayByteOrder>(Some(&state), &mut writer)?;
+    PhysicsNetState::write_optional::<XRayByteOrder>(&mut writer, Some(&state))?;
     writer.buffer.pop();
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&writer.buffer)?;
@@ -401,7 +398,7 @@ mod tests {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
     state.awake = 0;
-    PhysicsNetState::write_optional::<XRayByteOrder>(Some(&state), &mut writer)?;
+    PhysicsNetState::write_optional::<XRayByteOrder>(&mut writer, Some(&state))?;
     writer.write_u8(42)?;
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&writer.buffer)?;

@@ -1,8 +1,6 @@
-use std::io::Write;
-
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_utils::{vector_from_string, vector_to_string};
@@ -22,11 +20,8 @@ pub struct AlifeObjectItemWeaponShotgun {
 
 impl AlifePacketsReadWrite for AlifeObjectItemWeaponShotgun {
   /// Read a shotgun from both packets; the shells loaded end its update packet.
-  fn read<T: ByteOrder, D: ChunkDataSource>(
-    spawn: &mut ChunkReader<D>,
-    update: &mut ChunkReader<D>,
-  ) -> XrfResult<Self> {
-    let base: AlifeObjectItemWeaponMagazined = AlifeObjectItemWeaponMagazined::read::<T, _>(spawn, update)?;
+  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
+    let base: AlifeObjectItemWeaponMagazined = AlifeObjectItemWeaponMagazined::read::<T, _, _>(spawn, update)?;
     let count: u8 = update.read_u8()?;
 
     Ok(Self {
@@ -40,7 +35,7 @@ impl AlifePacketsReadWrite for AlifeObjectItemWeaponShotgun {
   /// # Errors
   ///
   /// Refuses more shells than the count's byte holds.
-  fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
+  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(&self, spawn: &mut S, update: &mut U) -> XrfResult {
     let count: u8 = u8::try_from(self.update_ammo_ids.len()).map_err(|_| {
       XrfError::new_invalid_error(format!(
         "Shotgun loads {} shells, more than the byte counting them holds",
@@ -48,9 +43,9 @@ impl AlifePacketsReadWrite for AlifeObjectItemWeaponShotgun {
       ))
     })?;
 
-    self.base.write::<T>(spawn, update)?;
+    self.base.write::<T, _, _>(spawn, update)?;
     update.write_u8(count)?;
-    update.write_all(&self.update_ammo_ids)?;
+    update.write_bytes(&self.update_ammo_ids)?;
 
     Ok(())
   }

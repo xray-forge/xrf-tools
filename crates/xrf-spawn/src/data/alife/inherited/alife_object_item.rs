@@ -1,6 +1,6 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 #[cfg(test)]
@@ -35,10 +35,7 @@ impl AlifeObjectItem {
 
 impl AlifePacketsReadWrite for AlifeObjectItem {
   /// Read the item's condition and upgrades, then the physics state of its update packet.
-  fn read<T: ByteOrder, D: ChunkDataSource>(
-    spawn: &mut ChunkReader<D>,
-    update: &mut ChunkReader<D>,
-  ) -> XrfResult<Self> {
+  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
     let base: AlifeObjectDynamicVisual = spawn.read_xr::<T, _>()?;
     let condition: f32 = spawn.read_f32::<T>()?;
     let count: u32 = spawn.read_u32::<T>()?;
@@ -53,12 +50,12 @@ impl AlifePacketsReadWrite for AlifeObjectItem {
       base,
       condition,
       upgrades,
-      update_state: PhysicsNetState::read_optional::<T, _>(update)?,
+      update_state: update.read_xr_optional::<T, _>()?,
     })
   }
 
   /// Write the item's condition and upgrades, then the physics state of its update packet.
-  fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
+  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(&self, spawn: &mut S, update: &mut U) -> XrfResult {
     spawn.write_xr::<T, _>(&self.base)?;
     spawn.write_f32::<T>(self.condition)?;
     spawn.write_u32::<T>(narrow_format_size(self.upgrades.len(), "item upgrades")?)?;
@@ -67,7 +64,7 @@ impl AlifePacketsReadWrite for AlifeObjectItem {
       spawn.write_w1251_string(upgrade)?;
     }
 
-    PhysicsNetState::write_optional::<T>(self.update_state.as_ref(), update)
+    update.write_xr_optional::<T, _>(self.update_state.as_ref())
   }
 }
 

@@ -6,7 +6,7 @@ use xrf_environment::{EnvironmentCatalog, WeatherGraphs};
 use xrf_level::{LevelFile, LevelHeaderChunk, LevelShaderEntry, LevelShadersChunk};
 use xrf_material::fixtures::FixtureTree;
 use xrf_math::Vector3d;
-use xrf_spawn::{AlifeObject, AlifeObjectAbstract, AlifeObjectInherited, ClsId};
+use xrf_spawn::{AlifeObject, AlifeObjectAbstract, AlifeObjectInherited, ClsId, SpawnPacketHeader};
 use xrf_vfs::{XrayLookupScope, XrayMountId, XraySearch, XrayVfs};
 
 /// A level whose shader table holds exactly these raw entries.
@@ -72,24 +72,26 @@ pub(super) fn new_abstract(story_id: u32) -> AlifeObjectAbstract {
 /// A spawned object named `name` of `section`, at `1, 2, 3` facing nowhere in particular.
 pub(super) fn new_object(name: &str, section: &str, clsid: ClsId, inherited: AlifeObjectInherited) -> AlifeObject {
   AlifeObject {
-    id: 0,
-    net_action: 1,
-    section: String::from(section),
+    header: SpawnPacketHeader {
+      id: 0,
+      net_action: 1,
+      section: String::from(section),
+      name: String::from(name),
+      script_game_id: 0,
+      script_rp: 0,
+      position: Vector3d::new(1.0, 2.0, 3.0),
+      direction: Vector3d::new(0.0, 0.0, 0.0),
+      respawn_time: 0,
+      parent_id: u16::MAX,
+      phantom_id: u16::MAX,
+      script_flags: 0,
+      version: 128,
+      game_type: 0,
+      script_version: 12,
+      client_data: Vec::new(),
+      spawn_id: 0,
+    },
     clsid,
-    name: String::from(name),
-    script_game_id: 0,
-    script_rp: 0,
-    position: Vector3d::new(1.0, 2.0, 3.0),
-    direction: Vector3d::new(0.0, 0.0, 0.0),
-    respawn_time: 0,
-    parent_id: u16::MAX,
-    phantom_id: u16::MAX,
-    script_flags: 0,
-    version: 128,
-    game_type: 0,
-    script_version: 12,
-    client_data: Vec::new(),
-    spawn_id: 0,
     inherited,
   }
 }

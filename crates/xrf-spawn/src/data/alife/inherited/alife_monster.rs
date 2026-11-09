@@ -1,6 +1,6 @@
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxWrite};
 use xrf_math::Vector3d;
@@ -43,19 +43,16 @@ impl AlifeMonster {
 
 impl AlifePacketsReadWrite for AlifeMonster {
   /// Read the monster from both packets; the script class adds to the spawn packet alone.
-  fn read<T: ByteOrder, D: ChunkDataSource>(
-    spawn: &mut ChunkReader<D>,
-    update: &mut ChunkReader<D>,
-  ) -> XrfResult<Self> {
+  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
     Ok(Self {
-      base: AlifeObjectMonsterBase::read::<T, _>(spawn, update)?,
+      base: AlifeObjectMonsterBase::read::<T, _, _>(spawn, update)?,
       offline_state: spawn.read_xr::<T, _>()?,
     })
   }
 
   /// Write the monster into both packets.
-  fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
-    self.base.write::<T>(spawn, update)?;
+  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(&self, spawn: &mut S, update: &mut U) -> XrfResult {
+    self.base.write::<T, _, _>(spawn, update)?;
 
     spawn.write_xr::<T, _>(&self.offline_state)
   }
@@ -106,7 +103,7 @@ mod tests {
     let update: Vec<u8> = GameWrittenPackets::bytes(GameWrittenPackets::MONSTER_UPDATE);
     let mut spawn_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&spawn)?;
     let mut update_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&update)?;
-    let monster: AlifeMonster = AlifeMonster::read::<XRayByteOrder, _>(&mut spawn_reader, &mut update_reader)?;
+    let monster: AlifeMonster = AlifeMonster::read::<XRayByteOrder, _, _>(&mut spawn_reader, &mut update_reader)?;
 
     spawn_reader.assert_read("Expect the game's spawn packet to be read whole")?;
     update_reader.assert_read("Expect the game's update packet to be read whole")?;
@@ -123,7 +120,7 @@ mod tests {
     let mut spawn_writer: ChunkWriter = ChunkWriter::new();
     let mut update_writer: ChunkWriter = ChunkWriter::new();
 
-    monster.write::<XRayByteOrder>(&mut spawn_writer, &mut update_writer)?;
+    monster.write::<XRayByteOrder, _, _>(&mut spawn_writer, &mut update_writer)?;
 
     assert_eq!((spawn_writer.buffer, update_writer.buffer), (spawn, update));
 
@@ -138,12 +135,12 @@ mod tests {
     let mut spawn: ChunkWriter = ChunkWriter::new();
     let mut update: ChunkWriter = ChunkWriter::new();
 
-    original.base.write::<XRayByteOrder>(&mut spawn, &mut update)?;
+    original.base.write::<XRayByteOrder, _, _>(&mut spawn, &mut update)?;
     spawn.buffer.extend_from_slice(b"450\0scheme@test\0");
 
     let mut spawn_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&spawn.buffer)?;
     let mut update_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&update.buffer)?;
-    let read: AlifeMonster = AlifeMonster::read::<XRayByteOrder, _>(&mut spawn_reader, &mut update_reader)?;
+    let read: AlifeMonster = AlifeMonster::read::<XRayByteOrder, _, _>(&mut spawn_reader, &mut update_reader)?;
 
     spawn_reader.assert_read("Expect the tail to close the spawn packet")?;
 
@@ -165,7 +162,7 @@ mod tests {
     let (base_spawn_size, _, _) = original.base.read_back::<XRayByteOrder>()?;
     let mut spawn: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder>(&mut spawn, &mut ChunkWriter::new())?;
+    original.write::<XRayByteOrder, _, _>(&mut spawn, &mut ChunkWriter::new())?;
 
     assert_eq!(&spawn.buffer[base_spawn_size..], b"nil\0nil\0");
     assert_eq!(

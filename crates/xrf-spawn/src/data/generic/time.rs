@@ -1,9 +1,9 @@
 use std::str::FromStr;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteOptional, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReadWriteOptional, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::constants::NIL;
@@ -22,33 +22,29 @@ pub struct Time {
   pub millis: u16,
 }
 
-impl ChunkReadWriteOptional for Time {
-  /// Read optional time object from the chunk.
-  fn read_optional<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Option<Self>> {
+impl ChunkFieldReadWriteOptional for Time {
+  /// A flag of 1 ahead of the time, or of 0 for none.
+  fn read_field_optional<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Option<Self>> {
     if reader.read_u8()? == 1 {
-      Ok(Some(Self::read::<T, _>(reader)?))
+      Ok(Some(reader.read_xr::<T, _>()?))
     } else {
       Ok(None)
     }
   }
 
-  /// Write optional time object into the writer.
-  fn write_optional<T: ByteOrder>(writer: &mut ChunkWriter, time: Option<&Self>) -> XrfResult {
+  fn write_field_optional<T: ByteOrder, W: ChunkFieldWriter>(writer: &mut W, time: Option<&Self>) -> XrfResult {
     if let Some(time) = time {
       writer.write_u8(1)?;
-
-      time.write::<T>(writer)?;
+      writer.write_xr::<T, _>(time)
     } else {
-      writer.write_u8(0)?;
+      writer.write_u8(0)
     }
-
-    Ok(())
   }
 }
 
-impl ChunkReadWrite for Time {
+impl ChunkFieldReadWrite for Time {
   /// Read time object from chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     let year: u8 = reader.read_u8()?;
     let month: u8 = reader.read_u8()?;
     let day: u8 = reader.read_u8()?;
@@ -69,16 +65,14 @@ impl ChunkReadWrite for Time {
   }
 
   /// Write time object into the chunk.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_u8(self.year)?;
     writer.write_u8(self.month)?;
     writer.write_u8(self.day)?;
     writer.write_u8(self.hour)?;
     writer.write_u8(self.minute)?;
     writer.write_u8(self.second)?;
-    writer.write_u16::<T>(self.millis)?;
-
-    Ok(())
+    writer.write_u16::<T>(self.millis)
   }
 }
 

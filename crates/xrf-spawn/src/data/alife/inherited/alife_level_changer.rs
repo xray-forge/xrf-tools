@@ -1,6 +1,6 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_math::Vector3d;
@@ -30,13 +30,18 @@ impl AlifeLevelChanger {
   const SCRIPT_CLASS: &'static str = "se_level_changer";
 }
 
-impl ChunkReadWrite for AlifeLevelChanger {
+impl ChunkFieldReadWrite for AlifeLevelChanger {
   /// Read ALife level changer object data from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     let base: AlifeObjectSpaceRestrictor = reader.read_xr::<T, _>()?;
     let dest_game_vertex_id: u16 = reader.read_u16::<T>()?;
     let dest_level_vertex_id: u32 = reader.read_u32::<T>()?;
-    let dest_position: Vector3d = reader.read_xr::<T, _>()?;
+    // Three floats where the angles that follow are one vector, as `STATE_Write` writes them.
+    let dest_position: Vector3d = Vector3d::new(
+      reader.read_f32::<T>()?,
+      reader.read_f32::<T>()?,
+      reader.read_f32::<T>()?,
+    );
     let dest_direction: Vector3d = reader.read_xr::<T, _>()?;
     let dest_level_name: String = reader.read_w1251_string()?;
     let dest_graph_point: String = reader.read_w1251_string()?;
@@ -60,20 +65,25 @@ impl ChunkReadWrite for AlifeLevelChanger {
   }
 
   /// Write object data into the writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_xr::<T, _>(&self.base)?;
 
     writer.write_u16::<T>(self.dest_game_vertex_id)?;
     writer.write_u32::<T>(self.dest_level_vertex_id)?;
 
-    writer.write_xr::<T, _>(&self.dest_position)?;
+    // `CSE_ALifeLevelChanger::STATE_Write` puts the position down as three floats and the angles as one vector
+    // (`xrServer_Objects_ALife.cpp:798`); the bytes are the same, the fields are not.
+    for component in self.dest_position.to_array() {
+      writer.write_f32::<T>(component)?;
+    }
+
     writer.write_xr::<T, _>(&self.dest_direction)?;
 
     writer.write_w1251_string(&self.dest_level_name)?;
     writer.write_w1251_string(&self.dest_graph_point)?;
     writer.write_u8(self.silent_mode)?;
 
-    ScriptSaveMarker::write::<T>(writer, Self::SCRIPT_CLASS, |writer| {
+    ScriptSaveMarker::write::<T, _>(writer, Self::SCRIPT_CLASS, |writer| {
       writer.write_u8(self.enabled)?;
       writer.write_w1251_string(&self.hint)?;
 

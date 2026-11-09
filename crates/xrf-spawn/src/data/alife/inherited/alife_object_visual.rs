@@ -1,6 +1,6 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
@@ -12,9 +12,9 @@ pub struct AlifeObjectVisual {
   pub visual_flags: u8,
 }
 
-impl ChunkReadWrite for AlifeObjectVisual {
+impl ChunkFieldReadWrite for AlifeObjectVisual {
   /// Read visual object data from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       visual_name: reader.read_w1251_string()?,
       visual_flags: reader.read_u8()?,
@@ -22,7 +22,7 @@ impl ChunkReadWrite for AlifeObjectVisual {
   }
 
   /// Write visual ALife object data into the writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_w1251_string(&self.visual_name)?;
     writer.write_u8(self.visual_flags)?;
 

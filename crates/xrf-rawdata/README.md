@@ -213,7 +213,16 @@ All 174 files across the game trees round-trip through the part's text: 172 with
 - `export_respawn_points` and `export_environment_modifiers` write what `CSpawnPoint::ExportGame` does, the latter
   under `SPAWNPOINT_VERSION` for every level.
 - 4,951 respawn points and 25 modifiers over every tree; CS's `mp_training_camp` holds positions off the `%f` grid, and
-  SGM 2.2's `l04u_labx18` an older `env_mod` that keeps no flags. Entity spawns, `level.spawn`, are not converted yet.
+  SGM 2.2's `l04u_labx18` an older `env_mod` that keeps no flags.
+
+### Entity spawn data
+
+`LevelSpawnDataFields` is an entity's `[object_N_spawndata]` as the editor saves it: `write_section` numbers the
+`ChunkField`s a spawn packet records from `000001` and prints each as `CInifile` prints its kind (`%d` integers, a
+`u32` past `i32::MAX` negative, `%f` floats, `x, y, z` vectors, quoted strings), refusing a string holding `"`, which
+`SIniFileStream` writes unescaped. As a `ChunkFieldSource` it reads them back as the packet asks; `assert_read` refuses
+a field past the packet's last. Entities are not yet converted between `spawn.part` and `level.spawn`: only the
+classes `xrf-spawn` writes as fields can be.
 
 ### Glows
 

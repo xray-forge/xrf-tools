@@ -1,10 +1,10 @@
 use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub};
 use std::str::FromStr;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -162,23 +162,16 @@ impl Neg for &Vector3d<f32> {
   }
 }
 
-impl ChunkReadWrite for Vector3d<f32> {
-  /// Read vector coordinates from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    Ok(Self {
-      x: reader.read_f32::<T>()?,
-      y: reader.read_f32::<T>()?,
-      z: reader.read_f32::<T>()?,
-    })
+/// An `Fvector`, `w_vec3`: three floats as one value.
+impl ChunkFieldReadWrite for Vector3d<f32> {
+  #[inline]
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+    Ok(Self::from(reader.read_vector3::<T>()?))
   }
 
-  /// Write vector coordinates into the writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_f32::<T>(self.x)?;
-    writer.write_f32::<T>(self.y)?;
-    writer.write_f32::<T>(self.z)?;
-
-    Ok(())
+  #[inline]
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    writer.write_vector3::<T>(self.to_array())
   }
 }
 

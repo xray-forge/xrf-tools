@@ -1,6 +1,7 @@
 #![doc = include_str!("../README.md")]
 
 pub(crate) mod chunk_constants;
+pub(crate) mod field;
 pub(crate) mod iterator;
 pub(crate) mod layout;
 pub(crate) mod read_write;
@@ -12,11 +13,21 @@ pub(crate) mod xray_byte_order;
 pub use crate::chunk_constants::{
   CHUNK_HEADER_SIZE, CHUNK_ID_COMPRESSED_MASK, CHUNK_ID_FIELD_SIZE, CHUNK_ID_MASK, CHUNK_SIZE_FIELD_SIZE,
 };
+pub use crate::field::chunk_field::ChunkField;
+pub use crate::field::chunk_field_kind::ChunkFieldKind;
+pub use crate::field::chunk_field_reader::ChunkFieldReader;
+pub use crate::field::chunk_field_writer::ChunkFieldWriter;
+pub use crate::field::stream::chunk_field_recorder::ChunkFieldRecorder;
+pub use crate::field::stream::chunk_field_replay::ChunkFieldReplay;
+pub use crate::field::stream::chunk_field_source::ChunkFieldSource;
 pub use crate::iterator::chunk_iterator::ChunkIterator;
 pub use crate::iterator::chunk_size_packed_iterator::ChunkSizePackedIterator;
 pub use crate::layout::chunk_layout::ChunkLayout;
 pub use crate::layout::chunk_payload::ChunkPayload;
 pub use crate::layout::chunk_sequence::ChunkSequence;
+pub use crate::read_write::chunk_field_read_write::ChunkFieldReadWrite;
+pub use crate::read_write::chunk_field_read_write_list::ChunkFieldReadWriteList;
+pub use crate::read_write::chunk_field_read_write_optional::ChunkFieldReadWriteOptional;
 pub use crate::read_write::chunk_read_write::ChunkReadWrite;
 pub use crate::read_write::chunk_read_write_list::ChunkReadWriteList;
 pub use crate::read_write::chunk_read_write_optional::ChunkReadWriteOptional;

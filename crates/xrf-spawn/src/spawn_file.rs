@@ -164,7 +164,7 @@ impl SpawnFile {
           if let AlifeObjectInherited::SeLevelChanger(changer) = &object.inherited {
             let destination: Option<&str> = levels.get_level(changer.dest_game_vertex_id).map(|it| it.name.as_str());
 
-            arrivals.extend(SpawnLevelArrival::of(&object.name, changer, destination, level));
+            arrivals.extend(SpawnLevelArrival::of(&object.header.name, changer, destination, level));
           }
 
           if levels

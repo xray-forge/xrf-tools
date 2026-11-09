@@ -1,6 +1,6 @@
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
 
 use crate::quaternion::Quaternion;
@@ -233,8 +233,10 @@ impl Affine3d {
   }
 }
 
-impl ChunkReadWrite for Affine3d {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+/// `w_matrix`: the four rows, each a vector.
+impl ChunkFieldReadWrite for Affine3d {
+  #[inline]
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       x_axis: reader.read_xr::<T, _>()?,
       y_axis: reader.read_xr::<T, _>()?,
@@ -243,13 +245,12 @@ impl ChunkReadWrite for Affine3d {
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    self.x_axis.write::<T>(writer)?;
-    self.y_axis.write::<T>(writer)?;
-    self.z_axis.write::<T>(writer)?;
-    self.translation.write::<T>(writer)?;
-
-    Ok(())
+  #[inline]
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    writer.write_xr::<T, _>(&self.x_axis)?;
+    writer.write_xr::<T, _>(&self.y_axis)?;
+    writer.write_xr::<T, _>(&self.z_axis)?;
+    writer.write_xr::<T, _>(&self.translation)
   }
 }
 
