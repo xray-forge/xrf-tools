@@ -1,4 +1,7 @@
+use std::hash::BuildHasher;
+
 use hashbrown::HashTable;
+use rustc_hash::FxBuildHasher;
 
 /// Finds a section's field by key among fields its owner keeps in written order, so a key set twice can take the place
 /// it was first written in.
@@ -61,7 +64,7 @@ impl LtxFieldIndex {
   }
 
   fn hash(text: &str) -> u64 {
-    fxhash::hash64(text)
+    FxBuildHasher.hash_one(text)
   }
 }
 

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use fxhash::FxBuildHasher;
+use rustc_hash::FxBuildHasher;
 
 use crate::dialect::LtxFieldOrigin;
 

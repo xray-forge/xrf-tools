@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::fs::File;
 use std::path::Path;
 
-use fxhash::FxBuildHasher;
+use rustc_hash::FxBuildHasher;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::read_as_string_from_w1251_encoded;
 
