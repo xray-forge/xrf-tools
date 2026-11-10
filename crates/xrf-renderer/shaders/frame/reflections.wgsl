@@ -137,7 +137,7 @@ fn world_offset(position: vec3<f32>) -> vec3<f32> {
 fn is_trace_turn(pixel: vec2<f32>, scale: u32) -> bool {
   let turns: u32 = max(reflection.trace_turns, 1u) * scale * trace_request_wait();
 
-  return (trace_turn_of(vec2<u32>(pixel), turns) + reflection.frame) % turns == 0u;
+  return is_on_trace_turn(vec2<u32>(pixel), turns, reflection.frame);
 }
 
 // What a pixel reflected the frame before, off its turn to trace: read where its reflected point stood then, through
@@ -711,8 +711,6 @@ const GRAZING_FACING: f32 = 0.25;
 const NOISY_VARIANCE: f32 = 0.05;
 // Traced pixels a side each workgroup of the budgeted trace takes, as quads one an invocation.
 const BUDGET_TILE: u32 = 16u;
-// The order a quad's pixels take its rays in, the diagonals first, so two rays fall across each other.
-const QUAD_ORDER: array<u32, 4> = array<u32, 4>(0u, 3u, 1u, 2u);
 
 // The rays of its quad's four a traced pixel asks for.
 fn ray_need(start: TraceStart, pixel: vec2<u32>) -> u32 {
@@ -797,7 +795,7 @@ fn cs_trace_budgeted(@builtin(workgroup_id) group: vec3<u32>, @builtin(local_inv
   // The quad's first pixel to trace turns each frame from a place its noise picks; two rays take a diagonal.
   let noise_size: vec2<u32> = textureDimensions(blue_noise);
   let picked: u32 = u32(textureLoad(blue_noise, ((tile + place) / 2u) % noise_size, 0).r * 4.0);
-  let turn: u32 = (reflection.frame + picked) % 4u;
+  let turn: u32 = quad_turn(reflection.frame, picked);
   let first: u32 = select(turn, turn & 2u, budget == 2u);
   var is_traced: array<bool, 4> = array<bool, 4>(false, false, false, false);
   var taken: u32 = 0u;
