@@ -10,6 +10,7 @@ use crate::feature::scene::statics::draw::static_draw_parameters::StaticDrawPara
 use crate::frame::periodic::periodic_ticket::PeriodicTicket;
 use crate::lighting::lamp::light_shadow_size::LIGHT_SHADOW_MIN_SIZE;
 use crate::pass::view::view_binding::ViewBinding;
+use crate::scene::level::lights::atlas::light_face_rank::LightFaceRank;
 use crate::scene::level::lights::atlas::light_shadow_atlas::LightShadowAtlas;
 use crate::scene::level::lights::atlas::light_shadow_entry::LightShadowEntry;
 use crate::scene::level::lights::atlas::light_shadow_set::LightShadowSet;
@@ -56,7 +57,7 @@ struct FaceKey {
 struct FaceOrder {
   is_away: bool,
   is_current: bool,
-  by: f32,
+  by: LightFaceRank,
 }
 
 /// A face wanting a draw: what orders it, which face, and the frames it may wait, none where it draws at once.
