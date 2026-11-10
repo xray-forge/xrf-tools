@@ -7,7 +7,6 @@ use xrf_renderer_core::{
 
 use crate::feature::scene::pyramid::pyramid_reduction::PyramidReduction;
 use crate::feature::scene::statics::draw::static_draws::StaticDraws;
-use crate::feature::tracing::ray_guides::ray_guides_pass::RayGuidesPass;
 use crate::feature::tracing::scene_trace::reflection_scene_parameters::ReflectionSceneParameters;
 use crate::feature::tracing::scene_trace::requests::trace_request_handles::TraceRequestHandles;
 use crate::feature::tracing::scene_trace::requests::trace_request_parameters::TraceRequestParameters;
@@ -298,8 +297,7 @@ impl WaterPass {
         Self::begin_surface_pass(graph, draw)
           .color(GraphColorAttachment::new(guides.specular_albedo, wgpu::LoadOp::Load))
           .color(GraphColorAttachment::new(guides.normals, wgpu::LoadOp::Load))
-          .color(GraphColorAttachment::new(guides.hit_distance, wgpu::LoadOp::Load))
-          .color(GraphColorAttachment::new(guides.bias, wgpu::LoadOp::Load)),
+          .color(GraphColorAttachment::new(guides.hit_distance, wgpu::LoadOp::Load)),
         parameters,
         None,
         &frame.args,
@@ -631,15 +629,11 @@ impl WaterPass {
       Some(ViewTargets::MOTION.into()),
     ];
     // Ray reconstruction's guides past them, replaced where the enhanced water draws.
-    let guided_targets: [Option<wgpu::ColorTargetState>; 7] = [
-      targets[0].clone(),
-      targets[1].clone(),
-      targets[2].clone(),
-      Some(RayGuidesPass::SPECULAR_ALBEDO.into()),
-      Some(RayGuidesPass::NORMALS.into()),
-      Some(RayGuidesPass::HIT_DISTANCE.into()),
-      Some(RayGuidesPass::BIAS.into()),
-    ];
+    let guided_targets: Vec<Option<wgpu::ColorTargetState>> = targets
+      .iter()
+      .cloned()
+      .chain(WaterPipelines::GUIDES.map(|format| Some(format.into())))
+      .collect();
     let reflection_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(WaterReflection::FORMAT.into())];
     let current_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(WaterReflection::CURRENT_FORMAT.into())];
     let describe = |label: &'static str,

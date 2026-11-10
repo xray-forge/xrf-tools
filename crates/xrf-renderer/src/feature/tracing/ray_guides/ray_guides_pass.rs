@@ -21,8 +21,6 @@ impl RayGuidesPass {
   pub(crate) const NORMALS: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   /// Metres the reflection ray went, and the indirect light's.
   pub(crate) const HIT_DISTANCE: wgpu::TextureFormat = wgpu::TextureFormat::R16Float;
-  /// How far a pixel is reconstructed from this frame alone.
-  pub(crate) const BIAS: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
   /// The surface's colour as the frame lights with it: half floats, as a dark leaf's linear channels fall below what
   /// eight bits tell apart.
   pub(crate) const DIFFUSE_ALBEDO: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
@@ -53,7 +51,7 @@ impl RayGuidesPass {
   }
 
   /// Writes the guides DLSS ray reconstruction reads: the specular albedo, the normal with the reflections' roughness,
-  /// the specular and the diffuse hit distances, the bias mask, and the diffuse albedo.
+  /// the specular and the diffuse hit distances, and the diffuse albedo.
   pub(crate) fn record(&self, context: &mut RasterContext<'_>, view: &ViewBinding, parameters: &RayGuidesParameters) {
     context.bind(parameters);
 
@@ -78,7 +76,6 @@ impl RayGuidesPass {
         Some(Self::SPECULAR_ALBEDO.into()),
         Some(Self::NORMALS.into()),
         Some(Self::HIT_DISTANCE.into()),
-        Some(Self::BIAS.into()),
         Some(Self::HIT_DISTANCE.into()),
         Some(Self::DIFFUSE_ALBEDO.into()),
       ],

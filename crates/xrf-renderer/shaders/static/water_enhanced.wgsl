@@ -327,7 +327,6 @@ struct GuidedOutput {
   @location(3) specular_albedo: vec4<f32>,
   @location(4) normals: vec4<f32>,
   @location(5) hit_distance: f32,
-  @location(6) bias: f32,
 };
 
 @fragment
@@ -341,7 +340,6 @@ fn fs_water_enhanced_guided(in: WaterVarying) -> GuidedOutput {
   out.specular_albedo = vec4<f32>(vec3<f32>(shaded.reflected_share), 1.0);
   out.normals = vec4<f32>(shaded.normal, shaded.roughness);
   out.hit_distance = shaded.hit_distance;
-  out.bias = RAY_GUIDE_BIAS_WATER;
 
   return out;
 }
