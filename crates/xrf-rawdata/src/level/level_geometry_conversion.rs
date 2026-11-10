@@ -13,6 +13,7 @@ use xrf_level::{
 use xrf_math::Vector3d;
 
 use crate::level::level_decompile_context::LevelDecompileContext;
+use crate::level::level_surface_inference::LevelSurfaceInference;
 use crate::level::level_visual_geometry::LevelVisualGeometry;
 use crate::object::decompile::object_decompile::ObjectDecompile;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
@@ -86,7 +87,9 @@ impl LevelGeometryConversion {
   /// The geometry of the compiled level `level` named `name`, its visuals `visuals` over `source`: each sector's static
   /// visuals (trees and impostors are left for their own objects) decompiled into one object of the sector's name
   /// (`ObjectDecompiler::decompile_level_geometry`), its points in the level's space and its scene object at the origin;
-  /// a sector per compiled sector naming its object, and a portal per compiled portal.
+  /// a sector per compiled sector naming its object, and a portal per compiled portal. With `surfaces`, each visual's
+  /// triangles are split by the game material they lie on and dressed (decision 14); without, every surface takes the
+  /// editor's defaults.
   ///
   /// A sector drawing no static geometry has no object to name, and the editor drops a sector of no item, which would
   /// renumber every sector after it. Where one does, the shells come back without sectors or portals, each such sector
@@ -101,6 +104,7 @@ impl LevelGeometryConversion {
     level: &LevelFile,
     visuals: &LevelVisualsChunk,
     source: &LevelGeomSource<D>,
+    mut surfaces: Option<&mut LevelSurfaceInference>,
     context: &mut LevelDecompileContext,
   ) -> XrfResult<LevelGeometryDecompile> {
     let shaders: &LevelShadersChunk = level
@@ -111,7 +115,15 @@ impl LevelGeometryConversion {
       .get_sectors()
       .iter()
       .map(|sector| {
-        let read: SectorGeometry = Self::read_sector::<T, D>(visuals, sector.root, shaders, source)?;
+        let mut read: SectorGeometry = Self::read_sector::<T, D>(visuals, sector.root, shaders, source)?;
+
+        if let Some(surfaces) = surfaces.as_deref_mut() {
+          read.geometry = std::mem::take(&mut read.geometry)
+            .into_iter()
+            .flat_map(|geometry| surfaces.dress(geometry))
+            .collect();
+        }
+
         let decompile: Option<ObjectDecompile> = if read.geometry.is_empty() {
           None
         } else {

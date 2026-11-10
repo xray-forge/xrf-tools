@@ -39,6 +39,24 @@ pub(crate) struct LevelDecompileGeometry {
   pub(crate) objects: usize,
   #[serde(flatten)]
   pub(crate) census: LevelGeometryCensus,
+  /// How the surfaces were dressed, where they were inferred; the sidecar lists each compiler shader chosen.
+  pub(crate) surfaces: Option<LevelDecompileSurfaces>,
+}
+
+/// The surfaces `level decompile` inferred, counted.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct LevelDecompileSurfaces {
+  /// Triangles on a collision face of the same three points.
+  pub(crate) exact_triangles: usize,
+  /// Triangles a short ray found a collision face beneath.
+  pub(crate) traced_triangles: usize,
+  /// Triangles on no collision face.
+  pub(crate) uncollided_triangles: usize,
+  /// Compiler shaders chosen, one per engine shader and kind of evidence.
+  pub(crate) compiler_shaders: usize,
+  /// Collision materials the game material library does not define.
+  pub(crate) unknown_game_materials: usize,
 }
 
 /// The root spawn `level decompile` read, counted.

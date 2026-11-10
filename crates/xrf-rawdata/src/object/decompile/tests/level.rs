@@ -4,6 +4,7 @@ use xrf_level::LevelVertex;
 use xrf_math::{Vector2d, Vector3d};
 
 use crate::level::level_visual_geometry::LevelVisualGeometry;
+use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
 
 /// A level vertex at `position` whose normal is `normal` stored as xrLC stores it, a byte a component, `(n + 1) *
@@ -29,6 +30,7 @@ fn visual(texture: &str, vertices: Vec<LevelVertex>, indices: Vec<u16>) -> Level
   LevelVisualGeometry {
     texture: String::from(texture),
     shader: String::from("def_shaders\\def_vertex"),
+    dress: SurfaceDress::default(),
     vertices,
     indices,
   }

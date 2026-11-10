@@ -57,10 +57,10 @@ impl ObjectDecompiler {
     }
   }
 
-  /// Decompiles visuals of a compiled level into one static object: the visuals drawn with one texture and shader are
-  /// one surface, and every triangle is welded into one mesh, so faces of different visuals that met in the source
-  /// meet again. Level normals are stored a byte a component, which the weld, the two-sided folding and the smoothing
-  /// allow one quantisation step for.
+  /// Decompiles visuals of a compiled level into one static object: the visuals drawn with one texture and shader and
+  /// dressed alike are one surface, and every triangle is welded into one mesh, so faces of different visuals that met
+  /// in the source meet again. Level normals are stored a byte a component, which the weld, the two-sided folding and
+  /// the smoothing allow one quantisation step for.
   ///
   /// # Errors
   ///
@@ -73,7 +73,7 @@ impl ObjectDecompiler {
 
       match surfaces
         .iter_mut()
-        .find(|it| it.texture == surface.texture && it.shader == surface.shader)
+        .find(|it| it.texture == surface.texture && it.shader == surface.shader && it.dress == surface.dress)
       {
         Some(existing) => existing.triangles.extend(surface.triangles),
         None => surfaces.push(surface),

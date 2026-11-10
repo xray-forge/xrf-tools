@@ -2,7 +2,6 @@ use xrf_editable_object::EditableSurface;
 
 use crate::object::decompile::geometry::source::ogf_surface::OgfSurface;
 use crate::object::decompile::geometry::welded_face::WeldedFace;
-use crate::object::decompile::mesh::mesh_assembler::MeshAssembler;
 
 /// The editable surfaces the OGF surfaces' faces land in: one for an OGF surface's single-sided faces and one for its
 /// two-sided ones, each only where it has such faces. The export merged surfaces sharing a texture and shader into one
@@ -46,8 +45,8 @@ impl SurfaceLayout {
         layout.surfaces.push(EditableSurface {
           name,
           shader: surface.shader.clone(),
-          compiler_shader: String::from(MeshAssembler::DEFAULT_SURFACE_SETTING),
-          game_material: String::from(MeshAssembler::DEFAULT_SURFACE_SETTING),
+          compiler_shader: surface.dress.compiler_shader.clone(),
+          game_material: surface.dress.game_material.clone(),
           texture: surface.texture.clone(),
           vmap: String::from(EditableSurface::UV_MAP_NAME),
           flags: if is_two_sided {

@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use xrf_error::XrfResult;
 
 use crate::level::level_geometry_conversion::LevelGeometryCensus;
+use crate::level::level_surface_inference::LevelSurfaceCensus;
 use crate::provenance::sidecar::Sidecar;
 
 /// One compiled file a scene was decompiled from.
@@ -62,6 +63,10 @@ pub enum LevelSceneInference {
   /// and placed at the origin; sectors take a new sector's colour, and sectors and portals are named as the editor
   /// names new ones. The compiled level merged the authored objects into each sector.
   SectorShells,
+  /// Each static surface's game material is the collision face's its triangles lie on, a surface split where they lie
+  /// on different ones or none; its compiler shader is one of `shaders_xrlc.xr` fitting what the level shows
+  /// (collision, vertex lighting), chosen as the sidecar's `geometry.surfaces` records.
+  SurfaceDress,
 }
 
 /// The objects a scene's static geometry came back as, and what the decompile counted of it.
@@ -71,6 +76,30 @@ pub struct LevelSceneGeometry {
   /// Each object written, by its path under `$objects$` without the extension.
   pub objects: Vec<String>,
   pub census: LevelGeometryCensus,
+  /// How the surfaces were dressed, where they were inferred.
+  #[serde(default)]
+  pub surfaces: Option<LevelSceneSurfaces>,
+}
+
+/// The surfaces of a scene's static geometry as inferred (decision 14): from what, and every compiler shader chosen with
+/// why.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LevelSceneSurfaces {
+  pub libraries: LevelSceneSurfaceLibraries,
+  pub census: LevelSurfaceCensus,
+}
+
+/// The libraries a scene's surfaces were dressed from.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LevelSceneSurfaceLibraries {
+  pub game_materials: LevelSceneSource,
+  pub compiler_shaders: LevelSceneSource,
+  /// The object library roots whose pairings broke ties, as given.
+  pub object_roots: Vec<String>,
+  /// Objects under them that did not read.
+  pub unread_objects: usize,
 }
 
 /// What the decompile read but left out of the scene, with why.

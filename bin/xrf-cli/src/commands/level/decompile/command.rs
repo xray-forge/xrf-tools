@@ -6,11 +6,14 @@ use xrf_chunk::XRayByteOrder;
 use xrf_editable_level::{EditableLevelFile, EditableLevelPart};
 use xrf_error::{XrfError, XrfResult};
 use xrf_output::OutputOptions;
-use xrf_rawdata::{LevelDecompileOptions, LevelSceneDecompile, LevelSceneDecompiler, LevelSceneProvenance};
+use xrf_rawdata::{
+  LevelDecompileOptions, LevelSceneDecompile, LevelSceneDecompiler, LevelSceneProvenance, LevelSurfaceInference,
+  LevelSurfaces,
+};
 use xrf_utils::format_path;
 
 use crate::commands::level::decompile::report::{
-  LevelDecompileGeometry, LevelDecompileReport, LevelDecompileRootSpawn, LevelDecompileTool,
+  LevelDecompileGeometry, LevelDecompileReport, LevelDecompileRootSpawn, LevelDecompileSurfaces, LevelDecompileTool,
 };
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
@@ -62,6 +65,41 @@ impl GenericCommand for DecompileCommand {
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
+        Arg::new("surfaces")
+          .help(
+            "How the geometry's surfaces are dressed: infer each game material from the collision face beneath and a \
+             compiler shader fitting what the level shows, or give every surface the editor's defaults",
+          )
+          .long("surfaces")
+          .value_parser(["infer", "defaults"])
+          .default_value("infer"),
+      )
+      .arg(
+        Arg::new("game-materials")
+          .help("Game material library naming the collision materials; gamemtl.xr in the level's gamedata by default")
+          .long("game-materials")
+          .value_parser(value_parser!(PathBuf)),
+      )
+      .arg(
+        Arg::new("compiler-shaders")
+          .help(
+            "Compiler shader library inferred compiler shaders are chosen from; shaders_xrlc.xr in the level's gamedata \
+             by default",
+          )
+          .long("compiler-shaders")
+          .value_parser(value_parser!(PathBuf)),
+      )
+      .arg(
+        Arg::new("library")
+          .help(
+            "Object library root, such as an SDK's rawdata/objects, whose surfaces' pairings of engine and compiler \
+             shaders break ties between compiler shaders that fit; repeatable",
+          )
+          .long("library")
+          .action(ArgAction::Append)
+          .value_parser(value_parser!(PathBuf)),
+      )
+      .arg(
         Arg::new("spawn")
           .help(
             "Root spawn whose objects on the level replace level.spawn's entities, read from spawns/<spawn>.spawn \
@@ -84,8 +122,39 @@ impl GenericCommand for DecompileCommand {
     let destination: &PathBuf = matches.get_one::<PathBuf>("dest").expect("the destination is required");
     let output: OutputOptions = context.get_output().clone();
 
-    let root_spawn: Option<PathBuf> =
-      Self::get_root_spawn(source, matches.get_one::<String>("spawn").map(String::as_str))?;
+    let gamedata: PathBuf = Self::get_gamedata(source);
+    let surfaces: LevelSurfaces = match matches.get_one::<String>("surfaces").map(String::as_str) {
+      Some("defaults") => LevelSurfaces::Defaults,
+      _ => LevelSurfaces::Infer,
+    };
+    // A library named must exist; one by default is taken where the level's gamedata holds it.
+    let library = |name: &str, file: &str| -> XrfResult<Option<PathBuf>> {
+      match matches.get_one::<PathBuf>(name) {
+        Some(path) if path.is_file() => Ok(Some(path.clone())),
+        Some(path) => Err(XrfError::new_not_found_error(format!(
+          "{} does not exist",
+          format_path(path)
+        ))),
+        None => Ok(Some(gamedata.join(file)).filter(|path| path.is_file())),
+      }
+    };
+    let build: BuildInfo = build_info!();
+    let options: LevelDecompileOptions = LevelDecompileOptions {
+      name: Self::get_level_name(destination)?,
+      tool: String::from("xrf-cli level decompile"),
+      tool_version: match build.short_commit() {
+        Some(commit) => format!("{} ({commit})", build.version),
+        None => build.version.to_string(),
+      },
+      root_spawn: Self::get_root_spawn(&gamedata, matches.get_one::<String>("spawn").map(String::as_str))?,
+      surfaces,
+      game_materials: library("game-materials", LevelSurfaceInference::GAME_MATERIALS_FILE)?,
+      compiler_shaders: library("compiler-shaders", LevelSurfaceInference::COMPILER_SHADERS_FILE)?,
+      libraries: matches
+        .get_many::<PathBuf>("library")
+        .map(|roots| roots.cloned().collect())
+        .unwrap_or_default(),
+    };
     let objects: PathBuf = matches
       .get_one::<PathBuf>("objects")
       .cloned()
@@ -95,7 +164,7 @@ impl GenericCommand for DecompileCommand {
       source,
       destination,
       &objects,
-      root_spawn,
+      &options,
       matches.get_flag("force"),
     )?;
 
@@ -109,14 +178,17 @@ impl DecompileCommand {
   /// The root spawn a new game starts from, which a decompile reads by default (decision 10).
   const DEFAULT_ROOT_SPAWN: &'static str = "all";
 
-  /// The root spawn named `name` beside the level's `levels` directory, `<level>/../../spawns/<name>.spawn`. Without a
-  /// name, `all.spawn` where it exists, else none.
-  fn get_root_spawn(source: &Path, name: Option<&str>) -> XrfResult<Option<PathBuf>> {
-    // The `gamedata` directory holding `levels\<level>`, named by the level path's parents where it has them.
-    let gamedata: PathBuf = match source.parent().and_then(Path::parent) {
+  /// The `gamedata` directory holding `levels\<level>`, named by the level path's parents where it has them.
+  fn get_gamedata(source: &Path) -> PathBuf {
+    match source.parent().and_then(Path::parent) {
       Some(gamedata) if !gamedata.as_os_str().is_empty() => gamedata.to_path_buf(),
       _ => source.join("..").join(".."),
-    };
+    }
+  }
+
+  /// The root spawn named `name` in `gamedata`, `spawns/<name>.spawn`. Without a name, `all.spawn` where it exists,
+  /// else none.
+  fn get_root_spawn(gamedata: &Path, name: Option<&str>) -> XrfResult<Option<PathBuf>> {
     let path: PathBuf = gamedata
       .join("spawns")
       .join(format!("{}.spawn", name.unwrap_or(Self::DEFAULT_ROOT_SPAWN)));
@@ -150,10 +222,9 @@ impl DecompileCommand {
     source: &Path,
     destination: &Path,
     objects: &Path,
-    root_spawn: Option<PathBuf>,
+    options: &LevelDecompileOptions,
     is_forced: bool,
   ) -> XrfResult<LevelDecompileReport> {
-    let name: String = Self::get_level_name(destination)?;
     let sidecar: PathBuf = LevelSceneProvenance::sidecar_path(destination);
 
     if !is_forced && let Some(existing) = LevelSceneDecompile::get_existing_paths(destination).first() {
@@ -163,19 +234,7 @@ impl DecompileCommand {
       )));
     }
 
-    let build: BuildInfo = build_info!();
-    let decompiled: LevelSceneDecompile = LevelSceneDecompiler::decompile::<XRayByteOrder>(
-      source,
-      &LevelDecompileOptions {
-        name,
-        tool: String::from("xrf-cli level decompile"),
-        tool_version: match build.short_commit() {
-          Some(commit) => format!("{} ({commit})", build.version),
-          None => build.version.to_string(),
-        },
-        root_spawn,
-      },
-    )?;
+    let decompiled: LevelSceneDecompile = LevelSceneDecompiler::decompile::<XRayByteOrder>(source, options)?;
 
     if !is_forced && let Some(existing) = decompiled.get_existing_object_paths(objects).first() {
       return Err(XrfError::new_invalid_error(format!(
@@ -222,8 +281,40 @@ impl DecompileCommand {
       geometry: decompiled.provenance.geometry.map(|geometry| LevelDecompileGeometry {
         objects: geometry.objects.len(),
         census: geometry.census,
+        surfaces: geometry.surfaces.map(|surfaces| LevelDecompileSurfaces {
+          exact_triangles: surfaces.census.exact_triangles,
+          traced_triangles: surfaces.census.traced_triangles,
+          uncollided_triangles: surfaces.census.uncollided_triangles,
+          compiler_shaders: surfaces.census.compiler_shaders.len(),
+          unknown_game_materials: surfaces.census.unknown_game_materials.len(),
+        }),
       }),
     };
+
+    if let Some(surfaces) = report.geometry.as_ref().and_then(|geometry| geometry.surfaces.as_ref()) {
+      xrf_output::info!(
+        output,
+        "Surfaces: game materials from {} triangles on a collision face and {} traced to one, {} on none; {} compiler \
+         shaders chosen, each with its reason in the sidecar",
+        surfaces.exact_triangles,
+        surfaces.traced_triangles,
+        surfaces.uncollided_triangles,
+        surfaces.compiler_shaders
+      );
+    }
+
+    if let Some(unknown) = report
+      .geometry
+      .as_ref()
+      .and_then(|geometry| geometry.surfaces.as_ref())
+      .map(|surfaces| surfaces.unknown_game_materials)
+      .filter(|unknown| *unknown > 0)
+    {
+      xrf_output::warning!(
+        output,
+        "{unknown} collision materials are not in the game material library; their surfaces take default"
+      );
+    }
 
     if let Some(geometry) = &report.geometry {
       xrf_output::info!(

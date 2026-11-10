@@ -105,12 +105,7 @@ fn level_directory(name: &str, radius: f32) -> XrfResult<PathBuf> {
 fn decompile(directory: &Path) -> XrfResult<LevelSceneDecompile> {
   LevelSceneDecompiler::decompile::<XRayByteOrder>(
     directory,
-    &LevelDecompileOptions {
-      name: String::from("test_level"),
-      tool: String::from("test"),
-      tool_version: String::from("1.0.0"),
-      root_spawn: None,
-    },
+    &LevelDecompileOptions::new("test_level", "test", "1.0.0"),
   )
 }
 

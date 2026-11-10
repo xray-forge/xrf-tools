@@ -25,6 +25,10 @@ pub use crate::level::level_sound_environment_conversion::LevelSoundEnvironmentC
 pub use crate::level::level_sound_source_conversion::LevelSoundSourceConversion;
 pub use crate::level::level_spawn_data_fields::LevelSpawnDataFields;
 pub use crate::level::level_spawn_point_conversion::LevelSpawnPointConversion;
+pub use crate::level::level_surface_inference::{
+  LevelCompilerShaderChoice, LevelCompilerShaderReason, LevelShaderPairings, LevelSurfaceCensus, LevelSurfaceInference,
+  LevelSurfaces,
+};
 pub use crate::level::level_visual_geometry::LevelVisualGeometry;
 pub use crate::level::level_wallmark_conversion::LevelWallmarkConversion;
 pub use crate::level::level_way_conversion::LevelWayConversion;
@@ -36,6 +40,7 @@ pub use crate::object::compile::object_compile_source::ObjectCompileSource;
 pub use crate::object::compile::object_compiler::ObjectCompiler;
 pub use crate::object::compile::skeleton::skeleton_geometry::SkeletonGeometry;
 pub use crate::object::compile::skeleton::skeleton_split::SkeletonSplit;
+pub use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 pub use crate::object::decompile::object_decompile::ObjectDecompile;
 pub use crate::object::decompile::object_decompiler::ObjectDecompiler;
 pub use crate::object::decompile::object_inference::ObjectInference;
@@ -44,6 +49,7 @@ pub use crate::object::verify::object_verification::{ObjectGeometryCensus, Objec
 pub use crate::object::verify::object_verifier::ObjectVerifier;
 pub use crate::provenance::level_scene_provenance::{
   LevelSceneDisagreement, LevelSceneFile, LevelSceneGeometry, LevelSceneInference, LevelSceneProvenance,
-  LevelSceneRefusal, LevelSceneRootSpawn, LevelSceneSource, LevelSceneUpdatePacket,
+  LevelSceneRefusal, LevelSceneRootSpawn, LevelSceneSource, LevelSceneSurfaceLibraries, LevelSceneSurfaces,
+  LevelSceneUpdatePacket,
 };
 pub use crate::provenance::object_provenance::ObjectProvenance;
