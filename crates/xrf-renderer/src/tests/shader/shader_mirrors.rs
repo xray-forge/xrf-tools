@@ -51,6 +51,9 @@ use crate::scene::static_scene::surface::build::static_surface_builder::StaticSu
 use crate::scene::static_scene::surface::static_surface::StaticSurface;
 use crate::scene::static_scene::surface::static_surface_pass::StaticSurfacePass;
 use crate::shader::shader_library::ShaderLibrary;
+use crate::tests::shader::fixtures::{
+  get_constant, get_float_constant, get_signed_constant, get_vector_constant, parse,
+};
 
 /// The inverse square's lamps give as much light within their reach as the engine's falloff does: the two integrated
 /// over the ball of the reach, `x` its share, `(1 - x²)` against `share · (1 - x⁴)² / x²`, each by the shell's `x²`.
@@ -594,16 +597,6 @@ fn get_struct_size(library: &ShaderLibrary, name: &str, type_name: &str) -> u32 
   layouter[handle].size
 }
 
-/// A `u32` constant's value in a module.
-fn get_constant(library: &ShaderLibrary, name: &str, constant: &str) -> u32 {
-  let module: naga::Module = parse(library, name);
-
-  match module.global_expressions[get_declared(&module, name, constant).init] {
-    naga::Expression::Literal(naga::Literal::U32(value)) => value,
-    ref other => panic!("'{name}' declares {constant} as {other:?}"),
-  }
-}
-
 /// The reflected rays, the surfaces' and the water's, climb a nearest depth's pyramid no higher than its last level.
 #[test]
 fn the_rays_climb_the_pyramid_as_high_as_rust_makes_it() {
@@ -748,57 +741,5 @@ fn the_compute_entries_run_the_workgroups_rust_dispatches() {
 
       assert_eq!(declared, size, "'{name}' {entry}");
     }
-  }
-}
-
-/// An `i32` constant's value in a module.
-fn get_signed_constant(library: &ShaderLibrary, name: &str, constant: &str) -> i32 {
-  let module: naga::Module = parse(library, name);
-
-  match module.global_expressions[get_declared(&module, name, constant).init] {
-    naga::Expression::Literal(naga::Literal::I32(value)) => value,
-    ref other => panic!("'{name}' declares {constant} as {other:?}"),
-  }
-}
-
-/// The value a module declares a float constant as.
-fn get_float_constant(library: &ShaderLibrary, name: &str, constant: &str) -> f32 {
-  let module: naga::Module = parse(library, name);
-
-  read_float(&module, name, get_declared(&module, name, constant).init)
-}
-
-/// The components a module declares a float vector constant with.
-fn get_vector_constant(library: &ShaderLibrary, name: &str, constant: &str) -> Vec<f32> {
-  let module: naga::Module = parse(library, name);
-
-  match module.global_expressions[get_declared(&module, name, constant).init] {
-    naga::Expression::Compose { ref components, .. } => components
-      .iter()
-      .map(|component| read_float(&module, name, *component))
-      .collect(),
-    ref other => panic!("'{name}' declares {constant} as {other:?}"),
-  }
-}
-
-fn parse(library: &ShaderLibrary, name: &str) -> naga::Module {
-  let source: String = library.compose(name).expect("composes");
-
-  naga::front::wgsl::parse_str(&source).expect("parses")
-}
-
-fn get_declared<'m>(module: &'m naga::Module, name: &str, constant: &str) -> &'m naga::Constant {
-  module
-    .constants
-    .iter()
-    .map(|(_, declared)| declared)
-    .find(|declared| declared.name.as_deref() == Some(constant))
-    .unwrap_or_else(|| panic!("'{name}' declares no {constant}"))
-}
-
-fn read_float(module: &naga::Module, name: &str, expression: naga::Handle<naga::Expression>) -> f32 {
-  match module.global_expressions[expression] {
-    naga::Expression::Literal(naga::Literal::F32(value)) => value,
-    ref other => panic!("'{name}' holds {other:?} where a float stands"),
   }
 }
