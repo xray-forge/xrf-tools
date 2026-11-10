@@ -63,6 +63,8 @@ pub(crate) struct SceneView {
   shared: ViewFrame,
   /// The G-buffer, depth, light and scene it draws into, once its size is known.
   targets: Option<ViewTargets>,
+  /// Whether this frame's prepare made its targets anew at another size, which leaves what the last size keyed unused.
+  is_resized: bool,
   /// Its units shared across its frame's parts.
   features: SceneFeatures,
   /// Its units drawing in one part of its frame alone, by part.
@@ -80,6 +82,7 @@ impl SceneView {
     Self {
       shared: ViewFrame::default(),
       targets: None,
+      is_resized: false,
       features: SceneFeatures::new(device, queue, view_layout),
       stages: ViewStages::new(),
       clock: FrameClock::default(),
@@ -158,7 +161,9 @@ impl SceneView {
 
     let (width, height) = frame.drawn;
 
-    if !self.targets.as_ref().is_some_and(|it| it.is_sized(width, height)) {
+    self.is_resized = !self.targets.as_ref().is_some_and(|it| it.is_sized(width, height));
+
+    if self.is_resized {
       self.targets = Some(ViewTargets::new(frame.device, width, height));
       self.features.statics.fit(frame.device, (width, height));
     }
@@ -181,6 +186,11 @@ impl SceneView {
     self.prepare_lighting(frame, &lighting_frame, &level);
 
     SceneAsks { lights }
+  }
+
+  /// Whether this frame's prepare made its targets anew at another size (`prepare`).
+  pub(crate) fn is_resized(&self) -> bool {
+    self.is_resized
   }
 
   /// Finishes readying its frame once its scene settled every view's asks (`LevelScene::settle`): writes its lights as

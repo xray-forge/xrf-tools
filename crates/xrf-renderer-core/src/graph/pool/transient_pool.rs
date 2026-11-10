@@ -66,6 +66,22 @@ impl TransientPool {
     self.buffers.retain(|_, entries| !entries.is_empty());
   }
 
+  /// Frees what the current frame did not reserve.
+  pub(crate) fn forget_unused(&mut self) {
+    let frame: u64 = self.frame;
+
+    for entries in self.textures.values_mut() {
+      entries.retain(|entry| entry.last_frame == frame);
+    }
+
+    for entries in self.buffers.values_mut() {
+      entries.retain(|entry| entry.last_frame == frame);
+    }
+
+    self.textures.retain(|_, entries| !entries.is_empty());
+    self.buffers.retain(|_, entries| !entries.is_empty());
+  }
+
   /// Frees every texture and buffer, for a renderer drawing no frames.
   pub(crate) fn clear(&mut self) {
     self.textures.clear();
