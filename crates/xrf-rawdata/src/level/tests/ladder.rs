@@ -121,10 +121,11 @@ fn decompiles_a_ladder_into_its_box_less_the_back_face() -> XrfResult {
   Ok(())
 }
 
-/// A flat ladder comes back as its front alone, facing the way its box does, its pivot the middle of its lowest end.
+/// A flat ladder comes back as its front alone, facing the way its box does, its pivot the middle of its lowest end:
+/// one whose box keeps the micrometres of thickness the Build's fit leaves too.
 #[test]
 fn decompiles_a_flat_ladder_into_its_front_standing_at_its_base() -> XrfResult {
-  let entity: AlifeObject = ladder(Vector3d::new(10.0, 5.0, 3.0), Vector3d::ZERO, [0.4, 2.0, 0.0], "")?;
+  let entity: AlifeObject = ladder(Vector3d::new(10.0, 5.0, 3.0), Vector3d::ZERO, [0.4, 2.0, 0.000_002], "")?;
   let decompiled: LevelDecompiledLadder = decompile(&entity)?;
   let faces: Vec<(Vector3d, [Vector3d; 3])> = get_box_faces(&decompiled, &entity);
 
