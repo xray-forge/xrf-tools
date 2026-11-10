@@ -1,3 +1,4 @@
+mod breakable;
 pub(crate) mod fixtures;
 mod geometry;
 mod level;

@@ -4,6 +4,7 @@ pub(crate) mod level;
 pub(crate) mod object;
 pub(crate) mod provenance;
 
+pub use crate::level::level_breakable_conversion::LevelBreakableConversion;
 pub use crate::level::level_collision_index::{LevelCollisionIndex, LevelCollisionLookup};
 pub use crate::level::level_decal_index::LevelDecalIndex;
 pub use crate::level::level_decompile_context::LevelDecompileContext;
@@ -16,6 +17,7 @@ pub use crate::level::level_geometry_conversion::{
   LevelDecompiledObject, LevelGeometryCensus, LevelGeometryConversion, LevelGeometryDecompile, LevelGeometrySources,
 };
 pub use crate::level::level_glow_conversion::LevelGlowConversion;
+pub use crate::level::level_ladder_conversion::{LevelDecompiledLadder, LevelLadderConversion};
 pub use crate::level::level_light_conversion::LevelLightConversion;
 pub use crate::level::level_object_names::LevelObjectNames;
 pub use crate::level::level_occluder_conversion::{LevelOccluderConversion, LevelSoundOccluderCensus};

@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use xrf_editable_level::EditableObjectTransform;
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::XrfResult;
 use xrf_gamemtl::GameMtlFile;
@@ -162,7 +163,8 @@ impl LevelOccluderConversion {
 
     Ok(Some(LevelDecompiledObject {
       reference,
-      source,
+      transform: EditableObjectTransform::default(),
+      source: String::from(source),
       decompile,
     }))
   }

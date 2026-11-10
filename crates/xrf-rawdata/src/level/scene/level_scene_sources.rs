@@ -10,6 +10,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_level::{LevelFile, LevelVisualsChunk};
 use xrf_utils::format_path;
 
+use crate::level::scene::level_scene_listing::LevelSceneListing;
 use crate::provenance::level_scene_provenance::LevelSceneSource;
 use crate::provenance::sidecar::Sidecar;
 
@@ -23,7 +24,8 @@ pub(crate) struct LevelBundle {
 /// parsed, and what the sidecar records of each, hashed as it was read.
 pub(crate) struct LevelSceneSources {
   directory: PathBuf,
-  files: BTreeMap<&'static str, Vec<u8>>,
+  /// Each file by its path in the level's directory, `/` between its directories.
+  files: BTreeMap<String, Vec<u8>>,
   recorded: Vec<LevelSceneSource>,
   /// The bundle, read the first time a step asks for it, and shared with every step after; `None` inside where the
   /// directory holds none.
@@ -31,23 +33,24 @@ pub(crate) struct LevelSceneSources {
 }
 
 impl LevelSceneSources {
-  /// Those of `names` that `directory` holds.
+  /// Those of `names` that `directory` holds, and the files of each of `listings` there.
   ///
   /// # Errors
   ///
-  /// Returns an error when one cannot be read, or the directory holds none of them.
-  pub(crate) fn read(directory: &Path, names: &[&'static str]) -> XrfResult<Self> {
-    let mut files: BTreeMap<&'static str, Vec<u8>> = BTreeMap::new();
+  /// Returns an error when one cannot be read, a listed directory cannot be listed, or the directory holds none of
+  /// `names`.
+  pub(crate) fn read(directory: &Path, names: &[&'static str], listings: &[LevelSceneListing]) -> XrfResult<Self> {
+    let mut files: BTreeMap<String, Vec<u8>> = BTreeMap::new();
+    let read = |path: &Path| -> XrfResult<Vec<u8>> {
+      std::fs::read(path)
+        .map_err(|error| XrfError::new_read_error(format!("{} was not read: {error}", format_path(path))))
+    };
 
     for name in names {
       let path: PathBuf = directory.join(name);
 
-      if !files.contains_key(name) && path.is_file() {
-        files.insert(
-          name,
-          std::fs::read(&path)
-            .map_err(|error| XrfError::new_read_error(format!("{} was not read: {error}", format_path(&path))))?,
-        );
+      if !files.contains_key(*name) && path.is_file() {
+        files.insert((*name).to_owned(), read(&path)?);
       }
     }
 
@@ -58,10 +61,18 @@ impl LevelSceneSources {
       )));
     }
 
+    for listing in listings {
+      for name in Self::list(&directory.join(listing.directory), listing.takes)? {
+        let path: PathBuf = directory.join(listing.directory).join(&name);
+
+        files.insert(format!("{}/{name}", listing.directory), read(&path)?);
+      }
+    }
+
     let recorded: Vec<LevelSceneSource> = files
       .iter()
       .map(|(name, bytes)| LevelSceneSource {
-        file: (*name).to_owned(),
+        file: name.clone(),
         sha256: Sidecar::get_sha256_hex(bytes),
       })
       .collect();
@@ -72,6 +83,44 @@ impl LevelSceneSources {
       recorded,
       bundle: None,
     })
+  }
+
+  /// The names of the files in `directory` that `takes` accepts, in name order; none where there is no such directory.
+  fn list(directory: &Path, takes: fn(&str) -> bool) -> XrfResult<Vec<String>> {
+    if !directory.is_dir() {
+      return Ok(Vec::new());
+    }
+
+    let mut names: Vec<String> = Vec::new();
+    let unlisted =
+      |error: std::io::Error| XrfError::new_read_error(format!("{} was not listed: {error}", format_path(directory)));
+
+    for entry in std::fs::read_dir(directory).map_err(unlisted)? {
+      let entry: std::fs::DirEntry = entry.map_err(unlisted)?;
+
+      if let Some(name) = entry.file_name().to_str()
+        && takes(name)
+        && entry.path().is_file()
+      {
+        names.push(name.to_owned());
+      }
+    }
+
+    names.sort_unstable();
+
+    Ok(names)
+  }
+
+  /// The paths of the files read of `listing`'s directory and not yet handed over, in name order.
+  pub(crate) fn get_listed(&self, listing: &LevelSceneListing) -> Vec<String> {
+    let prefix: String = format!("{}/", listing.directory);
+
+    self
+      .files
+      .keys()
+      .filter(|name| name.starts_with(&prefix))
+      .cloned()
+      .collect()
   }
 
   /// The scene's GUID (decision 22): the first 16 bytes of the SHA-256 of each source's name, a zero, its length and

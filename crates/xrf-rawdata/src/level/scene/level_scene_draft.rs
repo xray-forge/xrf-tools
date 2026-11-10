@@ -27,6 +27,8 @@ pub(crate) struct LevelSceneDraft {
   pub(crate) refused: Vec<LevelSceneRefusal>,
   pub(crate) objects: Vec<LevelDecompiledObject>,
   pub(crate) geometry: Option<LevelSceneGeometry>,
+  /// The names of the entities the objects stand for, which the Build exports again from them.
+  pub(crate) folded_entities: Vec<String>,
   /// The root spawn the entities come from, where one was given.
   pub(crate) root_spawn: Option<LevelRootSpawn>,
 }
@@ -52,6 +54,7 @@ impl LevelSceneDraft {
       refused: Vec::new(),
       objects: Vec::new(),
       geometry: None,
+      folded_entities: Vec::new(),
       root_spawn,
     }
   }
@@ -82,8 +85,8 @@ impl LevelSceneDraft {
       .into_iter()
       .map(|object| LevelSceneObjectFile {
         provenance: ObjectProvenance::of_source_hash(
-          format_path(&sources.get_path(object.source)).to_string(),
-          sources.get_sha256(object.source).unwrap_or_default().to_owned(),
+          format_path(&sources.get_path(&object.source)).to_string(),
+          sources.get_sha256(&object.source).unwrap_or_default().to_owned(),
           options.tool.clone(),
           options.tool_version.clone(),
           object.decompile.inferred,

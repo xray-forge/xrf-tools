@@ -7,6 +7,7 @@ use xrf_error::XrfResult;
 use crate::level::scene::level_decompile_options::LevelDecompileOptions;
 use crate::level::scene::level_scene_decompile::LevelSceneDecompile;
 use crate::level::scene::level_scene_draft::LevelSceneDraft;
+use crate::level::scene::level_scene_listing::LevelSceneListing;
 use crate::level::scene::level_scene_sources::LevelSceneSources;
 use crate::level::scene::steps::level_bundle_step::LevelBundleStep;
 use crate::level::scene::steps::level_companion_step::LevelCompanionStep;
@@ -46,6 +47,17 @@ impl LevelSceneDecompiler {
     files
   }
 
+  /// The files every step reads by what their names hold.
+  fn get_listings() -> Vec<LevelSceneListing> {
+    [
+      LevelGeometryStep::LISTINGS,
+      LevelBundleStep::LISTINGS,
+      LevelCompanionStep::LISTINGS,
+      LevelGameStep::LISTINGS,
+    ]
+    .concat()
+  }
+
   /// The scene of the level in `directory`: a part per tool whose compiled file the directory holds, the objects of
   /// its geometry, and the main file its name and those files give.
   ///
@@ -55,7 +67,8 @@ impl LevelSceneDecompiler {
   /// file its name says, the root spawn given cannot be read or holds no objects chunk or graph, or a step refuses what
   /// it holds.
   pub fn decompile<T: ByteOrder>(directory: &Path, options: &LevelDecompileOptions) -> XrfResult<LevelSceneDecompile> {
-    let mut sources: LevelSceneSources = LevelSceneSources::read(directory, &Self::get_source_files())?;
+    let mut sources: LevelSceneSources =
+      LevelSceneSources::read(directory, &Self::get_source_files(), &Self::get_listings())?;
     let root_spawn: Option<LevelRootSpawn> = options
       .root_spawn
       .as_deref()

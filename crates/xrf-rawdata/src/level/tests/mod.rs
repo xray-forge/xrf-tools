@@ -2,6 +2,7 @@ mod entity;
 mod fog_volume;
 mod geometry;
 mod glow;
+mod ladder;
 mod light;
 mod occluder;
 mod particle;

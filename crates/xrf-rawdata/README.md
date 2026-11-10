@@ -245,8 +245,8 @@ Over every game tree's spawn lists, each packet read comes back byte for byte, o
 rounded, as the editor's own save rounds them (mostly climbable and breakable shapes). GSC's `labx8` scene exports its
 318 entities byte for byte against the shipped `level.spawn`.
 
-Breakable and climbable objects stay entities for now. The editor builds them from scene geometry, so they leave
-`spawn.part` once static geometry is decompiled.
+Breakable and climbable objects are built by the editor from scene geometry, so where the geometry is decompiled they
+come back as objects instead and leave `spawn.part` (`LevelEntitySources::folded`; see the geometry below).
 
 #### From a root spawn
 
@@ -322,7 +322,7 @@ draft, each a `LevelSceneStep` declaring the files it reads (`level/scene/steps/
 
 | Step                 | Files                                                                                      | Gives                                            |
 | -------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------ |
-| `LevelGeometryStep`  | `level`, `level.geom`, `level.cform`, `level.hom`, `level.som`                             | Objects, scene objects, sectors, portals (below) |
+| `LevelGeometryStep`  | `level`, `level.geom`, `level.cform`, `level.hom`, `level.som`, `level.wallmarks`, `level.spawn`, `meshes/brkbl#*.ogf` | Objects, scene objects, sectors, portals (below) |
 | `LevelBundleStep`    | `level`, `build.lights`                                                                    | Glows, lights, the light qualities               |
 | `LevelCompanionStep` | `level.ps_static`, `level.snd_static`, `level.snd_env`, `level.fog_vol`, `level.wallmarks` | One part each                                    |
 | `LevelGameStep`      | `level.game`, `level.env_mod`, `level.spawn`, `level_rs.spawn`                             | Ways, spawn points, the game modes               |
@@ -339,11 +339,13 @@ that need it), runs the steps in that order, so names come out the same each tim
 - the objects the scene places (`LevelSceneObjectFile`), each with its own `ObjectProvenance` naming the compiled file
   it came from (`LevelDecompiledObject::source`).
 
-A new source is a file in a step's `FILES`, read in its `decompile`; a new kind of part is a step of its own.
+A new source is a file in a step's `FILES`, or a `LevelSceneListing` in its `LISTINGS` for files known by what their
+names hold (the breakable parts), read in its `decompile`; a new kind of part is a step of its own. A step that needs a
+file another step decompiles reads it without taking it (`LevelSceneSources::peek_read`).
 
 `LevelGeometryConversion::decompile` gives a level's geometry back from `LevelGeometrySources` (the bundle, its
-visuals, `level.geom`, and where held the indexed collision form, `level.hom` and `level.som`): every object below,
-each placed at the origin by a scene object, with the sectors and portals. The static geometry comes back as one object
+visuals, `level.geom`, and where held the indexed collision form, `level.hom`, `level.som`, the wall marks, the spawn
+list and the breakable parts): every object below, each placed by a scene object, with the sectors and portals. The static geometry comes back as one object
 per compiled sector, `levels\<name>\<name>_sector_<N>`: the static visuals the sector's root reaches, trees and their
 impostors left out,
 through `ObjectDecompiler::decompile_level_geometry`. Each object keeps the level's coordinates and its scene object
@@ -385,6 +387,21 @@ as `decal_triangles`.
 several share it). A two-sided polygon goes in with its mirror, so the decompile folds the two into one two-sided face.
 Exported again as the Build exports them, every vanilla `level.hom` polygon comes back, and every `level.som` polygon
 of CS, CoC, Anomaly and GAMMA.
+
+The Build leaves faces of a climbable or breakable game material out of the geometry and exports each connected part as
+an entity, so with the spawn list (`LevelGeometrySources::spawn`) the decompile folds them back into objects and names
+their packets in `LevelGeometryDecompile::folded_entities`, which the entities then leave out:
+
+- `LevelLadderConversion` turns a `climable_object` into `<name>_ladder_<N>`: its box less the face behind its thinnest
+  axis (the front alone where the box is flat), standing at the middle of the box's lowest end, dressed as GSC dressed
+  its ladders, of the packet's game material or `materials\fake_ladders` where the packet keeps none.
+- `LevelBreakableConversion` turns a `breakable_object` into `<name>_breakable_<N>` from the part its visual names,
+  `meshes/brkbl#<n>.ogf` (`LevelGeometrySources::breakable_parts`), through `ObjectDecompiler::decompile_breakable`: the
+  random fragments' bones dropped and their points welded, each surface of its fragments' game material. A breakable
+  whose part is missing stays an entity, counted.
+
+Both stand where their packets placed them, `Affine3d::from_xyz` of the angles. Over vanilla, all 380 ladders and 173
+breakables fold back.
 
 Over vanilla CoP's 22 levels, 7,189,838 static triangles lie exactly on a collision face, 2,036,780 are traced to one
 and 601,675 lie on none. Where the SDK's objects dress the same texture and engine shader, the compiler shader is one

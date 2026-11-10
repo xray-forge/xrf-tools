@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use xrf_chunk::{ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_editable_level::{EditableObjectTransform, EditableSectorItem};
 use xrf_error::XrfResult;
@@ -184,6 +186,8 @@ fn decompile_with(
       hom: None,
       som: None,
       decals: None,
+      spawn: None,
+      breakable_parts: &BTreeMap::new(),
     },
     inference,
     &mut LevelDecompileContext::new(GUID),
@@ -530,6 +534,8 @@ fn drops_the_static_copies_of_wall_marks() -> XrfResult {
       hom: None,
       som: None,
       decals: Some(&LevelDecalIndex::new(&wallmarks)),
+      spawn: None,
+      breakable_parts: &BTreeMap::new(),
     },
     None,
     &mut LevelDecompileContext::new(GUID),

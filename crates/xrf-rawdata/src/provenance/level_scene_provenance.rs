@@ -75,6 +75,17 @@ pub enum LevelSceneInference {
   /// `level.som` as `<level>_som`, flagged a sound occluder, each polygon's game material the library's of the lowest
   /// number whose sound occlusion factor is the polygon's; both dressed with `prop\prop_fake_occ`.
   Occluders,
+  /// Each ladder the spawn list keeps (`climable_object`) comes back as an object, `<level>_ladder_<N>`, of its box
+  /// less the back face (its front alone where the box is flat), standing at the middle of the box's lowest end and
+  /// dressed as GSC dressed its ladders (`prop\prop_fake_ladder`, `def_shaders\def_trans_v`,
+  /// `def_shaders\def_kolizion_vertex`), of `materials\fake_ladders` where the packet keeps no game material; its
+  /// packet is no spawn point, since the Build exports it again. The authored faces are lost.
+  Ladders,
+  /// Each breakable part the Build wrote (`meshes\brkbl#<N>.ogf`) comes back as a static object,
+  /// `<level>_breakable_<N>`, standing where its `breakable_object` placed it: its fragments' bones dropped, each surface
+  /// of the game material of the fragments its faces follow, its compiler shader the editor's default. Its packet is no
+  /// spawn point, since the Build exports it again, cut into new fragments at random.
+  BreakableParts,
 }
 
 /// The objects a scene's static geometry came back as, and what the decompile counted of it.
