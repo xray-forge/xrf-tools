@@ -1,4 +1,5 @@
 #import "common/fullscreen"
+#import "common/srgb"
 
 // SMAA 1x, medium preset with colour edge detection, v2.8 (MIT, Jorge Jimenez, Jose I. Echevarria, Belen Masia,
 // Fernando Navarro, Diego Gutierrez), as three.js's `SMAANode` stages it: the frame's edges found, the area each edge
@@ -21,11 +22,12 @@ fn sample_source(at: vec2<f32>) -> vec4<f32> {
 }
 
 // The frame as its edges are found: as it is, or, where it holds linear light, through its reversible tonemap,
-// `c / (1 + max(c))`, so a bright edge counts as it is shown.
+// `c / (1 + max(c))`, display-encoded, so a bright edge counts as it is shown and a dark one reaches the threshold made
+// for display values, which the tonemap alone, still linear near black, leaves it far under.
 fn sample_shown(at: vec2<f32>) -> vec3<f32> {
   let color: vec3<f32> = sample_source(at).rgb;
 
-  return select(color, color / (1.0 + max3(color)), smoothing.linear > 0.5);
+  return select(color, srgb_encoded(color / (1.0 + max3(color))), smoothing.linear > 0.5);
 }
 
 fn sample_edges(at: vec2<f32>) -> vec2<f32> {
