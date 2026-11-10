@@ -400,6 +400,7 @@ impl ViewTraceFeature {
           trace_shadow_sampler: scene.lights.get_shadow_atlas().sampler,
           trace_sun_maps: lit.shadow_maps,
           trace_sun_shadows: lit.shadows,
+          trace_sun_compare: lit.shadow_compare,
           trace_grass_grid: StorageArray::new(grass.grid),
           trace_grass_slots: StorageArray::new(grass.slots),
           trace_grass_models: StorageArray::new(grass.models),

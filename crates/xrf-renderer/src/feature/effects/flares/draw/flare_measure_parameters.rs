@@ -7,7 +7,7 @@ use crate::feature::lighting::shadows::shadow_uniform::ShadowUniform;
 /// for the rays on screen and the sun's shadow for those off it.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub(crate) struct FlareMeasureParameters {
+pub(crate) struct FlareMeasureParameters<'a> {
   #[uniform]
   pub flares: UniformBinding<FlareUniform>,
   #[storage]
@@ -18,4 +18,7 @@ pub(crate) struct FlareMeasureParameters {
   pub shadow_maps: GraphTexture,
   #[uniform]
   pub shadows: UniformBinding<ShadowUniform>,
+  /// The comparison the cascades' maps are filtered through (`SunPass::get_compare`).
+  #[sampler(comparison)]
+  pub shadow_compare: &'a wgpu::Sampler,
 }

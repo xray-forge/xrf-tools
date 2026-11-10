@@ -17,3 +17,4 @@
 @group(1) @binding(12) var sun_traced: texture_2d<f32>;
 @group(1) @binding(13) var wet_surface: texture_2d<f32>;
 @group(1) @binding(14) var wet_reach: texture_2d<f32>;
+@group(1) @binding(15) var shadow_compare: sampler_comparison;

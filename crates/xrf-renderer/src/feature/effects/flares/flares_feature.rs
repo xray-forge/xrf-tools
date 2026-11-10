@@ -194,12 +194,13 @@ impl FlaresFeature {
     let pass: &FlarePass = &passes.effects.flares;
     let flares: UniformBinding<FlareUniform> = runtime.push_uniform(&self.values);
     let state: GraphBuffer = bindings.import_buffer(&mut *graph, "flare visibility", state);
-    let measure: FlareMeasureParameters = FlareMeasureParameters {
+    let measure: FlareMeasureParameters<'_> = FlareMeasureParameters {
       flares,
       state: StorageValueMut::new(state),
       depth_target: targets.depth,
       shadow_maps: lit.shadow_maps,
       shadows: lit.shadows,
+      shadow_compare: lit.shadow_compare,
     };
     let draw: FlareDrawParameters<'_> = FlareDrawParameters {
       flares,

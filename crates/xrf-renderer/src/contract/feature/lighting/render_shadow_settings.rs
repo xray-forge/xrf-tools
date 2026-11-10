@@ -31,7 +31,8 @@ pub struct RenderShadowSettings {
   /// Texels each cascade's map is across.
   #[setting(min = 256, max = 8192, recommended = [1024, 4096])]
   pub resolution: u32,
-  /// Texels the filter reaches from the one sampled, each way: zero for one comparison, one for a three by three.
+  /// Texels the filter reaches from the one sampled, each way: zero for the four about the point, one for a three by
+  /// three.
   #[setting(min = 0, max = RENDER_MAX_SHADOW_FILTER)]
   pub filter: u32,
   /// How far a point is moved along its normal before it is compared, in texels of its cascade.

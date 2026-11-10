@@ -82,7 +82,8 @@ fn light_sun(in: FullscreenVarying, is_traced: bool, is_split: bool) -> SunSplit
     let world_normal: vec3<f32> = normalize((transpose(camera.view) * vec4<f32>(normal, 0.0)).xyz);
     let cascade: u32 = sun_cascade(shadows, world);
     let order: f32 = select(0.0, f32(cascade) + 1.0, cascade < shadows.count);
-    let seen: f32 = sun_shadow(shadow_maps, shadows, world, world_normal, dot(normal, lighting.to_sun.xyz));
+    let seen: f32 =
+      sun_shadow(shadow_maps, shadow_compare, shadows, world, world_normal, dot(normal, lighting.to_sun.xyz));
 
     return SunSplitTargets(vec4<f32>(order, seen, 0.0, 0.0), vec4<f32>(0.0), vec4<f32>(0.0));
   }
@@ -112,9 +113,9 @@ fn light_sun(in: FullscreenVarying, is_traced: bool, is_split: bool) -> SunSplit
   if (is_traced) {
     seen = textureLoad(sun_traced, texel, 0).x;
   } else if (has_mark(material.a, MARK_PLANT)) {
-    seen = plant_sun_shadow(shadow_maps, shadows, world, world_normal, dot(normal, to_light));
+    seen = plant_sun_shadow(shadow_maps, shadow_compare, shadows, world, world_normal, dot(normal, to_light));
   } else {
-    seen = sun_shadow(shadow_maps, shadows, world, world_normal, dot(normal, to_light));
+    seen = sun_shadow(shadow_maps, shadow_compare, shadows, world, world_normal, dot(normal, to_light));
   }
 
   let shadow: f32 = seen * contacted * relief;

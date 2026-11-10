@@ -2562,7 +2562,10 @@ export type RenderShadowSettings = {
   cascades: Array<number | null>;
   /** Texels each cascade's map is across. */
   resolution: number;
-  /** Texels the filter reaches from the one sampled, each way: zero for one comparison, one for a three by three. */
+  /**
+   * Texels the filter reaches from the one sampled, each way: zero for the four about the point, one for a three by
+   * three.
+   */
   filter: number;
   /** How far a point is moved along its normal before it is compared, in texels of its cascade. */
   bias: number | null;

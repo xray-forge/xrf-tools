@@ -287,6 +287,7 @@ impl CompositedFeature {
         lut_sampler: lit.lut_sampler,
         shadow_maps: lit.shadow_maps,
         shadows: lit.shadows,
+        shadow_compare: lit.shadow_compare,
         glass: runtime.push_uniform(&glass),
         glass_scene: copy,
         scene_sampler: passes.effects.glass.get_scene_sampler(),
