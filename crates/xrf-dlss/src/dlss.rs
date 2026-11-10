@@ -35,7 +35,7 @@ impl Dlss {
   pub const RUNTIME_LIBRARY: &'static str = if cfg!(target_os = "windows") {
     "nvngx_dlss.dll"
   } else {
-    "libnvidia-ngx-dlss.so.310.9.1"
+    "libnvidia-ngx-dlss.so.310.9.16"
   };
 
   /// NGX on a device: a Vulkan one opened with its instance and device extensions, or a D3D12 one; none where the GPU
