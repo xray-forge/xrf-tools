@@ -446,15 +446,34 @@ before a decompile and `get_existing_object_paths` after it. Vanilla CoP's `labx
 and CS's `agroprom_underground`, decompile, read back to the same bytes, and export every file byte for byte; so does
 GSC's own `labx8` scene.
 
+Every export reads a tool's objects with the groups' members of its class first (`EditableGroupTool`), as the editor
+loads the group tool before the others and keeps a member's transform in the level. GSC's `labx8` holds 99 scene
+objects, 229 lights, 43 spawn points and 29 glows in groups; with them its scene exports 361 of the shipped
+`level.spawn`'s 379 packets byte for byte and in its order, the other 18 being the climbable objects the Build cuts out
+of the geometry, which no export here makes yet.
+
 `LevelBuildExporter::export` writes the `build.prj` the Build hands xrLC (`CompileStatic`, `SaveBuild`), reading each
 placed object from an objects root and its game materials from `gamemtl.xr`: the sky and the sun generated from the
 level options (the sun's samples each taken from the one before, as the shipped editor's loop reads the variable it
 declares), then glows, static objects (`BuildMesh`: world space, occluder, breakable and climbable surfaces skipped,
 faces of no area dropped, two-sided backs added), the scene's lights under their controls, portals and wall marks,
-each material once per texture, shaders and sector. It refuses a draft-quality scene, a multi-use object and a portal
-of more than six corners, which the Build would simplify. Gunslinger's `l01_test` decompiled and exported comes back to
-its shipped `build.prj` on all its area, its sky, sun and dynamic lights exact; the decompiled `labx8`'s compiles in
-GSC's xrLC and plays.
+each material once per texture, shaders and sector. A portal of more than six corners is simplified as `CPortal`
+simplifies one (`LevelBuildPortal`: the plane fitted, the convex hull, the smallest edges collapsed), in double
+precision rather than bit for bit. Beside it go `level.hom` and `level.som` (`BuildHOMModel`: an `eoHOM` object's faces
+and any `materials\occ` surface's; `BuildSOMModel`: an `eoSoundOccluder` object's, with its game materials' factors)
+and `level.ltx` (`LevelMapConversion::export`); `LevelBuildExport::into_files` gives them by name. It refuses a
+draft-quality scene and a multi-use object. Gunslinger's `l01_test` decompiled and exported comes back to its shipped
+`build.prj` on all its area, its sky, sun and dynamic lights exact; the decompiled `labx8`'s compiles in GSC's xrLC and
+plays. GSC's own `labx8` scene builds a `level.hom` byte for byte as shipped, and a `level.ltx` of the same rectangle and
+sector map parts.
+
+`LevelMapConversion` reads `level.ltx` back as the decompile's first step: the map version and game types into the level
+options (the respawn points' game types only where the level has no `level.ltx`), each sector's part of the map
+(`[sub_level_map]`, by the sector's number), and the map's rectangle as a level-bound shape, `level_bound_NNNN`, whose
+box the Build takes over the objects'. The shipped files were saved again after the Build, holding decimals no float
+prints (`126.614072`), so a rectangle comes back as the floats it reads as. Sections the Build writes only from the
+build options' text, such as a multiplayer level's `[*_anomaly_sets]`, are refused: the scene's main file holds that
+text on one line.
 
 ## Compile an object into an OGF
 

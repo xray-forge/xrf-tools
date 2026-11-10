@@ -17,6 +17,7 @@ use crate::level::level_collision_index::LevelCollisionIndex;
 use crate::level::level_decal_index::LevelDecalIndex;
 use crate::level::level_entity_conversion::LevelEntityConversion;
 use crate::level::level_geometry_conversion::{LevelGeometryConversion, LevelGeometryDecompile, LevelGeometrySources};
+use crate::level::level_map_conversion::LevelMapConversion;
 use crate::level::level_surface_inference::{LevelShaderPairings, LevelSurfaceInference, LevelSurfaces};
 use crate::level::scene::level_decompile_options::LevelDecompileOptions;
 use crate::level::scene::level_scene_draft::LevelSceneDraft;
@@ -86,7 +87,7 @@ impl LevelSceneStep for LevelGeometryStep {
       (LevelSurfaces::Infer, Some(_)) => Some(Self::read_surface_inference::<T>(options)?),
       _ => None,
     };
-    let geometry: LevelGeometryDecompile = LevelGeometryConversion::decompile::<T, _>(
+    let mut geometry: LevelGeometryDecompile = LevelGeometryConversion::decompile::<T, _>(
       LevelGeometrySources {
         name: &options.name,
         level: &bundle.file,
@@ -102,6 +103,15 @@ impl LevelSceneStep for LevelGeometryStep {
       surfaces.as_mut().map(|(inference, _)| inference),
       &mut draft.context,
     )?;
+
+    // Each sector takes its part of the map `level.ltx` names for its number, which is its place in the scene.
+    if let Some(map) = &draft.map {
+      for (sector, number) in geometry.sectors.objects.iter_mut().zip(0u16..) {
+        if let Some(map_index) = map.sector_maps.get(&number) {
+          sector.map_index = *map_index;
+        }
+      }
+    }
 
     let has_objects: bool = !geometry.objects.is_empty();
 
@@ -130,6 +140,7 @@ impl LevelSceneStep for LevelGeometryStep {
           LevelFile::FILE_NAME,
           LevelGeomFile::FILE_NAME,
           LevelCformFile::FILE_NAME,
+          LevelMapConversion::FILE_NAME,
         ],
         sources,
       );

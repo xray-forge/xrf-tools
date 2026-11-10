@@ -37,7 +37,8 @@ pub enum LevelSceneInference {
   /// The level options are a new level's, built into and prefixed by the level's name, but for the light qualities,
   /// which the count of `build.lights`' generated sky and sun gives.
   LevelOptions,
-  /// The level serves the game modes its respawn points answer to, or single player where it has none.
+  /// The level serves the game modes its respawn points answer to, or single player where it has none; made only where
+  /// no `level.ltx` names them.
   GameTypes,
   /// The build parameters are the editor's defaults but for a weld distance of 0, for geometry already welded.
   BuildParameters,
@@ -86,6 +87,9 @@ pub enum LevelSceneInference {
   /// of the game material of the fragments its faces follow, its compiler shader the editor's default. Its packet is no
   /// spawn point, since the Build exports it again, cut into new fragments at random.
   BreakableParts,
+  /// The map's rectangle (`level.ltx`'s `bound_rect`) comes back as a level-bound shape, `level_bound_NNNN`, a box over
+  /// it one metre tall around height 0; the file keeps only its x and z.
+  MapBound,
 }
 
 /// The objects a scene's static geometry came back as, and what the decompile counted of it.

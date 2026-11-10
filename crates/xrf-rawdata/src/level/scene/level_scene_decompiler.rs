@@ -13,10 +13,12 @@ use crate::level::scene::steps::level_bundle_step::LevelBundleStep;
 use crate::level::scene::steps::level_companion_step::LevelCompanionStep;
 use crate::level::scene::steps::level_game_step::LevelGameStep;
 use crate::level::scene::steps::level_geometry_step::LevelGeometryStep;
+use crate::level::scene::steps::level_map_step::LevelMapStep;
 use crate::level::scene::steps::level_root_spawn::LevelRootSpawn;
 use crate::level::scene::steps::level_scene_step::LevelSceneStep;
 
-/// Decompiles a level's directory into a Level Editor scene, step by step over one draft: the geometry and its objects,
+/// Decompiles a level's directory into a Level Editor scene, step by step over one draft: the map's settings, the
+/// geometry and its objects,
 /// sectors and portals; the bundle's glows and lights; the files the build passes through from a part
 /// (`BuilderGame.cpp`); and the game's ways and spawn points. Each step names the files it reads; the decompile reads
 /// them all once and hashes them into the scene's GUID, so decompiling the same level twice gives the same scene
@@ -30,6 +32,7 @@ impl LevelSceneDecompiler {
   /// The files of a level's directory the decompile reads, every step's, in the order the steps run.
   pub fn get_source_files() -> Vec<&'static str> {
     let mut files: Vec<&'static str> = [
+      LevelMapStep::FILES,
       LevelGeometryStep::FILES,
       LevelBundleStep::FILES,
       LevelCompanionStep::FILES,
@@ -50,6 +53,7 @@ impl LevelSceneDecompiler {
   /// The files every step reads by what their names hold.
   fn get_listings() -> Vec<LevelSceneListing> {
     [
+      LevelMapStep::LISTINGS,
       LevelGeometryStep::LISTINGS,
       LevelBundleStep::LISTINGS,
       LevelCompanionStep::LISTINGS,
@@ -77,6 +81,7 @@ impl LevelSceneDecompiler {
     let guid: EditableLevelGuid = sources.get_guid(root_spawn.as_ref().and_then(LevelRootSpawn::get_guid_hash));
     let mut draft: LevelSceneDraft = LevelSceneDraft::new(guid, &options.name, root_spawn);
 
+    LevelMapStep::decompile::<T>(&mut sources, options, &mut draft)?;
     LevelGeometryStep::decompile::<T>(&mut sources, options, &mut draft)?;
     LevelBundleStep::decompile::<T>(&mut sources, options, &mut draft)?;
     LevelCompanionStep::decompile::<T>(&mut sources, options, &mut draft)?;

@@ -1,0 +1,87 @@
+use std::collections::BTreeMap;
+
+use byteorder::ByteOrder;
+use serde::Serialize;
+use xrf_chunk::ChunkWriter;
+use xrf_error::XrfResult;
+use xrf_level::{BuildPrjFile, LevelHomFile, LevelSomFile};
+
+use crate::level::level_map_conversion::LevelMapConversion;
+
+/// A scene exported for the level compiler: `build.prj`, the occluders and the map's settings written beside it, and
+/// what went into them.
+#[derive(Clone, Debug, PartialEq)]
+pub struct LevelBuildExport {
+  pub project: BuildPrjFile,
+  /// `level.hom`, where an object occludes the renderer's view.
+  pub hom: Option<LevelHomFile>,
+  /// `level.som`, where an object occludes sound.
+  pub som: Option<LevelSomFile>,
+  /// `level.ltx` as the build writes it.
+  pub map: Vec<u8>,
+  pub census: LevelBuildCensus,
+}
+
+/// What a build took from the scene and left out.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LevelBuildCensus {
+  /// Static objects whose meshes went into the geometry.
+  pub static_objects: usize,
+  /// Objects of no static geometry: dynamic ones, and occluders, which `level.hom` and `level.som` take.
+  pub other_objects: usize,
+  pub faces: usize,
+  /// Faces of occluder, breakable and climbable surfaces, which other exports take.
+  pub skipped_faces: usize,
+  /// Faces of no area, which the Build drops.
+  pub invalid_faces: usize,
+  pub static_lights: usize,
+  pub dynamic_lights: usize,
+  pub glows: usize,
+  pub portals: usize,
+  pub occluder_polygons: usize,
+  pub sound_occluder_polygons: usize,
+}
+
+impl LevelBuildExport {
+  /// Every file [`Self::into_files`] may give, sorted by name.
+  pub const FILE_NAMES: [&'static str; 4] = [
+    BuildPrjFile::FILE_NAME,
+    LevelHomFile::FILE_NAME,
+    LevelMapConversion::FILE_NAME,
+    LevelSomFile::FILE_NAME,
+  ];
+
+  /// Each file by name, written in `T`'s byte order: `build.prj` and `level.ltx` always, `level.hom` and `level.som`
+  /// where their occluders are.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a file does not write.
+  pub fn into_files<T: ByteOrder>(self) -> XrfResult<BTreeMap<&'static str, Vec<u8>>> {
+    let encode = |write: &dyn Fn(&mut ChunkWriter) -> XrfResult| -> XrfResult<Vec<u8>> {
+      let mut writer: ChunkWriter = ChunkWriter::new();
+
+      write(&mut writer)?;
+
+      Ok(writer.buffer)
+    };
+    let mut files: BTreeMap<&'static str, Vec<u8>> = BTreeMap::new();
+
+    files.insert(
+      BuildPrjFile::FILE_NAME,
+      encode(&|writer| self.project.write::<T>(writer))?,
+    );
+    files.insert(LevelMapConversion::FILE_NAME, self.map);
+
+    if let Some(hom) = &self.hom {
+      files.insert(LevelHomFile::FILE_NAME, encode(&|writer| hom.write::<T>(writer))?);
+    }
+
+    if let Some(som) = &self.som {
+      files.insert(LevelSomFile::FILE_NAME, encode(&|writer| som.write::<T>(writer))?);
+    }
+
+    Ok(files)
+  }
+}

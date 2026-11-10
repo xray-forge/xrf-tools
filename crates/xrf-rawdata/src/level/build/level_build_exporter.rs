@@ -2,11 +2,10 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use byteorder::ByteOrder;
-use serde::Serialize;
 use xrf_editable_level::{
   EditableBuildParams, EditableGlowObject, EditableLevelGuid, EditableLevelOptions, EditableLevelScene,
   EditableLightObject, EditableObjectPart, EditablePortalObject, EditableSceneObject, EditableSectorObject,
-  EditableWallmarkTool,
+  EditableShape, EditableShapeObject, EditableWallmarkTool,
 };
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::{XrfError, XrfResult};
@@ -14,43 +13,22 @@ use xrf_gamemtl::GameMtlFile;
 use xrf_level::{BuildPrjFile, BuildPrjGlow, BuildPrjParams, BuildPrjPortal};
 use xrf_math::{Aabb, Vector3d};
 
+use crate::level::build::level_build_export::{LevelBuildCensus, LevelBuildExport};
 use crate::level::build::level_build_geometry::LevelBuildGeometry;
 use crate::level::build::level_build_library::LevelBuildLibrary;
 use crate::level::build::level_build_lights::LevelBuildLights;
+use crate::level::build::level_build_occluders::LevelBuildOccluders;
+use crate::level::build::level_build_portal::LevelBuildPortal;
 use crate::level::build::level_build_sectors::LevelBuildSectors;
 use crate::level::build::level_build_tables::{LevelBuildTableRecords, LevelBuildTables};
+use crate::level::level_map_conversion::LevelMapConversion;
 use crate::level::level_scene_exporter::LevelSceneExporter;
 
 /// Exports a scene into the `build.prj` the Level Editor's Build hands xrLC (`SceneBuilder::CompileStatic` and
 /// `SaveBuild`, `BuilderRemote.cpp:1421`, `:357`): the sky and the sun generated from the level options, then each tool
-/// in the editor's order of classes, glows, static objects, lights, portals and wall marks.
+/// in the editor's order of classes, glows, static objects, lights, portals and wall marks; with it the occluders
+/// (`BuildHOMModel`, `BuildSOMModel`) and the map's settings (`BuildLTX`) the Build writes from the placed objects.
 pub struct LevelBuildExporter;
-
-/// A scene exported: the build project, and what went into it.
-#[derive(Clone, Debug, PartialEq)]
-pub struct LevelBuildExport {
-  pub project: BuildPrjFile,
-  pub census: LevelBuildCensus,
-}
-
-/// What a build took from the scene and left out.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LevelBuildCensus {
-  /// Static objects whose meshes went into the geometry.
-  pub static_objects: usize,
-  /// Objects of no static geometry: dynamic ones, and occluders, which `level.hom` and `level.som` take.
-  pub other_objects: usize,
-  pub faces: usize,
-  /// Faces of occluder, breakable and climbable surfaces, which other exports take.
-  pub skipped_faces: usize,
-  /// Faces of no area, which the Build drops.
-  pub invalid_faces: usize,
-  pub static_lights: usize,
-  pub dynamic_lights: usize,
-  pub glows: usize,
-  pub portals: usize,
-}
 
 impl LevelBuildExporter {
   /// `ebqDraft`, the quality whose materials the Build swaps for the plain vertex shaders, which this does not.
@@ -89,21 +67,19 @@ impl LevelBuildExporter {
       .iter()
       .map(|object| (object.object.name.as_str(), object))
       .collect();
-    let sectors: LevelBuildSectors = LevelBuildSectors::new(
-      &LevelSceneExporter::get_part::<EditableSectorObject>(scene, guid)?.objects,
-      |object, mesh| {
-        let placed: &EditableSceneObject = by_name.get(object)?;
-        let bounds: Aabb = library
-          .get(&placed.reference)?
-          .meshes
-          .iter()
-          .flatten()
-          .find(|it| it.name == mesh)?
-          .bounds;
+    let sector_part: EditableObjectPart<EditableSectorObject> = LevelSceneExporter::get_part(scene, guid)?;
+    let sectors: LevelBuildSectors = LevelBuildSectors::new(&sector_part.objects, |object, mesh| {
+      let placed: &EditableSceneObject = by_name.get(object)?;
+      let bounds: Aabb = library
+        .get(&placed.reference)?
+        .meshes
+        .iter()
+        .flatten()
+        .find(|it| it.name == mesh)?
+        .bounds;
 
-        Some(bounds.transform(&placed.object.transform.to_matrix()))
-      },
-    );
+      Some(bounds.transform(&placed.object.transform.to_matrix()))
+    });
     let mut tables: LevelBuildTables = LevelBuildTables::default();
     let mut geometry: LevelBuildGeometry = LevelBuildGeometry::default();
     let mut lights: LevelBuildLights = LevelBuildLights::default();
@@ -137,10 +113,34 @@ impl LevelBuildExporter {
       })
       .collect::<XrfResult<_>>()?;
 
+    let mut occluders: LevelBuildOccluders = LevelBuildOccluders::default();
+    let mut placed_bounds: Option<Aabb> = None;
+
     for object in &placed.objects {
       let file: &EditableObjectFile = library
         .get(&object.reference)
         .ok_or_else(|| XrfError::new_invalid_error(format!("Library object '{}' was not read", object.reference)))?;
+
+      occluders.add_object(object, file, game_materials)?;
+
+      // `CSceneObject::GetBox`: the object's box, the union of its meshes', placed.
+      if let Some(bounds) = file
+        .meshes
+        .iter()
+        .flatten()
+        .map(|mesh| mesh.bounds)
+        .reduce(|mut held, bounds| {
+          held.include_box(&bounds);
+          held
+        })
+      {
+        let bounds: Aabb = bounds.transform(&object.object.transform.to_matrix());
+
+        match &mut placed_bounds {
+          Some(held) => held.include_box(&bounds),
+          None => placed_bounds = Some(bounds),
+        }
+      }
 
       if file.flags
         & (EditableObjectFile::DYNAMIC_FLAG | EditableObjectFile::HOM_FLAG | EditableObjectFile::SOUND_OCCLUDER_FLAG)
@@ -179,6 +179,15 @@ impl LevelBuildExporter {
     }
 
     let records: LevelBuildTableRecords = tables.into_records()?;
+    // `BuildLTX` takes the first level-bound shape's box over the placed objects'.
+    let map_bounds: Aabb = LevelSceneExporter::get_part::<EditableShapeObject>(scene, guid)?
+      .objects
+      .iter()
+      .filter(|shape| shape.shape.usage == EditableShape::LEVEL_BOUND_USAGE)
+      .find_map(|shape| Some(shape.shape.get_bounds()?.transform(&shape.object.transform.to_matrix())))
+      .or(placed_bounds)
+      .unwrap_or_else(|| Aabb::of_point(&Vector3d::ZERO));
+    let (hom, som) = occluders.into_files();
 
     census.faces = geometry.faces.len();
     census.skipped_faces = geometry.skipped_faces;
@@ -187,6 +196,8 @@ impl LevelBuildExporter {
     census.dynamic_lights = lights.dynamic_lights.len();
     census.glows = glows.len();
     census.portals = portals.len();
+    census.occluder_polygons = hom.as_ref().map_or(0, |file| file.polygons.len());
+    census.sound_occluder_polygons = som.as_ref().map_or(0, |file| file.polygons.len());
 
     Ok(LevelBuildExport {
       project: BuildPrjFile {
@@ -218,12 +229,16 @@ impl LevelBuildExporter {
         mu_models: Vec::new(),
         mu_references: Vec::new(),
       },
+      hom,
+      som,
+      map: LevelMapConversion::export(&options, &map_bounds, &sector_part.objects),
       census,
     })
   }
 
-  /// A portal between the sectors it names, its polygon as the scene holds it: a decompiled portal holds the compiled
-  /// one, which the Build's simplification gives back unchanged.
+  /// A portal between the sectors it names: its polygon as the scene holds it where it has no more corners than a
+  /// compiled portal (a decompiled portal holds the compiled one), else simplified as the Build simplifies it
+  /// ([`LevelBuildPortal`]).
   fn get_portal(portal: &EditablePortalObject, sectors: &LevelBuildSectors) -> XrfResult<BuildPrjPortal> {
     let sector = |name: &str| {
       sectors.get_number(name).ok_or_else(|| {
@@ -233,25 +248,27 @@ impl LevelBuildExporter {
         ))
       })
     };
-
-    if portal.vertices.len() > BuildPrjPortal::MAXIMUM_VERTICES {
-      return Err(XrfError::new_not_implemented_error(format!(
-        "Portal '{}' holds {} corners; the build simplifies such a polygon, which is not exported yet",
-        portal.object.name,
-        portal.vertices.len()
-      )));
-    }
-
+    let vertices: Vec<Vector3d> = if portal.vertices.len() > BuildPrjPortal::MAXIMUM_VERTICES {
+      LevelBuildPortal::simplify(&portal.vertices).ok_or_else(|| {
+        XrfError::new_invalid_error(format!(
+          "Portal '{}' of {} corners simplifies to no polygon, which the editor holds invalid",
+          portal.object.name,
+          portal.vertices.len()
+        ))
+      })?
+    } else {
+      portal.vertices.clone()
+    };
     let mut vertex_slots: [Vector3d; BuildPrjPortal::MAXIMUM_VERTICES] =
       [Vector3d::ZERO; BuildPrjPortal::MAXIMUM_VERTICES];
 
-    vertex_slots[..portal.vertices.len()].copy_from_slice(&portal.vertices);
+    vertex_slots[..vertices.len()].copy_from_slice(&vertices);
 
     Ok(BuildPrjPortal {
       sector_front: sector(&portal.sector_front)?,
       sector_back: sector(&portal.sector_back)?,
       vertex_slots,
-      vertex_count: u32::try_from(portal.vertices.len()).unwrap_or(u32::MAX),
+      vertex_count: u32::try_from(vertices.len()).unwrap_or(u32::MAX),
     })
   }
 }

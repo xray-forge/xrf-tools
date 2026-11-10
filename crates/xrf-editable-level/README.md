@@ -78,7 +78,13 @@ An object tool's part reads as an `EditableObjectPart<T>`: the GUID, `[main]`'s 
 writes them as the editor's `SaveLTX` does, and names its tool's class, part name (`ClassName`), `[main]` version and
 the key it is under (`version`, or the glow tool's `glow_tool_version`), and whether it keeps flags. A part refuses what the tool's `LoadLTX` refuses: another version, missing flags where the tool
 keeps them, an object of another class. What a tool saves beyond that is kept as stored in the part's `tool_data`: the
-light tool's `sun_shadow_dir`, `lcontrol_last_idx` and `[lcontrols]`, the scene object tool's `[appendrandom]`.
+light tool's `sun_shadow_dir`, `lcontrol_last_idx` and `[lcontrols]`, the scene object tool's `[appendrandom]`;
+`EditableLightObject::read_controls` and `read_sun_direction` read the light tool's.
+
+Groups (`group.part`, `group.part1` and on) hold each group as an `[object_N]` of class 0 and its members as
+`[object_N_ingroup_M]`, with their own sections after them (`[object_N_ingroup_M_spawndata]`).
+`EditableGroupTool::read_members` reads every member of one class as that class's type. A member keeps its own transform
+in the level, and the editor loads it into its class's list before the objects of that tool's own part.
 
 | Type                             | Editor              | Holds                                                                                  |
 | -------------------------------- | ------------------- | -------------------------------------------------------------------------------------- |

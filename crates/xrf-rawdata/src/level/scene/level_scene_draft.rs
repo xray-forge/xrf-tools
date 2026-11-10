@@ -6,6 +6,7 @@ use xrf_utils::format_path;
 
 use crate::level::level_decompile_context::LevelDecompileContext;
 use crate::level::level_geometry_conversion::LevelDecompiledObject;
+use crate::level::level_map_conversion::LevelMapSettings;
 use crate::level::scene::level_decompile_options::LevelDecompileOptions;
 use crate::level::scene::level_scene_decompile::{LevelSceneDecompile, LevelSceneObjectFile};
 use crate::level::scene::level_scene_sources::LevelSceneSources;
@@ -31,13 +32,16 @@ pub(crate) struct LevelSceneDraft {
   pub(crate) folded_entities: Vec<String>,
   /// The root spawn the entities come from, where one was given.
   pub(crate) root_spawn: Option<LevelRootSpawn>,
+  /// What `level.ltx` says, where the directory holds one: the sectors' parts of the map and the game types.
+  pub(crate) map: Option<LevelMapSettings>,
 }
 
 impl LevelSceneDraft {
   /// The owner the scene's `[level_tag]` names.
   pub(crate) const OWNER: &'static str = "xrf";
 
-  /// A scene of `guid` named `name`, holding no tool yet, with the inferences every decompiled scene makes.
+  /// A scene of `guid` named `name`, holding no tool yet, with the inferences every decompiled scene makes; the game
+  /// types are inferred only where no `level.ltx` names them.
   pub(crate) fn new(guid: EditableLevelGuid, name: &str, root_spawn: Option<LevelRootSpawn>) -> Self {
     Self {
       context: LevelDecompileContext::new(guid),
@@ -47,7 +51,6 @@ impl LevelSceneDraft {
       inferred: vec![
         LevelSceneInference::ObjectNames,
         LevelSceneInference::LevelOptions,
-        LevelSceneInference::GameTypes,
         LevelSceneInference::BuildParameters,
         LevelSceneInference::Camera,
       ],
@@ -56,6 +59,7 @@ impl LevelSceneDraft {
       geometry: None,
       folded_entities: Vec::new(),
       root_spawn,
+      map: None,
     }
   }
 

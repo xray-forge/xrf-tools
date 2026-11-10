@@ -38,6 +38,7 @@ pub use crate::part::editable_part_header::EditablePartHeader;
 pub use crate::part::editable_part_modification::EditablePartModification;
 pub use crate::part::editable_part_object::EditablePartObject;
 pub use crate::part::editable_text_part::EditableTextPart;
+pub use crate::scene::editable_group_tool::EditableGroupTool;
 pub use crate::scene::editable_level_scene::EditableLevelScene;
 pub use crate::scene::editable_scene_tool::EditableSceneTool;
 pub use crate::tool::editable_wallmark::EditableWallmark;

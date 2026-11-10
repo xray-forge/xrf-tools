@@ -5,9 +5,9 @@ use std::path::{Path, PathBuf};
 use byteorder::ByteOrder;
 use xrf_chunk::ChunkWriter;
 use xrf_editable_level::{
-  EditableFogVolumeObject, EditableLevelGuid, EditableLevelScene, EditableObjectPart, EditableParticleObject,
-  EditableSoundEnvironmentObject, EditableSoundSourceObject, EditableSpawnPointObject, EditableToolObject,
-  EditableWallmarkTool, EditableWayObject,
+  EditableFogVolumeObject, EditableGroupTool, EditableLevelGuid, EditableLevelScene, EditableObjectPart,
+  EditableParticleObject, EditableSoundEnvironmentObject, EditableSoundSourceObject, EditableSpawnPointObject,
+  EditableToolObject, EditableWallmarkTool, EditableWayObject,
 };
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{
@@ -144,15 +144,17 @@ impl LevelSceneExporter {
   ///
   /// # Errors
   ///
-  /// Returns an error, writing nothing, when the directory holds a file of [`Self::FILE_NAMES`] that `files` lacks;
-  /// returns an error when a file there cannot be read or one cannot be written.
+  /// Returns an error, writing nothing, when the directory holds a file of `names`, every file this build may write
+  /// ([`Self::FILE_NAMES`], and [`LevelBuildExport::FILE_NAMES`](crate::LevelBuildExport::FILE_NAMES) for a build of
+  /// the geometry), that `files` lacks; returns an error when a file there cannot be read or one cannot be written.
   pub fn write_to_directory(
     files: &BTreeMap<&'static str, Vec<u8>>,
+    names: &[&str],
     directory: &Path,
   ) -> XrfResult<Vec<LevelExportedFile>> {
-    if let Some(stale) = Self::FILE_NAMES
-      .into_iter()
-      .find(|name| !files.contains_key(name) && directory.join(name).exists())
+    if let Some(stale) = names
+      .iter()
+      .find(|name| !files.contains_key(*name) && directory.join(name).exists())
     {
       return Err(XrfError::new_invalid_error(format!(
         "{} holds {stale}, which the scene does not build and the game would still read; move it away first",
@@ -189,15 +191,26 @@ impl LevelSceneExporter {
     Ok(written)
   }
 
-  /// The scene's part of tool `O`, or an empty one where the scene has no such tool, as the editor holds every tool.
+  /// The scene's part of tool `O`, or an empty one where the scene has no such tool, as the editor holds every tool;
+  /// its objects the groups' members of the tool's class first, as the editor loads the group tool (class 0) before
+  /// the others, then the part's own.
   pub(crate) fn get_part<O: EditableToolObject>(
     scene: &EditableLevelScene,
     guid: EditableLevelGuid,
   ) -> XrfResult<EditableObjectPart<O>> {
-    match scene.get_tool(O::TOOL_NAME) {
-      Some(tool) => EditableObjectPart::read_from_scene_tool(tool),
-      None => Ok(EditableObjectPart::new(guid, Vec::new())),
+    let mut part: EditableObjectPart<O> = match scene.get_tool(O::TOOL_NAME) {
+      Some(tool) => EditableObjectPart::read_from_scene_tool(tool)?,
+      None => EditableObjectPart::new(guid, Vec::new()),
+    };
+
+    if let Some(groups) = scene.get_tool(EditableGroupTool::TOOL_NAME) {
+      let mut objects: Vec<O> = EditableGroupTool::read_members::<O>(groups)?;
+
+      objects.append(&mut part.objects);
+      part.objects = objects;
     }
+
+    Ok(part)
   }
 
   /// The bytes `write` puts into a new chunk writer.
