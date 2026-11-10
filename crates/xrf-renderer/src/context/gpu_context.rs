@@ -7,7 +7,7 @@ use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use xrf_dlss::{DlssInstance, DlssTask};
+use xrf_dlss::{Dlss, DlssInstance, DlssTask};
 use xrf_env_flags::{EnvFlags, SwitchFlag};
 use xrf_error::{XrfError, XrfResult};
 
@@ -16,6 +16,7 @@ use crate::context::gpu_libraries::GpuLibraries;
 use crate::context::gpu_requirements::{
   OPTIONAL_FEATURES, REQUIRED_FEATURES, can_trace, get_missing_features, get_ray_query_features,
 };
+use crate::context::library_versions::read_file_version;
 use crate::contract::settings::gpu::render_backend::RenderBackend;
 use crate::contract::settings::gpu::render_backend_availability::RenderBackendAvailability;
 use crate::contract::settings::gpu::render_gpu::RenderGpu;
@@ -322,6 +323,9 @@ impl GpuContext {
       };
     let shader_compiler: Option<&'static str> = (backend == RenderBackend::D3d12).then_some(shader_compiler);
     let info: wgpu::AdapterInfo = Self::check_adapter(&adapter)?;
+    // The DLSS runtime's file version, which the log names so a run says which library it measured.
+    let dlss_version: Option<String> =
+      dlss.and_then(|directory| read_file_version(&directory.join(Dlss::RUNTIME_LIBRARY)));
 
     let ray_query: wgpu::Features = get_ray_query_features(adapter.features());
     let (device, queue, dlss) = instance
@@ -372,7 +376,14 @@ impl GpuContext {
       } else {
         "without ray queries"
       },
-      if dlss.is_launched() { ", with DLSS" } else { "" }
+      if dlss.is_launched() {
+        format!(
+          ", with DLSS {}",
+          dlss_version.as_deref().unwrap_or("of an unknown version")
+        )
+      } else {
+        String::new()
+      }
     );
 
     Ok(Self {
