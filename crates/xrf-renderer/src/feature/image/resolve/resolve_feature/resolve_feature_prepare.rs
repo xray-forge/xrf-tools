@@ -8,6 +8,7 @@ use crate::contract::feature::image::resolve::render_antialiasing::RenderAntiali
 use crate::contract::feature::image::resolve::render_upscaling_settings::RenderUpscalingSettings;
 use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
 use crate::feature::image::resolve::dlss::dlss_resolve::DlssResolve;
+use crate::feature::image::resolve::dlss::ngx_evaluation::NgxEvaluation;
 use crate::feature::image::resolve::dlss::ray_reconstruction_resolve::RayReconstructionResolve;
 use crate::feature::image::resolve::fsr::fsr_dispatch::FsrDispatch;
 use crate::feature::image::resolve::fsr::fsr_uniform::FsrUniform;
@@ -251,6 +252,15 @@ impl ResolveFeature {
     );
     let key: DlssKey = (display, model, is_hdr);
 
+    // NGX refusing an evaluation at run time refuses every one after it.
+    if let Some(Resolve::Dlss(resolve)) = &mut self.resolve
+      && let Some(error) = resolve.evaluation.take_refusal()
+    {
+      log::warn!("FSR resolves in DLSS's place: {error}");
+      self.resolve = None;
+      self.refused = Some(key);
+    }
+
     if self.refused == Some(key) {
       return false;
     }
@@ -269,6 +279,7 @@ impl ResolveFeature {
             upscaler,
             output: DlssResolve::create_output(device, queue, "dlss output", display),
             is_reset: true,
+            evaluation: NgxEvaluation::default(),
           })));
         }
         Err(error) => {
@@ -315,6 +326,15 @@ impl ResolveFeature {
     let preset: DlssRayPreset = self.upscaling.ray_reconstruction_preset.to_dlss(self.is_light_physical);
     let key: RayKey = (display, quality, preset);
 
+    // NGX refusing an evaluation at run time refuses every one after it.
+    if let Some(Resolve::RayReconstruction(resolve)) = &mut self.resolve
+      && let Some(error) = resolve.evaluation.take_refusal()
+    {
+      log::warn!("DLSS upscales without reconstructing rays: {error}");
+      self.resolve = None;
+      self.refused_rays = Some(key);
+    }
+
     if self.refused_rays == Some(key) {
       return false;
     }
@@ -339,6 +359,7 @@ impl ResolveFeature {
             is_reset: true,
             view: Mat4::IDENTITY,
             projection: Mat4::IDENTITY,
+            evaluation: NgxEvaluation::default(),
           })));
         }
         Err(error) => {

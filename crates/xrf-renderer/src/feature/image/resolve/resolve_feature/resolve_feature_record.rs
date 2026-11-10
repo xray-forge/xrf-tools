@@ -388,9 +388,11 @@ impl ResolveFeature {
           pre_exposure,
         };
 
-        match resolve.upscaler.record(context.get_encoder(), &inputs) {
-          Ok(commands) => context.hand_over(commands),
-          Err(error) => log::error!("{error}"),
+        if let Some(commands) = resolve
+          .evaluation
+          .keep(resolve.upscaler.record(context.get_encoder(), &inputs))
+        {
+          context.hand_over(commands);
         }
       });
 
@@ -467,9 +469,11 @@ impl ResolveFeature {
         pre_exposure,
       };
 
-      match resolve.reconstructor.record(context.get_encoder(), &inputs) {
-        Ok(commands) => context.hand_over(commands),
-        Err(error) => log::error!("{error}"),
+      if let Some(commands) = resolve
+        .evaluation
+        .keep(resolve.reconstructor.record(context.get_encoder(), &inputs))
+      {
+        context.hand_over(commands);
       }
     });
 
