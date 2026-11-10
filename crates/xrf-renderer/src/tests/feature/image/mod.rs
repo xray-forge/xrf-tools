@@ -6,4 +6,5 @@ mod exposure_readback;
 mod exposure_restart;
 mod fsr;
 mod image_corrections;
+mod rcas;
 mod temporal;

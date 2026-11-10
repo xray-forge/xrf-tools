@@ -1,4 +1,5 @@
 #import "common/fullscreen"
+#import "common/rcas"
 
 // FidelityFX Super Resolution 1 (`ffx_fsr1.h`, MIT): EASU upscales a frame drawn smaller than its viewport, RCAS
 // sharpens an upscaled one; and the downscale of a frame resolved larger than its viewport.
@@ -20,9 +21,6 @@ const K: u32 = 8u;
 const L: u32 = 9u;
 const N: u32 = 10u;
 const O: u32 = 11u;
-
-// `FSR_RCAS_LIMIT`: the most negative lobe, so the sharpened pixel never rings past its neighbours.
-const RCAS_LIMIT: f32 = 0.25 - 1.0 / 16.0;
 
 // A texel of the frame as both stages work on it: as it is, or, where the frame holds linear light, its reversible
 // tonemap, `c / (1 + max(c))`, the range both are made for.
@@ -137,8 +135,7 @@ fn fs_easu(in: FullscreenVarying) -> @location(0) vec4<f32> {
   return stored(min(most, max(least, color / weight)));
 }
 
-// `FsrRcasF`: each pixel sharpened by a lobe over its four neighbours, as strong as its neighbourhood leaves room for
-// without clipping, so an edge is crisped and a flat area left alone.
+// `FsrRcasF`: each pixel sharpened by a lobe over its four neighbours (`rcas_sharpen`).
 @fragment
 fn fs_rcas(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let size: vec2<f32> = vec2<f32>(textureDimensions(source));
@@ -148,15 +145,12 @@ fn fs_rcas(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let e: vec3<f32> = load_clamped(at, size);
   let f: vec3<f32> = load_clamped(at + vec2<f32>(1.0, 0.0), size);
   let h: vec3<f32> = load_clamped(at + vec2<f32>(0.0, 1.0), size);
-  let least: vec3<f32> = min(min(b, d), min(f, h));
-  let most: vec3<f32> = max(max(b, d), max(f, h));
-  // How far each channel may go down before the darkest neighbour clips, and up before the brightest does.
-  let hit_min: vec3<f32> = least / max(most * 4.0, vec3<f32>(1e-5));
-  let hit_max: vec3<f32> = (1.0 - most) / min(least * 4.0 - 4.0, vec3<f32>(-1e-5));
-  let lobes: vec3<f32> = max(-hit_min, hit_max);
-  let lobe: f32 = max(-RCAS_LIMIT, min(max(lobes.x, max(lobes.y, lobes.z)), 0.0)) * upscale.sharpness;
 
-  return stored(((b + d + f + h) * lobe + e) / (lobe * 4.0 + 1.0));
+  if (upscale.linear > 0.5) {
+    return stored(rcas_sharpen_held(b, d, e, f, h, upscale.sharpness));
+  }
+
+  return stored(rcas_sharpen(b, d, e, f, h, upscale.sharpness));
 }
 
 // The output pixel's footprint in the frame, each texel weighed by how much of it the footprint covers: a box downscale
