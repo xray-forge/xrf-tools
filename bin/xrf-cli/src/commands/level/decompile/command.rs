@@ -205,7 +205,7 @@ impl DecompileCommand {
 
   /// The objects root beside the scene's directory, `<levels>/../objects`, as the SDK's `fs.ltx` puts `$maps$` and
   /// `$objects$` side by side under its rawdata.
-  fn get_default_objects_root(destination: &Path) -> PathBuf {
+  pub(crate) fn get_default_objects_root(destination: &Path) -> PathBuf {
     let named = |path: &&Path| !path.as_os_str().is_empty();
 
     match destination.parent().filter(named) {

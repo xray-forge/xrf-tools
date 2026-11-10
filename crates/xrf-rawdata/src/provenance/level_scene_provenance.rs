@@ -71,6 +71,10 @@ pub enum LevelSceneInference {
   /// dressed as GSC dressed its collision-only props (`prop\prop_fake_kollision`, `def_shaders\def_trans_v`,
   /// `def_shaders\def_kolizion_vertex`).
   CollisionObject,
+  /// `level.hom` comes back as `<level>_hom`, a surface of `materials\occ` as GSC's `labx8` keeps its occluders, and
+  /// `level.som` as `<level>_som`, flagged a sound occluder, each polygon's game material the library's of the lowest
+  /// number whose sound occlusion factor is the polygon's; both dressed with `prop\prop_fake_occ`.
+  Occluders,
 }
 
 /// The objects a scene's static geometry came back as, and what the decompile counted of it.

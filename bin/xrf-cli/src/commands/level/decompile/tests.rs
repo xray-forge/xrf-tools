@@ -161,6 +161,39 @@ fn refuses_a_named_root_spawn_that_does_not_exist() -> XrfResult {
 }
 
 #[test]
+fn puts_objects_beside_the_levels_directory_by_default() {
+  let objects_of = |destination: &str| DecompileCommand::get_default_objects_root(Path::new(destination));
+
+  assert_eq!(
+    objects_of("rawdata/levels/zaton.level"),
+    Path::new("rawdata").join("objects"),
+    "the SDK's rawdata/objects beside rawdata/levels"
+  );
+  assert_eq!(
+    objects_of("levels/zaton.level"),
+    Path::new("levels").join("..").join("objects")
+  );
+  assert_eq!(objects_of("zaton.level"), Path::new("..").join("objects"));
+}
+
+#[test]
+fn refuses_a_named_library_that_does_not_exist() -> XrfResult {
+  let root: PathBuf = level_root("library")?;
+  let error: String = get_error(decompile(
+    &root.join("level"),
+    &root.join("test_level.level"),
+    &["--game-materials", &root.join("missing.xr").to_string_lossy()],
+  ));
+
+  assert!(
+    error.contains("does not exist"),
+    "Expect the refusal to name the missing library: {error}"
+  );
+
+  Ok(())
+}
+
+#[test]
 fn refuses_a_destination_that_is_not_a_level() -> XrfResult {
   let root: PathBuf = level_root("named")?;
   let error: String = get_error(decompile(

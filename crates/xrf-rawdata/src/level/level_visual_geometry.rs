@@ -3,6 +3,8 @@ use xrf_chunk::ChunkDataSource;
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{LevelGeomSource, LevelShaderEntry, LevelShadersChunk, LevelVertex, LevelVisual};
 
+use xrf_math::{Vector2d, Vector3d};
+
 use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 
 /// One visual of a compiled level, as the decompile takes it: what it is dressed with, and its full-detail triangles
@@ -21,6 +23,55 @@ pub struct LevelVisualGeometry {
 }
 
 impl LevelVisualGeometry {
+  /// Geometry of bare triangles, such as collision faces or occluder polygons, which keep nothing but their corners:
+  /// each corner takes its triangle's own normal and texture coordinates spanning the texture once, in parts small
+  /// enough for a visual's `u16` indices.
+  pub(crate) fn of_triangles(
+    texture: &str,
+    shader: &str,
+    dress: &SurfaceDress,
+    triangles: &[[Vector3d; 3]],
+  ) -> Vec<Self> {
+    triangles
+      .chunks(usize::from(u16::MAX) / 3)
+      .map(|run| {
+        let vertices: Vec<LevelVertex> = run.iter().flat_map(Self::get_bare_corners).collect();
+
+        Self {
+          texture: String::from(texture),
+          shader: String::from(shader),
+          dress: dress.clone(),
+          indices: (0..vertices.len()).map(|index| index as u16).collect(),
+          vertices,
+        }
+      })
+      .collect()
+  }
+
+  /// A bare triangle's corners: its own normal at each, straight up where it has none.
+  fn get_bare_corners(points: &[Vector3d; 3]) -> [LevelVertex; 3] {
+    let [a, b, c] = points;
+    let cross: Vector3d = (b - a).cross(&(c - a));
+    let length: f32 = cross.length();
+    let normal: Vector3d = if length.is_normal() {
+      &cross / length
+    } else {
+      Vector3d::new(0.0, 1.0, 0.0)
+    };
+    let corner = |position: &Vector3d, u: f32, v: f32| LevelVertex {
+      position: *position,
+      normal,
+      tangent: None,
+      binormal: None,
+      texture_coordinate: Vector2d::new(u, v),
+      lightmap_coordinate: None,
+      color: None,
+      hemi: 0,
+    };
+
+    [corner(a, 0.0, 0.0), corner(b, 1.0, 0.0), corner(c, 0.0, 1.0)]
+  }
+
   /// The geometry of `visual`: its texture and shader from its own texture chunk, else from the row of `shaders` its
   /// header names (its base texture, the first the row lists), and its vertices and full-detail indices from `source`
   /// (`LevelGeomSource::read_full_detail_indices`, which takes a progressive visual's first slide window). `None` for a

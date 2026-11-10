@@ -14,7 +14,8 @@ use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 use crate::level::tests::GUID;
 use crate::{
   LevelCollisionIndex, LevelCompilerShaderReason, LevelDecompileContext, LevelGeometryCensus, LevelGeometryConversion,
-  LevelGeometryDecompile, LevelShaderPairings, LevelSurfaceCensus, LevelSurfaceInference, SurfaceDress,
+  LevelGeometryDecompile, LevelGeometrySources, LevelShaderPairings, LevelSurfaceCensus, LevelSurfaceInference,
+  SurfaceDress,
 };
 
 /// A square of render geometry two metres across on the ground, centred on `x`.
@@ -162,15 +163,28 @@ fn level(portal_sectors: (u16, u16)) -> LevelFile {
 }
 
 fn decompile(level: &LevelFile) -> XrfResult<LevelGeometryDecompile> {
+  decompile_with(level, vec![drawable(0), drawable(1), hierarchy(vec![0])], None, None)
+}
+
+/// The two squares' geometry, drawn by `visuals` as `level` arranges them in sectors, with `collision` and `inference`
+/// where given.
+fn decompile_with(
+  level: &LevelFile,
+  visuals: Vec<LevelVisual>,
+  collision: Option<&mut LevelCollisionIndex>,
+  inference: Option<&mut LevelSurfaceInference>,
+) -> XrfResult<LevelGeometryDecompile> {
   LevelGeometryConversion::decompile::<XRayByteOrder, _>(
-    "test",
-    level,
-    &LevelVisualsChunk {
-      visuals: vec![drawable(0), drawable(1), hierarchy(vec![0])],
+    LevelGeometrySources {
+      name: "test",
+      level,
+      visuals: &LevelVisualsChunk { visuals },
+      geom: &geometry(&[square(-4.0), square(4.0)])?,
+      collision,
+      hom: None,
+      som: None,
     },
-    &geometry(&[square(-4.0), square(4.0)])?,
-    None,
-    None,
+    inference,
     &mut LevelDecompileContext::new(GUID),
   )
 }
@@ -255,16 +269,11 @@ fn leaves_sectors_and_portals_out_where_a_sector_draws_no_static_geometry() -> X
   // The second sector's root is a hierarchy over nothing, as a sector of trees alone draws no static geometry.
   level.sectors.as_mut().expect("the level holds sectors").sectors[1].root = 3;
 
-  let decompiled: LevelGeometryDecompile = LevelGeometryConversion::decompile::<XRayByteOrder, _>(
-    "test",
+  let decompiled: LevelGeometryDecompile = decompile_with(
     &level,
-    &LevelVisualsChunk {
-      visuals: vec![drawable(0), drawable(1), hierarchy(vec![0]), hierarchy(Vec::new())],
-    },
-    &geometry(&[square(-4.0), square(4.0)])?,
+    vec![drawable(0), drawable(1), hierarchy(vec![0]), hierarchy(Vec::new())],
     None,
     None,
-    &mut LevelDecompileContext::new(GUID),
   )?;
 
   assert_eq!(
@@ -375,16 +384,11 @@ fn decompile_dressed(
   collision: &mut LevelCollisionIndex,
   inference: &mut LevelSurfaceInference,
 ) -> XrfResult<LevelGeometryDecompile> {
-  LevelGeometryConversion::decompile::<XRayByteOrder, _>(
-    "test",
+  decompile_with(
     &level((0, 1)),
-    &LevelVisualsChunk {
-      visuals: vec![drawable(0), drawable(1), hierarchy(vec![0])],
-    },
-    &geometry(&[square(-4.0), square(4.0)])?,
+    vec![drawable(0), drawable(1), hierarchy(vec![0])],
     Some(collision),
     Some(inference),
-    &mut LevelDecompileContext::new(GUID),
   )
 }
 

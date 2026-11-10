@@ -13,8 +13,8 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_gamemtl::GameMtlFile;
 use xrf_level::{
   LevelCformFile, LevelEnvModFile, LevelFile, LevelFogVolFile, LevelGameFile, LevelGameRPoint, LevelGeomFile,
-  LevelGeomSource, LevelLightsFile, LevelPsStaticFile, LevelSndEnvFile, LevelSndStaticFile, LevelVisualsChunk,
-  LevelWallmarksFile,
+  LevelGeomSource, LevelHomFile, LevelLightsFile, LevelPsStaticFile, LevelSndEnvFile, LevelSndStaticFile, LevelSomFile,
+  LevelVisualsChunk, LevelWallmarksFile,
 };
 use xrf_shaders::ShaderCompilerFile;
 use xrf_spawn::{AlifeObject, LevelSpawnFile, SpawnFile, SpawnLevelObjects};
@@ -24,7 +24,7 @@ use crate::level::level_collision_index::LevelCollisionIndex;
 use crate::level::level_decompile_context::LevelDecompileContext;
 use crate::level::level_entity_conversion::{LevelEntityConversion, LevelEntityDecompile, LevelEntitySources};
 use crate::level::level_fog_volume_conversion::LevelFogVolumeConversion;
-use crate::level::level_geometry_conversion::{LevelDecompiledObject, LevelGeometryConversion};
+use crate::level::level_geometry_conversion::{LevelDecompiledObject, LevelGeometryConversion, LevelGeometrySources};
 use crate::level::level_glow_conversion::LevelGlowConversion;
 use crate::level::level_light_conversion::LevelLightConversion;
 use crate::level::level_particle_conversion::LevelParticleConversion;
@@ -194,10 +194,12 @@ impl LevelSceneDecompiler {
   /// the compiled bundle (`level`, for its sectors, portals, visuals, glows and dynamic lights), the geometry its
   /// visuals draw (`level.geom`) and the level compiler's `build.lights`, then the files
   /// [`crate::LevelSceneExporter::FILE_NAMES`] the build writes from the scene's parts and the export writes back.
-  pub const SOURCE_FILES: [&'static str; 13] = [
+  pub const SOURCE_FILES: [&'static str; 15] = [
     LevelFile::FILE_NAME,
     LevelGeomFile::FILE_NAME,
     LevelCformFile::FILE_NAME,
+    LevelHomFile::FILE_NAME,
+    LevelSomFile::FILE_NAME,
     LevelLightsFile::FILE_NAME,
     LevelEnvModFile::FILE_NAME,
     LevelFogVolFile::FILE_NAME,
@@ -328,9 +330,8 @@ impl LevelSceneDecompiler {
     Ok(())
   }
 
-  /// The objects of the level's static geometry and the parts placing them, sectors and portals
-  /// ([`LevelGeometryConversion`]), their surfaces dressed from `level.cform` where the options ask it and the
-  /// directory holds one.
+  /// The objects of the level's geometry and the parts placing them, sectors and portals ([`LevelGeometryConversion`]),
+  /// their surfaces dressed from `level.cform` where the options ask it and the directory holds one.
   fn decompile_geometry<T: ByteOrder>(
     level: &LevelFile,
     visuals: &LevelVisualsChunk,
@@ -344,24 +345,42 @@ impl LevelSceneDecompiler {
       .take(LevelCformFile::FILE_NAME)
       .map(|bytes| LevelCformFile::read_geometry_from_bytes::<T>(bytes).map(LevelCollisionIndex::new))
       .transpose()?;
+    let hom: Option<LevelHomFile> = sources
+      .take(LevelHomFile::FILE_NAME)
+      .map(LevelHomFile::read_from_bytes::<T>)
+      .transpose()?;
+    let som: Option<LevelSomFile> = sources
+      .take(LevelSomFile::FILE_NAME)
+      .map(LevelSomFile::read_from_bytes::<T>)
+      .transpose()?;
     let mut surfaces: Option<(LevelSurfaceInference, LevelSceneSurfaceLibraries)> = match (options.surfaces, &collision)
     {
       (LevelSurfaces::Infer, Some(_)) => Some(Self::read_surface_inference::<T>(options)?),
       _ => None,
     };
     let geometry = LevelGeometryConversion::decompile::<T, _>(
-      &options.name,
-      level,
-      visuals,
-      &source,
-      collision.as_mut(),
+      LevelGeometrySources {
+        name: &options.name,
+        level,
+        visuals,
+        geom: &source,
+        collision: collision.as_mut(),
+        hom: hom.as_ref(),
+        som: som.as_ref(),
+      },
       surfaces.as_mut().map(|(inference, _)| inference),
       &mut draft.context,
     )?;
-    let files: Vec<&'static str> = std::iter::once(LevelFile::FILE_NAME)
-      .chain(std::iter::once(LevelGeomFile::FILE_NAME))
-      .chain(collision.is_some().then_some(LevelCformFile::FILE_NAME))
-      .collect();
+    let files: Vec<&'static str> = [
+      Some(LevelFile::FILE_NAME),
+      Some(LevelGeomFile::FILE_NAME),
+      collision.is_some().then_some(LevelCformFile::FILE_NAME),
+      hom.is_some().then_some(LevelHomFile::FILE_NAME),
+      som.is_some().then_some(LevelSomFile::FILE_NAME),
+    ]
+    .into_iter()
+    .flatten()
+    .collect();
 
     if !geometry.objects.is_empty() {
       draft.inferred.push(LevelSceneInference::SectorShells);
@@ -370,7 +389,11 @@ impl LevelSceneDecompiler {
         geometry.census.collision_only_faces > 0,
         &[LevelSceneInference::CollisionObject],
       );
+      draft.infer_if(hom.is_some() || som.is_some(), &[LevelSceneInference::Occluders]);
       draft.add(geometry.scene_objects.to_scene_tool()?, &files, sources);
+    }
+
+    if !geometry.sectors.objects.is_empty() {
       draft.add(geometry.sectors.to_scene_tool()?, &files, sources);
     }
 

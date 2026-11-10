@@ -12,11 +12,12 @@ pub use crate::level::level_entity_conversion::{
 pub use crate::level::level_exported_file::{LevelExportedFile, LevelExportedPrevious};
 pub use crate::level::level_fog_volume_conversion::LevelFogVolumeConversion;
 pub use crate::level::level_geometry_conversion::{
-  LevelDecompiledObject, LevelGeometryCensus, LevelGeometryConversion, LevelGeometryDecompile,
+  LevelDecompiledObject, LevelGeometryCensus, LevelGeometryConversion, LevelGeometryDecompile, LevelGeometrySources,
 };
 pub use crate::level::level_glow_conversion::LevelGlowConversion;
 pub use crate::level::level_light_conversion::LevelLightConversion;
 pub use crate::level::level_object_names::LevelObjectNames;
+pub use crate::level::level_occluder_conversion::{LevelOccluderConversion, LevelSoundOccluderCensus};
 pub use crate::level::level_particle_conversion::LevelParticleConversion;
 pub use crate::level::level_scene_decompiler::{
   LevelDecompileOptions, LevelSceneDecompile, LevelSceneDecompiler, LevelSceneObjectFile,
