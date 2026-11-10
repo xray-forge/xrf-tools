@@ -31,26 +31,26 @@ impl<K: Copy + Eq + Hash, T> PipelineMap<K, T> {
   ///
   /// # Errors
   ///
-  /// Returns `make`'s error, nothing kept for `key`, and the same refusal at every ask after it until the cache changes.
+  /// Returns `make`'s refusal, nothing kept for `key`, and the same refusal word for word at every ask after it until
+  /// the cache changes, so a log that skips a repeated failure tells it once.
   pub fn prepare(&mut self, key: K, make: impl FnOnce(K) -> XrfResult<T>) -> XrfResult {
-    if let Some(refusal) = self.refused.get(&key) {
-      return Err(XrfError::new_unexpected_error(refusal.clone()));
-    }
-
-    if let Entry::Vacant(entry) = self.pipelines.entry(key) {
+    if let Entry::Vacant(entry) = self.pipelines.entry(key)
+      && !self.refused.contains_key(&key)
+    {
       match make(key) {
         Ok(pipelines) => {
           entry.insert(pipelines);
         }
         Err(error) => {
           self.refused.insert(key, error.to_string());
-
-          return Err(error);
         }
       }
     }
 
-    Ok(())
+    match self.refused.get(&key) {
+      Some(refusal) => Err(XrfError::new_unexpected_error(refusal.clone())),
+      None => Ok(()),
+    }
   }
 
   /// The pipelines made for `key`, none before `prepare` made them.
