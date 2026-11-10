@@ -37,6 +37,9 @@ impl GrassCards {
   pub(crate) const REFLECTION_MASK: u8 = 0x04;
   /// The share of their reach over which the cards fade out.
   const FADE_SHARE: f32 = 0.2;
+  /// Metres from the eye past which only a share of the tufts stand as cards (`CARD_THIN_FROM` in
+  /// `shaders/grass/card_thinning.wgsl`).
+  pub(crate) const THIN_FROM: f32 = 40.0;
 
   /// Cards holding `capacity` triangles at most, and the structure over them where the device traces rays.
   pub(crate) fn new(device: &wgpu::Device, capacity: u32) -> Self {
@@ -113,12 +116,13 @@ impl GrassCards {
     (reach, reach * Self::FADE_SHARE)
   }
 
-  /// Metres from the eye within which the traced cards stand every tuft whole for `settings`, short of their fade: where
-  /// a water's ray meets the grass as its cards, and past which it walks the grass's layers.
+  /// Metres from the eye within which the traced cards stand every tuft whole for `settings`, short of their fade and of
+  /// their thinning (`THIN_FROM`): where a water's ray meets the grass as its cards, and past which it walks the grass's
+  /// layers.
   pub(crate) fn get_whole_reach(settings: &RenderGrassSettings) -> f32 {
     let (reach, fade): (f32, f32) = Self::get_reach(settings, None);
 
-    reach - fade
+    (reach - fade).min(Self::THIN_FROM)
   }
 
   /// Slots each way from the eye's that `reach` spans: the eye stands up to half a slot off its slot's middle.
