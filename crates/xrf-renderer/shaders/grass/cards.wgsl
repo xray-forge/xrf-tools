@@ -111,7 +111,7 @@ fn cs_grass_cards(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_wor
   let kept_look: vec4<f32> = ring_tuft_look(ring, kept);
   let from_eye: f32 = distance(place.xyz, vec3<f32>(params.eye.x, params.eye.y, -params.eye.z));
   let shrink: f32 = card_share(from_eye);
-  let thinned: f32 = card_thinned(card_kept(from_eye), card_chance(place.xyz));
+  let thinned: f32 = card_thinned(card_kept(from_eye, params.card_thin_from), card_chance(place.xyz));
   let unflooded: f32 = puddle_kept(place.xyz, from_eye);
 
   if (kept_look.x <= 0.0 || shrink <= 0.0 || thinned <= 0.0 || unflooded <= 0.0) {

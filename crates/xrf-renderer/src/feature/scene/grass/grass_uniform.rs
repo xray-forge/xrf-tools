@@ -45,5 +45,7 @@ pub(crate) struct GrassUniform {
   pub card_reach: f32,
   pub card_fade: f32,
   pub card_slots: i32,
-  pub _pad: [u32; 2],
+  /// Metres from the eye past which only a share of the tufts stand as cards (`GrassCards::get_thin_from`).
+  pub card_thin_from: f32,
+  pub _pad: u32,
 }

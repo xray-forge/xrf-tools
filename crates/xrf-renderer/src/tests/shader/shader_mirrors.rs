@@ -16,7 +16,6 @@ use crate::feature::image::present::present_uniform::PresentUniform;
 use crate::feature::image::resolve::fsr::fsr_pass::FsrPass;
 use crate::feature::lighting::lights::lights_pass::LightsPass;
 use crate::feature::scene::calibration::calibration_uniform::CalibrationUniform;
-use crate::feature::scene::grass::cards::grass_cards::GrassCards;
 use crate::feature::scene::grass::grass_pass::GrassPass;
 use crate::feature::scene::pyramid::depth_pyramid_pass::DepthPyramidPass;
 use crate::feature::scene::statics::cull::static_cull_pass::StaticCullPass;
@@ -586,17 +585,6 @@ fn the_impostors_and_the_grass_write_the_material_slices_rust_gives_them() {
 
   assert!((impostor - material_slice(StaticSurfaceBuilder::IMPOSTOR_MATERIAL)).abs() < 1e-6);
   assert!((grass - material_slice(1.0)).abs() < 1e-6);
-}
-
-/// The grass's cards start thinning where Rust stops treating every traced tuft as whole.
-#[test]
-fn the_grass_cards_thin_from_where_rust_stops_their_whole_reach() {
-  let library: ShaderLibrary = ShaderLibrary::default();
-
-  assert_eq!(
-    get_float_constant(&library, "grass/card_thinning", "CARD_THIN_FROM"),
-    GrassCards::THIN_FROM
-  );
 }
 
 /// naga lays the camera and the page's backdrop out where the derive does, and takes each as a uniform.

@@ -37,9 +37,13 @@ impl GrassCards {
   pub(crate) const REFLECTION_MASK: u8 = 0x04;
   /// The share of their reach over which the cards fade out.
   const FADE_SHARE: f32 = 0.2;
-  /// Metres from the eye past which only a share of the tufts stand as cards (`CARD_THIN_FROM` in
-  /// `shaders/grass/card_thinning.wgsl`).
+  /// Metres from the eye past which only a share of the tufts stand as cards while they only cast the cascades'
+  /// shadows (`card_kept` in `shaders/grass/card_thinning.wgsl`): every far tuft drawn into four cascades a frame once
+  /// made 150 m of grass shadow cost three milliseconds.
   pub(crate) const THIN_FROM: f32 = 40.0;
+  /// A distance past any tuft the cards stand, from which traced cards would thin: finite, as the GPU divides through a
+  /// reciprocal that the largest float's flushes to nought.
+  const NEVER_THINNED: f32 = 1.0e6;
 
   /// Cards holding `capacity` triangles at most, and the structure over them where the device traces rays.
   pub(crate) fn new(device: &wgpu::Device, capacity: u32) -> Self {
@@ -116,13 +120,25 @@ impl GrassCards {
     (reach, reach * Self::FADE_SHARE)
   }
 
-  /// Metres from the eye within which the traced cards stand every tuft whole for `settings`, short of their fade and of
-  /// their thinning (`THIN_FROM`): where a water's ray meets the grass as its cards, and past which it walks the grass's
-  /// layers.
+  /// Metres from the eye within which the traced cards stand every tuft whole for `settings`, short of their fade, as
+  /// traced cards are never thinned (`get_thin_from`): where a water's ray meets the grass as its cards, and past which
+  /// it walks the grass's layers.
   pub(crate) fn get_whole_reach(settings: &RenderGrassSettings) -> f32 {
     let (reach, fade): (f32, f32) = Self::get_reach(settings, None);
 
-    (reach - fade).min(Self::THIN_FROM)
+    reach - fade
+  }
+
+  /// Metres from the eye past which only a share of the tufts stand as cards: `THIN_FROM` while they only cast the
+  /// cascades' shadows, where the far tufts' cost lay; past any tuft (`NEVER_THINNED`) while they are traced
+  /// (`is_traced`), so the water's rays and the traced sun meet every tuft whole and a reflection does not change its
+  /// look as the eye comes nearer.
+  pub(crate) fn get_thin_from(is_traced: bool) -> f32 {
+    if is_traced {
+      Self::NEVER_THINNED
+    } else {
+      Self::THIN_FROM
+    }
   }
 
   /// Slots each way from the eye's that `reach` spans: the eye stands up to half a slot off its slot's middle.
