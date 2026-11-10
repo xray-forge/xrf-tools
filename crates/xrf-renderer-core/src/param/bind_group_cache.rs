@@ -3,20 +3,28 @@ use std::sync::RwLock;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::param::bind_group_key::BindGroupKey;
-use crate::param::binding_key::BindingKey;
 use crate::param::pass_binding::PassBinding;
 use crate::param::pass_parameters::PassParameters;
 use crate::param::pass_resources::PassResources;
 
 /// The layouts of pass parameters, one per struct, and the bind groups made from them, kept across frames by the
 /// identity of what they bind: the same resources get the same bind group back, and one unused for longer than the
-/// cache's patience is dropped. Shared by the passes recording a frame, which find what they bind under a read lock.
+/// cache's patience is dropped. Shared by the passes recording a frame, which find what they bind under a read lock,
+/// by a hash of the bindings as they are, so a group found takes nothing from them (a bindless array's every view).
 pub struct BindGroupCache {
   layouts: RwLock<HashMap<&'static str, wgpu::BindGroupLayout>>,
-  /// Each group with the last frame that bound it, kept atomic so a found group is marked under the read lock.
-  groups: RwLock<HashMap<BindGroupKey, (wgpu::BindGroup, AtomicU64)>>,
+  /// The groups by the hash of what they bind (`BindGroupKey::hash_of`), those sharing one together.
+  groups: RwLock<HashMap<u64, Vec<CachedGroup>>>,
   frame: AtomicU64,
   max_idle_frames: u64,
+}
+
+/// A cached bind group, what it binds, and the last frame that bound it, kept atomic so a found group is marked under
+/// the read lock.
+struct CachedGroup {
+  key: BindGroupKey,
+  group: wgpu::BindGroup,
+  last_frame: AtomicU64,
 }
 
 impl Default for BindGroupCache {
@@ -44,7 +52,13 @@ impl BindGroupCache {
   }
 
   pub fn get_bind_group_count(&self) -> usize {
-    self.groups.read().expect("bind group cache lock").len()
+    self
+      .groups
+      .read()
+      .expect("bind group cache lock")
+      .values()
+      .map(Vec::len)
+      .sum()
   }
 
   /// The layout of `P`'s bind group, made once; a pipeline built for `P` takes this one, so its bind groups match.
@@ -71,34 +85,30 @@ impl BindGroupCache {
   ) -> wgpu::BindGroup {
     let layout: wgpu::BindGroupLayout = self.get_layout::<P>(device);
     let bindings: Vec<PassBinding<'r>> = parameters.list_bindings(resources);
-    let key: BindGroupKey = BindGroupKey {
-      layout: layout.clone(),
-      bindings: bindings
-        .iter()
-        .map(|binding| match binding {
-          PassBinding::Buffer(buffer) => BindingKey::Buffer((*buffer).clone(), None),
-          PassBinding::BufferRange { buffer, offset, size } => {
-            BindingKey::Buffer((*buffer).clone(), Some((*offset, *size)))
-          }
-          PassBinding::TextureView(view) => BindingKey::TextureView((*view).clone()),
-          PassBinding::TextureViewArray(views) => {
-            BindingKey::TextureViewArray(views.iter().map(|view| (*view).clone()).collect())
-          }
-          PassBinding::Sampler(sampler) => BindingKey::Sampler((*sampler).clone()),
-          PassBinding::AccelerationStructure(structure) => BindingKey::AccelerationStructure(structure.key),
-        })
-        .collect(),
-    };
+    let hash: u64 = BindGroupKey::hash_of(&layout, &bindings);
     let frame: u64 = self.frame.load(Ordering::Relaxed);
 
-    if let Some((group, last_frame)) = self.groups.read().expect("bind group cache lock").get(&key) {
-      last_frame.store(frame, Ordering::Relaxed);
+    if let Some(cached) = Self::find(
+      self.groups.read().expect("bind group cache lock").get(&hash),
+      &layout,
+      &bindings,
+    ) {
+      cached.last_frame.store(frame, Ordering::Relaxed);
 
-      return group.clone();
+      return cached.group.clone();
     }
 
     let mut groups = self.groups.write().expect("bind group cache lock");
-    let (group, last_frame) = groups.entry(key).or_insert_with(|| {
+    let bucket: &mut Vec<CachedGroup> = groups.entry(hash).or_default();
+
+    // Another recorder may have made it between the locks.
+    if let Some(cached) = bucket.iter_mut().find(|cached| cached.key.is_of(&layout, &bindings)) {
+      *cached.last_frame.get_mut() = frame;
+
+      return cached.group.clone();
+    }
+
+    let group: wgpu::BindGroup = {
       let entries: Vec<wgpu::BindGroupEntry<'_>> = bindings
         .iter()
         .zip(P::BINDINGS)
@@ -119,18 +129,29 @@ impl BindGroupCache {
         })
         .collect();
 
-      (
-        device.create_bind_group(&wgpu::BindGroupDescriptor {
-          label: Some(P::LAYOUT_KEY),
-          layout: &layout,
-          entries: &entries,
-        }),
-        AtomicU64::new(frame),
-      )
+      device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some(P::LAYOUT_KEY),
+        layout: &layout,
+        entries: &entries,
+      })
+    };
+
+    bucket.push(CachedGroup {
+      key: BindGroupKey::new(&layout, &bindings),
+      group: group.clone(),
+      last_frame: AtomicU64::new(frame),
     });
 
-    *last_frame.get_mut() = frame;
-    group.clone()
+    group
+  }
+
+  /// The group of a bucket that binds `bindings` by `layout`, if one does.
+  fn find<'a>(
+    bucket: Option<&'a Vec<CachedGroup>>,
+    layout: &wgpu::BindGroupLayout,
+    bindings: &[PassBinding<'_>],
+  ) -> Option<&'a CachedGroup> {
+    bucket?.iter().find(|cached| cached.key.is_of(layout, bindings))
   }
 
   /// Drops every bind group, and its hold on what it binds, keeping the layouts, for a renderer drawing no frames.
@@ -142,11 +163,16 @@ impl BindGroupCache {
   pub(crate) fn forget_unused(&self) {
     let frame: u64 = self.frame.load(Ordering::Relaxed);
 
-    self
-      .groups
-      .write()
-      .expect("bind group cache lock")
-      .retain(|_, (_, last_frame)| *last_frame.get_mut() == frame);
+    self.retain(|last_frame| last_frame == frame);
+  }
+
+  /// Keeps the groups whose last frame `is_kept` passes, and the buckets still holding one.
+  fn retain(&self, is_kept: impl Fn(u64) -> bool) {
+    self.groups.write().expect("bind group cache lock").retain(|_, bucket| {
+      bucket.retain_mut(|cached| is_kept(*cached.last_frame.get_mut()));
+
+      !bucket.is_empty()
+    });
   }
 
   /// Starts a frame: drops the bind groups the frames before it left unused for too long.
@@ -154,10 +180,6 @@ impl BindGroupCache {
     let frame: u64 = self.frame.fetch_add(1, Ordering::Relaxed) + 1;
     let patience: u64 = self.max_idle_frames;
 
-    self
-      .groups
-      .write()
-      .expect("bind group cache lock")
-      .retain(|_, (_, last_frame)| frame - *last_frame.get_mut() <= patience);
+    self.retain(|last_frame| frame - last_frame <= patience);
   }
 }
