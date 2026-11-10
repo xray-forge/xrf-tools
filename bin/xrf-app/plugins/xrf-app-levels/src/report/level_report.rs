@@ -263,11 +263,11 @@ impl LevelReport {
   }
 
   /// How many of the resolved configs' sections a level keeps, which is the ones its spawned objects name.
-  pub(crate) fn sections(source: &LevelSource, kept: usize, resolved: usize, started: Instant) {
+  pub(crate) fn sections(source: &LevelSource, kept: usize, resolved: usize, read_in: Duration) {
     log::info!(
       "Read the configs of {} in {}: kept {kept} of {resolved} sections",
       source.get_label(),
-      xrf_utils::format_duration(started.elapsed())
+      xrf_utils::format_duration(read_in)
     );
   }
 

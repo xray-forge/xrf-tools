@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use xrf_app_core::TauriResult;
 use xrf_app_core::session::{SessionPart, SessionParts, SessionSnapshot};
@@ -51,9 +51,8 @@ impl LevelSectionsPart {
     parts.with::<Self>(sections, inputs)
   }
 
-  /// The sections a level's spawned objects name and [`XrayReducedTextures::SECTION`], out of `system.ltx` with its
-  /// includes merged and every section's parents resolved, read through `search` with the dialect the level is opened
-  /// with.
+  /// The sections a level's spawned objects name and [`XrayReducedTextures::SECTION`], out of the configs
+  /// [`Self::resolve`] reads.
   ///
   /// # Errors
   ///
@@ -65,10 +64,37 @@ impl LevelSectionsPart {
     spawn: &LevelSpawn,
   ) -> TauriResult<Arc<Ltx>> {
     let started: Instant = Instant::now();
-    let resolved: Arc<LtxResolution> = configs
+    let resolved: Arc<LtxResolution> = Self::resolve(source, search, configs)?;
+
+    Ok(Self::keep(source, &resolved, started.elapsed(), spawn))
+  }
+
+  /// `system.ltx` with its includes merged and every section's parents resolved, read through `search` with the dialect
+  /// the level is opened with. It needs nothing of the spawn, so an open reads it beside the spawn: it is the longest
+  /// read of the open.
+  ///
+  /// # Errors
+  ///
+  /// Returns the reason the configs cannot be read.
+  pub(crate) fn resolve(
+    source: &LevelSource,
+    search: &XraySearch,
+    configs: &LevelConfigs,
+  ) -> TauriResult<Arc<LtxResolution>> {
+    configs
       .open(search)?
       .system_ltx()
-      .map_err(|error| format!("Failed to read 'system.ltx' for {}: {error}", source.get_label()))?;
+      .map_err(|error| format!("Failed to read 'system.ltx' for {}: {error}", source.get_label()))
+  }
+
+  /// The sections `spawn`'s objects name and [`XrayReducedTextures::SECTION`], out of the configs [`Self::resolve`]
+  /// read in `read_in`.
+  pub(crate) fn keep(
+    source: &LevelSource,
+    resolved: &LtxResolution,
+    read_in: Duration,
+    spawn: &LevelSpawn,
+  ) -> Arc<Ltx> {
     let names: BTreeSet<&str> = spawn
       .objects
       .iter()
@@ -89,9 +115,9 @@ impl LevelSectionsPart {
       }
     }
 
-    LevelReport::sections(source, kept.len(), resolved.ltx.len(), started);
+    LevelReport::sections(source, kept.len(), resolved.ltx.len(), read_in);
     LevelReport::missing_sections_named(source, &missing);
 
-    Ok(Arc::new(kept))
+    Arc::new(kept)
   }
 }
