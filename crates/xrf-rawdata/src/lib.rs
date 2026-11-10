@@ -5,6 +5,7 @@ pub(crate) mod object;
 pub(crate) mod provenance;
 
 pub use crate::level::level_collision_index::{LevelCollisionIndex, LevelCollisionLookup};
+pub use crate::level::level_decal_index::LevelDecalIndex;
 pub use crate::level::level_decompile_context::LevelDecompileContext;
 pub use crate::level::level_entity_conversion::{
   LevelEntityConversion, LevelEntityDecompile, LevelEntityExport, LevelEntitySources,

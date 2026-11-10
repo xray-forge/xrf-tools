@@ -122,6 +122,16 @@ impl LevelSceneSources {
     self.take(name).map(read).transpose()
   }
 
+  /// The file `name` read by `read` without handing it over, for a step that needs a file another step decompiles,
+  /// or none where the directory holds no such file or it was handed over already.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error as `read` does.
+  pub(crate) fn peek_read<F>(&self, name: &str, read: impl FnOnce(Vec<u8>) -> XrfResult<F>) -> XrfResult<Option<F>> {
+    self.files.get(name).cloned().map(read).transpose()
+  }
+
   /// The compiled bundle, read the first time it is asked for, or none where the directory holds no `level`.
   ///
   /// # Errors

@@ -372,6 +372,13 @@ mesh per sector they lie in (`collision_<N>`, which that sector names), dressed 
 sectors' decompiles into the one object. Over vanilla, 403,906 of 10,830,486 collision faces are collision-only and
 2,637,496 lie under trees alone.
 
+The Build adds every wall mark to the static faces too (`ESceneWallmarkTool::ExportStatic`, compiler shader
+`def_shaders\def_vertex_ghost_no_shadow`) beside writing `level.wallmarks`, so the compiled geometry holds each decal
+twice. With the wall marks, `LevelDecalIndex` drops a static triangle of a slot's texture whose centre lies within 1 cm
+of one of that slot's decal triangles: `wallmark.part` holds it, and a rebuild would otherwise draw it twice. Over
+vanilla every one of the 11,768 static triangles of a slot's texture lies so (6,601 exactly), and the census counts them
+as `decal_triangles`.
+
 `LevelOccluderConversion` gives `level.hom` back as `<name>_hom`, an ordinary object whose surfaces have the
 `materials\occ` game material, as GSC's `labx8` keeps its occluders, and `level.som` as `<name>_som`, flagged
 `eoSoundOccluder`, a surface per game material whose sound occlusion factor is a polygon's (the lowest number where
