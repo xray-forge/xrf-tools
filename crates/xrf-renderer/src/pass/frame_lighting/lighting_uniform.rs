@@ -304,4 +304,10 @@ impl LightingUniform {
   pub(crate) fn is_light_anchored(&self) -> bool {
     self.environment.w > 0.5
   }
+
+  /// Whether the sun has a colour: one of none (a weather's night between the sun and the moon) lights nothing, so
+  /// nothing of it is shadowed.
+  pub(crate) fn is_sunlit(&self) -> bool {
+    self.sun.truncate() != Vec3::ZERO
+  }
 }

@@ -142,7 +142,8 @@ impl SceneView {
     let is_scene_traced: bool = frame.passes.tracing.scene_trace.is_traced() && scene.trace.is_some();
     let is_traced: bool = options.is_light_traced() && is_scene_traced;
     // The sun's cascades shadow the frame where they are asked for and the sun is not traced in their place.
-    let is_sun_traced: bool = is_traced && SunTraceFeature::is_asked(options, self.shared.resolve);
+    let is_sun_traced: bool =
+      is_traced && SunTraceFeature::is_asked(options, &self.shared.lighting, self.shared.resolve);
     let is_cascaded: bool = options.features.shadows.get_cascade_count() > 0 && !is_sun_traced;
 
     let grass: GrassViewFrame<'_> = GrassViewFrame {
