@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use glam::Mat4;
 
 /// What a view's frame gives DLSS ray reconstruction to denoise and upscale: what super resolution takes, and the
@@ -38,6 +40,8 @@ pub struct DlssRayInputs<'a> {
   pub output: &'a wgpu::TextureView,
   /// Whether the frames before are forgotten: the first frame, or one after a cut.
   pub is_reset: bool,
+  /// The time since the frame before, which DLSS reads the motion's speed by when it weighs how much to denoise.
+  pub frame_time: Duration,
   /// The scale the frame's colour was written at, which DLSS divides out so a history kept at the last frame's scale
   /// still matches it; one for colour written as it is.
   pub pre_exposure: f32,

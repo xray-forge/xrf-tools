@@ -411,6 +411,7 @@ impl ResolveFeature {
     // FSR's sense of the jitter, which DLSS shares: a drawn texel `m` stands at `m + 0.5 - jitter`.
     let jitter: [f32; 2] = (-self.offset).to_array();
     let is_reset: bool = resolve.is_reset;
+    let frame_time: Duration = self.frame_time;
     let pre_exposure: f32 = self.pre_exposure.current;
 
     let mut pass = graph
@@ -462,6 +463,7 @@ impl ResolveFeature {
         render,
         output: context.get_texture(output).view,
         is_reset,
+        frame_time,
         pre_exposure,
       };
 

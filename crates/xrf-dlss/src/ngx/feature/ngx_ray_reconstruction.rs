@@ -180,6 +180,7 @@ impl NgxRayReconstruction {
     parameters.InMVScaleX = inputs.motion_scale[0];
     parameters.InMVScaleY = inputs.motion_scale[1];
     parameters.InToneMapperType = NVSDK_NGX_ToneMapperType_NVSDK_NGX_TONEMAPPER_STRING;
+    parameters.InFrameTimeDeltaInMsec = inputs.frame_time.as_secs_f32() * 1000.0;
     parameters.InPreExposure = inputs.pre_exposure;
     parameters.pInRoughness = ptr::null_mut();
 
@@ -236,6 +237,7 @@ impl NgxRayReconstruction {
       parameters.InMVScaleX = inputs.motion_scale[0];
       parameters.InMVScaleY = inputs.motion_scale[1];
       parameters.InToneMapperType = NVSDK_NGX_ToneMapperType_NVSDK_NGX_TONEMAPPER_STRING;
+      parameters.InFrameTimeDeltaInMsec = inputs.frame_time.as_secs_f32() * 1000.0;
       parameters.InPreExposure = inputs.pre_exposure;
 
       NGX_D3D12_EVALUATE_DLSSD_EXT(list, handle, sdk.parameters, &raw mut parameters)
