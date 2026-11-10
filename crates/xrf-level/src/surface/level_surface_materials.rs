@@ -23,9 +23,10 @@ pub struct LevelSurfaceMaterials {
 }
 
 impl LevelSurfaceMaterials {
-  /// How far above a triangle its ray starts, and half how far it reaches: a render face and the collision face made of
-  /// it coincide, so a few centimetres either side finds the one under it and nothing past it.
-  pub const RAY_LIFT: f32 = 0.05;
+  /// How far either side of a triangle along its normal the collision face it lies on is looked for: a render face and
+  /// the collision face made of it coincide but for xrLC's moves, so a few centimetres finds the one under it, the
+  /// nearest taken where others lie stacked close by.
+  pub const COLLISION_REACH: f32 = 0.05;
 
   /// Tallies every drawable visual of `level.geom` against the collision form `tracer` holds. Impostors are left out:
   /// a billboard standing for trees lies on nothing.
@@ -104,8 +105,9 @@ impl LevelSurfaceMaterials {
 
       let normal: Vector3d<f32> = &cross / length;
       let centre: Vector3d<f32> = &(&(&a + &b) + &c) / 3.0;
-      let origin: Vector3d<f32> = &centre + &(&normal * Self::RAY_LIFT);
-      let material: Option<u16> = tracer.get_nearest_material(&origin, &-&normal, Self::RAY_LIFT * 2.0);
+      let material: Option<u16> = tracer
+        .get_face_nearest_along(&centre, &normal, Self::COLLISION_REACH)
+        .map(|(_, material)| material);
 
       tally.add(f64::from(length) * 0.5, material);
     }

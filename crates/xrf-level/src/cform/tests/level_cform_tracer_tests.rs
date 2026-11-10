@@ -241,27 +241,26 @@ fn picks_no_back_face_and_nothing_past_the_range() -> XrfResult {
 }
 
 #[test]
-fn names_the_material_of_the_face_a_ray_meets_from_either_side() -> XrfResult {
+fn names_the_face_a_line_crosses_nearest_its_point_from_either_side() -> XrfResult {
   let mut faces: Vec<LevelCformFace> = vec![face([0, 2, 1]), face([0, 3, 2])];
 
   faces.iter_mut().for_each(|face| face.material = 9);
 
   let tracer: LevelCformTracer =
     LevelCformTracer::new(&LevelCformGeometry::new(floor(0.0)?.get_vertices().to_vec(), faces)?);
+  let material = |point: Vector3d, direction: Vector3d| {
+    tracer
+      .get_face_nearest_along(&point, &direction, 0.1)
+      .map(|(_, material)| material)
+  };
 
+  assert_eq!(material(Vector3d::new(1.0, 0.05, 1.0), up()), Some(9));
   assert_eq!(
-    tracer.get_nearest_material(&Vector3d::new(1.0, 0.1, 1.0), &down(), 0.2),
-    Some(9)
-  );
-  assert_eq!(
-    tracer.get_nearest_material(&Vector3d::new(1.0, -0.1, 1.0), &up(), 0.2),
+    material(Vector3d::new(1.0, -0.05, 1.0), down()),
     Some(9),
     "the floor's underside too"
   );
-  assert_eq!(
-    tracer.get_nearest_material(&Vector3d::new(1.0, 0.3, 1.0), &down(), 0.2),
-    None
-  );
+  assert_eq!(material(Vector3d::new(1.0, 0.3, 1.0), up()), None);
   assert_eq!(
     tracer
       .get_nearest_hit(&Vector3d::new(1.0, 2.0, 1.0), &down(), 5.0)
@@ -289,6 +288,34 @@ fn picks_the_nearer_of_two_floors() -> XrfResult {
     .expect("a hit on the upper floor");
 
   assert_eq!(hit.distance, 2.0);
+
+  Ok(())
+}
+
+/// A surface's collision face is the one nearest it along its normal, not the first a ray from above meets: a plate
+/// lying 3 cm over a floor does not take the floor's place.
+#[test]
+fn names_the_face_nearest_the_point_before_one_stacked_above_it() -> XrfResult {
+  let floor_vertices: Vec<Vector3d> = floor(-0.01)?.get_vertices().to_vec();
+  let plate_vertices: Vec<Vector3d> = floor(0.03)?.get_vertices().to_vec();
+  let mut faces: Vec<LevelCformFace> = vec![face([0, 2, 1]), face([0, 3, 2]), face([4, 6, 5]), face([4, 7, 6])];
+
+  faces[0].material = 9;
+  faces[1].material = 9;
+  faces[2].material = 4;
+  faces[3].material = 4;
+
+  let tracer: LevelCformTracer = LevelCformTracer::new(&LevelCformGeometry::new(
+    floor_vertices.into_iter().chain(plate_vertices).collect(),
+    faces,
+  )?);
+
+  assert_eq!(
+    tracer
+      .get_face_nearest_along(&Vector3d::new(1.0, 0.0, 1.0), &up(), 0.05)
+      .map(|(_, material)| material),
+    Some(9)
+  );
 
   Ok(())
 }
