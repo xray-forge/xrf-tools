@@ -26,7 +26,7 @@ impl LevelLightShadows {
     self.candidates.sort_by(|a, b| {
       (a.order.is_away, a.order.is_current)
         .cmp(&(b.order.is_away, b.order.is_current))
-        .then(a.order.by.total_cmp(&b.order.by))
+        .then(a.order.by.compare(b.order.by))
     });
     let mut queued: HashSet<FaceKey> = HashSet::new();
     let faces: Vec<FaceCandidate> = self

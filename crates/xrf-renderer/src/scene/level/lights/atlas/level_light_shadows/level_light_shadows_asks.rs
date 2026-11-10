@@ -15,6 +15,7 @@ use crate::scene::level::lights::atlas::level_light_shadows::{
   DEFAULT_NEAR, FaceCandidate, FaceKey, FaceOrder, FaceSet, GROW, LevelLightShadows, SHRINK, STALE_WAIT_MOST,
   SWAY_WAIT_MOST,
 };
+use crate::scene::level::lights::atlas::light_face_rank::LightFaceRank;
 use crate::scene::level::lights::atlas::light_shadow_ask::LightShadowAsk;
 use crate::scene::level::lights::atlas::light_shadow_entry::LightShadowEntry;
 use crate::scene::level::lights::atlas::light_shadow_face::LightShadowFace;
@@ -95,19 +96,34 @@ impl LevelLightShadows {
     Some(asked)
   }
 
-  /// Gives a light faces of the `asked` size: back at the size it shows while another was being drawn, the shown faces
-  /// stand and the other goes; at a size it neither shows nor draws, new faces replace those it draws.
+  /// Gives a light faces of the `asked` size: drawing them already, it keeps those; back at the size it shows while
+  /// another was being drawn, the shown faces stand and the other goes; at a size it neither shows nor draws, new faces
+  /// replace those it draws. Faces given smaller squares than their size, the atlas too full when they were made, take
+  /// larger ones in their place once room can be made (`grow_set`), so a light shrunk under pressure grows back.
   fn replace_set(&mut self, ask: &LightShadowAsk<'_>, asked: u32) {
     // Out of the map while the faces are made, which may evict another light's.
     let Some(mut entry) = self.entries.remove(&ask.handle) else {
       return;
     };
 
-    if entry.shown.as_ref().is_some_and(|set| set.size == asked) {
-      if let Some(next) = entry.next.take() {
+    if let Some(next) = entry.next.as_ref().filter(|set| set.size == asked) {
+      if next.is_shrunk()
+        && let Some(grown) = self.grow_set(ask, next)
+        && let Some(next) = entry.next.replace(grown)
+      {
         Self::release_set(&mut self.allocator, next);
       }
-    } else if entry.next.as_ref().is_none_or(|set| set.size != asked) {
+    } else if let Some(shown) = entry.shown.as_ref().filter(|set| set.size == asked) {
+      let grown: Option<LightShadowSet> = if shown.is_shrunk() {
+        self.grow_set(ask, shown)
+      } else {
+        None
+      };
+
+      if let Some(next) = std::mem::replace(&mut entry.next, grown) {
+        Self::release_set(&mut self.allocator, next);
+      }
+    } else {
       if let Some(next) = entry.next.take() {
         Self::release_set(&mut self.allocator, next);
       }
@@ -116,6 +132,14 @@ impl LevelLightShadows {
     }
 
     self.entries.insert(ask.handle, entry);
+  }
+
+  /// Faces at `shrunk`'s size, or at the largest square under it that is larger than its faces' squares, room made from
+  /// the lights out of view longest where a view sees it, as for new faces; none where no larger square fits yet.
+  fn grow_set(&mut self, ask: &LightShadowAsk<'_>, shrunk: &LightShadowSet) -> Option<LightShadowSet> {
+    let least: u32 = shrunk.faces.first().map_or(shrunk.size, |face| face.tile.size * 2);
+
+    self.create_set_within(ask, shrunk.size, least)
   }
 
   /// Puts forward the faces of a light wanting a draw: those holding nothing yet or changed under, those its light
@@ -203,7 +227,7 @@ impl LevelLightShadows {
             (true, SWAY_WAIT_MOST, SWAY_WAIT_MOST)
           };
 
-          let candidate = |is_current: bool, by: f32, wait_most: u32| FaceCandidate {
+          let candidate = |is_current: bool, by: LightFaceRank, wait_most: u32| FaceCandidate {
             order: FaceOrder {
               is_away,
               is_current,
@@ -215,15 +239,17 @@ impl LevelLightShadows {
 
           if state.drawn.is_none_or(|drawn| statics.is_changed_since(drawn, touches)) || state.casting != casting {
             state.drawn_static = None;
-            self.candidates.push(candidate(false, distance, stale_wait));
+            self
+              .candidates
+              .push(candidate(false, LightFaceRank::Distance(distance), stale_wait));
           } else if is_moved {
             self
               .candidates
-              .push(candidate(true, state.drawn_at.get_seconds() as f32, moved_wait));
+              .push(candidate(true, LightFaceRank::DrawnAt(state.drawn_at), moved_wait));
           } else if sway.is_redrawn(swaying, spread / state.tile.size as f32, state.drawn_at) {
             self
               .candidates
-              .push(candidate(true, state.drawn_at.get_seconds() as f32, SWAY_WAIT_MOST));
+              .push(candidate(true, LightFaceRank::DrawnAt(state.drawn_at), SWAY_WAIT_MOST));
           }
         }
       }
@@ -233,6 +259,12 @@ impl LevelLightShadows {
   /// The faces a light asks for (`ask`) at a size, room made from the lights out of view longest where a view sees it,
   /// and at smaller squares where there is still none.
   fn create_set(&mut self, ask: &LightShadowAsk<'_>, size: u32) -> Option<LightShadowSet> {
+    self.create_set_within(ask, size, LIGHT_SHADOW_MIN_SIZE)
+  }
+
+  /// The faces a light asks for (`ask`) at a size, room made from the lights out of view longest where a view sees it,
+  /// and at smaller squares where there is still none, none under `least`.
+  fn create_set_within(&mut self, ask: &LightShadowAsk<'_>, size: u32, least: u32) -> Option<LightShadowSet> {
     let LightShadowAsk {
       light,
       basis,
@@ -265,7 +297,7 @@ impl LevelLightShadows {
       }
 
       if !(may_evict && self.evict_oldest()) {
-        if side <= LIGHT_SHADOW_MIN_SIZE {
+        if side <= least {
           return None;
         }
 
