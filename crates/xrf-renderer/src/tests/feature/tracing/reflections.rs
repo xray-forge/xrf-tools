@@ -301,6 +301,32 @@ fn writes_the_settings_the_trace_reads() {
   );
 }
 
+// Each frame turns the pixels' noise however long the view has run: past 2²⁴ frames, under three days at 60 frames a
+// second, a frame's count times the R2 steps in `f32` holds no fraction, and every pixel would draw the same sample
+// each frame.
+#[test]
+fn turns_the_noise_each_frame_however_long_the_view_runs() {
+  let noise = |frame: u32| {
+    let uniform: ReflectionUniform = ReflectionUniform::new(
+      &enhanced(),
+      trace_of(enhanced()),
+      ReflectionTraceFrame {
+        frame,
+        ..ReflectionTraceFrame::default()
+      },
+    );
+
+    [uniform.noise_x, uniform.noise_y]
+  };
+
+  for frame in [1_000, 1 << 24, (1 << 24) + 1, u32::MAX] {
+    let [x, y] = noise(frame);
+
+    assert!((0.0..1.0).contains(&x) && (0.0..1.0).contains(&y), "{frame}: {x}, {y}");
+    assert_ne!(noise(frame), noise(frame.wrapping_add(1)), "{frame}");
+  }
+}
+
 // Taken raw under DLSS ray reconstruction, every pixel traces every frame at the frame's own size, whatever the size
 // and interval asked; the settings' steps and distance still hold.
 #[test]

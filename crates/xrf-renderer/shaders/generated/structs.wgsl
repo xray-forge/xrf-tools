@@ -426,6 +426,8 @@ struct Reflections {
   is_traced: f32,
   trace_turns: u32,
   trace_floor: f32,
+  noise_x: f32,
+  noise_y: f32,
 }
 
 struct TraceInstance {

@@ -3,6 +3,7 @@ use xrf_renderer_core::ShaderStruct;
 use crate::contract::feature::tracing::render_reflection_settings::RenderReflectionSettings;
 use crate::feature::tracing::reflections::trace::reflection_trace::ReflectionTrace;
 use crate::feature::tracing::reflections::trace::reflection_trace_frame::ReflectionTraceFrame;
+use crate::pass::view::noise_turn::NoiseTurn;
 
 /// What the reflections' trace and filters read, as `shaders/frame/reflections.wgsl` takes it.
 #[repr(C)]
@@ -11,7 +12,7 @@ use crate::feature::tracing::reflections::trace::reflection_trace_frame::Reflect
 pub(crate) struct ReflectionUniform {
   /// Cells of the depth pyramid a ray crosses at most.
   pub crossings: u32,
-  /// The frame's count, which turns each pixel's noise from one frame to the next.
+  /// The frame's count, which turns the pixels the trace takes and the texels they stand for.
   pub frame: u32,
   /// What scales how much of a surface's reflection a traced one replaces, and how much a puddle's coat reflects.
   pub intensity: f32,
@@ -30,6 +31,9 @@ pub(crate) struct ReflectionUniform {
   pub trace_turns: u32,
   /// The share of what it reflects a pixel's specular shows at most, below which it is not traced.
   pub trace_floor: f32,
+  /// What this frame turns each pixel's noise by, each way.
+  pub noise_x: f32,
+  pub noise_y: f32,
 }
 
 impl ReflectionUniform {
@@ -42,6 +46,8 @@ impl ReflectionUniform {
   /// carry and its scene to read, on a device that traces rays or not, over a level wet or dry. Raw, each pixel traces
   /// each frame.
   pub(crate) fn new(settings: &RenderReflectionSettings, trace: ReflectionTrace, frame: ReflectionTraceFrame) -> Self {
+    let [noise_x, noise_y] = NoiseTurn::get_r2(frame.frame, NoiseTurn::FRAMES);
+
     Self {
       crossings: settings.get_steps(),
       frame: frame.frame,
@@ -57,6 +63,8 @@ impl ReflectionUniform {
       } else {
         Self::DRY_TRACE_FLOOR
       },
+      noise_x,
+      noise_y,
     }
   }
 }

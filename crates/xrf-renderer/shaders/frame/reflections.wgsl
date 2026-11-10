@@ -274,7 +274,7 @@ fn pixel_numbers(pixel: vec2<f32>) -> vec2<f32> {
     textureLoad(blue_noise, (at + size / 2u) % size, 0).r,
   );
 
-  return fract(noise + f32(reflection.frame) * R2_STEPS);
+  return fract(noise + vec2<f32>(reflection.noise_x, reflection.noise_y));
 }
 
 // What a ray met lit as combine lights it this frame: `hmodel` over its G-buffer, its occlusion where it is searched.
