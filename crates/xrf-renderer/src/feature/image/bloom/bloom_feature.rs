@@ -1,6 +1,6 @@
 use xrf_engine_target::XrayEngine;
 use xrf_renderer_core::{
-  GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, PipelineSet, UniformBinding,
+  GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, PipelineAsk, UniformBinding,
 };
 
 use crate::contract::feature::image::bloom::render_bloom_mode::RenderBloomMode;
@@ -35,7 +35,7 @@ pub(crate) struct BloomFeature {
   /// What the enhanced bloom draws with, where it draws in the engine's place.
   enhanced: Option<RenderEnhancedBloomSettings>,
   /// The enhanced bloom's pipelines, one a stage, asked for once it draws.
-  pipelines: Option<PipelineSet<[wgpu::RenderPipeline; 5]>>,
+  pipelines: PipelineAsk<[wgpu::RenderPipeline; 5]>,
 }
 
 impl BloomFeature {
@@ -56,13 +56,14 @@ impl BloomFeature {
     if self.enhanced.is_some() {
       let pass: &EnhancedBloomPass = &passes.image.enhanced_bloom;
 
-      if let Err(error) = PipelineSet::ask(&mut self.pipelines, passes.pipelines.cache, || {
-        pass.get_pipelines(passes.pipelines)
-      }) {
+      if let Err(error) = self
+        .pipelines
+        .ask(passes.pipelines.cache, || pass.get_pipelines(passes.pipelines))
+      {
         log::error!("Enhanced bloom rejected, blooming with the last one: {error}");
       }
 
-      self.enhanced = self.enhanced.filter(|_| self.pipelines.is_some());
+      self.enhanced = self.enhanced.filter(|_| self.pipelines.get().is_some());
     }
 
     self.is_engine_shown = size.is_some() && bloom.is_enabled && self.enhanced.is_none();
@@ -144,7 +145,7 @@ impl BloomFeature {
     let frame: (u32, u32) = targets.size;
     let lighting: UniformBinding<LightingUniform> = lit.lighting;
     let settings: &RenderEnhancedBloomSettings = self.enhanced.as_ref()?;
-    let pipelines: &[wgpu::RenderPipeline; 5] = self.pipelines.as_deref()?;
+    let pipelines: &[wgpu::RenderPipeline; 5] = self.pipelines.get()?;
     let pass: &'a EnhancedBloomPass = &passes.image.enhanced_bloom;
     let empty: GraphTexture = bindings.import_view(
       &mut *graph,

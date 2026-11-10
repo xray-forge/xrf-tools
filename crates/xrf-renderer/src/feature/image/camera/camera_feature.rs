@@ -1,5 +1,5 @@
 use xrf_renderer_core::{
-  GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, PipelineSet, UniformBinding,
+  GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, PipelineAsk, UniformBinding,
 };
 
 use crate::camera::camera_view::CameraView;
@@ -24,8 +24,8 @@ use crate::pass::level_passes::LevelPasses;
 pub(crate) struct CameraFeature {
   /// What the camera draws this frame with, none where it draws nothing.
   frame: Option<CameraFrame>,
-  /// The stages' pipelines, asked for once it draws.
-  pipelines: Option<PipelineSet<[wgpu::RenderPipeline; CameraEffectsStage::COUNT]>>,
+  /// The stages' pipelines, asked for once it draws, made ahead as the renderer starts (`ImagePasses::new`).
+  pipelines: PipelineAsk<[wgpu::RenderPipeline; CameraEffectsStage::COUNT]>,
 }
 
 impl CameraFeature {
@@ -43,13 +43,14 @@ impl CameraFeature {
     if is_drawn {
       let pass: &CameraEffectsPass = &passes.image.camera_effects;
 
-      if let Err(error) = PipelineSet::ask(&mut self.pipelines, passes.pipelines.cache, || {
-        pass.get_pipelines(passes.pipelines)
-      }) {
+      if let Err(error) = self
+        .pipelines
+        .ask(passes.pipelines.cache, || pass.get_pipelines(passes.pipelines))
+      {
         log::error!("Camera effects rejected, showing with the last ones: {error}");
       }
 
-      self.frame = self.pipelines.as_ref().map(|_| CameraFrame {
+      self.frame = self.pipelines.get().map(|_| CameraFrame {
         settings: *settings,
         view: *view,
       });
@@ -71,7 +72,7 @@ impl CameraFeature {
     }: ImageChain,
   ) -> Option<GraphTexture> {
     let CameraFrame { settings, view } = self.frame.as_ref()?;
-    let pipelines: &[wgpu::RenderPipeline; CameraEffectsStage::COUNT] = self.pipelines.as_deref()?;
+    let pipelines: &[wgpu::RenderPipeline; CameraEffectsStage::COUNT] = self.pipelines.get()?;
     let uniform: CameraEffectsUniform = CameraEffectsUniform::new(settings, view, (handles.size, size));
 
     // A switch on that draws nothing, the depth of field through a lens of parallel rays, leaves the image as it is.

@@ -33,7 +33,8 @@ pub(crate) struct ImagePasses {
 
 impl ImagePasses {
   /// Builds every pass at once, each on a thread of its own; the enhanced bloom and the camera's effects make their
-  /// pipelines on demand.
+  /// pipelines on demand, the camera's made ahead here too, beside the others, so the first frame an effect is turned
+  /// on does not compile them on the render thread.
   ///
   /// # Errors
   ///
@@ -56,6 +57,13 @@ impl ImagePasses {
       let upscale = threads.spawn(move || UpscalePass::new(source));
       let exposure = threads.spawn(move || ExposurePass::new(source));
       let meter = threads.spawn(move || MeterPass::new(source, view));
+      let camera_effects = threads.spawn(move || -> XrfResult<CameraEffectsPass> {
+        let pass: CameraEffectsPass = CameraEffectsPass::new(source.device);
+
+        source.warm(&pass.describe_pipelines())?;
+
+        Ok(pass)
+      });
 
       Ok(Self {
         bloom: PassBuild::join(bloom)?,
@@ -67,7 +75,7 @@ impl ImagePasses {
         temporal: PassBuild::join(temporal)?,
         fsr: PassBuild::join(fsr)?,
         upscale: PassBuild::join(upscale)?,
-        camera_effects: CameraEffectsPass::new(source.device),
+        camera_effects: PassBuild::join(camera_effects)?,
         exposure: PassBuild::join(exposure)?,
         meter: PassBuild::join(meter)?,
       })
