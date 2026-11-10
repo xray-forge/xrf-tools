@@ -1,4 +1,5 @@
 pub(crate) mod level_collision_index;
+pub(crate) mod level_decal_index;
 pub(crate) mod level_decompile_context;
 pub(crate) mod level_entity_conversion;
 pub(crate) mod level_exported_file;

@@ -5,7 +5,7 @@ use xrf_gamemtl::{GameMtlFile, GameMtlMaterial};
 use xrf_level::{
   LevelCformFace, LevelCformGeometry, LevelFile, LevelGeomFile, LevelGeomSource, LevelHeaderChunk, LevelPortal,
   LevelPortalsChunk, LevelSector, LevelSectorsChunk, LevelShaderEntry, LevelShaderReference, LevelShadersChunk,
-  LevelVisual, LevelVisualsChunk,
+  LevelVisual, LevelVisualsChunk, LevelWallmark, LevelWallmarkSlot, LevelWallmarkVertex, LevelWallmarksFile,
 };
 use xrf_math::{Aabb, Sphere, Vector3d};
 use xrf_ogf::{OgfGeometryContainerChunk, OgfHeaderChunk};
@@ -13,9 +13,9 @@ use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 
 use crate::level::tests::GUID;
 use crate::{
-  LevelCollisionIndex, LevelCompilerShaderReason, LevelDecompileContext, LevelGeometryCensus, LevelGeometryConversion,
-  LevelGeometryDecompile, LevelGeometrySources, LevelShaderPairings, LevelSurfaceCensus, LevelSurfaceInference,
-  SurfaceDress,
+  LevelCollisionIndex, LevelCompilerShaderReason, LevelDecalIndex, LevelDecompileContext, LevelGeometryCensus,
+  LevelGeometryConversion, LevelGeometryDecompile, LevelGeometrySources, LevelShaderPairings, LevelSurfaceCensus,
+  LevelSurfaceInference, SurfaceDress,
 };
 
 /// A square of render geometry two metres across on the ground, centred on `x`.
@@ -183,6 +183,7 @@ fn decompile_with(
       collision,
       hom: None,
       som: None,
+      decals: None,
     },
     inference,
     &mut LevelDecompileContext::new(GUID),
@@ -491,6 +492,57 @@ fn gathers_collision_no_render_triangle_draws_into_its_own_object_by_sector() ->
       .objects
       .iter()
       .any(|placed| placed.reference == collision.reference)
+  );
+
+  Ok(())
+}
+
+#[test]
+fn drops_the_static_copies_of_wall_marks() -> XrfResult {
+  let corner = |[x, y, z]: [f32; 3]| LevelWallmarkVertex {
+    position: Vector3d::new(x, y, z),
+    color: 0,
+    u: 0.0,
+    v: 0.0,
+  };
+  let east: [[f32; 3]; 4] = square(4.0);
+  // The Build adds each decal to the static faces too: here one triangle of the east square, a slot of its texture.
+  let wallmarks: LevelWallmarksFile = LevelWallmarksFile {
+    slots: vec![LevelWallmarkSlot {
+      shader: String::from("default"),
+      texture: String::from("floor\\floor_tile"),
+      marks: vec![LevelWallmark {
+        center: Vector3d::new(4.0, 0.0, 0.0),
+        radius: 1.5,
+        vertices: vec![corner(east[0]), corner(east[1]), corner(east[2])],
+      }],
+    }],
+  };
+  let decompiled: LevelGeometryDecompile = LevelGeometryConversion::decompile::<XRayByteOrder, _>(
+    LevelGeometrySources {
+      name: "test",
+      level: &level((0, 1)),
+      visuals: &LevelVisualsChunk {
+        visuals: vec![drawable(0), drawable(1), hierarchy(vec![0])],
+      },
+      geom: &geometry(&[square(-4.0), east])?,
+      collision: None,
+      hom: None,
+      som: None,
+      decals: Some(&LevelDecalIndex::new(&wallmarks)),
+    },
+    None,
+    &mut LevelDecompileContext::new(GUID),
+  )?;
+
+  assert_eq!(
+    (
+      decompiled.census.static_triangles,
+      decompiled.census.faces,
+      decompiled.census.decal_triangles
+    ),
+    (4, 3, 1),
+    "the decal's copy is counted, not written"
   );
 
   Ok(())

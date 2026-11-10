@@ -16,6 +16,7 @@ use xrf_level::{
 use xrf_math::{Matrix4x4, Vector3d};
 
 use crate::level::level_collision_index::LevelCollisionIndex;
+use crate::level::level_decal_index::LevelDecalIndex;
 use crate::level::level_decompile_context::LevelDecompileContext;
 use crate::level::level_occluder_conversion::LevelOccluderConversion;
 use crate::level::level_surface_inference::LevelSurfaceInference;
@@ -45,6 +46,8 @@ pub struct LevelGeometrySources<'a, D: ChunkDataSource> {
   pub collision: Option<&'a mut LevelCollisionIndex>,
   pub hom: Option<&'a LevelHomFile>,
   pub som: Option<&'a LevelSomFile>,
+  /// The wall marks, whose copies in the static geometry are dropped, since the scene's `wallmark.part` holds them.
+  pub decals: Option<&'a LevelDecalIndex>,
 }
 
 /// One object the decompile writes, by the path the scene references it at.
@@ -76,6 +79,8 @@ pub struct LevelGeometryCensus {
   pub tree_triangles: usize,
   /// Impostors standing for trees afar, which the build makes again from the trees.
   pub impostors: usize,
+  /// Static triangles dropped as copies of wall marks ([`LevelDecalIndex`]), counted in the static triangles read.
+  pub decal_triangles: usize,
   /// Sectors drawing no static geometry, such as one of trees alone, which no shell stands for.
   pub empty_sectors: usize,
   /// Faces of the collision form, where the level's directory held one.
@@ -130,6 +135,8 @@ struct SectorGeometry {
   geometry: Vec<LevelVisualGeometry>,
   tree_triangles: usize,
   impostors: usize,
+  /// Static triangles dropped as copies of wall marks.
+  decal_triangles: usize,
 }
 
 impl LevelGeometryConversion {
@@ -229,7 +236,13 @@ impl LevelGeometryConversion {
     mut surfaces: Option<&mut LevelSurfaceInference>,
     context: &mut LevelDecompileContext,
   ) -> XrfResult<Vec<String>> {
-    let (name, level, visuals, source) = (sources.name, sources.level, sources.visuals, sources.geom);
+    let (name, level, visuals, source, decals) = (
+      sources.name,
+      sources.level,
+      sources.visuals,
+      sources.geom,
+      sources.decals,
+    );
     let mut collision: Option<&mut LevelCollisionIndex> = sources.collision.as_deref_mut();
     let shaders: &LevelShadersChunk = level
       .shaders
@@ -241,6 +254,10 @@ impl LevelGeometryConversion {
       .map(|sector| {
         let mut read: SectorGeometry =
           Self::read_sector::<T, D>(visuals, sector.root, shaders, source, collision.as_deref_mut())?;
+
+        if let Some(decals) = decals {
+          read.decal_triangles = Self::drop_decals(&mut read.geometry, decals);
+        }
 
         match (collision.as_deref_mut(), surfaces.as_deref_mut()) {
           (Some(collision), Some(surfaces)) => {
@@ -275,7 +292,8 @@ impl LevelGeometryConversion {
       let triangles: usize = read.geometry.iter().map(|it| it.indices.len() / 3).sum();
       let census: &mut LevelGeometryCensus = &mut decompile.census;
 
-      census.static_triangles += triangles;
+      census.static_triangles += triangles + read.decal_triangles;
+      census.decal_triangles += read.decal_triangles;
       census.tree_triangles += read.tree_triangles;
       census.impostors += read.impostors;
 
@@ -378,6 +396,7 @@ impl LevelGeometryConversion {
       geometry: Vec::new(),
       tree_triangles: 0,
       impostors: 0,
+      decal_triangles: 0,
     };
 
     if let Some(unknown) = composition.unknown.first() {
@@ -418,20 +437,49 @@ impl LevelGeometryConversion {
     Ok(read)
   }
 
+  /// Drops from each of `geometry`'s visuals the triangles that copy a wall mark, and returns how many.
+  fn drop_decals(geometry: &mut Vec<LevelVisualGeometry>, decals: &LevelDecalIndex) -> usize {
+    let mut dropped: usize = 0;
+
+    for visual in geometry
+      .iter_mut()
+      .filter(|visual| decals.is_decal_texture(&visual.texture))
+    {
+      let kept: Vec<u16> = Self::list_indexed_triangles(visual)
+        .filter(|(_, points)| !decals.holds(&visual.texture, points))
+        .flat_map(|(triangle, _)| triangle)
+        .collect();
+
+      dropped += (visual.indices.len() - kept.len()) / 3;
+      visual.indices = kept;
+    }
+
+    geometry.retain(|visual| !visual.indices.is_empty());
+
+    dropped
+  }
+
+  /// Each triangle of `visual` by its indices and its points, an index past its vertices left out.
+  fn list_indexed_triangles(visual: &LevelVisualGeometry) -> impl Iterator<Item = ([u16; 3], [Vector3d; 3])> + '_ {
+    visual.indices.as_chunks::<3>().0.iter().filter_map(|triangle| {
+      let point = |index: u16| -> Option<Vector3d> { Some(visual.vertices.get(usize::from(index))?.position) };
+
+      Some((
+        *triangle,
+        [point(triangle[0])?, point(triangle[1])?, point(triangle[2])?],
+      ))
+    })
+  }
+
   /// The triangles of `geometry`, placed in the level by `placement` where it stands in a space of its own; an index
   /// past its vertices is left out, as the decompile refuses it on its own.
   fn list_triangles<'a>(
     geometry: &'a LevelVisualGeometry,
     placement: Option<&'a Matrix4x4>,
   ) -> impl Iterator<Item = [Vector3d; 3]> + 'a {
-    geometry.indices.as_chunks::<3>().0.iter().filter_map(move |triangle| {
-      let point = |index: &u16| -> Option<Vector3d> {
-        let position: &Vector3d = &geometry.vertices.get(usize::from(*index))?.position;
-
-        Some(placement.map_or(*position, |matrix| matrix.transform_point(position)))
-      };
-
-      Some([point(&triangle[0])?, point(&triangle[1])?, point(&triangle[2])?])
+    Self::list_indexed_triangles(geometry).map(move |(_, points)| match placement {
+      Some(matrix) => points.map(|point| matrix.transform_point(&point)),
+      None => points,
     })
   }
 

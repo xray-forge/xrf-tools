@@ -3,11 +3,14 @@ use std::path::PathBuf;
 use byteorder::ByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_gamemtl::GameMtlFile;
-use xrf_level::{LevelCformFile, LevelFile, LevelGeomFile, LevelGeomSource, LevelHomFile, LevelSomFile};
+use xrf_level::{
+  LevelCformFile, LevelFile, LevelGeomFile, LevelGeomSource, LevelHomFile, LevelSomFile, LevelWallmarksFile,
+};
 use xrf_shaders::ShaderCompilerFile;
 use xrf_utils::format_path;
 
 use crate::level::level_collision_index::LevelCollisionIndex;
+use crate::level::level_decal_index::LevelDecalIndex;
 use crate::level::level_geometry_conversion::{LevelGeometryConversion, LevelGeometryDecompile, LevelGeometrySources};
 use crate::level::level_surface_inference::{LevelShaderPairings, LevelSurfaceInference, LevelSurfaces};
 use crate::level::scene::level_decompile_options::LevelDecompileOptions;
@@ -31,6 +34,7 @@ impl LevelSceneStep for LevelGeometryStep {
     LevelCformFile::FILE_NAME,
     LevelHomFile::FILE_NAME,
     LevelSomFile::FILE_NAME,
+    LevelWallmarksFile::FILE_NAME,
   ];
 
   fn decompile<T: ByteOrder>(
@@ -52,6 +56,10 @@ impl LevelSceneStep for LevelGeometryStep {
     })?;
     let hom: Option<LevelHomFile> = sources.take_read(LevelHomFile::FILE_NAME, LevelHomFile::read_from_bytes::<T>)?;
     let som: Option<LevelSomFile> = sources.take_read(LevelSomFile::FILE_NAME, LevelSomFile::read_from_bytes::<T>)?;
+    // Read, not taken: the companion step decompiles the wall marks into their part.
+    let decals: Option<LevelDecalIndex> = sources
+      .peek_read(LevelWallmarksFile::FILE_NAME, LevelWallmarksFile::read_from_bytes::<T>)?
+      .map(|wallmarks| LevelDecalIndex::new(&wallmarks));
     let mut surfaces: Option<(LevelSurfaceInference, LevelSceneSurfaceLibraries)> = match (options.surfaces, &collision)
     {
       (LevelSurfaces::Infer, Some(_)) => Some(Self::read_surface_inference::<T>(options)?),
@@ -66,6 +74,7 @@ impl LevelSceneStep for LevelGeometryStep {
         collision: collision.as_mut(),
         hom: hom.as_ref(),
         som: som.as_ref(),
+        decals: decals.as_ref(),
       },
       surfaces.as_mut().map(|(inference, _)| inference),
       &mut draft.context,
