@@ -2,15 +2,18 @@ use crate::frame::targets::view_targets::ViewTargets;
 
 /// The surroundings cube's faces as last drawn: each face's G-buffer kept at the size it is drawn at, so a face whose
 /// geometry still stands is lit again from it rather than culled and drawn again; and a spare, which a face drawn
-/// again band by band is drawn into before it takes the face's place.
+/// again band by band is drawn into before it takes the face's place. Each target is one array of layers, a face's or
+/// the spare's a layer of it, which the frame graph imports whole: a draw attaches its layer and the resolve reads it
+/// at its index. A view of one layer imported on its own is declared as the array behind it, and a draw into it
+/// attaches the array's first layer whatever layer the view shows.
 pub(crate) struct SurroundingsFaces {
   /// Texels a side each face is drawn at.
   pub drawn: u32,
-  /// Every layer's albedo, normal, material and depth, in the order `SurroundingsFaces::FORMATS` names them.
-  layers: [[wgpu::TextureView; 4]; Self::LAYERS],
+  /// The albedo, normal, material and depth arrays, in the order `SurroundingsFaces::FORMATS` names them, viewed whole.
+  arrays: [wgpu::TextureView; 4],
   /// The layer each face keeps, and the spare.
-  slots: [usize; 6],
-  spare: usize,
+  slots: [u32; 6],
+  spare: u32,
 }
 
 impl SurroundingsFaces {
@@ -22,52 +25,51 @@ impl SurroundingsFaces {
     ("surroundings depth", ViewTargets::DEPTH),
   ];
   /// Layers kept: a face each, and the spare.
-  const LAYERS: usize = 7;
+  const LAYERS: u32 = 7;
 
   pub(crate) fn new(device: &wgpu::Device, drawn: u32) -> Self {
-    let textures: [wgpu::Texture; 4] = Self::FORMATS.map(|(label, format)| {
-      device.create_texture(&wgpu::TextureDescriptor {
-        label: Some(label),
-        size: wgpu::Extent3d {
-          width: drawn,
-          height: drawn,
-          depth_or_array_layers: Self::LAYERS as u32,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
-        view_formats: &[],
-      })
-    });
-
     Self {
       drawn,
-      layers: std::array::from_fn(|layer| {
-        std::array::from_fn(|target| {
-          textures[target].create_view(&wgpu::TextureViewDescriptor {
-            label: Some(Self::FORMATS[target].0),
-            dimension: Some(wgpu::TextureViewDimension::D2),
-            base_array_layer: layer as u32,
-            array_layer_count: Some(1),
+      arrays: Self::FORMATS.map(|(label, format)| {
+        device
+          .create_texture(&wgpu::TextureDescriptor {
+            label: Some(label),
+            size: wgpu::Extent3d {
+              width: drawn,
+              height: drawn,
+              depth_or_array_layers: Self::LAYERS,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+          })
+          .create_view(&wgpu::TextureViewDescriptor {
+            label: Some(label),
+            dimension: Some(wgpu::TextureViewDimension::D2Array),
             ..Default::default()
           })
-        })
       }),
-      slots: std::array::from_fn(|face| face),
+      slots: std::array::from_fn(|face| face as u32),
       spare: 6,
     }
   }
 
-  /// The G-buffer a face keeps.
-  pub(crate) fn get_face(&self, face: u32) -> &[wgpu::TextureView; 4] {
-    &self.layers[self.slots[face as usize]]
+  /// The albedo, normal, material and depth arrays, viewed whole.
+  pub(crate) fn get_arrays(&self) -> &[wgpu::TextureView; 4] {
+    &self.arrays
   }
 
-  /// The G-buffer a face drawn again band by band is drawn into.
-  pub(crate) fn get_spare(&self) -> &[wgpu::TextureView; 4] {
-    &self.layers[self.spare]
+  /// The layer of the arrays a face keeps its G-buffer in.
+  pub(crate) fn get_face_layer(&self, face: u32) -> u32 {
+    self.slots[face as usize]
+  }
+
+  /// The layer a face drawn again band by band is drawn into.
+  pub(crate) fn get_spare_layer(&self) -> u32 {
+    self.spare
   }
 
   /// Lets the spare, drawn whole, take a face's place, the face's old layer the spare.

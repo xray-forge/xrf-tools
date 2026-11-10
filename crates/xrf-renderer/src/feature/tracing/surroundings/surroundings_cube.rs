@@ -482,16 +482,26 @@ impl SurroundingsCube {
     let ViewRecord { passes, lit, .. } = record;
     let size: u32 = self.size;
     let drawn: u32 = kept.drawn;
-    if let Some(band) = self.band_due {
-      let targets: [GraphTexture; 4] =
-        Self::import_layer(GraphDeclaration::new(graph, bindings, runtime), kept.get_spare());
 
+    if self.band_due.is_none() && !self.is_due {
+      return;
+    }
+
+    let targets: [GraphTexture; 4] = std::array::from_fn(|target| {
+      bindings.import_view(
+        &mut *graph,
+        SurroundingsFaces::FORMATS[target].0,
+        &kept.get_arrays()[target],
+      )
+    });
+
+    if let Some(band) = self.band_due {
       self.add_draw_passes(
         GraphDeclaration::new(graph, bindings, runtime),
         record,
         &self.band,
         &BAND_PASSES,
-        Some(band),
+        (Some(band), kept.get_spare_layer()),
         targets,
       );
     }
@@ -500,10 +510,7 @@ impl SurroundingsCube {
       return;
     }
 
-    let [albedo, normal, material, depth]: [GraphTexture; 4] = Self::import_layer(
-      GraphDeclaration::new(graph, bindings, runtime),
-      kept.get_face(self.face),
-    );
+    let layer: u32 = kept.get_face_layer(self.face);
 
     if self.is_redrawn {
       self.add_draw_passes(
@@ -511,13 +518,14 @@ impl SurroundingsCube {
         record,
         &self.cut,
         &DRAW_PASSES,
-        None,
-        [albedo, normal, material, depth],
+        (None, layer),
+        targets,
       );
     }
 
+    let [albedo, normal, material, depth]: [GraphTexture; 4] = targets;
     let settings: UniformBinding<SurroundingsUniform> =
-      runtime.push_uniform(&SurroundingsUniform::new(self.to_sun, self.face, (size, drawn)));
+      runtime.push_uniform(&SurroundingsUniform::new(self.to_sun, (self.face, layer), (size, drawn)));
     let parameters: SurroundingsParameters<'_> = SurroundingsParameters {
       depth_target: depth,
       albedo_target: albedo,
@@ -550,8 +558,9 @@ impl SurroundingsCube {
       });
   }
 
-  /// Declares a cull by `cut` and its draw into a G-buffer, `targets` its albedo, normal, material and depth, under the
-  /// cull's and draw's pass `names`: the whole face, cleared, or `band` of it, the first band clearing the rest.
+  /// Declares a cull by `cut` and its draw into `layer` of the faces' G-buffer arrays, `targets` their albedo, normal,
+  /// material and depth, under the cull's and draw's pass `names`: the whole face, cleared, or `band` of it, the first
+  /// band clearing the rest.
   fn add_draw_passes<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
@@ -564,7 +573,7 @@ impl SurroundingsCube {
     }: ViewRecord<'a>,
     cut: &'a ShadowCut,
     names: &'static [&'static str],
-    band: Option<u32>,
+    (band, layer): (Option<u32>, u32),
     [albedo, normal, material, depth]: [GraphTexture; 4],
   ) {
     let scene: &StaticSceneHandles = &statics;
@@ -611,7 +620,7 @@ impl SurroundingsCube {
     let builder = [albedo, normal, material]
       .into_iter()
       .fold(graph.add_raster_pass(draw_pass), |builder, texture| {
-        builder.color(GraphColorAttachment::new(texture, color_load))
+        builder.color(GraphColorAttachment::new(texture, color_load).with_array_layer(layer))
       })
       .color(GraphColorAttachment::new(
         motion,
@@ -621,7 +630,7 @@ impl SurroundingsCube {
         relief,
         wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
       ))
-      .depth(GraphDepthAttachment::new(depth, depth_load))
+      .depth(GraphDepthAttachment::new(depth, depth_load).with_array_layer(layer))
       .buffer(args, GraphBufferAccess::Indirect);
 
     StaticDraws::declare_layouts(builder, &layouts).record(move |context| {
@@ -642,16 +651,6 @@ impl SurroundingsCube {
         );
       }
     });
-  }
-
-  /// A layer of the faces' G-buffers as the frame's graph knows it: its albedo, normal, material and depth.
-  fn import_layer<'a>(
-    GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
-    layer: &'a [wgpu::TextureView; 4],
-  ) -> [GraphTexture; 4] {
-    std::array::from_fn(|target| {
-      bindings.import_view(&mut *graph, SurroundingsFaces::FORMATS[target].0, &layer[target])
-    })
   }
 }
 
