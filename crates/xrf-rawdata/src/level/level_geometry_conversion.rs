@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::ChunkDataSource;
@@ -8,13 +10,15 @@ use xrf_editable_level::{
 use xrf_editable_object::{EditableMesh, EditableObjectFile};
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{
-  LevelFile, LevelGeomSource, LevelSectorComposition, LevelShadersChunk, LevelVisual, LevelVisualsChunk,
+  LevelFile, LevelGeomSource, LevelSectorComposition, LevelShadersChunk, LevelVertex, LevelVisual, LevelVisualsChunk,
 };
-use xrf_math::Vector3d;
+use xrf_math::{Matrix4x4, Vector2d, Vector3d};
 
+use crate::level::level_collision_index::LevelCollisionIndex;
 use crate::level::level_decompile_context::LevelDecompileContext;
 use crate::level::level_surface_inference::LevelSurfaceInference;
 use crate::level::level_visual_geometry::LevelVisualGeometry;
+use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 use crate::object::decompile::object_decompile::ObjectDecompile;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
 use crate::provenance::level_scene_provenance::LevelSceneRefusal;
@@ -53,6 +57,12 @@ pub struct LevelGeometryCensus {
   pub impostors: usize,
   /// Sectors drawing no static geometry, such as one of trees alone, which no shell stands for.
   pub empty_sectors: usize,
+  /// Faces of the collision form, where the level's directory held one.
+  pub collision_faces: usize,
+  /// Collision faces only a tree's triangles lie on: trunks, which come back with their trees.
+  pub tree_collision_faces: usize,
+  /// Collision faces no render triangle lies on, which the collision object holds.
+  pub collision_only_faces: usize,
 }
 
 /// A level's geometry decompiled: the objects to write, and the parts placing them and culling them.
@@ -68,6 +78,13 @@ pub struct LevelGeometryDecompile {
   pub refused: Vec<LevelSceneRefusal>,
 }
 
+/// One mesh of the collision object: the sector its faces lie in, which names it, and how many faces it holds.
+struct CollisionMesh {
+  sector: u16,
+  name: String,
+  faces: usize,
+}
+
 /// One sector's static geometry read, and what it left out.
 struct SectorGeometry {
   geometry: Vec<LevelVisualGeometry>,
@@ -79,6 +96,15 @@ impl LevelGeometryConversion {
   /// A new sector's colour, white and clear (`CSector::Construct`, `sector.cpp:55`), which the compiled level does not
   /// keep.
   pub const SECTOR_COLOR: [u8; 4] = [255, 255, 255, 0];
+
+  /// How GSC dressed the collision-only props of its own scenes (`prop\prop_fake_kollision` in the SDK's objects), which
+  /// the collision object takes: the build reads only the compiler shader, of collision and no rendering.
+  pub const COLLISION_TEXTURE: &'static str = "prop\\prop_fake_kollision";
+  pub const COLLISION_ENGINE_SHADER: &'static str = "def_shaders\\def_trans_v";
+  pub const COLLISION_COMPILER_SHADER: &'static str = "def_shaders\\def_kolizion_vertex";
+
+  /// What the collision object's meshes are named before their sector, `collision_<sector>`.
+  const COLLISION_MESH_PREFIX: &'static str = "collision";
 
   /// What names the scene's sectors and portals, as the editor names new ones.
   const SECTOR_PREFIX: &'static str = "sector";
@@ -104,6 +130,7 @@ impl LevelGeometryConversion {
     level: &LevelFile,
     visuals: &LevelVisualsChunk,
     source: &LevelGeomSource<D>,
+    mut collision: Option<&mut LevelCollisionIndex>,
     mut surfaces: Option<&mut LevelSurfaceInference>,
     context: &mut LevelDecompileContext,
   ) -> XrfResult<LevelGeometryDecompile> {
@@ -115,13 +142,24 @@ impl LevelGeometryConversion {
       .get_sectors()
       .iter()
       .map(|sector| {
-        let mut read: SectorGeometry = Self::read_sector::<T, D>(visuals, sector.root, shaders, source)?;
+        let mut read: SectorGeometry =
+          Self::read_sector::<T, D>(visuals, sector.root, shaders, source, collision.as_deref_mut())?;
 
-        if let Some(surfaces) = surfaces.as_deref_mut() {
-          read.geometry = std::mem::take(&mut read.geometry)
-            .into_iter()
-            .flat_map(|geometry| surfaces.dress(geometry))
-            .collect();
+        match (collision.as_deref_mut(), surfaces.as_deref_mut()) {
+          (Some(collision), Some(surfaces)) => {
+            read.geometry = std::mem::take(&mut read.geometry)
+              .into_iter()
+              .flat_map(|geometry| surfaces.dress(collision, geometry))
+              .collect();
+          }
+          (Some(collision), None) => {
+            for geometry in &read.geometry {
+              for points in Self::list_triangles(geometry, None) {
+                collision.find_static(&points);
+              }
+            }
+          }
+          (None, _) => {}
         }
 
         let decompile: Option<ObjectDecompile> = if read.geometry.is_empty() {
@@ -194,6 +232,32 @@ impl LevelGeometryConversion {
       objects.push(LevelDecompiledObject { reference, decompile });
     }
 
+    if let Some(collision) = collision.as_deref() {
+      census.collision_faces = collision.count_faces();
+      census.tree_collision_faces = collision.count_tree_covered();
+
+      if let Some((object, meshes)) = Self::decompile_collision(name, collision, surfaces)? {
+        census.collision_only_faces = meshes.iter().map(|mesh| mesh.faces).sum();
+
+        for mesh in meshes {
+          if let Some(sector) = sectors.get_mut(usize::from(mesh.sector)).filter(|_| refused.is_empty()) {
+            sector.items.push(EditableSectorItem {
+              object: object.reference.clone(),
+              mesh: mesh.name,
+            });
+          }
+        }
+
+        context.names.reserve(&object.reference);
+        scene_objects.push(EditableSceneObject {
+          object: EditableCustomObject::new(object.reference.clone(), EditableObjectTransform::default()),
+          reference: object.reference.clone(),
+          flags: 0,
+        });
+        objects.push(object);
+      }
+    }
+
     let portals: Vec<EditablePortalObject> = level
       .get_portals()
       .iter()
@@ -248,6 +312,7 @@ impl LevelGeometryConversion {
     root: u32,
     shaders: &LevelShadersChunk,
     source: &LevelGeomSource<D>,
+    mut collision: Option<&mut LevelCollisionIndex>,
   ) -> XrfResult<SectorGeometry> {
     let composition: LevelSectorComposition = LevelSectorComposition::of(visuals, root);
     let mut read: SectorGeometry = SectorGeometry {
@@ -279,12 +344,130 @@ impl LevelGeometryConversion {
 
       if visual.tree.is_some() {
         read.tree_triangles += geometry.indices.len() / 3;
+
+        // A trunk's collision faces come back with its tree, not as collision of their own.
+        if let Some(collision) = collision.as_deref_mut() {
+          for points in Self::list_triangles(&geometry, visual.get_placement()) {
+            collision.cover_tree(&points);
+          }
+        }
       } else {
         read.geometry.push(geometry);
       }
     }
 
     Ok(read)
+  }
+
+  /// The triangles of `geometry`, placed in the level by `placement` where it stands in a space of its own; an index
+  /// past its vertices is left out, as the decompile refuses it on its own.
+  fn list_triangles<'a>(
+    geometry: &'a LevelVisualGeometry,
+    placement: Option<&'a Matrix4x4>,
+  ) -> impl Iterator<Item = [Vector3d; 3]> + 'a {
+    geometry.indices.as_chunks::<3>().0.iter().filter_map(move |triangle| {
+      let point = |index: &u16| -> Option<Vector3d> {
+        let position: &Vector3d = &geometry.vertices.get(usize::from(*index))?.position;
+
+        Some(placement.map_or(*position, |matrix| matrix.transform_point(position)))
+      };
+
+      Some([point(&triangle[0])?, point(&triangle[1])?, point(&triangle[2])?])
+    })
+  }
+
+  /// The collision faces no render triangle covers, as one object, `<level>_collision`, of a mesh per sector they lie
+  /// in, `collision_<sector>`, each with how many faces it holds: dressed as GSC dressed its collision-only props, a
+  /// compiler shader of collision and no rendering, with each face's game material where `surfaces` names them.
+  fn decompile_collision(
+    name: &str,
+    collision: &LevelCollisionIndex,
+    mut surfaces: Option<&mut LevelSurfaceInference>,
+  ) -> XrfResult<Option<(LevelDecompiledObject, Vec<CollisionMesh>)>> {
+    let mut by_sector: BTreeMap<u16, BTreeMap<u16, Vec<[Vector3d; 3]>>> = BTreeMap::new();
+
+    for (_, face) in collision.get_uncovered() {
+      by_sector
+        .entry(face.sector)
+        .or_default()
+        .entry(face.material)
+        .or_default()
+        .push(collision.get_triangle(face));
+    }
+
+    let mut meshes: Vec<(String, ObjectDecompile)> = Vec::with_capacity(by_sector.len());
+    let mut counts: Vec<CollisionMesh> = Vec::with_capacity(by_sector.len());
+
+    for (sector, materials) in by_sector {
+      let mut geometry: Vec<LevelVisualGeometry> = Vec::new();
+
+      for (material, triangles) in materials {
+        let dress: SurfaceDress = SurfaceDress {
+          compiler_shader: String::from(Self::COLLISION_COMPILER_SHADER),
+          game_material: surfaces.as_deref_mut().map_or_else(
+            || String::from(SurfaceDress::DEFAULT_SETTING),
+            |surfaces| surfaces.get_material_name(Some(material)),
+          ),
+        };
+
+        // A visual's indices are `u16`, so a run of corners no longer than that per part.
+        for run in triangles.chunks(usize::from(u16::MAX) / 3) {
+          let vertices: Vec<LevelVertex> = run.iter().flat_map(Self::get_collision_corners).collect();
+
+          geometry.push(LevelVisualGeometry {
+            texture: String::from(Self::COLLISION_TEXTURE),
+            shader: String::from(Self::COLLISION_ENGINE_SHADER),
+            dress: dress.clone(),
+            indices: (0..vertices.len()).map(|index| index as u16).collect(),
+            vertices,
+          });
+        }
+      }
+      let faces: usize = geometry.iter().map(|it| it.indices.len() / 3).sum();
+      let mesh: String = format!("{}_{sector}", Self::COLLISION_MESH_PREFIX);
+
+      meshes.push((mesh.clone(), ObjectDecompiler::decompile_level_geometry(&geometry)?));
+      counts.push(CollisionMesh {
+        sector,
+        name: mesh,
+        faces,
+      });
+    }
+
+    Ok(ObjectDecompile::merge_meshes(meshes).map(|decompile| {
+      (
+        LevelDecompiledObject {
+          reference: format!("levels\\{name}\\{name}_collision"),
+          decompile,
+        },
+        counts,
+      )
+    }))
+  }
+
+  /// A collision face's corners as level vertices: its own normal at each, and texture coordinates spanning the
+  /// texture once, as a face of no render triangle keeps none.
+  fn get_collision_corners(points: &[Vector3d; 3]) -> [LevelVertex; 3] {
+    let [a, b, c] = points;
+    let cross: Vector3d = (b - a).cross(&(c - a));
+    let length: f32 = cross.length();
+    let normal: Vector3d = if length.is_normal() {
+      &cross / length
+    } else {
+      Vector3d::new(0.0, 1.0, 0.0)
+    };
+    let corner = |position: &Vector3d, u: f32, v: f32| LevelVertex {
+      position: *position,
+      normal,
+      tangent: None,
+      binormal: None,
+      texture_coordinate: Vector2d::new(u, v),
+      lightmap_coordinate: None,
+      color: None,
+      hemi: 0,
+    };
+
+    [corner(a, 0.0, 0.0), corner(b, 1.0, 0.0), corner(c, 0.0, 1.0)]
   }
 
   /// The one mesh a decompiled object holds.

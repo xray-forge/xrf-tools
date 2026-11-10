@@ -349,6 +349,13 @@ the editor's `default` otherwise):
   shader (`LevelShaderPairings`), then the one GSC's objects use most for that evidence, then library order;
 - `LevelSurfaceCensus` counts exact, traced and uncollided triangles and lists every choice with its reason.
 
+Where the level holds `level.cform`, `LevelCollisionIndex` holds those lookups and marks which collision faces a static
+render triangle, or only a tree's, lies on. The faces nothing covers come back as `levels\<name>\<name>_collision`, a
+mesh per sector they lie in (`collision_<N>`, which that sector names), dressed as GSC dressed its collision-only props
+(`LevelGeometryConversion::COLLISION_TEXTURE` and the two shaders beside it). `ObjectDecompile::merge_meshes` joins the
+sectors' decompiles into the one object. Over vanilla, 403,906 of 10,830,486 collision faces are collision-only and
+2,637,496 lie under trees alone.
+
 Over vanilla CoP's 22 levels, 7,189,838 static triangles lie exactly on a collision face, 2,036,780 are traced to one
 and 601,675 lie on none. Where the SDK's objects dress the same texture and engine shader, the compiler shader is one
 GSC used for 95.2% of faces (96.0% with the SDK's objects as the library) and the game material for 87.0%.
