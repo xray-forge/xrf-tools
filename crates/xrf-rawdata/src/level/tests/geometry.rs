@@ -454,6 +454,8 @@ fn gathers_collision_no_render_triangle_draws_into_its_own_object_by_sector() ->
   let meshes = collision.decompile.object.meshes.as_deref().unwrap_or_default();
 
   assert_eq!(collision.reference, "levels\\test\\test_collision");
+  assert_eq!(collision.source, "level.cform", "its sidecar names the collision form");
+  assert_eq!(decompiled.objects[0].source, "level.geom");
   assert_eq!(
     meshes
       .iter()

@@ -1,0 +1,104 @@
+use std::path::{Path, PathBuf};
+
+use byteorder::ByteOrder;
+use xrf_editable_level::EditableLevelScene;
+use xrf_editable_object::EditableObjectFile;
+use xrf_error::{XrfError, XrfResult};
+use xrf_utils::{StagedFile, format_path};
+
+use crate::provenance::level_scene_provenance::LevelSceneProvenance;
+use crate::provenance::object_provenance::ObjectProvenance;
+
+/// One object a decompiled scene places, written under the objects root (`$objects$`) with its own sidecar.
+#[derive(Clone, Debug, PartialEq)]
+pub struct LevelSceneObjectFile {
+  /// Its path under the objects root without the extension, as the scene object's `reference_name` names it.
+  pub reference: String,
+  pub object: EditableObjectFile,
+  pub provenance: ObjectProvenance,
+}
+
+impl LevelSceneObjectFile {
+  /// The extension the reference leaves off.
+  pub const EXTENSION: &'static str = "object";
+
+  /// Its path under `objects_root`, the reference's folders as directories.
+  pub fn get_path(&self, objects_root: &Path) -> PathBuf {
+    let mut path: PathBuf = objects_root.join(self.reference.split('\\').collect::<PathBuf>());
+
+    path.set_extension(Self::EXTENSION);
+    path
+  }
+}
+
+/// A decompiled level: its scene, the provenance written beside it, and the objects it places.
+#[derive(Clone, Debug, PartialEq)]
+pub struct LevelSceneDecompile {
+  pub scene: EditableLevelScene,
+  pub provenance: LevelSceneProvenance,
+  pub objects: Vec<LevelSceneObjectFile>,
+}
+
+impl LevelSceneDecompile {
+  /// What a write would replace of the objects the scene places, under `objects_root`, and their sidecars.
+  pub fn get_existing_object_paths(&self, objects_root: &Path) -> Vec<PathBuf> {
+    self
+      .objects
+      .iter()
+      .flat_map(|object| {
+        let path: PathBuf = object.get_path(objects_root);
+
+        [ObjectProvenance::sidecar_path(&path), path]
+      })
+      .filter(|path| path.exists())
+      .collect()
+  }
+
+  /// What a write to `level_path` would replace, of the scene's main file, its part directory and its sidecar: what a
+  /// front-end asks about before writing over an earlier decompile or an authored scene.
+  pub fn get_existing_paths(level_path: &Path) -> Vec<PathBuf> {
+    [
+      level_path.to_path_buf(),
+      EditableLevelScene::get_parts_directory(level_path),
+      LevelSceneProvenance::sidecar_path(level_path),
+    ]
+    .into_iter()
+    .filter(|path| path.exists())
+    .collect()
+  }
+
+  /// Writes the scene's sidecar (`<level_path>.xrf.json`), then each object under `objects_root` after its own sidecar,
+  /// then the scene: its main file at `level_path` and its parts in the directory beside it. Each sidecar goes before
+  /// what it describes, so a write that fails leaves a stray sidecar, never a decompile taken for authored work.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error, writing nothing, when [`EditableLevelScene::check_writable`] refuses the scene; when a sidecar
+  /// or object cannot be written; or as [`EditableLevelScene::write_to_path`] does.
+  pub fn write_to_path<T: ByteOrder>(&self, level_path: &Path, objects_root: &Path) -> XrfResult {
+    // Refused before the sidecar is written, so a sidecar never lands beside an authored scene left as it was.
+    self.scene.check_writable(level_path)?;
+
+    Self::write_file(
+      &LevelSceneProvenance::sidecar_path(level_path),
+      self.provenance.to_json()?.as_bytes(),
+    )?;
+
+    for object in &self.objects {
+      let path: PathBuf = object.get_path(objects_root);
+
+      Self::write_file(
+        &ObjectProvenance::sidecar_path(&path),
+        object.provenance.to_json()?.as_bytes(),
+      )?;
+      Self::write_file(&path, &object.object.write_to_bytes::<T>()?)?;
+    }
+
+    self.scene.write_to_path::<T, _>(&level_path)
+  }
+
+  fn write_file(path: &Path, bytes: &[u8]) -> XrfResult {
+    StagedFile::write_creating_directories(path, bytes)
+      .map_err(|error| XrfError::new_io_error(format!("{} was not written: {error}", format_path(path)), error.kind()))
+  }
+}

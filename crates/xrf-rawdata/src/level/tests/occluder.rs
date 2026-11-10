@@ -56,6 +56,7 @@ fn takes_the_occlusion_mesh_back_as_a_surface_of_the_occluder_material() -> XrfR
   let occluder = String::from(LevelOccluderConversion::OCCLUDER_GAME_MATERIAL);
 
   assert_eq!(object.reference, "levels\\test\\test_hom");
+  assert_eq!(object.source, "level.hom");
   assert_eq!(
     object.decompile.object.flags, 0,
     "an ordinary object, as GSC's labx8 keeps its occluders"
@@ -91,6 +92,7 @@ fn takes_sound_occluders_back_with_the_material_of_their_occlusion_factor() -> X
   let object: LevelDecompiledObject = object.expect("a sound occlusion mesh of polygons is an object");
 
   assert_eq!(object.reference, "levels\\test\\test_som");
+  assert_eq!(object.source, "level.som");
   assert_eq!(
     object.decompile.object.flags,
     LevelOccluderConversion::SOUND_OCCLUDER_FLAG
