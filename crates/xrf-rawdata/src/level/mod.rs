@@ -9,7 +9,6 @@ pub(crate) mod level_light_conversion;
 pub(crate) mod level_object_names;
 pub(crate) mod level_occluder_conversion;
 pub(crate) mod level_particle_conversion;
-pub(crate) mod level_scene_decompiler;
 pub(crate) mod level_scene_exporter;
 pub(crate) mod level_sound_environment_conversion;
 pub(crate) mod level_sound_source_conversion;
@@ -19,6 +18,7 @@ pub(crate) mod level_surface_inference;
 pub(crate) mod level_visual_geometry;
 pub(crate) mod level_wallmark_conversion;
 pub(crate) mod level_way_conversion;
+pub(crate) mod scene;
 
 #[cfg(test)]
 mod tests;

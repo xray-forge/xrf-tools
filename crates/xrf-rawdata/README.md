@@ -317,16 +317,29 @@ counts keep a new level's quality, and a direction may come back one unit off in
 
 ### A whole scene
 
-`LevelSceneDecompiler::decompile` reads every pass-through file a level's directory holds, the `level` bundle and
-`build.lights` for its glows and lights, and `level.geom` for its static geometry, and decompiles each through one
-context into a scene (`LevelSceneDecompile`):
+`LevelSceneDecompiler::decompile` turns a level's directory into a scene (`LevelSceneDecompile`) in steps over one
+draft, each a `LevelSceneStep` declaring the files it reads (`level/scene/steps/`):
 
-- a part per tool, sorted by name; the spawn part from `level.game` and `level.env_mod` together;
+| Step                 | Files                                                                                      | Gives                                            |
+| -------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------ |
+| `LevelGeometryStep`  | `level`, `level.geom`, `level.cform`, `level.hom`, `level.som`                             | Objects, scene objects, sectors, portals (below) |
+| `LevelBundleStep`    | `level`, `build.lights`                                                                    | Glows, lights, the light qualities               |
+| `LevelCompanionStep` | `level.ps_static`, `level.snd_static`, `level.snd_env`, `level.fog_vol`, `level.wallmarks` | One part each                                    |
+| `LevelGameStep`      | `level.game`, `level.env_mod`, `level.spawn`, `level_rs.spawn`                             | Ways, spawn points, the game modes               |
+
+The decompile reads every step's files once (`LevelSceneSources`, which also reads the bundle once for the two steps
+that need it), runs the steps in that order, so names come out the same each time, and finishes the draft:
+
+- a part per tool, sorted by name, each recording the files it came from;
 - a main file of a new level named after `LevelDecompileOptions::name`, serving its respawn points' game modes (single
-  player where it has none), the editor's build parameters with a weld distance of 0, the camera at the origin;
-- a scene GUID from the SHA-256 over each source's name, length and bytes, so the same level always gives the same
-  scene;
-- the objects the scene places (`LevelSceneObjectFile`), each with its own `ObjectProvenance`.
+  player where it has none), the editor's build parameters with a weld distance of 0, the camera at the origin, and
+  recording the files its options came from;
+- a scene GUID from the SHA-256 over each source's name, length and bytes in name order, then a root spawn's hash where
+  the entities came from one, so the same level always gives the same scene;
+- the objects the scene places (`LevelSceneObjectFile`), each with its own `ObjectProvenance` naming the compiled file
+  it came from (`LevelDecompiledObject::source`).
+
+A new source is a file in a step's `FILES`, read in its `decompile`; a new kind of part is a step of its own.
 
 `LevelGeometryConversion::decompile` gives a level's geometry back from `LevelGeometrySources` (the bundle, its
 visuals, `level.geom`, and where held the indexed collision form, `level.hom` and `level.som`): every object below,
@@ -380,10 +393,6 @@ The sidecar holds the front-end the options name, each source's SHA-256, each wr
 the decompile chose rather than read (`LevelSceneInference`), recorded only for a part that holds what it was chosen
 for: a level of no light records no light inference. The object and scene sidecars share one convention, the
 `.xrf.json` suffix beside their file and sources named by SHA-256.
-
-`decompile` reads the sources once and hands each file's bytes to the step that decompiles it: the compiled bundle
-(glows, lights, the light qualities), the files built each from one part, then `level.game` and `level.env_mod` (ways,
-spawn points, the game modes). A new source joins as its own step.
 
 `LevelSceneExporter::export` goes back: the files the Build writes from a scene's parts (`BuildGame`,
 `BuildWallmarks`), by name. `level.game`, `level.env_mod` and `level.fog_vol` are written for every scene, empty where

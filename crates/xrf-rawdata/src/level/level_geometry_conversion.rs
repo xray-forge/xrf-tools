@@ -10,8 +10,8 @@ use xrf_editable_level::{
 use xrf_editable_object::{EditableMesh, EditableObjectFile};
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{
-  LevelFile, LevelGeomSource, LevelHomFile, LevelSectorComposition, LevelShadersChunk, LevelSomFile, LevelVisual,
-  LevelVisualsChunk,
+  LevelCformFile, LevelFile, LevelGeomFile, LevelGeomSource, LevelHomFile, LevelSectorComposition, LevelShadersChunk,
+  LevelSomFile, LevelVisual, LevelVisualsChunk,
 };
 use xrf_math::{Matrix4x4, Vector3d};
 
@@ -53,6 +53,9 @@ pub struct LevelDecompiledObject {
   /// Its path under `$objects$` without the extension, such as `levels\<level>\<level>_sector_<N>`: what the scene
   /// object's `reference_name` names.
   pub reference: String,
+  /// The compiled file it came from, by its name in the level's directory, which its sidecar records: `level.geom`
+  /// for a sector's shell, `level.cform` for the collision object, `level.hom` and `level.som` for the occluders.
+  pub source: &'static str,
   pub decompile: ObjectDecompile,
 }
 
@@ -312,6 +315,7 @@ impl LevelGeometryConversion {
       decompile.place(
         LevelDecompiledObject {
           reference,
+          source: LevelGeomFile::FILE_NAME,
           decompile: shell,
         },
         context,
@@ -524,6 +528,7 @@ impl LevelGeometryConversion {
       (
         LevelDecompiledObject {
           reference: format!("levels\\{name}\\{name}_collision"),
+          source: LevelCformFile::FILE_NAME,
           decompile,
         },
         counts,

@@ -19,9 +19,6 @@ pub use crate::level::level_light_conversion::LevelLightConversion;
 pub use crate::level::level_object_names::LevelObjectNames;
 pub use crate::level::level_occluder_conversion::{LevelOccluderConversion, LevelSoundOccluderCensus};
 pub use crate::level::level_particle_conversion::LevelParticleConversion;
-pub use crate::level::level_scene_decompiler::{
-  LevelDecompileOptions, LevelSceneDecompile, LevelSceneDecompiler, LevelSceneObjectFile,
-};
 pub use crate::level::level_scene_exporter::LevelSceneExporter;
 pub use crate::level::level_sound_environment_conversion::LevelSoundEnvironmentConversion;
 pub use crate::level::level_sound_source_conversion::LevelSoundSourceConversion;
@@ -34,6 +31,9 @@ pub use crate::level::level_surface_inference::{
 pub use crate::level::level_visual_geometry::LevelVisualGeometry;
 pub use crate::level::level_wallmark_conversion::LevelWallmarkConversion;
 pub use crate::level::level_way_conversion::LevelWayConversion;
+pub use crate::level::scene::level_decompile_options::LevelDecompileOptions;
+pub use crate::level::scene::level_scene_decompile::{LevelSceneDecompile, LevelSceneObjectFile};
+pub use crate::level::scene::level_scene_decompiler::LevelSceneDecompiler;
 pub use crate::object::compile::geometry::export_vertex::ExportVertex;
 pub use crate::object::compile::geometry::export_vertex_bone::ExportVertexBone;
 pub use crate::object::compile::object_compile::ObjectCompile;

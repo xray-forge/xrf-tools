@@ -179,6 +179,46 @@ fn decompiling_the_same_level_twice_gives_the_same_scene() -> XrfResult {
 }
 
 #[test]
+fn reads_each_steps_files_once_and_records_what_the_main_file_came_from() -> XrfResult {
+  let files: Vec<&str> = LevelSceneDecompiler::get_source_files();
+
+  assert_eq!(
+    files.iter().filter(|file| **file == "level").count(),
+    1,
+    "the bundle two steps read is read once"
+  );
+
+  for file in [
+    "level.geom",
+    "level.cform",
+    "level.hom",
+    "level.som",
+    "build.lights",
+    "level.ps_static",
+    "level.snd_static",
+    "level.snd_env",
+    "level.fog_vol",
+    "level.wallmarks",
+    "level.game",
+    "level.env_mod",
+    "level.spawn",
+    "level_rs.spawn",
+  ] {
+    assert!(files.contains(&file), "{file} is a step's");
+  }
+
+  let decompiled: LevelSceneDecompile = decompile(&level_directory("main_sources", 10.0)?)?;
+
+  assert_eq!(
+    decompiled.provenance.files[0].sources,
+    ["level.game"],
+    "the game modes come from level.game; the directory holds no build.lights for light qualities"
+  );
+
+  Ok(())
+}
+
+#[test]
 fn writes_each_object_under_the_objects_root_after_its_sidecar() -> XrfResult {
   let mut decompiled: LevelSceneDecompile = decompile(&level_directory("objects", 10.0)?)?;
   let floor = [[

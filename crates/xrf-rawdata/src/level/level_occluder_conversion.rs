@@ -55,6 +55,7 @@ impl LevelOccluderConversion {
 
     Self::decompile(
       format!("levels\\{name}\\{name}_hom"),
+      LevelHomFile::FILE_NAME,
       [(String::from(Self::OCCLUDER_GAME_MATERIAL), polygons)].into(),
       0,
     )
@@ -102,6 +103,7 @@ impl LevelOccluderConversion {
     Ok((
       Self::decompile(
         format!("levels\\{name}\\{name}_som"),
+        LevelSomFile::FILE_NAME,
         by_material,
         Self::SOUND_OCCLUDER_FLAG,
       )?,
@@ -123,6 +125,7 @@ impl LevelOccluderConversion {
   /// mirror so the decompile folds the two into one two-sided face.
   fn decompile(
     reference: String,
+    source: &'static str,
     by_material: BTreeMap<String, Vec<([Vector3d; 3], bool)>>,
     flags: u32,
   ) -> XrfResult<Option<LevelDecompiledObject>> {
@@ -157,6 +160,10 @@ impl LevelOccluderConversion {
 
     object.flags |= flags;
 
-    Ok(Some(LevelDecompiledObject { reference, decompile }))
+    Ok(Some(LevelDecompiledObject {
+      reference,
+      source,
+      decompile,
+    }))
   }
 }
