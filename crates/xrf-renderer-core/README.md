@@ -260,9 +260,10 @@ render layout holds, the render state, and owned `VertexLayout`s.
   `Deref`, with the generation it was made in.
 - `refresh` remakes it once the cache has moved past that generation and returns any refusal, keeping the last good
   set and not retrying until the cache changes again.
-- `PipelineSet::ask` makes a pipeline only once a pass actually draws.
+- A pass that makes its pipelines only once it actually draws holds a `PipelineAsk<T>`: a set made by its first `ask`,
+  a refused first ask told once and not tried again until the cache changes.
 - A pass drawing into targets of several formats holds a `PipelineMap<K, T>`: one set per key, made on first use
-  (`prepare`) and remade together.
+  (`prepare`) and remade together; a key refused on first use answers its refusal until the cache changes.
 
 **Errors.** Every creation runs under a wgpu validation scope, so whatever wgpu refuses comes back as an error naming the
 module or pipeline. A shader compile error names lines of the composed text; `ShaderLines` maps each back to its module

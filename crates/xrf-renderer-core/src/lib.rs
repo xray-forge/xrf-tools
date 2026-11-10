@@ -31,8 +31,8 @@ pub use crate::param::{
   UniformField,
 };
 pub use crate::pipeline::{
-  ComputePipelineDescription, PipelineCache, PipelineConstants, PipelineMap, PipelineSet, RenderPipelineDescription,
-  ShaderLines, ShaderOverride, ShaderPermutation, ShaderSource, VertexLayout,
+  ComputePipelineDescription, PipelineAsk, PipelineCache, PipelineConstants, PipelineMap, PipelineSet,
+  RenderPipelineDescription, ShaderLines, ShaderOverride, ShaderPermutation, ShaderSource, VertexLayout,
 };
 pub use crate::shader::{
   GeneratedShaderFile, ShaderAddressSpace, ShaderAtomicU32, ShaderDeclarations, ShaderLayoutVerifier, ShaderMember,
