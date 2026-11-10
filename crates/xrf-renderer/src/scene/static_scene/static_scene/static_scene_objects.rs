@@ -244,7 +244,7 @@ impl StaticScene {
     let instances: usize = (group.instance_count as usize).min(transforms.len() / 16);
     // Traced at its whole detail, unswayed: a reflection shows neither the coarser bands nor the sway's centimetres.
     let mut traced: Option<StaticTraceGroup> = class.is_deferred().then(|| StaticTraceGroup {
-      geometry: StaticTraceGeometry {
+      geometry: writer.put_densities(StaticTraceGeometry {
         layout,
         first_index: base.index_start + bands[0].0,
         index_count: bands[0].1,
@@ -252,7 +252,8 @@ impl StaticScene {
         vertex_count: geometry.vertex_count,
         surface,
         is_cut_out: class == StaticClass::CutOut,
-      },
+        first_density: 0,
+      }),
       first_place: writer.places.len() as u32,
       transforms: Vec::with_capacity(instances),
     });

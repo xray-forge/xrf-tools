@@ -14,6 +14,8 @@ pub struct StaticSpans {
   /// Its impostors, with their corners, terms and list entries.
   pub impostors: Option<Span>,
   pub skins: Option<Span>,
+  /// Its cut-out traced geometries' triangles' density words.
+  pub trace_densities: Option<Span>,
 }
 
 impl StaticSpans {

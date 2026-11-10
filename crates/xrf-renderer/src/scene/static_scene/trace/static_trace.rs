@@ -453,11 +453,11 @@ impl StaticTrace {
 
     for (sector, sections, groups) in sectors {
       if !sections.is_empty() {
-        table.push(StaticTraceInstance {
-          first_record: records.len() as u32,
-          place: Self::ORIGIN_PLACE,
-          pad: [0; 2],
-        });
+        table.push(StaticTraceInstance::new(
+          records.len() as u32,
+          Self::ORIGIN_PLACE,
+          &Self::IDENTITY,
+        ));
         instances.push((Structure::Baked(*sector), Self::IDENTITY));
         records.extend(sections.iter().map(StaticTraceRecord::from));
       }
@@ -480,11 +480,7 @@ impl StaticTrace {
             });
           }
 
-          table.push(StaticTraceInstance {
-            first_record,
-            place,
-            pad: [0; 2],
-          });
+          table.push(StaticTraceInstance::new(first_record, place, transform));
           instances.push((Structure::Group(*sector, index), *transform));
         }
       }
@@ -498,12 +494,10 @@ impl StaticTrace {
     }
 
     for (model, place, transform) in objects {
-      table.push(StaticTraceInstance {
-        first_record: first_records[model],
-        place: *place,
-        pad: [0; 2],
-      });
-      instances.push((Structure::Model(*model), StaticTraceGroup::pack_transform(transform)));
+      let transform: [f32; 12] = StaticTraceGroup::pack_transform(transform);
+
+      table.push(StaticTraceInstance::new(first_records[model], *place, &transform));
+      instances.push((Structure::Model(*model), transform));
     }
 
     (table, records, instances, swaying)

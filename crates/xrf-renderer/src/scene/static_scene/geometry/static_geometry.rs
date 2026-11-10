@@ -15,8 +15,8 @@ use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 use crate::scene::static_scene::item::static_place::StaticPlace;
 use crate::scene::static_scene::item::static_scene_writer::StaticSceneWriter;
 
-/// A static scene's geometry on the GPU: span buffers of vertices, indices, clusters, slots, places, impostors, skins
-/// and bones each item takes a range of, and the rows a store keeps dense for the cull to walk. A cull walks the
+/// A static scene's geometry on the GPU: span buffers of vertices, indices, clusters, slots, places, impostors, skins,
+/// bones and traced density words each item takes a range of, and the rows a store keeps dense for the cull to walk. A cull walks the
 /// clusters and impostors whole, so a range is cleared as it is freed and reads as nothing.
 pub(crate) struct StaticGeometry {
   /// Each layout's vertices, which an acceleration structure reads in place where rays are traced.
@@ -35,6 +35,8 @@ pub(crate) struct StaticGeometry {
   /// Skinned models' links, two words a vertex, and the objects' bone matrices, three rows a bone.
   pub skins: SpanBuffer,
   pub bones: SpanBuffer,
+  /// A word a cut-out traced triangle, which a ray tests its holes by (`StaticTraceDensity`).
+  pub trace_densities: SpanBuffer,
   row_records: ProxyStore<StaticRow>,
   /// Place zero, where every single draw stands: its geometry is in renderer space already. Never freed.
   origin: Span,
@@ -118,6 +120,7 @@ impl StaticGeometry {
       ),
       skins: SpanBuffer::new(device, "static model skins", 8, storage, 1 << 14),
       bones: SpanBuffer::new(device, "static bones", size_of::<Vec4>() as u64, storage, 1 << 12),
+      trace_densities: SpanBuffer::new(device, "static trace densities", 4, storage, 1 << 14),
       row_records: ProxyStore::new(),
       origin,
       is_traced,
@@ -192,13 +195,14 @@ impl StaticGeometry {
     writer: &StaticSceneWriter,
   ) -> XrfResult<StaticSpans> {
     let mut spans: StaticSpans = StaticSpans::default();
-    let counts: [usize; 6] = [
+    let counts: [usize; 7] = [
       writer.indices.len(),
       writer.clusters.len(),
       writer.slots.len(),
       writer.places.len(),
       writer.impostors.len(),
       writer.skins.len() / 2,
+      writer.trace_densities.len(),
     ];
     let mut result: XrfResult<()> = Ok(());
 
@@ -214,13 +218,14 @@ impl StaticGeometry {
       }
     }
 
-    let buffers: [(&mut SpanBuffer, &mut Option<Span>); 6] = [
+    let buffers: [(&mut SpanBuffer, &mut Option<Span>); 7] = [
       (&mut self.indices, &mut spans.indices),
       (&mut self.clusters, &mut spans.clusters),
       (&mut self.slots, &mut spans.slots),
       (&mut self.places, &mut spans.places),
       (&mut self.impostors, &mut spans.impostors),
       (&mut self.skins, &mut spans.skins),
+      (&mut self.trace_densities, &mut spans.trace_densities),
     ];
 
     for ((buffer, held), count) in buffers.into_iter().zip(counts) {
@@ -276,6 +281,12 @@ impl StaticGeometry {
     if let Some(span) = &spans.skins {
       self.skins.write(span, 0, bytemuck::cast_slice(&writer.skins));
     }
+
+    if let Some(span) = &spans.trace_densities {
+      self
+        .trace_densities
+        .write(span, 0, bytemuck::cast_slice(&writer.trace_densities));
+    }
   }
 
   /// Gives an item's ranges back, the clusters and impostors cleared first, since the cull walks them whole.
@@ -288,6 +299,7 @@ impl StaticGeometry {
       places,
       impostors,
       skins,
+      trace_densities,
     } = spans;
 
     for (layout, span) in words.into_iter().enumerate() {
@@ -311,6 +323,7 @@ impl StaticGeometry {
       (&mut self.slots, slots),
       (&mut self.places, places),
       (&mut self.skins, skins),
+      (&mut self.trace_densities, trace_densities),
     ] {
       if let Some(span) = span {
         buffer.free(span);
@@ -318,7 +331,7 @@ impl StaticGeometry {
     }
   }
 
-  fn list_spans_mut(&mut self) -> [&mut SpanBuffer; 10] {
+  fn list_spans_mut(&mut self) -> [&mut SpanBuffer; 11] {
     let [baked, tree, model] = &mut self.words;
 
     [
@@ -332,6 +345,7 @@ impl StaticGeometry {
       &mut self.impostors,
       &mut self.skins,
       &mut self.bones,
+      &mut self.trace_densities,
     ]
   }
 

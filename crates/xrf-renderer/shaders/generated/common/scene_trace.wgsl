@@ -24,3 +24,4 @@ enable wgpu_ray_query;
 @group(3) @binding(18) var<storage, read> trace_grass_colours: array<vec4<f32>>;
 @group(3) @binding(19) var<uniform> trace_grass: TraceGrass;
 @group(3) @binding(20) var<storage, read> trace_grass_cards: array<u32>;
+@group(3) @binding(21) var<storage, read> trace_densities: array<u32>;

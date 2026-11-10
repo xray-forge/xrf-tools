@@ -480,6 +480,7 @@ fn run_probes(
       empty.clone(),
       grass.as_entire_binding(),
       empty,
+      scene.geometry.trace_densities.get_buffer().as_entire_binding(),
     ])
     .collect();
   let entries: Vec<wgpu::BindGroupEntry<'_>> = resources

@@ -31,6 +31,7 @@ pub(crate) struct StaticSceneHandles {
   pub words: [GraphBuffer; StaticLayout::COUNT],
   pub skins: GraphBuffer,
   pub bones: GraphBuffer,
+  pub trace_densities: GraphBuffer,
   pub impostors: GraphBuffer,
   pub corners: GraphBuffer,
   pub terms: GraphBuffer,
@@ -91,6 +92,7 @@ impl StaticSceneHandles {
       import("static model skins", scene.geometry.skins.get_buffer()),
       import("static bones", scene.geometry.bones.get_buffer()),
     );
+    let trace_densities: GraphBuffer = import("static trace densities", scene.geometry.trace_densities.get_buffer());
     let impostors: [GraphBuffer; 4] = [
       import("static impostors", scene.geometry.impostors.get_buffer()),
       import(
@@ -129,6 +131,7 @@ impl StaticSceneHandles {
       words,
       skins: skinning.0,
       bones: skinning.1,
+      trace_densities,
       impostors: impostors[0],
       corners: impostors[1],
       terms: impostors[2],
