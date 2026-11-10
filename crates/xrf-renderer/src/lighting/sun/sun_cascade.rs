@@ -128,9 +128,13 @@ impl SunCascade {
   }
 
   /// Whether a map drawn at `drawn` still holds this fit near enough to wait for its turn: drawn at the same width and
-  /// resolution over the same level, strayed from it by a sixteenth of the width at most along each axis, and under a
-  /// light turned by no more than moves a caster as far towards the sun as the map reaches `TURN_TEXELS` across. A
-  /// sharp turn moves the square further, and its view would fall out of the map until the map's turn came.
+  /// resolution, strayed from it by a sixteenth of the width at most along each axis, under a light turned by no more
+  /// than moves a caster as far towards the sun as the map reaches `TURN_TEXELS` across, and over a level whose span
+  /// along the light moved at either end by no more than the step of depth `fit` keeps past it, less what the turn moves
+  /// a point the map holds along the light. The map is sampled with the matrix it was drawn with, so this keeps every
+  /// caster and receiver the fit's span names within its depth: a turning light moves the span's ends a little every
+  /// frame, and a caster coming into the level past that step stops the map holding. A sharp turn moves the square
+  /// further, and its view would fall out of the map until the map's turn came.
   pub(crate) fn is_held_by(&self, drawn: &Self) -> bool {
     self.is_held_within(drawn, 1.0)
   }
@@ -150,14 +154,26 @@ impl SunCascade {
       drawn_light @ ..,
     ] = drawn.key;
     let slack: f32 = width * DRIFT * share;
+    let facing: f32 = Vec3::from(light).dot(Vec3::from(drawn_light));
     // The turn's sine, as a cosine this near one rounds to it.
     let turn: f32 = Vec3::from(light).cross(Vec3::from(drawn_light)).length();
+    // Where along its light the drawn map's depth starts and ends.
+    let drawn_from: f32 = drawn_z - drawn.back;
+    let drawn_to: f32 = drawn_from + drawn.far;
+    // How far the turn alone moves a point within the drawn map's square along the light: its distance across the light
+    // from the origin, at most the square's centre's and a width, times the turn's sine, and its distance along it, at
+    // most as far as the map's depth reaches, times one less the turn's cosine.
+    let moved: f32 = (drawn_x.hypot(drawn_y) + width) * turn + drawn_from.abs().max(drawn_to.abs()) * (1.0 - facing);
+    // `fit` draws a step past the level's nearest towards the sun and a step past its farthest, whatever the centre's
+    // rounding: an end that moved out by less than that, the turn's own move counted, still stands within the map.
+    let span_slack: f32 = (width * DEPTH_STEP - moved) * share;
+    let is_end_held = |end: f32, drawn_end: f32| end == drawn_end || (end - drawn_end).abs() <= span_slack;
 
     width == drawn_width
       && resolution == drawn_resolution
-      && nearest == drawn_nearest
-      && farthest == drawn_farthest
-      && Vec3::from(light).dot(Vec3::from(drawn_light)) > 0.0
+      && is_end_held(nearest, drawn_nearest)
+      && is_end_held(farthest, drawn_farthest)
+      && facing > 0.0
       && turn <= TURN_TEXELS * share * self.texel / self.back.max(1.0)
       && [x - drawn_x, y - drawn_y, z - drawn_z]
         .iter()
