@@ -50,6 +50,20 @@ impl<'a> ShadowSway<'a> {
 
   /// `is_redrawn` with an interval of its own, `interval` seconds.
   pub(crate) fn is_redrawn_every(&self, reach: f32, texel: f32, drawn_at: LevelTime, interval: f32) -> bool {
-    self.amplitude * reach > texel * SWAY_TEXELS && self.time.get_since(drawn_at) >= interval * (1.0 - SWAY_SLACK)
+    self.amplitude * reach > texel * SWAY_TEXELS
+      && self
+        .get_waited(drawn_at)
+        .is_none_or(|waited| waited >= interval * (1.0 - SWAY_SLACK))
+  }
+
+  /// Whether a map drawn at `drawn_at` may wait yet for its next draw, for less than `most` seconds.
+  pub(crate) fn can_wait(&self, drawn_at: LevelTime, most: f32) -> bool {
+    self.get_waited(drawn_at).is_some_and(|waited| waited < most)
+  }
+
+  /// Seconds a map drawn at `drawn_at` has waited by the level's clock; none where it was drawn after the clock now
+  /// stands, as a burst from an earlier time leaves every map: such a map is due, however near the clock reads.
+  fn get_waited(&self, drawn_at: LevelTime) -> Option<f32> {
+    (drawn_at <= self.time).then(|| self.time.get_since(drawn_at))
   }
 }

@@ -9,6 +9,7 @@ use crate::lighting::weather::render_fog::RenderFog;
 use crate::lighting::weather::render_rainfall::RenderRainfall;
 use crate::lighting::wind::render_tree_wind::RenderTreeWind;
 use crate::lighting::wind::render_wind::RenderWind;
+use crate::scene::level::level_time::LevelTime;
 use crate::scene::level::shadow::shadow_sway::ShadowSway;
 use crate::tests::support::test_time::at;
 
@@ -183,6 +184,27 @@ fn redraws_a_shadow_for_the_sway_where_the_lean_shows_once_an_interval() {
   // Within an interval it waits; a hair short of one, it draws.
   assert!(!sway(0.01, 1.0 + ShadowSway::INTERVAL * 0.5).is_redrawn(20.0, 0.1, at(1.0)));
   assert!(sway(0.01, 1.0 + ShadowSway::INTERVAL * 0.95).is_redrawn(20.0, 0.1, at(1.0)));
+}
+
+// A map drawn after the clock now stands, which a burst from an earlier time leaves behind, is due for the sway at once
+// and waits no more, as one drawn long ago is: the clock read back saturates at nought, and taken as the time since
+// the draw it held every such map until the clock caught up.
+#[test]
+fn redraws_a_shadow_drawn_after_the_clock_moved_back() {
+  let sway = ShadowSway {
+    amplitude: 0.01,
+    reach: 20.0,
+    time: at(1.0),
+    places: &[],
+  };
+  let ahead: LevelTime = at(600.0);
+
+  assert!(sway.is_redrawn(20.0, 0.1, ahead));
+  assert!(!sway.can_wait(ahead, ShadowSway::INTERVAL * 4.0));
+  // Still trees never draw a map again, however the clock moved.
+  assert!(!ShadowSway { amplitude: 0.0, ..sway }.is_redrawn(20.0, 0.1, ahead));
+  // A map drawn a moment ago still waits.
+  assert!(sway.can_wait(at(1.0 - f64::from(ShadowSway::INTERVAL)), ShadowSway::INTERVAL * 4.0));
 }
 
 #[test]
