@@ -36,6 +36,11 @@ impl LevelLadderConversion {
   /// wood.
   pub const DEFAULT_GAME_MATERIAL: &'static str = "materials\\fake_ladders";
 
+  /// The half thickness below which a box is flat, its front alone given back: a flat ladder's box keeps a few
+  /// micrometres the Build's `f32` fit leaves (vanilla's thinnest are 1.9 µm), and side faces that thin would give
+  /// normals too rough for `OrientToNorm` to find the front by.
+  pub const FLAT_HALF_THICKNESS: f32 = 1e-4;
+
   /// The entity's ladder as `levels\<level>\<level>_ladder_<index>`, its pivot at the base of the box, or `None` for
   /// an entity that is no ladder or whose shape is not one box.
   ///
@@ -88,7 +93,7 @@ impl LevelLadderConversion {
   }
 
   /// The box's faces in its frame, its half sizes `half`, less the face behind its thinnest axis, each wound to face
-  /// out; its front alone where it has no thickness.
+  /// out; its front alone where it is flat ([`Self::FLAT_HALF_THICKNESS`]).
   fn get_faces(half: &[f32; 3]) -> Vec<[Vector3d; 3]> {
     let thin: usize = Self::get_thin_axis(half);
     let corner = |signs: [f32; 3]| Vector3d::new(signs[0] * half[0], signs[1] * half[1], signs[2] * half[2]);
@@ -99,7 +104,7 @@ impl LevelLadderConversion {
         let is_front: bool = axis == thin && sign > 0.0;
         let is_back: bool = axis == thin && sign < 0.0;
 
-        if is_back || (!is_front && half[thin] == 0.0) {
+        if is_back || (!is_front && half[thin] < Self::FLAT_HALF_THICKNESS) {
           continue;
         }
 
