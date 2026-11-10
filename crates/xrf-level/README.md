@@ -115,8 +115,9 @@ vertex decodes through `LevelVertexBytes`, so verification and the renderer read
   (`LevelCformMaterials`), keeping nothing else, for checking a level against the material library.
 - `LevelCformTracer` holds the whole form in a bounding volume hierarchy for the engine's static ray tests, with each
   triangle's material and its face's index in the form. `get_nearest_hit` names the material of the front face it
-  hits; `get_nearest_material` the material of the nearest face a ray crosses from either side, and
-  `get_nearest_face` that face's index with it.
+  hits; `get_face_nearest_along` the face, and its material, that a short line through a point crosses nearest the
+  point, from either side: the collision face a render face lies on, taken before one stacked a few centimetres above
+  or below it.
 - `LevelAiFile::read_with_nodes_*` reads the nodes as `LevelAiNodes`, packed as stored and decoded one at a time
   (`LevelAiNode`) in any layout the engine loads, versions 8 to 13. Keeping the bytes is what lets the writer
   reproduce the file. `LevelAiHeader::get_node_position` gives a node's world position as `CLevelGraph` does.

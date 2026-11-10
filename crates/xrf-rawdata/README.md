@@ -359,9 +359,10 @@ With a `LevelSurfaceInference` (decision 14, `LevelSurfaces::Infer`), each visua
 triangles lie on before the decompile, so each surface carries one `SurfaceDress` (compiler shader and game material,
 the editor's `default` otherwise):
 
-- the game material is the collision face's on the triangle's very points, else the one a short ray from just above its
-  centre meets (xrLC splits render faces it keeps whole in `level.cform`), else none; `level.cform` stores the
-  material's `gamemtl.xr` ID, as the editor wrote it into `build.prj`;
+- the game material is the collision face's on the triangle's very points, else that of the one its normal through its
+  centre crosses nearest it within 5 cm (xrLC splits render faces it keeps whole in `level.cform`; the nearest, not the
+  first a ray from above meets, keeps a floor's material under a plate lying on it), else none; `level.cform` stores
+  the material's `gamemtl.xr` ID, as the editor wrote it into `build.prj`;
 - the compiler shader is one of `shaders_xrlc.xr` that renders and fits the evidence, collision and vertex lighting
   (vertices without lightmap coordinates), ranked by how often an object library pairs it with the surface's engine
   shader (`LevelShaderPairings`), then the one GSC's objects use most for that evidence, then library order;
@@ -371,8 +372,8 @@ Where the level holds `level.cform`, `LevelCollisionIndex` holds those lookups a
 render triangle, or only a tree's, lies on. The faces nothing covers come back as `levels\<name>\<name>_collision`, a
 mesh per sector they lie in (`collision_<N>`, which that sector names), dressed as GSC dressed its collision-only props
 (`LevelGeometryConversion::COLLISION_TEXTURE` and the two shaders beside it). `ObjectDecompile::merge_meshes` joins the
-sectors' decompiles into the one object. Over vanilla, 403,906 of 10,830,486 collision faces are collision-only and
-2,637,496 lie under trees alone.
+sectors' decompiles into the one object. Over vanilla, 377,359 of 10,830,486 collision faces are collision-only and
+2,646,858 lie under trees alone.
 
 The Build adds every wall mark to the static faces too (`ESceneWallmarkTool::ExportStatic`, compiler shader
 `def_shaders\def_vertex_ghost_no_shadow`) beside writing `level.wallmarks`, so the compiled geometry holds each decal

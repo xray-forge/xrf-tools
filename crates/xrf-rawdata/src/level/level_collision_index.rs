@@ -107,8 +107,9 @@ impl LevelCollisionIndex {
       .map(|((face, index), _)| (index, face))
   }
 
-  /// The face on the triangle's very points, else the one a ray from just above its centre meets, then one from just
-  /// below, which catches a face the first misses at an edge; each found face covered by `cover` where not yet.
+  /// The face on the triangle's very points, else the one its normal through its centre crosses nearest it within a few
+  /// centimetres either side, before a face stacked close above or below; each found face covered by `cover` where not
+  /// yet.
   fn find(&mut self, points: &[Vector3d; 3], cover: LevelCollisionCover) -> LevelCollisionLookup {
     if let Some(faces) = self.exact.get(&Self::get_key(points)) {
       for face in faces {
@@ -129,14 +130,11 @@ impl LevelCollisionIndex {
 
     let normal: Vector3d = &cross / length;
     let centre: Vector3d = &(&(a + b) + c) / 3.0;
-    let lift: Vector3d = &normal * LevelSurfaceMaterials::RAY_LIFT;
-    let range: f32 = LevelSurfaceMaterials::RAY_LIFT * 2.0;
-    let found: Option<(u32, u16)> = self
-      .tracer
-      .get_nearest_face(&(&centre + &lift), &-&normal, range)
-      .or_else(|| self.tracer.get_nearest_face(&(&centre - &lift), &normal, range));
 
-    match found {
+    match self
+      .tracer
+      .get_face_nearest_along(&centre, &normal, LevelSurfaceMaterials::COLLISION_REACH)
+    {
       Some((face, material)) => {
         Self::mark(&mut self.covers[face as usize], cover);
         LevelCollisionLookup::Traced(material)

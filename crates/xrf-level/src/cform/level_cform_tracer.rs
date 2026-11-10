@@ -123,32 +123,45 @@ impl LevelCformTracer {
     is_blocked
   }
 
-  /// The game material of the nearest face a ray crosses within `range` of its origin, from either side: what a
-  /// surface lying on the form is made of, read along its own normal whichever way its collision faces were wound.
-  pub fn get_nearest_material(&self, origin: &Vector3d<f32>, direction: &Vector3d<f32>, range: f32) -> Option<u16> {
-    self
-      .get_nearest_triangle(origin, direction, range)
-      .map(|index| self.materials[index])
+  /// The face a line through `point` along `direction` crosses nearest the point, within `reach` either side and from
+  /// either side, by its index in the collision form the tracer was built from, with its game material: what a surface
+  /// lying on the form is made of, read along its own normal whichever way its collision faces were wound, before a
+  /// face stacked a little above or below it, such as a plate laid on a floor.
+  pub fn get_face_nearest_along(
+    &self,
+    point: &Vector3d<f32>,
+    direction: &Vector3d<f32>,
+    reach: f32,
+  ) -> Option<(u32, u16)> {
+    let reversed: Vector3d<f32> = -direction;
+
+    // Walked from both ends: a line grazing a face's edge can miss it from one end and cross it from the other.
+    [direction, &reversed]
+      .into_iter()
+      .filter_map(|along| self.get_nearest_to_middle(&(point - &(along * reach)), along, reach))
+      .min_by(|first, second| first.0.total_cmp(&second.0))
+      .map(|(_, index)| (self.faces[index], self.materials[index]))
   }
 
-  /// The nearest face a ray crosses within `range` of its origin, from either side, by its index in the collision form
-  /// the tracer was built from, with its game material.
-  pub fn get_nearest_face(&self, origin: &Vector3d<f32>, direction: &Vector3d<f32>, range: f32) -> Option<(u32, u16)> {
-    self
-      .get_nearest_triangle(origin, direction, range)
-      .map(|index| (self.faces[index], self.materials[index]))
-  }
+  /// The triangle a ray crosses nearest `reach` ahead of its origin, within `reach` either side, by how far from there
+  /// and its place in the hierarchy's order.
+  fn get_nearest_to_middle(
+    &self,
+    origin: &Vector3d<f32>,
+    direction: &Vector3d<f32>,
+    reach: f32,
+  ) -> Option<(f32, usize)> {
+    let mut nearest: Option<(f32, usize)> = None;
 
-  /// The nearest triangle a ray crosses within `range`, from either side, by its place in the hierarchy's order.
-  fn get_nearest_triangle(&self, origin: &Vector3d<f32>, direction: &Vector3d<f32>, range: f32) -> Option<usize> {
-    let mut nearest: Option<usize> = None;
-
-    self.walk(origin, direction, range, |index, reach| {
+    self.walk(origin, direction, reach * 2.0, |index, _| {
       if let Some(distance) = self.get_distance(index, origin, direction)
-        && distance < *reach
+        && distance <= reach * 2.0
       {
-        nearest = Some(index);
-        *reach = distance;
+        let off: f32 = (distance - reach).abs();
+
+        if nearest.is_none_or(|(best, _)| off < best) {
+          nearest = Some((off, index));
+        }
       }
 
       false
