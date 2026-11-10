@@ -99,10 +99,8 @@ impl LevelLightConversion {
 
     let mut part: EditableObjectPart<EditableLightObject> = EditableObjectPart::new(context.guid, objects);
 
-    EditableLightObject::write_new_tool_data(&mut part.tool_data);
-
     if let Some(direction) = Self::get_sun_direction(level) {
-      part.tool_data.section_mut("main").set(
+      part.tool_data.section_mut(EditableLightObject::MAIN_SECTION).set(
         EditableLightObject::SUN_DIRECTION_KEY,
         EditableLevelValue::format_vector2(&direction),
       );

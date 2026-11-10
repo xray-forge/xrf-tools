@@ -466,7 +466,8 @@ fn gathers_collision_no_render_triangle_draws_into_its_own_object_by_sector() ->
       .iter()
       .map(|mesh| (mesh.name.as_str(), mesh.faces.len()))
       .collect::<Vec<_>>(),
-    [("collision_1", 1)]
+    [("collision_1", 2)],
+    "the sector's lone collision face, halved for the Level Editor"
   );
   assert_eq!(
     dress_of(&decompiled).last().cloned().unwrap_or_default(),
@@ -552,6 +553,23 @@ fn drops_the_static_copies_of_wall_marks() -> XrfResult {
   );
 
   Ok(())
+}
+
+#[test]
+fn takes_a_triangle_xrlc_measures_no_area_in_for_a_needle() {
+  // One of the faces of `labx8`'s compiled geometry xrLC refused: 11 m long, about 2 mm across.
+  assert!(LevelGeometryConversion::is_needle(&[
+    Vector3d::new(-75.476135, 2.162382, 99.757_22),
+    Vector3d::new(-75.4795, -1.505456, 99.757_22),
+    Vector3d::new(-75.4795, -8.841132, 99.757_22),
+  ]));
+  assert!(LevelGeometryConversion::is_needle(&[Vector3d::ZERO; 3]));
+  // A sliver a centimetre across holds area enough.
+  assert!(!LevelGeometryConversion::is_needle(&[
+    Vector3d::new(0.0, 0.0, 0.0),
+    Vector3d::new(5.0, 0.01, 0.0),
+    Vector3d::new(10.0, 0.0, 0.0),
+  ]));
 }
 
 #[test]

@@ -3,7 +3,7 @@ use xrf_ini::{IniFile, IniFormat, IniSection};
 use xrf_math::Vector3d;
 
 use crate::tests::fixtures::GUID;
-use crate::{EditableLightObject, EditableObjectPart, EditableTextPart};
+use crate::{EditableLightObject, EditableObjectPart, EditableTextPart, EditableToolObject};
 
 /// A light tool's part as the CoP SDK saves `labx8`'s: `[main]` with the tool's own sun direction and last control
 /// index, `[lcontrols]`, and one fuzzy light shaped as `light_galogen_1m_ambient_0018` (at values `%f` prints
@@ -104,6 +104,44 @@ fn reads_a_light_part_typed_and_writes_it_back_with_the_tools_own_data() -> XrfR
     "the header's own keys stay the header's"
   );
   assert_eq!(String::from_utf8_lossy(&part.to_text_part()?.write_to_bytes()?), text);
+
+  Ok(())
+}
+
+#[test]
+fn reads_the_tools_controls_and_sun_direction_and_none_from_a_tool_without_them() -> XrfResult {
+  let lights: EditableObjectPart<EditableLightObject> = read_lights(&light_part_text(&[])?)?;
+  let controls = EditableLightObject::read_controls(&lights.tool_data)?;
+
+  assert_eq!(
+    (
+      controls.len(),
+      controls.get(&EditableLightObject::SUN_CONTROL).map(String::as_str)
+    ),
+    (3, Some("$sun"))
+  );
+  assert!(EditableLightObject::read_sun_direction(&lights.tool_data)?.is_some());
+
+  let mut fresh: IniFile = IniFile::default();
+
+  assert!(EditableLightObject::read_controls(&fresh)?.is_empty());
+  assert_eq!(EditableLightObject::read_sun_direction(&fresh)?, None);
+
+  EditableLightObject::write_new_tool_data(&mut fresh);
+
+  // Written as `%f` prints it, so within its six decimals.
+  let (read, default) = (
+    EditableLightObject::read_sun_direction(&fresh)?.expect("a new tool's sun direction"),
+    EditableLightObject::get_default_sun_direction(),
+  );
+
+  assert!((read.x - default.x).abs() < 1e-6 && (read.y - default.y).abs() < 1e-6);
+
+  fresh
+    .section_mut(EditableLightObject::CONTROLS_SECTION)
+    .set("$broken", "x");
+
+  assert!(EditableLightObject::read_controls(&fresh).is_err());
 
   Ok(())
 }

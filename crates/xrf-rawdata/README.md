@@ -10,6 +10,7 @@ Converts between the game's compiled assets and the SDK's rawdata, the tree the 
 | Level files ↔ Level Editor parts     | `Level*Conversion::decompile` and `export`   |
 | Level directory → Level Editor scene | `LevelSceneDecompiler::decompile`            |
 | Level Editor scene → its game files  | `LevelSceneExporter::export`                 |
+| Level Editor scene → `build.prj`     | `LevelBuildExporter::export`                 |
 | `.object` → OGF                      | `ObjectCompiler::compile`                    |
 | `.object` → `.dm`                    | `ObjectCompiler::compile_detail`             |
 | Compare a compiled OGF with another  | `ObjectVerifier::verify`                     |
@@ -274,7 +275,7 @@ from its own spawn lists where it was edited; each difference is a recorded disa
 Glows are not passed through: the build hands each to the level compiler as a `b_glow` (`SceneBuilder::BuildGlow`),
 which keeps its position, radius and the shader table row of its shader and texture in the compiled `level`
 (`fsL_GLOWS`). `decompile` gives back a glow per record, unturned, named after its texture, with no fixed-size flag,
-which the compiled level drops. Their export goes into `build.prj`, not yet written.
+which the compiled level drops. Their export goes into `build.prj` (`LevelBuildExporter`).
 
 - GSC's `labx8` holds its 29 glows inside groups: each matches a decompiled glow at distance 0 with the same radius,
   shader and texture.
@@ -378,12 +379,22 @@ kept it whole where it split the render faces over it. A face of another materia
 as a collision-only prop laid on a floor, and stays. Over vanilla, 288,343 of 10,830,486 collision faces are
 collision-only and 2,646,858 lie under trees alone.
 
+The Level Editor builds a picking model of every mesh it loads and refuses one of fewer than 4 points and 2 faces
+(`CDB::MODEL::build`), so `ObjectDecompiler::decompile_level_geometry` gives a mesh of one face back halved through its
+longest edge, the same area in two faces, and records `ObjectInference::HalvedFace`; the census counts it as the one
+face it was. A sector's lone collision-only face is the usual case (`labx8`'s sector 13).
+
 The Build adds every wall mark to the static faces too (`ESceneWallmarkTool::ExportStatic`, compiler shader
 `def_shaders\def_vertex_ghost_no_shadow`) beside writing `level.wallmarks`, so the compiled geometry holds each decal
 twice. With the wall marks, `LevelDecalIndex` drops a static triangle of a slot's texture whose centre lies within 1 cm
 of one of that slot's decal triangles: `wallmark.part` holds it, and a rebuild would otherwise draw it twice. Over
 vanilla every one of the 11,768 static triangles of a slot's texture lies so (6,601 exactly), and the census counts them
 as `decal_triangles`.
+
+xrLC leaves needles along T-junctions in its own output: triangles a millimetre or two across whose two shorter edges add
+up to the longest within a few single-precision steps. The Build and xrLC measure a face by Heron's formula in single
+precision, which rounds such a face's area to zero, and xrLC stops on one (`Face::Verify`), so the decompile leaves
+them out, static and collision-only alike, and the census counts them as `needle_triangles` (54 on `labx8`).
 
 `LevelOccluderConversion` gives `level.hom` back as `<name>_hom`, an ordinary object whose surfaces have the
 `materials\occ` game material, as GSC's `labx8` keeps its occluders, and `level.som` as `<name>_som`, flagged
@@ -434,6 +445,16 @@ replaced is the front-end's to ask (`--force`, a confirmation), as `LevelSceneDe
 before a decompile and `get_existing_object_paths` after it. Vanilla CoP's `labx8`, `zaton` and `mp_atp`,
 and CS's `agroprom_underground`, decompile, read back to the same bytes, and export every file byte for byte; so does
 GSC's own `labx8` scene.
+
+`LevelBuildExporter::export` writes the `build.prj` the Build hands xrLC (`CompileStatic`, `SaveBuild`), reading each
+placed object from an objects root and its game materials from `gamemtl.xr`: the sky and the sun generated from the
+level options (the sun's samples each taken from the one before, as the shipped editor's loop reads the variable it
+declares), then glows, static objects (`BuildMesh`: world space, occluder, breakable and climbable surfaces skipped,
+faces of no area dropped, two-sided backs added), the scene's lights under their controls, portals and wall marks,
+each material once per texture, shaders and sector. It refuses a draft-quality scene, a multi-use object and a portal
+of more than six corners, which the Build would simplify. Gunslinger's `l01_test` decompiled and exported comes back to
+its shipped `build.prj` on all its area, its sky, sun and dynamic lights exact; the decompiled `labx8`'s compiles in
+GSC's xrLC and plays.
 
 ## Compile an object into an OGF
 

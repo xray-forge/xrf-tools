@@ -1,5 +1,6 @@
 use xrf_error::{XrfError, XrfResult};
 use xrf_ini::{IniFile, IniSection};
+use xrf_math::Vector3d;
 
 use crate::level::editable_level_value::EditableLevelValue;
 use crate::object::editable_custom_object::EditableCustomObject;
@@ -20,6 +21,9 @@ pub struct EditableSceneObject {
 impl EditableSceneObject {
   /// `SCENEOBJ_CURRENT_VERSION`, which the editor writes.
   pub const VERSION: u32 = 0x12;
+
+  /// The tool's own section, `AppendRandom` as the editor names it, saved lowered.
+  pub const APPEND_RANDOM_SECTION: &'static str = "appendrandom";
 }
 
 impl EditableToolObject for EditableSceneObject {
@@ -55,5 +59,23 @@ impl EditableToolObject for EditableSceneObject {
     section.set("version", Self::VERSION.to_string());
     section.set("reference_name", self.reference.clone());
     section.set("flags", EditableLevelValue::format_u32(self.flags));
+  }
+
+  /// The scene object tool's `[appendrandom]` as a new tool holds it (`ESceneObjectTool::ESceneObjectTool`,
+  /// `ESceneObjectTools.cpp:17`): scale 1 to 1, rotation 0 to 0, no objects. Its `LoadLTX` reads every key
+  /// (`ESceneObjectToolsIO.cpp:31`), so a part without them does not open.
+  fn write_new_tool_data(tool_data: &mut IniFile) {
+    let section: &mut IniSection = tool_data.section_mut(Self::APPEND_RANDOM_SECTION);
+
+    for (key, value) in [
+      ("AppendRandomMaxRotation", Vector3d::ZERO),
+      ("AppendRandomMaxScale", Vector3d::ONE),
+      ("AppendRandomMinRotation", Vector3d::ZERO),
+      ("AppendRandomMinScale", Vector3d::ONE),
+    ] {
+      section.set(key, EditableLevelValue::format_vector3(&value));
+    }
+
+    section.set("AppendRandomObjects_size", "0");
   }
 }

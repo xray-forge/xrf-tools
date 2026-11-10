@@ -68,6 +68,18 @@ fn reads_a_scene_object_part_typed_and_writes_it_back_with_the_tools_own_data() 
   Ok(())
 }
 
+/// A new part holds the tool's `[appendrandom]` as a new tool saves it, which the editor's loader requires: GSC's own,
+/// as `labx8`'s part holds it.
+#[test]
+fn writes_a_new_part_with_the_tools_own_data_as_a_new_tool_holds_it() -> XrfResult {
+  let gsc: EditableObjectPart<EditableSceneObject> = read_scene_objects(&scene_object_part_text(&[])?)?;
+  let new: EditableObjectPart<EditableSceneObject> = EditableObjectPart::new(GUID, Vec::new());
+
+  assert_eq!(new.tool_data, gsc.tool_data);
+
+  Ok(())
+}
+
 #[test]
 fn refuses_a_scene_object_of_no_reference() -> XrfResult {
   assert!(read_scene_objects(&scene_object_part_text(&[("reference_name", "")])?).is_err());

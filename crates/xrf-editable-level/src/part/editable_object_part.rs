@@ -28,14 +28,19 @@ pub struct EditableObjectPart<T> {
 }
 
 impl<T: EditableToolObject> EditableObjectPart<T> {
-  /// A part of no modification holding `objects`, its flags clear where the tool keeps any, and no tool data.
+  /// A part of no modification holding `objects`, its flags clear where the tool keeps any, and the tool data a new
+  /// tool holds ([`EditableToolObject::write_new_tool_data`]).
   pub fn new(guid: EditableLevelGuid, objects: Vec<T>) -> Self {
+    let mut tool_data: IniFile = IniFile::default();
+
+    T::write_new_tool_data(&mut tool_data);
+
     Self {
       guid,
       flags: T::KEEPS_FLAGS.then_some(0),
       modification: EditablePartModification::default(),
       objects,
-      tool_data: IniFile::default(),
+      tool_data,
     }
   }
 

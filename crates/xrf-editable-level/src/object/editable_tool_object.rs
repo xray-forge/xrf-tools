@@ -33,4 +33,9 @@ pub trait EditableToolObject: Sized {
 
   /// Writes the object's fields under `section`, and any section named after it, `clsid` aside.
   fn write_to_ini(&self, ini: &mut IniFile, section: &str);
+
+  /// Writes what the tool itself saves beyond its header as a new scene's tool holds it, which the tool's `LoadLTX`
+  /// requires: nothing for most tools. A new part ([`crate::EditableObjectPart::new`]) starts from it, so the editor
+  /// opens it.
+  fn write_new_tool_data(_tool_data: &mut IniFile) {}
 }

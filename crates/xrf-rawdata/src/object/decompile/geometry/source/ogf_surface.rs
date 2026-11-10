@@ -98,6 +98,34 @@ impl OgfSurface {
     })
   }
 
+  /// The same surface with each triangle halved through the middle of its longest edge, winding kept: the area it covers
+  /// is the same, in twice the faces over one more point. A triangle and its mirror halve alike, as they share their
+  /// longest edge, so they still fold into two-sided faces.
+  pub(crate) fn halve(&self) -> Self {
+    let length = |first: &OgfCorner, second: &OgfCorner| (&first.position - &second.position).length();
+
+    Self {
+      triangles: self
+        .triangles
+        .iter()
+        .flat_map(|triangle| {
+          let longest: usize = (0..3)
+            .max_by(|first, second| {
+              let edge = |start: &usize| length(&triangle[*start], &triangle[(*start + 1) % 3]);
+
+              edge(first).total_cmp(&edge(second))
+            })
+            .unwrap_or(0);
+          let [start, end, opposite] = [0, 1, 2].map(|offset| triangle[(longest + offset) % 3]);
+          let middle: OgfCorner = start.interpolate(&end);
+
+          [[start, middle, opposite], [middle, end, opposite]]
+        })
+        .collect(),
+      ..self.clone()
+    }
+  }
+
   /// The triangles `indices` make of `corners`, three a triangle.
   fn list_triangles(corners: &[OgfCorner], indices: &[u16]) -> XrfResult<Vec<[OgfCorner; 3]>> {
     let corner = |index: u16| -> XrfResult<OgfCorner> {

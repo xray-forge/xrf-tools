@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use xrf_error::{XrfError, XrfResult};
 use xrf_ini::{IniFile, IniSection};
 use xrf_math::{Vector2d, Vector3d};
@@ -92,33 +94,55 @@ impl EditableLightObject {
   /// `ELight::ltPoint`, the only kind the build exports.
   pub const POINT: u32 = 1;
 
+  /// The light tool's sections: `[lcontrols]`, each control's name by its index, and `[main]`.
+  pub const CONTROLS_SECTION: &'static str = "lcontrols";
+  pub const MAIN_SECTION: &'static str = "main";
+
   /// The light tool's `[main]` key of the sun's direction, pitch then heading in radians, which the build points the
   /// sun along (`SceneBuilder::BuildSun`).
   pub const SUN_DIRECTION_KEY: &'static str = "sun_shadow_dir";
 
-  /// Writes the light tool's own data as a new scene's tool saves it (`ESceneLightTool::Clear`,
-  /// `ESceneLightTools.cpp:27`): the controls `$static`, `$hemi` and `$sun` at 0, 1 and 2, the next control index 3, and
-  /// the default sun shadow direction, -25 and 292 degrees.
-  pub fn write_new_tool_data(tool_data: &mut IniFile) {
-    for (name, index) in [
-      ("$static", Self::STATIC_CONTROL),
-      ("$hemi", Self::HEMI_CONTROL),
-      ("$sun", Self::SUN_CONTROL),
-    ] {
-      tool_data.section_mut("lcontrols").set(name, index.to_string());
-    }
+  /// A new light tool's sun direction, -25 and 292 degrees. `deg2rad` multiplies by `PI / 180` in double precision;
+  /// GSC's scenes hold `-0.436332, 5.096362`.
+  pub fn get_default_sun_direction() -> Vector2d {
+    Vector2d::new((-25.0_f64).to_radians() as f32, 292.0_f64.to_radians() as f32)
+  }
 
-    let main: &mut IniSection = tool_data.section_mut("main");
+  /// The light tool's controls in `tool_data`, each name by its index, as `ESceneLightTool::LoadLTX` reads
+  /// `[lcontrols]`; none where the tool holds no such section.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for a control whose index is not a number.
+  pub fn read_controls(tool_data: &IniFile) -> XrfResult<HashMap<u32, String>> {
+    tool_data
+      .section(Self::CONTROLS_SECTION)
+      .into_iter()
+      .flat_map(|section| &section.fields)
+      .map(|field| {
+        let index: u32 = field.value.trim().parse::<u32>().map_err(|error| {
+          XrfError::new_parsing_error(format!(
+            "Light control '{}' has index '{}': {error}",
+            field.key, field.value
+          ))
+        })?;
 
-    main.set("lcontrol_last_idx", "3");
-    main.set(
-      Self::SUN_DIRECTION_KEY,
-      // `deg2rad` multiplies by `PI / 180` in double precision; GSC's scenes hold `-0.436332, 5.096362`.
-      EditableLevelValue::format_vector2(&Vector2d::new(
-        (-25.0_f64).to_radians() as f32,
-        292.0_f64.to_radians() as f32,
-      )),
-    );
+        Ok((index, field.key.clone()))
+      })
+      .collect()
+  }
+
+  /// The light tool's sun direction in `tool_data`, pitch then heading; none where `[main]` holds none.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for a direction that is not two floats.
+  pub fn read_sun_direction(tool_data: &IniFile) -> XrfResult<Option<Vector2d>> {
+    tool_data
+      .section(Self::MAIN_SECTION)
+      .filter(|section| section.get(Self::SUN_DIRECTION_KEY).is_some())
+      .map(|section| EditableLevelValue::read_vector2(section, Self::SUN_DIRECTION_KEY))
+      .transpose()
   }
 
   /// The flags as the editor saves them, [`Self::POINT_FUZZY`] set for a light holding fuzzy points.
@@ -266,5 +290,28 @@ impl EditableToolObject for EditableLightObject {
         );
       }
     }
+  }
+
+  /// The light tool's own data as a new scene's tool saves it (`ESceneLightTool::Clear`, `ESceneLightTools.cpp:27`):
+  /// the controls `$static`, `$hemi` and `$sun` at 0, 1 and 2, the next control index 3, and the default sun shadow
+  /// direction, -25 and 292 degrees.
+  fn write_new_tool_data(tool_data: &mut IniFile) {
+    for (name, index) in [
+      ("$static", Self::STATIC_CONTROL),
+      ("$hemi", Self::HEMI_CONTROL),
+      ("$sun", Self::SUN_CONTROL),
+    ] {
+      tool_data
+        .section_mut(Self::CONTROLS_SECTION)
+        .set(name, index.to_string());
+    }
+
+    let main: &mut IniSection = tool_data.section_mut(Self::MAIN_SECTION);
+
+    main.set("lcontrol_last_idx", "3");
+    main.set(
+      Self::SUN_DIRECTION_KEY,
+      EditableLevelValue::format_vector2(&Self::get_default_sun_direction()),
+    );
   }
 }

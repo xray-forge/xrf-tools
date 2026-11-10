@@ -190,7 +190,7 @@ impl LevelSceneExporter {
   }
 
   /// The scene's part of tool `O`, or an empty one where the scene has no such tool, as the editor holds every tool.
-  fn get_part<O: EditableToolObject>(
+  pub(crate) fn get_part<O: EditableToolObject>(
     scene: &EditableLevelScene,
     guid: EditableLevelGuid,
   ) -> XrfResult<EditableObjectPart<O>> {

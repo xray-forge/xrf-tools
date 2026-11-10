@@ -67,6 +67,7 @@ struct Lighting {
   pictures: vec4<f32>,
   summed_light: vec4<f32>,
   display: vec4<f32>,
+  eye: vec4<f32>,
 }
 
 struct Present {

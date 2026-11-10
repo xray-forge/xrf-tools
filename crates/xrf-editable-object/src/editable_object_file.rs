@@ -74,6 +74,16 @@ impl EditableObjectFile {
   /// `CEditableObject::eoProgressive`: the export builds sliding-window detail levels of the mesh.
   pub const PROGRESSIVE_FLAG: u32 = 1 << 1;
 
+  /// `CEditableObject::eoHOM`: the object is an occluder the Build writes to `level.hom`, not level geometry.
+  pub const HOM_FLAG: u32 = 1 << 3;
+
+  /// `CEditableObject::eoMultipleUsage`: the object is a model placed many times, built once with each placement
+  /// referencing it.
+  pub const MULTIPLE_USAGE_FLAG: u32 = 1 << 4;
+
+  /// `CEditableObject::eoSoundOccluder`: the object is a sound occluder the Build writes to `level.som`.
+  pub const SOUND_OCCLUDER_FLAG: u32 = 1 << 5;
+
   /// Bytes the flags chunk holds as the current editor writes it.
   pub const FLAGS_SIZE: u8 = 4;
 

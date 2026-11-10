@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_rawdata::LevelExportedFile;
+use xrf_rawdata::{LevelBuildCensus, LevelExportedFile};
 
 /// What `level build` wrote, as its JSON report says it.
 #[derive(Debug, Serialize)]
@@ -9,4 +9,6 @@ pub(crate) struct LevelBuildReport {
   pub(crate) destination: String,
   /// Each file written, its size and what it replaced.
   pub(crate) files: Vec<LevelExportedFile>,
+  /// What `build.prj` took from the scene, where the build wrote one.
+  pub(crate) geometry: Option<LevelBuildCensus>,
 }

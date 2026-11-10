@@ -99,7 +99,13 @@ fn makes_a_new_scenes_main_file_of_every_key_the_editor_writes() -> XrfResult {
   assert_eq!(level.get_build_params()?, EditableBuildParams::DEFAULT);
   assert_eq!(level.get_camera()?, camera);
   assert_eq!(level.ini.get("level_tag", "owner"), Some("xrf"));
-  assert_eq!(level.ini.get("build_params", "reserved_0"), Some("0.000000"));
+  for index in 0..EditableBuildParams::RESERVED_FLOATS {
+    assert_eq!(
+      level.ini.get("build_params", &format!("reserved_{index}")),
+      Some("0.000000"),
+      "the SDK's editor refuses a scene lacking reserved_{index}"
+    );
+  }
 
   Ok(())
 }

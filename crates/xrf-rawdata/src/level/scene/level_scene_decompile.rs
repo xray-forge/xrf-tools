@@ -24,7 +24,12 @@ impl LevelSceneObjectFile {
 
   /// Its path under `objects_root`, the reference's folders as directories.
   pub fn get_path(&self, objects_root: &Path) -> PathBuf {
-    let mut path: PathBuf = objects_root.join(self.reference.split('\\').collect::<PathBuf>());
+    Self::get_reference_path(objects_root, &self.reference)
+  }
+
+  /// The path under `objects_root` of the object `reference` names, as the Level Editor resolves `$objects$`.
+  pub fn get_reference_path(objects_root: &Path, reference: &str) -> PathBuf {
+    let mut path: PathBuf = objects_root.join(reference.split('\\').collect::<PathBuf>());
 
     path.set_extension(Self::EXTENSION);
     path

@@ -66,7 +66,8 @@ fn folds_a_mirror_one_quantisation_step_off_into_a_two_sided_face() -> XrfResult
   )])?;
   let surfaces: &[EditableSurface] = object.surfaces.as_deref().expect("Expect surfaces");
 
-  assert_eq!(mesh(&object).faces.len(), 1);
+  // One two-sided face, which a mesh of nothing else gives back halved for the Level Editor.
+  assert_eq!(mesh(&object).faces.len(), 2);
   assert!(surfaces.len() == 1 && surfaces[0].is_two_sided());
 
   Ok(())
@@ -175,4 +176,60 @@ fn refuses_an_index_past_a_visuals_vertices() {
   .to_string();
 
   assert!(error.contains("Index 7"), "{error}");
+}
+
+/// The Level Editor refuses a mesh of fewer than 4 points and 2 faces, so a lone triangle comes back halved through
+/// its longest edge, the same area in two faces; a two-sided one, two two-sided halves.
+#[test]
+fn halves_a_lone_triangle_the_level_editor_would_refuse() -> XrfResult {
+  let [a, b, c] = [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [0.0, 0.0, 1.0]];
+  let area = |mesh: &EditableMesh| -> f32 {
+    mesh
+      .faces
+      .iter()
+      .map(|face| {
+        let [p, q, r] = face.corners.map(|corner| mesh.points[corner.point as usize]);
+
+        0.5 * (&q - &p).cross(&(&r - &p)).length()
+      })
+      .sum()
+  };
+
+  let one_sided: EditableObjectFile = decompile(&[visual(
+    "wood\\wood_plank6",
+    vec![vertex(a, UP), vertex(b, UP), vertex(c, UP)],
+    vec![0, 2, 1],
+  )])?;
+
+  assert_eq!((mesh(&one_sided).points.len(), mesh(&one_sided).faces.len()), (4, 2));
+  assert!(
+    mesh(&one_sided).points.contains(&Vector3d::new(1.0, 0.0, 0.5)),
+    "halved through the longest edge's middle"
+  );
+  assert!((area(mesh(&one_sided)) - 1.0).abs() < 1e-6);
+
+  let two_sided: EditableObjectFile = decompile(&[visual(
+    "wood\\wood_plank6",
+    vec![
+      vertex(a, UP),
+      vertex(b, UP),
+      vertex(c, UP),
+      vertex(a, DOWN),
+      vertex(b, DOWN),
+      vertex(c, DOWN),
+    ],
+    vec![0, 2, 1, 3, 4, 5],
+  )])?;
+
+  assert_eq!((mesh(&two_sided).points.len(), mesh(&two_sided).faces.len()), (4, 2));
+  assert!(
+    two_sided
+      .surfaces
+      .as_deref()
+      .unwrap_or_default()
+      .iter()
+      .all(EditableSurface::is_two_sided)
+  );
+
+  Ok(())
 }
