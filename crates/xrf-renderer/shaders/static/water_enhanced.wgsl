@@ -435,8 +435,15 @@ fn shade_enhanced(in: WaterVarying) -> EnhancedShaded {
   let glinted: f32 = dot(highlight, LUMINANCE) / max(dot(lit, LUMINANCE), 1e-4);
   shaded.reflected_share = mix(saturate(fresnel * enhanced.reflectivity), 1.0, glinted) * seen * border * seen * seen;
   shaded.roughness = mix(GUIDE_ROUGHNESS_CALM, GUIDE_ROUGHNESS_RAIN, waves.rain_rough);
-  shaded.hit_distance = reflected_ray_length(fragment.position,
-    textureSampleLevel(reflection_clear, sky_clamp, saturate((pixel + 0.5) / size + waves.screen), 0.0).a);
+  // The distance the reflection kept at the texel nearest where the waves move its read, or at the pixel's own where
+  // that is no water: a linear read beside a reed would mix in the nothing where no water drew as a nearer hit.
+  let clear_size: vec2<f32> = vec2<f32>(textureDimensions(reflection_clear));
+  let own: vec2<f32> = (pixel + 0.5) / size;
+  let moved_kept: f32 =
+    textureLoad(reflection_clear, vec2<i32>(min(saturate(own + waves.screen) * clear_size, clear_size - 1.0)), 0).a;
+  let own_kept: f32 = textureLoad(reflection_clear, vec2<i32>(min(own * clear_size, clear_size - 1.0)), 0).a;
+
+  shaded.hit_distance = reflected_ray_length(fragment.position, select(own_kept, moved_kept, moved_kept > 0.0));
 
   return shaded;
 }

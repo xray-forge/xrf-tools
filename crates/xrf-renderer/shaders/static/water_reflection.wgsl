@@ -6,6 +6,7 @@
 #import "common/water_enhanced"
 #import "common/trace_requests"
 #import "common/water_rays"
+#import "common/water_reflection_read"
 #import "generated/static/water_reflection"
 
 // The reflection's walk over the pyramid of the frame's nearest depth, its hits and probable answers the surfaces' rays'
@@ -415,13 +416,16 @@ fn fs_water_resolve(in: WaterVarying) -> @location(0) vec4<f32> {
     pow(saturate(REFLECTION_HISTORY - select(0.0, REFLECTION_SKY_HISTORY, met_distance <= 0.0) - f32(is_off)), frames) *
     enhanced.history;
   let jitter: vec2<f32> = (resolve_jitter(vec2<u32>(in.clip.xy)) * 2.0 - 1.0) / size * 0.25;
-  let sampled: vec3<f32> = textureSampleLevel(reflection_history, sky_clamp, previous + jitter, 0.0).rgb;
+  // The history read off its water alone (`read_water_reflection`): where no water drew it holds nothing, which a
+  // plain linear read beside a reed or a pipe would mix in as black for the history to keep.
+  let history_read: vec4<f32> = read_water_reflection(reflection_history, previous + jitter);
   // The history held within what this frame's fresh pixels about it show, so a reflection that moved onto a pixel,
   // which its history never had, stands at once rather than when its turn comes.
   let bounds: FreshBounds = fresh_bounds(vec2<i32>(in.clip.xy));
-  let history: vec3<f32> = select(sampled, clamp(sampled, bounds.low, bounds.high), bounds.is_found);
-  // The history's distance says whether the last frame drew water there: newly seen water keeps none of it.
-  let is_history: f32 = f32(history_distance(previous) > 0.0);
+  let history: vec3<f32> =
+    select(history_read.rgb, clamp(history_read.rgb, bounds.low, bounds.high), bounds.is_found);
+  // Whether the last frame drew water about there: newly seen water keeps none of the history.
+  let is_history: f32 = f32(history_read.w > 0.0 && !is_off);
   let settled: f32 = saturate(1.0 - length(moved * size) / HISTORY_MOTION);
 
   // A held pixel keeps the history whole where it holds a frame there; where it does not, it takes what its fresh
