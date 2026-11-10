@@ -103,16 +103,23 @@ fn engine_wetting(
   let near: f32 = reached * fade * fade * saturate(up * 10.0 + 10.0 * 0.5 + 0.5);
   let wetness: f32 = near * wet.puddles.x;
   let upward: f32 = max(up, 0.0);
-  let splashed: vec3<f32> = splash_normal(place.xz, wet.time * engine_value(SPLASH_PACE.x, SPLASH_PACE.y));
-  let along: vec3<f32> = place / 2.0;
-  let slide: f32 = ceil((1.0 - upward) * FLOW_SLIDE_STEPS) / FLOW_SLIDE_STEPS *
-    engine_value(FLOW_SLIDE_PACE.x, FLOW_SLIDE_PACE.y);
-  let fall_x: vec3<f32> = flow_normal(vec2<f32>(along.z, along.y + wet.time * slide));
-  let fall_z: vec3<f32> = flow_normal(vec2<f32>(along.x, along.y + wet.time * slide));
   // Nothing on the weapon in hand, which the viewer has none of.
   let applied: f32 = near * wet.density * smoothstep(0.8, 0.9, length(position));
-  let water: vec3<f32> = splashed * (upward * applied) + fall_x.yxz * (abs(facing.x) * applied) +
-    fall_z.zxy * (abs(facing.z) * applied);
+  var water: vec3<f32> = vec3<f32>(0.0);
+
+  // The splash and flow maps are read only where they bend the normal: not as the level dries after the rain, nor past
+  // the engine's reach.
+  if (applied > 0.0) {
+    let splashed: vec3<f32> = splash_normal(place.xz, wet.time * engine_value(SPLASH_PACE.x, SPLASH_PACE.y));
+    let along: vec3<f32> = place / 2.0;
+    let slide: f32 = ceil((1.0 - upward) * FLOW_SLIDE_STEPS) / FLOW_SLIDE_STEPS *
+      engine_value(FLOW_SLIDE_PACE.x, FLOW_SLIDE_PACE.y);
+    let fall_x: vec3<f32> = flow_normal(vec2<f32>(along.z, along.y + wet.time * slide));
+    let fall_z: vec3<f32> = flow_normal(vec2<f32>(along.x, along.y + wet.time * slide));
+
+    water = splashed * (upward * applied) + fall_x.yxz * (abs(facing.x) * applied) +
+      fall_z.zxy * (abs(facing.z) * applied);
+  }
 
   return EngineWetting((camera.view * vec4<f32>(water.x, water.y, -water.z, 0.0)).xyz, wetness);
 }
