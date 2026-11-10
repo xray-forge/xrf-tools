@@ -224,8 +224,9 @@ fn scene_ray(pixel: vec2<f32>, position: vec3<f32>, normal: vec3<f32>, direction
   let pixel_angle: f32 = 2.0 * reflection.ratio / (camera.projection[1][1] * camera.viewport.y);
   var request: TraceRequest;
 
-  request.origin = vec4<f32>(origin, reflection.distance);
-  request.cone = vec2<f32>(distance * pixel_angle, pixel_angle + roughness);
+  request.origin = pack_trace_request_origin(origin);
+  request.reach = pack2x16float(vec2<f32>(reflection.distance, 0.0));
+  request.cone = pack2x16float(vec2<f32>(distance * pixel_angle, pixel_angle + roughness));
   request.toward = pack2x16snorm(octahedral_encode(world_direction(direction)));
   request.pixel = u32(pixel.x) | (u32(pixel.y) << 16u);
 
@@ -248,7 +249,7 @@ fn request_scene(answer: vec4<f32>, share: f32, hit_end: u32) -> bool {
   var request: TraceRequest = scene_request;
 
   request.screen = trace_request_screen(answer.rgb, share);
-  request.screen_length = answer.w;
+  request.reach = pack2x16float(vec2<f32>(unpack2x16float(request.reach).x, answer.w));
   request.hit_end = hit_end | (scene_mates << TRACE_REQUEST_MATES_SHIFT);
 
   return list_trace_request(request);

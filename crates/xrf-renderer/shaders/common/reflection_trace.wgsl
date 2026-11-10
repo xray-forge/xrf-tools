@@ -544,6 +544,15 @@ const TRACE_REQUEST_WATER: u32 = 0x80000000u;
 const TRACE_REQUEST_MATES_SHIFT: u32 = 8u;
 const TRACE_REQUEST_REASON: u32 = 0xffu;
 
+// Where a request's ray starts, as it carries it in three floats, so a request needs no vector's alignment.
+fn trace_request_origin(origin: array<f32, 3>) -> vec3<f32> {
+  return vec3<f32>(origin[0], origin[1], origin[2]);
+}
+
+fn pack_trace_request_origin(origin: vec3<f32>) -> array<f32, 3> {
+  return array<f32, 3>(origin.x, origin.y, origin.z);
+}
+
 // The sky's share a water's request carries in its reason's low half (a half float), which the water's sky is lit by
 // where its ray meets nothing.
 fn trace_request_sky_share(hit_end: u32) -> f32 {

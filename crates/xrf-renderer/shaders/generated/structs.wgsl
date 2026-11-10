@@ -382,12 +382,12 @@ struct TraceSwaySlot {
 }
 
 struct TraceRequest {
-  origin: vec4<f32>,
-  cone: vec2<f32>,
+  origin: array<f32, 3>,
+  reach: u32,
+  screen: vec2<u32>,
+  cone: u32,
   toward: u32,
   pixel: u32,
-  screen: vec2<u32>,
-  screen_length: f32,
   hit_end: u32,
 }
 

@@ -60,10 +60,15 @@ impl TraceRequestList {
     }
   }
 
+  /// The requests' buffer, as many as `capacity` and one workgroup's at the least, but no more than one binding of the
+  /// device holds: a ray past its room is held as one past a full list is.
   fn create_requests(device: &wgpu::Device, label: &str, capacity: u32) -> wgpu::Buffer {
+    let stride: u64 = size_of::<TraceRequest>() as u64;
+    let most: u64 = device.limits().max_storage_buffer_binding_size / stride * stride;
+
     device.create_buffer(&wgpu::BufferDescriptor {
       label: Some(&format!("{label} requests")),
-      size: u64::from(capacity.max(TraceRequest::WORKGROUP)) * size_of::<TraceRequest>() as u64,
+      size: (u64::from(capacity.max(TraceRequest::WORKGROUP)) * stride).min(most),
       usage: wgpu::BufferUsages::STORAGE,
       mapped_at_creation: false,
     })

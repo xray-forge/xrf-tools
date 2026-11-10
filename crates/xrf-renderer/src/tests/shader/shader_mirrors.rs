@@ -617,6 +617,19 @@ fn a_static_surface_is_as_large_as_its_shaders_read() {
   );
 }
 
+/// A trace request takes ten words in the scene pass as in Rust: no member holds it to a vector's alignment, so a list
+/// as large as the frame stays a sixth smaller than one of twelve.
+#[test]
+fn a_trace_request_takes_ten_words() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+
+  assert_eq!(size_of::<TraceRequest>(), 40);
+  assert_eq!(
+    get_struct_size(&library, "frame/reflection_scene", "TraceRequest"),
+    size_of::<TraceRequest>() as u32
+  );
+}
+
 /// The bytes a struct of a name takes in a module, as the shader lays it out.
 fn get_struct_size(library: &ShaderLibrary, name: &str, type_name: &str) -> u32 {
   let module: naga::Module = parse(library, name);

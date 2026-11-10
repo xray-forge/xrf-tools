@@ -119,12 +119,12 @@ fn cs_water_scene(@builtin(global_invocation_id) id: vec3<u32>) {
   let pixel_angle: f32 = 2.0 / (camera.projection[1][1] * camera.viewport.y);
   var request: TraceRequest;
 
-  request.origin = vec4<f32>(world + normal * TRACED_LIFT, water_rays_frame.trace_distance);
-  request.cone = vec2<f32>(distance * pixel_angle, pixel_angle);
+  request.origin = pack_trace_request_origin(world + normal * TRACED_LIFT);
+  request.reach = pack2x16float(vec2<f32>(water_rays_frame.trace_distance, 0.0)) | (last << 16u);
+  request.cone = pack2x16float(vec2<f32>(distance * pixel_angle, pixel_angle));
   request.toward = water_rays[at];
   request.pixel = id.x | (id.y << 16u);
   request.screen = vec2<u32>(water_rays[at + 1u], water_rays[at + 2u]);
-  request.screen_length = unpack2x16float(last & 0xffffu).x;
   request.hit_end = TRACE_REQUEST_WATER | (pack2x16float(vec2<f32>(water_rays_frame.sky_share, 0.0)) & 0xffffu);
 
   trace_water_request(request);
@@ -133,12 +133,20 @@ fn cs_water_scene(@builtin(global_invocation_id) id: vec3<u32>) {
 // A water's request traced against the level's geometry and the grass's cards, answered into the water's reflection.
 fn trace_water_request(request: TraceRequest) {
   let toward: vec3<f32> = normalize(octahedral_decode(unpack2x16snorm(request.toward)));
-  let cone: SceneCone = SceneCone(request.cone.x, request.cone.y);
+  let cone: SceneCone = request_cone(request);
   let screen: vec4<f32> = vec4<f32>(unpack2x16float(request.screen.x), unpack2x16float(request.screen.y));
   let pixel: vec2<u32> = vec2<u32>(request.pixel & 0xffffu, request.pixel >> 16u);
+  let reach: f32 = unpack2x16float(request.reach).x;
 
-  answer_water(request, toward, cone, trace_water_ray(request.origin.xyz, toward, 0.0, request.origin.w, cone), screen,
-    pixel);
+  answer_water(request, toward, cone,
+    trace_water_ray(trace_request_origin(request.origin), toward, 0.0, reach, cone), screen, pixel);
+}
+
+// A request's cone as it carries it, two halves.
+fn request_cone(request: TraceRequest) -> SceneCone {
+  let cone: vec2<f32> = unpack2x16float(request.cone);
+
+  return SceneCone(cone.x, cone.y);
 }
 
 @compute @workgroup_size(64)
@@ -154,24 +162,26 @@ fn cs_scene(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroup
   }
 
   let request: TraceRequest = trace_requests[index];
-  let toward: vec3<f32> = normalize(octahedral_decode(unpack2x16snorm(request.toward)));
-  let cone: SceneCone = SceneCone(request.cone.x, request.cone.y);
-  let screen: vec4<f32> = vec4<f32>(unpack2x16float(request.screen.x), unpack2x16float(request.screen.y));
-  let pixel: vec2<u32> = vec2<u32>(request.pixel & 0xffffu, request.pixel >> 16u);
-
   if ((request.hit_end & TRACE_REQUEST_WATER) != 0u) {
     trace_water_request(request);
 
     return;
   }
 
-  let hit: SceneHit = trace_scene_ray(request.origin.xyz, toward, 0.0, request.origin.w, cone);
+  let toward: vec3<f32> = normalize(octahedral_decode(unpack2x16snorm(request.toward)));
+  let cone: SceneCone = request_cone(request);
+  let screen: vec4<f32> = vec4<f32>(unpack2x16float(request.screen.x), unpack2x16float(request.screen.y));
+  let pixel: vec2<u32> = vec2<u32>(request.pixel & 0xffffu, request.pixel >> 16u);
+  let origin: vec3<f32> = trace_request_origin(request.origin);
+  // How far the ray reaches, then the length of what the screen answered.
+  let lengths: vec2<f32> = unpack2x16float(request.reach);
+  let hit: SceneHit = trace_scene_ray(origin, toward, 0.0, lengths.x, cone);
 
   if (hit.distance < 0.0) {
     return;
   }
 
-  let remembered: vec4<f32> = remembered_light(request.origin.xyz + toward * hit.distance);
+  let remembered: vec4<f32> = remembered_light(origin + toward * hit.distance);
   var shown: vec3<f32> = remembered.rgb;
 
   if (remembered.w < 0.5) {
@@ -183,7 +193,7 @@ fn cs_scene(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroup
     fog_mixed(lighting, shown * min(1.0, RADIANCE_LIMIT / traced_luminance(shown)), fog_light(lighting, toward), fog);
 
   let answer: vec4<f32> = vec4<f32>(screen.rgb + met * (1.0 - screen.w),
-    select(hit.distance, request.screen_length, screen.w > 0.5));
+    select(hit.distance, lengths.y, screen.w > 0.5));
   let mates: u32 = request.hit_end >> TRACE_REQUEST_MATES_SHIFT;
   let quad: vec2<u32> = pixel & vec2<u32>(~1u);
 
@@ -220,12 +230,15 @@ fn answer_water(request: TraceRequest, toward: vec3<f32>, cone: SceneCone, hit: 
   pixel: vec2<u32>) {
   let is_card: bool = is_scene_grass_card(hit);
   let is_met: bool = hit.distance >= 0.0;
+  let start: vec3<f32> = trace_request_origin(request.origin);
+  // How far the ray reaches, then the length of what the screen answered.
+  let lengths: vec2<f32> = unpack2x16float(request.reach);
   var grass: SceneGrassPassed;
 
   if (is_card) {
     grass = scene_card_grass(hit, cone.width + cone.spread * hit.distance);
   } else {
-    grass = scene_grass_passed(request.origin.xyz, toward, select(request.origin.w, hit.distance, is_met), is_met);
+    grass = scene_grass_passed(start, toward, select(lengths.x, hit.distance, is_met), is_met);
   }
 
   if (!is_met && grass.opacity <= 0.0) {
@@ -258,7 +271,7 @@ fn answer_water(request: TraceRequest, toward: vec3<f32>, cone: SceneCone, hit: 
   var met_length: f32 = hit.distance;
 
   if (grass.opacity > 0.0) {
-    let lit: vec3<f32> = shade_scene_grass(grass, request.origin.xyz, toward, lighting, material_lut, lut_sampler,
+    let lit: vec3<f32> = shade_scene_grass(grass, start, toward, lighting, material_lut, lut_sampler,
       sky_environment_0, sky_environment_1, sky_clamp);
 
     behind = mix(behind,
@@ -267,9 +280,9 @@ fn answer_water(request: TraceRequest, toward: vec3<f32>, cone: SceneCone, hit: 
     met_length = select(met_length, grass.entry, !is_met || grass.opacity > 0.5);
   }
 
-  let origin: vec3<f32> = (camera.view * vec4<f32>(request.origin.xyz, 1.0)).xyz;
+  let origin: vec3<f32> = (camera.view * vec4<f32>(start, 1.0)).xyz;
   let along: f32 = -origin.z * (1.0 + met_length / max(length(origin), 1e-4));
 
   textureStore(traced_out, pixel, vec4<f32>(screen.rgb + behind * (1.0 - screen.w),
-    select(along, request.screen_length, request.screen_length > 0.0)));
+    select(along, lengths.y, lengths.y > 0.0)));
 }
