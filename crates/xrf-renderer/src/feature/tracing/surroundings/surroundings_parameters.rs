@@ -4,19 +4,20 @@ use crate::feature::image::exposure::reading::exposure_head::ExposureHead;
 use crate::feature::tracing::surroundings::surroundings_uniform::SurroundingsUniform;
 use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 
-/// What resolving one face of the surroundings cube reads and writes: the face's G-buffer as the static scene drew it,
-/// the material table, both keyframes' sky and irradiance cubes and clouds and their samplers, the lighting, the
-/// exposure whose scale the sky is drawn on, the face's settings, and the cube's first mip, whose face it writes.
+/// What resolving one face of the surroundings cube reads and writes: the faces' G-buffer arrays as the static scene
+/// drew them, read at the face's layer, the material table, both keyframes' sky and irradiance cubes and clouds and
+/// their samplers, the lighting, the exposure whose scale the sky is drawn on, the face's settings, and the cube's
+/// first mip, whose face it writes.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
 pub(crate) struct SurroundingsParameters<'a> {
-  #[texture(d2, depth)]
+  #[texture(d2_array, depth)]
   pub depth_target: GraphTexture,
-  #[texture(d2, unfilterable)]
+  #[texture(d2_array, unfilterable)]
   pub albedo_target: GraphTexture,
-  #[texture(d2, unfilterable)]
+  #[texture(d2_array, unfilterable)]
   pub normal_target: GraphTexture,
-  #[texture(d2, unfilterable)]
+  #[texture(d2_array, unfilterable)]
   pub material_target: GraphTexture,
   #[texture(d3, float)]
   pub material_lut: GraphTexture,
