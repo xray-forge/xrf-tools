@@ -213,7 +213,7 @@ impl StaticScene {
         }
 
         if class.is_deferred() {
-          writer.trace_geometries.push(StaticTraceGeometry {
+          let traced: StaticTraceGeometry = writer.put_densities(StaticTraceGeometry {
             layout: StaticLayout::Baked,
             first_index: base.index_start + section.draw.start,
             index_count: section.draw.count,
@@ -221,7 +221,10 @@ impl StaticScene {
             vertex_count: description.geometry.vertex_count,
             surface,
             is_cut_out: class == StaticClass::CutOut,
+            first_density: 0,
           });
+
+          writer.trace_geometries.push(traced);
         }
       }
     }

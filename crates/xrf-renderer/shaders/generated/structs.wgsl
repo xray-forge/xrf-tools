@@ -433,7 +433,8 @@ struct Reflections {
 struct TraceInstance {
   first_record: u32,
   place: u32,
-  pad: array<u32, 2>,
+  density_scale: f32,
+  flags: u32,
 }
 
 struct TraceRecord {
@@ -441,6 +442,7 @@ struct TraceRecord {
   vertex_start: u32,
   surface: u32,
   flags: u32,
+  first_density: u32,
 }
 
 struct Froxels {

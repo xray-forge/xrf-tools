@@ -50,6 +50,9 @@ use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 use crate::scene::static_scene::surface::build::static_surface_builder::StaticSurfaceBuilder;
 use crate::scene::static_scene::surface::static_surface::StaticSurface;
 use crate::scene::static_scene::surface::static_surface_pass::StaticSurfacePass;
+use crate::scene::static_scene::trace::static_trace_density::StaticTraceDensity;
+use crate::scene::static_scene::trace::static_trace_instance::StaticTraceInstance;
+use crate::scene::static_scene::trace::static_trace_record::StaticTraceRecord;
 use crate::shader::shader_library::ShaderLibrary;
 use crate::tests::shader::fixtures::{
   get_constant, get_float_constant, get_signed_constant, get_vector_constant, parse,
@@ -538,6 +541,39 @@ fn the_static_draws_read_a_vertex_s_words_where_rust_packs_them() {
   assert_eq!(get("VERTEX_TANGENT"), StaticLayout::TANGENT);
   assert_eq!(get("VERTEX_UV"), StaticLayout::UV);
   assert_eq!(get("VERTEX_EXTRA"), StaticLayout::EXTRA);
+}
+
+/// The scene trace reads a record's flags as `StaticTraceRecord` sets them, an instance's as `StaticTraceInstance` does,
+/// and a cut-out triangle's density word as `StaticTraceDensity` packs it.
+#[test]
+fn the_scene_trace_reads_its_records_instances_and_densities_as_rust_writes_them() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+  let module: &str = "common/scene_trace";
+
+  assert_eq!(
+    get_constant(&library, module, "TRACE_RECORD_CUT_OUT"),
+    StaticTraceRecord::CUT_OUT
+  );
+  assert_eq!(
+    get_constant(&library, module, "TRACE_RECORD_TREE"),
+    StaticTraceRecord::TREE
+  );
+  assert_eq!(
+    get_constant(&library, module, "TRACE_RECORD_MODEL"),
+    StaticTraceRecord::MODEL
+  );
+  assert_eq!(
+    get_constant(&library, module, "TRACE_INSTANCE_UNEVEN"),
+    StaticTraceInstance::UNEVEN
+  );
+  assert_eq!(
+    get_float_constant(&library, module, "TRACE_DENSITY_STEPS"),
+    StaticTraceDensity::STEPS
+  );
+  assert_eq!(
+    get_float_constant(&library, module, "TRACE_DENSITY_BIAS"),
+    StaticTraceDensity::BIAS
+  );
 }
 
 /// The impostors and the grass write the material slices Rust gives their surfaces: the default lighting model, and

@@ -5,6 +5,7 @@ enable wgpu_binding_array;
 #import "common/scene_light"
 #import "common/hmodel"
 #import "common/local_lights"
+#import "common/octahedral"
 #import "common/sun_shadow"
 #import "common/axis_frame"
 #import "grass/records"
@@ -13,13 +14,14 @@ enable wgpu_binding_array;
 #import "generated/common/scene_trace"
 
 // Rays traced by hardware ray query against the level's static geometry (`StaticTrace`, bound by `TraceParameters`
-// at group 3): each top-level instance names an entry of the instance table, its first record and its place; each
-// geometry a record naming its layout's arena, where its triangles' indices and vertices start, and its surface; and
-// the texture cache's bindless textures at group 4, which a hit is shaded from and a cut-out geometry's holes are
-// tested in; and the view's local lights with the shadow atlas, which light a hit as the lights pass lights a pixel. A
-// hit is lit from what the frame already holds where it can be: the sun's cascades shadow a hit they cover, as they
-// shadow the frame's own surfaces, and only a hit past them traces its ray to the sun. A device without ray queries
-// composes `common/scene_trace_none` in its place, whose trace meets nothing.
+// at group 3): each top-level instance names an entry of the instance table, its first record, its place and what its
+// transform does to a triangle's density; each geometry a record naming its layout's arena, where its triangles'
+// indices, vertices and, cut out, density words start, and its surface; and the texture cache's bindless textures at
+// group 4, which a hit is shaded from and a cut-out geometry's holes are tested in; and the view's local lights with
+// the shadow atlas, which light a hit as the lights pass lights a pixel. A hit is lit from what the frame already holds
+// where it can be: the sun's cascades shadow a hit they cover, as they shadow the frame's own surfaces, and only a hit
+// past them traces its ray to the sun. A device without ray queries composes `common/scene_trace_none` in its place,
+// whose trace meets nothing.
 
 // What a traced ray met: its distance along the ray, below none for nothing; its record, triangle and barycentrics;
 // the place its instance stands at; the point it met, in renderer space; what turns its geometry's normals into
@@ -77,6 +79,12 @@ const SCENE_SUN_REACH: f32 = 1000.0;
 const TRACE_RECORD_CUT_OUT: u32 = 1u;
 const TRACE_RECORD_TREE: u32 = 2u;
 const TRACE_RECORD_MODEL: u32 = 4u;
+// An instance's flag, as `StaticTraceInstance` sets it: one whose transform scales unevenly.
+const TRACE_INSTANCE_UNEVEN: u32 = 1u;
+// A cut-out triangle's density word's logarithm, as `StaticTraceDensity` stores it: steps a unit, and the offset that
+// keeps it unsigned.
+const TRACE_DENSITY_STEPS: f32 = 256.0;
+const TRACE_DENSITY_BIAS: f32 = 128.0;
 // No place, which a ray passes none of.
 const SCENE_NO_PLACE: u32 = 0xffffffffu;
 // The grass cards' top-level instance's custom index (`GrassCards::INSTANCE`), past any of the scene's, which a hit on
@@ -176,8 +184,8 @@ fn traverse_solid(ray: RayDesc, cone: SceneCone, passed: u32) -> SceneHit {
     let instance: TraceInstance = trace_instances[candidate.instance_custom_data];
 
     if (instance.place != passed &&
-      is_scene_solid(instance.first_record + candidate.geometry_index, candidate.primitive_index,
-        candidate.barycentrics, width, normals_to_world(candidate.world_to_object))) {
+      is_scene_solid(instance, candidate.geometry_index, candidate.primitive_index, candidate.barycentrics, width,
+        normals_to_world(candidate.world_to_object))) {
       rayQueryConfirmIntersection(&query);
     }
   }
@@ -207,22 +215,23 @@ fn normals_to_world(world_to_object: mat4x3<f32>) -> mat3x3<f32> {
   return transpose(mat3x3<f32>(world_to_object[0], world_to_object[1], world_to_object[2]));
 }
 
-// Whether a cut-out section is solid at a point of a triangle: its base texture's alpha at the level of detail the
-// cone's `width` there reads, raised as minification thins it as the G-buffer's cut raises it (`is_alpha_cut`), over
-// its surface's reference; `to_world` turns its instance's normals into renderer space.
-fn is_scene_solid(index: u32, primitive: u32, barycentrics: vec2<f32>, width: f32, to_world: mat3x3<f32>) -> bool {
-  let record: TraceRecord = trace_records[index];
+// Whether a cut-out section is solid at a point of a triangle of an instance's `geometry`: its base texture's alpha at
+// the level of detail the cone's `width` there reads, raised as minification thins it as the G-buffer's cut raises it
+// (`is_alpha_cut`), over its surface's reference; `to_world` turns the instance's normals into renderer space.
+fn is_scene_solid(instance: TraceInstance, geometry: u32, primitive: u32, barycentrics: vec2<f32>, width: f32,
+  to_world: mat3x3<f32>) -> bool {
+  let record: TraceRecord = trace_records[instance.first_record + geometry];
 
   if ((record.flags & TRACE_RECORD_CUT_OUT) == 0u) {
     return true;
   }
 
   // What the test reads alone, each candidate a leaf a ray passes may be: the surface's base slot, tiling and
-  // reference, and the triangle's outline.
+  // reference, the triangle's base coordinates and its density word.
   let slot: u32 = trace_surfaces[record.surface].textures[SLOT_BASE];
   let tiling: f32 = trace_surfaces[record.surface].tiling;
-  let triangle: SceneTriangle = scene_outline(record, primitive);
-  let lod: f32 = texture_lod(tiling, triangle, slot, width, 1.0, scene_area(triangle, to_world));
+  let triangle: SceneTriangle = scene_base_uvs(record, primitive);
+  let lod: f32 = cut_out_lod(record, primitive, tiling, slot, width, instance, to_world);
   let uv: vec2<f32> = base_uv(tiling, triangle, barycentric_weights(barycentrics));
   let alpha: f32 = textureSampleLevel(trace_textures[slot], trace_sampler, uv, lod).a;
 
@@ -764,15 +773,17 @@ fn scene_grass_slot_exit(origin: vec3<f32>, toward: vec3<f32>, slot: vec2<i32>) 
   return min(exits.x, exits.y);
 }
 
-// A triangle's corners, read from its layout's arena through its record: its outline, then each corner's normal and,
-// for a sector's or an instanced mesh's, its lightmap's coordinate as two shorts over 32768.
+// A triangle's corners, read from its layout's arena through its record: their base coordinates, then each corner's
+// position, normal and, for a sector's or an instanced mesh's, its lightmap's coordinate as two shorts over 32768.
 fn scene_triangle(record: TraceRecord, primitive: u32) -> SceneTriangle {
-  var triangle: SceneTriangle = scene_outline(record, primitive);
+  var triangle: SceneTriangle = scene_base_uvs(record, primitive);
 
   for (var corner: u32 = 0u; corner < 3u; corner++) {
     let at: u32 = scene_vertex(record, primitive, corner) * VERTEX_WORDS;
     let normal: vec4<f32> = unpack4x8unorm(trace_word(record.flags, at + VERTEX_NORMAL));
 
+    triangle.positions[corner] = vertex_position(trace_word(record.flags, at + VERTEX_POSITION),
+      trace_word(record.flags, at + VERTEX_POSITION + 1u), trace_word(record.flags, at + VERTEX_POSITION + 2u));
     triangle.normals[corner] = vec4<f32>(unpack_direction(normal), normal.w);
 
     if ((record.flags & (TRACE_RECORD_TREE | TRACE_RECORD_MODEL)) == 0u) {
@@ -783,18 +794,14 @@ fn scene_triangle(record: TraceRecord, primitive: u32) -> SceneTriangle {
   return triangle;
 }
 
-// A triangle's outline alone, what a cut-out's test reads: its corners' positions and base coordinates, a sector's or
-// an instanced mesh's as two shorts with their fraction, a tree's as two shorts over 2048, a spawned model's as two
-// floats.
-fn scene_outline(record: TraceRecord, primitive: u32) -> SceneTriangle {
+// A triangle's corners' base coordinates alone, what a cut-out's test reads with its density word: a sector's or an
+// instanced mesh's as two shorts with their fraction, a tree's as two shorts over 2048, a spawned model's as two floats.
+fn scene_base_uvs(record: TraceRecord, primitive: u32) -> SceneTriangle {
   var triangle: SceneTriangle;
 
   for (var corner: u32 = 0u; corner < 3u; corner++) {
     let at: u32 = scene_vertex(record, primitive, corner) * VERTEX_WORDS;
     let uv: u32 = trace_word(record.flags, at + VERTEX_UV);
-
-    triangle.positions[corner] = vertex_position(trace_word(record.flags, at + VERTEX_POSITION),
-      trace_word(record.flags, at + VERTEX_POSITION + 1u), trace_word(record.flags, at + VERTEX_POSITION + 2u));
 
     if ((record.flags & TRACE_RECORD_TREE) != 0u) {
       triangle.uvs[corner] = unpack_shorts(uv) / 2048.0;
@@ -845,6 +852,29 @@ fn texture_lod(tiling: f32, triangle: SceneTriangle, slot: u32, width: f32, scal
   let density: f32 = sqrt(uv_area / max(area, 1e-8)) * max(size.x, size.y);
 
   return log2(max(width * density, 1.0));
+}
+
+// The level of detail a cut-out triangle's texture is read at under a cone `width` wide, as `texture_lod` reads it from
+// the triangle's corners, but from its density word (`StaticTraceDensity`): its base coordinate's units a metre of it
+// spans in its geometry's own space, by its surface's `tiling` and its texture's size, carried by its instance's
+// transform. An instance scaling alike each way adds its own logarithm; one scaling unevenly stretches the triangle by
+// the way it faces, worked out from its corners' cross as `scene_area` carries its area (`to_world` the transpose of
+// the instance's inverse).
+fn cut_out_lod(record: TraceRecord, primitive: u32, tiling: f32, slot: u32, width: f32, instance: TraceInstance,
+  to_world: mat3x3<f32>) -> f32 {
+  let word: u32 = trace_densities[record.first_density + primitive];
+  let size: vec2<f32> = vec2<f32>(textureDimensions(trace_textures[slot]));
+  let local: f32 = f32(word & 0xffffu) / TRACE_DENSITY_STEPS - TRACE_DENSITY_BIAS;
+  var scale: f32 = instance.density_scale;
+
+  if ((instance.flags & TRACE_INSTANCE_UNEVEN) != 0u) {
+    let across: vec3<f32> = octahedral_decode(unpack4x8unorm(word).zw * 2.0 - 1.0);
+    let stretch: f32 = length(to_world * across) / max(abs(determinant(to_world)), 1e-12);
+
+    scale = -0.5 * log2(max(stretch, 1e-12));
+  }
+
+  return max(log2(width * tiling * max(size.x, size.y)) + local + scale, 0.0);
 }
 
 // A triangle's area in renderer space, its geometry's corners carried by its instance: the cross of its edges, turned

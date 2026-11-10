@@ -17,7 +17,8 @@ use crate::scene::static_scene::trace::static_trace_record::StaticTraceRecord;
 /// surfaces; the view's local lights, how many and how their shadows compare, and the shadow atlas, which light a hit;
 /// the sun's cascades and what they were drawn with, which shadow a hit they cover; and the level's grass as the view
 /// plants it, its slot grid, slots, models and their colours, which covers a terrain hit, and the cards it stands near
-/// its eye, whose holes a ray passes. The bindless textures a hit is shaded from are the texture cache's own group.
+/// its eye, whose holes a ray passes; and the cut-out geometry's triangles' density words, which its holes are tested
+/// by. The bindless textures a hit is shaded from are the texture cache's own group.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 3)]
 pub(crate) struct TraceParameters<'a> {
@@ -65,4 +66,8 @@ pub(crate) struct TraceParameters<'a> {
   /// widths a metre of it spans, then each corner's coordinate (`shaders/grass/cards.wgsl`).
   #[storage]
   pub trace_grass_cards: StorageArray<u32>,
+  /// A word a cut-out geometry's triangle, which its holes are tested by (`StaticTraceDensity`), from its record's
+  /// first.
+  #[storage]
+  pub trace_densities: StorageArray<u32>,
 }

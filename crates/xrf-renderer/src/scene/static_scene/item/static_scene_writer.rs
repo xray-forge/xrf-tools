@@ -14,6 +14,7 @@ use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 use crate::scene::static_scene::item::static_place::StaticPlace;
 use crate::scene::static_scene::item::static_sorted_run::StaticSortedRun;
 use crate::scene::static_scene::surface::static_surface::StaticSurface;
+use crate::scene::static_scene::trace::static_trace_density::StaticTraceDensity;
 use crate::scene::static_scene::trace::static_trace_geometry::StaticTraceGeometry;
 use crate::scene::static_scene::trace::static_trace_group::StaticTraceGroup;
 
@@ -40,9 +41,11 @@ pub(crate) struct StaticSceneWriter {
   pub slot_infos: Vec<StaticSlotInfo>,
   pub cluster_slots: Vec<u32>,
   pub impostor_shaders: Vec<u16>,
-  /// Its deferred baked sections and instanced meshes, which the level's acceleration structures take.
+  /// Its deferred baked sections and instanced meshes, which the level's acceleration structures take, and the density
+  /// words of the cut-out ones' triangles.
   pub trace_geometries: Vec<StaticTraceGeometry>,
   pub trace_groups: Vec<StaticTraceGroup>,
+  pub trace_densities: Vec<u32>,
   /// Its strictly sorted composited runs, which a view draws back to front.
   pub sorted_runs: Vec<StaticSortedRun>,
   /// The bounding sphere in the world of each cluster of its sections and of each of its placed meshes drawn by a pass
@@ -63,6 +66,30 @@ impl StaticSceneWriter {
     self.indices.extend_from_slice(indices);
 
     base
+  }
+
+  /// A deferred geometry of the words and indices put, as the acceleration structures take it: a cut-out one's
+  /// triangles' density words put, which it starts at.
+  pub(crate) fn put_densities(&mut self, mut geometry: StaticTraceGeometry) -> StaticTraceGeometry {
+    geometry.first_density = 0;
+
+    if geometry.is_cut_out {
+      let first: usize = geometry.first_index as usize;
+      let indices: &[u32] = self
+        .indices
+        .get(first..first + geometry.index_count as usize)
+        .unwrap_or_default();
+
+      geometry.first_density = self.trace_densities.len() as u32;
+      self.trace_densities.extend(StaticTraceDensity::measure(
+        geometry.layout,
+        &self.words[geometry.layout.get_index()],
+        geometry.vertex_start,
+        indices,
+      ));
+    }
+
+    geometry
   }
 
   /// Puts the clusters covering one index range as one slot; answers its index and how many clusters it took.
@@ -120,6 +147,7 @@ impl StaticSceneWriter {
     let slots: u32 = StaticSpans::get_offset(spans.slots.as_ref());
     let places: u32 = StaticSpans::get_offset(spans.places.as_ref());
     let impostors: u32 = StaticSpans::get_offset(spans.impostors.as_ref());
+    let densities: u32 = StaticSpans::get_offset(spans.trace_densities.as_ref());
 
     for (cluster, layout) in self.clusters.iter_mut().zip(&self.cluster_layouts) {
       cluster.first_index += indices;
@@ -158,6 +186,10 @@ impl StaticSceneWriter {
     {
       geometry.first_index += indices;
       geometry.vertex_start += words[geometry.layout.get_index()];
+
+      if geometry.is_cut_out {
+        geometry.first_density += densities;
+      }
     }
 
     for group in &mut self.trace_groups {

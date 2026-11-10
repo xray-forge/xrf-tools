@@ -15,6 +15,9 @@ pub struct StaticTraceGeometry {
   pub surface: u32,
   /// Whether its texels at or below its surface's alpha reference are holes a ray passes through.
   pub is_cut_out: bool,
+  /// Its first triangle's density word in the shared ones (`StaticTraceDensity`), which a cut-out one's holes are
+  /// tested with; nothing for one not cut out.
+  pub first_density: u32,
 }
 
 impl StaticTraceGeometry {

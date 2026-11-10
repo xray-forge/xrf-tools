@@ -75,7 +75,7 @@ impl StaticScene {
       };
 
       if class.is_deferred() && model.skin.is_none() {
-        writer.trace_geometries.push(StaticTraceGeometry {
+        let traced: StaticTraceGeometry = writer.put_densities(StaticTraceGeometry {
           layout: StaticLayout::Model,
           first_index: base.index_start + part.indices.0,
           index_count: part.indices.1,
@@ -83,7 +83,10 @@ impl StaticScene {
           vertex_count,
           surface,
           is_cut_out: class == StaticClass::CutOut,
+          first_density: 0,
         });
+
+        writer.trace_geometries.push(traced);
       }
 
       // A row's clusters are culled one after another by one thread, so a large part is cut into several slots.

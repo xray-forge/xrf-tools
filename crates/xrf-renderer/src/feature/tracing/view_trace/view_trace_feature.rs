@@ -398,6 +398,7 @@ impl ViewTraceFeature {
           trace_grass_colours: StorageArray::new(grass.colours),
           trace_grass: grass.uniform,
           trace_grass_cards: StorageArray::new(grass.cards),
+          trace_densities: StorageArray::new(statics.trace_densities),
         },
         textures: texture_group,
       })
