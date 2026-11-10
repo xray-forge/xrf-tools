@@ -33,6 +33,9 @@ pub struct LevelEntitySources<'a> {
   /// The root spawn's objects standing on the level (decision 10). Where it holds any, they stand in for `spawn`'s
   /// entities but its graph points, which a root spawn keeps as graph vertices instead.
   pub root: &'a [AlifeObject],
+  /// The names of entities the Build exported from the scene's geometry, which the decompile folded back into objects:
+  /// left out of every list, as the Build writes them again.
+  pub folded: &'a [String],
 }
 
 /// A level's entities decompiled: the spawn points of those typed, those refused (each named with its section in the
@@ -73,31 +76,42 @@ impl LevelEntityConversion {
   ///
   /// Returns an error when a typed packet's fields cannot be saved, a string holding a double quote, or a root spawn
   /// object does not write; a packet whose class is not known is refused one by one instead.
-  pub fn decompile<T: ByteOrder>(
-    sources: &LevelEntitySources<'_>,
+  pub fn decompile<'a, T: ByteOrder>(
+    sources: &LevelEntitySources<'a>,
     context: &mut LevelDecompileContext,
   ) -> XrfResult<LevelEntityDecompile> {
-    let spawn: &[LevelSpawnObject] = sources.spawn.map(|list| list.objects.as_slice()).unwrap_or_default();
-    let respawn: &[LevelSpawnObject] = sources.respawn.map(|list| list.objects.as_slice()).unwrap_or_default();
+    let is_kept = |name: &String| !sources.folded.contains(name);
+    let list = |file: Option<&'a LevelSpawnFile>| -> Vec<&'a LevelSpawnObject> {
+      file
+        .map(|list| list.objects.iter().filter(|object| is_kept(&object.name)).collect())
+        .unwrap_or_default()
+    };
+    let spawn: Vec<&LevelSpawnObject> = list(sources.spawn);
+    let respawn: Vec<&LevelSpawnObject> = list(sources.respawn);
+    let root: Vec<&AlifeObject> = sources
+      .root
+      .iter()
+      .filter(|object| is_kept(&object.header.name))
+      .collect();
     let mut decompile: LevelEntityDecompile = LevelEntityDecompile::default();
 
     for name in spawn
       .iter()
-      .chain(respawn)
+      .chain(&respawn)
       .map(|object| object.name.as_str())
-      .chain(sources.root.iter().map(|object| object.header.name.as_str()))
+      .chain(root.iter().map(|object| object.header.name.as_str()))
     {
       context.names.reserve(name);
     }
 
     if sources.root.is_empty() {
-      Self::decompile_listed::<T>(spawn, Self::SPAWN_FILE_NAME, 0, &mut decompile, context)?;
+      Self::decompile_listed::<T>(&spawn, Self::SPAWN_FILE_NAME, 0, &mut decompile, context)?;
     } else {
-      Self::decompile_root::<T>(spawn, sources.root, &mut decompile, context)?;
+      Self::decompile_root::<T>(&spawn, &root, &mut decompile, context)?;
     }
 
     Self::decompile_listed::<T>(
-      respawn,
+      &respawn,
       Self::RESPAWN_FILE_NAME,
       EditableSpawnPointObject::RESPAWN_ENTITY,
       &mut decompile,
@@ -109,7 +123,7 @@ impl LevelEntityConversion {
 
   /// A spawn list's packets as spawn points of `flags`, those of no known class refused.
   fn decompile_listed<T: ByteOrder>(
-    objects: &[LevelSpawnObject],
+    objects: &[&LevelSpawnObject],
     file: &str,
     flags: u8,
     decompile: &mut LevelEntityDecompile,
@@ -130,8 +144,8 @@ impl LevelEntityConversion {
   /// `level.spawn`'s packets in its order, each replaced by the root spawn's object of its name, then the root spawn's
   /// objects `level.spawn` lacks; its graph points kept, its other packets the root spawn lacks left out.
   fn decompile_root<T: ByteOrder>(
-    listed: &[LevelSpawnObject],
-    root: &[AlifeObject],
+    listed: &[&LevelSpawnObject],
+    root: &[&AlifeObject],
     decompile: &mut LevelEntityDecompile,
     context: &mut LevelDecompileContext,
   ) -> XrfResult {
@@ -145,7 +159,7 @@ impl LevelEntityConversion {
     for object in listed {
       if let Some(index) = by_name.remove(object.name.as_str()) {
         taken[index] = true;
-        Self::decompile_built::<T>(&root[index], Some(object), decompile, context)?;
+        Self::decompile_built::<T>(root[index], Some(*object), decompile, context)?;
         continue;
       }
 

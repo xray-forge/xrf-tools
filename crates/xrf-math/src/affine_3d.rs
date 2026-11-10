@@ -55,6 +55,12 @@ impl Affine3d {
     }
   }
 
+  /// The rotation `Fmatrix::setXYZ` makes of angles, heading, pitch and bank of `y`, `x` and `z`: the one a scene
+  /// object's rotation names, and the one an exported part's angles were read back from (`getXYZ`).
+  pub fn from_xyz(angles: &Vector3d) -> Self {
+    Self::from_heading_pitch_bank(angles.y, angles.x, angles.z)
+  }
+
   /// The rotation a bone's rest angles name, `Fmatrix::setXYZi`: heading, pitch and bank of `-y`, `-x` and `-z`.
   pub fn from_xyz_inverse(angles: &Vector3d) -> Self {
     Self::from_heading_pitch_bank(-angles.y, -angles.x, -angles.z)

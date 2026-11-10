@@ -52,6 +52,7 @@ impl LevelSceneStep for LevelGameStep {
           .as_ref()
           .map(|root| root.objects.as_slice())
           .unwrap_or_default(),
+        folded: &draft.folded_entities,
       },
       &mut draft.context,
     )?;

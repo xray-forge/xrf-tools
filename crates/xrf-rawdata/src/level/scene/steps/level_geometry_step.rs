@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use byteorder::ByteOrder;
@@ -6,25 +7,33 @@ use xrf_gamemtl::GameMtlFile;
 use xrf_level::{
   LevelCformFile, LevelFile, LevelGeomFile, LevelGeomSource, LevelHomFile, LevelSomFile, LevelWallmarksFile,
 };
+use xrf_ogf::OgfFile;
 use xrf_shaders::ShaderCompilerFile;
+use xrf_spawn::LevelSpawnFile;
 use xrf_utils::format_path;
 
+use crate::level::level_breakable_conversion::LevelBreakableConversion;
 use crate::level::level_collision_index::LevelCollisionIndex;
 use crate::level::level_decal_index::LevelDecalIndex;
+use crate::level::level_entity_conversion::LevelEntityConversion;
 use crate::level::level_geometry_conversion::{LevelGeometryConversion, LevelGeometryDecompile, LevelGeometrySources};
 use crate::level::level_surface_inference::{LevelShaderPairings, LevelSurfaceInference, LevelSurfaces};
 use crate::level::scene::level_decompile_options::LevelDecompileOptions;
 use crate::level::scene::level_scene_draft::LevelSceneDraft;
+use crate::level::scene::level_scene_listing::LevelSceneListing;
 use crate::level::scene::level_scene_sources::LevelSceneSources;
 use crate::level::scene::steps::level_scene_step::LevelSceneStep;
 use crate::provenance::level_scene_provenance::{
-  LevelSceneGeometry, LevelSceneInference, LevelSceneSource, LevelSceneSurfaceLibraries, LevelSceneSurfaces,
+  LevelSceneGeometry, LevelSceneInference, LevelSceneRefusal, LevelSceneSource, LevelSceneSurfaceLibraries,
+  LevelSceneSurfaces,
 };
 use crate::provenance::sidecar::Sidecar;
 
-/// The level's geometry ([`LevelGeometryConversion`]): the objects of its static geometry, collision and occluders,
-/// the scene objects placing them, and the sectors and portals, their surfaces dressed from `level.cform` where the
-/// options ask it and the directory holds one. It runs first, so the sectors take the first names of their prefix.
+/// The level's geometry ([`LevelGeometryConversion`]): the objects of its static geometry, collision, occluders,
+/// ladders and breakable parts, the scene objects placing them, and the sectors and portals, their surfaces dressed
+/// from `level.cform` where the options ask it and the directory holds one. It runs first, so the sectors take the
+/// first names of their prefix, and names the folded ladders' and breakables' packets in the draft, which the game step
+/// leaves out of the spawn points.
 pub(crate) struct LevelGeometryStep;
 
 impl LevelSceneStep for LevelGeometryStep {
@@ -35,7 +44,13 @@ impl LevelSceneStep for LevelGeometryStep {
     LevelHomFile::FILE_NAME,
     LevelSomFile::FILE_NAME,
     LevelWallmarksFile::FILE_NAME,
+    LevelEntityConversion::SPAWN_FILE_NAME,
   ];
+
+  const LISTINGS: &'static [LevelSceneListing] = &[LevelSceneListing {
+    directory: LevelBreakableConversion::DIRECTORY,
+    takes: LevelBreakableConversion::is_part_file,
+  }];
 
   fn decompile<T: ByteOrder>(
     sources: &mut LevelSceneSources,
@@ -60,6 +75,12 @@ impl LevelSceneStep for LevelGeometryStep {
     let decals: Option<LevelDecalIndex> = sources
       .peek_read(LevelWallmarksFile::FILE_NAME, LevelWallmarksFile::read_from_bytes::<T>)?
       .map(|wallmarks| LevelDecalIndex::new(&wallmarks));
+    // Read, not taken: the game step decompiles the entities the geometry does not stand for.
+    let spawn: Option<LevelSpawnFile> = sources.peek_read(
+      LevelEntityConversion::SPAWN_FILE_NAME,
+      LevelSpawnFile::read_from_bytes::<T>,
+    )?;
+    let breakable_parts: BTreeMap<String, OgfFile> = Self::read_breakable_parts::<T>(sources, draft);
     let mut surfaces: Option<(LevelSurfaceInference, LevelSceneSurfaceLibraries)> = match (options.surfaces, &collision)
     {
       (LevelSurfaces::Infer, Some(_)) => Some(Self::read_surface_inference::<T>(options)?),
@@ -75,6 +96,8 @@ impl LevelSceneStep for LevelGeometryStep {
         hom: hom.as_ref(),
         som: som.as_ref(),
         decals: decals.as_ref(),
+        spawn: spawn.as_ref(),
+        breakable_parts: &breakable_parts,
       },
       surfaces.as_mut().map(|(inference, _)| inference),
       &mut draft.context,
@@ -92,6 +115,8 @@ impl LevelSceneStep for LevelGeometryStep {
       has_objects && (hom.is_some() || som.is_some()),
       &[LevelSceneInference::Occluders],
     );
+    draft.infer_if(geometry.census.ladders > 0, &[LevelSceneInference::Ladders]);
+    draft.infer_if(geometry.census.breakables > 0, &[LevelSceneInference::BreakableParts]);
 
     if has_objects {
       draft.add(geometry.scene_objects.to_scene_tool()?, Self::FILES, sources);
@@ -115,6 +140,7 @@ impl LevelSceneStep for LevelGeometryStep {
     }
 
     draft.refused.extend(geometry.refused);
+    draft.folded_entities = geometry.folded_entities;
     draft.geometry = Some(LevelSceneGeometry {
       objects: geometry.objects.iter().map(|object| object.reference.clone()).collect(),
       census: geometry.census,
@@ -130,6 +156,33 @@ impl LevelSceneStep for LevelGeometryStep {
 }
 
 impl LevelGeometryStep {
+  /// The breakable parts the directory holds, by their paths in it; one that is no OGF is refused, and its breakable
+  /// stays an entity.
+  fn read_breakable_parts<T: ByteOrder>(
+    sources: &mut LevelSceneSources,
+    draft: &mut LevelSceneDraft,
+  ) -> BTreeMap<String, OgfFile> {
+    let mut parts: BTreeMap<String, OgfFile> = BTreeMap::new();
+
+    for listing in Self::LISTINGS {
+      for path in sources.get_listed(listing) {
+        match sources.take_read(&path, OgfFile::read_from_bytes::<T>) {
+          Ok(Some(part)) => {
+            parts.insert(path, part);
+          }
+          Ok(None) => {}
+          Err(error) => draft.refused.push(LevelSceneRefusal {
+            object: path.clone(),
+            file: path,
+            reason: format!("The breakable part is no OGF, so its breakable stays an entity: {error}"),
+          }),
+        }
+      }
+    }
+
+    parts
+  }
+
   /// What dresses the surfaces: the libraries the options name, each recorded with its hash.
   fn read_surface_inference<T: ByteOrder>(
     options: &LevelDecompileOptions,

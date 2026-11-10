@@ -14,10 +14,14 @@ use xrf_level::{
   LevelSomFile, LevelVisual, LevelVisualsChunk,
 };
 use xrf_math::{Matrix4x4, Vector3d};
+use xrf_ogf::OgfFile;
+use xrf_spawn::LevelSpawnFile;
 
+use crate::level::level_breakable_conversion::LevelBreakableConversion;
 use crate::level::level_collision_index::LevelCollisionIndex;
 use crate::level::level_decal_index::LevelDecalIndex;
 use crate::level::level_decompile_context::LevelDecompileContext;
+use crate::level::level_ladder_conversion::LevelLadderConversion;
 use crate::level::level_occluder_conversion::LevelOccluderConversion;
 use crate::level::level_surface_inference::LevelSurfaceInference;
 use crate::level::level_visual_geometry::LevelVisualGeometry;
@@ -29,11 +33,13 @@ use crate::provenance::level_scene_provenance::LevelSceneRefusal;
 /// A level's geometry, from the compiled level back into objects the scene places, and the sectors and portals that
 /// cull them (decision 11's shells): one object per compiled sector holding every static triangle the sector draws,
 /// named by the sector, whose index the Build gives back since it numbers sectors in the order the scene lists them
-/// (`SceneBuilder::RenumerateSectors`, `BuilderCore.cpp:75`); the collision no render triangle draws; and the occluders.
+/// (`SceneBuilder::RenumerateSectors`, `BuilderCore.cpp:75`); the collision no render triangle draws; the occluders;
+/// and the ladders and breakable parts the Build took out of the geometry.
 ///
-/// Every object keeps the level's coordinates and stands at the origin: a shell spans its sector, so a pivot inside it
-/// would round the low bits off every point nearer the origin than the pivot, and two sectors would no longer meet
-/// exactly where the level had them meet (decision 11, as amended).
+/// A shell, the collision and the occluders keep the level's coordinates and stand at the origin: a shell spans its
+/// sector, so a pivot inside it would round the low bits off every point nearer the origin than the pivot, and two
+/// sectors would no longer meet exactly where the level had them meet (decision 11, as amended). A ladder or a
+/// breakable part stands where its packet placed it, in a frame of its own.
 pub struct LevelGeometryConversion;
 
 /// What a level's geometry decompiles from: the compiled bundle named `name`, its visuals and the buffers they draw
@@ -48,17 +54,25 @@ pub struct LevelGeometrySources<'a, D: ChunkDataSource> {
   pub som: Option<&'a LevelSomFile>,
   /// The wall marks, whose copies in the static geometry are dropped, since the scene's `wallmark.part` holds them.
   pub decals: Option<&'a LevelDecalIndex>,
+  /// The spawn list the Build wrote, whose ladders and breakables are folded back into objects.
+  pub spawn: Option<&'a LevelSpawnFile>,
+  /// The breakable parts the Build wrote beside it, by their paths in the level's directory, `meshes/brkbl#<N>.ogf`.
+  pub breakable_parts: &'a BTreeMap<String, OgfFile>,
 }
 
-/// One object the decompile writes, by the path the scene references it at.
+/// One object the decompile writes, by the path the scene references it at, and where its scene object stands.
 #[derive(Clone, Debug, PartialEq)]
 pub struct LevelDecompiledObject {
   /// Its path under `$objects$` without the extension, such as `levels\<level>\<level>_sector_<N>`: what the scene
   /// object's `reference_name` names.
   pub reference: String,
-  /// The compiled file it came from, by its name in the level's directory, which its sidecar records: `level.geom`
-  /// for a sector's shell, `level.cform` for the collision object, `level.hom` and `level.som` for the occluders.
-  pub source: &'static str,
+  /// The origin for an object in the level's space, a shell, the collision or an occluder; where its packet placed it
+  /// for a ladder or a breakable part.
+  pub transform: EditableObjectTransform,
+  /// The compiled file it came from, by its path in the level's directory, which its sidecar records: `level.geom`
+  /// for a sector's shell, `level.cform` for the collision object, `level.hom` and `level.som` for the occluders,
+  /// `level.spawn` for a ladder, `meshes/brkbl#<N>.ogf` for a breakable part.
+  pub source: String,
   pub decompile: ObjectDecompile,
 }
 
@@ -94,6 +108,17 @@ pub struct LevelGeometryCensus {
   pub sound_occluder_polygons: usize,
   /// Sound occlusion factors no game material of the library has, whose polygons take `default`.
   pub unmatched_sound_occlusion_factors: usize,
+  /// Ladders folded back into objects, and those of them whose packet kept no game material.
+  #[serde(default)]
+  pub ladders: usize,
+  #[serde(default)]
+  pub ladders_of_default_material: usize,
+  /// Breakables folded back into objects, and those whose part the level's directory does not hold, which stay
+  /// entities.
+  #[serde(default)]
+  pub breakables: usize,
+  #[serde(default)]
+  pub breakables_without_part: usize,
 }
 
 /// A level's geometry decompiled: the objects to write, and the parts placing them and culling them.
@@ -107,15 +132,18 @@ pub struct LevelGeometryDecompile {
   pub census: LevelGeometryCensus,
   /// Each sector left out, and why.
   pub refused: Vec<LevelSceneRefusal>,
+  /// The names of the spawn list's packets the objects stand for, which the Build writes again from them, so no spawn
+  /// point should.
+  pub folded_entities: Vec<String>,
 }
 
 impl LevelGeometryDecompile {
-  /// Adds `object` with a scene object placing it at the origin under its reference, which `context` keeps from every
-  /// name generated after.
+  /// Adds `object` with a scene object placing it at its transform under its reference, which `context` keeps from
+  /// every name generated after.
   fn place(&mut self, object: LevelDecompiledObject, context: &mut LevelDecompileContext) {
     context.names.reserve(&object.reference);
     self.scene_objects.objects.push(EditableSceneObject {
-      object: EditableCustomObject::new(object.reference.clone(), EditableObjectTransform::default()),
+      object: EditableCustomObject::new(object.reference.clone(), object.transform),
       reference: object.reference.clone(),
       flags: 0,
     });
@@ -164,7 +192,10 @@ impl LevelGeometryConversion {
   ///   portal per compiled portal; with `surfaces`, each visual's triangles are split by the game material they lie on
   ///   and dressed (decision 14), else every surface takes the editor's defaults;
   /// - with the collision form, the faces no render triangle lies on, as `<level>_collision`;
-  /// - `level.hom` and `level.som`, as `<level>_hom` and `<level>_som` ([`LevelOccluderConversion`]).
+  /// - `level.hom` and `level.som`, as `<level>_hom` and `<level>_som` ([`LevelOccluderConversion`]);
+  /// - with the spawn list, each ladder and breakable part the Build exported from the geometry, as `<level>_ladder_<N>`
+  ///   and `<level>_breakable_<N>` standing where their packets placed them ([`LevelLadderConversion`],
+  ///   [`LevelBreakableConversion`]), each packet named in the decompile's folded entities.
   ///
   /// A sector drawing no static geometry has no object to name, and the editor drops a sector of no item, which would
   /// renumber every sector after it. Where one does, the objects come back without sectors or portals, each such sector
@@ -187,6 +218,7 @@ impl LevelGeometryConversion {
       portals: EditableObjectPart::new(context.guid, Vec::new()),
       census: LevelGeometryCensus::default(),
       refused: Vec::new(),
+      folded_entities: Vec::new(),
     };
     let sector_names: Vec<String> =
       Self::decompile_shells::<T, D>(&mut decompile, &mut sources, surfaces.as_deref_mut(), context)?;
@@ -218,8 +250,12 @@ impl LevelGeometryConversion {
       }
     }
 
+    if let Some(spawn) = sources.spawn {
+      Self::decompile_entities::<T>(&mut decompile, name, spawn, sources.breakable_parts, context)?;
+    }
+
     // With a sector left out, the rest would renumber, so none is written, and no portal joining them.
-    if decompile.refused.is_empty() {
+    if decompile.census.empty_sectors == 0 {
       decompile.portals.objects = Self::decompile_portals(sources.level, &sector_names, context)?;
     } else {
       decompile.sectors.objects.clear();
@@ -333,7 +369,8 @@ impl LevelGeometryConversion {
       decompile.place(
         LevelDecompiledObject {
           reference,
-          source: LevelGeomFile::FILE_NAME,
+          transform: EditableObjectTransform::default(),
+          source: String::from(LevelGeomFile::FILE_NAME),
           decompile: shell,
         },
         context,
@@ -505,7 +542,7 @@ impl LevelGeometryConversion {
 
     for mesh in meshes {
       // A sector left out leaves out every sector, so no item is needed.
-      if decompile.refused.is_empty()
+      if decompile.census.empty_sectors == 0
         && let Some(sector) = decompile.sectors.objects.get_mut(usize::from(mesh.sector))
       {
         sector.items.push(EditableSectorItem {
@@ -576,12 +613,62 @@ impl LevelGeometryConversion {
       (
         LevelDecompiledObject {
           reference: format!("levels\\{name}\\{name}_collision"),
-          source: LevelCformFile::FILE_NAME,
+          transform: EditableObjectTransform::default(),
+          source: String::from(LevelCformFile::FILE_NAME),
           decompile,
         },
         counts,
       )
     }))
+  }
+
+  /// Each entity of `spawn` the Build exported from the geometry as an object standing where the packet placed it, its
+  /// packet's name folded into `decompile`: a ladder as its box ([`LevelLadderConversion`]), a breakable as its part of
+  /// `parts` ([`LevelBreakableConversion`]), refused where the part does not decompile. A packet that does not read is
+  /// left to the spawn points, which refuse it, and a breakable whose part is missing stays an entity.
+  fn decompile_entities<T: ByteOrder>(
+    decompile: &mut LevelGeometryDecompile,
+    name: &str,
+    spawn: &LevelSpawnFile,
+    parts: &BTreeMap<String, OgfFile>,
+    context: &mut LevelDecompileContext,
+  ) -> XrfResult {
+    for object in &spawn.objects {
+      let Ok(entity) = object.read_alife_object::<T>() else {
+        continue;
+      };
+
+      if let Some(ladder) = LevelLadderConversion::decompile(name, decompile.census.ladders, &entity)? {
+        decompile.census.ladders += 1;
+        decompile.census.ladders_of_default_material += usize::from(ladder.is_material_inferred);
+        decompile.folded_entities.push(object.name.clone());
+        decompile.place(ladder.object, context);
+        continue;
+      }
+
+      let Some(path) = LevelBreakableConversion::get_part_path(&entity) else {
+        continue;
+      };
+      let Some(part) = parts.get(&path) else {
+        decompile.census.breakables_without_part += 1;
+        continue;
+      };
+
+      match LevelBreakableConversion::decompile(name, decompile.census.breakables, &entity, &path, part) {
+        Ok(breakable) => {
+          decompile.census.breakables += 1;
+          decompile.folded_entities.push(object.name.clone());
+          decompile.place(breakable, context);
+        }
+        Err(error) => decompile.refused.push(LevelSceneRefusal {
+          file: path,
+          object: object.name.clone(),
+          reason: format!("The breakable part stays an entity: {error}"),
+        }),
+      }
+    }
+
+    Ok(())
   }
 
   /// The one mesh a decompiled object holds.

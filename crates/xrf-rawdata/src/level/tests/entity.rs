@@ -14,7 +14,7 @@ use crate::{
 };
 
 /// A packet as a spawn list holds it, under chunk `id`.
-fn listed<S: ChunkReadWrite>(packet: &S, id: u32) -> XrfResult<LevelSpawnObject> {
+pub(super) fn listed<S: ChunkReadWrite>(packet: &S, id: u32) -> XrfResult<LevelSpawnObject> {
   let mut bytes: ChunkWriter = ChunkWriter::new();
 
   packet.write::<XRayByteOrder>(&mut bytes)?;
@@ -76,6 +76,7 @@ fn decompile_with_root(
       spawn: Some(spawn),
       respawn: Some(respawn),
       root,
+      folded: &[],
     },
     &mut LevelDecompileContext::new(GUID),
   )
@@ -295,6 +296,48 @@ fn takes_a_root_spawns_objects_in_place_of_the_level_spawn_list() -> XrfResult {
     "the built restrictor exports as the editor wrote it"
   );
   assert_eq!(objects[2], listed(&restrictor_named("test_added"), 2)?);
+
+  Ok(())
+}
+
+/// An entity the geometry's objects stand for is left out of every list, the root spawn's too, with no disagreement.
+#[test]
+fn leaves_out_entities_folded_into_objects() -> XrfResult {
+  let (spawn, respawn) = lists()?;
+  let root: [AlifeObject; 2] = [built(&restrictor())?, built(&restrictor_named("test_added"))?];
+  let folded: [String; 2] = [String::from("test_restrictor"), String::from("test_respawned")];
+  let decompile_folded = |root: &[AlifeObject]| {
+    LevelEntityConversion::decompile::<XRayByteOrder>(
+      &LevelEntitySources {
+        spawn: Some(&spawn),
+        respawn: Some(&respawn),
+        root,
+        folded: &folded,
+      },
+      &mut LevelDecompileContext::new(GUID),
+    )
+  };
+  let names = |decompiled: &LevelEntityDecompile| -> Vec<String> {
+    decompiled
+      .entities
+      .iter()
+      .map(|entity| entity.object.name.clone())
+      .collect()
+  };
+
+  assert_eq!(names(&decompile_folded(&[])?), ["shape_0000"]);
+
+  let from_root: LevelEntityDecompile = decompile_folded(&root)?;
+
+  assert_eq!(names(&from_root), ["shape_0000", "test_added"]);
+  assert_eq!(
+    from_root
+      .disagreements
+      .iter()
+      .map(|disagreement| disagreement.object.as_str())
+      .collect::<Vec<_>>(),
+    ["test_added"]
+  );
 
   Ok(())
 }

@@ -8,7 +8,10 @@ use crate::level::level_visual_geometry::LevelVisualGeometry;
 use crate::object::compile::object_compile_options::TangentMethod;
 use crate::object::decompile::geometry::repeated_faces::RepeatedFaces;
 use crate::object::decompile::geometry::smoothing_inference::SmoothingInference;
+use crate::object::decompile::geometry::source::bone_influences::BoneInfluences;
+use crate::object::decompile::geometry::source::ogf_corner::OgfCorner;
 use crate::object::decompile::geometry::source::ogf_surface::OgfSurface;
+use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 use crate::object::decompile::geometry::two_sided_pairs::TwoSidedPairs;
 use crate::object::decompile::geometry::welded_mesh::WeldedMesh;
 use crate::object::decompile::mesh::assembled_mesh::AssembledMesh;
@@ -55,6 +58,71 @@ impl ObjectDecompiler {
         )
       ))),
     }
+  }
+
+  /// Decompiles a part the Level Editor cut out of a level's geometry to break (`SBPart::Export`, written to the level's
+  /// `meshes\brkbl#<N>.ogf`) back into the static object of the faces it was cut from. Its bones are fragments the
+  /// export drew at random (`Random.randI`), so they are dropped and the points welded across them; each surface takes
+  /// the game material of the bone its faces follow, the one the export named the fragment by, split where its faces
+  /// follow bones of different materials.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for an OGF that is no skeleton, or one whose vertex layouts or indices do not hold together.
+  pub fn decompile_breakable(file: &OgfFile) -> XrfResult<ObjectDecompile> {
+    if OgfModelType::from_raw(file.header.model_type) != Some(OgfModelType::SkeletonRigid) {
+      return Err(XrfError::new_invalid_error(format!(
+        "A breakable part is a rigid skeleton, not a visual of model type {}",
+        OgfModelType::label(file.header.model_type)
+      )));
+    }
+
+    let materials: Vec<&str> = file
+      .ik_data
+      .as_ref()
+      .map(|chunk| chunk.bones.iter().map(|bone| bone.game_material.as_str()).collect())
+      .unwrap_or_default();
+    let mut surfaces: Vec<OgfSurface> = Vec::new();
+
+    for surface in OgfSurface::collect(file)? {
+      let mut by_material: Vec<(&str, Vec<[OgfCorner; 3]>)> = Vec::new();
+
+      for mut triangle in surface.triangles {
+        // The export gives a face's corners its fragment's bone alone.
+        let material: &str = triangle[0]
+          .influences
+          .iter()
+          .next()
+          .and_then(|(bone, _)| materials.get(usize::from(bone)).copied())
+          .unwrap_or(SurfaceDress::DEFAULT_SETTING);
+
+        for corner in &mut triangle {
+          corner.influences = BoneInfluences::NONE;
+        }
+
+        match by_material.iter_mut().find(|(it, _)| *it == material) {
+          Some((_, triangles)) => triangles.push(triangle),
+          None => by_material.push((material, vec![triangle])),
+        }
+      }
+
+      surfaces.extend(by_material.into_iter().map(|(material, triangles)| OgfSurface {
+        texture: surface.texture.clone(),
+        shader: surface.shader.clone(),
+        dress: SurfaceDress {
+          game_material: String::from(material),
+          ..surface.dress.clone()
+        },
+        triangles,
+      }));
+    }
+
+    Ok(Self::assemble_static(
+      Self::assemble(&surfaces, MeshKind::Static)?,
+      0,
+      file.get_description().map(Self::copy_description),
+      Self::get_tangent_method(file),
+    ))
   }
 
   /// Decompiles visuals of a compiled level into one static object: the visuals drawn with one texture and shader and
