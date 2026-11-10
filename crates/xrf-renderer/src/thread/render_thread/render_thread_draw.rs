@@ -448,6 +448,7 @@ impl RenderThread {
     let mut graph: FrameGraph<'_> = FrameGraph::new();
     let mut bindings: GraphBindings<'_> = GraphBindings::new();
     let mut outputs: HashMap<RenderViewportId, SceneOutput> = HashMap::with_capacity(frames.len());
+    let mut is_resized: bool = false;
 
     for ReadiedView {
       viewport: id, frame, ..
@@ -464,6 +465,7 @@ impl RenderThread {
       };
 
       graph.begin_owner(viewport.get_graph_owner());
+      is_resized |= view.is_resized();
 
       let output: Option<SceneOutput> = view.record(
         scene,
@@ -602,7 +604,7 @@ impl RenderThread {
     #[cfg(debug_assertions)]
     let jitter_guard: &mut JitterGuard = &mut self.jitter_guard;
 
-    graph.compile(&self.settings.graph.to_options()).and_then(|compiled| {
+    let executed: XrfResult<ExecutedGraph> = graph.compile(&self.settings.graph.to_options()).and_then(|compiled| {
       if graph_report
         .as_ref()
         .is_none_or(|(described, _)| started.duration_since(*described) >= FrameStatistics::REPORT_INTERVAL)
@@ -615,7 +617,15 @@ impl RenderThread {
       }
 
       compiled.execute((&gpu.context.device, &gpu.context.queue), runtime, &bindings)
-    })
+    });
+
+    // The one graph draws every viewport, so what it left unused no view draws with: a view drawn at another size lets
+    // what its last size keyed go now, rather than as many frames later as a drag's sizes can slow to a few a second.
+    if is_resized {
+      runtime.forget_unused();
+    }
+
+    executed
   }
 
   /// A viewport as its window composes it: its picture from the frame it left (`output`) and its overlays over it, or

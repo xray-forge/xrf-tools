@@ -138,6 +138,17 @@ impl BindGroupCache {
     self.groups.write().expect("bind group cache lock").clear();
   }
 
+  /// Drops the bind groups the current frame did not bind, and their hold on what they bind, keeping the layouts.
+  pub(crate) fn forget_unused(&self) {
+    let frame: u64 = self.frame.load(Ordering::Relaxed);
+
+    self
+      .groups
+      .write()
+      .expect("bind group cache lock")
+      .retain(|_, (_, last_frame)| *last_frame.get_mut() == frame);
+  }
+
   /// Starts a frame: drops the bind groups the frames before it left unused for too long.
   pub(crate) fn begin_frame(&self) {
     let frame: u64 = self.frame.fetch_add(1, Ordering::Relaxed) + 1;
