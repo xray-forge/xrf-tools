@@ -2,11 +2,10 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::XRayByteOrder;
 use xrf_editable_level::EditableLevelScene;
 use xrf_error::{XrfError, XrfResult};
 use xrf_gamemtl::GameMtlFile;
-use xrf_level::BuildPrjFile;
 use xrf_output::OutputOptions;
 use xrf_rawdata::{LevelBuildCensus, LevelBuildExport, LevelBuildExporter, LevelExportedPrevious, LevelSceneExporter};
 use xrf_utils::format_path;
@@ -29,7 +28,8 @@ impl GenericCommand for BuildCommand {
         "Build an SDK Level Editor scene's game files into a level directory, as the editor's Build writes them from \
          the scene's parts: level.game, level.env_mod, level.fog_vol, and level.spawn, level_rs.spawn, \
          level.ps_static, level.snd_static, level.snd_env and level.wallmarks where the scene holds them; and given \
-         the objects root and game materials, the build.prj xrLC compiles the geometry and lighting from",
+         the objects root and game materials, the build.prj xrLC compiles the geometry and lighting from, level.ltx, \
+         and level.hom and level.som where objects occlude",
       )
       .arg(
         Arg::new("path")
@@ -51,7 +51,7 @@ impl GenericCommand for BuildCommand {
         Arg::new("objects")
           .help(
             "Objects root ($objects$) the scene's objects are read from; with --game-materials, the build writes \
-             build.prj",
+             build.prj, level.ltx and the occluders",
           )
           .long("objects")
           .requires("game-materials")
@@ -90,8 +90,8 @@ impl GenericCommand for BuildCommand {
 }
 
 impl BuildCommand {
-  /// Builds the scene at `source` into `destination`, and its `build.prj` where `geometry` gives the objects root and
-  /// the game material library.
+  /// Builds the scene at `source` into `destination`, and what it gives the level compiler where `geometry` gives the
+  /// objects root and the game material library.
   fn build(
     output: &OutputOptions,
     source: &Path,
@@ -101,6 +101,8 @@ impl BuildCommand {
   ) -> XrfResult<LevelBuildReport> {
     let scene: EditableLevelScene = EditableLevelScene::read_from_path::<XRayByteOrder, _>(&source)?;
     let mut files: BTreeMap<&'static str, Vec<u8>> = LevelSceneExporter::export::<XRayByteOrder>(&scene)?;
+    // A build of the geometry may write its own files too, and a stale one left beside them is refused alike.
+    let mut names: Vec<&'static str> = LevelSceneExporter::FILE_NAMES.to_vec();
     let census: Option<LevelBuildCensus> = match geometry {
       Some((objects, game_materials)) => {
         let export: LevelBuildExport = LevelBuildExporter::export::<XRayByteOrder>(
@@ -108,12 +110,12 @@ impl BuildCommand {
           objects,
           &GameMtlFile::read_from_path::<XRayByteOrder, _>(game_materials)?,
         )?;
-        let mut writer: ChunkWriter = ChunkWriter::new();
+        let census: LevelBuildCensus = export.census;
 
-        export.project.write::<XRayByteOrder>(&mut writer)?;
-        files.insert(BuildPrjFile::FILE_NAME, writer.buffer);
+        files.extend(export.into_files::<XRayByteOrder>()?);
+        names.extend(LevelBuildExport::FILE_NAMES);
 
-        Some(export.census)
+        Some(census)
       }
       None => None,
     };
@@ -128,7 +130,7 @@ impl BuildCommand {
     let report: LevelBuildReport = LevelBuildReport {
       source: format_path(source).to_string(),
       destination: format_path(destination).to_string(),
-      files: LevelSceneExporter::write_to_directory(&files, destination)?,
+      files: LevelSceneExporter::write_to_directory(&files, &names, destination)?,
       geometry: census,
     };
 

@@ -6,6 +6,7 @@ mod geometry;
 mod glow;
 mod ladder;
 mod light;
+mod map;
 mod occluder;
 mod particle;
 mod scene;

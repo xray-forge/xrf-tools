@@ -1,5 +1,6 @@
 mod fixtures;
 mod glow;
+mod group;
 mod level;
 mod light;
 mod object;

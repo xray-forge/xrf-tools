@@ -28,6 +28,9 @@ impl EditableShape {
   /// `SHAPE_CURRENT_VERSION`, which a shape object writes as its `version` unless its own class writes another over it.
   pub const VERSION: u32 = 2;
 
+  /// `eShapeLevelBound`, the usage of the shape whose box the build takes for the level's map.
+  pub const LEVEL_BOUND_USAGE: u8 = 1;
+
   /// `cfSphere` and `cfBox`, an element's `shape_type_N`.
   pub const SPHERE: u8 = 0;
   pub const BOX: u8 = 1;

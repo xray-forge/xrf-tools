@@ -14,7 +14,8 @@ use crate::level::scene::steps::level_scene_step::LevelSceneStep;
 use crate::provenance::level_scene_provenance::LevelSceneInference;
 
 /// What `level.game`, `level.env_mod` and the spawn lists give: ways, spawn points (respawn points, environment
-/// modifiers and entities, from the root spawn where the draft holds one), and the game modes the level serves.
+/// modifiers and entities, from the root spawn where the draft holds one), and the game modes the level serves where
+/// no `level.ltx` named them.
 /// Entities are decompiled first, so that no name generated for another spawn point takes theirs.
 pub(crate) struct LevelGameStep;
 
@@ -87,7 +88,11 @@ impl LevelSceneStep for LevelGameStep {
       draft.add(spawns.to_scene_tool()?, Self::FILES, sources);
     }
 
-    draft.level_options.game_type = Self::get_game_types(respawn_points);
+    draft.level_options.game_type = match &draft.map {
+      Some(map) => map.game_types,
+      None => Self::get_game_types(respawn_points),
+    };
+    draft.infer_if(draft.map.is_none(), &[LevelSceneInference::GameTypes]);
     draft.add_level_source(LevelGameFile::FILE_NAME, sources);
 
     Ok(())

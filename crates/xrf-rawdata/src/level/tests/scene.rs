@@ -326,10 +326,11 @@ fn writes_an_export_saying_what_each_file_replaced() -> XrfResult {
   exported.insert("level.game", b"other".to_vec());
   std::fs::remove_file(directory.join("level.fog_vol"))?;
 
-  let previous: Vec<(String, LevelExportedPrevious)> = LevelSceneExporter::write_to_directory(&exported, &directory)?
-    .into_iter()
-    .map(|file| (file.name, file.previous))
-    .collect();
+  let previous: Vec<(String, LevelExportedPrevious)> =
+    LevelSceneExporter::write_to_directory(&exported, &LevelSceneExporter::FILE_NAMES, &directory)?
+      .into_iter()
+      .map(|file| (file.name, file.previous))
+      .collect();
 
   assert_eq!(
     previous,
@@ -349,7 +350,7 @@ fn refuses_to_write_an_export_beside_a_file_it_does_not_build() -> XrfResult {
   let directory: PathBuf = level_directory("stale", 10.0)?;
   let exported: BTreeMap<&str, Vec<u8>> = BTreeMap::from([("level.game", b"other".to_vec())]);
   let before: Vec<u8> = std::fs::read(directory.join("level.game"))?;
-  let error: String = LevelSceneExporter::write_to_directory(&exported, &directory)
+  let error: String = LevelSceneExporter::write_to_directory(&exported, &LevelSceneExporter::FILE_NAMES, &directory)
     .unwrap_err()
     .to_string();
 

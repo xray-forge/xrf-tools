@@ -7,6 +7,7 @@ use xrf_math::{EPS, Matrix4x4, Vector2d, Vector3d};
 
 use crate::level::build::level_build_sectors::LevelBuildSectors;
 use crate::level::build::level_build_tables::LevelBuildTables;
+use crate::level::level_occluder_conversion::LevelOccluderConversion;
 use crate::object::compile::geometry::source::mesh_corners::MeshCorners;
 
 /// The static geometry a build hands xrLC: every vertex in world space, the faces over them and a smoothing group per
@@ -24,9 +25,6 @@ pub(crate) struct LevelBuildGeometry {
 }
 
 impl LevelBuildGeometry {
-  /// The game material whose faces go to `level.hom` rather than the geometry.
-  const OCCLUDER_MATERIAL: &'static str = "materials\\occ";
-
   /// The compiler shader of a wall mark's faces, `COMPILER_SHADER` (`ESceneWallmarkTools.cpp`).
   const WALLMARK_COMPILER_SHADER: &'static str = "def_shaders\\def_vertex_ghost_no_shadow";
 
@@ -84,7 +82,8 @@ impl LevelBuildGeometry {
             ))
           })?;
 
-        if surface.game_material == Self::OCCLUDER_MATERIAL {
+        // Its faces go to `level.hom` instead.
+        if surface.game_material == LevelOccluderConversion::OCCLUDER_GAME_MATERIAL {
           self.skipped_faces += surface_faces.faces.len();
           continue;
         }
