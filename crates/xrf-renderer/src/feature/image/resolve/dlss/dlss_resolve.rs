@@ -1,13 +1,15 @@
 use xrf_dlss::DlssUpscaler;
 
+use crate::feature::image::resolve::dlss::ngx_evaluation::NgxEvaluation;
 use crate::frame::targets::frame_texture::FrameTexture;
 
-/// DLSS's state: its upscaler, the frame it writes at the viewport's size, and whether the next frame forgets the ones
-/// before.
+/// DLSS's state: its upscaler, the frame it writes at the viewport's size, whether the next frame forgets the ones
+/// before, and what its evaluations came to.
 pub(crate) struct DlssResolve {
   pub upscaler: DlssUpscaler,
   pub output: FrameTexture,
   pub is_reset: bool,
+  pub evaluation: NgxEvaluation,
 }
 
 impl DlssResolve {

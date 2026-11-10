@@ -6,5 +6,6 @@ mod exposure_readback;
 mod exposure_restart;
 mod fsr;
 mod image_corrections;
+mod ngx_evaluation;
 mod rcas;
 mod temporal;
