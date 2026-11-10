@@ -20,11 +20,19 @@ fn is_on_trace_turn(cell: vec2<u32>, turns: u32, frame: u32) -> bool {
   return (trace_turn_of(cell, turns) + frame) % turns == 0u;
 }
 
+// Whether a pixel of a quad under ray budgets takes its turn of `turns` on `frame`: the quad's, by its own place in the
+// dither, so on that frame whichever of its pixels traces asks the scene, and its quad-mates take the answer, within
+// `turns` frames whatever `turns` is, where every pixel of the quad waits the same `turns`. Taken a pixel at a time,
+// a pixel's turn would fall on frames its quad gives the ray to another pixel for as long as the frame's step and
+// `turns` share their pattern: at 3, 9 or 15 turns, tens to hundreds of frames.
+fn is_on_quad_trace_turn(pixel: vec2<u32>, turns: u32, frame: u32) -> bool {
+  return is_on_trace_turn(pixel / 2u, turns, frame);
+}
+
 // The place in `QUAD_ORDER` a quad's rays start from on `frame`, from the place `picked` its noise picks: the sum of the
-// frame's base-4 digits, so each four frames from a multiple of four start once at each place, yet the frames a pixel's
-// own turn falls on (`is_on_trace_turn`, every `turns` frames, often a multiple of four) start at each place in turn.
-// Stepped by the frame alone, those frames would all start at one place, and a pixel whose turn fell on another's
-// would never ask the scene.
+// frame's base-4 digits, so each four frames from a multiple of four start once at each place, yet a pixel's traced
+// frames fall on every residue of four in turn, and so on every cell of the block it traces (`reflection_texel` turns
+// the cell by the frame). Stepped by the frame alone, a one-ray pixel would trace one cell of its block always.
 fn quad_turn(frame: u32, picked: u32) -> u32 {
   // The digits summed a pair of bits, a nibble and a byte at a time.
   let pairs: u32 = (frame & 0x33333333u) + ((frame >> 2u) & 0x33333333u);

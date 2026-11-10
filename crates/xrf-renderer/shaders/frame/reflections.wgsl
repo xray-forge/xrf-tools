@@ -133,9 +133,15 @@ fn world_offset(position: vec3<f32>) -> vec3<f32> {
 // Whether a pixel the screen leaves unanswered traces against the level's geometry this frame: once in its
 // `trace_turns`, `scale` times as many for a still, dim reflection, stretched by the list's wait where the rays asked
 // overrun it; each pixel's turn its own (`trace_turn_of`), so a held pixel has traced ones about it, which the resolve
-// clips it to. Tiles turning together kept a held tile's lag from its traced neighbours as a chequer in motion.
+// clips it to. Tiles turning together kept a held tile's lag from its traced neighbours as a chequer in motion. Under
+// ray budgets each quad's turn is its own (`is_on_quad_trace_turn`): it traces one pixel a frame, which asks the scene
+// for the quad.
 fn is_trace_turn(pixel: vec2<f32>, scale: u32) -> bool {
   let turns: u32 = max(reflection.trace_turns, 1u) * scale * trace_request_wait();
+
+  if (quad_scale > 0u) {
+    return is_on_quad_trace_turn(vec2<u32>(pixel), turns, reflection.frame);
+  }
 
   return is_on_trace_turn(vec2<u32>(pixel), turns, reflection.frame);
 }
@@ -232,6 +238,9 @@ var<private> is_scene_requested: bool = false;
 var<private> scene_texel: vec2<i32>;
 // The corners of the pixel's quad that take its answer under ray budgets, which its request carries to the scene pass.
 var<private> scene_mates: u32 = 0u;
+// Under ray budgets, the scale of the turns the pixel's quad takes its scene turn at as one (`is_trace_turn`): one, or
+// `DIM_TURNS` where every pixel it traces is still and dim; none where the pixel traces alone.
+var<private> quad_scale: u32 = 0u;
 
 // Lists the pixel's ray for the scene pass with what the screen answered (`answer`'s colour weighed by its `share`,
 // its length) and the reason `hit_end` its ends take where the ray meets something; whether the list took it.
@@ -568,6 +577,14 @@ fn trace_start(pixel: vec2<f32>) -> TraceStart {
   return TraceStart(true, END_UNTRACED, texel, roughness, normal, position, toward, facing, shown, is_puddle);
 }
 
+// Whether a traced pixel's reflection is dim and its surface stands where it stood the frame before, so its scene trace
+// waits `DIM_TURNS` times the quality's turns.
+fn is_still_dim(start: TraceStart) -> bool {
+  let was: vec2<f32> = previous_uv(camera.position.xyz + world_offset(start.position)) * camera.viewport.xy;
+
+  return start.shown < DIM_SHARE && length(was - (vec2<f32>(start.texel) + 0.5)) < DIM_STILL;
+}
+
 @fragment
 fn fs_trace(in: FullscreenVarying) -> TraceTargets {
   return trace_pixel(floor(in.clip.xy));
@@ -627,10 +644,10 @@ fn trace_pixel(pixel: vec2<f32>) -> TraceTargets {
   if (confidence < 1.0 && reflection.is_traced > 0.5) {
     var held: vec4<f32> = vec4<f32>(0.0, 0.0, 0.0, -1.0);
 
-    let was: vec2<f32> = previous_uv(camera.position.xyz + world_offset(position)) * camera.viewport.xy;
-    let is_still_dim: bool = shown < DIM_SHARE && length(was - (vec2<f32>(texel) + 0.5)) < DIM_STILL;
+    // Under ray budgets the quad's scale, so every pixel of it waits the same turns.
+    let scale: u32 = select(select(1u, DIM_TURNS, is_still_dim(start)), quad_scale, quad_scale > 0u);
 
-    if (!is_trace_turn(pixel, select(1u, DIM_TURNS, is_still_dim))) {
+    if (!is_trace_turn(pixel, scale)) {
       held = held_radiance(texel);
     }
 
@@ -749,8 +766,9 @@ fn store_trace(pixel: vec2<u32>, written: TraceTargets) {
 }
 
 // Each listed ray: its pixel's place in the tile, four bits a side, then from the eighth bit the corners of its quad
-// that take its answer.
+// that take its answer, then one bit where its quad waits a still, dim reflection's turns (`BUDGET_DIM_BIT`).
 var<workgroup> budget_rays: array<u32, 256>;
+const BUDGET_DIM_BIT: u32 = 1u << 12u;
 var<workgroup> budget_count: atomic<u32>;
 
 // The trace under ray budgets: a tile of traced pixels a workgroup, each invocation one quad's. Each quad finds what
@@ -771,6 +789,8 @@ fn cs_trace_budgeted(@builtin(workgroup_id) group: vec3<u32>, @builtin(local_inv
   var starts: array<TraceStart, 4>;
   var needs: array<u32, 4> = array<u32, 4>(0u, 0u, 0u, 0u);
   var budget: u32 = 0u;
+  // The quad waits a still, dim reflection's turns only where every pixel it traces is one.
+  var is_dim: bool = true;
 
   for (var corner: u32 = 0u; corner < 4u; corner++) {
     let pixel: vec2<u32> = tile + place + vec2<u32>(corner & 1u, corner >> 1u);
@@ -790,6 +810,7 @@ fn cs_trace_budgeted(@builtin(workgroup_id) group: vec3<u32>, @builtin(local_inv
 
     needs[corner] = ray_need(starts[corner], pixel);
     budget = max(budget, needs[corner]);
+    is_dim = is_dim && is_still_dim(starts[corner]);
   }
 
   // The quad's first pixel to trace turns each frame from a place its noise picks; two rays take a diagonal.
@@ -835,7 +856,8 @@ fn cs_trace_budgeted(@builtin(workgroup_id) group: vec3<u32>, @builtin(local_inv
     if (is_traced[corner]) {
       let at: vec2<u32> = place + vec2<u32>(corner & 1u, corner >> 1u);
 
-      budget_rays[atomicAdd(&budget_count, 1u)] = at.x | (at.y << 4u) | (mates[corner] << 8u);
+      budget_rays[atomicAdd(&budget_count, 1u)] =
+        at.x | (at.y << 4u) | (mates[corner] << 8u) | select(0u, BUDGET_DIM_BIT, is_dim);
     }
   }
 
@@ -848,7 +870,8 @@ fn cs_trace_budgeted(@builtin(workgroup_id) group: vec3<u32>, @builtin(local_inv
     let pixel: vec2<u32> = tile + vec2<u32>(packed & 15u, (packed >> 4u) & 15u);
     let quad: vec2<u32> = pixel & vec2<u32>(~1u);
 
-    scene_mates = packed >> 8u;
+    scene_mates = (packed >> 8u) & 15u;
+    quad_scale = select(1u, DIM_TURNS, (packed & BUDGET_DIM_BIT) != 0u);
 
     let written: TraceTargets = trace_pixel(vec2<f32>(pixel));
 

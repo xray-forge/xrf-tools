@@ -1,3 +1,4 @@
+pub(crate) mod fixtures;
 mod generated_shaders;
 pub(crate) mod gpu_probe;
 mod shader_composer;
