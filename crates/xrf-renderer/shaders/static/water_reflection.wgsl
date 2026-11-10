@@ -130,12 +130,12 @@ fn request_water_trace(pixel: vec2<f32>, world: vec3<f32>, normal: vec3<f32>, to
   let pixel_angle: f32 = 2.0 / (camera.projection[1][1] * camera.viewport.y);
   var request: TraceRequest;
 
-  request.origin = vec4<f32>(world + normal * TRACED_LIFT, enhanced.trace_distance);
-  request.cone = vec2<f32>(distance * pixel_angle, pixel_angle);
+  request.origin = pack_trace_request_origin(world + normal * TRACED_LIFT);
+  request.reach = pack2x16float(vec2<f32>(enhanced.trace_distance, answer.w));
+  request.cone = pack2x16float(vec2<f32>(distance * pixel_angle, pixel_angle));
   request.toward = pack2x16snorm(octahedral_encode(toward));
   request.pixel = u32(pixel.x) | (u32(pixel.y) << 16u);
   request.screen = trace_request_screen(answer.rgb, share);
-  request.screen_length = answer.w;
   request.hit_end = TRACE_REQUEST_WATER | (pack2x16float(vec2<f32>(water.reflection, 0.0)) & 0xffffu);
 
   return list_trace_request(request);
