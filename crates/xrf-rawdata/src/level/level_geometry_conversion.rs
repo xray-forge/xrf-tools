@@ -28,6 +28,7 @@ use crate::level::level_visual_geometry::LevelVisualGeometry;
 use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 use crate::object::decompile::object_decompile::ObjectDecompile;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
+use crate::object::decompile::object_inference::ObjectInference;
 use crate::provenance::level_scene_provenance::LevelSceneRefusal;
 
 /// A level's geometry, from the compiled level back into objects the scene places, and the sectors and portals that
@@ -95,6 +96,10 @@ pub struct LevelGeometryCensus {
   pub impostors: usize,
   /// Static triangles dropped as copies of wall marks ([`LevelDecalIndex`]), counted in the static triangles read.
   pub decal_triangles: usize,
+  /// Static and collision-only triangles dropped as needles, so thin that xrLC measures no area in them and stops, the
+  /// static ones counted in the static triangles read.
+  #[serde(default)]
+  pub needle_triangles: usize,
   /// Sectors drawing no static geometry, such as one of trees alone, which no shell stands for.
   pub empty_sectors: usize,
   /// Faces of the collision form, where the level's directory held one.
@@ -165,6 +170,8 @@ struct SectorGeometry {
   impostors: usize,
   /// Static triangles dropped as copies of wall marks.
   decal_triangles: usize,
+  /// Static triangles dropped as needles.
+  needle_triangles: usize,
 }
 
 impl LevelGeometryConversion {
@@ -296,6 +303,8 @@ impl LevelGeometryConversion {
           read.decal_triangles = Self::drop_decals(&mut read.geometry, decals);
         }
 
+        read.needle_triangles = Self::drop_needles(&mut read.geometry);
+
         match (collision.as_deref_mut(), surfaces.as_deref_mut()) {
           (Some(collision), Some(surfaces)) => {
             read.geometry = std::mem::take(&mut read.geometry)
@@ -339,8 +348,9 @@ impl LevelGeometryConversion {
       let triangles: usize = read.geometry.iter().map(|it| it.indices.len() / 3).sum();
       let census: &mut LevelGeometryCensus = &mut decompile.census;
 
-      census.static_triangles += triangles + read.decal_triangles;
+      census.static_triangles += triangles + read.decal_triangles + read.needle_triangles;
       census.decal_triangles += read.decal_triangles;
+      census.needle_triangles += read.needle_triangles;
       census.tree_triangles += read.tree_triangles;
       census.impostors += read.impostors;
 
@@ -357,7 +367,7 @@ impl LevelGeometryConversion {
         sector_names.push(sector_name);
         continue;
       };
-      let (faces, two_sided) = Self::count_faces(&shell.object);
+      let (faces, two_sided) = Self::count_faces(&shell);
 
       census.faces += faces;
       census.two_sided_faces += two_sided;
@@ -445,6 +455,7 @@ impl LevelGeometryConversion {
       tree_triangles: 0,
       impostors: 0,
       decal_triangles: 0,
+      needle_triangles: 0,
     };
 
     if let Some(unknown) = composition.unknown.first() {
@@ -507,6 +518,51 @@ impl LevelGeometryConversion {
     dropped
   }
 
+  /// Drops from each of `geometry`'s visuals its needles, and returns how many.
+  fn drop_needles(geometry: &mut Vec<LevelVisualGeometry>) -> usize {
+    let mut dropped: usize = 0;
+
+    for visual in geometry.iter_mut() {
+      let kept: Vec<u16> = Self::list_indexed_triangles(visual)
+        .filter(|(_, points)| !Self::is_needle(points))
+        .flat_map(|(triangle, _)| triangle)
+        .collect();
+
+      dropped += (visual.indices.len() - kept.len()) / 3;
+      visual.indices = kept;
+    }
+
+    geometry.retain(|visual| !visual.indices.is_empty());
+
+    dropped
+  }
+
+  /// Whether a triangle is a needle: its two shorter edges add up to its longest within a few single-precision steps of
+  /// it, as xrLC leaves along T-junctions in its own output. The Build and xrLC measure a face by Heron's formula in
+  /// single precision (`CalcArea`, `BuilderRemote.cpp:254`, `xrLC/xrFace.cpp:248`), which rounds such a face's area to
+  /// zero or to no number, and xrLC stops on one (`Face::Verify`, `PreOptimize`), so the decompile leaves them out:
+  /// each is a millimetre or two across.
+  pub(crate) fn is_needle(points: &[Vector3d; 3]) -> bool {
+    let distance = |from: &Vector3d, to: &Vector3d| {
+      let (x, y, z) = (
+        f64::from(to.x) - f64::from(from.x),
+        f64::from(to.y) - f64::from(from.y),
+        f64::from(to.z) - f64::from(from.z),
+      );
+
+      (x * x + y * y + z * z).sqrt()
+    };
+    let [a, b, c] = points;
+    let mut edges: [f64; 3] = [distance(a, b), distance(a, c), distance(b, c)];
+
+    edges.sort_unstable_by(f64::total_cmp);
+
+    edges[0] + edges[1] - edges[2] <= edges[2] * Self::NEEDLE_TOLERANCE
+  }
+
+  /// How far short of its longest edge a needle's two others may add up, relative to it: eight single-precision steps.
+  const NEEDLE_TOLERANCE: f64 = 8.0 * f32::EPSILON as f64;
+
   /// Each triangle of `visual` by its indices and its points, an index past its vertices left out.
   fn list_indexed_triangles(visual: &LevelVisualGeometry) -> impl Iterator<Item = ([u16; 3], [Vector3d; 3])> + '_ {
     visual.indices.as_chunks::<3>().0.iter().filter_map(|triangle| {
@@ -544,6 +600,10 @@ impl LevelGeometryConversion {
   ) -> XrfResult {
     decompile.census.collision_faces = collision.count_faces();
     decompile.census.tree_collision_faces = collision.count_tree_covered();
+    decompile.census.needle_triangles += collision
+      .get_uncovered()
+      .filter(|(_, face)| Self::is_needle(&collision.get_triangle(face)))
+      .count();
 
     let Some((object, meshes)) = Self::decompile_collision_object(name, collision, surfaces)? else {
       return Ok(());
@@ -568,8 +628,8 @@ impl LevelGeometryConversion {
     Ok(())
   }
 
-  /// The collision object of the faces no render triangle covers, with each mesh's sector and faces; none where every
-  /// face is covered.
+  /// The collision object of the faces no render triangle covers, needles left out, with each mesh's sector and faces;
+  /// none where every face is covered.
   fn decompile_collision_object(
     name: &str,
     collision: &LevelCollisionIndex,
@@ -578,12 +638,18 @@ impl LevelGeometryConversion {
     let mut by_sector: BTreeMap<u16, BTreeMap<u16, Vec<[Vector3d; 3]>>> = BTreeMap::new();
 
     for (_, face) in collision.get_uncovered() {
+      let triangle: [Vector3d; 3] = collision.get_triangle(face);
+
+      if Self::is_needle(&triangle) {
+        continue;
+      }
+
       by_sector
         .entry(face.sector)
         .or_default()
         .entry(face.material)
         .or_default()
-        .push(collision.get_triangle(face));
+        .push(triangle);
     }
 
     let mut meshes: Vec<(String, ObjectDecompile)> = Vec::with_capacity(by_sector.len());
@@ -691,10 +757,17 @@ impl LevelGeometryConversion {
       .expect("a decompiled object holds one mesh")
   }
 
-  /// The faces `object`'s mesh holds, and how many of them are two-sided.
-  fn count_faces(object: &EditableObjectFile) -> (usize, usize) {
+  /// The faces the decompiled mesh stands for, and how many of them are two-sided: those it holds, or the one it held
+  /// where it was halved for the editor ([`ObjectInference::HalvedFace`]).
+  fn count_faces(decompile: &ObjectDecompile) -> (usize, usize) {
+    let object: &EditableObjectFile = &decompile.object;
     let mesh: &EditableMesh = Self::get_mesh(object);
     let surfaces = object.surfaces.as_deref().unwrap_or_default();
+    let halves: usize = if decompile.inferred.contains(&ObjectInference::HalvedFace) {
+      2
+    } else {
+      1
+    };
     let two_sided: usize = mesh
       .surface_faces
       .iter()
@@ -706,6 +779,6 @@ impl LevelGeometryConversion {
       .map(|faces| faces.faces.len())
       .sum();
 
-    (mesh.faces.len(), two_sided)
+    (mesh.faces.len() / halves, two_sided / halves)
   }
 }

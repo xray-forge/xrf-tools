@@ -39,9 +39,6 @@ impl LevelOccluderConversion {
   pub const OCCLUDER_TEXTURE: &'static str = "prop\\prop_fake_occ";
   pub const OCCLUDER_SHADER: &'static str = "default";
 
-  /// `CEditableObject::eoSoundOccluder`.
-  pub const SOUND_OCCLUDER_FLAG: u32 = 1 << 5;
-
   /// `level.hom` as `<level>_hom`: one surface of `materials\occ`, two-sided where its polygons are, at the origin.
   ///
   /// # Errors
@@ -106,7 +103,7 @@ impl LevelOccluderConversion {
         format!("levels\\{name}\\{name}_som"),
         LevelSomFile::FILE_NAME,
         by_material,
-        Self::SOUND_OCCLUDER_FLAG,
+        EditableObjectFile::SOUND_OCCLUDER_FLAG,
       )?,
       census,
     ))

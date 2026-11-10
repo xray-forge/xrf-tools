@@ -1,3 +1,4 @@
+pub(crate) mod build;
 pub(crate) mod level_breakable_conversion;
 pub(crate) mod level_collision_index;
 pub(crate) mod level_decal_index;

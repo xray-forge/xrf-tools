@@ -26,4 +26,7 @@ pub enum ObjectInference {
   /// A motion holding one key per bone more than it declares is as long as its keys: `blender-xray` declares one frame
   /// fewer than it samples for an action starting between frames, which the engine misreads.
   MotionLengths,
+  /// The mesh held one face, which the Level Editor refuses to load (it builds a picking model of every mesh and asserts
+  /// 4 points and 2 faces), so it comes back halved through its longest edge: the same area in two faces.
+  HalvedFace,
 }

@@ -93,10 +93,7 @@ fn takes_sound_occluders_back_with_the_material_of_their_occlusion_factor() -> X
 
   assert_eq!(object.reference, "levels\\test\\test_som");
   assert_eq!(object.source, "level.som");
-  assert_eq!(
-    object.decompile.object.flags,
-    LevelOccluderConversion::SOUND_OCCLUDER_FLAG
-  );
+  assert_eq!(object.decompile.object.flags, EditableObjectFile::SOUND_OCCLUDER_FLAG);
   assert_eq!(
     surfaces_of(&object.decompile.object),
     [

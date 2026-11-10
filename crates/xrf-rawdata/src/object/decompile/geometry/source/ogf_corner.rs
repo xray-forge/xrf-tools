@@ -30,6 +30,30 @@ impl OgfCorner {
     self.is_near(&self.normal, &-&other.normal, other).unwrap_or(false)
   }
 
+  /// The corner halfway to `other`: the middle of their positions and texture coordinates, this corner's normal where
+  /// both carry one smoothed normal, else the middle of the two made unit, and this corner's bones.
+  pub(crate) fn interpolate(&self, other: &Self) -> Self {
+    let normal: Vector3d = if self.has_normal_of(other) {
+      self.normal
+    } else {
+      let sum: Vector3d = &self.normal + &other.normal;
+      let length: f32 = sum.length();
+
+      if length.is_normal() { &sum / length } else { self.normal }
+    };
+
+    Self {
+      position: &(&self.position + &other.position) * 0.5,
+      normal,
+      normal_precision: self.normal_precision,
+      texture_coordinate: Vector2d::new(
+        f32::midpoint(self.texture_coordinate.x, other.texture_coordinate.x),
+        f32::midpoint(self.texture_coordinate.y, other.texture_coordinate.y),
+      ),
+      influences: self.influences,
+    }
+  }
+
   /// Whether the corner stores a normal, which a detail model's corners do not.
   pub(crate) fn has_normal(&self) -> bool {
     self.normal_precision != NormalPrecision::Unstored

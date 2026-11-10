@@ -109,6 +109,8 @@ pub(crate) struct LightingUniform {
   /// How the present shows the frame (`DisplayMode::get_display`), which the game's pictures enter the scene through
   /// the inverse of (`picture_for_display` in `common/display_transform`).
   pub display: Vec4,
+  /// The eye's world position, then nothing: the height fog is taken along the ray from it (`fog_amount_at`).
+  pub eye: Vec4,
 }
 
 impl LightingUniform {
@@ -287,6 +289,7 @@ impl LightingUniform {
         }
       },
       display: frame.display,
+      eye: view.inverse().w_axis.truncate().extend(0.0),
     }
   }
 

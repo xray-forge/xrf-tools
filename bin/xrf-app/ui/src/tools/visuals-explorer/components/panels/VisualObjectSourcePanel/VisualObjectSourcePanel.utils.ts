@@ -3,6 +3,7 @@ import { EObjectInference, ObjectInference } from "@xrf/ipc/types/xrf-rawdata";
 /** What each of the decompiler's inferences says was guessed rather than read. */
 const INFERENCE_LABELS: Readonly<Record<ObjectInference, string>> = {
   [EObjectInference.BONE_LENGTHS]: "Bone lengths: the SDK's 0.5, an OGF stores none",
+  [EObjectInference.HALVED_FACE]: "Halved face: a lone face split in two, as the Level Editor needs two",
   [EObjectInference.MESH_NAME]: "Mesh name: `skin` for a skeleton, `mesh` for a static object",
   [EObjectInference.MOTION_CURVES]: "Motion curves: keyed at every frame, the authored curves are not stored",
   [EObjectInference.MOTION_LENGTHS]: "Motion lengths: one frame longer than declared, as the keys hold",

@@ -29,6 +29,11 @@ export enum EObjectInference {
    * fewer than it samples for an action starting between frames, which the engine misreads.
    */
   MOTION_LENGTHS = "motionLengths",
+  /**
+   * The mesh held one face, which the Level Editor refuses to load (it builds a picking model of every mesh and asserts
+   * 4 points and 2 faces), so it comes back halved through its longest edge: the same area in two faces.
+   */
+  HALVED_FACE = "halvedFace",
 }
 
 /** Every `EObjectInference` as the spelling it crosses IPC as, for a value no member has narrowed. */

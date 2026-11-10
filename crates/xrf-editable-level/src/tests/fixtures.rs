@@ -22,6 +22,11 @@ pub(super) fn level_text(guid: &EditableLevelGuid) -> XrfResult<String> {
     ("light_rms", "4"),
     ("light_rms_zero", "4"),
     ("reserved_0", "18011438074424197120000000.000000"),
+    ("reserved_1", "18464873920939950080000000.000000"),
+    ("reserved_2", "775798582030840627200000000.000000"),
+    ("reserved_3", "0.000000"),
+    ("reserved_4", "69776420771106652160000.000000"),
+    ("reserved_5", "0.000000"),
     ("smooth_angle", "75.000000"),
     ("weld_distance", "0.005000"),
   ] {

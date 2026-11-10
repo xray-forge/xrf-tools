@@ -45,12 +45,15 @@ impl EditableLevelFile {
     file.set_level_options(options);
     file.set_build_params(build_params);
 
-    // `b_params::LoadLTX` reads the reserved fields too; SDK 0.7 writes the quality's and the first float's only, as
-    // GSC's `labx8.level` holds them.
+    // `b_params::LoadLTX` reads the reserved fields too, and the SDK's editor refuses a scene lacking one ("Can't find
+    // variable reserved_1 in [build_params]"): every GSC scene of SDK 0.7 holds the quality's and all six floats.
     let build = file.ini.section_mut(EditableBuildParams::SECTION);
 
     build.set("light_quality_reserved", "0");
-    build.set("reserved_0", EditableLevelValue::format_f32(0.0));
+
+    for index in 0..EditableBuildParams::RESERVED_FLOATS {
+      build.set(format!("reserved_{index}"), EditableLevelValue::format_f32(0.0));
+    }
 
     camera.write_to_section(file.ini.section_mut(EditableLevelCamera::SECTION));
 

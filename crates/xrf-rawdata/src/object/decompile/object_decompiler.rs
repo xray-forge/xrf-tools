@@ -28,6 +28,10 @@ use crate::object::detail_parameters::DetailParameters;
 pub struct ObjectDecompiler;
 
 impl ObjectDecompiler {
+  /// The least points and faces a mesh holds for the Level Editor to load it (`CDB::MODEL::build`, `xrCDB.cpp:86`).
+  const EDITOR_LEAST_POINTS: usize = 4;
+  const EDITOR_LEAST_FACES: usize = 2;
+
   /// What every decompiled object infers, since no OGF stores it.
   const INFERRED: [ObjectInference; 6] = [
     ObjectInference::SurfaceNames,
@@ -148,13 +152,28 @@ impl ObjectDecompiler {
       }
     }
 
+    let assembled: AssembledMesh = Self::assemble(&surfaces, MeshKind::Static)?;
+    // The Level Editor builds a picking model of every mesh it loads and asserts it holds 4 points and 2 triangles
+    // (`CEditableMesh::GenerateCFModel`, `CDB::MODEL::build`), so a mesh of one face, such as a sector's lone
+    // collision-only face, comes back halved: the same area in two faces.
+    let is_too_small: bool =
+      assembled.mesh.points.len() < Self::EDITOR_LEAST_POINTS || assembled.mesh.faces.len() < Self::EDITOR_LEAST_FACES;
+    let assembled: AssembledMesh = if is_too_small {
+      Self::assemble(
+        &surfaces.iter().map(OgfSurface::halve).collect::<Vec<_>>(),
+        MeshKind::Static,
+      )?
+    } else {
+      assembled
+    };
     // The object is static and compiles without tangents, so the method recorded for its compile is moot.
-    Ok(Self::assemble_static(
-      Self::assemble(&surfaces, MeshKind::Static)?,
-      0,
-      None,
-      TangentMethod::ActorEditor,
-    ))
+    let mut decompile: ObjectDecompile = Self::assemble_static(assembled, 0, None, TangentMethod::ActorEditor);
+
+    if is_too_small {
+      decompile.inferred.push(ObjectInference::HalvedFace);
+    }
+
+    Ok(decompile)
   }
 
   /// Decompiles a detail model (`.dm`, `CDetail`) into a static object of one mesh and one surface, as `EDetail::Update`

@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_editable_level::EditableSpawnPointObject;
 use xrf_error::XrfResult;
-use xrf_level::{LevelEnvModFile, LevelEnvModifier, LevelPsStaticFile};
+use xrf_level::{BuildPrjFile, LevelEnvModFile, LevelEnvModifier, LevelPsStaticFile};
 use xrf_math::Vector3d;
 use xrf_test_utils::GeneratedResources;
 
@@ -90,6 +90,27 @@ fn builds_the_game_files_every_build_writes() -> XrfResult {
   assert!(built.join("level.game").is_file());
   assert!(built.join("level.fog_vol").is_file());
   assert!(!built.join(LevelPsStaticFile::FILE_NAME).exists());
+
+  Ok(())
+}
+
+#[test]
+fn needs_the_game_materials_beside_the_objects_to_write_build_prj() -> XrfResult {
+  let root: PathBuf = scene_root("geometry-inputs")?;
+  let built: PathBuf = root.join("built");
+  let objects: String = root.join("objects").display().to_string();
+
+  assert!(
+    run(
+      "build",
+      &root.join("scenes/test_level.level"),
+      &built,
+      &["--objects", &objects]
+    )
+    .is_err()
+  );
+  assert!(!built.join("level.game").exists(), "a refusal writes nothing");
+  assert!(!built.join(BuildPrjFile::FILE_NAME).exists());
 
   Ok(())
 }

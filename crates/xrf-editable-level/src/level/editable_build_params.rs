@@ -21,6 +21,9 @@ pub struct EditableBuildParams {
 impl EditableBuildParams {
   pub const SECTION: &str = "build_params";
 
+  /// The reserved floats `b_params` saves and loads, `reserved_0` to `reserved_5`.
+  pub const RESERVED_FLOATS: usize = 6;
+
   /// `b_params::Init` then `setHighQuality`, what `st_LevelOptions::Reset` gives a new level.
   pub const DEFAULT: Self = Self {
     smooth_angle: 75.0,

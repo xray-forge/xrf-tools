@@ -4,6 +4,7 @@ pub(crate) mod level;
 pub(crate) mod object;
 pub(crate) mod provenance;
 
+pub use crate::level::build::level_build_exporter::{LevelBuildCensus, LevelBuildExport, LevelBuildExporter};
 pub use crate::level::level_breakable_conversion::LevelBreakableConversion;
 pub use crate::level::level_collision_index::{LevelCollisionIndex, LevelCollisionLookup};
 pub use crate::level::level_decal_index::LevelDecalIndex;
