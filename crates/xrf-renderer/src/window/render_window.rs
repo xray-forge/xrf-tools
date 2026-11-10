@@ -51,12 +51,7 @@ impl RenderWindow {
         .map_err(|error| XrfError::new_unexpected_error(format!("Cannot draw into the window: {error}")))?
     };
     let capabilities: wgpu::SurfaceCapabilities = surface.get_capabilities(&context.adapter);
-    // Not sRGB: the page's colours are cleared as stated, so the area around a viewport matches the page exactly.
-    let format: wgpu::TextureFormat = [wgpu::TextureFormat::Bgra8Unorm, wgpu::TextureFormat::Rgba8Unorm]
-      .into_iter()
-      .find(|it| capabilities.formats.contains(it))
-      .or_else(|| capabilities.formats.first().copied())
-      .ok_or_else(|| XrfError::new_unexpected_error("The window offers no swapchain format"))?;
+    let format: wgpu::TextureFormat = Self::choose_format(&capabilities.formats)?;
 
     log::info!(
       "Window swapchain on {}: {format:?}, present modes {:?}",
@@ -75,6 +70,26 @@ impl RenderWindow {
       surface,
       format,
     })
+  }
+
+  /// The swapchain format of those a window's surface `offered` that the present writes for: eight-bit unorm, as the
+  /// present writes display-encoded values and dithers them by an eight-bit step. Not sRGB, which would encode them
+  /// again, and so the page's colours are cleared as stated and the area around a viewport matches the page exactly.
+  /// DX12 and Metal surfaces always offer `Bgra8Unorm`; a Vulkan one offers what its driver lists.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error naming what the surface offered where it offers neither.
+  pub(crate) fn choose_format(offered: &[wgpu::TextureFormat]) -> XrfResult<wgpu::TextureFormat> {
+    [wgpu::TextureFormat::Bgra8Unorm, wgpu::TextureFormat::Rgba8Unorm]
+      .into_iter()
+      .find(|it| offered.contains(it))
+      .ok_or_else(|| {
+        XrfError::new_unexpected_error(format!(
+          "Cannot draw into the window: its surface offers {offered:?}, none of them Bgra8Unorm or Rgba8Unorm, the \
+           formats the present writes for"
+        ))
+      })
   }
 
   pub(crate) fn get_backdrop(&self) -> Option<&WindowBackdrop> {

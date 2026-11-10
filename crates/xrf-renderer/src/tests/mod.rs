@@ -10,3 +10,4 @@ pub(crate) mod scene;
 pub(crate) mod shader;
 pub(crate) mod support;
 pub(crate) mod thread;
+pub(crate) mod window;
