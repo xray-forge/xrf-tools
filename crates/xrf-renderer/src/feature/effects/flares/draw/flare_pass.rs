@@ -78,7 +78,7 @@ impl FlarePass {
     &self,
     context: &mut ComputeContext<'_>,
     view: &ViewBinding,
-    parameters: &FlareMeasureParameters,
+    parameters: &FlareMeasureParameters<'_>,
   ) {
     context.bind(parameters);
 

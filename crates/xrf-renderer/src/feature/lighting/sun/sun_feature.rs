@@ -51,6 +51,7 @@ impl SunFeature {
         .unwrap_or_else(|| bindings.import_view(&mut *graph, "sun untraced", passes.lighting.sun.get_untraced())),
       wet_surface: wet.surface,
       wet_reach: wet.reach,
+      shadow_compare: lit.shadow_compare,
     };
     let (width, height) = targets.size;
     let seen: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(

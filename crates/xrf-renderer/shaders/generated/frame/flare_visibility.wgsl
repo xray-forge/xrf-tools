@@ -7,3 +7,4 @@
 @group(1) @binding(2) var depth_target: texture_depth_2d;
 @group(1) @binding(3) var shadow_maps: texture_depth_2d_array;
 @group(1) @binding(4) var<uniform> shadows: Shadows;
+@group(1) @binding(5) var shadow_compare: sampler_comparison;

@@ -30,4 +30,7 @@ pub(crate) struct GlassParameters<'a> {
   pub scene_sampler: &'a wgpu::Sampler,
   #[texture(d2, depth)]
   pub depth_target: GraphTexture,
+  /// The comparison the cascades' maps are filtered through (`SunPass::get_compare`).
+  #[sampler(comparison)]
+  pub shadow_compare: &'a wgpu::Sampler,
 }

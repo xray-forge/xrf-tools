@@ -115,7 +115,7 @@ impl EffectPasses {
       .add::<GlassCopyParameters>("generated/frame/glass_copy")?
       .add::<FlareDrawParameters<'_>>("generated/frame/flare")?
       .add::<FlareTextureParameters>("generated/frame/flare")?
-      .add::<FlareMeasureParameters>("generated/frame/flare_visibility")?
+      .add::<FlareMeasureParameters<'_>>("generated/frame/flare_visibility")?
       .add::<RainParameters<'_>>("generated/frame/rain")?
       .add::<RainLookParameters<'_>>("generated/frame/rain")?
       .add::<RainBlurParameters<'_>>("generated/frame/rain_blur")?

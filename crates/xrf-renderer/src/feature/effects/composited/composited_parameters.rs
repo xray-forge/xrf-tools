@@ -21,4 +21,7 @@ pub(crate) struct CompositedParameters<'a> {
   pub shadow_maps: GraphTexture,
   #[uniform]
   pub shadows: UniformBinding<ShadowUniform>,
+  /// The comparison the cascades' maps are filtered through (`SunPass::get_compare`).
+  #[sampler(comparison)]
+  pub shadow_compare: &'a wgpu::Sampler,
 }

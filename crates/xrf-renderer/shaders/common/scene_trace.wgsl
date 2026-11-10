@@ -401,7 +401,7 @@ fn shade_scene_hit(
 // aside.
 fn scene_sun_lit(position: vec3<f32>, normal: vec3<f32>, to_sun: vec3<f32>, cone: SceneCone, passed: u32) -> f32 {
   if (is_sun_mapped(trace_sun_shadows, position)) {
-    return sun_shadow(trace_sun_maps, trace_sun_shadows, position, normal, dot(normal, to_sun));
+    return sun_shadow(trace_sun_maps, trace_sun_compare, trace_sun_shadows, position, normal, dot(normal, to_sun));
   }
 
   return f32(!trace_scene_blocked(position + normal * SCENE_SUN_BIAS, to_sun, SCENE_SUN_REACH, cone, passed));

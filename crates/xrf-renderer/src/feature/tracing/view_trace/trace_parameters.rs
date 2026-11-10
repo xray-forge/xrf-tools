@@ -70,4 +70,7 @@ pub(crate) struct TraceParameters<'a> {
   /// first.
   #[storage]
   pub trace_densities: StorageArray<u32>,
+  /// The comparison the sun's cascades are filtered through (`SunPass::get_compare`).
+  #[sampler(comparison)]
+  pub trace_sun_compare: &'a wgpu::Sampler,
 }

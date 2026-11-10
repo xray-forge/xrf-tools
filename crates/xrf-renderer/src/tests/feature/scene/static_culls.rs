@@ -177,6 +177,7 @@ fn draw_views(
         lut_sampler: &passes.lighting.table.sampler,
         shadow_maps: bindings.import_view(&mut graph, "sun shadow maps", passes.lighting.sun.get_unshadowed()),
         shadows: runtime.push_uniform(&bytemuck::Zeroable::zeroed()),
+        shadow_compare: passes.lighting.sun.get_compare(),
       };
 
       view.statics.add_gbuffer_passes(

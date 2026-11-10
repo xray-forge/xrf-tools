@@ -42,4 +42,7 @@ pub(crate) struct SunParameters<'a> {
   pub wet_surface: GraphTexture,
   #[texture(d2, unfilterable)]
   pub wet_reach: GraphTexture,
+  /// The comparison the cascades' maps are filtered through (`SunPass::get_compare`).
+  #[sampler(comparison)]
+  pub shadow_compare: &'a wgpu::Sampler,
 }

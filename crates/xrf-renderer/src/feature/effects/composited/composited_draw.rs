@@ -42,6 +42,7 @@ impl<'a> CompositedDraw<'a> {
         lut_sampler: lit.lut_sampler,
         shadow_maps: lit.shadow_maps,
         shadows: lit.shadows,
+        shadow_compare: lit.shadow_compare,
       },
     }
   }

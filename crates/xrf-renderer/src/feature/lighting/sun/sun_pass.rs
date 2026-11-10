@@ -23,6 +23,9 @@ pub(crate) struct SunPass {
   unshadowed: wgpu::TextureView,
   /// A lit texel, which the frame binds where the sun's shadow is not traced.
   untraced: wgpu::TextureView,
+  /// The comparison every pass filtering the cascades' maps gathers through: lit where the reference, its depth
+  /// reversed, is no nearer the sun than the texel, the map's edge texel past its edge.
+  compare: wgpu::Sampler,
   view_layout: wgpu::BindGroupLayout,
   /// Shadowed by the cascades, then by the traced shadow, each by the engine's light and then split into the anchored
   /// levels' diffuse and coloured specular, for each width the cascades' filter reaches (`MAX_REACH` apart), so its
@@ -45,6 +48,11 @@ impl SunPass {
   /// A lit texel, which the frame binds where the sun's shadow is not traced.
   pub(crate) fn get_untraced(&self) -> &wgpu::TextureView {
     &self.untraced
+  }
+
+  /// The comparison every pass filtering the cascades' maps gathers through.
+  pub(crate) fn get_compare(&self) -> &wgpu::Sampler {
+    &self.compare
   }
 
   /// # Errors
@@ -81,6 +89,11 @@ impl SunPass {
           &[u8::MAX],
         )
         .create_view(&Default::default()),
+      compare: device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some("sun shadow compare"),
+        compare: Some(wgpu::CompareFunction::GreaterEqual),
+        ..Default::default()
+      }),
       unshadowed: device
         .create_texture(&wgpu::TextureDescriptor {
           label: Some("sun unshadowed"),

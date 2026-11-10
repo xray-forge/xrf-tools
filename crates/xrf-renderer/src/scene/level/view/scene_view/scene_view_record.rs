@@ -113,6 +113,7 @@ impl SceneView {
           .map_or(passes.lighting.sun.get_unshadowed(), |maps| &maps.view),
       ),
       shadows: runtime.push_uniform(self.features.shadows.get_values()),
+      shadow_compare: passes.lighting.sun.get_compare(),
     }
   }
 

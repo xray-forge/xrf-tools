@@ -8,3 +8,4 @@
 @group(3) @binding(3) var lut_sampler: sampler;
 @group(3) @binding(4) var shadow_maps: texture_depth_2d_array;
 @group(3) @binding(5) var<uniform> shadows: Shadows;
+@group(3) @binding(6) var shadow_compare: sampler_comparison;

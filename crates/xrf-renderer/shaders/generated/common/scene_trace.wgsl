@@ -25,3 +25,4 @@ enable wgpu_ray_query;
 @group(3) @binding(19) var<uniform> trace_grass: TraceGrass;
 @group(3) @binding(20) var<storage, read> trace_grass_cards: array<u32>;
 @group(3) @binding(21) var<storage, read> trace_densities: array<u32>;
+@group(3) @binding(22) var trace_sun_compare: sampler_comparison;
