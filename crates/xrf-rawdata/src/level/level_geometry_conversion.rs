@@ -287,7 +287,8 @@ impl LevelGeometryConversion {
     let shells: Vec<(SectorGeometry, Option<ObjectDecompile>)> = level
       .get_sectors()
       .iter()
-      .map(|sector| {
+      .zip(0u16..)
+      .map(|(sector, index)| {
         let mut read: SectorGeometry =
           Self::read_sector::<T, D>(visuals, sector.root, shaders, source, collision.as_deref_mut())?;
 
@@ -310,6 +311,16 @@ impl LevelGeometryConversion {
             }
           }
           (None, _) => {}
+        }
+
+        if let Some(collision) = collision.as_deref_mut() {
+          let triangles: Vec<[Vector3d; 3]> = read
+            .geometry
+            .iter()
+            .flat_map(|geometry| Self::list_triangles(geometry, None))
+            .collect();
+
+          collision.cover_under_static(index, &triangles)?;
         }
 
         let decompile: Option<ObjectDecompile> = if read.geometry.is_empty() {

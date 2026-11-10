@@ -372,8 +372,11 @@ Where the level holds `level.cform`, `LevelCollisionIndex` holds those lookups a
 render triangle, or only a tree's, lies on. The faces nothing covers come back as `levels\<name>\<name>_collision`, a
 mesh per sector they lie in (`collision_<N>`, which that sector names), dressed as GSC dressed its collision-only props
 (`LevelGeometryConversion::COLLISION_TEXTURE` and the two shaders beside it). `ObjectDecompile::merge_meshes` joins the
-sectors' decompiles into the one object. Over vanilla, 377,359 of 10,830,486 collision faces are collision-only and
-2,646,858 lie under trees alone.
+sectors' decompiles into the one object. A face no render triangle's centre lands on is still covered where it lies
+under one of its sector's render triangles that lies on collision of its game material (`cover_under_static`): xrLC
+kept it whole where it split the render faces over it. A face of another material there is collision of its own, such
+as a collision-only prop laid on a floor, and stays. Over vanilla, 288,343 of 10,830,486 collision faces are
+collision-only and 2,646,858 lie under trees alone.
 
 The Build adds every wall mark to the static faces too (`ESceneWallmarkTool::ExportStatic`, compiler shader
 `def_shaders\def_vertex_ghost_no_shadow`) beside writing `level.wallmarks`, so the compiled geometry holds each decal
