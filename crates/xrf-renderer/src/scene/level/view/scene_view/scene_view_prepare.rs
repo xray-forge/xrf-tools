@@ -240,10 +240,13 @@ impl SceneView {
         .filter_map(DrawableKindSource::get_trace_instance)
         .collect();
 
-    self
-      .features
-      .view_trace
-      .prepare(frame, &mut *encoder, scene.trace.as_ref(), &trace_instances);
+    self.features.view_trace.prepare(
+      frame,
+      &mut *encoder,
+      scene.trace.as_ref(),
+      self.features.wind.get_sway_amplitude(),
+      &trace_instances,
+    );
     self
       .features
       .composited
