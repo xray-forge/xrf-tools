@@ -328,8 +328,11 @@ context into a scene (`LevelSceneDecompile`):
   scene;
 - the objects the scene places (`LevelSceneObjectFile`), each with its own `ObjectProvenance`.
 
-`LevelGeometryConversion::decompile` gives the static geometry back as one object per compiled sector,
-`levels\<name>\<name>_sector_<N>`: the static visuals the sector's root reaches, trees and their impostors left out,
+`LevelGeometryConversion::decompile` gives a level's geometry back from `LevelGeometrySources` (the bundle, its
+visuals, `level.geom`, and where held the indexed collision form, `level.hom` and `level.som`): every object below,
+each placed at the origin by a scene object, with the sectors and portals. The static geometry comes back as one object
+per compiled sector, `levels\<name>\<name>_sector_<N>`: the static visuals the sector's root reaches, trees and their
+impostors left out,
 through `ObjectDecompiler::decompile_level_geometry`. Each object keeps the level's coordinates and its scene object
 stands at the origin, since a pivot inside a sector-sized object would round the low bits off the points nearer the
 origin and open seams between sectors. A sector per compiled sector names its object, and a portal per compiled portal
@@ -356,9 +359,17 @@ mesh per sector they lie in (`collision_<N>`, which that sector names), dressed 
 sectors' decompiles into the one object. Over vanilla, 403,906 of 10,830,486 collision faces are collision-only and
 2,637,496 lie under trees alone.
 
+`LevelOccluderConversion` gives `level.hom` back as `<name>_hom`, an ordinary object whose surfaces have the
+`materials\occ` game material, as GSC's `labx8` keeps its occluders, and `level.som` as `<name>_som`, flagged
+`eoSoundOccluder`, a surface per game material whose sound occlusion factor is a polygon's (the lowest number where
+several share it). A two-sided polygon goes in with its mirror, so the decompile folds the two into one two-sided face.
+Exported again as the Build exports them, every vanilla `level.hom` polygon comes back, and every `level.som` polygon
+of CS, CoC, Anomaly and GAMMA.
+
 Over vanilla CoP's 22 levels, 7,189,838 static triangles lie exactly on a collision face, 2,036,780 are traced to one
 and 601,675 lie on none. Where the SDK's objects dress the same texture and engine shader, the compiler shader is one
-GSC used for 95.2% of faces (96.0% with the SDK's objects as the library) and the game material for 87.0%.
+GSC used for 95.2% of faces (96.0% with the SDK's objects as the library) and the game material for 86.8% (the
+collision object counted).
 `LevelGeometryCensus` counts the triangles read, the faces written, the two-sided folds, the repeats dropped and the
 tree triangles left. Over every tree's 202 levels, every static triangle is a face, a fold or a repeat, and every
 written point is a position the level's vertices hold, bit for bit.

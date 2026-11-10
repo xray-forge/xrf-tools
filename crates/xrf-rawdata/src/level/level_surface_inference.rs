@@ -256,6 +256,11 @@ impl LevelSurfaceInference {
       .collect()
   }
 
+  /// The game material library the surfaces are named from.
+  pub fn get_game_materials(&self) -> &GameMtlFile {
+    &self.game_materials
+  }
+
   /// The game material numbered `material` by name, or `default` for no collision or a number the library lacks.
   pub fn get_material_name(&mut self, material: Option<u16>) -> String {
     let Some(material) = material else {

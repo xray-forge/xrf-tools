@@ -3,6 +3,7 @@ mod fog_volume;
 mod geometry;
 mod glow;
 mod light;
+mod occluder;
 mod particle;
 mod scene;
 mod sound_environment;

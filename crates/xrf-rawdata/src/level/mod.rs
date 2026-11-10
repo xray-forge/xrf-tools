@@ -7,6 +7,7 @@ pub(crate) mod level_geometry_conversion;
 pub(crate) mod level_glow_conversion;
 pub(crate) mod level_light_conversion;
 pub(crate) mod level_object_names;
+pub(crate) mod level_occluder_conversion;
 pub(crate) mod level_particle_conversion;
 pub(crate) mod level_scene_decompiler;
 pub(crate) mod level_scene_exporter;

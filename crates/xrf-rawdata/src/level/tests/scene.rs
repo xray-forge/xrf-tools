@@ -14,10 +14,14 @@ use xrf_level::{
 use xrf_math::Vector3d;
 use xrf_test_utils::GeneratedResources;
 
+use xrf_editable_object::EditableObjectFile;
+
+use crate::level::level_visual_geometry::LevelVisualGeometry;
 use crate::level::tests::GUID;
 use crate::{
   LevelDecompileOptions, LevelExportedPrevious, LevelFogVolumeConversion, LevelSceneDecompile, LevelSceneDecompiler,
-  LevelSceneExporter, LevelSceneInference, LevelSceneProvenance,
+  LevelSceneExporter, LevelSceneInference, LevelSceneObjectFile, LevelSceneProvenance, ObjectDecompiler,
+  ObjectProvenance, SurfaceDress,
 };
 
 fn respawn_point(game_types: u16) -> LevelGameRPoint {
@@ -170,6 +174,59 @@ fn decompiling_the_same_level_twice_gives_the_same_scene() -> XrfResult {
     first
   );
   assert_ne!(other, first, "a level of other bytes is another scene");
+
+  Ok(())
+}
+
+#[test]
+fn writes_each_object_under_the_objects_root_after_its_sidecar() -> XrfResult {
+  let mut decompiled: LevelSceneDecompile = decompile(&level_directory("objects", 10.0)?)?;
+  let floor = [[
+    Vector3d::new(0.0, 0.0, 0.0),
+    Vector3d::new(0.0, 0.0, 1.0),
+    Vector3d::new(1.0, 0.0, 0.0),
+  ]];
+  let object = ObjectDecompiler::decompile_level_geometry(&LevelVisualGeometry::of_triangles(
+    "floor\\floor_tile",
+    "default",
+    &SurfaceDress::default(),
+    &floor,
+  ))?;
+  let output: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "objects_scene"))?;
+  let objects: PathBuf = output.join("objects");
+
+  decompiled.objects.push(LevelSceneObjectFile {
+    reference: String::from("levels\\test_level\\test_level_sector_0"),
+    provenance: ObjectProvenance::new("level.geom", &[], "test", "1.0.0", object.inferred, object.tangents),
+    object: object.object,
+  });
+
+  assert!(
+    decompiled.get_existing_object_paths(&objects).is_empty(),
+    "nothing written yet"
+  );
+
+  decompiled.write_to_path::<XRayByteOrder>(&output.join("test_level.level"), &objects)?;
+
+  let path: PathBuf = objects
+    .join("levels")
+    .join("test_level")
+    .join("test_level_sector_0.object");
+
+  assert_eq!(
+    EditableObjectFile::read_from_path::<XRayByteOrder, _>(&path)?.write_to_bytes::<XRayByteOrder>()?,
+    decompiled.objects[0].object.write_to_bytes::<XRayByteOrder>()?,
+    "read back, the object saves the bytes it was written as"
+  );
+  assert_eq!(
+    ObjectProvenance::read_beside(&path)?,
+    Some(decompiled.objects[0].provenance.clone())
+  );
+  assert_eq!(
+    decompiled.get_existing_object_paths(&objects),
+    [ObjectProvenance::sidecar_path(&path), path],
+    "a front-end asks about both before writing over them"
+  );
 
   Ok(())
 }
