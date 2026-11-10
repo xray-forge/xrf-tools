@@ -163,6 +163,7 @@ struct GrassParams {
   card_reach: f32,
   card_fade: f32,
   card_slots: i32,
+  card_thin_from: f32,
 }
 
 struct GrassWind {

@@ -8,20 +8,42 @@ use crate::tests::shader::wgsl_probe::run_wgsl_probe;
 /// The largest chance `card_chance` gives, its 24 bits' last step.
 const CHANCE_MOST: f32 = 1.0 - 1.0 / 16_777_216.0;
 
-/// The share of its size each tuft stands at as a card, a case's `x` metres from the eye and of chance `y`
-/// (`grass/card_thinning`).
-fn thinned(cases: &[(f32, f32)]) -> Option<Vec<f32>> {
+/// The share of its size each tuft stands at as a card, a case's `x` metres from the eye and of chance `y`, where the
+/// cards thin past `thin_from` (`grass/card_thinning`).
+fn thinned_from(cases: &[(f32, f32)], thin_from: f32) -> Option<Vec<f32>> {
   let probes: Vec<(Vec4, Vec4)> = cases
     .iter()
-    .map(|(from_eye, chance)| (Vec4::new(*from_eye, *chance, 0.0, 0.0), Vec4::ZERO))
+    .map(|(from_eye, chance)| (Vec4::new(*from_eye, *chance, thin_from, 0.0), Vec4::ZERO))
     .collect();
   let answered: Vec<Vec4> = run_wgsl_probe(
     "grass/card_thinning",
-    "vec4<f32>(card_thinned(card_kept(probe.first.x), probe.first.y), 0.0, 0.0, 0.0)",
+    "vec4<f32>(card_thinned(card_kept(probe.first.x, probe.first.z), probe.first.y), 0.0, 0.0, 0.0)",
     &probes,
   )?;
 
   Some(answered.iter().map(|answer| answer.x).collect())
+}
+
+/// The share of its size each tuft stands at as a card where the cards only cast the cascades' shadows.
+fn thinned(cases: &[(f32, f32)]) -> Option<Vec<f32>> {
+  thinned_from(cases, GrassCards::get_thin_from(false))
+}
+
+// Traced, the cards are never thinned: every tuft stands whole as far as they reach, so a reflection keeps its look as
+// the eye comes nearer.
+#[test]
+fn stands_every_traced_tuft_whole_however_far() {
+  let cases: Vec<(f32, f32)> = [40.0, 60.0, 150.0]
+    .iter()
+    .flat_map(|from_eye| [0.5, 0.99, CHANCE_MOST].map(|chance| (*from_eye, chance)))
+    .collect();
+  let Some(answered) = thinned_from(&cases, GrassCards::get_thin_from(true)) else {
+    return;
+  };
+
+  for (share, (from_eye, chance)) in answered.iter().zip(&cases) {
+    assert!(*share == 1.0, "{chance} at {from_eye} m: {share}");
+  }
 }
 
 // Short of the thinning every tuft stands whole as a card, whatever its chance: there, none joins or leaves.
@@ -94,20 +116,18 @@ fn sizes_the_cards_to_what_their_tufts_ask() {
   assert_eq!(GrassCards::get_capacity(grown, 20_000), 32_768);
 }
 
-// The traced cards stand every tuft whole no further than the thinning starts, past which most tufts stand as no card,
-// at any shadow radius.
+// The traced cards, never thinned, stand every tuft whole as far as their fade starts, at any shadow radius: the water's
+// rays meet them there rather than walking the grass's layers.
 #[test]
-fn stands_every_tuft_whole_no_further_than_the_thinning_starts() {
-  for shadow_radius in [5.0, 20.0, 45.0, 50.0, 60.0, 100.0, 150.0] {
+fn stands_every_traced_tuft_whole_as_far_as_the_fade() {
+  for shadow_radius in [5.0, 20.0, 45.0, 50.0, 60.0, 75.0, 100.0, 150.0] {
     let grass: RenderGrassSettings = RenderGrassSettings {
       shadow_radius,
       ..RenderGrassSettings::default()
     };
     let (reach, fade): (f32, f32) = GrassCards::get_reach(&grass, None);
-    let whole: f32 = GrassCards::get_whole_reach(&grass);
 
-    assert!(whole <= GrassCards::THIN_FROM, "{shadow_radius}: {whole}");
-    assert!(whole <= reach - fade, "{shadow_radius}: {whole}");
+    assert_eq!(GrassCards::get_whole_reach(&grass), reach - fade, "{shadow_radius}");
   }
 }
 

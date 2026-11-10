@@ -233,6 +233,7 @@ impl GrassView {
       card_reach,
       card_fade,
       card_slots: GrassCards::get_slots(card_reach).cast_signed(),
+      card_thin_from: GrassCards::get_thin_from(self.is_card_traced),
       ..self.values
     };
     self.sway = wind;
