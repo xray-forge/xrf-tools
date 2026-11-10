@@ -3,15 +3,16 @@ use std::path::{Path, PathBuf};
 
 use byteorder::ByteOrder;
 use sha2::{Digest, Sha256};
-use xrf_chunk::ChunkReader;
+use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
 use xrf_editable_level::{
   EditableBuildParams, EditableLevelCamera, EditableLevelFile, EditableLevelGuid, EditableLevelOptions,
   EditableLevelScene, EditableSceneTool, EditableSpawnPointObject,
 };
+use xrf_editable_object::EditableObjectFile;
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{
-  LevelEnvModFile, LevelFile, LevelFogVolFile, LevelGameFile, LevelGameRPoint, LevelLightsFile, LevelPsStaticFile,
-  LevelSndEnvFile, LevelSndStaticFile, LevelWallmarksFile,
+  LevelEnvModFile, LevelFile, LevelFogVolFile, LevelGameFile, LevelGameRPoint, LevelGeomFile, LevelGeomSource,
+  LevelLightsFile, LevelPsStaticFile, LevelSndEnvFile, LevelSndStaticFile, LevelVisualsChunk, LevelWallmarksFile,
 };
 use xrf_spawn::{AlifeObject, LevelSpawnFile, SpawnFile, SpawnLevelObjects};
 use xrf_utils::{StagedFile, format_path};
@@ -19,6 +20,7 @@ use xrf_utils::{StagedFile, format_path};
 use crate::level::level_decompile_context::LevelDecompileContext;
 use crate::level::level_entity_conversion::{LevelEntityConversion, LevelEntityDecompile, LevelEntitySources};
 use crate::level::level_fog_volume_conversion::LevelFogVolumeConversion;
+use crate::level::level_geometry_conversion::{LevelDecompiledObject, LevelGeometryConversion};
 use crate::level::level_glow_conversion::LevelGlowConversion;
 use crate::level::level_light_conversion::LevelLightConversion;
 use crate::level::level_particle_conversion::LevelParticleConversion;
@@ -28,8 +30,10 @@ use crate::level::level_spawn_point_conversion::LevelSpawnPointConversion;
 use crate::level::level_wallmark_conversion::LevelWallmarkConversion;
 use crate::level::level_way_conversion::LevelWayConversion;
 use crate::provenance::level_scene_provenance::{
-  LevelSceneFile, LevelSceneInference, LevelSceneProvenance, LevelSceneRefusal, LevelSceneRootSpawn, LevelSceneSource,
+  LevelSceneFile, LevelSceneGeometry, LevelSceneInference, LevelSceneProvenance, LevelSceneRefusal,
+  LevelSceneRootSpawn, LevelSceneSource,
 };
+use crate::provenance::object_provenance::ObjectProvenance;
 use crate::provenance::sidecar::Sidecar;
 
 /// What a level's decompile takes besides the level's directory (decision 21's one options type; libraries, surfaces
@@ -53,14 +57,51 @@ struct LevelRootSpawnSource {
   objects: Vec<AlifeObject>,
 }
 
-/// A decompiled level: its scene and the provenance written beside it.
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// One object a decompiled scene places, written under the objects root (`$objects$`) with its own sidecar.
+#[derive(Clone, Debug, PartialEq)]
+pub struct LevelSceneObjectFile {
+  /// Its path under the objects root without the extension, as the scene object's `reference_name` names it.
+  pub reference: String,
+  pub object: EditableObjectFile,
+  pub provenance: ObjectProvenance,
+}
+
+impl LevelSceneObjectFile {
+  /// The extension the reference leaves off.
+  pub const EXTENSION: &'static str = "object";
+
+  /// Its path under `objects_root`, the reference's folders as directories.
+  pub fn get_path(&self, objects_root: &Path) -> PathBuf {
+    let mut path: PathBuf = objects_root.join(self.reference.split('\\').collect::<PathBuf>());
+
+    path.set_extension(Self::EXTENSION);
+    path
+  }
+}
+
+/// A decompiled level: its scene, the provenance written beside it, and the objects it places.
+#[derive(Clone, Debug, PartialEq)]
 pub struct LevelSceneDecompile {
   pub scene: EditableLevelScene,
   pub provenance: LevelSceneProvenance,
+  pub objects: Vec<LevelSceneObjectFile>,
 }
 
 impl LevelSceneDecompile {
+  /// What a write would replace of the objects the scene places, under `objects_root`, and their sidecars.
+  pub fn get_existing_object_paths(&self, objects_root: &Path) -> Vec<PathBuf> {
+    self
+      .objects
+      .iter()
+      .flat_map(|object| {
+        let path: PathBuf = object.get_path(objects_root);
+
+        [ObjectProvenance::sidecar_path(&path), path]
+      })
+      .filter(|path| path.exists())
+      .collect()
+  }
+
   /// What a write to `level_path` would replace, of the scene's main file, its part directory and its sidecar: what a
   /// front-end asks about before writing over an earlier decompile or an authored scene.
   pub fn get_existing_paths(level_path: &Path) -> Vec<PathBuf> {
@@ -74,42 +115,56 @@ impl LevelSceneDecompile {
     .collect()
   }
 
-  /// Writes the scene's sidecar (`<level_path>.xrf.json`), then the scene: its main file at `level_path` and its parts
-  /// in the directory beside it. The sidecar goes first, so a scene that fails to write leaves a stray sidecar, never a
-  /// decompile taken for an authored scene.
+  /// Writes the scene's sidecar (`<level_path>.xrf.json`), then each object under `objects_root` after its own sidecar,
+  /// then the scene: its main file at `level_path` and its parts in the directory beside it. Each sidecar goes before
+  /// what it describes, so a write that fails leaves a stray sidecar, never a decompile taken for authored work.
   ///
   /// # Errors
   ///
-  /// Returns an error, writing nothing, when [`EditableLevelScene::check_writable`] refuses the scene; when the sidecar
-  /// cannot be written; or as [`EditableLevelScene::write_to_path`] does.
-  pub fn write_to_path<T: ByteOrder>(&self, level_path: &Path) -> XrfResult {
-    let sidecar: PathBuf = LevelSceneProvenance::sidecar_path(level_path);
-
+  /// Returns an error, writing nothing, when [`EditableLevelScene::check_writable`] refuses the scene; when a sidecar
+  /// or object cannot be written; or as [`EditableLevelScene::write_to_path`] does.
+  pub fn write_to_path<T: ByteOrder>(&self, level_path: &Path, objects_root: &Path) -> XrfResult {
     // Refused before the sidecar is written, so a sidecar never lands beside an authored scene left as it was.
     self.scene.check_writable(level_path)?;
 
-    StagedFile::write_creating_directories(&sidecar, self.provenance.to_json()?.as_bytes()).map_err(|error| {
-      XrfError::new_io_error(
-        format!("{} was not written: {error}", format_path(&sidecar)),
-        error.kind(),
-      )
-    })?;
+    Self::write_file(
+      &LevelSceneProvenance::sidecar_path(level_path),
+      self.provenance.to_json()?.as_bytes(),
+    )?;
+
+    for object in &self.objects {
+      let path: PathBuf = object.get_path(objects_root);
+
+      Self::write_file(
+        &ObjectProvenance::sidecar_path(&path),
+        object.provenance.to_json()?.as_bytes(),
+      )?;
+      Self::write_file(&path, &object.object.write_to_bytes::<T>()?)?;
+    }
 
     self.scene.write_to_path::<T, _>(&level_path)
+  }
+
+  fn write_file(path: &Path, bytes: &[u8]) -> XrfResult {
+    StagedFile::write_creating_directories(path, bytes)
+      .map_err(|error| XrfError::new_io_error(format!("{} was not written: {error}", format_path(path)), error.kind()))
   }
 }
 
 /// Decompiles a level's directory into a Level Editor scene: every file the build passes through from a part
 /// (`BuilderGame.cpp`) back into its part, through one [`LevelDecompileContext`], under a scene GUID hashed from those
-/// files, so decompiling the same level twice gives the same scene (decision 22). The scene holds no geometry yet.
+/// files, so decompiling the same level twice gives the same scene (decision 22); and its static geometry back into
+/// objects the scene places, one per compiled sector, with the sectors and portals.
 pub struct LevelSceneDecompiler;
 
 impl LevelSceneDecompiler {
   /// The files of a level's directory the decompile reads, in the order their bytes are hashed into the scene's GUID:
-  /// the compiled bundle (`level`, for its glows and dynamic lights) and the level compiler's `build.lights`, then the
-  /// files [`crate::LevelSceneExporter::FILE_NAMES`] the build writes from the scene's parts and the export writes back.
-  pub const SOURCE_FILES: [&'static str; 11] = [
+  /// the compiled bundle (`level`, for its sectors, portals, visuals, glows and dynamic lights), the geometry its
+  /// visuals draw (`level.geom`) and the level compiler's `build.lights`, then the files
+  /// [`crate::LevelSceneExporter::FILE_NAMES`] the build writes from the scene's parts and the export writes back.
+  pub const SOURCE_FILES: [&'static str; 12] = [
     LevelFile::FILE_NAME,
+    LevelGeomFile::FILE_NAME,
     LevelLightsFile::FILE_NAME,
     LevelEnvModFile::FILE_NAME,
     LevelFogVolFile::FILE_NAME,
@@ -149,12 +204,12 @@ impl LevelSceneDecompiler {
     );
     let mut draft: LevelSceneDraft = LevelSceneDraft::new(guid, &options.name);
 
-    Self::decompile_bundle::<T>(&mut sources, &mut draft)?;
+    Self::decompile_bundle::<T>(&mut sources, &options.name, &mut draft)?;
     Self::decompile_companions::<T>(&mut sources, &mut draft)?;
 
     let game_types: u16 = Self::decompile_game::<T>(&mut sources, root.as_mut(), &mut draft)?;
 
-    Ok(draft.finish(options, game_types, &sources, root.map(|root| root.record)))
+    Ok(draft.finish(options, directory, game_types, &sources, root.map(|root| root.record)))
   }
 
   /// The objects of the root spawn at `path` standing on the level `directory` is named after, by their game vertices.
@@ -183,12 +238,23 @@ impl LevelSceneDecompiler {
   }
 
   /// The parts the compiled bundle and the level compiler's light list give: glows, lights, and the light qualities of
-  /// the level options.
-  fn decompile_bundle<T: ByteOrder>(sources: &mut LevelSceneSources, draft: &mut LevelSceneDraft) -> XrfResult {
+  /// the level options; and with `level.geom`, the static geometry of the level `name`, its sectors and its portals.
+  fn decompile_bundle<T: ByteOrder>(
+    sources: &mut LevelSceneSources,
+    name: &str,
+    draft: &mut LevelSceneDraft,
+  ) -> XrfResult {
     let Some(level) = sources.take(LevelFile::FILE_NAME) else {
       return Ok(());
     };
-    let level: LevelFile = LevelFile::read_from_bytes::<T>(level)?;
+    let chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_vec(level)?.read_children()?;
+    let level: LevelFile = LevelFile::read_from_chunks::<T, _>(&chunks)?;
+
+    if let Some(geom) = sources.take(LevelGeomFile::FILE_NAME)
+      && let Some(visuals) = LevelFile::read_visuals_from_chunks::<T, _>(&chunks)?
+    {
+      Self::decompile_geometry::<T>(&level, &visuals, geom, name, sources, draft)?;
+    }
     let lights: Option<LevelLightsFile> = sources
       .take(LevelLightsFile::FILE_NAME)
       .map(LevelLightsFile::read_from_bytes::<T>)
@@ -224,6 +290,40 @@ impl LevelSceneDecompiler {
       &[LevelFile::FILE_NAME, LevelLightsFile::FILE_NAME],
       sources,
     );
+
+    Ok(())
+  }
+
+  /// The objects of the level's static geometry and the parts placing them, sectors and portals
+  /// ([`LevelGeometryConversion`]).
+  fn decompile_geometry<T: ByteOrder>(
+    level: &LevelFile,
+    visuals: &LevelVisualsChunk,
+    geom: Vec<u8>,
+    name: &str,
+    sources: &LevelSceneSources,
+    draft: &mut LevelSceneDraft,
+  ) -> XrfResult {
+    let source: LevelGeomSource<InMemoryChunkDataSource> = LevelGeomSource::open_from_bytes::<T>(geom)?;
+    let geometry = LevelGeometryConversion::decompile::<T, _>(name, level, visuals, &source, &mut draft.context)?;
+    let files: [&'static str; 2] = [LevelFile::FILE_NAME, LevelGeomFile::FILE_NAME];
+
+    if !geometry.objects.is_empty() {
+      draft.inferred.push(LevelSceneInference::SectorShells);
+      draft.add(geometry.scene_objects.to_scene_tool()?, &files, sources);
+      draft.add(geometry.sectors.to_scene_tool()?, &files, sources);
+    }
+
+    if !geometry.portals.objects.is_empty() {
+      draft.add(geometry.portals.to_scene_tool()?, &[LevelFile::FILE_NAME], sources);
+    }
+
+    draft.refused.extend(geometry.refused);
+    draft.geometry = Some(LevelSceneGeometry {
+      objects: geometry.objects.iter().map(|object| object.reference.clone()).collect(),
+      census: geometry.census,
+    });
+    draft.objects = geometry.objects;
 
     Ok(())
   }
@@ -447,6 +547,9 @@ struct LevelSceneDraft {
   tools: Vec<(EditableSceneTool, Vec<&'static str>)>,
   inferred: Vec<LevelSceneInference>,
   refused: Vec<LevelSceneRefusal>,
+  /// The objects of the static geometry, and what the sidecar records of them.
+  objects: Vec<LevelDecompiledObject>,
+  geometry: Option<LevelSceneGeometry>,
 }
 
 impl LevelSceneDraft {
@@ -464,6 +567,8 @@ impl LevelSceneDraft {
         LevelSceneInference::Camera,
       ],
       refused: Vec::new(),
+      objects: Vec::new(),
+      geometry: None,
     }
   }
 
@@ -486,10 +591,33 @@ impl LevelSceneDraft {
   fn finish(
     mut self,
     options: &LevelDecompileOptions,
+    directory: &Path,
     game_types: u16,
     sources: &LevelSceneSources,
     root_spawn: Option<LevelSceneRootSpawn>,
   ) -> LevelSceneDecompile {
+    let geom_sha256: String = sources
+      .recorded
+      .iter()
+      .find(|source| source.file == LevelGeomFile::FILE_NAME)
+      .map(|source| source.sha256.clone())
+      .unwrap_or_default();
+    let objects: Vec<LevelSceneObjectFile> = std::mem::take(&mut self.objects)
+      .into_iter()
+      .map(|object| LevelSceneObjectFile {
+        provenance: ObjectProvenance::of_source_hash(
+          format_path(&directory.join(LevelGeomFile::FILE_NAME)).to_string(),
+          geom_sha256.clone(),
+          options.tool.clone(),
+          options.tool_version.clone(),
+          object.decompile.inferred,
+          object.decompile.tangents,
+        ),
+        reference: object.reference,
+        object: object.decompile.object,
+      })
+      .collect();
+
     self
       .tools
       .sort_by(|(first, _), (second, _)| first.name.cmp(&second.name));
@@ -533,8 +661,10 @@ impl LevelSceneDraft {
         inferred: self.inferred,
         refused: self.refused,
         root_spawn,
+        geometry: self.geometry,
         ..LevelSceneProvenance::new(options.name.clone(), options.tool.clone(), options.tool_version.clone())
       },
+      objects,
     }
   }
 }

@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_rawdata::{LevelSceneInference, LevelSceneRefusal};
+use xrf_rawdata::{LevelGeometryCensus, LevelSceneInference, LevelSceneRefusal};
 
 /// One tool of the scene `level decompile` wrote, and what its part holds.
 #[derive(Debug, Serialize)]
@@ -25,6 +25,20 @@ pub(crate) struct LevelDecompileReport {
   pub(crate) refused: Vec<LevelSceneRefusal>,
   /// The root spawn read, where one was; the sidecar lists what is counted here.
   pub(crate) root_spawn: Option<LevelDecompileRootSpawn>,
+  /// The objects root the scene's objects were written under.
+  pub(crate) objects_root: String,
+  /// The static geometry, counted, where the level held `level.geom`; the sidecar lists each object.
+  pub(crate) geometry: Option<LevelDecompileGeometry>,
+}
+
+/// The static geometry `level decompile` wrote, counted.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct LevelDecompileGeometry {
+  /// The objects written, one per sector drawing static geometry.
+  pub(crate) objects: usize,
+  #[serde(flatten)]
+  pub(crate) census: LevelGeometryCensus,
 }
 
 /// The root spawn `level decompile` read, counted.

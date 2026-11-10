@@ -126,18 +126,19 @@ The Level Editor's Build writes some level files straight from the scene's parts
 - A compiled level keeps no object names. `LevelObjectNames` names a scene's objects `<prefix>_0000` upwards, as the
   editor numbers new objects; `get_next_after_file` takes the prefix from the file an object plays or shows.
 
-| Conversion                        | Files                                                       | Round trip                                                     |
-| --------------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------- |
-| `LevelParticleConversion`         | `level.ps_static` ↔ `ps.part`                               | All 18 of vanilla CoP's files, byte for byte                   |
-| `LevelSoundSourceConversion`      | `level.snd_static` ↔ `sound_src.part`                       | 91 files (1,303 sounds) from memory; all but one through text  |
-| `LevelSoundEnvironmentConversion` | `level.snd_env` ↔ `sound_env.part`                          | 15 of 20 byte for byte; 5 within 6.1e-5                        |
-| `LevelFogVolumeConversion`        | `level.fog_vol` ↔ `fog_volume.part`                         | All 174 files through text                                     |
-| `LevelWallmarkConversion`         | `level.wallmarks` ↔ `wallmark.part`                         | All 74 files through the binary part; `labx8`'s part exact     |
-| `LevelWayConversion`              | `level.game` paths ↔ `way.part`                             | 202 files from memory; all but two through text                |
-| `LevelSpawnPointConversion`       | `level.game` respawn points, `level.env_mod` ↔ `spawn.part` | 200 of 202 levels through text                                 |
-| `LevelEntityConversion`           | `level.spawn`, `level_rs.spawn` ↔ `spawn.part`              | Every packet read comes back; floats off the `%f` grid rounded |
-| `LevelGlowConversion`             | `level`'s glows → `glow.part`                               | 4,563 glows over 202 levels; `labx8`'s 29 exactly GSC's        |
-| `LevelLightConversion`            | `build.lights`, `level`'s lights → `light.part`             | Built back exactly over all 186 levels with `build.lights`     |
+| Conversion                        | Files                                                         | Round trip                                                     |
+| --------------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------- |
+| `LevelParticleConversion`         | `level.ps_static` ↔ `ps.part`                                 | All 18 of vanilla CoP's files, byte for byte                   |
+| `LevelSoundSourceConversion`      | `level.snd_static` ↔ `sound_src.part`                         | 91 files (1,303 sounds) from memory; all but one through text  |
+| `LevelSoundEnvironmentConversion` | `level.snd_env` ↔ `sound_env.part`                            | 15 of 20 byte for byte; 5 within 6.1e-5                        |
+| `LevelFogVolumeConversion`        | `level.fog_vol` ↔ `fog_volume.part`                           | All 174 files through text                                     |
+| `LevelWallmarkConversion`         | `level.wallmarks` ↔ `wallmark.part`                           | All 74 files through the binary part; `labx8`'s part exact     |
+| `LevelWayConversion`              | `level.game` paths ↔ `way.part`                               | 202 files from memory; all but two through text                |
+| `LevelSpawnPointConversion`       | `level.game` respawn points, `level.env_mod` ↔ `spawn.part`   | 200 of 202 levels through text                                 |
+| `LevelEntityConversion`           | `level.spawn`, `level_rs.spawn` ↔ `spawn.part`                | Every packet read comes back; floats off the `%f` grid rounded |
+| `LevelGlowConversion`             | `level`'s glows → `glow.part`                                 | 4,563 glows over 202 levels; `labx8`'s 29 exactly GSC's        |
+| `LevelLightConversion`            | `build.lights`, `level`'s lights → `light.part`               | Built back exactly over all 186 levels with `build.lights`     |
+| `LevelGeometryConversion`         | `level`, `level.geom` → objects, `sector.part`, `portal.part` | Every static triangle of vanilla CoP's 22 levels accounted for |
 
 ### Particles
 
@@ -316,21 +317,35 @@ counts keep a new level's quality, and a direction may come back one unit off in
 
 ### A whole scene
 
-`LevelSceneDecompiler::decompile` reads every pass-through file a level's directory holds, and the `level` bundle and
-`build.lights` for its glows and lights, and decompiles each through one context into a scene (`LevelSceneDecompile`),
-with no geometry yet:
+`LevelSceneDecompiler::decompile` reads every pass-through file a level's directory holds, the `level` bundle and
+`build.lights` for its glows and lights, and `level.geom` for its static geometry, and decompiles each through one
+context into a scene (`LevelSceneDecompile`):
 
 - a part per tool, sorted by name; the spawn part from `level.game` and `level.env_mod` together;
 - a main file of a new level named after `LevelDecompileOptions::name`, serving its respawn points' game modes (single
   player where it has none), the editor's build parameters with a weld distance of 0, the camera at the origin;
 - a scene GUID from the SHA-256 over each source's name, length and bytes, so the same level always gives the same
-  scene.
+  scene;
+- the objects the scene places (`LevelSceneObjectFile`), each with its own `ObjectProvenance`.
 
-`write_to_path` writes the sidecar, `<name>.level.xrf.json` (`LevelSceneProvenance`), then the scene, so a failed write
-never leaves a decompile that looks authored. The sidecar holds the front-end the options name, each source's SHA-256,
-each written file and its sources, and what the decompile chose rather than read (`LevelSceneInference`), recorded
-only for a part that holds what it was chosen for: a level of no light records no light inference. The object and
-scene sidecars share one convention, the `.xrf.json` suffix beside their file and sources named by SHA-256.
+`LevelGeometryConversion::decompile` gives the static geometry back as one object per compiled sector,
+`levels\<name>\<name>_sector_<N>`: the static visuals the sector's root reaches, trees and their impostors left out,
+through `ObjectDecompiler::decompile_level_geometry`. Each object keeps the level's coordinates and its scene object
+stands at the origin, since a pivot inside a sector-sized object would round the low bits off the points nearer the
+origin and open seams between sectors. A sector per compiled sector names its object, and a portal per compiled portal
+joins two of them; the Build numbers sectors in the order the scene lists them, so the compiled indices come back. A
+sector drawing no static geometry would leave no object to name, and the editor drops a sector of no item, renumbering
+the rest: such a level keeps its shells but no sector or portal, each empty sector refused.
+`LevelGeometryCensus` counts the triangles read, the faces written, the two-sided folds, the repeats dropped and the
+tree triangles left. Over every tree's 202 levels, every static triangle is a face, a fold or a repeat, and every
+written point is a position the level's vertices hold, bit for bit.
+
+`write_to_path` writes the sidecar, `<name>.level.xrf.json` (`LevelSceneProvenance`), then each object under the
+objects root after its own sidecar, then the scene, so a failed write never leaves a decompile that looks authored.
+The sidecar holds the front-end the options name, each source's SHA-256, each written file and its sources, and what
+the decompile chose rather than read (`LevelSceneInference`), recorded only for a part that holds what it was chosen
+for: a level of no light records no light inference. The object and scene sidecars share one convention, the
+`.xrf.json` suffix beside their file and sources named by SHA-256.
 
 `decompile` reads the sources once and hands each file's bytes to the step that decompiles it: the compiled bundle
 (glows, lights, the light qualities), the files built each from one part, then `level.game` and `level.env_mod` (ways,
@@ -345,7 +360,7 @@ writes. `write_to_directory` writes them, each staged,
 saying of each whether it is new, the same or changed. Since the editor's Build moves every file it may write aside
 first, it refuses a directory holding one the scene does not build rather than delete it. Whether existing files may be
 replaced is the front-end's to ask (`--force`, a confirmation), as `LevelSceneDecompile::get_existing_paths` lets it ask
-before a decompile. Vanilla CoP's `labx8`, `zaton` and `mp_atp`,
+before a decompile and `get_existing_object_paths` after it. Vanilla CoP's `labx8`, `zaton` and `mp_atp`,
 and CS's `agroprom_underground`, decompile, read back to the same bytes, and export every file byte for byte; so does
 GSC's own `labx8` scene.
 

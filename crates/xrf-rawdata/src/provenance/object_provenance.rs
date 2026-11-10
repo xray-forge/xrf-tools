@@ -49,9 +49,29 @@ impl ObjectProvenance {
     inferred: Vec<ObjectInference>,
     tangents: TangentMethod,
   ) -> Self {
+    Self::of_source_hash(
+      source,
+      Sidecar::get_sha256_hex(source_bytes),
+      tool,
+      tool_version,
+      inferred,
+      tangents,
+    )
+  }
+
+  /// [`Self::new`] for a source hashed already, `source_sha256` its SHA-256 in lowercase hex: one compiled file many
+  /// objects are decompiled from, such as a level's geometry.
+  pub fn of_source_hash(
+    source: impl Into<String>,
+    source_sha256: String,
+    tool: impl Into<String>,
+    tool_version: impl Into<String>,
+    inferred: Vec<ObjectInference>,
+    tangents: TangentMethod,
+  ) -> Self {
     Self {
       source: source.into(),
-      source_sha256: Sidecar::get_sha256_hex(source_bytes),
+      source_sha256,
       tool: tool.into(),
       tool_version: tool_version.into(),
       decompiled_at: SystemTime::now()
