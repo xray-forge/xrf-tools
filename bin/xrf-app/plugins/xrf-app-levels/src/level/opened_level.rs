@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
@@ -6,7 +7,7 @@ use xrf_app_core::session::{SessionDerived, SessionParts, SessionSnapshot};
 use xrf_chunk::InMemoryChunkDataSource;
 use xrf_engine_target::XrayEngineResolution;
 use xrf_level::LevelGeomSource;
-use xrf_ltx::{Ltx, LtxDialect};
+use xrf_ltx::{Ltx, LtxDialect, LtxResolution};
 use xrf_material::{XraySurfaceDescriptor, XrayTextureScope};
 use xrf_vfs::{XrayInputRecord, XrayRoots, XraySearch};
 use xrf_visual::SectorOutline;
@@ -93,9 +94,10 @@ impl OpenedLevel {
     let sections_inputs: XrayInputRecord = XrayInputRecord::new();
     let start_inputs: XrayInputRecord = XrayInputRecord::new();
     // Two lines of reads, each waiting only on what it needs: the level, its geometry and then the surfaces and textures
-    // its shader table names; and beside them the spawn, then what stands over the places it has an actor at and the
-    // configs' sections it names, side by side. The renderer's first texture asks whether the configs reduce it, so the
-    // sections are read with the level rather than after it.
+    // its shader table names; and beside them the spawn and then what stands over the places it has an actor at, while
+    // the game's configs are read alongside and the sections the spawn names kept out of them once both are in. The
+    // configs are the open's longest read, so they start at once rather than after the spawn. The renderer's first
+    // texture asks whether the configs reduce it, so the sections are read with the level rather than after it.
     let ((dressed, geometry), (spawn, open, sections)) = rayon::join(
       || {
         let (bundle, geometry) = rayon::join(
@@ -133,33 +135,49 @@ impl OpenedLevel {
         (dressed, geometry)
       },
       || {
-        let spawn: TauriResult<Arc<LevelSpawn>> = {
-          profiling::scope!("level spawn");
+        let (spawned, (resolved, read_in)) = rayon::join(
+          || -> (TauriResult<Arc<LevelSpawn>>, Vec<bool>) {
+            let spawn: TauriResult<Arc<LevelSpawn>> = {
+              profiling::scope!("level spawn");
 
-          LevelSpawnPart::read(source, &search.clone().with_recording(&spawn_inputs))
-        };
+              LevelSpawnPart::read(source, &search.clone().with_recording(&spawn_inputs))
+            };
 
-        // Where the level starts is decided over its spawn, and the sections are those the spawn names.
-        start_inputs.extend_from(&spawn_inputs);
-        sections_inputs.extend_from(&spawn_inputs);
+            // Where the level starts is decided over its spawn.
+            start_inputs.extend_from(&spawn_inputs);
 
-        let Ok(found) = spawn.as_deref() else {
-          return (spawn, Vec::new(), None);
-        };
-        let (open, sections): (Vec<bool>, TauriResult<Arc<Ltx>>) = rayon::join(
-          || {
-            profiling::scope!("level start");
+            let open: Vec<bool> = spawn.as_deref().map_or_else(
+              |_| Vec::new(),
+              |found| {
+                profiling::scope!("level start");
 
-            LevelStartPart::find_open(source, &search.clone().with_recording(&start_inputs), found)
+                LevelStartPart::find_open(source, &search.clone().with_recording(&start_inputs), found)
+              },
+            );
+
+            (spawn, open)
           },
-          || {
-            profiling::scope!("level sections");
+          || -> (TauriResult<Arc<LtxResolution>>, Duration) {
+            profiling::scope!("level configs");
 
-            LevelSectionsPart::read(source, &search.clone().with_recording(&sections_inputs), configs, found)
+            let started: Instant = Instant::now();
+            let resolved: TauriResult<Arc<LtxResolution>> =
+              LevelSectionsPart::resolve(source, &search.clone().with_recording(&sections_inputs), configs);
+
+            (resolved, started.elapsed())
           },
         );
+        let (spawn, open) = spawned;
 
-        (spawn, open, Some(sections))
+        // The sections are those the spawn names.
+        sections_inputs.extend_from(&spawn_inputs);
+
+        let sections: Option<TauriResult<Arc<Ltx>>> = spawn
+          .as_deref()
+          .ok()
+          .map(|found| resolved.map(|resolved| LevelSectionsPart::keep(source, &resolved, read_in, found)));
+
+        (spawn, open, sections)
       },
     );
     let (bundle, surfaces, textures): (LevelBundle, Vec<XraySurfaceDescriptor>, Vec<LevelTextureReference>) = dressed?;
