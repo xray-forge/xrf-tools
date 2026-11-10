@@ -110,11 +110,11 @@ Ray reconstruction also takes:
 - normals, with roughness in the fourth channel;
 - hit distances of reflection and indirect rays, in metres;
 - the unjittered view and projection;
-- an optional `bias_current_color` mask weighting pixels toward this frame;
 - optionally, the frame before and after its transparent layers.
 
-The upscaler takes no current-colour bias mask: NGX's `pInBiasCurrentColorMask` serves preset F alone, and the
-transformer presets ignore it (DLSS Programming Guide, "Biasing the Current Frame").
+Neither feature takes a current-colour bias mask: NGX's `pInBiasCurrentColorMask` serves super resolution's preset F
+alone, the transformer presets ignore it (DLSS Programming Guide, "Biasing the Current Frame"), and ray reconstruction's
+models E and F drew water rippling in rain alike with a mask of 0.8 over it and with none.
 
 NGX's own messages are logged under the `xrf_dlss::ngx` target while its debug level is on.
 

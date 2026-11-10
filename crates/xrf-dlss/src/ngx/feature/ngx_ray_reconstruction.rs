@@ -139,7 +139,6 @@ impl NgxRayReconstruction {
     let mut normals = resource(inputs.normals);
     let mut hit_distance = resource(inputs.specular_hit_distance);
     let mut diffuse_hit_distance = inputs.diffuse_hit_distance.map(resource);
-    let mut bias = inputs.bias_current_color.map(resource);
     let mut transparency = inputs
       .transparency
       .map(|(before, after)| (resource(before), resource(after)));
@@ -157,10 +156,6 @@ impl NgxRayReconstruction {
 
     if let Some(diffuse) = &mut diffuse_hit_distance {
       parameters.pInDiffuseHitDistance = diffuse;
-    }
-
-    if let Some(bias) = &mut bias {
-      parameters.pInBiasCurrentColorMask = bias;
     }
 
     if let Some((before, after)) = &mut transparency {
@@ -214,10 +209,6 @@ impl NgxRayReconstruction {
 
       if let Some(diffuse) = inputs.diffuse_hit_distance {
         parameters.pInDiffuseHitDistance = NgxD3d12Resource::of(diffuse);
-      }
-
-      if let Some(bias) = inputs.bias_current_color {
-        parameters.pInBiasCurrentColorMask = NgxD3d12Resource::of(bias);
       }
 
       if let Some((before, after)) = inputs.transparency {

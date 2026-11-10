@@ -140,7 +140,6 @@ impl ResolveFeature {
       specular_albedo: create("ray guides specular albedo", RayGuidesPass::SPECULAR_ALBEDO),
       normals: create("ray guides normals", RayGuidesPass::NORMALS),
       hit_distance: create("ray guides hit distance", RayGuidesPass::HIT_DISTANCE),
-      bias: create("ray guides bias", RayGuidesPass::BIAS),
       transparency: None,
       diffuse_hit_distance: None,
     };
@@ -166,7 +165,6 @@ impl ResolveFeature {
       .color(clear(guides.specular_albedo))
       .color(clear(guides.normals))
       .color(clear(guides.hit_distance))
-      .color(clear(guides.bias))
       .color(clear(diffuse_hit_distance))
       .color(clear(guides.diffuse_albedo))
       .record(move |context| passes.tracing.ray_guides.record(context, view, &parameters));
@@ -426,7 +424,6 @@ impl ResolveFeature {
       .texture(guides.specular_albedo, GraphTextureAccess::Sampled)
       .texture(guides.normals, GraphTextureAccess::Sampled)
       .texture(guides.hit_distance, GraphTextureAccess::Sampled)
-      .texture(guides.bias, GraphTextureAccess::Sampled)
       .texture(output, GraphTextureAccess::StorageReadWrite);
 
     if let Some(diffuse) = guides.diffuse_hit_distance {
@@ -455,7 +452,6 @@ impl ResolveFeature {
         diffuse_hit_distance: guides
           .diffuse_hit_distance
           .map(|diffuse| context.get_texture(diffuse).view),
-        bias_current_color: Some(context.get_texture(guides.bias).view),
         transparency: guides
           .transparency
           .map(|[before, after]| (context.get_texture(before).view, context.get_texture(after).view)),
