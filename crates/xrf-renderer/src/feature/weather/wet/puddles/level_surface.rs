@@ -124,7 +124,8 @@ impl LevelSurface {
   }
 
   /// Where the puddles stood last frame as the grass plants around them: a surface's puddles and the window they cover,
-  /// or the dry stand-in (`dry`) where none is made; marked as puddles only where the `wet` surfaces draw any.
+  /// or the dry stand-in (`dry`) where none is made; marked as puddles only where the `wet` surfaces draw any, as far
+  /// as they draw them.
   pub(crate) fn get_grass_puddles<'a>(
     surface: Option<&'a Self>,
     dry: &'a wgpu::TextureView,
@@ -135,11 +136,9 @@ impl LevelSurface {
 
     (
       surface.map_or(dry, |surface| &surface.puddles),
-      if wet.has_puddles() {
-        uniform.with_puddles()
-      } else {
-        uniform
-      },
+      wet
+        .get_puddle_distance()
+        .map_or(uniform, |distance| uniform.with_puddles(distance)),
     )
   }
 

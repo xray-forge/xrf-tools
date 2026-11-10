@@ -317,8 +317,6 @@ fn fs_wet_patch(in: FullscreenVarying) -> EngineWetTargets {
 const RIPPLE_REACH: f32 = 15.0;
 const RIPPLE_LAYER_SPEEDS: vec3<f32> = vec3<f32>(1.05, 1.31, 1.58);
 const RIPPLE_LAYER_OFFSETS: vec4<f32> = vec4<f32>(0.5, 0.25, 0.31, 0.5);
-// The share of the puddles' distance over which they fade out.
-const PUDDLE_FADE: f32 = 0.15;
 // The reflectivity setting at which a puddle's water reflects as water does, the default; a lower one reflects less,
 // a higher one more.
 const WATER_REFLECTIVITY: f32 = 0.4;
@@ -805,7 +803,7 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
     let edge: f32 = textureSampleGrad(puddle_noise, wet_sampler, place.zx / PUDDLE_EDGE_TILE + 0.37,
       gradients.across.yx / PUDDLE_EDGE_TILE, gradients.down.yx / PUDDLE_EDGE_TILE).r;
     let border: f32 = (edge - 0.5) * PUDDLE_EDGE_SHAPE + (noise - 0.5) * PUDDLE_NOISE_SHAPE;
-    let fade: f32 = smoothstep(wet.puddle_state.x, wet.puddle_state.x * (1.0 - PUDDLE_FADE), length(position));
+    let fade: f32 = puddle_drawn(length(position), wet.puddle_state.x);
     // The cover only reaches some tens of metres; a site is on open ground already, so a puddle does not wait for it.
     var found: SitePuddle = SitePuddle(0.0, 0.0, 0.0, up, 1.0);
 

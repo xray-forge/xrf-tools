@@ -112,12 +112,13 @@ fn cs_grass_cards(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_wor
   let from_eye: f32 = distance(place.xyz, vec3<f32>(params.eye.x, params.eye.y, -params.eye.z));
   let shrink: f32 = card_share(from_eye);
   let thinned: f32 = card_thinned(card_kept(from_eye), card_chance(place.xyz));
+  let unflooded: f32 = puddle_kept(place.xyz, from_eye);
 
-  if (kept_look.x <= 0.0 || shrink <= 0.0 || thinned <= 0.0 || is_in_puddle(place.xyz)) {
+  if (kept_look.x <= 0.0 || shrink <= 0.0 || thinned <= 0.0 || unflooded <= 0.0) {
     return;
   }
 
-  let look: vec4<f32> = vec4<f32>(kept_look.x * shrink * thinned, kept_look.yzw);
+  let look: vec4<f32> = vec4<f32>(kept_look.x * shrink * thinned * unflooded, kept_look.yzw);
   let model_index: u32 = u32(kept.y);
   let model: GrassModel = models[model_index];
   let count: u32 = model.index_count / 3u;
