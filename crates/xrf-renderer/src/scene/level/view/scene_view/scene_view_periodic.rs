@@ -1,5 +1,3 @@
-use glam::Vec3;
-
 use crate::feature::effects::rain::cover::rain_cover::RainCover;
 use crate::feature::scene::drawable::casters::per_frame_casters::PerFrameCasters;
 use crate::feature::view::scene_features::SceneFeatures;
@@ -44,7 +42,7 @@ impl SceneView {
       camera: &shared.camera,
       settings: &shared.shadow_settings,
       sun_direction: shared.sun_direction,
-      is_sunlit: shared.lighting.sun.truncate() != Vec3::ZERO,
+      is_sunlit: shared.lighting.is_sunlit(),
       switches: shared.switches,
       sway: ShadowSway::of(statics, &features.wind, scene.get_time()),
       casters: casters.as_slice(),
@@ -106,7 +104,7 @@ impl SceneView {
       camera: &shared.camera,
       settings: &shared.shadow_settings,
       sun_direction: shared.sun_direction,
-      is_sunlit: shared.lighting.sun.truncate() != Vec3::ZERO,
+      is_sunlit: shared.lighting.is_sunlit(),
       switches: shared.switches,
       sway: ShadowSway::of(statics, &features.wind, scene.get_time()),
       casters: casters.as_slice(),
@@ -147,7 +145,7 @@ impl SceneView {
       camera: &self.shared.camera,
       settings: &self.shared.shadow_settings,
       sun_direction: self.shared.sun_direction,
-      is_sunlit: self.shared.lighting.sun.truncate() != Vec3::ZERO,
+      is_sunlit: self.shared.lighting.is_sunlit(),
       switches: self.shared.switches,
       sway: ShadowSway::of(statics, &self.features.wind, time),
       casters: casters.as_slice(),

@@ -1,4 +1,4 @@
-use glam::{Vec2, Vec3, Vec4};
+use glam::Vec2;
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, UniformBinding};
 
 use crate::contract::feature::lighting::render_shadow_settings::RenderShadowSettings;
@@ -35,18 +35,14 @@ impl ContactShadowFeature {
     height: u32,
     noise_frame: u32,
   ) {
-    let (to_sun, sun): (Vec4, Vec4) = (lighting.to_sun, lighting.sun);
-
     let shadows: &RenderShadowSettings = &options.features.shadows;
     let is_marched: bool = options.mode.is_lit && !options.mode.is_wireframe;
-    // A sun of no colour adds nothing for its contact shadows to take away.
-    let is_sunlit: bool = sun.truncate() != Vec3::ZERO;
 
-    self.is_sun = is_marched && is_sunlit && shadows.is_sun_contact_drawn();
+    self.is_sun = is_marched && lighting.is_sunlit() && shadows.is_sun_contact_drawn();
     self.uniform = if is_marched {
       ContactShadowUniform::new(
         &shadows.contact,
-        to_sun,
+        lighting.to_sun,
         height,
         noise_frame,
         Self::get_grass_reach(options),
