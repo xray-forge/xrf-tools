@@ -8808,6 +8808,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "specta",
+ "uuid",
  "xrf-animation-envelope",
  "xrf-chunk",
  "xrf-dds",

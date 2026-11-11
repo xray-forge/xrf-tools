@@ -5,9 +5,9 @@ use xrf_math::{Aabb, Sphere, Vector3d};
 
 use crate::tests::fixtures::GUID;
 use crate::{
-  EditableBinaryPart, EditableDetailColorIndex, EditableDetailHeader, EditableDetailObject, EditableDetailObjectTool,
-  EditableLevelPart, EditableSceneTool, EditableWallmark, EditableWallmarkSlot, EditableWallmarkTool,
-  EditableWallmarkVertex,
+  EditableAiMapNode, EditableAiMapParams, EditableAiMapTool, EditableBinaryPart, EditableDetailColorIndex,
+  EditableDetailHeader, EditableDetailObject, EditableDetailObjectTool, EditableLevelPart, EditableSceneTool,
+  EditableWallmark, EditableWallmarkSlot, EditableWallmarkTool, EditableWallmarkVertex,
 };
 
 fn fan() -> Vec<EditableWallmarkVertex> {
@@ -252,6 +252,91 @@ fn reads_and_writes_a_slots_corners_and_light_as_the_editor_does() {
   assert_eq!(
     EditableDetailObjectTool::get_unlit_slot(slot),
     [0x0410_03E8, 0x0000_01FF, 0x1111, 0x2222]
+  );
+}
+
+fn ai_map_tool() -> EditableAiMapTool {
+  EditableAiMapTool {
+    flags: 4,
+    snap_objects: vec![String::from("labx8_sector_0")],
+    ..EditableAiMapTool::new(
+      Aabb {
+        min: Vector3d::new(-10.0, -2.0, 5.0),
+        max: Vector3d::new(10.0, 8.0, 25.0),
+      },
+      EditableAiMapParams::default(),
+      vec![
+        EditableAiMapNode {
+          links: [1, EditableAiMapNode::NO_LINK, 0x00AB_CDEF, 0],
+          plane: 0x8001,
+          x: -14,
+          z: 30,
+          y: 13107,
+          flags: 1,
+        },
+        EditableAiMapNode {
+          links: [EditableAiMapNode::NO_LINK; 4],
+          plane: 7,
+          x: 3,
+          z: 7,
+          y: u16::MAX,
+          flags: 0,
+        },
+      ],
+    )
+  }
+}
+
+#[test]
+fn an_ai_map_tool_saved_as_its_part_reads_back_the_same() -> XrfResult {
+  let scene_tool: EditableSceneTool = ai_map_tool().to_scene_tool::<XRayByteOrder>(GUID)?;
+  let EditableLevelPart::Binary(part) = &scene_tool.parts[0] else {
+    panic!("an AI map part is chunks");
+  };
+  let bytes: Vec<u8> = part.write_to_bytes::<XRayByteOrder>()?;
+  let EditableLevelPart::Binary(read) = EditableLevelPart::read_from_bytes::<XRayByteOrder>(bytes.clone())? else {
+    panic!("an AI map part reads as chunks");
+  };
+
+  assert_eq!(scene_tool.get_file_name(0), "ai_map.part");
+  assert_eq!(
+    EditableAiMapTool::read_from_part::<XRayByteOrder>(&read)?,
+    ai_map_tool()
+  );
+  assert_eq!(read.write_to_bytes::<XRayByteOrder>()?, bytes);
+  assert!(
+    EditableAiMapTool::read_from_part::<XRayByteOrder>(&EditableBinaryPart {
+      class_id: EditableDetailObjectTool::CLASS_ID,
+      ..read
+    })
+    .is_err(),
+    "the detail tool's part"
+  );
+
+  Ok(())
+}
+
+/// A node stands on its cell, the patch size from the world origin, at its height spread across the box.
+#[test]
+fn unpacks_a_nodes_position_as_the_editor_does() {
+  let tool: EditableAiMapTool = ai_map_tool();
+  let position: Vector3d = tool.get_node_position(&tool.nodes[0]);
+
+  assert!((position.x + 9.8).abs() < 1e-5, "{position:?}");
+  assert!(
+    (position.y - 0.0).abs() < 1e-5,
+    "a fifth of the way up a box ten high from -2"
+  );
+  assert!((position.z - 21.0).abs() < 1e-5);
+  assert_eq!(tool.get_node_position(&tool.nodes[1]).y, 8.0);
+
+  let mut wide: EditableAiMapTool = ai_map_tool();
+
+  wide.nodes[0].links[0] = EditableAiMapNode::NO_LINK + 1;
+
+  assert!(
+    wide.write_to_bytes::<XRayByteOrder>().is_err(),
+    "a link past three bytes"
   );
 }
 

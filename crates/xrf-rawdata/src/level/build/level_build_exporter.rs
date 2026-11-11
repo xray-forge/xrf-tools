@@ -3,14 +3,16 @@ use std::path::Path;
 
 use byteorder::ByteOrder;
 use xrf_editable_level::{
-  EditableBuildParams, EditableDetailObjectTool, EditableGlowObject, EditableLevelGuid, EditableLevelOptions,
-  EditableLevelScene, EditableLightObject, EditableObjectPart, EditablePortalObject, EditableSceneObject,
-  EditableSectorObject, EditableShape, EditableShapeObject, EditableWallmarkTool,
+  EditableAiMapTool, EditableBuildParams, EditableDetailObjectTool, EditableGlowObject, EditableLevelGuid,
+  EditableLevelOptions, EditableLevelScene, EditableLightObject, EditableObjectPart, EditablePortalObject,
+  EditableSceneObject, EditableSectorObject, EditableShape, EditableShapeObject, EditableWallmarkTool,
 };
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::{XrfError, XrfResult};
 use xrf_gamemtl::GameMtlFile;
-use xrf_level::{BuildPrjFile, BuildPrjGlow, BuildPrjMuModel, BuildPrjMuReference, BuildPrjParams, BuildPrjPortal};
+use xrf_level::{
+  BuildAimapFile, BuildPrjFile, BuildPrjGlow, BuildPrjMuModel, BuildPrjMuReference, BuildPrjParams, BuildPrjPortal,
+};
 use xrf_math::{Aabb, Vector3d};
 
 use crate::level::build::level_build_climbables::{LevelBuildClimbableExport, LevelBuildClimbables};
@@ -24,6 +26,7 @@ use crate::level::build::level_build_portal::LevelBuildPortal;
 use crate::level::build::level_build_sectors::LevelBuildSectors;
 use crate::level::build::level_build_sources::LevelBuildSources;
 use crate::level::build::level_build_tables::{LevelBuildTableRecords, LevelBuildTables};
+use crate::level::level_ai_map_conversion::LevelAiMapConversion;
 use crate::level::level_entity_conversion::LevelEntityConversion;
 use crate::level::level_map_conversion::LevelMapConversion;
 use crate::level::level_scene_exporter::LevelSceneExporter;
@@ -33,7 +36,7 @@ use crate::provenance::level_scene_provenance::LevelSceneRefusal;
 /// `SaveBuild`, `BuilderRemote.cpp:1421`, `:357`): the sky and the sun generated from the level options, then each tool
 /// in the editor's order of classes, glows, static objects, lights, portals and wall marks; with it the occluders
 /// (`BuildHOMModel`, `BuildSOMModel`) and the map's settings (`BuildLTX`) the Build writes from the placed objects, and
-/// the details (`EDetailManager::Export`).
+/// the details (`EDetailManager::Export`) and the AI map (`ESceneAIMapTool::Export`).
 pub struct LevelBuildExporter;
 
 impl LevelBuildExporter {
@@ -218,6 +221,13 @@ impl LevelBuildExporter {
       }
       None => None,
     };
+    // `ESceneAIMapTool::Export` writes nothing for a map of no node.
+    let ai_map: Option<BuildAimapFile> = match scene.get_tool(EditableAiMapTool::TOOL_NAME) {
+      Some(tool) => Some(EditableAiMapTool::read_from_scene_tool::<T>(tool)?)
+        .filter(|tool| !tool.nodes.is_empty())
+        .map(|tool| LevelAiMapConversion::export(&tool)),
+      None => None,
+    };
     let records: LevelBuildTableRecords = tables.into_records()?;
     // `BuildLTX` takes the first level-bound shape's box over the placed objects'.
     let map_bounds: Aabb = LevelSceneExporter::get_part::<EditableShapeObject>(scene, guid)?
@@ -240,6 +250,7 @@ impl LevelBuildExporter {
     census.sound_occluder_polygons = som.as_ref().map_or(0, |file| file.polygons.len());
     census.multi_use_models = mu_models.len();
     census.multi_use_references = mu_references.len();
+    census.ai_map_nodes = ai_map.as_ref().map_or(0, |map| map.nodes.len());
     census.detail_objects = details.as_ref().map_or(0, |details| details.file.objects.len());
     census.detail_textures = details.as_ref().map_or(0, |details| details.textures);
     census.climbable_objects = climbables.entities.len();
@@ -279,6 +290,7 @@ impl LevelBuildExporter {
       som,
       map: LevelMapConversion::export(&options, &map_bounds, &sector_part.objects),
       details,
+      ai_map,
       entities: climbables.entities,
       refused: climbables
         .refused
