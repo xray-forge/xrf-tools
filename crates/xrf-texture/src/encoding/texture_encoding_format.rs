@@ -36,8 +36,8 @@ impl TextureEncodingFormat {
   }
 
   /// The `ETFormat` a descriptor names a texture written in this format by, `has_alpha` telling `tfDXT1` from
-  /// `tfADXT1`: one encoder, told apart only by whether the alpha means anything. None for BC7, which `ETFormat` has no
-  /// member for.
+  /// `tfADXT1`: BC1 either way, the alpha cutting out its texels in the second (`DdsEncoding::with_cut_out`). None for
+  /// BC7, which `ETFormat` has no member for.
   pub const fn to_thm_format(self, has_alpha: bool) -> Option<ThmFormat> {
     match self {
       Self::Bc1 if has_alpha => Some(ThmFormat::Dxt1Alpha),
