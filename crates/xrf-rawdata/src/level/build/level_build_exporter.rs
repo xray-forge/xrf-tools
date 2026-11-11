@@ -10,7 +10,7 @@ use xrf_editable_level::{
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::{XrfError, XrfResult};
 use xrf_gamemtl::GameMtlFile;
-use xrf_level::{BuildPrjFile, BuildPrjGlow, BuildPrjParams, BuildPrjPortal};
+use xrf_level::{BuildPrjFile, BuildPrjGlow, BuildPrjMuModel, BuildPrjMuReference, BuildPrjParams, BuildPrjPortal};
 use xrf_math::{Aabb, Vector3d};
 
 use crate::level::build::level_build_climbables::{LevelBuildClimbableExport, LevelBuildClimbables};
@@ -118,6 +118,8 @@ impl LevelBuildExporter {
 
     let mut occluders: LevelBuildOccluders = LevelBuildOccluders::default();
     let mut climbables: LevelBuildClimbables = LevelBuildClimbables::default();
+    let mut mu_models: Vec<BuildPrjMuModel> = Vec::new();
+    let mut mu_references: Vec<BuildPrjMuReference> = Vec::new();
     let mut placed_bounds: Option<Aabb> = None;
 
     for object in &placed.objects {
@@ -152,10 +154,21 @@ impl LevelBuildExporter {
       {
         census.other_objects += 1;
       } else if file.flags & EditableObjectFile::MULTIPLE_USAGE_FLAG != 0 {
-        return Err(XrfError::new_not_implemented_error(format!(
-          "Scene object '{}' places the multi-use object '{}', which is not exported yet",
-          object.object.name, object.reference
-        )));
+        if file.flags & EditableObjectFile::USING_LOD_FLAG != 0 {
+          return Err(XrfError::new_not_implemented_error(format!(
+            "Scene object '{}' places '{}', a multi-use object with an impostor, whose LOD textures are not exported yet",
+            object.object.name, object.reference
+          )));
+        }
+
+        mu_references.push(Self::add_mu_reference(
+          object,
+          file,
+          &sectors,
+          &mut tables,
+          game_materials,
+          &mut mu_models,
+        )?);
       } else {
         geometry.add_object(object, file, &sectors, &mut tables, game_materials)?;
         climbables.add_object(object, file, game_materials)?;
@@ -205,6 +218,8 @@ impl LevelBuildExporter {
     census.portals = portals.len();
     census.occluder_polygons = hom.as_ref().map_or(0, |file| file.polygons.len());
     census.sound_occluder_polygons = som.as_ref().map_or(0, |file| file.polygons.len());
+    census.multi_use_models = mu_models.len();
+    census.multi_use_references = mu_references.len();
     census.climbable_objects = climbables.entities.len();
     census.refused_parts = climbables.refused.len();
 
@@ -235,8 +250,8 @@ impl LevelBuildExporter {
         glows,
         portals,
         lods: Vec::new(),
-        mu_models: Vec::new(),
-        mu_references: Vec::new(),
+        mu_models,
+        mu_references,
       },
       hom,
       som,
@@ -252,6 +267,45 @@ impl LevelBuildExporter {
         })
         .collect(),
       census,
+    })
+  }
+
+  /// `BuildMUObject` (`BuilderRemote.cpp:837`): the reference placing `object` by `placed`'s transform in the sector
+  /// of its first mesh, the model of `object` built first where `models` holds none of its name, in its own space and
+  /// that first placement's sector, with no impostor.
+  pub(crate) fn add_mu_reference(
+    placed: &EditableSceneObject,
+    object: &EditableObjectFile,
+    sectors: &LevelBuildSectors,
+    tables: &mut LevelBuildTables,
+    game_materials: &GameMtlFile,
+    models: &mut Vec<BuildPrjMuModel>,
+  ) -> XrfResult<BuildPrjMuReference> {
+    let model: usize = match models.iter().position(|model| model.name == placed.reference) {
+      Some(model) => model,
+      None => {
+        let mut geometry: LevelBuildGeometry = LevelBuildGeometry::default();
+
+        geometry.add_model(placed, object, sectors, tables, game_materials)?;
+        models.push(BuildPrjMuModel {
+          name: placed.reference.clone(),
+          vertices: geometry.vertices,
+          faces: geometry.faces,
+          lod: u16::MAX,
+          smoothing_groups: Some(geometry.smoothing_groups),
+        });
+        models.len() - 1
+      }
+    };
+
+    Ok(BuildPrjMuReference {
+      model: u32::try_from(model)
+        .map_err(|_| XrfError::new_invalid_error("A build holds more multi-use models than its u32 indices number"))?,
+      transform: placed.object.transform.to_matrix(),
+      flags: 0,
+      sector: LevelBuildGeometry::get_model_sector(placed, object, sectors),
+      sector_padding: 0,
+      reserved: [0; 8],
     })
   }
 

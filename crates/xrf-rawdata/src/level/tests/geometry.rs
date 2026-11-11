@@ -2,15 +2,16 @@ use std::collections::BTreeMap;
 
 use xrf_chunk::{ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_editable_level::{EditableObjectTransform, EditableSectorItem};
-use xrf_error::XrfResult;
+use xrf_editable_object::EditableObjectFile;
+use xrf_error::{XrfError, XrfResult};
 use xrf_gamemtl::{GameMtlFile, GameMtlMaterial};
 use xrf_level::{
   LevelCformFace, LevelCformGeometry, LevelFile, LevelGeomFile, LevelGeomSource, LevelHeaderChunk, LevelPortal,
   LevelPortalsChunk, LevelSector, LevelSectorsChunk, LevelShaderEntry, LevelShaderReference, LevelShadersChunk,
   LevelVisual, LevelVisualsChunk, LevelWallmark, LevelWallmarkSlot, LevelWallmarkVertex, LevelWallmarksFile,
 };
-use xrf_math::{Aabb, Sphere, Vector3d};
-use xrf_ogf::{OgfGeometryContainerChunk, OgfHeaderChunk};
+use xrf_math::{Aabb, Matrix4x4, Sphere, Vector3d};
+use xrf_ogf::{OgfGeometryContainerChunk, OgfHeaderChunk, OgfTreeColor, OgfTreeDefinitionChunk};
 use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 
 use crate::level::tests::GUID;
@@ -168,8 +169,8 @@ fn decompile(level: &LevelFile) -> XrfResult<LevelGeometryDecompile> {
   decompile_with(level, vec![drawable(0), drawable(1), hierarchy(vec![0])], None, None)
 }
 
-/// The two squares' geometry, drawn by `visuals` as `level` arranges them in sectors, with `collision` and `inference`
-/// where given.
+/// The squares' geometry, drawn by `visuals` as `level` arranges them in sectors, with `collision` and `inference` where
+/// given: the two the sectors draw, then two a tree's subdivisions may draw in its own space.
 fn decompile_with(
   level: &LevelFile,
   visuals: Vec<LevelVisual>,
@@ -181,7 +182,7 @@ fn decompile_with(
       name: "test",
       level,
       visuals: &LevelVisualsChunk { visuals },
-      geom: &geometry(&[square(-4.0), square(4.0)])?,
+      geom: &geometry(&[square(-4.0), square(4.0), square(0.0), square(10.0)])?,
       collision,
       hom: None,
       som: None,
@@ -271,7 +272,7 @@ fn decompiles_each_sector_into_a_shell_with_its_sector_and_portals() -> XrfResul
 fn leaves_sectors_and_portals_out_where_a_sector_draws_no_static_geometry() -> XrfResult {
   let mut level: LevelFile = level((0, 1));
 
-  // The second sector's root is a hierarchy over nothing, as a sector of trees alone draws no static geometry.
+  // The second sector's root is a hierarchy over nothing.
   level.sectors.as_mut().expect("the level holds sectors").sectors[1].root = 3;
 
   let decompiled: LevelGeometryDecompile = decompile_with(
@@ -291,6 +292,127 @@ fn leaves_sectors_and_portals_out_where_a_sector_draws_no_static_geometry() -> X
   assert!(decompiled.portals.objects.is_empty());
   assert_eq!(decompiled.refused.len(), 1);
   assert_eq!(decompiled.refused[0].object, "sector 1");
+
+  Ok(())
+}
+
+/// A tree visual drawing the `index`th square in its own space, placed by `placement`.
+fn tree(index: u32, placement: Matrix4x4) -> LevelVisual {
+  let color: OgfTreeColor = OgfTreeColor {
+    rgb: Vector3d::ZERO,
+    hemi: 0.0,
+    sun: 0.0,
+  };
+
+  LevelVisual {
+    tree: Some(OgfTreeDefinitionChunk {
+      transform: placement,
+      scale: color.clone(),
+      bias: color,
+    }),
+    ..drawable(index)
+  }
+}
+
+/// An `MT_LOD` over `children`, its impostor not read.
+fn lod(children: Vec<u32>) -> LevelVisual {
+  LevelVisual {
+    lod: Some(Err(XrfError::new_invalid_error("no impostor"))),
+    ..hierarchy(children)
+  }
+}
+
+/// Trees fold back into one multi-use object per set of subdivisions, kept in its own space, and a scene object per
+/// placement: the visuals an `MT_LOD` parents, whatever their order, or one standing alone.
+#[test]
+fn folds_tree_visuals_into_models_and_their_placements() -> XrfResult {
+  let at = |x: f32| Matrix4x4::from_translation(&Vector3d::new(x, 0.0, 20.0));
+  let decompiled: LevelGeometryDecompile = decompile_with(
+    &level((0, 1)),
+    vec![
+      drawable(0),
+      LevelVisual {
+        children: vec![9],
+        ..drawable(1)
+      },
+      hierarchy(vec![0, 5, 6]),
+      tree(2, at(1.0)),
+      tree(3, at(1.0)),
+      lod(vec![3, 4]),
+      lod(vec![8, 7]),
+      tree(2, at(2.0)),
+      tree(3, at(2.0)),
+      tree(2, at(3.0)),
+    ],
+    None,
+    None,
+  )?;
+
+  assert_eq!(
+    (
+      decompiled.census.tree_models,
+      decompiled.census.tree_placements,
+      decompiled.census.tree_triangles
+    ),
+    (2, 3, 10)
+  );
+
+  let models: Vec<_> = decompiled
+    .objects
+    .iter()
+    .filter(|object| object.reference.contains("_tree_"))
+    .collect();
+
+  assert_eq!(
+    models.iter().map(|model| model.reference.as_str()).collect::<Vec<_>>(),
+    ["levels\\test\\test_tree_0", "levels\\test\\test_tree_1"]
+  );
+  assert!(
+    models
+      .iter()
+      .all(|model| model.decompile.object.flags & EditableObjectFile::MULTIPLE_USAGE_FLAG != 0)
+  );
+
+  let points: Vec<Vector3d> = models[0]
+    .decompile
+    .object
+    .meshes
+    .iter()
+    .flatten()
+    .flat_map(|mesh| mesh.points.iter().copied())
+    .collect();
+
+  assert!(
+    points.contains(&Vector3d::new(-1.0, 0.0, -1.0)) && points.contains(&Vector3d::new(11.0, 0.0, 1.0)),
+    "a model keeps both subdivisions in its own space: {points:?}"
+  );
+
+  let placed: Vec<(&str, Vector3d)> = decompiled
+    .scene_objects
+    .objects
+    .iter()
+    .filter(|object| object.reference.contains("_tree_"))
+    .map(|object| (object.reference.as_str(), object.object.transform.position))
+    .collect();
+
+  assert_eq!(
+    placed,
+    [
+      ("levels\\test\\test_tree_0", Vector3d::new(1.0, 0.0, 20.0)),
+      ("levels\\test\\test_tree_0", Vector3d::new(2.0, 0.0, 20.0)),
+      ("levels\\test\\test_tree_1", Vector3d::new(3.0, 0.0, 20.0)),
+    ]
+  );
+  assert_eq!(
+    decompiled
+      .sectors
+      .objects
+      .iter()
+      .map(|sector| sector.items.len())
+      .collect::<Vec<_>>(),
+    [3, 2],
+    "each sector names its shell and the placements standing in it"
+  );
 
   Ok(())
 }

@@ -48,6 +48,9 @@ pub struct LevelBuildCensus {
   pub portals: usize,
   pub occluder_polygons: usize,
   pub sound_occluder_polygons: usize,
+  /// Multi-use models and the placements referencing them.
+  pub multi_use_models: usize,
+  pub multi_use_references: usize,
   /// Ladders made of climbable faces, and parts of them refused.
   pub climbable_objects: usize,
   pub refused_parts: usize,

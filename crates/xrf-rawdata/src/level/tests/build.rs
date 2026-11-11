@@ -1,5 +1,5 @@
-//! The pieces a `build.prj` export is made of: its tables, its generated sky and sun, its sectors, the occluders and
-//! the map's settings written beside it.
+//! The pieces a `build.prj` export is made of: its tables, its generated sky and sun, its sectors, its multi-use
+//! models, the occluders, ladders and the map's settings written beside it.
 
 use xrf_editable_level::{
   EditableCustomObject, EditableLevelOptions, EditableObjectTransform, EditableSceneObject, EditableSectorItem,
@@ -8,11 +8,12 @@ use xrf_editable_level::{
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::XrfResult;
 use xrf_gamemtl::{GameMtlFile, GameMtlMaterial};
-use xrf_level::LevelDynamicLight;
+use xrf_level::{BuildPrjMuModel, BuildPrjMuReference, LevelDynamicLight};
 use xrf_math::{Aabb, Affine3d, Vector2d, Vector3d};
 use xrf_spawn::{AlifeObjectInherited, Shape};
 
 use crate::level::build::level_build_climbables::LevelBuildClimbables;
+use crate::level::build::level_build_exporter::LevelBuildExporter;
 use crate::level::build::level_build_geometry::LevelBuildGeometry;
 use crate::level::build::level_build_hemisphere::LevelBuildHemisphere;
 use crate::level::build::level_build_lights::LevelBuildLights;
@@ -406,6 +407,56 @@ fn makes_a_ladder_of_a_climbable_part_at_its_box_turned_to_face_its_faces() -> X
   assert!(half[thin] < 1e-6, "a flat part's box is flat: {half:?}");
   assert!(facing.y > 0.999, "its thin axis faces up, as the quad does: {facing:?}");
   assert!(export.refused.is_empty());
+
+  Ok(())
+}
+
+/// A multi-use object's model is built once, in its own space and its first placement's sector, with no impostor;
+/// each placement references it with its own transform, in the sector of its own first mesh.
+#[test]
+fn builds_a_multi_use_model_once_and_references_it_per_placement() -> XrfResult {
+  let library: GameMtlFile = GameMtlFile::new(vec![GameMtlMaterial::new(3, "materials\\stone")], Vec::new());
+  let mut tree: EditableObjectFile = quad("materials\\stone", EditableObjectFile::MULTIPLE_USAGE_FLAG)?;
+
+  for mesh in tree.meshes.iter_mut().flatten() {
+    mesh.name = String::from("mesh");
+  }
+
+  let place = |name: &str, x: f32| EditableSceneObject {
+    object: EditableCustomObject::new(name.to_owned(), placed_at(x).object.transform),
+    reference: String::from("levels\\test\\test_tree_0"),
+    flags: 0,
+  };
+  let mut tables: LevelBuildTables = LevelBuildTables::default();
+  let mut models: Vec<BuildPrjMuModel> = Vec::new();
+  let references: Vec<BuildPrjMuReference> = [place("hall_shell", 10.0), place("tree_0001", 30.0)]
+    .iter()
+    .map(|placed| LevelBuildExporter::add_mu_reference(placed, &tree, &sectors(), &mut tables, &library, &mut models))
+    .collect::<XrfResult<_>>()?;
+
+  let [model] = models.as_slice() else {
+    panic!("one model for both placements: {}", models.len());
+  };
+
+  assert_eq!(model.name, "levels\\test\\test_tree_0");
+  assert_eq!((model.faces.len(), model.lod), (2, u16::MAX));
+  assert!(
+    model.vertices.iter().all(|vertex| (0.0..=1.0).contains(&vertex.x)),
+    "the model stays in its own space: {:?}",
+    model.vertices
+  );
+  assert_eq!(
+    references
+      .iter()
+      .map(|reference| (
+        reference.model,
+        reference.transform.get_translation().x,
+        reference.sector
+      ))
+      .collect::<Vec<_>>(),
+    [(0, 10.0, 1), (0, 30.0, 2)],
+    "each placement in the sector naming its first mesh, else the default"
+  );
 
   Ok(())
 }
