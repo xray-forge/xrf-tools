@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
@@ -24,6 +24,7 @@ use crate::level::level_decompile_context::LevelDecompileContext;
 use crate::level::level_ladder_conversion::LevelLadderConversion;
 use crate::level::level_occluder_conversion::LevelOccluderConversion;
 use crate::level::level_surface_inference::LevelSurfaceInference;
+use crate::level::level_tree_conversion::{LevelTreeConversion, LevelTreeDecompile, LevelTreeVisual};
 use crate::level::level_visual_geometry::LevelVisualGeometry;
 use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 use crate::object::decompile::object_decompile::ObjectDecompile;
@@ -90,8 +91,13 @@ pub struct LevelGeometryCensus {
   pub two_sided_faces: usize,
   /// Triangles dropped as an exact repeat of another of their surface.
   pub repeated_triangles: usize,
-  /// Full-detail triangles of tree instances, left for their own objects.
+  /// Full-detail triangles of tree instances, every placement's counted; each model holds one placement's.
   pub tree_triangles: usize,
+  /// Multi-use models the trees come back as, and their placements.
+  #[serde(default)]
+  pub tree_models: usize,
+  #[serde(default)]
+  pub tree_placements: usize,
   /// Impostors standing for trees afar, which the build makes again from the trees.
   pub impostors: usize,
   /// Static triangles dropped as copies of wall marks ([`LevelDecalIndex`]), counted in the static triangles read.
@@ -166,6 +172,8 @@ struct CollisionMesh {
 /// One sector's static geometry read, and what it left out.
 struct SectorGeometry {
   geometry: Vec<LevelVisualGeometry>,
+  /// The sector's tree visuals, each a subdivision of a multi-use model at a placement.
+  trees: Vec<LevelTreeVisual>,
   tree_triangles: usize,
   impostors: usize,
   /// Static triangles dropped as copies of wall marks.
@@ -291,13 +299,30 @@ impl LevelGeometryConversion {
       .shaders
       .as_ref()
       .ok_or_else(|| XrfError::new_invalid_error("The level holds visuals but no shader table"))?;
+    // Each tree visual's `MT_LOD` parent, which names the placement it belongs to.
+    let parents: HashMap<u32, u32> = visuals
+      .visuals
+      .iter()
+      .zip(0u32..)
+      .filter(|(visual, _)| visual.lod.is_some())
+      .flat_map(|(visual, parent)| visual.children.iter().map(move |child| (*child, parent)))
+      .collect();
+    let mut trees: Vec<LevelTreeVisual> = Vec::new();
     let shells: Vec<(SectorGeometry, Option<ObjectDecompile>)> = level
       .get_sectors()
       .iter()
       .zip(0u16..)
       .map(|(sector, index)| {
-        let mut read: SectorGeometry =
-          Self::read_sector::<T, D>(visuals, sector.root, shaders, source, collision.as_deref_mut())?;
+        let mut read: SectorGeometry = Self::read_sector::<T, D>(
+          visuals,
+          (sector.root, index),
+          &parents,
+          shaders,
+          source,
+          collision.as_deref_mut(),
+        )?;
+
+        trees.append(&mut read.trees);
 
         if let Some(decals) = decals {
           read.decal_triangles = Self::drop_decals(&mut read.geometry, decals);
@@ -342,11 +367,39 @@ impl LevelGeometryConversion {
       })
       .collect::<XrfResult<_>>()?;
     let mut sector_names: Vec<String> = Vec::with_capacity(shells.len());
+    let trees: LevelTreeDecompile = LevelTreeConversion::decompile(name, trees, surfaces, collision, context)?;
+    // Each placement's scene object name and mesh, by its sector.
+    let mut tree_items: BTreeMap<u16, Vec<EditableSectorItem>> = BTreeMap::new();
+    let mut tree_objects: Vec<EditableSceneObject> = Vec::with_capacity(trees.placements.len());
+
+    for placement in &trees.placements {
+      let object_name: String = context.names.get_next_after_file(&placement.reference);
+
+      tree_items
+        .entry(placement.sector)
+        .or_default()
+        .push(EditableSectorItem {
+          object: object_name.clone(),
+          mesh: placement.mesh.clone(),
+        });
+      tree_objects.push(EditableSceneObject {
+        object: EditableCustomObject::new(object_name, placement.transform),
+        reference: placement.reference.clone(),
+        flags: 0,
+      });
+    }
+
+    decompile.census.tree_models = trees.models.len();
+    decompile.census.tree_placements = trees.placements.len();
 
     for (index, (read, shell)) in shells.into_iter().enumerate() {
       let sector_name: String = context.names.get_next(Self::SECTOR_PREFIX);
       let triangles: usize = read.geometry.iter().map(|it| it.indices.len() / 3).sum();
       let census: &mut LevelGeometryCensus = &mut decompile.census;
+      let placed_trees: Vec<EditableSectorItem> = u16::try_from(index)
+        .ok()
+        .and_then(|number| tree_items.remove(&number))
+        .unwrap_or_default();
 
       census.static_triangles += triangles + read.decal_triangles + read.needle_triangles;
       census.decal_triangles += read.decal_triangles;
@@ -354,7 +407,20 @@ impl LevelGeometryConversion {
       census.tree_triangles += read.tree_triangles;
       census.impostors += read.impostors;
 
+      // A sector of trees alone names their placements and no shell.
       let Some(shell) = shell else {
+        if !placed_trees.is_empty() {
+          decompile.sectors.objects.push(EditableSectorObject {
+            object: EditableCustomObject::new(sector_name.clone(), EditableObjectTransform::default()),
+            color: Self::SECTOR_COLOR,
+            is_default: false,
+            items: placed_trees,
+            map_index: EditableSectorObject::NO_MAP,
+          });
+          sector_names.push(sector_name);
+          continue;
+        }
+
         census.empty_sectors += 1;
         decompile.refused.push(LevelSceneRefusal {
           file: String::from(LevelFile::FILE_NAME),
@@ -380,10 +446,12 @@ impl LevelGeometryConversion {
         object: EditableCustomObject::new(sector_name.clone(), EditableObjectTransform::default()),
         color: Self::SECTOR_COLOR,
         is_default: false,
-        items: vec![EditableSectorItem {
+        items: std::iter::once(EditableSectorItem {
           object: reference.clone(),
           mesh: Self::get_mesh(&shell.object).name.clone(),
-        }],
+        })
+        .chain(placed_trees)
+        .collect(),
         map_index: EditableSectorObject::NO_MAP,
       });
       sector_names.push(sector_name);
@@ -397,6 +465,10 @@ impl LevelGeometryConversion {
         context,
       );
     }
+
+    // The models are written once; each placement is a scene object of its own.
+    decompile.objects.extend(trees.models);
+    decompile.scene_objects.objects.extend(tree_objects);
 
     Ok(sector_names)
   }
@@ -440,11 +512,12 @@ impl LevelGeometryConversion {
       .collect()
   }
 
-  /// The static geometry a sector's root reaches: every drawable visual but trees and their impostors, which are
-  /// counted.
+  /// The geometry a sector's root reaches, the sector of `number`: every static drawable visual, and the trees, each
+  /// with the `MT_LOD` of `parents` that parents it; the impostors are counted.
   fn read_sector<T: ByteOrder, D: ChunkDataSource>(
     visuals: &LevelVisualsChunk,
-    root: u32,
+    (root, number): (u32, u16),
+    parents: &HashMap<u32, u32>,
     shaders: &LevelShadersChunk,
     source: &LevelGeomSource<D>,
     mut collision: Option<&mut LevelCollisionIndex>,
@@ -452,6 +525,7 @@ impl LevelGeometryConversion {
     let composition: LevelSectorComposition = LevelSectorComposition::of(visuals, root);
     let mut read: SectorGeometry = SectorGeometry {
       geometry: Vec::new(),
+      trees: Vec::new(),
       tree_triangles: 0,
       impostors: 0,
       decal_triangles: 0,
@@ -488,6 +562,13 @@ impl LevelGeometryConversion {
             collision.cover_tree(&points);
           }
         }
+
+        read.trees.extend(LevelTreeConversion::read(
+          visual,
+          number,
+          parents.get(&index).copied(),
+          geometry,
+        ));
       } else {
         read.geometry.push(geometry);
       }

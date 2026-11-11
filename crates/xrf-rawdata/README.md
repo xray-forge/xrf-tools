@@ -348,13 +348,23 @@ file another step decompiles reads it without taking it (`LevelSceneSources::pee
 visuals, `level.geom`, and where held the indexed collision form, `level.hom`, `level.som`, the wall marks, the spawn
 list and the breakable parts): every object below, each placed by a scene object, with the sectors and portals. The static geometry comes back as one object
 per compiled sector, `levels\<name>\<name>_sector_<N>`: the static visuals the sector's root reaches, trees and their
-impostors left out,
-through `ObjectDecompiler::decompile_level_geometry`. Each object keeps the level's coordinates and its scene object
+impostors left out, through `ObjectDecompiler::decompile_level_geometry`. Each object keeps the level's coordinates and its scene object
 stands at the origin, since a pivot inside a sector-sized object would round the low bits off the points nearer the
 origin and open seams between sectors. A sector per compiled sector names its object, and a portal per compiled portal
 joins two of them; the Build numbers sectors in the order the scene lists them, so the compiled indices come back. A
 sector drawing no static geometry would leave no object to name, and the editor drops a sector of no item, renumbering
-the rest: such a level keeps its shells but no sector or portal, each empty sector refused.
+the rest: such a level keeps its shells but no sector or portal, each empty sector refused. A sector drawing trees
+alone is kept, naming their placements.
+
+Trees come back as the multi-use objects the Build placed them from (`LevelTreeConversion`, `BuildMUObject`). xrLC
+draws each placement as one tree visual per subdivision of its model, in the model's own space with the placement's
+matrix, under one `MT_LOD` where the model has an impostor. So a placement is the visuals one `MT_LOD` parents, or that
+share a sector and matrix where none does, and a model is the set of subdivisions a placement draws; no subdivision
+belongs to two models in vanilla's `mp_darkvalley`, `mp_firestation` or `zaton`. Each model is written once as
+`levels\<name>\<name>_tree_<N>`, in its own space and flagged `eoMultipleUsage`, dressed from where its first placement
+lies on the collision form; each placement is a scene object of its matrix that its sector names. The impostors are
+not kept: the Build needs a model's own LOD textures for one. `mp_darkvalley`'s 162 tree visuals come back as 19
+models and 73 placements.
 
 With a `LevelSurfaceInference` (decision 14, `LevelSurfaces::Infer`), each visual is split by the game material its
 triangles lie on before the decompile, so each surface carries one `SurfaceDress` (compiler shader and game material,
@@ -422,8 +432,8 @@ Over vanilla CoP's 22 levels, 7,189,838 static triangles lie exactly on a collis
 and 601,675 lie on none. Where the SDK's objects dress the same texture and engine shader, the compiler shader is one
 GSC used for 95.2% of faces (96.0% with the SDK's objects as the library) and the game material for 86.8% (the
 collision object counted).
-`LevelGeometryCensus` counts the triangles read, the faces written, the two-sided folds, the repeats dropped and the
-tree triangles left. Over every tree's 202 levels, every static triangle is a face, a fold or a repeat, and every
+`LevelGeometryCensus` counts the triangles read, the faces written, the two-sided folds, the repeats dropped, and the
+tree triangles, models and placements. Over every tree's 202 levels, every static triangle is a face, a fold or a repeat, and every
 written point is a position the level's vertices hold, bit for bit.
 
 `write_to_path` writes the sidecar, `<name>.level.xrf.json` (`LevelSceneProvenance`), then each object under the
@@ -464,8 +474,11 @@ and any `materials\occ` surface's; `BuildSOMModel`: an `eoSoundOccluder` object'
 and `level.ltx` (`LevelMapConversion::export`); `LevelBuildExport::into_files` gives them by name. The ladders it cuts
 from the geometry (`LevelBuildClimbables`, `ExportClimableObjects`: climbable faces in parts sharing a point, each a
 `climable_object` at its box) are `LevelBuildExport::entities`, which `LevelSceneExporter::export` writes first in
-`level.spawn`; over GSC's `labx8` they are SDK 0.7's ladders but for its single-precision fit's noise. It refuses a
-draft-quality scene and a multi-use object, and exports no breakable yet. Gunslinger's `l01_test` decompiled and exported comes back to its shipped
+`level.spawn`; over GSC's `labx8` they are SDK 0.7's ladders but for its single-precision fit's noise. A multi-use
+object goes in as `BuildMUObject` puts it: its model once, in its own space and its first placement's sector, and a
+reference per placement, of its transform and the sector naming its first mesh. It refuses a draft-quality scene and a
+multi-use object with an impostor (`eoUsingLOD`), whose LOD textures it does not export, and exports no breakable
+yet. Gunslinger's `l01_test` decompiled and exported comes back to its shipped
 `build.prj` on all its area, its sky, sun and dynamic lights exact; the decompiled `labx8`'s compiles in GSC's xrLC and
 plays. GSC's own `labx8` scene builds a `level.hom` byte for byte as shipped, and a `level.ltx` of the same rectangle and
 sector map parts.

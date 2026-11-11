@@ -126,6 +126,7 @@ impl LevelSceneStep for LevelGeometryStep {
       &[LevelSceneInference::Occluders],
     );
     draft.infer_if(geometry.census.ladders > 0, &[LevelSceneInference::Ladders]);
+    draft.infer_if(geometry.census.tree_models > 0, &[LevelSceneInference::TreeModels]);
     draft.infer_if(geometry.census.breakables > 0, &[LevelSceneInference::BreakableParts]);
 
     if has_objects {

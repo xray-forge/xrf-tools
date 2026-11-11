@@ -87,6 +87,10 @@ pub enum LevelSceneInference {
   /// of the game material of the fragments its faces follow, its compiler shader the editor's default. Its packet is no
   /// spawn point, since the Build exports it again, cut into new fragments at random.
   BreakableParts,
+  /// Trees come back as multi-use objects, `<level>_tree_<N>`, one per set of subdivisions the compiled tree visuals
+  /// draw, each in its own space and dressed as its first placement lies on the collision form, with a scene object per
+  /// placement; their impostors are not kept, so a rebuild draws no tree far off as one.
+  TreeModels,
   /// The map's rectangle (`level.ltx`'s `bound_rect`) comes back as a level-bound shape, `level_bound_NNNN`, a box over
   /// it one metre tall around height 0; the file keeps only its x and z.
   MapBound,

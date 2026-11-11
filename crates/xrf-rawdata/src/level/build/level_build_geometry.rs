@@ -46,11 +46,69 @@ impl LevelBuildGeometry {
     tables: &mut LevelBuildTables,
     game_materials: &GameMtlFile,
   ) -> XrfResult {
-    let matrix: Matrix4x4 = placed.object.transform.to_matrix();
+    self.add_meshes(
+      placed,
+      object,
+      &placed.object.transform.to_matrix(),
+      |mesh| sectors.find(&placed.object.name, &mesh.name),
+      tables,
+      game_materials,
+    )
+  }
+
+  /// A multi-use model of `object` as `BuildMUObject` builds one for its first placement `placed`: its meshes in its
+  /// own space, every face in the sector of the placement's first mesh, which it returns.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error as [`Self::add_object`] does.
+  pub(crate) fn add_model(
+    &mut self,
+    placed: &EditableSceneObject,
+    object: &EditableObjectFile,
+    sectors: &LevelBuildSectors,
+    tables: &mut LevelBuildTables,
+    game_materials: &GameMtlFile,
+  ) -> XrfResult<u16> {
+    let sector: u16 = Self::get_model_sector(placed, object, sectors);
+
+    self.add_meshes(placed, object, &Matrix4x4::IDENTITY, |_| sector, tables, game_materials)?;
+
+    Ok(sector)
+  }
+
+  /// The sector a placement of a multi-use model stands in: the one naming its first mesh (`PortalUtils.FindSector`
+  /// of `FirstMesh`), else the default.
+  pub(crate) fn get_model_sector(
+    placed: &EditableSceneObject,
+    object: &EditableObjectFile,
+    sectors: &LevelBuildSectors,
+  ) -> u16 {
+    let first: &str = object
+      .meshes
+      .iter()
+      .flatten()
+      .next()
+      .map(|mesh| mesh.name.as_str())
+      .unwrap_or_default();
+
+    sectors.find(&placed.object.name, first)
+  }
+
+  /// Adds the faces of each mesh of `object` placed by `matrix`, each in the sector `sector_of` gives it.
+  fn add_meshes(
+    &mut self,
+    placed: &EditableSceneObject,
+    object: &EditableObjectFile,
+    matrix: &Matrix4x4,
+    sector_of: impl Fn(&EditableMesh) -> u16,
+    tables: &mut LevelBuildTables,
+    game_materials: &GameMtlFile,
+  ) -> XrfResult {
     let surfaces: &[EditableSurface] = object.surfaces.as_deref().unwrap_or_default();
 
     for mesh in object.meshes.iter().flatten() {
-      let sector: u16 = sectors.find(&placed.object.name, &mesh.name);
+      let sector: u16 = sector_of(mesh);
       let offset: u32 = u32::try_from(self.vertices.len())
         .map_err(|_| XrfError::new_invalid_error("A build holds more vertices than its u32 indices number"))?;
       let uvs: Vec<[Vector2d; 3]> = MeshCorners::without_normals(mesh).read_faces(|corner| {

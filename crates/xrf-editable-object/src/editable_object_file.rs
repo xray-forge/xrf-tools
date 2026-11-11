@@ -74,6 +74,9 @@ impl EditableObjectFile {
   /// `CEditableObject::eoProgressive`: the export builds sliding-window detail levels of the mesh.
   pub const PROGRESSIVE_FLAG: u32 = 1 << 1;
 
+  /// `CEditableObject::eoUsingLOD`: a multi-use object drawn far off as the impostor its LOD textures give.
+  pub const USING_LOD_FLAG: u32 = 1 << 2;
+
   /// `CEditableObject::eoHOM`: the object is an occluder the Build writes to `level.hom`, not level geometry.
   pub const HOM_FLAG: u32 = 1 << 3;
 
