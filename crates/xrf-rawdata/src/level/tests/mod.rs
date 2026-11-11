@@ -1,5 +1,6 @@
 mod build;
 mod collision;
+mod detail;
 mod entity;
 mod fog_volume;
 mod geometry;

@@ -71,6 +71,12 @@ brush and its decals in slots, read as `LoadStream` reads versions 3 and 4 and w
 4; each `EditableWallmark` keeps its fan's lit vertices, box and sphere (`get_bounds` gives the ones `AddWallmark`
 does). An empty slot stays as stored; the editor drops it on load.
 
+`EditableDetailObjectTool` (`EDetailManager`) holds the detail objects, each an `EditableDetailObject` (`EDetail`: the
+library object it plants by reference, its scale range, density factor and flags), the base texture's colour indices,
+and the slot grid as stored (`DetailSlot`, four words a slot), with the grid's header, box, base texture, density and
+snap objects; `get_slot_object`, `with_slot_object` and `get_unlit_slot` read and write a slot's corners and light as
+the editor does. The SDK's four `detail_object.part` files read and write back byte for byte.
+
 ## Typed objects
 
 An object tool's part reads as an `EditableObjectPart<T>`: the GUID, `[main]`'s flags for the tools that keep them,

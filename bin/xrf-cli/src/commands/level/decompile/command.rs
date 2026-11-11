@@ -320,14 +320,15 @@ impl DecompileCommand {
       xrf_output::info!(
         output,
         "Static geometry: {} objects under {}, {} faces from {} triangles ({} two-sided folds, {} repeats dropped); \
-         {} tree triangles left for their own objects; {} collision faces no render triangle draws",
+         {} tree models placed {} times; {} collision faces no render triangle draws",
         geometry.objects,
         report.objects_root,
         geometry.census.faces,
         geometry.census.static_triangles,
         geometry.census.two_sided_faces,
         geometry.census.repeated_triangles,
-        geometry.census.tree_triangles,
+        geometry.census.tree_models,
+        geometry.census.tree_placements,
         geometry.census.collision_only_faces
       );
     }
