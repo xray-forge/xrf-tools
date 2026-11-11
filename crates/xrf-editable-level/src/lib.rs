@@ -41,6 +41,8 @@ pub use crate::part::editable_text_part::EditableTextPart;
 pub use crate::scene::editable_group_tool::EditableGroupTool;
 pub use crate::scene::editable_level_scene::EditableLevelScene;
 pub use crate::scene::editable_scene_tool::EditableSceneTool;
+pub use crate::tool::editable_ai_map_node::EditableAiMapNode;
+pub use crate::tool::editable_ai_map_tool::{EditableAiMapParams, EditableAiMapTool};
 pub use crate::tool::editable_detail_object::EditableDetailObject;
 pub use crate::tool::editable_detail_object_tool::{
   EditableDetailColorIndex, EditableDetailHeader, EditableDetailObjectTool,

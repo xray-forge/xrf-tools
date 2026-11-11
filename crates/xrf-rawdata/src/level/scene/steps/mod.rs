@@ -1,3 +1,4 @@
+pub(crate) mod level_ai_map_step;
 pub(crate) mod level_bundle_step;
 pub(crate) mod level_companion_step;
 pub(crate) mod level_detail_step;

@@ -34,6 +34,7 @@ xrf-spawn = { workspace = true }
 xrf-utils = { workspace = true }
 
 [dev-dependencies]
+uuid = { workspace = true }
 xrf-test-utils = { workspace = true }
 
 [features]

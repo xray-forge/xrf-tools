@@ -1,3 +1,4 @@
+mod ai_map;
 mod build;
 mod collision;
 mod detail;

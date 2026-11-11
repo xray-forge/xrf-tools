@@ -4,7 +4,7 @@ use byteorder::ByteOrder;
 use serde::Serialize;
 use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
-use xrf_level::{BuildPrjFile, LevelHomFile, LevelSomFile};
+use xrf_level::{BuildAimapFile, BuildPrjFile, LevelHomFile, LevelSomFile};
 use xrf_spawn::AlifeObject;
 
 use crate::level::build::level_build_details::LevelBuildDetails;
@@ -24,6 +24,8 @@ pub struct LevelBuildExport {
   pub map: Vec<u8>,
   /// `build.details` and its atlas, where the scene holds details.
   pub details: Option<LevelBuildDetails>,
+  /// `build.aimap`, where the scene holds AI map nodes.
+  pub ai_map: Option<BuildAimapFile>,
   /// The entities the build cuts from the geometry, the ladders (`climable_object`), which `level.spawn` opens with:
   /// what [`LevelSceneExporter::export`](crate::LevelSceneExporter::export) takes as built.
   pub entities: Vec<AlifeObject>,
@@ -54,6 +56,8 @@ pub struct LevelBuildCensus {
   /// Multi-use models and the placements referencing them.
   pub multi_use_models: usize,
   pub multi_use_references: usize,
+  /// AI map nodes the map holds.
+  pub ai_map_nodes: usize,
   /// Detail objects the slots plant, and the textures their atlas merges.
   pub detail_objects: usize,
   pub detail_textures: usize,
@@ -64,7 +68,8 @@ pub struct LevelBuildCensus {
 
 impl LevelBuildExport {
   /// Every file [`Self::into_files`] may give, sorted by name.
-  pub const FILE_NAMES: [&'static str; 6] = [
+  pub const FILE_NAMES: [&'static str; 7] = [
+    BuildAimapFile::FILE_NAME,
     LevelBuildDetails::FILE_NAME,
     BuildPrjFile::FILE_NAME,
     LevelBuildDetails::ATLAS_FILE_NAME,
@@ -74,7 +79,7 @@ impl LevelBuildExport {
   ];
 
   /// Each file by name, written in `T`'s byte order: `build.prj` and `level.ltx` always, `level.hom` and `level.som`
-  /// where their occluders are, `build.details` and its atlas where the details are.
+  /// where their occluders are, `build.details` and its atlas where the details are, `build.aimap` where the AI map is.
   ///
   /// # Errors
   ///
@@ -101,6 +106,10 @@ impl LevelBuildExport {
 
     if let Some(som) = &self.som {
       files.insert(LevelSomFile::FILE_NAME, encode(&|writer| som.write::<T>(writer))?);
+    }
+
+    if let Some(ai_map) = &self.ai_map {
+      files.insert(BuildAimapFile::FILE_NAME, encode(&|writer| ai_map.write::<T>(writer))?);
     }
 
     if let Some(details) = self.details {

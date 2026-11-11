@@ -135,6 +135,7 @@ The Level Editor's Build writes some level files straight from the scene's parts
 | `LevelFogVolumeConversion`        | `level.fog_vol` ↔ `fog_volume.part`                           | All 174 files through text                                     |
 | `LevelWallmarkConversion`         | `level.wallmarks` ↔ `wallmark.part`                           | All 74 files through the binary part; `labx8`'s part exact     |
 | `LevelWayConversion`              | `level.game` paths ↔ `way.part`                               | 202 files from memory; all but two through text                |
+| `LevelAiMapConversion`            | `level.ai` ↔ `ai_map.part`, `build.aimap`                     | `labx8`'s 6,781 nodes at GSC's part's cells, every link alike  |
 | `LevelDetailConversion`           | `level.details` ↔ `detail_object.part`, `build.details`       | `mp_darkvalley` built back: objects and slots as shipped       |
 | `LevelSpawnPointConversion`       | `level.game` respawn points, `level.env_mod` ↔ `spawn.part`   | 200 of 202 levels through text                                 |
 | `LevelEntityConversion`           | `level.spawn`, `level_rs.spawn` ↔ `spawn.part`                | Every packet read comes back; floats off the `%f` grid rounded |
@@ -510,6 +511,14 @@ by `LevelBuildAtlas` (the editor's packer: largest first at the first free spot,
 each object from the first holding it, the game materials, and the textures root a scene of details needs.
 `mp_darkvalley` decompiled and built gives the shipped `level.details`' header, its 14 objects in order with the same
 geometry, shader, flags and scale range, and all 39,601 slots, the light zeroed; only the atlas is its own.
+
+`LevelAiMapConversion` gives `level.ai` back as `ai_map.part`: each node's cell, counted from the world origin, its
+height packed over a box of the map's floor and height, its plane, and its links, in the level's order; the covers
+are left for xrAI to compute again, and the generator's settings but the patch size take the editor's defaults
+(inference `aiMapSettings`). Vanilla `labx8` against GSC's own part: all 6,781 nodes at the same cells, heights
+within a millimetre, every link the same, 6,353 planes the same. Its `export` writes `build.aimap` as
+`ESceneAIMapTool::Export` does, each node packed again over the box around every node, which `LevelBuildExporter`
+adds beside `build.prj`.
 
 ## Compile an object into an OGF
 

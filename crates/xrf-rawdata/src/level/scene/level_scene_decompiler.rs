@@ -9,6 +9,7 @@ use crate::level::scene::level_scene_decompile::LevelSceneDecompile;
 use crate::level::scene::level_scene_draft::LevelSceneDraft;
 use crate::level::scene::level_scene_listing::LevelSceneListing;
 use crate::level::scene::level_scene_sources::LevelSceneSources;
+use crate::level::scene::steps::level_ai_map_step::LevelAiMapStep;
 use crate::level::scene::steps::level_bundle_step::LevelBundleStep;
 use crate::level::scene::steps::level_companion_step::LevelCompanionStep;
 use crate::level::scene::steps::level_detail_step::LevelDetailStep;
@@ -21,7 +22,7 @@ use crate::level::scene::steps::level_scene_step::LevelSceneStep;
 /// Decompiles a level's directory into a Level Editor scene, step by step over one draft: the map's settings, the
 /// geometry and its objects,
 /// sectors and portals; the bundle's glows and lights; the files the build passes through from a part
-/// (`BuilderGame.cpp`); the details; and the game's ways and spawn points. Each step names the files it reads; the decompile reads
+/// (`BuilderGame.cpp`); the details and the AI map; and the game's ways and spawn points. Each step names the files it reads; the decompile reads
 /// them all once and hashes them into the scene's GUID, so decompiling the same level twice gives the same scene
 /// (decision 22).
 pub struct LevelSceneDecompiler;
@@ -38,6 +39,7 @@ impl LevelSceneDecompiler {
       LevelBundleStep::FILES,
       LevelCompanionStep::FILES,
       LevelDetailStep::FILES,
+      LevelAiMapStep::FILES,
       LevelGameStep::FILES,
     ]
     .concat();
@@ -60,6 +62,7 @@ impl LevelSceneDecompiler {
       LevelBundleStep::LISTINGS,
       LevelCompanionStep::LISTINGS,
       LevelDetailStep::LISTINGS,
+      LevelAiMapStep::LISTINGS,
       LevelGameStep::LISTINGS,
     ]
     .concat()
@@ -89,6 +92,7 @@ impl LevelSceneDecompiler {
     LevelBundleStep::decompile::<T>(&mut sources, options, &mut draft)?;
     LevelCompanionStep::decompile::<T>(&mut sources, options, &mut draft)?;
     LevelDetailStep::decompile::<T>(&mut sources, options, &mut draft)?;
+    LevelAiMapStep::decompile::<T>(&mut sources, options, &mut draft)?;
     LevelGameStep::decompile::<T>(&mut sources, options, &mut draft)?;
 
     Ok(draft.finish(options, &sources))
