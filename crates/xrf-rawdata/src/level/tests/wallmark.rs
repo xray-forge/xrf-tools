@@ -5,6 +5,9 @@ use xrf_level::{LevelWallmark, LevelWallmarkSlot, LevelWallmarkVertex, LevelWall
 use xrf_math::{Aabb, Vector3d};
 
 use crate::LevelWallmarkConversion;
+use crate::level::build::level_build_geometry::LevelBuildGeometry;
+use crate::level::build::level_build_sectors::LevelBuildSectors;
+use crate::level::build::level_build_tables::LevelBuildTables;
 use crate::level::tests::GUID;
 
 fn decal(offset: f32, vertices: usize) -> LevelWallmark {
@@ -63,6 +66,44 @@ fn wall_marks_come_back_to_the_same_file_through_the_part() -> XrfResult {
   assert_eq!((mark.width, mark.height, mark.rotation), (1.0, 1.0, 0.0), "the brush's");
   assert_eq!(mark.bbox, EditableWallmark::get_bounds(&mark.vertices).unwrap().0);
   assert_eq!(bytes_of(&LevelWallmarkConversion::export(&read))?, bytes_of(&file)?);
+
+  Ok(())
+}
+
+/// A wall mark's triangle too small for xrLC goes into neither `build.prj` nor the face count, but stays in the wall
+/// marks the game draws.
+#[test]
+fn leaves_a_wall_mark_triangle_of_no_area_out_of_the_build() -> XrfResult {
+  let mut tiny: LevelWallmark = decal(0.0, 6);
+
+  // The second triangle a millimetre across, as `jupiter`'s are.
+  for (vertex, position) in tiny.vertices[3..].iter_mut().zip([
+    Vector3d::new(5.0, 1.25, 0.0),
+    Vector3d::new(5.001, 1.25, 0.0),
+    Vector3d::new(5.0, 1.25, 0.0005),
+  ]) {
+    vertex.position = position;
+  }
+
+  let bounds: Aabb = Aabb::from_points(tiny.vertices.iter().map(|vertex| vertex.position)).expect("its vertices");
+
+  tiny.center = bounds.get_center();
+  tiny.radius = bounds.get_bounding_sphere().radius;
+
+  let file: LevelWallmarksFile = LevelWallmarksFile {
+    slots: vec![slot("decal\\decal_graz2", vec![tiny])],
+  };
+  let tool: EditableWallmarkTool = LevelWallmarkConversion::decompile(&file)?;
+  let mut geometry: LevelBuildGeometry = LevelBuildGeometry::default();
+
+  geometry.add_wallmarks(
+    &tool,
+    &LevelBuildSectors::new(&[], |_, _| None),
+    &mut LevelBuildTables::default(),
+  )?;
+
+  assert_eq!((geometry.faces.len(), geometry.invalid_faces), (1, 1));
+  assert_eq!(bytes_of(&LevelWallmarkConversion::export(&tool))?, bytes_of(&file)?);
 
   Ok(())
 }

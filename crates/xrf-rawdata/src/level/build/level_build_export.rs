@@ -49,7 +49,8 @@ pub struct LevelBuildCensus {
   pub faces: usize,
   /// Faces of occluder, breakable and climbable surfaces, which other exports take.
   pub skipped_faces: usize,
-  /// Faces of no area, which the Build drops.
+  /// Faces of no area left out: the objects' faces, which the Build drops, and the wall marks' triangles, which xrLC
+  /// would stop on.
   pub invalid_faces: usize,
   pub static_lights: usize,
   pub dynamic_lights: usize,

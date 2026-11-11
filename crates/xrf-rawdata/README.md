@@ -480,7 +480,8 @@ placed object from an objects root and its game materials from `gamemtl.xr`: the
 level options (the sun's samples each taken from the one before, as the shipped editor's loop reads the variable it
 declares), then glows, static objects (`BuildMesh`: world space, occluder, breakable and climbable surfaces skipped,
 faces of no area dropped, two-sided backs added), the scene's lights under their controls, portals and wall marks,
-each material once per texture, shaders and sector. A portal of more than six corners is simplified as `CPortal`
+each material once per texture, shaders and sector. A wall mark's triangle of no area is left out too, where the
+editor passes it on: xrLC refuses it by the same measure and stops on seven, as vanilla `jupiter`'s wall marks hold. A portal of more than six corners is simplified as `CPortal`
 simplifies one (`LevelBuildPortal`: the plane fitted, the convex hull, the smallest edges collapsed), in double
 precision rather than bit for bit. Beside it go `level.hom` and `level.som` (`BuildHOMModel`: an `eoHOM` object's faces
 and any `materials\occ` surface's; `BuildSOMModel`: an `eoSoundOccluder` object's, with its game materials' factors)
