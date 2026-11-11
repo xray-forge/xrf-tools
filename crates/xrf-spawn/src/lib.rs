@@ -76,6 +76,7 @@ pub use crate::data::alife::inherited::alife_smart_terrain::AlifeSmartTerrain;
 pub use crate::data::alife::inherited::alife_smart_zone::AlifeSmartZone;
 pub use crate::data::alife::inherited::alife_squad::AlifeSquad;
 pub use crate::data::alife::inherited::alife_stalker::AlifeStalker;
+pub use crate::data::alife::inherited::alife_team_base_zone::AlifeTeamBaseZone;
 pub use crate::data::alife::inherited::alife_zone_visual::AlifeZoneVisual;
 pub use crate::data::alife::spawn_level_arrival::SpawnLevelArrival;
 pub use crate::data::alife::spawn_level_objects::SpawnLevelObjects;

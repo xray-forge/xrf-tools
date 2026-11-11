@@ -286,6 +286,7 @@ lazy_static! {
     "zone_radioactive_average" => ClsId::ZRadio,
     "zone_radioactive_strong" => ClsId::ZRadio,
     "zone_radioactive_weak" => ClsId::ZRadio,
+    "zone_team_base" => ClsId::ZTeamBs,
     "zone_teleport" => ClsId::ZMbald,
     "zone_witches_galantine" => ClsId::ZsMBald,
     "zone_witches_galantine_average" => ClsId::ZsMBald,
@@ -713,6 +714,7 @@ lazy_static! {
     ClsId::ZNoGrav => AlifeClass::CseAlifeAnomalousZone,
     ClsId::ZRadio => AlifeClass::CseAlifeAnomalousZone,
     ClsId::ZRustyH => AlifeClass::CseAlifeZoneVisual,
+    ClsId::ZTeamBs => AlifeClass::CseAlifeTeamBaseZone,
     ClsId::ZTorrid => AlifeClass::CseAlifeTorridZone,
     ClsId::ZsAmeba => AlifeClass::CseAlifeZoneVisual,
     ClsId::ZsBFuzz => AlifeClass::CseAlifeZoneVisual,
@@ -754,8 +756,8 @@ mod tests {
   }
 
   /// Every zone CLSID `xray-16/src/xrServerEntities/object_factory_register.cpp` registers, paired with the server
-  /// class it registers it to, but the multiplayer team base. No spawn in the mounted corpora declares a section for
-  /// most of them, so the registry is what records the engine's answer.
+  /// class it registers it to. No spawn in the mounted corpora declares a section for most of them, so the registry is
+  /// what records the engine's answer.
   #[test]
   fn maps_every_engine_zone_clsid_to_its_server_class() {
     for (cls_id, class) in [
@@ -778,6 +780,7 @@ mod tests {
       (ClsId::ZsAmeba, AlifeClass::CseAlifeZoneVisual),
       (ClsId::ZsRadio, AlifeClass::CseAlifeAnomalousZone),
       (ClsId::ZsNGrav, AlifeClass::CseAlifeAnomalousZone),
+      (ClsId::ZTeamBs, AlifeClass::CseAlifeTeamBaseZone),
     ] {
       assert_eq!(
         AlifeClass::from_cls_id(&cls_id),
