@@ -524,8 +524,11 @@ impl SurroundingsCube {
     }
 
     let [albedo, normal, material, depth]: [GraphTexture; 4] = targets;
-    let settings: UniformBinding<SurroundingsUniform> =
-      runtime.push_uniform(&SurroundingsUniform::new(self.to_sun, (self.face, layer), (size, drawn)));
+    let settings: UniformBinding<SurroundingsUniform> = runtime.push_uniform(&SurroundingsUniform::new(
+      self.to_sun,
+      (self.face, layer),
+      (size, drawn),
+    ));
     let parameters: SurroundingsParameters<'_> = SurroundingsParameters {
       depth_target: depth,
       albedo_target: albedo,
