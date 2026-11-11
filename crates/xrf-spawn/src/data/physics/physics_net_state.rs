@@ -14,8 +14,9 @@ use crate::data::physics::raw_float::RawFloat;
 ///
 /// That byte packs the item count into its low five bits and, above them, a mask: whether the body is enabled, and
 /// whether each velocity is left out as zero. A zero byte is a state that is not there at all, so an object without one
-/// is `None` beside its other update fields rather than a state with dead fields. The SDK writes some states without
-/// initialising them, so each float keeps the bits it is stored in.
+/// is `None` beside its other update fields rather than a state with dead fields; but for a physic object's state,
+/// which closes its packet, a zero byte with bytes behind it is a state packed to zero (`read_closing`). The
+/// SDK writes some states without initialising them, so each float keeps the bits it is stored in.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -61,9 +62,57 @@ impl PhysicsNetState {
     self.position = [position.x, position.y, position.z].map(RawFloat::from);
   }
 
+  /// The state closing a physic object's update packet, `CSE_ALifeObjectPhysic::UPDATE_Read`'s: a zero byte ending the
+  /// packet is no state, and one with bytes behind it is a state whose count and mask pack to zero, which the SDK's
+  /// 2009 `xrSE_Factory` writes for an object of no items and both velocities set (its `UPDATE_Write` has no early
+  /// return); the engine reads the zero byte and skips the rest.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the state is cut short.
+  pub(crate) fn read_closing<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Option<Self>> {
+    if reader.is_ended() {
+      return Ok(None);
+    }
+
+    let packed: u8 = reader.read_u8()?;
+
+    if packed == 0 && reader.is_ended() {
+      return Ok(None);
+    }
+
+    Self::read_after::<T, _>(reader, packed).map(Some)
+  }
+
+  /// Write a state closing a physic object's update packet as [`Self::read_closing`] reads it, the zero byte for none
+  /// and a state that packs to zero as the SDK wrote it.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for a count past [`Self::MAX_ITEM_COUNT`].
+  pub(crate) fn write_closing<T: ByteOrder, W: ChunkFieldWriter>(writer: &mut W, state: Option<&Self>) -> XrfResult {
+    match state {
+      Some(state) => state.write_after::<T, _>(writer, state.pack()?),
+      None => writer.write_u8(0),
+    }
+  }
+
   /// The byte opening the state: its item count, and the mask of what follows. A byte packing to zero would read
   /// back as no state at all.
   fn get_packed(&self) -> XrfResult<u8> {
+    let packed: u8 = self.pack()?;
+
+    if packed == 0 {
+      return Err(XrfError::new_invalid_error(
+        "Physics state with no items, disabled and with both velocities packs into the byte of an absent state",
+      ));
+    }
+
+    Ok(packed)
+  }
+
+  /// The count and mask packed into the opening byte, whatever they come to.
+  fn pack(&self) -> XrfResult<u8> {
     if self.item_count > Self::MAX_ITEM_COUNT {
       return Err(XrfError::new_invalid_error(format!(
         "Physics state item count {} does not fit its five bits",
@@ -85,27 +134,13 @@ impl PhysicsNetState {
       packed |= Self::FLAG_LINEAR_NULL;
     }
 
-    if packed == 0 {
-      return Err(XrfError::new_invalid_error(
-        "Physics state with no items, disabled and with both velocities packs into the byte of an absent state",
-      ));
-    }
-
     Ok(packed)
   }
-}
 
-/// The state an update packet carries, or the zero byte standing in for none.
-impl ChunkFieldReadWriteOptional for PhysicsNetState {
-  /// A state ending its packet before the closing byte reads as awake, as the engine reads it (`r_eof`).
-  fn read_field_optional<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Option<Self>> {
-    let packed: u8 = reader.read_u8()?;
-
-    if packed == 0 {
-      return Ok(None);
-    }
-
-    Ok(Some(Self {
+  /// The state behind its opening byte `packed`. A state ending its packet before the closing byte reads as awake, as
+  /// the engine reads it (`r_eof`).
+  fn read_after<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R, packed: u8) -> XrfResult<Self> {
+    Ok(Self {
       item_count: packed & Self::MAX_ITEM_COUNT,
       enabled: packed & Self::FLAG_ENABLED != 0,
       force: RawFloat::read_array::<T, _, 3>(reader)?,
@@ -127,34 +162,50 @@ impl ChunkFieldReadWriteOptional for PhysicsNetState {
       } else {
         reader.read_u8()?
       },
-    }))
+    })
+  }
+
+  /// The state behind its opening byte `packed`, as the engine writes it.
+  fn write_after<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W, packed: u8) -> XrfResult {
+    writer.write_u8(packed)?;
+
+    RawFloat::write_array::<T, _>(writer, &self.force)?;
+    RawFloat::write_array::<T, _>(writer, &self.torque)?;
+    RawFloat::write_array::<T, _>(writer, &self.position)?;
+    RawFloat::write_array::<T, _>(writer, &self.rotation)?;
+
+    if let Some(velocity) = &self.angular_velocity {
+      RawFloat::write_array::<T, _>(writer, velocity)?;
+    }
+
+    if let Some(velocity) = &self.linear_velocity {
+      RawFloat::write_array::<T, _>(writer, velocity)?;
+    }
+
+    writer.write_u8(self.awake)
+  }
+}
+
+/// The state an update packet carries, or the zero byte standing in for none.
+impl ChunkFieldReadWriteOptional for PhysicsNetState {
+  /// A state ending its packet before the closing byte reads as awake, as the engine reads it (`r_eof`).
+  fn read_field_optional<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Option<Self>> {
+    let packed: u8 = reader.read_u8()?;
+
+    if packed == 0 {
+      return Ok(None);
+    }
+
+    Self::read_after::<T, _>(reader, packed).map(Some)
   }
 
   /// Refuses a count past [`Self::MAX_ITEM_COUNT`], and a state that would pack into the zero byte, which reads back
   /// as no state at all.
   fn write_field_optional<T: ByteOrder, W: ChunkFieldWriter>(writer: &mut W, state: Option<&Self>) -> XrfResult {
-    let Some(state) = state else {
-      writer.write_u8(0)?;
-
-      return Ok(());
-    };
-
-    writer.write_u8(state.get_packed()?)?;
-
-    RawFloat::write_array::<T, _>(writer, &state.force)?;
-    RawFloat::write_array::<T, _>(writer, &state.torque)?;
-    RawFloat::write_array::<T, _>(writer, &state.position)?;
-    RawFloat::write_array::<T, _>(writer, &state.rotation)?;
-
-    if let Some(velocity) = &state.angular_velocity {
-      RawFloat::write_array::<T, _>(writer, velocity)?;
+    match state {
+      Some(state) => state.write_after::<T, _>(writer, state.get_packed()?),
+      None => writer.write_u8(0),
     }
-
-    if let Some(velocity) = &state.linear_velocity {
-      RawFloat::write_array::<T, _>(writer, velocity)?;
-    }
-
-    writer.write_u8(state.awake)
   }
 }
 
