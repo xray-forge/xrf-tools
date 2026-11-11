@@ -9,8 +9,10 @@ use xrf_editable_object::EditableObjectFile;
 use xrf_error::XrfResult;
 use xrf_gamemtl::{GameMtlFile, GameMtlMaterial};
 use xrf_level::LevelDynamicLight;
-use xrf_math::{Aabb, Vector2d, Vector3d};
+use xrf_math::{Aabb, Affine3d, Vector2d, Vector3d};
+use xrf_spawn::{AlifeObjectInherited, Shape};
 
+use crate::level::build::level_build_climbables::LevelBuildClimbables;
 use crate::level::build::level_build_geometry::LevelBuildGeometry;
 use crate::level::build::level_build_hemisphere::LevelBuildHemisphere;
 use crate::level::build::level_build_lights::LevelBuildLights;
@@ -143,6 +145,19 @@ fn places_items_and_spheres_in_the_sectors_holding_them() {
 /// An object of one quad on the ground, two triangles of the game material `material`, flagged `flags`.
 fn quad(material: &str, flags: u32) -> XrfResult<EditableObjectFile> {
   let corner = |x: f32, z: f32| Vector3d::new(x, 0.0, z);
+
+  object_of(
+    &[
+      [corner(0.0, 0.0), corner(0.0, 1.0), corner(1.0, 1.0)],
+      [corner(0.0, 0.0), corner(1.0, 1.0), corner(1.0, 0.0)],
+    ],
+    material,
+    flags,
+  )
+}
+
+/// An object of `triangles`, one surface of the game material `material`, flagged `flags`.
+fn object_of(triangles: &[[Vector3d; 3]], material: &str, flags: u32) -> XrfResult<EditableObjectFile> {
   let geometry: Vec<LevelVisualGeometry> = LevelVisualGeometry::of_triangles(
     "floor\\floor_tile",
     "default",
@@ -150,10 +165,7 @@ fn quad(material: &str, flags: u32) -> XrfResult<EditableObjectFile> {
       compiler_shader: String::from("default"),
       game_material: material.to_owned(),
     },
-    &[
-      [corner(0.0, 0.0), corner(0.0, 1.0), corner(1.0, 1.0)],
-      [corner(0.0, 0.0), corner(1.0, 1.0), corner(1.0, 0.0)],
-    ],
+    triangles,
   );
   let mut object: EditableObjectFile = ObjectDecompiler::decompile_level_geometry(&geometry)?.object;
 
@@ -345,6 +357,84 @@ fn registers_a_climbable_surfaces_material_though_its_faces_are_left_out() -> Xr
     tables.into_records()?.materials.len(),
     1,
     "the material registered before the game material is looked at, as `BuildMesh` does"
+  );
+
+  Ok(())
+}
+
+/// A game material library of one climbable material, `materials\fake_ladders`, and `materials\stone`.
+fn ladders() -> GameMtlFile {
+  let mut ladder: GameMtlMaterial = GameMtlMaterial::new(7, "materials\\fake_ladders");
+
+  ladder.flags |= GameMtlMaterial::FLAG_CLIMABLE;
+
+  GameMtlFile::new(vec![ladder, GameMtlMaterial::new(3, "materials\\stone")], Vec::new())
+}
+
+#[test]
+fn makes_a_ladder_of_a_climbable_part_at_its_box_turned_to_face_its_faces() -> XrfResult {
+  let mut climbables: LevelBuildClimbables = LevelBuildClimbables::default();
+
+  climbables.add_object(&placed_at(10.0), &quad("materials\\fake_ladders", 0)?, &ladders())?;
+  climbables.add_object(&placed_at(20.0), &quad("materials\\stone", 0)?, &ladders())?;
+
+  let export = climbables.into_export();
+  let [entity] = export.entities.as_slice() else {
+    panic!("one ladder of the climbable quad alone: {:?}", export.entities);
+  };
+  let AlifeObjectInherited::CseAlifeObjectClimable(climbable) = &entity.inherited else {
+    panic!("a climable_object");
+  };
+  let [Shape::Box(shape)] = climbable.base.shape.as_slice() else {
+    panic!("one box");
+  };
+  let frame: Affine3d = Affine3d::from_xyz(&entity.header.direction);
+  let half: [f32; 3] = [shape.x_axis.length(), shape.y_axis.length(), shape.z_axis.length()];
+  let thin: usize = (0..3).min_by(|a, b| half[*a].total_cmp(&half[*b])).unwrap_or(0);
+  let facing: Vector3d = frame.transform_direction(&[Vector3d::X, Vector3d::Y, Vector3d::Z][thin]);
+
+  assert_eq!(
+    (entity.header.section.as_str(), entity.header.name.as_str()),
+    ("climable_object", "clmbl#0")
+  );
+  assert_eq!(climbable.game_material, "materials\\fake_ladders");
+  assert!(
+    entity.header.position.distance(&Vector3d::new(10.5, 0.0, 0.5)) < 1e-5,
+    "{:?}",
+    entity.header.position
+  );
+  assert!(half[thin] < 1e-6, "a flat part's box is flat: {half:?}");
+  assert!(facing.y > 0.999, "its thin axis faces up, as the quad does: {facing:?}");
+  assert!(export.refused.is_empty());
+
+  Ok(())
+}
+
+#[test]
+fn refuses_a_climbable_part_whose_faces_share_no_edge() -> XrfResult {
+  let point = |x: f32, z: f32| Vector3d::new(x, 0.0, z);
+  let mut climbables: LevelBuildClimbables = LevelBuildClimbables::default();
+
+  climbables.add_object(
+    &placed_at(0.0),
+    &object_of(
+      &[
+        [point(0.0, 0.0), point(0.0, 1.0), point(1.0, 1.0)],
+        [point(1.0, 1.0), point(2.0, 1.0), point(2.0, 2.0)],
+      ],
+      "materials\\fake_ladders",
+      0,
+    )?,
+    &ladders(),
+  )?;
+
+  let export = climbables.into_export();
+
+  assert!(export.entities.is_empty());
+  assert_eq!(
+    export.refused.iter().map(|(name, _)| name.as_str()).collect::<Vec<_>>(),
+    ["clmbl#0"],
+    "the two triangles meet at a point alone, so the part holds faces of no edge shared"
   );
 
   Ok(())

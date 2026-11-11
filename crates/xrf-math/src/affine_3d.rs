@@ -143,6 +143,14 @@ impl Affine3d {
     }
   }
 
+  /// The angles giving this rotation, `Fmatrix::getXYZ`: pitch, heading and bank as `x`, `y` and `z`, the inverse of
+  /// [`Self::from_xyz`].
+  pub fn get_xyz(&self) -> Vector3d {
+    let angles: Vector3d = self.get_heading_pitch_bank();
+
+    Vector3d::new(angles.y, angles.x, angles.z)
+  }
+
   /// The bone angles giving this rotation, `Fmatrix::getXYZi`: the inverse of [`Self::from_xyz_inverse`].
   pub fn get_xyz_inverse(&self) -> Vector3d {
     let angles: Vector3d = self.get_heading_pitch_bank();
@@ -334,6 +342,7 @@ mod tests {
     let rebuilt: Affine3d = Affine3d::from_rotation(&turned.get_rotation());
 
     assert!(is_near(&turned.get_xyz_inverse(), &angles));
+    assert!(is_near(&Affine3d::from_xyz(&angles).get_xyz(), &angles));
 
     for (axis, other) in [
       (turned.x_axis, rebuilt.x_axis),

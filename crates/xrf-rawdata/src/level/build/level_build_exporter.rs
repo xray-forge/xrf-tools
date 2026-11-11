@@ -13,6 +13,7 @@ use xrf_gamemtl::GameMtlFile;
 use xrf_level::{BuildPrjFile, BuildPrjGlow, BuildPrjParams, BuildPrjPortal};
 use xrf_math::{Aabb, Vector3d};
 
+use crate::level::build::level_build_climbables::{LevelBuildClimbableExport, LevelBuildClimbables};
 use crate::level::build::level_build_export::{LevelBuildCensus, LevelBuildExport};
 use crate::level::build::level_build_geometry::LevelBuildGeometry;
 use crate::level::build::level_build_library::LevelBuildLibrary;
@@ -21,8 +22,10 @@ use crate::level::build::level_build_occluders::LevelBuildOccluders;
 use crate::level::build::level_build_portal::LevelBuildPortal;
 use crate::level::build::level_build_sectors::LevelBuildSectors;
 use crate::level::build::level_build_tables::{LevelBuildTableRecords, LevelBuildTables};
+use crate::level::level_entity_conversion::LevelEntityConversion;
 use crate::level::level_map_conversion::LevelMapConversion;
 use crate::level::level_scene_exporter::LevelSceneExporter;
+use crate::provenance::level_scene_provenance::LevelSceneRefusal;
 
 /// Exports a scene into the `build.prj` the Level Editor's Build hands xrLC (`SceneBuilder::CompileStatic` and
 /// `SaveBuild`, `BuilderRemote.cpp:1421`, `:357`): the sky and the sun generated from the level options, then each tool
@@ -114,6 +117,7 @@ impl LevelBuildExporter {
       .collect::<XrfResult<_>>()?;
 
     let mut occluders: LevelBuildOccluders = LevelBuildOccluders::default();
+    let mut climbables: LevelBuildClimbables = LevelBuildClimbables::default();
     let mut placed_bounds: Option<Aabb> = None;
 
     for object in &placed.objects {
@@ -154,9 +158,12 @@ impl LevelBuildExporter {
         )));
       } else {
         geometry.add_object(object, file, &sectors, &mut tables, game_materials)?;
+        climbables.add_object(object, file, game_materials)?;
         census.static_objects += 1;
       }
     }
+
+    let climbables: LevelBuildClimbableExport = climbables.into_export();
 
     let controls: HashMap<u32, String> = EditableLightObject::read_controls(&light_part.tool_data)?;
 
@@ -198,6 +205,8 @@ impl LevelBuildExporter {
     census.portals = portals.len();
     census.occluder_polygons = hom.as_ref().map_or(0, |file| file.polygons.len());
     census.sound_occluder_polygons = som.as_ref().map_or(0, |file| file.polygons.len());
+    census.climbable_objects = climbables.entities.len();
+    census.refused_parts = climbables.refused.len();
 
     Ok(LevelBuildExport {
       project: BuildPrjFile {
@@ -232,6 +241,16 @@ impl LevelBuildExporter {
       hom,
       som,
       map: LevelMapConversion::export(&options, &map_bounds, &sector_part.objects),
+      entities: climbables.entities,
+      refused: climbables
+        .refused
+        .into_iter()
+        .map(|(object, reason)| LevelSceneRefusal {
+          file: String::from(LevelEntityConversion::SPAWN_FILE_NAME),
+          object,
+          reason,
+        })
+        .collect(),
       census,
     })
   }

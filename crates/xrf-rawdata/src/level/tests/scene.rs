@@ -303,7 +303,8 @@ fn writes_the_scene_and_its_sidecar_and_reads_them_back() -> XrfResult {
 #[test]
 fn exports_the_scene_back_to_the_files_it_came_from() -> XrfResult {
   let directory: PathBuf = level_directory("exported", 10.0)?;
-  let exported: BTreeMap<&str, Vec<u8>> = LevelSceneExporter::export::<XRayByteOrder>(&decompile(&directory)?.scene)?;
+  let exported: BTreeMap<&str, Vec<u8>> =
+    LevelSceneExporter::export::<XRayByteOrder>(&decompile(&directory)?.scene, &[])?;
 
   assert_eq!(
     exported.keys().copied().collect::<Vec<_>>(),
@@ -321,7 +322,7 @@ fn exports_the_scene_back_to_the_files_it_came_from() -> XrfResult {
 fn writes_an_export_saying_what_each_file_replaced() -> XrfResult {
   let directory: PathBuf = level_directory("rewritten", 10.0)?;
   let mut exported: BTreeMap<&str, Vec<u8>> =
-    LevelSceneExporter::export::<XRayByteOrder>(&decompile(&directory)?.scene)?;
+    LevelSceneExporter::export::<XRayByteOrder>(&decompile(&directory)?.scene, &[])?;
 
   exported.insert("level.game", b"other".to_vec());
   std::fs::remove_file(directory.join("level.fog_vol"))?;
@@ -377,7 +378,7 @@ fn a_scene_of_no_tool_exports_the_files_every_build_writes() -> XrfResult {
     ),
     tools: Vec::new(),
   };
-  let exported: BTreeMap<&str, Vec<u8>> = LevelSceneExporter::export::<XRayByteOrder>(&scene)?;
+  let exported: BTreeMap<&str, Vec<u8>> = LevelSceneExporter::export::<XRayByteOrder>(&scene, &[])?;
 
   assert_eq!(
     exported.keys().copied().collect::<Vec<_>>(),

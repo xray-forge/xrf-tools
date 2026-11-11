@@ -461,8 +461,11 @@ each material once per texture, shaders and sector. A portal of more than six co
 simplifies one (`LevelBuildPortal`: the plane fitted, the convex hull, the smallest edges collapsed), in double
 precision rather than bit for bit. Beside it go `level.hom` and `level.som` (`BuildHOMModel`: an `eoHOM` object's faces
 and any `materials\occ` surface's; `BuildSOMModel`: an `eoSoundOccluder` object's, with its game materials' factors)
-and `level.ltx` (`LevelMapConversion::export`); `LevelBuildExport::into_files` gives them by name. It refuses a
-draft-quality scene and a multi-use object. Gunslinger's `l01_test` decompiled and exported comes back to its shipped
+and `level.ltx` (`LevelMapConversion::export`); `LevelBuildExport::into_files` gives them by name. The ladders it cuts
+from the geometry (`LevelBuildClimbables`, `ExportClimableObjects`: climbable faces in parts sharing a point, each a
+`climable_object` at its box) are `LevelBuildExport::entities`, which `LevelSceneExporter::export` writes first in
+`level.spawn`; over GSC's `labx8` they are SDK 0.7's ladders but for its single-precision fit's noise. It refuses a
+draft-quality scene and a multi-use object, and exports no breakable yet. Gunslinger's `l01_test` decompiled and exported comes back to its shipped
 `build.prj` on all its area, its sky, sun and dynamic lights exact; the decompiled `labx8`'s compiles in GSC's xrLC and
 plays. GSC's own `labx8` scene builds a `level.hom` byte for byte as shipped, and a `level.ltx` of the same rectangle and
 sector map parts.
