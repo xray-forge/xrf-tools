@@ -246,7 +246,7 @@ fn writes_each_object_under_the_objects_root_after_its_sidecar() -> XrfResult {
     "nothing written yet"
   );
 
-  decompiled.write_to_path::<XRayByteOrder>(&output.join("test_level.level"), &objects)?;
+  decompiled.write_to_path::<XRayByteOrder>(&output.join("test_level.level"), &objects, &output.join("textures"))?;
 
   let path: PathBuf = objects
     .join("levels")
@@ -277,7 +277,7 @@ fn writes_the_scene_and_its_sidecar_and_reads_them_back() -> XrfResult {
   let output: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "written_scene"))?;
   let level_path: PathBuf = output.join("test_level.level");
 
-  decompiled.write_to_path::<XRayByteOrder>(&level_path, &output.join("objects"))?;
+  decompiled.write_to_path::<XRayByteOrder>(&level_path, &output.join("objects"), &output.join("textures"))?;
 
   let read: EditableLevelScene = EditableLevelScene::read_from_path::<XRayByteOrder, _>(&level_path)?;
   let sidecar: LevelSceneProvenance =

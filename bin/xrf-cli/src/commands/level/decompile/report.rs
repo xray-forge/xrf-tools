@@ -27,6 +27,9 @@ pub(crate) struct LevelDecompileReport {
   pub(crate) root_spawn: Option<LevelDecompileRootSpawn>,
   /// The objects root the scene's objects were written under.
   pub(crate) objects_root: String,
+  /// The game textures root the objects' textures were written under, and how many.
+  pub(crate) textures_root: String,
+  pub(crate) textures: usize,
   /// The static geometry, counted, where the level held `level.geom`; the sidecar lists each object.
   pub(crate) geometry: Option<LevelDecompileGeometry>,
 }

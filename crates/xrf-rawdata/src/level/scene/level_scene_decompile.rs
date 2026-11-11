@@ -36,15 +36,54 @@ impl LevelSceneObjectFile {
   }
 }
 
-/// A decompiled level: its scene, the provenance written beside it, and the objects it places.
+/// One texture a decompiled scene's objects need for the Build, written under the game textures root
+/// (`$game_textures$`), such as a tree model's impostor strip.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LevelSceneTextureFile {
+  /// Its name under the textures root without the extension, as the editor asks for it: `lod\lod_<model>`.
+  pub name: String,
+  /// The texture, a DDS file.
+  pub bytes: Vec<u8>,
+}
+
+impl LevelSceneTextureFile {
+  /// The extension the name leaves off.
+  pub const EXTENSION: &'static str = "dds";
+
+  /// Its path under `textures_root`, the name's folders as directories.
+  pub fn get_path(&self, textures_root: &Path) -> PathBuf {
+    Self::get_named_path(textures_root, &self.name)
+  }
+
+  /// The path under `textures_root` of the texture `name` names, as the editor resolves `$game_textures$`.
+  pub fn get_named_path(textures_root: &Path, name: &str) -> PathBuf {
+    let mut path: PathBuf = textures_root.join(name.split('\\').collect::<PathBuf>());
+
+    path.set_extension(Self::EXTENSION);
+    path
+  }
+}
+
+/// A decompiled level: its scene, the provenance written beside it, the objects it places, and the textures they need.
 #[derive(Clone, Debug, PartialEq)]
 pub struct LevelSceneDecompile {
   pub scene: EditableLevelScene,
   pub provenance: LevelSceneProvenance,
   pub objects: Vec<LevelSceneObjectFile>,
+  pub textures: Vec<LevelSceneTextureFile>,
 }
 
 impl LevelSceneDecompile {
+  /// What a write would replace of the textures the objects need, under `textures_root`.
+  pub fn get_existing_texture_paths(&self, textures_root: &Path) -> Vec<PathBuf> {
+    self
+      .textures
+      .iter()
+      .map(|texture| texture.get_path(textures_root))
+      .filter(|path| path.exists())
+      .collect()
+  }
+
   /// What a write would replace of the objects the scene places, under `objects_root`, and their sidecars.
   pub fn get_existing_object_paths(&self, objects_root: &Path) -> Vec<PathBuf> {
     self
@@ -73,14 +112,15 @@ impl LevelSceneDecompile {
   }
 
   /// Writes the scene's sidecar (`<level_path>.xrf.json`), then each object under `objects_root` after its own sidecar,
-  /// then the scene: its main file at `level_path` and its parts in the directory beside it. Each sidecar goes before
-  /// what it describes, so a write that fails leaves a stray sidecar, never a decompile taken for authored work.
+  /// then each texture under `textures_root`, then the scene: its main file at `level_path` and its parts in the
+  /// directory beside it. Each sidecar goes before what it describes, so a write that fails leaves a stray sidecar,
+  /// never a decompile taken for authored work.
   ///
   /// # Errors
   ///
-  /// Returns an error, writing nothing, when [`EditableLevelScene::check_writable`] refuses the scene; when a sidecar
-  /// or object cannot be written; or as [`EditableLevelScene::write_to_path`] does.
-  pub fn write_to_path<T: ByteOrder>(&self, level_path: &Path, objects_root: &Path) -> XrfResult {
+  /// Returns an error, writing nothing, when [`EditableLevelScene::check_writable`] refuses the scene; when a sidecar,
+  /// object or texture cannot be written; or as [`EditableLevelScene::write_to_path`] does.
+  pub fn write_to_path<T: ByteOrder>(&self, level_path: &Path, objects_root: &Path, textures_root: &Path) -> XrfResult {
     // Refused before the sidecar is written, so a sidecar never lands beside an authored scene left as it was.
     self.scene.check_writable(level_path)?;
 
@@ -97,6 +137,10 @@ impl LevelSceneDecompile {
         object.provenance.to_json()?.as_bytes(),
       )?;
       Self::write_file(&path, &object.object.write_to_bytes::<T>()?)?;
+    }
+
+    for texture in &self.textures {
+      Self::write_file(&texture.get_path(textures_root), &texture.bytes)?;
     }
 
     self.scene.write_to_path::<T, _>(&level_path)

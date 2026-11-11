@@ -8,15 +8,15 @@ use xrf_editable_level::{
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::XrfResult;
 use xrf_gamemtl::{GameMtlFile, GameMtlMaterial};
-use xrf_level::{BuildPrjMuModel, BuildPrjMuReference, LevelDynamicLight};
+use xrf_level::LevelDynamicLight;
 use xrf_math::{Aabb, Affine3d, Vector2d, Vector3d};
 use xrf_spawn::{AlifeObjectInherited, Shape};
 
 use crate::level::build::level_build_climbables::LevelBuildClimbables;
-use crate::level::build::level_build_exporter::LevelBuildExporter;
 use crate::level::build::level_build_geometry::LevelBuildGeometry;
 use crate::level::build::level_build_hemisphere::LevelBuildHemisphere;
 use crate::level::build::level_build_lights::LevelBuildLights;
+use crate::level::build::level_build_models::LevelBuildModels;
 use crate::level::build::level_build_occluders::LevelBuildOccluders;
 use crate::level::build::level_build_portal::LevelBuildPortal;
 use crate::level::build::level_build_sectors::LevelBuildSectors;
@@ -428,12 +428,13 @@ fn builds_a_multi_use_model_once_and_references_it_per_placement() -> XrfResult 
     flags: 0,
   };
   let mut tables: LevelBuildTables = LevelBuildTables::default();
-  let mut models: Vec<BuildPrjMuModel> = Vec::new();
-  let references: Vec<BuildPrjMuReference> = [place("hall_shell", 10.0), place("tree_0001", 30.0)]
-    .iter()
-    .map(|placed| LevelBuildExporter::add_mu_reference(placed, &tree, &sectors(), &mut tables, &library, &mut models))
-    .collect::<XrfResult<_>>()?;
+  let mut built: LevelBuildModels = LevelBuildModels::default();
 
+  for placed in [place("hall_shell", 10.0), place("tree_0001", 30.0)] {
+    built.add(&placed, &tree, &sectors(), &mut tables, &library, None)?;
+  }
+
+  let LevelBuildModels { models, references, .. } = built;
   let [model] = models.as_slice() else {
     panic!("one model for both placements: {}", models.len());
   };

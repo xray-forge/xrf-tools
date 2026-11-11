@@ -364,9 +364,19 @@ matrix, under one `MT_LOD` where the model has an impostor. So a placement is th
 share a sector and matrix where none does, and a model is the set of subdivisions a placement draws; no subdivision
 belongs to two models in vanilla's `mp_darkvalley`, `mp_firestation` or `zaton`. Each model is written once as
 `levels\<name>\<name>_tree_<N>`, in its own space and flagged `eoMultipleUsage`, dressed from where its first placement
-lies on the collision form; each placement is a scene object of its matrix that its sector names. The impostors are
-not kept: the Build needs a model's own LOD textures for one. `mp_darkvalley`'s 162 tree visuals come back as 19
-models and 73 placements.
+lies on the collision form; each placement is a scene object of its matrix that its sector names. `mp_darkvalley`'s 162
+tree visuals come back as 19 models and 73 placements.
+
+A model's impostor comes back where its first placement's `MT_LOD` names it in the level's atlas,
+`level_lods.dds` and `level_lods_nm.dds` (`LevelGeometrySources::impostors`, a `LevelTreeImpostorAtlas`). The eight
+facets' coordinates must fit one place of a whole 512 by 64 strip, turned or not; the strip and its normals are cut back
+out as the textures the Build loads, `lod\lod_<model>` and its `_nm` under `$game_textures$`
+(`LevelGeometryDecompile::textures`, written by `LevelSceneDecompile::write_to_path` under the textures root), and the
+model is flagged `eoUsingLOD`. The Build stands the quads in the union of the model's meshes' boxes, which the editor
+reads from the file as saved; the source object's box held geometry the level does not draw, such as a collision trunk
+under the ground, so the model's stored box is widened to the one the facets were stood in, read back through the
+placement. An impostor that does not cut is refused and its model comes back without one. All 19 of `mp_darkvalley`'s
+cut, and rebuilt they stand within 0.05 mm of the shipped quads, sampling the same pixels but for DXT noise.
 
 With a `LevelSurfaceInference` (decision 14, `LevelSurfaces::Infer`), each visual is split by the game material its
 triangles lie on before the decompile, so each surface carries one `SurfaceDress` (compiler shader and game material,
@@ -439,7 +449,8 @@ tree triangles, models and placements. Over every tree's 202 levels, every stati
 written point is a position the level's vertices hold, bit for bit.
 
 `write_to_path` writes the sidecar, `<name>.level.xrf.json` (`LevelSceneProvenance`), then each object under the
-objects root after its own sidecar, then the scene, so a failed write never leaves a decompile that looks authored.
+objects root after its own sidecar, then the textures the objects need (the impostor strips) under the textures root,
+then the scene, so a failed write never leaves a decompile that looks authored.
 The sidecar holds the front-end the options name, each source's SHA-256, each written file and its sources, and what
 the decompile chose rather than read (`LevelSceneInference`), recorded only for a part that holds what it was chosen
 for: a level of no light records no light inference. The object and scene sidecars share one convention, the
@@ -478,8 +489,11 @@ from the geometry (`LevelBuildClimbables`, `ExportClimableObjects`: climbable fa
 `climable_object` at its box) are `LevelBuildExport::entities`, which `LevelSceneExporter::export` writes first in
 `level.spawn`; over GSC's `labx8` they are SDK 0.7's ladders but for its single-precision fit's noise. A multi-use
 object goes in as `BuildMUObject` puts it: its model once, in its own space and its first placement's sector, and a
-reference per placement, of its transform and the sector naming its first mesh. It refuses a draft-quality scene and a
-multi-use object with an impostor (`eoUsingLOD`), whose LOD textures it does not export, and exports no breakable
+reference per placement, of its transform and the sector naming its first mesh (`LevelBuildModels`). A model flagged
+`eoUsingLOD` gets its impostor first, as `BuildObjectLOD` makes one (`LevelBuildImpostors`): a material of `level_lods`
+under `details\lod`, eight quads standing through the model's box with their cells of its strip, the strips read from
+the textures root and merged with their normals into `level_lods.dds` and `level_lods_nm.dds` by the same packer as the
+details' atlas, 512 by 64 up to 2048 a side, DXT5 with mips. It refuses a draft-quality scene, and exports no breakable
 yet. Gunslinger's `l01_test` decompiled and exported comes back to its shipped
 `build.prj` on all its area, its sky, sun and dynamic lights exact; the decompiled `labx8`'s compiles in GSC's xrLC and
 plays. GSC's own `labx8` scene builds a `level.hom` byte for byte as shipped, and a `level.ltx` of the same rectangle and

@@ -89,7 +89,9 @@ pub enum LevelSceneInference {
   BreakableParts,
   /// Trees come back as multi-use objects, `<level>_tree_<N>`, one per set of subdivisions the compiled tree visuals
   /// draw, each in its own space and dressed as its first placement lies on the collision form, with a scene object per
-  /// placement; their impostors are not kept, so a rebuild draws no tree far off as one.
+  /// placement. A model's impostor strips are cut from the level's atlas where its first placement's `MT_LOD` names
+  /// them, and written as the textures the Build loads (`lod\lod_<model>` and its `_nm`), the model flagged
+  /// `eoUsingLOD`; a model of no strip draws no impostor far off after a rebuild.
   TreeModels,
   /// Each detail model comes back as the detail object of the object libraries drawing its geometry (the first by
   /// path where several do), at the level's scale range and flags and a density factor of 1; the tool takes a density

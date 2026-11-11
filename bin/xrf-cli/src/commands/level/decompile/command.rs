@@ -65,6 +65,16 @@ impl GenericCommand for DecompileCommand {
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
+        Arg::new("textures")
+          .help(
+            "Game textures root ($game_textures$) the textures the objects need for the build, such as the tree \
+             models' impostor strips under lod/, are written under; by default gamedata/textures beside the \
+             destination's rawdata directory, as the SDK lays out editors/rawdata and editors/gamedata",
+          )
+          .long("textures")
+          .value_parser(value_parser!(PathBuf)),
+      )
+      .arg(
         Arg::new("surfaces")
           .help(
             "How the geometry's surfaces are dressed: infer each game material from the collision face beneath and a \
@@ -159,11 +169,15 @@ impl GenericCommand for DecompileCommand {
       .get_one::<PathBuf>("objects")
       .cloned()
       .unwrap_or_else(|| Self::get_default_objects_root(destination));
+    let textures: PathBuf = matches
+      .get_one::<PathBuf>("textures")
+      .cloned()
+      .unwrap_or_else(|| Self::get_default_textures_root(destination));
     let report: LevelDecompileReport = Self::decompile(
       &output,
       source,
       destination,
-      &objects,
+      (&objects, &textures),
       &options,
       matches.get_flag("force"),
     )?;
@@ -206,14 +220,28 @@ impl DecompileCommand {
   /// The objects root beside the scene's directory, `<levels>/../objects`, as the SDK's `fs.ltx` puts `$maps$` and
   /// `$objects$` side by side under its rawdata.
   pub(crate) fn get_default_objects_root(destination: &Path) -> PathBuf {
+    Self::get_rawdata(destination).join("objects")
+  }
+
+  /// The game textures root beside the scene's rawdata, `<rawdata>/../gamedata/textures`, as the SDK's `fs.ltx` puts
+  /// `$game_textures$` under the gamedata beside its rawdata.
+  pub(crate) fn get_default_textures_root(destination: &Path) -> PathBuf {
+    Self::get_rawdata(destination)
+      .join("..")
+      .join("gamedata")
+      .join("textures")
+  }
+
+  /// The rawdata directory holding the scene's `levels` directory.
+  fn get_rawdata(destination: &Path) -> PathBuf {
     let named = |path: &&Path| !path.as_os_str().is_empty();
 
     match destination.parent().filter(named) {
       Some(levels) => match levels.parent().filter(named) {
-        Some(rawdata) => rawdata.join("objects"),
-        None => levels.join("..").join("objects"),
+        Some(rawdata) => rawdata.to_path_buf(),
+        None => levels.join(".."),
       },
-      None => Path::new("..").join("objects"),
+      None => PathBuf::from(".."),
     }
   }
 
@@ -221,7 +249,7 @@ impl DecompileCommand {
     output: &OutputOptions,
     source: &Path,
     destination: &Path,
-    objects: &Path,
+    (objects, textures): (&Path, &Path),
     options: &LevelDecompileOptions,
     is_forced: bool,
   ) -> XrfResult<LevelDecompileReport> {
@@ -236,14 +264,20 @@ impl DecompileCommand {
 
     let decompiled: LevelSceneDecompile = LevelSceneDecompiler::decompile::<XRayByteOrder>(source, options)?;
 
-    if !is_forced && let Some(existing) = decompiled.get_existing_object_paths(objects).first() {
+    if !is_forced
+      && let Some(existing) = decompiled
+        .get_existing_object_paths(objects)
+        .into_iter()
+        .chain(decompiled.get_existing_texture_paths(textures))
+        .next()
+    {
       return Err(XrfError::new_invalid_error(format!(
-        "{} already exists; pass --force to overwrite the scene's objects",
-        format_path(existing)
+        "{} already exists; pass --force to overwrite the scene's objects and textures",
+        format_path(&existing)
       )));
     }
 
-    decompiled.write_to_path::<XRayByteOrder>(destination, objects)?;
+    decompiled.write_to_path::<XRayByteOrder>(destination, objects, textures)?;
 
     let report: LevelDecompileReport = LevelDecompileReport {
       source: format_path(source).to_string(),
@@ -278,6 +312,8 @@ impl DecompileCommand {
         update_packets: root.update_packets.len(),
       }),
       objects_root: format_path(objects).to_string(),
+      textures_root: format_path(textures).to_string(),
+      textures: decompiled.textures.len(),
       geometry: decompiled.provenance.geometry.map(|geometry| LevelDecompileGeometry {
         objects: geometry.objects.len(),
         census: geometry.census,
@@ -320,7 +356,8 @@ impl DecompileCommand {
       xrf_output::info!(
         output,
         "Static geometry: {} objects under {}, {} faces from {} triangles ({} two-sided folds, {} repeats dropped); \
-         {} tree models placed {} times; {} collision faces no render triangle draws",
+         {} tree models placed {} times, {} with impostor strips under {}; {} collision faces no render triangle \
+         draws",
         geometry.objects,
         report.objects_root,
         geometry.census.faces,
@@ -329,6 +366,8 @@ impl DecompileCommand {
         geometry.census.repeated_triangles,
         geometry.census.tree_models,
         geometry.census.tree_placements,
+        geometry.census.tree_impostors,
+        report.textures_root,
         geometry.census.collision_only_faces
       );
     }

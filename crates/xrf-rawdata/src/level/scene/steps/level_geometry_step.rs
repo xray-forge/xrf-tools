@@ -19,6 +19,7 @@ use crate::level::level_entity_conversion::LevelEntityConversion;
 use crate::level::level_geometry_conversion::{LevelGeometryConversion, LevelGeometryDecompile, LevelGeometrySources};
 use crate::level::level_map_conversion::LevelMapConversion;
 use crate::level::level_surface_inference::{LevelShaderPairings, LevelSurfaceInference, LevelSurfaces};
+use crate::level::level_tree_impostor::LevelTreeImpostorAtlas;
 use crate::level::scene::level_decompile_options::LevelDecompileOptions;
 use crate::level::scene::level_scene_draft::LevelSceneDraft;
 use crate::level::scene::level_scene_listing::LevelSceneListing;
@@ -46,6 +47,8 @@ impl LevelSceneStep for LevelGeometryStep {
     LevelSomFile::FILE_NAME,
     LevelWallmarksFile::FILE_NAME,
     LevelEntityConversion::SPAWN_FILE_NAME,
+    LevelTreeImpostorAtlas::COLOR_FILE_NAME,
+    LevelTreeImpostorAtlas::NORMAL_FILE_NAME,
   ];
 
   const LISTINGS: &'static [LevelSceneListing] = &[LevelSceneListing {
@@ -82,6 +85,7 @@ impl LevelSceneStep for LevelGeometryStep {
       LevelSpawnFile::read_from_bytes::<T>,
     )?;
     let breakable_parts: BTreeMap<String, OgfFile> = Self::read_breakable_parts::<T>(sources, draft);
+    let impostors: Option<LevelTreeImpostorAtlas> = Self::read_impostors(sources, draft);
     let mut surfaces: Option<(LevelSurfaceInference, LevelSceneSurfaceLibraries)> = match (options.surfaces, &collision)
     {
       (LevelSurfaces::Infer, Some(_)) => Some(Self::read_surface_inference::<T>(options)?),
@@ -99,6 +103,7 @@ impl LevelSceneStep for LevelGeometryStep {
         decals: decals.as_ref(),
         spawn: spawn.as_ref(),
         breakable_parts: &breakable_parts,
+        impostors: impostors.as_ref(),
       },
       surfaces.as_mut().map(|(inference, _)| inference),
       &mut draft.context,
@@ -162,12 +167,30 @@ impl LevelSceneStep for LevelGeometryStep {
       }),
     });
     draft.objects = geometry.objects;
+    draft.textures = geometry.textures;
 
     Ok(())
   }
 }
 
 impl LevelGeometryStep {
+  /// The trees' impostor atlas, where the directory holds both its files; one that does not read is refused, and the
+  /// trees come back without impostors.
+  fn read_impostors(sources: &mut LevelSceneSources, draft: &mut LevelSceneDraft) -> Option<LevelTreeImpostorAtlas> {
+    let color: Option<Vec<u8>> = sources.take(LevelTreeImpostorAtlas::COLOR_FILE_NAME);
+    let normal: Option<Vec<u8>> = sources.take(LevelTreeImpostorAtlas::NORMAL_FILE_NAME);
+
+    LevelTreeImpostorAtlas::read_from_bytes(color?, normal?)
+      .inspect_err(|error| {
+        draft.refused.push(LevelSceneRefusal {
+          file: String::from(LevelTreeImpostorAtlas::COLOR_FILE_NAME),
+          object: String::from(LevelTreeImpostorAtlas::COLOR_FILE_NAME),
+          reason: format!("The impostor atlas was not read, so the trees come back without impostors: {error}"),
+        });
+      })
+      .ok()
+  }
+
   /// The breakable parts the directory holds, by their paths in it; one that is no OGF is refused, and its breakable
   /// stays an entity.
   fn read_breakable_parts<T: ByteOrder>(
