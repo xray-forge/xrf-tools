@@ -1,6 +1,7 @@
 use crate::graph::resource::GraphTexture;
 
-/// A raster pass's depth target: one mip of one layer, cleared, loaded, or only read.
+/// A raster pass's depth target: one mip of one layer, cleared, loaded, or only read. As a colour target
+/// (`GraphColorAttachment`), a texture of several mips or layers is drawn into only at those it names.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GraphDepthAttachment {
   pub texture: GraphTexture,
@@ -9,6 +10,9 @@ pub struct GraphDepthAttachment {
   pub is_read_only: bool,
   pub mip_level: u32,
   pub array_layer: u32,
+  /// Whether its mip and its layer were named.
+  pub is_mip_named: bool,
+  pub is_layer_named: bool,
 }
 
 impl GraphDepthAttachment {
@@ -19,6 +23,8 @@ impl GraphDepthAttachment {
       is_read_only: false,
       mip_level: 0,
       array_layer: 0,
+      is_mip_named: false,
+      is_layer_named: false,
     }
   }
 
@@ -32,11 +38,13 @@ impl GraphDepthAttachment {
 
   pub fn with_mip_level(mut self, mip_level: u32) -> Self {
     self.mip_level = mip_level;
+    self.is_mip_named = true;
     self
   }
 
   pub fn with_array_layer(mut self, array_layer: u32) -> Self {
     self.array_layer = array_layer;
+    self.is_layer_named = true;
     self
   }
 

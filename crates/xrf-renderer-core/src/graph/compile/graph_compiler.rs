@@ -12,7 +12,7 @@ use crate::graph::compile::transient_slot::TransientSlot;
 use crate::graph::frame_graph::FrameGraph;
 use crate::graph::pool::{TransientBufferKey, TransientTextureKey};
 use crate::graph::record::{GraphBufferRecord, GraphPass, GraphPassWork, GraphTextureRecord};
-use crate::graph::resource::{GraphBuffer, GraphTexture};
+use crate::graph::resource::{GraphBuffer, GraphTexture, GraphTextureDescriptor};
 
 /// Turns a declared frame graph into one ready to execute.
 pub(crate) struct GraphCompiler;
@@ -107,7 +107,8 @@ impl GraphCompiler {
     })
   }
 
-  /// A raster pass draws into attachments of one size it neither writes otherwise nor names twice.
+  /// A raster pass draws into attachments of one size it neither writes otherwise nor names twice, each naming its mip
+  /// and its layer where its texture has several.
   fn validate_pass(pass: &GraphPass<'_>, textures: &[GraphTextureRecord]) -> XrfResult {
     let GraphPassWork::Raster { colors, depth, .. } = &pass.work else {
       return Ok(());
@@ -118,6 +119,23 @@ impl GraphCompiler {
         "Raster pass '{}' has no attachment to draw into",
         pass.name
       )));
+    }
+
+    let named = colors
+      .iter()
+      .map(|color| (color.texture, color.is_mip_named, color.is_layer_named))
+      .chain(
+        depth
+          .iter()
+          .map(|depth| (depth.texture, depth.is_mip_named, depth.is_layer_named)),
+      );
+
+    for (texture, is_mip_named, is_layer_named) in named {
+      Self::validate_target(
+        pass,
+        &textures[texture.get_index()].descriptor,
+        (is_mip_named, is_layer_named),
+      )?;
     }
 
     // Each attachment, and whether the pass may also sample it: only a depth it does not write.
@@ -224,6 +242,35 @@ impl GraphCompiler {
   }
 
   /// No surviving pass reads a transient before a pass before it, or it itself, has written it.
+  /// Refuses a pass drawing into a texture of several mips or layers without naming which (`named`: whether its mip and
+  /// its layer were): the graph knows the texture behind an import, never which part of it the imported view shows,
+  /// so an unnamed target would be drawn into the first mip and layer while a pass reading the view sees its own.
+  fn validate_target(
+    pass: &GraphPass<'_>,
+    descriptor: &GraphTextureDescriptor,
+    (is_mip_named, is_layer_named): (bool, bool),
+  ) -> XrfResult {
+    let layers: u32 = match descriptor.dimension {
+      wgpu::TextureDimension::D3 => 1,
+      _ => descriptor.size.depth_or_array_layers,
+    };
+    let unnamed: Option<&str> = if layers > 1 && !is_layer_named {
+      Some("layer")
+    } else if descriptor.mip_level_count > 1 && !is_mip_named {
+      Some("mip")
+    } else {
+      None
+    };
+
+    match unnamed {
+      Some(part) => Err(XrfError::new_invalid_error(format!(
+        "Raster pass '{}' draws into '{}', of {} mips and {layers} layers, naming no {part}",
+        pass.name, descriptor.label, descriptor.mip_level_count
+      ))),
+      None => Ok(()),
+    }
+  }
+
   fn validate_order(
     passes: &[GraphPass<'_>],
     textures: &[GraphTextureRecord],
