@@ -7,6 +7,7 @@ use xrf_error::XrfResult;
 use xrf_level::{BuildPrjFile, LevelHomFile, LevelSomFile};
 use xrf_spawn::AlifeObject;
 
+use crate::level::build::level_build_details::LevelBuildDetails;
 use crate::level::level_map_conversion::LevelMapConversion;
 use crate::provenance::level_scene_provenance::LevelSceneRefusal;
 
@@ -21,6 +22,8 @@ pub struct LevelBuildExport {
   pub som: Option<LevelSomFile>,
   /// `level.ltx` as the build writes it.
   pub map: Vec<u8>,
+  /// `build.details` and its atlas, where the scene holds details.
+  pub details: Option<LevelBuildDetails>,
   /// The entities the build cuts from the geometry, the ladders (`climable_object`), which `level.spawn` opens with:
   /// what [`LevelSceneExporter::export`](crate::LevelSceneExporter::export) takes as built.
   pub entities: Vec<AlifeObject>,
@@ -51,6 +54,9 @@ pub struct LevelBuildCensus {
   /// Multi-use models and the placements referencing them.
   pub multi_use_models: usize,
   pub multi_use_references: usize,
+  /// Detail objects the slots plant, and the textures their atlas merges.
+  pub detail_objects: usize,
+  pub detail_textures: usize,
   /// Ladders made of climbable faces, and parts of them refused.
   pub climbable_objects: usize,
   pub refused_parts: usize,
@@ -58,15 +64,17 @@ pub struct LevelBuildCensus {
 
 impl LevelBuildExport {
   /// Every file [`Self::into_files`] may give, sorted by name.
-  pub const FILE_NAMES: [&'static str; 4] = [
+  pub const FILE_NAMES: [&'static str; 6] = [
+    LevelBuildDetails::FILE_NAME,
     BuildPrjFile::FILE_NAME,
+    LevelBuildDetails::ATLAS_FILE_NAME,
     LevelHomFile::FILE_NAME,
     LevelMapConversion::FILE_NAME,
     LevelSomFile::FILE_NAME,
   ];
 
   /// Each file by name, written in `T`'s byte order: `build.prj` and `level.ltx` always, `level.hom` and `level.som`
-  /// where their occluders are.
+  /// where their occluders are, `build.details` and its atlas where the details are.
   ///
   /// # Errors
   ///
@@ -93,6 +101,14 @@ impl LevelBuildExport {
 
     if let Some(som) = &self.som {
       files.insert(LevelSomFile::FILE_NAME, encode(&|writer| som.write::<T>(writer))?);
+    }
+
+    if let Some(details) = self.details {
+      files.insert(
+        LevelBuildDetails::FILE_NAME,
+        encode(&|writer| details.file.write::<T>(writer))?,
+      );
+      files.insert(LevelBuildDetails::ATLAS_FILE_NAME, details.atlas);
     }
 
     Ok(files)

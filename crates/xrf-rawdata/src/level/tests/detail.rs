@@ -1,9 +1,19 @@
-use xrf_editable_level::EditableDetailObjectTool;
-use xrf_level::{DetailModel, DetailVertex, LevelDetailsFile, LevelDetailsHeader};
-use xrf_math::Vector3d;
+use std::path::PathBuf;
 
+use xrf_chunk::XRayByteOrder;
+use xrf_dds::{DdsEncoding, DdsFile, DdsMipChain, DdsMipmaps, ImageFormat, Quality, Rgba, RgbaImage};
+use xrf_editable_level::EditableDetailObjectTool;
+use xrf_error::XrfResult;
+use xrf_level::{DetailModel, DetailVertex, LevelDetailsFile, LevelDetailsHeader};
+use xrf_math::{Vector2d, Vector3d};
+use xrf_test_utils::GeneratedResources;
+
+use crate::level::build::level_build_atlas::{LevelBuildAtlas, LevelBuildAtlasPlace};
+use crate::level::build::level_build_details::LevelBuildDetails;
+use crate::level::build::level_build_library::LevelBuildLibrary;
 use crate::level::level_detail_conversion::{LevelDetailConversion, LevelDetailDecompile};
 use crate::level::level_detail_library::LevelDetailLibrary;
+use crate::object::decompile::object_decompiler::ObjectDecompiler;
 
 /// A model of one quad, `size` across, its coordinates `uv` gives each corner's.
 fn quad(size: f32, uv: impl Fn(f32, f32) -> (f32, f32)) -> DetailModel {
@@ -128,4 +138,142 @@ fn matches_no_model_whose_coordinates_are_no_remap() {
 
   assert_eq!(library().find(&bent), None);
   assert_eq!(library().find(&quad(2.0, |u, v| (u, v))), Some("detail\\grass"));
+}
+
+/// Textures go in largest first at the first free spot, row by row; one fitting only turned goes in turned, and the
+/// atlas doubles its narrower side until all fit.
+#[test]
+fn merges_textures_as_the_editor_packs_its_detail_atlas() {
+  let image = |width: u32, height: u32| RgbaImage::from_pixel(width, height, Rgba([200, 100, 50, 255]));
+  let at = |x: f32, y: f32| Vector2d::new(x, y);
+  let (small, square, tall) = (image(64, 32), image(256, 256), image(128, 512));
+  let atlas: LevelBuildAtlas = LevelBuildAtlas::merge(&[&small, &square, &tall]).expect("a fit");
+
+  assert_eq!(atlas.image.dimensions(), (512, 512));
+  assert_eq!(
+    atlas.places,
+    [
+      LevelBuildAtlasPlace {
+        offset: at(0.75, 0.0),
+        scale: at(0.125, 0.0625),
+        is_rotated: false,
+      },
+      LevelBuildAtlasPlace {
+        offset: at(0.25, 0.0),
+        scale: at(0.5, 0.5),
+        is_rotated: false,
+      },
+      LevelBuildAtlasPlace {
+        offset: at(0.0, 0.0),
+        scale: at(0.25, 1.0),
+        is_rotated: false,
+      },
+    ],
+    "the tall texture first, at the corner, then the square beside it and the small one beside that"
+  );
+  assert_eq!(atlas.places[0].remap(1.0, 1.0), (0.875, 0.0625));
+  assert_eq!(*atlas.image.get_pixel(384, 0), Rgba([200, 100, 50, 255]));
+  assert_eq!(
+    *atlas.image.get_pixel(511, 511),
+    Rgba([0, 0, 0, 0]),
+    "the rest left clear"
+  );
+
+  let stacked: LevelBuildAtlas = LevelBuildAtlas::merge(&[&image(512, 128), &image(512, 384)]).expect("a fit");
+
+  assert_eq!(stacked.image.dimensions(), (512, 512));
+  assert_eq!(stacked.places[0].offset, at(0.0, 0.75), "the smaller below the larger");
+  assert!(
+    LevelBuildAtlas::merge(&[&image(2048, 16)]).is_none(),
+    "past the largest atlas"
+  );
+
+  let turned: LevelBuildAtlas = LevelBuildAtlas::merge(&[&image(256, 512)]).expect("a fit");
+
+  assert_eq!(
+    turned.image.dimensions(),
+    (512, 256),
+    "the atlas widens before it grows tall"
+  );
+  assert!(turned.places[0].is_rotated);
+  assert_eq!(turned.places[0].remap(0.0, 1.0), (1.0, 0.0), "turned, u and v swap");
+}
+
+/// The export keeps the planted objects alone, compiled from their library objects with their coordinates moved into
+/// an atlas of their textures named `build_details`, and the slots renumbered with their light zeroed.
+#[test]
+fn exports_the_planted_details_with_their_atlas() -> XrfResult {
+  let root: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "details_export"))?;
+  let (objects, textures) = (root.join("objects"), root.join("textures"));
+
+  std::fs::create_dir_all(objects.join("detail"))?;
+  std::fs::create_dir_all(textures.join("detail"))?;
+
+  for (name, size) in [("grass", 2.0), ("small", 1.0)] {
+    std::fs::write(
+      objects.join("detail").join(format!("{name}.object")),
+      ObjectDecompiler::decompile_detail(&quad(size, |u, v| (u, v)))?
+        .object
+        .write_to_bytes::<XRayByteOrder>()?,
+    )?;
+  }
+
+  let texture: RgbaImage = RgbaImage::from_pixel(64, 32, Rgba([10, 200, 10, 255]));
+
+  std::fs::write(
+    textures.join("detail").join("detail_grass.dds"),
+    DdsEncoding::new(ImageFormat::Rgba8Unorm, Quality::Fast)
+      .encode(&DdsMipChain::build(&texture, DdsMipmaps::Disabled)?)?
+      .write_to_bytes()?,
+  )?;
+
+  // The small quad is the tool's second object, and no slot plants it.
+  let file: LevelDetailsFile = details(
+    vec![quad(2.0, |u, v| (u, v)), quad(1.0, |u, v| (u, v))],
+    vec![slot([0, 63, 0, 63]), slot([63; 4])],
+  );
+  let tool: EditableDetailObjectTool = LevelDetailConversion::decompile(&file, &library())
+    .tool
+    .expect("both found");
+  let exported: LevelBuildDetails =
+    LevelBuildDetails::export::<XRayByteOrder>(&tool, &mut LevelBuildLibrary::new(&[objects]), &textures)?;
+  let [model] = exported.file.objects.as_slice() else {
+    panic!("the planted object alone: {}", exported.file.objects.len());
+  };
+  let corners = |model: &DetailModel| -> Vec<(Vector3d, f32, f32)> {
+    model
+      .vertices
+      .iter()
+      .map(|vertex| (vertex.position, vertex.u, vertex.v))
+      .collect()
+  };
+
+  assert_eq!(tool.objects.len(), 2);
+  assert_eq!(model.texture, LevelBuildDetails::ATLAS_TEXTURE);
+  assert_eq!(
+    corners(model),
+    corners(&quad(2.0, |u, v| (0.25 * u, 0.125 * v))),
+    "the 64 by 32 texture at the corner of a 256 by 256 atlas"
+  );
+  assert_eq!(
+    (
+      exported.file.header.object_count,
+      exported.atlas_size,
+      exported.textures
+    ),
+    (1, (256, 256), 1)
+  );
+  assert_eq!(
+    (0..EditableDetailObjectTool::SLOT_CORNERS)
+      .map(|corner| EditableDetailObjectTool::get_slot_object(&exported.file.slots[0], corner))
+      .collect::<Vec<_>>(),
+    [Some(0), None, Some(0), None]
+  );
+  assert_eq!(exported.file.slots[0][1] >> 12, 0, "the light zeroed");
+  assert_eq!(
+    DdsFile::read_from_bytes(&exported.atlas)?.decode_rgba(0)?.dimensions(),
+    (256, 256)
+  );
+
+  Ok(())
 }
