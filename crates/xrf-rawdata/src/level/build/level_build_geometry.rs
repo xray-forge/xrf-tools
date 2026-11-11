@@ -20,7 +20,8 @@ pub(crate) struct LevelBuildGeometry {
   pub(crate) smoothing_groups: Vec<u32>,
   /// Faces of surfaces the build leaves out: occluders, breakables and ladders, which other exports take.
   pub(crate) skipped_faces: usize,
-  /// Faces of no area, which the build drops (`"has %d invalid face(s). Removed."`).
+  /// Faces of no area left out: the objects' faces, which the build drops (`"has %d invalid face(s). Removed."`), and
+  /// the wall marks' triangles, which it would hand xrLC to stop on.
   pub(crate) invalid_faces: usize,
 }
 
@@ -220,9 +221,8 @@ impl LevelBuildGeometry {
       .ok_or_else(|| XrfError::new_invalid_error(format!("Mesh '{}' names face {face}", mesh.name)))?
       .corners;
     let points: [u32; 3] = corners.each_ref().map(|corner| corner.point);
-    let area: f32 = Self::get_area(&points.map(|point| mesh.points[point as usize]));
 
-    if !area.is_finite() || area < EPS {
+    if !Self::has_area(&points.map(|point| mesh.points[point as usize])) {
       self.invalid_faces += 1;
       return Ok(());
     }
@@ -265,6 +265,10 @@ impl LevelBuildGeometry {
   /// and the wall marks' compiler shader. Each corner is a vertex of its own, as the tool writes them; the face's game
   /// material and smoothing are what the editor leaves unset, here zero.
   ///
+  /// A triangle of no area is counted and left out, where the editor writes it: xrLC refuses such a face by the same
+  /// measure (`Face::Verify`, `xrLC_Light/xrFace.cpp:198`) and stops the build on seven of them. Vanilla `jupiter`'s
+  /// `level.wallmarks` holds seven, a few millimetres across; they stay in the wall marks the game draws.
+  ///
   /// # Errors
   ///
   /// Returns an error when a table outgrows its indices.
@@ -285,6 +289,11 @@ impl LevelBuildGeometry {
         )?;
 
         for triangle in mark.vertices.as_chunks::<3>().0 {
+          if !Self::has_area(&triangle.each_ref().map(|vertex| vertex.position)) {
+            self.invalid_faces += 1;
+            continue;
+          }
+
           let first: u32 = u32::try_from(self.vertices.len())
             .map_err(|_| XrfError::new_invalid_error("A build holds more vertices than its u32 indices number"))?;
 
@@ -304,12 +313,14 @@ impl LevelBuildGeometry {
     Ok(())
   }
 
-  /// `CalcArea` (`BuilderRemote.cpp:509`): Heron's formula over the edges, which is not a number for a triangle
-  /// rounding makes impossible.
-  fn get_area([a, b, c]: &[Vector3d; 3]) -> f32 {
+  /// Whether a triangle has the area the Build and xrLC ask of a face (`BuilderRemote.cpp:680`,
+  /// `xrLC_Light/xrFace.cpp:198`): `CalcArea` (`BuilderRemote.cpp:509`), Heron's formula over the edges in single
+  /// precision, a number no less than `EPS`.
+  fn has_area([a, b, c]: &[Vector3d; 3]) -> bool {
     let (first, second, third) = (a.distance(b), a.distance(c), b.distance(c));
     let half: f32 = (first + second + third) / 2.0;
+    let area: f32 = (half * (half - first) * (half - second) * (half - third)).sqrt();
 
-    (half * (half - first) * (half - second) * (half - third)).sqrt()
+    area.is_finite() && area >= EPS
   }
 }
