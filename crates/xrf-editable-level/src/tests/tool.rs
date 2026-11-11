@@ -5,8 +5,9 @@ use xrf_math::{Aabb, Sphere, Vector3d};
 
 use crate::tests::fixtures::GUID;
 use crate::{
-  EditableBinaryPart, EditableLevelPart, EditableSceneTool, EditableWallmark, EditableWallmarkSlot,
-  EditableWallmarkTool, EditableWallmarkVertex,
+  EditableBinaryPart, EditableDetailColorIndex, EditableDetailHeader, EditableDetailObject, EditableDetailObjectTool,
+  EditableLevelPart, EditableSceneTool, EditableWallmark, EditableWallmarkSlot, EditableWallmarkTool,
+  EditableWallmarkVertex,
 };
 
 fn fan() -> Vec<EditableWallmarkVertex> {
@@ -172,6 +173,86 @@ fn refuses_a_stream_the_editor_does_not_load() -> XrfResult {
   );
 
   Ok(())
+}
+
+fn detail_tool() -> EditableDetailObjectTool {
+  EditableDetailObjectTool {
+    flags: EditableDetailObjectTool::OBJECTS_DRAW,
+    header: EditableDetailHeader {
+      version: 3,
+      object_count: 2,
+      offset_x: -41,
+      offset_z: 216,
+      size_x: 2,
+      size_z: 1,
+    },
+    objects: vec![
+      EditableDetailObject::new("detail\\trava_green", 1.5, 2.0, 0),
+      EditableDetailObject {
+        density_factor: 0.5,
+        ..EditableDetailObject::new("detail\\det_list_01", 0.8, 1.3, EditableDetailObject::NO_WAVING_FLAG)
+      },
+    ],
+    color_indices: vec![EditableDetailColorIndex {
+      color: 0x00FF_8000,
+      objects: vec![String::from("detail\\trava_green")],
+    }],
+    slots: vec![[0x0410_03E8, 0xFFFF_F1FF, 0x1111, 0x2222], [0x1234, 0, 0, 0]],
+    bbox: Aabb {
+      min: Vector3d::new(82.0, -3.5, -432.0),
+      max: Vector3d::new(86.0, 12.0, -430.0),
+    },
+    base_texture: Some(String::from("terrain\\terrain_mp_darkvalley_det")),
+    density: 0.3,
+    snap_objects: vec![String::from("mp_darkvalley_sector_0")],
+  }
+}
+
+#[test]
+fn a_detail_object_tool_saved_as_its_part_reads_back_the_same() -> XrfResult {
+  let scene_tool: EditableSceneTool = detail_tool().to_scene_tool::<XRayByteOrder>(GUID)?;
+  let EditableLevelPart::Binary(part) = &scene_tool.parts[0] else {
+    panic!("a detail part is chunks");
+  };
+  let bytes: Vec<u8> = part.write_to_bytes::<XRayByteOrder>()?;
+  let EditableLevelPart::Binary(read) = EditableLevelPart::read_from_bytes::<XRayByteOrder>(bytes.clone())? else {
+    panic!("a detail part reads as chunks");
+  };
+
+  assert_eq!(scene_tool.get_file_name(0), "detail_object.part");
+  assert_eq!(
+    EditableDetailObjectTool::read_from_part::<XRayByteOrder>(&read)?,
+    detail_tool()
+  );
+  assert_eq!(read.write_to_bytes::<XRayByteOrder>()?, bytes);
+  assert!(
+    EditableDetailObjectTool::read_from_scene_tool::<XRayByteOrder>(&tool().to_scene_tool::<XRayByteOrder>(GUID)?)
+      .is_err(),
+    "the wall mark tool's part"
+  );
+
+  Ok(())
+}
+
+/// A corner's object is six bits of the slot's first two words, the light the twenty above them.
+#[test]
+fn reads_and_writes_a_slots_corners_and_light_as_the_editor_does() {
+  let slot: [u32; 4] = detail_tool().slots[0];
+  let corners = |slot: &[u32; 4]| -> Vec<Option<u8>> {
+    (0..4)
+      .map(|corner| EditableDetailObjectTool::get_slot_object(slot, corner))
+      .collect()
+  };
+
+  assert_eq!(corners(&slot), [Some(1), Some(1), None, Some(7)]);
+
+  let moved: [u32; 4] = EditableDetailObjectTool::with_slot_object(slot, 2, 5);
+
+  assert_eq!(corners(&moved), [Some(1), Some(1), Some(5), Some(7)]);
+  assert_eq!(
+    EditableDetailObjectTool::get_unlit_slot(slot),
+    [0x0410_03E8, 0x0000_01FF, 0x1111, 0x2222]
+  );
 }
 
 #[test]

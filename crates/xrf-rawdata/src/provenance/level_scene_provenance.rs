@@ -91,6 +91,11 @@ pub enum LevelSceneInference {
   /// draw, each in its own space and dressed as its first placement lies on the collision form, with a scene object per
   /// placement; their impostors are not kept, so a rebuild draws no tree far off as one.
   TreeModels,
+  /// Each detail model comes back as the detail object of the object libraries drawing its geometry (the first by
+  /// path where several do), at the level's scale range and flags and a density factor of 1; the tool takes a density
+  /// of 0.3, no base texture, colour indices or snap objects, and the grid's box, and each slot's light is zeroed, as
+  /// the Build zeroes it before the detail lighter lights it again.
+  DetailObjects,
   /// The map's rectangle (`level.ltx`'s `bound_rect`) comes back as a level-bound shape, `level_bound_NNNN`, a box over
   /// it one metre tall around height 0; the file keeps only its x and z.
   MapBound,

@@ -202,10 +202,12 @@ impl LevelGeometryConversion {
 
   /// The geometry of a compiled level, every object of it at the origin in the level's space, placed by a scene object:
   ///
-  /// - each sector's static visuals (trees and impostors are left for their own objects) decompiled into one object of
-  ///   the sector's name (`ObjectDecompiler::decompile_level_geometry`), a sector per compiled sector naming it, and a
-  ///   portal per compiled portal; with `surfaces`, each visual's triangles are split by the game material they lie on
-  ///   and dressed (decision 14), else every surface takes the editor's defaults;
+  /// - each sector's static visuals but its trees and impostors decompiled into one object of the sector's name
+  ///   (`ObjectDecompiler::decompile_level_geometry`), a sector per compiled sector naming it, and a portal per compiled
+  ///   portal; with `surfaces`, each visual's triangles are split by the game material they lie on and dressed
+  ///   else every surface takes the editor's defaults;
+  /// - the trees, as multi-use objects and a scene object per placement (`LevelTreeConversion`), their impostors
+  ///   dropped;
   /// - with the collision form, the faces no render triangle lies on, as `<level>_collision`;
   /// - `level.hom` and `level.som`, as `<level>_hom` and `<level>_som` ([`LevelOccluderConversion`]);
   /// - with the spawn list, each ladder and breakable part the Build exported from the geometry, as `<level>_ladder_<N>`

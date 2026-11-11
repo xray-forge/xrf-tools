@@ -45,6 +45,31 @@ impl DetailModelBuilder {
     object: &EditableObjectFile,
     parameters: &DetailParameters,
   ) -> XrfResult<ObjectCompile> {
+    let (model, dropped_faces) = Self::build_model(object, parameters)?;
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    model.write::<T>(&mut writer)?;
+
+    Ok(ObjectCompile {
+      bytes: writer.flush_raw_into_buffer()?,
+      children: 1,
+      vertices: model.vertices.len(),
+      faces: model.get_triangles_count(),
+      dropped_faces,
+      tangents: None,
+    })
+  }
+
+  /// The detail model of `object` and `parameters` as [`Self::build`] writes it, and how many faces the export
+  /// dropped.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error as [`Self::build`] does.
+  pub(crate) fn build_model(
+    object: &EditableObjectFile,
+    parameters: &DetailParameters,
+  ) -> XrfResult<(DetailModel, usize)> {
     let surfaces: &[EditableSurface] = object.surfaces.as_deref().unwrap_or_default();
     let [surface] = surfaces else {
       return Err(XrfError::new_invalid_error(format!(
@@ -75,18 +100,8 @@ impl DetailModelBuilder {
       vertices: builder.vertices,
       indices: builder.indices,
     };
-    let mut writer: ChunkWriter = ChunkWriter::new();
 
-    model.write::<T>(&mut writer)?;
-
-    Ok(ObjectCompile {
-      bytes: writer.flush_raw_into_buffer()?,
-      children: 1,
-      vertices: model.vertices.len(),
-      faces: model.get_triangles_count(),
-      dropped_faces: builder.dropped_faces,
-      tangents: None,
-    })
+    Ok((model, builder.dropped_faces))
   }
 
   fn add_face(&mut self, corners: [DetailVertex; 3]) -> XrfResult {

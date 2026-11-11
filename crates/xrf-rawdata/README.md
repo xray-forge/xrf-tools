@@ -135,6 +135,7 @@ The Level Editor's Build writes some level files straight from the scene's parts
 | `LevelFogVolumeConversion`        | `level.fog_vol` ↔ `fog_volume.part`                           | All 174 files through text                                     |
 | `LevelWallmarkConversion`         | `level.wallmarks` ↔ `wallmark.part`                           | All 74 files through the binary part; `labx8`'s part exact     |
 | `LevelWayConversion`              | `level.game` paths ↔ `way.part`                               | 202 files from memory; all but two through text                |
+| `LevelDetailConversion`           | `level.details` → `detail_object.part`                        | `mp_darkvalley`'s 14 models found in the SDK's library         |
 | `LevelSpawnPointConversion`       | `level.game` respawn points, `level.env_mod` ↔ `spawn.part`   | 200 of 202 levels through text                                 |
 | `LevelEntityConversion`           | `level.spawn`, `level_rs.spawn` ↔ `spawn.part`                | Every packet read comes back; floats off the `%f` grid rounded |
 | `LevelGlowConversion`             | `level`'s glows → `glow.part`                                 | 4,563 glows over 202 levels; `labx8`'s 29 exactly GSC's        |
@@ -490,6 +491,16 @@ box the Build takes over the objects'. The shipped files were saved again after 
 prints (`126.614072`), so a rectangle comes back as the floats it reads as. Sections the Build writes only from the
 build options' text, such as a multiplayer level's `[*_anomaly_sets]`, are refused: the scene's main file holds that
 text on one line.
+
+`LevelDetailConversion` gives `level.details` back as `detail_object.part`. The file keeps each detail model's geometry
+but not the object it came from, its coordinates moved into the level's atlas, so each model is matched against the
+detail objects of the object libraries (`LevelDetailLibrary`: every `.object` under a root's `detail\`, compiled as
+`EDetail` exports it): the same positions and indices, its coordinates a remap of the object's, turned or not. A match
+comes back as the object's reference at the level's scale range and flags. A model no library draws is refused and the
+corners planting it plant nothing, since recovering its texture from the atlas is not done; where none matches, there
+is no part. The slots keep their heights, corners and densities, their light zeroed as the Build zeroes it before the
+detail lighter runs (inference `detailObjects`). With the SDK's objects as the library, all 14 of `mp_darkvalley`'s
+models come back.
 
 ## Compile an object into an OGF
 
