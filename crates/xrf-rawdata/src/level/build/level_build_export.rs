@@ -5,8 +5,10 @@ use serde::Serialize;
 use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 use xrf_level::{BuildPrjFile, LevelHomFile, LevelSomFile};
+use xrf_spawn::AlifeObject;
 
 use crate::level::level_map_conversion::LevelMapConversion;
+use crate::provenance::level_scene_provenance::LevelSceneRefusal;
 
 /// A scene exported for the level compiler: `build.prj`, the occluders and the map's settings written beside it, and
 /// what went into them.
@@ -19,6 +21,11 @@ pub struct LevelBuildExport {
   pub som: Option<LevelSomFile>,
   /// `level.ltx` as the build writes it.
   pub map: Vec<u8>,
+  /// The entities the build cuts from the geometry, the ladders (`climable_object`), which `level.spawn` opens with:
+  /// what [`LevelSceneExporter::export`](crate::LevelSceneExporter::export) takes as built.
+  pub entities: Vec<AlifeObject>,
+  /// The parts the build made no entity of, and why, as it reports them and goes on.
+  pub refused: Vec<LevelSceneRefusal>,
   pub census: LevelBuildCensus,
 }
 
@@ -41,6 +48,9 @@ pub struct LevelBuildCensus {
   pub portals: usize,
   pub occluder_polygons: usize,
   pub sound_occluder_polygons: usize,
+  /// Ladders made of climbable faces, and parts of them refused.
+  pub climbable_objects: usize,
+  pub refused_parts: usize,
 }
 
 impl LevelBuildExport {

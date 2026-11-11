@@ -7,7 +7,7 @@ use xrf_editable_level::EditableLevelScene;
 use xrf_error::{XrfError, XrfResult};
 use xrf_gamemtl::GameMtlFile;
 use xrf_output::OutputOptions;
-use xrf_rawdata::{LevelBuildCensus, LevelBuildExport, LevelBuildExporter, LevelExportedPrevious, LevelSceneExporter};
+use xrf_rawdata::{LevelBuildExport, LevelBuildExporter, LevelExportedPrevious, LevelSceneExporter};
 use xrf_utils::format_path;
 
 use crate::commands::level::build::report::LevelBuildReport;
@@ -100,25 +100,34 @@ impl BuildCommand {
     is_forced: bool,
   ) -> XrfResult<LevelBuildReport> {
     let scene: EditableLevelScene = EditableLevelScene::read_from_path::<XRayByteOrder, _>(&source)?;
-    let mut files: BTreeMap<&'static str, Vec<u8>> = LevelSceneExporter::export::<XRayByteOrder>(&scene)?;
-    // A build of the geometry may write its own files too, and a stale one left beside them is refused alike.
+    // The geometry first: the entities it cuts out open the spawn list. A stale file of its own left beside the ones
+    // it writes is refused alike.
     let mut names: Vec<&'static str> = LevelSceneExporter::FILE_NAMES.to_vec();
-    let census: Option<LevelBuildCensus> = match geometry {
+    let (mut files, census, entities, refused) = match geometry {
       Some((objects, game_materials)) => {
-        let export: LevelBuildExport = LevelBuildExporter::export::<XRayByteOrder>(
+        let mut export: LevelBuildExport = LevelBuildExporter::export::<XRayByteOrder>(
           &scene,
           objects,
           &GameMtlFile::read_from_path::<XRayByteOrder, _>(game_materials)?,
         )?;
-        let census: LevelBuildCensus = export.census;
+        let (census, entities, refused) = (
+          export.census,
+          std::mem::take(&mut export.entities),
+          std::mem::take(&mut export.refused),
+        );
 
-        files.extend(export.into_files::<XRayByteOrder>()?);
         names.extend(LevelBuildExport::FILE_NAMES);
 
-        Some(census)
+        (export.into_files::<XRayByteOrder>()?, Some(census), entities, refused)
       }
-      None => None,
+      None => (BTreeMap::new(), None, Vec::new(), Vec::new()),
     };
+
+    files.extend(LevelSceneExporter::export::<XRayByteOrder>(&scene, &entities)?);
+
+    for refusal in &refused {
+      xrf_output::warning!(output, "{}: {}", refusal.object, refusal.reason);
+    }
 
     if !is_forced && let Some(existing) = files.keys().find(|name| destination.join(name).exists()) {
       return Err(XrfError::new_invalid_error(format!(

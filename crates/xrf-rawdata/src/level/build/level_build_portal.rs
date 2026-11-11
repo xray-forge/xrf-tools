@@ -1,6 +1,9 @@
 use xrf_level::BuildPrjPortal;
 use xrf_math::Vector3d;
 
+use crate::level::build::level_build_eigen::LevelBuildEigen;
+use crate::level::build::level_build_vector::LevelBuildVector;
+
 /// A portal's polygon as the Build simplifies one of more corners than a compiled portal holds (`CPortal::Simplify`,
 /// `portal.cpp:355`): the plane fitted to its corners, the corners seen along the plane's normal, their convex hull
 /// without collinear corners, the edge whose collapse adds the least area collapsed until six corners are left, and
@@ -29,9 +32,12 @@ impl LevelBuildPortal {
     let flat: Vec<Point> = points
       .iter()
       .map(|point| {
-        let offset: [f64; 3] = sub(point, &plane.origin);
+        let offset: [f64; 3] = LevelBuildVector::sub(point, &plane.origin);
 
-        [dot(&offset, &plane.right), dot(&offset, &plane.up)]
+        [
+          LevelBuildVector::dot(&offset, &plane.right),
+          LevelBuildVector::dot(&offset, &plane.up),
+        ]
       })
       .collect();
     let mut hull: Vec<Point> = Self::get_hull(&flat);
@@ -61,7 +67,7 @@ impl LevelBuildPortal {
       })
       .collect();
 
-    if dot(&Self::get_normal(&simplified), &Self::get_normal(vertices)) < 0.0 {
+    if LevelBuildVector::dot(&Self::get_normal(&simplified), &Self::get_normal(vertices)) < 0.0 {
       simplified.reverse();
     }
 
@@ -75,12 +81,12 @@ impl LevelBuildPortal {
     let count: f64 = points.len() as f64;
     let origin: [f64; 3] = points
       .iter()
-      .fold([0.0; 3], |sum, point| add(&sum, point))
+      .fold([0.0; 3], |sum, point| LevelBuildVector::add(&sum, point))
       .map(|sum| sum / count);
     let mut covariance: [[f64; 3]; 3] = [[0.0; 3]; 3];
 
     for point in points {
-      let offset: [f64; 3] = sub(point, &origin);
+      let offset: [f64; 3] = LevelBuildVector::sub(point, &origin);
 
       for (row, value) in covariance.iter_mut().zip(offset) {
         for (cell, other) in row.iter_mut().zip(offset) {
@@ -97,56 +103,23 @@ impl LevelBuildPortal {
     };
     // `build_camera(from, from - normal, up)`: looking along -normal, right is up × look and up look × right.
     let look: [f64; 3] = normal.map(|value| -value);
-    let up: [f64; 3] = normalize(&cross(&normal, &normalize(&cross(&up_hint, &normal))?))?;
-    let right: [f64; 3] = normalize(&cross(&up, &look))?;
-    let up: [f64; 3] = normalize(&cross(&look, &right))?;
+    let up: [f64; 3] = LevelBuildVector::normalize(&LevelBuildVector::cross(
+      &normal,
+      &LevelBuildVector::normalize(&LevelBuildVector::cross(&up_hint, &normal))?,
+    ))?;
+    let right: [f64; 3] = LevelBuildVector::normalize(&LevelBuildVector::cross(&up, &look))?;
+    let up: [f64; 3] = LevelBuildVector::normalize(&LevelBuildVector::cross(&look, &right))?;
 
     Some(PortalPlane { origin, right, up })
   }
 
-  /// The eigenvector of the least eigenvalue of a symmetric matrix, by cyclic Jacobi rotations.
-  fn get_least_eigenvector(mut matrix: [[f64; 3]; 3]) -> Option<[f64; 3]> {
-    let mut vectors: [[f64; 3]; 3] = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
+  /// The eigenvector of the least eigenvalue of a symmetric matrix.
+  fn get_least_eigenvector(matrix: [[f64; 3]; 3]) -> Option<[f64; 3]> {
+    let (values, vectors) = LevelBuildEigen::decompose(matrix);
+    let least: usize = (0..3).min_by(|a, b| values[*a].total_cmp(&values[*b]))?;
 
-    for _ in 0..Self::JACOBI_SWEEPS {
-      for (p, q) in [(0, 1), (0, 2), (1, 2)] {
-        if matrix[p][q].abs() < f64::EPSILON * (matrix[p][p].abs() + matrix[q][q].abs()) {
-          continue;
-        }
-
-        let theta: f64 = (matrix[q][q] - matrix[p][p]) / (2.0 * matrix[p][q]);
-        let tangent: f64 = theta.signum() / (theta.abs() + theta.mul_add(theta, 1.0).sqrt());
-        let cosine: f64 = 1.0 / tangent.mul_add(tangent, 1.0).sqrt();
-        let sine: f64 = tangent * cosine;
-
-        for row in &mut matrix {
-          let (a, b) = (row[p], row[q]);
-
-          row[p] = cosine * a - sine * b;
-          row[q] = sine * a + cosine * b;
-        }
-
-        let (row_p, row_q) = (matrix[p], matrix[q]);
-
-        matrix[p] = [0, 1, 2].map(|column| cosine * row_p[column] - sine * row_q[column]);
-        matrix[q] = [0, 1, 2].map(|column| sine * row_p[column] + cosine * row_q[column]);
-
-        for vector in &mut vectors {
-          let (a, b) = (vector[p], vector[q]);
-
-          vector[p] = cosine * a - sine * b;
-          vector[q] = sine * a + cosine * b;
-        }
-      }
-    }
-
-    let least: usize = (0..3).min_by(|a, b| matrix[*a][*a].total_cmp(&matrix[*b][*b]))?;
-
-    normalize(&[vectors[0][least], vectors[1][least], vectors[2][least]])
+    LevelBuildVector::normalize(&LevelBuildEigen::get_column(&vectors, least))
   }
-
-  /// Rotation sweeps enough for a 3x3 symmetric matrix to settle in double precision.
-  const JACOBI_SWEEPS: usize = 32;
 
   /// The convex hull of `points` counterclockwise, no collinear point kept (`ConvexHull2D::ByIncremental` and
   /// `RemoveCollinear`), by Andrew's monotone chain.
@@ -244,37 +217,15 @@ impl LevelBuildPortal {
     #[expect(clippy::cast_precision_loss, reason = "a portal holds a few dozen corners")]
     let centre: [f64; 3] = points
       .iter()
-      .fold([0.0; 3], |sum, point| add(&sum, point))
+      .fold([0.0; 3], |sum, point| LevelBuildVector::add(&sum, point))
       .map(|sum| sum / points.len() as f64);
 
     points.windows(2).fold([0.0; 3], |sum, pair| {
-      normalize(&cross(&sub(&pair[0], &centre), &sub(&pair[1], &centre))).map_or(sum, |turn| add(&sum, &turn))
+      LevelBuildVector::normalize(&LevelBuildVector::cross(
+        &LevelBuildVector::sub(&pair[0], &centre),
+        &LevelBuildVector::sub(&pair[1], &centre),
+      ))
+      .map_or(sum, |turn| LevelBuildVector::add(&sum, &turn))
     })
   }
-}
-
-fn add(a: &[f64; 3], b: &[f64; 3]) -> [f64; 3] {
-  [a[0] + b[0], a[1] + b[1], a[2] + b[2]]
-}
-
-fn sub(a: &[f64; 3], b: &[f64; 3]) -> [f64; 3] {
-  [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
-}
-
-fn dot(a: &[f64; 3], b: &[f64; 3]) -> f64 {
-  a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
-}
-
-fn cross(a: &[f64; 3], b: &[f64; 3]) -> [f64; 3] {
-  [
-    a[1] * b[2] - a[2] * b[1],
-    a[2] * b[0] - a[0] * b[2],
-    a[0] * b[1] - a[1] * b[0],
-  ]
-}
-
-fn normalize(a: &[f64; 3]) -> Option<[f64; 3]> {
-  let length: f64 = dot(a, a).sqrt();
-
-  (length > f64::EPSILON).then(|| a.map(|value| value / length))
 }

@@ -14,6 +14,7 @@ use xrf_level::{
   LevelEnvModFile, LevelFogVolFile, LevelGameFile, LevelPsStaticFile, LevelSndEnvFile, LevelSndStaticFile,
   LevelWallmarksFile,
 };
+use xrf_spawn::{AlifeObject, LevelSpawnFile, LevelSpawnObject};
 use xrf_utils::{StagedFile, format_path};
 
 use crate::level::level_entity_conversion::{LevelEntityConversion, LevelEntityExport};
@@ -50,7 +51,9 @@ impl LevelSceneExporter {
   ///
   /// - `level.game`, `level.env_mod` and `level.fog_vol` for every scene, from its way and spawn parts and its fog
   ///   volumes, each empty where the scene has no such tool;
-  /// - `level.spawn` and `level_rs.spawn` where the spawn part places an entity there;
+  /// - `level.spawn` and `level_rs.spawn` where the spawn part places an entity there, `level.spawn` opening with
+  ///   `built`, the entities a build of the geometry cut from it ([`LevelBuildExport::entities`](crate::LevelBuildExport)),
+  ///   as the object tool exports before the spawn tool;
   /// - `level.ps_static` and `level.snd_static` where the scene places a particle or a sound;
   /// - `level.snd_env` where it holds a sound environment;
   /// - `level.wallmarks` where its wall mark tool exports a slot (the build exports only a tool holding slots).
@@ -58,7 +61,10 @@ impl LevelSceneExporter {
   /// # Errors
   ///
   /// Returns an error when the scene's GUID or a tool's part does not read, or a conversion refuses what a part holds.
-  pub fn export<T: ByteOrder>(scene: &EditableLevelScene) -> XrfResult<BTreeMap<&'static str, Vec<u8>>> {
+  pub fn export<T: ByteOrder>(
+    scene: &EditableLevelScene,
+    built: &[AlifeObject],
+  ) -> XrfResult<BTreeMap<&'static str, Vec<u8>>> {
     let guid: EditableLevelGuid = scene.level.get_guid()?;
     let mut files: BTreeMap<&'static str, Vec<u8>> = BTreeMap::new();
     let spawn: EditableObjectPart<EditableSpawnPointObject> = Self::get_part(scene, guid)?;
@@ -79,9 +85,10 @@ impl LevelSceneExporter {
     );
 
     let entities: LevelEntityExport = LevelEntityConversion::export::<T>(&spawn)?;
+    let spawn_list: Option<LevelSpawnFile> = Self::prepend_built::<T>(built, entities.spawn)?;
 
     for (name, list) in [
-      (LevelEntityConversion::SPAWN_FILE_NAME, entities.spawn),
+      (LevelEntityConversion::SPAWN_FILE_NAME, spawn_list),
       (LevelEntityConversion::RESPAWN_FILE_NAME, entities.respawn),
     ] {
       if let Some(list) = list {
@@ -211,6 +218,34 @@ impl LevelSceneExporter {
     }
 
     Ok(part)
+  }
+
+  /// `list` with `built` before its entities, every one numbered again in order; none where both are empty.
+  fn prepend_built<T: ByteOrder>(
+    built: &[AlifeObject],
+    list: Option<LevelSpawnFile>,
+  ) -> XrfResult<Option<LevelSpawnFile>> {
+    if built.is_empty() {
+      return Ok(list);
+    }
+
+    let mut objects: Vec<LevelSpawnObject> = built
+      .iter()
+      .zip(0u32..)
+      .map(|(entity, id)| LevelSpawnObject::from_alife_object::<T>(id, entity))
+      .collect::<XrfResult<_>>()?;
+
+    for (mut object, id) in list
+      .map(|list| list.objects)
+      .unwrap_or_default()
+      .into_iter()
+      .zip(u32::try_from(objects.len()).unwrap_or(u32::MAX)..)
+    {
+      object.id = id;
+      objects.push(object);
+    }
+
+    Ok(Some(LevelSpawnFile { objects }))
   }
 
   /// The bytes `write` puts into a new chunk writer.
