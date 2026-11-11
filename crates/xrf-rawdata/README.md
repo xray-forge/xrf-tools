@@ -485,17 +485,24 @@ editor passes it on: xrLC refuses it by the same measure and stops on seven, as 
 simplifies one (`LevelBuildPortal`: the plane fitted, the convex hull, the smallest edges collapsed), in double
 precision rather than bit for bit. Beside it go `level.hom` and `level.som` (`BuildHOMModel`: an `eoHOM` object's faces
 and any `materials\occ` surface's; `BuildSOMModel`: an `eoSoundOccluder` object's, with its game materials' factors)
-and `level.ltx` (`LevelMapConversion::export`); `LevelBuildExport::into_files` gives them by name. The ladders it cuts
-from the geometry (`LevelBuildClimbables`, `ExportClimableObjects`: climbable faces in parts sharing a point, each a
-`climable_object` at its box) are `LevelBuildExport::entities`, which `LevelSceneExporter::export` writes first in
-`level.spawn`; over GSC's `labx8` they are SDK 0.7's ladders but for its single-precision fit's noise. A multi-use
+and `level.ltx` (`LevelMapConversion::export`); `LevelBuildExport::into_files` gives them by name. The breakables and
+ladders it cuts from the geometry are `LevelBuildExport::entities`, breakables first, which `LevelSceneExporter::export`
+writes first in `level.spawn`. Both take their faces from `LevelBuildParts` (`CGeomPartExtractor`: faces of a
+breakable or climbable game material in parts sharing a point, each fitted a box). A ladder (`LevelBuildClimbables`,
+`ExportClimableObjects`) is a `climable_object` at its box; over GSC's `labx8` they are SDK 0.7's ladders but for its
+single-precision fit's noise. A breakable (`LevelBuildBreakables`, `ExportBreakableObjects`) is its part in the box's
+frame, cut into fragments grown to sizes drawn from the editor's `CRandom` seeded at zero (`SBPart::prepare`), written
+as a rigid skeleton of a breakable bone per fragment through the skeleton export's splits (`SBPart::Export`) to
+`meshes/brkbl#<n>.ogf`, and a `breakable_object` at the box. Vanilla `jupiter` decompiled and built gives its 65
+breakables by name, every point of their parts placed within a millimetre of the shipped parts' both ways; the fragments
+differ, as GSC's rebuilds' do, and in game one breaks into its fragments. A part already in `meshes` that a build does
+not write is refused as stale (`LevelBuildExport::list_file_names`). A multi-use
 object goes in as `BuildMUObject` puts it: its model once, in its own space and its first placement's sector, and a
 reference per placement, of its transform and the sector naming its first mesh (`LevelBuildModels`). A model flagged
 `eoUsingLOD` gets its impostor first, as `BuildObjectLOD` makes one (`LevelBuildImpostors`): a material of `level_lods`
 under `details\lod`, eight quads standing through the model's box with their cells of its strip, the strips read from
 the textures root and merged with their normals into `level_lods.dds` and `level_lods_nm.dds` by the same packer as the
-details' atlas, 512 by 64 up to 2048 a side, DXT5 with mips. It refuses a draft-quality scene, and exports no breakable
-yet. Gunslinger's `l01_test` decompiled and exported comes back to its shipped
+details' atlas, 512 by 64 up to 2048 a side, DXT5 with mips. It refuses a draft-quality scene. Gunslinger's `l01_test` decompiled and exported comes back to its shipped
 `build.prj` on all its area, its sky, sun and dynamic lights exact; the decompiled `labx8`'s compiles in GSC's xrLC and
 plays. GSC's own `labx8` scene builds a `level.hom` byte for byte as shipped, and a `level.ltx` of the same rectangle and
 sector map parts.

@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::collections::BTreeMap;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
@@ -152,15 +153,17 @@ impl LevelSceneExporter {
   /// # Errors
   ///
   /// Returns an error, writing nothing, when the directory holds a file of `names`, every file this build may write
-  /// ([`Self::FILE_NAMES`], and [`LevelBuildExport::FILE_NAMES`](crate::LevelBuildExport::FILE_NAMES) for a build of
-  /// the geometry), that `files` lacks; returns an error when a file there cannot be read or one cannot be written.
-  pub fn write_to_directory(
-    files: &BTreeMap<&'static str, Vec<u8>>,
-    names: &[&str],
+  /// ([`Self::FILE_NAMES`], and [`LevelBuildExport::list_file_names`](crate::LevelBuildExport::list_file_names) for a
+  /// build of the geometry, its breakable parts already there included), that `files` lacks; returns an error when a
+  /// file there cannot be read or one cannot be written.
+  pub fn write_to_directory<K: Borrow<str> + Ord>(
+    files: &BTreeMap<K, Vec<u8>>,
+    names: &[impl AsRef<str>],
     directory: &Path,
   ) -> XrfResult<Vec<LevelExportedFile>> {
     if let Some(stale) = names
       .iter()
+      .map(AsRef::as_ref)
       .find(|name| !files.contains_key(*name) && directory.join(name).exists())
     {
       return Err(XrfError::new_invalid_error(format!(
@@ -172,6 +175,7 @@ impl LevelSceneExporter {
     let mut written: Vec<LevelExportedFile> = Vec::with_capacity(files.len());
 
     for (name, bytes) in files {
+      let name: &str = name.borrow();
       let path: PathBuf = directory.join(name);
       let previous: LevelExportedPrevious = match std::fs::read(&path) {
         Ok(existing) if existing == *bytes => LevelExportedPrevious::Same,
@@ -189,7 +193,7 @@ impl LevelSceneExporter {
         XrfError::new_io_error(format!("{} was not written: {error}", format_path(&path)), error.kind())
       })?;
       written.push(LevelExportedFile {
-        name: (*name).to_owned(),
+        name: name.to_owned(),
         size: bytes.len(),
         previous,
       });

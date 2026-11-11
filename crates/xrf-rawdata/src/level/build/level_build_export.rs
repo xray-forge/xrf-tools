@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::path::Path;
 
 use byteorder::ByteOrder;
 use serde::Serialize;
@@ -9,6 +10,7 @@ use xrf_spawn::AlifeObject;
 
 use crate::level::build::level_build_details::LevelBuildDetails;
 use crate::level::build::level_build_impostors::LevelBuildImpostorAtlas;
+use crate::level::level_breakable_conversion::LevelBreakableConversion;
 use crate::level::level_map_conversion::LevelMapConversion;
 use crate::level::level_tree_impostor::LevelTreeImpostorAtlas;
 use crate::provenance::level_scene_provenance::LevelSceneRefusal;
@@ -30,8 +32,11 @@ pub struct LevelBuildExport {
   pub ai_map: Option<BuildAimapFile>,
   /// `level_lods.dds` and `level_lods_nm.dds`, where a multi-use object has an impostor.
   pub impostors: Option<LevelBuildImpostorAtlas>,
-  /// The entities the build cuts from the geometry, the ladders (`climable_object`), which `level.spawn` opens with:
-  /// what [`LevelSceneExporter::export`](crate::LevelSceneExporter::export) takes as built.
+  /// Each breakable part's rigid skeleton, by its path in the level's directory, `meshes/brkbl#<n>.ogf`.
+  pub breakable_parts: Vec<(String, Vec<u8>)>,
+  /// The entities the build cuts from the geometry, the breakables (`breakable_object`) and then the ladders
+  /// (`climable_object`), which `level.spawn` opens with: what
+  /// [`LevelSceneExporter::export`](crate::LevelSceneExporter::export) takes as built.
   pub entities: Vec<AlifeObject>,
   /// The parts the build made no entity of, and why, as it reports them and goes on.
   pub refused: Vec<LevelSceneRefusal>,
@@ -68,7 +73,8 @@ pub struct LevelBuildCensus {
   /// Detail objects the slots plant, and the textures their atlas merges.
   pub detail_objects: usize,
   pub detail_textures: usize,
-  /// Ladders made of climbable faces, and parts of them refused.
+  /// Breakables and ladders made of breakable and climbable faces, and parts of either refused.
+  pub breakable_objects: usize,
   pub climbable_objects: usize,
   pub refused_parts: usize,
 }
@@ -87,14 +93,34 @@ impl LevelBuildExport {
     LevelTreeImpostorAtlas::NORMAL_FILE_NAME,
   ];
 
-  /// Each file by name, written in `T`'s byte order: `build.prj` and `level.ltx` always, `level.hom` and `level.som`
-  /// where their occluders are, `build.details` and its atlas where the details are, `build.aimap` where the AI map is,
-  /// and `level_lods.dds` and `level_lods_nm.dds` where the impostors are.
+  /// Every file a build may write into `directory` or leave stale there: [`Self::FILE_NAMES`], and each breakable part
+  /// already in its `meshes` directory, which a build of fewer parts would leave for the game to load.
+  pub fn list_file_names(directory: &Path) -> Vec<String> {
+    let mut names: Vec<String> = Self::FILE_NAMES.iter().map(|name| (*name).to_owned()).collect();
+
+    if let Ok(entries) = std::fs::read_dir(directory.join(LevelBreakableConversion::DIRECTORY)) {
+      let mut parts: Vec<String> = entries
+        .filter_map(|entry| entry.ok()?.file_name().into_string().ok())
+        .filter(|name| LevelBreakableConversion::is_part_file(name))
+        .map(|name| format!("{}/{name}", LevelBreakableConversion::DIRECTORY))
+        .collect();
+
+      parts.sort_unstable();
+      names.extend(parts);
+    }
+
+    names
+  }
+
+  /// Each file by its path in the level's directory, written in `T`'s byte order: `build.prj` and `level.ltx` always,
+  /// `level.hom` and `level.som` where their occluders are, `build.details` and its atlas where the details are,
+  /// `build.aimap` where the AI map is, `level_lods.dds` and `level_lods_nm.dds` where the impostors are, and each
+  /// breakable part under `meshes`.
   ///
   /// # Errors
   ///
   /// Returns an error when a file does not write.
-  pub fn into_files<T: ByteOrder>(self) -> XrfResult<BTreeMap<&'static str, Vec<u8>>> {
+  pub fn into_files<T: ByteOrder>(self) -> XrfResult<BTreeMap<String, Vec<u8>>> {
     let encode = |write: &dyn Fn(&mut ChunkWriter) -> XrfResult| -> XrfResult<Vec<u8>> {
       let mut writer: ChunkWriter = ChunkWriter::new();
 
@@ -102,37 +128,42 @@ impl LevelBuildExport {
 
       Ok(writer.buffer)
     };
-    let mut files: BTreeMap<&'static str, Vec<u8>> = BTreeMap::new();
+    let mut files: BTreeMap<String, Vec<u8>> = BTreeMap::new();
+    let mut insert = |name: &str, bytes: Vec<u8>| files.insert(name.to_owned(), bytes);
 
-    files.insert(
+    insert(
       BuildPrjFile::FILE_NAME,
       encode(&|writer| self.project.write::<T>(writer))?,
     );
-    files.insert(LevelMapConversion::FILE_NAME, self.map);
+    insert(LevelMapConversion::FILE_NAME, self.map);
 
     if let Some(hom) = &self.hom {
-      files.insert(LevelHomFile::FILE_NAME, encode(&|writer| hom.write::<T>(writer))?);
+      insert(LevelHomFile::FILE_NAME, encode(&|writer| hom.write::<T>(writer))?);
     }
 
     if let Some(som) = &self.som {
-      files.insert(LevelSomFile::FILE_NAME, encode(&|writer| som.write::<T>(writer))?);
+      insert(LevelSomFile::FILE_NAME, encode(&|writer| som.write::<T>(writer))?);
     }
 
     if let Some(ai_map) = &self.ai_map {
-      files.insert(BuildAimapFile::FILE_NAME, encode(&|writer| ai_map.write::<T>(writer))?);
+      insert(BuildAimapFile::FILE_NAME, encode(&|writer| ai_map.write::<T>(writer))?);
     }
 
     if let Some(details) = self.details {
-      files.insert(
+      insert(
         LevelBuildDetails::FILE_NAME,
         encode(&|writer| details.file.write::<T>(writer))?,
       );
-      files.insert(LevelBuildDetails::ATLAS_FILE_NAME, details.atlas);
+      insert(LevelBuildDetails::ATLAS_FILE_NAME, details.atlas);
     }
 
     if let Some(impostors) = self.impostors {
-      files.insert(LevelTreeImpostorAtlas::COLOR_FILE_NAME, impostors.color);
-      files.insert(LevelTreeImpostorAtlas::NORMAL_FILE_NAME, impostors.normal);
+      insert(LevelTreeImpostorAtlas::COLOR_FILE_NAME, impostors.color);
+      insert(LevelTreeImpostorAtlas::NORMAL_FILE_NAME, impostors.normal);
+    }
+
+    for (path, bytes) in self.breakable_parts {
+      insert(&path, bytes);
     }
 
     Ok(files)

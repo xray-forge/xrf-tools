@@ -13,6 +13,7 @@ use xrf_gamemtl::GameMtlFile;
 use xrf_level::{BuildAimapFile, BuildPrjFile, BuildPrjGlow, BuildPrjParams, BuildPrjPortal};
 use xrf_math::{Aabb, Vector3d};
 
+use crate::level::build::level_build_breakables::{LevelBuildBreakableExport, LevelBuildBreakables};
 use crate::level::build::level_build_climbables::{LevelBuildClimbableExport, LevelBuildClimbables};
 use crate::level::build::level_build_details::LevelBuildDetails;
 use crate::level::build::level_build_export::{LevelBuildCensus, LevelBuildExport};
@@ -34,8 +35,9 @@ use crate::provenance::level_scene_provenance::LevelSceneRefusal;
 /// Exports a scene into the `build.prj` the Level Editor's Build hands xrLC (`SceneBuilder::CompileStatic` and
 /// `SaveBuild`, `BuilderRemote.cpp:1421`, `:357`): the sky and the sun generated from the level options, then each tool
 /// in the editor's order of classes, glows, static objects, lights, portals and wall marks; with it the occluders
-/// (`BuildHOMModel`, `BuildSOMModel`) and the map's settings (`BuildLTX`) the Build writes from the placed objects, and
-/// the details (`EDetailManager::Export`) and the AI map (`ESceneAIMapTool::Export`).
+/// (`BuildHOMModel`, `BuildSOMModel`) and the map's settings (`BuildLTX`) the Build writes from the placed objects, the
+/// breakables and ladders it cuts out of their geometry (`ExportBreakableObjects`, `ExportClimableObjects`), and the
+/// details (`EDetailManager::Export`) and the AI map (`ESceneAIMapTool::Export`).
 pub struct LevelBuildExporter;
 
 impl LevelBuildExporter {
@@ -123,6 +125,7 @@ impl LevelBuildExporter {
       .collect::<XrfResult<_>>()?;
 
     let mut occluders: LevelBuildOccluders = LevelBuildOccluders::default();
+    let mut breakables: LevelBuildBreakables = LevelBuildBreakables::default();
     let mut climbables: LevelBuildClimbables = LevelBuildClimbables::default();
     let mut models: LevelBuildModels = LevelBuildModels::default();
     let mut placed_bounds: Option<Aabb> = None;
@@ -162,11 +165,14 @@ impl LevelBuildExporter {
         models.add(object, file, &sectors, &mut tables, game_materials, sources.textures)?;
       } else {
         geometry.add_object(object, file, &sectors, &mut tables, game_materials)?;
+        breakables.add_object(object, file, game_materials)?;
         climbables.add_object(object, file, game_materials)?;
         census.static_objects += 1;
       }
     }
 
+    // `ExportGame` exports the breakables before the ladders, so they open the spawn list.
+    let breakables: LevelBuildBreakableExport = breakables.into_export::<T>()?;
     let climbables: LevelBuildClimbableExport = climbables.into_export();
 
     let controls: HashMap<u32, String> = EditableLightObject::read_controls(&light_part.tool_data)?;
@@ -242,8 +248,9 @@ impl LevelBuildExporter {
     census.ai_map_nodes = ai_map.as_ref().map_or(0, |map| map.nodes.len());
     census.detail_objects = details.as_ref().map_or(0, |details| details.file.objects.len());
     census.detail_textures = details.as_ref().map_or(0, |details| details.textures);
+    census.breakable_objects = breakables.entities.len();
     census.climbable_objects = climbables.entities.len();
-    census.refused_parts = climbables.refused.len();
+    census.refused_parts = breakables.refused.len() + climbables.refused.len();
 
     Ok(LevelBuildExport {
       project: BuildPrjFile {
@@ -281,10 +288,12 @@ impl LevelBuildExporter {
       map: LevelMapConversion::export(&options, &map_bounds, &sector_part.objects),
       details,
       ai_map,
-      entities: climbables.entities,
-      refused: climbables
+      breakable_parts: breakables.parts,
+      entities: breakables.entities.into_iter().chain(climbables.entities).collect(),
+      refused: breakables
         .refused
         .into_iter()
+        .chain(climbables.refused)
         .map(|(object, reason)| LevelSceneRefusal {
           file: String::from(LevelEntityConversion::SPAWN_FILE_NAME),
           object,
