@@ -588,15 +588,14 @@ fn is_still_dim(start: TraceStart) -> bool {
 
 @fragment
 fn fs_trace(in: FullscreenVarying) -> TraceTargets {
-  let pixel: vec2<f32> = floor(in.clip.xy);
-
-  return trace_pixel(pixel, trace_start(pixel));
+  return trace_pixel(floor(in.clip.xy));
 }
 
-// What a traced pixel reflects from where its ray starts (`trace_start`): its ray walked over the nearest depth's
-// pyramid, what it met lit, the sky where it met nothing, the level's geometry asked to answer where the screen is less
-// than sure.
-fn trace_pixel(pixel: vec2<f32>, start: TraceStart) -> TraceTargets {
+// What a traced pixel reflects: its ray walked over the nearest depth's pyramid, what it met lit, the sky where it met
+// nothing, the level's geometry asked to answer where the screen is less than sure.
+fn trace_pixel(pixel: vec2<f32>) -> TraceTargets {
+  let start: TraceStart = trace_start(pixel);
+
   is_scene_requested = false;
 
   if (!start.is_traced) {
@@ -772,18 +771,11 @@ fn store_trace(pixel: vec2<u32>, written: TraceTargets) {
 var<workgroup> budget_rays: array<u32, 256>;
 const BUDGET_DIM_BIT: u32 = 1u << 12u;
 var<workgroup> budget_count: atomic<u32>;
-// Each listed ray's start as its quad found it (`TraceStart`), so the ray's walk reads none of its pixel's targets
-// again: its point and roughness; its normal and the share it shows, negative for a puddle's; its texel, `x` in the low
-// half.
-var<workgroup> budget_points: array<vec4<f32>, 256>;
-var<workgroup> budget_normals: array<vec4<f32>, 256>;
-var<workgroup> budget_texels: array<u32, 256>;
 
 // The trace under ray budgets: a tile of traced pixels a workgroup, each invocation one quad's. Each quad finds what
 // its pixels show and how many rays they ask, writes its untraced pixels, gives each pixel its budget leaves to the
-// most alike of those it traces, and lists those with where each starts; then the workgroup's invocations walk the
-// listed rays packed, so a quad tracing one ray holds no lanes idle, and each writes its answer to its pixel and the
-// pixels it stands for.
+// most alike of those it traces, and lists those; then the workgroup's invocations walk the listed rays packed, so a
+// quad tracing one ray holds no lanes idle, and each writes its answer to its pixel and the pixels it stands for.
 @compute @workgroup_size(64)
 fn cs_trace_budgeted(@builtin(workgroup_id) group: vec3<u32>, @builtin(local_invocation_index) local: u32) {
   if (local == 0u) {
@@ -864,13 +856,9 @@ fn cs_trace_budgeted(@builtin(workgroup_id) group: vec3<u32>, @builtin(local_inv
   for (var corner: u32 = 0u; corner < 4u; corner++) {
     if (is_traced[corner]) {
       let at: vec2<u32> = place + vec2<u32>(corner & 1u, corner >> 1u);
-      let listed: u32 = atomicAdd(&budget_count, 1u);
-      let start: TraceStart = starts[corner];
 
-      budget_rays[listed] = at.x | (at.y << 4u) | (mates[corner] << 8u) | select(0u, BUDGET_DIM_BIT, is_dim);
-      budget_points[listed] = vec4<f32>(start.position, start.roughness);
-      budget_normals[listed] = vec4<f32>(start.normal, select(start.shown, -start.shown, start.is_puddle));
-      budget_texels[listed] = u32(start.texel.x) | (u32(start.texel.y) << 16u);
+      budget_rays[atomicAdd(&budget_count, 1u)] =
+        at.x | (at.y << 4u) | (mates[corner] << 8u) | select(0u, BUDGET_DIM_BIT, is_dim);
     }
   }
 
@@ -886,13 +874,7 @@ fn cs_trace_budgeted(@builtin(workgroup_id) group: vec3<u32>, @builtin(local_inv
     scene_mates = (packed >> 8u) & 15u;
     quad_scale = select(1u, DIM_TURNS, (packed & BUDGET_DIM_BIT) != 0u);
 
-    let point: vec4<f32> = budget_points[index];
-    let normal: vec4<f32> = budget_normals[index];
-    let texel: u32 = budget_texels[index];
-    let toward: vec3<f32> = normalize(point.xyz);
-    let start: TraceStart = TraceStart(true, END_UNTRACED, vec2<i32>(i32(texel & 0xffffu), i32(texel >> 16u)), point.w,
-      normal.xyz, point.xyz, toward, dot(normal.xyz, -toward), abs(normal.w), normal.w < 0.0);
-    let written: TraceTargets = trace_pixel(vec2<f32>(pixel), start);
+    let written: TraceTargets = trace_pixel(vec2<f32>(pixel));
 
     store_trace(pixel, written);
 
