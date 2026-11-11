@@ -83,6 +83,45 @@ fn sizes_an_attachment_by_its_mip() {
 }
 
 #[test]
+fn refuses_drawing_into_an_array_naming_no_layer() {
+  let mut graph: FrameGraph<'_> = FrameGraph::new();
+  let faces = graph.import_texture(color_texture("faces").with_array_layer_count(7));
+
+  graph.add_raster_pass("face").color(clear(faces)).keep().record(|_| {});
+
+  let error: String = compile_error(graph);
+
+  assert!(
+    error.contains("'face' draws into 'faces', of 1 mips and 7 layers, naming no layer"),
+    "{error}"
+  );
+}
+
+#[test]
+fn draws_into_the_layer_an_array_names() {
+  let mut graph: FrameGraph<'_> = FrameGraph::new();
+  let faces = graph.import_texture(color_texture("faces").with_array_layer_count(7));
+
+  graph
+    .add_raster_pass("face")
+    .color(clear(faces).with_array_layer(3))
+    .keep()
+    .record(|_| {});
+
+  assert!(graph.compile(&GraphCompileOptions::default()).is_ok());
+}
+
+#[test]
+fn refuses_drawing_into_a_mip_chain_naming_no_mip() {
+  let mut graph: FrameGraph<'_> = FrameGraph::new();
+  let chain = graph.create_texture(GraphTextureDescriptor::new_2d("chain", 128, 128, COLOR).with_mip_level_count(2));
+
+  graph.add_raster_pass("scene").color(clear(chain)).keep().record(|_| {});
+
+  assert!(compile_error(graph).contains("naming no mip"));
+}
+
+#[test]
 fn refuses_a_raster_pass_with_no_attachment() {
   let mut graph: FrameGraph<'_> = FrameGraph::new();
 
