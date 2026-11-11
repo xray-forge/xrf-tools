@@ -1,4 +1,6 @@
+pub(crate) mod level_build_atlas;
 pub(crate) mod level_build_climbables;
+pub(crate) mod level_build_details;
 pub(crate) mod level_build_eigen;
 pub(crate) mod level_build_export;
 pub(crate) mod level_build_exporter;
@@ -9,5 +11,6 @@ pub(crate) mod level_build_lights;
 pub(crate) mod level_build_occluders;
 pub(crate) mod level_build_portal;
 pub(crate) mod level_build_sectors;
+pub(crate) mod level_build_sources;
 pub(crate) mod level_build_tables;
 pub(crate) mod level_build_vector;

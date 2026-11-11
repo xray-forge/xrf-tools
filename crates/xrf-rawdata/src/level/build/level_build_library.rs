@@ -8,17 +8,19 @@ use xrf_utils::format_path;
 
 use crate::level::scene::level_scene_decompile::LevelSceneObjectFile;
 
-/// The library objects a scene places, read from an objects root (`$objects$`) the first time each is named: a
-/// reference `levels\labx8\labx8_sector_0` is `<root>/levels/labx8/labx8_sector_0.object`.
+/// The library objects a scene names, read from objects roots (`$objects$`) the first time each is named, from the first
+/// root holding it: a reference `levels\labx8\labx8_sector_0` is `<root>/levels/labx8/labx8_sector_0.object`. A
+/// decompiled scene's own objects and the library objects it names, such as GSC's detail objects, may stand in
+/// different roots.
 pub(crate) struct LevelBuildLibrary {
-  root: PathBuf,
+  roots: Vec<PathBuf>,
   objects: HashMap<String, EditableObjectFile>,
 }
 
 impl LevelBuildLibrary {
-  pub(crate) fn new(root: &Path) -> Self {
+  pub(crate) fn new(roots: &[PathBuf]) -> Self {
     Self {
-      root: root.to_path_buf(),
+      roots: roots.to_vec(),
       objects: HashMap::new(),
     }
   }
@@ -27,14 +29,23 @@ impl LevelBuildLibrary {
   ///
   /// # Errors
   ///
-  /// Returns an error naming the reference whose object is missing or does not read.
+  /// Returns an error naming the reference whose object no root holds or that does not read.
   pub(crate) fn load<'a, T: ByteOrder>(&mut self, references: impl IntoIterator<Item = &'a str>) -> XrfResult {
     for reference in references {
       if self.objects.contains_key(reference) {
         continue;
       }
 
-      let path: PathBuf = LevelSceneObjectFile::get_reference_path(&self.root, reference);
+      let candidates: Vec<PathBuf> = self
+        .roots
+        .iter()
+        .map(|root| LevelSceneObjectFile::get_reference_path(root, reference))
+        .collect();
+      let path: &Path = candidates
+        .iter()
+        .find(|path| path.is_file())
+        .or(candidates.first())
+        .ok_or_else(|| XrfError::new_invalid_error("A build names no objects root"))?;
       let object: EditableObjectFile = EditableObjectFile::read_from_path::<T, _>(&path).map_err(|error| {
         XrfError::new_read_error(format!(
           "Library object '{reference}' was not read from {}: {error}",

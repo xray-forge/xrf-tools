@@ -19,6 +19,7 @@ sha2 = "0.10.9"
 specta = { workspace = true, optional = true }
 xrf-animation-envelope = { workspace = true }
 xrf-chunk = { workspace = true }
+xrf-dds = { workspace = true }
 xrf-editable-level = { workspace = true }
 xrf-editable-object = { workspace = true }
 xrf-error = { workspace = true }

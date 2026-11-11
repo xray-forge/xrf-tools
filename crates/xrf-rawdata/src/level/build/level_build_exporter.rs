@@ -3,9 +3,9 @@ use std::path::Path;
 
 use byteorder::ByteOrder;
 use xrf_editable_level::{
-  EditableBuildParams, EditableGlowObject, EditableLevelGuid, EditableLevelOptions, EditableLevelScene,
-  EditableLightObject, EditableObjectPart, EditablePortalObject, EditableSceneObject, EditableSectorObject,
-  EditableShape, EditableShapeObject, EditableWallmarkTool,
+  EditableBuildParams, EditableDetailObjectTool, EditableGlowObject, EditableLevelGuid, EditableLevelOptions,
+  EditableLevelScene, EditableLightObject, EditableObjectPart, EditablePortalObject, EditableSceneObject,
+  EditableSectorObject, EditableShape, EditableShapeObject, EditableWallmarkTool,
 };
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::{XrfError, XrfResult};
@@ -14,6 +14,7 @@ use xrf_level::{BuildPrjFile, BuildPrjGlow, BuildPrjMuModel, BuildPrjMuReference
 use xrf_math::{Aabb, Vector3d};
 
 use crate::level::build::level_build_climbables::{LevelBuildClimbableExport, LevelBuildClimbables};
+use crate::level::build::level_build_details::LevelBuildDetails;
 use crate::level::build::level_build_export::{LevelBuildCensus, LevelBuildExport};
 use crate::level::build::level_build_geometry::LevelBuildGeometry;
 use crate::level::build::level_build_library::LevelBuildLibrary;
@@ -21,6 +22,7 @@ use crate::level::build::level_build_lights::LevelBuildLights;
 use crate::level::build::level_build_occluders::LevelBuildOccluders;
 use crate::level::build::level_build_portal::LevelBuildPortal;
 use crate::level::build::level_build_sectors::LevelBuildSectors;
+use crate::level::build::level_build_sources::LevelBuildSources;
 use crate::level::build::level_build_tables::{LevelBuildTableRecords, LevelBuildTables};
 use crate::level::level_entity_conversion::LevelEntityConversion;
 use crate::level::level_map_conversion::LevelMapConversion;
@@ -30,26 +32,28 @@ use crate::provenance::level_scene_provenance::LevelSceneRefusal;
 /// Exports a scene into the `build.prj` the Level Editor's Build hands xrLC (`SceneBuilder::CompileStatic` and
 /// `SaveBuild`, `BuilderRemote.cpp:1421`, `:357`): the sky and the sun generated from the level options, then each tool
 /// in the editor's order of classes, glows, static objects, lights, portals and wall marks; with it the occluders
-/// (`BuildHOMModel`, `BuildSOMModel`) and the map's settings (`BuildLTX`) the Build writes from the placed objects.
+/// (`BuildHOMModel`, `BuildSOMModel`) and the map's settings (`BuildLTX`) the Build writes from the placed objects, and
+/// the details (`EDetailManager::Export`).
 pub struct LevelBuildExporter;
 
 impl LevelBuildExporter {
   /// `ebqDraft`, the quality whose materials the Build swaps for the plain vertex shaders, which this does not.
   const DRAFT_QUALITY: u16 = 0;
 
-  /// The build project of `scene`, its library objects read under `objects` and their game materials named by
-  /// `game_materials`, in `T`'s byte order.
+  /// The build project of `scene` and what goes beside it, its library objects, game materials and detail textures read
+  /// from `sources`, in `T`'s byte order.
   ///
   /// # Errors
   ///
   /// Returns an error, as the Build stops, when a part does not read, a placed object is missing from the library or
-  /// does not build, the scene places a multi-use object, is of draft quality, or holds a portal of more corners than
-  /// a compiled one, which the Build simplifies and this does not yet; or a light does not build.
+  /// does not build, the scene places a multi-use object with an impostor, is of draft quality, or a light does not
+  /// build; or it holds details and `sources` name no textures root, or they do not export
+  /// ([`LevelBuildDetails`]).
   pub fn export<T: ByteOrder>(
     scene: &EditableLevelScene,
-    objects: &Path,
-    game_materials: &GameMtlFile,
+    sources: &LevelBuildSources<'_>,
   ) -> XrfResult<LevelBuildExport> {
+    let game_materials: &GameMtlFile = sources.game_materials;
     let guid: EditableLevelGuid = scene.level.get_guid()?;
     let options: EditableLevelOptions = scene.level.get_level_options()?;
     let params: EditableBuildParams = scene.level.get_build_params()?;
@@ -61,7 +65,7 @@ impl LevelBuildExporter {
     }
 
     let placed: EditableObjectPart<EditableSceneObject> = LevelSceneExporter::get_part(scene, guid)?;
-    let mut library: LevelBuildLibrary = LevelBuildLibrary::new(objects);
+    let mut library: LevelBuildLibrary = LevelBuildLibrary::new(sources.objects);
 
     library.load::<T>(placed.objects.iter().map(|object| object.reference.as_str()))?;
 
@@ -198,6 +202,22 @@ impl LevelBuildExporter {
       )?;
     }
 
+    let details: Option<LevelBuildDetails> = match scene.get_tool(EditableDetailObjectTool::TOOL_NAME) {
+      Some(tool) => {
+        let textures: &Path = sources.textures.ok_or_else(|| {
+          XrfError::new_invalid_error(
+            "The scene holds details, whose textures the Build merges into an atlas; name the textures root",
+          )
+        })?;
+
+        Some(LevelBuildDetails::export::<T>(
+          &EditableDetailObjectTool::read_from_scene_tool::<T>(tool)?,
+          &mut library,
+          textures,
+        )?)
+      }
+      None => None,
+    };
     let records: LevelBuildTableRecords = tables.into_records()?;
     // `BuildLTX` takes the first level-bound shape's box over the placed objects'.
     let map_bounds: Aabb = LevelSceneExporter::get_part::<EditableShapeObject>(scene, guid)?
@@ -220,6 +240,8 @@ impl LevelBuildExporter {
     census.sound_occluder_polygons = som.as_ref().map_or(0, |file| file.polygons.len());
     census.multi_use_models = mu_models.len();
     census.multi_use_references = mu_references.len();
+    census.detail_objects = details.as_ref().map_or(0, |details| details.file.objects.len());
+    census.detail_textures = details.as_ref().map_or(0, |details| details.textures);
     census.climbable_objects = climbables.entities.len();
     census.refused_parts = climbables.refused.len();
 
@@ -256,6 +278,7 @@ impl LevelBuildExporter {
       hom,
       som,
       map: LevelMapConversion::export(&options, &map_bounds, &sector_part.objects),
+      details,
       entities: climbables.entities,
       refused: climbables
         .refused

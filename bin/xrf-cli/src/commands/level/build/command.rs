@@ -7,11 +7,19 @@ use xrf_editable_level::EditableLevelScene;
 use xrf_error::{XrfError, XrfResult};
 use xrf_gamemtl::GameMtlFile;
 use xrf_output::OutputOptions;
-use xrf_rawdata::{LevelBuildExport, LevelBuildExporter, LevelExportedPrevious, LevelSceneExporter};
+use xrf_rawdata::{LevelBuildExport, LevelBuildExporter, LevelBuildSources, LevelExportedPrevious, LevelSceneExporter};
 use xrf_utils::format_path;
 
 use crate::commands::level::build::report::LevelBuildReport;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+
+/// What the command line names for the level compiler's files: the objects roots, the game material library, read once
+/// the build starts, and the textures root.
+struct LevelBuildInputs<'a> {
+  objects: &'a [PathBuf],
+  game_materials: &'a Path,
+  textures: Option<&'a Path>,
+}
 
 /// Builds a Level Editor scene's game files into a level directory, as the editor's Build writes them.
 #[derive(Default)]
@@ -28,8 +36,9 @@ impl GenericCommand for BuildCommand {
         "Build an SDK Level Editor scene's game files into a level directory, as the editor's Build writes them from \
          the scene's parts: level.game, level.env_mod, level.fog_vol, and level.spawn, level_rs.spawn, \
          level.ps_static, level.snd_static, level.snd_env and level.wallmarks where the scene holds them; and given \
-         the objects root and game materials, the build.prj xrLC compiles the geometry and lighting from, level.ltx, \
-         and level.hom and level.som where objects occlude",
+         the objects roots and game materials, the build.prj xrLC compiles the geometry and lighting from, level.ltx, \
+         level.hom and level.som where objects occlude, and build.details and its atlas build_details.dds where the \
+         scene holds details",
       )
       .arg(
         Arg::new("path")
@@ -50,11 +59,22 @@ impl GenericCommand for BuildCommand {
       .arg(
         Arg::new("objects")
           .help(
-            "Objects root ($objects$) the scene's objects are read from; with --game-materials, the build writes \
-             build.prj, level.ltx and the occluders",
+            "Objects root ($objects$) the scene's objects are read from, repeatable, each object from the first root \
+             holding it; with --game-materials, the build writes build.prj, level.ltx and the occluders",
           )
           .long("objects")
+          .action(ArgAction::Append)
           .requires("game-materials")
+          .value_parser(value_parser!(PathBuf)),
+      )
+      .arg(
+        Arg::new("textures")
+          .help(
+            "Textures root ($game_textures$) the detail objects' textures are merged from into build_details.dds, \
+             which a scene of details needs",
+          )
+          .long("textures")
+          .requires("objects")
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
@@ -78,9 +98,18 @@ impl GenericCommand for BuildCommand {
     let destination: &PathBuf = matches.get_one::<PathBuf>("dest").expect("the destination is required");
     let output: OutputOptions = context.get_output().clone();
 
-    let geometry: Option<(&PathBuf, &PathBuf)> = matches
-      .get_one::<PathBuf>("objects")
-      .zip(matches.get_one::<PathBuf>("game-materials"));
+    let objects: Vec<PathBuf> = matches
+      .get_many::<PathBuf>("objects")
+      .map(|roots| roots.cloned().collect())
+      .unwrap_or_default();
+    let geometry: Option<LevelBuildInputs<'_>> =
+      matches
+        .get_one::<PathBuf>("game-materials")
+        .map(|game_materials| LevelBuildInputs {
+          objects: &objects,
+          game_materials,
+          textures: matches.get_one::<PathBuf>("textures").map(PathBuf::as_path),
+        });
     let report: LevelBuildReport = Self::build(&output, source, destination, geometry, matches.get_flag("force"))?;
 
     context.set_result(|| &report)?;
@@ -91,12 +120,12 @@ impl GenericCommand for BuildCommand {
 
 impl BuildCommand {
   /// Builds the scene at `source` into `destination`, and what it gives the level compiler where `geometry` gives the
-  /// objects root and the game material library.
+  /// objects roots and the game material library.
   fn build(
     output: &OutputOptions,
     source: &Path,
     destination: &Path,
-    geometry: Option<(&PathBuf, &PathBuf)>,
+    geometry: Option<LevelBuildInputs<'_>>,
     is_forced: bool,
   ) -> XrfResult<LevelBuildReport> {
     let scene: EditableLevelScene = EditableLevelScene::read_from_path::<XRayByteOrder, _>(&source)?;
@@ -104,11 +133,15 @@ impl BuildCommand {
     // it writes is refused alike.
     let mut names: Vec<&'static str> = LevelSceneExporter::FILE_NAMES.to_vec();
     let (mut files, census, entities, refused) = match geometry {
-      Some((objects, game_materials)) => {
+      Some(inputs) => {
+        let game_materials: GameMtlFile = GameMtlFile::read_from_path::<XRayByteOrder, _>(&inputs.game_materials)?;
         let mut export: LevelBuildExport = LevelBuildExporter::export::<XRayByteOrder>(
           &scene,
-          objects,
-          &GameMtlFile::read_from_path::<XRayByteOrder, _>(game_materials)?,
+          &LevelBuildSources {
+            objects: inputs.objects,
+            game_materials: &game_materials,
+            textures: inputs.textures,
+          },
         )?;
         let (census, entities, refused) = (
           export.census,

@@ -135,7 +135,7 @@ The Level Editor's Build writes some level files straight from the scene's parts
 | `LevelFogVolumeConversion`        | `level.fog_vol` ↔ `fog_volume.part`                           | All 174 files through text                                     |
 | `LevelWallmarkConversion`         | `level.wallmarks` ↔ `wallmark.part`                           | All 74 files through the binary part; `labx8`'s part exact     |
 | `LevelWayConversion`              | `level.game` paths ↔ `way.part`                               | 202 files from memory; all but two through text                |
-| `LevelDetailConversion`           | `level.details` → `detail_object.part`                        | `mp_darkvalley`'s 14 models found in the SDK's library         |
+| `LevelDetailConversion`           | `level.details` ↔ `detail_object.part`, `build.details`       | `mp_darkvalley` built back: objects and slots as shipped       |
 | `LevelSpawnPointConversion`       | `level.game` respawn points, `level.env_mod` ↔ `spawn.part`   | 200 of 202 levels through text                                 |
 | `LevelEntityConversion`           | `level.spawn`, `level_rs.spawn` ↔ `spawn.part`                | Every packet read comes back; floats off the `%f` grid rounded |
 | `LevelGlowConversion`             | `level`'s glows → `glow.part`                                 | 4,563 glows over 202 levels; `labx8`'s 29 exactly GSC's        |
@@ -501,6 +501,15 @@ corners planting it plant nothing, since recovering its texture from the atlas i
 is no part. The slots keep their heights, corners and densities, their light zeroed as the Build zeroes it before the
 detail lighter runs (inference `detailObjects`). With the SDK's objects as the library, all 14 of `mp_darkvalley`'s
 models come back.
+
+`LevelBuildDetails` exports the tool back as `EDetailManager::Export` does: `build.details` of the planted objects
+alone, each compiled from its library object, its coordinates moved into the atlas and its texture named
+`build_details`, the slots renumbered with their light zeroed; and `build_details.dds`, the objects' textures merged
+by `LevelBuildAtlas` (the editor's packer: largest first at the first free spot, turned where only that fits, 256 to
+1024 a side) and saved as DXT1 with mipmaps. `LevelBuildExporter::export` takes `LevelBuildSources`: objects roots,
+each object from the first holding it, the game materials, and the textures root a scene of details needs.
+`mp_darkvalley` decompiled and built gives the shipped `level.details`' header, its 14 objects in order with the same
+geometry, shader, flags and scale range, and all 39,601 slots, the light zeroed; only the atlas is its own.
 
 ## Compile an object into an OGF
 

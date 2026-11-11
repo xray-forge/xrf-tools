@@ -8810,6 +8810,7 @@ dependencies = [
  "specta",
  "xrf-animation-envelope",
  "xrf-chunk",
+ "xrf-dds",
  "xrf-editable-level",
  "xrf-editable-object",
  "xrf-error",
