@@ -31,7 +31,8 @@ impl AlifePacketsReadWrite for AlifeObjectPhysic {
   /// Read a physic object from both packets.
   ///
   /// An empty update packet reads as no physics state, as `CSE_ALifeObjectPhysic::UPDATE_Read` reads it; it is
-  /// written back as the zero byte the engine writes for one.
+  /// written back as the zero byte the engine writes for one. The state closes the packet, so it reads as
+  /// [`PhysicsNetState::read_closing`] reads one, a state the SDK packed to zero among them.
   fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
     Ok(Self {
       base: spawn.read_xr::<T, _>()?,
@@ -39,11 +40,7 @@ impl AlifePacketsReadWrite for AlifeObjectPhysic {
       physic_type: spawn.read_u32::<T>()?,
       mass: spawn.read_f32::<T>()?,
       fixed_bones: spawn.read_w1251_string()?,
-      update_state: if update.is_ended() {
-        None
-      } else {
-        update.read_xr_optional::<T, _>()?
-      },
+      update_state: PhysicsNetState::read_closing::<T, _>(update)?,
     })
   }
 
@@ -55,7 +52,7 @@ impl AlifePacketsReadWrite for AlifeObjectPhysic {
     spawn.write_f32::<T>(self.mass)?;
     spawn.write_w1251_string(&self.fixed_bones)?;
 
-    update.write_xr_optional::<T, _>(self.update_state.as_ref())
+    PhysicsNetState::write_closing::<T, _>(update, self.update_state.as_ref())
   }
 }
 
@@ -111,6 +108,7 @@ mod tests {
   use crate::data::alife::inherited::alife_object_physic::AlifeObjectPhysic;
   use crate::data::alife::inherited::alife_object_skeleton::AlifeObjectSkeleton;
   use crate::data::physics::physics_net_state::PhysicsNetState;
+  use crate::data::physics::raw_float::RawFloat;
 
   fn new_object() -> AlifeObjectPhysic {
     AlifeObjectPhysic {
@@ -179,6 +177,27 @@ mod tests {
     assert_eq!(
       AlifeObjectPhysic::read::<XRayByteOrder, _, _>(&mut spawn_reader, &mut update_reader)?,
       expected
+    );
+
+    Ok(())
+  }
+
+  /// The SDK's 2009 factory writes the state of an object of no items and both velocities set behind a zero byte; it
+  /// reads as that state and writes back byte for byte.
+  #[test]
+  fn reads_a_state_the_sdk_packed_to_zero() -> XrfResult {
+    let mut original: AlifeObjectPhysic = new_object();
+    let mut state: PhysicsNetState = PhysicsNetState::new_mock(Vector3d::new(1.0, 2.0, 3.0));
+
+    state.item_count = 0;
+    state.enabled = false;
+    state.angular_velocity = Some([0.5, 0.0, 0.0].map(RawFloat::from));
+    state.linear_velocity = Some([0.0, -1.0, 0.0].map(RawFloat::from));
+    original.update_state = Some(state);
+
+    assert_eq!(
+      original.read_back::<XRayByteOrder>()?,
+      (88, 1 + 36 + 16 + 24 + 1, original)
     );
 
     Ok(())
