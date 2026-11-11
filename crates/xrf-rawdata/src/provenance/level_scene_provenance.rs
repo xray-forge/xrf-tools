@@ -119,7 +119,7 @@ pub struct LevelSceneGeometry {
   pub surfaces: Option<LevelSceneSurfaces>,
 }
 
-/// The surfaces of a scene's static geometry as inferred (decision 14): from what, and every compiler shader chosen with
+/// The surfaces of a scene's static geometry as inferred: from what, and every compiler shader chosen with
 /// why.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -151,7 +151,7 @@ pub struct LevelSceneRefusal {
   pub reason: String,
 }
 
-/// The root spawn a scene's entities were decompiled from (decision 10): taken for the level it holds in place of
+/// The root spawn a scene's entities were decompiled from: taken for the level it holds in place of
 /// `level.spawn`'s entities, with what the two disagree on and what the scene cannot carry.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -188,7 +188,7 @@ pub struct LevelSceneUpdatePacket {
   pub bytes: String,
 }
 
-/// The sidecar written beside a decompiled scene, `<name>.level.xrf.json` (decision 22): the compiled files it came
+/// The sidecar written beside a decompiled scene, `<name>.level.xrf.json`: the compiled files it came
 /// from, what made it and when, every file it wrote and from what, and what in it was chosen rather than read.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

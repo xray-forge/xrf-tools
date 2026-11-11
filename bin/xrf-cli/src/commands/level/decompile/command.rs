@@ -189,7 +189,7 @@ impl GenericCommand for DecompileCommand {
 }
 
 impl DecompileCommand {
-  /// The root spawn a new game starts from, which a decompile reads by default (decision 10).
+  /// The root spawn a new game starts from, which a decompile reads by default.
   const DEFAULT_ROOT_SPAWN: &'static str = "all";
 
   /// The `gamedata` directory holding `levels\<level>`, named by the level path's parents where it has them.

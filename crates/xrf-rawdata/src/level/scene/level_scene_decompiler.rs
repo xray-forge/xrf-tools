@@ -3,7 +3,9 @@ use std::path::Path;
 use byteorder::ByteOrder;
 use xrf_editable_level::EditableLevelGuid;
 use xrf_error::XrfResult;
+use xrf_spawn::LevelSpawnFile;
 
+use crate::level::level_entity_conversion::LevelEntityConversion;
 use crate::level::scene::level_decompile_options::LevelDecompileOptions;
 use crate::level::scene::level_scene_decompile::LevelSceneDecompile;
 use crate::level::scene::level_scene_draft::LevelSceneDraft;
@@ -20,11 +22,10 @@ use crate::level::scene::steps::level_root_spawn::LevelRootSpawn;
 use crate::level::scene::steps::level_scene_step::LevelSceneStep;
 
 /// Decompiles a level's directory into a Level Editor scene, step by step over one draft: the map's settings, the
-/// geometry and its objects,
-/// sectors and portals; the bundle's glows and lights; the files the build passes through from a part
-/// (`BuilderGame.cpp`); the details and the AI map; and the game's ways and spawn points. Each step names the files it reads; the decompile reads
-/// them all once and hashes them into the scene's GUID, so decompiling the same level twice gives the same scene
-/// (decision 22).
+/// geometry and its objects, sectors and portals; the bundle's glows and lights; the files the build passes through from
+/// a part (`BuilderGame.cpp`); the details and the AI map; and the game's ways and spawn points. Each step names the
+/// files it reads; the decompile reads them all once and hashes them into the scene's GUID, so decompiling the same
+/// level twice gives the same scene.
 pub struct LevelSceneDecompiler;
 
 impl LevelSceneDecompiler {
@@ -85,7 +86,15 @@ impl LevelSceneDecompiler {
       .map(|path| LevelRootSpawn::read::<T>(path, directory))
       .transpose()?;
     let guid: EditableLevelGuid = sources.get_guid(root_spawn.as_ref().and_then(LevelRootSpawn::get_guid_hash));
-    let mut draft: LevelSceneDraft = LevelSceneDraft::new(guid, &options.name, root_spawn);
+    let spawn: Option<LevelSpawnFile> = sources.take_read(
+      LevelEntityConversion::SPAWN_FILE_NAME,
+      LevelSpawnFile::read_from_bytes::<T>,
+    )?;
+    let respawn: Option<LevelSpawnFile> = sources.take_read(
+      LevelEntityConversion::RESPAWN_FILE_NAME,
+      LevelSpawnFile::read_from_bytes::<T>,
+    )?;
+    let mut draft: LevelSceneDraft = LevelSceneDraft::new(guid, &options.name, root_spawn, spawn, respawn);
 
     LevelMapStep::decompile::<T>(&mut sources, options, &mut draft)?;
     LevelGeometryStep::decompile::<T>(&mut sources, options, &mut draft)?;

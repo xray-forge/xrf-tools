@@ -14,7 +14,7 @@ use xrf_math::{Aabb, Matrix4x4, Sphere, Vector3d};
 use xrf_ogf::{OgfGeometryContainerChunk, OgfHeaderChunk, OgfTreeColor, OgfTreeDefinitionChunk};
 use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 
-use crate::level::tests::GUID;
+use crate::level::tests::fixtures::GUID;
 use crate::{
   LevelCollisionIndex, LevelCompilerShaderReason, LevelDecalIndex, LevelDecompileContext, LevelGeometryCensus,
   LevelGeometryConversion, LevelGeometryDecompile, LevelGeometrySources, LevelShaderPairings, LevelSurfaceCensus,

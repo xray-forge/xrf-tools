@@ -16,6 +16,7 @@ use xrf_spawn::{
 
 use crate::level::build::level_build_parts::{LevelBuildPartBox, LevelBuildParts};
 use crate::level::build::level_build_vector::LevelBuildVector;
+use crate::level::level_breakable_conversion::LevelBreakableConversion;
 use crate::object::compile::bounds::bone_boxes::BoneBoxes;
 use crate::object::compile::geometry::export_vertex_bone::ExportVertexBone;
 use crate::object::compile::object_compile_options::TangentMethod;
@@ -35,13 +36,41 @@ pub(crate) struct LevelBuildBreakables {
   random: EditorRandom,
 }
 
-/// The breakables a build made: each part's OGF by its path in the level's directory, the entities placing them, and
-/// the parts it could not make one of.
+/// The breakables a build made: each part's skeleton, the entities placing them, and the parts it could not make one
+/// of.
 pub(crate) struct LevelBuildBreakableExport {
-  pub(crate) parts: Vec<(String, Vec<u8>)>,
+  pub(crate) parts: Vec<LevelBuildBreakablePart>,
   pub(crate) entities: Vec<AlifeObject>,
   /// Each part refused, by its name, with why.
   pub(crate) refused: Vec<(String, String)>,
+}
+
+/// One part's rigid skeleton, kept unwritten so that it takes the byte order of the level's other files.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct LevelBuildBreakablePart {
+  /// Its path in the level's directory, `meshes/brkbl#<n>.ogf`.
+  pub(crate) path: String,
+  object: EditableObjectFile,
+  geometry: SkeletonGeometry,
+}
+
+impl LevelBuildBreakablePart {
+  /// The part's OGF in `T`'s byte order, with a description of nothing (`ogf_desc`'s defaults).
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the skeleton does not write.
+  pub(crate) fn write<T: ByteOrder>(&self) -> XrfResult<Vec<u8>> {
+    SkeletonOgfWriter::write::<T>(
+      &self.object,
+      &self.geometry,
+      &ObjectCompileSource {
+        source_file: String::new(),
+        convertor: String::new(),
+        built_at: 0,
+      },
+    )
+  }
 }
 
 /// One fragment of a part, `SBBone`: the game material of the face it grew from, how many faces it grew and their area,
@@ -74,16 +103,14 @@ impl Default for LevelBuildBreakables {
 }
 
 impl LevelBuildBreakables {
-  /// The class every breakable is of, and where its parts go and what names them.
+  /// The class every breakable is of.
   const SECTION: &'static str = "breakable_object";
-  const PART_PREFIX: &'static str = "meshes\\brkbl#";
 
   /// `per_bone_face_count_min`, the fewest faces a fragment grows (`Initialize(bb, EPS_L, 2)`).
   const FRAGMENT_FACES_MIN: usize = 2;
 
-  /// Fragments a part is cut into at most, and bones a rigid skeleton of one may hold.
+  /// Fragments a part is cut into at most, which keeps its skeleton within the 63 bones the editor's export takes.
   const FRAGMENTS_MAX: usize = 62;
-  const BONES_MAX: usize = 63;
 
   /// `SJointIKData::flBreakable`.
   const BREAKABLE_JOINT_FLAG: u32 = 1 << 0;
@@ -102,13 +129,13 @@ impl LevelBuildBreakables {
     self.parts.add_object(placed, object, game_materials)
   }
 
-  /// A breakable of each part, numbered by part, its OGF written in `T`'s byte order; a part some face of which shares
-  /// no edge with another, or cut into more fragments than a skeleton holds, refused as the Build refuses it.
+  /// A breakable of each part, numbered by part; a part some face of which shares no edge with another refused as the
+  /// Build refuses it.
   ///
   /// # Errors
   ///
-  /// Returns an error where a part's skeleton does not build or write.
-  pub(crate) fn into_export<T: ByteOrder>(mut self) -> XrfResult<LevelBuildBreakableExport> {
+  /// Returns an error where a part's skeleton does not build.
+  pub(crate) fn into_export(mut self) -> XrfResult<LevelBuildBreakableExport> {
     let mut export: LevelBuildBreakableExport = LevelBuildBreakableExport {
       parts: Vec::new(),
       entities: Vec::new(),
@@ -116,19 +143,13 @@ impl LevelBuildBreakables {
     };
 
     for (index, part) in self.parts.get_parts().iter().enumerate() {
-      let name: String = format!("{}{index}", Self::PART_PREFIX);
+      let (name, path) = LevelBreakableConversion::get_part_names(index);
 
       match self.prepare(part) {
-        Ok(prepared) if prepared.fragments.len() <= Self::BONES_MAX => {
-          export
-            .parts
-            .push((format!("{name}.ogf"), self.write_part::<T>(part, &prepared)?));
+        Ok(prepared) => {
+          export.parts.push(self.build_part(path, part, &prepared)?);
           export.entities.push(Self::get_entity(&name, &prepared.frame));
         }
-        Ok(_) => export.refused.push((
-          name,
-          String::from("it is cut into more fragments than a skeleton holds (\"cannot handle more than 63 parts\")"),
-        )),
         Err(reason) => export.refused.push((name, reason)),
       }
     }
@@ -302,7 +323,7 @@ impl LevelBuildBreakables {
   /// `SBPart::Export`: a rigid skeleton of a bone per fragment, the first the root and every other its child, each face
   /// following its fragment's bone alone, into a child per engine shader and texture; each bone's box the one around its
   /// vertices, which its physics shape repeats, breaking off when struck, its mass the area it grew.
-  fn write_part<T: ByteOrder>(&self, part: &[usize], prepared: &PreparedPart) -> XrfResult<Vec<u8>> {
+  fn build_part(&self, path: String, part: &[usize], prepared: &PreparedPart) -> XrfResult<LevelBuildBreakablePart> {
     let mut builder: SkeletonGeometryBuilder = SkeletonGeometryBuilder::of_faces(prepared.bounds);
 
     for (index, face) in part.iter().enumerate() {
@@ -338,32 +359,25 @@ impl LevelBuildBreakables {
       bone.shape.obb = obb;
     }
 
-    let object: EditableObjectFile = EditableObjectFile {
-      flags: 0,
-      flags_size: 4,
-      class_script: None,
-      lods: None,
-      meshes: None,
-      surfaces: None,
-      bones: Some(bones),
-      embedded_motions: None,
-      motion_references: None,
-      bone_parts: None,
-      actor_transform: None,
-      description: None,
-      layout: ChunkLayout::default(),
-    };
-
-    // A part is written with a description of nothing (`ogf_desc`'s defaults).
-    SkeletonOgfWriter::write::<T>(
-      &object,
-      &geometry,
-      &ObjectCompileSource {
-        source_file: String::new(),
-        convertor: String::new(),
-        built_at: 0,
+    Ok(LevelBuildBreakablePart {
+      path,
+      object: EditableObjectFile {
+        flags: 0,
+        flags_size: 4,
+        class_script: None,
+        lods: None,
+        meshes: None,
+        surfaces: None,
+        bones: Some(bones),
+        embedded_motions: None,
+        motion_references: None,
+        bone_parts: None,
+        actor_transform: None,
+        description: None,
+        layout: ChunkLayout::default(),
       },
-    )
+      geometry,
+    })
   }
 
   /// A fragment's bone: named by its number, the first the root, its joint none and breakable, its mass its area.

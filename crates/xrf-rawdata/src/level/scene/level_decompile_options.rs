@@ -2,8 +2,7 @@ use std::path::PathBuf;
 
 use crate::level::level_surface_inference::LevelSurfaces;
 
-/// What a level's decompile takes besides the level's directory (decision 21's one options type; libraries for
-/// placed objects and an output root join it as their stages land).
+/// What a level's decompile takes besides the level's directory, the one set of options every front-end fills.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LevelDecompileOptions {
   /// The level's name: its scene's main file is `<name>.level`, its parts are in `<name>/`, its objects under
@@ -12,17 +11,17 @@ pub struct LevelDecompileOptions {
   /// The front-end decompiling, such as `xrf-cli level decompile`, and its version, which the sidecars record.
   pub tool: String,
   pub tool_version: String,
-  /// A root spawn (`all.spawn`) whose objects on this level stand in for `level.spawn`'s entities (decision 10). The
+  /// A root spawn (`all.spawn`) whose objects on this level stand in for `level.spawn`'s entities. The
   /// level is found in it by its directory's name.
   pub root_spawn: Option<PathBuf>,
-  /// How the static geometry's surfaces are dressed (decision 14). Inferring reads the level's `level.cform` where the
+  /// How the static geometry's surfaces are dressed. Inferring reads the level's `level.cform` where the
   /// directory holds one, and needs both libraries below.
   pub surfaces: LevelSurfaces,
   /// The game material library (`gamemtl.xr`) naming the collision form's materials.
   pub game_materials: Option<PathBuf>,
   /// The compiler shader library (`shaders_xrlc.xr`) the inferred compiler shaders are chosen from.
   pub compiler_shaders: Option<PathBuf>,
-  /// Object library roots (decision 13) whose surfaces' pairings of engine and compiler shaders break ties between
+  /// Object library roots whose surfaces' pairings of engine and compiler shaders break ties between
   /// compiler shaders that fit.
   pub libraries: Vec<PathBuf>,
 }

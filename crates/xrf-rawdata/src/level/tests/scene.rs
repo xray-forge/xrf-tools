@@ -17,7 +17,7 @@ use xrf_test_utils::GeneratedResources;
 use xrf_editable_object::EditableObjectFile;
 
 use crate::level::level_visual_geometry::LevelVisualGeometry;
-use crate::level::tests::GUID;
+use crate::level::tests::fixtures::GUID;
 use crate::{
   LevelDecompileOptions, LevelExportedPrevious, LevelFogVolumeConversion, LevelSceneDecompile, LevelSceneDecompiler,
   LevelSceneExporter, LevelSceneInference, LevelSceneObjectFile, LevelSceneProvenance, ObjectDecompiler,

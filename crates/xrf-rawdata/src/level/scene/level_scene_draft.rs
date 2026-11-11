@@ -2,9 +2,11 @@ use xrf_editable_level::{
   EditableBuildParams, EditableLevelCamera, EditableLevelFile, EditableLevelGuid, EditableLevelOptions,
   EditableLevelScene, EditableSceneTool,
 };
+use xrf_spawn::LevelSpawnFile;
 use xrf_utils::format_path;
 
 use crate::level::level_decompile_context::LevelDecompileContext;
+use crate::level::level_entity_conversion::{LevelEntityConversion, LevelEntitySources};
 use crate::level::level_geometry_conversion::LevelDecompiledObject;
 use crate::level::level_map_conversion::LevelMapSettings;
 use crate::level::scene::level_decompile_options::LevelDecompileOptions;
@@ -34,6 +36,10 @@ pub(crate) struct LevelSceneDraft {
   pub(crate) folded_entities: Vec<String>,
   /// The root spawn the entities come from, where one was given.
   pub(crate) root_spawn: Option<LevelRootSpawn>,
+  /// `level.spawn` and `level_rs.spawn`, where the directory holds them: read once, before any step, for the geometry
+  /// to fold ladders and breakables from and the game step to decompile the entities of.
+  pub(crate) spawn: Option<LevelSpawnFile>,
+  pub(crate) respawn: Option<LevelSpawnFile>,
   /// What `level.ltx` says, where the directory holds one: the sectors' parts of the map and the game types.
   pub(crate) map: Option<LevelMapSettings>,
 }
@@ -43,10 +49,32 @@ impl LevelSceneDraft {
   pub(crate) const OWNER: &'static str = "xrf";
 
   /// A scene of `guid` named `name`, holding no tool yet, with the inferences every decompiled scene makes; the game
-  /// types are inferred only where no `level.ltx` names them.
-  pub(crate) fn new(guid: EditableLevelGuid, name: &str, root_spawn: Option<LevelRootSpawn>) -> Self {
+  /// types are inferred only where no `level.ltx` names them. Every entity's name is reserved from the start, so that no
+  /// name a step generates takes one.
+  pub(crate) fn new(
+    guid: EditableLevelGuid,
+    name: &str,
+    root_spawn: Option<LevelRootSpawn>,
+    spawn: Option<LevelSpawnFile>,
+    respawn: Option<LevelSpawnFile>,
+  ) -> Self {
+    let mut context: LevelDecompileContext = LevelDecompileContext::new(guid);
+
+    LevelEntityConversion::reserve_names(
+      &LevelEntitySources {
+        spawn: spawn.as_ref(),
+        respawn: respawn.as_ref(),
+        root: root_spawn
+          .as_ref()
+          .map(|root| root.objects.as_slice())
+          .unwrap_or_default(),
+        folded: &[],
+      },
+      &mut context,
+    );
+
     Self {
-      context: LevelDecompileContext::new(guid),
+      context,
       level_options: EditableLevelOptions::new(name, EditableLevelOptions::SINGLE_PLAYER),
       level_sources: Vec::new(),
       tools: Vec::new(),
@@ -62,6 +90,8 @@ impl LevelSceneDraft {
       geometry: None,
       folded_entities: Vec::new(),
       root_spawn,
+      spawn,
+      respawn,
       map: None,
     }
   }

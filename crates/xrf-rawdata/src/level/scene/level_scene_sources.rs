@@ -123,7 +123,7 @@ impl LevelSceneSources {
       .collect()
   }
 
-  /// The scene's GUID (decision 22): the first 16 bytes of the SHA-256 of each source's name, a zero, its length and
+  /// The scene's GUID: the first 16 bytes of the SHA-256 of each source's name, a zero, its length and
   /// its bytes, in the order of their names, then `extra`, the hash of a source read beside the directory, where given.
   pub(crate) fn get_guid(&self, extra: Option<&str>) -> EditableLevelGuid {
     let mut hash = Sha256::new();

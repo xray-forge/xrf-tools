@@ -21,6 +21,7 @@ use crate::level::level_breakable_conversion::LevelBreakableConversion;
 use crate::level::level_collision_index::LevelCollisionIndex;
 use crate::level::level_decal_index::LevelDecalIndex;
 use crate::level::level_decompile_context::LevelDecompileContext;
+use crate::level::level_entity_conversion::LevelEntityConversion;
 use crate::level::level_ladder_conversion::LevelLadderConversion;
 use crate::level::level_occluder_conversion::LevelOccluderConversion;
 use crate::level::level_surface_inference::LevelSurfaceInference;
@@ -37,15 +38,15 @@ use crate::object::decompile::object_inference::ObjectInference;
 use crate::provenance::level_scene_provenance::LevelSceneRefusal;
 
 /// A level's geometry, from the compiled level back into objects the scene places, and the sectors and portals that
-/// cull them (decision 11's shells): one object per compiled sector holding every static triangle the sector draws,
-/// named by the sector, whose index the Build gives back since it numbers sectors in the order the scene lists them
+/// cull them: a shell per compiled sector, one object holding every static triangle the sector draws, named by the
+/// sector, whose index the Build gives back since it numbers sectors in the order the scene lists them
 /// (`SceneBuilder::RenumerateSectors`, `BuilderCore.cpp:75`); the collision no render triangle draws; the occluders;
 /// and the ladders and breakable parts the Build took out of the geometry.
 ///
 /// A shell, the collision and the occluders keep the level's coordinates and stand at the origin: a shell spans its
 /// sector, so a pivot inside it would round the low bits off every point nearer the origin than the pivot, and two
-/// sectors would no longer meet exactly where the level had them meet (decision 11, as amended). A ladder or a
-/// breakable part stands where its packet placed it, in a frame of its own.
+/// sectors would no longer meet exactly where the level had them meet. A ladder or a breakable part stands where its
+/// packet placed it, in a frame of its own.
 pub struct LevelGeometryConversion;
 
 /// What a level's geometry decompiles from: the compiled bundle named `name`, its visuals and the buffers they draw
@@ -814,8 +815,9 @@ impl LevelGeometryConversion {
 
   /// Each entity of `spawn` the Build exported from the geometry as an object standing where the packet placed it, its
   /// packet's name folded into `decompile`: a ladder as its box ([`LevelLadderConversion`]), a breakable as its part of
-  /// `parts` ([`LevelBreakableConversion`]), refused where the part does not decompile. A packet that does not read is
-  /// left to the spawn points, which refuse it, and a breakable whose part is missing stays an entity.
+  /// `parts` ([`LevelBreakableConversion`]), either refused, and left an entity, where its geometry does not decompile.
+  /// A packet that does not read is left to the spawn points, which refuse it, and a breakable whose part is missing
+  /// stays an entity.
   fn decompile_entities<T: ByteOrder>(
     decompile: &mut LevelGeometryDecompile,
     name: &str,
@@ -828,12 +830,23 @@ impl LevelGeometryConversion {
         continue;
       };
 
-      if let Some(ladder) = LevelLadderConversion::decompile(name, decompile.census.ladders, &entity)? {
-        decompile.census.ladders += 1;
-        decompile.census.ladders_of_default_material += usize::from(ladder.is_material_inferred);
-        decompile.folded_entities.push(object.name.clone());
-        decompile.place(ladder.object, context);
-        continue;
+      match LevelLadderConversion::decompile(name, decompile.census.ladders, &entity) {
+        Ok(Some(ladder)) => {
+          decompile.census.ladders += 1;
+          decompile.census.ladders_of_default_material += usize::from(ladder.is_material_inferred);
+          decompile.folded_entities.push(object.name.clone());
+          decompile.place(ladder.object, context);
+          continue;
+        }
+        Ok(None) => {}
+        Err(error) => {
+          decompile.refused.push(LevelSceneRefusal {
+            file: String::from(LevelEntityConversion::SPAWN_FILE_NAME),
+            object: object.name.clone(),
+            reason: format!("The ladder stays an entity: {error}"),
+          });
+          continue;
+        }
       }
 
       let Some(path) = LevelBreakableConversion::get_part_path(&entity) else {

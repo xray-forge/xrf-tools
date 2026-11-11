@@ -30,7 +30,7 @@ pub struct LevelEntityConversion;
 pub struct LevelEntitySources<'a> {
   pub spawn: Option<&'a LevelSpawnFile>,
   pub respawn: Option<&'a LevelSpawnFile>,
-  /// The root spawn's objects standing on the level (decision 10). Where it holds any, they stand in for `spawn`'s
+  /// The root spawn's objects standing on the level. Where it holds any, they stand in for `spawn`'s
   /// entities but its graph points, which a root spawn keeps as graph vertices instead.
   pub root: &'a [AlifeObject],
   /// The names of entities the Build exported from the scene's geometry, which the decompile folded back into objects:
@@ -63,14 +63,29 @@ impl LevelEntityConversion {
   /// The prefix the decompile names an entity's attached shape after.
   pub const SHAPE_PREFIX: &'static str = "shape";
 
+  /// Keeps every entity's name in `sources` from the names generated after, as the export keeps each entity's name. A
+  /// scene decompile does this before any step names an object; [`Self::decompile`] does it again for a decompile of
+  /// the entities alone.
+  pub fn reserve_names<'a>(sources: &LevelEntitySources<'a>, context: &mut LevelDecompileContext) {
+    let listed = |file: Option<&'a LevelSpawnFile>| file.into_iter().flat_map(|list| &list.objects);
+
+    for name in listed(sources.spawn)
+      .chain(listed(sources.respawn))
+      .map(|object| object.name.as_str())
+      .chain(sources.root.iter().map(|object| object.header.name.as_str()))
+    {
+      context.names.reserve(name);
+    }
+  }
+
   /// The spawn points of a level's entities: those of `spawn` (or the root spawn's) first, then those of `respawn`
-  /// marked to respawn. Every name is reserved before any other is generated, as the export keeps it.
+  /// marked to respawn, every name reserved ([`Self::reserve_names`]) before any shape's is generated.
   ///
   /// From a root spawn, each object takes the place of its `level.spawn` packet of the same name, the fields xrAI fills
   /// in (`AlifeBuiltFields`) taken from that packet, and the objects only the root spawn holds follow in its order with
-  /// a fresh entity's (`AlifeBuiltFields::UNBUILT`), as does an object whose `level.spawn` packet does not read. A disagreement is recorded for each of those, for each packet only
-  /// `level.spawn` holds (left out), and for each object whose packet then is not `level.spawn`'s; an update packet is
-  /// kept where it differs from a fresh entity's.
+  /// a fresh entity's (`AlifeBuiltFields::UNBUILT`), as does an object whose `level.spawn` packet does not read. A
+  /// disagreement is recorded for each of those, for each packet only `level.spawn` holds (left out), and for each
+  /// object whose packet then is not `level.spawn`'s; an update packet is kept where it differs from a fresh entity's.
   ///
   /// # Errors
   ///
@@ -95,14 +110,7 @@ impl LevelEntityConversion {
       .collect();
     let mut decompile: LevelEntityDecompile = LevelEntityDecompile::default();
 
-    for name in spawn
-      .iter()
-      .chain(&respawn)
-      .map(|object| object.name.as_str())
-      .chain(root.iter().map(|object| object.header.name.as_str()))
-    {
-      context.names.reserve(name);
-    }
+    Self::reserve_names(sources, context);
 
     if sources.root.is_empty() {
       Self::decompile_listed::<T>(&spawn, Self::SPAWN_FILE_NAME, 0, &mut decompile, context)?;

@@ -3,6 +3,7 @@ mod build;
 mod collision;
 mod detail;
 mod entity;
+mod fixtures;
 mod fog_volume;
 mod geometry;
 mod glow;
@@ -19,8 +20,3 @@ mod spawn_data;
 mod spawn_point;
 mod wallmark;
 mod way;
-
-use xrf_editable_level::EditableLevelGuid;
-
-/// The scene every decompiled part here belongs to.
-const GUID: EditableLevelGuid = EditableLevelGuid { g0: 7, g1: 11 };
