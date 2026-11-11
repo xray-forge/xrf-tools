@@ -6,6 +6,7 @@ mod entity;
 mod fog_volume;
 mod geometry;
 mod glow;
+mod impostor;
 mod ladder;
 mod light;
 mod map;

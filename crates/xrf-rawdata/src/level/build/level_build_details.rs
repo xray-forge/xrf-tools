@@ -79,14 +79,19 @@ impl LevelBuildDetails {
       .iter()
       .map(|name| Self::read_texture(textures, name))
       .collect::<XrfResult<_>>()?;
-    let atlas: LevelBuildAtlas = LevelBuildAtlas::merge(&images.iter().collect::<Vec<_>>()).ok_or_else(|| {
+    let atlas: LevelBuildAtlas = LevelBuildAtlas::merge(
+      &images.iter().map(std::slice::from_ref).collect::<Vec<_>>(),
+      &LevelBuildAtlas::DETAIL_SIZES,
+    )
+    .ok_or_else(|| {
+      let (width, height) = LevelBuildAtlas::DETAIL_SIZES.largest;
+
       XrfError::new_invalid_error(format!(
-        "The detail objects' {} textures do not fit an atlas {} by {}",
-        names.len(),
-        LevelBuildAtlas::LARGEST,
-        LevelBuildAtlas::LARGEST
+        "The detail objects' {} textures do not fit an atlas {width} by {height}",
+        names.len()
       ))
     })?;
+    let image: &RgbaImage = &atlas.layers[0];
     // Each model's texture is among the sorted names, which the atlas places in their order.
     let objects: Vec<DetailModel> = models
       .into_iter()
@@ -115,7 +120,7 @@ impl LevelBuildDetails {
         )
       })
       .collect();
-    let chain: DdsMipChain = DdsMipChain::build(&atlas.image, DdsMipmaps::Filtered(DdsMipFilter::Kaiser))?;
+    let chain: DdsMipChain = DdsMipChain::build(image, DdsMipmaps::Filtered(DdsMipFilter::Kaiser))?;
 
     Ok(Self {
       file: LevelDetailsFile {
@@ -133,7 +138,7 @@ impl LevelBuildDetails {
       atlas: DdsEncoding::new(ImageFormat::BC1RgbaUnorm, Quality::Normal)
         .encode(&chain)?
         .write_to_bytes()?,
-      atlas_size: atlas.image.dimensions(),
+      atlas_size: image.dimensions(),
       textures: names.len(),
     })
   }

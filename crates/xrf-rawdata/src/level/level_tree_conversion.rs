@@ -1,17 +1,21 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 use xrf_editable_level::EditableObjectTransform;
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::XrfResult;
 use xrf_level::{LevelFile, LevelVisual};
-use xrf_math::Matrix4x4;
+use xrf_math::{Aabb, Matrix4x4, Vector3d};
+use xrf_ogf::OgfLodDefinitionChunk;
 
 use crate::level::level_collision_index::LevelCollisionIndex;
 use crate::level::level_decompile_context::LevelDecompileContext;
 use crate::level::level_geometry_conversion::LevelDecompiledObject;
+use crate::level::level_lod_strip::LevelLodStrip;
 use crate::level::level_surface_inference::LevelSurfaceInference;
+use crate::level::level_tree_impostor::{LevelTreeImpostor, LevelTreeImpostorAtlas};
 use crate::level::level_visual_geometry::LevelVisualGeometry;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
+use crate::provenance::level_scene_provenance::LevelSceneRefusal;
 
 /// A level's trees folded back into the multi-use objects the Build placed them from (`SceneBuilder::BuildMUObject`).
 /// xrLC drew each placement as one tree visual (`MT_TREE_ST`, `MT_TREE_PM`) per subdivision of its model, in the model's
@@ -21,9 +25,16 @@ use crate::object::decompile::object_decompiler::ObjectDecompiler;
 /// `mp_darkvalley`, `mp_firestation` and `zaton`).
 ///
 /// Each model comes back as an object of its subdivisions in its own space, flagged `eoMultipleUsage`, dressed as its
-/// first placement lies on the collision form; each placement as a scene object of its matrix, in its sector. The
-/// impostor is not kept, since the editor's Build needs the model's own LOD textures for one.
+/// first placement lies on the collision form; each placement as a scene object of its matrix, in its sector. Where
+/// that placement's `MT_LOD` names the model's strip in the level's impostor atlas, the strips are cut back out as the
+/// textures the Build reads (`lod\lod_<model>`) and the model is flagged `eoUsingLOD`.
 pub(crate) struct LevelTreeConversion;
+
+/// What a level holds of its trees' impostors: the atlas, and each `MT_LOD`'s definition by its visual's index.
+pub(crate) struct LevelTreeImpostors<'a> {
+  pub(crate) atlas: &'a LevelTreeImpostorAtlas,
+  pub(crate) lods: HashMap<u32, &'a OgfLodDefinitionChunk>,
+}
 
 /// One tree visual of a sector, its geometry in its model's own space.
 pub(crate) struct LevelTreeVisual {
@@ -41,6 +52,10 @@ pub(crate) struct LevelTreeDecompile {
   /// The models, each at the origin of its own space.
   pub(crate) models: Vec<LevelDecompiledObject>,
   pub(crate) placements: Vec<LevelTreePlacement>,
+  /// Each model's impostor strips, by its reference, where it has one.
+  pub(crate) impostors: Vec<(String, LevelTreeImpostor)>,
+  /// The impostors that did not cut, the model coming back without one.
+  pub(crate) refused: Vec<LevelSceneRefusal>,
 }
 
 /// A placed tree: the model it places by reference, the mesh its sector names, its transform and sector.
@@ -77,7 +92,8 @@ impl LevelTreeConversion {
   }
 
   /// The models and placements of `visuals`, each model named `levels\<name>\<name>_tree_<N>` in the order its first
-  /// placement comes; each model dressed by `surfaces` from where its first placement lies on `collision`.
+  /// placement comes; each model dressed by `surfaces` from where its first placement lies on `collision`, and given
+  /// its impostor from `impostors` where that placement's `MT_LOD` names one.
   ///
   /// # Errors
   ///
@@ -87,6 +103,7 @@ impl LevelTreeConversion {
     visuals: Vec<LevelTreeVisual>,
     mut surfaces: Option<&mut LevelSurfaceInference>,
     mut collision: Option<&mut LevelCollisionIndex>,
+    impostors: Option<&LevelTreeImpostors<'_>>,
     context: &mut LevelDecompileContext,
   ) -> XrfResult<LevelTreeDecompile> {
     // Each placement in order of its first visual, with its visuals' subdivisions sorted.
@@ -109,6 +126,8 @@ impl LevelTreeConversion {
     let mut decompile: LevelTreeDecompile = LevelTreeDecompile {
       models: Vec::new(),
       placements: Vec::with_capacity(placements.len()),
+      impostors: Vec::new(),
+      refused: Vec::new(),
     };
     // Each model's reference and mesh, by its subdivisions.
     let mut models: BTreeMap<Vec<[u32; 4]>, (String, String)> = BTreeMap::new();
@@ -121,6 +140,7 @@ impl LevelTreeConversion {
         Some(model) => model.clone(),
         None => {
           let reference: String = format!("levels\\{name}\\{name}_tree_{}", models.len());
+          let parent: Option<u32> = visuals.first().and_then(|visual| visual.parent);
           let geometry: Vec<LevelVisualGeometry> = visuals
             .into_iter()
             .flat_map(|visual| {
@@ -135,6 +155,33 @@ impl LevelTreeConversion {
           let mut decompiled = ObjectDecompiler::decompile_level_geometry(&geometry)?;
 
           decompiled.object.flags |= EditableObjectFile::MULTIPLE_USAGE_FLAG;
+
+          if let Some((impostors, lod)) =
+            impostors.and_then(|impostors| Some((impostors, *impostors.lods.get(&parent?)?)))
+          {
+            match impostors.atlas.cut(lod) {
+              Ok(impostor) => {
+                decompiled.object.flags |= EditableObjectFile::USING_LOD_FLAG;
+                decompile.impostors.push((reference.clone(), impostor));
+
+                if !Self::fit_impostor_box(&mut decompiled.object, lod, &placement) {
+                  decompile.refused.push(LevelSceneRefusal {
+                    file: String::from(LevelFile::FILE_NAME),
+                    object: reference.clone(),
+                    reason: String::from(
+                      "The impostor's quads stand in no box around the model, so the Build stands them around the \
+                       model's own",
+                    ),
+                  });
+                }
+              }
+              Err(error) => decompile.refused.push(LevelSceneRefusal {
+                file: String::from(LevelTreeImpostorAtlas::COLOR_FILE_NAME),
+                object: reference.clone(),
+                reason: format!("The impostor did not cut, so the model comes back without one: {error}"),
+              }),
+            }
+          }
 
           let mesh: String = decompiled
             .object
@@ -166,6 +213,82 @@ impl LevelTreeConversion {
     }
 
     Ok(decompile)
+  }
+
+  /// Widens `object`'s first mesh's stored box to the box its impostor `lod` was stood in by `placement`, as the Build
+  /// stands it in the union of the meshes' boxes (`CEditableObject::GetLODFrame`), which the editor reads as saved
+  /// (`CEditableMesh::LoadMesh`). The source object's box held geometry the level does not draw, such as a collision
+  /// trunk under the ground; so the rebuilt quads stand where the shipped ones did. The box across is known only as
+  /// its widest half side, which goes on the model's own widest axis.
+  ///
+  /// Returns `false`, leaving the box as it was, where `placement` does not invert or the recovered box does not hold
+  /// the model's.
+  pub(crate) fn fit_impostor_box(
+    object: &mut EditableObjectFile,
+    lod: &OgfLodDefinitionChunk,
+    placement: &Matrix4x4,
+  ) -> bool {
+    /// How far the model's box may stand past the recovered one, past rounding.
+    const TOLERANCE: f32 = 1e-3;
+
+    let Some(inverse) = placement.invert_affine() else {
+      return false;
+    };
+    let Some(held) = object
+      .meshes
+      .iter()
+      .flatten()
+      .map(|mesh| mesh.bounds)
+      .reduce(|mut held, bounds| {
+        held.include_box(&bounds);
+        held
+      })
+    else {
+      return false;
+    };
+    let corners: [Vector3d; 4] = lod.facets[0]
+      .vertices
+      .each_ref()
+      .map(|vertex| inverse.transform_point(&vertex.position));
+    let (center, across, half_height) = LevelLodStrip::get_first_frame_extent(&corners);
+    let reach = |min: f32, max: f32, middle: f32| (middle - min).max(max - middle);
+    let (half_x, half_z) = (
+      reach(held.min.x, held.max.x, center.x),
+      reach(held.min.z, held.max.z, center.z),
+    );
+    let (half_x, half_z) = if held.max.x - held.min.x >= held.max.z - held.min.z {
+      (across, half_z)
+    } else {
+      (half_x, across)
+    };
+    let fitted: Aabb = Aabb {
+      min: Vector3d::new(center.x - half_x, center.y - half_height, center.z - half_z),
+      max: Vector3d::new(center.x + half_x, center.y + half_height, center.z + half_z),
+    };
+    let holds: bool = [
+      (fitted.min.x, held.min.x),
+      (fitted.min.y, held.min.y),
+      (fitted.min.z, held.min.z),
+    ]
+    .iter()
+    .all(|(fitted, held)| *fitted <= held + TOLERANCE)
+      && [
+        (fitted.max.x, held.max.x),
+        (fitted.max.y, held.max.y),
+        (fitted.max.z, held.max.z),
+      ]
+      .iter()
+      .all(|(fitted, held)| *fitted >= held - TOLERANCE);
+
+    if !holds {
+      return false;
+    }
+
+    if let Some(mesh) = object.meshes.iter_mut().flatten().next() {
+      mesh.bounds.include_box(&fitted);
+    }
+
+    true
   }
 
   /// `geometry` in its model's space dressed as it lies placed by `placement`: split by the game material its placed

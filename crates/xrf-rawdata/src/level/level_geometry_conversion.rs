@@ -24,8 +24,12 @@ use crate::level::level_decompile_context::LevelDecompileContext;
 use crate::level::level_ladder_conversion::LevelLadderConversion;
 use crate::level::level_occluder_conversion::LevelOccluderConversion;
 use crate::level::level_surface_inference::LevelSurfaceInference;
-use crate::level::level_tree_conversion::{LevelTreeConversion, LevelTreeDecompile, LevelTreeVisual};
+use crate::level::level_tree_conversion::{
+  LevelTreeConversion, LevelTreeDecompile, LevelTreeImpostors, LevelTreeVisual,
+};
+use crate::level::level_tree_impostor::LevelTreeImpostorAtlas;
 use crate::level::level_visual_geometry::LevelVisualGeometry;
+use crate::level::scene::level_scene_decompile::LevelSceneTextureFile;
 use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 use crate::object::decompile::object_decompile::ObjectDecompile;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
@@ -60,6 +64,8 @@ pub struct LevelGeometrySources<'a, D: ChunkDataSource> {
   pub spawn: Option<&'a LevelSpawnFile>,
   /// The breakable parts the Build wrote beside it, by their paths in the level's directory, `meshes/brkbl#<N>.ogf`.
   pub breakable_parts: &'a BTreeMap<String, OgfFile>,
+  /// The trees' impostor atlas, `level_lods.dds` and its normals, which the tree models' strips are cut from.
+  pub impostors: Option<&'a LevelTreeImpostorAtlas>,
 }
 
 /// One object the decompile writes, by the path the scene references it at, and where its scene object stands.
@@ -100,6 +106,9 @@ pub struct LevelGeometryCensus {
   pub tree_placements: usize,
   /// Impostors standing for trees afar, which the build makes again from the trees.
   pub impostors: usize,
+  /// Tree models given their impostor strips back, cut from the level's atlas.
+  #[serde(default)]
+  pub tree_impostors: usize,
   /// Static triangles dropped as copies of wall marks ([`LevelDecalIndex`]), counted in the static triangles read.
   pub decal_triangles: usize,
   /// Static and collision-only triangles dropped as needles, so thin that xrLC measures no area in them and stops, the
@@ -141,7 +150,9 @@ pub struct LevelGeometryDecompile {
   pub sectors: EditableObjectPart<EditableSectorObject>,
   pub portals: EditableObjectPart<EditablePortalObject>,
   pub census: LevelGeometryCensus,
-  /// Each sector left out, and why.
+  /// The tree models' impostor strips, which the Build loads for them.
+  pub textures: Vec<LevelSceneTextureFile>,
+  /// Each sector left out, and each impostor that did not cut, and why.
   pub refused: Vec<LevelSceneRefusal>,
   /// The names of the spawn list's packets the objects stand for, which the Build writes again from them, so no spawn
   /// point should.
@@ -206,8 +217,8 @@ impl LevelGeometryConversion {
   ///   (`ObjectDecompiler::decompile_level_geometry`), a sector per compiled sector naming it, and a portal per compiled
   ///   portal; with `surfaces`, each visual's triangles are split by the game material they lie on and dressed
   ///   else every surface takes the editor's defaults;
-  /// - the trees, as multi-use objects and a scene object per placement (`LevelTreeConversion`), their impostors
-  ///   dropped;
+  /// - the trees, as multi-use objects and a scene object per placement (`LevelTreeConversion`), each model with its
+  ///   impostor strips cut from the atlas where the sources give one, as textures;
   /// - with the collision form, the faces no render triangle lies on, as `<level>_collision`;
   /// - `level.hom` and `level.som`, as `<level>_hom` and `<level>_som` ([`LevelOccluderConversion`]);
   /// - with the spawn list, each ladder and breakable part the Build exported from the geometry, as `<level>_ladder_<N>`
@@ -234,6 +245,7 @@ impl LevelGeometryConversion {
       sectors: EditableObjectPart::new(context.guid, Vec::new()),
       portals: EditableObjectPart::new(context.guid, Vec::new()),
       census: LevelGeometryCensus::default(),
+      textures: Vec::new(),
       refused: Vec::new(),
       folded_entities: Vec::new(),
     };
@@ -369,7 +381,25 @@ impl LevelGeometryConversion {
       })
       .collect::<XrfResult<_>>()?;
     let mut sector_names: Vec<String> = Vec::with_capacity(shells.len());
-    let trees: LevelTreeDecompile = LevelTreeConversion::decompile(name, trees, surfaces, collision, context)?;
+    let impostors: Option<LevelTreeImpostors<'_>> = sources.impostors.map(|atlas| LevelTreeImpostors {
+      atlas,
+      lods: visuals
+        .visuals
+        .iter()
+        .zip(0u32..)
+        .filter_map(|(visual, index)| Some((index, visual.lod.as_ref()?.as_ref().ok()?)))
+        .collect(),
+    });
+    let mut trees: LevelTreeDecompile =
+      LevelTreeConversion::decompile(name, trees, surfaces, collision, impostors.as_ref(), context)?;
+
+    decompile.census.tree_impostors = trees.impostors.len();
+    decompile.refused.append(&mut trees.refused);
+
+    for (reference, impostor) in std::mem::take(&mut trees.impostors) {
+      decompile.textures.extend(impostor.into_textures(&reference)?);
+    }
+
     // Each placement's scene object name and mesh, by its sector.
     let mut tree_items: BTreeMap<u16, Vec<EditableSectorItem>> = BTreeMap::new();
     let mut tree_objects: Vec<EditableSceneObject> = Vec::with_capacity(trees.placements.len());

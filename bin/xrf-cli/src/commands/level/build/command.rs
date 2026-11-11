@@ -37,8 +37,9 @@ impl GenericCommand for BuildCommand {
          the scene's parts: level.game, level.env_mod, level.fog_vol, and level.spawn, level_rs.spawn, \
          level.ps_static, level.snd_static, level.snd_env and level.wallmarks where the scene holds them; and given \
          the objects roots and game materials, the build.prj xrLC compiles the geometry and lighting from, level.ltx, \
-         level.hom and level.som where objects occlude, and build.details and its atlas build_details.dds where the \
-         scene holds details",
+         level.hom and level.som where objects occlude, build.details and its atlas build_details.dds where the \
+         scene holds details, and the impostor atlas level_lods.dds and level_lods_nm.dds where a multi-use object \
+         has an impostor",
       )
       .arg(
         Arg::new("path")
@@ -70,8 +71,9 @@ impl GenericCommand for BuildCommand {
       .arg(
         Arg::new("textures")
           .help(
-            "Textures root ($game_textures$) the detail objects' textures are merged from into build_details.dds, \
-             which a scene of details needs",
+            "Textures root ($game_textures$) the detail objects' textures are merged from into build_details.dds, and \
+             the multi-use objects' impostor strips (lod/lod_<object>.dds and _nm) into level_lods.dds and \
+             level_lods_nm.dds; a scene of details or impostors needs it",
           )
           .long("textures")
           .requires("objects")

@@ -146,10 +146,15 @@ fn matches_no_model_whose_coordinates_are_no_remap() {
 fn merges_textures_as_the_editor_packs_its_detail_atlas() {
   let image = |width: u32, height: u32| RgbaImage::from_pixel(width, height, Rgba([200, 100, 50, 255]));
   let at = |x: f32, y: f32| Vector2d::new(x, y);
-  let (small, square, tall) = (image(64, 32), image(256, 256), image(128, 512));
-  let atlas: LevelBuildAtlas = LevelBuildAtlas::merge(&[&small, &square, &tall]).expect("a fit");
+  let merge = |textures: &[RgbaImage]| {
+    LevelBuildAtlas::merge(
+      &textures.iter().map(std::slice::from_ref).collect::<Vec<_>>(),
+      &LevelBuildAtlas::DETAIL_SIZES,
+    )
+  };
+  let atlas: LevelBuildAtlas = merge(&[image(64, 32), image(256, 256), image(128, 512)]).expect("a fit");
 
-  assert_eq!(atlas.image.dimensions(), (512, 512));
+  assert_eq!(atlas.layers[0].dimensions(), (512, 512));
   assert_eq!(
     atlas.places,
     [
@@ -172,31 +177,51 @@ fn merges_textures_as_the_editor_packs_its_detail_atlas() {
     "the tall texture first, at the corner, then the square beside it and the small one beside that"
   );
   assert_eq!(atlas.places[0].remap(1.0, 1.0), (0.875, 0.0625));
-  assert_eq!(*atlas.image.get_pixel(384, 0), Rgba([200, 100, 50, 255]));
+  assert_eq!(*atlas.layers[0].get_pixel(384, 0), Rgba([200, 100, 50, 255]));
   assert_eq!(
-    *atlas.image.get_pixel(511, 511),
+    *atlas.layers[0].get_pixel(511, 511),
     Rgba([0, 0, 0, 0]),
     "the rest left clear"
   );
 
-  let stacked: LevelBuildAtlas = LevelBuildAtlas::merge(&[&image(512, 128), &image(512, 384)]).expect("a fit");
+  let stacked: LevelBuildAtlas = merge(&[image(512, 128), image(512, 384)]).expect("a fit");
 
-  assert_eq!(stacked.image.dimensions(), (512, 512));
+  assert_eq!(stacked.layers[0].dimensions(), (512, 512));
   assert_eq!(stacked.places[0].offset, at(0.0, 0.75), "the smaller below the larger");
-  assert!(
-    LevelBuildAtlas::merge(&[&image(2048, 16)]).is_none(),
-    "past the largest atlas"
-  );
+  assert!(merge(&[image(2048, 16)]).is_none(), "past the largest atlas");
 
-  let turned: LevelBuildAtlas = LevelBuildAtlas::merge(&[&image(256, 512)]).expect("a fit");
+  let turned: LevelBuildAtlas = merge(&[image(256, 512)]).expect("a fit");
 
   assert_eq!(
-    turned.image.dimensions(),
+    turned.layers[0].dimensions(),
     (512, 256),
     "the atlas widens before it grows tall"
   );
   assert!(turned.places[0].is_rotated);
   assert_eq!(turned.places[0].remap(0.0, 1.0), (1.0, 0.0), "turned, u and v swap");
+}
+
+/// Impostor strips merge with their normals as a second layer at the same spots, in an atlas starting one strip in
+/// size that grows tall first.
+#[test]
+fn merges_layered_strips_as_the_build_packs_its_impostors() {
+  let strip = |value: u8| RgbaImage::from_pixel(512, 64, Rgba([value, value, value, 255]));
+  let (first, second) = ([strip(10), strip(20)], [strip(30), strip(40)]);
+  let atlas: LevelBuildAtlas = LevelBuildAtlas::merge(&[&first, &second], &LevelBuildAtlas::LOD_SIZES).expect("a fit");
+
+  assert_eq!(atlas.layers.len(), 2);
+  assert_eq!(
+    atlas.layers[1].dimensions(),
+    (512, 128),
+    "the narrower side, the height, doubles"
+  );
+  assert_eq!(atlas.places[1].offset, Vector2d::new(0.0, 0.5));
+  assert_eq!(*atlas.layers[0].get_pixel(0, 64), Rgba([30, 30, 30, 255]));
+  assert_eq!(
+    *atlas.layers[1].get_pixel(0, 64),
+    Rgba([40, 40, 40, 255]),
+    "each layer at its texture's spot"
+  );
 }
 
 /// The export keeps the planted objects alone, compiled from their library objects with their coordinates moved into

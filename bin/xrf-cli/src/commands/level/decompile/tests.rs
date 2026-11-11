@@ -177,6 +177,18 @@ fn puts_objects_beside_the_levels_directory_by_default() {
 }
 
 #[test]
+fn puts_textures_in_the_gamedata_beside_the_rawdata_by_default() {
+  assert_eq!(
+    DecompileCommand::get_default_textures_root(Path::new("editors/rawdata/levels/zaton.level")),
+    Path::new("editors/rawdata")
+      .join("..")
+      .join("gamedata")
+      .join("textures"),
+    "the SDK's editors/gamedata/textures beside editors/rawdata"
+  );
+}
+
+#[test]
 fn refuses_a_named_library_that_does_not_exist() -> XrfResult {
   let root: PathBuf = level_root("library")?;
   let error: String = get_error(decompile(

@@ -8,7 +8,9 @@ use xrf_level::{BuildAimapFile, BuildPrjFile, LevelHomFile, LevelSomFile};
 use xrf_spawn::AlifeObject;
 
 use crate::level::build::level_build_details::LevelBuildDetails;
+use crate::level::build::level_build_impostors::LevelBuildImpostorAtlas;
 use crate::level::level_map_conversion::LevelMapConversion;
+use crate::level::level_tree_impostor::LevelTreeImpostorAtlas;
 use crate::provenance::level_scene_provenance::LevelSceneRefusal;
 
 /// A scene exported for the level compiler: `build.prj`, the occluders and the map's settings written beside it, and
@@ -26,6 +28,8 @@ pub struct LevelBuildExport {
   pub details: Option<LevelBuildDetails>,
   /// `build.aimap`, where the scene holds AI map nodes.
   pub ai_map: Option<BuildAimapFile>,
+  /// `level_lods.dds` and `level_lods_nm.dds`, where a multi-use object has an impostor.
+  pub impostors: Option<LevelBuildImpostorAtlas>,
   /// The entities the build cuts from the geometry, the ladders (`climable_object`), which `level.spawn` opens with:
   /// what [`LevelSceneExporter::export`](crate::LevelSceneExporter::export) takes as built.
   pub entities: Vec<AlifeObject>,
@@ -56,6 +60,8 @@ pub struct LevelBuildCensus {
   /// Multi-use models and the placements referencing them.
   pub multi_use_models: usize,
   pub multi_use_references: usize,
+  /// Impostors of those models, whose strips the atlas merges.
+  pub impostors: usize,
   /// AI map nodes the map holds.
   pub ai_map_nodes: usize,
   /// Detail objects the slots plant, and the textures their atlas merges.
@@ -68,7 +74,7 @@ pub struct LevelBuildCensus {
 
 impl LevelBuildExport {
   /// Every file [`Self::into_files`] may give, sorted by name.
-  pub const FILE_NAMES: [&'static str; 7] = [
+  pub const FILE_NAMES: [&'static str; 9] = [
     BuildAimapFile::FILE_NAME,
     LevelBuildDetails::FILE_NAME,
     BuildPrjFile::FILE_NAME,
@@ -76,10 +82,13 @@ impl LevelBuildExport {
     LevelHomFile::FILE_NAME,
     LevelMapConversion::FILE_NAME,
     LevelSomFile::FILE_NAME,
+    LevelTreeImpostorAtlas::COLOR_FILE_NAME,
+    LevelTreeImpostorAtlas::NORMAL_FILE_NAME,
   ];
 
   /// Each file by name, written in `T`'s byte order: `build.prj` and `level.ltx` always, `level.hom` and `level.som`
-  /// where their occluders are, `build.details` and its atlas where the details are, `build.aimap` where the AI map is.
+  /// where their occluders are, `build.details` and its atlas where the details are, `build.aimap` where the AI map is,
+  /// and `level_lods.dds` and `level_lods_nm.dds` where the impostors are.
   ///
   /// # Errors
   ///
@@ -118,6 +127,11 @@ impl LevelBuildExport {
         encode(&|writer| details.file.write::<T>(writer))?,
       );
       files.insert(LevelBuildDetails::ATLAS_FILE_NAME, details.atlas);
+    }
+
+    if let Some(impostors) = self.impostors {
+      files.insert(LevelTreeImpostorAtlas::COLOR_FILE_NAME, impostors.color);
+      files.insert(LevelTreeImpostorAtlas::NORMAL_FILE_NAME, impostors.normal);
     }
 
     Ok(files)

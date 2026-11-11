@@ -132,6 +132,44 @@ impl Matrix4x4 {
     }
   }
 
+  /// The inverse of the affine transform, its fourth column taken as [`Self::AFFINE_COLUMN`], solved in double precision
+  /// by cofactors so that a scaled or sheared placement inverts as well as a rigid one; `None` where its axes are
+  /// singular.
+  pub fn invert_affine(&self) -> Option<Self> {
+    let at = |row: usize, column: usize| f64::from(self.values[row * 4 + column]);
+    // Cofactors of the upper 3x3, the transpose of which over the determinant is its inverse.
+    let cofactor = |row: usize, column: usize| {
+      let (rows, columns) = ([(row + 1) % 3, (row + 2) % 3], [(column + 1) % 3, (column + 2) % 3]);
+
+      at(rows[0], columns[0]) * at(rows[1], columns[1]) - at(rows[0], columns[1]) * at(rows[1], columns[0])
+    };
+    let determinant: f64 = (0..3).map(|column| at(0, column) * cofactor(0, column)).sum();
+
+    if determinant.abs() <= f64::EPSILON {
+      return None;
+    }
+
+    let mut values: [f32; Self::ELEMENTS] = [0.0; Self::ELEMENTS];
+
+    for row in 0..3 {
+      for column in 0..3 {
+        values[row * 4 + column] = (cofactor(column, row) / determinant) as f32;
+      }
+    }
+
+    // The translation moved back: the origin's image, `-c * inverse`, row vector by rows.
+    for column in 0..3 {
+      values[12 + column] = (-(0..3)
+        .map(|row| at(3, row) * cofactor(column, row) / determinant)
+        .sum::<f64>()) as f32;
+      values[column * 4 + 3] = Self::AFFINE_COLUMN[column];
+    }
+
+    values[15] = Self::AFFINE_COLUMN[3];
+
+    Some(Self { values })
+  }
+
   /// Turns a direction by the upper three rows, leaving the translation out of it.
   pub fn transform_direction(&self, direction: &Vector3d<f32>) -> Vector3d<f32> {
     Vector3d {
@@ -276,6 +314,33 @@ mod tests {
     assert_eq!(
       Matrix4x4::IDENTITY.multiply_affine(&placed()),
       Matrix4x4::IDENTITY.multiply(&placed())
+    );
+  }
+
+  #[test]
+  fn test_an_affine_inverse_takes_a_placed_point_back() {
+    use crate::affine_3d::Affine3d;
+
+    let placement: Matrix4x4 = Matrix4x4::from_translation(&Vector3d::new(10.0, 20.0, 30.0))
+      .multiply(&Matrix4x4::from(&Affine3d::from_heading_pitch_bank(0.4, -0.3, 1.1)))
+      .multiply(&Matrix4x4::from_scale(&Vector3d::new(2.0, 0.5, 1.5)));
+    let inverse: Matrix4x4 = placement.invert_affine().expect("an invertible placement");
+    let point: Vector3d = Vector3d::new(0.5, -2.0, 3.0);
+
+    assert!(
+      inverse
+        .transform_point(&placement.transform_point(&point))
+        .distance(&point)
+        <= 1e-5
+    );
+    assert_eq!(inverse.get_fourth_column(), Matrix4x4::AFFINE_COLUMN);
+    assert_eq!(
+      placed().invert_affine().map(|it| it.get_translation()),
+      Some(Vector3d::new(-5.0, -20.0, -30.0))
+    );
+    assert_eq!(
+      Matrix4x4::from_scale(&Vector3d::new(1.0, 0.0, 1.0)).invert_affine(),
+      None
     );
   }
 

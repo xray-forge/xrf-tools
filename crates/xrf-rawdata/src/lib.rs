@@ -7,6 +7,7 @@ pub(crate) mod provenance;
 pub use crate::level::build::level_build_details::LevelBuildDetails;
 pub use crate::level::build::level_build_export::{LevelBuildCensus, LevelBuildExport};
 pub use crate::level::build::level_build_exporter::LevelBuildExporter;
+pub use crate::level::build::level_build_impostors::LevelBuildImpostorAtlas;
 pub use crate::level::build::level_build_sources::LevelBuildSources;
 pub use crate::level::level_breakable_conversion::LevelBreakableConversion;
 pub use crate::level::level_collision_index::{LevelCollisionIndex, LevelCollisionLookup};
@@ -36,11 +37,14 @@ pub use crate::level::level_surface_inference::{
   LevelCompilerShaderChoice, LevelCompilerShaderReason, LevelShaderPairings, LevelSurfaceCensus, LevelSurfaceInference,
   LevelSurfaces,
 };
+pub use crate::level::level_tree_impostor::LevelTreeImpostorAtlas;
 pub use crate::level::level_visual_geometry::LevelVisualGeometry;
 pub use crate::level::level_wallmark_conversion::LevelWallmarkConversion;
 pub use crate::level::level_way_conversion::LevelWayConversion;
 pub use crate::level::scene::level_decompile_options::LevelDecompileOptions;
-pub use crate::level::scene::level_scene_decompile::{LevelSceneDecompile, LevelSceneObjectFile};
+pub use crate::level::scene::level_scene_decompile::{
+  LevelSceneDecompile, LevelSceneObjectFile, LevelSceneTextureFile,
+};
 pub use crate::level::scene::level_scene_decompiler::LevelSceneDecompiler;
 pub use crate::object::compile::geometry::export_vertex::ExportVertex;
 pub use crate::object::compile::geometry::export_vertex_bone::ExportVertexBone;
