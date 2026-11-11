@@ -10,6 +10,7 @@ use xrf_ogf::{OgfLodDefinitionChunk, OgfLodFacet, OgfLodVertex};
 use xrf_test_utils::GeneratedResources;
 
 use crate::level::build::level_build_atlas::{LevelBuildAtlas, LevelBuildAtlasPlace};
+use crate::level::build::level_build_impostor_limit::LevelBuildImpostorLimit;
 use crate::level::build::level_build_impostors::LevelBuildImpostors;
 use crate::level::build::level_build_models::LevelBuildModels;
 use crate::level::build::level_build_sectors::LevelBuildSectors;
@@ -101,6 +102,23 @@ fn stands_each_frame_through_the_box_and_reads_the_box_back() {
       Vector2d::new(0.125 + 0.5 / 512.0, 1.0 - 0.5 / 64.0),
     ],
     "the second cell, half a pixel in, corners clockwise from the top left"
+  );
+}
+
+/// One strip past the 128 a 2048 atlas holds: SDK 0.7's limit refuses it, the default grows the atlas to 4096 by 2048,
+/// as Anomaly's largest levels ship it.
+#[test]
+fn grows_the_impostor_atlas_past_the_sdks_limit_by_default() {
+  let strips: Vec<[RgbaImage; 2]> = (0..129).map(|_| [strip(1), strip(2)]).collect();
+  let layers: Vec<&[RgbaImage]> = strips.iter().map(<[RgbaImage; 2]>::as_slice).collect();
+
+  assert!(LevelBuildAtlas::merge(&layers, &LevelBuildImpostorLimit::Sdk.get_sizes()).is_none());
+  assert_eq!(
+    LevelBuildAtlas::merge(&layers, &LevelBuildImpostorLimit::default().get_sizes())
+      .expect("a fit")
+      .layers[0]
+      .dimensions(),
+    (4096, 2048)
   );
 }
 
@@ -310,7 +328,10 @@ fn builds_an_impostor_from_the_strips_the_decompile_writes() -> XrfResult {
     "the impostor's material goes in before the model's"
   );
 
-  let (lods, atlas) = models.impostors.into_export()?.expect("an impostor");
+  let (lods, atlas) = models
+    .impostors
+    .into_export(LevelBuildImpostorLimit::default())?
+    .expect("an impostor");
   let color: RgbaImage = xrf_dds::DdsFile::read_from_vec(atlas.color)?.decode_rgba(0)?;
 
   assert_eq!(
