@@ -8,6 +8,7 @@ pub use crate::level::build::level_build_details::LevelBuildDetails;
 pub use crate::level::build::level_build_export::{LevelBuildCensus, LevelBuildExport};
 pub use crate::level::build::level_build_exporter::LevelBuildExporter;
 pub use crate::level::build::level_build_impostors::LevelBuildImpostorAtlas;
+pub use crate::level::build::level_build_lighting::LevelBuildLighting;
 pub use crate::level::build::level_build_sources::LevelBuildSources;
 pub use crate::level::level_breakable_conversion::LevelBreakableConversion;
 pub use crate::level::level_collision_index::{LevelCollisionIndex, LevelCollisionLookup};

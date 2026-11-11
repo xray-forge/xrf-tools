@@ -9,6 +9,7 @@ pub(crate) mod level_build_geometry;
 pub(crate) mod level_build_hemisphere;
 pub(crate) mod level_build_impostors;
 pub(crate) mod level_build_library;
+pub(crate) mod level_build_lighting;
 pub(crate) mod level_build_lights;
 pub(crate) mod level_build_models;
 pub(crate) mod level_build_occluders;
