@@ -88,6 +88,14 @@ impl LevelBuildGeometry {
           continue;
         }
 
+        // Registered before the game material is looked at, so a breakable or climbable surface's material is in the
+        // tables though its faces are not, as `BuildMesh` (`BuilderRemote.cpp:631`) registers it.
+        let material: u16 = tables.get_material(
+          &surface.shader,
+          Some(&surface.compiler_shader),
+          &surface.texture,
+          sector,
+        )?;
         let game_material: &GameMtlMaterial = game_materials
           .find_material_by_name(&surface.game_material)
           .ok_or_else(|| {
@@ -115,13 +123,6 @@ impl LevelBuildGeometry {
             surface.name, placed.reference
           )));
         }
-
-        let material: u16 = tables.get_material(
-          &surface.shader,
-          Some(&surface.compiler_shader),
-          &surface.texture,
-          sector,
-        )?;
 
         for face in &surface_faces.faces {
           self.add_face(

@@ -11,6 +11,7 @@ use xrf_gamemtl::{GameMtlFile, GameMtlMaterial};
 use xrf_level::LevelDynamicLight;
 use xrf_math::{Aabb, Vector2d, Vector3d};
 
+use crate::level::build::level_build_geometry::LevelBuildGeometry;
 use crate::level::build::level_build_hemisphere::LevelBuildHemisphere;
 use crate::level::build::level_build_lights::LevelBuildLights;
 use crate::level::build::level_build_occluders::LevelBuildOccluders;
@@ -319,4 +320,32 @@ fn simplifies_a_portal_of_more_corners_to_six_on_its_plane_wound_as_it_was() {
     None,
     "corners holding no plane"
   );
+}
+
+#[test]
+fn registers_a_climbable_surfaces_material_though_its_faces_are_left_out() -> XrfResult {
+  let mut ladder: GameMtlMaterial = GameMtlMaterial::new(7, "materials\\fake_ladders");
+
+  ladder.flags |= GameMtlMaterial::FLAG_CLIMABLE;
+
+  let library: GameMtlFile = GameMtlFile::new(vec![ladder], Vec::new());
+  let mut tables: LevelBuildTables = LevelBuildTables::default();
+  let mut geometry: LevelBuildGeometry = LevelBuildGeometry::default();
+
+  geometry.add_object(
+    &placed_at(0.0),
+    &quad("materials\\fake_ladders", 0)?,
+    &sectors(),
+    &mut tables,
+    &library,
+  )?;
+
+  assert_eq!((geometry.faces.len(), geometry.skipped_faces), (0, 2));
+  assert_eq!(
+    tables.into_records()?.materials.len(),
+    1,
+    "the material registered before the game material is looked at, as `BuildMesh` does"
+  );
+
+  Ok(())
 }
