@@ -21,7 +21,7 @@ pub struct LevelBuildDetails {
   /// `build.details`: the planted objects, each compiled from its library object with its coordinates moved into the
   /// atlas, and the slots renumbered with their light zeroed.
   pub file: LevelDetailsFile,
-  /// `build_details.dds`, DXT1 with mipmaps.
+  /// `build_details.dds`, DXT1 with its one bit of alpha and mipmaps.
   pub atlas: Vec<u8>,
   /// The atlas's size, and how many textures it merges.
   pub atlas_size: (u32, u32),
@@ -135,7 +135,10 @@ impl LevelBuildDetails {
         objects,
         slots,
       },
+      // `tfADXT1` (`ESceneDOTools.cpp:542`): DXT1 whose cut-out pixels stay transparent, or each card draws its clear
+      // around the leaves black.
       atlas: DdsEncoding::new(ImageFormat::BC1RgbaUnorm, Quality::Normal)
+        .with_cut_out()
         .encode(&chain)?
         .write_to_bytes()?,
       atlas_size: image.dimensions(),

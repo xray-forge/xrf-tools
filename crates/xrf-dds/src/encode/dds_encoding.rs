@@ -4,15 +4,20 @@ use image_dds::{ImageFormat, Mipmaps, Quality, Surface, SurfaceRgba8};
 use rayon::prelude::*;
 use xrf_error::{XrfError, XrfResult};
 
+use crate::encode::dds_bc1_cut_out::DdsBc1CutOut;
 use crate::encode::dds_surface_levels::DdsSurfaceLevels;
 use crate::file::dds_file::DdsFile;
 use crate::mip::dds_mip_chain::DdsMipChain;
 
-/// How a texture is written: the layout its pixels are packed into, and how hard the encoder works at it.
+/// How a texture is written: the layout its pixels are packed into, how hard the encoder works at it, and for BC1
+/// whether its one bit of alpha cuts out the pixels below half ([`Self::with_cut_out`]).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct DdsEncoding {
   pub format: ImageFormat,
   pub quality: Quality,
+  /// BC1 only: the blocks covering a pixel of alpha below half written in three colours and transparent, the SDK's
+  /// `tfADXT1`; off, every BC1 block is opaque.
+  pub is_cut_out: bool,
 }
 
 impl DdsEncoding {
@@ -23,7 +28,20 @@ impl DdsEncoding {
   const STRIPE_ROWS: u32 = 16 * Self::BLOCK_SIZE;
 
   pub fn new(format: ImageFormat, quality: Quality) -> Self {
-    Self { format, quality }
+    Self {
+      format,
+      quality,
+      is_cut_out: false,
+    }
+  }
+
+  /// The encoding with BC1's cut-out alpha written (`DdsBc1CutOut`), as a detail atlas needs; other formats keep their
+  /// alpha whole and ignore it.
+  pub fn with_cut_out(self) -> Self {
+    Self {
+      is_cut_out: true,
+      ..self
+    }
   }
 
   /// Writes the chain into a texture, level for level.
@@ -100,14 +118,21 @@ impl DdsEncoding {
   /// own sixteen pixels alone and a payload is its blocks row by row, so the stripes laid end to end are the bytes the
   /// level encoded whole would be; only a level's last stripe is padded out to whole blocks, as the whole level is.
   fn encode_levels(&self, levels: &[&RgbaImage]) -> XrfResult<Vec<u8>> {
+    let is_cut_out: bool = self.is_cut_out && self.format == ImageFormat::BC1RgbaUnorm;
     let stripes: Vec<SurfaceRgba8<&[u8]>> = levels.iter().flat_map(|level| Self::stripes_of(level)).collect();
     let encoded: Vec<Vec<u8>> = stripes
       .par_iter()
       .map(|stripe| {
-        stripe
+        let mut data: Vec<u8> = stripe
           .encode(self.format, self.quality, Mipmaps::FromSurface)
           .map(|surface| surface.data)
-          .map_err(|error| XrfError::new_texture_processing_error(error.to_string()))
+          .map_err(|error| XrfError::new_texture_processing_error(error.to_string()))?;
+
+        if is_cut_out {
+          DdsBc1CutOut::apply(&mut data, stripe.data, stripe.width, stripe.height);
+        }
+
+        Ok(data)
       })
       .collect::<XrfResult<Vec<Vec<u8>>>>()?;
 
@@ -287,6 +312,31 @@ mod tests {
     uneven.push(new_face(8, 5)?);
 
     assert!(encoding.encode_cube(&uneven).is_err());
+
+    Ok(())
+  }
+
+  #[test]
+  fn writes_bc1_cut_out_alpha_only_when_asked() -> XrfResult {
+    // A leaf on clear: the left half opaque green, the right half cut out.
+    let base: RgbaImage = RgbaImage::from_fn(16, 8, |x, _| {
+      if x < 8 {
+        Rgba([40, 160, 40, u8::MAX])
+      } else {
+        Rgba([0, 0, 0, 0])
+      }
+    });
+    let chain: DdsMipChain = DdsMipChain::build(&base, DdsMipmaps::Disabled)?;
+    let read = |encoding: DdsEncoding| -> XrfResult<RgbaImage> {
+      DdsFile::read_from_bytes(&encoding.encode(&chain)?.write_to_bytes()?)?.decode_rgba(0)
+    };
+    let encoding: DdsEncoding = DdsEncoding::new(ImageFormat::BC1RgbaUnorm, Quality::Fast);
+    let cut_out: RgbaImage = read(encoding.with_cut_out())?;
+
+    assert_eq!(cut_out.get_pixel(12, 4).0[3], 0, "cut out");
+    assert_eq!(cut_out.get_pixel(2, 4).0[3], u8::MAX, "kept");
+    assert!(cut_out.get_pixel(2, 4).0[1] > 140, "the leaf keeps its green");
+    assert_eq!(read(encoding)?.get_pixel(12, 4).0[3], u8::MAX, "opaque by default");
 
     Ok(())
   }

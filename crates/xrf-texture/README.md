@@ -66,9 +66,9 @@ fn main() -> xrf_error::XrfResult {
 The descriptor decides everything: the layout, whether there is a mip chain and who reduces it, and whether the
 source's alpha means anything. Nothing is taken from the file being replaced. The destination's directory must exist.
 
-**Formats.** DXT1, DXT3, DXT5 and RGBA map to BC1, BC2, BC3 and uncompressed RGBA. Other formats are refused, not
-substituted, including DXT1 Alpha (the available BC1 encoder does not keep its one-bit cutout). A descriptor without
-texture parameters is refused too.
+**Formats.** DXT1, DXT3, DXT5 and RGBA map to BC1, BC2, BC3 and uncompressed RGBA, and DXT1 Alpha to BC1 whose one
+bit of alpha cuts out the texels below half (`DdsEncoding::with_cut_out`). Other formats are refused, not substituted.
+A descriptor without texture parameters is refused too.
 
 | Descriptor                    | Built as                                                                          |
 | ----------------------------- | --------------------------------------------------------------------------------- |

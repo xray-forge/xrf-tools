@@ -47,7 +47,7 @@ impl BuildTextureProcessor {
       .collect::<XrfResult<_>>()?;
     let levels: u32 = u32::try_from(faces[0].levels().len())
       .map_err(|_| XrfError::new_texture_processing_error("Built texture has more levels than the format can carry"))?;
-    let encoding: DdsEncoding = DdsEncoding::new(recipe.format, options.quality);
+    let encoding: DdsEncoding = recipe.get_encoding(options.quality);
     let encoded: DdsFile = match recipe.layout {
       BuildTextureLayout::CubeStrip => encoding.encode_cube(&faces)?,
       BuildTextureLayout::Planar | BuildTextureLayout::BumpPair(_) => encoding.encode(&faces[0])?,
@@ -252,15 +252,19 @@ mod tests {
       u8::MAX
     );
 
-    // `tfADXT1` says the opposite, and the same encoder cannot express it. Refused, because writing it would turn
-    // every transparent texel of a fence or a leaf solid - a visible change, not a recipe field left out.
-    assert!(
-      BuildTextureProcessor::build(&options(
-        "dxt1a",
-        descriptor(ThmFormat::Dxt1Alpha, &[], ThmMipFilter::Box),
-        translucent(16),
-      ))
-      .is_err()
+    // `tfADXT1` says the opposite: BC1 whose one bit of alpha cuts out the transparent texels of a fence or a leaf.
+    let cut_out: BuildTextureResult = BuildTextureProcessor::build(&options(
+      "dxt1a",
+      descriptor(ThmFormat::Dxt1Alpha, &[], ThmMipFilter::Box),
+      translucent(16),
+    ))?;
+
+    assert_eq!(
+      DdsFile::read_from_path(&cut_out.destination)?
+        .decode_rgba(0)?
+        .get_pixel(0, 0)
+        .0[3],
+      0
     );
 
     Ok(())

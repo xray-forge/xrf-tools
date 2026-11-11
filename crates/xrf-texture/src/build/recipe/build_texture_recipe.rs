@@ -1,4 +1,4 @@
-use xrf_dds::ImageFormat;
+use xrf_dds::{DdsEncoding, ImageFormat, Quality};
 use xrf_error::{XrfError, XrfResult};
 use xrf_thm::{ThmFile, ThmFormat, ThmTextureFlag, ThmTextureParamChunk, ThmTextureType};
 
@@ -14,6 +14,9 @@ pub struct BuildTextureRecipe {
   pub layout: BuildTextureLayout,
   /// The layout to write, from the descriptor's own format.
   pub format: ImageFormat,
+  /// Whether BC1's one bit of alpha cuts out the transparent texels, `tfADXT1` where `tfDXT1` writes every block
+  /// opaque.
+  pub is_cut_out: bool,
   pub mipmaps: BuildTextureMipmaps,
   /// Recipe fields this build does not honour, in the order the descriptor declares them.
   pub omissions: Vec<BuildTextureOmission>,
@@ -40,6 +43,7 @@ impl BuildTextureRecipe {
         return Ok(Self {
           layout: BuildTextureLayout::BumpPair(BuildTextureBumpPair::of(file)),
           format: BuildTextureBumpPair::FORMAT,
+          is_cut_out: false,
           mipmaps: BuildTextureMipmaps::Filtered(BuildTextureBumpPair::MIP_FILTER),
           omissions: Vec::new(),
         });
@@ -58,23 +62,32 @@ impl BuildTextureRecipe {
     Ok(Self {
       layout,
       format: Self::resolve_image_format(param.format)?,
+      is_cut_out: param.format == ThmFormat::Dxt1Alpha,
       omissions: Self::list_omissions(param, &mipmaps),
       mipmaps,
     })
   }
 
-  /// The layout the descriptor's format names, for the four this build can write.
+  /// How the recipe's texture is encoded at `quality`: its format, BC1 with its cut-out where the descriptor asks.
+  pub fn get_encoding(&self, quality: Quality) -> DdsEncoding {
+    let encoding: DdsEncoding = DdsEncoding::new(self.format, quality);
+
+    if self.is_cut_out {
+      encoding.with_cut_out()
+    } else {
+      encoding
+    }
+  }
+
+  /// The layout the descriptor's format names, for the five this build can write.
   fn resolve_image_format(format: ThmFormat) -> XrfResult<ImageFormat> {
     match format {
-      // BC1 with no alpha, which is what the descriptor asked for: the encoder discards the source's own.
-      ThmFormat::Dxt1 => Ok(ImageFormat::BC1RgbaUnorm),
+      // BC1 with no alpha, which is what `tfDXT1` asked for: the encoder discards the source's own. `tfADXT1` keeps
+      // its one bit, which the recipe's cut-out writes.
+      ThmFormat::Dxt1 | ThmFormat::Dxt1Alpha => Ok(ImageFormat::BC1RgbaUnorm),
       ThmFormat::Dxt3 => Ok(ImageFormat::BC2RgbaUnorm),
       ThmFormat::Dxt5 => Ok(ImageFormat::BC3RgbaUnorm),
       ThmFormat::Rgba => Ok(ImageFormat::Rgba8Unorm),
-      ThmFormat::Dxt1Alpha => Err(XrfError::new_texture_processing_error(
-        "Cannot build a texture in format 'DXT1 Alpha': the encoder available here writes BC1 without its one-bit \
-         cutout, so every transparent texel would come back opaque",
-      )),
       other => Err(XrfError::new_texture_processing_error(format!(
         "Cannot build a texture in format '{}', which this build has no encoder for",
         other.label()
