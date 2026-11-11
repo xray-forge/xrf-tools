@@ -142,7 +142,8 @@ A scene built in code takes the same types:
 
 - `EditableLevelFile::new` writes every key `EScene::SaveLTX` does: the version, the GUID, level options
   (`EditableLevelOptions::new` gives a new level's), build parameters (`EditableBuildParams::DEFAULT` are the
-  editor's), the reserved build fields as zero, the camera, and the owner tag.
+  editor's), the build parameters' reserved fields as they hold them (zero in the editor's defaults, GSC's leftover
+  memory in its scenes, which the Build copies into `build.prj`), the camera, and the owner tag.
 - `EditableObjectPart::to_scene_tool` gives the tool a scene holds, named after the object's `TOOL_NAME`, with the part
   as its one text file; `EditableWallmarkTool::to_scene_tool` does the same with its binary part. Each type's
   `read_from_scene_tool` reads a scene's tool back, refusing another tool's or one of other than its one part.

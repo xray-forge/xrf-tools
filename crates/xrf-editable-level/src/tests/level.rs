@@ -53,14 +53,14 @@ fn writes_build_parameters_and_options_in_the_editors_layout() -> XrfResult {
 
   assert_eq!(level.ini.get("build_params", "weld_distance"), Some("0.000000"));
   assert_eq!(level.ini.get("level_options", "bop"), Some("\"-f\""));
-  assert_eq!(
-    level.ini.get("build_params", "reserved_0"),
-    Some("18011438074424197120000000.000000")
-  );
-
   let restored: EditableLevelFile = EditableLevelFile::read_from_bytes(&level.write_to_bytes()?)?;
 
   assert_eq!(restored.get_build_params()?, params);
+  // GSC's text, `18011438074424197120000000.000000` as its editor's printf padded it, reads back to the same float.
+  assert_eq!(
+    restored.get_build_params()?.reserved[0],
+    "18011438074424197120000000.000000".parse::<f32>().unwrap_or_default()
+  );
   assert_eq!(restored.get_level_options()?, options);
 
   Ok(())

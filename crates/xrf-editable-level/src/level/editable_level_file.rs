@@ -8,7 +8,6 @@ use crate::level::editable_build_params::EditableBuildParams;
 use crate::level::editable_level_camera::EditableLevelCamera;
 use crate::level::editable_level_guid::EditableLevelGuid;
 use crate::level::editable_level_options::EditableLevelOptions;
-use crate::level::editable_level_value::EditableLevelValue;
 
 /// A scene's main file, the `.level` under `$maps$` the Level Editor opens (`EScene::SaveLTX`): the scene's GUID,
 /// version, level options, build parameters, camera and owner tag. Each tool's objects are in the scene's parts.
@@ -28,7 +27,7 @@ impl EditableLevelFile {
   pub const EXTENSION: &str = "level";
 
   /// A new scene's main file with every section `EScene::SaveLTX` writes and `EScene::LoadLTX` reads: the version, the
-  /// GUID its parts carry, the level options and build parameters (their reserved fields zero), the camera, and the
+  /// GUID its parts carry, the level options and build parameters (their reserved fields too), the camera, and the
   /// owner tag.
   pub fn new(
     guid: &EditableLevelGuid,
@@ -44,17 +43,6 @@ impl EditableLevelFile {
     file.set_guid(guid);
     file.set_level_options(options);
     file.set_build_params(build_params);
-
-    // `b_params::LoadLTX` reads the reserved fields too, and the SDK's editor refuses a scene lacking one ("Can't find
-    // variable reserved_1 in [build_params]"): every GSC scene of SDK 0.7 holds the quality's and all six floats.
-    let build = file.ini.section_mut(EditableBuildParams::SECTION);
-
-    build.set("light_quality_reserved", "0");
-
-    for index in 0..EditableBuildParams::RESERVED_FLOATS {
-      build.set(format!("reserved_{index}"), EditableLevelValue::format_f32(0.0));
-    }
-
     camera.write_to_section(file.ini.section_mut(EditableLevelCamera::SECTION));
 
     let section = file.ini.section_mut("level_tag");
