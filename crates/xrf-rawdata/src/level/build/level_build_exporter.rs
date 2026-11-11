@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::path::Path;
 
 use byteorder::ByteOrder;
 use xrf_editable_level::{
@@ -26,10 +25,12 @@ use crate::level::build::level_build_portal::LevelBuildPortal;
 use crate::level::build::level_build_sectors::LevelBuildSectors;
 use crate::level::build::level_build_sources::LevelBuildSources;
 use crate::level::build::level_build_tables::{LevelBuildTableRecords, LevelBuildTables};
+use crate::level::build::level_build_textures::LevelBuildTextures;
 use crate::level::level_ai_map_conversion::LevelAiMapConversion;
 use crate::level::level_entity_conversion::LevelEntityConversion;
 use crate::level::level_map_conversion::LevelMapConversion;
 use crate::level::level_scene_exporter::LevelSceneExporter;
+use crate::level::scene::level_scene_decompile::{LevelSceneObjectFile, LevelSceneTextureFile};
 use crate::provenance::level_scene_provenance::LevelSceneRefusal;
 
 /// Exports a scene into the `build.prj` the Level Editor's Build hands xrLC (`SceneBuilder::CompileStatic` and
@@ -73,7 +74,11 @@ impl LevelBuildExporter {
     }
 
     let placed: EditableObjectPart<EditableSceneObject> = LevelSceneExporter::get_part(scene, guid)?;
-    let mut library: LevelBuildLibrary = LevelBuildLibrary::new(sources.objects);
+    let held: (&[LevelSceneObjectFile], &[LevelSceneTextureFile]) = sources
+      .held
+      .map_or((&[], &[]), |decompile| (&decompile.objects, &decompile.textures));
+    let mut library: LevelBuildLibrary<'_> = LevelBuildLibrary::new(sources.objects, held.0);
+    let textures: LevelBuildTextures<'_> = LevelBuildTextures::new(sources.textures, held.1);
 
     library.load::<T>(placed.objects.iter().map(|object| object.reference.as_str()))?;
 
@@ -166,7 +171,7 @@ impl LevelBuildExporter {
       {
         census.other_objects += 1;
       } else if file.flags & EditableObjectFile::MULTIPLE_USAGE_FLAG != 0 {
-        models.add(object, file, &sectors, &mut tables, game_materials, sources.textures)?;
+        models.add(object, file, &sectors, &mut tables, game_materials, &textures)?;
       } else {
         geometry.add_object(object, file, &sectors, &mut tables, game_materials)?;
         breakables.add_object(object, file, game_materials)?;
@@ -201,16 +206,16 @@ impl LevelBuildExporter {
 
     let details: Option<LevelBuildDetails> = match scene.get_tool(EditableDetailObjectTool::TOOL_NAME) {
       Some(tool) => {
-        let textures: &Path = sources.textures.ok_or_else(|| {
-          XrfError::new_invalid_error(
+        if !textures.is_available() {
+          return Err(XrfError::new_invalid_error(
             "The scene holds details, whose textures the Build merges into an atlas; name the textures root",
-          )
-        })?;
+          ));
+        }
 
         Some(LevelBuildDetails::export::<T>(
           &EditableDetailObjectTool::read_from_scene_tool::<T>(tool)?,
           &mut library,
-          textures,
+          &textures,
         )?)
       }
       None => None,

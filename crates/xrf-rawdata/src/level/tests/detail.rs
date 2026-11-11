@@ -11,6 +11,7 @@ use xrf_test_utils::GeneratedResources;
 use crate::level::build::level_build_atlas::{LevelBuildAtlas, LevelBuildAtlasPlace};
 use crate::level::build::level_build_details::LevelBuildDetails;
 use crate::level::build::level_build_library::LevelBuildLibrary;
+use crate::level::build::level_build_textures::LevelBuildTextures;
 use crate::level::level_detail_conversion::{LevelDetailConversion, LevelDetailDecompile};
 use crate::level::level_detail_library::LevelDetailLibrary;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
@@ -260,8 +261,11 @@ fn exports_the_planted_details_with_their_atlas() -> XrfResult {
   let tool: EditableDetailObjectTool = LevelDetailConversion::decompile(&file, &library())
     .tool
     .expect("both found");
-  let exported: LevelBuildDetails =
-    LevelBuildDetails::export::<XRayByteOrder>(&tool, &mut LevelBuildLibrary::new(&[objects]), &textures)?;
+  let exported: LevelBuildDetails = LevelBuildDetails::export::<XRayByteOrder>(
+    &tool,
+    &mut LevelBuildLibrary::new(&[objects], &[]),
+    &LevelBuildTextures::new(Some(&textures), &[]),
+  )?;
   let [model] = exported.file.objects.as_slice() else {
     panic!("the planted object alone: {}", exported.file.objects.len());
   };

@@ -1,15 +1,13 @@
-use std::path::{Path, PathBuf};
-
 use byteorder::ByteOrder;
-use xrf_dds::{DdsEncoding, DdsFile, DdsMipChain, DdsMipFilter, DdsMipmaps, ImageFormat, Quality, RgbaImage};
+use xrf_dds::{DdsEncoding, DdsMipChain, DdsMipFilter, DdsMipmaps, ImageFormat, Quality, RgbaImage};
 use xrf_editable_level::{EditableDetailObject, EditableDetailObjectTool};
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{DetailModel, DetailVertex, LevelDetailsFile, LevelDetailsHeader};
-use xrf_utils::format_path;
 
 use crate::level::build::level_build_atlas::{LevelBuildAtlas, LevelBuildAtlasPlace};
 use crate::level::build::level_build_library::LevelBuildLibrary;
+use crate::level::build::level_build_textures::LevelBuildTextures;
 use crate::object::compile::detail::detail_model_builder::DetailModelBuilder;
 use crate::object::detail_parameters::DetailParameters;
 
@@ -36,8 +34,6 @@ impl LevelBuildDetails {
   pub const ATLAS_FILE_NAME: &'static str = "build_details.dds";
   pub const ATLAS_TEXTURE: &'static str = "build_details";
 
-  const TEXTURE_EXTENSION: &'static str = "dds";
-
   /// The details of `tool`, its objects read from `library` and their textures from `textures` (`$game_textures$`).
   ///
   /// # Errors
@@ -47,8 +43,8 @@ impl LevelBuildDetails {
   /// or the textures do not fit the largest atlas.
   pub(crate) fn export<T: ByteOrder>(
     tool: &EditableDetailObjectTool,
-    library: &mut LevelBuildLibrary,
-    textures: &Path,
+    library: &mut LevelBuildLibrary<'_>,
+    textures: &LevelBuildTextures<'_>,
   ) -> XrfResult<Self> {
     let renumbered: Vec<Option<u8>> = Self::renumber(tool)?;
     let planted: Vec<&EditableDetailObject> = tool
@@ -77,7 +73,7 @@ impl LevelBuildDetails {
 
     let images: Vec<RgbaImage> = names
       .iter()
-      .map(|name| Self::read_texture(textures, name))
+      .map(|name| textures.read("Detail texture", name))
       .collect::<XrfResult<_>>()?;
     let atlas: LevelBuildAtlas = LevelBuildAtlas::merge(
       &images.iter().map(std::slice::from_ref).collect::<Vec<_>>(),
@@ -179,7 +175,7 @@ impl LevelBuildDetails {
   }
 
   /// The model `EDetail` exports of `object`'s library object, at the object's scale range and flags.
-  fn compile(object: &EditableDetailObject, library: &LevelBuildLibrary) -> XrfResult<DetailModel> {
+  fn compile(object: &EditableDetailObject, library: &LevelBuildLibrary<'_>) -> XrfResult<DetailModel> {
     let file: &EditableObjectFile = library
       .get(&object.reference)
       .ok_or_else(|| XrfError::new_invalid_error(format!("Detail object '{}' was not read", object.reference)))?;
@@ -213,22 +209,5 @@ impl LevelBuildDetails {
         .collect(),
       ..model
     }
-  }
-
-  /// The top level of texture `name` under `textures`, as `Surface_Load` reads its `.dds`.
-  fn read_texture(textures: &Path, name: &str) -> XrfResult<RgbaImage> {
-    let path: PathBuf = name
-      .split('\\')
-      .fold(textures.to_path_buf(), |path, part| path.join(part))
-      .with_extension(Self::TEXTURE_EXTENSION);
-
-    DdsFile::read_from_path(&path)
-      .and_then(|file| file.decode_rgba(0))
-      .map_err(|error| {
-        XrfError::new_read_error(format!(
-          "Detail texture '{name}' was not read from {}: {error}",
-          format_path(&path)
-        ))
-      })
   }
 }

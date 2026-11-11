@@ -18,4 +18,5 @@ pub(crate) mod level_build_portal;
 pub(crate) mod level_build_sectors;
 pub(crate) mod level_build_sources;
 pub(crate) mod level_build_tables;
+pub(crate) mod level_build_textures;
 pub(crate) mod level_build_vector;
