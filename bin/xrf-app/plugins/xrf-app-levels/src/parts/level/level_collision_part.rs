@@ -4,7 +4,8 @@ use std::time::{Duration, Instant};
 use xrf_app_core::TauriResult;
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
 use xrf_chunk::XRayByteOrder;
-use xrf_level::{LevelCformFile, LevelCformGeometry, LevelCformTracer};
+use xrf_geometry::{BvhTracer, Tracer};
+use xrf_level::{LevelCformFile, LevelCformGeometry};
 use xrf_vfs::XraySearch;
 
 use crate::level::{LevelSource, SelectedLevel};
@@ -20,7 +21,7 @@ pub(crate) const LEVEL_COLLISION_PART: &str = "collision";
 pub(crate) struct LevelCollisionPart;
 
 impl SessionPart for LevelCollisionPart {
-  type Value = TauriResult<Arc<LevelCformTracer>>;
+  type Value = TauriResult<Arc<BvhTracer>>;
 
   const NAME: &'static str = LEVEL_COLLISION_PART;
 }
@@ -31,10 +32,7 @@ impl LevelCollisionPart {
   /// # Errors
   ///
   /// Returns why the collision form cannot be read, which every later ask answers with again.
-  pub(crate) fn get(
-    current: &SessionSnapshot<SelectedLevel>,
-    search: &XraySearch,
-  ) -> TauriResult<Arc<LevelCformTracer>> {
+  pub(crate) fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> TauriResult<Arc<BvhTracer>> {
     current
       .parts
       .get_or_record::<Self>(search, |search| Self::read(&current.source, search))
@@ -50,13 +48,13 @@ impl LevelCollisionPart {
       .map_err(|error| source.describe_read_failure(LevelCformFile::FILE_NAME, &error))
   }
 
-  fn read(source: &LevelSource, search: &XraySearch) -> TauriResult<Arc<LevelCformTracer>> {
+  fn read(source: &LevelSource, search: &XraySearch) -> TauriResult<Arc<BvhTracer>> {
     let started: Instant = Instant::now();
     let geometry: LevelCformGeometry = Self::read_geometry(source, search)?;
     let read: Duration = started.elapsed();
-    let tracer: LevelCformTracer = LevelCformTracer::new(&geometry);
+    let tracer: BvhTracer = geometry.build_tracer();
 
-    LevelReport::collision(source, tracer.get_triangle_count(), read, started);
+    LevelReport::collision(source, tracer.get_face_count(), read, started);
 
     Ok(Arc::new(tracer))
   }

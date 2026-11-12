@@ -1,7 +1,9 @@
 use byteorder::ByteOrder;
+use glam::Vec3;
 use serde::Serialize;
 use xrf_chunk::{ChunkDataSource, ChunkReader};
 use xrf_error::{XrfError, XrfResult};
+use xrf_geometry::{BvhTracer, Triangle};
 use xrf_math::Vector3d;
 
 use crate::cform::level_cform_face::LevelCformFace;
@@ -82,5 +84,16 @@ impl LevelCformGeometry {
   /// A face's three corners.
   pub fn get_triangle(&self, face: &LevelCformFace) -> [Vector3d<f32>; 3] {
     face.vertices.map(|index| self.vertices[index as usize])
+  }
+
+  /// The form's faces in a tracer for the engine's ray and box queries, each named by its index here.
+  pub fn build_tracer(&self) -> BvhTracer {
+    BvhTracer::of_triangles(
+      self
+        .faces
+        .iter()
+        .map(|face| Triangle::new(face.vertices.map(|index| Vec3::from(&self.vertices[index as usize]))))
+        .collect(),
+    )
   }
 }

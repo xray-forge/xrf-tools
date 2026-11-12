@@ -7,7 +7,6 @@ use xrf_ogf::{OgfGeometryContainerChunk, OgfHeaderChunk};
 
 use crate::cform::level_cform_face::LevelCformFace;
 use crate::cform::level_cform_geometry::LevelCformGeometry;
-use crate::cform::level_cform_tracer::LevelCformTracer;
 use crate::geom::buffers::level_geom_vertex_element::LevelGeomVertexElement;
 use crate::geom::level_geom_file::LevelGeomFile;
 use crate::geom::level_geom_source::LevelGeomSource;
@@ -142,8 +141,7 @@ fn tallies_each_surface_by_the_collision_faces_beneath_it() -> XrfResult {
   let visuals: LevelVisualsChunk = LevelVisualsChunk {
     visuals: vec![visual(0, 1), visual(1, 2), visual(2, 2)],
   };
-  let survey: LevelSurfaceMaterials =
-    LevelSurfaceMaterials::survey::<XRayByteOrder, _>(&visuals, &source, &LevelCformTracer::new(&floor()?));
+  let survey: LevelSurfaceMaterials = LevelSurfaceMaterials::survey::<XRayByteOrder, _>(&visuals, &source, &floor()?);
 
   let stone: &LevelSurfaceMaterial = &survey.surfaces[&1];
   let earth: &LevelSurfaceMaterial = &survey.surfaces[&2];

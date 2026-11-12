@@ -6,7 +6,8 @@ use rayon::prelude::*;
 use xrf_app_core::TauriResult;
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
 use xrf_chunk::XRayByteOrder;
-use xrf_level::{LevelCformTracer, LevelLight, LevelLightsChunk, LevelLightsFile};
+use xrf_geometry::BvhTracer;
+use xrf_level::{LevelLight, LevelLightsChunk, LevelLightsFile};
 use xrf_math::{Sphere, Vector3d};
 use xrf_vfs::XraySearch;
 use xrf_visual::{HemiEstimator, VisualTransform};
@@ -94,7 +95,7 @@ impl LevelHemiPart {
 
   fn read(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> TauriResult<Arc<HemiEstimator>> {
     let started: Instant = Instant::now();
-    let tracer: Arc<LevelCformTracer> = LevelCollisionPart::get(current, search)?;
+    let tracer: Arc<BvhTracer> = LevelCollisionPart::get(current, search)?;
     let estimator: HemiEstimator = HemiEstimator::new(tracer, &Self::read_lights(&current.source, search));
 
     LevelReport::hemi(&current.source, estimator.get_light_count(), started);

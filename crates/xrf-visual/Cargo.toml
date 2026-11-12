@@ -10,10 +10,12 @@ path = "src/lib.rs"
 
 [dependencies]
 byteorder = { workspace = true }
+glam = { workspace = true }
 log = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
-xrf-math = { workspace = true }
+xrf-geometry = { workspace = true }
+xrf-math = { workspace = true, features = ["glam"] }
 xrf-ogf = { workspace = true }
 xrf-omf = { workspace = true }
 xrf-skeleton = { workspace = true }

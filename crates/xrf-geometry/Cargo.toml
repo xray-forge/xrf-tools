@@ -1,0 +1,17 @@
+[package]
+name = "xrf-geometry"
+version = "0.1.0"
+publish = false
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+glam = { workspace = true }
+obvhs = { version = "0.4.0", features = ["parallel"] }
+xrf-math = { workspace = true }
+
+[lints]
+workspace = true

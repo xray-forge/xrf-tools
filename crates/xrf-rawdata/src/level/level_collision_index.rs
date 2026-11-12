@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
+use glam::Vec3;
 use xrf_error::{XrfError, XrfResult};
-use xrf_level::{LevelCformFace, LevelCformGeometry, LevelCformTracer, LevelSurfaceMaterials};
+use xrf_geometry::{BvhTracer, Tracer, Triangle};
+use xrf_level::{LevelCformFace, LevelCformGeometry, LevelSurfaceMaterials};
 use xrf_math::Vector3d;
 
 /// What drew over a collision face, as the decompile finds out.
@@ -45,7 +47,7 @@ pub struct LevelCollisionIndex {
   geometry: LevelCformGeometry,
   /// The faces on each set of three exact points.
   exact: HashMap<[[u32; 3]; 3], Vec<u32>>,
-  tracer: LevelCformTracer,
+  tracer: BvhTracer,
   covers: Vec<LevelCollisionCover>,
 }
 
@@ -65,7 +67,7 @@ impl LevelCollisionIndex {
     }
 
     Self {
-      tracer: LevelCformTracer::new(&geometry),
+      tracer: geometry.build_tracer(),
       covers: vec![LevelCollisionCover::None; geometry.get_faces().len()],
       geometry,
       exact,
@@ -110,23 +112,20 @@ impl LevelCollisionIndex {
       return Ok(());
     }
 
-    let corners: u32 = u32::try_from(triangles.len() * 3)
-      .map_err(|_| XrfError::new_invalid_error("A sector holds more render triangles than a form indexes"))?;
-    // Each render triangle carries the material it lies on, `NO_MATERIAL` where it lies on none.
-    let render: LevelCformTracer = LevelCformTracer::new(&LevelCformGeometry::new(
-      triangles.iter().flatten().copied().collect(),
-      (0..corners)
-        .step_by(3)
-        .zip(triangles)
-        .map(|(first, points)| LevelCformFace {
-          vertices: [first, first + 1, first + 2],
-          material: self.locate(points).1.get_material().unwrap_or(Self::NO_MATERIAL),
-          is_shadow_suppressed: false,
-          is_wallmark_suppressed: false,
-          sector,
-        })
+    u32::try_from(triangles.len())
+      .map_err(|_| XrfError::new_invalid_error("A sector holds more render triangles than a tracer indexes"))?;
+
+    // The material each render triangle lies on, `NO_MATERIAL` where it lies on none.
+    let materials: Vec<u16> = triangles
+      .iter()
+      .map(|points| self.locate(points).1.get_material().unwrap_or(Self::NO_MATERIAL))
+      .collect();
+    let render: BvhTracer = BvhTracer::of_triangles(
+      triangles
+        .iter()
+        .map(|points| Triangle::new(points.map(Vec3::from)))
         .collect(),
-    )?);
+    );
 
     for index in uncovered {
       let face: &LevelCformFace = &self.geometry.get_faces()[index];
@@ -135,8 +134,12 @@ impl LevelCollisionIndex {
       };
 
       if render
-        .get_face_nearest_along(&centre, &normal, LevelSurfaceMaterials::COLLISION_REACH)
-        .is_some_and(|(_, material)| material == face.material)
+        .get_face_nearest_along(
+          Vec3::from(&centre),
+          Vec3::from(&normal),
+          LevelSurfaceMaterials::COLLISION_REACH,
+        )
+        .is_some_and(|triangle| materials[triangle as usize] == face.material)
       {
         self.covers[index] = LevelCollisionCover::Static;
       }
@@ -207,11 +210,15 @@ impl LevelCollisionIndex {
       return (Vec::new(), LevelCollisionLookup::None);
     };
 
-    match self
-      .tracer
-      .get_face_nearest_along(&centre, &normal, LevelSurfaceMaterials::COLLISION_REACH)
-    {
-      Some((face, material)) => (vec![face], LevelCollisionLookup::Traced(material)),
+    match self.tracer.get_face_nearest_along(
+      Vec3::from(&centre),
+      Vec3::from(&normal),
+      LevelSurfaceMaterials::COLLISION_REACH,
+    ) {
+      Some(face) => (
+        vec![face],
+        LevelCollisionLookup::Traced(self.geometry.get_faces()[face as usize].material),
+      ),
       None => (Vec::new(), LevelCollisionLookup::None),
     }
   }
