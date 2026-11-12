@@ -3,14 +3,13 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{Value, json};
 use uuid::{Uuid, uuid};
-use xrf_chunk::ChunkWriter;
-use xrf_math::Vector3d;
 use xrf_spawn::{
-  GraphHeader, LevelSpawnFile, LevelSpawnObject, SpawnALifeSpawnsChunk, SpawnArtefactSpawnsChunk, SpawnFile,
-  SpawnGraphsChunk, SpawnHeaderChunk, SpawnPatrolsChunk, XRayByteOrder,
+  GraphHeader, SpawnALifeSpawnsChunk, SpawnArtefactSpawnsChunk, SpawnFile, SpawnGraphsChunk, SpawnHeaderChunk,
+  SpawnPatrolsChunk, XRayByteOrder,
 };
 use xrf_test_utils::GeneratedResources;
 
+use crate::commands::spawn::fixtures::{new_level_object, write_level_spawn_list};
 use crate::commands::spawn::info::InfoCommand;
 use crate::core::command::command_testing::run_command_for_result;
 use crate::core::command::{CommandError, CommandResult, GenericCommand};
@@ -26,21 +25,6 @@ fn run(path: &Path) -> CommandResult<Option<Value>> {
       String::from("--json"),
     ],
   )
-}
-
-fn new_object(id: u32, section: &str, name: &str) -> LevelSpawnObject {
-  LevelSpawnObject {
-    id,
-    // `M_SPAWN`, which every packet of a list opens with.
-    net_action: 1,
-    section: String::from(section),
-    name: String::from(name),
-    script_game_id: 0,
-    script_rp: 0xFF,
-    position: Vector3d::new(1.0, 2.0, 3.0),
-    direction: Vector3d::ZERO,
-    payload: vec![7; 12],
-  }
 }
 
 fn new_root_spawn() -> SpawnFile {
@@ -93,17 +77,15 @@ fn reports_a_root_spawn_as_its_kind() -> CommandResult {
 #[test]
 fn reports_a_level_spawn_list_by_section() -> CommandResult {
   let path: PathBuf = GeneratedResources::create_dir("spawn_info/level")?.join("level.spawn");
-  let list: LevelSpawnFile = LevelSpawnFile {
-    objects: vec![
-      new_object(0, "graph_point", "fake_graph_point"),
-      new_object(1, "m_stalker", "esc_wolf"),
-      new_object(2, "graph_point", "fake_exit_point"),
-    ],
-  };
-  let mut writer: ChunkWriter = ChunkWriter::new();
 
-  list.write::<XRayByteOrder>(&mut writer)?;
-  fs::write(&path, writer.flush_raw_into_buffer()?)?;
+  write_level_spawn_list(
+    &path,
+    vec![
+      new_level_object(0, "graph_point", "fake_graph_point"),
+      new_level_object(1, "m_stalker", "esc_wolf"),
+      new_level_object(2, "graph_point", "fake_exit_point"),
+    ],
+  )?;
 
   assert_eq!(
     run(&path)?.expect("a level spawn list is reported"),

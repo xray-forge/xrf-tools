@@ -6,7 +6,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::format_path;
+use xrf_utils::{StagedFile, format_path};
 
 use crate::level_spawn_object::LevelSpawnObject;
 
@@ -92,6 +92,20 @@ impl LevelSpawnFile {
     }
 
     Ok(())
+  }
+
+  /// Writes the list to `path`, making the directories above it: encoded whole first and staged beside it, so a
+  /// failure leaves whatever was there before.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the list cannot be encoded or the file cannot be written.
+  pub fn write_to_path<T: ByteOrder, P: AsRef<Path>>(&self, path: &P) -> XrfResult {
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    self.write::<T>(&mut writer)?;
+
+    Ok(StagedFile::write_creating_directories(path.as_ref(), &writer.buffer)?)
   }
 }
 

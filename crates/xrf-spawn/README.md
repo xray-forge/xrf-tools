@@ -25,6 +25,8 @@ A caller holding a `.spawn` of either kind walks its top-level chunks once and a
 (a set) where chunk 0 reads whole as a `SpawnHeaderChunk`, `Level` otherwise, reading nothing but that chunk's 44 bytes.
 It then hands the same chunks to `SpawnFile::read_from_chunks` or `LevelSpawnFile::read_from_chunks`, whose own read
 refuses a file that is neither. `SpawnFileKind::read_root_header` is the same rule for a caller that wants the header.
+`AnySpawnFile::read_from_path` does both for a file on disk and answers `Root` or `Level` with the file read, refusing
+one that is neither with a message naming both kinds; `LevelSpawnFile::write_to_path` writes a list back, staged.
 
 ## Read a spawn set
 

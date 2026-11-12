@@ -1,4 +1,4 @@
-use xrf_spawn::SpawnFile;
+use xrf_spawn::AnySpawnFile;
 
 use crate::commands::{packed_file, spawn};
 use crate::core::command::{CommandGroup, GenericCommand};
@@ -15,11 +15,11 @@ impl SpawnGroup {
       about: "Spawn file tools",
       commands: vec![
         spawn::info::InfoCommand::new_box(),
-        packed_file::PackCommand::<SpawnFile>::new_box(),
-        packed_file::RepackCommand::<SpawnFile>::new_box(),
-        packed_file::ReUnpackCommand::<SpawnFile>::new_box(),
-        packed_file::UnpackCommand::<SpawnFile>::new_box(),
-        packed_file::VerifyCommand::<SpawnFile>::new_box(),
+        packed_file::PackCommand::<AnySpawnFile>::new_box(),
+        packed_file::RepackCommand::<AnySpawnFile>::new_box(),
+        packed_file::ReUnpackCommand::<AnySpawnFile>::new_box(),
+        packed_file::UnpackCommand::<AnySpawnFile>::new_box(),
+        packed_file::VerifyCommand::<AnySpawnFile>::new_box(),
       ],
     }
   }
