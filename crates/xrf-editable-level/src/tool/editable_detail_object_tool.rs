@@ -70,18 +70,9 @@ impl EditableDetailObjectTool {
   /// `flObjectsDraw`, the flags a new tool takes.
   pub const OBJECTS_DRAW: u32 = 1 << 28;
 
-  /// The words of one slot, `sizeof(DetailSlot) / 4`.
+  /// The words of one slot, `sizeof(DetailSlot) / 4`, packed as `xrf-level`'s `LevelDetailsSlot` reads and writes
+  /// them.
   pub const SLOT_WORDS: usize = 4;
-
-  /// How many corners a slot plants, each one object.
-  pub const SLOT_CORNERS: usize = 4;
-
-  /// `DetailSlot::ID_Empty`: a corner planting nothing.
-  pub const EMPTY_ID: u8 = 0x3F;
-
-  /// The bits of a slot's first two words below its light (`c_dir`, `c_hemi`, `c_r`, `c_g`, `c_b`): its height and its
-  /// four corners' objects.
-  pub const UNLIT_BITS: u64 = (1 << 44) - 1;
 
   const HEADER_CHUNK_ID: u32 = 0x0000;
   const OBJECTS_CHUNK_ID: u32 = 0x0001;
@@ -347,43 +338,6 @@ impl EditableDetailObjectTool {
       name: Self::TOOL_NAME.to_owned(),
       parts: vec![EditableLevelPart::Binary(self.to_part::<T>(guid)?)],
     })
-  }
-
-  /// The object a slot's corner plants, by its place in [`Self::objects`]; `None` for a corner planting nothing.
-  ///
-  /// # Panics
-  ///
-  /// Panics in debug builds for a corner past [`Self::SLOT_CORNERS`].
-  pub fn get_slot_object(slot: &[u32; Self::SLOT_WORDS], corner: usize) -> Option<u8> {
-    debug_assert!(corner < Self::SLOT_CORNERS, "a slot has four corners, not {corner}");
-
-    let word: u64 = u64::from(slot[0]) | (u64::from(slot[1]) << 32);
-    let id: u8 = ((word >> (20 + 6 * corner)) & 0x3F) as u8;
-
-    (id != Self::EMPTY_ID).then_some(id)
-  }
-
-  /// `slot` planting `object` in its corner `corner`, [`Self::EMPTY_ID`] for none, as `DetailSlot::w_id` writes it.
-  ///
-  /// # Panics
-  ///
-  /// Panics in debug builds for a corner past [`Self::SLOT_CORNERS`].
-  pub fn with_slot_object(slot: [u32; Self::SLOT_WORDS], corner: usize, object: u8) -> [u32; Self::SLOT_WORDS] {
-    debug_assert!(corner < Self::SLOT_CORNERS, "a slot has four corners, not {corner}");
-
-    let shift: usize = 20 + 6 * corner;
-    let word: u64 = u64::from(slot[0]) | (u64::from(slot[1]) << 32);
-    let word: u64 = (word & !(0x3F << shift)) | (u64::from(object & 0x3F) << shift);
-
-    [word as u32, (word >> 32) as u32, slot[2], slot[3]]
-  }
-
-  /// `slot` with its light zeroed, as `EDetailManager::Export` zeroes every slot's before the detail lighter lights
-  /// it again.
-  pub fn get_unlit_slot(slot: [u32; Self::SLOT_WORDS]) -> [u32; Self::SLOT_WORDS] {
-    let word: u64 = (u64::from(slot[0]) | (u64::from(slot[1]) << 32)) & Self::UNLIT_BITS;
-
-    [word as u32, (word >> 32) as u32, slot[2], slot[3]]
   }
 
   fn read_color_indices<T: ByteOrder>(
