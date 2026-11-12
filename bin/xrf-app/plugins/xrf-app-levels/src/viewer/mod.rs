@@ -5,9 +5,8 @@
 pub(crate) mod burst;
 mod capture;
 pub(crate) mod commands;
-pub(crate) mod cube;
+pub(crate) mod export;
 mod folder;
-pub(crate) mod map;
 pub(crate) mod recording;
 pub(crate) mod routes;
 

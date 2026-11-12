@@ -1,5 +1,5 @@
 use crate::objects::{LevelObject, LevelObjectId, LevelObjectKind};
-use crate::viewer::map::annotations::{AnnotationOutline, AnnotationPoint};
+use crate::viewer::export::map::annotations::{AnnotationOutline, AnnotationPoint};
 
 /// One object of the level standing at a point, seen from above: a dot where it stands.
 #[derive(Clone, Debug, PartialEq)]

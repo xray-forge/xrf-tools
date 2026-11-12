@@ -1,5 +1,5 @@
 use crate::objects::{LevelObject, LevelObjectPatrol};
-use crate::viewer::map::annotations::{AnnotationOutline, AnnotationPoint};
+use crate::viewer::export::map::annotations::{AnnotationOutline, AnnotationPoint};
 
 /// A patrol path from above: its points, and the links between them by index.
 #[derive(Clone, Debug, PartialEq)]

@@ -20,9 +20,9 @@ use crate::data::alife::alife_object_inherited::AlifeObjectInherited;
 use crate::data::alife::spawn_level_arrival::SpawnLevelArrival;
 use crate::data::alife::spawn_level_objects::SpawnLevelObjects;
 use crate::data::alife::spawn_skipped_object::SpawnSkippedObject;
-use crate::data::graph::graph_vertex_levels::GraphVertexLevels;
-use crate::data::graph::spawn_level_graph::SpawnLevelGraph;
-use crate::data::graph::spawn_level_graph_point::SpawnLevelGraphPoint;
+use crate::data::graph::level_view::graph_vertex_levels::GraphVertexLevels;
+use crate::data::graph::level_view::spawn_level_graph::SpawnLevelGraph;
+use crate::data::graph::level_view::spawn_level_graph_point::SpawnLevelGraphPoint;
 use crate::data::patrols::patrol::Patrol;
 
 /// Descriptor of generic spawn file used by xray game engine.
@@ -319,8 +319,8 @@ mod tests {
   use crate::data::graph::graph_header::GraphHeader;
   use crate::data::graph::graph_level::GraphLevel;
   use crate::data::graph::graph_vertex::GraphVertex;
-  use crate::data::graph::spawn_level_graph::SpawnLevelGraph;
-  use crate::data::graph::spawn_level_graph_point::SpawnLevelGraphPoint;
+  use crate::data::graph::level_view::spawn_level_graph::SpawnLevelGraph;
+  use crate::data::graph::level_view::spawn_level_graph_point::SpawnLevelGraphPoint;
   use crate::data::patrols::patrol::Patrol;
   use crate::data::patrols::patrol_point::PatrolPoint;
 

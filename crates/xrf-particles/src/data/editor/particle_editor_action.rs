@@ -5,14 +5,14 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 use xrf_utils::narrow_format_size;
 
+use crate::data::actions::particle_action::ParticleAction;
+use crate::data::actions::particle_action_type::ParticleActionType;
 use crate::data::editor::particle_editor_action_compiler::ParticleEditorActionCompiler;
 use crate::data::editor::particle_editor_domain::ParticleEditorDomain;
 use crate::data::editor::particle_editor_property::ParticleEditorProperty;
 use crate::data::editor::particle_editor_schema::ParticleEditorSchema;
 use crate::data::editor::particle_editor_value::ParticleEditorValue;
 use crate::data::editor::particle_editor_value_kind::ParticleEditorValueKind;
-use crate::data::particle_action::ParticleAction;
-use crate::data::particle_action_type::ParticleActionType;
 
 /// One action as the SDK's particle editor holds it (`EParticleAction`): named, switchable, and made of named
 /// properties rather than the derived values the engine plays.

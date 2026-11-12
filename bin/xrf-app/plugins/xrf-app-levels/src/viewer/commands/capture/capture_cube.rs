@@ -11,7 +11,7 @@ use xrf_app_render::{CaptureOutcome, Renderer};
 use xrf_job::JobProgress;
 use xrf_renderer::CubeAssembly;
 
-use crate::viewer::cube::CubeCaptureRequest;
+use crate::viewer::export::cube::CubeCaptureRequest;
 use crate::viewer::{LevelViewerReport, ViewerCaptureJob};
 
 /// Capture a cubemap around a viewport's camera face by face and write it to a PNG file as a horizontal cross.

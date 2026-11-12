@@ -8,7 +8,7 @@ use xrf_renderer::CubeAssembly;
 use xrf_utils::StagedFile;
 
 use crate::viewer::ViewerImage;
-use crate::viewer::cube::{CubeExportFormat, CubeExportRequest};
+use crate::viewer::export::cube::{CubeExportFormat, CubeExportRequest};
 
 /// A cubemap's capture written again: its faces resized, as one cube DDS, six uncompressed TGAs or six PNGs.
 pub(crate) struct CubeExporter;

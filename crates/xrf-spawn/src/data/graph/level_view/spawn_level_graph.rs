@@ -1,5 +1,5 @@
 use crate::data::graph::graph_level::GraphLevel;
-use crate::data::graph::spawn_level_graph_point::SpawnLevelGraphPoint;
+use crate::data::graph::level_view::spawn_level_graph_point::SpawnLevelGraphPoint;
 use crate::data::patrols::patrol::Patrol;
 
 /// What a spawn's graph and patrols hold of one level: every level of the graph with its place in the world, the game

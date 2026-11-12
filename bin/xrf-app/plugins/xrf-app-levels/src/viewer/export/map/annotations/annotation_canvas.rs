@@ -10,7 +10,7 @@ use xrf_utils::StagedFile;
 
 use crate::objects::{LevelObjectKind, LevelObjectKindEntry};
 use crate::parts::LevelMapArea;
-use crate::viewer::map::annotations::{
+use crate::viewer::export::map::annotations::{
   AnnotationMarker, AnnotationOutline, AnnotationPatrol, AnnotationPoint, AnnotationVolume, LevelAnnotations,
   MapAnnotationsWriteRequest,
 };

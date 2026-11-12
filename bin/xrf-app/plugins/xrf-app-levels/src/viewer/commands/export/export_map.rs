@@ -3,7 +3,7 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::directories::AppDirectories;
 use xrf_app_core::execution::ExecutionState;
 
-use crate::viewer::map::{MapExportOutcome, MapExportRequest, MapExporter};
+use crate::viewer::export::map::{MapExportOutcome, MapExportRequest, MapExporter};
 use crate::viewer::{LevelViewerFolder, LevelViewerReport};
 
 /// Write a level map of the screenshots folder again as a PNG, a TGA or a DDS, or its annotations alone as an SVG;

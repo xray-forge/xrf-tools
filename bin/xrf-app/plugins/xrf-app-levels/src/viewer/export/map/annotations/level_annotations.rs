@@ -8,7 +8,7 @@ use xrf_vfs::XraySearch;
 use crate::level::SelectedLevel;
 use crate::objects::LevelObjectsDescription;
 use crate::parts::LevelGraphPart;
-use crate::viewer::map::annotations::{AnnotationMarker, AnnotationPatrol, AnnotationVolume};
+use crate::viewer::export::map::annotations::{AnnotationMarker, AnnotationPatrol, AnnotationVolume};
 
 /// Everything a level map's annotations can draw of a level's objects, engine space seen from above: what covers a
 /// space by its outlines, the patrol paths by their links, and what stands at a point by a dot.

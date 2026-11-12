@@ -6,12 +6,12 @@ use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrit
 use xrf_math::Vector3d;
 use xrf_utils::assert_equal;
 
+use crate::data::actions::particle_action::ParticleAction;
 use crate::data::editor::particle_editor_action::ParticleEditorAction;
 use crate::data::effect::particle_effect_collision::ParticleEffectCollision;
 use crate::data::effect::particle_effect_editor_data::ParticleEffectEditorData;
 use crate::data::effect::particle_effect_frame::ParticleEffectFrame;
 use crate::data::effect::particle_effect_sprite::ParticleEffectSprite;
-use crate::data::particle_action::ParticleAction;
 use crate::data::particle_description::ParticleDescription;
 use crate::data::particle_record_chunks::ParticleRecordChunks;
 
@@ -368,15 +368,15 @@ mod tests {
   use xrf_math::{Vector2d, Vector3d};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
+  use crate::data::actions::particle_action::ParticleAction;
   use crate::data::actions::particle_action_copy_vertex::ParticleActionCopyVertex;
   use crate::data::actions::particle_action_damping::ParticleActionDamping;
+  use crate::data::actions::particle_action_type::ParticleActionType;
   use crate::data::effect::particle_effect::ParticleEffect;
   use crate::data::effect::particle_effect_collision::ParticleEffectCollision;
   use crate::data::effect::particle_effect_editor_data::ParticleEffectEditorData;
   use crate::data::effect::particle_effect_frame::ParticleEffectFrame;
   use crate::data::effect::particle_effect_sprite::ParticleEffectSprite;
-  use crate::data::particle_action::ParticleAction;
-  use crate::data::particle_action_type::ParticleActionType;
   use crate::data::particle_description::ParticleDescription;
 
   #[test]

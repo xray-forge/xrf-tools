@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use serde::Deserialize;
 
-use crate::viewer::map::{MapExportAnnotations, MapExportFormat};
+use crate::viewer::export::map::{MapExportAnnotations, MapExportFormat};
 
 /// A level map's capture written again in another shape.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
