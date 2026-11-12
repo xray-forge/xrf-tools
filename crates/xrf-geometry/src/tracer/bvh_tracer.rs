@@ -61,9 +61,9 @@ impl BvhTracer {
     let shapes: Vec<obvhs::triangle::Triangle> = triangles
       .iter()
       .map(|triangle| obvhs::triangle::Triangle {
-        v0: Vec3A::from(triangle.corners[0]),
-        v1: Vec3A::from(triangle.corners[1]),
-        v2: Vec3A::from(triangle.corners[2]),
+        v0: triangle.corners[0],
+        v1: triangle.corners[1],
+        v2: triangle.corners[2],
       })
       .collect();
     let mut bvh: Bvh2 = build_bvh2_from_tris(&shapes, BvhBuildParams::medium_build(), &mut Duration::default());
@@ -74,6 +74,11 @@ impl BvhTracer {
       nodes: std::mem::take(&mut bvh.nodes),
       faces: std::mem::take(&mut bvh.primitive_indices),
     }
+  }
+
+  /// A leaf's faces.
+  pub(crate) fn get_leaf_faces(&self, node: &Bvh2Node) -> &[u32] {
+    &self.faces[node.first_index as usize..(node.first_index + node.prim_count) as usize]
   }
 
   /// Visits each face in a leaf a ray reaches within a reach the visitor may shorten, until the visitor returns true.
@@ -96,7 +101,7 @@ impl BvhTracer {
       }
 
       if node.is_leaf() {
-        for face in &self.faces[node.first_index as usize..(node.first_index + node.prim_count) as usize] {
+        for face in self.get_leaf_faces(node) {
           if visit(*face, &mut reach) {
             return;
           }
@@ -173,7 +178,7 @@ impl Tracer for BvhTracer {
       }
 
       if node.is_leaf() {
-        for face in &self.faces[node.first_index as usize..(node.first_index + node.prim_count) as usize] {
+        for face in self.get_leaf_faces(node) {
           if self.triangles[*face as usize].overlaps_box(center, half) {
             visit(*face);
           }
@@ -189,7 +194,7 @@ impl Tracer for BvhTracer {
     let mut nearest: Option<TraceHit> = None;
 
     self.walk(ray, |face, reach| {
-      let narrowed: Ray = Ray::new(ray.origin, ray.direction, *reach);
+      let narrowed: Ray = Ray { range: *reach, ..*ray };
 
       if let Some(crossing) = self.triangles[face as usize].cross(&narrowed, Facing::Front)
         && nearest.is_none_or(|best| crossing.distance < best.distance)

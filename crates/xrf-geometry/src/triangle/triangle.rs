@@ -1,19 +1,22 @@
-use glam::Vec3;
+use glam::{Vec3, Vec3A};
 use xrf_math::EPS;
 
 use crate::ray::facing::Facing;
 use crate::ray::ray::Ray;
 use crate::ray::ray_crossing::RayCrossing;
 
-/// A triangle by its three corners, in the engine's arithmetic.
+/// A triangle by its three corners, in the engine's arithmetic. The corners are held a SIMD register wide, which
+/// changes no result: each lane's operations, and the order a dot product sums in, are the scalar ones.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Triangle {
-  pub corners: [Vec3; 3],
+  pub corners: [Vec3A; 3],
 }
 
 impl Triangle {
-  pub const fn new(corners: [Vec3; 3]) -> Self {
-    Self { corners }
+  pub fn new(corners: [Vec3; 3]) -> Self {
+    Self {
+      corners: corners.map(Vec3A::from),
+    }
   }
 
   /// Where a ray crosses the triangle within its range, from the sides `facing` names: `CDB::TestRayTri` as the
@@ -22,11 +25,11 @@ impl Triangle {
   /// the triangle is too small to tell.
   pub fn cross(&self, ray: &Ray, facing: Facing) -> Option<RayCrossing> {
     let [first, second, third] = self.corners;
-    let edge1: Vec3 = second - first;
-    let edge2: Vec3 = third - first;
-    let pvec: Vec3 = ray.direction.cross(edge2);
+    let edge1: Vec3A = second - first;
+    let edge2: Vec3A = third - first;
+    let pvec: Vec3A = ray.direction.cross(edge2);
     let det: f32 = edge1.dot(pvec);
-    let tvec: Vec3 = ray.origin - first;
+    let tvec: Vec3A = ray.origin - first;
 
     let crossing: RayCrossing = match facing {
       Facing::Front => {
@@ -40,7 +43,7 @@ impl Triangle {
           return None;
         }
 
-        let qvec: Vec3 = tvec.cross(edge1);
+        let qvec: Vec3A = tvec.cross(edge1);
         let v: f32 = ray.direction.dot(qvec);
 
         if v < 0.0 || u + v > det {
@@ -67,7 +70,7 @@ impl Triangle {
           return None;
         }
 
-        let qvec: Vec3 = tvec.cross(edge1);
+        let qvec: Vec3A = tvec.cross(edge1);
         let v: f32 = ray.direction.dot(qvec) * inverse;
 
         if v < 0.0 || u + v > 1.0 {
@@ -89,7 +92,7 @@ impl Triangle {
   /// test (Akenine-Möller), as `CDB::COLLIDER`'s box query runs it under `OPT_FULL_TEST`: the box's three axes, the
   /// nine cross products of an axis with an edge, and the triangle's plane. Touching counts.
   pub fn overlaps_box(&self, center: Vec3, half: Vec3) -> bool {
-    let corners: [Vec3; 3] = self.corners.map(|corner| corner - center);
+    let corners: [Vec3; 3] = self.corners.map(|corner| Vec3::from(corner) - center);
 
     for axis in 0..3 {
       let (low, high) = Self::get_extent(corners.map(|corner| corner[axis]));
@@ -124,7 +127,7 @@ impl Triangle {
   /// `Fvector::mknormal`: the unit normal of `(p1 - p0) x (p2 - p1)`, which points the way a front face's does, left as
   /// it is when too short to scale (`normalize_safe`).
   pub fn get_normal(&self) -> Vec3 {
-    let [first, second, third] = self.corners;
+    let [first, second, third] = self.corners.map(Vec3::from);
     let normal: Vec3 = (second - first).cross(third - second);
     let length_sqr: f32 = normal.length_squared();
 
