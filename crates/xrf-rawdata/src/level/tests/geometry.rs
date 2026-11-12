@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::path::PathBuf;
 
 use xrf_chunk::{ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_editable_level::{EditableObjectTransform, EditableSectorItem};
@@ -17,8 +18,8 @@ use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 use crate::level::tests::fixtures::GUID;
 use crate::{
   LevelCollisionIndex, LevelCompilerShaderReason, LevelDecalIndex, LevelDecompileContext, LevelGeometryCensus,
-  LevelGeometryConversion, LevelGeometryDecompile, LevelGeometrySources, LevelShaderPairings, LevelSurfaceCensus,
-  LevelSurfaceInference, SurfaceDress,
+  LevelGeometryConversion, LevelGeometryDecompile, LevelGeometrySources, LevelInstanceLibrary, LevelShaderPairings,
+  LevelSurfaceCensus, LevelSurfaceInference, SurfaceDress,
 };
 
 /// A square of render geometry two metres across on the ground, centred on `x`.
@@ -177,6 +178,17 @@ fn decompile_with(
   collision: Option<&mut LevelCollisionIndex>,
   inference: Option<&mut LevelSurfaceInference>,
 ) -> XrfResult<LevelGeometryDecompile> {
+  decompile_from(level, visuals, collision, inference, None)
+}
+
+/// As [`decompile_with`], looking for `library`'s objects where given.
+fn decompile_from(
+  level: &LevelFile,
+  visuals: Vec<LevelVisual>,
+  collision: Option<&mut LevelCollisionIndex>,
+  inference: Option<&mut LevelSurfaceInference>,
+  library: Option<&LevelInstanceLibrary>,
+) -> XrfResult<LevelGeometryDecompile> {
   LevelGeometryConversion::decompile::<XRayByteOrder, _>(
     LevelGeometrySources {
       name: "test",
@@ -190,6 +202,7 @@ fn decompile_with(
       spawn: None,
       breakable_parts: &BTreeMap::new(),
       impostors: None,
+      library,
     },
     inference,
     &mut LevelDecompileContext::new(GUID),
@@ -265,6 +278,57 @@ fn decompiles_each_sector_into_a_shell_with_its_sector_and_portals() -> XrfResul
     ("sector_0000", "sector_0001")
   );
   assert_eq!(portal.vertices.len(), 4, "only the corners the portal spans");
+
+  Ok(())
+}
+
+#[test]
+fn places_library_objects_found_in_the_shells_and_counts_their_triangles() -> XrfResult {
+  // The library's square is one of the level's own, decompiled without a library: it stands where both squares do.
+  let mut library: LevelInstanceLibrary = LevelInstanceLibrary::default();
+  let shell: &EditableObjectFile = &decompile(&level((0, 1)))?.objects[1].decompile.object;
+
+  library.add(
+    String::from("statics\\square"),
+    PathBuf::from("square.object"),
+    shell,
+    None,
+  );
+
+  let decompiled: LevelGeometryDecompile = decompile_from(
+    &level((0, 1)),
+    vec![drawable(0), drawable(1), hierarchy(vec![0])],
+    None,
+    None,
+    Some(&library),
+  )?;
+
+  assert_eq!(
+    decompiled.census,
+    LevelGeometryCensus {
+      static_triangles: 4,
+      instances: 2,
+      instance_objects: 1,
+      instance_triangles: 4,
+      ..LevelGeometryCensus::default()
+    }
+  );
+  assert!(decompiled.objects.is_empty(), "no shell is left to write");
+  assert_eq!(
+    decompiled
+      .scene_objects
+      .objects
+      .iter()
+      .map(|it| it.reference.as_str())
+      .collect::<Vec<_>>(),
+    ["statics\\square", "statics\\square"]
+  );
+
+  // Each sector names the placement standing in it, so the Build keeps each square in its own sector.
+  for (sector, placed) in decompiled.sectors.objects.iter().zip(&decompiled.scene_objects.objects) {
+    assert_eq!(sector.items.len(), 1);
+    assert_eq!(sector.items[0].object, placed.object.name);
+  }
 
   Ok(())
 }
@@ -661,6 +725,7 @@ fn drops_the_static_copies_of_wall_marks() -> XrfResult {
       spawn: None,
       breakable_parts: &BTreeMap::new(),
       impostors: None,
+      library: None,
     },
     None,
     &mut LevelDecompileContext::new(GUID),

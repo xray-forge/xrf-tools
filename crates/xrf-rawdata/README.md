@@ -331,12 +331,12 @@ counts keep a new level's quality, and a direction may come back one unit off in
 `LevelSceneDecompiler::decompile` turns a level's directory into a scene (`LevelSceneDecompile`) in steps over one
 draft, each a `LevelSceneStep` declaring the files it reads (`level/scene/steps/`):
 
-| Step                 | Files                                                                                      | Gives                                            |
-| -------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------ |
+| Step                 | Files                                                                                                                  | Gives                                            |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
 | `LevelGeometryStep`  | `level`, `level.geom`, `level.cform`, `level.hom`, `level.som`, `level.wallmarks`, `level.spawn`, `meshes/brkbl#*.ogf` | Objects, scene objects, sectors, portals (below) |
-| `LevelBundleStep`    | `level`, `build.lights`                                                                    | Glows, lights, the light qualities               |
-| `LevelCompanionStep` | `level.ps_static`, `level.snd_static`, `level.snd_env`, `level.fog_vol`, `level.wallmarks` | One part each                                    |
-| `LevelGameStep`      | `level.game`, `level.env_mod`, `level.spawn`, `level_rs.spawn`                             | Ways, spawn points, the game modes               |
+| `LevelBundleStep`    | `level`, `build.lights`                                                                                                | Glows, lights, the light qualities               |
+| `LevelCompanionStep` | `level.ps_static`, `level.snd_static`, `level.snd_env`, `level.fog_vol`, `level.wallmarks`                             | One part each                                    |
+| `LevelGameStep`      | `level.game`, `level.env_mod`, `level.spawn`, `level_rs.spawn`                                                         | Ways, spawn points, the game modes               |
 
 The decompile reads every step's files once (`LevelSceneSources`, which also reads the bundle once for the two steps
 that need it), runs the steps in that order, so names come out the same each time, and finishes the draft:
@@ -385,6 +385,19 @@ reads from the file as saved; the source object's box held geometry the level do
 under the ground, so the model's stored box is widened to the one the facets were stood in, read back through the
 placement. An impostor that does not cut is refused and its model comes back without one. All 19 of `mp_darkvalley`'s
 cut, and rebuilt they stand within 0.05 mm of the shipped quads, sampling the same pixels but for DXT noise.
+
+With a `LevelInstanceLibrary` (`LevelGeometrySources::library`, the static and multi-use objects of the decompile's
+library roots), the library objects the Build merged into the static geometry come back as placements of them
+(`LevelGeometryDecompile::instances`), found by `level/instance/`'s `LevelInstanceMatcher` before the shells decompile:
+each object, largest first, from anchor triangles the level keeps whole, rigid by edge lengths then uniformly scaled by
+edge ratios, texture coordinates matched modulo whole repeats; a fit stands where it finds 80% of the object's rendered
+area (the pieces xrLC cut long faces into counted), fitted again over every corner matched, and claims one copy of each
+face. Claimed triangles leave the shells; each placement is a scene object of the library reference, named by the
+sector holding most of its triangles, and its collision-only faces leave `<name>_collision`. Each tree model a library
+tree draws is placed by the library's name instead (`LevelGeometryDecompile::trees`). The scene step copies each object
+found with its thumbnail beside the scene's objects (`LevelSceneLibraryFile`). On vanilla `labx8` with SDK 0.7's
+objects, 236 of GSC's 237 library placements come back, 5 under the name of an object of identical geometry, corners
+within 0.34 mm; geometry no library object matches stays in the shells.
 
 With a `LevelSurfaceInference` (`LevelSurfaces::Infer`), each visual is split by the game material its
 triangles lie on before the decompile, so each surface carries one `SurfaceDress` (compiler shader and game material,

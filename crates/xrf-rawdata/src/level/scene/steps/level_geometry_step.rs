@@ -11,6 +11,9 @@ use xrf_ogf::OgfFile;
 use xrf_shaders::ShaderCompilerFile;
 use xrf_utils::format_path;
 
+use crate::level::instance::level_instance_library::LevelInstanceLibrary;
+use crate::level::instance::level_instance_placement::LevelInstancePlacement;
+use crate::level::instance::level_tree_match::LevelTreeMatch;
 use crate::level::level_breakable_conversion::LevelBreakableConversion;
 use crate::level::level_collision_index::LevelCollisionIndex;
 use crate::level::level_decal_index::LevelDecalIndex;
@@ -20,13 +23,14 @@ use crate::level::level_map_conversion::LevelMapConversion;
 use crate::level::level_surface_inference::{LevelShaderPairings, LevelSurfaceInference, LevelSurfaces};
 use crate::level::level_tree_impostor::LevelTreeImpostorAtlas;
 use crate::level::scene::level_decompile_options::LevelDecompileOptions;
+use crate::level::scene::level_scene_decompile::LevelSceneLibraryFile;
 use crate::level::scene::level_scene_draft::LevelSceneDraft;
 use crate::level::scene::level_scene_listing::LevelSceneListing;
 use crate::level::scene::level_scene_sources::LevelSceneSources;
 use crate::level::scene::steps::level_scene_step::LevelSceneStep;
 use crate::provenance::level_scene_provenance::{
-  LevelSceneGeometry, LevelSceneInference, LevelSceneRefusal, LevelSceneSource, LevelSceneSurfaceLibraries,
-  LevelSceneSurfaces,
+  LevelSceneGeometry, LevelSceneInference, LevelSceneInstancePlacement, LevelSceneInstances, LevelSceneLibraryObject,
+  LevelSceneRefusal, LevelSceneSource, LevelSceneSurfaceLibraries, LevelSceneSurfaces, LevelSceneTreeMatch,
 };
 use crate::provenance::sidecar::Sidecar;
 
@@ -85,6 +89,7 @@ impl LevelSceneStep for LevelGeometryStep {
       (LevelSurfaces::Infer, Some(_)) => Some(Self::read_surface_inference::<T>(options)?),
       _ => None,
     };
+    let library: Option<LevelInstanceLibrary> = Self::read_instance_library::<T>(options)?;
     let mut geometry: LevelGeometryDecompile = LevelGeometryConversion::decompile::<T, _>(
       LevelGeometrySources {
         name: &options.name,
@@ -98,6 +103,7 @@ impl LevelSceneStep for LevelGeometryStep {
         spawn: draft.spawn.as_ref(),
         breakable_parts: &breakable_parts,
         impostors: impostors.as_ref(),
+        library: library.as_ref(),
       },
       surfaces.as_mut().map(|(inference, _)| inference),
       &mut draft.context,
@@ -150,6 +156,21 @@ impl LevelSceneStep for LevelGeometryStep {
       draft.add(geometry.portals.to_scene_tool()?, &[LevelFile::FILE_NAME], sources);
     }
 
+    draft.infer_if(
+      geometry.census.instances + geometry.census.library_tree_models > 0,
+      &[LevelSceneInference::LibraryInstances],
+    );
+
+    let instances: Option<LevelSceneInstances> = match &library {
+      Some(library) => {
+        let (files, instances) = Self::copy_library(options, library, &geometry.instances, &geometry.trees)?;
+
+        draft.library = files;
+        Some(instances)
+      }
+      None => None,
+    };
+
     draft.refused.extend(geometry.refused);
     draft.folded_entities = geometry.folded_entities;
     draft.geometry = Some(LevelSceneGeometry {
@@ -159,6 +180,7 @@ impl LevelSceneStep for LevelGeometryStep {
         libraries,
         census: inference.into_census(),
       }),
+      instances,
     });
     draft.objects = geometry.objects;
     draft.textures = geometry.textures;
@@ -168,6 +190,103 @@ impl LevelSceneStep for LevelGeometryStep {
 }
 
 impl LevelGeometryStep {
+  /// Each library object `placements` place, read from its library with its thumbnail to be copied beside the scene's
+  /// objects, and the record of the roots, the copies and the placements.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a placed object's file cannot be read again.
+  fn copy_library(
+    options: &LevelDecompileOptions,
+    library: &LevelInstanceLibrary,
+    placements: &[LevelInstancePlacement],
+    trees: &[LevelTreeMatch],
+  ) -> XrfResult<(Vec<LevelSceneLibraryFile>, LevelSceneInstances)> {
+    let mut files: Vec<LevelSceneLibraryFile> = Vec::new();
+    let mut objects: Vec<LevelSceneLibraryObject> = Vec::new();
+    let placed = placements
+      .iter()
+      .map(|placement| (&placement.reference, &placement.path))
+      .chain(trees.iter().map(|tree| (&tree.reference, &tree.path)));
+
+    for (reference, path) in placed {
+      if files.iter().any(|file| file.reference == *reference) {
+        continue;
+      }
+
+      let object: Vec<u8> = std::fs::read(path)
+        .map_err(|error| XrfError::new_read_error(format!("{} was not read: {error}", format_path(path))))?;
+      let thumbnail: Option<Vec<u8>> =
+        std::fs::read(path.with_extension(LevelSceneLibraryFile::THUMBNAIL_EXTENSION)).ok();
+
+      objects.push(LevelSceneLibraryObject {
+        reference: reference.clone(),
+        source: format_path(path).to_string(),
+        sha256: Sidecar::get_sha256_hex(&object),
+      });
+      files.push(LevelSceneLibraryFile {
+        reference: reference.clone(),
+        object,
+        thumbnail,
+      });
+    }
+
+    let instances: LevelSceneInstances = LevelSceneInstances {
+      roots: options
+        .libraries
+        .iter()
+        .map(|root| format_path(root).to_string())
+        .collect(),
+      unread_objects: library.unread_objects,
+      objects,
+      placements: placements
+        .iter()
+        .map(|placement| LevelSceneInstancePlacement {
+          reference: placement.reference.clone(),
+          object: placement.object.clone(),
+          coverage: placement.coverage,
+          error: placement.error,
+          triangles: placement.triangles,
+        })
+        .collect(),
+      trees: trees
+        .iter()
+        .map(|tree| LevelSceneTreeMatch {
+          model: tree.model.clone(),
+          reference: tree.reference.clone(),
+          coverage: tree.coverage,
+          error: tree.error,
+        })
+        .collect(),
+    };
+
+    Ok((files, instances))
+  }
+
+  /// The objects of the library roots the options name, looked for in the static geometry; none without a root. A
+  /// surface renders where its compiler shader in the options' `shaders_xrlc.xr` says so, or where none is named.
+  fn read_instance_library<T: ByteOrder>(options: &LevelDecompileOptions) -> XrfResult<Option<LevelInstanceLibrary>> {
+    if options.libraries.is_empty() {
+      return Ok(None);
+    }
+
+    let compiler_shaders: Option<ShaderCompilerFile> = options
+      .compiler_shaders
+      .as_ref()
+      .map(|path| ShaderCompilerFile::read_from_path::<T, _>(path))
+      .transpose()?;
+    let mut library: LevelInstanceLibrary =
+      LevelInstanceLibrary::read_from_roots::<T>(&options.libraries, compiler_shaders.as_ref())?;
+    // The decompile's own folder holds what an earlier decompile of this level wrote, whose shells would be found whole.
+    let own: String = format!("levels\\{}\\", options.name).to_lowercase();
+
+    library
+      .objects
+      .retain(|object| !object.reference.to_lowercase().starts_with(&own));
+
+    Ok(Some(library))
+  }
+
   /// The trees' impostor atlas, where the directory holds both its files; one that does not read is refused, and the
   /// trees come back without impostors.
   fn read_impostors(sources: &mut LevelSceneSources, draft: &mut LevelSceneDraft) -> Option<LevelTreeImpostorAtlas> {

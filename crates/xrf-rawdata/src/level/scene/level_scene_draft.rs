@@ -10,7 +10,9 @@ use crate::level::level_entity_conversion::{LevelEntityConversion, LevelEntitySo
 use crate::level::level_geometry_conversion::LevelDecompiledObject;
 use crate::level::level_map_conversion::LevelMapSettings;
 use crate::level::scene::level_decompile_options::LevelDecompileOptions;
-use crate::level::scene::level_scene_decompile::{LevelSceneDecompile, LevelSceneObjectFile, LevelSceneTextureFile};
+use crate::level::scene::level_scene_decompile::{
+  LevelSceneDecompile, LevelSceneLibraryFile, LevelSceneObjectFile, LevelSceneTextureFile,
+};
 use crate::level::scene::level_scene_sources::LevelSceneSources;
 use crate::level::scene::steps::level_root_spawn::LevelRootSpawn;
 use crate::provenance::level_scene_provenance::{
@@ -29,6 +31,8 @@ pub(crate) struct LevelSceneDraft {
   inferred: Vec<LevelSceneInference>,
   pub(crate) refused: Vec<LevelSceneRefusal>,
   pub(crate) objects: Vec<LevelDecompiledObject>,
+  /// The library objects the scene places by reference, copied beside the objects.
+  pub(crate) library: Vec<LevelSceneLibraryFile>,
   /// The textures the objects need for the Build.
   pub(crate) textures: Vec<LevelSceneTextureFile>,
   pub(crate) geometry: Option<LevelSceneGeometry>,
@@ -86,6 +90,7 @@ impl LevelSceneDraft {
       ],
       refused: Vec::new(),
       objects: Vec::new(),
+      library: Vec::new(),
       textures: Vec::new(),
       geometry: None,
       folded_entities: Vec::new(),
@@ -174,6 +179,7 @@ impl LevelSceneDraft {
         ..LevelSceneProvenance::new(options.name.clone(), options.tool.clone(), options.tool_version.clone())
       },
       objects,
+      library: self.library,
       textures: self.textures,
     }
   }

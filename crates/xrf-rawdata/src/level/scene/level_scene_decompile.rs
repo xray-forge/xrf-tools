@@ -36,6 +36,29 @@ impl LevelSceneObjectFile {
   }
 }
 
+/// One library object a decompiled scene places by reference, copied as its library holds it, with the thumbnail
+/// beside it where the library has one, so the scene opens and builds from the decompile's objects alone.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LevelSceneLibraryFile {
+  /// Its path under the objects root without the extension, the library's own.
+  pub reference: String,
+  pub object: Vec<u8>,
+  pub thumbnail: Option<Vec<u8>>,
+}
+
+impl LevelSceneLibraryFile {
+  /// The extension of the thumbnail the Level Editor lists an object by.
+  pub const THUMBNAIL_EXTENSION: &'static str = "thm";
+
+  /// Its object's path under `objects_root`, and its thumbnail's.
+  pub fn get_paths(&self, objects_root: &Path) -> (PathBuf, PathBuf) {
+    let path: PathBuf = LevelSceneObjectFile::get_reference_path(objects_root, &self.reference);
+    let thumbnail: PathBuf = path.with_extension(Self::THUMBNAIL_EXTENSION);
+
+    (path, thumbnail)
+  }
+}
+
 /// One texture a decompiled scene's objects need for the Build, written under the game textures root
 /// (`$game_textures$`), such as a tree model's impostor strip.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -70,6 +93,8 @@ pub struct LevelSceneDecompile {
   pub scene: EditableLevelScene,
   pub provenance: LevelSceneProvenance,
   pub objects: Vec<LevelSceneObjectFile>,
+  /// The library objects it places by reference, copied beside the objects.
+  pub library: Vec<LevelSceneLibraryFile>,
   pub textures: Vec<LevelSceneTextureFile>,
 }
 
@@ -84,18 +109,35 @@ impl LevelSceneDecompile {
       .collect()
   }
 
-  /// What a write would replace of the objects the scene places, under `objects_root`, and their sidecars.
+  /// What a write would replace of the objects the scene places, under `objects_root`, and their sidecars; a library
+  /// copy that would write a file's own bytes again replaces nothing, as where the objects root is the library's.
   pub fn get_existing_object_paths(&self, objects_root: &Path) -> Vec<PathBuf> {
+    let library = self.library.iter().flat_map(|file| {
+      let (path, thumbnail) = file.get_paths(objects_root);
+
+      [
+        (path, Some(file.object.as_slice())),
+        (thumbnail, file.thumbnail.as_deref()),
+      ]
+    });
+
     self
       .objects
       .iter()
       .flat_map(|object| {
         let path: PathBuf = object.get_path(objects_root);
 
-        [ObjectProvenance::sidecar_path(&path), path]
+        [(ObjectProvenance::sidecar_path(&path), None), (path, None)]
       })
-      .filter(|path| path.exists())
+      .chain(library)
+      .filter(|(path, bytes)| path.exists() && !bytes.is_some_and(|bytes| Self::is_same_file(path, bytes)))
+      .map(|(path, _)| path)
       .collect()
+  }
+
+  /// Whether the file at `path` holds `bytes`.
+  fn is_same_file(path: &Path, bytes: &[u8]) -> bool {
+    std::fs::read(path).is_ok_and(|held| held == bytes)
   }
 
   /// What a write to `level_path` would replace, of the scene's main file, its part directory and its sidecar: what a
@@ -112,7 +154,8 @@ impl LevelSceneDecompile {
   }
 
   /// Writes the scene's sidecar (`<level_path>.xrf.json`), then each object under `objects_root` after its own sidecar,
-  /// then each texture under `textures_root`, then the scene: its main file at `level_path` and its parts in the
+  /// then each library object and its thumbnail as copied (left alone where the file already holds them), then each
+  /// texture under `textures_root`, then the scene: its main file at `level_path` and its parts in the
   /// directory beside it. Each sidecar goes before what it describes, so a write that fails leaves a stray sidecar,
   /// never a decompile taken for authored work.
   ///
@@ -137,6 +180,22 @@ impl LevelSceneDecompile {
         object.provenance.to_json()?.as_bytes(),
       )?;
       Self::write_file(&path, &object.object.write_to_bytes::<T>()?)?;
+    }
+
+    for file in &self.library {
+      let (path, thumbnail) = file.get_paths(objects_root);
+
+      if !Self::is_same_file(&path, &file.object) {
+        Self::write_file(&path, &file.object)?;
+      }
+
+      if let Some(bytes) = file
+        .thumbnail
+        .as_deref()
+        .filter(|bytes| !Self::is_same_file(&thumbnail, bytes))
+      {
+        Self::write_file(&thumbnail, bytes)?;
+      }
     }
 
     for texture in &self.textures {

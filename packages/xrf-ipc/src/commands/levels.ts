@@ -86,8 +86,8 @@ export enum ELevelsCommand {
 export const levelsCommands = {
   /**
    * Build a Level Editor scene into a level directory, as `level build` does, then compile it where `compile` names
-   * the steps, as `level compile` does, one job reporting both and stopping between steps on request. The compile
-   * works on the directory the build wrote, whatever level `compile` names.
+   * the steps, as `level compile` does, one job reporting both. A cancel stops the build between its steps and kills a
+   * running compiler. The compile works on the directory the build wrote, whatever level `compile` names.
    */
   buildLevel: (
     request: LevelBuildRequest,

@@ -94,8 +94,9 @@ impl GenericCommand for DecompileCommand {
       .arg(
         Arg::new("library")
           .help(
-            "Object library root, such as an SDK's rawdata/objects, whose surfaces' pairings of engine and compiler \
-             shaders break ties between compiler shaders that fit; repeatable",
+            "Object library root, such as an SDK's rawdata/objects: its objects found placed in the static geometry and \
+             its trees found as tree models are placed by reference and copied beside the objects, and its surfaces' \
+             pairings of engine and compiler shaders break ties between compiler shaders that fit; repeatable",
           )
           .long("library")
           .action(ArgAction::Append)
@@ -203,6 +204,18 @@ impl DecompileCommand {
         report.textures_root,
         geometry.census.collision_only_faces
       );
+
+      if geometry.census.instances + geometry.census.library_tree_models > 0 {
+        xrf_output::info!(
+          output,
+          "Library objects: {} placements of {} objects found in the static geometry, taking {} of its triangles; {} \
+           tree models found to be library trees; each copied beside the objects, as the sidecar records",
+          geometry.census.instances,
+          geometry.census.instance_objects,
+          geometry.census.instance_triangles,
+          geometry.census.library_tree_models
+        );
+      }
     }
 
     if let Some(root) = report.root_spawn.as_ref().filter(|root| root.objects > 0) {
