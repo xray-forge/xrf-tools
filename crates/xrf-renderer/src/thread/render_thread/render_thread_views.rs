@@ -19,7 +19,7 @@ use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::frame::timing::frame_phases::FramePhases;
 use crate::host::weather::render_level_weather::RenderLevelWeather;
 use crate::host::world::render_scene_id::RenderSceneId;
-use crate::host::world::render_view_frame::RenderViewFrame;
+use crate::host::world::view::render_view_frame::RenderViewFrame;
 use crate::lighting::weather::render_lighting::RenderLighting;
 use crate::pass::view::camera_uniform::CameraUniform;
 use crate::pass::view::view_binding::ViewBinding;

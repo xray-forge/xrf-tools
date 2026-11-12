@@ -2,7 +2,7 @@ use crate::capture::capture_job::CaptureJob;
 use crate::contract::overlay::render_selection::RenderSelection;
 use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::host::world::render_scene_id::RenderSceneId;
-use crate::host::world::render_view_frame::RenderViewFrame;
+use crate::host::world::view::render_view_frame::RenderViewFrame;
 use crate::pass::view::view_binding::ViewBinding;
 use crate::scene::level::view::scene_view::SceneView;
 use crate::viewport::viewport_overlays::ViewportOverlays;
