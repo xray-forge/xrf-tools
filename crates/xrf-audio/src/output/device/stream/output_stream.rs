@@ -5,9 +5,9 @@ use cpal::traits::{DeviceTrait, StreamTrait};
 use cpal::{Device, ErrorKind, OutputCallbackInfo, OutputStreamTimestamp, Stream, StreamConfig};
 use rtrb::{Consumer, RingBuffer};
 
-use crate::device::stream::mixer_holder::MixerHolder;
-use crate::device::stream::open_failure::OpenFailure;
 use crate::mixer::audio_mixer::AudioMixer;
+use crate::output::device::stream::mixer_holder::MixerHolder;
+use crate::output::device::stream::open_failure::OpenFailure;
 
 /// A device stream playing the mixer, with what its callbacks report.
 pub(crate) struct OutputStream {

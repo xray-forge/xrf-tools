@@ -12,7 +12,7 @@ use crate::control::server::control_runtime::ControlRuntime;
 use crate::control::server::events::audio_event::AudioEvent;
 use crate::mixer::audio_mixer::AudioMixer;
 use crate::mixer::meter::audio_mixer_meter::AudioMixerMeter;
-use crate::offline::offline_render::OfflineRender;
+use crate::output::offline::offline_render::OfflineRender;
 use crate::scene::host::audio_asset_source::AudioAssetSource;
 use crate::scene::host::audio_scene_geometry::AudioSceneGeometry;
 use crate::scene::render::bank::sound_bank::SoundBank;
