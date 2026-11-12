@@ -103,6 +103,7 @@ README is also its crate's rustdoc page.
 | [xrf-env-flags](xrf-env-flags/README.md)       | Declare and read every environment variable the workspace honours |
 | [xrf-error](xrf-error/README.md)               | Share typed errors and results                                    |
 | [xrf-error-derive](xrf-error-derive/README.md) | Generate message-based error constructors                         |
+| [xrf-geometry](xrf-geometry/README.md)         | Trace rays and boxes against triangles as the engine's CDB does   |
 | [xrf-job](xrf-job/README.md)                   | Report progress, request cancellation, and plan worker limits     |
 | [xrf-math](xrf-math/README.md)                 | Vectors, matrices and shapes in the engine's layout               |
 | [xrf-output](xrf-output/README.md)             | Route live messages and ordered worker output                     |

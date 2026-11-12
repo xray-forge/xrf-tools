@@ -24,6 +24,7 @@ xrf-editable-level = { workspace = true }
 xrf-editable-object = { workspace = true }
 xrf-error = { workspace = true }
 xrf-gamemtl = { workspace = true }
+xrf-geometry = { workspace = true }
 xrf-ini = { workspace = true }
 xrf-job = { workspace = true }
 xrf-level = { workspace = true }

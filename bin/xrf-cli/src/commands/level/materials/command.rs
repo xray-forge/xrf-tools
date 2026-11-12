@@ -3,8 +3,8 @@ use xrf_chunk::{ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_error::XrfError;
 use xrf_gamemtl::GameMtlFile;
 use xrf_level::{
-  LevelCformFile, LevelCformGeometry, LevelCformTracer, LevelFile, LevelGeomFile, LevelGeomSource,
-  LevelSurfaceMaterials, LevelVisualsChunk,
+  LevelCformFile, LevelCformGeometry, LevelFile, LevelGeomFile, LevelGeomSource, LevelSurfaceMaterials,
+  LevelVisualsChunk,
 };
 use xrf_output::OutputOptions;
 
@@ -61,7 +61,7 @@ impl GenericCommand for MaterialsCommand {
     let library: Option<GameMtlFile> = Self::read_library(&assets, &output);
 
     let survey: LevelSurfaceMaterials =
-      LevelSurfaceMaterials::survey::<XRayByteOrder, _>(&visuals, &source, &LevelCformTracer::new(&collision));
+      LevelSurfaceMaterials::survey::<XRayByteOrder, _>(&visuals, &source, &collision);
     let report: LevelMaterialsReport =
       LevelMaterialsReport::new(assets.describe(), &survey, level.shaders.as_ref(), library.as_ref());
 
