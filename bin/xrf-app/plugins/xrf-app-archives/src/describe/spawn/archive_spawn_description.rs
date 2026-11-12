@@ -27,10 +27,7 @@ impl ArchiveSpawnDescription {
   pub fn of_entry(entry: &mut ArchiveEntryReader) -> Option<Self> {
     let size: u64 = entry.size();
     let sections: Vec<(u32, u64)> = entry.read_sections().ok()?;
-    let header: SpawnHeaderChunk = entry
-      .read_chunk::<SpawnHeaderChunk>(SpawnHeaderChunk::CHUNK_ID)
-      .ok()
-      .flatten()?;
+    let header: SpawnHeaderChunk = entry.read_spawn_header().ok().flatten()?;
 
     Some(Self {
       version: header.version,

@@ -1,31 +1,22 @@
 use serde::Serialize;
-use xrf_spawn::SpawnFile;
 
-use crate::commands::spawn::info::spawn_graph_report::SpawnGraphReport;
+use crate::commands::spawn::info::spawn_info_file::SpawnInfoFile;
+use crate::commands::spawn::info::spawn_level_report::SpawnLevelReport;
+use crate::commands::spawn::info::spawn_root_report::SpawnRootReport;
 
-/// What `spawn info` read out of a spawn file.
+/// What `spawn info` read out of a spawn file, beside the `kind` of `.spawn` it was.
 #[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct SpawnInfoReport {
-  artefact_spawn_points: usize,
-  graph: SpawnGraphReport,
-  guid: String,
-  levels: u32,
-  objects: u32,
-  patrols: usize,
-  version: u32,
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub(crate) enum SpawnInfoReport {
+  Root(SpawnRootReport),
+  Level(SpawnLevelReport),
 }
 
 impl SpawnInfoReport {
-  pub(crate) fn new(file: &SpawnFile) -> Self {
-    Self {
-      artefact_spawn_points: file.artefact_spawn.nodes.len(),
-      graph: SpawnGraphReport::new(&file.graphs),
-      guid: file.header.guid.to_string(),
-      levels: file.header.levels_count,
-      objects: file.header.objects_count,
-      patrols: file.patrols.patrols.len(),
-      version: file.header.version,
+  pub(crate) fn new(file: &SpawnInfoFile) -> Self {
+    match file {
+      SpawnInfoFile::Root(file) => Self::Root(SpawnRootReport::new(file)),
+      SpawnInfoFile::Level(file) => Self::Level(SpawnLevelReport::new(file)),
     }
   }
 }

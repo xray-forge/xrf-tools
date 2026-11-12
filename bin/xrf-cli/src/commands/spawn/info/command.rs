@@ -2,10 +2,10 @@ use std::path::PathBuf;
 
 use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_output::OutputOptions;
-use xrf_spawn::{SpawnFile, XRayByteOrder};
 use xrf_utils::format_path;
 
 use super::report::SpawnInfoReport;
+use super::spawn_info_file::SpawnInfoFile;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
@@ -19,7 +19,7 @@ impl GenericCommand for InfoCommand {
   fn declare(&self, command: Command) -> Command {
     command.about("Print what a spawn file holds").arg(
       Arg::new("path")
-        .help("Path to spawn file")
+        .help("Path to a root spawn such as all.spawn, or to a level's level.spawn")
         .short('p')
         .long("path")
         .required(true)
@@ -36,33 +36,11 @@ impl GenericCommand for InfoCommand {
 
     xrf_output::info!(output, "Read spawn file {}", format_path(path));
 
-    let spawn_file: SpawnFile = SpawnFile::read_from_path::<XRayByteOrder, _>(path)?;
+    let file: SpawnInfoFile = SpawnInfoFile::read_from_path(path)?;
 
-    xrf_output::info!(output, "Spawn file information:");
+    file.print(&output);
 
-    xrf_output::info!(output, "Version: {}", spawn_file.header.version);
-    xrf_output::info!(output, "GUID: {}", spawn_file.header.guid);
-    xrf_output::info!(output, "Levels count: {}", spawn_file.header.levels_count);
-    xrf_output::info!(output, "Objects count: {}", spawn_file.header.objects_count);
-
-    xrf_output::info!(
-      output,
-      "Artefact spawn points: {}",
-      spawn_file.artefact_spawn.nodes.len()
-    );
-
-    xrf_output::info!(output, "Patrols: {}", spawn_file.patrols.patrols.len());
-
-    xrf_output::info!(output, "Level version: {}", spawn_file.graphs.header.version);
-    xrf_output::info!(
-      output,
-      "Level graph vertices: {}",
-      spawn_file.graphs.header.vertices_count
-    );
-    xrf_output::info!(output, "Level graph points: {}", spawn_file.graphs.header.points_count);
-    xrf_output::info!(output, "Level graph edges: {}", spawn_file.graphs.header.edges_count);
-
-    context.set_result(|| SpawnInfoReport::new(&spawn_file))?;
+    context.set_result(|| SpawnInfoReport::new(&file))?;
 
     Ok(())
   }

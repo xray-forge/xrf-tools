@@ -6,6 +6,7 @@ pub(crate) mod data;
 pub(crate) mod level_spawn_file;
 pub(crate) mod level_spawn_object;
 pub(crate) mod spawn_file;
+pub(crate) mod spawn_file_kind;
 
 #[cfg(test)]
 mod fixtures;
@@ -108,3 +109,4 @@ pub use crate::data::physics::scaled_direction::ScaledDirection;
 pub use crate::level_spawn_file::*;
 pub use crate::level_spawn_object::*;
 pub use crate::spawn_file::*;
+pub use crate::spawn_file_kind::SpawnFileKind;
