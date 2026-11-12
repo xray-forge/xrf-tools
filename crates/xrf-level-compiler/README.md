@@ -47,6 +47,28 @@ An alpha face's image is decoded with `xrf-dds`' `decode_sdk_alpha`, and only fo
 Loading fails where the SDK's compilers stop: a texture with no `.thm`, a compiler shader the library lacks, a face of a
 material with no compiler shader, or an alpha image that is missing or not the size its `.thm` gives.
 
+## The detail lighter
+
+`DetailLighter::light` lights `build.details` as xrDO_Light does, and is not a step yet: the `details` step still runs
+the SDK's. It takes a `DetailLightRequest` (the details, a tracer over `build.cform`, the shadow materials and
+`build.lights`) and an `xrf-job` `JobHandle`, and gives a `DetailLighting`: the `level.details` to write and how many
+slots it met each way.
+
+- Every slot's corners whose densities are all zero are cleared; a slot planting nothing, or touching no face of the
+  ray model in its box, is left unlit.
+- A planted slot is lit from 15 by 15 points, each dropped onto the highest face under it, by every light of
+  `build.lights` reaching the slot: the static lights' colour by the cosine and attenuation, the sun and the sky as
+  plain amounts. Each light is scaled by the product of the transmittances its shadow ray crosses.
+- A directional light's rays from a slot's points share its direction and trace as one packet. The amounts are then
+  summed in the SDK's order, point by point, so the packets change no result, only the time.
+- The sums are averaged, halved and stored as four bits each (`LevelDetailsLight::quantize`).
+
+The slots run over the installed rayon pool, a progress unit each, and a cancelled job stops the lighting with
+`XrfError::Cancelled`. Every shadow ray is a full query: the SDK's lighter first tests the face that last blocked each
+light, from either side, so its result depends on the order slots run in and can come out darker; this one is the
+same on any thread count. On the kept SDK runs of `mp_darkvalley` and `jupiter` it matches the SDK's slot for slot but
+for one in about 20,000 to 90,000, each one step off: the SDK's cache, or a sum under the x87's precision.
+
 ## Develop
 
 ```bash

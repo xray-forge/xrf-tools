@@ -1,6 +1,7 @@
 #![doc = include_str!("../README.md")]
 
 mod compiler_textures;
+mod detail;
 mod level_compile_report;
 mod level_compile_request;
 mod level_compile_step;
@@ -11,6 +12,10 @@ mod shadow;
 #[cfg(test)]
 mod tests;
 
+pub use crate::detail::detail_light_request::DetailLightRequest;
+pub use crate::detail::detail_lighter::DetailLighter;
+pub use crate::detail::detail_lighting::DetailLighting;
+pub use crate::detail::detail_slot_counts::DetailSlotCounts;
 pub use crate::level_compile_report::{LevelCompileReport, LevelCompileStepReport};
 pub use crate::level_compile_request::LevelCompileRequest;
 pub use crate::level_compile_step::LevelCompileStep;
