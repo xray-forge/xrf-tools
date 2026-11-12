@@ -6,13 +6,15 @@ use crate::chunks::particles_header_chunk::ParticlesHeaderChunk;
 use crate::data::actions::particle_action_kill_old::ParticleActionKillOld;
 use crate::data::actions::particle_action_move::ParticleActionMove;
 use crate::data::actions::particle_action_source::ParticleActionSource;
+use crate::data::domain::particle_domain::ParticleDomain;
+use crate::data::domain::particle_domain_basis::ParticleDomainBasis;
+use crate::data::domain::particle_domain_points::ParticleDomainPoints;
 use crate::data::effect::particle_effect::ParticleEffect;
 use crate::data::effect::particle_effect_sprite::ParticleEffectSprite;
 use crate::data::group::particle_group::ParticleGroup;
 use crate::data::group::particle_group_effect::ParticleGroupEffect;
 use crate::data::particle_action::ParticleAction;
 use crate::data::particle_action_type::ParticleActionType;
-use crate::data::particle_domain::ParticleDomain;
 use crate::particles_file::ParticlesFile;
 use crate::simulation::particle_engine_rules::ParticleEngineRules;
 use crate::simulation::particle_library::ParticleLibrary;
@@ -22,8 +24,14 @@ use crate::simulation::particle_update_context::ParticleUpdateContext;
 pub(super) fn point(x: f32, y: f32, z: f32) -> ParticleDomain {
   ParticleDomain {
     domain_type: 0,
-    coordinates: (Vector3d::new(x, y, z), Vector3d::new(0.0, 0.0, 0.0)),
-    basis: (Vector3d::new(0.0, 0.0, 0.0), Vector3d::new(0.0, 0.0, 0.0)),
+    coordinates: ParticleDomainPoints {
+      p1: Vector3d::new(x, y, z),
+      p2: Vector3d::new(0.0, 0.0, 0.0),
+    },
+    basis: ParticleDomainBasis {
+      u: Vector3d::new(0.0, 0.0, 0.0),
+      v: Vector3d::new(0.0, 0.0, 0.0),
+    },
     radius1: 0.0,
     radius2: 0.0,
     radius1_sqr: 0.0,

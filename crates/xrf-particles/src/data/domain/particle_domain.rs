@@ -7,12 +7,15 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 
+use crate::data::domain::particle_domain_basis::ParticleDomainBasis;
+use crate::data::domain::particle_domain_points::ParticleDomainPoints;
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ParticleDomain {
   pub domain_type: u32,
-  pub coordinates: (Vector3d, Vector3d),
-  pub basis: (Vector3d, Vector3d),
+  pub coordinates: ParticleDomainPoints,
+  pub basis: ParticleDomainBasis,
   pub radius1: f32,
   pub radius2: f32,
   pub radius1_sqr: f32,
@@ -24,8 +27,14 @@ impl ChunkReadWrite for ParticleDomain {
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
       domain_type: reader.read_u32::<T>()?,
-      coordinates: (reader.read_xr::<T, _>()?, reader.read_xr::<T, _>()?),
-      basis: (reader.read_xr::<T, _>()?, reader.read_xr::<T, _>()?),
+      coordinates: ParticleDomainPoints {
+        p1: reader.read_xr::<T, _>()?,
+        p2: reader.read_xr::<T, _>()?,
+      },
+      basis: ParticleDomainBasis {
+        u: reader.read_xr::<T, _>()?,
+        v: reader.read_xr::<T, _>()?,
+      },
       radius1: reader.read_f32::<T>()?,
       radius2: reader.read_f32::<T>()?,
       radius1_sqr: reader.read_f32::<T>()?,
@@ -35,10 +44,10 @@ impl ChunkReadWrite for ParticleDomain {
 
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_u32::<T>(self.domain_type)?;
-    writer.write_xr::<T, _>(&self.coordinates.0)?;
-    writer.write_xr::<T, _>(&self.coordinates.1)?;
-    writer.write_xr::<T, _>(&self.basis.0)?;
-    writer.write_xr::<T, _>(&self.basis.1)?;
+    writer.write_xr::<T, _>(&self.coordinates.p1)?;
+    writer.write_xr::<T, _>(&self.coordinates.p2)?;
+    writer.write_xr::<T, _>(&self.basis.u)?;
+    writer.write_xr::<T, _>(&self.basis.v)?;
     writer.write_f32::<T>(self.radius1)?;
     writer.write_f32::<T>(self.radius2)?;
     writer.write_f32::<T>(self.radius1_sqr)?;
@@ -54,18 +63,18 @@ impl Display for ParticleDomain {
       formatter,
       "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
       self.domain_type,
-      self.coordinates.0.x,
-      self.coordinates.0.y,
-      self.coordinates.0.z,
-      self.coordinates.1.x,
-      self.coordinates.1.y,
-      self.coordinates.1.z,
-      self.basis.0.x,
-      self.basis.0.y,
-      self.basis.0.z,
-      self.basis.1.x,
-      self.basis.1.y,
-      self.basis.1.z,
+      self.coordinates.p1.x,
+      self.coordinates.p1.y,
+      self.coordinates.p1.z,
+      self.coordinates.p2.x,
+      self.coordinates.p2.y,
+      self.coordinates.p2.z,
+      self.basis.u.x,
+      self.basis.u.y,
+      self.basis.u.z,
+      self.basis.v.x,
+      self.basis.v.y,
+      self.basis.v.z,
       self.radius1,
       self.radius2,
       self.radius1_sqr,
@@ -104,8 +113,14 @@ impl FromStr for ParticleDomain {
 
     Ok(Self {
       domain_type: parts[0].parse::<u32>().map_err(|_| invalid(0, "domain_type"))?,
-      coordinates: (vector(1, "coordinates 0")?, vector(4, "coordinates 1")?),
-      basis: (vector(7, "basis 0")?, vector(10, "basis 1")?),
+      coordinates: ParticleDomainPoints {
+        p1: vector(1, "coordinates 0")?,
+        p2: vector(4, "coordinates 1")?,
+      },
+      basis: ParticleDomainBasis {
+        u: vector(7, "basis 0")?,
+        v: vector(10, "basis 1")?,
+      },
       radius1: number(13, "radius1")?,
       radius2: number(14, "radius2")?,
       radius1_sqr: number(15, "radius1_sqr")?,
@@ -119,22 +134,22 @@ impl ParticleDomain {
   pub fn new_mock() -> Self {
     Self {
       domain_type: 1,
-      coordinates: (
-        Vector3d {
+      coordinates: ParticleDomainPoints {
+        p1: Vector3d {
           x: 1.5,
           y: 1.25,
           z: 1.75,
         },
-        Vector3d { x: 2.5, y: 2.1, z: 2.8 },
-      ),
-      basis: (
-        Vector3d {
+        p2: Vector3d { x: 2.5, y: 2.1, z: 2.8 },
+      },
+      basis: ParticleDomainBasis {
+        u: Vector3d {
           x: 0.5,
           y: -1.3,
           z: 0.4,
         },
-        Vector3d { x: 2.3, y: 0.3, z: 3.3 },
-      ),
+        v: Vector3d { x: 2.3, y: 0.3, z: 3.3 },
+      },
       radius1: 100.0,
       radius2: 400.0,
       radius1_sqr: 10.0,
@@ -154,7 +169,7 @@ mod tests {
   use xrf_error::XrfResult;
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
-  use crate::data::particle_domain::ParticleDomain;
+  use crate::data::domain::particle_domain::ParticleDomain;
 
   #[test]
   fn test_read_write() -> XrfResult {
@@ -217,6 +232,18 @@ mod tests {
 
     assert_eq!(serialized.to_string(), serialized);
     assert_eq!(original, serde_json::from_str::<ParticleDomain>(&serialized)?);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_serializes_each_pair_as_an_array() -> XrfResult {
+    let value: serde_json::Value = serde_json::to_value(ParticleDomain::new_mock())?;
+
+    assert_eq!(value["coordinates"].as_array().map(Vec::len), Some(2));
+    assert_eq!(value["coordinates"][0]["x"], 1.5);
+    assert_eq!(value["basis"].as_array().map(Vec::len), Some(2));
+    assert_eq!(value["basis"][1]["z"], 3.3_f32);
 
     Ok(())
   }

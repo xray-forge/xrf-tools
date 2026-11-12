@@ -5,7 +5,7 @@ use xrf_renderer::{RenderHelperIcon, RenderHelperShape, RenderLevelHelpers};
 use xrf_spawn::{
   AlifeGraphPoint, AlifeObject, AlifeObjectAbstract, AlifeObjectDynamicVisual, AlifeObjectHangingLamp,
   AlifeObjectInherited, AlifeObjectItem, AlifeObjectPhysic, AlifeObjectSkeleton, AlifeObjectSpaceRestrictor, ClsId,
-  Patrol, PatrolLink, PatrolPoint, Shape, SpawnLevelGraph,
+  Patrol, PatrolLink, PatrolPoint, Shape, SpawnLevelGraph, SpawnLevelGraphPoint,
 };
 
 use crate::objects::{
@@ -125,7 +125,16 @@ fn get_index(object: &LevelObject) -> u32 {
 fn new_graph() -> SpawnLevelGraph {
   SpawnLevelGraph {
     levels: Vec::new(),
-    points: vec![(12, Vector3d::new(1.0, 2.0, 3.0)), (13, Vector3d::new(4.0, 5.0, 6.0))],
+    points: vec![
+      SpawnLevelGraphPoint {
+        game_vertex_id: 12,
+        level_point: Vector3d::new(1.0, 2.0, 3.0),
+      },
+      SpawnLevelGraphPoint {
+        game_vertex_id: 13,
+        level_point: Vector3d::new(4.0, 5.0, 6.0),
+      },
+    ],
     patrols: vec![Patrol {
       name: String::from("zat_walk"),
       points: (0..3)

@@ -91,7 +91,7 @@ fn compiles_a_bounce_as_pbounce_does() -> XrfResult {
   assert_eq!(bounce.cutoff_sqr, 4.0);
   assert_eq!(bounce.resilience, 0.5);
   assert_eq!(bounce.action_flags, ParticleAction::ALLOW_ROTATE);
-  assert_eq!(bounce.position.coordinates.1, Vector3d::Y);
+  assert_eq!(bounce.position.coordinates.p2, Vector3d::Y);
 
   Ok(())
 }
@@ -113,7 +113,7 @@ fn compiles_a_source_with_the_flags_psource_sets() -> XrfResult {
     ParticleActionSource::VERTEX_B_TRACKS | ParticleActionSource::SINGLE_SIZE
   );
   assert_eq!(compiled.particle_rate, 25.0);
-  assert_eq!(compiled.color.coordinates.0, Vector3d::new(1.0, 1.0, 1.0));
+  assert_eq!(compiled.color.coordinates.p1, Vector3d::new(1.0, 1.0, 1.0));
 
   Ok(())
 }
@@ -239,8 +239,8 @@ fn compiles_a_disc_domain_as_pdomain_does() {
 
   let compiled = disc.compile();
 
-  assert_eq!(compiled.coordinates.1, Vector3d::Z);
+  assert_eq!(compiled.coordinates.p2, Vector3d::Z);
   assert_eq!((compiled.radius1, compiled.radius2), (1.5, 0.5));
-  assert_eq!(compiled.basis.0, Vector3d::X);
-  assert_eq!(compiled.basis.1, Vector3d::Y);
+  assert_eq!(compiled.basis.u, Vector3d::X);
+  assert_eq!(compiled.basis.v, Vector3d::Y);
 }

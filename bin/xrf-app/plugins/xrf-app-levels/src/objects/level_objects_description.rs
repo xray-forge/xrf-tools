@@ -109,12 +109,14 @@ impl LevelObjectsDescription {
         Self::add_patrol(&mut objects, path as u32, patrol);
       }
 
-      objects.extend(graph.points.iter().map(|(vertex, position)| {
+      objects.extend(graph.points.iter().map(|point| {
         LevelObject::new(
-          LevelObjectId::GraphPoint { vertex: *vertex },
+          LevelObjectId::GraphPoint {
+            vertex: point.game_vertex_id,
+          },
           LevelObjectKind::GraphPoints,
-          format!("vertex {vertex}"),
-          Self::get_place(position),
+          format!("vertex {}", point.game_vertex_id),
+          Self::get_place(&point.level_point),
         )
       }));
     }

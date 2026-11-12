@@ -40,6 +40,9 @@ pub use crate::data::actions::particle_action_target_size::ParticleActionTargetS
 pub use crate::data::actions::particle_action_target_velocity::ParticleActionTargetVelocity;
 pub use crate::data::actions::particle_action_turbulence::ParticleActionTurbulence;
 pub use crate::data::actions::particle_action_vortex::ParticleActionVortex;
+pub use crate::data::domain::particle_domain::ParticleDomain;
+pub use crate::data::domain::particle_domain_basis::ParticleDomainBasis;
+pub use crate::data::domain::particle_domain_points::ParticleDomainPoints;
 pub use crate::data::editor::particle_editor_action::ParticleEditorAction;
 pub use crate::data::editor::particle_editor_domain::ParticleEditorDomain;
 pub use crate::data::editor::particle_editor_property::ParticleEditorProperty;
@@ -60,7 +63,6 @@ pub use crate::data::group::particle_group_effect_old::ParticleGroupEffectOld;
 pub use crate::data::particle_action::ParticleAction;
 pub use crate::data::particle_action_type::ParticleActionType;
 pub use crate::data::particle_description::ParticleDescription;
-pub use crate::data::particle_domain::ParticleDomain;
 pub use crate::particles_file::*;
 pub use crate::particles_file_issue::ParticlesFileIssue;
 pub use crate::simulation::instance::particle_effect_instance::ParticleEffectInstance;

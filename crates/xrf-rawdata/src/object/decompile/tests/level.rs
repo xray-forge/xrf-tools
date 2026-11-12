@@ -11,7 +11,8 @@ use crate::object::decompile::object_decompiler::ObjectDecompiler;
 /// 127.5` truncated.
 fn vertex(position: [f32; 3], normal: [f32; 3]) -> LevelVertex {
   let byte = |component: f32| ((component + 1.0) * 127.5) as u8;
-  let (normal, _) = LevelVertex::decode_direction([byte(normal[2]), byte(normal[1]), byte(normal[0]), 0]);
+  let normal: Vector3d =
+    LevelVertex::decode_direction([byte(normal[2]), byte(normal[1]), byte(normal[0]), 0]).direction;
 
   LevelVertex {
     position: Vector3d::from(position),

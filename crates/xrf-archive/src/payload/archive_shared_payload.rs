@@ -5,8 +5,20 @@ use serde::Serialize;
 
 use crate::volume::ArchiveFileDescriptor;
 
-/// The fields a reader locates and checks a payload by: volume, offset, stored size, real size, and CRC.
-type PayloadLocation = (u32, u32, u32, u32, u32);
+/// The fields a reader locates and checks a payload by.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+struct PayloadLocation {
+  /// Which volume holds the bytes.
+  volume: u32,
+  /// Byte offset of the payload inside its volume.
+  offset: u32,
+  /// Payload bytes as stored in the volume.
+  size_compressed: u32,
+  /// Payload bytes once unpacked.
+  size_real: u32,
+  /// CRC32 of the unpacked payload.
+  crc: u32,
+}
 
 /// Stored bytes that several file entries of one volume set locate at once.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -45,15 +57,15 @@ impl ArchiveSharedPayload {
     let mut payloads: Vec<Self> = groups
       .into_iter()
       .filter(|(_, names)| names.len() > 1)
-      .map(|((volume, offset, size_compressed, size_real, crc), mut names)| {
+      .map(|(location, mut names)| {
         names.sort_unstable();
 
         Self {
-          volume,
-          offset,
-          size_compressed,
-          size_real,
-          crc,
+          volume: location.volume,
+          offset: location.offset,
+          size_compressed: location.size_compressed,
+          size_real: location.size_real,
+          crc: location.crc,
           names,
         }
       })
@@ -74,17 +86,23 @@ impl ArchiveSharedPayload {
   }
 
   fn get_location(&self) -> PayloadLocation {
-    (self.volume, self.offset, self.size_compressed, self.size_real, self.crc)
+    PayloadLocation {
+      volume: self.volume,
+      offset: self.offset,
+      size_compressed: self.size_compressed,
+      size_real: self.size_real,
+      crc: self.crc,
+    }
   }
 
   fn location_of(entry: &ArchiveFileDescriptor) -> PayloadLocation {
-    (
-      entry.volume,
-      entry.offset,
-      entry.size_compressed,
-      entry.size_real,
-      entry.crc,
-    )
+    PayloadLocation {
+      volume: entry.volume,
+      offset: entry.offset,
+      size_compressed: entry.size_compressed,
+      size_real: entry.size_real,
+      crc: entry.crc,
+    }
   }
 }
 
