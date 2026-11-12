@@ -1,42 +1,58 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
+/** How many slots of a level's details the detail lighter met each way. */
+export type DetailSlotCounts = {
+  /** Planting nothing. */
+  unplanted: number;
+  /** Planting something, but at no density, and so cleared. */
+  emptied: number;
+  /** Planted, but touching no face of the ray model, and so left unlit. */
+  untouched: number;
+  lit: number;
+};
+
 /** What a level's compile ran ([`crate::LevelCompiler::compile`]), as the front-ends report it. */
 export type LevelCompileReport = {
   level: string;
-  /** The directory the compilers ran in, with their `fsgame.ltx` and logs. */
-  work: string;
+  /** The directory the SDK's compilers ran in, with their `fsgame.ltx` and logs; none where no step ran one. */
+  work: string | null;
   steps: Array<LevelCompileStepReport>;
 };
 
 /**
  * A level's compile, as a front-end asks for it: the level's directory the build wrote into, the steps to run, and
- * what the SDK's compilers need to run them.
+ * what they read.
  */
 export type LevelCompileRequest = {
   /** The level's directory, `<levels>/<level>`, holding what `level build` wrote; the compile writes beside it. */
   level: string;
   /** The steps to run, each once in [`LevelCompileStep::ALL`]'s order whatever the order given; every step when empty. */
   steps: Array<LevelCompileStep>;
-  /** The SDK's `editors` directory, whose `bin` holds xrLC, xrDO_Light and xrAI. */
-  sdk: string;
+  /**
+   * The SDK's `editors` directory, whose `bin` holds xrLC and xrAI; needed only by the steps the SDK still runs
+   * ([`LevelCompileStep::is_sdk`]).
+   */
+  sdk: string | null;
   /** The game data the compilers read their libraries from (`$game_data$`): `gamemtl.xr` and `shaders_xrlc.xr`. */
   gamedata: string;
   /**
-   * The textures root (`$game_textures$`): a `.thm` for every texture `build.prj` names, and the image where the
-   * texture has alpha or is lit implicitly.
+   * The textures roots (`$game_textures$`), searched in order for each file: a `.thm` for every texture `build.prj`
+   * names, and the image where the texture has alpha or is lit implicitly. The SDK's compilers take exactly one.
    */
-  textures: string;
+  textures: Array<string>;
   /**
-   * The directory the compilers run in, holding the `fsgame.ltx` written for them and their logs; a directory of the
-   * system's temporary one named after the level by default.
+   * The directory the SDK's compilers run in, holding the `fsgame.ltx` written for them and their logs; a directory of
+   * the system's temporary one named after the level by default.
    */
   work: string | null;
+  /** Whether a step of ours overwrites a file it writes where the level's directory holds it, rather than refusing. */
+  isForced: boolean;
 };
 
 /**
  * One step of a level's compile from the files `level build` writes, in the order they run: the geometry (xrLC's
- * part, lightmaps included), the details' light (xrDO_Light's) and the AI map (xrAI's `-f`). Each runs the SDK's own
- * compiler until a compiler of ours takes its place.
+ * part, lightmaps included), the details' light (xrDO_Light's, done by [`crate::DetailLighter`]) and the AI map
+ * (xrAI's `-f`). A step no compiler of ours does yet runs the SDK's own ([`Self::is_sdk`]).
  */
 export enum ELevelCompileStep {
   GEOMETRY = "geometry",
@@ -50,10 +66,22 @@ export type LevelCompileStep = `${ELevelCompileStep}`;
 /** One step a compile ran. */
 export type LevelCompileStepReport = {
   step: LevelCompileStep;
-  /** The program that ran it. */
-  program: string;
   /** How long it ran, in milliseconds. */
   duration: number;
-  /** The compiler's log, where it wrote one. */
-  log: string | null;
+  run: LevelCompileStepRun;
 };
+
+/** Every `kind` the `LevelCompileStepRun` union is told apart by, so a switch or a comparison names one. */
+export enum ELevelCompileStepRun {
+  /** One of the SDK's compilers: its path, and its log where it wrote one. */
+  PROGRAM = "program",
+  /** The detail lighter ([`crate::DetailLighter`]), and how it met the slots. */
+  DETAIL_LIGHTER = "detailLighter",
+}
+
+/** What ran a step of a level's compile, and what it says of the run. */
+export type LevelCompileStepRun =
+  /** One of the SDK's compilers: its path, and its log where it wrote one. */
+  | { kind: "program"; program: string; log: string | null }
+  /** The detail lighter ([`crate::DetailLighter`]), and how it met the slots. */
+  | { kind: "detailLighter"; slots: DetailSlotCounts };

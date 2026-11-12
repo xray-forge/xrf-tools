@@ -24,10 +24,21 @@ describe("toCompileRequest", () => {
 
     expect(request?.steps).toEqual([ELevelCompileStep.GEOMETRY, ELevelCompileStep.AI]);
     expect(request?.sdk).toBe("C:\\SDK\\editors");
+    expect(request?.textures).toEqual(["C:\\Games\\CoP\\gamedata\\textures"]);
+  });
+
+  it("lights the details without the SDK, which only the geometry and the AI map need", () => {
+    const request = toCompileRequest(choice([ELevelCompileStep.DETAILS], { sdk: null }));
+
+    expect(request?.steps).toEqual([ELevelCompileStep.DETAILS]);
+    expect(request?.sdk).toBeNull();
+    expect(getCompileProblem(choice([ELevelCompileStep.DETAILS, ELevelCompileStep.AI], { sdk: null }))).toContain(
+      "SDK"
+    );
   });
 
   it("names what a chosen step lacks before it can run", () => {
-    expect(getCompileProblem(choice([ELevelCompileStep.DETAILS], { sdk: null }))).toContain("SDK");
+    expect(getCompileProblem(choice([ELevelCompileStep.GEOMETRY], { sdk: null }))).toContain("SDK");
     expect(getCompileProblem(choice([ELevelCompileStep.DETAILS], { gamedata: null }))).toContain("game data");
     expect(getCompileProblem(choice([ELevelCompileStep.DETAILS], { textures: null }))).toContain("textures");
     expect(toCompileRequest(choice([ELevelCompileStep.DETAILS], { textures: null }))).toBeNull();

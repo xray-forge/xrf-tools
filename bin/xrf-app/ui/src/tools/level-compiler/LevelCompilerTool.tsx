@@ -29,7 +29,7 @@ const STEP_LABELS: Record<LevelCompileStep, { label: string; description: string
   },
   [ELevelCompileStep.DETAILS]: {
     label: "Light details",
-    description: "level.details lit from build.details, with the SDK's xrDO_Light",
+    description: "level.details lit from build.details, build.cform and build.lights, as xrDO_Light lights it",
   },
   [ELevelCompileStep.AI]: {
     label: "Compile AI map",
@@ -276,7 +276,10 @@ export function LevelCompilerTool(): ReactElement {
       <PathFormRow
         isDisabled={isRunning}
         label={"SDK"}
-        description={compileProblem ?? "The SDK's editors directory, whose bin holds xrLC, xrDO_Light and xrAI"}
+        description={
+          compileProblem ??
+          "The SDK's editors directory, whose bin holds xrLC and xrAI; for the geometry and the AI map"
+        }
         field={sdk}
       />
 

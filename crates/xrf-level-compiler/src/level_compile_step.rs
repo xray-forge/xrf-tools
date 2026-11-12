@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 
 /// One step of a level's compile from the files `level build` writes, in the order they run: the geometry (xrLC's
-/// part, lightmaps included), the details' light (xrDO_Light's) and the AI map (xrAI's `-f`). Each runs the SDK's own
-/// compiler until a compiler of ours takes its place.
+/// part, lightmaps included), the details' light (xrDO_Light's, done by [`crate::DetailLighter`]) and the AI map
+/// (xrAI's `-f`). A step no compiler of ours does yet runs the SDK's own ([`Self::is_sdk`]).
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -28,6 +28,11 @@ impl LevelCompileStep {
   /// The step a command line names, by [`Self::get_name`]; none for another name.
   pub fn from_name(name: &str) -> Option<Self> {
     Self::ALL.into_iter().find(|step| step.get_name() == name)
+  }
+
+  /// Whether the SDK's own compiler runs the step, needing the SDK, rather than a compiler of ours.
+  pub fn is_sdk(self) -> bool {
+    self != Self::Details
   }
 
   /// The files of the level's directory the step reads, which must be there before it runs: the build project, and

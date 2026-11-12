@@ -21,7 +21,7 @@ use crate::{DetailLightRequest, DetailLighter, DetailLighting, DetailSlotCounts}
 /// - over nothing;
 /// - planting an object at no density;
 /// - planting nothing.
-fn details() -> LevelDetailsFile {
+pub(super) fn details() -> LevelDetailsFile {
   // Base 1000 units of 0.2 m from -200 m, height 10 units of 0.1 m, no corner planting.
   let empty: [u32; 4] = (0..LevelDetailsSlot::CORNERS).fold([1000 | (10 << 12), 0, 0, 0], |words, corner| {
     LevelDetailsSlot::with_object(words, corner, LevelDetailsSlot::EMPTY_ID)
@@ -61,14 +61,18 @@ fn quad(low: [f32; 2], high: [f32; 2], y: f32, is_up: bool) -> [[Vec3; 3]; 2] {
 }
 
 /// Ground under the first two slots, ending short of the third, and a roof over the second.
-fn tracer() -> BvhTracer {
-  let triangles: Vec<[Vec3; 3]> = [
+pub(super) fn triangles() -> Vec<[Vec3; 3]> {
+  [
     quad([-1.0, -1.0], [3.9, 3.0], 0.5, true),
     quad([2.0, -1.0], [4.0, 3.0], 3.0, false),
   ]
   .into_iter()
   .flatten()
-  .collect();
+  .collect()
+}
+
+fn tracer() -> BvhTracer {
+  let triangles: Vec<[Vec3; 3]> = triangles();
   let vertices: Vec<Vec3> = triangles.iter().flatten().copied().collect();
   let faces: Vec<[u32; 3]> = (0..triangles.len() as u32)
     .map(|face| [face * 3, face * 3 + 1, face * 3 + 2])
@@ -99,7 +103,7 @@ fn light(kind: u16, position: [f32; 3], direction: [f32; 3], diffuse: [f32; 3]) 
 
 /// The sun straight overhead, and a bright red point light beside the first slot, reaching a corner of its points and
 /// none of the second's.
-fn lights() -> LevelLightsFile {
+pub(super) fn lights() -> LevelLightsFile {
   LevelLightsFile {
     chunks: vec![
       LevelLightsChunk::Lights {
@@ -128,7 +132,8 @@ fn lights() -> LevelLightsFile {
   }
 }
 
-fn lighting() -> XrfResult<DetailLighting> {
+/// The grid lit over the ground and roof, every face opaque.
+pub(super) fn lighting() -> XrfResult<DetailLighting> {
   let details: LevelDetailsFile = details();
   let tracer: BvhTracer = tracer();
 

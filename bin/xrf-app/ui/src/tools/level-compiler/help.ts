@@ -13,10 +13,10 @@ export const LEVEL_COMPILER_HELP: IToolHelp = {
     "Add the objects roots the scene's objects are read from, such as the scene's own `rawdata\\objects` and the SDK's.",
     "Pick the game materials, `gamemtl.xr`, to write `build.prj`, and the textures root where the scene holds details " +
       "or tree impostors.",
-    "To compile as well, tick the steps (geometry, details, AI map) and pick the SDK's `editors` directory and the " +
-      "game data the compilers read.",
+    "To compile as well, tick the steps (geometry, details, AI map) and pick the game data the compilers read, and " +
+      "the SDK's `editors` directory for the geometry or the AI map.",
     "`Build` reports every file written and what it replaced, and lists any part it could not make; with steps " +
-      "ticked, `Build and compile` also reports each step's time and log.",
+      "ticked, `Build and compile` also reports each step's time.",
   ],
   nuances: [
     "Without the game materials only the game files are written, as for a scene of no geometry.",
@@ -26,13 +26,15 @@ export const LEVEL_COMPILER_HELP: IToolHelp = {
       "keeps SDK 0.7's 2048 and refuses a level of more than 128 impostors.",
     "Files the build writes that the directory already holds are replaced only when overwriting is chosen, and a file " +
       "of the build's own it would not write again is refused, since the SDK's Build would move it aside.",
-    "The steps run in a work folder of their own and are checked before any starts: each step's inputs, and a " +
-      "texture description (`.thm`) for every texture `build.prj` names. Stopping a step kills its compiler and keeps " +
-      "what was built.",
+    "The steps are checked before any starts: each step's inputs, and a texture description (`.thm`) for every " +
+      "texture `build.prj` names. Stopping a step kills its compiler and keeps what was built.",
+    "The details are lit by the tools themselves, as the SDK's xrDO_Light lights them, on every core: seconds on a " +
+      "small level, about a minute on `jupiter` at proof quality. An existing `level.details` is replaced only when " +
+      "overwriting is chosen.",
   ],
   limitations: [
-    "The compile steps run the SDK's own xrLC, xrDO_Light and xrAI, so they need SDK 0.7 and take its time; " +
-      "they run at idle priority, so they slow down while the machine is busy.",
+    "The geometry and AI map steps run the SDK's own xrLC and xrAI in a work folder of their own, so they need " +
+      "SDK 0.7 and take its time; they run at idle priority, so they slow down while the machine is busy.",
     "The objects roots are typed rather than picked.",
   ],
   relatedTools: [EToolId.LEVEL_DECOMPILER, EToolId.LEVEL_VIEWER],
