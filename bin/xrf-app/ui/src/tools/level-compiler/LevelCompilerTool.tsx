@@ -1,19 +1,41 @@
 import { useInjection } from "@wirestate/react";
+import { ELevelCompileStep, LevelCompileStep } from "@xrf/ipc/types/xrf-level-compiler";
 import { ELevelBuildImpostorLimit } from "@xrf/ipc/types/xrf-rawdata";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { StringListFormRow } from "@xrf/ui/form/string-list-row";
-import { ReactElement, useCallback, useEffect, useState } from "react";
+import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
 import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { LEVEL_SCENE_FILE_FILTERS, XR_LIBRARY_FILE_FILTERS } from "@/core/path/file-filters";
 import { EToolId } from "@/core/routing/tool";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+import {
+  COMPILE_STEPS,
+  getCompileProblem,
+  ICompileChoice,
+  toCompileRequest,
+} from "@/tools/level-compiler/lib/compile-request";
 import { LevelCompilerService } from "@/tools/level-compiler/services/level-compiler.service";
 
 import { LevelBuildResultView } from "./components/LevelBuildResultView";
+
+const STEP_LABELS: Record<LevelCompileStep, { label: string; description: string }> = {
+  [ELevelCompileStep.GEOMETRY]: {
+    label: "Compile geometry",
+    description: "The level, its geometry, collision and lightmaps from build.prj, with the SDK's xrLC",
+  },
+  [ELevelCompileStep.DETAILS]: {
+    label: "Light details",
+    description: "level.details lit from build.details, with the SDK's xrDO_Light",
+  },
+  [ELevelCompileStep.AI]: {
+    label: "Compile AI map",
+    description: "level.ai from build.aimap, with the SDK's xrAI",
+  },
+};
 
 export function LevelCompilerTool(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
@@ -26,6 +48,7 @@ export function LevelCompilerTool(): ReactElement {
   const [isProofLighting, setIsProofLighting] = useState<boolean>(false);
   const [isSdkImpostorAtlas, setIsSdkImpostorAtlas] = useState<boolean>(false);
   const [isForced, setIsForced] = useState<boolean>(false);
+  const [steps, setSteps] = useState<ReadonlySet<LevelCompileStep>>(new Set());
 
   const source: IPathField = usePathField({
     tool: EToolId.LEVEL_COMPILER,
@@ -62,10 +85,47 @@ export function LevelCompilerTool(): ReactElement {
     isDisabled: isRunning,
   });
 
+  const sdk: IPathField = usePathField({
+    tool: EToolId.LEVEL_COMPILER,
+    id: "sdk",
+    title: "Select the SDK's editors directory",
+    isDirectory: true,
+    isRequired: false,
+    isDisabled: isRunning,
+  });
+
+  const gamedata: IPathField = usePathField({
+    tool: EToolId.LEVEL_COMPILER,
+    id: "gamedata",
+    title: "Select game data",
+    isDirectory: true,
+    isRequired: false,
+    isDisabled: isRunning,
+  });
+
   const scenePath: Nullable<string> = source.value;
   const levelPath: Nullable<string> = destination.value;
   // The build project needs the objects its placements name; the game files alone do not.
   const isMissingObjects: boolean = gameMaterials.value !== null && objects.length === 0;
+  const compile: ICompileChoice = useMemo(
+    () => ({ steps, sdk: sdk.value, gamedata: gamedata.value, textures: textures.value }),
+    [gamedata.value, sdk.value, steps, textures.value]
+  );
+  const compileProblem: Nullable<string> = getCompileProblem(compile);
+
+  const onStepChanged = useCallback((step: LevelCompileStep, isChecked: boolean) => {
+    setSteps((current: ReadonlySet<LevelCompileStep>) => {
+      const next: Set<LevelCompileStep> = new Set(current);
+
+      if (isChecked) {
+        next.add(step);
+      } else {
+        next.delete(step);
+      }
+
+      return next;
+    });
+  }, []);
 
   const onBuildClicked = useCallback(async () => {
     if (!scenePath || !levelPath) {
@@ -74,17 +134,21 @@ export function LevelCompilerTool(): ReactElement {
 
     log.info("Building:", scenePath);
 
-    await compilerService.build({
-      source: scenePath,
-      destination: levelPath,
-      objects,
-      gameMaterials: gameMaterials.value,
-      textures: textures.value,
-      isProofLighting,
-      impostorLimit: isSdkImpostorAtlas ? ELevelBuildImpostorLimit.SDK : ELevelBuildImpostorLimit.EXTENDED,
-      isForced,
-    });
+    await compilerService.build(
+      {
+        source: scenePath,
+        destination: levelPath,
+        objects,
+        gameMaterials: gameMaterials.value,
+        textures: textures.value,
+        isProofLighting,
+        impostorLimit: isSdkImpostorAtlas ? ELevelBuildImpostorLimit.SDK : ELevelBuildImpostorLimit.EXTENDED,
+        isForced,
+      },
+      toCompileRequest(compile)
+    );
   }, [
+    compile,
     compilerService,
     gameMaterials.value,
     isForced,
@@ -101,6 +165,7 @@ export function LevelCompilerTool(): ReactElement {
   useEffect(() => {
     compilerService.operation.reset();
   }, [
+    compile,
     compilerService,
     gameMaterials.value,
     isForced,
@@ -116,11 +181,21 @@ export function LevelCompilerTool(): ReactElement {
     <JobPickerForm
       operation={compilerService.operation}
       isSubmitDisabled={
-        !source.isValid || !destination.isValid || !gameMaterials.isValid || !textures.isValid || isMissingObjects
+        !source.isValid ||
+        !destination.isValid ||
+        !gameMaterials.isValid ||
+        !textures.isValid ||
+        !sdk.isValid ||
+        !gamedata.isValid ||
+        isMissingObjects ||
+        compileProblem !== null
       }
       title={"Build a level"}
-      description={"Writes a Level Editor scene's game files and, given its objects and game materials, its build.prj."}
-      submitLabel={"Build"}
+      description={
+        "Writes a Level Editor scene's game files and, given its objects and game materials, its build.prj, then " +
+        "compiles it with the steps chosen."
+      }
+      submitLabel={steps.size > 0 ? "Build and compile" : "Build"}
       renderResult={(result) => <LevelBuildResultView result={result} outputPath={levelPath} />}
       onSubmit={onBuildClicked}
     >
@@ -185,6 +260,31 @@ export function LevelCompilerTool(): ReactElement {
         isChecked={isForced}
         isDisabled={isRunning}
         onChange={setIsForced}
+      />
+
+      {COMPILE_STEPS.map((step: LevelCompileStep) => (
+        <CheckboxFormRow
+          key={step}
+          label={STEP_LABELS[step].label}
+          description={STEP_LABELS[step].description}
+          isChecked={steps.has(step)}
+          isDisabled={isRunning}
+          onChange={(isChecked: boolean) => onStepChanged(step, isChecked)}
+        />
+      ))}
+
+      <PathFormRow
+        isDisabled={isRunning}
+        label={"SDK"}
+        description={compileProblem ?? "The SDK's editors directory, whose bin holds xrLC, xrDO_Light and xrAI"}
+        field={sdk}
+      />
+
+      <PathFormRow
+        isDisabled={isRunning}
+        label={"Game data"}
+        description={"Where the compilers read gamemtl.xr and shaders_xrlc.xr; the textures root above serves them too"}
+        field={gamedata}
       />
     </JobPickerForm>
   );

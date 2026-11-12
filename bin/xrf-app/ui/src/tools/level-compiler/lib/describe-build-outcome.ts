@@ -25,7 +25,7 @@ export function describeBuildOutcome(request: LevelBuildRequest, outcome: IJobOu
     return describeJobFailure("Could not build the level", request.source, error);
   }
 
-  if (result?.outcome === EJobOutcome.CANCELLED || !result?.report) {
+  if (!result?.report) {
     return {
       details: ["Stopped before writing; nothing was written.", request.destination].join("\n"),
       severity: ENotificationSeverity.INFO,
@@ -33,16 +33,29 @@ export function describeBuildOutcome(request: LevelBuildRequest, outcome: IJobOu
     };
   }
 
+  if (result.outcome === EJobOutcome.CANCELLED) {
+    return {
+      details: [
+        "The build was written; the compile was stopped, and what it wrote so far stays.",
+        request.destination,
+      ].join("\n"),
+      severity: ENotificationSeverity.INFO,
+      title: "Stopped compiling the level",
+    };
+  }
+
   const refused: number = result.report.refused.length;
+  const compiled: number = result.compile?.steps.length ?? 0;
 
   return {
     details: [
       request.source,
       request.destination,
       `${formatCount(result.report.files.length)} files written.`,
+      ...(compiled > 0 ? [`${formatCount(compiled)} compile steps run.`] : []),
       ...(refused > 0 ? [`${formatCount(refused)} parts were refused.`] : []),
     ].join("\n"),
     severity: refused > 0 ? ENotificationSeverity.WARNING : ENotificationSeverity.SUCCESS,
-    title: "Built the level",
+    title: compiled > 0 ? "Built and compiled the level" : "Built the level",
   };
 }
