@@ -5,8 +5,8 @@ use crate::contract::viewport::render_viewport_id::RenderViewportId;
 use crate::host::world::feedback::render_scene_feedback::RenderSceneFeedback;
 use crate::host::world::render_scene_frame::RenderSceneFrame;
 use crate::host::world::render_scene_id::RenderSceneId;
-use crate::host::world::render_view_frame::RenderViewFrame;
-use crate::host::world::render_view_input::RenderViewInput;
+use crate::host::world::view::render_view_frame::RenderViewFrame;
+use crate::host::world::view::render_view_input::RenderViewInput;
 
 /// The world a renderer draws, run inline on the render thread before each frame: it advances what it simulates,
 /// publishes what changed, and answers what the frame draws: each viewport's camera and environment, then each scene's
