@@ -8,7 +8,6 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_ltx::FileImportExport;
-use xrf_math::Vector3d;
 use xrf_utils::{StagedFile, assert_equal, assert_length};
 
 use crate::chunks::spawn_alife_spawns_chunk::SpawnALifeSpawnsChunk;
@@ -23,6 +22,7 @@ use crate::data::alife::spawn_level_objects::SpawnLevelObjects;
 use crate::data::alife::spawn_skipped_object::SpawnSkippedObject;
 use crate::data::graph::graph_vertex_levels::GraphVertexLevels;
 use crate::data::graph::spawn_level_graph::SpawnLevelGraph;
+use crate::data::graph::spawn_level_graph_point::SpawnLevelGraphPoint;
 use crate::data::patrols::patrol::Patrol;
 
 /// Descriptor of generic spawn file used by xray game engine.
@@ -205,10 +205,13 @@ impl SpawnFile {
         .get_level(game_vertex_id)
         .is_some_and(|it| it.name.eq_ignore_ascii_case(level))
     };
-    let points: Vec<(u16, Vector3d)> = (0..=u16::MAX)
+    let points: Vec<SpawnLevelGraphPoint> = (0..=u16::MAX)
       .zip(&graph.vertices)
       .filter(|(id, _)| is_on_level(*id))
-      .map(|(id, vertex)| (id, vertex.level_point))
+      .map(|(game_vertex_id, vertex)| SpawnLevelGraphPoint {
+        game_vertex_id,
+        level_point: vertex.level_point,
+      })
       .collect();
     let patrols: Vec<Patrol> = ChunkReader::find_required_by_id(chunks, SpawnPatrolsChunk::CHUNK_ID)?
       .read_xr::<T, SpawnPatrolsChunk>()?
@@ -317,6 +320,7 @@ mod tests {
   use crate::data::graph::graph_level::GraphLevel;
   use crate::data::graph::graph_vertex::GraphVertex;
   use crate::data::graph::spawn_level_graph::SpawnLevelGraph;
+  use crate::data::graph::spawn_level_graph_point::SpawnLevelGraphPoint;
   use crate::data::patrols::patrol::Patrol;
   use crate::data::patrols::patrol_point::PatrolPoint;
 
@@ -477,8 +481,14 @@ mod tests {
     assert_eq!(
       graph.points,
       vec![
-        (0, Vector3d::new(10.0, 1.0, -10.0)),
-        (2, Vector3d::new(30.0, 1.0, -30.0))
+        SpawnLevelGraphPoint {
+          game_vertex_id: 0,
+          level_point: Vector3d::new(10.0, 1.0, -10.0),
+        },
+        SpawnLevelGraphPoint {
+          game_vertex_id: 2,
+          level_point: Vector3d::new(30.0, 1.0, -30.0),
+        },
       ]
     );
     assert_eq!(

@@ -2,6 +2,7 @@ use byteorder::ByteOrder;
 use xrf_math::{Vector2d, Vector3d};
 
 use crate::geom::vertex::level_vertex::LevelVertex;
+use crate::geom::vertex::level_vertex_direction::LevelVertexDirection;
 use crate::geom::vertex::level_vertex_layout::LevelVertexLayout;
 
 /// One vertex as the level stores it, a stride of bytes, read through the declaration saying where each element sits.
@@ -91,34 +92,38 @@ impl<'a> LevelVertexBytes<'a> {
 
   /// What xrLC had before it quantized the vertex.
   pub fn decode<T: ByteOrder>(&self) -> LevelVertex {
-    let (normal, hemi): (Vector3d, u8) = self
-      .get_normal()
-      .map_or((Vector3d::new(0.0, 0.0, 0.0), 0), LevelVertex::decode_direction);
-    let tangent: Option<(Vector3d, u8)> = self.get_tangent().map(LevelVertex::decode_direction);
-    let binormal: Option<(Vector3d, u8)> = self.get_binormal().map(LevelVertex::decode_direction);
+    let normal: LevelVertexDirection = self.get_normal().map_or(
+      LevelVertexDirection {
+        direction: Vector3d::new(0.0, 0.0, 0.0),
+        extra: 0,
+      },
+      LevelVertex::decode_direction,
+    );
+    let tangent: Option<LevelVertexDirection> = self.get_tangent().map(LevelVertex::decode_direction);
+    let binormal: Option<LevelVertexDirection> = self.get_binormal().map(LevelVertex::decode_direction);
 
     // The low byte of each base coordinate rides in a tangent or binormal alpha, so the coordinate is rebuilt from
     // two elements rather than one. A tree carries both but adds neither: `deffer_tree_*.vs` scales `I.tc` by
     // `consts` alone.
-    let fraction = |direction: &Option<(Vector3d, u8)>| match direction {
-      Some((_, fraction)) if !self.layout.is_tree() => *fraction,
+    let fraction = |decoded: &Option<LevelVertexDirection>| match decoded {
+      Some(decoded) if !self.layout.is_tree() => decoded.extra,
       _ => 0,
     };
     let (fraction_u, fraction_v): (u8, u8) = (fraction(&tangent), fraction(&binormal));
 
     LevelVertex {
-      binormal: binormal.map(|(direction, _)| direction),
+      binormal: binormal.map(|decoded| decoded.direction),
       color: self.get_color().map(LevelVertex::decode_color),
-      hemi,
+      hemi: normal.extra,
       lightmap_coordinate: self.get_lightmap_coordinate::<T>().map(|[u, v]| {
         Vector2d::new(
           f32::from(u) / LevelVertexLayout::LIGHTMAP_QUANT,
           f32::from(v) / LevelVertexLayout::LIGHTMAP_QUANT,
         )
       }),
-      normal,
+      normal: normal.direction,
       position: self.get_position::<T>(),
-      tangent: tangent.map(|(direction, _)| direction),
+      tangent: tangent.map(|decoded| decoded.direction),
       texture_coordinate: self.get_texture_coordinate::<T>().map_or(Vector2d::ZERO, |[u, v, ..]| {
         Vector2d::new(
           self.layout.rebuild_coordinate(u, fraction_u),

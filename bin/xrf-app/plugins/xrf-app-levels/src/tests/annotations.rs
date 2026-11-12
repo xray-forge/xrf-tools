@@ -8,7 +8,7 @@ use xrf_app_core::TauriResult;
 use xrf_math::{Affine3d, Sphere, Vector3d};
 use xrf_spawn::{
   AlifeLevelChanger, AlifeObject, AlifeObjectAbstract, AlifeObjectInherited, AlifeObjectSpaceRestrictor, ClsId,
-  GraphLevel, Patrol, PatrolLink, PatrolPoint, Shape, SpawnLevelGraph,
+  GraphLevel, Patrol, PatrolLink, PatrolPoint, Shape, SpawnLevelGraph, SpawnLevelGraphPoint,
 };
 use xrf_test_utils::GeneratedResources;
 use xrf_visual::VisualTransform;
@@ -75,7 +75,10 @@ fn new_graph() -> SpawnLevelGraph {
       new_level(1, "zaton", Vector3d::new(0.0, 0.0, 0.0)),
       new_level(2, "pripyat", Vector3d::new(0.0, 0.0, 500.0)),
     ],
-    points: vec![(321, Vector3d::new(5.0, 0.0, 6.0))],
+    points: vec![SpawnLevelGraphPoint {
+      game_vertex_id: 321,
+      level_point: Vector3d::new(5.0, 0.0, 6.0),
+    }],
     patrols: vec![Patrol {
       name: String::from("zat_walk"),
       points: ["wp00", "wp01"]

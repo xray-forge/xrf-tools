@@ -2,7 +2,7 @@ use std::f32::consts::PI;
 
 use glam::{Mat4, Vec3, Vec4Swizzles};
 
-use crate::data::particle_domain::ParticleDomain;
+use crate::data::domain::particle_domain::ParticleDomain;
 use crate::simulation::domain::engine_vector::EngineVector;
 use crate::simulation::domain::particle_random::ParticleRandom;
 use crate::simulation::domain::particle_volume_kind::ParticleVolumeKind;
@@ -222,10 +222,10 @@ impl From<&ParticleDomain> for ParticleVolume {
   fn from(domain: &ParticleDomain) -> Self {
     Self {
       kind: ParticleVolumeKind::from(domain.domain_type),
-      p1: Vec3::from(&domain.coordinates.0),
-      p2: Vec3::from(&domain.coordinates.1),
-      u: Vec3::from(&domain.basis.0),
-      v: Vec3::from(&domain.basis.1),
+      p1: Vec3::from(&domain.coordinates.p1),
+      p2: Vec3::from(&domain.coordinates.p2),
+      u: Vec3::from(&domain.basis.u),
+      v: Vec3::from(&domain.basis.v),
       radius1: domain.radius1,
       radius2: domain.radius2,
       radius1_sqr: domain.radius1_sqr,

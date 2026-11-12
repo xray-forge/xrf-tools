@@ -1,6 +1,5 @@
-use xrf_math::Vector3d;
-
 use crate::data::graph::graph_level::GraphLevel;
+use crate::data::graph::spawn_level_graph_point::SpawnLevelGraphPoint;
 use crate::data::patrols::patrol::Patrol;
 
 /// What a spawn's graph and patrols hold of one level: every level of the graph with its place in the world, the game
@@ -10,7 +9,7 @@ pub struct SpawnLevelGraph {
   /// Every level of the graph, each with its offset in the world the levels share.
   pub levels: Vec<GraphLevel>,
   /// The level's game vertices, each by its id and where it stands on the level, engine space.
-  pub points: Vec<(u16, Vector3d)>,
+  pub points: Vec<SpawnLevelGraphPoint>,
   /// The patrols whose first point stands on the level, in the spawn's order.
   pub patrols: Vec<Patrol>,
 }

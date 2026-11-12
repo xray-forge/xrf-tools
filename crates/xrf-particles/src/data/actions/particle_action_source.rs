@@ -5,8 +5,8 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_math::Vector3d;
 
+use crate::data::domain::particle_domain::ParticleDomain;
 use crate::data::particle_action_type::ParticleActionType;
-use crate::data::particle_domain::ParticleDomain;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -134,8 +134,8 @@ mod tests {
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::actions::particle_action_source::ParticleActionSource;
+  use crate::data::domain::particle_domain::ParticleDomain;
   use crate::data::particle_action_type::ParticleActionType;
-  use crate::data::particle_domain::ParticleDomain;
 
   #[test]
   fn test_read_write() -> XrfResult {

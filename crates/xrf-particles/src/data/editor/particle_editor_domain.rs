@@ -4,7 +4,9 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
-use crate::data::particle_domain::ParticleDomain;
+use crate::data::domain::particle_domain::ParticleDomain;
+use crate::data::domain::particle_domain_basis::ParticleDomainBasis;
+use crate::data::domain::particle_domain_points::ParticleDomainPoints;
 use crate::simulation::domain::engine_vector::EngineVector;
 use crate::simulation::domain::particle_volume_kind::ParticleVolumeKind;
 
@@ -47,8 +49,14 @@ impl ParticleEditorDomain {
     let [a, b, c] = &self.points;
     let mut domain: ParticleDomain = ParticleDomain {
       domain_type: self.domain_type,
-      coordinates: (Vector3d::ZERO, Vector3d::ZERO),
-      basis: (Vector3d::ZERO, Vector3d::ZERO),
+      coordinates: ParticleDomainPoints {
+        p1: Vector3d::ZERO,
+        p2: Vector3d::ZERO,
+      },
+      basis: ParticleDomainBasis {
+        u: Vector3d::ZERO,
+        v: Vector3d::ZERO,
+      },
       radius1: 0.0,
       radius2: 0.0,
       radius1_sqr: 0.0,
@@ -56,17 +64,17 @@ impl ParticleEditorDomain {
     };
 
     match ParticleVolumeKind::from(self.domain_type) {
-      ParticleVolumeKind::Point => domain.coordinates.0 = *a,
-      ParticleVolumeKind::Line => domain.coordinates = (*a, b - a),
+      ParticleVolumeKind::Point => domain.coordinates.p1 = *a,
+      ParticleVolumeKind::Line => domain.coordinates = ParticleDomainPoints { p1: *a, p2: b - a },
       ParticleVolumeKind::Box => {
         let (low_x, high_x) = Self::order_pair(a.x, b.x);
         let (low_y, high_y) = Self::order_pair(a.y, b.y);
         let (low_z, high_z) = Self::order_pair(a.z, b.z);
 
-        domain.coordinates = (
-          Vector3d::new(low_x, low_y, low_z),
-          Vector3d::new(high_x, high_y, high_z),
-        );
+        domain.coordinates = ParticleDomainPoints {
+          p1: Vector3d::new(low_x, low_y, low_z),
+          p2: Vector3d::new(high_x, high_y, high_z),
+        };
       }
       ParticleVolumeKind::Triangle => Self::compile_planar(&mut domain, *a, b - a, c - a),
       ParticleVolumeKind::Rectangle => Self::compile_planar(&mut domain, *a, *b, *c),
@@ -74,19 +82,18 @@ impl ParticleEditorDomain {
         let normal: Vector3d = (*b).normalize_safe();
 
         domain.radius1 = -a.dot(&normal);
-        domain.coordinates = (*a, normal);
+        domain.coordinates = ParticleDomainPoints { p1: *a, p2: normal };
       }
       ParticleVolumeKind::Sphere => {
         (domain.radius1, domain.radius2) = Self::order_radii(b.x, b.y);
         domain.radius1_sqr = domain.radius1 * domain.radius1;
         domain.radius2_sqr = domain.radius2 * domain.radius2;
-        domain.coordinates.0 = *a;
+        domain.coordinates.p1 = *a;
       }
       ParticleVolumeKind::Cylinder | ParticleVolumeKind::Cone => {
         let axis: Vector3d = b - a;
         let axis_length_squared: f32 = axis.length_squared();
         let normal: Vector3d = axis.normalize_safe();
-        let (u, v) = Self::orthonormal_basis(&normal);
 
         (domain.radius1, domain.radius2) = Self::order_radii(c.x, c.y);
         domain.radius1_sqr = domain.radius1 * domain.radius1;
@@ -96,8 +103,8 @@ impl ParticleEditorDomain {
         } else {
           0.0
         };
-        domain.coordinates = (*a, axis);
-        domain.basis = (u, v);
+        domain.coordinates = ParticleDomainPoints { p1: *a, p2: axis };
+        domain.basis = Self::orthonormal_basis(&normal);
       }
       ParticleVolumeKind::Blob => {
         let inverse: f32 = 1.0 / b.x;
@@ -105,17 +112,16 @@ impl ParticleEditorDomain {
         domain.radius1 = b.x;
         domain.radius2_sqr = -0.5 * inverse * inverse;
         domain.radius2 = Self::ONE_OVER_SQRT_2PI * inverse;
-        domain.coordinates.0 = *a;
+        domain.coordinates.p1 = *a;
       }
       ParticleVolumeKind::Disc => {
         let normal: Vector3d = (*b).normalize_safe();
-        let (u, v) = Self::orthonormal_basis(&normal);
 
         (domain.radius1, domain.radius2) = Self::order_radii(c.x, c.y);
         // Holds the plane equation's `d` rather than a radius.
         domain.radius1_sqr = -a.dot(&normal);
-        domain.coordinates = (*a, normal);
-        domain.basis = (u, v);
+        domain.coordinates = ParticleDomainPoints { p1: *a, p2: normal };
+        domain.basis = Self::orthonormal_basis(&normal);
       }
       ParticleVolumeKind::Unknown(_) => {}
     }
@@ -134,12 +140,12 @@ impl ParticleEditorDomain {
       .normalize_safe();
 
     domain.radius1 = -corner.dot(&normal);
-    domain.coordinates = (corner, normal);
-    domain.basis = (u, v);
+    domain.coordinates = ParticleDomainPoints { p1: corner, p2: normal };
+    domain.basis = ParticleDomainBasis { u, v };
   }
 
   /// Two unit vectors across `normal`, built from the X axis unless it lies almost along it.
-  fn orthonormal_basis(normal: &Vector3d) -> (Vector3d, Vector3d) {
+  fn orthonormal_basis(normal: &Vector3d) -> ParticleDomainBasis {
     let mut basis: Vector3d = Vector3d::X;
 
     if basis.dot(normal).abs() > 0.999 {
@@ -149,7 +155,7 @@ impl ParticleEditorDomain {
     let u: Vector3d = (&basis - &(normal * basis.dot(normal))).normalize_safe();
     let v: Vector3d = normal.cross(&u);
 
-    (u, v)
+    ParticleDomainBasis { u, v }
   }
 
   /// The pair low first, as the constructor orders a box's corners: equal values keep the second first.
@@ -199,8 +205,9 @@ impl ChunkReadWrite for ParticleEditorDomain {
 mod tests {
   use xrf_math::Vector3d;
 
+  use crate::data::domain::particle_domain::ParticleDomain;
+  use crate::data::domain::particle_domain_points::ParticleDomainPoints;
   use crate::data::editor::particle_editor_domain::ParticleEditorDomain;
-  use crate::data::particle_domain::ParticleDomain;
 
   fn domain(domain_type: u32, points: [[f32; 3]; 3]) -> ParticleEditorDomain {
     ParticleEditorDomain {
@@ -215,7 +222,10 @@ mod tests {
 
     assert_eq!(
       compiled.coordinates,
-      (Vector3d::new(1.0, 2.0, 3.0), Vector3d::new(3.0, 4.0, 0.0))
+      ParticleDomainPoints {
+        p1: Vector3d::new(1.0, 2.0, 3.0),
+        p2: Vector3d::new(3.0, 4.0, 0.0),
+      }
     );
   }
 
@@ -225,7 +235,10 @@ mod tests {
 
     assert_eq!(
       compiled.coordinates,
-      (Vector3d::new(1.0, -1.0, 2.0), Vector3d::new(5.0, 3.0, 2.0))
+      ParticleDomainPoints {
+        p1: Vector3d::new(1.0, -1.0, 2.0),
+        p2: Vector3d::new(5.0, 3.0, 2.0),
+      }
     );
   }
 
@@ -241,7 +254,7 @@ mod tests {
   fn compiles_a_plane_with_its_unit_normal_and_offset() {
     let compiled: ParticleDomain = domain(3, [[0.0, 2.0, 0.0], [0.0, 5.0, 0.0], [0.0; 3]]).compile();
 
-    assert_eq!(compiled.coordinates.1, Vector3d::Y);
+    assert_eq!(compiled.coordinates.p2, Vector3d::Y);
     assert_eq!(compiled.radius1, -2.0);
   }
 
@@ -250,17 +263,17 @@ mod tests {
     // An axis along X turns the basis from Y, since crossing X with itself gives nothing.
     let compiled: ParticleDomain = domain(6, [[0.0; 3], [2.0, 0.0, 0.0], [1.0, 0.5, 0.0]]).compile();
 
-    assert_eq!(compiled.coordinates.1, Vector3d::new(2.0, 0.0, 0.0));
+    assert_eq!(compiled.coordinates.p2, Vector3d::new(2.0, 0.0, 0.0));
     assert_eq!(compiled.radius2_sqr, 0.25);
-    assert_eq!(compiled.basis.0.dot(&Vector3d::X), 0.0);
-    assert_eq!(compiled.basis.0.length(), 1.0);
+    assert_eq!(compiled.basis.u.dot(&Vector3d::X), 0.0);
+    assert_eq!(compiled.basis.u.length(), 1.0);
   }
 
   #[test]
   fn compiles_a_triangle_with_its_normal_and_edge_lengths() {
     let compiled: ParticleDomain = domain(2, [[0.0; 3], [2.0, 0.0, 0.0], [0.0, 0.0, 4.0]]).compile();
 
-    assert_eq!(compiled.coordinates.1, Vector3d::new(0.0, -1.0, 0.0));
+    assert_eq!(compiled.coordinates.p2, Vector3d::new(0.0, -1.0, 0.0));
     assert_eq!((compiled.radius1_sqr, compiled.radius2_sqr), (2.0, 4.0));
   }
 }

@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use xrf_math::{Vector2d, Vector3d};
 
 use crate::geom::vertex::level_vertex_color::LevelVertexColor;
+use crate::geom::vertex::level_vertex_direction::LevelVertexDirection;
 
 /// One vertex of a level's render geometry, decoded from whichever declaration stored it.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -37,15 +38,15 @@ impl LevelVertex {
   pub const DIRECTION_EXTRA: usize = 3;
 
   /// Decodes one `D3DCOLOR`-packed direction and the byte riding along with it.
-  pub fn decode_direction(bytes: [u8; 4]) -> (Vector3d, u8) {
-    (
-      Vector3d {
+  pub fn decode_direction(bytes: [u8; 4]) -> LevelVertexDirection {
+    LevelVertexDirection {
+      direction: Vector3d {
         x: f32::from(bytes[Self::DIRECTION_X]) / 127.5 - 1.0,
         y: f32::from(bytes[Self::DIRECTION_Y]) / 127.5 - 1.0,
         z: f32::from(bytes[Self::DIRECTION_Z]) / 127.5 - 1.0,
       },
-      bytes[Self::DIRECTION_EXTRA],
-    )
+      extra: bytes[Self::DIRECTION_EXTRA],
+    }
   }
 
   /// The colour of a `D3DCOLOR` element, as the red, green and blue the packing puts on disk.
@@ -64,23 +65,25 @@ mod tests {
 
   use crate::geom::vertex::level_vertex::LevelVertex;
   use crate::geom::vertex::level_vertex_color::LevelVertexColor;
+  use crate::geom::vertex::level_vertex_direction::LevelVertexDirection;
 
   #[test]
   fn test_direction_decodes_the_bytes_in_the_order_they_are_written() {
     // Blue, green, red, alpha: x comes from the third byte.
-    let (direction, alpha): (Vector3d, u8) = LevelVertex::decode_direction([0, 128, 255, 42]);
+    let decoded: LevelVertexDirection = LevelVertex::decode_direction([0, 128, 255, 42]);
+    let direction: Vector3d = decoded.direction;
 
     assert!((direction.x - 1.0).abs() < 0.01, "x is the red byte");
     assert!(direction.y.abs() < 0.01, "y is the green byte");
     assert!((direction.z + 1.0).abs() < 0.01, "z is the blue byte");
-    assert_eq!(alpha, 42);
+    assert_eq!(decoded.extra, 42);
   }
 
   #[test]
   fn test_direction_round_trips_the_encoding_the_compiler_uses() {
     for component in [-1.0_f32, -0.5, 0.0, 0.5, 1.0] {
       let encoded: u8 = ((component + 1.0) * 127.5) as u8;
-      let (direction, _): (Vector3d, u8) = LevelVertex::decode_direction([0, 0, encoded, 0]);
+      let direction: Vector3d = LevelVertex::decode_direction([0, 0, encoded, 0]).direction;
 
       assert!(
         (direction.x - component).abs() < 0.01,
