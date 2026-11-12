@@ -135,7 +135,11 @@ does not record.
 - Record chunks the engine casts onto an array (portals, static lights, glows, occlusion meshes) are read through
   `ChunkReader::read_xr_records`, which refuses a chunk that is not whole records.
 - `LevelDetailsFile` keeps its slot grid packed as the file's 16-byte words (up to 667,489 slots per level) and
-  computes totals by folding over it. `LevelDetailsSlot` is a view built per slot.
+  computes totals by folding over it. `LevelDetailsSlot` is a view built per slot, and its associated functions are the
+  one rule every crate packs a slot's words by: a corner's object, its densities, the light (`LevelDetailsLight`, five
+  values of four bits, `quantize` as the detail lighter rounds them), and the corners the lighter clears.
+- `build.lights` holds one chunk per `LevelLightRole`, rgb, hemi and sun; `get_role_lights` reads one, point and
+  directional lights alike (xrLC's `LT_DIRECT` 0 and `LT_POINT` 1).
 - A `.dm` is one `CDetail`, so `DetailModel` reads both a library entry and a whole `.dm`.
 - Counts read from a file are checked against the bytes remaining before anything is reserved.
 

@@ -1,5 +1,5 @@
 use xrf_editable_level::{EditableDetailHeader, EditableDetailObject, EditableDetailObjectTool};
-use xrf_level::{DetailModel, LevelDetailsFile, LevelDetailsSlot};
+use xrf_level::{DetailModel, LevelDetailsFile, LevelDetailsLight, LevelDetailsSlot};
 use xrf_math::{Aabb, Vector3d};
 
 use crate::level::level_detail_library::LevelDetailLibrary;
@@ -61,17 +61,13 @@ impl LevelDetailConversion {
       .slots
       .iter()
       .map(|slot| {
-        (0..EditableDetailObjectTool::SLOT_CORNERS).fold(
-          EditableDetailObjectTool::get_unlit_slot(*slot),
-          |slot, corner| match EditableDetailObjectTool::get_slot_object(&slot, corner) {
+        (0..LevelDetailsSlot::CORNERS).fold(
+          LevelDetailsSlot::with_light(*slot, LevelDetailsLight::UNLIT),
+          |slot, corner| match LevelDetailsSlot::get_object(&slot, corner) {
             Some(model) => {
               let place: Option<u8> = places.get(usize::from(model)).copied().flatten();
 
-              EditableDetailObjectTool::with_slot_object(
-                slot,
-                corner,
-                place.unwrap_or(EditableDetailObjectTool::EMPTY_ID),
-              )
+              LevelDetailsSlot::with_object(slot, corner, place.unwrap_or(LevelDetailsSlot::EMPTY_ID))
             }
             None => slot,
           },

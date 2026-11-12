@@ -6,6 +6,7 @@ use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
 use crate::lights::level_light::LevelLight;
+use crate::lights::level_light_role::LevelLightRole;
 
 /// One chunk of a compiled light list, which is a run of lights or something this does not read.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -18,8 +19,8 @@ pub enum LevelLightsChunk {
 }
 
 impl LevelLightsChunk {
-  /// `fsL_HEADER`, which is the one chunk `CLight_DB::LoadHemi` opens.
-  pub const HEMI_CHUNK_ID: u32 = 1;
+  /// `fsL_HEADER`, which is the one chunk `CLight_DB::LoadHemi` opens: xrLC's hemisphere lights.
+  pub const HEMI_CHUNK_ID: u32 = LevelLightRole::Hemi.get_chunk_id();
 
   /// The id this chunk was found under, written back unchanged.
   pub const fn get_id(&self) -> u32 {

@@ -4,7 +4,7 @@ use xrf_chunk::XRayByteOrder;
 use xrf_dds::{DdsEncoding, DdsFile, DdsMipChain, DdsMipmaps, ImageFormat, Quality, Rgba, RgbaImage};
 use xrf_editable_level::EditableDetailObjectTool;
 use xrf_error::XrfResult;
-use xrf_level::{DetailModel, DetailVertex, LevelDetailsFile, LevelDetailsHeader};
+use xrf_level::{DetailModel, DetailVertex, LevelDetailsFile, LevelDetailsHeader, LevelDetailsSlot};
 use xrf_math::{Vector2d, Vector3d};
 use xrf_test_utils::GeneratedResources;
 
@@ -103,8 +103,8 @@ fn decompiles_details_into_the_library_objects_drawing_them() {
   assert_eq!(refused.len(), 1);
   assert_eq!(refused[0].object, "detail object 1");
   assert_eq!(
-    (0..4)
-      .map(|corner| EditableDetailObjectTool::get_slot_object(&tool.slots[0], corner))
+    (0..LevelDetailsSlot::CORNERS)
+      .map(|corner| LevelDetailsSlot::get_object(&tool.slots[0], corner))
       .collect::<Vec<_>>(),
     [Some(0), None, Some(1), None]
   );
@@ -293,8 +293,8 @@ fn exports_the_planted_details_with_their_atlas() -> XrfResult {
     (1, (256, 256), 1)
   );
   assert_eq!(
-    (0..EditableDetailObjectTool::SLOT_CORNERS)
-      .map(|corner| EditableDetailObjectTool::get_slot_object(&exported.file.slots[0], corner))
+    (0..LevelDetailsSlot::CORNERS)
+      .map(|corner| LevelDetailsSlot::get_object(&exported.file.slots[0], corner))
       .collect::<Vec<_>>(),
     [Some(0), None, Some(0), None]
   );

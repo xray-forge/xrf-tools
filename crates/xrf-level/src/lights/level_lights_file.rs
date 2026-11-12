@@ -8,6 +8,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
 use crate::lights::level_light::LevelLight;
+use crate::lights::level_light_role::LevelLightRole;
 use crate::lights::level_lights_chunk::LevelLightsChunk;
 
 /// The compiled light list of a level, `build.lights`.
@@ -92,6 +93,15 @@ impl LevelLightsFile {
   /// Every light of every chunk, in file order.
   pub fn iter_lights(&self) -> impl Iterator<Item = &LevelLight> {
     self.chunks.iter().flat_map(LevelLightsChunk::get_lights)
+  }
+
+  /// The lights of one role, its chunk's in file order: every light xrLC wrote there, point and directional.
+  pub fn get_role_lights(&self, role: LevelLightRole) -> impl Iterator<Item = &LevelLight> {
+    self
+      .chunks
+      .iter()
+      .filter(move |chunk| chunk.get_id() == role.get_chunk_id())
+      .flat_map(LevelLightsChunk::get_lights)
   }
 
   /// Lights across the whole file.

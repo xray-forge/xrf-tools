@@ -2,9 +2,11 @@ use std::fs::File;
 use std::path::Path;
 
 use byteorder::ByteOrder;
+use glam::Vec3;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
+use xrf_geometry::{BvhTracer, Triangle};
 use xrf_math::{Aabb, Vector3d};
 use xrf_utils::{format_path, narrow_format_size};
 
@@ -179,6 +181,18 @@ impl BuildCformFile {
     raycast_faces.flush_chunk_into::<T>(&mut writer.buffer, Self::RAYCAST_FACES_CHUNK_ID)?;
 
     Ok(())
+  }
+
+  /// The form's faces in a tracer for the engine's ray and box queries, each named by its index here, the index of its
+  /// raycast record: the ray model the light and AI compilers query (`RCAST_Model`).
+  pub fn build_tracer(&self) -> BvhTracer {
+    BvhTracer::of_triangles(
+      self
+        .faces
+        .iter()
+        .map(|face| Triangle::new(face.vertices.map(|index| Vec3::from(&self.vertices[index as usize]))))
+        .collect(),
+    )
   }
 
   /// Refuses a face naming a vertex the form does not hold, and raycast records that are not one per face, which is

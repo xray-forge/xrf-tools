@@ -3,7 +3,7 @@ use xrf_dds::{DdsEncoding, DdsMipChain, DdsMipFilter, DdsMipmaps, ImageFormat, Q
 use xrf_editable_level::{EditableDetailObject, EditableDetailObjectTool};
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::{XrfError, XrfResult};
-use xrf_level::{DetailModel, DetailVertex, LevelDetailsFile, LevelDetailsHeader};
+use xrf_level::{DetailModel, DetailVertex, LevelDetailsFile, LevelDetailsHeader, LevelDetailsLight, LevelDetailsSlot};
 
 use crate::level::build::level_build_atlas::{LevelBuildAtlas, LevelBuildAtlasPlace};
 use crate::level::build::level_build_library::LevelBuildLibrary;
@@ -103,13 +103,13 @@ impl LevelBuildDetails {
       .slots
       .iter()
       .map(|slot| {
-        (0..EditableDetailObjectTool::SLOT_CORNERS).fold(
-          EditableDetailObjectTool::get_unlit_slot(*slot),
-          |slot, corner| match EditableDetailObjectTool::get_slot_object(&slot, corner) {
-            Some(object) => EditableDetailObjectTool::with_slot_object(
+        (0..LevelDetailsSlot::CORNERS).fold(
+          LevelDetailsSlot::with_light(*slot, LevelDetailsLight::UNLIT),
+          |slot, corner| match LevelDetailsSlot::get_object(&slot, corner) {
+            Some(object) => LevelDetailsSlot::with_object(
               slot,
               corner,
-              renumbered[usize::from(object)].unwrap_or(EditableDetailObjectTool::EMPTY_ID),
+              renumbered[usize::from(object)].unwrap_or(LevelDetailsSlot::EMPTY_ID),
             ),
             None => slot,
           },
@@ -147,8 +147,8 @@ impl LevelBuildDetails {
     let mut is_planted: Vec<bool> = vec![false; tool.objects.len()];
 
     for slot in &tool.slots {
-      for corner in 0..EditableDetailObjectTool::SLOT_CORNERS {
-        if let Some(object) = EditableDetailObjectTool::get_slot_object(slot, corner) {
+      for corner in 0..LevelDetailsSlot::CORNERS {
+        if let Some(object) = LevelDetailsSlot::get_object(slot, corner) {
           *is_planted.get_mut(usize::from(object)).ok_or_else(|| {
             XrfError::new_invalid_error(format!(
               "A detail slot plants object {object}, past the tool's {}",

@@ -234,27 +234,6 @@ fn a_detail_object_tool_saved_as_its_part_reads_back_the_same() -> XrfResult {
   Ok(())
 }
 
-/// A corner's object is six bits of the slot's first two words, the light the twenty above them.
-#[test]
-fn reads_and_writes_a_slots_corners_and_light_as_the_editor_does() {
-  let slot: [u32; 4] = detail_tool().slots[0];
-  let corners = |slot: &[u32; 4]| -> Vec<Option<u8>> {
-    (0..4)
-      .map(|corner| EditableDetailObjectTool::get_slot_object(slot, corner))
-      .collect()
-  };
-
-  assert_eq!(corners(&slot), [Some(1), Some(1), None, Some(7)]);
-
-  let moved: [u32; 4] = EditableDetailObjectTool::with_slot_object(slot, 2, 5);
-
-  assert_eq!(corners(&moved), [Some(1), Some(1), Some(5), Some(7)]);
-  assert_eq!(
-    EditableDetailObjectTool::get_unlit_slot(slot),
-    [0x0410_03E8, 0x0000_01FF, 0x1111, 0x2222]
-  );
-}
-
 fn ai_map_tool() -> EditableAiMapTool {
   EditableAiMapTool {
     flags: 4,

@@ -2,6 +2,7 @@ use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
 
 use crate::lights::level_light::LevelLight;
+use crate::lights::level_light_role::LevelLightRole;
 use crate::lights::level_lights_chunk::LevelLightsChunk;
 use crate::lights::level_lights_file::LevelLightsFile;
 use crate::tests::fixtures::{chunk, floats};
@@ -64,6 +65,28 @@ fn only_the_point_lights_of_the_header_chunk_reach_the_runtime() -> XrfResult {
 
   assert_eq!(file.get_lights_count(), 5);
   assert_eq!(file.get_hemi_lights().count(), 2);
+
+  Ok(())
+}
+
+#[test]
+fn reads_each_role_s_lights_from_its_own_chunk_point_and_directional_alike() -> XrfResult {
+  let mut bytes: Vec<u8> = lights_chunk(LevelLightRole::Rgb.get_chunk_id(), &[1])?;
+
+  bytes.extend(lights_chunk(LevelLightRole::Hemi.get_chunk_id(), &[0, 0, 1])?);
+  bytes.extend(lights_chunk(LevelLightRole::Sun.get_chunk_id(), &[0])?);
+
+  let file: LevelLightsFile = LevelLightsFile::read_from_bytes::<XRayByteOrder>(bytes)?;
+  let kinds = |role: LevelLightRole| -> Vec<u16> { file.get_role_lights(role).map(|light| light.kind).collect() };
+
+  assert_eq!(kinds(LevelLightRole::Rgb), [LevelLight::KIND_POINT]);
+  assert_eq!(kinds(LevelLightRole::Hemi), [0, 0, 1]);
+  assert_eq!(kinds(LevelLightRole::Sun), [LevelLight::KIND_DIRECTIONAL]);
+  assert!(
+    file
+      .get_role_lights(LevelLightRole::Sun)
+      .all(LevelLight::is_directional)
+  );
 
   Ok(())
 }
