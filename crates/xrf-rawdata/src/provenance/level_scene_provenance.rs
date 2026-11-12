@@ -105,6 +105,10 @@ pub enum LevelSceneInference {
   /// The map's rectangle (`level.ltx`'s `bound_rect`) comes back as a level-bound shape, `level_bound_NNNN`, a box over
   /// it one metre tall around height 0; the file keeps only its x and z.
   MapBound,
+  /// The sections of `level.ltx` the Build does not write itself (a multiplayer map's anomaly sets) come back as the
+  /// build options' text, which the Build writes into `level.ltx` again: a line each as the file held it, without its
+  /// blank and `;` lines.
+  BuildOptions,
 }
 
 /// The objects a scene's static geometry came back as, and what the decompile counted of it.

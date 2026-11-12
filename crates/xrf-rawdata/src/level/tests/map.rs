@@ -2,8 +2,8 @@
 
 use xrf_chunk::XRayByteOrder;
 use xrf_editable_level::{
-  EditableCustomObject, EditableLevelOptions, EditableObjectPart, EditableObjectTransform, EditableSectorObject,
-  EditableShape, EditableShapeObject,
+  EditableCustomObject, EditableLevelFile, EditableLevelOptions, EditableObjectPart, EditableObjectTransform,
+  EditableSectorObject, EditableShape, EditableShapeObject,
 };
 use xrf_error::XrfResult;
 use xrf_test_utils::GeneratedResources;
@@ -36,7 +36,10 @@ fn reads_the_maps_settings_as_the_build_wrote_them_and_a_later_save_left_them() 
   assert_eq!(settings.unknown_game_types, ["freemp"]);
   assert_eq!(settings.bounds, Some(shipped_bounds()));
   assert_eq!(settings.texture.as_deref(), Some("map\\map_labx8"));
-  assert_eq!(settings.other_sections, ["deathmatch_game_anomaly_sets"]);
+  assert_eq!(
+    settings.build_options,
+    "[deathmatch_game_anomaly_sets]\r\nset1 = zone_mine"
+  );
   assert_eq!(
     settings.sector_maps.into_iter().collect::<Vec<_>>(),
     [(0, 255), (1, 0), (2, 3)]
@@ -112,6 +115,19 @@ fn decompiles_a_levels_map_settings_into_its_options_and_a_level_bound_shape() -
   assert_eq!(options.game_type, (1 << 1) | (1 << 4));
   assert_eq!(shapes.objects.len(), 1);
   assert!(decompiled.provenance.inferred.contains(&LevelSceneInference::MapBound));
+  // The anomaly sets travel as the build options' text, across lines in the saved scene as the editor saves it.
+  assert_eq!(
+    EditableLevelFile::read_from_bytes(&decompiled.scene.level.write_to_bytes()?)?
+      .get_level_options()?
+      .build_options,
+    "[deathmatch_game_anomaly_sets]\r\nset1 = zone_mine"
+  );
+  assert!(
+    decompiled
+      .provenance
+      .inferred
+      .contains(&LevelSceneInference::BuildOptions)
+  );
   assert!(
     !decompiled.provenance.inferred.contains(&LevelSceneInference::GameTypes),
     "the map names the game types"
@@ -123,7 +139,7 @@ fn decompiles_a_levels_map_settings_into_its_options_and_a_level_bound_shape() -
       .iter()
       .map(|refusal| refusal.object.as_str())
       .collect::<Vec<_>>(),
-    ["[deathmatch_game_anomaly_sets]", "[map_usage] freemp"]
+    ["[map_usage] freemp"]
   );
 
   Ok(())

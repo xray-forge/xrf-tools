@@ -60,6 +60,7 @@ impl LevelSpawnCategory {
       | AlifeObjectInherited::CseAlifeObjectClimable(_)
       | AlifeObjectInherited::CseAlifeGraphPoint(_)
       | AlifeObjectInherited::CseAlifeSpaceRestrictor(_)
+      | AlifeObjectInherited::CseAlifeTeamBaseZone(_)
       | AlifeObjectInherited::SeSmartCover(_)
       | AlifeObjectInherited::CseAlifeAnomalousZone(_)
       | AlifeObjectInherited::CseAlifeTorridZone(_)

@@ -16,12 +16,13 @@ pub struct LevelObjectVolume {
 }
 
 impl LevelObjectVolume {
-  /// The volume of a spawned object, or `None` for a class that is none: a smart terrain, a space restrictor, an
-  /// anomalous or torrid zone, a level changer or a ladder.
+  /// The volume of a spawned object, or `None` for a class that is none: a smart terrain, a space restrictor, a team
+  /// base, an anomalous or torrid zone, a level changer or a ladder.
   pub fn of(inherited: &AlifeObjectInherited) -> Option<Self> {
     let (restrictor, destination): (&AlifeObjectSpaceRestrictor, Option<&String>) = match inherited {
       AlifeObjectInherited::SeSmartTerrain(terrain) => (&terrain.base.base, None),
       AlifeObjectInherited::CseAlifeSpaceRestrictor(restrictor) => (restrictor, None),
+      AlifeObjectInherited::CseAlifeTeamBaseZone(zone) => (&zone.base, None),
       AlifeObjectInherited::CseAlifeAnomalousZone(zone) => (&zone.base.base.base, None),
       AlifeObjectInherited::CseAlifeTorridZone(zone) => (&zone.base.base, None),
       AlifeObjectInherited::SeLevelChanger(changer) => (&changer.base, Some(&changer.dest_level_name)),

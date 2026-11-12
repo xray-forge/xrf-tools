@@ -74,6 +74,8 @@ pub enum AlifeClass {
   CseAlifeSpaceRestrictor,
   #[display("CseAlifeStationaryMGun")]
   CseAlifeStationaryMGun,
+  #[display("CseAlifeTeamBaseZone")]
+  CseAlifeTeamBaseZone,
   #[display("CseAlifeTorridZone")]
   CseAlifeTorridZone,
   #[display("CseAlifeTrader")]

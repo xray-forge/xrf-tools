@@ -48,6 +48,7 @@ use crate::data::alife::inherited::alife_smart_cover::AlifeSmartCover;
 use crate::data::alife::inherited::alife_smart_terrain::AlifeSmartTerrain;
 use crate::data::alife::inherited::alife_squad::AlifeSquad;
 use crate::data::alife::inherited::alife_stalker::AlifeStalker;
+use crate::data::alife::inherited::alife_team_base_zone::AlifeTeamBaseZone;
 use crate::data::alife::inherited::alife_zone_visual::AlifeZoneVisual;
 use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 use crate::data::generic::shape::Shape;
@@ -70,6 +71,7 @@ pub enum AlifeObjectInherited {
   CseAlifeTorridZone(Box<AlifeObjectTorridZone>),
   SeSmartTerrain(Box<AlifeSmartTerrain>),
   SeLevelChanger(Box<AlifeLevelChanger>),
+  CseAlifeTeamBaseZone(Box<AlifeTeamBaseZone>),
   CseAlifeZoneVisual(Box<AlifeZoneVisual>),
   CseAlifeCar(Box<AlifeObjectCar>),
   CseAlifeTrader(Box<AlifeObjectTrader>),
@@ -123,6 +125,7 @@ impl AlifeObjectInherited {
       AlifeClass::CseAlifeTorridZone => Self::CseAlifeTorridZone(Box::new(spawn.read_xr::<T, _>()?)),
       AlifeClass::SeSmartTerrain => Self::SeSmartTerrain(Box::new(spawn.read_xr::<T, _>()?)),
       AlifeClass::SeLevelChanger => Self::SeLevelChanger(Box::new(spawn.read_xr::<T, _>()?)),
+      AlifeClass::CseAlifeTeamBaseZone => Self::CseAlifeTeamBaseZone(Box::new(spawn.read_xr::<T, _>()?)),
       AlifeClass::CseAlifeZoneVisual => Self::CseAlifeZoneVisual(Box::new(spawn.read_xr::<T, _>()?)),
       AlifeClass::CseAlifeCar => Self::CseAlifeCar(Box::new(spawn.read_xr::<T, _>()?)),
       AlifeClass::CseAlifeTrader => Self::CseAlifeTrader(Box::new(spawn.read_xr::<T, _>()?)),
@@ -215,6 +218,7 @@ impl AlifeObjectInherited {
       Self::CseAlifeTorridZone(_) => AlifeClass::CseAlifeTorridZone,
       Self::SeSmartTerrain(_) => AlifeClass::SeSmartTerrain,
       Self::SeLevelChanger(_) => AlifeClass::SeLevelChanger,
+      Self::CseAlifeTeamBaseZone(_) => AlifeClass::CseAlifeTeamBaseZone,
       Self::CseAlifeZoneVisual(_) => AlifeClass::CseAlifeZoneVisual,
       Self::CseAlifeCar(_) => AlifeClass::CseAlifeCar,
       Self::CseAlifeTrader(_) => AlifeClass::CseAlifeTrader,
@@ -264,6 +268,7 @@ impl AlifeObjectInherited {
       Self::CseAlifeTorridZone(object) => Some(&object.base.base.base),
       Self::SeSmartTerrain(object) => Some(&object.base.base.base),
       Self::SeLevelChanger(object) => Some(&object.base.base),
+      Self::CseAlifeTeamBaseZone(object) => Some(&object.base.base),
       Self::CseAlifeZoneVisual(object) => Some(&object.base.base.base.base),
       Self::CseAlifeCar(object) => Some(&object.base.base),
       Self::CseAlifeTrader(object) => Some(&object.base.base),
@@ -312,6 +317,7 @@ impl AlifeObjectInherited {
       Self::CseAlifeTorridZone(object) => Some(&mut object.base.base.base),
       Self::SeSmartTerrain(object) => Some(&mut object.base.base.base),
       Self::SeLevelChanger(object) => Some(&mut object.base.base),
+      Self::CseAlifeTeamBaseZone(object) => Some(&mut object.base.base),
       Self::CseAlifeZoneVisual(object) => Some(&mut object.base.base.base.base),
       Self::CseAlifeCar(object) => Some(&mut object.base.base),
       Self::CseAlifeTrader(object) => Some(&mut object.base.base),
@@ -401,6 +407,7 @@ impl AlifeObjectInherited {
     match self {
       Self::CseAlifeSpaceRestrictor(object) => Some(&object.shape),
       Self::SeLevelChanger(object) => Some(&object.base.shape),
+      Self::CseAlifeTeamBaseZone(object) => Some(&object.base.shape),
       Self::SeSmartTerrain(object) => Some(&object.base.base.shape),
       Self::CseAlifeTorridZone(object) => Some(&object.base.base.shape),
       Self::CseAlifeAnomalousZone(object) => Some(&object.base.base.base.shape),
@@ -416,6 +423,7 @@ impl AlifeObjectInherited {
     match self {
       Self::CseAlifeSpaceRestrictor(object) => Some(&mut object.shape),
       Self::SeLevelChanger(object) => Some(&mut object.base.shape),
+      Self::CseAlifeTeamBaseZone(object) => Some(&mut object.base.shape),
       Self::SeSmartTerrain(object) => Some(&mut object.base.base.shape),
       Self::CseAlifeTorridZone(object) => Some(&mut object.base.base.shape),
       Self::CseAlifeAnomalousZone(object) => Some(&mut object.base.base.base.shape),
@@ -471,6 +479,7 @@ impl AlifeObjectInherited {
       | Self::CseAlifeTorridZone(_)
       | Self::SeSmartTerrain(_)
       | Self::SeLevelChanger(_)
+      | Self::CseAlifeTeamBaseZone(_)
       | Self::SimSquadScripted(_) => return None,
     };
 
@@ -534,6 +543,7 @@ impl AlifeObjectInherited {
       | Self::CseAlifeTorridZone(_)
       | Self::SeSmartTerrain(_)
       | Self::SeLevelChanger(_)
+      | Self::CseAlifeTeamBaseZone(_)
       | Self::CseAlifeZoneVisual(_)
       | Self::CseAlifeCar(_)
       | Self::CseAlifeTrader(_)
@@ -586,6 +596,7 @@ impl AlifeObjectInherited {
       | Self::CseAlifeTorridZone(_)
       | Self::SeSmartTerrain(_)
       | Self::SeLevelChanger(_)
+      | Self::CseAlifeTeamBaseZone(_)
       | Self::CseAlifeZoneVisual(_)
       | Self::CseAlifeCar(_)
       | Self::CseAlifeTrader(_)
@@ -618,6 +629,7 @@ impl AlifeObjectInherited {
       Self::CseAlifeTorridZone(object) => spawn.write_xr::<T, _>(object.deref())?,
       Self::SeSmartTerrain(object) => spawn.write_xr::<T, _>(object.deref())?,
       Self::SeLevelChanger(object) => spawn.write_xr::<T, _>(object.deref())?,
+      Self::CseAlifeTeamBaseZone(object) => spawn.write_xr::<T, _>(object.deref())?,
       Self::CseAlifeZoneVisual(object) => spawn.write_xr::<T, _>(object.deref())?,
       Self::CseAlifeCar(object) => spawn.write_xr::<T, _>(object.deref())?,
       Self::CseAlifeTrader(object) => spawn.write_xr::<T, _>(object.deref())?,
@@ -677,6 +689,9 @@ impl AlifeObjectInherited {
       }
       AlifeClass::SeSmartTerrain => Self::SeSmartTerrain(Box::new(AlifeSmartTerrain::import(section_name, ltx)?)),
       AlifeClass::SeLevelChanger => Self::SeLevelChanger(Box::new(AlifeLevelChanger::import(section_name, ltx)?)),
+      AlifeClass::CseAlifeTeamBaseZone => {
+        Self::CseAlifeTeamBaseZone(Box::new(AlifeTeamBaseZone::import(section_name, ltx)?))
+      }
       AlifeClass::CseAlifeZoneVisual => Self::CseAlifeZoneVisual(Box::new(AlifeZoneVisual::import(section_name, ltx)?)),
       AlifeClass::CseAlifeCar => Self::CseAlifeCar(Box::new(AlifeObjectCar::import(section_name, ltx)?)),
       AlifeClass::CseAlifeTrader => Self::CseAlifeTrader(Box::new(AlifeObjectTrader::import(section_name, ltx)?)),
@@ -769,6 +784,7 @@ impl AlifeObjectInherited {
       Self::CseAlifeTorridZone(object) => object.export(section_name, ltx),
       Self::SeSmartTerrain(object) => object.export(section_name, ltx),
       Self::SeLevelChanger(object) => object.export(section_name, ltx),
+      Self::CseAlifeTeamBaseZone(object) => object.export(section_name, ltx),
       Self::CseAlifeZoneVisual(object) => object.export(section_name, ltx),
       Self::CseAlifeCar(object) => object.export(section_name, ltx),
       Self::CseAlifeTrader(object) => object.export(section_name, ltx),

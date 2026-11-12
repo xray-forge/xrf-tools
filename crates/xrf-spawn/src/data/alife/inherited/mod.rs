@@ -54,4 +54,5 @@ pub(crate) mod alife_smart_terrain;
 pub(crate) mod alife_smart_zone;
 pub(crate) mod alife_squad;
 pub(crate) mod alife_stalker;
+pub(crate) mod alife_team_base_zone;
 pub(crate) mod alife_zone_visual;

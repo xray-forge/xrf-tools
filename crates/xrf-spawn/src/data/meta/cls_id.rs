@@ -103,6 +103,7 @@ pub enum ClsId {
   ZNoGrav,
   ZRadio,
   ZRustyH,
+  ZTeamBs,
   ZTorrid,
   ZsAmeba,
   ZsBFuzz,

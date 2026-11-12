@@ -67,7 +67,9 @@ impl LevelObjectKind {
       AlifeObjectInherited::CseAlifeTrader(_) => Some(Self::Traders),
       AlifeObjectInherited::SimSquadScripted(_) => Some(Self::Squads),
       AlifeObjectInherited::SeSmartTerrain(_) => Some(Self::SmartTerrains),
-      AlifeObjectInherited::CseAlifeSpaceRestrictor(_) => Some(Self::Restrictors),
+      AlifeObjectInherited::CseAlifeSpaceRestrictor(_) | AlifeObjectInherited::CseAlifeTeamBaseZone(_) => {
+        Some(Self::Restrictors)
+      }
       AlifeObjectInherited::CseAlifeAnomalousZone(_) | AlifeObjectInherited::CseAlifeTorridZone(_) => {
         Some(Self::Anomalies)
       }

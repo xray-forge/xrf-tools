@@ -310,6 +310,9 @@ export type AlifeObjectInherited =
       type: "SeLevelChanger";
     } & AlifeLevelChanger)
   | ({
+      type: "CseAlifeTeamBaseZone";
+    } & AlifeTeamBaseZone)
+  | ({
       type: "CseAlifeZoneVisual";
     } & AlifeZoneVisual)
   | ({
@@ -734,6 +737,16 @@ export type AlifeStalker = {
   lootDropped: number;
 };
 
+/**
+ * A multiplayer team's base, `CSE_ALifeTeamBaseZone` (`zone_team_base`, class `Z_TEAMBS`): a space restrictor and the
+ * team it belongs to, which the team modes respawn and score at.
+ */
+export type AlifeTeamBaseZone = {
+  base: AlifeObjectSpaceRestrictor;
+  /** `m_team`, which the Level Editor offers from 0 to 16. */
+  team: number;
+};
+
 export type AlifeZoneVisual = {
   base: AlifeObjectAnomalyZone;
   visual: AlifeObjectVisual;
@@ -844,6 +857,7 @@ export enum EClsId {
   Z_NO_GRAV = "ZNoGrav",
   Z_RADIO = "ZRadio",
   Z_RUSTY_H = "ZRustyH",
+  Z_TEAM_BS = "ZTeamBs",
   Z_TORRID = "ZTorrid",
   ZS_AMEBA = "ZsAmeba",
   ZS_B_FUZZ = "ZsBFuzz",
@@ -977,8 +991,9 @@ export type PatrolPoint = {
  *
  * That byte packs the item count into its low five bits and, above them, a mask: whether the body is enabled, and
  * whether each velocity is left out as zero. A zero byte is a state that is not there at all, so an object without one
- * is `None` beside its other update fields rather than a state with dead fields. The SDK writes some states without
- * initialising them, so each float keeps the bits it is stored in.
+ * is `None` beside its other update fields rather than a state with dead fields; but for a physic object's state,
+ * which closes its packet, a zero byte with bytes behind it is a state packed to zero (`read_closing`). The
+ * SDK writes some states without initialising them, so each float keeps the bits it is stored in.
  */
 export type PhysicsNetState = {
   /** The synchronised items, `m_u8NumItems`, at most the 31 its five bits hold. */

@@ -9,9 +9,10 @@ use crate::level::scene::level_scene_sources::LevelSceneSources;
 use crate::level::scene::steps::level_scene_step::LevelSceneStep;
 use crate::provenance::level_scene_provenance::{LevelSceneInference, LevelSceneRefusal};
 
-/// What `level.ltx` gives ([`LevelMapConversion`]): the map's version and game types into the level options, the map's
-/// rectangle as a level-bound shape, and each sector's part of the map, which the draft keeps for the geometry step's
-/// sectors. It runs before the geometry step, which makes the sectors.
+/// What `level.ltx` gives ([`LevelMapConversion`]): the map's version, game types and the sections the Build does not
+/// write itself (as the build options' text) into the level options, the map's rectangle as a level-bound shape, and
+/// each sector's part of the map, which the draft keeps for the geometry step's sectors. It runs before the geometry
+/// step, which makes the sectors.
 pub(crate) struct LevelMapStep;
 
 impl LevelSceneStep for LevelMapStep {
@@ -33,6 +34,11 @@ impl LevelSceneStep for LevelMapStep {
       draft.level_options.map_version.clone_from(version);
     }
 
+    if !settings.build_options.is_empty() {
+      draft.level_options.build_options.clone_from(&settings.build_options);
+      draft.infer_if(true, &[LevelSceneInference::BuildOptions]);
+    }
+
     if let Some(bounds) = &settings.bounds {
       let part: EditableObjectPart<EditableShapeObject> = EditableObjectPart::new(
         draft.context.guid,
@@ -52,23 +58,14 @@ impl LevelSceneStep for LevelMapStep {
 }
 
 impl LevelMapStep {
-  /// Records what `settings` holds that the scene cannot: sections the Build did not write itself, which its build
-  /// options' text would carry but a part cannot hold as several lines; game types it does not write; and a texture
-  /// other than the one it names after the level.
+  /// Records what `settings` holds that the scene cannot: game types the Build does not write, and a texture other than
+  /// the one it names after the level.
   fn refuse(draft: &mut LevelSceneDraft, settings: &LevelMapSettings) {
     let refusal = |object: &str, reason: &str| LevelSceneRefusal {
       file: String::from(LevelMapConversion::FILE_NAME),
       object: object.to_owned(),
       reason: reason.to_owned(),
     };
-
-    for section in &settings.other_sections {
-      draft.refused.push(refusal(
-        &format!("[{section}]"),
-        "A section the Build writes only from the build options' text, which the scene's main file cannot hold as \
-         several lines",
-      ));
-    }
 
     for name in &settings.unknown_game_types {
       draft

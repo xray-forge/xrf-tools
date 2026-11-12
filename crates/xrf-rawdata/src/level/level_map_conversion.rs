@@ -27,8 +27,10 @@ pub struct LevelMapSettings {
   pub texture: Option<String>,
   /// `[sub_level_map]`: each sector's part of the map, by the sector's number.
   pub sector_maps: BTreeMap<u16, u8>,
-  /// Sections other than those the Build writes itself, which came from the build options' text or a later edit.
-  pub other_sections: Vec<String>,
+  /// Sections other than those the Build writes itself, which came from the build options' text or a later edit, as
+  /// that text again: each of their lines as read, `;` and blank ones left out, ended by line breaks between them.
+  /// Empty where there is none.
+  pub build_options: String,
   /// Names `[map_usage]` holds that are no game type the Build writes.
   pub unknown_game_types: Vec<String>,
 }
@@ -78,11 +80,19 @@ impl LevelMapConversion {
 
       if let Some(name) = line.strip_prefix('[').and_then(|line| line.strip_suffix(']')) {
         section = name.to_owned();
+      }
 
-        if !Self::BUILT_SECTIONS.contains(&name) && !settings.other_sections.contains(&section) {
-          settings.other_sections.push(section.clone());
+      if !Self::BUILT_SECTIONS.contains(&section.as_str()) {
+        if !settings.build_options.is_empty() {
+          settings.build_options.push_str("\r\n");
         }
 
+        settings.build_options.push_str(line);
+
+        continue;
+      }
+
+      if line.starts_with('[') {
         continue;
       }
 
