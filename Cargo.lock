@@ -8808,14 +8808,20 @@ name = "xrf-level-compiler"
 version = "0.1.0"
 dependencies = [
  "log",
+ "rayon",
  "serde",
  "specta",
  "windows",
  "xrf-chunk",
+ "xrf-dds",
  "xrf-error",
+ "xrf-geometry",
  "xrf-job",
  "xrf-level",
+ "xrf-math",
+ "xrf-shaders",
  "xrf-test-utils",
+ "xrf-thm",
  "xrf-utils",
 ]
 

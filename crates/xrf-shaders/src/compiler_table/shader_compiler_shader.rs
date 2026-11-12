@@ -23,9 +23,12 @@ impl ShaderCompilerShader {
     (1 << 1, "rendering"),
     (1 << 2, "optimize UV"),
     (1 << 3, "vertex lighting"),
-    (1 << 4, "casts shadow"),
+    (Self::CASTS_SHADOW, "casts shadow"),
     (1 << 5, "sharp light"),
   ];
+
+  /// `flLIGHT_CastShadow`: the light compilers stop a ray at a face of this shader, or let it through when clear.
+  pub const CASTS_SHADOW: u32 = 1 << 4;
 
   /// Bytes the fixed name field occupies, which is `char Name[128]` whatever the name's own length.
   pub const NAME_SIZE: usize = 128;
@@ -69,6 +72,11 @@ impl ShaderCompilerShader {
     }
 
     Ok(bytes)
+  }
+
+  /// Whether a face of this shader casts shadows, [`Self::CASTS_SHADOW`].
+  pub fn casts_shadow(&self) -> bool {
+    self.flags & Self::CASTS_SHADOW != 0
   }
 
   /// The flags the shader sets, named.

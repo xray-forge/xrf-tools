@@ -25,6 +25,28 @@ Each step runs the SDK 0.7 compiler until a compiler of this crate takes its pla
 report stay as they are when one does. The spawn (xrAI `-s`) is not a step: it works on
 every level of a game at once.
 
+## Shadow materials
+
+`ShadowMaterials::load` reads how each face of xrLC's ray model (`build.cform`) meets a light ray, as the SDK's light
+compilers read it. It takes a `ShadowMaterialsRequest`: `build.prj`, the ray model's faces, `shaders_xrlc.xr` and the
+texture roots, searched in order.
+
+| Class    | When                                                                                             |
+| -------- | ------------------------------------------------------------------------------------------------ |
+| `Passes` | the material's compiler shader casts no shadow                                                   |
+| `Alpha`  | the texture's `.thm` gives an alpha channel, and it is neither a `lod\` texture nor `level_lods` |
+| `Opaque` | anything else                                                                                    |
+
+An alpha face's image is decoded with `xrf-dds`' `decode_sdk_alpha`, and only for alpha textures a face names.
+`get_transmittance` answers a tracer hit (`xrf-geometry`'s `TraceHit`, faces by index):
+
+- 1 for a face that passes the ray;
+- 0 for an opaque face;
+- `1 - alpha` at the nearest texel of the hit's texture coordinates, wrapped, for an alpha face.
+
+Loading fails where the SDK's compilers stop: a texture with no `.thm`, a compiler shader the library lacks, a face of a
+material with no compiler shader, or an alpha image that is missing or not the size its `.thm` gives.
+
 ## Develop
 
 ```bash
