@@ -1,4 +1,4 @@
-use glam::{Vec3, Vec3A};
+use glam::Vec3A;
 
 /// A ray as a box test takes it: its origin and the inverse of its direction.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -9,11 +9,9 @@ pub(crate) struct SlabRay {
 }
 
 impl SlabRay {
-  pub(crate) fn new(origin: Vec3, direction: Vec3) -> Self {
-    let direction: Vec3A = Vec3A::from(direction);
-
+  pub(crate) fn new(origin: Vec3A, direction: Vec3A) -> Self {
     Self {
-      origin: Vec3A::from(origin),
+      origin,
       // Adding zero turns a minus zero into plus zero, whose sign the infinite inverse then takes.
       inverse: direction.recip().abs().copysign(direction + Vec3A::ZERO),
     }

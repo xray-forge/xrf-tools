@@ -6,6 +6,7 @@ use crate::ray::ray::Ray;
 use crate::ray::slab_ray::SlabRay;
 use crate::tracer::bvh_tracer::BvhTracer;
 use crate::tracer::trace_hit::TraceHit;
+use crate::triangle::triangle::Triangle;
 
 /// Which of a packet's rays a node is walked for, a bit each.
 type PacketMask = [u64; BvhTracer::MASK_WORDS];
@@ -78,7 +79,9 @@ impl BvhTracer {
       }
 
       if node.is_leaf() {
-        for face in &self.faces[node.first_index as usize..(node.first_index + node.prim_count) as usize] {
+        for face in self.get_leaf_faces(node) {
+          let triangle: &Triangle = &self.triangles[*face as usize];
+
           for (word, bits) in active.iter().enumerate() {
             let mut bits: u64 = *bits;
 
@@ -87,7 +90,7 @@ impl BvhTracer {
 
               bits &= bits - 1;
 
-              if let Some(crossing) = self.triangles[*face as usize].cross(&rays[index], Facing::Front) {
+              if let Some(crossing) = triangle.cross(&rays[index], Facing::Front) {
                 visit(index, TraceHit::new(*face, crossing));
               }
             }

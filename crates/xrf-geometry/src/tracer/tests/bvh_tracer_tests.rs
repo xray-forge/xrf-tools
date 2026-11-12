@@ -1,4 +1,4 @@
-use glam::Vec3;
+use glam::{Vec3, Vec3A};
 
 use crate::ray::ray::Ray;
 use crate::tracer::bvh_tracer::BvhTracer;
@@ -68,7 +68,7 @@ fn picks_the_nearest_front_face_with_its_barycentrics() {
   let [a, b, c] = tracer.get_triangle(hit.face).corners;
 
   assert!(
-    ((a * (1.0 - hit.u - hit.v) + b * hit.u + c * hit.v) - Vec3::new(1.0, 1.0, 1.0)).length() < 1e-6,
+    ((a * (1.0 - hit.u - hit.v) + b * hit.u + c * hit.v) - Vec3A::new(1.0, 1.0, 1.0)).length() < 1e-6,
     "{hit:?}"
   );
 }

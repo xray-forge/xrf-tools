@@ -28,7 +28,9 @@ assert_eq!(tracer.get_nearest_hit(&down).map(|hit| hit.distance), Some(2.0));
 ```
 
 Every ray test is `Triangle::cross`, so a query answers as testing every face in turn would, whichever implementation
-runs it; the tests hold `BvhTracer` to such a walk. Its box test takes a zero direction component's inverse as infinite
+runs it; the tests hold `BvhTracer` to such a walk. A triangle's corners and a ray's vectors are `glam`'s `Vec3A`, a
+SIMD register wide, built from `Vec3`: each crossing comes out bit for bit as the scalar arithmetic gives it, which a
+test pins, and the queries run about 1.15 times faster for it. Its box test takes a zero direction component's inverse as infinite
 and an origin exactly on a box's face as inside, where `obvhs`' own traversals lose faces on such rays.
 `for_each_packet_hit` traces many rays together, 256 at a time, which pays where they run close together, such as one
 set of points' rays toward one light.

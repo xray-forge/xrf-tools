@@ -1,10 +1,10 @@
-use glam::{Vec3, Vec3A};
+use glam::Vec3A;
 
 use crate::ray::slab_ray::SlabRay;
 
 /// Whether a ray reaches the box a metre across from the origin.
 fn reaches_unit_box(origin: [f32; 3], direction: [f32; 3], reach: f32) -> bool {
-  SlabRay::new(Vec3::from(origin), Vec3::from(direction)).reaches(reach, Vec3A::ZERO, Vec3A::ONE)
+  SlabRay::new(Vec3A::from(origin), Vec3A::from(direction)).reaches(reach, Vec3A::ZERO, Vec3A::ONE)
 }
 
 #[test]
@@ -34,7 +34,7 @@ fn reaches_a_box_along_a_face_from_an_origin_on_its_plane() {
 
 #[test]
 fn reaches_a_box_of_no_depth() {
-  let ray: SlabRay = SlabRay::new(Vec3::new(0.5, 2.0, 0.5), Vec3::NEG_Y);
+  let ray: SlabRay = SlabRay::new(Vec3A::new(0.5, 2.0, 0.5), Vec3A::NEG_Y);
 
   assert!(ray.reaches(5.0, Vec3A::new(0.0, 1.0, 0.0), Vec3A::new(1.0, 1.0, 1.0)));
   assert!(

@@ -104,3 +104,71 @@ fn faces_its_normal_the_way_its_front_does() {
   assert_eq!(ground().get_normal(), Vec3::Y);
   assert_eq!(Triangle::new([Vec3::ZERO; 3]).get_normal(), Vec3::ZERO);
 }
+
+/// `CDB::TestRayTri` in plain three-component arithmetic, each operation as the engine writes it.
+fn cross_scalar(corners: [Vec3; 3], origin: Vec3, direction: Vec3, facing: Facing) -> Option<[f32; 3]> {
+  let edge1: Vec3 = corners[1] - corners[0];
+  let edge2: Vec3 = corners[2] - corners[0];
+  let pvec: Vec3 = direction.cross(edge2);
+  let det: f32 = edge1.dot(pvec);
+  let tvec: Vec3 = origin - corners[0];
+  let qvec: Vec3 = tvec.cross(edge1);
+
+  match facing {
+    Facing::Front => {
+      let (u, v) = (tvec.dot(pvec), direction.dot(qvec));
+
+      (det >= xrf_math::EPS && (0.0..=det).contains(&u) && v >= 0.0 && u + v <= det).then(|| {
+        let inverse: f32 = 1.0 / det;
+
+        [edge2.dot(qvec) * inverse, u * inverse, v * inverse]
+      })
+    }
+    Facing::Both => {
+      let inverse: f32 = 1.0 / det;
+      let (u, v) = (tvec.dot(pvec) * inverse, direction.dot(qvec) * inverse);
+
+      (det.abs() >= xrf_math::EPS && (0.0..=1.0).contains(&u) && v >= 0.0 && u + v <= 1.0)
+        .then(|| [edge2.dot(qvec) * inverse, u, v])
+    }
+  }
+}
+
+// The corners and rays are held a SIMD register wide; every crossing must still come out bit for bit as the scalar
+// arithmetic gives it, distance and barycentrics alike, or the light that rests on them would move.
+#[test]
+fn crosses_bit_for_bit_as_the_scalar_arithmetic_does() {
+  let mut state: u64 = 3;
+  let mut next = || {
+    state = state
+      .wrapping_mul(6_364_136_223_846_793_005)
+      .wrapping_add(1_442_695_040_888_963_407);
+
+    (state >> 40) as f32 / (1u64 << 24) as f32
+  };
+  let mut crossed: usize = 0;
+
+  for _ in 0..20_000 {
+    let corners: [Vec3; 3] = std::array::from_fn(|_| Vec3::new(next(), next(), next()) * 10.0);
+    let target: Vec3 = corners[0] + (corners[1] - corners[0]) * next() * 0.6 + (corners[2] - corners[0]) * next() * 0.6;
+    let origin: Vec3 = Vec3::new(next(), next(), next()) * 30.0 - Vec3::splat(10.0);
+    let direction: Vec3 = (target - origin).normalize_or(Vec3::Y);
+
+    for facing in [Facing::Front, Facing::Both] {
+      let found: Option<[f32; 3]> = Triangle::new(corners)
+        .cross(&Ray::new(origin, direction, f32::MAX), facing)
+        .map(|crossing| [crossing.distance, crossing.u, crossing.v]);
+      let expected: Option<[f32; 3]> =
+        cross_scalar(corners, origin, direction, facing).filter(|[distance, ..]| *distance > 0.0);
+
+      crossed += usize::from(found.is_some());
+      assert_eq!(
+        found.map(|values| values.map(f32::to_bits)),
+        expected.map(|values| values.map(f32::to_bits)),
+        "{corners:?} from {origin} along {direction}, {facing:?}"
+      );
+    }
+  }
+
+  assert!(crossed > 10_000, "the rays aim at the triangles: {crossed}");
+}
