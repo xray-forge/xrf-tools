@@ -7,7 +7,9 @@ use xrf_dds::DdsFile;
 use xrf_test_utils::GeneratedResources;
 use xrf_texture::{TextureEncodingFormat, TextureEncodingQuality};
 
-use crate::viewer::map::{MapExportAnnotations, MapExportFormat, MapExportOutcome, MapExportRequest, MapExporter};
+use crate::viewer::export::map::{
+  MapExportAnnotations, MapExportFormat, MapExportOutcome, MapExportRequest, MapExporter,
+};
 use crate::viewer::{ViewerDdsExport, ViewerImage};
 
 /// A 30 by 20 map, its left half covered in red and its right clear, and beside it annotations drawing a white square

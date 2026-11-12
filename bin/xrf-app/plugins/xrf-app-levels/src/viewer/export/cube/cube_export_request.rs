@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use serde::Deserialize;
 
-use crate::viewer::cube::CubeExportFormat;
+use crate::viewer::export::cube::CubeExportFormat;
 
 /// A cubemap's capture written again in another shape.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

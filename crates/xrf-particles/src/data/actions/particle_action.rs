@@ -36,8 +36,8 @@ use crate::data::actions::particle_action_target_rotate::ParticleActionTargetRot
 use crate::data::actions::particle_action_target_size::ParticleActionTargetSize;
 use crate::data::actions::particle_action_target_velocity::ParticleActionTargetVelocity;
 use crate::data::actions::particle_action_turbulence::ParticleActionTurbulence;
+use crate::data::actions::particle_action_type::ParticleActionType;
 use crate::data::actions::particle_action_vortex::ParticleActionVortex;
-use crate::data::particle_action_type::ParticleActionType;
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
@@ -348,10 +348,10 @@ mod tests {
   use xrf_math::Vector3d;
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
+  use crate::data::actions::particle_action::ParticleAction;
   use crate::data::actions::particle_action_target_rotate::ParticleActionTargetRotate;
   use crate::data::actions::particle_action_target_velocity::ParticleActionTargetVelocity;
-  use crate::data::particle_action::ParticleAction;
-  use crate::data::particle_action_type::ParticleActionType;
+  use crate::data::actions::particle_action_type::ParticleActionType;
 
   #[test]
   fn test_read_write_derivative_action_types() -> XrfResult {

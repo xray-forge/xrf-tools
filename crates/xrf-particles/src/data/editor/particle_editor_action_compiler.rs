@@ -1,6 +1,7 @@
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 
+use crate::data::actions::particle_action::ParticleAction;
 use crate::data::actions::particle_action_avoid::ParticleActionAvoid;
 use crate::data::actions::particle_action_bounce::ParticleActionBounce;
 use crate::data::actions::particle_action_copy_vertex::ParticleActionCopyVertex;
@@ -29,11 +30,10 @@ use crate::data::actions::particle_action_target_rotate::ParticleActionTargetRot
 use crate::data::actions::particle_action_target_size::ParticleActionTargetSize;
 use crate::data::actions::particle_action_target_velocity::ParticleActionTargetVelocity;
 use crate::data::actions::particle_action_turbulence::ParticleActionTurbulence;
+use crate::data::actions::particle_action_type::ParticleActionType;
 use crate::data::actions::particle_action_vortex::ParticleActionVortex;
 use crate::data::domain::particle_domain::ParticleDomain;
 use crate::data::editor::particle_editor_action::ParticleEditorAction;
-use crate::data::particle_action::ParticleAction;
-use crate::data::particle_action_type::ParticleActionType;
 use crate::simulation::domain::engine_vector::EngineVector;
 
 /// Turns an editor action into the action the engine plays, as each `EPA*::Compile` calls its `p*` function

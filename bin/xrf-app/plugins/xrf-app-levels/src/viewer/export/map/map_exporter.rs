@@ -7,8 +7,8 @@ use xrf_app_core::TauriResult;
 use xrf_dds::{DdsFile, DdsMipChain};
 use xrf_utils::StagedFile;
 
-use crate::viewer::map::annotations::AnnotationCanvas;
-use crate::viewer::map::{MapExportAnnotations, MapExportFormat, MapExportOutcome, MapExportRequest};
+use crate::viewer::export::map::annotations::AnnotationCanvas;
+use crate::viewer::export::map::{MapExportAnnotations, MapExportFormat, MapExportOutcome, MapExportRequest};
 use crate::viewer::{LevelViewerFolder, ViewerImage};
 
 /// A level map's capture written again: resized, flattened or not, as a PNG, an uncompressed TGA or a DDS, or its

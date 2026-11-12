@@ -1,5 +1,5 @@
 use crate::acoustics::distance_curve::DistanceCurve;
-use crate::render::emitter_culling::EmitterCulling;
+use crate::scene::render::emitter_culling::EmitterCulling;
 use xrf_audio_scene::AudioSceneEmitter;
 
 /// Below this a sound is not worth a voice.

@@ -4,7 +4,7 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
-use crate::data::particle_action_type::ParticleActionType;
+use crate::data::actions::particle_action_type::ParticleActionType;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -82,7 +82,7 @@ mod tests {
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::actions::particle_action_gravitate::ParticleActionGravitate;
-  use crate::data::particle_action_type::ParticleActionType;
+  use crate::data::actions::particle_action_type::ParticleActionType;
 
   #[test]
   fn test_read_write() -> XrfResult {

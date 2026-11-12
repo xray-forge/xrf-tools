@@ -73,7 +73,7 @@ mod tests {
   use crate::data::graph::graph_header::GraphHeader;
   use crate::data::graph::graph_level::GraphLevel;
   use crate::data::graph::graph_vertex::GraphVertex;
-  use crate::data::graph::graph_vertex_levels::GraphVertexLevels;
+  use crate::data::graph::level_view::graph_vertex_levels::GraphVertexLevels;
 
   fn new_level(id: u8, name: &str) -> GraphLevel {
     GraphLevel {

@@ -7,7 +7,7 @@ use xrf_app_core::session::{SessionId, SessionSnapshot};
 
 use crate::level::{SelectedLevel, SelectedLevels};
 use crate::viewer::LevelViewerFolder;
-use crate::viewer::map::annotations::{AnnotationCanvas, LevelAnnotations, MapAnnotationsWriteRequest};
+use crate::viewer::export::map::annotations::{AnnotationCanvas, LevelAnnotations, MapAnnotationsWriteRequest};
 
 /// Draw the open level's annotations over one of its level maps and write them beside it as an SVG; answers the SVG.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

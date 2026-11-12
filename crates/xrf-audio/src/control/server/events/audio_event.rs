@@ -1,5 +1,5 @@
-use crate::transport::audio_transport_id::AudioTransportId;
-use crate::transport::audio_transport_state::AudioTransportState;
+use crate::control::transport::audio_transport_id::AudioTransportId;
+use crate::control::transport::audio_transport_state::AudioTransportState;
 
 /// What the control thread tells its host, as it happens.
 #[derive(Clone, Debug, PartialEq, Eq)]

@@ -5,7 +5,7 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::directories::AppDirectories;
 use xrf_app_core::execution::ExecutionState;
 
-use crate::viewer::cube::{CubeExportRequest, CubeExporter};
+use crate::viewer::export::cube::{CubeExportRequest, CubeExporter};
 use crate::viewer::{LevelViewerFolder, LevelViewerReport};
 
 /// Write a cubemap of the screenshots folder again as a cube DDS, six TGAs or six PNGs; answers the files written.

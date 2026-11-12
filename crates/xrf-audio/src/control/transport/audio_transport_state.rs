@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
-use crate::transport::audio_transport_playback::AudioTransportPlayback;
+use crate::control::transport::audio_transport_playback::AudioTransportPlayback;
 
 /// Where a transport is, for a player to show.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

@@ -11,7 +11,7 @@ use xrf_app_render::{CaptureOutcome, Renderer};
 use xrf_job::JobProgress;
 use xrf_renderer::MapAssembly;
 
-use crate::viewer::map::MapCaptureRequest;
+use crate::viewer::export::map::MapCaptureRequest;
 use crate::viewer::{LevelViewerReport, ViewerCaptureJob};
 
 /// Capture a level map in a viewport tile by tile and write it to a PNG file with its coverage in alpha.

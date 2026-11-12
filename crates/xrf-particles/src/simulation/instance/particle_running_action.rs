@@ -1,6 +1,6 @@
 use glam::{Mat4, Vec3};
 
-use crate::data::particle_action::ParticleAction;
+use crate::data::actions::particle_action::ParticleAction;
 use crate::simulation::actions::avoid_action::AvoidAction;
 use crate::simulation::actions::bounce_action::BounceAction;
 use crate::simulation::actions::copy_vertex_action::CopyVertexAction;

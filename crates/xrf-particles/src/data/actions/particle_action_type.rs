@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
-use crate::data::particle_action::ParticleAction;
+use crate::data::actions::particle_action::ParticleAction;
 
 #[derive(Copy, Clone, Debug, Enum, PartialEq, Eq, FromStr, Display, Serialize, Deserialize)]
 pub enum ParticleActionType {
@@ -172,7 +172,7 @@ where
 mod tests {
   use std::str::FromStr;
 
-  use crate::data::particle_action_type::ParticleActionType;
+  use crate::data::actions::particle_action_type::ParticleActionType;
 
   #[test]
   fn test_from_str() {

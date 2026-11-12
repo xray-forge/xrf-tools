@@ -2,7 +2,7 @@ use xrf_math::Vector3d;
 use xrf_visual::VisualTransform;
 
 use crate::objects::LevelObjectShape;
-use crate::viewer::map::annotations::AnnotationPoint;
+use crate::viewer::export::map::annotations::AnnotationPoint;
 
 /// What a volume's shape covers seen from above.
 #[derive(Clone, Debug, PartialEq)]

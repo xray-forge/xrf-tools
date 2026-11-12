@@ -3,7 +3,5 @@ pub(crate) mod domain;
 pub(crate) mod editor;
 pub(crate) mod effect;
 pub(crate) mod group;
-pub(crate) mod particle_action;
-pub(crate) mod particle_action_type;
 pub(crate) mod particle_description;
 pub(crate) mod particle_record_chunks;

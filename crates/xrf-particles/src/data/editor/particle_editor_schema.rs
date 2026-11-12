@@ -1,10 +1,10 @@
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 
+use crate::data::actions::particle_action_type::ParticleActionType;
 use crate::data::editor::particle_editor_domain::ParticleEditorDomain;
 use crate::data::editor::particle_editor_property::ParticleEditorProperty;
 use crate::data::editor::particle_editor_value::ParticleEditorValue;
-use crate::data::particle_action_type::ParticleActionType;
 
 /// The properties each kind of editor action has, with the values a new one starts from, as the SDK's `EPA*`
 /// constructors append them (`editors/ParticleEditor/ParticleEffectActionsImpl.cpp`).

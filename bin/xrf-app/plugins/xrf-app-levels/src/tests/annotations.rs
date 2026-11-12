@@ -19,7 +19,7 @@ use crate::objects::{
 };
 use crate::parts::{LevelMapArea, LevelSpawn};
 use crate::tests::fixtures;
-use crate::viewer::map::annotations::{
+use crate::viewer::export::map::annotations::{
   AnnotationCanvas, AnnotationMarker, AnnotationOutline, AnnotationVolume, LevelAnnotations, MapAnnotationsWriteRequest,
 };
 

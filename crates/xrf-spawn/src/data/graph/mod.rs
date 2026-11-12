@@ -4,6 +4,4 @@ pub(crate) mod graph_header;
 pub(crate) mod graph_level;
 pub(crate) mod graph_level_point;
 pub(crate) mod graph_vertex;
-pub(crate) mod graph_vertex_levels;
-pub(crate) mod spawn_level_graph;
-pub(crate) mod spawn_level_graph_point;
+pub(crate) mod level_view;
