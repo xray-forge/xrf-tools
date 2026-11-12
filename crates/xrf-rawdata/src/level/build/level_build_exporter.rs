@@ -45,7 +45,7 @@ impl LevelBuildExporter {
   const DRAFT_QUALITY: u16 = 0;
 
   /// The build project of `scene` and what goes beside it, its library objects, game materials and detail textures read
-  /// from `sources`, in `T`'s byte order.
+  /// from `sources`, in `T`'s byte order, lit as `sources` says where it gives a lighting and as the scene says else.
   ///
   /// # Errors
   ///
@@ -59,8 +59,12 @@ impl LevelBuildExporter {
   ) -> XrfResult<LevelBuildExport> {
     let game_materials: &GameMtlFile = sources.game_materials;
     let guid: EditableLevelGuid = scene.level.get_guid()?;
-    let options: EditableLevelOptions = scene.level.get_level_options()?;
-    let params: EditableBuildParams = scene.level.get_build_params()?;
+    let mut options: EditableLevelOptions = scene.level.get_level_options()?;
+    let mut params: EditableBuildParams = scene.level.get_build_params()?;
+
+    if let Some(lighting) = &sources.lighting {
+      lighting.apply(&mut params, &mut options);
+    }
 
     if params.light_quality == Self::DRAFT_QUALITY {
       return Err(XrfError::new_not_implemented_error(

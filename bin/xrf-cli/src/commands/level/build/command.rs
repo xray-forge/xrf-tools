@@ -7,18 +7,22 @@ use xrf_editable_level::EditableLevelScene;
 use xrf_error::{XrfError, XrfResult};
 use xrf_gamemtl::GameMtlFile;
 use xrf_output::OutputOptions;
-use xrf_rawdata::{LevelBuildExport, LevelBuildExporter, LevelBuildSources, LevelExportedPrevious, LevelSceneExporter};
+use xrf_rawdata::{
+  LevelBuildExport, LevelBuildExporter, LevelBuildLighting, LevelBuildSources, LevelExportedPrevious,
+  LevelSceneExporter,
+};
 use xrf_utils::format_path;
 
 use crate::commands::level::build::report::LevelBuildReport;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 /// What the command line names for the level compiler's files: the objects roots, the game material library, read once
-/// the build starts, and the textures root.
+/// the build starts, the textures root, and the lighting in place of the scene's.
 struct LevelBuildInputs<'a> {
   objects: &'a [PathBuf],
   game_materials: &'a Path,
   textures: Option<&'a Path>,
+  lighting: Option<LevelBuildLighting>,
 }
 
 /// Builds a Level Editor scene's game files into a level directory, as the editor's Build writes them.
@@ -87,6 +91,16 @@ impl GenericCommand for BuildCommand {
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
+        Arg::new("proof-lighting")
+          .help(
+            "Light build.prj at proof quality whatever the scene sets, 3 lightmap pixels a metre, 1 jitter sample, sky \
+             and sun at quality 1, to check a level with xrLC in minutes rather than hours; not for a level to ship",
+          )
+          .long("proof-lighting")
+          .requires("objects")
+          .action(ArgAction::SetTrue),
+      )
+      .arg(
         Arg::new("force")
           .help("Overwrite the files the build writes where the directory already holds them")
           .short('f')
@@ -111,6 +125,7 @@ impl GenericCommand for BuildCommand {
           objects: &objects,
           game_materials,
           textures: matches.get_one::<PathBuf>("textures").map(PathBuf::as_path),
+          lighting: matches.get_flag("proof-lighting").then_some(LevelBuildLighting::PROOF),
         });
     let report: LevelBuildReport = Self::build(&output, source, destination, geometry, matches.get_flag("force"))?;
 
@@ -146,6 +161,7 @@ impl BuildCommand {
             objects: inputs.objects,
             game_materials: &game_materials,
             textures: inputs.textures,
+            lighting: inputs.lighting,
           },
         )?;
         let (census, entities, refused) = (

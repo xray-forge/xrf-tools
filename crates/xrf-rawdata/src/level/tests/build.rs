@@ -5,8 +5,8 @@ use std::path::PathBuf;
 
 use xrf_chunk::XRayByteOrder;
 use xrf_editable_level::{
-  EditableCustomObject, EditableLevelOptions, EditableObjectTransform, EditableSceneObject, EditableSectorItem,
-  EditableSectorObject,
+  EditableBuildParams, EditableCustomObject, EditableLevelOptions, EditableObjectTransform, EditableSceneObject,
+  EditableSectorItem, EditableSectorObject,
 };
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::XrfResult;
@@ -22,6 +22,7 @@ use crate::level::build::level_build_breakables::LevelBuildBreakables;
 use crate::level::build::level_build_climbables::LevelBuildClimbables;
 use crate::level::build::level_build_geometry::LevelBuildGeometry;
 use crate::level::build::level_build_hemisphere::LevelBuildHemisphere;
+use crate::level::build::level_build_lighting::LevelBuildLighting;
 use crate::level::build::level_build_lights::LevelBuildLights;
 use crate::level::build::level_build_models::LevelBuildModels;
 use crate::level::build::level_build_occluders::LevelBuildOccluders;
@@ -502,6 +503,42 @@ fn makes_a_breakable_of_a_breakable_part_in_the_frame_of_its_box() -> XrfResult 
   assert!(export.refused.is_empty());
 
   Ok(())
+}
+
+/// Proof lighting sets the lightmaps' density and samples and the sky's and sun's quality, and nothing else.
+#[test]
+fn lights_at_proof_quality_leaving_the_rest_of_the_scene() {
+  let mut params: EditableBuildParams = EditableBuildParams::DEFAULT;
+  let mut options: EditableLevelOptions = EditableLevelOptions::new("test_level", EditableLevelOptions::SINGLE_PLAYER);
+  let (params_before, options_before) = (params, options.clone());
+
+  LevelBuildLighting::PROOF.apply(&mut params, &mut options);
+
+  assert_eq!(
+    (
+      params.light_pixel_per_meter,
+      params.light_jitter_samples,
+      options.light_hemi_quality,
+      options.light_sun_quality
+    ),
+    (3.0, 1, 1, 1)
+  );
+  assert_eq!(
+    EditableBuildParams {
+      light_pixel_per_meter: params_before.light_pixel_per_meter,
+      light_jitter_samples: params_before.light_jitter_samples,
+      ..params
+    },
+    params_before
+  );
+  assert_eq!(
+    EditableLevelOptions {
+      light_hemi_quality: options_before.light_hemi_quality,
+      light_sun_quality: options_before.light_sun_quality,
+      ..options
+    },
+    options_before
+  );
 }
 
 /// A rebuild finds the parts an earlier build wrote under the paths it writes them to, so that it replaces them rather
