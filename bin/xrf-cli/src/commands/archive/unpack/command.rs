@@ -74,7 +74,7 @@ impl GenericCommand for UnpackCommand {
     let archive_project: ArchiveProject = ArchiveProject::new(&path)?;
 
     let (compressed_size, real_size): (String, String) =
-      xrf_utils::format_bytes_pair(archive_project.get_compressed_size(), archive_project.get_real_size());
+      xrf_utils::format_bytes_pair(archive_project.sum_compressed_size(), archive_project.get_real_size());
 
     xrf_output::info!(
       output,
