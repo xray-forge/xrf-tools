@@ -11,6 +11,7 @@ import {
 } from "#/types/xrf-environment";
 import { JobOutcome } from "#/types/xrf-job";
 import { LevelEnvModifier } from "#/types/xrf-level";
+import { LevelCompileReport } from "#/types/xrf-level-compiler";
 import { Vector3d } from "#/types/xrf-math";
 import { LevelBuildReport, LevelDecompileReport } from "#/types/xrf-rawdata";
 import {
@@ -441,12 +442,13 @@ export type EnvironmentCycleEntry = {
 };
 
 /**
- * How a scene's build into a level directory ended: what it wrote where it completed, none where it was cancelled
- * before writing.
+ * How a scene's build into a level directory, and the compile after it, ended: what the build wrote where it got that
+ * far, and what the compile ran where one was asked for and finished.
  */
 export type LevelBuildResult = {
   outcome: JobOutcome;
   report: LevelBuildReport | null;
+  compile: LevelCompileReport | null;
 };
 
 /**

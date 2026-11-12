@@ -7959,6 +7959,7 @@ dependencies = [
  "xrf-ipc",
  "xrf-job",
  "xrf-level",
+ "xrf-level-compiler",
  "xrf-light-anim",
  "xrf-ltx",
  "xrf-material",
@@ -8268,6 +8269,7 @@ dependencies = [
  "xrf-gamemtl",
  "xrf-job",
  "xrf-level",
+ "xrf-level-compiler",
  "xrf-ltx",
  "xrf-ltx-inspect",
  "xrf-material",
@@ -8604,6 +8606,22 @@ dependencies = [
  "xrf-math",
  "xrf-ogf",
  "xrf-report",
+ "xrf-test-utils",
+ "xrf-utils",
+]
+
+[[package]]
+name = "xrf-level-compiler"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "serde",
+ "specta",
+ "windows",
+ "xrf-chunk",
+ "xrf-error",
+ "xrf-job",
+ "xrf-level",
  "xrf-test-utils",
  "xrf-utils",
 ]

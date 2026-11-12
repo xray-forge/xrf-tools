@@ -35,6 +35,7 @@ members = [
   "crates/xrf-ipc-typescript",
   "crates/xrf-job",
   "crates/xrf-level",
+  "crates/xrf-level-compiler",
   "crates/xrf-light-anim",
   "crates/xrf-ltx",
   "crates/xrf-ltx-inspect",
@@ -161,6 +162,7 @@ xrf-ipc-derive = { path = "crates/xrf-ipc-derive" }
 xrf-ipc-typescript = { path = "crates/xrf-ipc-typescript" }
 xrf-job = { path = "crates/xrf-job" }
 xrf-level = { path = "crates/xrf-level" }
+xrf-level-compiler = { path = "crates/xrf-level-compiler" }
 xrf-light-anim = { path = "crates/xrf-light-anim" }
 xrf-ltx = { path = "crates/xrf-ltx" }
 xrf-ltx-inspect = { path = "crates/xrf-ltx-inspect" }

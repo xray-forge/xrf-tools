@@ -35,6 +35,7 @@ import {
 import { CaptureOutcome } from "#/types/xrf-app-render";
 import { WeatherCycleId } from "#/types/xrf-environment";
 import { JobProgress } from "#/types/xrf-job";
+import { LevelCompileRequest } from "#/types/xrf-level-compiler";
 import { XraySurfaceDescriptor } from "#/types/xrf-material";
 import { LevelBuildRequest, LevelDecompileRequest } from "#/types/xrf-rawdata";
 import { RenderViewportId } from "#/types/xrf-renderer";
@@ -84,11 +85,16 @@ export enum ELevelsCommand {
 /** Commands */
 export const levelsCommands = {
   /**
-   * Build a Level Editor scene into a level directory, as `level build` does, reporting each stage and stopping before
-   * writing on request.
+   * Build a Level Editor scene into a level directory, as `level build` does, then compile it where `compile` names
+   * the steps, as `level compile` does, one job reporting both and stopping between steps on request. The compile
+   * works on the directory the build wrote, whatever level `compile` names.
    */
-  buildLevel: (request: LevelBuildRequest, jobId: string, progress: Channel<JobProgress>) =>
-    __TAURI_INVOKE<LevelBuildResult>(ELevelsCommand.BUILD_LEVEL, { request, jobId, progress }),
+  buildLevel: (
+    request: LevelBuildRequest,
+    compile: LevelCompileRequest | null,
+    jobId: string,
+    progress: Channel<JobProgress>
+  ) => __TAURI_INVOKE<LevelBuildResult>(ELevelsCommand.BUILD_LEVEL, { request, compile, jobId, progress }),
   /** Capture a cubemap around a viewport's camera face by face and write it to a PNG file as a horizontal cross. */
   captureCube: (request: CubeCaptureRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<CaptureOutcome>(ELevelsCommand.CAPTURE_CUBE, { request, jobId, progress }),
@@ -251,7 +257,7 @@ export const levelsCommands = {
 export interface ILevelsCommandSignatures {
   [ELevelsCommand.BUILD_LEVEL]: IIpcCommandSignature<
     typeof levelsCommands.buildLevel,
-    ["request", "jobId", "progress"]
+    ["request", "compile", "jobId", "progress"]
   >;
   [ELevelsCommand.CAPTURE_CUBE]: IIpcCommandSignature<
     typeof levelsCommands.captureCube,

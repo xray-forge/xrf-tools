@@ -19,7 +19,7 @@ const REQUEST: LevelBuildRequest = {
 };
 
 function result(refused: Array<LevelSceneRefusal> = []): LevelBuildResult {
-  return { outcome: "completed", report: { files: [], refused } as unknown as LevelBuildReport };
+  return { outcome: "completed", report: { files: [], refused } as unknown as LevelBuildReport, compile: null };
 }
 
 function outcome(patch: Partial<IJobOutcome<LevelBuildResult>>): IJobOutcome<LevelBuildResult> {
@@ -46,11 +46,21 @@ describe("describeBuildOutcome", () => {
   it("reports a cancelled build as having written nothing", () => {
     const notice: IJobNotice = describeBuildOutcome(
       REQUEST,
-      outcome({ result: { outcome: "cancelled", report: null } })
+      outcome({ result: { outcome: "cancelled", report: null, compile: null } })
     );
 
     expect(notice.severity).toBe(ENotificationSeverity.INFO);
     expect(notice.details).toContain("nothing was written");
+  });
+
+  it("reports a compile stopped after the build as keeping what was written", () => {
+    const notice: IJobNotice = describeBuildOutcome(
+      REQUEST,
+      outcome({ result: { ...result(), outcome: "cancelled" } })
+    );
+
+    expect(notice.title).toBe("Stopped compiling the level");
+    expect(notice.details).toContain("what it wrote so far stays");
   });
 
   it("reports a failure with the reason", () => {

@@ -20,6 +20,7 @@ README is also its crate's rustdoc page.
 | [xrf-efd](xrf-efd/README.md)                               | Read and write `.efd` evaluation function data                                 |
 | [xrf-gamemtl](xrf-gamemtl/README.md)                       | Read and write `gamemtl.xr` game materials and the pairs between them          |
 | [xrf-level](xrf-level/README.md)                           | Read compiled levels, one module per file the game ships, and write companions |
+| [xrf-level-compiler](xrf-level-compiler/README.md)         | Compile a built level in steps: geometry, details, AI map                      |
 | [xrf-light-anim](xrf-light-anim/README.md)                 | Read and write light animation libraries                                       |
 | [xrf-lzhuf](xrf-lzhuf/README.md)                           | Compress and decompress X-Ray LZHUF payloads                                   |
 | [xrf-ogf](xrf-ogf/README.md)                               | Read OGF visuals and patch them in place                                       |

@@ -3,11 +3,11 @@ use std::path::PathBuf;
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_build_info::{BuildInfo, build_info};
 use xrf_chunk::XRayByteOrder;
-use xrf_job::JobHandle;
 use xrf_output::OutputOptions;
 use xrf_rawdata::{LevelDecompileReport, LevelDecompileRequest, LevelSceneDecompiler, LevelSurfaces};
 
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::terminal::CliJob;
 
 /// Decompiles a compiled level's directory into a Level Editor scene, with a provenance sidecar beside it.
 #[derive(Default)]
@@ -152,7 +152,7 @@ impl GenericCommand for DecompileCommand {
         Some(commit) => format!("{} ({commit})", build.version),
         None => build.version.to_string(),
       },
-      &JobHandle::inert(),
+      &CliJob::for_output(context.get_output()),
     )?;
 
     Self::print(context.get_output(), &report);

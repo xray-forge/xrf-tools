@@ -1,5 +1,7 @@
-import { formatBytes, formatCount } from "@xrf/format";
+import { formatBytes, formatCount, formatDuration } from "@xrf/format";
 import { LevelBuildResult } from "@xrf/ipc/types/xrf-app-levels";
+import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
+import { LevelCompileStepReport } from "@xrf/ipc/types/xrf-level-compiler";
 import { ELevelExportedPrevious, LevelBuildReport, LevelExportedFile } from "@xrf/ipc/types/xrf-rawdata";
 import { Nullable } from "@xrf/types";
 import { CommandResult, CommandResultPathList, ICommandResultStat } from "@xrf/ui/command-result";
@@ -9,6 +11,7 @@ import { ReactElement, useMemo } from "react";
 import { LevelRefusalFindings } from "@/core/level/components/refusals/LevelRefusalFindings";
 import { EToolId } from "@/core/routing/tool";
 import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
+import { describeBuildHeadline } from "@/tools/level-compiler/lib/describe-build-headline";
 
 const PREVIOUS_LABELS: Record<ELevelExportedPrevious, string> = {
   [ELevelExportedPrevious.NEW]: "new",
@@ -50,8 +53,15 @@ export function LevelBuildResultView({
       { label: "faces", value: formatCount(report.geometry?.faces ?? 0) },
       { label: "lights", value: formatCount(report.geometry?.staticLights ?? 0) },
       { label: "refused", value: report.refused.length },
+      // Each compile step the run took, by how long its compiler ran.
+      ...(result.compile?.steps ?? []).map((step: LevelCompileStepReport) => ({
+        label: step.step,
+        value: formatDuration(step.duration),
+      })),
     ];
-  }, [report]);
+  }, [report, result.compile]);
+
+  const isCompileStopped: boolean = result.outcome === EJobOutcome.CANCELLED;
 
   const files: Array<string> = useMemo(
     () =>
@@ -79,8 +89,8 @@ export function LevelBuildResultView({
       data-testid={dataTestId}
       id={id}
       className={className}
-      headline={`Built ${report.source} into ${report.destination}`}
-      tone={report.refused.length > 0 ? "warning" : "success"}
+      headline={describeBuildHeadline(report, result.compile, isCompileStopped)}
+      tone={report.refused.length > 0 || isCompileStopped ? "warning" : "success"}
       stats={stats}
       actions={<RevealPathButton tool={EToolId.LEVEL_COMPILER} path={outputPath} label={"Show level"} />}
     >

@@ -1,0 +1,32 @@
+[package]
+name = "xrf-level-compiler"
+version = "0.1.0"
+publish = false
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+log = { workspace = true }
+serde = { workspace = true }
+specta = { workspace = true, optional = true }
+xrf-chunk = { workspace = true }
+xrf-error = { workspace = true }
+xrf-job = { workspace = true }
+xrf-level = { workspace = true }
+xrf-utils = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+windows = { workspace = true, features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
+
+[dev-dependencies]
+xrf-test-utils = { workspace = true }
+
+[features]
+# Emits TypeScript mirrors of the request and report. Nothing in a normal build turns this on.
+typescript-bindings = ["specta", "xrf-job/typescript-bindings"]
+
+[lints]
+workspace = true

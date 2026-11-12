@@ -1,5 +1,6 @@
 pub(crate) mod albedo;
 pub(crate) mod build;
+pub(crate) mod compile;
 pub(crate) mod decompile;
 pub(crate) mod info;
 pub(crate) mod level_assets;
