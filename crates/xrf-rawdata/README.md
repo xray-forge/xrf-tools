@@ -522,7 +522,8 @@ models come back.
 alone, each compiled from its library object, its coordinates moved into the atlas and its texture named
 `build_details`, the slots renumbered with their light zeroed; and `build_details.dds`, the objects' textures merged
 by `LevelBuildAtlas` (the editor's packer: largest first at the first free spot, turned where only that fits, 256 to
-1024 a side) and saved as DXT1 with mipmaps. `LevelBuildExporter::export` takes `LevelBuildSources`: objects roots,
+1024 a side) and saved as the editor's `tfADXT1`, DXT1 with mipmaps whose cut-out pixels stay transparent
+(`DdsEncoding::with_cut_out`). `LevelBuildExporter::export` takes `LevelBuildSources`: objects roots,
 each object from the first holding it, the game materials, and the textures root a scene of details needs.
 `mp_darkvalley` decompiled and built gives the shipped `level.details`' header, its 14 objects in order with the same
 geometry, shader, flags and scale range, and all 39,601 slots, the light zeroed; only the atlas is its own.

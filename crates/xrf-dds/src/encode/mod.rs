@@ -1,5 +1,6 @@
 //! Writing a texture: the layout to write it in, and what that choice costs.
 
+pub(crate) mod dds_bc1_cut_out;
 pub(crate) mod dds_encode_attempt;
 pub(crate) mod dds_encode_candidate;
 pub(crate) mod dds_encoding;
