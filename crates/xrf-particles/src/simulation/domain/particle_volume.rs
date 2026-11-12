@@ -4,6 +4,7 @@ use glam::{Mat4, Vec3, Vec4Swizzles};
 
 use crate::data::domain::particle_domain::ParticleDomain;
 use crate::simulation::domain::engine_vector::EngineVector;
+use crate::simulation::domain::particle_plane_inverse_basis::ParticlePlaneInverseBasis;
 use crate::simulation::domain::particle_random::ParticleRandom;
 use crate::simulation::domain::particle_volume_kind::ParticleVolumeKind;
 
@@ -143,17 +144,18 @@ impl ParticleVolume {
   }
 
   /// `s1` and `s2`: the rows reading a point's `u` and `v` coordinates in a rectangle's or triangle's plane.
-  pub(crate) fn get_plane_inverse_basis(&self) -> (Vec3, Vec3) {
+  pub(crate) fn get_plane_inverse_basis(&self) -> ParticlePlaneInverseBasis {
     let (u, v) = (self.u, self.v);
     let wx: f32 = u.y * v.z - u.z * v.y;
     let wy: f32 = u.z * v.x - u.x * v.z;
     let wz: f32 = u.x * v.y - u.y * v.x;
     let det: f32 =
       1.0 / (wz * u.x * v.y - wz * u.y * v.x - u.z * wx * v.y - u.x * v.z * wy + v.z * wx * u.y + u.z * v.x * wy);
-    let s1: Vec3 = Vec3::new(v.y * wz - v.z * wy, v.z * wx - v.x * wz, v.x * wy - v.y * wx) * det;
-    let s2: Vec3 = Vec3::new(u.y * wz - u.z * wy, u.z * wx - u.x * wz, u.x * wy - u.y * wx) * -det;
 
-    (s1, s2)
+    ParticlePlaneInverseBasis {
+      s1: Vec3::new(v.y * wz - v.z * wy, v.z * wx - v.x * wz, v.x * wy - v.y * wx) * det,
+      s2: Vec3::new(u.y * wz - u.z * wy, u.z * wx - u.x * wz, u.x * wy - u.y * wx) * -det,
+    }
   }
 
   /// `transform`: the source volume placed by a matrix; a box takes its turned corners' bounds (`Fbox::xform`).
