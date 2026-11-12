@@ -1,5 +1,6 @@
 #![doc = include_str!("../README.md")]
 
+pub(crate) mod any_spawn_file;
 pub(crate) mod chunks;
 pub(crate) mod constants;
 pub(crate) mod data;
@@ -15,6 +16,7 @@ mod tests;
 
 pub use xrf_chunk::XRayByteOrder;
 
+pub use crate::any_spawn_file::AnySpawnFile;
 pub use crate::chunks::spawn_alife_spawns_chunk::SpawnALifeSpawnsChunk;
 pub use crate::chunks::spawn_artefact_spawns_chunk::SpawnArtefactSpawnsChunk;
 pub use crate::chunks::spawn_graphs_chunk::SpawnGraphsChunk;

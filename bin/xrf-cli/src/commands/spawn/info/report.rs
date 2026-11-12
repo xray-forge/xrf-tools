@@ -1,6 +1,6 @@
 use serde::Serialize;
+use xrf_spawn::AnySpawnFile;
 
-use crate::commands::spawn::info::spawn_info_file::SpawnInfoFile;
 use crate::commands::spawn::info::spawn_level_report::SpawnLevelReport;
 use crate::commands::spawn::info::spawn_root_report::SpawnRootReport;
 
@@ -13,10 +13,10 @@ pub(crate) enum SpawnInfoReport {
 }
 
 impl SpawnInfoReport {
-  pub(crate) fn new(file: &SpawnInfoFile) -> Self {
+  pub(crate) fn new(file: &AnySpawnFile) -> Self {
     match file {
-      SpawnInfoFile::Root(file) => Self::Root(SpawnRootReport::new(file)),
-      SpawnInfoFile::Level(file) => Self::Level(SpawnLevelReport::new(file)),
+      AnySpawnFile::Root(file) => Self::Root(SpawnRootReport::new(file)),
+      AnySpawnFile::Level(file) => Self::Level(SpawnLevelReport::new(file)),
     }
   }
 }
