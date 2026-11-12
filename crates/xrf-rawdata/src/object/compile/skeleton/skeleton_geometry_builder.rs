@@ -90,7 +90,25 @@ impl SkeletonGeometryBuilder {
     builder.finish(options.tangents)
   }
 
-  fn add_face(&mut self, surface: &EditableSurface, corners: &[SkinCorner; 3]) -> XrfResult {
+  /// A builder of splits from faces handed in one by one ([`Self::add_face`]), their vertices packed within `bounds`,
+  /// all of one breakable part: what a part the Level Editor cuts out of a level to break (`SBPart::Export`) builds its
+  /// children with, the `CExportSkeletonCustom` it derives from.
+  pub(crate) fn of_faces(bounds: Aabb) -> Self {
+    Self {
+      splits: Vec::new(),
+      bounds,
+      parts: Vec::new(),
+      is_breakable: false,
+    }
+  }
+
+  /// Adds a face of `surface` to the split of its shader, texture and breakable part, and again mirrored where the
+  /// surface is two-sided.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for a corner following no bone or a face spanning two breakable parts.
+  pub(crate) fn add_face(&mut self, surface: &EditableSurface, corners: &[SkinCorner; 3]) -> XrfResult {
     let link_count: usize = corners.iter().map(|corner| corner.weights.len()).max().unwrap_or(0);
 
     if corners.iter().any(|corner| corner.weights.is_empty()) {
@@ -179,7 +197,11 @@ impl SkeletonGeometryBuilder {
   /// The splits that kept a face, each through the tangent pass `tangents` names (see [`TangentBasis`] and
   /// [`MikkTSpaceBasis`]), cut where it outgrows one child (see [`SplitPartition`]), each child ordered for the vertex
   /// cache (see [`VertexCacheOrder`]) and with its bones listed once.
-  fn finish(self, tangents: TangentMethod) -> XrfResult<SkeletonGeometry> {
+  ///
+  /// # Errors
+  ///
+  /// Returns an error where the tangent pass cannot read a split's faces.
+  pub(crate) fn finish(self, tangents: TangentMethod) -> XrfResult<SkeletonGeometry> {
     let mut dropped_faces: usize = 0;
     let mut splits: Vec<SkeletonSplit> = Vec::with_capacity(self.splits.len());
 

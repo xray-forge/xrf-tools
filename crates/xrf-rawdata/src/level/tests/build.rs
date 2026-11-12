@@ -1,6 +1,7 @@
 //! The pieces a `build.prj` export is made of: its tables, its generated sky and sun, its sectors, its multi-use
 //! models, the occluders, ladders and the map's settings written beside it.
 
+use xrf_chunk::XRayByteOrder;
 use xrf_editable_level::{
   EditableCustomObject, EditableLevelOptions, EditableObjectTransform, EditableSceneObject, EditableSectorItem,
   EditableSectorObject,
@@ -10,8 +11,10 @@ use xrf_error::XrfResult;
 use xrf_gamemtl::{GameMtlFile, GameMtlMaterial};
 use xrf_level::LevelDynamicLight;
 use xrf_math::{Aabb, Affine3d, Vector2d, Vector3d};
+use xrf_ogf::{OgfFile, OgfModelType};
 use xrf_spawn::{AlifeObjectInherited, Shape};
 
+use crate::level::build::level_build_breakables::LevelBuildBreakables;
 use crate::level::build::level_build_climbables::LevelBuildClimbables;
 use crate::level::build::level_build_geometry::LevelBuildGeometry;
 use crate::level::build::level_build_hemisphere::LevelBuildHemisphere;
@@ -406,6 +409,90 @@ fn makes_a_ladder_of_a_climbable_part_at_its_box_turned_to_face_its_faces() -> X
   );
   assert!(half[thin] < 1e-6, "a flat part's box is flat: {half:?}");
   assert!(facing.y > 0.999, "its thin axis faces up, as the quad does: {facing:?}");
+  assert!(export.refused.is_empty());
+
+  Ok(())
+}
+
+/// A breakable part comes out as a rigid skeleton in the frame of its box, a bone per fragment, placed by a
+/// `breakable_object` named by its file; its points, placed as the engine places them, are the faces' own.
+#[test]
+fn makes_a_breakable_of_a_breakable_part_in_the_frame_of_its_box() -> XrfResult {
+  let mut glass: GameMtlMaterial = GameMtlMaterial::new(9, "materials\\glass");
+
+  glass.flags |= GameMtlMaterial::FLAG_BREAKABLE;
+
+  let library: GameMtlFile = GameMtlFile::new(vec![glass, GameMtlMaterial::new(3, "materials\\stone")], Vec::new());
+  // A pane of eight triangles, standing in x and y.
+  let corner = |x: f32, y: f32| Vector3d::new(x, y, 0.0);
+  let pane: Vec<[Vector3d; 3]> = (0..4)
+    .flat_map(|step| {
+      let x: f32 = step as f32 * 0.5;
+
+      [
+        [corner(x, 0.0), corner(x, 1.0), corner(x + 0.5, 1.0)],
+        [corner(x, 0.0), corner(x + 0.5, 1.0), corner(x + 0.5, 0.0)],
+      ]
+    })
+    .collect();
+  let mut breakables: LevelBuildBreakables = LevelBuildBreakables::default();
+
+  breakables.add_object(&placed_at(10.0), &object_of(&pane, "materials\\glass", 0)?, &library)?;
+  breakables.add_object(&placed_at(20.0), &quad("materials\\stone", 0)?, &library)?;
+
+  let export = breakables.into_export::<XRayByteOrder>()?;
+  let ([(path, bytes)], [entity]) = (export.parts.as_slice(), export.entities.as_slice()) else {
+    panic!("one breakable of the pane alone: {:?}", export.entities);
+  };
+  let AlifeObjectInherited::CseAlifeObjectBreakable(breakable) = &entity.inherited else {
+    panic!("a breakable_object");
+  };
+  let part: OgfFile = OgfFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
+  let ik_data = part.ik_data.as_ref().expect("bones' physics");
+
+  assert_eq!(
+    (
+      path.as_str(),
+      entity.header.name.as_str(),
+      breakable.base.visual_name.as_str()
+    ),
+    ("meshes\\brkbl#0.ogf", "meshes\\brkbl#0.ogf", "meshes\\brkbl#0")
+  );
+  assert_eq!(
+    OgfModelType::from_raw(part.header.model_type),
+    Some(OgfModelType::SkeletonRigid)
+  );
+  assert!(
+    (1..=4).contains(&ik_data.bones.len()),
+    "eight faces in fragments of two or more"
+  );
+  assert!(
+    ik_data
+      .bones
+      .iter()
+      .all(|bone| bone.joint.ik_flags & 1 != 0 && bone.game_material == "materials\\glass")
+  );
+
+  let placement: Affine3d = Affine3d::from_xyz(&entity.header.direction).with_translation(entity.header.position);
+
+  for point in ObjectDecompiler::decompile_breakable(&part)?
+    .object
+    .meshes
+    .iter()
+    .flatten()
+    .flat_map(|mesh| &mesh.points)
+  {
+    let placed: Vector3d = placement.transform_point(point);
+
+    assert!(
+      pane
+        .iter()
+        .flatten()
+        .any(|corner| placed.distance(&Vector3d::new(corner.x + 10.0, corner.y, corner.z)) < 1e-4),
+      "{placed:?} is a corner of the pane"
+    );
+  }
+
   assert!(export.refused.is_empty());
 
   Ok(())

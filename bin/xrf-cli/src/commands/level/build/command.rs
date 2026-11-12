@@ -39,7 +39,7 @@ impl GenericCommand for BuildCommand {
          the objects roots and game materials, the build.prj xrLC compiles the geometry and lighting from, level.ltx, \
          level.hom and level.som where objects occlude, build.details and its atlas build_details.dds where the \
          scene holds details, and the impostor atlas level_lods.dds and level_lods_nm.dds where a multi-use object \
-         has an impostor",
+         has an impostor, and each breakable part as meshes/brkbl#<n>.ogf",
       )
       .arg(
         Arg::new("path")
@@ -133,7 +133,10 @@ impl BuildCommand {
     let scene: EditableLevelScene = EditableLevelScene::read_from_path::<XRayByteOrder, _>(&source)?;
     // The geometry first: the entities it cuts out open the spawn list. A stale file of its own left beside the ones
     // it writes is refused alike.
-    let mut names: Vec<&'static str> = LevelSceneExporter::FILE_NAMES.to_vec();
+    let mut names: Vec<String> = LevelSceneExporter::FILE_NAMES
+      .iter()
+      .map(|name| (*name).to_owned())
+      .collect();
     let (mut files, census, entities, refused) = match geometry {
       Some(inputs) => {
         let game_materials: GameMtlFile = GameMtlFile::read_from_path::<XRayByteOrder, _>(&inputs.game_materials)?;
@@ -151,14 +154,18 @@ impl BuildCommand {
           std::mem::take(&mut export.refused),
         );
 
-        names.extend(LevelBuildExport::FILE_NAMES);
+        names.extend(LevelBuildExport::list_file_names(destination));
 
         (export.into_files::<XRayByteOrder>()?, Some(census), entities, refused)
       }
       None => (BTreeMap::new(), None, Vec::new(), Vec::new()),
     };
 
-    files.extend(LevelSceneExporter::export::<XRayByteOrder>(&scene, &entities)?);
+    files.extend(
+      LevelSceneExporter::export::<XRayByteOrder>(&scene, &entities)?
+        .into_iter()
+        .map(|(name, bytes)| (name.to_owned(), bytes)),
+    );
 
     for refusal in &refused {
       xrf_output::warning!(output, "{}: {}", refusal.object, refusal.reason);
