@@ -301,11 +301,12 @@ fn cs_decompress(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_work
   let w3: u32 = slot_records[at + 3u];
   let bin_start: u32 = slot_records[at + 4u];
   let bin_count: u32 = slot_records[at + 5u];
-  let base: f32 = f32(w0 & 0xfffu) * 0.2 - 200.0;
-  let top: f32 = base + f32((w0 >> 12u) & 0xffu) * 0.1;
+  let heights: vec2<f32> = grass_slot_heights(w0);
+  let base: f32 = heights.x;
+  let top: f32 = heights.y;
   let ids: array<u32, 4> = array<u32, 4>((w0 >> 20u) & 0x3fu, (w0 >> 26u) & 0x3fu, w1 & 0x3fu, (w1 >> 6u) & 0x3fu);
-  let sun: f32 = f32((w1 >> 12u) & 0xfu) / 15.0;
-  let hemi: f32 = f32((w1 >> 16u) & 0xfu) / 15.0;
+  let sun: f32 = grass_slot_light(w1, GRASS_LIGHT_SUN);
+  let hemi: f32 = grass_slot_light(w1, GRASS_LIGHT_HEMI);
   let palettes: array<u32, 4> = array<u32, 4>(w2 & 0xffffu, w2 >> 16u, w3 & 0xffffu, w3 >> 16u);
 
   shapes[cell] = vec4<f32>((base + top) * 0.5, (top - base) * 0.5, hemi, sun);

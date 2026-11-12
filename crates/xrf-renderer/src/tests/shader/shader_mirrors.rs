@@ -17,6 +17,7 @@ use crate::feature::image::resolve::fsr::fsr_pass::FsrPass;
 use crate::feature::lighting::lights::lights_pass::LightsPass;
 use crate::feature::scene::calibration::calibration_uniform::CalibrationUniform;
 use crate::feature::scene::grass::grass_pass::GrassPass;
+use crate::feature::scene::grass::slots::grass_slot_value::GrassSlotValue;
 use crate::feature::scene::pyramid::depth_pyramid_pass::DepthPyramidPass;
 use crate::feature::scene::statics::cull::static_cull_pass::StaticCullPass;
 use crate::feature::tracing::scene_trace::requests::trace_request::TraceRequest;
@@ -287,6 +288,9 @@ fn the_present_numbers_debug_views_as_rust_does() {
     ("VIEW_LAMPS", RenderDebugView::LampsPerCluster),
     ("VIEW_SAMPLED_MIP", RenderDebugView::SampledMip),
     ("VIEW_SPECULAR", RenderDebugView::Specular),
+    ("VIEW_DETAIL_SUN", RenderDebugView::DetailSun),
+    ("VIEW_DETAIL_HEMI", RenderDebugView::DetailHemi),
+    ("VIEW_DETAIL_LIGHT", RenderDebugView::DetailLight),
   ] {
     assert_eq!(
       get_constant(&library, "frame/present", name),
@@ -307,6 +311,20 @@ fn the_present_numbers_debug_views_as_rust_does() {
     RenderDebugView::FsrMasks.get_index()
   );
   assert!(RenderDebugView::FsrFrameShare.get_index() > RenderDebugView::FsrMasks.get_index());
+}
+
+/// The slots' light view tells the value it shows as Rust numbers it.
+#[test]
+fn the_slot_light_numbers_its_values_as_rust_does() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+
+  for (name, value) in [
+    ("SLOT_VALUE_SUN", GrassSlotValue::Sun),
+    ("SLOT_VALUE_HEMI", GrassSlotValue::Hemi),
+    ("SLOT_VALUE_LIGHT", GrassSlotValue::Light),
+  ] {
+    assert_eq!(get_constant(&library, "grass/slot_light", name), value as u32, "{name}");
+  }
 }
 
 /// The present tells the engine's bloom from the enhanced one by the values Rust writes.

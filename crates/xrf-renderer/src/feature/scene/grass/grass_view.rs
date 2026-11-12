@@ -34,6 +34,9 @@ use crate::feature::scene::grass::grass_view_frame::GrassViewFrame;
 use crate::feature::scene::grass::level::grass_level::GrassLevel;
 use crate::feature::scene::grass::level::grass_level_parameters::GrassLevelParameters;
 use crate::feature::scene::grass::level::grass_source::GrassSource;
+use crate::feature::scene::grass::slots::grass_slot_light_parameters::GrassSlotLightParameters;
+use crate::feature::scene::grass::slots::grass_slot_light_pass::GrassSlotLightPass;
+use crate::feature::scene::grass::slots::grass_slot_light_uniform::GrassSlotLightUniform;
 use crate::feature::scene::grass::trace::grass_trace_source::GrassTraceSource;
 use crate::feature::scene::grass::trace::trace_grass_uniform::TraceGrassUniform;
 use crate::feature::scene::grass::trace::traced_grass::TracedGrass;
@@ -81,6 +84,8 @@ pub(crate) struct GrassView {
   stats: StatsReadback,
   /// How many triangles the cards' tufts asked for, read back a frame or more late, which their room is sized to.
   card_demand: StatsReadback,
+  /// What the slots' light view reads this frame, none while the view shows none.
+  slot_light: Option<GrassSlotLightUniform>,
 }
 
 impl GrassView {
@@ -103,6 +108,7 @@ impl GrassView {
       trace: TraceGrassUniform::default(),
       stats: StatsReadback::new(device),
       card_demand: StatsReadback::new(device),
+      slot_light: None,
     }
   }
 
@@ -127,7 +133,15 @@ impl GrassView {
       is_traced,
       is_reflected,
       cascade_reach,
+      slot_value,
     } = *frame;
+
+    // Shown whether or not the grass is drawn: the slots stand without it.
+    self.slot_light = slot_value.map(|value| GrassSlotLightUniform {
+      grid: level.map_or(IVec4::ZERO, |level| IVec4::from_array(level.grid)),
+      value: value as u32,
+      _pad: [0; 3],
+    });
     let wind: GrassWindUniform = self
       .wind
       .advance(time, FoliageMotion::of(is_windy), strength)
@@ -476,6 +490,48 @@ impl GrassView {
       });
 
     Some(handles)
+  }
+
+  /// Declares the slots' light view where the view shows it: each drawn pixel's slot value of `level` written over
+  /// `light`, nothing where no slot is planted or the level has no grass.
+  pub(crate) fn add_slot_light<'a>(
+    &self,
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
+    ViewRecord {
+      passes, view, handles, ..
+    }: ViewRecord<'a>,
+    level: Option<&'a GrassLevel>,
+    light: GraphTexture,
+  ) {
+    let Some(uniform) = &self.slot_light else {
+      return;
+    };
+    let pass: &'a GrassSlotLightPass = &passes.scene.grass_slot_light;
+    let empty: &'a wgpu::Buffer = pass.get_empty();
+    let parameters: GrassSlotLightParameters = GrassSlotLightParameters {
+      depth_target: handles.depth,
+      grid: StorageArray::new(bindings.import_buffer(
+        &mut *graph,
+        "grass grid",
+        level.map_or(empty, |level| &level.cells),
+      )),
+      slot_records: StorageArray::new(bindings.import_buffer(
+        &mut *graph,
+        "grass slots",
+        level.map_or(empty, |level| &level.slots),
+      )),
+      slot_light: runtime.push_uniform(uniform),
+    };
+
+    graph
+      .add_raster_pass("grass slot light")
+      .parameters(&parameters)
+      .color(GraphColorAttachment::new(light, wgpu::LoadOp::Load))
+      .record(move |context| pass.record(context, view, &parameters));
   }
 
   /// The planting as a traced hit reads it this frame.

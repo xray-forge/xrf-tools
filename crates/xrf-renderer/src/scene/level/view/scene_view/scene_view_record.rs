@@ -320,6 +320,12 @@ impl SceneView {
       .features
       .statics
       .add_overdraw_pass(&mut *graph, record, handles.light);
+    self.features.grass.add_slot_light(
+      GraphDeclaration::new(graph, bindings, runtime),
+      record,
+      scene.grass.get_level(),
+      handles.light,
+    );
     let surroundings: &SurroundingsCube = &self.features.surroundings;
     let sky: Option<SkyParameters<'_>> = self.features.sky.add_passes(
       GraphDeclaration::new(graph, bindings, runtime),

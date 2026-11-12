@@ -31,3 +31,24 @@ const GRASS_EMPTY_ID: u32 = 0x3fu;
 
 // Metres a detail slot spans, `dm_slot_size`.
 const GRASS_SLOT_METERS: f32 = 2.0;
+
+// The light values a planted slot's second stored word holds, by their place: `c_dir`, `c_hemi`, `c_r`, `c_g`, `c_b`.
+const GRASS_LIGHT_SUN: u32 = 0u;
+const GRASS_LIGHT_HEMI: u32 = 1u;
+const GRASS_LIGHT_RED: u32 = 2u;
+const GRASS_LIGHT_GREEN: u32 = 3u;
+const GRASS_LIGHT_BLUE: u32 = 4u;
+
+// A planted slot's base and top in metres, from its first stored word: `DetailSlot`'s `y_base` in fifths of a metre
+// from 200 m down, and `y_height` in tenths over it.
+fn grass_slot_heights(first: u32) -> vec2<f32> {
+  let base: f32 = f32(first & 0xfffu) * 0.2 - 200.0;
+
+  return vec2<f32>(base, base + f32((first >> 12u) & 0xffu) * 0.1);
+}
+
+// One of a planted slot's light values, from none to full, from its second stored word: the value at `place`
+// (`GRASS_LIGHT_*`), four bits each from the word's twelfth.
+fn grass_slot_light(second: u32, place: u32) -> f32 {
+  return f32((second >> (12u + place * 4u)) & 0xfu) / 15.0;
+}

@@ -16,6 +16,7 @@ use crate::feature::image::present::present_inputs::PresentInputs;
 use crate::feature::scene::drawable::draw::drawable_kind_source::DrawableKindSource;
 use crate::feature::scene::drawable::drawable_trace_instance::DrawableTraceInstance;
 use crate::feature::scene::grass::grass_view_frame::GrassViewFrame;
+use crate::feature::scene::grass::slots::grass_slot_value::GrassSlotValue;
 use crate::feature::tracing::reflections::trace::reflection_trace::ReflectionTrace;
 use crate::feature::tracing::sun_trace::sun_trace_feature::SunTraceFeature;
 use crate::feature::view::overhead_windows::OverheadWindows;
@@ -171,6 +172,7 @@ impl SceneView {
             .get_reach(options.features.grass.shadow_cascades)
         })
         .flatten(),
+      slot_value: GrassSlotValue::of(options.mode.debug_view),
     };
 
     self

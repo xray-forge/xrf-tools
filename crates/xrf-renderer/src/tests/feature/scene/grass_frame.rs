@@ -184,6 +184,7 @@ impl GrassFrames {
         is_traced: traced.0,
         is_reflected: traced.1,
         cascade_reach: Some(40.0),
+        slot_value: None,
       },
     );
   }

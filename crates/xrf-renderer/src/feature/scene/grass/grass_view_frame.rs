@@ -1,4 +1,5 @@
 use crate::camera::camera_view::CameraView;
+use crate::feature::scene::grass::slots::grass_slot_value::GrassSlotValue;
 use crate::feature::scene::wind::foliage_wind_values::FoliageWindValues;
 use crate::feature::weather::wet::puddles::grass_puddles_uniform::GrassPuddlesUniform;
 use crate::scene::level::view::view_time::ViewTime;
@@ -25,4 +26,6 @@ pub(crate) struct GrassViewFrame<'a> {
   pub is_reflected: bool,
   /// How far the sun's cascades reach where they draw the cards, none where they do not.
   pub cascade_reach: Option<f32>,
+  /// The slots' light value the view's debug view shows over the ground, none where it shows none.
+  pub slot_value: Option<GrassSlotValue>,
 }

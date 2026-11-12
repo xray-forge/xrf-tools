@@ -581,9 +581,11 @@ fn scene_grass_slot(slot: vec2<i32>, within: vec2<f32>, standing: f32) -> SceneG
   var densities: vec4<f32> = vec4<f32>(0.0);
   var missed: f32 = 1.0;
 
-  out.base = f32(w0 & 0xfffu) * 0.2 - 200.0;
-  out.top = out.base + f32((w0 >> 12u) & 0xffu) * 0.1;
-  out.hemi = f32((w1 >> 16u) & 0xfu) / 15.0;
+  let heights: vec2<f32> = grass_slot_heights(w0);
+
+  out.base = heights.x;
+  out.top = heights.y;
+  out.hemi = grass_slot_light(w1, GRASS_LIGHT_HEMI);
 
   for (var object: u32 = 0u; object < 4u; object++) {
     if (ids[object] != GRASS_EMPTY_ID && ids[object] < trace_grass.model_count) {
