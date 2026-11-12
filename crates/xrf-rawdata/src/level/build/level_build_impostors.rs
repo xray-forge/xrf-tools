@@ -4,7 +4,8 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_level::{BuildPrjLod, BuildPrjLodFace};
 use xrf_math::{Aabb, Vector2d};
 
-use crate::level::build::level_build_atlas::LevelBuildAtlas;
+use crate::level::build::level_build_atlas::{LevelBuildAtlas, LevelBuildAtlasSizes};
+use crate::level::build::level_build_impostor_limit::LevelBuildImpostorLimit;
 use crate::level::build::level_build_tables::LevelBuildTables;
 use crate::level::build::level_build_textures::LevelBuildTextures;
 use crate::level::level_lod_strip::LevelLodStrip;
@@ -88,19 +89,23 @@ impl LevelBuildImpostors {
   ///
   /// # Errors
   ///
-  /// Returns an error, as the Build stops, when the strips do not fit an atlas 2048 by 2048, or the atlas does not
-  /// encode.
-  pub(crate) fn into_export(mut self) -> XrfResult<Option<(Vec<BuildPrjLod>, LevelBuildImpostorAtlas)>> {
+  /// Returns an error, as the Build stops, when the strips do not fit the largest atlas `limit` allows, or the atlas
+  /// does not encode.
+  pub(crate) fn into_export(
+    mut self,
+    limit: LevelBuildImpostorLimit,
+  ) -> XrfResult<Option<(Vec<BuildPrjLod>, LevelBuildImpostorAtlas)>> {
     if self.lods.is_empty() {
       return Ok(None);
     }
 
+    let sizes: LevelBuildAtlasSizes = limit.get_sizes();
     let atlas: LevelBuildAtlas = LevelBuildAtlas::merge(
       &self.strips.iter().map(<[RgbaImage; 2]>::as_slice).collect::<Vec<_>>(),
-      &LevelBuildAtlas::LOD_SIZES,
+      &sizes,
     )
     .ok_or_else(|| {
-      let (width, height) = LevelBuildAtlas::LOD_SIZES.largest;
+      let (width, height) = sizes.largest;
 
       XrfError::new_invalid_error(format!(
         "The {} impostors' strips do not fit an atlas {width} by {height}",

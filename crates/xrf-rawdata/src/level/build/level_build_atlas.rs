@@ -52,6 +52,12 @@ impl LevelBuildAtlas {
     largest: (2048, 2048),
   };
 
+  /// The impostor sizes past SDK 0.7's, to 4096 a side, the next after 2048 by 2048 being 4096 by 2048.
+  pub(crate) const EXTENDED_LOD_SIZES: LevelBuildAtlasSizes = LevelBuildAtlasSizes {
+    smallest: (512, 64),
+    largest: (4096, 4096),
+  };
+
   /// `textures` merged, each given as its layers of one size, every texture of as many; `None` where they do not fit
   /// the largest of `sizes`. The editor sorts by a predicate that is no ordering (larger area, or else a longer edge,
   /// either way round), so its order is its sort's own; this one places the larger area first, then the longer edge,

@@ -7,6 +7,7 @@ pub(crate) mod level_build_export;
 pub(crate) mod level_build_exporter;
 pub(crate) mod level_build_geometry;
 pub(crate) mod level_build_hemisphere;
+pub(crate) mod level_build_impostor_limit;
 pub(crate) mod level_build_impostors;
 pub(crate) mod level_build_library;
 pub(crate) mod level_build_lighting;

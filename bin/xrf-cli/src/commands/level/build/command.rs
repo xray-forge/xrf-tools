@@ -8,8 +8,8 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_gamemtl::GameMtlFile;
 use xrf_output::OutputOptions;
 use xrf_rawdata::{
-  LevelBuildExport, LevelBuildExporter, LevelBuildLighting, LevelBuildSources, LevelExportedPrevious,
-  LevelSceneExporter,
+  LevelBuildExport, LevelBuildExporter, LevelBuildImpostorLimit, LevelBuildLighting, LevelBuildSources,
+  LevelExportedPrevious, LevelSceneExporter,
 };
 use xrf_utils::format_path;
 
@@ -17,12 +17,13 @@ use crate::commands::level::build::report::LevelBuildReport;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 /// What the command line names for the level compiler's files: the objects roots, the game material library, read once
-/// the build starts, the textures root, and the lighting in place of the scene's.
+/// the build starts, the textures root, the lighting in place of the scene's, and the impostor atlas's limit.
 struct LevelBuildInputs<'a> {
   objects: &'a [PathBuf],
   game_materials: &'a Path,
   textures: Option<&'a Path>,
   lighting: Option<LevelBuildLighting>,
+  impostor_limit: LevelBuildImpostorLimit,
 }
 
 /// Builds a Level Editor scene's game files into a level directory, as the editor's Build writes them.
@@ -101,6 +102,16 @@ impl GenericCommand for BuildCommand {
           .action(ArgAction::SetTrue),
       )
       .arg(
+        Arg::new("sdk-impostor-atlas")
+          .help(
+            "Keep the impostor atlas within SDK 0.7's 2048 by 2048, refusing a level of more than 128 impostors as that \
+             Level Editor does; by default it grows to 4096 a side, as Anomaly's largest levels ship it",
+          )
+          .long("sdk-impostor-atlas")
+          .requires("objects")
+          .action(ArgAction::SetTrue),
+      )
+      .arg(
         Arg::new("force")
           .help("Overwrite the files the build writes where the directory already holds them")
           .short('f')
@@ -126,6 +137,11 @@ impl GenericCommand for BuildCommand {
           game_materials,
           textures: matches.get_one::<PathBuf>("textures").map(PathBuf::as_path),
           lighting: matches.get_flag("proof-lighting").then_some(LevelBuildLighting::PROOF),
+          impostor_limit: if matches.get_flag("sdk-impostor-atlas") {
+            LevelBuildImpostorLimit::Sdk
+          } else {
+            LevelBuildImpostorLimit::Extended
+          },
         });
     let report: LevelBuildReport = Self::build(&output, source, destination, geometry, matches.get_flag("force"))?;
 
@@ -162,6 +178,7 @@ impl BuildCommand {
             game_materials: &game_materials,
             textures: inputs.textures,
             lighting: inputs.lighting,
+            impostor_limit: inputs.impostor_limit,
             held: None,
           },
         )?;

@@ -502,7 +502,9 @@ reference per placement, of its transform and the sector naming its first mesh (
 `eoUsingLOD` gets its impostor first, as `BuildObjectLOD` makes one (`LevelBuildImpostors`): a material of `level_lods`
 under `details\lod`, eight quads standing through the model's box with their cells of its strip, the strips read from
 the textures root and merged with their normals into `level_lods.dds` and `level_lods_nm.dds` by the same packer as the
-details' atlas, 512 by 64 up to 2048 a side, DXT5 with mips. It refuses a draft-quality scene. Gunslinger's `l01_test` decompiled and exported comes back to its shipped
+details' atlas, 512 by 64 up to 4096 a side (`LevelBuildImpostorLimit::Extended`, as Anomaly's largest levels ship
+4096 by 2048; `Sdk` keeps SDK 0.7's 2048 and refuses past its 128 strips, `level build --sdk-impostor-atlas`), DXT5
+with mips. It refuses a draft-quality scene. Gunslinger's `l01_test` decompiled and exported comes back to its shipped
 `build.prj` on all its area, its sky, sun and dynamic lights exact; the decompiled `labx8`'s compiles in GSC's xrLC and
 plays. GSC's own `labx8` scene builds a `level.hom` byte for byte as shipped, and a `level.ltx` of the same rectangle and
 sector map parts.

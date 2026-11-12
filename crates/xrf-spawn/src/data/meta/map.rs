@@ -617,6 +617,99 @@ lazy_static! {
     "zone_mosquito_bald_strong" => ClsId::ZsMBald,
     "zone_mosquito_bald_weak" => ClsId::ZsMBald,
     "zone_zhar" => ClsId::ZsMBald,
+    // Multiplayer, CoP's `configs/mp`: each by the `class` it declares or inherits, whose server class reads its
+    // packet (a launcher's `W_AK74` and `W_GROZA` read one more byte than `W_PM`, `W_VAL` or `W_SVD`).
+    "mp_af_electra_flash" => ClsId::ScrptArt, // ARTEFACT
+    "mp_ammo_11.43x23_fmj" => ClsId::AmmoS, // AMMO
+    "mp_ammo_11.43x23_hydro" => ClsId::AmmoS, // AMMO
+    "mp_ammo_12x70_buck" => ClsId::AmmoS, // AMMO
+    "mp_ammo_12x76_zhekan" => ClsId::AmmoS, // AMMO
+    "mp_ammo_5.45x39_ap" => ClsId::AmmoS, // AMMO
+    "mp_ammo_5.45x39_fmj" => ClsId::AmmoS, // AMMO
+    "mp_ammo_5.56x45_ap" => ClsId::AmmoS, // AMMO
+    "mp_ammo_5.56x45_ss190" => ClsId::AmmoS, // AMMO
+    "mp_ammo_7.62x54_7h1" => ClsId::AmmoS, // AMMO
+    "mp_ammo_7.62x54_ap" => ClsId::AmmoS, // AMMO
+    "mp_ammo_9x18_fmj" => ClsId::AmmoS, // AMMO
+    "mp_ammo_9x18_pmm" => ClsId::AmmoS, // AMMO
+    "mp_ammo_9x19_fmj" => ClsId::AmmoS, // AMMO
+    "mp_ammo_9x19_fmj_4mp5" => ClsId::AmmoS, // AMMO
+    "mp_ammo_9x19_pbp" => ClsId::AmmoS, // AMMO
+    "mp_ammo_9x19_pbp_4mp5" => ClsId::AmmoS, // AMMO
+    "mp_ammo_9x39_ap" => ClsId::AmmoS, // AMMO
+    "mp_ammo_9x39_pab9" => ClsId::AmmoS, // AMMO
+    "mp_ammo_gauss" => ClsId::AmmoS, // AMMO
+    "mp_ammo_m209" => ClsId::SM209, // AMMO
+    "mp_ammo_og-7b" => ClsId::SOG7B, // AMMO
+    "mp_ammo_pkm_100" => ClsId::AmmoS, // AMMO
+    "mp_ammo_vog-25" => ClsId::SVog25, // AMMO
+    "mp_antirad" => ClsId::SFood, // II_ANTIR
+    "mp_antirad_old" => ClsId::SFood, // II_ANTIR
+    "mp_bandage" => ClsId::SFood, // II_BANDG
+    "mp_detector_advanced" => ClsId::DetElit, // DET_ELIT
+    "mp_device_torch" => ClsId::TorchS, // TORCH_S
+    "mp_drug_coagulant" => ClsId::SFood, // II_FOOD
+    "mp_drug_radioprotector" => ClsId::SFood, // II_FOOD
+    "mp_energy_drink" => ClsId::SFood, // II_BOTTL
+    "mp_exo_outfit" => ClsId::EStlk, // EQU_EXO
+    "mp_explosive_barrel" => ClsId::SExplo, // II_EXPLO
+    "mp_explosive_fuelcan" => ClsId::SExplo, // II_EXPLO
+    "mp_explosive_tank" => ClsId::SExplo, // II_EXPLO
+    "mp_grenade_f1" => ClsId::GF1S, // G_F1
+    "mp_grenade_gd-05" => ClsId::GF1S, // G_F1
+    "mp_grenade_rgd5" => ClsId::GRgd5S, // G_RGD5
+    "mp_medkit" => ClsId::SFood, // II_MEDKI
+    "mp_medkit_army" => ClsId::SFood, // II_MEDKI
+    "mp_medkit_old" => ClsId::SFood, // S_MEDKI
+    "mp_medkit_scientic" => ClsId::SFood, // II_MEDKI
+    "mp_military_stalker_outfit" => ClsId::EStlk, // EQU_MLTR
+    "mp_scientific_outfit" => ClsId::EStlk, // EQU_SCIE
+    "mp_wood_stolb_fixed" => ClsId::ODstrS, // P_DSTRBL
+    "mp_wpn_abakan" => ClsId::WpAk74, // W_AK74
+    "mp_wpn_addon_grenade_launcher" => ClsId::WpGLaun, // W_GLAUNC
+    "mp_wpn_addon_grenade_launcher_m203" => ClsId::WpGLaun, // W_GLAUNC
+    "mp_wpn_addon_scope" => ClsId::WpScope, // W_SCOPE
+    "mp_wpn_addon_scope_susat" => ClsId::WpScope, // W_SCOPE
+    "mp_wpn_addon_silencer" => ClsId::WpSilen, // W_SILENC
+    "mp_wpn_ak74" => ClsId::WpAk74, // W_AK74
+    "mp_wpn_ak74u" => ClsId::WpAk74, // W_AK74
+    "mp_wpn_beretta" => ClsId::WpPM, // W_PM
+    "mp_wpn_binoc" => ClsId::WpBinoc, // W_BINOC
+    "mp_wpn_bm16" => ClsId::WpBM16, // W_BM16
+    "mp_wpn_colt1911" => ClsId::WpPM, // W_PM
+    "mp_wpn_desert_eagle" => ClsId::WpPM, // W_PM
+    "mp_wpn_fake_missile" => ClsId::GFake, // G_FAKE
+    "mp_wpn_fake_missile1" => ClsId::GFake, // G_FAKE
+    "mp_wpn_fake_missile2" => ClsId::GFake, // G_FAKE
+    "mp_wpn_fn2000" => ClsId::WpAk74, // W_AK74
+    "mp_wpn_fort" => ClsId::WpPM, // W_FORT
+    "mp_wpn_g36" => ClsId::WpAk74, // W_AK74
+    "mp_wpn_gauss" => ClsId::WpSVD, // W_SVD
+    "mp_wpn_groza" => ClsId::WpGroza, // W_GROZA
+    "mp_wpn_hpsa" => ClsId::WpHPSA, // W_HPSA
+    "mp_wpn_knife" => ClsId::WpKnife, // W_KNIFE
+    "mp_wpn_l85" => ClsId::WpAk74, // W_AK74
+    "mp_wpn_lr300" => ClsId::WpAk74, // W_AK74
+    "mp_wpn_mp5" => ClsId::WpAk74, // W_AK74
+    "mp_wpn_pb" => ClsId::WpPM, // W_PM
+    "mp_wpn_pkm" => ClsId::WpAk74, // W_AK74
+    "mp_wpn_pm" => ClsId::WpPM, // W_PM
+    "mp_wpn_protecta" => ClsId::WpAshTG, // W_SHOTGN
+    "mp_wpn_rg-6" => ClsId::WpRG6, // W_RG6
+    "mp_wpn_rpg7" => ClsId::WpRPG7, // W_RPG7
+    "mp_wpn_rpg7_missile" => ClsId::GRpg7, // G_RPG7
+    "mp_wpn_sig220" => ClsId::WpPM, // W_PM
+    "mp_wpn_sig550" => ClsId::WpAk74, // W_AK74
+    "mp_wpn_spas12" => ClsId::WpAshTG, // W_SHOTGN
+    "mp_wpn_svd" => ClsId::WpSVD, // W_SVD
+    "mp_wpn_svu" => ClsId::WpSVD, // W_SVD
+    "mp_wpn_toz34" => ClsId::WpBM16, // W_BM16
+    "mp_wpn_usp" => ClsId::WpLR300, // W_USP45, read as any magazined weapon
+    "mp_wpn_val" => ClsId::WpVAL, // W_VAL
+    "mp_wpn_vintorez" => ClsId::WpVAL, // W_VAL
+    "mp_wpn_walther" => ClsId::WpPM, // W_PM
+    "mp_wpn_wincheaster1300" => ClsId::WpAshTG, // W_SHOTGN
+    "mp_zone_witches_galantine" => ClsId::ZsMBald, // Z_MBALD
   };
 
   pub static ref CLS_ID_TO_CLASS: EnumMap<ClsId, AlifeClass> = enum_map! {
@@ -732,8 +825,8 @@ mod tests {
   use crate::data::meta::alife_class::AlifeClass;
   use crate::data::meta::cls_id::ClsId;
 
-  /// Multiplayer and Shadow of Chernobyl sections have no class to read, and a rocket's `CSE_Temporary` is no alife
-  /// object the simulation can hold.
+  /// Groups, Shadow of Chernobyl sections and the spectator have no class to read, and a rocket's `CSE_Temporary` is no
+  /// alife object the simulation can hold.
   #[test]
   fn refuses_what_call_of_pripyat_creates_from_no_spawn() {
     for section in [
@@ -753,6 +846,18 @@ mod tests {
 
       assert_eq!(AlifeClass::from_cls_id(&clsid), AlifeClass::Unknown, "{section}");
     }
+  }
+
+  /// A multiplayer section reads as the class it declares, not as its single-player parent: CoP's `mp_wpn_mp5` is a
+  /// `W_AK74` with a launcher's byte though `wpn_mp5` is no such weapon here, and `mp_wpn_vintorez` a `W_VAL` without.
+  #[test]
+  fn maps_a_multiplayer_section_by_the_class_it_declares() {
+    let class = |section: &str| AlifeClass::from_cls_id(&ClsId::from_section(section).expect("a multiplayer section"));
+
+    assert_eq!(class("mp_wpn_mp5"), AlifeClass::CseAlifeItemWeaponMagazinedWGl);
+    assert_eq!(class("mp_wpn_vintorez"), AlifeClass::CseAlifeItemWeaponMagazined);
+    assert_eq!(class("mp_medkit"), AlifeClass::CseAlifeItem);
+    assert_eq!(class("mp_exo_outfit"), AlifeClass::CseAlifeItemCustomOutfit);
   }
 
   /// Every zone CLSID `xray-16/src/xrServerEntities/object_factory_register.cpp` registers, paired with the server

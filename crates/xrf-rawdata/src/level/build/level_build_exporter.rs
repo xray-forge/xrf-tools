@@ -227,7 +227,7 @@ impl LevelBuildExporter {
         .map(|tool| LevelAiMapConversion::export(&tool)),
       None => None,
     };
-    let (lods, impostors) = match models.impostors.into_export()? {
+    let (lods, impostors) = match models.impostors.into_export(sources.impostor_limit)? {
       Some((lods, atlas)) => (lods, Some(atlas)),
       None => (Vec::new(), None),
     };
