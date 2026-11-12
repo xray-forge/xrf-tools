@@ -4,7 +4,7 @@ import { Nullable } from "@xrf/types";
 /** What the form names for the compile after the build. */
 export interface ICompileChoice {
   steps: ReadonlySet<LevelCompileStep>;
-  /** The SDK's `editors` directory, whose `bin` holds its compilers. */
+  /** The SDK's `editors` directory, whose `bin` holds xrLC and xrAI. */
   sdk: Nullable<string>;
   /** The game data holding `gamemtl.xr` and `shaders_xrlc.xr`. */
   gamedata: Nullable<string>;
@@ -19,9 +19,23 @@ export const COMPILE_STEPS: ReadonlyArray<LevelCompileStep> = [
   ELevelCompileStep.AI,
 ];
 
+/** The steps the SDK's own compilers run; the details are lit by the tools themselves. */
+export const SDK_COMPILE_STEPS: ReadonlySet<LevelCompileStep> = new Set([
+  ELevelCompileStep.GEOMETRY,
+  ELevelCompileStep.AI,
+]);
+
 /**
- * Whether the compile the form names cannot run: a step is chosen but the SDK, the game data or the textures root is
- * not named.
+ * @param steps - The steps chosen.
+ * @returns Whether any of them runs one of the SDK's compilers, and so needs the SDK named.
+ */
+export function isSdkNeeded(steps: ReadonlySet<LevelCompileStep>): boolean {
+  return [...steps].some((step: LevelCompileStep) => SDK_COMPILE_STEPS.has(step));
+}
+
+/**
+ * Whether the compile the form names cannot run: a step is chosen but the game data or the textures root is not
+ * named, or a step the SDK runs is chosen without the SDK.
  *
  * @param choice - What the form names.
  * @returns Why it cannot run, or null where it can or no step is chosen.
@@ -31,8 +45,8 @@ export function getCompileProblem(choice: ICompileChoice): Nullable<string> {
     return null;
   }
 
-  if (!choice.sdk) {
-    return "Name the SDK's editors directory to compile";
+  if (!choice.sdk && isSdkNeeded(choice.steps)) {
+    return "Name the SDK's editors directory to compile the geometry or the AI map";
   }
 
   if (!choice.gamedata) {
@@ -54,17 +68,19 @@ export function getCompileProblem(choice: ICompileChoice): Nullable<string> {
  * @returns The request, or null.
  */
 export function toCompileRequest(choice: ICompileChoice): Nullable<LevelCompileRequest> {
-  if (choice.steps.size === 0 || !choice.sdk || !choice.gamedata || !choice.textures) {
+  if (choice.steps.size === 0 || getCompileProblem(choice) || !choice.gamedata || !choice.textures) {
     return null;
   }
 
   return {
-    // The backend runs the compile on the build's destination, whatever level is named here.
+    // The backend runs the compile on the build's destination, and forces it as the build is forced, whatever is
+    // named here.
     level: "",
     steps: COMPILE_STEPS.filter((step: LevelCompileStep) => choice.steps.has(step)),
-    sdk: choice.sdk,
+    sdk: isSdkNeeded(choice.steps) ? choice.sdk : null,
     gamedata: choice.gamedata,
-    textures: choice.textures,
+    textures: [choice.textures],
     work: null,
+    isForced: false,
   };
 }

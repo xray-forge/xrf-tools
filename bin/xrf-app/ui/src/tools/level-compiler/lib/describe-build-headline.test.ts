@@ -9,8 +9,12 @@ const COMPILE: LevelCompileReport = {
   level: "levels\\test",
   work: "work",
   steps: [
-    { step: "geometry", program: "xrLC.exe", duration: 1000, log: null },
-    { step: "details", program: "xrDO_Light.exe", duration: 500, log: null },
+    { step: "geometry", duration: 1000, run: { kind: "program", program: "xrLC.exe", log: null } },
+    {
+      step: "details",
+      duration: 500,
+      run: { kind: "detailLighter", slots: { unplanted: 0, emptied: 0, untouched: 0, lit: 1 } },
+    },
   ],
 };
 

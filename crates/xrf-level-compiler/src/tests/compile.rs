@@ -12,11 +12,7 @@ use crate::{LevelCompileRequest, LevelCompileStep, LevelCompiler};
 fn sdk(name: &str) -> XrfResult<PathBuf> {
   let root: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), name))?;
 
-  for (directory, program) in [
-    ("bin/compilers", "xrLC.exe"),
-    ("bin/compilers", "xrDO_Light.exe"),
-    ("bin/designer/release", "xrAI.exe"),
-  ] {
+  for (directory, program) in [("bin/compilers", "xrLC.exe"), ("bin/designer/release", "xrAI.exe")] {
     std::fs::create_dir_all(root.join(directory))?;
     std::fs::write(root.join(directory).join(program), b"")?;
   }
@@ -42,7 +38,8 @@ fn request(level: &Path, sdk: &Path, steps: &[LevelCompileStep]) -> LevelCompile
   LevelCompileRequest {
     level: level.to_path_buf(),
     steps: steps.to_vec(),
-    sdk: sdk.to_path_buf(),
+    sdk: Some(sdk.to_path_buf()),
+    textures: vec![level.join("textures")],
     ..LevelCompileRequest::default()
   }
 }
@@ -107,6 +104,42 @@ fn refuses_an_sdk_without_the_steps_program() -> XrfResult {
   .to_string();
 
   assert!(error.contains("xrLC.exe"), "{error}");
+
+  Ok(())
+}
+
+#[test]
+fn refuses_a_step_the_sdk_runs_without_the_sdk() -> XrfResult {
+  let level: PathBuf = level("sdk_unnamed", &["build.prj", "build.aimap", "build.cform"])?;
+  let error: String = LevelCompiler::compile(
+    &LevelCompileRequest {
+      sdk: None,
+      ..request(&level, Path::new(""), &[LevelCompileStep::Ai])
+    },
+    &JobHandle::inert(),
+  )
+  .unwrap_err()
+  .to_string();
+
+  assert!(error.contains("ai step runs the SDK's compiler"), "{error}");
+
+  Ok(())
+}
+
+#[test]
+fn refuses_the_sdk_more_than_one_textures_root() -> XrfResult {
+  let level: PathBuf = level("two_roots", &["build.prj"])?;
+  let error: String = LevelCompiler::compile(
+    &LevelCompileRequest {
+      textures: vec![level.join("first"), level.join("second")],
+      ..request(&level, &sdk("two_roots_sdk")?, &[LevelCompileStep::Geometry])
+    },
+    &JobHandle::inert(),
+  )
+  .unwrap_err()
+  .to_string();
+
+  assert!(error.contains("one textures root, not 2"), "{error}");
 
   Ok(())
 }

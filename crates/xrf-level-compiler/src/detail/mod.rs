@@ -8,3 +8,4 @@ pub(crate) mod detail_lighting;
 pub(crate) mod detail_slot_counts;
 pub(crate) mod detail_slot_fate;
 pub(crate) mod detail_slot_lighter;
+pub(crate) mod detail_step;
