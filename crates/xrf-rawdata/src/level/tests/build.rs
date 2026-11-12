@@ -1,6 +1,8 @@
 //! The pieces a `build.prj` export is made of: its tables, its generated sky and sun, its sectors, its multi-use
 //! models, the occluders, ladders and the map's settings written beside it.
 
+use std::path::PathBuf;
+
 use xrf_chunk::XRayByteOrder;
 use xrf_editable_level::{
   EditableCustomObject, EditableLevelOptions, EditableObjectTransform, EditableSceneObject, EditableSectorItem,
@@ -13,7 +15,9 @@ use xrf_level::LevelDynamicLight;
 use xrf_math::{Aabb, Affine3d, Vector2d, Vector3d};
 use xrf_ogf::{OgfFile, OgfModelType};
 use xrf_spawn::{AlifeObjectInherited, Shape};
+use xrf_test_utils::GeneratedResources;
 
+use crate::LevelBuildExport;
 use crate::level::build::level_build_breakables::LevelBuildBreakables;
 use crate::level::build::level_build_climbables::LevelBuildClimbables;
 use crate::level::build::level_build_geometry::LevelBuildGeometry;
@@ -24,6 +28,7 @@ use crate::level::build::level_build_occluders::LevelBuildOccluders;
 use crate::level::build::level_build_portal::LevelBuildPortal;
 use crate::level::build::level_build_sectors::LevelBuildSectors;
 use crate::level::build::level_build_tables::LevelBuildTables;
+use crate::level::level_breakable_conversion::LevelBreakableConversion;
 use crate::level::level_map_conversion::LevelMapConversion;
 use crate::level::level_occluder_conversion::LevelOccluderConversion;
 use crate::level::level_visual_geometry::LevelVisualGeometry;
@@ -440,23 +445,24 @@ fn makes_a_breakable_of_a_breakable_part_in_the_frame_of_its_box() -> XrfResult 
   breakables.add_object(&placed_at(10.0), &object_of(&pane, "materials\\glass", 0)?, &library)?;
   breakables.add_object(&placed_at(20.0), &quad("materials\\stone", 0)?, &library)?;
 
-  let export = breakables.into_export::<XRayByteOrder>()?;
-  let ([(path, bytes)], [entity]) = (export.parts.as_slice(), export.entities.as_slice()) else {
+  let export = breakables.into_export()?;
+  let ([written], [entity]) = (export.parts.as_slice(), export.entities.as_slice()) else {
     panic!("one breakable of the pane alone: {:?}", export.entities);
   };
   let AlifeObjectInherited::CseAlifeObjectBreakable(breakable) = &entity.inherited else {
     panic!("a breakable_object");
   };
-  let part: OgfFile = OgfFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
+  let part: OgfFile = OgfFile::read_from_bytes::<XRayByteOrder>(written.write::<XRayByteOrder>()?)?;
   let ik_data = part.ik_data.as_ref().expect("bones' physics");
 
+  // The file goes where the level's other files are listed, the packet names it as the Build does.
   assert_eq!(
     (
-      path.as_str(),
+      written.path.as_str(),
       entity.header.name.as_str(),
       breakable.base.visual_name.as_str()
     ),
-    ("meshes\\brkbl#0.ogf", "meshes\\brkbl#0.ogf", "meshes\\brkbl#0")
+    ("meshes/brkbl#0.ogf", "meshes\\brkbl#0.ogf", "meshes\\brkbl#0")
   );
   assert_eq!(
     OgfModelType::from_raw(part.header.model_type),
@@ -494,6 +500,21 @@ fn makes_a_breakable_of_a_breakable_part_in_the_frame_of_its_box() -> XrfResult 
   }
 
   assert!(export.refused.is_empty());
+
+  Ok(())
+}
+
+/// A rebuild finds the parts an earlier build wrote under the paths it writes them to, so that it replaces them rather
+/// than refusing them as files of no build.
+#[test]
+fn lists_a_written_breakable_part_by_the_path_the_build_writes_it_to() -> XrfResult {
+  let directory: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "listed_part"))?;
+  let (_, path) = LevelBreakableConversion::get_part_names(0);
+
+  std::fs::create_dir_all(directory.join(LevelBreakableConversion::DIRECTORY))?;
+  std::fs::write(directory.join(&path), b"part")?;
+
+  assert!(LevelBuildExport::list_file_names(&directory).contains(&path));
 
   Ok(())
 }

@@ -7,7 +7,7 @@ use xrf_math::{Vector2d, Vector3d};
 use crate::level::level_decompile_context::LevelDecompileContext;
 
 /// A level's authored lights, from the compiled `build.lights` and the bundle's `fsL_LIGHT_DYNAMIC` back into the
-/// scene's `light.part` (decision 15).
+/// scene's `light.part`.
 ///
 /// The build hands each light to the level compiler as a static light, a dynamic one or both
 /// (`SceneBuilder::BuildLight`, `BuilderRemote.cpp:1080`). The compiler writes the static ones into `build.lights` by

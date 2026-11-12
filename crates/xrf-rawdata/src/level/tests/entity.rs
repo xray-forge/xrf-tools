@@ -7,7 +7,7 @@ use xrf_spawn::{
   SpawnPacketHeader,
 };
 
-use crate::level::tests::GUID;
+use crate::level::tests::fixtures::GUID;
 use crate::level::tests::spawn_data::restrictor;
 use crate::{
   LevelDecompileContext, LevelEntityConversion, LevelEntityDecompile, LevelEntityExport, LevelEntitySources,

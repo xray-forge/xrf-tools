@@ -9,7 +9,6 @@ use xrf_level::{
 };
 use xrf_ogf::OgfFile;
 use xrf_shaders::ShaderCompilerFile;
-use xrf_spawn::LevelSpawnFile;
 use xrf_utils::format_path;
 
 use crate::level::level_breakable_conversion::LevelBreakableConversion;
@@ -33,9 +32,9 @@ use crate::provenance::sidecar::Sidecar;
 
 /// The level's geometry ([`LevelGeometryConversion`]): the objects of its static geometry, collision, occluders,
 /// ladders and breakable parts, the scene objects placing them, and the sectors and portals, their surfaces dressed
-/// from `level.cform` where the options ask it and the directory holds one. It runs first, so the sectors take the
-/// first names of their prefix, and names the folded ladders' and breakables' packets in the draft, which the game step
-/// leaves out of the spawn points.
+/// from `level.cform` where the options ask it and the directory holds one. It runs before every step but the map's, so
+/// the sectors take the first names of their prefix, and names the folded ladders' and breakables' packets in the
+/// draft, which the game step leaves out of the spawn points.
 pub(crate) struct LevelGeometryStep;
 
 impl LevelSceneStep for LevelGeometryStep {
@@ -79,11 +78,6 @@ impl LevelSceneStep for LevelGeometryStep {
     let decals: Option<LevelDecalIndex> = sources
       .peek_read(LevelWallmarksFile::FILE_NAME, LevelWallmarksFile::read_from_bytes::<T>)?
       .map(|wallmarks| LevelDecalIndex::new(&wallmarks));
-    // Read, not taken: the game step decompiles the entities the geometry does not stand for.
-    let spawn: Option<LevelSpawnFile> = sources.peek_read(
-      LevelEntityConversion::SPAWN_FILE_NAME,
-      LevelSpawnFile::read_from_bytes::<T>,
-    )?;
     let breakable_parts: BTreeMap<String, OgfFile> = Self::read_breakable_parts::<T>(sources, draft);
     let impostors: Option<LevelTreeImpostorAtlas> = Self::read_impostors(sources, draft);
     let mut surfaces: Option<(LevelSurfaceInference, LevelSceneSurfaceLibraries)> = match (options.surfaces, &collision)
@@ -101,7 +95,7 @@ impl LevelSceneStep for LevelGeometryStep {
         hom: hom.as_ref(),
         som: som.as_ref(),
         decals: decals.as_ref(),
-        spawn: spawn.as_ref(),
+        spawn: draft.spawn.as_ref(),
         breakable_parts: &breakable_parts,
         impostors: impostors.as_ref(),
       },

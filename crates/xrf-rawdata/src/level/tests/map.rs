@@ -9,7 +9,7 @@ use xrf_error::XrfResult;
 use xrf_test_utils::GeneratedResources;
 
 use crate::level::level_decompile_context::LevelDecompileContext;
-use crate::level::tests::GUID;
+use crate::level::tests::fixtures::GUID;
 use crate::{
   LevelDecompileOptions, LevelMapConversion, LevelMapSettings, LevelSceneDecompile, LevelSceneDecompiler,
   LevelSceneInference,

@@ -3,7 +3,7 @@ use xrf_error::XrfResult;
 use xrf_level::{LevelFile, LevelGlow, LevelGlowsChunk, LevelHeaderChunk, LevelShaderEntry, LevelShadersChunk};
 use xrf_math::Vector3d;
 
-use crate::level::tests::GUID;
+use crate::level::tests::fixtures::GUID;
 use crate::{LevelDecompileContext, LevelGlowConversion};
 
 /// A compiled level of these shader table rows and glows, and nothing else.

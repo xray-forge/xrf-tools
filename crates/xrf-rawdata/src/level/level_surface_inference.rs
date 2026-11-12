@@ -14,7 +14,7 @@ use crate::level::level_collision_index::{LevelCollisionIndex, LevelCollisionLoo
 use crate::level::level_visual_geometry::LevelVisualGeometry;
 use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 
-/// How a level's decompile dresses its surfaces (decision 14): from what the level shows, or with the editor's defaults.
+/// How a level's decompile dresses its surfaces: from what the level shows, or with the editor's defaults.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum LevelSurfaces {
@@ -157,7 +157,7 @@ pub struct LevelSurfaceCensus {
   pub compiler_shaders: Vec<LevelCompilerShaderChoice>,
 }
 
-/// What dresses a level's surfaces (decision 14) from where their triangles lie on its collision form
+/// What dresses a level's surfaces from where their triangles lie on its collision form
 /// ([`LevelCollisionIndex`]): the libraries naming game materials and compiler shaders, and an object library's
 /// pairings.
 pub struct LevelSurfaceInference {

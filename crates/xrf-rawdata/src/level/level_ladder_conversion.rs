@@ -9,7 +9,7 @@ use crate::level::level_visual_geometry::LevelVisualGeometry;
 use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
 
-/// A level's ladders folded back into the geometry they were built from (decision 16). The Build leaves the faces of a
+/// A level's ladders folded back into the geometry they were built from. The Build leaves the faces of a
 /// climbable game material out of the level's geometry and exports each connected part as a `climable_object` whose
 /// box is the part's (`ESceneObjectTool::ExportClimableObjects`): its frame the box's axes, turned so its thinnest
 /// axis faces the way the faces did, its half sizes the box matrix's axes, and from packet version 127 the material.

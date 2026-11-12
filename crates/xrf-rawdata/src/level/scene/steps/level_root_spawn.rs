@@ -9,7 +9,7 @@ use xrf_utils::format_path;
 use crate::provenance::level_scene_provenance::LevelSceneRootSpawn;
 use crate::provenance::sidecar::Sidecar;
 
-/// A root spawn read for one level (decision 10): what the sidecar records of it, and its objects on the level, which
+/// A root spawn read for one level: what the sidecar records of it, and its objects on the level, which
 /// the game step takes in place of `level.spawn`'s entities.
 pub(crate) struct LevelRootSpawn {
   pub(crate) record: LevelSceneRootSpawn,

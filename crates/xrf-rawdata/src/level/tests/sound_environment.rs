@@ -9,7 +9,7 @@ use xrf_error::XrfResult;
 use xrf_level::LevelSndEnvFile;
 use xrf_math::{Affine3d, Vector3d};
 
-use crate::level::tests::GUID;
+use crate::level::tests::fixtures::GUID;
 use crate::{LevelDecompileContext, LevelSoundEnvironmentConversion};
 
 /// A box sheared by its own matrix, which no object transform of the unit box gives.

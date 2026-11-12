@@ -2,7 +2,6 @@ use byteorder::ByteOrder;
 use xrf_editable_level::{EditableLevelOptions, EditableSpawnPointObject};
 use xrf_error::XrfResult;
 use xrf_level::{LevelEnvModFile, LevelGameFile, LevelGameRPoint};
-use xrf_spawn::LevelSpawnFile;
 
 use crate::level::level_entity_conversion::{LevelEntityConversion, LevelEntityDecompile, LevelEntitySources};
 use crate::level::level_spawn_point_conversion::LevelSpawnPointConversion;
@@ -13,10 +12,9 @@ use crate::level::scene::level_scene_sources::LevelSceneSources;
 use crate::level::scene::steps::level_scene_step::LevelSceneStep;
 use crate::provenance::level_scene_provenance::LevelSceneInference;
 
-/// What `level.game`, `level.env_mod` and the spawn lists give: ways, spawn points (respawn points, environment
+/// What `level.game`, `level.env_mod` and the draft's spawn lists give: ways, spawn points (respawn points, environment
 /// modifiers and entities, from the root spawn where the draft holds one), and the game modes the level serves where
 /// no `level.ltx` named them.
-/// Entities are decompiled first, so that no name generated for another spawn point takes theirs.
 pub(crate) struct LevelGameStep;
 
 impl LevelSceneStep for LevelGameStep {
@@ -36,18 +34,10 @@ impl LevelSceneStep for LevelGameStep {
       sources.take_read(LevelGameFile::FILE_NAME, LevelGameFile::read_from_bytes::<T>)?;
     let environment: Option<LevelEnvModFile> =
       sources.take_read(LevelEnvModFile::FILE_NAME, LevelEnvModFile::read_from_bytes::<T>)?;
-    let spawn: Option<LevelSpawnFile> = sources.take_read(
-      LevelEntityConversion::SPAWN_FILE_NAME,
-      LevelSpawnFile::read_from_bytes::<T>,
-    )?;
-    let respawn: Option<LevelSpawnFile> = sources.take_read(
-      LevelEntityConversion::RESPAWN_FILE_NAME,
-      LevelSpawnFile::read_from_bytes::<T>,
-    )?;
     let entities: LevelEntityDecompile = LevelEntityConversion::decompile::<T>(
       &LevelEntitySources {
-        spawn: spawn.as_ref(),
-        respawn: respawn.as_ref(),
+        spawn: draft.spawn.as_ref(),
+        respawn: draft.respawn.as_ref(),
         root: draft
           .root_spawn
           .as_ref()

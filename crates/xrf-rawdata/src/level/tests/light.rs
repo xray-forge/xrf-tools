@@ -6,7 +6,7 @@ use xrf_level::{
 };
 use xrf_math::{Color, Vector3d};
 
-use crate::level::tests::GUID;
+use crate::level::tests::fixtures::GUID;
 use crate::{LevelDecompileContext, LevelLightConversion};
 
 /// A static light as the level compiler stores one it was given: diffuse over its energy, the mean of its channels, and

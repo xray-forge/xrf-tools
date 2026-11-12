@@ -7,7 +7,7 @@ use xrf_spawn::{AlifeObject, AlifeObjectInherited};
 use crate::level::level_geometry_conversion::LevelDecompiledObject;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
 
-/// A level's breakable parts folded back into the geometry they were built from (decision 16). The Build leaves the
+/// A level's breakable parts folded back into the geometry they were built from. The Build leaves the
 /// faces of a breakable game material out of the level's geometry and exports each connected part
 /// (`ESceneObjectTool::ExportBreakableObjects`) as a rigid skeleton in the level's directory, `meshes\brkbl#<N>.ogf`,
 /// its points in the frame of the part's box, and a `breakable_object` naming it, standing at the box with the angles
@@ -24,6 +24,15 @@ impl LevelBreakableConversion {
   /// Whether a file of the parts' directory, by its name, is a part the Build exported.
   pub fn is_part_file(name: &str) -> bool {
     name.starts_with(Self::PREFIX) && name.ends_with(Self::EXTENSION)
+  }
+
+  /// The name the Build gives the part numbered `index`, `meshes\brkbl#<index>`, which its entity and visual take, and
+  /// the part's path in the level's directory, `meshes/brkbl#<index>.ogf`.
+  pub(crate) fn get_part_names(index: usize) -> (String, String) {
+    (
+      format!("{}\\{}{index}", Self::DIRECTORY, Self::PREFIX),
+      format!("{}/{}{index}{}", Self::DIRECTORY, Self::PREFIX, Self::EXTENSION),
+    )
   }
 
   /// The part a breakable's packet names, by its path in the level's directory, `meshes/brkbl#<N>.ogf`; `None` for an

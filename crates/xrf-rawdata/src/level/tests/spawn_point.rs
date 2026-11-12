@@ -4,7 +4,7 @@ use xrf_error::XrfResult;
 use xrf_level::{LevelEnvModFile, LevelEnvModifier, LevelGameRPoint};
 use xrf_math::Vector3d;
 
-use crate::level::tests::GUID;
+use crate::level::tests::fixtures::GUID;
 use crate::{LevelDecompileContext, LevelSpawnPointConversion};
 
 fn respawn_point(team: u8, profile: &str) -> LevelGameRPoint {

@@ -98,8 +98,8 @@ describe("buildTextureNodes", () => {
   });
 
   it("marks a texture served out of an archive rather than hiding or disabling it", () => {
-    // Decision 20 as it survives decision 24. The only tree left is the read-only one, where an archived texture is
-    // fully inspectable, so the row says what a person can act on: this file cannot be written where it is.
+    // The only tree left is the read-only one, where an archived texture is fully inspectable, so the row says what a
+    // person can act on: this file cannot be written where it is.
     const nodes: Array<ITextureNode> = buildTextureNodes(
       [mockTextureEntry(MOCK_TEXTURE, { texture: mockArchivedTextureAsset(`textures\\${MOCK_TEXTURE}.dds`) })],
       []

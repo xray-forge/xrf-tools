@@ -172,7 +172,7 @@ impl LevelBuildExporter {
     }
 
     // `ExportGame` exports the breakables before the ladders, so they open the spawn list.
-    let breakables: LevelBuildBreakableExport = breakables.into_export::<T>()?;
+    let breakables: LevelBuildBreakableExport = breakables.into_export()?;
     let climbables: LevelBuildClimbableExport = climbables.into_export();
 
     let controls: HashMap<u32, String> = EditableLightObject::read_controls(&light_part.tool_data)?;

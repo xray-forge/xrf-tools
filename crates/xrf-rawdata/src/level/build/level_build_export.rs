@@ -8,6 +8,7 @@ use xrf_error::XrfResult;
 use xrf_level::{BuildAimapFile, BuildPrjFile, LevelHomFile, LevelSomFile};
 use xrf_spawn::AlifeObject;
 
+use crate::level::build::level_build_breakables::LevelBuildBreakablePart;
 use crate::level::build::level_build_details::LevelBuildDetails;
 use crate::level::build::level_build_impostors::LevelBuildImpostorAtlas;
 use crate::level::level_breakable_conversion::LevelBreakableConversion;
@@ -32,8 +33,8 @@ pub struct LevelBuildExport {
   pub ai_map: Option<BuildAimapFile>,
   /// `level_lods.dds` and `level_lods_nm.dds`, where a multi-use object has an impostor.
   pub impostors: Option<LevelBuildImpostorAtlas>,
-  /// Each breakable part's rigid skeleton, by its path in the level's directory, `meshes/brkbl#<n>.ogf`.
-  pub breakable_parts: Vec<(String, Vec<u8>)>,
+  /// Each breakable part's rigid skeleton, which [`Self::into_files`] writes as `meshes/brkbl#<n>.ogf`.
+  pub(crate) breakable_parts: Vec<LevelBuildBreakablePart>,
   /// The entities the build cuts from the geometry, the breakables (`breakable_object`) and then the ladders
   /// (`climable_object`), which `level.spawn` opens with: what
   /// [`LevelSceneExporter::export`](crate::LevelSceneExporter::export) takes as built.
@@ -162,8 +163,8 @@ impl LevelBuildExport {
       insert(LevelTreeImpostorAtlas::NORMAL_FILE_NAME, impostors.normal);
     }
 
-    for (path, bytes) in self.breakable_parts {
-      insert(&path, bytes);
+    for part in &self.breakable_parts {
+      insert(&part.path, part.write::<T>()?);
     }
 
     Ok(files)

@@ -8,7 +8,7 @@ use crate::LevelWallmarkConversion;
 use crate::level::build::level_build_geometry::LevelBuildGeometry;
 use crate::level::build::level_build_sectors::LevelBuildSectors;
 use crate::level::build::level_build_tables::LevelBuildTables;
-use crate::level::tests::GUID;
+use crate::level::tests::fixtures::GUID;
 
 fn decal(offset: f32, vertices: usize) -> LevelWallmark {
   let vertices: Vec<LevelWallmarkVertex> = (0..vertices)

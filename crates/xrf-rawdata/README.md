@@ -378,7 +378,7 @@ under the ground, so the model's stored box is widened to the one the facets wer
 placement. An impostor that does not cut is refused and its model comes back without one. All 19 of `mp_darkvalley`'s
 cut, and rebuilt they stand within 0.05 mm of the shipped quads, sampling the same pixels but for DXT noise.
 
-With a `LevelSurfaceInference` (decision 14, `LevelSurfaces::Infer`), each visual is split by the game material its
+With a `LevelSurfaceInference` (`LevelSurfaces::Infer`), each visual is split by the game material its
 triangles lie on before the decompile, so each surface carries one `SurfaceDress` (compiler shader and game material,
 the editor's `default` otherwise):
 

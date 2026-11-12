@@ -4,7 +4,7 @@ use serde::Serialize;
 use sha2::{Digest, Sha256};
 use xrf_error::{XrfError, XrfResult};
 
-/// The convention every provenance sidecar follows (decision 22): JSON beside the file it describes, named after it
+/// The convention every provenance sidecar follows: JSON beside the file it describes, named after it
 /// with `.xrf.json` added, and sources named by their SHA-256.
 pub(crate) struct Sidecar;
 

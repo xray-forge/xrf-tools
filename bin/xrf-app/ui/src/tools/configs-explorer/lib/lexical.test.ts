@@ -68,8 +68,7 @@ describe("toLexicalLine", () => {
   it("does not recognise a DLTX operation prefix on a header", () => {
     // A header is anchored at line start, so `!`, `@` and `!!` push the bracket off the anchor and the
     // whole line falls through to plain. Left as it is on purpose: the structure record describes header
-    // lines outright and replaces these spans, so the regex is not the thing that has to be right here
-    // (`plans/configs-explorer.md` decision 4).
+    // lines outright and replaces these spans, so the regex is not the thing that has to be right here.
     expect(lex("![wpn_ak74]")).toEqual([{ token: ESyntaxToken.PLAIN, text: "![wpn_ak74]" }]);
     expect(lex("@[s]")).toEqual([{ token: ESyntaxToken.PLAIN, text: "@[s]" }]);
     expect(lex("!![s]")).toEqual([{ token: ESyntaxToken.PLAIN, text: "!![s]" }]);
