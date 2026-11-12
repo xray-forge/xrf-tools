@@ -162,6 +162,7 @@ impl BuildCommand {
             game_materials: &game_materials,
             textures: inputs.textures,
             lighting: inputs.lighting,
+            held: None,
           },
         )?;
         let (census, entities, refused) = (

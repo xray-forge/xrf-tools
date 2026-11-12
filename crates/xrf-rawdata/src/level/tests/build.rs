@@ -29,6 +29,7 @@ use crate::level::build::level_build_occluders::LevelBuildOccluders;
 use crate::level::build::level_build_portal::LevelBuildPortal;
 use crate::level::build::level_build_sectors::LevelBuildSectors;
 use crate::level::build::level_build_tables::LevelBuildTables;
+use crate::level::build::level_build_textures::LevelBuildTextures;
 use crate::level::level_breakable_conversion::LevelBreakableConversion;
 use crate::level::level_map_conversion::LevelMapConversion;
 use crate::level::level_occluder_conversion::LevelOccluderConversion;
@@ -576,7 +577,14 @@ fn builds_a_multi_use_model_once_and_references_it_per_placement() -> XrfResult 
   let mut built: LevelBuildModels = LevelBuildModels::default();
 
   for placed in [place("hall_shell", 10.0), place("tree_0001", 30.0)] {
-    built.add(&placed, &tree, &sectors(), &mut tables, &library, None)?;
+    built.add(
+      &placed,
+      &tree,
+      &sectors(),
+      &mut tables,
+      &library,
+      &LevelBuildTextures::default(),
+    )?;
   }
 
   let LevelBuildModels { models, references, .. } = built;

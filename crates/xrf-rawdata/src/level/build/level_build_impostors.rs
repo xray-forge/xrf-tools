@@ -1,16 +1,13 @@
-use std::path::{Path, PathBuf};
-
-use xrf_dds::{DdsFile, RgbaImage};
+use xrf_dds::RgbaImage;
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{BuildPrjLod, BuildPrjLodFace};
 use xrf_math::{Aabb, Vector2d};
-use xrf_utils::format_path;
 
 use crate::level::build::level_build_atlas::LevelBuildAtlas;
 use crate::level::build::level_build_tables::LevelBuildTables;
+use crate::level::build::level_build_textures::LevelBuildTextures;
 use crate::level::level_lod_strip::LevelLodStrip;
-use crate::level::scene::level_scene_decompile::LevelSceneTextureFile;
 
 /// The impostors a build draws its multi-use models as from afar (`SceneBuilder::BuildObjectLOD`,
 /// `BuilderLODs.cpp:54`): for each model flagged `eoUsingLOD`, eight quads standing through its box in its own space,
@@ -49,7 +46,7 @@ impl LevelBuildImpostors {
     object: &EditableObjectFile,
     sector: u16,
     tables: &mut LevelBuildTables,
-    textures: &Path,
+    textures: &LevelBuildTextures<'_>,
   ) -> XrfResult<u16> {
     let material: u16 = tables.get_material(Self::SHADER, None, Self::TEXTURE, sector)?;
     let bounds: Aabb = object
@@ -131,16 +128,8 @@ impl LevelBuildImpostors {
   }
 
   /// The strip `name` under `textures`, a `.dds` of eight frames side by side, where the decompile writes it.
-  fn read_strip(textures: &Path, name: &str) -> XrfResult<RgbaImage> {
-    let path: PathBuf = LevelSceneTextureFile::get_named_path(textures, name);
-    let image: RgbaImage = DdsFile::read_from_path(&path)
-      .and_then(|file| file.decode_rgba(0))
-      .map_err(|error| {
-        XrfError::new_read_error(format!(
-          "Impostor strip '{name}' was not read from {}: {error}",
-          format_path(&path)
-        ))
-      })?;
+  fn read_strip(textures: &LevelBuildTextures<'_>, name: &str) -> XrfResult<RgbaImage> {
+    let image: RgbaImage = textures.read("Impostor strip", name)?;
 
     if image.dimensions() != (LevelLodStrip::WIDTH, LevelLodStrip::HEIGHT) {
       return Err(XrfError::new_invalid_error(format!(

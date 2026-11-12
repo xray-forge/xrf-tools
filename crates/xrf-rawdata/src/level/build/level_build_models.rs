@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use xrf_editable_level::EditableSceneObject;
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::{XrfError, XrfResult};
@@ -10,6 +8,7 @@ use crate::level::build::level_build_geometry::LevelBuildGeometry;
 use crate::level::build::level_build_impostors::LevelBuildImpostors;
 use crate::level::build::level_build_sectors::LevelBuildSectors;
 use crate::level::build::level_build_tables::LevelBuildTables;
+use crate::level::build::level_build_textures::LevelBuildTextures;
 
 /// A build's multi-use objects (`SceneBuilder::BuildMUObject`, `BuilderRemote.cpp:837`): each object's model, built
 /// once in its own space, its impostor where it has one, and a reference per placement.
@@ -36,7 +35,7 @@ impl LevelBuildModels {
     sectors: &LevelBuildSectors,
     tables: &mut LevelBuildTables,
     game_materials: &GameMtlFile,
-    textures: Option<&Path>,
+    textures: &LevelBuildTextures<'_>,
   ) -> XrfResult {
     let sector: u16 = LevelBuildGeometry::get_model_sector(placed, object, sectors);
     let model: usize = match self.models.iter().position(|model| model.name == placed.reference) {
@@ -45,13 +44,13 @@ impl LevelBuildModels {
         let lod: u16 = if object.flags & EditableObjectFile::USING_LOD_FLAG == 0 {
           u16::MAX
         } else {
-          let textures: &Path = textures.ok_or_else(|| {
-            XrfError::new_invalid_error(format!(
+          if !textures.is_available() {
+            return Err(XrfError::new_invalid_error(format!(
               "Multi-use object '{}' has an impostor, whose strips the Build merges into an atlas; name the textures \
                root",
               placed.reference
-            ))
-          })?;
+            )));
+          }
 
           self
             .impostors

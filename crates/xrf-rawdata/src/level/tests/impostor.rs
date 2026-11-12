@@ -14,10 +14,12 @@ use crate::level::build::level_build_impostors::LevelBuildImpostors;
 use crate::level::build::level_build_models::LevelBuildModels;
 use crate::level::build::level_build_sectors::LevelBuildSectors;
 use crate::level::build::level_build_tables::LevelBuildTables;
+use crate::level::build::level_build_textures::LevelBuildTextures;
 use crate::level::level_lod_strip::LevelLodStrip;
 use crate::level::level_tree_conversion::LevelTreeConversion;
 use crate::level::level_tree_impostor::{LevelTreeImpostor, LevelTreeImpostorAtlas};
 use crate::level::level_visual_geometry::LevelVisualGeometry;
+use crate::level::scene::level_scene_decompile::LevelSceneTextureFile;
 use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
 
@@ -227,16 +229,17 @@ fn builds_an_impostor_from_the_strips_the_decompile_writes() -> XrfResult {
 
   let textures: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "impostor_build"))?;
 
-  for texture in (LevelTreeImpostor {
+  let strips: [LevelSceneTextureFile; 2] = LevelTreeImpostor {
     color: strip(5),
     normal: strip(6),
-  })
-  .into_textures(reference)?
-  {
+  }
+  .into_textures(reference)?;
+
+  for texture in &strips {
     let path: PathBuf = texture.get_path(&textures);
 
     std::fs::create_dir_all(path.parent().expect("a folder"))?;
-    std::fs::write(path, texture.bytes)?;
+    std::fs::write(path, &texture.bytes)?;
   }
 
   let placed = xrf_editable_level::EditableSceneObject {
@@ -253,14 +256,42 @@ fn builds_an_impostor_from_the_strips_the_decompile_writes() -> XrfResult {
 
   assert!(
     models
-      .add(&placed, &object, &sectors, &mut tables, &library, None)
+      .add(
+        &placed,
+        &object,
+        &sectors,
+        &mut tables,
+        &library,
+        &LevelBuildTextures::default()
+      )
       .is_err(),
     "an impostor needs the textures root"
   );
 
-  models.add(&placed, &object, &sectors, &mut tables, &library, Some(&textures))?;
+  models.add(
+    &placed,
+    &object,
+    &sectors,
+    &mut tables,
+    &library,
+    &LevelBuildTextures::new(Some(&textures), &[]),
+  )?;
 
   assert_eq!(models.models[0].lod, 0);
+
+  // The decompile's strips held in memory build the same impostor as written under the root.
+  let mut held: LevelBuildModels = LevelBuildModels::default();
+
+  held.add(
+    &placed,
+    &object,
+    &sectors,
+    &mut LevelBuildTables::default(),
+    &library,
+    &LevelBuildTextures::new(None, &strips),
+  )?;
+
+  assert_eq!(held.models, models.models);
 
   let records = tables.into_records()?;
   let first: &BuildPrjMaterial = &records.materials[0];
