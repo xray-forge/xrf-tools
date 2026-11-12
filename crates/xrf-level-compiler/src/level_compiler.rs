@@ -7,6 +7,7 @@ use xrf_job::{JobHandle, JobScope};
 use xrf_level::BuildPrjFile;
 use xrf_utils::format_path;
 
+use crate::compiler_textures::CompilerTextures;
 use crate::level_compile_report::{LevelCompileReport, LevelCompileStepReport};
 use crate::level_compile_request::LevelCompileRequest;
 use crate::level_compile_step::LevelCompileStep;
@@ -22,9 +23,6 @@ pub struct LevelCompiler;
 impl LevelCompiler {
   /// What a job reports a compile under: its steps, each named as its detail until the compiler's log says more.
   pub const PROGRESS_STEPS: &'static str = "steps";
-
-  /// The texture xrLC takes without loading it, the merged impostors' atlas (`xrLC/Build_Load.cpp:304`).
-  const UNLOADED_TEXTURE: &'static str = "level_lods";
 
   /// Runs the request's steps on its level.
   ///
@@ -125,12 +123,12 @@ impl LevelCompiler {
     }
 
     let project: BuildPrjFile = BuildPrjFile::read_from_path::<XRayByteOrder, _>(&request.level.join("build.prj"))?;
-    let missing: Vec<&str> = project
+    let missing: Vec<String> = project
       .textures
       .iter()
-      .map(|texture| texture.name.value.as_str())
-      .filter(|name| !name.eq_ignore_ascii_case(Self::UNLOADED_TEXTURE))
-      .filter(|name| !Self::get_texture_path(&request.textures, name, "thm").is_file())
+      .map(|texture| CompilerTextures::get_name(&texture.name.value))
+      .filter(|name| name != CompilerTextures::UNLOADED)
+      .filter(|name| !CompilerTextures::get_path(&request.textures, name, "thm").is_file())
       .collect();
 
     match missing.as_slice() {
@@ -141,13 +139,5 @@ impl LevelCompiler {
         format_path(&request.textures)
       ))),
     }
-  }
-
-  /// A texture's file under the textures root, `<root>\<name>.<extension>`.
-  fn get_texture_path(textures: &Path, name: &str, extension: &str) -> PathBuf {
-    name
-      .split(['\\', '/'])
-      .fold(textures.to_path_buf(), |path, part| path.join(part))
-      .with_extension(extension)
   }
 }

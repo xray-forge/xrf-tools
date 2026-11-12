@@ -46,6 +46,11 @@ A successful metadata read does not validate the texture.
   of copying them.
 - **Decode:** `decode_rgba` for one mip level, `to_png` for a PNG of the base level. `get_data` is the payload as
   stored, each layer's chain largest level first.
+- **Decode alpha as the SDK's compilers read it:** `decode_sdk_alpha` gives the base level's alpha as FreeImage 3.9,
+  their image library, decodes it. A DXT5 block's interpolated alpha rounds to nearest where `decode_rgba` rounds down,
+  one step apart on up to a fifth of a texture's texels. A 16-bit or 24-bit packing reads opaque. A DX10 header, an
+  alpha-only or luminance layout, a level with no texels, and a block-compressed level that is not whole blocks are
+  refused.
 - **Write:** `write_to_path` or `write_to_bytes`.
 - **Encode:** build a `DdsMipChain`, then call `DdsEncoding::encode`, or `encode_cube` with six square chains
   (`+x -x +y -y +z -z`).

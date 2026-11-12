@@ -4,13 +4,14 @@ use std::path::Path;
 
 use ddsfile::{Dds, DxgiFormat};
 use image::codecs::png::PngEncoder;
-use image::{ExtendedColorType, ImageEncoder, RgbaImage};
+use image::{ExtendedColorType, GrayImage, ImageEncoder, RgbaImage};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{StagedFile, format_path};
 
 use crate::file::dds_block_decoder::DdsBlockDecoder;
 use crate::file::dds_metadata::DdsMetadata;
 use crate::file::dds_png::DdsPng;
+use crate::file::dds_sdk_alpha_decoder::DdsSdkAlphaDecoder;
 use crate::file::dds_uncompressed_decoder::DdsUncompressedDecoder;
 use crate::renderer::dds_format_support::DdsFormatSupport;
 use crate::renderer::dds_renderer::DdsRenderer;
@@ -188,6 +189,18 @@ impl DdsFile {
         ))
       }),
     }
+  }
+
+  /// The base level's alpha as the X-Ray SDK's compilers read it through their image library, FreeImage 3.9: one byte a
+  /// texel, top row first. It differs from [`Self::decode_rgba`]'s alpha where FreeImage does: a DXT5 block's
+  /// interpolated alpha rounds to nearest, and a 16-bit or 24-bit packing reads opaque.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for a layout FreeImage 3.9 does not load (a DX10 header, alpha-only, luminance), a level with no
+  /// texels, a block-compressed level whose sides are not whole blocks, or a payload shorter than the level.
+  pub fn decode_sdk_alpha(&self) -> XrfResult<GrayImage> {
+    DdsSdkAlphaDecoder::decode(&self.dds)
   }
 
   /// The base level as a PNG, decoded as [`Self::decode_rgba`] decodes it.
