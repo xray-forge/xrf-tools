@@ -86,8 +86,9 @@ Each volume records where it unpacks to:
 
 ### Understand size totals
 
-`project.get_real_size()` sums unpacked sizes in the merged table, and `get_compressed_size()` sums their stored sizes.
-The same methods on an `ArchiveDescriptor` report that volume's totals before merging across volumes.
+`project.get_real_size()` sums unpacked sizes in the merged table, and `sum_compressed_size()` sums their stored sizes.
+`get_real_size()` and `get_compressed_size()` on an `ArchiveDescriptor` report that volume's totals before merging
+across volumes.
 
 These are sums per entry. They exclude archive headers and tables, and shared payloads can be counted more than once.
 They therefore do not report the physical size of the archive files or the number of distinct stored bytes.

@@ -162,7 +162,7 @@ impl ArchiveProject {
   }
 
   /// Bytes the merged name table's entries occupy as stored.
-  pub fn get_compressed_size(&self) -> u64 {
+  pub fn sum_compressed_size(&self) -> u64 {
     self.files.values().map(|file| u64::from(file.size_compressed)).sum()
   }
 

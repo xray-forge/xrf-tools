@@ -33,7 +33,7 @@ impl ArchiveUnpackDryReport {
       directories: project.count_directories(),
       files: project.count_files(),
       is_dry_run: true,
-      size_compressed: project.get_compressed_size(),
+      size_compressed: project.sum_compressed_size(),
       size_real: project.get_real_size(),
       source: String::from(source),
     }
