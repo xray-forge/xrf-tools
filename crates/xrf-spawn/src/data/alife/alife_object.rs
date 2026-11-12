@@ -13,6 +13,7 @@ use xrf_utils::{assert_equal, assert_not_equal, narrow_format_size};
 use crate::constants::NET_ACTION_UPDATE;
 use crate::data::alife::alife_built_fields::AlifeBuiltFields;
 use crate::data::alife::alife_object_inherited::AlifeObjectInherited;
+use crate::data::alife::spawn_layout::SpawnLayout;
 use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 use crate::data::alife::zeroed_update_fields::ZeroedUpdateFields;
 use crate::data::meta::alife_class::AlifeClass;
@@ -141,8 +142,9 @@ impl AlifeObject {
 
     assert_not_equal(&class, &AlifeClass::Unknown, "Expect known ALife object clsid")?;
 
+    let layout: SpawnLayout = SpawnLayout::from(&header);
     let inherited: AlifeObjectInherited = header.read_state::<T, _, _>(spawn, |spawn| {
-      AlifeObjectInherited::read::<T, _, _>(spawn, update, &class)
+      AlifeObjectInherited::read::<T, _, _>(spawn, update, &class, layout)
     })?;
 
     Ok(Self {
@@ -160,7 +162,11 @@ impl AlifeObject {
   ) -> XrfResult {
     self.assert_class_matches_section()?;
     spawn.write_xr::<T, _>(&self.header)?;
-    SpawnPacketHeader::write_state::<T, _>(spawn, |spawn| self.inherited.write::<T, _, _>(spawn, update))
+    SpawnPacketHeader::write_state::<T, _>(spawn, |spawn| {
+      self
+        .inherited
+        .write::<T, _, _>(spawn, update, SpawnLayout::from(&self.header))
+    })
   }
 }
 
@@ -233,8 +239,12 @@ impl LtxImportExport for AlifeObject {
   fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
     let header: SpawnPacketHeader = SpawnPacketHeader::import(section_name, ltx)?;
     let clsid: ClsId = ClsId::from_section(&header.section)?;
-    let inherited: AlifeObjectInherited =
-      AlifeObjectInherited::import(section_name, ltx, &AlifeClass::from_cls_id(&clsid))?;
+    let inherited: AlifeObjectInherited = AlifeObjectInherited::import(
+      section_name,
+      ltx,
+      &AlifeClass::from_cls_id(&clsid),
+      SpawnLayout::from(&header),
+    )?;
 
     Ok(Self {
       header,
@@ -246,7 +256,9 @@ impl LtxImportExport for AlifeObject {
   /// Export ALife object data into ltx file.
   fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     self.header.export(section_name, ltx)?;
-    self.inherited.export(section_name, ltx)
+    self
+      .inherited
+      .export(section_name, ltx, SpawnLayout::from(&self.header))
   }
 }
 
@@ -284,10 +296,12 @@ mod tests {
   use crate::data::alife::inherited::alife_object_stationary_mgun::AlifeObjectStationaryMgun;
   use crate::data::alife::inherited::alife_squad::AlifeSquad;
   use crate::data::alife::inherited::alife_stalker::AlifeStalker;
+  use crate::data::alife::spawn_layout::SpawnLayout;
   use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
   use crate::data::meta::cls_id::ClsId;
   use crate::data::physics::physics_net_state::PhysicsNetState;
   use crate::data::physics::raw_float::RawFloat;
+  use crate::fixtures::{ClearSkyStates, GameWrittenPackets};
 
   /// A whole spawn packet header naming a section no class reads.
   fn new_unknown_section_header() -> SpawnPacketHeader {
@@ -921,9 +935,11 @@ mod tests {
 
     let mut inherited_writer: ChunkWriter = ChunkWriter::new();
 
-    original
-      .inherited
-      .write::<XRayByteOrder, _, _>(&mut inherited_writer, &mut ChunkWriter::new())?;
+    original.inherited.write::<XRayByteOrder, _, _>(
+      &mut inherited_writer,
+      &mut ChunkWriter::new(),
+      SpawnLayout::from(&original.header),
+    )?;
 
     let inherited_length: usize = inherited_writer.bytes_written();
 
@@ -998,6 +1014,101 @@ mod tests {
       .to_string();
 
     assert!(error.contains("of section 'medkit' (SFood, CseAlifeItem)"), "{error}");
+  }
+
+  /// A spawn packet of Clear Sky's layout: a header at spawn version 124 and script version 8, then `state` as stored.
+  fn new_clear_sky_packet(section: &str, name: &str, state: &str) -> XrfResult<Vec<u8>> {
+    let mut header: SpawnPacketHeader = new_graph_point_object().header;
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    header.section = String::from(section);
+    header.name = String::from(name);
+    header.version = 124;
+    header.game_type = u16::MAX;
+    header.script_version = 8;
+    header.write::<XRayByteOrder>(&mut writer)?;
+    writer.write_all(&GameWrittenPackets::bytes(state))?;
+
+    Ok(writer.buffer)
+  }
+
+  /// The object a spawn packet holds, after checking it writes back byte for byte and survives its LTX text with
+  /// `absent_keys` left out.
+  fn read_clear_sky_packet(packet: &[u8], absent_keys: &[&str]) -> XrfResult<AlifeObject> {
+    let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(packet)?;
+    let object: AlifeObject = AlifeObject::read_spawn_packet::<XRayByteOrder, _>(&mut reader)?;
+    let mut writer: ChunkWriter = ChunkWriter::new();
+    let mut ltx: Ltx = Ltx::new();
+
+    assert!(reader.is_ended());
+    object.write_spawn_packet::<XRayByteOrder, _>(&mut writer)?;
+    assert_eq!(writer.buffer, packet);
+    object.export("object", &mut ltx)?;
+
+    for key in absent_keys {
+      assert_eq!(ltx.get_from("object", key), None, "{key}");
+    }
+
+    assert_eq!(AlifeObject::import("object", &ltx)?, object);
+
+    Ok(object)
+  }
+
+  /// Clear Sky's smart cover stores neither `can_fire` nor `se_smart_cover`'s fields: the engine copies the combat
+  /// cover flag into `can_fire`, and the script holds its constructor's empty description and loopholes.
+  #[test]
+  fn reads_and_writes_a_clear_sky_smart_cover() -> XrfResult {
+    assert_eq!(GameWrittenPackets::bytes(ClearSkyStates::SMART_COVER).len(), 77);
+
+    let packet: Vec<u8> = new_clear_sky_packet("smart_cover", "agr_smart_cover", ClearSkyStates::SMART_COVER)?;
+    let object: AlifeObject = read_clear_sky_packet(&packet, &["can_fire", "last_description", "loopholes"])?;
+    let AlifeObjectInherited::SeSmartCover(cover) = &object.inherited else {
+      panic!("Expected a smart cover payload, read {:?}", object.inherited);
+    };
+
+    assert_eq!(cover.base.description, "cover_loophole_2");
+    assert_eq!(
+      (cover.base.enter_min_enemy_distance, cover.base.exit_min_enemy_distance),
+      (15.0, 10.0)
+    );
+    assert_eq!((cover.base.is_combat_cover, cover.base.can_fire), (1, 1));
+    assert_eq!((cover.last_description.as_str(), cover.loopholes.len()), ("", 0));
+
+    Ok(())
+  }
+
+  /// Clear Sky's inventory box stores no access fields or tip, which hold `CSE_ALifeInventoryBox`'s constructor values.
+  #[test]
+  fn reads_and_writes_a_clear_sky_inventory_box() -> XrfResult {
+    assert_eq!(GameWrittenPackets::bytes(ClearSkyStates::INVENTORY_BOX).len(), 77);
+
+    let packet: Vec<u8> = new_clear_sky_packet(
+      "inventory_box",
+      "agr_smart_terrain_1_2_box",
+      ClearSkyStates::INVENTORY_BOX,
+    )?;
+    let object: AlifeObject = read_clear_sky_packet(
+      &packet,
+      &["inventory_box.can_take", "inventory_box.is_closed", "inventory_box.tip"],
+    )?;
+    let AlifeObjectInherited::CseAlifeInventoryBox(inventory_box) = &object.inherited else {
+      panic!("Expected an inventory box payload, read {:?}", object.inherited);
+    };
+
+    assert_eq!(
+      inventory_box.base.visual_name,
+      "dynamics\\equipment_cache\\equipment_box_02_case"
+    );
+    assert_eq!(
+      (
+        inventory_box.can_take,
+        inventory_box.is_closed,
+        inventory_box.tip.as_str()
+      ),
+      (1, 0, "inventory_box_use")
+    );
+
+    Ok(())
   }
 
   /// A class whose update packet is empty reads none of it, so bytes there would be dropped by a rewrite.
