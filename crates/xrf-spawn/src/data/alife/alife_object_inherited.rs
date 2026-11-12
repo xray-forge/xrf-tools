@@ -9,6 +9,7 @@ use xrf_math::Vector3d;
 
 use crate::data::alife::alife_built_fields::{AlifeBuiltDestination, AlifeBuiltFields};
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
+use crate::data::alife::alife_state_read_write::AlifeStateReadWrite;
 use crate::data::alife::inherited::alife_actor::AlifeActor;
 use crate::data::alife::inherited::alife_anomalous_zone::AlifeAnomalousZone;
 use crate::data::alife::inherited::alife_graph_point::AlifeGraphPoint;
@@ -50,6 +51,7 @@ use crate::data::alife::inherited::alife_squad::AlifeSquad;
 use crate::data::alife::inherited::alife_stalker::AlifeStalker;
 use crate::data::alife::inherited::alife_team_base_zone::AlifeTeamBaseZone;
 use crate::data::alife::inherited::alife_zone_visual::AlifeZoneVisual;
+use crate::data::alife::spawn_layout::SpawnLayout;
 use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 use crate::data::generic::shape::Shape;
 use crate::data::meta::alife_class::AlifeClass;
@@ -105,12 +107,14 @@ pub enum AlifeObjectInherited {
 }
 
 impl AlifeObjectInherited {
-  /// Read the payload of `alife_class` from both packets: each class's `STATE_Read` from the spawn packet, script
-  /// fields included, and its `UPDATE_Read` from the update packet, which a class without update fields leaves empty.
-  pub fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+  /// Read the payload of `alife_class` from both packets, laid out as `layout`: each class's `STATE_Read` from the
+  /// spawn packet, script fields included, and its `UPDATE_Read` from the update packet, which a class without update
+  /// fields leaves empty.
+  pub(crate) fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
     spawn: &mut S,
     update: &mut U,
     alife_class: &AlifeClass,
+    layout: SpawnLayout,
   ) -> XrfResult<Self> {
     Ok(match alife_class {
       AlifeClass::SeActor => Self::SeActor(Box::new(AlifeActor::read::<T, _, _>(spawn, update)?)),
@@ -120,7 +124,7 @@ impl AlifeObjectInherited {
       AlifeClass::CseAlifeObjectClimable => Self::CseAlifeObjectClimable(Box::new(spawn.read_xr::<T, _>()?)),
       AlifeClass::CseAlifeGraphPoint => Self::CseAlifeGraphPoint(Box::new(spawn.read_xr::<T, _>()?)),
       AlifeClass::CseAlifeSpaceRestrictor => Self::CseAlifeSpaceRestrictor(Box::new(spawn.read_xr::<T, _>()?)),
-      AlifeClass::SeSmartCover => Self::SeSmartCover(Box::new(spawn.read_xr::<T, _>()?)),
+      AlifeClass::SeSmartCover => Self::SeSmartCover(Box::new(AlifeSmartCover::read_state::<T, _>(spawn, layout)?)),
       AlifeClass::CseAlifeAnomalousZone => Self::CseAlifeAnomalousZone(Box::new(spawn.read_xr::<T, _>()?)),
       AlifeClass::CseAlifeTorridZone => Self::CseAlifeTorridZone(Box::new(spawn.read_xr::<T, _>()?)),
       AlifeClass::SeSmartTerrain => Self::SeSmartTerrain(Box::new(spawn.read_xr::<T, _>()?)),
@@ -133,7 +137,9 @@ impl AlifeObjectInherited {
         Self::CseAlifeObjectPhysic(Box::new(AlifeObjectPhysic::read::<T, _, _>(spawn, update)?))
       }
       AlifeClass::CseAlifeHelicopter => Self::CseAlifeHelicopter(Box::new(spawn.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeInventoryBox => Self::CseAlifeInventoryBox(Box::new(spawn.read_xr::<T, _>()?)),
+      AlifeClass::CseAlifeInventoryBox => {
+        Self::CseAlifeInventoryBox(Box::new(AlifeObjectInventoryBox::read_state::<T, _>(spawn, layout)?))
+      }
       AlifeClass::CseAlifeObjectHangingLamp => Self::CseAlifeObjectHangingLamp(Box::new(spawn.read_xr::<T, _>()?)),
       AlifeClass::CseAlifeItem => Self::CseAlifeItem(Box::new(AlifeObjectItem::read::<T, _, _>(spawn, update)?)),
       AlifeClass::CseAlifeItemExplosive => {
@@ -610,11 +616,12 @@ impl AlifeObjectInherited {
     }
   }
 
-  /// Write the payload's spawn fields into `spawn` and its update fields into `update`.
-  pub fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+  /// Write the payload's spawn fields into `spawn` and its update fields into `update`, laid out as `layout`.
+  pub(crate) fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
     &self,
     spawn: &mut S,
     update: &mut U,
+    layout: SpawnLayout,
   ) -> XrfResult {
     match self {
       Self::SeActor(object) => object.write::<T, _, _>(spawn, update)?,
@@ -624,7 +631,7 @@ impl AlifeObjectInherited {
       Self::CseAlifeObjectClimable(object) => spawn.write_xr::<T, _>(object.deref())?,
       Self::CseAlifeGraphPoint(object) => spawn.write_xr::<T, _>(object.deref())?,
       Self::CseAlifeSpaceRestrictor(object) => spawn.write_xr::<T, _>(object.deref())?,
-      Self::SeSmartCover(object) => spawn.write_xr::<T, _>(object.deref())?,
+      Self::SeSmartCover(object) => object.write_state::<T, _>(spawn, layout)?,
       Self::CseAlifeAnomalousZone(object) => spawn.write_xr::<T, _>(object.deref())?,
       Self::CseAlifeTorridZone(object) => spawn.write_xr::<T, _>(object.deref())?,
       Self::SeSmartTerrain(object) => spawn.write_xr::<T, _>(object.deref())?,
@@ -635,7 +642,7 @@ impl AlifeObjectInherited {
       Self::CseAlifeTrader(object) => spawn.write_xr::<T, _>(object.deref())?,
       Self::CseAlifeObjectPhysic(object) => object.write::<T, _, _>(spawn, update)?,
       Self::CseAlifeHelicopter(object) => spawn.write_xr::<T, _>(object.deref())?,
-      Self::CseAlifeInventoryBox(object) => spawn.write_xr::<T, _>(object.deref())?,
+      Self::CseAlifeInventoryBox(object) => object.write_state::<T, _>(spawn, layout)?,
       Self::CseAlifeObjectHangingLamp(object) => spawn.write_xr::<T, _>(object.deref())?,
       Self::CseAlifeItem(object) => object.write::<T, _, _>(spawn, update)?,
       Self::CseAlifeItemExplosive(object) => object.write::<T, _, _>(spawn, update)?,
@@ -665,7 +672,13 @@ impl AlifeObjectInherited {
     Ok(())
   }
 
-  pub fn import<L: LtxRead>(section_name: &str, ltx: &L, alife_class: &AlifeClass) -> XrfResult<Self> {
+  /// Import the payload of `alife_class` from its LTX section, the keys `layout` carries.
+  pub(crate) fn import<L: LtxRead>(
+    section_name: &str,
+    ltx: &L,
+    alife_class: &AlifeClass,
+    layout: SpawnLayout,
+  ) -> XrfResult<Self> {
     Ok(match alife_class {
       AlifeClass::SeActor => Self::SeActor(Box::new(AlifeActor::import(section_name, ltx)?)),
       AlifeClass::SeStalker => Self::SeStalker(Box::new(AlifeStalker::import(section_name, ltx)?)),
@@ -680,7 +693,9 @@ impl AlifeObjectInherited {
       AlifeClass::CseAlifeSpaceRestrictor => {
         Self::CseAlifeSpaceRestrictor(Box::new(AlifeObjectSpaceRestrictor::import(section_name, ltx)?))
       }
-      AlifeClass::SeSmartCover => Self::SeSmartCover(Box::new(AlifeSmartCover::import(section_name, ltx)?)),
+      AlifeClass::SeSmartCover => {
+        Self::SeSmartCover(Box::new(AlifeSmartCover::import_state(section_name, ltx, layout)?))
+      }
       AlifeClass::CseAlifeAnomalousZone => {
         Self::CseAlifeAnomalousZone(Box::new(AlifeAnomalousZone::import(section_name, ltx)?))
       }
@@ -701,9 +716,11 @@ impl AlifeObjectInherited {
       AlifeClass::CseAlifeHelicopter => {
         Self::CseAlifeHelicopter(Box::new(AlifeObjectHelicopter::import(section_name, ltx)?))
       }
-      AlifeClass::CseAlifeInventoryBox => {
-        Self::CseAlifeInventoryBox(Box::new(AlifeObjectInventoryBox::import(section_name, ltx)?))
-      }
+      AlifeClass::CseAlifeInventoryBox => Self::CseAlifeInventoryBox(Box::new(AlifeObjectInventoryBox::import_state(
+        section_name,
+        ltx,
+        layout,
+      )?)),
       AlifeClass::CseAlifeObjectHangingLamp => {
         Self::CseAlifeObjectHangingLamp(Box::new(AlifeObjectHangingLamp::import(section_name, ltx)?))
       }
@@ -770,7 +787,8 @@ impl AlifeObjectInherited {
     })
   }
 
-  pub fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
+  /// Export the payload into its LTX section, the keys `layout` carries.
+  pub(crate) fn export(&self, section_name: &str, ltx: &mut impl LtxWrite, layout: SpawnLayout) -> XrfResult {
     match self {
       Self::SeActor(object) => object.export(section_name, ltx),
       Self::SeStalker(object) => object.export(section_name, ltx),
@@ -779,7 +797,7 @@ impl AlifeObjectInherited {
       Self::CseAlifeObjectClimable(object) => object.export(section_name, ltx),
       Self::CseAlifeGraphPoint(object) => object.export(section_name, ltx),
       Self::CseAlifeSpaceRestrictor(object) => object.export(section_name, ltx),
-      Self::SeSmartCover(object) => object.export(section_name, ltx),
+      Self::SeSmartCover(object) => object.export_state(section_name, ltx, layout),
       Self::CseAlifeAnomalousZone(object) => object.export(section_name, ltx),
       Self::CseAlifeTorridZone(object) => object.export(section_name, ltx),
       Self::SeSmartTerrain(object) => object.export(section_name, ltx),
@@ -790,7 +808,7 @@ impl AlifeObjectInherited {
       Self::CseAlifeTrader(object) => object.export(section_name, ltx),
       Self::CseAlifeObjectPhysic(object) => object.export(section_name, ltx),
       Self::CseAlifeHelicopter(object) => object.export(section_name, ltx),
-      Self::CseAlifeInventoryBox(object) => object.export(section_name, ltx),
+      Self::CseAlifeInventoryBox(object) => object.export_state(section_name, ltx, layout),
       Self::CseAlifeObjectHangingLamp(object) => object.export(section_name, ltx),
       Self::CseAlifeItem(object) => object.export(section_name, ltx),
       Self::CseAlifeItemExplosive(object) => object.export(section_name, ltx),
@@ -827,7 +845,14 @@ mod tests {
 
   use crate::constants::NET_ACTION_UPDATE;
   use crate::data::alife::alife_object_inherited::AlifeObjectInherited;
+  use crate::data::alife::spawn_layout::SpawnLayout;
   use crate::fixtures::GameWrittenPackets;
+
+  /// The layout of the packets an XRF game writes, Call of Pripyat's.
+  const LAYOUT: SpawnLayout = SpawnLayout {
+    version: 128,
+    script_version: 12,
+  };
 
   /// What the game writes for a new object of each class reads whole as that class and writes back byte for byte.
   #[test]
@@ -843,7 +868,7 @@ mod tests {
       update_reader.read_u16::<XRayByteOrder>()?;
 
       let object: AlifeObjectInherited =
-        AlifeObjectInherited::read::<XRayByteOrder, _, _>(&mut spawn_reader, &mut update_reader, class)?;
+        AlifeObjectInherited::read::<XRayByteOrder, _, _>(&mut spawn_reader, &mut update_reader, class, LAYOUT)?;
 
       spawn_reader.assert_read(&format!("Expect the game's {section} spawn packet to be read whole"))?;
       update_reader.assert_read(&format!("Expect the game's {section} update packet to be read whole"))?;
@@ -851,7 +876,7 @@ mod tests {
       let mut spawn_writer: ChunkWriter = ChunkWriter::new();
       let mut update_writer: ChunkWriter = ChunkWriter::new();
 
-      object.write::<XRayByteOrder, _, _>(&mut spawn_writer, &mut update_writer)?;
+      object.write::<XRayByteOrder, _, _>(&mut spawn_writer, &mut update_writer, LAYOUT)?;
 
       assert_eq!(&object.get_class(), class, "{section}");
       assert_eq!(

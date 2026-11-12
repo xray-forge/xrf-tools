@@ -7,6 +7,7 @@ use xrf_math::Vector3d;
 use xrf_utils::{decode_bytes_from_base64, encode_bytes_to_base64, narrow_format_size};
 
 use crate::constants::NET_ACTION_SPAWN;
+use crate::data::alife::spawn_layout::SpawnLayout;
 
 /// What every server entity's spawn packet opens with, `CSE_Abstract::Spawn_Write` (`xrServer_Object_Base.cpp:156`),
 /// up to the size it patches in once its class's own fields, the state, are written.
@@ -43,9 +44,24 @@ impl SpawnPacketHeader {
   /// `M_SPAWN_VERSION`: the packet stores its spawn version after the flags.
   pub const FLAG_SPAWN_VERSION: u16 = 1 << 5;
 
-  /// The highest spawn version refused: `CSE_Abstract::Spawn_Read` reads the game type only above it, and the packets
-  /// here are laid out as Call of Pripyat and the forks built on it write them, at 128.
-  pub const MAX_UNSUPPORTED_VERSION: u16 = 120;
+  /// Refuse a spawn version whose layout is not read ([`SpawnLayout::is_supported_version`]), naming Shadow of
+  /// Chernobyl's. The game type follows the version only above 120 (`CSE_Abstract::Spawn_Read`), so a refused version
+  /// must stop the read before the fields after it.
+  fn assert_supported_version(version: u16, name: &str, script_flags: u16) -> XrfResult {
+    if SpawnLayout::is_supported_version(version) {
+      return Ok(());
+    }
+
+    Err(XrfError::new_assertion_error(
+      if version == SpawnLayout::SHADOW_OF_CHERNOBYL_VERSION {
+        format!(
+          "Spawn packet '{name}' is of spawn version {version}, Shadow of Chernobyl's, whose layout is not supported"
+        )
+      } else {
+        format!("Unexpected version {version} of spawn packet '{name}', script flags {script_flags}")
+      },
+    ))
+  }
 
   /// Writes the class's own fields after the `u16` that `Spawn_Write` patches with their size, its own two bytes
   /// counted. The patch is a seek over the bytes alone (`NET_Packet::w_seek`), so fields keep the zero first written.
@@ -107,8 +123,8 @@ impl SpawnPacketHeader {
   }
 }
 
-/// As `CSE_Abstract::Spawn_Read` reads it, refusing another action than `M_SPAWN` and a version older than Call of
-/// Pripyat's layout.
+/// As `CSE_Abstract::Spawn_Read` reads it, refusing another action than `M_SPAWN` and a spawn version of neither
+/// Clear Sky's nor Call of Pripyat's layout.
 impl ChunkFieldReadWrite for SpawnPacketHeader {
   fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     let net_action: u16 = reader.read_u16::<T>()?;
@@ -136,11 +152,7 @@ impl ChunkFieldReadWrite for SpawnPacketHeader {
       reader.read_u16::<T>()?
     };
 
-    if version <= Self::MAX_UNSUPPORTED_VERSION {
-      return Err(XrfError::new_assertion_error(format!(
-        "Unexpected version {version} of spawn packet '{name}', script flags {script_flags}"
-      )));
-    }
+    Self::assert_supported_version(version, &name, script_flags)?;
 
     let game_type: u16 = reader.read_u16::<T>()?;
     let script_version: u16 = reader.read_u16::<T>()?;
@@ -203,11 +215,17 @@ impl LtxImportExport for SpawnPacketHeader {
       ))
     })?;
 
+    let name: String = section.read_field("name")?;
+    let script_flags: u16 = section.read_field("script_flags")?;
+    let version: u16 = section.read_field("version")?;
+
+    Self::assert_supported_version(version, &name, script_flags)?;
+
     Ok(Self {
       id: section.read_field("id")?,
       net_action: section.read_field("net_action")?,
       section: section.read_field("section")?,
-      name: section.read_field("name")?,
+      name,
       script_game_id: section.read_field("script_game_id")?,
       script_rp: section.read_field("script_rp")?,
       position: section.read_field("position")?,
@@ -215,8 +233,8 @@ impl LtxImportExport for SpawnPacketHeader {
       respawn_time: section.read_field("respawn_time")?,
       parent_id: section.read_field("parent_id")?,
       phantom_id: section.read_field("phantom_id")?,
-      script_flags: section.read_field("script_flags")?,
-      version: section.read_field("version")?,
+      script_flags,
+      version,
       game_type: section.read_field("game_type")?,
       script_version: section.read_field("script_version")?,
       client_data: decode_bytes_from_base64(&section.read_field::<String>("client_data")?)?,
@@ -246,5 +264,91 @@ impl LtxImportExport for SpawnPacketHeader {
       .set("spawn_id", self.spawn_id);
 
     Ok(())
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_error::XrfResult;
+  use xrf_ltx::{Ltx, LtxImportExport};
+  use xrf_math::Vector3d;
+
+  use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
+
+  fn new_header(version: u16) -> SpawnPacketHeader {
+    SpawnPacketHeader {
+      id: 7,
+      net_action: 1,
+      section: String::from("graph_point"),
+      name: String::from("test-graph-point"),
+      script_game_id: 0,
+      script_rp: 0,
+      position: Vector3d::new(1.0, 2.0, 3.0),
+      direction: Vector3d::new(0.0, 0.0, 0.0),
+      respawn_time: 0,
+      parent_id: u16::MAX,
+      phantom_id: u16::MAX,
+      script_flags: SpawnPacketHeader::FLAG_SPAWN_VERSION | 1,
+      version,
+      game_type: u16::MAX,
+      script_version: 8,
+      client_data: Vec::new(),
+      spawn_id: 3,
+    }
+  }
+
+  /// The header written at `version`, read back.
+  fn read_back(version: u16) -> XrfResult<SpawnPacketHeader> {
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    writer.write_xr::<XRayByteOrder, _>(&new_header(version))?;
+
+    ChunkReader::<InMemoryChunkDataSource>::from_bytes(&writer.buffer)?.read_xr::<XRayByteOrder, _>()
+  }
+
+  /// The header exported at `version`, imported back.
+  fn import_back(version: u16) -> XrfResult<SpawnPacketHeader> {
+    let mut ltx: Ltx = Ltx::new();
+
+    new_header(version).export("object", &mut ltx)?;
+
+    SpawnPacketHeader::import("object", &ltx)
+  }
+
+  #[test]
+  fn reads_clear_sky_and_call_of_pripyat_versions() -> XrfResult {
+    for version in [121, 122, 123, 124, 128] {
+      assert_eq!(read_back(version)?, new_header(version), "{version}");
+      assert_eq!(import_back(version)?, new_header(version), "{version}");
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn refuses_shadow_of_chernobyl_naming_it() {
+    let expected: &str = "Assertion error: Spawn packet 'test-graph-point' is of spawn version 118, Shadow of \
+                          Chernobyl's, whose layout is not supported";
+
+    assert_eq!(read_back(118).expect_err("version 118").to_string(), expected);
+    assert_eq!(import_back(118).expect_err("version 118").to_string(), expected);
+  }
+
+  #[test]
+  fn refuses_a_version_no_game_shipped() {
+    for version in [0, 120, 125, 127, 129] {
+      let expected: String =
+        format!("Assertion error: Unexpected version {version} of spawn packet 'test-graph-point', script flags 33");
+
+      assert_eq!(
+        read_back(version).expect_err("an unlisted version").to_string(),
+        expected
+      );
+      assert_eq!(
+        import_back(version).expect_err("an unlisted version").to_string(),
+        expected
+      );
+    }
   }
 }

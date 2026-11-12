@@ -180,3 +180,24 @@ impl GameWrittenPackets {
       .collect()
   }
 }
+
+/// Spawn packet states of Clear Sky's `agroprom` level list (`gamedata-cs/levels/agroprom/level.spawn`), spawn version
+/// 124 and script version 8, each with the `u16` size `Spawn_Write` patches in before its fields.
+pub(crate) struct ClearSkyStates;
+
+impl ClearSkyStates {
+  /// `agr_smart_cover`: 77 bytes ending at the combat cover flag, with no `can_fire` and no script fields.
+  pub(crate) const SMART_COVER: &'static str = concat!(
+    "4d00ffff0000000001000000ffffffffbfffffff00ffffffffffffffff",
+    "010000000000000000000000000000000040",
+    "636f7665725f6c6f6f70686f6c655f3200",
+    "00000000000070410000204101",
+  );
+
+  /// `agr_smart_terrain_1_2_box`: 77 bytes, the size, 27 of the abstract object and 48 of its visual, with no access
+  /// fields or tip.
+  pub(crate) const INVENTORY_BOX: &'static str = concat!(
+    "4d00ffff0000000001000000ffffffff3fffffff00ffffffffffffffff",
+    "64796e616d6963735c65717569706d656e745f63616368655c65717569706d656e745f626f785f30325f636173650000",
+  );
+}
