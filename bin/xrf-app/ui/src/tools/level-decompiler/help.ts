@@ -10,7 +10,9 @@ export const LEVEL_DECOMPILER_HELP: IToolHelp = {
     "Pick the compiled level's directory, `gamedata\\levels\\<level>`.",
     "Pick the scene file to write, `rawdata\\levels\\<level>.level`; its name is the level's.",
     "Leave the objects and textures roots empty to write beside the scene as the SDK lays rawdata out, or name them.",
-    "Add an object library, such as the SDK's `rawdata\\objects`, to dress surfaces and find detail models by it.",
+    "Add an object library, such as the SDK's `rawdata\\objects`: its objects found placed in the level and its trees found " +
+      "as tree models come back as references to it, copied beside the scene's objects; it also dresses surfaces and " +
+      "finds the detail models.",
     "`Decompile` reports what it wrote and lists what the scene could not hold, with why.",
   ],
   nuances: [

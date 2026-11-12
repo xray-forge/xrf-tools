@@ -13,6 +13,8 @@ enum LevelCollisionCover {
   Static,
   /// Only a tree's triangle lies on it: a trunk's collision, which comes back with the tree.
   Tree,
+  /// A collision-only triangle of a library object found placed lies on it, which comes back with the object.
+  Instance,
 }
 
 /// Where a render triangle lies on a level's collision form.
@@ -81,6 +83,12 @@ impl LevelCollisionIndex {
     self.find(points, LevelCollisionCover::Tree);
   }
 
+  /// Marks the collision face a placed library object's collision-only triangle of `points` lies on, where no static
+  /// triangle covers it already: it comes back with the object.
+  pub fn cover_instance(&mut self, points: &[Vector3d; 3]) {
+    self.find(points, LevelCollisionCover::Instance);
+  }
+
   /// Marks each face of `sector` no render triangle's centre found that lies under one of `triangles`, the sector's
   /// static render triangles, lying itself on a face of the same game material: a face xrLC kept whole where it split
   /// the render faces over it, so their centres land on its neighbours and miss it. Each is found as a render triangle
@@ -145,6 +153,11 @@ impl LevelCollisionIndex {
   /// How many collision faces only a tree's triangles lie on.
   pub fn count_tree_covered(&self) -> usize {
     self.covered(LevelCollisionCover::Tree).count()
+  }
+
+  /// How many faces only a placed library object's collision-only triangles lie on.
+  pub fn count_instance_covered(&self) -> usize {
+    self.covered(LevelCollisionCover::Instance).count()
   }
 
   /// How many faces the form holds.

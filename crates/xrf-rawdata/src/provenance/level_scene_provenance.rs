@@ -88,6 +88,12 @@ pub enum LevelSceneInference {
   /// of the game material of the fragments its faces follow, its compiler shader the editor's default. Its packet is no
   /// spawn point, since the Build exports it again, cut into new fragments at random.
   BreakableParts,
+  /// Library objects found placed in the static geometry come back as scene objects placing them by reference, at the
+  /// transform that best takes their rendered triangles onto the level's (one scale on every axis), their triangles
+  /// taken out of the shells; each object is copied from its library with its thumbnail beside the scene's objects, as
+  /// the sidecar's `geometry.instances` records. Where two library objects draw the same geometry, the larger,
+  /// then the one whose reference sorts first, stands for both.
+  LibraryInstances,
   /// Trees come back as multi-use objects, `<level>_tree_<N>`, one per set of subdivisions the compiled tree visuals
   /// draw, each in its own space and dressed as its first placement lies on the collision form, with a scene object per
   /// placement. A model's impostor strips are cut from the level's atlas where its first placement's `MT_LOD` names
@@ -113,7 +119,7 @@ pub enum LevelSceneInference {
 }
 
 /// The objects a scene's static geometry came back as, and what the decompile counted of it.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelSceneGeometry {
   /// Each object written, by its path under `$objects$` without the extension.
@@ -122,6 +128,62 @@ pub struct LevelSceneGeometry {
   /// How the surfaces were dressed, where they were inferred.
   #[serde(default)]
   pub surfaces: Option<LevelSceneSurfaces>,
+  /// The library objects found placed in the static geometry, where libraries were looked in.
+  #[serde(default)]
+  pub instances: Option<LevelSceneInstances>,
+}
+
+/// The library objects a decompile looked for in the static geometry, and what it found: each object copied, with the
+/// file it came from and the copy's hash, and each placement with how well it fits.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LevelSceneInstances {
+  /// The library roots looked in, and the objects there that did not read.
+  pub roots: Vec<String>,
+  pub unread_objects: usize,
+  pub objects: Vec<LevelSceneLibraryObject>,
+  pub placements: Vec<LevelSceneInstancePlacement>,
+  /// The tree models found to be library trees.
+  #[serde(default)]
+  pub trees: Vec<LevelSceneTreeMatch>,
+}
+
+/// A tree model a decompile found to be a library tree.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LevelSceneTreeMatch {
+  /// The model it stands for, by the reference the decompile would have given it, and the library tree.
+  pub model: String,
+  pub reference: String,
+  /// How much of the tree's rendered area the model holds, and how far its corners stood from the model's, metres.
+  pub coverage: f64,
+  pub error: f64,
+}
+
+/// One library object a decompile copied beside the scene's objects.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LevelSceneLibraryObject {
+  /// Its reference, the path it is copied to under `$objects$` without the extension.
+  pub reference: String,
+  /// The file it was copied from, and its SHA-256, lowercase hex.
+  pub source: String,
+  pub sha256: String,
+}
+
+/// One placement of a library object found in the static geometry.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LevelSceneInstancePlacement {
+  pub reference: String,
+  /// The scene object placing it.
+  pub object: String,
+  /// How much of its rendered area the level drew as its own triangles, from 0 to 1, and how far its placed corners
+  /// stood from the level's they were matched to, metres.
+  pub coverage: f64,
+  pub error: f64,
+  /// The level triangles the placement took out of the shells.
+  pub triangles: usize,
 }
 
 /// The surfaces of a scene's static geometry as inferred: from what, and every compiler shader chosen with
@@ -196,7 +258,7 @@ pub struct LevelSceneUpdatePacket {
 
 /// The sidecar written beside a decompiled scene, `<name>.level.xrf.json`: the compiled files it came
 /// from, what made it and when, every file it wrote and from what, and what in it was chosen rather than read.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelSceneProvenance {
   /// The level's name.

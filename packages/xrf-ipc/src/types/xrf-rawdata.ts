@@ -219,9 +219,18 @@ export type LevelGeometryCensus = {
   repeatedTriangles: number;
   /** Full-detail triangles of tree instances, every placement's counted; each model holds one placement's. */
   treeTriangles: number;
+  /** Tree models found to be library trees, which their placements reference instead. */
+  libraryTreeModels?: number;
   /** Multi-use models the trees come back as, and their placements. */
   treeModels?: number;
   treePlacements?: number;
+  /**
+   * Library objects found placed in the static geometry, the distinct objects they place, and the static triangles
+   * their placements took out of the shells, counted in the static triangles read.
+   */
+  instances?: number;
+  instanceObjects?: number;
+  instanceTriangles?: number;
   /** Impostors standing for trees afar, which the build makes again from the trees. */
   impostors: number;
   /** Tree models given their impostor strips back, cut from the level's atlas. */
@@ -239,6 +248,8 @@ export type LevelGeometryCensus = {
   collisionFaces: number;
   /** Collision faces only a tree's triangles lie on: trunks, which come back with their trees. */
   treeCollisionFaces: number;
+  /** Collision faces only a placed library object's collision-only triangles lie on, which come back with it. */
+  instanceCollisionFaces?: number;
   /** Collision faces no render triangle lies on, which the collision object holds. */
   collisionOnlyFaces: number;
   /** Polygons of `level.hom` and `level.som`, which `<level>_hom` and `<level>_som` hold. */
@@ -337,6 +348,14 @@ export enum ELevelSceneInference {
    * spawn point, since the Build exports it again, cut into new fragments at random.
    */
   BREAKABLE_PARTS = "breakableParts",
+  /**
+   * Library objects found placed in the static geometry come back as scene objects placing them by reference, at the
+   * transform that best takes their rendered triangles onto the level's (one scale on every axis), their triangles
+   * taken out of the shells; each object is copied from its library with its thumbnail beside the scene's objects, as
+   * the sidecar's `geometry.instances` records. Where two library objects draw the same geometry, the one whose
+   * reference sorts first stands for both.
+   */
+  LIBRARY_INSTANCES = "libraryInstances",
   /**
    * Trees come back as multi-use objects, `<level>_tree_<N>`, one per set of subdivisions the compiled tree visuals
    * draw, each in its own space and dressed as its first placement lies on the collision form, with a scene object per

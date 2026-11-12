@@ -1,4 +1,5 @@
 pub(crate) mod build;
+pub(crate) mod instance;
 pub(crate) mod level_ai_map_conversion;
 pub(crate) mod level_breakable_conversion;
 pub(crate) mod level_collision_index;

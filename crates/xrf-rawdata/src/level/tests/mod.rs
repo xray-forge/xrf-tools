@@ -8,6 +8,7 @@ mod fog_volume;
 mod geometry;
 mod glow;
 mod impostor;
+mod instance;
 mod ladder;
 mod light;
 mod map;

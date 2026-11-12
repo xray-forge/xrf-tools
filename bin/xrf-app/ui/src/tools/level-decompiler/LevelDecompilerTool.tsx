@@ -145,7 +145,9 @@ export function LevelDecompilerTool(): ReactElement {
 
       <StringListFormRow
         label={"Object libraries"}
-        description={"Roots such as an SDK's rawdata\\objects, which break ties between shaders and match details"}
+        description={
+          "Roots such as an SDK's rawdata\\objects, whose objects and trees found in the level are placed by reference"
+        }
         values={libraries}
         addLabel={"Add library"}
         emptyLabel={"No library: details are left out"}

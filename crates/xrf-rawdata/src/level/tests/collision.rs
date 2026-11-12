@@ -82,3 +82,32 @@ fn covers_a_collision_face_lying_under_a_render_triangle_no_centre_reaches() -> 
 
   Ok(())
 }
+
+/// A collision face only a placed library object's collision-only triangle lies on comes back with the object, so it
+/// leaves the uncovered faces and is counted apart; a face a render triangle covers stays covered by it.
+#[test]
+fn covers_a_collision_face_a_placed_object_brings_itself() -> XrfResult {
+  let render: [Vector3d; 3] = [
+    Vector3d::new(0.0, 0.0, 0.0),
+    Vector3d::new(0.0, 0.0, 1.0),
+    Vector3d::new(1.0, 0.0, 0.0),
+  ];
+  let fake: [Vector3d; 3] = [
+    Vector3d::new(5.0, 0.0, 5.0),
+    Vector3d::new(5.0, 0.0, 6.0),
+    Vector3d::new(6.0, 0.0, 5.0),
+  ];
+  let mut index: LevelCollisionIndex = LevelCollisionIndex::new(LevelCformGeometry::new(
+    [render, fake].concat(),
+    vec![face([0, 1, 2]), face([3, 4, 5])],
+  )?);
+
+  index.find_static(&render);
+  index.cover_instance(&render);
+  index.cover_instance(&fake);
+
+  assert_eq!(index.get_uncovered().count(), 0);
+  assert_eq!(index.count_instance_covered(), 1);
+
+  Ok(())
+}

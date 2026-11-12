@@ -17,6 +17,11 @@ use xrf_math::{Matrix4x4, Vector3d};
 use xrf_ogf::OgfFile;
 use xrf_spawn::LevelSpawnFile;
 
+use crate::level::instance::level_instance_library::LevelInstanceLibrary;
+use crate::level::instance::level_instance_placement::LevelInstancePlacement;
+use crate::level::instance::level_instance_recovery::LevelInstanceRecovery;
+use crate::level::instance::level_tree_match::LevelTreeMatch;
+use crate::level::instance::level_tree_naming::LevelTreeNaming;
 use crate::level::level_breakable_conversion::LevelBreakableConversion;
 use crate::level::level_collision_index::LevelCollisionIndex;
 use crate::level::level_decal_index::LevelDecalIndex;
@@ -67,6 +72,8 @@ pub struct LevelGeometrySources<'a, D: ChunkDataSource> {
   pub breakable_parts: &'a BTreeMap<String, OgfFile>,
   /// The trees' impostor atlas, `level_lods.dds` and its normals, which the tree models' strips are cut from.
   pub impostors: Option<&'a LevelTreeImpostorAtlas>,
+  /// The library objects looked for in the static geometry, each found placement placed by reference.
+  pub library: Option<&'a LevelInstanceLibrary>,
 }
 
 /// One object the decompile writes, by the path the scene references it at, and where its scene object stands.
@@ -101,11 +108,22 @@ pub struct LevelGeometryCensus {
   pub repeated_triangles: usize,
   /// Full-detail triangles of tree instances, every placement's counted; each model holds one placement's.
   pub tree_triangles: usize,
+  /// Tree models found to be library trees, which their placements reference instead.
+  #[serde(default)]
+  pub library_tree_models: usize,
   /// Multi-use models the trees come back as, and their placements.
   #[serde(default)]
   pub tree_models: usize,
   #[serde(default)]
   pub tree_placements: usize,
+  /// Library objects found placed in the static geometry, the distinct objects they place, and the static triangles
+  /// their placements took out of the shells, counted in the static triangles read.
+  #[serde(default)]
+  pub instances: usize,
+  #[serde(default)]
+  pub instance_objects: usize,
+  #[serde(default)]
+  pub instance_triangles: usize,
   /// Impostors standing for trees afar, which the build makes again from the trees.
   pub impostors: usize,
   /// Tree models given their impostor strips back, cut from the level's atlas.
@@ -123,6 +141,9 @@ pub struct LevelGeometryCensus {
   pub collision_faces: usize,
   /// Collision faces only a tree's triangles lie on: trunks, which come back with their trees.
   pub tree_collision_faces: usize,
+  /// Collision faces only a placed library object's collision-only triangles lie on, which come back with it.
+  #[serde(default)]
+  pub instance_collision_faces: usize,
   /// Collision faces no render triangle lies on, which the collision object holds.
   pub collision_only_faces: usize,
   /// Polygons of `level.hom` and `level.som`, which `<level>_hom` and `<level>_som` hold.
@@ -152,6 +173,10 @@ pub struct LevelGeometryDecompile {
   pub sectors: EditableObjectPart<EditableSectorObject>,
   pub portals: EditableObjectPart<EditablePortalObject>,
   pub census: LevelGeometryCensus,
+  /// The library objects placed by reference, which the scene needs beside it.
+  pub instances: Vec<LevelInstancePlacement>,
+  /// The library trees found standing for tree models, which the scene places by reference instead.
+  pub trees: Vec<LevelTreeMatch>,
   /// The tree models' impostor strips, which the Build loads for them.
   pub textures: Vec<LevelSceneTextureFile>,
   /// Each sector left out, and each impostor that did not cut, and why.
@@ -193,6 +218,8 @@ struct SectorGeometry {
   decal_triangles: usize,
   /// Static triangles dropped as needles.
   needle_triangles: usize,
+  /// Static triangles a library object's placement took.
+  instance_triangles: usize,
 }
 
 impl LevelGeometryConversion {
@@ -247,6 +274,8 @@ impl LevelGeometryConversion {
       sectors: EditableObjectPart::new(context.guid, Vec::new()),
       portals: EditableObjectPart::new(context.guid, Vec::new()),
       census: LevelGeometryCensus::default(),
+      instances: Vec::new(),
+      trees: Vec::new(),
       textures: Vec::new(),
       refused: Vec::new(),
       folded_entities: Vec::new(),
@@ -324,7 +353,7 @@ impl LevelGeometryConversion {
       .flat_map(|(visual, parent)| visual.children.iter().map(move |child| (*child, parent)))
       .collect();
     let mut trees: Vec<LevelTreeVisual> = Vec::new();
-    let shells: Vec<(SectorGeometry, Option<ObjectDecompile>)> = level
+    let mut reads: Vec<SectorGeometry> = level
       .get_sectors()
       .iter()
       .zip(0u16..)
@@ -373,6 +402,24 @@ impl LevelGeometryConversion {
           collision.cover_under_static(index, &triangles)?;
         }
 
+        Ok(read)
+      })
+      .collect::<XrfResult<_>>()?;
+
+    if let Some(library) = sources.library {
+      decompile.instances = Self::recover_instances(library, &mut reads, collision.as_deref_mut())?;
+      decompile.census.instances = decompile.instances.len();
+      decompile.census.instance_objects = decompile
+        .instances
+        .iter()
+        .map(|placement| placement.reference.as_str())
+        .collect::<std::collections::BTreeSet<&str>>()
+        .len();
+    }
+
+    let shells: Vec<(SectorGeometry, Option<ObjectDecompile>)> = reads
+      .into_iter()
+      .map(|read| {
         let decompile: Option<ObjectDecompile> = if read.geometry.is_empty() {
           None
         } else {
@@ -395,6 +442,11 @@ impl LevelGeometryConversion {
     let mut trees: LevelTreeDecompile =
       LevelTreeConversion::decompile(name, trees, surfaces, collision, impostors.as_ref(), context)?;
 
+    if let Some(library) = sources.library {
+      decompile.trees = LevelTreeNaming::name(library, &mut trees)?;
+      decompile.census.library_tree_models = decompile.trees.len();
+    }
+
     decompile.census.tree_impostors = trees.impostors.len();
     decompile.refused.append(&mut trees.refused);
 
@@ -402,21 +454,40 @@ impl LevelGeometryConversion {
       decompile.textures.extend(impostor.into_textures(&reference)?);
     }
 
-    // Each placement's scene object name and mesh, by its sector.
-    let mut tree_items: BTreeMap<u16, Vec<EditableSectorItem>> = BTreeMap::new();
-    let mut tree_objects: Vec<EditableSceneObject> = Vec::with_capacity(trees.placements.len());
+    // Each tree's and library object's placement: its scene object, and its meshes by the sector naming them.
+    let mut placed_items: BTreeMap<u16, Vec<EditableSectorItem>> = BTreeMap::new();
+    let mut placed_objects: Vec<EditableSceneObject> = Vec::with_capacity(trees.placements.len());
 
     for placement in &trees.placements {
       let object_name: String = context.names.get_next_after_file(&placement.reference);
 
-      tree_items
+      placed_items
         .entry(placement.sector)
         .or_default()
         .push(EditableSectorItem {
           object: object_name.clone(),
           mesh: placement.mesh.clone(),
         });
-      tree_objects.push(EditableSceneObject {
+      placed_objects.push(EditableSceneObject {
+        object: EditableCustomObject::new(object_name, placement.transform),
+        reference: placement.reference.clone(),
+        flags: 0,
+      });
+    }
+
+    for placement in &mut decompile.instances {
+      let object_name: String = context.names.get_next_after_file(&placement.reference);
+
+      placement.object.clone_from(&object_name);
+
+      placed_items
+        .entry(placement.sector)
+        .or_default()
+        .extend(placement.meshes.iter().map(|mesh| EditableSectorItem {
+          object: object_name.clone(),
+          mesh: mesh.clone(),
+        }));
+      placed_objects.push(EditableSceneObject {
         object: EditableCustomObject::new(object_name, placement.transform),
         reference: placement.reference.clone(),
         flags: 0,
@@ -430,25 +501,26 @@ impl LevelGeometryConversion {
       let sector_name: String = context.names.get_next(Self::SECTOR_PREFIX);
       let triangles: usize = read.geometry.iter().map(|it| it.indices.len() / 3).sum();
       let census: &mut LevelGeometryCensus = &mut decompile.census;
-      let placed_trees: Vec<EditableSectorItem> = u16::try_from(index)
+      let placed: Vec<EditableSectorItem> = u16::try_from(index)
         .ok()
-        .and_then(|number| tree_items.remove(&number))
+        .and_then(|number| placed_items.remove(&number))
         .unwrap_or_default();
 
-      census.static_triangles += triangles + read.decal_triangles + read.needle_triangles;
+      census.static_triangles += triangles + read.decal_triangles + read.needle_triangles + read.instance_triangles;
+      census.instance_triangles += read.instance_triangles;
       census.decal_triangles += read.decal_triangles;
       census.needle_triangles += read.needle_triangles;
       census.tree_triangles += read.tree_triangles;
       census.impostors += read.impostors;
 
-      // A sector of trees alone names their placements and no shell.
+      // A sector of trees or library objects alone names their placements and no shell.
       let Some(shell) = shell else {
-        if !placed_trees.is_empty() {
+        if !placed.is_empty() {
           decompile.sectors.objects.push(EditableSectorObject {
             object: EditableCustomObject::new(sector_name.clone(), EditableObjectTransform::default()),
             color: Self::SECTOR_COLOR,
             is_default: false,
-            items: placed_trees,
+            items: placed,
             map_index: EditableSectorObject::NO_MAP,
           });
           sector_names.push(sector_name);
@@ -484,7 +556,7 @@ impl LevelGeometryConversion {
           object: reference.clone(),
           mesh: Self::get_mesh(&shell.object).name.clone(),
         })
-        .chain(placed_trees)
+        .chain(placed)
         .collect(),
         map_index: EditableSectorObject::NO_MAP,
       });
@@ -502,9 +574,43 @@ impl LevelGeometryConversion {
 
     // The models are written once; each placement is a scene object of its own.
     decompile.objects.extend(trees.models);
-    decompile.scene_objects.objects.extend(tree_objects);
+    decompile.scene_objects.objects.extend(placed_objects);
 
     Ok(sector_names)
+  }
+
+  /// The placements of `library`'s objects found in the sectors' static geometry ([`LevelInstanceRecovery`]), each
+  /// one's triangles taken out of the sectors read and counted there.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a placement's fit is no transform the editor saves.
+  fn recover_instances(
+    library: &LevelInstanceLibrary,
+    reads: &mut [SectorGeometry],
+    collision: Option<&mut LevelCollisionIndex>,
+  ) -> XrfResult<Vec<LevelInstancePlacement>> {
+    let sectors: Vec<&[LevelVisualGeometry]> = reads.iter().map(|read| read.geometry.as_slice()).collect();
+    let recovery: LevelInstanceRecovery = LevelInstanceRecovery::find(library, &sectors, collision)?;
+
+    for (read, taken) in reads.iter_mut().zip(&recovery.taken) {
+      for (geometry, triangles) in read.geometry.iter_mut().zip(taken) {
+        geometry.indices = geometry
+          .indices
+          .as_chunks::<3>()
+          .0
+          .iter()
+          .zip(0u32..)
+          .filter(|(_, triangle)| triangles.binary_search(triangle).is_err())
+          .flat_map(|(corners, _)| *corners)
+          .collect();
+        read.instance_triangles += triangles.len();
+      }
+
+      read.geometry.retain(|visual| !visual.indices.is_empty());
+    }
+
+    Ok(recovery.placements)
   }
 
   /// A portal per compiled portal, joining the sectors `sector_names` names by compiled index.
@@ -564,6 +670,7 @@ impl LevelGeometryConversion {
       impostors: 0,
       decal_triangles: 0,
       needle_triangles: 0,
+      instance_triangles: 0,
     };
 
     if let Some(unknown) = composition.unknown.first() {
@@ -715,6 +822,7 @@ impl LevelGeometryConversion {
   ) -> XrfResult {
     decompile.census.collision_faces = collision.count_faces();
     decompile.census.tree_collision_faces = collision.count_tree_covered();
+    decompile.census.instance_collision_faces = collision.count_instance_covered();
     decompile.census.needle_triangles += collision
       .get_uncovered()
       .filter(|(_, face)| Self::is_needle(&collision.get_triangle(face)))

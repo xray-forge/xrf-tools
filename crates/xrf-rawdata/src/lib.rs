@@ -13,6 +13,9 @@ pub use crate::level::build::level_build_lighting::LevelBuildLighting;
 pub use crate::level::build::level_build_report::LevelBuildReport;
 pub use crate::level::build::level_build_request::LevelBuildRequest;
 pub use crate::level::build::level_build_sources::LevelBuildSources;
+pub use crate::level::instance::level_instance_library::LevelInstanceLibrary;
+pub use crate::level::instance::level_instance_placement::LevelInstancePlacement;
+pub use crate::level::instance::level_library_object::{LevelLibraryObject, LevelLibraryTriangle};
 pub use crate::level::level_breakable_conversion::LevelBreakableConversion;
 pub use crate::level::level_collision_index::{LevelCollisionIndex, LevelCollisionLookup};
 pub use crate::level::level_decal_index::LevelDecalIndex;
@@ -52,7 +55,7 @@ pub use crate::level::scene::level_decompile_report::{
 };
 pub use crate::level::scene::level_decompile_request::LevelDecompileRequest;
 pub use crate::level::scene::level_scene_decompile::{
-  LevelSceneDecompile, LevelSceneObjectFile, LevelSceneTextureFile,
+  LevelSceneDecompile, LevelSceneLibraryFile, LevelSceneObjectFile, LevelSceneTextureFile,
 };
 pub use crate::level::scene::level_scene_decompiler::LevelSceneDecompiler;
 pub use crate::object::compile::geometry::export_vertex::ExportVertex;
@@ -71,8 +74,8 @@ pub use crate::object::detail_parameters::DetailParameters;
 pub use crate::object::verify::object_verification::{ObjectGeometryCensus, ObjectVerification};
 pub use crate::object::verify::object_verifier::ObjectVerifier;
 pub use crate::provenance::level_scene_provenance::{
-  LevelSceneDisagreement, LevelSceneFile, LevelSceneGeometry, LevelSceneInference, LevelSceneProvenance,
-  LevelSceneRefusal, LevelSceneRootSpawn, LevelSceneSource, LevelSceneSurfaceLibraries, LevelSceneSurfaces,
-  LevelSceneUpdatePacket,
+  LevelSceneDisagreement, LevelSceneFile, LevelSceneGeometry, LevelSceneInference, LevelSceneInstancePlacement,
+  LevelSceneInstances, LevelSceneLibraryObject, LevelSceneProvenance, LevelSceneRefusal, LevelSceneRootSpawn,
+  LevelSceneSource, LevelSceneSurfaceLibraries, LevelSceneSurfaces, LevelSceneTreeMatch, LevelSceneUpdatePacket,
 };
 pub use crate::provenance::object_provenance::ObjectProvenance;

@@ -38,6 +38,10 @@ export function LevelDecompileResultView({
       { label: "objects", value: formatCount(report.geometry?.objects ?? 0) },
       { label: "faces", value: formatCount(report.geometry?.faces ?? 0) },
       { label: "tree models", value: formatCount(report.geometry?.treeModels ?? 0) },
+      {
+        label: "library objects",
+        value: formatCount((report.geometry?.instances ?? 0) + (report.geometry?.libraryTreeModels ?? 0)),
+      },
       { label: "textures", value: report.textures },
       { label: "inferred", value: report.inferred.length },
       { label: "left out", value: report.refused.length },
