@@ -73,7 +73,10 @@ pub(crate) async fn textures_save(
       move |job| {
         let texture: Option<TextureWrite> = match (request.texture, held, texture_path) {
           (Some(save), Some(held), Some(path)) => Some(TextureWrite {
-            bytes: held.require(save.format)?.write_to_bytes().map_err(error_to_string)?,
+            bytes: held
+              .require_for_save(save.format, request.descriptor.form.has_alpha())?
+              .write_to_bytes()
+              .map_err(error_to_string)?,
             path,
             expected: save.expected,
             format: save.format,
