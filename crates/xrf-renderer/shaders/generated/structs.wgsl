@@ -196,6 +196,11 @@ struct TraceGrass {
   card_reach: f32,
 }
 
+struct GrassSlotLight {
+  grid: vec4<i32>,
+  value: u32,
+}
+
 struct Calibration {
   props: array<vec4<f32>, 4>,
   surfaces: array<vec4<f32>, 4>,

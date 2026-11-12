@@ -64,6 +64,15 @@ pub enum RenderDebugView {
   SampledMip,
   /// The specular the sun and the lights accumulated, kept apart from their diffuse in the light target's alpha.
   Specular,
+  /// The sun the level's detail slots store, `c_dir`, over the ground each slot covers and the tufts on it: black none
+  /// to white full, its sixteen steps as greys, the slots' edges darkened; a dim grey of the albedo elsewhere, over a
+  /// slot planting nothing or above a slot's heights.
+  DetailSun,
+  /// The hemisphere the detail slots store, `c_hemi`, shown as `DetailSun` is.
+  DetailHemi,
+  /// The light the detail slots store from the level's lamps, `c_r`, `c_g` and `c_b`, as one colour, shown as
+  /// `DetailSun` is.
+  DetailLight,
   /// FSR's masks at each pixel's drawn texel: how reactive it is (moving apart from what it lands on, or a plant the
   /// wind moved) in red, how disoccluded in green, how far its shading changed in blue.
   FsrMasks,
