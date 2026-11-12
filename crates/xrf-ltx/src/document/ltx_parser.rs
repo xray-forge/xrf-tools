@@ -34,6 +34,9 @@ pub(crate) struct LtxParser<'a> {
   is_preserving_source: bool,
   /// Whether nothing but comments has been read yet: only that leading block may carry `@xrf-ltx` directives.
   is_metadata_header: bool,
+  /// Whether a section header has been read: `CInifile::Load` drops every field line before the first one whole, so
+  /// an open quote there carries nothing into the lines after it.
+  is_in_section: bool,
   /// Checks the leading comment block opted out of, in the order first named.
   skipped_checks: Vec<LtxCheck>,
   /// One authored line per statement read, when the parser keeps them.
@@ -48,6 +51,7 @@ impl Default for LtxParser<'_> {
       indent: String::new(),
       is_preserving_source: false,
       is_metadata_header: true,
+      is_in_section: false,
       line: 0,
       column: 0,
       reader: "".chars(),
@@ -152,6 +156,8 @@ impl<'a> LtxParser<'a> {
         StatementOperation::Section(operation, rest) => {
           let (name, parents, comment) = self.parse_section_from_line(rest)?;
 
+          self.is_in_section = true;
+
           LtxItemKind::Section {
             comment,
             name,
@@ -160,7 +166,7 @@ impl<'a> LtxParser<'a> {
           }
         }
         StatementOperation::Key(operation, rest) => {
-          let (name, value, comment) = self.parse_key_value_from_line(rest)?;
+          let (name, value, comment) = self.parse_key_value_from_line(rest, span)?;
 
           LtxItemKind::Key {
             comment,
@@ -423,8 +429,11 @@ impl LtxParser<'_> {
     Ok((name, comment.filter(|it| !it.is_empty())))
   }
 
-  /// Parse line key, value and comment from provided line.
-  fn parse_key_value_from_line<'line>(&self, line: &'line str) -> XrfResult<ParsedKeyValue<'line>> {
+  /// Parse line key, value and comment from provided line, the statement starting at `span`.
+  ///
+  /// A section's value whose quotes the engine sees left open is refused at `span`: `CInifile::Load` reads the lines
+  /// after it into the value until they close, which one line per statement cannot follow.
+  fn parse_key_value_from_line<'line>(&self, line: &'line str, span: LtxSpan) -> XrfResult<ParsedKeyValue<'line>> {
     if line.is_empty() {
       return self.error("Failed to parse empty value statement");
     }
@@ -439,14 +448,54 @@ impl LtxParser<'_> {
       Some((key, value)) => (key.trim(), Some(value.trim())),
     };
 
+    // With no quote before the first `;`, the engine cuts there or earlier too and sees no quote at all, so most lines
+    // pay this one search and nothing more.
+    if self.is_in_section && data.as_bytes().contains(&b'"') && Self::is_engine_quote_open(line) {
+      return Err(XrfError::new_ltx_parse_error(
+        span.get_line(),
+        span.get_column(),
+        format!("Value of '{key}' leaves a quote open, and the engine would read the lines after it into it"),
+      ));
+    }
+
     Ok((key, value, comment.filter(|it| !it.is_empty())))
+  }
+
+  /// Whether `CInifile::Load` sees an odd number of quotes in the value of `line`, and so reads the lines after it into
+  /// that value.
+  ///
+  /// Counted after the first `=` of what the engine's comment cut keeps of the line, as `_parse` counts them there.
+  fn is_engine_quote_open(line: &str) -> bool {
+    Self::strip_engine_comment(line)
+      .split_once('=')
+      .is_some_and(|(_, value)| value.bytes().filter(|&byte| byte == b'"').count() % 2 == 1)
+  }
+
+  /// `line` as `CInifile::Load` keeps it before reading a field from it: cut at the first `;`, or at the line's first
+  /// `/` when a second follows it and the first `;` does not come earlier, but kept whole when that point lies between
+  /// the line's first quote and the next one.
+  ///
+  /// Not this parser's own cut, which takes any first `;` and leaves `//` in the text.
+  fn strip_engine_comment(line: &str) -> &str {
+    let semicolon: Option<usize> = line.find(LTX_SYMBOL_COMMENT);
+    let slashes: Option<usize> = line.find('/').filter(|&slash| line[slash + 1..].starts_with('/'));
+    let Some(start) = semicolon.into_iter().chain(slashes).min() else {
+      return line;
+    };
+    let is_quoted: bool = line[..start]
+      .find('"')
+      .is_some_and(|open| line[open + 1..].find('"').is_some_and(|close| open + 1 + close > start));
+
+    if is_quoted { line } else { &line[..start] }
   }
 }
 
 #[cfg(test)]
 mod test {
-  use crate::document::{LtxCheck, LtxParser};
+  use crate::binding::LtxRecordReader;
+  use crate::document::{LtxCheck, LtxParser, LtxSpan};
   use crate::ltx::Ltx;
+  use crate::syntax::ROOT_SECTION;
 
   #[test]
   fn parses_header_metadata_directive() {
@@ -621,7 +670,9 @@ mod test {
     let parser: LtxParser<'_> = Default::default();
 
     assert_eq!(
-      parser.parse_key_value_from_line("  key   =   value").unwrap(),
+      parser
+        .parse_key_value_from_line("  key   =   value", LtxSpan::default())
+        .unwrap(),
       ("key", Some("value"), None)
     );
   }
@@ -632,10 +683,117 @@ mod test {
 
     assert_eq!(
       parser
-        .parse_key_value_from_line("  key   =   1     ;   some phrase")
+        .parse_key_value_from_line("  key   =   1     ;   some phrase", LtxSpan::default())
         .unwrap(),
       ("key", Some("1"), Some("some phrase"))
     );
+  }
+
+  /// The engine keeps reading lines into a value whose quotes stay open, which a parser of one line per statement
+  /// cannot follow, so such a value is refused where its statement starts.
+  #[test]
+  fn refuses_a_value_whose_quote_stays_open_on_its_line() {
+    for (input, expected) in [
+      (
+        "[box]\nx = \"open\n",
+        "Ltx parse error: 2:1 Value of 'x' leaves a quote open, and the engine would read the lines after it into it",
+      ),
+      (
+        "[box]\n  x = \"a\" \"b\r\n",
+        "Ltx parse error: 2:3 Value of 'x' leaves a quote open, and the engine would read the lines after it into it",
+      ),
+      (
+        "[box]\n>list = \"a\n",
+        "Ltx parse error: 2:1 Value of 'list' leaves a quote open, and the engine would read the lines after it into it",
+      ),
+    ] {
+      assert_eq!(
+        Ltx::read_from_str(input).expect_err("an open quote").to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  /// Quotes are counted in what the engine keeps of the line: it cuts at the first `;`, or at the first `/` when a
+  /// second follows it, unless that point sits between the line's first quote and the next one.
+  #[test]
+  fn counts_quotes_in_the_part_of_the_line_the_engine_keeps() {
+    for refused in [
+      // The pair spans the `;`, so the engine keeps the line whole and sees three quotes.
+      "x = \"a ; b\" \"c",
+      // The first pair closes before the `;`, so the engine cuts there and sees three quotes.
+      "x = \"a\" \"b ; c\"",
+      // Nothing closes the first quote, so the engine cuts at the `;`.
+      "x = \"a;b",
+      "x = \"a // b",
+      // Only the first `/` can open a comment, so this line is kept whole.
+      "x = \"a/b\" // \"c",
+    ] {
+      assert!(
+        Ltx::read_from_str(&format!("[s]\n{refused}\n")).is_err(),
+        "{refused:?} to be refused"
+      );
+    }
+
+    for read in [
+      "x = 1",
+      "x = \"a;b\"",
+      "$spawn = \" ; quest_items\\toolkit_1\"",
+      "$spawn = \"monsters\\lurker\" ; \"monsters\\chimera\" ; option",
+      "x = 1 ; say \"hi",
+      "x = 1 // say \"hi",
+      "bare \"word",
+      "k\"ey = v",
+      "x = a // b = \"c",
+    ] {
+      assert!(
+        Ltx::read_from_str(&format!("[s]\n{read}\n")).is_ok(),
+        "{read:?} to be read"
+      );
+    }
+  }
+
+  /// The engine drops a field line before the first header whole, so its open quote takes no lines after it.
+  #[test]
+  fn reads_an_open_quote_before_the_first_section_as_one_line() {
+    let ltx: Ltx = Ltx::read_from_str("root = \"open\n[s]\nx = 1\n").expect("a root field read as one line");
+
+    assert_eq!(ltx.get_from(ROOT_SECTION, "root"), Some("\"open"));
+    assert_eq!(ltx.get_from("s", "x"), Some("1"));
+    assert!(Ltx::read_from_str("root = \"open\n[s]\nx = \"open\n").is_err());
+  }
+
+  /// A value spanning lines as a mod writes custom data is refused at the line it opens on, not read as the fields and
+  /// sections its later lines would make.
+  #[test]
+  fn refuses_custom_data_written_across_lines() {
+    let input: &str = "[box]\r\ncustom_data = \"[logic]\r\ncfg = scripts\\\\box.ltx ; kept\r\n\r\n[story_object]\r\nstory_id = box\"\r\nname = box\r\n";
+
+    assert_eq!(
+      Ltx::read_from_str(input)
+        .expect_err("custom data across lines")
+        .to_string(),
+      "Ltx parse error: 2:1 Value of 'custom_data' leaves a quote open, and the engine would read the lines after it into it"
+    );
+  }
+
+  /// The refusal belongs to the parser, so every reader built on it refuses alike.
+  #[test]
+  fn refuses_an_open_quote_through_every_reader() {
+    let input: &str = "[box]\nx = \"open\ny = 1\n";
+    let expected: &str =
+      "Ltx parse error: 2:1 Value of 'x' leaves a quote open, and the engine would read the lines after it into it";
+
+    for error in [
+      Ltx::read_from_str(input).map(drop),
+      Ltx::read_document_from_str(input).map(drop),
+      Ltx::read_document_from_str_preserving_source(input).map(drop),
+      Ltx::format_from_str(input).map(drop),
+      LtxRecordReader::read_str(input, |_| Ok(())),
+    ] {
+      assert_eq!(error.expect_err("an open quote").to_string(), expected);
+    }
   }
 
   #[test]
@@ -643,7 +801,9 @@ mod test {
     let parser: LtxParser<'_> = Default::default();
 
     assert_eq!(
-      parser.parse_key_value_from_line("  key   ").unwrap(),
+      parser
+        .parse_key_value_from_line("  key   ", LtxSpan::default())
+        .unwrap(),
       ("key", None, None)
     );
   }
