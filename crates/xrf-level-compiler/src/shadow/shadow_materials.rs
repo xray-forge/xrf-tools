@@ -141,6 +141,16 @@ impl ShadowMaterials {
     })
   }
 
+  /// Every one of `face_count` faces blocking light, for a test's ray model.
+  #[cfg(test)]
+  pub(crate) fn new_opaque(face_count: usize) -> Self {
+    Self {
+      faces: vec![ShadowFace::Opaque; face_count],
+      alpha_faces: Vec::new(),
+      textures: Vec::new(),
+    }
+  }
+
   /// How a ray model face meets a light ray.
   ///
   /// # Panics
