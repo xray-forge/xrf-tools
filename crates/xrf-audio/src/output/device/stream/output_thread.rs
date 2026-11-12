@@ -5,13 +5,13 @@ use std::time::{Duration, Instant};
 use cpal::traits::HostTrait;
 use cpal::{Device, ErrorKind, Host};
 
-use crate::device::audio_devices::AudioDevices;
-use crate::device::audio_output_choice::AudioOutputChoice;
-use crate::device::audio_output_status::AudioOutputStatus;
-use crate::device::stream::open_failure::OpenFailure;
-use crate::device::stream::output_request::OutputRequest;
-use crate::device::stream::output_stream::OutputStream;
 use crate::mixer::audio_mixer::AudioMixer;
+use crate::output::device::audio_devices::AudioDevices;
+use crate::output::device::audio_output_choice::AudioOutputChoice;
+use crate::output::device::audio_output_status::AudioOutputStatus;
+use crate::output::device::stream::open_failure::OpenFailure;
+use crate::output::device::stream::output_request::OutputRequest;
+use crate::output::device::stream::output_stream::OutputStream;
 
 /// The thread that owns the device stream: it opens one for the chosen device, follows the system default, and opens
 /// another when a device goes, keeping the same mixer and so the same voices throughout.

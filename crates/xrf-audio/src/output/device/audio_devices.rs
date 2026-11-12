@@ -2,7 +2,7 @@ use cpal::traits::{DeviceTrait, HostTrait};
 use cpal::{Device, Host};
 use xrf_error::{XrfError, XrfResult};
 
-use crate::device::audio_device_description::AudioDeviceDescription;
+use crate::output::device::audio_device_description::AudioDeviceDescription;
 
 /// The system's output devices.
 pub struct AudioDevices;

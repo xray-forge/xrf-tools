@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 
 use xrf_test_utils::TestSkip;
 
-use crate::device::stream::output_thread::OutputThread;
+use crate::output::device::stream::output_thread::OutputThread;
 use crate::tests::fixtures::{RATE, engine, looped, once, sine};
 use crate::{
   AudioBus, AudioClockAnchor, AudioEngine, AudioEngineParts, AudioMixerMeter, AudioOutput, AudioOutputChoice,

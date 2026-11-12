@@ -4,11 +4,11 @@ use std::thread::{self, JoinHandle};
 
 use xrf_error::{XrfError, XrfResult};
 
-use crate::device::audio_output_choice::AudioOutputChoice;
-use crate::device::audio_output_status::AudioOutputStatus;
-use crate::device::stream::output_request::OutputRequest;
-use crate::device::stream::output_thread::OutputThread;
 use crate::mixer::audio_mixer::AudioMixer;
+use crate::output::device::audio_output_choice::AudioOutputChoice;
+use crate::output::device::audio_output_status::AudioOutputStatus;
+use crate::output::device::stream::output_request::OutputRequest;
+use crate::output::device::stream::output_thread::OutputThread;
 
 /// Plays a mixer on an output device from a thread of its own, which follows the system default or the chosen
 /// device and opens a new stream when a device goes. No device is not an error: the mixer waits silent and the

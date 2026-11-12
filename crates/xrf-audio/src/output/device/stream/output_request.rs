@@ -1,4 +1,4 @@
-use crate::device::audio_output_choice::AudioOutputChoice;
+use crate::output::device::audio_output_choice::AudioOutputChoice;
 
 /// What the output's owner asks of its thread.
 #[derive(Debug)]

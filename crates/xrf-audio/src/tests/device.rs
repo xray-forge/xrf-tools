@@ -4,8 +4,8 @@ use std::time::{Duration, Instant};
 
 use rtrb::RingBuffer;
 
-use crate::device::stream::mixer_holder::MixerHolder;
-use crate::device::stream::output_thread::OutputThread;
+use crate::output::device::stream::mixer_holder::MixerHolder;
+use crate::output::device::stream::output_thread::OutputThread;
 use crate::tests::fixtures::{RATE, engine, looped, once, sine};
 use crate::{
   AudioBus, AudioEngineParts, AudioMixer, AudioOutput, AudioOutputChoice, AudioOutputStatus, AudioPlay, AudioVoiceId,
