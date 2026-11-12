@@ -43,6 +43,7 @@ xrf-material = { workspace = true }
 xrf-math = { workspace = true, features = ["glam"] }
 xrf-ogf = { workspace = true }
 xrf-particles = { workspace = true }
+xrf-rawdata = { workspace = true }
 xrf-renderer = { workspace = true }
 xrf-sound = { workspace = true }
 xrf-spawn = { workspace = true }
@@ -85,6 +86,7 @@ typescript-bindings = [
   "xrf-ltx/typescript-bindings",
   "xrf-material/typescript-bindings",
   "xrf-math/typescript-bindings",
+  "xrf-rawdata/typescript-bindings",
   "xrf-renderer/typescript-bindings",
   "xrf-spawn/typescript-bindings",
   "xrf-texture/typescript-bindings",

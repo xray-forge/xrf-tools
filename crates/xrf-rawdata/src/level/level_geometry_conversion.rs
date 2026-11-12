@@ -87,6 +87,7 @@ pub struct LevelDecompiledObject {
 
 /// What the static geometry's decompile counts, so every triangle the compiled level draws is either in a written
 /// object or accounted for.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelGeometryCensus {

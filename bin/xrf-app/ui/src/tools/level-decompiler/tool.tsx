@@ -14,7 +14,7 @@ export const LEVEL_DECOMPILER_TOOL: IToolDescriptor = createToolDescriptor(
     id: EToolId.LEVEL_DECOMPILER,
     label: "Level decompiler",
     path: "/level-decompiler",
-    status: EToolStatus.PLANNED,
+    status: EToolStatus.READY,
   },
   {
     load: () => import("./runtime"),

@@ -1,4 +1,6 @@
+pub(crate) mod build_level;
 pub(crate) mod close_level;
+pub(crate) mod decompile_level;
 pub(crate) mod describe_console_defaults;
 pub(crate) mod describe_level_map;
 pub(crate) mod describe_objects;

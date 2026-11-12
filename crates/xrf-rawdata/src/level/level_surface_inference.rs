@@ -15,6 +15,7 @@ use crate::level::level_visual_geometry::LevelVisualGeometry;
 use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 
 /// How a level's decompile dresses its surfaces: from what the level shows, or with the editor's defaults.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum LevelSurfaces {

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use byteorder::ByteOrder;
 use xrf_editable_level::{
@@ -9,8 +9,10 @@ use xrf_editable_level::{
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::{XrfError, XrfResult};
 use xrf_gamemtl::GameMtlFile;
+use xrf_job::{JobHandle, JobScope};
 use xrf_level::{BuildAimapFile, BuildPrjFile, BuildPrjGlow, BuildPrjParams, BuildPrjPortal};
 use xrf_math::{Aabb, Vector3d};
+use xrf_utils::format_path;
 
 use crate::level::build::level_build_breakables::{LevelBuildBreakableExport, LevelBuildBreakables};
 use crate::level::build::level_build_climbables::{LevelBuildClimbableExport, LevelBuildClimbables};
@@ -18,10 +20,13 @@ use crate::level::build::level_build_details::LevelBuildDetails;
 use crate::level::build::level_build_export::{LevelBuildCensus, LevelBuildExport};
 use crate::level::build::level_build_geometry::LevelBuildGeometry;
 use crate::level::build::level_build_library::LevelBuildLibrary;
+use crate::level::build::level_build_lighting::LevelBuildLighting;
 use crate::level::build::level_build_lights::LevelBuildLights;
 use crate::level::build::level_build_models::LevelBuildModels;
 use crate::level::build::level_build_occluders::LevelBuildOccluders;
 use crate::level::build::level_build_portal::LevelBuildPortal;
+use crate::level::build::level_build_report::LevelBuildReport;
+use crate::level::build::level_build_request::LevelBuildRequest;
 use crate::level::build::level_build_sectors::LevelBuildSectors;
 use crate::level::build::level_build_sources::LevelBuildSources;
 use crate::level::build::level_build_tables::{LevelBuildTableRecords, LevelBuildTables};
@@ -346,6 +351,104 @@ impl LevelBuildExporter {
       sector_back: sector(&portal.sector_back)?,
       vertex_slots,
       vertex_count: u32::try_from(vertices.len()).unwrap_or(u32::MAX),
+    })
+  }
+
+  /// What a job reports a build under: its stages, each named as its detail.
+  pub const PROGRESS_STAGES: &'static str = "stages";
+
+  /// The scene `request.source` built into the level directory `request.destination`, as the Level Editor's Build
+  /// writes it: the level compiler's files first where the request names the game materials ([`Self::export`]), since
+  /// the entities they cut out open the spawn list, then the game files ([`LevelSceneExporter::export`]); written only
+  /// where no file it writes exists or the request is forced, and none where the directory holds a stale file of the
+  /// build's own ([`LevelSceneExporter::write_to_directory`]).
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the scene or the game materials do not read, the request names game materials but no
+  /// objects root, the export fails, a file exists and the request is not forced, the job is cancelled before writing,
+  /// or a file does not write.
+  pub fn build_to_directory<T: ByteOrder>(request: &LevelBuildRequest, job: &JobHandle) -> XrfResult<LevelBuildReport> {
+    let (source, destination) = (&request.source, &request.destination);
+    let stages: JobScope = job.enter(Self::PROGRESS_STAGES, Some(3));
+
+    job.set_detail(Some(String::from("Reading the scene")));
+
+    let scene: EditableLevelScene = EditableLevelScene::read_from_path::<T, _>(source)?;
+    let mut names: Vec<String> = LevelSceneExporter::FILE_NAMES
+      .iter()
+      .map(|name| (*name).to_owned())
+      .collect();
+
+    stages.advance();
+    job.check_cancelled()?;
+    job.set_detail(Some(String::from("Build project and geometry")));
+
+    let (mut files, census, entities, refused) = match &request.game_materials {
+      Some(game_materials) => {
+        if request.objects.is_empty() {
+          return Err(XrfError::new_invalid_error(
+            "The build project needs the objects roots the scene's objects are read from",
+          ));
+        }
+
+        let game_materials: GameMtlFile = GameMtlFile::read_from_path::<T, _>(game_materials)?;
+        let mut export: LevelBuildExport = Self::export::<T>(
+          &scene,
+          &LevelBuildSources {
+            objects: &request.objects,
+            game_materials: &game_materials,
+            textures: request.textures.as_deref(),
+            lighting: request.is_proof_lighting.then_some(LevelBuildLighting::PROOF),
+            impostor_limit: request.impostor_limit,
+            held: None,
+          },
+        )?;
+        let (census, entities, refused) = (
+          export.census,
+          std::mem::take(&mut export.entities),
+          std::mem::take(&mut export.refused),
+        );
+
+        names.extend(LevelBuildExport::list_file_names(destination));
+
+        (export.into_files::<T>()?, Some(census), entities, refused)
+      }
+      None => (BTreeMap::new(), None, Vec::new(), Vec::new()),
+    };
+
+    stages.advance();
+    job.check_cancelled()?;
+    job.set_detail(Some(String::from("Game files")));
+
+    files.extend(
+      LevelSceneExporter::export::<T>(&scene, &entities)?
+        .into_iter()
+        .map(|(name, bytes)| (name.to_owned(), bytes)),
+    );
+
+    if !request.is_forced
+      && let Some(existing) = files.keys().find(|name| destination.join(name).exists())
+    {
+      return Err(XrfError::new_invalid_error(format!(
+        "{} already exists; overwrite to replace the files the build writes",
+        format_path(&destination.join(existing))
+      )));
+    }
+
+    job.check_cancelled()?;
+    job.set_detail(Some(format_path(destination).to_string()));
+
+    let written = LevelSceneExporter::write_to_directory(&files, &names, destination)?;
+
+    stages.advance();
+
+    Ok(LevelBuildReport {
+      source: format_path(source).to_string(),
+      destination: format_path(destination).to_string(),
+      files: written,
+      geometry: census,
+      refused,
     })
   }
 }

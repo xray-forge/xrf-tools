@@ -25,6 +25,7 @@ xrf-editable-object = { workspace = true }
 xrf-error = { workspace = true }
 xrf-gamemtl = { workspace = true }
 xrf-ini = { workspace = true }
+xrf-job = { workspace = true }
 xrf-level = { workspace = true }
 xrf-math = { workspace = true, features = ["glam"] }
 xrf-ogf = { workspace = true }

@@ -2,6 +2,7 @@ use serde::Serialize;
 
 /// What a file [`LevelSceneExporter::write_to_directory`](crate::LevelSceneExporter::write_to_directory) wrote
 /// replaced.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum LevelExportedPrevious {
@@ -14,6 +15,7 @@ pub enum LevelExportedPrevious {
 }
 
 /// One level file an export wrote.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelExportedFile {

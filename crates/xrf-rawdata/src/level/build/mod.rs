@@ -16,6 +16,8 @@ pub(crate) mod level_build_models;
 pub(crate) mod level_build_occluders;
 pub(crate) mod level_build_parts;
 pub(crate) mod level_build_portal;
+pub(crate) mod level_build_report;
+pub(crate) mod level_build_request;
 pub(crate) mod level_build_sectors;
 pub(crate) mod level_build_sources;
 pub(crate) mod level_build_tables;

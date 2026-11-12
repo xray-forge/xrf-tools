@@ -1,12 +1,15 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::time::Duration;
 
 use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_editable_level::{
   EditableBuildParams, EditableLevelCamera, EditableLevelFile, EditableLevelGuid, EditableLevelOptions,
   EditableLevelScene, EditableObjectPart, EditableSpawnPointObject, EditableWayObject,
 };
-use xrf_error::XrfResult;
+use xrf_error::{XrfError, XrfResult};
+use xrf_job::{JobHandle, ProgressSink, RecordingSink};
 use xrf_level::{
   LevelEnvModFile, LevelEnvModifier, LevelFogVolFile, LevelGameFile, LevelGameRPoint, LevelGameWay, LevelGameWayLink,
   LevelGameWayPoint,
@@ -19,9 +22,9 @@ use xrf_editable_object::EditableObjectFile;
 use crate::level::level_visual_geometry::LevelVisualGeometry;
 use crate::level::tests::fixtures::GUID;
 use crate::{
-  LevelDecompileOptions, LevelExportedPrevious, LevelFogVolumeConversion, LevelSceneDecompile, LevelSceneDecompiler,
-  LevelSceneExporter, LevelSceneInference, LevelSceneObjectFile, LevelSceneProvenance, ObjectDecompiler,
-  ObjectProvenance, SurfaceDress,
+  LevelDecompileOptions, LevelDecompileReport, LevelDecompileRequest, LevelExportedPrevious, LevelFogVolumeConversion,
+  LevelSceneDecompile, LevelSceneDecompiler, LevelSceneExporter, LevelSceneInference, LevelSceneObjectFile,
+  LevelSceneProvenance, ObjectDecompiler, ObjectProvenance, SurfaceDress,
 };
 
 fn respawn_point(game_types: u16) -> LevelGameRPoint {
@@ -404,6 +407,48 @@ fn refuses_a_directory_of_no_level_file() -> XrfResult {
   let error: String = decompile(&directory).unwrap_err().to_string();
 
   assert!(error.contains("holds none of the level files"), "{error}");
+
+  Ok(())
+}
+
+/// A front-end's decompile into a scene on disk: one cancelled before its first step writes nothing, one run whole
+/// writes the scene, reports what it wrote and each step it took.
+#[test]
+fn writes_a_scene_for_a_front_end_and_nothing_once_cancelled() -> XrfResult {
+  let level: PathBuf = level_directory("front_end", 10.0)?;
+  let output: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "front_end_out"))?;
+  let request: LevelDecompileRequest = LevelDecompileRequest {
+    source: level,
+    destination: output.join("levels").join("test_level.level"),
+    ..LevelDecompileRequest::default()
+  };
+  let cancelled: JobHandle = JobHandle::inert();
+
+  cancelled.cancel();
+
+  let error = LevelSceneDecompiler::decompile_to_path::<XRayByteOrder>(&request, "test", "1.0.0", &cancelled)
+    .expect_err("a cancelled decompile stops");
+
+  assert!(matches!(error, XrfError::Cancelled { .. }), "{error}");
+  assert!(!request.destination.exists(), "a cancelled decompile writes nothing");
+
+  let sink: Arc<RecordingSink> = Arc::new(RecordingSink::default());
+  let report: LevelDecompileReport = LevelSceneDecompiler::decompile_to_path::<XRayByteOrder>(
+    &request,
+    "test",
+    "1.0.0",
+    &JobHandle::with_interval(Arc::clone(&sink) as Arc<dyn ProgressSink>, Duration::ZERO),
+  )?;
+
+  assert!(request.destination.is_file());
+  assert!(report.tools.iter().any(|tool| tool.name == "spawn"));
+  assert!(
+    sink
+      .list_reported()
+      .iter()
+      .any(|progress| progress.detail.as_deref() == Some("Ways and spawn points")),
+    "the last step is reported by name"
+  );
 
   Ok(())
 }

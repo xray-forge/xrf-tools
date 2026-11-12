@@ -23,6 +23,12 @@ export const DDS_FILE_FILTERS: Array<DialogFilter> = [{ name: "dds", extensions:
 /** An LTX configuration. */
 export const LTX_FILE_FILTERS: Array<DialogFilter> = [{ name: "ltx", extensions: [EXrayExtension.LTX] }];
 
+/** An SDK Level Editor scene's main file, which no game format shares an extension with. */
+export const LEVEL_SCENE_FILE_FILTERS: Array<DialogFilter> = [{ name: "Level Editor scene", extensions: ["level"] }];
+
+/** A library the SDK keeps as `.xr`, such as the game materials' `gamemtl.xr`. */
+export const XR_LIBRARY_FILE_FILTERS: Array<DialogFilter> = [{ name: "xr library", extensions: [EXrayExtension.XR] }];
+
 /**
  * One save dialog entry per format, so the extension a person picks is what decides the writer.
  *

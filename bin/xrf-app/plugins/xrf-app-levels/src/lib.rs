@@ -7,6 +7,7 @@ mod level;
 mod objects;
 mod parts;
 pub mod plugin;
+mod rawdata;
 mod render;
 mod report;
 mod sound;
