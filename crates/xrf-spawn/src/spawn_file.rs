@@ -303,7 +303,7 @@ mod tests {
   use std::fs;
   use std::path::PathBuf;
 
-  use uuid::{Uuid, uuid};
+  use uuid::uuid;
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_math::Vector3d;
@@ -311,10 +311,7 @@ mod tests {
   use xrf_utils::StagingFaults;
 
   use super::SpawnFile;
-  use crate::chunks::spawn_alife_spawns_chunk::SpawnALifeSpawnsChunk;
-  use crate::chunks::spawn_artefact_spawns_chunk::SpawnArtefactSpawnsChunk;
   use crate::chunks::spawn_graphs_chunk::SpawnGraphsChunk;
-  use crate::chunks::spawn_header_chunk::SpawnHeaderChunk;
   use crate::chunks::spawn_patrols_chunk::SpawnPatrolsChunk;
   use crate::data::graph::graph_header::GraphHeader;
   use crate::data::graph::graph_level::GraphLevel;
@@ -323,6 +320,7 @@ mod tests {
   use crate::data::graph::level_view::spawn_level_graph_point::SpawnLevelGraphPoint;
   use crate::data::patrols::patrol::Patrol;
   use crate::data::patrols::patrol_point::PatrolPoint;
+  use crate::fixtures::EmptySpawnFile;
 
   fn new_level(id: u8, name: &str, offset: f32) -> GraphLevel {
     GraphLevel {
@@ -366,34 +364,7 @@ mod tests {
   #[test]
   fn keeps_the_previous_file_when_publication_fails() -> XrfResult {
     let path: PathBuf = GeneratedResources::create_dir("spawn_file/publication")?.join("all.spawn");
-    let guid: Uuid = uuid!("78e55023-10b1-426f-9247-bb680e5fe0b7");
-    let spawn: SpawnFile = SpawnFile {
-      header: SpawnHeaderChunk {
-        version: 10,
-        guid,
-        graph_guid: guid,
-        objects_count: 0,
-        levels_count: 0,
-      },
-      alife_spawn: SpawnALifeSpawnsChunk { objects: Vec::new() },
-      artefact_spawn: SpawnArtefactSpawnsChunk { nodes: Vec::new() },
-      patrols: SpawnPatrolsChunk { patrols: Vec::new() },
-      graphs: SpawnGraphsChunk {
-        header: GraphHeader {
-          version: 10,
-          vertices_count: 0,
-          edges_count: 0,
-          points_count: 0,
-          guid,
-          levels_count: 0,
-        },
-        levels: Vec::new(),
-        vertices: Vec::new(),
-        edges: Vec::new(),
-        points: Vec::new(),
-        cross_tables: Vec::new(),
-      },
-    };
+    let spawn: SpawnFile = EmptySpawnFile::build();
 
     fs::write(&path, b"previous")?;
     StagingFaults::fail_next_write();
@@ -407,34 +378,10 @@ mod tests {
   /// A header counting objects the file does not hold would size the engine's registry wrong, so it is not written.
   #[test]
   fn refuses_to_write_a_header_that_miscounts_its_objects() {
-    let guid: Uuid = uuid!("78e55023-10b1-426f-9247-bb680e5fe0b7");
-    let spawn: SpawnFile = SpawnFile {
-      header: SpawnHeaderChunk {
-        version: 10,
-        guid,
-        graph_guid: guid,
-        objects_count: 1,
-        levels_count: 0,
-      },
-      alife_spawn: SpawnALifeSpawnsChunk { objects: Vec::new() },
-      artefact_spawn: SpawnArtefactSpawnsChunk { nodes: Vec::new() },
-      patrols: SpawnPatrolsChunk { patrols: Vec::new() },
-      graphs: SpawnGraphsChunk {
-        header: GraphHeader {
-          version: 10,
-          vertices_count: 0,
-          edges_count: 0,
-          points_count: 0,
-          guid,
-          levels_count: 0,
-        },
-        levels: Vec::new(),
-        vertices: Vec::new(),
-        edges: Vec::new(),
-        points: Vec::new(),
-        cross_tables: Vec::new(),
-      },
-    };
+    let mut spawn: SpawnFile = EmptySpawnFile::build();
+
+    spawn.header.objects_count = 1;
+
     let mut bytes: Vec<u8> = Vec::new();
     let error: String = spawn
       .write_to::<XRayByteOrder>(&mut bytes)

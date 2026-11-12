@@ -57,7 +57,16 @@ impl LevelSpawnFile {
   /// Returns an error when a chunk does not open with a spawn packet, which is what tells this format from the set
   /// that shares its extension.
   pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
+    Self::read_from_chunks::<T, D>(reader.read_children()?)
+  }
+
+  /// Reads from a file's top-level chunks already walked, which is how a caller that first asked
+  /// [`SpawnFileKind`](crate::SpawnFileKind) avoids walking them again.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a chunk does not open with a spawn packet.
+  pub fn read_from_chunks<T: ByteOrder, D: ChunkDataSource>(chunks: Vec<ChunkReader<D>>) -> XrfResult<Self> {
     let mut objects: Vec<LevelSpawnObject> = Vec::with_capacity(chunks.len());
 
     for mut chunk in chunks {

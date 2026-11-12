@@ -21,6 +21,11 @@ Most `.spawn` files in a game tree are level lists; only a few have a header. Ea
 `SpawnFile` requires exactly its five root chunks, and `LevelSpawnFile` requires every chunk to start with an `M_SPAWN`
 packet, which a set's header never does.
 
+A caller holding a `.spawn` of either kind walks its top-level chunks once and asks `SpawnFileKind::of_chunks`: `Root`
+(a set) where chunk 0 reads whole as a `SpawnHeaderChunk`, `Level` otherwise, reading nothing but that chunk's 44 bytes.
+It then hands the same chunks to `SpawnFile::read_from_chunks` or `LevelSpawnFile::read_from_chunks`, whose own read
+refuses a file that is neither. `SpawnFileKind::read_root_header` is the same rule for a caller that wants the header.
+
 ## Read a spawn set
 
 `SpawnFile::read_from_path` (and `read_from_file`, `read_from_chunk`) reads the whole set and checks the header's object
