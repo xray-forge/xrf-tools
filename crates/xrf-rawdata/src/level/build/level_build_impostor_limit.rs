@@ -1,7 +1,11 @@
+use serde::{Deserialize, Serialize};
+
 use crate::level::build::level_build_atlas::{LevelBuildAtlas, LevelBuildAtlasSizes};
 
 /// How large a build lets the impostor atlas, `level_lods.dds` and `_nm`, grow.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum LevelBuildImpostorLimit {
   /// SDK 0.7's, 2048 a side, 128 strips of 512 by 64; a level of more is refused, as that Level Editor refuses it.
   Sdk,

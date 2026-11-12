@@ -9,8 +9,10 @@ import {
   WeatherCycleKind,
   WeatherDescriptor,
 } from "#/types/xrf-environment";
+import { JobOutcome } from "#/types/xrf-job";
 import { LevelEnvModifier } from "#/types/xrf-level";
 import { Vector3d } from "#/types/xrf-math";
+import { LevelBuildReport, LevelDecompileReport } from "#/types/xrf-rawdata";
 import {
   RenderBurst,
   RenderCubeCapture,
@@ -24,11 +26,17 @@ import { TextureEncodingFormat, TextureEncodingQuality } from "#/types/xrf-textu
 import { XrayRoots } from "#/types/xrf-vfs";
 import { SectorOutline, VisualBounds, VisualTransform } from "#/types/xrf-visual";
 
+/** Building a Level Editor scene into a level directory. */
+export const LEVELS_JOB_BUILD = "levels.build" as const;
+
 /** Capturing a cubemap around a viewport's camera, face by face. */
 export const LEVELS_JOB_CAPTURE_CUBE = "levels.capture-cube" as const;
 
 /** Capturing a level map in a viewport, tile by tile. */
 export const LEVELS_JOB_CAPTURE_MAP = "levels.capture-map" as const;
+
+/** Decompiling a compiled level into a Level Editor scene. */
+export const LEVELS_JOB_DECOMPILE = "levels.decompile" as const;
 
 /** What a change event calls a level's collision form when it goes stale. */
 export const LEVEL_COLLISION_PART = "collision" as const;
@@ -433,6 +441,15 @@ export type EnvironmentCycleEntry = {
 };
 
 /**
+ * How a scene's build into a level directory ended: what it wrote where it completed, none where it was cancelled
+ * before writing.
+ */
+export type LevelBuildResult = {
+  outcome: JobOutcome;
+  report: LevelBuildReport | null;
+};
+
+/**
  * What a game's console sets of how its levels are lit, exposed and corrected: its installation's `user.ltx` over its
  * shipped defaults (Anomaly's `default_controls.ltx`); each `None` it leaves to the engine.
  */
@@ -459,6 +476,12 @@ export type LevelConsoleDefaults = {
   bloomThreshold: number | null;
   bloomRadius: number | null;
   bloomStrength: number | null;
+};
+
+/** How a level's decompile into a scene ended: what it wrote where it completed, none where it was cancelled first. */
+export type LevelDecompileResult = {
+  outcome: JobOutcome;
+  report: LevelDecompileReport | null;
 };
 
 /** One compiled level the roots hold, as a picker lists it. */

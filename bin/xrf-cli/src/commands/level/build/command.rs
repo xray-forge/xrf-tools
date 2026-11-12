@@ -1,30 +1,14 @@
-use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_chunk::XRayByteOrder;
-use xrf_editable_level::EditableLevelScene;
-use xrf_error::{XrfError, XrfResult};
-use xrf_gamemtl::GameMtlFile;
+use xrf_job::JobHandle;
 use xrf_output::OutputOptions;
 use xrf_rawdata::{
-  LevelBuildExport, LevelBuildExporter, LevelBuildImpostorLimit, LevelBuildLighting, LevelBuildSources,
-  LevelExportedPrevious, LevelSceneExporter,
+  LevelBuildExporter, LevelBuildImpostorLimit, LevelBuildReport, LevelBuildRequest, LevelExportedPrevious,
 };
-use xrf_utils::format_path;
 
-use crate::commands::level::build::report::LevelBuildReport;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
-
-/// What the command line names for the level compiler's files: the objects roots, the game material library, read once
-/// the build starts, the textures root, the lighting in place of the scene's, and the impostor atlas's limit.
-struct LevelBuildInputs<'a> {
-  objects: &'a [PathBuf],
-  game_materials: &'a Path,
-  textures: Option<&'a Path>,
-  lighting: Option<LevelBuildLighting>,
-  impostor_limit: LevelBuildImpostorLimit,
-}
 
 /// Builds a Level Editor scene's game files into a level directory, as the editor's Build writes them.
 #[derive(Default)]
@@ -121,30 +105,33 @@ impl GenericCommand for BuildCommand {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let source: &PathBuf = matches.get_one::<PathBuf>("path").expect("the path is required");
-    let destination: &PathBuf = matches.get_one::<PathBuf>("dest").expect("the destination is required");
-    let output: OutputOptions = context.get_output().clone();
+    let request: LevelBuildRequest = LevelBuildRequest {
+      source: matches
+        .get_one::<PathBuf>("path")
+        .expect("the path is required")
+        .clone(),
+      destination: matches
+        .get_one::<PathBuf>("dest")
+        .expect("the destination is required")
+        .clone(),
+      objects: matches
+        .get_many::<PathBuf>("objects")
+        .map(|roots| roots.cloned().collect())
+        .unwrap_or_default(),
+      game_materials: matches.get_one::<PathBuf>("game-materials").cloned(),
+      textures: matches.get_one::<PathBuf>("textures").cloned(),
+      is_proof_lighting: matches.get_flag("proof-lighting"),
+      impostor_limit: if matches.get_flag("sdk-impostor-atlas") {
+        LevelBuildImpostorLimit::Sdk
+      } else {
+        LevelBuildImpostorLimit::Extended
+      },
+      is_forced: matches.get_flag("force"),
+    };
+    let report: LevelBuildReport =
+      LevelBuildExporter::build_to_directory::<XRayByteOrder>(&request, &JobHandle::inert())?;
 
-    let objects: Vec<PathBuf> = matches
-      .get_many::<PathBuf>("objects")
-      .map(|roots| roots.cloned().collect())
-      .unwrap_or_default();
-    let geometry: Option<LevelBuildInputs<'_>> =
-      matches
-        .get_one::<PathBuf>("game-materials")
-        .map(|game_materials| LevelBuildInputs {
-          objects: &objects,
-          game_materials,
-          textures: matches.get_one::<PathBuf>("textures").map(PathBuf::as_path),
-          lighting: matches.get_flag("proof-lighting").then_some(LevelBuildLighting::PROOF),
-          impostor_limit: if matches.get_flag("sdk-impostor-atlas") {
-            LevelBuildImpostorLimit::Sdk
-          } else {
-            LevelBuildImpostorLimit::Extended
-          },
-        });
-    let report: LevelBuildReport = Self::build(&output, source, destination, geometry, matches.get_flag("force"))?;
-
+    Self::print(context.get_output(), &report);
     context.set_result(|| &report)?;
 
     Ok(())
@@ -152,72 +139,11 @@ impl GenericCommand for BuildCommand {
 }
 
 impl BuildCommand {
-  /// Builds the scene at `source` into `destination`, and what it gives the level compiler where `geometry` gives the
-  /// objects roots and the game material library.
-  fn build(
-    output: &OutputOptions,
-    source: &Path,
-    destination: &Path,
-    geometry: Option<LevelBuildInputs<'_>>,
-    is_forced: bool,
-  ) -> XrfResult<LevelBuildReport> {
-    let scene: EditableLevelScene = EditableLevelScene::read_from_path::<XRayByteOrder, _>(&source)?;
-    // The geometry first: the entities it cuts out open the spawn list. A stale file of its own left beside the ones
-    // it writes is refused alike.
-    let mut names: Vec<String> = LevelSceneExporter::FILE_NAMES
-      .iter()
-      .map(|name| (*name).to_owned())
-      .collect();
-    let (mut files, census, entities, refused) = match geometry {
-      Some(inputs) => {
-        let game_materials: GameMtlFile = GameMtlFile::read_from_path::<XRayByteOrder, _>(&inputs.game_materials)?;
-        let mut export: LevelBuildExport = LevelBuildExporter::export::<XRayByteOrder>(
-          &scene,
-          &LevelBuildSources {
-            objects: inputs.objects,
-            game_materials: &game_materials,
-            textures: inputs.textures,
-            lighting: inputs.lighting,
-            impostor_limit: inputs.impostor_limit,
-            held: None,
-          },
-        )?;
-        let (census, entities, refused) = (
-          export.census,
-          std::mem::take(&mut export.entities),
-          std::mem::take(&mut export.refused),
-        );
-
-        names.extend(LevelBuildExport::list_file_names(destination));
-
-        (export.into_files::<XRayByteOrder>()?, Some(census), entities, refused)
-      }
-      None => (BTreeMap::new(), None, Vec::new(), Vec::new()),
-    };
-
-    files.extend(
-      LevelSceneExporter::export::<XRayByteOrder>(&scene, &entities)?
-        .into_iter()
-        .map(|(name, bytes)| (name.to_owned(), bytes)),
-    );
-
-    for refusal in &refused {
+  /// What the build wrote, each file with what it replaced, and each part it refused.
+  fn print(output: &OutputOptions, report: &LevelBuildReport) {
+    for refusal in &report.refused {
       xrf_output::warning!(output, "{}: {}", refusal.object, refusal.reason);
     }
-
-    if !is_forced && let Some(existing) = files.keys().find(|name| destination.join(name).exists()) {
-      return Err(XrfError::new_invalid_error(format!(
-        "{} already exists; pass --force to overwrite the files the build writes",
-        format_path(&destination.join(existing))
-      )));
-    }
-
-    let report: LevelBuildReport = LevelBuildReport {
-      source: format_path(source).to_string(),
-      destination: format_path(destination).to_string(),
-      files: LevelSceneExporter::write_to_directory(&files, &names, destination)?,
-      geometry: census,
-    };
 
     xrf_output::success!(
       output,
@@ -239,7 +165,5 @@ impl BuildCommand {
         .collect::<Vec<_>>()
         .join(", ")
     );
-
-    Ok(report)
   }
 }

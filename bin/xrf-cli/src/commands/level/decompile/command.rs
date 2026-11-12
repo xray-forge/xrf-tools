@@ -1,20 +1,12 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_build_info::{BuildInfo, build_info};
 use xrf_chunk::XRayByteOrder;
-use xrf_editable_level::{EditableLevelFile, EditableLevelPart};
-use xrf_error::{XrfError, XrfResult};
+use xrf_job::JobHandle;
 use xrf_output::OutputOptions;
-use xrf_rawdata::{
-  LevelDecompileOptions, LevelSceneDecompile, LevelSceneDecompiler, LevelSceneProvenance, LevelSurfaceInference,
-  LevelSurfaces,
-};
-use xrf_utils::format_path;
+use xrf_rawdata::{LevelDecompileReport, LevelDecompileRequest, LevelSceneDecompiler, LevelSurfaces};
 
-use crate::commands::level::decompile::report::{
-  LevelDecompileGeometry, LevelDecompileReport, LevelDecompileRootSpawn, LevelDecompileSurfaces, LevelDecompileTool,
-};
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 /// Decompiles a compiled level's directory into a Level Editor scene, with a provenance sidecar beside it.
@@ -128,60 +120,42 @@ impl GenericCommand for DecompileCommand {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let source: &PathBuf = matches.get_one::<PathBuf>("path").expect("the path is required");
-    let destination: &PathBuf = matches.get_one::<PathBuf>("dest").expect("the destination is required");
-    let output: OutputOptions = context.get_output().clone();
-
-    let gamedata: PathBuf = Self::get_gamedata(source);
-    let surfaces: LevelSurfaces = match matches.get_one::<String>("surfaces").map(String::as_str) {
-      Some("defaults") => LevelSurfaces::Defaults,
-      _ => LevelSurfaces::Infer,
-    };
-    // A library named must exist; one by default is taken where the level's gamedata holds it.
-    let library = |name: &str, file: &str| -> XrfResult<Option<PathBuf>> {
-      match matches.get_one::<PathBuf>(name) {
-        Some(path) if path.is_file() => Ok(Some(path.clone())),
-        Some(path) => Err(XrfError::new_not_found_error(format!(
-          "{} does not exist",
-          format_path(path)
-        ))),
-        None => Ok(Some(gamedata.join(file)).filter(|path| path.is_file())),
-      }
-    };
     let build: BuildInfo = build_info!();
-    let options: LevelDecompileOptions = LevelDecompileOptions {
-      name: Self::get_level_name(destination)?,
-      tool: String::from("xrf-cli level decompile"),
-      tool_version: match build.short_commit() {
-        Some(commit) => format!("{} ({commit})", build.version),
-        None => build.version.to_string(),
+    let request: LevelDecompileRequest = LevelDecompileRequest {
+      source: matches
+        .get_one::<PathBuf>("path")
+        .expect("the path is required")
+        .clone(),
+      destination: matches
+        .get_one::<PathBuf>("dest")
+        .expect("the destination is required")
+        .clone(),
+      objects: matches.get_one::<PathBuf>("objects").cloned(),
+      textures: matches.get_one::<PathBuf>("textures").cloned(),
+      root_spawn: matches.get_one::<String>("spawn").cloned(),
+      surfaces: match matches.get_one::<String>("surfaces").map(String::as_str) {
+        Some("defaults") => LevelSurfaces::Defaults,
+        _ => LevelSurfaces::Infer,
       },
-      root_spawn: Self::get_root_spawn(&gamedata, matches.get_one::<String>("spawn").map(String::as_str))?,
-      surfaces,
-      game_materials: library("game-materials", LevelSurfaceInference::GAME_MATERIALS_FILE)?,
-      compiler_shaders: library("compiler-shaders", LevelSurfaceInference::COMPILER_SHADERS_FILE)?,
+      game_materials: matches.get_one::<PathBuf>("game-materials").cloned(),
+      compiler_shaders: matches.get_one::<PathBuf>("compiler-shaders").cloned(),
       libraries: matches
         .get_many::<PathBuf>("library")
         .map(|roots| roots.cloned().collect())
         .unwrap_or_default(),
+      is_forced: matches.get_flag("force"),
     };
-    let objects: PathBuf = matches
-      .get_one::<PathBuf>("objects")
-      .cloned()
-      .unwrap_or_else(|| Self::get_default_objects_root(destination));
-    let textures: PathBuf = matches
-      .get_one::<PathBuf>("textures")
-      .cloned()
-      .unwrap_or_else(|| Self::get_default_textures_root(destination));
-    let report: LevelDecompileReport = Self::decompile(
-      &output,
-      source,
-      destination,
-      (&objects, &textures),
-      &options,
-      matches.get_flag("force"),
+    let report: LevelDecompileReport = LevelSceneDecompiler::decompile_to_path::<XRayByteOrder>(
+      &request,
+      "xrf-cli level decompile",
+      &match build.short_commit() {
+        Some(commit) => format!("{} ({commit})", build.version),
+        None => build.version.to_string(),
+      },
+      &JobHandle::inert(),
     )?;
 
+    Self::print(context.get_output(), &report);
     context.set_result(|| &report)?;
 
     Ok(())
@@ -189,144 +163,8 @@ impl GenericCommand for DecompileCommand {
 }
 
 impl DecompileCommand {
-  /// The root spawn a new game starts from, which a decompile reads by default.
-  const DEFAULT_ROOT_SPAWN: &'static str = "all";
-
-  /// The `gamedata` directory holding `levels\<level>`, named by the level path's parents where it has them.
-  fn get_gamedata(source: &Path) -> PathBuf {
-    match source.parent().and_then(Path::parent) {
-      Some(gamedata) if !gamedata.as_os_str().is_empty() => gamedata.to_path_buf(),
-      _ => source.join("..").join(".."),
-    }
-  }
-
-  /// The root spawn named `name` in `gamedata`, `spawns/<name>.spawn`. Without a name, `all.spawn` where it exists,
-  /// else none.
-  fn get_root_spawn(gamedata: &Path, name: Option<&str>) -> XrfResult<Option<PathBuf>> {
-    let path: PathBuf = gamedata
-      .join("spawns")
-      .join(format!("{}.spawn", name.unwrap_or(Self::DEFAULT_ROOT_SPAWN)));
-
-    match (path.is_file(), name) {
-      (true, _) => Ok(Some(path)),
-      (false, None) => Ok(None),
-      (false, Some(_)) => Err(XrfError::new_not_found_error(format!(
-        "{} does not exist",
-        format_path(&path)
-      ))),
-    }
-  }
-
-  /// The objects root beside the scene's directory, `<levels>/../objects`, as the SDK's `fs.ltx` puts `$maps$` and
-  /// `$objects$` side by side under its rawdata.
-  pub(crate) fn get_default_objects_root(destination: &Path) -> PathBuf {
-    Self::get_rawdata(destination).join("objects")
-  }
-
-  /// The game textures root beside the scene's rawdata, `<rawdata>/../gamedata/textures`, as the SDK's `fs.ltx` puts
-  /// `$game_textures$` under the gamedata beside its rawdata.
-  pub(crate) fn get_default_textures_root(destination: &Path) -> PathBuf {
-    Self::get_rawdata(destination)
-      .join("..")
-      .join("gamedata")
-      .join("textures")
-  }
-
-  /// The rawdata directory holding the scene's `levels` directory.
-  fn get_rawdata(destination: &Path) -> PathBuf {
-    let named = |path: &&Path| !path.as_os_str().is_empty();
-
-    match destination.parent().filter(named) {
-      Some(levels) => match levels.parent().filter(named) {
-        Some(rawdata) => rawdata.to_path_buf(),
-        None => levels.join(".."),
-      },
-      None => PathBuf::from(".."),
-    }
-  }
-
-  fn decompile(
-    output: &OutputOptions,
-    source: &Path,
-    destination: &Path,
-    (objects, textures): (&Path, &Path),
-    options: &LevelDecompileOptions,
-    is_forced: bool,
-  ) -> XrfResult<LevelDecompileReport> {
-    let sidecar: PathBuf = LevelSceneProvenance::sidecar_path(destination);
-
-    if !is_forced && let Some(existing) = LevelSceneDecompile::get_existing_paths(destination).first() {
-      return Err(XrfError::new_invalid_error(format!(
-        "{} already exists; pass --force to overwrite the scene",
-        format_path(existing)
-      )));
-    }
-
-    let decompiled: LevelSceneDecompile = LevelSceneDecompiler::decompile::<XRayByteOrder>(source, options)?;
-
-    if !is_forced
-      && let Some(existing) = decompiled
-        .get_existing_object_paths(objects)
-        .into_iter()
-        .chain(decompiled.get_existing_texture_paths(textures))
-        .next()
-    {
-      return Err(XrfError::new_invalid_error(format!(
-        "{} already exists; pass --force to overwrite the scene's objects and textures",
-        format_path(&existing)
-      )));
-    }
-
-    decompiled.write_to_path::<XRayByteOrder>(destination, objects, textures)?;
-
-    let report: LevelDecompileReport = LevelDecompileReport {
-      source: format_path(source).to_string(),
-      destination: format_path(destination).to_string(),
-      sidecar: format_path(&sidecar).to_string(),
-      sources: decompiled
-        .provenance
-        .sources
-        .iter()
-        .map(|source| source.file.clone())
-        .collect(),
-      tools: decompiled
-        .scene
-        .tools
-        .iter()
-        .map(|tool| {
-          Ok(LevelDecompileTool {
-            name: tool.name.clone(),
-            objects: match tool.parts.first() {
-              Some(EditableLevelPart::Text(part)) => Some(part.get_objects()?.len()),
-              _ => None,
-            },
-          })
-        })
-        .collect::<XrfResult<Vec<LevelDecompileTool>>>()?,
-      inferred: decompiled.provenance.inferred,
-      refused: decompiled.provenance.refused,
-      root_spawn: decompiled.provenance.root_spawn.map(|root| LevelDecompileRootSpawn {
-        file: root.file,
-        objects: root.objects,
-        disagreements: root.disagreements.len(),
-        update_packets: root.update_packets.len(),
-      }),
-      objects_root: format_path(objects).to_string(),
-      textures_root: format_path(textures).to_string(),
-      textures: decompiled.textures.len(),
-      geometry: decompiled.provenance.geometry.map(|geometry| LevelDecompileGeometry {
-        objects: geometry.objects.len(),
-        census: geometry.census,
-        surfaces: geometry.surfaces.map(|surfaces| LevelDecompileSurfaces {
-          exact_triangles: surfaces.census.exact_triangles,
-          traced_triangles: surfaces.census.traced_triangles,
-          uncollided_triangles: surfaces.census.uncollided_triangles,
-          compiler_shaders: surfaces.census.compiler_shaders.len(),
-          unknown_game_materials: surfaces.census.unknown_game_materials.len(),
-        }),
-      }),
-    };
-
+  /// What the decompile wrote, a line per kind of it, warnings where it inferred or left something out.
+  fn print(output: &OutputOptions, report: &LevelDecompileReport) {
     if let Some(surfaces) = report.geometry.as_ref().and_then(|geometry| geometry.surfaces.as_ref()) {
       xrf_output::info!(
         output,
@@ -337,19 +175,14 @@ impl DecompileCommand {
         surfaces.uncollided_triangles,
         surfaces.compiler_shaders
       );
-    }
 
-    if let Some(unknown) = report
-      .geometry
-      .as_ref()
-      .and_then(|geometry| geometry.surfaces.as_ref())
-      .map(|surfaces| surfaces.unknown_game_materials)
-      .filter(|unknown| *unknown > 0)
-    {
-      xrf_output::warning!(
-        output,
-        "{unknown} collision materials are not in the game material library; their surfaces take default"
-      );
+      if surfaces.unknown_game_materials > 0 {
+        xrf_output::warning!(
+          output,
+          "{} collision materials are not in the game material library; their surfaces take default",
+          surfaces.unknown_game_materials
+        );
+      }
     }
 
     if let Some(geometry) = &report.geometry {
@@ -408,25 +241,5 @@ impl DecompileCommand {
         .join(", "),
       report.sidecar
     );
-
-    Ok(report)
-  }
-
-  /// The level's name, the destination's file stem, from a path ending in `.level`.
-  fn get_level_name(destination: &Path) -> XrfResult<String> {
-    destination
-      .extension()
-      .filter(|extension| extension.eq_ignore_ascii_case(EditableLevelFile::EXTENSION))
-      .and(destination.file_stem())
-      .and_then(|stem| stem.to_str())
-      .filter(|stem| !stem.is_empty())
-      .map(str::to_owned)
-      .ok_or_else(|| {
-        XrfError::new_invalid_error(format!(
-          "{} does not name a .{} file",
-          format_path(destination),
-          EditableLevelFile::EXTENSION
-        ))
-      })
   }
 }

@@ -123,8 +123,8 @@ fn refuses_to_replace_a_levels_files_without_force() -> XrfResult {
   let error: String = get_error(run("build", &root.join("scenes/test_level.level"), &level, &[]));
 
   assert!(
-    error.contains("--force"),
-    "Expect the refusal to name the flag: {error}"
+    error.contains("already exists"),
+    "Expect the refusal to name the existing file: {error}"
   );
   assert!(!level.join("level.game").exists(), "a refusal writes nothing");
 

@@ -9,14 +9,22 @@ Converts between the game's compiled assets and the SDK's rawdata, the tree the 
 | Level visuals → one static `.object` | `ObjectDecompiler::decompile_level_geometry` |
 | Level files ↔ Level Editor parts     | `Level*Conversion::decompile` and `export`   |
 | Level directory → Level Editor scene | `LevelSceneDecompiler::decompile`            |
+| … written to disk, for a front-end   | `LevelSceneDecompiler::decompile_to_path`    |
 | Level Editor scene → its game files  | `LevelSceneExporter::export`                 |
 | Level Editor scene → `build.prj`     | `LevelBuildExporter::export`                 |
+| … the whole Build into a directory   | `LevelBuildExporter::build_to_directory`     |
 | `.object` → OGF                      | `ObjectCompiler::compile`                    |
 | `.object` → `.dm`                    | `ObjectCompiler::compile_detail`             |
 | Compare a compiled OGF with another  | `ObjectVerifier::verify`                     |
 
 It sits beside the format crates because each conversion reads one format and writes another, so `xrf-ogf` and
 `xrf-editable-object` stay independent of each other.
+
+`xrf-cli level decompile` and `level build` and the app's level decompiler and compiler both call the two front-end
+entry points: they take a `LevelDecompileRequest` or `LevelBuildRequest`, resolve the defaults the SDK's layout gives
+(the gamedata beside a level, its root spawn and libraries, the objects and textures roots beside a scene), refuse to
+overwrite unless asked, report to an `xrf-job` `JobHandle` and stop between steps once it is cancelled, and return a
+`LevelDecompileReport` or `LevelBuildReport`.
 
 ## Decompile an OGF
 

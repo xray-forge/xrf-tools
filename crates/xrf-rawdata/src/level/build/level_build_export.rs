@@ -45,6 +45,7 @@ pub struct LevelBuildExport {
 }
 
 /// What a build took from the scene and left out.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelBuildCensus {

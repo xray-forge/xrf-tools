@@ -8,7 +8,7 @@ use xrf_editable_level::EditableSpawnPointObject;
 use xrf_error::XrfResult;
 use xrf_level::{LevelEnvModFile, LevelEnvModifier};
 use xrf_math::Vector3d;
-use xrf_rawdata::LevelSceneProvenance;
+use xrf_rawdata::{LevelDecompileRequest, LevelSceneProvenance};
 use xrf_test_utils::GeneratedResources;
 
 use crate::commands::level::decompile::command::DecompileCommand;
@@ -93,8 +93,8 @@ fn refuses_to_replace_a_scene_without_force() -> XrfResult {
   let error: String = get_error(decompile(&root.join("level"), &destination, &[]));
 
   assert!(
-    error.contains("--force"),
-    "Expect the refusal to name the flag: {error}"
+    error.contains("already exists"),
+    "Expect the refusal to name the existing scene: {error}"
   );
   assert_eq!(fs::read(&destination)?, b"authored");
   assert!(!root.join("scenes/test_level.level.xrf.json").exists());
@@ -162,7 +162,13 @@ fn refuses_a_named_root_spawn_that_does_not_exist() -> XrfResult {
 
 #[test]
 fn puts_objects_beside_the_levels_directory_by_default() {
-  let objects_of = |destination: &str| DecompileCommand::get_default_objects_root(Path::new(destination));
+  let objects_of = |destination: &str| {
+    LevelDecompileRequest {
+      destination: PathBuf::from(destination),
+      ..LevelDecompileRequest::default()
+    }
+    .get_objects_root()
+  };
 
   assert_eq!(
     objects_of("rawdata/levels/zaton.level"),
@@ -179,7 +185,11 @@ fn puts_objects_beside_the_levels_directory_by_default() {
 #[test]
 fn puts_textures_in_the_gamedata_beside_the_rawdata_by_default() {
   assert_eq!(
-    DecompileCommand::get_default_textures_root(Path::new("editors/rawdata/levels/zaton.level")),
+    LevelDecompileRequest {
+      destination: PathBuf::from("editors/rawdata/levels/zaton.level"),
+      ..LevelDecompileRequest::default()
+    }
+    .get_textures_root(),
     Path::new("editors/rawdata")
       .join("..")
       .join("gamedata")

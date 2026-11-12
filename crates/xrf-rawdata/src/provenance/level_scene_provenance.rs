@@ -29,6 +29,7 @@ pub struct LevelSceneFile {
 
 /// What a decompiled scene holds that its sources do not say, which the decompile chose; a part's inferences are
 /// recorded only where it holds what they were chosen for.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum LevelSceneInference {
@@ -145,6 +146,7 @@ pub struct LevelSceneSurfaceLibraries {
 }
 
 /// What the decompile read but left out of the scene, with why.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelSceneRefusal {

@@ -5,11 +5,13 @@ macro_rules! for_each_levels_domain {
   ($consumer:ident) => {
     $consumer! {
       levels => "levels" {
+        build_level => crate::commands::build_level::levels_build_level,
         capture_cube => crate::viewer::commands::capture::capture_cube::levels_capture_cube,
         capture_map => crate::viewer::commands::capture::capture_map::levels_capture_map,
         close_level => crate::commands::close_level::levels_close_level,
         command_music => crate::commands::sound::command_music::levels_command_music,
         copy_screenshot => crate::viewer::commands::screenshot::copy_screenshot::levels_copy_screenshot,
+        decompile_level => crate::commands::decompile_level::levels_decompile_level,
         delete_recording => crate::viewer::commands::record::delete_recording::levels_delete_recording,
         delete_screenshot => crate::viewer::commands::screenshot::delete_screenshot::levels_delete_screenshot,
         describe_console_defaults => crate::commands::describe_console_defaults::levels_describe_console_defaults,
@@ -44,10 +46,14 @@ macro_rules! for_each_levels_domain {
         read_screenshot(path: "string") => crate::viewer::routes::read_screenshot::levels_read_screenshot,
       }
       @jobs {
+        /// Building a Level Editor scene into a level directory.
+        LEVELS_JOB_BUILD => "build",
         /// Capturing a cubemap around a viewport's camera, face by face.
         LEVELS_JOB_CAPTURE_CUBE => "capture-cube",
         /// Capturing a level map in a viewport, tile by tile.
         LEVELS_JOB_CAPTURE_MAP => "capture-map",
+        /// Decompiling a compiled level into a Level Editor scene.
+        LEVELS_JOB_DECOMPILE => "decompile",
       }
     }
   };

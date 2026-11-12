@@ -10,6 +10,8 @@ pub use crate::level::build::level_build_exporter::LevelBuildExporter;
 pub use crate::level::build::level_build_impostor_limit::LevelBuildImpostorLimit;
 pub use crate::level::build::level_build_impostors::LevelBuildImpostorAtlas;
 pub use crate::level::build::level_build_lighting::LevelBuildLighting;
+pub use crate::level::build::level_build_report::LevelBuildReport;
+pub use crate::level::build::level_build_request::LevelBuildRequest;
 pub use crate::level::build::level_build_sources::LevelBuildSources;
 pub use crate::level::level_breakable_conversion::LevelBreakableConversion;
 pub use crate::level::level_collision_index::{LevelCollisionIndex, LevelCollisionLookup};
@@ -44,6 +46,11 @@ pub use crate::level::level_visual_geometry::LevelVisualGeometry;
 pub use crate::level::level_wallmark_conversion::LevelWallmarkConversion;
 pub use crate::level::level_way_conversion::LevelWayConversion;
 pub use crate::level::scene::level_decompile_options::LevelDecompileOptions;
+pub use crate::level::scene::level_decompile_report::{
+  LevelDecompileGeometry, LevelDecompileReport, LevelDecompileReportTool, LevelDecompileRootSpawn,
+  LevelDecompileSurfaces,
+};
+pub use crate::level::scene::level_decompile_request::LevelDecompileRequest;
 pub use crate::level::scene::level_scene_decompile::{
   LevelSceneDecompile, LevelSceneObjectFile, LevelSceneTextureFile,
 };

@@ -10,7 +10,9 @@ import {
   BurstOutcome,
   CubeCaptureRequest,
   CubeExportRequest,
+  LevelBuildResult,
   LevelConsoleDefaults,
+  LevelDecompileResult,
   LevelEntry,
   LevelMapDescription,
   LevelObjectsDescription,
@@ -34,17 +36,20 @@ import { CaptureOutcome } from "#/types/xrf-app-render";
 import { WeatherCycleId } from "#/types/xrf-environment";
 import { JobProgress } from "#/types/xrf-job";
 import { XraySurfaceDescriptor } from "#/types/xrf-material";
+import { LevelBuildRequest, LevelDecompileRequest } from "#/types/xrf-rawdata";
 import { RenderViewportId } from "#/types/xrf-renderer";
 import { XrayRoots } from "#/types/xrf-vfs";
 import { WorldMusicCommand, WorldSoundReport } from "#/types/xrf-world";
 
 /** The wire name of every command of the `levels` plugin. */
 export enum ELevelsCommand {
+  BUILD_LEVEL = "plugin:levels|build_level",
   CAPTURE_CUBE = "plugin:levels|capture_cube",
   CAPTURE_MAP = "plugin:levels|capture_map",
   CLOSE_LEVEL = "plugin:levels|close_level",
   COMMAND_MUSIC = "plugin:levels|command_music",
   COPY_SCREENSHOT = "plugin:levels|copy_screenshot",
+  DECOMPILE_LEVEL = "plugin:levels|decompile_level",
   DELETE_RECORDING = "plugin:levels|delete_recording",
   DELETE_SCREENSHOT = "plugin:levels|delete_screenshot",
   DESCRIBE_CONSOLE_DEFAULTS = "plugin:levels|describe_console_defaults",
@@ -78,6 +83,12 @@ export enum ELevelsCommand {
 
 /** Commands */
 export const levelsCommands = {
+  /**
+   * Build a Level Editor scene into a level directory, as `level build` does, reporting each stage and stopping before
+   * writing on request.
+   */
+  buildLevel: (request: LevelBuildRequest, jobId: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<LevelBuildResult>(ELevelsCommand.BUILD_LEVEL, { request, jobId, progress }),
   /** Capture a cubemap around a viewport's camera face by face and write it to a PNG file as a horizontal cross. */
   captureCube: (request: CubeCaptureRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<CaptureOutcome>(ELevelsCommand.CAPTURE_CUBE, { request, jobId, progress }),
@@ -99,6 +110,12 @@ export const levelsCommands = {
    */
   copyScreenshot: (path: string, target: string) =>
     __TAURI_INVOKE<null>(ELevelsCommand.COPY_SCREENSHOT, { path, target }),
+  /**
+   * Decompile a compiled level's directory into a Level Editor scene on disk, as `level decompile` does, reporting each
+   * step and stopping between steps on request.
+   */
+  decompileLevel: (request: LevelDecompileRequest, jobId: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<LevelDecompileResult>(ELevelsCommand.DECOMPILE_LEVEL, { request, jobId, progress }),
   /** Delete a recording of the recordings folder for good. */
   deleteRecording: (path: string) => __TAURI_INVOKE<null>(ELevelsCommand.DELETE_RECORDING, { path }),
   /**
@@ -232,6 +249,10 @@ export const levelsCommands = {
 
 /** What each command of the `levels` plugin takes and resolves to, keyed by its wire name. */
 export interface ILevelsCommandSignatures {
+  [ELevelsCommand.BUILD_LEVEL]: IIpcCommandSignature<
+    typeof levelsCommands.buildLevel,
+    ["request", "jobId", "progress"]
+  >;
   [ELevelsCommand.CAPTURE_CUBE]: IIpcCommandSignature<
     typeof levelsCommands.captureCube,
     ["request", "jobId", "progress"]
@@ -243,6 +264,10 @@ export interface ILevelsCommandSignatures {
   [ELevelsCommand.CLOSE_LEVEL]: IIpcCommandSignature<typeof levelsCommands.closeLevel, ["sessionIds"]>;
   [ELevelsCommand.COMMAND_MUSIC]: IIpcCommandSignature<typeof levelsCommands.commandMusic, ["viewport", "command"]>;
   [ELevelsCommand.COPY_SCREENSHOT]: IIpcCommandSignature<typeof levelsCommands.copyScreenshot, ["path", "target"]>;
+  [ELevelsCommand.DECOMPILE_LEVEL]: IIpcCommandSignature<
+    typeof levelsCommands.decompileLevel,
+    ["request", "jobId", "progress"]
+  >;
   [ELevelsCommand.DELETE_RECORDING]: IIpcCommandSignature<typeof levelsCommands.deleteRecording, ["path"]>;
   [ELevelsCommand.DELETE_SCREENSHOT]: IIpcCommandSignature<typeof levelsCommands.deleteScreenshot, ["path"]>;
   [ELevelsCommand.DESCRIBE_CONSOLE_DEFAULTS]: IIpcCommandSignature<
