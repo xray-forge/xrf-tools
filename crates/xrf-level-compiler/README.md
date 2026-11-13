@@ -21,9 +21,8 @@ to an `xrf-job` `JobHandle` and killing it when the job is cancelled; the detail
 SDK program and its log, the lighter with the slots it met and the GPU that traced, or the AI map compiler with its
 covers, GPU, identity and graph check. `xrf-cli level compile` and the app's level compiler call it.
 
-Each SDK compiler ends a run on a "Congratulation!" message box and waits on it, even once answered. xrLC takes
-`-silent` to skip it; a compiler with no such switch has its box end the step, the process stopped with its files
-already written (`sdk/level_sdk_dialog.rs`), which no step needs since the AI map became this crate's.
+Each SDK compiler ends a run on a "Congratulation!" message box and waits on it, even once answered; xrLC runs with
+`-silent`, which skips it, so it exits on its own.
 
 The spawn (xrAI `-s`) is not a step: it works on every level of a game at once.
 

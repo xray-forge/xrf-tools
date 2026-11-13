@@ -18,22 +18,19 @@ fn sdk() -> XrfResult<PathBuf> {
   Ok(root)
 }
 
-fn arguments(sdk: &Path, step: LevelCompileStep) -> XrfResult<Option<(Vec<String>, bool)>> {
-  Ok(LevelSdkProgram::of(sdk, step)?.map(|program| (program.get_arguments("mp_darkvalley"), program.is_silent())))
+fn arguments(sdk: &Path, step: LevelCompileStep) -> XrfResult<Option<Vec<String>>> {
+  Ok(LevelSdkProgram::of(sdk, step)?.map(|program| program.get_arguments("mp_darkvalley")))
 }
 
 #[test]
 fn runs_xrlc_silent() -> XrfResult {
   assert_eq!(
     arguments(&sdk()?, LevelCompileStep::Geometry)?,
-    Some((
-      vec![
-        String::from("-f"),
-        String::from("mp_darkvalley"),
-        String::from("-silent")
-      ],
-      true
-    ))
+    Some(vec![
+      String::from("-f"),
+      String::from("mp_darkvalley"),
+      String::from("-silent")
+    ])
   );
 
   Ok(())

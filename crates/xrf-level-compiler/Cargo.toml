@@ -31,9 +31,6 @@ xrf-shaders = { workspace = true }
 xrf-thm = { workspace = true }
 xrf-utils = { workspace = true }
 
-[target.'cfg(windows)'.dependencies]
-windows = { workspace = true, features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
-
 [dev-dependencies]
 xrf-test-utils = { workspace = true }
 

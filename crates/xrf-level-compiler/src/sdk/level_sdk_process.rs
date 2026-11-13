@@ -5,7 +5,6 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_job::JobHandle;
 use xrf_utils::format_path;
 
-use crate::sdk::level_sdk_dialog::LevelSdkDialog;
 use crate::sdk::level_sdk_program::LevelSdkProgram;
 use crate::sdk::level_sdk_workspace::LevelSdkWorkspace;
 
@@ -68,14 +67,6 @@ impl LevelSdkProcess {
           "{} was stopped",
           format_path(&program.path)
         )));
-      }
-
-      if !program.is_silent() && LevelSdkDialog::is_shown(child.id()) {
-        // Its outputs are written and closed; it would wait on the box, and past it, for good.
-        let _ = child.kill();
-        let _ = child.wait();
-
-        return Ok(started.elapsed());
       }
 
       job.set_detail(workspace.get_last_log_line(program.log_prefix, since));

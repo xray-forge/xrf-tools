@@ -8817,7 +8817,6 @@ dependencies = [
  "sha2",
  "specta",
  "uuid",
- "windows",
  "xrf-chunk",
  "xrf-dds",
  "xrf-error",
