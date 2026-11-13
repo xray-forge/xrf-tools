@@ -26,21 +26,6 @@ pub struct AlifeObjectSmartCover {
 }
 
 impl AlifeObjectSmartCover {
-  /// Refuse a layout whose smart cover takes its combat cover flag from the section's config rather than the packet:
-  /// no value read or written here would be the one the engine holds.
-  fn assert_combat_flag(layout: SpawnLayout) -> XrfResult {
-    if layout.has_smart_cover_combat_flag() {
-      return Ok(());
-    }
-
-    Err(XrfError::new_invalid_error(format!(
-      "A smart cover of spawn version {} takes its combat cover flag from its section's config, which the packet does \
-       not carry; version {} is the first to store it",
-      layout.version,
-      SpawnLayout::SMART_COVER_COMBAT_FLAG_VERSION
-    )))
-  }
-
   /// Refuse a `can_fire` the layout has no field for unless it is the combat cover flag the engine copies into it.
   fn assert_fire_flag_fits(&self, layout: SpawnLayout) -> XrfResult {
     if layout.has_smart_cover_fire_flag() {
@@ -59,9 +44,6 @@ impl AlifeStateReadWrite for AlifeObjectSmartCover {
     let hold_position_time: f32 = reader.read_f32::<T>()?;
     let enter_min_enemy_distance: f32 = reader.read_f32::<T>()?;
     let exit_min_enemy_distance: f32 = reader.read_f32::<T>()?;
-
-    Self::assert_combat_flag(layout)?;
-
     let is_combat_cover: u8 = reader.read_u8()?;
     let can_fire: u8 = if layout.has_smart_cover_fire_flag() {
       reader.read_u8()?
@@ -82,7 +64,6 @@ impl AlifeStateReadWrite for AlifeObjectSmartCover {
   }
 
   fn write_state<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W, layout: SpawnLayout) -> XrfResult {
-    Self::assert_combat_flag(layout)?;
     self.assert_fire_flag_fits(layout)?;
 
     writer.write_xr::<T, _>(&self.base)?;
@@ -109,8 +90,6 @@ impl AlifeStateReadWrite for AlifeObjectSmartCover {
       ))
     })?;
 
-    Self::assert_combat_flag(layout)?;
-
     let is_combat_cover: u8 = section.read_field("is_combat_cover")?;
 
     Ok(Self {
@@ -130,7 +109,6 @@ impl AlifeStateReadWrite for AlifeObjectSmartCover {
   }
 
   fn export_state(&self, section_name: &str, ltx: &mut impl LtxWrite, layout: SpawnLayout) -> XrfResult {
-    Self::assert_combat_flag(layout)?;
     self.assert_fire_flag_fits(layout)?;
     self.base.export(section_name, ltx)?;
 
@@ -277,38 +255,12 @@ mod tests {
     );
   }
 
-  /// Version 122 stores the combat cover flag; below it the engine takes it from the section's config.
+  /// The lowest accepted version, 122, already stores the combat cover flag.
   #[test]
-  fn refuses_a_smart_cover_below_version_122() -> XrfResult {
+  fn reads_and_writes_the_combat_cover_flag_at_version_122() -> XrfResult {
     let cover: AlifeObjectSmartCover = new_smart_cover();
-    let (bytes, read) = read_back(&cover, layout(122))?;
 
-    assert_eq!(bytes, 135);
-    assert_eq!(read, cover);
-
-    let error: String = cover
-      .write_state::<XRayByteOrder, _>(&mut ChunkWriter::new(), layout(121))
-      .expect_err("a combat cover flag the packet does not store")
-      .to_string();
-
-    assert_eq!(
-      error,
-      "Invalid error: A smart cover of spawn version 121 takes its combat cover flag from its section's config, which \
-       the packet does not carry; version 122 is the first to store it"
-    );
-
-    let mut writer: ChunkWriter = ChunkWriter::new();
-
-    cover.write_state::<XRayByteOrder, _>(&mut writer, layout(122))?;
-
-    let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&writer.buffer)?;
-
-    assert_eq!(
-      AlifeObjectSmartCover::read_state::<XRayByteOrder, _>(&mut reader, layout(121))
-        .expect_err("a combat cover flag the packet does not store")
-        .to_string(),
-      error
-    );
+    assert_eq!(read_back(&cover, layout(122))?, (135, cover));
 
     Ok(())
   }
