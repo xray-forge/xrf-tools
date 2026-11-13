@@ -1,5 +1,4 @@
-use xrf_math::EPS;
-
+use crate::ai::ai_cell_pick::AiCellPick;
 use crate::ai::ai_vertex::AiVertex;
 
 /// Whether a node reaches a cover node by walking straight toward it across the map (`vertex_in_direction`,
@@ -31,7 +30,7 @@ impl AiCoverWalk {
         let min: (f32, f32) = (at.0 - half_cell, at.1 - half_cell);
         let max: (f32, f32) = (at.0 + half_cell, at.1 + half_cell);
 
-        if !Self::is_crossing(min, max, from, direction) {
+        if !AiCellPick::is_crossing(min, max, from, direction) {
           continue;
         }
 
@@ -69,34 +68,5 @@ impl AiCoverWalk {
 
   fn flatten(vertex: &AiVertex) -> (f32, f32) {
     (vertex.position.x, vertex.position.z)
-  }
-
-  /// `Fbox2::pick_exact` (`xrCore/_fbox2.h:116`): whether the line through `start` along `direction`, both ways, meets
-  /// the box from `min` to `max` on one of its four sides, within `EPS`.
-  fn is_crossing(min: (f32, f32), max: (f32, f32), start: (f32, f32), direction: (f32, f32)) -> bool {
-    let low: (f32, f32) = (min.0 - start.0, min.1 - start.1);
-    let high: (f32, f32) = (max.0 - start.0, max.1 - start.1);
-
-    if direction.0 != 0.0 {
-      for side in [low.0, high.0] {
-        let y: f32 = side / direction.0 * direction.1;
-
-        if y >= low.1 - EPS && y <= high.1 + EPS {
-          return true;
-        }
-      }
-    }
-
-    if direction.1 != 0.0 {
-      for side in [low.1, high.1] {
-        let x: f32 = side / direction.1 * direction.0;
-
-        if x >= low.0 - EPS && x <= high.0 + EPS {
-          return true;
-        }
-      }
-    }
-
-    false
   }
 }

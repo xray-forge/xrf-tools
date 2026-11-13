@@ -9,5 +9,6 @@ mod gpu;
 mod program;
 mod shadow;
 mod spawn;
+mod spawn_graph;
 mod textures;
 mod workspace;

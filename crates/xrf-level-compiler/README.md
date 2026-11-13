@@ -28,7 +28,8 @@ The spawn (xrAI `-s`) is not a step: it works on every level of a game at once.
 
 ## The root spawn builder
 
-The root spawn builder (`spawn/`), xrAI `-s` without xrAI, grows piece by piece; a level's cross table is built so far.
+The root spawn builder (`spawn/`), xrAI `-s` without xrAI, grows piece by piece; a level's cross table and game graph
+are built so far.
 
 - `SpawnAiMap` reads a level's `level.ai` as the engine's `CLevelGraph` looks nodes up: `find_node` gives the node of a
   position's cell nearest at or under it, else nearest over it.
@@ -41,8 +42,17 @@ The root spawn builder (`spawn/`), xrAI `-s` without xrAI, grows piece by piece;
   point, gigabytes on a large level; only the owner's distance to each node is ever read back, so a few arrays a node
   hold the same tables.
 
+- `SpawnLevelGameGraph::build` gives each vertex an edge to every vertex whose region its own borders, in the order a
+  depth first walk over its region meets them. An edge weighs the distance across the ground where a straight walk from
+  its node toward the other point gets there (`find_straight_walk`), else the length of xrAI's level path search,
+  smoothed by straight walks. The search is xrAI's A* kept rule for rule, ties included, since its path decides the
+  weight: a step costs a cell, the estimate is twice the cells across and along from the node being expanded, and the
+  open list is 8,192 buckets each sorted by cost, a new node ahead of equal ones. Then of every triangle of edges the
+  longest pair goes, the longest first.
+
 On all five vanilla Call of Pripyat levels the cross tables equal the shipped ones cell for cell, bit for bit, zaton's
-1.85 M nodes in a quarter of a second.
+1.85 M nodes in a quarter of a second. Each vertex's edges lead where the shipped ones do, in their order; 2,548 of the
+2,550 weights are the shipped ones or a few millionths off, and two take another path, about half a metre apart.
 
 ## The AI map compiler
 
@@ -144,7 +154,9 @@ step off.
 The slots run a progress unit each, and a cancelled job stops the lighting with `XrfError::Cancelled`.
 
 The spawn tests take a strip of nodes with a second floor and a cut-off node: the cross table's ties, reach and
-unreached nodes, `find_node` between floors, and the graph points xrAI leaves out. The AI map tests compile a generated
+unreached nodes, `find_node` between floors, and the graph points xrAI leaves out. The game graph tests take open and
+walled grids: bordering regions joined, a triangle's longest side dropped, a wall weighed by the path around it, and
+regions apart left unjoined. The AI map tests compile a generated
 four-node map: the sort and renumbering, the header, three planes whose round
 trip xrAI's own run gave, the identity rule, and the refusals. The cover tests take a grid: the sectors, which nodes are
 corners, the walk stopped by a hole, the quadtree's reach, and a wall whose front blocks the corners' rays and whose
