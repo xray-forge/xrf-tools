@@ -6,7 +6,7 @@ use std::path::Path;
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
-use xrf_error::XrfResult;
+use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::FileImportExport;
 use xrf_utils::{StagedFile, assert_equal, assert_length};
 
@@ -95,6 +95,24 @@ impl SpawnFile {
       u32::from(self.graphs.header.levels_count),
       "Expected correct levels count",
     )
+  }
+
+  /// Refuses a file the engine would refuse or misread: the spawn's graph GUID not the graph's
+  /// (`CALifeSpawnRegistry::load`, `alife_spawn_registry.cpp:126`), or a graph [`SpawnGraphsChunk::assert_engine_layout`]
+  /// refuses.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error naming the first disagreement.
+  pub fn assert_engine_agreement(&self) -> XrfResult {
+    if self.header.graph_guid != self.graphs.header.guid {
+      return Err(XrfError::new_invalid_error(format!(
+        "The spawn names game graph {}, but holds graph {}",
+        self.header.graph_guid, self.graphs.header.guid
+      )));
+    }
+
+    self.graphs.assert_engine_layout()
   }
 
   /// Read only the game graphs chunk of the spawn file by provided path.
@@ -246,9 +264,11 @@ impl SpawnFile {
   ///
   /// # Errors
   ///
-  /// Returns an error when the header's counts disagree with what the file holds, or a chunk cannot be written.
+  /// Returns an error when the header's counts disagree with what the file holds, when the engine would refuse or
+  /// misread the file ([`Self::assert_engine_agreement`]), or a chunk cannot be written.
   pub fn write_to<T: ByteOrder>(&self, writer: &mut dyn Write) -> XrfResult {
     self.assert_header_counts()?;
+    self.assert_engine_agreement()?;
 
     let mut header_chunk_writer: ChunkWriter = ChunkWriter::new();
     header_chunk_writer.write_xr::<T, _>(&self.header)?;

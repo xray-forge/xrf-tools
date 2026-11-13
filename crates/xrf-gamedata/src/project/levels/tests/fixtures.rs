@@ -9,7 +9,7 @@ use xrf_chunk::{ChunkReadWrite, ChunkWriter, XRayByteOrder};
 use xrf_gamemtl::GameMtlFile;
 use xrf_level::{LevelAiHeader, LevelCformHeader, LevelHeaderChunk, LevelShaderEntry, LevelShadersChunk};
 use xrf_math::{Aabb, Vector3d};
-use xrf_spawn::{GraphCrossTable, GraphHeader, GraphLevel, SpawnGraphsChunk};
+use xrf_spawn::{GraphCrossTable, GraphCrossTableCell, GraphHeader, GraphLevel, SpawnGraphsChunk};
 use xrf_test_utils::GeneratedResources;
 
 use crate::project::gamedata_check::GamedataCheck;
@@ -237,7 +237,13 @@ pub(crate) fn cross_table(level_guid: Uuid, game_guid: Uuid, nodes_count: u32) -
     vertices_count: 0,
     level_guid,
     game_guid,
-    data: Vec::new(),
+    cells: vec![
+      GraphCrossTableCell {
+        game_vertex_id: 0,
+        distance: 0.0,
+      };
+      nodes_count as usize
+    ],
   }
 }
 

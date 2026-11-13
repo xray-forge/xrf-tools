@@ -26,6 +26,24 @@ Each SDK compiler ends a run on a "Congratulation!" message box and waits on it,
 
 The spawn (xrAI `-s`) is not a step: it works on every level of a game at once.
 
+## The root spawn builder
+
+The root spawn builder (`spawn/`), xrAI `-s` without xrAI, grows piece by piece; a level's cross table is built so far.
+
+- `SpawnAiMap` reads a level's `level.ai` as the engine's `CLevelGraph` looks nodes up: `find_node` gives the node of a
+  position's cell nearest at or under it, else nearest over it.
+- `SpawnGraphPoints::read` takes `level.spawn`'s graph points in order, the level's game vertices to be, each on the
+  node under its position; one within a millimetre of a point before it, over no node, or on a kept point's node is
+  left out with its `SpawnGraphPointRemoval`, as xrAI drops it.
+- `SpawnCrossTable::build` gives every node its game vertex and distance as xrAI does: each graph point in turn floods
+  breadth first from its node, taking a node only where strictly nearer than its owner so far and going on only through
+  nodes it takes; nodes no point reaches keep the first vertex and `u32::MAX` cells. xrAI keeps a distance row a graph
+  point, gigabytes on a large level; only the owner's distance to each node is ever read back, so a few arrays a node
+  hold the same tables.
+
+On all five vanilla Call of Pripyat levels the cross tables equal the shipped ones cell for cell, bit for bit, zaton's
+1.85 M nodes in a quarter of a second.
+
 ## The AI map compiler
 
 `AiMapCompiler::compile` compiles `build.aimap` into `level.ai` as SDK 0.7's `xrAI -f` does. It takes an `AiMapRequest`
@@ -125,7 +143,9 @@ step off.
 
 The slots run a progress unit each, and a cancelled job stops the lighting with `XrfError::Cancelled`.
 
-The AI map tests compile a generated four-node map: the sort and renumbering, the header, three planes whose round
+The spawn tests take a strip of nodes with a second floor and a cut-off node: the cross table's ties, reach and
+unreached nodes, `find_node` between floors, and the graph points xrAI leaves out. The AI map tests compile a generated
+four-node map: the sort and renumbering, the header, three planes whose round
 trip xrAI's own run gave, the identity rule, and the refusals. The cover tests take a grid: the sectors, which nodes are
 corners, the walk stopped by a hole, the quadtree's reach, and a wall whose front blocks the corners' rays and whose
 mix reaches the other nodes.

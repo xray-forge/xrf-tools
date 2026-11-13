@@ -11,6 +11,7 @@ mod level_compiler;
 mod ray;
 mod sdk;
 mod shadow;
+mod spawn;
 
 #[cfg(test)]
 mod tests;
@@ -38,3 +39,9 @@ pub use crate::shadow::shadow_class_counts::ShadowClassCounts;
 pub use crate::shadow::shadow_materials::ShadowMaterials;
 pub use crate::shadow::shadow_materials_request::ShadowMaterialsRequest;
 pub use crate::shadow::shadow_texture::ShadowTexture;
+pub use crate::spawn::spawn_ai_map::SpawnAiMap;
+pub use crate::spawn::spawn_cross_table::SpawnCrossTable;
+pub use crate::spawn::spawn_graph_point::SpawnGraphPoint;
+pub use crate::spawn::spawn_graph_point_removal::SpawnGraphPointRemoval;
+pub use crate::spawn::spawn_graph_points::SpawnGraphPoints;
+pub use crate::spawn::spawn_removed_graph_point::SpawnRemovedGraphPoint;
