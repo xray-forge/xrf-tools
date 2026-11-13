@@ -19,16 +19,13 @@ impl SpawnLayout {
   /// Shadow of Chernobyl's spawn version (`xrServer_Objects.h:154` of its engine), whose layout is not read.
   pub(crate) const SHADOW_OF_CHERNOBYL_VERSION: u16 = 118;
 
-  /// The spawn versions of Clear Sky's layout, up to its release's 124 (`xrServer_Objects.h:162` of its engine); its
-  /// levels hold objects of 122 to 124. Version 121 is the first whose spawn packet header carries the game type.
-  pub(crate) const CLEAR_SKY_VERSIONS: RangeInclusive<u16> = 121..=124;
+  /// The spawn versions of Clear Sky's layout its levels hold, 122 to its release's 124 (`xrServer_Objects.h:162` of
+  /// its engine). Below 122 an item's update packet and a smart cover's spawn fields take another layout
+  /// (`CSE_ALifeInventoryItem::UPDATE_Read`, `CSE_SmartCover::STATE_Read`), which no shipped object carries.
+  pub(crate) const CLEAR_SKY_VERSIONS: RangeInclusive<u16> = 122..=124;
 
   /// Call of Pripyat's spawn version (`xrServer_Objects.h:168`), which the forks built on it keep.
   pub(crate) const CALL_OF_PRIPYAT_VERSION: u16 = 128;
-
-  /// The first spawn version whose smart cover stores its combat cover flag; below it the flag comes from the
-  /// section's config (`CSE_SmartCover::STATE_Read`).
-  pub(crate) const SMART_COVER_COMBAT_FLAG_VERSION: u16 = 122;
 
   /// The first spawn version whose smart cover stores whether it can fire (`CSE_SmartCover::STATE_Read`).
   pub(crate) const SMART_COVER_FIRE_FLAG_VERSION: u16 = 128;
@@ -60,11 +57,6 @@ impl SpawnLayout {
   /// Whether objects of spawn `version` are read and written, Clear Sky's or Call of Pripyat's.
   pub(crate) fn is_supported_version(version: u16) -> bool {
     Self::CLEAR_SKY_VERSIONS.contains(&version) || version == Self::CALL_OF_PRIPYAT_VERSION
-  }
-
-  /// Whether a smart cover stores its combat cover flag.
-  pub(crate) fn has_smart_cover_combat_flag(self) -> bool {
-    self.version >= Self::SMART_COVER_COMBAT_FLAG_VERSION
   }
 
   /// Whether a smart cover stores whether it can fire.
@@ -149,7 +141,7 @@ mod tests {
       .filter(|version| SpawnLayout::is_supported_version(*version))
       .collect();
 
-    assert_eq!(supported, vec![121, 122, 123, 124, 128]);
+    assert_eq!(supported, vec![122, 123, 124, 128]);
   }
 
   #[test]
@@ -159,8 +151,6 @@ mod tests {
       script_version,
     };
 
-    assert!(!layout(121, 8).has_smart_cover_combat_flag());
-    assert!(layout(122, 8).has_smart_cover_combat_flag());
     assert!(!layout(124, 12).has_smart_cover_fire_flag());
     assert!(layout(128, 12).has_smart_cover_fire_flag());
     assert!(!layout(128, 8).has_smart_cover_loopholes());

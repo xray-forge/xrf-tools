@@ -318,7 +318,7 @@ mod tests {
 
   #[test]
   fn reads_clear_sky_and_call_of_pripyat_versions() -> XrfResult {
-    for version in [121, 122, 123, 124, 128] {
+    for version in [122, 123, 124, 128] {
       assert_eq!(read_back(version)?, new_header(version), "{version}");
       assert_eq!(import_back(version)?, new_header(version), "{version}");
     }
@@ -337,7 +337,7 @@ mod tests {
 
   #[test]
   fn refuses_a_version_no_game_shipped() {
-    for version in [0, 120, 125, 127, 129] {
+    for version in [0, 120, 121, 125, 127, 129] {
       let expected: String =
         format!("Assertion error: Unexpected version {version} of spawn packet 'test-graph-point', script flags 33");
 
