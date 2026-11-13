@@ -4,9 +4,12 @@ use xrf_level::{LevelGameFile, LevelGameWay, LevelGameWayLink, LevelGameWayPoint
 use xrf_math::Vector3d;
 use xrf_spawn::{AlifeObject, AlifeObjectInherited, GraphCrossTableCell, LevelSpawnFile, SpawnFile};
 
-use crate::tests::fixtures::{actor_object, changer_object, graph_point_object, grid, spawn_file, zone_object};
+use crate::tests::fixtures::{
+  actor_object, changer_object, graph_point_object, grid, separator_object, spawn_file, zone_object,
+};
 use crate::{
-  SpawnAiMap, SpawnCrossTable, SpawnGraphPoints, SpawnLevelGameGraph, SpawnMergeLevel, SpawnRootBuilder, SpawnRootLevel,
+  SpawnAiMap, SpawnCrossTable, SpawnGraphPoints, SpawnLevelGameGraph, SpawnMergeLevel, SpawnRootBuild,
+  SpawnRootBuilder, SpawnRootLevel, SpawnRootOptions,
 };
 
 /// A level's files, and the graph and cross table built from them.
@@ -130,17 +133,23 @@ fn levels() -> XrfResult<(Level, Level)> {
   ))
 }
 
-fn build(a: &Level, b: &Level, start: Option<&str>) -> XrfResult<SpawnFile> {
-  Ok(
-    SpawnRootBuilder::build(
-      &[
-        a.input("a", 20, Vector3d::new(100.0, 0.0, 0.0)),
-        b.input("b", 10, Vector3d::ZERO),
-      ],
-      start,
-    )?
-    .spawn,
+fn build_with(a: &Level, b: &Level, options: &SpawnRootOptions) -> XrfResult<SpawnRootBuild> {
+  SpawnRootBuilder::build(
+    &[
+      a.input("a", 20, Vector3d::new(100.0, 0.0, 0.0)),
+      b.input("b", 10, Vector3d::ZERO),
+    ],
+    options,
   )
+}
+
+fn build(a: &Level, b: &Level, start: Option<&str>) -> XrfResult<SpawnFile> {
+  let options: SpawnRootOptions = SpawnRootOptions {
+    start: start.map(str::to_owned),
+    is_separator_strict: false,
+  };
+
+  Ok(build_with(a, b, &options)?.spawn)
 }
 
 fn find<'a>(spawn: &'a SpawnFile, name: &str) -> &'a AlifeObject {
@@ -311,6 +320,108 @@ fn refuses_patrols_sharing_a_name_and_an_unknown_start() -> XrfResult {
 
   assert_refused(&a, &twin, None, "Two patrols are named a_walk");
   assert_refused(&a, &b, Some("c"), "is not a level of the build");
+
+  Ok(())
+}
+
+/// An object with `story_id`, a zone's.
+fn with_story_id(mut object: AlifeObject, story_id: u32) -> AlifeObject {
+  if let AlifeObjectInherited::CseAlifeAnomalousZone(zone) = &mut object.inherited {
+    zone.base.base.base.base.story_id = story_id;
+  }
+
+  object
+}
+
+#[test]
+fn reports_a_connection_left_out_and_a_restrictor_cutting_the_map() -> XrfResult {
+  let (a, _) = levels()?;
+  // A box over the centres of column 2 alone: its two nodes the border, columns 0 and 1 cut from 3 to 5.
+  let b: Level = level_b(
+    &[
+      graph_point_object("b_to_c", 4.0, 1.0, "c", "c_start")?,
+      separator_object("b_wall", 2.0, 0.5, Vector3d::new(0.2, 2.0, 4.0))?,
+    ],
+    Vec::new(),
+  )?;
+  let report = build_with(&a, &b, &SpawnRootOptions::default())?.report;
+  let findings = |check: &str| {
+    report
+      .checks()
+      .iter()
+      .find(|it| it.id().as_str() == check)
+      .expect("the check")
+      .findings()
+      .iter()
+      .map(|finding| {
+        (
+          finding.subject().unwrap_or_default().to_owned(),
+          finding.message().to_owned(),
+        )
+      })
+      .collect::<Vec<_>>()
+  };
+
+  assert_eq!(
+    findings("spawn.connections"),
+    [(
+      String::from("b"),
+      String::from("Graph point b_to_c connects to level c, which is not built; the connection is left out")
+    )]
+  );
+  assert_eq!(
+    findings("spawn.separators"),
+    [(
+      String::from("b"),
+      String::from("Restrictor b_wall cuts 4 AI map nodes off, the first node 0 at (0.0, 0.0, 0.0)")
+    )]
+  );
+
+  let strict: SpawnRootOptions = SpawnRootOptions {
+    start: None,
+    is_separator_strict: true,
+  };
+  let error: String = build_with(&a, &b, &strict)
+    .err()
+    .map(|error| error.to_string())
+    .unwrap_or_default();
+
+  assert!(
+    error.contains("on level b: Restrictor b_wall cuts 4"),
+    "Unexpected error: {error}"
+  );
+
+  Ok(())
+}
+
+#[test]
+fn refuses_a_shared_story_id_and_a_level_of_no_entity() -> XrfResult {
+  let (_, b) = levels()?;
+  let shared: Level = level_a(
+    &[
+      with_story_id(zone_object("a_zone_1", 1.0, 0.0, 1.0, 1)?, 7),
+      with_story_id(zone_object("a_zone_2", 2.0, 0.0, 1.0, 1)?, 7),
+    ],
+    Vec::new(),
+  )?;
+
+  assert_refused(
+    &shared,
+    &b,
+    None,
+    "Story id 7 names both a_zone_1 on level a and a_zone_2 on level a",
+  );
+
+  let empty: Level = Level::new(
+    grid(4, 1, &[], Uuid::nil())?,
+    &[
+      graph_point_object("a_start", 0.0, 0.0, "", "")?,
+      graph_point_object("a_end", 3.0, 0.0, "b", "b_start")?,
+    ],
+    Vec::new(),
+  )?;
+
+  assert_refused(&empty, &b, None, "Level a holds no entity");
 
   Ok(())
 }

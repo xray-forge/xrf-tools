@@ -1,9 +1,9 @@
+use xrf_report::Report;
 use xrf_spawn::SpawnFile;
 
-use crate::spawn::spawn_skipped_connection::SpawnSkippedConnection;
-
-/// A root spawn as the build gives it, and the level connections it left out.
+/// A root spawn as the build gives it, and its report: the level connections it left out and the restrictors cutting
+/// an AI map apart, each a finding.
 pub struct SpawnRootBuild {
   pub spawn: SpawnFile,
-  pub skipped: Vec<SpawnSkippedConnection>,
+  pub report: Report,
 }

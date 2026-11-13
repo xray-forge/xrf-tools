@@ -27,7 +27,7 @@ impl SpawnLevelChangerLinks {
   ) -> XrfResult {
     let targets: Vec<Vec<AlifeObject>> = entities.iter().map(|level| level.graph_points.clone()).collect();
 
-    for level_entities in entities.iter_mut() {
+    for (level, level_entities) in levels.iter().zip(entities.iter_mut()) {
       for object in &mut level_entities.objects {
         let name: String = object.header.name.clone();
         let AlifeObjectInherited::SeLevelChanger(changer) = &mut object.inherited else {
@@ -35,8 +35,8 @@ impl SpawnLevelChangerLinks {
         };
         let Some(target) = levels.iter().position(|level| level.name == changer.dest_level_name) else {
           return Err(XrfError::new_invalid_error(format!(
-            "Level changer {name} leads to level {}, which is not built",
-            changer.dest_level_name
+            "Level changer {name} on level {} leads to level {}, which is not built",
+            level.name, changer.dest_level_name
           )));
         };
         let Some(point) = targets[target]
@@ -44,14 +44,14 @@ impl SpawnLevelChangerLinks {
           .find(|point| point.header.name == changer.dest_graph_point)
         else {
           return Err(XrfError::new_invalid_error(format!(
-            "Level changer {name} names graph point {}, which level {} lacks",
-            changer.dest_graph_point, changer.dest_level_name
+            "Level changer {name} on level {} names graph point {}, which level {} lacks",
+            level.name, changer.dest_graph_point, changer.dest_level_name
           )));
         };
         let Some((vertex_id, vertex)) = Self::find_vertex(graph, levels[target].id, &point.header.position) else {
           return Err(XrfError::new_invalid_error(format!(
-            "Level changer {name}'s graph point {} on level {} has no game vertex",
-            changer.dest_graph_point, changer.dest_level_name
+            "Level changer {name} on level {} leads to graph point {} of level {}, which has no game vertex",
+            level.name, changer.dest_graph_point, changer.dest_level_name
           )));
         };
 
