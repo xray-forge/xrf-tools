@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_error::XrfResult;
 use xrf_level_compiler::{
-  LevelCompileReport, LevelCompileRequest, LevelCompileStep, LevelCompileStepRun, LevelCompiler,
+  DetailLightBackend, LevelCompileReport, LevelCompileRequest, LevelCompileStep, LevelCompileStepRun, LevelCompiler,
 };
 use xrf_output::OutputOptions;
 
@@ -86,6 +86,17 @@ impl GenericCommand for CompileCommand {
           .long("force")
           .action(ArgAction::SetTrue),
       )
+      .arg(
+        Arg::new("backend")
+          .help(
+            "What traces the details step's shadow rays: auto, the GPU where one traces rays, else the CPU; gpu, the \
+             GPU's ray queries alone, on D3D12 where dxc/dxcompiler.dll stands beside the CLI, else on Vulkan; cpu, \
+             the reference, every slot within one step of the GPU's",
+          )
+          .long("backend")
+          .default_value(DetailLightBackend::default().get_name())
+          .value_parser(DetailLightBackend::ALL.map(DetailLightBackend::get_name).to_vec()),
+      )
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
@@ -111,6 +122,12 @@ impl GenericCommand for CompileCommand {
       gamedata,
       work: matches.get_one::<PathBuf>("work").cloned(),
       is_forced: matches.get_flag("force"),
+      detail_backend: matches
+        .get_one::<String>("backend")
+        .and_then(|backend| DetailLightBackend::from_name(backend))
+        .unwrap_or_default(),
+      dxc: Self::find_dxc(),
+      detail_gpu: None,
       level,
     };
     let output: OutputOptions = context.get_output().clone();
@@ -123,6 +140,19 @@ impl GenericCommand for CompileCommand {
 }
 
 impl CompileCommand {
+  /// Where DXC stands beside the CLI's executable, as the app bundles it for the renderer.
+  const DXC_LIBRARY: [&'static str; 2] = ["dxc", "dxcompiler.dll"];
+
+  /// DXC's library beside the executable, where it stands there; none otherwise.
+  fn find_dxc() -> Option<PathBuf> {
+    let executable: PathBuf = std::env::current_exe().ok()?;
+    let library: PathBuf = Self::DXC_LIBRARY
+      .iter()
+      .fold(executable.parent()?.to_path_buf(), |path, part| path.join(part));
+
+    library.is_file().then_some(library)
+  }
+
   /// The `gamedata` directory holding `levels\<level>`, named by the level path's parents where it has them.
   fn get_gamedata(level: &Path) -> PathBuf {
     match level.parent().and_then(Path::parent) {
@@ -140,9 +170,13 @@ impl CompileCommand {
           "{program}{}",
           log.as_ref().map(|log| format!(", log {log}")).unwrap_or_default()
         ),
-        LevelCompileStepRun::DetailLighter { slots } => format!(
-          "{} slots lit, {} touching no face, {} emptied, {} unplanted",
-          slots.lit, slots.untouched, slots.emptied, slots.unplanted
+        LevelCompileStepRun::DetailLighter { slots, gpu } => format!(
+          "{} slots lit, {} touching no face, {} emptied, {} unplanted, traced on {}",
+          slots.lit,
+          slots.untouched,
+          slots.emptied,
+          slots.unplanted,
+          gpu.as_deref().unwrap_or("the CPU")
         ),
       };
 

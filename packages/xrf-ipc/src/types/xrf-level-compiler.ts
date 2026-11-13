@@ -1,5 +1,29 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
+/**
+ * The GPU the detail lighter's GPU backend traces on, by its PCI vendor and device ids, as the renderer's settings name
+ * one (`RenderGpu`).
+ */
+export type DetailGpu = {
+  vendor: number;
+  device: number;
+};
+
+/**
+ * What traces the detail lighter's shadow rays. The CPU is the reference the SDK's runs are matched against; the GPU
+ * traces with hardware ray queries, each slot within one step of the CPU's light, several times faster.
+ */
+export enum EDetailLightBackend {
+  CPU = "cpu",
+  /** Refused where the build has no GPU backend or no GPU traces rays. */
+  GPU = "gpu",
+  /** The GPU where the build has its backend and a GPU traces rays, the CPU otherwise. */
+  AUTO = "auto",
+}
+
+/** Every `EDetailLightBackend` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type DetailLightBackend = `${EDetailLightBackend}`;
+
 /** How many slots of a level's details the detail lighter met each way. */
 export type DetailSlotCounts = {
   /** Planting nothing. */
@@ -47,6 +71,12 @@ export type LevelCompileRequest = {
   work: string | null;
   /** Whether a step of ours overwrites a file it writes where the level's directory holds it, rather than refusing. */
   isForced: boolean;
+  /** What traces the details step's shadow rays. */
+  detailBackend: DetailLightBackend;
+  /** DXC's `dxcompiler.dll`, with which the details step's GPU backend traces on D3D12; Vulkan alone without it. */
+  dxc: string | null;
+  /** The GPU the details step's GPU backend traces on; the high-performance one without it. */
+  detailGpu: DetailGpu | null;
 };
 
 /**
@@ -75,7 +105,10 @@ export type LevelCompileStepReport = {
 export enum ELevelCompileStepRun {
   /** One of the SDK's compilers: its path, and its log where it wrote one. */
   PROGRAM = "program",
-  /** The detail lighter ([`crate::DetailLighter`]), and how it met the slots. */
+  /**
+   * The detail lighter ([`crate::DetailLighter`]), how it met the slots, and the GPU that traced its shadow rays,
+   * none where the CPU traced them.
+   */
   DETAIL_LIGHTER = "detailLighter",
 }
 
@@ -83,5 +116,8 @@ export enum ELevelCompileStepRun {
 export type LevelCompileStepRun =
   /** One of the SDK's compilers: its path, and its log where it wrote one. */
   | { kind: "program"; program: string; log: string | null }
-  /** The detail lighter ([`crate::DetailLighter`]), and how it met the slots. */
-  | { kind: "detailLighter"; slots: DetailSlotCounts };
+  /**
+   * The detail lighter ([`crate::DetailLighter`]), how it met the slots, and the GPU that traced its shadow rays,
+   * none where the CPU traced them.
+   */
+  | { kind: "detailLighter"; slots: DetailSlotCounts; gpu: string | null };

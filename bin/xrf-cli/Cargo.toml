@@ -67,6 +67,10 @@ xrf-test-utils = { workspace = true }
 xrf-utils = { workspace = true, features = ["staging-faults"] }
 
 [features]
+default = ["gpu"]
+# `level compile --backend gpu`: the detail lighter's shadow rays traced with GPU ray queries, on Vulkan where no DXC
+# stands beside the CLI. On by default; `--no-default-features` builds a CLI linking no graphics code.
+gpu = ["xrf-level-compiler/gpu"]
 # Every crate's zones in a Tracy capture; built with the `tracy` profile.
 tracy = ["xrf-profiler/tracy"]
 # Every allocation in the capture too, with its call stack: for finding what holds memory, never for timing.

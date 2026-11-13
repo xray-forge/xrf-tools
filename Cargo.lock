@@ -8808,8 +8808,10 @@ dependencies = [
 name = "xrf-level-compiler"
 version = "0.1.0"
 dependencies = [
+ "bytemuck",
  "glam",
  "log",
+ "pollster",
  "rayon",
  "serde",
  "specta",
@@ -8821,6 +8823,7 @@ dependencies = [
  "xrf-job",
  "xrf-level",
  "xrf-math",
+ "xrf-renderer-core",
  "xrf-shaders",
  "xrf-test-utils",
  "xrf-thm",

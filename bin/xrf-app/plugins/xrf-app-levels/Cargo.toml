@@ -38,7 +38,8 @@ xrf-geometry = { workspace = true }
 xrf-ipc = { workspace = true, optional = true }
 xrf-job = { workspace = true, features = ["rayon"] }
 xrf-level = { workspace = true }
-xrf-level-compiler = { workspace = true }
+# The details step's GPU backend, traced on D3D12 through the DXC the app bundles for the renderer.
+xrf-level-compiler = { workspace = true, features = ["gpu"] }
 xrf-light-anim = { workspace = true }
 xrf-ltx = { workspace = true }
 xrf-material = { workspace = true }

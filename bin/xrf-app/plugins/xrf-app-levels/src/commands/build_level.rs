@@ -15,16 +15,19 @@ use xrf_utils::format_path;
 
 use crate::ipc::levels::LEVELS_JOB_BUILD;
 use crate::rawdata::level_build_result::LevelBuildResult;
+use crate::rawdata::level_compiler_libraries::LevelCompilerLibraries;
 
 /// Build a Level Editor scene into a level directory, as `level build` does, then compile it where `compile` names
 /// the steps, as `level compile` does, one job reporting both. A cancel stops the build between its steps and kills a
-/// running compiler. The compile works on the directory the build wrote, whatever level `compile` names, and
-/// overwrites what it writes as the build does, where the build is forced.
+/// running compiler. The compile works on the directory the build wrote, whatever level `compile` names, overwrites
+/// what it writes as the build does where the build is forced, and lights the details on D3D12 with the DXC the app
+/// bundles where it traces on the GPU.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "build_level")]
 pub(crate) async fn levels_build_level(
   execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
+  libraries: State<'_, LevelCompilerLibraries>,
   request: LevelBuildRequest,
   compile: Option<LevelCompileRequest>,
   job_id: Uuid,
@@ -33,6 +36,7 @@ pub(crate) async fn levels_build_level(
   let compile: Option<LevelCompileRequest> = compile.map(|compile| LevelCompileRequest {
     level: request.destination.clone(),
     is_forced: request.is_forced,
+    dxc: libraries.dxc.clone(),
     ..compile
   });
   let mut resources: Vec<JobResource> = vec![JobResource::tree(&request.destination)];

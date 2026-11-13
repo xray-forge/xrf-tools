@@ -17,7 +17,8 @@ use xrf_thm::{ThmFile, ThmFormat, ThmTextureParamChunk};
 
 use crate::tests::detail::{details, lighting, lights, triangles};
 use crate::{
-  DetailSlotCounts, LevelCompileReport, LevelCompileRequest, LevelCompileStep, LevelCompileStepRun, LevelCompiler,
+  DetailLightBackend, DetailSlotCounts, LevelCompileReport, LevelCompileRequest, LevelCompileStep, LevelCompileStepRun,
+  LevelCompiler,
 };
 
 /// Game data holding a compiler shader library of one shadow-casting shader, a textures root with one opaque
@@ -81,6 +82,8 @@ impl Fixture {
       gamedata: self.gamedata.clone(),
       textures: vec![self.gamedata.join("textures")],
       is_forced,
+      // The reference, whatever the build: the light and the report alike on every machine.
+      detail_backend: DetailLightBackend::Cpu,
       ..LevelCompileRequest::default()
     }
   }
@@ -198,7 +201,8 @@ fn writes_the_details_lit_as_the_lighter_lights_them_with_no_sdk() -> XrfResult 
           emptied: 1,
           untouched: 1,
           lit: 2,
-        }
+        },
+        gpu: None,
       }
     )]
   );

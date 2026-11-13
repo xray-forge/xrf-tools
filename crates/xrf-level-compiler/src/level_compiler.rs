@@ -9,7 +9,6 @@ use xrf_shaders::ShaderCompilerFile;
 use xrf_utils::format_path;
 
 use crate::compiler_textures::CompilerTextures;
-use crate::detail::detail_slot_counts::DetailSlotCounts;
 use crate::detail::detail_step::DetailStep;
 use crate::level_compile_report::{LevelCompileReport, LevelCompileStepReport};
 use crate::level_compile_request::LevelCompileRequest;
@@ -87,9 +86,9 @@ impl LevelCompiler {
         // A step of ours, the details being the one so far.
         None => {
           let started: Instant = Instant::now();
-          let slots: DetailSlotCounts = DetailStep::run(request, job)?;
+          let run: LevelCompileStepRun = DetailStep::run(request, job)?;
 
-          (started.elapsed(), LevelCompileStepRun::DetailLighter { slots })
+          (started.elapsed(), run)
         }
       };
 

@@ -325,6 +325,15 @@ When items are made before the store that holds them (as a world posts items to 
 out the handles and the store takes each item at its handle with `insert`. A store takes its handles from `add` or from
 an allocator, never both.
 
+## A device for tools
+
+`RayQueryDevice::request(RayQueryAsk { dxc, gpu })` starts a GPU without a window that traces rays in compute shaders
+(`EXPERIMENTAL_RAY_QUERY`), with the adapter's own limits, for a tool tracing offline rather than drawing. D3D12 compiles
+ray query shaders only through DXC, so with `dxc` naming DXC's `dxcompiler.dll` it tries D3D12 first; Vulkan needs no
+library and is tried after it, or alone. On each it takes the GPU `gpu` names (`RayQueryGpu`, PCI vendor and device)
+where that one traces rays, else, warning where one was named, the high-performance one. Its `name` says the adapter
+and the backend, as a report names the GPU that traced. The level compiler's detail lighter traces on it (`xrf-level-compiler`'s `gpu` feature).
+
 ## Generated files
 
 `GeneratedShaderFile::sync` keeps a checked-in WGSL file written from Rust declarations (`ShaderDeclarations`, pass

@@ -28,9 +28,10 @@ export const LEVEL_COMPILER_HELP: IToolHelp = {
       "of the build's own it would not write again is refused, since the SDK's Build would move it aside.",
     "The steps are checked before any starts: each step's inputs, and a texture description (`.thm`) for every " +
       "texture `build.prj` names. Stopping a step kills its compiler and keeps what was built.",
-    "The details are lit by the tools themselves, as the SDK's xrDO_Light lights them, on every core: seconds on a " +
-      "small level, about a minute on `jupiter` at proof quality. An existing `level.details` is replaced only when " +
-      "overwriting is chosen.",
+    "The details are lit by the tools themselves, as the SDK's xrDO_Light lights them: on the GPU chosen in the " +
+      "renderer settings where it traces rays, seconds on a small level and under a minute on `jupiter` as shipped; " +
+      "on the CPU otherwise, or when chosen, the reference, every slot within one step of the GPU's. An existing " +
+      "`level.details` is replaced only when overwriting is chosen.",
   ],
   limitations: [
     "The geometry and AI map steps run the SDK's own xrLC and xrAI in a work folder of their own, so they need " +
