@@ -14,8 +14,8 @@ use xrf_ltx::Ltx;
 use xrf_material::{XrayReducedTextures, XraySurfaceDescriptor};
 use xrf_particles::{ParticleCollider, ParticleEngineRules};
 use xrf_renderer::{
-  RenderAssetSource, RenderLevelDetails, RenderLevelHelpers, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn,
-  RenderLoadFailure, RenderSpawnLighting, RenderSpawnModel, RenderSpawnModels,
+  RenderAssetSource, RenderLevelAiMap, RenderLevelDetails, RenderLevelHelpers, RenderLevelParticles, RenderLevelSource,
+  RenderLevelSpawn, RenderLoadFailure, RenderSpawnLighting, RenderSpawnModel, RenderSpawnModels,
 };
 use xrf_vfs::XraySearch;
 use xrf_visual::{LightsDescription, SectorAttributes, SectorPackage, SectorPacker, VisualPoser};
@@ -24,10 +24,10 @@ use xrf_world::{WorldLevelSounds, WorldLevelSource, WorldLevelWeather, WorldSoun
 use crate::level::SelectedLevel;
 use crate::objects::LevelObjectsDescription;
 use crate::parts::{
-  LevelCollisionPart, LevelDetailsPart, LevelEnvironment, LevelEnvironmentPart, LevelGeometryPart, LevelHemiPart,
-  LevelLightsPart, LevelObjectMotionsPart, LevelParticlesPart, LevelSectionsPart, LevelSpawnPart, LevelSurfacesPart,
-  LevelTextureReference, LevelTexturesPart, LevelWeatherPart, NamedSpawnVisual, PackedLevelDetails, PackedLevelLights,
-  PackedLevelParticles, SpawnVisualReader,
+  LevelAiMapPart, LevelCollisionPart, LevelDetailsPart, LevelEnvironment, LevelEnvironmentPart, LevelGeometryPart,
+  LevelHemiPart, LevelLightsPart, LevelObjectMotionsPart, LevelParticlesPart, LevelSectionsPart, LevelSpawnPart,
+  LevelSurfacesPart, LevelTextureReference, LevelTexturesPart, LevelWeatherPart, NamedSpawnVisual, PackedLevelDetails,
+  PackedLevelLights, PackedLevelParticles, SpawnVisualReader,
 };
 use crate::render::{LevelAudio, LevelParticleCollider, LevelRenderParts};
 use crate::report::LevelReport;
@@ -265,6 +265,10 @@ impl WorldLevelSource for LevelRenderSource {
       package: packed.package,
       surfaces: packed.surfaces,
     }))
+  }
+
+  fn read_ai_map(&self) -> XrfResult<Option<RenderLevelAiMap>> {
+    LevelAiMapPart::read(&self.level, &self.search()?).map_err(XrfError::new_asset_error)
   }
 
   fn read_spawn(&self) -> XrfResult<RenderLevelSpawn> {

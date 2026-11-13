@@ -2,8 +2,8 @@ use xrf_anm::AnmFile;
 use xrf_environment::WeatherDescriptor;
 use xrf_error::{XrfError, XrfResult};
 use xrf_renderer::{
-  RenderLevelDetails, RenderLevelHelpers, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn, RenderMotion,
-  RenderSpawnModels,
+  RenderLevelAiMap, RenderLevelDetails, RenderLevelHelpers, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn,
+  RenderMotion, RenderSpawnModels,
 };
 use xrf_visual::{LightsDescription, SectorPackage};
 
@@ -86,6 +86,16 @@ pub trait WorldLevelSource: RenderLevelSource {
   ///
   /// Returns an error when the library or the collision form cannot be read.
   fn read_details(&self) -> XrfResult<Option<RenderLevelDetails>>;
+
+  /// The level's AI map, which the debug views show over the ground, called from a loader thread as the level opens and
+  /// again for a next source that reloads it; none for a level without one or a source with no level.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the map is there and cannot be read.
+  fn read_ai_map(&self) -> XrfResult<Option<RenderLevelAiMap>> {
+    Ok(None)
+  }
 
   /// The level's particle systems, planted and played by its zones, called from a loader thread as the level opens and
   /// again for a next source that reloads them; none for a source with no level.

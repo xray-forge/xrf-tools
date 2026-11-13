@@ -201,6 +201,12 @@ struct GrassSlotLight {
   value: u32,
 }
 
+struct AiMap {
+  origin: vec4<f32>,
+  cells: vec4<u32>,
+  height: f32,
+}
+
 struct Calibration {
   props: array<vec4<f32>, 4>,
   surfaces: array<vec4<f32>, 4>,

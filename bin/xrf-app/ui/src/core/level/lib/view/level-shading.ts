@@ -32,6 +32,9 @@ export enum ELevelShading {
   DETAIL_SUN = "detailSun",
   DETAIL_HEMI = "detailHemi",
   DETAIL_LIGHT = "detailLight",
+  AI_HIGH_COVER = "aiHighCover",
+  AI_LOW_COVER = "aiLowCover",
+  AI_LINKS = "aiLinks",
   MATERIAL = "material",
   DEPTH = "depth",
   LIGHT = "light",
@@ -53,7 +56,7 @@ export interface ILevelShadingChoice {
   value: ELevelShading;
   label: string;
   /** The heading it is listed under: `Frame` for the frame's own looks, the others for the targets it is built from. */
-  section: "Frame" | "Surfaces" | "Light" | "Temporal";
+  section: "Frame" | "Surfaces" | "Light" | "AI map" | "Temporal";
   /** One line on what it shows and how to read its colours. */
   description: string;
   /** The surfaces' colour it draws with. */
@@ -73,7 +76,7 @@ const FSR_SHADINGS: ReadonlySet<ELevelShading> = new Set([
 
 /**
  * Every shading, in the order offered: the frame's three looks and its overdraw, the surfaces' targets, the light's,
- * then what the frame carries over from the last one.
+ * the AI map's nodes, then what the frame carries over from the last one.
  */
 export const LEVEL_SHADINGS: ReadonlyArray<ILevelShadingChoice> = (
   [
@@ -274,6 +277,27 @@ export const LEVEL_SHADINGS: ReadonlyArray<ILevelShadingChoice> = (
       description: "The scene's brightness in stops from middle grey: grey at it, blue below, green to red above.",
       value: ELevelShading.LUMINANCE,
       debugView: ERenderDebugView.LUMINANCE,
+    },
+    {
+      section: "AI map",
+      label: "High cover",
+      description: "Each AI node's cover from standing height, its four directions' mean: black covered, white open.",
+      value: ELevelShading.AI_HIGH_COVER,
+      debugView: ERenderDebugView.AI_HIGH_COVER,
+    },
+    {
+      section: "AI map",
+      label: "Low cover",
+      description: "Each AI node's cover from crouching height, its four directions' mean: black covered, white open.",
+      value: ELevelShading.AI_LOW_COVER,
+      debugView: ERenderDebugView.AI_LOW_COVER,
+    },
+    {
+      section: "AI map",
+      label: "Missing links",
+      description: "How many neighbours each AI node lacks: green none, yellow, orange, red, dark red for all four.",
+      value: ELevelShading.AI_LINKS,
+      debugView: ERenderDebugView.AI_LINKS,
     },
     {
       section: "Temporal",

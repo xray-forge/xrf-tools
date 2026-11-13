@@ -47,8 +47,11 @@ const VIEW_SPECULAR: u32 = 23u;
 const VIEW_DETAIL_SUN: u32 = 24u;
 const VIEW_DETAIL_HEMI: u32 = 25u;
 const VIEW_DETAIL_LIGHT: u32 = 26u;
+const VIEW_AI_HIGH_COVER: u32 = 27u;
+const VIEW_AI_LOW_COVER: u32 = 28u;
+const VIEW_AI_LINKS: u32 = 29u;
 // The first of FSR's debug views, which FSR draws in place of the frame it resolved.
-const VIEW_FSR_FIRST: u32 = 27u;
+const VIEW_FSR_FIRST: u32 = 30u;
 // What the reflections view shows where no ray was traced and the cube stands.
 const REFLECTION_MISS: vec3<f32> = vec3<f32>(0.05, 0.1, 0.45);
 // Drawn pixels of motion the motion view spans from black to full colour on each axis.
@@ -68,7 +71,7 @@ const ALBEDO_MOST: f32 = 0.9;
 const ALBEDO_UNDER: vec3<f32> = vec3<f32>(0.1, 0.25, 0.95);
 const ALBEDO_OVER: vec3<f32> = vec3<f32>(0.95, 0.15, 0.1);
 
-// How bright the detail slots' views show the albedo where they show no slot.
+// How bright the detail slots' and the AI map's views show the albedo where they show no slot or node.
 const UNSLOTTED_DIM: f32 = 0.25;
 
 // The counts the overdraw and the lamps views reach red at.
@@ -215,8 +218,9 @@ fn shown_target(texel: vec2<i32>) -> vec3<f32> {
 
       return select(shown, mix(shown, vec3<f32>(1.0), 0.6), distance < present.inspect.x && is_stripe);
     }
-    // The grass wrote the slot's value over the light target, with one in alpha where it shows a slot.
-    case VIEW_DETAIL_SUN, VIEW_DETAIL_HEMI, VIEW_DETAIL_LIGHT: {
+    // The grass wrote the slot's value, or the AI map the node's, over the light target, with one in alpha where it
+    // shows one.
+    case VIEW_DETAIL_SUN, VIEW_DETAIL_HEMI, VIEW_DETAIL_LIGHT, VIEW_AI_HIGH_COVER, VIEW_AI_LOW_COVER, VIEW_AI_LINKS: {
       let slot: vec4<f32> = textureLoad(light_target, texel, 0);
 
       if (slot.a > 0.5) {

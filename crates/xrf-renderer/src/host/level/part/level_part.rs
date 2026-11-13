@@ -17,11 +17,13 @@ pub enum LevelPart {
   Weather,
   /// The object motions its moving zones follow, each read again the next time something it carries asks.
   Motions,
+  /// Its AI map, which the debug views show over the ground.
+  AiMap,
 }
 
 impl LevelPart {
   /// Every part, in declaration order.
-  pub const ALL: [Self; 8] = [
+  pub const ALL: [Self; 9] = [
     Self::Sectors,
     Self::Spawn,
     Self::Lights,
@@ -30,6 +32,7 @@ impl LevelPart {
     Self::Particles,
     Self::Weather,
     Self::Motions,
+    Self::AiMap,
   ];
 
   /// The parts a level's load waits for beside its textures, in the order its report names them.
@@ -46,6 +49,7 @@ impl LevelPart {
       Self::Particles => "particles",
       Self::Weather => "weather",
       Self::Motions => "motions",
+      Self::AiMap => "ai map",
     }
   }
 

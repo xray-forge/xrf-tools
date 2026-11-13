@@ -39,6 +39,9 @@ export const LEVELS_JOB_CAPTURE_MAP = "levels.capture-map" as const;
 /** Decompiling a compiled level into a Level Editor scene. */
 export const LEVELS_JOB_DECOMPILE = "levels.decompile" as const;
 
+/** What a change event calls what a level's AI map was read from when it goes stale. */
+export const LEVEL_AI_MAP_PART = "aiMap" as const;
+
 /** What a change event calls a level's collision form when it goes stale. */
 export const LEVEL_COLLISION_PART = "collision" as const;
 

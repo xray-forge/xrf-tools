@@ -60,7 +60,7 @@ impl LevelLoad {
       LevelPart::Lights => Some(&mut durations.lights),
       LevelPart::Grass => Some(&mut durations.grass),
       LevelPart::Particles => Some(&mut durations.particles),
-      LevelPart::Helpers | LevelPart::Weather | LevelPart::Motions => None,
+      LevelPart::Helpers | LevelPart::Weather | LevelPart::Motions | LevelPart::AiMap => None,
     }
   }
 
