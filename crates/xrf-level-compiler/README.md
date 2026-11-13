@@ -29,8 +29,15 @@ The spawn (xrAI `-s`) is not a step: it works on every level of a game at once.
 ## The root spawn builder
 
 The root spawn builder (`spawn/`), xrAI `-s` without xrAI: `SpawnRootBuilder::build` takes each level as a
-`SpawnRootLevel` (what its graph merges from, its `level.spawn` and, where it has one, its `level.game`) and an optional
-start level, and gives the root spawn (`SpawnRootBuild`: the `SpawnFile` and the connections it left out).
+`SpawnRootLevel` (what its graph merges from, its `level.spawn` and, where it has one, its `level.game`) and its
+`SpawnRootOptions` (the start level, and whether a restrictor cutting the AI map refuses the build), and gives the root
+spawn (`SpawnRootBuild`: the `SpawnFile` and a `Report`). What xrAI asserts is refused, naming the level and the entity:
+a level of no entity, no actor or two, two entities of a story id, a level changer leading to no level built or to a
+graph point its level lacks, two patrols of a name, an unknown start level. What xrAI lets through is reported: a
+connection to a level outside the build (`spawn.connections`), and a restrictor flagged for xrAI's separator check
+whose border cuts nodes off (`spawn.separators`). The check finds the map's parts once, floods each part the border
+touches into pieces, and reports the nodes outside every piece but the largest, with the first one's position; GSC's
+own check also fires on nodes it counts twice and blames the side its first node happens to fall on.
 
 - `SpawnAiMap` reads a level's `level.ai` as the engine's `CLevelGraph` looks nodes up: `find_node` gives the node of a
   position's cell nearest at or under it, else nearest over it.
@@ -189,8 +196,9 @@ regions apart left unjoined. The merge tests join two levels listed out of id or
 edges and a skipped one, the cross tables' numbering, the level points, the GUID, a missing connection refused, and
 the runtime's first draws. The root spawn tests build two such levels with an actor, zones, level changers and
 patrols: the objects' order and numbering, the changers' links, the zones' offsets, the patrols' order and a point
-over a hole, the actor moved only to another start level, the spawn GUID, and the refusals (no actor or two, a changer
-leading nowhere built or to a point its level lacks, two patrols of a name, an unknown start level). They take the
+over a hole, the actor moved only to another start level, the spawn GUID, the report (a connection left out, a wall
+across the map and its strict refusal), and the refusals (no actor or two, a shared story id, a level of no entity, a
+changer leading nowhere built or to a point its level lacks, two patrols of a name, an unknown start level). They take the
 objects' `new_mock` constructors through `xrf-spawn`'s `mocks` feature. The AI map tests compile a generated
 four-node map: the sort and renumbering, the header, three planes whose round
 trip xrAI's own run gave, the identity rule, and the refusals. The cover tests take a grid: the sectors, which nodes are

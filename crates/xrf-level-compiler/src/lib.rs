@@ -54,4 +54,5 @@ pub use crate::spawn::spawn_removed_graph_point::SpawnRemovedGraphPoint;
 pub use crate::spawn::spawn_root_build::SpawnRootBuild;
 pub use crate::spawn::spawn_root_builder::SpawnRootBuilder;
 pub use crate::spawn::spawn_root_level::SpawnRootLevel;
+pub use crate::spawn::spawn_root_options::SpawnRootOptions;
 pub use crate::spawn::spawn_skipped_connection::SpawnSkippedConnection;

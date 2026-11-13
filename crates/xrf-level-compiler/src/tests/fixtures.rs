@@ -2,11 +2,11 @@ use uuid::Uuid;
 use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_level::{LevelAiHeader, LevelAiNode, LevelAiNodes, LevelAiVersion};
-use xrf_math::{Aabb, Vector3d};
+use xrf_math::{Aabb, Affine3d, Vector3d};
 use xrf_spawn::{
   AlifeActor, AlifeAnomalousZone, AlifeGraphPoint, AlifeLevelChanger, AlifeObject, AlifeObjectAbstract,
   AlifeObjectAnomalyZone, AlifeObjectCustomZone, AlifeObjectInherited, AlifeObjectSpaceRestrictor, ClsId,
-  LastSpawnTime, LevelSpawnFile, LevelSpawnObject, SpawnPacketHeader,
+  LastSpawnTime, LevelSpawnFile, LevelSpawnObject, Shape, SpawnPacketHeader,
 };
 
 use crate::{SpawnAiMap, SpawnGraphPoint};
@@ -204,4 +204,25 @@ pub(crate) fn spawn_file(objects: &[AlifeObject]) -> XrfResult<LevelSpawnFile> {
       .map(|(index, object)| LevelSpawnObject::from_alife_object::<XRayByteOrder>(index as u32, object))
       .collect::<XrfResult<_>>()?,
   })
+}
+
+/// A restrictor named `name`, flagged for xrAI's separator check, of one box of `sides` centred at `x`, `z`.
+pub(crate) fn separator_object(name: &str, x: f32, z: f32, sides: Vector3d) -> XrfResult<AlifeObject> {
+  let mut base: AlifeObjectSpaceRestrictor = restrictor();
+
+  // `flCheckForSeparator`, and `eDefaultRestrictorTypeNone`, a type that restricts.
+  base.base.flags = 1 << 12;
+  base.shape = vec![Shape::Box(Affine3d {
+    x_axis: Vector3d::new(sides.x, 0.0, 0.0),
+    y_axis: Vector3d::new(0.0, sides.y, 0.0),
+    z_axis: Vector3d::new(0.0, 0.0, sides.z),
+    translation: Vector3d::ZERO,
+  })];
+
+  object(
+    "space_restrictor",
+    name,
+    Vector3d::new(x, 0.0, z),
+    AlifeObjectInherited::CseAlifeSpaceRestrictor(Box::new(base)),
+  )
 }

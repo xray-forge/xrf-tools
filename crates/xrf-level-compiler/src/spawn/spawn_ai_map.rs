@@ -1,6 +1,6 @@
 use xrf_chunk::XRayByteOrder;
 use xrf_level::{LevelAiHeader, LevelAiNode, LevelAiNodes};
-use xrf_math::Vector3d;
+use xrf_math::{Aabb, Vector3d};
 
 use crate::ai::ai_cell_pick::AiCellPick;
 
@@ -292,6 +292,25 @@ impl SpawnAiMap {
     }
 
     None
+  }
+
+  /// The nodes, in node order, whose cells lie across the ground within `bounds` grown by a cell.
+  pub(crate) fn get_nodes_within(&self, bounds: &Aabb) -> Vec<u32> {
+    let size: f32 = self.header.size;
+    let (min_x, min_z) = self.get_cell(&Vector3d::new(bounds.min.x - size, 0.0, bounds.min.z - size));
+    let (max_x, max_z) = self.get_cell(&Vector3d::new(bounds.max.x + size, 0.0, bounds.max.z + size));
+    let mut nodes: Vec<u32> = Vec::new();
+
+    for x in min_x.max(0)..=max_x.min(self.column_length - 1) {
+      let packed = |z: i64| (x * self.row_length + z.clamp(0, self.row_length)) as u32;
+      let (from, to) = (packed(min_z), packed(max_z + 1));
+      let first: usize = self.nodes.partition_point(|node| node.packed_xz < from);
+      let last: usize = self.nodes.partition_point(|node| node.packed_xz < to);
+
+      nodes.extend(first as u32..last as u32);
+    }
+
+    nodes
   }
 
   /// The packed cell a point across the ground falls in.

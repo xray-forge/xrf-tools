@@ -1,3 +1,6 @@
+use std::collections::BTreeMap;
+use std::time::{Duration, Instant};
+
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 use xrf_chunk::XRayByteOrder;
@@ -17,6 +20,10 @@ use crate::spawn::spawn_patrols::SpawnPatrols;
 use crate::spawn::spawn_random::SpawnRandom;
 use crate::spawn::spawn_root_build::SpawnRootBuild;
 use crate::spawn::spawn_root_level::SpawnRootLevel;
+use crate::spawn::spawn_root_options::SpawnRootOptions;
+use crate::spawn::spawn_root_report::SpawnRootReport;
+use crate::spawn::spawn_separator_check::SpawnSeparatorCheck;
+use crate::spawn::spawn_separator_cut::SpawnSeparatorCut;
 
 /// The root spawn builder, xrAI's `CGameSpawnConstructor` (`game_spawn_constructor.cpp:24`): the levels' game graphs
 /// merged, then each level's entities placed and its patrols read, the levels in id order and the random stream one
@@ -25,20 +32,25 @@ use crate::spawn::spawn_root_level::SpawnRootLevel;
 ///
 /// The output is deterministic, where xrAI's is not: patrols go sorted by name, a patrol point with no node under it
 /// takes a game vertex of its level, and the spawn's GUID, like the graph's, is derived from what the file holds.
+///
+/// What xrAI asserts is refused, naming the level and the entity; what it lets through is reported: the connections to
+/// levels outside the build, and the restrictors whose border cuts an AI map apart ([`SpawnSeparatorCheck`]), refused
+/// only with [`SpawnRootOptions::is_separator_strict`].
 pub struct SpawnRootBuilder;
 
 impl SpawnRootBuilder {
   /// `XRAI_CURRENT_VERSION`, the spawn's version.
   pub const VERSION: u32 = 10;
 
-  /// Builds the root spawn of `levels`; `start` names the level the actor starts on, where it is not its own.
+  /// Builds the root spawn of `levels` as `options` asks.
   ///
   /// # Errors
   ///
-  /// Returns an error when the levels do not merge ([`SpawnGameGraphMerger::merge`]), a level has no graph point, an
-  /// entity does not read as its class, a level changer cannot be linked, two patrols share a name, the levels hold
-  /// no actor or more than one, or `start` names no level of the build.
-  pub fn build(levels: &[SpawnRootLevel<'_>], start: Option<&str>) -> XrfResult<SpawnRootBuild> {
+  /// Returns an error when the levels do not merge ([`SpawnGameGraphMerger::merge`]), a level has no graph point or
+  /// no entity, an entity does not read as its class, two entities share a story id, a level changer cannot be
+  /// linked, two patrols share a name, the levels hold no actor or more than one, the start level is no level of the
+  /// build, or, strict, a restrictor cuts an AI map apart.
+  pub fn build(levels: &[SpawnRootLevel<'_>], options: &SpawnRootOptions) -> XrfResult<SpawnRootBuild> {
     let mut ordered: Vec<&SpawnRootLevel<'_>> = levels.iter().collect();
 
     ordered.sort_by_key(|level| level.merge.id);
@@ -48,6 +60,8 @@ impl SpawnRootBuilder {
     let merge: SpawnGameGraphMerge = SpawnGameGraphMerger::merge(&merges, &mut random)?;
     let mut entities: Vec<SpawnLevelEntities> = Vec::new();
     let mut patrols: Vec<Patrol> = Vec::new();
+    let mut cuts: Vec<SpawnSeparatorCut> = Vec::new();
+    let mut separators_took: Duration = Duration::ZERO;
     let mut first: u16 = 0;
 
     for (level, merge_level) in ordered.iter().zip(&merges) {
@@ -62,7 +76,12 @@ impl SpawnRootBuilder {
         first_node: first_vertex.level_vertex_id,
       };
 
-      entities.push(SpawnLevelEntities::build(level, &vertices, &mut random)?);
+      let level_entities: SpawnLevelEntities = SpawnLevelEntities::build(level, &vertices, &mut random)?;
+      let started: Instant = Instant::now();
+
+      cuts.extend(SpawnSeparatorCheck::new(merge_level.map).find_cuts(&merge_level.name, &level_entities.objects));
+      separators_took += started.elapsed();
+      entities.push(level_entities);
 
       if let Some(game) = level.game {
         patrols.extend(SpawnPatrols::build(merge_level, game, &vertices));
@@ -71,6 +90,8 @@ impl SpawnRootBuilder {
       first += merge_level.points.len() as u16;
     }
 
+    Self::assert_story_ids(&merges, &entities)?;
+    Self::assert_separators(&cuts, options)?;
     SpawnLevelChangerLinks::fill(&merges, &mut entities, &merge.graph)?;
     Self::sort_patrols(&mut patrols)?;
 
@@ -89,13 +110,49 @@ impl SpawnRootBuilder {
     };
 
     Self::lay_out(entities, &mut spawn)?;
-    Self::place_actor(&mut spawn, start)?;
+    Self::place_actor(&mut spawn, options.start.as_deref())?;
     spawn.header.guid = Self::derive_guid(&spawn)?;
 
     Ok(SpawnRootBuild {
       spawn,
-      skipped: merge.skipped,
+      report: SpawnRootReport::build(&merge.skipped, &cuts, separators_took),
     })
+  }
+
+  /// `add_story_object`: a story id names one entity of the whole build.
+  fn assert_story_ids(levels: &[SpawnMergeLevel<'_>], entities: &[SpawnLevelEntities]) -> XrfResult {
+    let mut owners: BTreeMap<u32, String> = BTreeMap::new();
+
+    for (level, level_entities) in levels.iter().zip(entities) {
+      for object in &level_entities.objects {
+        let Some(story_id) = object.inherited.get_abstract().and_then(|base| base.get_story_id()) else {
+          continue;
+        };
+
+        let owner: String = format!("{} on level {}", object.header.name, level.name);
+
+        if let Some(other) = owners.insert(story_id, owner.clone()) {
+          return Err(XrfError::new_invalid_error(format!(
+            "Story id {story_id} names both {other} and {owner}"
+          )));
+        }
+      }
+    }
+
+    Ok(())
+  }
+
+  /// Refuses a build whose restrictors cut an AI map apart, where the options ask for it.
+  fn assert_separators(cuts: &[SpawnSeparatorCut], options: &SpawnRootOptions) -> XrfResult {
+    match cuts.first().filter(|_| options.is_separator_strict) {
+      Some(cut) => Err(XrfError::new_invalid_error(format!(
+        "Restrictors cut an AI map apart, {} in all; on level {}: {}",
+        cuts.len(),
+        cut.level,
+        SpawnRootReport::describe(cut)
+      ))),
+      None => Ok(()),
+    }
   }
 
   /// The levels' objects one level after another, each numbered by its place (`add_object`), and their zones' artefact

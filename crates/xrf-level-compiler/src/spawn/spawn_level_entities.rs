@@ -1,5 +1,5 @@
 use xrf_chunk::XRayByteOrder;
-use xrf_error::XrfResult;
+use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 use xrf_spawn::{AlifeBuiltFields, AlifeObject, AlifeObjectInherited, ArtefactSpawnPoint, LevelSpawnFile};
 
@@ -36,7 +36,7 @@ impl SpawnLevelEntities {
   ///
   /// # Errors
   ///
-  /// Returns an error when a packet does not read as its class.
+  /// Returns an error when a packet does not read as its class, or the level holds no entity (`load_objects`).
   pub(crate) fn build(
     root: &SpawnRootLevel<'_>,
     vertices: &SpawnLevelVertices,
@@ -44,6 +44,13 @@ impl SpawnLevelEntities {
   ) -> XrfResult<Self> {
     let level: &SpawnMergeLevel<'_> = &root.merge;
     let mut entities: Self = Self::load(root.spawn)?;
+
+    if entities.objects.is_empty() {
+      return Err(XrfError::new_invalid_error(format!(
+        "Level {} holds no entity a single player game loads",
+        level.name
+      )));
+    }
     let mut search: SpawnPathSearch = SpawnPathSearch::new(level.map);
     let mut buffer: SpawnArtefactBuffer = SpawnArtefactBuffer::default();
 
