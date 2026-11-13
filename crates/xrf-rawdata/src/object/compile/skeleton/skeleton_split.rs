@@ -1,4 +1,4 @@
-use crate::object::compile::geometry::export_vertex::ExportVertex;
+use xrf_geometry::MeshVertex;
 
 /// One child of a skeleton OGF before it is written: the faces of every surface sharing an engine shader, a texture and
 /// a breakable part (`CExportSkeleton::SSplit`), their corners packed into vertices.
@@ -12,7 +12,7 @@ pub struct SkeletonSplit {
   pub link_count: u8,
   /// The bones its vertices follow, ascending.
   pub used_bones: Vec<u16>,
-  pub vertices: Vec<ExportVertex>,
+  pub vertices: Vec<MeshVertex>,
   /// Each face's vertices, in the winding it was authored in.
   pub faces: Vec<[u16; 3]>,
 }

@@ -1,4 +1,5 @@
-use crate::object::compile::geometry::export_vertex::ExportVertex;
+use crate::mesh::mesh::Mesh;
+use crate::mesh::mesh_vertex::MeshVertex;
 
 /// Orders a child's triangles for the GPU's post-transform vertex cache, and its vertices by first use, where the
 /// Actor Editor's export took D3DX's closed `D3DXOptimizeFaces` and `D3DXOptimizeVertices` (`MakeStripify`).
@@ -7,7 +8,7 @@ use crate::object::compile::geometry::export_vertex::ExportVertex;
 /// stands in a modelled LRU cache and by how few triangles still need it, each triangle by the sum of its corners, and
 /// the best triangle among those touching the cache goes next, in time linear in the triangles. It reaches the cache
 /// efficiency D3DX's order has on vanilla models without depending on it, and gives one order for one input.
-pub(crate) struct VertexCacheOrder;
+pub struct VertexCacheOrder;
 
 impl VertexCacheOrder {
   /// The modelled LRU cache's size, Forsyth's general choice, larger than the hardware FIFOs the order is measured on.
@@ -23,14 +24,14 @@ impl VertexCacheOrder {
   const VALENCE_BOOST_SCALE: f32 = 2.0;
   const VALENCE_BOOST_POWER: f32 = 0.5;
 
-  /// The vertices and faces of one child, the faces reordered for the cache and the vertices renumbered in the order
-  /// the faces first use them, so the GPU fetches them in sequence.
-  pub(crate) fn apply(vertices: Vec<ExportVertex>, faces: &[[u16; 3]]) -> (Vec<ExportVertex>, Vec<[u16; 3]>) {
+  /// One child, its faces reordered for the cache and its vertices renumbered in the order the faces first use them,
+  /// so the GPU fetches them in sequence.
+  pub fn apply(Mesh { vertices, faces }: Mesh<u16>) -> Mesh<u16> {
     let renumber = |position: usize| -> u16 {
       u16::try_from(position).expect("a child's vertices fit the 16-bit indices its faces use")
     };
 
-    let ordered: Vec<[u16; 3]> = Self::order_faces(faces, vertices.len());
+    let ordered: Vec<[u16; 3]> = Self::order_faces(&faces, vertices.len());
     let mut new_index: Vec<Option<u16>> = vec![None; vertices.len()];
     let mut order: Vec<usize> = Vec::with_capacity(vertices.len());
 
@@ -51,21 +52,22 @@ impl VertexCacheOrder {
       }
     }
 
-    let mut taken: Vec<Option<ExportVertex>> = vertices.into_iter().map(Some).collect();
-    let reordered: Vec<ExportVertex> = order
+    let mut taken: Vec<Option<MeshVertex>> = vertices.into_iter().map(Some).collect();
+    let reordered: Vec<MeshVertex> = order
       .iter()
       .map(|vertex| taken[*vertex].take().expect("each vertex is placed once"))
       .collect();
-    let faces: Vec<[u16; 3]> = ordered
-      .iter()
-      .map(|face| face.map(|vertex| new_index[usize::from(vertex)].expect("every vertex is renumbered")))
-      .collect();
-
-    (reordered, faces)
+    Mesh {
+      vertices: reordered,
+      faces: ordered
+        .iter()
+        .map(|face| face.map(|vertex| new_index[usize::from(vertex)].expect("every vertex is renumbered")))
+        .collect(),
+    }
   }
 
   /// The faces in cache order.
-  pub(crate) fn order_faces(faces: &[[u16; 3]], vertex_count: usize) -> Vec<[u16; 3]> {
+  pub fn order_faces(faces: &[[u16; 3]], vertex_count: usize) -> Vec<[u16; 3]> {
     if faces.len() <= 1 {
       return faces.to_vec();
     }

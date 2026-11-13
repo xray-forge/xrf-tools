@@ -58,8 +58,6 @@ pub use crate::level::scene::level_scene_decompile::{
   LevelSceneDecompile, LevelSceneLibraryFile, LevelSceneObjectFile, LevelSceneTextureFile,
 };
 pub use crate::level::scene::level_scene_decompiler::LevelSceneDecompiler;
-pub use crate::object::compile::geometry::export_vertex::ExportVertex;
-pub use crate::object::compile::geometry::export_vertex_bone::ExportVertexBone;
 pub use crate::object::compile::object_compile::ObjectCompile;
 pub use crate::object::compile::object_compile_options::{ObjectCompileOptions, TangentMethod};
 pub use crate::object::compile::object_compile_source::ObjectCompileSource;

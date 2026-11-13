@@ -185,11 +185,6 @@ impl LevelSurfaceInference {
     ((false, true), "def_shaders\\def_vertex_ghost"),
   ];
 
-  /// `Shader_xrLC` flags: collision, rendering, vertex lighting.
-  const COLLISION_FLAG: u32 = ShaderCompilerShader::FLAGS[0].0;
-  const RENDERING_FLAG: u32 = ShaderCompilerShader::FLAGS[1].0;
-  const VERTEX_LIGHTING_FLAG: u32 = ShaderCompilerShader::FLAGS[3].0;
-
   pub fn new(game_materials: GameMtlFile, compiler_shaders: ShaderCompilerFile, pairings: LevelShaderPairings) -> Self {
     Self {
       game_materials,
@@ -287,10 +282,15 @@ impl LevelSurfaceInference {
       return choice.compiler_shader.clone();
     }
 
-    let wanted: u32 = Self::RENDERING_FLAG
-      | if collision { Self::COLLISION_FLAG } else { 0 }
-      | if vertex_lighting { Self::VERTEX_LIGHTING_FLAG } else { 0 };
-    let mask: u32 = Self::COLLISION_FLAG | Self::RENDERING_FLAG | Self::VERTEX_LIGHTING_FLAG;
+    let wanted: u32 = ShaderCompilerShader::RENDERING
+      | if collision { ShaderCompilerShader::COLLISION } else { 0 }
+      | if vertex_lighting {
+        ShaderCompilerShader::VERTEX_LIGHTING
+      } else {
+        0
+      };
+    let mask: u32 =
+      ShaderCompilerShader::COLLISION | ShaderCompilerShader::RENDERING | ShaderCompilerShader::VERTEX_LIGHTING;
     let commonest: Option<&str> = Self::COMMONEST
       .iter()
       .find(|(evidence, _)| *evidence == (collision, vertex_lighting))

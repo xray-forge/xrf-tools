@@ -2,6 +2,7 @@ use byteorder::ByteOrder;
 use xrf_chunk::ChunkWriter;
 use xrf_editable_object::{EditableBone, EditableObjectFile};
 use xrf_error::XrfResult;
+use xrf_geometry::{MeshVertex, MeshVertexBone};
 use xrf_math::{Aabb, Vector3d};
 use xrf_ogf::{
   OgfBone, OgfBoneIkData, OgfBonesChunk, OgfChildrenChunk, OgfDescriptionChunk, OgfGeometry, OgfHeaderChunk,
@@ -11,8 +12,6 @@ use xrf_ogf::{
 use xrf_skeleton::{SkeletonMotionParametersChunk, SkeletonMotionsChunk};
 
 use crate::object::compile::bounds::bone_boxes::BoneBoxes;
-use crate::object::compile::geometry::export_vertex::ExportVertex;
-use crate::object::compile::geometry::export_vertex_bone::ExportVertexBone;
 use crate::object::compile::motion::motion_export::MotionExport;
 use crate::object::compile::object_compile_source::ObjectCompileSource;
 use crate::object::compile::ogf_export_chunks::OgfExportChunks;
@@ -172,13 +171,13 @@ impl SkeletonOgfWriter {
 
   /// A vertex laid out in its split's `link_count` as `Save` lays it: bones strongest first, a two-link vertex
   /// storing the second bone's share of the two, padding repeating the first bone weightless.
-  fn pack_ogf_vertex(vertex: &ExportVertex, link_count: u8) -> OgfVertex {
-    let mut bones: Vec<ExportVertexBone> = vertex.bones.clone();
+  fn pack_ogf_vertex(vertex: &MeshVertex, link_count: u8) -> OgfVertex {
+    let mut bones: Vec<MeshVertexBone> = vertex.bones.clone();
 
     // Strongest first, equals as they came: the export's `sort_by_weight` over a handful of bones.
     bones.sort_by(|first, second| second.weight.total_cmp(&first.weight));
 
-    let first: ExportVertexBone = bones[0];
+    let first: MeshVertexBone = bones[0];
     let link = |bone: u16, weight: f32| OgfVertexLink { bone, weight };
     let links: Vec<OgfVertexLink> = match link_count {
       1 => vec![link(first.bone, 1.0)],
@@ -239,7 +238,7 @@ impl SkeletonOgfWriter {
     }
   }
 
-  fn get_bounds<'a>(vertices: impl IntoIterator<Item = &'a ExportVertex>) -> Aabb {
+  fn get_bounds<'a>(vertices: impl IntoIterator<Item = &'a MeshVertex>) -> Aabb {
     OgfExportChunks::get_bounds(vertices.into_iter().map(|vertex| &vertex.position))
   }
 }

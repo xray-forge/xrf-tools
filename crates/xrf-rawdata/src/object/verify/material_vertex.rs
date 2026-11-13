@@ -1,9 +1,8 @@
 use std::collections::BTreeMap;
 
+use xrf_geometry::MeshVertexBone;
 use xrf_math::{Vector2d, Vector3d};
 use xrf_ogf::{OgfStaticVertex, OgfVertex};
-
-use crate::object::compile::geometry::export_vertex_bone::ExportVertexBone;
 
 /// A vertex as the comparison reads it, from a skinned child or a static one: where it stands, its normal, its texture
 /// coordinate, and the bones it follows with their weights, none for a static vertex.
@@ -14,7 +13,7 @@ pub(crate) struct MaterialVertex {
   pub(crate) texture_coordinate: Vector2d,
   /// By ascending bone, each vertex's padding links summed away: a layout pads a narrower vertex with repeated or
   /// empty links, which the engine blends to the same pose.
-  pub(crate) bones: Vec<ExportVertexBone>,
+  pub(crate) bones: Vec<MeshVertexBone>,
 }
 
 impl MaterialVertex {
@@ -37,7 +36,7 @@ impl From<&OgfVertex> for MaterialVertex {
       bones: summed
         .into_iter()
         .filter(|(_, weight)| *weight > Self::NEGLIGIBLE_WEIGHT)
-        .map(|(bone, weight)| ExportVertexBone { bone, weight })
+        .map(|(bone, weight)| MeshVertexBone { bone, weight })
         .collect(),
     }
   }

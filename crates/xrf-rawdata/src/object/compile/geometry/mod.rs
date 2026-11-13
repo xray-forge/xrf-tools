@@ -1,10 +1,5 @@
-//! What the skeleton and the static export do alike: reading the editable mesh, packing a split's corners into
-//! vertices, the tangent pass that splits and orders those, and cutting a split into children 16-bit indices reach.
+//! What the skeleton and the static export read alike from an editable object: its meshes' corners and the box over
+//! them. Packing, the tangent pass, cutting and ordering a split are `xrf-geometry`'s, shared with the level compiler.
 
-pub(crate) mod export_vertex;
-pub(crate) mod export_vertex_bone;
+pub(crate) mod object_bounds;
 pub(crate) mod source;
-pub(crate) mod split_partition;
-pub(crate) mod tangent_basis;
-pub(crate) mod vertex_packer;
-pub(crate) mod vertex_packing;

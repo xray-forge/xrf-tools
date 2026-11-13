@@ -6,4 +6,3 @@ pub(crate) mod skeleton_hierarchy;
 pub(crate) mod skeleton_ogf_writer;
 pub(crate) mod skeleton_split;
 pub(crate) mod skin_corner;
-pub(crate) mod vertex_cache_order;

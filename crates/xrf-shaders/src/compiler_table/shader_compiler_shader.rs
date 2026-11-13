@@ -17,18 +17,35 @@ pub struct ShaderCompilerShader {
 }
 
 impl ShaderCompilerShader {
-  /// Flags a compiler shader carries, by the bit `Shader_xrLC` names it under.
+  /// Flags a compiler shader carries, by the bit `Shader_xrLC` names it under, with a name to show.
   pub const FLAGS: [(u32, &'static str); 6] = [
-    (1 << 0, "collision"),
-    (1 << 1, "rendering"),
-    (1 << 2, "optimize UV"),
-    (1 << 3, "vertex lighting"),
+    (Self::COLLISION, "collision"),
+    (Self::RENDERING, "rendering"),
+    (Self::OPTIMIZE_UV, "optimize UV"),
+    (Self::VERTEX_LIGHTING, "vertex lighting"),
     (Self::CASTS_SHADOW, "casts shadow"),
-    (1 << 5, "sharp light"),
+    (Self::SHARP_LIGHT, "sharp light"),
   ];
 
-  /// `flLIGHT_CastShadow`: the light compilers stop a ray at a face of this shader, or let it through when clear.
+  /// `bCollision`: xrLC puts a face of this shader into the level's collision form, `level.cform`.
+  pub const COLLISION: u32 = 1 << 0;
+
+  /// `bRendering`: xrLC draws a face of this shader, putting it into the level's visuals.
+  pub const RENDERING: u32 = 1 << 1;
+
+  /// `bOptimizeUV`: xrLC moves a visual's base coordinates by whole tiles toward the origin, a connected group at a
+  /// time.
+  pub const OPTIMIZE_UV: u32 = 1 << 2;
+
+  /// `bLIGHT_Vertex`: a face of this shader is lit by vertex colours, not a lightmap.
+  pub const VERTEX_LIGHTING: u32 = 1 << 3;
+
+  /// `bLIGHT_CastShadow`: the light compilers stop a ray at a face of this shader, or let it through when clear, and
+  /// xrLC puts it into the ray model, `build.cform`.
   pub const CASTS_SHADOW: u32 = 1 << 4;
+
+  /// `bLIGHT_Sharp`: the light baker lights a face of this shader without softening.
+  pub const SHARP_LIGHT: u32 = 1 << 5;
 
   /// Bytes the fixed name field occupies, which is `char Name[128]` whatever the name's own length.
   pub const NAME_SIZE: usize = 128;
@@ -74,9 +91,34 @@ impl ShaderCompilerShader {
     Ok(bytes)
   }
 
+  /// Whether a face of this shader collides, [`Self::COLLISION`].
+  pub fn is_collidable(&self) -> bool {
+    self.flags & Self::COLLISION != 0
+  }
+
+  /// Whether a face of this shader is drawn, [`Self::RENDERING`].
+  pub fn is_rendered(&self) -> bool {
+    self.flags & Self::RENDERING != 0
+  }
+
+  /// Whether a visual of this shader has its base coordinates moved toward the origin, [`Self::OPTIMIZE_UV`].
+  pub fn optimizes_uv(&self) -> bool {
+    self.flags & Self::OPTIMIZE_UV != 0
+  }
+
+  /// Whether a face of this shader is lit by vertex colours, [`Self::VERTEX_LIGHTING`].
+  pub fn is_vertex_lit(&self) -> bool {
+    self.flags & Self::VERTEX_LIGHTING != 0
+  }
+
   /// Whether a face of this shader casts shadows, [`Self::CASTS_SHADOW`].
   pub fn casts_shadow(&self) -> bool {
     self.flags & Self::CASTS_SHADOW != 0
+  }
+
+  /// Whether a face of this shader is lit without softening, [`Self::SHARP_LIGHT`].
+  pub fn is_sharply_lit(&self) -> bool {
+    self.flags & Self::SHARP_LIGHT != 0
   }
 
   /// The flags the shader sets, named.

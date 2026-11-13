@@ -2,8 +2,9 @@ use xrf_editable_level::{EditableSceneObject, EditableWallmarkTool};
 use xrf_editable_object::{EditableMesh, EditableObjectFile, EditableSurface, EditableVMapKind};
 use xrf_error::{XrfError, XrfResult};
 use xrf_gamemtl::{GameMtlFile, GameMtlMaterial};
+use xrf_geometry::FaceArea;
 use xrf_level::BuildPrjFace;
-use xrf_math::{EPS, Matrix4x4, Vector2d, Vector3d};
+use xrf_math::{Matrix4x4, Vector2d, Vector3d};
 
 use crate::level::build::level_build_sectors::LevelBuildSectors;
 use crate::level::build::level_build_tables::LevelBuildTables;
@@ -222,7 +223,7 @@ impl LevelBuildGeometry {
       .corners;
     let points: [u32; 3] = corners.each_ref().map(|corner| corner.point);
 
-    if !Self::has_area(&points.map(|point| mesh.points[point as usize])) {
+    if !FaceArea::is_enough(&points.map(|point| mesh.points[point as usize])) {
       self.invalid_faces += 1;
       return Ok(());
     }
@@ -289,7 +290,7 @@ impl LevelBuildGeometry {
         )?;
 
         for triangle in mark.vertices.as_chunks::<3>().0 {
-          if !Self::has_area(&triangle.each_ref().map(|vertex| vertex.position)) {
+          if !FaceArea::is_enough(&triangle.each_ref().map(|vertex| vertex.position)) {
             self.invalid_faces += 1;
             continue;
           }
@@ -311,16 +312,5 @@ impl LevelBuildGeometry {
     }
 
     Ok(())
-  }
-
-  /// Whether a triangle has the area the Build and xrLC ask of a face (`BuilderRemote.cpp:680`,
-  /// `xrLC_Light/xrFace.cpp:198`): `CalcArea` (`BuilderRemote.cpp:509`), Heron's formula over the edges in single
-  /// precision, a number no less than `EPS`.
-  fn has_area([a, b, c]: &[Vector3d; 3]) -> bool {
-    let (first, second, third) = (a.distance(b), a.distance(c), b.distance(c));
-    let half: f32 = (first + second + third) / 2.0;
-    let area: f32 = (half * (half - first) * (half - second) * (half - third)).sqrt();
-
-    area.is_finite() && area >= EPS
   }
 }

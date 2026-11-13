@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 use xrf_editable_level::EditableLightObject;
 use xrf_error::{XrfError, XrfResult};
+use xrf_geometry::Hemisphere;
 use xrf_level::{BuildPrjDynamicLight, BuildPrjLightControl, BuildPrjName, LevelDynamicLight};
 use xrf_math::{Affine3d, Color, Matrix4x4, Vector2d, Vector3d};
 
-use crate::level::build::level_build_hemisphere::LevelBuildHemisphere;
 use crate::level::build::level_build_sectors::LevelBuildSectors;
 
 /// The lights of a build: the layers they are controlled by (`SceneBuilder::BuildLightControl`,
@@ -43,11 +43,11 @@ impl LevelBuildLights {
       return;
     }
 
-    for (direction, energy) in LevelBuildHemisphere::get_lights(quality, Self::HEMI_ENERGY) {
+    for light in Hemisphere::get_lights(quality, Self::HEMI_ENERGY) {
       self.static_lights.push(Self::directional(
         controller,
-        Color::new(energy, energy, energy, 1.0),
-        direction,
+        Color::new(light.energy, light.energy, light.energy, 1.0),
+        light.direction,
       ));
     }
   }

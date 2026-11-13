@@ -1,4 +1,4 @@
-use crate::object::compile::geometry::export_vertex::ExportVertex;
+use xrf_geometry::MeshVertex;
 
 /// One child of a static object's OGF: a surface's vertices and faces, as `CExportObjectOGF::SSplit::SavePart` writes
 /// a part.
@@ -8,6 +8,6 @@ pub(crate) struct RigidSplit {
   pub(crate) shader: String,
   /// Its vertices as the tangent pass split and ordered them, each following no bone; the OGF keeps their positions,
   /// normals and texture coordinates.
-  pub(crate) vertices: Vec<ExportVertex>,
+  pub(crate) vertices: Vec<MeshVertex>,
   pub(crate) faces: Vec<[u16; 3]>,
 }
