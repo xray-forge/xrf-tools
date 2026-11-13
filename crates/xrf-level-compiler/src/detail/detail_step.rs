@@ -2,10 +2,8 @@ use std::path::Path;
 
 use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
-use xrf_geometry::BvhTracer;
 use xrf_job::JobHandle;
-use xrf_level::{BuildCformFile, BuildPrjFile, LevelDetailsFile, LevelLightsFile};
-use xrf_shaders::ShaderCompilerFile;
+use xrf_level::{LevelDetailsFile, LevelLightsFile};
 use xrf_utils::{StagedFile, format_path};
 
 use crate::detail::detail_light_request::DetailLightRequest;
@@ -13,8 +11,7 @@ use crate::detail::detail_lighter::DetailLighter;
 use crate::detail::detail_lighting::DetailLighting;
 use crate::level_compile_request::LevelCompileRequest;
 use crate::level_compile_step_run::LevelCompileStepRun;
-use crate::shadow::shadow_materials::ShadowMaterials;
-use crate::shadow::shadow_materials_request::ShadowMaterialsRequest;
+use crate::ray::ray_model::RayModel;
 
 /// A compile's details step, xrDO_Light's part: the level's `level.details` written as `build.details` lit by
 /// [`DetailLighter`] from xrLC's `build.cform` and `build.lights`, the build's `build.prj` and the game data's
@@ -39,29 +36,18 @@ impl DetailStep {
   pub(crate) fn run(request: &LevelCompileRequest, job: &JobHandle) -> XrfResult<LevelCompileStepRun> {
     let level: &Path = &request.level;
     let details: LevelDetailsFile = LevelDetailsFile::read_from_path::<XRayByteOrder, _>(&level.join(Self::SOURCE))?;
-    let cform: BuildCformFile =
-      BuildCformFile::read_from_path::<XRayByteOrder, _>(&level.join(BuildCformFile::FILE_NAME))?;
     let lights: LevelLightsFile =
       LevelLightsFile::read_from_path::<XRayByteOrder, _>(&level.join(LevelLightsFile::FILE_NAME))?;
-    let project: BuildPrjFile = BuildPrjFile::read_from_path::<XRayByteOrder, _>(&level.join(BuildPrjFile::FILE_NAME))?;
-    let library: ShaderCompilerFile =
-      ShaderCompilerFile::read_from_path::<XRayByteOrder, _>(&request.gamedata.join(ShaderCompilerFile::FILE_NAME))?;
-    let shadows: ShadowMaterials = ShadowMaterials::load(&ShadowMaterialsRequest {
-      project: &project,
-      faces: &cform.raycast_faces,
-      library: &library,
-      textures: &request.textures,
-    })?;
-    let tracer: BvhTracer = cform.build_tracer();
+    let model: RayModel = RayModel::read(request)?;
     let lighting: DetailLighting = DetailLighter::light(
       &DetailLightRequest {
         details: &details,
-        tracer: &tracer,
-        shadows: &shadows,
+        tracer: &model.tracer,
+        shadows: &model.shadows,
         lights: &lights,
-        backend: request.detail_backend,
+        backend: request.backend,
         dxc: request.dxc.as_deref(),
-        gpu: request.detail_gpu,
+        gpu: request.gpu,
       },
       job,
     )?;

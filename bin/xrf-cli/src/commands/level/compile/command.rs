@@ -3,15 +3,16 @@ use std::path::{Path, PathBuf};
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_error::XrfResult;
 use xrf_level_compiler::{
-  DetailLightBackend, LevelCompileReport, LevelCompileRequest, LevelCompileStep, LevelCompileStepRun, LevelCompiler,
+  AiMapCovers, AiMapGuid, LevelCompileReport, LevelCompileRequest, LevelCompileStep, LevelCompileStepRun,
+  LevelCompiler, RayBackend,
 };
 use xrf_output::OutputOptions;
 
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 use crate::core::terminal::CliJob;
 
-/// Compiles a level directory `level build` wrote, step by step: the details by our lighter, the geometry and the AI
-/// map by the SDK's compilers until ours replace them.
+/// Compiles a level directory `level build` wrote, step by step: the details by our lighter, the AI map by our
+/// compiler, the geometry by the SDK's xrLC until ours replaces it.
 #[derive(Default)]
 pub(crate) struct CompileCommand;
 
@@ -25,9 +26,10 @@ impl GenericCommand for CompileCommand {
       .about(
         "Compile a level directory level build wrote into what the game loads, step by step: geometry (the level, its \
          geometry, collision and lightmaps; the SDK's xrLC), details (level.details lit from build.details, \
-         build.cform and build.lights, as xrDO_Light lights it, on every core) and ai (level.ai; the SDK's xrAI -f). \
-         Every step's inputs and every texture build.prj names are checked before any step runs. The SDK's compilers \
-         run in a working directory under an fsgame.ltx written for them, never in a game installation",
+         build.cform and build.lights, as xrDO_Light lights it) and ai (level.ai compiled from build.aimap as xrAI -f \
+         compiles it, its covers traced against build.cform, then checked as a graph). Every step's inputs and every \
+         texture build.prj names are checked before any step runs. The SDK's xrLC runs in a working directory under an \
+         fsgame.ltx written for it, never in a game installation",
       )
       .arg(
         Arg::new("path")
@@ -46,7 +48,7 @@ impl GenericCommand for CompileCommand {
       )
       .arg(
         Arg::new("sdk")
-          .help("The SDK's editors directory, whose bin holds xrLC and xrAI; needed by the geometry and ai steps")
+          .help("The SDK's editors directory, whose bin holds xrLC; needed by the geometry step")
           .long("sdk")
           .value_parser(value_parser!(PathBuf)),
       )
@@ -63,7 +65,7 @@ impl GenericCommand for CompileCommand {
         Arg::new("textures")
           .help(
             "Textures root with a .thm for every texture build.prj names, and the images of those with alpha; \
-             repeatable, each file from the first root holding it, though the SDK's steps take one; the game data's \
+             repeatable, each file from the first root holding it, though the SDK's xrLC takes one; the game data's \
              textures by default",
           )
           .long("textures")
@@ -73,15 +75,17 @@ impl GenericCommand for CompileCommand {
       .arg(
         Arg::new("work")
           .help(
-            "Directory the SDK's compilers run in, with their fsgame.ltx and logs; one in the system's temporary \
-             directory",
+            "Directory the SDK's xrLC runs in, with its fsgame.ltx and logs; one in the system's temporary directory",
           )
           .long("work")
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
         Arg::new("force")
-          .help("Overwrite level.details where the level's directory already holds it")
+          .help(
+            "Overwrite level.details and level.ai where the level's directory already holds them; a level.ai replaced \
+             keeps its identity while its graph is unchanged, so the level's spawn still loads",
+          )
           .short('f')
           .long("force")
           .action(ArgAction::SetTrue),
@@ -89,13 +93,23 @@ impl GenericCommand for CompileCommand {
       .arg(
         Arg::new("backend")
           .help(
-            "What traces the details step's shadow rays: auto, the GPU where one traces rays, else the CPU; gpu, the \
-             GPU's ray queries alone, on D3D12 where dxc/dxcompiler.dll stands beside the CLI, else on Vulkan; cpu, \
-             the reference, every slot within one step of the GPU's",
+            "What traces the details step's shadow rays and the ai step's cover rays: auto, the GPU where one traces \
+             rays, else the CPU; gpu, the GPU's ray queries alone, on D3D12 where dxc/dxcompiler.dll stands beside the \
+             CLI, else on Vulkan; cpu, the reference, every slot and cover within one step of the GPU's",
           )
           .long("backend")
-          .default_value(DetailLightBackend::default().get_name())
-          .value_parser(DetailLightBackend::ALL.map(DetailLightBackend::get_name).to_vec()),
+          .default_value(RayBackend::default().get_name())
+          .value_parser(RayBackend::ALL.map(RayBackend::get_name).to_vec()),
+      )
+      .arg(
+        Arg::new("ai-covers")
+          .help(
+            "Covers the ai step computes: full, traced against build.cform as xrAI -f traces them; none, every cover 0 \
+             as xrAI -draft leaves them, needing no build.cform, for a map to walk before the geometry is compiled",
+          )
+          .long("ai-covers")
+          .default_value(AiMapCovers::default().get_name())
+          .value_parser(AiMapCovers::ALL.map(AiMapCovers::get_name).to_vec()),
       )
   }
 
@@ -122,12 +136,16 @@ impl GenericCommand for CompileCommand {
       gamedata,
       work: matches.get_one::<PathBuf>("work").cloned(),
       is_forced: matches.get_flag("force"),
-      detail_backend: matches
+      backend: matches
         .get_one::<String>("backend")
-        .and_then(|backend| DetailLightBackend::from_name(backend))
+        .and_then(|backend| RayBackend::from_name(backend))
         .unwrap_or_default(),
       dxc: Self::find_dxc(),
-      detail_gpu: None,
+      gpu: None,
+      ai_covers: matches
+        .get_one::<String>("ai-covers")
+        .and_then(|covers| AiMapCovers::from_name(covers))
+        .unwrap_or_default(),
       level,
     };
     let output: OutputOptions = context.get_output().clone();
@@ -178,6 +196,33 @@ impl CompileCommand {
           slots.unplanted,
           gpu.as_deref().unwrap_or("the CPU")
         ),
+        LevelCompileStepRun::AiMapCompiler {
+          covers,
+          gpu,
+          guid,
+          census,
+          graph,
+        } => {
+          for finding in graph.checks().iter().flat_map(|check| check.findings()) {
+            xrf_output::warning!(output, "{}", finding.message());
+          }
+
+          format!(
+            "{} nodes, {} covers{}, the identity {}; one-way nodes {}, parts {}",
+            census.nodes,
+            covers.get_name(),
+            match (covers, gpu) {
+              (AiMapCovers::None, _) => String::new(),
+              (AiMapCovers::Full, gpu) => format!(" traced on {}", gpu.as_deref().unwrap_or("the CPU")),
+            },
+            match guid {
+              AiMapGuid::Kept => "kept",
+              AiMapGuid::Derived => "derived",
+            },
+            census.one_way_nodes,
+            census.components
+          )
+        }
       };
 
       xrf_output::info!(

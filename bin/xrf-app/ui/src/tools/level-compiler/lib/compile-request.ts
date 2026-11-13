@@ -1,25 +1,28 @@
 import {
-  DetailGpu,
-  DetailLightBackend,
+  AiMapCovers,
   ELevelCompileStep,
   LevelCompileRequest,
   LevelCompileStep,
+  RayBackend,
+  RayGpu,
 } from "@xrf/ipc/types/xrf-level-compiler";
 import { Nullable } from "@xrf/types";
 
 /** What the form names for the compile after the build. */
 export interface ICompileChoice {
   steps: ReadonlySet<LevelCompileStep>;
-  /** The SDK's `editors` directory, whose `bin` holds xrLC and xrAI. */
+  /** The SDK's `editors` directory, whose `bin` holds xrLC. */
   sdk: Nullable<string>;
   /** The game data holding `gamemtl.xr` and `shaders_xrlc.xr`. */
   gamedata: Nullable<string>;
   /** The textures root, with a `.thm` for every texture `build.prj` names. */
   textures: Nullable<string>;
-  /** What traces the details' shadow rays. */
-  detailBackend: DetailLightBackend;
+  /** What traces the rays: the details' shadow rays and the AI map's cover rays. */
+  rayBackend: RayBackend;
   /** The GPU they trace on, the renderer's choice; null for the automatic one. */
-  detailGpu: Nullable<DetailGpu>;
+  rayGpu: Nullable<RayGpu>;
+  /** The covers the AI map gets: full ones traced against `build.cform`, or none. */
+  aiCovers: AiMapCovers;
 }
 
 /** Every step, in the order the compile runs them and the form lists them. */
@@ -29,11 +32,8 @@ export const COMPILE_STEPS: ReadonlyArray<LevelCompileStep> = [
   ELevelCompileStep.AI,
 ];
 
-/** The steps the SDK's own compilers run; the details are lit by the tools themselves. */
-export const SDK_COMPILE_STEPS: ReadonlySet<LevelCompileStep> = new Set([
-  ELevelCompileStep.GEOMETRY,
-  ELevelCompileStep.AI,
-]);
+/** The steps the SDK's own compilers run; the details and the AI map are compiled by the tools themselves. */
+export const SDK_COMPILE_STEPS: ReadonlySet<LevelCompileStep> = new Set([ELevelCompileStep.GEOMETRY]);
 
 /**
  * @param steps - The steps chosen.
@@ -56,7 +56,7 @@ export function getCompileProblem(choice: ICompileChoice): Nullable<string> {
   }
 
   if (!choice.sdk && isSdkNeeded(choice.steps)) {
-    return "Name the SDK's editors directory to compile the geometry or the AI map";
+    return "Name the SDK's editors directory to compile the geometry";
   }
 
   if (!choice.gamedata) {
@@ -92,8 +92,9 @@ export function toCompileRequest(choice: ICompileChoice): Nullable<LevelCompileR
     textures: [choice.textures],
     work: null,
     isForced: false,
-    detailBackend: choice.detailBackend,
+    backend: choice.rayBackend,
     dxc: null,
-    detailGpu: choice.detailGpu,
+    gpu: choice.rayGpu,
+    aiCovers: choice.aiCovers,
   };
 }

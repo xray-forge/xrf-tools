@@ -16,7 +16,7 @@ use crate::detail::gpu::detail_gpu_tracer::DetailGpuTracer;
 use crate::shadow::shadow_materials::ShadowMaterials;
 use crate::tests::ai_covers;
 use crate::tests::detail::{lighting, lighting_on, tracer};
-use crate::{DetailLightBackend, DetailLighting};
+use crate::{DetailLighting, RayBackend};
 
 /// The DXC each backend is asked with: none, for Vulkan, then the checkout's, for D3D12 first.
 fn dxcs() -> [Option<PathBuf>; 2] {
@@ -86,7 +86,7 @@ fn lights_the_slots_as_the_cpu_does() -> XrfResult {
       continue;
     }
 
-    let on_gpu: DetailLighting = lighting_on(DetailLightBackend::Gpu, dxc.as_deref())?;
+    let on_gpu: DetailLighting = lighting_on(RayBackend::Gpu, dxc.as_deref())?;
     let name: String = on_gpu.gpu.clone().unwrap_or_default();
 
     assert_eq!(on_gpu.details, lighting()?.details, "{name}");
@@ -99,7 +99,7 @@ fn lights_the_slots_as_the_cpu_does() -> XrfResult {
 #[test]
 fn covers_the_ai_map_as_the_cpu_does() -> XrfResult {
   let tracer: BvhTracer = ai_covers::wall();
-  let on_cpu: Vec<AiNodeCovers> = ai_covers::covers(&tracer, DetailLightBackend::Cpu, None)?;
+  let on_cpu: Vec<AiNodeCovers> = ai_covers::covers(&tracer, RayBackend::Cpu, None)?;
 
   for dxc in dxcs() {
     if device(dxc.as_ref()).is_none() {
@@ -107,7 +107,7 @@ fn covers_the_ai_map_as_the_cpu_does() -> XrfResult {
     }
 
     assert_eq!(
-      ai_covers::covers(&tracer, DetailLightBackend::Gpu, dxc.as_deref())?,
+      ai_covers::covers(&tracer, RayBackend::Gpu, dxc.as_deref())?,
       on_cpu,
       "{dxc:?}"
     );

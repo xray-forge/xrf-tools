@@ -8826,6 +8826,7 @@ dependencies = [
  "xrf-level",
  "xrf-math",
  "xrf-renderer-core",
+ "xrf-report",
  "xrf-shaders",
  "xrf-test-utils",
  "xrf-thm",

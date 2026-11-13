@@ -12,10 +12,8 @@ use crate::sdk::level_sdk_program::LevelSdkProgram;
 fn sdk() -> XrfResult<PathBuf> {
   let root: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "sdk"))?;
 
-  for (directory, program) in [("bin/compilers", "xrLC.exe"), ("bin/designer/release", "xrAI.exe")] {
-    std::fs::create_dir_all(root.join(directory))?;
-    std::fs::write(root.join(directory).join(program), b"")?;
-  }
+  std::fs::create_dir_all(root.join("bin/compilers"))?;
+  std::fs::write(root.join("bin/compilers/xrLC.exe"), b"")?;
 
   Ok(root)
 }
@@ -25,11 +23,9 @@ fn arguments(sdk: &Path, step: LevelCompileStep) -> XrfResult<Option<(Vec<String
 }
 
 #[test]
-fn skips_the_closing_box_where_the_program_can_and_keeps_the_ai_map() -> XrfResult {
-  let sdk: PathBuf = sdk()?;
-
+fn runs_xrlc_silent() -> XrfResult {
   assert_eq!(
-    arguments(&sdk, LevelCompileStep::Geometry)?,
+    arguments(&sdk()?, LevelCompileStep::Geometry)?,
     Some((
       vec![
         String::from("-f"),
@@ -37,17 +33,6 @@ fn skips_the_closing_box_where_the_program_can_and_keeps_the_ai_map() -> XrfResu
         String::from("-silent")
       ],
       true
-    ))
-  );
-  assert_eq!(
-    arguments(&sdk, LevelCompileStep::Ai)?,
-    Some((
-      vec![
-        String::from("-f"),
-        String::from("mp_darkvalley"),
-        String::from("-keep_temp_files")
-      ],
-      false
     ))
   );
 
@@ -58,11 +43,15 @@ fn skips_the_closing_box_where_the_program_can_and_keeps_the_ai_map() -> XrfResu
 fn runs_an_sdk_program_for_exactly_the_steps_the_sdk_runs() -> XrfResult {
   let sdk: PathBuf = sdk()?;
 
-  assert_eq!(arguments(&sdk, LevelCompileStep::Details)?, None);
-
   for step in LevelCompileStep::ALL {
     assert_eq!(LevelSdkProgram::of(&sdk, step)?.is_some(), step.is_sdk(), "{step:?}");
   }
+
+  assert_eq!(
+    LevelCompileStep::ALL.map(LevelCompileStep::is_sdk),
+    [true, false, false],
+    "the SDK runs the geometry alone"
+  );
 
   Ok(())
 }

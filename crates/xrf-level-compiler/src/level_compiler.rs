@@ -8,6 +8,7 @@ use xrf_level::BuildPrjFile;
 use xrf_shaders::ShaderCompilerFile;
 use xrf_utils::format_path;
 
+use crate::ai::ai_step::AiStep;
 use crate::compiler_textures::CompilerTextures;
 use crate::detail::detail_step::DetailStep;
 use crate::level_compile_report::{LevelCompileReport, LevelCompileStepReport};
@@ -20,8 +21,9 @@ use crate::sdk::level_sdk_workspace::LevelSdkWorkspace;
 
 /// Compiles a level from the files `level build` wrote, step by step ([`LevelCompileStep`]): each step's inputs and
 /// program are checked before any runs, so a missing file stops the compile at once rather than an hour in, then each
-/// runs in order, reported to a job: the details by [`crate::DetailLighter`] here, cancelled with the job; the others
-/// by the SDK's compilers in a workspace of their own, killed when the job is cancelled.
+/// runs in order, reported to a job: the details by [`crate::DetailLighter`] and the AI map by
+/// [`crate::AiMapCompiler`] here, cancelled with the job; the geometry by the SDK's xrLC in a workspace of its own,
+/// killed when the job is cancelled.
 pub struct LevelCompiler;
 
 impl LevelCompiler {
@@ -33,9 +35,9 @@ impl LevelCompiler {
   /// # Errors
   ///
   /// Returns an error before anything runs when the level's directory has no name, a step's input is missing, a
-  /// texture `build.prj` names has no `.thm` under the textures roots, the details step would overwrite `level.details`
-  /// unforced, or a step the SDK runs has no SDK, no such program in it, or other than one textures root; and while
-  /// running when a step fails or the job is cancelled.
+  /// texture `build.prj` names has no `.thm` under the textures roots where a step reads them, the details or AI step
+  /// would overwrite `level.details` or `level.ai` unforced, or the geometry step has no SDK, no xrLC in it, or other
+  /// than one textures root; and while running when a step fails or the job is cancelled.
   pub fn compile(request: &LevelCompileRequest, job: &JobHandle) -> XrfResult<LevelCompileReport> {
     let steps: Vec<LevelCompileStep> = Self::get_steps(&request.steps);
     let (levels, name) = Self::get_level_name(&request.level)?;
@@ -83,10 +85,9 @@ impl LevelCompiler {
             },
           )
         }
-        // A step of ours, the details being the one so far.
         None => {
           let started: Instant = Instant::now();
-          let run: LevelCompileStepRun = DetailStep::run(request, job)?;
+          let run: LevelCompileStepRun = Self::run_own(*step, request, job)?;
 
           (started.elapsed(), run)
         }
@@ -105,6 +106,17 @@ impl LevelCompiler {
       work: workspace.map(|workspace| format_path(&workspace.directory).to_string()),
       steps: reports,
     })
+  }
+
+  /// Runs `step`, one of ours ([`LevelCompileStep::is_sdk`] false).
+  fn run_own(step: LevelCompileStep, request: &LevelCompileRequest, job: &JobHandle) -> XrfResult<LevelCompileStepRun> {
+    match step {
+      LevelCompileStep::Details => DetailStep::run(request, job),
+      LevelCompileStep::Ai => AiStep::run(request, job),
+      LevelCompileStep::Geometry => Err(XrfError::new_unexpected_error(
+        "The geometry step has no compiler of ours; the SDK's xrLC runs it",
+      )),
+    }
   }
 
   /// `steps`, each once in the order a compile runs them; every step where none is given.
@@ -155,14 +167,14 @@ impl LevelCompiler {
   }
 
   /// Whether every file `steps` read is there, those an earlier step of the same compile writes left aside; every
-  /// texture `build.prj` names has its `.thm`, which each of the compilers loads and asserts on
-  /// (`xrAI/compiler_load.cpp:140` for one); and the details step writes no `level.details` over one unforced.
+  /// texture `build.prj` names has its `.thm` where a step reads them, as each of the compilers loads and asserts on
+  /// (`xrAI/compiler_load.cpp:140` for one); and no step of ours writes over its output unforced.
   fn check_inputs(request: &LevelCompileRequest, steps: &[LevelCompileStep]) -> XrfResult {
     let written_by_geometry: [&str; 2] = ["build.cform", "build.lights"];
     let is_geometry_run: bool = steps.contains(&LevelCompileStep::Geometry);
 
     for step in steps {
-      for input in step.get_inputs() {
+      for input in step.get_inputs(request.ai_covers) {
         if is_geometry_run && *step != LevelCompileStep::Geometry && written_by_geometry.contains(input) {
           continue;
         }
@@ -178,8 +190,20 @@ impl LevelCompiler {
       }
     }
 
+    if let Some(step) = steps.iter().find(|step| step.is_tracing(request.ai_covers)) {
+      Self::check_library(request, *step)?;
+    }
+
     if steps.contains(&LevelCompileStep::Details) {
-      Self::check_details(request)?;
+      Self::check_output(request, DetailStep::OUTPUT)?;
+    }
+
+    if steps.contains(&LevelCompileStep::Ai) {
+      Self::check_output(request, AiStep::OUTPUT)?;
+    }
+
+    if !steps.iter().any(|step| step.is_reading_textures(request.ai_covers)) {
+      return Ok(());
     }
 
     let project: BuildPrjFile =
@@ -202,18 +226,25 @@ impl LevelCompiler {
     }
   }
 
-  /// Whether the details step can write: the game data holds the compiler shader library it reads, and the level's
-  /// directory no `level.details` but where the request is forced.
-  fn check_details(request: &LevelCompileRequest) -> XrfResult {
+  /// Whether the game data holds the compiler shader library a step tracing through the ray model reads, `step` naming
+  /// the first such step in a message.
+  fn check_library(request: &LevelCompileRequest, step: LevelCompileStep) -> XrfResult {
     let library: PathBuf = request.gamedata.join(ShaderCompilerFile::FILE_NAME);
-    let output: PathBuf = request.level.join(DetailStep::OUTPUT);
 
-    if !library.is_file() {
-      return Err(XrfError::new_not_found_error(format!(
-        "The details step needs {}, which is not there",
-        format_path(&library)
-      )));
+    if library.is_file() {
+      return Ok(());
     }
+
+    Err(XrfError::new_not_found_error(format!(
+      "The {} step needs {}, which is not there",
+      step.get_name(),
+      format_path(&library)
+    )))
+  }
+
+  /// Whether a step of ours can write `name` in the level's directory: it holds no such file, or the request is forced.
+  fn check_output(request: &LevelCompileRequest, name: &str) -> XrfResult {
+    let output: PathBuf = request.level.join(name);
 
     if output.exists() && !request.is_forced {
       return Err(XrfError::new_invalid_error(format!(

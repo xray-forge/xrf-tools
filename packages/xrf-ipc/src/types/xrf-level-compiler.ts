@@ -1,28 +1,35 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-/**
- * The GPU the detail lighter's GPU backend traces on, by its PCI vendor and device ids: the renderer's `RenderGpu`,
- * spelled again here so a request names one in a build without the `gpu` feature, which links no graphics code.
- */
-export type DetailGpu = {
-  vendor: number;
-  device: number;
-};
+import { LevelAiGraphCensus } from "#/types/xrf-level";
+import { Report } from "#/types/xrf-report";
 
-/**
- * What traces the detail lighter's shadow rays. The CPU is the reference the SDK's runs are matched against; the GPU
- * traces with hardware ray queries, each slot within one step of the CPU's light, several times faster.
- */
-export enum EDetailLightBackend {
-  CPU = "cpu",
-  /** Refused where the build has no GPU backend or no GPU traces rays. */
-  GPU = "gpu",
-  /** The GPU where the build has its backend and a GPU traces rays, the CPU otherwise. */
-  AUTO = "auto",
+/** Which covers the AI map compiler computes. */
+export enum EAiMapCovers {
+  /** None, as xrAI's `-draft` leaves them: every value 0, and no `build.cform` needed. */
+  NONE = "none",
+  /** Each corner node traced against `build.cform` and the other nodes mixed from them, as xrAI's full run does. */
+  FULL = "full",
 }
 
-/** Every `EDetailLightBackend` as the spelling it crosses IPC as, for a value no member has narrowed. */
-export type DetailLightBackend = `${EDetailLightBackend}`;
+/** Every `EAiMapCovers` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type AiMapCovers = `${EAiMapCovers}`;
+
+/**
+ * Where a compiled `level.ai`'s graph identity came from.
+ *
+ * xrAI gives every run a new random identity, which the root spawn's game graph and cross table must carry for the
+ * level to load. Ours is the replaced map's when the graph a spawn indexes is unchanged, so the existing spawn still
+ * loads the level; otherwise one derived from the nodes, so the same input gives the same file.
+ */
+export enum EAiMapGuid {
+  /** The replaced map's: its nodes are as many, in the same order, at the same cells and with the same links. */
+  KEPT = "kept",
+  /** Hashed from the compiled nodes, there being no map to replace or its graph having changed. */
+  DERIVED = "derived",
+}
+
+/** Every `EAiMapGuid` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type AiMapGuid = `${EAiMapGuid}`;
 
 /** How many slots of a level's details the detail lighter met each way. */
 export type DetailSlotCounts = {
@@ -71,18 +78,21 @@ export type LevelCompileRequest = {
   work: string | null;
   /** Whether a step of ours overwrites a file it writes where the level's directory holds it, rather than refusing. */
   isForced: boolean;
-  /** What traces the details step's shadow rays. */
-  detailBackend: DetailLightBackend;
-  /** DXC's `dxcompiler.dll`, with which the details step's GPU backend traces on D3D12; Vulkan alone without it. */
+  /** What traces the rays: the details step's shadow rays and the AI step's corner rays. */
+  backend: RayBackend;
+  /** DXC's `dxcompiler.dll`, with which the GPU backend traces on D3D12; Vulkan alone without it. */
   dxc: string | null;
-  /** The GPU the details step's GPU backend traces on; the high-performance one without it. */
-  detailGpu: DetailGpu | null;
+  /** The GPU the GPU backend traces on; the high-performance one without it. */
+  gpu: RayGpu | null;
+  /** The covers the AI step computes: full ones traced against `build.cform`, or none, needing no `build.cform`. */
+  aiCovers: AiMapCovers;
 };
 
 /**
  * One step of a level's compile from the files `level build` writes, in the order they run: the geometry (xrLC's
  * part, lightmaps included), the details' light (xrDO_Light's, done by [`crate::DetailLighter`]) and the AI map
- * (xrAI's `-f`). A step no compiler of ours does yet runs the SDK's own ([`Self::is_sdk`]).
+ * (xrAI's `-f`, done by [`crate::AiMapCompiler`]). A step no compiler of ours does yet runs the SDK's own
+ * ([`Self::is_sdk`]).
  */
 export enum ELevelCompileStep {
   GEOMETRY = "geometry",
@@ -110,6 +120,12 @@ export enum ELevelCompileStepRun {
    * none where the CPU traced them.
    */
   DETAIL_LIGHTER = "detailLighter",
+  /**
+   * The AI map compiler ([`crate::AiMapCompiler`]): the covers it computed, the GPU that traced their rays, none where
+   * the CPU did or no ray was traced, where the map's identity came from, and the graph check run on the map it wrote,
+   * with what the map held.
+   */
+  AI_MAP_COMPILER = "aiMapCompiler",
 }
 
 /** What ran a step of a level's compile, and what it says of the run. */
@@ -120,4 +136,42 @@ export type LevelCompileStepRun =
    * The detail lighter ([`crate::DetailLighter`]), how it met the slots, and the GPU that traced its shadow rays,
    * none where the CPU traced them.
    */
-  | { kind: "detailLighter"; slots: DetailSlotCounts; gpu: string | null };
+  | { kind: "detailLighter"; slots: DetailSlotCounts; gpu: string | null }
+  /**
+   * The AI map compiler ([`crate::AiMapCompiler`]): the covers it computed, the GPU that traced their rays, none where
+   * the CPU did or no ray was traced, where the map's identity came from, and the graph check run on the map it wrote,
+   * with what the map held.
+   */
+  | {
+      kind: "aiMapCompiler";
+      covers: AiMapCovers;
+      gpu: string | null;
+      guid: AiMapGuid;
+      census: LevelAiGraphCensus;
+      graph: Report;
+    };
+
+/**
+ * What traces the compile's rays through the ray model: the detail lighter's shadow rays and the AI map's corner rays.
+ * The CPU is the reference the SDK's runs are matched against; the GPU traces with hardware ray queries, each slot and
+ * each cover within one step of the CPU's, several times faster.
+ */
+export enum ERayBackend {
+  CPU = "cpu",
+  /** Refused where the build has no GPU backend or no GPU traces rays. */
+  GPU = "gpu",
+  /** The GPU where the build has its backend and a GPU traces rays, the CPU otherwise. */
+  AUTO = "auto",
+}
+
+/** Every `ERayBackend` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RayBackend = `${ERayBackend}`;
+
+/**
+ * The GPU the GPU backend traces on, by its PCI vendor and device ids: the renderer's `RenderGpu`,
+ * spelled again here so a request names one in a build without the `gpu` feature, which links no graphics code.
+ */
+export type RayGpu = {
+  vendor: number;
+  device: number;
+};

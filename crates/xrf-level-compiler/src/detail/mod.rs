@@ -1,8 +1,6 @@
 //! The detail lighter: each planted slot of `build.details` lit from the ray model and the light lists, as xrDO_Light
 //! lights it.
 
-pub(crate) mod detail_gpu;
-pub(crate) mod detail_light_backend;
 pub(crate) mod detail_light_request;
 pub(crate) mod detail_light_source;
 pub(crate) mod detail_lighter;

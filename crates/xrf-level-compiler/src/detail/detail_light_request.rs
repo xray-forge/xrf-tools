@@ -3,8 +3,8 @@ use std::path::Path;
 use xrf_geometry::BvhTracer;
 use xrf_level::{LevelDetailsFile, LevelLightsFile};
 
-use crate::detail::detail_gpu::DetailGpu;
-use crate::detail::detail_light_backend::DetailLightBackend;
+use crate::ray::ray_backend::RayBackend;
+use crate::ray::ray_gpu::RayGpu;
 use crate::shadow::shadow_materials::ShadowMaterials;
 
 /// What [`crate::DetailLighter::light`] lights a level's details from, each already read.
@@ -19,9 +19,9 @@ pub struct DetailLightRequest<'a> {
   /// xrLC's light lists, `build.lights`.
   pub lights: &'a LevelLightsFile,
   /// What traces the shadow rays.
-  pub backend: DetailLightBackend,
+  pub backend: RayBackend,
   /// DXC's `dxcompiler.dll`, with which the GPU backend traces on D3D12; Vulkan alone without it.
   pub dxc: Option<&'a Path>,
   /// The GPU the GPU backend traces on; the high-performance one without it.
-  pub gpu: Option<DetailGpu>,
+  pub gpu: Option<RayGpu>,
 }

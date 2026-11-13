@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { EDetailLightBackend, ELevelCompileStep, LevelCompileStep } from "@xrf/ipc/types/xrf-level-compiler";
+import { EAiMapCovers, ELevelCompileStep, ERayBackend, LevelCompileStep } from "@xrf/ipc/types/xrf-level-compiler";
 
 import { getCompileProblem, ICompileChoice, toCompileRequest } from "./compile-request";
 
@@ -9,8 +9,9 @@ function choice(steps: Array<LevelCompileStep>, patch: Partial<ICompileChoice> =
     sdk: "C:\\SDK\\editors",
     gamedata: "C:\\Games\\CoP\\gamedata",
     textures: "C:\\Games\\CoP\\gamedata\\textures",
-    detailBackend: EDetailLightBackend.AUTO,
-    detailGpu: { vendor: 0x10de, device: 0x2c02 },
+    rayBackend: ERayBackend.AUTO,
+    rayGpu: { vendor: 0x10de, device: 0x2c02 },
+    aiCovers: EAiMapCovers.FULL,
     ...patch,
   };
 }
@@ -29,21 +30,24 @@ describe("toCompileRequest", () => {
     expect(request?.textures).toEqual(["C:\\Games\\CoP\\gamedata\\textures"]);
   });
 
-  it("asks for the details traced as chosen, on the renderer's GPU", () => {
-    const request = toCompileRequest(choice([ELevelCompileStep.DETAILS], { detailBackend: EDetailLightBackend.CPU }));
+  it("asks for the rays traced as chosen, on the renderer's GPU, and the AI map's covers", () => {
+    const request = toCompileRequest(
+      choice([ELevelCompileStep.DETAILS, ELevelCompileStep.AI], {
+        rayBackend: ERayBackend.CPU,
+        aiCovers: EAiMapCovers.NONE,
+      })
+    );
 
-    expect(request?.detailBackend).toBe(EDetailLightBackend.CPU);
-    expect(request?.detailGpu).toEqual({ vendor: 0x10de, device: 0x2c02 });
+    expect(request?.backend).toBe(ERayBackend.CPU);
+    expect(request?.gpu).toEqual({ vendor: 0x10de, device: 0x2c02 });
+    expect(request?.aiCovers).toBe(EAiMapCovers.NONE);
   });
 
-  it("lights the details without the SDK, which only the geometry and the AI map need", () => {
-    const request = toCompileRequest(choice([ELevelCompileStep.DETAILS], { sdk: null }));
+  it("compiles the details and the AI map without the SDK, which only the geometry needs", () => {
+    const request = toCompileRequest(choice([ELevelCompileStep.DETAILS, ELevelCompileStep.AI], { sdk: null }));
 
-    expect(request?.steps).toEqual([ELevelCompileStep.DETAILS]);
+    expect(request?.steps).toEqual([ELevelCompileStep.DETAILS, ELevelCompileStep.AI]);
     expect(request?.sdk).toBeNull();
-    expect(getCompileProblem(choice([ELevelCompileStep.DETAILS, ELevelCompileStep.AI], { sdk: null }))).toContain(
-      "SDK"
-    );
   });
 
   it("names what a chosen step lacks before it can run", () => {

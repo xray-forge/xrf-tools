@@ -1,9 +1,11 @@
 import { useInjection } from "@wirestate/react";
 import {
-  DetailLightBackend,
-  EDetailLightBackend,
+  AiMapCovers,
+  EAiMapCovers,
   ELevelCompileStep,
+  ERayBackend,
   LevelCompileStep,
+  RayBackend,
 } from "@xrf/ipc/types/xrf-level-compiler";
 import { ELevelBuildImpostorLimit } from "@xrf/ipc/types/xrf-rawdata";
 import { RenderGpu } from "@xrf/ipc/types/xrf-renderer-core";
@@ -42,14 +44,20 @@ const STEP_LABELS: Record<LevelCompileStep, { label: string; description: string
   },
   [ELevelCompileStep.AI]: {
     label: "Compile AI map",
-    description: "level.ai from build.aimap, with the SDK's xrAI",
+    description:
+      "level.ai from build.aimap, as xrAI -f compiles it, its covers traced against build.cform, then checked as a graph",
   },
 };
 
-const DETAIL_BACKENDS: ReadonlyArray<IChoiceFormRowOption<DetailLightBackend>> = [
-  { label: "Auto", value: EDetailLightBackend.AUTO },
-  { label: "GPU", value: EDetailLightBackend.GPU },
-  { label: "CPU", value: EDetailLightBackend.CPU },
+const RAY_BACKENDS: ReadonlyArray<IChoiceFormRowOption<RayBackend>> = [
+  { label: "Auto", value: ERayBackend.AUTO },
+  { label: "GPU", value: ERayBackend.GPU },
+  { label: "CPU", value: ERayBackend.CPU },
+];
+
+const AI_COVERS: ReadonlyArray<IChoiceFormRowOption<AiMapCovers>> = [
+  { label: "Full", value: EAiMapCovers.FULL },
+  { label: "None", value: EAiMapCovers.NONE },
 ];
 
 export function LevelCompilerTool(): ReactElement {
@@ -65,7 +73,8 @@ export function LevelCompilerTool(): ReactElement {
   const [isSdkImpostorAtlas, setIsSdkImpostorAtlas] = useState<boolean>(false);
   const [isForced, setIsForced] = useState<boolean>(false);
   const [steps, setSteps] = useState<ReadonlySet<LevelCompileStep>>(new Set());
-  const [detailBackend, setDetailBackend] = useState<DetailLightBackend>(EDetailLightBackend.AUTO);
+  const [rayBackend, setRayBackend] = useState<RayBackend>(ERayBackend.AUTO);
+  const [aiCovers, setAiCovers] = useState<AiMapCovers>(EAiMapCovers.FULL);
 
   const source: IPathField = usePathField({
     tool: EToolId.LEVEL_COMPILER,
@@ -124,18 +133,21 @@ export function LevelCompilerTool(): ReactElement {
   const levelPath: Nullable<string> = destination.value;
   // The build project needs the objects its placements name; the game files alone do not.
   const isMissingObjects: boolean = gameMaterials.value !== null && objects.length === 0;
-  // The details trace on the GPU the renderer's settings choose, the automatic one where they choose none.
-  const detailGpu: Nullable<RenderGpu> = renderSettingsService.renderGpu;
+  // The rays trace on the GPU the renderer's settings choose, the automatic one where they choose none.
+  const rayGpu: Nullable<RenderGpu> = renderSettingsService.renderGpu;
+  const isTracing: boolean =
+    steps.has(ELevelCompileStep.DETAILS) || (steps.has(ELevelCompileStep.AI) && aiCovers === EAiMapCovers.FULL);
   const compile: ICompileChoice = useMemo(
     () => ({
       steps,
       sdk: sdk.value,
       gamedata: gamedata.value,
       textures: textures.value,
-      detailBackend,
-      detailGpu: detailGpu === null ? null : { vendor: detailGpu.vendor, device: detailGpu.device },
+      rayBackend,
+      rayGpu: rayGpu === null ? null : { vendor: rayGpu.vendor, device: rayGpu.device },
+      aiCovers,
     }),
-    [detailBackend, detailGpu, gamedata.value, sdk.value, steps, textures.value]
+    [aiCovers, gamedata.value, rayBackend, rayGpu, sdk.value, steps, textures.value]
   );
   const compileProblem: Nullable<string> = getCompileProblem(compile);
 
@@ -300,24 +312,34 @@ export function LevelCompilerTool(): ReactElement {
       ))}
 
       <ChoiceFormRow
-        label={"Details traced on"}
+        label={"AI map covers"}
         description={
-          "Auto: the GPU where it traces rays, else the CPU. The GPU is the one chosen in the renderer settings, " +
-          "several times faster; the CPU is the reference, every slot within one step of the GPU's"
+          "Full: traced against build.cform, as xrAI -f traces them. None: every cover 0, as xrAI -draft leaves " +
+          "them, needing no compiled geometry"
         }
-        options={DETAIL_BACKENDS}
-        value={detailBackend}
-        isDisabled={isRunning || !steps.has(ELevelCompileStep.DETAILS)}
-        onChange={setDetailBackend}
+        options={AI_COVERS}
+        value={aiCovers}
+        isDisabled={isRunning || !steps.has(ELevelCompileStep.AI)}
+        onChange={setAiCovers}
+      />
+
+      <ChoiceFormRow
+        label={"Rays traced on"}
+        description={
+          "The details' shadow rays and the AI map's cover rays. Auto: the GPU where it traces rays, else the CPU. The " +
+          "GPU is the one chosen in the renderer settings, several times faster; the CPU is the reference, every slot " +
+          "and cover within one step of the GPU's"
+        }
+        options={RAY_BACKENDS}
+        value={rayBackend}
+        isDisabled={isRunning || !isTracing}
+        onChange={setRayBackend}
       />
 
       <PathFormRow
         isDisabled={isRunning}
         label={"SDK"}
-        description={
-          compileProblem ??
-          "The SDK's editors directory, whose bin holds xrLC and xrAI; for the geometry and the AI map"
-        }
+        description={compileProblem ?? "The SDK's editors directory, whose bin holds xrLC; for the geometry"}
         field={sdk}
       />
 

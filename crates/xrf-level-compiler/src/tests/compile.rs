@@ -6,16 +6,14 @@ use xrf_error::XrfResult;
 use xrf_job::JobHandle;
 use xrf_test_utils::GeneratedResources;
 
-use crate::{LevelCompileRequest, LevelCompileStep, LevelCompiler};
+use crate::{AiMapCovers, LevelCompileRequest, LevelCompileStep, LevelCompiler};
 
 /// An SDK `editors` directory whose compilers are empty files: enough to be found, never run by these tests.
 fn sdk(name: &str) -> XrfResult<PathBuf> {
   let root: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), name))?;
 
-  for (directory, program) in [("bin/compilers", "xrLC.exe"), ("bin/designer/release", "xrAI.exe")] {
-    std::fs::create_dir_all(root.join(directory))?;
-    std::fs::write(root.join(directory).join(program), b"")?;
-  }
+  std::fs::create_dir_all(root.join("bin/compilers"))?;
+  std::fs::write(root.join("bin/compilers/xrLC.exe"), b"")?;
 
   Ok(root)
 }
@@ -110,18 +108,41 @@ fn refuses_an_sdk_without_the_steps_program() -> XrfResult {
 
 #[test]
 fn refuses_a_step_the_sdk_runs_without_the_sdk() -> XrfResult {
-  let level: PathBuf = level("sdk_unnamed", &["build.prj", "build.aimap", "build.cform"])?;
+  let level: PathBuf = level("sdk_unnamed", &["build.prj"])?;
   let error: String = LevelCompiler::compile(
     &LevelCompileRequest {
       sdk: None,
-      ..request(&level, Path::new(""), &[LevelCompileStep::Ai])
+      ..request(&level, Path::new(""), &[LevelCompileStep::Geometry])
     },
     &JobHandle::inert(),
   )
   .unwrap_err()
   .to_string();
 
-  assert!(error.contains("ai step runs the SDK's compiler"), "{error}");
+  assert!(error.contains("geometry step runs the SDK's compiler"), "{error}");
+
+  Ok(())
+}
+
+#[test]
+fn needs_no_ray_model_for_an_ai_map_with_no_covers() -> XrfResult {
+  let level: PathBuf = level("ai_no_covers", &["build.aimap"])?;
+  let refuse = |covers: AiMapCovers| {
+    LevelCompiler::compile(
+      &LevelCompileRequest {
+        sdk: None,
+        ai_covers: covers,
+        ..request(&level, Path::new(""), &[LevelCompileStep::Ai])
+      },
+      &JobHandle::inert(),
+    )
+    .unwrap_err()
+    .to_string()
+  };
+
+  assert!(refuse(AiMapCovers::Full).contains("ai step needs build.prj"));
+  // With no covers the checks pass, no SDK needed, and the empty build.aimap fails to read.
+  assert!(!refuse(AiMapCovers::None).contains("needs"));
 
   Ok(())
 }
