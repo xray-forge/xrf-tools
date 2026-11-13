@@ -6,9 +6,11 @@ use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrit
 use xrf_math::Vector3d;
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
+use crate::data::alife::alife_state_read_write::AlifeStateReadWrite;
 use crate::data::alife::inherited::alife_object_creature::AlifeObjectCreature;
 use crate::data::alife::inherited::alife_object_skeleton::AlifeObjectSkeleton;
 use crate::data::alife::inherited::alife_object_trader_abstract::AlifeObjectTraderAbstract;
+use crate::data::alife::spawn_layout::SpawnLayout;
 use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 use crate::data::physics::actor_physics_state::ActorPhysicsState;
 use crate::data::physics::scaled_direction::ScaledDirection;
@@ -47,10 +49,14 @@ impl AlifePacketsReadWrite for AlifeObjectActor {
   }
 
   /// Read the actor from both packets.
-  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
+  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+    spawn: &mut S,
+    update: &mut U,
+    layout: SpawnLayout,
+  ) -> XrfResult<Self> {
     Ok(Self {
-      base: AlifeObjectCreature::read::<T, _, _>(spawn, update)?,
-      trader: spawn.read_xr::<T, _>()?,
+      base: AlifeObjectCreature::read::<T, _, _>(spawn, update, layout)?,
+      trader: AlifeObjectTraderAbstract::read_state::<T, _>(spawn, layout)?,
       skeleton: spawn.read_xr::<T, _>()?,
       holder_id: spawn.read_u16::<T>()?,
       update_movement_state: update.read_u16::<T>()?,
@@ -63,10 +69,15 @@ impl AlifePacketsReadWrite for AlifeObjectActor {
   }
 
   /// Write the actor into both packets.
-  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(&self, spawn: &mut S, update: &mut U) -> XrfResult {
-    self.base.write::<T, _, _>(spawn, update)?;
+  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+    &self,
+    spawn: &mut S,
+    update: &mut U,
+    layout: SpawnLayout,
+  ) -> XrfResult {
+    self.base.write::<T, _, _>(spawn, update, layout)?;
 
-    spawn.write_xr::<T, _>(&self.trader)?;
+    self.trader.write_state::<T, _>(spawn, layout)?;
     spawn.write_xr::<T, _>(&self.skeleton)?;
     spawn.write_u16::<T>(self.holder_id)?;
 
@@ -78,11 +89,9 @@ impl AlifePacketsReadWrite for AlifeObjectActor {
 
     update.write_xr::<T, _>(&self.update_body)
   }
-}
 
-impl LtxImportExport for AlifeObjectActor {
   /// Import actor data from ltx config section.
-  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L, layout: SpawnLayout) -> XrfResult<Self> {
     let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
@@ -92,8 +101,8 @@ impl LtxImportExport for AlifeObjectActor {
     })?;
 
     Ok(Self {
-      base: AlifeObjectCreature::import(section_name, ltx)?,
-      trader: AlifeObjectTraderAbstract::import(section_name, ltx)?,
+      base: AlifeObjectCreature::import(section_name, ltx, layout)?,
+      trader: AlifeObjectTraderAbstract::import_state(section_name, ltx, layout)?,
       skeleton: AlifeObjectSkeleton::import(section_name, ltx)?,
       holder_id: section.read_field("actor.holder_id")?,
       update_movement_state: section.read_field("actor.update_movement_state")?,
@@ -106,9 +115,9 @@ impl LtxImportExport for AlifeObjectActor {
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
-    self.base.export(section_name, ltx)?;
-    self.trader.export(section_name, ltx)?;
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite, layout: SpawnLayout) -> XrfResult {
+    self.base.export(section_name, ltx, layout)?;
+    self.trader.export_state(section_name, ltx, layout)?;
     self.skeleton.export(section_name, ltx)?;
 
     ltx
@@ -170,11 +179,12 @@ impl AlifeObjectActor {
 mod tests {
   use xrf_chunk::XRayByteOrder;
   use xrf_error::XrfResult;
-  use xrf_ltx::{Ltx, LtxImportExport};
+  use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
 
   use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
   use crate::data::alife::inherited::alife_object_actor::AlifeObjectActor;
+  use crate::data::alife::spawn_layout::SpawnLayout;
   use crate::data::physics::actor_physics_state::ActorPhysicsState;
   use crate::data::physics::raw_float::RawFloat;
 
@@ -195,7 +205,7 @@ mod tests {
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectActor = AlifeObjectActor::new_mock(Vector3d::new(256.24, 19.81, 550.82));
-    let (_, update_size, read) = original.read_back::<XRayByteOrder>()?;
+    let (_, update_size, read) = original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?;
 
     assert_eq!((update_size, read), (61, original));
 
@@ -209,7 +219,7 @@ mod tests {
 
     original.update_body = new_alive_body([1.0, 2.0, 3.0]);
 
-    let (_, update_size, read) = original.read_back::<XRayByteOrder>()?;
+    let (_, update_size, read) = original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?;
 
     assert_eq!((update_size, read), (61 + 1 + 5 * 12 + 16, original));
 
@@ -236,9 +246,12 @@ mod tests {
     let mut ltx: Ltx = Ltx::new();
 
     original.update_body = new_alive_body([1.0, 2.0, 3.0]);
-    original.export("data", &mut ltx)?;
+    original.export("data", &mut ltx, SpawnLayout::CALL_OF_PRIPYAT)?;
 
-    assert_eq!(AlifeObjectActor::import("data", &ltx)?, original);
+    assert_eq!(
+      AlifeObjectActor::import("data", &ltx, SpawnLayout::CALL_OF_PRIPYAT)?,
+      original
+    );
 
     Ok(())
   }

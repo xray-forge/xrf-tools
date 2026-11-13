@@ -8,6 +8,7 @@ use xrf_math::Vector3d;
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_monster_abstract::AlifeObjectMonsterAbstract;
 use crate::data::alife::inherited::alife_object_skeleton::AlifeObjectSkeleton;
+use crate::data::alife::spawn_layout::SpawnLayout;
 use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 
 /// A mutant, `CSE_ALifeMonsterBase`: a monster with a physics skeleton, which every monster class Call of Pripyat
@@ -35,28 +36,35 @@ impl AlifePacketsReadWrite for AlifeObjectMonsterBase {
   }
 
   /// Read the monster from both packets.
-  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
+  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+    spawn: &mut S,
+    update: &mut U,
+    layout: SpawnLayout,
+  ) -> XrfResult<Self> {
     Ok(Self {
-      base: AlifeObjectMonsterAbstract::read::<T, _, _>(spawn, update)?,
+      base: AlifeObjectMonsterAbstract::read::<T, _, _>(spawn, update, layout)?,
       skeleton: spawn.read_xr::<T, _>()?,
       spec_object_id: spawn.read_u16::<T>()?,
     })
   }
 
   /// Write the monster into both packets.
-  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(&self, spawn: &mut S, update: &mut U) -> XrfResult {
-    self.base.write::<T, _, _>(spawn, update)?;
+  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+    &self,
+    spawn: &mut S,
+    update: &mut U,
+    layout: SpawnLayout,
+  ) -> XrfResult {
+    self.base.write::<T, _, _>(spawn, update, layout)?;
 
     spawn.write_xr::<T, _>(&self.skeleton)?;
     spawn.write_u16::<T>(self.spec_object_id)?;
 
     Ok(())
   }
-}
 
-impl LtxImportExport for AlifeObjectMonsterBase {
   /// Import monster data from ltx config section.
-  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L, layout: SpawnLayout) -> XrfResult<Self> {
     let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
@@ -66,15 +74,15 @@ impl LtxImportExport for AlifeObjectMonsterBase {
     })?;
 
     Ok(Self {
-      base: AlifeObjectMonsterAbstract::import(section_name, ltx)?,
+      base: AlifeObjectMonsterAbstract::import(section_name, ltx, layout)?,
       skeleton: AlifeObjectSkeleton::import(section_name, ltx)?,
       spec_object_id: section.read_field("monster.spec_object_id")?,
     })
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
-    self.base.export(section_name, ltx)?;
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite, layout: SpawnLayout) -> XrfResult {
+    self.base.export(section_name, ltx, layout)?;
     self.skeleton.export(section_name, ltx)?;
 
     ltx
@@ -109,11 +117,12 @@ impl AlifeObjectMonsterBase {
 mod tests {
   use xrf_chunk::XRayByteOrder;
   use xrf_error::XrfResult;
-  use xrf_ltx::{Ltx, LtxImportExport};
+  use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
 
   use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
   use crate::data::alife::inherited::alife_object_monster_base::AlifeObjectMonsterBase;
+  use crate::data::alife::spawn_layout::SpawnLayout;
 
   fn new_object() -> AlifeObjectMonsterBase {
     let mut object: AlifeObjectMonsterBase = AlifeObjectMonsterBase::new_mock(Vector3d::new(1.0, 2.0, 3.0));
@@ -129,13 +138,20 @@ mod tests {
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectMonsterBase = new_object();
-    let (spawn_size, update_size, read) = original.read_back::<XRayByteOrder>()?;
+    let (spawn_size, update_size, read) = original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?;
 
     assert_eq!(update_size, 52);
     assert_eq!(read, original);
     assert_eq!(
       spawn_size,
-      original.base.read_back::<XRayByteOrder>()?.0 + 7 + 1 + 2 + 2
+      original
+        .base
+        .read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?
+        .0
+        + 7
+        + 1
+        + 2
+        + 2
     );
 
     Ok(())
@@ -146,9 +162,12 @@ mod tests {
     let original: AlifeObjectMonsterBase = new_object();
     let mut ltx: Ltx = Ltx::new();
 
-    original.export("data", &mut ltx)?;
+    original.export("data", &mut ltx, SpawnLayout::CALL_OF_PRIPYAT)?;
 
-    assert_eq!(AlifeObjectMonsterBase::import("data", &ltx)?, original);
+    assert_eq!(
+      AlifeObjectMonsterBase::import("data", &ltx, SpawnLayout::CALL_OF_PRIPYAT)?,
+      original
+    );
 
     Ok(())
   }

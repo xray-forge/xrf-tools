@@ -1,11 +1,15 @@
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
+use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
+use crate::data::alife::alife_state_read_write::AlifeStateReadWrite;
 use crate::data::alife::inherited::alife_object_shape::AlifeObjectShape;
+use crate::data::alife::spawn_layout::SpawnLayout;
 
+/// `CSE_ALifeObjectClimable`. Up to spawn version 126 the packet stores no game material, which then holds the
+/// constructor's `materials\fake_ladders` (`xrServer_Objects_ALife.cpp:1727`).
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -14,27 +18,58 @@ pub struct AlifeObjectClimable {
   pub game_material: String,
 }
 
-impl ChunkFieldReadWrite for AlifeObjectClimable {
-  /// Read climable object data from the chunk.
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+impl AlifeObjectClimable {
+  /// The game material where the packet does not store it.
+  pub(crate) const DEFAULT_GAME_MATERIAL: &'static str = "materials\\fake_ladders";
+
+  /// The climbable object with the constructor's game material over `base`.
+  fn new_default_material(base: AlifeObjectShape) -> Self {
+    Self {
+      base,
+      game_material: String::from(Self::DEFAULT_GAME_MATERIAL),
+    }
+  }
+
+  /// Refuse a game material the layout has no place for unless it is the constructor's.
+  fn assert_material_fits(&self, layout: SpawnLayout) -> XrfResult {
+    if layout.has_climable_material() {
+      return Ok(());
+    }
+
+    layout.assert_absent_default(
+      "game_material",
+      &self.game_material.as_str(),
+      &Self::DEFAULT_GAME_MATERIAL,
+    )
+  }
+}
+
+impl AlifeStateReadWrite for AlifeObjectClimable {
+  fn read_state<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R, layout: SpawnLayout) -> XrfResult<Self> {
+    let base: AlifeObjectShape = reader.read_xr::<T, _>()?;
+
+    if !layout.has_climable_material() {
+      return Ok(Self::new_default_material(base));
+    }
+
     Ok(Self {
-      base: reader.read_xr::<T, _>()?,
+      base,
       game_material: reader.read_w1251_string()?,
     })
   }
 
-  /// Write climable object data into the chunk.
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+  fn write_state<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W, layout: SpawnLayout) -> XrfResult {
+    self.assert_material_fits(layout)?;
     writer.write_xr::<T, _>(&self.base)?;
-    writer.write_w1251_string(&self.game_material)?;
+
+    if layout.has_climable_material() {
+      writer.write_w1251_string(&self.game_material)?;
+    }
 
     Ok(())
   }
-}
 
-impl LtxImportExport for AlifeObjectClimable {
-  /// Import climable object data from ltx config section.
-  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+  fn import_state<L: LtxRead>(section_name: &str, ltx: &L, layout: SpawnLayout) -> XrfResult<Self> {
     let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
@@ -42,20 +77,27 @@ impl LtxImportExport for AlifeObjectClimable {
         file!()
       ))
     })?;
+    let base: AlifeObjectShape = AlifeObjectShape::import(section_name, ltx)?;
+
+    if !layout.has_climable_material() {
+      return Ok(Self::new_default_material(base));
+    }
 
     Ok(Self {
-      base: AlifeObjectShape::import(section_name, ltx)?,
+      base,
       game_material: section.read_field("climbable.game_material")?,
     })
   }
 
-  /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
+  fn export_state(&self, section_name: &str, ltx: &mut impl LtxWrite, layout: SpawnLayout) -> XrfResult {
+    self.assert_material_fits(layout)?;
     self.base.export(section_name, ltx)?;
 
-    ltx
-      .with_section(section_name)
-      .set("climbable.game_material", &self.game_material);
+    if layout.has_climable_material() {
+      ltx
+        .with_section(section_name)
+        .set("climbable.game_material", &self.game_material);
+    }
 
     Ok(())
   }
@@ -67,23 +109,21 @@ mod tests {
   use std::io::{Seek, SeekFrom, Write, read_to_string};
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_ltx::{Ltx, LtxImportExport};
+  use xrf_ltx::Ltx;
   use xrf_math::{Affine3d, Sphere, Vector3d};
-  use xrf_test_utils::{FileSlice, GeneratedResources};
+  use xrf_test_utils::GeneratedResources;
 
+  use crate::data::alife::alife_state_read_write::AlifeStateReadWrite;
   use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
   use crate::data::alife::inherited::alife_object_climable::AlifeObjectClimable;
   use crate::data::alife::inherited::alife_object_shape::AlifeObjectShape;
+  use crate::data::alife::spawn_layout::SpawnLayout;
   use crate::data::generic::shape::Shape;
 
-  #[test]
-  fn test_read_write() -> XrfResult {
-    let mut writer: ChunkWriter = ChunkWriter::new();
-    let filename: String = GeneratedResources::sample_name(file!(), "read_write.chunk");
-
-    let original: AlifeObjectClimable = AlifeObjectClimable {
+  fn new_climable(game_material: &str) -> AlifeObjectClimable {
+    AlifeObjectClimable {
       base: AlifeObjectShape {
         base: AlifeObjectAbstract {
           game_vertex_id: 4223,
@@ -108,102 +148,94 @@ mod tests {
           }),
         ],
       },
-      game_material: String::from("dest-material"),
-    };
+      game_material: String::from(game_material),
+    }
+  }
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+  fn layout(version: u16) -> SpawnLayout {
+    SpawnLayout {
+      version,
+      script_version: 8,
+    }
+  }
 
-    assert_eq!(writer.bytes_written(), 119);
+  /// The bytes written at `layout`, and the object read back from them whole.
+  fn read_back(climable: &AlifeObjectClimable, layout: SpawnLayout) -> XrfResult<(usize, AlifeObjectClimable)> {
+    let mut writer: ChunkWriter = ChunkWriter::new();
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    climable.write_state::<XRayByteOrder, _>(&mut writer, layout)?;
 
-    assert_eq!(bytes_written, 119);
+    let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&writer.buffer)?;
+    let read: AlifeObjectClimable = AlifeObjectClimable::read_state::<XRayByteOrder, _>(&mut reader, layout)?;
 
-    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
+    reader.assert_read("Expect the climbable object to be read whole")?;
 
-    assert_eq!(file.bytes_remaining(), 119 + 8);
+    Ok((writer.buffer.len(), read))
+  }
 
-    let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
+  #[test]
+  fn writes_its_material_above_version_126_only() -> XrfResult {
+    let climable: AlifeObjectClimable = new_climable(AlifeObjectClimable::DEFAULT_GAME_MATERIAL);
+    let (with_material, read_with) = read_back(&climable, layout(127))?;
+    let (without_material, read_without) = read_back(&climable, layout(126))?;
 
-    assert_eq!(AlifeObjectClimable::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(with_material, 128);
+    assert_eq!(
+      without_material,
+      with_material - AlifeObjectClimable::DEFAULT_GAME_MATERIAL.len() - 1
+    );
+    assert_eq!(read_with, climable);
+    assert_eq!(read_without, climable);
+
+    let climable: AlifeObjectClimable = new_climable("dest-material");
+
+    assert_eq!(read_back(&climable, layout(128))?, (119, climable));
 
     Ok(())
   }
 
   #[test]
+  fn refuses_to_drop_its_material_up_to_version_126() {
+    let climable: AlifeObjectClimable = new_climable("dest-material");
+    let error: String = climable
+      .write_state::<XRayByteOrder, _>(&mut ChunkWriter::new(), layout(124))
+      .expect_err("a material the packet cannot hold")
+      .to_string();
+
+    assert!(
+      error.starts_with("Invalid error: Field 'game_material' holds"),
+      "{error}"
+    );
+    assert!(climable.export_state("data", &mut Ltx::new(), layout(124)).is_err());
+  }
+
+  #[test]
   fn test_import_export() -> XrfResult {
-    let ltx_filename: String = GeneratedResources::sample_name(file!(), "import_export.ltx");
-    let mut ltx: Ltx = Ltx::new();
+    for (climable, version) in [
+      (new_climable("dest-material"), 128),
+      (new_climable(AlifeObjectClimable::DEFAULT_GAME_MATERIAL), 124),
+    ] {
+      let mut ltx: Ltx = Ltx::new();
 
-    let original: AlifeObjectClimable = AlifeObjectClimable {
-      base: AlifeObjectShape {
-        base: AlifeObjectAbstract {
-          game_vertex_id: 364,
-          distance: 64.23,
-          direct_control: 20,
-          level_vertex_id: 10,
-          flags: 6,
-          custom_data: String::from("custom-data"),
-          story_id: 4,
-          spawn_story_id: 53,
-        },
-        shape: vec![
-          Shape::Sphere(Sphere {
-            center: Vector3d::new(54.5, 0.5, 11.5),
-            radius: 1.0,
-          }),
-          Shape::Box(Affine3d {
-            x_axis: Vector3d::new(5.5, 6.5, 3.1),
-            y_axis: Vector3d::new(5.1, 3.2, 2.3),
-            z_axis: Vector3d::new(5.0, 6.0, 2.4),
-            translation: Vector3d::new(5.2, 3.3, 3.0),
-          }),
-        ],
-      },
-      game_material: String::from("dest-material"),
-    };
+      climable.export_state("data", &mut ltx, layout(version))?;
 
-    original.export("data", &mut ltx)?;
-
-    ltx.write_to(&mut GeneratedResources::overwrite(&ltx_filename)?)?;
-
-    let source: Ltx = Ltx::read_from_path(GeneratedResources::path(&ltx_filename))?;
-
-    assert_eq!(AlifeObjectClimable::import("data", &source)?, original);
+      assert_eq!(
+        ltx.get_from("data", "climbable.game_material").is_some(),
+        version == 128,
+        "{version}"
+      );
+      assert_eq!(
+        AlifeObjectClimable::import_state("data", &ltx, layout(version))?,
+        climable
+      );
+    }
 
     Ok(())
   }
 
   #[test]
   fn test_serialize_deserialize() -> XrfResult {
-    let original: AlifeObjectClimable = AlifeObjectClimable {
-      base: AlifeObjectShape {
-        base: AlifeObjectAbstract {
-          game_vertex_id: 253,
-          distance: 47.23,
-          direct_control: 5,
-          level_vertex_id: 50,
-          flags: 64,
-          custom_data: String::from("custom-data"),
-          story_id: 75,
-          spawn_story_id: 35,
-        },
-        shape: vec![
-          Shape::Sphere(Sphere {
-            center: Vector3d::new(54.5, 0.5, 11.5),
-            radius: 1.0,
-          }),
-          Shape::Box(Affine3d {
-            x_axis: Vector3d::new(7.5, 2.5, 4.1),
-            y_axis: Vector3d::new(7.1, 3.2, 4.3),
-            z_axis: Vector3d::new(7.0, 3.0, 4.4),
-            translation: Vector3d::new(7.2, 3.3, 4.0),
-          }),
-        ],
-      },
-      game_material: String::from("dest-material"),
-    };
+    let original: AlifeObjectClimable = new_climable("dest-material");
 
     let mut file: File =
       GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), "serialize_deserialize.json"))?;

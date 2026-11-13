@@ -290,6 +290,7 @@ mod tests {
   use crate::data::alife::inherited::alife_object_item_custom_outfit::AlifeObjectItemCustomOutfit;
   use crate::data::alife::inherited::alife_object_item_document::AlifeObjectItemDocument;
   use crate::data::alife::inherited::alife_object_item_torch::AlifeObjectItemTorch;
+  use crate::data::alife::inherited::alife_object_item_weapon::AlifeObjectItemWeapon;
   use crate::data::alife::inherited::alife_object_online_offline_group::AlifeObjectOnlineOfflineGroup;
   use crate::data::alife::inherited::alife_object_ph_skeleton_object::AlifeObjectPhSkeletonObject;
   use crate::data::alife::inherited::alife_object_skeleton::AlifeObjectSkeleton;
@@ -1016,14 +1017,14 @@ mod tests {
     assert!(error.contains("of section 'medkit' (SFood, CseAlifeItem)"), "{error}");
   }
 
-  /// A spawn packet of Clear Sky's layout: a header at spawn version 124 and script version 8, then `state` as stored.
-  fn new_clear_sky_packet(section: &str, name: &str, state: &str) -> XrfResult<Vec<u8>> {
+  /// A spawn packet of Clear Sky's layout: a header at spawn `version` and script version 8, then `state` as stored.
+  fn new_clear_sky_packet(section: &str, name: &str, version: u16, state: &str) -> XrfResult<Vec<u8>> {
     let mut header: SpawnPacketHeader = new_graph_point_object().header;
     let mut writer: ChunkWriter = ChunkWriter::new();
 
     header.section = String::from(section);
     header.name = String::from(name);
-    header.version = 124;
+    header.version = version;
     header.game_type = u16::MAX;
     header.script_version = 8;
     header.write::<XRayByteOrder>(&mut writer)?;
@@ -1060,7 +1061,7 @@ mod tests {
   fn reads_and_writes_a_clear_sky_smart_cover() -> XrfResult {
     assert_eq!(GameWrittenPackets::bytes(ClearSkyStates::SMART_COVER).len(), 77);
 
-    let packet: Vec<u8> = new_clear_sky_packet("smart_cover", "agr_smart_cover", ClearSkyStates::SMART_COVER)?;
+    let packet: Vec<u8> = new_clear_sky_packet("smart_cover", "agr_smart_cover", 124, ClearSkyStates::SMART_COVER)?;
     let object: AlifeObject = read_clear_sky_packet(&packet, &["can_fire", "last_description", "loopholes"])?;
     let AlifeObjectInherited::SeSmartCover(cover) = &object.inherited else {
       panic!("Expected a smart cover payload, read {:?}", object.inherited);
@@ -1085,6 +1086,7 @@ mod tests {
     let packet: Vec<u8> = new_clear_sky_packet(
       "inventory_box",
       "agr_smart_terrain_1_2_box",
+      124,
       ClearSkyStates::INVENTORY_BOX,
     )?;
     let object: AlifeObject = read_clear_sky_packet(
@@ -1107,6 +1109,81 @@ mod tests {
       ),
       (1, 0, "inventory_box_use")
     );
+
+    Ok(())
+  }
+
+  /// Clear Sky's climbable object stores no material, which holds `CSE_ALifeObjectClimable`'s constructor value.
+  #[test]
+  fn reads_and_writes_a_clear_sky_climable_object() -> XrfResult {
+    assert_eq!(GameWrittenPackets::bytes(ClearSkyStates::CLIMABLE).len(), 79);
+
+    let packet: Vec<u8> = new_clear_sky_packet("climable_object", "clmbl#0", 124, ClearSkyStates::CLIMABLE)?;
+    let object: AlifeObject = read_clear_sky_packet(&packet, &["climbable.game_material"])?;
+    let AlifeObjectInherited::CseAlifeObjectClimable(climable) = &object.inherited else {
+      panic!("Expected a climable object payload, read {:?}", object.inherited);
+    };
+
+    assert_eq!(climable.base.shape.len(), 1);
+    assert_eq!(climable.game_material, "materials\\fake_ladders");
+
+    Ok(())
+  }
+
+  /// Clear Sky's item of spawn version 123 stores no upgrades, which hold `CSE_ALifeInventoryItem`'s constructor's none.
+  #[test]
+  fn reads_and_writes_a_clear_sky_item_without_upgrades() -> XrfResult {
+    assert_eq!(GameWrittenPackets::bytes(ClearSkyStates::ITEM_123).len(), 81);
+
+    let packet: Vec<u8> = new_clear_sky_packet("medkit", "esc_medkit", 123, ClearSkyStates::ITEM_123)?;
+    let object: AlifeObject = read_clear_sky_packet(&packet, &["item.upgrades"])?;
+    let AlifeObjectInherited::CseAlifeItem(item) = &object.inherited else {
+      panic!("Expected an item payload, read {:?}", object.inherited);
+    };
+
+    assert_eq!((item.condition, item.upgrades.len()), (1.0, 0));
+
+    Ok(())
+  }
+
+  /// Clear Sky's weapon of spawn version 123 stores its loaded grenades but no upgrades, one of 122 neither.
+  #[test]
+  fn reads_and_writes_clear_sky_weapons() -> XrfResult {
+    for (section, name, version, state, size, absent_keys) in [
+      (
+        "wpn_ak74u",
+        "esc_wpn_ak74u",
+        123,
+        ClearSkyStates::WEAPON_123,
+        79,
+        ["item.upgrades"].as_slice(),
+      ),
+      (
+        "wpn_rg-6",
+        "mp_garbage_mp_wpn_rg-6",
+        122,
+        ClearSkyStates::WEAPON_122,
+        74,
+        ["item.upgrades", "item_weapon.elapsed_grenades"].as_slice(),
+      ),
+    ] {
+      assert_eq!(GameWrittenPackets::bytes(state).len(), size, "{name}");
+
+      let packet: Vec<u8> = new_clear_sky_packet(section, name, version, state)?;
+      let object: AlifeObject = read_clear_sky_packet(&packet, absent_keys)?;
+      let weapon: &AlifeObjectItemWeapon = match &object.inherited {
+        AlifeObjectInherited::CseAlifeItemWeaponMagazined(weapon) => &weapon.base,
+        AlifeObjectInherited::CseAlifeItemWeaponMagazinedWGl(weapon) => &weapon.base.base,
+        AlifeObjectInherited::CseAlifeItemWeaponShotgun(weapon) => &weapon.base.base,
+        other => panic!("Expected a weapon payload, read {other:?}"),
+      };
+
+      assert_eq!(
+        (weapon.ammo_current, weapon.elapsed_grenades, weapon.base.upgrades.len()),
+        (90, 0, 0),
+        "{name}"
+      );
+    }
 
     Ok(())
   }

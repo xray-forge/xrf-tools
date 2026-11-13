@@ -2,10 +2,11 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
-use xrf_ltx::{LtxImportExport, LtxRead, LtxWrite};
+use xrf_ltx::{LtxRead, LtxWrite};
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
+use crate::data::alife::spawn_layout::SpawnLayout;
 use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 
 /// A detector, `CSE_ALifeItemDetector`, which adds nothing to either packet of the item it is.
@@ -22,29 +23,36 @@ impl AlifePacketsReadWrite for AlifeObjectItemDetector {
   }
 
   /// Read a detector from both packets.
-  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
+  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+    spawn: &mut S,
+    update: &mut U,
+    layout: SpawnLayout,
+  ) -> XrfResult<Self> {
     Ok(Self {
-      base: AlifeObjectItem::read::<T, _, _>(spawn, update)?,
+      base: AlifeObjectItem::read::<T, _, _>(spawn, update, layout)?,
     })
   }
 
   /// Write a detector into both packets.
-  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(&self, spawn: &mut S, update: &mut U) -> XrfResult {
-    self.base.write::<T, _, _>(spawn, update)
+  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+    &self,
+    spawn: &mut S,
+    update: &mut U,
+    layout: SpawnLayout,
+  ) -> XrfResult {
+    self.base.write::<T, _, _>(spawn, update, layout)
   }
-}
 
-impl LtxImportExport for AlifeObjectItemDetector {
   /// Import a detector from ltx config section.
-  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L, layout: SpawnLayout) -> XrfResult<Self> {
     Ok(Self {
-      base: AlifeObjectItem::import(section_name, ltx)?,
+      base: AlifeObjectItem::import(section_name, ltx, layout)?,
     })
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
-    self.base.export(section_name, ltx)
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite, layout: SpawnLayout) -> XrfResult {
+    self.base.export(section_name, ltx, layout)
   }
 }
 
@@ -52,12 +60,13 @@ impl LtxImportExport for AlifeObjectItemDetector {
 mod tests {
   use xrf_chunk::XRayByteOrder;
   use xrf_error::XrfResult;
-  use xrf_ltx::{Ltx, LtxImportExport};
+  use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
 
   use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
   use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
   use crate::data::alife::inherited::alife_object_item_detector::AlifeObjectItemDetector;
+  use crate::data::alife::spawn_layout::SpawnLayout;
 
   fn new_object() -> AlifeObjectItemDetector {
     AlifeObjectItemDetector {
@@ -69,7 +78,10 @@ mod tests {
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectItemDetector = new_object();
 
-    assert_eq!(original.read_back::<XRayByteOrder>()?, (52, 54, original));
+    assert_eq!(
+      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
+      (52, 54, original)
+    );
 
     Ok(())
   }
@@ -79,9 +91,12 @@ mod tests {
     let original: AlifeObjectItemDetector = new_object();
     let mut ltx: Ltx = Ltx::new();
 
-    original.export("data", &mut ltx)?;
+    original.export("data", &mut ltx, SpawnLayout::CALL_OF_PRIPYAT)?;
 
-    assert_eq!(AlifeObjectItemDetector::import("data", &ltx)?, original);
+    assert_eq!(
+      AlifeObjectItemDetector::import("data", &ltx, SpawnLayout::CALL_OF_PRIPYAT)?,
+      original
+    );
 
     Ok(())
   }

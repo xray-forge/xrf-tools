@@ -2,10 +2,11 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
+use xrf_ltx::{LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
+use crate::data::alife::spawn_layout::SpawnLayout;
 use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 
 /// A document, `CSE_ALifeItemDocument`: an item whose spawn packet closes with the info portion reading it gives; its
@@ -25,25 +26,32 @@ impl AlifePacketsReadWrite for AlifeObjectItemDocument {
   }
 
   /// Read a document from both packets.
-  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
+  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+    spawn: &mut S,
+    update: &mut U,
+    layout: SpawnLayout,
+  ) -> XrfResult<Self> {
     Ok(Self {
-      base: AlifeObjectItem::read::<T, _, _>(spawn, update)?,
+      base: AlifeObjectItem::read::<T, _, _>(spawn, update, layout)?,
       info_portion: spawn.read_w1251_string()?,
     })
   }
 
   /// Write a document into both packets.
-  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(&self, spawn: &mut S, update: &mut U) -> XrfResult {
-    self.base.write::<T, _, _>(spawn, update)?;
+  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+    &self,
+    spawn: &mut S,
+    update: &mut U,
+    layout: SpawnLayout,
+  ) -> XrfResult {
+    self.base.write::<T, _, _>(spawn, update, layout)?;
     spawn.write_w1251_string(&self.info_portion)?;
 
     Ok(())
   }
-}
 
-impl LtxImportExport for AlifeObjectItemDocument {
   /// Import a document from ltx config section.
-  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L, layout: SpawnLayout) -> XrfResult<Self> {
     let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
@@ -53,14 +61,14 @@ impl LtxImportExport for AlifeObjectItemDocument {
     })?;
 
     Ok(Self {
-      base: AlifeObjectItem::import(section_name, ltx)?,
+      base: AlifeObjectItem::import(section_name, ltx, layout)?,
       info_portion: section.read_field("item_document.info_portion")?,
     })
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
-    self.base.export(section_name, ltx)?;
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite, layout: SpawnLayout) -> XrfResult {
+    self.base.export(section_name, ltx, layout)?;
 
     ltx
       .with_section(section_name)
@@ -74,12 +82,13 @@ impl LtxImportExport for AlifeObjectItemDocument {
 mod tests {
   use xrf_chunk::XRayByteOrder;
   use xrf_error::XrfResult;
-  use xrf_ltx::{Ltx, LtxImportExport};
+  use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
 
   use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
   use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
   use crate::data::alife::inherited::alife_object_item_document::AlifeObjectItemDocument;
+  use crate::data::alife::spawn_layout::SpawnLayout;
 
   fn new_object() -> AlifeObjectItemDocument {
     AlifeObjectItemDocument {
@@ -94,7 +103,7 @@ mod tests {
     let original: AlifeObjectItemDocument = new_object();
 
     assert_eq!(
-      original.read_back::<XRayByteOrder>()?,
+      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
       (52 + original.info_portion.len() + 1, 54, original)
     );
 
@@ -106,9 +115,12 @@ mod tests {
     let original: AlifeObjectItemDocument = new_object();
     let mut ltx: Ltx = Ltx::new();
 
-    original.export("data", &mut ltx)?;
+    original.export("data", &mut ltx, SpawnLayout::CALL_OF_PRIPYAT)?;
 
-    assert_eq!(AlifeObjectItemDocument::import("data", &ltx)?, original);
+    assert_eq!(
+      AlifeObjectItemDocument::import("data", &ltx, SpawnLayout::CALL_OF_PRIPYAT)?,
+      original
+    );
 
     Ok(())
   }

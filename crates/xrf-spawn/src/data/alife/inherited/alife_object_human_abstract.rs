@@ -2,13 +2,15 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
+use xrf_ltx::{LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_math::Vector3d;
 use xrf_utils::{narrow_format_size, vector_from_string, vector_to_string};
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
+use crate::data::alife::alife_state_read_write::AlifeStateReadWrite;
 use crate::data::alife::inherited::alife_object_monster_abstract::AlifeObjectMonsterAbstract;
 use crate::data::alife::inherited::alife_object_trader_abstract::AlifeObjectTraderAbstract;
+use crate::data::alife::spawn_layout::SpawnLayout;
 use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 
 /// A human, `CSE_ALifeHumanAbstract`: a trader and a monster, in that order, so unlike the actor's its spawn packet
@@ -62,29 +64,36 @@ impl AlifePacketsReadWrite for AlifeObjectHumanAbstract {
   }
 
   /// Read the human from both packets.
-  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
+  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+    spawn: &mut S,
+    update: &mut U,
+    layout: SpawnLayout,
+  ) -> XrfResult<Self> {
     Ok(Self {
-      trader: spawn.read_xr::<T, _>()?,
-      base: AlifeObjectMonsterAbstract::read::<T, _, _>(spawn, update)?,
+      trader: AlifeObjectTraderAbstract::read_state::<T, _>(spawn, layout)?,
+      base: AlifeObjectMonsterAbstract::read::<T, _, _>(spawn, update, layout)?,
       equipment_preferences: Self::read_preferences::<T, _>(spawn)?,
       main_weapon_preferences: Self::read_preferences::<T, _>(spawn)?,
     })
   }
 
   /// Write the human into both packets.
-  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(&self, spawn: &mut S, update: &mut U) -> XrfResult {
-    spawn.write_xr::<T, _>(&self.trader)?;
+  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+    &self,
+    spawn: &mut S,
+    update: &mut U,
+    layout: SpawnLayout,
+  ) -> XrfResult {
+    self.trader.write_state::<T, _>(spawn, layout)?;
 
-    self.base.write::<T, _, _>(spawn, update)?;
+    self.base.write::<T, _, _>(spawn, update, layout)?;
 
     Self::write_preferences::<T, _>(spawn, &self.equipment_preferences)?;
     Self::write_preferences::<T, _>(spawn, &self.main_weapon_preferences)
   }
-}
 
-impl LtxImportExport for AlifeObjectHumanAbstract {
   /// Import human data from ltx config section.
-  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L, layout: SpawnLayout) -> XrfResult<Self> {
     let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
@@ -94,17 +103,17 @@ impl LtxImportExport for AlifeObjectHumanAbstract {
     })?;
 
     Ok(Self {
-      trader: AlifeObjectTraderAbstract::import(section_name, ltx)?,
-      base: AlifeObjectMonsterAbstract::import(section_name, ltx)?,
+      trader: AlifeObjectTraderAbstract::import_state(section_name, ltx, layout)?,
+      base: AlifeObjectMonsterAbstract::import(section_name, ltx, layout)?,
       equipment_preferences: vector_from_string(&section.read_field::<String>("human.equipment_preferences")?)?,
       main_weapon_preferences: vector_from_string(&section.read_field::<String>("human.main_weapon_preferences")?)?,
     })
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
-    self.trader.export(section_name, ltx)?;
-    self.base.export(section_name, ltx)?;
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite, layout: SpawnLayout) -> XrfResult {
+    self.trader.export_state(section_name, ltx, layout)?;
+    self.base.export(section_name, ltx, layout)?;
 
     ltx
       .with_section(section_name)
@@ -149,12 +158,13 @@ impl AlifeObjectHumanAbstract {
 mod tests {
   use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_ltx::{Ltx, LtxImportExport};
+  use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
 
   use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
   use crate::data::alife::inherited::alife_object_human_abstract::AlifeObjectHumanAbstract;
   use crate::data::alife::inherited::alife_object_monster_abstract::AlifeObjectMonsterAbstract;
+  use crate::data::alife::spawn_layout::SpawnLayout;
 
   /// The mock trader's money, two strings, flags, profile, three ranks and two bytes.
   const TRADER_SIZE: usize = 4 + 1 + 4 + "sim_default_stalker_0".len() + 1 + 12 + 1 + 2;
@@ -163,10 +173,10 @@ mod tests {
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectHumanAbstract = AlifeObjectHumanAbstract::new_mock(Vector3d::new(1.0, 2.0, 3.0));
-    let (monster_size, _, _) = original.base.read_back::<XRayByteOrder>()?;
+    let (monster_size, _, _) = original.base.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?;
 
     assert_eq!(
-      original.read_back::<XRayByteOrder>()?,
+      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
       (TRADER_SIZE + monster_size + 4 + 5 + 4 + 4, 52, original)
     );
 
@@ -181,7 +191,7 @@ mod tests {
     let mut update: ChunkWriter = ChunkWriter::new();
 
     original.trader.money = 0x0102_0304;
-    original.write::<XRayByteOrder, _, _>(&mut spawn, &mut update)?;
+    original.write::<XRayByteOrder, _, _>(&mut spawn, &mut update, SpawnLayout::CALL_OF_PRIPYAT)?;
 
     assert_eq!(&spawn.buffer[..4], &[4, 3, 2, 1]);
 
@@ -189,9 +199,39 @@ mod tests {
     let mut monster_update: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&update.buffer)?;
 
     assert_eq!(
-      AlifeObjectMonsterAbstract::read::<XRayByteOrder, _, _>(&mut monster, &mut monster_update)?,
+      AlifeObjectMonsterAbstract::read::<XRayByteOrder, _, _>(
+        &mut monster,
+        &mut monster_update,
+        SpawnLayout::CALL_OF_PRIPYAT
+      )?,
       original.base
     );
+
+    Ok(())
+  }
+
+  /// Up to spawn version 124 the trader stores no corpse access, so the monster's fields start two bytes earlier.
+  #[test]
+  fn reads_its_trader_without_corpse_access_up_to_version_124() -> XrfResult {
+    let original: AlifeObjectHumanAbstract = AlifeObjectHumanAbstract::new_mock(Vector3d::new(1.0, 2.0, 3.0));
+    let layout = |version: u16| SpawnLayout {
+      version,
+      script_version: 8,
+    };
+    let (with_access, update_with, read_with) = original.read_back::<XRayByteOrder>(layout(125))?;
+    let (without_access, update_without, read_without) = original.read_back::<XRayByteOrder>(layout(124))?;
+
+    assert_eq!(without_access, with_access - 2);
+    assert_eq!(update_without, update_with);
+    assert_eq!(read_with, original);
+    assert_eq!(read_without, original);
+
+    let mut closed: AlifeObjectHumanAbstract = original;
+
+    closed.trader.dead_body_closed = 1;
+
+    assert!(closed.read_back::<XRayByteOrder>(layout(124)).is_err());
+    assert!(closed.export("data", &mut Ltx::new(), layout(124)).is_err());
 
     Ok(())
   }
@@ -201,9 +241,12 @@ mod tests {
     let original: AlifeObjectHumanAbstract = AlifeObjectHumanAbstract::new_mock(Vector3d::new(1.0, 2.0, 3.0));
     let mut ltx: Ltx = Ltx::new();
 
-    original.export("data", &mut ltx)?;
+    original.export("data", &mut ltx, SpawnLayout::CALL_OF_PRIPYAT)?;
 
-    assert_eq!(AlifeObjectHumanAbstract::import("data", &ltx)?, original);
+    assert_eq!(
+      AlifeObjectHumanAbstract::import("data", &ltx, SpawnLayout::CALL_OF_PRIPYAT)?,
+      original
+    );
 
     Ok(())
   }

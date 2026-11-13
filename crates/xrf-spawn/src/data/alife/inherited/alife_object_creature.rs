@@ -10,6 +10,7 @@ use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 #[cfg(test)]
 use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
 use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
+use crate::data::alife::spawn_layout::SpawnLayout;
 use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 
 /// A creature, `CSE_ALifeCreatureAbstract`. Its update packet repeats its health, team, squad and group, and carries
@@ -73,7 +74,11 @@ impl AlifePacketsReadWrite for AlifeObjectCreature {
   }
 
   /// Read a creature from both packets.
-  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
+  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+    spawn: &mut S,
+    update: &mut U,
+    _: SpawnLayout,
+  ) -> XrfResult<Self> {
     Ok(Self {
       base: spawn.read_xr::<T, _>()?,
       team: spawn.read_u8()?,
@@ -99,7 +104,12 @@ impl AlifePacketsReadWrite for AlifeObjectCreature {
   }
 
   /// Write a creature into both packets.
-  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(&self, spawn: &mut S, update: &mut U) -> XrfResult {
+  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+    &self,
+    spawn: &mut S,
+    update: &mut U,
+    _: SpawnLayout,
+  ) -> XrfResult {
     spawn.write_xr::<T, _>(&self.base)?;
 
     spawn.write_u8(self.team)?;
@@ -127,11 +137,9 @@ impl AlifePacketsReadWrite for AlifeObjectCreature {
 
     Ok(())
   }
-}
 
-impl LtxImportExport for AlifeObjectCreature {
   /// Import ALife creature object from ltx config section.
-  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L, _: SpawnLayout) -> XrfResult<Self> {
     let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
@@ -167,7 +175,7 @@ impl LtxImportExport for AlifeObjectCreature {
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite, _: SpawnLayout) -> XrfResult {
     self.base.export(section_name, ltx)?;
 
     ltx
@@ -248,11 +256,12 @@ impl AlifeObjectCreature {
 mod tests {
   use xrf_chunk::XRayByteOrder;
   use xrf_error::XrfResult;
-  use xrf_ltx::{Ltx, LtxImportExport};
+  use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
 
   use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
   use crate::data::alife::inherited::alife_object_creature::AlifeObjectCreature;
+  use crate::data::alife::spawn_layout::SpawnLayout;
 
   fn new_object() -> AlifeObjectCreature {
     let mut object: AlifeObjectCreature = AlifeObjectCreature::new_mock(Vector3d::new(256.24, 19.81, 550.82));
@@ -271,7 +280,10 @@ mod tests {
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectCreature = new_object();
 
-    assert_eq!(original.read_back::<XRayByteOrder>()?, (104, 40, original));
+    assert_eq!(
+      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
+      (104, 40, original)
+    );
 
     Ok(())
   }
@@ -295,9 +307,12 @@ mod tests {
     let original: AlifeObjectCreature = new_object();
     let mut ltx: Ltx = Ltx::new();
 
-    original.export("data", &mut ltx)?;
+    original.export("data", &mut ltx, SpawnLayout::CALL_OF_PRIPYAT)?;
 
-    assert_eq!(AlifeObjectCreature::import("data", &ltx)?, original);
+    assert_eq!(
+      AlifeObjectCreature::import("data", &ltx, SpawnLayout::CALL_OF_PRIPYAT)?,
+      original
+    );
 
     Ok(())
   }

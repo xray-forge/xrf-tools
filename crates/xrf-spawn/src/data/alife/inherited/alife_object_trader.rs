@@ -1,11 +1,13 @@
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
+use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
 use xrf_ltx::{LtxImportExport, LtxRead, LtxWrite};
 
+use crate::data::alife::alife_state_read_write::AlifeStateReadWrite;
 use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
 use crate::data::alife::inherited::alife_object_trader_abstract::AlifeObjectTraderAbstract;
+use crate::data::alife::spawn_layout::SpawnLayout;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -15,42 +17,36 @@ pub struct AlifeObjectTrader {
   pub trader: AlifeObjectTraderAbstract,
 }
 
-impl ChunkFieldReadWrite for AlifeObjectTrader {
+impl AlifeStateReadWrite for AlifeObjectTrader {
   /// Read trader data from the chunk.
   ///
   /// `CSE_ALifeTrader::STATE_Read` follows its two bases with three blocks gated below version 118,
   /// none of which the supported versions reach.
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  fn read_state<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R, layout: SpawnLayout) -> XrfResult<Self> {
     Ok(Self {
       base: reader.read_xr::<T, _>()?,
-      trader: reader.read_xr::<T, _>()?,
+      trader: AlifeObjectTraderAbstract::read_state::<T, _>(reader, layout)?,
     })
   }
 
   /// Write trader data into the chunk.
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+  fn write_state<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W, layout: SpawnLayout) -> XrfResult {
     writer.write_xr::<T, _>(&self.base)?;
-    writer.write_xr::<T, _>(&self.trader)?;
-
-    Ok(())
+    self.trader.write_state::<T, _>(writer, layout)
   }
-}
 
-impl LtxImportExport for AlifeObjectTrader {
   /// Import trader object data from ltx config section.
-  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+  fn import_state<L: LtxRead>(section_name: &str, ltx: &L, layout: SpawnLayout) -> XrfResult<Self> {
     Ok(Self {
       base: AlifeObjectDynamicVisual::import(section_name, ltx)?,
-      trader: AlifeObjectTraderAbstract::import(section_name, ltx)?,
+      trader: AlifeObjectTraderAbstract::import_state(section_name, ltx, layout)?,
     })
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
+  fn export_state(&self, section_name: &str, ltx: &mut impl LtxWrite, layout: SpawnLayout) -> XrfResult {
     self.base.export(section_name, ltx)?;
-    self.trader.export(section_name, ltx)?;
-
-    Ok(())
+    self.trader.export_state(section_name, ltx, layout)
   }
 }
 
@@ -60,15 +56,17 @@ mod tests {
   use std::io::{Seek, SeekFrom, Write, read_to_string};
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_ltx::{Ltx, LtxImportExport};
-  use xrf_test_utils::{FileSlice, GeneratedResources};
+  use xrf_ltx::Ltx;
+  use xrf_test_utils::GeneratedResources;
 
+  use crate::data::alife::alife_state_read_write::AlifeStateReadWrite;
   use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
   use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
   use crate::data::alife::inherited::alife_object_trader::AlifeObjectTrader;
   use crate::data::alife::inherited::alife_object_trader_abstract::AlifeObjectTraderAbstract;
+  use crate::data::alife::spawn_layout::SpawnLayout;
 
   /// Shaped like the version 128 traders in the Call of Chernobyl and Anomaly spawns, whose rank and
   /// reputation are stored with the high bit set.
@@ -106,25 +104,19 @@ mod tests {
   #[test]
   fn test_read_write() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
-    let filename: String = GeneratedResources::sample_name(file!(), "read_write.chunk");
     let original: AlifeObjectTrader = new_mock();
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write_state::<XRayByteOrder, _>(&mut writer, SpawnLayout::CALL_OF_PRIPYAT)?;
 
     assert_eq!(writer.bytes_written(), 126);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&writer.buffer)?;
 
-    assert_eq!(bytes_written, 126);
-
-    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
-
-    assert_eq!(file.bytes_remaining(), 126 + 8);
-
-    let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
-
-    assert_eq!(AlifeObjectTrader::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(
+      AlifeObjectTrader::read_state::<XRayByteOrder, _>(&mut reader, SpawnLayout::CALL_OF_PRIPYAT)?,
+      original
+    );
+    reader.assert_read("Expect the trader to be read whole")?;
 
     Ok(())
   }
@@ -135,13 +127,16 @@ mod tests {
     let mut ltx: Ltx = Ltx::new();
     let original: AlifeObjectTrader = new_mock();
 
-    original.export("data", &mut ltx)?;
+    original.export_state("data", &mut ltx, SpawnLayout::CALL_OF_PRIPYAT)?;
 
     ltx.write_to(&mut GeneratedResources::overwrite(&ltx_filename)?)?;
 
     let source: Ltx = Ltx::read_from_path(GeneratedResources::path(&ltx_filename))?;
 
-    assert_eq!(AlifeObjectTrader::import("data", &source)?, original);
+    assert_eq!(
+      AlifeObjectTrader::import_state("data", &source, SpawnLayout::CALL_OF_PRIPYAT)?,
+      original
+    );
 
     Ok(())
   }
