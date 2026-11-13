@@ -7,6 +7,7 @@ use xrf_editable_object::{
 };
 use xrf_error::XrfResult;
 use xrf_gamemtl::{GameMtlFile, GameMtlMaterial};
+use xrf_geometry::MeshVertexBone;
 use xrf_math::{Aabb, Affine3d, Cylinder, Obb, Sphere, Vector3d};
 use xrf_skeleton::{SkeletonBoneShape, SkeletonBoneShapeKind, SkeletonJointKind, SkeletonJointLimit};
 use xrf_spawn::{
@@ -18,7 +19,6 @@ use crate::level::build::level_build_parts::{LevelBuildPartBox, LevelBuildParts}
 use crate::level::build::level_build_vector::LevelBuildVector;
 use crate::level::level_breakable_conversion::LevelBreakableConversion;
 use crate::object::compile::bounds::bone_boxes::BoneBoxes;
-use crate::object::compile::geometry::export_vertex_bone::ExportVertexBone;
 use crate::object::compile::object_compile_options::TangentMethod;
 use crate::object::compile::object_compile_source::ObjectCompileSource;
 use crate::object::compile::skeleton::skeleton_geometry::SkeletonGeometry;
@@ -332,7 +332,7 @@ impl LevelBuildBreakables {
         position: prepared.corners[index][corner],
         normal: prepared.normals[index][corner],
         texture_coordinate: held.texture_coordinates[corner],
-        weights: vec![ExportVertexBone {
+        weights: vec![MeshVertexBone {
           bone: prepared.bone_of_face[index] as u16,
           weight: 1.0,
         }],

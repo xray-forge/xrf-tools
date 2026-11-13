@@ -1,17 +1,26 @@
 # xrf-geometry
 
 Geometry the level tools compute over: ray and box queries against a set of triangles, in the arithmetic of the
-engine's collision database (`xrCDB`). It reads no file format; callers hand it vertices and triangles and look up what
-a face is made of themselves. The level viewer, the decompiler and the compilers use it alike.
+engine's collision database (`xrCDB`), and the mesh work the SDK's exports and xrLC share. It reads no file format;
+callers hand it vertices and triangles and look up what a face is made of themselves. The level viewer, the decompiler,
+the object compile and the level compilers use it alike.
 
-| Type        | What it is                                                                                        |
-| ----------- | ------------------------------------------------------------------------------------------------- |
-| `Tracer`    | The queries: every hit along a ray (one ray or a packet), faces in a box, nearest, blocked, along |
-| `BvhTracer` | The tracer: `obvhs`' PLOC binary hierarchy walked by its own exact traversal                      |
-| `Triangle`  | `CDB::TestRayTri` (`cross`), the separating axis test against a box, `Fvector::mknormal`          |
-| `Ray`       | Origin, direction and range; a crossing counts ahead of the origin up to the range, inclusive     |
-| `TraceHit`  | A face a ray meets: its index, distance and barycentrics                                          |
-| `Facing`    | Whether a ray test meets a triangle's front only (`OPT_CULL`) or either side                      |
+| Type                         | What it is                                                                                        |
+| ---------------------------- | ------------------------------------------------------------------------------------------------- |
+| `Tracer`                     | The queries: every hit along a ray (one ray or a packet), faces in a box, nearest, blocked, along |
+| `BvhTracer`                  | The tracer: `obvhs`' PLOC binary hierarchy walked by its own exact traversal                      |
+| `Triangle`                   | `CDB::TestRayTri` (`cross`), the separating axis test against a box, `Fvector::mknormal`          |
+| `Ray`                        | Origin, direction and range; a crossing counts ahead of the origin up to the range, inclusive     |
+| `TraceHit`                   | A face a ray meets: its index, distance and barycentrics                                          |
+| `Facing`                     | Whether a ray test meets a triangle's front only (`OPT_CULL`) or either side                      |
+| `MeshVertex`, `Mesh`         | A split's vertex (position, basis, coordinate, bones) and its faces, 32-bit packed or 16-bit cut  |
+| `VertexPacker`               | Corners packed into vertices over a grid of the object's box, as the exports' `VPack`             |
+| `TangentBasis`               | The exports' MeshMender tangent pass: splits, orders and shifts a split's vertices                |
+| `SplitPartition`             | A split cut into children 16-bit indices reach                                                    |
+| `VertexCacheOrder`           | A child's faces ordered for the vertex cache (Forsyth), its vertices by first use                 |
+| `PointWelder`                | Points welded within `EPS_L`, as the editor's `VCPacked::add_vert`                                |
+| `FaceArea`                   | `CalcArea`, Heron's formula in single precision, and the `EPS` a face must reach                  |
+| `Hemisphere`                 | `xrHemisphereBuild`'s sky directions by quality, each a `HemisphereLight`                         |
 
 ```rust
 use glam::Vec3;

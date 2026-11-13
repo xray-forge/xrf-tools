@@ -1,11 +1,11 @@
 use std::collections::HashSet;
 
-use xrf_editable_object::EditableMesh;
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::{Aabb, Vector3d};
 
-use crate::object::compile::geometry::export_vertex::ExportVertex;
-use crate::object::compile::geometry::vertex_packing::VertexPacking;
+use crate::mesh::mesh::Mesh;
+use crate::mesh::mesh_vertex::MeshVertex;
+use crate::mesh::vertex_packing::VertexPacking;
 
 /// Packs one split's corners into vertices as `CSkeletonCollectorPacked` and `CObjectOGFCollectorPacked` do, by the
 /// grid and repeat rule of the [`VertexPacking`] given.
@@ -20,11 +20,11 @@ use crate::object::compile::geometry::vertex_packing::VertexPacking;
 ///
 /// Indices are 32-bit here, where the export's are 16-bit: a split too big for one OGF child is cut into several once
 /// its tangents are known (`SplitPartition`).
-pub(crate) struct VertexPacker {
-  pub(crate) vertices: Vec<ExportVertex>,
-  pub(crate) faces: Vec<[u32; 3]>,
+pub struct VertexPacker {
+  vertices: Vec<MeshVertex>,
+  faces: Vec<[u32; 3]>,
   /// Faces left out: degenerate, or repeating a face already added where the packing drops repeats.
-  pub(crate) dropped_faces: usize,
+  dropped_faces: usize,
   /// Each face's vertices sorted, which a face in any winding shares with every other winding of it; filled only
   /// where the packing drops repeats.
   face_sets: Option<HashSet<[u32; 3]>>,
@@ -46,17 +46,8 @@ impl VertexPacker {
   /// the object's box and its growth.
   const EPSILON: f32 = 1e-5;
 
-  /// The object's box the grid spans, `CEditableObject::UpdateBox`: every mesh's stored bounds together, or `None`
-  /// for an object without meshes.
-  pub(crate) fn get_object_bounds(meshes: &[EditableMesh]) -> Option<Aabb> {
-    meshes.iter().map(|mesh| mesh.bounds).reduce(|bounds, other| Aabb {
-      min: bounds.min.min(&other.min),
-      max: bounds.max.max(&other.max),
-    })
-  }
-
   /// A packer over `bounds`, the object's box, by `packing`'s grid and repeat rule.
-  pub(crate) fn new(bounds: &Aabb, packing: &VertexPacking) -> Self {
+  pub fn new(bounds: &Aabb, packing: &VertexPacking) -> Self {
     let grow: Vector3d = Vector3d::new(packing.growth, packing.growth, packing.growth);
     let epsilon: Vector3d = Vector3d::new(Self::EPSILON, Self::EPSILON, Self::EPSILON);
     let (low, high): (Vector3d, Vector3d) = (&bounds.min - &grow, &bounds.max + &grow);
@@ -81,13 +72,36 @@ impl VertexPacker {
     }
   }
 
+  /// The vertices packed so far, by index.
+  pub fn get_vertices(&self) -> &[MeshVertex] {
+    &self.vertices
+  }
+
+  /// The faces added so far, over [`Self::get_vertices`].
+  pub fn get_faces(&self) -> &[[u32; 3]] {
+    &self.faces
+  }
+
+  /// How many faces were left out: degenerate, or repeating a face already added where the packing drops repeats.
+  pub fn get_dropped_faces(&self) -> usize {
+    self.dropped_faces
+  }
+
+  /// The split packed: its vertices and faces.
+  pub fn into_mesh(self) -> Mesh<u32> {
+    Mesh {
+      vertices: self.vertices,
+      faces: self.faces,
+    }
+  }
+
   /// Adds a face of `corners`, packing them, unless it is degenerate or repeats a face already added. Packing can move
   /// a corner onto a vertex it stood near, and `corners` keeps the moved positions, as the export's do.
   ///
   /// # Errors
   ///
-  /// Returns an error when a corner stands outside the object's box, or the split outgrows 32-bit indices.
-  pub(crate) fn add_face(&mut self, corners: &mut [ExportVertex; 3]) -> XrfResult {
+  /// Returns an error when a corner stands outside the box the packer spans, or the split outgrows 32-bit indices.
+  pub fn add_face(&mut self, corners: &mut [MeshVertex; 3]) -> XrfResult {
     let is_near = |first: &Vector3d, second: &Vector3d| Self::is_within(first, second, Self::EPSILON);
 
     if is_near(&corners[0].position, &corners[1].position)
@@ -123,12 +137,12 @@ impl VertexPacker {
   }
 
   /// `VPack`: the vertex `corner` is, packed now when no similar one is.
-  fn pack(&mut self, corner: &mut ExportVertex) -> XrfResult<u32> {
+  fn pack(&mut self, corner: &mut MeshVertex) -> XrfResult<u32> {
     let cell: [u32; 3] = self.get_cell(&corner.position)?;
     let mut near: Option<u32> = None;
 
     for candidate in &self.cells[self.get_cell_index(cell)] {
-      let vertex: &ExportVertex = &self.vertices[*candidate as usize];
+      let vertex: &MeshVertex = &self.vertices[*candidate as usize];
 
       if Self::is_within(&vertex.position, &corner.position, Self::POSITION_DELTA) {
         if Self::is_similar(vertex, corner) {
@@ -144,7 +158,7 @@ impl VertexPacker {
     }
 
     let index: u32 = u32::try_from(self.vertices.len())
-      .map_err(|_| XrfError::new_invalid_error("A skeleton split holds more vertices than 32-bit indices reach"))?;
+      .map_err(|_| XrfError::new_invalid_error("A split holds more vertices than 32-bit indices reach"))?;
 
     self.vertices.push(corner.clone());
     self.file(index, cell)?;
@@ -198,7 +212,7 @@ impl VertexPacker {
         Ok(cell as u32)
       } else {
         Err(XrfError::new_invalid_error(format!(
-          "A corner at {position} stands outside the object's box, which its meshes' bounds give"
+          "A corner at {position} stands outside the box the packing spans, an object's its meshes' stored bounds"
         )))
       }
     };
@@ -217,7 +231,7 @@ impl VertexPacker {
   }
 
   /// `SSkelVert::similar`.
-  fn is_similar(first: &ExportVertex, second: &ExportVertex) -> bool {
+  fn is_similar(first: &MeshVertex, second: &MeshVertex) -> bool {
     first.bones.len() == second.bones.len()
       && first
         .bones

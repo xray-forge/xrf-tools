@@ -29,10 +29,6 @@ pub struct LevelInstanceLibrary {
 impl LevelInstanceLibrary {
   const OBJECT_EXTENSION: &'static str = "object";
 
-  /// The `Shader_xrLC` flags of a compiler shader xrLC collides with and draws.
-  const COLLISION_FLAG: u32 = ShaderCompilerShader::FLAGS[0].0;
-  const RENDERING_FLAG: u32 = ShaderCompilerShader::FLAGS[1].0;
-
   /// Object flags that keep an object out of the level's geometry.
   const UNBUILT_FLAGS: u32 =
     EditableObjectFile::DYNAMIC_FLAG | EditableObjectFile::HOM_FLAG | EditableObjectFile::SOUND_OCCLUDER_FLAG;
@@ -126,9 +122,10 @@ impl LevelInstanceLibrary {
     let mut triangles: Vec<LevelLibraryTriangle> = Vec::new();
     let mut collision: Vec<[DVec3; 3]> = Vec::new();
     let flags = |name: &str| -> u32 {
-      compiler_shaders
-        .and_then(|shaders| shaders.find_shader(name))
-        .map_or(Self::COLLISION_FLAG | Self::RENDERING_FLAG, |shader| shader.flags)
+      compiler_shaders.and_then(|shaders| shaders.find_shader(name)).map_or(
+        ShaderCompilerShader::COLLISION | ShaderCompilerShader::RENDERING,
+        |shader| shader.flags,
+      )
     };
 
     for mesh in meshes {
@@ -143,8 +140,8 @@ impl LevelInstanceLibrary {
           .filter_map(|face| mesh.faces.get(*face as usize))
           .filter_map(|face| Some((Self::get_points(mesh, face.corners.map(|corner| corner.point))?, face)));
 
-        if surface_flags & Self::RENDERING_FLAG == 0 {
-          if surface_flags & Self::COLLISION_FLAG != 0 {
+        if surface_flags & ShaderCompilerShader::RENDERING == 0 {
+          if surface_flags & ShaderCompilerShader::COLLISION != 0 {
             collision.extend(corners.map(|(points, _)| points));
           }
 

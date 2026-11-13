@@ -2,21 +2,22 @@ use std::collections::VecDeque;
 
 use xrf_math::{Vector2d, Vector3d};
 
-use crate::object::compile::geometry::export_vertex::ExportVertex;
-use crate::object::compile::geometry::export_vertex_bone::ExportVertexBone;
-use crate::object::compile::skeleton::vertex_cache_order::VertexCacheOrder;
+use crate::mesh::mesh::Mesh;
+use crate::mesh::mesh_vertex::MeshVertex;
+use crate::mesh::mesh_vertex_bone::MeshVertexBone;
+use crate::mesh::vertex_cache_order::VertexCacheOrder;
 
 /// A grid of `size` by `size` quads, two triangles each, its vertices numbered row by row.
-fn grid(size: u16) -> (Vec<ExportVertex>, Vec<[u16; 3]>) {
-  let vertices: Vec<ExportVertex> = (0..=size)
+fn grid(size: u16) -> Mesh<u16> {
+  let vertices: Vec<MeshVertex> = (0..=size)
     .flat_map(|row| (0..=size).map(move |column| (row, column)))
-    .map(|(row, column)| ExportVertex {
+    .map(|(row, column)| MeshVertex {
       position: Vector3d::new(f32::from(column), 0.0, f32::from(row)),
       normal: Vector3d::Y,
       tangent: Vector3d::X,
       binormal: Vector3d::Z,
       texture_coordinate: Vector2d::ZERO,
-      bones: vec![ExportVertexBone { bone: 0, weight: 1.0 }],
+      bones: vec![MeshVertexBone { bone: 0, weight: 1.0 }],
     })
     .collect();
   let at = |row: u16, column: u16| row * (size + 1) + column;
@@ -30,7 +31,7 @@ fn grid(size: u16) -> (Vec<ExportVertex>, Vec<[u16; 3]>) {
     })
     .collect();
 
-  (vertices, faces)
+  Mesh { vertices, faces }
 }
 
 /// The faces in an order no cache likes: a fixed stride through the list.
@@ -62,15 +63,21 @@ fn misses_a_triangle(faces: &[[u16; 3]]) -> f32 {
 }
 
 /// A face by its corners' positions, so faces compare across renumbering, its winding kept.
-fn by_position(vertices: &[ExportVertex], face: &[u16; 3]) -> [[u32; 3]; 3] {
+fn by_position(vertices: &[MeshVertex], face: &[u16; 3]) -> [[u32; 3]; 3] {
   face.map(|vertex| vertices[usize::from(vertex)].position.to_array().map(f32::to_bits))
 }
 
 #[test]
 fn reorders_a_scrambled_grid_for_the_cache_keeping_every_triangle_and_its_winding() {
-  let (vertices, faces) = grid(16);
+  let Mesh { vertices, faces } = grid(16);
   let faces: Vec<[u16; 3]> = scrambled(&faces);
-  let (reordered, ordered) = VertexCacheOrder::apply(vertices.clone(), &faces);
+  let Mesh {
+    vertices: reordered,
+    faces: ordered,
+  } = VertexCacheOrder::apply(Mesh {
+    vertices: vertices.clone(),
+    faces: faces.clone(),
+  });
   let mut before: Vec<[[u32; 3]; 3]> = faces.iter().map(|face| by_position(&vertices, face)).collect();
   let mut after: Vec<[[u32; 3]; 3]> = ordered.iter().map(|face| by_position(&reordered, face)).collect();
 
@@ -91,11 +98,14 @@ fn reorders_a_scrambled_grid_for_the_cache_keeping_every_triangle_and_its_windin
 
 #[test]
 fn numbers_vertices_in_the_order_the_faces_first_use_them() {
-  let (vertices, faces) = grid(4);
-  let (_, ordered) = VertexCacheOrder::apply(vertices, &scrambled(&faces));
+  let Mesh { vertices, faces } = grid(4);
+  let ordered: Mesh<u16> = VertexCacheOrder::apply(Mesh {
+    vertices,
+    faces: scrambled(&faces),
+  });
   let mut next: u16 = 0;
 
-  for vertex in ordered.iter().flatten() {
+  for vertex in ordered.faces.iter().flatten() {
     assert!(*vertex <= next, "vertex {vertex} used before {next}");
 
     if *vertex == next {
@@ -119,7 +129,7 @@ fn orders_a_degenerate_face_without_losing_it() {
 
 #[test]
 fn gives_one_order_for_one_input() {
-  let (vertices, faces) = grid(8);
+  let Mesh { vertices, faces } = grid(8);
   let faces: Vec<[u16; 3]> = scrambled(&faces);
 
   assert_eq!(

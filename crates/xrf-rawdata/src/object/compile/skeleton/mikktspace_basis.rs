@@ -2,10 +2,8 @@ use std::collections::HashMap;
 
 use bevy_mikktspace::{Geometry, TangentSpace, generate_tangents};
 use xrf_error::{XrfError, XrfResult};
+use xrf_geometry::{Mesh, MeshVertex, TangentBasis};
 use xrf_math::Vector3d;
-
-use crate::object::compile::geometry::export_vertex::ExportVertex;
-use crate::object::compile::geometry::tangent_basis::TangentBasis;
 
 /// Gives a split's vertices MikkTSpace tangents and binormals, the basis Blender bakes and `blender-xray` exports
 /// against, in place of the Actor Editor's (see [`TangentBasis`]).
@@ -21,13 +19,13 @@ pub(crate) struct MikkTSpaceBasis;
 
 /// A split as [`Geometry`] reads it, and the basis it gives each face corner.
 struct SplitGeometry<'a> {
-  vertices: &'a [ExportVertex],
+  vertices: &'a [MeshVertex],
   faces: &'a [[u32; 3]],
   bases: Vec<[Option<(Vector3d, Vector3d)>; 3]>,
 }
 
 impl SplitGeometry<'_> {
-  fn vertex(&self, face: usize, corner: usize) -> &ExportVertex {
+  fn vertex(&self, face: usize, corner: usize) -> &MeshVertex {
     &self.vertices[self.faces[face][corner] as usize]
   }
 }
@@ -68,16 +66,13 @@ impl Geometry for SplitGeometry<'_> {
 }
 
 impl MikkTSpaceBasis {
-  /// `vertices` and `faces` with MikkTSpace tangents and binormals, the vertices split where their corners' bases
-  /// differ, ordered by first use, and texture coordinates moved by whole tiles.
+  /// `mesh` with MikkTSpace tangents and binormals, the vertices split where their corners' bases differ, ordered by
+  /// first use, and texture coordinates moved by whole tiles.
   ///
   /// # Errors
   ///
   /// Returns an error when a face names a vertex the split lacks, or the split outgrows 32-bit indices.
-  pub(crate) fn generate(
-    vertices: Vec<ExportVertex>,
-    faces: &[[u32; 3]],
-  ) -> XrfResult<(Vec<ExportVertex>, Vec<[u32; 3]>)> {
+  pub(crate) fn generate(Mesh { vertices, faces }: Mesh<u32>) -> XrfResult<Mesh<u32>> {
     if faces.iter().flatten().any(|index| *index as usize >= vertices.len()) {
       return Err(XrfError::new_invalid_error(
         "A skeleton split face names a vertex the split lacks",
@@ -86,7 +81,7 @@ impl MikkTSpaceBasis {
 
     let mut geometry: SplitGeometry<'_> = SplitGeometry {
       vertices: &vertices,
-      faces,
+      faces: &faces,
       bases: vec![[None; 3]; faces.len()],
     };
 
@@ -94,7 +89,7 @@ impl MikkTSpaceBasis {
       .map_err(|_| XrfError::new_invalid_error("MikkTSpace gives a skeleton split no tangent space"))?;
 
     let bases: Vec<[Option<(Vector3d, Vector3d)>; 3]> = geometry.bases;
-    let mut ordered: Vec<ExportVertex> = Vec::with_capacity(vertices.len());
+    let mut ordered: Vec<MeshVertex> = Vec::with_capacity(vertices.len());
     let mut index_of: HashMap<(u32, [u32; 6]), u32> = HashMap::with_capacity(vertices.len());
     let mut renumbered: Vec<[u32; 3]> = Vec::with_capacity(faces.len());
 
@@ -102,7 +97,7 @@ impl MikkTSpaceBasis {
       let mut indices: [u32; 3] = [0; 3];
 
       for ((slot, source), basis) in indices.iter_mut().zip(face).zip(face_bases) {
-        let vertex: &ExportVertex = &vertices[*source as usize];
+        let vertex: &MeshVertex = &vertices[*source as usize];
         let (tangent, binormal) = basis.unwrap_or_else(|| TangentBasis::get_basis_from_normal(&vertex.normal));
         let bits: [u32; 6] = [tangent.x, tangent.y, tangent.z, binormal.x, binormal.y, binormal.z].map(f32::to_bits);
 
@@ -113,7 +108,7 @@ impl MikkTSpaceBasis {
               XrfError::new_invalid_error("A skeleton split outgrows 32-bit indices once its tangents split it")
             })?;
 
-            ordered.push(ExportVertex {
+            ordered.push(MeshVertex {
               tangent,
               binormal,
               ..vertex.clone()
@@ -130,6 +125,9 @@ impl MikkTSpaceBasis {
 
     TangentBasis::shift_texture_coordinates(&mut ordered);
 
-    Ok((ordered, renumbered))
+    Ok(Mesh {
+      vertices: ordered,
+      faces: renumbered,
+    })
   }
 }

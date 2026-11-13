@@ -3,25 +3,10 @@
 
 use std::path::PathBuf;
 
-use xrf_chunk::XRayByteOrder;
-use xrf_editable_level::{
-  EditableBuildParams, EditableCustomObject, EditableLevelOptions, EditableObjectTransform, EditableSceneObject,
-  EditableSectorItem, EditableSectorObject,
-};
-use xrf_editable_object::EditableObjectFile;
-use xrf_error::XrfResult;
-use xrf_gamemtl::{GameMtlFile, GameMtlMaterial};
-use xrf_level::LevelDynamicLight;
-use xrf_math::{Aabb, Affine3d, Vector2d, Vector3d};
-use xrf_ogf::{OgfFile, OgfModelType};
-use xrf_spawn::{AlifeObjectInherited, Shape};
-use xrf_test_utils::GeneratedResources;
-
 use crate::LevelBuildExport;
 use crate::level::build::level_build_breakables::LevelBuildBreakables;
 use crate::level::build::level_build_climbables::LevelBuildClimbables;
 use crate::level::build::level_build_geometry::LevelBuildGeometry;
-use crate::level::build::level_build_hemisphere::LevelBuildHemisphere;
 use crate::level::build::level_build_lighting::LevelBuildLighting;
 use crate::level::build::level_build_lights::LevelBuildLights;
 use crate::level::build::level_build_models::LevelBuildModels;
@@ -36,6 +21,19 @@ use crate::level::level_occluder_conversion::LevelOccluderConversion;
 use crate::level::level_visual_geometry::LevelVisualGeometry;
 use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
+use xrf_chunk::XRayByteOrder;
+use xrf_editable_level::{
+  EditableBuildParams, EditableCustomObject, EditableLevelOptions, EditableObjectTransform, EditableSceneObject,
+  EditableSectorItem, EditableSectorObject,
+};
+use xrf_editable_object::EditableObjectFile;
+use xrf_error::XrfResult;
+use xrf_gamemtl::{GameMtlFile, GameMtlMaterial};
+use xrf_level::LevelDynamicLight;
+use xrf_math::{Aabb, Affine3d, Vector2d, Vector3d};
+use xrf_ogf::{OgfFile, OgfModelType};
+use xrf_spawn::{AlifeObjectInherited, Shape};
+use xrf_test_utils::GeneratedResources;
 
 fn sector(name: &str, is_default: bool, object: &str) -> EditableSectorObject {
   EditableSectorObject {
@@ -92,21 +90,6 @@ fn keeps_each_material_once_per_texture_shaders_and_sector() -> XrfResult {
   );
 
   Ok(())
-}
-
-#[test]
-fn spreads_the_skys_energy_over_each_qualitys_directions_downwards() {
-  for (quality, count) in [(1, 26), (2, 91), (3, 196)] {
-    let lights: Vec<(Vector3d, f32)> = LevelBuildHemisphere::get_lights(quality, 2.0);
-
-    assert_eq!(lights.len(), count);
-    assert!((lights.iter().map(|(_, energy)| energy).sum::<f32>() - 2.0).abs() < 1e-4);
-    assert!(
-      lights
-        .iter()
-        .all(|(direction, _)| direction.y <= 0.0 && (direction.length() - 1.0).abs() < 1e-5)
-    );
-  }
 }
 
 #[test]

@@ -1,11 +1,7 @@
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::XrfResult;
-use xrf_math::{Aabb, Vector2d, Vector3d};
+use xrf_geometry::MeshVertexBone;
 
-use crate::object::compile::geometry::export_vertex::ExportVertex;
-use crate::object::compile::geometry::export_vertex_bone::ExportVertexBone;
-use crate::object::compile::geometry::vertex_packer::VertexPacker;
-use crate::object::compile::geometry::vertex_packing::VertexPacking;
 use crate::object::compile::object_compiler::ObjectCompiler;
 use crate::object::compile::skeleton::breakable_parts::BreakableParts;
 use crate::object::compile::skeleton::skeleton_geometry::SkeletonGeometry;
@@ -46,8 +42,8 @@ fn packs_a_smooth_quad_into_four_vertices_padded_to_two_links() -> XrfResult {
   assert_eq!(split.used_bones, [0]);
   assert!(split.vertices.iter().all(|vertex| vertex.bones
     == [
-      ExportVertexBone { bone: 0, weight: 1.0 },
-      ExportVertexBone { bone: 0, weight: 0.0 }
+      MeshVertexBone { bone: 0, weight: 1.0 },
+      MeshVertexBone { bone: 0, weight: 0.0 }
     ]));
 
   Ok(())
@@ -72,12 +68,12 @@ fn keeps_a_corner_of_a_one_link_face_apart_from_the_same_corner_of_a_blended_one
 
   assert_eq!((split.vertices.len(), split.link_count), (6, 2));
   assert_eq!(split.used_bones, [0, 1]);
-  assert_eq!(split.vertices[3].bones, [ExportVertexBone { bone: 0, weight: 1.0 }]);
+  assert_eq!(split.vertices[3].bones, [MeshVertexBone { bone: 0, weight: 1.0 }]);
   assert_eq!(
     split.vertices[5].bones,
     [
-      ExportVertexBone { bone: 0, weight: 0.5 },
-      ExportVertexBone { bone: 1, weight: 0.5 }
+      MeshVertexBone { bone: 0, weight: 0.5 },
+      MeshVertexBone { bone: 1, weight: 0.5 }
     ]
   );
 
@@ -138,59 +134,4 @@ fn numbers_breakable_parts_down_from_the_root() {
 
   assert_eq!(BreakableParts::of(&bones), [0, 1, 1, 2]);
   assert_eq!(BreakableParts::of(&chain()), [0, 0, 0]);
-}
-
-#[test]
-fn snaps_a_near_corner_onto_a_vertex_and_drops_degenerate_and_repeated_faces() -> XrfResult {
-  let vertex = |position: [f32; 3], normal: [f32; 3]| ExportVertex {
-    position: Vector3d::from(position),
-    normal: Vector3d::from(normal),
-    tangent: Vector3d::X,
-    binormal: Vector3d::Z,
-    texture_coordinate: Vector2d::ZERO,
-    bones: vec![ExportVertexBone { bone: 0, weight: 1.0 }],
-  };
-  let mut packer: VertexPacker = VertexPacker::new(
-    &Aabb {
-      min: Vector3d::new(-1.0, -1.0, -1.0),
-      max: Vector3d::new(1.0, 1.0, 1.0),
-    },
-    &VertexPacking::SKELETON,
-  );
-  let face = |first: [f32; 3], normal: [f32; 3]| {
-    [
-      vertex(first, normal),
-      vertex([0.5, 0.0, 0.0], UP),
-      vertex([0.0, 0.0, 0.5], UP),
-    ]
-  };
-
-  packer.add_face(&mut face([0.0, 0.0, 0.0], UP))?;
-
-  // Half a millimetre off with another normal: a vertex of its own, standing where the first one does.
-  let mut near = face([0.0005, 0.0, 0.0], DOWN);
-
-  packer.add_face(&mut near)?;
-
-  assert_eq!(packer.vertices.len(), 4);
-  assert_eq!(packer.vertices[3].position, Vector3d::ZERO);
-  assert_eq!(
-    near[0].position,
-    Vector3d::ZERO,
-    "the corner to keep the position it was moved to"
-  );
-
-  // The first face again in another winding, and a face two of whose corners coincide.
-  let [first, second, third] = face([0.0, 0.0, 0.0], UP);
-
-  packer.add_face(&mut [second, third, first])?;
-  packer.add_face(&mut [
-    vertex([0.2, 0.0, 0.0], UP),
-    vertex([0.2, 0.0, 0.0], UP),
-    vertex([0.0, 0.0, 0.2], UP),
-  ])?;
-
-  assert_eq!((packer.faces.len(), packer.dropped_faces), (2, 2));
-
-  Ok(())
 }

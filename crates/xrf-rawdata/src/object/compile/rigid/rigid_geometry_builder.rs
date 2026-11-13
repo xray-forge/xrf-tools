@@ -1,13 +1,10 @@
 use xrf_editable_object::{EditableMesh, EditableObjectFile, EditableSurface};
 use xrf_error::{XrfError, XrfResult};
+use xrf_geometry::{Mesh, MeshVertex, SplitPartition, TangentBasis, VertexPacker, VertexPacking};
 use xrf_math::Aabb;
 
-use crate::object::compile::geometry::export_vertex::ExportVertex;
+use crate::object::compile::geometry::object_bounds::ObjectBounds;
 use crate::object::compile::geometry::source::mesh_surface_faces::MeshSurfaceFaces;
-use crate::object::compile::geometry::split_partition::SplitPartition;
-use crate::object::compile::geometry::tangent_basis::TangentBasis;
-use crate::object::compile::geometry::vertex_packer::VertexPacker;
-use crate::object::compile::geometry::vertex_packing::VertexPacking;
 use crate::object::compile::rigid::rigid_corner::RigidCorner;
 use crate::object::compile::rigid::rigid_geometry::RigidGeometry;
 use crate::object::compile::rigid::rigid_split::RigidSplit;
@@ -48,7 +45,7 @@ impl RigidGeometryBuilder {
   pub(crate) fn build(object: &EditableObjectFile) -> XrfResult<RigidGeometry> {
     let meshes: &[EditableMesh] = object.meshes.as_deref().unwrap_or_default();
     let surfaces: &[EditableSurface] = object.surfaces.as_deref().unwrap_or_default();
-    let Some(bounds) = VertexPacker::get_object_bounds(meshes) else {
+    let Some(bounds) = ObjectBounds::of(meshes) else {
       return Err(XrfError::new_invalid_error("A static object holds no mesh to export"));
     };
     let mut builder: Self = Self {
@@ -95,15 +92,15 @@ impl RigidGeometryBuilder {
     let mut splits: Vec<RigidSplit> = Vec::with_capacity(self.splits.len());
 
     for split in self.splits {
-      dropped_faces += split.packer.dropped_faces;
+      dropped_faces += split.packer.get_dropped_faces();
 
-      if split.packer.faces.is_empty() {
+      if split.packer.get_faces().is_empty() {
         continue;
       }
 
-      let (vertices, faces) = TangentBasis::mend(split.packer.vertices, &split.packer.faces)?;
+      let mended: Mesh<u32> = TangentBasis::mend(split.packer.into_mesh())?;
 
-      for (vertices, faces) in SplitPartition::cut(vertices, &faces) {
+      for Mesh { vertices, faces } in SplitPartition::cut(mended) {
         splits.push(RigidSplit {
           texture: split.texture.clone(),
           shader: split.shader.clone(),
@@ -121,7 +118,7 @@ impl PendingSplit {
   /// Packs a face of `corners`, and where `surface` is two-sided its mirror: wound the other way, its normals turned
   /// around, from the corners as packing left them.
   fn add_face(&mut self, surface: &EditableSurface, corners: &[RigidCorner; 3]) -> XrfResult {
-    let mut vertices: [ExportVertex; 3] = corners.each_ref().map(RigidCorner::to_vertex);
+    let mut vertices: [MeshVertex; 3] = corners.each_ref().map(RigidCorner::to_vertex);
 
     self.packer.add_face(&mut vertices)?;
 

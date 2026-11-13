@@ -4,7 +4,8 @@ use xrf_editable_level::EditableSceneObject;
 use xrf_editable_object::{EditableMeshNormals, EditableObjectFile, EditableSurface, EditableVMapKind};
 use xrf_error::{XrfError, XrfResult};
 use xrf_gamemtl::{GameMtlFile, GameMtlMaterial};
-use xrf_math::{EPS_L, Matrix4x4, Vector2d, Vector3d};
+use xrf_geometry::PointWelder;
+use xrf_math::{Matrix4x4, Vector2d, Vector3d};
 
 use crate::level::build::level_build_eigen::LevelBuildEigen;
 use crate::level::build::level_build_vector::LevelBuildVector;
@@ -21,9 +22,8 @@ pub(crate) struct LevelBuildParts {
   /// Each surface a face names, once per object and surface name.
   pub(crate) surfaces: Vec<EditableSurface>,
   surface_index: HashMap<(String, String), usize>,
-  /// Each welded point, and the cells of `EPS_L` that find it.
-  points: Vec<Vector3d>,
-  cells: HashMap<[i64; 3], Vec<u32>>,
+  /// The faces' corners welded into points.
+  points: PointWelder,
 }
 
 /// One face gathered: its corners placed, their welded points, their normals turned into the level, their texture
@@ -51,8 +51,7 @@ impl LevelBuildParts {
       faces: Vec::new(),
       surfaces: Vec::new(),
       surface_index: HashMap::new(),
-      points: Vec::new(),
-      cells: HashMap::new(),
+      points: PointWelder::default(),
     }
   }
 
@@ -129,7 +128,7 @@ impl LevelBuildParts {
 
             &turned * (1.0 / turned.length().max(f32::EPSILON))
           });
-          let points: [u32; 3] = placed_corners.map(|corner| self.weld(&corner));
+          let points: [u32; 3] = placed_corners.map(|corner| self.points.weld(&corner));
 
           self.faces.push(LevelBuildPartFace {
             corners: placed_corners,
@@ -319,7 +318,7 @@ impl LevelBuildParts {
 
   /// Each welded point's faces, in the order they were added.
   fn get_faces_around_points(&self) -> Vec<Vec<usize>> {
-    let mut around: Vec<Vec<usize>> = vec![Vec::new(); self.points.len()];
+    let mut around: Vec<Vec<usize>> = vec![Vec::new(); self.points.get_points().len()];
 
     for (index, face) in self.faces.iter().enumerate() {
       for point in face.points {
@@ -358,37 +357,5 @@ impl LevelBuildParts {
           .unwrap_or(Vector2d::ZERO),
       )
     })
-  }
-
-  /// The welded point at `point`: the first added within `EPS_L` of it on every axis, else a new one
-  /// (`VCPacked::add_vert`).
-  fn weld(&mut self, point: &Vector3d) -> u32 {
-    let cell = |value: f32| (f64::from(value) / f64::from(EPS_L)).floor() as i64;
-    let home: [i64; 3] = [cell(point.x), cell(point.y), cell(point.z)];
-
-    for x in -1..=1 {
-      for y in -1..=1 {
-        for z in -1..=1 {
-          let Some(candidates) = self.cells.get(&[home[0] + x, home[1] + y, home[2] + z]) else {
-            continue;
-          };
-
-          if let Some(found) = candidates.iter().copied().find(|candidate| {
-            let held: &Vector3d = &self.points[*candidate as usize];
-
-            (held.x - point.x).abs() <= EPS_L && (held.y - point.y).abs() <= EPS_L && (held.z - point.z).abs() <= EPS_L
-          }) {
-            return found;
-          }
-        }
-      }
-    }
-
-    let index: u32 = u32::try_from(self.points.len()).unwrap_or(u32::MAX);
-
-    self.points.push(*point);
-    self.cells.entry(home).or_default().push(index);
-
-    index
   }
 }

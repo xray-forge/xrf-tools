@@ -2,10 +2,9 @@ use std::collections::HashMap;
 
 use xrf_editable_object::{EditableMesh, EditableVMapKind};
 use xrf_error::{XrfError, XrfResult};
+use xrf_geometry::{MeshVertex, MeshVertexBone};
 use xrf_math::{Vector2d, Vector3d};
 
-use crate::object::compile::geometry::export_vertex::ExportVertex;
-use crate::object::compile::geometry::export_vertex_bone::ExportVertexBone;
 use crate::object::compile::geometry::source::mesh_corner::MeshCorner;
 use crate::object::compile::geometry::source::mesh_corners::MeshCorners;
 
@@ -17,7 +16,7 @@ pub(crate) struct SkinCorner {
   pub(crate) normal: Vector3d,
   pub(crate) texture_coordinate: Vector2d,
   /// Strongest first, at most [`Self::INFLUENCE`], summing to one (`st_VertexWB::prepare_weights`).
-  pub(crate) weights: Vec<ExportVertexBone>,
+  pub(crate) weights: Vec<MeshVertexBone>,
 }
 
 impl SkinCorner {
@@ -38,12 +37,12 @@ impl SkinCorner {
   /// The corner with the last UV its reference names, as the export keeps it, and its weights prepared.
   fn of_corner(corner: MeshCorner<'_>, bone_of_map: &HashMap<&str, u16>) -> XrfResult<Self> {
     let mut texture_coordinate: Vector2d = Vector2d::ZERO;
-    let mut weights: Vec<ExportVertexBone> = Vec::with_capacity(corner.entries.len());
+    let mut weights: Vec<MeshVertexBone> = Vec::with_capacity(corner.entries.len());
 
     for entry in &corner.entries {
       match (entry.vmap.kind, entry.values) {
         (EditableVMapKind::Uv, [u, v, ..]) => texture_coordinate = Vector2d::new(*u, *v),
-        (EditableVMapKind::Weight, [weight, ..]) => weights.push(ExportVertexBone {
+        (EditableVMapKind::Weight, [weight, ..]) => weights.push(MeshVertexBone {
           bone: *bone_of_map.get(entry.vmap.name.as_str()).ok_or_else(|| {
             XrfError::new_invalid_error(format!("Weight map '{}' belongs to no bone", entry.vmap.name))
           })?,
@@ -78,14 +77,14 @@ impl SkinCorner {
 
   /// The corner as the export sets its vertex: its bones sorted by bone, one bone padded with its weightless copy in a
   /// face whose every corner follows one (`is_one_link`).
-  pub(crate) fn into_vertex(self, is_one_link: bool) -> ExportVertex {
-    let mut bones: Vec<ExportVertexBone> = if is_one_link {
+  pub(crate) fn into_vertex(self, is_one_link: bool) -> MeshVertex {
+    let mut bones: Vec<MeshVertexBone> = if is_one_link {
       vec![
-        ExportVertexBone {
+        MeshVertexBone {
           bone: self.weights[0].bone,
           weight: 1.0,
         },
-        ExportVertexBone {
+        MeshVertexBone {
           bone: self.weights[0].bone,
           weight: 0.0,
         },
@@ -96,7 +95,7 @@ impl SkinCorner {
 
     bones.sort_by_key(|bone| bone.bone);
 
-    ExportVertex {
+    MeshVertex {
       position: self.position,
       normal: self.normal,
       // What `SSkelVert` starts with, until the tangent pass.

@@ -1,8 +1,8 @@
 use xrf_editable_object::{EditableMesh, EditableVMapKind};
 use xrf_error::{XrfError, XrfResult};
+use xrf_geometry::MeshVertex;
 use xrf_math::{Vector2d, Vector3d};
 
-use crate::object::compile::geometry::export_vertex::ExportVertex;
 use crate::object::compile::geometry::source::mesh_corner::MeshCorner;
 use crate::object::compile::geometry::source::mesh_corners::MeshCorners;
 
@@ -30,8 +30,8 @@ impl RigidCorner {
 
   /// The vertex the corner is before packing: following no bone, its tangent and binormal what `SOGFVert` starts with
   /// until the tangent pass.
-  pub(crate) fn to_vertex(&self) -> ExportVertex {
-    ExportVertex {
+  pub(crate) fn to_vertex(&self) -> MeshVertex {
+    MeshVertex {
       position: self.position,
       normal: self.normal,
       tangent: Vector3d::ZERO,
