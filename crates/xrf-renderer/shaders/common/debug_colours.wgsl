@@ -1,5 +1,5 @@
 // The colours the debug views read a measure by: a heat ramp for counts and the sampled mip, a band a stop for the
-// luminance, and a tint a sun cascade.
+// luminance, a tint a sun cascade, and a colour an AI map node's count of missing neighbours.
 
 const HEAT_BLUE: vec3<f32> = vec3<f32>(0.1, 0.25, 0.95);
 const HEAT_CYAN: vec3<f32> = vec3<f32>(0.1, 0.75, 0.9);
@@ -80,6 +80,27 @@ fn stop_colour(stops: f32) -> vec3<f32> {
     }
     default: {
       return vec3<f32>(1.0);
+    }
+  }
+}
+
+// How many of its four neighbours an AI map node lacks: green none, then yellow, orange, red and dark red for all four.
+fn missing_links_colour(missing: u32) -> vec3<f32> {
+  switch (missing) {
+    case 0u: {
+      return HEAT_GREEN;
+    }
+    case 1u: {
+      return HEAT_YELLOW;
+    }
+    case 2u: {
+      return vec3<f32>(0.95, 0.55, 0.1);
+    }
+    case 3u: {
+      return HEAT_RED;
+    }
+    default: {
+      return vec3<f32>(0.45, 0.0, 0.05);
     }
   }
 }

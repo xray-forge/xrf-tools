@@ -13,6 +13,7 @@ use crate::contract::report::texture::render_texture_group::RenderTextureGroup;
 use crate::contract::report::texture::render_texture_report::RenderTextureReport;
 use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::contract::viewport::render_viewport_id::RenderViewportId;
+use crate::feature::scene::ai_map::ai_map_level::AiMapLevel;
 use crate::frame::frame_upload::FrameUpload;
 use crate::frame::periodic::periodic_job::PeriodicJob;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
@@ -54,6 +55,8 @@ use crate::thread::queue::render_workers::RenderWorkers;
 pub(crate) struct LevelScene {
   pub source: Arc<dyn RenderLevelSource>,
   pub grass: LevelGrass,
+  /// The level's AI map, which the debug views show over the ground, none before it is posted or for a level without.
+  pub ai_map: Option<AiMapLevel>,
   pub statics: StaticScene,
   /// The static geometry's acceleration structures, while a view of it traces rays on a device that can: tracing is
   /// opted into, and the structures take some 150 MB on Zaton.
@@ -120,6 +123,7 @@ impl LevelScene {
 
     Self {
       grass: LevelGrass::default(),
+      ai_map: None,
       lights: LevelLights::new(device, view_layout),
       particles: LevelParticles::new(device, workers),
       statics,
@@ -510,6 +514,13 @@ impl LevelScene {
             self
               .particles
               .add_definitions(device, &mut *textures, assets, definitions);
+          }
+          RenderLevelPart::AiMap(map) => {
+            self.ai_map = map.and_then(|map| AiMapLevel::new(device, &map));
+
+            if let Some(level) = &self.ai_map {
+              log::info!("Native viewport AI map {} nodes", level.get_node_count());
+            }
           }
         },
         RenderSceneUpdate::AddEmitter {

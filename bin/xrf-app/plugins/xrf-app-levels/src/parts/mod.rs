@@ -13,8 +13,8 @@ mod spawn;
 
 pub(crate) use console::LevelConsolePart;
 pub(crate) use drawn::{
-  LevelDetailsPart, LevelLightsPart, LevelObjectMotionsPart, LevelParticlesPart, PackedLevelDetails, PackedLevelLights,
-  PackedLevelParticles,
+  LevelAiMapPart, LevelDetailsPart, LevelLightsPart, LevelObjectMotionsPart, LevelParticlesPart, PackedLevelDetails,
+  PackedLevelLights, PackedLevelParticles,
 };
 pub(crate) use environment::{LevelEnvironment, LevelEnvironmentPart, LevelWeatherPart};
 pub(crate) use level::{

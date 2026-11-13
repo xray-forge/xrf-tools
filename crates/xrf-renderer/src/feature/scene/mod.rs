@@ -1,3 +1,4 @@
+pub(crate) mod ai_map;
 pub(crate) mod calibration;
 pub(crate) mod drawable;
 pub(crate) mod grass;

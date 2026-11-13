@@ -167,6 +167,8 @@ pub use crate::contract::viewport::render_rect::RenderRect;
 pub use crate::contract::viewport::render_viewport_event::RenderViewportEvent;
 pub use crate::contract::viewport::render_viewport_id::RenderViewportId;
 pub use crate::contract::viewport::render_viewport_layout::RenderViewportLayout;
+pub use crate::host::level::ai_map::render_ai_map_node::RenderAiMapNode;
+pub use crate::host::level::ai_map::render_level_ai_map::RenderLevelAiMap;
 pub use crate::host::level::helpers::render_helper_object::RenderHelperObject;
 pub use crate::host::level::helpers::render_helper_shape::RenderHelperShape;
 pub use crate::host::level::helpers::render_level_helpers::RenderLevelHelpers;

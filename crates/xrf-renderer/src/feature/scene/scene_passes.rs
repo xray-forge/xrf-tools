@@ -1,5 +1,6 @@
 use xrf_error::XrfResult;
 
+use crate::feature::scene::ai_map::ai_map_pass::AiMapPass;
 use crate::feature::scene::calibration::calibration_pass::CalibrationPass;
 use crate::feature::scene::grass::colour::grass_colour_pass::GrassColourPass;
 use crate::feature::scene::grass::grass_pass::GrassPass;
@@ -13,7 +14,7 @@ use crate::pass::build::pipeline_source::PipelineSource;
 use crate::shader::generated_modules::GeneratedModules;
 
 /// The passes drawing the scene into the G-buffer: the static scene's cull, its depth pyramid and its draws, the grass,
-/// its colours and its slots' light view, and the calibration props.
+/// its colours and its slots' light view, the AI map's view, and the calibration props.
 pub(crate) struct ScenePasses {
   pub cull: StaticCullPass,
   pub gbuffer: StaticGBufferPass,
@@ -21,6 +22,7 @@ pub(crate) struct ScenePasses {
   pub grass: GrassPass,
   pub grass_colours: GrassColourPass,
   pub grass_slot_light: GrassSlotLightPass,
+  pub ai_map: AiMapPass,
   pub calibration: CalibrationPass,
 }
 
@@ -42,6 +44,7 @@ impl ScenePasses {
       let grass = threads.spawn(move || GrassPass::new(source, view, texture));
       let grass_colours = threads.spawn(move || GrassColourPass::new(source, texture));
       let grass_slot_light = threads.spawn(move || GrassSlotLightPass::new(source, view));
+      let ai_map = threads.spawn(move || AiMapPass::new(source, view));
       let calibration = threads.spawn(move || CalibrationPass::new(source, view));
 
       Ok(Self {
@@ -51,6 +54,7 @@ impl ScenePasses {
         grass: PassBuild::join(grass)?,
         grass_colours: PassBuild::join(grass_colours)?,
         grass_slot_light: PassBuild::join(grass_slot_light)?,
+        ai_map: PassBuild::join(ai_map)?,
         calibration: PassBuild::join(calibration)?,
       })
     })
@@ -64,6 +68,7 @@ impl ScenePasses {
     self.grass.refresh(source);
     self.grass_colours.refresh(source);
     self.grass_slot_light.refresh(source);
+    self.ai_map.refresh(source);
     self.calibration.refresh(source);
   }
 
@@ -75,6 +80,8 @@ impl ScenePasses {
   /// Returns an error when passes sharing a module declare one of its bindings otherwise.
   #[cfg(test)]
   pub(crate) fn declare_shaders(modules: &mut GeneratedModules) -> XrfResult<()> {
+    use crate::feature::scene::ai_map::ai_map_parameters::AiMapParameters;
+    use crate::feature::scene::ai_map::ai_map_uniform::AiMapUniform;
     use crate::feature::scene::calibration::calibration_parameters::CalibrationParameters;
     use crate::feature::scene::calibration::calibration_uniform::CalibrationUniform;
     use crate::feature::scene::grass::build::grass_build_parameters::GrassBuildParameters;
@@ -105,6 +112,7 @@ impl ScenePasses {
       .declare::<GrassWindUniform>()
       .declare::<TraceGrassUniform>()
       .declare::<GrassSlotLightUniform>()
+      .declare::<AiMapUniform>()
       .declare::<CalibrationUniform>()
       .declare_held::<StaticCullParameters>()
       .declare_held::<StaticDrawParameters>()
@@ -119,6 +127,7 @@ impl ScenePasses {
       .add::<GrassCardShadowParameters>("generated/grass/card_shadow")?
       .add::<GrassColourParameters>("generated/grass/colours")?
       .add::<GrassSlotLightParameters>("generated/grass/slot_light")?
+      .add::<AiMapParameters>("generated/ai_map/node_field")?
       .add::<CalibrationParameters>("generated/frame/calibration")?
       .add::<PyramidDepthParameters>("generated/frame/pyramid")?
       .add::<PyramidLevelParameters>("generated/frame/pyramid")?

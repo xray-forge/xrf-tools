@@ -73,6 +73,15 @@ pub enum RenderDebugView {
   /// The light the detail slots store from the level's lamps, `c_r`, `c_g` and `c_b`, as one colour, shown as
   /// `DetailSun` is.
   DetailLight,
+  /// The cover each AI map node stores from standing height, over the ground its cell covers: the mean of its four
+  /// directions from black, covered, to white, open, its sixteen steps as greys, the cells' edges darkened; a dim grey of
+  /// the albedo elsewhere, off the map or above a node.
+  AiHighCover,
+  /// The cover each AI map node stores from crouching height, shown as `AiHighCover` is.
+  AiLowCover,
+  /// How many neighbours each AI map node lacks, shown over its cell as `AiHighCover` is: green none, then yellow,
+  /// orange, red and dark red for one to four.
+  AiLinks,
   /// FSR's masks at each pixel's drawn texel: how reactive it is (moving apart from what it lands on, or a plant the
   /// wind moved) in red, how disoccluded in green, how far its shading changed in blue.
   FsrMasks,

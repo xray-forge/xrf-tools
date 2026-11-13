@@ -2,9 +2,9 @@ use xrf_app_core::session::{SessionId, SessionPart};
 use xrf_renderer::{LevelPart, LevelParts};
 
 use crate::parts::{
-  LevelCollisionPart, LevelDetailsPart, LevelEnvironmentPart, LevelGeometryPart, LevelGraphPart, LevelHemiPart,
-  LevelLightsPart, LevelObjectMotionsPart, LevelParticlesPart, LevelPlacementsPart, LevelSectionsPart, LevelSpawnPart,
-  LevelSpawnVisualsPart, LevelSurfacesPart, LevelWeatherPart,
+  LevelAiMapPart, LevelCollisionPart, LevelDetailsPart, LevelEnvironmentPart, LevelGeometryPart, LevelGraphPart,
+  LevelHemiPart, LevelLightsPart, LevelObjectMotionsPart, LevelParticlesPart, LevelPlacementsPart, LevelSectionsPart,
+  LevelSpawnPart, LevelSpawnVisualsPart, LevelSurfacesPart, LevelWeatherPart,
 };
 
 /// How a level's session parts feed the scene the renderer draws it as: the scene each session shares, the parts whose
@@ -66,6 +66,7 @@ impl LevelRenderParts {
       LevelPart::Weather => &[LevelEnvironmentPart::NAME, LevelWeatherPart::NAME],
       LevelPart::Motions => &[LevelObjectMotionsPart::NAME],
       LevelPart::Grass => &[LevelDetailsPart::NAME],
+      LevelPart::AiMap => &[LevelAiMapPart::NAME],
       LevelPart::Helpers => &[
         LevelSpawnPart::NAME,
         LevelGraphPart::NAME,

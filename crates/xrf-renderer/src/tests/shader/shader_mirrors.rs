@@ -15,6 +15,7 @@ use crate::feature::image::present::display::display_mode::DisplayMode;
 use crate::feature::image::present::present_uniform::PresentUniform;
 use crate::feature::image::resolve::fsr::fsr_pass::FsrPass;
 use crate::feature::lighting::lights::lights_pass::LightsPass;
+use crate::feature::scene::ai_map::ai_map_field::AiMapField;
 use crate::feature::scene::calibration::calibration_uniform::CalibrationUniform;
 use crate::feature::scene::grass::grass_pass::GrassPass;
 use crate::feature::scene::grass::slots::grass_slot_value::GrassSlotValue;
@@ -291,6 +292,9 @@ fn the_present_numbers_debug_views_as_rust_does() {
     ("VIEW_DETAIL_SUN", RenderDebugView::DetailSun),
     ("VIEW_DETAIL_HEMI", RenderDebugView::DetailHemi),
     ("VIEW_DETAIL_LIGHT", RenderDebugView::DetailLight),
+    ("VIEW_AI_HIGH_COVER", RenderDebugView::AiHighCover),
+    ("VIEW_AI_LOW_COVER", RenderDebugView::AiLowCover),
+    ("VIEW_AI_LINKS", RenderDebugView::AiLinks),
   ] {
     assert_eq!(
       get_constant(&library, "frame/present", name),
@@ -324,6 +328,24 @@ fn the_slot_light_numbers_its_values_as_rust_does() {
     ("SLOT_VALUE_LIGHT", GrassSlotValue::Light),
   ] {
     assert_eq!(get_constant(&library, "grass/slot_light", name), value as u32, "{name}");
+  }
+}
+
+/// The AI map's view tells the field it shows as Rust numbers it.
+#[test]
+fn the_ai_map_view_numbers_its_fields_as_rust_does() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+
+  for (name, field) in [
+    ("FIELD_HIGH_COVER", AiMapField::HighCover),
+    ("FIELD_LOW_COVER", AiMapField::LowCover),
+    ("FIELD_LINKS", AiMapField::Links),
+  ] {
+    assert_eq!(
+      get_constant(&library, "ai_map/node_field", name),
+      field as u32,
+      "{name}"
+    );
   }
 }
 

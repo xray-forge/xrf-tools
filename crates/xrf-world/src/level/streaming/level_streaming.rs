@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use xrf_renderer::{
-  LevelPart, LevelParts, RenderLevelDetails, RenderLevelHelpers, RenderLevelPart, RenderLoadFailure,
+  LevelPart, LevelParts, RenderLevelAiMap, RenderLevelDetails, RenderLevelHelpers, RenderLevelPart, RenderLoadFailure,
   RenderModelFailure, RenderModelSkeleton, RenderSceneUpdate, RenderSectorFailure, RenderStreamingProgress,
   RenderWorkers, StaticModelPlace, StaticModelProxy, StaticObjectProxy, StaticSectorProxy,
 };
@@ -31,7 +31,7 @@ const SECTORS_PER_FRAME: usize = 4;
 /// Spawned models posted at most in one frame.
 const MODELS_PER_FRAME: usize = 16;
 
-/// What streams a level into its scene: the workers reading its sectors, spawned models, lights and grass, how much of
+/// What streams a level into its scene: the workers reading its sectors, spawned models, lights, grass and AI map, how much of
 /// what they read is posted a frame, the handles its posts name, which spawn groups stand, and what came in and what
 /// could not.
 pub(crate) struct LevelStreaming {
@@ -41,6 +41,7 @@ pub(crate) struct LevelStreaming {
   lights: LoaderOnce<LightsDescription>,
   grass: LoaderOnce<Option<RenderLevelDetails>>,
   helpers: LoaderOnce<RenderLevelHelpers>,
+  ai_map: LoaderOnce<Option<RenderLevelAiMap>>,
   /// The campfires and the object motions the lights follow, by the campfires' ids and the motions' names.
   light_campfires: Vec<u16>,
   light_motions: Vec<String>,
@@ -73,6 +74,7 @@ impl LevelStreaming {
       lights: Self::read_lights(&source, workers),
       grass: Self::read_grass(&source, workers),
       helpers: Self::read_helpers(&source, workers),
+      ai_map: Self::read_ai_map(&source, workers),
       light_campfires: Vec::new(),
       light_motions: Vec::new(),
       sector_handles: ProxyAllocator::new(),
@@ -127,6 +129,18 @@ impl LevelStreaming {
     })
   }
 
+  /// Reads the level's AI map on the workers.
+  fn read_ai_map(source: &Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> LoaderOnce<Option<RenderLevelAiMap>> {
+    let source: Arc<dyn WorldLevelSource> = Arc::clone(source);
+
+    LoaderOnce::spawn(workers, "ai map", move || {
+      source
+        .read_ai_map()
+        .inspect_err(|error| log::warn!("The level's AI map cannot be shown: {error}"))
+        .ok()
+    })
+  }
+
   pub(crate) fn get_source(&self) -> &Arc<dyn WorldLevelSource> {
     &self.source
   }
@@ -167,6 +181,10 @@ impl LevelStreaming {
     if reload.contains(LevelPart::Grass) {
       self.grass = Self::read_grass(&self.source, workers);
     }
+
+    if reload.contains(LevelPart::AiMap) {
+      self.ai_map = Self::read_ai_map(&self.source, workers);
+    }
   }
 
   /// Records the sectors and the spawned models the scene could not take in of the posts before, forgetting them.
@@ -201,6 +219,10 @@ impl LevelStreaming {
 
     if let Some(grass) = self.grass.take() {
       updates.push(RenderSceneUpdate::SetPart(RenderLevelPart::Grass(grass)));
+    }
+
+    if let Some(ai_map) = self.ai_map.take() {
+      updates.push(RenderSceneUpdate::SetPart(RenderLevelPart::AiMap(ai_map)));
     }
 
     if let Some(helpers) = self.helpers.take() {

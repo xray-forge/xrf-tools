@@ -326,6 +326,12 @@ impl SceneView {
       scene.grass.get_level(),
       handles.light,
     );
+    self.stages.scene.add_ai_map(
+      GraphDeclaration::new(graph, bindings, runtime),
+      record,
+      scene.ai_map.as_ref(),
+      handles.light,
+    );
     let surroundings: &SurroundingsCube = &self.features.surroundings;
     let sky: Option<SkyParameters<'_>> = self.features.sky.add_passes(
       GraphDeclaration::new(graph, bindings, runtime),
