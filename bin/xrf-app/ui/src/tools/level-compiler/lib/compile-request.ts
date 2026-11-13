@@ -1,4 +1,10 @@
-import { ELevelCompileStep, LevelCompileRequest, LevelCompileStep } from "@xrf/ipc/types/xrf-level-compiler";
+import {
+  DetailGpu,
+  DetailLightBackend,
+  ELevelCompileStep,
+  LevelCompileRequest,
+  LevelCompileStep,
+} from "@xrf/ipc/types/xrf-level-compiler";
 import { Nullable } from "@xrf/types";
 
 /** What the form names for the compile after the build. */
@@ -10,6 +16,10 @@ export interface ICompileChoice {
   gamedata: Nullable<string>;
   /** The textures root, with a `.thm` for every texture `build.prj` names. */
   textures: Nullable<string>;
+  /** What traces the details' shadow rays. */
+  detailBackend: DetailLightBackend;
+  /** The GPU they trace on, the renderer's choice; null for the automatic one. */
+  detailGpu: Nullable<DetailGpu>;
 }
 
 /** Every step, in the order the compile runs them and the form lists them. */
@@ -73,8 +83,8 @@ export function toCompileRequest(choice: ICompileChoice): Nullable<LevelCompileR
   }
 
   return {
-    // The backend runs the compile on the build's destination, and forces it as the build is forced, whatever is
-    // named here.
+    // The backend runs the compile on the build's destination, forces it as the build is forced, and gives it the DXC
+    // the app bundles, whatever is named here.
     level: "",
     steps: COMPILE_STEPS.filter((step: LevelCompileStep) => choice.steps.has(step)),
     sdk: isSdkNeeded(choice.steps) ? choice.sdk : null,
@@ -82,5 +92,8 @@ export function toCompileRequest(choice: ICompileChoice): Nullable<LevelCompileR
     textures: [choice.textures],
     work: null,
     isForced: false,
+    detailBackend: choice.detailBackend,
+    dxc: null,
+    detailGpu: choice.detailGpu,
   };
 }

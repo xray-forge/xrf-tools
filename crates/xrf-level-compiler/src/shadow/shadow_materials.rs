@@ -74,6 +74,14 @@ impl ShadowMaterials {
   /// What `build.prj` leaves in a material with no compiler shader.
   const NO_COMPILER_SHADER: u16 = u16::MAX;
 
+  /// A face's part as [`Self::get_face_codes`] numbers it.
+  #[cfg(feature = "gpu")]
+  pub(crate) const FACE_PASSES: u32 = 0;
+  #[cfg(feature = "gpu")]
+  pub(crate) const FACE_OPAQUE: u32 = 1;
+  #[cfg(feature = "gpu")]
+  pub(crate) const FACE_ALPHA: u32 = 2;
+
   /// Reads a level's shadow materials: every texture's `.thm`, and the image of each alpha texture a face casting
   /// shadows names, decoded as the compilers' image library decodes it.
   ///
@@ -206,6 +214,28 @@ impl ShadowMaterials {
   /// The textures alpha faces dim light through, in the order faces first name them.
   pub fn get_textures(&self) -> &[ShadowTexture] {
     &self.textures
+  }
+
+  /// Each ray model face's part as a number, for a shader: [`Self::FACE_PASSES`], [`Self::FACE_OPAQUE`], or
+  /// [`Self::FACE_ALPHA`] plus the face's index among [`Self::get_alpha_faces`].
+  #[cfg(feature = "gpu")]
+  pub(crate) fn get_face_codes(&self) -> Vec<u32> {
+    self
+      .faces
+      .iter()
+      .map(|face| match face {
+        ShadowFace::Passes => Self::FACE_PASSES,
+        ShadowFace::Opaque => Self::FACE_OPAQUE,
+        ShadowFace::Alpha(index) => Self::FACE_ALPHA + index,
+      })
+      .collect()
+  }
+
+  /// Each face dimming through alpha: its texture's index among [`Self::get_textures`], and its corners' texture
+  /// coordinates.
+  #[cfg(feature = "gpu")]
+  pub(crate) fn get_alpha_faces(&self) -> impl Iterator<Item = (u32, [Vector2d; 3])> {
+    self.alpha_faces.iter().map(|face| (face.texture, face.coordinates))
   }
 
   /// Each texture's size where the compilers load its image for its alpha, by its `.thm`: an alpha channel, and

@@ -87,8 +87,9 @@ export const levelsCommands = {
   /**
    * Build a Level Editor scene into a level directory, as `level build` does, then compile it where `compile` names
    * the steps, as `level compile` does, one job reporting both. A cancel stops the build between its steps and kills a
-   * running compiler. The compile works on the directory the build wrote, whatever level `compile` names, and
-   * overwrites what it writes as the build does, where the build is forced.
+   * running compiler. The compile works on the directory the build wrote, whatever level `compile` names, overwrites
+   * what it writes as the build does where the build is forced, and lights the details on D3D12 with the DXC the app
+   * bundles where it traces on the GPU.
    */
   buildLevel: (
     request: LevelBuildRequest,

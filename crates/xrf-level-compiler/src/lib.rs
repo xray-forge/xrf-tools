@@ -13,6 +13,8 @@ mod shadow;
 #[cfg(test)]
 mod tests;
 
+pub use crate::detail::detail_gpu::DetailGpu;
+pub use crate::detail::detail_light_backend::DetailLightBackend;
 pub use crate::detail::detail_light_request::DetailLightRequest;
 pub use crate::detail::detail_lighter::DetailLighter;
 pub use crate::detail::detail_lighting::DetailLighting;

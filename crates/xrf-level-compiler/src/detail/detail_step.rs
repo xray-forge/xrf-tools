@@ -11,8 +11,8 @@ use xrf_utils::{StagedFile, format_path};
 use crate::detail::detail_light_request::DetailLightRequest;
 use crate::detail::detail_lighter::DetailLighter;
 use crate::detail::detail_lighting::DetailLighting;
-use crate::detail::detail_slot_counts::DetailSlotCounts;
 use crate::level_compile_request::LevelCompileRequest;
+use crate::level_compile_step_run::LevelCompileStepRun;
 use crate::shadow::shadow_materials::ShadowMaterials;
 use crate::shadow::shadow_materials_request::ShadowMaterialsRequest;
 
@@ -28,13 +28,15 @@ impl DetailStep {
   /// The step's one output, which it refuses to overwrite unless the request is forced.
   pub(crate) const OUTPUT: &'static str = LevelDetailsFile::FILE_NAME;
 
-  /// Lights the request's level's details and writes them, answering how the slots were met.
+  /// Lights the request's level's details on its backend and writes them, answering how the slots were met and what
+  /// traced.
   ///
   /// # Errors
   ///
   /// Returns an error when an input is unreadable, the shadow materials cannot be loaded (`ShadowMaterials::load`),
-  /// the job is cancelled, or `level.details` is not written; a file left as it was in each case.
-  pub(crate) fn run(request: &LevelCompileRequest, job: &JobHandle) -> XrfResult<DetailSlotCounts> {
+  /// the backend cannot trace, the job is cancelled, or `level.details` is not written; a file left as it was in each
+  /// case.
+  pub(crate) fn run(request: &LevelCompileRequest, job: &JobHandle) -> XrfResult<LevelCompileStepRun> {
     let level: &Path = &request.level;
     let details: LevelDetailsFile = LevelDetailsFile::read_from_path::<XRayByteOrder, _>(&level.join(Self::SOURCE))?;
     let cform: BuildCformFile =
@@ -57,6 +59,9 @@ impl DetailStep {
         tracer: &tracer,
         shadows: &shadows,
         lights: &lights,
+        backend: request.detail_backend,
+        dxc: request.dxc.as_deref(),
+        gpu: request.detail_gpu,
       },
       job,
     )?;
@@ -71,6 +76,9 @@ impl DetailStep {
       )
     })?;
 
-    Ok(lighting.counts)
+    Ok(LevelCompileStepRun::DetailLighter {
+      slots: lighting.counts,
+      gpu: lighting.gpu,
+    })
   }
 }

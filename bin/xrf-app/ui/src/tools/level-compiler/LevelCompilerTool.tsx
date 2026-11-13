@@ -1,15 +1,23 @@
 import { useInjection } from "@wirestate/react";
-import { ELevelCompileStep, LevelCompileStep } from "@xrf/ipc/types/xrf-level-compiler";
+import {
+  DetailLightBackend,
+  EDetailLightBackend,
+  ELevelCompileStep,
+  LevelCompileStep,
+} from "@xrf/ipc/types/xrf-level-compiler";
 import { ELevelBuildImpostorLimit } from "@xrf/ipc/types/xrf-rawdata";
+import { RenderGpu } from "@xrf/ipc/types/xrf-renderer";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
+import { ChoiceFormRow, IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { StringListFormRow } from "@xrf/ui/form/string-list-row";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
 import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { LEVEL_SCENE_FILE_FILTERS, XR_LIBRARY_FILE_FILTERS } from "@/core/path/file-filters";
+import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { EToolId } from "@/core/routing/tool";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import {
@@ -29,7 +37,8 @@ const STEP_LABELS: Record<LevelCompileStep, { label: string; description: string
   },
   [ELevelCompileStep.DETAILS]: {
     label: "Light details",
-    description: "level.details lit from build.details, build.cform and build.lights, as xrDO_Light lights it",
+    description:
+      "level.details lit from build.details, build.cform and build.lights, as xrDO_Light lights it, on the GPU or the CPU",
   },
   [ELevelCompileStep.AI]: {
     label: "Compile AI map",
@@ -37,10 +46,17 @@ const STEP_LABELS: Record<LevelCompileStep, { label: string; description: string
   },
 };
 
+const DETAIL_BACKENDS: ReadonlyArray<IChoiceFormRowOption<DetailLightBackend>> = [
+  { label: "Auto", value: EDetailLightBackend.AUTO },
+  { label: "GPU", value: EDetailLightBackend.GPU },
+  { label: "CPU", value: EDetailLightBackend.CPU },
+];
+
 export function LevelCompilerTool(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
   const compilerService: LevelCompilerService = useInjection(LevelCompilerService);
+  const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
 
   const isRunning: boolean = compilerService.operation.isRunning;
 
@@ -49,6 +65,7 @@ export function LevelCompilerTool(): ReactElement {
   const [isSdkImpostorAtlas, setIsSdkImpostorAtlas] = useState<boolean>(false);
   const [isForced, setIsForced] = useState<boolean>(false);
   const [steps, setSteps] = useState<ReadonlySet<LevelCompileStep>>(new Set());
+  const [detailBackend, setDetailBackend] = useState<DetailLightBackend>(EDetailLightBackend.AUTO);
 
   const source: IPathField = usePathField({
     tool: EToolId.LEVEL_COMPILER,
@@ -107,9 +124,18 @@ export function LevelCompilerTool(): ReactElement {
   const levelPath: Nullable<string> = destination.value;
   // The build project needs the objects its placements name; the game files alone do not.
   const isMissingObjects: boolean = gameMaterials.value !== null && objects.length === 0;
+  // The details trace on the GPU the renderer's settings choose, the automatic one where they choose none.
+  const detailGpu: Nullable<RenderGpu> = renderSettingsService.renderGpu;
   const compile: ICompileChoice = useMemo(
-    () => ({ steps, sdk: sdk.value, gamedata: gamedata.value, textures: textures.value }),
-    [gamedata.value, sdk.value, steps, textures.value]
+    () => ({
+      steps,
+      sdk: sdk.value,
+      gamedata: gamedata.value,
+      textures: textures.value,
+      detailBackend,
+      detailGpu: detailGpu === null ? null : { vendor: detailGpu.vendor, device: detailGpu.device },
+    }),
+    [detailBackend, detailGpu, gamedata.value, sdk.value, steps, textures.value]
   );
   const compileProblem: Nullable<string> = getCompileProblem(compile);
 
@@ -272,6 +298,18 @@ export function LevelCompilerTool(): ReactElement {
           onChange={(isChecked: boolean) => onStepChanged(step, isChecked)}
         />
       ))}
+
+      <ChoiceFormRow
+        label={"Details traced on"}
+        description={
+          "Auto: the GPU where it traces rays, else the CPU. The GPU is the one chosen in the renderer settings, " +
+          "several times faster; the CPU is the reference, every slot within one step of the GPU's"
+        }
+        options={DETAIL_BACKENDS}
+        value={detailBackend}
+        isDisabled={isRunning || !steps.has(ELevelCompileStep.DETAILS)}
+        onChange={setDetailBackend}
+      />
 
       <PathFormRow
         isDisabled={isRunning}

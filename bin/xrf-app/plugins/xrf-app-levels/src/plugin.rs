@@ -7,6 +7,7 @@ use xrf_app_render::WorldState;
 use xrf_audio::AudioServer;
 
 use crate::level::{OpenedLevel, SelectedLevels};
+use crate::rawdata::level_compiler_libraries::LevelCompilerLibraries;
 use crate::render::{LevelRenderParts, LevelSceneFollower, ShownLevels};
 use crate::viewer::recording::LevelRecordings;
 
@@ -51,6 +52,9 @@ impl LevelsPlugin {
         application.manage(levels);
         application.manage(shown);
         application.manage(LevelRecordings::default());
+        application.manage(LevelCompilerLibraries::locate(
+          application.path().resource_dir().ok().as_deref(),
+        ));
 
         Ok(())
       })

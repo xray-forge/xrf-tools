@@ -4,6 +4,7 @@
 extern crate self as xrf_renderer_core;
 
 mod alloc;
+mod device;
 mod graph;
 mod param;
 mod pipeline;
@@ -17,6 +18,7 @@ pub use wgpu;
 pub use xrf_renderer_derive::{PassParameters, ShaderPermutation, ShaderStruct};
 
 pub use crate::alloc::{Span, SpanAllocator, SpanBuffer, SpanLane, SpanWrites, UploadRing, UploadSlice};
+pub use crate::device::{RayQueryAsk, RayQueryDevice, RayQueryGpu};
 pub use crate::graph::{
   CompiledGraph, ComputeContext, ComputePassBuilder, EncodeGroup, EncoderContext, EncoderPassBuilder, ExecutedGraph,
   ExecutedGroup, FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphBufferDescriptor,

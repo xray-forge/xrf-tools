@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { ELevelCompileStep, LevelCompileStep } from "@xrf/ipc/types/xrf-level-compiler";
+import { EDetailLightBackend, ELevelCompileStep, LevelCompileStep } from "@xrf/ipc/types/xrf-level-compiler";
 
 import { getCompileProblem, ICompileChoice, toCompileRequest } from "./compile-request";
 
@@ -9,6 +9,8 @@ function choice(steps: Array<LevelCompileStep>, patch: Partial<ICompileChoice> =
     sdk: "C:\\SDK\\editors",
     gamedata: "C:\\Games\\CoP\\gamedata",
     textures: "C:\\Games\\CoP\\gamedata\\textures",
+    detailBackend: EDetailLightBackend.AUTO,
+    detailGpu: { vendor: 0x10de, device: 0x2c02 },
     ...patch,
   };
 }
@@ -25,6 +27,13 @@ describe("toCompileRequest", () => {
     expect(request?.steps).toEqual([ELevelCompileStep.GEOMETRY, ELevelCompileStep.AI]);
     expect(request?.sdk).toBe("C:\\SDK\\editors");
     expect(request?.textures).toEqual(["C:\\Games\\CoP\\gamedata\\textures"]);
+  });
+
+  it("asks for the details traced as chosen, on the renderer's GPU", () => {
+    const request = toCompileRequest(choice([ELevelCompileStep.DETAILS], { detailBackend: EDetailLightBackend.CPU }));
+
+    expect(request?.detailBackend).toBe(EDetailLightBackend.CPU);
+    expect(request?.detailGpu).toEqual({ vendor: 0x10de, device: 0x2c02 });
   });
 
   it("lights the details without the SDK, which only the geometry and the AI map need", () => {

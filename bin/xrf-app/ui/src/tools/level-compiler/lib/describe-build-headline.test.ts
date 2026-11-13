@@ -13,7 +13,7 @@ const COMPILE: LevelCompileReport = {
     {
       step: "details",
       duration: 500,
-      run: { kind: "detailLighter", slots: { unplanted: 0, emptied: 0, untouched: 0, lit: 1 } },
+      run: { kind: "detailLighter", slots: { unplanted: 0, emptied: 0, untouched: 0, lit: 1 }, gpu: null },
     },
   ],
 };

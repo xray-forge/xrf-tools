@@ -9,6 +9,10 @@ use crate::detail::detail_slot_counts::DetailSlotCounts;
 pub enum LevelCompileStepRun {
   /// One of the SDK's compilers: its path, and its log where it wrote one.
   Program { program: String, log: Option<String> },
-  /// The detail lighter ([`crate::DetailLighter`]), and how it met the slots.
-  DetailLighter { slots: DetailSlotCounts },
+  /// The detail lighter ([`crate::DetailLighter`]), how it met the slots, and the GPU that traced its shadow rays,
+  /// none where the CPU traced them.
+  DetailLighter {
+    slots: DetailSlotCounts,
+    gpu: Option<String>,
+  },
 }
