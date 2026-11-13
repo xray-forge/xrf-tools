@@ -2,9 +2,10 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use crate::detail::detail_gpu::DetailGpu;
-use crate::detail::detail_light_backend::DetailLightBackend;
+use crate::ai::ai_map_covers::AiMapCovers;
 use crate::level_compile_step::LevelCompileStep;
+use crate::ray::ray_backend::RayBackend;
+use crate::ray::ray_gpu::RayGpu;
 
 /// A level's compile, as a front-end asks for it: the level's directory the build wrote into, the steps to run, and
 /// what they read.
@@ -29,10 +30,12 @@ pub struct LevelCompileRequest {
   pub work: Option<PathBuf>,
   /// Whether a step of ours overwrites a file it writes where the level's directory holds it, rather than refusing.
   pub is_forced: bool,
-  /// What traces the details step's shadow rays.
-  pub detail_backend: DetailLightBackend,
-  /// DXC's `dxcompiler.dll`, with which the details step's GPU backend traces on D3D12; Vulkan alone without it.
+  /// What traces the rays: the details step's shadow rays and the AI step's corner rays.
+  pub backend: RayBackend,
+  /// DXC's `dxcompiler.dll`, with which the GPU backend traces on D3D12; Vulkan alone without it.
   pub dxc: Option<PathBuf>,
-  /// The GPU the details step's GPU backend traces on; the high-performance one without it.
-  pub detail_gpu: Option<DetailGpu>,
+  /// The GPU the GPU backend traces on; the high-performance one without it.
+  pub gpu: Option<RayGpu>,
+  /// The covers the AI step computes: full ones traced against `build.cform`, or none, needing no `build.cform`.
+  pub ai_covers: AiMapCovers,
 }

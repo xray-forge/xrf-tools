@@ -8,9 +8,9 @@ use crate::level_compile_step::LevelCompileStep;
 /// The SDK 0.7 compiler that runs a step, under the SDK's `editors\bin`, the prefix of the log it writes under its
 /// working directory's `logs`, and the switches it runs with after `-f <level>`.
 ///
-/// Each compiler ends a run on a "Congratulation!" message box and waits on it. xrLC skips it under `-silent`; xrAI has no such switch, so its box ends the run (`LevelSdkDialog`). xrAI deletes `build.aimap` once
-/// read unless given `-keep_temp_files` (`xrAI/compiler_load.cpp:318`), which keeps the level a step can run on again;
-/// xrLC takes the same switch to write debug files, so it runs without.
+/// Each compiler ends a run on a "Congratulation!" message box and waits on it. xrLC skips it under `-silent`; a
+/// compiler with no such switch has its box end the run (`LevelSdkDialog`). xrLC takes `-keep_temp_files` to write
+/// debug files, so it runs without.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct LevelSdkProgram {
   pub(crate) path: PathBuf,
@@ -31,13 +31,7 @@ impl LevelSdkProgram {
   pub(crate) fn of(sdk: &Path, step: LevelCompileStep) -> XrfResult<Option<Self>> {
     let (directory, name, log_prefix, switches): (&[&str], &str, &str, &'static [&'static str]) = match step {
       LevelCompileStep::Geometry => (&["bin", "compilers"], "xrLC.exe", "xrlc_", &[Self::SILENT]),
-      LevelCompileStep::Ai => (
-        &["bin", "designer", "release"],
-        "xrAI.exe",
-        "xrai_",
-        &["-keep_temp_files"],
-      ),
-      LevelCompileStep::Details => return Ok(None),
+      LevelCompileStep::Details | LevelCompileStep::Ai => return Ok(None),
     };
     let path: PathBuf = directory
       .iter()
@@ -58,7 +52,7 @@ impl LevelSdkProgram {
     }))
   }
 
-  /// The arguments the program takes for the level named `level`: `-f` and the level, which all three compilers take,
+  /// The arguments the program takes for the level named `level`: `-f` and the level, which every SDK compiler takes,
   /// then its switches.
   pub(crate) fn get_arguments(&self, level: &str) -> Vec<String> {
     [String::from("-f"), level.to_owned()]

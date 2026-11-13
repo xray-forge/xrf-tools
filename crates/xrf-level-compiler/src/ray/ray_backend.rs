@@ -1,11 +1,12 @@
 use serde::{Deserialize, Serialize};
 
-/// What traces the detail lighter's shadow rays. The CPU is the reference the SDK's runs are matched against; the GPU
-/// traces with hardware ray queries, each slot within one step of the CPU's light, several times faster.
+/// What traces the compile's rays through the ray model: the detail lighter's shadow rays and the AI map's corner rays.
+/// The CPU is the reference the SDK's runs are matched against; the GPU traces with hardware ray queries, each slot and
+/// each cover within one step of the CPU's, several times faster.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub enum DetailLightBackend {
+pub enum RayBackend {
   Cpu,
   /// Refused where the build has no GPU backend or no GPU traces rays.
   Gpu,
@@ -14,7 +15,7 @@ pub enum DetailLightBackend {
   Auto,
 }
 
-impl DetailLightBackend {
+impl RayBackend {
   /// Every backend, in the order a command line lists them.
   pub const ALL: [Self; 3] = [Self::Cpu, Self::Gpu, Self::Auto];
 

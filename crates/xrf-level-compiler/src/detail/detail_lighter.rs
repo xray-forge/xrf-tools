@@ -3,7 +3,6 @@ use xrf_error::XrfResult;
 use xrf_job::{JobHandle, JobScope};
 use xrf_level::{LevelDetailsFile, LevelDetailsSlot, LevelLightRole};
 
-use crate::detail::detail_light_backend::DetailLightBackend;
 use crate::detail::detail_light_request::DetailLightRequest;
 use crate::detail::detail_light_source::DetailLightSource;
 use crate::detail::detail_lighting::DetailLighting;
@@ -11,6 +10,7 @@ use crate::detail::detail_slot_counts::DetailSlotCounts;
 use crate::detail::detail_slot_fate::DetailSlotFate;
 use crate::detail::detail_slot_lighter::DetailSlotLighter;
 use crate::detail::detail_slot_stage::DetailSlotStage;
+use crate::ray::ray_backend::RayBackend;
 
 /// Lights a level's details as xrDO_Light does: each slot's bare corners cleared, then each planted slot touching the
 /// ray model lit from 225 points across it by every light that reaches it, the light scaled by what each shadow ray
@@ -47,8 +47,8 @@ impl DetailLighter {
     };
     let scope: JobScope = job.enter(Self::PROGRESS_SLOTS, Some(details.slots.len() as u64));
     let (fates, gpu): (Vec<DetailSlotFate>, Option<String>) = match request.backend {
-      DetailLightBackend::Cpu => (Self::light_on_cpu(&lighter, details, job, &scope)?, None),
-      DetailLightBackend::Gpu | DetailLightBackend::Auto => Self::light_on_gpu(request, &lighter, job, &scope)?,
+      RayBackend::Cpu => (Self::light_on_cpu(&lighter, details, job, &scope)?, None),
+      RayBackend::Gpu | RayBackend::Auto => Self::light_on_gpu(request, &lighter, job, &scope)?,
     };
     let mut counts: DetailSlotCounts = DetailSlotCounts::default();
     let slots: Vec<[u32; LevelDetailsSlot::WORDS]> = details
@@ -125,7 +125,7 @@ impl DetailLighter {
       Ok(gpu) => gpu
         .light(request, lighter, job, scope)
         .map(|(fates, name)| (fates, Some(name))),
-      Err(error) if request.backend == DetailLightBackend::Auto => {
+      Err(error) if request.backend == RayBackend::Auto => {
         Self::light_on_cpu_instead(&error, lighter, request.details, job, scope)
       }
       Err(error) => Err(error),
@@ -144,7 +144,7 @@ impl DetailLighter {
       "This build lights details on the CPU alone; its GPU backend is the `gpu` feature",
     );
 
-    if request.backend == DetailLightBackend::Auto {
+    if request.backend == RayBackend::Auto {
       Self::light_on_cpu_instead(&error, lighter, request.details, job, scope)
     } else {
       Err(error)

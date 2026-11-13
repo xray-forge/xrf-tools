@@ -1,6 +1,7 @@
 use serde::Serialize;
 
 /// What a level's AI map held, beside what its graph check found.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelAiGraphCensus {

@@ -14,7 +14,7 @@ use xrf_level::{
 use xrf_math::Vector3d;
 
 use crate::shadow::shadow_materials::ShadowMaterials;
-use crate::{DetailLightBackend, DetailLightRequest, DetailLighter, DetailLighting, DetailSlotCounts};
+use crate::{DetailLightRequest, DetailLighter, DetailLighting, DetailSlotCounts, RayBackend};
 
 /// A row of five slots, 2 m each from the origin along x, each 1 m tall from its base at 0 m:
 ///
@@ -136,11 +136,11 @@ pub(super) fn lights() -> LevelLightsFile {
 
 /// The grid lit over the ground and roof, every face opaque, on the CPU.
 pub(super) fn lighting() -> XrfResult<DetailLighting> {
-  lighting_on(DetailLightBackend::Cpu, None)
+  lighting_on(RayBackend::Cpu, None)
 }
 
 /// The grid lit over the ground and roof, every face opaque, its shadow rays traced on `backend`, with `dxc` for D3D12.
-pub(super) fn lighting_on(backend: DetailLightBackend, dxc: Option<&Path>) -> XrfResult<DetailLighting> {
+pub(super) fn lighting_on(backend: RayBackend, dxc: Option<&Path>) -> XrfResult<DetailLighting> {
   let details: LevelDetailsFile = details();
   let tracer: BvhTracer = tracer();
 

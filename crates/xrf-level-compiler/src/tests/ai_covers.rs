@@ -15,7 +15,7 @@ use crate::ai::cover::ai_cover_tracing::AiCoverTracing;
 use crate::ai::cover::ai_cover_tree::AiCoverTree;
 use crate::ai::cover::ai_cover_walk::AiCoverWalk;
 use crate::shadow::shadow_materials::ShadowMaterials;
-use crate::{AiRayModel, DetailLightBackend};
+use crate::{AiRayModel, RayBackend};
 
 const SIDE: u32 = 5;
 
@@ -65,11 +65,7 @@ pub(super) fn wall() -> BvhTracer {
 
 /// Each node of the grid's covers once computed against `tracer`, every face blocking, its corner rays traced on
 /// `backend`, with `dxc` for D3D12.
-pub(super) fn covers(
-  tracer: &BvhTracer,
-  backend: DetailLightBackend,
-  dxc: Option<&Path>,
-) -> XrfResult<Vec<AiNodeCovers>> {
+pub(super) fn covers(tracer: &BvhTracer, backend: RayBackend, dxc: Option<&Path>) -> XrfResult<Vec<AiNodeCovers>> {
   let shadows: ShadowMaterials = ShadowMaterials::new_opaque(tracer.get_face_count());
   let mut vertices: Vec<AiVertex> = grid(&[]);
 
@@ -184,8 +180,8 @@ fn finds_points_within_reach_across_the_ground() {
 
 #[test]
 fn covers_corners_by_the_rays_a_wall_blocks_and_mixes_the_others() -> XrfResult {
-  let open: Vec<AiNodeCovers> = covers(&BvhTracer::new(&[], &[]), DetailLightBackend::Cpu, None)?;
-  let walled: Vec<AiNodeCovers> = covers(&wall(), DetailLightBackend::Cpu, None)?;
+  let open: Vec<AiNodeCovers> = covers(&BvhTracer::new(&[], &[]), RayBackend::Cpu, None)?;
+  let walled: Vec<AiNodeCovers> = covers(&wall(), RayBackend::Cpu, None)?;
   const RIGHT: usize = 2;
 
   // From the open grid's corner, the nodes stand forward and right alone.

@@ -7,7 +7,7 @@ use xrf_job::JobHandle;
 use xrf_level::{BuildAimapFile, BuildAimapNode, BuildAimapParams, LevelAiNode, LevelAiVersion};
 use xrf_math::{Aabb, AiNodePosition, EPS_L, Vector3d};
 
-use crate::{AiMap, AiMapCompilation, AiMapCompiler, AiMapCovers, AiMapGuid, AiMapRequest, DetailLightBackend};
+use crate::{AiMap, AiMapCompilation, AiMapCompiler, AiMapCovers, AiMapGuid, AiMapRequest, RayBackend};
 
 const NO_LINK: u32 = BuildAimapNode::NARROW_LINK_MASK;
 
@@ -29,7 +29,7 @@ fn node(x: i16, z: i16, y: u16, plane: u16, links: [u32; 4]) -> BuildAimapNode {
 
 /// Four nodes out of the save's order: a row of three along z at x 3 (one of them high up), and one at x 2, linked
 /// in a chain by their indices here.
-fn aimap() -> BuildAimapFile {
+pub(super) fn aimap() -> BuildAimapFile {
   BuildAimapFile {
     version: BuildAimapFile::NARROW_LINKS_VERSION,
     bounds: Aabb {
@@ -57,7 +57,7 @@ fn compile(replaced: Option<&AiMap>) -> XrfResult<AiMapCompilation> {
       aimap: &aimap(),
       covers: AiMapCovers::None,
       rays: None,
-      backend: DetailLightBackend::Cpu,
+      backend: RayBackend::Cpu,
       dxc: None,
       gpu: None,
       replaced,
@@ -168,7 +168,7 @@ fn refuses_what_xrai_refuses_and_full_covers_with_no_ray_model() {
         aimap: &aimap,
         covers,
         rays: None,
-        backend: DetailLightBackend::Cpu,
+        backend: RayBackend::Cpu,
         dxc: None,
         gpu: None,
         replaced: None,

@@ -26,6 +26,7 @@ xrf-job = { workspace = true }
 xrf-level = { workspace = true }
 xrf-math = { workspace = true, features = ["glam"] }
 xrf-renderer-core = { workspace = true, optional = true }
+xrf-report = { workspace = true }
 xrf-shaders = { workspace = true }
 xrf-thm = { workspace = true }
 xrf-utils = { workspace = true }
@@ -37,11 +38,16 @@ windows = { workspace = true, features = ["Win32_Foundation", "Win32_UI_WindowsA
 xrf-test-utils = { workspace = true }
 
 [features]
-# The detail lighter's GPU backend: shadow rays traced with hardware ray queries on a Vulkan device. Off by default, so
-# a build without it links no graphics code.
+# The GPU backend: the detail lighter's shadow rays and the AI map's corner rays traced with hardware ray queries on a
+# D3D12 or Vulkan device. Off by default, so a build without it links no graphics code.
 gpu = ["dep:bytemuck", "dep:pollster", "dep:xrf-renderer-core"]
 # Emits TypeScript mirrors of the request and report. Nothing in a normal build turns this on.
-typescript-bindings = ["specta", "xrf-job/typescript-bindings"]
+typescript-bindings = [
+  "specta",
+  "xrf-job/typescript-bindings",
+  "xrf-level/typescript-bindings",
+  "xrf-report/typescript-bindings",
+]
 
 [lints]
 workspace = true

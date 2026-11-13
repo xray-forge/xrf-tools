@@ -17,20 +17,20 @@ use xrf_thm::{ThmFile, ThmFormat, ThmTextureParamChunk};
 
 use crate::tests::detail::{details, lighting, lights, triangles};
 use crate::{
-  DetailLightBackend, DetailSlotCounts, LevelCompileReport, LevelCompileRequest, LevelCompileStep, LevelCompileStepRun,
-  LevelCompiler,
+  DetailSlotCounts, LevelCompileReport, LevelCompileRequest, LevelCompileStep, LevelCompileStepRun, LevelCompiler,
+  RayBackend,
 };
 
 /// Game data holding a compiler shader library of one shadow-casting shader, a textures root with one opaque
 /// texture's `.thm`, and `levels/test_level` holding what the details step reads: the lighter tests' grid, ground,
 /// roof and lights, every face of the one material.
-struct Fixture {
-  gamedata: PathBuf,
-  level: PathBuf,
+pub(super) struct Fixture {
+  pub(super) gamedata: PathBuf,
+  pub(super) level: PathBuf,
 }
 
 impl Fixture {
-  fn new(name: &str) -> XrfResult<Self> {
+  pub(super) fn new(name: &str) -> XrfResult<Self> {
     let gamedata: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), name))?;
     let level: PathBuf = gamedata.join("levels").join("test_level");
     let mut thumbnail: ThmFile = ThmFile::new_texture();
@@ -76,19 +76,24 @@ impl Fixture {
   }
 
   fn request(&self, is_forced: bool) -> LevelCompileRequest {
+    self.request_steps(&[LevelCompileStep::Details], is_forced)
+  }
+
+  /// The compile of `steps` on the level, on the CPU.
+  pub(super) fn request_steps(&self, steps: &[LevelCompileStep], is_forced: bool) -> LevelCompileRequest {
     LevelCompileRequest {
       level: self.level.clone(),
-      steps: vec![LevelCompileStep::Details],
+      steps: steps.to_vec(),
       gamedata: self.gamedata.clone(),
       textures: vec![self.gamedata.join("textures")],
       is_forced,
       // The reference, whatever the build: the light and the report alike on every machine.
-      detail_backend: DetailLightBackend::Cpu,
+      backend: RayBackend::Cpu,
       ..LevelCompileRequest::default()
     }
   }
 
-  fn write(path: &Path, write: impl FnOnce(&mut ChunkWriter) -> XrfResult) -> XrfResult {
+  pub(super) fn write(path: &Path, write: impl FnOnce(&mut ChunkWriter) -> XrfResult) -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
     write(&mut writer)?;

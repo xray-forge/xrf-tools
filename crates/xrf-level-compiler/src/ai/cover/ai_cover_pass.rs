@@ -12,7 +12,7 @@ use crate::ai::cover::ai_cover_tracing::AiCoverTracing;
 use crate::ai::cover::ai_cover_tree::AiCoverTree;
 use crate::ai::cover::ai_cover_walk::AiCoverWalk;
 use crate::ai::cover::ai_ray_model::AiRayModel;
-use crate::detail::detail_light_backend::DetailLightBackend;
+use crate::ray::ray_backend::RayBackend;
 
 /// xrAI's covers (`xrCover`, `xrAI/compiler_cover.cpp:567`), its arithmetic in single precision in the same order:
 /// each node at a corner of the map traced against the ray model toward every node it reaches within 30 m, from a
@@ -64,13 +64,11 @@ impl AiCoverPass {
       .collect();
     let scope: JobScope = job.enter(Self::PROGRESS_CORNERS, Some(corners.len() as u64));
     let (traced, gpu): (Vec<AiNodeCovers>, Option<String>) = match tracing.backend {
-      DetailLightBackend::Cpu => (
+      RayBackend::Cpu => (
         Self::trace_on_cpu(vertices, &corners, &tracing.rays, job, &scope)?,
         None,
       ),
-      DetailLightBackend::Gpu | DetailLightBackend::Auto => {
-        Self::trace_on_gpu(vertices, &corners, tracing, job, &scope)?
-      }
+      RayBackend::Gpu | RayBackend::Auto => Self::trace_on_gpu(vertices, &corners, tracing, job, &scope)?,
     };
 
     for (node, (high, low)) in corners.iter().zip(traced) {
@@ -204,7 +202,7 @@ impl AiCoverPass {
         gpu.trace_corners(vertices, corners, job, scope)?,
         Some(String::from(gpu.get_name())),
       )),
-      Err(error) if tracing.backend == DetailLightBackend::Auto => {
+      Err(error) if tracing.backend == RayBackend::Auto => {
         Self::trace_on_cpu_instead(&error, vertices, corners, &tracing.rays, job, scope)
       }
       Err(error) => Err(error),
@@ -224,7 +222,7 @@ impl AiCoverPass {
       "This build traces AI-map covers on the CPU alone; its GPU backend is the `gpu` feature",
     );
 
-    if tracing.backend == DetailLightBackend::Auto {
+    if tracing.backend == RayBackend::Auto {
       Self::trace_on_cpu_instead(&error, vertices, corners, &tracing.rays, job, scope)
     } else {
       Err(error)

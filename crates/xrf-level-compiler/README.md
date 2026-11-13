@@ -3,36 +3,38 @@
 Compiles a level from the files `level build` writes (`xrf-rawdata`'s `LevelBuildExporter`), step by step, into what the
 game loads: the geometry with its lightmaps and collision, the details' light and the AI map.
 
-| Step       | Reads                                                       | Runs today                            |
-| ---------- | ----------------------------------------------------------- | ------------------------------------- |
-| `geometry` | `build.prj`                                                 | the SDK's xrLC                        |
-| `details`  | `build.prj`, `build.details`, `build.cform`, `build.lights` | this crate's lighter (`DetailLighter`) |
-| `ai`       | `build.prj`, `build.aimap`, `build.cform`                   | the SDK's xrAI (`-f`)                 |
+| Step       | Reads                                                              | Runs today                              |
+| ---------- | ------------------------------------------------------------------ | --------------------------------------- |
+| `geometry` | `build.prj`                                                        | the SDK's xrLC                          |
+| `details`  | `build.prj`, `build.details`, `build.cform`, `build.lights`        | this crate's lighter (`DetailLighter`)  |
+| `ai`       | `build.aimap`; with full covers also `build.prj` and `build.cform` | this crate's compiler (`AiMapCompiler`) |
 
 `LevelCompiler::compile` takes a `LevelCompileRequest`: the level's directory, the steps (every one when none), the
-SDK's `editors` directory for the steps the SDK runs (`LevelCompileStep::is_sdk`), the game data whose `gamemtl.xr` and
-`shaders_xrlc.xr` the compilers read, the textures roots (the SDK's steps take exactly one), a working directory for the
-SDK's compilers, whether `level.details` may be overwritten, the details' backend and DXC's library for it. It checks
-every step's inputs and program first, and a `.thm` under the textures roots for every texture `build.prj` names (each
-compiler loads them), so a missing file stops it before a long run. Then it runs the steps in order: the SDK's in the
-working directory, under an `fsgame.ltx` it writes there, reporting each compiler's last log line to an `xrf-job`
-`JobHandle` and killing it when the job is cancelled; the details in process (`DetailStep`), writing `level.details`
-staged. Each step's report says what ran it (`LevelCompileStepRun`): an SDK program and its log, or the lighter, the
-slots it met and the GPU that traced. `xrf-cli level compile` and the app's level compiler call it.
+SDK's `editors` directory for the step the SDK runs (`LevelCompileStep::is_sdk`, the geometry), the game data whose
+`gamemtl.xr` and `shaders_xrlc.xr` the compilers read, the textures roots (xrLC takes exactly one), a working directory
+for xrLC, whether `level.details` and `level.ai` may be overwritten, the rays' backend (`RayBackend`) and DXC's library
+for it, and the AI map's covers. It checks every step's inputs and program first, and a `.thm` under the textures roots
+for every texture `build.prj` names where a step reads them, so a missing file stops it before a long run. Then it runs
+the steps in order: xrLC in the working directory, under an `fsgame.ltx` it writes there, reporting its last log line
+to an `xrf-job` `JobHandle` and killing it when the job is cancelled; the details (`DetailStep`) and the AI map
+(`AiStep`) in process, each writing its output staged. Each step's report says what ran it (`LevelCompileStepRun`): an
+SDK program and its log, the lighter with the slots it met and the GPU that traced, or the AI map compiler with its
+covers, GPU, identity and graph check. `xrf-cli level compile` and the app's level compiler call it.
 
 Each SDK compiler ends a run on a "Congratulation!" message box and waits on it, even once answered. xrLC takes
-`-silent` to skip it; xrAI has no such switch, so its box showing ends the step and the process is stopped, its files
-already written (`sdk/level_sdk_dialog.rs`).
+`-silent` to skip it; a compiler with no such switch has its box end the step, the process stopped with its files
+already written (`sdk/level_sdk_dialog.rs`), which no step needs since the AI map became this crate's.
 
-The SDK 0.7 compilers run the steps no compiler of this crate does yet. The spawn (xrAI `-s`) is not a step: it works on
-every level of a game at once.
+The spawn (xrAI `-s`) is not a step: it works on every level of a game at once.
 
 ## The AI map compiler
 
 `AiMapCompiler::compile` compiles `build.aimap` into `level.ai` as SDK 0.7's `xrAI -f` does. It takes an `AiMapRequest`
 (the map, the covers, the ray model they are traced against, and the `level.ai` it replaces, if any) and an `xrf-job`
 `JobHandle`, and gives an `AiMapCompilation`: the `AiMap`, header and nodes, and where its identity came from
-(`AiMapGuid`). It is not yet the `ai` step.
+(`AiMapGuid`). The `ai` step (`AiStep`) runs it on a level directory: the replaced `level.ai` read for its identity,
+the compiled map checked as a graph (`xrf-level`'s `LevelAiGraphVerifier`) and refused with a node linked to itself
+before it is written.
 
 - Each node is loaded as xrAI loads it: its cell through the packed grid over the map's box and back (`AiGrid`), its
   plane normal decompressed and normalised.
@@ -48,7 +50,8 @@ every level of a game at once.
   Every ray is a full query, never the SDK's remembered blocker, so the covers are the same on any thread count. Corner
   nodes and other nodes run over the installed rayon pool, a progress unit each; a cancelled job stops with
   `XrfError::Cancelled`.
-- The corner rays are traced by the request's `backend`, the detail lighter's `DetailLightBackend` with its `dxc` and
+
+- The corner rays are traced by the request's `backend`, the detail lighter's `RayBackend` with its `dxc` and
   `gpu`. On the GPU (the `gpu` feature, `ai/cover/gpu/`) nodes are flooded and their rays made on the pool a batch at a
   time while the GPU traces the batch before, through the detail lighter's ray queries one ray at a time; the sums stay
   on the CPU. `AiMapCompilation::gpu` names the GPU that traced.
@@ -106,15 +109,15 @@ side, so its result depends on the order slots run in and can come out darker; t
 count. On the kept SDK runs of `mp_darkvalley` and `jupiter` the CPU matches the SDK's slot for slot but for one in
 about 20,000 to 90,000, each one step off: the SDK's cache, or a sum under the x87's precision.
 
-| Backend (`DetailLightBackend`) | Traces                                                                                  |
-| ------------------------------ | --------------------------------------------------------------------------------------- |
-| `Auto`, the default            | the GPU where this build and the machine can, the CPU otherwise                          |
-| `Gpu`                          | slots planned on the pool a batch at a time, their rays made and traced with ray queries  |
-| `Cpu`                          | each slot whole on a thread of the installed rayon pool, a packet at a time; the reference |
+| Backend (`RayBackend`) | Traces                                                                                     |
+| ---------------------- | ------------------------------------------------------------------------------------------ |
+| `Auto`, the default    | the GPU where this build and the machine can, the CPU otherwise                            |
+| `Gpu`                  | slots planned on the pool a batch at a time, their rays made and traced with ray queries   |
+| `Cpu`                  | each slot whole on a thread of the installed rayon pool, a packet at a time; the reference |
 
 The GPU backend is the `gpu` feature, off by default, so a build without it links no graphics code; the CLI and the
 app turn it on. It starts an `xrf-renderer-core` `RayQueryDevice`: D3D12 where DXC's library is given, else Vulkan; on
-the GPU the request names (`DetailGpu`, the app's renderer choice), else the high-performance one. The ray model goes up once as two
+the GPU the request names (`RayGpu`, the app's renderer choice), else the high-performance one. The ray model goes up once as two
 geometries: the opaque faces, which the hardware takes alone and which end a ray at the first; and the alpha faces, which
 the shader dims the light through (`detail/gpu/detail_shadow_rays.wgsl`). Faces passing light are left out. A packet's
 rays are made on the GPU from its slot's origins, a workgroup a packet, so a slot sends about 20 KB rather than its
