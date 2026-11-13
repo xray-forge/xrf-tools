@@ -5,6 +5,7 @@ use sha2::{Digest, Sha256};
 use uuid::Uuid;
 use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
+use xrf_report::Report;
 use xrf_spawn::{
   AlifeBuiltFields, AlifeObject, ArtefactSpawnPoint, Patrol, SpawnALifeSpawnsChunk, SpawnArtefactSpawnsChunk,
   SpawnFile, SpawnGraphsChunk, SpawnHeaderChunk, SpawnPatrolsChunk,
@@ -115,7 +116,11 @@ impl SpawnRootBuilder {
 
     Ok(SpawnRootBuild {
       spawn,
-      report: SpawnRootReport::build(&merge.skipped, &cuts, separators_took),
+      report: Report::new(vec![
+        SpawnRootReport::get_graph_points(&ordered),
+        SpawnRootReport::get_connections(&merge.skipped),
+        SpawnRootReport::get_separators(&cuts, separators_took),
+      ]),
     })
   }
 

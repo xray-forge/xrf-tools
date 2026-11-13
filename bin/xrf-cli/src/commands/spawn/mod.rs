@@ -1,3 +1,4 @@
+pub(crate) mod build;
 #[cfg(test)]
 pub(crate) mod fixtures;
 pub(crate) mod info;
