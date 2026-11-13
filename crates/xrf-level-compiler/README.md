@@ -28,8 +28,8 @@ The spawn (xrAI `-s`) is not a step: it works on every level of a game at once.
 
 ## The root spawn builder
 
-The root spawn builder (`spawn/`), xrAI `-s` without xrAI, grows piece by piece; a level's cross table and game graph
-are built so far.
+The root spawn builder (`spawn/`), xrAI `-s` without xrAI, grows piece by piece; the game graph, levels merged, is
+built so far.
 
 - `SpawnAiMap` reads a level's `level.ai` as the engine's `CLevelGraph` looks nodes up: `find_node` gives the node of a
   position's cell nearest at or under it, else nearest over it.
@@ -50,9 +50,21 @@ are built so far.
   open list is 8,192 buckets each sorted by cost, a new node ahead of equal ones. Then of every triangle of edges the
   longest pair goes, the longest first.
 
+- `SpawnGameGraphMerger::merge` takes each level as a `SpawnMergeLevel` (its `game_levels.ltx` entry, AI map, graph
+  points, graph and cross table) and gives the root spawn's graph chunk (`SpawnGameGraphMerge`). The levels go in id
+  order, each one's vertices numbered past the levels' before it and placed in the shared world by its offset. Each
+  vertex keeps level points: its region's nodes shuffled, the first tenth, at most 255, or all of ten or fewer. The
+  shuffle is GSC's own stream (`SpawnRandom`: the MSVC runtime's `rand` from seed 1 and VS2008's `random_shuffle`),
+  which nothing in xrAI seeds, so it gives the shipped points. A graph point naming a connection gets an edge to the
+  point it names, the distance between them across the world; one naming a level outside the build is skipped
+  (`SpawnSkippedConnection`). The graph GUID is the first 16 bytes of the SHA-256 of the graph written with none, so
+  the same levels give the same graph and any change another.
+
 On all five vanilla Call of Pripyat levels the cross tables equal the shipped ones cell for cell, bit for bit, zaton's
 1.85 M nodes in a quarter of a second. Each vertex's edges lead where the shipped ones do, in their order; 2,548 of the
-2,550 weights are the shipped ones or a few millionths off, and two take another path, about half a metre apart.
+2,550 weights are the shipped ones or a few millionths off, and two take another path, about half a metre apart. The
+merged graph chunk, 27 MB, is the shipped one but for its GUIDs and those weights' 121 bytes, every level point
+included; the five levels build and merge in a second.
 
 ## The AI map compiler
 
@@ -156,7 +168,9 @@ The slots run a progress unit each, and a cancelled job stops the lighting with 
 The spawn tests take a strip of nodes with a second floor and a cut-off node: the cross table's ties, reach and
 unreached nodes, `find_node` between floors, and the graph points xrAI leaves out. The game graph tests take open and
 walled grids: bordering regions joined, a triangle's longest side dropped, a wall weighed by the path around it, and
-regions apart left unjoined. The AI map tests compile a generated
+regions apart left unjoined. The merge tests join two levels listed out of id order: the order, offsets, connection
+edges and a skipped one, the cross tables' numbering, the level points, the GUID, a missing connection refused, and
+the runtime's first draws. The AI map tests compile a generated
 four-node map: the sort and renumbering, the header, three planes whose round
 trip xrAI's own run gave, the identity rule, and the refusals. The cover tests take a grid: the sectors, which nodes are
 corners, the walk stopped by a hole, the quadtree's reach, and a wall whose front blocks the corners' rays and whose
