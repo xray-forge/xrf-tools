@@ -352,8 +352,8 @@ export enum ELevelSceneInference {
    * Library objects found placed in the static geometry come back as scene objects placing them by reference, at the
    * transform that best takes their rendered triangles onto the level's (one scale on every axis), their triangles
    * taken out of the shells; each object is copied from its library with its thumbnail beside the scene's objects, as
-   * the sidecar's `geometry.instances` records. Where two library objects draw the same geometry, the one whose
-   * reference sorts first stands for both.
+   * the sidecar's `geometry.instances` records. Where two library objects draw the same geometry, the larger,
+   * then the one whose reference sorts first, stands for both.
    */
   LIBRARY_INSTANCES = "libraryInstances",
   /**
