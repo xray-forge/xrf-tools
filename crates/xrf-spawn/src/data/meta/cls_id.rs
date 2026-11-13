@@ -4,7 +4,8 @@ use enum_map::Enum;
 use serde::{Deserialize, Serialize};
 use xrf_error::{XrfError, XrfResult};
 
-use crate::data::meta::map::SECTION_TO_CLS_ID;
+use crate::data::alife::script_dialect::ScriptDialect;
+use crate::data::meta::map::{CLEAR_SKY_SECTION_TO_CLS_ID, SECTION_TO_CLS_ID};
 
 /// todo: Add script to parse system ltx and read all the data from ltx/txt file instead.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -45,6 +46,8 @@ pub enum ClsId {
   PSkelet,
   SActor,
   SExplo,
+  /// `SFACTION`, Clear Sky's `se_sim_faction`.
+  SFaction,
   SFood,
   SInvBox,
   SM209,
@@ -125,12 +128,25 @@ impl ClsId {
     }
   }
 
+  /// The class a section declares in Call of Pripyat's configs, which the games after it keep.
   pub fn from_section(section_name: &str) -> XrfResult<Self> {
     SECTION_TO_CLS_ID.get(section_name).cloned().ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "Unknown ALife object section '{section_name}', no CLSID mapping exists"
       ))
     })
+  }
+
+  /// The class a section declares in the game whose scripts the object follows: Clear Sky's configs declare a few
+  /// otherwise (`CLEAR_SKY_SECTION_TO_CLS_ID`).
+  pub fn from_dialect_section(section_name: &str, dialect: ScriptDialect) -> XrfResult<Self> {
+    match dialect {
+      ScriptDialect::ClearSky => match CLEAR_SKY_SECTION_TO_CLS_ID.get(section_name) {
+        Some(clsid) => Ok(clsid.clone()),
+        None => Self::from_section(section_name),
+      },
+      ScriptDialect::CallOfPripyat => Self::from_section(section_name),
+    }
   }
 }
 
@@ -139,6 +155,7 @@ mod tests {
   use xrf_error::XrfError;
 
   use super::ClsId;
+  use crate::data::alife::script_dialect::ScriptDialect;
 
   #[test]
   fn reads_a_campfire_by_its_class_name() {
@@ -149,6 +166,23 @@ mod tests {
   #[test]
   fn maps_known_section_to_clsid() {
     assert_eq!(ClsId::from_section("actor").unwrap(), ClsId::SActor);
+  }
+
+  /// Clear Sky's faction is its own class, where Call of Pripyat's section is a space restrictor.
+  #[test]
+  fn maps_a_section_by_the_dialect_that_declares_it() {
+    assert_eq!(
+      ClsId::from_dialect_section("sim_faction", ScriptDialect::ClearSky).ok(),
+      Some(ClsId::SFaction)
+    );
+    assert_eq!(
+      ClsId::from_dialect_section("sim_faction", ScriptDialect::CallOfPripyat).ok(),
+      Some(ClsId::ScriptZn)
+    );
+    assert_eq!(
+      ClsId::from_dialect_section("stalker", ScriptDialect::ClearSky).ok(),
+      Some(ClsId::AiStlS)
+    );
   }
 
   #[test]

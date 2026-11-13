@@ -59,17 +59,21 @@ impl LevelObjectKind {
     }
 
     match inherited {
-      AlifeObjectInherited::SeActor(_) => Some(Self::Actor),
-      AlifeObjectInherited::SeStalker(_) => Some(Self::Stalkers),
+      AlifeObjectInherited::SeActor(_) | AlifeObjectInherited::ClearSkySeActor(_) => Some(Self::Actor),
+      AlifeObjectInherited::SeStalker(_) | AlifeObjectInherited::ClearSkySeStalker(_) => Some(Self::Stalkers),
       AlifeObjectInherited::SeMonster(_)
+      | AlifeObjectInherited::ClearSkySeMonster(_)
       | AlifeObjectInherited::CseAlifeCreatureCrow(_)
       | AlifeObjectInherited::CseAlifeCreaturePhantom(_) => Some(Self::Creatures),
       AlifeObjectInherited::CseAlifeTrader(_) => Some(Self::Traders),
       AlifeObjectInherited::SimSquadScripted(_) => Some(Self::Squads),
-      AlifeObjectInherited::SeSmartTerrain(_) => Some(Self::SmartTerrains),
-      AlifeObjectInherited::CseAlifeSpaceRestrictor(_) | AlifeObjectInherited::CseAlifeTeamBaseZone(_) => {
-        Some(Self::Restrictors)
+      AlifeObjectInherited::SeSmartTerrain(_) | AlifeObjectInherited::ClearSkySeSmartTerrain(_) => {
+        Some(Self::SmartTerrains)
       }
+      // Clear Sky's faction is a space restrictor carrying script state, as Call of Pripyat's section is a plain one.
+      AlifeObjectInherited::CseAlifeSpaceRestrictor(_)
+      | AlifeObjectInherited::CseAlifeTeamBaseZone(_)
+      | AlifeObjectInherited::ClearSkySeSimFaction(_) => Some(Self::Restrictors),
       AlifeObjectInherited::CseAlifeAnomalousZone(_) | AlifeObjectInherited::CseAlifeTorridZone(_) => {
         Some(Self::Anomalies)
       }

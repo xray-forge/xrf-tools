@@ -712,6 +712,12 @@ lazy_static! {
     "mp_zone_witches_galantine" => ClsId::ZsMBald, // Z_MBALD
   };
 
+  /// The sections whose `class` Clear Sky's configs declare otherwise than Call of Pripyat's, which
+  /// `SECTION_TO_CLS_ID` follows.
+  pub static ref CLEAR_SKY_SECTION_TO_CLS_ID: phf::Map<&'static str, ClsId> = phf_map! {
+    "sim_faction" => ClsId::SFaction, // gamedata-cs/configs/misc/simulation.ltx
+  };
+
   pub static ref CLS_ID_TO_CLASS: EnumMap<ClsId, AlifeClass> = enum_map! {
     ClsId::AiCrow => AlifeClass::CseAlifeCreatureCrow,
     ClsId::AiGraph => AlifeClass::CseAlifeGraphPoint,
@@ -749,6 +755,8 @@ lazy_static! {
     ClsId::PSkelet => AlifeClass::CseAlifePhSkeletonObject,
     ClsId::SActor => AlifeClass::SeActor,
     ClsId::SExplo => AlifeClass::CseAlifeItemExplosive,
+    // Call of Pripyat registers no `SFACTION`; Clear Sky's faction resolves by its dialect.
+    ClsId::SFaction => AlifeClass::Unknown,
     ClsId::SFood => AlifeClass::CseAlifeItem,
     ClsId::SInvBox => AlifeClass::CseAlifeInventoryBox,
     ClsId::SM209 => AlifeClass::CseAlifeItemAmmo,

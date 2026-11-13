@@ -51,6 +51,11 @@ use crate::data::alife::inherited::alife_squad::AlifeSquad;
 use crate::data::alife::inherited::alife_stalker::AlifeStalker;
 use crate::data::alife::inherited::alife_team_base_zone::AlifeTeamBaseZone;
 use crate::data::alife::inherited::alife_zone_visual::AlifeZoneVisual;
+use crate::data::alife::inherited::clear_sky::actor::alife_clear_sky_actor::AlifeClearSkyActor;
+use crate::data::alife::inherited::clear_sky::alife_clear_sky_monster::AlifeClearSkyMonster;
+use crate::data::alife::inherited::clear_sky::alife_clear_sky_stalker::AlifeClearSkyStalker;
+use crate::data::alife::inherited::clear_sky::zone::alife_clear_sky_sim_faction::AlifeClearSkySimFaction;
+use crate::data::alife::inherited::clear_sky::zone::alife_clear_sky_smart_terrain::AlifeClearSkySmartTerrain;
 use crate::data::alife::spawn_layout::SpawnLayout;
 use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 use crate::data::generic::shape::Shape;
@@ -104,6 +109,11 @@ pub enum AlifeObjectInherited {
   CseAlifePhSkeletonObject(Box<AlifeObjectPhSkeletonObject>),
   CseAlifeStationaryMGun(Box<AlifeObjectStationaryMgun>),
   SimSquadScripted(Box<AlifeSquad>),
+  ClearSkySeActor(Box<AlifeClearSkyActor>),
+  ClearSkySeStalker(Box<AlifeClearSkyStalker>),
+  ClearSkySeMonster(Box<AlifeClearSkyMonster>),
+  ClearSkySeSmartTerrain(Box<AlifeClearSkySmartTerrain>),
+  ClearSkySeSimFaction(Box<AlifeClearSkySimFaction>),
 }
 
 impl AlifeObjectInherited {
@@ -210,6 +220,21 @@ impl AlifeObjectInherited {
         )?))
       }
       AlifeClass::SimSquadScripted => Self::SimSquadScripted(Box::new(spawn.read_xr::<T, _>()?)),
+      AlifeClass::ClearSkySeActor => {
+        Self::ClearSkySeActor(Box::new(AlifeClearSkyActor::read::<T, _, _>(spawn, update, layout)?))
+      }
+      AlifeClass::ClearSkySeStalker => {
+        Self::ClearSkySeStalker(Box::new(AlifeClearSkyStalker::read::<T, _, _>(spawn, update, layout)?))
+      }
+      AlifeClass::ClearSkySeMonster => {
+        Self::ClearSkySeMonster(Box::new(AlifeClearSkyMonster::read::<T, _, _>(spawn, update, layout)?))
+      }
+      AlifeClass::ClearSkySeSmartTerrain => {
+        Self::ClearSkySeSmartTerrain(Box::new(AlifeClearSkySmartTerrain::read_state::<T, _>(spawn, layout)?))
+      }
+      AlifeClass::ClearSkySeSimFaction => {
+        Self::ClearSkySeSimFaction(Box::new(AlifeClearSkySimFaction::read_state::<T, _>(spawn, layout)?))
+      }
       AlifeClass::Unknown => return Err(Self::new_unknown_class_error()),
     })
   }
@@ -265,6 +290,11 @@ impl AlifeObjectInherited {
       Self::CseAlifePhSkeletonObject(_) => AlifeClass::CseAlifePhSkeletonObject,
       Self::CseAlifeStationaryMGun(_) => AlifeClass::CseAlifeStationaryMGun,
       Self::SimSquadScripted(_) => AlifeClass::SimSquadScripted,
+      Self::ClearSkySeActor(_) => AlifeClass::ClearSkySeActor,
+      Self::ClearSkySeStalker(_) => AlifeClass::ClearSkySeStalker,
+      Self::ClearSkySeMonster(_) => AlifeClass::ClearSkySeMonster,
+      Self::ClearSkySeSmartTerrain(_) => AlifeClass::ClearSkySeSmartTerrain,
+      Self::ClearSkySeSimFaction(_) => AlifeClass::ClearSkySeSimFaction,
     }
   }
 
@@ -315,6 +345,11 @@ impl AlifeObjectInherited {
       Self::CseAlifePhSkeletonObject(object) => Some(&object.base.base),
       Self::CseAlifeStationaryMGun(object) => Some(&object.base.base),
       Self::SimSquadScripted(object) => Some(&object.base.base.base),
+      Self::ClearSkySeActor(object) => Some(&object.base.base.base.base),
+      Self::ClearSkySeStalker(object) => Some(&object.base.base.base.base.base.base),
+      Self::ClearSkySeMonster(object) => Some(&object.base.base.base.base.base),
+      Self::ClearSkySeSmartTerrain(object) => Some(&object.base.base.base),
+      Self::ClearSkySeSimFaction(object) => Some(&object.base.base.base),
     }
   }
 
@@ -364,6 +399,11 @@ impl AlifeObjectInherited {
       Self::CseAlifePhSkeletonObject(object) => Some(&mut object.base.base),
       Self::CseAlifeStationaryMGun(object) => Some(&mut object.base.base),
       Self::SimSquadScripted(object) => Some(&mut object.base.base.base),
+      Self::ClearSkySeActor(object) => Some(&mut object.base.base.base.base),
+      Self::ClearSkySeStalker(object) => Some(&mut object.base.base.base.base.base.base),
+      Self::ClearSkySeMonster(object) => Some(&mut object.base.base.base.base.base),
+      Self::ClearSkySeSmartTerrain(object) => Some(&mut object.base.base.base),
+      Self::ClearSkySeSimFaction(object) => Some(&mut object.base.base.base),
     }
   }
 
@@ -430,6 +470,8 @@ impl AlifeObjectInherited {
       Self::CseAlifeZoneVisual(object) => Some(&object.base.base.base.shape),
       Self::CseAlifeObjectClimable(object) => Some(&object.base.shape),
       Self::SeSmartCover(object) => Some(&object.base.shape),
+      Self::ClearSkySeSmartTerrain(object) => Some(&object.base.base.shape),
+      Self::ClearSkySeSimFaction(object) => Some(&object.base.base.shape),
       _ => None,
     }
   }
@@ -446,6 +488,8 @@ impl AlifeObjectInherited {
       Self::CseAlifeZoneVisual(object) => Some(&mut object.base.base.base.shape),
       Self::CseAlifeObjectClimable(object) => Some(&mut object.base.shape),
       Self::SeSmartCover(object) => Some(&mut object.base.shape),
+      Self::ClearSkySeSmartTerrain(object) => Some(&mut object.base.base.shape),
+      Self::ClearSkySeSimFaction(object) => Some(&mut object.base.base.shape),
       _ => None,
     }
   }
@@ -487,6 +531,10 @@ impl AlifeObjectInherited {
       Self::CseAlifeObjectProjector(object) => object.visual_name.as_str(),
       Self::CseAlifePhSkeletonObject(object) => object.base.visual_name.as_str(),
       Self::CseAlifeStationaryMGun(object) => object.base.visual_name.as_str(),
+      Self::ClearSkySeActor(object) => object.base.base.base.visual_name.as_str(),
+      Self::ClearSkySeStalker(object) => object.base.base.base.base.base.visual_name.as_str(),
+      Self::ClearSkySeMonster(object) => object.base.base.base.base.visual_name.as_str(),
+      Self::ClearSkySeSmartTerrain(_) | Self::ClearSkySeSimFaction(_) => return None,
       Self::CseAlifeObjectClimable(_)
       | Self::CseAlifeGraphPoint(_)
       | Self::CseAlifeSpaceRestrictor(_)
@@ -533,6 +581,21 @@ impl AlifeObjectInherited {
 
         return;
       }
+      Self::ClearSkySeActor(object) => {
+        object.base.move_to(position, direction);
+
+        return;
+      }
+      Self::ClearSkySeStalker(object) => {
+        object.move_to(position, direction);
+
+        return;
+      }
+      Self::ClearSkySeMonster(object) => {
+        object.move_to(position, direction);
+
+        return;
+      }
       Self::CseAlifeObjectPhysic(object) => object.update_state.as_mut(),
       Self::CseAlifeItemBolt(object) => object.update_state.as_mut(),
       Self::CseAlifeItemTorch(object) => object.base.update_state.as_mut(),
@@ -570,7 +633,9 @@ impl AlifeObjectInherited {
       | Self::CseAlifeObjectProjector(_)
       | Self::CseAlifePhSkeletonObject(_)
       | Self::CseAlifeStationaryMGun(_)
-      | Self::SimSquadScripted(_) => None,
+      | Self::SimSquadScripted(_)
+      | Self::ClearSkySeSmartTerrain(_)
+      | Self::ClearSkySeSimFaction(_) => None,
     };
 
     if let Some(state) = state {
@@ -603,6 +668,10 @@ impl AlifeObjectInherited {
       Self::CseAlifeItemDocument(object) => object.set_spawned_update(header),
       Self::CseAlifeCreatureCrow(object) | Self::CseAlifeCreaturePhantom(object) => object.set_spawned_update(header),
       Self::CseAlifeStationaryMGun(object) => object.set_spawned_update(header),
+      Self::ClearSkySeActor(object) => object.set_spawned_update(header),
+      Self::ClearSkySeStalker(object) => object.set_spawned_update(header),
+      Self::ClearSkySeMonster(object) => object.set_spawned_update(header),
+      Self::ClearSkySeSmartTerrain(_) | Self::ClearSkySeSimFaction(_) => {}
       Self::CseAlifeObjectBreakable(_)
       | Self::CseAlifeObjectClimable(_)
       | Self::CseAlifeGraphPoint(_)
@@ -677,6 +746,11 @@ impl AlifeObjectInherited {
       Self::CseAlifePhSkeletonObject(object) => spawn.write_xr::<T, _>(object.deref())?,
       Self::CseAlifeStationaryMGun(object) => object.write::<T, _, _>(spawn, update, layout)?,
       Self::SimSquadScripted(object) => spawn.write_xr::<T, _>(object.deref())?,
+      Self::ClearSkySeActor(object) => object.write::<T, _, _>(spawn, update, layout)?,
+      Self::ClearSkySeStalker(object) => object.write::<T, _, _>(spawn, update, layout)?,
+      Self::ClearSkySeMonster(object) => object.write::<T, _, _>(spawn, update, layout)?,
+      Self::ClearSkySeSmartTerrain(object) => object.write_state::<T, _>(spawn, layout)?,
+      Self::ClearSkySeSimFaction(object) => object.write_state::<T, _>(spawn, layout)?,
     }
 
     Ok(())
@@ -801,6 +875,23 @@ impl AlifeObjectInherited {
         Self::CseAlifeStationaryMGun(Box::new(AlifeObjectStationaryMgun::import(section_name, ltx, layout)?))
       }
       AlifeClass::SimSquadScripted => Self::SimSquadScripted(Box::new(AlifeSquad::import(section_name, ltx)?)),
+      AlifeClass::ClearSkySeActor => {
+        Self::ClearSkySeActor(Box::new(AlifeClearSkyActor::import(section_name, ltx, layout)?))
+      }
+      AlifeClass::ClearSkySeStalker => {
+        Self::ClearSkySeStalker(Box::new(AlifeClearSkyStalker::import(section_name, ltx, layout)?))
+      }
+      AlifeClass::ClearSkySeMonster => {
+        Self::ClearSkySeMonster(Box::new(AlifeClearSkyMonster::import(section_name, ltx, layout)?))
+      }
+      AlifeClass::ClearSkySeSmartTerrain => Self::ClearSkySeSmartTerrain(Box::new(
+        AlifeClearSkySmartTerrain::import_state(section_name, ltx, layout)?,
+      )),
+      AlifeClass::ClearSkySeSimFaction => Self::ClearSkySeSimFaction(Box::new(AlifeClearSkySimFaction::import_state(
+        section_name,
+        ltx,
+        layout,
+      )?)),
       AlifeClass::Unknown => return Err(Self::new_unknown_class_error()),
     })
   }
@@ -851,6 +942,11 @@ impl AlifeObjectInherited {
       Self::CseAlifePhSkeletonObject(object) => object.export(section_name, ltx),
       Self::CseAlifeStationaryMGun(object) => object.export(section_name, ltx, layout),
       Self::SimSquadScripted(object) => object.export(section_name, ltx),
+      Self::ClearSkySeActor(object) => object.export(section_name, ltx, layout),
+      Self::ClearSkySeStalker(object) => object.export(section_name, ltx, layout),
+      Self::ClearSkySeMonster(object) => object.export(section_name, ltx, layout),
+      Self::ClearSkySeSmartTerrain(object) => object.export_state(section_name, ltx, layout),
+      Self::ClearSkySeSimFaction(object) => object.export_state(section_name, ltx, layout),
     }
   }
 }

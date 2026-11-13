@@ -56,3 +56,4 @@ pub(crate) mod alife_squad;
 pub(crate) mod alife_stalker;
 pub(crate) mod alife_team_base_zone;
 pub(crate) mod alife_zone_visual;
+pub(crate) mod clear_sky;
