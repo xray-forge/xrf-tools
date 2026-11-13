@@ -3,7 +3,8 @@ use xrf_editable_object::{EditableMesh, EditableObjectFile};
 use xrf_error::XrfResult;
 use xrf_math::{Affine3d, Vector3d};
 use xrf_spawn::{
-  AlifeObject, AlifeObjectAbstract, AlifeObjectClimable, AlifeObjectShape, Shape, SpawnPacket, SpawnPacketHeader,
+  AlifeObject, AlifeObjectAbstract, AlifeObjectClimable, AlifeObjectInherited, AlifeObjectShape, ClsId, Shape,
+  SpawnPacketHeader,
 };
 
 use crate::level::tests::entity::listed;
@@ -14,7 +15,8 @@ use crate::{LevelDecompiledLadder, LevelLadderConversion};
 /// `direction`, of `material`.
 fn ladder(position: Vector3d, direction: Vector3d, half: [f32; 3], material: &str) -> XrfResult<AlifeObject> {
   let base: AlifeObjectAbstract = restrictor().state.base;
-  let packet: SpawnPacket<AlifeObjectClimable> = SpawnPacket {
+
+  Ok(AlifeObject {
     header: SpawnPacketHeader {
       section: String::from("climable_object"),
       name: String::from("clmbl#0"),
@@ -22,7 +24,8 @@ fn ladder(position: Vector3d, direction: Vector3d, half: [f32; 3], material: &st
       direction,
       ..restrictor().header
     },
-    state: AlifeObjectClimable {
+    clsid: ClsId::from_section("climable_object")?,
+    inherited: AlifeObjectInherited::CseAlifeObjectClimable(Box::new(AlifeObjectClimable {
       base: AlifeObjectShape {
         base: AlifeObjectAbstract {
           custom_data: String::new(),
@@ -36,10 +39,8 @@ fn ladder(position: Vector3d, direction: Vector3d, half: [f32; 3], material: &st
         })],
       },
       game_material: String::from(material),
-    },
-  };
-
-  listed(&packet, 0)?.read_alife_object::<XRayByteOrder>()
+    })),
+  })
 }
 
 fn decompile(entity: &AlifeObject) -> XrfResult<LevelDecompiledLadder> {

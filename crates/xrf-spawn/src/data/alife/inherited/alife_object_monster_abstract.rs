@@ -2,11 +2,12 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
+use xrf_ltx::{LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_math::Vector3d;
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_creature::AlifeObjectCreature;
+use crate::data::alife::spawn_layout::SpawnLayout;
 use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 
 /// A creature the alife simulation moves offline, `CSE_ALifeMonsterAbstract`: every monster and every stalker. Its
@@ -73,9 +74,13 @@ impl AlifePacketsReadWrite for AlifeObjectMonsterAbstract {
   }
 
   /// Read the monster from both packets.
-  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
+  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+    spawn: &mut S,
+    update: &mut U,
+    layout: SpawnLayout,
+  ) -> XrfResult<Self> {
     Ok(Self {
-      base: AlifeObjectCreature::read::<T, _, _>(spawn, update)?,
+      base: AlifeObjectCreature::read::<T, _, _>(spawn, update, layout)?,
       out_space_restrictors: spawn.read_w1251_string()?,
       in_space_restrictors: spawn.read_w1251_string()?,
       smart_terrain_id: spawn.read_u16::<T>()?,
@@ -88,8 +93,13 @@ impl AlifePacketsReadWrite for AlifeObjectMonsterAbstract {
   }
 
   /// Write the monster into both packets.
-  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(&self, spawn: &mut S, update: &mut U) -> XrfResult {
-    self.base.write::<T, _, _>(spawn, update)?;
+  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+    &self,
+    spawn: &mut S,
+    update: &mut U,
+    layout: SpawnLayout,
+  ) -> XrfResult {
+    self.base.write::<T, _, _>(spawn, update, layout)?;
 
     spawn.write_w1251_string(&self.out_space_restrictors)?;
     spawn.write_w1251_string(&self.in_space_restrictors)?;
@@ -103,11 +113,9 @@ impl AlifePacketsReadWrite for AlifeObjectMonsterAbstract {
 
     Ok(())
   }
-}
 
-impl LtxImportExport for AlifeObjectMonsterAbstract {
   /// Import monster data from ltx config section.
-  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L, layout: SpawnLayout) -> XrfResult<Self> {
     let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
@@ -117,7 +125,7 @@ impl LtxImportExport for AlifeObjectMonsterAbstract {
     })?;
 
     Ok(Self {
-      base: AlifeObjectCreature::import(section_name, ltx)?,
+      base: AlifeObjectCreature::import(section_name, ltx, layout)?,
       out_space_restrictors: section.read_field("monster.out_space_restrictors")?,
       in_space_restrictors: section.read_field("monster.in_space_restrictors")?,
       smart_terrain_id: section.read_field("monster.smart_terrain_id")?,
@@ -130,8 +138,8 @@ impl LtxImportExport for AlifeObjectMonsterAbstract {
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
-    self.base.export(section_name, ltx)?;
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite, layout: SpawnLayout) -> XrfResult {
+    self.base.export(section_name, ltx, layout)?;
 
     ltx
       .with_section(section_name)
@@ -173,11 +181,12 @@ impl AlifeObjectMonsterAbstract {
 mod tests {
   use xrf_chunk::XRayByteOrder;
   use xrf_error::XrfResult;
-  use xrf_ltx::{Ltx, LtxImportExport};
+  use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
 
   use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
   use crate::data::alife::inherited::alife_object_monster_abstract::AlifeObjectMonsterAbstract;
+  use crate::data::alife::spawn_layout::SpawnLayout;
 
   fn new_object() -> AlifeObjectMonsterAbstract {
     let mut object: AlifeObjectMonsterAbstract = AlifeObjectMonsterAbstract::new_mock(Vector3d::new(1.0, 2.0, 3.0));
@@ -201,7 +210,7 @@ mod tests {
     let original: AlifeObjectMonsterAbstract = new_object();
 
     assert_eq!(
-      original.read_back::<XRayByteOrder>()?,
+      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
       (88 + 36 + 14 + 2 + 1, 40 + 12, original)
     );
 
@@ -213,9 +222,12 @@ mod tests {
     let original: AlifeObjectMonsterAbstract = new_object();
     let mut ltx: Ltx = Ltx::new();
 
-    original.export("data", &mut ltx)?;
+    original.export("data", &mut ltx, SpawnLayout::CALL_OF_PRIPYAT)?;
 
-    assert_eq!(AlifeObjectMonsterAbstract::import("data", &ltx)?, original);
+    assert_eq!(
+      AlifeObjectMonsterAbstract::import("data", &ltx, SpawnLayout::CALL_OF_PRIPYAT)?,
+      original
+    );
 
     Ok(())
   }

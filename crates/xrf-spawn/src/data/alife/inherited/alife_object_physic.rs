@@ -7,6 +7,7 @@ use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrit
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
 use crate::data::alife::inherited::alife_object_skeleton::AlifeObjectSkeleton;
+use crate::data::alife::spawn_layout::SpawnLayout;
 use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 use crate::data::physics::physics_net_state::PhysicsNetState;
 
@@ -33,7 +34,11 @@ impl AlifePacketsReadWrite for AlifeObjectPhysic {
   /// An empty update packet reads as no physics state, as `CSE_ALifeObjectPhysic::UPDATE_Read` reads it; it is
   /// written back as the zero byte the engine writes for one. The state closes the packet, so it reads as
   /// [`PhysicsNetState::read_closing`] reads one, a state the SDK packed to zero among them.
-  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
+  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+    spawn: &mut S,
+    update: &mut U,
+    _: SpawnLayout,
+  ) -> XrfResult<Self> {
     Ok(Self {
       base: spawn.read_xr::<T, _>()?,
       skeleton: spawn.read_xr::<T, _>()?,
@@ -45,7 +50,12 @@ impl AlifePacketsReadWrite for AlifeObjectPhysic {
   }
 
   /// Write a physic object into both packets.
-  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(&self, spawn: &mut S, update: &mut U) -> XrfResult {
+  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+    &self,
+    spawn: &mut S,
+    update: &mut U,
+    _: SpawnLayout,
+  ) -> XrfResult {
     spawn.write_xr::<T, _>(&self.base)?;
     spawn.write_xr::<T, _>(&self.skeleton)?;
     spawn.write_u32::<T>(self.physic_type)?;
@@ -54,11 +64,9 @@ impl AlifePacketsReadWrite for AlifeObjectPhysic {
 
     PhysicsNetState::write_closing::<T, _>(update, self.update_state.as_ref())
   }
-}
 
-impl LtxImportExport for AlifeObjectPhysic {
   /// Import ALife physic object data from ltx config section.
-  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L, _: SpawnLayout) -> XrfResult<Self> {
     let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
@@ -78,7 +86,7 @@ impl LtxImportExport for AlifeObjectPhysic {
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite, _: SpawnLayout) -> XrfResult {
     self.base.export(section_name, ltx)?;
     self.skeleton.export(section_name, ltx)?;
 
@@ -99,7 +107,7 @@ mod tests {
   use byteorder::ReadBytesExt;
   use xrf_chunk::{ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_ltx::{Ltx, LtxImportExport};
+  use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
 
   use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
@@ -107,6 +115,7 @@ mod tests {
   use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
   use crate::data::alife::inherited::alife_object_physic::AlifeObjectPhysic;
   use crate::data::alife::inherited::alife_object_skeleton::AlifeObjectSkeleton;
+  use crate::data::alife::spawn_layout::SpawnLayout;
   use crate::data::physics::physics_net_state::PhysicsNetState;
   use crate::data::physics::raw_float::RawFloat;
 
@@ -142,7 +151,10 @@ mod tests {
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectPhysic = new_object();
 
-    assert_eq!(original.read_back::<XRayByteOrder>()?, (88, 54, original));
+    assert_eq!(
+      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
+      (88, 54, original)
+    );
 
     Ok(())
   }
@@ -153,7 +165,10 @@ mod tests {
 
     original.update_state = None;
 
-    assert_eq!(original.read_back::<XRayByteOrder>()?, (88, 1, original));
+    assert_eq!(
+      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
+      (88, 1, original)
+    );
 
     Ok(())
   }
@@ -166,7 +181,7 @@ mod tests {
     let mut update: xrf_chunk::ChunkWriter = xrf_chunk::ChunkWriter::new();
 
     expected.update_state = None;
-    expected.write::<XRayByteOrder, _, _>(&mut spawn, &mut update)?;
+    expected.write::<XRayByteOrder, _, _>(&mut spawn, &mut update, SpawnLayout::CALL_OF_PRIPYAT)?;
 
     let mut spawn_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&spawn.buffer)?;
     // The packet's length and `M_UPDATE` action, which `AlifeObject` reads, leaving nothing behind them.
@@ -175,7 +190,11 @@ mod tests {
     update_reader.read_u32::<XRayByteOrder>()?;
 
     assert_eq!(
-      AlifeObjectPhysic::read::<XRayByteOrder, _, _>(&mut spawn_reader, &mut update_reader)?,
+      AlifeObjectPhysic::read::<XRayByteOrder, _, _>(
+        &mut spawn_reader,
+        &mut update_reader,
+        SpawnLayout::CALL_OF_PRIPYAT
+      )?,
       expected
     );
 
@@ -196,7 +215,7 @@ mod tests {
     original.update_state = Some(state);
 
     assert_eq!(
-      original.read_back::<XRayByteOrder>()?,
+      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
       (88, 1 + 36 + 16 + 24 + 1, original)
     );
 
@@ -208,9 +227,12 @@ mod tests {
     let original: AlifeObjectPhysic = new_object();
     let mut ltx: Ltx = Ltx::new();
 
-    original.export("data", &mut ltx)?;
+    original.export("data", &mut ltx, SpawnLayout::CALL_OF_PRIPYAT)?;
 
-    assert_eq!(AlifeObjectPhysic::import("data", &ltx)?, original);
+    assert_eq!(
+      AlifeObjectPhysic::import("data", &ltx, SpawnLayout::CALL_OF_PRIPYAT)?,
+      original
+    );
 
     Ok(())
   }

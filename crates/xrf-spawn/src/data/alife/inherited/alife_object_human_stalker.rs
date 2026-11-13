@@ -8,6 +8,7 @@ use xrf_math::Vector3d;
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_human_abstract::AlifeObjectHumanAbstract;
 use crate::data::alife::inherited::alife_object_skeleton::AlifeObjectSkeleton;
+use crate::data::alife::spawn_layout::SpawnLayout;
 use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 
 /// A stalker, `CSE_ALifeHumanStalker`: a human with a physics skeleton, whose update packet closes with the dialog it
@@ -35,28 +36,35 @@ impl AlifePacketsReadWrite for AlifeObjectHumanStalker {
   }
 
   /// Read the stalker from both packets.
-  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
+  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+    spawn: &mut S,
+    update: &mut U,
+    layout: SpawnLayout,
+  ) -> XrfResult<Self> {
     Ok(Self {
-      base: AlifeObjectHumanAbstract::read::<T, _, _>(spawn, update)?,
+      base: AlifeObjectHumanAbstract::read::<T, _, _>(spawn, update, layout)?,
       skeleton: spawn.read_xr::<T, _>()?,
       update_start_dialog: update.read_w1251_string()?,
     })
   }
 
   /// Write the stalker into both packets.
-  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(&self, spawn: &mut S, update: &mut U) -> XrfResult {
-    self.base.write::<T, _, _>(spawn, update)?;
+  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+    &self,
+    spawn: &mut S,
+    update: &mut U,
+    layout: SpawnLayout,
+  ) -> XrfResult {
+    self.base.write::<T, _, _>(spawn, update, layout)?;
 
     spawn.write_xr::<T, _>(&self.skeleton)?;
     update.write_w1251_string(&self.update_start_dialog)?;
 
     Ok(())
   }
-}
 
-impl LtxImportExport for AlifeObjectHumanStalker {
   /// Import stalker data from ltx config section.
-  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L, layout: SpawnLayout) -> XrfResult<Self> {
     let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
@@ -66,15 +74,15 @@ impl LtxImportExport for AlifeObjectHumanStalker {
     })?;
 
     Ok(Self {
-      base: AlifeObjectHumanAbstract::import(section_name, ltx)?,
+      base: AlifeObjectHumanAbstract::import(section_name, ltx, layout)?,
       skeleton: AlifeObjectSkeleton::import(section_name, ltx)?,
       update_start_dialog: section.read_field("stalker.update_start_dialog")?,
     })
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
-    self.base.export(section_name, ltx)?;
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite, layout: SpawnLayout) -> XrfResult {
+    self.base.export(section_name, ltx, layout)?;
     self.skeleton.export(section_name, ltx)?;
 
     ltx
@@ -105,11 +113,12 @@ impl AlifeObjectHumanStalker {
 mod tests {
   use xrf_chunk::XRayByteOrder;
   use xrf_error::XrfResult;
-  use xrf_ltx::{Ltx, LtxImportExport};
+  use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
 
   use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
   use crate::data::alife::inherited::alife_object_human_stalker::AlifeObjectHumanStalker;
+  use crate::data::alife::spawn_layout::SpawnLayout;
 
   fn new_object() -> AlifeObjectHumanStalker {
     let mut object: AlifeObjectHumanStalker = AlifeObjectHumanStalker::new_mock(Vector3d::new(1.0, 2.0, 3.0));
@@ -123,10 +132,11 @@ mod tests {
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectHumanStalker = new_object();
-    let (human_spawn_size, human_update_size, _) = original.base.read_back::<XRayByteOrder>()?;
+    let (human_spawn_size, human_update_size, _) =
+      original.base.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?;
 
     assert_eq!(
-      original.read_back::<XRayByteOrder>()?,
+      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
       (
         human_spawn_size + 1 + 1 + 2,
         human_update_size + original.update_start_dialog.len() + 1,
@@ -142,9 +152,12 @@ mod tests {
     let original: AlifeObjectHumanStalker = new_object();
     let mut ltx: Ltx = Ltx::new();
 
-    original.export("data", &mut ltx)?;
+    original.export("data", &mut ltx, SpawnLayout::CALL_OF_PRIPYAT)?;
 
-    assert_eq!(AlifeObjectHumanStalker::import("data", &ltx)?, original);
+    assert_eq!(
+      AlifeObjectHumanStalker::import("data", &ltx, SpawnLayout::CALL_OF_PRIPYAT)?,
+      original
+    );
 
     Ok(())
   }

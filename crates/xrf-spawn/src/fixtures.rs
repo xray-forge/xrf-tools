@@ -181,8 +181,9 @@ impl GameWrittenPackets {
   }
 }
 
-/// Spawn packet states of Clear Sky's `agroprom` level list (`gamedata-cs/levels/agroprom/level.spawn`), spawn version
-/// 124 and script version 8, each with the `u16` size `Spawn_Write` patches in before its fields.
+/// Spawn packet states of Clear Sky's level lists (`gamedata-cs/levels/<level>/level.spawn`), script version 8, each
+/// with the `u16` size `Spawn_Write` patches in before its fields: `agroprom`'s at spawn version 124, the others at the
+/// version their name ends with.
 pub(crate) struct ClearSkyStates;
 
 impl ClearSkyStates {
@@ -199,5 +200,38 @@ impl ClearSkyStates {
   pub(crate) const INVENTORY_BOX: &'static str = concat!(
     "4d00ffff0000000001000000ffffffff3fffffff00ffffffffffffffff",
     "64796e616d6963735c65717569706d656e745f63616368655c65717569706d656e745f626f785f30325f636173650000",
+  );
+
+  /// `clmbl#0`: 79 bytes, the size, 27 of the abstract object, then one shape, a box of 48 bytes, with no material.
+  pub(crate) const CLIMABLE: &'static str = concat!(
+    "4f00ffff0000000001000000ffffffffbfffffff00ffffffffffffffff",
+    "0101",
+    "6901b6400000000000000000000000000000363b0000000000000000000000008089eb3e000000000000000000000000",
+  );
+
+  /// `escape`'s `esc_medkit`: 81 bytes, the size, 27 of the abstract object, 48 of its visual and the condition, with
+  /// no upgrades.
+  pub(crate) const ITEM_123: &'static str = concat!(
+    "5100ffff0000000001000000ffffffff3fffffff00ffffffffffffffff",
+    "64796e616d6963735c646576696365735c6465765f6170746563686b615c6465765f6170746563686b615f6c6f770000",
+    "0000803f",
+  );
+
+  /// `escape`'s `esc_wpn_ak74u`: 79 bytes, the size, 27 of the abstract object, 38 of its visual and the condition,
+  /// with no upgrades, then the weapon's seven bytes and its loaded grenades.
+  pub(crate) const WEAPON_123: &'static str = concat!(
+    "4f00ffff0000000001000000ffffffff3fffffff00ffffffffffffffff",
+    "64796e616d6963735c776561706f6e735c77706e5f616b3734755c77706e5f616b3734750000",
+    "0000803f",
+    "5a00000000000000",
+  );
+
+  /// `mp_garbage`'s `mp_garbage_mp_wpn_rg-6`: 74 bytes, the size, 27 of the abstract object, 34 of its visual and the
+  /// condition, with no upgrades, then the weapon's seven bytes and no loaded grenades.
+  pub(crate) const WEAPON_122: &'static str = concat!(
+    "4a00ffff0000000001000000ffffffffbfffffff00ffffffffffffffff",
+    "64796e616d6963735c776561706f6e735c77706e5f7267365c77706e5f7267360000",
+    "0000803f",
+    "5a000100000000",
   );
 }

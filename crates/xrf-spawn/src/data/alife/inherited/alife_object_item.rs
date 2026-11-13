@@ -11,9 +11,13 @@ use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 #[cfg(test)]
 use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
 use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
+use crate::data::alife::spawn_layout::SpawnLayout;
 use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 use crate::data::physics::physics_net_state::PhysicsNetState;
 
+/// An item, `CSE_ALifeItem`: a dynamic visual and an inventory item. Up to spawn version 123 the packet stores no
+/// upgrades, and the item holds none, as `CSE_ALifeInventoryItem`'s constructor leaves `m_upgrades`
+/// (`xrServer_Objects_ALife_Items.cpp:27`, read above 123 at `:92`).
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -38,6 +42,28 @@ impl AlifeObjectItem {
   pub fn quantize_condition(condition: f32) -> u8 {
     (condition * 255.0 + 0.5).floor() as i32 as u8
   }
+
+  /// Refuse upgrades the layout has no place for unless there are none, as the constructor leaves them.
+  fn assert_upgrades_fit(&self, layout: SpawnLayout) -> XrfResult {
+    if layout.has_item_upgrades() {
+      return Ok(());
+    }
+
+    layout.assert_absent_default("upgrades", &self.upgrades, &Vec::new())
+  }
+
+  /// Read the upgrade count and that many sections, as `load_data` reads `m_upgrades`.
+  fn read_upgrades<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Vec<String>> {
+    let count: u32 = reader.read_u32::<T>()?;
+    // An upgrade is at least the terminator of an empty name.
+    let mut upgrades: Vec<String> = reader.new_bounded_vec(count.into(), 1, "item upgrades")?;
+
+    for _ in 0..count {
+      upgrades.push(reader.read_w1251_string()?);
+    }
+
+    Ok(upgrades)
+  }
 }
 
 impl AlifePacketsReadWrite for AlifeObjectItem {
@@ -46,42 +72,47 @@ impl AlifePacketsReadWrite for AlifeObjectItem {
   fn set_spawned_update(&mut self, _: &SpawnPacketHeader) {}
 
   /// Read the item's condition and upgrades, then the physics state of its update packet.
-  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U) -> XrfResult<Self> {
-    let base: AlifeObjectDynamicVisual = spawn.read_xr::<T, _>()?;
-    let condition: f32 = spawn.read_f32::<T>()?;
-    let count: u32 = spawn.read_u32::<T>()?;
-    // An upgrade is at least the terminator of an empty name.
-    let mut upgrades: Vec<String> = spawn.new_bounded_vec(count.into(), 1, "item upgrades")?;
-
-    for _ in 0..count {
-      upgrades.push(spawn.read_w1251_string()?);
-    }
-
+  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+    spawn: &mut S,
+    update: &mut U,
+    layout: SpawnLayout,
+  ) -> XrfResult<Self> {
     Ok(Self {
-      base,
-      condition,
-      upgrades,
+      base: spawn.read_xr::<T, _>()?,
+      condition: spawn.read_f32::<T>()?,
+      upgrades: if layout.has_item_upgrades() {
+        Self::read_upgrades::<T, _>(spawn)?
+      } else {
+        Vec::new()
+      },
       update_state: update.read_xr_optional::<T, _>()?,
     })
   }
 
   /// Write the item's condition and upgrades, then the physics state of its update packet.
-  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(&self, spawn: &mut S, update: &mut U) -> XrfResult {
+  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+    &self,
+    spawn: &mut S,
+    update: &mut U,
+    layout: SpawnLayout,
+  ) -> XrfResult {
+    self.assert_upgrades_fit(layout)?;
     spawn.write_xr::<T, _>(&self.base)?;
     spawn.write_f32::<T>(self.condition)?;
-    spawn.write_u32::<T>(narrow_format_size(self.upgrades.len(), "item upgrades")?)?;
 
-    for upgrade in &self.upgrades {
-      spawn.write_w1251_string(upgrade)?;
+    if layout.has_item_upgrades() {
+      spawn.write_u32::<T>(narrow_format_size(self.upgrades.len(), "item upgrades")?)?;
+
+      for upgrade in &self.upgrades {
+        spawn.write_w1251_string(upgrade)?;
+      }
     }
 
     update.write_xr_optional::<T, _>(self.update_state.as_ref())
   }
-}
 
-impl LtxImportExport for AlifeObjectItem {
   /// Import ALife item object data from ltx config section.
-  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L, layout: SpawnLayout) -> XrfResult<Self> {
     let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
@@ -93,19 +124,27 @@ impl LtxImportExport for AlifeObjectItem {
     Ok(Self {
       base: AlifeObjectDynamicVisual::import(section_name, ltx)?,
       condition: section.read_field("item.condition")?,
-      upgrades: vector_from_string(&section.read_field::<String>("item.upgrades")?)?,
+      upgrades: if layout.has_item_upgrades() {
+        vector_from_string(&section.read_field::<String>("item.upgrades")?)?
+      } else {
+        Vec::new()
+      },
       update_state: PhysicsNetState::import_optional(section, "item.update_state")?,
     })
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite, layout: SpawnLayout) -> XrfResult {
+    self.assert_upgrades_fit(layout)?;
     self.base.export(section_name, ltx)?;
 
-    ltx
-      .with_section(section_name)
-      .set("item.condition", self.condition)
-      .set("item.upgrades", vector_to_string(&self.upgrades));
+    ltx.with_section(section_name).set("item.condition", self.condition);
+
+    if layout.has_item_upgrades() {
+      ltx
+        .with_section(section_name)
+        .set("item.upgrades", vector_to_string(&self.upgrades));
+    }
 
     PhysicsNetState::export_optional(self.update_state.as_ref(), section_name, "item.update_state", ltx);
 
@@ -145,20 +184,75 @@ mod tests {
   use std::io::{Seek, SeekFrom, Write, read_to_string};
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::XRayByteOrder;
+  use xrf_chunk::{ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_ltx::{Ltx, LtxImportExport};
+  use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
   use xrf_test_utils::GeneratedResources;
 
   use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
   use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
+  use crate::data::alife::spawn_layout::SpawnLayout;
+
+  fn layout(version: u16) -> SpawnLayout {
+    SpawnLayout {
+      version,
+      script_version: 8,
+    }
+  }
+
+  /// The upgrade count is the one spawn field the layout gates; the update packet is the same at every version.
+  #[test]
+  fn writes_upgrades_above_version_123_only() -> XrfResult {
+    let original: AlifeObjectItem = AlifeObjectItem::new_mock(Vector3d::new(1.0, 2.0, 3.0));
+    let (with_upgrades, update_with, read_with) = original.read_back::<XRayByteOrder>(layout(124))?;
+    let (without_upgrades, update_without, read_without) = original.read_back::<XRayByteOrder>(layout(123))?;
+
+    assert_eq!(with_upgrades, 52);
+    assert_eq!(without_upgrades, with_upgrades - 4);
+    assert_eq!(update_without, update_with);
+    assert_eq!(read_with, original);
+    assert_eq!(read_without, original);
+
+    Ok(())
+  }
+
+  #[test]
+  fn refuses_to_drop_upgrades_up_to_version_123() {
+    let mut original: AlifeObjectItem = AlifeObjectItem::new_mock(Vector3d::ZERO);
+
+    original.upgrades = vec![String::from("up_firsta_ak74")];
+
+    let error: String = original
+      .write::<XRayByteOrder, _, _>(&mut ChunkWriter::new(), &mut ChunkWriter::new(), layout(123))
+      .expect_err("upgrades the packet cannot hold")
+      .to_string();
+
+    assert!(error.starts_with("Invalid error: Field 'upgrades' holds"), "{error}");
+    assert!(original.export("data", &mut Ltx::new(), layout(123)).is_err());
+  }
+
+  #[test]
+  fn imports_and_exports_no_upgrades_up_to_version_123() -> XrfResult {
+    let original: AlifeObjectItem = AlifeObjectItem::new_mock(Vector3d::new(-4.5, 0.25, 7.0));
+    let mut ltx: Ltx = Ltx::new();
+
+    original.export("data", &mut ltx, layout(123))?;
+
+    assert_eq!(ltx.get_from("data", "item.upgrades"), None);
+    assert_eq!(AlifeObjectItem::import("data", &ltx, layout(123))?, original);
+
+    Ok(())
+  }
 
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectItem = AlifeObjectItem::new_mock(Vector3d::new(1.0, 2.0, 3.0));
 
-    assert_eq!(original.read_back::<XRayByteOrder>()?, (52, 54, original));
+    assert_eq!(
+      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
+      (52, 54, original)
+    );
 
     Ok(())
   }
@@ -170,7 +264,10 @@ mod tests {
 
     original.update_state = None;
 
-    assert_eq!(original.read_back::<XRayByteOrder>()?, (52, 1, original));
+    assert_eq!(
+      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
+      (52, 1, original)
+    );
 
     Ok(())
   }
@@ -182,7 +279,10 @@ mod tests {
 
     original.upgrades = vec![String::from("up_firsta_ak74"), String::from("up_secondb_ak74")];
 
-    assert_eq!(original.read_back::<XRayByteOrder>()?.2, original);
+    assert_eq!(
+      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?.2,
+      original
+    );
 
     Ok(())
   }
@@ -217,13 +317,16 @@ mod tests {
     original.condition = 0.1;
     original.upgrades = vec![String::from("up_firsta_ak74"), String::from("up_secondb_ak74")];
 
-    original.export("data", &mut ltx)?;
+    original.export("data", &mut ltx, SpawnLayout::CALL_OF_PRIPYAT)?;
 
     ltx.write_to(&mut GeneratedResources::overwrite(&ltx_filename)?)?;
 
     let source: Ltx = Ltx::read_from_path(GeneratedResources::path(&ltx_filename))?;
 
-    assert_eq!(AlifeObjectItem::import("data", &source)?, original);
+    assert_eq!(
+      AlifeObjectItem::import("data", &source, SpawnLayout::CALL_OF_PRIPYAT)?,
+      original
+    );
 
     Ok(())
   }
