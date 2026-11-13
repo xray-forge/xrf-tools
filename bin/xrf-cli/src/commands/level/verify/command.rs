@@ -1,7 +1,8 @@
 use clap::{ArgMatches, Command};
-use xrf_level::{LevelGeometryVerifier, LevelGeometryVerifyResult};
+use xrf_level::{LevelAiGraphVerifier, LevelAiGraphVerifyResult, LevelGeometryVerifier, LevelGeometryVerifyResult};
 use xrf_math::Aabb;
 use xrf_output::OutputOptions;
+use xrf_report::{CheckReport, Report};
 
 use crate::commands::level::level_assets::LevelAssets;
 use crate::commands::level::level_selection::LevelSelection;
@@ -18,9 +19,10 @@ impl GenericCommand for VerifyCommand {
   }
 
   fn declare(&self, command: Command) -> Command {
-    LevelSelection::declare(
-      command.about("Verify that a compiled level's geometry can be drawn the way the renderer addresses it"),
-    )
+    LevelSelection::declare(command.about(
+      "Verify that a compiled level's geometry can be drawn the way the renderer addresses it, and that its AI map is \
+       a graph the engine can walk",
+    ))
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
@@ -33,18 +35,50 @@ impl GenericCommand for VerifyCommand {
     xrf_output::info!(output, "Verifying compiled level {}", assets.describe());
 
     let result: LevelGeometryVerifyResult = LevelGeometryVerifier::new(&assets).run();
+    let ai: LevelAiGraphVerifyResult = LevelAiGraphVerifier::verify_source(&assets);
+    let report: Report = Report::new(
+      result
+        .report
+        .checks()
+        .iter()
+        .chain(ai.report.checks())
+        .cloned()
+        .collect::<Vec<CheckReport>>(),
+    );
 
     Self::print_census(&output, &result);
-    ReportVerdict::print_findings(&output, &result.report);
+    Self::print_ai_census(&output, &ai);
+    ReportVerdict::print_findings(&output, &report);
 
     // Deposited before the verdict becomes an outcome, so a failing check still reports what explains it.
-    context.set_result(|| LevelVerifyReport::new(&result.census, &result.report))?;
+    context.set_result(|| LevelVerifyReport::new(&result.census, ai.census.as_ref(), &report))?;
 
-    ReportVerdict::conclude(&output, &result.report, "Verification of the level")
+    ReportVerdict::conclude(&output, &report, "Verification of the level")
   }
 }
 
 impl VerifyCommand {
+  fn print_ai_census(output: &OutputOptions, result: &LevelAiGraphVerifyResult) {
+    let Some(census) = &result.census else {
+      xrf_output::info!(output, "No AI map was checked");
+
+      return;
+    };
+
+    xrf_output::info!(
+      output,
+      "AI map of {} nodes and {} links in {}: {} one-way to {} nodes, {} to themselves; {} parts, the largest {} nodes",
+      census.nodes,
+      census.links,
+      xrf_utils::format_duration(result.duration),
+      census.one_way_links,
+      census.one_way_nodes,
+      census.self_links,
+      census.components,
+      census.largest_component
+    );
+  }
+
   fn print_census(output: &OutputOptions, result: &LevelGeometryVerifyResult) {
     xrf_output::info!(
       output,
