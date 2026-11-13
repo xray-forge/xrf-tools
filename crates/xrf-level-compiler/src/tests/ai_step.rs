@@ -18,7 +18,7 @@ use crate::{
 
 /// The details step's level, with the AI tests' four-node map as `build.aimap`.
 fn level(name: &str, aimap: &BuildAimapFile) -> XrfResult<Fixture> {
-  let fixture: Fixture = Fixture::new(name)?;
+  let fixture: Fixture = Fixture::new(file!(), name)?;
 
   Fixture::write(&fixture.level.join(BuildAimapFile::FILE_NAME), |writer| {
     aimap.write::<XRayByteOrder>(writer)
