@@ -5,6 +5,7 @@ mod compile;
 mod detail;
 mod detail_step;
 mod fixtures;
+mod geometry;
 #[cfg(feature = "gpu")]
 mod gpu;
 mod program;

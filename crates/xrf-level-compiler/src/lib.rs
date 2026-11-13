@@ -3,6 +3,7 @@
 mod ai;
 mod compiler_textures;
 mod detail;
+mod geometry;
 mod level_compile_report;
 mod level_compile_request;
 mod level_compile_step;
@@ -27,6 +28,10 @@ pub use crate::detail::detail_light_request::DetailLightRequest;
 pub use crate::detail::detail_lighter::DetailLighter;
 pub use crate::detail::detail_lighting::DetailLighting;
 pub use crate::detail::detail_slot_counts::DetailSlotCounts;
+pub use crate::geometry::geometry_face::GeometryFace;
+pub use crate::geometry::geometry_mesh::GeometryMesh;
+pub use crate::geometry::geometry_normals::GeometryNormals;
+pub use crate::geometry::geometry_optimization::GeometryOptimization;
 pub use crate::level_compile_report::{LevelCompileReport, LevelCompileStepReport};
 pub use crate::level_compile_request::LevelCompileRequest;
 pub use crate::level_compile_step::LevelCompileStep;
