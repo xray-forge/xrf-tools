@@ -18,8 +18,8 @@ use crate::spawn::spawn_skipped_connection::SpawnSkippedConnection;
 ///
 /// The levels go in ascending id order, each vertex's edges numbered past the vertices of the levels before. Each
 /// vertex keeps level points ("death points", `vfGenerateDeathPoints`): its region's nodes in node order, shuffled by
-/// [`SpawnRandom`], the first tenth kept, at most 255, or every one of ten or fewer; one stream for the whole merge,
-/// as xrAI's main thread draws it, which gives the shipped points. Then each graph point naming a connection on a level
+/// [`SpawnRandom`], the first tenth kept, at most 255, or every one of ten or fewer; the build's one stream, from its
+/// start, which gives the shipped points. Then each graph point naming a connection on a level
 /// of the build gets an edge to that point's vertex, the distance between them in the world the levels share; the
 /// levels in id order, each level's points by name. The graph GUID is derived from the graph as written with no
 /// GUID, so the same levels give the same graph.
@@ -29,13 +29,14 @@ impl SpawnGameGraphMerger {
   /// `XRAI_CURRENT_VERSION`, the version of the graph and its cross tables.
   pub const VERSION: u8 = 10;
 
-  /// Merges the levels' graphs.
+  /// Merges the levels' graphs, the level points drawn from `random`: the build's one stream, which the zones'
+  /// artefact points draw from next.
   ///
   /// # Errors
   ///
   /// Returns an error when two levels share an id or a name, a level's graph or cross table is not its points' and
   /// map's, a connection names a graph point its level lacks, or the graph is past what its format counts.
-  pub fn merge(levels: &[SpawnMergeLevel<'_>]) -> XrfResult<SpawnGameGraphMerge> {
+  pub fn merge(levels: &[SpawnMergeLevel<'_>], random: &mut SpawnRandom) -> XrfResult<SpawnGameGraphMerge> {
     let mut ordered: Vec<&SpawnMergeLevel<'_>> = levels.iter().collect();
 
     ordered.sort_by_key(|level| level.id);
@@ -51,13 +52,12 @@ impl SpawnGameGraphMerger {
         Some(this)
       })
       .collect();
-    let mut random: SpawnRandom = SpawnRandom::new();
     let mut vertices: Vec<GraphVertex> = Vec::new();
     let mut vertex_edges: Vec<Vec<GraphEdge>> = Vec::new();
     let mut points: Vec<GraphLevelPoint> = Vec::new();
 
     for (level, first) in ordered.iter().zip(&firsts) {
-      let level_points: Vec<Vec<GraphLevelPoint>> = Self::draw_level_points(level, &mut random);
+      let level_points: Vec<Vec<GraphLevelPoint>> = Self::draw_level_points(level, random);
 
       for ((point, edges), drawn) in level.points.iter().zip(&level.graph.edges).zip(level_points) {
         vertices.push(GraphVertex {

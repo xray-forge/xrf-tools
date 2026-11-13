@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 use xrf_math::Vector3d;
 use xrf_utils::narrow_format_size;
 
@@ -122,7 +122,7 @@ impl AlifeClearSkyActor {
   }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 impl AlifeClearSkyActor {
   /// An actor at `position` as a Clear Sky level places one, its managers as their constructors leave them.
   pub fn new_mock(position: Vector3d) -> Self {

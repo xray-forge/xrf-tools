@@ -93,7 +93,7 @@ impl AlifePacketsReadWrite for AlifeObjectMonsterBase {
   }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 impl AlifeObjectMonsterBase {
   /// A monster at `position` as the SDK compiles one, with no skeleton state and bound to nothing.
   pub fn new_mock(position: Vector3d) -> Self {

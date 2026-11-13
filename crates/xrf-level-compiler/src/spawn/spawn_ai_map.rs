@@ -95,6 +95,114 @@ impl SpawnAiMap {
     Some(best as u32)
   }
 
+  /// `inside(vertex, position)`: the position lies over the grid, in the node's cell.
+  pub fn is_inside(&self, node: u32, position: &Vector3d<f32>) -> bool {
+    self.is_valid_position(position)
+      && self.nodes[node as usize].packed_xz == self.get_packed_xz(position.x, position.z)
+  }
+
+  /// `CLevelGraph::vertex(u32(-1), position)`: the node of the position's cell nearest at or under it
+  /// ([`Self::find_node`]), else, with none or off the grid, [`Self::find_nearest_node`].
+  pub fn place(&self, position: &Vector3d<f32>) -> u32 {
+    self
+      .is_valid_position(position)
+      .then(|| self.find_node(position))
+      .flatten()
+      .unwrap_or_else(|| self.find_nearest_node(position))
+  }
+
+  /// `CLevelGraph::vertex(position)`, the slow search: the node whose cell's edges, on its plane, come nearest the
+  /// position, the first of equals.
+  ///
+  /// A node whose cell lies, across the ground, clearly farther than the best so far is passed over unmeasured: its
+  /// edges can come no nearer than its cell does, and the margin keeps rounding from passing over an equal.
+  pub fn find_nearest_node(&self, position: &Vector3d<f32>) -> u32 {
+    let half: f64 = f64::from(self.header.size) / 2.0;
+    let across = |from: f32, to: f32| (f64::from(to - from).abs() - half).max(0.0);
+    let (mut nearest, mut nearest_distance): (u32, f32) = (0, f32::MAX);
+
+    for node in 0..self.nodes.len() as u32 {
+      let (x, z) = self.get_node_xz(node);
+      let floor: f64 = across(x, position.x).powi(2) + across(z, position.z).powi(2);
+
+      if floor > f64::from(nearest_distance) * 1.001 + 0.01 {
+        continue;
+      }
+
+      let distance: f32 = self.get_contour_distance(node, position);
+
+      if distance < nearest_distance {
+        nearest = node;
+        nearest_distance = distance;
+      }
+    }
+
+    nearest
+  }
+
+  /// `CLevelGraph::distance(position, vertex)`: the squared distance to the nearest of the node's four cell edges
+  /// raised onto its plane (`contour`).
+  ///
+  /// The plane's offset and each corner's height are worked wide and rounded once, as the 2009 build's x87 code keeps
+  /// `plane.d` and `project_point`'s expression in its registers until they are stored: in single precision the
+  /// plane's dot products cancel to tens of ulps, enough to pick the other of two cells sharing an edge.
+  fn get_contour_distance(&self, node: u32, position: &Vector3d<f32>) -> f32 {
+    let centre: Vector3d<f64> = Self::widen(&self.get_node_position(node));
+    let normal: Vector3d<f64> = Self::widen(&self.nodes[node as usize].get_normal());
+    let offset: f64 = f64::from((-(normal.x * centre.x + normal.y * centre.y + normal.z * centre.z)) as f32);
+    let half: f32 = self.header.size / 2.0;
+    let corner = |dx: f32, dz: f32| {
+      // `v.set(position.x ± st, ...)` stores each corner's x and z in single precision before projecting it.
+      let (x, z) = ((centre.x as f32) + dx, (centre.z as f32) + dz);
+      let classify: f64 = normal.x * f64::from(x) + normal.y * centre.y + normal.z * f64::from(z) + offset;
+
+      Vector3d::new(x, (centre.y - classify / normal.y) as f32, z)
+    };
+    let corners: [Vector3d<f32>; 4] = [
+      corner(-half, -half),
+      corner(half, -half),
+      corner(half, half),
+      corner(-half, half),
+    ];
+
+    (0..4)
+      .map(|index| Self::get_segment_distance(position, &corners[index], &corners[(index + 1) % 4]))
+      .fold(f32::MAX, f32::min)
+  }
+
+  fn widen(vector: &Vector3d<f32>) -> Vector3d<f64> {
+    Vector3d {
+      x: f64::from(vector.x),
+      y: f64::from(vector.y),
+      z: f64::from(vector.z),
+    }
+  }
+
+  /// The squared distance from a point to a segment, `CLevelGraph::distance(position, point0, point1)`.
+  fn get_segment_distance(position: &Vector3d<f32>, start: &Vector3d<f32>, end: &Vector3d<f32>) -> f32 {
+    let squared = |a: &Vector3d<f32>, b: &Vector3d<f32>| {
+      let (dx, dy, dz) = (a.x - b.x, a.y - b.y, a.z - b.z);
+
+      dx * dx + dy * dy + dz * dz
+    };
+    let (cx, cy, cz) = (position.x - start.x, position.y - start.y, position.z - start.z);
+    let (vx, vy, vz) = (end.x - start.x, end.y - start.y, end.z - start.z);
+    let length: f32 = (vx * vx + vy * vy + vz * vz).sqrt();
+    let (vx, vy, vz) = (vx / length, vy / length, vz / length);
+    let t: f32 = vx * cx + vy * cy + vz * cz;
+
+    if t <= 0.0 {
+      squared(position, start)
+    } else if t >= length {
+      squared(position, end)
+    } else {
+      squared(
+        position,
+        &Vector3d::new(start.x + vx * t, start.y + vy * t, start.z + vz * t),
+      )
+    }
+  }
+
   /// A node's cell along x and z, `unpack_xz` into whole cells.
   pub fn get_node_cell(&self, node: u32) -> (i64, i64) {
     let packed: i64 = i64::from(self.nodes[node as usize].packed_xz);
@@ -102,8 +210,9 @@ impl SpawnAiMap {
     (packed / self.row_length, packed % self.row_length)
   }
 
-  /// A node's position, `vertex_position`: its cell centre at its packed height, the height
-  /// `(float(y) / 65535) * factor_y + min.y` rounded once, as the 2009 build keeps it on the x87 until it is stored.
+  /// A node's position, `vertex_position`: its cell centre at its packed height. The 2009 build computes the height
+  /// `(float(y) / 65535) * factor_y + min.y` with the division as a multiply by the reciprocal, which every shipped
+  /// level point's height needs.
   pub fn get_node_position(&self, node: u32) -> Vector3d<f32> {
     let vertex: &LevelAiNode = &self.nodes[node as usize];
     let (x, z) = self.get_node_xz(node);

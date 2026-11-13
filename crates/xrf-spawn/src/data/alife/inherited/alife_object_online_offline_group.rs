@@ -5,7 +5,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_utils::{vector_from_string, vector_to_string};
 
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
 use crate::data::alife::inherited::alife_object_dynamic::AlifeObjectDynamic;
 
@@ -67,7 +67,7 @@ impl LtxImportExport for AlifeObjectOnlineOfflineGroup {
   }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 impl AlifeObjectOnlineOfflineGroup {
   /// A group of `members` at no particular vertex.
   pub fn new_mock(members: Vec<u16>) -> Self {

@@ -74,10 +74,13 @@ fn levels() -> XrfResult<(Level, Level)> {
 }
 
 fn merge(a: &Level, b: &Level) -> XrfResult<SpawnGameGraphMerge> {
-  SpawnGameGraphMerger::merge(&[
-    a.input("a", 20, Vector3d::new(100.0, 0.0, 0.0)),
-    b.input("b", 10, Vector3d::new(0.0, 0.0, 0.0)),
-  ])
+  SpawnGameGraphMerger::merge(
+    &[
+      a.input("a", 20, Vector3d::new(100.0, 0.0, 0.0)),
+      b.input("b", 10, Vector3d::new(0.0, 0.0, 0.0)),
+    ],
+    &mut SpawnRandom::new(),
+  )
 }
 
 #[test]
@@ -166,10 +169,13 @@ fn derives_the_graph_guid_from_the_graph() -> XrfResult {
   );
 
   let (moved, _) = levels()?;
-  let other: SpawnGameGraphMerge = SpawnGameGraphMerger::merge(&[
-    moved.input("a", 20, Vector3d::new(200.0, 0.0, 0.0)),
-    b.input("b", 10, Vector3d::new(0.0, 0.0, 0.0)),
-  ])?;
+  let other: SpawnGameGraphMerge = SpawnGameGraphMerger::merge(
+    &[
+      moved.input("a", 20, Vector3d::new(200.0, 0.0, 0.0)),
+      b.input("b", 10, Vector3d::new(0.0, 0.0, 0.0)),
+    ],
+    &mut SpawnRandom::new(),
+  )?;
 
   assert_ne!(other.graph.header.guid, first.graph.header.guid);
 
@@ -180,10 +186,13 @@ fn derives_the_graph_guid_from_the_graph() -> XrfResult {
 fn refuses_a_connection_to_a_point_its_level_lacks() -> XrfResult {
   let a: Level = Level::new(4, Uuid::nil(), &[(0.0, "b", "missing")])?;
   let (_, b) = levels()?;
-  let error: String = SpawnGameGraphMerger::merge(&[
-    a.input("a", 20, Vector3d::new(100.0, 0.0, 0.0)),
-    b.input("b", 10, Vector3d::new(0.0, 0.0, 0.0)),
-  ])
+  let error: String = SpawnGameGraphMerger::merge(
+    &[
+      a.input("a", 20, Vector3d::new(100.0, 0.0, 0.0)),
+      b.input("b", 10, Vector3d::new(0.0, 0.0, 0.0)),
+    ],
+    &mut SpawnRandom::new(),
+  )
   .expect_err("expect the missing graph point refused")
   .to_string();
 
@@ -197,7 +206,7 @@ fn refuses_levels_it_cannot_number() -> XrfResult {
   let (a, b) = levels()?;
   let origin: Vector3d = Vector3d::new(0.0, 0.0, 0.0);
   let error = |inputs: &[SpawnMergeLevel<'_>]| {
-    SpawnGameGraphMerger::merge(inputs)
+    SpawnGameGraphMerger::merge(inputs, &mut SpawnRandom::new())
       .expect_err("expect the levels refused")
       .to_string()
   };

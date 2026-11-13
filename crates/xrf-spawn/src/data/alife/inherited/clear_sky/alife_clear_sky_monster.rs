@@ -37,7 +37,7 @@ impl AlifeClearSkyMonster {
   }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 impl AlifeClearSkyMonster {
   /// A monster at `position` as a Clear Sky level spawns one.
   pub fn new_mock(position: Vector3d) -> Self {

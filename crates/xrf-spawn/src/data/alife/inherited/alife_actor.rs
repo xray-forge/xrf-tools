@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 use xrf_math::Vector3d;
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
@@ -26,7 +26,7 @@ impl AlifeActor {
   const SCRIPT_CLASS: &'static str = "se_actor";
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 impl AlifeActor {
   /// An actor at `position` as a new game places one, with no body saved.
   pub fn new_mock(position: Vector3d) -> Self {

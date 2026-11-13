@@ -8,6 +8,7 @@ use crate::spawn::spawn_level_game_graph::SpawnLevelGameGraph;
 
 /// One level as the game graph merge takes it: its `game_levels.ltx` entry, its AI map, and the graph points, game
 /// graph and cross table built from them.
+#[derive(Clone)]
 pub struct SpawnMergeLevel<'a> {
   /// The level's `[levels]` section, `level<id>` in vanilla.
   pub section: String,

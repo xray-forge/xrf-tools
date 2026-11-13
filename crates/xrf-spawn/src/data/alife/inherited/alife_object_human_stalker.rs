@@ -93,7 +93,7 @@ impl AlifePacketsReadWrite for AlifeObjectHumanStalker {
   }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 impl AlifeObjectHumanStalker {
   /// A stalker at `position` as the SDK compiles one, with no skeleton state and the default dialog.
   pub fn new_mock(position: Vector3d) -> Self {

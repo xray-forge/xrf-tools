@@ -7,7 +7,7 @@ use xrf_math::Vector3d;
 use xrf_utils::{vector_from_string, vector_to_string};
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
 use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
 use crate::data::alife::spawn_layout::SpawnLayout;
@@ -210,7 +210,7 @@ impl AlifePacketsReadWrite for AlifeObjectCreature {
   }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 impl AlifeObjectCreature {
   /// A living creature at `position`, facing along its spawn packet's direction as the SDK leaves one.
   pub fn new_mock(position: Vector3d) -> Self {

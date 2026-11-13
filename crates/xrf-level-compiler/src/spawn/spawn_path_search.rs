@@ -59,9 +59,7 @@ impl SpawnPathSearch {
 
   /// The nodes from `start` to `goal` the search walks, both included; `None` where it fails.
   pub(crate) fn find(&mut self, map: &SpawnAiMap, start: u32, goal: u32) -> Option<Vec<u32>> {
-    self.search += 1;
-    self.buckets.fill(Self::NONE);
-    self.minimum_bucket = Self::BUCKETS;
+    self.begin();
 
     let cell: f32 = map.get_header().size;
     let goal_cell: (i64, i64) = map.get_node_cell(goal);
@@ -83,30 +81,72 @@ impl SpawnPathSearch {
       }
 
       self.pop_best();
-
-      let best_g: f32 = self.nodes[best as usize].g;
-      let h: f32 = estimate(map.get_node_cell(best));
-
-      for neighbour in map.get_neighbours(best) {
-        let g: f32 = best_g + cell;
-        let node: SearchNode = self.nodes[neighbour as usize];
-
-        if node.search != self.search {
-          self.visit(neighbour, g, h, best);
-        } else if node.is_open && node.g > g {
-          self.unlink(neighbour);
-
-          let node: &mut SearchNode = &mut self.nodes[neighbour as usize];
-
-          node.g = g;
-          node.f = g + node.h;
-          node.parent = best;
-          self.link(neighbour);
-        }
-      }
+      self.expand(map, best, estimate(map.get_node_cell(best)), |_| true);
     }
 
     None
+  }
+
+  /// xrAI's level flood (`CLevelFlooderPathManager`, `path_manager_level_flooder_inline.h`): the same search with no
+  /// goal and no estimate, reaching only nodes whose cell lies within `radius` of `start`'s across and along, in whole
+  /// cells (`iFloor(radius² / cell² + 0.5)`); the nodes in the order it closes them, `start` first.
+  pub(crate) fn flood(&mut self, map: &SpawnAiMap, start: u32, radius: f32) -> Vec<u32> {
+    self.begin();
+
+    let cell: f32 = map.get_header().size;
+    let limit: i64 = (radius * radius / (cell * cell) + 0.5).floor() as i64;
+    let origin: (i64, i64) = map.get_node_cell(start);
+    let mut closed: Vec<u32> = Vec::new();
+
+    self.visit(start, 0.0, 0.0, Self::NONE);
+
+    while self.advance_minimum() {
+      let best: u32 = self.buckets[self.minimum_bucket];
+
+      closed.push(best);
+      self.pop_best();
+      self.expand(map, best, 0.0, |node| {
+        let (x, z) = map.get_node_cell(node);
+
+        (x - origin.0) * (x - origin.0) + (z - origin.1) * (z - origin.1) <= limit
+      });
+    }
+
+    closed
+  }
+
+  /// Starts a search: no node met, every bucket empty.
+  fn begin(&mut self) {
+    self.search += 1;
+    self.buckets.fill(Self::NONE);
+    self.minimum_bucket = Self::BUCKETS;
+  }
+
+  /// One expansion of the closed node `best`: each accessible neighbour met for the first time is opened at a cell's
+  /// step with the estimate `h`, and an open one reached shorter is relinked.
+  fn expand(&mut self, map: &SpawnAiMap, best: u32, h: f32, is_accessible: impl Fn(u32) -> bool) {
+    let g: f32 = self.nodes[best as usize].g + map.get_header().size;
+
+    for neighbour in map.get_neighbours(best) {
+      if !is_accessible(neighbour) {
+        continue;
+      }
+
+      let node: SearchNode = self.nodes[neighbour as usize];
+
+      if node.search != self.search {
+        self.visit(neighbour, g, h, best);
+      } else if node.is_open && node.g > g {
+        self.unlink(neighbour);
+
+        let node: &mut SearchNode = &mut self.nodes[neighbour as usize];
+
+        node.g = g;
+        node.f = g + node.h;
+        node.parent = best;
+        self.link(neighbour);
+      }
+    }
   }
 
   /// Meets a node for the first time and opens it.
