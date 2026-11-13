@@ -27,6 +27,24 @@ already written (`sdk/level_sdk_dialog.rs`).
 The SDK 0.7 compilers run the steps no compiler of this crate does yet. The spawn (xrAI `-s`) is not a step: it works on
 every level of a game at once.
 
+## The AI map compiler
+
+`AiMapCompiler::compile` compiles `build.aimap` into `level.ai` as SDK 0.7's `xrAI -f` does. It takes an `AiMapRequest`
+(the map, the covers, and the `level.ai` it replaces, if any) and gives an `AiMapCompilation`: the `AiMap`, header and
+nodes, and where its identity came from (`AiMapGuid`). It is not yet the `ai` step.
+
+- Each node is loaded as xrAI loads it: its cell through the packed grid over the map's box and back (`AiGrid`), its
+  plane normal decompressed and normalised.
+- `AiMapCovers::None` stores every cover as 0, as xrAI's `-draft` does; `Full` is refused until the cover pass exists.
+- The save: the box around every node, its height grown by `EPS_L`; each node's cell, height, plane and covers
+  compressed over it; a stable sort by packed cell with the links renumbered; the light 15, which no loader reads.
+- The identity is the replaced map's while its graph stands (as many nodes, the same cell size, each at the same cell
+  with the same links), so the existing spawn still loads the level; otherwise the first 16 bytes of the SHA-256 of the
+  map with a nil identity, so the same input gives the same file. xrAI draws a random one every run.
+
+On the kept SDK runs of `labx8` and `jupiter` a draft compile is the SDK's `-draft` file byte for byte but for the
+identity and each node's light, and the full runs' but for the covers too.
+
 ## Shadow materials
 
 `ShadowMaterials::load` reads how each face of xrLC's ray model (`build.cform`) meets a light ray, as the SDK's light
@@ -86,6 +104,9 @@ rays. On the kept runs it matches the CPU on every `mp_darkvalley` slot and all 
 step off.
 
 The slots run a progress unit each, and a cancelled job stops the lighting with `XrfError::Cancelled`.
+
+The AI map tests compile a generated four-node map: the sort and renumbering, the header, three planes whose round
+trip xrAI's own run gave, the identity rule, and the refusals.
 
 ## Develop
 

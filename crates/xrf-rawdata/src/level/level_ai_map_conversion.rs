@@ -1,6 +1,6 @@
 use xrf_editable_level::{EditableAiMapNode, EditableAiMapParams, EditableAiMapTool};
 use xrf_level::{BuildAimapFile, BuildAimapNode, BuildAimapParams, LevelAiHeader, LevelAiNode};
-use xrf_math::{Aabb, Vector3d};
+use xrf_math::{Aabb, AiNodePosition, Vector3d};
 
 /// A level's AI map, `level.ai`, back into the AI map tool (`ESceneAIMapTool`), and the tool out to the `build.aimap`
 /// the Build hands xrAI (`ESceneAIMapTool::Export`, `LevelEditor/Edit/ESceneAIMapTools_Export.cpp:31`).
@@ -41,9 +41,11 @@ impl LevelAiMapConversion {
               .links
               .map(|link| if link < count { link } else { EditableAiMapNode::NO_LINK }),
             plane: node.plane,
-            x: Self::get_cell(position.x, header.size),
-            z: Self::get_cell(position.z, header.size),
-            y: node.packed_y,
+            position: AiNodePosition {
+              x: Self::get_cell(position.x, header.size),
+              y: node.packed_y,
+              z: Self::get_cell(position.z, header.size),
+            },
             flags: 0,
           }
         })
@@ -82,9 +84,7 @@ impl LevelAiMapConversion {
         .map(|(node, position)| BuildAimapNode {
           links: node.links,
           plane: node.plane,
-          x: Self::pack_axis(position.x / tool.params.patch_size),
-          y: Self::pack_height(position.y, &bounds),
-          z: Self::pack_axis(position.z / tool.params.patch_size),
+          position: AiNodePosition::pack(position, tool.params.patch_size, &bounds),
         })
         .collect(),
     }
@@ -94,24 +94,5 @@ impl LevelAiMapConversion {
   /// of the patch size that the map's floor and float rounding move off it by a hair.
   fn get_cell(coordinate: f32, patch_size: f32) -> i16 {
     (coordinate / patch_size).round().clamp(-32767.0, 32767.0) as i16
-  }
-
-  /// `PackPosition`'s cell, `iFloor(coordinate / patch + EPS_L)` clamped to a signed 16 bits.
-  fn pack_axis(cells: f32) -> i16 {
-    (cells + xrf_math::EPS_L).floor().clamp(-32767.0, 32767.0) as i16
-  }
-
-  /// `PackPosition`'s height, `iFloor(65535 * (y - floor) / extent + EPS_L)` clamped to 16 bits; the floor for a box
-  /// of no height, where the editor would divide by zero.
-  fn pack_height(y: f32, bounds: &Aabb) -> u16 {
-    let extent: f32 = bounds.max.y - bounds.min.y;
-
-    if extent <= 0.0 {
-      return 0;
-    }
-
-    (65535.0 * (y - bounds.min.y) / extent + xrf_math::EPS_L)
-      .floor()
-      .clamp(0.0, 65535.0) as u16
   }
 }

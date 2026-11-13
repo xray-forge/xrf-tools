@@ -79,8 +79,8 @@ the editor does. The SDK's four `detail_object.part` files read and write back b
 
 `EditableAiMapTool` (`ESceneAIMapTool`) holds the AI map: the generator's settings (`EditableAiMapParams`, `SAIParams`),
 the box node heights are packed across, and each `EditableAiMapNode` (`SAINode`: four three-byte links, the packed
-plane normal, the cell and height, the editor's flags), with the editor's own settings and snap objects;
-`get_node_position` unpacks a node as `UnpackPosition` does. The SDK's four `ai_map.part` files, GSC's `labx8` of 6,781
+plane normal, the cell and height as an `xrf-math` `AiNodePosition`, the editor's flags), with the editor's own
+settings and snap objects; `get_node_position` unpacks a node as `UnpackPosition` does. The SDK's four `ai_map.part` files, GSC's `labx8` of 6,781
 nodes among them, read and write back byte for byte.
 
 ## Typed objects

@@ -1,7 +1,7 @@
 use uuid::Uuid;
 use xrf_editable_level::{EditableAiMapNode, EditableAiMapTool};
 use xrf_level::{BuildAimapFile, LevelAiHeader, LevelAiNode};
-use xrf_math::{Aabb, Vector3d};
+use xrf_math::{Aabb, AiNodePosition, Vector3d};
 
 use crate::level::level_ai_map_conversion::LevelAiMapConversion;
 
@@ -28,6 +28,7 @@ fn node(cell: (u32, u32), packed_y: u16, links: [u32; 4]) -> LevelAiNode {
     plane: 0x1234,
     packed_xz: cell.0 * 21 + cell.1,
     packed_y,
+    light: 15,
   }
 }
 
@@ -49,15 +50,17 @@ fn decompiles_a_level_ai_into_the_ai_map_tool() {
     EditableAiMapNode {
       links: [1, EditableAiMapNode::NO_LINK, 1, EditableAiMapNode::NO_LINK],
       plane: 0x1234,
-      x: -8,
-      z: 23,
-      y: 32768,
+      position: AiNodePosition { x: -8, y: 32768, z: 23 },
       flags: 0,
     },
     "cell 2 is 1.4 m past the floor at -7, the eighth cell west of the origin; cell 3 along z is 16.1 m, the 23rd"
   );
   assert_eq!(
-    (tool.nodes[1].x, tool.nodes[1].z, tool.nodes[1].links[1]),
+    (
+      tool.nodes[1].position.x,
+      tool.nodes[1].position.z,
+      tool.nodes[1].links[1]
+    ),
     (-5, 20, EditableAiMapNode::NO_LINK)
   );
   assert_eq!((tool.bounds.min.y, tool.bounds.max.y), (-5.0, 5.0));
@@ -81,7 +84,13 @@ fn exports_the_tool_as_the_editor_writes_build_aimap() {
     exported
       .nodes
       .iter()
-      .map(|node| (node.x, node.z, node.y, node.links, node.plane))
+      .map(|node| (
+        node.position.x,
+        node.position.z,
+        node.position.y,
+        node.links,
+        node.plane
+      ))
       .collect::<Vec<_>>(),
     [
       (-8, 23, 65535, tool.nodes[0].links, 0x1234),

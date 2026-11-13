@@ -49,6 +49,11 @@ impl LevelAiVersion {
     self.get_node_layout().size as u64
   }
 
+  /// Bits one link of this version holds; its widest value is no neighbour.
+  pub const fn get_link_bits(self) -> u32 {
+    self.get_node_layout().link_bits
+  }
+
   /// Where a node of this version keeps each field.
   pub(crate) const fn get_node_layout(self) -> LevelAiNodeLayout {
     match self {

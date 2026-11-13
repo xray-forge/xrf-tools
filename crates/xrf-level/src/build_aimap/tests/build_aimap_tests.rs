@@ -1,6 +1,6 @@
 use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
-use xrf_math::Vector3d;
+use xrf_math::{AiNodePosition, Vector3d};
 
 use crate::build_aimap::build_aimap_file::BuildAimapFile;
 use crate::build_aimap::build_aimap_node::BuildAimapNode;
@@ -67,7 +67,7 @@ fn an_sdk_map_reads_three_byte_links_and_its_invalid_link_as_their_widest_value(
       BuildAimapNode::NARROW_LINK_MASK
     ]
   );
-  assert_eq!((file.nodes[0].x, file.nodes[0].y, file.nodes[0].z), (-21, 0, 21));
+  assert_eq!(file.nodes[0].position, AiNodePosition { x: -21, y: 0, z: 21 });
 
   Ok(())
 }
@@ -77,7 +77,14 @@ fn an_ix_ray_map_reads_four_byte_links() -> XrfResult {
   let file: BuildAimapFile = BuildAimapFile::read_from_bytes::<XRayByteOrder>(map_bytes(2, 4)?)?;
 
   assert_eq!(file.nodes[1].links, [1, u32::MAX, u32::MAX, u32::MAX]);
-  assert_eq!((file.nodes[1].x, file.nodes[1].y, file.nodes[1].z), (3, u16::MAX, -4));
+  assert_eq!(
+    file.nodes[1].position,
+    AiNodePosition {
+      x: 3,
+      y: u16::MAX,
+      z: -4
+    }
+  );
 
   Ok(())
 }

@@ -1,3 +1,4 @@
+mod ai;
 mod compile;
 mod detail;
 mod detail_step;

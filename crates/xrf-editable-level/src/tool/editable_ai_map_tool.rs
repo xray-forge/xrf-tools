@@ -93,11 +93,7 @@ impl EditableAiMapTool {
   /// Where `node` stands, `ESceneAIMapTool::UnpackPosition`: its cell scaled by the patch size, its height spread
   /// across the box.
   pub fn get_node_position(&self, node: &EditableAiMapNode) -> Vector3d {
-    Vector3d::new(
-      f32::from(node.x) * self.params.patch_size,
-      f32::from(node.y) / 65535.0 * (self.bounds.max.y - self.bounds.min.y) + self.bounds.min.y,
-      f32::from(node.z) * self.params.patch_size,
-    )
+    node.position.unpack(self.params.patch_size, &self.bounds)
   }
 
   /// # Errors

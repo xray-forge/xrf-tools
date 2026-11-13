@@ -166,11 +166,7 @@ impl BuildAimapFile {
   /// Where a node sits in the world, as the editor unpacks it (`ESceneAIMapTool::UnpackPosition`): its cell scaled by
   /// the patch size, and its height spread across the box.
   pub fn get_node_position(&self, node: &BuildAimapNode) -> Vector3d<f32> {
-    Vector3d::new(
-      f32::from(node.x) * self.params.patch_size,
-      f32::from(node.y) / f32::from(u16::MAX) * (self.bounds.max.y - self.bounds.min.y) + self.bounds.min.y,
-      f32::from(node.z) * self.params.patch_size,
-    )
+    node.position.unpack(self.params.patch_size, &self.bounds)
   }
 
   /// Whether a map of `version` stores four-byte links rather than three-byte ones.

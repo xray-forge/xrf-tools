@@ -1,7 +1,7 @@
 use byteorder::WriteBytesExt;
 use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
-use xrf_math::{Aabb, Sphere, Vector3d};
+use xrf_math::{Aabb, AiNodePosition, Sphere, Vector3d};
 
 use crate::tests::fixtures::GUID;
 use crate::{
@@ -248,17 +248,21 @@ fn ai_map_tool() -> EditableAiMapTool {
         EditableAiMapNode {
           links: [1, EditableAiMapNode::NO_LINK, 0x00AB_CDEF, 0],
           plane: 0x8001,
-          x: -14,
-          z: 30,
-          y: 13107,
+          position: AiNodePosition {
+            x: -14,
+            y: 13107,
+            z: 30,
+          },
           flags: 1,
         },
         EditableAiMapNode {
           links: [EditableAiMapNode::NO_LINK; 4],
           plane: 7,
-          x: 3,
-          z: 7,
-          y: u16::MAX,
+          position: AiNodePosition {
+            x: 3,
+            y: u16::MAX,
+            z: 7,
+          },
           flags: 0,
         },
       ],

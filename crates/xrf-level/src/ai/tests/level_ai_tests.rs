@@ -33,7 +33,7 @@ fn node_bytes(version: LevelAiVersion, node: &LevelAiNode) -> Vec<u8> {
   };
   let links: u128 = node.links.iter().enumerate().fold(0, |packed, (index, link)| {
     packed | (u128::from(*link) << (index as u32 * link_bits))
-  });
+  }) | (u128::from(node.light) << (4 * link_bits));
   let cover = |cover: [u8; 4]| -> [u8; 2] {
     cover
       .iter()
@@ -88,8 +88,36 @@ fn sample_node(widest_link: u32) -> LevelAiNode {
     plane: 126,
     packed_xz: 3 * 9 + 4,
     packed_y: 32768,
+    light: 9,
   }
 }
+
+/// [`sample_node`] as `version` gives it back: one cover set for both where it keeps one, no light where it has no
+/// bits for it.
+fn sample_node_of(version: LevelAiVersion, widest_link: u32) -> LevelAiNode {
+  let mut node: LevelAiNode = sample_node(widest_link);
+
+  if matches!(version, LevelAiVersion::Soc | LevelAiVersion::Priquel) {
+    // One cover set, which the engine hands out as both.
+    node.low_cover = node.high_cover;
+  }
+
+  if version == LevelAiVersion::Skyloader {
+    node.light = 0;
+  }
+
+  node
+}
+
+/// Every version with its widest link.
+const VERSIONS: [(LevelAiVersion, u32); 6] = [
+  (LevelAiVersion::Soc, (1 << 23) - 1),
+  (LevelAiVersion::Priquel, (1 << 23) - 1),
+  (LevelAiVersion::CsCop, (1 << 23) - 1),
+  (LevelAiVersion::Borsht, (1 << 25) - 1),
+  (LevelAiVersion::BorshtBig, (1 << 25) - 1),
+  (LevelAiVersion::Skyloader, (1 << 26) - 1),
+];
 
 #[test]
 fn reads_and_writes_back_the_header() -> XrfResult {
@@ -124,24 +152,8 @@ fn a_truncated_header_is_an_error_and_not_a_panic() -> XrfResult {
 
 #[test]
 fn decodes_a_node_of_every_version() -> XrfResult {
-  for (version, widest_link) in [
-    (LevelAiVersion::Soc, (1 << 23) - 1),
-    (LevelAiVersion::Priquel, (1 << 23) - 1),
-    (LevelAiVersion::CsCop, (1 << 23) - 1),
-    (LevelAiVersion::Borsht, (1 << 25) - 1),
-    (LevelAiVersion::BorshtBig, (1 << 25) - 1),
-    (LevelAiVersion::Skyloader, (1 << 26) - 1),
-  ] {
-    let expected = |widest_link: u32| -> LevelAiNode {
-      let mut node: LevelAiNode = sample_node(widest_link);
-
-      if matches!(version, LevelAiVersion::Soc | LevelAiVersion::Priquel) {
-        // One cover set, which the engine hands out as both.
-        node.low_cover = node.high_cover;
-      }
-
-      node
-    };
+  for (version, widest_link) in VERSIONS {
+    let expected = |widest_link: u32| sample_node_of(version, widest_link);
     let bytes: Vec<u8> = map_bytes(&header(version, 2), &[expected(widest_link), expected(0)])?;
     let (file, nodes): (LevelAiFile, LevelAiNodes) = LevelAiFile::read_with_nodes_from_bytes::<XRayByteOrder>(bytes)?;
 
@@ -159,6 +171,49 @@ fn decodes_a_node_of_every_version() -> XrfResult {
   }
 
   Ok(())
+}
+
+#[test]
+fn encodes_nodes_of_every_version_as_the_file_lays_them_out() -> XrfResult {
+  for (version, widest_link) in VERSIONS {
+    let nodes: [LevelAiNode; 2] = [sample_node_of(version, widest_link), sample_node_of(version, 0)];
+    let encoded: LevelAiNodes = LevelAiNodes::from_nodes::<XRayByteOrder>(version, &nodes)?;
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    encoded.write(&mut writer)?;
+
+    assert_eq!(
+      writer.buffer,
+      [node_bytes(version, &nodes[0]), node_bytes(version, &nodes[1])].concat(),
+      "{version:?}"
+    );
+    assert_eq!(
+      encoded.iter_nodes::<XRayByteOrder>().collect::<Vec<LevelAiNode>>(),
+      nodes,
+      "{version:?}"
+    );
+  }
+
+  Ok(())
+}
+
+#[test]
+fn a_value_past_its_bits_is_refused_rather_than_cut() {
+  let refuse = |version: LevelAiVersion, change: fn(&mut LevelAiNode)| {
+    let mut node: LevelAiNode = sample_node_of(version, 0);
+
+    change(&mut node);
+
+    LevelAiNodes::from_nodes::<XRayByteOrder>(version, &[node])
+      .expect_err("the value is refused")
+      .to_string()
+  };
+
+  assert!(refuse(LevelAiVersion::CsCop, |node| node.links[2] = 1 << 23).contains("link 8388608"));
+  assert!(refuse(LevelAiVersion::CsCop, |node| node.packed_xz = 1 << 24).contains("cell"));
+  assert!(refuse(LevelAiVersion::CsCop, |node| node.low_cover[3] = 16).contains("cover"));
+  assert!(refuse(LevelAiVersion::CsCop, |node| node.light = 16).contains("light"));
+  assert!(refuse(LevelAiVersion::Skyloader, |node| node.light = 1).contains("0 bits"));
 }
 
 #[test]

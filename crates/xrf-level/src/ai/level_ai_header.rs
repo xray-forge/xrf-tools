@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_math::{Aabb, EPS_L, Vector3d};
+use xrf_math::{Aabb, AiNodePosition, EPS_L, Vector3d};
 
 use crate::ai::level_ai_node::LevelAiNode;
 
@@ -50,7 +50,7 @@ impl LevelAiHeader {
 
     Vector3d::new(
       (node.packed_xz / row_length) as f32 * self.size + self.bounds.min.x,
-      f32::from(node.packed_y) / 65535.0 * self.size_y + self.bounds.min.y,
+      AiNodePosition::unpack_height(node.packed_y, self.bounds.min.y, self.size_y),
       (node.packed_xz % row_length) as f32 * self.size + self.bounds.min.z,
     )
   }
