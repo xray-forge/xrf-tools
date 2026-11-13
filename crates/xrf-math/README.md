@@ -11,6 +11,7 @@ The engine's basic math types, as the format crates read and write them.
 | `Quaternion`                        | `Fquaternion`                          | —                     |
 | `Color`                             | `Fcolor`                               | 16                    |
 | `Aabb`, `Obb`, `Sphere`, `Cylinder` | `Fbox`, `Fobb`, `Fsphere`, `Fcylinder` | see [Shapes](#shapes) |
+| `AiNodePosition`                    | `SNodePositionOld`                     | 6                     |
 
 It also holds the engine's float epsilons and the display-colour helpers.
 
@@ -65,6 +66,11 @@ fn main() -> xrf_error::XrfResult {
 - Converts from `[f32; 3]` and `(f32, f32, f32)`.
 - Displays as `x,y,z` and parses that back with `FromStr` (whitespace around numbers allowed), failing with
   `XrfError::Parsing`.
+
+`from_compressed_normal` and `to_compressed_normal` are `pvDecompress` and `pvCompress`, the 16-bit normal an AI node
+stores its plane in, computed as SDK 0.7's xrCore computes them: the table at x87 extended precision, the rest in single
+precision, the compression's sum `(z + y) + x`, a sign bit forced on rather than negated. All 65,536 values round trip
+through decompression, normalisation and compression as SDK 0.7's xrAI saves them.
 
 `Vector2d` is the same for two `f32` components: `new`, `ZERO`, `to_array`, and `x,y` through `Display` and `FromStr`.
 It holds a texture coordinate or a sprite's size on its sheet.
@@ -126,6 +132,12 @@ renderer space and says so.
 - `transform` is `Fbox::xform`: the box around one placed by a matrix, summed in the engine's order.
 - `get_size`, `get_center` and `get_bounding_sphere` are `Fbox::getsize`, `getcenter` and `getsphere`.
 
+## AI node positions
+
+`AiNodePosition` is where the AI map tool's part and `build.aimap` keep a node: its cell along x and z in patches from
+the world origin, and its height packed across a box's height. `pack` and `unpack` are the editor's `PackPosition` and
+`UnpackPosition`; `pack_height` and `unpack_height` are the height rule `level.ai` shares, over its own extent.
+
 ## Epsilons
 
 `EPS_S` (`0.0000001`), `EPS` (`0.00001`) and `EPS_L` (`0.001`) are the engine's epsilons from
@@ -158,5 +170,6 @@ agrees with what the renderer draws.
 Run `cargo test --locked -p xrf-math` from the repository root.
 
 Sources: [Vector2d](src/vector_2d.rs), [Vector3d](src/vector_3d.rs), [Matrix4x4](src/matrix_4x4.rs),
-[Affine3d](src/affine_3d.rs), [Quaternion](src/quaternion.rs), [Color](src/color.rs), the [shapes](src/shape/), the
+[Affine3d](src/affine_3d.rs), [Quaternion](src/quaternion.rs), [Color](src/color.rs), the [shapes](src/shape/),
+[AiNodePosition](src/ai_node_position.rs), the
 [glam conversions](src/glam_conversions.rs) and the [epsilons](src/math_constants.rs).

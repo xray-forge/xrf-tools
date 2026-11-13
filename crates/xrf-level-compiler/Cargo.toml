@@ -15,7 +15,9 @@ log = { workspace = true }
 pollster = { workspace = true, optional = true }
 rayon = { workspace = true }
 serde = { workspace = true }
+sha2 = { workspace = true }
 specta = { workspace = true, optional = true }
+uuid = { workspace = true }
 xrf-chunk = { workspace = true }
 xrf-dds = { workspace = true }
 xrf-error = { workspace = true }

@@ -86,7 +86,12 @@ impl Vector3d<f32> {
   ///
   /// The top three bits are the signs of x, y and z; the remaining thirteen are a point on the triangle
   /// (0,0)-(0,126)-(126,0) folded into a rectangle, six bits of x above seven of y. A level AI node packs its plane
-  /// normal this way. Computed in `f32` as the engine's lookup table is, so a decoded normal matches what it uses.
+  /// normal this way.
+  ///
+  /// As SDK 0.7's xrCore computes it, which every plane value's round trip through its xrAI confirms: the lookup
+  /// table's `1 / sqrt` taken on the x87 at extended precision before the engine lowers it, stored as a float; each
+  /// component that float times its bits, in single precision; and a sign bit forced on, not a negation, so the
+  /// folded edge's z of -1 stays negative under its sign bit.
   pub fn from_compressed_normal(packed: u16) -> Self {
     let mut x: i32 = i32::from((packed & 0x1F80) >> 7);
     let mut y: i32 = i32::from(packed & 0x007F);
@@ -97,14 +102,37 @@ impl Vector3d<f32> {
     }
 
     let z: i32 = 126 - x - y;
-    let (x, y, z): (f32, f32, f32) = (x as f32, y as f32, z as f32);
-    let adjustment: f32 = 1.0 / (x * x + y * y + z * z).sqrt();
+    let (xd, yd, zd): (f64, f64, f64) = (f64::from(x), f64::from(y), f64::from(z));
+    let adjustment: f32 = (1.0 / (zd * zd + yd * yd + xd * xd).sqrt()) as f32;
+    let component = |bits: i32, sign: u16| {
+      let value: f32 = bits as f32 * adjustment;
 
-    Self::new(
-      if packed & 0x8000 == 0 { x } else { -x } * adjustment,
-      if packed & 0x4000 == 0 { y } else { -y } * adjustment,
-      if packed & 0x2000 == 0 { z } else { -z } * adjustment,
-    )
+      if packed & sign == 0 { value } else { -value.abs() }
+    };
+
+    Self::new(component(x, 0x8000), component(y, 0x4000), component(z, 0x2000))
+  }
+
+  /// The 16-bit compressed normal of this direction, `pvCompress` (`xrCore/_compressed_normal.cpp:43`): the signs in
+  /// the top three bits, then the direction projected onto the plane through the three axes' unit points, its x and y
+  /// floored to 126ths and folded into the rectangle [`Self::from_compressed_normal`] reads. Need not be unit length.
+  ///
+  /// In single precision as SDK 0.7's xrCore computes it, its sum taken z first, `(z + y) + x`: the order decides
+  /// which side of a whole 126th a component lands on.
+  pub fn to_compressed_normal(self) -> u16 {
+    let signs: u16 = (u16::from(self.x.is_sign_negative()) << 15)
+      | (u16::from(self.y.is_sign_negative()) << 14)
+      | (u16::from(self.z.is_sign_negative()) << 13);
+    let (x, y, z): (f32, f32, f32) = (self.x.abs(), self.y.abs(), self.z.abs());
+    let scale: f32 = 126.0 / (z + y + x);
+    let (mut x_bits, mut y_bits): (i32, i32) = ((x * scale).floor() as i32, (y * scale).floor() as i32);
+
+    if x_bits >= 64 {
+      x_bits = 127 - x_bits;
+      y_bits = 127 - y_bits;
+    }
+
+    signs | (((x_bits << 7) | y_bits) as u16 & 0x1FFF)
   }
 }
 
@@ -322,6 +350,28 @@ mod tests {
       "Unexpected normal {folded}"
     );
     assert_eq!(folded.y, 0.0);
+  }
+
+  /// On the fold's edge, x and y summing to 127, the unfolded z is -1: its sign bit forces it negative rather than
+  /// flipping it positive, as the engine's `set_negative` does.
+  #[test]
+  fn keeps_the_folded_edge_negative_under_its_sign_bit() {
+    let unsigned: Vector3d = Vector3d::from_compressed_normal(127);
+    let signed: Vector3d = Vector3d::from_compressed_normal(0x2000 | 127);
+
+    assert!(unsigned.z < 0.0, "{unsigned}");
+    assert_eq!(signed, unsigned);
+  }
+
+  #[test]
+  fn compresses_a_normal_as_the_engine_does() {
+    assert_eq!(Vector3d::new(0.0, 0.0, 1.0).to_compressed_normal(), 0);
+    assert_eq!(Vector3d::new(0.0, 1.0, 0.0).to_compressed_normal(), 126);
+    assert_eq!(Vector3d::new(0.0, -1.0, 0.0).to_compressed_normal(), 0x4000 | 126);
+    // Past x's 63 the point folds: (64, 0, 62) packs as x 63 and y 127.
+    assert_eq!(Vector3d::new(64.0, 0.0, 62.0).to_compressed_normal(), (63 << 7) | 127);
+    // A negative zero keeps its sign bit, as `negative` reads it.
+    assert_eq!(Vector3d::new(-0.0, 1.0, 0.0).to_compressed_normal(), 0x8000 | 126);
   }
 
   #[test]

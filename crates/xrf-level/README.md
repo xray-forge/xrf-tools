@@ -117,7 +117,10 @@ vertex decodes through `LevelVertexBytes`, so verification and the renderer read
   box queries, each face named by its index in the form, whose material the caller reads off the form.
 - `LevelAiFile::read_with_nodes_*` reads the nodes as `LevelAiNodes`, packed as stored and decoded one at a time
   (`LevelAiNode`) in any layout the engine loads, versions 8 to 13. Keeping the bytes is what lets the writer
-  reproduce the file. `LevelAiHeader::get_node_position` gives a node's world position as `CLevelGraph` does.
+  reproduce the file. `LevelAiNodes::from_nodes` packs computed nodes in a version's layout, refusing a value its bits
+  cannot hold; a node's `light` is the bits older compilers left past the links. `LevelAiHeader::get_node_position`
+  gives a node's world position as `CLevelGraph` does. `build.aimap`'s nodes keep their cell and height as an
+  `xrf-math` `AiNodePosition`.
 
 ### Surface materials
 

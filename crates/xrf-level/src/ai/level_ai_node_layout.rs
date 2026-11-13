@@ -22,6 +22,11 @@ pub(crate) struct LevelAiNodeLayout {
 }
 
 impl LevelAiNodeLayout {
+  /// Bits the link block holds past its four links, the top of its last byte: the light older compilers wrote.
+  pub(crate) const fn get_light_bits(&self) -> u32 {
+    self.high_cover as u32 * 8 - 4 * self.link_bits
+  }
+
   const LINKS_23: [(usize, u32); 4] = [(0, 0), (2, 7), (5, 6), (8, 5)];
   const LINKS_25: [(usize, u32); 4] = [(0, 0), (3, 1), (6, 2), (9, 3)];
   const LINKS_26: [(usize, u32); 4] = [(0, 0), (3, 2), (6, 4), (9, 6)];

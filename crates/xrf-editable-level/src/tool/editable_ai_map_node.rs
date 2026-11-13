@@ -1,20 +1,18 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
+use xrf_math::AiNodePosition;
 
 /// One node of the AI map tool, `SAINode` as `SAINode::SaveStream` writes it: its four neighbours, its plane, its cell
-/// and height packed against the tool's box (`NodePosition`), and the editor's flags for it.
+/// and height packed against the tool's box, and the editor's flags for it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct EditableAiMapNode {
   /// The neighbours across each edge, by node index, [`Self::NO_LINK`] for none.
   pub links: [u32; 4],
   /// The plane normal, compressed (`pvCompress`).
   pub plane: u16,
-  /// The cell along x and z, in patches from the world origin.
-  pub x: i16,
-  pub z: i16,
-  /// The height across the tool's box, 0 at its floor and 65535 at its top.
-  pub y: u16,
+  /// The cell, and the height across the tool's box.
+  pub position: AiNodePosition,
   /// `SAINode`'s flags: selected and the like.
   pub flags: u8,
 }
@@ -36,9 +34,7 @@ impl EditableAiMapNode {
     Ok(Self {
       links,
       plane: reader.read_u16::<T>()?,
-      x: reader.read_i16::<T>()?,
-      y: reader.read_u16::<T>()?,
-      z: reader.read_i16::<T>()?,
+      position: reader.read_xr::<T, _>()?,
       flags: reader.read_u8()?,
     })
   }
@@ -55,9 +51,7 @@ impl EditableAiMapNode {
     }
 
     writer.write_u16::<T>(self.plane)?;
-    writer.write_i16::<T>(self.x)?;
-    writer.write_u16::<T>(self.y)?;
-    writer.write_i16::<T>(self.z)?;
+    writer.write_xr::<T, _>(&self.position)?;
     writer.write_u8(self.flags)?;
 
     Ok(())
