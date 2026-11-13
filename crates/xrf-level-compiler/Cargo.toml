@@ -24,6 +24,7 @@ xrf-error = { workspace = true }
 xrf-geometry = { workspace = true }
 xrf-job = { workspace = true }
 xrf-level = { workspace = true }
+xrf-ltx = { workspace = true }
 xrf-math = { workspace = true, features = ["glam"] }
 xrf-renderer-core = { workspace = true, optional = true }
 xrf-report = { workspace = true }

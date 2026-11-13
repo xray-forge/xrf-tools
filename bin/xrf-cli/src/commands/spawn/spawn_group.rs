@@ -14,6 +14,7 @@ impl SpawnGroup {
       label: "Spawn",
       about: "Spawn file tools",
       commands: vec![
+        spawn::build::BuildCommand::new_box(),
         spawn::info::InfoCommand::new_box(),
         packed_file::PackCommand::<AnySpawnFile>::new_box(),
         packed_file::RepackCommand::<AnySpawnFile>::new_box(),

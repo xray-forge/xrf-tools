@@ -8,8 +8,8 @@ use crate::tests::fixtures::{
   actor_object, changer_object, graph_point_object, grid, separator_object, spawn_file, zone_object,
 };
 use crate::{
-  SpawnAiMap, SpawnCrossTable, SpawnGraphPoints, SpawnLevelGameGraph, SpawnMergeLevel, SpawnRootBuild,
-  SpawnRootBuilder, SpawnRootLevel, SpawnRootOptions,
+  SpawnAiMap, SpawnCrossTable, SpawnGameLevel, SpawnGameLevels, SpawnGraphPoints, SpawnLevelGameGraph, SpawnMergeLevel,
+  SpawnRootBuild, SpawnRootBuilder, SpawnRootLevel, SpawnRootOptions,
 };
 
 /// A level's files, and the graph and cross table built from them.
@@ -58,6 +58,7 @@ impl Level {
       },
       spawn: &self.list,
       game: Some(&self.game),
+      removed: &self.points.removed,
     }
   }
 }
@@ -340,6 +341,7 @@ fn reports_a_connection_left_out_and_a_restrictor_cutting_the_map() -> XrfResult
   let b: Level = level_b(
     &[
       graph_point_object("b_to_c", 4.0, 1.0, "c", "c_start")?,
+      graph_point_object("b_end_again", 5.0, 0.0, "", "")?,
       separator_object("b_wall", 2.0, 0.5, Vector3d::new(0.2, 2.0, 4.0))?,
     ],
     Vec::new(),
@@ -362,6 +364,13 @@ fn reports_a_connection_left_out_and_a_restrictor_cutting_the_map() -> XrfResult
       .collect::<Vec<_>>()
   };
 
+  assert_eq!(
+    findings("spawn.graph-points"),
+    [(
+      String::from("b"),
+      String::from("Graph point b_end_again is left out of the game graph, too close to another graph point")
+    )]
+  );
   assert_eq!(
     findings("spawn.connections"),
     [(
@@ -422,6 +431,67 @@ fn refuses_a_shared_story_id_and_a_level_of_no_entity() -> XrfResult {
   )?;
 
   assert_refused(&empty, &b, None, "Level a holds no entity");
+
+  Ok(())
+}
+
+#[test]
+fn reads_the_levels_the_game_lists() -> XrfResult {
+  let ltx = xrf_ltx::Ltx::read_from_str(
+    "[levels]
+level108
+level150
+
+[level108]
+name = zaton
+caption = \"zaton\"
+offset = 12000.0,     1000.0,         10000.0
+id = 108
+
+[level150]
+name = labx8
+offset = 10000.0, 1000.0, 10000.0
+id = 150
+",
+  )?;
+  let levels: SpawnGameLevels = SpawnGameLevels::from_ltx(&ltx)?;
+
+  assert_eq!(
+    levels.find("zaton").ok(),
+    Some(&SpawnGameLevel {
+      section: String::from("level108"),
+      name: String::from("zaton"),
+      caption: String::from("zaton"),
+      id: 108,
+      offset: Vector3d::new(12000.0, 1000.0, 10000.0),
+    })
+  );
+  // No caption: the name, as a connection names it.
+  assert_eq!(levels.find("labx8")?.caption, "labx8");
+
+  // Passed over as xrAI passes them, and refused only when asked for.
+  let odd = xrf_ltx::Ltx::read_from_str(
+    "[levels]
+level1
+level2
+
+[level2]
+name = smay_test01
+offset = 0, 0, 0
+id = 10000
+",
+  )?;
+  let odd: SpawnGameLevels = SpawnGameLevels::from_ltx(&odd)?;
+
+  assert!(odd.levels.is_empty());
+  assert_eq!(odd.skipped.len(), 2);
+
+  let error: String = odd.find("smay_test01").expect_err("an id past a byte").to_string();
+
+  assert!(
+    error.contains("its id 10000 is not one of the 0 to 255"),
+    "Unexpected error: {error}"
+  );
 
   Ok(())
 }

@@ -8823,6 +8823,7 @@ dependencies = [
  "xrf-geometry",
  "xrf-job",
  "xrf-level",
+ "xrf-ltx",
  "xrf-math",
  "xrf-renderer-core",
  "xrf-report",

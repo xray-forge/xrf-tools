@@ -18,6 +18,9 @@ pub struct LevelSpawnFile {
 }
 
 impl LevelSpawnFile {
+  /// The file's name in a level's directory.
+  pub const FILE_NAME: &'static str = "level.spawn";
+
   /// Reads a level spawn list from a path.
   ///
   /// # Errors
