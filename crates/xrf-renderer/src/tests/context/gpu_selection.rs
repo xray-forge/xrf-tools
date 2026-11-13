@@ -1,12 +1,12 @@
 use std::path::PathBuf;
 
+use xrf_renderer_core::RenderGpu;
 use xrf_test_utils::TestSkip;
 
 use crate::context::gpu_context::GpuContext;
 use crate::context::gpu_libraries::GpuLibraries;
 use crate::contract::settings::gpu::render_backend::RenderBackend;
 use crate::contract::settings::gpu::render_backend_availability::RenderBackendAvailability;
-use crate::contract::settings::gpu::render_gpu::RenderGpu;
 use crate::tests::support::test_bundle::checkout_dxc;
 
 /// A GPU no machine has.

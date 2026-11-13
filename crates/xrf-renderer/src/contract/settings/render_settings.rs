@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
+use xrf_renderer_core::RenderGpu;
 use xrf_renderer_derive::RenderSettingSchema;
 
 use crate::contract::settings::gpu::render_backend::RenderBackend;
-use crate::contract::settings::gpu::render_gpu::RenderGpu;
 use crate::contract::settings::render_frame_rate::RenderFrameRate;
 use crate::contract::settings::render_graph_settings::RenderGraphSettings;
 use crate::contract::view::render_texture_filtering::RenderTextureFiltering;

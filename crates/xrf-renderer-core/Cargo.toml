@@ -16,6 +16,7 @@ pollster = { workspace = true }
 profiling = { workspace = true }
 rayon = { workspace = true }
 serde = { workspace = true }
+specta = { workspace = true, optional = true }
 # The GPU zones' context; xrf-profiler pins the version and starts the client.
 tracy-client = { version = "=0.18.5", optional = true }
 wgpu = { workspace = true }
@@ -28,6 +29,8 @@ xrf-test-utils = { workspace = true }
 serde_json = { workspace = true }
 
 [features]
+# Emits TypeScript mirrors of the serialized types. Nothing in a normal build turns this on.
+typescript-bindings = ["specta"]
 # GPU zones beside every crate's zones in a Tracy capture; only the `tracy` build profile turns it on.
 tracy = ["xrf-profiler/tracy", "dep:tracy-client"]
 

@@ -140,7 +140,6 @@ pub use crate::contract::report::texture::render_texture_state::RenderTextureSta
 pub use crate::contract::settings::gpu::render_backend::RenderBackend;
 pub use crate::contract::settings::gpu::render_backend_availability::RenderBackendAvailability;
 pub use crate::contract::settings::gpu::render_dlss_availability::RenderDlssAvailability;
-pub use crate::contract::settings::gpu::render_gpu::RenderGpu;
 pub use crate::contract::settings::gpu::render_gpu_description::RenderGpuDescription;
 pub use crate::contract::settings::gpu::render_libraries::RenderLibraries;
 pub use crate::contract::settings::render_frame_rate::RenderFrameRate;

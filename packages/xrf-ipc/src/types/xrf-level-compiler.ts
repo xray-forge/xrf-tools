@@ -1,8 +1,8 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
 /**
- * The GPU the detail lighter's GPU backend traces on, by its PCI vendor and device ids, as the renderer's settings name
- * one (`RenderGpu`).
+ * The GPU the detail lighter's GPU backend traces on, by its PCI vendor and device ids: the renderer's `RenderGpu`,
+ * spelled again here so a request names one in a build without the `gpu` feature, which links no graphics code.
  */
 export type DetailGpu = {
   vendor: number;

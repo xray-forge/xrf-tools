@@ -60,6 +60,7 @@ typescript-bindings = [
   "specta",
   "xrf-ipc",
   "xrf-engine-target/typescript-bindings",
+  "xrf-renderer-core/typescript-bindings",
   "xrf-visual/typescript-bindings",
 ]
 # Zones, GPU zones and frame marks for a Tracy capture.

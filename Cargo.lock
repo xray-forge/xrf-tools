@@ -9108,6 +9108,7 @@ dependencies = [
  "rayon",
  "serde",
  "serde_json",
+ "specta",
  "tracy-client",
  "wgpu",
  "xrf-error",
