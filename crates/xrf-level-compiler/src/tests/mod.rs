@@ -1,4 +1,5 @@
 mod ai;
+mod ai_covers;
 mod compile;
 mod detail;
 mod detail_step;

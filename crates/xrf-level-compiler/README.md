@@ -30,12 +30,24 @@ every level of a game at once.
 ## The AI map compiler
 
 `AiMapCompiler::compile` compiles `build.aimap` into `level.ai` as SDK 0.7's `xrAI -f` does. It takes an `AiMapRequest`
-(the map, the covers, and the `level.ai` it replaces, if any) and gives an `AiMapCompilation`: the `AiMap`, header and
-nodes, and where its identity came from (`AiMapGuid`). It is not yet the `ai` step.
+(the map, the covers, the ray model they are traced against, and the `level.ai` it replaces, if any) and an `xrf-job`
+`JobHandle`, and gives an `AiMapCompilation`: the `AiMap`, header and nodes, and where its identity came from
+(`AiMapGuid`). It is not yet the `ai` step.
 
 - Each node is loaded as xrAI loads it: its cell through the packed grid over the map's box and back (`AiGrid`), its
   plane normal decompressed and normalised.
-- `AiMapCovers::None` stores every cover as 0, as xrAI's `-draft` does; `Full` is refused until the cover pass exists.
+- `AiMapCovers::None` stores every cover as 0, as xrAI's `-draft` does. `Full` needs an `AiRayModel`, a tracer over
+  `build.cform` and its shadow materials, and computes the covers as xrAI's `xrCover` does (`ai/cover/`), in single
+  precision and the engine's order:
+  - the corner nodes, where a link is missing beside a missing link or a neighbour reaching round (a straight edge's
+    nodes are not ones), each trace a ray toward every node linked to them within 30 m, from 1.5 and 0.6 m up; each
+    of eight sectors keeps the share its rays let through, and each of four covers averages four sectors;
+  - every other node mixes the corner nodes not open both ways that the engine's quadtree lists within 30 m and its
+    straight walk reaches, weighted by one over distance; with none, it is open.
+
+  Every ray is a full query, never the SDK's remembered blocker, so the covers are the same on any thread count. Corner
+  nodes and other nodes run over the installed rayon pool, a progress unit each; a cancelled job stops with
+  `XrfError::Cancelled`.
 - The save: the box around every node, its height grown by `EPS_L`; each node's cell, height, plane and covers
   compressed over it; a stable sort by packed cell with the links renumbered; the light 15, which no loader reads.
 - The identity is the replaced map's while its graph stands (as many nodes, the same cell size, each at the same cell
@@ -43,7 +55,8 @@ nodes, and where its identity came from (`AiMapGuid`). It is not yet the `ai` st
   map with a nil identity, so the same input gives the same file. xrAI draws a random one every run.
 
 On the kept SDK runs of `labx8` and `jupiter` a draft compile is the SDK's `-draft` file byte for byte but for the
-identity and each node's light, and the full runs' but for the covers too.
+identity and each node's light. A full compile is the full run's byte for byte on `labx8`; on `jupiter` every cover
+value is within one step, 99.97% exact, the rest single rays that differ and the mix carrying them.
 
 ## Shadow materials
 
@@ -106,7 +119,9 @@ step off.
 The slots run a progress unit each, and a cancelled job stops the lighting with `XrfError::Cancelled`.
 
 The AI map tests compile a generated four-node map: the sort and renumbering, the header, three planes whose round
-trip xrAI's own run gave, the identity rule, and the refusals.
+trip xrAI's own run gave, the identity rule, and the refusals. The cover tests take a grid: the sectors, which nodes are
+corners, the walk stopped by a hole, the quadtree's reach, and a wall whose front blocks the corners' rays and whose
+mix reaches the other nodes.
 
 ## Develop
 

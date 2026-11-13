@@ -20,6 +20,7 @@ pub use crate::ai::ai_map_compiler::AiMapCompiler;
 pub use crate::ai::ai_map_covers::AiMapCovers;
 pub use crate::ai::ai_map_guid::AiMapGuid;
 pub use crate::ai::ai_map_request::AiMapRequest;
+pub use crate::ai::cover::ai_ray_model::AiRayModel;
 pub use crate::detail::detail_gpu::DetailGpu;
 pub use crate::detail::detail_light_backend::DetailLightBackend;
 pub use crate::detail::detail_light_request::DetailLightRequest;

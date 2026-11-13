@@ -1,8 +1,9 @@
-//! The AI map compiler: `build.aimap` into `level.ai` with no covers, as SDK 0.7's `xrAI -f -draft` writes it.
+//! The AI map compiler: `build.aimap` into `level.ai`, as SDK 0.7's `xrAI -f` writes it.
 
 use uuid::Uuid;
 use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
+use xrf_job::JobHandle;
 use xrf_level::{BuildAimapFile, BuildAimapNode, BuildAimapParams, LevelAiNode, LevelAiVersion};
 use xrf_math::{Aabb, AiNodePosition, EPS_L, Vector3d};
 
@@ -51,11 +52,15 @@ fn aimap() -> BuildAimapFile {
 }
 
 fn compile(replaced: Option<&AiMap>) -> XrfResult<AiMapCompilation> {
-  AiMapCompiler::compile(AiMapRequest {
-    aimap: &aimap(),
-    covers: AiMapCovers::None,
-    replaced,
-  })
+  AiMapCompiler::compile(
+    AiMapRequest {
+      aimap: &aimap(),
+      covers: AiMapCovers::None,
+      rays: None,
+      replaced,
+    },
+    &JobHandle::inert(),
+  )
 }
 
 fn nodes(map: &AiMap) -> Vec<LevelAiNode> {
@@ -153,18 +158,22 @@ fn keeps_the_replaced_identity_while_the_graph_stands() -> XrfResult {
 }
 
 #[test]
-fn refuses_what_xrai_refuses_and_covers_not_yet_computed() {
+fn refuses_what_xrai_refuses_and_full_covers_with_no_ray_model() {
   let refuse = |aimap: BuildAimapFile, covers: AiMapCovers| {
-    AiMapCompiler::compile(AiMapRequest {
-      aimap: &aimap,
-      covers,
-      replaced: None,
-    })
+    AiMapCompiler::compile(
+      AiMapRequest {
+        aimap: &aimap,
+        covers,
+        rays: None,
+        replaced: None,
+      },
+      &JobHandle::inert(),
+    )
     .expect_err("the map is refused")
     .to_string()
   };
 
-  assert!(refuse(aimap(), AiMapCovers::Full).contains("covers none"));
+  assert!(refuse(aimap(), AiMapCovers::Full).contains("build.cform"));
   assert!(
     refuse(
       BuildAimapFile {
