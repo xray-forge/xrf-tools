@@ -8827,6 +8827,7 @@ dependencies = [
  "xrf-renderer-core",
  "xrf-report",
  "xrf-shaders",
+ "xrf-spawn",
  "xrf-test-utils",
  "xrf-thm",
  "xrf-utils",

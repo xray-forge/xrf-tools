@@ -87,11 +87,19 @@ for a new stalker and monster.
 - `export_to_path` unpacks a set into a directory of editable LTX files; `import_from_path` reads it back. Unpacking and
   packing again should reproduce the original bytes.
 - `write_to_path` and `write_to` write the binary set.
+- `SpawnGraphsChunk::derive_layout` lays a graph assembled in memory out as the engine stores it: the header's counts and
+  every vertex's edge and level point offsets, each vertex's following the one before. Every shipped graph is laid out
+  that way already.
 
 Writing refuses what the engine would misread:
 
 - header counts that differ from the objects and levels the set holds;
 - graph counts that differ from its tables;
+- a graph GUID other than the graph's (`assert_engine_agreement`), and a graph `SpawnGraphsChunk::assert_engine_layout`
+  refuses: an edge to a vertex past the graph, a vertex on no level or naming a node past 24 bits, edges or level points
+  off their tables' records, cross tables not one a level in ascending level id order, each naming its level and the graph,
+  sized to the level's vertices, every cell's vertex on that level;
+- a cross table whose cells (`GraphCrossTableCell`, refused on read too) are not one a node;
 - an object whose payload class is not its section's;
 - a patrol link to a point the patrol lacks;
 - a smart terrain or skeleton declaring state this crate cannot carry;

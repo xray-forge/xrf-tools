@@ -1,4 +1,5 @@
 pub(crate) mod graph_cross_table;
+pub(crate) mod graph_cross_table_cell;
 pub(crate) mod graph_edge;
 pub(crate) mod graph_header;
 pub(crate) mod graph_level;

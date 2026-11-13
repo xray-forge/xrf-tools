@@ -28,6 +28,7 @@ xrf-math = { workspace = true, features = ["glam"] }
 xrf-renderer-core = { workspace = true, optional = true }
 xrf-report = { workspace = true }
 xrf-shaders = { workspace = true }
+xrf-spawn = { workspace = true }
 xrf-thm = { workspace = true }
 xrf-utils = { workspace = true }
 

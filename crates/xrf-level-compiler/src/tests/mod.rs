@@ -8,5 +8,6 @@ mod detail_step;
 mod gpu;
 mod program;
 mod shadow;
+mod spawn;
 mod textures;
 mod workspace;

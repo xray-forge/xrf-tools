@@ -107,6 +107,7 @@ pub use crate::data::generic::shape::Shape;
 pub use crate::data::generic::time::Time;
 pub use crate::data::generic::u32_bytes::U32Bytes;
 pub use crate::data::graph::graph_cross_table::GraphCrossTable;
+pub use crate::data::graph::graph_cross_table_cell::GraphCrossTableCell;
 pub use crate::data::graph::graph_edge::GraphEdge;
 pub use crate::data::graph::graph_header::GraphHeader;
 pub use crate::data::graph::graph_level::GraphLevel;
