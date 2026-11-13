@@ -54,6 +54,9 @@ impl DetailGpuTracer {
   /// The most workgroups a dispatch's side holds.
   pub(crate) const MOST_WORKGROUPS: usize = 65_535;
 
+  /// The most single rays one batch holds.
+  pub(crate) const MOST_SINGLES: usize = Self::MOST_WORKGROUPS * Self::SINGLE_LANES as usize;
+
   /// The transform placing the ray model where it stands, a 3 by 4 row-major identity.
   const IDENTITY: [f32; 12] = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0];
 
@@ -267,7 +270,7 @@ impl DetailGpuTracer {
     let packets: usize = batch.packets.len();
     let singles: usize = batch.singles.len();
 
-    if packets > Self::MOST_WORKGROUPS || singles > Self::MOST_WORKGROUPS * Self::SINGLE_LANES as usize {
+    if packets > Self::MOST_WORKGROUPS || singles > Self::MOST_SINGLES {
       return Err(XrfError::new_invalid_error(format!(
         "A detail batch of {packets} packets and {singles} single rays is more than one dispatch takes"
       )));

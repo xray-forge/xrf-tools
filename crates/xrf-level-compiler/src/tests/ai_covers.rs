@@ -1,18 +1,21 @@
 //! The AI map's covers, as xrAI's `xrCover` computes them.
 
+use std::path::Path;
+
 use glam::Vec3;
 use xrf_error::XrfResult;
 use xrf_geometry::{BvhTracer, Tracer};
 use xrf_job::JobHandle;
 use xrf_math::{Aabb, Vector3d};
 
-use crate::AiRayModel;
 use crate::ai::ai_vertex::AiVertex;
 use crate::ai::cover::ai_cover_pass::{AiCoverPass, AiNodeCovers};
 use crate::ai::cover::ai_cover_sector::AiCoverSector;
+use crate::ai::cover::ai_cover_tracing::AiCoverTracing;
 use crate::ai::cover::ai_cover_tree::AiCoverTree;
 use crate::ai::cover::ai_cover_walk::AiCoverWalk;
 use crate::shadow::shadow_materials::ShadowMaterials;
+use crate::{AiRayModel, DetailLightBackend};
 
 const SIDE: u32 = 5;
 
@@ -47,17 +50,40 @@ fn grid(holes: &[u32]) -> Vec<AiVertex> {
     .collect()
 }
 
-/// Each node's covers once computed against `tracer`, every face blocking.
-fn covers(tracer: &BvhTracer) -> XrfResult<Vec<AiNodeCovers>> {
+/// A wall 3 m high across the grid between x 2 and x 3, its front toward -x.
+pub(super) fn wall() -> BvhTracer {
+  BvhTracer::new(
+    &[
+      Vec3::new(2.5, 0.0, -1.0),
+      Vec3::new(2.5, 0.0, 5.0),
+      Vec3::new(2.5, 3.0, -1.0),
+      Vec3::new(2.5, 3.0, 5.0),
+    ],
+    &[[0, 1, 2], [1, 3, 2]],
+  )
+}
+
+/// Each node of the grid's covers once computed against `tracer`, every face blocking, its corner rays traced on
+/// `backend`, with `dxc` for D3D12.
+pub(super) fn covers(
+  tracer: &BvhTracer,
+  backend: DetailLightBackend,
+  dxc: Option<&Path>,
+) -> XrfResult<Vec<AiNodeCovers>> {
   let shadows: ShadowMaterials = ShadowMaterials::new_opaque(tracer.get_face_count());
   let mut vertices: Vec<AiVertex> = grid(&[]);
 
   AiCoverPass::compute(
     &mut vertices,
     1.0,
-    &AiRayModel {
-      tracer,
-      shadows: &shadows,
+    &AiCoverTracing {
+      rays: AiRayModel {
+        tracer,
+        shadows: &shadows,
+      },
+      backend,
+      dxc,
+      gpu: None,
     },
     &JobHandle::inert(),
   )?;
@@ -158,17 +184,8 @@ fn finds_points_within_reach_across_the_ground() {
 
 #[test]
 fn covers_corners_by_the_rays_a_wall_blocks_and_mixes_the_others() -> XrfResult {
-  let open: Vec<AiNodeCovers> = covers(&BvhTracer::new(&[], &[]))?;
-  // A wall 3 m high across the grid between x 2 and x 3, its front toward -x.
-  let walled: Vec<AiNodeCovers> = covers(&BvhTracer::new(
-    &[
-      Vec3::new(2.5, 0.0, -1.0),
-      Vec3::new(2.5, 0.0, 5.0),
-      Vec3::new(2.5, 3.0, -1.0),
-      Vec3::new(2.5, 3.0, 5.0),
-    ],
-    &[[0, 1, 2], [1, 3, 2]],
-  ))?;
+  let open: Vec<AiNodeCovers> = covers(&BvhTracer::new(&[], &[]), DetailLightBackend::Cpu, None)?;
+  let walled: Vec<AiNodeCovers> = covers(&wall(), DetailLightBackend::Cpu, None)?;
   const RIGHT: usize = 2;
 
   // From the open grid's corner, the nodes stand forward and right alone.

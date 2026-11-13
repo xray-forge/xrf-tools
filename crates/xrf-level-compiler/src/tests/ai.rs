@@ -7,7 +7,7 @@ use xrf_job::JobHandle;
 use xrf_level::{BuildAimapFile, BuildAimapNode, BuildAimapParams, LevelAiNode, LevelAiVersion};
 use xrf_math::{Aabb, AiNodePosition, EPS_L, Vector3d};
 
-use crate::{AiMap, AiMapCompilation, AiMapCompiler, AiMapCovers, AiMapGuid, AiMapRequest};
+use crate::{AiMap, AiMapCompilation, AiMapCompiler, AiMapCovers, AiMapGuid, AiMapRequest, DetailLightBackend};
 
 const NO_LINK: u32 = BuildAimapNode::NARROW_LINK_MASK;
 
@@ -57,6 +57,9 @@ fn compile(replaced: Option<&AiMap>) -> XrfResult<AiMapCompilation> {
       aimap: &aimap(),
       covers: AiMapCovers::None,
       rays: None,
+      backend: DetailLightBackend::Cpu,
+      dxc: None,
+      gpu: None,
       replaced,
     },
     &JobHandle::inert(),
@@ -165,6 +168,9 @@ fn refuses_what_xrai_refuses_and_full_covers_with_no_ray_model() {
         aimap: &aimap,
         covers,
         rays: None,
+        backend: DetailLightBackend::Cpu,
+        dxc: None,
+        gpu: None,
         replaced: None,
       },
       &JobHandle::inert(),
