@@ -13,6 +13,7 @@ use xrf_utils::{assert_equal, assert_not_equal, narrow_format_size};
 use crate::constants::NET_ACTION_UPDATE;
 use crate::data::alife::alife_built_fields::AlifeBuiltFields;
 use crate::data::alife::alife_object_inherited::AlifeObjectInherited;
+use crate::data::alife::script_dialect::ScriptDialect;
 use crate::data::alife::spawn_layout::SpawnLayout;
 use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 use crate::data::alife::zeroed_update_fields::ZeroedUpdateFields;
@@ -89,10 +90,12 @@ impl AlifeObject {
   }
 
   /// Refuse an object whose payload is shaped for another class than its section's, which the engine would read
-  /// with the section's class.
+  /// with the section's class in the game whose scripts its spawn version names: a Clear Sky script class's payload
+  /// under a Call of Pripyat header among them, and the reverse.
   fn assert_class_matches_section(&self) -> XrfResult {
-    let clsid: ClsId = ClsId::from_section(&self.header.section)?;
-    let class: AlifeClass = AlifeClass::from_cls_id(&clsid);
+    let dialect: ScriptDialect = SpawnLayout::from(&self.header).script_dialect();
+    let clsid: ClsId = ClsId::from_dialect_section(&self.header.section, dialect)?;
+    let class: AlifeClass = AlifeClass::from_dialect_cls_id(&clsid, dialect);
 
     if clsid != self.clsid || class != self.inherited.get_class() {
       return Err(XrfError::new_invalid_error(format!(
@@ -137,12 +140,13 @@ impl AlifeObject {
     update: &mut U,
   ) -> XrfResult<Self> {
     let header: SpawnPacketHeader = spawn.read_xr::<T, _>()?;
-    let clsid: ClsId = ClsId::from_section(&header.section)?;
-    let class: AlifeClass = AlifeClass::from_cls_id(&clsid);
+    let layout: SpawnLayout = SpawnLayout::from(&header);
+    let dialect: ScriptDialect = layout.script_dialect();
+    let clsid: ClsId = ClsId::from_dialect_section(&header.section, dialect)?;
+    let class: AlifeClass = AlifeClass::from_dialect_cls_id(&clsid, dialect);
 
     assert_not_equal(&class, &AlifeClass::Unknown, "Expect known ALife object clsid")?;
 
-    let layout: SpawnLayout = SpawnLayout::from(&header);
     let inherited: AlifeObjectInherited = header.read_state::<T, _, _>(spawn, |spawn| {
       AlifeObjectInherited::read::<T, _, _>(spawn, update, &class, layout)
     })?;
@@ -238,12 +242,14 @@ impl LtxImportExport for AlifeObject {
   /// Import ALife object data from ltx file section.
   fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
     let header: SpawnPacketHeader = SpawnPacketHeader::import(section_name, ltx)?;
-    let clsid: ClsId = ClsId::from_section(&header.section)?;
+    let layout: SpawnLayout = SpawnLayout::from(&header);
+    let dialect: ScriptDialect = layout.script_dialect();
+    let clsid: ClsId = ClsId::from_dialect_section(&header.section, dialect)?;
     let inherited: AlifeObjectInherited = AlifeObjectInherited::import(
       section_name,
       ltx,
-      &AlifeClass::from_cls_id(&clsid),
-      SpawnLayout::from(&header),
+      &AlifeClass::from_dialect_cls_id(&clsid, dialect),
+      layout,
     )?;
 
     Ok(Self {
@@ -299,6 +305,7 @@ mod tests {
   use crate::data::alife::inherited::alife_stalker::AlifeStalker;
   use crate::data::alife::spawn_layout::SpawnLayout;
   use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
+  use crate::data::meta::alife_class::AlifeClass;
   use crate::data::meta::cls_id::ClsId;
   use crate::data::physics::physics_net_state::PhysicsNetState;
   use crate::data::physics::raw_float::RawFloat;
@@ -1184,6 +1191,146 @@ mod tests {
         "{name}"
       );
     }
+
+    Ok(())
+  }
+
+  /// Each Clear Sky script class a level spawns reads as its Clear Sky type, writes back byte for byte and survives its
+  /// text: a level's monster, stalker, faction, smart terrain and actor.
+  #[test]
+  fn reads_and_writes_clear_sky_script_classes() -> XrfResult {
+    for (section, name, state, size, class) in [
+      (
+        "dog_weak",
+        "esc_dog_weak",
+        ClearSkyStates::MONSTER,
+        96,
+        AlifeClass::ClearSkySeMonster,
+      ),
+      (
+        "stalker",
+        "esc_flashman_1",
+        ClearSkyStates::STALKER,
+        171,
+        AlifeClass::ClearSkySeStalker,
+      ),
+      (
+        "sim_faction",
+        "val_sim_faction_killer",
+        ClearSkyStates::SIM_FACTION,
+        119,
+        AlifeClass::ClearSkySeSimFaction,
+      ),
+      (
+        "smart_terrain",
+        "mar_smart_terrain_csky_base",
+        ClearSkyStates::SMART_TERRAIN,
+        200,
+        AlifeClass::ClearSkySeSmartTerrain,
+      ),
+      (
+        "actor",
+        "level_prefix_actor",
+        ClearSkyStates::ACTOR,
+        302,
+        AlifeClass::ClearSkySeActor,
+      ),
+    ] {
+      assert_eq!(GameWrittenPackets::bytes(state).len(), size, "{name}");
+
+      let packet: Vec<u8> = new_clear_sky_packet(section, name, 123, state)?;
+      let object: AlifeObject = read_clear_sky_packet(&packet, &[])?;
+
+      assert_eq!(object.inherited.get_class(), class, "{name}");
+    }
+
+    Ok(())
+  }
+
+  /// Clear Sky's faction is `se_sim_faction`, its own class (`SFACTION`), where Call of Pripyat's section is a space
+  /// restrictor.
+  #[test]
+  fn reads_a_clear_sky_faction_as_its_own_class() -> XrfResult {
+    let packet: Vec<u8> = new_clear_sky_packet(
+      "sim_faction",
+      "val_sim_faction_killer",
+      123,
+      ClearSkyStates::SIM_FACTION,
+    )?;
+    let object: AlifeObject = read_clear_sky_packet(&packet, &[])?;
+    let AlifeObjectInherited::ClearSkySeSimFaction(faction) = &object.inherited else {
+      panic!("Expected a Clear Sky faction payload, read {:?}", object.inherited);
+    };
+
+    assert_eq!(object.clsid, ClsId::SFaction);
+    assert_eq!(
+      (
+        faction.community_player,
+        faction.start_position_filled,
+        faction.current_expansion_level
+      ),
+      (0, 0, 0)
+    );
+    assert_eq!(faction.base.base.shape.len(), 1);
+
+    Ok(())
+  }
+
+  /// A Clear Sky payload under a Call of Pripyat header, or the reverse, would be read by the engine with the other
+  /// game's script class, so it is not written.
+  #[test]
+  fn refuses_a_payload_of_the_other_games_script_class() -> XrfResult {
+    let packet: Vec<u8> = new_clear_sky_packet("dog_weak", "esc_dog_weak", 123, ClearSkyStates::MONSTER)?;
+    let mut clear_sky: AlifeObject = read_clear_sky_packet(&packet, &[])?;
+
+    clear_sky.header.version = 128;
+    clear_sky.header.script_version = 12;
+
+    let error: String = clear_sky
+      .write_spawn_packet::<XRayByteOrder, _>(&mut ChunkWriter::new())
+      .expect_err("a Clear Sky monster under a Call of Pripyat header")
+      .to_string();
+
+    assert!(
+      error.contains("(SmDogS, SeMonster) carries SmDogS and a ClearSkySeMonster payload"),
+      "{error}"
+    );
+
+    let mut call_of_pripyat: AlifeObject = new_graph_point_object();
+
+    call_of_pripyat.header.section = String::from("dog_weak");
+    call_of_pripyat.header.version = 123;
+    call_of_pripyat.header.script_version = 8;
+    call_of_pripyat.clsid = ClsId::SmDogS;
+    call_of_pripyat.inherited = AlifeObjectInherited::SeMonster(Box::new(AlifeMonster::new_mock(Vector3d::ZERO)));
+
+    let error: String = call_of_pripyat
+      .write_spawn_packet::<XRayByteOrder, _>(&mut ChunkWriter::new())
+      .expect_err("a Call of Pripyat monster under a Clear Sky header")
+      .to_string();
+
+    assert!(
+      error.contains("(SmDogS, ClearSkySeMonster) carries SmDogS and a SeMonster payload"),
+      "{error}"
+    );
+
+    Ok(())
+  }
+
+  /// Clear Sky's scripts read fewer fields below their own script version, a layout no shipped object holds.
+  #[test]
+  fn refuses_clear_sky_script_fields_of_another_script_version() -> XrfResult {
+    let mut packet: Vec<u8> = new_clear_sky_packet("dog_weak", "esc_dog_weak", 123, ClearSkyStates::MONSTER)?;
+    let header_size: usize = packet.len() - GameWrittenPackets::bytes(ClearSkyStates::MONSTER).len();
+
+    // The script version is the header's last fixed field before the client data's size and the spawn id.
+    packet[header_size - 6] = 7;
+
+    let error: String = AlifeObject::read_spawn_packet::<XRayByteOrder, _>(&mut ChunkReader::from_bytes(&packet)?)
+      .expect_err("script version 7")
+      .to_string();
+
+    assert!(error.contains("se_monster of script version 7 is not read"), "{error}");
 
     Ok(())
   }

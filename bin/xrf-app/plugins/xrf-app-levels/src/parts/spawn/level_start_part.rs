@@ -101,7 +101,12 @@ impl LevelStartPart {
     });
     let actors = spawn
       .list_kept()
-      .filter(|object| matches!(object.inherited, AlifeObjectInherited::SeActor(_)))
+      .filter(|object| {
+        matches!(
+          object.inherited,
+          AlifeObjectInherited::SeActor(_) | AlifeObjectInherited::ClearSkySeActor(_)
+        )
+      })
       .map(|actor| {
         (
           Self::get_eye(&actor.header.position),

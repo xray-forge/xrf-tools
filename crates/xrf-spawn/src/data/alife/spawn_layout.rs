@@ -3,6 +3,7 @@ use std::ops::RangeInclusive;
 
 use xrf_error::{XrfError, XrfResult};
 
+use crate::data::alife::script_dialect::ScriptDialect;
 use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 
 /// Which fields an object's packets carry, from the spawn version and script version its spawn packet header stores.
@@ -54,9 +55,40 @@ impl SpawnLayout {
   /// engine reads them above 124 (`CSE_ALifeTraderAbstract::STATE_Read`).
   pub(crate) const TRADER_CORPSE_ACCESS_VERSION: u16 = 125;
 
+  /// The script version Clear Sky's script classes write (`current_server_entity_version` in its `system.ltx`), the
+  /// one every Clear Sky object of the reference levels carries. Its scripts read fewer fields below it, a layout no
+  /// shipped object holds and which is not read.
+  pub(crate) const CLEAR_SKY_SCRIPT_VERSION: u16 = 8;
+
   /// Whether objects of spawn `version` are read and written, Clear Sky's or Call of Pripyat's.
   pub(crate) fn is_supported_version(version: u16) -> bool {
     Self::CLEAR_SKY_VERSIONS.contains(&version) || version == Self::CALL_OF_PRIPYAT_VERSION
+  }
+
+  /// Which game's script classes the object follows, by its spawn version.
+  pub(crate) fn script_dialect(self) -> ScriptDialect {
+    if Self::CLEAR_SKY_VERSIONS.contains(&self.version) {
+      ScriptDialect::ClearSky
+    } else {
+      ScriptDialect::CallOfPripyat
+    }
+  }
+
+  /// Refuse a Clear Sky script class's fields at another script version than the one its scripts write.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error naming `owner` when the script version is not [`Self::CLEAR_SKY_SCRIPT_VERSION`].
+  pub(crate) fn assert_clear_sky_script_version(self, owner: &str) -> XrfResult {
+    if self.script_version == Self::CLEAR_SKY_SCRIPT_VERSION {
+      return Ok(());
+    }
+
+    Err(XrfError::new_invalid_error(format!(
+      "{owner} of script version {} is not read: Clear Sky's scripts write version {}",
+      self.script_version,
+      Self::CLEAR_SKY_SCRIPT_VERSION
+    )))
   }
 
   /// Whether a smart cover stores whether it can fire.
@@ -120,6 +152,12 @@ impl SpawnLayout {
     version: Self::CALL_OF_PRIPYAT_VERSION,
     script_version: 12,
   };
+
+  /// The layout of Clear Sky's release packets, at its spawn version and script version.
+  pub(crate) const CLEAR_SKY: Self = Self {
+    version: 124,
+    script_version: Self::CLEAR_SKY_SCRIPT_VERSION,
+  };
 }
 
 impl From<&SpawnPacketHeader> for SpawnLayout {
@@ -133,6 +171,7 @@ impl From<&SpawnPacketHeader> for SpawnLayout {
 
 #[cfg(test)]
 mod tests {
+  use crate::data::alife::script_dialect::ScriptDialect;
   use crate::data::alife::spawn_layout::SpawnLayout;
 
   #[test]
@@ -165,6 +204,59 @@ mod tests {
     assert!(layout(123, 8).has_weapon_grenades());
     assert!(!layout(124, 8).has_trader_corpse_access());
     assert!(layout(128, 12).has_trader_corpse_access());
+  }
+
+  #[test]
+  fn picks_the_dialect_by_spawn_version() {
+    for version in [122, 123, 124] {
+      assert_eq!(
+        SpawnLayout {
+          version,
+          script_version: 8
+        }
+        .script_dialect(),
+        ScriptDialect::ClearSky,
+        "{version}"
+      );
+    }
+
+    // The script version does not decide it: a Call of Pripyat packet at Clear Sky's script version stays Call of
+    // Pripyat's.
+    assert_eq!(
+      SpawnLayout {
+        version: 128,
+        script_version: 8
+      }
+      .script_dialect(),
+      ScriptDialect::CallOfPripyat
+    );
+  }
+
+  #[test]
+  fn refuses_clear_sky_script_fields_of_another_script_version() {
+    assert!(
+      SpawnLayout::CLEAR_SKY
+        .assert_clear_sky_script_version("se_monster")
+        .is_ok()
+    );
+
+    for script_version in [7, 9] {
+      let layout: SpawnLayout = SpawnLayout {
+        version: 123,
+        script_version,
+      };
+
+      assert_eq!(
+        layout
+          .assert_clear_sky_script_version("se_monster")
+          .expect_err("another script version")
+          .to_string(),
+        format!(
+          "Invalid error: se_monster of script version {script_version} is not read: Clear Sky's scripts write \
+           version 8"
+        )
+      );
+    }
   }
 
   #[test]

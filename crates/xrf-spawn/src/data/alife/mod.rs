@@ -4,6 +4,7 @@ pub(crate) mod alife_object_inherited;
 pub(crate) mod alife_packets_read_write;
 pub(crate) mod alife_state_read_write;
 pub(crate) mod inherited;
+pub(crate) mod script_dialect;
 pub(crate) mod spawn_layout;
 pub(crate) mod spawn_level_arrival;
 pub(crate) mod spawn_level_objects;

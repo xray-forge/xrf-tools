@@ -234,4 +234,50 @@ impl ClearSkyStates {
     "0000803f",
     "5a000100000000",
   );
+
+  /// `escape`'s `esc_dog_weak`, spawn version 123: 96 bytes, the monster's engine fields, then `se_monster`'s job kind
+  /// for `nil`, its squad as `nil` and its forced online flag.
+  pub(crate) const MONSTER: &'static str = concat!(
+    "6000ffff0000000001000000ffffffffbfffffff00ffffffffffffffff",
+    "6d6f6e73746572735c646f675c646f6700000000000000000000000000000000",
+    "00ffff00000000000000000000ffff0024656469746f720000ffffffff",
+    "026e696c0000",
+  );
+
+  /// `escape`'s `esc_flashman_1`, spawn version 123: 171 bytes, the stalker's engine fields with no corpse access
+  /// fields, then `se_stalker`'s job kind for `nil`, its loot flag, its squad as `nil` and its forced online flag.
+  pub(crate) const STALKER: &'static str = concat!(
+    "ab008813000000010000006573635f666c6173686d616e00ffffffff010000800100008000ffff0000000001000000ffffffff3fffffff",
+    "00b4010000ffffffff6163746f72735c7374616c6b65725f736f6c646965725c7374616c6b65725f736f6c646965725f310000000000",
+    "000000000000000000000000ffff00000000000000000000ffff00050000000102020101040000000200010224656469746f720000ffff",
+    "02006e696c0000",
+  );
+
+  /// `darkvalley`'s `val_sim_faction_killer`, spawn version 123: 119 bytes, the smart zone, then `se_sim_faction`'s
+  /// three bytes, its `nil` last spawn time, four empty tables and its marker.
+  pub(crate) const SIM_FACTION: &'static str = concat!(
+    "7700ffff0000000001000000ffffffff3effffff5b66616374696f6e5d0d0a6e616d65203d206b696c6c65720d0a73657474696e67",
+    "73203d206d6973635c66616374696f6e5f6b696c6c65722e6c747800ffffffffffffffff01000000000000000000000000000000803f",
+    "00000000ff00000000000900",
+  );
+
+  /// `marsh`'s `mar_smart_terrain_csky_base`, spawn version 123: 200 bytes, the smart zone, then `se_smart_terrain`'s
+  /// combat manager with its cover manager, two empty tables and the markers closing each.
+  pub(crate) const SMART_TERRAIN: &'static str = concat!(
+    "c800ffff0000000001000000ffffffff3effffff5b736d6172745f7465727261696e5d0d0a74617267657473203d200d0a73696d5f74",
+    "797065203d20626173650d0a73717561645f6361706163697479203d20330d0a73717561645f6964203d2033310d0a6163746f725f6869",
+    "646573203d206d61725f696e74726f5f7a6f6e650d0a6e6f5f6d7574616e74203d207472756500ffffffffffffffff01000000000000",
+    "00000000000000a379474000006e696c00ffff6e696c000000000000000200130000001700",
+  );
+
+  /// `marsh`'s `level_prefix_actor`, spawn version 123: 302 bytes, the actor's engine fields, then `se_actor`'s random
+  /// task manager, squad id generator and minigames manager as a new game holds them, each closed by its marker.
+  pub(crate) const ACTOR: &'static str = concat!(
+    "2e01ffff0000000001000000ffffffffbfffffff00ffffffffffffffff6163746f72735c7374616c6b65725f6865726f5c7374616c6b",
+    "65725f6865726f5f3100000000000000803f0000000000000000ffff00000000000000002800000000000000006163746f7200ffffff",
+    "ff01000080010000800024656469746f720000ffffffff0000000000000000000008000000000f0000000000000000000800020074",
+    "6573745f63726f776b696c6c657200434d4743726f774b696c6c65720076616c6961626c6500003c000004000000000a0064000000",
+    "0000000a0000001600746573745f73686f6f74696e6700434d4753686f6f74696e670076616c6961626c650000006e696c006e696c",
+    "006e696c006e696c006e696c000100000000000000000000006e696c0026008c00a900",
+  );
 }

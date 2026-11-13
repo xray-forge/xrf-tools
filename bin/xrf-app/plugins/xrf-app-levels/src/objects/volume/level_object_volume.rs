@@ -21,6 +21,8 @@ impl LevelObjectVolume {
   pub fn of(inherited: &AlifeObjectInherited) -> Option<Self> {
     let (restrictor, destination): (&AlifeObjectSpaceRestrictor, Option<&String>) = match inherited {
       AlifeObjectInherited::SeSmartTerrain(terrain) => (&terrain.base.base, None),
+      AlifeObjectInherited::ClearSkySeSmartTerrain(terrain) => (&terrain.base.base, None),
+      AlifeObjectInherited::ClearSkySeSimFaction(faction) => (&faction.base.base, None),
       AlifeObjectInherited::CseAlifeSpaceRestrictor(restrictor) => (restrictor, None),
       AlifeObjectInherited::CseAlifeTeamBaseZone(zone) => (&zone.base, None),
       AlifeObjectInherited::CseAlifeAnomalousZone(zone) => (&zone.base.base.base, None),
