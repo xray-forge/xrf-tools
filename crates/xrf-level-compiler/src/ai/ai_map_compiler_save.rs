@@ -98,6 +98,7 @@ impl AiMapCompiler {
         nodes: packed,
       },
       guid,
+      gpu: None,
     })
   }
 

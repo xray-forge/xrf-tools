@@ -48,6 +48,10 @@ every level of a game at once.
   Every ray is a full query, never the SDK's remembered blocker, so the covers are the same on any thread count. Corner
   nodes and other nodes run over the installed rayon pool, a progress unit each; a cancelled job stops with
   `XrfError::Cancelled`.
+- The corner rays are traced by the request's `backend`, the detail lighter's `DetailLightBackend` with its `dxc` and
+  `gpu`. On the GPU (the `gpu` feature, `ai/cover/gpu/`) nodes are flooded and their rays made on the pool a batch at a
+  time while the GPU traces the batch before, through the detail lighter's ray queries one ray at a time; the sums stay
+  on the CPU. `AiMapCompilation::gpu` names the GPU that traced.
 - The save: the box around every node, its height grown by `EPS_L`; each node's cell, height, plane and covers
   compressed over it; a stable sort by packed cell with the links renumbered; the light 15, which no loader reads.
 - The identity is the replaced map's while its graph stands (as many nodes, the same cell size, each at the same cell
@@ -56,7 +60,8 @@ every level of a game at once.
 
 On the kept SDK runs of `labx8` and `jupiter` a draft compile is the SDK's `-draft` file byte for byte but for the
 identity and each node's light. A full compile is the full run's byte for byte on `labx8`; on `jupiter` every cover
-value is within one step, 99.97% exact, the rest single rays that differ and the mix carrying them.
+value is within one step, 99.97% exact, the rest single rays that differ and the mix carrying them, on either backend;
+the GPU compiles `jupiter` in about 10 s, the CPU in 35.
 
 ## Shadow materials
 
@@ -131,5 +136,5 @@ cargo test -p xrf-level-compiler --features gpu
 ```
 
 The tests run no SDK compiler. A run of the SDK's compilers on a level is the CLI's or the app's, on copies of a level
-outside any game installation. The GPU tests trace on Vulkan, and on D3D12 with the checkout's `.sdks/dxc`; a backend
-no GPU of the host traces rays on is skipped.
+outside any game installation. The GPU tests, the detail lighter's and the AI map's covers against the CPU's, trace on
+Vulkan, and on D3D12 with the checkout's `.sdks/dxc`; a backend no GPU of the host traces rays on is skipped.

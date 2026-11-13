@@ -8,9 +8,11 @@ use xrf_math::{Aabb, Vector3d};
 use crate::ai::ai_vertex::AiVertex;
 use crate::ai::cover::ai_cover_query::AiCoverQuery;
 use crate::ai::cover::ai_cover_sector::AiCoverSector;
+use crate::ai::cover::ai_cover_tracing::AiCoverTracing;
 use crate::ai::cover::ai_cover_tree::AiCoverTree;
 use crate::ai::cover::ai_cover_walk::AiCoverWalk;
 use crate::ai::cover::ai_ray_model::AiRayModel;
+use crate::detail::detail_light_backend::DetailLightBackend;
 
 /// xrAI's covers (`xrCover`, `xrAI/compiler_cover.cpp:567`), its arithmetic in single precision in the same order:
 /// each node at a corner of the map traced against the ray model toward every node it reaches within 30 m, from a
@@ -29,11 +31,9 @@ impl AiCoverPass {
   /// What a job reports mixing under: the other nodes.
   pub(crate) const PROGRESS_OTHERS: &'static str = "other nodes";
 
-  /// `high_cover_height`, a standing eye.
-  const HIGH: f32 = 1.5;
-
-  /// `low_cover_height`, a crouching eye.
-  const LOW: f32 = 0.6;
+  /// The heights a corner node's rays leave from, `high_cover_height` and `low_cover_height`: a standing eye and a
+  /// crouching one, its high covers and its low ones.
+  pub(crate) const HEIGHTS: [f32; 2] = [1.5, 0.6];
 
   /// `cover_distance`, how far a node's covers look across the ground.
   const REACH: f32 = 30.0;
@@ -41,17 +41,20 @@ impl AiCoverPass {
   /// A cover summed over its four directions from which a node counts as open, `4 * .999f`.
   const OPEN: f32 = 4.0 * 0.999;
 
-  /// Computes every node's covers, the map's cells `cell_size` across.
+  /// Computes every node's covers, the map's cells `cell_size` across, the corner nodes' rays traced as `tracing`
+  /// says; answers the name of the GPU that traced, if one did.
   ///
   /// # Errors
   ///
-  /// Returns [`XrfError::Cancelled`] when the job is cancelled, the covers then left unfinished.
+  /// Returns [`XrfError::Cancelled`] when the job is cancelled, the covers then left unfinished; and, for the GPU
+  /// backend, an error when this build has none, no GPU traces rays, or the GPU fails; `Auto` traces on the CPU instead
+  /// when the GPU does not start, but fails with a GPU that fails once started.
   pub(crate) fn compute(
     vertices: &mut [AiVertex],
     cell_size: f32,
-    rays: &AiRayModel<'_>,
+    tracing: &AiCoverTracing<'_>,
     job: &JobHandle,
-  ) -> XrfResult<()> {
+  ) -> XrfResult<Option<String>> {
     let is_corner: Vec<bool> = vertices
       .iter()
       .map(|vertex| Self::is_corner(vertices, vertex))
@@ -59,7 +62,16 @@ impl AiCoverPass {
     let corners: Vec<u32> = (0..vertices.len() as u32)
       .filter(|node| is_corner[*node as usize])
       .collect();
-    let traced: Vec<AiNodeCovers> = Self::trace_corners(vertices, &corners, rays, job)?;
+    let scope: JobScope = job.enter(Self::PROGRESS_CORNERS, Some(corners.len() as u64));
+    let (traced, gpu): (Vec<AiNodeCovers>, Option<String>) = match tracing.backend {
+      DetailLightBackend::Cpu => (
+        Self::trace_on_cpu(vertices, &corners, &tracing.rays, job, &scope)?,
+        None,
+      ),
+      DetailLightBackend::Gpu | DetailLightBackend::Auto => {
+        Self::trace_on_gpu(vertices, &corners, tracing, job, &scope)?
+      }
+    };
 
     for (node, (high, low)) in corners.iter().zip(traced) {
       vertices[*node as usize].high_cover = high;
@@ -75,7 +87,7 @@ impl AiCoverPass {
       }
     }
 
-    Ok(())
+    Ok(gpu)
   }
 
   /// `is_cover` (`:364`): whether a node stands at a corner of the map, with a link missing on a side where a link
@@ -97,56 +109,30 @@ impl AiCoverPass {
     is_critical(0, 1, 3) || is_critical(2, 1, 3) || is_critical(1, 0, 2) || is_critical(3, 0, 2)
   }
 
-  /// Every corner node's covers, the nodes shared over the installed pool.
-  fn trace_corners(
-    vertices: &[AiVertex],
-    corners: &[u32],
-    rays: &AiRayModel<'_>,
-    job: &JobHandle,
-  ) -> XrfResult<Vec<AiNodeCovers>> {
-    let scope: JobScope = job.enter(Self::PROGRESS_CORNERS, Some(corners.len() as u64));
+  /// The ray from `height` over `base` toward the point `height` over `target`, its direction and range as
+  /// `compute_cover_value` (`:248`) divides them, and the sector it falls in.
+  pub(crate) fn aim(base: &Vector3d, target: &Vector3d, height: f32) -> (Ray, usize) {
+    let offset: Vector3d = target - base;
+    let range: f32 = offset.length();
+    let direction: Vector3d = &offset / range;
 
-    corners
-      .par_iter()
-      .map_init(
-        || AiCoverQuery::new(vertices.len()),
-        |query, node| {
-          job.check_cancelled()?;
-          query.perform(vertices, *node);
-
-          let covers: AiNodeCovers = (
-            Self::trace(vertices, *node, &query.list, Self::HIGH, rays),
-            Self::trace(vertices, *node, &query.list, Self::LOW, rays),
-          );
-
-          scope.advance();
-
-          Ok(covers)
-        },
-      )
-      .collect()
+    (
+      Ray::new(
+        Vec3::new(base.x, base.y + height, base.z),
+        Vec3::new(direction.x, direction.y, direction.z),
+        range,
+      ),
+      AiCoverSector::of(&direction),
+    )
   }
 
-  /// `compute_cover_value` (`:248`): one corner node's covers from `height` over it, by the share of each sector's rays
-  /// toward the nodes `reached` lists that the ray model lets through.
-  fn trace(vertices: &[AiVertex], node: u32, reached: &[u32], height: f32, rays: &AiRayModel<'_>) -> [f32; 4] {
-    let base: &Vector3d = &vertices[node as usize].position;
-    let eye: Vec3 = Vec3::new(base.x, base.y + height, base.z);
+  /// One height's four covers from its rays' sectors and transmittances, in the order the rays were aimed: each
+  /// sector's share passed, an empty sector 0.
+  pub(crate) fn sum_covers(rays: impl Iterator<Item = (usize, f32)>) -> [f32; 4] {
     let mut total: [f32; 8] = [0.0; 8];
     let mut passed: [f32; 8] = [0.0; 8];
 
-    for other in reached.iter().filter(|other| **other != node) {
-      let offset: Vector3d = &vertices[*other as usize].position - base;
-      let range: f32 = offset.length();
-      let direction: Vector3d = &offset / range;
-      let sector: usize = AiCoverSector::of(&direction);
-      let mut transmittance: f32 = 1.0;
-
-      rays.tracer.for_each_hit(
-        &Ray::new(eye, Vec3::new(direction.x, direction.y, direction.z), range),
-        |hit| transmittance *= rays.shadows.get_transmittance(&hit),
-      );
-
+    for (sector, transmittance) in rays {
       total[sector] += 1.0;
       passed[sector] += transmittance;
     }
@@ -160,6 +146,103 @@ impl AiCoverPass {
     });
 
     AiCoverSector::get_covers(&values)
+  }
+
+  /// Every corner node's covers, each whole on a thread of the installed pool, every ray a query of the CPU's tracer.
+  fn trace_on_cpu(
+    vertices: &[AiVertex],
+    corners: &[u32],
+    rays: &AiRayModel<'_>,
+    job: &JobHandle,
+    scope: &JobScope,
+  ) -> XrfResult<Vec<AiNodeCovers>> {
+    corners
+      .par_iter()
+      .map_init(
+        || AiCoverQuery::new(vertices.len()),
+        |query, node| {
+          job.check_cancelled()?;
+          query.perform(vertices, *node);
+
+          let base: &Vector3d = &vertices[*node as usize].position;
+          let trace = |height: f32| {
+            Self::sum_covers(query.list.iter().filter(|other| **other != *node).map(|other| {
+              let (ray, sector) = Self::aim(base, &vertices[*other as usize].position, height);
+              let mut transmittance: f32 = 1.0;
+
+              rays
+                .tracer
+                .for_each_hit(&ray, |hit| transmittance *= rays.shadows.get_transmittance(&hit));
+
+              (sector, transmittance)
+            }))
+          };
+          let covers: AiNodeCovers = (trace(Self::HEIGHTS[0]), trace(Self::HEIGHTS[1]));
+
+          scope.advance();
+
+          Ok(covers)
+        },
+      )
+      .collect()
+  }
+
+  /// Every corner node's covers with the rays traced on the GPU, and the GPU's name; for `Auto`, on the CPU when the
+  /// GPU does not start. A GPU that fails once started fails the pass, as the nodes it traced are already counted.
+  #[cfg(feature = "gpu")]
+  fn trace_on_gpu(
+    vertices: &[AiVertex],
+    corners: &[u32],
+    tracing: &AiCoverTracing<'_>,
+    job: &JobHandle,
+    scope: &JobScope,
+  ) -> XrfResult<(Vec<AiNodeCovers>, Option<String>)> {
+    use crate::ai::cover::gpu::ai_cover_gpu::AiCoverGpu;
+
+    match AiCoverGpu::start(tracing) {
+      Ok(gpu) => Ok((
+        gpu.trace_corners(vertices, corners, job, scope)?,
+        Some(String::from(gpu.get_name())),
+      )),
+      Err(error) if tracing.backend == DetailLightBackend::Auto => {
+        Self::trace_on_cpu_instead(&error, vertices, corners, &tracing.rays, job, scope)
+      }
+      Err(error) => Err(error),
+    }
+  }
+
+  /// Every corner node's covers on the CPU for `Auto`; refused for `Gpu`: this build has no GPU backend.
+  #[cfg(not(feature = "gpu"))]
+  fn trace_on_gpu(
+    vertices: &[AiVertex],
+    corners: &[u32],
+    tracing: &AiCoverTracing<'_>,
+    job: &JobHandle,
+    scope: &JobScope,
+  ) -> XrfResult<(Vec<AiNodeCovers>, Option<String>)> {
+    let error: XrfError = XrfError::new_invalid_error(
+      "This build traces AI-map covers on the CPU alone; its GPU backend is the `gpu` feature",
+    );
+
+    if tracing.backend == DetailLightBackend::Auto {
+      Self::trace_on_cpu_instead(&error, vertices, corners, &tracing.rays, job, scope)
+    } else {
+      Err(error)
+    }
+  }
+
+  /// Every corner node's covers on the CPU, the GPU having not started.
+  fn trace_on_cpu_instead(
+    error: &XrfError,
+    vertices: &[AiVertex],
+    corners: &[u32],
+    rays: &AiRayModel<'_>,
+    job: &JobHandle,
+    scope: &JobScope,
+  ) -> XrfResult<(Vec<AiNodeCovers>, Option<String>)> {
+    log::info!("Tracing the AI-map covers on the CPU: {error}");
+
+    Ok((Self::trace_on_cpu(vertices, corners, rays, job, scope)?, None))
   }
 
   /// `compute_non_covers` (`:448`): each other node's covers, `None` for a corner node, mixed from the corner nodes not

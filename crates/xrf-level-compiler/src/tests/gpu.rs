@@ -1,5 +1,5 @@
-//! The detail lighter's shadow rays traced on the GPU, on Vulkan and on D3D12 through the checkout's DXC, against the
-//! CPU's answers. A backend no GPU of the host traces rays on is skipped.
+//! The detail lighter's shadow rays and the AI map's corner rays traced on the GPU, on Vulkan and on D3D12 through the
+//! checkout's DXC, against the CPU's answers. A backend no GPU of the host traces rays on is skipped.
 
 use std::path::PathBuf;
 
@@ -9,10 +9,12 @@ use xrf_geometry::{BvhTracer, Ray};
 use xrf_renderer_core::{RayQueryAsk, RayQueryDevice};
 use xrf_test_utils::TestSkip;
 
+use crate::ai::cover::ai_cover_pass::AiNodeCovers;
 use crate::detail::gpu::detail_gpu_batch::DetailGpuBatch;
 use crate::detail::gpu::detail_gpu_records::GpuSingle;
 use crate::detail::gpu::detail_gpu_tracer::DetailGpuTracer;
 use crate::shadow::shadow_materials::ShadowMaterials;
+use crate::tests::ai_covers;
 use crate::tests::detail::{lighting, lighting_on, tracer};
 use crate::{DetailLightBackend, DetailLighting};
 
@@ -89,6 +91,26 @@ fn lights_the_slots_as_the_cpu_does() -> XrfResult {
 
     assert_eq!(on_gpu.details, lighting()?.details, "{name}");
     assert!(on_gpu.gpu.is_some());
+  }
+
+  Ok(())
+}
+
+#[test]
+fn covers_the_ai_map_as_the_cpu_does() -> XrfResult {
+  let tracer: BvhTracer = ai_covers::wall();
+  let on_cpu: Vec<AiNodeCovers> = ai_covers::covers(&tracer, DetailLightBackend::Cpu, None)?;
+
+  for dxc in dxcs() {
+    if device(dxc.as_ref()).is_none() {
+      continue;
+    }
+
+    assert_eq!(
+      ai_covers::covers(&tracer, DetailLightBackend::Gpu, dxc.as_deref())?,
+      on_cpu,
+      "{dxc:?}"
+    );
   }
 
   Ok(())
