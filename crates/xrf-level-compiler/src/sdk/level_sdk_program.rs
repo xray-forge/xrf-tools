@@ -8,9 +8,8 @@ use crate::level_compile_step::LevelCompileStep;
 /// The SDK 0.7 compiler that runs a step, under the SDK's `editors\bin`, the prefix of the log it writes under its
 /// working directory's `logs`, and the switches it runs with after `-f <level>`.
 ///
-/// Each compiler ends a run on a "Congratulation!" message box and waits on it. xrLC skips it under `-silent`; a
-/// compiler with no such switch has its box end the run (`LevelSdkDialog`). xrLC takes `-keep_temp_files` to write
-/// debug files, so it runs without.
+/// Each compiler ends a run on a "Congratulation!" message box and waits on it, even once answered; xrLC skips it under
+/// `-silent`, so it exits on its own. It takes `-keep_temp_files` to write debug files, so it runs without.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct LevelSdkProgram {
   pub(crate) path: PathBuf,
@@ -59,10 +58,5 @@ impl LevelSdkProgram {
       .into_iter()
       .chain(self.switches.iter().map(|switch| String::from(*switch)))
       .collect()
-  }
-
-  /// Whether the program skips its closing message box, exiting on its own.
-  pub(crate) fn is_silent(&self) -> bool {
-    self.switches.contains(&Self::SILENT)
   }
 }
