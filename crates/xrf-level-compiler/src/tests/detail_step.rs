@@ -30,8 +30,10 @@ pub(super) struct Fixture {
 }
 
 impl Fixture {
-  pub(super) fn new(name: &str) -> XrfResult<Self> {
-    let gamedata: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), name))?;
+  /// The fixture of test `name` in `test_file`, the caller's `file!()`: its directory is named after both, so tests of
+  /// two files sharing a name never share a directory when the suite runs in parallel.
+  pub(super) fn new(test_file: &str, name: &str) -> XrfResult<Self> {
+    let gamedata: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(test_file, name))?;
     let level: PathBuf = gamedata.join("levels").join("test_level");
     let mut thumbnail: ThmFile = ThmFile::new_texture();
 
@@ -185,7 +187,7 @@ impl Fixture {
 
 #[test]
 fn writes_the_details_lit_as_the_lighter_lights_them_with_no_sdk() -> XrfResult {
-  let fixture: Fixture = Fixture::new("lit")?;
+  let fixture: Fixture = Fixture::new(file!(), "lit")?;
   let report: LevelCompileReport = LevelCompiler::compile(&fixture.request(false), &JobHandle::inert())?;
   let written: LevelDetailsFile =
     LevelDetailsFile::read_from_path::<XRayByteOrder, _>(&fixture.level.join(LevelDetailsFile::FILE_NAME))?;
@@ -217,7 +219,7 @@ fn writes_the_details_lit_as_the_lighter_lights_them_with_no_sdk() -> XrfResult 
 
 #[test]
 fn refuses_to_overwrite_the_details_unless_forced() -> XrfResult {
-  let fixture: Fixture = Fixture::new("forced")?;
+  let fixture: Fixture = Fixture::new(file!(), "forced")?;
   let output: PathBuf = fixture.level.join(LevelDetailsFile::FILE_NAME);
 
   std::fs::write(&output, b"kept")?;
@@ -241,7 +243,7 @@ fn refuses_to_overwrite_the_details_unless_forced() -> XrfResult {
 
 #[test]
 fn refuses_game_data_without_the_compiler_shader_library() -> XrfResult {
-  let fixture: Fixture = Fixture::new("no_library")?;
+  let fixture: Fixture = Fixture::new(file!(), "no_library")?;
 
   std::fs::remove_file(fixture.gamedata.join(ShaderCompilerFile::FILE_NAME))?;
 
