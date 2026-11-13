@@ -102,9 +102,14 @@ impl SpawnAiMap {
     (packed / self.row_length, packed % self.row_length)
   }
 
-  /// A node's position, `vertex_position`: its cell centre at its packed height.
+  /// A node's position, `vertex_position`: its cell centre at its packed height, the height
+  /// `(float(y) / 65535) * factor_y + min.y` rounded once, as the 2009 build keeps it on the x87 until it is stored.
   pub fn get_node_position(&self, node: u32) -> Vector3d<f32> {
-    self.header.get_node_position(&self.nodes[node as usize])
+    let vertex: &LevelAiNode = &self.nodes[node as usize];
+    let (x, z) = self.get_node_xz(node);
+    let height: f32 = f32::from(vertex.packed_y) * (1.0 / 65535.0) * self.header.size_y + self.header.bounds.min.y;
+
+    Vector3d::new(x, height, z)
   }
 
   /// Where a node's cell centre stands across the ground, `unpack_xz`.
