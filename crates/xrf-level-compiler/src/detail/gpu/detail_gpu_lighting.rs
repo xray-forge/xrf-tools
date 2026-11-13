@@ -1,7 +1,7 @@
 use rayon::prelude::*;
 use xrf_error::XrfResult;
 use xrf_job::{JobHandle, JobScope};
-use xrf_renderer_core::{RayQueryAsk, RayQueryDevice, RayQueryGpu};
+use xrf_renderer_core::{RayQueryAsk, RayQueryDevice, RenderGpu};
 
 use crate::detail::detail_light_request::DetailLightRequest;
 use crate::detail::detail_lighter::DetailLighter;
@@ -35,10 +35,7 @@ impl DetailGpuLighting {
   pub(crate) fn start(request: &DetailLightRequest<'_>) -> XrfResult<Self> {
     let device: RayQueryDevice = RayQueryDevice::request(RayQueryAsk {
       dxc: request.dxc,
-      gpu: request.gpu.map(|gpu| RayQueryGpu {
-        vendor: gpu.vendor,
-        device: gpu.device,
-      }),
+      gpu: request.gpu.map(RenderGpu::from),
     })?;
 
     Ok(Self {

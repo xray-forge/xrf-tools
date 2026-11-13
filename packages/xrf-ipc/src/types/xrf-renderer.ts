@@ -1,5 +1,7 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
+import { RenderGpu } from "#/types/xrf-renderer-core";
+
 /** Pixels a cubemap's face spans on a side at most. */
 export const RENDER_CUBE_MOST_PIXELS: number = 2048;
 
@@ -1487,15 +1489,6 @@ export type RenderGlassSettings = {
   mode: RenderGlassMode;
   /** How far the enhanced glass bends what is behind it, one as designed; none draws it flat. */
   refraction: number | null;
-};
-
-/**
- * A GPU identified by its PCI vendor and device IDs. D3D12 and Vulkan report the same IDs; two identical cards share
- * one identity.
- */
-export type RenderGpu = {
-  vendor: number;
-  device: number;
 };
 
 /** A GPU a backend can draw on: its identity, its name and its driver. */

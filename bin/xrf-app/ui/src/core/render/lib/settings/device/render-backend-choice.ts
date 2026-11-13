@@ -2,9 +2,9 @@ import {
   ERenderBackend,
   RenderBackend,
   RenderBackendAvailability,
-  RenderGpu,
   RenderGpuDescription,
 } from "@xrf/ipc/types/xrf-renderer";
+import { RenderGpu } from "@xrf/ipc/types/xrf-renderer-core";
 import { Nullable } from "@xrf/types";
 
 import { resolveRenderGpu } from "@/core/render/lib/settings/device/render-gpu-choice";

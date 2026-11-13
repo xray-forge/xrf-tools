@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
-import { ERenderBackend, RenderBackendAvailability, RenderGpu } from "@xrf/ipc/types/xrf-renderer";
+import { ERenderBackend, RenderBackendAvailability } from "@xrf/ipc/types/xrf-renderer";
+import { RenderGpu } from "@xrf/ipc/types/xrf-renderer-core";
 
 import {
   describeRenderGpu,

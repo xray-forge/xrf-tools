@@ -6,7 +6,7 @@ import {
   LevelCompileStep,
 } from "@xrf/ipc/types/xrf-level-compiler";
 import { ELevelBuildImpostorLimit } from "@xrf/ipc/types/xrf-rawdata";
-import { RenderGpu } from "@xrf/ipc/types/xrf-renderer";
+import { RenderGpu } from "@xrf/ipc/types/xrf-renderer-core";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";

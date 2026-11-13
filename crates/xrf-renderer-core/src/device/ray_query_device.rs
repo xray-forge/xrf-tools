@@ -7,8 +7,9 @@ use std::path::Path;
 
 use xrf_error::{XrfError, XrfResult};
 
+use crate::device::gpu_adapters::GpuAdapters;
 use crate::device::ray_query_ask::RayQueryAsk;
-use crate::device::ray_query_gpu::RayQueryGpu;
+use crate::device::render_gpu::RenderGpu;
 
 /// A GPU device without a window that traces rays in compute shaders (`EXPERIMENTAL_RAY_QUERY`), for tools tracing
 /// offline rather than drawing.
@@ -48,16 +49,16 @@ impl RayQueryDevice {
 
   /// The adapter `gpu` names on `instance` where it traces rays; else, with a warning where one was named, the
   /// high-performance one.
-  fn request_adapter(instance: &wgpu::Instance, label: &str, gpu: Option<RayQueryGpu>) -> XrfResult<wgpu::Adapter> {
+  fn request_adapter(
+    instance: &wgpu::Instance,
+    backends: wgpu::Backends,
+    label: &str,
+    gpu: Option<RenderGpu>,
+  ) -> XrfResult<wgpu::Adapter> {
     if let Some(gpu) = gpu {
-      let listed: Vec<wgpu::Adapter> = pollster::block_on(instance.enumerate_adapters(wgpu::Backends::all()));
-      let named: Option<wgpu::Adapter> = listed.into_iter().find(|adapter| {
-        let info: wgpu::AdapterInfo = adapter.get_info();
-
-        info.vendor == gpu.vendor && info.device == gpu.device && adapter.features().contains(Self::FEATURES)
-      });
-
-      match named {
+      match GpuAdapters::find(instance, backends, gpu, |adapter| {
+        adapter.features().contains(Self::FEATURES)
+      }) {
         Some(adapter) => return Ok(adapter),
         None => log::warn!(
           "The chosen GPU ({:04x}:{:04x}) does not trace rays on {label}; tracing on the automatic one",
@@ -67,16 +68,11 @@ impl RayQueryDevice {
       }
     }
 
-    pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-      power_preference: wgpu::PowerPreference::HighPerformance,
-      compatible_surface: None,
-      force_fallback_adapter: false,
-      apply_limit_buckets: false,
-    }))
-    .map_err(|error| XrfError::new_unexpected_error(format!("No {label} GPU to trace rays on: {error}")))
+    GpuAdapters::request_automatic(instance, false)
+      .map_err(|error| XrfError::new_unexpected_error(format!("No {label} GPU to trace rays on: {error}")))
   }
 
-  fn request_on(backends: wgpu::Backends, dxc: Option<&Path>, gpu: Option<RayQueryGpu>) -> XrfResult<Self> {
+  fn request_on(backends: wgpu::Backends, dxc: Option<&Path>, gpu: Option<RenderGpu>) -> XrfResult<Self> {
     let label: &str = if backends == wgpu::Backends::DX12 {
       "D3D12"
     } else {
@@ -94,7 +90,7 @@ impl RayQueryDevice {
     }
 
     let instance: wgpu::Instance = wgpu::Instance::new(descriptor);
-    let adapter: wgpu::Adapter = Self::request_adapter(&instance, label, gpu)?;
+    let adapter: wgpu::Adapter = Self::request_adapter(&instance, backends, label, gpu)?;
     let name: String = format!("{} ({label})", adapter.get_info().name);
 
     if !adapter.features().contains(Self::FEATURES) {

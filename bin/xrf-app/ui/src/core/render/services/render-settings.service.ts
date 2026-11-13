@@ -4,10 +4,10 @@ import { renderCommands } from "@xrf/ipc/commands/render";
 import {
   RENDER_DEFAULT_PERIODIC_BUDGET,
   RenderBackendAvailability,
-  RenderGpu,
   RenderGraphSettings,
   RenderSettings,
 } from "@xrf/ipc/types/xrf-renderer";
+import { RenderGpu } from "@xrf/ipc/types/xrf-renderer-core";
 import { Logger } from "@xrf/logging";
 import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";

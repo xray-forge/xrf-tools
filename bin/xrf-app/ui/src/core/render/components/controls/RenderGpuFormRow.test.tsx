@@ -1,7 +1,8 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { render } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-import { ERenderBackend, RenderBackendAvailability, RenderGpu } from "@xrf/ipc/types/xrf-renderer";
+import { ERenderBackend, RenderBackendAvailability } from "@xrf/ipc/types/xrf-renderer";
+import { RenderGpu } from "@xrf/ipc/types/xrf-renderer-core";
 import { Nullable } from "@xrf/types";
 
 import { RENDER_BACKEND_AUTO } from "@/core/render/lib/settings/device/render-backend-choice";

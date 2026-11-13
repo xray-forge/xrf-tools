@@ -10,6 +10,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use xrf_dlss::{Dlss, DlssInstance, DlssTask};
 use xrf_env_flags::{EnvFlags, SwitchFlag};
 use xrf_error::{XrfError, XrfResult};
+use xrf_renderer_core::{GpuAdapters, RenderGpu};
 
 use crate::context::gpu_instance_use::GpuInstanceUse;
 use crate::context::gpu_libraries::GpuLibraries;
@@ -19,7 +20,6 @@ use crate::context::gpu_requirements::{
 use crate::context::library_versions::read_file_version;
 use crate::contract::settings::gpu::render_backend::RenderBackend;
 use crate::contract::settings::gpu::render_backend_availability::RenderBackendAvailability;
-use crate::contract::settings::gpu::render_gpu::RenderGpu;
 use crate::contract::settings::gpu::render_gpu_description::RenderGpuDescription;
 
 /// The GPU the renderer draws with: one per process, owned by the render thread.
@@ -237,13 +237,8 @@ impl GpuContext {
     backend: RenderBackend,
     instance_use: GpuInstanceUse,
   ) -> XrfResult<wgpu::Adapter> {
-    pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-      power_preference: wgpu::PowerPreference::HighPerformance,
-      compatible_surface: None,
-      force_fallback_adapter: instance_use.is_fallback(),
-      apply_limit_buckets: false,
-    }))
-    .map_err(|error| XrfError::new_unexpected_error(format!("No {} adapter: {error}", backend.get_label())))
+    GpuAdapters::request_automatic(instance, instance_use.is_fallback())
+      .map_err(|error| XrfError::new_unexpected_error(format!("No {} adapter: {error}", backend.get_label())))
   }
 
   /// Creates an instance of a backend and picks its adapter: the hardware GPU `gpu` names if the backend has it with
@@ -257,16 +252,9 @@ impl GpuContext {
     let instance: DlssInstance = Self::create_instance(backend, instance_use, libraries);
 
     if let Some(asked) = gpu.filter(|_| !instance_use.is_fallback()) {
-      let listed: Vec<wgpu::Adapter> = pollster::block_on(instance.instance.enumerate_adapters(backend.to_backends()));
-      let chosen: Option<wgpu::Adapter> = listed.into_iter().find(|adapter| {
-        let info: wgpu::AdapterInfo = adapter.get_info();
-
-        info.device_type != wgpu::DeviceType::Cpu
-          && RenderGpu::of(&info) == asked
-          && Self::check_adapter(adapter).is_ok()
-      });
-
-      match chosen {
+      match GpuAdapters::find(&instance.instance, backend.to_backends(), asked, |adapter| {
+        Self::check_adapter(adapter).is_ok()
+      }) {
         Some(adapter) => return Ok((instance, adapter)),
         None => log::warn!(
           "The chosen GPU ({:04x}:{:04x}) cannot draw on {}; drawing on the automatic one",
