@@ -28,8 +28,9 @@ The spawn (xrAI `-s`) is not a step: it works on every level of a game at once.
 
 ## The root spawn builder
 
-The root spawn builder (`spawn/`), xrAI `-s` without xrAI, grows piece by piece; the game graph, levels merged, is
-built so far.
+The root spawn builder (`spawn/`), xrAI `-s` without xrAI: `SpawnRootBuilder::build` takes each level as a
+`SpawnRootLevel` (what its graph merges from, its `level.spawn` and, where it has one, its `level.game`) and an optional
+start level, and gives the root spawn (`SpawnRootBuild`: the `SpawnFile` and the connections it left out).
 
 - `SpawnAiMap` reads a level's `level.ai` as the engine's `CLevelGraph` looks nodes up: `find_node` gives the node of a
   position's cell nearest at or under it, else nearest over it.
@@ -60,11 +61,27 @@ built so far.
   (`SpawnSkippedConnection`). The graph GUID is the first 16 bytes of the SHA-256 of the graph written with none, so
   the same levels give the same graph and any change another.
 
+- Then each level, in id order, has its entities placed (`SpawnLevelEntities`) as xrAI's `correct_objects` does: an
+  object standing on the AI map takes the node under it, raised 0.15 m, and moves onto the node where it stands outside
+  its cell; any other the level's first vertex. Where a cell holds no node, the slow search takes the node whose cell
+  edges come nearest; its plane is worked wide, as the 2009 build's x87 code does, or a tie between two cells goes the
+  other way. Each anomalous zone floods the nodes within its radius, keeps those lying within it, shuffles them from the
+  same stream, and takes its count of them; a zone wanting more reads on through what the buffer held, as xrAI does.
+  The level's `level.game` ways become patrols, each point on the node under it.
+- Then every level changer takes the graph point it names on the level it leads to, and that point's vertex; the zones'
+  artefact points go one level after another; the one actor moves, where a start level other than its own is named, to
+  the first vertex of that level a search of the game graph reaches. Patrols go sorted by name, a point with no node
+  under it takes its nearest node's vertex, and the spawn's GUID is derived as the graph's: xrAI's own output depends on
+  string addresses, uninitialised memory and a random GUID.
+
 On all five vanilla Call of Pripyat levels the cross tables equal the shipped ones cell for cell, bit for bit, zaton's
 1.85 M nodes in a quarter of a second. Each vertex's edges lead where the shipped ones do, in their order; 2,548 of the
 2,550 weights are the shipped ones or a few millionths off, and two take another path, about half a metre apart. The
 merged graph chunk, 27 MB, is the shipped one but for its GUIDs and those weights' 121 bytes, every level point
-included; the five levels build and merge in a second.
+included; the five levels build and merge in a second. The whole spawn builds in 8 s: all 6,464 entities in the shipped
+order, with the shipped nodes, vertices, distances, positions and links, all 39,584 artefact points, and every patrol
+point with a node as shipped. What differs is what xrAI leaves to chance: the GUIDs, the patrols' order, the 282 points
+with no node, and the update packets' uninitialised fields.
 
 ## The AI map compiler
 
@@ -170,7 +187,11 @@ unreached nodes, `find_node` between floors, and the graph points xrAI leaves ou
 walled grids: bordering regions joined, a triangle's longest side dropped, a wall weighed by the path around it, and
 regions apart left unjoined. The merge tests join two levels listed out of id order: the order, offsets, connection
 edges and a skipped one, the cross tables' numbering, the level points, the GUID, a missing connection refused, and
-the runtime's first draws. The AI map tests compile a generated
+the runtime's first draws. The root spawn tests build two such levels with an actor, zones, level changers and
+patrols: the objects' order and numbering, the changers' links, the zones' offsets, the patrols' order and a point
+over a hole, the actor moved only to another start level, the spawn GUID, and the refusals (no actor or two, a changer
+leading nowhere built or to a point its level lacks, two patrols of a name, an unknown start level). They take the
+objects' `new_mock` constructors through `xrf-spawn`'s `mocks` feature. The AI map tests compile a generated
 four-node map: the sort and renumbering, the header, three planes whose round
 trip xrAI's own run gave, the identity rule, and the refusals. The cover tests take a grid: the sectors, which nodes are
 corners, the walk stopped by a hole, the quadtree's reach, and a wall whose front blocks the corners' rays and whose

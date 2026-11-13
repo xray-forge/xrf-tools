@@ -32,7 +32,7 @@ impl AlifeMonster {
   }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 impl AlifeMonster {
   /// A monster at `position` as a compiled spawn holds one.
   pub fn new_mock(position: Vector3d) -> Self {

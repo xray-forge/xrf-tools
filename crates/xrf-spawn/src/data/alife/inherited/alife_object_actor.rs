@@ -135,7 +135,7 @@ impl AlifePacketsReadWrite for AlifeObjectActor {
   }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 impl AlifeObjectActor {
   /// An actor at `position` as a new game places one, with no body saved.
   pub fn new_mock(position: Vector3d) -> Self {

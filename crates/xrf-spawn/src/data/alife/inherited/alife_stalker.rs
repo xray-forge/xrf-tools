@@ -35,7 +35,7 @@ impl AlifeStalker {
   }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 impl AlifeStalker {
   /// A stalker at `position` as a compiled spawn holds one.
   pub fn new_mock(position: Vector3d) -> Self {

@@ -3,12 +3,12 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 use xrf_math::Vector3d;
 use xrf_utils::{narrow_format_size, vector_from_string, vector_to_string};
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
 use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
 use crate::data::alife::spawn_layout::SpawnLayout;
@@ -152,7 +152,7 @@ impl AlifePacketsReadWrite for AlifeObjectItem {
   }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 impl AlifeObjectItem {
   /// An item placed at `position` with a physics state there, as most placed items carry one.
   pub fn new_mock(position: Vector3d) -> Self {

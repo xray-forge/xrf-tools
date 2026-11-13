@@ -269,7 +269,7 @@ impl PhysicsNetState {
   }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 impl PhysicsNetState {
   /// A state at `position` with both velocities left out, as most placed items carry one.
   pub fn new_mock(position: Vector3d) -> Self {

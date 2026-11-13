@@ -39,7 +39,7 @@ impl AlifeClearSkyStalker {
   }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 impl AlifeClearSkyStalker {
   /// A stalker at `position` as a Clear Sky level spawns one.
   pub fn new_mock(position: Vector3d) -> Self {

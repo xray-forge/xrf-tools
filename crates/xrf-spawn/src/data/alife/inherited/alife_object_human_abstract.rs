@@ -130,7 +130,7 @@ impl AlifePacketsReadWrite for AlifeObjectHumanAbstract {
   }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 impl AlifeObjectHumanAbstract {
   /// A human at `position` as the SDK compiles one: a character profile, no money, and random preferences.
   pub fn new_mock(position: Vector3d) -> Self {

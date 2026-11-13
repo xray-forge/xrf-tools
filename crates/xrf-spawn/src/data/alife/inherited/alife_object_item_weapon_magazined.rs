@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 use xrf_math::Vector3d;
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
@@ -78,7 +78,7 @@ impl AlifePacketsReadWrite for AlifeObjectItemWeaponMagazined {
   }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 impl AlifeObjectItemWeaponMagazined {
   /// A magazined weapon placed at `position`, firing in its second mode.
   pub fn new_mock(position: Vector3d) -> Self {

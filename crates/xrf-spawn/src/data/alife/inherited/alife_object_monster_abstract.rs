@@ -159,7 +159,7 @@ impl AlifePacketsReadWrite for AlifeObjectMonsterAbstract {
   }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 impl AlifeObjectMonsterAbstract {
   /// A creature at `position` as the SDK compiles one: no restrictions, no smart terrain, and its graph edge unset.
   pub fn new_mock(position: Vector3d) -> Self {

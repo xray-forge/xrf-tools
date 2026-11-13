@@ -120,7 +120,7 @@ impl FromStr for Time {
   }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 impl Time {
   pub fn new_mock() -> Self {
     Self {
