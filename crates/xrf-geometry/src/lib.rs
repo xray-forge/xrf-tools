@@ -19,6 +19,7 @@ pub use crate::mesh::vertex_packing::VertexPacking;
 pub use crate::progressive::progressive_mesh::ProgressiveMesh;
 pub use crate::progressive::progressive_point::ProgressivePoint;
 pub use crate::progressive::progressive_window::ProgressiveWindow;
+pub use crate::ray::box2_pick::Box2Pick;
 pub use crate::ray::facing::Facing;
 pub use crate::ray::ray::Ray;
 pub use crate::ray::ray_crossing::RayCrossing;

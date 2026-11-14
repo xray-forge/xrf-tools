@@ -12,9 +12,9 @@ use crate::progressive::progressive_window::ProgressiveWindow;
 ///
 /// Edges are collapsed one at a time, each time the one whose removed vertex, moved onto its neighbour, lies least far
 /// off the planes of the triangles around it, measured by a quadric over position and texture coordinate
-/// ([`ProgressiveQuadric`]). A vertex on an open edge never moves. The collapses fall into levels: the triangles a
+/// (`ProgressiveQuadric`). A vertex on an open edge never moves. The collapses fall into levels: the triangles a
 /// collapse makes belong to the next level, and a collapse touching one must start that level, which it does only
-/// where its error beats the best on the current level by more than the mean error ([`Self::LEVEL_TOLERANCE`]). Each
+/// where its error beats the best on the current level by more than the mean error (`Self::LEVEL_TOLERANCE`). Each
 /// level's triangles are laid out once in the index buffer so every state of it is one contiguous run: those its
 /// collapses will make first, then those it leaves alone, then those its collapses take away. The vertices are
 /// renumbered so each state's are a prefix.
@@ -33,11 +33,11 @@ type Candidate = (f32, u16, u16);
 
 impl ProgressiveMesh {
   /// The levels a mesh may reach, xrLC's `VIPM_Convert(25, ...)`.
-  pub const MAXIMUM_LEVEL: u32 = 25;
+  pub(crate) const MAXIMUM_LEVEL: u32 = 25;
 
   /// How much worse, in mean errors, the best collapse on the current level may be before one starting a new level
   /// is taken instead.
-  pub const LEVEL_TOLERANCE: f32 = 1.0;
+  pub(crate) const LEVEL_TOLERANCE: f32 = 1.0;
 
   /// No collapse found yet, `1.0e10f` as the source starts its search.
   const NO_ERROR: f32 = 1.0e10;
@@ -62,7 +62,8 @@ impl ProgressiveMesh {
   }
 
   /// How many collapses the windows step through.
-  pub fn get_collapse_count(&self) -> usize {
+  #[cfg(test)]
+  pub(crate) fn get_collapse_count(&self) -> usize {
     self.windows.len() - 1
   }
 

@@ -15,7 +15,7 @@ use crate::triangle::triangle::Triangle;
 
 /// The triangles in a binary bounding volume hierarchy, `obvhs`' PLOC build at its medium quality, walked by its own
 /// traversal: `obvhs`' own takes a zero direction component's inverse as a large finite number and misses faces on such
-/// rays, where [`SlabRay`] takes it as infinite.
+/// rays, where `SlabRay` takes it as infinite.
 pub struct BvhTracer {
   /// Each face, in the order given.
   pub(crate) triangles: Vec<Triangle>,

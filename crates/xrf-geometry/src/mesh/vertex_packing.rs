@@ -8,7 +8,7 @@ pub struct VertexPacking {
   /// How far the grid's box reaches past the object's on every side, before the `EPS` both exports add.
   pub growth: f32,
   /// Whether a face whose corners pack onto the vertices of a face already added, in any winding, is dropped.
-  pub drops_repeated_faces: bool,
+  pub(crate) drops_repeated_faces: bool,
 }
 
 impl VertexPacking {

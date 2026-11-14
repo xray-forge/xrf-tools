@@ -91,7 +91,7 @@ impl Triangle {
   /// Whether the triangle overlaps the box centred at `center` reaching `half` along each axis, by the separating axis
   /// test (Akenine-Möller), as `CDB::COLLIDER`'s box query runs it under `OPT_FULL_TEST`: the box's three axes, the
   /// nine cross products of an axis with an edge, and the triangle's plane. Touching counts.
-  pub fn overlaps_box(&self, center: Vec3, half: Vec3) -> bool {
+  pub(crate) fn overlaps_box(&self, center: Vec3, half: Vec3) -> bool {
     let corners: [Vec3; 3] = self.corners.map(|corner| Vec3::from(corner) - center);
 
     for axis in 0..3 {

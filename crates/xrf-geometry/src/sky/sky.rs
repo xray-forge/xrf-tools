@@ -11,12 +11,12 @@ pub struct Sky;
 
 impl Sky {
   /// The energy the sky is spread over (`xrHemisphereBuild(quality, 2.f, ...)`).
-  pub const HEMI_ENERGY: f32 = 2.0;
+  pub(crate) const HEMI_ENERGY: f32 = 2.0;
 
   /// The sun's spread, three degrees (`deg2rad(3.f)`).
-  pub const SUN_DISPERSION_DEGREES: f32 = 3.0;
+  pub(crate) const SUN_DISPERSION_DEGREES: f32 = 3.0;
 
-  /// The sky of `quality`: one light per hemisphere direction, sharing [`Self::HEMI_ENERGY`], else at quality 0 a
+  /// The sky of `quality`: one light per hemisphere direction, sharing `Self::HEMI_ENERGY`, else at quality 0 a
   /// single light of energy 1 straight down. Another quality has no table, and no light.
   pub fn get_hemisphere(quality: u8) -> Vec<SkyLight> {
     if quality == 0 {
@@ -30,7 +30,7 @@ impl Sky {
   }
 
   /// The sun of `quality` along `pitch` and `heading`: a square of 1, 3, 4 or 7 lights a side, meant to spread over
-  /// [`Self::SUN_DISPERSION_DEGREES`], sharing an energy of 1.
+  /// `Self::SUN_DISPERSION_DEGREES`, sharing an energy of 1.
   ///
   /// # Errors
   ///

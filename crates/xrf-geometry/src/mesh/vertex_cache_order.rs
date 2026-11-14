@@ -67,7 +67,7 @@ impl VertexCacheOrder {
   }
 
   /// The faces in cache order.
-  pub fn order_faces(faces: &[[u16; 3]], vertex_count: usize) -> Vec<[u16; 3]> {
+  pub(crate) fn order_faces(faces: &[[u16; 3]], vertex_count: usize) -> Vec<[u16; 3]> {
     if faces.len() <= 1 {
       return faces.to_vec();
     }

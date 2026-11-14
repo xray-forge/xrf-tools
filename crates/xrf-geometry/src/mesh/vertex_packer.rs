@@ -11,9 +11,9 @@ use crate::mesh::vertex_packing::VertexPacking;
 /// grid and repeat rule of the [`VertexPacking`] given.
 ///
 /// A corner reuses a vertex already packed when the two are similar: positions and normals within
-/// [`Self::POSITION_DELTA`] per component, texture coordinates within [`Self::TEXTURE_DELTA`], and the same bones at
-/// weights within [`Self::POSITION_DELTA`], a static vertex following none. Candidates come from a grid over the
-/// object's box: a vertex is filed under its own cell and the cells one [`Self::POSITION_DELTA`] above it on each axis,
+/// `Self::POSITION_DELTA` per component, texture coordinates within `Self::TEXTURE_DELTA`, and the same bones at
+/// weights within `Self::POSITION_DELTA`, a static vertex following none. Candidates come from a grid over the
+/// object's box: a vertex is filed under its own cell and the cells one `Self::POSITION_DELTA` above it on each axis,
 /// and a corner looks in its own cell only, so the grid decides which near vertices a corner can meet, and is kept as
 /// the export lays it out. A corner matching none takes the position of the last vertex it stood within the delta of,
 /// then is packed as a vertex of its own.
