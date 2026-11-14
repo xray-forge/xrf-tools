@@ -12,7 +12,7 @@ import {
 import { JobOutcome } from "#/types/xrf-job";
 import { LevelEnvModifier } from "#/types/xrf-level";
 import { LevelCompileReport } from "#/types/xrf-level-compiler";
-import { Vector3d } from "#/types/xrf-math";
+import { Vector2d, Vector3d } from "#/types/xrf-math";
 import { LevelBuildReport, LevelDecompileReport } from "#/types/xrf-rawdata";
 import {
   RenderBurst,
@@ -352,6 +352,12 @@ export const LEVEL_TEXTURES_PART = "textures" as const;
 
 /** What a change event calls what a level's weather plays with beyond its environment when it goes stale. */
 export const LEVEL_WEATHER_PART = "weather" as const;
+
+/** What a change event calls a scene's binary tools' counts when they go stale. */
+export const SCENE_BINARY_TOOLS_PART = "sceneBinaryTools" as const;
+
+/** What a change event calls a scene's object tools' objects when they go stale. */
+export const SCENE_OBJECTS_PART = "sceneObjects" as const;
 
 /**
  * A burst asked of a viewport, the name of the folder of the level viewer's bursts it is written into, whether it
@@ -1097,6 +1103,533 @@ export type RecordingProgress = {
   ended: string | null;
 };
 
+/** Every `tool` the `SceneBinaryToolDescription` union is told apart by, so a switch or a comparison names one. */
+export enum ESceneBinaryToolDescription {
+  /** `ai_map.part`: the nodes the AI walks. */
+  AI_MAP = "ai_map",
+  /** `detail_object.part`: the detail objects the library plants, and the grid's slots planting them. */
+  DETAIL_OBJECT = "detail_object",
+  /** `wallmark.part`: the decals, in slots of one shader and texture each. */
+  WALLMARK = "wallmark",
+}
+
+/**
+ * What one binary tool of a scene holds, counted: its payload stays in the backend. Told apart by its tool, spelled as
+ * that tool's `SceneToolKind`: the name its part files carry.
+ */
+export type SceneBinaryToolDescription =
+  /** `ai_map.part`: the nodes the AI walks. */
+  | { tool: "ai_map"; nodes: number }
+  /** `detail_object.part`: the detail objects the library plants, and the grid's slots planting them. */
+  | { tool: "detail_object"; objects: number; slots: number }
+  /** `wallmark.part`: the decals, in slots of one shader and texture each. */
+  | { tool: "wallmark"; slots: number; marks: number };
+
+/** What a scene's binary tools hold, counted, and why any of them did not read. */
+export type SceneBinaryToolsDescription = {
+  /** The binary tools the scene holds a part of that read. */
+  tools: Array<SceneBinaryToolDescription>;
+  /** The binary tools whose parts did not read, each left out of [`Self::tools`]. */
+  problems: Array<SceneProblem>;
+};
+
+/** What the scene's `[build_params]` set the compilers to weld, smooth and bake with; the reserved fields left out. */
+export type SceneBuildParamsDescription = {
+  /** Degrees between faces' normals that still smooth into one. */
+  smoothAngle: number | null;
+  /** Metres within which the compiler welds vertices. */
+  weldDistance: number | null;
+  lightPixelPerMeter: number | null;
+  lightJitterSamples: number;
+  lightQuality: number;
+};
+
+/** Where the Level Editor's camera stood when the scene was saved, in the scene's own space. */
+export type SceneCameraDescription = {
+  position: Vector3d;
+  /** Heading, pitch and bank, in radians. */
+  rotation: Vector3d;
+};
+
+/** Every `kind` the `SceneLightType` union is told apart by, so a switch or a comparison names one. */
+export enum ESceneLightType {
+  /** `ltPoint`, the only kind the build exports. */
+  POINT = "point",
+  /** `ltSpot`. */
+  SPOT = "spot",
+  /** `ltDirect`. */
+  DIRECTIONAL = "directional",
+  /** A type the editor gives no name, kept as the number the part saves. */
+  UNKNOWN = "unknown",
+}
+
+/** What kind of light a light is, `ELight::EType`. */
+export type SceneLightType =
+  /** `ltPoint`, the only kind the build exports. */
+  | { kind: "point" }
+  /** `ltSpot`. */
+  | { kind: "spot" }
+  /** `ltDirect`. */
+  | { kind: "directional" }
+  /** A type the editor gives no name, kept as the number the part saves. */
+  | { kind: "unknown"; value: number };
+
+/** One object of a scene's object tool, as the outliner lists it and an inspector shows it. */
+export type SceneObjectDescription = {
+  id: SceneObjectId;
+  /** Unique within the scene. */
+  name: string;
+  /** The group it is a member of, by the group's name; none for an object of its tool's own part. */
+  group: string | null;
+  /** `co_flags`: motion, grouping and the editor's other states. */
+  flags: number;
+  transform: SceneObjectTransform;
+  properties: SceneObjectProperties;
+};
+
+/**
+ * What names one scene object for as long as its scene's read stands: its tool, and its place in the tool's objects as
+ * the editor loads them, the groups' members first.
+ */
+export type SceneObjectId = {
+  tool: SceneToolKind;
+  index: number;
+};
+
+/** Every `kind` the `SceneObjectProperties` union is told apart by, so a switch or a comparison names one. */
+export enum ESceneObjectProperties {
+  /** A library object placed, `scene_object.part`. */
+  SCENE_OBJECT = "sceneObject",
+  /** The meshes the renderer culls together, `sector.part`. */
+  SECTOR = "sector",
+  /** A polygon one sector is seen through from another, `portal.part`. */
+  PORTAL = "portal",
+  /** A light, `light.part`. */
+  LIGHT = "light",
+  /** A light flare, `glow.part`. */
+  GLOW = "glow",
+  /** A spawn point, `spawn.part`, with the shape attached where its entity needs a volume. */
+  SPAWN = "spawn",
+  /** A shape the shape tool places, `shape.part`. */
+  SHAPE = "shape",
+  /** A patrol path, `way.part`. */
+  WAY = "way",
+  /** A particle effect planted, `ps.part`. */
+  PARTICLE = "particle",
+  /** A sound planted, `sound_src.part`. */
+  SOUND_SOURCE = "soundSource",
+  /** A volume of reverb, `sound_env.part`: its first box splits the inner environment from the outer. */
+  SOUND_ENVIRONMENT = "soundEnvironment",
+  /** A body of volumetric fog, `fog_volume.part`. */
+  FOG_VOLUME = "fogVolume",
+  /** A group, `group.part`, whose members are described under their own tools. */
+  GROUP = "group",
+}
+
+/**
+ * What one scene object's kind keeps beyond its name and transform, as an inspector shows it: one variant per object
+ * tool.
+ */
+export type SceneObjectProperties =
+  /** A library object placed, `scene_object.part`. */
+  | {
+      kind: "sceneObject";
+      /** The `.object` it places, a path below the objects roots without its extension. */
+      reference: string;
+      flags: number;
+      /** Whether its `.object` was found in the objects roots the scene was opened with. */
+      isFound: boolean;
+    }
+  /** The meshes the renderer culls together, `sector.part`. */
+  | {
+      kind: "sector";
+      /** The colour the editor draws it in: red, green, blue and alpha bytes. */
+      color: [number, number, number, number];
+      /** Whether it is the sector everything no other sector holds falls into. */
+      isDefault: boolean;
+      /** The level map index it switches to; none for one switching to none. */
+      mapIndex: number | null;
+      items: Array<SceneSectorItem>;
+    }
+  /** A polygon one sector is seen through from another, `portal.part`. */
+  | {
+      kind: "portal";
+      sectorFront: string;
+      sectorBack: string;
+      /** Its corners in world space, in order. */
+      vertices: Array<Vector3d>;
+    }
+  /** A light, `light.part`. */
+  | {
+      kind: "light";
+      lightType: SceneLightType;
+      /** Red, green, blue and alpha, lit with times the brightness. */
+      color: [number | null, number | null, number | null, number | null];
+      brightness: number | null;
+      range: number | null;
+      attenuation: [number | null, number | null, number | null];
+      /** A spot's cone angle, in radians. */
+      cone: number | null;
+      virtualSize: number | null;
+      isUsedInD3d: boolean;
+      /** Whether it bakes, lights at run time, and the editor's other bits, the fuzzy one aside. */
+      flags: number;
+      /** The light control it answers to, by its index in the light tool's controls. */
+      control: number;
+      /** The light animation it plays, empty for none. */
+      animation: string;
+      falloffTexture: string;
+      /** The points a fuzzy point light spreads over, in its own space; none for another light. */
+      fuzzyPoints: Array<Vector3d>;
+    }
+  /** A light flare, `glow.part`. */
+  | { kind: "glow"; radius: number | null; shader: string; texture: string; flags: number }
+  /** A spawn point, `spawn.part`, with the shape attached where its entity needs a volume. */
+  | { kind: "spawn"; spawn: SceneSpawnKind; attached: SceneShape | null }
+  /** A shape the shape tool places, `shape.part`. */
+  | { kind: "shape"; shape: SceneShape }
+  /** A patrol path, `way.part`. */
+  | { kind: "way"; wayType: SceneWayType; points: Array<SceneWayPoint> }
+  /** A particle effect planted, `ps.part`. */
+  | {
+      kind: "particle";
+      /** The effect it plays, a definition of `particles.xr`. */
+      reference: string;
+      /** The game modes it plays in, one bit each. */
+      gameTypes: number;
+    }
+  /** A sound planted, `sound_src.part`. */
+  | {
+      kind: "soundSource";
+      /** The sound it plays, a path below the game's sounds without its extension. */
+      sound: string;
+      flags: number;
+      /** Where the sound stands, which its transform does not move. */
+      position: Vector3d;
+      volume: number | null;
+      frequency: number | null;
+      minDistance: number | null;
+      maxDistance: number | null;
+      maxAiDistance: number | null;
+      /** The pause between playings, in seconds. */
+      randomPause: Vector2d;
+      /** The window of the game's day it plays in, in seconds from midnight. */
+      activeTime: Vector2d;
+      /** How long one playing lasts, in seconds. */
+      playTime: Vector2d;
+    }
+  /** A volume of reverb, `sound_env.part`: its first box splits the inner environment from the outer. */
+  | { kind: "soundEnvironment"; shape: SceneShape; inner: string; outer: string }
+  /** A body of volumetric fog, `fog_volume.part`. */
+  | {
+      kind: "fogVolume";
+      shape: SceneShape;
+      /** The emitter's profile; none for an occlusion volume. */
+      profile: string | null;
+      /** Which volumes export together; none for one never grouped. */
+      group: number | null;
+    }
+  /** A group, `group.part`, whose members are described under their own tools. */
+  | {
+      kind: "group";
+      /** How many members of the tools described name it as their group. */
+      members: number;
+    };
+
+/**
+ * One object tool of a scene and its objects, in the order the editor loads them: the groups' members of its class,
+ * then its own part's.
+ */
+export type SceneObjectToolDescription = {
+  tool: SceneToolKind;
+  objects: Array<SceneObjectDescription>;
+};
+
+/** Where a scene object stands, as the editor keeps it, in the scene's own space. */
+export type SceneObjectTransform = {
+  position: Vector3d;
+  /** Angles about `x`, `y` and `z`, in radians. */
+  rotation: Vector3d;
+  scale: Vector3d;
+};
+
+/**
+ * What a scene's object tools hold, typed: every tool with a part or a group's member, and why any tool's objects did
+ * not read.
+ */
+export type SceneObjectsDescription = {
+  /** The tools whose objects read, by name. */
+  tools: Array<SceneObjectToolDescription>;
+  /** The tools whose objects did not read, each left out of [`Self::tools`]. */
+  problems: Array<SceneProblem>;
+};
+
+/** What opening a Level Editor scene was asked to read, and where its library objects are looked for. */
+export type SceneOpenRequest = {
+  source: SceneSource;
+  /**
+   * Directories the scene objects' `.object` files are looked for in, in search order; `objects` beside the directory
+   * holding the `.level` where none are given.
+   */
+  objectsRoots: Array<string> | null;
+};
+
+/** One part file a tool has beside its scene, whether the editor loads it or skips it. */
+export type ScenePartFileDescription = {
+  /** `<tool>.part`, or a numbered one after it. */
+  name: string;
+  /** Its size in bytes. */
+  size: number;
+  /** The GUID of the scene it was saved for, `g0:g1`; none for a file that does not read as a part. */
+  guid: string | null;
+};
+
+/**
+ * Something of a scene the Level Editor would skip or refuse, kept on the tool it belongs to: what an open or a part's
+ * read found, never a refused open.
+ */
+export type SceneProblem = {
+  kind: SceneProblemKind;
+  /** The tool it belongs to, by the name its part files carry: `scene_object`, `spawn`, `ai_map` and the rest. */
+  tool: string;
+  /**
+   * The part file it was found in, `<tool>.part` or a numbered one; none where it is the tool's objects as a whole that
+   * do not read, its groups' members among them.
+   */
+  file: string | null;
+  message: string;
+};
+
+/** Why the Level Editor would skip or refuse one of a scene's parts, as it does rather than refusing the scene. */
+export enum ESceneProblemKind {
+  /** The file does not read as a part, or what its tool keeps in it does not read as that tool's. */
+  UNREADABLE = "unreadable",
+  /** The part carries another scene's GUID: a stale copy of the tool's part, which the editor skips. */
+  FOREIGN_GUID = "foreignGuid",
+  /** The part's `[main]` holds a tool version other than the one its tool reads. */
+  WRONG_VERSION = "wrongVersion",
+  /** The part is saved as another tool's class, or holds an object of another class than its tool's. */
+  FOREIGN_CLASS = "foreignClass",
+}
+
+/** Every `ESceneProblemKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type SceneProblemKind = `${ESceneProblemKind}`;
+
+/** One mesh a sector holds: a scene object by name, and one of its object's meshes by name. */
+export type SceneSectorItem = {
+  object: string;
+  mesh: string;
+};
+
+/** The volume a shape encloses: its spheres and boxes, and what the shape is used for. */
+export type SceneShape = {
+  usage: SceneShapeUsage;
+  elements: Array<SceneShapeElement>;
+};
+
+/** Every `kind` the `SceneShapeElement` union is told apart by, so a switch or a comparison names one. */
+export enum ESceneShapeElement {
+  SPHERE = "sphere",
+  /** The unit box, `-0.5` to `0.5` on each axis, placed by its axes and translation. */
+  BOX = "box",
+}
+
+/** One element of a shape, in its object's own space. */
+export type SceneShapeElement =
+  | { kind: "sphere"; center: Vector3d; radius: number | null }
+  /** The unit box, `-0.5` to `0.5` on each axis, placed by its axes and translation. */
+  | { kind: "box"; xAxis: Vector3d; yAxis: Vector3d; zAxis: Vector3d; translation: Vector3d };
+
+/** Every `kind` the `SceneShapeUsage` union is told apart by, so a switch or a comparison names one. */
+export enum ESceneShapeUsage {
+  /** `eShapeCommon`. */
+  COMMON = "common",
+  /** `eShapeLevelBound`: the box the build takes for the level's map. */
+  LEVEL_BOUND = "levelBound",
+  /** A usage the editor gives no name, kept as the number the part saves. */
+  UNKNOWN = "unknown",
+}
+
+/** What a shape is used for, `eShapeUsage`. */
+export type SceneShapeUsage =
+  /** `eShapeCommon`. */
+  | { kind: "common" }
+  /** `eShapeLevelBound`: the box the build takes for the level's map. */
+  | { kind: "levelBound" }
+  /** A usage the editor gives no name, kept as the number the part saves. */
+  | { kind: "unknown"; value: number };
+
+/**
+ * Where a Level Editor scene is read from: its `.level` on disk. The scene is searched for from the directory holding
+ * the `.level`, its parts in the directory beside it named after it, so a scene opens wherever it lies.
+ */
+export type SceneSource = {
+  /** The `.level` file's filesystem path. */
+  path: string;
+};
+
+/**
+ * One field of a spawned entity's data as the scene saves it, `[object_N_spawndata]`: the packet's values numbered in
+ * the order they are written, its custom data among them.
+ */
+export type SceneSpawnField = {
+  key: string;
+  /** The value as the scene stores it. */
+  value: string;
+};
+
+/** Every `kind` the `SceneSpawnKind` union is told apart by, so a switch or a comparison names one. */
+export enum ESceneSpawnKind {
+  /** Where a multiplayer team, artefact or item respawns. */
+  RESPAWN_POINT = "respawnPoint",
+  /** A local override of the weather. */
+  ENVIRONMENT_MODIFIER = "environmentModifier",
+  /** A server entity. */
+  ENTITY = "entity",
+}
+
+/** What a spawn point places, with what its kind keeps. */
+export type SceneSpawnKind =
+  /** Where a multiplayer team, artefact or item respawns. */
+  | {
+      kind: "respawnPoint";
+      team: number;
+      /** An actor, artefact or item spawn. */
+      pointType: number;
+      /** The game modes it answers to, one bit each. */
+      gameTypes: number;
+      /** The item preset an item spawn names. */
+      profile: string;
+    }
+  /** A local override of the weather. */
+  | {
+      kind: "environmentModifier";
+      radius: number | null;
+      power: number | null;
+      viewDistance: number | null;
+      /** Colours as packed `0xAARRGGBB` words. */
+      fogColor: number;
+      fogDensity: number | null;
+      ambientColor: number;
+      skyColor: number;
+      hemiColor: number;
+      /** Which values the engine mixes in, one bit each. */
+      flags: number;
+    }
+  /** A server entity. */
+  | {
+      kind: "entity";
+      /** The section the entity is created from. */
+      section: string;
+      /** Whether the entity respawns in multiplayer, `fl`. */
+      flags: number;
+      /** Its packet's fields in the order the scene saves them. */
+      data: Array<SceneSpawnField>;
+    };
+
+/** One tool a scene holds part files of, as its open listed them. */
+export type SceneToolDescription = {
+  /** The tool's name, which names its files: `scene_object`, `spawn`, `ai_map` and the rest. */
+  name: string;
+  /** The editor's tool of that name; none for a tool the editor does not save. */
+  kind: SceneToolKind | null;
+  /** How the tool saves its part; none for a tool the editor does not know whose files do not read. */
+  format: SceneToolFormat | null;
+  /** Its files' sizes summed, in bytes. */
+  size: number;
+  /** Its files in the order the editor reads them, those it skips among them. */
+  files: Array<ScenePartFileDescription>;
+};
+
+/** How a tool saves its part: as text holding one section per object, or as chunks holding the tool's own stream. */
+export enum ESceneToolFormat {
+  /** An object tool's text part: scene objects, sectors, spawn points, groups and the rest. */
+  OBJECT = "object",
+  /** A binary part: the AI map, the detail objects and the wall marks. */
+  BINARY = "binary",
+}
+
+/** Every `ESceneToolFormat` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type SceneToolFormat = `${ESceneToolFormat}`;
+
+/**
+ * A Level Editor tool a scene's part file belongs to, by the name the file carries, and what the editor requires of
+ * the tool's part before it loads it.
+ *
+ * Declared in the order of the editor's class ids (`ObjClassID`), which is the order it keeps and lists its tools in.
+ * Each crosses IPC as the name its part files carry, written per variant rather than derived: no case convention
+ * spells `ps` or `sound_src`.
+ */
+export enum ESceneToolKind {
+  /** Groups of other tools' objects, `OBJCLASS_GROUP`. */
+  GROUP = "group",
+  /** Light flares, `OBJCLASS_GLOW`. */
+  GLOW = "glow",
+  /** Library objects placed, `OBJCLASS_SCENEOBJECT`. */
+  SCENE_OBJECT = "scene_object",
+  /** Lights, `OBJCLASS_LIGHT`. */
+  LIGHT = "light",
+  /** Shapes, `OBJCLASS_SHAPE`. */
+  SHAPE = "shape",
+  /** Sounds planted, `OBJCLASS_SOUND_SRC`. */
+  SOUND_SOURCE = "sound_src",
+  /** Spawn points, `OBJCLASS_SPAWNPOINT`. */
+  SPAWN = "spawn",
+  /** Patrol paths, `OBJCLASS_WAY`. */
+  WAY = "way",
+  /** Sectors, `OBJCLASS_SECTOR`. */
+  SECTOR = "sector",
+  /** Portals, `OBJCLASS_PORTAL`. */
+  PORTAL = "portal",
+  /** Reverb volumes, `OBJCLASS_SOUND_ENV`. */
+  SOUND_ENVIRONMENT = "sound_env",
+  /** Particle effects planted, `OBJCLASS_PS`. */
+  PARTICLE = "ps",
+  /** Detail objects, `OBJCLASS_DO`. */
+  DETAIL_OBJECT = "detail_object",
+  /** The AI map, `OBJCLASS_AIMAP`. */
+  AI_MAP = "ai_map",
+  /** Wall marks, `OBJCLASS_WM`. */
+  WALLMARK = "wallmark",
+  /** Fog volumes, `OBJCLASS_FOG_VOL`. */
+  FOG_VOLUME = "fog_volume",
+}
+
+/** Every `ESceneToolKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type SceneToolKind = `${ESceneToolKind}`;
+
+/** A link from one way point to another of its way. */
+export type SceneWayLink = {
+  /** The point it leads to, by its place in the way's points. */
+  to: number;
+  probability: number | null;
+};
+
+/** One point of a way, with the links leading from it. */
+export type SceneWayPoint = {
+  name: string;
+  position: Vector3d;
+  /** Thirty-two flags the scripts give meaning to. */
+  flags: number;
+  /** Its links in the order the editor keeps them. */
+  links: Array<SceneWayLink>;
+};
+
+/** Every `kind` the `SceneWayType` union is told apart by, so a switch or a comparison names one. */
+export enum ESceneWayType {
+  /** `wtPatrolPath`, every way the editor makes. */
+  PATROL_PATH = "patrolPath",
+  /** A type the editor gives no name, kept as the number the part saves. */
+  UNKNOWN = "unknown",
+}
+
+/** What a way is, `EWayType`. */
+export type SceneWayType =
+  /** `wtPatrolPath`, every way the editor makes. */
+  | { kind: "patrolPath" }
+  /** A type the editor gives no name, kept as the number the part saves. */
+  | { kind: "unknown"; value: number };
+
 /**
  * A screenshot asked of a viewport, drawn as `screenshot` asks, and the PNG of the level viewer's screenshots folder
  * it is written to.
@@ -1141,6 +1674,28 @@ export type SelectedLevelDescription = {
   sectors: Array<SectorOutline>;
   /** Extent every sector together covers, which is where a camera is framed from. */
   bounds: VisualBounds | null;
+};
+
+/**
+ * What the page is shown of an open scene itself: what names it, what its `.level` holds worth showing, its tools'
+ * part files and what is wrong with them. The tools' objects are parts with queries of their own.
+ */
+export type SelectedSceneDescription = {
+  source: SceneSource;
+  /** The `.level`'s name, which names its part directory. */
+  name: string;
+  /** The scene's GUID, `g0:g1`, which each of its parts carries. */
+  guid: string;
+  /** Where its scene objects' library objects are looked for. */
+  objectsRoots: XrayRoots;
+  /** What its `[build_params]` set, none where they do not read. */
+  buildParams: SceneBuildParamsDescription | null;
+  /** Where the editor's camera stood, none where `[camera]` does not read. */
+  camera: SceneCameraDescription | null;
+  /** Every tool it holds part files of, in the editor's order, those it does not save after them by name. */
+  tools: Array<SceneToolDescription>;
+  /** What the open found the editor would skip or refuse of its part files. */
+  problems: Array<SceneProblem>;
 };
 
 /** A DDS an export writes, as the game loads a map or a cubemap: its format, how hard it is encoded, and its mipmaps. */

@@ -1,13 +1,35 @@
 //! What several test modules build the same way: a level of shader entries, a search over a fixture tree, an empty
-//! environment catalog, and a spawned object.
+//! environment catalog, a spawned object, and a Level Editor scene written into a rawdata tree and opened.
 
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+
+use xrf_app_core::assets::AssetMountState;
+use xrf_app_core::session::{SessionDerived, SessionId, SessionScopes, SessionSnapshot};
+use xrf_editable_level::{
+  EditableBuildParams, EditableCustomObject, EditableLevelCamera, EditableLevelFile, EditableLevelGuid,
+  EditableLevelOptions, EditableObjectPart, EditableObjectTransform, EditableToolObject,
+};
 use xrf_engine_target::XrayEngine;
 use xrf_environment::{EnvironmentCatalog, WeatherGraphs};
 use xrf_level::{LevelFile, LevelHeaderChunk, LevelShaderEntry, LevelShadersChunk};
 use xrf_material::fixtures::FixtureTree;
 use xrf_math::Vector3d;
 use xrf_spawn::{AlifeObject, AlifeObjectAbstract, AlifeObjectInherited, ClsId, SpawnPacketHeader};
-use xrf_vfs::{XrayLookupScope, XrayMountId, XraySearch, XrayVfs};
+use xrf_test_utils::GeneratedResources;
+use xrf_vfs::{XrayLookupScope, XrayMountId, XrayRevision, XrayRoots, XraySearch, XrayVfs};
+
+use crate::scene::{OpenedScene, SceneSource, SelectedScene, SelectedScenes};
+
+/// The GUID every test scene and its parts carry, `labx8`'s.
+pub(super) const SCENE_GUID: EditableLevelGuid = EditableLevelGuid {
+  g0: 5065284203709945560,
+  g1: 13177767572218497455,
+};
+
+/// The name of every test scene, which names its part directory.
+pub(super) const SCENE_NAME: &str = "labx8";
 
 /// A level whose shader table holds exactly these raw entries.
 pub(super) fn new_level(entries: &[&str]) -> LevelFile {
@@ -94,4 +116,94 @@ pub(super) fn new_object(name: &str, section: &str, clsid: ClsId, inherited: Ali
     clsid,
     inherited,
   }
+}
+
+/// A rawdata tree made afresh under `resource`, holding the scene `labx8` in `levels` with its `.level` alone, as the
+/// CoP SDK's editor saves a new one; answers where it is read from.
+pub(super) fn write_scene(resource: &str) -> SceneSource {
+  let levels: PathBuf = GeneratedResources::create_dir(resource)
+    .expect("the tree is made")
+    .join("rawdata")
+    .join("levels");
+  let level: EditableLevelFile = EditableLevelFile::new(
+    &SCENE_GUID,
+    &EditableLevelOptions::new(SCENE_NAME, EditableLevelOptions::SINGLE_PLAYER),
+    &EditableBuildParams::DEFAULT,
+    &EditableLevelCamera::default(),
+    "owner",
+    0,
+  );
+  let path: PathBuf = levels.join(format!("{SCENE_NAME}.{}", EditableLevelFile::EXTENSION));
+
+  fs::create_dir_all(levels.join(SCENE_NAME)).expect("the part directory is made");
+  fs::write(&path, level.write_to_bytes().expect("the .level writes")).expect("the .level is written");
+
+  SceneSource {
+    path: path.to_string_lossy().into_owned(),
+  }
+}
+
+/// Writes `bytes` as the scene's part file `file`, beside its `.level`.
+pub(super) fn write_scene_part(source: &SceneSource, file: &str, bytes: impl AsRef<[u8]>) {
+  let parts: PathBuf = Path::new(&source.path).with_extension("");
+
+  fs::write(parts.join(file), bytes).expect("the part is written");
+}
+
+/// Writes a library object at `reference` into the `objects` directory of the scene's rawdata tree.
+pub(super) fn write_scene_library_object(source: &SceneSource, reference: &str) {
+  let path: PathBuf = Path::new(&source.path)
+    .parent()
+    .and_then(Path::parent)
+    .expect("the scene lies in a rawdata tree")
+    .join(SceneSource::OBJECTS_DIRECTORY)
+    .join(format!("{reference}.object"));
+
+  fs::create_dir_all(path.parent().expect("an object lies in a directory")).expect("the object's directory is made");
+  fs::write(path, "object").expect("the object is written");
+}
+
+/// The text part of tool `T` holding `objects`, carrying the test scenes' GUID.
+pub(super) fn scene_part<T: EditableToolObject>(objects: Vec<T>) -> Vec<u8> {
+  EditableObjectPart::new(SCENE_GUID, objects)
+    .to_text_part()
+    .and_then(|part| part.write_to_bytes())
+    .expect("the part writes")
+}
+
+/// An object named `name` standing at `x` along the scene's first axis.
+pub(super) fn scene_custom_object(name: &str, x: f32) -> EditableCustomObject {
+  EditableCustomObject::new(
+    name,
+    EditableObjectTransform {
+      position: Vector3d::new(x, 2.0, 3.0),
+      ..EditableObjectTransform::default()
+    },
+  )
+}
+
+/// The scenes as the plugin holds them, read again inside the commit that moved what one was read from, so a test reads
+/// what a commit moved as soon as it returns.
+pub(super) fn new_scenes(assets: &AssetMountState) -> SelectedScenes {
+  SelectedScenes::new("scene", &SessionScopes::default()).with_derivation(assets, OpenedScene::derive)
+}
+
+/// Opens the scene `source` names as one more handle of `scenes`, as `levels|open_scene` does, its library objects
+/// looked for in the `objects` directory beside its `levels`.
+pub(super) fn open_scene(
+  scenes: &SelectedScenes,
+  assets: &AssetMountState,
+  source: &SceneSource,
+) -> Arc<SessionSnapshot<SelectedScene>> {
+  let roots: XrayRoots = source.get_roots().expect("the scene lies in a directory");
+  let search: XraySearch = assets.search(&roots).expect("the scene's directory mounts");
+  let revision: XrayRevision = search.get_vfs().get_revision();
+  let opened: SessionDerived<SelectedScene> =
+    OpenedScene::read(search, source.clone(), source.get_objects_roots(None)).expect("the scene opens");
+
+  scenes
+    .begin_fixture_open(SessionId::generate())
+    .unwrap()
+    .commit_fixture(opened, revision)
+    .unwrap()
 }

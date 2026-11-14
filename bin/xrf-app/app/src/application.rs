@@ -139,7 +139,7 @@ mod tests {
   use xrf_app_core::window::{WindowCloseApprovals, WindowHandles, WindowReveals};
   use xrf_app_dialogs::DialogProjects;
   use xrf_app_exports::ExportsProjects;
-  use xrf_app_levels::{SelectedLevels, ShownLevels};
+  use xrf_app_levels::{SelectedLevels, SelectedScenes, ShownLevels};
   use xrf_app_render::{RenderViewports, Renderer, TextureReloads, ViewportShows, WorldState};
   use xrf_app_spawn::SpawnFiles;
   use xrf_app_sprite_equipment::EquipmentSprites;
@@ -182,6 +182,7 @@ mod tests {
     assert!(application.try_state::<AudioSettingsStore>().is_some());
     assert!(application.try_state::<PreviewTransports>().is_some());
     assert!(application.try_state::<SelectedLevels>().is_some());
+    assert!(application.try_state::<SelectedScenes>().is_some());
     assert!(application.try_state::<ShownLevels>().is_some());
     assert!(application.try_state::<VisualModels>().is_some());
     assert!(application.try_state::<VisualPoses>().is_some());

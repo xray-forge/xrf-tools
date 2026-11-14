@@ -23,6 +23,11 @@ mod particles;
 #[cfg(windows)]
 mod record_resampler;
 mod render_reload;
+mod scene_follow;
+mod scene_objects;
+mod scene_open;
+mod scene_problems;
+mod scene_tools;
 mod sound_emitters;
 mod surfaces;
 mod textures;

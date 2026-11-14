@@ -14,6 +14,7 @@ use xrf_visual::{LightsDescription, SectorDescription, SectorInstanceGroup, Sect
 use crate::level::{LevelEntry, LevelSource, SelectedLevel};
 use crate::objects::LevelObjectsDescription;
 use crate::parts::{LevelStart, LevelTextureReference};
+use crate::scene::{SceneSource, SelectedScene};
 
 /// What the level plugin says to the log, in one place rather than beside each command that says it; the viewer's
 /// lines are `LevelViewerReport`'s.
@@ -39,6 +40,36 @@ impl LevelReport {
   /// That an open has begun, before anything is read.
   pub(crate) fn opening(source: &LevelSource) {
     log::info!("Opening level: {}", source.get_label());
+  }
+
+  /// That a scene's open has begun, before anything is read.
+  pub(crate) fn opening_scene(source: &SceneSource) {
+    log::info!("Opening scene: {}", source.path);
+  }
+
+  /// What one scene's open came to, read off the snapshot it committed, and each part file the editor would skip or
+  /// refuse, by name.
+  pub(crate) fn opened_scene(opened: &SessionSnapshot<SelectedScene>, started: Instant) {
+    let scene: &SelectedScene = &opened.value;
+
+    log::info!(
+      "Opened scene {} in {}: {} tools, {} loaded, {} inputs read",
+      scene.source.path,
+      xrf_utils::format_duration(started.elapsed()),
+      scene.tools.len(),
+      scene.scene.tools.len(),
+      opened.inputs.len()
+    );
+
+    for problem in &scene.problems {
+      log::warn!(
+        "Scene {} skips {} of tool '{}': {}",
+        scene.source.path,
+        problem.file.as_deref().unwrap_or("the objects"),
+        problem.tool,
+        problem.message
+      );
+    }
   }
 
   /// That a level's bundle was read, and the engine its configs are read as.

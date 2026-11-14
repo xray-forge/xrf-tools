@@ -13,5 +13,6 @@ pub(crate) mod list_levels;
 pub(crate) mod open_level;
 pub(crate) mod read_level_cycle;
 pub(crate) mod restore_level;
+pub(crate) mod scene;
 pub(crate) mod show_level;
 pub(crate) mod sound;

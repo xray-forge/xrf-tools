@@ -28,6 +28,12 @@ export type Sphere = {
   radius: number | null;
 };
 
+/** Two named components, the engine's `Fvector2`: a texture coordinate, a sprite's size on its sheet. */
+export type Vector2d = {
+  x: number | null;
+  y: number | null;
+};
+
 export type Vector3d<T = number | null> = {
   x: T;
   y: T;
