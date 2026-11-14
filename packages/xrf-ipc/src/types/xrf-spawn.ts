@@ -1141,9 +1141,15 @@ export enum EClsId {
 /** Every `EClsId` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type ClsId = `${EClsId}`;
 
+/**
+ * One level's cross table, `CGameLevelCrossTable`: a header naming the level and the game graph it was built against,
+ * then a cell for each of the level's AI nodes, in node order.
+ */
 export type GraphCrossTable = {
   version: number;
+  /** The level's AI node count, which the cells match. */
   nodesCount: number;
+  /** The level's game vertex count. */
   verticesCount: number;
   levelGuid: string;
   gameGuid: string;
