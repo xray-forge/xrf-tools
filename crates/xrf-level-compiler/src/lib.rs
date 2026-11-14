@@ -28,6 +28,8 @@ pub use crate::ai::ai_map_covers::AiMapCovers;
 pub use crate::ai::ai_map_guid::AiMapGuid;
 pub use crate::ai::ai_map_request::AiMapRequest;
 pub use crate::ai::cover::ai_ray_model::AiRayModel;
+pub use crate::chart::implicit_lighter::ImplicitLighter;
+pub use crate::chart::implicit_map::ImplicitMap;
 pub use crate::chart::light_chart::LightChart;
 pub use crate::chart::light_chart_lighter::LightChartLighter;
 pub use crate::chart::light_chart_mask::LightChartMask;

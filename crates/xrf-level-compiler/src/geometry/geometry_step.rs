@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_dds::{DdsEncoding, DdsMipChain, ImageFormat, Quality, RgbaImage};
@@ -11,6 +11,7 @@ use xrf_utils::{StagedFile, format_path};
 use crate::chart::light_chart::LightChart;
 use crate::chart::lightmap_faces::LightmapFaces;
 use crate::compiler_texture::CompilerTexture;
+use crate::compiler_textures::CompilerTextures;
 use crate::geometry::geometry_level::GeometryLevel;
 use crate::level_compile_request::LevelCompileRequest;
 use crate::level_compile_step_run::LevelCompileStepRun;
@@ -65,10 +66,26 @@ impl GeometryStep {
       compiled.lights.write::<XRayByteOrder>(writer)
     })?;
 
+    let side: u32 = LightChart::PAGE_SIDE;
+
     for (page, textures) in compiled.lightmaps.iter().enumerate() {
       for (name, texels) in LightmapFaces::get_textures(page as u32).iter().zip(textures) {
-        Self::write_lightmap(&level.join(format!("{name}.dds")), texels)?;
+        Self::write_texture(&level.join(format!("{name}.dds")), texels, side, side)?;
       }
+    }
+
+    for map in &compiled.implicit_maps {
+      let path: PathBuf = CompilerTextures::get_path(level, &map.name, "dds");
+      let lightmap: PathBuf = CompilerTextures::get_path(level, &format!("{}_lm", map.name), "dds");
+
+      if let Some(folder) = path.parent() {
+        std::fs::create_dir_all(folder).map_err(|error| {
+          XrfError::new_io_error(format!("{} was not made: {error}", format_path(folder)), error.kind())
+        })?;
+      }
+
+      Self::write_texture(&path, &map.base, map.width, map.height)?;
+      Self::write_texture(&lightmap, &map.lightmap, map.width, map.height)?;
     }
 
     Ok(LevelCompileStepRun::GeometryCompiler {
@@ -88,11 +105,11 @@ impl GeometryStep {
       .map_err(|error| XrfError::new_io_error(format!("{} was not written: {error}", format_path(path)), error.kind()))
   }
 
-  /// A lightmap page's texture of `texels`, a page a side, as BC3 with no mips (`CLightmap::Save`'s DXT5).
-  fn write_lightmap(path: &Path, texels: &[[u8; 4]]) -> XrfResult {
-    let side: u32 = LightChart::PAGE_SIDE;
-    let image: RgbaImage = RgbaImage::from_raw(side, side, texels.as_flattened().to_vec())
-      .ok_or_else(|| XrfError::new_unexpected_error("A lightmap page holds a page's texels"))?;
+  /// A lightmap texture of `texels`, `width` by `height`, as BC3 with no mips (`CLightmap::Save`'s and the implicit
+  /// maps' DXT5).
+  fn write_texture(path: &Path, texels: &[[u8; 4]], width: u32, height: u32) -> XrfResult {
+    let image: RgbaImage = RgbaImage::from_raw(width, height, texels.as_flattened().to_vec())
+      .ok_or_else(|| XrfError::new_unexpected_error("A lightmap texture holds as many texels as its size"))?;
 
     DdsEncoding::new(ImageFormat::BC3RgbaUnorm, Quality::Normal)
       .encode(&DdsMipChain::from_levels(vec![image])?)?

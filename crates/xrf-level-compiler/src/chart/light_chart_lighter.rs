@@ -223,7 +223,7 @@ impl<T: Tracer> LightChartLighter<'_, T> {
 
   /// `LightPoint` at `point` facing `normal` from every light, `face`'s own triangle letting everything through, each
   /// light first tested against the face that last stopped it on this chart.
-  fn light_point(&self, face: u32, point: Vec3, normal: Vec3, occluders: &mut LightOccluders) -> LightColor {
+  pub(crate) fn light_point(&self, face: u32, point: Vec3, normal: Vec3, occluders: &mut LightOccluders) -> LightColor {
     let skipped: Option<u32> = self.ray_faces.get(face as usize).copied().flatten();
     let light_point: LightPoint = LightPoint {
       variant: LightPointVariant::Level,
@@ -434,7 +434,7 @@ impl<T: Tracer> LightChartLighter<'_, T> {
   }
 
   /// `_TCF::barycentric`: `point`'s weights on `triangle`'s corners, where each lies between 0 and 1 (`isInside`).
-  fn get_barycentric(triangle: &[Vector2d; 3], point: &Vector2d) -> Option<[f32; 3]> {
+  pub(crate) fn get_barycentric(triangle: &[Vector2d; 3], point: &Vector2d) -> Option<[f32; 3]> {
     let [first, second, third] = triangle;
     let (v02_x, v02_y) = (first.x - third.x, first.y - third.y);
     let (v12_x, v12_y) = (second.x - third.x, second.y - third.y);

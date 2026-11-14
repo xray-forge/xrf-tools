@@ -9,9 +9,9 @@ use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 use crate::chart::lightmap_page::LightmapPage;
 use crate::tests::geometry::project;
 use crate::{
-  CompilerShaders, CompilerTexture, GeometryFace, GeometryMesh, GeometryNormals, GeometrySplits, LightChart,
-  LightChartLighter, LightChartMask, LightChartScene, LightColor, LightSource, LightmapAtlas, LightmapLayer,
-  LightmapPlacement, LightmapResampler, LitChart, ShadowMaterials,
+  CompilerShaders, CompilerTexture, GeometryFace, GeometryMesh, GeometryNormals, GeometrySplits, ImplicitLighter,
+  ImplicitMap, LightChart, LightChartLighter, LightChartMask, LightChartScene, LightColor, LightSource, LightmapAtlas,
+  LightmapLayer, LightmapPlacement, LightmapResampler, LitChart, ShadowMaterials,
 };
 
 /// A face of material 0 over `vertices`.
@@ -193,6 +193,58 @@ fn lights_an_evenly_lit_chart_as_one_colour_two_texels_a_side_halved() {
   assert!(lit.layer.marker.iter().all(|marker| *marker == LightmapLayer::LIT));
   assert_eq!(lit.layer.surface[0].sun, LightColor::get_fixed(0.4));
   assert_eq!(lit.layer.surface[0].hemi, 0.0);
+}
+
+#[test]
+fn lights_an_implicit_map_over_its_faces_texture_coordinates_and_keeps_the_texture_s_colour() {
+  let mesh: GeometryMesh = floor_and_wall(0.0);
+  let (project, shaders, textures) = tables();
+  let normals: GeometryNormals = GeometryNormals::of(&mesh);
+  let scene: LightChartScene<'_> = LightChartScene::of(&mesh, &normals, &project, &shaders, &textures, 10.0, 1);
+  let corners: Vec<Vec3> = mesh
+    .vertices
+    .iter()
+    .map(|vertex| Vec3::new(vertex.x, vertex.y, vertex.z))
+    .collect();
+  let triangles: Vec<[u32; 3]> = mesh.faces.iter().map(|face| face.vertices).collect();
+  let tracer: BvhTracer = BvhTracer::new(&corners, &triangles);
+  let ray_faces: Vec<Option<u32>> = (0..mesh.faces.len() as u32).map(Some).collect();
+  let lights: [Vec<LightSource>; 3] = [Vec::new(), Vec::new(), vec![sun(0.8)]];
+  let shadows: ShadowMaterials = ShadowMaterials::new_opaque(mesh.faces.len());
+  let lighter: LightChartLighter<'_, BvhTracer> = LightChartLighter {
+    scene: &scene,
+    lights: &lights,
+    tracer: &tracer,
+    shadows: &shadows,
+    ray_faces: &ray_faces,
+    rms_zero: 2,
+    rms_shrink: 4,
+  };
+  // The floor's corners over the whole texture, by their x and z; the wall's beyond it.
+  let coordinates: Vec<[Vector2d; 3]> = mesh
+    .faces
+    .iter()
+    .map(|face| {
+      face
+        .get_corners(&mesh.vertices)
+        .map(|corner| Vector2d::new(corner.x / 2.0, corner.z / 2.0 + corner.y))
+    })
+    .collect();
+  let map: ImplicitMap = ImplicitLighter {
+    lighter: &lighter,
+    coordinates: &coordinates,
+  }
+  .light(String::from("ground"), vec![[10, 20, 30, 255]; 16], 4, 4, &[0, 1]);
+
+  // Every texel the sun halved, the texture's colour kept and its alpha the sky's, none here.
+  assert_eq!((map.width, map.height), (4, 4));
+  assert!(
+    map
+      .lightmap
+      .iter()
+      .all(|texel| texel[3] == LightColor::get_byte(LightColor::get_fixed(0.4)))
+  );
+  assert!(map.base.iter().all(|texel| *texel == [10, 20, 30, 0]));
 }
 
 #[test]

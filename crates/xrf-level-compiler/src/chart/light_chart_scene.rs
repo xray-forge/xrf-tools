@@ -18,6 +18,8 @@ pub struct LightChartScene<'a> {
   pub areas: Vec<f32>,
   /// Each material's compiler shader's lightmap density, `lm_density`; 0 for one with no compiler shader.
   pub densities: Vec<f32>,
+  /// Whether each material's faces are rendered.
+  pub is_rendered: Vec<bool>,
   /// Whether each material's faces are lightmapped: rendered, not vertex-lit, and not of a texture lit implicitly.
   pub is_lightmapped: Vec<bool>,
   /// Each material's sector, which orders the charts as they are packed.
@@ -61,6 +63,10 @@ impl<'a> LightChartScene<'a> {
       densities: materials
         .clone()
         .map(|material| shaders.get(material).map_or(0.0, |shader| shader.lightmap_density))
+        .collect(),
+      is_rendered: materials
+        .clone()
+        .map(|material| shaders.get(material).is_some_and(|shader| shader.is_rendered()))
         .collect(),
       is_lightmapped: materials
         .map(|material| {

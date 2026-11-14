@@ -24,8 +24,8 @@ use crate::sdk::level_sdk_workspace::LevelSdkWorkspace;
 /// program are checked before any runs, so a missing file stops the compile at once rather than an hour in, then each
 /// runs in order, reported to a job: the details by [`crate::DetailLighter`] and the AI map by
 /// [`crate::AiMapCompiler`] here, cancelled with the job; the geometry by [`crate::GeometryLevel`] here, its vertices
-/// and lightmaps lit but for terrain's implicit light, or where the request names the SDK by its xrLC in a workspace of
-/// its own, killed when the job is cancelled.
+/// and lightmaps lit, or where the request names the SDK by its xrLC in a workspace of its own, killed when the job is
+/// cancelled.
 pub struct LevelCompiler;
 
 impl LevelCompiler {

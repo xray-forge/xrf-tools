@@ -1,8 +1,10 @@
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use rayon::prelude::*;
+use xrf_dds::{DdsFile, RgbaImage};
 use xrf_error::{XrfError, XrfResult};
-use xrf_geometry::{BvhTracer, ProgressiveWindow, Sky, SkyLight};
+use xrf_geometry::{BvhTracer, ProgressiveWindow, Sky, SkyLight, Tracer};
 use xrf_level::{
   BuildCformFile, BuildCformRaycastFace, BuildPrjFile, LevelBundle, LevelCformFile, LevelCformGeometry,
   LevelCformHeader, LevelDynamicLight, LevelGeomBuffers, LevelGeomPacker, LevelGeomSlideWindowItem, LevelGlow,
@@ -16,6 +18,8 @@ use xrf_ogf::{
 };
 use xrf_shaders::ShaderCompilerFile;
 
+use crate::chart::implicit_lighter::ImplicitLighter;
+use crate::chart::implicit_map::ImplicitMap;
 use crate::chart::light_chart::LightChart;
 use crate::chart::light_chart_lighter::LightChartLighter;
 use crate::chart::light_chart_scene::LightChartScene;
@@ -24,6 +28,7 @@ use crate::chart::lightmap_faces::LightmapFaces;
 use crate::chart::lit_chart::LitChart;
 use crate::compiler_shaders::CompilerShaders;
 use crate::compiler_texture::CompilerTexture;
+use crate::compiler_textures::CompilerTextures;
 use crate::geometry::geometry_base_coordinates::GeometryBaseCoordinates;
 use crate::geometry::geometry_bounds::GeometryBounds;
 use crate::geometry::geometry_collision::GeometryCollision;
@@ -67,6 +72,8 @@ pub struct GeometryLevel {
   pub lights: LevelLightsFile,
   /// Each lightmap page's two textures, `lmap#N_1` and `_2`, 1024 texels a side row by row ([`LightmapAtlas::compose`]).
   pub lightmaps: Vec<[Vec<[u8; 4]>; 2]>,
+  /// Each texture lit implicitly, such as terrain's; none at draft quality.
+  pub implicit_maps: Vec<ImplicitMap>,
   /// What the compile made, for its report.
   pub census: GeometryLevelCensus,
 }
@@ -164,6 +171,22 @@ impl GeometryLevel {
       .collect();
 
     drop(lit);
+
+    // xrLC lights no texture implicitly at draft quality (`ImplicitLighting`).
+    let implicit_maps: Vec<ImplicitMap> = if project.params.is_draft() {
+      Vec::new()
+    } else {
+      Self::get_implicit_maps(
+        &ImplicitLighter {
+          lighter: &lighter,
+          coordinates: &coordinates.faces,
+        },
+        &mesh,
+        project,
+        textures,
+        roots,
+      )?
+    };
     let faces: LightmapFaces = atlas.get_faces(&charts, mesh.faces.len());
 
     splits.merge(&mesh, Some(&faces.pages));
@@ -398,6 +421,7 @@ impl GeometryLevel {
       ray_model,
       lights,
       lightmaps,
+      implicit_maps,
       census,
     })
   }
@@ -411,6 +435,61 @@ impl GeometryLevel {
     Ok(LevelCformFile {
       header: LevelCformHeader::of(&self.collision)?,
     })
+  }
+
+  /// Each texture lit implicitly, its faces those of `mesh` rendered with it (`hasImplicitLighting`), in the mesh's
+  /// order, its image read from the first of `roots` holding it, lit by `lighter`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for a texture whose image is missing or unreadable.
+  fn get_implicit_maps<T: Tracer + Sync>(
+    lighter: &ImplicitLighter<'_, T>,
+    mesh: &GeometryMesh,
+    project: &BuildPrjFile,
+    textures: &[CompilerTexture],
+    roots: &[PathBuf],
+  ) -> XrfResult<Vec<ImplicitMap>> {
+    let mut faces: BTreeMap<u16, Vec<u32>> = BTreeMap::new();
+
+    for (index, face) in mesh.faces.iter().enumerate() {
+      let Some(material) = project.materials.get(usize::from(face.material)) else {
+        continue;
+      };
+      let is_rendered: bool = lighter
+        .lighter
+        .scene
+        .is_rendered
+        .get(usize::from(face.material))
+        .copied()
+        .unwrap_or(false);
+
+      if is_rendered
+        && textures
+          .get(usize::from(material.texture))
+          .is_some_and(|texture| texture.is_implicitly_lit)
+      {
+        faces.entry(material.texture).or_default().push(index as u32);
+      }
+    }
+
+    faces
+      .into_iter()
+      .map(|(texture, faces)| {
+        let texture: &CompilerTexture = &textures[usize::from(texture)];
+        let path: PathBuf = CompilerTextures::find(roots, &texture.name, "dds").ok_or_else(|| {
+          XrfError::new_not_found_error(format!(
+            "The implicitly lit texture {} has no .dds under the texture roots",
+            texture.name
+          ))
+        })?;
+        let image: RgbaImage = DdsFile::read_from_path(&path)?.decode_rgba(0)?;
+        let (width, height) = image.dimensions();
+        let base: Vec<[u8; 4]> = image.pixels().map(|pixel| pixel.0).collect();
+
+        Ok(lighter.light(texture.name.clone(), base, width, height, &faces))
+      })
+      .collect()
   }
 
   /// A material's shader table entry, `<render shader>/<texture>`, as glows and LODs are dressed.

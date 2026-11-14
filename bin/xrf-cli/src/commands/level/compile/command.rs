@@ -12,8 +12,7 @@ use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 use crate::core::terminal::CliJob;
 
 /// Compiles a level directory `level build` wrote, step by step: the details by our lighter, the AI map by our
-/// compiler, the geometry by ours, its vertices and lightmaps lit but for terrain's implicit light, or, given the SDK,
-/// by its xrLC.
+/// compiler, the geometry by ours, its vertices and lightmaps lit, or, given the SDK, by its xrLC.
 #[derive(Default)]
 pub(crate) struct CompileCommand;
 
@@ -26,8 +25,8 @@ impl GenericCommand for CompileCommand {
     command
       .about(
         "Compile a level directory level build wrote into what the game loads, step by step: geometry (the level, its \
-         geometry, collision and lightmaps; ours, its vertices and lightmaps lit but for terrain's implicit light, or \
-         the SDK's xrLC with --sdk), details (level.details lit from build.details, build.cform and build.lights, as xrDO_Light lights it) and ai (level.ai compiled from build.aimap as xrAI -f \
+         geometry, collision and lightmaps; ours, its vertices, lightmaps and terrain lit, or the SDK's xrLC with \
+         --sdk), details (level.details lit from build.details, build.cform and build.lights, as xrDO_Light lights it) and ai (level.ai compiled from build.aimap as xrAI -f \
          compiles it, its covers traced against build.cform, then checked as a graph). Every step's inputs and every \
          texture build.prj names are checked before any step runs. The SDK's xrLC runs in a working directory under an \
          fsgame.ltx written for it, never in a game installation",
@@ -51,7 +50,7 @@ impl GenericCommand for CompileCommand {
         Arg::new("sdk")
           .help(
             "The SDK's editors directory, whose bin holds xrLC; given, the geometry step runs it and the level is lit, \
-             else our compiler runs it, its vertices and lightmaps lit but for terrain's implicit light",
+             else our compiler runs it, its vertices, lightmaps and terrain lit",
           )
           .long("sdk")
           .value_parser(value_parser!(PathBuf)),

@@ -11,8 +11,8 @@ game loads: the geometry with its lightmaps and collision, the details' light an
 
 The geometry step is this crate's own (`GeometryLevel::compile`: xrLC's geometry phases, progressive meshes above
 draft quality, every vertex and tree lit by `LightHemisphere`, `LightVertices` and `LightModels`, the lightmapped faces
-cut into charts, lit and packed onto pages; terrain's implicit light aside) unless the request names the SDK, whose xrLC
-then compiles and lights it.
+cut into charts, lit and packed onto pages, each implicitly lit texture lit over its own coordinates) unless the
+request names the SDK, whose xrLC then compiles and lights it.
 
 ## Lightmaps
 
@@ -38,8 +38,15 @@ at the first place by row it fits, upright before crosswise, over a bit a texel;
 where the last one fitted. `LightmapAtlas::compose` lays each chart's texels on its page, fills sixteen border rings and
 packs `_1` (static light, sun in alpha) and `_2` (sun, hemisphere in alpha), which the step writes as BC3.
 
-On the SDK's draft runs the charts hold the same triangles as xrLC's for 99.56 to 100% of them, the pages are as many,
-and the light, compared in world space, lies within the threshold two SDK bakes of a level differ by.
+`ImplicitLighter` is `ImplicitLightingExec`, for a texture whose `.thm` says it is lit implicitly, such as terrain's:
+a map the texture's size over its own coordinates, each texel the mean of every face under each of its jitter samples,
+lit with the chart lighter's `LightPoint`; the rings then fill the map, the texture's alpha takes the hemisphere and
+the map the static light and sun (`ImplicitMap`), which the step writes as `<texture>.dds` and `<texture>_lm.dds` in the
+level's folder. As xrLC, it lights none at draft quality.
+
+On the SDK's runs the charts hold the same triangles as xrLC's for 99.56 to 100% of them, the pages are as many, the
+light, compared in world space, lies within the threshold two SDK bakes of a level differ by, and `jupiter`'s terrain
+map within p99 6 steps of xrLC's texel for texel.
 
 `LevelCompiler::compile` takes a `LevelCompileRequest`: the level's directory, the steps (every one when none), the
 SDK's `editors` directory, which runs the geometry by xrLC (`LevelCompileStep::is_sdk`), the game data whose
