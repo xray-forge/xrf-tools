@@ -3,6 +3,7 @@ use xrf_geometry::Ray;
 use xrf_math::Vector2d;
 
 use crate::detail::detail_slot_plan::DetailRayGroup;
+use crate::light::light_point::LightPoint;
 use crate::shadow::shadow_texture::ShadowTexture;
 
 /// A directional light's packet as `detail_shadow_rays.wgsl` reads it (`Packet`).
@@ -72,7 +73,7 @@ impl GpuPacket {
       facing,
       first_origin,
       first_ray,
-      range: DetailRayGroup::DIRECTIONAL_RANGE,
+      range: LightPoint::DIRECTIONAL_RANGE,
       _pad: 0,
     }
   }

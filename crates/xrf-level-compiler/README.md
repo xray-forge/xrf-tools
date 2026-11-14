@@ -151,6 +151,23 @@ An alpha face's image is decoded with `xrf-dds`' `decode_sdk_alpha`, and only fo
 - 0 for an opaque face;
 - `1 - alpha` at the nearest texel of the hit's texture coordinates, wrapped, for an alpha face.
 
+`get_opacity` gives what a hit stops, the alpha alone, for xrLC's `1 - alpha²`.
+
+## `LightPoint`
+
+`LightPoint::evaluate` gathers the light a point with a normal receives from `build.lights` (`LightSource`s by role):
+static lights' colour by the cosine, the sun and the sky as amounts, lights at a position fading with distance, each
+scaled by what its shadow ray lets through the ray model. Its two variants (`LightPointVariant`) are the two SDK
+compilers' copies, which differ in three ways:
+
+| Variant   | Static point light                                  | Faces that shadow | An alpha texel lets through |
+| --------- | --------------------------------------------------- | ----------------- | --------------------------- |
+| `Details` | over its attenuation (xrDO_Light)                   | front only        | `1 - alpha`                 |
+| `Level`   | its attenuation's inverse less its falloff (xrLC)   | either side       | `1 - alpha²`                |
+
+The detail lighter plans its rays through `LightPoint::get_ray`; the light baker's lighters share it. On the SDK's own
+vertex light of `l01_test` and `labx8`, `Level` gives xrLC's bytes on 99.99% and 99.93% of vertices.
+
 Loading fails where the SDK's compilers stop: a texture with no `.thm`, a compiler shader the library lacks, a face of a
 material with no compiler shader, or an alpha image that is missing or not the size its `.thm` gives.
 

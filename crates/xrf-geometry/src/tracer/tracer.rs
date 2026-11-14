@@ -1,5 +1,6 @@
 use glam::Vec3;
 
+use crate::ray::facing::Facing;
 use crate::ray::ray::Ray;
 use crate::tracer::trace_hit::TraceHit;
 use crate::triangle::triangle::Triangle;
@@ -20,7 +21,13 @@ pub trait Tracer {
 
   /// Visits every face whose front a ray meets within its range: the engine's ray query under `OPT_CULL`, all results
   /// kept.
-  fn for_each_hit(&self, ray: &Ray, visit: impl FnMut(TraceHit));
+  fn for_each_hit(&self, ray: &Ray, visit: impl FnMut(TraceHit)) {
+    self.for_each_hit_facing(ray, Facing::Front, visit);
+  }
+
+  /// Visits every face a ray meets within its range on the side or sides `facing` names: the engine's ray query with
+  /// `OPT_CULL` for [`Facing::Front`] and without it for [`Facing::Both`], all results kept.
+  fn for_each_hit_facing(&self, ray: &Ray, facing: Facing, visit: impl FnMut(TraceHit));
 
   /// [`Self::for_each_hit`] for many rays at once, each hit with the index of its ray in `rays`: faster where the rays
   /// run close together, such as one point set's rays toward one light.

@@ -30,8 +30,8 @@ impl Tracer for BruteTracer {
     self.triangles[face as usize]
   }
 
-  fn for_each_hit(&self, ray: &Ray, visit: impl FnMut(TraceHit)) {
-    self.hits(ray, Facing::Front).for_each(visit);
+  fn for_each_hit_facing(&self, ray: &Ray, facing: Facing, visit: impl FnMut(TraceHit)) {
+    self.hits(ray, facing).for_each(visit);
   }
 
   fn for_each_packet_hit(&self, rays: &[Ray], mut visit: impl FnMut(usize, TraceHit)) {

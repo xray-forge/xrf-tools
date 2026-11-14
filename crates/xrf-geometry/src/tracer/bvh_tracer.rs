@@ -144,9 +144,9 @@ impl Tracer for BvhTracer {
     self.triangles[face as usize]
   }
 
-  fn for_each_hit(&self, ray: &Ray, mut visit: impl FnMut(TraceHit)) {
+  fn for_each_hit_facing(&self, ray: &Ray, facing: Facing, mut visit: impl FnMut(TraceHit)) {
     self.walk(ray, |face, _| {
-      if let Some(crossing) = self.triangles[face as usize].cross(ray, Facing::Front) {
+      if let Some(crossing) = self.triangles[face as usize].cross(ray, facing) {
         visit(TraceHit::new(face, crossing));
       }
 

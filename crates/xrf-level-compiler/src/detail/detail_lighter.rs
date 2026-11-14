@@ -4,12 +4,12 @@ use xrf_job::{JobHandle, JobScope};
 use xrf_level::{LevelDetailsFile, LevelDetailsSlot, LevelLightRole};
 
 use crate::detail::detail_light_request::DetailLightRequest;
-use crate::detail::detail_light_source::DetailLightSource;
 use crate::detail::detail_lighting::DetailLighting;
 use crate::detail::detail_slot_counts::DetailSlotCounts;
 use crate::detail::detail_slot_fate::DetailSlotFate;
 use crate::detail::detail_slot_lighter::DetailSlotLighter;
 use crate::detail::detail_slot_stage::DetailSlotStage;
+use crate::light::light_source::LightSource;
 use crate::ray::ray_backend::RayBackend;
 
 /// Lights a level's details as xrDO_Light does: each slot's bare corners cleared, then each planted slot touching the
@@ -32,13 +32,8 @@ impl DetailLighter {
   /// CPU instead when the GPU does not start, but fails with a GPU that fails once started.
   pub fn light(request: &DetailLightRequest<'_>, job: &JobHandle) -> XrfResult<DetailLighting> {
     let details: &LevelDetailsFile = request.details;
-    let lights: [Vec<DetailLightSource>; 3] = LevelLightRole::ALL.map(|role| {
-      request
-        .lights
-        .get_role_lights(role)
-        .map(DetailLightSource::from)
-        .collect()
-    });
+    let lights: [Vec<LightSource>; 3] =
+      LevelLightRole::ALL.map(|role| request.lights.get_role_lights(role).map(LightSource::from).collect());
     let lighter: DetailSlotLighter<'_> = DetailSlotLighter {
       header: &details.header,
       tracer: request.tracer,

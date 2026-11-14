@@ -178,16 +178,35 @@ impl ShadowMaterials {
     match self.faces[hit.face as usize] {
       ShadowFace::Passes => 1.0,
       ShadowFace::Opaque => 0.0,
-      ShadowFace::Alpha(index) => {
-        let face: &ShadowAlphaFace = &self.alpha_faces[index as usize];
-        let [first, second, third] = &face.coordinates;
-        let weight: f32 = 1.0 - hit.u - hit.v;
+      ShadowFace::Alpha(index) => self.textures[self.alpha_faces[index as usize].texture as usize]
+        .get_transmittance(self.get_alpha_coordinates(index, hit)),
+    }
+  }
 
-        self.textures[face.texture as usize].get_transmittance(Vector2d {
-          x: first.x * weight + second.x * hit.u + third.x * hit.v,
-          y: first.y * weight + second.y * hit.u + third.y * hit.v,
-        })
-      }
+  /// How much of a light ray the face it hits stops: 0 for a face passing it, 1 for one blocking it, and the alpha at
+  /// the hit's texture coordinates for an alpha one.
+  ///
+  /// # Panics
+  ///
+  /// Panics when the hit's face is not a face of the ray model these were loaded for.
+  pub fn get_opacity(&self, hit: &TraceHit) -> f32 {
+    match self.faces[hit.face as usize] {
+      ShadowFace::Passes => 0.0,
+      ShadowFace::Opaque => 1.0,
+      ShadowFace::Alpha(index) => self.textures[self.alpha_faces[index as usize].texture as usize]
+        .get_opacity(self.get_alpha_coordinates(index, hit)),
+    }
+  }
+
+  /// An alpha face's texture coordinates at a hit, weighted by its barycentrics as the SDK weighs them.
+  fn get_alpha_coordinates(&self, index: u32, hit: &TraceHit) -> Vector2d {
+    let face: &ShadowAlphaFace = &self.alpha_faces[index as usize];
+    let [first, second, third] = &face.coordinates;
+    let weight: f32 = 1.0 - hit.u - hit.v;
+
+    Vector2d {
+      x: first.x * weight + second.x * hit.u + third.x * hit.v,
+      y: first.y * weight + second.y * hit.u + third.y * hit.v,
     }
   }
 

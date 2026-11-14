@@ -3,11 +3,16 @@ use xrf_geometry::{BvhTracer, Facing, Ray, Tracer, Triangle};
 use xrf_level::{DETAIL_SLOT_METERS, LevelDetailsHeader, LevelDetailsLight, LevelDetailsSlot, LevelLightRole};
 use xrf_math::EPS;
 
-use crate::detail::detail_light_source::DetailLightSource;
-use crate::detail::detail_slot_plan::{DetailLightTerm, DetailRayGroup, DetailSlotPlan};
+use crate::detail::detail_slot_plan::{DetailRayGroup, DetailSlotPlan};
+use crate::light::light_color::LightColor;
+use crate::light::light_point::LightPoint;
+use crate::light::light_point_variant::LightPointVariant;
+use crate::light::light_sample_point::LightSamplePoint;
+use crate::light::light_source::LightSource;
+use crate::light::light_term::LightTerm;
 use crate::shadow::shadow_materials::ShadowMaterials;
 
-/// Lights one planted slot as xrDO_Light does (`LightThread::Execute` and `LightPoint`,
+/// Lights one planted slot as xrDO_Light does (`LightThread::Execute` and its `LightPoint`,
 /// `xrDO_Light/LightThread.cpp:174`), its arithmetic in the same order, every shadow ray a full query of the ray model
 /// with no remembered blocker: planned ([`Self::plan`]), its rays traced, then finished ([`Self::finish`]).
 pub(crate) struct DetailSlotLighter<'a> {
@@ -15,26 +20,15 @@ pub(crate) struct DetailSlotLighter<'a> {
   pub(crate) tracer: &'a BvhTracer,
   pub(crate) shadows: &'a ShadowMaterials,
   /// The lights of each role, in [`LevelLightRole::ALL`]'s order.
-  pub(crate) lights: &'a [Vec<DetailLightSource>; 3],
-}
-
-/// The light a slot's points gather, `base_color` (`xrDO_Light/LightThread.cpp:26`).
-#[derive(Clone, Copy, Debug, Default)]
-struct DetailLightSum {
-  rgb: Vec3,
-  hemi: f32,
-  sun: f32,
-}
-
-/// A point of a slot the drop ray kept: where it lies, its ground's normal, and where its shadow rays start.
-#[derive(Clone, Copy, Debug)]
-struct DetailSamplePoint {
-  point: Vec3,
-  normal: Vec3,
-  lifted: Vec3,
+  pub(crate) lights: &'a [Vec<LightSource>; 3],
 }
 
 impl DetailSlotLighter<'_> {
+  /// xrDO_Light's `LightPoint`.
+  const LIGHT_POINT: LightPoint = LightPoint {
+    variant: LightPointVariant::Details,
+  };
+
   /// `get_slot_box`'s growth of the slot's box.
   const BOX_GROW: f32 = 0.05;
 
@@ -47,12 +41,6 @@ impl DetailSlotLighter<'_> {
 
   /// How far under the box a drop ray's height starts, so a point whose ray meets nothing stays out of it.
   const DROP_FLOOR: f32 = 5.0;
-
-  /// How far a point is lifted along its ground's normal before its shadow rays start.
-  const POINT_LIFT: f32 = 0.01;
-
-  /// How much further along itself a directional hemisphere light's shadow ray starts.
-  const HEMI_LIFT: f32 = 0.001;
 
   /// What lighting the slot in grid cell `cell` asks of the ray model, or `None` where its box touches no face of it.
   pub(crate) fn plan(&self, cell: usize, slot: &LevelDetailsSlot) -> Option<DetailSlotPlan> {
@@ -84,7 +72,7 @@ impl DetailSlotLighter<'_> {
       return None;
     }
 
-    let points: Vec<DetailSamplePoint> = Self::get_points(&triangles, center, low, high);
+    let points: Vec<LightSamplePoint> = Self::get_points(&triangles, center, low, high);
     let mut plan: DetailSlotPlan = DetailSlotPlan {
       selected: std::array::from_fn(|role| {
         (0..self.lights[role].len() as u32)
@@ -101,7 +89,7 @@ impl DetailSlotLighter<'_> {
     // rays trace together.
     for (role, lights) in self.lights.iter().enumerate() {
       for index in 0..plan.selected[role].len() {
-        let light: &DetailLightSource = &lights[plan.selected[role][index] as usize];
+        let light: &LightSource = &lights[plan.selected[role][index] as usize];
 
         Self::plan_light(&mut plan, role, light, &points);
       }
@@ -144,7 +132,7 @@ impl DetailSlotLighter<'_> {
   /// The slot's light from what each of its plan's rays lets through, summed in the SDK's order: point by point, each
   /// point's lights in turn.
   pub(crate) fn finish(&self, plan: &DetailSlotPlan, transmittances: &[f32]) -> LevelDetailsLight {
-    let mut sum: DetailLightSum = DetailLightSum::default();
+    let mut sum: LightColor = LightColor::default();
     let point_count: usize = plan.origins.len();
 
     for index in 0..point_count {
@@ -185,9 +173,9 @@ impl DetailSlotLighter<'_> {
   /// The slot's 15 by 15 points across the box from `low` to `high` about `center`, each dropped onto the highest
   /// face of `triangles` under it, a later face replacing it only from more than `EPS` above; those meeting none
   /// inside the box are left out.
-  fn get_points(triangles: &[Triangle], center: Vec3, low: Vec3, high: Vec3) -> Vec<DetailSamplePoint> {
+  fn get_points(triangles: &[Triangle], center: Vec3, low: Vec3, high: Vec3) -> Vec<LightSamplePoint> {
     let step: f32 = (DETAIL_SLOT_METERS * 0.5) / Self::SAMPLE_STEPS as f32;
-    let mut points: Vec<DetailSamplePoint> = Vec::new();
+    let mut points: Vec<LightSamplePoint> = Vec::new();
 
     for sample_x in -Self::SAMPLE_STEPS..=Self::SAMPLE_STEPS {
       for sample_z in -Self::SAMPLE_STEPS..=Self::SAMPLE_STEPS {
@@ -211,11 +199,7 @@ impl DetailSlotLighter<'_> {
         }
 
         if point.y >= low.y {
-          points.push(DetailSamplePoint {
-            point,
-            normal,
-            lifted: point + normal * Self::POINT_LIFT,
-          });
+          points.push(LightSamplePoint::new(point, normal));
         }
       }
     }
@@ -223,30 +207,24 @@ impl DetailSlotLighter<'_> {
     points
   }
 
-  /// What `light` of the role at `role_index` in [`LevelLightRole::ALL`] gives each of `points` (`LightPoint`), as terms
-  /// of `plan` with their rays: the static lights' colour by the cosine, the sun and sky as plain amounts, a point light
-  /// of any role through its attenuation, each scaled by how much of it reaches the point. A directional light's rays
-  /// share its direction, and form one packet.
-  fn plan_light(plan: &mut DetailSlotPlan, role_index: usize, light: &DetailLightSource, points: &[DetailSamplePoint]) {
+  /// What `light` of the role at `role_index` in [`LevelLightRole::ALL`] gives each of `points`, as terms of `plan`
+  /// with their rays ([`LightPoint::get_ray`]). A directional light's rays share its direction, and form one packet.
+  fn plan_light(plan: &mut DetailSlotPlan, role_index: usize, light: &LightSource, points: &[LightSamplePoint]) {
     let role: LevelLightRole = LevelLightRole::ALL[role_index];
-    let terms: &mut Vec<DetailLightTerm> = &mut plan.terms[role_index];
+    let terms: &mut Vec<LightTerm> = &mut plan.terms[role_index];
 
     if !light.is_directional {
       for point in points {
-        let term: DetailLightTerm = match Self::plan_point_light(light, point) {
-          Some((ray, factor, divisor)) => {
+        let term: LightTerm = match Self::LIGHT_POINT.get_ray(role, light, point) {
+          Some((ray, term)) => {
             let index: u32 = plan.ray_count as u32;
 
             plan.groups.push(DetailRayGroup::Single { ray, index });
             plan.ray_count += 1;
 
-            DetailLightTerm {
-              factor,
-              divisor,
-              ray: index,
-            }
+            LightTerm { ray: index, ..term }
           }
-          None => DetailLightTerm::NOTHING,
+          None => LightTerm::NOTHING,
         };
 
         terms.push(term);
@@ -255,78 +233,34 @@ impl DetailSlotLighter<'_> {
       return;
     }
 
-    let toward: Vec3 = -light.direction;
     let first: usize = plan.ray_count;
     let mut facing: [u32; DetailRayGroup::FACING_WORDS] = [0; DetailRayGroup::FACING_WORDS];
 
     for (index, point) in points.iter().enumerate() {
-      let cosine: f32 = toward.dot(point.normal);
-
-      // The light gives a point it faces away from nothing, and traces no ray for it.
-      if cosine <= 0.0 {
-        terms.push(DetailLightTerm::NOTHING);
+      // The packet makes the ray `get_ray` describes, for each point the light gives anything.
+      let Some((_, term)) = Self::LIGHT_POINT.get_ray(role, light, point) else {
+        terms.push(LightTerm::NOTHING);
         continue;
-      }
+      };
 
       facing[index / 32] |= 1 << (index % 32);
-      terms.push(DetailLightTerm {
-        factor: match role {
-          LevelLightRole::Rgb => cosine * light.energy,
-          LevelLightRole::Hemi | LevelLightRole::Sun => light.energy,
-        },
-        divisor: 1.0,
+      terms.push(LightTerm {
         ray: plan.ray_count as u32,
+        ..term
       });
       plan.ray_count += 1;
     }
 
     if plan.ray_count > first {
       plan.groups.push(DetailRayGroup::Packet {
-        toward,
+        toward: -light.direction,
         lift: match role {
-          LevelLightRole::Hemi => Self::HEMI_LIFT,
+          LevelLightRole::Hemi => LightPoint::HEMI_LIFT,
           LevelLightRole::Rgb | LevelLightRole::Sun => 0.0,
         },
         facing,
         first: first as u32,
       });
-    }
-  }
-
-  /// The ray toward a light at a position from `point`, with what multiplies and divides the light it lets through;
-  /// none past the light's range or behind the ground.
-  fn plan_point_light(light: &DetailLightSource, point: &DetailSamplePoint) -> Option<(Ray, f32, f32)> {
-    let distance_squared: f32 = point.point.distance_squared(light.position);
-
-    if distance_squared > light.range_squared {
-      return None;
-    }
-
-    let toward: Vec3 = Self::normalize_safe(light.position - point.point);
-    let cosine: f32 = toward.dot(point.normal);
-
-    if cosine <= 0.0 {
-      return None;
-    }
-
-    let distance: f32 = distance_squared.sqrt();
-    let [constant, linear, quadratic] = light.attenuation;
-
-    Some((
-      Ray::new(point.lifted, toward, distance),
-      cosine * light.energy,
-      constant + linear * distance + quadratic * distance_squared,
-    ))
-  }
-
-  /// `Fvector::normalize_safe`: scaled by the root of the inverse squared length, left as it is when too short.
-  fn normalize_safe(vector: Vec3) -> Vec3 {
-    let length_squared: f32 = vector.length_squared();
-
-    if length_squared > f32::MIN_POSITIVE {
-      vector * (1.0 / length_squared).sqrt()
-    } else {
-      vector
     }
   }
 }

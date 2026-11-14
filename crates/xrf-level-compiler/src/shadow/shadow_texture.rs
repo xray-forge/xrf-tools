@@ -13,10 +13,15 @@ impl ShadowTexture {
   /// How much light passes a hit at texture coordinates `coordinates`: `1 - alpha / 255` at the nearest texel, the
   /// coordinates wrapped (`getLastRP_Scale`, `xrLC_Light/detail_slot_calculate.cpp:146`).
   pub fn get_transmittance(&self, coordinates: Vector2d) -> f32 {
+    1.0 - self.get_opacity(coordinates)
+  }
+
+  /// The alpha at texture coordinates `coordinates`, `alpha / 255` at the nearest texel, the coordinates wrapped.
+  pub fn get_opacity(&self, coordinates: Vector2d) -> f32 {
     let column: u32 = Self::get_texel(coordinates.x, self.alpha.width());
     let row: u32 = Self::get_texel(coordinates.y, self.alpha.height());
 
-    1.0 - f32::from(self.alpha.get_pixel(column, row).0[0]) / 255.0
+    f32::from(self.alpha.get_pixel(column, row).0[0]) / 255.0
   }
 
   /// The texel `coordinate` rounds to along a side of `size` texels, wrapped.

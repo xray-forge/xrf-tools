@@ -8,6 +8,7 @@ mod fixtures;
 mod geometry;
 #[cfg(feature = "gpu")]
 mod gpu;
+mod light;
 mod program;
 mod progressive;
 mod sectors;
