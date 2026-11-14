@@ -72,6 +72,7 @@ pub use crate::light::light_hemisphere::LightHemisphere;
 pub use crate::light::light_models::{LightModels, LightReference};
 pub use crate::light::light_point::LightPoint;
 pub use crate::light::light_point_variant::LightPointVariant;
+pub use crate::light::light_quality::LightQuality;
 pub use crate::light::light_sample_point::LightSamplePoint;
 pub use crate::light::light_source::LightSource;
 pub use crate::light::light_vertices::LightVertices;

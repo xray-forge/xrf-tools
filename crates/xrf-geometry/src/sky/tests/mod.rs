@@ -1,1 +1,1 @@
-mod hemisphere_tests;
+mod sky_tests;

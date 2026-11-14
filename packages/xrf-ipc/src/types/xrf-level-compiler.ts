@@ -42,6 +42,19 @@ export type DetailSlotCounts = {
   lit: number;
 };
 
+/** What a geometry compile made, for its report. */
+export type GeometryLevelCensus = {
+  /** Static visuals. */
+  visuals: number;
+  /** Their triangles at full detail. */
+  triangles: number;
+  /** Static and multi-use visuals made progressive. */
+  progressive: number;
+  /** Multi-use placements. */
+  trees: number;
+  sectors: number;
+};
+
 /** What a level's compile ran ([`crate::LevelCompiler::compile`]), as the front-ends report it. */
 export type LevelCompileReport = {
   level: string;
@@ -86,13 +99,18 @@ export type LevelCompileRequest = {
   gpu: RayGpu | null;
   /** The covers the AI step computes: full ones traced against `build.cform`, or none, needing no `build.cform`. */
   aiCovers: AiMapCovers;
+  /**
+   * How finely the geometry step of ours lights the level: by `build.prj`'s own sky and sun, or a draft regenerating
+   * them; the SDK's xrLC lights by `build.prj` alone.
+   */
+  lightQuality: LightQuality;
 };
 
 /**
  * One step of a level's compile from the files `level build` writes, in the order they run: the geometry (xrLC's
- * part, lightmaps included), the details' light (xrDO_Light's, done by [`crate::DetailLighter`]) and the AI map
- * (xrAI's `-f`, done by [`crate::AiMapCompiler`]). A step no compiler of ours does yet runs the SDK's own
- * ([`Self::is_sdk`]).
+ * part, done by [`crate::GeometryLevel`] with draft lightmaps, or by the SDK's xrLC with its own where the request
+ * names the SDK, [`Self::is_sdk`]), the details' light (xrDO_Light's, done by [`crate::DetailLighter`]) and the AI map
+ * (xrAI's `-f`, done by [`crate::AiMapCompiler`]).
  */
 export enum ELevelCompileStep {
   GEOMETRY = "geometry",
@@ -120,6 +138,8 @@ export enum ELevelCompileStepRun {
    * none where the CPU traced them.
    */
   DETAIL_LIGHTER = "detailLighter",
+  /** Our geometry compiler ([`crate::GeometryLevel`]), and what it made. */
+  GEOMETRY_COMPILER = "geometryCompiler",
   /**
    * The AI map compiler ([`crate::AiMapCompiler`]): the covers it computed, the GPU that traced their rays, none where
    * the CPU did or no ray was traced, where the map's identity came from, and the graph check run on the map it wrote,
@@ -137,6 +157,8 @@ export type LevelCompileStepRun =
    * none where the CPU traced them.
    */
   | { kind: "detailLighter"; slots: DetailSlotCounts; gpu: string | null }
+  /** Our geometry compiler ([`crate::GeometryLevel`]), and what it made. */
+  | { kind: "geometryCompiler"; census: GeometryLevelCensus }
   /**
    * The AI map compiler ([`crate::AiMapCompiler`]): the covers it computed, the GPU that traced their rays, none where
    * the CPU did or no ray was traced, where the map's identity came from, and the graph check run on the map it wrote,
@@ -150,6 +172,20 @@ export type LevelCompileStepRun =
       census: LevelAiGraphCensus;
       graph: Report;
     };
+
+/** How finely a level is lit: by `build.prj`'s own settings, or by a cheaper preset that regenerates what it changes. */
+export enum ELightQuality {
+  /** `build.prj`'s own: its sky and sun lights as the editor generated them, its sample counts. */
+  SCENE = "scene",
+  /**
+   * The cheap estimate: the sky and the sun regenerated at quality 1 (26 and 9 lights), each multi-use model lit from
+   * one sample.
+   */
+  DRAFT = "draft",
+}
+
+/** Every `ELightQuality` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type LightQuality = `${ELightQuality}`;
 
 /**
  * What traces the compile's rays through the ray model: the detail lighter's shadow rays and the AI map's corner rays.

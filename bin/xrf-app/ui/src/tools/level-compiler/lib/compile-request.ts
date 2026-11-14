@@ -1,6 +1,7 @@
 import {
   AiMapCovers,
   ELevelCompileStep,
+  ELightQuality,
   LevelCompileRequest,
   LevelCompileStep,
   RayBackend,
@@ -96,5 +97,7 @@ export function toCompileRequest(choice: ICompileChoice): Nullable<LevelCompileR
     dxc: null,
     gpu: choice.rayGpu,
     aiCovers: choice.aiCovers,
+    // The app compiles the geometry by the SDK's xrLC, which lights by build.prj alone.
+    lightQuality: ELightQuality.SCENE,
   };
 }

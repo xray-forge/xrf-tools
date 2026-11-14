@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::ai::ai_map_covers::AiMapCovers;
 use crate::level_compile_step::LevelCompileStep;
+use crate::light::light_quality::LightQuality;
 use crate::ray::ray_backend::RayBackend;
 use crate::ray::ray_gpu::RayGpu;
 
@@ -38,4 +39,7 @@ pub struct LevelCompileRequest {
   pub gpu: Option<RayGpu>,
   /// The covers the AI step computes: full ones traced against `build.cform`, or none, needing no `build.cform`.
   pub ai_covers: AiMapCovers,
+  /// How finely the geometry step of ours lights the level: by `build.prj`'s own sky and sun, or a draft regenerating
+  /// them; the SDK's xrLC lights by `build.prj` alone.
+  pub light_quality: LightQuality,
 }

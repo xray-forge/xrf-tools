@@ -9,6 +9,7 @@ mod geometry;
 #[cfg(feature = "gpu")]
 mod gpu;
 mod light;
+mod light_quality;
 mod program;
 mod progressive;
 mod sectors;

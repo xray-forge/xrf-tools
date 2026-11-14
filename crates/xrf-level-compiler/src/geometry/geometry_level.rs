@@ -1,14 +1,14 @@
 use std::path::PathBuf;
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_geometry::{BvhTracer, ProgressiveWindow};
+use xrf_geometry::{BvhTracer, ProgressiveWindow, Sky, SkyLight};
 use xrf_level::{
   BuildCformFile, BuildCformRaycastFace, BuildPrjFile, LevelBundle, LevelCformFile, LevelCformGeometry,
   LevelCformHeader, LevelDynamicLight, LevelGeomBuffers, LevelGeomPacker, LevelGeomSlideWindowItem, LevelGlow,
   LevelHeaderChunk, LevelLight, LevelLightRole, LevelLightsChunk, LevelLightsFile, LevelPortal, LevelSector,
   LevelShaderEntry, LevelShadersChunk, LevelVertexQuantizer, LevelVisualRecord,
 };
-use xrf_math::{Sphere, Vector3d};
+use xrf_math::{Color, Sphere, Vector3d};
 use xrf_ogf::{
   OgfFastpathChunk, OgfGeometryContainerChunk, OgfHeaderChunk, OgfLodDefinitionChunk, OgfLodFacet, OgfLodVertex,
   OgfModelType, OgfSlideWindow, OgfSwiContainerChunk, OgfSwiDataChunk, OgfTreeColor, OgfTreeDefinitionChunk,
@@ -38,6 +38,7 @@ use crate::geometry::geometry_visuals_request::GeometryVisualsRequest;
 use crate::light::light_color::LightColor;
 use crate::light::light_hemisphere::LightHemisphere;
 use crate::light::light_models::LightModels;
+use crate::light::light_quality::LightQuality;
 use crate::light::light_source::LightSource;
 use crate::light::light_vertices::LightVertices;
 use crate::shadow::shadow_materials::ShadowMaterials;
@@ -69,8 +70,8 @@ impl GeometryLevel {
   pub const VERSION: u16 = 14;
 
   /// The level of `project`, its compiler shaders from `library` and its textures as `textures` loads them, their
-  /// alpha images under `roots` dimming the light: every vertex lit ([`LightHemisphere`], [`LightVertices`]), every
-  /// multi-use model and placement ([`LightModels`]), the lightmaps a draft.
+  /// alpha images under `roots` dimming the light, lit at `quality`: every vertex lit ([`LightHemisphere`],
+  /// [`LightVertices`]), every multi-use model and placement ([`LightModels`]), the lightmaps a draft.
   ///
   /// # Errors
   ///
@@ -81,6 +82,7 @@ impl GeometryLevel {
     library: &ShaderCompilerFile,
     textures: &[CompilerTexture],
     roots: &[PathBuf],
+    quality: LightQuality,
   ) -> XrfResult<Self> {
     let shaders: CompilerShaders = CompilerShaders::resolve(project, library)?;
     let mut mesh: GeometryMesh = GeometryMesh::load(project)?;
@@ -93,7 +95,7 @@ impl GeometryLevel {
     let coordinates: GeometryBaseCoordinates = GeometryBaseCoordinates::of(&mesh, &normals);
     let tangents: GeometryTangents = GeometryTangents::of(&mesh, &normals, &coordinates);
     let ray_model: BuildCformFile = GeometryRayModel::build(&mesh, &normals, &coordinates, project, &shaders)?;
-    let lights: LevelLightsFile = Self::get_lights(project)?;
+    let lights: LevelLightsFile = Self::get_lights(project, quality)?;
     let sources: [Vec<LightSource>; 3] =
       LevelLightRole::ALL.map(|role| lights.get_role_lights(role).map(LightSource::from).collect());
     let load = |faces: &[BuildCformRaycastFace]| {
@@ -124,7 +126,7 @@ impl GeometryLevel {
       &model_starts,
       &tracer,
       &shadows,
-      project.params.is_draft(),
+      quality.is_draft(project.params.is_draft()),
     )?;
     let splits: GeometrySplits = GeometrySplits::of(&mesh, &shaders);
     let visuals: GeometryVisuals = GeometryVisuals::build(&GeometryVisualsRequest {
@@ -432,19 +434,21 @@ impl GeometryLevel {
   }
 
   /// `build.lights` (`Build.cpp:180`): the `$static`, `$hemi` and `$sun` layers' lights as xrLC loads them
-  /// (`Build_Load.cpp:211`), chunks 0, 1 and 2.
-  fn get_lights(project: &BuildPrjFile) -> XrfResult<LevelLightsFile> {
-    let layer = |name: &str| -> XrfResult<Vec<LevelLight>> {
-      let control: usize = project
+  /// (`Build_Load.cpp:211`), chunks 0, 1 and 2, the sky and the sun regenerated where `quality` asks for another
+  /// quality than `build.prj`'s ([`Self::get_sky_layer`]).
+  pub(crate) fn get_lights(project: &BuildPrjFile, quality: LightQuality) -> XrfResult<LevelLightsFile> {
+    let layer = |name: &str| -> XrfResult<(u32, Vec<LevelDynamicLight>)> {
+      let control: u32 = project
         .light_controls
         .iter()
         .position(|control| control.name.value.eq_ignore_ascii_case(name))
+        .and_then(|control| u32::try_from(control).ok())
         .ok_or_else(|| XrfError::new_invalid_error(format!("build.prj has no {name} light layer")))?;
-      let lights: Vec<LevelLight> = project
+      let lights: Vec<LevelDynamicLight> = project
         .static_lights
         .iter()
-        .filter(|light| light.controller as usize == control)
-        .map(Self::get_light)
+        .filter(|light| light.controller == control)
+        .cloned()
         .collect();
 
       if lights.is_empty() {
@@ -453,25 +457,73 @@ impl GeometryLevel {
         )));
       }
 
-      Ok(lights)
+      Ok((control, lights))
+    };
+    let (_, static_lights) = layer("$static")?;
+    let (hemi_control, mut hemi) = layer("$hemi")?;
+    let (sun_control, mut sun) = layer("$sun")?;
+
+    if let Some(sky) = quality.get_sky_quality() {
+      let (pitch, heading) = Sky::get_pitch_heading(&Self::get_sun_direction(project, sun_control, &sun));
+
+      hemi = Self::get_sky_layer(hemi, hemi_control, Sky::get_hemisphere(sky));
+      sun = Self::get_sky_layer(sun, sun_control, Sky::get_sun(sky, pitch, heading)?);
+    }
+
+    let chunk = |id: u32, lights: &[LevelDynamicLight]| LevelLightsChunk::Lights {
+      id,
+      lights: lights.iter().map(Self::get_light).collect(),
     };
 
     Ok(LevelLightsFile {
-      chunks: vec![
-        LevelLightsChunk::Lights {
-          id: 0,
-          lights: layer("$static")?,
-        },
-        LevelLightsChunk::Lights {
-          id: 1,
-          lights: layer("$hemi")?,
-        },
-        LevelLightsChunk::Lights {
-          id: 2,
-          lights: layer("$sun")?,
-        },
-      ],
+      chunks: vec![chunk(0, &static_lights), chunk(1, &hemi), chunk(2, &sun)],
     })
+  }
+
+  /// A sky or sun layer at the quality `generated` holds. The editor generates the layer's directional lights and
+  /// takes the scene's lights under the layer as point lights alone (`LevelBuildLights`), so the directional ones are
+  /// replaced by `generated` under `controller` and the scene's kept, unless they are of that quality already (as many).
+  fn get_sky_layer(held: Vec<LevelDynamicLight>, controller: u32, generated: Vec<SkyLight>) -> Vec<LevelDynamicLight> {
+    if held.iter().filter(|light| light.is_sun()).count() == generated.len() {
+      return held;
+    }
+
+    generated
+      .iter()
+      .map(|light| {
+        LevelDynamicLight::new_directional(
+          controller,
+          Color::new(light.energy, light.energy, light.energy, 1.0),
+          light.direction,
+        )
+      })
+      .chain(held.into_iter().filter(|light| !light.is_sun()))
+      .collect()
+  }
+
+  /// The way the sun's light travels: the directional dynamic light under `$sun` the editor writes along it, else the
+  /// mean of the layer's directional `lights`, which spread three degrees about it.
+  fn get_sun_direction(project: &BuildPrjFile, control: u32, lights: &[LevelDynamicLight]) -> Vector3d {
+    if let Some(sun) = project
+      .dynamic_lights
+      .iter()
+      .map(|light| &light.light)
+      .find(|light| light.controller == control && light.is_sun())
+    {
+      return sun.direction;
+    }
+
+    lights
+      .iter()
+      .filter(|light| light.is_sun())
+      .fold(Vector3d::ZERO, |sum, light| {
+        Vector3d::new(
+          sum.x + light.direction.x,
+          sum.y + light.direction.y,
+          sum.z + light.direction.z,
+        )
+      })
+      .normalize_or_zero()
   }
 
   /// One static light as xrLC loads it (`R_Light`): its energy the mean of its diffuse, its colour divided by it, its

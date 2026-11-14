@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use xrf_editable_level::EditableLightObject;
 use xrf_error::{XrfError, XrfResult};
-use xrf_geometry::Hemisphere;
+use xrf_geometry::{Sky, SkyLight};
 use xrf_level::{BuildPrjDynamicLight, BuildPrjLightControl, BuildPrjName, LevelDynamicLight};
-use xrf_math::{Affine3d, Color, Matrix4x4, Vector2d, Vector3d};
+use xrf_math::{Color, Matrix4x4, Vector2d, Vector3d};
 
 use crate::level::build::level_build_sectors::LevelBuildSectors;
 
@@ -24,80 +24,34 @@ impl LevelBuildLights {
   pub(crate) const HEMI_CONTROL: &'static str = "$hemi";
   pub(crate) const SUN_CONTROL: &'static str = "$sun";
 
-  /// The energy the sky is spread over (`xrHemisphereBuild(quality, 2.f, ...)`).
-  const HEMI_ENERGY: f32 = 2.0;
-
-  /// The sun's spread, three degrees (`deg2rad(3.f)`).
-  const SUN_DISPERSION_DEGREES: f32 = 3.0;
-
-  /// The sky of `quality`: one light per hemisphere direction under `$hemi`, else a single light straight down.
+  /// The sky of `quality` under `$hemi`, [`Sky::get_hemisphere`].
   pub(crate) fn add_hemisphere(&mut self, quality: u8) {
     let controller: u32 = self.get_control(Self::HEMI_CONTROL);
 
-    if quality == 0 {
-      self.static_lights.push(Self::directional(
-        controller,
-        Color::new(1.0, 1.0, 1.0, 1.0),
-        Vector3d::new(0.0, -1.0, 0.0),
-      ));
-      return;
-    }
-
-    for light in Hemisphere::get_lights(quality, Self::HEMI_ENERGY) {
-      self.static_lights.push(Self::directional(
-        controller,
-        Color::new(light.energy, light.energy, light.energy, 1.0),
-        light.direction,
-      ));
+    for light in Sky::get_hemisphere(quality) {
+      self.static_lights.push(Self::get_sky_light(controller, &light));
     }
   }
 
-  /// The sun of `quality` along `direction` (pitch, then heading): a square of 1, 3, 4 or 7 static lights a side, meant
-  /// to spread over three degrees, under `$sun`, sharing its energy, and one dynamic light along it.
+  /// The sun of `quality` along `direction` (pitch, then heading) under `$sun`: its static lights,
+  /// [`Sky::get_sun`], and one dynamic light along it.
   ///
   /// # Errors
   ///
-  /// Returns an error for another quality, which the Build throws on.
+  /// Returns an error for a quality above 3, which the Build throws on.
   pub(crate) fn add_sun(&mut self, quality: u8, direction: &Vector2d) -> XrfResult {
-    let samples: u16 = match quality {
-      0 => 1,
-      1 => 3,
-      2 => 4,
-      3 => 7,
-      _ => {
-        return Err(XrfError::new_invalid_error(format!(
-          "Sun quality {quality} is not one the build knows"
-        )));
-      }
-    };
+    let lights: Vec<SkyLight> = Sky::get_sun(quality, direction.x, direction.y)?;
     let controller: u32 = self.get_control(Self::SUN_CONTROL);
-    let energy: f32 = 1.0 / f32::from(samples * samples);
-    let dispersion: f32 = Self::SUN_DISPERSION_DEGREES.to_radians();
-    let step: f32 = dispersion / f32::from(samples);
-    let (pitch_from, heading_from) = (direction.x - dispersion / 2.0, direction.y - dispersion / 2.0);
-    // The source's `float x = mn_x+x*da;` reads the variable it declares, so the shipped editor takes each sample from
-    // the one before, from zero, the heading carried across rows: the samples close on one direction rather than
-    // spreading over the square. `l01_test`'s `build.prj` holds exactly these.
-    let (mut pitch, mut heading): (f32, f32) = (0.0, 0.0);
 
-    for _ in 0..samples {
-      pitch = pitch_from + pitch * step;
-
-      for _ in 0..samples {
-        heading = heading_from + heading * step;
-        self.static_lights.push(Self::directional(
-          controller,
-          Color::new(energy, energy, energy, 1.0),
-          Self::get_direction(heading, pitch),
-        ));
-      }
+    for light in &lights {
+      self.static_lights.push(Self::get_sky_light(controller, light));
     }
 
     self.dynamic_lights.push(BuildPrjDynamicLight {
-      light: Self::directional(
+      light: LevelDynamicLight::new_directional(
         controller,
         Color::new(1.0, 1.0, 1.0, 1.0),
-        Self::get_direction(direction.y, direction.x),
+        Sky::get_direction(direction.y, direction.x),
       ),
       sector_slots: [0; BuildPrjDynamicLight::MAXIMUM_SECTORS],
       sector_count: 0,
@@ -156,7 +110,7 @@ impl LevelBuildLights {
       specular: Color::new(0.0, 0.0, 0.0, 0.0),
       ambient: Color::new(0.0, 0.0, 0.0, 0.0),
       position: light.object.transform.position,
-      direction: Self::get_direction(rotation.y, rotation.x),
+      direction: Sky::get_direction(rotation.y, rotation.x),
       range: light.range,
       falloff: 0.0,
       attenuation_0: light.attenuation[0],
@@ -242,28 +196,12 @@ impl LevelBuildLights {
     u32::try_from(index).unwrap_or(u32::MAX)
   }
 
-  /// A directional light of `diffuse` along `direction`, the rest of it zero.
-  fn directional(controller: u32, diffuse: Color, direction: Vector3d) -> LevelDynamicLight {
-    LevelDynamicLight {
+  /// A generated sky or sun light, of its energy in each channel.
+  fn get_sky_light(controller: u32, light: &SkyLight) -> LevelDynamicLight {
+    LevelDynamicLight::new_directional(
       controller,
-      kind: LevelDynamicLight::KIND_DIRECTIONAL,
-      diffuse,
-      specular: Color::new(0.0, 0.0, 0.0, 0.0),
-      ambient: Color::new(0.0, 0.0, 0.0, 0.0),
-      position: Vector3d::ZERO,
-      direction,
-      range: 0.0,
-      falloff: 0.0,
-      attenuation_0: 0.0,
-      attenuation_1: 0.0,
-      attenuation_2: 0.0,
-      theta: 0.0,
-      phi: 0.0,
-    }
-  }
-
-  /// `Fvector::setHP(heading, pitch)`: the direction a rotation of that heading and pitch looks along.
-  fn get_direction(heading: f32, pitch: f32) -> Vector3d {
-    Affine3d::from_heading_pitch_bank(heading, pitch, 0.0).z_axis
+      Color::new(light.energy, light.energy, light.energy, 1.0),
+      light.direction,
+    )
   }
 }

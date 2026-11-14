@@ -23,7 +23,7 @@ the object compile and the level compilers use it alike.
 | `ProgressivePoint`           | A vertex of a mesh made progressive: the position and coordinate a collapse is measured by        |
 | `ProgressiveWindow`          | One level of detail: its run of the index buffer and the vertices it reaches                      |
 | `FaceArea`                   | `CalcArea`, Heron's formula in single precision, and the `EPS` a face must reach                  |
-| `Hemisphere`                 | `xrHemisphereBuild`'s sky directions by quality, each a `HemisphereLight`                         |
+| `Sky`, `SkyLight`            | The editor's generated sky (`xrHemisphereBuild`) and sun by quality, each light a `SkyLight`      |
 
 ```rust
 use glam::Vec3;

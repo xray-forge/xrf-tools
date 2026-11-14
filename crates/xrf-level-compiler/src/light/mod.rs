@@ -6,6 +6,7 @@ pub(crate) mod light_hemisphere;
 pub(crate) mod light_models;
 pub(crate) mod light_point;
 pub(crate) mod light_point_variant;
+pub(crate) mod light_quality;
 pub(crate) mod light_sample_point;
 pub(crate) mod light_source;
 pub(crate) mod light_term;

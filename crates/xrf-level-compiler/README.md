@@ -179,6 +179,10 @@ On it the vertex light is built as xrLC builds it, each term stored as `base_col
   in the level, which gives its tree's scale and bias by a least-squares fit; samples are jittered from a seeded source
   where xrLC uses its random one.
 
+`LightQuality` sets what they light by: `Scene`, `build.prj`'s own lights, or `Draft`, the sky and sun the Level Editor
+builds at quality 1 (`xrf_geometry::Sky`) in place of the `$hemi` and `$sun` layers' directional lights, the lamps under
+them kept, and one sample a multi-use model. `build.lights` is written from the lights the step lit by.
+
 Loading fails where the SDK's compilers stop: a texture with no `.thm`, a compiler shader the library lacks, a face of a
 material with no compiler shader, or an alpha image that is missing or not the size its `.thm` gives.
 

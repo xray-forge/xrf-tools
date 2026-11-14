@@ -42,6 +42,27 @@ impl LevelDynamicLight {
   /// Bytes one record occupies: the controller, then `Flight`.
   pub const SERIALIZED_SIZE: u64 = 4 + 4 + (3 * Color::SERIALIZED_SIZE) + (2 * 12) + (7 * 4);
 
+  /// A directional light under `controller` of `diffuse` along `direction`, the rest of it zero, as the editor writes
+  /// its generated sky and sun.
+  pub fn new_directional(controller: u32, diffuse: Color, direction: Vector3d) -> Self {
+    Self {
+      controller,
+      kind: Self::KIND_DIRECTIONAL,
+      diffuse,
+      specular: Color::new(0.0, 0.0, 0.0, 0.0),
+      ambient: Color::new(0.0, 0.0, 0.0, 0.0),
+      position: Vector3d::ZERO,
+      direction,
+      range: 0.0,
+      falloff: 0.0,
+      attenuation_0: 0.0,
+      attenuation_1: 0.0,
+      attenuation_2: 0.0,
+      theta: 0.0,
+      phi: 0.0,
+    }
+  }
+
   /// The engine's name for the kind, or a labelled unknown for a value `Flight::Type` does not name.
   pub fn get_kind_label(&self) -> String {
     match self.kind {

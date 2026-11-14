@@ -4,7 +4,7 @@ use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_error::XrfResult;
 use xrf_level_compiler::{
   AiMapCovers, AiMapGuid, LevelCompileReport, LevelCompileRequest, LevelCompileStep, LevelCompileStepRun,
-  LevelCompiler, RayBackend,
+  LevelCompiler, LightQuality, RayBackend,
 };
 use xrf_output::OutputOptions;
 
@@ -115,6 +115,16 @@ impl GenericCommand for CompileCommand {
           .default_value(AiMapCovers::default().get_name())
           .value_parser(AiMapCovers::ALL.map(AiMapCovers::get_name).to_vec()),
       )
+      .arg(
+        Arg::new("quality")
+          .help(
+            "How finely our geometry step lights the level: scene, by build.prj's own sky and sun; draft, the sky and \
+             sun regenerated at quality 1 and each tree lit from one sample, the cheap estimate",
+          )
+          .long("quality")
+          .default_value(LightQuality::default().get_name())
+          .value_parser(LightQuality::ALL.map(LightQuality::get_name).to_vec()),
+      )
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
@@ -149,6 +159,10 @@ impl GenericCommand for CompileCommand {
       ai_covers: matches
         .get_one::<String>("ai-covers")
         .and_then(|covers| AiMapCovers::from_name(covers))
+        .unwrap_or_default(),
+      light_quality: matches
+        .get_one::<String>("quality")
+        .and_then(|quality| LightQuality::from_name(quality))
         .unwrap_or_default(),
       level,
     };

@@ -1,16 +1,16 @@
 use xrf_math::Vector3d;
 
-use crate::sky::hemisphere_light::HemisphereLight;
+use crate::sky::sky_light::SkyLight;
 
 /// The directions a level's sky is lit from, `xrHemisphereBuild` (`xrEngine/xrHemisphere.cpp`): a table of points on
 /// the upper hemisphere per quality, each turned around into the direction its light travels, and the energy shared
-/// evenly among them. The Level Editor builds a level's sky lights from it, and xrLC lights by them.
-pub struct Hemisphere;
+/// evenly among them, which [`crate::Sky`] builds a level's sky from.
+pub(crate) struct Hemisphere;
 
 impl Hemisphere {
   /// Each light of the table of `quality` (1 to 3: 26, 91 or 196 lights); none for another quality, which
   /// `xrHemisphereVertices` leaves to `NODEFAULT`.
-  pub fn get_lights(quality: u8, energy: f32) -> Vec<HemisphereLight> {
+  pub(crate) fn get_lights(quality: u8, energy: f32) -> Vec<SkyLight> {
     let table: &[[f32; 3]] = match quality {
       1 => &HEMI_1,
       2 => &HEMI_2,
@@ -26,7 +26,7 @@ impl Hemisphere {
         let (x, y, z) = (-x, -y, -z);
         let magnitude: f32 = (x * x + y * y + z * z).sqrt();
 
-        HemisphereLight {
+        SkyLight {
           direction: Vector3d::new(x / magnitude, y / magnitude, z / magnitude),
           energy: share * energy,
         }

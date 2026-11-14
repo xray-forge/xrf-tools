@@ -38,7 +38,7 @@ impl GeometryStep {
 
     job.check_cancelled()?;
 
-    let compiled: GeometryLevel = GeometryLevel::compile(&project, &library, &textures, &request.textures)?;
+    let compiled: GeometryLevel = GeometryLevel::compile(&project, &library, &textures, &request.textures, request.light_quality)?;
 
     job.check_cancelled()?;
 
