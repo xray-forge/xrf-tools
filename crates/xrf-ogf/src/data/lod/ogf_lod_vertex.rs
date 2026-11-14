@@ -12,30 +12,28 @@ pub struct OgfLodVertex {
   /// `D3DCOLOR`: the baked colour, and the hemisphere term in the alpha byte.
   pub rgb_hemi: u32,
   pub sun: u8,
+  /// The struct's padding after the sun byte, which aligns it to four. xrLC leaves whatever its memory held there; it
+  /// is kept so a rewrite gives back what was read.
+  pub padding: [u8; Self::PADDING],
 }
 
 impl OgfLodVertex {
   /// Bytes the struct takes on disk, its compiler's padding included: `FLOD::Load` reads the facets whole.
   pub const SIZE: usize = 28;
 
-  /// Padding after the sun byte, which aligns the struct to four.
-  const PADDING: usize = 3;
+  /// Padding bytes after the sun byte.
+  pub const PADDING: usize = 3;
 }
 
 impl ChunkReadWrite for OgfLodVertex {
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let vertex: Self = Self {
+    Ok(Self {
       position: reader.read_xr::<T, _>()?,
       texture_coordinate: reader.read_xr::<T, _>()?,
       rgb_hemi: reader.read_u32::<T>()?,
       sun: reader.read_u8()?,
-    };
-
-    for _ in 0..Self::PADDING {
-      reader.read_u8()?;
-    }
-
-    Ok(vertex)
+      padding: [reader.read_u8()?, reader.read_u8()?, reader.read_u8()?],
+    })
   }
 
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
@@ -44,8 +42,8 @@ impl ChunkReadWrite for OgfLodVertex {
     writer.write_u32::<T>(self.rgb_hemi)?;
     writer.write_u8(self.sun)?;
 
-    for _ in 0..Self::PADDING {
-      writer.write_u8(0)?;
+    for byte in self.padding {
+      writer.write_u8(byte)?;
     }
 
     Ok(())

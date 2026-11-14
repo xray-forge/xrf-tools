@@ -3,9 +3,9 @@ use serde::{Deserialize, Serialize};
 use crate::ai::ai_map_covers::AiMapCovers;
 
 /// One step of a level's compile from the files `level build` writes, in the order they run: the geometry (xrLC's
-/// part, lightmaps included), the details' light (xrDO_Light's, done by [`crate::DetailLighter`]) and the AI map
-/// (xrAI's `-f`, done by [`crate::AiMapCompiler`]). A step no compiler of ours does yet runs the SDK's own
-/// ([`Self::is_sdk`]).
+/// part, done by [`crate::GeometryLevel`] under draft light, or by the SDK's xrLC with its lightmaps where the request
+/// names the SDK, [`Self::is_sdk`]), the details' light (xrDO_Light's, done by [`crate::DetailLighter`]) and the AI map
+/// (xrAI's `-f`, done by [`crate::AiMapCompiler`]).
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -33,7 +33,7 @@ impl LevelCompileStep {
     Self::ALL.into_iter().find(|step| step.get_name() == name)
   }
 
-  /// Whether the SDK's own compiler runs the step, needing the SDK, rather than a compiler of ours.
+  /// Whether the SDK's own compiler can run the step, which it does where the request names the SDK.
   pub fn is_sdk(self) -> bool {
     self == Self::Geometry
   }

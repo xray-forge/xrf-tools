@@ -26,6 +26,7 @@ xrf-job = { workspace = true }
 xrf-level = { workspace = true }
 xrf-ltx = { workspace = true }
 xrf-math = { workspace = true, features = ["glam"] }
+xrf-ogf = { workspace = true }
 xrf-renderer-core = { workspace = true, optional = true }
 xrf-report = { workspace = true }
 xrf-shaders = { workspace = true }

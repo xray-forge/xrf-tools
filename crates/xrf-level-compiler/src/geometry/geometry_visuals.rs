@@ -1,15 +1,14 @@
+use rayon::prelude::*;
 use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{
-  LevelGeomPacker, LevelGeomRange, LevelHeaderChunk, LevelVertexDeclaration, LevelVertexLayout, LevelVertexQuantizer,
-  LevelVertexStored,
+  LevelGeomPacker, LevelGeomRange, LevelVertexDeclaration, LevelVertexLayout, LevelVertexQuantizer, LevelVertexStored,
 };
 use xrf_math::{Vector2d, Vector3d};
 
 use crate::compiler_texture::CompilerTexture;
 use crate::geometry::geometry_draft_light::GeometryDraftLight;
 use crate::geometry::geometry_packed_visual::GeometryPackedVisual;
-use crate::geometry::geometry_packed_visuals::GeometryPackedVisuals;
 use crate::geometry::geometry_visual::GeometryVisual;
 use crate::geometry::geometry_visual_vertex::GeometryVisualVertex;
 use crate::geometry::geometry_visuals_request::GeometryVisualsRequest;
@@ -21,8 +20,9 @@ use crate::geometry::geometry_visuals_request::GeometryVisualsRequest;
 /// vertex's place and normal, the corner's basis and base coordinate, and a lightmap coordinate: the base coordinate
 /// for an implicitly lit texture, the draft lightmap's for the rest ([`GeometryDraftLight`]). The faces are welded in
 /// order ([`GeometryVisual::add_face`]), the fast path taking an opaque texture's, and a visual whose compiler shader
-/// optimizes coordinates has them shifted ([`GeometryVisual::shift_texture_coordinates`]). Progressive meshes are left
-/// to a later stage; the faces keep the order they were taken in, where xrLC strips them.
+/// optimizes coordinates has them shifted ([`GeometryVisual::shift_texture_coordinates`]). Above draft quality each is
+/// then made progressive where it gains enough ([`GeometryVisual::make_progressive`]). Other faces keep the order they
+/// were taken in, where xrLC strips them.
 #[derive(Clone, Debug, PartialEq)]
 pub struct GeometryVisuals {
   pub visuals: Vec<GeometryVisual>,
@@ -133,17 +133,28 @@ impl GeometryVisuals {
       visuals.push(visual);
     }
 
+    // `Flex2OGF` makes each visual progressive, except at draft quality (`OGF::MakeProgressive`).
+    if !project.params.is_draft() {
+      visuals
+        .par_iter_mut()
+        .for_each(|visual| visual.make_progressive(GeometryVisual::STATIC_METRIC_LIMIT));
+    }
+
     Ok(Self { visuals })
   }
 
-  /// The visuals' vertices and indices packed into the level's buffers as `SaveTREE` packs them
-  /// (`xrLC/xrSaveOGF.cpp:84`): in the order of their base textures' names, a stable sort, each visual's fast path
-  /// before its own geometry; and their shader table, in visual order, each entry once.
+  /// The visuals' vertices and indices packed into the level's buffers, `geometry` for `level.geom` and `fast` for
+  /// `level.geomx`, as `SaveTREE` packs them (`xrLC/xrSaveOGF.cpp:84`): in the order of their base textures' names, a
+  /// stable sort, each visual's fast path before its own geometry. Where each one went, in visual order.
   ///
   /// # Errors
   ///
   /// Returns an error when a visual's vertices cannot be packed.
-  pub fn pack(&self, header: &LevelHeaderChunk) -> XrfResult<GeometryPackedVisuals> {
+  pub fn pack(
+    &self,
+    geometry: &mut LevelGeomPacker,
+    fast: &mut LevelGeomPacker,
+  ) -> XrfResult<Vec<GeometryPackedVisual>> {
     let mut order: Vec<usize> = (0..self.visuals.len()).collect();
 
     order.sort_by(|first, second| self.visuals[*first].textures[0].cmp(&self.visuals[*second].textures[0]));
@@ -151,8 +162,6 @@ impl GeometryVisuals {
     let lightmapped: LevelVertexLayout = LevelVertexLayout::of_declaration(&LevelVertexDeclaration::get_lightmapped())?;
     let vertex_lit: LevelVertexLayout = LevelVertexLayout::of_declaration(&LevelVertexDeclaration::get_vertex_lit())?;
     let fast_path: LevelVertexLayout = LevelVertexLayout::of_declaration(&LevelVertexDeclaration::get_fast_path())?;
-    let mut geometry: LevelGeomPacker = LevelGeomPacker::default();
-    let mut fast: LevelGeomPacker = LevelGeomPacker::default();
     let mut packed: Vec<Option<GeometryPackedVisual>> = vec![None; self.visuals.len()];
 
     for index in order {
@@ -194,34 +203,11 @@ impl GeometryVisuals {
         indices: geometry.add_indices(visual.faces.as_flattened()),
         fast_vertices,
         fast_indices,
+        slide_window: None,
       });
     }
 
-    let mut shaders: Vec<String> = Vec::new();
-    let mut shader_ids: Vec<u16> = Vec::with_capacity(self.visuals.len());
-
-    for visual in &self.visuals {
-      let id: usize = match shaders
-        .iter()
-        .position(|shader| shader.eq_ignore_ascii_case(&visual.shader))
-      {
-        Some(id) => id,
-        None => {
-          shaders.push(visual.shader.clone());
-          shaders.len() - 1
-        }
-      };
-
-      shader_ids.push(id as u16);
-    }
-
-    Ok(GeometryPackedVisuals {
-      visuals: packed.into_iter().flatten().collect(),
-      shader_ids,
-      shaders,
-      geometry: geometry.into_buffers(header.clone(), Vec::new()),
-      fast: fast.into_buffers(header.clone(), Vec::new()),
-    })
+    Ok(packed.into_iter().flatten().collect())
   }
 
   /// A texel of a texture of `width` by `height`, as a coordinate weld reaches.

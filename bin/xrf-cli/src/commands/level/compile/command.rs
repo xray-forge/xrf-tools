@@ -12,7 +12,7 @@ use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 use crate::core::terminal::CliJob;
 
 /// Compiles a level directory `level build` wrote, step by step: the details by our lighter, the AI map by our
-/// compiler, the geometry by the SDK's xrLC until ours replaces it.
+/// compiler, the geometry by ours under draft light or, given the SDK, by its xrLC.
 #[derive(Default)]
 pub(crate) struct CompileCommand;
 
@@ -25,7 +25,7 @@ impl GenericCommand for CompileCommand {
     command
       .about(
         "Compile a level directory level build wrote into what the game loads, step by step: geometry (the level, its \
-         geometry, collision and lightmaps; the SDK's xrLC), details (level.details lit from build.details, \
+         geometry, collision and lightmaps; ours under draft light, or the SDK's xrLC, lit, with --sdk), details (level.details lit from build.details, \
          build.cform and build.lights, as xrDO_Light lights it) and ai (level.ai compiled from build.aimap as xrAI -f \
          compiles it, its covers traced against build.cform, then checked as a graph). Every step's inputs and every \
          texture build.prj names are checked before any step runs. The SDK's xrLC runs in a working directory under an \
@@ -48,7 +48,10 @@ impl GenericCommand for CompileCommand {
       )
       .arg(
         Arg::new("sdk")
-          .help("The SDK's editors directory, whose bin holds xrLC; needed by the geometry step")
+          .help(
+            "The SDK's editors directory, whose bin holds xrLC; given, the geometry step runs it and the level is lit, \
+             else our compiler runs it under draft light",
+          )
           .long("sdk")
           .value_parser(value_parser!(PathBuf)),
       )
@@ -187,6 +190,10 @@ impl CompileCommand {
         LevelCompileStepRun::Program { program, log } => format!(
           "{program}{}",
           log.as_ref().map(|log| format!(", log {log}")).unwrap_or_default()
+        ),
+        LevelCompileStepRun::GeometryCompiler { census } => format!(
+          "{} static visuals of {} triangles, {} trees, {} visuals progressive, {} sectors, under draft light",
+          census.visuals, census.triangles, census.trees, census.progressive, census.sectors
         ),
         LevelCompileStepRun::DetailLighter { slots, gpu } => format!(
           "{} slots lit, {} touching no face, {} emptied, {} unplanted, traced on {}",

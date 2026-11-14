@@ -104,7 +104,7 @@ impl TangentBasis {
   ///
   /// Returns an error when the split outgrows 32-bit indices.
   pub fn mend(mesh: Mesh<u32>) -> XrfResult<Mesh<u32>> {
-    let mut mesh: Mesh<u32> = Self::mend_directions(mesh).order_by_first_use()?;
+    let mut mesh: Mesh<u32> = Self::order_by_first_use(Self::mend_in_place(mesh))?;
 
     Self::shift_texture_coordinates(&mut mesh.vertices);
 
@@ -395,15 +395,19 @@ impl TangentBasis {
   }
 
   /// `t_remove_isolated_verts`: the vertices the faces use, in the order the faces first reach them.
-  fn order_by_first_use(self) -> XrfResult<Mesh<u32>> {
-    let mut renumbered: Vec<Option<u32>> = vec![None; self.vertices.len()];
-    let mut ordered: Vec<MeshVertex> = Vec::with_capacity(self.vertices.len());
-    let mut faces: Vec<[u32; 3]> = Vec::with_capacity(self.triangles.len());
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the mesh outgrows 32-bit indices.
+  pub fn order_by_first_use(mesh: Mesh<u32>) -> XrfResult<Mesh<u32>> {
+    let mut renumbered: Vec<Option<u32>> = vec![None; mesh.vertices.len()];
+    let mut ordered: Vec<MeshVertex> = Vec::with_capacity(mesh.vertices.len());
+    let mut faces: Vec<[u32; 3]> = Vec::with_capacity(mesh.faces.len());
 
-    for triangle in &self.triangles {
+    for triangle in &mesh.faces {
       let mut face: [u32; 3] = [0; 3];
 
-      for (slot, index) in face.iter_mut().zip(triangle.indices) {
+      for (slot, index) in face.iter_mut().zip(triangle.map(|index| index as usize)) {
         *slot = match renumbered[index] {
           Some(number) => number,
           None => {
@@ -411,7 +415,7 @@ impl TangentBasis {
               .map_err(|_| XrfError::new_invalid_error("A split outgrows 32-bit indices once its tangents split it"))?;
 
             renumbered[index] = Some(number);
-            ordered.push(self.vertices[index].clone());
+            ordered.push(mesh.vertices[index].clone());
 
             number
           }

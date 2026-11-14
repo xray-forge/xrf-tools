@@ -27,6 +27,14 @@ pub struct BuildPrjParams {
 impl BuildPrjParams {
   /// Bytes the settings occupy.
   pub const SERIALIZED_SIZE: u64 = 3 * 4 + 3 * 4 + 2 * 2 + 6 * 4;
+
+  /// `ebqDraft`, the quality at which xrLC skips what only a finished level needs.
+  pub const QUALITY_DRAFT: u16 = 0;
+
+  /// Whether the level is built at draft quality.
+  pub fn is_draft(&self) -> bool {
+    self.quality == Self::QUALITY_DRAFT
+  }
 }
 
 impl ChunkReadWrite for BuildPrjParams {

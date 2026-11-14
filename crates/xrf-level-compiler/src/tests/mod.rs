@@ -9,6 +9,8 @@ mod geometry;
 #[cfg(feature = "gpu")]
 mod gpu;
 mod program;
+mod progressive;
+mod sectors;
 mod shadow;
 mod spawn;
 mod spawn_graph;

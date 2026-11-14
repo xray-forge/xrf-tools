@@ -1,5 +1,6 @@
 pub(crate) mod dynamic_lights;
 pub(crate) mod glows;
+pub(crate) mod level_bundle;
 pub(crate) mod level_file;
 pub(crate) mod level_header_chunk;
 pub(crate) mod portals;

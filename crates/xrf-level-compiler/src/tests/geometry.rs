@@ -89,7 +89,7 @@ pub(super) fn project(vertices: &[[f32; 3]], faces: &[([u32; 3], u32)]) -> XrfRe
 
 /// The compiler shader library the project's two compiler shaders resolve in: `default` collides, casts a shadow and
 /// is drawn, `ghost` is only drawn.
-fn library() -> ShaderCompilerFile {
+pub(super) fn library() -> ShaderCompilerFile {
   let shader = |name: &str, flags: u32| ShaderCompilerShader {
     name: String::from(name),
     name_trailing: vec![0; ShaderCompilerShader::NAME_SIZE - name.len()],

@@ -43,6 +43,14 @@ impl LevelVertexQuantizer {
       .clamp(f32::from(i16::MIN), f32::from(i16::MAX)) as i16
   }
 
+  /// A tree's coordinate short, `QC` (`xrMU_Model_export_geometry.cpp:8`): scaled by
+  /// [`LevelVertexLayout::TREE_QUANT`] and rounded down, a base coordinate and the wind fraction alike.
+  pub fn get_tree_coordinate(value: f32) -> i16 {
+    (value * LevelVertexLayout::TREE_QUANT)
+      .floor()
+      .clamp(f32::from(i16::MIN), f32::from(i16::MAX)) as i16
+  }
+
   /// A light term's byte, `u8_clr`: `floor(value * 255)` in `[0, 255]`.
   pub fn get_light_term(value: f32) -> u8 {
     (value * 255.0).floor().clamp(0.0, 255.0) as u8

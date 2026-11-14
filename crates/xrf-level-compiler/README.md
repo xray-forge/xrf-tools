@@ -5,12 +5,15 @@ game loads: the geometry with its lightmaps and collision, the details' light an
 
 | Step       | Reads                                                              | Runs today                              |
 | ---------- | ------------------------------------------------------------------ | --------------------------------------- |
-| `geometry` | `build.prj`                                                        | the SDK's xrLC                          |
+| `geometry` | `build.prj`, `shaders_xrlc.xr`, the textures                       | this crate's (`GeometryStep`), or xrLC  |
 | `details`  | `build.prj`, `build.details`, `build.cform`, `build.lights`        | this crate's lighter (`DetailLighter`)  |
 | `ai`       | `build.aimap`; with full covers also `build.prj` and `build.cform` | this crate's compiler (`AiMapCompiler`) |
 
+The geometry step is this crate's own (`GeometryLevel::compile`, xrLC's geometry phases under draft light, progressive
+meshes above draft quality) unless the request names the SDK, whose xrLC then compiles and lights it.
+
 `LevelCompiler::compile` takes a `LevelCompileRequest`: the level's directory, the steps (every one when none), the
-SDK's `editors` directory for the step the SDK runs (`LevelCompileStep::is_sdk`, the geometry), the game data whose
+SDK's `editors` directory, which runs the geometry by xrLC (`LevelCompileStep::is_sdk`), the game data whose
 `gamemtl.xr` and `shaders_xrlc.xr` the compilers read, the textures roots (xrLC takes exactly one), a working directory
 for xrLC, whether `level.details` and `level.ai` may be overwritten, the rays' backend (`RayBackend`) and DXC's library
 for it, and the AI map's covers. It checks every step's inputs and program first, and a `.thm` under the textures roots
@@ -18,7 +21,7 @@ for every texture `build.prj` names where a step reads them, so a missing file s
 the steps in order: xrLC in the working directory, under an `fsgame.ltx` it writes there, reporting its last log line
 to an `xrf-job` `JobHandle` and killing it when the job is cancelled; the details (`DetailStep`) and the AI map
 (`AiStep`) in process, each writing its output staged. Each step's report says what ran it (`LevelCompileStepRun`): an
-SDK program and its log, the lighter with the slots it met and the GPU that traced, or the AI map compiler with its
+SDK program and its log, the geometry compiler with its census, the lighter with the slots it met and the GPU that traced, or the AI map compiler with its
 covers, GPU, identity and graph check. `xrf-cli level compile` and the app's level compiler call it.
 
 Each SDK compiler ends a run on a "Congratulation!" message box and waits on it, even once answered; xrLC runs with

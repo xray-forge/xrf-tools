@@ -50,6 +50,7 @@ fn lod(place: &LevelBuildAtlasPlace, bounds: &Aabb, placement: &Matrix4x4) -> Og
             texture_coordinate: Vector2d::new(u, v),
             rgb_hemi: 0,
             sun: 0,
+            padding: [0; OgfLodVertex::PADDING],
           }
         }),
       }

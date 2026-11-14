@@ -55,7 +55,7 @@ impl GeometryPlacement {
   }
 
   /// `Fmatrix::transform_tiny`: a row vector by the matrix, summed left to right, the translation last.
-  fn transform(matrix: &Matrix4x4, point: &Vector3d) -> Vector3d {
+  pub(crate) fn transform(matrix: &Matrix4x4, point: &Vector3d) -> Vector3d {
     let m: &[f32; Matrix4x4::ELEMENTS] = &matrix.values;
 
     Vector3d::new(

@@ -88,6 +88,7 @@ mod tests {
       rgb_hemi: 0x4d00_0000,
       sun: 16,
       texture_coordinate: Vector2d::new(x, y),
+      padding: [0; OgfLodVertex::PADDING],
     };
 
     OgfLodFacet {

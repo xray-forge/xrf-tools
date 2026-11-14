@@ -19,6 +19,9 @@ the object compile and the level compilers use it alike.
 | `SplitPartition`             | A split cut into children 16-bit indices reach                                                    |
 | `VertexCacheOrder`           | A child's faces ordered for the vertex cache (Forsyth), its vertices by first use                 |
 | `PointWelder`                | Points welded within `EPS_L`, as the editor's `VCPacked::add_vert`                                |
+| `ProgressiveMesh`            | A mesh made progressive by sliding windows, as ETools' `VIPM_Convert` (Forsyth's VIPM, a quadric) |
+| `ProgressivePoint`           | A vertex of a mesh made progressive: the position and coordinate a collapse is measured by        |
+| `ProgressiveWindow`          | One level of detail: its run of the index buffer and the vertices it reaches                      |
 | `FaceArea`                   | `CalcArea`, Heron's formula in single precision, and the `EPS` a face must reach                  |
 | `Hemisphere`                 | `xrHemisphereBuild`'s sky directions by quality, each a `HemisphereLight`                         |
 

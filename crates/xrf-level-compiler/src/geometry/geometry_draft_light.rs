@@ -22,4 +22,16 @@ impl GeometryDraftLight {
 
   /// Where every lightmapped vertex samples it, its middle.
   pub const LIGHTMAP_COORDINATE: Vector2d = Vector2d::new(0.5, 0.5);
+
+  /// A tree's hemisphere term, as shipped trees carry it in effect.
+  pub const TREE_HEMISPHERE: f32 = 0.67;
+
+  /// A tree's sun term, likewise.
+  pub const TREE_SUN: f32 = 0.38;
+
+  /// A tree placement's scale, `c_scale`: red, green, blue, hemisphere and sun, none of a vertex's own light kept.
+  pub const TREE_SCALE: [f32; 5] = [0.0; 5];
+
+  /// A tree placement's bias, `c_bias`: no static light, and the tree's hemisphere and sun.
+  pub const TREE_BIAS: [f32; 5] = [0.0, 0.0, 0.0, Self::TREE_HEMISPHERE, Self::TREE_SUN];
 }

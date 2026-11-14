@@ -1,3 +1,4 @@
+use xrf_geometry::{ProgressiveMesh, ProgressivePoint, ProgressiveWindow};
 use xrf_math::{EPS_L, Vector2d, Vector3d};
 
 use crate::geometry::geometry_visual_vertex::GeometryVisualVertex;
@@ -20,9 +21,22 @@ pub struct GeometryVisual {
   /// The fast path's positions and faces (`fast_path_data`), empty for a surface with alpha.
   pub fast_vertices: Vec<Vector3d>,
   pub fast_faces: Vec<[u16; 3]>,
+  /// A progressive visual's windows over its faces, and over its fast path's where it has one; none for a static one.
+  pub windows: Option<Vec<ProgressiveWindow>>,
+  pub fast_windows: Option<Vec<ProgressiveWindow>>,
 }
 
 impl GeometryVisual {
+  /// Fewer faces than this are not worth making progressive (`c_PM_FaceLimit`).
+  pub const PROGRESSIVE_FACE_LIMIT: usize = 128;
+
+  /// The share of a static visual's vertices its windows must step through for it to be made progressive
+  /// (`c_PM_MetricLimit_static`).
+  pub const STATIC_METRIC_LIMIT: f32 = 0.10;
+
+  /// The same for a multi-use model's visual (`c_PM_MetricLimit_mu`).
+  pub const MODEL_METRIC_LIMIT: f32 = 0.05;
+
   /// A visual of no geometry yet.
   pub(crate) fn new(material: u16, sector: u16, textures: Vec<String>, shader: String, is_vertex_lit: bool) -> Self {
     Self {
@@ -35,7 +49,84 @@ impl GeometryVisual {
       faces: Vec::new(),
       fast_vertices: Vec::new(),
       fast_faces: Vec::new(),
+      windows: None,
+      fast_windows: None,
     }
+  }
+
+  /// `OGF::MakeProgressive`: a visual of [`Self::PROGRESSIVE_FACE_LIMIT`] faces or more made progressive
+  /// ([`ProgressiveMesh`]) over its positions and base coordinates, kept so where its windows step through at least
+  /// `metric_limit` of its vertices, counted as xrLC counts them, the collapses and the whole mesh's window. Its fast
+  /// path is then made progressive over positions alone, with no such limit; where that fails, the visual stays as it
+  /// was.
+  pub(crate) fn make_progressive(&mut self, metric_limit: f32) {
+    if self.faces.len() < Self::PROGRESSIVE_FACE_LIMIT {
+      return;
+    }
+
+    let points: Vec<ProgressivePoint> = self
+      .vertices
+      .iter()
+      .map(|vertex| ProgressivePoint {
+        position: vertex.position,
+        coordinate: vertex.texture_coordinate,
+      })
+      .collect();
+    let Some(mesh) = ProgressiveMesh::build(&points, &self.faces) else {
+      return;
+    };
+
+    if (mesh.windows.len() as f32 / self.vertices.len() as f32) < metric_limit {
+      return;
+    }
+
+    let fast: Option<ProgressiveMesh> = if self.fast_vertices.is_empty() || self.fast_faces.is_empty() {
+      None
+    } else {
+      let points: Vec<ProgressivePoint> = self
+        .fast_vertices
+        .iter()
+        .map(|position| ProgressivePoint {
+          position: *position,
+          coordinate: Vector2d::new(0.0, 0.0),
+        })
+        .collect();
+
+      match ProgressiveMesh::build(&points, &self.fast_faces) {
+        Some(fast) => Some(fast),
+        None => return,
+      }
+    };
+
+    self.vertices = Self::permute(std::mem::take(&mut self.vertices), &mesh.permutation);
+    self.faces = mesh.faces;
+    self.windows = Some(mesh.windows);
+
+    if let Some(fast) = fast {
+      self.fast_vertices = Self::permute(std::mem::take(&mut self.fast_vertices), &fast.permutation);
+      self.fast_faces = fast.faces;
+      self.fast_windows = Some(fast.windows);
+    }
+  }
+
+  /// Its triangles at full detail: a progressive visual's index buffer holds every level's run.
+  pub fn get_triangle_count(&self) -> usize {
+    self
+      .windows
+      .as_ref()
+      .and_then(|windows| windows.first())
+      .map_or(self.faces.len(), |window| usize::from(window.triangles))
+  }
+
+  /// `vertices` each moved to the place `permutation` gives it.
+  fn permute<V: Copy>(vertices: Vec<V>, permutation: &[u16]) -> Vec<V> {
+    let mut placed: Vec<Option<V>> = vec![None; vertices.len()];
+
+    for (vertex, place) in vertices.into_iter().zip(permutation) {
+      placed[usize::from(*place)] = Some(vertex);
+    }
+
+    placed.into_iter().flatten().collect()
   }
 
   /// `OGF::_BuildFace`: each corner welded to the first vertex similar to it ([`Self::is_similar`]) or added; a face

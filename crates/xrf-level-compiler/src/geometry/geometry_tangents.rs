@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use xrf_geometry::{Mesh, MeshVertex, TangentBasis};
-use xrf_level::LevelVertexQuantizer;
 use xrf_math::Vector3d;
 
 use crate::geometry::geometry_base_coordinates::GeometryBaseCoordinates;
@@ -15,7 +14,7 @@ use crate::geometry::geometry_normals::GeometryNormals;
 /// Every face in order gives the mender a vertex per corner: its split vertex's place and normal with the corner's base
 /// coordinate, one vertex per split vertex and coordinate (`fill_mender_input`). The mender runs with the arguments
 /// both exports give it ([`TangentBasis::mend_in_place`]), and each corner takes its vertex's directions back
-/// (`set_face`), normalized safely and quantized to a byte a component (`base_basis::set`).
+/// (`set_face`), normalized safely and quantized to a byte a component ([`GeometryBasis::of`]).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GeometryTangents {
   /// Each face of the mesh, in its order, its three corners' bases.
@@ -65,28 +64,10 @@ impl GeometryTangents {
           face.map(|vertex| {
             let vertex: &MeshVertex = &mended.vertices[vertex as usize];
 
-            GeometryBasis {
-              tangent: Self::quantize(&vertex.tangent),
-              binormal: Self::quantize(&vertex.binormal),
-            }
+            GeometryBasis::of(&vertex.tangent, &vertex.binormal)
           })
         })
         .collect(),
     }
-  }
-
-  /// `base_basis::set`: the direction normalized where it has a length, then a byte a component as `u8_vec4` takes it.
-  fn quantize(direction: &Vector3d) -> [u8; 3] {
-    let length_squared: f32 = direction.x * direction.x + direction.y * direction.y + direction.z * direction.z;
-    let normalized: Vector3d = if length_squared > f32::MIN_POSITIVE {
-      let scale: f32 = (1.0 / length_squared).sqrt();
-
-      Vector3d::new(direction.x * scale, direction.y * scale, direction.z * scale)
-    } else {
-      *direction
-    };
-    let [z, y, x, _] = LevelVertexQuantizer::get_direction(&normalized, 0);
-
-    [x, y, z]
   }
 }

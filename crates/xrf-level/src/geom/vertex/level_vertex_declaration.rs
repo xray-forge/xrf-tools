@@ -59,6 +59,28 @@ impl LevelVertexDeclaration {
     )]
   }
 
+  /// A tree's (`xrMU_Model_export_geometry.cpp:14`), 32 bytes: position, normal, tangent, binormal, and the base
+  /// coordinate with its wind terms.
+  pub fn get_tree() -> Vec<LevelGeomVertexElement> {
+    vec![
+      Self::element(0, LevelVertexLayout::KIND_FLOAT3, LevelVertexLayout::USAGE_POSITION, 0),
+      Self::element(12, LevelVertexLayout::KIND_D3DCOLOR, LevelVertexLayout::USAGE_NORMAL, 0),
+      Self::element(
+        16,
+        LevelVertexLayout::KIND_D3DCOLOR,
+        LevelVertexLayout::USAGE_TANGENT,
+        0,
+      ),
+      Self::element(
+        20,
+        LevelVertexLayout::KIND_D3DCOLOR,
+        LevelVertexLayout::USAGE_BINORMAL,
+        0,
+      ),
+      Self::element(24, LevelVertexLayout::KIND_SHORT4, LevelVertexLayout::USAGE_TEXCOORD, 0),
+    ]
+  }
+
   /// An element of stream 0 read by `D3DDECLMETHOD_DEFAULT`.
   const fn element(offset: u16, kind: u8, usage: u8, usage_index: u8) -> LevelGeomVertexElement {
     LevelGeomVertexElement {

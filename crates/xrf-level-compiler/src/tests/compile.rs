@@ -107,7 +107,7 @@ fn refuses_an_sdk_without_the_steps_program() -> XrfResult {
 }
 
 #[test]
-fn refuses_a_step_the_sdk_runs_without_the_sdk() -> XrfResult {
+fn runs_our_geometry_compiler_without_the_sdk_reading_the_compiler_shader_library() -> XrfResult {
   let level: PathBuf = level("sdk_unnamed", &["build.prj"])?;
   let error: String = LevelCompiler::compile(
     &LevelCompileRequest {
@@ -119,7 +119,11 @@ fn refuses_a_step_the_sdk_runs_without_the_sdk() -> XrfResult {
   .unwrap_err()
   .to_string();
 
-  assert!(error.contains("geometry step runs the SDK's compiler"), "{error}");
+  // Our compiler reads the library the SDK's xrLC would have; without it the compile stops before anything runs.
+  assert!(
+    error.contains("geometry step needs") && error.contains("shaders_xrlc.xr"),
+    "{error}"
+  );
 
   Ok(())
 }

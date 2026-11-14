@@ -1,6 +1,7 @@
 #![doc = include_str!("../README.md")]
 
 pub(crate) mod mesh;
+pub(crate) mod progressive;
 pub(crate) mod ray;
 pub(crate) mod sky;
 pub(crate) mod tracer;
@@ -15,6 +16,9 @@ pub use crate::mesh::tangent_basis::TangentBasis;
 pub use crate::mesh::vertex_cache_order::VertexCacheOrder;
 pub use crate::mesh::vertex_packer::VertexPacker;
 pub use crate::mesh::vertex_packing::VertexPacking;
+pub use crate::progressive::progressive_mesh::ProgressiveMesh;
+pub use crate::progressive::progressive_point::ProgressivePoint;
+pub use crate::progressive::progressive_window::ProgressiveWindow;
 pub use crate::ray::facing::Facing;
 pub use crate::ray::ray::Ray;
 pub use crate::ray::ray_crossing::RayCrossing;

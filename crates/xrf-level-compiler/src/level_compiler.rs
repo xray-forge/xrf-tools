@@ -11,6 +11,7 @@ use xrf_utils::format_path;
 use crate::ai::ai_step::AiStep;
 use crate::compiler_textures::CompilerTextures;
 use crate::detail::detail_step::DetailStep;
+use crate::geometry::geometry_step::GeometryStep;
 use crate::level_compile_report::{LevelCompileReport, LevelCompileStepReport};
 use crate::level_compile_request::LevelCompileRequest;
 use crate::level_compile_step::LevelCompileStep;
@@ -22,8 +23,8 @@ use crate::sdk::level_sdk_workspace::LevelSdkWorkspace;
 /// Compiles a level from the files `level build` wrote, step by step ([`LevelCompileStep`]): each step's inputs and
 /// program are checked before any runs, so a missing file stops the compile at once rather than an hour in, then each
 /// runs in order, reported to a job: the details by [`crate::DetailLighter`] and the AI map by
-/// [`crate::AiMapCompiler`] here, cancelled with the job; the geometry by the SDK's xrLC in a workspace of its own,
-/// killed when the job is cancelled.
+/// [`crate::AiMapCompiler`] here, cancelled with the job; the geometry by [`crate::GeometryLevel`] here under draft
+/// light, or where the request names the SDK by its xrLC in a workspace of its own, killed when the job is cancelled.
 pub struct LevelCompiler;
 
 impl LevelCompiler {
@@ -113,9 +114,7 @@ impl LevelCompiler {
     match step {
       LevelCompileStep::Details => DetailStep::run(request, job),
       LevelCompileStep::Ai => AiStep::run(request, job),
-      LevelCompileStep::Geometry => Err(XrfError::new_unexpected_error(
-        "The geometry step has no compiler of ours; the SDK's xrLC runs it",
-      )),
+      LevelCompileStep::Geometry => GeometryStep::run(request, job),
     }
   }
 
@@ -143,15 +142,12 @@ impl LevelCompiler {
     Ok((levels, name))
   }
 
-  /// The SDK's program running `step`, none for a step of ours.
+  /// The SDK's program running `step`, none for a step of ours: the geometry runs the SDK's xrLC where the request
+  /// names the SDK, which lights the level, and our compiler under draft light where it does not.
   fn get_program(request: &LevelCompileRequest, step: LevelCompileStep) -> XrfResult<Option<LevelSdkProgram>> {
     match &request.sdk {
-      _ if !step.is_sdk() => Ok(None),
-      Some(sdk) => LevelSdkProgram::of(sdk, step),
-      None => Err(XrfError::new_invalid_error(format!(
-        "The {} step runs the SDK's compiler; name the SDK's editors directory",
-        step.get_name()
-      ))),
+      Some(sdk) if step.is_sdk() => LevelSdkProgram::of(sdk, step),
+      _ => Ok(None),
     }
   }
 
@@ -190,7 +186,10 @@ impl LevelCompiler {
       }
     }
 
-    if let Some(step) = steps.iter().find(|step| step.is_tracing(request.ai_covers)) {
+    // Our geometry compiler, and every step tracing the ray model, read the compiler shader library.
+    if let Some(step) = steps.iter().find(|step| {
+      step.is_tracing(request.ai_covers) || (**step == LevelCompileStep::Geometry && request.sdk.is_none())
+    }) {
       Self::check_library(request, *step)?;
     }
 
