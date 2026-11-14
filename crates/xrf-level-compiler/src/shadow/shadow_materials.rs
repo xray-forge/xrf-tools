@@ -5,12 +5,11 @@ use xrf_chunk::XRayByteOrder;
 use xrf_dds::{DdsFile, GrayImage};
 use xrf_error::{XrfError, XrfResult};
 use xrf_geometry::TraceHit;
-use xrf_level::BuildPrjFile;
 use xrf_math::Vector2d;
-use xrf_shaders::ShaderCompilerShader;
 use xrf_thm::{ThmFile, ThmTextureParamChunk};
 use xrf_utils::format_path;
 
+use crate::compiler_shaders::CompilerShaders;
 use crate::compiler_textures::CompilerTextures;
 use crate::shadow::shadow_class::ShadowClass;
 use crate::shadow::shadow_class_counts::ShadowClassCounts;
@@ -70,9 +69,6 @@ struct ShadowImageSource {
 impl ShadowMaterials {
   /// The folder whose textures' images the compilers never load (`global_calculation_data.cpp:168`).
   const LOD_FOLDER: &'static str = "lod\\";
-
-  /// What `build.prj` leaves in a material with no compiler shader.
-  const NO_COMPILER_SHADER: u16 = u16::MAX;
 
   /// A face's part as [`Self::get_face_codes`] numbers it.
   #[cfg(feature = "gpu")]
@@ -276,62 +272,37 @@ impl ShadowMaterials {
   }
 
   /// Each `build.prj` material's part in a light ray, `None` for one with no compiler shader: its compiler shader's
-  /// shadow flag by its name in the library (`post_process_materials`, `Shader_xrLC.h:130`), then its texture's alpha.
+  /// shadow flag ([`CompilerShaders`]), then its texture's alpha.
   fn classify_materials(
     request: &ShadowMaterialsRequest<'_>,
     alpha_sizes: &[Option<[u32; 2]>],
   ) -> XrfResult<Vec<Option<ShadowMaterial>>> {
-    let project: &BuildPrjFile = request.project;
-    let casts_shadow: Vec<Option<bool>> = project
-      .compiler_shaders
-      .iter()
-      .map(|shader| {
-        request
-          .library
-          .find_shader(&shader.name.value)
-          .map(ShaderCompilerShader::casts_shadow)
-      })
-      .collect();
-    let mut missing: Vec<&str> = Vec::new();
-    let mut materials: Vec<Option<ShadowMaterial>> = Vec::with_capacity(project.materials.len());
+    let shaders: CompilerShaders = CompilerShaders::resolve(request.project, request.library)?;
+    let mut materials: Vec<Option<ShadowMaterial>> = Vec::with_capacity(request.project.materials.len());
 
-    for (index, material) in project.materials.iter().enumerate() {
-      if material.compiler_shader == Self::NO_COMPILER_SHADER {
+    for (index, material) in request.project.materials.iter().enumerate() {
+      let Some(shader) = shaders.get(index as u16) else {
         materials.push(None);
         continue;
-      }
-
-      let shader: usize = usize::from(material.compiler_shader);
+      };
       let texture: usize = usize::from(material.texture);
-      let (Some(casts_shadow), Some(alpha_size)) = (casts_shadow.get(shader), alpha_sizes.get(texture)) else {
+      let Some(alpha_size) = alpha_sizes.get(texture) else {
         return Err(XrfError::new_invalid_error(format!(
-          "build.prj material {index} names compiler shader {shader} and texture {texture}, which it does not hold"
+          "build.prj material {index} names texture {texture}, which it does not hold"
         )));
       };
 
-      materials.push(match casts_shadow {
-        None => {
-          missing.push(&project.compiler_shaders[shader].name.value);
-          None
-        }
-        Some(false) => Some(ShadowMaterial::Passes),
-        Some(true) => Some(match *alpha_size {
+      materials.push(Some(if !shader.casts_shadow() {
+        ShadowMaterial::Passes
+      } else {
+        match *alpha_size {
           Some(size) => ShadowMaterial::Alpha(ShadowImageSource { texture, size }),
           None => ShadowMaterial::Opaque,
-        }),
-      });
+        }
+      }));
     }
 
-    missing.sort_unstable();
-    missing.dedup();
-
-    match missing.as_slice() {
-      [] => Ok(materials),
-      names => Err(XrfError::new_not_found_error(format!(
-        "build.prj names compiler shaders the library lacks: {}",
-        names.join(", ")
-      ))),
-    }
+    Ok(materials)
   }
 
   /// An alpha texture's image, its alpha decoded as the compilers' image library decodes it.

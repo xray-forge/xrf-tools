@@ -1,10 +1,13 @@
 use xrf_error::XrfResult;
 use xrf_level::{
-  BuildPrjFace, BuildPrjFile, BuildPrjMaterial, BuildPrjName, BuildPrjParams, BuildPrjShader, BuildPrjTexture,
+  BuildPrjFace, BuildPrjFile, BuildPrjMaterial, BuildPrjMuModel, BuildPrjMuReference, BuildPrjName, BuildPrjParams,
+  BuildPrjShader, BuildPrjTexture, LevelCformFace, LevelCformGeometry,
 };
-use xrf_math::{Vector2d, Vector3d};
+use xrf_math::{Aabb, Matrix4x4, Vector2d, Vector3d};
+use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 
-use crate::{GeometryFace, GeometryMesh, GeometryNormals, GeometryOptimization};
+use crate::geometry::geometry_collector::GeometryCollector;
+use crate::{CompilerShaders, GeometryCollision, GeometryFace, GeometryMesh, GeometryNormals, GeometryOptimization};
 
 /// The edge flags of a front face with every edge soft.
 const SOFT: u32 = 0;
@@ -50,14 +53,19 @@ fn project(vertices: &[[f32; 3]], faces: &[([u32; 3], u32)]) -> XrfResult<BuildP
       })
       .collect(),
     smoothing_groups: Some(faces.iter().map(|(_, flags)| *flags).collect()),
-    // The second material has no compiler shader, as a glow's.
-    materials: vec![material(0), material(u16::MAX)],
+    // The second material has no compiler shader, as a glow's; the third is drawn and does not collide.
+    materials: vec![material(0), material(u16::MAX), material(1)],
     render_shaders: vec![BuildPrjShader {
       name: BuildPrjName::new("default", BuildPrjName::LONG_SIZE)?,
     }],
-    compiler_shaders: vec![BuildPrjShader {
-      name: BuildPrjName::new("default", BuildPrjName::LONG_SIZE)?,
-    }],
+    compiler_shaders: vec![
+      BuildPrjShader {
+        name: BuildPrjName::new("default", BuildPrjName::LONG_SIZE)?,
+      },
+      BuildPrjShader {
+        name: BuildPrjName::new("ghost", BuildPrjName::LONG_SIZE)?,
+      },
+    ],
     textures: vec![BuildPrjTexture {
       name: BuildPrjName::new("ground", BuildPrjName::LONG_SIZE)?,
       width: 0,
@@ -74,6 +82,29 @@ fn project(vertices: &[[f32; 3]], faces: &[([u32; 3], u32)]) -> XrfResult<BuildP
     mu_models: Vec::new(),
     mu_references: Vec::new(),
   })
+}
+
+/// The compiler shader library the project's two compiler shaders resolve in: `default` collides and is drawn,
+/// `ghost` is only drawn.
+fn library() -> ShaderCompilerFile {
+  let shader = |name: &str, flags: u32| ShaderCompilerShader {
+    name: String::from(name),
+    name_trailing: vec![0; ShaderCompilerShader::NAME_SIZE - name.len()],
+    flags,
+    vertex_translucency: 0.5,
+    vertex_ambient: 0.0,
+    lightmap_density: 1.0,
+  };
+
+  ShaderCompilerFile {
+    shaders: vec![
+      shader(
+        "default",
+        ShaderCompilerShader::COLLISION | ShaderCompilerShader::RENDERING,
+      ),
+      shader("ghost", ShaderCompilerShader::RENDERING),
+    ],
+  }
 }
 
 /// A unit square on the floor, `0 1 2 3` round its edge, as two faces over the diagonal `0 2` with the flags given.
@@ -262,6 +293,138 @@ fn shares_a_vertex_across_a_soft_edge_and_splits_it_across_a_hard_one_or_a_back_
       .normals
       .iter()
       .all(|normal| *normal == Vector3d::new(0.0, 1.0, 0.0))
+  );
+
+  Ok(())
+}
+
+#[test]
+fn packs_a_point_into_a_vertex_strictly_within_a_millimetre_found_in_its_own_cell() {
+  // Cells along x are 10/24 m, the first border at 0.41667 m.
+  let bounds: Aabb = Aabb {
+    min: Vector3d::new(0.0, 0.0, 0.0),
+    max: Vector3d::new(10.0, 10.0, 10.0),
+  };
+  let mut collector: GeometryCollector = GeometryCollector::new(&bounds);
+
+  assert_eq!(collector.pack(&Vector3d::new(5.0, 5.0, 5.0)), 0);
+  assert_eq!(collector.pack(&Vector3d::new(5.0005, 5.0, 5.0)), 0);
+  assert_eq!(collector.pack(&Vector3d::new(5.002, 5.0, 5.0)), 1);
+
+  // A vertex just below a border is filed in the cell above too, so a point just past the border finds it; one just
+  // past it is filed only there, and a point just below does not.
+  assert_eq!(collector.pack(&Vector3d::new(0.4163, 5.0, 5.0)), 2);
+  assert_eq!(collector.pack(&Vector3d::new(0.4168, 5.0, 5.0)), 2);
+  assert_eq!(collector.pack(&Vector3d::new(0.8338, 5.0, 5.0)), 3);
+  assert_eq!(collector.pack(&Vector3d::new(0.8333, 5.0, 5.0)), 4);
+
+  // A point below the box lands in the last cell, so it misses a vertex just inside the box's first.
+  assert_eq!(collector.pack(&Vector3d::new(0.0004, 5.0, 5.0)), 5);
+  assert_eq!(collector.pack(&Vector3d::new(-0.0001, 5.0, 5.0)), 6);
+  assert_eq!(collector.into_vertices().len(), 7);
+}
+
+#[test]
+fn collides_static_faces_of_a_colliding_shader_then_each_reference_placed_in_its_sector() -> XrfResult {
+  // The square on the floor collides; a wall face of the `ghost` shader is only drawn.
+  let mut file: BuildPrjFile = project(
+    &[
+      [0.0, 0.0, 0.0],
+      [1.0, 0.0, 0.0],
+      [1.0, 0.0, 1.0],
+      [0.0, 0.0, 1.0],
+      [0.0, 1.0, 0.0],
+    ],
+    &[([0, 2, 1], SOFT), ([0, 3, 2], SOFT), ([0, 1, 4], SOFT)],
+  )?;
+  let model_face = |material: u16, game_material: u32| BuildPrjFace {
+    vertices: [0, 1, 2],
+    texture_coordinates: [
+      Vector2d::new(0.0, 0.0),
+      Vector2d::new(1.0, 0.0),
+      Vector2d::new(0.0, 1.0),
+    ],
+    material,
+    material_padding: 0,
+    game_material,
+  };
+  // A quarter turn about y, `x` to `-z` and `z` to `x`, then 2 m along x.
+  let mut turn: Matrix4x4 = Matrix4x4::IDENTITY;
+
+  turn.values[0] = 0.0;
+  turn.values[2] = -1.0;
+  turn.values[8] = 1.0;
+  turn.values[10] = 0.0;
+  turn.values[12] = 2.0;
+
+  file.faces[2].material = 2;
+  file.faces[1].game_material = 3;
+  file.materials[0].sector = 4;
+  file.mu_models = vec![BuildPrjMuModel {
+    name: String::from("crate"),
+    vertices: vec![
+      Vector3d::new(0.0, 0.0, 0.0),
+      Vector3d::new(1.0, 0.0, 0.0),
+      Vector3d::new(0.0, 0.0, 1.0),
+    ],
+    // The game material keeps its low 14 bits; the ghost face is dropped.
+    faces: vec![model_face(0, 0x4005), model_face(2, 0)],
+    lod: u16::MAX,
+    smoothing_groups: Some(vec![SOFT, SOFT]),
+  }];
+  file.mu_references = vec![BuildPrjMuReference {
+    model: 0,
+    transform: turn,
+    flags: 0,
+    sector: 7,
+    sector_padding: 0,
+    reserved: [0; 8],
+  }];
+
+  let shaders: CompilerShaders = CompilerShaders::resolve(&file, &library())?;
+  let form: LevelCformGeometry = GeometryCollision::build(&GeometryMesh::load(&file)?, &file, &shaders)?;
+  let face = |vertices: [u32; 3], material: u16, sector: u16| LevelCformFace {
+    vertices,
+    material,
+    is_shadow_suppressed: false,
+    is_wallmark_suppressed: false,
+    sector,
+  };
+
+  assert_eq!(
+    form.get_faces(),
+    [face([0, 1, 2], 0, 4), face([0, 3, 1], 3, 4), face([4, 5, 6], 5, 7)]
+  );
+  assert_eq!(
+    form.get_vertices()[4..],
+    [
+      Vector3d::new(2.0, 0.0, 0.0),
+      Vector3d::new(2.0, 0.0, -1.0),
+      Vector3d::new(3.0, 0.0, 0.0)
+    ]
+  );
+
+  let mut astray: BuildPrjFile = file.clone();
+  let mut ghostly: BuildPrjFile = file.clone();
+
+  astray.mu_references[0].model = 9;
+  ghostly.faces.iter_mut().for_each(|face| face.material = 2);
+
+  assert!(
+    error_of(GeometryCollision::build(
+      &GeometryMesh::load(&astray)?,
+      &astray,
+      &shaders
+    ))
+    .contains("multi-use reference 0 names model 9 of 1")
+  );
+  assert!(
+    error_of(GeometryCollision::build(
+      &GeometryMesh::load(&ghostly)?,
+      &ghostly,
+      &shaders
+    ))
+    .contains("no static face to collide with")
   );
 
   Ok(())

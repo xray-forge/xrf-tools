@@ -7,6 +7,7 @@ use xrf_test_utils::GeneratedResources;
 
 use crate::cform::level_cform_face::LevelCformFace;
 use crate::cform::level_cform_file::{LevelCformFile, LevelCformHeader};
+use crate::cform::level_cform_geometry::LevelCformGeometry;
 
 fn sample() -> LevelCformHeader {
   LevelCformHeader {
@@ -40,6 +41,71 @@ fn test_read_write() -> XrfResult {
   )?)?;
 
   assert_eq!(read.header, original);
+
+  Ok(())
+}
+
+#[test]
+fn writes_a_form_back_byte_for_byte_its_header_derived_from_its_geometry() -> XrfResult {
+  let geometry: LevelCformGeometry = LevelCformGeometry::new(
+    vec![
+      Vector3d::new(0.0, -1.0, 0.0),
+      Vector3d::new(2.0, 0.0, 0.0),
+      Vector3d::new(0.0, 3.0, 1.0),
+    ],
+    vec![LevelCformFace {
+      vertices: [0, 2, 1],
+      material: 0x2ABC,
+      is_shadow_suppressed: true,
+      is_wallmark_suppressed: false,
+      sector: 513,
+    }],
+  )?;
+  let file: LevelCformFile = LevelCformFile {
+    header: LevelCformHeader::of(&geometry)?,
+  };
+  let mut writer: ChunkWriter = ChunkWriter::new();
+
+  assert_eq!(
+    file.header,
+    LevelCformHeader {
+      version: LevelCformHeader::CURRENT_VERSION,
+      vertex_count: 3,
+      face_count: 1,
+      bounds: Aabb {
+        min: Vector3d::new(0.0, -1.0, 0.0),
+        max: Vector3d::new(2.0, 3.0, 1.0),
+      },
+    }
+  );
+
+  file.write_with_geometry::<XRayByteOrder>(&geometry, &mut writer)?;
+
+  let bytes: Vec<u8> = writer.flush_raw_into_buffer()?;
+  let (read, read_geometry) = LevelCformFile::read_with_geometry_from_bytes::<XRayByteOrder>(bytes.clone())?;
+  let mut again: ChunkWriter = ChunkWriter::new();
+
+  assert_eq!((read.clone(), read_geometry.clone()), (file, geometry));
+  read.write_with_geometry::<XRayByteOrder>(&read_geometry, &mut again)?;
+  assert_eq!(again.flush_raw_into_buffer()?, bytes);
+  assert_eq!(bytes.len(), LevelCformHeader::SIZE as usize + 3 * 12 + 16);
+
+  Ok(())
+}
+
+#[test]
+fn refuses_to_write_a_header_counting_other_than_its_geometry() -> XrfResult {
+  let geometry: LevelCformGeometry = LevelCformGeometry::new(vec![Vector3d::new(0.0, 0.0, 0.0)], Vec::new())?;
+  let mut header: LevelCformHeader = LevelCformHeader::of(&geometry)?;
+
+  header.face_count = 1;
+
+  assert!(
+    LevelCformFile { header }
+      .write_with_geometry::<XRayByteOrder>(&geometry, &mut ChunkWriter::new())
+      .is_err()
+  );
+  assert!(LevelCformHeader::of(&LevelCformGeometry::new(Vec::new(), Vec::new())?).is_err());
 
   Ok(())
 }

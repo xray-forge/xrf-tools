@@ -1,7 +1,7 @@
 use byteorder::ByteOrder;
 use glam::Vec3;
 use serde::Serialize;
-use xrf_chunk::{ChunkDataSource, ChunkReader};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_geometry::{BvhTracer, Triangle};
 use xrf_math::Vector3d;
@@ -69,6 +69,23 @@ impl LevelCformGeometry {
     }
 
     Ok(Self { vertices, faces })
+  }
+
+  /// Writes the payload, every vertex then every face, as [`Self::read_from_chunk`] reads it.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the writer fails.
+  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+    for vertex in &self.vertices {
+      writer.write_xr::<T, _>(vertex)?;
+    }
+
+    for face in &self.faces {
+      writer.write_xr::<T, _>(face)?;
+    }
+
+    Ok(())
   }
 
   /// Every vertex, in the engine's own space.
