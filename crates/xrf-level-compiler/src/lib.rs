@@ -56,6 +56,7 @@ pub use crate::geometry::geometry_face::GeometryFace;
 pub use crate::geometry::geometry_hierarchy::GeometryHierarchy;
 pub use crate::geometry::geometry_level::GeometryLevel;
 pub use crate::geometry::geometry_level_census::GeometryLevelCensus;
+pub use crate::geometry::geometry_level_request::GeometryLevelRequest;
 pub use crate::geometry::geometry_lod::GeometryLod;
 pub use crate::geometry::geometry_lod_vertex::GeometryLodVertex;
 pub use crate::geometry::geometry_mesh::GeometryMesh;

@@ -3,13 +3,14 @@ use xrf_geometry::{BvhTracer, Facing, Ray, Tracer, Triangle};
 use xrf_level::{DETAIL_SLOT_METERS, LevelDetailsHeader, LevelDetailsLight, LevelDetailsSlot, LevelLightRole};
 use xrf_math::EPS;
 
-use crate::detail::detail_slot_plan::{DetailRayGroup, DetailSlotPlan};
 use crate::light::light_color::LightColor;
+use crate::light::light_lamp_rays::LightLampRays;
+use crate::light::light_plan::LightPlan;
 use crate::light::light_point::LightPoint;
 use crate::light::light_point_variant::LightPointVariant;
+use crate::light::light_ray_group::LightRayGroup;
 use crate::light::light_sample_point::LightSamplePoint;
 use crate::light::light_source::LightSource;
-use crate::light::light_term::LightTerm;
 use crate::shadow::shadow_materials::ShadowMaterials;
 
 /// Lights one planted slot as xrDO_Light does (`LightThread::Execute` and its `LightPoint`,
@@ -43,7 +44,7 @@ impl DetailSlotLighter<'_> {
   const DROP_FLOOR: f32 = 5.0;
 
   /// What lighting the slot in grid cell `cell` asks of the ray model, or `None` where its box touches no face of it.
-  pub(crate) fn plan(&self, cell: usize, slot: &LevelDetailsSlot) -> Option<DetailSlotPlan> {
+  pub(crate) fn plan(&self, cell: usize, slot: &LevelDetailsSlot) -> Option<LightPlan> {
     // A grid's sides are `u32`, so a cell's column and row are too.
     let column: u32 = (cell % self.header.size_x as usize) as u32;
     let row: u32 = (cell / self.header.size_x as usize) as u32;
@@ -73,52 +74,41 @@ impl DetailSlotLighter<'_> {
     }
 
     let points: Vec<LightSamplePoint> = Self::get_points(&triangles, center, low, high);
-    let mut plan: DetailSlotPlan = DetailSlotPlan {
-      selected: std::array::from_fn(|role| {
-        (0..self.lights[role].len() as u32)
-          .filter(|light| self.lights[role][*light as usize].reaches(sphere_center, sphere_radius))
-          .collect()
-      }),
-      terms: [Vec::new(), Vec::new(), Vec::new()],
-      origins: points.iter().map(|point| point.lifted).collect(),
-      groups: Vec::new(),
-      ray_count: 0,
-    };
+    let selected: [Vec<u32>; 3] = std::array::from_fn(|role| {
+      (0..self.lights[role].len() as u32)
+        .filter(|light| self.lights[role][*light as usize].reaches(sphere_center, sphere_radius))
+        .collect()
+    });
 
-    // Each role's lights' terms, a light's for every point in turn, planned a light at a time so a directional light's
-    // rays trace together.
-    for (role, lights) in self.lights.iter().enumerate() {
-      for index in 0..plan.selected[role].len() {
-        let light: &LightSource = &lights[plan.selected[role][index] as usize];
+    let skips: Vec<Option<u32>> = vec![None; points.len()];
 
-        Self::plan_light(&mut plan, role, light, &points);
-      }
-    }
-
-    Some(plan)
+    // A slot's few rays made on the CPU, so either backend gives each slot the same light.
+    Some(LightPlan::new(
+      Self::LIGHT_POINT,
+      points,
+      skips,
+      self.lights,
+      selected,
+      LightLampRays::Single,
+    ))
   }
 
   /// How much light each of a plan's rays lets through, traced on the CPU: the product of every face's transmittance it
   /// crosses from the front (`rayTrace`).
-  pub(crate) fn trace(&self, plan: &DetailSlotPlan) -> Vec<f32> {
+  pub(crate) fn trace(&self, plan: &LightPlan) -> Vec<f32> {
     let mut transmittances: Vec<f32> = vec![1.0; plan.ray_count];
 
     for group in &plan.groups {
       match group {
-        DetailRayGroup::Packet {
-          toward,
-          lift,
-          facing,
-          first,
-        } => {
+        LightRayGroup::Packet { first, .. } | LightRayGroup::Lamp { first, .. } => {
           let first: usize = *first as usize;
-          let rays: Vec<Ray> = DetailRayGroup::make_packet(&plan.origins, *toward, *lift, facing);
+          let rays: Vec<Ray> = group.make_rays(&plan.points);
 
           self.tracer.for_each_packet_hit(&rays, |ray, hit| {
             transmittances[first + ray] *= self.shadows.get_transmittance(&hit);
           });
         }
-        DetailRayGroup::Single { ray, index } => {
+        LightRayGroup::Single { ray, index, .. } => {
           self.tracer.for_each_hit(ray, |hit| {
             transmittances[*index as usize] *= self.shadows.get_transmittance(&hit);
           });
@@ -131,14 +121,15 @@ impl DetailSlotLighter<'_> {
 
   /// The slot's light from what each of its plan's rays lets through, summed in the SDK's order: point by point, each
   /// point's lights in turn.
-  pub(crate) fn finish(&self, plan: &DetailSlotPlan, transmittances: &[f32]) -> LevelDetailsLight {
+  pub(crate) fn finish(&self, plan: &LightPlan, transmittances: &[f32]) -> LevelDetailsLight {
     let mut sum: LightColor = LightColor::default();
-    let point_count: usize = plan.origins.len();
+    let point_count: usize = plan.points.len();
+    let amounts: [Vec<f32>; 3] = plan.get_amounts(self.lights, transmittances);
 
     for index in 0..point_count {
       for (role, lights) in plan.selected.iter().enumerate() {
         for (light, source) in lights.iter().enumerate() {
-          let amount: f32 = plan.terms[role][light * point_count + index].get_amount(transmittances);
+          let amount: f32 = amounts[role][light * point_count + index];
 
           // Each sum is rounded to a float as it is stored, as the SDK's `base_color` members are: wider sums move
           // more slots across a step than they settle.
@@ -205,62 +196,5 @@ impl DetailSlotLighter<'_> {
     }
 
     points
-  }
-
-  /// What `light` of the role at `role_index` in [`LevelLightRole::ALL`] gives each of `points`, as terms of `plan`
-  /// with their rays ([`LightPoint::get_ray`]). A directional light's rays share its direction, and form one packet.
-  fn plan_light(plan: &mut DetailSlotPlan, role_index: usize, light: &LightSource, points: &[LightSamplePoint]) {
-    let role: LevelLightRole = LevelLightRole::ALL[role_index];
-    let terms: &mut Vec<LightTerm> = &mut plan.terms[role_index];
-
-    if !light.is_directional {
-      for point in points {
-        let term: LightTerm = match Self::LIGHT_POINT.get_ray(role, light, point) {
-          Some((ray, term)) => {
-            let index: u32 = plan.ray_count as u32;
-
-            plan.groups.push(DetailRayGroup::Single { ray, index });
-            plan.ray_count += 1;
-
-            LightTerm { ray: index, ..term }
-          }
-          None => LightTerm::NOTHING,
-        };
-
-        terms.push(term);
-      }
-
-      return;
-    }
-
-    let first: usize = plan.ray_count;
-    let mut facing: [u32; DetailRayGroup::FACING_WORDS] = [0; DetailRayGroup::FACING_WORDS];
-
-    for (index, point) in points.iter().enumerate() {
-      // The packet makes the ray `get_ray` describes, for each point the light gives anything.
-      let Some((_, term)) = Self::LIGHT_POINT.get_ray(role, light, point) else {
-        terms.push(LightTerm::NOTHING);
-        continue;
-      };
-
-      facing[index / 32] |= 1 << (index % 32);
-      terms.push(LightTerm {
-        ray: plan.ray_count as u32,
-        ..term
-      });
-      plan.ray_count += 1;
-    }
-
-    if plan.ray_count > first {
-      plan.groups.push(DetailRayGroup::Packet {
-        toward: -light.direction,
-        lift: match role {
-          LevelLightRole::Hemi => LightPoint::HEMI_LIFT,
-          LevelLightRole::Rgb | LevelLightRole::Sun => 0.0,
-        },
-        facing,
-        first: first as u32,
-      });
-    }
   }
 }

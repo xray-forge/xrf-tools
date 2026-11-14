@@ -8,13 +8,14 @@ use crate::detail::detail_lighter::DetailLighter;
 use crate::detail::detail_slot_fate::DetailSlotFate;
 use crate::detail::detail_slot_lighter::DetailSlotLighter;
 use crate::detail::detail_slot_stage::DetailSlotStage;
-use crate::detail::gpu::detail_gpu_batch::DetailGpuBatch;
-use crate::detail::gpu::detail_gpu_tracer::DetailGpuTracer;
+use crate::light::light_point_variant::LightPointVariant;
+use crate::ray::gpu::ray_gpu_batch::RayGpuBatch;
+use crate::ray::gpu::ray_gpu_tracer::RayGpuTracer;
 
 /// The detail lighter with its shadow rays made and traced on the GPU: slots planned on the CPU's threads a few at a
 /// time until enough rays wait, those rays traced in one go, then those slots finished on the CPU's threads.
 pub(crate) struct DetailGpuLighting {
-  tracer: DetailGpuTracer,
+  tracer: RayGpuTracer,
 }
 
 impl DetailGpuLighting {
@@ -25,7 +26,7 @@ impl DetailGpuLighting {
   const RAYS: usize = 1 << 23;
 
   /// Packets traced together at most before another batch: a dispatch's workgroups, less room for one more plan's.
-  const PACKETS: usize = DetailGpuTracer::MOST_WORKGROUPS / 2;
+  const PACKETS: usize = RayGpuTracer::MOST_WORKGROUPS / 2;
 
   /// The request's GPU started, the ray model on it, before any slot is lit.
   ///
@@ -39,7 +40,7 @@ impl DetailGpuLighting {
     })?;
 
     Ok(Self {
-      tracer: DetailGpuTracer::new(device, request.tracer, request.shadows)?,
+      tracer: RayGpuTracer::new(device, request.tracer, request.shadows)?,
     })
   }
 
@@ -55,11 +56,11 @@ impl DetailGpuLighting {
     job: &JobHandle,
     scope: &JobScope,
   ) -> XrfResult<(Vec<DetailSlotFate>, String)> {
-    let tracer: &DetailGpuTracer = &self.tracer;
+    let tracer: &RayGpuTracer = &self.tracer;
     let slots: &[[u32; 4]] = &request.details.slots;
     let mut fates: Vec<DetailSlotFate> = Vec::with_capacity(slots.len());
     let mut waiting: Vec<DetailSlotStage> = Vec::new();
-    let mut batch: DetailGpuBatch = DetailGpuBatch::default();
+    let mut batch: RayGpuBatch = RayGpuBatch::default();
     let mut firsts: Vec<usize> = Vec::new();
     let mut next: usize = 0;
 
@@ -74,7 +75,7 @@ impl DetailGpuLighting {
 
       for stage in planned {
         firsts.push(match &stage {
-          DetailSlotStage::Planned(plan) => batch.push(plan),
+          DetailSlotStage::Planned(plan) => batch.push(plan, |face| tracer.get_skip(face)),
           DetailSlotStage::Met(_) => 0,
         });
         waiting.push(stage);
@@ -83,7 +84,7 @@ impl DetailGpuLighting {
       next = end;
 
       if batch.ray_count >= Self::RAYS || batch.packets.len() >= Self::PACKETS || next == slots.len() {
-        let transmittances: Vec<f32> = tracer.trace(&batch)?;
+        let transmittances: Vec<f32> = tracer.trace(&batch, LightPointVariant::Details)?;
         let finished: Vec<DetailSlotFate> = waiting
           .par_drain(..)
           .zip(firsts.par_drain(..))
@@ -97,7 +98,7 @@ impl DetailGpuLighting {
 
         scope.advance_by(finished.len() as u64);
         fates.extend(finished);
-        batch = DetailGpuBatch::default();
+        batch = RayGpuBatch::default();
       }
     }
 

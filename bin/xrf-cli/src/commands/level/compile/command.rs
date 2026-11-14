@@ -96,9 +96,9 @@ impl GenericCommand for CompileCommand {
       .arg(
         Arg::new("backend")
           .help(
-            "What traces the details step's shadow rays and the ai step's cover rays: auto, the GPU where one traces \
-             rays, else the CPU; gpu, the GPU's ray queries alone, on D3D12 where dxc/dxcompiler.dll stands beside the \
-             CLI, else on Vulkan; cpu, the reference, every slot and cover within one step of the GPU's",
+            "What traces the geometry step's lightmap rays, the details step's shadow rays and the ai step's cover \
+             rays: auto, the GPU where one traces rays, else the CPU; gpu, the GPU's ray queries alone, on D3D12 where \
+             dxc/dxcompiler.dll stands beside the CLI, else on Vulkan; cpu, the reference",
           )
           .long("backend")
           .default_value(RayBackend::default().get_name())
@@ -206,16 +206,17 @@ impl CompileCommand {
           "{program}{}",
           log.as_ref().map(|log| format!(", log {log}")).unwrap_or_default()
         ),
-        LevelCompileStepRun::GeometryCompiler { census } => format!(
+        LevelCompileStepRun::GeometryCompiler { census, gpu } => format!(
           "{} static visuals of {} triangles, {} trees, {} visuals progressive, {} sectors, vertices lit, {} lightmap \
-           charts baked on {} pages",
+           charts baked on {} pages, traced on {}",
           census.visuals,
           census.triangles,
           census.trees,
           census.progressive,
           census.sectors,
           census.charts,
-          census.lightmaps
+          census.lightmaps,
+          gpu.as_deref().unwrap_or("the CPU")
         ),
         LevelCompileStepRun::DetailLighter { slots, gpu } => format!(
           "{} slots lit, {} touching no face, {} emptied, {} unplanted, traced on {}",

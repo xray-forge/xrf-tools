@@ -1,5 +1,5 @@
-//! The detail lighter's shadow rays and the AI map's corner rays traced on the GPU, on Vulkan and on D3D12 through the
-//! checkout's DXC, against the CPU's answers. A backend no GPU of the host traces rays on is skipped.
+//! The detail lighter's shadow rays, the lightmaps' and the AI map's corner rays traced on the GPU, on Vulkan and on
+//! D3D12 through the checkout's DXC, against the CPU's answers. A backend no GPU of the host traces rays on is skipped.
 
 use std::path::PathBuf;
 
@@ -10,13 +10,15 @@ use xrf_renderer_core::{RayQueryAsk, RayQueryDevice};
 use xrf_test_utils::TestSkip;
 
 use crate::ai::cover::ai_cover_pass::AiNodeCovers;
-use crate::detail::gpu::detail_gpu_batch::DetailGpuBatch;
-use crate::detail::gpu::detail_gpu_records::GpuSingle;
-use crate::detail::gpu::detail_gpu_tracer::DetailGpuTracer;
+use crate::chart::light_gpu::LightGpu;
+use crate::light::light_point_variant::LightPointVariant;
+use crate::ray::gpu::ray_gpu_batch::RayGpuBatch;
+use crate::ray::gpu::ray_gpu_records::GpuSingle;
+use crate::ray::gpu::ray_gpu_tracer::RayGpuTracer;
 use crate::shadow::shadow_materials::ShadowMaterials;
-use crate::tests::ai_covers;
 use crate::tests::detail::{lighting, lighting_on, tracer};
-use crate::{DetailLighting, RayBackend};
+use crate::tests::{ai_covers, charts};
+use crate::{DetailLighting, GeometryMesh, LightSource, LitChart, RayBackend};
 
 /// The DXC each backend is asked with: none, for Vulkan, then the checkout's, for D3D12 first.
 fn dxcs() -> [Option<PathBuf>; 2] {
@@ -61,19 +63,113 @@ fn stops_a_ray_at_a_face_seen_from_its_front_alone() -> XrfResult {
       assert!(name.ends_with("(D3D12)"), "{name}");
     }
 
-    let gpu: DetailGpuTracer = DetailGpuTracer::new(device, &tracer, &ShadowMaterials::new_opaque(4))?;
-
-    let batch: DetailGpuBatch = DetailGpuBatch {
+    let gpu: RayGpuTracer = RayGpuTracer::new(device, &tracer, &ShadowMaterials::new_opaque(4))?;
+    let batch = |skip: u32| RayGpuBatch {
       singles: rays
         .iter()
         .zip(0..)
-        .map(|(ray, index)| GpuSingle::new(ray, index))
+        .map(|(ray, index)| GpuSingle::new(ray, index, skip))
         .collect(),
       ray_count: rays.len(),
-      ..DetailGpuBatch::default()
+      ..RayGpuBatch::default()
     };
 
-    assert_eq!(gpu.trace(&batch)?, [0.0, 1.0, 0.0, 1.0], "{name}");
+    assert_eq!(
+      gpu.trace(&batch(RayGpuTracer::NO_SKIP), LightPointVariant::Details)?,
+      [0.0, 1.0, 0.0, 1.0],
+      "{name}"
+    );
+    // By xrLC's rules a face stops a ray from either side: the ground's back too.
+    assert_eq!(
+      gpu.trace(&batch(RayGpuTracer::NO_SKIP), LightPointVariant::Level)?,
+      [0.0, 0.0, 0.0, 1.0],
+      "{name}"
+    );
+  }
+
+  Ok(())
+}
+
+#[test]
+fn passes_a_ray_through_its_own_face_by_xrlc_s_rules() -> XrfResult {
+  let tracer: BvhTracer = tracer();
+  // Down onto the ground's top, which is face 0 or 1; the ground stops it unless it passes the face it meets.
+  let ray: Ray = Ray::new(Vec3::new(0.5, 2.0, 1.0), Vec3::NEG_Y, 10.0);
+  let mut met: Option<u32> = None;
+
+  xrf_geometry::Tracer::for_each_hit(&tracer, &ray, |hit| met = met.or(Some(hit.face)));
+
+  let met: u32 = met.expect("the ray meets the ground");
+
+  for dxc in dxcs() {
+    let Some(device) = device(dxc.as_ref()) else {
+      continue;
+    };
+    let name: String = device.name.clone();
+    let gpu: RayGpuTracer = RayGpuTracer::new(device, &tracer, &ShadowMaterials::new_opaque(4))?;
+    let batch = |skip: u32| RayGpuBatch {
+      singles: vec![GpuSingle::new(&ray, 0, skip)],
+      ray_count: 1,
+      ..RayGpuBatch::default()
+    };
+
+    assert_eq!(
+      gpu.trace(&batch(gpu.get_skip(Some(met))), LightPointVariant::Level)?,
+      [1.0],
+      "{name}"
+    );
+    assert_eq!(
+      gpu.trace(&batch(RayGpuTracer::NO_SKIP), LightPointVariant::Level)?,
+      [0.0],
+      "{name}"
+    );
+    // The detail lighter's rules pass no face.
+    assert_eq!(
+      gpu.trace(&batch(gpu.get_skip(Some(met))), LightPointVariant::Details)?,
+      [0.0],
+      "{name}"
+    );
+  }
+
+  Ok(())
+}
+
+#[test]
+fn lights_a_chart_by_a_lamp_and_the_sun_as_the_cpu_does() -> XrfResult {
+  let mesh: GeometryMesh = charts::floor_and_wall(0.0);
+  // A lamp 6 m over the wall's foot, 1 m behind it: the wall's top shades the floor's far half from it.
+  let lamp: LightSource = LightSource {
+    is_directional: false,
+    is_point: true,
+    position: Vec3::new(1.0, 6.0, 3.0),
+    direction: Vec3::NEG_Y,
+    range: 10.0,
+    range_squared: 100.0,
+    ..charts::sun(1.0)
+  };
+  let lights: [Vec<LightSource>; 3] = [vec![lamp], Vec::new(), vec![charts::sun(0.8)]];
+  let on_cpu: LitChart = charts::light_by(&mesh, &lights, |lighter, floor| lighter.light(floor));
+
+  assert!(
+    on_cpu
+      .layer
+      .surface
+      .iter()
+      .any(|texel| *texel != on_cpu.layer.surface[0]),
+    "the lamp's shadow leaves the chart more than one colour"
+  );
+
+  for dxc in dxcs() {
+    if device(dxc.as_ref()).is_none() {
+      continue;
+    }
+
+    let on_gpu: Vec<LitChart> = charts::light_by(&mesh, &lights, |lighter, floor| {
+      LightGpu::start(dxc.as_deref(), None, lighter.tracer, lighter.shadows)?
+        .light_charts(lighter, std::slice::from_ref(floor))
+    })?;
+
+    assert_eq!(on_gpu, std::slice::from_ref(&on_cpu), "{dxc:?}");
   }
 
   Ok(())

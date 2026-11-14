@@ -11,14 +11,15 @@ use crate::ai::cover::ai_cover_pass::AiNodeCovers;
 use crate::ai::cover::ai_cover_query::AiCoverQuery;
 use crate::ai::cover::ai_cover_tracing::AiCoverTracing;
 use crate::ai::cover::gpu::ai_cover_gpu_batch::AiCoverGpuBatch;
-use crate::detail::gpu::detail_gpu_tracer::DetailGpuTracer;
+use crate::light::light_point_variant::LightPointVariant;
+use crate::ray::gpu::ray_gpu_tracer::RayGpuTracer;
 
-/// The corner nodes' rays traced on the GPU with the detail lighter's ray queries, which answer a ray as the CPU's
-/// pass does: back faces passed, the first opaque face ending it, alpha faces dimming it. Nodes are flooded and their
-/// rays aimed on the CPU's threads a chunk at a time, while the GPU traces the chunk before; the covers are summed on
-/// the CPU in the CPU pass's order.
+/// The corner nodes' rays traced on the GPU with the detail lighter's rules, which answer a ray as the CPU's pass does:
+/// back faces passed, the first opaque face ending it, alpha faces dimming it. Nodes are flooded and their rays aimed
+/// on the CPU's threads a chunk at a time, while the GPU traces the chunk before; the covers are summed on the CPU in
+/// the CPU pass's order.
 pub(crate) struct AiCoverGpu {
-  tracer: DetailGpuTracer,
+  tracer: RayGpuTracer,
 }
 
 impl AiCoverGpu {
@@ -37,7 +38,7 @@ impl AiCoverGpu {
     })?;
 
     Ok(Self {
-      tracer: DetailGpuTracer::new(device, tracing.rays.tracer, tracing.rays.shadows)?,
+      tracer: RayGpuTracer::new(device, tracing.rays.tracer, tracing.rays.shadows)?,
     })
   }
 
@@ -71,7 +72,10 @@ impl AiCoverGpu {
       job.check_cancelled()?;
 
       let next: Option<&[u32]> = if waiting.is_empty() { chunks.next() } else { None };
-      let (traced, aimed) = rayon::join(|| self.tracer.trace(&batch.rays), || next.map(aim).transpose());
+      let (traced, aimed) = rayon::join(
+        || self.tracer.trace(&batch.rays, LightPointVariant::Details),
+        || next.map(aim).transpose(),
+      );
 
       covers.extend(batch.sum(vertices, &traced?));
       scope.advance_by(batch.get_node_count() as u64);

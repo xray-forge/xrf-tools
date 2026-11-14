@@ -48,6 +48,15 @@ On the SDK's runs the charts hold the same triangles as xrLC's for 99.56 to 100%
 light, compared in world space, lies within the threshold two SDK bakes of a level differ by, and `jupiter`'s terrain
 map within p99 6 steps of xrLC's texel for texel.
 
+`LightmapBackend` lights the charts and the implicit maps by the request's `RayBackend`. On the GPU (`LightGpu`) a
+chunk of charts' samples is planned a few hundred points a plan (`LightPlan`) with the lights reaching them, every
+light's rays a packet the shader makes from the points (`LightLampRays::Packet`), traced in batches by the shared
+`RayGpuTracer` under xrLC's rules (both sides of a face, `1 - alpha²`, the sample's own face passed, and each face the
+device meets tested again by the CPU's ray test), finished on the pool; the charts that shrink are lit again together,
+then each takes its border. A point's light is the CPU's but where the GPU's arithmetic parts from it in a last bit,
+which a chart's compression can carry across it: on the proof levels the pages lie within p90 3, p99 12 steps of the
+CPU's, and as close to xrLC's as the CPU's are.
+
 `LevelCompiler::compile` takes a `LevelCompileRequest`: the level's directory, the steps (every one when none), the
 SDK's `editors` directory, which runs the geometry by xrLC (`LevelCompileStep::is_sdk`), the game data whose
 `gamemtl.xr` and `shaders_xrlc.xr` the compilers read, the textures roots (xrLC takes exactly one), a working directory
@@ -57,7 +66,7 @@ for every texture `build.prj` names where a step reads them, so a missing file s
 the steps in order: xrLC in the working directory, under an `fsgame.ltx` it writes there, reporting its last log line
 to an `xrf-job` `JobHandle` and killing it when the job is cancelled; the details (`DetailStep`) and the AI map
 (`AiStep`) in process, each writing its output staged. Each step's report says what ran it (`LevelCompileStepRun`): an
-SDK program and its log, the geometry compiler with its census, the lighter with the slots it met and the GPU that traced, or the AI map compiler with its
+SDK program and its log, the geometry compiler with its census and the GPU that traced its light, the lighter with the slots it met and the GPU that traced, or the AI map compiler with its
 covers, GPU, identity and graph check. `xrf-cli level compile` and the app's level compiler call it.
 
 Each SDK compiler ends a run on a "Congratulation!" message box and waits on it, even once answered; xrLC runs with
@@ -232,9 +241,10 @@ and gives a `DetailLighting`: the `level.details` to write, how many slots it me
 - A planted slot is lit from 15 by 15 points, each dropped onto the highest face under it, by every light of
   `build.lights` reaching the slot: the static lights' colour by the cosine and attenuation, the sun and the sky as
   plain amounts. Each light is scaled by the product of the transmittances its shadow ray crosses.
-- A slot is planned (`DetailSlotPlan`): its points' ray origins, each directional light's rays as a packet (its
-  direction and the points it faces, by bit), each positioned light's rays one by one, and what each ray's light is
-  worth. Its rays are made and traced by the backend, then the amounts summed in the SDK's order, point by point.
+- A slot is planned (`LightPlan`): its points, each directional light's rays as a packet (its direction and the points
+  it faces, by bit), each positioned light's rays made on the CPU one by one (`LightLampRays::Single`), so either
+  backend traces the same rays. Its rays are traced by the backend, then each light's amounts made again and summed in
+  the SDK's order, point by point.
 - The sums are averaged, halved and stored as four bits each (`LevelDetailsLight::quantize`).
 
 Every shadow ray is a full query: the SDK's lighter first tests the face that last blocked each light, from either
@@ -250,9 +260,10 @@ about 20,000 to 90,000, each one step off: the SDK's cache, or a sum under the x
 
 The GPU backend is the `gpu` feature, off by default, so a build without it links no graphics code; the CLI and the
 app turn it on. It starts an `xrf-renderer-core` `RayQueryDevice`: D3D12 where DXC's library is given, else Vulkan; on
-the GPU the request names (`RayGpu`, the app's renderer choice), else the high-performance one. The ray model goes up once as two
-geometries: the opaque faces, which the hardware takes alone and which end a ray at the first; and the alpha faces, which
-the shader dims the light through (`detail/gpu/detail_shadow_rays.wgsl`). Faces passing light are left out. A packet's
+the GPU the request names (`RayGpu`, the app's renderer choice), else the high-performance one. The ray model goes up
+once to the tracer the lightmaps share (`RayGpuTracer`) as two geometries: the opaque faces, which the hardware takes
+alone and which end a ray at the first; and the alpha faces, which the shader dims the light through
+(`ray/gpu/shadow_rays.wgsl`). Faces passing light are left out. A packet's
 rays are made on the GPU from its slot's origins, a workgroup a packet, so a slot sends about 20 KB rather than its
 rays. On the kept runs it matches the CPU on every `mp_darkvalley` slot and all but 9 of `jupiter`'s 345,801, each one
 step off.
@@ -283,5 +294,6 @@ cargo test -p xrf-level-compiler --features gpu
 ```
 
 The tests run no SDK compiler. A run of the SDK's compilers on a level is the CLI's or the app's, on copies of a level
-outside any game installation. The GPU tests, the detail lighter's and the AI map's covers against the CPU's, trace on
-Vulkan, and on D3D12 with the checkout's `.sdks/dxc`; a backend no GPU of the host traces rays on is skipped.
+outside any game installation. The GPU tests, the tracer under each lighter's rules, the detail lighter's and the AI
+map's covers against the CPU's, trace on Vulkan, and on D3D12 with the checkout's `.sdks/dxc`; a backend no GPU of the
+host traces rays on is skipped.

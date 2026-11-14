@@ -95,7 +95,10 @@ export type LevelCompileRequest = {
   work: string | null;
   /** Whether a step of ours overwrites a file it writes where the level's directory holds it, rather than refusing. */
   isForced: boolean;
-  /** What traces the rays: the details step's shadow rays and the AI step's corner rays. */
+  /**
+   * What traces the rays: the geometry step's lightmap and terrain rays, the details step's shadow rays and the AI
+   * step's corner rays.
+   */
   backend: RayBackend;
   /** DXC's `dxcompiler.dll`, with which the GPU backend traces on D3D12; Vulkan alone without it. */
   dxc: string | null;
@@ -142,7 +145,10 @@ export enum ELevelCompileStepRun {
    * none where the CPU traced them.
    */
   DETAIL_LIGHTER = "detailLighter",
-  /** Our geometry compiler ([`crate::GeometryLevel`]), and what it made. */
+  /**
+   * Our geometry compiler ([`crate::GeometryLevel`]), what it made, and the GPU that traced its lightmaps' shadow rays,
+   * none where the CPU traced them.
+   */
   GEOMETRY_COMPILER = "geometryCompiler",
   /**
    * The AI map compiler ([`crate::AiMapCompiler`]): the covers it computed, the GPU that traced their rays, none where
@@ -161,8 +167,11 @@ export type LevelCompileStepRun =
    * none where the CPU traced them.
    */
   | { kind: "detailLighter"; slots: DetailSlotCounts; gpu: string | null }
-  /** Our geometry compiler ([`crate::GeometryLevel`]), and what it made. */
-  | { kind: "geometryCompiler"; census: GeometryLevelCensus }
+  /**
+   * Our geometry compiler ([`crate::GeometryLevel`]), what it made, and the GPU that traced its lightmaps' shadow rays,
+   * none where the CPU traced them.
+   */
+  | { kind: "geometryCompiler"; census: GeometryLevelCensus; gpu: string | null }
   /**
    * The AI map compiler ([`crate::AiMapCompiler`]): the covers it computed, the GPU that traced their rays, none where
    * the CPU did or no ray was traced, where the map's identity came from, and the graph check run on the map it wrote,

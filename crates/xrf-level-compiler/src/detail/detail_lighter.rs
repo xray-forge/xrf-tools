@@ -176,9 +176,10 @@ impl DetailLighter {
       return DetailSlotStage::Met(DetailSlotFate::Emptied);
     }
 
-    lighter.plan(cell, &slot).map_or(
-      DetailSlotStage::Met(DetailSlotFate::Untouched),
-      DetailSlotStage::Planned,
-    )
+    lighter
+      .plan(cell, &slot)
+      .map_or(DetailSlotStage::Met(DetailSlotFate::Untouched), |plan| {
+        DetailSlotStage::Planned(Box::new(plan))
+      })
   }
 }

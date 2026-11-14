@@ -4,9 +4,9 @@ use xrf_math::Vector3d;
 
 use crate::ai::ai_vertex::AiVertex;
 use crate::ai::cover::ai_cover_pass::{AiCoverPass, AiNodeCovers};
-use crate::detail::gpu::detail_gpu_batch::DetailGpuBatch;
-use crate::detail::gpu::detail_gpu_records::GpuSingle;
-use crate::detail::gpu::detail_gpu_tracer::DetailGpuTracer;
+use crate::ray::gpu::ray_gpu_batch::RayGpuBatch;
+use crate::ray::gpu::ray_gpu_records::GpuSingle;
+use crate::ray::gpu::ray_gpu_tracer::RayGpuTracer;
 
 /// Some corner nodes' rays as the GPU traces them: each node's targets, and its rays from each height in turn, one
 /// numbered run, a node's after the node before.
@@ -16,7 +16,7 @@ pub(crate) struct AiCoverGpuBatch {
   targets: Vec<Vec<u32>>,
   /// Each node's first ray's number.
   firsts: Vec<usize>,
-  pub(crate) rays: DetailGpuBatch,
+  pub(crate) rays: RayGpuBatch,
 }
 
 impl AiCoverGpuBatch {
@@ -34,13 +34,13 @@ impl AiCoverGpuBatch {
     for (node, list) in nodes.iter().zip(targets) {
       let rays: usize = list.len() * heights;
 
-      if rays > DetailGpuTracer::MOST_SINGLES {
+      if rays > RayGpuTracer::MOST_SINGLES {
         return Err(XrfError::new_invalid_error(format!(
           "AI-map node {node} traces {rays} rays, more than one GPU dispatch takes"
         )));
       }
 
-      if count + rays > DetailGpuTracer::MOST_SINGLES {
+      if count + rays > RayGpuTracer::MOST_SINGLES {
         batches.push(Self::new(vertices, std::mem::take(&mut taken)));
         count = 0;
       }
@@ -81,7 +81,11 @@ impl AiCoverGpuBatch {
             list.iter().enumerate().map(move |(target, other)| {
               let (ray, _) = AiCoverPass::aim(&base, &vertices[*other as usize].position, *height);
 
-              GpuSingle::new(&ray, (first + height_index * list.len() + target) as u32)
+              GpuSingle::new(
+                &ray,
+                (first + height_index * list.len() + target) as u32,
+                RayGpuTracer::NO_SKIP,
+              )
             })
           })
       })
@@ -91,10 +95,10 @@ impl AiCoverGpuBatch {
       nodes,
       targets,
       firsts,
-      rays: DetailGpuBatch {
+      rays: RayGpuBatch {
         singles,
         ray_count: count,
-        ..DetailGpuBatch::default()
+        ..RayGpuBatch::default()
       },
     }
   }

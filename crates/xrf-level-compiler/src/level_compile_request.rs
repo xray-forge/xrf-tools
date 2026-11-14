@@ -31,7 +31,8 @@ pub struct LevelCompileRequest {
   pub work: Option<PathBuf>,
   /// Whether a step of ours overwrites a file it writes where the level's directory holds it, rather than refusing.
   pub is_forced: bool,
-  /// What traces the rays: the details step's shadow rays and the AI step's corner rays.
+  /// What traces the rays: the geometry step's lightmap and terrain rays, the details step's shadow rays and the AI
+  /// step's corner rays.
   pub backend: RayBackend,
   /// DXC's `dxcompiler.dll`, with which the GPU backend traces on D3D12; Vulkan alone without it.
   pub dxc: Option<PathBuf>,

@@ -20,8 +20,12 @@ pub enum LevelCompileStepRun {
     slots: DetailSlotCounts,
     gpu: Option<String>,
   },
-  /// Our geometry compiler ([`crate::GeometryLevel`]), and what it made.
-  GeometryCompiler { census: GeometryLevelCensus },
+  /// Our geometry compiler ([`crate::GeometryLevel`]), what it made, and the GPU that traced its lightmaps' shadow rays,
+  /// none where the CPU traced them.
+  GeometryCompiler {
+    census: GeometryLevelCensus,
+    gpu: Option<String>,
+  },
   /// The AI map compiler ([`crate::AiMapCompiler`]): the covers it computed, the GPU that traced their rays, none where
   /// the CPU did or no ray was traced, where the map's identity came from, and the graph check run on the map it wrote,
   /// with what the map held.

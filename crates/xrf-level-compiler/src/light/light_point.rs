@@ -99,6 +99,18 @@ impl LightPoint {
     ))
   }
 
+  /// The shadow ray from `point` toward a light at `position`, as [`Self::get_ray`] makes it for a light it gives
+  /// anything.
+  pub(crate) fn get_lamp_ray(point: &LightSamplePoint, position: Vec3) -> Ray {
+    let distance_squared: f32 = point.point.distance_squared(position);
+
+    Ray::new(
+      point.lifted,
+      Self::normalize_safe(position - point.point),
+      distance_squared.sqrt(),
+    )
+  }
+
   /// The light `point` gathers from `lights`, a role's lights in [`LevelLightRole::ALL`]'s order, of the roles
   /// `roles` names, every ray traced on the CPU against `tracer`, each face it crosses dimming it as `shadows` says.
   pub fn evaluate<T: Tracer>(

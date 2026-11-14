@@ -16,7 +16,6 @@ use xrf_ogf::{
   OgfFastpathChunk, OgfGeometryContainerChunk, OgfHeaderChunk, OgfLodDefinitionChunk, OgfLodFacet, OgfLodVertex,
   OgfModelType, OgfSlideWindow, OgfSwiContainerChunk, OgfSwiDataChunk, OgfTreeColor, OgfTreeDefinitionChunk,
 };
-use xrf_shaders::ShaderCompilerFile;
 
 use crate::chart::implicit_lighter::ImplicitLighter;
 use crate::chart::implicit_map::ImplicitMap;
@@ -24,6 +23,7 @@ use crate::chart::light_chart::LightChart;
 use crate::chart::light_chart_lighter::LightChartLighter;
 use crate::chart::light_chart_scene::LightChartScene;
 use crate::chart::lightmap_atlas::LightmapAtlas;
+use crate::chart::lightmap_backend::LightmapBackend;
 use crate::chart::lightmap_faces::LightmapFaces;
 use crate::chart::lit_chart::LitChart;
 use crate::compiler_shaders::CompilerShaders;
@@ -34,6 +34,7 @@ use crate::geometry::geometry_bounds::GeometryBounds;
 use crate::geometry::geometry_collision::GeometryCollision;
 use crate::geometry::geometry_hierarchy::GeometryHierarchy;
 use crate::geometry::geometry_level_census::GeometryLevelCensus;
+use crate::geometry::geometry_level_request::GeometryLevelRequest;
 use crate::geometry::geometry_mesh::GeometryMesh;
 use crate::geometry::geometry_models::GeometryModels;
 use crate::geometry::geometry_node_kind::GeometryNodeKind;
@@ -76,28 +77,34 @@ pub struct GeometryLevel {
   pub implicit_maps: Vec<ImplicitMap>,
   /// What the compile made, for its report.
   pub census: GeometryLevelCensus,
+  /// The GPU that traced the lightmaps' shadow rays, none where the CPU did.
+  pub gpu: Option<String>,
 }
 
 impl GeometryLevel {
   /// `XRCL_PRODUCTION_VERSION`, the version the engine asserts a level carries.
   pub const VERSION: u16 = 14;
 
-  /// The level of `project`, its compiler shaders from `library` and its textures as `textures` loads them, their
-  /// alpha images under `roots` dimming the light, lit at `quality`: every vertex lit ([`LightHemisphere`],
-  /// [`LightVertices`]), every multi-use model and placement ([`LightModels`]), the lightmapped faces cut into charts,
-  /// each lit and compressed ([`LightChartLighter`]), and packed onto pages ([`LightmapAtlas`]).
+  /// The level the request's project compiles to, its compiler shaders from its library and its textures as it loads
+  /// them, their alpha images under its roots dimming the light, lit at its quality: every vertex lit
+  /// ([`LightHemisphere`], [`LightVertices`]), every multi-use model and placement ([`LightModels`]), the lightmapped
+  /// faces cut into charts, each lit and compressed ([`LightChartLighter`]), and packed onto pages ([`LightmapAtlas`]),
+  /// the lightmaps' and implicit maps' shadow rays traced by its backend.
   ///
   /// # Errors
   ///
-  /// Returns an error where a phase refuses the project, for a static light layer `build.prj` lacks, and where the
-  /// shadow materials cannot be loaded.
-  pub fn compile(
-    project: &BuildPrjFile,
-    library: &ShaderCompilerFile,
-    textures: &[CompilerTexture],
-    roots: &[PathBuf],
-    quality: LightQuality,
-  ) -> XrfResult<Self> {
+  /// Returns an error where a phase refuses the project, for a static light layer `build.prj` lacks, where the shadow
+  /// materials cannot be loaded, and for the GPU backend where this build has none, no GPU traces rays or the GPU
+  /// fails; `Auto` lights on the CPU instead where the GPU does not start.
+  pub fn compile(request: &GeometryLevelRequest<'_>) -> XrfResult<Self> {
+    let GeometryLevelRequest {
+      project,
+      library,
+      textures,
+      roots,
+      quality,
+      ..
+    } = *request;
     let shaders: CompilerShaders = CompilerShaders::resolve(project, library)?;
     let mut mesh: GeometryMesh = GeometryMesh::load(project)?;
 
@@ -163,7 +170,9 @@ impl GeometryLevel {
       rms_zero: 4_u32.midpoint(project.params.lightmap_rms_zero),
       rms_shrink: 8_u32.midpoint(project.params.lightmap_rms),
     };
-    let lit: Vec<LitChart> = charts.par_iter().map(|chart| lighter.light(chart)).collect();
+    let backend: LightmapBackend =
+      LightmapBackend::start(request.backend, request.dxc, request.gpu, &tracer, &shadows)?;
+    let lit: Vec<LitChart> = backend.light_charts(&lighter, &charts)?;
     let atlas: LightmapAtlas = LightmapAtlas::pack(&charts, &lit, &scene);
     let lightmaps: Vec<[Vec<[u8; 4]>; 2]> = (0..atlas.pages)
       .into_par_iter()
@@ -177,6 +186,7 @@ impl GeometryLevel {
       Vec::new()
     } else {
       Self::get_implicit_maps(
+        &backend,
         &ImplicitLighter {
           lighter: &lighter,
           coordinates: &coordinates.faces,
@@ -423,6 +433,7 @@ impl GeometryLevel {
       lightmaps,
       implicit_maps,
       census,
+      gpu: backend.get_name(),
     })
   }
 
@@ -444,6 +455,7 @@ impl GeometryLevel {
   ///
   /// Returns an error for a texture whose image is missing or unreadable.
   fn get_implicit_maps<T: Tracer + Sync>(
+    backend: &LightmapBackend,
     lighter: &ImplicitLighter<'_, T>,
     mesh: &GeometryMesh,
     project: &BuildPrjFile,
@@ -487,7 +499,7 @@ impl GeometryLevel {
         let (width, height) = image.dimensions();
         let base: Vec<[u8; 4]> = image.pixels().map(|pixel| pixel.0).collect();
 
-        Ok(lighter.light(texture.name.clone(), base, width, height, &faces))
+        backend.light_implicit(lighter, texture.name.clone(), base, width, height, &faces)
       })
       .collect()
   }

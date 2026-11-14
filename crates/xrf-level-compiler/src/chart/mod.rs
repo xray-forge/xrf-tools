@@ -8,10 +8,15 @@ pub(crate) mod light_chart;
 pub(crate) mod light_chart_lighter;
 pub(crate) mod light_chart_mask;
 pub(crate) mod light_chart_scene;
+#[cfg(feature = "gpu")]
+pub(crate) mod light_gpu;
+pub(crate) mod light_texel_point;
 pub(crate) mod lightmap_atlas;
+pub(crate) mod lightmap_backend;
 pub(crate) mod lightmap_faces;
 pub(crate) mod lightmap_layer;
 pub(crate) mod lightmap_page;
 pub(crate) mod lightmap_placement;
 pub(crate) mod lightmap_resampler;
 pub(crate) mod lit_chart;
+pub(crate) mod lit_chart_next;

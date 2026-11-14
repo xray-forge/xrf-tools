@@ -5,9 +5,11 @@ use xrf_math::{Vector2d, Vector3d};
 
 use crate::chart::light_chart::LightChart;
 use crate::chart::light_chart_scene::LightChartScene;
+use crate::chart::light_texel_point::LightTexelPoint;
 use crate::chart::lightmap_layer::LightmapLayer;
 use crate::chart::lightmap_resampler::LightmapResampler;
 use crate::chart::lit_chart::LitChart;
+use crate::chart::lit_chart_next::LitChartNext;
 use crate::geometry::geometry_normals::GeometryNormals;
 use crate::light::light_color::LightColor;
 use crate::light::light_occluders::LightOccluders;
@@ -57,32 +59,89 @@ impl<T: Tracer> LightChartLighter<'_, T> {
   /// smaller size. Then it takes its border: a side one texel across a strip two texels wide of its texels, any other
   /// its lit texels and the first ring set in a texel's frame, the rest filled ring by ring.
   pub fn light(&self, chart: &LightChart) -> LitChart {
-    let mut layer: LightmapLayer = self.calculate(chart, chart.width, chart.height);
+    match self.settle(self.calculate(chart, chart.width, chart.height)) {
+      LitChartNext::Lit(lit) => lit,
+      LitChartNext::Relit(width, height) => Self::expand(self.calculate(chart, width, height)),
+      LitChartNext::Bordered(layer) => Self::expand(layer),
+    }
+  }
 
+  /// What a chart's first `layer` leads to: filled ring by ring, one colour where it may be, else lit again at a
+  /// smaller size where it may shrink, else bordered as it is.
+  pub(crate) fn settle(&self, mut layer: LightmapLayer) -> LitChartNext {
     layer.fill_borders(254);
 
     if let Some(color) = self.get_one_colour(&layer) {
-      return LitChart {
+      return LitChartNext::Lit(LitChart {
         width: 0,
         height: 0,
         layer: LightmapLayer::filled(2, 2, color),
-      };
+      });
     }
 
-    if let Some((width, height)) = self.get_shrunk(&layer) {
-      layer = self.calculate(chart, width, height);
+    match self.get_shrunk(&layer) {
+      Some((width, height)) => LitChartNext::Relit(width, height),
+      None => LitChartNext::Bordered(layer),
     }
-
-    Self::expand(layer)
   }
 
-  /// `CDeflector::L_Calculate`: `chart` lit at `width` by `height` texels. A texel takes the mean light of its jitter
-  /// samples that fall on a face, the first face of the chart's order holding the sample, each lit at its place on the
-  /// face facing its corners' normals blended there and joined with the face's own, the face itself let through
-  /// (`L_Direct`); then each face's edges are walked in steps of an eighth of a texel, every texel they reach that is
-  /// still unlit taking the light at that point of the edge facing the face (`L_Direct_Edge`). Each light is halved.
+  /// `CDeflector::L_Calculate`: `chart` lit at `width` by `height` texels ([`Self::get_points`]), its points lit on the
+  /// CPU, each light first tested against the face that last stopped it on the chart.
   fn calculate(&self, chart: &LightChart, width: u32, height: u32) -> LightmapLayer {
+    let points: Vec<LightTexelPoint> = self.get_points(chart, width, height);
+    let mut occluders: LightOccluders = LightOccluders::new(self.lights);
+    let colors: Vec<LightColor> = points
+      .iter()
+      .map(|point| self.light_point(point.face, point.point, point.normal, &mut occluders))
+      .collect();
+
+    Self::assemble(width, height, &points, &colors)
+  }
+
+  /// The layer `width` by `height` of `points` lit `colors`: each texel the mean of its samples' light, an edge's texel
+  /// its point's, halved, stored.
+  pub(crate) fn assemble(width: u32, height: u32, points: &[LightTexelPoint], colors: &[LightColor]) -> LightmapLayer {
     let mut layer: LightmapLayer = LightmapLayer::new(width, height);
+    let mut sums: Vec<(LightColor, u32)> = vec![(LightColor::default(), 0); (width * height) as usize];
+
+    for (point, color) in points.iter().zip(colors) {
+      let texel: usize = point.texel as usize;
+
+      if point.is_edge {
+        layer.surface[texel] = color.get_scaled(0.5).get_stored();
+        layer.marker[texel] = LightmapLayer::LIT;
+        continue;
+      }
+
+      let (sum, count) = &mut sums[texel];
+
+      *sum = LightColor {
+        rgb: sum.rgb + color.rgb,
+        hemi: sum.hemi + color.hemi,
+        sun: sum.sun + color.sun,
+      };
+      *count += 1;
+    }
+
+    for (texel, (sum, count)) in sums.iter().enumerate() {
+      if *count > 0 {
+        layer.surface[texel] = sum.get_scaled(1.0 / *count as f32).get_scaled(0.5).get_stored();
+        layer.marker[texel] = LightmapLayer::LIT;
+      }
+    }
+
+    layer
+  }
+
+  /// The points `chart` is lit at `width` by `height` texels, texel by texel, then the edges' (`L_Calculate`). A texel's
+  /// points are its jitter samples that fall on a face, the first face of the chart's order holding the sample, each at
+  /// its place on the face facing its corners' normals blended there and joined with the face's own (`L_Direct`); then
+  /// each face's edges are walked in steps of an eighth of a texel, every texel they reach that has no sample and no
+  /// walk yet taking the point of the edge there, facing the face (`L_Direct_Edge`). Which texel takes which is
+  /// geometry alone, known before any light.
+  pub(crate) fn get_points(&self, chart: &LightChart, width: u32, height: u32) -> Vec<LightTexelPoint> {
+    let mut is_taken: Vec<bool> = vec![false; (width * height) as usize];
+    let mut points: Vec<LightTexelPoint> = Vec::new();
     let triangles: Vec<[Vector2d; 3]> = chart.remap([0, 0], [width, height], [width, height], false);
     let jitter: &[[f32; 2]] = match self.scene.jitter_samples {
       1 => &Self::JITTER_1,
@@ -98,7 +157,6 @@ impl<T: Tracer> LightChartLighter<'_, T> {
         y as f32 / dimension_y + half_y + jitter_y * spread_y,
       )
     };
-    let mut occluders: LightOccluders = LightOccluders::new(self.lights);
     // Each texel's samples: the chart's face holding each, and where on it.
     let mut held: Vec<Option<(usize, [f32; 3])>> = vec![None; (width * height) as usize * jitter.len()];
 
@@ -108,7 +166,7 @@ impl<T: Tracer> LightChartLighter<'_, T> {
       for y in ys {
         for x in xs.clone() {
           for (number, offset) in jitter.iter().enumerate() {
-            let slot: usize = layer.get_index(x, y) * jitter.len() + number;
+            let slot: usize = (y * width + x) as usize * jitter.len() + number;
 
             if held[slot].is_none() {
               held[slot] = Self::get_barycentric(triangle, &sample(x, y, *offset)).map(|weights| (index, weights));
@@ -118,28 +176,19 @@ impl<T: Tracer> LightChartLighter<'_, T> {
       }
     }
 
-    for y in 0..height {
-      for x in 0..width {
-        let texel: usize = layer.get_index(x, y);
-        let mut sum: LightColor = LightColor::default();
-        let mut count: u32 = 0;
+    for texel in 0..(width * height) as usize {
+      for (index, weights) in held[texel * jitter.len()..(texel + 1) * jitter.len()].iter().flatten() {
+        let face: u32 = chart.faces[*index];
+        let (point, normal) = self.get_sample(face, weights);
 
-        for (index, weights) in held[texel * jitter.len()..(texel + 1) * jitter.len()].iter().flatten() {
-          let face: u32 = chart.faces[*index];
-          let color: LightColor = self.sample_face(face, weights, &mut occluders);
-
-          sum = LightColor {
-            rgb: sum.rgb + color.rgb,
-            hemi: sum.hemi + color.hemi,
-            sun: sum.sun + color.sun,
-          };
-          count += 1;
-        }
-
-        if count > 0 {
-          layer.surface[texel] = sum.get_scaled(1.0 / count as f32).get_scaled(0.5).get_stored();
-          layer.marker[texel] = LightmapLayer::LIT;
-        }
+        is_taken[texel] = true;
+        points.push(LightTexelPoint {
+          texel: texel as u32,
+          face,
+          point,
+          normal,
+          is_edge: false,
+        });
       }
     }
 
@@ -169,34 +218,36 @@ impl<T: Tracer> LightChartLighter<'_, T> {
             continue;
           }
 
-          let texel: usize = layer.get_index(x as u32, y as u32);
+          let texel: usize = (y as u32 * width + x as u32) as usize;
 
-          if layer.marker[texel] != 0 {
+          if is_taken[texel] {
             continue;
           }
 
-          let point: Vec3 = Vec3::new(
-            from.x + along.x * time,
-            from.y + along.y * time,
-            from.z + along.z * time,
-          );
           let normal: &Vector3d = &self.scene.face_normals[*face as usize];
 
-          layer.surface[texel] = self
-            .light_point(*face, point, Vec3::new(normal.x, normal.y, normal.z), &mut occluders)
-            .get_scaled(0.5)
-            .get_stored();
-          layer.marker[texel] = LightmapLayer::LIT;
+          is_taken[texel] = true;
+          points.push(LightTexelPoint {
+            texel: texel as u32,
+            face: *face,
+            point: Vec3::new(
+              from.x + along.x * time,
+              from.y + along.y * time,
+              from.z + along.z * time,
+            ),
+            normal: Vec3::new(normal.x, normal.y, normal.z),
+            is_edge: true,
+          });
         }
       }
     }
 
-    layer
+    points
   }
 
-  /// The light at `weights` on `face`: its corners blended there, facing its corners' normals blended there and
-  /// joined with its own normal (`exact_normalize` each time).
-  fn sample_face(&self, face: u32, weights: &[f32; 3], occluders: &mut LightOccluders) -> LightColor {
+  /// The point at `weights` on `face`: its corners blended there, facing its corners' normals blended there and joined
+  /// with its own normal (`exact_normalize` each time).
+  fn get_sample(&self, face: u32, weights: &[f32; 3]) -> (Vec3, Vec3) {
     let normals: &GeometryNormals = self.scene.normals;
     let splits: [u32; 3] = normals.faces[face as usize];
     let blend = |values: [Vector3d; 3]| {
@@ -213,11 +264,9 @@ impl<T: Tracer> LightChartLighter<'_, T> {
     let normal: Vector3d =
       GeometryNormals::exact_normalize(&Vector3d::new(blended.x + own.x, blended.y + own.y, blended.z + own.z));
 
-    self.light_point(
-      face,
+    (
       Vec3::new(point.x, point.y, point.z),
       Vec3::new(normal.x, normal.y, normal.z),
-      occluders,
     )
   }
 
@@ -342,7 +391,7 @@ impl<T: Tracer> LightChartLighter<'_, T> {
 
   /// The border round a lit `layer`: a side one texel across, a strip two texels wide of its texels, every one lit;
   /// any other, its lit and first-ring texels in a frame a texel wide, filled ring by ring.
-  fn expand(layer: LightmapLayer) -> LitChart {
+  pub(crate) fn expand(layer: LightmapLayer) -> LitChart {
     let (width, height) = (layer.width, layer.height);
     let border: u32 = LightChart::BORDER;
 

@@ -1,10 +1,12 @@
 use glam::Vec3;
 use rayon::prelude::*;
+use xrf_error::XrfResult;
 use xrf_geometry::Tracer;
 use xrf_math::{Vector2d, Vector3d};
 
 use crate::chart::implicit_map::ImplicitMap;
 use crate::chart::light_chart_lighter::LightChartLighter;
+use crate::chart::light_texel_point::LightTexelPoint;
 use crate::chart::lightmap_layer::LightmapLayer;
 use crate::geometry::geometry_normals::GeometryNormals;
 use crate::light::light_color::LightColor;
@@ -38,12 +40,78 @@ impl<T: Tracer + Sync> ImplicitLighter<'_, T> {
     [1.0, 1.0],
   ];
 
-  /// The map of texture `name`, of the texels `base` holds, over `faces` (mesh faces of it, in the mesh's order). A
-  /// texel sums the light of every face under each of its jitter samples (`ImplicitExecute::Execute`), a face lit at its
-  /// place there facing its corners' normals blended there and normalised, the face itself let through, and takes the
-  /// mean halved; the texels unlit are then filled ring by ring to the map's edges. The texture's alpha becomes each
+  /// The map of texture `name`, of the texels `base` holds, over `faces` (mesh faces of it, in the mesh's order), its
+  /// points lit on the CPU a row's worth at a time, each light first tested against the face that last stopped it.
+  ///
+  /// # Errors
+  ///
+  /// Returns no error on the CPU; the result is a [`Self::light_by`]'s.
+  pub fn light(
+    &self,
+    name: String,
+    base: Vec<[u8; 4]>,
+    width: u32,
+    height: u32,
+    faces: &[u32],
+  ) -> XrfResult<ImplicitMap> {
+    self.light_by(name, base, width, height, faces, |points| {
+      Ok(
+        points
+          .par_chunks(width.max(1) as usize)
+          .map(|chunk| {
+            let mut occluders: LightOccluders = LightOccluders::new(self.lighter.lights);
+
+            chunk
+              .iter()
+              .map(|point| {
+                self
+                  .lighter
+                  .light_point(point.face, point.point, point.normal, &mut occluders)
+              })
+              .collect::<Vec<LightColor>>()
+          })
+          .collect::<Vec<_>>()
+          .into_iter()
+          .flatten()
+          .collect(),
+      )
+    })
+  }
+
+  /// [`Self::light`] with the points' shadow rays traced on `gpu`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the GPU refuses a batch.
+  #[cfg(feature = "gpu")]
+  pub(crate) fn light_on_gpu(
+    &self,
+    gpu: &crate::chart::light_gpu::LightGpu,
+    name: String,
+    base: Vec<[u8; 4]>,
+    width: u32,
+    height: u32,
+    faces: &[u32],
+  ) -> XrfResult<ImplicitMap> {
+    self.light_by(name, base, width, height, faces, |points| {
+      gpu.light_points(self.lighter.lights, self.lighter.ray_faces, points)
+    })
+  }
+
+  /// The map of texture `name`, of the texels `base` holds, over `faces`, its points lit by `light_points`. A texel sums
+  /// the light of every face under each of its jitter samples (`ImplicitExecute::Execute`), a face lit at its place
+  /// there facing its corners' normals blended there and normalised, the face itself let through, and takes the mean
+  /// halved; the texels unlit are then filled ring by ring to the map's edges. The texture's alpha becomes each
   /// texel's hemisphere, and the map its static light and sun.
-  pub fn light(&self, name: String, mut base: Vec<[u8; 4]>, width: u32, height: u32, faces: &[u32]) -> ImplicitMap {
+  fn light_by(
+    &self,
+    name: String,
+    mut base: Vec<[u8; 4]>,
+    width: u32,
+    height: u32,
+    faces: &[u32],
+    light_points: impl FnOnce(&[LightTexelPoint]) -> XrfResult<Vec<LightColor>>,
+  ) -> XrfResult<ImplicitMap> {
     let jitter: &[[f32; 2]] = match self.lighter.scene.jitter_samples {
       1 => &Self::JITTER_1,
       9 => &Self::JITTER_9,
@@ -54,57 +122,45 @@ impl<T: Tracer + Sync> ImplicitLighter<'_, T> {
     let (spread_x, spread_y) = (0.499 / dimension_x, 0.499 / dimension_y);
     let cells: Vec<Vec<u32>> = self.get_cells(faces, width, height);
     let columns: u32 = width.div_ceil(Self::CELL);
-    let rows: Vec<Vec<(LightColor, u8)>> = (0..height)
+    let points: Vec<LightTexelPoint> = (0..height)
       .into_par_iter()
       .map(|y| {
-        let mut occluders: LightOccluders = LightOccluders::new(self.lighter.lights);
+        let mut row: Vec<LightTexelPoint> = Vec::new();
 
-        (0..width)
-          .map(|x| {
-            let cell: &[u32] = &cells[((y / Self::CELL) * columns + x / Self::CELL) as usize];
-            let mut sum: LightColor = LightColor::default();
-            let mut count: u32 = 0;
+        for x in 0..width {
+          let cell: &[u32] = &cells[((y / Self::CELL) * columns + x / Self::CELL) as usize];
 
-            for [jitter_x, jitter_y] in jitter {
-              let point: Vector2d = Vector2d::new(
-                x as f32 / dimension_x + half_x + jitter_x * spread_x,
-                y as f32 / dimension_y + half_y + jitter_y * spread_y,
-              );
+          for [jitter_x, jitter_y] in jitter {
+            let sample: Vector2d = Vector2d::new(
+              x as f32 / dimension_x + half_x + jitter_x * spread_x,
+              y as f32 / dimension_y + half_y + jitter_y * spread_y,
+            );
 
-              for face in cell {
-                let Some(weights) = LightChartLighter::<T>::get_barycentric(&self.coordinates[*face as usize], &point)
-                else {
-                  continue;
-                };
-                let color: LightColor = self.sample_face(*face, &weights, &mut occluders);
+            for face in cell {
+              if let Some(weights) = LightChartLighter::<T>::get_barycentric(&self.coordinates[*face as usize], &sample)
+              {
+                let (point, normal) = self.get_sample(*face, &weights);
 
-                sum = LightColor {
-                  rgb: sum.rgb + color.rgb,
-                  hemi: sum.hemi + color.hemi,
-                  sun: sum.sun + color.sun,
-                };
-                count += 1;
+                row.push(LightTexelPoint {
+                  texel: y * width + x,
+                  face: *face,
+                  point,
+                  normal,
+                  is_edge: false,
+                });
               }
             }
+          }
+        }
 
-            if count > 0 {
-              (
-                sum.get_scaled(1.0 / count as f32).get_scaled(0.5).get_stored(),
-                LightmapLayer::LIT,
-              )
-            } else {
-              (LightColor::default(), 0)
-            }
-          })
-          .collect()
+        row
       })
+      .collect::<Vec<_>>()
+      .into_iter()
+      .flatten()
       .collect();
-    let mut layer: LightmapLayer = LightmapLayer::new(width, height);
-
-    for (index, (color, marker)) in rows.into_iter().flatten().enumerate() {
-      layer.surface[index] = color;
-      layer.marker[index] = marker;
-    }
+    let colors: Vec<LightColor> = light_points(&points)?;
+    let mut layer: LightmapLayer = LightChartLighter::<T>::assemble(width, height, &points, &colors);
 
     layer.fill_borders(254);
 
@@ -112,18 +168,18 @@ impl<T: Tracer + Sync> ImplicitLighter<'_, T> {
       texel[3] = LightColor::get_byte(color.hemi);
     }
 
-    ImplicitMap {
+    Ok(ImplicitMap {
       name,
       width,
       height,
       base,
       lightmap: layer.get_packed(),
-    }
+    })
   }
 
-  /// The light at `weights` on `face`: its corners blended there, facing its corners' normals blended there and
+  /// The point at `weights` on `face`: its corners blended there, facing its corners' normals blended there and
   /// normalised (`Fvector::normalize`).
-  fn sample_face(&self, face: u32, weights: &[f32; 3], occluders: &mut LightOccluders) -> LightColor {
+  fn get_sample(&self, face: u32, weights: &[f32; 3]) -> (Vec3, Vec3) {
     let normals: &GeometryNormals = self.lighter.scene.normals;
     let splits: [u32; 3] = normals.faces[face as usize];
     let blend = |values: [Vector3d; 3]| {
@@ -137,11 +193,9 @@ impl<T: Tracer + Sync> ImplicitLighter<'_, T> {
     let normal: Vector3d = blend(splits.map(|split| normals.normals[split as usize]));
     let scale: f32 = (1.0 / (normal.x * normal.x + normal.y * normal.y + normal.z * normal.z)).sqrt();
 
-    self.lighter.light_point(
-      face,
+    (
       Vec3::new(point.x, point.y, point.z),
       Vec3::new(normal.x * scale, normal.y * scale, normal.z * scale),
-      occluders,
     )
   }
 

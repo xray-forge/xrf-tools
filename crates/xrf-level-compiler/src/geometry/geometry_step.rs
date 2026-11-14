@@ -13,6 +13,7 @@ use crate::chart::lightmap_faces::LightmapFaces;
 use crate::compiler_texture::CompilerTexture;
 use crate::compiler_textures::CompilerTextures;
 use crate::geometry::geometry_level::GeometryLevel;
+use crate::geometry::geometry_level_request::GeometryLevelRequest;
 use crate::level_compile_request::LevelCompileRequest;
 use crate::level_compile_step_run::LevelCompileStepRun;
 
@@ -40,8 +41,16 @@ impl GeometryStep {
 
     job.check_cancelled()?;
 
-    let compiled: GeometryLevel =
-      GeometryLevel::compile(&project, &library, &textures, &request.textures, request.light_quality)?;
+    let compiled: GeometryLevel = GeometryLevel::compile(&GeometryLevelRequest {
+      project: &project,
+      library: &library,
+      textures: &textures,
+      roots: &request.textures,
+      quality: request.light_quality,
+      backend: request.backend,
+      dxc: request.dxc.as_deref(),
+      gpu: request.gpu,
+    })?;
 
     job.check_cancelled()?;
 
@@ -90,6 +99,7 @@ impl GeometryStep {
 
     Ok(LevelCompileStepRun::GeometryCompiler {
       census: compiled.census,
+      gpu: compiled.gpu,
     })
   }
 

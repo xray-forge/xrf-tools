@@ -36,7 +36,7 @@ fn mesh(vertices: Vec<Vector3d>, faces: Vec<GeometryFace>) -> GeometryMesh {
 
 /// A floor 2 m square facing up, and a wall 2 m high rising from its far edge facing it, its top `lean` metres further
 /// out: upright at 0, folded 90 degrees from the floor, and opening the fold the further it leans.
-fn floor_and_wall(lean: f32) -> GeometryMesh {
+pub(crate) fn floor_and_wall(lean: f32) -> GeometryMesh {
   mesh(
     vec![
       Vector3d::new(0.0, 0.0, 0.0),
@@ -140,7 +140,7 @@ fn keeps_a_bend_within_the_smoothing_angle_on_one_chart() {
 }
 
 /// A sun straight above of `energy`.
-fn sun(energy: f32) -> LightSource {
+pub(crate) fn sun(energy: f32) -> LightSource {
   LightSource {
     is_directional: true,
     is_point: false,
@@ -157,6 +157,15 @@ fn sun(energy: f32) -> LightSource {
 
 /// `charts`' first, the floor, lit by `lights` through a ray model of `mesh`'s own faces, each skipped by its own.
 fn light(mesh: &GeometryMesh, lights: &[Vec<LightSource>; 3]) -> LitChart {
+  light_by(mesh, lights, |lighter, floor| lighter.light(floor))
+}
+
+/// [`light`], the floor lit by `lighting` with the lighter over the ray model of `mesh` and the shadow materials.
+pub(crate) fn light_by<R>(
+  mesh: &GeometryMesh,
+  lights: &[Vec<LightSource>; 3],
+  lighting: impl FnOnce(&LightChartLighter<'_, BvhTracer>, &LightChart) -> R,
+) -> R {
   let (project, shaders, textures) = tables();
   let normals: GeometryNormals = GeometryNormals::of(mesh);
   let scene: LightChartScene<'_> = LightChartScene::of(mesh, &normals, &project, &shaders, &textures, 10.0, 1);
@@ -171,7 +180,7 @@ fn light(mesh: &GeometryMesh, lights: &[Vec<LightSource>; 3]) -> LitChart {
   let split: Vec<u32> = (0..mesh.faces.len() as u32).collect();
   let floor: LightChart = LightChart::cut(&split, &scene).remove(0);
 
-  LightChartLighter {
+  let lighter: LightChartLighter<'_, BvhTracer> = LightChartLighter {
     scene: &scene,
     lights,
     tracer: &tracer,
@@ -179,8 +188,9 @@ fn light(mesh: &GeometryMesh, lights: &[Vec<LightSource>; 3]) -> LitChart {
     ray_faces: &ray_faces,
     rms_zero: 2,
     rms_shrink: 4,
-  }
-  .light(&floor)
+  };
+
+  lighting(&lighter, &floor)
 }
 
 #[test]
@@ -234,7 +244,8 @@ fn lights_an_implicit_map_over_its_faces_texture_coordinates_and_keeps_the_textu
     lighter: &lighter,
     coordinates: &coordinates,
   }
-  .light(String::from("ground"), vec![[10, 20, 30, 255]; 16], 4, 4, &[0, 1]);
+  .light(String::from("ground"), vec![[10, 20, 30, 255]; 16], 4, 4, &[0, 1])
+  .expect("the CPU lights a map");
 
   // Every texel the sun halved, the texture's colour kept and its alpha the sky's, none here.
   assert_eq!((map.width, map.height), (4, 4));
