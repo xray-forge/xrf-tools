@@ -1,6 +1,7 @@
 #![doc = include_str!("../README.md")]
 
 mod ai;
+mod compiler_shaders;
 mod compiler_textures;
 mod detail;
 mod geometry;
@@ -24,10 +25,12 @@ pub use crate::ai::ai_map_covers::AiMapCovers;
 pub use crate::ai::ai_map_guid::AiMapGuid;
 pub use crate::ai::ai_map_request::AiMapRequest;
 pub use crate::ai::cover::ai_ray_model::AiRayModel;
+pub use crate::compiler_shaders::CompilerShaders;
 pub use crate::detail::detail_light_request::DetailLightRequest;
 pub use crate::detail::detail_lighter::DetailLighter;
 pub use crate::detail::detail_lighting::DetailLighting;
 pub use crate::detail::detail_slot_counts::DetailSlotCounts;
+pub use crate::geometry::geometry_collision::GeometryCollision;
 pub use crate::geometry::geometry_face::GeometryFace;
 pub use crate::geometry::geometry_mesh::GeometryMesh;
 pub use crate::geometry::geometry_normals::GeometryNormals;

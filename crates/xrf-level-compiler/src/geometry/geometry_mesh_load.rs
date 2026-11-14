@@ -2,15 +2,13 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_level::{BuildPrjFile, BuildPrjMaterial};
 use xrf_math::Aabb;
 
+use crate::compiler_shaders::CompilerShaders;
 use crate::geometry::geometry_face::GeometryFace;
 use crate::geometry::geometry_mesh::GeometryMesh;
 
 impl GeometryMesh {
   /// The game material ids xrLC takes, below `1 << 16` (`R_ASSERT(B.dwMaterialGame<65536)`, `Build_Load.cpp:98`).
   const GAME_MATERIAL_LIMIT: u32 = 1 << 16;
-
-  /// A material's compiler shader where it has none, as a glow's material has (`post_process_materials`).
-  const NO_COMPILER_SHADER: u16 = u16::MAX;
 
   /// The static geometry of `project`, as `CBuild::Load` reads it (`xrLC/Build_Load.cpp:47`), checked first for what
   /// xrLC would stop on or read past: a face naming a vertex or material the project lacks, a game material past its
@@ -96,7 +94,7 @@ impl GeometryMesh {
       Self::find(&project.faces, |face| {
         materials
           .get(usize::from(face.material))
-          .is_some_and(|material| material.compiler_shader == Self::NO_COMPILER_SHADER)
+          .is_some_and(|material| material.compiler_shader == CompilerShaders::NONE)
           .then(|| format!("material {}", face.material))
       }),
     );
@@ -111,7 +109,7 @@ impl GeometryMesh {
       Self::find(materials, |material| {
         (usize::from(material.texture) >= project.textures.len()
           || usize::from(material.shader) >= project.render_shaders.len()
-          || (material.compiler_shader != Self::NO_COMPILER_SHADER
+          || (material.compiler_shader != CompilerShaders::NONE
             && usize::from(material.compiler_shader) >= project.compiler_shaders.len()))
         .then(|| {
           format!(
