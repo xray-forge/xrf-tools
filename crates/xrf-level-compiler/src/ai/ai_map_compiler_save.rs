@@ -16,14 +16,14 @@ impl AiMapCompiler {
   /// The layout xrAI writes, `XRAI_CURRENT_VERSION` of Clear Sky and Call of Pripyat.
   const VERSION: LevelAiVersion = LevelAiVersion::CsCop;
 
-  /// The light every node is saved with (`compiler_save.cpp:18`); the 2009 binary leaves whatever its stack held.
+  /// The light every node is saved with (`xrAI/compiler_save.cpp`); the 2009 binary leaves whatever its stack held.
   const LIGHT: u8 = 15;
 
   /// A link of [`Self::VERSION`] at full width; xrAI's `InvalidNode` is stored cut to it.
   const LINK_MASK: u32 = (1 << Self::VERSION.get_link_bits()) - 1;
 
-  /// Saves the nodes as xrAI does (`xrSaveNodes`, `xrAI/compiler_save.cpp:140`): the header's box around every node
-  /// with its height grown by `EPS_L` (`CalculateHeight`), each node compressed over it, then the nodes stably sorted by
+  /// Saves the nodes as xrAI does (`xrSaveNodes`, `xrAI/compiler_save.cpp`): the header's box around every node with
+  /// its height grown by `EPS_L` (`CalculateHeight`), each node compressed over it, then the nodes stably sorted by
   /// packed cell with their links renumbered (`CNodeRenumberer`).
   pub(crate) fn save(cell_size: f32, vertices: &[AiVertex], replaced: Option<&AiMap>) -> XrfResult<AiMapCompilation> {
     let bounds: Aabb = Aabb::from_points(vertices.iter().map(|vertex| vertex.position))
@@ -108,7 +108,7 @@ impl AiMapCompiler {
   }
 
   /// Whether `nodes` under `header` are the replaced map's graph: as many nodes, of the same cell size, each at the
-  /// same cell and linked to the same nodes. What a spawn built against the replaced map indexes.
+  /// same cell and linked to the same nodes: what a root spawn built against the replaced map indexes.
   fn is_same_graph(header: &LevelAiHeader, nodes: &[LevelAiNode], replaced: &AiMap) -> bool {
     let theirs: &LevelAiHeader = &replaced.file.header;
 

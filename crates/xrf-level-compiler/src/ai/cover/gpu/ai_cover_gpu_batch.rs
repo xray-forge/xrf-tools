@@ -3,9 +3,10 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 
 use crate::ai::ai_vertex::AiVertex;
-use crate::ai::cover::ai_cover_pass::{AiCoverPass, AiNodeCovers};
+use crate::ai::cover::ai_cover_pass::AiCoverPass;
+use crate::ai::cover::ai_node_covers::AiNodeCovers;
 use crate::ray::gpu::ray_gpu_batch::RayGpuBatch;
-use crate::ray::gpu::ray_gpu_records::GpuSingle;
+use crate::ray::gpu::ray_gpu_single::RayGpuSingle;
 use crate::ray::gpu::ray_gpu_tracer::RayGpuTracer;
 
 /// Some corner nodes' rays as the GPU traces them: each node's targets, and its rays from each height in turn, one
@@ -67,7 +68,7 @@ impl AiCoverGpuBatch {
       count += list.len() * AiCoverPass::HEIGHTS.len();
     }
 
-    let singles: Vec<GpuSingle> = nodes
+    let singles: Vec<RayGpuSingle> = nodes
       .par_iter()
       .zip(&targets)
       .zip(&firsts)
@@ -81,7 +82,7 @@ impl AiCoverGpuBatch {
             list.iter().enumerate().map(move |(target, other)| {
               let (ray, _) = AiCoverPass::aim(&base, &vertices[*other as usize].position, *height);
 
-              GpuSingle::new(
+              RayGpuSingle::new(
                 &ray,
                 (first + height_index * list.len() + target) as u32,
                 RayGpuTracer::NO_SKIP,
@@ -127,7 +128,10 @@ impl AiCoverGpuBatch {
           }))
         };
 
-        (covers(0), covers(1))
+        AiNodeCovers {
+          high: covers(0),
+          low: covers(1),
+        }
       })
       .collect()
   }

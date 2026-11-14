@@ -1,8 +1,8 @@
 use xrf_math::{Aabb, EPS_L};
 
 /// The grid of square cells a `level.ai` packs each node's cell over: cells counted from a box's lowest corner, x in
-/// rows of the cells along z (`CNodePositionCompressor`, `xrAI/compiler.h:170`, and `vertex_position`,
-/// `compiler_load.cpp:8`).
+/// rows of the cells along z (`CNodePositionCompressor`, `xrAI/compiler.h`, and `vertex_position`,
+/// `xrAI/compiler_load.cpp`).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct AiGrid {
   min_x: f32,

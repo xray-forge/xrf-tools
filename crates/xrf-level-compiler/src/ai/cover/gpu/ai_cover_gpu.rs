@@ -4,48 +4,26 @@ use std::sync::Mutex;
 use rayon::prelude::*;
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::{JobHandle, JobScope};
-use xrf_renderer_core::{RayQueryAsk, RayQueryDevice, RenderGpu};
 
 use crate::ai::ai_vertex::AiVertex;
-use crate::ai::cover::ai_cover_pass::AiNodeCovers;
 use crate::ai::cover::ai_cover_query::AiCoverQuery;
-use crate::ai::cover::ai_cover_tracing::AiCoverTracing;
+use crate::ai::cover::ai_node_covers::AiNodeCovers;
 use crate::ai::cover::gpu::ai_cover_gpu_batch::AiCoverGpuBatch;
-use crate::light::light_point_variant::LightPointVariant;
 use crate::ray::gpu::ray_gpu_tracer::RayGpuTracer;
+use crate::ray::ray_rules::RayRules;
 
-/// The corner nodes' rays traced on the GPU with the detail lighter's rules, which answer a ray as the CPU's pass does:
-/// back faces passed, the first opaque face ending it, alpha faces dimming it. Nodes are flooded and their rays aimed
-/// on the CPU's threads a chunk at a time, while the GPU traces the chunk before; the covers are summed on the CPU in
-/// the CPU pass's order.
-pub(crate) struct AiCoverGpu {
-  tracer: RayGpuTracer,
+/// The corner nodes' rays traced on a started GPU by xrAI's rules ([`RayRules::COVERS`]), which answer a ray as the
+/// CPU's pass does: back faces passed, the first opaque face ending it, alpha faces dimming it. Nodes are flooded and
+/// their rays aimed on the CPU's threads a chunk at a time, while the GPU traces the chunk before; the covers are
+/// summed on the CPU in the CPU pass's order.
+pub(crate) struct AiCoverGpu<'a> {
+  /// The GPU holding the cover pass's ray scene, started by `RayDevice`.
+  pub(crate) tracer: &'a RayGpuTracer,
 }
 
-impl AiCoverGpu {
+impl AiCoverGpu<'_> {
   /// Corner nodes flooded and aimed together.
   const NODES: usize = 256;
-
-  /// The GPU `tracing` names started, its ray model on it.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when no GPU traces rays or the GPU refuses the ray model.
-  pub(crate) fn start(tracing: &AiCoverTracing<'_>) -> XrfResult<Self> {
-    let device: RayQueryDevice = RayQueryDevice::request(RayQueryAsk {
-      dxc: tracing.dxc,
-      gpu: tracing.gpu.map(RenderGpu::from),
-    })?;
-
-    Ok(Self {
-      tracer: RayGpuTracer::new(device, tracing.rays.tracer, tracing.rays.shadows)?,
-    })
-  }
-
-  /// The name of the GPU tracing.
-  pub(crate) fn get_name(&self) -> &str {
-    self.tracer.get_name()
-  }
 
   /// Every corner node's covers, in the order `corners` lists them.
   ///
@@ -73,7 +51,7 @@ impl AiCoverGpu {
 
       let next: Option<&[u32]> = if waiting.is_empty() { chunks.next() } else { None };
       let (traced, aimed) = rayon::join(
-        || self.tracer.trace(&batch.rays, LightPointVariant::Details),
+        || self.tracer.trace(&batch.rays, RayRules::COVERS),
         || next.map(aim).transpose(),
       );
 

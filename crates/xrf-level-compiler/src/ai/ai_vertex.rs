@@ -1,6 +1,6 @@
 use xrf_math::Vector3d;
 
-/// One node as xrAI works on it (`vertex`, `xrAI/compiler.h:17`): its four links, by node index in `build.aimap`'s
+/// One node as xrAI works on it (`vertex`, `xrAI/compiler.h`): its four links, by node index in `build.aimap`'s
 /// order, the unit normal of its plane, where it stands, and its covers in each of the four directions.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct AiVertex {

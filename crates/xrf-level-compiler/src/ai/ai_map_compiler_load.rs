@@ -7,7 +7,7 @@ use crate::ai::ai_map_compiler::AiMapCompiler;
 use crate::ai::ai_vertex::AiVertex;
 
 impl AiMapCompiler {
-  /// The map's nodes as xrAI loads them (`xrLoad`, `xrAI/compiler_load.cpp:267`), in `build.aimap`'s order.
+  /// The map's nodes as xrAI loads them (`xrLoad`, `xrAI/compiler_load.cpp`), in `build.aimap`'s order.
   ///
   /// Each cell goes through the packed form xrAI's save uses, over the map's box, and back, which is where its position
   /// lands; the height is unpacked across the box. Each plane normal is decompressed and normalised again

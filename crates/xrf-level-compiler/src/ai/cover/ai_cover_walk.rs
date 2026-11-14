@@ -1,8 +1,9 @@
-use crate::ai::ai_cell_pick::AiCellPick;
+use xrf_geometry::Box2Pick;
+
 use crate::ai::ai_vertex::AiVertex;
 
 /// Whether a node reaches a cover node by walking straight toward it across the map (`vertex_in_direction`,
-/// `xrAI/compiler_cover.cpp:397`): from the node, each step takes the first link whose cell the line toward the cover
+/// `xrAI/compiler_cover.cpp`): from the node, each step takes the first link whose cell the line toward the cover
 /// node crosses and whose cell's middle comes no farther from it, never stepping straight back.
 pub(crate) struct AiCoverWalk;
 
@@ -30,7 +31,7 @@ impl AiCoverWalk {
         let min: (f32, f32) = (at.0 - half_cell, at.1 - half_cell);
         let max: (f32, f32) = (at.0 + half_cell, at.1 + half_cell);
 
-        if !AiCellPick::is_crossing(min, max, from, direction) {
+        if !Box2Pick::is_crossing(min, max, from, direction) {
           continue;
         }
 

@@ -1,7 +1,7 @@
 use rayon::prelude::*;
 use xrf_error::XrfResult;
 use xrf_job::{JobHandle, JobScope};
-use xrf_level::{LevelDetailsFile, LevelDetailsSlot, LevelLightRole};
+use xrf_level::{LevelDetailsFile, LevelDetailsSlot};
 
 use crate::detail::detail_light_request::DetailLightRequest;
 use crate::detail::detail_lighting::DetailLighting;
@@ -9,18 +9,18 @@ use crate::detail::detail_slot_counts::DetailSlotCounts;
 use crate::detail::detail_slot_fate::DetailSlotFate;
 use crate::detail::detail_slot_lighter::DetailSlotLighter;
 use crate::detail::detail_slot_stage::DetailSlotStage;
-use crate::light::light_source::LightSource;
-use crate::ray::ray_backend::RayBackend;
+use crate::light::source::light_sources::LightSources;
+use crate::ray::ray_device::RayDevice;
 
 /// Lights a level's details as xrDO_Light does: each slot's bare corners cleared, then each planted slot touching the
 /// ray model lit from 225 points across it by every light that reaches it, the light scaled by what each shadow ray
-/// crosses. Unlike the SDK's lighter, every shadow ray is a full query, never a test of the face that last blocked the
-/// light first, so the result is the same whatever the order and the thread count.
+/// crosses. Unlike xrDO_Light, every shadow ray is a full query, never a test of the face that last blocked the light
+/// first, so the result is the same whatever the order and the thread count.
 pub struct DetailLighter;
 
 impl DetailLighter {
   /// What a job reports the lighting under: the grid's slots.
-  pub const PROGRESS_SLOTS: &'static str = "slots";
+  pub(crate) const PROGRESS_SLOTS: &'static str = "slots";
 
   /// The request's details lit, the slots shared over the installed pool, their shadow rays traced by the request's
   /// backend.
@@ -29,22 +29,19 @@ impl DetailLighter {
   ///
   /// Returns [`xrf_error::XrfError::Cancelled`] when the job is cancelled, the lighting then left unfinished; and, for
   /// the GPU backend, an error when this build has none, no GPU traces rays, or the GPU fails; `Auto` lights on the
-  /// CPU instead when the GPU does not start, but fails with a GPU that fails once started.
+  /// CPU instead when the GPU does not start, but fails with a GPU that fails once started, as the slots it lit are
+  /// already counted.
   pub fn light(request: &DetailLightRequest<'_>, job: &JobHandle) -> XrfResult<DetailLighting> {
     let details: &LevelDetailsFile = request.details;
-    let lights: [Vec<LightSource>; 3] =
-      LevelLightRole::ALL.map(|role| request.lights.get_role_lights(role).map(LightSource::from).collect());
+    let lights: LightSources = LightSources::from_file(request.lights);
     let lighter: DetailSlotLighter<'_> = DetailSlotLighter {
       header: &details.header,
-      tracer: request.tracer,
-      shadows: request.shadows,
+      scene: request.scene,
       lights: &lights,
     };
     let scope: JobScope = job.enter(Self::PROGRESS_SLOTS, Some(details.slots.len() as u64));
-    let (fates, gpu): (Vec<DetailSlotFate>, Option<String>) = match request.backend {
-      RayBackend::Cpu => (Self::light_on_cpu(&lighter, details, job, &scope)?, None),
-      RayBackend::Gpu | RayBackend::Auto => Self::light_on_gpu(request, &lighter, job, &scope)?,
-    };
+    let device: RayDevice = RayDevice::start(&request.tracing, request.scene, "the details' shadow rays")?;
+    let fates: Vec<DetailSlotFate> = Self::light_on(&device, &lighter, details, job, &scope)?;
     let mut counts: DetailSlotCounts = DetailSlotCounts::default();
     let slots: Vec<[u32; LevelDetailsSlot::WORDS]> = details
       .slots
@@ -75,8 +72,27 @@ impl DetailLighter {
         slots,
       },
       counts,
-      gpu,
+      gpu: device.get_name(),
     })
+  }
+
+  /// Every slot's fate, its shadow rays traced on `device`.
+  fn light_on(
+    device: &RayDevice,
+    lighter: &DetailSlotLighter<'_>,
+    details: &LevelDetailsFile,
+    job: &JobHandle,
+    scope: &JobScope,
+  ) -> XrfResult<Vec<DetailSlotFate>> {
+    #[cfg(feature = "gpu")]
+    if let Some(tracer) = device.get_gpu() {
+      return crate::detail::gpu::detail_gpu_lighting::DetailGpuLighting { tracer }.light(details, lighter, job, scope);
+    }
+
+    #[cfg(not(feature = "gpu"))]
+    let _ = device;
+
+    Self::light_on_cpu(lighter, details, job, scope)
   }
 
   /// Every slot's fate, each lit whole on a CPU thread: planned, its rays traced as packets, finished.
@@ -103,60 +119,6 @@ impl DetailLighter {
         Ok(fate)
       })
       .collect()
-  }
-
-  /// Every slot's fate with the shadow rays traced on the GPU, and the GPU's name; for `Auto`, on the CPU when the GPU
-  /// does not start. A GPU that fails once started fails the lighting, as the slots it lit are already counted.
-  #[cfg(feature = "gpu")]
-  fn light_on_gpu(
-    request: &DetailLightRequest<'_>,
-    lighter: &DetailSlotLighter<'_>,
-    job: &JobHandle,
-    scope: &JobScope,
-  ) -> XrfResult<(Vec<DetailSlotFate>, Option<String>)> {
-    use crate::detail::gpu::detail_gpu_lighting::DetailGpuLighting;
-
-    match DetailGpuLighting::start(request) {
-      Ok(gpu) => gpu
-        .light(request, lighter, job, scope)
-        .map(|(fates, name)| (fates, Some(name))),
-      Err(error) if request.backend == RayBackend::Auto => {
-        Self::light_on_cpu_instead(&error, lighter, request.details, job, scope)
-      }
-      Err(error) => Err(error),
-    }
-  }
-
-  /// Every slot's fate on the CPU for `Auto`; refused for `Gpu`: this build has no GPU backend.
-  #[cfg(not(feature = "gpu"))]
-  fn light_on_gpu(
-    request: &DetailLightRequest<'_>,
-    lighter: &DetailSlotLighter<'_>,
-    job: &JobHandle,
-    scope: &JobScope,
-  ) -> XrfResult<(Vec<DetailSlotFate>, Option<String>)> {
-    let error: xrf_error::XrfError = xrf_error::XrfError::new_invalid_error(
-      "This build lights details on the CPU alone; its GPU backend is the `gpu` feature",
-    );
-
-    if request.backend == RayBackend::Auto {
-      Self::light_on_cpu_instead(&error, lighter, request.details, job, scope)
-    } else {
-      Err(error)
-    }
-  }
-
-  /// Every slot's fate on the CPU, the GPU having not started.
-  fn light_on_cpu_instead(
-    error: &xrf_error::XrfError,
-    lighter: &DetailSlotLighter<'_>,
-    details: &LevelDetailsFile,
-    job: &JobHandle,
-    scope: &JobScope,
-  ) -> XrfResult<(Vec<DetailSlotFate>, Option<String>)> {
-    log::info!("Lighting the details on the CPU: {error}");
-
-    Ok((Self::light_on_cpu(lighter, details, job, scope)?, None))
   }
 
   /// What the lighter does with the slot of `words` in grid cell `cell`: its fate where that needs no ray, else its

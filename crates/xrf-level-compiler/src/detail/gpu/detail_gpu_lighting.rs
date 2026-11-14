@@ -1,63 +1,40 @@
 use rayon::prelude::*;
 use xrf_error::XrfResult;
 use xrf_job::{JobHandle, JobScope};
-use xrf_renderer_core::{RayQueryAsk, RayQueryDevice, RenderGpu};
+use xrf_level::LevelDetailsFile;
 
-use crate::detail::detail_light_request::DetailLightRequest;
 use crate::detail::detail_lighter::DetailLighter;
 use crate::detail::detail_slot_fate::DetailSlotFate;
 use crate::detail::detail_slot_lighter::DetailSlotLighter;
 use crate::detail::detail_slot_stage::DetailSlotStage;
-use crate::light::light_point_variant::LightPointVariant;
 use crate::ray::gpu::ray_gpu_batch::RayGpuBatch;
 use crate::ray::gpu::ray_gpu_tracer::RayGpuTracer;
 
-/// The detail lighter with its shadow rays made and traced on the GPU: slots planned on the CPU's threads a few at a
-/// time until enough rays wait, those rays traced in one go, then those slots finished on the CPU's threads.
-pub(crate) struct DetailGpuLighting {
-  tracer: RayGpuTracer,
+/// The detail lighter with its shadow rays made and traced on a started GPU: slots planned on the CPU's threads a few
+/// at a time until enough rays wait, those rays traced in one go, then those slots finished on the CPU's threads.
+pub(crate) struct DetailGpuLighting<'a> {
+  /// The GPU holding the lighter's ray scene, started by `RayDevice`.
+  pub(crate) tracer: &'a RayGpuTracer,
 }
 
-impl DetailGpuLighting {
+impl DetailGpuLighting<'_> {
   /// Slots planned together, then planned again until enough rays wait.
   const PLANNED: usize = 64;
 
-  /// Rays traced together at least, unless the slots run out first.
-  const RAYS: usize = 1 << 23;
-
-  /// Packets traced together at most before another batch: a dispatch's workgroups, less room for one more plan's.
-  const PACKETS: usize = RayGpuTracer::MOST_WORKGROUPS / 2;
-
-  /// The request's GPU started, the ray model on it, before any slot is lit.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when no GPU traces rays or the GPU refuses the ray model.
-  pub(crate) fn start(request: &DetailLightRequest<'_>) -> XrfResult<Self> {
-    let device: RayQueryDevice = RayQueryDevice::request(RayQueryAsk {
-      dxc: request.dxc,
-      gpu: request.gpu.map(RenderGpu::from),
-    })?;
-
-    Ok(Self {
-      tracer: RayGpuTracer::new(device, request.tracer, request.shadows)?,
-    })
-  }
-
-  /// Every slot's fate, and the name of the GPU that traced.
+  /// Every slot's fate of `details`.
   ///
   /// # Errors
   ///
   /// Returns an error when the GPU refuses a batch, or the job is cancelled.
   pub(crate) fn light(
     &self,
-    request: &DetailLightRequest<'_>,
+    details: &LevelDetailsFile,
     lighter: &DetailSlotLighter<'_>,
     job: &JobHandle,
     scope: &JobScope,
-  ) -> XrfResult<(Vec<DetailSlotFate>, String)> {
-    let tracer: &RayGpuTracer = &self.tracer;
-    let slots: &[[u32; 4]] = &request.details.slots;
+  ) -> XrfResult<Vec<DetailSlotFate>> {
+    let tracer: &RayGpuTracer = self.tracer;
+    let slots: &[[u32; 4]] = &details.slots;
     let mut fates: Vec<DetailSlotFate> = Vec::with_capacity(slots.len());
     let mut waiting: Vec<DetailSlotStage> = Vec::new();
     let mut batch: RayGpuBatch = RayGpuBatch::default();
@@ -75,7 +52,7 @@ impl DetailGpuLighting {
 
       for stage in planned {
         firsts.push(match &stage {
-          DetailSlotStage::Planned(plan) => batch.push(plan, |face| tracer.get_skip(face)),
+          DetailSlotStage::Planned(plan) => batch.push(plan.as_ref(), |face| tracer.get_skip(face)),
           DetailSlotStage::Met(_) => 0,
         });
         waiting.push(stage);
@@ -83,8 +60,9 @@ impl DetailGpuLighting {
 
       next = end;
 
-      if batch.ray_count >= Self::RAYS || batch.packets.len() >= Self::PACKETS || next == slots.len() {
-        let transmittances: Vec<f32> = tracer.trace(&batch, LightPointVariant::Details)?;
+      // Traced once no room is left for one more packet or single ray, or enough rays wait.
+      if batch.is_full(1, 1) || next == slots.len() {
+        let transmittances: Vec<f32> = tracer.trace(&batch, DetailSlotLighter::get_rules())?;
         let finished: Vec<DetailSlotFate> = waiting
           .par_drain(..)
           .zip(firsts.par_drain(..))
@@ -102,6 +80,6 @@ impl DetailGpuLighting {
       }
     }
 
-    Ok((fates, tracer.get_name().to_owned()))
+    Ok(fates)
   }
 }

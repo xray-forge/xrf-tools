@@ -6,6 +6,6 @@ pub(crate) mod ai_cover_sector;
 pub(crate) mod ai_cover_tracing;
 pub(crate) mod ai_cover_tree;
 pub(crate) mod ai_cover_walk;
-pub(crate) mod ai_ray_model;
+pub(crate) mod ai_node_covers;
 #[cfg(feature = "gpu")]
 pub(crate) mod gpu;

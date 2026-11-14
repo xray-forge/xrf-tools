@@ -6,16 +6,24 @@ use xrf_renderer_core::RayQueryDevice;
 use xrf_renderer_core::wgpu;
 use xrf_renderer_core::wgpu::util::DeviceExt;
 
-use crate::light::light_point_variant::LightPointVariant;
+use crate::ray::gpu::ray_gpu_alpha_face::RayGpuAlphaFace;
+use crate::ray::gpu::ray_gpu_alpha_texture::RayGpuAlphaTexture;
+use crate::ray::gpu::ray_gpu_alpha_textures::RayGpuAlphaTextures;
 use crate::ray::gpu::ray_gpu_batch::RayGpuBatch;
-use crate::ray::gpu::ray_gpu_records::{GpuAlphaFace, GpuAlphaTexture, GpuBatchSize, GpuOrigin, GpuPacket, GpuSingle};
+use crate::ray::gpu::ray_gpu_batch_size::RayGpuBatchSize;
+use crate::ray::gpu::ray_gpu_origin::RayGpuOrigin;
+use crate::ray::gpu::ray_gpu_packet::RayGpuPacket;
+use crate::ray::gpu::ray_gpu_single::RayGpuSingle;
+use crate::ray::ray_rules::RayRules;
+use crate::shadow::shadow_face::ShadowFace;
 use crate::shadow::shadow_materials::ShadowMaterials;
 
 /// Traces shadow rays on the GPU with ray queries (`shadow_rays.wgsl`), for the detail lighter, the AI map's covers
 /// and the lightmaps: the ray model as one acceleration structure of two geometries, its opaque faces and its alpha
 /// faces, and the alpha faces' textures uploaded once; then each batch's rays made from their plans and answered with
-/// how much light each lets through, as the CPU answers it by the rules of a [`LightPointVariant`]: which sides of a
-/// face stop a ray, how much an alpha texel lets through, and whether a ray passes a face of its own.
+/// how much light each lets through, as the CPU answers it by a batch's [`RayRules`]: which sides of a face stop a
+/// ray, how much an alpha texel lets through, whether a ray passes a face of its own, and whether a face counts only
+/// where the CPU's ray test meets it too.
 pub(crate) struct RayGpuTracer {
   device: RayQueryDevice,
   packets_pipeline: wgpu::ComputePipeline,
@@ -32,7 +40,11 @@ pub(crate) struct RayGpuTracer {
 }
 
 /// The corners of the ray model's opaque faces and of its alpha faces, and each face's skip code.
-type SplitFaces = ([Vec<[f32; 3]>; 2], Vec<u32>);
+struct RaySplitFaces {
+  opaque: Vec<[f32; 3]>,
+  alpha: Vec<[f32; 3]>,
+  skips: Vec<u32>,
+}
 
 /// The buffers bound for every batch.
 struct RayGpuFixed {
@@ -68,14 +80,6 @@ impl RayGpuTracer {
   /// The skip code's bit naming the alpha geometry.
   const ALPHA_GEOMETRY: u32 = 1 << 31;
 
-  /// The rules' bits, `RULE_*` in the shader: a face stops a ray from either side; an alpha texel lets `1 - alpha²`
-  /// through rather than `1 - alpha`; a ray passes the face its skip code names; a face the device's ray test meets
-  /// counts only where the CPU's (`Triangle::cross`) meets it too.
-  const RULE_BOTH_SIDES: u32 = 1;
-  const RULE_SQUARED_ALPHA: u32 = 2;
-  const RULE_SKIPPING: u32 = 4;
-  const RULE_CPU_TEST: u32 = 8;
-
   /// The most workgroups a dispatch's side holds.
   pub(crate) const MOST_WORKGROUPS: usize = 65_535;
 
@@ -93,11 +97,15 @@ impl RayGpuTracer {
   pub(crate) fn new(device: RayQueryDevice, tracer: &BvhTracer, shadows: &ShadowMaterials) -> XrfResult<Self> {
     let gpu: &wgpu::Device = &device.device;
     let scope: wgpu::ErrorScopeGuard = gpu.push_error_scope(wgpu::ErrorFilter::Validation);
-    let ([opaque, alpha_corners], skips) = Self::split_faces(tracer, shadows)?;
+    let RaySplitFaces {
+      opaque,
+      alpha: alpha_corners,
+      skips,
+    } = Self::split_faces(tracer, shadows)?;
     let storage = |label: &str, bytes: &[u8], usage: wgpu::BufferUsages| -> wgpu::Buffer {
       // A binding cannot be empty: an empty array is bound as one element of the widest record.
       let padded: Vec<u8> = if bytes.is_empty() {
-        vec![0; size_of::<GpuAlphaFace>()]
+        vec![0; size_of::<RayGpuAlphaFace>()]
       } else {
         bytes.to_vec()
       };
@@ -132,8 +140,11 @@ impl RayGpuTracer {
         },
       )
     });
-    let alpha_faces: Vec<GpuAlphaFace> = shadows.get_alpha_faces().map(GpuAlphaFace::of).collect();
-    let (alpha_textures, alpha): (Vec<GpuAlphaTexture>, Vec<u8>) = GpuAlphaTexture::pack(shadows.get_textures());
+    let alpha_faces: Vec<RayGpuAlphaFace> = shadows.get_alpha_faces().map(RayGpuAlphaFace::of).collect();
+    let RayGpuAlphaTextures {
+      records: alpha_textures,
+      bytes: alpha,
+    } = RayGpuAlphaTexture::pack(shadows.get_textures());
     let blas: wgpu::Blas = gpu.create_blas(
       &wgpu::CreateBlasDescriptor {
         label: Some("ray model"),
@@ -261,7 +272,7 @@ impl RayGpuTracer {
       alpha: storage("ray alpha", &alpha, wgpu::BufferUsages::empty()),
       size: gpu.create_buffer(&wgpu::BufferDescriptor {
         label: Some("ray batch size"),
-        size: size_of::<GpuBatchSize>() as u64,
+        size: size_of::<RayGpuBatchSize>() as u64,
         usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         mapped_at_creation: false,
       }),
@@ -304,13 +315,13 @@ impl RayGpuTracer {
       .unwrap_or(Self::NO_SKIP)
   }
 
-  /// How much light each of `batch`'s rays lets through, by its number, by `variant`'s rules.
+  /// How much light each of `batch`'s rays lets through, by its number, by `rules`.
   ///
   /// # Errors
   ///
   /// Returns an error when the batch holds more packets or single rays than one dispatch takes, the GPU refuses its
   /// buffers or dispatches, or its answers cannot be read back.
-  pub(crate) fn trace(&self, batch: &RayGpuBatch, variant: LightPointVariant) -> XrfResult<Vec<f32>> {
+  pub(crate) fn trace(&self, batch: &RayGpuBatch, rules: RayRules) -> XrfResult<Vec<f32>> {
     let packets: usize = batch.packets.len();
     let singles: usize = batch.singles.len();
 
@@ -346,19 +357,10 @@ impl RayGpuTracer {
     queue.write_buffer(&held.packets, 0, bytemuck::cast_slice(&batch.packets));
     queue.write_buffer(&held.origins, 0, bytemuck::cast_slice(&batch.origins));
     queue.write_buffer(&held.singles, 0, bytemuck::cast_slice(&batch.singles));
-    let rules: u32 = match variant {
-      LightPointVariant::Details => 0,
-      // The light baker's samples sit on their faces and its skies hold grazing directions: the device's watertight
-      // test takes crossings the CPU's determinant test turns away, a step of light apart on a lightmap.
-      LightPointVariant::Level => {
-        Self::RULE_BOTH_SIDES | Self::RULE_SQUARED_ALPHA | Self::RULE_SKIPPING | Self::RULE_CPU_TEST
-      }
-    };
-
     queue.write_buffer(
       &self.fixed.size,
       0,
-      bytemuck::bytes_of(&GpuBatchSize::new(packets as u32, singles as u32, rules)),
+      bytemuck::bytes_of(&RayGpuBatchSize::new(packets as u32, singles as u32, rules.get_bits())),
     );
 
     let mut encoder: wgpu::CommandEncoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -427,9 +429,9 @@ impl RayGpuTracer {
       })
     };
     let input = wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST;
-    let packets: wgpu::Buffer = buffer("ray packets", capacity[0] * size_of::<GpuPacket>(), input);
-    let origins: wgpu::Buffer = buffer("ray origins", capacity[1] * size_of::<GpuOrigin>(), input);
-    let singles: wgpu::Buffer = buffer("ray singles", capacity[2] * size_of::<GpuSingle>(), input);
+    let packets: wgpu::Buffer = buffer("ray packets", capacity[0] * size_of::<RayGpuPacket>(), input);
+    let origins: wgpu::Buffer = buffer("ray origins", capacity[1] * size_of::<RayGpuOrigin>(), input);
+    let singles: wgpu::Buffer = buffer("ray singles", capacity[2] * size_of::<RayGpuSingle>(), input);
     let transmittances: wgpu::Buffer = buffer(
       "ray transmittances",
       capacity[3] * 4,
@@ -484,26 +486,25 @@ impl RayGpuTracer {
   /// `ShadowMaterials::get_alpha_faces`; the faces passing light left out. A geometry left empty holds one inactive
   /// triangle, its corners not numbers, which no ray meets, since a structure's geometry cannot be empty. With them,
   /// each face's skip code, its place in its geometry.
-  fn split_faces(tracer: &BvhTracer, shadows: &ShadowMaterials) -> XrfResult<SplitFaces> {
-    let codes: Vec<u32> = shadows.get_face_codes();
+  fn split_faces(tracer: &BvhTracer, shadows: &ShadowMaterials) -> XrfResult<RaySplitFaces> {
+    let parts: &[ShadowFace] = shadows.get_faces();
     let alpha_count: usize = shadows.get_alpha_faces().count();
     let mut opaque: Vec<[f32; 3]> = Vec::new();
     let mut alpha: Vec<[f32; 3]> = vec![[f32::NAN; 3]; alpha_count.max(1) * 3];
-    let mut skips: Vec<u32> = Vec::with_capacity(codes.len());
+    let mut skips: Vec<u32> = Vec::with_capacity(parts.len());
 
-    for (face, code) in codes.iter().enumerate() {
+    for (face, part) in parts.iter().enumerate() {
       let face: u32 = u32::try_from(face)
         .map_err(|_| XrfError::new_invalid_error("The ray model holds more faces than a GPU structure takes"))?;
       let corners: [[f32; 3]; 3] = tracer.get_triangle(face).corners.map(|corner| corner.to_array());
 
-      match *code {
-        ShadowMaterials::FACE_PASSES => skips.push(Self::NO_SKIP),
-        ShadowMaterials::FACE_OPAQUE => {
+      match *part {
+        ShadowFace::Passes => skips.push(Self::NO_SKIP),
+        ShadowFace::Opaque => {
           skips.push((opaque.len() / 3) as u32);
           opaque.extend(corners);
         }
-        alpha_code => {
-          let index: u32 = alpha_code - ShadowMaterials::FACE_ALPHA;
+        ShadowFace::Alpha(index) => {
           let start: usize = index as usize * 3;
 
           skips.push(Self::ALPHA_GEOMETRY | index);
@@ -516,6 +517,6 @@ impl RayGpuTracer {
       opaque = vec![[f32::NAN; 3]; 3];
     }
 
-    Ok(([opaque, alpha], skips))
+    Ok(RaySplitFaces { opaque, alpha, skips })
   }
 }

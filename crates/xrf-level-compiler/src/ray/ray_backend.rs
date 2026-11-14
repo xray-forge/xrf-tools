@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-/// What traces the compile's rays through the ray model: the detail lighter's shadow rays and the AI map's corner rays.
+/// What traces the compile's rays through the ray model: the light baker's lightmap and implicit map shadow rays, the
+/// detail lighter's shadow rays and the AI map's corner rays.
 /// The CPU is the reference the SDK's runs are matched against; the GPU traces with hardware ray queries, each slot and
 /// each cover within one step of the CPU's, several times faster.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

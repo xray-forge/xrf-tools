@@ -9,17 +9,11 @@ use crate::ai::cover::ai_cover_pass::AiCoverPass;
 use crate::ai::cover::ai_cover_tracing::AiCoverTracing;
 
 /// Compiles a level's AI map, `build.aimap` into `level.ai`, as SDK 0.7's `xrAI -f` does (`xrCompiler`,
-/// `xrAI/compiler.cpp:63`): the nodes loaded, their covers computed, and the map saved sorted by cell. Node lighting is
+/// `xrAI/compiler.cpp`): the nodes loaded, their covers computed, and the map saved sorted by cell. Node lighting is
 /// not computed: xrAI's is dead code, and no loader reads the value.
 pub struct AiMapCompiler;
 
 impl AiMapCompiler {
-  /// What a job reports tracing the covers under: the nodes at the map's corners.
-  pub const PROGRESS_CORNER_NODES: &'static str = AiCoverPass::PROGRESS_CORNERS;
-
-  /// What a job reports mixing the covers under: the other nodes.
-  pub const PROGRESS_OTHER_NODES: &'static str = AiCoverPass::PROGRESS_OTHERS;
-
   /// Compiles the map `request` names, its covers shared over the installed pool and the corner nodes' rays traced by
   /// the request's backend.
   ///
@@ -35,7 +29,7 @@ impl AiMapCompiler {
       // xrAI's draft leaves the covers as the allocator gave them, which on its fresh heap is zero.
       AiMapCovers::None => None,
       AiMapCovers::Full => {
-        let rays = request.rays.ok_or_else(|| {
+        let scene = request.scene.ok_or_else(|| {
           XrfError::new_invalid_error("Full AI-map covers are traced against build.cform, and none was given")
         })?;
 
@@ -43,10 +37,8 @@ impl AiMapCompiler {
           &mut vertices,
           request.aimap.params.patch_size,
           &AiCoverTracing {
-            rays,
-            backend: request.backend,
-            dxc: request.dxc,
-            gpu: request.gpu,
+            scene,
+            tracing: request.tracing,
           },
           job,
         )?

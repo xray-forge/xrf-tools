@@ -1,21 +1,20 @@
 use std::path::Path;
 
 use xrf_chunk::{ChunkWriter, XRayByteOrder};
-use xrf_error::{XrfError, XrfResult};
+use xrf_error::XrfResult;
 use xrf_job::JobHandle;
 use xrf_level::{LevelDetailsFile, LevelLightsFile};
-use xrf_utils::{StagedFile, format_path};
 
+use crate::compile::compiler_output::CompilerOutput;
+use crate::compile::level_compile_request::LevelCompileRequest;
+use crate::compile::level_compile_step_run::LevelCompileStepRun;
 use crate::detail::detail_light_request::DetailLightRequest;
 use crate::detail::detail_lighter::DetailLighter;
 use crate::detail::detail_lighting::DetailLighting;
-use crate::level_compile_request::LevelCompileRequest;
-use crate::level_compile_step_run::LevelCompileStepRun;
 use crate::ray::ray_model::RayModel;
 
-/// A compile's details step, xrDO_Light's part: the level's `level.details` written as `build.details` lit by
-/// [`DetailLighter`] from xrLC's `build.cform` and `build.lights`, the build's `build.prj` and the game data's
-/// `shaders_xrlc.xr`, the textures read under the request's roots.
+/// A compile's details step, xrDO_Light's part: the level's `level.details`, its `build.details` lit by
+/// [`DetailLighter`] through the ray model ([`RayModel`]) and by `build.lights`.
 pub(crate) struct DetailStep;
 
 impl DetailStep {
@@ -31,8 +30,8 @@ impl DetailStep {
   /// # Errors
   ///
   /// Returns an error when an input is unreadable, the shadow materials cannot be loaded (`ShadowMaterials::load`),
-  /// the backend cannot trace, the job is cancelled, or `level.details` is not written; a file left as it was in each
-  /// case.
+  /// the backend cannot trace, the job is cancelled, or `level.details` is not written; the file is left as it was in
+  /// each case.
   pub(crate) fn run(request: &LevelCompileRequest, job: &JobHandle) -> XrfResult<LevelCompileStepRun> {
     let level: &Path = &request.level;
     let details: LevelDetailsFile = LevelDetailsFile::read_from_path::<XRayByteOrder, _>(&level.join(Self::SOURCE))?;
@@ -42,25 +41,16 @@ impl DetailStep {
     let lighting: DetailLighting = DetailLighter::light(
       &DetailLightRequest {
         details: &details,
-        tracer: &model.tracer,
-        shadows: &model.shadows,
+        scene: model.get_scene(),
         lights: &lights,
-        backend: request.backend,
-        dxc: request.dxc.as_deref(),
-        gpu: request.gpu,
+        tracing: request.get_tracing(),
       },
       job,
     )?;
     let mut writer: ChunkWriter = ChunkWriter::new();
-    let output = level.join(Self::OUTPUT);
 
     lighting.details.write::<XRayByteOrder>(&mut writer)?;
-    StagedFile::write(&output, &writer.buffer).map_err(|error| {
-      XrfError::new_io_error(
-        format!("{} was not written: {error}", format_path(&output)),
-        error.kind(),
-      )
-    })?;
+    CompilerOutput::write(&level.join(Self::OUTPUT), &writer.buffer)?;
 
     Ok(LevelCompileStepRun::DetailLighter {
       slots: lighting.counts,

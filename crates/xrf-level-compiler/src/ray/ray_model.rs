@@ -6,7 +6,8 @@ use xrf_geometry::BvhTracer;
 use xrf_level::{BuildCformFile, BuildPrjFile};
 use xrf_shaders::ShaderCompilerFile;
 
-use crate::level_compile_request::LevelCompileRequest;
+use crate::compile::level_compile_request::LevelCompileRequest;
+use crate::ray::ray_scene::RayScene;
 use crate::shadow::shadow_materials::ShadowMaterials;
 use crate::shadow::shadow_materials_request::ShadowMaterialsRequest;
 
@@ -42,5 +43,13 @@ impl RayModel {
       tracer: cform.build_tracer(),
       shadows,
     })
+  }
+
+  /// The ray model as the compilers trace through it.
+  pub(crate) fn get_scene(&self) -> RayScene<'_> {
+    RayScene {
+      tracer: &self.tracer,
+      shadows: &self.shadows,
+    }
   }
 }

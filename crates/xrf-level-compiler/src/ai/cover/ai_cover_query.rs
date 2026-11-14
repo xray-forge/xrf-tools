@@ -1,6 +1,6 @@
 use crate::ai::ai_vertex::AiVertex;
 
-/// The nodes a cover node traces its rays to (`Query::Perform`, `xrAI/compiler_cover.cpp:202`): every node reached
+/// The nodes a cover node traces its rays to (`Query::Perform`, `xrAI/compiler_cover.cpp`): every node reached
 /// through links whose position lies within `cover_distance` of the cover node's, in the order the engine's recursion
 /// lists them, the cover node first. A node past the distance is marked and not walked through, as in the engine.
 pub(crate) struct AiCoverQuery {

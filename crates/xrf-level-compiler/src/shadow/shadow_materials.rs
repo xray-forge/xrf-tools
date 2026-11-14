@@ -9,15 +9,16 @@ use xrf_math::Vector2d;
 use xrf_thm::{ThmFile, ThmTextureParamChunk};
 use xrf_utils::format_path;
 
-use crate::compiler_shaders::CompilerShaders;
-use crate::compiler_textures::CompilerTextures;
+use crate::input::compiler_shaders::CompilerShaders;
+use crate::input::compiler_textures::CompilerTextures;
 use crate::shadow::shadow_class::ShadowClass;
 use crate::shadow::shadow_class_counts::ShadowClassCounts;
+use crate::shadow::shadow_face::ShadowFace;
 use crate::shadow::shadow_materials_request::ShadowMaterialsRequest;
 use crate::shadow::shadow_texture::ShadowTexture;
 
 /// How each ray model face meets a light ray, as the SDK's lighters read it from `build.prj`, `shaders_xrlc.xr` and the
-/// textures (`xrLoad`, `xrLC_Light/global_calculation_data.cpp:34`; `getLastRP_Scale`, `detail_slot_calculate.cpp:93`):
+/// textures (`xrLoad`, `xrLC_Light/global_calculation_data.cpp`; `getLastRP_Scale`, `detail_slot_calculate.cpp`):
 ///
 /// - a face whose material's compiler shader casts no shadow passes the ray;
 /// - a face whose texture has an alpha channel, by its `.thm`, is dimmed through that alpha, unless the texture is a
@@ -33,15 +34,6 @@ pub struct ShadowMaterials {
   alpha_faces: Vec<ShadowAlphaFace>,
   /// The textures alpha faces name, each once.
   textures: Vec<ShadowTexture>,
-}
-
-/// One ray model face's part in a light ray.
-#[derive(Clone, Copy, Debug)]
-enum ShadowFace {
-  Passes,
-  Opaque,
-  /// By its index among the alpha faces.
-  Alpha(u32),
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -67,16 +59,8 @@ struct ShadowImageSource {
 }
 
 impl ShadowMaterials {
-  /// The folder whose textures' images the compilers never load (`global_calculation_data.cpp:168`).
+  /// The folder whose textures' images the compilers never load (`xrLC_Light/global_calculation_data.cpp`).
   const LOD_FOLDER: &'static str = "lod\\";
-
-  /// A face's part as [`Self::get_face_codes`] numbers it.
-  #[cfg(feature = "gpu")]
-  pub(crate) const FACE_PASSES: u32 = 0;
-  #[cfg(feature = "gpu")]
-  pub(crate) const FACE_OPAQUE: u32 = 1;
-  #[cfg(feature = "gpu")]
-  pub(crate) const FACE_ALPHA: u32 = 2;
 
   /// Reads a level's shadow materials: every texture's `.thm`, and the image of each alpha texture a face casting
   /// shadows names, decoded as the compilers' image library decodes it.
@@ -168,23 +152,9 @@ impl ShadowMaterials {
     }
   }
 
-  /// How much of a light ray passes the face it hits: 1 for a face passing it, 0 for one blocking it, and `1 - alpha`
-  /// at the hit's texture coordinates for an alpha one, weighted by its barycentrics as the SDK weighs them.
-  ///
-  /// # Panics
-  ///
-  /// Panics when the hit's face is not a face of the ray model these were loaded for.
-  pub fn get_transmittance(&self, hit: &TraceHit) -> f32 {
-    match self.faces[hit.face as usize] {
-      ShadowFace::Passes => 1.0,
-      ShadowFace::Opaque => 0.0,
-      ShadowFace::Alpha(index) => self.textures[self.alpha_faces[index as usize].texture as usize]
-        .get_transmittance(self.get_alpha_coordinates(index, hit)),
-    }
-  }
-
   /// How much of a light ray the face it hits stops: 0 for a face passing it, 1 for one blocking it, and the alpha at
-  /// the hit's texture coordinates for an alpha one.
+  /// the hit's texture coordinates for an alpha one, weighted by its barycentrics as the SDK weighs them; how much
+  /// passes is the tracing's rules' (`RayRules::get_transmittance`).
   ///
   /// # Panics
   ///
@@ -231,19 +201,10 @@ impl ShadowMaterials {
     &self.textures
   }
 
-  /// Each ray model face's part as a number, for a shader: [`Self::FACE_PASSES`], [`Self::FACE_OPAQUE`], or
-  /// [`Self::FACE_ALPHA`] plus the face's index among [`Self::get_alpha_faces`].
+  /// Each ray model face's part, an alpha face's index among [`Self::get_alpha_faces`].
   #[cfg(feature = "gpu")]
-  pub(crate) fn get_face_codes(&self) -> Vec<u32> {
-    self
-      .faces
-      .iter()
-      .map(|face| match face {
-        ShadowFace::Passes => Self::FACE_PASSES,
-        ShadowFace::Opaque => Self::FACE_OPAQUE,
-        ShadowFace::Alpha(index) => Self::FACE_ALPHA + index,
-      })
-      .collect()
+  pub(crate) fn get_faces(&self) -> &[ShadowFace] {
+    &self.faces
   }
 
   /// Each face dimming through alpha: its texture's index among [`Self::get_textures`], and its corners' texture

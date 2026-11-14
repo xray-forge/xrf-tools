@@ -39,7 +39,8 @@ impl AiCoverTree {
     }
   }
 
-  /// `neighbour_index`: the quarter of the cell around `center` that `position` falls in, moving `center` to its middle.
+  /// `neighbour_index`: the quarter of the cell around `center` that `position` falls in, moving `center` to its
+  /// middle.
   fn get_quarter(position: &Vector3d, center: &mut Vector3d, distance: f32) -> usize {
     let quarter: usize = match (position.x <= center.x, position.z <= center.z) {
       (true, true) => 0,
@@ -124,7 +125,7 @@ impl AiCoverTree {
     );
   }
 
-  /// One cell of `nearest` (`quadtree_inline.h:149`), its children walked as the engine walks them.
+  /// One cell of `nearest` (`xrAI/quadtree_inline.h`), its children walked as the engine walks them.
   fn visit(
     &self,
     search: &AiCoverTreeSearch<'_>,

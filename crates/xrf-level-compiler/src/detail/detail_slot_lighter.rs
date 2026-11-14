@@ -1,27 +1,28 @@
 use glam::Vec3;
-use xrf_geometry::{BvhTracer, Facing, Ray, Tracer, Triangle};
+use xrf_geometry::{Facing, Ray, Tracer, Triangle};
 use xrf_level::{DETAIL_SLOT_METERS, LevelDetailsHeader, LevelDetailsLight, LevelDetailsSlot, LevelLightRole};
 use xrf_math::EPS;
 
-use crate::light::light_color::LightColor;
-use crate::light::light_lamp_rays::LightLampRays;
-use crate::light::light_plan::LightPlan;
-use crate::light::light_point::LightPoint;
-use crate::light::light_point_variant::LightPointVariant;
-use crate::light::light_ray_group::LightRayGroup;
-use crate::light::light_sample_point::LightSamplePoint;
-use crate::light::light_source::LightSource;
-use crate::shadow::shadow_materials::ShadowMaterials;
+use crate::light::point::light_color::LightColor;
+use crate::light::point::light_plan::LightPlan;
+use crate::light::point::light_point::LightPoint;
+use crate::light::point::light_point_variant::LightPointVariant;
+use crate::light::point::light_sample_point::LightSamplePoint;
+use crate::light::source::light_roles::LightRoles;
+use crate::light::source::light_sources::LightSources;
+use crate::ray::ray_group::RayGroup;
+use crate::ray::ray_lamp_mode::RayLampMode;
+use crate::ray::ray_rules::RayRules;
+use crate::ray::ray_scene::RayScene;
 
 /// Lights one planted slot as xrDO_Light does (`LightThread::Execute` and its `LightPoint`,
-/// `xrDO_Light/LightThread.cpp:174`), its arithmetic in the same order, every shadow ray a full query of the ray model
+/// `xrDO_Light/LightThread.cpp`), its arithmetic in the same order, every shadow ray a full query of the ray model
 /// with no remembered blocker: planned ([`Self::plan`]), its rays traced, then finished ([`Self::finish`]).
 pub(crate) struct DetailSlotLighter<'a> {
   pub(crate) header: &'a LevelDetailsHeader,
-  pub(crate) tracer: &'a BvhTracer,
-  pub(crate) shadows: &'a ShadowMaterials,
-  /// The lights of each role, in [`LevelLightRole::ALL`]'s order.
-  pub(crate) lights: &'a [Vec<LightSource>; 3],
+  pub(crate) scene: RayScene<'a>,
+  /// The lights of each role.
+  pub(crate) lights: &'a LightSources,
 }
 
 impl DetailSlotLighter<'_> {
@@ -42,6 +43,11 @@ impl DetailSlotLighter<'_> {
 
   /// How far under the box a drop ray's height starts, so a point whose ray meets nothing stays out of it.
   const DROP_FLOOR: f32 = 5.0;
+
+  /// The rules the slots' shadow rays follow on either backend.
+  pub(crate) fn get_rules() -> RayRules {
+    Self::LIGHT_POINT.variant.get_rules()
+  }
 
   /// What lighting the slot in grid cell `cell` asks of the ray model, or `None` where its box touches no face of it.
   pub(crate) fn plan(&self, cell: usize, slot: &LevelDetailsSlot) -> Option<LightPlan> {
@@ -64,9 +70,10 @@ impl DetailSlotLighter<'_> {
     let mut triangles: Vec<Triangle> = Vec::new();
 
     self
+      .scene
       .tracer
       .for_each_face_in_box(center, half + Vec3::splat(Self::QUERY_GROW), |face| {
-        triangles.push(self.tracer.get_triangle(face));
+        triangles.push(self.scene.tracer.get_triangle(face));
       });
 
     if triangles.is_empty() {
@@ -74,12 +81,7 @@ impl DetailSlotLighter<'_> {
     }
 
     let points: Vec<LightSamplePoint> = Self::get_points(&triangles, center, low, high);
-    let selected: [Vec<u32>; 3] = std::array::from_fn(|role| {
-      (0..self.lights[role].len() as u32)
-        .filter(|light| self.lights[role][*light as usize].reaches(sphere_center, sphere_radius))
-        .collect()
-    });
-
+    let selected: LightRoles<Vec<u32>> = self.lights.select_reaching(sphere_center, sphere_radius);
     let skips: Vec<Option<u32>> = vec![None; points.len()];
 
     // A slot's few rays made on the CPU, so either backend gives each slot the same light.
@@ -89,28 +91,30 @@ impl DetailSlotLighter<'_> {
       skips,
       self.lights,
       selected,
-      LightLampRays::Single,
+      RayLampMode::Single,
     ))
   }
 
   /// How much light each of a plan's rays lets through, traced on the CPU: the product of every face's transmittance it
-  /// crosses from the front (`rayTrace`).
+  /// crosses from the front (`rayTrace`), by xrDO_Light's rules.
   pub(crate) fn trace(&self, plan: &LightPlan) -> Vec<f32> {
+    let rules: RayRules = Self::get_rules();
+    let RayScene { tracer, shadows } = self.scene;
     let mut transmittances: Vec<f32> = vec![1.0; plan.ray_count];
 
     for group in &plan.groups {
       match group {
-        LightRayGroup::Packet { first, .. } | LightRayGroup::Lamp { first, .. } => {
+        RayGroup::Packet { first, .. } | RayGroup::Lamp { first, .. } => {
           let first: usize = *first as usize;
-          let rays: Vec<Ray> = group.make_rays(&plan.points);
+          let rays: Vec<Ray> = plan.make_rays(group);
 
-          self.tracer.for_each_packet_hit(&rays, |ray, hit| {
-            transmittances[first + ray] *= self.shadows.get_transmittance(&hit);
+          tracer.for_each_packet_hit(&rays, |ray, hit| {
+            transmittances[first + ray] *= rules.get_transmittance(shadows.get_opacity(&hit));
           });
         }
-        LightRayGroup::Single { ray, index, .. } => {
-          self.tracer.for_each_hit(ray, |hit| {
-            transmittances[*index as usize] *= self.shadows.get_transmittance(&hit);
+        RayGroup::Single { ray, index, .. } => {
+          tracer.for_each_hit(ray, |hit| {
+            transmittances[*index as usize] *= rules.get_transmittance(shadows.get_opacity(&hit));
           });
         }
       }
@@ -124,17 +128,17 @@ impl DetailSlotLighter<'_> {
   pub(crate) fn finish(&self, plan: &LightPlan, transmittances: &[f32]) -> LevelDetailsLight {
     let mut sum: LightColor = LightColor::default();
     let point_count: usize = plan.points.len();
-    let amounts: [Vec<f32>; 3] = plan.get_amounts(self.lights, transmittances);
+    let amounts: LightRoles<Vec<f32>> = plan.get_amounts(self.lights, transmittances);
 
     for index in 0..point_count {
-      for (role, lights) in plan.selected.iter().enumerate() {
+      for (role, lights) in plan.selected.iter() {
         for (light, source) in lights.iter().enumerate() {
-          let amount: f32 = amounts[role][light * point_count + index];
+          let amount: f32 = amounts.get(role)[light * point_count + index];
 
           // Each sum is rounded to a float as it is stored, as the SDK's `base_color` members are: wider sums move
           // more slots across a step than they settle.
-          match LevelLightRole::ALL[role] {
-            LevelLightRole::Rgb => sum.rgb += self.lights[role][*source as usize].diffuse * amount,
+          match role {
+            LevelLightRole::Rgb => sum.rgb += self.lights.rgb[*source as usize].diffuse * amount,
             LevelLightRole::Hemi => sum.hemi += amount,
             LevelLightRole::Sun => sum.sun += amount,
           }

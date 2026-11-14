@@ -5,16 +5,16 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_job::JobHandle;
 use xrf_level::{BuildAimapFile, LevelAiFile, LevelAiGraphVerifier, LevelAiGraphVerifyResult};
 use xrf_report::Status;
-use xrf_utils::{StagedFile, format_path};
+use xrf_utils::format_path;
 
 use crate::ai::ai_map::AiMap;
 use crate::ai::ai_map_compilation::AiMapCompilation;
 use crate::ai::ai_map_compiler::AiMapCompiler;
 use crate::ai::ai_map_covers::AiMapCovers;
 use crate::ai::ai_map_request::AiMapRequest;
-use crate::ai::cover::ai_ray_model::AiRayModel;
-use crate::level_compile_request::LevelCompileRequest;
-use crate::level_compile_step_run::LevelCompileStepRun;
+use crate::compile::compiler_output::CompilerOutput;
+use crate::compile::level_compile_request::LevelCompileRequest;
+use crate::compile::level_compile_step_run::LevelCompileStepRun;
 use crate::ray::ray_model::RayModel;
 
 /// A compile's AI step, xrAI `-f`'s part: the level's `level.ai` compiled from `build.aimap` by [`AiMapCompiler`], its
@@ -31,9 +31,9 @@ impl AiStep {
   ///
   /// # Errors
   ///
-  /// Returns an error when an input is unreadable, the shadow materials cannot be loaded, the map does not compile or
-  /// links a node to itself, the backend cannot trace, the job is cancelled, or `level.ai` is not written; a file left
-  /// as it was in each case.
+  /// Returns an error when an input is unreadable, the shadow materials cannot be loaded (`ShadowMaterials::load`), the
+  /// map does not compile or links a node to itself, the backend cannot trace, the job is cancelled, or `level.ai` is
+  /// not written; the file is left as it was in each case.
   pub(crate) fn run(request: &LevelCompileRequest, job: &JobHandle) -> XrfResult<LevelCompileStepRun> {
     let level: &Path = &request.level;
     let output: PathBuf = level.join(Self::OUTPUT);
@@ -48,13 +48,8 @@ impl AiStep {
       AiMapRequest {
         aimap: &aimap,
         covers: request.ai_covers,
-        rays: model.as_ref().map(|model| AiRayModel {
-          tracer: &model.tracer,
-          shadows: &model.shadows,
-        }),
-        backend: request.backend,
-        dxc: request.dxc.as_deref(),
-        gpu: request.gpu,
+        scene: model.as_ref().map(RayModel::get_scene),
+        tracing: request.get_tracing(),
         replaced: replaced.as_ref(),
       },
       job,
@@ -80,12 +75,7 @@ impl AiStep {
       )));
     }
 
-    StagedFile::write(&output, &compiled.map.get_bytes()?).map_err(|error| {
-      XrfError::new_io_error(
-        format!("{} was not written: {error}", format_path(&output)),
-        error.kind(),
-      )
-    })?;
+    CompilerOutput::write(&output, &compiled.map.get_bytes()?)?;
 
     Ok(LevelCompileStepRun::AiMapCompiler {
       covers: request.ai_covers,

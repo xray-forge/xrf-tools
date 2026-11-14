@@ -1,6 +1,6 @@
 use xrf_math::Vector3d;
 
-/// The eight horizontal sectors a cover node bins its rays in (`calcSphereSector`, `xrAI/compiler_cover.cpp:142`), and
+/// The eight horizontal sectors a cover node bins its rays in (`calcSphereSector`, `xrAI/compiler_cover.cpp`), and
 /// the four covers each averaging four of them.
 pub(crate) struct AiCoverSector;
 
@@ -30,7 +30,7 @@ impl AiCoverSector {
   }
 
   /// The four covers, left, forward, right and back, from the eight sectors' passed shares: each the mean of four
-  /// sectors, summed in the engine's order (`:293`), clamped to 0..1.
+  /// sectors, summed in the engine's order, clamped to 0..1.
   pub(crate) fn get_covers(values: &[f32; 8]) -> [f32; 4] {
     let mean =
       |a: usize, b: usize, c: usize, d: usize| ((values[a] + values[b] + values[c] + values[d]) / 4.0).clamp(0.0, 1.0);

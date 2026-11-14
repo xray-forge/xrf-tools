@@ -1,16 +1,17 @@
 enable wgpu_ray_query;
 
-// How much light each of a batch of shadow rays lets through, as the CPU's `LightPoint` answers it by the batch's
-// rules (`RayGpuTracer::trace`): the product over every face of the ray model the ray crosses within its range, from
-// its front alone or from either side, each alpha face letting `1 - alpha` or `1 - alpha²` through, and where the rules
-// say so a face of the ray's own passed. The structure holds two geometries: the opaque faces, any one of which stops
-// the light, so the hardware ends the ray at the first; and the alpha faces, each dimming the light by its texture's
-// alpha at the nearest texel to the hit's texture coordinates, wrapped as the SDK wraps them. Faces passing light are
-// left out, as they change nothing. Where a ray passes a face of its own, every face is a candidate, an opaque one
-// taken unless it is the ray's own; where the rules ask for the CPU's ray test, every face is a candidate too, taken
-// only where that test meets it, so grazing crossings the device's watertight test takes count as the CPU counts them.
+// How much light each of a batch of shadow rays lets through, as the CPU answers it by the batch's rules
+// (`RayGpuTracer::trace`, `RayRules`): the product over every face of the ray model the ray crosses within its range,
+// from its front alone or from either side, each alpha face letting `1 - alpha` or `1 - alpha²` through, and where the
+// rules say so a face of the ray's own passed. The structure holds two geometries: the opaque faces, any one of which
+// stops the light, so the hardware ends the ray at the first; and the alpha faces, each dimming the light by its
+// texture's alpha at the nearest texel to the hit's texture coordinates, wrapped as the SDK wraps them. Faces passing
+// light are left out, as they change nothing. Where a ray passes a face of its own, every face is a candidate, an
+// opaque one taken unless it is the ray's own; where the rules ask for the CPU's ray test, every face is a candidate
+// too, taken only where that test meets it, so grazing crossings the device's watertight test takes count as the CPU
+// counts them.
 //
-// The rays come as the plans describe them (`LightRayGroup`): a light's packet, made here from its points' origins, a
+// The rays come as the plans describe them (`RayGroup`): a light's packet, made here from its points' origins, a
 // workgroup a packet, toward a directional light or a light at a position; and single rays toward lights at
 // positions, made on the CPU where a lighter wants them as the CPU makes them to the last bit.
 
@@ -86,12 +87,12 @@ struct Batch {
 @group(0) @binding(9) var<storage, read> opaque_corners: array<f32>;
 @group(0) @binding(10) var<storage, read> alpha_corners: array<f32>;
 
-// Lanes a packet's workgroup runs, a lane a point: room for a slot's 225 (`DetailGpuTracer::PACKET_LANES`); and a
-// single rays' workgroup (`DetailGpuTracer::SINGLE_LANES`).
+// Lanes a packet's workgroup runs, a lane a point: one for each bit of a packet's `facing` (`RayGroup::FACING_WORDS`),
+// room for a detail slot's 225; and a single rays' workgroup (`RayGpuTracer::SINGLE_LANES`).
 const PACKET_LANES: u32 = 256u;
 const SINGLE_LANES: u32 = 64u;
 
-// The batch's rules (`RayGpuTracer::RULE_*`): a face stops a ray from either side, not its front alone; an alpha texel
+// The batch's rules (`RayRules::RULE_*`): a face stops a ray from either side, not its front alone; an alpha texel
 // lets `1 - alpha²` through, not `1 - alpha`; a ray passes the face its skip code names; a face the device meets counts
 // only where the CPU's ray test meets it too.
 const RULE_BOTH_SIDES: u32 = 1u;
@@ -102,7 +103,7 @@ const RULE_CPU_TEST: u32 = 8u;
 // The CPU's ray test's least determinant, `xrf_math::EPS`.
 const EPS: f32 = 0.00001;
 
-// The kinds of packet (`GpuPacket::KIND_*`): a directional light's, and a light at a position's.
+// The kinds of packet (`RayGpuPacket::KIND_*`): a directional light's, and a light at a position's.
 const KIND_DIRECTIONAL: u32 = 0u;
 const KIND_LAMP: u32 = 1u;
 
