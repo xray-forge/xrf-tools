@@ -31,6 +31,7 @@ README is also its crate's rustdoc page.
 | [xrf-skeleton](xrf-skeleton/README.md)                     | Skeleton motions and bone physics two formats share                            |
 | [xrf-sound](xrf-sound/README.md)                           | Read and edit sound parameters, validate audio, edit `senvironment.xr`         |
 | [xrf-spawn](xrf-spawn/README.md)                           | Read and write spawn sets, alife records, graphs, patrols, and artefact points |
+| [xrf-spawn-builder](xrf-spawn-builder/README.md)           | Build a game's root spawn from its levels, as xrAI `-s` does                   |
 | [xrf-thm](xrf-thm/README.md)                               | Read and write `.thm` texture descriptors, bump pairs and SDK thumbnails       |
 
 ### Archives and the virtual file system

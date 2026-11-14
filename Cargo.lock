@@ -8469,6 +8469,7 @@ dependencies = [
  "xrf-rawdata",
  "xrf-report",
  "xrf-spawn",
+ "xrf-spawn-builder",
  "xrf-test-utils",
  "xrf-texture",
  "xrf-thm",
@@ -8827,13 +8828,11 @@ dependencies = [
  "xrf-geometry",
  "xrf-job",
  "xrf-level",
- "xrf-ltx",
  "xrf-math",
  "xrf-ogf",
  "xrf-renderer-core",
  "xrf-report",
  "xrf-shaders",
- "xrf-spawn",
  "xrf-test-utils",
  "xrf-thm",
  "xrf-utils",
@@ -9210,6 +9209,26 @@ dependencies = [
  "xrf-math",
  "xrf-test-utils",
  "xrf-utils",
+]
+
+[[package]]
+name = "xrf-spawn-builder"
+version = "0.1.0"
+dependencies = [
+ "glam",
+ "rayon",
+ "serde",
+ "sha2",
+ "specta",
+ "uuid",
+ "xrf-chunk",
+ "xrf-error",
+ "xrf-geometry",
+ "xrf-level",
+ "xrf-ltx",
+ "xrf-math",
+ "xrf-report",
+ "xrf-spawn",
 ]
 
 [[package]]
