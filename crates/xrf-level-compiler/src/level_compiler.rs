@@ -16,6 +16,7 @@ use crate::level_compile_report::{LevelCompileReport, LevelCompileStepReport};
 use crate::level_compile_request::LevelCompileRequest;
 use crate::level_compile_step::LevelCompileStep;
 use crate::level_compile_step_run::LevelCompileStepRun;
+use crate::light::light_bake::LightBake;
 use crate::sdk::level_sdk_process::LevelSdkProcess;
 use crate::sdk::level_sdk_program::LevelSdkProgram;
 use crate::sdk::level_sdk_workspace::LevelSdkWorkspace;
@@ -23,9 +24,9 @@ use crate::sdk::level_sdk_workspace::LevelSdkWorkspace;
 /// Compiles a level from the files `level build` wrote, step by step ([`LevelCompileStep`]): each step's inputs and
 /// program are checked before any runs, so a missing file stops the compile at once rather than an hour in, then each
 /// runs in order, reported to a job: the details by [`crate::DetailLighter`] and the AI map by
-/// [`crate::AiMapCompiler`] here, cancelled with the job; the geometry by [`crate::GeometryLevel`] here, its vertices
-/// and lightmaps lit, or where the request names the SDK by its xrLC in a workspace of its own, killed when the job is
-/// cancelled.
+/// [`crate::AiMapCompiler`] here, cancelled with the job; the geometry by [`crate::GeometryLevel`] here, with its light
+/// baked in the same pass where the light step runs and reported as that step, or where the request names the SDK by
+/// its xrLC in a workspace of its own, which lights it too, killed when the job is cancelled.
 pub struct LevelCompiler;
 
 impl LevelCompiler {
@@ -36,12 +37,32 @@ impl LevelCompiler {
   ///
   /// # Errors
   ///
-  /// Returns an error before anything runs when the level's directory has no name, a step's input is missing, a
-  /// texture `build.prj` names has no `.thm` under the textures roots where a step reads them, the details or AI step
-  /// would overwrite `level.details` or `level.ai` unforced, or the geometry step has no SDK, no xrLC in it, or other
-  /// than one textures root; and while running when a step fails or the job is cancelled.
+  /// Returns an error before anything runs when the light step is asked for without the geometry step, the level's
+  /// directory has no name, a step's input is missing, a texture `build.prj` names has no `.thm` under the textures
+  /// roots where a step reads them, the details or AI step would overwrite `level.details` or `level.ai` unforced, or
+  /// the SDK's geometry step has no xrLC or other than one textures root; and while running when a step fails or the
+  /// job is cancelled.
   pub fn compile(request: &LevelCompileRequest, job: &JobHandle) -> XrfResult<LevelCompileReport> {
-    let steps: Vec<LevelCompileStep> = Self::get_steps(&request.steps);
+    let mut steps: Vec<LevelCompileStep> = Self::get_steps(&request.steps);
+
+    if let Some(step) = steps.iter().find(|step| {
+      step
+        .get_companion()
+        .is_some_and(|companion| !steps.contains(&companion))
+    }) {
+      return Err(XrfError::new_invalid_error(format!(
+        "The {} step runs only with the {} step, in the same compile",
+        step.get_name(),
+        step.get_companion().map_or("", LevelCompileStep::get_name)
+      )));
+    }
+
+    // xrLC lights the geometry it compiles, which leaves the light step nothing of its own.
+    if request.sdk.is_some() {
+      steps.retain(|step| *step != LevelCompileStep::Light);
+    }
+
+    let is_lit: bool = steps.contains(&LevelCompileStep::Light);
     let (levels, name) = Self::get_level_name(&request.level)?;
     let programs: Vec<Option<LevelSdkProgram>> = steps
       .iter()
@@ -62,6 +83,8 @@ impl LevelCompiler {
     let mut workspace: Option<LevelSdkWorkspace> = None;
     let scope: JobScope = job.enter(Self::PROGRESS_STEPS, Some(steps.len() as u64));
     let mut reports: Vec<LevelCompileStepReport> = Vec::with_capacity(steps.len());
+    // The light the geometry step baked, which the light step reports.
+    let mut baked: Option<LightBake> = None;
 
     for (step, program) in steps.iter().zip(&programs) {
       job.check_cancelled()?;
@@ -89,9 +112,33 @@ impl LevelCompiler {
         }
         None => {
           let started: Instant = Instant::now();
-          let run: LevelCompileStepRun = Self::run_own(*step, request, job)?;
 
-          (started.elapsed(), run)
+          match step {
+            LevelCompileStep::Geometry => {
+              let (run, bake) = GeometryStep::run(request, job, is_lit)?;
+              // The bake ran within the geometry's compile; its time is the light step's.
+              let light: Duration = bake.as_ref().map_or(Duration::ZERO, |bake| bake.duration);
+
+              baked = bake;
+
+              (started.elapsed().saturating_sub(light), run)
+            }
+            LevelCompileStep::Light => {
+              let bake: LightBake = baked
+                .take()
+                .ok_or_else(|| XrfError::new_unexpected_error("The light step ran with no light baked"))?;
+
+              (
+                bake.duration,
+                LevelCompileStepRun::LightBaker {
+                  census: bake.census,
+                  gpu: bake.gpu,
+                },
+              )
+            }
+            LevelCompileStep::Details => (started.elapsed(), DetailStep::run(request, job)?),
+            LevelCompileStep::Ai => (started.elapsed(), AiStep::run(request, job)?),
+          }
         }
       };
 
@@ -108,15 +155,6 @@ impl LevelCompiler {
       work: workspace.map(|workspace| format_path(&workspace.directory).to_string()),
       steps: reports,
     })
-  }
-
-  /// Runs `step`, one of ours ([`LevelCompileStep::is_sdk`] false).
-  fn run_own(step: LevelCompileStep, request: &LevelCompileRequest, job: &JobHandle) -> XrfResult<LevelCompileStepRun> {
-    match step {
-      LevelCompileStep::Details => DetailStep::run(request, job),
-      LevelCompileStep::Ai => AiStep::run(request, job),
-      LevelCompileStep::Geometry => GeometryStep::run(request, job),
-    }
   }
 
   /// `steps`, each once in the order a compile runs them; every step where none is given.

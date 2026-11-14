@@ -53,10 +53,6 @@ export type GeometryLevelCensus = {
   /** Multi-use placements. */
   trees: number;
   sectors: number;
-  /** Lightmap charts. */
-  charts: number;
-  /** Lightmap pages, each written as `lmap#N_1` and `_2`. */
-  lightmaps: number;
 };
 
 /** What a level's compile ran ([`crate::LevelCompiler::compile`]), as the front-ends report it. */
@@ -115,12 +111,14 @@ export type LevelCompileRequest = {
 
 /**
  * One step of a level's compile from the files `level build` writes, in the order they run: the geometry (xrLC's
- * part, done by [`crate::GeometryLevel`] with its lightmaps, or by the SDK's xrLC with its own where the request
- * names the SDK, [`Self::is_sdk`]), the details' light (xrDO_Light's, done by [`crate::DetailLighter`]) and the AI map
- * (xrAI's `-f`, done by [`crate::AiMapCompiler`]).
+ * part, done by [`crate::GeometryLevel`], or by the SDK's xrLC with its own light where the request names the SDK,
+ * [`Self::is_sdk`]), its light (xrLC's baker, done with the geometry in one pass, since the lightmap pages decide the
+ * visuals), the details' light (xrDO_Light's, done by [`crate::DetailLighter`]) and the AI map (xrAI's `-f`, done by
+ * [`crate::AiMapCompiler`]).
  */
 export enum ELevelCompileStep {
   GEOMETRY = "geometry",
+  LIGHT = "light",
   DETAILS = "details",
   AI = "ai",
 }
@@ -145,11 +143,13 @@ export enum ELevelCompileStepRun {
    * none where the CPU traced them.
    */
   DETAIL_LIGHTER = "detailLighter",
-  /**
-   * Our geometry compiler ([`crate::GeometryLevel`]), what it made, and the GPU that traced its lightmaps' shadow rays,
-   * none where the CPU traced them.
-   */
+  /** Our geometry compiler ([`crate::GeometryLevel`]), and what it made. */
   GEOMETRY_COMPILER = "geometryCompiler",
+  /**
+   * Our light baker, within the geometry compile, what it made, and the GPU that traced its shadow rays, none where
+   * the CPU traced them.
+   */
+  LIGHT_BAKER = "lightBaker",
   /**
    * The AI map compiler ([`crate::AiMapCompiler`]): the covers it computed, the GPU that traced their rays, none where
    * the CPU did or no ray was traced, where the map's identity came from, and the graph check run on the map it wrote,
@@ -167,11 +167,13 @@ export type LevelCompileStepRun =
    * none where the CPU traced them.
    */
   | { kind: "detailLighter"; slots: DetailSlotCounts; gpu: string | null }
+  /** Our geometry compiler ([`crate::GeometryLevel`]), and what it made. */
+  | { kind: "geometryCompiler"; census: GeometryLevelCensus }
   /**
-   * Our geometry compiler ([`crate::GeometryLevel`]), what it made, and the GPU that traced its lightmaps' shadow rays,
-   * none where the CPU traced them.
+   * Our light baker, within the geometry compile, what it made, and the GPU that traced its shadow rays, none where
+   * the CPU traced them.
    */
-  | { kind: "geometryCompiler"; census: GeometryLevelCensus; gpu: string | null }
+  | { kind: "lightBaker"; census: LightBakeCensus; gpu: string | null }
   /**
    * The AI map compiler ([`crate::AiMapCompiler`]): the covers it computed, the GPU that traced their rays, none where
    * the CPU did or no ray was traced, where the map's identity came from, and the graph check run on the map it wrote,
@@ -185,6 +187,16 @@ export type LevelCompileStepRun =
       census: LevelAiGraphCensus;
       graph: Report;
     };
+
+/** What a light bake made, for its report. */
+export type LightBakeCensus = {
+  /** Lightmap charts. */
+  charts: number;
+  /** Lightmap pages, each written as `lmap#N_1` and `_2`. */
+  lightmaps: number;
+  /** Textures lit implicitly, such as terrain's, each written as `<texture>.dds` and `<texture>_lm.dds`. */
+  implicitMaps: number;
+};
 
 /** How finely a level is lit: by `build.prj`'s own settings, or by a cheaper preset that regenerates what it changes. */
 export enum ELightQuality {

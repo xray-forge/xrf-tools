@@ -1,15 +1,9 @@
-use std::collections::BTreeMap;
-use std::path::PathBuf;
-
-use rayon::prelude::*;
-use xrf_dds::{DdsFile, RgbaImage};
 use xrf_error::{XrfError, XrfResult};
-use xrf_geometry::{BvhTracer, ProgressiveWindow, Sky, SkyLight, Tracer};
+use xrf_geometry::{ProgressiveWindow, Sky, SkyLight};
 use xrf_level::{
-  BuildCformFile, BuildCformRaycastFace, BuildPrjFile, LevelBundle, LevelCformFile, LevelCformGeometry,
-  LevelCformHeader, LevelDynamicLight, LevelGeomBuffers, LevelGeomPacker, LevelGeomSlideWindowItem, LevelGlow,
-  LevelHeaderChunk, LevelLight, LevelLightRole, LevelLightsChunk, LevelLightsFile, LevelPortal, LevelSector,
-  LevelShaderEntry, LevelShadersChunk, LevelVisualRecord,
+  BuildCformFile, BuildPrjFile, LevelBundle, LevelCformFile, LevelCformGeometry, LevelCformHeader, LevelDynamicLight,
+  LevelGeomBuffers, LevelGeomPacker, LevelGeomSlideWindowItem, LevelGlow, LevelHeaderChunk, LevelLight,
+  LevelLightsChunk, LevelLightsFile, LevelPortal, LevelSector, LevelShaderEntry, LevelShadersChunk, LevelVisualRecord,
 };
 use xrf_math::{Color, Sphere, Vector3d};
 use xrf_ogf::{
@@ -17,24 +11,19 @@ use xrf_ogf::{
   OgfModelType, OgfSlideWindow, OgfSwiContainerChunk, OgfSwiDataChunk, OgfTreeColor, OgfTreeDefinitionChunk,
 };
 
-use crate::chart::implicit_lighter::ImplicitLighter;
 use crate::chart::implicit_map::ImplicitMap;
 use crate::chart::light_chart::LightChart;
-use crate::chart::light_chart_lighter::LightChartLighter;
-use crate::chart::light_chart_scene::LightChartScene;
-use crate::chart::lightmap_atlas::LightmapAtlas;
-use crate::chart::lightmap_backend::LightmapBackend;
-use crate::chart::lightmap_faces::LightmapFaces;
-use crate::chart::lit_chart::LitChart;
 use crate::compiler_shaders::CompilerShaders;
 use crate::compiler_texture::CompilerTexture;
-use crate::compiler_textures::CompilerTextures;
 use crate::geometry::geometry_base_coordinates::GeometryBaseCoordinates;
 use crate::geometry::geometry_bounds::GeometryBounds;
 use crate::geometry::geometry_collision::GeometryCollision;
+use crate::geometry::geometry_draft_light::GeometryDraftLight;
 use crate::geometry::geometry_hierarchy::GeometryHierarchy;
 use crate::geometry::geometry_level_census::GeometryLevelCensus;
 use crate::geometry::geometry_level_request::GeometryLevelRequest;
+use crate::geometry::geometry_light::GeometryLight;
+use crate::geometry::geometry_light_request::GeometryLightRequest;
 use crate::geometry::geometry_mesh::GeometryMesh;
 use crate::geometry::geometry_models::GeometryModels;
 use crate::geometry::geometry_node_kind::GeometryNodeKind;
@@ -47,17 +36,12 @@ use crate::geometry::geometry_tangents::GeometryTangents;
 use crate::geometry::geometry_visual::GeometryVisual;
 use crate::geometry::geometry_visuals::GeometryVisuals;
 use crate::geometry::geometry_visuals_request::GeometryVisualsRequest;
-use crate::light::light_color::LightColor;
-use crate::light::light_hemisphere::LightHemisphere;
-use crate::light::light_models::LightModels;
+use crate::light::light_bake::LightBake;
 use crate::light::light_quality::LightQuality;
-use crate::light::light_source::LightSource;
-use crate::light::light_vertices::LightVertices;
-use crate::shadow::shadow_materials::ShadowMaterials;
-use crate::shadow::shadow_materials_request::ShadowMaterialsRequest;
 
-/// Everything xrLC writes for a level's geometry, compiled from its `build.prj`, its vertices and trees lit: the `level`
-/// file, its render geometry, the game's collision form, the compilers' ray model and lights, and the lightmap pages.
+/// Everything xrLC writes for a level's geometry, compiled from its `build.prj`, lit by our baker or with neutral light:
+/// the `level` file, its render geometry, the game's collision form, the compilers' ray model and lights, and the
+/// lightmap pages.
 #[derive(Debug)]
 pub struct GeometryLevel {
   pub bundle: LevelBundle,
@@ -71,14 +55,17 @@ pub struct GeometryLevel {
   pub ray_model: BuildCformFile,
   /// `build.lights`.
   pub lights: LevelLightsFile,
-  /// Each lightmap page's two textures, `lmap#N_1` and `_2`, 1024 texels a side row by row ([`LightmapAtlas::compose`]).
+  /// Each lightmap page's two textures, `lmap#N_1` and `_2`, [`Self::lightmap_side`] texels a side row by row: the
+  /// baked pages ([`crate::LightmapAtlas::compose`]), or the one pair of neutral light ([`GeometryDraftLight`]).
   pub lightmaps: Vec<[Vec<[u8; 4]>; 2]>,
-  /// Each texture lit implicitly, such as terrain's; none at draft quality.
+  /// A lightmap page's side in texels.
+  pub lightmap_side: u32,
+  /// Each texture lit implicitly, such as terrain's; none unlit or at draft build quality.
   pub implicit_maps: Vec<ImplicitMap>,
   /// What the compile made, for its report.
   pub census: GeometryLevelCensus,
-  /// The GPU that traced the lightmaps' shadow rays, none where the CPU did.
-  pub gpu: Option<String>,
+  /// How the light was baked, for the light step's report; none for the neutral light.
+  pub light: Option<LightBake>,
 }
 
 impl GeometryLevel {
@@ -86,22 +73,19 @@ impl GeometryLevel {
   pub const VERSION: u16 = 14;
 
   /// The level the request's project compiles to, its compiler shaders from its library and its textures as it loads
-  /// them, their alpha images under its roots dimming the light, lit at its quality: every vertex lit
-  /// ([`LightHemisphere`], [`LightVertices`]), every multi-use model and placement ([`LightModels`]), the lightmapped
-  /// faces cut into charts, each lit and compressed ([`LightChartLighter`]), and packed onto pages ([`LightmapAtlas`]),
-  /// the lightmaps' and implicit maps' shadow rays traced by its backend.
+  /// them: xrLC's geometry phases, then, where the request asks for light, the light baked at its quality
+  /// ([`GeometryLight::bake`]), its pages deciding which splits join into a visual; else the neutral light
+  /// ([`GeometryDraftLight`]), every lightmapped visual on its one pair.
   ///
   /// # Errors
   ///
-  /// Returns an error where a phase refuses the project, for a static light layer `build.prj` lacks, where the shadow
-  /// materials cannot be loaded, and for the GPU backend where this build has none, no GPU traces rays or the GPU
-  /// fails; `Auto` lights on the CPU instead where the GPU does not start.
+  /// Returns an error where a phase refuses the project, for a static light layer `build.prj` lacks, and where the bake
+  /// fails ([`GeometryLight::bake`]).
   pub fn compile(request: &GeometryLevelRequest<'_>) -> XrfResult<Self> {
     let GeometryLevelRequest {
       project,
       library,
       textures,
-      roots,
       quality,
       ..
     } = *request;
@@ -117,89 +101,26 @@ impl GeometryLevel {
     let tangents: GeometryTangents = GeometryTangents::of(&mesh, &normals, &coordinates);
     let ray_model: BuildCformFile = GeometryRayModel::build(&mesh, &normals, &coordinates, project, &shaders)?;
     let lights: LevelLightsFile = Self::get_lights(project, quality)?;
-    let sources: [Vec<LightSource>; 3] =
-      LevelLightRole::ALL.map(|role| lights.get_role_lights(role).map(LightSource::from).collect());
-    let load = |faces: &[BuildCformRaycastFace]| {
-      ShadowMaterials::load(&ShadowMaterialsRequest {
-        project,
-        faces,
-        library,
-        textures: roots,
-      })
-    };
-    let welded: BuildCformFile = GeometryRayModel::build_welded(&mesh, project, &shaders)?;
-    let hemispheres: Vec<f32> = LightHemisphere::of(
-      &mesh,
-      &sources[1],
-      &welded.build_tracer(),
-      &load(&welded.raycast_faces)?,
-    );
-    let tracer: BvhTracer = ray_model.build_tracer();
-    let shadows: ShadowMaterials = load(&ray_model.raycast_faces)?;
-    let vertex_lights: Vec<LightColor> =
-      LightVertices::of(&mesh, &normals, &shaders, &hemispheres, &sources, &tracer, &shadows);
-    let (model_faces, model_starts) = LightModels::get_model_faces(project, &shaders)?;
-    let model_lights: LightModels = LightModels::of(
-      project,
-      &shaders,
-      &sources,
-      &load(&model_faces)?,
-      &model_starts,
-      &tracer,
-      &shadows,
-      quality.is_draft(project.params.is_draft()),
-    )?;
-    let scene: LightChartScene<'_> = LightChartScene::of(
-      &mesh,
-      &normals,
-      project,
-      &shaders,
-      textures,
-      quality.get_pixels_per_meter(project.params.lightmap_pixels_per_meter),
-      quality.get_jitter_samples(project.params.lightmap_jitter_samples),
-    );
-    let (mut splits, charts): (GeometrySplits, Vec<LightChart>) = GeometrySplits::cut(&mesh, &shaders, Some(&scene));
-    let ray_faces: Vec<Option<u32>> = GeometryRayModel::get_static_faces(&mesh, &normals, &shaders);
-    let lighter: LightChartLighter<'_, BvhTracer> = LightChartLighter {
-      scene: &scene,
-      lights: &sources,
-      tracer: &tracer,
-      shadows: &shadows,
-      ray_faces: &ray_faces,
-      // `(4 + rms_zero) / 2` and `(8 + rms) / 2`.
-      rms_zero: 4_u32.midpoint(project.params.lightmap_rms_zero),
-      rms_shrink: 8_u32.midpoint(project.params.lightmap_rms),
-    };
-    let backend: LightmapBackend =
-      LightmapBackend::start(request.backend, request.dxc, request.gpu, &tracer, &shadows)?;
-    let lit: Vec<LitChart> = backend.light_charts(&lighter, &charts)?;
-    let atlas: LightmapAtlas = LightmapAtlas::pack(&charts, &lit, &scene);
-    let lightmaps: Vec<[Vec<[u8; 4]>; 2]> = (0..atlas.pages)
-      .into_par_iter()
-      .map(|page| atlas.compose(page, &lit))
-      .collect();
+    let (mut splits, light): (GeometrySplits, Option<GeometryLight>) = match request.light {
+      Some(bake) => {
+        let (splits, light) = GeometryLight::bake(&GeometryLightRequest {
+          level: request,
+          bake,
+          mesh: &mesh,
+          normals: &normals,
+          coordinates: &coordinates,
+          shaders: &shaders,
+          ray_model: &ray_model,
+          lights: &lights,
+        })?;
 
-    drop(lit);
-
-    // xrLC lights no texture implicitly at draft quality (`ImplicitLighting`).
-    let implicit_maps: Vec<ImplicitMap> = if project.params.is_draft() {
-      Vec::new()
-    } else {
-      Self::get_implicit_maps(
-        &backend,
-        &ImplicitLighter {
-          lighter: &lighter,
-          coordinates: &coordinates.faces,
-        },
-        &mesh,
-        project,
-        textures,
-        roots,
-      )?
+        (splits, Some(light))
+      }
+      None => (GeometrySplits::cut(&mesh, &shaders, None).0, None),
     };
-    let faces: LightmapFaces = atlas.get_faces(&charts, mesh.faces.len());
 
-    splits.merge(&mesh, Some(&faces.pages));
+    // Splits on one lightmap page only are joined, so the light decides the visuals.
+    splits.merge(&mesh, light.as_ref().map(|light| light.faces.pages.as_slice()));
 
     let visuals: GeometryVisuals = GeometryVisuals::build(&GeometryVisualsRequest {
       mesh: &mesh,
@@ -210,10 +131,11 @@ impl GeometryLevel {
       project,
       shaders: &shaders,
       textures,
-      lights: Some(&vertex_lights),
-      lightmaps: Some(&faces),
+      lights: light.as_ref().map(|light| light.vertices.as_slice()),
+      lightmaps: light.as_ref().map(|light| &light.faces),
     })?;
-    let models: GeometryModels = GeometryModels::build(project, &shaders, textures, Some(&model_lights))?;
+    let models: GeometryModels =
+      GeometryModels::build(project, &shaders, textures, light.as_ref().map(|light| &light.models))?;
     let hierarchy: GeometryHierarchy = GeometryHierarchy::build(&visuals, &models, project)?;
     let header: LevelHeaderChunk = LevelHeaderChunk {
       xrlc_version: Self::VERSION,
@@ -385,8 +307,20 @@ impl GeometryLevel {
         .count(),
       trees: models.trees.len(),
       sectors: hierarchy.sectors.len(),
-      charts: charts.len(),
-      lightmaps: atlas.pages,
+    };
+    let (lightmaps, lightmap_side, implicit_maps, light) = match light {
+      Some(light) => (
+        light.lightmaps,
+        LightChart::PAGE_SIDE,
+        light.implicit_maps,
+        Some(light.bake),
+      ),
+      None => (
+        vec![GeometryDraftLight::get_lightmap_page()],
+        GeometryDraftLight::LIGHTMAP_SIDE,
+        Vec::new(),
+        None,
+      ),
     };
 
     Ok(Self {
@@ -431,9 +365,10 @@ impl GeometryLevel {
       ray_model,
       lights,
       lightmaps,
+      lightmap_side,
       implicit_maps,
       census,
-      gpu: backend.get_name(),
+      light,
     })
   }
 
@@ -446,62 +381,6 @@ impl GeometryLevel {
     Ok(LevelCformFile {
       header: LevelCformHeader::of(&self.collision)?,
     })
-  }
-
-  /// Each texture lit implicitly, its faces those of `mesh` rendered with it (`hasImplicitLighting`), in the mesh's
-  /// order, its image read from the first of `roots` holding it, lit by `lighter`.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error for a texture whose image is missing or unreadable.
-  fn get_implicit_maps<T: Tracer + Sync>(
-    backend: &LightmapBackend,
-    lighter: &ImplicitLighter<'_, T>,
-    mesh: &GeometryMesh,
-    project: &BuildPrjFile,
-    textures: &[CompilerTexture],
-    roots: &[PathBuf],
-  ) -> XrfResult<Vec<ImplicitMap>> {
-    let mut faces: BTreeMap<u16, Vec<u32>> = BTreeMap::new();
-
-    for (index, face) in mesh.faces.iter().enumerate() {
-      let Some(material) = project.materials.get(usize::from(face.material)) else {
-        continue;
-      };
-      let is_rendered: bool = lighter
-        .lighter
-        .scene
-        .is_rendered
-        .get(usize::from(face.material))
-        .copied()
-        .unwrap_or(false);
-
-      if is_rendered
-        && textures
-          .get(usize::from(material.texture))
-          .is_some_and(|texture| texture.is_implicitly_lit)
-      {
-        faces.entry(material.texture).or_default().push(index as u32);
-      }
-    }
-
-    faces
-      .into_iter()
-      .map(|(texture, faces)| {
-        let texture: &CompilerTexture = &textures[usize::from(texture)];
-        let path: PathBuf = CompilerTextures::find(roots, &texture.name, "dds").ok_or_else(|| {
-          XrfError::new_not_found_error(format!(
-            "The implicitly lit texture {} has no .dds under the texture roots",
-            texture.name
-          ))
-        })?;
-        let image: RgbaImage = DdsFile::read_from_path(&path)?.decode_rgba(0)?;
-        let (width, height) = image.dimensions();
-        let base: Vec<[u8; 4]> = image.pixels().map(|pixel| pixel.0).collect();
-
-        backend.light_implicit(lighter, texture.name.clone(), base, width, height, &faces)
-      })
-      .collect()
   }
 
   /// A material's shader table entry, `<render shader>/<texture>`, as glows and LODs are dressed.

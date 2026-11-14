@@ -26,13 +26,14 @@ import {
   COMPILE_STEPS,
   getCompileProblem,
   ICompileChoice,
+  TCompileFormStep,
   toCompileRequest,
 } from "@/tools/level-compiler/lib/compile-request";
 import { LevelCompilerService } from "@/tools/level-compiler/services/level-compiler.service";
 
 import { LevelBuildResultView } from "./components/LevelBuildResultView";
 
-const STEP_LABELS: Record<LevelCompileStep, { label: string; description: string }> = {
+const STEP_LABELS: Record<TCompileFormStep, { label: string; description: string }> = {
   [ELevelCompileStep.GEOMETRY]: {
     label: "Compile geometry",
     description: "The level, its geometry, collision and lightmaps from build.prj, with the SDK's xrLC",
@@ -300,7 +301,7 @@ export function LevelCompilerTool(): ReactElement {
         onChange={setIsForced}
       />
 
-      {COMPILE_STEPS.map((step: LevelCompileStep) => (
+      {COMPILE_STEPS.map((step: TCompileFormStep) => (
         <CheckboxFormRow
           key={step}
           label={STEP_LABELS[step].label}

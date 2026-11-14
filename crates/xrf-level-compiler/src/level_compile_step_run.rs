@@ -6,6 +6,7 @@ use crate::ai::ai_map_covers::AiMapCovers;
 use crate::ai::ai_map_guid::AiMapGuid;
 use crate::detail::detail_slot_counts::DetailSlotCounts;
 use crate::geometry::geometry_level_census::GeometryLevelCensus;
+use crate::light::light_bake_census::LightBakeCensus;
 
 /// What ran a step of a level's compile, and what it says of the run.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -20,10 +21,12 @@ pub enum LevelCompileStepRun {
     slots: DetailSlotCounts,
     gpu: Option<String>,
   },
-  /// Our geometry compiler ([`crate::GeometryLevel`]), what it made, and the GPU that traced its lightmaps' shadow rays,
-  /// none where the CPU traced them.
-  GeometryCompiler {
-    census: GeometryLevelCensus,
+  /// Our geometry compiler ([`crate::GeometryLevel`]), and what it made.
+  GeometryCompiler { census: GeometryLevelCensus },
+  /// Our light baker, within the geometry compile, what it made, and the GPU that traced its shadow rays, none where
+  /// the CPU traced them.
+  LightBaker {
+    census: LightBakeCensus,
     gpu: Option<String>,
   },
   /// The AI map compiler ([`crate::AiMapCompiler`]): the covers it computed, the GPU that traced their rays, none where

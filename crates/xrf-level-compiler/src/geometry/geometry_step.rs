@@ -8,7 +8,6 @@ use xrf_level::{BuildCformFile, BuildPrjFile, LevelFile, LevelGeomFile, LevelLig
 use xrf_shaders::ShaderCompilerFile;
 use xrf_utils::{StagedFile, format_path};
 
-use crate::chart::light_chart::LightChart;
 use crate::chart::lightmap_faces::LightmapFaces;
 use crate::compiler_texture::CompilerTexture;
 use crate::compiler_textures::CompilerTextures;
@@ -16,23 +15,31 @@ use crate::geometry::geometry_level::GeometryLevel;
 use crate::geometry::geometry_level_request::GeometryLevelRequest;
 use crate::level_compile_request::LevelCompileRequest;
 use crate::level_compile_step_run::LevelCompileStepRun;
+use crate::light::light_bake::LightBake;
+use crate::light::light_bake_request::LightBakeRequest;
 
-/// A compile's geometry step by our compiler, xrLC's part ([`GeometryLevel`]): the level's `level`, `level.geom`,
-/// `level.geomx`, `level.cform`, `build.cform`, `build.lights` and each lightmap page's pair, from its `build.prj`, the
-/// game data's `shaders_xrlc.xr` and the textures under the request's roots.
+/// A compile's geometry step by our compiler, xrLC's part ([`GeometryLevel`]), with the light step where the compile
+/// runs it: the level's `level`, `level.geom`, `level.geomx`, `level.cform`, `build.cform`, `build.lights`, each
+/// lightmap page's pair and each implicitly lit texture's maps, from its `build.prj`, the game data's
+/// `shaders_xrlc.xr` and the textures under the request's roots.
 pub(crate) struct GeometryStep;
 
 impl GeometryStep {
   /// `level.cform`.
   const COLLISION: &'static str = "level.cform";
 
-  /// Compiles the request's level and writes what xrLC writes.
+  /// Compiles the request's level and writes what xrLC writes, its light baked where `is_lit` (the light step runs with
+  /// it), else neutral; with the report, how the light was baked.
   ///
   /// # Errors
   ///
-  /// Returns an error when an input is unreadable, a phase refuses the project, the job is cancelled, or a file is not
-  /// written.
-  pub(crate) fn run(request: &LevelCompileRequest, job: &JobHandle) -> XrfResult<LevelCompileStepRun> {
+  /// Returns an error when an input is unreadable, a phase refuses the project, the bake fails, the job is cancelled,
+  /// or a file is not written.
+  pub(crate) fn run(
+    request: &LevelCompileRequest,
+    job: &JobHandle,
+    is_lit: bool,
+  ) -> XrfResult<(LevelCompileStepRun, Option<LightBake>)> {
     let level: &Path = &request.level;
     let project: BuildPrjFile = BuildPrjFile::read_from_path::<XRayByteOrder, _>(&level.join(BuildPrjFile::FILE_NAME))?;
     let library: ShaderCompilerFile =
@@ -47,9 +54,11 @@ impl GeometryStep {
       textures: &textures,
       roots: &request.textures,
       quality: request.light_quality,
-      backend: request.backend,
-      dxc: request.dxc.as_deref(),
-      gpu: request.gpu,
+      light: is_lit.then_some(LightBakeRequest {
+        backend: request.backend,
+        dxc: request.dxc.as_deref(),
+        gpu: request.gpu,
+      }),
     })?;
 
     job.check_cancelled()?;
@@ -75,7 +84,7 @@ impl GeometryStep {
       compiled.lights.write::<XRayByteOrder>(writer)
     })?;
 
-    let side: u32 = LightChart::PAGE_SIDE;
+    let side: u32 = compiled.lightmap_side;
 
     for (page, textures) in compiled.lightmaps.iter().enumerate() {
       for (name, texels) in LightmapFaces::get_textures(page as u32).iter().zip(textures) {
@@ -97,10 +106,12 @@ impl GeometryStep {
       Self::write_texture(&lightmap, &map.lightmap, map.width, map.height)?;
     }
 
-    Ok(LevelCompileStepRun::GeometryCompiler {
-      census: compiled.census,
-      gpu: compiled.gpu,
-    })
+    Ok((
+      LevelCompileStepRun::GeometryCompiler {
+        census: compiled.census,
+      },
+      compiled.light,
+    ))
   }
 
   /// Writes what `fill` puts in a writer to `path`, staged so a failed write leaves the file as it was.

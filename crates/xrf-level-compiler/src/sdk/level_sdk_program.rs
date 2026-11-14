@@ -30,7 +30,7 @@ impl LevelSdkProgram {
   pub(crate) fn of(sdk: &Path, step: LevelCompileStep) -> XrfResult<Option<Self>> {
     let (directory, name, log_prefix, switches): (&[&str], &str, &str, &'static [&'static str]) = match step {
       LevelCompileStep::Geometry => (&["bin", "compilers"], "xrLC.exe", "xrlc_", &[Self::SILENT]),
-      LevelCompileStep::Details | LevelCompileStep::Ai => return Ok(None),
+      LevelCompileStep::Light | LevelCompileStep::Details | LevelCompileStep::Ai => return Ok(None),
     };
     let path: PathBuf = directory
       .iter()

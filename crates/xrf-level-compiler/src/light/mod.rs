@@ -1,6 +1,9 @@
 //! The light one point gathers, `LightPoint`, shared by the compilers that light: the detail lighter and the light
 //! baker.
 
+pub(crate) mod light_bake;
+pub(crate) mod light_bake_census;
+pub(crate) mod light_bake_request;
 pub(crate) mod light_color;
 pub(crate) mod light_hemisphere;
 pub(crate) mod light_lamp_rays;

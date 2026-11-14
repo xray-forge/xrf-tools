@@ -46,7 +46,7 @@ fn runs_an_sdk_program_for_exactly_the_steps_the_sdk_runs() -> XrfResult {
 
   assert_eq!(
     LevelCompileStep::ALL.map(LevelCompileStep::is_sdk),
-    [true, false, false],
+    [true, false, false, false],
     "the SDK runs the geometry alone"
   );
 

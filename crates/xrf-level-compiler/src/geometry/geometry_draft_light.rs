@@ -3,9 +3,9 @@ use xrf_math::Vector2d;
 
 use crate::light::light_color::LightColor;
 
-/// The light a level compiled without a light baker carries, neutral constants: an open sky for the sun, which the
-/// renderers shadow in real time, a middle hemisphere, and no static light, which they light in real time too. The
-/// lightmaps still carry it where vertices and trees are lit ([`crate::LightVertices`], [`crate::LightModels`]).
+/// The light a level compiled without the light step carries, neutral constants: an open sky for the sun, which the
+/// renderers shadow in real time, a middle hemisphere, and no static light, which they light in real time too. Every
+/// lightmapped visual samples the middle of one small pair of it.
 pub struct GeometryDraftLight;
 
 impl GeometryDraftLight {
@@ -37,6 +37,18 @@ impl GeometryDraftLight {
 
   /// Where every lightmapped vertex samples it, its middle.
   pub const LIGHTMAP_COORDINATE: Vector2d = Vector2d::new(0.5, 0.5);
+
+  /// The neutral lightmap pair, [`Self::LIGHTMAP_SIDE`] texels a side: `_1` no static light and the sun in alpha, `_2`
+  /// the sun in every colour and the hemisphere in alpha (`lm_layer::Pack`, `Pack_hemi`).
+  pub fn get_lightmap_page() -> [Vec<[u8; 4]>; 2] {
+    let sun: u8 = LightColor::get_byte(Self::SUN);
+    let texels: usize = (Self::LIGHTMAP_SIDE * Self::LIGHTMAP_SIDE) as usize;
+
+    [
+      vec![[0, 0, 0, sun]; texels],
+      vec![[sun, sun, sun, LightColor::get_byte(Self::HEMISPHERE)]; texels],
+    ]
+  }
 
   /// A tree's hemisphere term, as shipped trees carry it in effect.
   pub const TREE_HEMISPHERE: f32 = 0.67;

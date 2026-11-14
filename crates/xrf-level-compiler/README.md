@@ -6,13 +6,18 @@ game loads: the geometry with its lightmaps and collision, the details' light an
 | Step       | Reads                                                              | Runs today                              |
 | ---------- | ------------------------------------------------------------------ | --------------------------------------- |
 | `geometry` | `build.prj`, `shaders_xrlc.xr`, the textures                       | this crate's (`GeometryStep`), or xrLC  |
+| `light`    | as the geometry, in its pass                                       | this crate's baker (`GeometryLight`)    |
 | `details`  | `build.prj`, `build.details`, `build.cform`, `build.lights`        | this crate's lighter (`DetailLighter`)  |
 | `ai`       | `build.aimap`; with full covers also `build.prj` and `build.cform` | this crate's compiler (`AiMapCompiler`) |
 
 The geometry step is this crate's own (`GeometryLevel::compile`: xrLC's geometry phases, progressive meshes above
-draft quality, every vertex and tree lit by `LightHemisphere`, `LightVertices` and `LightModels`, the lightmapped faces
-cut into charts, lit and packed onto pages, each implicitly lit texture lit over its own coordinates) unless the
-request names the SDK, whose xrLC then compiles and lights it.
+draft quality) unless the request names the SDK, whose xrLC then compiles and lights it. Where the light step runs
+too, `GeometryLevelRequest::light` asks the compile to bake in the same pass (`GeometryLight::bake`: every vertex and
+tree lit by `LightHemisphere`, `LightVertices` and `LightModels`, the lightmapped faces cut into charts, lit and packed
+onto pages, each implicitly lit texture lit over its own coordinates), since the pages decide which splits join into
+a visual; the bake's time and census (`LightBake`) are reported as the light step's. Without it every lightmapped
+visual takes one pair of neutral light (`GeometryDraftLight`). `LevelCompiler` refuses the light step without the
+geometry step, and drops it under the SDK, whose xrLC always lights.
 
 ## Lightmaps
 
@@ -66,7 +71,7 @@ for every texture `build.prj` names where a step reads them, so a missing file s
 the steps in order: xrLC in the working directory, under an `fsgame.ltx` it writes there, reporting its last log line
 to an `xrf-job` `JobHandle` and killing it when the job is cancelled; the details (`DetailStep`) and the AI map
 (`AiStep`) in process, each writing its output staged. Each step's report says what ran it (`LevelCompileStepRun`): an
-SDK program and its log, the geometry compiler with its census and the GPU that traced its light, the lighter with the slots it met and the GPU that traced, or the AI map compiler with its
+SDK program and its log, the geometry compiler with its census, the light baker with its census and the GPU that traced, the lighter with the slots it met and the GPU that traced, or the AI map compiler with its
 covers, GPU, identity and graph check. `xrf-cli level compile` and the app's level compiler call it.
 
 Each SDK compiler ends a run on a "Congratulation!" message box and waits on it, even once answered; xrLC runs with

@@ -26,8 +26,14 @@ export interface ICompileChoice {
   aiCovers: AiMapCovers;
 }
 
-/** Every step, in the order the compile runs them and the form lists them. */
-export const COMPILE_STEPS: ReadonlyArray<LevelCompileStep> = [
+/**
+ * A step the form offers: every step but the light, since the app compiles the geometry by the SDK's xrLC, which lights
+ * it whatever the steps.
+ */
+export type TCompileFormStep = Exclude<LevelCompileStep, `${ELevelCompileStep.LIGHT}`>;
+
+/** Every step the form offers, in the order the compile runs them and the form lists them. */
+export const COMPILE_STEPS: ReadonlyArray<TCompileFormStep> = [
   ELevelCompileStep.GEOMETRY,
   ELevelCompileStep.DETAILS,
   ELevelCompileStep.AI,

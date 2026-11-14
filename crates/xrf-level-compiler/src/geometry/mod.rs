@@ -13,6 +13,8 @@ pub(crate) mod geometry_hierarchy;
 pub(crate) mod geometry_level;
 pub(crate) mod geometry_level_census;
 pub(crate) mod geometry_level_request;
+pub(crate) mod geometry_light;
+pub(crate) mod geometry_light_request;
 pub(crate) mod geometry_lod;
 pub(crate) mod geometry_lod_vertex;
 pub(crate) mod geometry_mesh;

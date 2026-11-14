@@ -49,8 +49,34 @@ fn runs_each_step_once_in_its_order_and_every_step_when_none_is_named() {
     [LevelCompileStep::Geometry, LevelCompileStep::Ai]
   );
   assert_eq!(LevelCompiler::get_steps(&[]), LevelCompileStep::ALL);
-  assert_eq!(LevelCompileStep::from_name("details"), Some(LevelCompileStep::Details));
-  assert_eq!(LevelCompileStep::from_name("light"), None);
+  assert_eq!(LevelCompileStep::from_name("light"), Some(LevelCompileStep::Light));
+  assert_eq!(LevelCompileStep::from_name("lights"), None);
+}
+
+#[test]
+fn refuses_the_light_step_without_the_geometry_step_before_running_anything() -> XrfResult {
+  let level: PathBuf = level("light_alone", &["build.prj"])?;
+  let compile = |sdk: Option<PathBuf>| {
+    LevelCompiler::compile(
+      &LevelCompileRequest {
+        sdk,
+        ..request(
+          &level,
+          Path::new(""),
+          &[LevelCompileStep::Light, LevelCompileStep::Details],
+        )
+      },
+      &JobHandle::inert(),
+    )
+    .unwrap_err()
+    .to_string()
+  };
+
+  // The light is baked in the geometry's pass, ours or xrLC's, so it has nothing to light alone.
+  assert!(compile(None).contains("light step runs only with the geometry step"));
+  assert!(compile(Some(sdk("light_alone_sdk")?)).contains("light step runs only with the geometry step"));
+
+  Ok(())
 }
 
 #[test]

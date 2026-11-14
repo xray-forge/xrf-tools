@@ -25,8 +25,10 @@ impl GenericCommand for CompileCommand {
     command
       .about(
         "Compile a level directory level build wrote into what the game loads, step by step: geometry (the level, its \
-         geometry, collision and lightmaps; ours, its vertices, lightmaps and terrain lit, or the SDK's xrLC with \
-         --sdk), details (level.details lit from build.details, build.cform and build.lights, as xrDO_Light lights it) and ai (level.ai compiled from build.aimap as xrAI -f \
+         geometry, collision and lightmaps; ours, or the SDK's xrLC with --sdk, which lights it too), light (ours \
+         bakes the vertices', lightmaps' and terrain's light in the geometry's pass, which it needs; without it the \
+         level carries neutral light), details (level.details lit from build.details, build.cform and build.lights, \
+         as xrDO_Light lights it) and ai (level.ai compiled from build.aimap as xrAI -f \
          compiles it, its covers traced against build.cform, then checked as a graph). Every step's inputs and every \
          texture build.prj names are checked before any step runs. The SDK's xrLC runs in a working directory under an \
          fsgame.ltx written for it, never in a game installation",
@@ -41,7 +43,10 @@ impl GenericCommand for CompileCommand {
       )
       .arg(
         Arg::new("steps")
-          .help("Steps to run, in their order whatever the order given; every step by default")
+          .help(
+            "Steps to run, in their order whatever the order given; every step by default. light runs only with \
+             geometry",
+          )
           .long("steps")
           .value_delimiter(',')
           .value_parser(LevelCompileStep::ALL.map(LevelCompileStep::get_name).to_vec()),
@@ -49,8 +54,8 @@ impl GenericCommand for CompileCommand {
       .arg(
         Arg::new("sdk")
           .help(
-            "The SDK's editors directory, whose bin holds xrLC; given, the geometry step runs it and the level is lit, \
-             else our compiler runs it, its vertices, lightmaps and terrain lit",
+            "The SDK's editors directory, whose bin holds xrLC; given, the geometry step runs it and the level is lit \
+             whatever the steps, else our compiler runs it, lit by the light step",
           )
           .long("sdk")
           .value_parser(value_parser!(PathBuf)),
@@ -96,7 +101,7 @@ impl GenericCommand for CompileCommand {
       .arg(
         Arg::new("backend")
           .help(
-            "What traces the geometry step's lightmap rays, the details step's shadow rays and the ai step's cover \
+            "What traces the light step's lightmap rays, the details step's shadow rays and the ai step's cover \
              rays: auto, the GPU where one traces rays, else the CPU; gpu, the GPU's ray queries alone, on D3D12 where \
              dxc/dxcompiler.dll stands beside the CLI, else on Vulkan; cpu, the reference",
           )
@@ -117,7 +122,7 @@ impl GenericCommand for CompileCommand {
       .arg(
         Arg::new("quality")
           .help(
-            "How finely our geometry step lights the level: scene, by build.prj's own sky, sun and lightmap density; \
+            "How finely our light step lights the level, and the sky and sun build.lights holds: scene, by build.prj's own sky, sun and lightmap density; \
              draft, the sky and sun regenerated at quality 1, lightmaps of 3 texels a metre and one sample each, and \
              each tree lit from one sample, the cheap estimate",
           )
@@ -206,16 +211,15 @@ impl CompileCommand {
           "{program}{}",
           log.as_ref().map(|log| format!(", log {log}")).unwrap_or_default()
         ),
-        LevelCompileStepRun::GeometryCompiler { census, gpu } => format!(
-          "{} static visuals of {} triangles, {} trees, {} visuals progressive, {} sectors, vertices lit, {} lightmap \
-           charts baked on {} pages, traced on {}",
-          census.visuals,
-          census.triangles,
-          census.trees,
-          census.progressive,
-          census.sectors,
+        LevelCompileStepRun::GeometryCompiler { census } => format!(
+          "{} static visuals of {} triangles, {} trees, {} visuals progressive, {} sectors",
+          census.visuals, census.triangles, census.trees, census.progressive, census.sectors,
+        ),
+        LevelCompileStepRun::LightBaker { census, gpu } => format!(
+          "vertices and trees lit, {} lightmap charts on {} pages, {} textures lit implicitly, traced on {}",
           census.charts,
           census.lightmaps,
+          census.implicit_maps,
           gpu.as_deref().unwrap_or("the CPU")
         ),
         LevelCompileStepRun::DetailLighter { slots, gpu } => format!(
