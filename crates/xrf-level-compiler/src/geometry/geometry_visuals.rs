@@ -12,6 +12,7 @@ use crate::geometry::geometry_packed_visual::GeometryPackedVisual;
 use crate::geometry::geometry_visual::GeometryVisual;
 use crate::geometry::geometry_visual_vertex::GeometryVisualVertex;
 use crate::geometry::geometry_visuals_request::GeometryVisualsRequest;
+use crate::light::light_color::LightColor;
 
 /// A level's static visuals, a visual a split, as xrLC converts them (`Flex2OGF`, `xrLC/xrFlex2OGF.cpp:64`).
 ///
@@ -45,6 +46,7 @@ impl GeometryVisuals {
       project,
       shaders,
       textures,
+      lights,
     } = *request;
     let mut visuals: Vec<GeometryVisual> = Vec::with_capacity(splits.splits.len());
 
@@ -120,6 +122,7 @@ impl GeometryVisuals {
             } else {
               Some(GeometryDraftLight::LIGHTMAP_COORDINATE)
             },
+            light: lights.map_or(GeometryDraftLight::VERTEX, |lights| lights[split_vertex]),
           }
         });
 
@@ -215,7 +218,8 @@ impl GeometryVisuals {
     Vector2d::new(1.0 / width as f32, 1.0 / height as f32)
   }
 
-  /// A vertex's stored form under the draft light (`r1v_lmap` and `r1v_vert`).
+  /// A vertex's stored form (`r1v_lmap` and `r1v_vert`): its sky term in the normal's fourth byte, and for a vertex-lit
+  /// one its static light and sun as its colour, each by `u8_clr`.
   fn get_stored(vertex: &GeometryVisualVertex, is_vertex_lit: bool) -> LevelVertexStored {
     let length_squared: f32 =
       vertex.normal.x * vertex.normal.x + vertex.normal.y * vertex.normal.y + vertex.normal.z * vertex.normal.z;
@@ -227,7 +231,8 @@ impl GeometryVisuals {
     );
     let u = LevelVertexQuantizer::get_base_coordinate(vertex.texture_coordinate.x);
     let v = LevelVertexQuantizer::get_base_coordinate(vertex.texture_coordinate.y);
-    let hemisphere: u8 = LevelVertexQuantizer::get_light_term(GeometryDraftLight::HEMISPHERE);
+    let term = LevelVertexQuantizer::get_light_term;
+    let hemisphere: u8 = term(vertex.light.hemi);
     let basis = |direction: [u8; 3], extra: u8| [direction[2], direction[1], direction[0], extra];
 
     LevelVertexStored {
@@ -236,14 +241,9 @@ impl GeometryVisuals {
       tangent: Some(basis(vertex.basis.tangent, u.fraction)),
       binormal: Some(basis(vertex.basis.binormal, v.fraction)),
       color: is_vertex_lit.then(|| {
-        let rgb: u8 = LevelVertexQuantizer::get_light_term(GeometryDraftLight::STATIC_LIGHT);
+        let LightColor { rgb, sun, .. } = vertex.light;
 
-        [
-          rgb,
-          rgb,
-          rgb,
-          LevelVertexQuantizer::get_light_term(GeometryDraftLight::SUN),
-        ]
+        [term(rgb.z), term(rgb.y), term(rgb.x), term(sun)]
       }),
       texture_coordinate: Some([u.primary, v.primary, 0, 0]),
       lightmap_coordinate: vertex.lightmap_coordinate.filter(|_| !is_vertex_lit).map(|coordinate| {

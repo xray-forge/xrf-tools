@@ -7,6 +7,7 @@ use crate::geometry::geometry_mesh::GeometryMesh;
 use crate::geometry::geometry_normals::GeometryNormals;
 use crate::geometry::geometry_splits::GeometrySplits;
 use crate::geometry::geometry_tangents::GeometryTangents;
+use crate::light::light_color::LightColor;
 
 /// What [`crate::GeometryVisuals::build`] converts: a level's mesh as the earlier phases left it, its splits, and the
 /// project's tables.
@@ -21,4 +22,6 @@ pub struct GeometryVisualsRequest<'a> {
   pub shaders: &'a CompilerShaders,
   /// Each `build.prj` texture as xrLC loads it.
   pub textures: &'a [CompilerTexture],
+  /// Each split vertex's light ([`crate::LightVertices`]), by index; none for the draft light.
+  pub lights: Option<&'a [LightColor]>,
 }

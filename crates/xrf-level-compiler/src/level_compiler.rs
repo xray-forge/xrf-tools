@@ -23,8 +23,9 @@ use crate::sdk::level_sdk_workspace::LevelSdkWorkspace;
 /// Compiles a level from the files `level build` wrote, step by step ([`LevelCompileStep`]): each step's inputs and
 /// program are checked before any runs, so a missing file stops the compile at once rather than an hour in, then each
 /// runs in order, reported to a job: the details by [`crate::DetailLighter`] and the AI map by
-/// [`crate::AiMapCompiler`] here, cancelled with the job; the geometry by [`crate::GeometryLevel`] here under draft
-/// light, or where the request names the SDK by its xrLC in a workspace of its own, killed when the job is cancelled.
+/// [`crate::AiMapCompiler`] here, cancelled with the job; the geometry by [`crate::GeometryLevel`] here, its vertices
+/// lit and its lightmaps a draft, or where the request names the SDK by its xrLC in a workspace of its own, killed when
+/// the job is cancelled.
 pub struct LevelCompiler;
 
 impl LevelCompiler {
@@ -143,7 +144,7 @@ impl LevelCompiler {
   }
 
   /// The SDK's program running `step`, none for a step of ours: the geometry runs the SDK's xrLC where the request
-  /// names the SDK, which lights the level, and our compiler under draft light where it does not.
+  /// names the SDK, which lights the level, and our compiler where it does not.
   fn get_program(request: &LevelCompileRequest, step: LevelCompileStep) -> XrfResult<Option<LevelSdkProgram>> {
     match &request.sdk {
       Some(sdk) if step.is_sdk() => LevelSdkProgram::of(sdk, step),

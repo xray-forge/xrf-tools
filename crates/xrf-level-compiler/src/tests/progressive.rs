@@ -7,6 +7,7 @@ use xrf_math::{Vector2d, Vector3d};
 use crate::geometry::geometry_basis::GeometryBasis;
 use crate::geometry::geometry_visual::GeometryVisual;
 use crate::geometry::geometry_visual_vertex::GeometryVisualVertex;
+use crate::light::light_color::LightColor;
 
 /// A flat opaque visual of a grid `side` points a side, a unit apart, its base coordinates following its positions.
 fn grid_visual(side: u16) -> GeometryVisual {
@@ -18,6 +19,7 @@ fn grid_visual(side: u16) -> GeometryVisual {
     basis: GeometryBasis::NONE,
     texture_coordinate: Vector2d::new(f32::from(x) / 4.0, f32::from(z) / 4.0),
     lightmap_coordinate: None,
+    light: LightColor::default(),
   };
   let texel: [Vector2d; 1] = [Vector2d::new(1.0 / 512.0, 1.0 / 512.0)];
 

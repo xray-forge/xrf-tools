@@ -1,10 +1,12 @@
+use std::path::PathBuf;
+
 use xrf_error::{XrfError, XrfResult};
-use xrf_geometry::ProgressiveWindow;
+use xrf_geometry::{BvhTracer, ProgressiveWindow};
 use xrf_level::{
-  BuildCformFile, BuildPrjFile, LevelBundle, LevelCformFile, LevelCformGeometry, LevelCformHeader, LevelDynamicLight,
-  LevelGeomBuffers, LevelGeomPacker, LevelGeomSlideWindowItem, LevelGlow, LevelHeaderChunk, LevelLight,
-  LevelLightsChunk, LevelLightsFile, LevelPortal, LevelSector, LevelShaderEntry, LevelShadersChunk,
-  LevelVertexQuantizer, LevelVisualRecord,
+  BuildCformFile, BuildCformRaycastFace, BuildPrjFile, LevelBundle, LevelCformFile, LevelCformGeometry,
+  LevelCformHeader, LevelDynamicLight, LevelGeomBuffers, LevelGeomPacker, LevelGeomSlideWindowItem, LevelGlow,
+  LevelHeaderChunk, LevelLight, LevelLightRole, LevelLightsChunk, LevelLightsFile, LevelPortal, LevelSector,
+  LevelShaderEntry, LevelShadersChunk, LevelVertexQuantizer, LevelVisualRecord,
 };
 use xrf_math::{Sphere, Vector3d};
 use xrf_ogf::{
@@ -33,9 +35,16 @@ use crate::geometry::geometry_tangents::GeometryTangents;
 use crate::geometry::geometry_visual::GeometryVisual;
 use crate::geometry::geometry_visuals::GeometryVisuals;
 use crate::geometry::geometry_visuals_request::GeometryVisualsRequest;
+use crate::light::light_color::LightColor;
+use crate::light::light_hemisphere::LightHemisphere;
+use crate::light::light_models::LightModels;
+use crate::light::light_source::LightSource;
+use crate::light::light_vertices::LightVertices;
+use crate::shadow::shadow_materials::ShadowMaterials;
+use crate::shadow::shadow_materials_request::ShadowMaterialsRequest;
 
-/// Everything xrLC writes for a level's geometry, compiled from its `build.prj` under draft light: the `level` file,
-/// its render geometry, the game's collision form, the compilers' ray model and lights, and the draft lightmaps.
+/// Everything xrLC writes for a level's geometry, compiled from its `build.prj`, its vertices and trees lit: the `level`
+/// file, its render geometry, the game's collision form, the compilers' ray model and lights, and the draft lightmaps.
 #[derive(Debug)]
 pub struct GeometryLevel {
   pub bundle: LevelBundle,
@@ -59,15 +68,19 @@ impl GeometryLevel {
   /// `XRCL_PRODUCTION_VERSION`, the version the engine asserts a level carries.
   pub const VERSION: u16 = 14;
 
-  /// The level of `project`, its compiler shaders from `library` and its textures as `textures` loads them.
+  /// The level of `project`, its compiler shaders from `library` and its textures as `textures` loads them, their
+  /// alpha images under `roots` dimming the light: every vertex lit ([`LightHemisphere`], [`LightVertices`]), every
+  /// multi-use model and placement ([`LightModels`]), the lightmaps a draft.
   ///
   /// # Errors
   ///
-  /// Returns an error where a phase refuses the project, and for a static light layer `build.prj` lacks.
+  /// Returns an error where a phase refuses the project, for a static light layer `build.prj` lacks, and where the
+  /// shadow materials cannot be loaded.
   pub fn compile(
     project: &BuildPrjFile,
     library: &ShaderCompilerFile,
     textures: &[CompilerTexture],
+    roots: &[PathBuf],
   ) -> XrfResult<Self> {
     let shaders: CompilerShaders = CompilerShaders::resolve(project, library)?;
     let mut mesh: GeometryMesh = GeometryMesh::load(project)?;
@@ -80,6 +93,39 @@ impl GeometryLevel {
     let coordinates: GeometryBaseCoordinates = GeometryBaseCoordinates::of(&mesh, &normals);
     let tangents: GeometryTangents = GeometryTangents::of(&mesh, &normals, &coordinates);
     let ray_model: BuildCformFile = GeometryRayModel::build(&mesh, &normals, &coordinates, project, &shaders)?;
+    let lights: LevelLightsFile = Self::get_lights(project)?;
+    let sources: [Vec<LightSource>; 3] =
+      LevelLightRole::ALL.map(|role| lights.get_role_lights(role).map(LightSource::from).collect());
+    let load = |faces: &[BuildCformRaycastFace]| {
+      ShadowMaterials::load(&ShadowMaterialsRequest {
+        project,
+        faces,
+        library,
+        textures: roots,
+      })
+    };
+    let welded: BuildCformFile = GeometryRayModel::build_welded(&mesh, project, &shaders)?;
+    let hemispheres: Vec<f32> = LightHemisphere::of(
+      &mesh,
+      &sources[1],
+      &welded.build_tracer(),
+      &load(&welded.raycast_faces)?,
+    );
+    let tracer: BvhTracer = ray_model.build_tracer();
+    let shadows: ShadowMaterials = load(&ray_model.raycast_faces)?;
+    let vertex_lights: Vec<LightColor> =
+      LightVertices::of(&mesh, &normals, &shaders, &hemispheres, &sources, &tracer, &shadows);
+    let (model_faces, model_starts) = LightModels::get_model_faces(project, &shaders)?;
+    let model_lights: LightModels = LightModels::of(
+      project,
+      &shaders,
+      &sources,
+      &load(&model_faces)?,
+      &model_starts,
+      &tracer,
+      &shadows,
+      project.params.is_draft(),
+    )?;
     let splits: GeometrySplits = GeometrySplits::of(&mesh, &shaders);
     let visuals: GeometryVisuals = GeometryVisuals::build(&GeometryVisualsRequest {
       mesh: &mesh,
@@ -90,8 +136,9 @@ impl GeometryLevel {
       project,
       shaders: &shaders,
       textures,
+      lights: Some(&vertex_lights),
     })?;
-    let models: GeometryModels = GeometryModels::build(project, &shaders, textures)?;
+    let models: GeometryModels = GeometryModels::build(project, &shaders, textures, Some(&model_lights))?;
     let hierarchy: GeometryHierarchy = GeometryHierarchy::build(&visuals, &models, project)?;
     let header: LevelHeaderChunk = LevelHeaderChunk {
       xrlc_version: Self::VERSION,
@@ -311,7 +358,7 @@ impl GeometryLevel {
       fast: fast.into_buffers(header, Vec::new()),
       collision,
       ray_model,
-      lights: Self::get_lights(project)?,
+      lights,
       has_lightmaps,
       census,
     })

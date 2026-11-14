@@ -49,13 +49,43 @@ impl GeometryRayModel {
       )));
     }
 
+    Self::collect(mesh, &normals.faces, &coordinates.faces, project, shaders)
+  }
+
+  /// The ray model `xrPhase_AdaptiveHT` builds for its sky term before the smoothing split (`BuildRapid(FALSE)`): as
+  /// [`Self::build`], but a face repeating another's corners as the weld leaves them is left out, a double-sided face's
+  /// back with it, and each face keeps its base coordinates as loaded.
+  ///
+  /// # Errors
+  ///
+  /// As [`Self::build`], for the references.
+  pub fn build_welded(
+    mesh: &GeometryMesh,
+    project: &BuildPrjFile,
+    shaders: &CompilerShaders,
+  ) -> XrfResult<BuildCformFile> {
+    let corners: Vec<[u32; 3]> = mesh.faces.iter().map(|face| face.vertices).collect();
+    let coordinates: Vec<[Vector2d; 3]> = mesh.faces.iter().map(|face| face.texture_coordinates).collect();
+
+    Self::collect(mesh, &corners, &coordinates, project, shaders)
+  }
+
+  /// The form of `mesh`'s faces, each named by `corners` for the repeat test and with its `coordinates`, then the
+  /// references'.
+  fn collect(
+    mesh: &GeometryMesh,
+    corners: &[[u32; 3]],
+    coordinates: &[[Vector2d; 3]],
+    project: &BuildPrjFile,
+    shaders: &CompilerShaders,
+  ) -> XrfResult<BuildCformFile> {
     let mut collector: GeometryCollector = GeometryCollector::new(&mesh.bounds);
     let mut faces: Vec<BuildCformFace> = Vec::new();
     let mut raycast_faces: Vec<BuildCformRaycastFace> = Vec::new();
     let mut taken: HashSet<[u32; 3]> = HashSet::new();
     let casts_shadow = |material: u16| shaders.get(material).is_some_and(|shader| shader.casts_shadow());
 
-    for ((face, corners), coordinates) in mesh.faces.iter().zip(&normals.faces).zip(&coordinates.faces) {
+    for ((face, corners), coordinates) in mesh.faces.iter().zip(corners).zip(coordinates) {
       if casts_shadow(face.material) && taken.insert(Self::get_key(corners)) {
         Self::push(
           &mut collector,

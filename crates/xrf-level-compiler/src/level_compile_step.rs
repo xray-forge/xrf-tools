@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::ai::ai_map_covers::AiMapCovers;
 
 /// One step of a level's compile from the files `level build` writes, in the order they run: the geometry (xrLC's
-/// part, done by [`crate::GeometryLevel`] under draft light, or by the SDK's xrLC with its lightmaps where the request
+/// part, done by [`crate::GeometryLevel`] with draft lightmaps, or by the SDK's xrLC with its own where the request
 /// names the SDK, [`Self::is_sdk`]), the details' light (xrDO_Light's, done by [`crate::DetailLighter`]) and the AI map
 /// (xrAI's `-f`, done by [`crate::AiMapCompiler`]).
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

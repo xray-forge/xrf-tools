@@ -1,10 +1,28 @@
+use glam::Vec3;
 use xrf_math::Vector2d;
 
+use crate::light::light_color::LightColor;
+
 /// The light a level compiled without a light baker carries, neutral constants: an open sky for the sun, which the
-/// renderers shadow in real time, a middle hemisphere, and no static light, which they light in real time too.
+/// renderers shadow in real time, a middle hemisphere, and no static light, which they light in real time too. The
+/// lightmaps still carry it where vertices and trees are lit ([`crate::LightVertices`], [`crate::LightModels`]).
 pub struct GeometryDraftLight;
 
 impl GeometryDraftLight {
+  /// A static vertex's light.
+  pub const VERTEX: LightColor = LightColor {
+    rgb: Vec3::ZERO,
+    hemi: Self::HEMISPHERE,
+    sun: Self::SUN,
+  };
+
+  /// A tree vertex's light.
+  pub const TREE_VERTEX: LightColor = LightColor {
+    rgb: Vec3::ZERO,
+    hemi: Self::TREE_HEMISPHERE,
+    sun: Self::TREE_SUN,
+  };
+
   /// The sun term, of a vertex colour's fourth byte and a lightmap's.
   pub const SUN: f32 = 1.0;
 

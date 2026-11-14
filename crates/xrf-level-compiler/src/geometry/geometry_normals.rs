@@ -129,7 +129,7 @@ impl GeometryNormals {
 
   /// `Face::CalcNormal`: `(v1 - v0) × (v2 - v1)`, divided by its length and normalised again, or for one shorter than
   /// `EPS_S` normalised in double precision.
-  fn get_face_normal([a, b, c]: &[Vector3d; 3]) -> Vector3d {
+  pub(crate) fn get_face_normal([a, b, c]: &[Vector3d; 3]) -> Vector3d {
     let along: Vector3d = b - a;
     let across: Vector3d = c - b;
     let cross: Vector3d = along.cross(&across);
@@ -149,7 +149,7 @@ impl GeometryNormals {
   /// `exact_normalize` (`xrCore/_vector3d.h:479`): scaled by the inverse square root of its square length taken in
   /// double precision; a vector too short for that by the inverse square root over its largest component, and a zero
   /// one straight up.
-  fn exact_normalize(vector: &Vector3d) -> Vector3d {
+  pub(crate) fn exact_normalize(vector: &Vector3d) -> Vector3d {
     let square: f64 = f64::from(vector.x * vector.x + vector.y * vector.y + vector.z * vector.z);
 
     if square > f64::from(1.192_092_9e-5_f32) {

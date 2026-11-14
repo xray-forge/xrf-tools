@@ -1,6 +1,4 @@
-use xrf_geometry::{Facing, TraceHit};
-
-use crate::shadow::shadow_materials::ShadowMaterials;
+use xrf_geometry::Facing;
 
 /// Which compiler's `LightPoint` to follow. The two copies differ in a static point light's colour, in which side of
 /// a face shadows, and in how much an alpha texel lets through.
@@ -24,15 +22,11 @@ impl LightPointVariant {
     }
   }
 
-  /// How much of a shadow ray passes the face of `hit`.
-  pub fn get_transmittance(self, shadows: &ShadowMaterials, hit: &TraceHit) -> f32 {
+  /// How much of a shadow ray passes a face stopping `opacity` of it.
+  pub fn get_transmittance(self, opacity: f32) -> f32 {
     match self {
-      Self::Details => shadows.get_transmittance(hit),
-      Self::Level => {
-        let opacity: f32 = shadows.get_opacity(hit);
-
-        1.0 - opacity * opacity
-      }
+      Self::Details => 1.0 - opacity,
+      Self::Level => 1.0 - opacity * opacity,
     }
   }
 }

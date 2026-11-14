@@ -9,8 +9,9 @@ game loads: the geometry with its lightmaps and collision, the details' light an
 | `details`  | `build.prj`, `build.details`, `build.cform`, `build.lights`        | this crate's lighter (`DetailLighter`)  |
 | `ai`       | `build.aimap`; with full covers also `build.prj` and `build.cform` | this crate's compiler (`AiMapCompiler`) |
 
-The geometry step is this crate's own (`GeometryLevel::compile`, xrLC's geometry phases under draft light, progressive
-meshes above draft quality) unless the request names the SDK, whose xrLC then compiles and lights it.
+The geometry step is this crate's own (`GeometryLevel::compile`: xrLC's geometry phases, progressive meshes above
+draft quality, every vertex and tree lit by `LightHemisphere`, `LightVertices` and `LightModels`, the lightmaps a draft)
+unless the request names the SDK, whose xrLC then compiles and lights it.
 
 `LevelCompiler::compile` takes a `LevelCompileRequest`: the level's directory, the steps (every one when none), the
 SDK's `editors` directory, which runs the geometry by xrLC (`LevelCompileStep::is_sdk`), the game data whose
@@ -167,6 +168,16 @@ compilers' copies, which differ in three ways:
 
 The detail lighter plans its rays through `LightPoint::get_ray`; the light baker's lighters share it. On the SDK's own
 vertex light of `l01_test` and `labx8`, `Level` gives xrLC's bytes on 99.99% and 99.93% of vertices.
+
+On it the vertex light is built as xrLC builds it, each term stored as `base_color`'s `fixed16<16>` (`LightColor`):
+
+- `LightHemisphere`: every welded vertex's sky term before the smoothing split, through the ray model of the welded
+  mesh (`GeometryRayModel::build_welded`), halved and averaged with its neighbours five times;
+- `LightVertices`: each split vertex's sky term, and a vertex-lit one's static light and sun, halved, then moved toward
+  the brightest vertex at its place by its translucency;
+- `LightModels`: each multi-use model's sky light in its own space, which its trees store, and each placement's light
+  in the level, which gives its tree's scale and bias by a least-squares fit; samples are jittered from a seeded source
+  where xrLC uses its random one.
 
 Loading fails where the SDK's compilers stop: a texture with no `.thm`, a compiler shader the library lacks, a face of a
 material with no compiler shader, or an alpha image that is missing or not the size its `.thm` gives.

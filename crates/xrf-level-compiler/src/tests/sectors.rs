@@ -6,7 +6,7 @@ use crate::geometry::geometry_visual::GeometryVisual;
 use crate::tests::geometry::project;
 use crate::{
   GeometryBasis, GeometryBounds, GeometryHierarchy, GeometryModels, GeometryNodeKind, GeometryVisualVertex,
-  GeometryVisuals,
+  GeometryVisuals, LightColor,
 };
 
 /// A visual of one triangle at `x`, a metre a side, in `sector`.
@@ -18,6 +18,7 @@ fn visual_at(x: f32, sector: u16) -> GeometryVisual {
     basis: GeometryBasis::NONE,
     texture_coordinate: Vector2d::new(0.0, 0.0),
     lightmap_coordinate: None,
+    light: LightColor::default(),
   };
 
   visual.vertices = vec![
@@ -100,7 +101,8 @@ fn builds_a_models_visuals_by_material_once_and_places_them_by_each_reference() 
     has_image: false,
     is_implicitly_lit: false,
   }];
-  let models: GeometryModels = GeometryModels::build(&file, &CompilerShaders::resolve(&file, &library())?, &textures)?;
+  let models: GeometryModels =
+    GeometryModels::build(&file, &CompilerShaders::resolve(&file, &library())?, &textures, None)?;
 
   assert_eq!(models.models.len(), 1);
   assert_eq!(

@@ -4,7 +4,9 @@ use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 
 use crate::geometry::geometry_visual::GeometryVisual;
 use crate::tests::geometry::project;
-use crate::{CompilerShaders, GeometryBasis, GeometryFace, GeometryMesh, GeometrySplits, GeometryVisualVertex};
+use crate::{
+  CompilerShaders, GeometryBasis, GeometryFace, GeometryMesh, GeometrySplits, GeometryVisualVertex, LightColor,
+};
 
 /// A face of `material` over `vertices`, mapped across the texture.
 fn face(vertices: [u32; 3], material: u16) -> GeometryFace {
@@ -125,6 +127,7 @@ fn corner(position: [f32; 3], coordinate: [f32; 2], tangent: u8) -> GeometryVisu
     },
     texture_coordinate: Vector2d::new(coordinate[0], coordinate[1]),
     lightmap_coordinate: None,
+    light: LightColor::default(),
   }
 }
 

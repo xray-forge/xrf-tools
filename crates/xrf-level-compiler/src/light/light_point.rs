@@ -1,5 +1,5 @@
 use glam::Vec3;
-use xrf_geometry::{Ray, Tracer};
+use xrf_geometry::{Ray, TraceHit, Tracer};
 use xrf_level::LevelLightRole;
 
 use crate::light::light_color::LightColor;
@@ -108,6 +108,18 @@ impl LightPoint {
     tracer: &T,
     shadows: &ShadowMaterials,
   ) -> LightColor {
+    self.evaluate_by(point, lights, roles, tracer, |hit| shadows.get_opacity(hit))
+  }
+
+  /// [`Self::evaluate`], each face a ray meets stopping what `opacity` says of the hit.
+  pub fn evaluate_by<T: Tracer>(
+    &self,
+    point: &LightSamplePoint,
+    lights: &[Vec<LightSource>; 3],
+    roles: &[LevelLightRole],
+    tracer: &T,
+    opacity: impl Fn(&TraceHit) -> f32,
+  ) -> LightColor {
     let mut color: LightColor = LightColor::default();
 
     for role in roles {
@@ -120,7 +132,7 @@ impl LightPoint {
         let mut transmittance: f32 = 1.0;
 
         tracer.for_each_hit_facing(&ray, self.variant.get_facing(), |hit| {
-          transmittance *= self.variant.get_transmittance(shadows, &hit);
+          transmittance *= self.variant.get_transmittance(opacity(&hit));
         });
 
         let amount: f32 = LightTerm { ray: 0, ..term }.get_amount(&[transmittance]);

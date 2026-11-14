@@ -14,7 +14,7 @@ use crate::geometry::geometry_level::GeometryLevel;
 use crate::level_compile_request::LevelCompileRequest;
 use crate::level_compile_step_run::LevelCompileStepRun;
 
-/// A compile's geometry step by our compiler, xrLC's part under draft light ([`GeometryLevel`]): the level's `level`,
+/// A compile's geometry step by our compiler, xrLC's part with draft lightmaps ([`GeometryLevel`]): the level's `level`,
 /// `level.geom`, `level.geomx`, `level.cform`, `build.cform`, `build.lights` and the draft lightmap pair, from its
 /// `build.prj`, the game data's `shaders_xrlc.xr` and the textures under the request's roots.
 pub(crate) struct GeometryStep;
@@ -38,7 +38,7 @@ impl GeometryStep {
 
     job.check_cancelled()?;
 
-    let compiled: GeometryLevel = GeometryLevel::compile(&project, &library, &textures)?;
+    let compiled: GeometryLevel = GeometryLevel::compile(&project, &library, &textures, &request.textures)?;
 
     job.check_cancelled()?;
 

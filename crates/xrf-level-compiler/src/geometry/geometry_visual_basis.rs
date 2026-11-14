@@ -1,10 +1,13 @@
+use std::collections::HashMap;
+
 use xrf_error::{XrfError, XrfResult};
 use xrf_geometry::{Mesh, MeshVertex, TangentBasis};
-use xrf_math::Vector3d;
+use xrf_math::{Vector2d, Vector3d};
 
 use crate::geometry::geometry_basis::GeometryBasis;
 use crate::geometry::geometry_visual::GeometryVisual;
 use crate::geometry::geometry_visual_vertex::GeometryVisualVertex;
+use crate::light::light_color::LightColor;
 
 impl GeometryVisual {
   /// `OGF::CalculateTB` (`xrLC/OGF_CalculateTB.cpp:11`), as a multi-use model's visuals take their basis: the vertices
@@ -15,6 +18,30 @@ impl GeometryVisual {
   ///
   /// Returns an error when the mended visual outgrows 16-bit indices.
   pub(crate) fn mend_basis(&mut self) -> XrfResult {
+    // A mended vertex is a copy of a source with its place, normal and coordinate, whose light it keeps.
+    let key = |position: &Vector3d, normal: &Vector3d, coordinate: &Vector2d| {
+      [
+        position.x,
+        position.y,
+        position.z,
+        normal.x,
+        normal.y,
+        normal.z,
+        coordinate.x,
+        coordinate.y,
+      ]
+      .map(f32::to_bits)
+    };
+    let lights: HashMap<[u32; 8], LightColor> = self
+      .vertices
+      .iter()
+      .map(|vertex| {
+        (
+          key(&vertex.position, &vertex.normal, &vertex.texture_coordinate),
+          vertex.light,
+        )
+      })
+      .collect();
     let ordered: Mesh<u32> = TangentBasis::order_by_first_use(Mesh {
       vertices: self
         .vertices
@@ -41,6 +68,10 @@ impl GeometryVisual {
         basis: GeometryBasis::of(&vertex.tangent, &vertex.binormal),
         texture_coordinate: vertex.texture_coordinate,
         lightmap_coordinate: None,
+        light: lights
+          .get(&key(&vertex.position, &vertex.normal, &vertex.texture_coordinate))
+          .copied()
+          .unwrap_or_default(),
       })
       .collect();
     self.faces = mended

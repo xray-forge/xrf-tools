@@ -21,6 +21,8 @@ use crate::geometry::geometry_placement::GeometryPlacement;
 use crate::geometry::geometry_tree::GeometryTree;
 use crate::geometry::geometry_visual::GeometryVisual;
 use crate::geometry::geometry_visual_vertex::GeometryVisualVertex;
+use crate::light::light_color::LightColor;
+use crate::light::light_models::{LightModels, LightReference};
 
 /// A level's multi-use models as xrLC exports them (`RunAfterLight`, `xrLC/Build.cpp:330`): each model's visuals once,
 /// each reference's placements of them, and its LOD.
@@ -31,8 +33,8 @@ use crate::geometry::geometry_visual_vertex::GeometryVisualVertex;
 ///   basis yet and no fast path, its coordinates shifted where its shader optimizes them, then its basis mended
 ///   ([`GeometryVisual::mend_basis`]), and above draft quality made progressive where it gains enough
 ///   ([`GeometryVisual::make_progressive`]).
-/// - **A reference** places each of its model's visuals as a tree ([`GeometryTree`]), lit by the draft light's scale
-///   and bias. Where its model names a LOD, a [`GeometryLod`] node stands over them, its quads placed by the reference
+/// - **A reference** places each of its model's visuals as a tree ([`GeometryTree`]), with its light's scale and bias
+///   ([`crate::LightModels`]). Where its model names a LOD, a [`GeometryLod`] node stands over them, its quads placed by the reference
 ///   and their light the model's vertices' weighted by `1 / (1 + 100 d²)` from each corner.
 #[derive(Clone, Debug, PartialEq)]
 pub struct GeometryModels {
@@ -45,17 +47,28 @@ pub struct GeometryModels {
 }
 
 impl GeometryModels {
-  /// The models and placements of `project`.
+  /// The models and placements of `project`, lit by `light` ([`crate::LightModels`]), or under the draft light where
+  /// none is given.
   ///
   /// # Errors
   ///
   /// Returns an error for a model whose faces xrLC would read past, a face of a material with no compiler shader or
   /// one the project lacks, a reference naming a model the project lacks, or a model naming a LOD it lacks.
-  pub fn build(project: &BuildPrjFile, shaders: &CompilerShaders, textures: &[CompilerTexture]) -> XrfResult<Self> {
+  pub fn build(
+    project: &BuildPrjFile,
+    shaders: &CompilerShaders,
+    textures: &[CompilerTexture],
+    light: Option<&LightModels>,
+  ) -> XrfResult<Self> {
     let models: Vec<GeometryModel> = project
       .mu_models
       .par_iter()
-      .map(|model| Self::build_model(model, project, shaders, textures))
+      .enumerate()
+      .map(|(index, model)| {
+        let colors: Option<&[LightColor]> = light.map(|light| light.models[index].as_slice());
+
+        Self::build_model(model, project, shaders, textures, colors)
+      })
       .collect::<XrfResult<_>>()?;
 
     let mut trees: Vec<GeometryTree> = Vec::new();
@@ -64,6 +77,7 @@ impl GeometryModels {
     for (index, reference) in project.mu_references.iter().enumerate() {
       let model: &BuildPrjMuModel = GeometryPlacement::get_model(project, index, reference)?;
       let first: usize = trees.len();
+      let placement: Option<&LightReference> = light.map(|light| &light.references[index]);
 
       for visual in 0..models[reference.model as usize].visuals.len() {
         trees.push(GeometryTree {
@@ -72,8 +86,8 @@ impl GeometryModels {
           reference: index as u32,
           sector: reference.sector,
           transform: reference.transform,
-          scale: GeometryDraftLight::TREE_SCALE,
-          bias: GeometryDraftLight::TREE_BIAS,
+          scale: placement.map_or(GeometryDraftLight::TREE_SCALE, |placement| placement.scale),
+          bias: placement.map_or(GeometryDraftLight::TREE_BIAS, |placement| placement.bias),
         });
       }
 
@@ -104,7 +118,11 @@ impl GeometryModels {
           std::array::from_fn(|corner| {
             let position: Vector3d =
               GeometryPlacement::transform(&reference.transform, &lod.faces[face].vertices[corner]);
-            let light: [f32; 5] = Self::get_lod_light(&position, &placed);
+            let light: [f32; 5] = Self::get_lod_light(
+              &position,
+              &placed,
+              placement.map(|placement| placement.colors.as_slice()),
+            );
             let term = |value: f32| LevelVertexQuantizer::get_light_term(value);
 
             GeometryLodVertex {
@@ -136,7 +154,6 @@ impl GeometryModels {
     let declaration = LevelVertexDeclaration::get_tree();
     let layout: LevelVertexLayout = LevelVertexLayout::of_declaration(&declaration)?;
     let stride: usize = layout.get_stride() as usize;
-    let hemisphere: u8 = LevelVertexQuantizer::get_light_term(GeometryDraftLight::TREE_HEMISPHERE);
     let mut packed: Vec<Vec<GeometryPackedVisual>> = Vec::with_capacity(self.models.len());
 
     for model in &self.models {
@@ -146,7 +163,7 @@ impl GeometryModels {
         let mut bytes: Vec<u8> = vec![0; visual.vertices.len() * stride];
 
         for (vertex, slot) in visual.vertices.iter().zip(bytes.chunks_exact_mut(stride)) {
-          Self::get_stored(vertex, model, hemisphere).write_into::<XRayByteOrder>(&layout, slot)?;
+          Self::get_stored(vertex, model).write_into::<XRayByteOrder>(&layout, slot)?;
         }
 
         let slide_window: Option<u32> = visual.windows.as_ref().map(|windows| {
@@ -190,6 +207,7 @@ impl GeometryModels {
     project: &BuildPrjFile,
     shaders: &CompilerShaders,
     textures: &[CompilerTexture],
+    colors: Option<&[LightColor]>,
   ) -> XrfResult<GeometryModel> {
     let mesh: GeometryMesh = GeometryMesh::of_model(model)?;
     let normals: GeometryNormals = GeometryNormals::of(&mesh);
@@ -246,6 +264,7 @@ impl GeometryModels {
             basis: GeometryBasis::NONE,
             texture_coordinate: mesh.faces[*face].texture_coordinates[corner],
             lightmap_coordinate: None,
+            light: colors.map_or(GeometryDraftLight::TREE_VERTEX, |colors| colors[split]),
           }
         });
 
@@ -282,22 +301,17 @@ impl GeometryModels {
     })
   }
 
-  /// A LOD corner's light: each of the model's placed vertices' draft light weighted by `1 / (1 + 100 d²)`, summed in
-  /// order and divided by the weights and `EPS`.
-  fn get_lod_light(corner: &Vector3d, vertices: &[Vector3d]) -> [f32; 5] {
-    let own: [f32; 5] = [
-      GeometryDraftLight::STATIC_LIGHT,
-      GeometryDraftLight::STATIC_LIGHT,
-      GeometryDraftLight::STATIC_LIGHT,
-      GeometryDraftLight::TREE_HEMISPHERE,
-      GeometryDraftLight::TREE_SUN,
-    ];
+  /// A LOD corner's light: each of the model's placed vertices' light (the placement's `colors`, or the draft light)
+  /// weighted by `1 / (1 + 100 d²)`, summed in order and divided by the weights and `EPS`.
+  fn get_lod_light(corner: &Vector3d, vertices: &[Vector3d], colors: Option<&[LightColor]>) -> [f32; 5] {
+    let terms = |color: &LightColor| [color.rgb.x, color.rgb.y, color.rgb.z, color.hemi, color.sun];
     let mut sum: [f32; 5] = [0.0; 5];
     let mut weights: f32 = 0.0;
 
-    for vertex in vertices {
+    for (index, vertex) in vertices.iter().enumerate() {
       let distance: f32 = corner.distance(vertex);
       let weight: f32 = 1.0 / (1.0 + 100.0 * distance * distance);
+      let own: [f32; 5] = terms(colors.map_or(&GeometryDraftLight::TREE_VERTEX, |colors| &colors[index]));
 
       for (term, value) in sum.iter_mut().zip(own) {
         *term += value * weight;
@@ -317,7 +331,8 @@ impl GeometryModels {
     clippy::manual_midpoint,
     reason = "xrLC averages the two wind terms in single precision, which `f32::midpoint` does not"
   )]
-  fn get_stored(vertex: &GeometryVisualVertex, model: &GeometryModel, hemisphere: u8) -> LevelVertexStored {
+  fn get_stored(vertex: &GeometryVisualVertex, model: &GeometryModel) -> LevelVertexStored {
+    let hemisphere: u8 = LevelVertexQuantizer::get_light_term(vertex.light.hemi);
     let basis = |direction: [u8; 3]| [direction[2], direction[1], direction[0], 0];
     let height: f32 = (vertex.position.y - model.wind_base.y) / model.wind_height;
     let reach: f32 = vertex.position.distance(&model.wind_base) / model.wind_height;
