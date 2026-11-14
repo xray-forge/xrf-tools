@@ -1,5 +1,5 @@
 use xrf_error::{XrfError, XrfResult};
-use xrf_level::BuildPrjFile;
+use xrf_level::{BuildPrjFace, BuildPrjFile, BuildPrjMuModel};
 use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 
 /// Each `build.prj` material's compiler shader, as the SDK's compilers resolve it (`post_process_materials`,
@@ -62,5 +62,24 @@ impl CompilerShaders {
   /// The compiler shader of material `material`, `None` for one with none or one the project does not hold.
   pub fn get(&self, material: u16) -> Option<&ShaderCompilerShader> {
     self.by_material.get(usize::from(material)).and_then(Option::as_ref)
+  }
+
+  /// The compiler shader of face `number` of multi-use model `model`, which xrLC reads without a check.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for a face of a material with no compiler shader or one the project does not hold.
+  pub(crate) fn require(
+    &self,
+    model: &BuildPrjMuModel,
+    number: usize,
+    face: &BuildPrjFace,
+  ) -> XrfResult<&ShaderCompilerShader> {
+    self.get(face.material).ok_or_else(|| {
+      XrfError::new_invalid_error(format!(
+        "Multi-use model {} face {number} is of material {}, which has no compiler shader",
+        model.name, face.material
+      ))
+    })
   }
 }
