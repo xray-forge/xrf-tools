@@ -2,14 +2,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use serde_json::{Value, json};
-use uuid::{Uuid, uuid};
-use xrf_spawn::{
-  GraphHeader, SpawnALifeSpawnsChunk, SpawnArtefactSpawnsChunk, SpawnFile, SpawnGraphsChunk, SpawnHeaderChunk,
-  SpawnPatrolsChunk, XRayByteOrder,
-};
+use xrf_spawn::XRayByteOrder;
 use xrf_test_utils::GeneratedResources;
 
-use crate::commands::spawn::fixtures::{new_level_object, write_level_spawn_list};
+use crate::commands::spawn::fixtures::{new_level_object, new_root_spawn, write_level_spawn_list};
 use crate::commands::spawn::info::InfoCommand;
 use crate::core::command::command_testing::run_command_for_result;
 use crate::core::command::{CommandError, CommandResult, GenericCommand};
@@ -25,38 +21,6 @@ fn run(path: &Path) -> CommandResult<Option<Value>> {
       String::from("--json"),
     ],
   )
-}
-
-fn new_root_spawn() -> SpawnFile {
-  let guid: Uuid = uuid!("78e55023-10b1-426f-9247-bb680e5fe0b7");
-
-  SpawnFile {
-    header: SpawnHeaderChunk {
-      version: 10,
-      guid,
-      graph_guid: guid,
-      objects_count: 0,
-      levels_count: 0,
-    },
-    alife_spawn: SpawnALifeSpawnsChunk { objects: Vec::new() },
-    artefact_spawn: SpawnArtefactSpawnsChunk { nodes: Vec::new() },
-    patrols: SpawnPatrolsChunk { patrols: Vec::new() },
-    graphs: SpawnGraphsChunk {
-      header: GraphHeader {
-        version: 10,
-        vertices_count: 0,
-        edges_count: 0,
-        points_count: 0,
-        guid,
-        levels_count: 0,
-      },
-      levels: Vec::new(),
-      vertices: Vec::new(),
-      edges: Vec::new(),
-      points: Vec::new(),
-      cross_tables: Vec::new(),
-    },
-  }
 }
 
 #[test]

@@ -1,7 +1,7 @@
 use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
 
-use crate::level_spawn_file::LevelSpawnFile;
+use crate::level::level_spawn_file::LevelSpawnFile;
 
 /// Frames a payload as one X-Ray chunk.
 fn new_chunk(id: u32, payload: &[u8]) -> XrfResult<Vec<u8>> {

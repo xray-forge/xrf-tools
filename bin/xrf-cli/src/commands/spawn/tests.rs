@@ -1,16 +1,19 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use serde_json::Value;
 use xrf_error::XrfResult;
-use xrf_spawn::AnySpawnFile;
+use xrf_spawn::{AnySpawnFile, LevelSpawnFile, XRayByteOrder};
 use xrf_test_utils::GeneratedResources;
 
-use crate::commands::packed_file::{RepackCommand, UnpackCommand, VerifyCommand};
-use crate::commands::spawn::fixtures::{new_level_object, write_level_spawn_list};
-use crate::core::command::command_testing::run_command;
+use crate::commands::packed_file::{PackCommand, ReUnpackCommand, RepackCommand, UnpackCommand, VerifyCommand};
+use crate::commands::spawn::fixtures::{
+  new_level_object, new_root_spawn, new_typed_level_object, write_level_spawn_list,
+};
+use crate::core::command::command_testing::{run_command, run_command_for_result};
 use crate::core::command::{CommandError, CommandResult, GenericCommand};
 
-fn run<T: GenericCommand>(command: &T, path: &Path, extra: &[&str]) -> CommandResult {
+fn arguments_of<T: GenericCommand>(command: &T, path: &Path, extra: &[&str]) -> Vec<String> {
   let mut arguments: Vec<String> = vec![
     String::from(command.operation()),
     String::from("--path"),
@@ -20,7 +23,16 @@ fn run<T: GenericCommand>(command: &T, path: &Path, extra: &[&str]) -> CommandRe
 
   arguments.extend(extra.iter().map(|it| String::from(*it)));
 
-  run_command(command, &arguments)
+  arguments
+}
+
+fn run<T: GenericCommand>(command: &T, path: &Path, extra: &[&str]) -> CommandResult {
+  run_command(command, &arguments_of(command, path, extra))
+}
+
+/// Runs a command asked for its result, answering the result it deposited.
+fn run_for_result<T: GenericCommand>(command: &T, path: &Path, extra: &[&str]) -> CommandResult<Value> {
+  Ok(run_command_for_result(command, &arguments_of(command, path, extra))?.expect("a result was asked for"))
 }
 
 fn new_level_spawn_list(directory: &str) -> XrfResult<(PathBuf, Vec<u8>)> {
@@ -76,26 +88,104 @@ fn repacks_a_level_spawn_list_byte_for_byte() -> XrfResult {
   Ok(())
 }
 
-/// A level's spawn list has no text form yet, which the refusal says rather than misreading it as a root spawn.
+/// A level's spawn list unpacks, reporting the objects it wrote typed and verbatim, and its folder verifies, re-unpacks
+/// into the same text and packs back into the bytes it came from.
 #[test]
-fn refuses_to_unpack_a_level_spawn_list_saying_why() -> XrfResult {
-  let (path, _) = new_level_spawn_list("spawn/unpack_level")?;
-  let dest: PathBuf = path.with_file_name("unpacked");
+fn unpacks_a_level_spawn_list_and_packs_it_back_byte_for_byte() -> CommandResult {
+  let path: PathBuf = GeneratedResources::create_dir("spawn/unpack_level")?.join("level.spawn");
+  let bytes: Vec<u8> = write_level_spawn_list(
+    &path,
+    vec![
+      new_typed_level_object(0, "zat_graph_point")?,
+      new_level_object(1, "m_stalker", "esc_wolf"),
+      new_level_object(2, "m_stalker", "esc_fox"),
+    ],
+  )?;
+  let unpacked: PathBuf = path.with_file_name("unpacked");
+  let re_unpacked: PathBuf = path.with_file_name("re_unpacked");
+  let repacked: PathBuf = path.with_file_name("repacked.spawn");
 
-  let error: CommandError = run(
+  let report: Value = run_for_result(
     &UnpackCommand::<AnySpawnFile>::default(),
     &path,
-    &["--dest", &dest.display().to_string(), "--force"],
-  )
-  .expect_err("a level's spawn list is not unpacked");
+    &["--dest", &unpacked.display().to_string(), "--json"],
+  )?;
 
-  assert_eq!(error.exit_code(), 1);
-  assert!(
-    error.message().contains("level's spawn list has no unpacked form"),
-    "{}",
-    error.message()
+  assert_eq!(report["typedObjects"], 1, "{report}");
+  assert_eq!(report["verbatimObjects"][0]["objects"], 2, "{report}");
+  // Both objects' packets are filler, refused at the version their bytes spell, and their names are left out of the
+  // reason, so the two share one.
+  assert_eq!(
+    report["verbatimObjects"][0]["reason"], "Assertion error: Unexpected version 0 of spawn packet, script flags 1799",
+    "{report}"
   );
-  assert!(!dest.exists());
+
+  run(&VerifyCommand::<AnySpawnFile>::default(), &unpacked, &["--unpacked"]).expect("the folder reads");
+  run(
+    &ReUnpackCommand::<AnySpawnFile>::default(),
+    &unpacked,
+    &["--dest", &re_unpacked.display().to_string()],
+  )
+  .expect("the folder re-unpacks");
+
+  assert_eq!(
+    fs::read(re_unpacked.join(LevelSpawnFile::UNPACKED_FILE_NAME))?,
+    fs::read(unpacked.join(LevelSpawnFile::UNPACKED_FILE_NAME))?
+  );
+
+  run(
+    &PackCommand::<AnySpawnFile>::default(),
+    &unpacked,
+    &["--dest", &repacked.display().to_string()],
+  )
+  .expect("the folder packs");
+
+  assert_eq!(fs::read(&repacked)?, bytes);
+
+  Ok(())
+}
+
+/// A root spawn's unpack says nothing past the conversion.
+#[test]
+fn reports_a_root_spawns_unpack_as_the_conversion_alone() -> CommandResult {
+  let root: PathBuf = GeneratedResources::create_dir("spawn/unpack_root")?;
+
+  new_root_spawn().write_to_path::<XRayByteOrder, _>(&root.join("all.spawn"))?;
+
+  let report: Value = run_for_result(
+    &UnpackCommand::<AnySpawnFile>::default(),
+    &root.join("all.spawn"),
+    &["--dest", &root.join("unpacked").display().to_string(), "--json"],
+  )?;
+  let mut keys: Vec<&String> = report.as_object().expect("an object").keys().collect();
+
+  keys.sort();
+
+  assert_eq!(keys, ["destination", "readDuration", "source", "writeDuration"]);
+
+  Ok(())
+}
+
+/// A folder that is neither kind's is judged by `verify`, and refused by `pack` naming what each kind's folder holds.
+#[test]
+fn judges_a_folder_of_neither_kind() -> XrfResult {
+  let folder: PathBuf = GeneratedResources::create_dir("spawn/neither_folder")?;
+  let verified: CommandError = run(&VerifyCommand::<AnySpawnFile>::default(), &folder, &["--unpacked"])
+    .expect_err("a folder of neither kind is judged");
+  let packed: CommandError = run(
+    &PackCommand::<AnySpawnFile>::default(),
+    &folder,
+    &["--dest", &folder.with_file_name("neither.spawn").display().to_string()],
+  )
+  .expect_err("a folder of neither kind is not packed");
+
+  assert_eq!(verified.exit_code(), 3);
+  assert_eq!(packed.exit_code(), 1);
+  assert!(
+    packed.message().contains("header.ltx") && packed.message().contains("level_spawns.ltx"),
+    "{}",
+    packed.message()
+  );
 
   Ok(())
 }

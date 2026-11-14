@@ -6,12 +6,12 @@ use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
-use crate::level_spawn_file::LevelSpawnFile;
+use crate::level::level_spawn_file::LevelSpawnFile;
 use crate::spawn_file::SpawnFile;
 use crate::spawn_file_kind::SpawnFileKind;
 
-/// A `.spawn` file as whichever of the two formats sharing the extension it is, told by its own chunks
-/// ([`SpawnFileKind`]) since its name cannot say.
+/// A `.spawn` file as whichever of the two formats sharing the extension it is, told by its own chunks, or by its
+/// unpacked folder's files ([`SpawnFileKind`]), since its name cannot say.
 #[derive(Clone, Debug)]
 pub enum AnySpawnFile {
   Root(Box<SpawnFile>),
@@ -42,6 +42,18 @@ impl AnySpawnFile {
         }),
     }
   }
+
+  /// Imports the unpacked folder at `path` as the kind its files make it ([`SpawnFileKind::of_folder`]).
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when `path` is not a folder, holds neither kind's files or both, or its files do not import.
+  pub fn import_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
+    match SpawnFileKind::of_folder(path.as_ref())? {
+      SpawnFileKind::Root => Ok(Self::Root(Box::new(SpawnFile::import_from_path::<T, _>(path)?))),
+      SpawnFileKind::Level => LevelSpawnFile::import_from_path::<T, _>(path).map(Self::Level),
+    }
+  }
 }
 
 #[cfg(test)]
@@ -50,15 +62,17 @@ mod tests {
   use std::path::PathBuf;
 
   use xrf_chunk::XRayByteOrder;
-  use xrf_error::XrfResult;
+  use xrf_error::{XrfError, XrfResult};
   use xrf_math::Vector3d;
   use xrf_test_utils::GeneratedResources;
 
   use super::AnySpawnFile;
   use crate::constants::NET_ACTION_SPAWN;
-  use crate::fixtures::EmptySpawnFile;
-  use crate::level_spawn_file::LevelSpawnFile;
-  use crate::level_spawn_object::LevelSpawnObject;
+  use crate::fixtures::{EmptySpawnFile, LevelSpawnObjects};
+  use crate::level::level_spawn_file::LevelSpawnFile;
+  use crate::level::level_spawn_object::LevelSpawnObject;
+  use crate::spawn_file::SpawnFile;
+  use crate::spawn_file_kind::SpawnFileKind;
 
   #[test]
   fn reads_a_root_spawn_as_its_kind() -> XrfResult {
@@ -117,6 +131,89 @@ mod tests {
       error.contains("Expected a root spawn") && error.contains("is neither"),
       "{error}"
     );
+
+    Ok(())
+  }
+
+  /// A root spawn's folder is imported as a root spawn. The empty spawn's graph writes an empty cross table file, which
+  /// does not import back, so the root import's own answer is what shows the folder was routed to it.
+  #[test]
+  fn imports_a_root_spawns_folder_as_its_kind() -> XrfResult {
+    let path: PathBuf = GeneratedResources::create_dir("any_spawn_file/root_folder")?;
+
+    EmptySpawnFile::build().export_to_path::<XRayByteOrder, _>(&path)?;
+
+    assert_eq!(SpawnFileKind::of_folder(&path)?, SpawnFileKind::Root);
+    assert_eq!(
+      AnySpawnFile::import_from_path::<XRayByteOrder, _>(&path)
+        .map(|_| ())
+        .map_err(|error| error.to_string()),
+      SpawnFile::import_from_path::<XRayByteOrder, _>(&path)
+        .map(|_| ())
+        .map_err(|error| error.to_string())
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn imports_a_level_spawn_lists_folder_as_its_kind() -> XrfResult {
+    let path: PathBuf = GeneratedResources::create_dir("any_spawn_file/level_folder")?;
+    let list: LevelSpawnFile = LevelSpawnFile {
+      objects: vec![
+        LevelSpawnObjects::bolt(0)?,
+        LevelSpawnObjects::shadow_of_chernobyl_graph_point(1, "l04u_graph_point_0")?,
+      ],
+    };
+
+    list.export_to_path::<XRayByteOrder, _>(&path)?;
+
+    let AnySpawnFile::Level(imported) = AnySpawnFile::import_from_path::<XRayByteOrder, _>(&path)? else {
+      panic!("Expected a level's spawn list");
+    };
+
+    assert_eq!(imported, list);
+
+    Ok(())
+  }
+
+  /// What a folder holds tells its kind, so a folder holding both kinds' files, or neither, is refused naming each.
+  #[test]
+  fn refuses_a_folder_of_neither_kind_or_both_naming_what_each_holds() -> XrfResult {
+    let path: PathBuf = GeneratedResources::create_dir("any_spawn_file/neither_folder")?;
+
+    fs::write(path.join("notes.txt"), "unrelated")?;
+
+    let neither: String = AnySpawnFile::import_from_path::<XRayByteOrder, _>(&path)
+      .expect_err("a folder of neither kind")
+      .to_string();
+
+    assert!(
+      neither.contains("header.ltx") && neither.contains("level_spawns.ltx") && neither.contains("holds neither"),
+      "{neither}"
+    );
+
+    EmptySpawnFile::build().export_to_path::<XRayByteOrder, _>(&path)?;
+    LevelSpawnFile { objects: Vec::new() }.export_to_path::<XRayByteOrder, _>(&path)?;
+
+    let both: String = AnySpawnFile::import_from_path::<XRayByteOrder, _>(&path)
+      .expect_err("a folder of both kinds")
+      .to_string();
+
+    assert!(both.contains("holds both"), "{both}");
+
+    Ok(())
+  }
+
+  /// A folder that is not there was not read, which is not a judgement of what it holds.
+  #[test]
+  fn answers_a_missing_folder_as_unread() -> XrfResult {
+    let path: PathBuf = GeneratedResources::create_dir("any_spawn_file/missing_folder")?.join("absent");
+
+    assert!(matches!(
+      AnySpawnFile::import_from_path::<XRayByteOrder, _>(&path),
+      Err(XrfError::Io { .. })
+    ));
 
     Ok(())
   }

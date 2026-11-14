@@ -6,7 +6,9 @@ use clap::{ArgMatches, Command};
 use xrf_output::OutputOptions;
 use xrf_utils::{format_duration, format_path};
 
-use crate::commands::packed_file::{PackedFileArguments, PackedFileDestination, PackedFileFormat};
+use crate::commands::packed_file::{
+  PackedFileArguments, PackedFileDestination, PackedFileFormat, PackedFileUnpackReport, PackedFileUnpacked,
+};
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 use crate::core::reports::FileConversionReport;
 
@@ -46,12 +48,12 @@ impl<F: PackedFileFormat> GenericCommand for UnpackCommand<F> {
     let file: F = F::read(path)?;
     let read_duration: Duration = started_at.elapsed();
 
-    PackedFileDestination::write_folder(dest, |folder| file.export(folder))?;
-
+    let unpacked: F::Unpacked = PackedFileDestination::write_folder(dest, |folder| file.export(folder))?;
     let write_duration: Duration = started_at.elapsed() - read_duration;
 
     xrf_output::verbose!(output, "Read in {}", format_duration(read_duration));
     xrf_output::verbose!(output, "Exported in {}", format_duration(write_duration));
+    unpacked.print(&output);
     xrf_output::success!(
       output,
       "Unpacked {} in {}",
@@ -59,6 +61,11 @@ impl<F: PackedFileFormat> GenericCommand for UnpackCommand<F> {
       format_duration(started_at.elapsed())
     );
 
-    context.set_result(|| FileConversionReport::new(path, dest, read_duration, write_duration))
+    context.set_result(|| {
+      PackedFileUnpackReport::new(
+        FileConversionReport::new(path, dest, read_duration, write_duration),
+        unpacked,
+      )
+    })
   }
 }

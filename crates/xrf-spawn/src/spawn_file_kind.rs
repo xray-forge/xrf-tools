@@ -1,10 +1,16 @@
+use std::io::ErrorKind;
+use std::path::Path;
+
 use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReader};
+use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 use crate::chunks::spawn_header_chunk::SpawnHeaderChunk;
+use crate::level::level_spawn_file::LevelSpawnFile;
 
-/// Which of the two formats sharing `.spawn` a file is, which its name cannot say: a root spawn such as `all.spawn`
-/// ([`SpawnFile`](crate::SpawnFile)), or the run of spawn packets a level's `level.spawn` holds
+/// Which of the two formats sharing `.spawn` a file or its unpacked folder is, which its name cannot say: a root spawn
+/// such as `all.spawn` ([`SpawnFile`](crate::SpawnFile)), or the run of spawn packets a level's `level.spawn` holds
 /// ([`LevelSpawnFile`](crate::LevelSpawnFile)).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SpawnFileKind {
@@ -33,6 +39,37 @@ impl SpawnFileKind {
       .read_xr::<T, SpawnHeaderChunk>()
       .ok()
   }
+
+  /// The kind an unpacked folder holds, told by its files: a root spawn's holds its header's file, a level list's the
+  /// file of its objects.
+  ///
+  /// # Errors
+  ///
+  /// Returns an IO error when `path` is not a folder, and an invalid error when it holds both kinds' files or neither.
+  pub fn of_folder(path: &Path) -> XrfResult<Self> {
+    if !path.is_dir() {
+      return Err(XrfError::new_io_error(
+        format!("Unpacked spawn folder {} is not a folder", format_path(path)),
+        ErrorKind::NotFound,
+      ));
+    }
+
+    let is_root: bool = path.join(SpawnHeaderChunk::UNPACKED_FILE_NAME).is_file();
+    let is_level: bool = path.join(LevelSpawnFile::UNPACKED_FILE_NAME).is_file();
+
+    if is_root != is_level {
+      return Ok(if is_root { Self::Root } else { Self::Level });
+    }
+
+    Err(XrfError::new_invalid_error(format!(
+      "Expected an unpacked spawn folder, a root spawn's holding {} beside its other chunks' files or a level spawn \
+       list's holding {}: {} holds {}",
+      SpawnHeaderChunk::UNPACKED_FILE_NAME,
+      LevelSpawnFile::UNPACKED_FILE_NAME,
+      format_path(path),
+      if is_root { "both" } else { "neither" }
+    )))
+  }
 }
 
 #[cfg(test)]
@@ -45,8 +82,8 @@ mod tests {
   use crate::chunks::spawn_header_chunk::SpawnHeaderChunk;
   use crate::constants::NET_ACTION_SPAWN;
   use crate::fixtures::EmptySpawnFile;
-  use crate::level_spawn_file::LevelSpawnFile;
-  use crate::level_spawn_object::LevelSpawnObject;
+  use crate::level::level_spawn_file::LevelSpawnFile;
+  use crate::level::level_spawn_object::LevelSpawnObject;
 
   fn read_kind(bytes: Vec<u8>) -> XrfResult<SpawnFileKind> {
     let chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_vec(bytes)?.read_children()?;

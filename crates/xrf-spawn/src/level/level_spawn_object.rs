@@ -74,6 +74,19 @@ impl LevelSpawnObject {
     Ok(())
   }
 
+  /// The packet the object is listed as, as [`Self::write`] writes it.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the writer refuses the bytes.
+  pub(crate) fn encode_packet<T: ByteOrder>(&self) -> XrfResult<Vec<u8>> {
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    self.write::<T>(&mut writer)?;
+
+    Ok(writer.buffer)
+  }
+
   /// The object typed as its section's class, read from its spawn packet alone
   /// ([`AlifeObject::read_spawn_packet`]).
   ///
@@ -81,11 +94,8 @@ impl LevelSpawnObject {
   ///
   /// Returns an error when the packet is not of a known class, or holds bytes past what its class reads.
   pub fn read_alife_object<T: ByteOrder>(&self) -> XrfResult<AlifeObject> {
-    let mut bytes: ChunkWriter = ChunkWriter::new();
-
-    self.write::<T>(&mut bytes)?;
-
-    let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&bytes.buffer)?;
+    let bytes: Vec<u8> = self.encode_packet::<T>()?;
+    let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&bytes)?;
     let object: AlifeObject = AlifeObject::read_spawn_packet::<T, _>(&mut reader)?;
 
     if !reader.is_ended() {
@@ -124,7 +134,7 @@ mod tests {
   use crate::data::alife::inherited::alife_graph_point::AlifeGraphPoint;
   use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
   use crate::data::meta::cls_id::ClsId;
-  use crate::level_spawn_object::LevelSpawnObject;
+  use crate::level::level_spawn_object::LevelSpawnObject;
 
   fn graph_point() -> AlifeObject {
     AlifeObject {

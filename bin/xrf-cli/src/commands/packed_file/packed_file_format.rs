@@ -1,8 +1,10 @@
 use std::path::Path;
 
-use xrf_error::{XrfError, XrfResult};
+use xrf_error::XrfResult;
 use xrf_particles::ParticlesFile;
-use xrf_spawn::{AnySpawnFile, SpawnFile, XRayByteOrder};
+use xrf_spawn::{AnySpawnFile, LevelSpawnExport, XRayByteOrder};
+
+use crate::commands::packed_file::PackedFileUnpacked;
 
 /// A file the game reads packed into one binary, which the tools unpack into a folder of text files and pack back: a
 /// particle library or a spawn file. The `pack`, `unpack`, `repack`, `re-unpack` and `verify` commands are written once
@@ -16,6 +18,9 @@ pub(crate) trait PackedFileFormat: Sized + Send + Sync + 'static {
 
   /// The check `verify` reports reading one under, and the rule a file that would not read breaks.
   const READ_CHECK: &'static str;
+
+  /// What an export says beyond the folder it wrote.
+  type Unpacked: PackedFileUnpacked;
 
   /// The packed file at `path`.
   ///
@@ -38,18 +43,20 @@ pub(crate) trait PackedFileFormat: Sized + Send + Sync + 'static {
   /// Returns an error when it cannot be encoded or written.
   fn write(&self, path: &Path) -> XrfResult;
 
-  /// Writes it unpacked into the folder `path`.
+  /// Writes it unpacked into the folder `path`, answering what the export says beyond the folder.
   ///
   /// # Errors
   ///
   /// Returns an error when a file of the folder cannot be written.
-  fn export(&self, path: &Path) -> XrfResult;
+  fn export(&self, path: &Path) -> XrfResult<Self::Unpacked>;
 }
 
 impl PackedFileFormat for ParticlesFile {
   const NOUN: &'static str = "particles file";
   const FILE_NAME: &'static str = Self::FILE_NAME;
   const READ_CHECK: &'static str = "particles.read";
+
+  type Unpacked = ();
 
   fn read(path: &Path) -> XrfResult<Self> {
     Self::read_from_path::<XRayByteOrder, _>(&path)
@@ -68,18 +75,20 @@ impl PackedFileFormat for ParticlesFile {
   }
 }
 
-/// Either kind of `.spawn` reads, verifies and repacks; only a root spawn has an unpacked folder.
+/// Either kind of `.spawn` reads, verifies, unpacks and packs, its file or its folder telling which kind it is.
 impl PackedFileFormat for AnySpawnFile {
   const NOUN: &'static str = "spawn file";
   const FILE_NAME: &'static str = "*.spawn";
   const READ_CHECK: &'static str = "spawn.read";
+
+  type Unpacked = Option<LevelSpawnExport>;
 
   fn read(path: &Path) -> XrfResult<Self> {
     Self::read_from_path::<XRayByteOrder, _>(&path)
   }
 
   fn import(path: &Path) -> XrfResult<Self> {
-    SpawnFile::import_from_path::<XRayByteOrder, _>(&path).map(|file| Self::Root(Box::new(file)))
+    Self::import_from_path::<XRayByteOrder, _>(&path)
   }
 
   fn write(&self, path: &Path) -> XrfResult {
@@ -89,13 +98,10 @@ impl PackedFileFormat for AnySpawnFile {
     }
   }
 
-  fn export(&self, path: &Path) -> XrfResult {
+  fn export(&self, path: &Path) -> XrfResult<Self::Unpacked> {
     match self {
-      Self::Root(file) => file.export_to_path::<XRayByteOrder, _>(&path),
-      // todo: unpack a level's spawn list into a folder of text files and pack it back.
-      Self::Level(_) => Err(XrfError::new_invalid_error(
-        "A level's spawn list has no unpacked form yet: only a root spawn such as all.spawn unpacks",
-      )),
+      Self::Root(file) => file.export_to_path::<XRayByteOrder, _>(&path).map(|()| None),
+      Self::Level(file) => file.export_to_path::<XRayByteOrder, _>(&path).map(Some),
     }
   }
 }

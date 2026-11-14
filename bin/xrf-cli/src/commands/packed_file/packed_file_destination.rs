@@ -26,23 +26,25 @@ impl PackedFileDestination {
   }
 
   /// Writes a folder at `dest` through `export`: straight into it where nothing is there, else into a staged sibling
-  /// that replaces the old folder once complete.
+  /// that replaces the old folder once complete. Answers what `export` answered.
   ///
   /// # Errors
   ///
   /// Returns an error when the export fails, or the old folder cannot be replaced.
-  pub(crate) fn write_folder(dest: &Path, export: impl FnOnce(&Path) -> XrfResult) -> XrfResult {
+  pub(crate) fn write_folder<R>(dest: &Path, export: impl FnOnce(&Path) -> XrfResult<R>) -> XrfResult<R> {
     if !dest.exists() {
       return export(dest);
     }
 
     let staged: PathBuf = StagedFile::name_sibling(dest, "staged")?;
+    let exported: R = match export(&staged) {
+      Ok(exported) => exported,
+      Err(error) => {
+        let _ = fs::remove_dir_all(&staged);
 
-    if let Err(error) = export(&staged) {
-      let _ = fs::remove_dir_all(&staged);
-
-      return Err(error);
-    }
+        return Err(error);
+      }
+    };
 
     if dest.is_dir() {
       fs::remove_dir_all(dest)?;
@@ -50,6 +52,8 @@ impl PackedFileDestination {
       fs::remove_file(dest)?;
     }
 
-    Ok(fs::rename(&staged, dest)?)
+    fs::rename(&staged, dest)?;
+
+    Ok(exported)
   }
 }

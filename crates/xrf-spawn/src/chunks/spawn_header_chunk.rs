@@ -20,6 +20,9 @@ pub struct SpawnHeaderChunk {
 
 impl SpawnHeaderChunk {
   pub const CHUNK_ID: u32 = 0;
+
+  /// The header's file in a root spawn's unpacked folder, which is what tells that folder from a level list's.
+  pub const UNPACKED_FILE_NAME: &'static str = "header.ltx";
 }
 
 impl ChunkReadWrite for SpawnHeaderChunk {
@@ -60,7 +63,7 @@ impl FileImportExport for SpawnHeaderChunk {
   /// Import header data from provided path.
   /// Parse ltx files and populate spawn file.
   fn import<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    let ltx: Ltx = Ltx::read_from_path(path.as_ref().join("header.ltx"))?;
+    let ltx: Ltx = Ltx::read_from_path(path.as_ref().join(Self::UNPACKED_FILE_NAME))?;
     let section: &Section = ltx
       .section("header")
       .expect("Patrol section 'header' should be defined in ltx file");
@@ -87,7 +90,7 @@ impl FileImportExport for SpawnHeaderChunk {
       .set("objects", self.objects_count)
       .set("level_count", self.levels_count);
 
-    ltx.write_to_path(path.as_ref().join("header.ltx"))?;
+    ltx.write_to_path(path.as_ref().join(Self::UNPACKED_FILE_NAME))?;
 
     log::info!("Exported header chunk");
 

@@ -27,6 +27,8 @@ It then hands the same chunks to `SpawnFile::read_from_chunks` or `LevelSpawnFil
 refuses a file that is neither. `SpawnFileKind::read_root_header` is the same rule for a caller that wants the header.
 `AnySpawnFile::read_from_path` does both for a file on disk and answers `Root` or `Level` with the file read, refusing
 one that is neither with a message naming both kinds; `LevelSpawnFile::write_to_path` writes a list back, staged.
+`AnySpawnFile::import_from_path` is the same for an unpacked folder, told by its files (`SpawnFileKind::of_folder`): a
+set's holds `header.ltx`, a level list's `level_spawns.ltx`, and a folder holding neither or both is refused.
 
 ## Read a spawn set
 
@@ -211,6 +213,17 @@ assert_eq!(read.get_sections().get("medkit"), Some(&1));
 # }
 ```
 
+`LevelSpawnFile::export_to_path` unpacks a list into a folder holding `level_spawns.ltx`, a section per object named by
+its place, and `import_from_path` reads it back. An object the typed read accepts, and whose typed form writes back its
+own bytes, is written as an unpacked set writes an ALife object, with the same keys. Any other is written verbatim
+under `form = verbatim`: its section, name, script bytes, position and direction, the rest of its packet in base64
+under `payload`, and the refusal under `reason`, with the object's name left out so objects refused alike share one
+and its double quotes made single so the value reads back. Importing packs a verbatim record from its payload whatever
+it holds and reads nothing of its reason. An object found under another chunk than its place keeps it in `chunk_id`; no
+shipped list needs one. The export answers a `LevelSpawnExport`: the objects written typed, and those written verbatim
+grouped by reason. Every one of the 168 shipped lists of the reference trees unpacks and packs back byte for byte, 579
+objects of Shadow of Chernobyl's spawn version 118 verbatim.
+
 ## The Level Editor's form
 
 The Level Editor stores each entity of a scene in `spawn.part` as an `[object_N_spawndata]` section: the entity's spawn
@@ -243,5 +256,5 @@ rounds. Stalkers, monsters and squads appear in no GSC scene, so their field for
 Run `cargo test --locked -p xrf-spawn` from the repository root.
 
 Sources: the [spawn set](src/spawn_file.rs), [alife objects](src/chunks/spawn_alife_spawns_chunk.rs),
-[level spawn list](src/level_spawn_file.rs), [spawn packet header](src/data/alife/spawn_packet_header.rs), and
+[level spawn list](src/level/level_spawn_file.rs), [spawn packet header](src/data/alife/spawn_packet_header.rs), and
 [public exports](src/lib.rs).

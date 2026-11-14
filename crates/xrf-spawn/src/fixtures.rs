@@ -1,12 +1,19 @@
+use byteorder::{LittleEndian, WriteBytesExt};
 use uuid::{Uuid, uuid};
+use xrf_chunk::{ChunkReader, ChunkWriter, XRayByteOrder};
+use xrf_error::XrfResult;
+use xrf_math::Vector3d;
 
 use crate::chunks::spawn_alife_spawns_chunk::SpawnALifeSpawnsChunk;
 use crate::chunks::spawn_artefact_spawns_chunk::SpawnArtefactSpawnsChunk;
 use crate::chunks::spawn_graphs_chunk::SpawnGraphsChunk;
 use crate::chunks::spawn_header_chunk::SpawnHeaderChunk;
 use crate::chunks::spawn_patrols_chunk::SpawnPatrolsChunk;
+use crate::constants::NET_ACTION_SPAWN;
+use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 use crate::data::graph::graph_header::GraphHeader;
 use crate::data::meta::alife_class::AlifeClass;
+use crate::level::level_spawn_object::LevelSpawnObject;
 use crate::spawn_file::SpawnFile;
 
 /// A root spawn holding nothing: no objects, levels, artefact points, patrols or graph vertices.
@@ -340,4 +347,107 @@ impl ClearSkyStates {
     "64796e616d6963735c646576696365735c6465765f7064615c6465765f7064610000",
     "0000803fffff0000",
   );
+}
+
+/// Objects of a level's spawn list, each a spawn packet's header followed by the state its class stores.
+pub(crate) struct LevelSpawnObjects;
+
+impl LevelSpawnObjects {
+  /// The header `section`'s object `name` opens with at spawn `version` and `script_version`.
+  pub(crate) fn header(section: &str, name: &str, version: u16, script_version: u16) -> SpawnPacketHeader {
+    SpawnPacketHeader {
+      id: u16::MAX,
+      net_action: NET_ACTION_SPAWN,
+      section: String::from(section),
+      name: String::from(name),
+      script_game_id: 0,
+      script_rp: 0xFE,
+      position: Vector3d::new(12.5, -3.0, 101.25),
+      direction: Vector3d::new(0.0, 1.5, 0.0),
+      respawn_time: 0,
+      parent_id: u16::MAX,
+      phantom_id: u16::MAX,
+      script_flags: SpawnPacketHeader::FLAG_SPAWN_VERSION | 1,
+      version,
+      game_type: u16::MAX,
+      script_version,
+      client_data: Vec::new(),
+      spawn_id: u16::MAX,
+    }
+  }
+
+  /// The object listed under chunk `id` whose packet is `header` followed by `state`, its size first.
+  pub(crate) fn of_state(id: u32, header: &SpawnPacketHeader, state: &[u8]) -> XrfResult<LevelSpawnObject> {
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    writer.write_xr::<XRayByteOrder, _>(header)?;
+    writer.buffer.extend(state);
+
+    LevelSpawnObject::read::<XRayByteOrder, _>(id, &mut ChunkReader::from_bytes(&writer.buffer)?)
+  }
+
+  /// A Call of Pripyat bolt, as the game writes a new one: its fields behind the size `Spawn_Write` patches in.
+  pub(crate) fn bolt(id: u32) -> XrfResult<LevelSpawnObject> {
+    let fields: Vec<u8> = GameWrittenPackets::bytes(GameWrittenPackets::CLASSES[0].2);
+    let mut state: Vec<u8> = Vec::new();
+
+    state.write_u16::<LittleEndian>(u16::try_from(fields.len() + 2).expect("a bolt's fields fit a u16"))?;
+    state.extend(fields);
+
+    Self::of_state(id, &Self::header("bolt", "zat_bolt", 128, 12), &state)
+  }
+
+  /// Clear Sky's `agr_smart_cover`, at spawn version 124.
+  pub(crate) fn clear_sky_smart_cover(id: u32) -> XrfResult<LevelSpawnObject> {
+    Self::of_state(
+      id,
+      &Self::header("smart_cover", "agr_smart_cover", 124, 8),
+      &GameWrittenPackets::bytes(ClearSkyStates::SMART_COVER),
+    )
+  }
+
+  /// Clear Sky's `esc_flashman_1`, a stalker at spawn version 123.
+  pub(crate) fn clear_sky_stalker(id: u32) -> XrfResult<LevelSpawnObject> {
+    Self::of_state(
+      id,
+      &Self::header("stalker", "esc_flashman_1", 123, 8),
+      &GameWrittenPackets::bytes(ClearSkyStates::STALKER),
+    )
+  }
+
+  /// A graph point of Shadow of Chernobyl's spawn version 118, which the typed read refuses: its header stores no game
+  /// type, which `CSE_Abstract::Spawn_Read` reads only above version 120.
+  pub(crate) fn shadow_of_chernobyl_graph_point(id: u32, name: &str) -> XrfResult<LevelSpawnObject> {
+    let mut payload: Vec<u8> = Vec::new();
+
+    // Respawn time, id, parent, phantom, the flags storing the version, the version and the script version.
+    for value in [
+      0,
+      u16::MAX,
+      u16::MAX,
+      u16::MAX,
+      SpawnPacketHeader::FLAG_SPAWN_VERSION | 1,
+      118,
+      6,
+    ] {
+      payload.write_u16::<LittleEndian>(value)?;
+    }
+
+    // No client data, the spawn id, then the state's size and a graph point's two empty names and four locations.
+    payload.write_u16::<LittleEndian>(0)?;
+    payload.write_u16::<LittleEndian>(u16::MAX)?;
+    payload.extend([8, 0, 0, 0, 1, 0, 0, 0]);
+
+    Ok(LevelSpawnObject {
+      id,
+      net_action: NET_ACTION_SPAWN,
+      section: String::from("graph_point"),
+      name: String::from(name),
+      script_game_id: 0,
+      script_rp: 0xFF,
+      position: Vector3d::new(-4.0, 0.5, 7.75),
+      direction: Vector3d::ZERO,
+      payload,
+    })
+  }
 }
