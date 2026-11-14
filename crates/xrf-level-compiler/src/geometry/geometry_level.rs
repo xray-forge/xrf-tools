@@ -1,12 +1,13 @@
 use std::path::PathBuf;
 
+use rayon::prelude::*;
 use xrf_error::{XrfError, XrfResult};
 use xrf_geometry::{BvhTracer, ProgressiveWindow, Sky, SkyLight};
 use xrf_level::{
   BuildCformFile, BuildCformRaycastFace, BuildPrjFile, LevelBundle, LevelCformFile, LevelCformGeometry,
   LevelCformHeader, LevelDynamicLight, LevelGeomBuffers, LevelGeomPacker, LevelGeomSlideWindowItem, LevelGlow,
   LevelHeaderChunk, LevelLight, LevelLightRole, LevelLightsChunk, LevelLightsFile, LevelPortal, LevelSector,
-  LevelShaderEntry, LevelShadersChunk, LevelVertexQuantizer, LevelVisualRecord,
+  LevelShaderEntry, LevelShadersChunk, LevelVisualRecord,
 };
 use xrf_math::{Color, Sphere, Vector3d};
 use xrf_ogf::{
@@ -16,15 +17,16 @@ use xrf_ogf::{
 use xrf_shaders::ShaderCompilerFile;
 
 use crate::chart::light_chart::LightChart;
+use crate::chart::light_chart_lighter::LightChartLighter;
 use crate::chart::light_chart_scene::LightChartScene;
 use crate::chart::lightmap_atlas::LightmapAtlas;
 use crate::chart::lightmap_faces::LightmapFaces;
+use crate::chart::lit_chart::LitChart;
 use crate::compiler_shaders::CompilerShaders;
 use crate::compiler_texture::CompilerTexture;
 use crate::geometry::geometry_base_coordinates::GeometryBaseCoordinates;
 use crate::geometry::geometry_bounds::GeometryBounds;
 use crate::geometry::geometry_collision::GeometryCollision;
-use crate::geometry::geometry_draft_light::GeometryDraftLight;
 use crate::geometry::geometry_hierarchy::GeometryHierarchy;
 use crate::geometry::geometry_level_census::GeometryLevelCensus;
 use crate::geometry::geometry_mesh::GeometryMesh;
@@ -49,8 +51,7 @@ use crate::shadow::shadow_materials::ShadowMaterials;
 use crate::shadow::shadow_materials_request::ShadowMaterialsRequest;
 
 /// Everything xrLC writes for a level's geometry, compiled from its `build.prj`, its vertices and trees lit: the `level`
-/// file, its render geometry, the game's collision form, the compilers' ray model and lights, and the lightmap pages,
-/// charted but of draft light.
+/// file, its render geometry, the game's collision form, the compilers' ray model and lights, and the lightmap pages.
 #[derive(Debug)]
 pub struct GeometryLevel {
   pub bundle: LevelBundle,
@@ -64,7 +65,9 @@ pub struct GeometryLevel {
   pub ray_model: BuildCformFile,
   /// `build.lights`.
   pub lights: LevelLightsFile,
-  /// What the compile made, for its report, its lightmap pages among it.
+  /// Each lightmap page's two textures, `lmap#N_1` and `_2`, 1024 texels a side row by row ([`LightmapAtlas::compose`]).
+  pub lightmaps: Vec<[Vec<[u8; 4]>; 2]>,
+  /// What the compile made, for its report.
   pub census: GeometryLevelCensus,
 }
 
@@ -74,8 +77,8 @@ impl GeometryLevel {
 
   /// The level of `project`, its compiler shaders from `library` and its textures as `textures` loads them, their
   /// alpha images under `roots` dimming the light, lit at `quality`: every vertex lit ([`LightHemisphere`],
-  /// [`LightVertices`]), every multi-use model and placement ([`LightModels`]), the lightmapped faces cut into charts
-  /// and packed onto pages ([`LightChart`], [`LightmapAtlas`]) whose light is a draft.
+  /// [`LightVertices`]), every multi-use model and placement ([`LightModels`]), the lightmapped faces cut into charts,
+  /// each lit and compressed ([`LightChartLighter`]), and packed onto pages ([`LightmapAtlas`]).
   ///
   /// # Errors
   ///
@@ -142,10 +145,28 @@ impl GeometryLevel {
       quality.get_jitter_samples(project.params.lightmap_jitter_samples),
     );
     let (mut splits, charts): (GeometrySplits, Vec<LightChart>) = GeometrySplits::cut(&mesh, &shaders, Some(&scene));
-    let atlas: LightmapAtlas = LightmapAtlas::pack(&charts, &scene);
-    let lightmaps: LightmapFaces = atlas.get_faces(&charts, mesh.faces.len());
+    let ray_faces: Vec<Option<u32>> = GeometryRayModel::get_static_faces(&mesh, &normals, &shaders);
+    let lighter: LightChartLighter<'_, BvhTracer> = LightChartLighter {
+      scene: &scene,
+      lights: &sources,
+      tracer: &tracer,
+      shadows: &shadows,
+      ray_faces: &ray_faces,
+      // `(4 + rms_zero) / 2` and `(8 + rms) / 2`.
+      rms_zero: 4_u32.midpoint(project.params.lightmap_rms_zero),
+      rms_shrink: 8_u32.midpoint(project.params.lightmap_rms),
+    };
+    let lit: Vec<LitChart> = charts.par_iter().map(|chart| lighter.light(chart)).collect();
+    let atlas: LightmapAtlas = LightmapAtlas::pack(&charts, &lit, &scene);
+    let lightmaps: Vec<[Vec<[u8; 4]>; 2]> = (0..atlas.pages)
+      .into_par_iter()
+      .map(|page| atlas.compose(page, &lit))
+      .collect();
 
-    splits.merge(&mesh, Some(&lightmaps.pages));
+    drop(lit);
+    let faces: LightmapFaces = atlas.get_faces(&charts, mesh.faces.len());
+
+    splits.merge(&mesh, Some(&faces.pages));
 
     let visuals: GeometryVisuals = GeometryVisuals::build(&GeometryVisualsRequest {
       mesh: &mesh,
@@ -157,7 +178,7 @@ impl GeometryLevel {
       shaders: &shaders,
       textures,
       lights: Some(&vertex_lights),
-      lightmaps: Some(&lightmaps),
+      lightmaps: Some(&faces),
     })?;
     let models: GeometryModels = GeometryModels::build(project, &shaders, textures, Some(&model_lights))?;
     let hierarchy: GeometryHierarchy = GeometryHierarchy::build(&visuals, &models, project)?;
@@ -376,6 +397,7 @@ impl GeometryLevel {
       collision,
       ray_model,
       lights,
+      lightmaps,
       census,
     })
   }
@@ -389,19 +411,6 @@ impl GeometryLevel {
     Ok(LevelCformFile {
       header: LevelCformHeader::of(&self.collision)?,
     })
-  }
-
-  /// The draft lightmap pair's texels: `_1` the static light (none) and the sun in alpha, `_2` the sun in every colour
-  /// and the hemisphere in alpha (`lm_layer::Pack`, `Pack_hemi`).
-  pub fn get_lightmap_texels() -> [[u8; 4]; 2] {
-    let term = |value: f32| LevelVertexQuantizer::get_light_term(value);
-    let sun: u8 = term(GeometryDraftLight::SUN);
-    let rgb: u8 = term(GeometryDraftLight::STATIC_LIGHT);
-
-    [
-      [rgb, rgb, rgb, sun],
-      [sun, sun, sun, term(GeometryDraftLight::HEMISPHERE)],
-    ]
   }
 
   /// A material's shader table entry, `<render shader>/<texture>`, as glows and LODs are dressed.

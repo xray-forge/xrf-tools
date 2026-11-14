@@ -29,9 +29,6 @@ impl GeometryDraftLight {
   /// The hemisphere term, of a normal's fourth byte and a lightmap's.
   pub const HEMISPHERE: f32 = 0.5;
 
-  /// The static light's red, green and blue.
-  pub const STATIC_LIGHT: f32 = 0.0;
-
   /// The one lightmap pair a lightmapped visual is dressed with where no charts are cut.
   pub const LIGHTMAP_TEXTURES: [&'static str; 2] = ["lmap#1_1", "lmap#1_2"];
 

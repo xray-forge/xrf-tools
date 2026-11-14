@@ -70,6 +70,36 @@ impl GeometryRayModel {
     Self::collect(mesh, &corners, &coordinates, project, shaders)
   }
 
+  /// Where each of `mesh`'s faces, its corners split as `normals` leaves them, stands in [`Self::build`]'s form: its
+  /// index there, none for a face that casts no shadow or repeats one taken before it.
+  pub fn get_static_faces(
+    mesh: &GeometryMesh,
+    normals: &GeometryNormals,
+    shaders: &CompilerShaders,
+  ) -> Vec<Option<u32>> {
+    Self::get_taken(mesh, &normals.faces, shaders)
+  }
+
+  /// Each static face's index in the form of `mesh`'s faces named by `corners`, none for one left out.
+  fn get_taken(mesh: &GeometryMesh, corners: &[[u32; 3]], shaders: &CompilerShaders) -> Vec<Option<u32>> {
+    let mut taken: HashSet<[u32; 3]> = HashSet::new();
+    let mut count: u32 = 0;
+
+    mesh
+      .faces
+      .iter()
+      .zip(corners)
+      .map(|(face, corners)| {
+        let casts_shadow: bool = shaders.get(face.material).is_some_and(|shader| shader.casts_shadow());
+
+        (casts_shadow && taken.insert(Self::get_key(corners))).then(|| {
+          count += 1;
+          count - 1
+        })
+      })
+      .collect()
+  }
+
   /// The form of `mesh`'s faces, each named by `corners` for the repeat test and with its `coordinates`, then the
   /// references'.
   fn collect(
@@ -82,11 +112,14 @@ impl GeometryRayModel {
     let mut collector: GeometryCollector = GeometryCollector::new(&mesh.bounds);
     let mut faces: Vec<BuildCformFace> = Vec::new();
     let mut raycast_faces: Vec<BuildCformRaycastFace> = Vec::new();
-    let mut taken: HashSet<[u32; 3]> = HashSet::new();
-    let casts_shadow = |material: u16| shaders.get(material).is_some_and(|shader| shader.casts_shadow());
 
-    for ((face, corners), coordinates) in mesh.faces.iter().zip(corners).zip(coordinates) {
-      if casts_shadow(face.material) && taken.insert(Self::get_key(corners)) {
+    for ((face, taken), coordinates) in mesh
+      .faces
+      .iter()
+      .zip(Self::get_taken(mesh, corners, shaders))
+      .zip(coordinates)
+    {
+      if taken.is_some() {
         Self::push(
           &mut collector,
           &mut faces,

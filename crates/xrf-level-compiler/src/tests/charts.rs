@@ -1,5 +1,7 @@
 //! Lightmap charts: how faces are cut into charts and sized, the texels a chart's mask takes, and how pages are packed.
 
+use glam::Vec3;
+use xrf_geometry::BvhTracer;
 use xrf_level::{BuildPrjFile, BuildPrjName, BuildPrjShader};
 use xrf_math::{Aabb, Vector2d, Vector3d};
 use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
@@ -8,7 +10,8 @@ use crate::chart::lightmap_page::LightmapPage;
 use crate::tests::geometry::project;
 use crate::{
   CompilerShaders, CompilerTexture, GeometryFace, GeometryMesh, GeometryNormals, GeometrySplits, LightChart,
-  LightChartMask, LightChartScene, LightmapAtlas,
+  LightChartLighter, LightChartMask, LightChartScene, LightColor, LightSource, LightmapAtlas, LightmapLayer,
+  LightmapPlacement, LightmapResampler, LitChart, ShadowMaterials,
 };
 
 /// A face of material 0 over `vertices`.
@@ -136,25 +139,128 @@ fn keeps_a_bend_within_the_smoothing_angle_on_one_chart() {
   assert_eq!(charts[0].faces.len(), 4);
 }
 
+/// A sun straight above of `energy`.
+fn sun(energy: f32) -> LightSource {
+  LightSource {
+    is_directional: true,
+    is_point: false,
+    diffuse: Vec3::ONE,
+    position: Vec3::ZERO,
+    direction: Vec3::NEG_Y,
+    range: 0.0,
+    range_squared: 0.0,
+    attenuation: [1.0, 0.0, 0.0],
+    falloff: 0.0,
+    energy,
+  }
+}
+
+/// `charts`' first, the floor, lit by `lights` through a ray model of `mesh`'s own faces, each skipped by its own.
+fn light(mesh: &GeometryMesh, lights: &[Vec<LightSource>; 3]) -> LitChart {
+  let (project, shaders, textures) = tables();
+  let normals: GeometryNormals = GeometryNormals::of(mesh);
+  let scene: LightChartScene<'_> = LightChartScene::of(mesh, &normals, &project, &shaders, &textures, 10.0, 1);
+  let corners: Vec<Vec3> = mesh
+    .vertices
+    .iter()
+    .map(|vertex| Vec3::new(vertex.x, vertex.y, vertex.z))
+    .collect();
+  let triangles: Vec<[u32; 3]> = mesh.faces.iter().map(|face| face.vertices).collect();
+  let tracer: BvhTracer = BvhTracer::new(&corners, &triangles);
+  let ray_faces: Vec<Option<u32>> = (0..mesh.faces.len() as u32).map(Some).collect();
+  let split: Vec<u32> = (0..mesh.faces.len() as u32).collect();
+  let floor: LightChart = LightChart::cut(&split, &scene).remove(0);
+
+  LightChartLighter {
+    scene: &scene,
+    lights,
+    tracer: &tracer,
+    shadows: &ShadowMaterials::new_opaque(mesh.faces.len()),
+    ray_faces: &ray_faces,
+    rms_zero: 2,
+    rms_shrink: 4,
+  }
+  .light(&floor)
+}
+
 #[test]
-fn masks_a_chart_s_lit_texels_and_two_rings_within_its_bordered_rectangle() {
-  let square: LightChartMask = LightChartMask::of(&charts(&floor_and_wall(0.0))[0], 1);
+fn lights_an_evenly_lit_chart_as_one_colour_two_texels_a_side_halved() {
+  // The sun lights the floor, its own faces let through; the wall stands beside it, casting no shadow on it.
+  let lit: LitChart = light(&floor_and_wall(0.0), &[Vec::new(), Vec::new(), vec![sun(0.8)]]);
 
-  assert_eq!((square.width, square.height), (23, 23));
-  assert!(square.rows.iter().all(|row| *row == Some((0, 22))));
+  assert_eq!((lit.width, lit.height), (0, 0));
+  assert_eq!((lit.layer.width, lit.layer.height), (2, 2));
+  assert!(lit.layer.marker.iter().all(|marker| *marker == LightmapLayer::LIT));
+  assert_eq!(lit.layer.surface[0].sun, LightColor::get_fixed(0.4));
+  assert_eq!(lit.layer.surface[0].hemi, 0.0);
+}
 
-  // A triangle takes its lower left half, the rings reaching two texels past its edge but not outside its rectangle.
-  let triangle: LightChartMask = LightChartMask::of(&triangle_chart(20, 20), 1);
+#[test]
+fn fills_a_ring_of_unlit_texels_with_their_lit_neighbours_mean() {
+  let mut layer: LightmapLayer = LightmapLayer::new(3, 3);
+  let lit = |sun: f32| LightColor {
+    sun,
+    ..LightColor::default()
+  };
 
-  assert_eq!(triangle.rows[0], Some((0, 21)));
-  assert_eq!(triangle.rows[21].map(|(first, _)| first), Some(0));
-  assert!(triangle.rows[21].is_some_and(|(_, last)| last < 5));
+  layer.surface[0] = lit(1.0);
+  layer.marker[0] = LightmapLayer::LIT;
+  layer.surface[2] = lit(0.5);
+  layer.marker[2] = LightmapLayer::LIT;
 
-  // A chart a texel across is its whole strip.
-  let strip: LightChartMask = LightChartMask::of(&triangle_chart(1, 6), 1);
+  assert!(layer.apply_borders(254));
+  // Between the two: their mean; beside one alone: its light; the far corner, beside neither, waits for a ring more.
+  assert_eq!(layer.surface[1].sun, LightColor::get_fixed(0.75));
+  assert_eq!(
+    (layer.surface[3].sun, layer.marker[3]),
+    (LightColor::get_fixed(1.0), 254)
+  );
+  assert_eq!(layer.marker[8], 0);
 
-  assert_eq!((strip.width, strip.height), (2, 8));
-  assert!(strip.columns.iter().all(|column| *column == Some((0, 7))));
+  layer.fill_borders(253);
+  assert!(layer.marker.iter().all(|marker| *marker != 0));
+}
+
+#[test]
+fn rescales_rows_then_columns_and_keeps_an_image_at_its_own_size() {
+  let pixels: Vec<[u8; 4]> = (0..16).map(|value| [value * 10, 200 - value * 5, 7, 100]).collect();
+
+  // The cubic weighs a pixel's own 1 and its neighbours' 0: the image back as it was, but for the fourth byte, which
+  // rounds half a step up on each of the two passes.
+  let same: Vec<[u8; 4]> = LightmapResampler::Cubic.resample(&pixels, 4, 4, 4, 4);
+
+  assert_eq!(
+    same,
+    pixels
+      .iter()
+      .map(|[r, g, b, a]| [*r, *g, *b, a + 2])
+      .collect::<Vec<_>>()
+  );
+
+  let flat: Vec<[u8; 4]> = vec![[100; 4]; 64];
+  let shrunk: Vec<[u8; 4]> = LightmapResampler::Lanczos3.resample(&flat, 8, 8, 4, 4);
+
+  assert_eq!(shrunk.len(), 16);
+  assert!(
+    shrunk.iter().flatten().all(|byte| byte.abs_diff(100) <= 3),
+    "{shrunk:?}"
+  );
+}
+
+#[test]
+fn masks_a_lit_layer_s_texels_marked_at_least_two_rings_out() {
+  let mut layer: LightmapLayer = LightmapLayer::new(6, 4);
+
+  for (index, marker) in [(7, 255), (8, 254), (9, 253), (10, 252)] {
+    layer.marker[index] = marker;
+  }
+
+  let mask: LightChartMask = LightChartMask::of(&layer);
+
+  assert_eq!((mask.width, mask.height), (6, 4));
+  assert_eq!(mask.rows, vec![None, Some((1, 3)), None, None]);
+  assert_eq!(mask.columns[1], Some((1, 1)));
+  assert_eq!(mask.columns[4], None);
 }
 
 #[test]
@@ -181,24 +287,14 @@ fn packs_charts_onto_as_many_pages_as_they_need_none_overlapping() {
   let mesh: GeometryMesh = floor_and_wall(0.0);
   let normals: GeometryNormals = GeometryNormals::of(&mesh);
   let scene: LightChartScene<'_> = LightChartScene::of(&mesh, &normals, &project, &shaders, &textures, 10.0, 1);
-  // Each a 510 texel square, 512 with borders: four to a page.
-  let square: LightChart = LightChart {
-    projected: vec![
-      [
-        Vector2d::new(0.0, 0.0),
-        Vector2d::new(1.0, 0.0),
-        Vector2d::new(1.0, 1.0),
-      ],
-      [
-        Vector2d::new(0.0, 0.0),
-        Vector2d::new(1.0, 1.0),
-        Vector2d::new(0.0, 1.0),
-      ],
-    ],
-    faces: vec![0, 1],
-    ..triangle_chart(LightChart::MAXIMUM_SIDE, LightChart::MAXIMUM_SIDE)
+  let side: u32 = LightChart::MAXIMUM_SIDE;
+  // Each a 510 texel square lit whole, 512 with borders: four to a page.
+  let lit: LitChart = LitChart {
+    width: side,
+    height: side,
+    layer: LightmapLayer::filled(side + 2, side + 2, LightColor::default()),
   };
-  let atlas: LightmapAtlas = LightmapAtlas::pack(&vec![square; 9], &scene);
+  let atlas: LightmapAtlas = LightmapAtlas::pack(&vec![triangle_chart(side, side); 9], &vec![lit; 9], &scene);
 
   assert_eq!(atlas.pages, 3);
 
@@ -215,6 +311,56 @@ fn packs_charts_onto_as_many_pages_as_they_need_none_overlapping() {
       assert!(apart, "{first:?} overlaps {second:?}");
     }
   }
+}
+
+#[test]
+fn composes_a_page_of_its_charts_texels_crosswise_where_rotated_and_borders_round_them() {
+  let lit = |width: u32, height: u32, sun: f32| LitChart {
+    width: width - 2,
+    height: height - 2,
+    layer: LightmapLayer::filled(
+      width,
+      height,
+      LightColor {
+        sun,
+        ..LightColor::default()
+      },
+    ),
+  };
+  let atlas: LightmapAtlas = LightmapAtlas {
+    pages: 1,
+    placements: vec![
+      LightmapPlacement {
+        page: 0,
+        x: 0,
+        y: 0,
+        width: 4,
+        height: 3,
+        is_rotated: false,
+      },
+      // A chart 3 wide and 5 high, laid 5 wide and 3 high.
+      LightmapPlacement {
+        page: 0,
+        x: 10,
+        y: 0,
+        width: 5,
+        height: 3,
+        is_rotated: true,
+      },
+    ],
+  };
+  let [first, second] = atlas.compose(0, &[lit(4, 3, 1.0), lit(3, 5, 0.5)]);
+  let at = |x: usize, y: usize| y * LightChart::PAGE_SIDE as usize + x;
+
+  assert_eq!(first[at(3, 2)][3], 255, "the first chart's sun in alpha");
+  assert_eq!(
+    second[at(3, 2)],
+    [255, 255, 255, 0],
+    "its sun in every colour, no hemisphere"
+  );
+  assert_eq!(first[at(14, 2)][3], 127, "the rotated chart's far corner");
+  assert_eq!(first[at(15, 2)][3], 127, "a border ring past it");
+  assert_eq!(first[at(40, 40)][3], 0, "beyond sixteen rings, nothing");
 }
 
 #[test]

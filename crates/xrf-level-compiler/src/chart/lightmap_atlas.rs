@@ -8,8 +8,10 @@ use crate::chart::light_chart::LightChart;
 use crate::chart::light_chart_mask::LightChartMask;
 use crate::chart::light_chart_scene::LightChartScene;
 use crate::chart::lightmap_faces::LightmapFaces;
+use crate::chart::lightmap_layer::LightmapLayer;
 use crate::chart::lightmap_page::LightmapPage;
 use crate::chart::lightmap_placement::LightmapPlacement;
+use crate::chart::lit_chart::LitChart;
 
 /// A mask's spans in one orientation, and whether it is the crosswise one.
 type MaskOrientation<'a> = (&'a [Option<(u32, u32)>], bool);
@@ -33,12 +35,12 @@ impl LightmapAtlas {
   /// The texels of the charts a page is tried with, eight pages' worth.
   const SELECTION: u32 = LightChart::PAGE_SIDE * LightChart::PAGE_SIDE * 8;
 
-  /// The pages `charts` take, masked as `scene` lights them ([`LightChartMask`]).
-  pub fn pack(charts: &[LightChart], scene: &LightChartScene<'_>) -> Self {
-    let masks: Vec<LightChartMask> = charts
-      .par_iter()
-      .map(|chart| LightChartMask::of(chart, scene.jitter_samples))
-      .collect();
+  /// The last of the sixteen border rings a page takes, from 254 down.
+  const LAST_BORDER: u8 = 254 - 15;
+
+  /// The pages `charts` take, lit as `lit` ([`LightChartMask`]), their materials' sectors as `scene` gives them.
+  pub fn pack(charts: &[LightChart], lit: &[LitChart], scene: &LightChartScene<'_>) -> Self {
+    let masks: Vec<LightChartMask> = lit.par_iter().map(|lit| LightChartMask::of(&lit.layer)).collect();
     let mut placements: Vec<Option<LightmapPlacement>> = vec![None; charts.len()];
     let mut waiting: Vec<usize> = (0..charts.len()).collect();
     let mut pages: u32 = 0;
@@ -115,6 +117,57 @@ impl LightmapAtlas {
       pages,
       placements: placements.into_iter().flatten().collect(),
     }
+  }
+
+  /// The two textures of page `page` of the charts `lit`, its texels row by row, as `CLightmap::Capture` and `Save` make
+  /// them: each chart placed on it takes its place with the texels it takes ([`LightmapLayer::TAKEN`]), crosswise
+  /// where it lies so; those are then lit, the rest not, and sixteen border rings fill round them. `_1` holds the static
+  /// light and the sun in alpha, `_2` the sun in every colour and the hemisphere in alpha.
+  pub fn compose(&self, page: u32, lit: &[LitChart]) -> [Vec<[u8; 4]>; 2] {
+    let side: u32 = LightChart::PAGE_SIDE;
+    let mut target: LightmapLayer = LightmapLayer::new(side, side);
+
+    for (placement, chart) in self
+      .placements
+      .iter()
+      .zip(lit)
+      .filter(|(placement, _)| placement.page == page)
+    {
+      let layer: &LightmapLayer = &chart.layer;
+
+      for y in 0..layer.height {
+        for x in 0..layer.width {
+          let from: usize = layer.get_index(x, y);
+
+          if layer.marker[from] < LightmapLayer::TAKEN {
+            continue;
+          }
+
+          let to: usize = if placement.is_rotated {
+            target.get_index(placement.x + y, placement.y + x)
+          } else {
+            target.get_index(placement.x + x, placement.y + y)
+          };
+
+          target.surface[to] = layer.surface[from];
+          target.marker[to] = layer.marker[from];
+        }
+      }
+    }
+
+    for marker in &mut target.marker {
+      *marker = if *marker >= LightmapLayer::TAKEN {
+        LightmapLayer::LIT
+      } else {
+        0
+      };
+    }
+
+    for reference in (Self::LAST_BORDER..=254).rev() {
+      target.apply_borders(reference);
+    }
+
+    [target.get_packed(), target.get_packed_hemi()]
   }
 
   /// Each of `face_count` faces' page and lightmap coordinates where `charts` were placed, none for a face no chart

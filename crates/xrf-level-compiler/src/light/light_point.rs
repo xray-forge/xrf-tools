@@ -1,8 +1,9 @@
 use glam::Vec3;
-use xrf_geometry::{Ray, TraceHit, Tracer};
+use xrf_geometry::{Facing, Ray, TraceHit, Tracer};
 use xrf_level::LevelLightRole;
 
 use crate::light::light_color::LightColor;
+use crate::light::light_occluders::LightOccluders;
 use crate::light::light_point_variant::LightPointVariant;
 use crate::light::light_sample_point::LightSamplePoint;
 use crate::light::light_source::LightSource;
@@ -120,20 +121,75 @@ impl LightPoint {
     tracer: &T,
     opacity: impl Fn(&TraceHit) -> f32,
   ) -> LightColor {
+    self.gather(point, lights, roles, tracer, opacity, None)
+  }
+
+  /// [`Self::evaluate_by`], each light's ray first tested against the face that last stopped that light whole
+  /// (`rayTrace`'s cached polygon): where it stops this ray whole too, the ray is traced no further, as nothing else it
+  /// meets could let more through. The light is the same; only the query is spared.
+  pub fn evaluate_remembering<T: Tracer>(
+    &self,
+    point: &LightSamplePoint,
+    lights: &[Vec<LightSource>; 3],
+    roles: &[LevelLightRole],
+    tracer: &T,
+    opacity: impl Fn(&TraceHit) -> f32,
+    occluders: &mut LightOccluders,
+  ) -> LightColor {
+    self.gather(point, lights, roles, tracer, opacity, Some(occluders))
+  }
+
+  fn gather<T: Tracer>(
+    &self,
+    point: &LightSamplePoint,
+    lights: &[Vec<LightSource>; 3],
+    roles: &[LevelLightRole],
+    tracer: &T,
+    opacity: impl Fn(&TraceHit) -> f32,
+    mut occluders: Option<&mut LightOccluders>,
+  ) -> LightColor {
     let mut color: LightColor = LightColor::default();
+    let facing: Facing = self.variant.get_facing();
 
     for role in roles {
       let index: usize = LevelLightRole::ALL.iter().position(|it| it == role).unwrap_or_default();
 
-      for light in &lights[index] {
+      for (number, light) in lights[index].iter().enumerate() {
         let Some((ray, term)) = self.get_ray(*role, light, point) else {
           continue;
         };
-        let mut transmittance: f32 = 1.0;
-
-        tracer.for_each_hit_facing(&ray, self.variant.get_facing(), |hit| {
-          transmittance *= self.variant.get_transmittance(opacity(&hit));
+        let remembered: Option<u32> = occluders.as_deref().and_then(|occluders| occluders.get(index, number));
+        let is_stopped: bool = remembered.is_some_and(|face| {
+          tracer.get_triangle(face).cross(&ray, facing).is_some_and(|crossing| {
+            opacity(&TraceHit {
+              face,
+              distance: crossing.distance,
+              u: crossing.u,
+              v: crossing.v,
+            }) >= 1.0
+          })
         });
+
+        if is_stopped {
+          continue;
+        }
+
+        let mut transmittance: f32 = 1.0;
+        let mut stopper: Option<u32> = None;
+
+        tracer.for_each_hit_facing(&ray, facing, |hit| {
+          let stops: f32 = opacity(&hit);
+
+          if stops >= 1.0 && stopper.is_none() {
+            stopper = Some(hit.face);
+          }
+
+          transmittance *= self.variant.get_transmittance(stops);
+        });
+
+        if let (Some(occluders), Some(face)) = (occluders.as_deref_mut(), stopper) {
+          occluders.set(index, number, face);
+        }
 
         let amount: f32 = LightTerm { ray: 0, ..term }.get_amount(&[transmittance]);
 

@@ -4,6 +4,7 @@
 pub(crate) mod light_color;
 pub(crate) mod light_hemisphere;
 pub(crate) mod light_models;
+pub(crate) mod light_occluders;
 pub(crate) mod light_point;
 pub(crate) mod light_point_variant;
 pub(crate) mod light_quality;

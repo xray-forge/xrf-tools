@@ -1,24 +1,23 @@
 use std::path::Path;
 
 use xrf_chunk::{ChunkWriter, XRayByteOrder};
-use xrf_dds::{DdsEncoding, DdsMipChain, ImageFormat, Quality, Rgba, RgbaImage};
+use xrf_dds::{DdsEncoding, DdsMipChain, ImageFormat, Quality, RgbaImage};
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::JobHandle;
 use xrf_level::{BuildCformFile, BuildPrjFile, LevelFile, LevelGeomFile, LevelLightsFile};
 use xrf_shaders::ShaderCompilerFile;
 use xrf_utils::{StagedFile, format_path};
 
+use crate::chart::light_chart::LightChart;
 use crate::chart::lightmap_faces::LightmapFaces;
 use crate::compiler_texture::CompilerTexture;
-use crate::geometry::geometry_draft_light::GeometryDraftLight;
 use crate::geometry::geometry_level::GeometryLevel;
 use crate::level_compile_request::LevelCompileRequest;
 use crate::level_compile_step_run::LevelCompileStepRun;
 
-/// A compile's geometry step by our compiler, xrLC's part with draft lightmaps ([`GeometryLevel`]): the level's `level`,
-/// `level.geom`, `level.geomx`, `level.cform`, `build.cform`, `build.lights` and each lightmap page's pair, charted
-/// and packed but of the draft light, from its `build.prj`, the game data's `shaders_xrlc.xr` and the textures under
-/// the request's roots.
+/// A compile's geometry step by our compiler, xrLC's part ([`GeometryLevel`]): the level's `level`, `level.geom`,
+/// `level.geomx`, `level.cform`, `build.cform`, `build.lights` and each lightmap page's pair, from its `build.prj`, the
+/// game data's `shaders_xrlc.xr` and the textures under the request's roots.
 pub(crate) struct GeometryStep;
 
 impl GeometryStep {
@@ -66,12 +65,9 @@ impl GeometryStep {
       compiled.lights.write::<XRayByteOrder>(writer)
     })?;
 
-    for page in 0..compiled.census.lightmaps {
-      for (name, texel) in LightmapFaces::get_textures(page)
-        .iter()
-        .zip(GeometryLevel::get_lightmap_texels())
-      {
-        Self::write_lightmap(&level.join(format!("{name}.dds")), texel)?;
+    for (page, textures) in compiled.lightmaps.iter().enumerate() {
+      for (name, texels) in LightmapFaces::get_textures(page as u32).iter().zip(textures) {
+        Self::write_lightmap(&level.join(format!("{name}.dds")), texels)?;
       }
     }
 
@@ -92,13 +88,13 @@ impl GeometryStep {
       .map_err(|error| XrfError::new_io_error(format!("{} was not written: {error}", format_path(path)), error.kind()))
   }
 
-  /// A draft lightmap of one texel colour, [`GeometryDraftLight::LIGHTMAP_SIDE`] a side, as BC3, which carries a
-  /// uniform colour and alpha exactly.
-  fn write_lightmap(path: &Path, texel: [u8; 4]) -> XrfResult {
-    let side: u32 = GeometryDraftLight::LIGHTMAP_SIDE;
-    let image: RgbaImage = RgbaImage::from_pixel(side, side, Rgba(texel));
+  /// A lightmap page's texture of `texels`, a page a side, as BC3 with no mips (`CLightmap::Save`'s DXT5).
+  fn write_lightmap(path: &Path, texels: &[[u8; 4]]) -> XrfResult {
+    let side: u32 = LightChart::PAGE_SIDE;
+    let image: RgbaImage = RgbaImage::from_raw(side, side, texels.as_flattened().to_vec())
+      .ok_or_else(|| XrfError::new_unexpected_error("A lightmap page holds a page's texels"))?;
 
-    DdsEncoding::new(ImageFormat::BC3RgbaUnorm, Quality::Fast)
+    DdsEncoding::new(ImageFormat::BC3RgbaUnorm, Quality::Normal)
       .encode(&DdsMipChain::from_levels(vec![image])?)?
       .write_to_path(path)
   }
