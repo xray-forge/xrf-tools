@@ -15,4 +15,5 @@ mod spawn_graph;
 mod spawn_merge;
 mod spawn_root;
 mod textures;
+mod visuals;
 mod workspace;

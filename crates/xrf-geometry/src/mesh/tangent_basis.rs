@@ -103,7 +103,32 @@ impl TangentBasis {
   /// # Errors
   ///
   /// Returns an error when the split outgrows 32-bit indices.
-  pub fn mend(Mesh { vertices, faces }: Mesh<u32>) -> XrfResult<Mesh<u32>> {
+  pub fn mend(mesh: Mesh<u32>) -> XrfResult<Mesh<u32>> {
+    let mut mesh: Mesh<u32> = Self::mend_directions(mesh).order_by_first_use()?;
+
+    Self::shift_texture_coordinates(&mut mesh.vertices);
+
+    Ok(mesh)
+  }
+
+  /// `mesh` with tangents and binormals, a vertex split off where faces disagree appended after the others and its
+  /// faces pointed at it, the rest in place: the mender's own result, as xrLC's level pass takes it back
+  /// (`xrPhase_TangentBasis`), before the export orders and shifts it.
+  pub fn mend_in_place(mesh: Mesh<u32>) -> Mesh<u32> {
+    let basis: Self = Self::mend_directions(mesh);
+
+    Mesh {
+      vertices: basis.vertices,
+      faces: basis
+        .triangles
+        .iter()
+        .map(|triangle| triangle.indices.map(|index| index as u32))
+        .collect(),
+    }
+  }
+
+  /// The grouping, smoothing and squaring of every vertex's directions.
+  fn mend_directions(Mesh { vertices, faces }: Mesh<u32>) -> Self {
     let mut basis: Self = Self {
       triangles: faces
         .iter()
@@ -139,12 +164,7 @@ impl TangentBasis {
     }
 
     basis.orthogonalize();
-
-    let mut mesh: Mesh<u32> = basis.order_by_first_use()?;
-
-    Self::shift_texture_coordinates(&mut mesh.vertices);
-
-    Ok(mesh)
+    basis
   }
 
   /// `GetGradients`: the directions `s` and `t` run in across a face, solved from its edges and their texture deltas.

@@ -16,7 +16,7 @@ use crate::{
 const SOFT: u32 = 0;
 
 /// A project of `vertices` and `faces` (corners, then edge flags), each face of material 0, mapped across the texture.
-fn project(vertices: &[[f32; 3]], faces: &[([u32; 3], u32)]) -> XrfResult<BuildPrjFile> {
+pub(super) fn project(vertices: &[[f32; 3]], faces: &[([u32; 3], u32)]) -> XrfResult<BuildPrjFile> {
   let material = |compiler_shader: u16| BuildPrjMaterial {
     texture: 0,
     shader: 0,
