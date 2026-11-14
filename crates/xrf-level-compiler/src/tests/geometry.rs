@@ -1,13 +1,16 @@
 use xrf_error::XrfResult;
 use xrf_level::{
-  BuildPrjFace, BuildPrjFile, BuildPrjMaterial, BuildPrjMuModel, BuildPrjMuReference, BuildPrjName, BuildPrjParams,
-  BuildPrjShader, BuildPrjTexture, LevelCformFace, LevelCformGeometry,
+  BuildCformFile, BuildPrjFace, BuildPrjFile, BuildPrjMaterial, BuildPrjMuModel, BuildPrjMuReference, BuildPrjName,
+  BuildPrjParams, BuildPrjShader, BuildPrjTexture, LevelCformFace, LevelCformGeometry,
 };
 use xrf_math::{Aabb, Matrix4x4, Vector2d, Vector3d};
 use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 
 use crate::geometry::geometry_collector::GeometryCollector;
-use crate::{CompilerShaders, GeometryCollision, GeometryFace, GeometryMesh, GeometryNormals, GeometryOptimization};
+use crate::{
+  CompilerShaders, GeometryBaseCoordinates, GeometryCollision, GeometryFace, GeometryMesh, GeometryNormals,
+  GeometryOptimization, GeometryRayModel,
+};
 
 /// The edge flags of a front face with every edge soft.
 const SOFT: u32 = 0;
@@ -84,8 +87,8 @@ fn project(vertices: &[[f32; 3]], faces: &[([u32; 3], u32)]) -> XrfResult<BuildP
   })
 }
 
-/// The compiler shader library the project's two compiler shaders resolve in: `default` collides and is drawn,
-/// `ghost` is only drawn.
+/// The compiler shader library the project's two compiler shaders resolve in: `default` collides, casts a shadow and
+/// is drawn, `ghost` is only drawn.
 fn library() -> ShaderCompilerFile {
   let shader = |name: &str, flags: u32| ShaderCompilerShader {
     name: String::from(name),
@@ -100,7 +103,7 @@ fn library() -> ShaderCompilerFile {
     shaders: vec![
       shader(
         "default",
-        ShaderCompilerShader::COLLISION | ShaderCompilerShader::RENDERING,
+        ShaderCompilerShader::COLLISION | ShaderCompilerShader::RENDERING | ShaderCompilerShader::CASTS_SHADOW,
       ),
       shader("ghost", ShaderCompilerShader::RENDERING),
     ],
@@ -425,6 +428,158 @@ fn collides_static_faces_of_a_colliding_shader_then_each_reference_placed_in_its
       &shaders
     ))
     .contains("no static face to collide with")
+  );
+
+  Ok(())
+}
+
+#[test]
+fn snaps_a_corner_to_a_coordinate_its_split_vertex_already_holds_within_eps() -> XrfResult {
+  // Both faces meet at vertex 0, the second's coordinate there 5e-6 off the first's; at vertex 2 the second's is 2e-5
+  // off, past `EPS`.
+  let coordinates = |first: u32| -> XrfResult<GeometryBaseCoordinates> {
+    let mut file: BuildPrjFile = square(first, SOFT)?;
+
+    file.faces[1].texture_coordinates = [
+      Vector2d::new(0.000_005, 0.0),
+      Vector2d::new(1.0, 1.0),
+      Vector2d::new(1.000_02, 0.0),
+    ];
+
+    let mut mesh: GeometryMesh = GeometryMesh::load(&file)?;
+
+    mesh.optimize(0.0)?;
+
+    Ok(GeometryBaseCoordinates::of(&mesh, &GeometryNormals::of(&mesh)))
+  };
+  let shared: GeometryBaseCoordinates = coordinates(SOFT)?;
+
+  assert_eq!(
+    shared.faces[0],
+    [
+      Vector2d::new(0.0, 0.0),
+      Vector2d::new(1.0, 0.0),
+      Vector2d::new(0.0, 1.0)
+    ]
+  );
+  assert_eq!(
+    shared.faces[1],
+    [
+      Vector2d::new(0.0, 0.0),
+      Vector2d::new(1.0, 1.0),
+      Vector2d::new(1.000_02, 0.0)
+    ]
+  );
+  // Across a hard diagonal the faces hold vertex 0 apart, and each keeps its own.
+  assert_eq!(coordinates(0b001)?.faces[1][0], Vector2d::new(0.000_005, 0.0));
+
+  Ok(())
+}
+
+#[test]
+fn casts_static_faces_once_a_split_corner_set_then_every_reference_face() -> XrfResult {
+  // The square, a drawn-only wall, the first face again wound the other way, and again as a back face.
+  let mut file: BuildPrjFile = project(
+    &[
+      [0.0, 0.0, 0.0],
+      [1.0, 0.0, 0.0],
+      [1.0, 0.0, 1.0],
+      [0.0, 0.0, 1.0],
+      [0.0, 1.0, 0.0],
+    ],
+    &[
+      ([0, 2, 1], SOFT),
+      ([0, 3, 2], SOFT),
+      ([0, 1, 4], SOFT),
+      ([0, 1, 2], SOFT),
+      ([0, 1, 2], GeometryFace::BACK_FACE),
+    ],
+  )?;
+  let model_face = |material: u16| BuildPrjFace {
+    vertices: [0, 1, 2],
+    texture_coordinates: [
+      Vector2d::new(0.0, 0.0),
+      Vector2d::new(1.0, 0.0),
+      Vector2d::new(0.0, 1.0),
+    ],
+    material,
+    material_padding: 0,
+    game_material: 9,
+  };
+
+  file.faces[2].material = 2;
+  file.faces[4].game_material = 6;
+  // A model's repeated face is kept, its drawn-only one left out.
+  file.mu_models = vec![BuildPrjMuModel {
+    name: String::from("crate"),
+    vertices: vec![
+      Vector3d::new(0.0, 0.0, 0.0),
+      Vector3d::new(1.0, 0.0, 0.0),
+      Vector3d::new(0.0, 0.0, 1.0),
+    ],
+    faces: vec![model_face(0), model_face(0), model_face(2)],
+    lod: u16::MAX,
+    smoothing_groups: Some(vec![SOFT; 3]),
+  }];
+  file.mu_references = vec![BuildPrjMuReference {
+    model: 0,
+    transform: Matrix4x4::from_translation(&Vector3d::new(5.0, 0.0, 0.0)),
+    flags: 0,
+    sector: 7,
+    sector_padding: 0,
+    reserved: [0; 8],
+  }];
+
+  let shaders: CompilerShaders = CompilerShaders::resolve(&file, &library())?;
+  let mut mesh: GeometryMesh = GeometryMesh::load(&file)?;
+
+  mesh.optimize(0.0)?;
+
+  let normals: GeometryNormals = GeometryNormals::of(&mesh);
+  let coordinates: GeometryBaseCoordinates = GeometryBaseCoordinates::of(&mesh, &normals);
+  let form: BuildCformFile = GeometryRayModel::build(&mesh, &normals, &coordinates, &file, &shaders)?;
+
+  assert_eq!(form.version, BuildCformFile::CURRENT_VERSION);
+  assert_eq!(form.bounds, mesh.bounds);
+  assert_eq!(
+    form.faces.iter().map(|face| face.vertices).collect::<Vec<_>>(),
+    [[0, 1, 2], [0, 3, 1], [0, 2, 1], [4, 5, 6], [4, 5, 6]]
+  );
+  assert_eq!(
+    form.faces.iter().map(|face| face.face_handle).collect::<Vec<_>>(),
+    [0, 1, 2, 3, 4]
+  );
+  assert_eq!(
+    form
+      .raycast_faces
+      .iter()
+      .map(|record| (record.material, record.game_material))
+      .collect::<Vec<_>>(),
+    [(0, 0), (0, 0), (0, 6), (0, 9), (0, 9)]
+  );
+  assert_eq!(form.raycast_faces[1].texture_coordinates, coordinates.faces[1]);
+  assert_eq!(
+    form.vertices[4..],
+    [
+      Vector3d::new(5.0, 0.0, 0.0),
+      Vector3d::new(6.0, 0.0, 0.0),
+      Vector3d::new(5.0, 0.0, 1.0)
+    ]
+  );
+
+  let mut unshaded: BuildPrjFile = file.clone();
+
+  unshaded.mu_models[0].faces[0].material = 1;
+
+  assert!(
+    error_of(GeometryRayModel::build(
+      &mesh,
+      &normals,
+      &coordinates,
+      &unshaded,
+      &shaders
+    ))
+    .contains("Multi-use model crate face 0 is of material 1, which has no compiler shader")
   );
 
   Ok(())

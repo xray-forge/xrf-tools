@@ -1,11 +1,12 @@
 use xrf_error::{XrfError, XrfResult};
-use xrf_level::{BuildPrjFace, BuildPrjFile, BuildPrjMuModel, BuildPrjMuReference, LevelCformFace, LevelCformGeometry};
-use xrf_math::{Aabb, Matrix4x4, Vector3d};
+use xrf_level::{BuildPrjFile, BuildPrjMuModel, LevelCformFace, LevelCformGeometry};
+use xrf_math::{Aabb, Vector3d};
 
 use crate::compiler_shaders::CompilerShaders;
 use crate::geometry::geometry_collector::GeometryCollector;
 use crate::geometry::geometry_face::GeometryFace;
 use crate::geometry::geometry_mesh::GeometryMesh;
+use crate::geometry::geometry_placement::GeometryPlacement;
 
 /// A level's collision form, `level.cform`, as `CBuild::BuildCForm` builds it (`xrLC/xrBuildCForm.cpp:83`) at draft
 /// quality: no simplification.
@@ -54,36 +55,16 @@ impl GeometryCollision {
     }
 
     for (index, reference) in project.mu_references.iter().enumerate() {
-      let model: &BuildPrjMuModel = project.mu_models.get(reference.model as usize).ok_or_else(|| {
-        XrfError::new_invalid_error(format!(
-          "build.prj multi-use reference {index} names model {} of {}",
-          reference.model,
-          project.mu_models.len()
-        ))
-      })?;
+      let model: &BuildPrjMuModel = GeometryPlacement::get_model(project, index, reference)?;
 
       for (number, face) in model.faces.iter().enumerate() {
-        if shaders.get(face.material).is_none() {
-          return Err(XrfError::new_invalid_error(format!(
-            "Multi-use model {} face {number} is of material {}, which has no compiler shader",
-            model.name, face.material
-          )));
-        }
-
-        if !collides(face.material) {
+        if !shaders.require(model, number, face)?.is_collidable() {
           continue;
         }
 
-        let corners: [Vector3d; 3] = Self::place(model, face, reference).ok_or_else(|| {
-          XrfError::new_invalid_error(format!(
-            "Multi-use model {} face {number} names a vertex it lacks",
-            model.name
-          ))
-        })?;
-
         faces.push(Self::pack(
           &mut collector,
-          &corners,
+          &GeometryPlacement::place(model, number, face, reference)?,
           face.game_material,
           reference.sector,
         ));
@@ -107,27 +88,5 @@ impl GeometryCollision {
       is_wallmark_suppressed: false,
       sector,
     }
-  }
-
-  /// A model face's corners placed by its reference, `Fmatrix::transform_tiny`; `None` for a corner past the model.
-  fn place(model: &BuildPrjMuModel, face: &BuildPrjFace, reference: &BuildPrjMuReference) -> Option<[Vector3d; 3]> {
-    let corners: [&Vector3d; 3] = [
-      model.vertices.get(face.vertices[0] as usize)?,
-      model.vertices.get(face.vertices[1] as usize)?,
-      model.vertices.get(face.vertices[2] as usize)?,
-    ];
-
-    Some(corners.map(|corner| Self::transform(&reference.transform, corner)))
-  }
-
-  /// `Fmatrix::transform_tiny`: a row vector by the matrix, summed left to right, the translation last.
-  fn transform(matrix: &Matrix4x4, point: &Vector3d) -> Vector3d {
-    let m: &[f32; Matrix4x4::ELEMENTS] = &matrix.values;
-
-    Vector3d::new(
-      point.x * m[0] + point.y * m[4] + point.z * m[8] + m[12],
-      point.x * m[1] + point.y * m[5] + point.z * m[9] + m[13],
-      point.x * m[2] + point.y * m[6] + point.z * m[10] + m[14],
-    )
   }
 }
