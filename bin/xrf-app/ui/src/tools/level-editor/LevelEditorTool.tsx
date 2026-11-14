@@ -1,7 +1,57 @@
-import { ReactElement } from "react";
+import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReactElement, useCallback, useState } from "react";
 
-import { PlannedTool } from "@/core/shell/chrome/PlannedTool";
+import { SessionTool } from "@/core/session/components/SessionTool";
+import { LevelEditorSceneService } from "@/tools/level-editor/services/level-editor-scene";
 
-export function LevelEditorTool(): ReactElement {
-  return <PlannedTool description={"Edit level geometry and scene objects."} />;
+import { LevelEditorLayout } from "./components/LevelEditorLayout";
+import { LevelEditorOpenForm } from "./components/LevelEditorOpenForm";
+
+/**
+ * Open a Level Editor scene and inspect what it holds, read-only. An open that fails shows why where the scene would
+ * be, with a retry, the open form one step back.
+ */
+export function LevelEditorTool({
+  "data-testid": dataTestId = "level-editor-tool",
+  id,
+  className,
+}: BaseComponentProps): ReactElement {
+  const sceneService: LevelEditorSceneService = useInjection(LevelEditorSceneService);
+
+  const [isFormOpen, setFormOpen] = useState<boolean>(false);
+
+  const path: Nullable<string> = sceneService.scene.value?.source.path ?? null;
+
+  const onBack = useCallback(() => setFormOpen(true), []);
+
+  const onFinished = useCallback(() => setFormOpen(false), []);
+
+  const onClose = useCallback(() => void sceneService.close(), [sceneService]);
+
+  const onRetry = useCallback(() => void sceneService.retry(), [sceneService]);
+
+  return (
+    <SessionTool
+      root={sceneService.scene}
+      isOpen={!isFormOpen && (path !== null || sceneService.scene.isLoading || sceneService.scene.state.isFailed)}
+      openForm={<LevelEditorOpenForm onFinished={onFinished} />}
+      workspace={
+        <LevelEditorLayout
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          name={path}
+          pending={sceneService.opening?.path ?? null}
+          isLoading={sceneService.scene.isLoading}
+          isStale={sceneService.isStale}
+          error={sceneService.scene.error?.message}
+          onRetry={onRetry}
+          onBack={onBack}
+          onClose={onClose}
+        />
+      }
+    />
+  );
 }

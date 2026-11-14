@@ -14,7 +14,7 @@ export const LEVEL_EDITOR_TOOL: IToolDescriptor = createToolDescriptor(
     id: EToolId.LEVEL_EDITOR,
     label: "Level editor",
     path: "/level-editor",
-    status: EToolStatus.PLANNED,
+    status: EToolStatus.READY,
   },
   {
     load: () => import("./runtime"),
