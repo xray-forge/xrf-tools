@@ -117,11 +117,16 @@ impl ChunkReadWrite for GraphCrossTable {
       )));
     }
 
-    let mut cells: Vec<GraphCrossTableCell> = Vec::with_capacity(nodes_count as usize);
-
-    for _ in 0..nodes_count {
-      cells.push(reader.read_xr::<T, _>()?);
-    }
+    // Millions of cells on a level, decoded in one pass over their bytes rather than one read per field; the check
+    // above leaves no partial cell.
+    let cells: Vec<GraphCrossTableCell> = reader.read_remaining_with(|bytes| {
+      bytes
+        .as_chunks::<{ GraphCrossTableCell::SIZE as usize }>()
+        .0
+        .iter()
+        .map(GraphCrossTableCell::decode::<T>)
+        .collect()
+    })?;
 
     Ok(Self {
       version,
@@ -147,9 +152,13 @@ impl ChunkReadWrite for GraphCrossTable {
     writer.write_u128::<T>(self.level_guid.as_u128())?;
     writer.write_u128::<T>(self.game_guid.as_u128())?;
 
+    let mut cells: Vec<u8> = Vec::with_capacity(self.cells.len() * GraphCrossTableCell::SIZE as usize);
+
     for cell in &self.cells {
-      writer.write_xr::<T, _>(cell)?;
+      cells.extend_from_slice(&cell.encode::<T>());
     }
+
+    writer.write_all(&cells)?;
 
     Ok(())
   }
@@ -161,6 +170,7 @@ mod tests {
   use std::io::{Seek, SeekFrom, Write, read_to_string};
   use std::path::Path;
 
+  use byteorder::{BigEndian, ByteOrder};
   use serde_json::to_string_pretty;
   use uuid::{Uuid, uuid};
   use xrf_chunk::{
@@ -292,6 +302,71 @@ mod tests {
     );
 
     Ok(())
+  }
+
+  #[test]
+  fn refuses_to_read_a_partial_cell() -> XrfResult {
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    table(Uuid::nil(), Uuid::nil(), 4, 1).write::<XRayByteOrder>(&mut writer)?;
+    writer.buffer.extend_from_slice(&[0, 0, 0]);
+
+    let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&writer.buffer)?;
+    let error: String = GraphCrossTable::read::<XRayByteOrder, _>(&mut reader)
+      .expect_err("expect four nodes over four and a half cells to be refused")
+      .to_string();
+
+    assert!(
+      error.contains("declares 4 nodes but holds 27 bytes"),
+      "Unexpected error: {error}"
+    );
+
+    Ok(())
+  }
+
+  /// The table's cells against the same cells read and written one at a time, by the bits of each field: the
+  /// unreached cell's distance is `u32::MAX` read as a float, a NaN that must come back bit for bit.
+  fn assert_table_agrees_with_cells<T: ByteOrder>() -> XrfResult {
+    let mut original: GraphCrossTable = table(Uuid::nil(), Uuid::nil(), 5, 300);
+
+    original.cells[1].game_vertex_id = 0x1234;
+    original.cells[3].distance = f32::from_bits(u32::MAX);
+    original.cells[4].distance = -0.0;
+
+    let mut table_writer: ChunkWriter = ChunkWriter::new();
+    let mut cells_writer: ChunkWriter = ChunkWriter::new();
+
+    original.write::<T>(&mut table_writer)?;
+
+    for cell in &original.cells {
+      cells_writer.write_xr::<T, _>(cell)?;
+    }
+
+    assert_eq!(
+      &table_writer.buffer[GraphCrossTable::HEADER_SIZE as usize..],
+      cells_writer.buffer.as_slice()
+    );
+
+    let read: GraphCrossTable = GraphCrossTable::read::<T, _>(&mut ChunkReader::from_bytes(&table_writer.buffer)?)?;
+    let mut cells_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&cells_writer.buffer)?;
+    let bits = |cell: &GraphCrossTableCell| (cell.game_vertex_id, cell.distance.to_bits());
+
+    assert_eq!(read.cells.len(), original.cells.len());
+
+    for (cell, expected) in read.cells.iter().zip(&original.cells) {
+      let one: GraphCrossTableCell = cells_reader.read_xr::<T, _>()?;
+
+      assert_eq!(bits(cell), bits(&one));
+      assert_eq!(bits(cell), bits(expected));
+    }
+
+    cells_reader.assert_read("Expect every cell to be read")
+  }
+
+  #[test]
+  fn reads_and_writes_cells_as_each_cell_does() -> XrfResult {
+    assert_table_agrees_with_cells::<XRayByteOrder>()?;
+    assert_table_agrees_with_cells::<BigEndian>()
   }
 
   #[test]
