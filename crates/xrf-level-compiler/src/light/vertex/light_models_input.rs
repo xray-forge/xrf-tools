@@ -1,0 +1,24 @@
+use xrf_geometry::BvhTracer;
+use xrf_level::BuildPrjFile;
+
+use crate::input::compiler_shaders::CompilerShaders;
+use crate::light::source::light_sources::LightSources;
+use crate::shadow::shadow_materials::ShadowMaterials;
+
+/// What lighting a project's multi-use models and placements takes ([`crate::LightModels::of`]): the models through
+/// their own faces, the placements through the level's ray model.
+#[derive(Clone, Copy)]
+pub struct LightModelsInput<'a> {
+  pub project: &'a BuildPrjFile,
+  pub shaders: &'a CompilerShaders,
+  pub lights: &'a LightSources,
+  /// The models' own faces' shadow materials, loaded over [`crate::LightModels::get_model_faces`].
+  pub model_shadows: &'a ShadowMaterials,
+  /// Where each model's faces start among them.
+  pub model_starts: &'a [usize],
+  /// The level's ray model and what each of its faces lets through.
+  pub tracer: &'a BvhTracer,
+  pub shadows: &'a ShadowMaterials,
+  /// The samples each vertex takes ([`crate::LightQuality::get_model_samples`]).
+  pub samples: u32,
+}
