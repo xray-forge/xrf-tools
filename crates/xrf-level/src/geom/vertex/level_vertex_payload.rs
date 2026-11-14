@@ -1,3 +1,5 @@
+use xrf_error::{XrfError, XrfResult};
+
 use crate::geom::vertex::level_vertex_bytes::LevelVertexBytes;
 use crate::geom::vertex::level_vertex_layout::LevelVertexLayout;
 
@@ -18,6 +20,23 @@ impl LevelVertexPayload {
     );
 
     Self { layout, bytes }
+  }
+
+  /// Vertices of `layout` held in `bytes`, as a buffer of [`crate::LevelGeomBuffers`] holds them.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when `bytes` are not whole vertices of the layout.
+  pub fn of(layout: LevelVertexLayout, bytes: Vec<u8>) -> XrfResult<Self> {
+    if !bytes.len().is_multiple_of(layout.get_stride() as usize) {
+      return Err(XrfError::new_invalid_error(format!(
+        "{} bytes are not whole level vertices of stride {}",
+        bytes.len(),
+        layout.get_stride()
+      )));
+    }
+
+    Ok(Self::new(layout, bytes))
   }
 
   /// The declaration the vertices were stored in.

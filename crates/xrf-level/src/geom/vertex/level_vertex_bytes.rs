@@ -4,6 +4,7 @@ use xrf_math::{Vector2d, Vector3d};
 use crate::geom::vertex::level_vertex::LevelVertex;
 use crate::geom::vertex::level_vertex_direction::LevelVertexDirection;
 use crate::geom::vertex::level_vertex_layout::LevelVertexLayout;
+use crate::geom::vertex::level_vertex_stored::LevelVertexStored;
 
 /// One vertex as the level stores it, a stride of bytes, read through the declaration saying where each element sits.
 #[derive(Clone, Copy, Debug)]
@@ -88,6 +89,19 @@ impl<'a> LevelVertexBytes<'a> {
 
       [self.take_short::<T>(at), self.take_short::<T>(at + 2)]
     })
+  }
+
+  /// Every element as stored, which [`LevelVertexStored::write_into`] writes back.
+  pub fn get_stored<T: ByteOrder>(&self) -> LevelVertexStored {
+    LevelVertexStored {
+      position: self.get_position::<T>(),
+      normal: self.get_normal(),
+      tangent: self.get_tangent(),
+      binormal: self.get_binormal(),
+      color: self.get_color(),
+      texture_coordinate: self.get_texture_coordinate::<T>(),
+      lightmap_coordinate: self.get_lightmap_coordinate::<T>(),
+    }
   }
 
   /// What xrLC had before it quantized the vertex.

@@ -66,12 +66,19 @@ impl<D: ChunkDataSource> LevelGeomSource<D> {
   pub fn open_from_chunk<T: ByteOrder, S: ChunkDataSource>(
     reader: &mut ChunkReader<S>,
   ) -> XrfResult<LevelGeomSource<S>> {
-    let chunks: Vec<ChunkReader<S>> = reader.read_children()?;
+    LevelGeomSource::open_from_children::<T>(&reader.read_children()?)
+  }
 
-    Ok(LevelGeomSource {
-      file: LevelGeomFile::read_from_children::<T, _>(&chunks)?,
-      indices: ChunkReader::find_required_by_id(&chunks, LevelGeomFile::INDEX_BUFFERS_CHUNK_ID)?,
-      vertices: ChunkReader::find_required_by_id(&chunks, LevelGeomFile::VERTEX_BUFFERS_CHUNK_ID)?,
+  /// Opens render geometry from children already read from it.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a required chunk is absent or the geometry's shape cannot be read.
+  pub fn open_from_children<T: ByteOrder>(chunks: &[ChunkReader<D>]) -> XrfResult<Self> {
+    Ok(Self {
+      file: LevelGeomFile::read_from_children::<T, _>(chunks)?,
+      indices: ChunkReader::find_required_by_id(chunks, LevelGeomFile::INDEX_BUFFERS_CHUNK_ID)?,
+      vertices: ChunkReader::find_required_by_id(chunks, LevelGeomFile::VERTEX_BUFFERS_CHUNK_ID)?,
     })
   }
 

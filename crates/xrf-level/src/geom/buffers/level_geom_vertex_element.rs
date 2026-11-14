@@ -36,6 +36,33 @@ impl LevelGeomVertexElement {
   /// `D3DDECLMETHOD_UV`, which the tessellator generates rather than reading, so it occupies no vertex bytes.
   pub const METHOD_UV: u8 = 4;
 
+  /// `D3DDECLTYPE_UNUSED`, the type of the terminator.
+  pub const KIND_UNUSED: u8 = 17;
+
+  /// `D3DDECL_END()`, which ends every declaration in a file.
+  pub const END: Self = Self {
+    stream: Self::TERMINATOR_STREAM,
+    offset: 0,
+    kind: Self::KIND_UNUSED,
+    method: 0,
+    usage: 0,
+    usage_index: 0,
+  };
+
+  /// Bytes one vertex of `declaration` occupies in `stream`, measured wide: an element's offset and size both come from
+  /// the file. `None` for a declaration naming a type no `D3DDECLTYPE` names.
+  pub fn get_vertex_size(declaration: &[Self], stream: u16) -> Option<u32> {
+    let mut size: u32 = 0;
+
+    for element in declaration {
+      if element.is_fed_from(stream) {
+        size = size.max(u32::from(element.get_kind_size()?) + u32::from(element.offset));
+      }
+    }
+
+    Some(size)
+  }
+
   /// `D3DDECLUSAGE` names by value.
   const USAGE_NAMES: [&'static str; 14] = [
     "POSITION",

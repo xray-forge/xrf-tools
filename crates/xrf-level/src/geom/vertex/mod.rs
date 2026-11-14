@@ -1,7 +1,11 @@
 pub(crate) mod level_vertex;
+pub(crate) mod level_vertex_base_coordinate;
 pub(crate) mod level_vertex_bytes;
 pub(crate) mod level_vertex_color;
 pub(crate) mod level_vertex_coordinate;
+pub(crate) mod level_vertex_declaration;
 pub(crate) mod level_vertex_direction;
 pub(crate) mod level_vertex_layout;
 pub(crate) mod level_vertex_payload;
+pub(crate) mod level_vertex_quantizer;
+pub(crate) mod level_vertex_stored;

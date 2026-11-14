@@ -49,12 +49,13 @@ impl LevelVertex {
     }
   }
 
-  /// The colour of a `D3DCOLOR` element, as the red, green and blue the packing puts on disk.
+  /// The colour of a `D3DCOLOR` element, as the red, green, blue and sun term the packing puts on disk.
   pub const fn decode_color(bytes: [u8; 4]) -> LevelVertexColor {
     LevelVertexColor {
       r: bytes[Self::DIRECTION_X],
       g: bytes[Self::DIRECTION_Y],
       b: bytes[Self::DIRECTION_Z],
+      sun: bytes[Self::DIRECTION_EXTRA],
     }
   }
 }
@@ -97,7 +98,12 @@ mod tests {
   fn test_color_takes_the_same_byte_order_as_a_direction() {
     assert_eq!(
       LevelVertex::decode_color([1, 2, 3, 4]),
-      LevelVertexColor { r: 3, g: 2, b: 1 }
+      LevelVertexColor {
+        r: 3,
+        g: 2,
+        b: 1,
+        sun: 4
+      }
     );
   }
 }
