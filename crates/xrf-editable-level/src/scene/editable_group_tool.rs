@@ -4,6 +4,7 @@ use xrf_ini::IniSection;
 use crate::object::editable_tool_object::EditableToolObject;
 use crate::part::editable_level_part::EditableLevelPart;
 use crate::part::editable_part_object::EditablePartObject;
+use crate::scene::editable_group_member::EditableGroupMember;
 use crate::scene::editable_scene_tool::EditableSceneTool;
 
 /// The group tool's parts, `group.part` and on (`ESceneGroupTool`): each group an `[object_N]` of class 0 and its
@@ -16,6 +17,9 @@ impl EditableGroupTool {
   /// The tool's name, which names its files.
   pub const TOOL_NAME: &'static str = "group";
 
+  /// `OBJCLASS_GROUP`, the class every group of the tool's parts is saved as.
+  pub const CLASS_ID: i32 = 0;
+
   /// What a member's section name holds between its group's and its index.
   const MEMBER_INFIX: &'static str = "_ingroup_";
 
@@ -23,10 +27,27 @@ impl EditableGroupTool {
   ///
   /// # Errors
   ///
-  /// Returns an error when the tool holds a binary part, a part's objects do not read, a member's class is not a number,
-  /// or a member of class `T` does not read.
+  /// As [`Self::read_grouped_members`].
   pub fn read_members<T: EditableToolObject>(tool: &EditableSceneTool) -> XrfResult<Vec<T>> {
-    let mut members: Vec<T> = Vec::new();
+    Ok(
+      Self::read_grouped_members::<T>(tool)?
+        .into_iter()
+        .map(|member| member.object)
+        .collect(),
+    )
+  }
+
+  /// Every member of class `T` of every group the tool's parts hold, in the order the files hold them, each with the
+  /// name of the group holding it.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the tool holds a binary part, a part's objects do not read, a group holding a member of class
+  /// `T` has no name, a member's class is not a number, or a member of class `T` does not read.
+  pub fn read_grouped_members<T: EditableToolObject>(
+    tool: &EditableSceneTool,
+  ) -> XrfResult<Vec<EditableGroupMember<T>>> {
+    let mut members: Vec<EditableGroupMember<T>> = Vec::new();
 
     for part in &tool.parts {
       let EditableLevelPart::Text(part) = part else {
@@ -56,7 +77,10 @@ impl EditableGroupTool {
           };
 
           if member.get_class_id()? == T::CLASS_ID {
-            members.push(T::read_from_object(&member)?);
+            members.push(EditableGroupMember {
+              group: group.get_name()?.to_owned(),
+              object: T::read_from_object(&member)?,
+            });
           }
         }
       }

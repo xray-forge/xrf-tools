@@ -3,7 +3,8 @@ use xrf_ini::{IniFile, IniFormat};
 
 use crate::tests::fixtures::GUID;
 use crate::{
-  EditableGroupTool, EditableLevelPart, EditableSceneObject, EditableSceneTool, EditableTextPart, EditableToolObject,
+  EditableGroupMember, EditableGroupTool, EditableLevelPart, EditableSceneObject, EditableSceneTool, EditableTextPart,
+  EditableToolObject,
 };
 
 /// One group part as GSC's `labx8` saves them: groups (class 0) up to `group`, the last of a member per class of
@@ -72,6 +73,29 @@ fn reads_each_groups_members_of_a_class_in_place_across_its_files() -> XrfResult
       .collect::<Vec<_>>(),
     [("member_0", 0.0), ("member_1", 1.0), ("member_0", 0.0)],
     "the members of the class, at their own places, the second group's in the second file"
+  );
+
+  Ok(())
+}
+
+#[test]
+fn reads_each_member_with_the_name_of_its_group() -> XrfResult {
+  let tool: EditableSceneTool = EditableSceneTool {
+    name: String::from(EditableGroupTool::TOOL_NAME),
+    parts: vec![
+      group_part(1, &[EditableSceneObject::CLASS_ID, 6])?,
+      group_part(0, &[EditableSceneObject::CLASS_ID])?,
+    ],
+  };
+  let members: Vec<EditableGroupMember<EditableSceneObject>> = EditableGroupTool::read_grouped_members(&tool)?;
+
+  assert_eq!(
+    members
+      .iter()
+      .map(|member| (member.group.as_str(), member.object.object.name.as_str()))
+      .collect::<Vec<_>>(),
+    [("group_1", "member_0"), ("group_0", "member_0")],
+    "each member named with the group holding it, in the order the files hold them"
   );
 
   Ok(())

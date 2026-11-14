@@ -6,9 +6,9 @@ use std::path::{Path, PathBuf};
 use byteorder::ByteOrder;
 use xrf_chunk::ChunkWriter;
 use xrf_editable_level::{
-  EditableFogVolumeObject, EditableGroupTool, EditableLevelGuid, EditableLevelScene, EditableObjectPart,
-  EditableParticleObject, EditableSoundEnvironmentObject, EditableSoundSourceObject, EditableSpawnPointObject,
-  EditableToolObject, EditableWallmarkTool, EditableWayObject,
+  EditableFogVolumeObject, EditableLevelGuid, EditableLevelScene, EditableObjectPart, EditableParticleObject,
+  EditableSoundEnvironmentObject, EditableSoundSourceObject, EditableSpawnPointObject, EditableToolObject,
+  EditableWallmarkTool, EditableWayObject,
 };
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{
@@ -22,6 +22,7 @@ use crate::level::level_entity_conversion::{LevelEntityConversion, LevelEntityEx
 use crate::level::level_exported_file::{LevelExportedFile, LevelExportedPrevious};
 use crate::level::level_fog_volume_conversion::LevelFogVolumeConversion;
 use crate::level::level_particle_conversion::LevelParticleConversion;
+use crate::level::level_scene_tool_objects::LevelSceneToolObjects;
 use crate::level::level_sound_environment_conversion::LevelSoundEnvironmentConversion;
 use crate::level::level_sound_source_conversion::LevelSoundSourceConversion;
 use crate::level::level_spawn_point_conversion::LevelSpawnPointConversion;
@@ -202,26 +203,13 @@ impl LevelSceneExporter {
     Ok(written)
   }
 
-  /// The scene's part of tool `O`, or an empty one where the scene has no such tool, as the editor holds every tool;
-  /// its objects the groups' members of the tool's class first, as the editor loads the group tool (class 0) before
-  /// the others, then the part's own.
+  /// The scene's part of tool `O` as the editor holds it once loaded ([`LevelSceneToolObjects::into_part`]): an empty
+  /// one where the scene has no such tool, its objects the groups' members of the tool's class, then the part's own.
   pub(crate) fn get_part<O: EditableToolObject>(
     scene: &EditableLevelScene,
     guid: EditableLevelGuid,
   ) -> XrfResult<EditableObjectPart<O>> {
-    let mut part: EditableObjectPart<O> = match scene.get_tool(O::TOOL_NAME) {
-      Some(tool) => EditableObjectPart::read_from_scene_tool(tool)?,
-      None => EditableObjectPart::new(guid, Vec::new()),
-    };
-
-    if let Some(groups) = scene.get_tool(EditableGroupTool::TOOL_NAME) {
-      let mut objects: Vec<O> = EditableGroupTool::read_members::<O>(groups)?;
-
-      objects.append(&mut part.objects);
-      part.objects = objects;
-    }
-
-    Ok(part)
+    Ok(LevelSceneToolObjects::<O>::read(scene, guid)?.into_part())
   }
 
   /// `list` with `built` before its entities, every one numbered again in order; none where both are empty.

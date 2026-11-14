@@ -36,6 +36,7 @@ pub use crate::level::level_object_names::LevelObjectNames;
 pub use crate::level::level_occluder_conversion::{LevelOccluderConversion, LevelSoundOccluderCensus};
 pub use crate::level::level_particle_conversion::LevelParticleConversion;
 pub use crate::level::level_scene_exporter::LevelSceneExporter;
+pub use crate::level::level_scene_tool_objects::LevelSceneToolObjects;
 pub use crate::level::level_sound_environment_conversion::LevelSoundEnvironmentConversion;
 pub use crate::level::level_sound_source_conversion::LevelSoundSourceConversion;
 pub use crate::level::level_spawn_data_fields::LevelSpawnDataFields;

@@ -15,6 +15,7 @@ mod map;
 mod occluder;
 mod particle;
 mod scene;
+mod scene_tool_objects;
 mod sound_environment;
 mod sound_source;
 mod spawn_data;

@@ -95,8 +95,9 @@ light tool's `sun_shadow_dir`, `lcontrol_last_idx` and `[lcontrols]`, the scene 
 
 Groups (`group.part`, `group.part1` and on) hold each group as an `[object_N]` of class 0 and its members as
 `[object_N_ingroup_M]`, with their own sections after them (`[object_N_ingroup_M_spawndata]`).
-`EditableGroupTool::read_members` reads every member of one class as that class's type. A member keeps its own transform
-in the level, and the editor loads it into its class's list before the objects of that tool's own part.
+`EditableGroupTool::read_members` reads every member of one class as that class's type, and `read_grouped_members` each
+as an `EditableGroupMember` naming the group holding it. A member keeps its own transform in the level, and the editor
+loads it into its class's list before the objects of that tool's own part.
 
 | Type                             | Editor              | Holds                                                                                  |
 | -------------------------------- | ------------------- | -------------------------------------------------------------------------------------- |
