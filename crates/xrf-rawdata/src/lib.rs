@@ -9,7 +9,6 @@ pub use crate::level::build::level_build_export::{LevelBuildCensus, LevelBuildEx
 pub use crate::level::build::level_build_exporter::LevelBuildExporter;
 pub use crate::level::build::level_build_impostor_limit::LevelBuildImpostorLimit;
 pub use crate::level::build::level_build_impostors::LevelBuildImpostorAtlas;
-pub use crate::level::build::level_build_lighting::LevelBuildLighting;
 pub use crate::level::build::level_build_report::LevelBuildReport;
 pub use crate::level::build::level_build_request::LevelBuildRequest;
 pub use crate::level::build::level_build_sources::LevelBuildSources;

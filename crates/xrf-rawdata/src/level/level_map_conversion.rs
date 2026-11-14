@@ -131,7 +131,7 @@ impl LevelMapConversion {
   }
 
   /// The level-bound shape whose box the Build takes for a map of `bounds` (lowest x and z, then highest): a box over
-  /// them, [`Self::BOUND_HEIGHT`] tall around height 0, its centre in the element and the object at the origin, so the
+  /// them, `Self::BOUND_HEIGHT` tall around height 0, its centre in the element and the object at the origin, so the
   /// object's transform moves no corner off the box's ends.
   pub fn decompile_bound(bounds: &[f32; 4], context: &mut LevelDecompileContext) -> EditableShapeObject {
     let [min_x, min_z, max_x, max_z] = *bounds;

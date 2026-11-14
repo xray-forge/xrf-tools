@@ -21,8 +21,7 @@ pub struct LevelBuildRequest {
   pub game_materials: Option<PathBuf>,
   /// The textures root (`$game_textures$`) the details' textures and the impostors' strips are read from.
   pub textures: Option<PathBuf>,
-  /// Whether `build.prj` is lit at proof quality ([`crate::LevelBuildLighting::PROOF`]) whatever the scene sets.
-  pub is_proof_lighting: bool,
+  /// How large the impostor atlas may grow.
   pub impostor_limit: LevelBuildImpostorLimit,
   /// Whether files the build writes are overwritten where the directory holds them rather than refused.
   pub is_forced: bool,
