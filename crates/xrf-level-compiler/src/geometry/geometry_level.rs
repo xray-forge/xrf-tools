@@ -15,6 +15,10 @@ use xrf_ogf::{
 };
 use xrf_shaders::ShaderCompilerFile;
 
+use crate::chart::light_chart::LightChart;
+use crate::chart::light_chart_scene::LightChartScene;
+use crate::chart::lightmap_atlas::LightmapAtlas;
+use crate::chart::lightmap_faces::LightmapFaces;
 use crate::compiler_shaders::CompilerShaders;
 use crate::compiler_texture::CompilerTexture;
 use crate::geometry::geometry_base_coordinates::GeometryBaseCoordinates;
@@ -45,7 +49,8 @@ use crate::shadow::shadow_materials::ShadowMaterials;
 use crate::shadow::shadow_materials_request::ShadowMaterialsRequest;
 
 /// Everything xrLC writes for a level's geometry, compiled from its `build.prj`, its vertices and trees lit: the `level`
-/// file, its render geometry, the game's collision form, the compilers' ray model and lights, and the draft lightmaps.
+/// file, its render geometry, the game's collision form, the compilers' ray model and lights, and the lightmap pages,
+/// charted but of draft light.
 #[derive(Debug)]
 pub struct GeometryLevel {
   pub bundle: LevelBundle,
@@ -59,9 +64,7 @@ pub struct GeometryLevel {
   pub ray_model: BuildCformFile,
   /// `build.lights`.
   pub lights: LevelLightsFile,
-  /// Whether a visual draws from the draft lightmap pair, which is then written.
-  pub has_lightmaps: bool,
-  /// What the compile made, for its report.
+  /// What the compile made, for its report, its lightmap pages among it.
   pub census: GeometryLevelCensus,
 }
 
@@ -71,7 +74,8 @@ impl GeometryLevel {
 
   /// The level of `project`, its compiler shaders from `library` and its textures as `textures` loads them, their
   /// alpha images under `roots` dimming the light, lit at `quality`: every vertex lit ([`LightHemisphere`],
-  /// [`LightVertices`]), every multi-use model and placement ([`LightModels`]), the lightmaps a draft.
+  /// [`LightVertices`]), every multi-use model and placement ([`LightModels`]), the lightmapped faces cut into charts
+  /// and packed onto pages ([`LightChart`], [`LightmapAtlas`]) whose light is a draft.
   ///
   /// # Errors
   ///
@@ -128,7 +132,21 @@ impl GeometryLevel {
       &shadows,
       quality.is_draft(project.params.is_draft()),
     )?;
-    let splits: GeometrySplits = GeometrySplits::of(&mesh, &shaders);
+    let scene: LightChartScene<'_> = LightChartScene::of(
+      &mesh,
+      &normals,
+      project,
+      &shaders,
+      textures,
+      quality.get_pixels_per_meter(project.params.lightmap_pixels_per_meter),
+      quality.get_jitter_samples(project.params.lightmap_jitter_samples),
+    );
+    let (mut splits, charts): (GeometrySplits, Vec<LightChart>) = GeometrySplits::cut(&mesh, &shaders, Some(&scene));
+    let atlas: LightmapAtlas = LightmapAtlas::pack(&charts, &scene);
+    let lightmaps: LightmapFaces = atlas.get_faces(&charts, mesh.faces.len());
+
+    splits.merge(&mesh, Some(&lightmaps.pages));
+
     let visuals: GeometryVisuals = GeometryVisuals::build(&GeometryVisualsRequest {
       mesh: &mesh,
       normals: &normals,
@@ -139,6 +157,7 @@ impl GeometryLevel {
       shaders: &shaders,
       textures,
       lights: Some(&vertex_lights),
+      lightmaps: Some(&lightmaps),
     })?;
     let models: GeometryModels = GeometryModels::build(project, &shaders, textures, Some(&model_lights))?;
     let hierarchy: GeometryHierarchy = GeometryHierarchy::build(&visuals, &models, project)?;
@@ -301,12 +320,6 @@ impl GeometryLevel {
       });
     }
 
-    let has_lightmaps: bool = visuals.visuals.iter().any(|visual| {
-      visual
-        .textures
-        .iter()
-        .any(|name| name == GeometryDraftLight::LIGHTMAP_TEXTURES[0])
-    });
     let census: GeometryLevelCensus = GeometryLevelCensus {
       visuals: visuals.visuals.len(),
       triangles: visuals.visuals.iter().map(GeometryVisual::get_triangle_count).sum(),
@@ -318,6 +331,8 @@ impl GeometryLevel {
         .count(),
       trees: models.trees.len(),
       sectors: hierarchy.sectors.len(),
+      charts: charts.len(),
+      lightmaps: atlas.pages,
     };
 
     Ok(Self {
@@ -361,7 +376,6 @@ impl GeometryLevel {
       collision,
       ray_model,
       lights,
-      has_lightmaps,
       census,
     })
   }

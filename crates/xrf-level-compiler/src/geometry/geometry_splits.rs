@@ -1,30 +1,39 @@
+use std::collections::HashMap;
+
 use xrf_math::{EPS_S, Vector3d};
 
+use crate::chart::light_chart::LightChart;
+use crate::chart::light_chart_scene::LightChartScene;
 use crate::compiler_shaders::CompilerShaders;
 use crate::geometry::geometry_mesh::GeometryMesh;
 use crate::geometry::geometry_split_box::GeometrySplitBox;
 
 /// A level's rendered faces grouped into the splits that each become a visual, as xrLC groups them: by material
-/// (`xrPhase_ResolveMaterials`), cut in space (`xrPhase_Subdivide`), then joined again where small
-/// (`xrPhase_MergeGeometry`).
+/// (`xrPhase_ResolveMaterials`), each lightmapped one into its lightmap charts (`xrPhase_UVmap`), cut in space
+/// (`xrPhase_Subdivide`), then joined again where small (`xrPhase_MergeGeometry`).
 ///
 /// - **By material.** Materials are taken in the order faces first name them, every face counted; a split each holds
 ///   that material's faces whose compiler shader renders, in face order, and a split left empty goes.
+/// - **Charted.** Where charts are cut ([`Self::cut`]), each split of a lightmapped material is cut into charts
+///   ([`LightChart::cut`]), each chart's faces leaving it, in its order, for a split of their own at the end of the
+///   list; the split, left empty, goes.
 /// - **Cut.** A split of at least [`Self::LOW_FACES`] twice over whose box is wider than [`Self::MAXIMUM_SIZE`] on an
 ///   axis, or which holds more than [`Self::HIGH_FACES`], is halved on its box's longest axis, each face going by its
 ///   centre to the lower half's closed box or else the upper. Where a half would hold under [`Self::LOW_FACES`], the
 ///   cut moves by half the larger half's width towards it, up to ten times while the split holds more than four times
 ///   the least, then turns to the next axis, three axes in all. A split cut goes, its halves joining the end of the list,
-///   where they are cut in their turn. xrLC also cuts a split whose lightmap chart outgrows a lightmap; a chart is the
-///   light baker's, and under draft light no split has one.
-/// - **Joined.** Each split in turn, while it holds under three quarters of the high limit and its box, grown by
-///   `EPS_S`, is narrower than the size on some axis, takes in the later split of its material that needs joining too
-///   and gives the smallest joined box by volume, the first of equals: one that keeps the two under four thirds of the
-///   high limit, keeps every axis of the joined box within four thirds of the size or within a metre of either part's,
-///   and is no more than eight times the two parts' cubes. Its faces go before the split's own. xrLC also requires the
-///   same lightmap; under draft light every lightmapped face has the one.
+///   where they are cut in their turn; a chart's split cut gives each half a chart of its own ([`LightChart::of`]), the
+///   chart cut leaving the charts and the two joining their end. xrLC also cuts a split whose chart outgrows a page,
+///   which a chart's largest side never does.
+/// - **Joined** ([`Self::merge`]). Each split in turn, while it holds under three quarters of the high limit and its
+///   box, grown by `EPS_S`, is narrower than the size on some axis, takes in the later split of its material and page
+///   that needs joining too and gives the smallest joined box by volume, the first of equals: one that keeps the two
+///   under four thirds of the high limit, keeps every axis of the joined box within four thirds of the size or within
+///   a metre of either part's, and is no more than eight times the two parts' cubes. Its faces go before the split's
+///   own.
 ///
-/// Which split a face lands in is left out of the compiler's bar, as xrLC's own splits follow its lightmaps.
+/// Which split a face lands in is left out of the compiler's bar, as xrLC's own splits follow its lightmaps, whose
+/// charts are placed by a packer of ours.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GeometrySplits {
   /// Each split's faces, by index into the mesh's faces.
@@ -41,14 +50,164 @@ impl GeometrySplits {
   /// `c_SS_maxsize`: the widest a split's box may be on an axis before it is cut.
   pub const MAXIMUM_SIZE: f32 = 32.0;
 
-  /// The splits of `mesh`'s faces whose compiler shader renders, by `shaders`.
+  /// The splits of `mesh`'s faces whose compiler shader renders, by `shaders`, with no chart cut: cut and joined.
   pub fn of(mesh: &GeometryMesh, shaders: &CompilerShaders) -> Self {
-    let mut splits: Vec<Vec<u32>> = Self::by_material(mesh, shaders);
+    let (mut splits, _) = Self::cut(mesh, shaders, None);
 
-    Self::subdivide(mesh, &mut splits);
-    Self::merge(mesh, &mut splits);
+    splits.merge(mesh, None);
+    splits
+  }
 
-    Self { splits }
+  /// The splits of `mesh`'s faces whose compiler shader renders, by `shaders`, before they are joined, and where
+  /// `scene` is given the lightmap charts they were cut by, in xrLC's order of its deflectors: a chart cut in two
+  /// leaves it, its halves joining the end.
+  pub fn cut(
+    mesh: &GeometryMesh,
+    shaders: &CompilerShaders,
+    scene: Option<&LightChartScene<'_>>,
+  ) -> (Self, Vec<LightChart>) {
+    let mut splits: Vec<(Vec<u32>, Option<usize>)> = Self::by_material(mesh, shaders)
+      .into_iter()
+      .map(|split| (split, None))
+      .collect();
+    let mut charts: Vec<Option<LightChart>> = Vec::new();
+
+    if let Some(scene) = scene {
+      Self::chart(&mut splits, &mut charts, scene);
+    }
+
+    Self::subdivide(mesh, &mut splits, &mut charts, scene);
+
+    (
+      Self {
+        splits: splits.into_iter().map(|(split, _)| split).collect(),
+      },
+      charts.into_iter().flatten().collect(),
+    )
+  }
+
+  /// `xrPhase_UVmap`: each split of a lightmapped material cut into its charts, each chart's faces a split of their own
+  /// at the end in the split's order; a split left empty goes.
+  fn chart(
+    splits: &mut Vec<(Vec<u32>, Option<usize>)>,
+    charts: &mut Vec<Option<LightChart>>,
+    scene: &LightChartScene<'_>,
+  ) {
+    let mut kept: Vec<(Vec<u32>, Option<usize>)> = Vec::with_capacity(splits.len());
+    let mut charted: Vec<(Vec<u32>, Option<usize>)> = Vec::new();
+
+    for (split, chart) in splits.drain(..) {
+      let material: u16 = split
+        .first()
+        .map_or(0, |face| scene.mesh.faces[*face as usize].material);
+
+      if !scene.is_charted(material) {
+        kept.push((split, chart));
+        continue;
+      }
+
+      let cuts: Vec<LightChart> = LightChart::cut(&split, scene);
+      let owners: HashMap<u32, usize> = cuts
+        .iter()
+        .enumerate()
+        .flat_map(|(index, cut)| cut.faces.iter().map(move |face| (*face, index)))
+        .collect();
+      let mut taken: Vec<Vec<u32>> = vec![Vec::new(); cuts.len()];
+      let mut left: Vec<u32> = Vec::new();
+
+      for face in split {
+        match owners.get(&face) {
+          Some(index) => taken[*index].push(face),
+          None => left.push(face),
+        }
+      }
+
+      for (cut, faces) in cuts.into_iter().zip(taken) {
+        charts.push(Some(cut));
+        charted.push((faces, Some(charts.len() - 1)));
+      }
+
+      if !left.is_empty() {
+        kept.push((left, None));
+      }
+    }
+
+    splits.extend(kept);
+    splits.extend(charted);
+  }
+
+  /// Joins the splits as `xrPhase_MergeGeometry` does, each only with splits of its first face's material and, where
+  /// `pages` gives each face's lightmap page, page.
+  ///
+  /// Only splits of one material and page can join, so each looks for its candidates among the later splits of its own
+  /// kind alone, in their order, which gives xrLC's choice without its search over every split.
+  pub fn merge(&mut self, mesh: &GeometryMesh, pages: Option<&[Option<u32>]>) {
+    let mut splits: Vec<Option<Vec<u32>>> = self.splits.drain(..).map(Some).collect();
+    let mut boxes: Vec<GeometrySplitBox> = splits
+      .iter()
+      .flatten()
+      .map(|split| GeometrySplitBox::of(mesh, split))
+      .collect();
+    let kind = |split: &[u32]| {
+      let face: u32 = split[0];
+
+      (
+        mesh.faces[face as usize].material,
+        pages.and_then(|pages| pages[face as usize]),
+      )
+    };
+    let mut kinds: HashMap<(u16, Option<u32>), Vec<usize>> = HashMap::new();
+
+    for (index, split) in splits.iter().enumerate() {
+      kinds
+        .entry(kind(split.as_deref().unwrap_or_default()))
+        .or_default()
+        .push(index);
+    }
+
+    for index in 0..splits.len() {
+      let Some(split) = splits[index].as_deref() else {
+        continue;
+      };
+      let same: &mut Vec<usize> = kinds.get_mut(&kind(split)).expect("every split's kind");
+      let mut original: Option<GeometrySplitBox> = None;
+
+      while let Some(grown) = Self::get_mergeable_box(splits[index].as_ref().map_or(0, Vec::len), &boxes[index]) {
+        let original: GeometrySplitBox = *original.get_or_insert(grown);
+        let faces: usize = splits[index].as_ref().map_or(0, Vec::len);
+        let mut selected: Option<(usize, f32)> = None;
+        let start: usize = same.partition_point(|other| *other <= index);
+
+        for (slot, candidate) in same.iter().enumerate().skip(start) {
+          let other_faces: usize = splits[*candidate].as_ref().map_or(0, Vec::len);
+          let Some(other) = Self::get_mergeable_box(other_faces, &boxes[*candidate]) else {
+            continue;
+          };
+          let Some(volume) = Self::get_merged_volume(faces, &grown, &original, other_faces, &other) else {
+            continue;
+          };
+
+          if selected.is_none_or(|(_, best)| volume < best) {
+            selected = Some((slot, volume));
+          }
+        }
+
+        let Some((slot, _)) = selected else {
+          break;
+        };
+        let candidate: usize = same.remove(slot);
+        let taken: Vec<u32> = splits[candidate].take().unwrap_or_default();
+        let taken_box: GeometrySplitBox = boxes[candidate];
+
+        if let Some(split) = splits[index].as_mut() {
+          split.splice(0..0, taken);
+        }
+
+        boxes[index] = boxes[index].merge(&taken_box);
+      }
+    }
+
+    self.splits = splits.into_iter().flatten().collect();
   }
 
   /// `xrPhase_ResolveMaterials`: a split a material, in the order faces first name it.
@@ -75,12 +234,18 @@ impl GeometrySplits {
     splits
   }
 
-  /// `xrPhase_Subdivide`.
-  fn subdivide(mesh: &GeometryMesh, splits: &mut Vec<Vec<u32>>) {
+  /// `xrPhase_Subdivide`: each split cut while it is too wide or holds too many faces, a chart's split giving each half
+  /// a chart of its own.
+  fn subdivide(
+    mesh: &GeometryMesh,
+    splits: &mut Vec<(Vec<u32>, Option<usize>)>,
+    charts: &mut Vec<Option<LightChart>>,
+    scene: Option<&LightChartScene<'_>>,
+  ) {
     let mut index: usize = 0;
 
     while index < splits.len() {
-      let split: &[u32] = &splits[index];
+      let split: &[u32] = &splits[index].0;
 
       if split.len() < Self::LOW_FACES * 2 {
         index += 1;
@@ -95,19 +260,26 @@ impl GeometrySplits {
         continue;
       }
 
-      match Self::cut(mesh, split, &bounds, size) {
-        Some([lower, upper]) => {
-          splits.remove(index);
-          splits.push(lower);
-          splits.push(upper);
-        }
-        None => index += 1,
+      let Some(halves) = Self::halve(mesh, split, &bounds, size) else {
+        index += 1;
+        continue;
+      };
+      let (_, chart) = splits.remove(index);
+
+      for half in halves {
+        let charted: Option<usize> = chart.zip(scene).map(|(chart, scene)| {
+          charts[chart] = None;
+          charts.push(Some(LightChart::of(half.clone(), scene)));
+          charts.len() - 1
+        });
+
+        splits.push((half, charted));
       }
     }
   }
 
   /// One split's cut into two halves of at least [`Self::LOW_FACES`] each, or none found.
-  fn cut(mesh: &GeometryMesh, split: &[u32], bounds: &GeometrySplitBox, size: [f32; 3]) -> Option<[Vec<u32>; 2]> {
+  fn halve(mesh: &GeometryMesh, split: &[u32], bounds: &GeometrySplitBox, size: [f32; 3]) -> Option<[Vec<u32>; 2]> {
     let mut axis: usize = if size[0] >= size[1] && size[0] >= size[2] {
       0
     } else if size[1] >= size[0] && size[1] >= size[2] {
@@ -157,52 +329,6 @@ impl GeometrySplits {
         axis = (axis + 1) % 3;
         [lower_box, upper_box] = bounds.halve(axis);
       }
-    }
-  }
-
-  /// `xrPhase_MergeGeometry`.
-  fn merge(mesh: &GeometryMesh, splits: &mut Vec<Vec<u32>>) {
-    let mut boxes: Vec<GeometrySplitBox> = splits.iter().map(|split| GeometrySplitBox::of(mesh, split)).collect();
-    let material = |split: &[u32]| mesh.faces[split[0] as usize].material;
-    let mut index: usize = 0;
-
-    while index < splits.len() {
-      let mut original: Option<GeometrySplitBox> = None;
-
-      while let Some(grown) = Self::get_mergeable_box(splits[index].len(), &boxes[index]) {
-        let original: GeometrySplitBox = *original.get_or_insert(grown);
-        let mut selected: Option<(usize, f32)> = None;
-
-        for candidate in index + 1..splits.len() {
-          if material(&splits[candidate]) != material(&splits[index]) {
-            continue;
-          }
-
-          let Some(other) = Self::get_mergeable_box(splits[candidate].len(), &boxes[candidate]) else {
-            continue;
-          };
-          let Some(volume) =
-            Self::get_merged_volume(splits[index].len(), &grown, &original, splits[candidate].len(), &other)
-          else {
-            continue;
-          };
-
-          if selected.is_none_or(|(_, best)| volume < best) {
-            selected = Some((candidate, volume));
-          }
-        }
-
-        let Some((candidate, _)) = selected else {
-          break;
-        };
-        let taken: Vec<u32> = splits.remove(candidate);
-        let taken_box: GeometrySplitBox = boxes.remove(candidate);
-
-        splits[index].splice(0..0, taken);
-        boxes[index] = boxes[index].merge(&taken_box);
-      }
-
-      index += 1;
     }
   }
 

@@ -8,8 +8,8 @@ pub enum LightQuality {
   /// `build.prj`'s own: its sky and sun lights as the editor generated them, its sample counts.
   #[default]
   Scene,
-  /// The cheap estimate: the sky and the sun regenerated at quality 1 (26 and 9 lights), each multi-use model lit from
-  /// one sample.
+  /// The cheap estimate: the sky and the sun regenerated at quality 1 (26 and 9 lights), the lightmaps 3 texels a metre
+  /// of one sample each, each multi-use model lit from one sample.
   Draft,
 }
 
@@ -35,6 +35,22 @@ impl LightQuality {
     match self {
       Self::Scene => None,
       Self::Draft => Some(1),
+    }
+  }
+
+  /// The lightmaps' texels a metre: 3 at [`Self::Draft`], else `build.prj`'s `project_density`.
+  pub fn get_pixels_per_meter(self, project_density: f32) -> f32 {
+    match self {
+      Self::Scene => project_density,
+      Self::Draft => 3.0,
+    }
+  }
+
+  /// The samples a lightmap texel takes: 1 at [`Self::Draft`], else `build.prj`'s `project_samples`.
+  pub fn get_jitter_samples(self, project_samples: u32) -> u32 {
+    match self {
+      Self::Scene => project_samples,
+      Self::Draft => 1,
     }
   }
 

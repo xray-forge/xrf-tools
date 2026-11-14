@@ -59,7 +59,10 @@ fn lit(sky: u8) -> XrfResult<BuildPrjFile> {
 
 /// The directions of a role's lights.
 fn directions(lights: &LevelLightsFile, role: LevelLightRole) -> Vec<Vector3d> {
-  lights.get_role_lights(role).map(|light: &LevelLight| light.direction).collect()
+  lights
+    .get_role_lights(role)
+    .map(|light: &LevelLight| light.direction)
+    .collect()
 }
 
 #[test]

@@ -53,6 +53,10 @@ export type GeometryLevelCensus = {
   /** Multi-use placements. */
   trees: number;
   sectors: number;
+  /** Lightmap charts. */
+  charts: number;
+  /** Lightmap pages, each written as `lmap#N_1` and `_2`. */
+  lightmaps: number;
 };
 
 /** What a level's compile ran ([`crate::LevelCompiler::compile`]), as the front-ends report it. */
@@ -178,8 +182,8 @@ export enum ELightQuality {
   /** `build.prj`'s own: its sky and sun lights as the editor generated them, its sample counts. */
   SCENE = "scene",
   /**
-   * The cheap estimate: the sky and the sun regenerated at quality 1 (26 and 9 lights), each multi-use model lit from
-   * one sample.
+   * The cheap estimate: the sky and the sun regenerated at quality 1 (26 and 9 lights), the lightmaps 3 texels a metre
+   * of one sample each, each multi-use model lit from one sample.
    */
   DRAFT = "draft",
 }

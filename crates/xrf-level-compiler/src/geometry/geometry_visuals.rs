@@ -6,6 +6,8 @@ use xrf_level::{
 };
 use xrf_math::{Vector2d, Vector3d};
 
+use crate::chart::light_chart::LightChart;
+use crate::chart::lightmap_faces::LightmapFaces;
 use crate::compiler_texture::CompilerTexture;
 use crate::geometry::geometry_draft_light::GeometryDraftLight;
 use crate::geometry::geometry_packed_visual::GeometryPackedVisual;
@@ -16,10 +18,11 @@ use crate::light::light_color::LightColor;
 
 /// A level's static visuals, a visual a split, as xrLC converts them (`Flex2OGF`, `xrLC/xrFlex2OGF.cpp:64`).
 ///
-/// A visual takes its first face's material: its sector, its base texture, and its lightmaps, `lmap#N_1` and `_2`, or
-/// for a texture lit implicitly the base's `_lm`; a vertex-lit visual has none. Each face's corners carry the split
-/// vertex's place and normal, the corner's basis and base coordinate, and a lightmap coordinate: the base coordinate
-/// for an implicitly lit texture, the draft lightmap's for the rest ([`GeometryDraftLight`]). The faces are welded in
+/// A visual takes its first face's material: its sector, its base texture, and its lightmaps, its first face's page's
+/// `lmap#N_1` and `_2`, or for a texture lit implicitly the base's `_lm`; a vertex-lit visual has none. Each face's
+/// corners carry the split vertex's place and normal, the corner's basis and base coordinate, and a lightmap
+/// coordinate: the base coordinate for an implicitly lit texture, its chart's on its page for the rest, or where no
+/// lightmaps are given the draft lightmap's ([`GeometryDraftLight`]). The faces are welded in
 /// order ([`GeometryVisual::add_face`]), the fast path taking an opaque texture's, and a visual whose compiler shader
 /// optimizes coordinates has them shifted ([`GeometryVisual::shift_texture_coordinates`]). Above draft quality each is
 /// then made progressive where it gains enough ([`GeometryVisual::make_progressive`]). Other faces keep the order they
@@ -47,6 +50,7 @@ impl GeometryVisuals {
       shaders,
       textures,
       lights,
+      lightmaps,
     } = *request;
     let mut visuals: Vec<GeometryVisual> = Vec::with_capacity(splits.splits.len());
 
@@ -79,16 +83,25 @@ impl GeometryVisuals {
       let is_vertex_lit: bool = shader.is_vertex_lit();
       let mut names: Vec<String> = vec![texture.name.clone()];
       let mut texel: Vec<Vector2d> = vec![Self::get_texel(texture.width, texture.height)];
+      let page: Option<u32> = lightmaps.and_then(|lightmaps| lightmaps.pages[*first as usize]);
 
       if texture.is_implicitly_lit {
         names.push(format!("{}_lm.dds", texture.name));
         texel.push(texel[0]);
       } else if !is_vertex_lit {
-        names.extend(GeometryDraftLight::LIGHTMAP_TEXTURES.map(String::from));
-        texel.push(Self::get_texel(
-          GeometryDraftLight::LIGHTMAP_SIDE,
-          GeometryDraftLight::LIGHTMAP_SIDE,
-        ));
+        match page {
+          Some(page) => {
+            names.extend(LightmapFaces::get_textures(page));
+            texel.push(Self::get_texel(LightChart::PAGE_SIDE, LightChart::PAGE_SIDE));
+          }
+          None => {
+            names.extend(GeometryDraftLight::LIGHTMAP_TEXTURES.map(String::from));
+            texel.push(Self::get_texel(
+              GeometryDraftLight::LIGHTMAP_SIDE,
+              GeometryDraftLight::LIGHTMAP_SIDE,
+            ));
+          }
+        }
       }
 
       let dress: String = names
@@ -119,6 +132,8 @@ impl GeometryVisuals {
               Some(texture_coordinate)
             } else if is_vertex_lit {
               None
+            } else if let (Some(lightmaps), Some(_)) = (lightmaps, page) {
+              Some(lightmaps.coordinates[face][corner])
             } else {
               Some(GeometryDraftLight::LIGHTMAP_COORDINATE)
             },

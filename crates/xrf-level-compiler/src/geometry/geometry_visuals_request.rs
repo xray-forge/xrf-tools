@@ -1,5 +1,6 @@
 use xrf_level::BuildPrjFile;
 
+use crate::chart::lightmap_faces::LightmapFaces;
 use crate::compiler_shaders::CompilerShaders;
 use crate::compiler_texture::CompilerTexture;
 use crate::geometry::geometry_base_coordinates::GeometryBaseCoordinates;
@@ -24,4 +25,6 @@ pub struct GeometryVisualsRequest<'a> {
   pub textures: &'a [CompilerTexture],
   /// Each split vertex's light ([`crate::LightVertices`]), by index; none for the draft light.
   pub lights: Option<&'a [LightColor]>,
+  /// Each face's lightmap page and coordinates ([`crate::LightmapAtlas`]); none for the draft lightmap.
+  pub lightmaps: Option<&'a LightmapFaces>,
 }

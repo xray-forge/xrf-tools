@@ -118,8 +118,9 @@ impl GenericCommand for CompileCommand {
       .arg(
         Arg::new("quality")
           .help(
-            "How finely our geometry step lights the level: scene, by build.prj's own sky and sun; draft, the sky and \
-             sun regenerated at quality 1 and each tree lit from one sample, the cheap estimate",
+            "How finely our geometry step lights the level: scene, by build.prj's own sky, sun and lightmap density; \
+             draft, the sky and sun regenerated at quality 1, lightmaps of 3 texels a metre and one sample each, and \
+             each tree lit from one sample, the cheap estimate",
           )
           .long("quality")
           .default_value(LightQuality::default().get_name())
@@ -207,8 +208,15 @@ impl CompileCommand {
           log.as_ref().map(|log| format!(", log {log}")).unwrap_or_default()
         ),
         LevelCompileStepRun::GeometryCompiler { census } => format!(
-          "{} static visuals of {} triangles, {} trees, {} visuals progressive, {} sectors, vertices lit, lightmaps a draft",
-          census.visuals, census.triangles, census.trees, census.progressive, census.sectors
+          "{} static visuals of {} triangles, {} trees, {} visuals progressive, {} sectors, vertices lit, {} lightmap \
+           charts on {} pages of draft light",
+          census.visuals,
+          census.triangles,
+          census.trees,
+          census.progressive,
+          census.sectors,
+          census.charts,
+          census.lightmaps
         ),
         LevelCompileStepRun::DetailLighter { slots, gpu } => format!(
           "{} slots lit, {} touching no face, {} emptied, {} unplanted, traced on {}",

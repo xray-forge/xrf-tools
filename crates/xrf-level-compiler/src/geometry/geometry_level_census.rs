@@ -14,4 +14,8 @@ pub struct GeometryLevelCensus {
   /// Multi-use placements.
   pub trees: usize,
   pub sectors: usize,
+  /// Lightmap charts.
+  pub charts: usize,
+  /// Lightmap pages, each written as `lmap#N_1` and `_2`.
+  pub lightmaps: u32,
 }

@@ -1,6 +1,7 @@
 #![doc = include_str!("../README.md")]
 
 mod ai;
+mod chart;
 mod compiler_shaders;
 mod compiler_texture;
 mod compiler_textures;
@@ -27,6 +28,13 @@ pub use crate::ai::ai_map_covers::AiMapCovers;
 pub use crate::ai::ai_map_guid::AiMapGuid;
 pub use crate::ai::ai_map_request::AiMapRequest;
 pub use crate::ai::cover::ai_ray_model::AiRayModel;
+pub use crate::chart::light_chart::LightChart;
+pub use crate::chart::light_chart_mask::LightChartMask;
+pub use crate::chart::light_chart_scene::LightChartScene;
+pub use crate::chart::lightmap_atlas::LightmapAtlas;
+pub use crate::chart::lightmap_faces::LightmapFaces;
+pub use crate::chart::lightmap_page::LightmapPage;
+pub use crate::chart::lightmap_placement::LightmapPlacement;
 pub use crate::compiler_shaders::CompilerShaders;
 pub use crate::compiler_texture::CompilerTexture;
 pub use crate::detail::detail_light_request::DetailLightRequest;

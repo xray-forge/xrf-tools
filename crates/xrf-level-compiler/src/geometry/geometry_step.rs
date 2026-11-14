@@ -8,6 +8,7 @@ use xrf_level::{BuildCformFile, BuildPrjFile, LevelFile, LevelGeomFile, LevelLig
 use xrf_shaders::ShaderCompilerFile;
 use xrf_utils::{StagedFile, format_path};
 
+use crate::chart::lightmap_faces::LightmapFaces;
 use crate::compiler_texture::CompilerTexture;
 use crate::geometry::geometry_draft_light::GeometryDraftLight;
 use crate::geometry::geometry_level::GeometryLevel;
@@ -15,8 +16,9 @@ use crate::level_compile_request::LevelCompileRequest;
 use crate::level_compile_step_run::LevelCompileStepRun;
 
 /// A compile's geometry step by our compiler, xrLC's part with draft lightmaps ([`GeometryLevel`]): the level's `level`,
-/// `level.geom`, `level.geomx`, `level.cform`, `build.cform`, `build.lights` and the draft lightmap pair, from its
-/// `build.prj`, the game data's `shaders_xrlc.xr` and the textures under the request's roots.
+/// `level.geom`, `level.geomx`, `level.cform`, `build.cform`, `build.lights` and each lightmap page's pair, charted
+/// and packed but of the draft light, from its `build.prj`, the game data's `shaders_xrlc.xr` and the textures under
+/// the request's roots.
 pub(crate) struct GeometryStep;
 
 impl GeometryStep {
@@ -38,7 +40,8 @@ impl GeometryStep {
 
     job.check_cancelled()?;
 
-    let compiled: GeometryLevel = GeometryLevel::compile(&project, &library, &textures, &request.textures, request.light_quality)?;
+    let compiled: GeometryLevel =
+      GeometryLevel::compile(&project, &library, &textures, &request.textures, request.light_quality)?;
 
     job.check_cancelled()?;
 
@@ -63,8 +66,8 @@ impl GeometryStep {
       compiled.lights.write::<XRayByteOrder>(writer)
     })?;
 
-    if compiled.has_lightmaps {
-      for (name, texel) in GeometryDraftLight::LIGHTMAP_TEXTURES
+    for page in 0..compiled.census.lightmaps {
+      for (name, texel) in LightmapFaces::get_textures(page)
         .iter()
         .zip(GeometryLevel::get_lightmap_texels())
       {

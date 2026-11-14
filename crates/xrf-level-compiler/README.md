@@ -10,8 +10,24 @@ game loads: the geometry with its lightmaps and collision, the details' light an
 | `ai`       | `build.aimap`; with full covers also `build.prj` and `build.cform` | this crate's compiler (`AiMapCompiler`) |
 
 The geometry step is this crate's own (`GeometryLevel::compile`: xrLC's geometry phases, progressive meshes above
-draft quality, every vertex and tree lit by `LightHemisphere`, `LightVertices` and `LightModels`, the lightmaps a draft)
-unless the request names the SDK, whose xrLC then compiles and lights it.
+draft quality, every vertex and tree lit by `LightHemisphere`, `LightVertices` and `LightModels`, the lightmapped faces
+cut into charts and packed onto pages whose light is a draft) unless the request names the SDK, whose xrLC then
+compiles and lights it.
+
+## Lightmap charts
+
+`chart/` cuts and sizes charts as xrLC does and packs them its own way. `LightChart::cut` is `xrPhase_UVmap`: per
+material split, the largest face not yet charted starts a chart, which takes, depth first through the faces sharing a
+split vertex, every face within the smoothing angle and a degree of its normal; `LightChart::of` is `OA_Export`, the
+projection along the faces' area-weighted normal and the size in texels from the density, between 1 and 510 a side.
+`GeometrySplits::cut` detaches each chart into a split, and a split the subdivision cuts is charted again a half at a
+time; `GeometrySplits::merge` then joins only splits on one page. `LightChartMask` is the texels a chart takes on a
+page, lit as `L_Direct` marks them (jitter samples inside a face, eighth-texel walks along its edges) with two border
+rings, kept as each row's span. `LightmapAtlas::pack` takes the charts in `xrPhase_MergeLM`'s order and selection and
+places each on a 1024-texel page at the first place by row it fits, upright before crosswise, over a bit a texel; a
+mask of the same spans starts from where the last one fitted. On the SDK's draft runs the charts hold the same triangles
+as xrLC's for 99.56 to 100% of them, and every size xrLC wrote is one its RMS compression reaches from ours; pages
+match once compression, which needs the light, sizes them.
 
 `LevelCompiler::compile` takes a `LevelCompileRequest`: the level's directory, the steps (every one when none), the
 SDK's `editors` directory, which runs the geometry by xrLC (`LevelCompileStep::is_sdk`), the game data whose

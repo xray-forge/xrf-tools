@@ -1,6 +1,7 @@
 mod ai;
 mod ai_covers;
 mod ai_step;
+mod charts;
 mod compile;
 mod detail;
 mod detail_step;
