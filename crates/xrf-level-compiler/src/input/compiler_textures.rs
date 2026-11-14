@@ -1,15 +1,15 @@
 use std::path::{Path, PathBuf};
 
-/// How the SDK's compilers name and find the textures `build.prj` names, under `$game_textures$`.
+/// How the SDK's compilers name and find the textures `build.prj` names under the textures roots (`$game_textures$`).
 pub(crate) struct CompilerTextures;
 
 impl CompilerTextures {
   /// The texture the compilers take without loading its `.thm` or image, the merged impostors' atlas
-  /// (`xrLC/Build_Load.cpp:304`, `xrLC_Light/global_calculation_data.cpp:140`).
+  /// (`xrLC/Build_Load.cpp`, `xrLC_Light/global_calculation_data.cpp`).
   pub(crate) const UNLOADED: &'static str = "level_lods";
 
   /// A texture's name as the compilers look it up: `build.prj`'s, cut at its first dot and lowered
-  /// (`xrLC_Light/global_calculation_data.cpp:137`).
+  /// (`xrLC_Light/global_calculation_data.cpp`).
   pub(crate) fn get_name(name: &str) -> String {
     name.split('.').next().unwrap_or_default().to_ascii_lowercase()
   }

@@ -3,7 +3,7 @@ use xrf_level::{BuildPrjFace, BuildPrjFile, BuildPrjMuModel};
 use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 
 /// Each `build.prj` material's compiler shader, as the SDK's compilers resolve it (`post_process_materials`,
-/// `utils/Shader_xrLC.h:130`): the project's compiler shader the material names, found by name in the library, `None`
+/// `utils/Shader_xrLC.h`): the project's compiler shader the material names, found by name in the library, `None`
 /// for a material with none.
 #[derive(Clone, Debug)]
 pub struct CompilerShaders {
