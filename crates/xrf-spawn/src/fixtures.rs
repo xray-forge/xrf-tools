@@ -280,4 +280,64 @@ impl ClearSkyStates {
     "0000000a0000001600746573745f73686f6f74696e6700434d4753686f6f74696e670076616c6961626c650000006e696c006e696c",
     "006e696c006e696c006e696c000100000000000000000000006e696c0026008c00a900",
   );
+
+  /// `escape`'s `esc_driver`, a named stalker section, spawn version 123: 295 bytes, the stalker's engine fields with
+  /// its logic in custom data, then `se_stalker`'s job kind for `nil`, its loot flag, squad and forced online flag.
+  pub(crate) const NAMED_STALKER: &'static str = concat!(
+    "27018813000000010000006573635f64726976657200ffffffff010000800100008000ffff0000000001000000ffffffffbfffffff",
+    "5b646f6e745f737061776e5f6368617261637465725f737570706c6965735d0d0a5b737061776e65725d0d0a636f6e64203d207b2b",
+    "6d61725f73746f72795f676f5f746f5f6573636170655f646f6e657d0d0a0d0a5b6c6f6769635d0d0a636667203d2073637269707473",
+    "5c6573636170655c6573635f766f646974656c2e6c74780d0a00b3010000ffffffff6163746f72735c7374616c6b65725f6865726f5c",
+    "7374616c6b65725f6865726f5f3100000000000000803f0000000000000000ffff00000000000000000000ffff0005000000000102010104",
+    "0000000200010224656469746f720000ffff02006e696c0000",
+  );
+
+  /// `marsh`'s `mar_boar_weak_0000`, spawn version 123: 162 bytes, the monster's engine fields with its logic in custom
+  /// data, then `se_monster`'s job kind for `nil`, its squad as `nil` and its forced online flag.
+  pub(crate) const BOAR: &'static str = concat!(
+    "a200ffff0000000001000000ffffffffbfffffff5b6c6f6769635d0d0a636667203d20736372697074735c6d617273685c6d61725f7475746f",
+    "7269616c5f626f61722e6c747800ffffffffffffffff6d6f6e73746572735c6d7574616e745f626f61725c6d7574616e745f626f6172",
+    "0000000000000000000000000000000000ffff00000000000000000000ffff0024656469746f720000ffffffff026e696c0000",
+  );
+
+  /// `hospital`'s `katacomb_zone_mine_field_strong_0000`, a `Z_MBALD` zone, spawn version 123: 78 bytes, the abstract
+  /// object, one sphere and its restrictor type, the custom zone's fields and the anomalous zone's, with no script tail.
+  pub(crate) const MINE_FIELD: &'static str = concat!(
+    "4e00ffff0000000001000000ffffffff3effffff00ffffffffffffffff",
+    "01000000000000000000000000000000803f00",
+    "00000000ffffffff000000000000000000000000",
+    "0000f04120000e000000",
+  );
+
+  /// `agroprom_underground`'s `agru_zone_mine_thermal_firetube_0001`, a `ZS_MBALD` zone, spawn version 123: 111 bytes,
+  /// the anomalous zone over one box, then `se_zone_anom`'s flag for no last spawn time.
+  pub(crate) const FIRE_TUBE: &'static str = concat!(
+    "6f00ffff0000000001000000ffffffff3effffff0048050000ffffffff",
+    "0101f3e8284000000000000000000000000018ec30400000000000000000000000007a1f5041",
+    "0000000000000000000000000300000000ffffffff0000000000000000000000000000f04120001f00000000",
+  );
+
+  /// `agroprom_underground`'s `agru_ammo_12x76_dart_0000`, an `AMMO` item, spawn version 123: 78 bytes, the abstract
+  /// object, its visual and condition with no upgrades, then the rounds left.
+  pub(crate) const AMMO: &'static str = concat!(
+    "4e00ffff0000000001000000ffffffff3fffffff00ffffffffffffffff",
+    "64796e616d6963735c776561706f6e735c77706e5f616d6d6f5c616d6d6f5f31327837365f646172740000",
+    "0000803f0a00",
+  );
+
+  /// `agroprom_underground`'s `agru_door`, an `O_PHYS_S` object, spawn version 123: 121 bytes, the abstract object
+  /// with its custom data and its visual, then the skeleton named `move_up`, the physics type, mass and fixed bones.
+  pub(crate) const DOOR: &'static str = concat!(
+    "7900ffff0000000001000000ffffffff3affffff5b636f6c6c6964655d0d0a69676e6f72655f7374617469630d0a5b616e696d617465645f",
+    "6f626a6563745d00ffffffffffffffff64796e616d6963735c646f6f725c616772755f646f6f720000",
+    "6d6f76655f75700000ffff03000000000020416c696e6b00",
+  );
+
+  /// `garbage`'s `gar_device_pda_fang`, a `D_PDA` item, spawn version 123: 71 bytes, the abstract object, its visual
+  /// and condition with no upgrades, then the owner and two empty strings.
+  pub(crate) const PDA: &'static str = concat!(
+    "4700ffff0000000001000000ffffffff3fffffff00bf020000ffffffff",
+    "64796e616d6963735c646576696365735c6465765f7064615c6465765f7064610000",
+    "0000803fffff0000",
+  );
 }

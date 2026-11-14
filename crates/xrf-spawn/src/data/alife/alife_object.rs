@@ -305,6 +305,7 @@ mod tests {
   use crate::data::alife::inherited::alife_stalker::AlifeStalker;
   use crate::data::alife::spawn_layout::SpawnLayout;
   use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
+  use crate::data::generic::last_spawn_time::LastSpawnTime;
   use crate::data::meta::alife_class::AlifeClass;
   use crate::data::meta::cls_id::ClsId;
   use crate::data::physics::physics_net_state::PhysicsNetState;
@@ -1242,6 +1243,109 @@ mod tests {
       let object: AlifeObject = read_clear_sky_packet(&packet, &[])?;
 
       assert_eq!(object.inherited.get_class(), class, "{name}");
+    }
+
+    Ok(())
+  }
+
+  /// A section only Clear Sky's configs declare, or besides them only a mod of Call of Pripyat's, reads by the class
+  /// Clear Sky gives it: a named stalker, a boar, both kinds of anomalous zone, ammo, a door and a quest pda.
+  #[test]
+  fn reads_and_writes_clear_sky_sections_by_their_class() -> XrfResult {
+    for (section, name, state, size, clsid, class) in [
+      (
+        "esc_driver",
+        "esc_driver",
+        ClearSkyStates::NAMED_STALKER,
+        295,
+        ClsId::AiStlS,
+        AlifeClass::ClearSkySeStalker,
+      ),
+      (
+        "boar_weak",
+        "mar_boar_weak_0000",
+        ClearSkyStates::BOAR,
+        162,
+        ClsId::SmBoarW,
+        AlifeClass::ClearSkySeMonster,
+      ),
+      (
+        "zone_mine_field_strong",
+        "katacomb_zone_mine_field_strong_0000",
+        ClearSkyStates::MINE_FIELD,
+        78,
+        ClsId::ZMbald,
+        AlifeClass::CseAlifeAnomalousZone,
+      ),
+      (
+        "zone_mine_thermal_firetube",
+        "agru_zone_mine_thermal_firetube_0001",
+        ClearSkyStates::FIRE_TUBE,
+        111,
+        ClsId::ZsMBald,
+        AlifeClass::CseAlifeAnomalousZone,
+      ),
+      (
+        "ammo_12x76_dart",
+        "agru_ammo_12x76_dart_0000",
+        ClearSkyStates::AMMO,
+        78,
+        ClsId::AmmoS,
+        AlifeClass::CseAlifeItemAmmo,
+      ),
+      (
+        "agru_door",
+        "agru_door",
+        ClearSkyStates::DOOR,
+        121,
+        ClsId::OPhysS,
+        AlifeClass::CseAlifeObjectPhysic,
+      ),
+      (
+        "device_pda_fang",
+        "gar_device_pda_fang",
+        ClearSkyStates::PDA,
+        71,
+        ClsId::DPda,
+        AlifeClass::CseAlifeItemPda,
+      ),
+    ] {
+      assert_eq!(GameWrittenPackets::bytes(state).len(), size, "{name}");
+
+      let packet: Vec<u8> = new_clear_sky_packet(section, name, 123, state)?;
+      let object: AlifeObject = read_clear_sky_packet(&packet, &[])?;
+
+      assert_eq!((&object.clsid, object.inherited.get_class()), (&clsid, class), "{name}");
+    }
+
+    Ok(())
+  }
+
+  /// `Z_MBALD` is an engine class with no script, so its zone stores nothing past the anomalous zone's fields, where
+  /// `ZS_MBALD`'s `se_zone_anom` appends its last spawn time's flag.
+  #[test]
+  fn reads_a_clear_sky_zone_tail_by_its_class() -> XrfResult {
+    for (section, name, state, last_spawn_time) in [
+      (
+        "zone_mine_field_strong",
+        "katacomb_zone_mine_field_strong_0000",
+        ClearSkyStates::MINE_FIELD,
+        LastSpawnTime::Absent,
+      ),
+      (
+        "zone_mine_thermal_firetube",
+        "agru_zone_mine_thermal_firetube_0001",
+        ClearSkyStates::FIRE_TUBE,
+        LastSpawnTime::Unset,
+      ),
+    ] {
+      let packet: Vec<u8> = new_clear_sky_packet(section, name, 123, state)?;
+      let object: AlifeObject = read_clear_sky_packet(&packet, &[])?;
+      let AlifeObjectInherited::CseAlifeAnomalousZone(zone) = &object.inherited else {
+        panic!("Expected an anomalous zone payload, read {:?}", object.inherited);
+      };
+
+      assert_eq!(zone.last_spawn_time, last_spawn_time, "{name}");
     }
 
     Ok(())

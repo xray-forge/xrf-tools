@@ -138,7 +138,7 @@ impl ClsId {
   }
 
   /// The class a section declares in the game whose scripts the object follows: Clear Sky's configs declare a few
-  /// otherwise (`CLEAR_SKY_SECTION_TO_CLS_ID`).
+  /// otherwise, and some only there (`CLEAR_SKY_SECTION_TO_CLS_ID`).
   pub fn from_dialect_section(section_name: &str, dialect: ScriptDialect) -> XrfResult<Self> {
     match dialect {
       ScriptDialect::ClearSky => match CLEAR_SKY_SECTION_TO_CLS_ID.get(section_name) {

@@ -169,6 +169,10 @@ lazy_static! {
     "script_zone" => ClsId::ScriptZn,
     "search_light" => ClsId::OSearch,
     "shooting_target_1" => ClsId::ODstrS,
+    "sim_default_duty_2" => ClsId::AiStlS,
+    "sim_default_military_2" => ClsId::AiStlS,
+    "sim_default_military_3" => ClsId::AiStlS,
+    "sim_default_stalker_3" => ClsId::AiStlS,
     "sim_faction" => ClsId::ScriptZn, // S_FACTION in Clear Sky
     "smart_cover" => ClsId::SmrtCS,
     "smart_terrain" => ClsId::SmrtTrrn,
@@ -181,7 +185,11 @@ lazy_static! {
     "space_restrictor" => ClsId::SpcRsS,
     "specops_outfit" => ClsId::EStlk,
     "stalker" => ClsId::AiStlS,
+    "stalker_die_hard" => ClsId::AiStlS,
     "stalker_outfit" => ClsId::EStlk,
+    "stalker_sakharov" => ClsId::AiStlS,
+    "stalker_strelok" => ClsId::AiStlS,
+    "stalker_zombied" => ClsId::AiStlS,
     "stationary_mgun" => ClsId::WSTMGun,
     "svoboda_heavy_outfit" => ClsId::EStlk,
     "svoboda_light_outfit" => ClsId::EStlk,
@@ -590,7 +598,12 @@ lazy_static! {
     "zone_mine_steam_strong" => ClsId::ZsMBald,
     "zone_mine_steam_weak" => ClsId::ZsMBald,
     // CoC and Anomaly:
+    "agru_door" => ClsId::OPhysS, // O_PHYSIC in CoC
+    "ammo_12x76_dart" => ClsId::AmmoS, // AMMO
+    "ammo_7.62x54_7h14" => ClsId::AmmoS, // AMMO
+    "ammo_7.62x54_ap" => ClsId::AmmoS, // AMMO
     "decoder" => ClsId::IIAttch,
+    "flesh_weak" => ClsId::SmFlesh,
     "generator_dust_static" => ClsId::ZMbald,
     "generator_electra" => ClsId::ZMbald,
     "generator_torrid" => ClsId::ZTorrid,
@@ -713,9 +726,46 @@ lazy_static! {
   };
 
   /// The sections whose `class` Clear Sky's configs declare otherwise than Call of Pripyat's, which
-  /// `SECTION_TO_CLS_ID` follows.
+  /// `SECTION_TO_CLS_ID` follows, and those only Clear Sky declares, each by the `class` it inherits.
   pub static ref CLEAR_SKY_SECTION_TO_CLS_ID: phf::Map<&'static str, ClsId> = phf_map! {
+    "agr_barman" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_agroprom.ltx
+    "agr_duty_base_trader" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_agroprom.ltx
+    "agr_secret_trader" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_agroprom.ltx
+    "agr_stalker_base_leader" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_agroprom.ltx
+    "agr_stalker_base_trader" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_agroprom.ltx
+    "boar_weak" => ClsId::SmBoarW, // gamedata-cs/configs/creatures/m_boar.ltx
+    "device_pda_fang" => ClsId::DPda, // gamedata-cs/configs/misc/quest_items.ltx
+    "esc_driver" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_escape.ltx
+    "esc_tech_stalkerbase" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_escape.ltx
+    "esc_trader_stalkerbase" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_escape.ltx
+    "flesh_up_aceg_scientific_outfit" => ClsId::DPda, // gamedata-cs/configs/misc/upgrade_items.ltx
+    "gar_bandit_barman" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+    "gar_bandit_fixer" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+    "gar_bandit_leader" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+    "gar_bandit_minigame" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+    "gar_bandit_senya" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+    "gar_bandit_trader" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+    "gar_digger_conc_camp_prisoner_1" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+    "gar_digger_conc_camp_prisoner_2" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+    "gar_digger_conc_camp_searcher_1" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+    "gar_digger_conc_camp_searcher_2" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+    "gar_digger_conc_camp_searcher_3" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+    "mar_csky_barman" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_marsh.ltx
+    "mar_csky_commander" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_marsh.ltx
+    "mar_csky_scientist" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_marsh.ltx
+    "mar_csky_tactic" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_marsh.ltx
+    "mar_csky_tech" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_marsh.ltx
+    "mar_csky_trader" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_marsh.ltx
+    "mar_csky_tutorial_man" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_marsh.ltx
+    "sim_default_digger_0" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_general.ltx
+    "sim_default_digger_1" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_general.ltx
+    "sim_default_digger_2" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_general.ltx
     "sim_faction" => ClsId::SFaction, // gamedata-cs/configs/misc/simulation.ltx
+    "val_freedom_trader" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_darkvalley.ltx
+    // `Z_MBALD` registers no script class, so its zone stores no `se_zone_anom` tail.
+    "zone_mine_field_no_damage" => ClsId::ZMbald, // gamedata-cs/configs/zones/zone_minefield.ltx
+    "zone_mine_field_strong" => ClsId::ZMbald, // gamedata-cs/configs/zones/zone_minefield.ltx
+    "zone_mine_thermal_firetube" => ClsId::ZsMBald, // gamedata-cs/configs/zones/zone_mine_thermal.ltx
   };
 
   pub static ref CLS_ID_TO_CLASS: EnumMap<ClsId, AlifeClass> = enum_map! {
@@ -830,8 +880,10 @@ lazy_static! {
 
 #[cfg(test)]
 mod tests {
+  use crate::data::alife::script_dialect::ScriptDialect;
   use crate::data::meta::alife_class::AlifeClass;
   use crate::data::meta::cls_id::ClsId;
+  use crate::data::meta::map::CLEAR_SKY_SECTION_TO_CLS_ID;
 
   /// Groups, Shadow of Chernobyl sections and the spectator have no class to read, and a rocket's `CSE_Temporary` is no
   /// alife object the simulation can hold.
@@ -866,6 +918,56 @@ mod tests {
     assert_eq!(class("mp_wpn_vintorez"), AlifeClass::CseAlifeItemWeaponMagazined);
     assert_eq!(class("mp_medkit"), AlifeClass::CseAlifeItem);
     assert_eq!(class("mp_exo_outfit"), AlifeClass::CseAlifeItemCustomOutfit);
+  }
+
+  /// Every section of Clear Sky's own map reads as a class under Clear Sky's scripts, and none of them leaks into Call of
+  /// Pripyat's, where only `sim_faction` names a section at all, as a space restrictor.
+  #[test]
+  fn resolves_every_clear_sky_section_under_its_own_dialect_alone() {
+    for (section, clsid) in CLEAR_SKY_SECTION_TO_CLS_ID.entries() {
+      let clear_sky: ClsId =
+        ClsId::from_dialect_section(section, ScriptDialect::ClearSky).expect("a Clear Sky section");
+
+      assert_eq!(&clear_sky, clsid, "{section}");
+      assert_ne!(
+        AlifeClass::from_dialect_cls_id(&clear_sky, ScriptDialect::ClearSky),
+        AlifeClass::Unknown,
+        "{section}"
+      );
+
+      match *section {
+        "sim_faction" => assert_eq!(
+          ClsId::from_dialect_section(section, ScriptDialect::CallOfPripyat).ok(),
+          Some(ClsId::ScriptZn)
+        ),
+        _ => assert!(
+          ClsId::from_dialect_section(section, ScriptDialect::CallOfPripyat).is_err(),
+          "{section}"
+        ),
+      }
+    }
+  }
+
+  /// Sections Clear Sky's levels place that Call of Pripyat or a mod of it declares with the same class read by that
+  /// class under either game's scripts.
+  #[test]
+  fn reads_a_section_both_games_declare_alike_under_either_dialect() {
+    for (section, clsid) in [
+      ("stalker_zombied", ClsId::AiStlS),
+      ("sim_default_stalker_3", ClsId::AiStlS),
+      ("stalker_sakharov", ClsId::AiStlS),
+      ("flesh_weak", ClsId::SmFlesh),
+      ("agru_door", ClsId::OPhysS),
+      ("ammo_7.62x54_7h14", ClsId::AmmoS),
+    ] {
+      for dialect in [ScriptDialect::ClearSky, ScriptDialect::CallOfPripyat] {
+        assert_eq!(
+          ClsId::from_dialect_section(section, dialect).ok(),
+          Some(clsid.clone()),
+          "{section} {dialect:?}"
+        );
+      }
+    }
   }
 
   /// Every zone CLSID `xray-16/src/xrServerEntities/object_factory_register.cpp` registers, paired with the server
