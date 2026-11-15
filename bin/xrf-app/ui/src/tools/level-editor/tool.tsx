@@ -1,5 +1,6 @@
 import { EditLocationAltIcon } from "@xrf/ui/icons/edit-location-alt";
 
+import { FRAME_LEVEL_SELECTION_KEYBIND_COMMAND } from "@/core/level/commands";
 import { EToolGroupId, EToolId, EToolStatus, IToolDescriptor } from "@/core/routing/tool";
 import { createToolDescriptor } from "@/core/routing/tool-descriptor";
 
@@ -12,6 +13,7 @@ export const LEVEL_EDITOR_TOOL: IToolDescriptor = createToolDescriptor(
     help: LEVEL_EDITOR_HELP,
     icon: <EditLocationAltIcon />,
     id: EToolId.LEVEL_EDITOR,
+    keybindCommands: [FRAME_LEVEL_SELECTION_KEYBIND_COMMAND],
     label: "Level editor",
     path: "/level-editor",
     status: EToolStatus.READY,

@@ -1,6 +1,6 @@
 //! A Level Editor scene as the native renderer draws it: each scene object placing a library object found in the
-//! objects roots stood as a model compiled once from its `.object`, what is not drawn reported by scene object, and the
-//! game data its textures are read from.
+//! objects roots stood as a model compiled once from its `.object`, what is not drawn reported by scene object, where
+//! each drawn one stands for a camera to frame it, and the game data its textures are read from.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -27,8 +27,8 @@ use xrf_world::WorldLevelSource;
 use crate::commands::scene::show_scene::levels_show_scene;
 use crate::plugin::LevelsPlugin;
 use crate::scene::{
-  SceneDrawDescription, SceneDrawPart, SceneDrawProblemKind, SceneObjectId, SceneRenderSource, SceneSource,
-  SceneToolKind, SelectedScene, SelectedScenes, ShownScenes,
+  SceneDrawDescription, SceneDrawPart, SceneDrawProblemKind, SceneObjectId, SceneObjectSphere, SceneRenderSource,
+  SceneSource, SceneToolKind, SelectedScene, SelectedScenes, ShownScenes,
 };
 use crate::tests::fixtures::{
   new_scenes, open_scene, scene_custom_object, scene_library_object, scene_part, write_scene,
@@ -186,7 +186,7 @@ fn reports_by_scene_object_what_is_missing_or_unreadable_and_leaves_out_by_refer
   let spawn: RenderLevelSpawn = drawn.read_spawn().expect("the spawn reads");
   let models: RenderSpawnModels = drawn.read_spawn_models(&spawn.visuals).expect("the models read");
   let described: Arc<SceneDrawDescription> =
-    SceneDrawPart::get(&opened, &assets.search(&opened.objects_roots).unwrap());
+    Arc::clone(&SceneDrawPart::get(&opened, &assets.search(&opened.objects_roots).unwrap()).description);
 
   assert_eq!(
     spawn.objects.iter().map(|object| object.index).collect::<Vec<_>>(),
@@ -243,7 +243,7 @@ fn bounds_the_objects_drawn_by_their_placed_boxes_in_renderer_space() {
   let source: SceneSource = write_tables("scene_render/bounds", Vec::new());
   let (assets, opened, _) = show(&source);
   let described: Arc<SceneDrawDescription> =
-    SceneDrawPart::get(&opened, &assets.search(&opened.objects_roots).unwrap());
+    Arc::clone(&SceneDrawPart::get(&opened, &assets.search(&opened.objects_roots).unwrap()).description);
   let bounds: &VisualBounds = described.bounds.as_ref().expect("the tables are drawn");
 
   // The unit square at `0, 2, 3` and `10, 2, 3`, `z` mirrored.
@@ -257,13 +257,40 @@ fn bounds_the_objects_drawn_by_their_placed_boxes_in_renderer_space() {
 }
 
 #[test]
+fn locates_a_drawn_object_by_its_placed_box_in_renderer_space_and_nothing_for_one_not_drawn() {
+  let source: SceneSource = write_tables("scene_render/locate", Vec::new());
+  let (assets, opened, _) = show(&source);
+  let locate = |index: u32| SceneObjectSphere::locate(&opened, &assets, &scene_object(index)).expect("it searches");
+
+  // The unit square at `10, 2, 3`, `z` mirrored.
+  assert_eq!(
+    locate(2),
+    Some(
+      Aabb {
+        min: Vector3d::new(10.0, 2.0, -4.0),
+        max: Vector3d::new(11.0, 2.0, -3.0),
+      }
+      .get_bounding_sphere()
+    )
+  );
+  assert_eq!(locate(1), None, "its library object is not found");
+  assert_eq!(locate(3), None, "no such scene object");
+  assert!(
+    SceneDrawPart::get(&opened, &assets.search(&opened.objects_roots).unwrap())
+      .find_sphere(0)
+      .is_some(),
+    "kept with the drawing, read once"
+  );
+}
+
+#[test]
 fn a_library_object_come_into_the_objects_roots_is_read_again_and_bounded() {
   let source: SceneSource = write_tables("scene_render/follow", Vec::new());
   let assets: AssetMountState = AssetMountState::new();
   let scenes: SelectedScenes = new_scenes(&assets);
   let opened: Arc<SessionSnapshot<SelectedScene>> = open_scene(&scenes, &assets, &source);
   let objects: XraySearch = assets.search(&opened.objects_roots).unwrap();
-  let before: Arc<SceneDrawDescription> = SceneDrawPart::get(&opened, &objects);
+  let before: Arc<SceneDrawDescription> = Arc::clone(&SceneDrawPart::get(&opened, &objects).description);
 
   assets
     .commit(
@@ -279,7 +306,8 @@ fn a_library_object_come_into_the_objects_roots_is_read_again_and_bounded() {
     .unwrap();
 
   let next: Arc<SessionSnapshot<SelectedScene>> = scenes.require(opened.session_id).unwrap();
-  let after: Arc<SceneDrawDescription> = SceneDrawPart::get(&next, &assets.search(&next.objects_roots).unwrap());
+  let after: Arc<SceneDrawDescription> =
+    Arc::clone(&SceneDrawPart::get(&next, &assets.search(&next.objects_roots).unwrap()).description);
 
   assert_eq!(before.problems.len(), 1);
   assert!(Arc::ptr_eq(&next.value, &opened.value), "the scene itself was kept");
@@ -298,7 +326,7 @@ fn a_library_object_come_into_the_objects_roots_is_read_again_and_bounded() {
 fn a_scene_draws_nothing_where_its_scene_object_tool_holds_no_object() {
   let (assets, opened, drawn) = show(&write_scene("scene_render/empty"));
   let described: Arc<SceneDrawDescription> =
-    SceneDrawPart::get(&opened, &assets.search(&opened.objects_roots).unwrap());
+    Arc::clone(&SceneDrawPart::get(&opened, &assets.search(&opened.objects_roots).unwrap()).description);
 
   assert!(drawn.read_spawn().expect("the spawn reads").objects.is_empty());
   assert!(described.bounds.is_none());

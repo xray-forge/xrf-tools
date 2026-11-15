@@ -6,7 +6,7 @@ use xrf_editable_level::{
   EditableShapeObject, EditableSoundEnvironmentObject, EditableSoundSourceObject, EditableSpawnPointObject,
   EditableWayObject,
 };
-use xrf_math::{Aabb, Vector3d};
+use xrf_math::{Aabb, Sphere, Vector3d};
 use xrf_rawdata::LevelSceneToolObjects;
 use xrf_renderer::{RenderHelperObject, RenderHelperShape, RenderLevelHelpers};
 use xrf_visual::VisualBounds;
@@ -74,6 +74,20 @@ impl SceneHelpers {
       }),
       helpers: RenderLevelHelpers { objects },
     }
+  }
+
+  /// The sphere about the extent of `object`'s helper, in renderer space, as the scene's extent is bounded; none for an
+  /// object that draws no helper.
+  pub(crate) fn find_sphere(&self, object: &SceneObjectId) -> Option<Sphere> {
+    let id: SceneHelperId = SceneHelperId::of(object)?;
+    // Ids sort by tool, then by index, and the helpers are read in that order.
+    let found: usize = self
+      .helpers
+      .objects
+      .binary_search_by_key(&id.0, |helper| helper.id)
+      .ok()?;
+
+    Self::bound(&self.helpers.objects[found..=found]).map(|bounds| bounds.bounding_sphere)
   }
 
   /// The helpers of the tool `entry` heads, an object of type `O`, added to `objects`.

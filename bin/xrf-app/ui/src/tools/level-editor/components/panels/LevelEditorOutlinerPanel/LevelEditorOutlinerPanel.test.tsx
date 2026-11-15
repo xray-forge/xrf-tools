@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
-import { RenderResult, waitFor, within } from "@testing-library/react";
+import { act, RenderResult, waitFor, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-import { Container } from "@wirestate/core";
+import { Binding, Container } from "@wirestate/core";
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
-import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
+import { listMockInvokeCalls, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import {
   ESceneProblemKind,
   ESceneToolKind,
@@ -12,6 +12,8 @@ import {
 } from "@xrf/ipc/types/xrf-app-levels";
 import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
 
+import { LevelViewService } from "@/core/level/services/level-view";
+import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { flush } from "@/fixtures/utils/promise";
@@ -25,10 +27,24 @@ import {
   mockSceneSpawn,
   mockSelectedSceneDescription,
 } from "@/tools/level-editor/fixtures/scene.mocks";
+import { LevelEditorHelpersService } from "@/tools/level-editor/services/level-editor-helpers";
+import { LevelEditorObjectsService } from "@/tools/level-editor/services/level-editor-objects";
+import { LevelEditorRenderService } from "@/tools/level-editor/services/level-editor-render";
 import { LevelEditorSceneService } from "@/tools/level-editor/services/level-editor-scene";
 import { LevelEditorSelectionService } from "@/tools/level-editor/services/level-editor-selection";
 
 import { LevelEditorOutlinerPanel } from "./LevelEditorOutlinerPanel";
+
+/** The services the Outliner and the Inspector reach, framing an object's included. */
+const OUTLINER_BINDINGS: Array<Binding> = [
+  LevelEditorSceneService,
+  LevelEditorSelectionService,
+  LevelEditorHelpersService,
+  LevelViewService,
+  LevelViewportService,
+  LevelEditorRenderService,
+  LevelEditorObjectsService,
+];
 
 /** The fixture's objects, one library object a member of a group. */
 function mockGroupedObjects(): SceneObjectsDescription {
@@ -46,7 +62,10 @@ function mockGroupedObjects(): SceneObjectsDescription {
   };
 }
 
-async function renderPanels(objects: SceneObjectsDescription = mockGroupedObjects()): Promise<RenderResult> {
+async function renderPanels(
+  objects: SceneObjectsDescription = mockGroupedObjects(),
+  container: Container = mockContainer(OUTLINER_BINDINGS)
+): Promise<RenderResult> {
   mockIpcCommands({
     [ELevelsCommand.OPEN_SCENE]: () =>
       mockSessionSnapshot(
@@ -64,8 +83,6 @@ async function renderPanels(objects: SceneObjectsDescription = mockGroupedObject
       ),
     ...mockScenePartResponses({ objects }),
   });
-
-  const container: Container = mockContainer([LevelEditorSceneService, LevelEditorSelectionService]);
 
   await container.get(LevelEditorSceneService).open({
     engine: EXrayEngineChoice.AUTO,
@@ -110,7 +127,7 @@ describe("LevelEditorOutlinerPanel", () => {
   });
 
   it("says why the objects could not be read, and lists nothing", async () => {
-    const container: Container = mockContainer([LevelEditorSceneService, LevelEditorSelectionService]);
+    const container: Container = mockContainer(OUTLINER_BINDINGS);
 
     mockIpcCommands({
       [ELevelsCommand.OPEN_SCENE]: () => mockSessionSnapshot(mockSelectedSceneDescription(), "scene-session"),
@@ -161,6 +178,75 @@ describe("LevelEditorOutlinerPanel", () => {
     expect(within(inspector).getByText("props\\crate")).toBeInTheDocument();
     expect(within(inspector).getByText("Not found in the objects roots")).toBeInTheDocument();
     expect(view.getByRole("treeitem", { name: /box_2/ })).toHaveAttribute("aria-current", "true");
+  });
+
+  // A pick in the viewport is answered where the Outliner lists it, whatever the filter hid.
+  it("opens the tool of an object selected elsewhere and chooses its row, clearing the filter", async () => {
+    const container: Container = mockContainer(OUTLINER_BINDINGS);
+    const view: RenderResult = await renderPanels(mockGroupedObjects(), container);
+
+    await userEvent.type(view.getByRole("textbox", { name: "Filter scene objects" }), "chair");
+    await waitFor(() => expect(listRows(view)).toEqual(["Scene objects1", "chairlab_props"]));
+
+    act(() => container.get(LevelEditorSelectionService).select({ index: 2, tool: ESceneToolKind.SPAWN }));
+
+    await waitFor(() =>
+      expect(view.getByRole("treeitem", { name: /stalker_2/ })).toHaveAttribute("aria-selected", "true")
+    );
+    expect(view.getByRole("textbox", { name: "Filter scene objects" })).toHaveValue("");
+    expect(view.getByRole("treeitem", { name: /stalker_2/ })).toHaveAttribute("aria-current", "true");
+    expect(view.getByRole("treeitem", { name: /Spawn points/ })).toHaveAttribute("aria-expanded", "true");
+
+    act(() => container.get(LevelEditorSelectionService).select(null));
+
+    await waitFor(() =>
+      expect(view.getByRole("treeitem", { name: /stalker_2/ })).toHaveAttribute("aria-selected", "false")
+    );
+  });
+
+  it("selects and frames an object whose row is activated", async () => {
+    const container: Container = mockContainer(OUTLINER_BINDINGS);
+    const view: RenderResult = await renderPanels(mockGroupedObjects(), container);
+
+    mockIpcCommands({
+      [ELevelsCommand.LOCATE_SCENE_OBJECT]: (args: { sessionId: string }) =>
+        mockSessionSnapshot({ center: { x: 1, y: 2, z: 3 }, radius: 1 }, args.sessionId),
+    });
+    await userEvent.type(view.getByRole("textbox", { name: "Filter scene objects" }), "box_2");
+    await userEvent.dblClick(await view.findByText("box_2"));
+
+    await waitFor(() =>
+      expect(listMockInvokeCalls(ELevelsCommand.LOCATE_SCENE_OBJECT)).toEqual([
+        { object: { index: 1, tool: ESceneToolKind.SCENE_OBJECT }, sessionId: "scene-session" },
+      ])
+    );
+    expect(container.get(LevelEditorSelectionService).selectedId).toEqual({
+      index: 1,
+      tool: ESceneToolKind.SCENE_OBJECT,
+    });
+  });
+
+  it("hides an object from its row's eye until shown again, and reveals every one hidden", async () => {
+    const container: Container = mockContainer(OUTLINER_BINDINGS);
+    const view: RenderResult = await renderPanels(mockGroupedObjects(), container);
+    const selection: LevelEditorSelectionService = container.get(LevelEditorSelectionService);
+
+    await userEvent.type(view.getByRole("textbox", { name: "Filter scene objects" }), "stalker");
+    await userEvent.click(await view.findByRole("button", { name: "Hide stalker_1" }));
+
+    expect(selection.hidden).toEqual([{ index: 0, tool: ESceneToolKind.SPAWN }]);
+    expect(view.getByRole("button", { name: "Hide stalker_1" })).toHaveAttribute("aria-pressed", "false");
+    expect(view.getByText("1 hidden")).toBeInTheDocument();
+
+    await userEvent.click(view.getByRole("button", { name: "Hide stalker_2" }));
+    await userEvent.click(view.getByRole("button", { name: "Hide stalker_1" }));
+
+    expect(selection.hidden).toEqual([{ index: 2, tool: ESceneToolKind.SPAWN }]);
+
+    await userEvent.click(view.getByRole("button", { name: "Reveal hidden objects" }));
+
+    expect(selection.hidden).toEqual([]);
+    expect(view.queryByText(/hidden$/)).not.toBeInTheDocument();
   });
 
   // A spawn's packet can run to hundreds of fields: the Inspector writes twenty and counts the rest.

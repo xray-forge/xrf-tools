@@ -4,12 +4,16 @@ import { cancelFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
 import { SessionId, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { SceneDrawDescription, SceneHelpersDescription, SelectedSceneDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { Sphere } from "@xrf/ipc/types/xrf-math";
 import { RenderLoadReport, RenderViewOptions, RenderViewportId } from "@xrf/ipc/types/xrf-renderer";
 import { VisualBounds } from "@xrf/ipc/types/xrf-visual";
+import { WorldCameraPose, WorldToggles } from "@xrf/ipc/types/xrf-world";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
+import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { toLevelFramedGoTo } from "@/core/level/lib/camera/level-camera-frame";
+import { toLevelCameraReading } from "@/core/level/lib/camera/level-camera-reading";
 import { toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import { ILevelScene } from "@/core/level/lib/load/level-scene";
 import { DEFAULT_LEVEL_RENDER_CONFIG } from "@/core/level/lib/render/level-render-config";
@@ -19,20 +23,24 @@ import { LevelRenderCamera } from "@/core/level/services/level-render/level-rend
 import { LevelViewService } from "@/core/level/services/level-view";
 import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { CommandOperation } from "@/core/operations/lib/command-operation";
+import { IRenderViewPoint } from "@/core/render/lib/frame/render-view-point";
 import { NativeRenderSurfaceService } from "@/core/render/lib/native/viewport/native-render-surface-service";
 import { NativeViewport } from "@/core/render/lib/native/viewport/native-viewport";
+import { INativeViewportClick } from "@/core/render/lib/native/viewport/native-viewport-target";
 import { toRenderOutput } from "@/core/render/lib/settings/device/render-resolution";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { toLevelEditorHelperRenderOptions } from "@/tools/level-editor/lib/helpers/level-editor-helper-options";
 import {
   DEFAULT_LEVEL_EDITOR_LIGHTING,
-  LEVEL_EDITOR_WORLD_TOGGLES,
   toLevelEditorSceneBounds,
   toLevelEditorSceneSphere,
   toLevelEditorViewOptions,
+  toLevelEditorWorldToggles,
 } from "@/tools/level-editor/lib/render/level-editor-render";
 import { LevelEditorHelpersService } from "@/tools/level-editor/services/level-editor-helpers";
+import { LevelEditorRenderPicks } from "@/tools/level-editor/services/level-editor-render/level-editor-render.service.picks";
 import { LevelEditorSceneService } from "@/tools/level-editor/services/level-editor-scene";
+import { LevelEditorSelectionService } from "@/tools/level-editor/services/level-editor-selection";
 
 /** What the open scene's camera is framed by: its picture's part and its helpers' part, each as last read. */
 interface ILevelEditorSceneExtent {
@@ -43,8 +51,9 @@ interface ILevelEditorSceneExtent {
 /**
  * Owns the native viewport the open scene is drawn in: the scene shown, concealed until it is resident whole, what it
  * is asked of the scene once resident, the editor's light in place of a weather, the helpers switched in the Show
- * action, and the fly camera, framed on the scene's drawn objects, or its helpers where it draws none, as each scene
- * opens.
+ * action, the objects hidden one by one, what a click selects and the pointer hovers (`picks`), and the fly camera,
+ * framed on the scene's drawn objects, or its helpers where it draws none, as each scene opens, and on one object as
+ * asked.
  */
 @Injectable()
 export class LevelEditorRenderService extends NativeRenderSurfaceService {
@@ -60,6 +69,9 @@ export class LevelEditorRenderService extends NativeRenderSurfaceService {
   /** Where the camera stands, framed on the scene and flown on from with the toolbar's speeds and lens. */
   public readonly camera: LevelRenderCamera;
 
+  /** What of the scene is drawn where the viewport is clicked or hovered, and what that selects and lifts. */
+  public readonly picks: LevelEditorRenderPicks;
+
   /** Which scene shows the open scene's snapshot, and whether it is revealed. */
   private readonly shown: LevelSceneShow = new LevelSceneShow({
     onLeft: () => this.leaveScene(),
@@ -70,10 +82,13 @@ export class LevelEditorRenderService extends NativeRenderSurfaceService {
   private sessionId: Nullable<SessionId> = null;
   /** The scene session the camera was framed on, so a scene is framed once however often its picture is read. */
   private framed: Nullable<SessionId> = null;
+  /** Where the camera stands and faces as the viewport last said, which framing keeps the heading of. */
+  private pose: Nullable<ILevelCamera> = null;
 
   public constructor(
     private readonly sceneService: LevelEditorSceneService = inject(LevelEditorSceneService),
     private readonly helpersService: LevelEditorHelpersService = inject(LevelEditorHelpersService),
+    private readonly selectionService: LevelEditorSelectionService = inject(LevelEditorSelectionService),
     private readonly viewService: LevelViewService = inject(LevelViewService),
     private readonly viewportService: LevelViewportService = inject(LevelViewportService),
     renderSettingsService: RenderSettingsService = inject(RenderSettingsService)
@@ -89,6 +104,10 @@ export class LevelEditorRenderService extends NativeRenderSurfaceService {
         viewService,
       }
     );
+    this.picks = new LevelEditorRenderPicks(
+      { getSessionId: () => this.sessionId, getViewport: () => this.viewport },
+      { helpersService, sceneService, selectionService }
+    );
   }
 
   /** Whether the viewport shows the open scene: not until every object it draws is resident, textures included. */
@@ -97,27 +116,45 @@ export class LevelEditorRenderService extends NativeRenderSurfaceService {
     return this.shown.isRevealed;
   }
 
-  /** What the scene is asked to be drawn with: the settings' features under the editor's light, helpers as switched. */
+  /**
+   * What the scene is asked to be drawn with: the settings' features under the editor's light, helpers as switched, the
+   * selected, hovered and hidden objects' singled out.
+   */
   @Computed()
   public get options(): RenderViewOptions {
-    const { renderSettingsService, viewService, helpersService } = this;
+    const { renderSettingsService, viewService, helpersService, selectionService } = this;
+    const { hidden, hovered, selectedId } = selectionService;
 
     return toLevelEditorViewOptions({
       features: renderSettingsService.rendererFeatures,
-      helpers: toLevelEditorHelperRenderOptions(helpersService.helpers),
+      helpers: toLevelEditorHelperRenderOptions(helpersService.helpers, { hidden, hovered, selected: selectedId }),
       lighting: DEFAULT_LEVEL_EDITOR_LIGHTING,
       output: toRenderOutput(renderSettingsService.renderResolution, renderSettingsService.renderOutputScale),
       surfaces: viewService.options,
     });
   }
 
-  protected start(viewport: NativeViewport): Array<() => void> {
-    viewport.setWorldToggles(LEVEL_EDITOR_WORLD_TOGGLES);
+  /**
+   * Stands the camera framing a sphere, keeping the heading it faces now, as `F` frames the selection.
+   *
+   * @param sphere - What to frame, in renderer space.
+   */
+  public frameSphere(sphere: Sphere): void {
+    this.camera.goTo(
+      toLevelFramedGoTo(this.pose, toLevelEditorSceneSphere(sphere), this.viewService.cameraOptions.fieldOfView)
+    );
+  }
 
+  protected start(viewport: NativeViewport): Array<() => void> {
     return [
       reaction(
         () => this.options,
         (options: RenderViewOptions) => viewport.setViewOptions(options),
+        { equals: comparer.structural, fireImmediately: true }
+      ),
+      reaction(
+        () => toLevelEditorWorldToggles(this.selectionService.hidden),
+        (toggles: WorldToggles) => viewport.setWorldToggles(toggles),
         { equals: comparer.structural, fireImmediately: true }
       ),
       reaction(
@@ -138,12 +175,25 @@ export class LevelEditorRenderService extends NativeRenderSurfaceService {
         { equals: comparer.shallow, fireImmediately: true }
       ),
       ...this.camera.start(),
+      ...this.picks.start(viewport),
     ];
+  }
+
+  protected onCamera(pose: WorldCameraPose): void {
+    this.pose = toLevelCameraReading(pose);
   }
 
   protected onLoad(report: RenderLoadReport): void {
     this.viewportService.noteLoad(report);
     this.shown.noteLoad(report);
+  }
+
+  protected onClick(click: INativeViewportClick): void {
+    this.picks.click(click);
+  }
+
+  protected onHover(point: Nullable<IRenderViewPoint>): void {
+    this.picks.rest(point);
   }
 
   protected onFlySpeed(steps: number): void {
@@ -154,6 +204,7 @@ export class LevelEditorRenderService extends NativeRenderSurfaceService {
   protected release(): void {
     this.sessionId = null;
     this.framed = null;
+    this.pose = null;
     this.camera.release();
     this.shown.release();
   }
@@ -206,7 +257,11 @@ export class LevelEditorRenderService extends NativeRenderSurfaceService {
 
     this.framed = sessionId;
     this.camera.goTo(
-      toLevelFramedGoTo(null, toLevelEditorSceneSphere(bounds), this.viewService.cameraOptions.fieldOfView)
+      toLevelFramedGoTo(
+        null,
+        toLevelEditorSceneSphere(bounds.boundingSphere),
+        this.viewService.cameraOptions.fieldOfView
+      )
     );
   }
 
@@ -232,10 +287,14 @@ export class LevelEditorRenderService extends NativeRenderSurfaceService {
     });
   }
 
-  /** Lets go of what was asked of the scene shown, which names it alone. */
+  /**
+   * Lets go of what was asked of the scene shown: what it described and what a click picked or the pointer hovered in
+   * it name it alone.
+   */
   @BoundAction()
   private leaveScene(): void {
     cancelFlow(this, "resident");
+    this.picks.leave();
     this.resident.reset();
   }
 }

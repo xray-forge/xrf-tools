@@ -10,7 +10,7 @@ interface ILevelOutlinerObjectActionsProps extends BaseComponentProps {
   onToggle: () => void;
 }
 
-/** The eye on one object's row, which hides it until revealed, as `H` hides the selection. */
+/** The eye on one object's Outliner row, which hides it until revealed. */
 export function LevelOutlinerObjectActions({
   "data-testid": dataTestId = "level-outliner-object-actions",
   id,

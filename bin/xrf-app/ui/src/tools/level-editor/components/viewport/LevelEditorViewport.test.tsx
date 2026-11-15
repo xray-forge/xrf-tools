@@ -25,6 +25,7 @@ import {
 import { LevelEditorHelpersService } from "@/tools/level-editor/services/level-editor-helpers";
 import { LevelEditorRenderService } from "@/tools/level-editor/services/level-editor-render";
 import { LevelEditorSceneService } from "@/tools/level-editor/services/level-editor-scene";
+import { LevelEditorSelectionService } from "@/tools/level-editor/services/level-editor-selection";
 
 import { LevelEditorViewport } from "./LevelEditorViewport";
 
@@ -42,6 +43,7 @@ async function renderViewport(parts: IMockSceneParts = {}): Promise<RenderResult
 
   const container: Container = mockContainer([
     LevelEditorSceneService,
+    LevelEditorSelectionService,
     LevelEditorHelpersService,
     LevelViewService,
     LevelViewportService,

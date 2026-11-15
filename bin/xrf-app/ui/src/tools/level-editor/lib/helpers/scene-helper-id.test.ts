@@ -7,7 +7,11 @@ import {
   SceneObjectId,
 } from "@xrf/ipc/types/xrf-app-levels";
 
-import { toSceneHelperId, toSceneHelperObject } from "@/tools/level-editor/lib/helpers/scene-helper-id";
+import {
+  toSceneHelperId,
+  toSceneHelperIds,
+  toSceneHelperObject,
+} from "@/tools/level-editor/lib/helpers/scene-helper-id";
 
 /** The highest index an id holds. */
 const MAX_INDEX: number = 2 ** SCENE_HELPER_INDEX_BITS - 1;
@@ -44,5 +48,16 @@ describe("scene helper ids", () => {
 
     expect(SCENE_HELPER_TOOLS.some((entry: SceneHelperToolEntry) => entry.kind === sceneObject)).toBe(false);
     expect(toSceneHelperObject(sceneObject * 2 ** SCENE_HELPER_INDEX_BITS)).toBeNull();
+  });
+
+  it("lists the helpers of helped objects ascending, leaving out what draws none", () => {
+    const light: SceneObjectId = { index: 0, tool: ESceneToolKind.LIGHT };
+    const stalker: SceneObjectId = { index: 2, tool: ESceneToolKind.SPAWN };
+
+    // A light's tool stands before a spawn point's.
+    expect(toSceneHelperIds([stalker, { index: 1, tool: ESceneToolKind.SCENE_OBJECT }, light])).toEqual([
+      toSceneHelperId(light),
+      toSceneHelperId(stalker),
+    ]);
   });
 });

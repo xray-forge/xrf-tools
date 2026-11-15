@@ -1,4 +1,10 @@
-import { SceneDrawDescription, SceneHelpersDescription } from "@xrf/ipc/types/xrf-app-levels";
+import {
+  ESceneToolKind,
+  SceneDrawDescription,
+  SceneHelpersDescription,
+  SceneObjectId,
+} from "@xrf/ipc/types/xrf-app-levels";
+import { Sphere } from "@xrf/ipc/types/xrf-math";
 import { RenderHelperOptions, RenderViewOptions } from "@xrf/ipc/types/xrf-renderer";
 import { VisualBounds } from "@xrf/ipc/types/xrf-visual";
 import { WorldToggles } from "@xrf/ipc/types/xrf-world";
@@ -28,25 +34,32 @@ export const DEFAULT_LEVEL_EDITOR_LIGHTING: IRenderLighting = {
 };
 
 /**
- * What of a scene's world plays: its objects, every one of which stands in the props group, and nothing else, since a
- * scene plays no weather, burns no campfire and has no sound.
+ * @param hidden - The scene objects hidden one by one, of any tool.
+ * @returns What of a scene's world plays: its objects, every one of which stands in the props group, less the scene
+ *   objects among those hidden, named by their index as the scene's source names their models, ascending; and nothing
+ *   else, since a scene plays no weather, burns no campfire and has no sound.
  */
-export const LEVEL_EDITOR_WORLD_TOGGLES: WorldToggles = toNativeWorldToggles(
-  {
-    isAmbientEffectPlayed: false,
-    isCampfireLit: false,
-    isRainy: false,
-    isSpawnedItems: false,
-    isSpawnedLamps: false,
-    isSpawnedProps: true,
-    isSpawnedReleased: false,
-    isSpawnedWeapons: false,
-    isThundering: false,
-    isWindy: false,
-  },
-  [],
-  { isAmbience: false, isHeard: false, isMusic: false, isWorld: false }
-);
+export function toLevelEditorWorldToggles(hidden: ReadonlyArray<SceneObjectId>): WorldToggles {
+  return toNativeWorldToggles(
+    {
+      isAmbientEffectPlayed: false,
+      isCampfireLit: false,
+      isRainy: false,
+      isSpawnedItems: false,
+      isSpawnedLamps: false,
+      isSpawnedProps: true,
+      isSpawnedReleased: false,
+      isSpawnedWeapons: false,
+      isThundering: false,
+      isWindy: false,
+    },
+    hidden
+      .filter((id: SceneObjectId) => id.tool === ESceneToolKind.SCENE_OBJECT)
+      .map((id: SceneObjectId) => id.index)
+      .sort((first: number, second: number) => first - second),
+    { isAmbience: false, isHeard: false, isMusic: false, isWorld: false }
+  );
+}
 
 /** What a scene's view options are made of. */
 export interface ILevelEditorViewOptionsInputs {
@@ -96,9 +109,9 @@ export function toLevelEditorSceneBounds(
 }
 
 /**
- * @param bounds - The extent of a scene's drawn objects, in renderer space, the sphere about their box stated.
- * @returns The sphere a camera frames them by; one stating no radius frames its centre alone.
+ * @param sphere - What a camera frames, in renderer space: a scene's extent's sphere, or one object's.
+ * @returns The sphere as a camera frames it; one stating no radius frames its centre alone.
  */
-export function toLevelEditorSceneSphere(bounds: VisualBounds): { center: IPoint3; radius: number } {
-  return { center: toPoint3(bounds.boundingSphere.center), radius: bounds.boundingSphere.radius ?? 0 };
+export function toLevelEditorSceneSphere(sphere: Sphere): { center: IPoint3; radius: number } {
+  return { center: toPoint3(sphere.center), radius: sphere.radius ?? 0 };
 }

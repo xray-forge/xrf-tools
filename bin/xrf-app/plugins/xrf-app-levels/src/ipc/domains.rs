@@ -34,6 +34,7 @@ macro_rules! for_each_levels_domain {
         find_screenshot_path => crate::viewer::commands::screenshot::find_screenshot_path::levels_find_screenshot_path,
         get_view_folder => crate::viewer::commands::view::get_view_folder::levels_get_view_folder,
         list_levels => crate::commands::list_levels::levels_list_levels,
+        locate_scene_object => crate::commands::scene::locate_scene_object::levels_locate_scene_object,
         open_level => crate::commands::open_level::levels_open_level,
         open_scene => crate::commands::scene::open_scene::levels_open_scene,
         read_level_cycle => crate::commands::read_level_cycle::levels_read_level_cycle,

@@ -4,9 +4,22 @@ import { ERenderSelectionTarget } from "@xrf/ipc/types/xrf-renderer";
 
 import { mockLevelObject, mockLevelVolumeObject } from "@/core/level/fixtures/level.mocks";
 import { ELevelPick } from "@/core/level/lib/pick/level-pick";
-import { toLevelPickSelection } from "@/core/level/lib/pick/level-pick-selection";
+import { toLevelPickSelection, toLevelSpawnSelection } from "@/core/level/lib/pick/level-pick-selection";
 
 const POINT = { x: 0, y: 0, z: 0 };
+
+describe("toLevelSpawnSelection", () => {
+  it("outlines a model by its index in the colour a level's picks are outlined in", () => {
+    const picked = toLevelPickSelection({
+      kind: ELevelPick.OBJECT,
+      object: mockLevelObject({ id: { index: 7, source: ELevelObjectId.SPAWN } }),
+      point: POINT,
+      visual: "crate",
+    });
+
+    expect(toLevelSpawnSelection(7)).toEqual(picked);
+  });
+});
 
 describe("toLevelPickSelection", () => {
   it("selects a picked spawned model, a picked surface, and nothing for none", () => {

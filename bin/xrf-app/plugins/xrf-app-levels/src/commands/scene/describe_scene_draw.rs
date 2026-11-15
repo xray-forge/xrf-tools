@@ -26,7 +26,11 @@ pub(crate) async fn levels_describe_scene_draw(
       &execution,
       session_id,
       "Describing the scene's drawing",
-      move |current| Ok(SceneDrawPart::get(current, &assets.search(&current.objects_roots)?)),
+      move |current| {
+        Ok(Arc::clone(
+          &SceneDrawPart::get(current, &assets.search(&current.objects_roots)?).description,
+        ))
+      },
     )
     .await
 }

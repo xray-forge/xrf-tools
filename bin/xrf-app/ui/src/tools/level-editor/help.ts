@@ -22,6 +22,12 @@ export const LEVEL_EDITOR_HELP: IToolHelp = {
       "and counts each tool's.",
     "The Outliner lists the tools in the SDK's order, each with its objects; filter by an object's name, the library " +
       "object or effect it places, or its entity's section, and pick one to show it in the Inspector.",
+    "Click an object in the viewport to select it, Alt held to pick what stands behind glass: the Outliner opens its " +
+      "tool and shows its row, and the selection is outlined, a helper lifted. The helper under the pointer is lifted " +
+      "while helpers are shown.",
+    "Double-click an Outliner row, or press Enter on it, to select its object and frame the camera on it; F frames " +
+      "the selection. The eye on a row hides its object until shown again or another scene opens; Reveal hidden " +
+      "objects shows them all.",
     "The Scene panel shows the `.level` itself: its GUID, the roots it reads from, build parameters, camera and every " +
       "tool's part files.",
   ],
@@ -43,8 +49,8 @@ export const LEVEL_EDITOR_HELP: IToolHelp = {
   ],
   limitations: [
     "Nothing is edited or written: the scene, its objects and its parts stay as they are on disk.",
-    "Sectors, groups, the AI map, detail objects and wall marks are not drawn, nor a spawn point's visual, and " +
-      "objects are chosen from the Outliner rather than the viewport.",
+    "Sectors, groups, the AI map, detail objects and wall marks are not drawn, nor a spawn point's visual, so they " +
+      "are neither picked in the viewport nor framed. One object is selected at a time.",
   ],
   relatedTools: [EToolId.LEVEL_DECOMPILER, EToolId.LEVEL_COMPILER],
 };

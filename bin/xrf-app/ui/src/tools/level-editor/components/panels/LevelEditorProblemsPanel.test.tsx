@@ -19,6 +19,7 @@ import { mockScenePartResponses, mockSelectedSceneDescription } from "@/tools/le
 import { LevelEditorHelpersService } from "@/tools/level-editor/services/level-editor-helpers";
 import { LevelEditorRenderService } from "@/tools/level-editor/services/level-editor-render";
 import { LevelEditorSceneService } from "@/tools/level-editor/services/level-editor-scene";
+import { LevelEditorSelectionService } from "@/tools/level-editor/services/level-editor-selection";
 
 import { LevelEditorProblemsPanel } from "./LevelEditorProblemsPanel";
 
@@ -56,6 +57,7 @@ async function renderProblems(resident: AsyncState<ILevelResident>): Promise<Ren
 
   const container: Container = mockContainer([
     LevelEditorSceneService,
+    LevelEditorSelectionService,
     LevelEditorHelpersService,
     LevelViewService,
     LevelViewportService,

@@ -1,41 +1,43 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
-import { Container, EventBus } from "@wirestate/core";
+import { EventBus } from "@wirestate/core";
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { ERenderCommand } from "@xrf/ipc/commands/render";
 import { SESSION_CHANGE_EVENT } from "@xrf/ipc/session";
-import {
-  getMockChannels,
-  IpcCommandMocks,
-  listMockInvokeCalls,
-  MockChannel,
-  mockInvoke,
-  mockIpcCommands,
-  resetMockChannels,
-  resetMockInvoke,
-} from "@xrf/ipc/testing";
+import { listMockInvokeCalls, mockInvoke, mockIpcCommands, resetMockChannels, resetMockInvoke } from "@xrf/ipc/testing";
 import { ESessionRootChange, SessionChange } from "@xrf/ipc/types/xrf-app-core";
 import { ESceneToolKind, SCENE_HELPER_TOOLS, SceneHelperToolEntry } from "@xrf/ipc/types/xrf-app-levels";
 import { ViewportEvent } from "@xrf/ipc/types/xrf-app-render";
+import { Sphere } from "@xrf/ipc/types/xrf-math";
 import { ERenderTextureGroup, ERenderViewportEvent } from "@xrf/ipc/types/xrf-renderer";
 import { VisualBounds } from "@xrf/ipc/types/xrf-visual";
-import { EWorldCamera, EWorldCameraCommand, WorldCamera } from "@xrf/ipc/types/xrf-world";
+import {
+  EWorldCamera,
+  EWorldCameraCommand,
+  EWorldViewportEvent,
+  WorldCamera,
+  WorldCameraPose,
+} from "@xrf/ipc/types/xrf-world";
 import { IPoint3 } from "@xrf/math";
 
 import { toLevelFramedGoTo } from "@/core/level/lib/camera/level-camera-frame";
 import { toLevelGoToViewpoint } from "@/core/level/lib/camera/level-camera-goto";
 import { DEFAULT_LEVEL_CAMERA_OPTIONS } from "@/core/level/lib/camera/level-camera-options";
+import { toLevelCameraReading } from "@/core/level/lib/camera/level-camera-reading";
 import { ILevelResident } from "@/core/level/lib/render/level-resident";
-import { LevelViewService } from "@/core/level/services/level-view";
-import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { mockRenderLoadReport } from "@/core/render/fixtures/render.mocks";
 import { toNativeAssetLighting } from "@/core/render/lib/lighting/render-lighting";
 import { clearLocalStorage } from "@/core/storage";
-import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
-import { mockContainer } from "@/fixtures/utils/container";
+import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { flush } from "@/fixtures/utils/promise";
 import {
-  IMockSceneParts,
+  emitSceneViewportEvent,
+  MOCK_CLEAN_SCENE_RESIDENT,
+  MOCK_SCENE_SESSION,
+  MOCK_SCENE_VIEWPORT,
+  mockAttachedSceneRender,
+} from "@/tools/level-editor/fixtures/scene-render";
+import {
   mockSceneDrawDescription,
   mockSceneHelpersDescription,
   mockScenePartResponses,
@@ -47,27 +49,10 @@ import {
   toLevelEditorSceneSphere,
 } from "@/tools/level-editor/lib/render/level-editor-render";
 import { LevelEditorHelpersService } from "@/tools/level-editor/services/level-editor-helpers";
-import { LevelEditorSceneService } from "@/tools/level-editor/services/level-editor-scene";
 
-import { LevelEditorRenderService } from "./level-editor-render.service";
-
-/** The viewport the mocked renderer attaches. */
-const VIEWPORT: number = 5;
-
-/** The session the fixture scene is restored in. */
-const SESSION: string = "fixture-session";
-
-/** What the renderer answers of a resident scene it drew whole. */
-const CLEAN_RESIDENT_RESPONSES: IpcCommandMocks = {
-  [ERenderCommand.DESCRIBE_PROBLEMS]: { models: [], sectors: [], skipped: [] },
-  [ERenderCommand.DESCRIBE_TEXTURE_LOADS]: [],
-};
-
-interface IAttachedSceneRender {
-  container: Container;
-  sceneService: LevelEditorSceneService;
-  service: LevelEditorRenderService;
-}
+const VIEWPORT: number = MOCK_SCENE_VIEWPORT;
+const SESSION: string = MOCK_SCENE_SESSION;
+const emit: (event: ViewportEvent) => void = emitSceneViewportEvent;
 
 /**
  * @param bounds - What the camera is framed on.
@@ -75,7 +60,7 @@ interface IAttachedSceneRender {
  */
 function toFramedPosition(bounds: VisualBounds): IPoint3 {
   return toLevelGoToViewpoint(
-    toLevelFramedGoTo(null, toLevelEditorSceneSphere(bounds), DEFAULT_LEVEL_CAMERA_OPTIONS.fieldOfView)
+    toLevelFramedGoTo(null, toLevelEditorSceneSphere(bounds.boundingSphere), DEFAULT_LEVEL_CAMERA_OPTIONS.fieldOfView)
   ).position;
 }
 
@@ -85,46 +70,6 @@ function expectCameraAt(expected: IPoint3): void {
   expect(x).toBeCloseTo(expected.x);
   expect(y).toBeCloseTo(expected.y);
   expect(z).toBeCloseTo(expected.z);
-}
-
-/**
- * The fixture scene restored and provisioned as the editor provisions it, its render service attached; each show
- * answers a scene of its own, as the renderer starts one for every show of a viewport it alone draws.
- */
-async function mockAttachedSceneRender(parts: IMockSceneParts = {}): Promise<IAttachedSceneRender> {
-  let scenes: number = 0;
-
-  mockIpcCommands({
-    [ELevelsCommand.RESTORE_SCENE]: mockSessionResponse(mockSelectedSceneDescription()),
-    ...mockScenePartResponses(parts),
-    [ERenderCommand.ATTACH_VIEWPORT]: VIEWPORT,
-    [ELevelsCommand.SHOW_SCENE]: () => (scenes += 1),
-    ...CLEAN_RESIDENT_RESPONSES,
-  });
-
-  const container: Container = mockContainer([
-    LevelEditorSceneService,
-    LevelEditorHelpersService,
-    LevelViewService,
-    LevelViewportService,
-    LevelEditorRenderService,
-  ]);
-  const sceneService: LevelEditorSceneService = container.get(LevelEditorSceneService);
-
-  container.provision();
-  await waitFor(() => expect(sceneService.drawing.value).not.toBeNull());
-  await waitFor(() => expect(sceneService.helpers.value).not.toBeNull());
-
-  const service: LevelEditorRenderService = container.get(LevelEditorRenderService);
-
-  service.attach(document.createElement("div"));
-  await waitFor(() => expect(listMockInvokeCalls(ELevelsCommand.SHOW_SCENE)).toHaveLength(1));
-
-  return { container, sceneService, service };
-}
-
-function emit(event: ViewportEvent): void {
-  (getMockChannels()[0] as MockChannel<ViewportEvent>).onmessage(event);
 }
 
 function countCalls(command: string): number {
@@ -226,7 +171,7 @@ describe("LevelEditorRenderService", () => {
     mockIpcCommands({
       [ELevelsCommand.RESTORE_SCENE]: () => mockSessionSnapshot(mockSelectedSceneDescription(), SESSION, 1),
       ...mockScenePartResponses({}, 1),
-      ...CLEAN_RESIDENT_RESPONSES,
+      ...MOCK_CLEAN_SCENE_RESIDENT,
     });
     container.get(EventBus).emit<SessionChange>(SESSION_CHANGE_EVENT, {
       isViewRenewed: false,
@@ -295,6 +240,26 @@ describe("LevelEditorRenderService", () => {
     await mockAttachedSceneRender({ drawing: { ...mockSceneDrawDescription(), bounds: null } });
 
     expectCameraAt(toFramedPosition(mockSceneHelpersDescription().bounds as VisualBounds));
+  });
+
+  it("frames a sphere asked for keeping the heading the viewport last reported", async () => {
+    const { service } = await mockAttachedSceneRender();
+    const pose: WorldCameraPose = { position: [0, 10, 0], target: [10, 0, 0] };
+    const sphere: Sphere = { center: { x: 3, y: 1, z: -4 }, radius: 2 };
+
+    emit({ kind: EWorldViewportEvent.CAMERA, pose } as ViewportEvent);
+    service.frameSphere(sphere);
+    await flush();
+
+    expectCameraAt(
+      toLevelGoToViewpoint(
+        toLevelFramedGoTo(
+          toLevelCameraReading(pose),
+          toLevelEditorSceneSphere(sphere),
+          DEFAULT_LEVEL_CAMERA_OPTIONS.fieldOfView
+        )
+      ).position
+    );
   });
 
   it("frames the camera on the scene's drawn objects once a scene, and stays as it is revealed", async () => {

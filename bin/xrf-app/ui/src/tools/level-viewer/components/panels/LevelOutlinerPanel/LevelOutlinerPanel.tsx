@@ -24,6 +24,7 @@ import {
 import { ReactElement, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { LevelKindIcon } from "@/core/level/components/objects/LevelKindIcon";
+import { LevelOutlinerObjectActions } from "@/core/level/components/objects/LevelOutlinerObjectActions";
 import { isLevelHelperOn } from "@/core/level/lib/objects/level-helper-options";
 import { toLevelObjectKey } from "@/core/level/lib/objects/level-object-kinds";
 import { ILevelVisibleOptionsChange, TLevelVisibleOption } from "@/core/level/lib/objects/level-object-visibility";
@@ -46,7 +47,6 @@ import { describeLevelSpawnRelease } from "@/tools/level-viewer/lib/spawn/level-
 import { LevelViewerObjectsService } from "@/tools/level-viewer/services/level-viewer-objects";
 
 import { LevelOutlinerKindActions } from "./LevelOutlinerKindActions";
-import { LevelOutlinerObjectActions } from "./LevelOutlinerObjectActions";
 
 /**
  * What the panel says while it lists nothing: why the spawn could not be read, that it is being read, or that it

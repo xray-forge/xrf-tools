@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { SceneDrawDescription, SceneHelpersDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { ESceneToolKind, SceneDrawDescription, SceneHelpersDescription } from "@xrf/ipc/types/xrf-app-levels";
 import {
   ERenderDebugView,
   ERenderSurfaceColor,
@@ -18,10 +18,10 @@ import {
 } from "@/tools/level-editor/fixtures/scene.mocks";
 import {
   DEFAULT_LEVEL_EDITOR_LIGHTING,
-  LEVEL_EDITOR_WORLD_TOGGLES,
   toLevelEditorSceneBounds,
   toLevelEditorSceneSphere,
   toLevelEditorViewOptions,
+  toLevelEditorWorldToggles,
 } from "@/tools/level-editor/lib/render/level-editor-render";
 
 describe("toLevelEditorViewOptions", () => {
@@ -62,10 +62,10 @@ describe("toLevelEditorViewOptions", () => {
   });
 });
 
-describe("LEVEL_EDITOR_WORLD_TOGGLES", () => {
+describe("toLevelEditorWorldToggles", () => {
   // Every scene object stands in the props group, which nothing hides.
   it("plays the scene's objects alone, silent", () => {
-    expect(LEVEL_EDITOR_WORLD_TOGGLES).toMatchObject({
+    expect(toLevelEditorWorldToggles([])).toMatchObject({
       hiddenSpawnObjects: [],
       isRainy: false,
       isSpawnedItems: false,
@@ -73,6 +73,16 @@ describe("LEVEL_EDITOR_WORLD_TOGGLES", () => {
       isSpawnedWeapons: false,
       sound: { isHeard: false },
     });
+  });
+
+  it("hides the scene objects hidden one by one by their index, ascending, every other tool's left to its helper", () => {
+    expect(
+      toLevelEditorWorldToggles([
+        { index: 7, tool: ESceneToolKind.SCENE_OBJECT },
+        { index: 2, tool: ESceneToolKind.SPAWN },
+        { index: 3, tool: ESceneToolKind.SCENE_OBJECT },
+      ]).hiddenSpawnObjects
+    ).toEqual([3, 7]);
   });
 });
 
@@ -98,12 +108,11 @@ describe("toLevelEditorSceneBounds", () => {
 });
 
 describe("toLevelEditorSceneSphere", () => {
-  it("frames by the sphere the bounds state", () => {
-    expect(
-      toLevelEditorSceneSphere({
-        boundingBox: { max: { x: 1, y: 1, z: 1 }, min: { x: -1, y: -1, z: -1 } },
-        boundingSphere: { center: { x: 10, y: 0, z: -20 }, radius: 5 },
-      })
-    ).toEqual({ center: { x: 10, y: 0, z: -20 }, radius: 5 });
+  it("frames by the sphere stated, its centre alone where it states no radius", () => {
+    expect(toLevelEditorSceneSphere({ center: { x: 10, y: 0, z: -20 }, radius: 5 })).toEqual({
+      center: { x: 10, y: 0, z: -20 },
+      radius: 5,
+    });
+    expect(toLevelEditorSceneSphere({ center: { x: 1, y: 2, z: 3 }, radius: null }).radius).toBe(0);
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { ESceneToolKind, SCENE_HELPER_TOOLS, SceneHelperToolEntry } from "@xrf/ipc/types/xrf-app-levels";
+import { ESceneToolKind, SCENE_HELPER_TOOLS, SceneHelperToolEntry, SceneObjectId } from "@xrf/ipc/types/xrf-app-levels";
 import { RenderHelperOptions } from "@xrf/ipc/types/xrf-renderer";
 
 import { NO_NATIVE_HELPERS } from "@/core/render/lib/native/contract/native-view-options";
@@ -10,6 +10,7 @@ import {
   toLevelEditorHelperOptions,
   toLevelEditorHelperRenderOptions,
 } from "@/tools/level-editor/lib/helpers/level-editor-helper-options";
+import { toSceneHelperId } from "@/tools/level-editor/lib/helpers/scene-helper-id";
 
 /** Every helped tool's bit. */
 const EVERY_KIND: number = SCENE_HELPER_TOOLS.reduce(
@@ -60,5 +61,27 @@ describe("toLevelEditorHelperRenderOptions", () => {
 
     expect(options.isShown).toBe(false);
     expect(options.kinds).toBe((EVERY_KIND & ~(1 << (getSceneHelperTool(ESceneToolKind.SPAWN)?.kind ?? 0))) >>> 0);
+  });
+
+  it("names the selected, hidden and hovered objects by their helpers' ids, a scene object drawing none", () => {
+    const stalker: SceneObjectId = { index: 2, tool: ESceneToolKind.SPAWN };
+    const light: SceneObjectId = { index: 0, tool: ESceneToolKind.LIGHT };
+    const way: SceneObjectId = { index: 1, tool: ESceneToolKind.WAY };
+    const box: SceneObjectId = { index: 1, tool: ESceneToolKind.SCENE_OBJECT };
+
+    expect(
+      toLevelEditorHelperRenderOptions(DEFAULT_LEVEL_EDITOR_HELPER_OPTIONS, {
+        hidden: [way, box, light],
+        hovered: stalker,
+        selected: light,
+      })
+    ).toMatchObject({
+      hidden: [toSceneHelperId(light), toSceneHelperId(way)],
+      hovered: toSceneHelperId(stalker),
+      selected: [toSceneHelperId(light)],
+    });
+    expect(
+      toLevelEditorHelperRenderOptions(DEFAULT_LEVEL_EDITOR_HELPER_OPTIONS, { hidden: [], hovered: box, selected: box })
+    ).toMatchObject({ hidden: [], hovered: null, selected: [] });
   });
 });

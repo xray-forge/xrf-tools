@@ -4,7 +4,7 @@ import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { SESSION_CHANGE_EVENT } from "@xrf/ipc/session";
 import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { ESessionRootChange, SessionChange } from "@xrf/ipc/types/xrf-app-core";
-import { ESceneToolKind, SCENE_OBJECTS_PART, SceneOpenRequest } from "@xrf/ipc/types/xrf-app-levels";
+import { ESceneToolKind, SCENE_OBJECTS_PART, SceneObjectId, SceneOpenRequest } from "@xrf/ipc/types/xrf-app-levels";
 import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
 
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
@@ -97,6 +97,51 @@ describe("LevelEditorSelectionService", () => {
     await scene.close();
 
     expect(selection.selected).toBeNull();
+  });
+
+  it("hides objects one by one, shows one again, and shows them all", async () => {
+    const { selection } = await openEditor();
+    const box: SceneObjectId = { index: 0, tool: ESceneToolKind.SCENE_OBJECT };
+    const stalker: SceneObjectId = { index: 2, tool: ESceneToolKind.SPAWN };
+
+    selection.toggleHidden(box);
+    selection.toggleHidden(stalker);
+
+    expect(selection.hidden).toEqual([box, stalker]);
+    expect(selection.isHidden({ index: 2, tool: ESceneToolKind.SPAWN })).toBe(true);
+
+    selection.toggleHidden(box);
+
+    expect(selection.hidden).toEqual([stalker]);
+
+    selection.revealAll();
+
+    expect(selection.hidden).toEqual([]);
+  });
+
+  // What was hidden belongs to the scene's opening, not to the editor.
+  it("hides nothing once another scene opens", async () => {
+    const { scene, selection } = await openEditor();
+
+    selection.toggleHidden({ index: 0, tool: ESceneToolKind.SCENE_OBJECT });
+    await scene.open(REQUEST);
+    await flush();
+
+    expect(selection.hidden).toEqual([]);
+  });
+
+  it("notes the object under the pointer, keeping the one noted for the same object", async () => {
+    const { selection } = await openEditor();
+    const stalker: SceneObjectId = { index: 2, tool: ESceneToolKind.SPAWN };
+
+    selection.noteHovered(stalker);
+    selection.noteHovered({ index: 2, tool: ESceneToolKind.SPAWN });
+
+    expect(selection.hovered).toBe(stalker);
+
+    selection.noteHovered(null);
+
+    expect(selection.hovered).toBeNull();
   });
 
   it("selects nothing once the objects are read again without the object", async () => {

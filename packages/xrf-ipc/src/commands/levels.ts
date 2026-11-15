@@ -32,6 +32,7 @@ import {
   SceneBinaryToolsDescription,
   SceneDrawDescription,
   SceneHelpersDescription,
+  SceneObjectId,
   SceneObjectsDescription,
   SceneOpenRequest,
   ScreenshotSaveRequest,
@@ -43,6 +44,7 @@ import { WeatherCycleId } from "#/types/xrf-environment";
 import { JobProgress } from "#/types/xrf-job";
 import { LevelCompileRequest } from "#/types/xrf-level-compiler";
 import { XraySurfaceDescriptor } from "#/types/xrf-material";
+import { Sphere } from "#/types/xrf-math";
 import { LevelBuildRequest, LevelDecompileRequest } from "#/types/xrf-rawdata";
 import { RenderViewportId } from "#/types/xrf-renderer";
 import { XrayRoots } from "#/types/xrf-vfs";
@@ -79,6 +81,7 @@ export enum ELevelsCommand {
   FIND_SCREENSHOT_PATH = "plugin:levels|find_screenshot_path",
   GET_VIEW_FOLDER = "plugin:levels|get_view_folder",
   LIST_LEVELS = "plugin:levels|list_levels",
+  LOCATE_SCENE_OBJECT = "plugin:levels|locate_scene_object",
   OPEN_LEVEL = "plugin:levels|open_level",
   OPEN_SCENE = "plugin:levels|open_scene",
   READ_LEVEL_CYCLE = "plugin:levels|read_level_cycle",
@@ -241,6 +244,12 @@ export const levelsCommands = {
   getViewFolder: () => __TAURI_INVOKE<string>(ELevelsCommand.GET_VIEW_FOLDER),
   /** Every compiled level the mounted roots hold, loose or archived alike, listed on the pool from a fresh search. */
   listLevels: (roots: XrayRoots) => __TAURI_INVOKE<Array<LevelEntry>>(ELevelsCommand.LIST_LEVELS, { roots }),
+  /**
+   * Locate one of the open scene's objects for a camera to frame: the sphere about a drawn object's placed box or about
+   * a helped object's helper, in renderer space; none for an object that draws nothing.
+   */
+  locateSceneObject: (sessionId: SessionId, object: SceneObjectId) =>
+    __TAURI_INVOKE<SessionSnapshot<Sphere | null>>(ELevelsCommand.LOCATE_SCENE_OBJECT, { sessionId, object }),
   /** Select a compiled level and report what it is built out of, without reading any of its geometry. */
   openLevel: (sessionId: SessionId, request: LevelOpenRequest) =>
     __TAURI_INVOKE<SessionSnapshot<SelectedLevelDescription>>(ELevelsCommand.OPEN_LEVEL, { sessionId, request }),
@@ -376,6 +385,10 @@ export interface ILevelsCommandSignatures {
   [ELevelsCommand.FIND_SCREENSHOT_PATH]: IIpcCommandSignature<typeof levelsCommands.findScreenshotPath, ["name"]>;
   [ELevelsCommand.GET_VIEW_FOLDER]: IIpcCommandSignature<typeof levelsCommands.getViewFolder, []>;
   [ELevelsCommand.LIST_LEVELS]: IIpcCommandSignature<typeof levelsCommands.listLevels, ["roots"]>;
+  [ELevelsCommand.LOCATE_SCENE_OBJECT]: IIpcCommandSignature<
+    typeof levelsCommands.locateSceneObject,
+    ["sessionId", "object"]
+  >;
   [ELevelsCommand.OPEN_LEVEL]: IIpcCommandSignature<typeof levelsCommands.openLevel, ["sessionId", "request"]>;
   [ELevelsCommand.OPEN_SCENE]: IIpcCommandSignature<typeof levelsCommands.openScene, ["sessionId", "request"]>;
   [ELevelsCommand.READ_LEVEL_CYCLE]: IIpcCommandSignature<typeof levelsCommands.readLevelCycle, ["sessionId", "cycle"]>;

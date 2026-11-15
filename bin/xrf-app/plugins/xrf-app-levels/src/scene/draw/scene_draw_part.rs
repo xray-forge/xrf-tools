@@ -5,12 +5,13 @@ use xrf_app_core::session::{SessionPart, SessionSnapshot};
 use xrf_chunk::XRayByteOrder;
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::XrfResult;
-use xrf_math::Aabb;
+use xrf_math::{Aabb, Sphere};
 use xrf_vfs::XraySearch;
 use xrf_visual::convert_declared_bounds;
 
 use crate::scene::{
-  SceneDrawDescription, SceneDrawProblem, SceneDrawProblemKind, SceneDrawnObject, SceneDrawnObjects, SelectedScene,
+  SceneDraw, SceneDrawDescription, SceneDrawProblem, SceneDrawProblemKind, SceneDrawnObject, SceneDrawnObjects,
+  SelectedScene,
 };
 
 /// What a change event calls what the page needs of a drawn scene beside its picture when it goes stale.
@@ -23,7 +24,7 @@ pub(crate) const SCENE_DRAW_PART: &str = "sceneDraw";
 pub(crate) struct SceneDrawPart;
 
 impl SessionPart for SceneDrawPart {
-  type Value = Arc<SceneDrawDescription>;
+  type Value = Arc<SceneDraw>;
 
   const NAME: &'static str = SCENE_DRAW_PART;
 }
@@ -31,21 +32,22 @@ impl SessionPart for SceneDrawPart {
 impl SceneDrawPart {
   /// What the open scene's drawn objects come to, read the first time anything asks and kept, its library objects read
   /// through `objects`, a search of the scene's objects roots.
-  pub(crate) fn get(current: &SessionSnapshot<SelectedScene>, objects: &XraySearch) -> Arc<SceneDrawDescription> {
+  pub(crate) fn get(current: &SessionSnapshot<SelectedScene>, objects: &XraySearch) -> Arc<SceneDraw> {
     current
       .parts
       .get_or_record::<Self>(objects, |objects| Arc::new(Self::read(current, objects)))
   }
 
-  /// The extent of the scene objects drawn, each `.object`'s meshes' boxes placed as `CSceneObject::GetBox` places
-  /// them, read once a library object without compiling it; and each scene object not drawn: its `.object` not found,
-  /// or found and not read.
-  pub(crate) fn read(scene: &SelectedScene, objects: &XraySearch) -> SceneDrawDescription {
+  /// The extent of the scene objects drawn and each one's sphere, each `.object`'s meshes' boxes placed as
+  /// `CSceneObject::GetBox` places them, read once a library object without compiling it; and each scene object not
+  /// drawn: its `.object` not found, or found and not read.
+  pub(crate) fn read(scene: &SelectedScene, objects: &XraySearch) -> SceneDraw {
     profiling::scope!("scene draw");
 
     let drawn: SceneDrawnObjects = SceneDrawnObjects::read(scene, objects);
     let mut boxes: HashMap<&str, XrfResult<Option<Aabb>>> = HashMap::new();
     let mut bounds: Option<Aabb> = None;
+    let mut spheres: HashMap<u32, Sphere> = HashMap::new();
     let mut problems: Vec<SceneDrawProblem> = drawn.problems.clone();
 
     for object in &drawn.objects {
@@ -56,6 +58,11 @@ impl SceneDrawPart {
       match read {
         Ok(Some(object_box)) => {
           let placed: Aabb = object_box.transform(&object.transform.to_matrix());
+
+          spheres.insert(
+            object.id.index,
+            convert_declared_bounds(&placed, &placed.get_bounding_sphere()).bounding_sphere,
+          );
 
           match &mut bounds {
             Some(bounds) => bounds.include_box(&placed),
@@ -74,9 +81,12 @@ impl SceneDrawPart {
 
     problems.sort_by_key(|problem| problem.object.index);
 
-    SceneDrawDescription {
-      bounds: bounds.map(|bounds| convert_declared_bounds(&bounds, &bounds.get_bounding_sphere())),
-      problems,
+    SceneDraw {
+      description: Arc::new(SceneDrawDescription {
+        bounds: bounds.map(|bounds| convert_declared_bounds(&bounds, &bounds.get_bounding_sphere())),
+        problems,
+      }),
+      spheres,
     }
   }
 

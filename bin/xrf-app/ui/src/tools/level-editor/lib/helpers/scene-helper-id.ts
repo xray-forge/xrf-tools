@@ -25,6 +25,17 @@ export function toSceneHelperId(object: SceneObjectId): Nullable<number> {
 }
 
 /**
+ * @param objects - Scene objects.
+ * @returns The ids of the helpers of those that draw one, ascending, as the renderer searches the lists it is given.
+ */
+export function toSceneHelperIds(objects: ReadonlyArray<SceneObjectId>): Array<number> {
+  return objects
+    .map(toSceneHelperId)
+    .filter((id: Nullable<number>): id is number => id !== null)
+    .sort((first: number, second: number) => first - second);
+}
+
+/**
  * @param id - The id a scene helper carries, as a pick of it answers.
  * @returns The scene object it stands for; null for an id no helped tool's place answers.
  */

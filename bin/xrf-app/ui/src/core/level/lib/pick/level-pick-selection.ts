@@ -10,6 +10,14 @@ import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
 const SELECTION_COLOR: [number, number, number] = toRawColor(parseHexColor(VIEWPORT_INK.accent));
 
 /**
+ * @param object - A model the world stands, by the index its source named it with.
+ * @returns The viewport's selection outlining that model in the selection's colour.
+ */
+export function toLevelSpawnSelection(object: number): RenderSelection {
+  return { color: SELECTION_COLOR, target: { kind: ERenderSelectionTarget.SPAWN, object } };
+}
+
+/**
  * @param pick - What a click or a panel picked, or null for nothing.
  * @returns What the viewport outlines as selected: a level object drawn as a model, or the surface the pick names;
  *   null for nothing, for an object drawn as nothing, which its helper marks instead, and for a clump of trees drawn as
@@ -23,9 +31,7 @@ export function toLevelPickSelection(pick: Nullable<TLevelPick>): Nullable<Rende
   if (pick.kind === ELevelPick.OBJECT) {
     const index: Nullable<number> = getLevelSpawnIndex(pick.object.id);
 
-    return index !== null && getLevelObjectKind(pick.object.kind).isDrawn
-      ? { color: SELECTION_COLOR, target: { kind: ERenderSelectionTarget.SPAWN, object: index } }
-      : null;
+    return index !== null && getLevelObjectKind(pick.object.kind).isDrawn ? toLevelSpawnSelection(index) : null;
   }
 
   return pick.isImpostor

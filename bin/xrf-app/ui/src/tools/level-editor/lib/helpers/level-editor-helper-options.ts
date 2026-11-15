@@ -1,8 +1,9 @@
-import { SCENE_HELPER_TOOLS, SceneHelperToolEntry, SceneToolKind } from "@xrf/ipc/types/xrf-app-levels";
+import { SCENE_HELPER_TOOLS, SceneHelperToolEntry, SceneObjectId, SceneToolKind } from "@xrf/ipc/types/xrf-app-levels";
 import { RenderHelperOptions } from "@xrf/ipc/types/xrf-renderer";
 import { isRecord, Nullable } from "@xrf/types";
 
 import { NO_NATIVE_HELPERS } from "@/core/render/lib/native/contract/native-view-options";
+import { toSceneHelperId, toSceneHelperIds } from "@/tools/level-editor/lib/helpers/scene-helper-id";
 
 /** Which helpers the editor draws over what a scene holds with no geometry: a preference, kept over runs. */
 export interface ILevelEditorHelperOptions {
@@ -65,19 +66,41 @@ export function toLevelEditorHelperOptions(stored: unknown): ILevelEditorHelperO
   };
 }
 
+/** The scene objects the editor singles out for their helpers. */
+export interface ILevelEditorHelperTargets {
+  /** Selected, which draws lifted and never fades; null for none. */
+  selected: Nullable<SceneObjectId>;
+  /** Hidden, which draw nothing. */
+  hidden: ReadonlyArray<SceneObjectId>;
+  /** Under the pointer, which draws lifted; null for none. */
+  hovered: Nullable<SceneObjectId>;
+}
+
+/** Nothing singled out. */
+export const NO_LEVEL_EDITOR_HELPER_TARGETS: ILevelEditorHelperTargets = { hidden: [], hovered: null, selected: null };
+
 /**
  * @param options - Which helpers the editor draws.
+ * @param targets - The scene objects singled out, each named to the renderer by its helper's id.
  * @returns What the renderer draws of a scene's helpers: each tool switched by its row's `kind`, as the backend numbers
- *   the helpers it draws, how they show left as every view's default, and nothing singled out.
+ *   the helpers it draws, how they show left as every view's default, and the targets singled out.
  */
-export function toLevelEditorHelperRenderOptions(options: ILevelEditorHelperOptions): RenderHelperOptions {
+export function toLevelEditorHelperRenderOptions(
+  options: ILevelEditorHelperOptions,
+  targets: ILevelEditorHelperTargets = NO_LEVEL_EDITOR_HELPER_TARGETS
+): RenderHelperOptions {
+  const { selected, hidden, hovered } = targets;
+
   return {
     ...NO_NATIVE_HELPERS,
+    hidden: toSceneHelperIds(hidden),
+    hovered: hovered ? toSceneHelperId(hovered) : null,
     isShown: options.isShown,
     kinds: SCENE_HELPER_TOOLS.reduce(
       (bits: number, entry: SceneHelperToolEntry) =>
         isLevelEditorHelperOn(options, entry.tool) ? (bits | (1 << entry.kind)) >>> 0 : bits,
       0
     ),
+    selected: selected ? toSceneHelperIds([selected]) : [],
   };
 }

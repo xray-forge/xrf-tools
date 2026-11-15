@@ -24,8 +24,8 @@ impl SceneHelperId {
       .then(|| Self((object.tool.get_ordinal() << SCENE_HELPER_INDEX_BITS) | object.index))
   }
 
-  /// The scene object the helper of this id stands for; none for an id no tool's place answers.
-  // todo: resolve a viewport pick's `RenderLevelHit::Helper` to its scene object through this once the editor picks.
+  /// The scene object the helper of this id stands for; none for an id no tool's place answers. The page reads a
+  /// helper's pick back itself (`toSceneHelperObject`), so only the tests read it here, proving both read it alike.
   #[cfg(test)]
   pub(crate) fn get_object(self) -> Option<SceneObjectId> {
     Some(SceneObjectId {

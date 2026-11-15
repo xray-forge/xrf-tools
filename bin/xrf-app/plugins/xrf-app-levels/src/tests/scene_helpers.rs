@@ -1,8 +1,10 @@
 //! A Level Editor scene's helpers: one for each object of a helped tool, named by its tool and index both ways,
-//! switched by its tool, in its tool's look, and the extent and counts the page frames and lists by.
+//! switched by its tool, in its tool's look, and the extent and counts the page frames and lists by, and where each
+//! helped object stands for a camera to frame it.
 
 use std::sync::Arc;
 
+use glam::Vec3;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::SessionSnapshot;
 use xrf_editable_level::{
@@ -12,13 +14,13 @@ use xrf_editable_level::{
   EditableSpawnPointKind, EditableSpawnPointObject, EditableWayLink, EditableWayObject, EditableWayPoint,
 };
 use xrf_ini::IniSection;
-use xrf_math::{Aabb, Vector2d, Vector3d};
+use xrf_math::{Aabb, Sphere, Vector2d, Vector3d};
 use xrf_renderer::{RenderHelperIcon, RenderHelperObject, RenderHelperShape, RenderLevelHelpers};
 use xrf_world::WorldLevelSource;
 
 use crate::scene::{
   SCENE_HELPER_TOOLS, SceneDrawPart, SceneHelperId, SceneHelperToolCount, SceneHelpers, SceneHelpersPart,
-  SceneObjectId, SceneRenderSource, SceneSource, SceneToolKind, SelectedScene, ShownScenes,
+  SceneObjectId, SceneObjectSphere, SceneRenderSource, SceneSource, SceneToolKind, SelectedScene, ShownScenes,
 };
 use crate::tests::fixtures::{new_scenes, open_scene, scene_custom_object, scene_part, write_scene, write_scene_part};
 
@@ -420,6 +422,55 @@ fn helps_each_object_of_a_helped_tool_in_its_tools_look() {
   );
 }
 
+/// Asserts `sphere` stands about `center` with `radius`, to a float's rounding.
+fn assert_sphere(sphere: Option<Sphere>, center: [f32; 3], radius: f32) {
+  let sphere: Sphere = sphere.expect("a sphere");
+
+  assert!(
+    (Vec3::new(sphere.center.x, sphere.center.y, sphere.center.z) - Vec3::from_array(center)).length() < 1e-5
+      && (sphere.radius - radius).abs() < 1e-5,
+    "{sphere:?} against {center:?} of {radius}"
+  );
+}
+
+#[test]
+fn locates_a_helped_object_by_its_helpers_extent_in_renderer_space() {
+  let (assets, opened) = open(&write_helped_scene("scene_helpers/locate"));
+  let locate = |tool: SceneToolKind, index: u32| {
+    SceneObjectSphere::locate(&opened, &assets, &SceneObjectId { tool, index }).expect("the scene is searched")
+  };
+
+  // A light by its icon at `1, 2, 3`, `z` mirrored: a point.
+  assert_sphere(locate(SceneToolKind::Light, 0), [1.0, 2.0, -3.0], 0.0);
+  // A glow by its sphere of 1.5 about `2, 2, 3`, bounded by the sphere's box.
+  assert_sphere(locate(SceneToolKind::Glow, 0), [2.0, 2.0, -3.0], 1.5 * 3.0_f32.sqrt());
+  // A fog volume by the unit box at `7, 2, 3`.
+  assert_sphere(locate(SceneToolKind::FogVolume, 0), [7.0, 2.0, -3.0], 0.75_f32.sqrt());
+  // A portal by its outline, the square of 2 standing on the scene's first two axes.
+  assert_sphere(locate(SceneToolKind::Portal, 0), [1.0, 1.0, 0.0], 2.0_f32.sqrt());
+  assert!(
+    locate(SceneToolKind::Way, 0).is_some_and(|sphere| sphere.radius >= 4.0),
+    "a way by its links and points, eight metres along"
+  );
+  assert_eq!(locate(SceneToolKind::Light, 1), None, "no second light");
+}
+
+#[test]
+fn locates_nothing_for_what_draws_nothing() {
+  let (assets, opened) = open(&write_helped_scene("scene_helpers/locate_undrawn"));
+  let locate = |tool: SceneToolKind| {
+    SceneObjectSphere::locate(&opened, &assets, &SceneObjectId { tool, index: 0 }).expect("the scene is searched")
+  };
+
+  assert_eq!(locate(SceneToolKind::Sector), None, "a sector draws no helper");
+  assert_eq!(locate(SceneToolKind::Group), None, "a group draws nothing of its own");
+  assert_eq!(
+    locate(SceneToolKind::SceneObject),
+    None,
+    "a scene object whose library object is not found is not drawn"
+  );
+}
+
 #[test]
 fn the_renderer_reads_the_helpers_the_page_counts() {
   let source: SceneSource = write_helped_scene("scene_helpers/render");
@@ -455,6 +506,7 @@ fn a_scene_of_helpers_alone_is_bounded_by_them_where_it_draws_no_object() {
 
   assert!(
     SceneDrawPart::get(&opened, &assets.search(&opened.objects_roots).unwrap())
+      .description
       .bounds
       .is_none(),
     "no scene object is drawn"

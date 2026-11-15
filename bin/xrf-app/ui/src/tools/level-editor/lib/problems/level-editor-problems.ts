@@ -18,6 +18,7 @@ import { assertExhaustive, Maybe } from "@xrf/types";
 import { listTextureProblems } from "@/core/level/lib/problems/level-texture-problems";
 import { ILevelTextureProblem } from "@/core/level/lib/texture/level-texture-report";
 import { IEditorProblem } from "@/core/shell/chrome/EditorProblemsPanel";
+import { findSceneObject } from "@/tools/level-editor/lib/tools/scene-objects";
 import { getSceneToolLabel } from "@/tools/level-editor/lib/tools/scene-tools";
 
 /** What a library object the renderer could not make a model of is listed under. */
@@ -197,9 +198,5 @@ function describePlacing(first: Maybe<string>, others: number): string {
  * @returns Its name, or its tool and place among the tool's objects where the listing holds it not.
  */
 function nameSceneObject(objectTools: ReadonlyArray<SceneObjectToolDescription>, id: SceneObjectId): string {
-  const object: Maybe<SceneObjectDescription> = objectTools
-    .find((tool: SceneObjectToolDescription) => tool.tool === id.tool)
-    ?.objects.find((it: SceneObjectDescription) => it.id.index === id.index);
-
-  return object?.name ?? `${getSceneToolLabel(id.tool, id.tool)} #${id.index}`;
+  return findSceneObject(objectTools, id)?.name ?? `${getSceneToolLabel(id.tool, id.tool)} #${id.index}`;
 }

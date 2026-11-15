@@ -5,7 +5,8 @@
 //! kept as a problem on its tool rather than refusing the open (`problem`); the scene objects it draws, where they
 //! stand and which it cannot draw (`draw`); the helpers drawn for what has no geometry, each named by its object
 //! (`helpers`); and the scene as the native renderer draws it, each scene object a model compiled from its `.object`,
-//! with the source each session is drawn from and the space it stands in (`render`).
+//! with the source each session is drawn from, the space it stands in and where one object stands for a camera to
+//! frame it (`render`).
 
 mod binary;
 mod description;
@@ -24,7 +25,8 @@ pub(crate) use description::{
 pub use document::SelectedScenes;
 pub(crate) use document::{OpenedScene, SceneGameData, SceneOpenRequest, SceneSource, SceneToolKind, SelectedScene};
 pub(crate) use draw::{
-  SceneDrawDescription, SceneDrawPart, SceneDrawProblem, SceneDrawProblemKind, SceneDrawnObject, SceneDrawnObjects,
+  SceneDraw, SceneDrawDescription, SceneDrawPart, SceneDrawProblem, SceneDrawProblemKind, SceneDrawnObject,
+  SceneDrawnObjects,
 };
 pub(crate) use helpers::{
   SCENE_HELPER_TOOLS, SceneHelpedObject, SceneHelperId, SceneHelperLook, SceneHelperToolCount, SceneHelperToolEntry,
@@ -36,5 +38,5 @@ pub(crate) use objects::{
   SceneShapeUsage, SceneSpawnField, SceneSpawnKind, SceneToolObject, SceneWayLink, SceneWayPoint, SceneWayType,
 };
 pub(crate) use problem::{SceneProblem, SceneProblemKind};
-pub(crate) use render::{SceneRenderSource, SceneRenderSpace};
 pub use render::ShownScenes;
+pub(crate) use render::{SceneObjectSphere, SceneRenderSource, SceneRenderSpace};
