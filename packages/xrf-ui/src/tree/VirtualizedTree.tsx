@@ -39,7 +39,7 @@ export interface IVirtualizedTreeIcons {
   leaf: ReactNode;
 }
 
-interface IVirtualizedTreeProps<T> extends BaseComponentProps {
+export interface IVirtualizedTreeProps<T> extends BaseComponentProps {
   items: ReadonlyArray<ITreeNode<T>>;
   expandedIds: ReadonlySet<string>;
   /** Where the keyboard stands. Moving it opens nothing, so it is safe to move on every arrow key. */

@@ -8,7 +8,7 @@ import { BaseComponentProps } from "#/element-types";
 import { Typography } from "#/material/typography";
 import { cn } from "#/theme";
 
-interface IDataTableProps<T extends GridValidRowModel> extends BaseComponentProps {
+export interface IDataTableProps<T extends GridValidRowModel> extends BaseComponentProps {
   rows: Array<T>;
   columns: Array<GridColDef<T>>;
   getRowId: (row: T) => GridRowId;

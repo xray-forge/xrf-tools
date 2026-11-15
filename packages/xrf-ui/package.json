@@ -19,6 +19,8 @@
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "lint": "eslint . --max-warnings 0 --cache --cache-location target/eslint/cache.json --cache-strategy content",
+    "storybook": "storybook dev --port 6006 --exact-port --no-open",
+    "build:storybook": "storybook build --output-dir target/storybook",
     "format": "prettier --write --ignore-path ../../.prettierignore \"**/*.(js|cjs|mjs|ts|tsx|md)\" && pnpm run lint --fix"
   },
   "dependencies": {
@@ -52,6 +54,9 @@
   },
   "devDependencies": {
     "@jest/globals": "catalog:",
+    "@storybook/addon-a11y": "^10.6.6",
+    "@storybook/react-vite": "^10.6.6",
+    "@tailwindcss/vite": "catalog:",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.8",
@@ -59,6 +64,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@typescript/native": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
     "@xrf/toolchain": "workspace:*",
     "eslint": "catalog:",
     "jest": "catalog:",
@@ -67,6 +73,8 @@
     "prettier-plugin-tailwindcss": "catalog:",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "typescript": "catalog:"
+    "storybook": "^10.6.6",
+    "typescript": "catalog:",
+    "vite": "catalog:"
   }
 }

@@ -5,7 +5,7 @@ import { Button } from "#/material/button";
 import { Dialog, DialogActions, DialogContent, DialogContentText } from "#/material/dialog";
 import { Breakpoint } from "#/material/styles";
 
-interface IConfirmDialogProps {
+export interface IConfirmDialogProps {
   isOpen: boolean;
   /** Paints the confirming button as destructive, for commands that overwrite or delete. */
   isDestructive?: boolean;

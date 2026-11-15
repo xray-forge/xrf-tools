@@ -10,8 +10,10 @@ catalog:
   "@jest/globals": ^30.5.2
   "@swc/core": ^1.16.20
   "@swc/jest": ^0.2.39
+  "@tailwindcss/vite": 4.3.3
   "@types/node": ^24.19.2
   "@typescript/native": npm:typescript@^7.0.2
+  "@vitejs/plugin-react": ^6.1.2
   "@xyflow/react": ^12.12.0
   date-fns: ^4.4.0
   eslint: ^10.13.0
@@ -21,6 +23,7 @@ catalog:
   prettier-plugin-tailwindcss: 0.8.1
   tailwindcss: 4.3.3
   typescript: npm:@typescript/typescript6@^6.0.2
+  vite: ^8.3.5
 
 allowBuilds:
   "@parcel/watcher": true
