@@ -41,7 +41,7 @@ impl RayGpuBatch {
 
     for group in plan.get_groups() {
       match group {
-        RayGroup::Packet {
+        RayGroup::Directional {
           toward,
           lift,
           range,

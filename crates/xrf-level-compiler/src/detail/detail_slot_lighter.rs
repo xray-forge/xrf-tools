@@ -104,7 +104,7 @@ impl DetailSlotLighter<'_> {
 
     for group in &plan.groups {
       match group {
-        RayGroup::Packet { first, .. } | RayGroup::Lamp { first, .. } => {
+        RayGroup::Directional { first, .. } | RayGroup::Lamp { first, .. } => {
           let first: usize = *first as usize;
           let rays: Vec<Ray> = plan.make_rays(group);
 

@@ -144,7 +144,7 @@ impl LightPlan {
     };
 
     match group {
-      RayGroup::Packet {
+      RayGroup::Directional {
         toward,
         lift,
         range,
@@ -201,7 +201,7 @@ impl LightPlan {
     }
 
     if light.is_directional {
-      self.groups.push(RayGroup::Packet {
+      self.groups.push(RayGroup::Directional {
         toward: -light.direction,
         lift: match role {
           LevelLightRole::Hemi => LightPoint::HEMI_LIFT,

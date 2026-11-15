@@ -7,7 +7,7 @@ pub(crate) enum RayGroup {
   /// A directional light's rays, one from each point it faces, traced as a packet: toward `toward` for `range`, each
   /// starting `lift` along it from its point's origin; the points by bit of `facing`, in their order; the rays numbered
   /// from `first`.
-  Packet {
+  Directional {
     toward: Vec3,
     lift: f32,
     range: f32,
