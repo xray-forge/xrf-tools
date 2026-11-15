@@ -15,12 +15,14 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
+    "knip": "knip",
     "format": "prettier --write \"*.(json|mjs|yaml)\" && pnpm -r format",
     "lint:staged": "lint-staged --config cli/hooks/lint-staged.config.mjs --max-arg-length 7000"
   },
   "devDependencies": {
     "@xrf/toolchain": "workspace:*",
     "eslint": "catalog:",
+    "knip": "^6.44.2",
     "lint-staged": "^17.6.0",
     "prettier": "catalog:"
   }
