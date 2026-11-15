@@ -8,7 +8,7 @@ import { Logger } from "@xrf/logging";
 import { findLastSeparator } from "@xrf/path";
 import { Nullable, Optional } from "@xrf/types";
 
-import { createRoots } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib/roots";
 import { IVisualBoneControls } from "@/core/visuals/components/panels/visual-inspection";
 import { IVisualPose } from "@/core/visuals/lib/render";
 import { selectAddonBones, selectHiddenBoneIndices } from "@/core/visuals/lib/visual-bones";

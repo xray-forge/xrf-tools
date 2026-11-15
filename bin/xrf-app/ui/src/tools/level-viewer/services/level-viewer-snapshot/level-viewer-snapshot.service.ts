@@ -1,5 +1,4 @@
 import { join } from "@tauri-apps/api/path";
-import { open, save } from "@tauri-apps/plugin-dialog";
 import { inject, Injectable } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, RefObservable } from "@wirestate/mobx";
 import { ExclusiveFlow, TFlow } from "@xrf/flow";
@@ -31,6 +30,7 @@ import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { LevelWeatherService } from "@/core/level/services/level-weather";
 import { CommandOperation } from "@/core/operations/lib/command-operation";
 import { CommandReporter } from "@/core/operations/lib/command-reporter";
+import { askToOpen, askToSave } from "@/core/path/native-dialog";
 import { mergeRenderFeatureOverrides } from "@/core/render/lib/settings/choice/render-feature-choice";
 import { IRenderFeatureOverrides } from "@/core/render/lib/settings/choice/render-feature-overrides";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
@@ -358,13 +358,10 @@ export class LevelViewerSnapshotService {
   private async writeView(): Promise<Nullable<string>> {
     const snapshot: ILevelViewerSnapshot = await this.exportSnapshot();
     const folder: string = await levelsCommands.getViewFolder();
-    const defaultPath: string = await join(
-      folder,
-      `${toLevelViewerFileStem(this.level, new Date())}.${EXrayExtension.JSON}`
-    );
-    const path: Nullable<string> = await save({
-      defaultPath,
+    const start: string = await join(folder, `${toLevelViewerFileStem(this.level, new Date())}.${EXrayExtension.JSON}`);
+    const path: Nullable<string> = await askToSave({
       filters: LEVEL_VIEWER_SNAPSHOT_FILTERS,
+      start,
       title: "Export view",
     });
 
@@ -377,14 +374,11 @@ export class LevelViewerSnapshotService {
    * @returns The file for import, or null where the dialog was dismissed.
    */
   private async readView(): Promise<Nullable<ILevelViewerImport>> {
-    const defaultPath: string = await levelsCommands.getViewFolder();
-    const path: Nullable<string> = (await open({
-      defaultPath,
-      directory: false,
+    const path: Nullable<string> = await askToOpen({
       filters: LEVEL_VIEWER_SNAPSHOT_FILTERS,
-      multiple: false,
+      start: await levelsCommands.getViewFolder(),
       title: "Import view",
-    })) as Nullable<string>;
+    });
 
     if (!path) {
       return null;

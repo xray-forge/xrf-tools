@@ -1,8 +1,8 @@
-import { DialogFilter } from "@tauri-apps/plugin-dialog";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
 import { EXrayExtension } from "@xrf/ipc/types/xrf-extension";
 
 import { withSupportedExtension } from "@/core/path/extension";
+import { IFileFilter } from "@/core/path/file-filters";
 import {
   ILevelViewerSnapshot,
   parseLevelViewerSnapshot,
@@ -10,7 +10,7 @@ import {
 } from "@/tools/level-viewer/lib/snapshot/level-viewer-snapshot";
 
 /** What the file dialogs offer a level view's snapshot as. */
-export const LEVEL_VIEWER_SNAPSHOT_FILTERS: Array<DialogFilter> = [
+export const LEVEL_VIEWER_SNAPSHOT_FILTERS: Array<IFileFilter> = [
   { extensions: [EXrayExtension.JSON], name: "Level view" },
 ];
 

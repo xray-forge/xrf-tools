@@ -6,7 +6,7 @@ import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { LevelEntry } from "@xrf/ipc/types/xrf-app-levels";
 import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 
-import { createRoots } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib/roots";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { EToolId } from "@/core/routing/tool";
 import { mockInjectedService, mockToolScope } from "@/fixtures/utils/container";

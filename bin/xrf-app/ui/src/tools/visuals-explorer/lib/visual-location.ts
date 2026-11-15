@@ -3,7 +3,7 @@ import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
 import { Nullable } from "@xrf/types";
 import { IEditorLocation } from "@xrf/ui/editor/toolbar";
 
-import { toAssetLocation } from "@/core/assets/lib";
+import { toAssetLocation } from "@/core/assets/lib/asset-location";
 
 /**
  * Where a single opened visual was read from, for a session that browses no root.

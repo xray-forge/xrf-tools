@@ -16,8 +16,9 @@ import {
 } from "@xrf/ui/tree";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
-import { IArchiveEntry, IArchiveTreeItem, parseTree, toArchiveSelectionItemId } from "@/core/archive/lib";
-import { isLooseContainer } from "@/core/assets/lib";
+import { IArchiveEntry } from "@/core/archive/lib/entry";
+import { IArchiveTreeItem, parseTree, toArchiveSelectionItemId } from "@/core/archive/lib/tree";
+import { isLooseContainer } from "@/core/assets/lib/container";
 import { EditorSearchMenu } from "@/core/shell/chrome/EditorSearchMenu";
 import { toPathSearchRow } from "@/core/shell/chrome/EditorSearchMenu/path-search-row";
 import { ArchivePreviewService } from "@/tools/archives-explorer/services/archive-preview";
@@ -47,17 +48,13 @@ export function ArchivesMenu({
 
   const onOpenEntry = useCallback(
     (entry: IArchiveEntry) => {
-      if (isWriting) {
-        return;
-      }
-
       // Opened from the filter rather than from the tree, so the tree is told where the user landed. Written on
       // the request, not derived from what came back, so a failed read leaves the row selected to retry.
       reveal(toFileItemId(entry.name));
 
       void previewService.selectFile(entry);
     },
-    [isWriting, previewService, reveal]
+    [previewService, reveal]
   );
 
   // Only a world knows where a file is read from: inside a volume set no entry carries a container, every entry is
@@ -79,10 +76,6 @@ export function ArchivesMenu({
 
   const onActivateItem = useCallback(
     (item: ITreeNode<IArchiveEntry>) => {
-      if (isWriting) {
-        return;
-      }
-
       if (item.payload) {
         onOpenEntry(item.payload);
 
@@ -97,7 +90,7 @@ export function ArchivesMenu({
         previewService.selectDirectory(directoryPath);
       }
     },
-    [isWriting, onOpenEntry, previewService]
+    [onOpenEntry, previewService]
   );
 
   useEffect(() => {

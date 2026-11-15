@@ -5,9 +5,9 @@ import { Nullable } from "@xrf/types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
-import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { ConfigsDialectFormRow } from "@/core/ltx/components/ConfigsDialectFormRow";
 import { EToolId } from "@/core/routing/tool";
+import { JobPickerForm } from "@/core/shell/chrome/JobPickerForm";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { ConfigsVerifierService } from "@/tools/configs-verifier/services/configs-verifier.service";
 

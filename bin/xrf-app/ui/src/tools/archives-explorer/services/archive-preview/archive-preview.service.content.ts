@@ -3,7 +3,8 @@ import { archivesCommands } from "@xrf/ipc/commands/archives";
 import { archivesBulkRoutes } from "@xrf/ipc/commands/archives-bulk";
 import { SessionId } from "@xrf/ipc/types/xrf-app-core";
 
-import { IArchiveEntry, TArchiveContent } from "@/core/archive/lib";
+import { IArchiveEntry } from "@/core/archive/lib/entry";
+import { TArchiveContent } from "@/core/archive/lib/selection";
 
 /**
  * Reads one file of the open subject as whatever a preview can draw it with, every read addressed by the subject's

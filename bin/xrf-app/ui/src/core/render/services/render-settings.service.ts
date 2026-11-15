@@ -41,7 +41,7 @@ import {
   toRenderOutputScale,
   toRenderResolution,
 } from "@/core/render/lib/settings/device/render-resolution";
-import { SettingsService } from "@/core/settings/services/settings";
+import { SettingsService } from "@/core/settings/services/settings.service";
 import {
   booleanCodec,
   FRAME_RATE_LIMIT_STORAGE_KEY,

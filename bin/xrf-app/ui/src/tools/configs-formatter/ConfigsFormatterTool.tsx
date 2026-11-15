@@ -6,8 +6,8 @@ import { FormatCommandResult, IFormatCommandNouns } from "@xrf/ui/command-result
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
-import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { EToolId } from "@/core/routing/tool";
+import { JobPickerForm } from "@/core/shell/chrome/JobPickerForm";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { ConfigsFormatterService } from "@/tools/configs-formatter/services/configs-formatter.service";
 

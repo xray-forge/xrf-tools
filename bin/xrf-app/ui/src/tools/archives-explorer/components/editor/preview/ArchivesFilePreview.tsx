@@ -11,13 +11,9 @@ import { ErrorState } from "@xrf/ui/layout/error-state";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement, useCallback } from "react";
 
-import {
-  ArchivePreviewSupport,
-  getArchivePreviewSupport,
-  IArchiveEntry,
-  TArchiveContent,
-  TArchiveSelection,
-} from "@/core/archive/lib";
+import { IArchiveEntry } from "@/core/archive/lib/entry";
+import { ArchivePreviewSupport, getArchivePreviewSupport } from "@/core/archive/lib/preview";
+import { TArchiveContent, TArchiveSelection } from "@/core/archive/lib/selection";
 import { inline } from "@/lib/callbacks/inline";
 import { ArchivePreviewService } from "@/tools/archives-explorer/services/archive-preview";
 

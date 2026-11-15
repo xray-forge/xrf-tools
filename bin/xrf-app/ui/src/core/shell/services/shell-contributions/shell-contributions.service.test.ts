@@ -1,7 +1,8 @@
 import { describe, expect, it, jest } from "@jest/globals";
 
+import { defineMenu, IMenu } from "@/core/routing/menu-descriptor";
 import { EToolId } from "@/core/routing/tool";
-import { defineMenu, EMenuEntryKind, IMenu, IMenuContribution } from "@/core/shell/menu/lib";
+import { EMenuEntryKind, IMenuContribution } from "@/core/shell/menu/lib";
 import { IShellPanel } from "@/core/shell/panels/shell-panel";
 import { mockInjectedService } from "@/fixtures/utils/container";
 

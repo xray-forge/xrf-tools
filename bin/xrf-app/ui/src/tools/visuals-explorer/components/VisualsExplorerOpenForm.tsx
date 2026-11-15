@@ -6,7 +6,7 @@ import { ChoiceFormRow } from "@xrf/ui/form/choice-row";
 import { ReactElement, useCallback } from "react";
 
 import { AssetRootFormRow } from "@/core/assets/components/AssetRootFormRow";
-import { useAssetRootField } from "@/core/assets/lib";
+import { useAssetRootField } from "@/core/assets/lib/use-asset-root-field";
 import { VISUAL_SOURCE_FILE_FILTERS } from "@/core/path/file-filters";
 import { EToolId } from "@/core/routing/tool";
 import { PickerForm } from "@/core/shell/chrome/PickerForm";

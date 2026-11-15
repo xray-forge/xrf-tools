@@ -6,7 +6,7 @@ import { ReactElement, useEffect } from "react";
 import { IKeybindCommand, KeybindCommandsService } from "@/core/commands";
 import { resolveKeybinding } from "@/core/keybinds/lib/keymap";
 import { KeymapService } from "@/core/keybinds/services/keymap.service";
-import { SettingsService } from "@/core/settings/services/settings";
+import { SettingsService } from "@/core/settings/services/settings.service";
 import { isModalOpen } from "@/lib/dom/modal";
 import { isTextEntryTarget } from "@/lib/dom/text-entry";
 

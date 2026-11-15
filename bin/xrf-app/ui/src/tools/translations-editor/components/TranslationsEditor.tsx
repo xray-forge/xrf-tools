@@ -10,7 +10,7 @@ import { EditorToolbarLocation } from "@xrf/ui/editor/toolbar";
 import { ReportProblemIcon } from "@xrf/ui/icons/report-problem";
 import { ReactElement, useCallback, useMemo } from "react";
 
-import { describeRoots } from "@/core/assets/lib";
+import { describeRoots } from "@/core/assets/lib/roots";
 import { EditorToolbar } from "@/core/shell/chrome/EditorToolbar";
 import { useShellPanels, useShellStatus } from "@/core/shell/contributions";
 import { TToolSaver, useToolLifecycle } from "@/core/shell/lifecycle";

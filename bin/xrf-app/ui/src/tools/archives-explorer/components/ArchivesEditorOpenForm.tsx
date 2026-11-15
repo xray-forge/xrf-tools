@@ -6,7 +6,7 @@ import { assertExhaustive, Nullable } from "@xrf/types";
 import { ChoiceFormRow } from "@xrf/ui/form/choice-row";
 import { ReactElement, useCallback } from "react";
 
-import { createRoot } from "@/core/assets/lib";
+import { createRoot } from "@/core/assets/lib/roots";
 import { useRootProbe } from "@/core/assets/lib/use-root-probe";
 import { EToolId } from "@/core/routing/tool";
 import { PickerForm } from "@/core/shell/chrome/PickerForm";

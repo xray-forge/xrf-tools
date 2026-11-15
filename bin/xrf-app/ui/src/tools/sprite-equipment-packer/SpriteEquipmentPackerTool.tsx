@@ -4,10 +4,10 @@ import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
-import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { ConfigsDialectFormRow } from "@/core/ltx/components/ConfigsDialectFormRow";
 import { DDS_FILE_FILTERS, LTX_FILE_FILTERS } from "@/core/path/file-filters";
 import { EToolId } from "@/core/routing/tool";
+import { JobPickerForm } from "@/core/shell/chrome/JobPickerForm";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/sprite-equipment-packer.service";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 

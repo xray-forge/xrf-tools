@@ -8,7 +8,7 @@ import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { XrayAsset, XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 import { Nullable } from "@xrf/types";
 
-import { createRoots } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib/roots";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { VisualsBrowseService } from "@/tools/visuals-explorer/services/visuals-browse";

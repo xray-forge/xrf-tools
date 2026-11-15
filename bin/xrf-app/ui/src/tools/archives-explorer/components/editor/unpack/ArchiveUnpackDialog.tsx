@@ -10,7 +10,7 @@ import { UnarchiveIcon } from "@xrf/ui/icons/unarchive";
 import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useCallback, useId } from "react";
 
-import { getSubjectRoot, getSubjectSize } from "@/core/archive/lib";
+import { getSubjectRoot, getSubjectSize } from "@/core/archive/lib/subject";
 import { EToolId } from "@/core/routing/tool";
 import { resolveOutputPath } from "@/core/settings/lib/output-path";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";

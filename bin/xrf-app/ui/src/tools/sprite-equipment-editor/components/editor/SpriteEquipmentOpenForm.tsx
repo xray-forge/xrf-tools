@@ -10,7 +10,7 @@ import { FormRow } from "@xrf/ui/form/row";
 import { TextField } from "@xrf/ui/input";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
-import { createRoots } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib/roots";
 import { ConfigsDialectFormRow } from "@/core/ltx/components/ConfigsDialectFormRow";
 import { DDS_FILE_FILTERS, LTX_FILE_FILTERS } from "@/core/path/file-filters";
 import { EToolId } from "@/core/routing/tool";

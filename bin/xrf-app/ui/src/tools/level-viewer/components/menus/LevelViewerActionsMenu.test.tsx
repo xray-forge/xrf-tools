@@ -2,8 +2,9 @@ import { afterEach, describe, expect, it, jest } from "@jest/globals";
 
 import { GO_TO_LEVEL_COORDINATES_KEYBIND_COMMAND } from "@/core/level/commands";
 import { mockLevelViewContainer } from "@/core/level/fixtures/level-container";
+import { isSameMenuSection } from "@/core/routing/menu-descriptor";
 import { EToolId } from "@/core/routing/tool";
-import { EMenuEntryKind, IMenuContribution, isSameMenuSection, TMenuEntry } from "@/core/shell/menu/lib";
+import { EMenuEntryKind, IMenuContribution, TMenuEntry } from "@/core/shell/menu/lib";
 import { ShellContributionsService } from "@/core/shell/services/shell-contributions";
 import { mockToolScope } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";

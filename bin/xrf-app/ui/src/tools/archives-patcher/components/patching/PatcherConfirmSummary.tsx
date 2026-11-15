@@ -9,7 +9,8 @@ import { Stack } from "@xrf/ui/layout/stack";
 import { Typography } from "@xrf/ui/typography";
 import { ReactElement } from "react";
 
-import { ARCHIVE_VOLUME_SUFFIX, HEADER_ENTRY_POINT, readHeaderValue } from "@/core/archive/lib";
+import { HEADER_ENTRY_POINT, readHeaderValue } from "@/core/archive/lib/header";
+import { ARCHIVE_VOLUME_SUFFIX } from "@/core/archive/lib/volume-options";
 
 interface IPatcherConfirmSummaryProps extends BaseComponentProps {
   config: ArchivePatchConfig;

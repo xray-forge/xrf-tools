@@ -15,7 +15,7 @@ import {
   VisualTransform,
 } from "@xrf/ipc/types/xrf-visual";
 
-import { createRoots } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib/roots";
 import { mockHeldSessionRoot } from "@/core/session/fixtures/session-root.mocks";
 import { MOTION_DEFAULT_SPEED, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";

@@ -1,4 +1,3 @@
-import * as dialog from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ConfirmDialog } from "@xrf/ui/dialog/confirm";
@@ -10,6 +9,7 @@ import { cn } from "@xrf/ui/theme";
 import { ReactElement, useCallback, useState } from "react";
 
 import { SPAWN_FILE_FILTERS } from "@/core/path/file-filters";
+import { askToOpenDirectory, askToSave } from "@/core/path/native-dialog";
 import { SpawnFileService } from "@/tools/spawn-editor/services/spawn-file.service";
 
 /**
@@ -28,8 +28,9 @@ export function SpawnEditorActions({
 
   const onSave = useCallback(async () => {
     // The save dialog asks about overwriting an existing file itself, so there is no second prompt here.
-    const path: Nullable<string> = await dialog.save({
+    const path: Nullable<string> = await askToSave({
       title: "Save spawn file",
+      start: spawnFileService.path,
       filters: SPAWN_FILE_FILTERS,
     });
 
@@ -39,10 +40,7 @@ export function SpawnEditorActions({
   }, [spawnFileService]);
 
   const onPickExportPath = useCallback(async () => {
-    const path: Nullable<string> = (await dialog.open({
-      title: "Export spawn file",
-      directory: true,
-    })) as Nullable<string>;
+    const path: Nullable<string> = await askToOpenDirectory({ title: "Export spawn file" });
 
     if (path) {
       setExportPath(path);

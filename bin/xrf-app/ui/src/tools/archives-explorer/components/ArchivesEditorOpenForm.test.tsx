@@ -48,8 +48,8 @@ describe("ArchivesEditorOpenForm", () => {
 
     expect(open).toHaveBeenCalledWith({
       title: "Select archives directory",
-      filters: undefined,
       directory: true,
+      multiple: false,
       // Nothing is configured and nothing has been picked here yet, so the host decides where to open.
       defaultPath: undefined,
     });
@@ -82,6 +82,7 @@ describe("ArchivesEditorOpenForm", () => {
         { name: "All files", extensions: ["*"] },
       ],
       directory: false,
+      multiple: false,
     });
 
     // Both stems unindexed and at every index a set is published with, and nothing past the last.
@@ -203,7 +204,7 @@ describe("ArchivesEditorOpenForm", () => {
     expect(open).toHaveBeenCalledWith({
       title: "Select gamedata directory",
       directory: true,
-      filters: undefined,
+      multiple: false,
       defaultPath: undefined,
     });
 

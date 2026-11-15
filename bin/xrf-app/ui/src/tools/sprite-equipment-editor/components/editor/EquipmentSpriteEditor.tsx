@@ -10,7 +10,7 @@ import { Typography } from "@xrf/ui/typography";
 import { format } from "date-fns";
 import { ReactElement, useCallback } from "react";
 
-import { toAssetLocation } from "@/core/assets/lib";
+import { toAssetLocation } from "@/core/assets/lib/asset-location";
 import { EditorToolbar } from "@/core/shell/chrome/EditorToolbar";
 import { useShellMenus, useShellPanels, useShellStatus } from "@/core/shell/contributions";
 import { useToolBusy } from "@/core/shell/lifecycle";

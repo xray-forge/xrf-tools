@@ -11,7 +11,7 @@ import {
   TLevelViewRenderResult,
 } from "@/core/level/fixtures/level-container";
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
-import { SettingsRendererDisplay } from "@/core/settings/components/SettingsDialog/SettingsRenderSection/SettingsRendererDisplay";
+import { SettingsRendererDisplay } from "@/core/settings-dialog/components/SettingsDialog/SettingsRenderSection/SettingsRendererDisplay";
 import { clearLocalStorage } from "@/core/storage";
 
 async function openShow(rendered: TLevelViewRenderResult): Promise<HTMLElement> {

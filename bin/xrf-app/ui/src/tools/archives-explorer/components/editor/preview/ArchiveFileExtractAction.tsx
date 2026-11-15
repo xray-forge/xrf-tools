@@ -1,4 +1,3 @@
-import * as dialog from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
 import { getFileExtension, splitLogicalPath } from "@xrf/path";
 import { Nullable } from "@xrf/types";
@@ -7,7 +6,8 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { SaveAltIcon } from "@xrf/ui/icons/save-alt";
 import { ReactElement, useCallback } from "react";
 
-import { IArchiveEntry } from "@/core/archive/lib";
+import { IArchiveEntry } from "@/core/archive/lib/entry";
+import { askToSave } from "@/core/path/native-dialog";
 import { ArchivesService } from "@/tools/archives-explorer/services/archives";
 
 export interface IArchiveFileExtractActionProps extends BaseComponentProps {
@@ -32,10 +32,10 @@ export function ArchiveFileExtractAction({
     const suggested: string = splitLogicalPath(entry.name).name;
 
     const extension: string = getFileExtension(entry.name);
-    const destination: Nullable<string> = await dialog.save({
+    const destination: Nullable<string> = await askToSave({
       title: "Extract file",
-      defaultPath: suggested,
-      filters: extension ? [{ name: `${extension.toUpperCase()} file`, extensions: [extension] }] : undefined,
+      start: suggested,
+      filters: extension ? [{ name: `${extension.toUpperCase()} file`, extensions: [extension] }] : null,
     });
 
     if (destination) {

@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "React hooks and helpers that need no theme: polling, throttled drafts, element sizes, copying, ranked search, and an error boundary.",
+  "description": "React hooks and helpers that need no theme: polling, throttled drafts, element sizes, the window width, copying, forced updates, partial changes, ranked search, and an error boundary.",
   "exports": {
     "./*": "./src/*/index.ts"
   },

@@ -5,7 +5,7 @@ import { ETexturesCommand } from "@xrf/ipc/commands/textures";
 import { mockIpcBulkRoutes, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { TextureCatalogMode } from "@xrf/ipc/types/xrf-app-textures";
 
-import { createRoots } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib/roots";
 import {
   MOCK_TEXTURE,
   mockTextureCatalog,

@@ -12,7 +12,7 @@ import {
   XrayEngineResolution,
 } from "@xrf/ipc/types/xrf-engine-target";
 
-import { createRoots } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib/roots";
 import { clearLocalStorage } from "@/core/storage";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockContainer } from "@/fixtures/utils/container";

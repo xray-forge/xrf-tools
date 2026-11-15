@@ -1,4 +1,3 @@
-import * as dialog from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { EditorIconAction } from "@xrf/ui/editor/icon-action";
@@ -6,6 +5,7 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { SaveAltIcon } from "@xrf/ui/icons/save-alt";
 import { ReactElement, useCallback } from "react";
 
+import { askToSave } from "@/core/path/native-dialog";
 import {
   DEFAULT_MANIFEST_NAME,
   MANIFEST_FILTERS,
@@ -29,9 +29,9 @@ export function ExportsSaveAction({
   const exportsService: ExportsService = useInjection(ExportsService);
 
   const onSave = useCallback(async (): Promise<void> => {
-    const selected: Nullable<string> = await dialog.save({
+    const selected: Nullable<string> = await askToSave({
       title: "Save exports manifest",
-      defaultPath: DEFAULT_MANIFEST_NAME,
+      start: DEFAULT_MANIFEST_NAME,
       filters: MANIFEST_FILTERS,
     });
 

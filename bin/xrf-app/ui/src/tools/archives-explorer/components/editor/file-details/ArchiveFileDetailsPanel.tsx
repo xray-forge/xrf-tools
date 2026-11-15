@@ -8,7 +8,8 @@ import { EditorPanelEmpty, EditorPanelProperty, EditorPanelSection } from "@xrf/
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useCallback } from "react";
 
-import { getArchiveVolumeOf, IArchiveEntry } from "@/core/archive/lib";
+import { IArchiveEntry } from "@/core/archive/lib/entry";
+import { getArchiveVolumeOf } from "@/core/archive/lib/files";
 import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
 import { ArchivePreviewService } from "@/tools/archives-explorer/services/archive-preview";
 import { ArchivesService } from "@/tools/archives-explorer/services/archives";

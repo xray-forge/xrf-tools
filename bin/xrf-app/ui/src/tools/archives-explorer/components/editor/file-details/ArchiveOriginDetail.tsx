@@ -4,7 +4,7 @@ import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
-import { describeAssetContainer, isLooseContainer } from "@/core/assets/lib";
+import { describeAssetContainer, isLooseContainer } from "@/core/assets/lib/container";
 
 interface IArchiveOriginDetailProps extends BaseComponentProps {
   entry: ArchiveWorldEntry;

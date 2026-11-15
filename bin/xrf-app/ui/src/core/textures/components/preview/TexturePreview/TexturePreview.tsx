@@ -12,7 +12,7 @@ import { PreviewFrame } from "@xrf/ui/media/preview-frame";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement, useEffect, useState } from "react";
 
-import { describeTextureShape } from "@/core/assets/lib";
+import { describeTextureShape } from "@/core/assets/lib/texture-shape";
 import { TextureSurface } from "@/core/textures/components/preview/TextureSurface";
 import {
   describeTexturePreviewGap,

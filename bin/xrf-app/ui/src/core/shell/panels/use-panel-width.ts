@@ -1,4 +1,5 @@
 import { clamp } from "@xrf/math";
+import { useWindowWidth } from "@xrf/react/window-width";
 import { Nullable } from "@xrf/types";
 import { PANEL } from "@xrf/ui/theme";
 import { useCallback } from "react";
@@ -6,7 +7,6 @@ import { useCallback } from "react";
 import { clampPanelWidth } from "@/core/shell/panels/panel-width";
 import { TShellPanelSide } from "@/core/shell/panels/shell-panel";
 import { getPanelWidthStorageKey, IStoredValueCodec, textCodec, useStoredValue } from "@/core/storage";
-import { useWindowWidth } from "@/lib/react/use-window-width";
 
 const PREFERRED_WIDTH_CODEC: IStoredValueCodec<number> = textCodec(readPreferredWidth);
 

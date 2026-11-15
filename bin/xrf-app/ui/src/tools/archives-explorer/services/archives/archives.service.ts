@@ -18,8 +18,9 @@ import { ArchiveExtractDirectoryResult } from "@xrf/ipc/types/xrf-pack";
 import { XrayPathCollision, XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 import { Logger } from "@xrf/logging";
 
-import { IArchiveEntry, listSubjectEntries } from "@/core/archive/lib";
-import { describeRoots } from "@/core/assets/lib";
+import { IArchiveEntry } from "@/core/archive/lib/entry";
+import { listSubjectEntries } from "@/core/archive/lib/subject";
+import { describeRoots } from "@/core/assets/lib/roots";
 import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { CommandOperation } from "@/core/operations/lib/command-operation";

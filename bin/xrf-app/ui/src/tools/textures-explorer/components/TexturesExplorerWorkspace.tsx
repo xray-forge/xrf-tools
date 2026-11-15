@@ -6,7 +6,7 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Alert } from "@xrf/ui/feedback";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
-import { describeRoots } from "@/core/assets/lib";
+import { describeRoots } from "@/core/assets/lib/roots";
 import { IShellPanel } from "@/core/shell/panels/shell-panel";
 import { TexturePreviewLayout } from "@/core/textures/components/workspace/TexturePreviewLayout";
 import { TextureSelectionService } from "@/core/textures/services/texture-selection";

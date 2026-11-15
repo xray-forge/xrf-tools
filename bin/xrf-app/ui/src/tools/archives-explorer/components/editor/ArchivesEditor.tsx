@@ -12,13 +12,8 @@ import { LayersIcon } from "@xrf/ui/icons/layers";
 import { UnarchiveIcon } from "@xrf/ui/icons/unarchive";
 import { ReactElement, useCallback, useState } from "react";
 
-import {
-  getEntryEngineIdentity,
-  getSubjectRoot,
-  getSubjectSize,
-  getSubjectSourceCount,
-  IArchiveEntry,
-} from "@/core/archive/lib";
+import { getEntryEngineIdentity, IArchiveEntry } from "@/core/archive/lib/entry";
+import { getSubjectRoot, getSubjectSize, getSubjectSourceCount } from "@/core/archive/lib/subject";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { EditorToolbar } from "@/core/shell/chrome/EditorToolbar";

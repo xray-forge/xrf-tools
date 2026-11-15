@@ -1,7 +1,7 @@
-import { DialogFilter } from "@tauri-apps/plugin-dialog";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 
-import { ARCHIVE_VOLUME_FILE_EXTENSIONS } from "@/core/archive/lib";
+import { ARCHIVE_VOLUME_FILE_EXTENSIONS } from "@/core/archive/lib/volume-options";
+import { IFileFilter } from "@/core/path/file-filters";
 
 /** Which source the picker opens. */
 export enum EArchiveOpenMode {
@@ -36,7 +36,7 @@ export const OPEN_MODE_DESCRIPTIONS: Readonly<Record<EArchiveOpenMode, string>> 
 };
 
 /** Volume extensions offered by the dialog. */
-export const ARCHIVE_FILTERS: Array<DialogFilter> = [
+export const ARCHIVE_FILTERS: Array<IFileFilter> = [
   { name: "Archive volume", extensions: [...ARCHIVE_VOLUME_FILE_EXTENSIONS] },
   { name: "All files", extensions: ["*"] },
 ];

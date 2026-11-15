@@ -5,7 +5,7 @@ import { CONFIGS_JOB_VERIFY } from "@xrf/ipc/types/xrf-app-configs";
 import { LtxProjectVerifyResult } from "@xrf/ipc/types/xrf-ltx";
 import { Logger } from "@xrf/logging";
 
-import { createRoots } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib/roots";
 import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { describeVerifyOutcome } from "@/tools/configs-verifier/lib/describe-verify-outcome";

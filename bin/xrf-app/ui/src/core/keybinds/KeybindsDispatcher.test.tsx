@@ -5,10 +5,10 @@ import { Logger } from "@xrf/logging";
 
 import { KeybindCommand } from "@/core/commands";
 import { HelpService } from "@/core/help/services/help.service";
+import { ShellToolService } from "@/core/routing/services/shell-tool.service";
 import { IToolDescriptor } from "@/core/routing/tool";
 import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
-import { SettingsService } from "@/core/settings/services/settings";
-import { ShellToolService } from "@/core/shell/services/shell-tool";
+import { SettingsService } from "@/core/settings/services/settings.service";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { ARCHIVES_EXPLORER_TOOL } from "@/tools/archives-explorer";

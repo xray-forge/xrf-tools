@@ -7,7 +7,7 @@ import { ERenderTextureGroup, ERenderTextureState } from "@xrf/ipc/types/xrf-ren
 import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 import { Nullable } from "@xrf/types";
 
-import { createRoots } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib/roots";
 import {
   mockMaterialDescriptor,
   mockPackedSubmesh,

@@ -3,7 +3,7 @@ import { ReactElement, ReactNode } from "react";
 import { IShellPanel } from "@/core/shell/panels/shell-panel";
 import { IFrameSide } from "@/core/shell/panels/use-frame-sides";
 
-import { PanelStripeButton } from "./rail";
+import { PanelStripeButton } from "./rail/PanelStripeButton";
 
 interface IApplicationPanelStripeProps {
   frameSide: IFrameSide;

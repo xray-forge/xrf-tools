@@ -6,7 +6,7 @@ import { Stack } from "@xrf/ui/layout/stack";
 import { ReactElement } from "react";
 
 import { ArchiveHeaderFields } from "@/core/archive/components/ArchiveHeaderFields";
-import { DEFAULT_ENTRY_POINT, HEADER_ENTRY_POINT, readHeaderValue } from "@/core/archive/lib";
+import { DEFAULT_ENTRY_POINT, HEADER_ENTRY_POINT, readHeaderValue } from "@/core/archive/lib/header";
 
 interface IPatcherHeaderSectionProps extends BaseComponentProps {
   config: ArchivePatchConfig;

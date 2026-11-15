@@ -19,10 +19,10 @@ import { ChoiceFormRow, IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { StringListFormRow } from "@xrf/ui/form/string-list-row";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
-import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { LEVEL_SCENE_FILE_FILTERS, XR_LIBRARY_FILE_FILTERS } from "@/core/path/file-filters";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { EToolId } from "@/core/routing/tool";
+import { JobPickerForm } from "@/core/shell/chrome/JobPickerForm";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import {
   COMPILE_STEPS,

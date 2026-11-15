@@ -3,8 +3,8 @@ import { Nullable } from "@xrf/types";
 import { SwitchFormRow } from "@xrf/ui/form/switch-row";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
-import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { EToolId } from "@/core/routing/tool";
+import { JobPickerForm } from "@/core/shell/chrome/JobPickerForm";
 import { TranslationLanguageField } from "@/core/translations/components/TranslationLanguageField";
 import { ALL_TRANSLATION_LANGUAGES, TRANSLATION_LANGUAGES_WITH_ALL } from "@/core/translations/translations.config";
 import { IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";

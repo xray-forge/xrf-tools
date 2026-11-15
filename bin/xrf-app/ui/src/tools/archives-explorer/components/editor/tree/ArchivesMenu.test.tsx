@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { act, fireEvent, RenderResult, waitFor } from "@testing-library/react";
 import { AsyncState } from "@xrf/async";
 import { EArchivesCommand } from "@xrf/ipc/commands/archives";
-import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
+import { mockIpcCommands } from "@xrf/ipc/testing";
 import { ArchiveFileDescriptor } from "@xrf/ipc/types/xrf-archive";
 import { EPathEntryKind } from "@xrf/path";
 
@@ -44,28 +44,23 @@ function fileRow(render: RenderResult, label: string): HTMLElement {
 }
 
 describe("ArchivesMenu", () => {
-  it("selects a file on one click without reading it", async () => {
-    const { render } = await renderMenu([mockArchiveFileDescriptor({ name: "configs\\system.ltx" })]);
+  it("selects a file on one click without opening it", async () => {
+    const { render, explorer } = await renderMenu([mockArchiveFileDescriptor({ name: "configs\\system.ltx" })]);
 
     fireEvent.dblClick(render.getByText("configs"));
     fireEvent.click(await render.findByText("system.ltx"));
 
-    expect(mockInvoke).not.toHaveBeenCalledWith(EArchivesCommand.READ_FILE, expect.anything());
+    expect(explorer.previewService.selectedEntry).toBeNull();
     expect(fileRow(render, "system.ltx")).toHaveAttribute("aria-selected", "true");
   });
 
-  it("reads a file on a double click", async () => {
-    const { render } = await renderMenu([mockArchiveFileDescriptor({ name: "configs\\system.ltx" })]);
+  it("opens a file on a double click", async () => {
+    const { render, explorer } = await renderMenu([mockArchiveFileDescriptor({ name: "configs\\system.ltx" })]);
 
     fireEvent.dblClick(render.getByText("configs"));
     fireEvent.dblClick(await render.findByText("system.ltx"));
 
-    await waitFor(() =>
-      expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.READ_FILE, {
-        sessionId: expect.any(String),
-        name: "configs\\system.ltx",
-      })
-    );
+    expect(explorer.previewService.selectedEntry?.name).toBe("configs\\system.ltx");
   });
 
   it("takes a directory as the extraction target on a double click, and opens it", async () => {
@@ -81,7 +76,7 @@ describe("ArchivesMenu", () => {
     expect(await render.findByText("system.ltx")).toBeInTheDocument();
   });
 
-  it("keeps browsing free while a read is in flight, and supersedes it with the next open", async () => {
+  it("keeps selecting free while a read is in flight", async () => {
     const { render, explorer } = await renderMenu([
       mockArchiveFileDescriptor({ name: "configs\\system.ltx" }),
       mockArchiveFileDescriptor({ name: "configs\\game.ltx" }),
@@ -95,29 +90,6 @@ describe("ArchivesMenu", () => {
 
     // Selecting is inert, so it never waits on a read.
     expect(fileRow(render, "game.ltx")).toHaveAttribute("aria-selected", "true");
-
-    fireEvent.dblClick(render.getByText("game.ltx"));
-
-    // The read in flight is abandoned for this one rather than swallowing the gesture that replaces it.
-    await waitFor(() =>
-      expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.READ_FILE, {
-        sessionId: expect.any(String),
-        name: "configs\\game.ltx",
-      })
-    );
-  });
-
-  it("refuses to open anything while an extraction is writing to disk", async () => {
-    const { render, explorer } = await renderMenu([mockArchiveFileDescriptor({ name: "configs\\system.ltx" })]);
-
-    fireEvent.dblClick(render.getByText("configs"));
-
-    // A write leaves the archive and cannot be abandoned the way a read can, so it still holds an open back.
-    await act(() => mockCommandAnswer(explorer.archivesService.fileExtraction, AsyncState.loading()));
-
-    fireEvent.dblClick(await render.findByText("system.ltx"));
-
-    expect(mockInvoke).not.toHaveBeenCalledWith(EArchivesCommand.READ_FILE, expect.anything());
   });
 
   it("blocks Enter on search results during extraction and opens them after it finishes", async () => {
@@ -128,7 +100,7 @@ describe("ArchivesMenu", () => {
     await act(() => mockCommandAnswer(explorer.archivesService.fileExtraction, AsyncState.loading()));
     fireEvent.keyDown(input, { key: "Enter" });
 
-    expect(mockInvoke).not.toHaveBeenCalledWith(EArchivesCommand.READ_FILE, expect.anything());
+    expect(explorer.previewService.selectedEntry).toBeNull();
 
     fireEvent.change(input, { target: { value: "missing" } });
 
@@ -138,12 +110,7 @@ describe("ArchivesMenu", () => {
     await act(() => mockCommandAnswer(explorer.archivesService.fileExtraction, AsyncState.idle()));
     fireEvent.keyDown(input, { key: "Enter" });
 
-    await waitFor(() =>
-      expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.READ_FILE, {
-        sessionId: expect.any(String),
-        name: "configs\\system.ltx",
-      })
-    );
+    expect(explorer.previewService.selectedEntry?.name).toBe("configs\\system.ltx");
 
     fireEvent.change(input, { target: { value: "" } });
 
@@ -162,16 +129,11 @@ describe("ArchivesMenu", () => {
 
     fireEvent.click(result);
 
-    expect(mockInvoke).not.toHaveBeenCalledWith(EArchivesCommand.READ_FILE, expect.anything());
+    expect(explorer.previewService.selectedEntry).toBeNull();
 
     await act(() => mockCommandAnswer(explorer.archivesService.fileExtraction, AsyncState.idle()));
     fireEvent.click(render.getByRole("button", { name: "system.ltx configs" }));
 
-    await waitFor(() =>
-      expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.READ_FILE, {
-        sessionId: expect.any(String),
-        name: "configs\\system.ltx",
-      })
-    );
+    expect(explorer.previewService.selectedEntry?.name).toBe("configs\\system.ltx");
   });
 });

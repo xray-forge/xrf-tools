@@ -9,7 +9,7 @@ import { Stack } from "@xrf/ui/layout/stack";
 import { Typography } from "@xrf/ui/typography";
 import { ChangeEvent, ReactElement, useCallback, useState } from "react";
 
-import { isReservedHeaderKey, isSameHeaderKey, readHeaderEntries, writeHeaderValue } from "@/core/archive/lib";
+import { isReservedHeaderKey, isSameHeaderKey, readHeaderEntries, writeHeaderValue } from "@/core/archive/lib/header";
 
 interface IArchiveHeaderEntriesProps extends BaseComponentProps {
   header: Nullable<string>;

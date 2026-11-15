@@ -1,8 +1,7 @@
-import { DialogFilter } from "@tauri-apps/plugin-dialog";
 import { EXrayExtension } from "@xrf/ipc/types/xrf-extension";
 
 import { withSupportedExtension } from "@/core/path/extension";
-import { toFormatFilters } from "@/core/path/file-filters";
+import { IFileFilter, toFormatFilters } from "@/core/path/file-filters";
 
 /** Formats the extern manifest can be written as, in the order the save dialog offers them. */
 export const EXTERN_MANIFEST_FORMATS: ReadonlyArray<EXrayExtension> = [
@@ -18,7 +17,7 @@ export const DEFAULT_EXTERN_MANIFEST_FORMAT: EXrayExtension = EXrayExtension.JSO
 export const DEFAULT_MANIFEST_NAME: string = `extern.${DEFAULT_EXTERN_MANIFEST_FORMAT}`;
 
 /** Filters the save dialog offers, one entry per format, so the chosen extension is what picks the writer. */
-export const MANIFEST_FILTERS: Array<DialogFilter> = toFormatFilters(
+export const MANIFEST_FILTERS: Array<IFileFilter> = toFormatFilters(
   EXTERN_MANIFEST_FORMATS,
   (format: EXrayExtension) => `${format.toUpperCase()} manifest`
 );

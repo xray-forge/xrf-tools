@@ -1,10 +1,10 @@
 import { formatDegrees, formatNumber } from "@xrf/format";
+import { usePartialChange } from "@xrf/react/partial-change";
 import { EditorPopoverSliderRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { IRenderLighting, RENDER_LIGHTING_LIMITS } from "@/core/render/lib/lighting/render-lighting";
-import { usePartialChange } from "@/lib/react/use-partial-change";
 
 /** Decimals a strength reads with, which is read against the other strength rather than in any unit. */
 const STRENGTH_DIGITS: number = 2;

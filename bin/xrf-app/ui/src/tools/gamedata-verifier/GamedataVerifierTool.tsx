@@ -7,8 +7,8 @@ import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { EngineChoiceFormRow } from "@/core/engine-target/components/EngineChoiceFormRow";
 import { IEngineChoice, useEngineChoice } from "@/core/engine-target/lib/use-engine-choice";
-import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { EToolId } from "@/core/routing/tool";
+import { JobPickerForm } from "@/core/shell/chrome/JobPickerForm";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { GamedataVerifierService } from "@/tools/gamedata-verifier/services/gamedata-verifier.service";
 

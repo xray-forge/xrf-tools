@@ -1,5 +1,6 @@
+import { defineMenu, IMenu } from "@/core/routing/menu-descriptor";
+import { defineMenuExtension, IMenuExtension } from "@/core/routing/menu-extension";
 import { EToolId } from "@/core/routing/tool";
-import { defineMenu, defineMenuExtension, IMenu, IMenuExtension } from "@/core/shell/menu/lib";
 import { FILE_MENU } from "@/core/shell/menu/menus";
 
 /**

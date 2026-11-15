@@ -10,8 +10,8 @@ import { cn } from "@xrf/ui/theme";
 import { Typography } from "@xrf/ui/typography";
 import { ReactElement } from "react";
 
-import { TArchiveBytes, TArchiveContent } from "@/core/archive/lib";
-import { describeTextureShape } from "@/core/assets/lib";
+import { TArchiveBytes, TArchiveContent } from "@/core/archive/lib/selection";
+import { describeTextureShape } from "@/core/assets/lib/texture-shape";
 import { useAssetUrl } from "@/core/assets/lib/use-asset-url";
 import { ArchivePreviewService } from "@/tools/archives-explorer/services/archive-preview";
 

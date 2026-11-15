@@ -5,12 +5,12 @@ import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { IKeybindCommand } from "@/core/commands";
-import { ROOT_KEYBIND_COMMANDS } from "@/core/commands/root-commands";
 import { parseChord } from "@/core/keybinds/lib/chord";
 import { buildKeymap, IKeymap } from "@/core/keybinds/lib/keymap";
-import { LAUNCHER_KEYBIND_COMMANDS } from "@/core/launcher/commands";
+import { KEYMAP_ROOT_COMMANDS } from "@/core/keybinds/lib/keymap-root-commands";
+import { ILauncherScreen, LAUNCHER_SCREEN } from "@/core/routing/launcher-screen";
+import { ShellToolService } from "@/core/routing/services/shell-tool.service";
 import { IToolDescriptor } from "@/core/routing/tool";
-import { ShellToolService } from "@/core/shell/services/shell-tool";
 import { jsonCodec, KEYBINDS_STORAGE_KEY, StoredValue } from "@/core/storage";
 
 /** Stored shape of the overlay: command id to the chords bound in its place. */
@@ -28,7 +28,11 @@ export class KeymapService {
     jsonCodec(KeymapService.readOverrides, KeymapService.writeOverrides)
   );
 
-  public constructor(private readonly shellToolService: ShellToolService = inject(ShellToolService)) {}
+  public constructor(
+    private readonly shellToolService: ShellToolService = inject(ShellToolService),
+    private readonly rootCommands: ReadonlyArray<IKeybindCommand> = inject(KEYMAP_ROOT_COMMANDS),
+    private readonly launcher: ILauncherScreen = inject(LAUNCHER_SCREEN)
+  ) {}
 
   /**
    * Reads the overlay, discarding entries it cannot use rather than the whole map.
@@ -84,9 +88,9 @@ export class KeymapService {
     const tool: Nullable<IToolDescriptor> = this.shellToolService.tool;
     const screen: ReadonlyArray<IKeybindCommand> = tool
       ? (tool.keybindCommands ?? EMPTY_ARRAY)
-      : LAUNCHER_KEYBIND_COMMANDS;
+      : this.launcher.keybindCommands;
 
-    for (const command of [...ROOT_KEYBIND_COMMANDS, ...screen]) {
+    for (const command of [...this.rootCommands, ...screen]) {
       byId.set(command.id, command);
     }
 

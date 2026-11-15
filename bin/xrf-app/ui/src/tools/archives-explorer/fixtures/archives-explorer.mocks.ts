@@ -7,7 +7,8 @@ import { EPathEntryKind } from "@xrf/path";
 import { Nullable } from "@xrf/types";
 
 import { mockArchivesVolumes } from "@/core/archive/fixtures/archive.mocks";
-import { IArchiveEntry, TArchiveContent } from "@/core/archive/lib";
+import { IArchiveEntry } from "@/core/archive/lib/entry";
+import { TArchiveContent } from "@/core/archive/lib/selection";
 import { mockCommandAnswer } from "@/core/operations/fixtures/command-operation.mocks";
 import { mockHeldSessionRoot } from "@/core/session/fixtures/session-root.mocks";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";

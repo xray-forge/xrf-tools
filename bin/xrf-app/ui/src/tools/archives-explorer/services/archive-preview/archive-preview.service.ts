@@ -2,22 +2,20 @@ import { inject, Injectable } from "@wirestate/core";
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { cancelFlow, LatestFlow, TFlow } from "@xrf/flow";
+import { archivesCommands } from "@xrf/ipc/commands/archives";
 import { ArchiveSubject, ArchiveWorldEntry, EArchiveSubject } from "@xrf/ipc/types/xrf-app-archives";
 import { SessionId } from "@xrf/ipc/types/xrf-app-core";
 import { ArchiveDescriptor, ArchiveFileDescriptor } from "@xrf/ipc/types/xrf-archive";
+import { AudioTransportId } from "@xrf/ipc/types/xrf-audio";
 import { EXrayAssetContainer } from "@xrf/ipc/types/xrf-vfs";
 import { Logger } from "@xrf/logging";
 import { EPathEntryKind } from "@xrf/path";
 import { Nullable, Optional } from "@xrf/types";
 
-import {
-  ArchivePreviewSupport,
-  getArchivePreviewSupport,
-  getArchiveVolumeOf,
-  IArchiveEntry,
-  TArchiveContent,
-  TArchiveSelection,
-} from "@/core/archive/lib";
+import { IArchiveEntry } from "@/core/archive/lib/entry";
+import { getArchiveVolumeOf } from "@/core/archive/lib/files";
+import { ArchivePreviewSupport, getArchivePreviewSupport } from "@/core/archive/lib/preview";
+import { TArchiveContent, TArchiveSelection } from "@/core/archive/lib/selection";
 import { CommandOperation } from "@/core/operations/lib/command-operation";
 import { ArchivesService } from "@/tools/archives-explorer/services/archives";
 
@@ -158,12 +156,17 @@ export class ArchivePreviewService {
   }
 
   /**
-   * Selects a file and reads it for its preview; the latest file picked is the one read.
+   * Selects a file and reads it for its preview; the latest file picked is the one read. Refused while the explorer
+   * writes to disk: a write leaves the archive and cannot be abandoned the way a read can.
    *
    * @param entry - File to select.
    */
   @LatestFlow("content")
   public *selectFile(entry: IArchiveEntry): TFlow {
+    if (this.archivesService.isWriting) {
+      return;
+    }
+
     this.log.info("Select archive file:", entry.name);
 
     this.view = { ...this.held, selection: { entry, kind: EPathEntryKind.FILE } };
@@ -191,16 +194,31 @@ export class ArchivePreviewService {
 
   /**
    * Selects a directory instead of a file, forgetting how the last writes ended, as they named what was selected.
+   * Refused while the explorer writes to disk, as a file is.
    *
    * @param path - Engine directory path; an empty string selects the tree root.
    */
   @BoundAction()
   public selectDirectory(path: string): void {
+    if (this.archivesService.isWriting) {
+      return;
+    }
+
     cancelFlow(this, "content");
 
     this.read.reset();
     this.view = { ...this.held, selection: { kind: EPathEntryKind.DIRECTORY, path } };
     this.archivesService.clearExtractions();
+  }
+
+  /**
+   * Opens a sound read for its preview as one the application's audio plays, by the session and name it was read by.
+   *
+   * @param audio - The sound as its preview was read.
+   * @returns The transport it plays through, which the caller closes.
+   */
+  public openAudio(audio: TArchiveContent & { kind: "audio" }): Promise<AudioTransportId> {
+    return archivesCommands.openAudioPreview(audio.sessionId, audio.name);
   }
 
   /** Reads the selected file again, after a read of it failed. */

@@ -4,7 +4,7 @@ import { EditorPanelProperty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useMemo } from "react";
 
-import { listPayloadSharersOf } from "@/core/archive/lib";
+import { listPayloadSharersOf } from "@/core/archive/lib/files";
 
 interface IArchiveSharedPayloadDetailProps extends BaseComponentProps {
   descriptor: ArchiveFileDescriptor;

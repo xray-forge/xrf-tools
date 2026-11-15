@@ -14,7 +14,7 @@ import { ContentState } from "@xrf/ui/layout/content-state";
 import { EmptyState } from "@xrf/ui/layout/empty-state";
 import { ReactElement } from "react";
 
-import { TArchiveContent } from "@/core/archive/lib";
+import { TArchiveContent } from "@/core/archive/lib/selection";
 import { ArchivePreviewService } from "@/tools/archives-explorer/services/archive-preview";
 
 import { ArchiveAnmDescriptionView } from "./ArchiveAnmDescriptionView";

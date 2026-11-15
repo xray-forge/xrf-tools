@@ -1,7 +1,7 @@
 import { inject, Injectable } from "@wirestate/core";
 import { EAssetSource } from "@xrf/ipc/types/xrf-app-core";
 
-import { createRoots } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib/roots";
 import { VisualInspectionService } from "@/core/visuals/services/visual-inspection";
 import { VisualLoadService } from "@/core/visuals/services/visual-load";
 

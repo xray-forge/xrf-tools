@@ -1,4 +1,3 @@
-import { DialogFilter, open, save } from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
 import { ArchivePackConfig } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
@@ -10,10 +9,15 @@ import { Divider, Stack } from "@xrf/ui/layout/stack";
 import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
-import { ARCHIVE_CONFIG_EXTENSIONS, withArchiveConfigExtension } from "@/core/archive/lib";
-import { ARCHIVE_CONFIG_EXPORT_FILTERS } from "@/core/archive/lib/config-format";
+import {
+  ARCHIVE_CONFIG_EXPORT_FILTERS,
+  ARCHIVE_CONFIG_EXTENSIONS,
+  withArchiveConfigExtension,
+} from "@/core/archive/lib/config-format";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
+import { IFileFilter } from "@/core/path/file-filters";
+import { askToOpen, askToSave } from "@/core/path/native-dialog";
 import { EToolId } from "@/core/routing/tool";
 import { resolveOutputPath } from "@/core/settings/lib/output-path";
 import { EditorToolbar } from "@/core/shell/chrome/EditorToolbar";
@@ -34,7 +38,7 @@ import {
 } from "./components/sections";
 
 /** Filter the open dialog offers: one entry listing every format, so browsing shows all configurations at once. */
-const IMPORT_CONFIG_FILTERS: Array<DialogFilter> = [
+const IMPORT_CONFIG_FILTERS: Array<IFileFilter> = [
   { name: "Packing configuration", extensions: [...ARCHIVE_CONFIG_EXTENSIONS] },
 ];
 
@@ -85,10 +89,11 @@ export function ArchivesPackerTool(): ReactElement {
   }, [config, source.value, destination.value, packerService.volumeSizeBytes]);
 
   const onImport = useCallback(async () => {
-    const selected: Nullable<string> = (await open({
+    const selected: Nullable<string> = await askToOpen({
       title: "Import packing configuration",
+      start: packerService.configPath,
       filters: IMPORT_CONFIG_FILTERS,
-    })) as Nullable<string>;
+    });
 
     if (selected) {
       await packerService.importConfig(selected);
@@ -96,8 +101,9 @@ export function ArchivesPackerTool(): ReactElement {
   }, [packerService]);
 
   const onExport = useCallback(async () => {
-    const selected: Nullable<string> = await save({
+    const selected: Nullable<string> = await askToSave({
       title: "Export packing configuration",
+      start: packerService.configPath,
       filters: ARCHIVE_CONFIG_EXPORT_FILTERS,
     });
 

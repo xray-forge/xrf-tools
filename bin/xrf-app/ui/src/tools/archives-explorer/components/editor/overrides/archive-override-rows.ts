@@ -2,7 +2,7 @@ import { ArchiveShadowedCopy, ArchiveWorldEntry } from "@xrf/ipc/types/xrf-app-a
 import { XrayAssetContainer } from "@xrf/ipc/types/xrf-vfs";
 import { Nullable } from "@xrf/types";
 
-import { getAssetContainerSource } from "@/core/assets/lib";
+import { getAssetContainerSource } from "@/core/assets/lib/container";
 
 /** Height every row of the listing draws at, so the virtualizer never has to measure one. */
 export const ARCHIVE_OVERRIDE_ROW_HEIGHT = 28;

@@ -4,7 +4,7 @@ import { EditorFileHeader } from "@xrf/ui/editor/file-header";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
-import { IArchiveEntry } from "@/core/archive/lib";
+import { IArchiveEntry } from "@/core/archive/lib/entry";
 import { ArchivePreviewService } from "@/tools/archives-explorer/services/archive-preview";
 
 import { ArchiveFileExtractAction } from "./ArchiveFileExtractAction";

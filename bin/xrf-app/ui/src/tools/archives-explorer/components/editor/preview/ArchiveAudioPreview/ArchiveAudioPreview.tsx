@@ -1,6 +1,5 @@
 import { useInjection } from "@wirestate/react";
 import { AsyncState } from "@xrf/async";
-import { archivesCommands } from "@xrf/ipc/commands/archives";
 import { AudioDescriptor } from "@xrf/ipc/types/xrf-app-archives";
 import { useLastValue } from "@xrf/react/last-value";
 import { Nullable } from "@xrf/types";
@@ -16,7 +15,7 @@ import { cn } from "@xrf/ui/theme";
 import { Typography } from "@xrf/ui/typography";
 import { ReactElement } from "react";
 
-import { TArchiveContent } from "@/core/archive/lib";
+import { TArchiveContent } from "@/core/archive/lib/selection";
 import { IAudioPreview, useAudioPreview } from "@/core/audio/lib/use-audio-preview";
 import { AudioSettingsService } from "@/core/audio/services/audio-settings.service";
 import { ArchivePreviewService } from "@/tools/archives-explorer/services/archive-preview";
@@ -47,7 +46,7 @@ export function ArchiveAudioPreview({
     audio
       ? {
           key: `${audio.sessionId}/${audio.name}`,
-          open: () => archivesCommands.openAudioPreview(audio.sessionId, audio.name),
+          open: () => previewService.openAudio(audio),
         }
       : null
   );

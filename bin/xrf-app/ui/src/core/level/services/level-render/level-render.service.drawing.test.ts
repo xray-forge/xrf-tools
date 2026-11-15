@@ -15,7 +15,7 @@ import { ELevelShading } from "@/core/level/lib/view/level-shading";
 import { LevelViewService } from "@/core/level/services/level-view";
 import { ERenderResolution } from "@/core/render/lib/settings/device/render-resolution";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
-import { SettingsService } from "@/core/settings/services/settings";
+import { SettingsService } from "@/core/settings/services/settings.service";
 import { clearLocalStorage } from "@/core/storage";
 describe("LevelRenderDrawing", () => {
   beforeEach(() => {

@@ -5,7 +5,7 @@ import { BADGE_FONT_SIZE, cn } from "@xrf/ui/theme";
 import { Typography } from "@xrf/ui/typography";
 import { ReactElement } from "react";
 
-import { describeAssetContainer, isLooseContainer } from "@/core/assets/lib";
+import { describeAssetContainer, isLooseContainer } from "@/core/assets/lib/container";
 
 import { ARCHIVE_OVERRIDE_ROW_HEIGHT, EArchiveOverrideRow, IArchiveOverrideCopyRow } from "./archive-override-rows";
 

@@ -4,7 +4,7 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { StringListFormRow } from "@xrf/ui/form/string-list-row";
 import { ReactElement, useCallback, useState } from "react";
 
-import { createRoots } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib/roots";
 import { EngineChoiceFormRow } from "@/core/engine-target/components/EngineChoiceFormRow";
 import { IEngineChoice, useEngineChoice } from "@/core/engine-target/lib/use-engine-choice";
 import { ConfigsDialectFormRow } from "@/core/ltx/components/ConfigsDialectFormRow";

@@ -1,4 +1,3 @@
-import * as dialog from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
 import { formatBytes, formatCount } from "@xrf/format";
 import { ArchiveExtractDirectoryResult } from "@xrf/ipc/types/xrf-pack";
@@ -14,8 +13,10 @@ import { cn } from "@xrf/ui/theme";
 import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useCallback, useMemo } from "react";
 
-import { IArchiveEntry, isUnderArchiveDirectory } from "@/core/archive/lib";
+import { IArchiveEntry } from "@/core/archive/lib/entry";
+import { isUnderArchiveDirectory } from "@/core/archive/lib/tree";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
+import { askToOpenDirectory } from "@/core/path/native-dialog";
 import { resolveDirectoryDestination } from "@/tools/archives-explorer/lib/resolve-directory-destination";
 import { ArchivesService } from "@/tools/archives-explorer/services/archives";
 
@@ -62,10 +63,7 @@ export function ArchiveDirectoryContent({
   }, [files, path]);
 
   const onExtract = useCallback(async () => {
-    const picked: Nullable<string> = (await dialog.open({
-      title: `Extract ${path} into`,
-      directory: true,
-    })) as Nullable<string>;
+    const picked: Nullable<string> = await askToOpenDirectory({ title: `Extract ${path} into` });
 
     if (picked) {
       // How it ends is published on the extraction, which the alerts below render.

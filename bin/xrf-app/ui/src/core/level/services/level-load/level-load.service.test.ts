@@ -8,7 +8,7 @@ import { LevelObjectsDescription, LevelSource, SelectedLevelDescription } from "
 import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
 import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 
-import { createRoots } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib/roots";
 import { mockLevelObject, mockSectorOutline, mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
 import { EMPTY_LEVEL_SPAWN_REPORT, isLevelSpawnReading } from "@/core/level/lib/spawn/level-spawn-report";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";

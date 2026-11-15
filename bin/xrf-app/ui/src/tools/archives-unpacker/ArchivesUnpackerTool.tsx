@@ -4,9 +4,9 @@ import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect } from "react";
 
-import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { EToolId } from "@/core/routing/tool";
 import { resolveOutputPath } from "@/core/settings/lib/output-path";
+import { JobPickerForm } from "@/core/shell/chrome/JobPickerForm";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { ArchivesUnpackerService } from "@/tools/archives-unpacker/services/archives-unpacker.service";
 

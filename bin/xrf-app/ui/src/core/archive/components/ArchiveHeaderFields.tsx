@@ -15,7 +15,7 @@ import {
   readHeaderValue,
   writeHeaderFlag,
   writeHeaderValue,
-} from "@/core/archive/lib";
+} from "@/core/archive/lib/header";
 
 interface IArchiveHeaderFieldsProps extends BaseComponentProps {
   header: Nullable<string>;

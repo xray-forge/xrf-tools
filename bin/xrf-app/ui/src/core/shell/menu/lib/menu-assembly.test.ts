@@ -1,11 +1,11 @@
 import { describe, expect, it, jest } from "@jest/globals";
 
+import { defineMenu, IMenu } from "@/core/routing/menu-descriptor";
+import { defineMenuExtension, IMenuExtension } from "@/core/routing/menu-extension";
 import { EToolId } from "@/core/routing/tool";
 
 import { assembleMenus, IAssembledMenu } from "./menu-assembly";
-import { defineMenu, IMenu } from "./menu-descriptor";
 import { EMenuEntryKind, IMenuContribution, TMenuEntry } from "./menu-entry";
-import { defineMenuExtension, IMenuExtension } from "./menu-extension";
 
 const FIRST: IMenu<"top" | "bottom"> = defineMenu({ id: "test/first", label: "First", sections: ["top", "bottom"] });
 const SECOND: IMenu<"only"> = defineMenu({ id: "test/second", label: "Second", sections: ["only"] });

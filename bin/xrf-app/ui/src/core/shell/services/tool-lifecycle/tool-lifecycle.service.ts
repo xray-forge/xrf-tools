@@ -6,9 +6,8 @@ import { ELeaveDecision } from "@xrf/ipc/types/xrf-app-system";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
-import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
-import { APPLICATION_SOURCE } from "@/core/routing/tool";
-import { ShellToolService } from "@/core/shell/services/shell-tool";
+import { APPLICATION_SOURCE, emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
+import { ShellToolService } from "@/core/routing/services/shell-tool.service";
 
 /** Writes all pending edits; false keeps the tool open. */
 export type TToolSaver = () => Promise<boolean>;

@@ -4,7 +4,7 @@ import { AssetTextureDescriptor } from "@xrf/ipc/types/xrf-app-core";
 import { Nullable } from "@xrf/types";
 
 import { mockArchiveFileDescriptor } from "@/core/archive/fixtures/archive.mocks";
-import { TArchiveBytes } from "@/core/archive/lib";
+import { TArchiveBytes } from "@/core/archive/lib/selection";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { ArchiveTexturePreview } from "@/tools/archives-explorer/components/editor/preview/ArchiveTexturePreview";
 import {

@@ -1,5 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { formatDegrees } from "@xrf/format";
+import { usePartialChange } from "@xrf/react/partial-change";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { EditorPopoverContent } from "@xrf/ui/editor/popover-content";
 import { EditorPopoverSliderRow } from "@xrf/ui/editor/popover-row";
@@ -15,7 +16,6 @@ import {
   LEVEL_CAMERA_LIMITS,
 } from "@/core/level/lib/camera/level-camera-options";
 import { LevelViewService } from "@/core/level/services/level-view";
-import { usePartialChange } from "@/lib/react/use-partial-change";
 
 /** What the camera's reset says it does: it sees and moves as it did before anyone touched it. */
 const LEVEL_CAMERA_RESET_LABEL: string = "Reset to the defaults";

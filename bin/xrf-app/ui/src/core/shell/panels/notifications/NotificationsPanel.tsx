@@ -7,7 +7,7 @@ import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { INotification } from "@/core/notifications/lib";
 import { NotificationsService } from "@/core/notifications/services";
-import { SettingsService } from "@/core/settings/services/settings";
+import { SettingsService } from "@/core/settings/services/settings.service";
 import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
 import { INotificationEntry, toNotificationEntries } from "@/core/shell/panels/notifications/notification-list";
 import { NotificationRow } from "@/core/shell/panels/notifications/NotificationRow";

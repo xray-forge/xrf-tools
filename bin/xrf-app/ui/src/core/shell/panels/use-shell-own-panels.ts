@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { SHELL_SESSION_TOOL } from "@xrf/ipc/session";
 import { useMemo } from "react";
 
-import { SettingsService } from "@/core/settings/services/settings";
+import { SettingsService } from "@/core/settings/services/settings.service";
 import { useShellContribution } from "@/core/shell/contributions";
 import { JOBS_PANEL } from "@/core/shell/panels/jobs/jobs-panel";
 import { NOTIFICATIONS_PANEL } from "@/core/shell/panels/notifications/notification-panel";

@@ -10,9 +10,9 @@ import { useMemo, useState } from "react";
 
 import { REPOSITORY_URL } from "@/core/configs";
 import { OPEN_TOOL_HELP_KEYBIND_COMMAND } from "@/core/help/commands";
-import { OPEN_SETTINGS_KEYBIND_COMMAND } from "@/core/settings/commands";
-import { ESettingsSection } from "@/core/settings/lib/settings-section";
-import { SettingsDialogService } from "@/core/settings/services/settings-dialog";
+import { OPEN_SETTINGS_KEYBIND_COMMAND } from "@/core/settings-dialog/commands";
+import { ESettingsSection } from "@/core/settings-dialog/lib/settings-section";
+import { SettingsDialogService } from "@/core/settings-dialog/services/settings-dialog";
 import { CLOSE_TOOL_KEYBIND_COMMAND } from "@/core/shell/commands";
 import { useShellContribution } from "@/core/shell/contributions";
 import { EMenuEntryKind, IMenuContribution } from "@/core/shell/menu/lib";

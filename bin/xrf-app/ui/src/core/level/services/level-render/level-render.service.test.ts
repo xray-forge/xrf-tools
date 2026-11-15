@@ -36,7 +36,7 @@ import {
   WorldSurfaceSpan,
 } from "@xrf/ipc/types/xrf-world";
 
-import { createRoots } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib/roots";
 import {
   emitViewportEvent,
   LEVEL_SCENE,

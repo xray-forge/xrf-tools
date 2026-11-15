@@ -1,8 +1,7 @@
 import { ReactNode } from "react";
 
 import { IKeybindCommand } from "@/core/commands";
-
-import { IMenuSection } from "./menu-descriptor";
+import { IMenuSection } from "@/core/routing/menu-descriptor";
 
 /** What a menu row is, which decides how it is drawn and what choosing it does. */
 export enum EMenuEntryKind {

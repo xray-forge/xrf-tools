@@ -1,4 +1,3 @@
-import { save } from "@tauri-apps/plugin-dialog";
 import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, reaction, RefObservable } from "@wirestate/mobx";
 import { cancelFlow, ExclusiveFlow, TFlow } from "@xrf/flow";
@@ -14,6 +13,7 @@ import { KeybindCommand } from "@/core/commands";
 import { LevelRenderService } from "@/core/level/services/level-render";
 import { CommandOperation } from "@/core/operations/lib/command-operation";
 import { CommandReporter, TCommandCompletion } from "@/core/operations/lib/command-reporter";
+import { askToSave } from "@/core/path/native-dialog";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { noop } from "@/lib/callbacks/noop";
 import { TAKE_LEVEL_SCREENSHOT_KEYBIND_COMMAND } from "@/tools/level-viewer/commands";
@@ -255,9 +255,9 @@ export class LevelViewerScreenshotService {
 
   /** Copies `shot` where a save dialog answers, if it answers. */
   private async saveCopy(shot: ILevelViewerScreenshot): Promise<void> {
-    const path: Nullable<string> = await save({
-      defaultPath: shot.name,
+    const path: Nullable<string> = await askToSave({
       filters: [{ extensions: [EXrayExtension.PNG], name: "PNG image" }],
+      start: shot.name,
       title: "Save screenshot as",
     });
 

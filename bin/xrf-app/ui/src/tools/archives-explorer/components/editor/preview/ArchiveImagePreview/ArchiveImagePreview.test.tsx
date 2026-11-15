@@ -4,7 +4,7 @@ import { ImageDescriptor } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable } from "@xrf/types";
 
 import { mockArchiveFileDescriptor } from "@/core/archive/fixtures/archive.mocks";
-import { TArchiveBytes } from "@/core/archive/lib";
+import { TArchiveBytes } from "@/core/archive/lib/selection";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import {
   IArchivesExplorerMock,

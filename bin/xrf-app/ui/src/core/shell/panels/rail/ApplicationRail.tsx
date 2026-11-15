@@ -8,7 +8,7 @@ import { useColorScheme } from "@xrf/ui/theme/styles";
 import { ReactElement, useCallback } from "react";
 
 import { ToolHelp } from "@/core/help/components/ToolHelp/ToolHelp";
-import { SettingsDialogService } from "@/core/settings/services/settings-dialog";
+import { SettingsDialogService } from "@/core/settings-dialog/services/settings-dialog";
 import { ApplicationPanelStripe } from "@/core/shell/panels/ApplicationPanelStripe";
 import { IFrameSide } from "@/core/shell/panels/use-frame-sides";
 
