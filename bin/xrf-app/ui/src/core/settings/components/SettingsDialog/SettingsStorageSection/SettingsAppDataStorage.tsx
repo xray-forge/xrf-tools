@@ -5,13 +5,12 @@ import { AppStorageArea, AppStorageUsage, EAppStorageKind } from "@xrf/ipc/types
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
+import { Button } from "@xrf/ui/button";
 import { ConfirmDialog } from "@xrf/ui/dialog/confirm";
 import { SliderFormRow } from "@xrf/ui/form/slider-row";
 import { DetailSection } from "@xrf/ui/layout/detail-section";
-import { Button } from "@xrf/ui/material/button";
-import { Divider } from "@xrf/ui/material/divider";
-import { Stack } from "@xrf/ui/material/stack";
-import { Typography } from "@xrf/ui/material/typography";
+import { Divider, Stack } from "@xrf/ui/layout/stack";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { APP_CACHE_POLICY_CODEC, APP_CACHE_POLICY_LIMITS, tidyAppCache } from "@/core/settings/lib/app-cache";

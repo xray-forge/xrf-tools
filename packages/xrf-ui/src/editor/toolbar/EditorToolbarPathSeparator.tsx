@@ -1,6 +1,6 @@
 import { ReactElement } from "react";
 
-import { Typography } from "#/material/typography";
+import { Typography } from "#/typography";
 
 export function EditorToolbarPathSeparator(): ReactElement {
   return (

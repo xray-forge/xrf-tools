@@ -1,8 +1,8 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ErrorOutlineOutlinedIcon as ErrorOutlineIcon } from "@xrf/ui/icons/error-outline-outlined";
 import { CenteredColumn } from "@xrf/ui/layout/centered-column";
-import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement } from "react";
 
 interface IRenderFailureNoticeProps extends BaseComponentProps {

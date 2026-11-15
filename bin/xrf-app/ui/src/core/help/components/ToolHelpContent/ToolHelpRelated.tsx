@@ -1,7 +1,7 @@
 import { Nullable } from "@xrf/types";
+import { Chip } from "@xrf/ui/badge";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Chip } from "@xrf/ui/material/chip";
-import { Typography } from "@xrf/ui/material/typography";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement } from "react";
 import { NavigateFunction, useNavigate } from "react-router-dom";
 

@@ -2,8 +2,7 @@ import { EmotionCache } from "@emotion/cache";
 import { CacheProvider } from "@emotion/react";
 import { ReactElement, ReactNode, useMemo } from "react";
 
-import { CssBaseline } from "#/material/css-baseline";
-import { Theme, ThemeProvider } from "#/material/styles";
+import { CssBaseline, Theme, ThemeProvider } from "#/theme/styles";
 
 import "./tailwind.css";
 import "./base.css";

@@ -1,7 +1,7 @@
 import { ArchiveDetailEntry } from "@xrf/ipc/types/xrf-app-archives";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement } from "react";
 
 import { ArchiveDescriptionReferenceLink } from "../ArchiveDescriptionReferenceLink";

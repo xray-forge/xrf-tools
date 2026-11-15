@@ -1,9 +1,9 @@
 import type { Decorator, Preview } from "@storybook/react-vite";
 import { ReactElement, ReactNode, useEffect } from "react";
 
-import { useColorScheme } from "#/material/styles";
 import { ColorScheme } from "#/theme";
 import { getPreloadThemeCss, ThemeRoot } from "#/theme/root";
+import { useColorScheme } from "#/theme/styles";
 
 import { COLOR_SCHEME_STORAGE_KEY } from "./color-scheme-storage";
 import { PRELOAD_STYLE_ID } from "./preview-head";

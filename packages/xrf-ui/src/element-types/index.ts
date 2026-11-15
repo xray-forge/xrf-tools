@@ -1,4 +1,4 @@
-import { SxProps, Theme } from "#/material/styles";
+import { SxProps, Theme } from "#/theme/styles";
 
 /** Identity for a component's rendered surface. */
 export interface BaseComponentProps {

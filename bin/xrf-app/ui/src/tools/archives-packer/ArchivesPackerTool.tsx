@@ -4,11 +4,10 @@ import { ArchivePackConfig } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
 import { ConfirmDialog } from "@xrf/ui/dialog/confirm";
 import { EditorLayout } from "@xrf/ui/editor/layout";
+import { Alert } from "@xrf/ui/feedback";
 import { TuneIcon } from "@xrf/ui/icons/tune";
-import { Alert } from "@xrf/ui/material/alert";
-import { Divider } from "@xrf/ui/material/divider";
-import { Stack } from "@xrf/ui/material/stack";
-import { Typography } from "@xrf/ui/material/typography";
+import { Divider, Stack } from "@xrf/ui/layout/stack";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
 import { ARCHIVE_CONFIG_EXTENSIONS, withArchiveConfigExtension } from "@/core/archive/lib";

@@ -1,7 +1,7 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { ListItem, ListItemButton } from "@xrf/ui/material/list";
-import { Typography } from "@xrf/ui/material/typography";
+import { ListItem, ListItemButton } from "@xrf/ui/list";
 import { cn, TREE } from "@xrf/ui/theme";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement } from "react";
 
 import { toAccentColor, useToolLauncherActions } from "@/core/launcher/lib";

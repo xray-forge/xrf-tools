@@ -1,7 +1,7 @@
-import { inputBaseClasses, outlinedInputClasses } from "#/material/input";
-import { SystemStyleObject, Theme } from "#/material/styles";
-import { toggleButtonClasses } from "#/material/toggle-button";
+import { toggleButtonClasses } from "#/button";
+import { inputBaseClasses, outlinedInputClasses } from "#/input";
 import { CONTROL, FORM, WELL_FILL } from "#/theme";
+import { SystemStyleObject, Theme } from "#/theme/styles";
 
 const CONTROL_LINE_HEIGHT: number = FORM.controlHeight - CONTROL.smallInputPaddingY * 2;
 const CONTROL_RADIUS: string = `${FORM.controlRadius}px`;

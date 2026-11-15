@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { SpawnGraphsChunk } from "@xrf/ipc/types/xrf-spawn";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Tab, Tabs } from "@xrf/ui/material/tabs";
+import { Tab, Tabs } from "@xrf/ui/tabs";
 import { ReactElement } from "react";
 
 import { SpawnChunkView } from "@/tools/spawn-editor/components/editor/chunks/SpawnChunkView";

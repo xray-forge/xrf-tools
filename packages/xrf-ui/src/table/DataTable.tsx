@@ -5,8 +5,8 @@ import { ReactElement, useCallback, useMemo, useState } from "react";
 import { DataGrid, GridColDef, GridRowId, GridRowParams, GridValidRowModel } from "#/data-grid";
 import { EditorFilterInput } from "#/editor/filter-input";
 import { BaseComponentProps } from "#/element-types";
-import { Typography } from "#/material/typography";
 import { cn } from "#/theme";
+import { Typography } from "#/typography";
 
 export interface IDataTableProps<T extends GridValidRowModel> extends BaseComponentProps {
   rows: Array<T>;

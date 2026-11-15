@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
+import { Button } from "@xrf/ui/button";
 import { SwitchFormRow } from "@xrf/ui/form/switch-row";
-import { Button } from "@xrf/ui/material/button";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";

@@ -1,10 +1,10 @@
 import { Nullable } from "@xrf/types";
+import { iconButtonClasses } from "@xrf/ui/button";
 import { EditorToolbarCrumb, EditorToolbarPathSeparator, EditorToolbarSeparator } from "@xrf/ui/editor/toolbar";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Box } from "@xrf/ui/material/box";
-import { iconButtonClasses } from "@xrf/ui/material/icon-button";
-import { svgIconClasses } from "@xrf/ui/material/svg-icon";
+import { Box } from "@xrf/ui/layout/stack";
 import { cn, CONTROL } from "@xrf/ui/theme";
+import { svgIconClasses } from "@xrf/ui/theme/styles";
 import { ReactElement, ReactNode, useCallback } from "react";
 
 import { useCurrentTool } from "@/core/routing/current-tool.context";

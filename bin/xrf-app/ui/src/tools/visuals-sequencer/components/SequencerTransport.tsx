@@ -7,8 +7,8 @@ import { PlayArrowIcon } from "@xrf/ui/icons/play-arrow";
 import { RepeatIcon } from "@xrf/ui/icons/repeat";
 import { SkipNextIcon } from "@xrf/ui/icons/skip-next";
 import { SkipPreviousIcon } from "@xrf/ui/icons/skip-previous";
-import { Paper } from "@xrf/ui/material/paper";
-import { Typography } from "@xrf/ui/material/typography";
+import { Paper } from "@xrf/ui/layout/card";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useCallback } from "react";
 
 import { MotionFrameSlider, MotionPlaybackRate } from "@/core/visuals/components/preview";

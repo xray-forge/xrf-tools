@@ -1,10 +1,10 @@
 import { Nullable } from "@xrf/types";
+import { Button } from "@xrf/ui/button";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { SearchOffIcon } from "@xrf/ui/icons/search-off";
 import { EmptyState } from "@xrf/ui/layout/empty-state";
-import { Button } from "@xrf/ui/material/button";
-import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement } from "react";
 
 import { ICatalogSection } from "@/core/launcher/lib";

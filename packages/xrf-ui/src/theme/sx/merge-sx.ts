@@ -1,6 +1,6 @@
 import { Optional } from "@xrf/types";
 
-import { SxProps, Theme } from "#/material/styles";
+import { SxProps, Theme } from "#/theme/styles";
 
 type SxArray = Extract<SxProps<Theme>, ReadonlyArray<unknown>>;
 

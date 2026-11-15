@@ -2,8 +2,8 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode } from "react";
 
 import { BaseComponentProps } from "#/element-types";
-import { Checkbox } from "#/material/checkbox";
-import { Tooltip } from "#/material/tooltip";
+import { Checkbox } from "#/form/control";
+import { Tooltip } from "#/overlay";
 import { cn } from "#/theme";
 
 /** One column of switches, headed by its icon. */

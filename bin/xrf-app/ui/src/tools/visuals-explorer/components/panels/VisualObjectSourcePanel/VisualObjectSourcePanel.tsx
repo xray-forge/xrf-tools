@@ -2,9 +2,9 @@ import { useInjection } from "@wirestate/react";
 import { ABSENT_VALUE, formatInstant } from "@xrf/format";
 import { SelectedObjectBone, SelectedObjectDescription, SelectedObjectSurface } from "@xrf/ipc/types/xrf-app-visuals";
 import { Nullable } from "@xrf/types";
+import { Chip } from "@xrf/ui/badge";
 import { EditorPanelEmpty, EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Chip } from "@xrf/ui/material/chip";
 import { ReactElement } from "react";
 
 import { EditorPanel } from "@/core/shell/chrome/EditorPanel";

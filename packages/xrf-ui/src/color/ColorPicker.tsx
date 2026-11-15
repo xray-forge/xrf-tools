@@ -3,7 +3,7 @@ import { ReactElement, useCallback, useEffect } from "react";
 import { RgbColorPicker } from "react-colorful";
 
 import { BaseComponentProps } from "#/element-types";
-import { Box } from "#/material/box";
+import { Box } from "#/layout/stack";
 import { useThrottledValue } from "#/react/throttled-value";
 import { RADIUS } from "#/theme";
 
@@ -18,7 +18,7 @@ function isSameColor(left: IPickedColor, right: Nullable<IPickedColor>): boolean
   return right !== null && left.r === right.r && left.g === right.g && left.b === right.b;
 }
 
-interface IColorPickerProps extends BaseComponentProps {
+export interface IColorPickerProps extends BaseComponentProps {
   value: IPickedColor;
   /** Told the colour while it is dragged at most once an interval, and at once when it is let go. */
   onChange: (value: IPickedColor) => void;

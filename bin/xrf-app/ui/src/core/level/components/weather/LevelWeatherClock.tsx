@@ -1,10 +1,10 @@
 import { EMPTY_ARRAY } from "@xrf/collections";
+import { IconButton } from "@xrf/ui/button";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Slider } from "@xrf/ui/form/control";
 import { PauseIcon } from "@xrf/ui/icons/pause";
 import { PlayArrowIcon } from "@xrf/ui/icons/play-arrow";
-import { IconButton } from "@xrf/ui/material/icon-button";
-import { Slider } from "@xrf/ui/material/slider";
-import { Tooltip } from "@xrf/ui/material/tooltip";
+import { Tooltip } from "@xrf/ui/overlay";
 import { IThrottledDraft, useThrottledDraft } from "@xrf/ui/react/throttled-draft";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement, useMemo } from "react";

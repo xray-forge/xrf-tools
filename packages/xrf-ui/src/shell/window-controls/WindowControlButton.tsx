@@ -1,6 +1,6 @@
 import { ReactElement, ReactNode } from "react";
 
-import { ButtonBase } from "#/material/button-base";
+import { ButtonBase } from "#/button";
 import { LAYOUT } from "#/theme";
 
 /** Windows tints only the close button, and keeps the same red in both schemes. */

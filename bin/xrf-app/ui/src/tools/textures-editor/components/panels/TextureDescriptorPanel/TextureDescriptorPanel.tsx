@@ -6,12 +6,12 @@ import {
   TextureVocabulary,
 } from "@xrf/ipc/types/xrf-app-textures";
 import { Nullable } from "@xrf/types";
+import { Button } from "@xrf/ui/button";
 import { EditorPanelEmpty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { EditorPopoverNote } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Alert } from "@xrf/ui/material/alert";
-import { Button } from "@xrf/ui/material/button";
-import { Stack } from "@xrf/ui/material/stack";
+import { Alert } from "@xrf/ui/feedback";
+import { Stack } from "@xrf/ui/layout/stack";
 import { ReactElement, useCallback } from "react";
 
 import { EditorPanel } from "@/core/shell/chrome/EditorPanel";

@@ -1,14 +1,14 @@
 import { formatPlaybackTime } from "@xrf/format";
 import { ReactElement } from "react";
 
+import { IconButton } from "#/button";
+import { Slider } from "#/form/control";
 import { PauseIcon } from "#/icons/pause";
 import { PlayArrowIcon } from "#/icons/play-arrow";
 import { RepeatIcon } from "#/icons/repeat";
 import { VolumeUpIcon } from "#/icons/volume-up";
-import { IconButton } from "#/material/icon-button";
-import { Slider } from "#/material/slider";
-import { Tooltip } from "#/material/tooltip";
-import { Typography } from "#/material/typography";
+import { Tooltip } from "#/overlay";
+import { Typography } from "#/typography";
 
 interface IAudioPlayerControlsProps {
   isPlaying: boolean;

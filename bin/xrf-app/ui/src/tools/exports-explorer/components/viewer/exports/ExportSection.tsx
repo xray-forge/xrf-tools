@@ -1,7 +1,7 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Divider } from "@xrf/ui/material/divider";
-import { Typography } from "@xrf/ui/material/typography";
+import { Divider } from "@xrf/ui/layout/stack";
 import { cn } from "@xrf/ui/theme";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement, ReactNode } from "react";
 
 export interface IExportSectionProps extends BaseComponentProps {

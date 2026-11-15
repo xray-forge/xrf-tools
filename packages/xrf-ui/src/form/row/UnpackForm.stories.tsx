@@ -2,15 +2,15 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Nullable } from "@xrf/types";
 import { ChangeEvent, ReactElement, useCallback, useState } from "react";
 
+import { Button } from "#/button";
 import { CheckboxFormRow } from "#/form/checkbox-row";
 import { ChoiceFormRow, IChoiceFormRowOption } from "#/form/choice-row";
 import { SliderFormRow } from "#/form/slider-row";
 import { SwitchFormRow } from "#/form/switch-row";
-import { Button } from "#/material/button";
-import { Card } from "#/material/card";
-import { TextField } from "#/material/text-field";
-import { Typography } from "#/material/typography";
+import { TextField } from "#/input";
+import { Card } from "#/layout/card";
 import { FORM_SURFACE_SX } from "#/theme/sx";
+import { Typography } from "#/typography";
 
 import { FormRow } from "./FormRow";
 

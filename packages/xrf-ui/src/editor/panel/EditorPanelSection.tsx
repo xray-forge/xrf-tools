@@ -1,8 +1,8 @@
 import { ReactElement, ReactNode } from "react";
 
 import { BaseComponentProps } from "#/element-types";
-import { Typography } from "#/material/typography";
 import { cn } from "#/theme";
+import { Typography } from "#/typography";
 
 interface IEditorPanelSectionProps extends BaseComponentProps {
   title: ReactNode;

@@ -3,8 +3,8 @@ import { ReactElement, ReactNode } from "react";
 import { BaseComponentProps } from "#/element-types";
 import { DescriptionOutlinedIcon } from "#/icons/description-outlined";
 import { CenteredColumn } from "#/layout/centered-column";
-import { Typography } from "#/material/typography";
 import { cn } from "#/theme";
+import { Typography } from "#/typography";
 
 interface IEmptyStateProps extends BaseComponentProps {
   title: string;

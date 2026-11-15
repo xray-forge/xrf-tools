@@ -1,7 +1,7 @@
 import { ChangeEvent, ReactElement } from "react";
 
 import { BaseComponentProps } from "#/element-types";
-import { TextField } from "#/material/text-field";
+import { TextField } from "#/input";
 import { POPOVER_INPUT_SX } from "#/theme/sx";
 
 import { EditorPopoverRow, IEditorPopoverRowControlProps } from "./EditorPopoverRow";

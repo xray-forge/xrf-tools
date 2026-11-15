@@ -2,12 +2,12 @@ import { useInjection } from "@wirestate/react";
 import { formatBytes, formatMilliseconds, formatNumber } from "@xrf/format";
 import { RenderFrameReport } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
+import { Button } from "@xrf/ui/button";
 import { DialogHeader } from "@xrf/ui/dialog/header";
+import { Dialog, DialogActions, DialogContent } from "@xrf/ui/dialog/modal";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { PhotoCameraOutlinedIcon as PhotoCameraIcon } from "@xrf/ui/icons/photo-camera-outlined";
-import { Button } from "@xrf/ui/material/button";
-import { Dialog, DialogActions, DialogContent } from "@xrf/ui/material/dialog";
-import { Typography } from "@xrf/ui/material/typography";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useCallback, useId, useState } from "react";
 
 import {

@@ -6,9 +6,9 @@ import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { ChoiceFormRow } from "@xrf/ui/form/choice-row";
-import { Typography } from "@xrf/ui/material/typography";
 import { IImageViewportView, ImageViewport } from "@xrf/ui/media/image-viewport";
 import { cn } from "@xrf/ui/theme";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement, ReactNode, useCallback } from "react";
 
 import { LEVEL_CAPTURE_DDS_FORMATS } from "@/tools/level-viewer/lib/capture/level-capture";

@@ -1,8 +1,8 @@
 import { ReactElement } from "react";
 
 import { BaseComponentProps } from "#/element-types";
-import { Typography } from "#/material/typography";
 import { cn } from "#/theme";
+import { Typography } from "#/typography";
 
 interface IEditorPanelSectionEmptyProps extends BaseComponentProps {
   /** What is absent from the section, and why: none in the file, or switched off elsewhere. */

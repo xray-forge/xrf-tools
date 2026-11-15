@@ -1,6 +1,6 @@
+import { Button } from "@xrf/ui/button";
 import { EditorLayout } from "@xrf/ui/editor/layout";
-import { Button } from "@xrf/ui/material/button";
-import { Typography } from "@xrf/ui/material/typography";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement } from "react";
 import { NavigateFunction, useNavigate } from "react-router-dom";
 

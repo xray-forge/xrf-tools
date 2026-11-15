@@ -1,12 +1,12 @@
 import { ReactElement, useCallback } from "react";
 
-import { Alert } from "#/material/alert";
+import { Alert } from "#/feedback";
 
 import { IAudioTransport } from "./audio-transport";
 import { AudioPlayerControls } from "./AudioPlayerControls";
 import { AudioWaveform } from "./AudioWaveform";
 
-interface IAudioPlayerProps {
+export interface IAudioPlayerProps {
   /** What plays the sound: the player shows its state and asks it to play, pause, seek and loop. */
   transport: IAudioTransport;
   /** Level in `[0, 1]`, which the caller keeps and applies. */

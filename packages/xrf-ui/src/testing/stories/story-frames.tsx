@@ -30,6 +30,36 @@ export function withListingPane(...[Story]: Parameters<Decorator>): ReactElement
   );
 }
 
+/** One tile's width, as the launcher and the picker screens lay their cards out side by side. */
+export function withTileSlot(...[Story]: Parameters<Decorator>): ReactElement {
+  return (
+    <div className={"w-72"}>
+      <Story />
+    </div>
+  );
+}
+
+/** Room above and beside a small subject, for what it floats over itself: a tooltip, a popper. */
+export function withOverlayRoom(...[Story]: Parameters<Decorator>): ReactElement {
+  return (
+    <div className={"px-24 pt-16"}>
+      <Story />
+    </div>
+  );
+}
+
+/** A toolbar popover's paper at its one width, for what sits inside one: a section, a row, a note. */
+export function withPopoverSurface(...[Story]: Parameters<Decorator>): ReactElement {
+  return (
+    <div
+      className={"flex w-popover flex-col gap-1 rounded-surface border border-divider bg-surface-overlay px-3 py-3"}
+      style={{ boxShadow: "var(--xrf-shadow-overlay)" }}
+    >
+      <Story />
+    </div>
+  );
+}
+
 /** A docked panel's slot: the frame level at the panel's default width, ruled off from the reading plane. */
 export function withPanelSlot(...[Story]: Parameters<Decorator>): ReactElement {
   return (

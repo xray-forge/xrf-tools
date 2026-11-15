@@ -3,8 +3,8 @@ import { ArchiveCompression, ArchiveExtensionUsage } from "@xrf/ipc/types/xrf-ar
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { DetailSection } from "@xrf/ui/layout/detail-section";
-import { Typography } from "@xrf/ui/material/typography";
 import { StatFigure } from "@xrf/ui/stats";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useMemo } from "react";
 
 /**

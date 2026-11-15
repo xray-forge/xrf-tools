@@ -1,10 +1,10 @@
 import { AriaAttributes, MouseEventHandler, ReactElement, ReactNode } from "react";
 
+import { IconButton } from "#/button";
 import { StyledComponentProps } from "#/element-types";
-import { IconButton } from "#/material/icon-button";
-import { svgIconClasses } from "#/material/svg-icon";
-import { Tooltip } from "#/material/tooltip";
+import { Tooltip } from "#/overlay";
 import { cn, CONTROL } from "#/theme";
+import { svgIconClasses } from "#/theme/styles";
 import { getControlStateSx, mergeSx } from "#/theme/sx";
 
 interface IEditorIconActionProps

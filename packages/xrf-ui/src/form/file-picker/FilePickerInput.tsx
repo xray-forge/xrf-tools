@@ -1,19 +1,19 @@
 import { Nullable, Optional } from "@xrf/types";
 import { ChangeEvent, ReactElement, useId, useState } from "react";
 
+import { IconButton } from "#/button";
 import { BaseComponentProps } from "#/element-types";
 import { ClearIcon } from "#/icons/clear";
 import { FolderOpenIcon } from "#/icons/folder-open";
 import { HistoryIcon } from "#/icons/history";
-import { IconButton } from "#/material/icon-button";
-import { TextField } from "#/material/text-field";
-import { Tooltip } from "#/material/tooltip";
+import { TextField } from "#/input";
+import { Tooltip } from "#/overlay";
 import { POPOVER_INPUT_SX } from "#/theme/sx";
 
 import { FilePickerRecentsMenu } from "./FilePickerRecentsMenu";
 import { IPathFieldRecents } from "./path-field-recents";
 
-interface IFilePickerInputProps extends BaseComponentProps {
+export interface IFilePickerInputProps extends BaseComponentProps {
   /** IDs of the description and validation message rendered by the enclosing row. */
   "aria-describedby"?: string;
   placeholder?: string;

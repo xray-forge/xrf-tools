@@ -1,5 +1,6 @@
 import { saturate } from "@xrf/math";
 import { Nullable } from "@xrf/types";
+import { ButtonBase } from "@xrf/ui/button";
 import {
   ColorPicker,
   fromPickedColor,
@@ -12,8 +13,7 @@ import {
 } from "@xrf/ui/color";
 import { EditorPopoverRow, IEditorPopoverRowControlProps } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { ButtonBase } from "@xrf/ui/material/button-base";
-import { InputBase } from "@xrf/ui/material/input";
+import { InputBase } from "@xrf/ui/input";
 import { FocusEvent, KeyboardEvent, ReactElement, useCallback, useId, useMemo, useState } from "react";
 
 interface ILevelWeatherVectorDraft {

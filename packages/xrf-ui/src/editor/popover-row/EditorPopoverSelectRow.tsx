@@ -1,7 +1,7 @@
 import { ReactElement, ReactNode } from "react";
 
 import { BaseComponentProps } from "#/element-types";
-import { Select, SelectChangeEvent } from "#/material/select";
+import { Select, SelectChangeEvent } from "#/input";
 import { CONTROL } from "#/theme";
 import { POPOVER_INPUT_SX } from "#/theme/sx";
 

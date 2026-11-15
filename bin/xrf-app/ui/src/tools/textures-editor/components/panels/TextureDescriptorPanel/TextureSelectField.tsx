@@ -1,7 +1,7 @@
 import { TextureVocabularyEntry } from "@xrf/ipc/types/xrf-app-textures";
 import { EditorPopoverSelectRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { MenuItem } from "@xrf/ui/material/menu";
+import { MenuItem } from "@xrf/ui/menu";
 import { ReactElement } from "react";
 
 import { toVocabularyOptions } from "@/tools/textures-editor/lib/texture-vocabulary";

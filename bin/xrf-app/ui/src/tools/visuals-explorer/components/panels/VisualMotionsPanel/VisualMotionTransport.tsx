@@ -8,8 +8,8 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { PauseIcon } from "@xrf/ui/icons/pause";
 import { PlayArrowIcon } from "@xrf/ui/icons/play-arrow";
 import { RepeatIcon } from "@xrf/ui/icons/repeat";
-import { Tooltip } from "@xrf/ui/material/tooltip";
-import { Typography } from "@xrf/ui/material/typography";
+import { Tooltip } from "@xrf/ui/overlay";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useCallback } from "react";
 
 import { MotionFrameSlider, MotionPlaybackRate } from "@/core/visuals/components/preview";

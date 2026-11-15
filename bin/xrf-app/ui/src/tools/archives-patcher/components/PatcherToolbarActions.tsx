@@ -5,7 +5,7 @@ import { CompareArrowsIcon } from "@xrf/ui/icons/compare-arrows";
 import { DifferenceIcon } from "@xrf/ui/icons/difference";
 import { FileOpenIcon } from "@xrf/ui/icons/file-open";
 import { SaveAltIcon } from "@xrf/ui/icons/save-alt";
-import { Stack } from "@xrf/ui/material/stack";
+import { Stack } from "@xrf/ui/layout/stack";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 

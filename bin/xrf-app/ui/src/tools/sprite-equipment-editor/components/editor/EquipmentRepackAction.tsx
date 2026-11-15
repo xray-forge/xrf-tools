@@ -6,7 +6,7 @@ import { ConfirmDialog } from "@xrf/ui/dialog/confirm";
 import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Inventory2Icon } from "@xrf/ui/icons/inventory2";
-import { Typography } from "@xrf/ui/material/typography";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useCallback, useState } from "react";
 
 import {

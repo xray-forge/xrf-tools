@@ -1,9 +1,9 @@
 import { LtxDeclaration } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { getPathName } from "@xrf/path";
+import { Chip } from "@xrf/ui/badge";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Chip } from "@xrf/ui/material/chip";
-import { ListItem, ListItemButton } from "@xrf/ui/material/list";
-import { Typography } from "@xrf/ui/material/typography";
+import { ListItem, ListItemButton } from "@xrf/ui/list";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useCallback } from "react";
 
 import { describeDeclaration } from "@/tools/configs-explorer/lib/declaration";

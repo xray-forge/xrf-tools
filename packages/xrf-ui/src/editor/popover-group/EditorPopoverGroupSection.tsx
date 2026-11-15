@@ -4,11 +4,11 @@ import { ReactElement, ReactNode, useId } from "react";
 import { EditorIconAction } from "#/editor/icon-action";
 import { EditorPopoverNote } from "#/editor/popover-row";
 import { BaseComponentProps } from "#/element-types";
+import { Checkbox } from "#/form/control";
 import { RestartAltIcon } from "#/icons/restart-alt";
-import { Checkbox } from "#/material/checkbox";
-import { Tooltip } from "#/material/tooltip";
-import { Typography } from "#/material/typography";
+import { Tooltip } from "#/overlay";
 import { cn } from "#/theme";
+import { Typography } from "#/typography";
 
 export interface IEditorPopoverGroupSectionProps extends BaseComponentProps {
   /** Names the section, and the toggle heading it where it has one. */

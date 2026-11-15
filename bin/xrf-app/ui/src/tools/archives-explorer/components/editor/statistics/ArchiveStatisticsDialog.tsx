@@ -2,12 +2,11 @@ import { useInjection } from "@wirestate/react";
 import { ArchiveStatistics } from "@xrf/ipc/types/xrf-archive-stats";
 import { Nullable, Optional } from "@xrf/types";
 import { DialogHeader } from "@xrf/ui/dialog/header";
+import { Dialog, DialogContent } from "@xrf/ui/dialog/modal";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Alert, CircularProgress } from "@xrf/ui/feedback";
 import { QueryStatsIcon } from "@xrf/ui/icons/query-stats";
-import { Alert } from "@xrf/ui/material/alert";
-import { Dialog, DialogContent } from "@xrf/ui/material/dialog";
-import { List, ListItemButton, ListItemText } from "@xrf/ui/material/list";
-import { CircularProgress } from "@xrf/ui/material/progress";
+import { List, ListItemButton, ListItemText } from "@xrf/ui/list";
 import { EStatMeasure } from "@xrf/ui/stats";
 import { ReactElement, useEffect, useId, useMemo, useState } from "react";
 

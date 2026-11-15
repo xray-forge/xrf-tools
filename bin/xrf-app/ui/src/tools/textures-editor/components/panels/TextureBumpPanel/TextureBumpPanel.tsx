@@ -2,12 +2,12 @@ import { useInjection } from "@wirestate/react";
 import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 import { EXrayExtension } from "@xrf/ipc/types/xrf-extension";
 import { Nullable } from "@xrf/types";
+import { Button } from "@xrf/ui/button";
 import { EditorPanelEmpty, EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { EditorPopoverNote, EditorPopoverSwitchRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Alert } from "@xrf/ui/material/alert";
-import { Button } from "@xrf/ui/material/button";
-import { Stack } from "@xrf/ui/material/stack";
+import { Alert } from "@xrf/ui/feedback";
+import { Stack } from "@xrf/ui/layout/stack";
 import { ReactElement, useCallback, useState } from "react";
 
 import { EToolId } from "@/core/routing/tool";

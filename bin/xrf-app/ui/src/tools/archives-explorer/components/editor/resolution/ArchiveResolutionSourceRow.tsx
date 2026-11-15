@@ -1,12 +1,12 @@
 import { formatCount } from "@xrf/format";
 import { ArchiveResolutionSource, ArchiveResolutionVolume } from "@xrf/ipc/types/xrf-app-archives";
 import { EXraySourceKind } from "@xrf/ipc/types/xrf-vfs";
+import { Chip, chipClasses } from "@xrf/ui/badge";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { FolderOutlinedIcon as FolderIcon } from "@xrf/ui/icons/folder-outlined";
 import { Inventory2OutlinedIcon as ArchiveIcon } from "@xrf/ui/icons/inventory2-outlined";
-import { Chip, chipClasses } from "@xrf/ui/material/chip";
-import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement } from "react";
 
 import { ArchiveResolutionVolumeRow } from "./ArchiveResolutionVolumeRow";

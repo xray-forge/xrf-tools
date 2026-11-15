@@ -1,6 +1,6 @@
-import { inputBaseClasses, outlinedInputClasses } from "#/material/input";
-import { SystemStyleObject, Theme } from "#/material/styles";
+import { inputBaseClasses, outlinedInputClasses } from "#/input";
 import { POPOVER } from "#/theme";
+import { SystemStyleObject, Theme } from "#/theme/styles";
 
 const LINE_HEIGHT: number = POPOVER.inputHeight - POPOVER.inputPaddingY * 2;
 // In `sx` a bare number pads in theme spacing units, so the padding is spelt in pixels.

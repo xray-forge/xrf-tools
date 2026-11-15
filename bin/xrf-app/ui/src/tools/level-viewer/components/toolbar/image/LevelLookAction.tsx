@@ -18,7 +18,7 @@ import { EditorPopoverCheckboxRow, EditorPopoverNote, EditorPopoverSelectRow } f
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { ExposureIcon } from "@xrf/ui/icons/exposure";
-import { MenuItem } from "@xrf/ui/material/menu";
+import { MenuItem } from "@xrf/ui/menu";
 import { ReactElement, useCallback } from "react";
 
 import { LevelEnhancedFeatureSection } from "@/core/level/components/preview/toolbar/LevelEnhancedFeatureSection";

@@ -1,14 +1,14 @@
 import { useInjection } from "@wirestate/react";
 import { formatSeconds } from "@xrf/format";
 import { Nullable } from "@xrf/types";
+import { Chip } from "@xrf/ui/badge";
 import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ArrowDownwardIcon } from "@xrf/ui/icons/arrow-downward";
 import { ArrowUpwardIcon } from "@xrf/ui/icons/arrow-upward";
 import { DeleteOutlinedIcon } from "@xrf/ui/icons/delete-outlined";
-import { Chip } from "@xrf/ui/material/chip";
-import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement } from "react";
 
 import { ESequenceMotionState, ISequenceMotion } from "@/tools/visuals-sequencer/lib/sequence-motion-cache";

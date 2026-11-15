@@ -5,9 +5,9 @@ import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
 import { EmptyState } from "@xrf/ui/layout/empty-state";
-import { Typography } from "@xrf/ui/material/typography";
 import { ImageViewport } from "@xrf/ui/media/image-viewport";
 import { cn } from "@xrf/ui/theme";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement } from "react";
 
 import { TArchiveBytes, TArchiveContent, useLastContent } from "@/core/archive/lib";

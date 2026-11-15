@@ -2,8 +2,8 @@ import { Nullable, Optional } from "@xrf/types";
 import { ReactElement, ReactNode, useId } from "react";
 
 import { BaseComponentProps } from "#/element-types";
-import { Typography } from "#/material/typography";
 import { cn } from "#/theme";
+import { Typography } from "#/typography";
 
 /** Attributes that associate a control or group with its row's label and visible messages. */
 export interface IFormRowControlProps {

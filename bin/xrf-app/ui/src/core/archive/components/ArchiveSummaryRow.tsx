@@ -1,7 +1,7 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Stack } from "@xrf/ui/material/stack";
-import { Typography } from "@xrf/ui/material/typography";
+import { Stack } from "@xrf/ui/layout/stack";
 import { cn } from "@xrf/ui/theme";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement, ReactNode } from "react";
 
 interface IArchiveSummaryRowProps extends BaseComponentProps {

@@ -1,8 +1,8 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ArrowOutwardIcon } from "@xrf/ui/icons/arrow-outward";
-import { Card, CardActionArea } from "@xrf/ui/material/card";
-import { Typography } from "@xrf/ui/material/typography";
+import { Card, CardActionArea } from "@xrf/ui/layout/card";
 import { cn } from "@xrf/ui/theme";
+import { Typography } from "@xrf/ui/typography";
 import { CSSProperties, ReactElement } from "react";
 
 import { ToolLauncherGroupLabel } from "@/core/launcher/components/ToolLauncherGroupLabel";

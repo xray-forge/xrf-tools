@@ -1,7 +1,7 @@
 import { ReactElement } from "react";
 
 import { BaseComponentProps } from "#/element-types";
-import { Checkbox } from "#/material/checkbox";
+import { Checkbox } from "#/form/control";
 
 import { EditorPopoverRow, IEditorPopoverRowControlProps } from "./EditorPopoverRow";
 

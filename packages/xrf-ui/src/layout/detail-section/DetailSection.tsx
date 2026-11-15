@@ -2,7 +2,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode } from "react";
 
 import { BaseComponentProps } from "#/element-types";
-import { Typography } from "#/material/typography";
+import { Typography } from "#/typography";
 
 export interface IDetailSectionProps extends BaseComponentProps {
   title: string;

@@ -1,5 +1,5 @@
-import { iconButtonClasses } from "#/material/icon-button";
-import { SystemStyleObject, Theme } from "#/material/styles";
+import { iconButtonClasses } from "#/button";
+import { SystemStyleObject, Theme } from "#/theme/styles";
 
 /**
  * The paint a compact control takes in each of the three states it can be in.

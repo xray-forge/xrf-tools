@@ -1,7 +1,7 @@
 import { ERenderViewportJob, RenderViewportJob } from "@xrf/ipc/types/xrf-renderer";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CircleIcon } from "@xrf/ui/icons/circle";
-import { Tooltip } from "@xrf/ui/material/tooltip";
+import { Tooltip } from "@xrf/ui/overlay";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 

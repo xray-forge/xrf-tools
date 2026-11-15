@@ -1,5 +1,5 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { LinearProgress } from "@xrf/ui/material/progress";
+import { LinearProgress } from "@xrf/ui/feedback";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement, Ref } from "react";
 

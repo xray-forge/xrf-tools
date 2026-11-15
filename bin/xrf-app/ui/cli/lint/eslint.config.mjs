@@ -11,8 +11,9 @@ const KIT_RESTRICTED_IMPORT_PATTERNS = [
   {
     group: ["@mui/**", "@emotion/**"],
     message:
-      "MUI and Emotion are `@xrf/ui`'s to import. Take the name from its subpath (`@xrf/ui/material`, `/icons`, " +
-      "`/data-grid`, `/virtualizer`), adding it there if it is missing.",
+      "MUI and Emotion are `@xrf/ui`'s to import. Take the name from the family that passes it through " +
+      "(`@xrf/ui/button`, `/input`, `/overlay`, `/icons/<name>`, `/data-grid`, `/virtualizer`, ...), adding it " +
+      "there if it is missing.",
   },
 ];
 

@@ -7,7 +7,7 @@ import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ChoiceFormRow } from "@xrf/ui/form/choice-row";
 import { FormRow } from "@xrf/ui/form/row";
-import { TextField } from "@xrf/ui/material/text-field";
+import { TextField } from "@xrf/ui/input";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { createRoots } from "@/core/assets/lib";

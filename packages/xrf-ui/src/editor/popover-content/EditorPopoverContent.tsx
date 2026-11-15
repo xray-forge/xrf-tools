@@ -3,8 +3,8 @@ import { ReactElement, ReactNode } from "react";
 import { EditorIconAction } from "#/editor/icon-action";
 import { BaseComponentProps } from "#/element-types";
 import { RestartAltIcon } from "#/icons/restart-alt";
-import { Typography } from "#/material/typography";
 import { cn } from "#/theme";
+import { Typography } from "#/typography";
 
 export interface IEditorPopoverContentProps extends BaseComponentProps {
   /** The popover's name, its heading. */

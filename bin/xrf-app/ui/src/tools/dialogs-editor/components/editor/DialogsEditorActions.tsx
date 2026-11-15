@@ -3,7 +3,7 @@ import { Nullable } from "@xrf/types";
 import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { TranslateIcon } from "@xrf/ui/icons/translate";
-import { Menu, MenuItem } from "@xrf/ui/material/menu";
+import { Menu, MenuItem } from "@xrf/ui/menu";
 import { MouseEvent, ReactElement, useCallback, useId, useState } from "react";
 
 import { DialogViewService } from "@/tools/dialogs-editor/services/dialog-view";

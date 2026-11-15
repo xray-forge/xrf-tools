@@ -1,8 +1,8 @@
 import { KeyboardEvent, MouseEvent, PointerEventHandler, ReactElement, RefCallback } from "react";
 
 import { ChevronRightIcon } from "#/icons/chevron-right";
-import { ListItemText } from "#/material/list";
-import { MenuItem } from "#/material/menu";
+import { ListItemText } from "#/list";
+import { MenuItem } from "#/menu";
 import { cn } from "#/theme";
 
 import { IMenubarSubmenu } from "./menubar-menu";

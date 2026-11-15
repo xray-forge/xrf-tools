@@ -4,8 +4,8 @@ import { LtxAnchoredFinding, LtxStructureSection } from "@xrf/ipc/types/xrf-ltx-
 import { Nullable } from "@xrf/types";
 import { ECodeLineMark, ICodeLine, ICodeLineSource, VirtualizedLines } from "@xrf/ui/code/lines";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Alert } from "@xrf/ui/feedback";
 import { EmptyState } from "@xrf/ui/layout/empty-state";
-import { Alert } from "@xrf/ui/material/alert";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { toFindingMarks } from "@/core/ltx/lib/findings";

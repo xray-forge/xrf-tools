@@ -1,9 +1,9 @@
 import { useInjection } from "@wirestate/react";
+import { Button } from "@xrf/ui/button";
 import { DialogHeader } from "@xrf/ui/dialog/header";
-import { Box } from "@xrf/ui/material/box";
-import { Button } from "@xrf/ui/material/button";
-import { Dialog, DialogActions, DialogContent } from "@xrf/ui/material/dialog";
-import { List, ListItemButton, ListItemText } from "@xrf/ui/material/list";
+import { Dialog, DialogActions, DialogContent } from "@xrf/ui/dialog/modal";
+import { Box } from "@xrf/ui/layout/stack";
+import { List, ListItemButton, ListItemText } from "@xrf/ui/list";
 import { FORM_SURFACE_SX } from "@xrf/ui/theme/sx";
 import { ReactElement, useId } from "react";
 

@@ -1,6 +1,5 @@
-import { SystemStyleObject, Theme } from "#/material/styles";
-import { svgIconClasses } from "#/material/svg-icon";
 import { LAYOUT } from "#/theme";
+import { svgIconClasses, SystemStyleObject, Theme } from "#/theme/styles";
 
 /** Shared rail metrics. State and feedback are `getControlStateSx`, which every chrome toggle composes. */
 export const RAIL_BUTTON_SX: SystemStyleObject<Theme> = {

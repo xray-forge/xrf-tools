@@ -1,7 +1,7 @@
 import { formatCount } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { WarningAmberIcon } from "@xrf/ui/icons/warning-amber";
-import { Tooltip } from "@xrf/ui/material/tooltip";
+import { Tooltip } from "@xrf/ui/overlay";
 import { TreeRowLabel } from "@xrf/ui/tree";
 import { ReactElement } from "react";
 

@@ -8,10 +8,10 @@ import {
   LevelObjectsDescription,
 } from "@xrf/ipc/types/xrf-app-levels";
 import { Maybe, Nullable } from "@xrf/types";
+import { Chip } from "@xrf/ui/badge";
 import { EditorPanelEmpty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { EmptyListing } from "@xrf/ui/layout/empty-listing";
-import { Chip } from "@xrf/ui/material/chip";
 import { cn } from "@xrf/ui/theme";
 import {
   ITreeNode,

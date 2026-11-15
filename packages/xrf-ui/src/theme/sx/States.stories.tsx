@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ReactElement } from "react";
 
+import { IconButton } from "#/button";
 import { GridOnIcon } from "#/icons/grid-on";
 import { VisibilityIcon } from "#/icons/visibility";
-import { IconButton } from "#/material/icon-button";
 import { FoundationSection } from "#/testing/stories";
 import { CONTROL, STATE } from "#/theme";
 

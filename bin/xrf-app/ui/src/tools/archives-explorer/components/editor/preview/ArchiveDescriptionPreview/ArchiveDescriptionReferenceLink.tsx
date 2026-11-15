@@ -2,8 +2,8 @@ import { useInjection } from "@wirestate/react";
 import { ArchiveReference } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Link } from "@xrf/ui/material/link";
 import { cn } from "@xrf/ui/theme";
+import { Link } from "@xrf/ui/typography";
 import { ReactElement, useCallback } from "react";
 
 import { ArchivePreviewService } from "@/tools/archives-explorer/services/archive-preview";

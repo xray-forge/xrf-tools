@@ -1,6 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { JobDescription } from "@xrf/ipc/types/xrf-app-core";
-import { Typography } from "@xrf/ui/material/typography";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useCallback } from "react";
 
 import { useJobsListing } from "@/core/jobs/lib/use-jobs-listing";

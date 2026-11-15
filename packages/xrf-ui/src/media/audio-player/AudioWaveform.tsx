@@ -3,10 +3,10 @@ import { clamp, extractPeaks } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { KeyboardEvent, MouseEvent, ReactElement, useLayoutEffect, useMemo, useRef } from "react";
 
-import { useColorScheme, useTheme } from "#/material/styles";
-import { useForkRef } from "#/material/utils";
 import { useElementSize } from "#/react/element-size";
+import { useForkRef } from "#/react/fork-ref";
 import { cn } from "#/theme";
+import { useColorScheme, useTheme } from "#/theme/styles";
 
 /** One peak per two pixels preserves short transients without crowding the strip. */
 const PEAKS_PER_PIXEL: number = 0.5;

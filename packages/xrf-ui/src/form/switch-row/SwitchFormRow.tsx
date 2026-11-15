@@ -1,8 +1,8 @@
 import { ReactElement } from "react";
 
 import { BaseComponentProps } from "#/element-types";
+import { Switch } from "#/form/control";
 import { FormRow } from "#/form/row";
-import { Switch } from "#/material/switch";
 
 export interface ISwitchFormRowProps extends BaseComponentProps {
   label: string;

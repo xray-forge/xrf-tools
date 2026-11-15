@@ -1,8 +1,7 @@
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Link } from "@xrf/ui/material/link";
-import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
+import { Link, Typography } from "@xrf/ui/typography";
 import { ReactElement } from "react";
 
 export interface ISettingsAboutRowProps extends BaseComponentProps {

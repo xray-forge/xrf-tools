@@ -1,7 +1,7 @@
 import { PointerEventHandler, ReactElement, ReactNode, useMemo } from "react";
 
-import { Paper } from "#/material/paper";
-import { Popper } from "#/material/popper";
+import { Paper } from "#/layout/card";
+import { Popper } from "#/overlay";
 
 /** Where an open menu stands: under its menubar button, or beside the row opening it as a submenu. */
 export type TMenubarPopupPlacement = "bottom-start" | "right-start";

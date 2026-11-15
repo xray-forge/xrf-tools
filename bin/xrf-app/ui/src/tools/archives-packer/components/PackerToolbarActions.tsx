@@ -4,7 +4,7 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ArchiveIcon } from "@xrf/ui/icons/archive";
 import { FileOpenIcon } from "@xrf/ui/icons/file-open";
 import { SaveAltIcon } from "@xrf/ui/icons/save-alt";
-import { Stack } from "@xrf/ui/material/stack";
+import { Stack } from "@xrf/ui/layout/stack";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 

@@ -1,8 +1,8 @@
 import { ReactElement } from "react";
 
 import { BaseComponentProps } from "#/element-types";
+import { Checkbox } from "#/form/control";
 import { FormRow } from "#/form/row";
-import { Checkbox } from "#/material/checkbox";
 
 export interface ICheckboxFormRowProps extends BaseComponentProps {
   label: string;

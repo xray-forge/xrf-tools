@@ -3,7 +3,7 @@ import { ReactElement, useCallback } from "react";
 import { useArgs } from "storybook/preview-api";
 import { fn } from "storybook/test";
 
-import { Button } from "#/material/button";
+import { Button } from "#/button";
 import { useArgChange } from "#/testing/stories";
 
 import { ConfirmDialog, IConfirmDialogProps } from "./ConfirmDialog";

@@ -4,7 +4,7 @@ import { Nullable } from "@xrf/types";
 import { EditorFilterInput } from "@xrf/ui/editor/filter-input";
 import { EditorPanelEmpty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Typography } from "@xrf/ui/material/typography";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useMemo, useState } from "react";
 
 import { EditorPanel } from "@/core/shell/chrome/EditorPanel";

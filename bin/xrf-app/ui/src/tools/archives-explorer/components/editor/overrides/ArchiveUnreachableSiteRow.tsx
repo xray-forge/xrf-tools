@@ -1,7 +1,7 @@
+import { Chip, chipClasses } from "@xrf/ui/badge";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Chip, chipClasses } from "@xrf/ui/material/chip";
-import { Typography } from "@xrf/ui/material/typography";
 import { BADGE_FONT_SIZE, cn } from "@xrf/ui/theme";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement } from "react";
 
 import { ARCHIVE_OVERRIDE_ROW_HEIGHT } from "./archive-override-rows";

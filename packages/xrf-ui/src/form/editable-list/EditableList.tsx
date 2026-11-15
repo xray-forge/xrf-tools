@@ -1,10 +1,10 @@
 import { ReactElement } from "react";
 
+import { Button } from "#/button";
 import { BaseComponentProps } from "#/element-types";
 import { AddIcon } from "#/icons/add";
-import { Button } from "#/material/button";
-import { Typography } from "#/material/typography";
 import { cn } from "#/theme";
+import { Typography } from "#/typography";
 
 interface IEditableListProps extends BaseComponentProps {
   addLabel: string;

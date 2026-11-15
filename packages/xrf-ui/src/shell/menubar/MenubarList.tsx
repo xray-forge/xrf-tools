@@ -1,8 +1,8 @@
 import { Nullable } from "@xrf/types";
 import { FocusEvent, KeyboardEvent, ReactElement, useCallback, useEffect, useRef, useState } from "react";
 
-import { Divider } from "#/material/divider";
-import { MenuList } from "#/material/menu";
+import { Divider } from "#/layout/stack";
+import { MenuList } from "#/menu";
 
 import { IMenubarItem, IMenubarSubmenu, isMenubarSubmenu, TMenubarEntry } from "./menubar-menu";
 import { MenubarPopup } from "./MenubarPopup";

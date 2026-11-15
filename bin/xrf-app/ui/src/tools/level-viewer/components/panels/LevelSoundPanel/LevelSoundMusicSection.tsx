@@ -3,8 +3,8 @@ import { Nullable } from "@xrf/types";
 import { EditorPanelProperty, EditorPanelSection, EditorPanelSectionEmpty } from "@xrf/ui/editor/panel";
 import { EditorPopoverSelectRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { MenuItem } from "@xrf/ui/material/menu";
-import { Slider } from "@xrf/ui/material/slider";
+import { Slider } from "@xrf/ui/form/control";
+import { MenuItem } from "@xrf/ui/menu";
 import { ReactElement, RefObject, useCallback, useEffect, useRef, useState } from "react";
 
 import { formatLevelSoundSeconds, formatLevelSoundTrackTime } from "@/tools/level-viewer/lib/sound/level-sound-format";

@@ -1,14 +1,13 @@
 import { Nullable } from "@xrf/types";
+import { ButtonBase, IconButton } from "@xrf/ui/button";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { DeleteOutlinedIcon as DeleteIcon } from "@xrf/ui/icons/delete-outlined";
 import { FolderOpenOutlinedIcon as FolderOpenIcon } from "@xrf/ui/icons/folder-open-outlined";
 import { LinkIcon } from "@xrf/ui/icons/link";
-import { ButtonBase } from "@xrf/ui/material/button-base";
-import { IconButton } from "@xrf/ui/material/icon-button";
-import { Paper } from "@xrf/ui/material/paper";
-import { Tooltip } from "@xrf/ui/material/tooltip";
-import { Typography } from "@xrf/ui/material/typography";
+import { Paper } from "@xrf/ui/layout/card";
+import { Tooltip } from "@xrf/ui/overlay";
 import { cn } from "@xrf/ui/theme";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement, ReactNode, useCallback, useEffect, useState } from "react";
 
 /** What a toast's preview opens, the toast put away as it does. */

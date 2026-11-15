@@ -1,10 +1,10 @@
 import { PointerEventHandler, ReactElement, ReactNode } from "react";
 
 import { CheckIcon } from "#/icons/check";
-import { ListItemText } from "#/material/list";
-import { MenuItem } from "#/material/menu";
-import { Tooltip } from "#/material/tooltip";
-import { Typography } from "#/material/typography";
+import { ListItemText } from "#/list";
+import { MenuItem } from "#/menu";
+import { Tooltip } from "#/overlay";
+import { Typography } from "#/typography";
 
 import { IMenubarItem } from "./menubar-menu";
 

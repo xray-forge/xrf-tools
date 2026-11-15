@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ReactElement } from "react";
 
-import { Typography } from "#/material/typography";
 import { FoundationSection } from "#/testing/stories";
 import { MONOSPACE, MONOSPACE_CHARACTER_WIDTH } from "#/theme";
+import { Typography } from "#/typography";
 
 const VARIANTS = ["h5", "h6", "subtitle1", "subtitle2", "body1", "body2", "button", "caption", "overline"] as const;
 

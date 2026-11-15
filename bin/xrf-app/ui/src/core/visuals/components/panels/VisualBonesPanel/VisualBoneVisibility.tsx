@@ -1,13 +1,13 @@
 import { useInjection } from "@wirestate/react";
 import { EMPTY_SET } from "@xrf/collections";
 import { Nullable } from "@xrf/types";
+import { Chip } from "@xrf/ui/badge";
 import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { EditorPanelSection } from "@xrf/ui/editor/panel";
 import { EditorPopoverNote, EditorPopoverSwitchRow } from "@xrf/ui/editor/popover-row";
 import { RestartAltIcon } from "@xrf/ui/icons/restart-alt";
 import { VisibilityIcon } from "@xrf/ui/icons/visibility";
 import { VisibilityOffIcon } from "@xrf/ui/icons/visibility-off";
-import { Chip } from "@xrf/ui/material/chip";
 import { ReactElement } from "react";
 
 import { IVisualInspection, VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";

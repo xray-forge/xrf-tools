@@ -2,12 +2,11 @@ import { useInjection } from "@wirestate/react";
 import { ArchiveResolution, ArchiveResolutionSource, ArchiveUnreadSource } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable } from "@xrf/types";
 import { DialogHeader } from "@xrf/ui/dialog/header";
+import { Dialog, DialogContent } from "@xrf/ui/dialog/modal";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Alert, CircularProgress } from "@xrf/ui/feedback";
 import { LayersIcon } from "@xrf/ui/icons/layers";
 import { DetailSection } from "@xrf/ui/layout/detail-section";
-import { Alert } from "@xrf/ui/material/alert";
-import { Dialog, DialogContent } from "@xrf/ui/material/dialog";
-import { CircularProgress } from "@xrf/ui/material/progress";
 import { ReactElement, useEffect, useId } from "react";
 
 import { ArchivesService } from "@/tools/archives-explorer/services/archives";

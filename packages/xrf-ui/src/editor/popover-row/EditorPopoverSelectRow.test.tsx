@@ -1,7 +1,7 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
-import { MenuItem } from "#/material/menu";
+import { MenuItem } from "#/menu";
 import { renderWithTheme } from "#/testing/render";
 
 import { EditorPopoverSelectRow } from "./EditorPopoverSelectRow";

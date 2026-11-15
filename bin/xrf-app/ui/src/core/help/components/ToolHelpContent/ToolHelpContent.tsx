@@ -1,6 +1,6 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement, ReactNode } from "react";
 
 import { renderHelpText } from "@/core/help/lib/help-text";

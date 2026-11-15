@@ -1,7 +1,7 @@
 import { LtxSectionSchemeReport } from "@xrf/ipc/types/xrf-ltx-inspect";
-import { Chip } from "@xrf/ui/material/chip";
-import { Stack } from "@xrf/ui/material/stack";
-import { Typography } from "@xrf/ui/material/typography";
+import { Chip } from "@xrf/ui/badge";
+import { Stack } from "@xrf/ui/layout/stack";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement } from "react";
 
 interface IConfigsSchemeBindingProps {

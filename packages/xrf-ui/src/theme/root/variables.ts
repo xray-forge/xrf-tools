@@ -1,4 +1,3 @@
-import { Theme } from "#/material/styles";
 import {
   BADGE_FONT_SIZE,
   CODE,
@@ -19,6 +18,7 @@ import {
   VIEWPORT,
   VIEWPORT_INK,
 } from "#/theme";
+import { Theme } from "#/theme/styles";
 
 /** Every published property, so a consumer and a test name the same thing. */
 export type TThemeVariableName =

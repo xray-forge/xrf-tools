@@ -1,8 +1,8 @@
 import { ArchiveDescribeScope, ArchiveLevelSndStaticSound } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement } from "react";
 
 import { describeReferenceStatus } from "../ArchiveDescriptionPreview.utils";

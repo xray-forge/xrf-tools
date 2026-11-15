@@ -3,9 +3,9 @@ import { KeyboardEvent, ReactElement, useCallback, useEffect, useLayoutEffect, u
 import { flushSync } from "react-dom";
 
 import { BaseComponentProps } from "#/element-types";
-import { ClickAwayListener } from "#/material/click-away-listener";
-import { Typography } from "#/material/typography";
+import { ClickAwayListener } from "#/overlay";
 import { cn } from "#/theme";
+import { Typography } from "#/typography";
 
 import { IMenubarItem, IMenubarMenu } from "./menubar-menu";
 import { MenubarList } from "./MenubarList";

@@ -1,10 +1,10 @@
 import { getPathName } from "@xrf/path";
 import { Nullable, Optional } from "@xrf/types";
+import { Chip } from "@xrf/ui/badge";
 import { EditorPanelEmpty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Chip } from "@xrf/ui/material/chip";
-import { List, ListItem, ListItemButton } from "@xrf/ui/material/list";
-import { Typography } from "@xrf/ui/material/typography";
+import { List, ListItem, ListItemButton } from "@xrf/ui/list";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement } from "react";
 
 import { EditorPanel } from "@/core/shell/chrome/EditorPanel";

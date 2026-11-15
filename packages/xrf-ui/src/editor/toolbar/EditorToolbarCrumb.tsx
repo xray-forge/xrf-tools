@@ -1,8 +1,8 @@
 import { ReactElement } from "react";
 
-import { Tooltip } from "#/material/tooltip";
-import { Typography } from "#/material/typography";
+import { Tooltip } from "#/overlay";
 import { cn } from "#/theme";
+import { Typography } from "#/typography";
 
 interface IEditorToolbarCrumbProps {
   label: string;

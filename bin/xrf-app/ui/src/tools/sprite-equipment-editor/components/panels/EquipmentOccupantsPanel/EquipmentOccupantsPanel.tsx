@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { EditorPanelEmpty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { List } from "@xrf/ui/material/list";
+import { List } from "@xrf/ui/list";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 

@@ -1,12 +1,12 @@
 import { useInjection } from "@wirestate/react";
 import { formatCount, formatNumber } from "@xrf/format";
+import { Button } from "@xrf/ui/button";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { ChoiceFormRow, IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { FormRow } from "@xrf/ui/form/row";
-import { Button } from "@xrf/ui/material/button";
-import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useCallback } from "react";
 
 import { LEVEL_CAPTURE_SETTLE_FRAMES } from "@/tools/level-viewer/lib/capture/level-capture";

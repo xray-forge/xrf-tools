@@ -2,7 +2,7 @@ import { Optional } from "@xrf/types";
 import { ReactElement, ReactNode, useId } from "react";
 
 import { BaseComponentProps } from "#/element-types";
-import { Tooltip } from "#/material/tooltip";
+import { Tooltip } from "#/overlay";
 import { cn } from "#/theme";
 
 /** Attributes that name a row's control by its label and describe it by its description. */

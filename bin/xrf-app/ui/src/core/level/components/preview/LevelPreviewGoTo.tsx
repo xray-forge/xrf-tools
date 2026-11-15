@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { InputBase } from "@xrf/ui/material/input";
+import { InputBase } from "@xrf/ui/input";
 import { cn } from "@xrf/ui/theme";
 import { ChangeEvent, FocusEvent, FormEvent, KeyboardEvent, ReactElement, useCallback, useState } from "react";
 

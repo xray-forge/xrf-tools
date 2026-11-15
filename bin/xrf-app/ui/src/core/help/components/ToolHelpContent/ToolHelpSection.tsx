@@ -1,6 +1,6 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Box } from "@xrf/ui/material/box";
-import { Typography } from "@xrf/ui/material/typography";
+import { Box } from "@xrf/ui/layout/stack";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement } from "react";
 
 import { renderHelpText } from "@/core/help/lib/help-text";

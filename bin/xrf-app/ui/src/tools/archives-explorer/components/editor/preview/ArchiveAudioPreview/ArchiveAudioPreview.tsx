@@ -5,14 +5,14 @@ import { AudioDescriptor } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable } from "@xrf/types";
 import { EditorPanelProperty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Alert } from "@xrf/ui/feedback";
 import { CenteredColumn } from "@xrf/ui/layout/centered-column";
 import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
 import { EmptyState } from "@xrf/ui/layout/empty-state";
-import { Alert } from "@xrf/ui/material/alert";
-import { Divider } from "@xrf/ui/material/divider";
-import { Typography } from "@xrf/ui/material/typography";
+import { Divider } from "@xrf/ui/layout/stack";
 import { AudioPlayer } from "@xrf/ui/media/audio-player";
 import { cn } from "@xrf/ui/theme";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement } from "react";
 
 import { TArchiveContent, useLastContent } from "@/core/archive/lib";

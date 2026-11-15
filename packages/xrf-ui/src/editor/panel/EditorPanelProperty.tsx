@@ -2,8 +2,8 @@ import { splitAfterSeparators } from "@xrf/path";
 import { Fragment, ReactElement, ReactNode } from "react";
 
 import { BaseComponentProps } from "#/element-types";
-import { Typography } from "#/material/typography";
 import { cn } from "#/theme";
+import { Typography } from "#/typography";
 
 /**
  * A path rendered so it breaks after a separator rather than mid-name.

@@ -1,9 +1,8 @@
 import { ReactElement, ReactNode, useId } from "react";
 
-import { IconButton } from "#/material/icon-button";
-import { useTheme } from "#/material/styles";
-import { svgIconClasses } from "#/material/svg-icon";
-import { Tooltip } from "#/material/tooltip";
+import { IconButton } from "#/button";
+import { Tooltip } from "#/overlay";
+import { svgIconClasses, useTheme } from "#/theme/styles";
 import { getControlStateSx } from "#/theme/sx";
 
 import { RAIL_BUTTON_SX } from "./RailButton.styles";

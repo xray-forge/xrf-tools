@@ -1,9 +1,9 @@
 import { ReactElement } from "react";
 
+import { Button } from "#/button";
 import { BaseComponentProps } from "#/element-types";
 import { ErrorOutlineOutlinedIcon as ErrorOutlineIcon } from "#/icons/error-outline-outlined";
 import { EmptyState } from "#/layout/empty-state";
-import { Button } from "#/material/button";
 import { cn } from "#/theme";
 
 interface IErrorStateProps extends BaseComponentProps {

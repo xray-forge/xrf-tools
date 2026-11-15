@@ -2,12 +2,12 @@ import { useInjection } from "@wirestate/react";
 import { formatBytes, formatCount } from "@xrf/format";
 import { ArchiveSubject } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable } from "@xrf/types";
+import { Button } from "@xrf/ui/button";
 import { DialogHeader } from "@xrf/ui/dialog/header";
+import { Dialog, DialogActions, DialogContent } from "@xrf/ui/dialog/modal";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { UnarchiveIcon } from "@xrf/ui/icons/unarchive";
-import { Button } from "@xrf/ui/material/button";
-import { Dialog, DialogActions, DialogContent } from "@xrf/ui/material/dialog";
-import { Typography } from "@xrf/ui/material/typography";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useCallback, useId } from "react";
 
 import { getSubjectRoot, getSubjectSize } from "@/core/archive/lib";

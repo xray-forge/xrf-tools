@@ -1,7 +1,7 @@
 import { EditorPopoverSelectRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { ListItemText } from "@xrf/ui/material/list";
-import { MenuItem } from "@xrf/ui/material/menu";
+import { ListItemText } from "@xrf/ui/list";
+import { MenuItem } from "@xrf/ui/menu";
 import { ReactElement } from "react";
 
 import {
