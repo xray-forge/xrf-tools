@@ -23,6 +23,7 @@ xrf-environment = { workspace = true }
 xrf-error = { workspace = true }
 xrf-extension = { workspace = true }
 xrf-material = { workspace = true }
+xrf-object-visual = { workspace = true }
 xrf-ogf = { workspace = true }
 xrf-rawdata = { workspace = true }
 xrf-renderer = { workspace = true }

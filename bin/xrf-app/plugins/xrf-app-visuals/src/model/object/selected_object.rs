@@ -3,8 +3,8 @@ use xrf_app_core::assets::AssetSource;
 use xrf_chunk::XRayByteOrder;
 use xrf_editable_object::EditableObjectFile;
 use xrf_extension::XrayExtension;
-use xrf_ogf::OgfFile;
-use xrf_rawdata::{ObjectCompileOptions, ObjectCompileSource, ObjectCompiler, ObjectProvenance};
+use xrf_object_visual::ObjectVisual;
+use xrf_rawdata::{ObjectCompileOptions, ObjectCompileSource, ObjectProvenance};
 use xrf_vfs::XraySearch;
 
 use crate::model::object::selected_object_description::SelectedObjectDescription;
@@ -19,12 +19,12 @@ impl SelectedObject {
     XrayExtension::Object.matches(source.label())
   }
 
-  /// The object `source` names, compiled, with what it alone holds described.
+  /// The object `source` names, compiled and packed, with what it alone holds described.
   ///
   /// # Errors
   ///
   /// Returns an error when the object cannot be read or does not compile.
-  pub fn read(source: &AssetSource, search: &XraySearch) -> TauriResult<(OgfFile, SelectedObjectDescription)> {
+  pub fn read(source: &AssetSource, search: &XraySearch) -> TauriResult<(ObjectVisual, SelectedObjectDescription)> {
     let label: &str = source.label();
     let object: EditableObjectFile = source
       .read(search)
@@ -37,7 +37,7 @@ impl SelectedObject {
         .flatten()
     });
     // A decompiled object compiles back with the tangent method its source was made with, as the CLI's default does.
-    let file: OgfFile = ObjectCompiler::compile_with(
+    let visual: ObjectVisual = ObjectVisual::compile(
       &object,
       &ObjectCompileSource {
         source_file: String::from(label),
@@ -46,9 +46,8 @@ impl SelectedObject {
       },
       &ObjectCompileOptions::following(provenance.as_ref()),
     )
-    .and_then(|compiled| OgfFile::read_from_bytes::<XRayByteOrder>(compiled.bytes))
     .map_err(|error| format!("Failed to compile object '{label}': {error}"))?;
 
-    Ok((file, SelectedObjectDescription::of(&object, provenance.as_ref())))
+    Ok((visual, SelectedObjectDescription::of(&object, provenance.as_ref())))
   }
 }

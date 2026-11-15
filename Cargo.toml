@@ -44,6 +44,7 @@ members = [
   "crates/xrf-lzhuf",
   "crates/xrf-material",
   "crates/xrf-math",
+  "crates/xrf-object-visual",
   "crates/xrf-ogf",
   "crates/xrf-omf",
   "crates/xrf-output",
@@ -174,6 +175,7 @@ xrf-lua = { path = "crates/xrf-lua" }
 xrf-lzhuf = { path = "crates/xrf-lzhuf" }
 xrf-material = { path = "crates/xrf-material" }
 xrf-math = { path = "crates/xrf-math" }
+xrf-object-visual = { path = "crates/xrf-object-visual" }
 xrf-ogf = { path = "crates/xrf-ogf" }
 xrf-omf = { path = "crates/xrf-omf" }
 xrf-output = { path = "crates/xrf-output" }

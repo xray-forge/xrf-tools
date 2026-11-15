@@ -1,0 +1,28 @@
+[package]
+name = "xrf-object-visual"
+version = "0.1.0"
+publish = false
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+xrf-chunk = { workspace = true }
+xrf-editable-object = { workspace = true }
+xrf-error = { workspace = true }
+xrf-material = { workspace = true }
+xrf-ogf = { workspace = true }
+xrf-rawdata = { workspace = true }
+xrf-visual = { workspace = true }
+
+[dev-dependencies]
+xrf-level = { workspace = true }
+xrf-material = { workspace = true, features = ["fixtures"] }
+xrf-math = { workspace = true }
+xrf-shaders = { workspace = true, features = ["fixtures"] }
+xrf-vfs = { workspace = true }
+
+[lints]
+workspace = true
