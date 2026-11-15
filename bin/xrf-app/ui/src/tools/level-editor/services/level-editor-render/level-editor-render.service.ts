@@ -3,7 +3,7 @@ import { BoundAction, comparer, Computed, reaction } from "@wirestate/mobx";
 import { cancelFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
 import { SessionId, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
-import { SceneDrawDescription, SelectedSceneDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { SceneDrawDescription, SceneHelpersDescription, SelectedSceneDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { RenderLoadReport, RenderViewOptions, RenderViewportId } from "@xrf/ipc/types/xrf-renderer";
 import { VisualBounds } from "@xrf/ipc/types/xrf-visual";
 import { Logger } from "@xrf/logging";
@@ -23,18 +23,28 @@ import { NativeRenderSurfaceService } from "@/core/render/lib/native/viewport/na
 import { NativeViewport } from "@/core/render/lib/native/viewport/native-viewport";
 import { toRenderOutput } from "@/core/render/lib/settings/device/render-resolution";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
+import { toLevelEditorHelperRenderOptions } from "@/tools/level-editor/lib/helpers/level-editor-helper-options";
 import {
   DEFAULT_LEVEL_EDITOR_LIGHTING,
   LEVEL_EDITOR_WORLD_TOGGLES,
+  toLevelEditorSceneBounds,
   toLevelEditorSceneSphere,
   toLevelEditorViewOptions,
 } from "@/tools/level-editor/lib/render/level-editor-render";
+import { LevelEditorHelpersService } from "@/tools/level-editor/services/level-editor-helpers";
 import { LevelEditorSceneService } from "@/tools/level-editor/services/level-editor-scene";
+
+/** What the open scene's camera is framed by: its picture's part and its helpers' part, each as last read. */
+interface ILevelEditorSceneExtent {
+  drawing: Nullable<SessionSnapshot<SceneDrawDescription>>;
+  helpers: Nullable<SessionSnapshot<SceneHelpersDescription>>;
+}
 
 /**
  * Owns the native viewport the open scene is drawn in: the scene shown, concealed until it is resident whole, what it
- * is asked of the scene once resident, the editor's light in place of a weather, and the fly camera, framed on the
- * scene's drawn objects as each scene opens.
+ * is asked of the scene once resident, the editor's light in place of a weather, the helpers switched in the Show
+ * action, and the fly camera, framed on the scene's drawn objects, or its helpers where it draws none, as each scene
+ * opens.
  */
 @Injectable()
 export class LevelEditorRenderService extends NativeRenderSurfaceService {
@@ -63,6 +73,7 @@ export class LevelEditorRenderService extends NativeRenderSurfaceService {
 
   public constructor(
     private readonly sceneService: LevelEditorSceneService = inject(LevelEditorSceneService),
+    private readonly helpersService: LevelEditorHelpersService = inject(LevelEditorHelpersService),
     private readonly viewService: LevelViewService = inject(LevelViewService),
     private readonly viewportService: LevelViewportService = inject(LevelViewportService),
     renderSettingsService: RenderSettingsService = inject(RenderSettingsService)
@@ -86,13 +97,14 @@ export class LevelEditorRenderService extends NativeRenderSurfaceService {
     return this.shown.isRevealed;
   }
 
-  /** What the scene is asked to be drawn with: the settings' features under the editor's light. */
+  /** What the scene is asked to be drawn with: the settings' features under the editor's light, helpers as switched. */
   @Computed()
   public get options(): RenderViewOptions {
-    const { renderSettingsService, viewService } = this;
+    const { renderSettingsService, viewService, helpersService } = this;
 
     return toLevelEditorViewOptions({
       features: renderSettingsService.rendererFeatures,
+      helpers: toLevelEditorHelperRenderOptions(helpersService.helpers),
       lighting: DEFAULT_LEVEL_EDITOR_LIGHTING,
       output: toRenderOutput(renderSettingsService.renderResolution, renderSettingsService.renderOutputScale),
       surfaces: viewService.options,
@@ -117,7 +129,14 @@ export class LevelEditorRenderService extends NativeRenderSurfaceService {
         this.showScene,
         { equals: comparer.structural, fireImmediately: true }
       ),
-      reaction(() => this.sceneService.drawing.snapshot, this.frameOnce, { fireImmediately: true }),
+      reaction(
+        (): ILevelEditorSceneExtent => ({
+          drawing: this.sceneService.drawing.snapshot,
+          helpers: this.sceneService.helpers.snapshot,
+        }),
+        this.frameOnce,
+        { equals: comparer.shallow, fireImmediately: true }
+      ),
       ...this.camera.start(),
     ];
   }
@@ -166,20 +185,26 @@ export class LevelEditorRenderService extends NativeRenderSurfaceService {
   }
 
   /**
-   * Frames the camera on the drawn objects of a scene the first time its picture is read with any: reading it again,
-   * as the scene's load finishes, leaves the camera where it has flown.
+   * Frames the camera on the drawn objects of a scene the first time its picture is read with any, or on its helpers
+   * once they are read where it draws none: reading either again, as the scene's load finishes, leaves the camera where
+   * it has flown.
    *
-   * @param drawing - What the open scene's picture needs, as last read, or null before it is.
+   * @param extent - What the open scene's picture and helpers need, each as last read, or null before it is.
    */
   @BoundAction()
-  private frameOnce(drawing: Nullable<SessionSnapshot<SceneDrawDescription>>): void {
-    const bounds: Nullable<VisualBounds> = drawing?.value.bounds ?? null;
+  private frameOnce(extent: ILevelEditorSceneExtent): void {
+    const { sessionId, framed } = this;
+    const { drawing, helpers } = extent;
+    const bounds: Nullable<VisualBounds> = toLevelEditorSceneBounds(
+      drawing?.sessionId === sessionId ? drawing.value : null,
+      helpers?.sessionId === sessionId ? helpers.value : null
+    );
 
-    if (!drawing || !bounds || drawing.sessionId === this.framed || drawing.sessionId !== this.sessionId) {
+    if (!bounds || sessionId === null || sessionId === framed) {
       return;
     }
 
-    this.framed = drawing.sessionId;
+    this.framed = sessionId;
     this.camera.goTo(
       toLevelFramedGoTo(null, toLevelEditorSceneSphere(bounds), this.viewService.cameraOptions.fieldOfView)
     );

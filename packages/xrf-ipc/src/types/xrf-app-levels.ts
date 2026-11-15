@@ -359,6 +359,34 @@ export const SCENE_BINARY_TOOLS_PART = "sceneBinaryTools" as const;
 /** What a change event calls what the page needs of a drawn scene beside its picture when it goes stale. */
 export const SCENE_DRAW_PART = "sceneDraw" as const;
 
+/** What a change event calls a scene's helpers when they go stale. */
+export const SCENE_HELPERS_PART = "sceneHelpers" as const;
+
+/**
+ * The bits of a scene helper's id that hold its object's index among its tool's objects; the bits above them hold the
+ * tool's place in the editor's order of its tools.
+ */
+export const SCENE_HELPER_INDEX_BITS: number = 24;
+
+/**
+ * Every tool whose objects the editor draws a helper for, in the editor's order of its tools, each switched by its
+ * place in that order. What has a counterpart in the level viewer's kind table looks as it does there: spawn points as
+ * its characters, ways as its patrols, lights, sound sources, sound environments, particles and fog volumes as its
+ * own, shapes as its restrictors; glows are amber and portals pale green, which nothing else is.
+ */
+export const SCENE_HELPER_TOOLS: Array<SceneHelperToolEntry> = [
+  { color: "#ffb74d", drawDistance: 150.0, icon: null, isHelpedByDefault: true, kind: 1, tool: "glow" },
+  { color: "#fff3c4", drawDistance: 200.0, icon: "light", isHelpedByDefault: true, kind: 3, tool: "light" },
+  { color: "#2196f3", drawDistance: 250.0, icon: null, isHelpedByDefault: true, kind: 4, tool: "shape" },
+  { color: "#80deea", drawDistance: 150.0, icon: "sound", isHelpedByDefault: true, kind: 5, tool: "sound_src" },
+  { color: "#e040fb", drawDistance: 300.0, icon: "spawnPoint", isHelpedByDefault: true, kind: 6, tool: "spawn" },
+  { color: "#ffeb3b", drawDistance: 250.0, icon: "patrolPoint", isHelpedByDefault: true, kind: 7, tool: "way" },
+  { color: "#aed581", drawDistance: 250.0, icon: null, isHelpedByDefault: true, kind: 9, tool: "portal" },
+  { color: "#4dd0e1", drawDistance: 150.0, icon: null, isHelpedByDefault: true, kind: 10, tool: "sound_env" },
+  { color: "#b39ddb", drawDistance: 150.0, icon: "particles", isHelpedByDefault: true, kind: 11, tool: "ps" },
+  { color: "#9575cd", drawDistance: 150.0, icon: null, isHelpedByDefault: true, kind: 15, tool: "fog_volume" },
+];
+
 /** What a change event calls a scene's object tools' objects when they go stale. */
 export const SCENE_OBJECTS_PART = "sceneObjects" as const;
 
@@ -1201,6 +1229,47 @@ export type SceneGameData = {
   isDltx: boolean;
   /** Which engine the game's configs are read as; detected on `auto`. */
   engine: XrayEngineChoice;
+};
+
+/** How many of one helped tool's objects draw a helper in a scene. */
+export type SceneHelperToolCount = {
+  tool: SceneToolKind;
+  count: number;
+};
+
+/**
+ * One helped tool's row of the scene's helper table: what the Show action names, colours, pictures and switches its
+ * helpers by.
+ */
+export type SceneHelperToolEntry = {
+  tool: SceneToolKind;
+  /**
+   * The bit of `RenderHelperOptions::kinds` its helpers are switched by: the tool's place in the editor's order of
+   * its tools, which tops each of its helpers' ids too.
+   */
+  kind: number;
+  /** Its helpers' colour, `#rrggbb` in sRGB. */
+  color: string;
+  /**
+   * The icon its objects draw where they stand with no shape of their own; none for a tool whose every object has a
+   * shape.
+   */
+  icon: RenderHelperIcon | null;
+  /** Metres from the camera past which its helpers fade out. */
+  drawDistance: number | null;
+  /** Whether its helpers are drawn until the editor is told otherwise. */
+  isHelpedByDefault: boolean;
+};
+
+/**
+ * What the page needs of a scene's helpers beside their picture: where they reach, to frame a camera on a scene that
+ * draws them alone, and how many each helped tool draws.
+ */
+export type SceneHelpersDescription = {
+  /** The extent of every helper's shapes and icons, in renderer space; none where the scene draws no helper. */
+  bounds: VisualBounds | null;
+  /** Each helped tool drawing at least one helper, in the editor's order of its tools. */
+  tools: Array<SceneHelperToolCount>;
 };
 
 /** Every `kind` the `SceneLightType` union is told apart by, so a switch or a comparison names one. */

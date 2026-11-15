@@ -15,6 +15,7 @@ import {
   resetMockInvoke,
 } from "@xrf/ipc/testing";
 import { ESessionRootChange, SessionChange } from "@xrf/ipc/types/xrf-app-core";
+import { ESceneToolKind, SCENE_HELPER_TOOLS, SceneHelperToolEntry } from "@xrf/ipc/types/xrf-app-levels";
 import { ViewportEvent } from "@xrf/ipc/types/xrf-app-render";
 import { ERenderTextureGroup, ERenderViewportEvent } from "@xrf/ipc/types/xrf-renderer";
 import { VisualBounds } from "@xrf/ipc/types/xrf-visual";
@@ -34,14 +35,18 @@ import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/sessi
 import { mockContainer } from "@/fixtures/utils/container";
 import { flush } from "@/fixtures/utils/promise";
 import {
+  IMockSceneParts,
   mockSceneDrawDescription,
+  mockSceneHelpersDescription,
   mockScenePartResponses,
   mockSelectedSceneDescription,
 } from "@/tools/level-editor/fixtures/scene.mocks";
+import { getSceneHelperTool } from "@/tools/level-editor/lib/helpers/level-editor-helper-options";
 import {
   DEFAULT_LEVEL_EDITOR_LIGHTING,
   toLevelEditorSceneSphere,
 } from "@/tools/level-editor/lib/render/level-editor-render";
+import { LevelEditorHelpersService } from "@/tools/level-editor/services/level-editor-helpers";
 import { LevelEditorSceneService } from "@/tools/level-editor/services/level-editor-scene";
 
 import { LevelEditorRenderService } from "./level-editor-render.service";
@@ -65,15 +70,33 @@ interface IAttachedSceneRender {
 }
 
 /**
+ * @param bounds - What the camera is framed on.
+ * @returns Where the camera stands once framed on them.
+ */
+function toFramedPosition(bounds: VisualBounds): IPoint3 {
+  return toLevelGoToViewpoint(
+    toLevelFramedGoTo(null, toLevelEditorSceneSphere(bounds), DEFAULT_LEVEL_CAMERA_OPTIONS.fieldOfView)
+  ).position;
+}
+
+function expectCameraAt(expected: IPoint3): void {
+  const [x, y, z] = lastCamera().position;
+
+  expect(x).toBeCloseTo(expected.x);
+  expect(y).toBeCloseTo(expected.y);
+  expect(z).toBeCloseTo(expected.z);
+}
+
+/**
  * The fixture scene restored and provisioned as the editor provisions it, its render service attached; each show
  * answers a scene of its own, as the renderer starts one for every show of a viewport it alone draws.
  */
-async function mockAttachedSceneRender(): Promise<IAttachedSceneRender> {
+async function mockAttachedSceneRender(parts: IMockSceneParts = {}): Promise<IAttachedSceneRender> {
   let scenes: number = 0;
 
   mockIpcCommands({
     [ELevelsCommand.RESTORE_SCENE]: mockSessionResponse(mockSelectedSceneDescription()),
-    ...mockScenePartResponses(),
+    ...mockScenePartResponses(parts),
     [ERenderCommand.ATTACH_VIEWPORT]: VIEWPORT,
     [ELevelsCommand.SHOW_SCENE]: () => (scenes += 1),
     ...CLEAN_RESIDENT_RESPONSES,
@@ -81,6 +104,7 @@ async function mockAttachedSceneRender(): Promise<IAttachedSceneRender> {
 
   const container: Container = mockContainer([
     LevelEditorSceneService,
+    LevelEditorHelpersService,
     LevelViewService,
     LevelViewportService,
     LevelEditorRenderService,
@@ -89,6 +113,7 @@ async function mockAttachedSceneRender(): Promise<IAttachedSceneRender> {
 
   container.provision();
   await waitFor(() => expect(sceneService.drawing.value).not.toBeNull());
+  await waitFor(() => expect(sceneService.helpers.value).not.toBeNull());
 
   const service: LevelEditorRenderService = container.get(LevelEditorRenderService);
 
@@ -238,18 +263,44 @@ describe("LevelEditorRenderService", () => {
     expect(listMockInvokeCalls(ELevelsCommand.SHOW_SCENE).at(-1)).toEqual({ sessionId: null, viewport: VIEWPORT });
   });
 
+  it("draws the scene's helpers, each helped tool switched by its place among the tools", async () => {
+    const { container } = await mockAttachedSceneRender();
+    const kinds: number = SCENE_HELPER_TOOLS.reduce(
+      (bits: number, entry: SceneHelperToolEntry) => (bits | (1 << entry.kind)) >>> 0,
+      0
+    );
+
+    expect(listMockInvokeCalls(ERenderCommand.SET_VIEW_OPTIONS).at(-1)?.options.helpers).toMatchObject({
+      hidden: [],
+      hovered: null,
+      isShown: true,
+      kinds,
+      selected: [],
+    });
+
+    container.get(LevelEditorHelpersService).setHelperTools({ isOn: false, tools: [ESceneToolKind.WAY] });
+    await flush();
+
+    expect(listMockInvokeCalls(ERenderCommand.SET_VIEW_OPTIONS).at(-1)?.options.helpers.kinds).toBe(
+      (kinds & ~(1 << (getSceneHelperTool(ESceneToolKind.WAY) as SceneHelperToolEntry).kind)) >>> 0
+    );
+
+    container.get(LevelEditorHelpersService).toggleHelpers();
+    await flush();
+
+    expect(listMockInvokeCalls(ERenderCommand.SET_VIEW_OPTIONS).at(-1)?.options.helpers.isShown).toBe(false);
+  });
+
+  it("frames the camera on the scene's helpers where it draws no object", async () => {
+    await mockAttachedSceneRender({ drawing: { ...mockSceneDrawDescription(), bounds: null } });
+
+    expectCameraAt(toFramedPosition(mockSceneHelpersDescription().bounds as VisualBounds));
+  });
+
   it("frames the camera on the scene's drawn objects once a scene, and stays as it is revealed", async () => {
     const { service } = await mockAttachedSceneRender();
 
-    const bounds: VisualBounds = mockSceneDrawDescription().bounds as VisualBounds;
-    const expected: IPoint3 = toLevelGoToViewpoint(
-      toLevelFramedGoTo(null, toLevelEditorSceneSphere(bounds), DEFAULT_LEVEL_CAMERA_OPTIONS.fieldOfView)
-    ).position;
-    const [x, y, z] = lastCamera().position;
-
-    expect(x).toBeCloseTo(expected.x);
-    expect(y).toBeCloseTo(expected.y);
-    expect(z).toBeCloseTo(expected.z);
+    expectCameraAt(toFramedPosition(mockSceneDrawDescription().bounds as VisualBounds));
     expect(listMockInvokeCalls(ERenderCommand.COMMAND_CAMERA).at(-1)).toEqual({
       command: { kind: EWorldCameraCommand.RESET },
       viewport: VIEWPORT,

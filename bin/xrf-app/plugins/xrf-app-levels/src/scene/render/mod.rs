@@ -1,5 +1,7 @@
 mod scene_render_source;
+mod scene_render_space;
 mod shown_scenes;
 
 pub(crate) use scene_render_source::SceneRenderSource;
+pub(crate) use scene_render_space::SceneRenderSpace;
 pub use shown_scenes::ShownScenes;

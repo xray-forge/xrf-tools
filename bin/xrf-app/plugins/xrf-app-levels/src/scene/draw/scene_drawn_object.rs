@@ -1,9 +1,7 @@
 use xrf_editable_level::{EditableObjectTransform, EditableSceneObject};
 use xrf_extension::XrayExtension;
-use xrf_math::Affine3d;
-use xrf_visual::VisualTransform;
 
-use crate::scene::SceneObjectId;
+use crate::scene::{SceneObjectId, SceneRenderSpace};
 
 /// One scene object the scene draws: the library object it places, found in the objects roots, and where it stands.
 #[derive(Clone, Debug, PartialEq)]
@@ -23,19 +21,9 @@ impl SceneDrawnObject {
     format!("{}.{}", object.reference, XrayExtension::Object.as_str())
   }
 
-  /// Where it stands as the renderer places its model, sixteen floats column by column: the world transform
-  /// `CCustomObject::OnUpdateTransform` composes, which the level build places its meshes' points by, mirrored through
-  /// `z` into renderer space as the model's vertices are.
+  /// Where it stands as the renderer places its model, sixteen floats column by column: its transform in renderer
+  /// space, as the model's vertices are.
   pub(crate) fn get_render_transform(&self) -> [f32; 16] {
-    let placement: Affine3d = self.transform.to_matrix().to_affine();
-
-    VisualTransform {
-      i: placement.x_axis,
-      j: placement.y_axis,
-      k: placement.z_axis,
-      c: placement.translation,
-    }
-    .mirrored()
-    .to_matrix()
+    SceneRenderSpace::place(&self.transform)
   }
 }

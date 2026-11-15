@@ -16,6 +16,7 @@ import { mockContainer } from "@/fixtures/utils/container";
 import { flush } from "@/fixtures/utils/promise";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { mockScenePartResponses, mockSelectedSceneDescription } from "@/tools/level-editor/fixtures/scene.mocks";
+import { LevelEditorHelpersService } from "@/tools/level-editor/services/level-editor-helpers";
 import { LevelEditorRenderService } from "@/tools/level-editor/services/level-editor-render";
 import { LevelEditorSceneService } from "@/tools/level-editor/services/level-editor-scene";
 
@@ -55,6 +56,7 @@ async function renderProblems(resident: AsyncState<ILevelResident>): Promise<Ren
 
   const container: Container = mockContainer([
     LevelEditorSceneService,
+    LevelEditorHelpersService,
     LevelViewService,
     LevelViewportService,
     LevelEditorRenderService,

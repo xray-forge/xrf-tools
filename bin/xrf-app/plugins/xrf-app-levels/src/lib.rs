@@ -2,6 +2,7 @@
 
 mod commands;
 mod console;
+mod helpers;
 pub mod ipc;
 mod level;
 mod objects;

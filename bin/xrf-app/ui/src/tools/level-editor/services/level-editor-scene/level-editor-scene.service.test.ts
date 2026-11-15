@@ -11,6 +11,7 @@ import { mockInjectedService } from "@/fixtures/utils/container";
 import { flush } from "@/fixtures/utils/promise";
 import {
   mockSceneDrawDescription,
+  mockSceneHelpersDescription,
   mockSceneObjectsDescription,
   mockScenePartResponses,
   mockSelectedSceneDescription,
@@ -66,7 +67,7 @@ describe("LevelEditorSceneService", () => {
   });
 
   // The open lists the part files alone: what each tool holds is read apart from it, side by side.
-  it("opens a scene, then reads its objects, its binary tools' counts and what its picture needs", async () => {
+  it("opens a scene, then reads its objects, its binary tools' counts, what its picture and helpers need", async () => {
     const { service } = mockInjectedService(LevelEditorSceneService);
 
     armScene();
@@ -78,12 +79,14 @@ describe("LevelEditorSceneService", () => {
     expect(service.objects.value).toEqual(mockSceneObjectsDescription());
     expect(service.binaryTools.value?.tools).toHaveLength(1);
     expect(service.drawing.value).toEqual(mockSceneDrawDescription());
+    expect(service.helpers.value).toEqual(mockSceneHelpersDescription());
     expect(mockInvoke.mock.calls.map(([name]) => name)).toEqual([
       ESessionsCommand.BIND,
       ELevelsCommand.OPEN_SCENE,
       ELevelsCommand.DESCRIBE_SCENE_OBJECTS,
       ELevelsCommand.DESCRIBE_SCENE_BINARY_TOOLS,
       ELevelsCommand.DESCRIBE_SCENE_DRAW,
+      ELevelsCommand.DESCRIBE_SCENE_HELPERS,
     ]);
     expect(listMockInvokeCalls(ELevelsCommand.OPEN_SCENE)[0]?.request).toEqual(REQUEST);
   });

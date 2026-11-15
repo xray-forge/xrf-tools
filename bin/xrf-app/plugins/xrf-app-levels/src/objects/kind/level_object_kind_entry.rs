@@ -1,6 +1,7 @@
 use serde::Serialize;
 use xrf_renderer::RenderHelperIcon;
 
+use crate::helpers::HelperColor;
 use crate::objects::{LevelObjectGroup, LevelObjectKind};
 
 /// One kind's row of the kind table: what the Outliner, the Show popover, the helpers and the map all name, colour,
@@ -27,15 +28,7 @@ pub struct LevelObjectKindEntry {
 impl LevelObjectKindEntry {
   /// The colour as sRGB floats from 0 to 1, a channel not written as two hex digits read as zero.
   pub fn get_rgb(&self) -> [f32; 3] {
-    let channel = |at: usize| -> f32 {
-      self
-        .color
-        .get(at..at + 2)
-        .and_then(|hex| u8::from_str_radix(hex, 16).ok())
-        .map_or(0.0, |value| f32::from(value) / 255.0)
-    };
-
-    [channel(1), channel(3), channel(5)]
+    HelperColor::parse_rgb(self.color)
   }
 
   /// What every spawned visual's row shares, its own kind, label and colour aside: drawn as its model, its helper off

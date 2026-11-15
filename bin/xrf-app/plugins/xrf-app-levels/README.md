@@ -29,14 +29,20 @@ from its `.object` by `xrf-object-visual`.
   (`objects`, `SceneObjectsPart`), and its binary tools' counts (`binary`, `SceneBinaryToolsPart`), each a part with
   its own query; what the editor would skip or refuse of a part, kept as a problem on its tool (`problem`); the scene
   objects it draws, their extent and each it does not draw, its `.object` missing or unreadable (`draw`,
-  `SceneDrawPart`); and the scene as the renderer draws it (`render`): `SceneRenderSource`, no sectors and every scene
-  object whose `.object` is found a model in the props group, named by its place among the scene's objects, a library
-  object that does not compile left out as a load failure named by its reference, which the viewport's problems answer
-  as for any source, and the scenes shown (`ShownScenes`).
+  `SceneDrawPart`); the helpers of what has no geometry (`helpers`, `SceneHelpersPart`, read from the parts the open
+  kept and no file): one a helped tool's object in its tool's row of `SCENE_HELPER_TOOLS`, switched by the tool's place
+  in `SceneToolKind::ALL` and named by a `SceneHelperId`, that place above `SCENE_HELPER_INDEX_BITS` of the object's
+  index, with their extent and per-tool counts for the page; and the scene as the renderer draws it (`render`):
+  `SceneRenderSource`, no sectors and every scene object whose `.object` is found a model in the props group, named by
+  its place among the scene's objects, a library object that does not compile left out as a load failure named by its
+  reference, which the viewport's problems answer as for any source, the helpers part as its helpers, the space it all
+  stands in (`SceneRenderSpace`, engine space mirrored through `z`), and the scenes shown (`ShownScenes`).
+- `helpers`: what the helpers look like wherever the plugin draws them, the compiled level's objects and a scene's
+  alike: a link's arrowed lines and a kind's colour.
 - `commands/`: the level commands: listing, opening, restoring, closing and showing a level, and describing its map,
   start, surfaces, textures, spawn objects, weather and console defaults; and in `commands/scene/` the scene's:
-  opening, restoring, closing and showing a scene, and describing its objects, binary tools and drawing. The viewer's
-  commands are in `viewer/commands/`.
+  opening, restoring, closing and showing a scene, and describing its objects, binary tools, drawing and helpers. The
+  viewer's commands are in `viewer/commands/`.
 - `level_report`: what the plugin writes to the log.
 - `plugin` and `ipc`: `LevelsPlugin` and its command domain.
 - `tests/`: the crate's tests and their fixtures.

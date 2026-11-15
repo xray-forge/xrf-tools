@@ -24,6 +24,8 @@ mod particles;
 mod record_resampler;
 mod render_reload;
 mod scene_follow;
+mod scene_helpers;
+mod scene_helpers_placement;
 mod scene_objects;
 mod scene_open;
 mod scene_problems;

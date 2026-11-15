@@ -11,6 +11,7 @@ import {
   ELevelEditorSceneBlank,
   toLevelEditorSceneBlank,
 } from "@/tools/level-editor/lib/render/level-editor-scene-blank";
+import { LevelEditorHelpersService } from "@/tools/level-editor/services/level-editor-helpers";
 import { LevelEditorRenderService } from "@/tools/level-editor/services/level-editor-render";
 import { LevelEditorSceneService } from "@/tools/level-editor/services/level-editor-scene";
 
@@ -28,8 +29,9 @@ interface ILevelEditorViewportProps extends BaseComponentProps {
 
 /**
  * Where the open scene is drawn: the native surface, covered while the scene opens and until every object it draws is
- * resident, the cover saying why where the renderer cannot draw it; why the scene draws nothing once its objects and
- * drawing are read and it draws no object; and why the open failed while none is open.
+ * resident, the cover saying why where the renderer cannot draw it; why the scene draws nothing once its objects,
+ * drawing and helpers are read and it draws neither an object nor a helper, its helpers switched off included; and
+ * why the open failed while none is open.
  */
 export function LevelEditorViewport({
   "data-testid": dataTestId = "level-editor-viewport",
@@ -41,12 +43,15 @@ export function LevelEditorViewport({
   renderViewport,
   onRetry,
 }: ILevelEditorViewportProps): ReactElement {
+  const helpersService: LevelEditorHelpersService = useInjection(LevelEditorHelpersService);
   const renderService: LevelEditorRenderService = useInjection(LevelEditorRenderService);
   const sceneService: LevelEditorSceneService = useInjection(LevelEditorSceneService);
 
   const blank: Nullable<ELevelEditorSceneBlank> = toLevelEditorSceneBlank(
     sceneService.objects.value,
-    sceneService.drawing.value
+    sceneService.drawing.value,
+    sceneService.helpers.value,
+    helpersService.helpers
   );
 
   return (

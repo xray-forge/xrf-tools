@@ -8,18 +8,21 @@ import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
 
 import { LevelViewService } from "@/core/level/services/level-view";
 import { LevelViewportService } from "@/core/level/services/level-viewport";
+import { LEVEL_EDITOR_HELPERS_STORAGE_KEY } from "@/core/storage";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { flush } from "@/fixtures/utils/promise";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import {
   IMockSceneParts,
+  MOCK_NO_SCENE_HELPERS,
   mockSceneDrawDescription,
   mockSceneObjectTool,
   mockScenePartResponses,
   mockSceneSpawn,
   mockSelectedSceneDescription,
 } from "@/tools/level-editor/fixtures/scene.mocks";
+import { LevelEditorHelpersService } from "@/tools/level-editor/services/level-editor-helpers";
 import { LevelEditorRenderService } from "@/tools/level-editor/services/level-editor-render";
 import { LevelEditorSceneService } from "@/tools/level-editor/services/level-editor-scene";
 
@@ -39,6 +42,7 @@ async function renderViewport(parts: IMockSceneParts = {}): Promise<RenderResult
 
   const container: Container = mockContainer([
     LevelEditorSceneService,
+    LevelEditorHelpersService,
     LevelViewService,
     LevelViewportService,
     LevelEditorRenderService,
@@ -61,6 +65,7 @@ async function renderViewport(parts: IMockSceneParts = {}): Promise<RenderResult
 
 describe("LevelEditorViewport", () => {
   beforeEach(() => {
+    localStorage.removeItem(LEVEL_EDITOR_HELPERS_STORAGE_KEY);
     resetMockInvoke();
   });
 
@@ -70,8 +75,22 @@ describe("LevelEditorViewport", () => {
     expect(queryByTestId("level-editor-viewport-state")).toBeNull();
   });
 
-  // A scene decompiled before its geometry holds helpers alone, which are not drawn yet.
-  it("says a scene holding no scene object has nothing to draw", async () => {
+  // A scene decompiled before its geometry holds helpers alone.
+  it("says nothing over a scene that draws helpers alone", async () => {
+    const { queryByTestId } = await renderViewport({
+      drawing: { ...mockSceneDrawDescription(), bounds: null },
+      objects: {
+        problems: [],
+        tools: [mockSceneObjectTool(ESceneToolKind.SPAWN, [mockSceneSpawn(0, "actor", "actor")])],
+      },
+    });
+
+    expect(queryByTestId("level-editor-viewport-state")).toBeNull();
+  });
+
+  it("says the helpers are switched off over a scene that draws helpers alone with none shown", async () => {
+    localStorage.setItem(LEVEL_EDITOR_HELPERS_STORAGE_KEY, JSON.stringify({ isShown: false }));
+
     const { getByTestId } = await renderViewport({
       drawing: { ...mockSceneDrawDescription(), bounds: null },
       objects: {
@@ -80,13 +99,24 @@ describe("LevelEditorViewport", () => {
       },
     });
 
-    expect(getByTestId("level-editor-viewport-state")).toHaveTextContent(
-      "This scene has no scene objects to draw. Its spawn points, ways and other tools are listed in the Outliner"
-    );
+    expect(getByTestId("level-editor-viewport-state")).toHaveTextContent("its helpers are switched off");
   });
 
-  it("says none of the scene's library objects was found where none is drawn", async () => {
-    const { getByTestId } = await renderViewport({ drawing: { ...mockSceneDrawDescription(), bounds: null } });
+  it("says a scene holding no objects has nothing to draw", async () => {
+    const { getByTestId } = await renderViewport({
+      drawing: { ...mockSceneDrawDescription(), bounds: null },
+      helpers: MOCK_NO_SCENE_HELPERS,
+      objects: { problems: [], tools: [] },
+    });
+
+    expect(getByTestId("level-editor-viewport-state")).toHaveTextContent("This scene holds no objects");
+  });
+
+  it("says none of the scene's library objects was found where it draws neither them nor a helper", async () => {
+    const { getByTestId } = await renderViewport({
+      drawing: { ...mockSceneDrawDescription(), bounds: null },
+      helpers: MOCK_NO_SCENE_HELPERS,
+    });
 
     expect(getByTestId("level-editor-viewport-state")).toHaveTextContent(
       "None of this scene's library objects was found. Check the objects roots"

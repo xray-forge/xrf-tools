@@ -1,7 +1,9 @@
-import { RenderViewOptions } from "@xrf/ipc/types/xrf-renderer";
+import { SceneDrawDescription, SceneHelpersDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { RenderHelperOptions, RenderViewOptions } from "@xrf/ipc/types/xrf-renderer";
 import { VisualBounds } from "@xrf/ipc/types/xrf-visual";
 import { WorldToggles } from "@xrf/ipc/types/xrf-world";
 import { IPoint3, toPoint3 } from "@xrf/math";
+import { Nullable } from "@xrf/types";
 
 import { ILevelSurfaceOptions } from "@/core/level/lib/surface/level-surface-options";
 import { IRenderLighting, toNativeAssetLighting } from "@/core/render/lib/lighting/render-lighting";
@@ -56,22 +58,41 @@ export interface ILevelEditorViewOptionsInputs {
   lighting: IRenderLighting;
   /** What the scene's frame is resolved at before the viewport. */
   output: TRenderOutput;
+  /** Which of the scene's helpers are drawn, and how. */
+  helpers: RenderHelperOptions;
 }
 
 /**
  * @param inputs - What the options are made of.
  * @returns What a native viewport draws a scene with: textured, under the editor's light, with no sky, fog or weather,
- *   its backdrop the level viewer's own.
+ *   its backdrop the level viewer's own, its helpers as switched.
  */
 export function toLevelEditorViewOptions(inputs: ILevelEditorViewOptionsInputs): RenderViewOptions {
-  const { surfaces, features, lighting, output } = inputs;
+  const { surfaces, features, lighting, output, helpers } = inputs;
   const view: RenderViewOptions = toNativeAssetViewOptions(
     { isBumped: surfaces.isBumped, isLit: true, isWireframe: surfaces.isWireframe },
     features,
     output
   );
 
-  return { ...view, asset: { ...view.asset, lighting: toNativeAssetLighting(lighting) } };
+  return { ...view, asset: { ...view.asset, lighting: toNativeAssetLighting(lighting) }, helpers };
+}
+
+/**
+ * @param drawing - What the open scene's picture needs, or null before it is read.
+ * @param helpers - What the page needs of the open scene's helpers, or null before it is read.
+ * @returns What a camera frames the scene by: the extent of its drawn objects where it draws any, else that of its
+ *   helpers once they are read; null while that is not known yet and for a scene drawing neither.
+ */
+export function toLevelEditorSceneBounds(
+  drawing: Nullable<SceneDrawDescription>,
+  helpers: Nullable<SceneHelpersDescription>
+): Nullable<VisualBounds> {
+  if (!drawing) {
+    return null;
+  }
+
+  return drawing.bounds ?? helpers?.bounds ?? null;
 }
 
 /**

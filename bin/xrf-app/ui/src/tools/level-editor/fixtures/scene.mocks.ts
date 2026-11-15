@@ -9,6 +9,7 @@ import {
   SceneBinaryToolsDescription,
   SceneDrawDescription,
   SceneDrawProblem,
+  SceneHelpersDescription,
   SceneObjectDescription,
   SceneObjectsDescription,
   SceneObjectToolDescription,
@@ -200,11 +201,32 @@ export function mockSceneDrawDescription(problems: Array<SceneDrawProblem> = [])
   };
 }
 
+/**
+ * What the fixture scene's helpers come to: its three spawn points' icons, about a point off its drawn objects.
+ *
+ * @param overrides - Fields to replace on the description.
+ * @returns A helpers description fixture.
+ */
+export function mockSceneHelpersDescription(overrides: Partial<SceneHelpersDescription> = {}): SceneHelpersDescription {
+  return {
+    bounds: {
+      boundingBox: { max: { x: -10, y: 2, z: 4 }, min: { x: -14, y: 0, z: 0 } },
+      boundingSphere: { center: { x: -12, y: 1, z: 2 }, radius: 3 },
+    },
+    tools: [{ count: 3, tool: ESceneToolKind.SPAWN }],
+    ...overrides,
+  };
+}
+
+/** What a scene drawing no helper answers of its helpers. */
+export const MOCK_NO_SCENE_HELPERS: SceneHelpersDescription = { bounds: null, tools: [] };
+
 /** What a fixture scene's parts answer, each defaulting to the fixture's own. */
 export interface IMockSceneParts {
   objects?: SceneObjectsDescription;
   binaryTools?: SceneBinaryToolsDescription;
   drawing?: SceneDrawDescription;
+  helpers?: SceneHelpersDescription;
 }
 
 /**
@@ -222,5 +244,7 @@ export function mockScenePartResponses(parts: IMockSceneParts = {}, revision: nu
       mockSessionSnapshot(parts.binaryTools ?? mockSceneBinaryToolsDescription(), args.sessionId, revision),
     [ELevelsCommand.DESCRIBE_SCENE_DRAW]: (args: { sessionId: string }) =>
       mockSessionSnapshot(parts.drawing ?? mockSceneDrawDescription(), args.sessionId, revision),
+    [ELevelsCommand.DESCRIBE_SCENE_HELPERS]: (args: { sessionId: string }) =>
+      mockSessionSnapshot(parts.helpers ?? mockSceneHelpersDescription(), args.sessionId, revision),
   };
 }

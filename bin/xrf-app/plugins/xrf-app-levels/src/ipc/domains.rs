@@ -21,6 +21,7 @@ macro_rules! for_each_levels_domain {
         describe_recording => crate::viewer::commands::record::describe_recording::levels_describe_recording,
         describe_scene_binary_tools => crate::commands::scene::describe_scene_binary_tools::levels_describe_scene_binary_tools,
         describe_scene_draw => crate::commands::scene::describe_scene_draw::levels_describe_scene_draw,
+        describe_scene_helpers => crate::commands::scene::describe_scene_helpers::levels_describe_scene_helpers,
         describe_scene_objects => crate::commands::scene::describe_scene_objects::levels_describe_scene_objects,
         describe_sound => crate::commands::sound::describe_sound::levels_describe_sound,
         describe_spawn_object => crate::commands::describe_spawn_object::levels_describe_spawn_object,

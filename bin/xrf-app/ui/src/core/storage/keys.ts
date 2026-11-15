@@ -53,6 +53,11 @@ export const LEVEL_HELPERS_STORAGE_KEY: string = buildStorageKey(EStorageNamespa
 export const LEVEL_LOOK_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "level-look");
 /** How each level's weather was last played, by level, as JSON. */
 export const LEVEL_WEATHER_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "level-weather");
+/** Which helpers the level editor draws over a scene's objects, by tool, as JSON. */
+export const LEVEL_EDITOR_HELPERS_STORAGE_KEY: string = buildStorageKey(
+  EStorageNamespace.PREFERENCE,
+  "level-editor-helpers"
+);
 
 /** Chords a person bound themselves, as one command id to chords map. */
 export const KEYBINDS_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "keybinds");

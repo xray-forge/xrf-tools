@@ -94,6 +94,26 @@ impl SceneToolKind {
     Self::ALL.into_iter().find(|kind| kind.get_name() == name)
   }
 
+  /// Its place in [`Self::ALL`], which the variants are declared in the order of.
+  pub(crate) const fn get_ordinal(self) -> u32 {
+    self as u32
+  }
+
+  /// Whether every tool of [`Self::ALL`] stands at its own ordinal, which a helper's id and switch rest on.
+  const fn is_ordered() -> bool {
+    let mut place: usize = 0;
+
+    while place < Self::ALL.len() {
+      if Self::ALL[place] as usize != place {
+        return false;
+      }
+
+      place += 1;
+    }
+
+    true
+  }
+
   /// The tool's `ClassName`, which names its part files.
   pub(crate) fn get_name(self) -> &'static str {
     match self {
@@ -247,3 +267,6 @@ impl SceneToolKind {
     }
   }
 }
+
+// A tool's ordinal is read off its variant, so the variants must stand in the order of the list.
+const _: () = assert!(SceneToolKind::is_ordered());

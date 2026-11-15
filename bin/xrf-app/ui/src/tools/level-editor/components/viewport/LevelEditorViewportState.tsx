@@ -13,14 +13,20 @@ import { ELevelEditorSceneBlank } from "@/tools/level-editor/lib/render/level-ed
  */
 function describeSceneBlank(blank: ELevelEditorSceneBlank): string {
   switch (blank) {
-    case ELevelEditorSceneBlank.NO_SCENE_OBJECTS:
-      return (
-        "This scene has no scene objects to draw. Its spawn points, ways and other tools are listed in the " +
-        "Outliner; they are not drawn yet."
-      );
+    case ELevelEditorSceneBlank.EMPTY:
+      return "This scene holds no objects: none of its tools places anything.";
 
     case ELevelEditorSceneBlank.NOTHING_FOUND:
       return "None of this scene's library objects was found. Check the objects roots; Problems lists each.";
+
+    case ELevelEditorSceneBlank.NOTHING_DRAWN:
+      return (
+        "This scene has no scene objects, and what it holds draws no helper: its sectors, groups and the rest are " +
+        "listed in the Outliner."
+      );
+
+    case ELevelEditorSceneBlank.HELPERS_HIDDEN:
+      return "This scene has no scene objects, and its helpers are switched off. Turn them on in Show.";
 
     default:
       return assertExhaustive(blank);

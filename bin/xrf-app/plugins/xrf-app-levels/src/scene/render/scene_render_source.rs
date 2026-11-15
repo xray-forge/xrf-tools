@@ -13,19 +13,20 @@ use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope}
 use xrf_object_visual::{ObjectVisual, VisualSurfaces};
 use xrf_rawdata::{ObjectCompileOptions, ObjectCompileSource};
 use xrf_renderer::{
-  RenderAssetSource, RenderLevelDetails, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn, RenderLoadFailure,
-  RenderSpawnCategory, RenderSpawnLighting, RenderSpawnModel, RenderSpawnModels, RenderSpawnObject,
+  RenderAssetSource, RenderLevelDetails, RenderLevelHelpers, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn,
+  RenderLoadFailure, RenderSpawnCategory, RenderSpawnLighting, RenderSpawnModel, RenderSpawnModels, RenderSpawnObject,
 };
 use xrf_vfs::XraySearch;
 use xrf_visual::{LightsDescription, SectorPackage, VisualPoser};
 use xrf_world::{WorldLevelSource, WorldLevelWeather};
 
 use crate::report::LevelReport;
-use crate::scene::{SceneDrawnObject, SceneDrawnObjects, SelectedScene};
+use crate::scene::{SceneDrawnObject, SceneDrawnObjects, SceneHelpersPart, SelectedScene};
 
 /// An open scene as the world plays it and the native renderer draws it: no sectors and no level, every scene object
 /// placing a library object found in its objects roots stood as a model compiled from that `.object`, each lit by the
-/// open sky as a model alone is, and their textures read from the scene's game data.
+/// open sky as a model alone is, and their textures read from the scene's game data; what has no geometry drawn as
+/// its helper.
 pub struct SceneRenderSource {
   scene: Arc<SessionSnapshot<SelectedScene>>,
   assets: AssetMountState,
@@ -260,6 +261,14 @@ impl WorldLevelSource for SceneRenderSource {
       lighting,
       failures,
     })
+  }
+
+  /// The helpers of what the scene holds with no geometry, each named by its scene object's [`SceneHelperId`] and
+  /// switched by its tool.
+  ///
+  /// [`SceneHelperId`]: crate::scene::SceneHelperId
+  fn read_helpers(&self) -> XrfResult<RenderLevelHelpers> {
+    Ok(SceneHelpersPart::get(&self.scene).helpers.clone())
   }
 
   fn read_details(&self) -> XrfResult<Option<RenderLevelDetails>> {

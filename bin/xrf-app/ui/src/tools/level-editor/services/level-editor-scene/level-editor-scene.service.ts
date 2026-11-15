@@ -7,9 +7,11 @@ import { SessionId, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import {
   SCENE_BINARY_TOOLS_PART,
   SCENE_DRAW_PART,
+  SCENE_HELPERS_PART,
   SCENE_OBJECTS_PART,
   SceneBinaryToolsDescription,
   SceneDrawDescription,
+  SceneHelpersDescription,
   SceneObjectsDescription,
   SceneOpenRequest,
   SceneSource,
@@ -22,8 +24,8 @@ import { SessionRootResource } from "@/core/session/lib/session-root-resource";
 
 /**
  * Opens a Level Editor scene, its `.level` and the part files beside it, and keeps each part of it the editor shows -
- * its object tools' objects, its binary tools' counts and what its picture needs - as a resource read apart from it
- * and again apart from it. Nothing of the scene is written.
+ * its object tools' objects, its binary tools' counts, what its picture needs and its helpers' extent and counts - as a
+ * resource read apart from it and again apart from it. Nothing of the scene is written.
  */
 @Injectable()
 export class LevelEditorSceneService {
@@ -41,6 +43,12 @@ export class LevelEditorSceneService {
    * say once the scene is resident (`LevelEditorRenderService.resident`).
    */
   public readonly drawing: SessionPartResource<SceneDrawDescription>;
+
+  /**
+   * Where the open scene's helpers reach, which the camera is framed on where it draws no object, and how many each
+   * helped tool draws, which the Show action counts.
+   */
+  public readonly helpers: SessionPartResource<SceneHelpersDescription>;
 
   /**
    * The open scene, read again once its session derives it anew. A scene that fails to open, or to close, is let go
@@ -73,6 +81,7 @@ export class LevelEditorSceneService {
       levelsCommands.describeSceneBinaryTools
     );
     this.drawing = new SessionPartResource(eventBus, [SCENE_DRAW_PART], levelsCommands.describeSceneDraw);
+    this.helpers = new SessionPartResource(eventBus, [SCENE_HELPERS_PART], levelsCommands.describeSceneHelpers);
   }
 
   /** Whether a change moved what the open scene was read from: it shows as it opened until it is read again. */
@@ -172,7 +181,12 @@ export class LevelEditorSceneService {
    */
   private *attachParts(sessionId: SessionId): TFlow {
     yield* call(
-      Promise.all([this.objects.attach(sessionId), this.binaryTools.attach(sessionId), this.drawing.attach(sessionId)])
+      Promise.all([
+        this.objects.attach(sessionId),
+        this.binaryTools.attach(sessionId),
+        this.drawing.attach(sessionId),
+        this.helpers.attach(sessionId),
+      ])
     );
   }
 
@@ -181,5 +195,6 @@ export class LevelEditorSceneService {
     this.objects.detach();
     this.binaryTools.detach();
     this.drawing.detach();
+    this.helpers.detach();
   }
 }

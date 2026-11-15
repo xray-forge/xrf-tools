@@ -17,6 +17,7 @@ import { LevelEditorInspectorPanel } from "@/tools/level-editor/components/panel
 import { LevelEditorOutlinerPanel } from "@/tools/level-editor/components/panels/LevelEditorOutlinerPanel";
 import { LevelEditorProblemsPanel } from "@/tools/level-editor/components/panels/LevelEditorProblemsPanel";
 import { LevelEditorScenePanel } from "@/tools/level-editor/components/panels/LevelEditorScenePanel";
+import { LevelEditorShowAction } from "@/tools/level-editor/components/toolbar/LevelEditorShowAction";
 import { LevelEditorViewport } from "@/tools/level-editor/components/viewport/LevelEditorViewport";
 import { ELevelEditorPanelId } from "@/tools/level-editor/lib/panels/level-editor-panel-id";
 
@@ -39,8 +40,8 @@ interface ILevelEditorLayoutProps extends BaseComponentProps {
 }
 
 /**
- * The level editor's chrome: the toolbar with the camera, the scene's header, the viewport the scene is drawn in, and
- * the panel stripe listing, inspecting and checking what the scene holds.
+ * The level editor's chrome: the toolbar with what is shown and the camera, the scene's header, the viewport the scene
+ * is drawn in, and the panel stripe listing, inspecting and checking what the scene holds.
  */
 export function LevelEditorLayout({
   "data-testid": dataTestId = "level-editor-layout",
@@ -93,7 +94,19 @@ export function LevelEditorLayout({
   );
 
   return (
-    <EditorLayout toolbar={<EditorToolbar onBack={onBack} actions={<LevelCameraAction />} />}>
+    <EditorLayout
+      toolbar={
+        <EditorToolbar
+          onBack={onBack}
+          actions={
+            <>
+              <LevelEditorShowAction />
+              <LevelCameraAction />
+            </>
+          }
+        />
+      }
+    >
       <div className={"flex min-h-0 min-w-0 grow flex-col"}>
         {heading ? (
           <EditorFileHeader

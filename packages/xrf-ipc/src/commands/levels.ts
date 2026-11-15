@@ -31,6 +31,7 @@ import {
   RecordingProgress,
   SceneBinaryToolsDescription,
   SceneDrawDescription,
+  SceneHelpersDescription,
   SceneObjectsDescription,
   SceneOpenRequest,
   ScreenshotSaveRequest,
@@ -65,6 +66,7 @@ export enum ELevelsCommand {
   DESCRIBE_RECORDING = "plugin:levels|describe_recording",
   DESCRIBE_SCENE_BINARY_TOOLS = "plugin:levels|describe_scene_binary_tools",
   DESCRIBE_SCENE_DRAW = "plugin:levels|describe_scene_draw",
+  DESCRIBE_SCENE_HELPERS = "plugin:levels|describe_scene_helpers",
   DESCRIBE_SCENE_OBJECTS = "plugin:levels|describe_scene_objects",
   DESCRIBE_SOUND = "plugin:levels|describe_sound",
   DESCRIBE_SPAWN_OBJECT = "plugin:levels|describe_spawn_object",
@@ -180,6 +182,12 @@ export const levelsCommands = {
    */
   describeSceneDraw: (sessionId: SessionId) =>
     __TAURI_INVOKE<SessionSnapshot<SceneDrawDescription>>(ELevelsCommand.DESCRIBE_SCENE_DRAW, { sessionId }),
+  /**
+   * Describe the open scene's helpers beside their picture: where they reach, to frame a camera on a scene drawing them
+   * alone, and how many each helped tool draws; read again where a commit let them go.
+   */
+  describeSceneHelpers: (sessionId: SessionId) =>
+    __TAURI_INVOKE<SessionSnapshot<SceneHelpersDescription>>(ELevelsCommand.DESCRIBE_SCENE_HELPERS, { sessionId }),
   /**
    * Describe the open scene's object tools' objects, typed, each scene object's library object looked for in the objects
    * roots the scene was opened with; read again where a commit let them go.
@@ -346,6 +354,10 @@ export interface ILevelsCommandSignatures {
     ["sessionId"]
   >;
   [ELevelsCommand.DESCRIBE_SCENE_DRAW]: IIpcCommandSignature<typeof levelsCommands.describeSceneDraw, ["sessionId"]>;
+  [ELevelsCommand.DESCRIBE_SCENE_HELPERS]: IIpcCommandSignature<
+    typeof levelsCommands.describeSceneHelpers,
+    ["sessionId"]
+  >;
   [ELevelsCommand.DESCRIBE_SCENE_OBJECTS]: IIpcCommandSignature<
     typeof levelsCommands.describeSceneObjects,
     ["sessionId"]
