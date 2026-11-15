@@ -9,13 +9,14 @@ use xrf_job::JobHandle;
 use xrf_math::{Aabb, Vector3d};
 
 use crate::ai::ai_vertex::AiVertex;
-use crate::ai::cover::ai_cover_pass::{AiCoverPass, AiNodeCovers};
+use crate::ai::cover::ai_cover_pass::AiCoverPass;
 use crate::ai::cover::ai_cover_sector::AiCoverSector;
 use crate::ai::cover::ai_cover_tracing::AiCoverTracing;
 use crate::ai::cover::ai_cover_tree::AiCoverTree;
 use crate::ai::cover::ai_cover_walk::AiCoverWalk;
+use crate::ai::cover::ai_node_covers::AiNodeCovers;
 use crate::shadow::shadow_materials::ShadowMaterials;
-use crate::{AiRayModel, RayBackend};
+use crate::{RayBackend, RayScene, RayTracing};
 
 const SIDE: u32 = 5;
 
@@ -51,7 +52,7 @@ fn grid(holes: &[u32]) -> Vec<AiVertex> {
 }
 
 /// A wall 3 m high across the grid between x 2 and x 3, its front toward -x.
-pub(super) fn wall() -> BvhTracer {
+pub(crate) fn wall() -> BvhTracer {
   BvhTracer::new(
     &[
       Vec3::new(2.5, 0.0, -1.0),
@@ -65,7 +66,7 @@ pub(super) fn wall() -> BvhTracer {
 
 /// Each node of the grid's covers once computed against `tracer`, every face blocking, its corner rays traced on
 /// `backend`, with `dxc` for D3D12.
-pub(super) fn covers(tracer: &BvhTracer, backend: RayBackend, dxc: Option<&Path>) -> XrfResult<Vec<AiNodeCovers>> {
+pub(crate) fn covers(tracer: &BvhTracer, backend: RayBackend, dxc: Option<&Path>) -> XrfResult<Vec<AiNodeCovers>> {
   let shadows: ShadowMaterials = ShadowMaterials::new_opaque(tracer.get_face_count());
   let mut vertices: Vec<AiVertex> = grid(&[]);
 
@@ -73,13 +74,15 @@ pub(super) fn covers(tracer: &BvhTracer, backend: RayBackend, dxc: Option<&Path>
     &mut vertices,
     1.0,
     &AiCoverTracing {
-      rays: AiRayModel {
+      scene: RayScene {
         tracer,
         shadows: &shadows,
       },
-      backend,
-      dxc,
-      gpu: None,
+      tracing: RayTracing {
+        backend,
+        dxc,
+        gpu: None,
+      },
     },
     &JobHandle::inert(),
   )?;
@@ -87,7 +90,10 @@ pub(super) fn covers(tracer: &BvhTracer, backend: RayBackend, dxc: Option<&Path>
   Ok(
     vertices
       .iter()
-      .map(|vertex| (vertex.high_cover, vertex.low_cover))
+      .map(|vertex| AiNodeCovers {
+        high: vertex.high_cover,
+        low: vertex.low_cover,
+      })
       .collect(),
   )
 }
@@ -187,20 +193,24 @@ fn covers_corners_by_the_rays_a_wall_blocks_and_mixes_the_others() -> XrfResult 
   // From the open grid's corner, the nodes stand forward and right alone.
   assert_eq!(
     open[at(0, 0) as usize],
-    ([0.0, 0.5, 0.75, 0.25], [0.0, 0.5, 0.75, 0.25])
+    AiNodeCovers {
+      high: [0.0, 0.5, 0.75, 0.25],
+      low: [0.0, 0.5, 0.75, 0.25],
+    }
   );
-  assert!(walled[at(0, 0) as usize].0[RIGHT] < open[at(0, 0) as usize].0[RIGHT]);
-  assert!(walled[at(0, 0) as usize].1[RIGHT] < open[at(0, 0) as usize].1[RIGHT]);
+  assert!(walled[at(0, 0) as usize].high[RIGHT] < open[at(0, 0) as usize].high[RIGHT]);
+  assert!(walled[at(0, 0) as usize].low[RIGHT] < open[at(0, 0) as usize].low[RIGHT]);
   // The wall's back passes rays from beyond it.
   assert_eq!(walled[at(4, 0) as usize], open[at(4, 0) as usize]);
   // A node beside the wall mixes the corners' covers, the walled ones included.
-  assert!(walled[at(1, 2) as usize].0[RIGHT] < open[at(1, 2) as usize].0[RIGHT]);
-  assert!(
-    walled
+  assert!(walled[at(1, 2) as usize].high[RIGHT] < open[at(1, 2) as usize].high[RIGHT]);
+  assert!(walled.iter().chain(&open).all(|covers| {
+    covers
+      .high
       .iter()
-      .chain(&open)
-      .all(|(high, low)| { high.iter().chain(low).all(|cover| (0.0..=1.0).contains(cover)) })
-  );
+      .chain(&covers.low)
+      .all(|cover| (0.0..=1.0).contains(cover))
+  }));
 
   Ok(())
 }

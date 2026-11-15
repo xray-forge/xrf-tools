@@ -6,7 +6,7 @@ use xrf_level::{
 use xrf_math::{Aabb, Matrix4x4, Vector2d, Vector3d};
 use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 
-use crate::geometry::geometry_collector::GeometryCollector;
+use crate::geometry::collision::geometry_collector::GeometryCollector;
 use crate::{
   CompilerShaders, GeometryBaseCoordinates, GeometryCollision, GeometryFace, GeometryMesh, GeometryNormals,
   GeometryOptimization, GeometryRayModel,
@@ -16,7 +16,7 @@ use crate::{
 const SOFT: u32 = 0;
 
 /// A project of `vertices` and `faces` (corners, then edge flags), each face of material 0, mapped across the texture.
-pub(super) fn project(vertices: &[[f32; 3]], faces: &[([u32; 3], u32)]) -> XrfResult<BuildPrjFile> {
+pub(crate) fn project(vertices: &[[f32; 3]], faces: &[([u32; 3], u32)]) -> XrfResult<BuildPrjFile> {
   let material = |compiler_shader: u16| BuildPrjMaterial {
     texture: 0,
     shader: 0,

@@ -7,7 +7,7 @@ use xrf_job::JobHandle;
 use xrf_level::{BuildAimapFile, BuildAimapNode, BuildAimapParams, LevelAiNode, LevelAiVersion};
 use xrf_math::{Aabb, AiNodePosition, EPS_L, Vector3d};
 
-use crate::{AiMap, AiMapCompilation, AiMapCompiler, AiMapCovers, AiMapGuid, AiMapRequest, RayBackend};
+use crate::{AiMap, AiMapCompilation, AiMapCompiler, AiMapCovers, AiMapGuid, AiMapRequest, RayBackend, RayTracing};
 
 const NO_LINK: u32 = BuildAimapNode::NARROW_LINK_MASK;
 
@@ -51,15 +51,22 @@ pub(super) fn aimap() -> BuildAimapFile {
   }
 }
 
+/// Tracing on the CPU, which a map with no covers never starts.
+fn on_cpu() -> RayTracing<'static> {
+  RayTracing {
+    backend: RayBackend::Cpu,
+    dxc: None,
+    gpu: None,
+  }
+}
+
 fn compile(replaced: Option<&AiMap>) -> XrfResult<AiMapCompilation> {
   AiMapCompiler::compile(
     AiMapRequest {
       aimap: &aimap(),
       covers: AiMapCovers::None,
-      rays: None,
-      backend: RayBackend::Cpu,
-      dxc: None,
-      gpu: None,
+      scene: None,
+      tracing: on_cpu(),
       replaced,
     },
     &JobHandle::inert(),
@@ -167,10 +174,8 @@ fn refuses_what_xrai_refuses_and_full_covers_with_no_ray_model() {
       AiMapRequest {
         aimap: &aimap,
         covers,
-        rays: None,
-        backend: RayBackend::Cpu,
-        dxc: None,
-        gpu: None,
+        scene: None,
+        tracing: on_cpu(),
         replaced: None,
       },
       &JobHandle::inert(),

@@ -4,11 +4,12 @@ use glam::Vec3;
 use xrf_geometry::{BvhTracer, Triangle};
 use xrf_level::LevelLightRole;
 
-use crate::light::light_color::LightColor;
-use crate::light::light_point::LightPoint;
-use crate::light::light_point_variant::LightPointVariant;
-use crate::light::light_sample_point::LightSamplePoint;
-use crate::light::light_source::LightSource;
+use crate::light::point::light_color::LightColor;
+use crate::light::point::light_point::LightPoint;
+use crate::light::point::light_point_variant::LightPointVariant;
+use crate::light::point::light_sample_point::LightSamplePoint;
+use crate::light::source::light_source::LightSource;
+use crate::light::source::light_sources::LightSources;
 use crate::shadow::shadow_materials::ShadowMaterials;
 
 const DETAILS: LightPoint = LightPoint {
@@ -77,7 +78,23 @@ fn open() -> BvhTracer {
   ])])
 }
 
-fn gather(light_point: &LightPoint, tracer: &BvhTracer, lights: [Vec<LightSource>; 3]) -> LightColor {
+/// `light` alone, a static light.
+fn statics(light: LightSource) -> LightSources {
+  LightSources {
+    rgb: vec![light],
+    ..LightSources::default()
+  }
+}
+
+/// `light` alone, a sun.
+fn suns(light: LightSource) -> LightSources {
+  LightSources {
+    sun: vec![light],
+    ..LightSources::default()
+  }
+}
+
+fn gather(light_point: &LightPoint, tracer: &BvhTracer, lights: LightSources) -> LightColor {
   light_point.evaluate(
     &LightSamplePoint::new(Vec3::ZERO, Vec3::Y),
     &lights,
@@ -89,8 +106,8 @@ fn gather(light_point: &LightPoint, tracer: &BvhTracer, lights: [Vec<LightSource
 
 #[test]
 fn a_static_point_light_fades_by_each_compilers_rule() {
-  let details: LightColor = gather(&DETAILS, &open(), [vec![lamp()], Vec::new(), Vec::new()]);
-  let level: LightColor = gather(&LEVEL, &open(), [vec![lamp()], Vec::new(), Vec::new()]);
+  let details: LightColor = gather(&DETAILS, &open(), statics(lamp()));
+  let level: LightColor = gather(&LEVEL, &open(), statics(lamp()));
 
   // 2 m away, straight above: attenuation 1 + 0.5 * 2 = 2.
   assert_eq!(
@@ -107,18 +124,14 @@ fn a_static_point_light_fades_by_each_compilers_rule() {
 
 #[test]
 fn the_sun_gives_its_energy_and_a_light_behind_gives_nothing() {
-  let lit: LightColor = gather(&LEVEL, &open(), [Vec::new(), Vec::new(), vec![sun()]]);
+  let lit: LightColor = gather(&LEVEL, &open(), suns(sun()));
   let behind: LightColor = gather(
     &LEVEL,
     &open(),
-    [
-      Vec::new(),
-      Vec::new(),
-      vec![LightSource {
-        direction: Vec3::Y,
-        ..sun()
-      }],
-    ],
+    suns(LightSource {
+      direction: Vec3::Y,
+      ..sun()
+    }),
   );
 
   assert_eq!(lit.sun, 0.75, "no cosine for the sun");
@@ -129,19 +142,10 @@ fn the_sun_gives_its_energy_and_a_light_behind_gives_nothing() {
 fn xrlc_shadows_from_either_side_of_a_face_and_xrdo_light_from_its_front() {
   // The roof's front faces down, toward the point: both compilers' rays meet it.
   for light_point in [DETAILS, LEVEL] {
-    assert_eq!(
-      gather(&light_point, &roof(false), [Vec::new(), Vec::new(), vec![sun()]]).sun,
-      0.0
-    );
+    assert_eq!(gather(&light_point, &roof(false), suns(sun())).sun, 0.0);
   }
 
   // Its front faces up, away from the point: xrDO_Light's ray passes its back, xrLC's does not.
-  assert_eq!(
-    gather(&DETAILS, &roof(true), [Vec::new(), Vec::new(), vec![sun()]]).sun,
-    0.75
-  );
-  assert_eq!(
-    gather(&LEVEL, &roof(true), [Vec::new(), Vec::new(), vec![sun()]]).sun,
-    0.0
-  );
+  assert_eq!(gather(&DETAILS, &roof(true), suns(sun())).sun, 0.75);
+  assert_eq!(gather(&LEVEL, &roof(true), suns(sun())).sun, 0.0);
 }

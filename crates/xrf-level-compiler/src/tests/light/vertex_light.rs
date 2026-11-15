@@ -4,12 +4,12 @@ use glam::Vec3;
 use xrf_geometry::{BvhTracer, Triangle};
 use xrf_math::{Aabb, Vector2d, Vector3d};
 
-use crate::geometry::geometry_face::GeometryFace;
-use crate::geometry::geometry_mesh::GeometryMesh;
-use crate::light::light_color::LightColor;
-use crate::light::light_hemisphere::LightHemisphere;
-use crate::light::light_models::LightModels;
-use crate::light::light_source::LightSource;
+use crate::geometry::mesh::geometry_face::GeometryFace;
+use crate::geometry::mesh::geometry_mesh::GeometryMesh;
+use crate::light::point::light_color::LightColor;
+use crate::light::source::light_source::LightSource;
+use crate::light::vertex::light_hemisphere::LightHemisphere;
+use crate::light::vertex::light_models::LightModels;
 use crate::shadow::shadow_materials::ShadowMaterials;
 
 /// A sky light from straight above.

@@ -9,11 +9,12 @@ use xrf_job::JobHandle;
 use xrf_level::{BuildAimapFile, BuildCformFile, LevelAiFile};
 use xrf_report::Status;
 
-use crate::tests::ai::aimap;
-use crate::tests::detail_step::Fixture;
+use crate::tests::ai::ai_map::aimap;
+use crate::tests::detail::detail_step::Fixture;
 use crate::{
-  AiMap, AiMapCompilation, AiMapCompiler, AiMapCovers, AiMapGuid, AiMapRequest, AiRayModel, LevelCompileReport,
-  LevelCompileRequest, LevelCompileStep, LevelCompileStepRun, LevelCompiler, RayBackend, ShadowMaterials,
+  AiMap, AiMapCompilation, AiMapCompiler, AiMapCovers, AiMapGuid, AiMapRequest, LevelCompileReport,
+  LevelCompileRequest, LevelCompileStep, LevelCompileStepRun, LevelCompiler, RayBackend, RayScene, RayTracing,
+  ShadowMaterials,
 };
 
 /// The details step's level, with the AI tests' four-node map as `build.aimap`.
@@ -52,13 +53,15 @@ fn writes_the_map_the_compiler_compiles_and_checks_it_as_a_graph() -> XrfResult 
     AiMapRequest {
       aimap: &aimap(),
       covers: AiMapCovers::Full,
-      rays: Some(AiRayModel {
+      scene: Some(RayScene {
         tracer: &tracer,
         shadows: &shadows,
       }),
-      backend: RayBackend::Cpu,
-      dxc: None,
-      gpu: None,
+      tracing: RayTracing {
+        backend: RayBackend::Cpu,
+        dxc: None,
+        gpu: None,
+      },
       replaced: None,
     },
     &JobHandle::inert(),
@@ -66,7 +69,6 @@ fn writes_the_map_the_compiler_compiles_and_checks_it_as_a_graph() -> XrfResult 
   let written: AiMap = AiMap::read_from_path(&fixture.level.join(LevelAiFile::FILE_NAME))?;
 
   assert_eq!(written.nodes, expected.map.nodes);
-  assert_eq!(report.work, None, "no SDK compiler ran");
 
   let LevelCompileStepRun::AiMapCompiler {
     covers,

@@ -14,7 +14,7 @@ use xrf_level::{
 use xrf_math::Vector3d;
 
 use crate::shadow::shadow_materials::ShadowMaterials;
-use crate::{DetailLightRequest, DetailLighter, DetailLighting, DetailSlotCounts, RayBackend};
+use crate::{DetailLightRequest, DetailLighter, DetailLighting, DetailSlotCounts, RayBackend, RayScene, RayTracing};
 
 /// A row of five slots, 2 m each from the origin along x, each 1 m tall from its base at 0 m:
 ///
@@ -73,7 +73,7 @@ pub(super) fn triangles() -> Vec<[Vec3; 3]> {
   .collect()
 }
 
-pub(super) fn tracer() -> BvhTracer {
+pub(crate) fn tracer() -> BvhTracer {
   let triangles: Vec<[Vec3; 3]> = triangles();
   let vertices: Vec<Vec3> = triangles.iter().flatten().copied().collect();
   let faces: Vec<[u32; 3]> = (0..triangles.len() as u32)
@@ -135,24 +135,28 @@ pub(super) fn lights() -> LevelLightsFile {
 }
 
 /// The grid lit over the ground and roof, every face opaque, on the CPU.
-pub(super) fn lighting() -> XrfResult<DetailLighting> {
+pub(crate) fn lighting() -> XrfResult<DetailLighting> {
   lighting_on(RayBackend::Cpu, None)
 }
 
 /// The grid lit over the ground and roof, every face opaque, its shadow rays traced on `backend`, with `dxc` for D3D12.
-pub(super) fn lighting_on(backend: RayBackend, dxc: Option<&Path>) -> XrfResult<DetailLighting> {
+pub(crate) fn lighting_on(backend: RayBackend, dxc: Option<&Path>) -> XrfResult<DetailLighting> {
   let details: LevelDetailsFile = details();
   let tracer: BvhTracer = tracer();
 
   DetailLighter::light(
     &DetailLightRequest {
       details: &details,
-      tracer: &tracer,
-      shadows: &ShadowMaterials::new_opaque(4),
+      scene: RayScene {
+        tracer: &tracer,
+        shadows: &ShadowMaterials::new_opaque(4),
+      },
       lights: &lights(),
-      backend,
-      dxc,
-      gpu: None,
+      tracing: RayTracing {
+        backend,
+        dxc,
+        gpu: None,
+      },
     },
     &JobHandle::inert(),
   )

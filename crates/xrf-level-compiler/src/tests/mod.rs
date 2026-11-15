@@ -1,25 +1,9 @@
 mod ai;
-mod ai_covers;
-mod ai_step;
-mod charts;
 mod compile;
 mod detail;
-mod detail_step;
-mod fixtures;
 mod geometry;
 #[cfg(feature = "gpu")]
 mod gpu;
 mod light;
-mod light_quality;
-mod program;
-mod progressive;
-mod sectors;
 mod shadow;
-mod spawn;
-mod spawn_graph;
-mod spawn_merge;
-mod spawn_root;
 mod textures;
-mod vertex_light;
-mod visuals;
-mod workspace;

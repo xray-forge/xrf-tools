@@ -6,12 +6,24 @@ use xrf_level::{BuildPrjFile, BuildPrjName, BuildPrjShader};
 use xrf_math::{Aabb, Vector2d, Vector3d};
 use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 
-use crate::chart::lightmap_page::LightmapPage;
-use crate::tests::geometry::project;
+use crate::light::implicit::implicit_lighter::ImplicitLighter;
+use crate::light::implicit::implicit_map::ImplicitMap;
+use crate::light::lightmap::atlas::lightmap_atlas::LightmapAtlas;
+use crate::light::lightmap::atlas::lightmap_image_pair::LightmapImagePair;
+use crate::light::lightmap::atlas::lightmap_page::LightmapPage;
+use crate::light::lightmap::atlas::lightmap_placement::LightmapPlacement;
+use crate::light::lightmap::chart::light_chart::LightChart;
+use crate::light::lightmap::chart::light_chart_mask::LightChartMask;
+use crate::light::lightmap::chart::light_chart_scene::LightChartScene;
+use crate::light::lightmap::chart::lightmap_orientation::LightmapOrientation;
+use crate::light::lightmap::lit::light_chart_lighter::LightChartLighter;
+use crate::light::lightmap::lit::lightmap_layer::LightmapLayer;
+use crate::light::lightmap::lit::lightmap_resampler::LightmapResampler;
+use crate::light::lightmap::lit::lit_chart::LitChart;
+use crate::tests::geometry::geometry_mesh::project;
 use crate::{
-  CompilerShaders, CompilerTexture, GeometryFace, GeometryMesh, GeometryNormals, GeometrySplits, ImplicitLighter,
-  ImplicitMap, LightChart, LightChartLighter, LightChartMask, LightChartScene, LightColor, LightSource, LightmapAtlas,
-  LightmapLayer, LightmapPlacement, LightmapResampler, LitChart, ShadowMaterials,
+  CompilerShaders, CompilerTexture, GeometryFace, GeometryMesh, GeometryNormals, GeometrySplits, LightColor,
+  LightSource, LightSources, RayScene, ShadowMaterials,
 };
 
 /// A face of material 0 over `vertices`.
@@ -156,15 +168,15 @@ pub(crate) fn sun(energy: f32) -> LightSource {
 }
 
 /// `charts`' first, the floor, lit by `lights` through a ray model of `mesh`'s own faces, each skipped by its own.
-fn light(mesh: &GeometryMesh, lights: &[Vec<LightSource>; 3]) -> LitChart {
+fn light(mesh: &GeometryMesh, lights: &LightSources) -> LitChart {
   light_by(mesh, lights, |lighter, floor| lighter.light(floor))
 }
 
 /// [`light`], the floor lit by `lighting` with the lighter over the ray model of `mesh` and the shadow materials.
 pub(crate) fn light_by<R>(
   mesh: &GeometryMesh,
-  lights: &[Vec<LightSource>; 3],
-  lighting: impl FnOnce(&LightChartLighter<'_, BvhTracer>, &LightChart) -> R,
+  lights: &LightSources,
+  lighting: impl FnOnce(&LightChartLighter<'_>, &LightChart) -> R,
 ) -> R {
   let (project, shaders, textures) = tables();
   let normals: GeometryNormals = GeometryNormals::of(mesh);
@@ -180,11 +192,13 @@ pub(crate) fn light_by<R>(
   let split: Vec<u32> = (0..mesh.faces.len() as u32).collect();
   let floor: LightChart = LightChart::cut(&split, &scene).remove(0);
 
-  let lighter: LightChartLighter<'_, BvhTracer> = LightChartLighter {
+  let lighter: LightChartLighter<'_> = LightChartLighter {
     scene: &scene,
     lights,
-    tracer: &tracer,
-    shadows: &ShadowMaterials::new_opaque(mesh.faces.len()),
+    rays: RayScene {
+      tracer: &tracer,
+      shadows: &ShadowMaterials::new_opaque(mesh.faces.len()),
+    },
     ray_faces: &ray_faces,
     rms_zero: 2,
     rms_shrink: 4,
@@ -196,7 +210,13 @@ pub(crate) fn light_by<R>(
 #[test]
 fn lights_an_evenly_lit_chart_as_one_colour_two_texels_a_side_halved() {
   // The sun lights the floor, its own faces let through; the wall stands beside it, casting no shadow on it.
-  let lit: LitChart = light(&floor_and_wall(0.0), &[Vec::new(), Vec::new(), vec![sun(0.8)]]);
+  let lit: LitChart = light(
+    &floor_and_wall(0.0),
+    &LightSources {
+      sun: vec![sun(0.8)],
+      ..LightSources::default()
+    },
+  );
 
   assert_eq!((lit.width, lit.height), (0, 0));
   assert_eq!((lit.layer.width, lit.layer.height), (2, 2));
@@ -219,13 +239,18 @@ fn lights_an_implicit_map_over_its_faces_texture_coordinates_and_keeps_the_textu
   let triangles: Vec<[u32; 3]> = mesh.faces.iter().map(|face| face.vertices).collect();
   let tracer: BvhTracer = BvhTracer::new(&corners, &triangles);
   let ray_faces: Vec<Option<u32>> = (0..mesh.faces.len() as u32).map(Some).collect();
-  let lights: [Vec<LightSource>; 3] = [Vec::new(), Vec::new(), vec![sun(0.8)]];
+  let lights: LightSources = LightSources {
+    sun: vec![sun(0.8)],
+    ..LightSources::default()
+  };
   let shadows: ShadowMaterials = ShadowMaterials::new_opaque(mesh.faces.len());
-  let lighter: LightChartLighter<'_, BvhTracer> = LightChartLighter {
+  let lighter: LightChartLighter<'_> = LightChartLighter {
     scene: &scene,
     lights: &lights,
-    tracer: &tracer,
-    shadows: &shadows,
+    rays: RayScene {
+      tracer: &tracer,
+      shadows: &shadows,
+    },
     ray_faces: &ray_faces,
     rms_zero: 2,
     rms_shrink: 4,
@@ -399,7 +424,7 @@ fn composes_a_page_of_its_charts_texels_crosswise_where_rotated_and_borders_roun
         y: 0,
         width: 4,
         height: 3,
-        is_rotated: false,
+        orientation: LightmapOrientation::Upright,
       },
       // A chart 3 wide and 5 high, laid 5 wide and 3 high.
       LightmapPlacement {
@@ -408,11 +433,11 @@ fn composes_a_page_of_its_charts_texels_crosswise_where_rotated_and_borders_roun
         y: 0,
         width: 5,
         height: 3,
-        is_rotated: true,
+        orientation: LightmapOrientation::Crosswise,
       },
     ],
   };
-  let [first, second] = atlas.compose(0, &[lit(4, 3, 1.0), lit(3, 5, 0.5)]);
+  let LightmapImagePair { first, second } = atlas.compose(0, &[lit(4, 3, 1.0), lit(3, 5, 0.5)]);
   let at = |x: usize, y: usize| y * LightChart::PAGE_SIDE as usize + x;
 
   assert_eq!(first[at(3, 2)][3], 255, "the first chart's sun in alpha");
@@ -429,7 +454,7 @@ fn composes_a_page_of_its_charts_texels_crosswise_where_rotated_and_borders_roun
 #[test]
 fn maps_a_placed_chart_into_its_rectangle_less_the_border_a_half_texel_in() {
   let chart: LightChart = charts(&floor_and_wall(0.0)).remove(0);
-  let coordinates: Vec<[Vector2d; 3]> = chart.remap([11, 21], [21, 21], [1024, 1024], false);
+  let coordinates: Vec<[Vector2d; 3]> = chart.remap([11, 21], [21, 21], [1024, 1024], LightmapOrientation::Upright);
   let all: Vec<&Vector2d> = coordinates.iter().flatten().collect();
   let low_x: f32 = all.iter().map(|corner| corner.x).fold(f32::INFINITY, f32::min);
   let high_x: f32 = all.iter().map(|corner| corner.x).fold(f32::NEG_INFINITY, f32::max);
@@ -442,7 +467,7 @@ fn maps_a_placed_chart_into_its_rectangle_less_the_border_a_half_texel_in() {
 fn joins_splits_only_on_the_same_lightmap_page() {
   let (_, shaders, _) = tables();
   let mesh: GeometryMesh = floor_and_wall(0.0);
-  let (cut, _) = GeometrySplits::cut(&mesh, &shaders, None);
+  let cut: GeometrySplits = GeometrySplits::cut(&mesh, &shaders, None).splits;
   let apart = |pages: [Option<u32>; 4]| {
     let mut splits: GeometrySplits = GeometrySplits {
       splits: vec![vec![0, 1], vec![2, 3]],

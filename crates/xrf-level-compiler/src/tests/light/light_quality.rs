@@ -3,14 +3,15 @@
 use xrf_error::XrfResult;
 use xrf_geometry::{Sky, SkyLight};
 use xrf_level::{
-  BuildPrjDynamicLight, BuildPrjFile, BuildPrjLightControl, BuildPrjName, LevelDynamicLight, LevelLight,
-  LevelLightRole, LevelLightsFile,
+  BuildPrjDynamicLight, BuildPrjFile, BuildPrjLightControl, BuildPrjName, BuildPrjParams, LevelDynamicLight,
+  LevelLight, LevelLightRole, LevelLightsFile,
 };
 use xrf_math::{Color, Vector3d};
 
-use crate::geometry::geometry_level::GeometryLevel;
-use crate::light::light_quality::LightQuality;
-use crate::tests::geometry::project;
+use crate::light::bake::light_quality::LightQuality;
+use crate::light::source::light_layers::LightLayers;
+use crate::light::vertex::light_models::LightModels;
+use crate::tests::geometry::geometry_mesh::project;
 
 /// The sun's pitch and heading in the editor's level options.
 const SUN: (f32, f32) = (-0.8, 2.4);
@@ -67,7 +68,7 @@ fn directions(lights: &LevelLightsFile, role: LevelLightRole) -> Vec<Vector3d> {
 
 #[test]
 fn keeps_build_prjs_sky_and_sun_at_scene_quality() -> XrfResult {
-  let lights: LevelLightsFile = GeometryLevel::get_lights(&lit(3)?, LightQuality::Scene)?;
+  let lights: LevelLightsFile = LightLayers::build(&lit(3)?, LightQuality::Scene)?;
 
   assert_eq!(lights.get_role_lights(LevelLightRole::Rgb).count(), 1);
   assert_eq!(lights.get_role_lights(LevelLightRole::Hemi).count(), 197);
@@ -78,9 +79,9 @@ fn keeps_build_prjs_sky_and_sun_at_scene_quality() -> XrfResult {
 
 #[test]
 fn regenerates_the_sky_and_the_sun_at_quality_one_for_a_draft_along_the_same_sun() -> XrfResult {
-  let draft: LevelLightsFile = GeometryLevel::get_lights(&lit(3)?, LightQuality::Draft)?;
+  let draft: LevelLightsFile = LightLayers::build(&lit(3)?, LightQuality::Draft)?;
   // A project lit at quality 1 already keeps its own, which the editor generated as the draft regenerates them.
-  let editor: LevelLightsFile = GeometryLevel::get_lights(&lit(1)?, LightQuality::Draft)?;
+  let editor: LevelLightsFile = LightLayers::build(&lit(1)?, LightQuality::Draft)?;
 
   assert_eq!(draft.get_role_lights(LevelLightRole::Rgb).count(), 1);
   // The scene's lamp under `$hemi` stays, after the regenerated sky.
@@ -114,6 +115,29 @@ fn names_each_light_quality_on_a_command_line() {
   }
 
   assert_eq!(LightQuality::default(), LightQuality::Scene);
-  assert!(LightQuality::Draft.is_draft(false) && LightQuality::Scene.is_draft(true));
-  assert!(!LightQuality::Scene.is_draft(false));
+}
+
+#[test]
+fn lights_the_models_from_one_sample_at_either_draft() -> XrfResult {
+  // `ebqHigh`.
+  let scene: BuildPrjParams = BuildPrjParams {
+    quality: 1,
+    ..project(&[], &[])?.params
+  };
+  let draft: BuildPrjParams = BuildPrjParams {
+    quality: BuildPrjParams::QUALITY_DRAFT,
+    ..scene
+  };
+
+  assert_eq!(
+    LightQuality::Draft.get_model_samples(&scene),
+    LightModels::DRAFT_SAMPLES
+  );
+  assert_eq!(
+    LightQuality::Scene.get_model_samples(&draft),
+    LightModels::DRAFT_SAMPLES
+  );
+  assert_eq!(LightQuality::Scene.get_model_samples(&scene), LightModels::SAMPLES);
+
+  Ok(())
 }

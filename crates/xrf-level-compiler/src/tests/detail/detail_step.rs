@@ -15,7 +15,7 @@ use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 use xrf_test_utils::GeneratedResources;
 use xrf_thm::{ThmFile, ThmFormat, ThmTextureParamChunk};
 
-use crate::tests::detail::{details, lighting, lights, triangles};
+use crate::tests::detail::detail_lighter::{details, lighting, lights, triangles};
 use crate::{
   DetailSlotCounts, LevelCompileReport, LevelCompileRequest, LevelCompileStep, LevelCompileStepRun, LevelCompiler,
   RayBackend,
@@ -24,15 +24,15 @@ use crate::{
 /// Game data holding a compiler shader library of one shadow-casting shader, a textures root with one opaque
 /// texture's `.thm`, and `levels/test_level` holding what the details step reads: the lighter tests' grid, ground,
 /// roof and lights, every face of the one material.
-pub(super) struct Fixture {
-  pub(super) gamedata: PathBuf,
-  pub(super) level: PathBuf,
+pub(crate) struct Fixture {
+  pub(crate) gamedata: PathBuf,
+  pub(crate) level: PathBuf,
 }
 
 impl Fixture {
   /// The fixture of test `name` in `test_file`, the caller's `file!()`: its directory is named after both, so tests of
   /// two files sharing a name never share a directory when the suite runs in parallel.
-  pub(super) fn new(test_file: &str, name: &str) -> XrfResult<Self> {
+  pub(crate) fn new(test_file: &str, name: &str) -> XrfResult<Self> {
     let gamedata: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(test_file, name))?;
     let level: PathBuf = gamedata.join("levels").join("test_level");
     let mut thumbnail: ThmFile = ThmFile::new_texture();
@@ -82,7 +82,7 @@ impl Fixture {
   }
 
   /// The compile of `steps` on the level, on the CPU.
-  pub(super) fn request_steps(&self, steps: &[LevelCompileStep], is_forced: bool) -> LevelCompileRequest {
+  pub(crate) fn request_steps(&self, steps: &[LevelCompileStep], is_forced: bool) -> LevelCompileRequest {
     LevelCompileRequest {
       level: self.level.clone(),
       steps: steps.to_vec(),
@@ -95,7 +95,7 @@ impl Fixture {
     }
   }
 
-  pub(super) fn write(path: &Path, write: impl FnOnce(&mut ChunkWriter) -> XrfResult) -> XrfResult {
+  pub(crate) fn write(path: &Path, write: impl FnOnce(&mut ChunkWriter) -> XrfResult) -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
     write(&mut writer)?;
@@ -186,14 +186,13 @@ impl Fixture {
 }
 
 #[test]
-fn writes_the_details_lit_as_the_lighter_lights_them_with_no_sdk() -> XrfResult {
+fn writes_the_details_lit_as_the_lighter_lights_them() -> XrfResult {
   let fixture: Fixture = Fixture::new(file!(), "lit")?;
   let report: LevelCompileReport = LevelCompiler::compile(&fixture.request(false), &JobHandle::inert())?;
   let written: LevelDetailsFile =
     LevelDetailsFile::read_from_path::<XRayByteOrder, _>(&fixture.level.join(LevelDetailsFile::FILE_NAME))?;
 
   assert_eq!(written, lighting()?.details);
-  assert_eq!(report.work, None);
   assert_eq!(
     report
       .steps

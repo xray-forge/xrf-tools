@@ -4,19 +4,10 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
 use xrf_job::JobHandle;
+use xrf_shaders::ShaderCompilerFile;
 use xrf_test_utils::GeneratedResources;
 
 use crate::{AiMapCovers, LevelCompileRequest, LevelCompileStep, LevelCompiler};
-
-/// An SDK `editors` directory whose compilers are empty files: enough to be found, never run by these tests.
-fn sdk(name: &str) -> XrfResult<PathBuf> {
-  let root: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), name))?;
-
-  std::fs::create_dir_all(root.join("bin/compilers"))?;
-  std::fs::write(root.join("bin/compilers/xrLC.exe"), b"")?;
-
-  Ok(root)
-}
 
 /// A level directory holding `files`, empty each.
 fn level(name: &str, files: &[&str]) -> XrfResult<PathBuf> {
@@ -32,11 +23,20 @@ fn level(name: &str, files: &[&str]) -> XrfResult<PathBuf> {
   Ok(level)
 }
 
-fn request(level: &Path, sdk: &Path, steps: &[LevelCompileStep]) -> LevelCompileRequest {
+/// A game data directory holding an empty compiler shader library: enough for the checks to find it, never read by
+/// these tests.
+fn gamedata(name: &str) -> XrfResult<PathBuf> {
+  let root: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), name))?;
+
+  std::fs::write(root.join(ShaderCompilerFile::FILE_NAME), b"")?;
+
+  Ok(root)
+}
+
+fn request(level: &Path, steps: &[LevelCompileStep]) -> LevelCompileRequest {
   LevelCompileRequest {
     level: level.to_path_buf(),
     steps: steps.to_vec(),
-    sdk: Some(sdk.to_path_buf()),
     textures: vec![level.join("textures")],
     ..LevelCompileRequest::default()
   }
@@ -56,25 +56,15 @@ fn runs_each_step_once_in_its_order_and_every_step_when_none_is_named() {
 #[test]
 fn refuses_the_light_step_without_the_geometry_step_before_running_anything() -> XrfResult {
   let level: PathBuf = level("light_alone", &["build.prj"])?;
-  let compile = |sdk: Option<PathBuf>| {
-    LevelCompiler::compile(
-      &LevelCompileRequest {
-        sdk,
-        ..request(
-          &level,
-          Path::new(""),
-          &[LevelCompileStep::Light, LevelCompileStep::Details],
-        )
-      },
-      &JobHandle::inert(),
-    )
-    .unwrap_err()
-    .to_string()
-  };
+  let error: String = LevelCompiler::compile(
+    &request(&level, &[LevelCompileStep::Light, LevelCompileStep::Details]),
+    &JobHandle::inert(),
+  )
+  .unwrap_err()
+  .to_string();
 
-  // The light is baked in the geometry's pass, ours or xrLC's, so it has nothing to light alone.
-  assert!(compile(None).contains("light step runs only with the geometry step"));
-  assert!(compile(Some(sdk("light_alone_sdk")?)).contains("light step runs only with the geometry step"));
+  // The light is baked in the geometry's pass, so it has nothing to light alone.
+  assert!(error.contains("light step runs only with the geometry step"), "{error}");
 
   Ok(())
 }
@@ -82,12 +72,9 @@ fn refuses_the_light_step_without_the_geometry_step_before_running_anything() ->
 #[test]
 fn refuses_a_step_whose_input_is_missing_before_running_anything() -> XrfResult {
   let level: PathBuf = level("missing_input", &["build.prj", "build.details"])?;
-  let error: String = LevelCompiler::compile(
-    &request(&level, &sdk("missing_input_sdk")?, &[LevelCompileStep::Details]),
-    &JobHandle::inert(),
-  )
-  .unwrap_err()
-  .to_string();
+  let error: String = LevelCompiler::compile(&request(&level, &[LevelCompileStep::Details]), &JobHandle::inert())
+    .unwrap_err()
+    .to_string();
 
   assert!(error.contains("details step needs build.cform"), "{error}");
 
@@ -96,56 +83,41 @@ fn refuses_a_step_whose_input_is_missing_before_running_anything() -> XrfResult 
 
 #[test]
 fn takes_what_the_geometry_writes_as_given_when_it_runs_first() -> XrfResult {
-  // Without the geometry, the AI map needs xrLC's build.cform; with it, the check moves on to the textures, which an
-  // empty build.prj cannot name, and so fails reading it rather than on a missing input.
+  // Without the geometry, the AI map needs the geometry's build.cform; with it, the checks move on past the library to
+  // the textures, which an empty build.prj cannot name, and so fail reading it rather than on a missing input.
   let level: PathBuf = level("chained", &["build.prj", "build.aimap"])?;
-  let sdk: PathBuf = sdk("chained_sdk")?;
-  let alone: String = LevelCompiler::compile(&request(&level, &sdk, &[LevelCompileStep::Ai]), &JobHandle::inert())
+  let gamedata: PathBuf = gamedata("chained_gamedata")?;
+  let compile = |steps: &[LevelCompileStep]| {
+    LevelCompiler::compile(
+      &LevelCompileRequest {
+        gamedata: gamedata.clone(),
+        ..request(&level, steps)
+      },
+      &JobHandle::inert(),
+    )
     .unwrap_err()
-    .to_string();
-  let chained: String = LevelCompiler::compile(
-    &request(&level, &sdk, &[LevelCompileStep::Geometry, LevelCompileStep::Ai]),
-    &JobHandle::inert(),
-  )
-  .unwrap_err()
-  .to_string();
+    .to_string()
+  };
+  let alone: String = compile(&[LevelCompileStep::Ai]);
+  let chained: String = compile(&[LevelCompileStep::Geometry, LevelCompileStep::Ai]);
 
   assert!(alone.contains("ai step needs build.cform"), "{alone}");
-  assert!(!chained.contains("needs build.cform"), "{chained}");
+  assert!(
+    !chained.contains("needs build.cform") && !chained.contains(ShaderCompilerFile::FILE_NAME),
+    "{chained}"
+  );
 
   Ok(())
 }
 
 #[test]
-fn refuses_an_sdk_without_the_steps_program() -> XrfResult {
-  let level: PathBuf = level("no_sdk", &["build.prj"])?;
-  let empty: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "no_sdk_editors"))?;
-  let error: String = LevelCompiler::compile(
-    &request(&level, &empty, &[LevelCompileStep::Geometry]),
-    &JobHandle::inert(),
-  )
-  .unwrap_err()
-  .to_string();
+fn refuses_the_geometry_step_without_the_compiler_shader_library() -> XrfResult {
+  let level: PathBuf = level("no_library", &["build.prj"])?;
+  let error: String = LevelCompiler::compile(&request(&level, &[LevelCompileStep::Geometry]), &JobHandle::inert())
+    .unwrap_err()
+    .to_string();
 
-  assert!(error.contains("xrLC.exe"), "{error}");
-
-  Ok(())
-}
-
-#[test]
-fn runs_our_geometry_compiler_without_the_sdk_reading_the_compiler_shader_library() -> XrfResult {
-  let level: PathBuf = level("sdk_unnamed", &["build.prj"])?;
-  let error: String = LevelCompiler::compile(
-    &LevelCompileRequest {
-      sdk: None,
-      ..request(&level, Path::new(""), &[LevelCompileStep::Geometry])
-    },
-    &JobHandle::inert(),
-  )
-  .unwrap_err()
-  .to_string();
-
-  // Our compiler reads the library the SDK's xrLC would have; without it the compile stops before anything runs.
+  // Our geometry compiler reads the library for each face's flags; without it the compile stops before anything runs.
   assert!(
     error.contains("geometry step needs") && error.contains("shaders_xrlc.xr"),
     "{error}"
@@ -160,9 +132,8 @@ fn needs_no_ray_model_for_an_ai_map_with_no_covers() -> XrfResult {
   let refuse = |covers: AiMapCovers| {
     LevelCompiler::compile(
       &LevelCompileRequest {
-        sdk: None,
         ai_covers: covers,
-        ..request(&level, Path::new(""), &[LevelCompileStep::Ai])
+        ..request(&level, &[LevelCompileStep::Ai])
       },
       &JobHandle::inert(),
     )
@@ -171,26 +142,8 @@ fn needs_no_ray_model_for_an_ai_map_with_no_covers() -> XrfResult {
   };
 
   assert!(refuse(AiMapCovers::Full).contains("ai step needs build.prj"));
-  // With no covers the checks pass, no SDK needed, and the empty build.aimap fails to read.
+  // With no covers the checks pass, no library needed, and the empty build.aimap fails to read.
   assert!(!refuse(AiMapCovers::None).contains("needs"));
-
-  Ok(())
-}
-
-#[test]
-fn refuses_the_sdk_more_than_one_textures_root() -> XrfResult {
-  let level: PathBuf = level("two_roots", &["build.prj"])?;
-  let error: String = LevelCompiler::compile(
-    &LevelCompileRequest {
-      textures: vec![level.join("first"), level.join("second")],
-      ..request(&level, &sdk("two_roots_sdk")?, &[LevelCompileStep::Geometry])
-    },
-    &JobHandle::inert(),
-  )
-  .unwrap_err()
-  .to_string();
-
-  assert!(error.contains("one textures root, not 2"), "{error}");
 
   Ok(())
 }

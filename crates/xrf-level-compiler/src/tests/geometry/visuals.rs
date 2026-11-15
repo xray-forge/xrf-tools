@@ -2,8 +2,10 @@ use xrf_level::{BuildPrjFile, BuildPrjName, BuildPrjShader};
 use xrf_math::{Aabb, Vector2d, Vector3d};
 use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 
-use crate::geometry::geometry_visual::GeometryVisual;
-use crate::tests::geometry::project;
+use crate::geometry::visual::geometry_fast_path::GeometryFastPath;
+use crate::geometry::visual::geometry_visual::GeometryVisual;
+use crate::geometry::visual::geometry_visual_light::GeometryVisualLight;
+use crate::tests::geometry::geometry_mesh::project;
 use crate::{
   CompilerShaders, GeometryBasis, GeometryFace, GeometryMesh, GeometrySplits, GeometryVisualVertex, LightColor,
 };
@@ -134,29 +136,51 @@ fn corner(position: [f32; 3], coordinate: [f32; 2], tangent: u8) -> GeometryVisu
 #[test]
 fn welds_a_visuals_corners_drops_closed_and_repeated_faces_and_keeps_an_opaque_fast_path() {
   let texel: [Vector2d; 1] = [Vector2d::new(1.0 / 256.0, 1.0 / 256.0)];
-  let mut visual: GeometryVisual = GeometryVisual::new(0, 0, vec![String::from("ground")], String::new(), true);
+  let mut visual: GeometryVisual = GeometryVisual::new(
+    0,
+    0,
+    vec![String::from("ground")],
+    String::new(),
+    GeometryVisualLight::Vertex,
+  );
   let a = corner([0.0, 0.0, 0.0], [0.0, 0.0], 255);
   let b = corner([1.0, 0.0, 0.0], [1.0, 0.0], 255);
   let c = corner([1.0, 0.0, 1.0], [1.0, 1.0], 255);
   let d = corner([0.0, 0.0, 1.0], [0.0, 1.0], 255);
 
-  visual.add_face([a, c, b], &texel, true);
+  visual.add_face([a, c, b], &texel, GeometryFastPath::Joined);
   // Shares `a` and `c`, one within a basis step and a coordinate texel of the first `a`.
-  visual.add_face([corner([0.0005, 0.0, 0.0], [0.003, 0.0], 254), d, c], &texel, true);
+  visual.add_face(
+    [corner([0.0005, 0.0, 0.0], [0.003, 0.0], 254), d, c],
+    &texel,
+    GeometryFastPath::Joined,
+  );
 
   assert_eq!(visual.vertices.len(), 4);
   assert_eq!(visual.faces, vec![[0, 1, 2], [0, 3, 1]]);
 
   // A repeat in another order is left out; a face closing on itself takes no vertex.
-  visual.add_face([b, a, c], &texel, true);
-  visual.add_face([a, corner([3.0, 0.0, 0.0], [5.0, 5.0], 0), a], &texel, true);
+  visual.add_face([b, a, c], &texel, GeometryFastPath::Joined);
+  visual.add_face(
+    [a, corner([3.0, 0.0, 0.0], [5.0, 5.0], 0), a],
+    &texel,
+    GeometryFastPath::Joined,
+  );
 
   assert_eq!((visual.vertices.len(), visual.faces.len()), (4, 2));
   assert_eq!((visual.fast_vertices.len(), visual.fast_faces.len()), (4, 2));
 
   // A corner a basis step and a half off, or a texel off, is a vertex of its own; a face with alpha has no fast path.
-  visual.add_face([corner([0.0, 0.0, 0.0], [0.0, 0.0], 252), b, c], &texel, false);
-  visual.add_face([corner([0.0, 0.0, 0.0], [0.004, 0.0], 255), d, c], &texel, false);
+  visual.add_face(
+    [corner([0.0, 0.0, 0.0], [0.0, 0.0], 252), b, c],
+    &texel,
+    GeometryFastPath::Left,
+  );
+  visual.add_face(
+    [corner([0.0, 0.0, 0.0], [0.004, 0.0], 255), d, c],
+    &texel,
+    GeometryFastPath::Left,
+  );
 
   assert_eq!(visual.vertices.len(), 6);
   assert_eq!(visual.fast_faces.len(), 2);
@@ -165,7 +189,13 @@ fn welds_a_visuals_corners_drops_closed_and_repeated_faces_and_keeps_an_opaque_f
 #[test]
 fn shifts_each_joined_groups_coordinates_by_the_whole_tiles_at_its_middle() {
   let texel: [Vector2d; 1] = [Vector2d::new(1.0 / 256.0, 1.0 / 256.0)];
-  let mut visual: GeometryVisual = GeometryVisual::new(0, 0, vec![String::from("ground")], String::new(), true);
+  let mut visual: GeometryVisual = GeometryVisual::new(
+    0,
+    0,
+    vec![String::from("ground")],
+    String::new(),
+    GeometryVisualLight::Vertex,
+  );
 
   // One face mapped from 3 to 4 tiles along u, another apart from it from -2 to -1.
   visual.add_face(
@@ -175,7 +205,7 @@ fn shifts_each_joined_groups_coordinates_by_the_whole_tiles_at_its_middle() {
       corner([1.0, 0.0, 0.0], [4.0, 0.0], 255),
     ],
     &texel,
-    true,
+    GeometryFastPath::Joined,
   );
   visual.add_face(
     [
@@ -184,7 +214,7 @@ fn shifts_each_joined_groups_coordinates_by_the_whole_tiles_at_its_middle() {
       corner([6.0, 0.0, 0.0], [-1.0, 0.0], 255),
     ],
     &texel,
-    true,
+    GeometryFastPath::Joined,
   );
   visual.shift_texture_coordinates();
 

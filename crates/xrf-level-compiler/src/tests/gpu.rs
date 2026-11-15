@@ -9,16 +9,18 @@ use xrf_geometry::{BvhTracer, Ray};
 use xrf_renderer_core::{RayQueryAsk, RayQueryDevice};
 use xrf_test_utils::TestSkip;
 
-use crate::ai::cover::ai_cover_pass::AiNodeCovers;
-use crate::chart::light_gpu::LightGpu;
-use crate::light::light_point_variant::LightPointVariant;
+use crate::ai::cover::ai_node_covers::AiNodeCovers;
+use crate::light::lightmap::lightmap_backend::LightmapBackend;
+use crate::light::lightmap::lit::lit_chart::LitChart;
 use crate::ray::gpu::ray_gpu_batch::RayGpuBatch;
-use crate::ray::gpu::ray_gpu_records::GpuSingle;
+use crate::ray::gpu::ray_gpu_single::RayGpuSingle;
 use crate::ray::gpu::ray_gpu_tracer::RayGpuTracer;
+use crate::ray::ray_rules::RayRules;
 use crate::shadow::shadow_materials::ShadowMaterials;
-use crate::tests::detail::{lighting, lighting_on, tracer};
-use crate::tests::{ai_covers, charts};
-use crate::{DetailLighting, GeometryMesh, LightSource, LitChart, RayBackend};
+use crate::tests::ai::ai_covers;
+use crate::tests::detail::detail_lighter::{lighting, lighting_on, tracer};
+use crate::tests::light::charts;
+use crate::{DetailLighting, GeometryMesh, LightSource, LightSources, RayBackend, RayTracing};
 
 /// The DXC each backend is asked with: none, for Vulkan, then the checkout's, for D3D12 first.
 fn dxcs() -> [Option<PathBuf>; 2] {
@@ -68,20 +70,20 @@ fn stops_a_ray_at_a_face_seen_from_its_front_alone() -> XrfResult {
       singles: rays
         .iter()
         .zip(0..)
-        .map(|(ray, index)| GpuSingle::new(ray, index, skip))
+        .map(|(ray, index)| RayGpuSingle::new(ray, index, skip))
         .collect(),
       ray_count: rays.len(),
       ..RayGpuBatch::default()
     };
 
     assert_eq!(
-      gpu.trace(&batch(RayGpuTracer::NO_SKIP), LightPointVariant::Details)?,
+      gpu.trace(&batch(RayGpuTracer::NO_SKIP), RayRules::DETAILS)?,
       [0.0, 1.0, 0.0, 1.0],
       "{name}"
     );
     // By xrLC's rules a face stops a ray from either side: the ground's back too.
     assert_eq!(
-      gpu.trace(&batch(RayGpuTracer::NO_SKIP), LightPointVariant::Level)?,
+      gpu.trace(&batch(RayGpuTracer::NO_SKIP), RayRules::LEVEL)?,
       [0.0, 0.0, 0.0, 1.0],
       "{name}"
     );
@@ -108,24 +110,24 @@ fn passes_a_ray_through_its_own_face_by_xrlc_s_rules() -> XrfResult {
     let name: String = device.name.clone();
     let gpu: RayGpuTracer = RayGpuTracer::new(device, &tracer, &ShadowMaterials::new_opaque(4))?;
     let batch = |skip: u32| RayGpuBatch {
-      singles: vec![GpuSingle::new(&ray, 0, skip)],
+      singles: vec![RayGpuSingle::new(&ray, 0, skip)],
       ray_count: 1,
       ..RayGpuBatch::default()
     };
 
     assert_eq!(
-      gpu.trace(&batch(gpu.get_skip(Some(met))), LightPointVariant::Level)?,
+      gpu.trace(&batch(gpu.get_skip(Some(met))), RayRules::LEVEL)?,
       [1.0],
       "{name}"
     );
     assert_eq!(
-      gpu.trace(&batch(RayGpuTracer::NO_SKIP), LightPointVariant::Level)?,
+      gpu.trace(&batch(RayGpuTracer::NO_SKIP), RayRules::LEVEL)?,
       [0.0],
       "{name}"
     );
     // The detail lighter's rules pass no face.
     assert_eq!(
-      gpu.trace(&batch(gpu.get_skip(Some(met))), LightPointVariant::Details)?,
+      gpu.trace(&batch(gpu.get_skip(Some(met))), RayRules::DETAILS)?,
       [0.0],
       "{name}"
     );
@@ -147,7 +149,11 @@ fn lights_a_chart_by_a_lamp_and_the_sun_as_the_cpu_does() -> XrfResult {
     range_squared: 100.0,
     ..charts::sun(1.0)
   };
-  let lights: [Vec<LightSource>; 3] = [vec![lamp], Vec::new(), vec![charts::sun(0.8)]];
+  let lights: LightSources = LightSources {
+    rgb: vec![lamp],
+    hemi: Vec::new(),
+    sun: vec![charts::sun(0.8)],
+  };
   let on_cpu: LitChart = charts::light_by(&mesh, &lights, |lighter, floor| lighter.light(floor));
 
   assert!(
@@ -164,9 +170,13 @@ fn lights_a_chart_by_a_lamp_and_the_sun_as_the_cpu_does() -> XrfResult {
       continue;
     }
 
+    let tracing: RayTracing<'_> = RayTracing {
+      backend: RayBackend::Gpu,
+      dxc: dxc.as_deref(),
+      gpu: None,
+    };
     let on_gpu: Vec<LitChart> = charts::light_by(&mesh, &lights, |lighter, floor| {
-      LightGpu::start(dxc.as_deref(), None, lighter.tracer, lighter.shadows)?
-        .light_charts(lighter, std::slice::from_ref(floor))
+      LightmapBackend::start(&tracing, lighter)?.light_charts(lighter, std::slice::from_ref(floor))
     })?;
 
     assert_eq!(on_gpu, std::slice::from_ref(&on_cpu), "{dxc:?}");

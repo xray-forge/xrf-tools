@@ -14,6 +14,7 @@ use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 use xrf_test_utils::GeneratedResources;
 use xrf_thm::{ThmFile, ThmFormat, ThmTextureParamChunk};
 
+use crate::ray::ray_rules::RayRules;
 use crate::{ShadowClass, ShadowClassCounts, ShadowMaterials, ShadowMaterialsRequest};
 
 /// The compiler shader casting shadows, and the one letting light through.
@@ -240,12 +241,13 @@ fn classes_each_face_by_its_compiler_shader_and_texture() -> XrfResult {
 fn passes_blocks_or_dims_the_light_where_a_ray_crosses_a_face() -> XrfResult {
   let scene: Scene = Scene::new("transmittance")?;
   let materials: ShadowMaterials = scene.load(&Scene::faces(&[0, 1, 2]))?;
+  let transmittance = |hit: TraceHit| RayRules::DETAILS.get_transmittance(materials.get_opacity(&hit));
 
-  assert_eq!(materials.get_transmittance(&hit(0, 0.0, 0.0)), 0.0);
-  assert_eq!(materials.get_transmittance(&hit(2, 0.5, 0.5)), 1.0);
+  assert_eq!(transmittance(hit(0, 0.0, 0.0)), 0.0);
+  assert_eq!(transmittance(hit(2, 0.5, 0.5)), 1.0);
   // The leaf's first corner sits in its clear block, its second in its opaque one.
-  assert_eq!(materials.get_transmittance(&hit(1, 0.0, 0.0)), 1.0);
-  assert_eq!(materials.get_transmittance(&hit(1, 1.0, 0.0)), 0.0);
+  assert_eq!(transmittance(hit(1, 0.0, 0.0)), 1.0);
+  assert_eq!(transmittance(hit(1, 1.0, 0.0)), 0.0);
 
   Ok(())
 }

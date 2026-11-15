@@ -2,8 +2,9 @@ use xrf_error::XrfResult;
 use xrf_level::{BuildPrjFile, BuildPrjPortal};
 use xrf_math::{EPS_L, Vector2d, Vector3d};
 
-use crate::geometry::geometry_visual::GeometryVisual;
-use crate::tests::geometry::project;
+use crate::geometry::visual::geometry_visual::GeometryVisual;
+use crate::geometry::visual::geometry_visual_light::GeometryVisualLight;
+use crate::tests::geometry::geometry_mesh::project;
 use crate::{
   GeometryBasis, GeometryBounds, GeometryHierarchy, GeometryModels, GeometryNodeKind, GeometryVisualVertex,
   GeometryVisuals, LightColor,
@@ -11,7 +12,13 @@ use crate::{
 
 /// A visual of one triangle at `x`, a metre a side, in `sector`.
 fn visual_at(x: f32, sector: u16) -> GeometryVisual {
-  let mut visual: GeometryVisual = GeometryVisual::new(0, sector, vec![String::from("ground")], String::new(), true);
+  let mut visual: GeometryVisual = GeometryVisual::new(
+    0,
+    sector,
+    vec![String::from("ground")],
+    String::new(),
+    GeometryVisualLight::Vertex,
+  );
   let corner = |position: [f32; 3]| GeometryVisualVertex {
     position: Vector3d::from(position),
     normal: Vector3d::new(0.0, 1.0, 0.0),
@@ -52,7 +59,7 @@ fn builds_a_models_visuals_by_material_once_and_places_them_by_each_reference() 
   use xrf_level::{BuildPrjFace, BuildPrjMuModel, BuildPrjMuReference};
   use xrf_math::Matrix4x4;
 
-  use crate::tests::geometry::library;
+  use crate::tests::geometry::geometry_mesh::library;
   use crate::{CompilerShaders, CompilerTexture};
 
   let face = |vertices: [u32; 3], material: u16| BuildPrjFace {

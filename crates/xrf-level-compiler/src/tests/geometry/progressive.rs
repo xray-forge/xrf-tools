@@ -4,15 +4,22 @@ use std::collections::HashSet;
 
 use xrf_math::{Vector2d, Vector3d};
 
-use crate::geometry::geometry_basis::GeometryBasis;
-use crate::geometry::geometry_visual::GeometryVisual;
-use crate::geometry::geometry_visual_vertex::GeometryVisualVertex;
-use crate::light::light_color::LightColor;
+use crate::geometry::surface::geometry_basis::GeometryBasis;
+use crate::geometry::visual::geometry_fast_path::GeometryFastPath;
+use crate::geometry::visual::geometry_visual::GeometryVisual;
+use crate::geometry::visual::geometry_visual_light::GeometryVisualLight;
+use crate::geometry::visual::geometry_visual_vertex::GeometryVisualVertex;
+use crate::light::point::light_color::LightColor;
 
 /// A flat opaque visual of a grid `side` points a side, a unit apart, its base coordinates following its positions.
 fn grid_visual(side: u16) -> GeometryVisual {
-  let mut visual: GeometryVisual =
-    GeometryVisual::new(0, 0, vec![String::from("floor")], String::from("default/floor"), true);
+  let mut visual: GeometryVisual = GeometryVisual::new(
+    0,
+    0,
+    vec![String::from("floor")],
+    String::from("default/floor"),
+    GeometryVisualLight::Vertex,
+  );
   let corner = |x: u16, z: u16| GeometryVisualVertex {
     position: Vector3d::new(f32::from(x), 0.0, f32::from(z)),
     normal: Vector3d::new(0.0, 1.0, 0.0),
@@ -25,8 +32,16 @@ fn grid_visual(side: u16) -> GeometryVisual {
 
   for z in 0..side - 1 {
     for x in 0..side - 1 {
-      visual.add_face([corner(x, z), corner(x, z + 1), corner(x + 1, z)], &texel, true);
-      visual.add_face([corner(x + 1, z), corner(x, z + 1), corner(x + 1, z + 1)], &texel, true);
+      visual.add_face(
+        [corner(x, z), corner(x, z + 1), corner(x + 1, z)],
+        &texel,
+        GeometryFastPath::Joined,
+      );
+      visual.add_face(
+        [corner(x + 1, z), corner(x, z + 1), corner(x + 1, z + 1)],
+        &texel,
+        GeometryFastPath::Joined,
+      );
     }
   }
 

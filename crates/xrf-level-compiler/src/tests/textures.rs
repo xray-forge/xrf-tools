@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use xrf_error::XrfResult;
 use xrf_test_utils::GeneratedResources;
 
-use crate::compiler_textures::CompilerTextures;
+use crate::input::compiler_textures::CompilerTextures;
 
 #[test]
 fn names_a_texture_by_what_precedes_its_first_dot_lowered() {
