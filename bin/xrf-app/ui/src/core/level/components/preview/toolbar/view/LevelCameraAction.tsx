@@ -2,6 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { formatDegrees } from "@xrf/format";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { EditorPopoverContent } from "@xrf/ui/editor/popover-content";
+import { EditorPopoverSliderRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { VideocamIcon } from "@xrf/ui/icons/videocam";
 import { ReactElement, useCallback } from "react";
@@ -14,7 +15,6 @@ import {
   LEVEL_CAMERA_LIMITS,
 } from "@/core/level/lib/camera/level-camera-options";
 import { LevelViewService } from "@/core/level/services/level-view";
-import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { usePartialChange } from "@/lib/react/use-partial-change";
 
 /** What the camera's reset says it does: it sees and moves as it did before anyone touched it. */
@@ -49,7 +49,7 @@ export function LevelCameraAction({
         resetLabel={LEVEL_CAMERA_RESET_LABEL}
         onReset={isDefaultLevelCamera(camera) ? undefined : onReset}
       >
-        <RenderValueSlider
+        <EditorPopoverSliderRow
           label={"Field of view"}
           value={camera.fieldOfView}
           {...LEVEL_CAMERA_LIMITS.fieldOfView}
@@ -57,7 +57,7 @@ export function LevelCameraAction({
           onChange={(fieldOfView) => onSet({ fieldOfView })}
         />
 
-        <RenderValueSlider
+        <EditorPopoverSliderRow
           label={"Speed"}
           value={camera.speed}
           {...LEVEL_CAMERA_LIMITS.speed}
@@ -65,7 +65,7 @@ export function LevelCameraAction({
           onChange={(speed) => onSet({ speed })}
         />
 
-        <RenderValueSlider
+        <EditorPopoverSliderRow
           label={"Boost"}
           value={camera.boost}
           {...LEVEL_CAMERA_LIMITS.boost}
@@ -73,7 +73,7 @@ export function LevelCameraAction({
           onChange={(boost) => onSet({ boost })}
         />
 
-        <RenderValueSlider
+        <EditorPopoverSliderRow
           label={"Sensitivity"}
           value={camera.sensitivity}
           {...LEVEL_CAMERA_LIMITS.sensitivity}

@@ -1,8 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
-import { IconButton } from "@xrf/ui/button";
+import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { ClearAllIcon } from "@xrf/ui/icons/clear-all";
-import { Tooltip } from "@xrf/ui/overlay";
 import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
@@ -47,18 +46,13 @@ export function NotificationsPanel(): ReactElement {
       className={"h-full"}
       title={"Notifications"}
       actions={
-        <Tooltip describeChild title={"Clear all"} placement={"left"}>
-          <span>
-            <IconButton
-              aria-label={"Clear all"}
-              disabled={!notifications.length}
-              size={"small"}
-              onClick={notificationsService.clear}
-            >
-              <ClearAllIcon fontSize={"small"} />
-            </IconButton>
-          </span>
-        </Tooltip>
+        <EditorIconAction
+          label={"Clear all"}
+          description={notifications.length ? "Clear every notification" : "Nothing to clear"}
+          icon={<ClearAllIcon />}
+          isDisabled={!notifications.length}
+          onClick={notificationsService.clear}
+        />
       }
     >
       <div className={"h-full overflow-y-auto"}>

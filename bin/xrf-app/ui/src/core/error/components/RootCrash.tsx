@@ -1,6 +1,5 @@
+import { IErrorBoundaryFallbackProps } from "@xrf/react/error-boundary";
 import { ReactElement } from "react";
-
-import { IErrorBoundaryFallbackProps } from "./ErrorBoundary";
 
 /**
  * Last-resort recovery UI that stays independent of the application provider stack.

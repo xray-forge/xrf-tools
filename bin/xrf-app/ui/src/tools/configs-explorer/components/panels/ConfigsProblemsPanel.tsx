@@ -1,13 +1,14 @@
 import { useInjection } from "@wirestate/react";
 import { LtxAnchoredFinding } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
+import { IEditorProblem, IEditorProblemLocation } from "@xrf/ui/editor/problems";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
 import { ErrorState } from "@xrf/ui/layout/error-state";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { toFindingMessage, toOrderedFindings } from "@/core/ltx/lib/findings";
-import { EditorProblemsPanel, IEditorProblem, IEditorProblemLocation } from "@/core/shell/chrome/EditorProblemsPanel";
+import { EditorProblemsPanel } from "@/core/shell/chrome/EditorProblemsPanel";
 import { ConfigsDocumentService } from "@/tools/configs-explorer/services/configs-document";
 import { ConfigsFindingsService } from "@/tools/configs-explorer/services/configs-findings";
 

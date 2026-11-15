@@ -1,11 +1,11 @@
 import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import { RenderLoadFailure } from "@xrf/ipc/types/xrf-renderer";
 import { WorldSectorSkip } from "@xrf/ipc/types/xrf-world";
+import { IEditorProblem } from "@xrf/ui/editor/problems";
 
 import { listTextureProblems } from "@/core/level/lib/problems/level-texture-problems";
 import { ILevelSpawnReport } from "@/core/level/lib/spawn/level-spawn-report";
 import { ILevelTextureProblem } from "@/core/level/lib/texture/level-texture-report";
-import { IEditorProblem } from "@/core/shell/chrome/EditorProblemsPanel";
 
 import { listDrawableProblems } from "./level-drawable-problems";
 import { listSpawnProblems } from "./level-spawn-problems";

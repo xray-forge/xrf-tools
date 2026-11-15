@@ -36,6 +36,7 @@
     "@xrf/logging": "workspace:*",
     "@xrf/math": "workspace:*",
     "@xrf/path": "workspace:*",
+    "@xrf/react": "workspace:*",
     "@xrf/search": "workspace:*",
     "@xrf/syntax": "workspace:*",
     "@xrf/types": "workspace:*",

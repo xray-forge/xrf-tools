@@ -1,11 +1,10 @@
 import { formatBytes } from "@xrf/format";
 import { ArchiveChunkNode, ArchiveChunksDescription } from "@xrf/ipc/types/xrf-app-archives";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReadingColumn } from "@xrf/ui/layout/reading-column";
 import { ReactElement } from "react";
 
-import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { ArchiveChunkNodeRow } from "./ArchiveChunkNodeRow";
 
 interface IArchiveChunksDescriptionViewProps extends BaseComponentProps {
@@ -24,12 +23,13 @@ export function ArchiveChunksDescriptionView({
   const { chunks, nodes, depth, size } = description;
 
   return (
-    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+    <ReadingColumn data-testid={dataTestId} id={id} className={className}>
       <EditorPanelSection
         title={"Container"}
         caption={"No reader claims this format. What follows is the framing every X-Ray binary shares."}
       >
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Chunks"}
           value={`${nodes}`}
           caption={
@@ -39,7 +39,8 @@ export function ArchiveChunksDescriptionView({
           }
         />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Size"}
           value={formatBytes(size)}
           caption={"Unpacked, and accounted for in full by the chunks below"}
@@ -54,6 +55,6 @@ export function ArchiveChunksDescriptionView({
           <ArchiveChunkNodeRow key={`${index}-${node.id}`} node={node} />
         ))}
       </EditorPanelSection>
-    </ArchiveDescriptionLayout>
+    </ReadingColumn>
   );
 }

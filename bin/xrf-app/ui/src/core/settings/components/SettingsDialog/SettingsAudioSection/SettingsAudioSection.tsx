@@ -2,6 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { formatPercent } from "@xrf/format";
 import { AudioSettings } from "@xrf/ipc/types/xrf-app-audio";
 import { EAudioSpatialization } from "@xrf/ipc/types/xrf-audio";
+import { useMountEffect } from "@xrf/react/mount-effect";
 import { Nullable } from "@xrf/types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { ChoiceListFormRow } from "@xrf/ui/form/choice-list-row";
@@ -16,7 +17,6 @@ import {
   TAudioVolume,
 } from "@/core/audio/lib/audio-volumes";
 import { AudioSettingsService } from "@/core/audio/services/audio-settings.service";
-import { useMountEffect } from "@/lib/react/use-mount-effect";
 
 import {
   AUDIO_SPATIALIZATION_OPTIONS,

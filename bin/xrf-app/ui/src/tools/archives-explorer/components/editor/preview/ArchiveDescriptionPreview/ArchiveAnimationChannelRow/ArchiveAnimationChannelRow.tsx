@@ -1,8 +1,8 @@
 import { ArchiveAnimationChannel } from "@xrf/ipc/types/xrf-app-archives";
+import { EditorPanelProperty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { describeChannelDetail, describeChannelKeys } from "./ArchiveAnimationChannelRow.utils";
 
 interface IArchiveAnimationChannelRowProps extends BaseComponentProps {
@@ -22,7 +22,8 @@ export function ArchiveAnimationChannelRow({
   label,
 }: IArchiveAnimationChannelRowProps): ReactElement {
   return (
-    <ArchiveDescriptionRow
+    <EditorPanelProperty
+      isInline
       data-testid={dataTestId}
       id={id}
       className={className}

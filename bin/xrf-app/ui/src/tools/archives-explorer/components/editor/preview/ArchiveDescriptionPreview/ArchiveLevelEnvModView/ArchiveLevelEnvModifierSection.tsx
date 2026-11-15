@@ -1,10 +1,9 @@
 import { formatNumber } from "@xrf/format";
 import { ArchiveLevelEnvModifier } from "@xrf/ipc/types/xrf-app-archives";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { describeMixedParameters } from "./ArchiveLevelEnvModView.utils";
 
 interface IArchiveLevelEnvModifierSectionProps extends BaseComponentProps {
@@ -25,23 +24,26 @@ export function ArchiveLevelEnvModifierSection({
 }: IArchiveLevelEnvModifierSectionProps): ReactElement {
   return (
     <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={`Override ${index + 1}`}>
-      <ArchiveDescriptionRow
+      <EditorPanelProperty
+        isInline
         label={"Reaches"}
         value={`${formatNumber(modifier.radius, 1)} m`}
         caption={"Falling off linearly to that edge, so the far side of it changes nothing"}
       />
 
-      <ArchiveDescriptionRow
+      <EditorPanelProperty
+        isInline
         label={"Mixes in"}
         value={formatNumber(modifier.power, 2)}
         caption={"How much of itself it contributes at the centre"}
       />
 
-      <ArchiveDescriptionRow label={"Far plane"} value={`${formatNumber(modifier.farPlane, 1)} m`} />
+      <EditorPanelProperty isInline label={"Far plane"} value={`${formatNumber(modifier.farPlane, 1)} m`} />
 
-      <ArchiveDescriptionRow label={"Fog density"} value={formatNumber(modifier.fogDensity, 3)} />
+      <EditorPanelProperty isInline label={"Fog density"} value={formatNumber(modifier.fogDensity, 3)} />
 
-      <ArchiveDescriptionRow
+      <EditorPanelProperty
+        isInline
         label={"Touches"}
         value={describeMixedParameters(modifier)}
         caption={

@@ -14,7 +14,12 @@ import { Optional } from "@xrf/types";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { EditorPopoverContent } from "@xrf/ui/editor/popover-content";
 import { EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
-import { EditorPopoverCheckboxRow, EditorPopoverNote, EditorPopoverSelectRow } from "@xrf/ui/editor/popover-row";
+import {
+  EditorPopoverCheckboxRow,
+  EditorPopoverChoiceRow,
+  EditorPopoverNote,
+  EditorPopoverSelectRow,
+} from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { ExposureIcon } from "@xrf/ui/icons/exposure";
@@ -32,7 +37,6 @@ import { ILevelLook } from "@/core/level/lib/look/level-look";
 import { ELevelLookSource } from "@/core/level/lib/look/level-look-choice";
 import { LevelLookService } from "@/core/level/services/level-look";
 import { LevelViewService } from "@/core/level/services/level-view";
-import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderSettingEntries } from "@/core/render/components/settings/RenderSettingEntries";
 import { RenderSettingEntry } from "@/core/render/components/settings/RenderSettingEntry";
 import {
@@ -290,7 +294,7 @@ export function LevelLookAction({
           resetLabel={LEVEL_SETTINGS_RESET_LABEL}
           onReset={onBloomReset}
         >
-          <RenderValueChoice
+          <EditorPopoverChoiceRow
             label={"Mode"}
             options={RENDER_BLOOM_MODE_OPTIONS}
             value={bloom.mode}

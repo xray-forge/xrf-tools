@@ -8,10 +8,11 @@ import { RepeatIcon } from "@xrf/ui/icons/repeat";
 import { SkipNextIcon } from "@xrf/ui/icons/skip-next";
 import { SkipPreviousIcon } from "@xrf/ui/icons/skip-previous";
 import { Paper } from "@xrf/ui/layout/card";
+import { FrameSlider } from "@xrf/ui/media/frame-slider";
 import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useCallback } from "react";
 
-import { MotionFrameSlider, MotionPlaybackRate } from "@/core/visuals/components/preview";
+import { MotionPlaybackRate } from "@/core/visuals/components/preview";
 import { ISequenceClip, VisualSequenceService } from "@/tools/visuals-sequencer/services/visual-sequence";
 
 /**
@@ -59,7 +60,7 @@ export function SequencerTransport(): ReactElement {
         {service.clip ? `${service.clipIndex + 1} / ${clips.length} · ${service.clip.motion}` : "Track is empty"}
       </Typography>
 
-      <MotionFrameSlider
+      <FrameSlider
         ariaLabel={"Clip frame"}
         className={"mx-2 min-w-12.5 grow basis-0"}
         frameCount={frames}

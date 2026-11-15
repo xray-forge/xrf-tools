@@ -1,8 +1,8 @@
 import { ArchiveDetailLibraryDescription } from "@xrf/ipc/types/xrf-app-archives";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReadingColumn } from "@xrf/ui/layout/reading-column";
 import { ReactElement } from "react";
 
-import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
 import { ArchiveDetailLayerSection } from "./ArchiveDetailLayerSection";
 import { ArchiveDetailObjectsSection } from "./ArchiveDetailObjectsSection";
 
@@ -20,10 +20,10 @@ export function ArchiveDetailLibraryDescriptionView({
   description,
 }: IArchiveDetailLibraryDescriptionViewProps): ReactElement {
   return (
-    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+    <ReadingColumn data-testid={dataTestId} id={id} className={className}>
       <ArchiveDetailLayerSection description={description} />
 
       <ArchiveDetailObjectsSection entries={description.entries} />
-    </ArchiveDescriptionLayout>
+    </ReadingColumn>
   );
 }

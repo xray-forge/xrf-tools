@@ -1,12 +1,11 @@
 import { formatCount } from "@xrf/format";
 import { ArchiveLevelSomDescription } from "@xrf/ipc/types/xrf-app-archives";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReadingColumn } from "@xrf/ui/layout/reading-column";
 import { ReactElement } from "react";
 
-import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
 import { formatLevelBounds } from "../ArchiveDescriptionPreview.utils";
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { describeOcclusionRange, describeTwoSided } from "./ArchiveLevelOcclusionView.utils";
 
 interface IArchiveLevelSomViewProps extends BaseComponentProps {
@@ -23,28 +22,31 @@ export function ArchiveLevelSomView({
   description,
 }: IArchiveLevelSomViewProps): ReactElement {
   return (
-    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+    <ReadingColumn data-testid={dataTestId} id={id} className={className}>
       <EditorPanelSection title={"Sound occlusion"}>
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Occluders"}
           value={formatCount(description.triangles)}
           caption={describeTwoSided(description)}
         />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Lets through"}
           value={describeOcclusionRange(description)}
           caption={"The quietest and the loudest face of the mesh, where 1 muffles nothing"}
         />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Covers"}
           value={formatLevelBounds(description.bounds)}
           caption={"Width, height and depth of what the occluders span"}
         />
 
-        <ArchiveDescriptionRow label={"Version"} value={`${description.version}`} />
+        <EditorPanelProperty isInline label={"Version"} value={`${description.version}`} />
       </EditorPanelSection>
-    </ArchiveDescriptionLayout>
+    </ReadingColumn>
   );
 }

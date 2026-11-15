@@ -1,5 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { WorldMusicCommand, WorldSoundReport, WorldSoundVoiceReport } from "@xrf/ipc/types/xrf-world";
+import { usePolledValue } from "@xrf/react/polled-value";
 import { Nullable } from "@xrf/types";
 import {
   EditorPanelEmpty,
@@ -13,7 +14,6 @@ import { ReactElement, useCallback } from "react";
 import { LevelLoadService } from "@/core/level/services/level-load";
 import { LevelRenderService } from "@/core/level/services/level-render";
 import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
-import { usePolledValue } from "@/lib/react/use-polled-value";
 import { LevelSoundMusicSection } from "@/tools/level-viewer/components/panels/LevelSoundPanel/LevelSoundMusicSection";
 import {
   formatLevelSoundAcoustics,

@@ -10,7 +10,12 @@ import { Nullable, Optional } from "@xrf/types";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { EditorPopoverContent } from "@xrf/ui/editor/popover-content";
 import { EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
-import { EditorPopoverNote, EditorPopoverSwitchRow } from "@xrf/ui/editor/popover-row";
+import {
+  EditorPopoverChoiceRow,
+  EditorPopoverNote,
+  EditorPopoverSliderRow,
+  EditorPopoverSwitchRow,
+} from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { HighQualityIcon } from "@xrf/ui/icons/high-quality";
@@ -26,8 +31,6 @@ import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-
 import { describeLevelFeatureToggle, LEVEL_ANTIALIASING_MODES } from "@/core/level/lib/features/level-feature-options";
 import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelViewService } from "@/core/level/services/level-view";
-import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
-import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { RenderSettingEntry } from "@/core/render/components/settings/RenderSettingEntry";
 import {
   describeRenderAntialiasing,
@@ -134,7 +137,7 @@ export function LevelImageQualityAction({
           onToggle={toggle}
           onReset={isAntialiasingSet ? onAntialiasingReset : undefined}
         >
-          <RenderValueChoice
+          <EditorPopoverChoiceRow
             label={"Mode"}
             options={dlssProblem ? MODE_OPTIONS_WITHOUT_DLSS : MODE_OPTIONS}
             value={mode}
@@ -170,7 +173,7 @@ export function LevelImageQualityAction({
             onChange={(next: boolean) => setUpscaling({ isRayReconstructed: next })}
           />
 
-          <RenderValueChoice
+          <EditorPopoverChoiceRow
             label={"Upscaler model"}
             description={RENDER_UPSCALING_SETTINGS.dlssPreset.label}
             options={RENDER_DLSS_PRESET_SHORT_OPTIONS}
@@ -179,7 +182,7 @@ export function LevelImageQualityAction({
             onChange={(next: RenderDlssPreset) => setUpscaling({ dlssPreset: next })}
           />
 
-          <RenderValueChoice
+          <EditorPopoverChoiceRow
             label={"Denoiser model"}
             description={RENDER_UPSCALING_SETTINGS.rayReconstructionPreset.label}
             options={RENDER_RAY_RECONSTRUCTION_PRESET_OPTIONS}
@@ -215,14 +218,14 @@ export function LevelImageQualityAction({
           resetLabel={LEVEL_SETTINGS_RESET_LABEL}
           onReset={isOutputSet ? onOutputReset : undefined}
         >
-          <RenderValueChoice
+          <EditorPopoverChoiceRow
             label={"Resolution"}
             options={RENDER_RESOLUTION_OPTIONS}
             value={output.resolution}
             onChange={(next: ERenderResolution) => setOutput({ resolution: next })}
           />
 
-          <RenderValueSlider
+          <EditorPopoverSliderRow
             label={"Scale"}
             value={output.scale}
             {...RENDER_OUTPUT_SCALE_LIMITS}

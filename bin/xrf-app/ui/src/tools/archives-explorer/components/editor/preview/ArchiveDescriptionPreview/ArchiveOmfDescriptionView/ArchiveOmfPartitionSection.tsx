@@ -1,9 +1,7 @@
 import { ArchiveOmfPart } from "@xrf/ipc/types/xrf-app-archives";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
-
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 
 interface IArchiveOmfPartitionSectionProps extends BaseComponentProps {
   parts: Array<ArchiveOmfPart>;
@@ -27,7 +25,8 @@ export function ArchiveOmfPartitionSection({
       caption={"Parts in the order the bank declares them, which is the order their indices count in"}
     >
       {parts.map((part: ArchiveOmfPart, index: number) => (
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           key={`${index}-${part.name}`}
           label={part.name}
           value={`${part.bones.length} ${part.bones.length === 1 ? "bone" : "bones"} · ${part.cycles} ${

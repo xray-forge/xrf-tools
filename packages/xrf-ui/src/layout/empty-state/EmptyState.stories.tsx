@@ -3,7 +3,7 @@ import { fn } from "storybook/test";
 
 import { Button } from "#/button";
 import { SearchOffIcon } from "#/icons/search-off";
-import { withListingPane } from "#/testing/stories";
+import { withListingPane, withViewportPane } from "#/testing/stories";
 
 import { EmptyState } from "./EmptyState";
 
@@ -34,5 +34,15 @@ export const WithAction: TStory = {
         Clear filter
       </Button>
     ),
+  },
+};
+
+/** In a viewport's inks, over its backdrop. */
+export const OnViewport: TStory = {
+  decorators: [withViewportPane],
+  args: {
+    title: "No level open",
+    description: "Pick a level from a game root to fly it.",
+    isOnViewport: true,
   },
 };

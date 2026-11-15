@@ -3,9 +3,9 @@ import { RecordingOutcome } from "@xrf/ipc/types/xrf-app-levels";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { VideocamIcon } from "@xrf/ui/icons/videocam";
+import { FileToast } from "@xrf/ui/toast";
 import { ReactElement, useCallback } from "react";
 
-import { LevelViewerFileToast } from "@/tools/level-viewer/components/toast/LevelViewerFileToast";
 import { LevelViewerRecordingReadout } from "@/tools/level-viewer/lib/recording/level-viewer-recording-readout";
 import { LevelViewerRecordingService } from "@/tools/level-viewer/services/level-viewer-recording";
 
@@ -28,7 +28,7 @@ export function LevelViewerRecordingToast({
   const onDelete = useCallback(() => void recordingService.remove(), [recordingService]);
 
   return (
-    <LevelViewerFileToast
+    <FileToast
       data-testid={dataTestId}
       id={id}
       className={className}

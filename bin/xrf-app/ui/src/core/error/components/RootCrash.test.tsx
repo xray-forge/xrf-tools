@@ -1,9 +1,9 @@
 import { expect, it, jest } from "@jest/globals";
 import { render } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
+import { ErrorBoundary } from "@xrf/react/error-boundary";
 import { ReactElement } from "react";
 
-import { ErrorBoundary } from "./ErrorBoundary";
 import { RootCrash } from "./RootCrash";
 
 function FailingComponent(): ReactElement {

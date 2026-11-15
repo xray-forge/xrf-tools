@@ -1,11 +1,10 @@
 import { formatCount } from "@xrf/format";
 import { ArchiveEfdDescription, ArchiveEfdPattern } from "@xrf/ipc/types/xrf-app-archives";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReadingColumn } from "@xrf/ui/layout/reading-column";
 import { ReactElement } from "react";
 
-import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { describeResultRange, describeTermInputs, describeTermWeights } from "./ArchiveEfdView.utils";
 
 interface IArchiveEfdViewProps extends BaseComponentProps {
@@ -24,29 +23,32 @@ export function ArchiveEfdView({
   const { variableRanges, variableKinds, patterns } = description;
 
   return (
-    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+    <ReadingColumn data-testid={dataTestId} id={id} className={className}>
       <EditorPanelSection title={"Evaluation function"}>
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Registers as"}
           value={`Function ${description.functionType}`}
           caption={"The slot it claims in the engine's function table, which is how the game asks it anything"}
         />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Answers between"}
           value={describeResultRange(description)}
           caption={"The band the trained table was built to answer in"}
         />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Weights"}
           value={formatCount(description.weights)}
           caption={"The file stores no count of them; the terms below are what decides how many are read"}
         />
 
-        <ArchiveDescriptionRow label={"Builder version"} value={`${description.builderVersion}`} />
+        <EditorPanelProperty isInline label={"Builder version"} value={`${description.builderVersion}`} />
 
-        <ArchiveDescriptionRow label={"Data format"} value={`${description.dataFormat}`} />
+        <EditorPanelProperty isInline label={"Data format"} value={`${description.dataFormat}`} />
       </EditorPanelSection>
 
       <EditorPanelSection
@@ -54,7 +56,8 @@ export function ArchiveEfdView({
         caption={"Numbered as the terms address them, each read from a function the engine already has"}
       >
         {variableRanges.map((range: number, index: number) => (
-          <ArchiveDescriptionRow
+          <EditorPanelProperty
+            isInline
             key={index}
             label={`Input ${index}`}
             value={`${formatCount(range)} ${range === 1 ? "bucket" : "buckets"}`}
@@ -68,7 +71,8 @@ export function ArchiveEfdView({
         caption={"Summed to the answer, each contributing one weight per combination of what it reads"}
       >
         {patterns.map((pattern: ArchiveEfdPattern, index: number) => (
-          <ArchiveDescriptionRow
+          <EditorPanelProperty
+            isInline
             key={index}
             label={`Term ${index + 1}`}
             value={describeTermInputs(pattern)}
@@ -76,6 +80,6 @@ export function ArchiveEfdView({
           />
         ))}
       </EditorPanelSection>
-    </ArchiveDescriptionLayout>
+    </ReadingColumn>
   );
 }

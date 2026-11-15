@@ -1,6 +1,7 @@
 import { formatCount } from "@xrf/format";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
+import { ICopiedText, useCopiedText } from "@xrf/react/copied-text";
 import { Nullable } from "@xrf/types";
 import { Button, IconButton } from "@xrf/ui/button";
 import { CheckCircleOutlineOutlinedIcon as CheckCircleOutlineIcon } from "@xrf/ui/icons/check-circle-outline-outlined";
@@ -21,7 +22,6 @@ import { ReactElement, ReactNode, useCallback, useState } from "react";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 import { IToolDescriptor, IToolGroup } from "@/core/routing/tool";
 import { INotificationEntry, isAttentionSeverity } from "@/core/shell/panels/notifications/notification-list";
-import { ICopiedText, useCopiedText } from "@/lib/react/use-copied-text";
 import { TOOL_CATALOG } from "@/ToolCatalog";
 
 /** Lines of `details` shown inline before the rest has to be asked for. */

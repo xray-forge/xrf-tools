@@ -1,13 +1,12 @@
 import { EMPTY_ARRAY } from "@xrf/collections";
-import { IconButton } from "@xrf/ui/button";
+import { IThrottledDraft, useThrottledDraft } from "@xrf/react/throttled-draft";
+import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Slider } from "@xrf/ui/form/control";
 import { PauseIcon } from "@xrf/ui/icons/pause";
 import { PlayArrowIcon } from "@xrf/ui/icons/play-arrow";
-import { Tooltip } from "@xrf/ui/overlay";
-import { IThrottledDraft, useThrottledDraft } from "@xrf/ui/react/throttled-draft";
 import { cn } from "@xrf/ui/theme";
-import { ReactElement, useMemo } from "react";
+import { ReactElement, useCallback, useMemo } from "react";
 
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";
 import { WEATHER_DAY_LENGTH } from "@/core/level/lib/weather/weather-day";
@@ -43,20 +42,17 @@ export function LevelWeatherClock({
   const draft: IThrottledDraft = useThrottledDraft(time, MINUTE, onSeek);
   const marks = useMemo(() => keyframes.map((value: number) => ({ value })), [keyframes]);
 
+  const onTogglePlaying = useCallback(() => onPlaying(!isPlaying), [isPlaying, onPlaying]);
+
   return (
     <div data-testid={dataTestId} id={id} className={cn("flex min-h-7 items-center gap-2", className)}>
-      <Tooltip title={isPlaying ? "Pause the clock" : "Run the clock"}>
-        <span className={"-ml-1"}>
-          <IconButton
-            size={"small"}
-            disabled={isDisabled}
-            aria-label={isPlaying ? "Pause" : "Play"}
-            onClick={() => onPlaying(!isPlaying)}
-          >
-            {isPlaying ? <PauseIcon fontSize={"small"} /> : <PlayArrowIcon fontSize={"small"} />}
-          </IconButton>
-        </span>
-      </Tooltip>
+      <EditorIconAction
+        label={isPlaying ? "Pause" : "Play"}
+        description={isPlaying ? "Pause the clock" : "Run the clock"}
+        icon={isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
+        isDisabled={isDisabled}
+        onClick={onTogglePlaying}
+      />
 
       <span className={"shrink-0 font-mono text-xs tabular-nums"}>{formatLevelWeatherTime(draft.value, true)}</span>
 

@@ -1,8 +1,8 @@
 import { ArchiveDescribeScope, ArchiveDetailModel } from "@xrf/ipc/types/xrf-app-archives";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReadingColumn } from "@xrf/ui/layout/reading-column";
 import { ReactElement } from "react";
 
-import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
 import { ArchiveDetailModelSection } from "../ArchiveDetailModelSection";
 
 interface IArchiveDetailDescriptionViewProps extends BaseComponentProps {
@@ -21,8 +21,8 @@ export function ArchiveDetailDescriptionView({
   scope,
 }: IArchiveDetailDescriptionViewProps): ReactElement {
   return (
-    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+    <ReadingColumn data-testid={dataTestId} id={id} className={className}>
       <ArchiveDetailModelSection model={description} scope={scope} />
-    </ArchiveDescriptionLayout>
+    </ReadingColumn>
   );
 }

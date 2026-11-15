@@ -1,6 +1,7 @@
 import { bytesToWholeMegabytes } from "@xrf/format";
 import { ArchivePatchConfig, EArchivePackMode } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
+import { EditorPanelProperty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Alert } from "@xrf/ui/feedback";
 import { Checkbox, FormControlLabel } from "@xrf/ui/form/control";
@@ -8,8 +9,6 @@ import { Stack } from "@xrf/ui/layout/stack";
 import { Typography } from "@xrf/ui/typography";
 import { ReactElement } from "react";
 
-import { ArchivePathText } from "@/core/archive/components/ArchivePathText";
-import { ArchiveSummaryRow } from "@/core/archive/components/ArchiveSummaryRow";
 import { ARCHIVE_VOLUME_SUFFIX, HEADER_ENTRY_POINT, readHeaderValue } from "@/core/archive/lib";
 
 interface IPatcherConfirmSummaryProps extends BaseComponentProps {
@@ -40,25 +39,24 @@ export function PatcherConfirmSummary({
 
   return (
     <Stack data-testid={dataTestId} id={id} className={className} spacing={1.5}>
-      <ArchiveSummaryRow label={"Game"}>
-        <ArchivePathText value={config.input} />
-      </ArchiveSummaryRow>
+      <EditorPanelProperty label={"Game"} value={config.input} isMonospace isInline />
 
-      <ArchiveSummaryRow label={"Delivers"}>
-        {config.target === null ? (
-          <Typography variant={"body2"}>Its own loose gamedata</Typography>
-        ) : (
-          <ArchivePathText value={config.target} />
-        )}
-      </ArchiveSummaryRow>
+      <EditorPanelProperty
+        label={"Delivers"}
+        value={config.target ?? "Its own loose gamedata"}
+        isMonospace={config.target !== null}
+        isInline
+      />
 
-      <ArchiveSummaryRow label={"Compares"}>
-        <Typography variant={"body2"}>
-          {config.include.length ? config.include.join(", ") : "Everything both sides hold"}
-          {config.ignore.length ? `, except ${config.ignore.join(", ")}` : ""}
-          {config.excludeExtensions.length ? `, excluding ${config.excludeExtensions.join(", ")}` : ""}
-        </Typography>
-      </ArchiveSummaryRow>
+      <EditorPanelProperty
+        label={"Compares"}
+        value={
+          (config.include.length ? config.include.join(", ") : "Everything both sides hold") +
+          (config.ignore.length ? `, except ${config.ignore.join(", ")}` : "") +
+          (config.excludeExtensions.length ? `, excluding ${config.excludeExtensions.join(", ")}` : "")
+        }
+        isInline
+      />
 
       {isPreviewOnly ? (
         <Alert severity={"info"} variant={"outlined"}>
@@ -66,22 +64,23 @@ export function PatcherConfirmSummary({
         </Alert>
       ) : (
         <>
-          <ArchiveSummaryRow label={"Writes"}>
-            <ArchivePathText value={`${config.destination}\\${volumeName}`} />
-          </ArchiveSummaryRow>
+          <EditorPanelProperty label={"Writes"} value={`${config.destination}\\${volumeName}`} isMonospace isInline />
 
-          <ArchiveSummaryRow label={"Mounts at"}>
-            <Typography variant={"body2"} className={"monospace"}>
-              {entryPoint ?? "nothing — the engine will read these as encrypted archives"}
-            </Typography>
-          </ArchiveSummaryRow>
+          <EditorPanelProperty
+            label={"Mounts at"}
+            value={entryPoint ?? "nothing — the engine will read these as encrypted archives"}
+            isMonospace
+            isInline
+          />
 
-          <ArchiveSummaryRow label={"Volumes"}>
-            <Typography variant={"body2"}>
-              {config.mode === EArchivePackMode.STORE ? "Stored" : "Compressed"}, up to{" "}
-              {bytesToWholeMegabytes(config.maxVolumeSize)} MB each
-            </Typography>
-          </ArchiveSummaryRow>
+          <EditorPanelProperty
+            label={"Volumes"}
+            value={
+              `${config.mode === EArchivePackMode.STORE ? "Stored" : "Compressed"}, up to ` +
+              `${bytesToWholeMegabytes(config.maxVolumeSize)} MB each`
+            }
+            isInline
+          />
         </>
       )}
 

@@ -8,7 +8,7 @@ import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { EditorPopoverContent } from "@xrf/ui/editor/popover-content";
 import { EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
-import { EditorPopoverNote } from "@xrf/ui/editor/popover-row";
+import { EditorPopoverNote, EditorPopoverSliderRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { LightModeIcon } from "@xrf/ui/icons/light-mode";
 import { WbSunnyIcon } from "@xrf/ui/icons/wb-sunny";
@@ -35,7 +35,6 @@ import { LevelLoadService } from "@/core/level/services/level-load";
 import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelViewService } from "@/core/level/services/level-view";
 import { LevelWeatherService } from "@/core/level/services/level-weather";
-import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 
 /**
  * The sun, the ambient and the hemisphere, by the keys a weather writes them with; the lens flare the sun is drawn
@@ -169,7 +168,7 @@ export function LevelSunAction({
             onEdit={weatherService.editManual}
           />
 
-          <RenderValueSlider
+          <EditorPopoverSliderRow
             label={"Steps"}
             hint={"Game setting: r2_sunshafts_quality steps 20, 20 and 40 (OpenXRay), 15, 25 and 30 (Monolith)"}
             value={sunShafts.steps}
@@ -185,7 +184,7 @@ export function LevelSunAction({
             </EditorPopoverNote>
           )}
 
-          <RenderValueSlider
+          <EditorPopoverSliderRow
             label={"Minimum"}
             hint={"Game setting: r2_sunshafts_min"}
             value={sunShafts.minimum}

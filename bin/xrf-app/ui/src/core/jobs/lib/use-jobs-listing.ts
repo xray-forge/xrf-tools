@@ -1,8 +1,7 @@
 import { EMPTY_ARRAY } from "@xrf/collections";
 import { jobsCommands } from "@xrf/ipc/commands/jobs";
 import { JobDescription } from "@xrf/ipc/types/xrf-app-core";
-
-import { usePolledValue } from "@/lib/react/use-polled-value";
+import { usePolledValue } from "@xrf/react/polled-value";
 
 /**
  * How often the listing asks the backend what it is doing.

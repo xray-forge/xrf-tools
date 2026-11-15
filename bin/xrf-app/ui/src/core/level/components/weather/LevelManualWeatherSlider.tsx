@@ -1,3 +1,4 @@
+import { EditorPopoverSliderRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
@@ -9,7 +10,6 @@ import {
 } from "@/core/level/lib/weather/level-manual-weather-labels";
 import { LEVEL_MANUAL_WEATHER_LIMITS } from "@/core/level/lib/weather/level-manual-weather-limits";
 import { TLevelManualWeatherNumberKey } from "@/core/level/lib/weather/level-manual-weather-number-key";
-import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 
 interface ILevelManualWeatherSliderProps extends BaseComponentProps {
   /** The number it sets, offered between its limits, its config key in the tooltip. */
@@ -38,7 +38,7 @@ export function LevelManualWeatherSlider({
   const sign: number = LEVEL_MANUAL_WEATHER_NEGATED.has(field) ? -1 : 1;
 
   return (
-    <RenderValueSlider
+    <EditorPopoverSliderRow
       data-testid={dataTestId}
       id={id}
       className={className}

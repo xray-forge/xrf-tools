@@ -1,8 +1,8 @@
 import { ArchiveAnmDescription } from "@xrf/ipc/types/xrf-app-archives";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReadingColumn } from "@xrf/ui/layout/reading-column";
 import { ReactElement } from "react";
 
-import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
 import { ArchiveAnmChannelsSection } from "./ArchiveAnmChannelsSection";
 import { ArchiveAnmMotionSection } from "./ArchiveAnmMotionSection";
 
@@ -20,10 +20,10 @@ export function ArchiveAnmDescriptionView({
   description,
 }: IArchiveAnmDescriptionViewProps): ReactElement {
   return (
-    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+    <ReadingColumn data-testid={dataTestId} id={id} className={className}>
       <ArchiveAnmMotionSection description={description} />
 
       <ArchiveAnmChannelsSection channels={description.channels} />
-    </ArchiveDescriptionLayout>
+    </ReadingColumn>
   );
 }

@@ -1,9 +1,9 @@
 import { formatPlaybackTime } from "@xrf/format";
 import { clamp, extractPeaks } from "@xrf/math";
+import { useElementSize } from "@xrf/react/element-size";
 import { Nullable } from "@xrf/types";
 import { KeyboardEvent, MouseEvent, ReactElement, useLayoutEffect, useMemo, useRef } from "react";
 
-import { useElementSize } from "#/react/element-size";
 import { useForkRef } from "#/react/fork-ref";
 import { cn } from "#/theme";
 import { useColorScheme, useTheme } from "#/theme/styles";

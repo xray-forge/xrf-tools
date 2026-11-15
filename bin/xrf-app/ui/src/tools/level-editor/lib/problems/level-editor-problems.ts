@@ -15,10 +15,10 @@ import {
 } from "@xrf/ipc/types/xrf-app-levels";
 import { RenderLoadFailure } from "@xrf/ipc/types/xrf-renderer";
 import { assertExhaustive, Maybe } from "@xrf/types";
+import { IEditorProblem } from "@xrf/ui/editor/problems";
 
 import { listTextureProblems } from "@/core/level/lib/problems/level-texture-problems";
 import { ILevelTextureProblem } from "@/core/level/lib/texture/level-texture-report";
-import { IEditorProblem } from "@/core/shell/chrome/EditorProblemsPanel";
 import { findSceneObject } from "@/tools/level-editor/lib/tools/scene-objects";
 import { getSceneToolLabel } from "@/tools/level-editor/lib/tools/scene-tools";
 

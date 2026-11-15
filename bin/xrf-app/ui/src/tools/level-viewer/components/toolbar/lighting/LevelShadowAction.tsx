@@ -1,6 +1,7 @@
 import { ERenderContactShadowMode } from "@xrf/ipc/types/xrf-renderer";
 import { Optional } from "@xrf/types";
 import { EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
+import { EditorPopoverChoiceRow } from "@xrf/ui/editor/popover-row";
 import { EditorPopoverToggle } from "@xrf/ui/editor/popover-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { TonalityIcon } from "@xrf/ui/icons/tonality";
@@ -14,7 +15,6 @@ import {
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";
 import { describeLevelFeatureToggle } from "@/core/level/lib/features/level-feature-options";
-import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderSettingEntries } from "@/core/render/components/settings/RenderSettingEntries";
 import { RENDER_CONTACT_SHADOW_SETTINGS } from "@/core/render/lib/features/lighting/render-contact-shadow-choices";
 import {
@@ -75,14 +75,14 @@ export function LevelShadowAction({
       onToggle={toggle}
       onReset={onReset}
     >
-      <RenderValueChoice
+      <EditorPopoverChoiceRow
         label={RENDER_SHADOW_SETTINGS.cascades.label}
         options={RENDER_SHADOW_CASCADE_OPTIONS}
         value={String(shadows.cascades.length)}
         onChange={(count: string) => set({ cascades: RENDER_SHADOW_CASCADE_WIDTHS.slice(0, Number(count)) })}
       />
 
-      <RenderValueChoice
+      <EditorPopoverChoiceRow
         label={RENDER_SHADOW_SETTINGS.resolution.entryLabel ?? RENDER_SHADOW_SETTINGS.resolution.label}
         options={RENDER_SHADOW_RESOLUTION_OPTIONS}
         value={String(shadows.resolution)}

@@ -6,9 +6,7 @@ import { ExportSourceContent } from "@xrf/ipc/types/xrf-export";
 import { Nullable } from "@xrf/types";
 import { CodeView } from "@xrf/ui/code/view";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
-import { EmptyState } from "@xrf/ui/layout/empty-state";
-import { ErrorState } from "@xrf/ui/layout/error-state";
+import { ContentState } from "@xrf/ui/layout/content-state";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
@@ -56,38 +54,31 @@ export function ExportSourceView({
     };
   }, [exportsService, name, retry, sessionId]);
 
-  if (source.isLoading) {
-    return <DelayedProgress data-testid={dataTestId} id={id} className={className} label={"Reading export source…"} />;
-  } else if (source.error) {
-    return (
-      <ErrorState
-        data-testid={dataTestId}
-        id={id}
-        className={className}
-        title={"Could not read this source"}
-        description={source.error.message}
-        onRetry={onRetry}
-      />
-    );
-  }
-
-  return source.value ? (
-    <CodeView
-      data-testid={dataTestId}
-      id={id}
-      className={cn("rounded-surface border border-divider bg-well", className)}
-      label={`Source of ${source.value.name}`}
-      content={source.value.content}
-      language={getSyntaxLanguage(source.value.path)}
-      firstLine={source.value.line}
-    />
-  ) : (
-    <EmptyState
+  return (
+    <ContentState
       data-testid={dataTestId}
       id={id}
       className={className}
-      title={"Source unavailable"}
-      description={"The source of this declaration could not be read."}
-    />
+      value={source.value}
+      isLoading={source.isLoading}
+      error={source.error}
+      loadingLabel={"Reading export source…"}
+      errorTitle={"Could not read this source"}
+      onRetry={onRetry}
+      emptyTitle={"Source unavailable"}
+      emptyDescription={"The source of this declaration could not be read."}
+    >
+      {(content: ExportSourceContent) => (
+        <CodeView
+          data-testid={dataTestId}
+          id={id}
+          className={cn("rounded-surface border border-divider bg-well", className)}
+          label={`Source of ${content.name}`}
+          content={content.content}
+          language={getSyntaxLanguage(content.path)}
+          firstLine={content.line}
+        />
+      )}
+    </ContentState>
   );
 }

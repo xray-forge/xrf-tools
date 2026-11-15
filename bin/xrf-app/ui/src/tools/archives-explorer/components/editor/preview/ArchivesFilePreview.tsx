@@ -7,6 +7,7 @@ import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
 import { EmptyState } from "@xrf/ui/layout/empty-state";
+import { ErrorState } from "@xrf/ui/layout/error-state";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement, useCallback } from "react";
 
@@ -27,7 +28,6 @@ import { ArchiveDirectoryContent } from "./ArchiveDirectoryContent";
 import { ArchiveFileHeader } from "./ArchiveFileHeader";
 import { ArchiveImagePreview } from "./ArchiveImagePreview";
 import { ArchiveModelPreview } from "./ArchiveModelPreview";
-import { ArchivePreviewError } from "./ArchivePreviewError";
 import { ArchiveTexturePreview } from "./ArchiveTexturePreview";
 
 // Everything that renders its own preview leaves this union; what is left is a reason to explain.
@@ -109,7 +109,13 @@ export function ArchivesFilePreview({
           } else if (content.isLoading) {
             return <DelayedProgress />;
           } else if (content.error) {
-            return <ArchivePreviewError error={content.error} onRetry={previewService.retry} />;
+            return (
+              <ErrorState
+                title={"Could not read this file"}
+                description={content.error.message}
+                onRetry={previewService.retry}
+              />
+            );
           } else if (content.value?.kind === "text") {
             return <ArchiveCodePreview file={content.value.result} />;
           }

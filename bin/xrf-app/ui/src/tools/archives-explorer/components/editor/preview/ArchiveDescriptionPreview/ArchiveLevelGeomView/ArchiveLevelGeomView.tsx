@@ -1,11 +1,10 @@
 import { formatBytes, formatCount } from "@xrf/format";
 import { ArchiveLevelGeomDescription, ArchiveLevelGeomLayout } from "@xrf/ipc/types/xrf-app-archives";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReadingColumn } from "@xrf/ui/layout/reading-column";
 import { ReactElement } from "react";
 
-import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { describeLayout, describeLayoutShare, describeProgressiveMeshes } from "./ArchiveLevelGeomView.utils";
 
 interface IArchiveLevelGeomViewProps extends BaseComponentProps {
@@ -24,27 +23,31 @@ export function ArchiveLevelGeomView({
   const { layouts } = description;
 
   return (
-    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+    <ReadingColumn data-testid={dataTestId} id={id} className={className}>
       <EditorPanelSection title={description.isDetail ? "Detail geometry" : "Render geometry"}>
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Triangles"}
           value={formatCount(description.triangles)}
           caption={`Over ${formatCount(description.vertices)} vertices`}
         />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Buffers"}
           value={`${description.vertexBuffers} vertex · ${description.indexBuffers} index`}
           caption={"What the renderer binds; a level is drawn out of a handful of large buffers"}
         />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Progressive meshes"}
           value={formatCount(description.progressiveMeshes)}
           caption={describeProgressiveMeshes(description)}
         />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Size"}
           value={formatBytes(description.size)}
           caption={"The vertices and indices are stepped over; only the shape is read"}
@@ -56,13 +59,14 @@ export function ArchiveLevelGeomView({
         caption={"Grouped by what a vertex is made of, widest first"}
       >
         {layouts.map((layout: ArchiveLevelGeomLayout) => (
-          <ArchiveDescriptionRow
+          <EditorPanelProperty
+            isInline
             key={`${layout.stride}-${layout.elements}`}
             label={describeLayout(layout)}
             value={describeLayoutShare(layout)}
           />
         ))}
       </EditorPanelSection>
-    </ArchiveDescriptionLayout>
+    </ReadingColumn>
   );
 }

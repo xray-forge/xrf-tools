@@ -3,11 +3,12 @@ import { Chip } from "@xrf/ui/badge";
 import { EditorFileHeader } from "@xrf/ui/editor/file-header";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { DataObjectIcon } from "@xrf/ui/icons/data-object";
+import { DetailSection } from "@xrf/ui/layout/detail-section";
+import { Divider } from "@xrf/ui/layout/stack";
 import { Typography } from "@xrf/ui/typography";
 import { ReactElement } from "react";
 
 import { CallableExportDetails } from "./CallableExportDetails";
-import { ExportSection } from "./ExportSection";
 import { ExportSourceView } from "./ExportSourceView";
 import { formatExportSignature } from "./format-export-signature";
 
@@ -34,37 +35,45 @@ export function ExportDeclarationView({ declaration, onDeselect }: IExportDeclar
 
       <div className={"min-h-0 grow overflow-y-auto p-6"}>
         <div className={"w-full max-w-360"}>
-          <ExportSection title={"Signature"}>
+          <DetailSection title={"Signature"}>
             <Typography component={"pre"} className={"monospace m-0 wrap-anywhere whitespace-pre-wrap"}>
               {formatExportSignature(declaration)}
             </Typography>
-          </ExportSection>
+          </DetailSection>
+
+          <Divider className={"my-5"} />
 
           {declaration.description ? (
-            <ExportSection title={"Description"}>
-              <Typography className={"whitespace-pre-wrap"} variant={"body2"}>
-                {declaration.description}
-              </Typography>
-            </ExportSection>
+            <>
+              <DetailSection title={"Description"}>
+                <Typography className={"whitespace-pre-wrap"} variant={"body2"}>
+                  {declaration.description}
+                </Typography>
+              </DetailSection>
+
+              <Divider className={"my-5"} />
+            </>
           ) : null}
 
           {declaration.kind === "callable" ? (
             <CallableExportDetails declaration={declaration} />
           ) : (
-            <ExportSection title={"Value type"}>
+            <DetailSection title={"Value type"}>
               <Typography className={"monospace wrap-anywhere"} variant={"body2"}>
                 {declaration.typing}
               </Typography>
-            </ExportSection>
+            </DetailSection>
           )}
 
-          <ExportSection title={"Source"} isLast={true}>
+          <Divider className={"my-5"} />
+
+          <DetailSection title={"Source"}>
             <Typography className={"monospace mb-2 wrap-anywhere text-text-secondary"} variant={"body2"}>
               {declaration.source.path}:{declaration.source.line}:{declaration.source.column}
             </Typography>
 
             <ExportSourceView key={declaration.name} name={declaration.name} />
-          </ExportSection>
+          </DetailSection>
         </div>
       </div>
     </div>

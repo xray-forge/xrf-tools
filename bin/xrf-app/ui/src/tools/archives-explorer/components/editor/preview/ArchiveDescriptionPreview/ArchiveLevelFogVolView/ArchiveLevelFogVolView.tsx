@@ -4,12 +4,11 @@ import {
   ArchiveLevelFogVolDescription,
   ArchiveLevelFogVolume,
 } from "@xrf/ipc/types/xrf-app-archives";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReadingColumn } from "@xrf/ui/layout/reading-column";
 import { ReactElement } from "react";
 
-import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { ArchiveLevelFogVolumeRow } from "./ArchiveLevelFogVolumeRow";
 
 interface IArchiveLevelFogVolViewProps extends BaseComponentProps {
@@ -30,21 +29,23 @@ export function ArchiveLevelFogVolView({
   const { volumes } = description;
 
   return (
-    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+    <ReadingColumn data-testid={dataTestId} id={id} className={className}>
       <EditorPanelSection title={"Volumetric fog"}>
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Bodies"}
           value={`${volumes.length}`}
           caption={volumes.length ? null : "The file was written, and nothing was placed in it"}
         />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Obstacles"}
           value={formatCount(description.obstacles)}
           caption={"Geometry the simulation flows around, taken over every body"}
         />
 
-        <ArchiveDescriptionRow label={"Version"} value={`${description.version}`} />
+        <EditorPanelProperty isInline label={"Version"} value={`${description.version}`} />
       </EditorPanelSection>
 
       {volumes.length ? (
@@ -57,6 +58,6 @@ export function ArchiveLevelFogVolView({
           ))}
         </EditorPanelSection>
       ) : null}
-    </ArchiveDescriptionLayout>
+    </ReadingColumn>
   );
 }

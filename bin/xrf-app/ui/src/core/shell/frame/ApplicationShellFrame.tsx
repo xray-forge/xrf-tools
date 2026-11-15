@@ -1,4 +1,5 @@
 import { useOnCommand, useOnQuery } from "@wirestate/react";
+import { ErrorBoundary, IErrorBoundaryFallbackProps } from "@xrf/react/error-boundary";
 import { Nullable } from "@xrf/types";
 import { EditorToolbarHostContext } from "@xrf/ui/editor/toolbar";
 import { BaseComponentProps } from "@xrf/ui/element-types";
@@ -7,7 +8,6 @@ import { ReactElement, ReactNode, Suspense, useCallback, useState } from "react"
 import { flushSync } from "react-dom";
 import { useLocation } from "react-router-dom";
 
-import { ErrorBoundary, IErrorBoundaryFallbackProps } from "@/core/error/components/ErrorBoundary";
 import { ENotificationSeverity, TEmitNotification, useEmitNotification } from "@/core/notifications/lib";
 import { useCurrentTool } from "@/core/routing/current-tool.context";
 import { APPLICATION_SOURCE, IToolDescriptor } from "@/core/routing/tool";

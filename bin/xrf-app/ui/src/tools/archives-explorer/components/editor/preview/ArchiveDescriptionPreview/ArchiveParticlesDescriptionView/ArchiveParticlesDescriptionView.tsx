@@ -7,13 +7,12 @@ import {
 } from "@xrf/ipc/types/xrf-app-archives";
 import { filterByName } from "@xrf/search";
 import { EditorFilterInput } from "@xrf/ui/editor/filter-input";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReadingColumn } from "@xrf/ui/layout/reading-column";
 import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useMemo, useState } from "react";
 
-import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { ArchiveParticlesEffectRow } from "./ArchiveParticlesEffectRow";
 import { ArchiveParticlesGroupRow } from "./ArchiveParticlesGroupRow";
 
@@ -49,15 +48,17 @@ export function ArchiveParticlesDescriptionView({
   const isFiltered: boolean = Boolean(filter.trim());
 
   return (
-    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+    <ReadingColumn data-testid={dataTestId} id={id} className={className}>
       <EditorPanelSection title={"Library"}>
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Effects"}
           value={formatCount(library.effects)}
           caption={`Built from ${formatCount(library.actions)} actions between them`}
         />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Groups"}
           value={formatCount(library.groups)}
           caption={
@@ -67,7 +68,8 @@ export function ArchiveParticlesDescriptionView({
           }
         />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Textures"}
           value={formatCount(library.textures)}
           caption={
@@ -77,7 +79,7 @@ export function ArchiveParticlesDescriptionView({
           }
         />
 
-        <ArchiveDescriptionRow label={"Version"} value={`${library.version}`} />
+        <EditorPanelProperty isInline label={"Version"} value={`${library.version}`} />
       </EditorPanelSection>
 
       <div className={"px-4 pt-2"}>
@@ -126,6 +128,6 @@ export function ArchiveParticlesDescriptionView({
           </Typography>
         )}
       </EditorPanelSection>
-    </ArchiveDescriptionLayout>
+    </ReadingColumn>
   );
 }

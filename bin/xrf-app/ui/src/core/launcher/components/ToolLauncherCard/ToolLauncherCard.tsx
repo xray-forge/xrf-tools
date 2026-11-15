@@ -1,12 +1,12 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ArrowOutwardIcon } from "@xrf/ui/icons/arrow-outward";
 import { Card, CardActionArea } from "@xrf/ui/layout/card";
+import { StatusPill } from "@xrf/ui/status-pill";
 import { cn } from "@xrf/ui/theme";
 import { Typography } from "@xrf/ui/typography";
 import { CSSProperties, ReactElement } from "react";
 
 import { ToolLauncherGroupLabel } from "@/core/launcher/components/ToolLauncherGroupLabel";
-import { ToolLauncherPlannedBadge } from "@/core/launcher/components/ToolLauncherPlannedBadge";
 import { toAccentColor, useToolLauncherActions } from "@/core/launcher/lib";
 import { EToolStatus, IToolDescriptor, IToolGroup } from "@/core/routing/tool";
 
@@ -65,7 +65,7 @@ export function ToolLauncherCard({
             </span>
 
             {isPlanned ? (
-              <ToolLauncherPlannedBadge />
+              <StatusPill label={"Planned"} />
             ) : (
               <ArrowOutwardIcon
                 aria-hidden={true}

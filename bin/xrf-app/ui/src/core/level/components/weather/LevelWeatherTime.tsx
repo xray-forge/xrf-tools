@@ -1,14 +1,13 @@
 import { formatPercent } from "@xrf/format";
 import { WorldWeatherReport } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
-import { EditorPopoverRow, IEditorPopoverRowControlProps } from "@xrf/ui/editor/popover-row";
+import { EditorPopoverRow, EditorPopoverSliderRow, IEditorPopoverRowControlProps } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { LevelWeatherClock } from "@/core/level/components/weather/LevelWeatherClock";
 import { ILevelWeatherControl, LEVEL_WEATHER_FACTOR_LIMITS } from "@/core/level/lib/weather/level-weather-control";
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";
-import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 
 interface ILevelWeatherTimeProps extends BaseComponentProps {
   /** Seconds since midnight. */
@@ -63,7 +62,7 @@ export function LevelWeatherTime({
         </EditorPopoverRow>
       ) : null}
 
-      <RenderValueSlider
+      <EditorPopoverSliderRow
         label={"Speed"}
         description={"How many times faster than real time the clock runs."}
         value={Math.log10(control.factor)}

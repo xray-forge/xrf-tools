@@ -2,12 +2,9 @@ import { useInjection } from "@wirestate/react";
 import { formatBytes } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { FileToast, IFileToastOpening } from "@xrf/ui/toast";
 import { ReactElement, useCallback, useMemo } from "react";
 
-import {
-  ILevelViewerFileToastOpening,
-  LevelViewerFileToast,
-} from "@/tools/level-viewer/components/toast/LevelViewerFileToast";
 import { ILevelViewerScreenshot } from "@/tools/level-viewer/lib/screenshot/level-viewer-screenshot";
 import { LevelViewerScreenshotService } from "@/tools/level-viewer/services/level-viewer-screenshot";
 
@@ -22,7 +19,7 @@ export function LevelViewerScreenshotToast({
   const screenshotService: LevelViewerScreenshotService = useInjection(LevelViewerScreenshotService);
   const shot: Nullable<ILevelViewerScreenshot> = screenshotService.shot.value;
 
-  const opening: ILevelViewerFileToastOpening = useMemo(
+  const opening: IFileToastOpening = useMemo(
     () => ({ label: "Open the screenshot", onOpen: () => screenshotService.setShown(true) }),
     [screenshotService]
   );
@@ -34,7 +31,7 @@ export function LevelViewerScreenshotToast({
   const onDelete = useCallback(() => void screenshotService.remove(), [screenshotService]);
 
   return (
-    <LevelViewerFileToast
+    <FileToast
       data-testid={dataTestId}
       id={id}
       className={className}

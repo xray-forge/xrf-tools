@@ -1,9 +1,9 @@
+import { renderCodeSpans } from "@xrf/ui/code/spans";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { cn } from "@xrf/ui/theme";
 import { Typography } from "@xrf/ui/typography";
 import { ReactElement, ReactNode } from "react";
 
-import { renderHelpText } from "@/core/help/lib/help-text";
 import { IToolHelp } from "@/core/routing/tool";
 
 import { ToolHelpRelated } from "./ToolHelpRelated";
@@ -43,7 +43,7 @@ export function ToolHelpContent({
   return (
     <div data-testid={dataTestId} id={id} className={cn("flex flex-col gap-4", className)}>
       <Typography className={"leading-panel"} variant={"body2"}>
-        {renderHelpText(help.summary)}
+        {renderCodeSpans(help.summary)}
       </Typography>
 
       {sections}

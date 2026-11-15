@@ -6,5 +6,4 @@ export * from "./preview";
 export * from "./tree";
 export * from "./selection";
 export * from "./subject";
-export * from "./use-last-content";
 export * from "./volume-options";

@@ -1,12 +1,11 @@
 import { formatNumber } from "@xrf/format";
 import { ArchiveThmMaterial } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable } from "@xrf/types";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { NOT_DECLARED } from "../ArchiveDescriptionPreview.utils";
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 
 interface IArchiveThmShadingSectionProps extends BaseComponentProps {
   material: Nullable<ArchiveThmMaterial>;
@@ -25,16 +24,17 @@ export function ArchiveThmShadingSection({
     <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Shading"}>
       {material ? (
         <>
-          <ArchiveDescriptionRow label={"Material"} value={material.label} />
+          <EditorPanelProperty isInline label={"Material"} value={material.label} />
 
-          <ArchiveDescriptionRow
+          <EditorPanelProperty
+            isInline
             label={"Weight"}
             value={formatNumber(material.weight, 3)}
             caption={"Where the surface sits between the two lighting models"}
           />
         </>
       ) : (
-        <ArchiveDescriptionRow label={"Material"} value={NOT_DECLARED} />
+        <EditorPanelProperty isInline label={"Material"} value={NOT_DECLARED} />
       )}
     </EditorPanelSection>
   );

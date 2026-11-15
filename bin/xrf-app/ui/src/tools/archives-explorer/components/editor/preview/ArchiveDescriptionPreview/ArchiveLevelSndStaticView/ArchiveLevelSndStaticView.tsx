@@ -3,12 +3,11 @@ import {
   ArchiveLevelSndStaticDescription,
   ArchiveLevelSndStaticSound,
 } from "@xrf/ipc/types/xrf-app-archives";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReadingColumn } from "@xrf/ui/layout/reading-column";
 import { ReactElement } from "react";
 
-import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { ArchiveLevelSndStaticSoundRow } from "./ArchiveLevelSndStaticSoundRow";
 
 interface IArchiveLevelSndStaticViewProps extends BaseComponentProps {
@@ -29,15 +28,17 @@ export function ArchiveLevelSndStaticView({
   const { sounds } = description;
 
   return (
-    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+    <ReadingColumn data-testid={dataTestId} id={id} className={className}>
       <EditorPanelSection title={"Planted sounds"}>
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Sounds"}
           value={`${sounds.length}`}
           caption={"Each playing on its own, without an object asking for it"}
         />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"On a schedule"}
           value={`${description.scheduled}`}
           caption={"Sounds allowed only inside a window of the day; the rest play at any hour"}
@@ -52,6 +53,6 @@ export function ArchiveLevelSndStaticView({
           <ArchiveLevelSndStaticSoundRow key={index} sound={sound} scope={scope} />
         ))}
       </EditorPanelSection>
-    </ArchiveDescriptionLayout>
+    </ReadingColumn>
   );
 }

@@ -2,6 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { ABSENT_VALUE, formatBytes, formatDuration } from "@xrf/format";
 import { IIpcCommandMetrics, IIpcMetricsSnapshot } from "@xrf/ipc";
 import { IpcMetricsService } from "@xrf/ipc/session";
+import { usePolledValue } from "@xrf/react/polled-value";
 import { Nullable } from "@xrf/types";
 import { Button } from "@xrf/ui/button";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
@@ -11,8 +12,6 @@ import { Divider, Stack } from "@xrf/ui/layout/stack";
 import { StatFigure } from "@xrf/ui/stats";
 import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useState } from "react";
-
-import { usePolledValue } from "@/lib/react/use-polled-value";
 
 import {
   describeWeighedCalls,

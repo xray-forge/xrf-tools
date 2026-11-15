@@ -1,6 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
-import { EditorPopoverSwitchRow } from "@xrf/ui/editor/popover-row";
+import { EditorPopoverSliderRow, EditorPopoverSwitchRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
@@ -10,7 +10,6 @@ import {
   LEVEL_HELPER_OCCLUDED_LIMITS,
 } from "@/core/level/lib/objects/level-helper-options";
 import { LevelViewService } from "@/core/level/services/level-view";
-import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 
 /**
  * The helpers' master switch, `G`, heading how they are drawn: whether what they leave unmarked fades and whether a
@@ -51,7 +50,7 @@ export function LevelShowHelpers({
         onChange={(isScreenshotHelped: boolean) => viewService.setHelperLook({ isScreenshotHelped })}
       />
 
-      <RenderValueSlider
+      <EditorPopoverSliderRow
         label={"Behind level"}
         description={"How strongly a wire shows where the level stands in front of it."}
         value={helpers.occludedStrength}
@@ -61,7 +60,7 @@ export function LevelShowHelpers({
         onChange={(occludedStrength: number) => viewService.setHelperLook({ ...helpers, occludedStrength })}
       />
 
-      <RenderValueSlider
+      <EditorPopoverSliderRow
         label={"Draw distance"}
         description={"Scales how far off each kind's helpers still draw."}
         value={helpers.distanceScale}

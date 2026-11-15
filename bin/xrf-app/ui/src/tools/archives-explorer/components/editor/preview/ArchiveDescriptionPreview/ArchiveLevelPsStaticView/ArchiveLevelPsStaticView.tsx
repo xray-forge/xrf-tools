@@ -1,11 +1,10 @@
 import { formatCount } from "@xrf/format";
 import { ArchiveLevelPsStaticDescription, ArchiveLevelPsStaticEffect } from "@xrf/ipc/types/xrf-app-archives";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReadingColumn } from "@xrf/ui/layout/reading-column";
 import { ReactElement } from "react";
 
-import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { ArchiveLevelPsStaticEffectRow } from "./ArchiveLevelPsStaticEffectRow";
 
 interface IArchiveLevelPsStaticViewProps extends BaseComponentProps {
@@ -24,9 +23,10 @@ export function ArchiveLevelPsStaticView({
   const { effects } = description;
 
   return (
-    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+    <ReadingColumn data-testid={dataTestId} id={id} className={className}>
       <EditorPanelSection title={"Planted effects"}>
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Placements"}
           value={formatCount(description.placements)}
           caption={
@@ -36,13 +36,14 @@ export function ArchiveLevelPsStaticView({
           }
         />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Effects"}
           value={`${effects.length}`}
           caption={"Each names a definition inside particles.xr rather than a file of its own"}
         />
 
-        <ArchiveDescriptionRow label={"Version"} value={`${description.version}`} />
+        <EditorPanelProperty isInline label={"Version"} value={`${description.version}`} />
       </EditorPanelSection>
 
       <EditorPanelSection
@@ -53,6 +54,6 @@ export function ArchiveLevelPsStaticView({
           <ArchiveLevelPsStaticEffectRow key={effect.name} effect={effect} />
         ))}
       </EditorPanelSection>
-    </ArchiveDescriptionLayout>
+    </ReadingColumn>
   );
 }

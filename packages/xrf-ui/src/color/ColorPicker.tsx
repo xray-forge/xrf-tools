@@ -1,10 +1,10 @@
+import { useThrottledValue } from "@xrf/react/throttled-value";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect } from "react";
 import { RgbColorPicker } from "react-colorful";
 
 import { BaseComponentProps } from "#/element-types";
 import { Box } from "#/layout/stack";
-import { useThrottledValue } from "#/react/throttled-value";
 import { RADIUS } from "#/theme";
 
 import { IPickedColor } from "./color-intensity";

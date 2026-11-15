@@ -1,19 +1,18 @@
 import { useInjection } from "@wirestate/react";
 import { AsyncState } from "@xrf/async";
 import { AssetTextureShape } from "@xrf/ipc/types/xrf-app-core";
+import { useLastValue } from "@xrf/react/last-value";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
-import { EmptyState } from "@xrf/ui/layout/empty-state";
+import { ContentState } from "@xrf/ui/layout/content-state";
 import { ImageViewport } from "@xrf/ui/media/image-viewport";
 import { cn } from "@xrf/ui/theme";
 import { Typography } from "@xrf/ui/typography";
 import { ReactElement } from "react";
 
-import { TArchiveBytes, TArchiveContent, useLastContent } from "@/core/archive/lib";
+import { TArchiveBytes, TArchiveContent } from "@/core/archive/lib";
 import { describeTextureShape } from "@/core/assets/lib";
 import { useAssetUrl } from "@/core/assets/lib/use-asset-url";
-import { ArchivePreviewError } from "@/tools/archives-explorer/components/editor/preview/ArchivePreviewError/ArchivePreviewError";
 import { ArchivePreviewService } from "@/tools/archives-explorer/services/archive-preview";
 
 /**
@@ -28,7 +27,7 @@ export function ArchiveTexturePreview({
   const content: AsyncState<Nullable<TArchiveContent>> = previewService.content;
 
   // The previous texture stays on screen while the next one decodes, rather than the panel blanking between clicks.
-  const texture: Nullable<TArchiveContent & { kind: "texture" }> = useLastContent(
+  const texture: Nullable<TArchiveContent & { kind: "texture" }> = useLastValue(
     content.value?.kind === "texture" ? content.value : null,
     content.isLoading
   );
@@ -40,46 +39,35 @@ export function ArchiveTexturePreview({
 
   const url: Nullable<string> = useAssetUrl(`${__MODULE_NAME__}/archive-texture`, bytes, "image/png");
 
-  if (content.error) {
-    return (
-      <ArchivePreviewError
-        data-testid={dataTestId}
-        id={id}
-        className={className}
-        error={content.error}
-        onRetry={previewService.retry}
-      />
-    );
-  }
-
-  if (!shape || !url) {
-    return content.isLoading ? (
-      <DelayedProgress data-testid={dataTestId} id={id} className={className} />
-    ) : (
-      <EmptyState
-        data-testid={dataTestId}
-        id={id}
-        className={className}
-        title={"Preview unavailable"}
-        description={"This texture could not be decoded."}
-      />
-    );
-  }
-
   return (
-    <div data-testid={dataTestId} id={id} className={cn("flex min-h-0 min-w-0 grow flex-col", className)}>
-      <ImageViewport
-        alt={previewService.selectedEntry?.name ?? "Texture"}
-        src={url}
-        width={shape.width}
-        height={shape.height}
-      />
+    <ContentState
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      value={shape && url ? { shape, url } : null}
+      isLoading={content.isLoading}
+      error={content.error}
+      errorTitle={"Could not read this file"}
+      onRetry={previewService.retry}
+      emptyTitle={"Preview unavailable"}
+      emptyDescription={"This texture could not be decoded."}
+    >
+      {(picture: { shape: AssetTextureShape; url: string }) => (
+        <div data-testid={dataTestId} id={id} className={cn("flex min-h-0 min-w-0 grow flex-col", className)}>
+          <ImageViewport
+            alt={previewService.selectedEntry?.name ?? "Texture"}
+            src={picture.url}
+            width={picture.shape.width}
+            height={picture.shape.height}
+          />
 
-      <div className={"shrink-0 border-t border-divider px-3 py-1"}>
-        <Typography className={"text-text-secondary"} variant={"caption"}>
-          {describeTextureShape(shape)}
-        </Typography>
-      </div>
-    </div>
+          <div className={"shrink-0 border-t border-divider px-3 py-1"}>
+            <Typography className={"text-text-secondary"} variant={"caption"}>
+              {describeTextureShape(picture.shape)}
+            </Typography>
+          </div>
+        </div>
+      )}
+    </ContentState>
   );
 }

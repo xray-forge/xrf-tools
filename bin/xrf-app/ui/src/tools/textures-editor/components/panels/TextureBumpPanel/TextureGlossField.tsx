@@ -1,9 +1,7 @@
 import { Nullable } from "@xrf/types";
-import { EditorPopoverNote } from "@xrf/ui/editor/popover-row";
+import { EditorPopoverNote, EditorPopoverSliderRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
-
-import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 
 interface ITextureGlossFieldProps extends BaseComponentProps {
   value: number;
@@ -36,7 +34,7 @@ export function TextureGlossField({
 }: ITextureGlossFieldProps): ReactElement {
   return (
     <div data-testid={dataTestId} id={id} className={className}>
-      <RenderValueSlider
+      <EditorPopoverSliderRow
         label={"Gloss level"}
         description={"The one level the whole surface takes, without a mask"}
         value={value}

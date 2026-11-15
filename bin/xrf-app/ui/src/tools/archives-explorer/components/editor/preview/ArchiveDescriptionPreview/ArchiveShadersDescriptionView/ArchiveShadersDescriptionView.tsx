@@ -5,13 +5,12 @@ import {
 } from "@xrf/ipc/types/xrf-app-archives";
 import { filterByName } from "@xrf/search";
 import { EditorFilterInput } from "@xrf/ui/editor/filter-input";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReadingColumn } from "@xrf/ui/layout/reading-column";
 import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useMemo, useState } from "react";
 
-import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { ArchiveShadersBlenderRow } from "./ArchiveShadersBlenderRow";
 
 interface IArchiveShadersDescriptionViewProps extends BaseComponentProps {
@@ -39,15 +38,17 @@ export function ArchiveShadersDescriptionView({
   );
 
   return (
-    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+    <ReadingColumn data-testid={dataTestId} id={id} className={className}>
       <EditorPanelSection title={"Library"}>
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Blenders"}
           value={`${library.blenders}`}
           caption={`Across ${library.classes} ${library.classes === 1 ? "class" : "classes"}, each deciding which passes are compiled`}
         />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Textures"}
           value={`${library.textures}`}
           caption={
@@ -57,7 +58,8 @@ export function ArchiveShadersDescriptionView({
           }
         />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Read"}
           value={"Blender chunk only"}
           caption={"The shader script list, the constant table and the matrix table name no surface and are skipped"}
@@ -86,6 +88,6 @@ export function ArchiveShadersDescriptionView({
           </Typography>
         )}
       </EditorPanelSection>
-    </ArchiveDescriptionLayout>
+    </ReadingColumn>
   );
 }

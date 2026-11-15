@@ -1,11 +1,10 @@
 import { formatSeconds } from "@xrf/format";
 import { ArchiveDescribeScope, ArchivePpeDescription } from "@xrf/ipc/types/xrf-app-archives";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { ArchiveDescriptionReference } from "../ArchiveDescriptionReference";
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { describeKeyedParameters } from "./ArchivePpeDescriptionView.utils";
 
 interface IArchivePpeEffectSectionProps extends BaseComponentProps {
@@ -27,19 +26,22 @@ export function ArchivePpeEffectSection({
 
   return (
     <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Effect"}>
-      <ArchiveDescriptionRow
+      <EditorPanelProperty
+        isInline
         label={"Runs for"}
         value={formatSeconds(description.lengthSeconds)}
         caption={"Its longest parameter decides it, not where its last key sits"}
       />
 
-      <ArchiveDescriptionRow
+      <EditorPanelProperty
+        isInline
         label={"Keys"}
         value={`${description.keys}`}
         caption={describeKeyedParameters(description)}
       />
 
-      <ArchiveDescriptionRow
+      <EditorPanelProperty
+        isInline
         label={"Version"}
         value={`${description.version}`}
         caption={description.version < 2 ? "Below version 2, which is where colour grading was added" : null}
@@ -50,7 +52,8 @@ export function ArchivePpeEffectSection({
       ) : null}
 
       {colorMap && !colorMap.isUsed ? (
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Colour grading"}
           value={"Not declared"}
           caption={"The effect carries the parameter but names no gradient, so it grades nothing"}

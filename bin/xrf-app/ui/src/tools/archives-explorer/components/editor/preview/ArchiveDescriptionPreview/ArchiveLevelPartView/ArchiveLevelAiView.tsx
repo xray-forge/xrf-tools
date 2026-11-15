@@ -1,12 +1,11 @@
 import { formatBytes, formatCount } from "@xrf/format";
 import { ArchiveLevelAiDescription } from "@xrf/ipc/types/xrf-app-archives";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReadingColumn } from "@xrf/ui/layout/reading-column";
 import { ReactElement } from "react";
 
-import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
 import { formatLevelBounds } from "../ArchiveDescriptionPreview.utils";
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { formatNodeSize } from "./ArchiveLevelPartView.utils";
 
 interface IArchiveLevelAiViewProps extends BaseComponentProps {
@@ -23,35 +22,39 @@ export function ArchiveLevelAiView({
   description,
 }: IArchiveLevelAiViewProps): ReactElement {
   return (
-    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+    <ReadingColumn data-testid={dataTestId} id={id} className={className}>
       <EditorPanelSection title={"Navigation grid"}>
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Nodes"}
           value={formatCount(description.nodes)}
           caption={formatNodeSize(description.nodeSize, description.nodeHeight)}
         />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Covers"}
           value={formatLevelBounds(description.bounds)}
           caption={"Width, height and depth of the box it declares"}
         />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Graph identity"}
           value={description.guid}
           isMonospace
           caption={"A spawn set built against this grid carries the same value"}
         />
 
-        <ArchiveDescriptionRow label={"Version"} value={`${description.version}`} />
+        <EditorPanelProperty isInline label={"Version"} value={`${description.version}`} />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Size"}
           value={formatBytes(description.size)}
           caption={"The nodes are read past; only the header is read"}
         />
       </EditorPanelSection>
-    </ArchiveDescriptionLayout>
+    </ReadingColumn>
   );
 }

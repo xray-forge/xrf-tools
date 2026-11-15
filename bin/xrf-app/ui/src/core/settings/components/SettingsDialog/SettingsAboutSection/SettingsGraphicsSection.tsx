@@ -3,17 +3,17 @@ import { renderCommands } from "@xrf/ipc/commands/render";
 import { RenderLibraries } from "@xrf/ipc/types/xrf-renderer";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
+import { useMountEffect } from "@xrf/react/mount-effect";
 import { Nullable } from "@xrf/types";
+import { EditorPanelProperty } from "@xrf/ui/editor/panel";
 import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { Stack } from "@xrf/ui/layout/stack";
 import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useState } from "react";
 
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
-import { useMountEffect } from "@/lib/react/use-mount-effect";
 
 import { IAboutRow } from "./about-row";
-import { SettingsAboutRow } from "./SettingsAboutRow";
 import { describeGraphics, DLSS_ATTRIBUTION } from "./SettingsGraphicsSection.utils";
 
 /**
@@ -53,7 +53,9 @@ export function SettingsGraphicsSection(): ReactElement {
         {rows.length === 0 ? (
           <Typography variant={"caption"}>Reading graphics details...</Typography>
         ) : (
-          rows.map((it: IAboutRow) => <SettingsAboutRow key={it.label} label={it.label} value={it.value} />)
+          rows.map((it: IAboutRow) => (
+            <EditorPanelProperty key={it.label} label={it.label} value={it.value} isMonospace isInline />
+          ))
         )}
 
         {libraries?.dlss ? (

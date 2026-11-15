@@ -2,6 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { LevelWeatherCycle, LevelWeatherDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
+import { useCopiedText } from "@xrf/react/copied-text";
 import { Nullable } from "@xrf/types";
 import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
@@ -23,7 +24,6 @@ import { listLevelWeatherCycles } from "@/core/level/lib/weather/level-weather-c
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";
 import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelWeatherService } from "@/core/level/services/level-weather";
-import { useCopiedText } from "@/lib/react/use-copied-text";
 
 /**
  * The weather in short: what lights the level, the cycle and the effect, and the time of day as the panel shows it (the

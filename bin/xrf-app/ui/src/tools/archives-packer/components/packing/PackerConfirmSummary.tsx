@@ -1,6 +1,7 @@
 import { bytesToWholeMegabytes } from "@xrf/format";
 import { ArchivePackConfig, EArchivePackMode, EArchiveVolumeExtension } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
+import { EditorPanelProperty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Alert } from "@xrf/ui/feedback";
 import { Checkbox, FormControlLabel } from "@xrf/ui/form/control";
@@ -8,8 +9,6 @@ import { Stack } from "@xrf/ui/layout/stack";
 import { Typography } from "@xrf/ui/typography";
 import { ReactElement } from "react";
 
-import { ArchivePathText } from "@/core/archive/components/ArchivePathText";
-import { ArchiveSummaryRow } from "@/core/archive/components/ArchiveSummaryRow";
 import { ARCHIVE_VOLUME_SUFFIX, HEADER_ENTRY_POINT, readHeaderValue } from "@/core/archive/lib";
 import { isWholeDirectory } from "@/tools/archives-packer/lib/pack-config";
 
@@ -44,69 +43,70 @@ export function PackerConfirmSummary({
 
   return (
     <Stack data-testid={dataTestId} id={id} className={className} spacing={1.5}>
-      <ArchiveSummaryRow label={"Source"}>
-        <ArchivePathText value={config.source} />
-      </ArchiveSummaryRow>
+      <EditorPanelProperty label={"Source"} value={config.source} isMonospace isInline />
 
-      <ArchiveSummaryRow label={"Output"}>
-        <ArchivePathText value={config.destination} />
-      </ArchiveSummaryRow>
+      <EditorPanelProperty label={"Output"} value={config.destination} isMonospace isInline />
 
-      <ArchiveSummaryRow label={"Volumes"}>
-        <Typography variant={"body2"}>
-          <span className={"monospace"}>{volumeName}</span>, splitting every{" "}
-          {bytesToWholeMegabytes(config.maxVolumeSize)} MB
-        </Typography>
-      </ArchiveSummaryRow>
+      <EditorPanelProperty
+        label={"Volumes"}
+        value={
+          <>
+            <span className={"monospace"}>{volumeName}</span>, splitting every{" "}
+            {bytesToWholeMegabytes(config.maxVolumeSize)} MB
+          </>
+        }
+        isInline
+      />
 
-      <ArchiveSummaryRow label={"Contents"}>
-        {isWholeDirectory(config) ? (
-          <Typography variant={"body2"}>Everything under the source directory</Typography>
-        ) : (
-          <Stack spacing={0.5}>
-            {config.includeDirectories.length ? (
-              <PackerDirectoryChips directories={config.includeDirectories} recursiveSuffix={" and below"} />
-            ) : null}
-            {config.includeFiles.length ? (
-              <Typography variant={"body2"}>{config.includeFiles.join(", ")}</Typography>
-            ) : null}
-          </Stack>
-        )}
-      </ArchiveSummaryRow>
+      <EditorPanelProperty
+        label={"Contents"}
+        value={
+          isWholeDirectory(config) ? (
+            "Everything under the source directory"
+          ) : (
+            <Stack spacing={0.5}>
+              {config.includeDirectories.length ? (
+                <PackerDirectoryChips directories={config.includeDirectories} recursiveSuffix={" and below"} />
+              ) : null}
+              {config.includeFiles.length ? <span>{config.includeFiles.join(", ")}</span> : null}
+            </Stack>
+          )
+        }
+        isInline
+      />
 
       {config.excludeDirectories.length || config.excludeExtensions.length ? (
-        <ArchiveSummaryRow label={"Excluding"}>
-          <Stack spacing={0.5}>
-            {config.excludeDirectories.length ? (
-              <PackerDirectoryChips directories={config.excludeDirectories} recursiveSuffix={" and below"} />
-            ) : null}
-            {config.excludeExtensions.length ? (
-              <Typography variant={"body2"}>{config.excludeExtensions.join(", ")}</Typography>
-            ) : null}
-          </Stack>
-        </ArchiveSummaryRow>
+        <EditorPanelProperty
+          label={"Excluding"}
+          value={
+            <Stack spacing={0.5}>
+              {config.excludeDirectories.length ? (
+                <PackerDirectoryChips directories={config.excludeDirectories} recursiveSuffix={" and below"} />
+              ) : null}
+              {config.excludeExtensions.length ? <span>{config.excludeExtensions.join(", ")}</span> : null}
+            </Stack>
+          }
+          isInline
+        />
       ) : null}
 
-      <ArchiveSummaryRow label={"Compression"}>
-        <Typography variant={"body2"}>
-          {config.mode === EArchivePackMode.STORE
+      <EditorPanelProperty
+        label={"Compression"}
+        value={
+          (config.mode === EArchivePackMode.STORE
             ? "Stored, nothing compressed"
-            : "Compressed where the engine expects it"}
-          {config.isWithSkipList ? ", editor leftovers skipped" : ", keeping editor leftovers"}
-        </Typography>
-      </ArchiveSummaryRow>
+            : "Compressed where the engine expects it") +
+          (config.isWithSkipList ? ", editor leftovers skipped" : ", keeping editor leftovers")
+        }
+        isInline
+      />
 
-      <ArchiveSummaryRow label={"Mounts at"}>
-        {entryPoint ? (
-          <Typography variant={"body2"} className={"monospace"}>
-            {entryPoint}
-          </Typography>
-        ) : (
-          <Typography variant={"body2"} color={"text.secondary"}>
-            Not set
-          </Typography>
-        )}
-      </ArchiveSummaryRow>
+      <EditorPanelProperty
+        label={"Mounts at"}
+        value={entryPoint ?? <span className={"text-text-secondary"}>Not set</span>}
+        isMonospace={entryPoint !== null}
+        isInline
+      />
 
       {publishedVolumes.length ? (
         <Alert severity={"warning"}>

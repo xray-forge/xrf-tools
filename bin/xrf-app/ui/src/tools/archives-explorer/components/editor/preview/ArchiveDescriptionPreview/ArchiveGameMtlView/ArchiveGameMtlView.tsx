@@ -6,13 +6,12 @@ import {
 } from "@xrf/ipc/types/xrf-app-archives";
 import { filterByName } from "@xrf/search";
 import { EditorFilterInput } from "@xrf/ui/editor/filter-input";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReadingColumn } from "@xrf/ui/layout/reading-column";
 import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useMemo, useState } from "react";
 
-import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { ArchiveGameMtlMaterialRow } from "./ArchiveGameMtlMaterialRow";
 
 interface IArchiveGameMtlViewProps extends BaseComponentProps {
@@ -38,9 +37,10 @@ export function ArchiveGameMtlView({
   );
 
   return (
-    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+    <ReadingColumn data-testid={dataTestId} id={id} className={className}>
       <EditorPanelSection title={"Pairings"}>
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Pairs"}
           value={formatCount(description.pairs)}
           caption={
@@ -50,14 +50,15 @@ export function ArchiveGameMtlView({
         />
 
         {properties.map((property: ArchiveGameMtlProperty) => (
-          <ArchiveDescriptionRow
+          <EditorPanelProperty
+            isInline
             key={property.name}
             label={property.name.charAt(0).toUpperCase() + property.name.slice(1)}
             value={formatCount(property.pairs)}
           />
         ))}
 
-        <ArchiveDescriptionRow label={"Version"} value={`${description.version}`} />
+        <EditorPanelProperty isInline label={"Version"} value={`${description.version}`} />
       </EditorPanelSection>
 
       <EditorPanelSection
@@ -84,6 +85,6 @@ export function ArchiveGameMtlView({
           </Typography>
         )}
       </EditorPanelSection>
-    </ArchiveDescriptionLayout>
+    </ReadingColumn>
   );
 }

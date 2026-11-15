@@ -1,11 +1,10 @@
 import { formatPercent } from "@xrf/format";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { EditorPopoverContent } from "@xrf/ui/editor/popover-content";
+import { EditorPopoverSliderRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { TuneIcon } from "@xrf/ui/icons/tune";
 import { ReactElement, useCallback } from "react";
-
-import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 
 interface IVisualMeshDetailProps extends BaseComponentProps {
   /** Position in each submesh's collapse chain: 0 is full detail, 1 is coarsest. */
@@ -40,7 +39,7 @@ export function VisualMeshDetail({
       isActive={detail !== 0 && hasDetailLevels}
     >
       <EditorPopoverContent label={"Mesh detail"}>
-        <RenderValueSlider
+        <EditorPopoverSliderRow
           label={"Quality"}
           description={"How much of each submesh's collapse chain is kept, the full mesh at 100%."}
           value={Math.round((1 - detail) * 100)}

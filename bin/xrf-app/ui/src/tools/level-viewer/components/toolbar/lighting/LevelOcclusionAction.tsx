@@ -7,7 +7,7 @@ import {
 } from "@xrf/ipc/types/xrf-renderer";
 import { Optional } from "@xrf/types";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
-import { EditorPopoverNote } from "@xrf/ui/editor/popover-row";
+import { EditorPopoverChoiceRow, EditorPopoverNote, EditorPopoverSliderRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { GradientIcon } from "@xrf/ui/icons/gradient";
 import { ReactElement, useCallback } from "react";
@@ -24,8 +24,6 @@ import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-opti
 import { DEFAULT_LEVEL_HEMI_STRENGTH, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelViewService } from "@/core/level/services/level-view";
-import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
-import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { RenderSettingEntries } from "@/core/render/components/settings/RenderSettingEntries";
 import { RenderSettingEntry } from "@/core/render/components/settings/RenderSettingEntry";
 import {
@@ -124,7 +122,7 @@ export function LevelOcclusionAction({
         onToggle={() => viewService.toggleOption("isOccluded")}
         onReset={onOcclusionReset}
       >
-        <RenderValueChoice
+        <EditorPopoverChoiceRow
           label={RENDER_AMBIENT_OCCLUSION_SETTINGS.method.label}
           options={
             isTraceable ? RENDER_AMBIENT_OCCLUSION_METHOD_OPTIONS : RENDER_AMBIENT_OCCLUSION_METHOD_UNTRACED_OPTIONS
@@ -205,7 +203,7 @@ export function LevelOcclusionAction({
         onToggle={() => viewService.toggleOption("isBaked")}
         onReset={hemiStrength === DEFAULT_LEVEL_HEMI_STRENGTH ? undefined : onBakedReset}
       >
-        <RenderValueSlider
+        <EditorPopoverSliderRow
           label={"Strength"}
           value={hemiStrength}
           min={0}

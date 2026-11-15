@@ -1,11 +1,10 @@
 import { formatBytes } from "@xrf/format";
 import { ArchiveSpawnDescription, ArchiveSpawnSection } from "@xrf/ipc/types/xrf-app-archives";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReadingColumn } from "@xrf/ui/layout/reading-column";
 import { ReactElement } from "react";
 
-import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { describeSectionWeight, formatSectionName } from "./ArchiveSpawnDescriptionView.utils";
 
 interface IArchiveSpawnDescriptionViewProps extends BaseComponentProps {
@@ -24,24 +23,27 @@ export function ArchiveSpawnDescriptionView({
   const { sections, size } = description;
 
   return (
-    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+    <ReadingColumn data-testid={dataTestId} id={id} className={className}>
       <EditorPanelSection title={"Spawn set"}>
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Objects"}
           value={`${description.objects}`}
           caption={`Across ${description.levels} ${description.levels === 1 ? "level" : "levels"}`}
         />
 
-        <ArchiveDescriptionRow label={"Version"} value={`${description.version}`} />
+        <EditorPanelProperty isInline label={"Version"} value={`${description.version}`} />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Identity"}
           value={description.guid}
           isMonospace
           caption={"What a save game is pinned to"}
         />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Graph identity"}
           value={description.graphGuid}
           isMonospace
@@ -54,7 +56,8 @@ export function ArchiveSpawnDescriptionView({
         caption={"Read by their chunk headers alone; what they hold is not parsed"}
       >
         {sections.map((section: ArchiveSpawnSection) => (
-          <ArchiveDescriptionRow
+          <EditorPanelProperty
+            isInline
             key={section.id}
             label={formatSectionName(section)}
             value={formatBytes(section.size)}
@@ -62,6 +65,6 @@ export function ArchiveSpawnDescriptionView({
           />
         ))}
       </EditorPanelSection>
-    </ArchiveDescriptionLayout>
+    </ReadingColumn>
   );
 }

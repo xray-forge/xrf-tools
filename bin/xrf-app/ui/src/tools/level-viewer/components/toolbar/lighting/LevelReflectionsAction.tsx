@@ -7,7 +7,7 @@ import {
 } from "@xrf/ipc/types/xrf-renderer";
 import { Optional } from "@xrf/types";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
-import { EditorPopoverNote } from "@xrf/ui/editor/popover-row";
+import { EditorPopoverChoiceRow, EditorPopoverNote } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { FlipIcon } from "@xrf/ui/icons/flip";
 import { ReactElement } from "react";
@@ -22,7 +22,6 @@ import {
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { LevelRenderService } from "@/core/level/services/level-render";
-import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderSettingEntries } from "@/core/render/components/settings/RenderSettingEntries";
 import { RenderSettingEntry } from "@/core/render/components/settings/RenderSettingEntry";
 import {
@@ -88,7 +87,7 @@ export function LevelReflectionsAction({
           </EditorPopoverNote>
         ) : null}
 
-        <RenderValueChoice
+        <EditorPopoverChoiceRow
           label={RENDER_REFLECTION_SETTINGS.traceSize.label}
           options={RENDER_TRACE_SIZE_OPTIONS}
           value={isRayReconstructed ? ERenderTraceSize.FULL : value.traceSize}

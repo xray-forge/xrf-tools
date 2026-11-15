@@ -3,12 +3,12 @@ import { RenderLoadReport } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
+import { ErrorState } from "@xrf/ui/layout/error-state";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 
 import { describeLevelLoad } from "@/core/level/lib/load/level-load-progress";
 import { LevelViewportService } from "@/core/level/services/level-viewport";
-import { RenderFailureNotice } from "@/core/render/components/overlay/RenderFailureNotice";
 
 /** What the cover asks of the render service drawing under it. */
 export interface ILevelPreviewCoverHost {
@@ -68,7 +68,7 @@ export function LevelPreviewCover({
         className
       )}
     >
-      {failure !== null ? <RenderFailureNotice failure={failure} /> : null}
+      {failure !== null ? <ErrorState title={"The renderer stopped"} description={failure} isOnViewport /> : null}
 
       {failure === null && isCovering ? <DelayedProgress isOnViewport={true} label={label} /> : null}
     </div>

@@ -46,3 +46,8 @@ export const Heading: TStory = {
 export const WithoutFact: TStory = {
   args: { fact: null },
 };
+
+/** A title that says what the section is needs no sentence under it; its content follows the title directly. */
+export const WithoutDescription: TStory = {
+  args: { description: undefined, fact: null, action: undefined },
+};

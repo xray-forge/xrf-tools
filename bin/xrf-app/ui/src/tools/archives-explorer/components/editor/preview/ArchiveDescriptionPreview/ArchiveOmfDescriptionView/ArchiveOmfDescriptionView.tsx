@@ -1,8 +1,8 @@
 import { ArchiveOmfDescription } from "@xrf/ipc/types/xrf-app-archives";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReadingColumn } from "@xrf/ui/layout/reading-column";
 import { ReactElement } from "react";
 
-import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
 import { ArchiveOmfBankSection } from "./ArchiveOmfBankSection";
 import { ArchiveOmfMotionsSection } from "./ArchiveOmfMotionsSection";
 import { ArchiveOmfPartitionSection } from "./ArchiveOmfPartitionSection";
@@ -21,12 +21,12 @@ export function ArchiveOmfDescriptionView({
   description,
 }: IArchiveOmfDescriptionViewProps): ReactElement {
   return (
-    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+    <ReadingColumn data-testid={dataTestId} id={id} className={className}>
       <ArchiveOmfBankSection bank={description.bank} parts={description.parts.length} />
 
       <ArchiveOmfPartitionSection parts={description.parts} />
 
       <ArchiveOmfMotionsSection motions={description.motions} />
-    </ArchiveDescriptionLayout>
+    </ReadingColumn>
   );
 }

@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
 
-import { withListingPane } from "#/testing/stories";
+import { withListingPane, withViewportPane } from "#/testing/stories";
 
 import { ErrorState } from "./ErrorState";
 
@@ -25,4 +25,15 @@ export const Retry: TStory = {};
 
 export const WithoutRetry: TStory = {
   args: { onRetry: undefined },
+};
+
+/** In a viewport's inks, over its backdrop, for a renderer that stopped drawing. */
+export const OnViewport: TStory = {
+  decorators: [withViewportPane],
+  args: {
+    title: "The renderer stopped",
+    description: "The GPU device was lost while drawing l01_escape.",
+    onRetry: undefined,
+    isOnViewport: true,
+  },
 };

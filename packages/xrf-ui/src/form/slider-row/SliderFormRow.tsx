@@ -1,10 +1,10 @@
+import { IThrottledDraft, useThrottledDraft } from "@xrf/react/throttled-draft";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
 import { BaseComponentProps } from "#/element-types";
 import { ISliderReference, ReferenceSlider, SliderReadout, useSliderReference } from "#/form/reference-slider";
 import { FormRow } from "#/form/row";
-import { IThrottledDraft, useThrottledDraft } from "#/react/throttled-draft";
 
 export interface ISliderFormRowProps extends BaseComponentProps {
   label: string;

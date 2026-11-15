@@ -3,15 +3,15 @@ import { formatCount } from "@xrf/format";
 import { ConfigsDeclarationSearch } from "@xrf/ipc/types/xrf-app-configs";
 import { LtxDeclaration } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
-import { Button, IconButton } from "@xrf/ui/button";
+import { Button } from "@xrf/ui/button";
 import { EditorFilterInput } from "@xrf/ui/editor/filter-input";
+import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { EditorPanelEmpty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { MyLocationIcon } from "@xrf/ui/icons/my-location";
 import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
 import { ErrorState } from "@xrf/ui/layout/error-state";
 import { List } from "@xrf/ui/list";
-import { Tooltip } from "@xrf/ui/overlay";
 import { KeyboardEvent, ReactElement, useCallback } from "react";
 
 import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
@@ -69,18 +69,13 @@ export function ConfigsFindPanel({
       data-testid={dataTestId}
       title={"Find"}
       actions={
-        <Tooltip title={selectedSection ? `Find every config writing [${selectedSection}]` : "Select a section first"}>
-          <span>
-            <IconButton
-              aria-label={"Find the selected section"}
-              size={"small"}
-              disabled={!selectedSection}
-              onClick={onFindSelected}
-            >
-              <MyLocationIcon fontSize={"small"} />
-            </IconButton>
-          </span>
-        </Tooltip>
+        <EditorIconAction
+          label={"Find the selected section"}
+          description={selectedSection ? `Find every config writing [${selectedSection}]` : "Select a section first"}
+          icon={<MyLocationIcon />}
+          isDisabled={!selectedSection}
+          onClick={onFindSelected}
+        />
       }
     >
       <div className={"flex flex-col gap-1.5 p-2"}>

@@ -1,10 +1,10 @@
 import { ArchiveDescribeScope, ArchiveReference } from "@xrf/ipc/types/xrf-app-archives";
+import { EditorPanelProperty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { describeReferenceStatus } from "./ArchiveDescriptionPreview.utils";
 import { ArchiveDescriptionReferenceLink } from "./ArchiveDescriptionReferenceLink";
-import { ArchiveDescriptionRow } from "./ArchiveDescriptionRow";
 
 interface IArchiveDescriptionReferenceProps extends BaseComponentProps {
   label: string;
@@ -24,7 +24,8 @@ export function ArchiveDescriptionReference({
   scope,
 }: IArchiveDescriptionReferenceProps): ReactElement {
   return (
-    <ArchiveDescriptionRow
+    <EditorPanelProperty
+      isInline
       data-testid={dataTestId}
       id={id}
       className={className}

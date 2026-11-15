@@ -1,10 +1,9 @@
 import { ArchiveLevelEnvModDescription, ArchiveLevelEnvModifier } from "@xrf/ipc/types/xrf-app-archives";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReadingColumn } from "@xrf/ui/layout/reading-column";
 import { ReactElement } from "react";
 
-import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { ArchiveLevelEnvModifierSection } from "./ArchiveLevelEnvModifierSection";
 
 interface IArchiveLevelEnvModViewProps extends BaseComponentProps {
@@ -23,9 +22,10 @@ export function ArchiveLevelEnvModView({
   const { modifiers } = description;
 
   return (
-    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+    <ReadingColumn data-testid={dataTestId} id={id} className={className}>
       <EditorPanelSection title={"Weather overrides"}>
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Overrides"}
           value={`${modifiers.length}`}
           caption={
@@ -35,12 +35,12 @@ export function ArchiveLevelEnvModView({
           }
         />
 
-        <ArchiveDescriptionRow label={"Version"} value={`${description.version}`} />
+        <EditorPanelProperty isInline label={"Version"} value={`${description.version}`} />
       </EditorPanelSection>
 
       {modifiers.map((modifier: ArchiveLevelEnvModifier, index: number) => (
         <ArchiveLevelEnvModifierSection key={index} modifier={modifier} index={index} />
       ))}
-    </ArchiveDescriptionLayout>
+    </ReadingColumn>
   );
 }

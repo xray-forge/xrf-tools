@@ -1,11 +1,10 @@
 import { formatNumber, formatSeconds } from "@xrf/format";
 import { ArchiveAnmDescription } from "@xrf/ipc/types/xrf-app-archives";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { NOT_DECLARED } from "../ArchiveDescriptionPreview.utils";
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { describeKeyedReach } from "./ArchiveAnmDescriptionView.utils";
 
 /** What every shipped animation is authored at, named only where a file departs from it. */
@@ -28,26 +27,30 @@ export function ArchiveAnmMotionSection({
 
   return (
     <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Motion"}>
-      <ArchiveDescriptionRow
+      <EditorPanelProperty
+        isInline
         label={"Saved as"}
         value={description.name ?? NOT_DECLARED}
         isMonospace={Boolean(description.name)}
         caption={description.name ? null : "Most animations carry no name of their own, and are loaded by path"}
       />
 
-      <ArchiveDescriptionRow
+      <EditorPanelProperty
+        isInline
         label={"Plays for"}
         value={formatSeconds(description.durationSeconds)}
         caption={`Frames ${frameStart} to ${frameEnd} inclusive, which is ${frames} at ${formatNumber(fps, 0)} fps`}
       />
 
-      <ArchiveDescriptionRow
+      <EditorPanelProperty
+        isInline
         label={"Keys"}
         value={`${description.keys}`}
         caption={describeKeyedReach(description) ?? "Across the six channels below"}
       />
 
-      <ArchiveDescriptionRow
+      <EditorPanelProperty
+        isInline
         label={"Version"}
         value={`${description.version}`}
         caption={

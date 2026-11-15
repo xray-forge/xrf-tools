@@ -1,10 +1,10 @@
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { EditorPopoverContent } from "@xrf/ui/editor/popover-content";
+import { EditorPopoverSliderRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { SpeedIcon } from "@xrf/ui/icons/speed";
 import { ReactElement, useCallback } from "react";
 
-import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { MOTION_MAX_FPS, MOTION_MIN_FPS, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
 
 interface IMotionPlaybackRateProps extends BaseComponentProps {
@@ -41,7 +41,7 @@ export function MotionPlaybackRate({
         resetLabel={`Reset to ${MOTION_SAMPLE_FPS} fps, the rate motions sample at`}
         onReset={fps === MOTION_SAMPLE_FPS ? undefined : onReset}
       >
-        <RenderValueSlider
+        <EditorPopoverSliderRow
           label={"Frames a second"}
           value={fps}
           min={MOTION_MIN_FPS}

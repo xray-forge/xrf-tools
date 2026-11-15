@@ -1,10 +1,9 @@
 import { ArchiveShaderCompilerDescription, ArchiveShaderCompilerShader } from "@xrf/ipc/types/xrf-app-archives";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReadingColumn } from "@xrf/ui/layout/reading-column";
 import { ReactElement } from "react";
 
-import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { describeBaking, describeCompilerFlags } from "./ArchiveShaderCompilerView.utils";
 
 interface IArchiveShaderCompilerViewProps extends BaseComponentProps {
@@ -23,13 +22,14 @@ export function ArchiveShaderCompilerView({
   const { shaders } = description;
 
   return (
-    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+    <ReadingColumn data-testid={dataTestId} id={id} className={className}>
       <EditorPanelSection
         title={`Compiler shaders (${shaders.length})`}
         caption={"Read when the level was built; the blender of the same name in shaders.xr is what draws it"}
       >
         {shaders.map((shader: ArchiveShaderCompilerShader) => (
-          <ArchiveDescriptionRow
+          <EditorPanelProperty
+            isInline
             key={shader.name}
             label={shader.name}
             value={describeCompilerFlags(shader)}
@@ -37,6 +37,6 @@ export function ArchiveShaderCompilerView({
           />
         ))}
       </EditorPanelSection>
-    </ArchiveDescriptionLayout>
+    </ReadingColumn>
   );
 }

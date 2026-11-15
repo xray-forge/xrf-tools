@@ -7,16 +7,16 @@ import {
   EArchiveDescribeRefusal,
   EArchiveFormatDescription,
 } from "@xrf/ipc/types/xrf-app-archives";
+import { useLastValue } from "@xrf/react/last-value";
 import { assertExhaustive, Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
+import { ContentState } from "@xrf/ui/layout/content-state";
 import { EmptyState } from "@xrf/ui/layout/empty-state";
-import { ReactElement, useCallback } from "react";
+import { ReactElement } from "react";
 
-import { TArchiveContent, useLastContent } from "@/core/archive/lib";
+import { TArchiveContent } from "@/core/archive/lib";
 import { ArchivePreviewService } from "@/tools/archives-explorer/services/archive-preview";
 
-import { ArchivePreviewError } from "../ArchivePreviewError";
 import { ArchiveAnmDescriptionView } from "./ArchiveAnmDescriptionView";
 import { ArchiveChunksDescriptionView } from "./ArchiveChunksDescriptionView";
 import { ArchiveDetailDescriptionView } from "./ArchiveDetailDescriptionView";
@@ -46,66 +46,32 @@ import { ArchiveSpawnDescriptionView } from "./ArchiveSpawnDescriptionView";
 import { ArchiveThmDescriptionView } from "./ArchiveThmDescriptionView";
 
 /**
- * What the backend can say about a binary entry the viewer cannot draw.
+ * @param reason - Why the backend declined to describe a file.
+ * @returns What the preview says in place of a description.
  */
-export function ArchiveDescriptionPreview({
-  "data-testid": dataTestId = "archive-description-preview",
-  id,
-  className,
-}: BaseComponentProps): ReactElement {
-  const previewService: ArchivePreviewService = useInjection(ArchivePreviewService);
-  const content: AsyncState<Nullable<TArchiveContent>> = previewService.content;
-
-  // The previous description stays on screen while the next one is read, rather than the panel blanking between
-  // clicks - the same courtesy the texture and sound previews extend.
-  const described: Nullable<TArchiveContent & { kind: "description" }> = useLastContent(
-    content.value?.kind === "description" ? content.value : null,
-    content.isLoading
-  );
-
-  const onGetRefusalDescription = useCallback((reason: ArchiveDescribeRefusal): string => {
-    switch (reason.kind) {
-      case EArchiveDescribeRefusal.NO_DESCRIBER:
-        return reason.extension
-          ? `Nothing reads .${reason.extension} files yet. Their metadata is still available in Details.`
-          : "Nothing reads files without an extension yet. Their metadata is still available in Details.";
-      case EArchiveDescribeRefusal.TOO_LARGE:
-        return (
-          `This file is ${formatBytes(reason.size)}, past the ${formatBytes(reason.maximum)} limit for reading a ` +
-          "file whole to describe it. Its metadata is still available in Details."
-        );
-      default:
-        return assertExhaustive(reason);
-    }
-  }, []);
-
-  if (content.error) {
-    return (
-      <ArchivePreviewError
-        data-testid={dataTestId}
-        id={id}
-        className={className}
-        error={content.error}
-        onRetry={previewService.retry}
-      />
-    );
+function describeRefusal(reason: ArchiveDescribeRefusal): string {
+  switch (reason.kind) {
+    case EArchiveDescribeRefusal.NO_DESCRIBER:
+      return reason.extension
+        ? `Nothing reads .${reason.extension} files yet. Their metadata is still available in Details.`
+        : "Nothing reads files without an extension yet. Their metadata is still available in Details.";
+    case EArchiveDescribeRefusal.TOO_LARGE:
+      return (
+        `This file is ${formatBytes(reason.size)}, past the ${formatBytes(reason.maximum)} limit for reading a ` +
+        "file whole to describe it. Its metadata is still available in Details."
+      );
+    default:
+      return assertExhaustive(reason);
   }
+}
 
-  if (!described) {
-    return content.isLoading ? (
-      <DelayedProgress data-testid={dataTestId} id={id} className={className} />
-    ) : (
-      <EmptyState
-        data-testid={dataTestId}
-        id={id}
-        className={className}
-        title={"Nothing to show"}
-        description={"The selected file did not return a description."}
-      />
-    );
-  }
-
-  const description: ArchiveFileDescription = described.description;
+/**
+ * @param description - What the backend said about the file.
+ * @param props - What the preview hands the view it picks.
+ * @returns The view for the description's format.
+ */
+function renderDescription(description: ArchiveFileDescription, props: BaseComponentProps): ReactElement {
+  const { "data-testid": dataTestId, id, className } = props;
 
   switch (description.format.kind) {
     case EArchiveFormatDescription.ANM:
@@ -414,11 +380,49 @@ export function ArchiveDescriptionPreview({
           id={id}
           className={className}
           title={"No description yet"}
-          description={onGetRefusalDescription(description.format.reason)}
+          description={describeRefusal(description.format.reason)}
         />
       );
 
     default:
       return assertExhaustive(description.format);
   }
+}
+
+/**
+ * What the backend can say about a binary entry the viewer cannot draw.
+ */
+export function ArchiveDescriptionPreview({
+  "data-testid": dataTestId = "archive-description-preview",
+  id,
+  className,
+}: BaseComponentProps): ReactElement {
+  const previewService: ArchivePreviewService = useInjection(ArchivePreviewService);
+  const content: AsyncState<Nullable<TArchiveContent>> = previewService.content;
+
+  // The previous description stays on screen while the next one is read, rather than the panel blanking between
+  // clicks - the same courtesy the texture and sound previews extend.
+  const described: Nullable<TArchiveContent & { kind: "description" }> = useLastValue(
+    content.value?.kind === "description" ? content.value : null,
+    content.isLoading
+  );
+
+  return (
+    <ContentState
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      value={described?.description ?? null}
+      isLoading={content.isLoading}
+      error={content.error}
+      errorTitle={"Could not read this file"}
+      onRetry={previewService.retry}
+      emptyTitle={"Nothing to show"}
+      emptyDescription={"The selected file did not return a description."}
+    >
+      {(description: ArchiveFileDescription) =>
+        renderDescription(description, { "data-testid": dataTestId, id, className })
+      }
+    </ContentState>
+  );
 }

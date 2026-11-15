@@ -1,12 +1,10 @@
 import { formatSeconds } from "@xrf/format";
 import { ArchiveOmfBank } from "@xrf/ipc/types/xrf-app-archives";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
-
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 
 interface IArchiveOmfBankSectionProps extends BaseComponentProps {
   bank: ArchiveOmfBank;
@@ -26,32 +24,37 @@ export function ArchiveOmfBankSection({
 }: IArchiveOmfBankSectionProps): ReactElement {
   return (
     <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Bank"}>
-      <ArchiveDescriptionRow
+      <EditorPanelProperty
+        isInline
         label={"Motions"}
         value={`${bank.motions}`}
         caption={bank.effects ? `${bank.effects} of them effects, played on a bone rather than on a part` : null}
       />
 
-      <ArchiveDescriptionRow
+      <EditorPanelProperty
+        isInline
         label={"Length"}
         value={formatSeconds(bank.durationSeconds)}
         caption={`${bank.frames} frames together, at the format's fixed ${MOTION_SAMPLE_FPS} fps`}
       />
 
-      <ArchiveDescriptionRow
+      <EditorPanelProperty
+        isInline
         label={"Partition"}
         value={`${parts} ${parts === 1 ? "part" : "parts"} · ${bank.bones} bones`}
         caption={"The skeleton this bank was authored against"}
       />
 
-      <ArchiveDescriptionRow
+      <EditorPanelProperty
+        isInline
         label={"Version"}
         value={`${bank.version}`}
         caption={bank.carriesMarks ? null : "Below version 4, which is where motion marks were added"}
       />
 
       {bank.markedMotions ? (
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Marked motions"}
           value={`${bank.markedMotions}`}
           caption={"Carry at least one mark, which is what the inverse-kinematics controller reads"}
@@ -59,7 +62,8 @@ export function ArchiveOmfBankSection({
       ) : null}
 
       {bank.replacedFalloffs ? (
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Replaced falloffs"}
           value={`${bank.replacedFalloffs}`}
           caption={
@@ -70,7 +74,8 @@ export function ArchiveOmfBankSection({
       ) : null}
 
       {bank.divergingLabels ? (
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Stale labels"}
           value={`${bank.divergingLabels}`}
           caption={"Payloads still carrying a name that is not the motion's; release playback never reads them"}

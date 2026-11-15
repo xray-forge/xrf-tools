@@ -4,12 +4,11 @@ import {
   ArchiveLevelWallmarksDescription,
   ArchiveLevelWallmarkSlot,
 } from "@xrf/ipc/types/xrf-app-archives";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReadingColumn } from "@xrf/ui/layout/reading-column";
 import { ReactElement } from "react";
 
-import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { ArchiveLevelWallmarkSlotRow } from "./ArchiveLevelWallmarkSlotRow";
 
 interface IArchiveLevelWallmarksViewProps extends BaseComponentProps {
@@ -30,21 +29,24 @@ export function ArchiveLevelWallmarksView({
   const { slots } = description;
 
   return (
-    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+    <ReadingColumn data-testid={dataTestId} id={id} className={className}>
       <EditorPanelSection title={"Baked decals"}>
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Decals"}
           value={formatCount(description.marks)}
           caption={`Over ${formatCount(description.vertices)} vertices, which is what the layer costs to draw`}
         />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Materials"}
           value={`${slots.length}`}
           caption={"Each a blender and a texture the decals under it are drawn with"}
         />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Read by"}
           value={"Nothing at play time"}
           caption={"The editor bakes these; the runtime places its own wallmarks as a session marks the walls"}
@@ -59,6 +61,6 @@ export function ArchiveLevelWallmarksView({
           <ArchiveLevelWallmarkSlotRow key={index} slot={slot} scope={scope} />
         ))}
       </EditorPanelSection>
-    </ArchiveDescriptionLayout>
+    </ReadingColumn>
   );
 }

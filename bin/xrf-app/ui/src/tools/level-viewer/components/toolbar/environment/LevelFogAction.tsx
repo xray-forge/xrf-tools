@@ -3,6 +3,7 @@ import { formatNumber, formatPercent } from "@xrf/format";
 import { ERenderFogMode } from "@xrf/ipc/types/xrf-renderer";
 import { Optional } from "@xrf/types";
 import { EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
+import { EditorPopoverChoiceRow } from "@xrf/ui/editor/popover-row";
 import { EditorPopoverToggle } from "@xrf/ui/editor/popover-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
@@ -27,7 +28,6 @@ import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weath
 import { LEVEL_MANUAL_WEATHER_FOG_KEYS } from "@/core/level/lib/weather/level-manual-weather-groups";
 import { LevelViewService } from "@/core/level/services/level-view";
 import { LevelWeatherService } from "@/core/level/services/level-weather";
-import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderSettingEntries } from "@/core/render/components/settings/RenderSettingEntries";
 import { RENDER_FOG_SETTINGS } from "@/core/render/lib/features/world/render-fog-choices";
 import { TRenderFogSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
@@ -104,7 +104,7 @@ export function LevelFogAction({
       />
 
       <EditorPopoverGroupSection label={"Rendering"} resetLabel={LEVEL_SETTINGS_RESET_LABEL} onReset={onSettingsReset}>
-        <RenderValueChoice
+        <EditorPopoverChoiceRow
           label={"Fades into"}
           options={FADE_OPTIONS}
           value={isHazed ? "haze" : "sky"}

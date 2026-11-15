@@ -2,14 +2,13 @@ import { formatBytes, formatCount } from "@xrf/format";
 import { ArchiveLevelSpawnDescription, ArchiveLevelSpawnSection } from "@xrf/ipc/types/xrf-app-archives";
 import { filterByName } from "@xrf/search";
 import { EditorFilterInput } from "@xrf/ui/editor/filter-input";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReadingColumn } from "@xrf/ui/layout/reading-column";
 import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useMemo, useState } from "react";
 
-import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
 import { formatLevelBounds } from "../ArchiveDescriptionPreview.utils";
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 
 interface IArchiveLevelSpawnViewProps extends BaseComponentProps {
   description: ArchiveLevelSpawnDescription;
@@ -34,27 +33,30 @@ export function ArchiveLevelSpawnView({
   );
 
   return (
-    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+    <ReadingColumn data-testid={dataTestId} id={id} className={className}>
       <EditorPanelSection title={"Spawned objects"}>
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Objects"}
           value={formatCount(description.objects)}
           caption={`Out of ${sections.length} ${sections.length === 1 ? "section" : "sections"}`}
         />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Covers"}
           value={formatLevelBounds(description.bounds)}
           caption={"Width, height and depth of where the objects stand"}
         />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Read by"}
           value={"xrServer::SLS_Default"}
           caption={"A flat run of spawn packets rather than a set: no header, no graph, no identity"}
         />
 
-        <ArchiveDescriptionRow label={"Size"} value={formatBytes(description.size)} />
+        <EditorPanelProperty isInline label={"Size"} value={formatBytes(description.size)} />
       </EditorPanelSection>
 
       <EditorPanelSection
@@ -71,7 +73,8 @@ export function ArchiveLevelSpawnView({
 
         {matched.length ? (
           matched.map((section: ArchiveLevelSpawnSection) => (
-            <ArchiveDescriptionRow
+            <EditorPanelProperty
+              isInline
               key={section.name}
               label={section.name}
               value={`${formatCount(section.objects)} ${section.objects === 1 ? "object" : "objects"}`}
@@ -83,6 +86,6 @@ export function ArchiveLevelSpawnView({
           </Typography>
         )}
       </EditorPanelSection>
-    </ArchiveDescriptionLayout>
+    </ReadingColumn>
   );
 }

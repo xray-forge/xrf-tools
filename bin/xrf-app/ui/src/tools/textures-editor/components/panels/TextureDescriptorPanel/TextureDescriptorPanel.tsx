@@ -8,7 +8,12 @@ import {
 import { Nullable } from "@xrf/types";
 import { Button } from "@xrf/ui/button";
 import { EditorPanelEmpty, EditorPanelSection } from "@xrf/ui/editor/panel";
-import { EditorPopoverNote } from "@xrf/ui/editor/popover-row";
+import {
+  EditorPopoverNote,
+  EditorPopoverNumberRow,
+  EditorPopoverSwitchRow,
+  EditorPopoverTextRow,
+} from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Alert } from "@xrf/ui/feedback";
 import { Stack } from "@xrf/ui/layout/stack";
@@ -20,12 +25,14 @@ import { hasTextureFlag, withTextureFlag } from "@/tools/textures-editor/lib/tex
 import { withTextureType } from "@/tools/textures-editor/lib/texture-type-change";
 import { TextureEditorService } from "@/tools/textures-editor/services/texture-editor";
 
-import { TextureFlagField } from "./TextureFlagField";
-import { TextureNumberField } from "./TextureNumberField";
 import { TextureSelectField } from "./TextureSelectField";
-import { TextureTextField } from "./TextureTextField";
 
-/** Flags that belong with the fields a person changes to change how a surface looks. */
+/**
+ * Flags that belong with the fields a person changes to change how a surface looks.
+ *
+ * Every flag is labelled by its SDK identifier (`flHasAlpha`, not "Has alpha"): what an author of a `.thm` recognises
+ * and what every other tool and every piece of documentation calls it.
+ */
 const PRIMARY_FLAG_LABELS: ReadonlyArray<string> = ["flDiffuseDetail", "flBumpDetail", "flHasAlpha", "flBinaryAlpha"];
 
 /**
@@ -105,7 +112,7 @@ export function TextureDescriptorPanel({
           onChange={(bumpMode: number) => onEdit({ bumpMode })}
         />
 
-        <TextureTextField
+        <EditorPopoverTextRow
           data-testid={"texture-field-bump-name"}
           label={"Bump texture"}
           value={draft.bumpName}
@@ -113,14 +120,14 @@ export function TextureDescriptorPanel({
           onChange={(bumpName: string) => onEdit({ bumpName })}
         />
 
-        <TextureTextField
+        <EditorPopoverTextRow
           data-testid={"texture-field-detail-name"}
           label={"Detail texture"}
           value={draft.detailName}
           onChange={(detailName: string) => onEdit({ detailName })}
         />
 
-        <TextureNumberField
+        <EditorPopoverNumberRow
           data-testid={"texture-field-detail-scale"}
           label={"Detail scale"}
           value={draft.detailScale}
@@ -129,7 +136,7 @@ export function TextureDescriptorPanel({
 
         <div className={"mt-1 flex flex-col"}>
           {primaryFlags.map((flag: TextureFlagEntry) => (
-            <TextureFlagField
+            <EditorPopoverSwitchRow
               key={flag.bit}
               data-testid={`texture-flag-${flag.label}`}
               label={flag.label}
@@ -169,14 +176,14 @@ export function TextureDescriptorPanel({
           onChange={(material: number) => onEdit({ material })}
         />
 
-        <TextureNumberField
+        <EditorPopoverNumberRow
           data-testid={"texture-field-material-weight"}
           label={"Material weight"}
           value={draft.materialWeight}
           onChange={(materialWeight: number) => onEdit({ materialWeight })}
         />
 
-        <TextureNumberField
+        <EditorPopoverNumberRow
           data-testid={"texture-field-virtual-height"}
           label={"Virtual height"}
           value={draft.virtualHeight}
@@ -184,7 +191,7 @@ export function TextureDescriptorPanel({
           onChange={(virtualHeight: number) => onEdit({ virtualHeight })}
         />
 
-        <TextureTextField
+        <EditorPopoverTextRow
           data-testid={"texture-field-ext-normal-map"}
           label={"Normal map"}
           value={draft.extNormalMapName}
@@ -192,14 +199,14 @@ export function TextureDescriptorPanel({
           onChange={(extNormalMapName: string) => onEdit({ extNormalMapName })}
         />
 
-        <TextureNumberField
+        <EditorPopoverNumberRow
           data-testid={"texture-field-fade-delay"}
           label={"Fade delay"}
           value={draft.fadeDelay}
           onChange={(fadeDelay: number) => onEdit({ fadeDelay })}
         />
 
-        <TextureNumberField
+        <EditorPopoverNumberRow
           data-testid={"texture-field-width"}
           label={"Width"}
           value={draft.width}
@@ -207,13 +214,13 @@ export function TextureDescriptorPanel({
           isReadOnly
         />
 
-        <TextureNumberField data-testid={"texture-field-height"} label={"Height"} value={draft.height} isReadOnly />
+        <EditorPopoverNumberRow data-testid={"texture-field-height"} label={"Height"} value={draft.height} isReadOnly />
 
         <div className={"mt-1 flex flex-col"}>
           {vocabulary.flags
             .filter((flag: TextureFlagEntry) => !PRIMARY_FLAG_LABELS.includes(flag.label))
             .map((flag: TextureFlagEntry) => (
-              <TextureFlagField
+              <EditorPopoverSwitchRow
                 key={flag.bit}
                 data-testid={`texture-flag-${flag.label}`}
                 label={flag.label}

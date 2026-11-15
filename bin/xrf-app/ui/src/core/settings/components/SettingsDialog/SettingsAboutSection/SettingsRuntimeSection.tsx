@@ -3,6 +3,7 @@ import { systemCommands } from "@xrf/ipc/commands/system";
 import { MemoryUsage, RuntimeSnapshot } from "@xrf/ipc/types/xrf-app-system";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
+import { usePolledValue } from "@xrf/react/polled-value";
 import { Nullable } from "@xrf/types";
 import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { StatFigure } from "@xrf/ui/stats";
@@ -10,7 +11,6 @@ import { Typography } from "@xrf/ui/typography";
 import { ReactElement } from "react";
 
 import { useMemoryUsage } from "@/core/diagnostics/lib";
-import { usePolledValue } from "@/lib/react/use-polled-value";
 
 import { describeBackendMemory, describeWebviewMemory } from "./SettingsRuntimeSection.utils";
 

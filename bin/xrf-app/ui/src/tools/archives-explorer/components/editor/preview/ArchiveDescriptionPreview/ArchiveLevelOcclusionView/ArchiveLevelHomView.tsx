@@ -1,12 +1,11 @@
 import { formatCount } from "@xrf/format";
 import { ArchiveLevelHomDescription } from "@xrf/ipc/types/xrf-app-archives";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReadingColumn } from "@xrf/ui/layout/reading-column";
 import { ReactElement } from "react";
 
-import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
 import { formatLevelBounds } from "../ArchiveDescriptionPreview.utils";
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 
 interface IArchiveLevelHomViewProps extends BaseComponentProps {
   description: ArchiveLevelHomDescription;
@@ -22,22 +21,24 @@ export function ArchiveLevelHomView({
   description,
 }: IArchiveLevelHomViewProps): ReactElement {
   return (
-    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+    <ReadingColumn data-testid={dataTestId} id={id} className={className}>
       <EditorPanelSection title={"Occlusion mesh"}>
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Occluders"}
           value={formatCount(description.triangles)}
           caption={"Triangles the renderer culls behind, drawn by nothing itself"}
         />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Covers"}
           value={formatLevelBounds(description.bounds)}
           caption={"Width, height and depth of what the occluders span"}
         />
 
-        <ArchiveDescriptionRow label={"Version"} value={`${description.version}`} />
+        <EditorPanelProperty isInline label={"Version"} value={`${description.version}`} />
       </EditorPanelSection>
-    </ArchiveDescriptionLayout>
+    </ReadingColumn>
   );
 }

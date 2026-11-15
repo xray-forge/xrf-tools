@@ -1,10 +1,13 @@
-import { EditorPopoverCheckboxRow, EditorPopoverNote } from "@xrf/ui/editor/popover-row";
+import {
+  EditorPopoverCheckboxRow,
+  EditorPopoverChoiceRow,
+  EditorPopoverNote,
+  EditorPopoverSliderRow,
+} from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { ReactElement, useCallback } from "react";
 
-import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
-import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import {
   describeRenderSetting,
   ERenderSettingControl,
@@ -77,7 +80,7 @@ export function RenderSettingEntry<G, K extends keyof G>({
     case ERenderSettingControl.CHOICE:
       return (
         <>
-          <RenderValueChoice
+          <EditorPopoverChoiceRow
             data-testid={dataTestId}
             id={id}
             className={className}
@@ -99,7 +102,7 @@ export function RenderSettingEntry<G, K extends keyof G>({
     case ERenderSettingControl.SLIDER:
       return (
         <>
-          <RenderValueSlider
+          <EditorPopoverSliderRow
             data-testid={dataTestId}
             id={id}
             className={className}

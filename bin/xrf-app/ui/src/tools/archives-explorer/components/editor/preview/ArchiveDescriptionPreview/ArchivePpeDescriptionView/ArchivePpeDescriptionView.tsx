@@ -1,8 +1,8 @@
 import { ArchiveDescribeScope, ArchivePpeColor, ArchivePpeDescription } from "@xrf/ipc/types/xrf-app-archives";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReadingColumn } from "@xrf/ui/layout/reading-column";
 import { ReactElement } from "react";
 
-import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
 import { ArchivePpeColorSection } from "./ArchivePpeColorSection";
 import { ArchivePpeEffectSection } from "./ArchivePpeEffectSection";
 import { ArchivePpeValuesSection } from "./ArchivePpeValuesSection";
@@ -23,7 +23,7 @@ export function ArchivePpeDescriptionView({
   scope,
 }: IArchivePpeDescriptionViewProps): ReactElement {
   return (
-    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+    <ReadingColumn data-testid={dataTestId} id={id} className={className}>
       <ArchivePpeEffectSection description={description} scope={scope} />
 
       {description.colors.map((color: ArchivePpeColor) => (
@@ -31,6 +31,6 @@ export function ArchivePpeDescriptionView({
       ))}
 
       <ArchivePpeValuesSection values={description.values} colorMap={description.colorMap} />
-    </ArchiveDescriptionLayout>
+    </ReadingColumn>
   );
 }

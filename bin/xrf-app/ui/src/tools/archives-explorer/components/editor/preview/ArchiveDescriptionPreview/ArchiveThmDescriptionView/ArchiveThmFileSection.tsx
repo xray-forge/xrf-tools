@@ -1,11 +1,10 @@
 import { formatBytes } from "@xrf/format";
 import { ArchiveThmFile } from "@xrf/ipc/types/xrf-app-archives";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { formatChunkId, NOT_DECLARED } from "../ArchiveDescriptionPreview.utils";
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { describeThumbnailType } from "./ArchiveThmDescriptionView.utils";
 
 interface IArchiveThmFileSectionProps extends BaseComponentProps {
@@ -23,16 +22,18 @@ export function ArchiveThmFileSection({
 }: IArchiveThmFileSectionProps): ReactElement {
   return (
     <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"File"}>
-      <ArchiveDescriptionRow
+      <EditorPanelProperty
+        isInline
         label={"Version"}
         value={file.version === null ? NOT_DECLARED : formatChunkId(file.version)}
         caption={file.isSupportedVersion ? null : "Not the version the SDK loads"}
         isMonospace
       />
 
-      <ArchiveDescriptionRow label={"Thumbnail subject"} value={describeThumbnailType(file.thumbnailType)} />
+      <EditorPanelProperty isInline label={"Thumbnail subject"} value={describeThumbnailType(file.thumbnailType)} />
 
-      <ArchiveDescriptionRow
+      <EditorPanelProperty
+        isInline
         label={"Preview picture"}
         value={file.thumbnail ? formatBytes(file.thumbnail.size) : "None"}
         caption={
@@ -43,7 +44,8 @@ export function ArchiveThmFileSection({
       />
 
       {file.extraChunks.length ? (
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Other chunks"}
           value={file.extraChunks.map(formatChunkId).join(", ")}
           caption={"Read and kept, with no field of their own"}
@@ -52,7 +54,8 @@ export function ArchiveThmFileSection({
       ) : null}
 
       {file.trailingChunks.length ? (
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Bytes past fields"}
           value={file.trailingChunks.map(formatChunkId).join(", ")}
           caption={"Chunks longer than their fields: the engine ignores the extra bytes, and a save keeps them"}

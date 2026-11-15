@@ -1,12 +1,12 @@
 import { ETextureSurfaceAlpha, ETextureSurfaceShape } from "@xrf/ipc/types/xrf-app-textures";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { EditorPopoverContent } from "@xrf/ui/editor/popover-content";
+import { EditorPopoverChoiceRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { ViewQuiltIcon } from "@xrf/ui/icons/view-quilt";
 import { ReactElement } from "react";
 
-import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { ETexturePreviewMode, ITexturePreviewOptions, TEXTURE_TILING_STEPS } from "@/core/textures/lib/texture-preview";
 import { describeTextureSurfaceAlpha, describeTextureSurfaceShape } from "@/core/textures/lib/texture-surface";
 
@@ -63,21 +63,21 @@ export function TextureBodyOptions({
       isDisabled={!isSurface}
     >
       <EditorPopoverContent label={"Body"}>
-        <RenderValueChoice
+        <EditorPopoverChoiceRow
           label={"Shape"}
           options={SHAPE_OPTIONS}
           value={options.shape}
           onChange={(shape: ETextureSurfaceShape) => onChangeOptions({ ...options, shape })}
         />
 
-        <RenderValueChoice
+        <EditorPopoverChoiceRow
           label={"Tiling"}
           options={TILING_OPTIONS}
           value={String(options.tiling)}
           onChange={(tiling: string) => onChangeOptions({ ...options, tiling: Number(tiling) })}
         />
 
-        <RenderValueChoice
+        <EditorPopoverChoiceRow
           label={"Alpha"}
           options={ALPHA_OPTIONS}
           value={options.alpha}

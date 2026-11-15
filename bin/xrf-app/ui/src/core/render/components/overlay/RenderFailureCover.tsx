@@ -1,9 +1,8 @@
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ErrorState } from "@xrf/ui/layout/error-state";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
-
-import { RenderFailureNotice } from "@/core/render/components/overlay/RenderFailureNotice";
 
 interface IRenderFailureCoverProps extends BaseComponentProps {
   /** Why the renderer stopped, or null while it draws. */
@@ -25,7 +24,7 @@ export function RenderFailureCover({
 
   return (
     <div data-testid={dataTestId} id={id} className={cn("absolute inset-0 z-20 bg-viewport-backdrop", className)}>
-      <RenderFailureNotice failure={failure} />
+      <ErrorState title={"The renderer stopped"} description={failure} isOnViewport />
     </div>
   );
 }

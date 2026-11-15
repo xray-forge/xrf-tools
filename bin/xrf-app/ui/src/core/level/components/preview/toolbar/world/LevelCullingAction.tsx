@@ -1,5 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
+import { EditorPopoverSliderRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { FilterAltIcon } from "@xrf/ui/icons/filter-alt";
 import { ReactElement, useCallback } from "react";
@@ -14,7 +15,6 @@ import {
 } from "@/core/level/lib/lod/level-lod-options";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { LevelViewService } from "@/core/level/services/level-view";
-import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { describeRenderSetting } from "@/core/render/lib/features/render-setting";
 import { RENDER_CULLING_SETTINGS, RENDER_LOD_SETTINGS } from "@/core/render/lib/features/world/render-culling-choices";
 
@@ -99,7 +99,7 @@ export function LevelCullingAction({
         onToggle={() => viewService.toggleOption("isImpostors")}
         onReset={lod.distance === DEFAULT_LEVEL_LOD_OPTIONS.distance ? undefined : onLodReset}
       >
-        <RenderValueSlider
+        <EditorPopoverSliderRow
           label={"Distance"}
           value={lod.distance}
           {...LEVEL_LOD_LIMITS.distance}

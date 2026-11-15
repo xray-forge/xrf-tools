@@ -1,8 +1,8 @@
 import { ERenderTextureGroup } from "@xrf/ipc/types/xrf-renderer";
+import { IEditorProblem } from "@xrf/ui/editor/problems";
 
 import { ELevelTextureProblemRule } from "@/core/level/lib/problems/level-texture-problem-rule";
 import { ILevelTextureProblem } from "@/core/level/lib/texture/level-texture-report";
-import { IEditorProblem } from "@/core/shell/chrome/EditorProblemsPanel";
 
 /**
  * What the texture set has to say, as rows, the grass's apart from the surfaces'.

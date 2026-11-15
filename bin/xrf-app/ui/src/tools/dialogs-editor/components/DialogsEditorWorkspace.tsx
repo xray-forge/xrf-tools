@@ -3,12 +3,10 @@ import { AsyncState } from "@xrf/async";
 import { DialogDescriptor } from "@xrf/ipc/types/xrf-dialog";
 import { Nullable } from "@xrf/types";
 import { EditorFileHeader } from "@xrf/ui/editor/file-header";
-import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
+import { ContentState } from "@xrf/ui/layout/content-state";
 import { EmptyState } from "@xrf/ui/layout/empty-state";
-import { ErrorState } from "@xrf/ui/layout/error-state";
 import { ReactElement } from "react";
 
-import { inline } from "@/lib/callbacks/inline";
 import { DialogViewService, IDialogSelection } from "@/tools/dialogs-editor/services/dialog-view";
 
 import { DialogGraph } from "./editor/DialogGraph";
@@ -43,23 +41,23 @@ export function DialogsEditorWorkspace(): ReactElement {
       />
 
       <div className={"flex min-h-0 min-w-0 grow overflow-hidden"}>
-        {inline(() => {
-          if (dialog.value) {
-            return (
-              <DialogGraph
-                dialog={dialog.value}
-                selectedNodeId={viewService.inspectedNodeId}
-                onSelect={viewService.inspectNode}
-              />
-            );
-          }
-
-          if (dialog.isLoading) {
-            return <DelayedProgress label={"Reading dialog…"} />;
-          }
-
-          return <ErrorState title={"Could not read this dialog"} description={String(dialog.error)} />;
-        })}
+        <ContentState
+          value={dialog.value}
+          isLoading={dialog.isLoading}
+          error={dialog.error}
+          loadingLabel={"Reading dialog…"}
+          errorTitle={"Could not read this dialog"}
+          emptyTitle={"Dialog unavailable"}
+          emptyDescription={"This dialog could not be read."}
+        >
+          {(value: DialogDescriptor) => (
+            <DialogGraph
+              dialog={value}
+              selectedNodeId={viewService.inspectedNodeId}
+              onSelect={viewService.inspectNode}
+            />
+          )}
+        </ContentState>
       </div>
     </div>
   );

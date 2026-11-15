@@ -9,13 +9,14 @@ import {
 } from "@xrf/ipc/types/xrf-app-levels";
 import { Nullable } from "@xrf/types";
 import { EditorPanelEmpty } from "@xrf/ui/editor/panel";
+import { IEditorProblem } from "@xrf/ui/editor/problems";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useMemo } from "react";
 
 import { describeLevelResidentWait } from "@/core/level/lib/load/level-resident-wait";
 import { EMPTY_LEVEL_RESIDENT, ILevelResident } from "@/core/level/lib/render/level-resident";
 import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
-import { EditorProblemsPanel, IEditorProblem } from "@/core/shell/chrome/EditorProblemsPanel";
+import { EditorProblemsPanel } from "@/core/shell/chrome/EditorProblemsPanel";
 import { listLevelEditorProblems } from "@/tools/level-editor/lib/problems/level-editor-problems";
 import { LevelEditorRenderService } from "@/tools/level-editor/services/level-editor-render";
 import { LevelEditorSceneService } from "@/tools/level-editor/services/level-editor-scene";

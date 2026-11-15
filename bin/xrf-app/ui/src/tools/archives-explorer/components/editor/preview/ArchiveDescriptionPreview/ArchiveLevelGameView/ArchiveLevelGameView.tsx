@@ -1,11 +1,10 @@
 import { formatCount } from "@xrf/format";
 import { ArchiveLevelGameDescription, ArchiveLevelGameSpawn } from "@xrf/ipc/types/xrf-app-archives";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReadingColumn } from "@xrf/ui/layout/reading-column";
 import { ReactElement } from "react";
 
-import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { describeSpawnKind, describeSpawnProfiles } from "./ArchiveLevelGameView.utils";
 
 interface IArchiveLevelGameViewProps extends BaseComponentProps {
@@ -24,19 +23,21 @@ export function ArchiveLevelGameView({
   const { spawns } = description;
 
   return (
-    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+    <ReadingColumn data-testid={dataTestId} id={id} className={className}>
       <EditorPanelSection
         title={"Respawn points"}
         caption={"Grouped by what they spawn: a level plants thousands of a few kinds"}
       >
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Points"}
           value={formatCount(description.rpoints)}
           caption={spawns.length ? `Across ${spawns.length} ${spawns.length === 1 ? "kind" : "kinds"}` : null}
         />
 
         {spawns.map((spawn: ArchiveLevelGameSpawn) => (
-          <ArchiveDescriptionRow
+          <EditorPanelProperty
+            isInline
             key={spawn.kind}
             label={describeSpawnKind(spawn)}
             value={formatCount(spawn.points)}
@@ -46,18 +47,20 @@ export function ArchiveLevelGameView({
       </EditorPanelSection>
 
       <EditorPanelSection title={"Patrol paths"}>
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Paths"}
           value={formatCount(description.ways)}
           caption={`Over ${formatCount(description.wayPoints)} nodes`}
         />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Without a node"}
           value={formatCount(description.emptyWays)}
           caption={"Paths carrying nothing to walk, which are a path in name only"}
         />
       </EditorPanelSection>
-    </ArchiveDescriptionLayout>
+    </ReadingColumn>
   );
 }

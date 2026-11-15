@@ -1,6 +1,7 @@
 import { ERenderFoliageMode } from "@xrf/ipc/types/xrf-renderer";
 import { Optional } from "@xrf/types";
 import { EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
+import { EditorPopoverSliderRow } from "@xrf/ui/editor/popover-row";
 import { EditorPopoverToggle } from "@xrf/ui/editor/popover-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { GrassIcon } from "@xrf/ui/icons/grass";
@@ -15,7 +16,6 @@ import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";
 import { describeLevelFeatureToggle } from "@/core/level/lib/features/level-feature-options";
 import { LEVEL_FOLIAGE_LIGHT_KEYS, resetLevelFoliageKeys } from "@/core/level/lib/features/level-foliage-keys";
-import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { RenderSettingEntries } from "@/core/render/components/settings/RenderSettingEntries";
 import { RenderSettingSection } from "@/core/render/components/settings/RenderSettingSection";
 import {
@@ -78,7 +78,7 @@ export function LevelGrassAction({
       onToggle={toggle}
       onReset={onReset}
     >
-      <RenderValueSlider
+      <EditorPopoverSliderRow
         label={RENDER_GRASS_SETTINGS.density.label}
         description={RENDER_GRASS_SETTINGS.density.description as string}
         value={toGrassDensityScale(grass.density)}

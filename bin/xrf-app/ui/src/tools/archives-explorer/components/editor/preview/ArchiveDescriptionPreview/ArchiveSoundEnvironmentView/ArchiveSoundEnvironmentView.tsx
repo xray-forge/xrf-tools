@@ -1,10 +1,9 @@
 import { ArchiveSoundEnvironment, ArchiveSoundEnvironmentDescription } from "@xrf/ipc/types/xrf-app-archives";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReadingColumn } from "@xrf/ui/layout/reading-column";
 import { ReactElement } from "react";
 
-import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { describeLevels, describeSpace } from "./ArchiveSoundEnvironmentView.utils";
 
 interface IArchiveSoundEnvironmentViewProps extends BaseComponentProps {
@@ -23,13 +22,14 @@ export function ArchiveSoundEnvironmentView({
   const { environments } = description;
 
   return (
-    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+    <ReadingColumn data-testid={dataTestId} id={id} className={className}>
       <EditorPanelSection
         title={`Reverb presets (${environments.length})`}
         caption={"In the order the file holds them, which is how a level addresses one"}
       >
         {environments.map((environment: ArchiveSoundEnvironment) => (
-          <ArchiveDescriptionRow
+          <EditorPanelProperty
+            isInline
             key={environment.name}
             label={environment.name}
             value={describeSpace(environment)}
@@ -37,6 +37,6 @@ export function ArchiveSoundEnvironmentView({
           />
         ))}
       </EditorPanelSection>
-    </ArchiveDescriptionLayout>
+    </ReadingColumn>
   );
 }

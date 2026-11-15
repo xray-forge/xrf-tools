@@ -1,10 +1,9 @@
 import { formatCount } from "@xrf/format";
 import { ArchiveDetailLibraryDescription } from "@xrf/ipc/types/xrf-app-archives";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { describeCoverage, describePlanting, DETAIL_SLOT_METERS } from "./ArchiveDetailLibraryDescriptionView.utils";
 
 interface IArchiveDetailLayerSectionProps extends BaseComponentProps {
@@ -22,25 +21,28 @@ export function ArchiveDetailLayerSection({
 }: IArchiveDetailLayerSectionProps): ReactElement {
   return (
     <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Detail layer"}>
-      <ArchiveDescriptionRow
+      <EditorPanelProperty
+        isInline
         label={"Planted"}
         value={describePlanting(description)}
         caption={`Of ${formatCount(description.slots)} slots, each ${DETAIL_SLOT_METERS} m square`}
       />
 
-      <ArchiveDescriptionRow
+      <EditorPanelProperty
+        isInline
         label={"Grid"}
         value={`${description.sizeX} × ${description.sizeZ}`}
         caption={describeCoverage(description)}
       />
 
-      <ArchiveDescriptionRow
+      <EditorPanelProperty
+        isInline
         label={"Objects"}
         value={`${description.entries.length}`}
         caption={"A slot addresses one of these with six bits, so a library holds at most 63"}
       />
 
-      <ArchiveDescriptionRow label={"Version"} value={`${description.version}`} />
+      <EditorPanelProperty isInline label={"Version"} value={`${description.version}`} />
     </EditorPanelSection>
   );
 }

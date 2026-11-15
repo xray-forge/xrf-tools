@@ -2,16 +2,15 @@ import { systemCommands } from "@xrf/ipc/commands/system";
 import { BuildInfo } from "@xrf/ipc/types/xrf-build-info";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
+import { useMountEffect } from "@xrf/react/mount-effect";
 import { Nullable } from "@xrf/types";
+import { EditorPanelProperty } from "@xrf/ui/editor/panel";
 import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { Stack } from "@xrf/ui/layout/stack";
 import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useState } from "react";
 
-import { useMountEffect } from "@/lib/react/use-mount-effect";
-
 import { IAboutRow } from "./about-row";
-import { SettingsAboutRow } from "./SettingsAboutRow";
 import { describeBuild } from "./SettingsBuildSection.utils";
 
 /**
@@ -39,7 +38,7 @@ export function SettingsBuildSection(): ReactElement {
       <Stack className={"mt-2"} spacing={0.5}>
         {build ? (
           describeBuild(build).map((it: IAboutRow) => (
-            <SettingsAboutRow key={it.label} label={it.label} value={it.value} href={it.href} />
+            <EditorPanelProperty key={it.label} label={it.label} value={it.value} href={it.href} isMonospace isInline />
           ))
         ) : (
           <Typography variant={"caption"}>Reading build details...</Typography>

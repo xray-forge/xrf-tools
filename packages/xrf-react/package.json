@@ -1,0 +1,44 @@
+{
+  "name": "@xrf/react",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "React hooks and helpers that need no theme: polling, throttled drafts, element sizes, copying, ranked search, and an error boundary.",
+  "exports": {
+    "./*": "./src/*/index.ts"
+  },
+  "imports": {
+    "#/*": "./src/*/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "jest",
+    "lint": "eslint . --max-warnings 0 --cache --cache-location target/eslint/cache.json --cache-strategy content",
+    "format": "prettier --write --ignore-path ../../.prettierignore \"**/*.(js|cjs|mjs|ts|tsx|md)\" && pnpm run lint --fix"
+  },
+  "dependencies": {
+    "@xrf/logging": "workspace:*",
+    "@xrf/search": "workspace:*",
+    "@xrf/types": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^19.3.1"
+  },
+  "devDependencies": {
+    "@jest/globals": "catalog:",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.8",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@typescript/native": "catalog:",
+    "eslint": "catalog:",
+    "jest": "catalog:",
+    "jest-environment-jsdom": "catalog:",
+    "prettier": "catalog:",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "typescript": "catalog:",
+    "@xrf/toolchain": "workspace:*"
+  }
+}

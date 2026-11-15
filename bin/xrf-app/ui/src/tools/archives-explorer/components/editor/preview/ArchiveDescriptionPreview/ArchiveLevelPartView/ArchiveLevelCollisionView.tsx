@@ -1,12 +1,11 @@
 import { formatBytes, formatCount } from "@xrf/format";
 import { ArchiveLevelCollisionDescription } from "@xrf/ipc/types/xrf-app-archives";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReadingColumn } from "@xrf/ui/layout/reading-column";
 import { ReactElement } from "react";
 
-import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
 import { formatLevelBounds } from "../ArchiveDescriptionPreview.utils";
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 
 interface IArchiveLevelCollisionViewProps extends BaseComponentProps {
   description: ArchiveLevelCollisionDescription;
@@ -22,28 +21,31 @@ export function ArchiveLevelCollisionView({
   description,
 }: IArchiveLevelCollisionViewProps): ReactElement {
   return (
-    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+    <ReadingColumn data-testid={dataTestId} id={id} className={className}>
       <EditorPanelSection title={"Collision mesh"}>
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Faces"}
           value={formatCount(description.faces)}
           caption={`Over ${formatCount(description.vertices)} vertices`}
         />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Covers"}
           value={formatLevelBounds(description.bounds)}
           caption={"Width, height and depth of the box it declares"}
         />
 
-        <ArchiveDescriptionRow label={"Version"} value={`${description.version}`} />
+        <EditorPanelProperty isInline label={"Version"} value={`${description.version}`} />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Size"}
           value={formatBytes(description.size)}
           caption={"The mesh itself is read past; only the header is read"}
         />
       </EditorPanelSection>
-    </ArchiveDescriptionLayout>
+    </ReadingColumn>
   );
 }

@@ -1,12 +1,11 @@
 import { formatCount } from "@xrf/format";
 import { ArchiveLevelLightsDescription, ArchiveLevelLightsGroup } from "@xrf/ipc/types/xrf-app-archives";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReadingColumn } from "@xrf/ui/layout/reading-column";
 import { ReactElement } from "react";
 
-import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
 import { formatLevelBounds } from "../ArchiveDescriptionPreview.utils";
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { describeGroupContents, describeGroupUse } from "./ArchiveLevelLightsView.utils";
 
 interface IArchiveLevelLightsViewProps extends BaseComponentProps {
@@ -25,21 +24,24 @@ export function ArchiveLevelLightsView({
   const { groups } = description;
 
   return (
-    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+    <ReadingColumn data-testid={dataTestId} id={id} className={className}>
       <EditorPanelSection title={"Compiled lights"}>
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Lights"}
           value={formatCount(description.lights)}
           caption={"Everything the compiler wrote, across every chunk of the file"}
         />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Reaching the runtime"}
           value={formatCount(description.used)}
           caption={"The point lights of the header chunk, which is the only one CLight_DB::LoadHemi opens"}
         />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Covers"}
           value={formatLevelBounds(description.bounds)}
           caption={"Width, height and depth of where the lights stand"}
@@ -51,7 +53,8 @@ export function ArchiveLevelLightsView({
         caption={"In the order the compiler wrote them, each under the id it wrote it as"}
       >
         {groups.map((group: ArchiveLevelLightsGroup) => (
-          <ArchiveDescriptionRow
+          <EditorPanelProperty
+            isInline
             key={group.id}
             label={`Chunk ${group.id}`}
             value={describeGroupContents(group)}
@@ -59,6 +62,6 @@ export function ArchiveLevelLightsView({
           />
         ))}
       </EditorPanelSection>
-    </ArchiveDescriptionLayout>
+    </ReadingColumn>
   );
 }

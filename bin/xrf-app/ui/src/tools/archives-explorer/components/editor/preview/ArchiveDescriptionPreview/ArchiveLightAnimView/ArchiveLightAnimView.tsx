@@ -2,13 +2,12 @@ import { formatCount } from "@xrf/format";
 import { ArchiveLightAnimDescription, ArchiveLightAnimItem } from "@xrf/ipc/types/xrf-app-archives";
 import { filterByName } from "@xrf/search";
 import { EditorFilterInput } from "@xrf/ui/editor/filter-input";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReadingColumn } from "@xrf/ui/layout/reading-column";
 import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useMemo, useState } from "react";
 
-import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { describeTiming } from "./ArchiveLightAnimView.utils";
 
 interface IArchiveLightAnimViewProps extends BaseComponentProps {
@@ -34,15 +33,17 @@ export function ArchiveLightAnimView({
   );
 
   return (
-    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+    <ReadingColumn data-testid={dataTestId} id={id} className={className}>
       <EditorPanelSection title={"Colour animations"}>
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Animations"}
           value={`${items.length}`}
           caption={`Over ${formatCount(description.keys)} keyed colours`}
         />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Version"}
           value={`${description.version}`}
           caption={
@@ -67,7 +68,8 @@ export function ArchiveLightAnimView({
 
         {matched.length ? (
           matched.map((item: ArchiveLightAnimItem) => (
-            <ArchiveDescriptionRow
+            <EditorPanelProperty
+              isInline
               key={item.name}
               label={item.name}
               value={describeTiming(item)}
@@ -80,6 +82,6 @@ export function ArchiveLightAnimView({
           </Typography>
         )}
       </EditorPanelSection>
-    </ArchiveDescriptionLayout>
+    </ReadingColumn>
   );
 }

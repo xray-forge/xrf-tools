@@ -1,9 +1,9 @@
+import { EditorPopoverChoiceRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { ReactElement, useMemo } from "react";
 
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
-import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 
 interface ILevelWeatherSourceChoiceProps extends BaseComponentProps {
   source: ELevelWeatherSource;
@@ -32,7 +32,7 @@ export function LevelWeatherSourceChoice({
   );
 
   return (
-    <RenderValueChoice
+    <EditorPopoverChoiceRow
       data-testid={dataTestId}
       id={id}
       className={className}

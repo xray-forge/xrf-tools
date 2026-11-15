@@ -6,14 +6,13 @@ import {
 } from "@xrf/ipc/types/xrf-app-archives";
 import { filterByName } from "@xrf/search";
 import { EditorFilterInput } from "@xrf/ui/editor/filter-input";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReadingColumn } from "@xrf/ui/layout/reading-column";
 import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useMemo, useState } from "react";
 
-import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
 import { ArchiveDescriptionReference } from "../ArchiveDescriptionReference";
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { ArchiveLevelSurfaceRow } from "./ArchiveLevelSurfaceRow";
 
 interface IArchiveLevelDescriptionViewProps extends BaseComponentProps {
@@ -51,9 +50,10 @@ export function ArchiveLevelDescriptionView({
   );
 
   return (
-    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+    <ReadingColumn data-testid={dataTestId} id={id} className={className}>
       <EditorPanelSection title={"Bundle"}>
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Surfaces"}
           value={`${bundle.surfaces}`}
           caption={
@@ -63,7 +63,8 @@ export function ArchiveLevelDescriptionView({
           }
         />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Shaders"}
           value={`${bundle.shaders}`}
           caption={
@@ -73,7 +74,8 @@ export function ArchiveLevelDescriptionView({
           }
         />
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Textures"}
           value={`${bundle.textures}`}
           caption={
@@ -84,14 +86,16 @@ export function ArchiveLevelDescriptionView({
         {bundle.library ? (
           <ArchiveDescriptionReference label={"Shader library"} reference={bundle.library} scope={scope} />
         ) : (
-          <ArchiveDescriptionRow
+          <EditorPanelProperty
+            isInline
             label={"Shader library"}
             value={"Not open"}
             caption={"Shader names are carried unasked; open the tree holding shaders.xr to resolve them"}
           />
         )}
 
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Built by"}
           value={`xrLC ${bundle.xrlcVersion}`}
           caption={`Quality ${bundle.xrlcQuality}`}
@@ -120,6 +124,6 @@ export function ArchiveLevelDescriptionView({
           </Typography>
         )}
       </EditorPanelSection>
-    </ArchiveDescriptionLayout>
+    </ReadingColumn>
   );
 }

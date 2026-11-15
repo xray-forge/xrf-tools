@@ -1,12 +1,11 @@
 import { formatHex } from "@xrf/format";
 import { ArchiveDescribeScope, ArchiveDetailModel } from "@xrf/ipc/types/xrf-app-archives";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { NOT_DECLARED } from "../ArchiveDescriptionPreview.utils";
 import { ArchiveDescriptionReference } from "../ArchiveDescriptionReference";
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { describeModelBounds, describeModelMesh, describeModelScale } from "./ArchiveDetailModelSection.utils";
 
 interface IArchiveDetailModelSectionProps extends BaseComponentProps {
@@ -32,29 +31,33 @@ export function ArchiveDetailModelSection({
       {model.texture ? (
         <ArchiveDescriptionReference label={"Texture"} reference={model.texture} scope={scope} />
       ) : (
-        <ArchiveDescriptionRow label={"Texture"} value={NOT_DECLARED} />
+        <EditorPanelProperty isInline label={"Texture"} value={NOT_DECLARED} />
       )}
 
-      <ArchiveDescriptionRow
+      <EditorPanelProperty
+        isInline
         label={"Shader"}
         value={model.shader || NOT_DECLARED}
         isMonospace={Boolean(model.shader)}
         caption={"A blender defined in `shaders.xr` rather than a file, so there is nothing to select"}
       />
 
-      <ArchiveDescriptionRow
+      <EditorPanelProperty
+        isInline
         label={"Mesh"}
         value={describeModelMesh(model)}
         caption={describeModelBounds(model.bounds) ?? "The object carries no mesh at all"}
       />
 
-      <ArchiveDescriptionRow
+      <EditorPanelProperty
+        isInline
         label={"Scale"}
         value={describeModelScale(model)}
         caption={"What a slot may multiply the object by when it plants one"}
       />
 
-      <ArchiveDescriptionRow
+      <EditorPanelProperty
+        isInline
         label={"Sways"}
         value={model.isWaving ? "Yes" : "No"}
         caption={
@@ -65,7 +68,8 @@ export function ArchiveDetailModelSection({
       />
 
       {model.unnamedFlags ? (
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Unnamed flags"}
           value={formatHex(model.unnamedFlags)}
           caption={"Bits of the flag word the engine gives no name"}

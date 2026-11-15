@@ -1,10 +1,9 @@
 import { ArchiveDescribeScope, ArchiveThmTexture } from "@xrf/ipc/types/xrf-app-archives";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { ArchiveDescriptionReference } from "../ArchiveDescriptionReference";
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { describeTextureShape } from "./ArchiveThmDescriptionView.utils";
 
 interface IArchiveThmTextureSectionProps extends BaseComponentProps {
@@ -30,10 +29,11 @@ export function ArchiveThmTextureSection({
     <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Texture"}>
       <ArchiveDescriptionReference label={"File"} reference={texture.reference} scope={scope} />
 
-      <ArchiveDescriptionRow label={"Size"} value={describeTextureShape(texture)} />
+      <EditorPanelProperty isInline label={"Size"} value={describeTextureShape(texture)} />
 
       {texture.declared ? (
-        <ArchiveDescriptionRow
+        <EditorPanelProperty
+          isInline
           label={"Declared size"}
           value={`${texture.declared.width} × ${texture.declared.height}`}
           caption={

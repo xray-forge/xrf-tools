@@ -1,11 +1,10 @@
 import { ArchiveThmParameters } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable } from "@xrf/types";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { formatColorWord, NOT_DECLARED } from "../ArchiveDescriptionPreview.utils";
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { ArchiveThmFlagList } from "./ArchiveThmFlagList";
 
 interface IArchiveThmRecipeSectionProps extends BaseComponentProps {
@@ -33,32 +32,45 @@ export function ArchiveThmRecipeSection({
     >
       {parameters ? (
         <>
-          <ArchiveDescriptionRow label={"Format"} value={parameters.formatLabel} />
+          <EditorPanelProperty isInline label={"Format"} value={parameters.formatLabel} />
 
-          <ArchiveDescriptionRow label={"Mip filter"} value={parameters.mipFilterLabel} />
+          <EditorPanelProperty isInline label={"Mip filter"} value={parameters.mipFilterLabel} />
 
-          <ArchiveDescriptionRow
+          <EditorPanelProperty
+            isInline
             label={"Converted size"}
             value={`${parameters.width} × ${parameters.height}`}
             isMonospace
           />
 
-          <ArchiveDescriptionRow label={"Border colour"} value={formatColorWord(parameters.borderColor)} isMonospace />
+          <EditorPanelProperty
+            isInline
+            label={"Border colour"}
+            value={formatColorWord(parameters.borderColor)}
+            isMonospace
+          />
 
-          <ArchiveDescriptionRow label={"Fade colour"} value={formatColorWord(parameters.fadeColor)} isMonospace />
+          <EditorPanelProperty
+            isInline
+            label={"Fade colour"}
+            value={formatColorWord(parameters.fadeColor)}
+            isMonospace
+          />
 
-          <ArchiveDescriptionRow label={"Fade amount"} value={parameters.fadeAmount} />
+          <EditorPanelProperty isInline label={"Fade amount"} value={parameters.fadeAmount} />
 
-          <ArchiveDescriptionRow
+          <EditorPanelProperty
+            isInline
             label={"Fade delay"}
             value={fadeDelay === null ? NOT_DECLARED : fadeDelay}
             caption={"Mip level the converter starts fading from"}
           />
 
-          <ArchiveDescriptionRow label={"Flags"} value={<ArchiveThmFlagList flags={parameters.flags} />} />
+          <EditorPanelProperty isInline label={"Flags"} value={<ArchiveThmFlagList flags={parameters.flags} />} />
 
           {parameters.unnamedFlags ? (
-            <ArchiveDescriptionRow
+            <EditorPanelProperty
+              isInline
               label={"Unnamed bits"}
               value={formatColorWord(parameters.unnamedFlags)}
               caption={"Bits the flag word carries that the SDK has no name for"}
@@ -67,7 +79,7 @@ export function ArchiveThmRecipeSection({
           ) : null}
         </>
       ) : (
-        <ArchiveDescriptionRow label={"Parameters"} value={NOT_DECLARED} />
+        <EditorPanelProperty isInline label={"Parameters"} value={NOT_DECLARED} />
       )}
     </EditorPanelSection>
   );

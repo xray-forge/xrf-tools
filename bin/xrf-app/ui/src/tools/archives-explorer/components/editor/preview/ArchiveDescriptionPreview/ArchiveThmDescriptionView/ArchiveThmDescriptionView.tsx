@@ -1,8 +1,8 @@
 import { ArchiveDescribeScope, ArchiveThmDescription } from "@xrf/ipc/types/xrf-app-archives";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReadingColumn } from "@xrf/ui/layout/reading-column";
 import { ReactElement } from "react";
 
-import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
 import { ArchiveThmEngineSection } from "./ArchiveThmEngineSection";
 import { ArchiveThmFileSection } from "./ArchiveThmFileSection";
 import { ArchiveThmRecipeSection } from "./ArchiveThmRecipeSection";
@@ -26,7 +26,7 @@ export function ArchiveThmDescriptionView({
   scope,
 }: IArchiveThmDescriptionViewProps): ReactElement {
   return (
-    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+    <ReadingColumn data-testid={dataTestId} id={id} className={className}>
       <ArchiveThmTextureSection texture={description.texture} scope={scope} />
 
       <ArchiveThmEngineSection textureType={description.textureType} />
@@ -43,6 +43,6 @@ export function ArchiveThmDescriptionView({
       <ArchiveThmRecipeSection parameters={description.parameters} fadeDelay={description.fadeDelay} />
 
       <ArchiveThmFileSection file={description.file} />
-    </ArchiveDescriptionLayout>
+    </ReadingColumn>
   );
 }

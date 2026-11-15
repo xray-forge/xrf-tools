@@ -6,13 +6,12 @@ import {
   ArchiveThmDetail,
 } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable } from "@xrf/types";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { NOT_DECLARED } from "../ArchiveDescriptionPreview.utils";
 import { ArchiveDescriptionReference } from "../ArchiveDescriptionReference";
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { describeDetailUsage } from "./ArchiveThmDescriptionView.utils";
 
 interface IArchiveThmReferencesSectionProps extends BaseComponentProps {
@@ -38,7 +37,8 @@ export function ArchiveThmReferencesSection({
     <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"References"}>
       {bump ? (
         <>
-          <ArchiveDescriptionRow
+          <EditorPanelProperty
+            isInline
             label={"Bump mode"}
             value={bump.modeLabel}
             caption={bump.isUsed ? null : "The engine does not resolve a bump texture for this descriptor"}
@@ -47,17 +47,18 @@ export function ArchiveThmReferencesSection({
           {bump.texture ? (
             <ArchiveDescriptionReference label={"Bump texture"} reference={bump.texture} scope={scope} />
           ) : (
-            <ArchiveDescriptionRow label={"Bump texture"} value={"Names none"} />
+            <EditorPanelProperty isInline label={"Bump texture"} value={"Names none"} />
           )}
 
-          <ArchiveDescriptionRow
+          <EditorPanelProperty
+            isInline
             label={"Virtual height"}
             value={formatNumber(bump.virtualHeight, 3)}
             caption={"Read when the pair is generated, never at runtime"}
           />
         </>
       ) : (
-        <ArchiveDescriptionRow label={"Bump"} value={NOT_DECLARED} />
+        <EditorPanelProperty isInline label={"Bump"} value={NOT_DECLARED} />
       )}
 
       {detail ? (
@@ -65,15 +66,15 @@ export function ArchiveThmReferencesSection({
           {detail.texture ? (
             <ArchiveDescriptionReference label={"Detail texture"} reference={detail.texture} scope={scope} />
           ) : (
-            <ArchiveDescriptionRow label={"Detail texture"} value={"Names none"} />
+            <EditorPanelProperty isInline label={"Detail texture"} value={"Names none"} />
           )}
 
-          <ArchiveDescriptionRow label={"Detail scale"} value={formatNumber(detail.scale, 3)} />
+          <EditorPanelProperty isInline label={"Detail scale"} value={formatNumber(detail.scale, 3)} />
 
-          <ArchiveDescriptionRow label={"Detail applied by"} value={describeDetailUsage(detail)} />
+          <EditorPanelProperty isInline label={"Detail applied by"} value={describeDetailUsage(detail)} />
         </>
       ) : (
-        <ArchiveDescriptionRow label={"Detail"} value={NOT_DECLARED} />
+        <EditorPanelProperty isInline label={"Detail"} value={NOT_DECLARED} />
       )}
 
       {externalNormalMap ? (

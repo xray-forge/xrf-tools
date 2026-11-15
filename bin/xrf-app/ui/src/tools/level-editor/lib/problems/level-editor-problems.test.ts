@@ -8,9 +8,9 @@ import {
   SceneObjectToolDescription,
 } from "@xrf/ipc/types/xrf-app-levels";
 import { ERenderTextureGroup } from "@xrf/ipc/types/xrf-renderer";
+import { IEditorProblem } from "@xrf/ui/editor/problems";
 
 import { ELevelTextureProblemRule } from "@/core/level/lib/problems/level-texture-problem-rule";
-import { IEditorProblem } from "@/core/shell/chrome/EditorProblemsPanel";
 import {
   mockSceneObject,
   mockSceneObjectsDescription,
