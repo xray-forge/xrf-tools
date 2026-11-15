@@ -1,8 +1,10 @@
-use xrf_chunk::{ChunkField, ChunkFieldKind, ChunkFieldSource};
+use byteorder::ByteOrder;
+use xrf_chunk::{ChunkField, ChunkFieldKind, ChunkFieldReplay, ChunkFieldSource};
 use xrf_editable_level::EditableLevelValue;
 use xrf_error::{XrfError, XrfResult};
 use xrf_ini::IniSection;
 use xrf_math::Vector3d;
+use xrf_spawn::AlifeObject;
 
 /// An entity's spawn packet as the Level Editor saves it in `[object_N_spawndata]`: one field per value, numbered from
 /// `000001` (`SIniFileStream::gen_name`, `iniStreamImpl.cpp`) and printed as `CInifile` prints its kind. Read field by
@@ -58,6 +60,33 @@ impl<'a> LevelSpawnDataFields<'a> {
     }
 
     Ok(())
+  }
+
+  /// The entity whose packet `data` holds, a spawn point's `[object_N_spawndata]` with its name and flags left out,
+  /// read whole as the build reads it.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error where the packet is not a spawn packet of a known class, its state does not read whole, or it
+  /// holds a field past the packet's last.
+  pub fn read_entity<T: ByteOrder>(data: &IniSection) -> XrfResult<AlifeObject> {
+    let mut fields: LevelSpawnDataFields<'_> = LevelSpawnDataFields::new(data);
+    let entity: AlifeObject = AlifeObject::read_spawn_packet::<T, _>(&mut ChunkFieldReplay::new(&mut fields))?;
+
+    fields.assert_read()?;
+
+    Ok(entity)
+  }
+
+  /// The visual the entity whose packet `data` holds is drawn as, by the name its packet keeps
+  /// (`cse_visual::visual_name`), which is what the Level Editor draws a spawn point as, whatever its section's config
+  /// says; none for a class drawn as nothing and for a packet naming no visual.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error where the packet does not read ([`Self::read_entity`]).
+  pub fn read_visual<T: ByteOrder>(data: &IniSection) -> XrfResult<Option<String>> {
+    Ok(Self::read_entity::<T>(data)?.inherited.get_visual().map(str::to_owned))
   }
 
   /// Refuses a numbered field past the last one read, which the packet did not take: the editor would ignore it, so

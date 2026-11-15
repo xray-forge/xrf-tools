@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use byteorder::ByteOrder;
-use xrf_chunk::{ChunkFieldRecorder, ChunkFieldReplay, ChunkWriter};
+use xrf_chunk::{ChunkFieldRecorder, ChunkWriter};
 use xrf_editable_level::{
   EditableCustomObject, EditableObjectPart, EditableObjectTransform, EditableShape, EditableShapeElement,
   EditableShapeObject, EditableSpawnPointKind, EditableSpawnPointObject,
@@ -366,10 +366,7 @@ impl LevelEntityConversion {
     data: &IniSection,
     id: u32,
   ) -> XrfResult<LevelSpawnObject> {
-    let mut fields: LevelSpawnDataFields<'_> = LevelSpawnDataFields::new(data);
-    let mut entity: AlifeObject = AlifeObject::read_spawn_packet::<T, _>(&mut ChunkFieldReplay::new(&mut fields))?;
-
-    fields.assert_read()?;
+    let mut entity: AlifeObject = LevelSpawnDataFields::read_entity::<T>(data)?;
 
     if entity.header.section != section {
       return Err(XrfError::new_invalid_error(format!(

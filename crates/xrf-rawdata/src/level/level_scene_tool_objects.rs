@@ -33,6 +33,18 @@ impl<O: EditableToolObject> LevelSceneToolObjects<O> {
     })
   }
 
+  /// Every object in the order the editor holds them once loaded, the members then the part's own, each with its
+  /// place in that order: the index a scene's object is named by.
+  pub fn iter_indexed(&self) -> impl Iterator<Item = (u32, &O)> {
+    (0u32..).zip(
+      self
+        .members
+        .iter()
+        .map(|member| &member.object)
+        .chain(&self.part.objects),
+    )
+  }
+
   /// The tool's part as the editor holds it once loaded: its objects the members, then its own.
   pub fn into_part(self) -> EditableObjectPart<O> {
     let Self { members, mut part } = self;

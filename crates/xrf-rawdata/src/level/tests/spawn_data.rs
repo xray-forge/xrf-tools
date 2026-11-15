@@ -4,7 +4,10 @@ use xrf_chunk::{
 use xrf_error::XrfResult;
 use xrf_ini::{IniFile, IniFormat, IniSection};
 use xrf_math::{Sphere, Vector3d};
-use xrf_spawn::{AlifeObjectAbstract, AlifeObjectSpaceRestrictor, Shape, SpawnPacket, SpawnPacketHeader};
+use xrf_spawn::{
+  AlifeObject, AlifeObjectAbstract, AlifeObjectBreakable, AlifeObjectDynamicVisual, AlifeObjectInherited,
+  AlifeObjectSpaceRestrictor, ClsId, Shape, SpawnPacket, SpawnPacketHeader,
+};
 
 use crate::LevelSpawnDataFields;
 
@@ -139,6 +142,82 @@ fn refuses_spawn_data_past_the_packet() -> XrfResult {
     .to_string();
 
   assert!(error.contains("holds field 000032 past the packet's last"), "{error}");
+
+  Ok(())
+}
+
+/// A breakable box drawn as `visual`, the restrictor's header otherwise.
+fn breakable(visual: &str) -> AlifeObject {
+  AlifeObject {
+    header: SpawnPacketHeader {
+      section: String::from("breakable_object"),
+      name: String::from("box_0000"),
+      ..restrictor().header
+    },
+    clsid: ClsId::OBrkbl,
+    inherited: AlifeObjectInherited::CseAlifeObjectBreakable(Box::new(AlifeObjectBreakable {
+      base: AlifeObjectDynamicVisual {
+        base: restrictor().state.base,
+        visual_name: String::from(visual),
+        visual_flags: 0,
+      },
+      health: 1.0,
+    })),
+  }
+}
+
+/// `entity`'s spawn packet as the editor saves it in a spawn point's spawn data.
+fn write_entity(entity: &AlifeObject) -> XrfResult<IniSection> {
+  let mut recorder: ChunkFieldRecorder = ChunkFieldRecorder::new();
+  let mut section: IniSection = IniSection::new("spawndata");
+
+  entity.write_spawn_packet::<XRayByteOrder, _>(&mut recorder)?;
+  LevelSpawnDataFields::write_section(&recorder.into_fields(), &mut section)?;
+
+  Ok(section)
+}
+
+/// The visual a spawn point is drawn as is its packet's own, read whatever its class, and none for a class drawn as
+/// nothing or a packet naming none.
+#[test]
+fn reads_the_visual_a_packet_names() -> XrfResult {
+  assert_eq!(
+    LevelSpawnDataFields::read_visual::<XRayByteOrder>(&write_entity(&breakable("dynamics\\box\\box_wood_01"))?)?,
+    Some(String::from("dynamics\\box\\box_wood_01"))
+  );
+  assert_eq!(
+    LevelSpawnDataFields::read_visual::<XRayByteOrder>(&write_entity(&breakable(""))?)?,
+    None,
+    "a packet naming no visual"
+  );
+
+  let mut restrictor_data: IniSection = IniSection::new("spawndata");
+  let mut recorder: ChunkFieldRecorder = ChunkFieldRecorder::new();
+
+  restrictor().write_fields::<XRayByteOrder, _>(&mut recorder)?;
+  LevelSpawnDataFields::write_section(&recorder.into_fields(), &mut restrictor_data)?;
+
+  assert_eq!(
+    LevelSpawnDataFields::read_visual::<XRayByteOrder>(&restrictor_data)?,
+    None,
+    "a restrictor is drawn as nothing"
+  );
+
+  Ok(())
+}
+
+/// A packet that does not read names no visual: it is refused as the build refuses it.
+#[test]
+fn refuses_the_visual_of_a_packet_that_does_not_read() -> XrfResult {
+  let mut data: IniSection = write_entity(&breakable("dynamics\\box\\box_wood_01"))?;
+
+  data.set(
+    LevelSpawnDataFields::format_key(data.fields.len() + 1),
+    LevelSpawnDataFields::format_value(&ChunkField::U8(0)),
+  );
+
+  assert!(LevelSpawnDataFields::read_visual::<XRayByteOrder>(&data).is_err());
+  assert!(LevelSpawnDataFields::read_visual::<XRayByteOrder>(&IniSection::new("spawndata")).is_err());
 
   Ok(())
 }
