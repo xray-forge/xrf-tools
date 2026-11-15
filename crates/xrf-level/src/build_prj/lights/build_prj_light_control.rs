@@ -19,7 +19,8 @@ pub struct BuildPrjLightControl {
 
 impl BuildPrjLightControl {
   /// Bytes a layer occupies before its data: the name and the data's count.
-  pub const HEAD_SIZE: u64 = BuildPrjName::SHORT_SIZE as u64 + 4;
+  #[cfg(test)]
+  pub(crate) const HEAD_SIZE: u64 = BuildPrjName::SHORT_SIZE as u64 + 4;
 }
 
 impl ChunkReadWrite for BuildPrjLightControl {
