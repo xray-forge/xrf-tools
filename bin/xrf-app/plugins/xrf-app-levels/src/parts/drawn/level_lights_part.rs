@@ -10,7 +10,7 @@ use xrf_visual::{LightsDescription, LightsPacker};
 
 use crate::level::SelectedLevel;
 use crate::parts::LevelTextureReference;
-use crate::parts::{LevelSpawnPart, PackedLevelLights, SpawnVisualReader};
+use crate::parts::{LevelSpawnPart, LevelSpawnVisualsPart, PackedLevelLights};
 use crate::report::LevelReport;
 
 /// What a change event calls what a level's lights were read from when it goes stale.
@@ -62,7 +62,7 @@ impl LevelLightsPart {
     }
 
     match LevelSpawnPart::get(current, search) {
-      Ok(spawn) => SpawnVisualReader::with(current, search, |visuals| {
+      Ok(spawn) => LevelSpawnVisualsPart::with_reader(current, search, |visuals| {
         packer.add_objects(spawn.list_kept(), &mut |name| {
           visuals.get(name).ok().and_then(|it| it.rest.clone())
         });

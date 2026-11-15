@@ -4,28 +4,34 @@ import { ERenderLevelHit, ERenderSelectionTarget } from "@xrf/ipc/types/xrf-rend
 
 import { toLevelSpawnSelection } from "@/core/level/lib/pick/level-pick-selection";
 import { mockSceneObjectsDescription } from "@/tools/level-editor/fixtures/scene.mocks";
-import { toSceneHelperId } from "@/tools/level-editor/lib/helpers/scene-helper-id";
 import {
   isSceneObjectListed,
   toLevelEditorPick,
   toLevelEditorSelection,
 } from "@/tools/level-editor/lib/pick/level-editor-pick";
+import { toSceneRenderId } from "@/tools/level-editor/lib/render/scene-render-id";
 
 const BOX: SceneObjectId = { index: 1, tool: ESceneToolKind.SCENE_OBJECT };
 const STALKER: SceneObjectId = { index: 2, tool: ESceneToolKind.SPAWN };
 
+/** The render id `object` carries. */
+function toId(object: SceneObjectId): number {
+  return toSceneRenderId(object) ?? -1;
+}
+
 describe("toLevelEditorPick", () => {
-  it("names a model by its place among the scene objects and a helper by the object its id carries", () => {
+  it("names a model and a helper alike by the object their render id carries", () => {
     const objects = mockSceneObjectsDescription();
 
-    expect(toLevelEditorPick({ depth: 1, kind: ERenderLevelHit.SPAWN, object: 1, point: [0, 0, 0] }, objects)).toEqual(
-      BOX
-    );
     expect(
-      toLevelEditorPick(
-        { depth: 1, kind: ERenderLevelHit.HELPER, object: toSceneHelperId(STALKER) ?? -1, point: [0, 0, 0] },
-        objects
-      )
+      toLevelEditorPick({ depth: 1, kind: ERenderLevelHit.SPAWN, object: toId(BOX), point: [0, 0, 0] }, objects)
+    ).toEqual(BOX);
+    expect(
+      toLevelEditorPick({ depth: 1, kind: ERenderLevelHit.HELPER, object: toId(STALKER), point: [0, 0, 0] }, objects)
+    ).toEqual(STALKER);
+    // A spawn point drawn as its model answers its spawn point, as its helper does.
+    expect(
+      toLevelEditorPick({ depth: 1, kind: ERenderLevelHit.SPAWN, object: toId(STALKER), point: [0, 0, 0] }, objects)
     ).toEqual(STALKER);
   });
 
@@ -49,9 +55,23 @@ describe("toLevelEditorPick", () => {
       )
     ).toBeNull();
     expect(
-      toLevelEditorPick({ depth: 1, kind: ERenderLevelHit.SPAWN, object: 9, point: [0, 0, 0] }, objects)
+      toLevelEditorPick(
+        {
+          depth: 1,
+          kind: ERenderLevelHit.SPAWN,
+          object: toId({ index: 9, tool: ESceneToolKind.SCENE_OBJECT }),
+          point: [0, 0, 0],
+        },
+        objects
+      )
     ).toBeNull();
-    expect(toLevelEditorPick({ depth: 1, kind: ERenderLevelHit.SPAWN, object: 0, point: [0, 0, 0] }, null)).toBeNull();
+    // A bare index names the first tool's object, a group's, which the listing does not hold.
+    expect(
+      toLevelEditorPick({ depth: 1, kind: ERenderLevelHit.SPAWN, object: 1, point: [0, 0, 0] }, objects)
+    ).toBeNull();
+    expect(
+      toLevelEditorPick({ depth: 1, kind: ERenderLevelHit.SPAWN, object: toId(BOX), point: [0, 0, 0] }, null)
+    ).toBeNull();
   });
 });
 
@@ -66,10 +86,16 @@ describe("isSceneObjectListed", () => {
 });
 
 describe("toLevelEditorSelection", () => {
-  it("outlines a scene object's model, and nothing for a helped object or none", () => {
-    expect(toLevelEditorSelection(BOX)).toEqual(toLevelSpawnSelection(1));
-    expect(toLevelEditorSelection(BOX)?.target).toEqual({ kind: ERenderSelectionTarget.SPAWN, object: 1 });
-    expect(toLevelEditorSelection(STALKER)).toBeNull();
+  it("outlines the model standing as the selected object by its render id, whatever its tool", () => {
+    expect(toLevelEditorSelection(BOX)).toEqual(toLevelSpawnSelection(toId(BOX)));
+    expect(toLevelEditorSelection(BOX)?.target).toEqual({ kind: ERenderSelectionTarget.SPAWN, object: 0x0200_0001 });
+    expect(toLevelEditorSelection(STALKER)?.target).toEqual({
+      kind: ERenderSelectionTarget.SPAWN,
+      object: 0x0600_0002,
+    });
+  });
+
+  it("outlines nothing for no selection", () => {
     expect(toLevelEditorSelection(null)).toBeNull();
   });
 });

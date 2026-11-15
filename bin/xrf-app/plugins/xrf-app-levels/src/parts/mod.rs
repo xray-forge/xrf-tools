@@ -22,7 +22,7 @@ pub(crate) use level::{
 };
 pub(crate) use level::{LevelMapArea, LevelMapDescription, LevelPlacements, LevelTextureReference};
 pub(crate) use spawn::{
-  LevelGraphPart, LevelHemiPart, LevelSectionsPart, LevelSpawn, LevelSpawnPart, LevelSpawnVisual, LevelSpawnVisuals,
-  LevelSpawnVisualsPart, LevelStartPart, NamedSpawnVisual, SpawnVisualReader,
+  LevelGraphPart, LevelHemiPart, LevelSectionsPart, LevelSpawn, LevelSpawnPart, LevelSpawnVisualsPart, LevelStartPart,
+  NamedSpawnVisual,
 };
 pub(crate) use spawn::{LevelSpawnObjectHemi, LevelStart, LevelStartOrigin};

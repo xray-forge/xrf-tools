@@ -16,6 +16,7 @@ import {
   mockSceneDrawDescription,
   mockSceneHelpersDescription,
 } from "@/tools/level-editor/fixtures/scene.mocks";
+import { DEFAULT_LEVEL_EDITOR_HELPER_OPTIONS } from "@/tools/level-editor/lib/helpers/level-editor-helper-options";
 import {
   DEFAULT_LEVEL_EDITOR_LIGHTING,
   toLevelEditorSceneBounds,
@@ -63,26 +64,43 @@ describe("toLevelEditorViewOptions", () => {
 });
 
 describe("toLevelEditorWorldToggles", () => {
-  // Every scene object stands in the props group, which nothing hides.
-  it("plays the scene's objects alone, silent", () => {
-    expect(toLevelEditorWorldToggles([])).toMatchObject({
+  // Every scene object stands in the props group, which nothing hides; every spawn point's model in the items group.
+  it("plays the scene's objects and its spawn points' models alone, silent", () => {
+    expect(toLevelEditorWorldToggles([], DEFAULT_LEVEL_EDITOR_HELPER_OPTIONS)).toMatchObject({
       hiddenSpawnObjects: [],
       isRainy: false,
-      isSpawnedItems: false,
+      isSpawnedItems: true,
+      isSpawnedLamps: false,
       isSpawnedProps: true,
       isSpawnedWeapons: false,
       sound: { isHeard: false },
     });
   });
 
-  it("hides the scene objects hidden one by one by their index, ascending, every other tool's left to its helper", () => {
+  it("switches the spawn points' models with their helpers' row and the master switch over it", () => {
     expect(
-      toLevelEditorWorldToggles([
-        { index: 7, tool: ESceneToolKind.SCENE_OBJECT },
-        { index: 2, tool: ESceneToolKind.SPAWN },
-        { index: 3, tool: ESceneToolKind.SCENE_OBJECT },
-      ]).hiddenSpawnObjects
-    ).toEqual([3, 7]);
+      toLevelEditorWorldToggles([], { isShown: true, tools: { [ESceneToolKind.SPAWN]: false } }).isSpawnedItems
+    ).toBe(false);
+    expect(toLevelEditorWorldToggles([], { isShown: false, tools: {} })).toMatchObject({
+      isSpawnedItems: false,
+      isSpawnedProps: true,
+    });
+    expect(
+      toLevelEditorWorldToggles([], { isShown: true, tools: { [ESceneToolKind.WAY]: false } }).isSpawnedItems
+    ).toBe(true);
+  });
+
+  it("hides the objects hidden one by one by their render ids, ascending, whatever their tool", () => {
+    expect(
+      toLevelEditorWorldToggles(
+        [
+          { index: 7, tool: ESceneToolKind.SCENE_OBJECT },
+          { index: 2, tool: ESceneToolKind.SPAWN },
+          { index: 3, tool: ESceneToolKind.SCENE_OBJECT },
+        ],
+        DEFAULT_LEVEL_EDITOR_HELPER_OPTIONS
+      ).hiddenSpawnObjects
+    ).toEqual([0x0200_0003, 0x0200_0007, 0x0600_0002]);
   });
 });
 

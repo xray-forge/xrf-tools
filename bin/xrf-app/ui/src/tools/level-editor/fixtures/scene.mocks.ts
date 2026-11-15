@@ -213,13 +213,14 @@ export function mockSceneHelpersDescription(overrides: Partial<SceneHelpersDescr
       boundingBox: { max: { x: -10, y: 2, z: 4 }, min: { x: -14, y: 0, z: 0 } },
       boundingSphere: { center: { x: -12, y: 1, z: 2 }, radius: 3 },
     },
+    spawnModels: [],
     tools: [{ count: 3, tool: ESceneToolKind.SPAWN }],
     ...overrides,
   };
 }
 
 /** What a scene drawing no helper answers of its helpers. */
-export const MOCK_NO_SCENE_HELPERS: SceneHelpersDescription = { bounds: null, tools: [] };
+export const MOCK_NO_SCENE_HELPERS: SceneHelpersDescription = { bounds: null, spawnModels: [], tools: [] };
 
 /** What a fixture scene's parts answer, each defaulting to the fixture's own. */
 export interface IMockSceneParts {

@@ -1,0 +1,69 @@
+use xrf_chunk::XRayByteOrder;
+use xrf_editable_level::{EditableSpawnPointKind, EditableSpawnPointObject};
+use xrf_rawdata::{LevelSceneToolObjects, LevelSpawnDataFields};
+
+use crate::scene::{SceneObjectId, SceneSpawnModel, SceneToolKind, SelectedScene};
+use crate::visuals::SpawnVisualReader;
+
+/// The spawn points a scene draws as their entities' models, as the SDK's editor draws a spawn point whose packet names
+/// a visual: each whose packet reads and names one that the scene's game data holds. The rest keep their icon.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub(crate) struct SceneSpawnModels {
+  /// Every spawn point drawn as a model, in the scene's order of its spawn points.
+  pub objects: Vec<SceneSpawnModel>,
+}
+
+impl SceneSpawnModels {
+  /// The spawn points of `scene` as the editor loads them, the groups' members first, each named by its place among
+  /// them as the scene's objects are, whose packet names a visual `reader` finds a file of; none where the scene has
+  /// no game data, or its spawn points do not read, which the scene's objects report.
+  pub(crate) fn read(scene: &SelectedScene, reader: &SpawnVisualReader) -> Self {
+    profiling::scope!("scene spawn models");
+
+    if scene.game.roots.is_empty() {
+      return Self::default();
+    }
+
+    let Ok(read) = LevelSceneToolObjects::<EditableSpawnPointObject>::read(&scene.scene, scene.guid) else {
+      return Self::default();
+    };
+    let mut models: Self = Self::default();
+
+    for (index, point) in read.iter_indexed() {
+      let EditableSpawnPointKind::Entity { data, .. } = &point.kind else {
+        continue;
+      };
+      // A packet that does not read is the build's to refuse; the spawn point keeps its icon here.
+      let Ok(Some(visual)) = LevelSpawnDataFields::read_visual::<XRayByteOrder>(data) else {
+        continue;
+      };
+
+      if reader.is_found(&visual) {
+        models.objects.push(SceneSpawnModel {
+          id: SceneObjectId {
+            tool: SceneToolKind::Spawn,
+            index,
+          },
+          visual,
+          transform: point.object.transform,
+        });
+      }
+    }
+
+    models
+  }
+
+  /// The spawn point at `index` among the scene's spawn points, where it is drawn as a model.
+  pub(crate) fn find(&self, index: u32) -> Option<&SceneSpawnModel> {
+    self
+      .objects
+      .binary_search_by_key(&index, |model| model.id.index)
+      .ok()
+      .map(|found| &self.objects[found])
+  }
+
+  /// The first spawn point drawn as the model the renderer knows by `name`, which every other standing as it shares.
+  pub(crate) fn find_model(&self, name: &str) -> Option<&SceneSpawnModel> {
+    self.objects.iter().find(|model| model.get_model_name() == name)
+  }
+}

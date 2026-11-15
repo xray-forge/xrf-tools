@@ -4,18 +4,19 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use xrf_app_core::TauriResult;
 use xrf_job::PoolOnceLock;
 
-use crate::parts::LevelSpawnVisual;
+use crate::visuals::SpawnVisual;
 
 /// One visual's place: empty until it is read, then the visual, or why it cannot be. Filled from the renderer's loaders,
 /// which are pool workers, so one waiting on another's read keeps working the pool rather than blocking it.
-type Cell = Arc<PoolOnceLock<TauriResult<Arc<LevelSpawnVisual>>>>;
+type Cell = Arc<PoolOnceLock<TauriResult<Arc<SpawnVisual>>>>;
 
-/// The visuals a level's spawned objects stand as, each read the first time anything asks and kept.
-pub(crate) struct LevelSpawnVisuals {
+/// The visuals spawned objects stand as, each read the first time anything asks and kept: a level's spawn, or a
+/// scene's spawn points, each keeping its own.
+pub(crate) struct SpawnVisuals {
   cells: Mutex<HashMap<String, Cell>>,
 }
 
-impl LevelSpawnVisuals {
+impl SpawnVisuals {
   /// No visual read yet.
   pub(crate) fn new() -> Self {
     Self {
@@ -31,8 +32,8 @@ impl LevelSpawnVisuals {
   pub(crate) fn get_or_read(
     &self,
     name: &str,
-    read: impl FnOnce() -> TauriResult<Arc<LevelSpawnVisual>> + Send,
-  ) -> TauriResult<Arc<LevelSpawnVisual>> {
+    read: impl FnOnce() -> TauriResult<Arc<SpawnVisual>> + Send,
+  ) -> TauriResult<Arc<SpawnVisual>> {
     let cell: Cell = Arc::clone(self.lock().entry(name.to_owned()).or_default());
 
     cell.get_or_init(read).clone()

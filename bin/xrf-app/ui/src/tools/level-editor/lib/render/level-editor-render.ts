@@ -16,6 +16,11 @@ import { IRenderLighting, toNativeAssetLighting } from "@/core/render/lib/lighti
 import { toNativeAssetViewOptions, toNativeWorldToggles } from "@/core/render/lib/native/contract/native-view-options";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { TRenderOutput } from "@/core/render/lib/settings/device/render-resolution";
+import {
+  ILevelEditorHelperOptions,
+  isLevelEditorHelperOn,
+} from "@/tools/level-editor/lib/helpers/level-editor-helper-options";
+import { toSceneRenderIds } from "@/tools/level-editor/lib/render/scene-render-id";
 
 /**
  * What a scene is lit by: a grey noon in place of a weather, since a scene carries no baked light and the editor shows
@@ -35,17 +40,23 @@ export const DEFAULT_LEVEL_EDITOR_LIGHTING: IRenderLighting = {
 
 /**
  * @param hidden - The scene objects hidden one by one, of any tool.
- * @returns What of a scene's world plays: its objects, every one of which stands in the props group, less the scene
- *   objects among those hidden, named by their index as the scene's source names their models, ascending; and nothing
+ * @param helpers - Which helpers the Show action has switched on: the spawn points' row, under the master switch,
+ *   switches their models with their helpers.
+ * @returns What of a scene's world plays: its scene objects, which stand in the props group, and its spawn points'
+ *   models, which stand in the items group of their own, shown as the spawn points' helpers are; less the objects
+ *   hidden, of any tool, named by their render ids as the scene's source names their models, ascending; and nothing
  *   else, since a scene plays no weather, burns no campfire and has no sound.
  */
-export function toLevelEditorWorldToggles(hidden: ReadonlyArray<SceneObjectId>): WorldToggles {
+export function toLevelEditorWorldToggles(
+  hidden: ReadonlyArray<SceneObjectId>,
+  helpers: ILevelEditorHelperOptions
+): WorldToggles {
   return toNativeWorldToggles(
     {
       isAmbientEffectPlayed: false,
       isCampfireLit: false,
       isRainy: false,
-      isSpawnedItems: false,
+      isSpawnedItems: helpers.isShown && isLevelEditorHelperOn(helpers, ESceneToolKind.SPAWN),
       isSpawnedLamps: false,
       isSpawnedProps: true,
       isSpawnedReleased: false,
@@ -53,10 +64,7 @@ export function toLevelEditorWorldToggles(hidden: ReadonlyArray<SceneObjectId>):
       isThundering: false,
       isWindy: false,
     },
-    hidden
-      .filter((id: SceneObjectId) => id.tool === ESceneToolKind.SCENE_OBJECT)
-      .map((id: SceneObjectId) => id.index)
-      .sort((first: number, second: number) => first - second),
+    toSceneRenderIds(hidden),
     { isAmbience: false, isHeard: false, isMusic: false, isWorld: false }
   );
 }

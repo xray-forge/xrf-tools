@@ -363,12 +363,6 @@ export const SCENE_DRAW_PART = "sceneDraw" as const;
 export const SCENE_HELPERS_PART = "sceneHelpers" as const;
 
 /**
- * The bits of a scene helper's id that hold its object's index among its tool's objects; the bits above them hold the
- * tool's place in the editor's order of its tools.
- */
-export const SCENE_HELPER_INDEX_BITS: number = 24;
-
-/**
  * Every tool whose objects the editor draws a helper for, in the editor's order of its tools, each switched by its
  * place in that order. What has a counterpart in the level viewer's kind table looks as it does there: spawn points as
  * its characters, ways as its patrols, lights, sound sources, sound environments, particles and fog volumes as its
@@ -389,6 +383,41 @@ export const SCENE_HELPER_TOOLS: Array<SceneHelperToolEntry> = [
 
 /** What a change event calls a scene's object tools' objects when they go stale. */
 export const SCENE_OBJECTS_PART = "sceneObjects" as const;
+
+/**
+ * The bits of a scene render id that hold its object's index among its tool's objects; the bits above them hold the
+ * tool's place in the editor's order of its tools.
+ */
+export const SCENE_RENDER_INDEX_BITS: number = 24;
+
+/**
+ * Every tool in the editor's order, the place a scene render id's top bits name each by. Only the page reads it: the
+ * backend reads a tool's place off its variant.
+ */
+export const SCENE_RENDER_TOOLS: Array<SceneToolKind> = [
+  "group",
+  "glow",
+  "scene_object",
+  "light",
+  "shape",
+  "sound_src",
+  "spawn",
+  "way",
+  "sector",
+  "portal",
+  "sound_env",
+  "ps",
+  "detail_object",
+  "ai_map",
+  "wallmark",
+  "fog_volume",
+];
+
+/** What a change event calls which of a scene's spawn points stand as models when it goes stale. */
+export const SCENE_SPAWN_MODELS_PART = "sceneSpawnModels" as const;
+
+/** What a change event calls the visuals a scene's spawn points stand as when they go stale. */
+export const SCENE_SPAWN_VISUALS_PART = "sceneSpawnVisuals" as const;
 
 /**
  * A burst asked of a viewport, the name of the folder of the level viewer's bursts it is written into, whether it
@@ -1263,13 +1292,21 @@ export type SceneHelperToolEntry = {
 
 /**
  * What the page needs of a scene's helpers beside their picture: where they reach, to frame a camera on a scene that
- * draws them alone, and how many each helped tool draws.
+ * draws them alone, how many each helped tool draws, and which spawn points stand as their models in place of an icon.
  */
 export type SceneHelpersDescription = {
-  /** The extent of every helper's shapes and icons, in renderer space; none where the scene draws no helper. */
+  /**
+   * The extent of every helper's shapes and icons and of where each spawn point drawn as a model stands, in renderer
+   * space; none where the scene draws no helper.
+   */
   bounds: VisualBounds | null;
-  /** Each helped tool drawing at least one helper, in the editor's order of its tools. */
+  /**
+   * Each helped tool helping at least one object, in the editor's order of its tools, a spawn point drawn as its model
+   * counted.
+   */
   tools: Array<SceneHelperToolCount>;
+  /** Each spawn point drawn as its entity's model, in the scene's order of its spawn points. */
+  spawnModels: Array<SceneSpawnModelDescription>;
 };
 
 /** Every `kind` the `SceneLightType` union is told apart by, so a switch or a comparison names one. */
@@ -1659,6 +1696,15 @@ export type SceneSpawnKind =
       /** Its packet's fields in the order the scene saves them. */
       data: Array<SceneSpawnField>;
     };
+
+/**
+ * A spawn point drawn as its entity's model, as the page is told of it: which object, and the name the renderer knows
+ * the model by, which a model the renderer could not read is reported under.
+ */
+export type SceneSpawnModelDescription = {
+  object: SceneObjectId;
+  model: string;
+};
 
 /** One tool a scene holds part files of, as its open listed them. */
 export type SceneToolDescription = {

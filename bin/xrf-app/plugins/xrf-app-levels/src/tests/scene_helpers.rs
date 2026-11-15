@@ -19,8 +19,8 @@ use xrf_renderer::{RenderHelperIcon, RenderHelperObject, RenderHelperShape, Rend
 use xrf_world::WorldLevelSource;
 
 use crate::scene::{
-  SCENE_HELPER_TOOLS, SceneDrawPart, SceneHelperId, SceneHelperToolCount, SceneHelpers, SceneHelpersPart,
-  SceneObjectId, SceneObjectSphere, SceneRenderSource, SceneSource, SceneToolKind, SelectedScene, ShownScenes,
+  SCENE_HELPER_TOOLS, SceneDrawPart, SceneHelperToolCount, SceneHelpers, SceneHelpersPart, SceneObjectId,
+  SceneObjectSphere, SceneRenderId, SceneRenderSource, SceneSource, SceneToolKind, SelectedScene, ShownScenes,
 };
 use crate::tests::fixtures::{new_scenes, open_scene, scene_custom_object, scene_part, write_scene, write_scene_part};
 
@@ -246,12 +246,17 @@ fn open(source: &SceneSource) -> (AssetMountState, Arc<SessionSnapshot<SelectedS
   (assets, opened)
 }
 
+/// The open scene's helpers, its spawn points' models looked for in its game data.
+fn read_helpers(assets: &AssetMountState, opened: &SessionSnapshot<SelectedScene>) -> Arc<SceneHelpers> {
+  SceneHelpersPart::get(opened, &assets.search(&opened.game.roots).unwrap())
+}
+
 /// The helpers of `tool`'s objects, in their order.
 fn list_tool(helpers: &RenderLevelHelpers, tool: SceneToolKind) -> Vec<&RenderHelperObject> {
   helpers
     .objects
     .iter()
-    .filter(|object| SceneHelperId(object.id).get_object().is_some_and(|id| id.tool == tool))
+    .filter(|object| SceneRenderId(object.id).get_object().is_some_and(|id| id.tool == tool))
     .collect()
 }
 
@@ -268,25 +273,33 @@ fn list_icons(object: &RenderHelperObject) -> Vec<RenderHelperIcon> {
 }
 
 #[test]
-fn names_a_helper_by_its_tool_and_index_both_ways() {
+fn names_an_object_to_the_renderer_by_its_tool_and_index_both_ways() {
   let way: SceneObjectId = SceneObjectId {
     tool: SceneToolKind::Way,
     index: 5,
   };
 
-  // The page decodes the same constant (`scene-helper-id.test.ts`): the way's place, 7, above 24 bits of index.
-  assert_eq!(SceneHelperId::of(&way), Some(SceneHelperId(0x0700_0005)));
-  assert_eq!(SceneHelperId(0x0700_0005).get_object(), Some(way));
+  // The page decodes the same constant (`scene-render-id.test.ts`): the way's place, 7, above 24 bits of index.
+  assert_eq!(SceneRenderId::of(&way), Some(SceneRenderId(0x0700_0005)));
+  assert_eq!(SceneRenderId(0x0700_0005).get_object(), Some(way));
+  // A scene object's model carries its tool's place, 2, as a helper does.
   assert_eq!(
-    SceneHelperId::of(&SceneObjectId {
-      tool: SceneToolKind::Way,
-      index: SceneHelperId::MAX_INDEX + 1,
+    SceneRenderId::of(&SceneObjectId {
+      tool: SceneToolKind::SceneObject,
+      index: 3,
     }),
-    None,
-    "an index past what an id holds draws no helper"
+    Some(SceneRenderId(0x0200_0003))
   );
   assert_eq!(
-    SceneHelperId(16 << 24).get_object(),
+    SceneRenderId::of(&SceneObjectId {
+      tool: SceneToolKind::Way,
+      index: SceneRenderId::MAX_INDEX + 1,
+    }),
+    None,
+    "an index past what an id holds is not drawn"
+  );
+  assert_eq!(
+    SceneRenderId(16 << 24).get_object(),
     None,
     "no tool stands past the last"
   );
@@ -294,11 +307,11 @@ fn names_a_helper_by_its_tool_and_index_both_ways() {
   for tool in SceneToolKind::ALL {
     let object: SceneObjectId = SceneObjectId {
       tool,
-      index: SceneHelperId::MAX_INDEX,
+      index: SceneRenderId::MAX_INDEX,
     };
 
     assert_eq!(
-      SceneHelperId::of(&object).and_then(SceneHelperId::get_object),
+      SceneRenderId::of(&object).and_then(SceneRenderId::get_object),
       Some(object)
     );
   }
@@ -329,8 +342,8 @@ fn switches_each_helped_tool_by_its_place_among_the_tools() {
 
 #[test]
 fn helps_each_object_of_a_helped_tool_in_its_tools_look() {
-  let (_, opened) = open(&write_helped_scene("scene_helpers/tools"));
-  let helpers: Arc<SceneHelpers> = SceneHelpersPart::get(&opened);
+  let (assets, opened) = open(&write_helped_scene("scene_helpers/tools"));
+  let helpers: Arc<SceneHelpers> = read_helpers(&assets, &opened);
 
   assert_eq!(
     helpers.description.tools,
@@ -351,7 +364,7 @@ fn helps_each_object_of_a_helped_tool_in_its_tools_look() {
   );
 
   for object in &helpers.helpers.objects {
-    let id: SceneObjectId = SceneHelperId(object.id).get_object().expect("a scene object's id");
+    let id: SceneObjectId = SceneRenderId(object.id).get_object().expect("a scene object's id");
     let entry = SCENE_HELPER_TOOLS
       .iter()
       .find(|entry| entry.tool == id.tool)
@@ -368,7 +381,7 @@ fn helps_each_object_of_a_helped_tool_in_its_tools_look() {
   assert_eq!(
     spawns
       .iter()
-      .map(|object| SceneHelperId(object.id).get_object().map(|id| id.index))
+      .map(|object| SceneRenderId(object.id).get_object().map(|id| id.index))
       .collect::<Vec<_>>(),
     [0, 1, 2, 3, 4].map(Some),
     "each by its place among the tool's objects"
@@ -479,7 +492,7 @@ fn the_renderer_reads_the_helpers_the_page_counts() {
 
   assert_eq!(
     drawn.read_helpers().expect("the helpers read"),
-    SceneHelpersPart::get(&opened).helpers
+    read_helpers(&assets, &opened).helpers
   );
 }
 
@@ -502,7 +515,7 @@ fn a_scene_of_helpers_alone_is_bounded_by_them_where_it_draws_no_object() {
   );
 
   let (assets, opened) = open(&source);
-  let helpers: Arc<SceneHelpers> = SceneHelpersPart::get(&opened);
+  let helpers: Arc<SceneHelpers> = read_helpers(&assets, &opened);
 
   assert!(
     SceneDrawPart::get(&opened, &assets.search(&opened.objects_roots).unwrap())
@@ -523,8 +536,8 @@ fn a_scene_of_helpers_alone_is_bounded_by_them_where_it_draws_no_object() {
 
 #[test]
 fn a_scene_of_no_helped_object_has_no_helper_and_no_extent() {
-  let (_, opened) = open(&write_scene("scene_helpers/empty"));
-  let helpers: Arc<SceneHelpers> = SceneHelpersPart::get(&opened);
+  let (assets, opened) = open(&write_scene("scene_helpers/empty"));
+  let helpers: Arc<SceneHelpers> = read_helpers(&assets, &opened);
 
   assert!(helpers.helpers.objects.is_empty());
   assert!(helpers.description.tools.is_empty());

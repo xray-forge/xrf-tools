@@ -17,6 +17,7 @@ mod spawn;
 #[cfg(test)]
 mod tests;
 mod viewer;
+mod visuals;
 mod weather;
 
 pub use level::SelectedLevels;

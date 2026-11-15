@@ -3,18 +3,20 @@ import { AsyncState } from "@xrf/async";
 import {
   SceneBinaryToolsDescription,
   SceneDrawDescription,
+  SceneHelpersDescription,
   SceneObjectsDescription,
   SelectedSceneDescription,
 } from "@xrf/ipc/types/xrf-app-levels";
 import { Nullable } from "@xrf/types";
 import { EditorPanelEmpty } from "@xrf/ui/editor/panel";
+import { IEditorProblem } from "@xrf/ui/editor/problems";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useMemo } from "react";
 
 import { describeLevelResidentWait } from "@/core/level/lib/load/level-resident-wait";
 import { EMPTY_LEVEL_RESIDENT, ILevelResident } from "@/core/level/lib/render/level-resident";
 import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
-import { EditorProblemsPanel, IEditorProblem } from "@/core/shell/chrome/EditorProblemsPanel";
+import { EditorProblemsPanel } from "@/core/shell/chrome/EditorProblemsPanel";
 import { listLevelEditorProblems } from "@/tools/level-editor/lib/problems/level-editor-problems";
 import { LevelEditorRenderService } from "@/tools/level-editor/services/level-editor-render";
 import { LevelEditorSceneService } from "@/tools/level-editor/services/level-editor-scene";
@@ -31,8 +33,9 @@ function toPartStatus(name: string, state: AsyncState<unknown>): Nullable<string
 /**
  * Everything of the open scene the SDK's Level Editor would skip or refuse, and what of it is not drawn: what the open
  * found of its part files, then what reading its objects and its binary tools found, then the scene objects its
- * picture leaves out, then the textures and library objects the renderer could not draw, said to be incomplete until
- * each is read; what the renderer could not draw is said once the scene is resident, as the level viewer says it.
+ * picture leaves out, then the textures and the models of library objects and spawn points the renderer could not draw,
+ * said to be incomplete until each is read; what the renderer could not draw is said once the scene is resident, as the
+ * level viewer says it.
  */
 export function LevelEditorProblemsPanel({
   "data-testid": dataTestId = "level-editor-problems-panel",
@@ -46,6 +49,7 @@ export function LevelEditorProblemsPanel({
   const objects: AsyncState<SceneObjectsDescription> = sceneService.objects.state;
   const binaryTools: AsyncState<SceneBinaryToolsDescription> = sceneService.binaryTools.state;
   const drawing: AsyncState<SceneDrawDescription> = sceneService.drawing.state;
+  const helpers: Nullable<SceneHelpersDescription> = sceneService.helpers.value;
   const resident: ILevelResident = renderService.resident.value ?? EMPTY_LEVEL_RESIDENT;
 
   const problems: Array<IEditorProblem> = useMemo(
@@ -57,10 +61,11 @@ export function LevelEditorProblemsPanel({
         objectTools: objects.value?.tools ?? [],
         objects: objects.value?.problems ?? [],
         scene: scene?.problems ?? [],
+        spawnModels: helpers?.spawnModels ?? [],
         textures: resident.textures.problems,
         tools: scene?.tools ?? [],
       }),
-    [binaryTools.value, drawing.value, objects.value, resident, scene]
+    [binaryTools.value, drawing.value, helpers, objects.value, resident, scene]
   );
   const status: Nullable<string> =
     toPartStatus("objects", objects) ??

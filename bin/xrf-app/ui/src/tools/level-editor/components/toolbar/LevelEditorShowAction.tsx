@@ -16,7 +16,8 @@ import { LevelEditorSceneService } from "@/tools/level-editor/services/level-edi
 
 /**
  * What the editor shows over the scene beside its objects, as an editor's show menu gathers it: the helpers' master
- * switch heading a switch for each helped tool, with the picture its helpers draw and how many the open scene holds.
+ * switch heading a switch for each helped tool, with the picture its helpers draw and how many the open scene holds;
+ * the spawn points' switch, and the master one over it, switch the spawn points' models too.
  */
 export function LevelEditorShowAction({
   "data-testid": dataTestId = "level-editor-show-action",
@@ -46,7 +47,8 @@ export function LevelEditorShowAction({
       <EditorPopoverGroupSection
         label={"Helpers"}
         description={
-          "Draws the wires and marks of what the scene holds with no geometry: spawn points, ways and the rest."
+          "Draws the wires and marks of what the scene holds with no geometry: spawn points, ways and the rest. " +
+          "Spawn points drawn as their models switch with them."
         }
         isOn={helpers.isShown}
         onToggle={helpersService.toggleHelpers}

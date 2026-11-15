@@ -97,12 +97,8 @@ impl SceneObjectsPart {
     }
 
     let mut described: Vec<SceneObjectDescription> = read
-      .members
-      .iter()
-      .map(|member| &member.object)
-      .chain(&read.part.objects)
-      .zip(0u32..)
-      .map(|(object, index)| SceneObjectDescription::of(SceneObjectId { tool: kind, index }, object, objects))
+      .iter_indexed()
+      .map(|(index, object)| SceneObjectDescription::of(SceneObjectId { tool: kind, index }, object, objects))
       .collect();
 
     for (description, member) in described.iter_mut().zip(read.members) {

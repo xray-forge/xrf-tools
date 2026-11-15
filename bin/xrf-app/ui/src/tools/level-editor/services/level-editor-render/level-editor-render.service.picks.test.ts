@@ -8,7 +8,7 @@ import { ERenderLevelHit, ERenderSelectionTarget, RenderHelperOptions } from "@x
 import { clearLocalStorage } from "@/core/storage";
 import { flush } from "@/fixtures/utils/promise";
 import { MOCK_SCENE_VIEWPORT, mockAttachedSceneRender } from "@/tools/level-editor/fixtures/scene-render";
-import { toSceneHelperId } from "@/tools/level-editor/lib/helpers/scene-helper-id";
+import { toSceneRenderId } from "@/tools/level-editor/lib/render/scene-render-id";
 import { LevelEditorHelpersService } from "@/tools/level-editor/services/level-editor-helpers";
 import { LevelEditorSelectionService } from "@/tools/level-editor/services/level-editor-selection";
 
@@ -17,6 +17,16 @@ const BOX: SceneObjectId = { index: 1, tool: ESceneToolKind.SCENE_OBJECT };
 
 /** The fixture's third spawn point. */
 const STALKER: SceneObjectId = { index: 2, tool: ESceneToolKind.SPAWN };
+
+/** Whether the viewport was last told to draw the items group, which the spawn points' models stand in. */
+function lastItems(): unknown {
+  return listMockInvokeCalls(ERenderCommand.SET_WORLD_TOGGLES).at(-1)?.toggles.isSpawnedItems;
+}
+
+/** The render id `object` carries. */
+function toId(object: SceneObjectId): number {
+  return toSceneRenderId(object) ?? -1;
+}
 
 /** The helpers the viewport was last told to draw. */
 function lastHelpers(): RenderHelperOptions {
@@ -31,10 +41,12 @@ describe("LevelEditorRenderPicks", () => {
     clearLocalStorage();
   });
 
-  it("selects the scene object a model stands for by its place among them, outlining its model", async () => {
+  it("selects the scene object a model stands for by its render id, outlining its model", async () => {
     const { container, service } = await mockAttachedSceneRender();
 
-    mockIpcCommands({ [ERenderCommand.PICK]: { depth: 3, kind: ERenderLevelHit.SPAWN, object: 1, point: [0, 0, 0] } });
+    mockIpcCommands({
+      [ERenderCommand.PICK]: { depth: 3, kind: ERenderLevelHit.SPAWN, object: toId(BOX), point: [0, 0, 0] },
+    });
     await service.picks.pick({ isThrough: true, point: { x: 10, y: 20 } });
 
     expect(listMockInvokeCalls(ERenderCommand.PICK).at(-1)).toEqual({
@@ -45,18 +57,19 @@ describe("LevelEditorRenderPicks", () => {
     await waitFor(() =>
       expect(listMockInvokeCalls(ERenderCommand.SET_SELECTION).at(-1)?.selection?.target).toEqual({
         kind: ERenderSelectionTarget.SPAWN,
-        object: 1,
+        object: toId(BOX),
       })
     );
-    expect(lastHelpers().selected).toEqual([]);
+    expect(lastHelpers().selected).toEqual([toId(BOX)]);
   });
 
-  it("selects the scene object a helper stands for, lifting its helper rather than outlining a model", async () => {
+  // A spawn point drawn as its model is picked by its model and outlined as one, its volume marked selected too.
+  it("selects the spawn point a model or a helper stands for, outlining its model and lifting its helper", async () => {
     const { container, service } = await mockAttachedSceneRender();
-    const id: number = toSceneHelperId(STALKER) as number;
+    const id: number = toId(STALKER);
 
     mockIpcCommands({
-      [ERenderCommand.PICK]: { depth: 3, kind: ERenderLevelHit.HELPER, object: id, point: [0, 0, 0] },
+      [ERenderCommand.PICK]: { depth: 3, kind: ERenderLevelHit.SPAWN, object: id, point: [0, 0, 0] },
     });
     service.picks.click({ isThrough: false, isToggling: false, point: { x: 1, y: 2 } });
 
@@ -64,7 +77,18 @@ describe("LevelEditorRenderPicks", () => {
     await flush();
 
     expect(lastHelpers().selected).toEqual([id]);
-    expect(listMockInvokeCalls(ERenderCommand.SET_SELECTION).at(-1)?.selection).toBeNull();
+    expect(listMockInvokeCalls(ERenderCommand.SET_SELECTION).at(-1)?.selection?.target).toEqual({
+      kind: ERenderSelectionTarget.SPAWN,
+      object: id,
+    });
+
+    container.get(LevelEditorSelectionService).select(null);
+    mockIpcCommands({
+      [ERenderCommand.PICK]: { depth: 3, kind: ERenderLevelHit.HELPER, object: id, point: [0, 0, 0] },
+    });
+    await service.picks.pick({ isThrough: false, point: { x: 1, y: 2 } });
+
+    expect(container.get(LevelEditorSelectionService).selectedId).toEqual(STALKER);
   });
 
   it("selects nothing for a click on nothing, or on an object the scene does not list", async () => {
@@ -78,7 +102,14 @@ describe("LevelEditorRenderPicks", () => {
     expect(selection.selectedId).toBeNull();
 
     selection.select(BOX);
-    mockIpcCommands({ [ERenderCommand.PICK]: { depth: 3, kind: ERenderLevelHit.SPAWN, object: 9, point: [0, 0, 0] } });
+    mockIpcCommands({
+      [ERenderCommand.PICK]: {
+        depth: 3,
+        kind: ERenderLevelHit.SPAWN,
+        object: toId({ index: 9, tool: ESceneToolKind.SCENE_OBJECT }),
+        point: [0, 0, 0],
+      },
+    });
     await service.picks.pick({ isThrough: false, point: { x: 1, y: 1 } });
 
     expect(selection.selectedId).toBeNull();
@@ -86,7 +117,7 @@ describe("LevelEditorRenderPicks", () => {
 
   it("lifts the helper under the pointer while helpers are drawn, and nothing once they are off", async () => {
     const { container, service } = await mockAttachedSceneRender();
-    const id: number = toSceneHelperId(STALKER) as number;
+    const id: number = toId(STALKER);
 
     mockIpcCommands({
       [ERenderCommand.PICK]: { depth: 3, kind: ERenderLevelHit.HELPER, object: id, point: [0, 0, 0] },
@@ -108,7 +139,7 @@ describe("LevelEditorRenderPicks", () => {
     expect(listMockInvokeCalls(ERenderCommand.PICK)).toHaveLength(picks);
   });
 
-  it("hides a scene object's model and a helped object's helper one by one", async () => {
+  it("hides an object's model and its helper one by one, by one id", async () => {
     const { container } = await mockAttachedSceneRender();
     const selection: LevelEditorSelectionService = container.get(LevelEditorSelectionService);
 
@@ -116,8 +147,11 @@ describe("LevelEditorRenderPicks", () => {
     selection.toggleHidden(BOX);
     await flush();
 
-    expect(listMockInvokeCalls(ERenderCommand.SET_WORLD_TOGGLES).at(-1)?.toggles.hiddenSpawnObjects).toEqual([1]);
-    expect(lastHelpers().hidden).toEqual([toSceneHelperId(STALKER)]);
+    expect(listMockInvokeCalls(ERenderCommand.SET_WORLD_TOGGLES).at(-1)?.toggles.hiddenSpawnObjects).toEqual([
+      toId(BOX),
+      toId(STALKER),
+    ]);
+    expect(lastHelpers().hidden).toEqual([toId(BOX), toId(STALKER)]);
 
     selection.revealAll();
     await flush();
@@ -133,7 +167,7 @@ describe("LevelEditorRenderPicks", () => {
       [ERenderCommand.PICK]: {
         depth: 3,
         kind: ERenderLevelHit.HELPER,
-        object: toSceneHelperId(STALKER) as number,
+        object: toId(STALKER),
         point: [0, 0, 0],
       },
     });
@@ -145,5 +179,24 @@ describe("LevelEditorRenderPicks", () => {
     await flush();
 
     expect(container.get(LevelEditorSelectionService).hovered).toBeNull();
+  });
+
+  it("switches the spawn points' models with their helpers in the Show action", async () => {
+    const { container } = await mockAttachedSceneRender();
+    const helpers: LevelEditorHelpersService = container.get(LevelEditorHelpersService);
+
+    expect(lastItems()).toBe(true);
+
+    helpers.setHelperTools({ isOn: false, tools: [ESceneToolKind.SPAWN] });
+    await flush();
+
+    expect(lastItems()).toBe(false);
+
+    helpers.setHelperTools({ isOn: true, tools: [ESceneToolKind.SPAWN] });
+    helpers.toggleHelpers();
+    await flush();
+
+    expect(lastItems()).toBe(false);
+    expect(listMockInvokeCalls(ERenderCommand.SET_WORLD_TOGGLES).at(-1)?.toggles.isSpawnedProps).toBe(true);
   });
 });

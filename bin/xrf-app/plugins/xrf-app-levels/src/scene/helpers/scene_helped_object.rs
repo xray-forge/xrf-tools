@@ -15,11 +15,18 @@ const ACTOR_SECTION: &str = "actor";
 pub(crate) trait SceneHelpedObject: EditableToolObject {
   /// What its helper draws and where; none for an object drawing none.
   fn get_look(&self) -> Option<SceneHelperLook>;
+
+  /// What its helper draws beside the model it stands as, which stands in for its icon; none by default, the model
+  /// being all such an object shows.
+  fn get_modelled_look(&self) -> Option<SceneHelperLook> {
+    None
+  }
 }
 
 /// A spawn point by what it places: an entity's volume where a shape is attached to it, else an icon by what its
 /// section or type says without the game's configs (the actor's start, a multiplayer respawn point, any other entity),
-/// and an environment modifier by the sphere it reaches, as the level viewer draws `level.env_mod`'s.
+/// and an environment modifier by the sphere it reaches, as the level viewer draws `level.env_mod`'s. An entity drawn
+/// as its model keeps its volume and loses its icon.
 impl SceneHelpedObject for EditableSpawnPointObject {
   fn get_look(&self) -> Option<SceneHelperLook> {
     let transform: &EditableObjectTransform = &self.object.transform;
@@ -37,33 +44,33 @@ impl SceneHelpedObject for EditableSpawnPointObject {
           ))
         })
       }
-      EditableSpawnPointKind::Entity { section, .. } => {
-        // The build gives an entity its spawn point's place and turn and the attached shape's elements with its scale
-        // applied, so the volume stands as the game's object holds it.
-        let volume: Option<SceneHelperLook> = self.attached.as_ref().and_then(|attached| {
-          let elements: Vec<EditableShapeElement> = attached.get_scaled_elements();
-
-          SceneHelperLook::of_elements(
-            &EditableObjectTransform {
-              scale: Vector3d::ONE,
-              ..*transform
-            },
-            &elements,
-          )
-        });
-
-        volume.or_else(|| {
-          Some(SceneHelperLook::icon_at(
-            SceneRenderSpace::place(transform),
-            if section == ACTOR_SECTION {
-              RenderHelperIcon::ActorStart
-            } else {
-              RenderHelperIcon::SpawnPoint
-            },
-          ))
-        })
-      }
+      EditableSpawnPointKind::Entity { section, .. } => self.get_modelled_look().or_else(|| {
+        Some(SceneHelperLook::icon_at(
+          SceneRenderSpace::place(transform),
+          if section == ACTOR_SECTION {
+            RenderHelperIcon::ActorStart
+          } else {
+            RenderHelperIcon::SpawnPoint
+          },
+        ))
+      }),
     }
+  }
+
+  /// An entity's volume where a shape is attached to it. The build gives an entity its spawn point's place and turn
+  /// and the attached shape's elements with its scale applied, so the volume stands as the game's object holds it.
+  fn get_modelled_look(&self) -> Option<SceneHelperLook> {
+    self.attached.as_ref().and_then(|attached| {
+      let elements: Vec<EditableShapeElement> = attached.get_scaled_elements();
+
+      SceneHelperLook::of_elements(
+        &EditableObjectTransform {
+          scale: Vector3d::ONE,
+          ..self.object.transform
+        },
+        &elements,
+      )
+    })
   }
 }
 

@@ -12,12 +12,13 @@ use xrf_renderer::{RenderHelperObject, RenderHelperShape, RenderLevelHelpers};
 use xrf_visual::VisualBounds;
 
 use crate::scene::{
-  SCENE_HELPER_TOOLS, SceneHelpedObject, SceneHelperId, SceneHelperLook, SceneHelperToolCount, SceneHelperToolEntry,
-  SceneHelpersDescription, SceneObjectId, SceneToolKind, SelectedScene,
+  SCENE_HELPER_TOOLS, SceneHelpedObject, SceneHelperLook, SceneHelperToolCount, SceneHelperToolEntry,
+  SceneHelpersDescription, SceneObjectId, SceneRenderId, SceneRenderSpace, SceneSpawnModelDescription,
+  SceneSpawnModels, SceneToolKind, SelectedScene,
 };
 
 /// A scene's helpers: the renderer's helper of every object of a helped tool that draws one, each named by its
-/// [`SceneHelperId`] and switched by its tool's place, and what the page is told of them.
+/// [`SceneRenderId`] and switched by its tool's place, and what the page is told of them.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct SceneHelpers {
   pub helpers: RenderLevelHelpers,
@@ -26,51 +27,56 @@ pub(crate) struct SceneHelpers {
 
 impl SceneHelpers {
   /// Every helped tool's objects as the editor loads them, the groups' members first, each helped in its tool's look,
-  /// read from the parts the open kept and nothing else; a tool whose objects do not read draws none, which the scene's
-  /// objects report.
-  pub(crate) fn read(scene: &SelectedScene) -> Self {
+  /// read from the parts the open kept and nothing else, a spawn point among `models` helped beside its model; a tool
+  /// whose objects do not read draws none, which the scene's objects report.
+  pub(crate) fn read(scene: &SelectedScene, models: &SceneSpawnModels) -> Self {
     profiling::scope!("scene helpers");
 
     let mut objects: Vec<RenderHelperObject> = Vec::new();
     let mut tools: Vec<SceneHelperToolCount> = Vec::new();
 
     for entry in SCENE_HELPER_TOOLS {
-      let before: usize = objects.len();
-
-      match entry.tool {
-        SceneToolKind::Glow => Self::read_tool::<EditableGlowObject>(scene, entry, &mut objects),
-        SceneToolKind::Light => Self::read_tool::<EditableLightObject>(scene, entry, &mut objects),
-        SceneToolKind::Shape => Self::read_tool::<EditableShapeObject>(scene, entry, &mut objects),
-        SceneToolKind::SoundSource => Self::read_tool::<EditableSoundSourceObject>(scene, entry, &mut objects),
-        SceneToolKind::Spawn => Self::read_tool::<EditableSpawnPointObject>(scene, entry, &mut objects),
-        SceneToolKind::Way => Self::read_tool::<EditableWayObject>(scene, entry, &mut objects),
-        SceneToolKind::Portal => Self::read_tool::<EditablePortalObject>(scene, entry, &mut objects),
-        SceneToolKind::SoundEnvironment => {
-          Self::read_tool::<EditableSoundEnvironmentObject>(scene, entry, &mut objects);
-        }
-        SceneToolKind::Particle => Self::read_tool::<EditableParticleObject>(scene, entry, &mut objects),
-        SceneToolKind::FogVolume => Self::read_tool::<EditableFogVolumeObject>(scene, entry, &mut objects),
+      let read: SceneHelperRead<'_> = SceneHelperRead { scene, entry, models };
+      let count: u32 = match entry.tool {
+        SceneToolKind::Glow => read.read_tool::<EditableGlowObject>(&mut objects),
+        SceneToolKind::Light => read.read_tool::<EditableLightObject>(&mut objects),
+        SceneToolKind::Shape => read.read_tool::<EditableShapeObject>(&mut objects),
+        SceneToolKind::SoundSource => read.read_tool::<EditableSoundSourceObject>(&mut objects),
+        SceneToolKind::Spawn => read.read_tool::<EditableSpawnPointObject>(&mut objects),
+        SceneToolKind::Way => read.read_tool::<EditableWayObject>(&mut objects),
+        SceneToolKind::Portal => read.read_tool::<EditablePortalObject>(&mut objects),
+        SceneToolKind::SoundEnvironment => read.read_tool::<EditableSoundEnvironmentObject>(&mut objects),
+        SceneToolKind::Particle => read.read_tool::<EditableParticleObject>(&mut objects),
+        SceneToolKind::FogVolume => read.read_tool::<EditableFogVolumeObject>(&mut objects),
         // Drawn as models, or as what the editor's helpers do not picture yet.
         SceneToolKind::Group
         | SceneToolKind::SceneObject
         | SceneToolKind::Sector
         | SceneToolKind::DetailObject
         | SceneToolKind::AiMap
-        | SceneToolKind::Wallmark => {}
-      }
+        | SceneToolKind::Wallmark => 0,
+      };
 
-      if objects.len() > before {
+      if count > 0 {
         tools.push(SceneHelperToolCount {
           tool: entry.tool,
-          count: (objects.len() - before) as u32,
+          count,
         });
       }
     }
 
+    // A spawn point standing as its model alone still stands within the extent framed, at its place.
+    let modelled: Vec<Vec3> = models
+      .objects
+      .iter()
+      .map(|model| SceneRenderSpace::convert_point(&model.transform.position))
+      .collect();
+
     Self {
       description: Arc::new(SceneHelpersDescription {
-        bounds: Self::bound(&objects),
+        bounds: Self::bound(&objects, &modelled),
         tools,
+        spawn_models: models.objects.iter().map(SceneSpawnModelDescription::from).collect(),
       }),
       helpers: RenderLevelHelpers { objects },
     }
@@ -79,7 +85,7 @@ impl SceneHelpers {
   /// The sphere about the extent of `object`'s helper, in renderer space, as the scene's extent is bounded; none for an
   /// object that draws no helper.
   pub(crate) fn find_sphere(&self, object: &SceneObjectId) -> Option<Sphere> {
-    let id: SceneHelperId = SceneHelperId::of(object)?;
+    let id: SceneRenderId = SceneRenderId::of(object)?;
     // Ids sort by tool, then by index, and the helpers are read in that order.
     let found: usize = self
       .helpers
@@ -87,51 +93,16 @@ impl SceneHelpers {
       .binary_search_by_key(&id.0, |helper| helper.id)
       .ok()?;
 
-    Self::bound(&self.helpers.objects[found..=found]).map(|bounds| bounds.bounding_sphere)
+    Self::bound(&self.helpers.objects[found..=found], &[]).map(|bounds| bounds.bounding_sphere)
   }
 
-  /// The helpers of the tool `entry` heads, an object of type `O`, added to `objects`.
-  fn read_tool<O: SceneHelpedObject>(
-    scene: &SelectedScene,
-    entry: &SceneHelperToolEntry,
-    objects: &mut Vec<RenderHelperObject>,
-  ) {
-    let Ok(read) = LevelSceneToolObjects::<O>::read(&scene.scene, scene.guid) else {
-      return;
-    };
-
-    for (object, index) in read
-      .members
+  /// The box holding every point each helper draws through, its spheres by their boxes, where it stands, and `extra`
+  /// points of renderer space; none for no helper and no point.
+  fn bound(objects: &[RenderHelperObject], extra: &[Vec3]) -> Option<VisualBounds> {
+    let mut points: Vec<Vector3d> = extra
       .iter()
-      .map(|member| &member.object)
-      .chain(&read.part.objects)
-      .zip(0u32..)
-    {
-      let (Some(SceneHelperLook { transform, shapes }), Some(id)) = (
-        object.get_look(),
-        SceneHelperId::of(&SceneObjectId {
-          tool: entry.tool,
-          index,
-        }),
-      ) else {
-        continue;
-      };
-
-      objects.push(RenderHelperObject {
-        id: id.0,
-        kind: entry.kind,
-        color: entry.get_rgb(),
-        draw_distance: entry.draw_distance,
-        transform,
-        shapes,
-      });
-    }
-  }
-
-  /// The box holding every point each helper draws through, its spheres by their boxes, where it stands; none for no
-  /// helper.
-  fn bound(objects: &[RenderHelperObject]) -> Option<VisualBounds> {
-    let mut points: Vec<Vector3d> = Vec::new();
+      .map(|point| Vector3d::new(point.x, point.y, point.z))
+      .collect();
 
     for object in objects {
       let transform: Mat4 = Mat4::from_cols_array(&object.transform);
@@ -174,5 +145,58 @@ impl SceneHelpers {
 
       center + i * x + j * y + k * z
     })
+  }
+}
+
+/// One helped tool's objects read into helpers: the scene, the tool's row, and the spawn points standing as models.
+struct SceneHelperRead<'a> {
+  scene: &'a SelectedScene,
+  entry: &'a SceneHelperToolEntry,
+  models: &'a SceneSpawnModels,
+}
+
+impl SceneHelperRead<'_> {
+  /// The helpers of the tool's objects, of type `O`, added to `objects`; answers how many of its objects are helped,
+  /// one standing as its model counted though its model is all it shows.
+  fn read_tool<O: SceneHelpedObject>(&self, objects: &mut Vec<RenderHelperObject>) -> u32 {
+    let Self { scene, entry, models } = self;
+    let Ok(read) = LevelSceneToolObjects::<O>::read(&scene.scene, scene.guid) else {
+      return 0;
+    };
+    let mut count: u32 = 0;
+
+    for (index, object) in read.iter_indexed() {
+      let Some(id) = SceneRenderId::of(&SceneObjectId {
+        tool: entry.tool,
+        index,
+      }) else {
+        continue;
+      };
+      let is_modelled: bool = entry.tool == SceneToolKind::Spawn && models.find(index).is_some();
+      let look: Option<SceneHelperLook> = if is_modelled {
+        object.get_modelled_look()
+      } else {
+        object.get_look()
+      };
+
+      if is_modelled || look.is_some() {
+        count += 1;
+      }
+
+      let Some(SceneHelperLook { transform, shapes }) = look else {
+        continue;
+      };
+
+      objects.push(RenderHelperObject {
+        id: id.0,
+        kind: entry.kind,
+        color: entry.get_rgb(),
+        draw_distance: entry.draw_distance,
+        transform,
+        shapes,
+      });
+    }
+
+    count
   }
 }

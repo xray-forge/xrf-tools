@@ -27,8 +27,8 @@ use xrf_world::WorldLevelSource;
 use crate::commands::scene::show_scene::levels_show_scene;
 use crate::plugin::LevelsPlugin;
 use crate::scene::{
-  SceneDrawDescription, SceneDrawPart, SceneDrawProblemKind, SceneObjectId, SceneObjectSphere, SceneRenderSource,
-  SceneSource, SceneToolKind, SelectedScene, SelectedScenes, ShownScenes,
+  SceneDrawDescription, SceneDrawPart, SceneDrawProblemKind, SceneObjectId, SceneObjectSphere, SceneRenderId,
+  SceneRenderSource, SceneSource, SceneToolKind, SelectedScene, SelectedScenes, ShownScenes,
 };
 use crate::tests::fixtures::{
   new_scenes, open_scene, scene_custom_object, scene_library_object, scene_part, write_scene,
@@ -102,6 +102,11 @@ fn scene_object(index: u32) -> SceneObjectId {
   }
 }
 
+/// The id the renderer knows the scene object at `index` by: the scene object tool's place, 2, above its index.
+fn drawn_id(index: u32) -> u32 {
+  SceneRenderId::of(&scene_object(index)).expect("an index an id holds").0
+}
+
 #[test]
 fn lists_each_scene_object_found_by_its_place_its_reference_and_where_it_stands() {
   let (_, _, drawn) = show(&write_tables("scene_render/spawn", Vec::new()));
@@ -119,10 +124,10 @@ fn lists_each_scene_object_found_by_its_place_its_reference_and_where_it_stands(
       .map(|object| (object.index, object.visual, object.category, object.is_released))
       .collect::<Vec<_>>(),
     [
-      (0, 0, RenderSpawnCategory::Props, false),
-      (2, 0, RenderSpawnCategory::Props, false)
+      (0x0200_0000, 0, RenderSpawnCategory::Props, false),
+      (0x0200_0002, 0, RenderSpawnCategory::Props, false)
     ],
-    "each named by its place among the scene's objects, the one not found left out"
+    "each named by its tool's place above its place among the scene's objects, the one not found left out"
   );
   // Standing at `x, 2, 3` unturned, which renderer space mirrors through `z`.
   assert_eq!(
@@ -162,7 +167,7 @@ fn compiles_a_shared_library_object_once_and_lights_every_object_standing_as_it(
       .iter()
       .map(|lighting| (lighting.object, lighting.cube, lighting.sky))
       .collect::<Vec<_>>(),
-    [(0, [1.0; 6], 1.0), (2, [1.0; 6], 1.0)],
+    [(drawn_id(0), [1.0; 6], 1.0), (drawn_id(2), [1.0; 6], 1.0)],
     "both tables under the open sky"
   );
 }
@@ -190,7 +195,7 @@ fn reports_by_scene_object_what_is_missing_or_unreadable_and_leaves_out_by_refer
 
   assert_eq!(
     spawn.objects.iter().map(|object| object.index).collect::<Vec<_>>(),
-    [0, 2, 3, 4],
+    [0, 2, 3, 4].map(drawn_id),
     "an object found is listed before it is read"
   );
   assert_eq!(
@@ -221,7 +226,7 @@ fn reports_by_scene_object_what_is_missing_or_unreadable_and_leaves_out_by_refer
       .iter()
       .map(|lighting| lighting.object)
       .collect::<Vec<_>>(),
-    [0, 2],
+    [0, 2].map(drawn_id),
     "only what is drawn is lit"
   );
   assert_eq!(

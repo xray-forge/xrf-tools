@@ -4,7 +4,7 @@ use std::sync::{Arc, OnceLock};
 use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
-use xrf_app_render::TextureResolver;
+use xrf_app_render::{ResolvedTexture, TextureResolver};
 use xrf_chunk::XRayByteOrder;
 use xrf_editable_object::EditableObjectFile;
 use xrf_environment::WeatherDescriptor;
@@ -21,12 +21,17 @@ use xrf_visual::{LightsDescription, SectorPackage, VisualPoser};
 use xrf_world::{WorldLevelSource, WorldLevelWeather};
 
 use crate::report::LevelReport;
-use crate::scene::{SceneDrawnObject, SceneDrawnObjects, SceneHelpersPart, SelectedScene};
+use crate::scene::{
+  SceneDrawnObject, SceneDrawnObjects, SceneHelpersPart, SceneRenderId, SceneSpawnModels, SceneSpawnModelsPart,
+  SceneSpawnVisualsPart, SelectedScene,
+};
+use crate::visuals::SpawnVisual;
 
 /// An open scene as the world plays it and the native renderer draws it: no sectors and no level, every scene object
-/// placing a library object found in its objects roots stood as a model compiled from that `.object`, each lit by the
-/// open sky as a model alone is, and their textures read from the scene's game data; what has no geometry drawn as
-/// its helper.
+/// placing a library object found in its objects roots stood as a model compiled from that `.object`, every spawn
+/// point whose packet names a visual found in the scene's game data stood as that model in its rest pose, each lit by
+/// the open sky as a model alone is, and their textures read from the scene's game data; what has no geometry drawn as
+/// its helper. Each drawn thing is named by its object's [`SceneRenderId`].
 pub struct SceneRenderSource {
   scene: Arc<SessionSnapshot<SelectedScene>>,
   assets: AssetMountState,
@@ -38,8 +43,13 @@ pub struct SceneRenderSource {
 }
 
 impl SceneRenderSource {
-  /// The one category every scene object stands in, so the page hides any of them one by one, never by group.
+  /// The category every scene object stands in, so the page hides any of them one by one, never by group.
   const CATEGORY: RenderSpawnCategory = RenderSpawnCategory::Props;
+
+  /// The category every spawn point's model stands in, apart from the scene objects', so the page switches them all
+  /// with the spawn points' helpers by its group alone: the renderer's items group, which nothing else of a scene
+  /// stands in, whatever the entity's class.
+  const SPAWN_CATEGORY: RenderSpawnCategory = RenderSpawnCategory::Items;
 
   /// The scene `scene` holds as the renderer draws it.
   pub fn new(scene: Arc<SessionSnapshot<SelectedScene>>, assets: AssetMountState) -> Self {
@@ -88,6 +98,46 @@ impl SceneRenderSource {
       .assets
       .search(&self.scene.objects_roots)
       .map_err(XrfError::new_asset_error)
+  }
+
+  /// A search over the scene's game data, which its textures, shaders and spawn points' visuals are read through.
+  fn search_game(&self) -> XrfResult<XraySearch> {
+    self
+      .assets
+      .search(&self.scene.game.roots)
+      .map_err(XrfError::new_asset_error)
+  }
+
+  /// The spawn points drawn as models, looked for the first time anything asks.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the scene's game data cannot be searched the first time.
+  fn get_spawn_models(&self) -> XrfResult<Arc<SceneSpawnModels>> {
+    Ok(SceneSpawnModelsPart::get(&self.scene, &self.search_game()?))
+  }
+
+  /// How a model standing as `object` is lit: by the open sky on every side, no level standing around a scene's
+  /// objects to shade their hemisphere.
+  fn light_open(object: SceneRenderId) -> RenderSpawnLighting {
+    RenderSpawnLighting {
+      object: object.0,
+      cube: [1.0; 6],
+      sky: 1.0,
+    }
+  }
+
+  /// The model the spawn points standing as `visual` draw as, posed as they stand still, its textures known to the
+  /// resolver as a level's spawned models' are.
+  fn pose_visual(&self, name: &str, visual: &SpawnVisual) -> RenderSpawnModel {
+    self.textures.extend(visual.textures.iter().map(ResolvedTexture::from));
+
+    RenderSpawnModel {
+      name: name.to_owned(),
+      package: VisualPoser::pose(&visual.package, visual.rest.as_deref()),
+      surfaces: visual.surfaces.clone(),
+      skeleton: None,
+    }
   }
 
   /// The model `object`'s library object compiles to, posed as stored, and how each of its submeshes draws as
@@ -182,27 +232,46 @@ impl WorldLevelSource for SceneRenderSource {
     )))
   }
 
-  /// Every scene object drawn, named by its place among the scene's objects, so a pick answers it as the page lists
-  /// it; each library object a visual, named by its reference, in the order first placed.
+  /// Every scene object drawn in the props group, then every spawn point drawn as a model in a group of their own, each
+  /// named by its [`SceneRenderId`], so a pick answers it as the page names it; each library object a visual named by
+  /// its reference and each spawn point's model one named by its file, in the order first placed.
   fn read_spawn(&self) -> XrfResult<RenderLevelSpawn> {
     let drawn: &SceneDrawnObjects = self.get_drawn()?;
+    let models: Arc<SceneSpawnModels> = self.get_spawn_models()?;
     let mut visuals: Vec<String> = Vec::new();
-    let mut indices: HashMap<&str, u32> = HashMap::new();
-    let objects: Vec<RenderSpawnObject> = drawn
-      .objects
-      .iter()
-      .map(|object| RenderSpawnObject {
-        index: object.id.index,
-        category: Self::CATEGORY,
-        is_released: false,
-        visual: *indices.entry(object.reference.as_str()).or_insert_with(|| {
-          visuals.push(object.reference.clone());
+    let mut indices: HashMap<String, u32> = HashMap::new();
+    let mut stand = |name: String| -> u32 {
+      *indices.entry(name).or_insert_with_key(|name| {
+        visuals.push(name.clone());
 
-          (visuals.len() - 1) as u32
-        }),
-        transform: object.get_render_transform(),
+        (visuals.len() - 1) as u32
       })
-      .collect();
+    };
+    let mut objects: Vec<RenderSpawnObject> = Vec::with_capacity(drawn.objects.len() + models.objects.len());
+
+    for object in &drawn.objects {
+      if let Some(id) = SceneRenderId::of(&object.id) {
+        objects.push(RenderSpawnObject {
+          index: id.0,
+          category: Self::CATEGORY,
+          is_released: false,
+          visual: stand(object.reference.clone()),
+          transform: object.get_render_transform(),
+        });
+      }
+    }
+
+    for model in &models.objects {
+      if let Some(id) = SceneRenderId::of(&model.id) {
+        objects.push(RenderSpawnObject {
+          index: id.0,
+          category: Self::SPAWN_CATEGORY,
+          is_released: false,
+          visual: stand(model.get_model_name()),
+          transform: model.get_render_transform(),
+        });
+      }
+    }
 
     Ok(RenderLevelSpawn {
       visuals,
@@ -211,49 +280,53 @@ impl WorldLevelSource for SceneRenderSource {
     })
   }
 
-  /// Each library object named, compiled once whatever stands as it; one that does not read or compile is left out
-  /// and reported.
+  /// Each model named: a library object compiled once whatever stands as it, a spawn point's visual read once through
+  /// the visuals the scene keeps; one that does not read or compile is left out and reported.
   fn read_spawn_models(&self, names: &[String]) -> XrfResult<RenderSpawnModels> {
     let drawn: &SceneDrawnObjects = self.get_drawn()?;
     let objects: XraySearch = self.search_objects()?;
-    let surfaces: XraySurfaceResolver = XraySurfaceResolver::open(
-      &self
-        .assets
-        .search(&self.scene.game.roots)
-        .map_err(XrfError::new_asset_error)?,
-      XrayTextureScope::shared(),
-    );
+    let game: XraySearch = self.search_game()?;
+    let spawn_models: Arc<SceneSpawnModels> = SceneSpawnModelsPart::get(&self.scene, &game);
+    let surfaces: XraySurfaceResolver = XraySurfaceResolver::open(&game, XrayTextureScope::shared());
     let mut models: Vec<RenderSpawnModel> = Vec::with_capacity(names.len());
     let mut failures: Vec<RenderLoadFailure> = Vec::new();
 
-    for name in names {
-      let read: TauriResult<RenderSpawnModel> = match drawn.find(name) {
-        Some(object) => self.read_model(&objects, object, &surfaces),
-        None => Err(format!("No scene object places library object '{name}'")),
-      };
+    SceneSpawnVisualsPart::with_reader(&self.scene, &game, |reader| {
+      for name in names {
+        let read: TauriResult<RenderSpawnModel> = match (drawn.find(name), spawn_models.find_model(name)) {
+          (Some(object), _) => self
+            .read_model(&objects, object, &surfaces)
+            .inspect_err(|reason| LevelReport::undrawn_scene_object(name, reason)),
+          // The reader reports a visual that does not read.
+          (None, Some(model)) => reader.get(&model.visual).map(|visual| self.pose_visual(name, &visual)),
+          (None, None) => Err(format!("No scene object or spawn point stands as model '{name}'"))
+            .inspect_err(|reason| LevelReport::undrawn_scene_object(name, reason)),
+        };
 
-      match read {
-        Ok(model) => models.push(model),
-        Err(reason) => {
-          LevelReport::undrawn_scene_object(name, &reason);
-          failures.push(RenderLoadFailure {
+        match read {
+          Ok(model) => models.push(model),
+          Err(reason) => failures.push(RenderLoadFailure {
             name: name.clone(),
             reason,
-          });
+          }),
         }
       }
-    }
+    });
 
+    let is_read = |name: &str| models.iter().any(|model| model.name == name);
     let lighting: Vec<RenderSpawnLighting> = drawn
       .objects
       .iter()
-      .filter(|object| models.iter().any(|model| model.name == object.reference))
-      .map(|object| RenderSpawnLighting {
-        object: object.id.index,
-        // Open sky on every side: no level stands around a scene's objects to shade their hemisphere.
-        cube: [1.0; 6],
-        sky: 1.0,
-      })
+      .filter(|object| is_read(&object.reference))
+      .filter_map(|object| SceneRenderId::of(&object.id))
+      .chain(
+        spawn_models
+          .objects
+          .iter()
+          .filter(|model| is_read(&model.get_model_name()))
+          .filter_map(|model| SceneRenderId::of(&model.id)),
+      )
+      .map(Self::light_open)
       .collect();
 
     Ok(RenderSpawnModels {
@@ -263,12 +336,10 @@ impl WorldLevelSource for SceneRenderSource {
     })
   }
 
-  /// The helpers of what the scene holds with no geometry, each named by its scene object's [`SceneHelperId`] and
-  /// switched by its tool.
-  ///
-  /// [`SceneHelperId`]: crate::scene::SceneHelperId
+  /// The helpers of what the scene holds with no geometry, each named by its scene object's [`SceneRenderId`] and
+  /// switched by its tool, a spawn point standing as its model helped by its volume alone.
   fn read_helpers(&self) -> XrfResult<RenderLevelHelpers> {
-    Ok(SceneHelpersPart::get(&self.scene).helpers.clone())
+    Ok(SceneHelpersPart::get(&self.scene, &self.search_game()?).helpers.clone())
   }
 
   fn read_details(&self) -> XrfResult<Option<RenderLevelDetails>> {

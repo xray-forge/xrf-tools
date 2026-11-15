@@ -31,6 +31,7 @@ mod scene_open;
 mod scene_problems;
 mod scene_render;
 mod scene_render_placement;
+mod scene_spawn_models;
 mod scene_tools;
 mod sound_emitters;
 mod surfaces;

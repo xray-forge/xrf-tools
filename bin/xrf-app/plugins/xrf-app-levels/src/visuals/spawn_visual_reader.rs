@@ -2,7 +2,6 @@ use std::collections::BTreeSet;
 use std::sync::{Arc, OnceLock};
 
 use xrf_app_core::TauriResult;
-use xrf_app_core::session::SessionSnapshot;
 use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope};
@@ -12,16 +11,18 @@ use xrf_visual::{
   VisualDependencies, VisualDescription, VisualMotions, VisualPackage, VisualPacker, VisualRestPose, VisualSkeleton,
 };
 
-use crate::level::SelectedLevel;
-use crate::parts::{LevelSpawnVisual, LevelSpawnVisuals, LevelSpawnVisualsPart, LevelTextureReference};
+use crate::parts::LevelTextureReference;
 use crate::report::LevelReport;
+use crate::visuals::{SpawnVisual, SpawnVisuals};
 
-/// Reads a level's spawned visuals within one search, opening the shader library once for all of them, and only if
-/// one is read at all.
+/// Reads spawned objects' visuals within one search into the visuals they are kept in, opening the shader library once
+/// for all of them, and only if one is read at all. A level and a scene each hand it the visuals their session keeps
+/// and the search their game data is read through.
 pub(crate) struct SpawnVisualReader {
-  visuals: Arc<LevelSpawnVisuals>,
+  visuals: Arc<SpawnVisuals>,
   search: XraySearch,
-  /// The level's own directory, the engine's `$level$`, where the level's breakables are compiled to.
+  /// The level's own directory, the engine's `$level$`, where a level's breakables are compiled to; none for a scene,
+  /// whose visuals are the game's alone.
   level: Option<XrayLogicalPath>,
   scope: XrayTextureScope,
   /// Shared with the pool a visual is read on, so held in a lock.
@@ -32,34 +33,29 @@ impl SpawnVisualReader {
   /// The cycle a lamp plays from the moment it spawns (`CHangingLamp::net_Spawn`), whose first frame it stands in.
   const IDLE_MOTION: &'static str = "idle";
 
-  /// Runs `read` with a reader of the open level's spawned visuals, whatever it reads recorded as the visuals' part read
-  /// it.
-  pub(crate) fn with<T>(
-    current: &SessionSnapshot<SelectedLevel>,
-    search: &XraySearch,
-    read: impl FnOnce(&Self) -> T,
-  ) -> T {
-    let visuals: Arc<LevelSpawnVisuals> = current
-      .parts
-      .get_or_init::<LevelSpawnVisualsPart>(|| Arc::new(LevelSpawnVisuals::new()));
-
-    current.parts.record::<LevelSpawnVisualsPart, T>(search, |search| {
-      read(&Self {
-        visuals,
-        search: search.clone(),
-        level: current.source.get_logical_directory(),
-        scope: current.source.get_texture_scope(),
-        resolver: OnceLock::new(),
-      })
-    })
+  /// A reader of visuals into `visuals` through `search`, their textures resolved in `scope`, looked for in the shared
+  /// meshes alone until [`Self::beside`] names a level's directory.
+  pub(crate) fn new(visuals: Arc<SpawnVisuals>, search: XraySearch, scope: XrayTextureScope) -> Self {
+    Self {
+      visuals,
+      search,
+      level: None,
+      scope,
+      resolver: OnceLock::new(),
+    }
   }
 
-  /// A spawned object's visual, read and packed the first time anything asks for it and kept with the level.
+  /// The same reader looking for each visual beside `level` first, a level's own directory, as the engine does.
+  pub(crate) fn beside(self, level: Option<XrayLogicalPath>) -> Self {
+    Self { level, ..self }
+  }
+
+  /// A spawned object's visual, read and packed the first time anything asks for it and kept with the visuals.
   ///
   /// # Errors
   ///
   /// Returns why it cannot be read, reported the once it is tried: it is not read again.
-  pub(crate) fn get(&self, name: &str) -> TauriResult<Arc<LevelSpawnVisual>> {
+  pub(crate) fn get(&self, name: &str) -> TauriResult<Arc<SpawnVisual>> {
     self.visuals.get_or_read(name, || {
       self
         .read(name)
@@ -68,7 +64,12 @@ impl SpawnVisualReader {
     })
   }
 
-  fn read(&self, name: &str) -> TauriResult<LevelSpawnVisual> {
+  /// Whether the visual `name` has a file where [`Self::get`] would read it, looked up without reading it.
+  pub(crate) fn is_found(&self, name: &str) -> bool {
+    self.find_asset(name).is_ok()
+  }
+
+  fn read(&self, name: &str) -> TauriResult<SpawnVisual> {
     let search: &XraySearch = &self.search;
     let file: Arc<OgfFile> = self
       .read_file(name)
@@ -97,7 +98,7 @@ impl SpawnVisualReader {
       .filter(|reference| !reference.is_empty())
       .collect();
 
-    Ok(LevelSpawnVisual {
+    Ok(SpawnVisual {
       // Resolved as a level's own surfaces are, so a model shades with the bump pair and the detail its base declares.
       textures: LevelTextureReference::resolve_bound(references, &surfaces, search, &self.scope),
       package,
@@ -106,26 +107,32 @@ impl SpawnVisualReader {
     })
   }
 
-  /// `CModelPool::Instance_Load`: beside the level first, then the shared meshes; a name no path beside the level can
-  /// spell is looked up in the shared meshes alone, as a texture's is. Parsed through the search, so a model another
-  /// level or the model viewer read is served as it was parsed.
+  /// The visual's file, parsed through the search, so a model another level, scene or the model viewer read is served
+  /// as it was parsed.
   fn read_file(&self, name: &str) -> XrfResult<Arc<OgfFile>> {
-    let beside: Option<XrayAsset> = self
-      .level
-      .as_ref()
-      .and_then(|level| self.search.find_beside(level, XrayAssetType::Ogf, name).ok().flatten());
-    let asset: XrayAsset = match beside {
-      Some(asset) => asset,
-      None => self
-        .search
-        .resolve(XrayAssetType::Ogf, name)?
-        .into_asset()
-        .ok_or_else(|| XrfError::new_asset_error(format!("'{name}' resolves to no model in the mounted roots")))?,
-    };
+    let asset: XrayAsset = self.find_asset(name)?;
 
     self
       .search
       .read_parsed(&asset, OgfFile::read_from_bytes::<XRayByteOrder>)
+  }
+
+  /// `CModelPool::Instance_Load`: beside the level first, then the shared meshes; a name no path beside the level can
+  /// spell is looked up in the shared meshes alone, as a texture's is.
+  fn find_asset(&self, name: &str) -> XrfResult<XrayAsset> {
+    let beside: Option<XrayAsset> = self
+      .level
+      .as_ref()
+      .and_then(|level| self.search.find_beside(level, XrayAssetType::Ogf, name).ok().flatten());
+
+    match beside {
+      Some(asset) => Ok(asset),
+      None => self
+        .search
+        .resolve(XrayAssetType::Ogf, name)?
+        .into_asset()
+        .ok_or_else(|| XrfError::new_asset_error(format!("'{name}' resolves to no model in the mounted roots"))),
+    }
   }
 
   /// `PlayCycle("idle")` then `CalculateBones`: the first frame of the visual's idle cycle where it has one, its bind

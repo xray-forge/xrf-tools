@@ -26,8 +26,8 @@ use crate::objects::LevelObjectsDescription;
 use crate::parts::{
   LevelAiMapPart, LevelCollisionPart, LevelDetailsPart, LevelEnvironment, LevelEnvironmentPart, LevelGeometryPart,
   LevelHemiPart, LevelLightsPart, LevelObjectMotionsPart, LevelParticlesPart, LevelSectionsPart, LevelSpawnPart,
-  LevelSurfacesPart, LevelTextureReference, LevelTexturesPart, LevelWeatherPart, NamedSpawnVisual, PackedLevelDetails,
-  PackedLevelLights, PackedLevelParticles, SpawnVisualReader,
+  LevelSpawnVisualsPart, LevelSurfacesPart, LevelTextureReference, LevelTexturesPart, LevelWeatherPart,
+  NamedSpawnVisual, PackedLevelDetails, PackedLevelLights, PackedLevelParticles,
 };
 use crate::render::{LevelAudio, LevelParticleCollider, LevelRenderParts};
 use crate::report::LevelReport;
@@ -358,7 +358,7 @@ impl WorldLevelSource for LevelRenderSource {
     let search: XraySearch = self.search()?;
     let mut failures: Vec<RenderLoadFailure> = Vec::new();
     // A visual that cannot be read is reported by the reader, and left out.
-    let read: Vec<NamedSpawnVisual<'_>> = SpawnVisualReader::with(level, &search, |visuals| {
+    let read: Vec<NamedSpawnVisual<'_>> = LevelSpawnVisualsPart::with_reader(level, &search, |visuals| {
       names
         .iter()
         .filter_map(|name| match visuals.get(name) {

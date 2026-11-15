@@ -187,7 +187,8 @@ export const levelsCommands = {
     __TAURI_INVOKE<SessionSnapshot<SceneDrawDescription>>(ELevelsCommand.DESCRIBE_SCENE_DRAW, { sessionId }),
   /**
    * Describe the open scene's helpers beside their picture: where they reach, to frame a camera on a scene drawing them
-   * alone, and how many each helped tool draws; read again where a commit let them go.
+   * alone, how many each helped tool draws, and which spawn points stand as their models; read again where a commit let
+   * them go.
    */
   describeSceneHelpers: (sessionId: SessionId) =>
     __TAURI_INVOKE<SessionSnapshot<SceneHelpersDescription>>(ELevelsCommand.DESCRIBE_SCENE_HELPERS, { sessionId }),

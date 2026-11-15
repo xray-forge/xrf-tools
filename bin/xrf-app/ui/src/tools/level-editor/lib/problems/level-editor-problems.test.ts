@@ -22,6 +22,7 @@ import {
   describeSceneProblemKind,
   ILevelEditorProblemSources,
   LEVEL_EDITOR_MODEL_PROBLEM_RULE,
+  LEVEL_EDITOR_SPAWN_MODEL_PROBLEM_RULE,
   listLevelEditorProblems,
 } from "@/tools/level-editor/lib/problems/level-editor-problems";
 
@@ -33,6 +34,7 @@ const NO_PROBLEMS: ILevelEditorProblemSources = {
   objectTools: [],
   objects: [],
   scene: [],
+  spawnModels: [],
   textures: [],
   tools: [],
 };
@@ -204,6 +206,53 @@ describe("listLevelEditorProblems", () => {
         message: "Its scene objects are not drawn: No scene object places library object 'props\\gone'",
         rule: LEVEL_EDITOR_MODEL_PROBLEM_RULE,
         subject: "props\\gone",
+      },
+    ]);
+  });
+
+  it("lists each spawn point model the renderer could not read by the spawn points standing as it", () => {
+    const objectTools: Array<SceneObjectToolDescription> = [
+      mockSceneObjectTool(ESceneToolKind.SPAWN, [
+        mockSceneObject({ id: { index: 0, tool: ESceneToolKind.SPAWN }, name: "box_1" }),
+        mockSceneObject({ id: { index: 1, tool: ESceneToolKind.SPAWN }, name: "box_2" }),
+        mockSceneObject({ id: { index: 2, tool: ESceneToolKind.SPAWN }, name: "lamp_1" }),
+      ]),
+    ];
+    const boxModel: string = "dynamics\\box\\box_wood.ogf";
+    const lampModel: string = "dynamics\\light\\lamp.ogf";
+
+    expect(
+      listLevelEditorProblems({
+        ...NO_PROBLEMS,
+        models: [
+          { name: boxModel, reason: "Failed to read visual 'dynamics\\box\\box_wood': not a model" },
+          { name: lampModel, reason: "Failed to read visual 'dynamics\\light\\lamp': not a model" },
+          { name: "props\\box", reason: "Library object 'props\\box' does not compile: no surfaces" },
+        ],
+        objectTools,
+        spawnModels: [
+          { model: boxModel, object: { index: 0, tool: ESceneToolKind.SPAWN } },
+          { model: boxModel, object: { index: 1, tool: ESceneToolKind.SPAWN } },
+          { model: lampModel, object: { index: 2, tool: ESceneToolKind.SPAWN } },
+        ],
+      })
+    ).toEqual([
+      {
+        message:
+          "box_1 and 1 more spawn point are not drawn as a model: Failed to read visual 'dynamics\\box\\box_wood': " +
+          "not a model",
+        rule: LEVEL_EDITOR_SPAWN_MODEL_PROBLEM_RULE,
+        subject: `box_1 · ${boxModel}`,
+      },
+      {
+        message: "lamp_1 is not drawn as a model: Failed to read visual 'dynamics\\light\\lamp': not a model",
+        rule: LEVEL_EDITOR_SPAWN_MODEL_PROBLEM_RULE,
+        subject: `lamp_1 · ${lampModel}`,
+      },
+      {
+        message: "Its scene objects are not drawn: Library object 'props\\box' does not compile: no surfaces",
+        rule: LEVEL_EDITOR_MODEL_PROBLEM_RULE,
+        subject: "props\\box",
       },
     ]);
   });

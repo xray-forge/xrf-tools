@@ -10,7 +10,7 @@ import {
   toLevelEditorHelperOptions,
   toLevelEditorHelperRenderOptions,
 } from "@/tools/level-editor/lib/helpers/level-editor-helper-options";
-import { toSceneHelperId } from "@/tools/level-editor/lib/helpers/scene-helper-id";
+import { toSceneRenderId } from "@/tools/level-editor/lib/render/scene-render-id";
 
 /** Every helped tool's bit. */
 const EVERY_KIND: number = SCENE_HELPER_TOOLS.reduce(
@@ -63,7 +63,7 @@ describe("toLevelEditorHelperRenderOptions", () => {
     expect(options.kinds).toBe((EVERY_KIND & ~(1 << (getSceneHelperTool(ESceneToolKind.SPAWN)?.kind ?? 0))) >>> 0);
   });
 
-  it("names the selected, hidden and hovered objects by their helpers' ids, a scene object drawing none", () => {
+  it("names the selected, hidden and hovered objects by their render ids, which a helper carries where drawn", () => {
     const stalker: SceneObjectId = { index: 2, tool: ESceneToolKind.SPAWN };
     const light: SceneObjectId = { index: 0, tool: ESceneToolKind.LIGHT };
     const way: SceneObjectId = { index: 1, tool: ESceneToolKind.WAY };
@@ -76,12 +76,17 @@ describe("toLevelEditorHelperRenderOptions", () => {
         selected: light,
       })
     ).toMatchObject({
-      hidden: [toSceneHelperId(light), toSceneHelperId(way)],
-      hovered: toSceneHelperId(stalker),
-      selected: [toSceneHelperId(light)],
+      hidden: [toSceneRenderId(box), toSceneRenderId(light), toSceneRenderId(way)],
+      hovered: toSceneRenderId(stalker),
+      selected: [toSceneRenderId(light)],
     });
+    // A spawn point drawn as its model marks its volume selected, as the model is outlined.
     expect(
-      toLevelEditorHelperRenderOptions(DEFAULT_LEVEL_EDITOR_HELPER_OPTIONS, { hidden: [], hovered: box, selected: box })
-    ).toMatchObject({ hidden: [], hovered: null, selected: [] });
+      toLevelEditorHelperRenderOptions(DEFAULT_LEVEL_EDITOR_HELPER_OPTIONS, {
+        hidden: [],
+        hovered: null,
+        selected: stalker,
+      })
+    ).toMatchObject({ hidden: [], hovered: null, selected: [toSceneRenderId(stalker)] });
   });
 });

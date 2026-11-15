@@ -3,10 +3,11 @@
 //! is shown of it (`description`); its object tools' typed objects (`objects`) and its binary tools' counts (`binary`),
 //! each a part of its session read on demand with a query of its own; what the editor would skip or refuse of a part,
 //! kept as a problem on its tool rather than refusing the open (`problem`); the scene objects it draws, where they
-//! stand and which it cannot draw (`draw`); the helpers drawn for what has no geometry, each named by its object
-//! (`helpers`); and the scene as the native renderer draws it, each scene object a model compiled from its `.object`,
-//! with the source each session is drawn from, the space it stands in and where one object stands for a camera to
-//! frame it (`render`).
+//! stand and which it cannot draw (`draw`); the spawn points it draws as their entities' models and the visuals they
+//! are read as (`spawn`); the helpers drawn for what has no geometry, each named by its object (`helpers`); and the
+//! scene as the native renderer draws it, each scene object a model compiled from its `.object`, with the source each
+//! session is drawn from, the one id every drawn thing of an object carries, the space it stands in and where one
+//! object stands for a camera to frame it (`render`).
 
 mod binary;
 mod description;
@@ -16,6 +17,7 @@ mod helpers;
 mod objects;
 mod problem;
 mod render;
+mod spawn;
 
 pub(crate) use binary::{SceneBinaryToolDescription, SceneBinaryToolsDescription, SceneBinaryToolsPart};
 pub(crate) use description::{
@@ -29,8 +31,8 @@ pub(crate) use draw::{
   SceneDrawnObjects,
 };
 pub(crate) use helpers::{
-  SCENE_HELPER_TOOLS, SceneHelpedObject, SceneHelperId, SceneHelperLook, SceneHelperToolCount, SceneHelperToolEntry,
-  SceneHelpers, SceneHelpersDescription, SceneHelpersPart,
+  SCENE_HELPER_TOOLS, SceneHelpedObject, SceneHelperLook, SceneHelperToolCount, SceneHelperToolEntry, SceneHelpers,
+  SceneHelpersDescription, SceneHelpersPart,
 };
 pub(crate) use objects::{
   SceneLightType, SceneObjectDescription, SceneObjectId, SceneObjectProperties, SceneObjectToolDescription,
@@ -39,4 +41,7 @@ pub(crate) use objects::{
 };
 pub(crate) use problem::{SceneProblem, SceneProblemKind};
 pub use render::ShownScenes;
-pub(crate) use render::{SceneObjectSphere, SceneRenderSource, SceneRenderSpace};
+pub(crate) use render::{SceneObjectSphere, SceneRenderId, SceneRenderSource, SceneRenderSpace};
+pub(crate) use spawn::{
+  SceneSpawnModel, SceneSpawnModelDescription, SceneSpawnModels, SceneSpawnModelsPart, SceneSpawnVisualsPart,
+};
