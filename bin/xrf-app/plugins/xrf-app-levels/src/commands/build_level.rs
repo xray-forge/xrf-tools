@@ -18,10 +18,10 @@ use crate::rawdata::level_build_result::LevelBuildResult;
 use crate::rawdata::level_compiler_libraries::LevelCompilerLibraries;
 
 /// Build a Level Editor scene into a level directory, as `level build` does, then compile it where `compile` names
-/// the steps, as `level compile` does, one job reporting both. A cancel stops the build between its steps and kills a
-/// running compiler. The compile works on the directory the build wrote, whatever level `compile` names, overwrites
-/// what it writes as the build does where the build is forced, and lights the details on D3D12 with the DXC the app
-/// bundles where it traces on the GPU.
+/// the steps, as `level compile` does, one job reporting both. A cancel stops the build between its steps and the
+/// compile within its running step. The compile works on the directory the build wrote, whatever level `compile`
+/// names, overwrites what it writes as the build does where the build is forced, and traces on D3D12 with the DXC the
+/// app bundles where it traces on the GPU.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "build_level")]
 pub(crate) async fn levels_build_level(
@@ -39,16 +39,10 @@ pub(crate) async fn levels_build_level(
     dxc: libraries.dxc.clone(),
     ..compile
   });
-  let mut resources: Vec<JobResource> = vec![JobResource::tree(&request.destination)];
-
-  if let Some(work) = compile.as_ref().and_then(|compile| compile.work.as_ref()) {
-    resources.push(JobResource::tree(work));
-  }
-
   let start: JobStart = JobStart::new(job_id, LEVELS_JOB_BUILD)
     .with_request(&request)
     .with_kind_exclusion()
-    .with_resources(resources)
+    .with_resources(vec![JobResource::tree(&request.destination)])
     .with_progress(progress);
 
   log::info!(

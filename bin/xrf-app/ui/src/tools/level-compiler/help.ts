@@ -2,41 +2,40 @@ import { EToolId, IToolHelp } from "@/core/routing/tool";
 
 export const LEVEL_COMPILER_HELP: IToolHelp = {
   summary:
-    "Builds an SDK Level Editor scene into a level directory as the Level Editor's Build does: the game files " +
-    "(`level.spawn`, `level.game`, particles, sounds and the rest) always, and, given the objects roots and game " +
-    "materials, the `build.prj` the SDK's xrLC compiles with `level.ltx`, the occluders, details, the AI map, the tree " +
-    "impostors and the breakable parts. It is what `xrf-cli level build` does, and with compile steps chosen it then " +
-    "runs `xrf-cli level compile` on the level it wrote.",
+    "Builds an SDK Level Editor scene into a level directory, as the Level Editor's Build does: always the game files " +
+    "(`level.spawn`, `level.game`, particles, sounds and the rest), and, given the objects roots and game materials, " +
+    "the `build.prj` the level is compiled from, with `level.ltx`, the occluders, details, the AI map, the impostors " +
+    "and the breakable parts. This is what `xrf-cli level build` does. With compile steps ticked, it then compiles the " +
+    "level it wrote, as `xrf-cli level compile` does, every step by the tools' own compilers.",
   workflow: [
     "Pick the scene's `.level`; its parts are read from the directory beside it.",
     "Pick the level directory to write into.",
     "Add the objects roots the scene's objects are read from, such as the scene's own `rawdata\\objects` and the SDK's.",
     "Pick the game materials, `gamemtl.xr`, to write `build.prj`, and the textures root where the scene holds details " +
-      "or tree impostors.",
-    "To compile as well, tick the steps (geometry, details, AI map) and pick the game data the compilers read, and " +
-      "the SDK's `editors` directory for the geometry or the AI map.",
+      "or impostors.",
+    "To compile as well, tick the steps (geometry, light, details, AI map), choose the light quality, and pick the " +
+      "game data the compilers read.",
     "`Build` reports every file written and what it replaced, and lists any part it could not make; with steps " +
       "ticked, `Build and compile` also reports each step's time.",
   ],
   nuances: [
     "Without the game materials only the game files are written, as for a scene of no geometry.",
-    "Proof lighting writes 3 lightmap pixels a metre, 1 jitter sample and quality 1 sky and sun into `build.prj`, " +
-      "whatever the scene sets: xrLC lights in minutes rather than hours, for checking a level, not shipping it.",
+    "`build.prj` carries the scene's own build options, as the Level Editor writes them. For a quick look at a level, " +
+      "choose the draft light quality: it lights at 3 lightmap texels a metre with one sample, under a sky and sun " +
+      "regenerated at quality 1.",
     "The impostor atlas grows to 4096 a side by default, as Anomaly's largest levels ship it; the SDK atlas limit " +
       "keeps SDK 0.7's 2048 and refuses a level of more than 128 impostors.",
     "Files the build writes that the directory already holds are replaced only when overwriting is chosen, and a file " +
       "of the build's own it would not write again is refused, since the SDK's Build would move it aside.",
-    "The steps are checked before any starts: each step's inputs, and a texture description (`.thm`) for every " +
-      "texture `build.prj` names. Stopping a step kills its compiler and keeps what was built.",
-    "The details are lit by the tools themselves, as the SDK's xrDO_Light lights them: on the GPU chosen in the " +
-      "renderer settings where it traces rays, seconds on a small level and under a minute on `jupiter` as shipped; " +
-      "on the CPU otherwise, or when chosen, the reference, every slot within one step of the GPU's. An existing " +
-      "`level.details` is replaced only when overwriting is chosen.",
+    "Before any step starts, the compile checks each step's inputs and a texture description (`.thm`) for every " +
+      "texture `build.prj` names. Stopping the job stops the running step and keeps what was already written.",
+    "The light is baked in the same pass as the geometry, so ticking the geometry ticks the light, and the light is " +
+      "offered only with the geometry. Geometry compiled without its light gets flat neutral light: enough to walk " +
+      "the level, not to judge its look.",
+    "The light, the details and the AI map's covers trace their rays on the GPU chosen in the renderer settings where " +
+      "it supports ray tracing, or on the CPU, the reference, when chosen or where no GPU can. Existing " +
+      "`level.details` and `level.ai` are replaced only when overwriting is chosen.",
   ],
-  limitations: [
-    "The geometry and AI map steps run the SDK's own xrLC and xrAI in a work folder of their own, so they need " +
-      "SDK 0.7 and take its time; they run at idle priority, so they slow down while the machine is busy.",
-    "The objects roots are typed rather than picked.",
-  ],
+  limitations: ["The objects roots are typed rather than picked."],
   relatedTools: [EToolId.LEVEL_DECOMPILER, EToolId.LEVEL_VIEWER],
 };

@@ -1,9 +1,9 @@
 import {
   AiMapCovers,
   ELevelCompileStep,
-  ELightQuality,
   LevelCompileRequest,
   LevelCompileStep,
+  LightQuality,
   RayBackend,
   RayGpu,
 } from "@xrf/ipc/types/xrf-level-compiler";
@@ -12,47 +12,68 @@ import { Nullable } from "@xrf/types";
 /** What the form names for the compile after the build. */
 export interface ICompileChoice {
   steps: ReadonlySet<LevelCompileStep>;
-  /** The SDK's `editors` directory, whose `bin` holds xrLC. */
-  sdk: Nullable<string>;
   /** The game data holding `gamemtl.xr` and `shaders_xrlc.xr`. */
   gamedata: Nullable<string>;
   /** The textures root, with a `.thm` for every texture `build.prj` names. */
   textures: Nullable<string>;
-  /** What traces the rays: the details' shadow rays and the AI map's cover rays. */
+  /** What traces the rays: the light's lightmap and terrain rays, the details' shadow rays and the AI map's cover rays. */
   rayBackend: RayBackend;
   /** The GPU they trace on, the renderer's choice; null for the automatic one. */
   rayGpu: Nullable<RayGpu>;
   /** The covers the AI map gets: full ones traced against `build.cform`, or none. */
   aiCovers: AiMapCovers;
+  /** How finely the light step lights the level: by `build.prj`'s own sky and sun, or a cheap draft. */
+  lightQuality: LightQuality;
 }
 
-/**
- * A step the form offers: every step but the light, since the app compiles the geometry by the SDK's xrLC, which lights
- * it whatever the steps.
- */
-export type TCompileFormStep = Exclude<LevelCompileStep, `${ELevelCompileStep.LIGHT}`>;
-
 /** Every step the form offers, in the order the compile runs them and the form lists them. */
-export const COMPILE_STEPS: ReadonlyArray<TCompileFormStep> = [
+export const COMPILE_STEPS: ReadonlyArray<LevelCompileStep> = [
   ELevelCompileStep.GEOMETRY,
+  ELevelCompileStep.LIGHT,
   ELevelCompileStep.DETAILS,
   ELevelCompileStep.AI,
 ];
 
-/** The steps the SDK's own compilers run; the details and the AI map are compiled by the tools themselves. */
-export const SDK_COMPILE_STEPS: ReadonlySet<LevelCompileStep> = new Set([ELevelCompileStep.GEOMETRY]);
-
 /**
- * @param steps - The steps chosen.
- * @returns Whether any of them runs one of the SDK's compilers, and so needs the SDK named.
+ * The steps chosen after one step's box changes: the light is baked in the geometry's pass, so ticking the geometry
+ * ticks its light too and unticking it drops the light, and a choice never holds the light without the geometry.
+ *
+ * @param steps - The steps chosen before.
+ * @param step - The step whose box changed.
+ * @param isChecked - Whether it is now ticked.
+ * @returns The steps chosen after.
  */
-export function isSdkNeeded(steps: ReadonlySet<LevelCompileStep>): boolean {
-  return [...steps].some((step: LevelCompileStep) => SDK_COMPILE_STEPS.has(step));
+export function toggleCompileStep(
+  steps: ReadonlySet<LevelCompileStep>,
+  step: LevelCompileStep,
+  isChecked: boolean
+): ReadonlySet<LevelCompileStep> {
+  const next: Set<LevelCompileStep> = new Set(steps);
+
+  if (isChecked) {
+    next.add(step);
+
+    if (step === ELevelCompileStep.GEOMETRY) {
+      next.add(ELevelCompileStep.LIGHT);
+    }
+  } else {
+    next.delete(step);
+
+    if (step === ELevelCompileStep.GEOMETRY) {
+      next.delete(ELevelCompileStep.LIGHT);
+    }
+  }
+
+  if (!next.has(ELevelCompileStep.GEOMETRY)) {
+    next.delete(ELevelCompileStep.LIGHT);
+  }
+
+  return next;
 }
 
 /**
  * Whether the compile the form names cannot run: a step is chosen but the game data or the textures root is not
- * named, or a step the SDK runs is chosen without the SDK.
+ * named, or the light is chosen without the geometry it is baked with.
  *
  * @param choice - What the form names.
  * @returns Why it cannot run, or null where it can or no step is chosen.
@@ -62,8 +83,8 @@ export function getCompileProblem(choice: ICompileChoice): Nullable<string> {
     return null;
   }
 
-  if (!choice.sdk && isSdkNeeded(choice.steps)) {
-    return "Name the SDK's editors directory to compile the geometry";
+  if (choice.steps.has(ELevelCompileStep.LIGHT) && !choice.steps.has(ELevelCompileStep.GEOMETRY)) {
+    return "The light is baked with the geometry; tick the geometry to light the level";
   }
 
   if (!choice.gamedata) {
@@ -94,16 +115,13 @@ export function toCompileRequest(choice: ICompileChoice): Nullable<LevelCompileR
     // the app bundles, whatever is named here.
     level: "",
     steps: COMPILE_STEPS.filter((step: LevelCompileStep) => choice.steps.has(step)),
-    sdk: isSdkNeeded(choice.steps) ? choice.sdk : null,
     gamedata: choice.gamedata,
     textures: [choice.textures],
-    work: null,
     isForced: false,
     backend: choice.rayBackend,
     dxc: null,
     gpu: choice.rayGpu,
     aiCovers: choice.aiCovers,
-    // The app compiles the geometry by the SDK's xrLC, which lights by build.prj alone.
-    lightQuality: ELightQuality.SCENE,
+    lightQuality: choice.lightQuality,
   };
 }

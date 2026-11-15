@@ -81,8 +81,7 @@ export type LevelBuildRequest = {
   gameMaterials: string | null;
   /** The textures root (`$game_textures$`) the details' textures and the impostors' strips are read from. */
   textures: string | null;
-  /** Whether `build.prj` is lit at proof quality ([`crate::LevelBuildLighting::PROOF`]) whatever the scene sets. */
-  isProofLighting: boolean;
+  /** How large the impostor atlas may grow. */
   impostorLimit: LevelBuildImpostorLimit;
   /** Whether files the build writes are overwritten where the directory holds them rather than refused. */
   isForced: boolean;

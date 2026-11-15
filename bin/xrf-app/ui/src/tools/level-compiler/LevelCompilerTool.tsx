@@ -3,8 +3,10 @@ import {
   AiMapCovers,
   EAiMapCovers,
   ELevelCompileStep,
+  ELightQuality,
   ERayBackend,
   LevelCompileStep,
+  LightQuality,
   RayBackend,
 } from "@xrf/ipc/types/xrf-level-compiler";
 import { ELevelBuildImpostorLimit } from "@xrf/ipc/types/xrf-rawdata";
@@ -26,22 +28,27 @@ import {
   COMPILE_STEPS,
   getCompileProblem,
   ICompileChoice,
-  TCompileFormStep,
   toCompileRequest,
+  toggleCompileStep,
 } from "@/tools/level-compiler/lib/compile-request";
 import { LevelCompilerService } from "@/tools/level-compiler/services/level-compiler.service";
 
 import { LevelBuildResultView } from "./components/LevelBuildResultView";
 
-const STEP_LABELS: Record<TCompileFormStep, { label: string; description: string }> = {
+const STEP_LABELS: Record<LevelCompileStep, { label: string; description: string }> = {
   [ELevelCompileStep.GEOMETRY]: {
     label: "Compile geometry",
-    description: "The level, its geometry, collision and lightmaps from build.prj, with the SDK's xrLC",
+    description: "level, level.geom, level.geomx and level.cform from build.prj, as xrLC builds them",
+  },
+  [ELevelCompileStep.LIGHT]: {
+    label: "Light geometry",
+    description:
+      "The light of the vertices, lightmaps and terrain, baked in the same pass as the geometry; without it the " +
+      "level gets flat neutral light",
   },
   [ELevelCompileStep.DETAILS]: {
     label: "Light details",
-    description:
-      "level.details lit from build.details, build.cform and build.lights, as xrDO_Light lights it, on the GPU or the CPU",
+    description: "level.details lit from build.details, build.cform and build.lights, as xrDO_Light lights it",
   },
   [ELevelCompileStep.AI]: {
     label: "Compile AI map",
@@ -61,6 +68,11 @@ const AI_COVERS: ReadonlyArray<IChoiceFormRowOption<AiMapCovers>> = [
   { label: "None", value: EAiMapCovers.NONE },
 ];
 
+const LIGHT_QUALITIES: ReadonlyArray<IChoiceFormRowOption<LightQuality>> = [
+  { label: "Scene", value: ELightQuality.SCENE },
+  { label: "Draft", value: ELightQuality.DRAFT },
+];
+
 export function LevelCompilerTool(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
@@ -70,12 +82,12 @@ export function LevelCompilerTool(): ReactElement {
   const isRunning: boolean = compilerService.operation.isRunning;
 
   const [objects, setObjects] = useState<Array<string>>([]);
-  const [isProofLighting, setIsProofLighting] = useState<boolean>(false);
   const [isSdkImpostorAtlas, setIsSdkImpostorAtlas] = useState<boolean>(false);
   const [isForced, setIsForced] = useState<boolean>(false);
   const [steps, setSteps] = useState<ReadonlySet<LevelCompileStep>>(new Set());
   const [rayBackend, setRayBackend] = useState<RayBackend>(ERayBackend.AUTO);
   const [aiCovers, setAiCovers] = useState<AiMapCovers>(EAiMapCovers.FULL);
+  const [lightQuality, setLightQuality] = useState<LightQuality>(ELightQuality.SCENE);
 
   const source: IPathField = usePathField({
     tool: EToolId.LEVEL_COMPILER,
@@ -112,15 +124,6 @@ export function LevelCompilerTool(): ReactElement {
     isDisabled: isRunning,
   });
 
-  const sdk: IPathField = usePathField({
-    tool: EToolId.LEVEL_COMPILER,
-    id: "sdk",
-    title: "Select the SDK's editors directory",
-    isDirectory: true,
-    isRequired: false,
-    isDisabled: isRunning,
-  });
-
   const gamedata: IPathField = usePathField({
     tool: EToolId.LEVEL_COMPILER,
     id: "gamedata",
@@ -137,33 +140,25 @@ export function LevelCompilerTool(): ReactElement {
   // The rays trace on the GPU the renderer's settings choose, the automatic one where they choose none.
   const rayGpu: Nullable<RenderGpu> = renderSettingsService.renderGpu;
   const isTracing: boolean =
-    steps.has(ELevelCompileStep.DETAILS) || (steps.has(ELevelCompileStep.AI) && aiCovers === EAiMapCovers.FULL);
+    steps.has(ELevelCompileStep.LIGHT) ||
+    steps.has(ELevelCompileStep.DETAILS) ||
+    (steps.has(ELevelCompileStep.AI) && aiCovers === EAiMapCovers.FULL);
   const compile: ICompileChoice = useMemo(
     () => ({
       steps,
-      sdk: sdk.value,
       gamedata: gamedata.value,
       textures: textures.value,
       rayBackend,
       rayGpu: rayGpu === null ? null : { vendor: rayGpu.vendor, device: rayGpu.device },
       aiCovers,
+      lightQuality,
     }),
-    [aiCovers, gamedata.value, rayBackend, rayGpu, sdk.value, steps, textures.value]
+    [aiCovers, gamedata.value, lightQuality, rayBackend, rayGpu, steps, textures.value]
   );
   const compileProblem: Nullable<string> = getCompileProblem(compile);
 
   const onStepChanged = useCallback((step: LevelCompileStep, isChecked: boolean) => {
-    setSteps((current: ReadonlySet<LevelCompileStep>) => {
-      const next: Set<LevelCompileStep> = new Set(current);
-
-      if (isChecked) {
-        next.add(step);
-      } else {
-        next.delete(step);
-      }
-
-      return next;
-    });
+    setSteps((current: ReadonlySet<LevelCompileStep>) => toggleCompileStep(current, step, isChecked));
   }, []);
 
   const onBuildClicked = useCallback(async () => {
@@ -180,7 +175,6 @@ export function LevelCompilerTool(): ReactElement {
         objects,
         gameMaterials: gameMaterials.value,
         textures: textures.value,
-        isProofLighting,
         impostorLimit: isSdkImpostorAtlas ? ELevelBuildImpostorLimit.SDK : ELevelBuildImpostorLimit.EXTENDED,
         isForced,
       },
@@ -191,7 +185,6 @@ export function LevelCompilerTool(): ReactElement {
     compilerService,
     gameMaterials.value,
     isForced,
-    isProofLighting,
     isSdkImpostorAtlas,
     levelPath,
     log,
@@ -208,7 +201,6 @@ export function LevelCompilerTool(): ReactElement {
     compilerService,
     gameMaterials.value,
     isForced,
-    isProofLighting,
     isSdkImpostorAtlas,
     levelPath,
     objects,
@@ -224,7 +216,6 @@ export function LevelCompilerTool(): ReactElement {
         !destination.isValid ||
         !gameMaterials.isValid ||
         !textures.isValid ||
-        !sdk.isValid ||
         !gamedata.isValid ||
         isMissingObjects ||
         compileProblem !== null
@@ -273,16 +264,11 @@ export function LevelCompilerTool(): ReactElement {
       <PathFormRow
         isDisabled={isRunning}
         label={"Textures root"}
-        description={"Where the details' textures and the trees' impostor strips are read from"}
+        description={
+          "Where the details' textures and the impostor strips are read from, and, to compile, every texture " +
+          "build.prj names"
+        }
         field={textures}
-      />
-
-      <CheckboxFormRow
-        label={"Proof lighting"}
-        description={"3 lightmap pixels a metre, 1 sample, quality 1 sky and sun: xrLC in minutes, not for shipping"}
-        isChecked={isProofLighting}
-        isDisabled={isRunning}
-        onChange={setIsProofLighting}
       />
 
       <CheckboxFormRow
@@ -301,22 +287,35 @@ export function LevelCompilerTool(): ReactElement {
         onChange={setIsForced}
       />
 
-      {COMPILE_STEPS.map((step: TCompileFormStep) => (
+      {COMPILE_STEPS.map((step: LevelCompileStep) => (
         <CheckboxFormRow
           key={step}
           label={STEP_LABELS[step].label}
           description={STEP_LABELS[step].description}
           isChecked={steps.has(step)}
-          isDisabled={isRunning}
+          isDisabled={isRunning || (step === ELevelCompileStep.LIGHT && !steps.has(ELevelCompileStep.GEOMETRY))}
           onChange={(isChecked: boolean) => onStepChanged(step, isChecked)}
         />
       ))}
 
       <ChoiceFormRow
+        label={"Light quality"}
+        description={
+          "Scene: build.prj's own sky, sun, lightmap density and samples. Draft: a quick estimate, not for shipping, " +
+          "with the sky and sun at quality 1, lightmaps of 3 texels a metre with one sample each, and each " +
+          "multi-use object lit from one sample"
+        }
+        options={LIGHT_QUALITIES}
+        value={lightQuality}
+        isDisabled={isRunning || !steps.has(ELevelCompileStep.LIGHT)}
+        onChange={setLightQuality}
+      />
+
+      <ChoiceFormRow
         label={"AI map covers"}
         description={
           "Full: traced against build.cform, as xrAI -f traces them. None: every cover 0, as xrAI -draft leaves " +
-          "them, needing no compiled geometry"
+          "them; needs no compiled geometry"
         }
         options={AI_COVERS}
         value={aiCovers}
@@ -327,9 +326,9 @@ export function LevelCompilerTool(): ReactElement {
       <ChoiceFormRow
         label={"Rays traced on"}
         description={
-          "The details' shadow rays and the AI map's cover rays. Auto: the GPU where it traces rays, else the CPU. The " +
-          "GPU is the one chosen in the renderer settings, several times faster; the CPU is the reference, every slot " +
-          "and cover within one step of the GPU's"
+          "The rays of the light, the details and the AI map's covers. Auto: the GPU where it supports ray tracing, " +
+          "else the CPU. The GPU is the one chosen in the renderer settings and several times faster; the CPU gives " +
+          "the reference result"
         }
         options={RAY_BACKENDS}
         value={rayBackend}
@@ -339,15 +338,12 @@ export function LevelCompilerTool(): ReactElement {
 
       <PathFormRow
         isDisabled={isRunning}
-        label={"SDK"}
-        description={compileProblem ?? "The SDK's editors directory, whose bin holds xrLC; for the geometry"}
-        field={sdk}
-      />
-
-      <PathFormRow
-        isDisabled={isRunning}
         label={"Game data"}
-        description={"Where the compilers read gamemtl.xr and shaders_xrlc.xr; the textures root above serves them too"}
+        description={
+          compileProblem ??
+          "Where the compilers read gamemtl.xr and shaders_xrlc.xr from; they read textures from the textures root " +
+            "above"
+        }
         field={gamedata}
       />
     </JobPickerForm>

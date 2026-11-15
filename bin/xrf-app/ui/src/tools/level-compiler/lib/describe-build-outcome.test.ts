@@ -13,7 +13,6 @@ const REQUEST: LevelBuildRequest = {
   objects: ["C:\\SDK\\rawdata\\objects"],
   gameMaterials: "C:\\Games\\CoP\\gamedata\\gamemtl.xr",
   textures: null,
-  isProofLighting: true,
   impostorLimit: "extended",
   isForced: false,
 };

@@ -7,9 +7,12 @@ import { describeBuildHeadline } from "./describe-build-headline";
 const REPORT = { source: "scene.level", destination: "levels\\test" } as LevelBuildReport;
 const COMPILE: LevelCompileReport = {
   level: "levels\\test",
-  work: "work",
   steps: [
-    { step: "geometry", duration: 1000, run: { kind: "program", program: "xrLC.exe", log: null } },
+    {
+      step: "geometry",
+      duration: 1000,
+      run: { kind: "geometryCompiler", census: { visuals: 1, triangles: 2, trees: 0, progressive: 0, sectors: 1 } },
+    },
     {
       step: "details",
       duration: 500,
