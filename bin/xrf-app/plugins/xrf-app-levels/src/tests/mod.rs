@@ -27,6 +27,8 @@ mod scene_follow;
 mod scene_objects;
 mod scene_open;
 mod scene_problems;
+mod scene_render;
+mod scene_render_placement;
 mod scene_tools;
 mod sound_emitters;
 mod surfaces;

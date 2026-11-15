@@ -10,6 +10,7 @@ import {
   SceneObjectsDescription,
   SceneSpawnField,
 } from "@xrf/ipc/types/xrf-app-levels";
+import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
 
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
@@ -66,7 +67,13 @@ async function renderPanels(objects: SceneObjectsDescription = mockGroupedObject
 
   const container: Container = mockContainer([LevelEditorSceneService, LevelEditorSelectionService]);
 
-  await container.get(LevelEditorSceneService).open({ objectsRoots: null, source: { path: "C:\\labx8.level" } });
+  await container.get(LevelEditorSceneService).open({
+    engine: EXrayEngineChoice.AUTO,
+    gameRoots: null,
+    isDltx: false,
+    objectsRoots: null,
+    source: { path: "C:\\labx8.level" },
+  });
   await flush();
 
   return renderWithProviders(
@@ -113,7 +120,13 @@ describe("LevelEditorOutlinerPanel", () => {
       },
     });
 
-    await container.get(LevelEditorSceneService).open({ objectsRoots: null, source: { path: "C:\\labx8.level" } });
+    await container.get(LevelEditorSceneService).open({
+      engine: EXrayEngineChoice.AUTO,
+      gameRoots: null,
+      isDltx: false,
+      objectsRoots: null,
+      source: { path: "C:\\labx8.level" },
+    });
     await flush();
 
     const { getByText } = renderWithProviders(<LevelEditorOutlinerPanel />, { container, route: "/level-editor" });

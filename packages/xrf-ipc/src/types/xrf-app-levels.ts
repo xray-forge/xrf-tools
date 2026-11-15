@@ -356,6 +356,9 @@ export const LEVEL_WEATHER_PART = "weather" as const;
 /** What a change event calls a scene's binary tools' counts when they go stale. */
 export const SCENE_BINARY_TOOLS_PART = "sceneBinaryTools" as const;
 
+/** What a change event calls what the page needs of a drawn scene beside its picture when it goes stale. */
+export const SCENE_DRAW_PART = "sceneDraw" as const;
+
 /** What a change event calls a scene's object tools' objects when they go stale. */
 export const SCENE_OBJECTS_PART = "sceneObjects" as const;
 
@@ -1151,6 +1154,55 @@ export type SceneCameraDescription = {
   rotation: Vector3d;
 };
 
+/**
+ * What the page needs of a drawn scene beside its picture: where its drawn objects stand, to frame a camera on, and
+ * each scene object it does not draw.
+ */
+export type SceneDrawDescription = {
+  /**
+   * The extent of the scene objects drawn, each `.object`'s meshes' boxes placed, in renderer space; none where the
+   * scene draws no object.
+   */
+  bounds: VisualBounds | null;
+  /** Each scene object not drawn, in the scene's order of its objects. */
+  problems: Array<SceneDrawProblem>;
+};
+
+/** One scene object the scene does not draw, and why. */
+export type SceneDrawProblem = {
+  /** The scene object, as the scene's objects name it. */
+  object: SceneObjectId;
+  /** The library object it places, a path under the objects roots without its extension. */
+  reference: string;
+  kind: SceneDrawProblemKind;
+  message: string;
+};
+
+/** Why a scene object is not drawn. */
+export enum ESceneDrawProblemKind {
+  /** Its reference names no `.object` in the scene's objects roots. */
+  MISSING = "missing",
+  /** Its `.object` was found and does not read. */
+  UNREADABLE = "unreadable",
+}
+
+/** Every `ESceneDrawProblemKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type SceneDrawProblemKind = `${ESceneDrawProblemKind}`;
+
+/**
+ * The game data a scene is drawn with, which its surfaces' textures and shaders are found in: the trees searched, and
+ * how the game's configs in them read, as a compiled level is opened with them. A scene with no game data opens and
+ * draws, its textures missing.
+ */
+export type SceneGameData = {
+  /** Trees the scene's textures and shaders are searched in, in search order; none for a scene with no game data. */
+  roots: XrayRoots;
+  /** Whether the game's configs resolve with the Monolith/Anomaly DLTX patch dialect. */
+  isDltx: boolean;
+  /** Which engine the game's configs are read as; detected on `auto`. */
+  engine: XrayEngineChoice;
+};
+
 /** Every `kind` the `SceneLightType` union is told apart by, so a switch or a comparison names one. */
 export enum ESceneLightType {
   /** `ltPoint`, the only kind the build exports. */
@@ -1364,7 +1416,10 @@ export type SceneObjectsDescription = {
   problems: Array<SceneProblem>;
 };
 
-/** What opening a Level Editor scene was asked to read, and where its library objects are looked for. */
+/**
+ * What opening a Level Editor scene was asked to read, where its library objects are looked for, and the game data it
+ * is drawn with.
+ */
 export type SceneOpenRequest = {
   source: SceneSource;
   /**
@@ -1372,6 +1427,15 @@ export type SceneOpenRequest = {
    * holding the `.level` where none are given.
    */
   objectsRoots: Array<string> | null;
+  /**
+   * Trees the scene's textures and shaders are searched in; where none are given, `gamedata` beside the `rawdata`
+   * directory holding the scene's `levels` where that directory exists, else no game data.
+   */
+  gameRoots: XrayRoots | null;
+  /** Whether the game's configs resolve with the Monolith/Anomaly DLTX patch dialect. */
+  isDltx: boolean;
+  /** Which engine the game's configs are read as; detected on `auto`. */
+  engine: XrayEngineChoice;
 };
 
 /** One part file a tool has beside its scene, whether the editor loads it or skips it. */
@@ -1688,6 +1752,8 @@ export type SelectedSceneDescription = {
   guid: string;
   /** Where its scene objects' library objects are looked for. */
   objectsRoots: XrayRoots;
+  /** The game data it is drawn with: the roots its textures and shaders are searched in, none where it has none. */
+  game: SceneGameData;
   /** What its `[build_params]` set, none where they do not read. */
   buildParams: SceneBuildParamsDescription | null;
   /** Where the editor's camera stood, none where `[camera]` does not read. */

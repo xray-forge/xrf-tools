@@ -42,7 +42,7 @@ function describeToolFiles(tool: SceneToolDescription, guid: string): string {
 
 /**
  * What the open scene's `.level` holds worth showing - where it lies, its GUID, where its library objects are looked
- * for, what it builds with and where the editor's camera stood - and every tool's part files.
+ * for and its textures read, what it builds with and where the editor's camera stood - and every tool's part files.
  */
 export function LevelEditorScenePanel({
   "data-testid": dataTestId = "level-editor-scene-panel",
@@ -72,6 +72,11 @@ export function LevelEditorScenePanel({
         <EditorPanelProperty
           label={"Objects roots"}
           value={scene.objectsRoots.roots.map((root: XrayRoot) => root.path).join("\n") || "None"}
+          isMonospace
+        />
+        <EditorPanelProperty
+          label={"Game roots"}
+          value={scene.game.roots.roots.map((root: XrayRoot) => root.path).join("\n") || "None: textures are missing"}
           isMonospace
         />
       </EditorPanelSection>

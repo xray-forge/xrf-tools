@@ -2,6 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { AsyncState } from "@xrf/async";
 import {
   SceneBinaryToolsDescription,
+  SceneDrawDescription,
   SceneObjectsDescription,
   SelectedSceneDescription,
 } from "@xrf/ipc/types/xrf-app-levels";
@@ -10,9 +11,12 @@ import { EditorPanelEmpty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useMemo } from "react";
 
+import { describeLevelResidentWait } from "@/core/level/lib/load/level-resident-wait";
+import { EMPTY_LEVEL_RESIDENT, ILevelResident } from "@/core/level/lib/render/level-resident";
 import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
 import { EditorProblemsPanel, IEditorProblem } from "@/core/shell/chrome/EditorProblemsPanel";
 import { listLevelEditorProblems } from "@/tools/level-editor/lib/problems/level-editor-problems";
+import { LevelEditorRenderService } from "@/tools/level-editor/services/level-editor-render";
 import { LevelEditorSceneService } from "@/tools/level-editor/services/level-editor-scene";
 
 /** What the panel says while a part's problems are not all in: that it is read, or why it could not be. */
@@ -25,8 +29,10 @@ function toPartStatus(name: string, state: AsyncState<unknown>): Nullable<string
 }
 
 /**
- * Everything of the open scene the SDK's Level Editor would skip or refuse: what the open found of its part files,
- * then what reading its objects and its binary tools found, said to be incomplete until both are read.
+ * Everything of the open scene the SDK's Level Editor would skip or refuse, and what of it is not drawn: what the open
+ * found of its part files, then what reading its objects and its binary tools found, then the scene objects its
+ * picture leaves out, then the textures and library objects the renderer could not draw, said to be incomplete until
+ * each is read; what the renderer could not draw is said once the scene is resident, as the level viewer says it.
  */
 export function LevelEditorProblemsPanel({
   "data-testid": dataTestId = "level-editor-problems-panel",
@@ -34,22 +40,33 @@ export function LevelEditorProblemsPanel({
   className,
 }: BaseComponentProps): ReactElement {
   const sceneService: LevelEditorSceneService = useInjection(LevelEditorSceneService);
+  const renderService: LevelEditorRenderService = useInjection(LevelEditorRenderService);
 
   const scene: Nullable<SelectedSceneDescription> = sceneService.scene.value;
   const objects: AsyncState<SceneObjectsDescription> = sceneService.objects.state;
   const binaryTools: AsyncState<SceneBinaryToolsDescription> = sceneService.binaryTools.state;
+  const drawing: AsyncState<SceneDrawDescription> = sceneService.drawing.state;
+  const resident: ILevelResident = renderService.resident.value ?? EMPTY_LEVEL_RESIDENT;
 
   const problems: Array<IEditorProblem> = useMemo(
     () =>
       listLevelEditorProblems({
         binaryTools: binaryTools.value?.problems ?? [],
+        drawing: drawing.value?.problems ?? [],
+        models: resident.problems.models,
+        objectTools: objects.value?.tools ?? [],
         objects: objects.value?.problems ?? [],
         scene: scene?.problems ?? [],
+        textures: resident.textures.problems,
         tools: scene?.tools ?? [],
       }),
-    [binaryTools.value, objects.value, scene]
+    [binaryTools.value, drawing.value, objects.value, resident, scene]
   );
-  const status: Nullable<string> = toPartStatus("objects", objects) ?? toPartStatus("binary tools", binaryTools);
+  const status: Nullable<string> =
+    toPartStatus("objects", objects) ??
+    toPartStatus("binary tools", binaryTools) ??
+    toPartStatus("library objects", drawing) ??
+    describeLevelResidentWait(renderService.resident.state, "what it could not draw", "the scene");
 
   if (!scene) {
     return (
@@ -66,7 +83,10 @@ export function LevelEditorProblemsPanel({
       className={className}
       findings={problems}
       status={status}
-      emptyDescription={"Every part file of this scene reads as its tool's, and every tool's objects read."}
+      emptyDescription={
+        "Every part file of this scene reads as its tool's, every tool's objects read, and every scene object draws " +
+        "with its textures."
+      }
     />
   );
 }

@@ -2,7 +2,7 @@ use serde::Serialize;
 use xrf_vfs::XrayRoots;
 
 use crate::scene::{
-  SceneBuildParamsDescription, SceneCameraDescription, SceneProblem, SceneSource, SceneToolDescription,
+  SceneBuildParamsDescription, SceneCameraDescription, SceneGameData, SceneProblem, SceneSource, SceneToolDescription,
 };
 
 /// What the page is shown of an open scene itself: what names it, what its `.level` holds worth showing, its tools'
@@ -18,6 +18,8 @@ pub struct SelectedSceneDescription {
   pub guid: String,
   /// Where its scene objects' library objects are looked for.
   pub objects_roots: XrayRoots,
+  /// The game data it is drawn with: the roots its textures and shaders are searched in, none where it has none.
+  pub game: SceneGameData,
   /// What its `[build_params]` set, none where they do not read.
   pub build_params: Option<SceneBuildParamsDescription>,
   /// Where the editor's camera stood, none where `[camera]` does not read.

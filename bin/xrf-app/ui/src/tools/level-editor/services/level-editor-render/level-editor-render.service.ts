@@ -1,0 +1,216 @@
+import { inject, Injectable } from "@wirestate/core";
+import { BoundAction, comparer, Computed, reaction } from "@wirestate/mobx";
+import { cancelFlow, LatestFlow, TFlow } from "@xrf/flow";
+import { levelsCommands } from "@xrf/ipc/commands/levels";
+import { SessionId, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
+import { SceneDrawDescription, SelectedSceneDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { RenderLoadReport, RenderViewOptions, RenderViewportId } from "@xrf/ipc/types/xrf-renderer";
+import { VisualBounds } from "@xrf/ipc/types/xrf-visual";
+import { Logger } from "@xrf/logging";
+import { Nullable } from "@xrf/types";
+
+import { toLevelFramedGoTo } from "@/core/level/lib/camera/level-camera-frame";
+import { toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
+import { ILevelScene } from "@/core/level/lib/load/level-scene";
+import { DEFAULT_LEVEL_RENDER_CONFIG } from "@/core/level/lib/render/level-render-config";
+import { ILevelResident, toLevelResident } from "@/core/level/lib/render/level-resident";
+import { LevelSceneShow } from "@/core/level/lib/render/level-scene-show";
+import { LevelRenderCamera } from "@/core/level/services/level-render/level-render.service.camera";
+import { LevelViewService } from "@/core/level/services/level-view";
+import { LevelViewportService } from "@/core/level/services/level-viewport";
+import { CommandOperation } from "@/core/operations/lib/command-operation";
+import { NativeRenderSurfaceService } from "@/core/render/lib/native/viewport/native-render-surface-service";
+import { NativeViewport } from "@/core/render/lib/native/viewport/native-viewport";
+import { toRenderOutput } from "@/core/render/lib/settings/device/render-resolution";
+import { RenderSettingsService } from "@/core/render/services/render-settings.service";
+import {
+  DEFAULT_LEVEL_EDITOR_LIGHTING,
+  LEVEL_EDITOR_WORLD_TOGGLES,
+  toLevelEditorSceneSphere,
+  toLevelEditorViewOptions,
+} from "@/tools/level-editor/lib/render/level-editor-render";
+import { LevelEditorSceneService } from "@/tools/level-editor/services/level-editor-scene";
+
+/**
+ * Owns the native viewport the open scene is drawn in: the scene shown, concealed until it is resident whole, what it
+ * is asked of the scene once resident, the editor's light in place of a weather, and the fly camera, framed on the
+ * scene's drawn objects as each scene opens.
+ */
+@Injectable()
+export class LevelEditorRenderService extends NativeRenderSurfaceService {
+  public readonly log: Logger = new Logger(__MODULE_NAME__);
+
+  /**
+   * What the renderer says of the open scene once it is resident whole, its textures and the library objects it could
+   * not make a model of, as it says them of a level: idle until then, and failed with why where it could not say. A
+   * scene has no sectors, so nothing of its surfaces is measured.
+   */
+  public readonly resident: CommandOperation<ILevelResident> = new CommandOperation(this.log);
+
+  /** Where the camera stands, framed on the scene and flown on from with the toolbar's speeds and lens. */
+  public readonly camera: LevelRenderCamera;
+
+  /** Which scene shows the open scene's snapshot, and whether it is revealed. */
+  private readonly shown: LevelSceneShow = new LevelSceneShow({
+    onLeft: () => this.leaveScene(),
+    onResident: () => void this.describeResident(),
+  });
+
+  /** The scene session shown, or null for none. */
+  private sessionId: Nullable<SessionId> = null;
+  /** The scene session the camera was framed on, so a scene is framed once however often its picture is read. */
+  private framed: Nullable<SessionId> = null;
+
+  public constructor(
+    private readonly sceneService: LevelEditorSceneService = inject(LevelEditorSceneService),
+    private readonly viewService: LevelViewService = inject(LevelViewService),
+    private readonly viewportService: LevelViewportService = inject(LevelViewportService),
+    renderSettingsService: RenderSettingsService = inject(RenderSettingsService)
+  ) {
+    super(renderSettingsService);
+
+    this.camera = new LevelRenderCamera(
+      { getViewport: () => this.viewport },
+      {
+        config: DEFAULT_LEVEL_RENDER_CONFIG,
+        // A decompiled scene's own camera stands at the origin: the scene is framed once its extent is read.
+        toStart: () => toLevelStartViewpoint(null),
+        viewService,
+      }
+    );
+  }
+
+  /** Whether the viewport shows the open scene: not until every object it draws is resident, textures included. */
+  @Computed()
+  public get isRevealed(): boolean {
+    return this.shown.isRevealed;
+  }
+
+  /** What the scene is asked to be drawn with: the settings' features under the editor's light. */
+  @Computed()
+  public get options(): RenderViewOptions {
+    const { renderSettingsService, viewService } = this;
+
+    return toLevelEditorViewOptions({
+      features: renderSettingsService.rendererFeatures,
+      lighting: DEFAULT_LEVEL_EDITOR_LIGHTING,
+      output: toRenderOutput(renderSettingsService.renderResolution, renderSettingsService.renderOutputScale),
+      surfaces: viewService.options,
+    });
+  }
+
+  protected start(viewport: NativeViewport): Array<() => void> {
+    viewport.setWorldToggles(LEVEL_EDITOR_WORLD_TOGGLES);
+
+    return [
+      reaction(
+        () => this.options,
+        (options: RenderViewOptions) => viewport.setViewOptions(options),
+        { equals: comparer.structural, fireImmediately: true }
+      ),
+      reaction(
+        (): Nullable<ILevelScene> => {
+          const selected: Nullable<SessionSnapshot<SelectedSceneDescription>> = this.sceneService.scene.snapshot;
+
+          return selected ? { revision: selected.revision, sessionId: selected.sessionId } : null;
+        },
+        this.showScene,
+        { equals: comparer.structural, fireImmediately: true }
+      ),
+      reaction(() => this.sceneService.drawing.snapshot, this.frameOnce, { fireImmediately: true }),
+      ...this.camera.start(),
+    ];
+  }
+
+  protected onLoad(report: RenderLoadReport): void {
+    this.viewportService.noteLoad(report);
+    this.shown.noteLoad(report);
+  }
+
+  protected onFlySpeed(steps: number): void {
+    this.camera.stepSpeed(steps);
+  }
+
+  /** A view mounted again shows and frames the scene open as a view first shown does. */
+  protected release(): void {
+    this.sessionId = null;
+    this.framed = null;
+    this.camera.release();
+    this.shown.release();
+  }
+
+  /**
+   * Shows the open scene's snapshot: a scene opened anew from the camera's start, one read again in its session in
+   * place of the snapshot shown, concealed until it is ready, since the backend draws a snapshot as it was shown and
+   * follows no commit itself; and nothing once the scene closes.
+   *
+   * @param scene - The open scene's session and the revision its snapshot was read at, or null for none open.
+   */
+  @BoundAction()
+  private showScene(scene: Nullable<ILevelScene>): void {
+    const sessionId: Nullable<SessionId> = scene?.sessionId ?? null;
+
+    if (this.shown.open(sessionId, scene)) {
+      this.camera.standAtStart();
+      this.viewportService.noteLoad(null);
+    } else {
+      this.shown.move(scene);
+    }
+
+    this.sessionId = sessionId;
+    this.show(
+      (viewport: NativeViewport) =>
+        viewport.ask("showScene", (id: RenderViewportId) => levelsCommands.showScene(id, sessionId), null),
+      this.shown.noteShown
+    );
+  }
+
+  /**
+   * Frames the camera on the drawn objects of a scene the first time its picture is read with any: reading it again,
+   * as the scene's load finishes, leaves the camera where it has flown.
+   *
+   * @param drawing - What the open scene's picture needs, as last read, or null before it is.
+   */
+  @BoundAction()
+  private frameOnce(drawing: Nullable<SessionSnapshot<SceneDrawDescription>>): void {
+    const bounds: Nullable<VisualBounds> = drawing?.value.bounds ?? null;
+
+    if (!drawing || !bounds || drawing.sessionId === this.framed || drawing.sessionId !== this.sessionId) {
+      return;
+    }
+
+    this.framed = drawing.sessionId;
+    this.camera.goTo(
+      toLevelFramedGoTo(null, toLevelEditorSceneSphere(bounds), this.viewService.cameraOptions.fieldOfView)
+    );
+  }
+
+  /**
+   * Asks what each texture came to and what the scene could not draw, once it is resident whole; the scene shown let go
+   * meanwhile cancels it, as it describes something else.
+   */
+  @LatestFlow("resident")
+  private *describeResident(): TFlow {
+    const viewport: Nullable<NativeViewport> = this.viewport;
+
+    if (!viewport) {
+      return;
+    }
+
+    yield* this.resident.run({
+      name: "Describe resident scene",
+      command: () =>
+        Promise.all([viewport.describeTextureLoads(), viewport.describeProblems()]).then(([textures, problems]) =>
+          toLevelResident([], textures, problems)
+        ),
+      failure: "Could not describe the resident scene",
+    });
+  }
+
+  /** Lets go of what was asked of the scene shown, which names it alone. */
+  @BoundAction()
+  private leaveScene(): void {
+    cancelFlow(this, "resident");
+    this.resident.reset();
+  }
+}

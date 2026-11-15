@@ -3,10 +3,9 @@ use xrf_editable_level::{
   EditablePortalObject, EditableSceneObject, EditableSectorObject, EditableShapeObject, EditableSoundEnvironmentObject,
   EditableSoundSourceObject, EditableSpawnPointObject, EditableToolObject, EditableWayObject,
 };
-use xrf_extension::XrayExtension;
 use xrf_vfs::XraySearch;
 
-use crate::scene::SceneObjectProperties;
+use crate::scene::{SceneDrawnObject, SceneObjectProperties};
 
 /// An object tool's typed object as the page is shown it: what every object saves first, and what its kind adds.
 pub(crate) trait SceneToolObject: EditableToolObject {
@@ -28,7 +27,7 @@ impl SceneToolObject for EditableSceneObject {
       reference: self.reference.clone(),
       flags: self.flags,
       is_found: objects
-        .find(&format!("{}.{}", self.reference, XrayExtension::Object.as_str()))
+        .find(&SceneDrawnObject::format_object_path(self))
         .is_ok_and(|found| found.is_some()),
     }
   }

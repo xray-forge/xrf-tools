@@ -2,7 +2,7 @@
 name = "xrf-app-levels"
 version = "0.1.0"
 publish = false
-description = "XRF development tools: levels and scenes opened as documents of parts, levels shown in viewports, captured and exported"
+description = "XRF development tools: levels and scenes opened as documents of parts, shown in viewports, levels captured and exported"
 authors = ["Neloreck"]
 edition.workspace = true
 rust-version.workspace = true
@@ -30,6 +30,7 @@ xrf-chunk = { workspace = true }
 xrf-dds = { workspace = true }
 xrf-dltx = { workspace = true }
 xrf-editable-level = { workspace = true }
+xrf-editable-object = { workspace = true }
 xrf-engine-target = { workspace = true }
 xrf-environment = { workspace = true }
 xrf-error = { workspace = true }
@@ -45,6 +46,7 @@ xrf-light-anim = { workspace = true }
 xrf-ltx = { workspace = true }
 xrf-material = { workspace = true }
 xrf-math = { workspace = true, features = ["glam"] }
+xrf-object-visual = { workspace = true }
 xrf-ogf = { workspace = true }
 xrf-particles = { workspace = true }
 xrf-rawdata = { workspace = true }

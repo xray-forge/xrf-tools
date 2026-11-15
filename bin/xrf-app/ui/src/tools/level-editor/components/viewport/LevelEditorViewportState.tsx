@@ -1,40 +1,60 @@
+import { assertExhaustive, Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
 import { EmptyState } from "@xrf/ui/layout/empty-state";
 import { ErrorState } from "@xrf/ui/layout/error-state";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 
+import { ELevelEditorSceneBlank } from "@/tools/level-editor/lib/render/level-editor-scene-blank";
+
+/**
+ * @param blank - Why an open scene draws nothing.
+ * @returns What the viewport says of it.
+ */
+function describeSceneBlank(blank: ELevelEditorSceneBlank): string {
+  switch (blank) {
+    case ELevelEditorSceneBlank.NO_SCENE_OBJECTS:
+      return (
+        "This scene has no scene objects to draw. Its spawn points, ways and other tools are listed in the " +
+        "Outliner; they are not drawn yet."
+      );
+
+    case ELevelEditorSceneBlank.NOTHING_FOUND:
+      return "None of this scene's library objects was found. Check the objects roots; Problems lists each.";
+
+    default:
+      return assertExhaustive(blank);
+  }
+}
+
 interface ILevelEditorViewportStateProps extends BaseComponentProps {
-  /** Whether a scene is being opened. */
-  isLoading?: boolean;
-  /** Why the last open failed, shown with `onRetry` while no scene is open. */
+  /** Why the last open failed, or absent where nothing went wrong. */
   error?: string;
+  /** Why the open scene draws nothing, or null for no scene open. */
+  blank?: Nullable<ELevelEditorSceneBlank>;
   onRetry?: () => void;
 }
 
 /**
- * What stands where the scene will be drawn: the open under way, why it failed, or that the scene is not drawn.
+ * What covers the viewport while it draws no scene: why the last open failed, with a retry, why the scene open draws
+ * nothing, or that none is open.
  */
 export function LevelEditorViewportState({
   "data-testid": dataTestId = "level-editor-viewport-state",
   id,
   className,
-  isLoading = false,
   error,
+  blank = null,
   onRetry,
 }: ILevelEditorViewportStateProps): ReactElement {
   return (
-    <div data-testid={dataTestId} id={id} className={cn("flex min-h-0 min-w-0 flex-1 surface-content", className)}>
-      {isLoading ? (
-        <DelayedProgress label={"Opening scene"} />
-      ) : error ? (
+    <div data-testid={dataTestId} id={id} className={cn("absolute inset-0 flex surface-content", className)}>
+      {error ? (
         <ErrorState title={"Could not open this scene"} description={error} onRetry={onRetry} />
+      ) : blank ? (
+        <EmptyState title={"Nothing to draw"} description={describeSceneBlank(blank)} />
       ) : (
-        <EmptyState
-          title={"The scene is not drawn yet"}
-          description={"Its objects are listed in the Outliner and shown in the Inspector."}
-        />
+        <EmptyState title={"No scene open"} description={"Open a scene's .level to draw it."} />
       )}
     </div>
   );

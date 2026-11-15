@@ -20,4 +20,4 @@ mod weather;
 
 pub use level::SelectedLevels;
 pub use render::ShownLevels;
-pub use scene::SelectedScenes;
+pub use scene::{SelectedScenes, ShownScenes};

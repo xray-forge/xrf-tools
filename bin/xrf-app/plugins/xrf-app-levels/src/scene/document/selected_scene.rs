@@ -2,7 +2,7 @@ use xrf_editable_level::{EditableLevelGuid, EditableLevelScene};
 use xrf_vfs::XrayRoots;
 
 use crate::scene::{
-  SceneBuildParamsDescription, SceneCameraDescription, SceneProblem, SceneSource, SceneToolDescription,
+  SceneBuildParamsDescription, SceneCameraDescription, SceneGameData, SceneProblem, SceneSource, SceneToolDescription,
   SelectedSceneDescription,
 };
 
@@ -19,6 +19,8 @@ pub struct SelectedScene {
   pub roots: XrayRoots,
   /// Where the scene objects' library objects are looked for.
   pub objects_roots: XrayRoots,
+  /// The game data the scene is drawn with, kept so every draw searches what the open was given.
+  pub game: SceneGameData,
   pub guid: EditableLevelGuid,
   /// The `.level`, and each tool's parts that read, carry the scene's GUID and are the tool's to load, in the order
   /// the editor reads them; the parts it would skip are left out.
@@ -39,6 +41,7 @@ impl SelectedScene {
       name: self.name.clone(),
       guid: Self::format_guid(&self.guid),
       objects_roots: self.objects_roots.clone(),
+      game: self.game.clone(),
       build_params: self
         .scene
         .level

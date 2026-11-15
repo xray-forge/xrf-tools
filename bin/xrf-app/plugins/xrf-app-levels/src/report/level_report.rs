@@ -82,6 +82,20 @@ impl LevelReport {
     log::info!("Showing level {} in native viewport {viewport}", source.get_label());
   }
 
+  /// That a scene is shown in a viewport, and the game data its textures are read from.
+  pub(crate) fn showing_scene(scene: &SelectedScene, viewport: RenderViewportId) {
+    log::info!(
+      "Showing scene {} in native viewport {viewport}, its textures from {}",
+      scene.source.path,
+      scene.game.roots.describe()
+    );
+  }
+
+  /// That a library object a scene places could not be read or compiled, so nothing standing as it is drawn.
+  pub(crate) fn undrawn_scene_object(reference: &str, reason: &str) {
+    log::warn!("Scene library object '{reference}' is not drawn: {reason}");
+  }
+
   /// What one open came to, its surfaces and their textures as the open resolved them, and what about it is worth a
   /// warning.
   pub(crate) fn opened(

@@ -7,8 +7,9 @@ import { InfoOutlinedIcon } from "@xrf/ui/icons/info-outlined";
 import { TuneIcon } from "@xrf/ui/icons/tune";
 import { WarningAmberIcon as WarningIcon } from "@xrf/ui/icons/warning-amber";
 import { cn } from "@xrf/ui/theme";
-import { ReactElement } from "react";
+import { ReactElement, ReactNode } from "react";
 
+import { LevelCameraAction } from "@/core/level/components/preview/toolbar/view/LevelCameraAction";
 import { EditorToolbar } from "@/core/shell/chrome/EditorToolbar";
 import { useShellPanels } from "@/core/shell/contributions";
 import { IShellPanel } from "@/core/shell/panels/shell-panel";
@@ -16,11 +17,11 @@ import { LevelEditorInspectorPanel } from "@/tools/level-editor/components/panel
 import { LevelEditorOutlinerPanel } from "@/tools/level-editor/components/panels/LevelEditorOutlinerPanel";
 import { LevelEditorProblemsPanel } from "@/tools/level-editor/components/panels/LevelEditorProblemsPanel";
 import { LevelEditorScenePanel } from "@/tools/level-editor/components/panels/LevelEditorScenePanel";
-import { LevelEditorViewportState } from "@/tools/level-editor/components/viewport/LevelEditorViewportState";
+import { LevelEditorViewport } from "@/tools/level-editor/components/viewport/LevelEditorViewport";
 import { ELevelEditorPanelId } from "@/tools/level-editor/lib/panels/level-editor-panel-id";
 
 interface ILevelEditorLayoutProps extends BaseComponentProps {
-  /** What the open scene is called, which heads the workspace. */
+  /** What the open scene is called, which heads the workspace. Its presence is what the viewport draws. */
   name?: Nullable<string>;
   /** What the scene being opened is called, which heads the workspace until it is open. */
   pending?: Nullable<string>;
@@ -30,14 +31,16 @@ interface ILevelEditorLayoutProps extends BaseComponentProps {
   isStale?: boolean;
   /** Why the last open failed, shown with `onRetry` while no scene is open. */
   error?: string;
+  /** Draws the native viewport, for a surface with no GPU to give one - a test. */
+  renderViewport?: (props: BaseComponentProps) => ReactNode;
   onRetry?: () => void;
   onBack?: () => void;
   onClose?: Nullable<() => void>;
 }
 
 /**
- * The level editor's chrome: the toolbar, the scene's header, the place the scene will be drawn in, and the panel
- * stripe listing, inspecting and checking what the scene holds.
+ * The level editor's chrome: the toolbar with the camera, the scene's header, the viewport the scene is drawn in, and
+ * the panel stripe listing, inspecting and checking what the scene holds.
  */
 export function LevelEditorLayout({
   "data-testid": dataTestId = "level-editor-layout",
@@ -48,10 +51,12 @@ export function LevelEditorLayout({
   isLoading = false,
   isStale = false,
   error,
+  renderViewport,
   onRetry,
   onBack,
   onClose = null,
 }: ILevelEditorLayoutProps): ReactElement {
+  const isOpen: boolean = Boolean(name);
   const heading: Nullable<string> = name ?? pending;
 
   useShellPanels(
@@ -88,7 +93,7 @@ export function LevelEditorLayout({
   );
 
   return (
-    <EditorLayout toolbar={<EditorToolbar onBack={onBack} />}>
+    <EditorLayout toolbar={<EditorToolbar onBack={onBack} actions={<LevelCameraAction />} />}>
       <div className={"flex min-h-0 min-w-0 grow flex-col"}>
         {heading ? (
           <EditorFileHeader
@@ -106,7 +111,13 @@ export function LevelEditorLayout({
           id={id}
           className={cn("relative flex min-h-0 min-w-0 flex-1 overflow-hidden", className)}
         >
-          <LevelEditorViewportState isLoading={isLoading} error={name ? undefined : error} onRetry={onRetry} />
+          <LevelEditorViewport
+            isOpen={isOpen}
+            isLoading={isLoading}
+            error={isOpen ? undefined : error}
+            renderViewport={renderViewport}
+            onRetry={onRetry}
+          />
         </div>
       </div>
     </EditorLayout>

@@ -5,6 +5,7 @@ import { SESSION_CHANGE_EVENT } from "@xrf/ipc/session";
 import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { ESessionRootChange, SessionChange } from "@xrf/ipc/types/xrf-app-core";
 import { ESceneToolKind, SCENE_OBJECTS_PART, SceneOpenRequest } from "@xrf/ipc/types/xrf-app-levels";
+import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
 
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
@@ -20,7 +21,13 @@ import { LevelEditorSceneService } from "@/tools/level-editor/services/level-edi
 
 import { LevelEditorSelectionService } from "./level-editor-selection.service";
 
-const REQUEST: SceneOpenRequest = { objectsRoots: null, source: { path: "C:\\rawdata\\levels\\labx8.level" } };
+const REQUEST: SceneOpenRequest = {
+  engine: EXrayEngineChoice.AUTO,
+  gameRoots: null,
+  isDltx: false,
+  objectsRoots: null,
+  source: { path: "C:\\rawdata\\levels\\labx8.level" },
+};
 
 interface IEditor {
   container: Container;

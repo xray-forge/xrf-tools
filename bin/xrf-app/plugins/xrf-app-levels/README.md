@@ -4,7 +4,8 @@ Compiled levels in the XRF desktop application, opened as documents: a minimal r
 each with its own query and followed as its files change; shown in a viewport through `xrf-app-render`'s units; and
 captured or exported through the level viewer. The level files themselves are read by `xrf-level`, the spawn by
 `xrf-spawn` and the weather by `xrf-environment`. Level Editor scenes, the source a level is built from, open as
-documents beside them, read by `xrf-editable-level`.
+documents beside them, read by `xrf-editable-level`, and are shown in a viewport too, each scene object a model compiled
+from its `.object` by `xrf-object-visual`.
 
 ## Layout
 
@@ -23,27 +24,34 @@ documents beside them, read by `xrf-editable-level`.
   cubemap captures and their exports, with the map's annotations of logic volumes, patrols and graph points.
 - `scene`: a Level Editor scene as a document: where it is read from (`SceneSource`, a `.level` whose directory roots
   its search), how an open reads its `.level` and each tool's part files and a commit reads it again (`OpenedScene`),
-  the scenes open (`SelectedScenes`) and what the page is shown of one (`document`, `description`); its object tools'
-  typed objects, each group's members under their own tool (`objects`, `SceneObjectsPart`), and its binary tools'
-  counts (`binary`, `SceneBinaryToolsPart`), each a part with its own query; and what the editor would skip or refuse
-  of a part, kept as a problem on its tool (`problem`).
+  the scenes open (`SelectedScenes`), the game data each is drawn with (`SceneGameData`) and what the page is shown of
+  one (`document`, `description`); its object tools' typed objects, each group's members under their own tool
+  (`objects`, `SceneObjectsPart`), and its binary tools' counts (`binary`, `SceneBinaryToolsPart`), each a part with
+  its own query; what the editor would skip or refuse of a part, kept as a problem on its tool (`problem`); the scene
+  objects it draws, their extent and each it does not draw, its `.object` missing or unreadable (`draw`,
+  `SceneDrawPart`); and the scene as the renderer draws it (`render`): `SceneRenderSource`, no sectors and every scene
+  object whose `.object` is found a model in the props group, named by its place among the scene's objects, a library
+  object that does not compile left out as a load failure named by its reference, which the viewport's problems answer
+  as for any source, and the scenes shown (`ShownScenes`).
 - `commands/`: the level commands: listing, opening, restoring, closing and showing a level, and describing its map,
   start, surfaces, textures, spawn objects, weather and console defaults; and in `commands/scene/` the scene's:
-  opening, restoring and closing a scene, and describing its objects and binary tools. The viewer's commands are in
-  `viewer/commands/`.
+  opening, restoring, closing and showing a scene, and describing its objects, binary tools and drawing. The viewer's
+  commands are in `viewer/commands/`.
 - `level_report`: what the plugin writes to the log.
 - `plugin` and `ipc`: `LevelsPlugin` and its command domain.
 - `tests/`: the crate's tests and their fixtures.
 
 ## In the application
 
-`LevelsPlugin` manages `SelectedLevels`, `SelectedScenes` and `ShownLevels`, and needs the render plugin set up first,
-since a shown level's scene is drawn in its `WorldState`. An open level records what it and its parts read: a commit
-carries the parts it did not touch and reads the level again on the pool where it moved one of the level's own files.
-An open scene records its `.level`, its part directory's listing and every part file it read, so a commit to any of
-them, or a part file come or gone, reads it again on the pool; its objects part records where it looked for the scene
-objects' library objects, so an `.object` come or gone moves that part alone. The `levels`
-domain serves the bulk route `read_screenshot` and runs the jobs `levels.capture-map` and `levels.capture-cube`.
+`LevelsPlugin` manages `SelectedLevels`, `SelectedScenes`, `ShownLevels` and `ShownScenes`, and needs the render plugin
+set up first, since a shown level's scene is drawn in its `WorldState`. An open level records what it and its parts
+read: a commit carries the parts it did not touch and reads the level again on the pool where it moved one of the
+level's own files. An open scene records its `.level`, its part directory's listing and every part file it read, so a
+commit to any of them, or a part file come or gone, reads it again on the pool; its objects and drawing parts record
+where they looked for the scene objects' library objects and what they read of them, so an `.object` come, gone or
+changed moves those parts alone. A shown scene does not follow a commit yet: it stays drawn from the snapshot shown
+until the page shows the session again. The `levels` domain serves the bulk route `read_screenshot` and runs the jobs
+`levels.capture-map` and `levels.capture-cube`.
 
 ## Checks
 

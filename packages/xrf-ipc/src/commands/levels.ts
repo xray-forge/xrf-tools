@@ -30,6 +30,7 @@ import {
   RecordingOutcome,
   RecordingProgress,
   SceneBinaryToolsDescription,
+  SceneDrawDescription,
   SceneObjectsDescription,
   SceneOpenRequest,
   ScreenshotSaveRequest,
@@ -63,6 +64,7 @@ export enum ELevelsCommand {
   DESCRIBE_OBJECTS = "plugin:levels|describe_objects",
   DESCRIBE_RECORDING = "plugin:levels|describe_recording",
   DESCRIBE_SCENE_BINARY_TOOLS = "plugin:levels|describe_scene_binary_tools",
+  DESCRIBE_SCENE_DRAW = "plugin:levels|describe_scene_draw",
   DESCRIBE_SCENE_OBJECTS = "plugin:levels|describe_scene_objects",
   DESCRIBE_SOUND = "plugin:levels|describe_sound",
   DESCRIBE_SPAWN_OBJECT = "plugin:levels|describe_spawn_object",
@@ -85,6 +87,7 @@ export enum ELevelsCommand {
   SAVE_SCREENSHOT = "plugin:levels|save_screenshot",
   SAVE_VIEW = "plugin:levels|save_view",
   SHOW_LEVEL = "plugin:levels|show_level",
+  SHOW_SCENE = "plugin:levels|show_scene",
   START_RECORDING = "plugin:levels|start_recording",
   STOP_RECORDING = "plugin:levels|stop_recording",
   WRITE_MAP_ANNOTATIONS = "plugin:levels|write_map_annotations",
@@ -171,6 +174,13 @@ export const levelsCommands = {
       sessionId,
     }),
   /**
+   * Describe what the page needs of the open scene's picture beside it: the extent of the scene objects drawn, to frame
+   * a camera on, and each scene object not drawn, its library object missing or unreadable; read again where a commit
+   * let the library objects go. What the renderer could not compile or texture is the viewport's to answer.
+   */
+  describeSceneDraw: (sessionId: SessionId) =>
+    __TAURI_INVOKE<SessionSnapshot<SceneDrawDescription>>(ELevelsCommand.DESCRIBE_SCENE_DRAW, { sessionId }),
+  /**
    * Describe the open scene's object tools' objects, typed, each scene object's library object looked for in the objects
    * roots the scene was opened with; read again where a commit let them go.
    */
@@ -228,7 +238,7 @@ export const levelsCommands = {
     __TAURI_INVOKE<SessionSnapshot<SelectedLevelDescription>>(ELevelsCommand.OPEN_LEVEL, { sessionId, request }),
   /**
    * Open a Level Editor scene from its `.level`, listing its tools' part files and what the editor would skip or refuse
-   * of them, without reading their objects.
+   * of them, without reading their objects, and keeping the game data it is drawn with.
    */
   openScene: (sessionId: SessionId, request: SceneOpenRequest) =>
     __TAURI_INVOKE<SessionSnapshot<SelectedSceneDescription>>(ELevelsCommand.OPEN_SCENE, { sessionId, request }),
@@ -272,6 +282,14 @@ export const levelsCommands = {
    */
   showLevel: (viewport: RenderViewportId, sessionId: SessionId | null) =>
     __TAURI_INVOKE<number | null>(ELevelsCommand.SHOW_LEVEL, { viewport, sessionId }),
+  /**
+   * Draw the open scene in a viewport, each scene object a model compiled from its `.object` as the renderer asks, its
+   * textures read from the scene's game data; no session draws none. Answers the scene drawn, which the viewport's load
+   * reports name, or none. The source is made on the pool, after the ticket that keeps a scene asked for later from being
+   * replaced by this one.
+   */
+  showScene: (viewport: RenderViewportId, sessionId: SessionId | null) =>
+    __TAURI_INVOKE<number | null>(ELevelsCommand.SHOW_SCENE, { viewport, sessionId }),
   /**
    * Record a viewport with what its camera hears into a new video of the level viewer's recordings named as asked, at
    * the size it is drawn at now, its camera heard whatever window takes the focus until it stops; `progress` is told
@@ -327,6 +345,7 @@ export interface ILevelsCommandSignatures {
     typeof levelsCommands.describeSceneBinaryTools,
     ["sessionId"]
   >;
+  [ELevelsCommand.DESCRIBE_SCENE_DRAW]: IIpcCommandSignature<typeof levelsCommands.describeSceneDraw, ["sessionId"]>;
   [ELevelsCommand.DESCRIBE_SCENE_OBJECTS]: IIpcCommandSignature<
     typeof levelsCommands.describeSceneObjects,
     ["sessionId"]
@@ -355,6 +374,7 @@ export interface ILevelsCommandSignatures {
   [ELevelsCommand.SAVE_SCREENSHOT]: IIpcCommandSignature<typeof levelsCommands.saveScreenshot, ["request"]>;
   [ELevelsCommand.SAVE_VIEW]: IIpcCommandSignature<typeof levelsCommands.saveView, ["path", "text"]>;
   [ELevelsCommand.SHOW_LEVEL]: IIpcCommandSignature<typeof levelsCommands.showLevel, ["viewport", "sessionId"]>;
+  [ELevelsCommand.SHOW_SCENE]: IIpcCommandSignature<typeof levelsCommands.showScene, ["viewport", "sessionId"]>;
   [ELevelsCommand.START_RECORDING]: IIpcCommandSignature<
     typeof levelsCommands.startRecording,
     ["viewport", "name", "progress"]

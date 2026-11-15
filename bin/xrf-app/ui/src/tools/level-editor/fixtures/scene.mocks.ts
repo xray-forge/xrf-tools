@@ -7,6 +7,8 @@ import {
   ESceneToolFormat,
   ESceneToolKind,
   SceneBinaryToolsDescription,
+  SceneDrawDescription,
+  SceneDrawProblem,
   SceneObjectDescription,
   SceneObjectsDescription,
   SceneObjectToolDescription,
@@ -17,6 +19,7 @@ import {
   SceneToolKind,
   SelectedSceneDescription,
 } from "@xrf/ipc/types/xrf-app-levels";
+import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
 
 import { createRoots } from "@/core/assets/lib";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
@@ -58,6 +61,7 @@ export function mockSelectedSceneDescription(
       weldDistance: 0.005,
     },
     camera: { position: { x: 1, y: 2, z: -5 }, rotation: { x: 0, y: Math.PI / 2, z: 0 } },
+    game: { engine: EXrayEngineChoice.AUTO, isDltx: false, roots: createRoots([]) },
     guid: MOCK_SCENE_GUID,
     name: "labx8",
     objectsRoots: createRoots(["C:\\rawdata\\objects"]),
@@ -179,10 +183,28 @@ export function mockSceneBinaryToolsDescription(problems: Array<SceneProblem> = 
   return { problems, tools: [{ nodes: 12_480, tool: ESceneBinaryToolDescription.AI_MAP }] };
 }
 
+/**
+ * What the fixture scene's picture needs: the extent of its two library objects, ten metres across about a point off
+ * the origin, and nothing it does not draw unless told.
+ *
+ * @param problems - The scene objects it does not draw.
+ * @returns A draw description fixture.
+ */
+export function mockSceneDrawDescription(problems: Array<SceneDrawProblem> = []): SceneDrawDescription {
+  return {
+    bounds: {
+      boundingBox: { max: { x: 15, y: 5, z: -15 }, min: { x: 5, y: -5, z: -25 } },
+      boundingSphere: { center: { x: 10, y: 0, z: -20 }, radius: 8.66 },
+    },
+    problems,
+  };
+}
+
 /** What a fixture scene's parts answer, each defaulting to the fixture's own. */
 export interface IMockSceneParts {
   objects?: SceneObjectsDescription;
   binaryTools?: SceneBinaryToolsDescription;
+  drawing?: SceneDrawDescription;
 }
 
 /**
@@ -198,5 +220,7 @@ export function mockScenePartResponses(parts: IMockSceneParts = {}, revision: nu
       mockSessionSnapshot(parts.objects ?? mockSceneObjectsDescription(), args.sessionId, revision),
     [ELevelsCommand.DESCRIBE_SCENE_BINARY_TOOLS]: (args: { sessionId: string }) =>
       mockSessionSnapshot(parts.binaryTools ?? mockSceneBinaryToolsDescription(), args.sessionId, revision),
+    [ELevelsCommand.DESCRIBE_SCENE_DRAW]: (args: { sessionId: string }) =>
+      mockSessionSnapshot(parts.drawing ?? mockSceneDrawDescription(), args.sessionId, revision),
   };
 }

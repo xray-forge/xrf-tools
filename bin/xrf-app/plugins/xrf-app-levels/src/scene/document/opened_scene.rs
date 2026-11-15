@@ -11,13 +11,18 @@ use xrf_error::XrfResult;
 use xrf_vfs::{XrayAsset, XrayInputRecord, XrayRoots, XraySearch};
 
 use crate::scene::{
-  ScenePartFileDescription, SceneProblem, SceneProblemKind, SceneSource, SceneToolDescription, SceneToolFormat,
-  SceneToolKind, SelectedScene,
+  SceneGameData, ScenePartFileDescription, SceneProblem, SceneProblemKind, SceneSource, SceneToolDescription,
+  SceneToolFormat, SceneToolKind, SelectedScene,
 };
 
-/// How a Level Editor scene is read through the shared asset state: what an open commits, and what a commit's follow
-/// derives again once it moved a file the scene was read from.
-pub(crate) struct OpenedScene;
+/// A Level Editor scene as an open reads it through the shared asset state, and a commit's follow again once it moved a
+/// file the scene was read from: the `.level` it is read from, where its library objects are looked for and the game
+/// data it is drawn with.
+pub(crate) struct OpenedScene {
+  pub source: SceneSource,
+  pub objects_roots: XrayRoots,
+  pub game: SceneGameData,
+}
 
 /// The part files beside a scene, by file name, and what each is read through and checked against.
 struct ScenePartFiles<'a> {
@@ -34,23 +39,24 @@ struct SceneToolRead {
 }
 
 impl OpenedScene {
-  /// Reads the scene `source` names through `search`, a search of the directory holding its `.level`: the `.level`,
+  /// Reads the scene its source names through `search`, a search of the directory holding its `.level`: the `.level`,
   /// the listing of its part directory and each tool's part files as the editor finds them, every read recorded as the
   /// scene's inputs, so a commit to any of them, or a part file come or gone, reads the scene again. Its library objects
-  /// are looked for in `objects_roots` where they are described.
+  /// are looked for in its objects roots where they are described, and it is drawn with its game data.
   ///
   /// # Errors
   ///
-  /// Returns an error when `source` names no `.level`, the `.level` is not found or does not read as a scene's, or its
-  /// part directory cannot be listed. A part file that does not read, or one the editor would skip, is kept as a
+  /// Returns an error when its source names no `.level`, the `.level` is not found or does not read as a scene's, or
+  /// its part directory cannot be listed. A part file that does not read, or one the editor would skip, is kept as a
   /// problem on its tool.
-  pub(crate) fn read(
-    search: XraySearch,
-    source: SceneSource,
-    objects_roots: XrayRoots,
-  ) -> TauriResult<SessionDerived<SelectedScene>> {
+  pub(crate) fn read(self, search: XraySearch) -> TauriResult<SessionDerived<SelectedScene>> {
     profiling::scope!("scene open");
 
+    let Self {
+      source,
+      objects_roots,
+      game,
+    } = self;
     let name: String = source.require_name()?;
     let roots: XrayRoots = source.get_roots()?;
     let inputs: XrayInputRecord = XrayInputRecord::new();
@@ -92,6 +98,7 @@ impl OpenedScene {
         name,
         roots,
         objects_roots,
+        game,
         guid,
         scene,
         tools,
@@ -101,7 +108,8 @@ impl OpenedScene {
     ))
   }
 
-  /// The open scene read again over the source it was opened from, its library objects looked for where they were.
+  /// The open scene read again over the source it was opened from, its library objects looked for where they were and
+  /// drawn with the same game data.
   ///
   /// # Errors
   ///
@@ -110,11 +118,12 @@ impl OpenedScene {
     current: &SessionSnapshot<SelectedScene>,
     assets: &AssetMountState,
   ) -> TauriResult<SessionDerived<SelectedScene>> {
-    Self::read(
-      assets.search(&current.roots)?,
-      current.source.clone(),
-      current.objects_roots.clone(),
-    )
+    Self {
+      source: current.source.clone(),
+      objects_roots: current.objects_roots.clone(),
+      game: current.game.clone(),
+    }
+    .read(assets.search(&current.roots)?)
   }
 }
 

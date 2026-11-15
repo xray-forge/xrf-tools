@@ -2,9 +2,17 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { fireEvent, RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
+import { EAssetsCommand } from "@xrf/ipc/commands/assets";
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { listMockInvokeCalls, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
+import {
+  EXrayEngine,
+  EXrayEngineChoice,
+  EXrayEngineEvidence,
+  XrayEngineResolution,
+} from "@xrf/ipc/types/xrf-engine-target";
 
+import { createRoots } from "@/core/assets/lib";
 import { clearLocalStorage } from "@/core/storage";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
@@ -15,6 +23,12 @@ import { LevelEditorSceneService } from "@/tools/level-editor/services/level-edi
 import { LevelEditorOpenForm } from "./LevelEditorOpenForm";
 
 const SCENE: string = "C:\\rawdata\\levels\\labx8.level";
+
+const VANILLA_DETECTION: XrayEngineResolution = {
+  engine: EXrayEngine.VANILLA,
+  evidence: EXrayEngineEvidence.NO_SIGNS,
+  subject: null,
+};
 
 function renderForm(onFinished: () => void = () => undefined): RenderResult {
   const container: Container = mockContainer([LevelEditorSceneService]);
@@ -32,6 +46,7 @@ describe("LevelEditorOpenForm", () => {
     resetMockInvoke();
 
     mockIpcCommands({
+      [EAssetsCommand.DETECT_ENGINE]: VANILLA_DETECTION,
       [ELevelsCommand.OPEN_SCENE]: mockSessionResponse(mockSelectedSceneDescription()),
       ...mockScenePartResponses(),
     });
@@ -43,8 +58,8 @@ describe("LevelEditorOpenForm", () => {
     expect(getByRole("button", { name: "Open" })).toBeDisabled();
   });
 
-  // No root named is the backend's default, `objects` beside the scene's directory, which the request leaves to it.
-  it("opens the scene named, leaving its objects roots to the default", async () => {
+  // No root named is the backend's default, `objects` and `gamedata` beside the scene, which the request leaves to it.
+  it("opens the scene named, leaving its objects and game data roots to the default", async () => {
     const onFinished = jest.fn();
     const form: RenderResult = renderForm(onFinished);
 
@@ -52,6 +67,9 @@ describe("LevelEditorOpenForm", () => {
     await userEvent.click(form.getByRole("button", { name: "Open" }));
 
     expect(listMockInvokeCalls(ELevelsCommand.OPEN_SCENE)[0]?.request).toEqual({
+      engine: EXrayEngineChoice.AUTO,
+      gameRoots: null,
+      isDltx: false,
       objectsRoots: null,
       source: { path: SCENE },
     });
@@ -73,6 +91,24 @@ describe("LevelEditorOpenForm", () => {
       "C:\\sdk\\objects",
       "D:\\mod\\objects",
     ]);
+  });
+
+  it("opens the scene with the game data named, read as the dialect and engine chosen", async () => {
+    const form: RenderResult = renderForm();
+
+    setScene(form, SCENE);
+    await userEvent.click(form.getByRole("button", { name: "Add game root" }));
+    await userEvent.type(form.getByRole("textbox", { name: "Add game root 1" }), " C:\\cop\\gamedata ");
+    await userEvent.click(form.getByRole("button", { name: "DLTX" }));
+    await userEvent.click(form.getByRole("button", { name: "Extended" }));
+    await userEvent.click(form.getByRole("button", { name: "Open" }));
+
+    expect(listMockInvokeCalls(ELevelsCommand.OPEN_SCENE)[0]?.request).toMatchObject({
+      engine: EXrayEngineChoice.EXTENDED,
+      gameRoots: createRoots(["C:\\cop\\gamedata"]),
+      isDltx: true,
+    });
+    expect(listMockInvokeCalls(EAssetsCommand.DETECT_ENGINE).at(-1)?.roots).toEqual(createRoots(["C:\\cop\\gamedata"]));
   });
 
   it("says why a scene could not be opened", async () => {

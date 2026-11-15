@@ -1,5 +1,6 @@
 //! What several test modules build the same way: a level of shader entries, a search over a fixture tree, an empty
-//! environment catalog, a spawned object, and a Level Editor scene written into a rawdata tree and opened.
+//! environment catalog, a spawned object, and a Level Editor scene written into a rawdata tree with its library
+//! objects, and opened.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -7,20 +8,23 @@ use std::sync::Arc;
 
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::{SessionDerived, SessionId, SessionScopes, SessionSnapshot};
+use xrf_chunk::XRayByteOrder;
 use xrf_editable_level::{
   EditableBuildParams, EditableCustomObject, EditableLevelCamera, EditableLevelFile, EditableLevelGuid,
   EditableLevelOptions, EditableObjectPart, EditableObjectTransform, EditableToolObject,
 };
-use xrf_engine_target::XrayEngine;
+use xrf_editable_object::EditableObjectFile;
+use xrf_engine_target::{XrayEngine, XrayEngineChoice};
 use xrf_environment::{EnvironmentCatalog, WeatherGraphs};
-use xrf_level::{LevelFile, LevelHeaderChunk, LevelShaderEntry, LevelShadersChunk};
+use xrf_level::{LevelFile, LevelHeaderChunk, LevelShaderEntry, LevelShadersChunk, LevelVertex};
 use xrf_material::fixtures::FixtureTree;
-use xrf_math::Vector3d;
+use xrf_math::{Vector2d, Vector3d};
+use xrf_rawdata::{LevelVisualGeometry, ObjectDecompiler, SurfaceDress};
 use xrf_spawn::{AlifeObject, AlifeObjectAbstract, AlifeObjectInherited, ClsId, SpawnPacketHeader};
 use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayLookupScope, XrayMountId, XrayRevision, XrayRoots, XraySearch, XrayVfs};
 
-use crate::scene::{OpenedScene, SceneSource, SelectedScene, SelectedScenes};
+use crate::scene::{OpenedScene, SceneGameData, SceneSource, SelectedScene, SelectedScenes};
 
 /// The GUID every test scene and its parts carry, `labx8`'s.
 pub(super) const SCENE_GUID: EditableLevelGuid = EditableLevelGuid {
@@ -163,6 +167,60 @@ pub(super) fn write_scene_library_object(source: &SceneSource, reference: &str) 
   fs::write(path, "object").expect("the object is written");
 }
 
+/// Writes `object` as the library object at `reference` into the `objects` directory of the scene's rawdata tree.
+pub(super) fn write_scene_object_file(source: &SceneSource, reference: &str, object: &EditableObjectFile) {
+  let path: PathBuf = Path::new(&source.path)
+    .parent()
+    .and_then(Path::parent)
+    .expect("the scene lies in a rawdata tree")
+    .join(SceneSource::OBJECTS_DIRECTORY)
+    .join(format!("{reference}.object"));
+
+  fs::create_dir_all(path.parent().expect("an object lies in a directory")).expect("the object's directory is made");
+  object
+    .write_to_path::<XRayByteOrder, _>(&path)
+    .expect("the object is written");
+}
+
+/// A static library object of one surface of `triangles`, drawn with `models\model` and a wood texture and of the game
+/// material [`SCENE_GAME_MATERIAL`], as a level's visuals decompile into one.
+pub(super) fn scene_library_object(triangles: &[[Vector3d; 3]]) -> EditableObjectFile {
+  let vertices: Vec<LevelVertex> = triangles
+    .iter()
+    .flat_map(|[a, b, c]| {
+      let cross: Vector3d = (b - a).cross(&(c - a));
+      let normal: Vector3d = &cross / cross.length();
+
+      [(a, 0.0, 0.0), (b, 1.0, 0.0), (c, 0.0, 1.0)].map(|(position, u, v)| LevelVertex {
+        position: *position,
+        normal,
+        tangent: None,
+        binormal: None,
+        texture_coordinate: Vector2d::new(u, v),
+        lightmap_coordinate: None,
+        color: None,
+        hemi: 0,
+      })
+    })
+    .collect();
+
+  ObjectDecompiler::decompile_level_geometry(&[LevelVisualGeometry {
+    texture: String::from("wood\\wood_planks"),
+    shader: String::from("models\\model"),
+    dress: SurfaceDress {
+      compiler_shader: String::from(SurfaceDress::DEFAULT_SETTING),
+      game_material: String::from(SCENE_GAME_MATERIAL),
+    },
+    indices: (0..vertices.len() as u16).collect(),
+    vertices,
+  }])
+  .expect("the triangles decompile into an object")
+  .object
+}
+
+/// The game material every test library object's surface is of.
+pub(super) const SCENE_GAME_MATERIAL: &str = "materials\\stone";
+
 /// The text part of tool `T` holding `objects`, carrying the test scenes' GUID.
 pub(super) fn scene_part<T: EditableToolObject>(objects: Vec<T>) -> Vec<u8> {
   EditableObjectPart::new(SCENE_GUID, objects)
@@ -189,7 +247,8 @@ pub(super) fn new_scenes(assets: &AssetMountState) -> SelectedScenes {
 }
 
 /// Opens the scene `source` names as one more handle of `scenes`, as `levels|open_scene` does, its library objects
-/// looked for in the `objects` directory beside its `levels`.
+/// looked for in the `objects` directory beside its `levels` and its game data in `gamedata` beside its `rawdata` where
+/// that directory exists.
 pub(super) fn open_scene(
   scenes: &SelectedScenes,
   assets: &AssetMountState,
@@ -198,8 +257,17 @@ pub(super) fn open_scene(
   let roots: XrayRoots = source.get_roots().expect("the scene lies in a directory");
   let search: XraySearch = assets.search(&roots).expect("the scene's directory mounts");
   let revision: XrayRevision = search.get_vfs().get_revision();
-  let opened: SessionDerived<SelectedScene> =
-    OpenedScene::read(search, source.clone(), source.get_objects_roots(None)).expect("the scene opens");
+  let opened: SessionDerived<SelectedScene> = OpenedScene {
+    source: source.clone(),
+    objects_roots: source.get_objects_roots(None),
+    game: SceneGameData {
+      roots: source.get_game_roots(None),
+      is_dltx: false,
+      engine: XrayEngineChoice::Auto,
+    },
+  }
+  .read(search)
+  .expect("the scene opens");
 
   scenes
     .begin_fixture_open(SessionId::generate())

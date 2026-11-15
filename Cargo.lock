@@ -8134,6 +8134,7 @@ dependencies = [
  "xrf-dds",
  "xrf-dltx",
  "xrf-editable-level",
+ "xrf-editable-object",
  "xrf-engine-target",
  "xrf-environment",
  "xrf-error",
@@ -8149,6 +8150,7 @@ dependencies = [
  "xrf-ltx",
  "xrf-material",
  "xrf-math",
+ "xrf-object-visual",
  "xrf-ogf",
  "xrf-particles",
  "xrf-rawdata",
@@ -8333,6 +8335,7 @@ dependencies = [
  "xrf-job",
  "xrf-material",
  "xrf-math",
+ "xrf-object-visual",
  "xrf-object-visual",
  "xrf-ogf",
  "xrf-rawdata",
@@ -8929,6 +8932,23 @@ dependencies = [
  "xrf-error",
  "xrf-test-utils",
 ]
+[[package]]
+name = "xrf-object-visual"
+version = "0.1.0"
+dependencies = [
+ "xrf-chunk",
+ "xrf-editable-object",
+ "xrf-error",
+ "xrf-level",
+ "xrf-material",
+ "xrf-math",
+ "xrf-ogf",
+ "xrf-rawdata",
+ "xrf-shaders",
+ "xrf-vfs",
+ "xrf-visual",
+]
+
 
 [[package]]
 name = "xrf-object-visual"

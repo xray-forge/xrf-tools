@@ -9,15 +9,16 @@ use xrf_audio::AudioServer;
 use crate::level::{OpenedLevel, SelectedLevels};
 use crate::rawdata::level_compiler_libraries::LevelCompilerLibraries;
 use crate::render::{LevelRenderParts, LevelSceneFollower, ShownLevels};
-use crate::scene::{OpenedScene, SelectedScenes};
+use crate::scene::{OpenedScene, SelectedScenes, ShownScenes};
 use crate::viewer::recording::LevelRecordings;
 
 /// The `levels` plugin: compiled levels opened as documents whose parts follow commits, shown in a viewport, and
-/// captured or exported through the viewer; and Level Editor scenes opened as documents beside them.
+/// captured or exported through the viewer; and Level Editor scenes opened as documents beside them and shown in a
+/// viewport too.
 pub struct LevelsPlugin;
 
 impl LevelsPlugin {
-  /// The plugin, its levels, scenes and shown sources managed as it sets up.
+  /// The plugin, its levels, scenes and the sources each is shown from managed as it sets up.
   pub fn init<R: Runtime>() -> TauriPlugin<R> {
     crate::ipc::levels::builder()
       .setup(|application, _| {
@@ -56,10 +57,13 @@ impl LevelsPlugin {
           shown: shown.clone(),
           world,
         });
+        // todo: follow a shown scene's session through commits as `LevelSceneFollower` follows a level's, moving its
+        // scene onto a source over the next snapshot and reloading the models whose library objects a commit moved.
 
         application.manage(levels);
         application.manage(scenes);
         application.manage(shown);
+        application.manage(ShownScenes::default());
         application.manage(LevelRecordings::default());
         application.manage(LevelCompilerLibraries::locate(
           application.path().resource_dir().ok().as_deref(),

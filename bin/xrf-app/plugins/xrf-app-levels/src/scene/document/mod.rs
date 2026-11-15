@@ -1,4 +1,5 @@
 mod opened_scene;
+mod scene_game_data;
 mod scene_open_request;
 mod scene_source;
 mod scene_tool_kind;
@@ -6,6 +7,7 @@ mod selected_scene;
 mod selected_scenes;
 
 pub(crate) use opened_scene::OpenedScene;
+pub(crate) use scene_game_data::SceneGameData;
 pub(crate) use scene_open_request::SceneOpenRequest;
 pub(crate) use scene_source::SceneSource;
 pub(crate) use scene_tool_kind::SceneToolKind;

@@ -20,6 +20,9 @@ impl SceneSource {
   /// The directory a rawdata tree keeps library objects in, beside the `levels` directory holding its scenes.
   pub const OBJECTS_DIRECTORY: &'static str = "objects";
 
+  /// The directory an SDK keeps the game's data in, beside its `rawdata`.
+  pub const GAME_DATA_DIRECTORY: &'static str = "gamedata";
+
   /// The scene's name, the `.level`'s without its extension, which names its part directory.
   ///
   /// # Errors
@@ -72,5 +75,22 @@ impl SceneSource {
     };
 
     XrayRoots::from_paths(paths, XrayMountMode::Directory)
+  }
+
+  /// Where the scene's textures and shaders are searched for: the roots `given`, else `gamedata` beside the `rawdata`
+  /// directory holding the scene's `levels`, as an SDK keeps them side by side, where that directory exists; none
+  /// otherwise, the scene drawn with no game data.
+  pub fn get_game_roots(&self, given: Option<XrayRoots>) -> XrayRoots {
+    given.unwrap_or_else(|| {
+      XrayRoots::from_paths(
+        Path::new(&self.path)
+          .parent()
+          .and_then(Path::parent)
+          .and_then(Path::parent)
+          .map(|beside| beside.join(Self::GAME_DATA_DIRECTORY))
+          .filter(|game_data| game_data.is_dir()),
+        XrayMountMode::Directory,
+      )
+    })
   }
 }

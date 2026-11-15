@@ -9,10 +9,12 @@ use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_vfs::XrayRoots;
 
 use crate::report::LevelReport;
-use crate::scene::{OpenedScene, SceneOpenRequest, SelectedScene, SelectedSceneDescription, SelectedScenes};
+use crate::scene::{
+  OpenedScene, SceneGameData, SceneOpenRequest, SelectedScene, SelectedSceneDescription, SelectedScenes,
+};
 
 /// Open a Level Editor scene from its `.level`, listing its tools' part files and what the editor would skip or refuse
-/// of them, without reading their objects.
+/// of them, without reading their objects, and keeping the game data it is drawn with.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "open_scene")]
 pub(crate) async fn levels_open_scene(
@@ -22,14 +24,28 @@ pub(crate) async fn levels_open_scene(
   assets: State<'_, AssetMountState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<SessionSnapshot<SelectedSceneDescription>> {
-  let SceneOpenRequest { source, objects_roots } = request;
+  let SceneOpenRequest {
+    source,
+    objects_roots,
+    game_roots,
+    is_dltx,
+    engine,
+  } = request;
 
   let started: Instant = Instant::now();
 
   LevelReport::opening_scene(&source);
 
   let roots: XrayRoots = source.get_roots()?;
-  let objects_roots: XrayRoots = source.get_objects_roots(objects_roots);
+  let scene: OpenedScene = OpenedScene {
+    objects_roots: source.get_objects_roots(objects_roots),
+    game: SceneGameData {
+      roots: source.get_game_roots(game_roots),
+      is_dltx,
+      engine,
+    },
+    source,
+  };
   let opened: Arc<SessionSnapshot<SelectedScene>> = scenes
     .open_followed(
       &execution,
@@ -37,7 +53,7 @@ pub(crate) async fn levels_open_scene(
       session_id,
       roots,
       "Opening the scene",
-      move |search| OpenedScene::read(search, source, objects_roots),
+      move |search| scene.read(search),
     )
     .await?;
 

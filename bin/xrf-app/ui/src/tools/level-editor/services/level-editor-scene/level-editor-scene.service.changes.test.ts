@@ -5,6 +5,7 @@ import { SESSION_CHANGE_EVENT } from "@xrf/ipc/session";
 import { mockInvoke, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { ESessionRootChange, SessionChange } from "@xrf/ipc/types/xrf-app-core";
 import { ESceneToolKind, SCENE_BINARY_TOOLS_PART, SCENE_OBJECTS_PART } from "@xrf/ipc/types/xrf-app-levels";
+import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
 
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
@@ -42,7 +43,13 @@ async function openScene(): Promise<IOpenedScene> {
 
   container.provision();
   await flush();
-  await service.open({ objectsRoots: null, source: { path: "C:\\rawdata\\levels\\labx8.level" } });
+  await service.open({
+    engine: EXrayEngineChoice.AUTO,
+    gameRoots: null,
+    isDltx: false,
+    objectsRoots: null,
+    source: { path: "C:\\rawdata\\levels\\labx8.level" },
+  });
   await flush();
 
   return { container, service, sessionId: service.scene.sessionId as string };

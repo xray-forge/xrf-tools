@@ -4,11 +4,13 @@ import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { ESessionsCommand } from "@xrf/ipc/commands/sessions";
 import { listMockInvokeCalls, mockInvoke, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { SceneOpenRequest } from "@xrf/ipc/types/xrf-app-levels";
+import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
 
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { flush } from "@/fixtures/utils/promise";
 import {
+  mockSceneDrawDescription,
   mockSceneObjectsDescription,
   mockScenePartResponses,
   mockSelectedSceneDescription,
@@ -16,8 +18,17 @@ import {
 
 import { LevelEditorSceneService } from "./level-editor-scene.service";
 
-const REQUEST: SceneOpenRequest = { objectsRoots: null, source: { path: "C:\\rawdata\\levels\\labx8.level" } };
+const REQUEST: SceneOpenRequest = {
+  engine: EXrayEngineChoice.AUTO,
+  gameRoots: null,
+  isDltx: false,
+  objectsRoots: null,
+  source: { path: "C:\\rawdata\\levels\\labx8.level" },
+};
 const OTHER_REQUEST: SceneOpenRequest = {
+  engine: EXrayEngineChoice.AUTO,
+  gameRoots: null,
+  isDltx: false,
   objectsRoots: ["C:\\sdk\\rawdata\\objects"],
   source: { path: "C:\\rawdata\\levels\\zaton.level" },
 };
@@ -55,7 +66,7 @@ describe("LevelEditorSceneService", () => {
   });
 
   // The open lists the part files alone: what each tool holds is read apart from it, side by side.
-  it("opens a scene, then reads its objects and its binary tools' counts", async () => {
+  it("opens a scene, then reads its objects, its binary tools' counts and what its picture needs", async () => {
     const { service } = mockInjectedService(LevelEditorSceneService);
 
     armScene();
@@ -66,11 +77,13 @@ describe("LevelEditorSceneService", () => {
     expect(service.scene.value?.name).toBe("labx8");
     expect(service.objects.value).toEqual(mockSceneObjectsDescription());
     expect(service.binaryTools.value?.tools).toHaveLength(1);
+    expect(service.drawing.value).toEqual(mockSceneDrawDescription());
     expect(mockInvoke.mock.calls.map(([name]) => name)).toEqual([
       ESessionsCommand.BIND,
       ELevelsCommand.OPEN_SCENE,
       ELevelsCommand.DESCRIBE_SCENE_OBJECTS,
       ELevelsCommand.DESCRIBE_SCENE_BINARY_TOOLS,
+      ELevelsCommand.DESCRIBE_SCENE_DRAW,
     ]);
     expect(listMockInvokeCalls(ELevelsCommand.OPEN_SCENE)[0]?.request).toEqual(REQUEST);
   });
@@ -131,6 +144,7 @@ describe("LevelEditorSceneService", () => {
     expect(service.scene.value).toBeNull();
     expect(service.objects.value).toBeNull();
     expect(service.binaryTools.value).toBeNull();
+    expect(service.drawing.value).toBeNull();
     expect(listMockInvokeCalls(ELevelsCommand.CLOSE_SCENE)).toHaveLength(1);
   });
 
