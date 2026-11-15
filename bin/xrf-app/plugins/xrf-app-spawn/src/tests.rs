@@ -12,16 +12,21 @@ use xrf_test_utils::GeneratedResources;
 
 use crate::{SpawnChunk, SpawnChunkKind, SpawnFiles, SpawnSession};
 
+/// A spawn of one level with no vertices or objects, its cross table naming the level and the graph. A spawn of no levels
+/// would export an empty cross table file, which does not import back.
 pub(super) fn synthetic_spawn() -> SpawnFile {
+  let level: Uuid = Uuid::from_u128(1);
+
   serde_json::from_value(json!({
-    "header": { "version": 10, "guid": Uuid::nil(), "graphGuid": Uuid::nil(), "objectsCount": 0, "levelsCount": 0 },
+    "header": { "version": 10, "guid": Uuid::nil(), "graphGuid": Uuid::nil(), "objectsCount": 0, "levelsCount": 1 },
     "alifeSpawn": { "objects": [] }, "artefactSpawn": { "nodes": [] }, "patrols": { "patrols": [] },
     "graphs": {
-      "header": { "version": 8, "verticesCount": 0, "edgesCount": 0, "pointsCount": 0, "guid": Uuid::nil(), "levelsCount": 0 },
-      "levels": [], "vertices": [], "edges": [], "points": [],
-      "crossTables": [{ "version": 8, "nodesCount": 0, "verticesCount": 0, "levelGuid": Uuid::nil(), "gameGuid": Uuid::nil() }]
+      "header": { "version": 8, "verticesCount": 0, "edgesCount": 0, "pointsCount": 0, "guid": Uuid::nil(), "levelsCount": 1 },
+      "levels": [{ "name": "test_level", "offset": { "x": 0.0, "y": 0.0, "z": 0.0 }, "id": 0, "section": "test_level", "guid": level }],
+      "vertices": [], "edges": [], "points": [],
+      "crossTables": [{ "version": 8, "nodesCount": 0, "verticesCount": 0, "levelGuid": level, "gameGuid": Uuid::nil() }]
     }
-  })).expect("synthetic spawn with an empty cross-table")
+  })).expect("synthetic spawn of one empty level")
 }
 
 /// A packed spawn opens as one handle described by its path and header, and each chunk reads back as it was written; a
