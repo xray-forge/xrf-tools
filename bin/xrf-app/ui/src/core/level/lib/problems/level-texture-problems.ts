@@ -1,9 +1,8 @@
 import { ERenderTextureGroup } from "@xrf/ipc/types/xrf-renderer";
 
+import { ELevelTextureProblemRule } from "@/core/level/lib/problems/level-texture-problem-rule";
 import { ILevelTextureProblem } from "@/core/level/lib/texture/level-texture-report";
 import { IEditorProblem } from "@/core/shell/chrome/EditorProblemsPanel";
-
-import { ELevelProblemRule } from "./level-problem-rule";
 
 /**
  * What the texture set has to say, as rows, the grass's apart from the surfaces'.
@@ -14,7 +13,10 @@ import { ELevelProblemRule } from "./level-problem-rule";
 export function listTextureProblems(textures: ReadonlyArray<ILevelTextureProblem>): Array<IEditorProblem> {
   return textures.map((problem: ILevelTextureProblem) => ({
     message: problem.reason,
-    rule: problem.group === ERenderTextureGroup.GRASS ? ELevelProblemRule.GRASS_TEXTURE : ELevelProblemRule.TEXTURE,
+    rule:
+      problem.group === ERenderTextureGroup.GRASS
+        ? ELevelTextureProblemRule.GRASS_TEXTURE
+        : ELevelTextureProblemRule.TEXTURE,
     subject: problem.reference,
   }));
 }

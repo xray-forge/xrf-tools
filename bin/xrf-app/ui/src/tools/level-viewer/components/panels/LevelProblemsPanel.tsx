@@ -5,13 +5,13 @@ import { EditorPanelEmpty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useMemo } from "react";
 
+import { describeLevelResidentWait } from "@/core/level/lib/load/level-resident-wait";
 import { EMPTY_LEVEL_RESIDENT, ILevelResident } from "@/core/level/lib/render/level-resident";
 import { ILevelSpawnReport } from "@/core/level/lib/spawn/level-spawn-report";
 import { LevelLoadService } from "@/core/level/services/level-load";
 import { LevelRenderService } from "@/core/level/services/level-render";
 import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
 import { EditorProblemsPanel, IEditorProblem } from "@/core/shell/chrome/EditorProblemsPanel";
-import { describeLevelResidentWait } from "@/tools/level-viewer/lib/load/level-resident-wait";
 import { listLevelProblems } from "@/tools/level-viewer/lib/problems/level-problems";
 
 /**

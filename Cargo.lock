@@ -8333,6 +8333,7 @@ dependencies = [
  "xrf-job",
  "xrf-material",
  "xrf-math",
+ "xrf-object-visual",
  "xrf-ogf",
  "xrf-rawdata",
  "xrf-renderer",
@@ -8927,6 +8928,23 @@ dependencies = [
  "xrf-chunk",
  "xrf-error",
  "xrf-test-utils",
+]
+
+[[package]]
+name = "xrf-object-visual"
+version = "0.1.0"
+dependencies = [
+ "xrf-chunk",
+ "xrf-editable-object",
+ "xrf-error",
+ "xrf-level",
+ "xrf-material",
+ "xrf-math",
+ "xrf-ogf",
+ "xrf-rawdata",
+ "xrf-shaders",
+ "xrf-vfs",
+ "xrf-visual",
 ]
 
 [[package]]

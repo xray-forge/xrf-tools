@@ -7,39 +7,54 @@ import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 
 import { describeLevelLoad } from "@/core/level/lib/load/level-load-progress";
-import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { RenderFailureNotice } from "@/core/render/components/overlay/RenderFailureNotice";
 
+/** What the cover asks of the render service drawing under it. */
+export interface ILevelPreviewCoverHost {
+  /** Why the viewport draws nothing it was asked to, or null while it does. */
+  readonly failure: Nullable<string>;
+  /** Whether what is open is drawn with everything it opens with. */
+  readonly isRevealed: boolean;
+}
+
 interface ILevelPreviewCoverProps extends BaseComponentProps {
-  /** Whether the level itself is being opened, before any of it is read. */
+  /** The render service drawing under the cover. */
+  host: ILevelPreviewCoverHost;
+  /** What is drawn, as the cover names it while it waits: a level, a scene. */
+  subject?: string;
+  /** What the load does once the sectors and textures are in, where it is not a level's spawned objects and the rest. */
+  rest?: string;
+  /** Whether what is drawn is itself being opened, before any of it is read. */
   isLoading: boolean;
 }
 
 /**
- * What hides the viewport until a level has been drawn with everything it opens with, so it never assembles in view:
- * opaque, taking the pointer from the canvas under it, and faded out once the level is shown. A renderer that failed
+ * What hides the viewport until a level or a scene has been drawn with everything it opens with, so it never assembles
+ * in view: opaque, taking the pointer from the canvas under it, and faded out once it is shown. A renderer that failed
  * never shows it, so the cover stays and says why.
  */
 export function LevelPreviewCover({
   "data-testid": dataTestId = "level-preview-cover",
   id,
   className,
+  host,
+  subject = "level",
+  rest,
   isLoading,
 }: ILevelPreviewCoverProps): ReactElement {
-  const renderService: LevelRenderService = useInjection(LevelRenderService);
   const viewportService: LevelViewportService = useInjection(LevelViewportService);
 
   const load: Nullable<RenderLoadReport> = viewportService.load;
-  const failure: Nullable<string> = renderService.failure;
-  const isCovering: boolean = failure !== null || isLoading || !renderService.isRevealed;
+  const failure: Nullable<string> = host.failure;
+  const isCovering: boolean = failure !== null || isLoading || !host.isRevealed;
 
-  let label: string = "Preparing the level…";
+  let label: string = `Preparing the ${subject}…`;
 
   if (isLoading) {
-    label = "Opening level…";
+    label = `Opening ${subject}…`;
   } else if (load && !load.isReady) {
-    label = `${describeLevelLoad(load)}…`;
+    label = `${describeLevelLoad(load, rest)}…`;
   }
 
   return (

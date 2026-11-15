@@ -4,6 +4,7 @@ import { ERenderTextureGroup } from "@xrf/ipc/types/xrf-renderer";
 import { SectorSkip } from "@xrf/ipc/types/xrf-visual";
 import { WorldSectorSkip } from "@xrf/ipc/types/xrf-world";
 
+import { ELevelTextureProblemRule } from "@/core/level/lib/problems/level-texture-problem-rule";
 import { EMPTY_LEVEL_SPAWN_REPORT } from "@/core/level/lib/spawn/level-spawn-report";
 import { IEditorProblem } from "@/core/shell/chrome/EditorProblemsPanel";
 import { mockSurfaceDescriptor } from "@/core/visuals/fixtures/visual.mocks";
@@ -39,7 +40,7 @@ describe("listLevelProblems", () => {
     );
 
     expect(problems).toEqual([
-      { message: "missing", rule: ELevelProblemRule.GRASS_TEXTURE, subject: "grass\\grass_1" },
+      { message: "missing", rule: ELevelTextureProblemRule.GRASS_TEXTURE, subject: "grass\\grass_1" },
     ]);
   });
 
@@ -59,7 +60,7 @@ describe("listLevelProblems", () => {
     expect(problems).toEqual([
       {
         message: "The file in the mounted roots is 2x2",
-        rule: ELevelProblemRule.TEXTURE,
+        rule: ELevelTextureProblemRule.TEXTURE,
         subject: "trees\\frond",
       },
     ]);
@@ -157,7 +158,7 @@ describe("listLevelProblems", () => {
     });
 
     expect(problems.map((it) => it.rule)).toEqual([
-      ELevelProblemRule.TEXTURE,
+      ELevelTextureProblemRule.TEXTURE,
       ELevelProblemRule.SURFACE,
       ELevelProblemRule.DRAWABLE,
       ELevelProblemRule.SPAWN,

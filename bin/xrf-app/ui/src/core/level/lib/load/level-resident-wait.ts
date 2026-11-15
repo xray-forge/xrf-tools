@@ -4,11 +4,16 @@ import { Nullable } from "@xrf/types";
 import { ILevelResident } from "@/core/level/lib/render/level-resident";
 
 /**
- * @param resident - How asking the renderer what the resident level draws went.
+ * @param resident - How asking the renderer what the resident level or scene draws went.
  * @param subject - What a panel waits for from it, as "what it could not draw".
+ * @param shown - What the viewport shows, as the wait names it.
  * @returns What the panel says in place of that, or null once the renderer has said it.
  */
-export function describeLevelResidentWait(resident: AsyncState<ILevelResident>, subject: string): Nullable<string> {
+export function describeLevelResidentWait(
+  resident: AsyncState<ILevelResident>,
+  subject: string,
+  shown: string = "the level"
+): Nullable<string> {
   if (resident.isReady) {
     return null;
   }
@@ -23,5 +28,5 @@ export function describeLevelResidentWait(resident: AsyncState<ILevelResident>, 
     return `Reading ${subject}…`;
   }
 
-  return `Not read yet: the renderer says ${subject} once the level is resident.`;
+  return `Not read yet: the renderer says ${subject} once ${shown} is resident.`;
 }

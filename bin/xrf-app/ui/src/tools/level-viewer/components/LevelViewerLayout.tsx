@@ -19,6 +19,7 @@ import { LevelPreviewGoTo } from "@/core/level/components/preview/LevelPreviewGo
 import { LevelPreviewPick } from "@/core/level/components/preview/LevelPreviewPick";
 import { ILevelPreviewViewportProps, LevelPreviewViewport } from "@/core/level/components/preview/LevelPreviewViewport";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
+import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelViewService } from "@/core/level/services/level-view";
 import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { useShellPanels } from "@/core/shell/contributions";
@@ -82,6 +83,7 @@ export function LevelViewerLayout({
   onBack,
   onDeselect = null,
 }: ILevelViewerLayoutProps): ReactElement {
+  const renderService: LevelRenderService = useInjection(LevelRenderService);
   const viewService: LevelViewService = useInjection(LevelViewService);
   const viewportService: LevelViewportService = useInjection(LevelViewportService);
 
@@ -200,7 +202,7 @@ export function LevelViewerLayout({
 
           {!isOpen && !isLoading ? <LevelPreviewEmpty error={error} onRetry={onRetry} /> : null}
 
-          {isOpen || isLoading ? <LevelPreviewCover isLoading={isLoading} /> : null}
+          {isOpen || isLoading ? <LevelPreviewCover host={renderService} isLoading={isLoading} /> : null}
         </div>
       </div>
     </EditorLayout>

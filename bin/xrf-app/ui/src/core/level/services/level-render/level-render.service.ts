@@ -10,6 +10,7 @@ import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { toLevelCameraReading } from "@/core/level/lib/camera/level-camera-reading";
+import { toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import { DEFAULT_LEVEL_RENDER_CONFIG, ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
 import { ILevelResident, toLevelResident } from "@/core/level/lib/render/level-resident";
 import { LevelSceneShow } from "@/core/level/lib/render/level-scene-show";
@@ -111,7 +112,11 @@ export class LevelRenderService extends NativeRenderSurfaceService {
       getViewport: () => this.viewport,
     };
 
-    this.camera = new LevelRenderCamera(context, { config, loadService, viewService });
+    this.camera = new LevelRenderCamera(context, {
+      config,
+      toStart: () => toLevelStartViewpoint(this.level?.bounds ?? null, loadService.start.value),
+      viewService,
+    });
     this.drawing = new LevelRenderDrawing(context, {
       config,
       loadService,

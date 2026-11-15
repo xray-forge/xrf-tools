@@ -1,9 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 import { AsyncState } from "@xrf/async";
 
+import { describeLevelResidentWait } from "@/core/level/lib/load/level-resident-wait";
 import { EMPTY_LEVEL_RESIDENT } from "@/core/level/lib/render/level-resident";
-
-import { describeLevelResidentWait } from "./level-resident-wait";
 
 describe("describeLevelResidentWait", () => {
   it("says nothing once the renderer has described the level", () => {
@@ -13,6 +12,9 @@ describe("describeLevelResidentWait", () => {
   it("says the description is not read yet, being read, or could not be read", () => {
     expect(describeLevelResidentWait(AsyncState.idle(), "what it could not draw")).toBe(
       "Not read yet: the renderer says what it could not draw once the level is resident."
+    );
+    expect(describeLevelResidentWait(AsyncState.idle(), "what it could not draw", "the scene")).toBe(
+      "Not read yet: the renderer says what it could not draw once the scene is resident."
     );
     expect(describeLevelResidentWait(AsyncState.loading(), "what it could not draw")).toBe(
       "Reading what it could not draw…"
