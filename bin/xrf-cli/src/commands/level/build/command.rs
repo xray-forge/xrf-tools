@@ -22,13 +22,14 @@ impl GenericCommand for BuildCommand {
   fn declare(&self, command: Command) -> Command {
     command
       .about(
-        "Build an SDK Level Editor scene's game files into a level directory, as the editor's Build writes them from \
-         the scene's parts: level.game, level.env_mod, level.fog_vol, and level.spawn, level_rs.spawn, \
-         level.ps_static, level.snd_static, level.snd_env and level.wallmarks where the scene holds them; and given \
-         the objects roots and game materials, the build.prj xrLC compiles the geometry and lighting from, level.ltx, \
-         level.hom and level.som where objects occlude, build.details and its atlas build_details.dds where the \
-         scene holds details, and the impostor atlas level_lods.dds and level_lods_nm.dds where a multi-use object \
-         has an impostor, and each breakable part as meshes/brkbl#<n>.ogf",
+        "Build an SDK Level Editor scene into a level directory, as the editor's Build writes it. From the scene's \
+         parts it writes level.game, level.env_mod and level.fog_vol, and level.spawn, level_rs.spawn, \
+         level.ps_static, level.snd_static, level.snd_env and level.wallmarks where the scene holds them. Given \
+         --objects and --game-materials it also writes what level compile reads: build.prj with the scene's build \
+         options, level.ltx, level.hom and level.som where objects occlude, build.details and its atlas \
+         build_details.dds where the scene holds details, build.aimap where it holds an AI map, the impostor atlas \
+         level_lods.dds and level_lods_nm.dds where a multi-use object has an impostor, and each breakable part as \
+         meshes/brkbl#<n>.ogf",
       )
       .arg(
         Arg::new("path")
@@ -76,16 +77,6 @@ impl GenericCommand for BuildCommand {
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
-        Arg::new("proof-lighting")
-          .help(
-            "Light build.prj at proof quality whatever the scene sets, 3 lightmap pixels a metre, 1 jitter sample, sky \
-             and sun at quality 1, to check a level with xrLC in minutes rather than hours; not for a level to ship",
-          )
-          .long("proof-lighting")
-          .requires("objects")
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
         Arg::new("sdk-impostor-atlas")
           .help(
             "Keep the impostor atlas within SDK 0.7's 2048 by 2048, refusing a level of more than 128 impostors as that \
@@ -120,7 +111,6 @@ impl GenericCommand for BuildCommand {
         .unwrap_or_default(),
       game_materials: matches.get_one::<PathBuf>("game-materials").cloned(),
       textures: matches.get_one::<PathBuf>("textures").cloned(),
-      is_proof_lighting: matches.get_flag("proof-lighting"),
       impostor_limit: if matches.get_flag("sdk-impostor-atlas") {
         LevelBuildImpostorLimit::Sdk
       } else {

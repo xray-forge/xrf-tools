@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
-use xrf_level_compiler::{SpawnRootGamedata, SpawnRootOptions, SpawnRootOutcome, SpawnRootRequest};
 use xrf_output::OutputOptions;
+use xrf_spawn_builder::{SpawnRootGamedata, SpawnRootOptions, SpawnRootOutcome, SpawnRootRequest};
 
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
@@ -67,7 +67,7 @@ impl GenericCommand for BuildCommand {
       )
       .arg(
         Arg::new("force")
-          .help("Write over spawns/all.spawn, the game's own spawn, where it is there")
+          .help("Overwrite spawns/all.spawn, the game's own spawn, where it already exists")
           .short('f')
           .long("force")
           .action(ArgAction::SetTrue),

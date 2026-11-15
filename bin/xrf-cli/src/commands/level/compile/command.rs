@@ -11,8 +11,8 @@ use xrf_output::OutputOptions;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 use crate::core::terminal::CliJob;
 
-/// Compiles a level directory `level build` wrote, step by step: the details by our lighter, the AI map by our
-/// compiler, the geometry by ours, its vertices and lightmaps lit, or, given the SDK, by its xrLC.
+/// Compiles a level directory `level build` wrote, step by step, each by our own compiler: the geometry, its light
+/// (vertices, lightmaps and terrain), the details' light and the AI map.
 #[derive(Default)]
 pub(crate) struct CompileCommand;
 
@@ -24,18 +24,17 @@ impl GenericCommand for CompileCommand {
   fn declare(&self, command: Command) -> Command {
     command
       .about(
-        "Compile a level directory level build wrote into what the game loads, step by step: geometry (the level, its \
-         geometry, collision and lightmaps; ours, or the SDK's xrLC with --sdk, which lights it too), light (ours \
-         bakes the vertices', lightmaps' and terrain's light in the geometry's pass, which it needs; without it the \
-         level carries neutral light), details (level.details lit from build.details, build.cform and build.lights, \
-         as xrDO_Light lights it) and ai (level.ai compiled from build.aimap as xrAI -f \
-         compiles it, its covers traced against build.cform, then checked as a graph). Every step's inputs and every \
-         texture build.prj names are checked before any step runs. The SDK's xrLC runs in a working directory under an \
-         fsgame.ltx written for it, never in a game installation",
+        "Compile a level directory that level build wrote into the files the game loads. The steps run in this \
+         process, in order: geometry (level, level.geom, level.geomx and level.cform, as xrLC builds them, and the \
+         build.cform and build.lights the later steps read), light (the light of the vertices, lightmaps and terrain, baked in \
+         the same pass as the geometry, so it runs only with geometry; without it the level gets flat neutral \
+         light), details (level.details lit from build.details, as xrDO_Light lights it) and ai (level.ai from \
+         build.aimap, as xrAI -f compiles it, then checked as a graph). Before any step runs, the compile checks \
+         that every input of the chosen steps is there, and a .thm for every texture build.prj names",
       )
       .arg(
         Arg::new("path")
-          .help("Path to the level's directory, <levels>/<level>, holding build.prj and the rest level build wrote")
+          .help("Path to the level directory, <levels>/<level>, that level build wrote into")
           .short('p')
           .long("path")
           .required(true)
@@ -44,27 +43,18 @@ impl GenericCommand for CompileCommand {
       .arg(
         Arg::new("steps")
           .help(
-            "Steps to run, in their order whatever the order given; every step by default. light runs only with \
-             geometry",
+            "Steps to run, comma-separated; they always run in the order geometry, light, details, ai. Every step by \
+             default; light runs only with geometry",
           )
           .long("steps")
           .value_delimiter(',')
           .value_parser(LevelCompileStep::ALL.map(LevelCompileStep::get_name).to_vec()),
       )
       .arg(
-        Arg::new("sdk")
-          .help(
-            "The SDK's editors directory, whose bin holds xrLC; given, the geometry step runs it and the level is lit \
-             whatever the steps, else our compiler runs it, lit by the light step",
-          )
-          .long("sdk")
-          .value_parser(value_parser!(PathBuf)),
-      )
-      .arg(
         Arg::new("gamedata")
           .help(
-            "Game data the compilers read gamemtl.xr and shaders_xrlc.xr from; the gamedata holding the level's \
-             levels directory by default",
+            "Game data directory to read gamemtl.xr and shaders_xrlc.xr from; by default the gamedata directory \
+             holding the level's levels directory",
           )
           .long("gamedata")
           .value_parser(value_parser!(PathBuf)),
@@ -72,26 +62,18 @@ impl GenericCommand for CompileCommand {
       .arg(
         Arg::new("textures")
           .help(
-            "Textures root with a .thm for every texture build.prj names, and the images of those with alpha; \
-             repeatable, each file from the first root holding it, though the SDK's xrLC takes one; the game data's \
-             textures by default",
+            "Textures root holding a .thm for every texture build.prj names, and the image of each texture with \
+             alpha; repeatable, each file taken from the first root holding it; by default the game data's textures \
+             directory",
           )
           .long("textures")
           .action(ArgAction::Append)
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
-        Arg::new("work")
-          .help(
-            "Directory the SDK's xrLC runs in, with its fsgame.ltx and logs; one in the system's temporary directory",
-          )
-          .long("work")
-          .value_parser(value_parser!(PathBuf)),
-      )
-      .arg(
         Arg::new("force")
           .help(
-            "Overwrite level.details and level.ai where the level's directory already holds them; a level.ai replaced \
+            "Overwrite level.details and level.ai where the level directory already holds them. A replaced level.ai \
              keeps its identity while its graph is unchanged, so the level's spawn still loads",
           )
           .short('f')
@@ -101,9 +83,9 @@ impl GenericCommand for CompileCommand {
       .arg(
         Arg::new("backend")
           .help(
-            "What traces the light step's lightmap rays, the details step's shadow rays and the ai step's cover \
-             rays: auto, the GPU where one traces rays, else the CPU; gpu, the GPU's ray queries alone, on D3D12 where \
-             dxc/dxcompiler.dll stands beside the CLI, else on Vulkan; cpu, the reference",
+            "What traces the rays of the light, details and ai steps: auto uses the GPU where it supports ray \
+             tracing, else the CPU; gpu uses the GPU only, on D3D12 where dxc/dxcompiler.dll is beside the CLI, else \
+             on Vulkan; cpu uses the CPU, the reference result",
           )
           .long("backend")
           .default_value(RayBackend::default().get_name())
@@ -112,8 +94,9 @@ impl GenericCommand for CompileCommand {
       .arg(
         Arg::new("ai-covers")
           .help(
-            "Covers the ai step computes: full, traced against build.cform as xrAI -f traces them; none, every cover 0 \
-             as xrAI -draft leaves them, needing no build.cform, for a map to walk before the geometry is compiled",
+            "Covers the ai step computes: full traces them against build.cform, as xrAI -f does; none sets every \
+             cover to 0, as xrAI -draft does, and needs no build.cform, for a map to walk before the geometry is \
+             compiled",
           )
           .long("ai-covers")
           .default_value(AiMapCovers::default().get_name())
@@ -122,9 +105,10 @@ impl GenericCommand for CompileCommand {
       .arg(
         Arg::new("quality")
           .help(
-            "How finely our light step lights the level, and the sky and sun build.lights holds: scene, by build.prj's own sky, sun and lightmap density; \
-             draft, the sky and sun regenerated at quality 1, lightmaps of 3 texels a metre and one sample each, and \
-             each tree lit from one sample, the cheap estimate",
+            "How finely the light step lights the level: scene uses build.prj's own sky, sun, lightmap density and \
+             samples; draft is a quick estimate, regenerating the sky and sun (also those written to build.lights) at \
+             quality 1, lighting lightmaps at 3 texels a metre with one sample each, and each multi-use object, such \
+             as a tree, from one sample",
           )
           .long("quality")
           .default_value(LightQuality::default().get_name())
@@ -150,10 +134,8 @@ impl GenericCommand for CompileCommand {
         .get_many::<String>("steps")
         .map(|steps| steps.filter_map(|step| LevelCompileStep::from_name(step)).collect())
         .unwrap_or_default(),
-      sdk: matches.get_one::<PathBuf>("sdk").cloned(),
       textures,
       gamedata,
-      work: matches.get_one::<PathBuf>("work").cloned(),
       is_forced: matches.get_flag("force"),
       backend: matches
         .get_one::<String>("backend")
@@ -207,10 +189,6 @@ impl CompileCommand {
 
     for step in &report.steps {
       let run: String = match &step.run {
-        LevelCompileStepRun::Program { program, log } => format!(
-          "{program}{}",
-          log.as_ref().map(|log| format!(", log {log}")).unwrap_or_default()
-        ),
         LevelCompileStepRun::GeometryCompiler { census } => format!(
           "{} static visuals of {} triangles, {} trees, {} visuals progressive, {} sectors",
           census.visuals, census.triangles, census.trees, census.progressive, census.sectors,
@@ -269,19 +247,14 @@ impl CompileCommand {
 
     xrf_output::success!(
       output,
-      "Compiled {} ({}){}",
+      "Compiled {} ({})",
       report.level,
       report
         .steps
         .iter()
         .map(|step| step.step.get_name())
         .collect::<Vec<_>>()
-        .join(", "),
-      report
-        .work
-        .as_ref()
-        .map(|work| format!(", the SDK's compilers in {work}"))
-        .unwrap_or_default()
+        .join(", ")
     );
 
     Ok(report)

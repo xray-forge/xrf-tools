@@ -57,6 +57,7 @@ xrf-profiler = { workspace = true }
 xrf-omf = { workspace = true }
 xrf-thm = { workspace = true }
 xrf-spawn = { workspace = true }
+xrf-spawn-builder = { workspace = true }
 xrf-particles = { workspace = true }
 xrf-chunk = { workspace = true }
 
@@ -68,8 +69,8 @@ xrf-utils = { workspace = true, features = ["staging-faults"] }
 
 [features]
 default = ["gpu"]
-# `level compile --backend gpu`: the detail lighter's shadow rays traced with GPU ray queries, on Vulkan where no DXC
-# stands beside the CLI. On by default; `--no-default-features` builds a CLI linking no graphics code.
+# `level compile --backend gpu`: the light step's, the details' and the AI map's rays traced with GPU ray queries, on
+# Vulkan where no DXC stands beside the CLI. On by default; `--no-default-features` builds a CLI linking no graphics code.
 gpu = ["xrf-level-compiler/gpu"]
 # Every crate's zones in a Tracy capture; built with the `tracy` profile.
 tracy = ["xrf-profiler/tracy"]
