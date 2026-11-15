@@ -3,12 +3,11 @@ use std::sync::Arc;
 
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
 use xrf_editable_level::{
-  EditableCustomObject, EditableFogVolumeObject, EditableGlowObject, EditableGroupTool, EditableLevelPart,
-  EditableLightObject, EditableParticleObject, EditablePortalObject, EditableSceneObject, EditableSceneTool,
-  EditableSectorObject, EditableShapeObject, EditableSoundEnvironmentObject, EditableSoundSourceObject,
-  EditableSpawnPointObject, EditableWayObject,
+  EditableFogVolumeObject, EditableGlowObject, EditableGroupTool, EditableLightObject, EditableParticleObject,
+  EditablePortalObject, EditableSceneObject, EditableSectorObject, EditableShapeObject, EditableSoundEnvironmentObject,
+  EditableSoundSourceObject, EditableSpawnPointObject, EditableWayObject,
 };
-use xrf_error::{XrfError, XrfResult};
+use xrf_error::XrfResult;
 use xrf_rawdata::LevelSceneToolObjects;
 use xrf_vfs::XraySearch;
 
@@ -130,39 +129,25 @@ impl SceneObjectsPart {
       *members.entry(group).or_default() += 1;
     }
 
-    let mut groups: Vec<SceneObjectDescription> = Vec::new();
-
-    for part in &tool.parts {
-      let EditableLevelPart::Text(part) = part else {
-        return Err(Self::refuse_binary_groups(tool));
-      };
-
-      for object in part.get_objects()? {
-        let custom: EditableCustomObject = EditableCustomObject::read_from_section(object.section)?;
+    let groups: Vec<SceneObjectDescription> = (0u32..)
+      .zip(EditableGroupTool::read_groups(tool)?)
+      .map(|(index, group)| {
         let properties: SceneObjectProperties = SceneObjectProperties::Group {
-          members: members.get(custom.name.as_str()).copied().unwrap_or_default(),
+          members: members.get(group.name.as_str()).copied().unwrap_or_default(),
         };
         let id: SceneObjectId = SceneObjectId {
           tool: SceneToolKind::Group,
-          index: groups.len() as u32,
+          index,
         };
 
-        groups.push(SceneObjectDescription::new(id, &custom, properties));
-      }
-    }
+        SceneObjectDescription::new(id, &group, properties)
+      })
+      .collect();
 
     Ok(Some(SceneObjectToolDescription {
       tool: SceneToolKind::Group,
       objects: groups,
     }))
-  }
-
-  /// Why a group tool holding a binary part is not read: groups are saved as text.
-  fn refuse_binary_groups(tool: &EditableSceneTool) -> XrfError {
-    XrfError::new_parsing_error(format!(
-      "Scene tool '{}' holds a binary part, where groups are text",
-      tool.name
-    ))
   }
 
   /// `read`, the tool `kind`'s objects, kept in `description`, or the reason they did not read.

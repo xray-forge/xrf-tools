@@ -1,9 +1,11 @@
 use xrf_error::{XrfError, XrfResult};
 use xrf_ini::IniSection;
 
+use crate::object::editable_custom_object::EditableCustomObject;
 use crate::object::editable_tool_object::EditableToolObject;
 use crate::part::editable_level_part::EditableLevelPart;
 use crate::part::editable_part_object::EditablePartObject;
+use crate::part::editable_text_part::EditableTextPart;
 use crate::scene::editable_group_member::EditableGroupMember;
 use crate::scene::editable_scene_tool::EditableSceneTool;
 
@@ -23,18 +25,22 @@ impl EditableGroupTool {
   /// What a member's section name holds between its group's and its index.
   const MEMBER_INFIX: &'static str = "_ingroup_";
 
-  /// Every member of class `T` of every group the tool's parts hold, in the order the files hold them.
+  /// Every group the tool's parts hold, `[object_N]`, as what every object saves first, in the order the files hold
+  /// them.
   ///
   /// # Errors
   ///
-  /// As [`Self::read_grouped_members`].
-  pub fn read_members<T: EditableToolObject>(tool: &EditableSceneTool) -> XrfResult<Vec<T>> {
-    Ok(
-      Self::read_grouped_members::<T>(tool)?
-        .into_iter()
-        .map(|member| member.object)
-        .collect(),
-    )
+  /// Returns an error when the tool holds a binary part, a part's objects do not read, or a group does not read.
+  pub fn read_groups(tool: &EditableSceneTool) -> XrfResult<Vec<EditableCustomObject>> {
+    let mut groups: Vec<EditableCustomObject> = Vec::new();
+
+    for part in Self::get_text_parts(tool)? {
+      for group in part.get_objects()? {
+        groups.push(EditableCustomObject::read_from_section(group.section)?);
+      }
+    }
+
+    Ok(groups)
   }
 
   /// Every member of class `T` of every group the tool's parts hold, in the order the files hold them, each with the
@@ -49,14 +55,7 @@ impl EditableGroupTool {
   ) -> XrfResult<Vec<EditableGroupMember<T>>> {
     let mut members: Vec<EditableGroupMember<T>> = Vec::new();
 
-    for part in &tool.parts {
-      let EditableLevelPart::Text(part) = part else {
-        return Err(XrfError::new_parsing_error(format!(
-          "Scene tool '{}' holds a binary part, where groups are text",
-          tool.name
-        )));
-      };
-
+    for part in Self::get_text_parts(tool)? {
       for group in part.get_objects()? {
         let prefix: String = format!("{}{}", group.section.name, Self::MEMBER_INFIX);
 
@@ -87,6 +86,21 @@ impl EditableGroupTool {
     }
 
     Ok(members)
+  }
+
+  /// The tool's parts, every one text as groups are saved.
+  fn get_text_parts(tool: &EditableSceneTool) -> XrfResult<Vec<&EditableTextPart>> {
+    tool
+      .parts
+      .iter()
+      .map(|part| match part {
+        EditableLevelPart::Text(part) => Ok(part),
+        EditableLevelPart::Binary(_) => Err(XrfError::new_parsing_error(format!(
+          "Scene tool '{}' holds a binary part, where groups are text",
+          tool.name
+        ))),
+      })
+      .collect()
   }
 
   /// The sections named after a member, `<member>_<suffix>`.

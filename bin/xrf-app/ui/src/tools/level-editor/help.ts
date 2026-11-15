@@ -16,6 +16,8 @@ export const LEVEL_EDITOR_HELP: IToolHelp = {
     "The viewport draws every scene object as the library object it places, compiled from its `.object`, and frames " +
       "the camera on them as the scene opens, or on the helpers where the scene has none; fly it as in the level " +
       "viewer, its speed and lens under Camera.",
+    "A spawn point whose entity names a visual found in the game data stands as that model, posed as the level " +
+      "viewer poses it, and keeps any volume attached to it.",
     "What has no geometry is drawn as a helper: spawn points by their volume or an icon, ways by their arrowed links " +
       "and points, shapes, sound environments and fog volumes by their volumes, glows by their radius, portals by " +
       "their outline, and lights, sound sources and particles by an icon. Show switches them all, or tool by tool, " +
@@ -49,8 +51,8 @@ export const LEVEL_EDITOR_HELP: IToolHelp = {
   ],
   limitations: [
     "Nothing is edited or written: the scene, its objects and its parts stay as they are on disk.",
-    "Sectors, groups, the AI map, detail objects and wall marks are not drawn, nor a spawn point's visual, so they " +
-      "are neither picked in the viewport nor framed. One object is selected at a time.",
+    "Sectors, groups, the AI map, detail objects and wall marks are not drawn, so they are neither picked in the " +
+      "viewport nor framed. One object is selected at a time.",
   ],
   relatedTools: [EToolId.LEVEL_DECOMPILER, EToolId.LEVEL_COMPILER],
 };

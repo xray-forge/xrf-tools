@@ -133,6 +133,38 @@ fn opens_a_scene_listing_its_tools_part_files_and_what_its_level_holds() {
 }
 
 #[test]
+fn reads_a_tools_numbered_part_files_after_its_first_until_one_is_missing() {
+  let source: SceneSource = write_scene("scene_open/numbered");
+  let sectors: Vec<u8> = scene_part(vec![sector()]);
+
+  write_scene_part(&source, "sector.part", &sectors);
+  write_scene_part(&source, "sector.part1", &sectors);
+  // Past the missing `sector.part2`, which the editor stops reading at.
+  write_scene_part(&source, "sector.part3", &sectors);
+
+  let assets: AssetMountState = AssetMountState::new();
+  let opened: Arc<SessionSnapshot<SelectedScene>> = open_scene(&new_scenes(&assets), &assets, &source);
+  let described: SelectedSceneDescription = opened.describe();
+  let sector_tool: &SceneToolDescription = described.tools.iter().find(|tool| tool.name == "sector").unwrap();
+
+  assert!(described.problems.is_empty(), "{:?}", described.problems);
+  assert_eq!(
+    sector_tool
+      .files
+      .iter()
+      .map(|file| file.name.as_str())
+      .collect::<Vec<_>>(),
+    ["sector.part", "sector.part1"]
+  );
+  assert_eq!(sector_tool.size, 2 * sectors.len() as u64);
+  assert_eq!(
+    opened.scene.get_tool("sector").map(|tool| tool.parts.len()),
+    Some(2),
+    "each file read is kept as one of the tool's parts"
+  );
+}
+
+#[test]
 fn counts_the_binary_tools_without_their_payload() {
   let source: SceneSource = write_scene("scene_open/binary");
 
