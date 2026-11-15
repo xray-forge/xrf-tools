@@ -59,6 +59,11 @@
       "icon": "respawnPoint",
       "material": "RestartAlt",
       "picture": "respawn-point.svg"
+    },
+    {
+      "icon": "spawnPoint",
+      "material": "MyLocation",
+      "picture": "spawn-point.svg"
     }
   ],
   "source": "@mui/icons-material (Material Icons, Apache License 2.0), as the application's UI draws them"

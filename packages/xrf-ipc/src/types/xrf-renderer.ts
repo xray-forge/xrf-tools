@@ -519,6 +519,7 @@ export const RENDER_HELPER_ICONS: Array<RenderHelperIconEntry> = [
   { icon: "patrolPoint", material: "Place" },
   { icon: "graphPoint", material: "Hub" },
   { icon: "respawnPoint", material: "RestartAlt" },
+  { icon: "spawnPoint", material: "MyLocation" },
 ];
 
 /** Map pixels a level map spans on a side at most. */
@@ -1658,6 +1659,8 @@ export enum ERenderHelperIcon {
   PATROL_POINT = "patrolPoint",
   GRAPH_POINT = "graphPoint",
   RESPAWN_POINT = "respawnPoint",
+  /** A spawn point whose entity is known by its section alone, as a scene places one before any game config is read. */
+  SPAWN_POINT = "spawnPoint",
 }
 
 /** Every `ERenderHelperIcon` as the spelling it crosses IPC as, for a value no member has narrowed. */
