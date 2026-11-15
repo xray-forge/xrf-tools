@@ -37,7 +37,7 @@ interface IReportedWindow {
  */
 const ROW_MODEL: Readonly<Record<string, never>> = Object.freeze({});
 
-interface IVirtualizedLinesProps extends BaseComponentProps {
+export interface IVirtualizedLinesProps extends BaseComponentProps {
   /**
    * The document to draw.
    *

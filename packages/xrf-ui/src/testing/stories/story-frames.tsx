@@ -69,6 +69,15 @@ export function withPanelSlot(...[Story]: Parameters<Decorator>): ReactElement {
   );
 }
 
+/** A viewport's pane on its backdrop, for a picture or a scene and what sits in its corner. */
+export function withViewportPane(...[Story]: Parameters<Decorator>): ReactElement {
+  return (
+    <div className={"relative flex h-100 w-full max-w-full bg-viewport-backdrop"}>
+      <Story />
+    </div>
+  );
+}
+
 /** A strip of the frame level, as a toolbar or the caption carries its actions. */
 export function withFrameStrip(...[Story]: Parameters<Decorator>): ReactElement {
   return (

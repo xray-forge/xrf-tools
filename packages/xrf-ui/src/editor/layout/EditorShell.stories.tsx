@@ -9,7 +9,14 @@ import { CodeView } from "#/code/view";
 import { EditorFileHeader } from "#/editor/file-header";
 import { EditorIconAction } from "#/editor/icon-action";
 import { EditorPanelProperty, EditorPanelSection } from "#/editor/panel";
-import { EditorToolbarCrumb, EditorToolbarHostContext, EditorToolbarSeparator } from "#/editor/toolbar";
+import {
+  EditorToolbarCrumb,
+  EditorToolbarHostContext,
+  EditorToolbarLocation,
+  EditorToolbarPathSeparator,
+  EditorToolbarSeparator,
+  IEditorLocation,
+} from "#/editor/toolbar";
 import { ArchiveIcon } from "#/icons/archive";
 import { DescriptionOutlinedIcon } from "#/icons/description-outlined";
 import { FolderIcon } from "#/icons/folder";
@@ -46,6 +53,10 @@ const ITEMS: Array<IPathTreeItem<string>> = parsePathTree(
 );
 
 const EXPANDED_IDS: ReadonlyArray<string> = [toDirectoryItemId("config"), toDirectoryItemId("config\\creatures")];
+
+const ARCHIVE_LOCATION: IEditorLocation = {
+  path: "D:\\Games\\S.T.A.L.K.E.R. - Call of Pripyat\\db\\resources\\configs.db",
+};
 
 const INITIAL_OPEN_PATH: string = "config\\creatures\\actor.ltx";
 
@@ -99,6 +110,8 @@ function EditorShellPattern(): ReactElement {
     <div className={"flex h-160 max-w-300 flex-col overflow-hidden border border-divider surface-frame"}>
       <div className={"flex h-title-bar shrink-0 items-center gap-1 px-2"}>
         <EditorToolbarCrumb label={"Archives"} />
+        <EditorToolbarPathSeparator />
+        <EditorToolbarLocation className={"max-w-80 truncate text-xs opacity-70"} location={ARCHIVE_LOCATION} />
         <EditorToolbarSeparator />
         <div ref={setToolbarHost} className={"flex min-w-0 items-center gap-0.5"} />
       </div>

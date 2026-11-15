@@ -6,7 +6,7 @@ import { DialogHeader } from "#/dialog/header";
 import { Dialog, DialogActions, DialogContent, DialogContentText } from "#/dialog/modal";
 import { CircularProgress } from "#/feedback";
 
-interface IUnsavedChangesDialogProps {
+export interface IUnsavedChangesDialogProps {
   isOpen: boolean;
   /** Whether a save asked for from here is still running, which holds every button until it answers. */
   isSaving?: boolean;
