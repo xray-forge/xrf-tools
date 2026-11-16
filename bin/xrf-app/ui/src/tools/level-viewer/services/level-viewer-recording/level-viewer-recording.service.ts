@@ -3,7 +3,6 @@ import { inject, Injectable, OnActivation, OnDeactivation } from "@wirestate/cor
 import { BoundAction, Computed, RefObservable } from "@wirestate/mobx";
 import { ExclusiveFlow, TFlow } from "@xrf/flow";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
-import { systemCommands } from "@xrf/ipc/commands/system";
 import { RecordingAvailability, RecordingOutcome, RecordingProgress } from "@xrf/ipc/types/xrf-app-levels";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
@@ -14,6 +13,7 @@ import { ENotificationSeverity } from "@/core/notifications/lib";
 import { CommandReporter, TCommandCompletion } from "@/core/operations/lib/command-reporter";
 import { RECORD_LEVEL_KEYBIND_COMMAND } from "@/tools/level-viewer/commands";
 import { toLevelViewerFileStem } from "@/tools/level-viewer/lib/files/level-viewer-file-stem";
+import { WrittenFileActions } from "@/tools/level-viewer/lib/files/written-file-actions";
 import { LevelViewerRecordingReadout } from "@/tools/level-viewer/lib/recording/level-viewer-recording-readout";
 import { LevelViewerSnapshotService } from "@/tools/level-viewer/services/level-viewer-snapshot";
 
@@ -43,6 +43,13 @@ export class LevelViewerRecordingService {
   public outcome: Nullable<RecordingOutcome> = null;
 
   private readonly reporter: CommandReporter = new CommandReporter(this.log);
+
+  /** Deletes, shows and copies the last recording. */
+  private readonly outcomeFile: WrittenFileActions<RecordingOutcome> = new WrittenFileActions(this.reporter, {
+    nouns: { name: "recording" },
+    current: () => this.outcome,
+    toPath: ({ file }) => file,
+  });
 
   public constructor(
     private readonly renderService: LevelRenderService = inject(LevelRenderService),
@@ -104,20 +111,7 @@ export class LevelViewerRecordingService {
   /** Deletes the last recording for good. */
   @ExclusiveFlow()
   public *remove(): TFlow {
-    const outcome: Nullable<RecordingOutcome> = this.outcome;
-
-    if (!outcome) {
-      return;
-    }
-
-    const completion: TCommandCompletion<unknown> = yield* this.reporter.run({
-      name: "Delete recording",
-      subject: outcome.file,
-      command: () => levelsCommands.deleteRecording(outcome.file),
-      failure: "Could not delete the recording",
-    });
-
-    if (!completion.error) {
+    if (yield* this.outcomeFile.remove(({ file }: RecordingOutcome) => levelsCommands.deleteRecording(file))) {
       this.forget();
     }
   }
@@ -125,31 +119,13 @@ export class LevelViewerRecordingService {
   /** Shows the last recording selected in its folder. */
   @ExclusiveFlow()
   public *reveal(): TFlow {
-    const outcome: Nullable<RecordingOutcome> = this.outcome;
-
-    if (outcome) {
-      yield* this.reporter.run({
-        name: "Show recording",
-        subject: outcome.file,
-        command: () => systemCommands.revealPath(outcome.file),
-        failure: "Could not show the recording",
-      });
-    }
+    yield* this.outcomeFile.reveal();
   }
 
   /** Puts the last recording's path on the clipboard. */
   @ExclusiveFlow()
   public *copyPath(): TFlow {
-    const outcome: Nullable<RecordingOutcome> = this.outcome;
-
-    if (outcome) {
-      yield* this.reporter.run({
-        name: "Copy recording path",
-        subject: outcome.file,
-        command: () => navigator.clipboard.writeText(outcome.file),
-        failure: "Could not copy the recording's path",
-      });
-    }
+    yield* this.outcomeFile.copyPath();
   }
 
   private *record(): TFlow<Nullable<string>> {

@@ -4,7 +4,7 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { SpawnChunkView } from "@/tools/spawn-editor/components/editor/chunks/SpawnChunkView";
-import { SpawnFileService } from "@/tools/spawn-editor/services/spawn-file.service";
+import { SpawnEditorService } from "@/tools/spawn-editor/services/spawn-editor.service";
 
 import { SpawnEditorHeaderTable } from "./SpawnEditorHeaderTable";
 
@@ -13,14 +13,14 @@ export function SpawnEditorHeader({
   id,
   className,
 }: BaseComponentProps): ReactElement {
-  const spawnFileService: SpawnFileService = useInjection(SpawnFileService);
+  const spawnEditorService: SpawnEditorService = useInjection(SpawnEditorService);
 
   return (
     <SpawnChunkView<SpawnHeaderChunk>
       data-testid={dataTestId}
       id={id}
       className={className}
-      chunk={spawnFileService.chunks.header}
+      chunk={spawnEditorService.chunks.header}
       render={(header: SpawnHeaderChunk) => <SpawnEditorHeaderTable header={header} />}
     />
   );

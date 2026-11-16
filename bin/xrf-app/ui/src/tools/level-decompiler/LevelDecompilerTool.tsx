@@ -1,12 +1,12 @@
 import { useInjection } from "@wirestate/react";
-import { ELevelSurfaces, LevelSurfaces } from "@xrf/ipc/types/xrf-rawdata";
+import { ELevelSurfaces, LevelDecompileRequest, LevelSurfaces } from "@xrf/ipc/types/xrf-rawdata";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { ChoiceFormRow, IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { StringListFormRow } from "@xrf/ui/form/string-list-row";
-import { ReactElement, useCallback, useEffect, useState } from "react";
+import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { LEVEL_SCENE_FILE_FILTERS } from "@/core/path/file-filters";
 import { EToolId } from "@/core/routing/tool";
@@ -70,14 +70,12 @@ export function LevelDecompilerTool(): ReactElement {
   const levelPath: Nullable<string> = source.value;
   const scenePath: Nullable<string> = destination.value;
 
-  const onDecompileClicked = useCallback(async () => {
+  const request: Nullable<LevelDecompileRequest> = useMemo(() => {
     if (!levelPath || !scenePath) {
-      return;
+      return null;
     }
 
-    log.info("Decompiling:", levelPath);
-
-    await decompilerService.decompile({
+    return {
       source: levelPath,
       destination: scenePath,
       objects: objects.value,
@@ -88,23 +86,28 @@ export function LevelDecompilerTool(): ReactElement {
       compilerShaders: null,
       libraries,
       isForced,
-    });
-  }, [decompilerService, isForced, levelPath, libraries, log, objects.value, scenePath, surfaces, textures.value]);
+    };
+  }, [isForced, levelPath, libraries, objects.value, scenePath, surfaces, textures.value]);
 
-  // Any change of what would be asked invalidates the previous run's report.
-  useEffect(() => {
-    decompilerService.operation.reset();
-  }, [decompilerService, isForced, levelPath, libraries, objects.value, scenePath, surfaces, textures.value]);
+  const onDecompile = useCallback(
+    async (submitted: LevelDecompileRequest) => {
+      log.info("Decompiling:", submitted.source);
+
+      await decompilerService.decompile(submitted);
+    },
+    [decompilerService, log]
+  );
 
   return (
     <JobPickerForm
       operation={decompilerService.operation}
+      request={request}
       isSubmitDisabled={!source.isValid || !destination.isValid || !objects.isValid || !textures.isValid}
       title={"Decompile a level"}
       description={"Writes a compiled level back as an SDK Level Editor scene, its objects and a provenance sidecar."}
       submitLabel={"Decompile"}
       renderResult={(result) => <LevelDecompileResultView result={result} outputPath={scenePath} />}
-      onSubmit={onDecompileClicked}
+      onSubmit={onDecompile}
     >
       <PathFormRow
         isDisabled={isRunning}

@@ -200,7 +200,7 @@ export class VisualsService extends VisualInspectionService {
    * Open again whatever the last attempt asked for, or do nothing when nothing has been asked for yet.
    */
   @BoundAction()
-  public async retryOpen(): Promise<void> {
+  public async retry(): Promise<void> {
     const attempt: Nullable<IVisualOpenAttempt> = this.attempt;
 
     if (attempt) {
@@ -236,6 +236,6 @@ export class VisualsService extends VisualInspectionService {
 
     // Whatever the caller named, in the order it named them, and nothing else: a browsed session already carries the
     // extra root it was opened with, so there is no ambient set to fall in behind them.
-    await this.loadService.load(source, createRoots(roots, asset));
+    await this.loadService.open(source, createRoots(roots, asset));
   }
 }

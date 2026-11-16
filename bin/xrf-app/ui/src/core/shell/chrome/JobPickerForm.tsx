@@ -1,38 +1,63 @@
 import { Nullable } from "@xrf/types";
-import { ReactElement, ReactNode } from "react";
+import { ReactElement, ReactNode, useCallback, useEffect } from "react";
 
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { IPickerFormProps, PickerForm } from "@/core/shell/chrome/PickerForm";
 
-export interface IJobPickerFormProps<T> extends Omit<IPickerFormProps, "error" | "status" | "result"> {
+export interface IJobPickerFormProps<TRequest, TResult> extends Omit<
+  IPickerFormProps,
+  "error" | "status" | "result" | "onSubmit"
+> {
   /** The run the form starts, whose progress, failure and answer it shows. */
-  operation: JobOperation<T>;
+  operation: JobOperation<TResult>;
+  /**
+   * What a submit runs, or null while the fields name none. Memoised over exactly what the run reads: a new identity
+   * means a field changed, which outdates whatever the previous run answered.
+   */
+  request: Nullable<TRequest>;
   /** Draws what a finished run answered. */
-  renderResult: (result: T) => ReactNode;
+  renderResult: (result: TResult) => ReactNode;
+  onSubmit: (request: TRequest) => void;
 }
 
 /**
  * A picker screen over one job: busy while the job runs, its progress while it is found, its failure or its answer
- * once it settles, including a run rediscovered after the window reloaded.
+ * once it settles, including a run rediscovered after the window reloaded. Submitting is offered only while there is a
+ * request to submit.
  */
-export function JobPickerForm<T>({
+export function JobPickerForm<TRequest, TResult>({
   operation,
+  request,
   renderResult,
   isLoading = false,
+  isSubmitDisabled = false,
+  onSubmit,
   ...props
-}: IJobPickerFormProps<T>): ReactElement {
+}: IJobPickerFormProps<TRequest, TResult>): ReactElement {
   const job: Nullable<IJobState> = operation.job;
-  const result: Nullable<T> = operation.result;
+  const result: Nullable<TResult> = operation.result;
+
+  const onSubmitRequest = useCallback(() => {
+    if (request !== null) {
+      onSubmit(request);
+    }
+  }, [onSubmit, request]);
+
+  useEffect(() => {
+    operation.reset();
+  }, [operation, request]);
 
   return (
     <PickerForm
       {...props}
       isLoading={isLoading || operation.isRunning}
+      isSubmitDisabled={isSubmitDisabled || request === null}
       error={operation.error ?? undefined}
       status={job ? <JobProgressView job={job} onCancel={operation.cancel} /> : null}
       result={result === null ? null : renderResult(result)}
+      onSubmit={onSubmitRequest}
     />
   );
 }

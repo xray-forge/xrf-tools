@@ -4,7 +4,7 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { SpawnChunkView } from "@/tools/spawn-editor/components/editor/chunks/SpawnChunkView";
-import { SpawnFileService } from "@/tools/spawn-editor/services/spawn-file.service";
+import { SpawnEditorService } from "@/tools/spawn-editor/services/spawn-editor.service";
 
 import { SpawnEditorArtefactsNodesTable } from "./SpawnEditorArtefactsNodesTable";
 
@@ -13,16 +13,16 @@ export function SpawnEditorArtefacts({
   id,
   className,
 }: BaseComponentProps): ReactElement {
-  const spawnFileService: SpawnFileService = useInjection(SpawnFileService);
+  const spawnEditorService: SpawnEditorService = useInjection(SpawnEditorService);
 
   return (
     <SpawnChunkView<SpawnArtefactSpawnsChunk>
       data-testid={dataTestId}
       id={id}
       className={className}
-      chunk={spawnFileService.chunks.artefactSpawn}
+      chunk={spawnEditorService.chunks.artefactSpawn}
       render={(chunk: SpawnArtefactSpawnsChunk) => <SpawnEditorArtefactsNodesTable nodes={chunk.nodes} />}
-      onLoad={spawnFileService.loadArtefactSpawn}
+      onLoad={spawnEditorService.loadArtefactSpawn}
     />
   );
 }

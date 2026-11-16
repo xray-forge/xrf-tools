@@ -1,5 +1,4 @@
 import { Injectable, OnProvision } from "@wirestate/core";
-import { BoundAction, Observable } from "@wirestate/mobx";
 import { call, ExclusiveFlow, TFlow } from "@xrf/flow";
 import { archivesCommands } from "@xrf/ipc/commands/archives";
 import { ARCHIVES_JOB_COMPARE, ARCHIVES_JOB_PATCH, ArchivesPatchRequest } from "@xrf/ipc/types/xrf-app-archives";
@@ -26,13 +25,13 @@ export enum EPatcherSection {
  * The patching configuration being edited, and what was done with it.
  */
 @Injectable()
-export class ArchivesPatcherService extends ArchiveConfigEditorService<ArchivePatchConfig, ArchivePatchResult> {
-  /** Which section of the configuration is open. */
-  @Observable()
-  public section: EPatcherSection = EPatcherSection.COMPARISON;
-
+export class ArchivesPatcherService extends ArchiveConfigEditorService<
+  ArchivePatchConfig,
+  ArchivePatchResult,
+  EPatcherSection
+> {
   public constructor() {
-    super(new Logger(__MODULE_NAME__), [ARCHIVES_JOB_COMPARE, ARCHIVES_JOB_PATCH]);
+    super(new Logger(__MODULE_NAME__), [ARCHIVES_JOB_COMPARE, ARCHIVES_JOB_PATCH], EPatcherSection.COMPARISON);
   }
 
   /**
@@ -46,16 +45,6 @@ export class ArchivesPatcherService extends ArchiveConfigEditorService<ArchivePa
     }
 
     this.config = yield* call(archivesCommands.defaultPatchConfig());
-  }
-
-  /**
-   * Opens one section of the configuration.
-   *
-   * @param section - Section to show.
-   */
-  @BoundAction()
-  public openSection(section: EPatcherSection): void {
-    this.section = section;
   }
 
   /**

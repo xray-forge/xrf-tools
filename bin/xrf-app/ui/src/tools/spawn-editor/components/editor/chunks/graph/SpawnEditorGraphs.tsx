@@ -6,7 +6,7 @@ import { ReactElement } from "react";
 
 import { SpawnChunkView } from "@/tools/spawn-editor/components/editor/chunks/SpawnChunkView";
 import { TChunkTabChange, useChunkTab } from "@/tools/spawn-editor/components/editor/chunks/use-chunk-tab";
-import { SpawnFileService } from "@/tools/spawn-editor/services/spawn-file.service";
+import { SpawnEditorService } from "@/tools/spawn-editor/services/spawn-editor.service";
 
 import { SpawnEditorGraphCrossTable } from "./SpawnEditorGraphCrossTable";
 import { SpawnEditorGraphEdgesTable } from "./SpawnEditorGraphEdgesTable";
@@ -23,7 +23,7 @@ export function SpawnEditorGraphs({
   id,
   className,
 }: BaseComponentProps): ReactElement {
-  const spawnFileService: SpawnFileService = useInjection(SpawnFileService);
+  const spawnEditorService: SpawnEditorService = useInjection(SpawnEditorService);
 
   const [activeTab, onChangeTab]: [string, TChunkTabChange] = useChunkTab(BASE_PATH, TABS, "header");
 
@@ -32,7 +32,7 @@ export function SpawnEditorGraphs({
       data-testid={dataTestId}
       id={id}
       className={className}
-      chunk={spawnFileService.chunks.graphs}
+      chunk={spawnEditorService.chunks.graphs}
       render={(chunk: SpawnGraphsChunk) => (
         <>
           <Tabs className={"mb-2 shrink-0"} value={activeTab} variant={"scrollable"} onChange={onChangeTab}>
@@ -54,7 +54,7 @@ export function SpawnEditorGraphs({
           </div>
         </>
       )}
-      onLoad={spawnFileService.loadGraphs}
+      onLoad={spawnEditorService.loadGraphs}
     />
   );
 }

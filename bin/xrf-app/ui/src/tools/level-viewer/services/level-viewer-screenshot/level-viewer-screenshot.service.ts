@@ -2,7 +2,6 @@ import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, reaction, RefObservable } from "@wirestate/mobx";
 import { cancelFlow, ExclusiveFlow, TFlow } from "@xrf/flow";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
-import { systemCommands } from "@xrf/ipc/commands/system";
 import { BuildInfo } from "@xrf/ipc/types/xrf-build-info";
 import { EXrayExtension } from "@xrf/ipc/types/xrf-extension";
 import { RenderFrameReport } from "@xrf/ipc/types/xrf-renderer";
@@ -18,7 +17,8 @@ import { RenderSettingsService } from "@/core/render/services/render-settings.se
 import { noop } from "@/lib/callbacks/noop";
 import { TAKE_LEVEL_SCREENSHOT_KEYBIND_COMMAND } from "@/tools/level-viewer/commands";
 import { toLevelViewerFileStem } from "@/tools/level-viewer/lib/files/level-viewer-file-stem";
-import { copyLevelViewerImage, readLevelViewerImage } from "@/tools/level-viewer/lib/files/level-viewer-image";
+import { readLevelViewerImage } from "@/tools/level-viewer/lib/files/level-viewer-image";
+import { WrittenFileActions } from "@/tools/level-viewer/lib/files/written-file-actions";
 import {
   ILevelViewerScreenshot,
   ILevelViewerScreenshotReport,
@@ -63,6 +63,23 @@ export class LevelViewerScreenshotService {
 
   /** Reports what is done with a screenshot taken: deleting, showing, copying and saving it. */
   private readonly reporter: CommandReporter = new CommandReporter(this.log);
+
+  /** Deletes, shows, copies and saves the last screenshot. */
+  private readonly shotFile: WrittenFileActions<ILevelViewerScreenshot> = new WrittenFileActions(this.reporter, {
+    nouns: { name: "screenshot" },
+    current: () => this.shot.value,
+    toPath: ({ path }) => path,
+  });
+
+  /** Shows the last screenshot's report. */
+  private readonly reportFile: WrittenFileActions<ILevelViewerScreenshotReportFile> = new WrittenFileActions(
+    this.reporter,
+    {
+      nouns: { name: "screenshot report", notice: "screenshot's report" },
+      current: () => this.report.value,
+      toPath: ({ path }) => path,
+    }
+  );
 
   public constructor(
     private readonly renderService: LevelRenderService = inject(LevelRenderService),
@@ -159,20 +176,7 @@ export class LevelViewerScreenshotService {
   /** Deletes the last screenshot and its report for good. */
   @ExclusiveFlow()
   public *remove(): TFlow {
-    const shot: Nullable<ILevelViewerScreenshot> = this.shot.value;
-
-    if (!shot) {
-      return;
-    }
-
-    const completion: TCommandCompletion<unknown> = yield* this.reporter.run({
-      name: "Delete screenshot",
-      subject: shot.path,
-      command: () => levelsCommands.deleteScreenshot(shot.path),
-      failure: "Could not delete the screenshot",
-    });
-
-    if (!completion.error) {
+    if (yield* this.shotFile.remove((shot: ILevelViewerScreenshot) => levelsCommands.deleteScreenshot(shot.path))) {
       this.forget();
     }
   }
@@ -180,59 +184,35 @@ export class LevelViewerScreenshotService {
   /** Shows the last screenshot selected in its folder. */
   @ExclusiveFlow()
   public *reveal(): TFlow {
-    yield* this.attempt("Show screenshot", "Could not show the screenshot", (shot) =>
-      systemCommands.revealPath(shot.path)
-    );
+    yield* this.shotFile.reveal();
   }
 
   /** Shows the last screenshot's report selected in its folder, once it is written. */
   @ExclusiveFlow()
   public *revealReport(): TFlow {
-    const report: Nullable<ILevelViewerScreenshotReportFile> = this.report.value;
-
-    if (report) {
-      yield* this.reporter.run({
-        name: "Show screenshot report",
-        subject: report.path,
-        command: () => systemCommands.revealPath(report.path),
-        failure: "Could not show the screenshot's report",
-      });
-    }
+    yield* this.reportFile.reveal();
   }
 
   /** Puts the last screenshot's path on the clipboard. */
   @ExclusiveFlow()
   public *copyPath(): TFlow {
-    yield* this.attempt("Copy screenshot path", "Could not copy the screenshot's path", (shot) =>
-      navigator.clipboard.writeText(shot.path)
-    );
+    yield* this.shotFile.copyPath();
   }
 
   /** Puts the last screenshot's image on the clipboard. */
   @ExclusiveFlow()
   public *copyImage(): TFlow {
-    yield* this.attempt("Copy screenshot", "Could not copy the screenshot", (shot) => copyLevelViewerImage(shot));
+    yield* this.shotFile.copyImage((shot: ILevelViewerScreenshot) => shot);
   }
 
   /** Copies the last screenshot where a save dialog answers. */
   @ExclusiveFlow()
   public *saveAs(): TFlow {
-    yield* this.attempt("Save screenshot as", "Could not save the screenshot", (shot) => this.saveCopy(shot));
-  }
-
-  /**
-   * Does something with the last screenshot, if any, reported as one command.
-   *
-   * @param name - What it does, as its log lines name it.
-   * @param failure - The failure notice's title.
-   * @param action - Does it with the screenshot.
-   */
-  private *attempt(name: string, failure: string, action: (shot: ILevelViewerScreenshot) => Promise<unknown>): TFlow {
-    const shot: Nullable<ILevelViewerScreenshot> = this.shot.value;
-
-    if (shot) {
-      yield* this.reporter.run({ name, subject: shot.path, command: () => action(shot), failure });
-    }
+    yield* this.shotFile.attempt(
+      "Save screenshot as",
+      "Could not save the screenshot",
+      (shot: ILevelViewerScreenshot) => this.saveCopy(shot)
+    );
   }
 
   /**

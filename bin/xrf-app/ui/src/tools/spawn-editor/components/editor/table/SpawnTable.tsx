@@ -5,7 +5,7 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { DataTable } from "@xrf/ui/table";
 import { ReactElement, useCallback } from "react";
 
-import { SpawnFileService } from "@/tools/spawn-editor/services/spawn-file.service";
+import { SpawnEditorService } from "@/tools/spawn-editor/services/spawn-editor.service";
 
 interface ISpawnTableProps<T extends GridValidRowModel> extends BaseComponentProps {
   /** What one row is, for the details panel heading. */
@@ -35,13 +35,13 @@ export function SpawnTable<T extends GridValidRowModel>({
   countNoun,
   hiddenColumns,
 }: ISpawnTableProps<T>): ReactElement {
-  const spawnFileService: SpawnFileService = useInjection(SpawnFileService);
+  const spawnEditorService: SpawnEditorService = useInjection(SpawnEditorService);
 
-  const selectedRowId: Nullable<GridRowId> = spawnFileService.selectedRow?.id ?? null;
+  const selectedRowId: Nullable<GridRowId> = spawnEditorService.selectedRow?.id ?? null;
 
   const onRowSelect = useCallback(
-    (row: T) => spawnFileService.selectRow(source, getRowId(row), row),
-    [source, spawnFileService, getRowId]
+    (row: T) => spawnEditorService.selectRow(source, getRowId(row), row),
+    [source, spawnEditorService, getRowId]
   );
 
   return (

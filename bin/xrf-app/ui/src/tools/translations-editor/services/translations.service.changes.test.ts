@@ -67,7 +67,7 @@ async function openProject(responses: IpcCommandMocks = {}): Promise<IOpenedProj
 
   container.provision();
   await flush();
-  await flowResult(service.openProject(createRoots([ROOT]), "source"));
+  await flowResult(service.open(createRoots([ROOT]), "source"));
 
   return { container, service, sessionId };
 }

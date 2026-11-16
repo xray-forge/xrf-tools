@@ -36,7 +36,7 @@ export function EquipmentRepackAction({
     setConfirmOpen(false);
 
     try {
-      await spriteEquipmentService.repackAndOpenProject();
+      await spriteEquipmentService.repackAndRefresh();
     } catch (error) {
       // Already published as the sprite failure, which the editor renders. Logged here for the stack.
       log.error("Failed to repack and reopen DDS:", error);

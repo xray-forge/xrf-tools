@@ -4,12 +4,18 @@ import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { FormatCommandResult, IFormatCommandNouns } from "@xrf/ui/command-result";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
-import { ReactElement, useCallback, useEffect, useState } from "react";
+import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { EToolId } from "@/core/routing/tool";
 import { JobPickerForm } from "@/core/shell/chrome/JobPickerForm";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { TranslationsFormatterService } from "@/tools/translations-formatter/services/translations-formatter.service";
+
+interface IFormatRequest {
+  directory: string;
+  /** Whether the run only reports, writing nothing. */
+  isCheck: boolean;
+}
 
 /** What this formatter's items are called in its result. */
 const TRANSLATIONS_FORMAT_NOUNS: IFormatCommandNouns = {
@@ -37,25 +43,24 @@ export function TranslationsFormatterTool(): ReactElement {
     isDisabled: isRunning,
   });
 
-  const directory: Nullable<string> = sources.value;
+  const request: Nullable<IFormatRequest> = useMemo(
+    () => (sources.value ? { directory: sources.value, isCheck } : null),
+    [isCheck, sources.value]
+  );
 
-  const onFormat = useCallback(async () => {
-    if (!directory) {
-      return;
-    }
+  const onFormat = useCallback(
+    async (submitted: IFormatRequest) => {
+      log.info("Performing translations format command:", submitted.isCheck, submitted.directory);
 
-    log.info("Performing translations format command:", isCheck, directory);
-
-    await formatterService.format(directory, isCheck);
-  }, [directory, formatterService, isCheck, log]);
-
-  useEffect(() => {
-    formatterService.operation.reset();
-  }, [directory, isCheck, formatterService]);
+      await formatterService.format(submitted.directory, submitted.isCheck);
+    },
+    [formatterService, log]
+  );
 
   return (
     <JobPickerForm
       operation={formatterService.operation}
+      request={request}
       isSubmitDisabled={!sources.isValid}
       title={isCheck ? "Check translations formatting" : "Format translation sources"}
       description={

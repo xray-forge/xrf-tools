@@ -43,7 +43,7 @@ export function TranslationsEditorOpenForm(): ReactElement {
 
   const onOpen = useCallback(() => {
     if (translations.value) {
-      void translationsService.openProject(createRoots([translations.value]), mode);
+      void translationsService.open(createRoots([translations.value]), mode);
     } else {
       log.info("Cannot open translations without a path");
     }

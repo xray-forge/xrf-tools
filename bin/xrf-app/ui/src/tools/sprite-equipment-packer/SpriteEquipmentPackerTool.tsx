@@ -2,7 +2,8 @@ import { flowResult } from "@wirestate/mobx";
 import { useInjection } from "@wirestate/react";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
-import { ReactElement, useCallback, useEffect, useState } from "react";
+import { Nullable } from "@xrf/types";
+import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { ConfigsDialectFormRow } from "@/core/ltx/components/ConfigsDialectFormRow";
 import { DDS_FILE_FILTERS, LTX_FILE_FILTERS } from "@/core/path/file-filters";
@@ -12,6 +13,15 @@ import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/s
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 
 import { EquipmentPackResult } from "./components/EquipmentPackResult";
+
+interface IEquipmentPackRequest {
+  /** The directory of loose icons. */
+  source: string;
+  /** The sprite built from them. */
+  output: string;
+  systemLtx: string;
+  isDltx: boolean;
+}
 
 export function SpriteEquipmentPackerTool(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
@@ -53,31 +63,37 @@ export function SpriteEquipmentPackerTool(): ReactElement {
   // other's rules draws a sheet from wrong icon descriptors rather than failing.
   const [isDltx, setDltx] = useState<boolean>(false);
 
-  const onPackEquipmentClicked = useCallback(async () => {
+  const request: Nullable<IEquipmentPackRequest> = useMemo(() => {
     if (!source.value || !output.value || !systemLtx.value) {
-      return log.info("Cannot pack equipment sprite without every path");
+      return null;
     }
 
-    try {
-      await flowResult(packerService.packEquipmentSprite(source.value, output.value, systemLtx.value, isDltx));
-    } catch (error) {
-      log.error("Failed to pack equipment-editor:", error);
-    }
-  }, [packerService, log, output.value, source.value, systemLtx.value, isDltx]);
+    return { source: source.value, output: output.value, systemLtx: systemLtx.value, isDltx };
+  }, [isDltx, output.value, source.value, systemLtx.value]);
 
-  useEffect(() => {
-    packerService.operation.reset();
-  }, [source.value, output.value, systemLtx.value, isDltx, packerService]);
+  const onPackEquipment = useCallback(
+    async (submitted: IEquipmentPackRequest) => {
+      try {
+        await flowResult(
+          packerService.packEquipmentSprite(submitted.source, submitted.output, submitted.systemLtx, submitted.isDltx)
+        );
+      } catch (error) {
+        log.error("Failed to pack equipment-editor:", error);
+      }
+    },
+    [packerService, log]
+  );
 
   return (
     <JobPickerForm
       operation={packerService.operation}
+      request={request}
       isSubmitDisabled={!source.isValid || !output.isValid || !systemLtx.isValid}
       title={"Pack equipment sprite"}
       description={"Builds one sprite from a directory of icons. The output file is overwritten."}
       submitLabel={"Pack"}
       renderResult={(result) => <EquipmentPackResult result={result} />}
-      onSubmit={onPackEquipmentClicked}
+      onSubmit={onPackEquipment}
     >
       <PathFormRow
         isDisabled={isRunning}

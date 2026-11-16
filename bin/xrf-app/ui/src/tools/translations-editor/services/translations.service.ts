@@ -139,11 +139,7 @@ export class TranslationsService {
    * @returns Whether the project opened.
    */
   @BoundAction()
-  public openProject(
-    roots: XrayRoots,
-    mode: TranslationProjectMode,
-    prefix: Nullable<string> = null
-  ): Promise<boolean> {
+  public open(roots: XrayRoots, mode: TranslationProjectMode, prefix: Nullable<string> = null): Promise<boolean> {
     return flowResult(
       this.project.open(describeRoots(roots), (sessionId: SessionId) =>
         translationsCommands.openProject({ sessionId, roots, mode, prefix })
@@ -172,7 +168,7 @@ export class TranslationsService {
   }
 
   @BoundAction()
-  public async closeProject(): Promise<void> {
+  public async close(): Promise<void> {
     // A failed close keeps the open project and its edits available for retry.
     if (await flowResult(this.project.close())) {
       this.forgetEdits();

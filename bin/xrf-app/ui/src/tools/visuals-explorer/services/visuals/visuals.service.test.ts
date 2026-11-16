@@ -363,7 +363,7 @@ describe("VisualsService opening", () => {
 
     expect(service.visual.error?.message).toBe("file was removed after listing");
 
-    await service.retryOpen();
+    await service.retry();
 
     expect(service.visual.error).toBeNull();
     expect(service.visual.value?.views.submeshes).toHaveLength(1);
@@ -385,7 +385,7 @@ describe("VisualsService opening", () => {
       },
     });
 
-    await service.retryOpen();
+    await service.retry();
 
     expect(openCalls).toBe(0);
     expect(service.visual.value).toBeNull();

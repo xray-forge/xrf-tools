@@ -1,7 +1,8 @@
 import { useInjection } from "@wirestate/react";
+import { ETranslationLanguage } from "@xrf/ipc/types/xrf-translation";
 import { Nullable } from "@xrf/types";
 import { SwitchFormRow } from "@xrf/ui/form/switch-row";
-import { ReactElement, useCallback, useEffect, useState } from "react";
+import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { EToolId } from "@/core/routing/tool";
 import { JobPickerForm } from "@/core/shell/chrome/JobPickerForm";
@@ -11,6 +12,14 @@ import { IPathField, PathFormRow, usePathField, useRememberedValue } from "@/cor
 import { TranslationsBuilderService } from "@/tools/translations-builder/services/translations-builder.service";
 
 import { TranslationsBuildResult } from "./components/TranslationsBuildResult";
+
+interface ITranslationsBuildRequest {
+  sources: string;
+  /** One language, or every language. */
+  language: ETranslationLanguage;
+  output: string;
+  isSorted: boolean;
+}
 
 export function TranslationsBuilderTool(): ReactElement {
   const builderService: TranslationsBuilderService = useInjection(TranslationsBuilderService);
@@ -43,25 +52,24 @@ export function TranslationsBuilderTool(): ReactElement {
     isDisabled: isRunning,
   });
 
-  const sourcesPath: Nullable<string> = sources.value;
   const outputPath: Nullable<string> = destination.value;
 
-  const onBuild = useCallback(async () => {
-    if (!sourcesPath || !outputPath) {
-      return;
-    }
+  const request: Nullable<ITranslationsBuildRequest> = useMemo(
+    () => (sources.value && outputPath ? { sources: sources.value, language, output: outputPath, isSorted } : null),
+    [isSorted, language, outputPath, sources.value]
+  );
 
-    await builderService.build(sourcesPath, language, outputPath, isSorted);
-  }, [builderService, isSorted, language, outputPath, sourcesPath]);
-
-  // Anything the build depends on invalidates whatever the previous run reported.
-  useEffect(() => {
-    builderService.operation.reset();
-  }, [sourcesPath, outputPath, language, isSorted, builderService]);
+  const onBuild = useCallback(
+    async (submitted: ITranslationsBuildRequest) => {
+      await builderService.build(submitted.sources, submitted.language, submitted.output, submitted.isSorted);
+    },
+    [builderService]
+  );
 
   return (
     <JobPickerForm
       operation={builderService.operation}
+      request={request}
       isSubmitDisabled={!sources.isValid || !destination.isValid}
       title={"Build translations"}
       description={"Compiles JSON sources into one X-Ray string table per language, in each language's code page."}

@@ -40,7 +40,7 @@ async function renderMenu(visuals: Array<XrayAsset>): Promise<{ render: RenderRe
     VisualsService,
   ]);
 
-  await container.get(VisualsBrowseService).openRoot("C:\\gamedata");
+  await container.get(VisualsBrowseService).open("C:\\gamedata");
 
   return { container, render: renderWithProviders(<VisualsMenu />, { container }) };
 }

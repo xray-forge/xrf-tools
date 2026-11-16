@@ -236,7 +236,7 @@ describe("ArchivePreviewService", () => {
     const { archivesService, previewService } = mockExplorer([descriptor]);
 
     await previewService.selectFile(descriptor);
-    await archivesService.closeSubject();
+    await archivesService.close();
 
     expect(previewService.selection).toEqual({ kind: "none" });
     expect(previewService.content.value).toBeNull();
@@ -264,7 +264,7 @@ describe("ArchivePreviewService", () => {
     const { archivesService, previewService } = mockExplorer([descriptor]);
 
     await previewService.selectFile(descriptor);
-    await archivesService.closeSubject();
+    await archivesService.close();
 
     expect(archivesService.subject.value).not.toBeNull();
     expect(previewService.selectedEntry).toStrictEqual(descriptor);

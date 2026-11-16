@@ -47,7 +47,7 @@ describe("VisualsBrowseService", () => {
       },
     });
 
-    await service.openRoot("C:\\gamedata");
+    await service.open("C:\\gamedata");
 
     // No subject asset: a browsed root is the roots itself, not a neighbourhood around one model.
     expect(listParameters).toEqual({ kind: "ogf", roots: createRoots(["C:\\gamedata"]) });
@@ -66,7 +66,7 @@ describe("VisualsBrowseService", () => {
       },
     });
 
-    await expect(service.openRoot("C:\\missing")).resolves.toBe(true);
+    await expect(service.open("C:\\missing")).resolves.toBe(true);
 
     expect(service.visuals.error?.message).toBe("root does not exist");
     expect(service.visuals.isLoading).toBe(false);
@@ -81,7 +81,7 @@ describe("VisualsBrowseService", () => {
       [EAssetsCommand.LIST_ASSETS]: [mockVisual("meshes\\actors\\stalker.ogf")],
     });
 
-    await service.openRoot("C:\\gamedata");
+    await service.open("C:\\gamedata");
 
     mockIpcCommands({
       [EVisualsCommand.OPEN_BROWSE]: mockSessionResponse(({ roots }: { roots: XrayRoots }) => roots),
@@ -90,7 +90,7 @@ describe("VisualsBrowseService", () => {
       },
     });
 
-    await service.openRoot("C:\\missing");
+    await service.open("C:\\missing");
 
     expect(service.rootPaths).toEqual(["C:\\missing"]);
     expect(service.visuals.value).toBeNull();
@@ -104,7 +104,7 @@ describe("VisualsBrowseService", () => {
       [EAssetsCommand.LIST_ASSETS]: [],
     });
 
-    await service.openRoot("C:\\gamedata");
+    await service.open("C:\\gamedata");
 
     mockIpcCommands({
       [EVisualsCommand.OPEN_BROWSE]: () => {
@@ -112,7 +112,7 @@ describe("VisualsBrowseService", () => {
       },
     });
 
-    await expect(service.openRoot("C:\\missing")).resolves.toBe(false);
+    await expect(service.open("C:\\missing")).resolves.toBe(false);
 
     expect(service.rootPaths).toEqual(["C:\\gamedata"]);
     expect(service.roots.error?.message).toBe("not a directory");
@@ -132,7 +132,7 @@ describe("VisualsBrowseService", () => {
 
     const { service } = mockInjectedService(VisualsBrowseService);
 
-    await service.openRoot("C:\\gamedata");
+    await service.open("C:\\gamedata");
 
     expect(recorded).toEqual({ sessionId: expect.any(String), roots: createRoots(["C:\\gamedata"]) });
   });
@@ -172,7 +172,7 @@ describe("VisualsBrowseService", () => {
 
     const { service, container } = mockInjectedService(VisualsBrowseService);
 
-    await service.openRoot("C:\\gamedata");
+    await service.open("C:\\gamedata");
 
     container.get(SessionScopeService).release();
 
@@ -196,7 +196,7 @@ describe("VisualsBrowseService", () => {
 
     const { service } = mockInjectedService(VisualsBrowseService);
 
-    await service.openRoot("C:\\gamedata");
+    await service.open("C:\\gamedata");
     await service.close();
 
     expect(service.rootsLabel).toBeNull();

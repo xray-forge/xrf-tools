@@ -26,6 +26,6 @@ export class MockVisualInspectionService extends VisualInspectionService {
    * @returns Once the loader settled.
    */
   public async openFile(path: string): Promise<void> {
-    await this.loadService.load({ kind: EAssetSource.FILE, path }, createRoots([], path));
+    await this.loadService.open({ kind: EAssetSource.FILE, path }, createRoots([], path));
   }
 }

@@ -141,7 +141,7 @@ export class VisualLoadService implements IVisualRenderSource {
    * @returns Whether the visual opened.
    */
   @BoundAction()
-  public load(source: AssetSource, roots: XrayRoots): Promise<boolean> {
+  public open(source: AssetSource, roots: XrayRoots): Promise<boolean> {
     return flowResult(this.selection.open(describeVisualSource(source), visualsCommands.openModel, source, roots));
   }
 

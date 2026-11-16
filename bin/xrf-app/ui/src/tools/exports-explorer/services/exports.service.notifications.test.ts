@@ -46,7 +46,7 @@ describe("ExportsService notifications", () => {
       }),
     });
 
-    await service.openExportsProject("C:\\game\\scripts");
+    await service.open("C:\\game\\scripts");
 
     expect(raised).toHaveLength(1);
     expect(raised[0].severity).toBe(ENotificationSeverity.ERROR);
@@ -59,7 +59,7 @@ describe("ExportsService notifications", () => {
 
     mockIpcCommands({ [EExportsCommand.OPEN_PROJECT]: mockSessionResponse(mockExportsProject()) });
 
-    await service.openExportsProject("C:\\game\\scripts");
+    await service.open("C:\\game\\scripts");
 
     mockIpcCommands({
       [EExportsCommand.OPEN_PROJECT]: mockSessionResponse(() => {
@@ -67,7 +67,7 @@ describe("ExportsService notifications", () => {
       }),
     });
 
-    await service.refreshExportsProject();
+    await service.refresh();
 
     expect(raised).toHaveLength(1);
     expect(raised[0].severity).toBe(ENotificationSeverity.ERROR);
@@ -79,7 +79,7 @@ describe("ExportsService notifications", () => {
 
     mockIpcCommands({ [EExportsCommand.OPEN_PROJECT]: mockSessionResponse(mockExportsProject()) });
 
-    await service.openExportsProject("C:\\game\\scripts");
+    await service.open("C:\\game\\scripts");
     await service.exportManifest("C:\\out\\extern.json");
 
     expect(raised).toHaveLength(1);
@@ -97,7 +97,7 @@ describe("ExportsService notifications", () => {
       },
     });
 
-    await service.openExportsProject("C:\\game\\scripts");
+    await service.open("C:\\game\\scripts");
     await service.exportManifest("C:\\out\\extern.json");
 
     expect(raised).toHaveLength(1);
@@ -111,7 +111,7 @@ describe("ExportsService notifications", () => {
 
     mockIpcCommands({ [EExportsCommand.OPEN_PROJECT]: mockSessionResponse(mockExportsProject()) });
 
-    await service.openExportsProject("C:\\game\\scripts");
+    await service.open("C:\\game\\scripts");
 
     expect(raised).toHaveLength(0);
   });

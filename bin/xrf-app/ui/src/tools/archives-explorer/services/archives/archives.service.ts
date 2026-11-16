@@ -134,7 +134,7 @@ export class ArchivesService {
   }
 
   @BoundAction()
-  public async closeSubject(): Promise<void> {
+  public async close(): Promise<void> {
     if (await flowResult(this.subject.close())) {
       this.forgetReports();
     }

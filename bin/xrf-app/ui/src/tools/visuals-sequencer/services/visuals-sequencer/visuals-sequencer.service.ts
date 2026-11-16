@@ -98,7 +98,7 @@ export class VisualsSequencerService extends VisualInspectionService {
   ): Promise<void> {
     this.forgetMotions();
 
-    if (await this.loadService.load(source, await this.getRoots(asset, assetRoot))) {
+    if (await this.loadService.open(source, await this.getRoots(asset, assetRoot))) {
       await flowResult(this.list());
     }
   }

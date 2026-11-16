@@ -10,7 +10,7 @@ import { ReactElement, useCallback, useState } from "react";
 
 import { SPAWN_FILE_FILTERS } from "@/core/path/file-filters";
 import { askToOpenDirectory, askToSave } from "@/core/path/native-dialog";
-import { SpawnFileService } from "@/tools/spawn-editor/services/spawn-file.service";
+import { SpawnEditorService } from "@/tools/spawn-editor/services/spawn-editor.service";
 
 /**
  * Commands that act on the open spawn file.
@@ -20,24 +20,24 @@ export function SpawnEditorActions({
   id,
   className,
 }: BaseComponentProps): ReactElement {
-  const spawnFileService: SpawnFileService = useInjection(SpawnFileService);
+  const spawnEditorService: SpawnEditorService = useInjection(SpawnEditorService);
 
   const [exportPath, setExportPath] = useState<Nullable<string>>(null);
 
-  const isBusy: boolean = spawnFileService.isBusy;
+  const isBusy: boolean = spawnEditorService.isBusy;
 
   const onSave = useCallback(async () => {
     // The save dialog asks about overwriting an existing file itself, so there is no second prompt here.
     const path: Nullable<string> = await askToSave({
       title: "Save spawn file",
-      start: spawnFileService.path,
+      start: spawnEditorService.path,
       filters: SPAWN_FILE_FILTERS,
     });
 
     if (path) {
-      await spawnFileService.saveFile(path);
+      await spawnEditorService.saveFile(path);
     }
-  }, [spawnFileService]);
+  }, [spawnEditorService]);
 
   const onPickExportPath = useCallback(async () => {
     const path: Nullable<string> = await askToOpenDirectory({ title: "Export spawn file" });
@@ -53,9 +53,9 @@ export function SpawnEditorActions({
     setExportPath(null);
 
     if (path) {
-      void spawnFileService.saveUnpackedDirectory(path);
+      void spawnEditorService.saveUnpackedDirectory(path);
     }
-  }, [exportPath, spawnFileService]);
+  }, [exportPath, spawnEditorService]);
 
   return (
     <div data-testid={dataTestId} id={id} className={cn("flex items-center", className)}>

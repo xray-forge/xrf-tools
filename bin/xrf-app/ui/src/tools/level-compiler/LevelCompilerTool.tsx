@@ -5,19 +5,20 @@ import {
   ELevelCompileStep,
   ELightQuality,
   ERayBackend,
+  LevelCompileRequest,
   LevelCompileStep,
   LightQuality,
   RayBackend,
 } from "@xrf/ipc/types/xrf-level-compiler";
-import { ELevelBuildImpostorLimit } from "@xrf/ipc/types/xrf-rawdata";
+import { ELevelBuildImpostorLimit, LevelBuildRequest } from "@xrf/ipc/types/xrf-rawdata";
 import { RenderGpu } from "@xrf/ipc/types/xrf-renderer-core";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
-import { ChoiceFormRow, IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
+import { ChoiceFormRow } from "@xrf/ui/form/choice-row";
 import { StringListFormRow } from "@xrf/ui/form/string-list-row";
-import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
+import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { LEVEL_SCENE_FILE_FILTERS, XR_LIBRARY_FILE_FILTERS } from "@/core/path/file-filters";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
@@ -25,53 +26,22 @@ import { EToolId } from "@/core/routing/tool";
 import { JobPickerForm } from "@/core/shell/chrome/JobPickerForm";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import {
-  COMPILE_STEPS,
-  getCompileProblem,
-  ICompileChoice,
-  toCompileRequest,
-  toggleCompileStep,
-} from "@/tools/level-compiler/lib/compile-request";
+  AI_COVERS_OPTIONS,
+  LIGHT_QUALITY_OPTIONS,
+  RAY_BACKEND_OPTIONS,
+} from "@/tools/level-compiler/lib/compile-options";
+import { getCompileProblem, ICompileChoice, toCompileRequest } from "@/tools/level-compiler/lib/compile-request";
 import { LevelCompilerService } from "@/tools/level-compiler/services/level-compiler.service";
 
 import { LevelBuildResultView } from "./components/LevelBuildResultView";
+import { LevelCompileStepRows } from "./components/LevelCompileStepRows";
 
-const STEP_LABELS: Record<LevelCompileStep, { label: string; description: string }> = {
-  [ELevelCompileStep.GEOMETRY]: {
-    label: "Compile geometry",
-    description: "level, level.geom, level.geomx and level.cform from build.prj, as xrLC builds them",
-  },
-  [ELevelCompileStep.LIGHT]: {
-    label: "Light geometry",
-    description:
-      "The light of the vertices, lightmaps and terrain, baked in the same pass as the geometry; without it the " +
-      "level gets flat neutral light",
-  },
-  [ELevelCompileStep.DETAILS]: {
-    label: "Light details",
-    description: "level.details lit from build.details, build.cform and build.lights, as xrDO_Light lights it",
-  },
-  [ELevelCompileStep.AI]: {
-    label: "Compile AI map",
-    description:
-      "level.ai from build.aimap, as xrAI -f compiles it, its covers traced against build.cform, then checked as a graph",
-  },
-};
-
-const RAY_BACKENDS: ReadonlyArray<IChoiceFormRowOption<RayBackend>> = [
-  { label: "Auto", value: ERayBackend.AUTO },
-  { label: "GPU", value: ERayBackend.GPU },
-  { label: "CPU", value: ERayBackend.CPU },
-];
-
-const AI_COVERS: ReadonlyArray<IChoiceFormRowOption<AiMapCovers>> = [
-  { label: "Full", value: EAiMapCovers.FULL },
-  { label: "None", value: EAiMapCovers.NONE },
-];
-
-const LIGHT_QUALITIES: ReadonlyArray<IChoiceFormRowOption<LightQuality>> = [
-  { label: "Scene", value: ELightQuality.SCENE },
-  { label: "Draft", value: ELightQuality.DRAFT },
-];
+/** A build and the compile run after it, as one job. */
+interface ILevelCompilerRequest {
+  build: LevelBuildRequest;
+  /** None to build alone. */
+  compile: Nullable<LevelCompileRequest>;
+}
 
 export function LevelCompilerTool(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
@@ -157,19 +127,13 @@ export function LevelCompilerTool(): ReactElement {
   );
   const compileProblem: Nullable<string> = getCompileProblem(compile);
 
-  const onStepChanged = useCallback((step: LevelCompileStep, isChecked: boolean) => {
-    setSteps((current: ReadonlySet<LevelCompileStep>) => toggleCompileStep(current, step, isChecked));
-  }, []);
-
-  const onBuildClicked = useCallback(async () => {
+  const request: Nullable<ILevelCompilerRequest> = useMemo(() => {
     if (!scenePath || !levelPath) {
-      return;
+      return null;
     }
 
-    log.info("Building:", scenePath);
-
-    await compilerService.build(
-      {
+    return {
+      build: {
         source: scenePath,
         destination: levelPath,
         objects,
@@ -178,39 +142,23 @@ export function LevelCompilerTool(): ReactElement {
         impostorLimit: isSdkImpostorAtlas ? ELevelBuildImpostorLimit.SDK : ELevelBuildImpostorLimit.EXTENDED,
         isForced,
       },
-      toCompileRequest(compile)
-    );
-  }, [
-    compile,
-    compilerService,
-    gameMaterials.value,
-    isForced,
-    isSdkImpostorAtlas,
-    levelPath,
-    log,
-    objects,
-    scenePath,
-    textures.value,
-  ]);
+      compile: toCompileRequest(compile),
+    };
+  }, [compile, gameMaterials.value, isForced, isSdkImpostorAtlas, levelPath, objects, scenePath, textures.value]);
 
-  // Any change of what would be asked invalidates the previous run's report.
-  useEffect(() => {
-    compilerService.operation.reset();
-  }, [
-    compile,
-    compilerService,
-    gameMaterials.value,
-    isForced,
-    isSdkImpostorAtlas,
-    levelPath,
-    objects,
-    scenePath,
-    textures.value,
-  ]);
+  const onBuild = useCallback(
+    async (submitted: ILevelCompilerRequest) => {
+      log.info("Building:", submitted.build.source);
+
+      await compilerService.build(submitted.build, submitted.compile);
+    },
+    [compilerService, log]
+  );
 
   return (
     <JobPickerForm
       operation={compilerService.operation}
+      request={request}
       isSubmitDisabled={
         !source.isValid ||
         !destination.isValid ||
@@ -227,7 +175,7 @@ export function LevelCompilerTool(): ReactElement {
       }
       submitLabel={steps.size > 0 ? "Build and compile" : "Build"}
       renderResult={(result) => <LevelBuildResultView result={result} outputPath={levelPath} />}
-      onSubmit={onBuildClicked}
+      onSubmit={onBuild}
     >
       <PathFormRow
         isDisabled={isRunning}
@@ -287,16 +235,7 @@ export function LevelCompilerTool(): ReactElement {
         onChange={setIsForced}
       />
 
-      {COMPILE_STEPS.map((step: LevelCompileStep) => (
-        <CheckboxFormRow
-          key={step}
-          label={STEP_LABELS[step].label}
-          description={STEP_LABELS[step].description}
-          isChecked={steps.has(step)}
-          isDisabled={isRunning || (step === ELevelCompileStep.LIGHT && !steps.has(ELevelCompileStep.GEOMETRY))}
-          onChange={(isChecked: boolean) => onStepChanged(step, isChecked)}
-        />
-      ))}
+      <LevelCompileStepRows steps={steps} isDisabled={isRunning} onChange={setSteps} />
 
       <ChoiceFormRow
         label={"Light quality"}
@@ -305,7 +244,7 @@ export function LevelCompilerTool(): ReactElement {
           "with the sky and sun at quality 1, lightmaps of 3 texels a metre with one sample each, and each " +
           "multi-use object lit from one sample"
         }
-        options={LIGHT_QUALITIES}
+        options={LIGHT_QUALITY_OPTIONS}
         value={lightQuality}
         isDisabled={isRunning || !steps.has(ELevelCompileStep.LIGHT)}
         onChange={setLightQuality}
@@ -317,7 +256,7 @@ export function LevelCompilerTool(): ReactElement {
           "Full: traced against build.cform, as xrAI -f traces them. None: every cover 0, as xrAI -draft leaves " +
           "them; needs no compiled geometry"
         }
-        options={AI_COVERS}
+        options={AI_COVERS_OPTIONS}
         value={aiCovers}
         isDisabled={isRunning || !steps.has(ELevelCompileStep.AI)}
         onChange={setAiCovers}
@@ -330,7 +269,7 @@ export function LevelCompilerTool(): ReactElement {
           "else the CPU. The GPU is the one chosen in the renderer settings and several times faster; the CPU gives " +
           "the reference result"
         }
-        options={RAY_BACKENDS}
+        options={RAY_BACKEND_OPTIONS}
         value={rayBackend}
         isDisabled={isRunning || !isTracing}
         onChange={setRayBackend}

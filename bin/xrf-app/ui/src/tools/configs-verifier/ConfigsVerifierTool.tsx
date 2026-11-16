@@ -3,7 +3,7 @@ import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
-import { ReactElement, useCallback, useEffect, useState } from "react";
+import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { ConfigsDialectFormRow } from "@/core/ltx/components/ConfigsDialectFormRow";
 import { EToolId } from "@/core/routing/tool";
@@ -12,6 +12,12 @@ import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { ConfigsVerifierService } from "@/tools/configs-verifier/services/configs-verifier.service";
 
 import { ConfigsVerifyResult } from "./components/ConfigsVerifyResult";
+
+interface IVerifyRequest {
+  directory: string;
+  isDltx: boolean;
+  isStrict: boolean;
+}
 
 export function ConfigsVerifierTool(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
@@ -30,28 +36,27 @@ export function ConfigsVerifierTool(): ReactElement {
     isDisabled: isRunning,
   });
 
-  const directory: Nullable<string> = configs.value;
-
   const [isDltx, setDltx] = useState<boolean>(false);
   const [isStrict, setIsStrict] = useState<boolean>(false);
 
-  const onVerify = useCallback(async () => {
-    if (!directory) {
-      return;
-    }
+  const request: Nullable<IVerifyRequest> = useMemo(
+    () => (configs.value ? { directory: configs.value, isDltx, isStrict } : null),
+    [configs.value, isDltx, isStrict]
+  );
 
-    log.info("Verifying:", { directory, isDltx, isStrict });
+  const onVerify = useCallback(
+    async (submitted: IVerifyRequest) => {
+      log.info("Verifying:", submitted);
 
-    await verifierService.verify(directory, isDltx, isStrict);
-  }, [directory, isDltx, isStrict, log, verifierService]);
-
-  useEffect(() => {
-    verifierService.operation.reset();
-  }, [directory, isDltx, isStrict, verifierService]);
+      await verifierService.verify(submitted.directory, submitted.isDltx, submitted.isStrict);
+    },
+    [log, verifierService]
+  );
 
   return (
     <JobPickerForm
       operation={verifierService.operation}
+      request={request}
       isSubmitDisabled={!configs.isValid}
       title={"Verify LTX configs"}
       description={"Checks every LTX file in the directory. Nothing is written."}

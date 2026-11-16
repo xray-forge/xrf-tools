@@ -70,7 +70,7 @@ export class VisualsBrowseService {
    * @returns Whether the root opened; a listing that failed after it still counts, and shows its own failure.
    */
   @BoundAction()
-  public openRoot(root: string, assetRoot: Nullable<string> = null): Promise<boolean> {
+  public open(root: string, assetRoot: Nullable<string> = null): Promise<boolean> {
     // Both go to the backend, which keeps them for the session: a reload restores the pair rather than the first of
     // them, so a later read searches what the open searched.
     const roots: XrayRoots = createRoots([root, assetRoot]);

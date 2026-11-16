@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
-import { ReactElement, useCallback, useEffect } from "react";
+import { ReactElement, useCallback, useMemo } from "react";
 
 import { EToolId } from "@/core/routing/tool";
 import { resolveOutputPath } from "@/core/settings/lib/output-path";
@@ -11,6 +11,11 @@ import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { ArchivesUnpackerService } from "@/tools/archives-unpacker/services/archives-unpacker.service";
 
 import { ArchivesUnpackResult } from "./components/ArchivesUnpackResult";
+
+interface IUnpackRequest {
+  source: string;
+  destination: string;
+}
 
 export function ArchivesUnpackerTool(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
@@ -37,33 +42,30 @@ export function ArchivesUnpackerTool(): ReactElement {
     seed: () => resolveOutputPath(EToolId.ARCHIVES_UNPACKER),
   });
 
-  const archivesPath: Nullable<string> = source.value;
-  const archivesUnpackPath: Nullable<string> = destination.value;
+  const request: Nullable<IUnpackRequest> = useMemo(
+    () => (source.value && destination.value ? { source: source.value, destination: destination.value } : null),
+    [destination.value, source.value]
+  );
 
-  const onUnpackArchivesPathClicked = useCallback(async () => {
-    if (!archivesPath || !archivesUnpackPath) {
-      return;
-    }
+  const onUnpack = useCallback(
+    async (submitted: IUnpackRequest) => {
+      log.info("Unpacking:", submitted.source);
 
-    log.info("Unpacking:", archivesPath);
-
-    await unpackerService.unpack(archivesPath, archivesUnpackPath);
-  }, [archivesPath, archivesUnpackPath, log, unpackerService]);
-
-  // Changing either path invalidates whatever the previous run reported.
-  useEffect(() => {
-    unpackerService.operation.reset();
-  }, [archivesPath, archivesUnpackPath, unpackerService]);
+      await unpackerService.unpack(submitted.source, submitted.destination);
+    },
+    [log, unpackerService]
+  );
 
   return (
     <JobPickerForm
       operation={unpackerService.operation}
+      request={request}
       isSubmitDisabled={!source.isValid || !destination.isValid}
       title={"Unpack game archives"}
       description={"Reads every archive in the source directory and writes its files into the output directory."}
       submitLabel={"Unpack"}
-      renderResult={(result) => <ArchivesUnpackResult result={result} outputPath={archivesUnpackPath} />}
-      onSubmit={onUnpackArchivesPathClicked}
+      renderResult={(result) => <ArchivesUnpackResult result={result} outputPath={destination.value} />}
+      onSubmit={onUnpack}
     >
       <PathFormRow
         isDisabled={isRunning}

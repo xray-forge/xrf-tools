@@ -4,12 +4,18 @@ import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { FormatCommandResult, IFormatCommandNouns } from "@xrf/ui/command-result";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
-import { ReactElement, useCallback, useEffect, useState } from "react";
+import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { EToolId } from "@/core/routing/tool";
 import { JobPickerForm } from "@/core/shell/chrome/JobPickerForm";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { ConfigsFormatterService } from "@/tools/configs-formatter/services/configs-formatter.service";
+
+interface IFormatRequest {
+  directory: string;
+  /** Whether the run only reports, writing nothing. */
+  isCheck: boolean;
+}
 
 /** What this formatter's items are called in its result. */
 const CONFIGS_FORMAT_NOUNS: IFormatCommandNouns = { column: "File", everything: "files", item: "file" };
@@ -33,25 +39,24 @@ export function ConfigsFormatterTool(): ReactElement {
     isDisabled: isRunning,
   });
 
-  const directory: Nullable<string> = configs.value;
+  const request: Nullable<IFormatRequest> = useMemo(
+    () => (configs.value ? { directory: configs.value, isCheck } : null),
+    [configs.value, isCheck]
+  );
 
-  const onFormat = useCallback(async () => {
-    if (!directory) {
-      return;
-    }
+  const onFormat = useCallback(
+    async (submitted: IFormatRequest) => {
+      log.info("Performing format command:", submitted.isCheck, submitted.directory);
 
-    log.info("Performing format command:", isCheck, directory);
-
-    await formatterService.format(directory, isCheck);
-  }, [directory, formatterService, isCheck, log]);
-
-  useEffect(() => {
-    formatterService.operation.reset();
-  }, [directory, isCheck, formatterService]);
+      await formatterService.format(submitted.directory, submitted.isCheck);
+    },
+    [formatterService, log]
+  );
 
   return (
     <JobPickerForm
       operation={formatterService.operation}
+      request={request}
       isSubmitDisabled={!configs.isValid}
       title={isCheck ? "Check LTX formatting" : "Format LTX configs"}
       description={

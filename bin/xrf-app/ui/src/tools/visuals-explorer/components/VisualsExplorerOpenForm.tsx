@@ -83,7 +83,7 @@ export function VisualsExplorerOpenForm({
       await visualsService.close();
 
       // A root that did not open leaves the picker up, saying why.
-      if (!(await browseService.openRoot(field.value, assetRoot.value))) {
+      if (!(await browseService.open(field.value, assetRoot.value))) {
         return;
       }
     } else {

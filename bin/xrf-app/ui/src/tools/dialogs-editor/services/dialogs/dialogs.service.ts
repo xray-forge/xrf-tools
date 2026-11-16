@@ -58,7 +58,7 @@ export class DialogsService {
    * @returns Whether the project opened.
    */
   @BoundAction()
-  public openProject(roots: XrayRoots, mode: DialogProjectMode): Promise<boolean> {
+  public open(roots: XrayRoots, mode: DialogProjectMode): Promise<boolean> {
     return flowResult(
       this.project.open(describeRoots(roots), (sessionId: SessionId) =>
         dialogsCommands.openProject({ sessionId, roots, mode, dialogsPrefix: null, translationsPrefix: null })
@@ -67,7 +67,7 @@ export class DialogsService {
   }
 
   @BoundAction()
-  public async closeProject(): Promise<void> {
+  public async close(): Promise<void> {
     await flowResult(this.project.close());
   }
 }

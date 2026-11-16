@@ -2,7 +2,6 @@ import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, RefObservable } from "@wirestate/mobx";
 import { cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
-import { systemCommands } from "@xrf/ipc/commands/system";
 import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
@@ -22,7 +21,7 @@ import {
   toCubeExportRequest,
 } from "@/tools/level-viewer/lib/cube/level-cube-export";
 import { toLevelViewerFileName, toLevelViewerLevelName } from "@/tools/level-viewer/lib/files/level-viewer-file-stem";
-import { copyLevelViewerImage } from "@/tools/level-viewer/lib/files/level-viewer-image";
+import { WrittenFileActions } from "@/tools/level-viewer/lib/files/written-file-actions";
 import {
   DEFAULT_LEVEL_MAP_ANNOTATIONS,
   ILevelMapAnnotations,
@@ -67,6 +66,20 @@ export class LevelViewerCaptureResultService {
 
   /** Reports what else is done with the capture: its annotations drawn, deleting, showing and copying it. */
   private readonly reporter: CommandReporter = new CommandReporter(this.log);
+
+  /** Deletes, shows and copies what was captured. */
+  private readonly capturedFile: WrittenFileActions<TLevelCapture> = new WrittenFileActions(this.reporter, {
+    nouns: { name: "capture" },
+    current: () => this.captured,
+    toPath: ({ image }) => image.path,
+  });
+
+  /** Shows the last export. */
+  private readonly exportedFile: WrittenFileActions<string> = new WrittenFileActions(this.reporter, {
+    nouns: { name: "export" },
+    current: () => this.exported.value,
+    toPath: (path) => path,
+  });
 
   /**
    * The last of the annotations' writes beside the map, each sent once the one before it ended, so the file on disk is
@@ -227,20 +240,11 @@ export class LevelViewerCaptureResultService {
   /** Deletes what was captured for good, with its annotations once they are written; nothing while it is exported. */
   @ExclusiveFlow()
   public *remove(): TFlow {
-    const captured: Nullable<TLevelCapture> = this.captured;
-
-    if (!captured || this.isExporting) {
+    if (this.isExporting) {
       return;
     }
 
-    const { error } = yield* this.reporter.run({
-      name: "Delete capture",
-      subject: captured.image.path,
-      command: () => this.delete(captured),
-      failure: "Could not delete the capture",
-    });
-
-    if (!error) {
+    if (yield* this.capturedFile.remove((captured: TLevelCapture) => this.delete(captured))) {
       this.show(null);
     }
   }
@@ -248,53 +252,25 @@ export class LevelViewerCaptureResultService {
   /** Shows what was captured selected in its folder. */
   @ExclusiveFlow()
   public *reveal(): TFlow {
-    yield* this.attempt("Show capture", "Could not show the capture", ({ image }) =>
-      systemCommands.revealPath(image.path)
-    );
+    yield* this.capturedFile.reveal();
   }
 
   /** Shows the last export selected in its folder. */
   @ExclusiveFlow()
   public *revealExport(): TFlow {
-    const exported: Nullable<string> = this.exported.value;
-
-    if (exported) {
-      yield* this.reporter.run({
-        name: "Show export",
-        subject: exported,
-        command: () => systemCommands.revealPath(exported),
-        failure: "Could not show the export",
-      });
-    }
+    yield* this.exportedFile.reveal();
   }
 
   /** Puts the capture's path on the clipboard. */
   @ExclusiveFlow()
   public *copyPath(): TFlow {
-    yield* this.attempt("Copy capture path", "Could not copy the capture's path", ({ image }) =>
-      navigator.clipboard.writeText(image.path)
-    );
+    yield* this.capturedFile.copyPath();
   }
 
   /** Puts the capture's image on the clipboard. */
   @ExclusiveFlow()
   public *copyImage(): TFlow {
-    yield* this.attempt("Copy capture", "Could not copy the capture", ({ image }) => copyLevelViewerImage(image));
-  }
-
-  /**
-   * Does something with what was captured, if anything, reported as one command.
-   *
-   * @param name - What it does, as its log lines name it.
-   * @param failure - The failure notice's title.
-   * @param action - Does it with the capture.
-   */
-  private *attempt(name: string, failure: string, action: (captured: TLevelCapture) => Promise<unknown>): TFlow {
-    const captured: Nullable<TLevelCapture> = this.captured;
-
-    if (captured) {
-      yield* this.reporter.run({ name, subject: captured.image.path, command: () => action(captured), failure });
-    }
+    yield* this.capturedFile.copyImage(({ image }) => image);
   }
 
   /**
