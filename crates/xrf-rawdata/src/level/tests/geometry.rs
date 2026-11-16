@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use xrf_chunk::{ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+use xrf_dds::RgbaImage;
 use xrf_editable_level::{EditableObjectTransform, EditableSectorItem};
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::{XrfError, XrfResult};
@@ -12,15 +13,20 @@ use xrf_level::{
   LevelVisual, LevelVisualsChunk, LevelWallmark, LevelWallmarkSlot, LevelWallmarkVertex, LevelWallmarksFile,
 };
 use xrf_math::{Aabb, Matrix4x4, Sphere, Vector3d};
-use xrf_ogf::{OgfGeometryContainerChunk, OgfHeaderChunk, OgfTreeColor, OgfTreeDefinitionChunk};
+use xrf_ogf::{OgfGeometryContainerChunk, OgfHeaderChunk, OgfLodDefinitionChunk, OgfTreeColor, OgfTreeDefinitionChunk};
 use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
+use xrf_test_utils::GeneratedResources;
 
+use crate::level::build::level_build_atlas::LevelBuildAtlas;
+use crate::level::build::level_build_textures::LevelBuildTextures;
+use crate::level::level_lod_strip::LevelLodStrip;
 use crate::level::tests::fixtures::GUID;
+use crate::level::tests::impostor::{bounds, lod as stood_lod, strip};
 use crate::object::decompile::object_decompile::ObjectDecompile;
 use crate::{
   LevelCollisionIndex, LevelCompilerShaderReason, LevelDecalIndex, LevelDecompileContext, LevelGeometryCensus,
-  LevelGeometryConversion, LevelGeometryDecompile, LevelGeometrySources, LevelInstanceLibrary, LevelShaderPairings,
-  LevelSurfaceCensus, LevelSurfaceInference, SurfaceDress,
+  LevelGeometryConversion, LevelGeometryDecompile, LevelGeometrySources, LevelInstanceLibrary, LevelSceneTextureFile,
+  LevelShaderPairings, LevelSurfaceCensus, LevelSurfaceInference, LevelTreeImpostorAtlas, SurfaceDress,
 };
 
 /// A square of render geometry two metres across on the ground, centred on `x`.
@@ -179,16 +185,17 @@ fn decompile_with(
   collision: Option<&mut LevelCollisionIndex>,
   inference: Option<&mut LevelSurfaceInference>,
 ) -> XrfResult<LevelGeometryDecompile> {
-  decompile_from(level, visuals, collision, inference, None)
+  decompile_from(level, visuals, collision, inference, None, None)
 }
 
-/// As [`decompile_with`], looking for `library`'s objects where given.
+/// As [`decompile_with`], looking for `library`'s objects and cutting the trees' strips from `impostors` where given.
 fn decompile_from(
   level: &LevelFile,
   visuals: Vec<LevelVisual>,
   collision: Option<&mut LevelCollisionIndex>,
   inference: Option<&mut LevelSurfaceInference>,
   library: Option<&LevelInstanceLibrary>,
+  impostors: Option<&LevelTreeImpostorAtlas>,
 ) -> XrfResult<LevelGeometryDecompile> {
   LevelGeometryConversion::decompile::<XRayByteOrder, _>(
     LevelGeometrySources {
@@ -202,7 +209,7 @@ fn decompile_from(
       decals: None,
       spawn: None,
       breakable_parts: &BTreeMap::new(),
-      impostors: None,
+      impostors,
       library,
     },
     inference,
@@ -302,6 +309,7 @@ fn places_library_objects_found_in_the_shells_and_counts_their_triangles() -> Xr
     None,
     None,
     Some(&library),
+    None,
   )?;
 
   assert_eq!(
@@ -361,6 +369,7 @@ fn keeps_each_sector_a_library_object_spans_by_the_meshes_it_holds() -> XrfResul
     None,
     None,
     Some(&library),
+    None,
   )?;
 
   assert_eq!(decompiled.census.instances, 1);
@@ -535,6 +544,130 @@ fn folds_tree_visuals_into_models_and_their_placements() -> XrfResult {
       .collect::<Vec<_>>(),
     [3, 2],
     "each sector names its shell and the placements standing in it"
+  );
+
+  Ok(())
+}
+
+/// A tree model a library tree stands for comes back as that tree with the impostor strips cut for the model, named
+/// for the tree, since the Build loads a placement's strips by its object's library name; a textures root already
+/// holding the library's own strips keeps them.
+#[test]
+fn names_the_strips_of_a_library_trees_impostor_for_it() -> XrfResult {
+  let placement: Matrix4x4 = Matrix4x4::from_translation(&Vector3d::new(1.0, 0.0, 20.0));
+  let strips: [RgbaImage; 2] = [strip(7), strip(8)];
+  let merged: LevelBuildAtlas = LevelBuildAtlas::merge(&[&strips], &LevelBuildAtlas::LOD_SIZES).expect("a fit");
+  let atlas: LevelTreeImpostorAtlas = LevelTreeImpostorAtlas::new(merged.layers[0].clone(), merged.layers[1].clone())?;
+  let impostor: OgfLodDefinitionChunk = stood_lod(
+    &merged.places[0],
+    &bounds((-1.0, 0.0, -1.0), (1.0, 2.0, 1.0)),
+    &placement,
+  );
+  // The second sector's square, and a tree under its impostor in the first.
+  let visuals = || {
+    vec![
+      drawable(0),
+      drawable(1),
+      hierarchy(vec![0, 4]),
+      tree(2, placement),
+      LevelVisual {
+        lod: Some(Ok(impostor.clone())),
+        ..hierarchy(vec![3])
+      },
+    ]
+  };
+  let names = |decompiled: &LevelGeometryDecompile| -> Vec<(String, bool)> {
+    decompiled
+      .textures
+      .iter()
+      .map(|texture| (texture.name.clone(), texture.is_library))
+      .collect()
+  };
+  let alone: LevelGeometryDecompile = decompile_from(&level((0, 1)), visuals(), None, None, None, Some(&atlas))?;
+
+  assert_eq!(
+    names(&alone),
+    [
+      (String::from("lod\\lod_levels_test_test_tree_0"), false),
+      (String::from("lod\\lod_levels_test_test_tree_0_nm"), false),
+    ]
+  );
+
+  let model: &EditableObjectFile = &alone
+    .objects
+    .iter()
+    .find(|object| object.reference.contains("_tree_"))
+    .expect("a tree model")
+    .decompile
+    .object;
+  let mut library: LevelInstanceLibrary = LevelInstanceLibrary::default();
+
+  library.add(String::from("trees\\pine"), PathBuf::from("pine.object"), model, None);
+
+  let decompiled: LevelGeometryDecompile =
+    decompile_from(&level((0, 1)), visuals(), None, None, Some(&library), Some(&atlas))?;
+
+  assert_eq!(
+    decompiled
+      .trees
+      .iter()
+      .map(|tree| tree.reference.as_str())
+      .collect::<Vec<_>>(),
+    ["trees\\pine"]
+  );
+  assert_eq!(
+    (decompiled.census.library_tree_models, decompiled.census.tree_impostors),
+    (1, 1)
+  );
+  assert_eq!(
+    names(&decompiled),
+    [
+      (String::from("lod\\lod_trees_pine"), true),
+      (String::from("lod\\lod_trees_pine_nm"), true),
+    ]
+  );
+  assert_eq!(
+    xrf_dds::DdsFile::read_from_vec(decompiled.textures[0].bytes.clone())?
+      .decode_rgba(0)?
+      .dimensions(),
+    (LevelLodStrip::WIDTH, LevelLodStrip::HEIGHT),
+    "a whole strip, as the Build loads it"
+  );
+
+  let textures: PathBuf =
+    GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "library_tree_strips"))?;
+  let path: PathBuf = decompiled.textures[0].get_path(&textures);
+
+  assert!(!decompiled.textures[0].is_held_by(&textures));
+
+  let own: Vec<u8> = LevelLodStrip::encode(&strip(9))?;
+  let read = |bytes: &[u8]| -> XrfResult<RgbaImage> { xrf_dds::DdsFile::read_from_bytes(bytes)?.decode_rgba(0) };
+  let name: &str = &decompiled.textures[0].name;
+
+  std::fs::create_dir_all(path.parent().expect("a folder"))?;
+  std::fs::write(&path, &own)?;
+
+  assert!(
+    decompiled.textures[0].is_held_by(&textures),
+    "the library's own is kept"
+  );
+  assert_eq!(
+    LevelBuildTextures::new(Some(&textures), &decompiled.textures).read("strip", name)?,
+    read(&own)?,
+    "a build from the decompile in memory reads the library's own, as one from the written decompile does"
+  );
+  assert_eq!(
+    LevelBuildTextures::new(None, &decompiled.textures).read("strip", name)?,
+    read(&decompiled.textures[0].bytes)?,
+    "the cut strip stands in without a root"
+  );
+  assert!(
+    !LevelSceneTextureFile {
+      is_library: false,
+      ..decompiled.textures[0].clone()
+    }
+    .is_held_by(&textures),
+    "a model's own strip is written over its earlier decompile"
   );
 
   Ok(())

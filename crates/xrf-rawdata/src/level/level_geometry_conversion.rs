@@ -126,7 +126,7 @@ pub struct LevelGeometryCensus {
   pub instance_triangles: usize,
   /// Impostors standing for trees afar, which the build makes again from the trees.
   pub impostors: usize,
-  /// Tree models given their impostor strips back, cut from the level's atlas.
+  /// Tree models given their impostor strips back, cut from the level's atlas; a library tree's named for it.
   #[serde(default)]
   pub tree_impostors: usize,
   /// Static triangles dropped as copies of wall marks ([`LevelDecalIndex`]), counted in the static triangles read.
@@ -177,7 +177,7 @@ pub struct LevelGeometryDecompile {
   pub instances: Vec<LevelInstancePlacement>,
   /// The library trees found standing for tree models, which the scene places by reference instead.
   pub trees: Vec<LevelTreeMatch>,
-  /// The tree models' impostor strips, which the Build loads for them.
+  /// The tree models' and library trees' impostor strips, which the Build loads for them.
   pub textures: Vec<LevelSceneTextureFile>,
   /// Each sector left out, and each impostor that did not cut, and why.
   pub refused: Vec<LevelSceneRefusal>,
@@ -453,7 +453,11 @@ impl LevelGeometryConversion {
     decompile.refused.append(&mut trees.refused);
 
     for (reference, impostor) in std::mem::take(&mut trees.impostors) {
-      decompile.textures.extend(impostor.into_textures(&reference)?);
+      let is_library: bool = decompile.trees.iter().any(|tree| tree.reference == reference);
+
+      for texture in impostor.into_textures(&reference)? {
+        decompile.textures.push(LevelSceneTextureFile { is_library, ..texture });
+      }
     }
 
     // Each tree's and library object's placement: its scene object, and its meshes by the sector naming them.

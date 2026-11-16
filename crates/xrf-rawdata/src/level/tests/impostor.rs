@@ -25,7 +25,7 @@ use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
 
 /// A strip whose every pixel names its place and the strip it belongs to, so a cut that reads one pixel amiss shows.
-fn strip(seed: u8) -> RgbaImage {
+pub(super) fn strip(seed: u8) -> RgbaImage {
   RgbaImage::from_fn(LevelLodStrip::WIDTH, LevelLodStrip::HEIGHT, |x, y| {
     Rgba([(x % 256) as u8, (x / 256) as u8 * 64 + y as u8, seed, 255])
   })
@@ -33,7 +33,7 @@ fn strip(seed: u8) -> RgbaImage {
 
 /// The impostor a level draws from a strip at `place` in its atlas: each frame's corners at `bounds` placed by
 /// `placement`, its coordinates moved to `place`.
-fn lod(place: &LevelBuildAtlasPlace, bounds: &Aabb, placement: &Matrix4x4) -> OgfLodDefinitionChunk {
+pub(super) fn lod(place: &LevelBuildAtlasPlace, bounds: &Aabb, placement: &Matrix4x4) -> OgfLodDefinitionChunk {
   OgfLodDefinitionChunk {
     facets: std::array::from_fn(|frame| {
       let (corners, coordinates) = (
@@ -58,7 +58,7 @@ fn lod(place: &LevelBuildAtlasPlace, bounds: &Aabb, placement: &Matrix4x4) -> Og
   }
 }
 
-fn bounds(min: (f32, f32, f32), max: (f32, f32, f32)) -> Aabb {
+pub(super) fn bounds(min: (f32, f32, f32), max: (f32, f32, f32)) -> Aabb {
   Aabb {
     min: Vector3d::new(min.0, min.1, min.2),
     max: Vector3d::new(max.0, max.1, max.2),

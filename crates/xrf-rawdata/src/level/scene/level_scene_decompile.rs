@@ -67,6 +67,9 @@ pub struct LevelSceneTextureFile {
   pub name: String,
   /// The texture, a DDS file.
   pub bytes: Vec<u8>,
+  /// Whether it stands in for a library object's own texture, such as a library tree's impostor strip cut from the
+  /// level: a textures root holding the library's own keeps it.
+  pub is_library: bool,
 }
 
 impl LevelSceneTextureFile {
@@ -76,6 +79,11 @@ impl LevelSceneTextureFile {
   /// Its path under `textures_root`, the name's folders as directories.
   pub fn get_path(&self, textures_root: &Path) -> PathBuf {
     Self::get_named_path(textures_root, &self.name)
+  }
+
+  /// Whether `textures_root` already holds the library's own texture this one stands in for, which a write leaves be.
+  pub fn is_held_by(&self, textures_root: &Path) -> bool {
+    self.is_library && self.get_path(textures_root).exists()
   }
 
   /// The path under `textures_root` of the texture `name` names, as the editor resolves `$game_textures$`.
@@ -99,14 +107,22 @@ pub struct LevelSceneDecompile {
 }
 
 impl LevelSceneDecompile {
-  /// What a write would replace of the textures the objects need, under `textures_root`.
+  /// What a write would replace of the textures the objects need, under `textures_root`; a library object's own
+  /// texture the root holds is kept, so replaces nothing.
   pub fn get_existing_texture_paths(&self, textures_root: &Path) -> Vec<PathBuf> {
     self
-      .textures
-      .iter()
+      .get_written_textures(textures_root)
       .map(|texture| texture.get_path(textures_root))
       .filter(|path| path.exists())
       .collect()
+  }
+
+  /// The textures a write puts under `textures_root`: all but a library object's own the root already holds.
+  fn get_written_textures(&self, textures_root: &Path) -> impl Iterator<Item = &LevelSceneTextureFile> {
+    self
+      .textures
+      .iter()
+      .filter(|texture| !texture.is_held_by(textures_root))
   }
 
   /// What a write would replace of the objects the scene places, under `objects_root`, and their sidecars; a library
@@ -155,9 +171,9 @@ impl LevelSceneDecompile {
 
   /// Writes the scene's sidecar (`<level_path>.xrf.json`), then each object under `objects_root` after its own sidecar,
   /// then each library object and its thumbnail as copied (left alone where the file already holds them), then each
-  /// texture under `textures_root`, then the scene: its main file at `level_path` and its parts in the
-  /// directory beside it. Each sidecar goes before what it describes, so a write that fails leaves a stray sidecar,
-  /// never a decompile taken for authored work.
+  /// texture under `textures_root` but a library object's own the root holds, then the scene: its main file at
+  /// `level_path` and its parts in the directory beside it. Each sidecar goes before what it describes, so a write that
+  /// fails leaves a stray sidecar, never a decompile taken for authored work.
   ///
   /// # Errors
   ///
@@ -198,7 +214,7 @@ impl LevelSceneDecompile {
       }
     }
 
-    for texture in &self.textures {
+    for texture in self.get_written_textures(textures_root) {
       Self::write_file(&texture.get_path(textures_root), &texture.bytes)?;
     }
 

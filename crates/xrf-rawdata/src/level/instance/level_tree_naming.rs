@@ -14,8 +14,8 @@ use crate::level::level_tree_conversion::LevelTreeDecompile;
 pub(crate) struct LevelTreeNaming;
 
 impl LevelTreeNaming {
-  /// Each model of `trees` one of `library`'s trees stands for whole: the model left out with its impostor strips, which
-  /// the library tree brings itself, and each placement of it placing the library tree instead, composed with the fit.
+  /// Each model of `trees` one of `library`'s trees stands for whole: the model left out, its impostor strips named for
+  /// the library tree, and each placement of it placing the library tree instead, composed with the fit.
   ///
   /// # Errors
   ///
@@ -59,7 +59,7 @@ impl LevelTreeNaming {
         }
       }
 
-      trees.impostors.retain(|(reference, _)| *reference != model.reference);
+      Self::rename_impostor(trees, &model.reference, &tree.reference);
       matches.push(LevelTreeMatch {
         model: model.reference,
         reference: tree.reference.clone(),
@@ -72,5 +72,20 @@ impl LevelTreeNaming {
     trees.models = kept;
 
     Ok(matches)
+  }
+
+  /// Gives the strips cut for `model` to the library tree of `reference` that stands for it. The Build loads a
+  /// placement's strips by its object's library name (`CEditableObject::GetLODTextureName`,
+  /// `ECore/Editor/EditObjectEditor.cpp`; `SceneBuilder::BuildObjectLOD`, `LevelEditor/Edit/BuilderLODs.cpp`), and the
+  /// level's atlas holds the very strips it loaded for that tree; a library's objects need not ship them, as the game's
+  /// textures do not. A tree standing for two models keeps the first one's.
+  fn rename_impostor(trees: &mut LevelTreeDecompile, model: &str, reference: &str) {
+    let is_held: bool = trees.impostors.iter().any(|(held, _)| held == reference);
+
+    if is_held {
+      trees.impostors.retain(|(held, _)| held != model);
+    } else if let Some((held, _)) = trees.impostors.iter_mut().find(|(held, _)| held == model) {
+      reference.clone_into(held);
+    }
   }
 }

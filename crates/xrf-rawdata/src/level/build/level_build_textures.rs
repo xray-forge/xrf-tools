@@ -8,7 +8,8 @@ use crate::level::scene::level_scene_decompile::LevelSceneTextureFile;
 
 /// The textures a build merges into its atlases, the detail objects' and the impostors' strips: those held in memory
 /// (a decompile's own, by name) before those under the textures root (`$game_textures$`), each as `Surface_Load` reads
-/// its `.dds`.
+/// its `.dds`; but a held one standing in for a library object's own gives way to the root's, as a written decompile
+/// keeps it ([`LevelSceneTextureFile::is_held_by`]).
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct LevelBuildTextures<'a> {
   root: Option<&'a Path>,
@@ -32,7 +33,11 @@ impl<'a> LevelBuildTextures<'a> {
   ///
   /// Returns an error when no held texture has the name and the root names none, or the texture does not decode.
   pub(crate) fn read(&self, kind: &str, name: &str) -> XrfResult<RgbaImage> {
-    if let Some(held) = self.held.iter().find(|held| held.name.eq_ignore_ascii_case(name)) {
+    if let Some(held) = self
+      .held
+      .iter()
+      .find(|held| held.name.eq_ignore_ascii_case(name) && !self.root.is_some_and(|root| held.is_held_by(root)))
+    {
       return DdsFile::read_from_bytes(&held.bytes)
         .and_then(|file| file.decode_rgba(0))
         .map_err(|error| XrfError::new_read_error(format!("{kind} '{name}' held in memory does not read: {error}")));
