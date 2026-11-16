@@ -4,8 +4,11 @@ use byteorder::ByteOrder;
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::DetailModel;
+use xrf_math::Vector2d;
 use xrf_utils::format_path;
 
+use crate::level::build::level_build_atlas::LevelBuildAtlasPlace;
+use crate::level::level_detail_match::LevelDetailMatch;
 use crate::object::compile::detail::detail_model_builder::DetailModelBuilder;
 use crate::object::detail_parameters::DetailParameters;
 
@@ -28,6 +31,9 @@ impl LevelDetailLibrary {
 
   /// How far a remapped texture coordinate may stand from the stored one, past single-precision rounding.
   const REMAP_TOLERANCE: f32 = 1e-5;
+
+  /// How little a source's coordinates may span on an axis and still give that axis a scale.
+  const SPAN_EPSILON: f32 = 1e-6;
 
   /// A library of `sources`, each a detail object's reference and its model as `EDetail` exports it, in the order
   /// [`Self::find`] tries them.
@@ -79,31 +85,32 @@ impl LevelDetailLibrary {
     Ok(library)
   }
 
-  /// The reference of the first object drawing `stored`: the same positions and indices, its texture coordinates
-  /// `stored`'s before `MergedTextureRemapUV` moved them into the level's atlas.
-  pub(crate) fn find(&self, stored: &DetailModel) -> Option<&str> {
-    self
-      .sources
-      .iter()
-      .find(|(_, source)| {
-        source.indices == stored.indices
-          && source.vertices.len() == stored.vertices.len()
-          && source
-            .vertices
-            .iter()
-            .zip(&stored.vertices)
-            .all(|(source, stored)| source.position == stored.position)
-          && Self::is_remap(source, stored)
-      })
-      .map(|(reference, _)| reference.as_str())
+  /// The first object drawing `stored`: the same positions and indices, its texture coordinates `stored`'s before
+  /// `MergedTextureRemapUV` moved them into the level's atlas.
+  pub(crate) fn find(&self, stored: &DetailModel) -> Option<LevelDetailMatch<'_>> {
+    self.sources.iter().find_map(|(reference, source)| {
+      let is_same_shape: bool = source.indices == stored.indices
+        && source.vertices.len() == stored.vertices.len()
+        && source
+          .vertices
+          .iter()
+          .zip(&stored.vertices)
+          .all(|(source, stored)| source.position == stored.position);
+
+      if is_same_shape {
+        Self::fit(reference, source, stored)
+      } else {
+        None
+      }
+    })
   }
 
-  /// Whether `stored`'s coordinates are `source`'s remapped into an atlas, `scale * source + offset` on each axis, `u`
-  /// and `v` swapped where the texture was turned to fit: the remap fitted from the extreme coordinates and checked on
-  /// every vertex.
-  fn is_remap(source: &DetailModel, stored: &DetailModel) -> bool {
-    [false, true].into_iter().any(|is_rotated| {
-      let pairs = |axis: usize| -> Vec<(f32, f32)> {
+  /// The match of `source` where `stored`'s coordinates are its own remapped into an atlas, `scale * source + offset`
+  /// on each axis, `u` and `v` swapped where the texture was turned to fit, as [`LevelBuildAtlasPlace::remap`] moves
+  /// them: the remap fitted from the extreme coordinates and checked on every vertex, unturned first.
+  fn fit<'a>(reference: &'a str, source: &'a DetailModel, stored: &DetailModel) -> Option<LevelDetailMatch<'a>> {
+    [false, true].into_iter().find_map(|is_rotated| {
+      let pairs = |axis: usize| -> Vec<LevelDetailRemapPair> {
         source
           .vertices
           .iter()
@@ -115,38 +122,71 @@ impl LevelDetailLibrary {
               [source.u, source.v]
             };
 
-            (from[axis], [stored.u, stored.v][axis])
+            LevelDetailRemapPair {
+              from: from[axis],
+              to: [stored.u, stored.v][axis],
+            }
           })
           .collect()
       };
+      let u: LevelDetailAxisRemap = Self::fit_axis(&pairs(0))?;
+      let v: LevelDetailAxisRemap = Self::fit_axis(&pairs(1))?;
+      let place: Option<LevelBuildAtlasPlace> = match (u, v) {
+        (
+          LevelDetailAxisRemap::Line {
+            scale: u_scale,
+            offset: u_offset,
+          },
+          LevelDetailAxisRemap::Line {
+            scale: v_scale,
+            offset: v_offset,
+          },
+        ) => Some(LevelBuildAtlasPlace {
+          offset: Vector2d::new(u_offset, v_offset),
+          scale: Vector2d::new(u_scale, v_scale),
+          is_rotated,
+        }),
+        _ => None,
+      };
 
-      [0, 1].into_iter().all(|axis| Self::fits_axis(&pairs(axis)))
+      Some(LevelDetailMatch {
+        reference,
+        source,
+        place,
+      })
     })
   }
 
-  /// Whether one straight line `to = scale * from + offset` carries every pair; a constant source carries any.
-  fn fits_axis(pairs: &[(f32, f32)]) -> bool {
+  /// The one remap carrying every pair, fitted from the pairs of the lowest and highest source coordinate; a source
+  /// that spans nothing is carried by a shift alone.
+  fn fit_axis(pairs: &[LevelDetailRemapPair]) -> Option<LevelDetailAxisRemap> {
     let Some(first) = pairs.first() else {
-      return true;
+      return Some(LevelDetailAxisRemap::Shift { offset: 0.0 });
     };
-    let (low, high) = pairs.iter().fold((*first, *first), |(low, high), pair| {
+    let (low, high) = pairs.iter().fold((first, first), |(low, high), pair| {
       (
-        if pair.0 < low.0 { *pair } else { low },
-        if pair.0 > high.0 { *pair } else { high },
+        if pair.from < low.from { pair } else { low },
+        if pair.from > high.from { pair } else { high },
       )
     });
-    let span: f32 = high.0 - low.0;
-    let (scale, offset) = if span.abs() < 1e-6 {
-      (1.0, low.1 - low.0)
+    let span: f32 = high.from - low.from;
+    let remap: LevelDetailAxisRemap = if span.abs() < Self::SPAN_EPSILON {
+      LevelDetailAxisRemap::Shift {
+        offset: low.to - low.from,
+      }
     } else {
-      let scale: f32 = (high.1 - low.1) / span;
+      let scale: f32 = (high.to - low.to) / span;
 
-      (scale, low.1 - scale * low.0)
+      LevelDetailAxisRemap::Line {
+        scale,
+        offset: low.to - scale * low.from,
+      }
     };
 
     pairs
       .iter()
-      .all(|(from, to)| (scale * from + offset - to).abs() <= Self::REMAP_TOLERANCE)
+      .all(|pair| (remap.apply(pair.from) - pair.to).abs() <= Self::REMAP_TOLERANCE)
+      .then_some(remap)
   }
 
   /// `path`'s reference under `root`: its path there without the extension, folders joined by `\`.
@@ -181,5 +221,29 @@ impl LevelDetailLibrary {
     }
 
     Ok(())
+  }
+}
+
+/// One vertex's coordinate on one axis: `from` the source's, `to` the level's.
+struct LevelDetailRemapPair {
+  from: f32,
+  to: f32,
+}
+
+/// How one axis of a source's coordinates moves into the atlas.
+#[derive(Clone, Copy)]
+enum LevelDetailAxisRemap {
+  /// `scale * from + offset`, fitted where the source spans the axis.
+  Line { scale: f32, offset: f32 },
+  /// `from + offset`, where the source spans nothing on the axis, so no scale can be told.
+  Shift { offset: f32 },
+}
+
+impl LevelDetailAxisRemap {
+  fn apply(self, from: f32) -> f32 {
+    match self {
+      Self::Line { scale, offset } => scale * from + offset,
+      Self::Shift { offset } => from + offset,
+    }
   }
 }

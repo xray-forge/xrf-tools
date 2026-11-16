@@ -116,7 +116,6 @@ impl LevelBuildDetails {
         )
       })
       .collect();
-    let chain: DdsMipChain = DdsMipChain::build(image, DdsMipmaps::Filtered(DdsMipFilter::Kaiser))?;
 
     Ok(Self {
       file: LevelDetailsFile {
@@ -131,15 +130,23 @@ impl LevelBuildDetails {
         objects,
         slots,
       },
-      // `tfADXT1` (`ESceneDOTools.cpp:542`): DXT1 whose cut-out pixels stay transparent, or each card draws its clear
-      // around the leaves black.
-      atlas: DdsEncoding::new(ImageFormat::BC1RgbaUnorm, Quality::Normal)
-        .with_cut_out()
-        .encode(&chain)?
-        .write_to_bytes()?,
+      atlas: Self::encode(image)?,
       atlas_size: image.dimensions(),
       textures: names.len(),
     })
+  }
+
+  /// `image` as the atlas is saved, `tfADXT1` (`EDetailManager::Export`, `ESceneDOTools.cpp`): DXT1 with mips whose
+  /// cut-out pixels stay transparent, or each card draws its clear around the leaves black.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the image does not encode.
+  pub(crate) fn encode(image: &RgbaImage) -> XrfResult<Vec<u8>> {
+    DdsEncoding::new(ImageFormat::BC1RgbaUnorm, Quality::Normal)
+      .with_cut_out()
+      .encode(&DdsMipChain::build(image, DdsMipmaps::Filtered(DdsMipFilter::Kaiser))?)?
+      .write_to_bytes()
   }
 
   /// Each of the tool's objects' number in the export: the planted ones counted in the tool's order, the rest none.

@@ -12,6 +12,7 @@ use crate::level::build::level_build_atlas::{LevelBuildAtlas, LevelBuildAtlasPla
 use crate::level::build::level_build_details::LevelBuildDetails;
 use crate::level::build::level_build_library::LevelBuildLibrary;
 use crate::level::build::level_build_textures::LevelBuildTextures;
+use crate::level::level_detail_atlas::LevelDetailAtlas;
 use crate::level::level_detail_conversion::{LevelDetailConversion, LevelDetailDecompile};
 use crate::level::level_detail_library::LevelDetailLibrary;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
@@ -89,7 +90,7 @@ fn decompiles_details_into_the_library_objects_drawing_them() {
     vec![atlas, unknown, turned],
     vec![slot([0, 1, 2, 63]), slot([63, 63, 63, 63])],
   );
-  let LevelDetailDecompile { tool, refused } = LevelDetailConversion::decompile(&file, &library());
+  let LevelDetailDecompile { tool, refused, .. } = LevelDetailConversion::decompile(&file, &library(), None);
   let tool: EditableDetailObjectTool = tool.expect("two models found");
 
   assert_eq!(
@@ -126,7 +127,7 @@ fn decompiles_details_into_the_library_objects_drawing_them() {
 #[test]
 fn leaves_the_tool_out_where_no_model_is_found() {
   let file: LevelDetailsFile = details(vec![quad(3.0, |u, v| (u, v))], vec![slot([0, 63, 63, 63])]);
-  let decompile: LevelDetailDecompile = LevelDetailConversion::decompile(&file, &LevelDetailLibrary::default());
+  let decompile: LevelDetailDecompile = LevelDetailConversion::decompile(&file, &LevelDetailLibrary::default(), None);
 
   assert!(decompile.tool.is_none());
   assert_eq!(decompile.refused.len(), 1);
@@ -138,7 +139,112 @@ fn matches_no_model_whose_coordinates_are_no_remap() {
   let bent: DetailModel = quad(2.0, |u, v| (u + 0.3 * v, v));
 
   assert_eq!(library().find(&bent), None);
-  assert_eq!(library().find(&quad(2.0, |u, v| (u, v))), Some("detail\\grass"));
+  assert_eq!(
+    library().find(&quad(2.0, |u, v| (u, v))).map(|found| found.reference),
+    Some("detail\\grass")
+  );
+}
+
+/// Each found object's texture comes back cut from the level's atlas at the size its place spans, turned back where it
+/// was turned in, once for objects sharing it, named as the library object's own; one whose place is no whole pixels is
+/// refused.
+#[test]
+fn cuts_the_found_objects_textures_from_the_level_atlas() -> XrfResult {
+  const RED: Rgba<u8> = Rgba([255, 0, 0, 255]);
+  const BLUE: Rgba<u8> = Rgba([0, 0, 255, 255]);
+  const GREEN: Rgba<u8> = Rgba([0, 255, 0, 255]);
+
+  // Colours DXT1 keeps exactly, a block each, so the cut reads what was merged.
+  let wide: RgbaImage = RgbaImage::from_fn(64, 32, |x, y| if x < 32 && y < 16 { RED } else { GREEN });
+  let turned: RgbaImage = RgbaImage::from_fn(32, 16, |x, _| if x < 16 { RED } else { BLUE });
+  let wide_place: LevelBuildAtlasPlace = LevelBuildAtlasPlace {
+    offset: Vector2d::new(0.0, 0.0),
+    scale: Vector2d::new(0.5, 0.5),
+    is_rotated: false,
+  };
+  let turned_place: LevelBuildAtlasPlace = LevelBuildAtlasPlace {
+    offset: Vector2d::new(0.5, 0.0),
+    scale: Vector2d::new(0.125, 0.5),
+    is_rotated: true,
+  };
+  let mut image: RgbaImage = RgbaImage::from_pixel(128, 64, Rgba([0, 0, 0, 255]));
+
+  for (x, y, pixel) in wide.enumerate_pixels() {
+    image.put_pixel(x, y, *pixel);
+  }
+
+  for (x, y, pixel) in turned.enumerate_pixels() {
+    image.put_pixel(64 + y, x, *pixel);
+  }
+
+  let atlas: LevelDetailAtlas = LevelDetailAtlas::read_from_bytes(LevelBuildDetails::encode(&image)?)?;
+  let source = |size: f32, texture: &str| DetailModel {
+    texture: String::from(texture),
+    ..quad(size, |u, v| (u, v))
+  };
+  let stored = |size: f32, place: LevelBuildAtlasPlace| DetailModel {
+    texture: String::from(LevelBuildDetails::ATLAS_TEXTURE),
+    ..quad(size, |u, v| place.remap(u, v))
+  };
+  let library: LevelDetailLibrary = LevelDetailLibrary::new(vec![
+    (String::from("detail\\wide"), source(1.0, "det\\det_wide")),
+    (String::from("detail\\turned"), source(2.0, "det\\det_turned")),
+    (String::from("detail\\wide_too"), source(3.0, "det\\det_wide")),
+    (String::from("detail\\between"), source(4.0, "det\\det_between")),
+  ]);
+  let between: DetailModel = DetailModel {
+    texture: String::from(LevelBuildDetails::ATLAS_TEXTURE),
+    ..quad(4.0, |u, v| (0.25 * u + 0.3 / 128.0, 0.25 * v))
+  };
+  let file: LevelDetailsFile = details(
+    vec![
+      stored(1.0, wide_place),
+      stored(2.0, turned_place),
+      stored(3.0, wide_place),
+      between,
+    ],
+    vec![slot([0, 1, 2, 3])],
+  );
+  let LevelDetailDecompile {
+    tool,
+    textures,
+    refused,
+  } = LevelDetailConversion::decompile(&file, &library, Some(&atlas));
+  let cut = |index: usize| -> XrfResult<RgbaImage> { DdsFile::read_from_bytes(&textures[index].bytes)?.decode_rgba(0) };
+
+  assert_eq!(tool.expect("all found").objects.len(), 4);
+  assert_eq!(
+    textures
+      .iter()
+      .map(|texture| (texture.name.as_str(), texture.is_library))
+      .collect::<Vec<_>>(),
+    [("det\\det_wide", true), ("det\\det_turned", true)],
+    "a texture two objects draw cut once"
+  );
+  assert_eq!(cut(0)?, wide, "cut at its own size where it stands");
+  assert_eq!(cut(1)?, turned, "turned back as it was before it went in");
+  assert_eq!(refused.len(), 1);
+  assert_eq!(refused[0].object, "det\\det_between");
+  assert_eq!(
+    library.find(&file.objects[1]).and_then(|found| found.place),
+    Some(turned_place),
+    "the place fitted is the one the remap used"
+  );
+  assert!(
+    atlas
+      .cut(
+        "det\\det_past",
+        &LevelBuildAtlasPlace {
+          offset: Vector2d::new(0.75, 0.5),
+          scale: Vector2d::new(0.5, 0.5),
+          is_rotated: false,
+        }
+      )
+      .is_err(),
+    "a place past the atlas's edge cuts nothing"
+  );
+
+  Ok(())
 }
 
 /// Textures go in largest first at the first free spot, row by row; one fitting only turned goes in turned, and the
@@ -258,7 +364,7 @@ fn exports_the_planted_details_with_their_atlas() -> XrfResult {
     vec![quad(2.0, |u, v| (u, v)), quad(1.0, |u, v| (u, v))],
     vec![slot([0, 63, 0, 63]), slot([63; 4])],
   );
-  let tool: EditableDetailObjectTool = LevelDetailConversion::decompile(&file, &library())
+  let tool: EditableDetailObjectTool = LevelDetailConversion::decompile(&file, &library(), None)
     .tool
     .expect("both found");
   let exported: LevelBuildDetails = LevelBuildDetails::export::<XRayByteOrder>(
