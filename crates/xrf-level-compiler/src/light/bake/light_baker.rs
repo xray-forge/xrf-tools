@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use xrf_dds::{DdsFile, RgbaImage};
 use xrf_error::{XrfError, XrfResult};
-use xrf_geometry::BvhTracer;
+use xrf_geometry::{BvhTracer, XrlcTracer};
 use xrf_level::{BuildCformFile, BuildCformRaycastFace, BuildPrjFile};
 
 use crate::geometry::collision::geometry_ray_model::GeometryRayModel;
@@ -41,6 +41,10 @@ use crate::shadow::shadow_materials_request::ShadowMaterialsRequest;
 /// [`LightVertices`]), every multi-use model and placement ([`LightModels`]), the lightmapped faces cut into charts,
 /// each lit and compressed ([`LightChartLighter`]) and packed onto pages ([`LightmapAtlas`]), and each implicitly lit
 /// texture's map ([`ImplicitLighter`]), the lightmaps' and implicit maps' shadow rays traced by the request's backend.
+///
+/// The vertex and model passes trace on the CPU through xrLC's own ray model ([`XrlcTracer`]), which loses the rays
+/// xrLC's tree loses, as their light is matched vertex for vertex. The lightmaps and implicit maps trace
+/// through [`BvhTracer`], which the GPU backend mirrors byte for byte; their light is matched in distribution.
 pub(crate) struct LightBaker;
 
 impl LightBaker {
@@ -77,13 +81,14 @@ impl LightBaker {
     let hemispheres: Vec<f32> = LightHemisphere::of(
       mesh,
       &sources.hemi,
-      &welded.build_tracer(),
+      &XrlcTracer::of_triangles(welded.get_triangles()),
       &load(&welded.raycast_faces)?,
     );
-    let tracer: BvhTracer = ray_model.build_tracer();
+    // The vertex passes trace through xrLC's own ray model, the lightmaps through the tree the GPU mirrors.
+    let vertex_tracer: XrlcTracer = XrlcTracer::of_triangles(ray_model.get_triangles());
     let shadows: ShadowMaterials = load(&ray_model.raycast_faces)?;
     let vertices: Vec<LightColor> =
-      LightVertices::of(mesh, normals, shaders, &hemispheres, &sources, &tracer, &shadows);
+      LightVertices::of(mesh, normals, shaders, &hemispheres, &sources, &vertex_tracer, &shadows);
     let model_faces: LightModelFaces = LightModels::get_model_faces(project, shaders)?;
     let models: LightModels = LightModels::of(&LightModelsInput {
       project,
@@ -91,10 +96,14 @@ impl LightBaker {
       lights: &sources,
       model_shadows: &load(&model_faces.faces)?,
       model_starts: &model_faces.starts,
-      tracer: &tracer,
+      tracer: &vertex_tracer,
       shadows: &shadows,
       samples: level.quality.get_model_samples(&project.params),
     })?;
+
+    drop(vertex_tracer);
+
+    let tracer: BvhTracer = ray_model.build_tracer();
     let scene: LightChartScene<'_> = LightChartScene::of(
       mesh,
       normals,

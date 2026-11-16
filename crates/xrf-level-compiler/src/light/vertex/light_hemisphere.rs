@@ -1,6 +1,6 @@
 use glam::Vec3;
 use rayon::prelude::*;
-use xrf_geometry::BvhTracer;
+use xrf_geometry::XrlcTracer;
 use xrf_level::LevelLightRole;
 use xrf_math::Vector3d;
 
@@ -20,14 +20,21 @@ use crate::shadow::shadow_materials::ShadowMaterials;
 /// ([`crate::GeometryRayModel::build_welded`]) and halved; then `Self::SMOOTHING_ROUNDS` rounds in which each vertex
 /// takes the mean of every vertex of its faces, itself included (`u_SmoothVertColors`). Each term is kept as
 /// `base_color` stores it.
+///
+/// The rays go through xrLC's own ray model ([`XrlcTracer`]), as the term is matched vertex for vertex: a sky ray
+/// grazing an axis-aligned wall exactly at its edge passes in xrLC where a tighter tree stops it. Each ray is a full
+/// query: xrLC's eight threads light runs of vertices far apart and share each light's remembered blocker
+/// (`rayTrace`'s `L.tri`), so a vertex is tested against a blocker of an unrelated one, which with the threads in step
+/// changes no vertex's light, and otherwise as the threads' timing falls.
 pub struct LightHemisphere;
 
 impl LightHemisphere {
   /// `u_SmoothVertColors(5)`.
   pub(crate) const SMOOTHING_ROUNDS: usize = 5;
 
-  /// The sky term of each of `mesh`'s vertices, by index, the sky's lights `sky`.
-  pub fn of(mesh: &GeometryMesh, sky: &[LightSource], tracer: &BvhTracer, shadows: &ShadowMaterials) -> Vec<f32> {
+  /// The sky term of each of `mesh`'s vertices, by index, the sky's lights `sky`, the welded mesh's ray model in
+  /// `tracer`.
+  pub fn of(mesh: &GeometryMesh, sky: &[LightSource], tracer: &XrlcTracer, shadows: &ShadowMaterials) -> Vec<f32> {
     let face_normals: Vec<Vector3d> = mesh
       .faces
       .iter()

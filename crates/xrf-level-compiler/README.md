@@ -64,6 +64,12 @@ The vertex light (`light/vertex/`) is built as xrLC builds it, each term stored 
   in the level, which gives its tree's scale and bias by a least-squares fit; samples are jittered from a seeded source
   where xrLC uses its random one.
 
+All three trace on the CPU through xrLC's own ray model, `xrf-geometry`'s `XrlcTracer`: they are matched to xrLC vertex
+for vertex, and xrLC's tree loses rays running exactly along a box's corner, which a tighter tree meets. `LightVertices`
+also lights runs of vertices in order, remembering each light's last blocker from one to the next as xrLC's threads do
+(`rayTrace`'s `L.tri`); the base hemisphere does not, as xrLC's eight threads there share that blocker between vertices
+far apart. The lightmaps keep `BvhTracer`, which the GPU mirrors.
+
 On the SDK's own vertex light of `l01_test` and `labx8`, `LightPoint`'s `Level` variant gives xrLC's bytes on 99.99% and
 99.93% of vertices.
 
@@ -186,7 +192,8 @@ the GPU compiles `jupiter` in about 10 s, the CPU in 35.
 three.
 
 - `RayScene` is a ray model in a `BvhTracer` with its `ShadowMaterials`. The details and AI steps read it from
-  `build.cform` (`RayModel`); the light baker builds its own from the ray model the geometry compile just made.
+  `build.cform` (`RayModel`); the light baker builds its own from the ray model the geometry compile just made, for
+  the lightmaps and implicit maps (its vertex passes take an `XrlcTracer` over the same faces).
 - `RayRules` says how a ray meets the faces, one source for the CPU and the GPU: `DETAILS` and `COVERS` stop at front
   faces and let `1 - alpha` through an alpha texel; `LEVEL` stops at either side, lets `1 - alpha²` through, passes
   the sample's own face, and has the GPU test each face it meets again by the CPU's ray test.

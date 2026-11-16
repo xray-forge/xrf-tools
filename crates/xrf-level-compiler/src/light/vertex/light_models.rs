@@ -4,7 +4,7 @@ use std::f32::consts::{PI, TAU};
 use glam::Vec3;
 use rayon::prelude::*;
 use xrf_error::XrfResult;
-use xrf_geometry::{BvhTracer, PointWelder, TraceHit, Triangle};
+use xrf_geometry::{PointWelder, TraceHit, Triangle, XrlcTracer};
 use xrf_level::{BuildCformRaycastFace, BuildPrjFile, BuildPrjMuModel, LevelLightRole};
 use xrf_math::{Matrix4x4, Vector3d};
 
@@ -42,7 +42,7 @@ struct LightPass<'a> {
   roles: &'a [LevelLightRole],
   samples: u32,
   seed: u64,
-  tracer: &'a BvhTracer,
+  tracer: &'a XrlcTracer,
 }
 
 /// The multi-use models' light as xrLC computes it (`xrLC/xrMU_Model_Calc_lighting.cpp`).
@@ -58,7 +58,8 @@ struct LightPass<'a> {
 /// within `Self::JITTER_DEGREES` of the vertex's and a step along it, its faces' mean `vert_ambient` added to the
 /// sky; then vertices within `EPS_L` of the first at a place are moved toward their brightest by their mean
 /// `vert_translucency`, never darker, and halved. xrLC jitters from its global random source; this from one seeded by
-/// the model, placement, vertex and sample, so a compile gives the same light every time.
+/// the model, placement, vertex and sample, so a compile gives the same light every time. Both ray models are xrLC's
+/// own ([`XrlcTracer`]), a model's built over its faces as `calc_lighting` builds its `CDB::MODEL`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct LightModels {
   /// Each model's vertices' light, by model in `build.prj`'s order and vertex as its normals pass splits them.
@@ -139,7 +140,7 @@ impl LightModels {
       .zip(&lit_models)
       .enumerate()
       .map(|(index, (model, lit))| {
-        let own: BvhTracer = Self::get_model_tracer(model, shaders);
+        let own: XrlcTracer = Self::get_model_tracer(model, shaders);
         let start: usize = model_starts[index];
 
         Self::light(
@@ -223,7 +224,7 @@ impl LightModels {
 
   /// The ray model a model lights itself through: its shadow-casting faces in its own space, every one kept
   /// (`export_cform_rcast` with no transform).
-  fn get_model_tracer(model: &BuildPrjMuModel, shaders: &CompilerShaders) -> BvhTracer {
+  fn get_model_tracer(model: &BuildPrjMuModel, shaders: &CompilerShaders) -> XrlcTracer {
     let corner = |index: u32| {
       let vertex: &Vector3d = &model.vertices[index as usize];
 
@@ -241,7 +242,7 @@ impl LightModels {
       .map(|(_, face)| Triangle::new(face.vertices.map(corner)))
       .collect();
 
-    BvhTracer::of_triangles(triangles)
+    XrlcTracer::of_triangles(triangles)
   }
 
   /// `xrMU_Model::calc_lighting`: each vertex of the pass's model placed and lit as the pass says, each face a ray

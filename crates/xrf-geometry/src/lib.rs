@@ -28,6 +28,7 @@ pub use crate::sky::sky_light::SkyLight;
 pub use crate::tracer::bvh_tracer::BvhTracer;
 pub use crate::tracer::trace_hit::TraceHit;
 pub use crate::tracer::tracer::Tracer;
+pub use crate::tracer::xrlc::xrlc_tracer::XrlcTracer;
 pub use crate::triangle::face_area::FaceArea;
 pub use crate::triangle::triangle::Triangle;
 pub use crate::weld::point_welder::PointWelder;

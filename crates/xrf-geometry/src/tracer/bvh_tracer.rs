@@ -9,6 +9,7 @@ use obvhs::bvh2::node::Bvh2Node;
 use crate::ray::facing::Facing;
 use crate::ray::ray::Ray;
 use crate::ray::slab_ray::SlabRay;
+use crate::tracer::face_walk::FaceWalk;
 use crate::tracer::trace_hit::TraceHit;
 use crate::tracer::tracer::Tracer;
 use crate::triangle::triangle::Triangle;
@@ -80,6 +81,12 @@ impl BvhTracer {
   pub(crate) fn get_leaf_faces(&self, node: &Bvh2Node) -> &[u32] {
     &self.faces[node.first_index as usize..(node.first_index + node.prim_count) as usize]
   }
+}
+
+impl FaceWalk for BvhTracer {
+  fn get_triangles(&self) -> &[Triangle] {
+    &self.triangles
+  }
 
   /// Visits each face in a leaf a ray reaches within a reach the visitor may shorten, until the visitor returns true.
   fn walk(&self, ray: &Ray, mut visit: impl FnMut(u32, &mut f32) -> bool) {
@@ -112,27 +119,6 @@ impl BvhTracer {
       }
     }
   }
-
-  /// The face the line from `origin` along `direction` crosses nearest `reach` along it, within `reach` either side,
-  /// by how far off that point.
-  fn get_nearest_to_middle(&self, origin: Vec3, direction: Vec3, reach: f32) -> Option<MiddleCrossing> {
-    let ray: Ray = Ray::new(origin, direction, reach * 2.0);
-    let mut nearest: Option<MiddleCrossing> = None;
-
-    self.walk(&ray, |face, _| {
-      if let Some(crossing) = self.triangles[face as usize].cross(&ray, Facing::Both) {
-        let off: f32 = (crossing.distance - reach).abs();
-
-        if nearest.is_none_or(|best| off < best.off) {
-          nearest = Some(MiddleCrossing { off, face });
-        }
-      }
-
-      false
-    });
-
-    nearest
-  }
 }
 
 impl Tracer for BvhTracer {
@@ -144,14 +130,8 @@ impl Tracer for BvhTracer {
     self.triangles[face as usize]
   }
 
-  fn for_each_hit_facing(&self, ray: &Ray, facing: Facing, mut visit: impl FnMut(TraceHit)) {
-    self.walk(ray, |face, _| {
-      if let Some(crossing) = self.triangles[face as usize].cross(ray, facing) {
-        visit(TraceHit::new(face, crossing));
-      }
-
-      false
-    });
+  fn for_each_hit_facing(&self, ray: &Ray, facing: Facing, visit: impl FnMut(TraceHit)) {
+    self.walk_hits(ray, facing, visit);
   }
 
   fn for_each_packet_hit(&self, rays: &[Ray], mut visit: impl FnMut(usize, TraceHit)) {
@@ -191,48 +171,14 @@ impl Tracer for BvhTracer {
   }
 
   fn get_nearest_hit(&self, ray: &Ray) -> Option<TraceHit> {
-    let mut nearest: Option<TraceHit> = None;
-
-    self.walk(ray, |face, reach| {
-      let narrowed: Ray = Ray { range: *reach, ..*ray };
-
-      if let Some(crossing) = self.triangles[face as usize].cross(&narrowed, Facing::Front)
-        && nearest.is_none_or(|best| crossing.distance < best.distance)
-      {
-        nearest = Some(TraceHit::new(face, crossing));
-        *reach = crossing.distance;
-      }
-
-      false
-    });
-
-    nearest
+    self.walk_nearest_hit(ray)
   }
 
   fn is_blocked(&self, ray: &Ray) -> bool {
-    let mut is_blocked: bool = false;
-
-    self.walk(ray, |face, _| {
-      is_blocked = self.triangles[face as usize].cross(ray, Facing::Both).is_some();
-      is_blocked
-    });
-
-    is_blocked
+    self.walk_is_blocked(ray)
   }
 
   fn get_face_nearest_along(&self, point: Vec3, direction: Vec3, reach: f32) -> Option<u32> {
-    // Walked from both ends: a line grazing a face's edge can miss it from one end and cross it from the other.
-    [direction, -direction]
-      .into_iter()
-      .filter_map(|along| self.get_nearest_to_middle(point - along * reach, along, reach))
-      .min_by(|first, second| first.off.total_cmp(&second.off))
-      .map(|middle| middle.face)
+    self.walk_face_nearest_along(point, direction, reach)
   }
-}
-
-/// A face a line crosses, by how far its crossing lies off the line's middle.
-#[derive(Clone, Copy, Debug)]
-struct MiddleCrossing {
-  off: f32,
-  face: u32,
 }

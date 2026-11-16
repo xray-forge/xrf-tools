@@ -1,7 +1,7 @@
 //! The light baked into vertices: storage, the sky term, and the trees' fit.
 
 use glam::Vec3;
-use xrf_geometry::{BvhTracer, Triangle};
+use xrf_geometry::{Triangle, XrlcTracer};
 use xrf_math::{Aabb, Vector2d, Vector3d};
 
 use crate::geometry::mesh::geometry_face::GeometryFace;
@@ -63,7 +63,7 @@ fn stores_a_term_as_base_color_and_packs_it_by_flooring() {
 
 #[test]
 fn an_open_vertex_takes_half_the_sky_and_keeps_it_through_smoothing() {
-  let open: BvhTracer = BvhTracer::of_triangles(vec![Triangle::new([
+  let open: XrlcTracer = XrlcTracer::of_triangles(vec![Triangle::new([
     Vec3::new(100.0, -1.0, 100.0),
     Vec3::new(101.0, -1.0, 100.0),
     Vec3::new(100.0, -1.0, 101.0),
@@ -80,7 +80,7 @@ fn an_open_vertex_takes_half_the_sky_and_keeps_it_through_smoothing() {
 
 #[test]
 fn a_roofed_vertex_takes_no_sky() {
-  let roof: BvhTracer = BvhTracer::of_triangles(vec![
+  let roof: XrlcTracer = XrlcTracer::of_triangles(vec![
     Triangle::new([
       Vec3::new(-5.0, 2.0, -5.0),
       Vec3::new(5.0, 2.0, -5.0),

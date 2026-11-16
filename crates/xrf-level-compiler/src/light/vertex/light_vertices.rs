@@ -2,13 +2,14 @@ use std::collections::HashMap;
 
 use glam::Vec3;
 use rayon::prelude::*;
-use xrf_geometry::{BvhTracer, PointWelder};
+use xrf_geometry::{PointWelder, XrlcTracer};
 use xrf_level::LevelLightRole;
 
 use crate::geometry::mesh::geometry_mesh::GeometryMesh;
 use crate::geometry::surface::geometry_normals::GeometryNormals;
 use crate::input::compiler_shaders::CompilerShaders;
 use crate::light::point::light_color::LightColor;
+use crate::light::point::light_occluders::LightOccluders;
 use crate::light::point::light_point::LightPoint;
 use crate::light::point::light_point_variant::LightPointVariant;
 use crate::light::point::light_sample_point::LightSamplePoint;
@@ -20,17 +21,31 @@ use crate::shadow::shadow_materials::ShadowMaterials;
 /// the static light and the sun from every light, halved; then, among the vertex-lit vertices within `EPS_L` of the
 /// first at a place, each moved toward the brightest of them by its faces' mean `vert_translucency`, never darker. Each
 /// term is kept as `base_color` stores it.
+///
+/// The rays go through xrLC's own ray model ([`XrlcTracer`]), as each vertex is matched to xrLC's: a shadow ray
+/// grazing an axis-aligned wall exactly at its edge passes in xrLC where a tighter tree stops it. The lightmaps keep
+/// [`xrf_geometry::BvhTracer`], which the GPU backend mirrors byte for byte; a texel's light is matched in distribution,
+/// not texel for texel, so the rays xrLC loses there do not show.
+///
+/// xrLC's threads take the vertices in order one at a time and share each light's remembered blocker (`rayTrace`'s
+/// `L.tri`), which a vertex's ray is tested against before the query: where the tree loses a ray at a corner, the
+/// blocker of the vertex lit just before can still stop it. Each run of `Self::REMEMBERED_RUN` vertices is lit in
+/// order the same way, remembering from one vertex to the next.
 pub struct LightVertices;
 
 impl LightVertices {
-  /// The light of each of `normals`' split vertices of `mesh`, by index, the welded vertices' sky terms `hemispheres`.
+  /// Vertices lit in order by one lighter, which remembers each light's last blocker from one to the next.
+  const REMEMBERED_RUN: usize = 1024;
+
+  /// The light of each of `normals`' split vertices of `mesh`, by index, the welded vertices' sky terms `hemispheres`,
+  /// the level's ray model in `tracer`.
   pub fn of(
     mesh: &GeometryMesh,
     normals: &GeometryNormals,
     shaders: &CompilerShaders,
     hemispheres: &[f32],
     lights: &LightSources,
-    tracer: &BvhTracer,
+    tracer: &XrlcTracer,
     shadows: &ShadowMaterials,
   ) -> Vec<LightColor> {
     let count: usize = normals.positions.len();
@@ -56,35 +71,46 @@ impl LightVertices {
     let light_point: LightPoint = LightPoint {
       variant: LightPointVariant::Level,
     };
-    let colors: Vec<LightColor> = (0..count)
-      .into_par_iter()
-      .map(|split| {
-        let hemi: f32 = hemispheres[welded[split] as usize];
+    let indices: Vec<usize> = (0..count).collect();
+    let colors: Vec<LightColor> = indices
+      .par_chunks(Self::REMEMBERED_RUN)
+      .flat_map_iter(|run| {
+        let mut occluders: LightOccluders = LightOccluders::new(lights);
 
-        if !is_vertex_lit[split] {
-          return LightColor {
-            hemi,
-            ..LightColor::default()
-          };
-        }
+        run
+          .iter()
+          .map(|split| {
+            let split: usize = *split;
+            let hemi: f32 = hemispheres[welded[split] as usize];
 
-        let position = &normals.positions[split];
-        let normal = &normals.normals[split];
-        let lit: LightColor = light_point
-          .evaluate(
-            &LightSamplePoint::new(
+            if !is_vertex_lit[split] {
+              return LightColor {
+                hemi,
+                ..LightColor::default()
+              };
+            }
+
+            let position = &normals.positions[split];
+            let normal = &normals.normals[split];
+            let point: LightSamplePoint = LightSamplePoint::new(
               Vec3::new(position.x, position.y, position.z),
               Vec3::new(normal.x, normal.y, normal.z),
-            ),
-            lights,
-            &[LevelLightRole::Rgb, LevelLightRole::Sun],
-            tracer,
-            shadows,
-          )
-          .get_scaled(0.5)
-          .get_stored();
+            );
+            let lit: LightColor = light_point
+              .evaluate_remembering(
+                &point,
+                lights,
+                &[LevelLightRole::Rgb, LevelLightRole::Sun],
+                tracer,
+                |hit| shadows.get_opacity(hit),
+                &mut occluders,
+              )
+              .get_scaled(0.5)
+              .get_stored();
 
-        LightColor { hemi, ..lit }
+            LightColor { hemi, ..lit }
+          })
+          .collect::<Vec<LightColor>>()
       })
       .collect();
 

@@ -186,13 +186,16 @@ impl BuildCformFile {
   /// The form's faces in a tracer for the engine's ray and box queries, each named by its index here, the index of its
   /// raycast record: the ray model the light and AI compilers query (`RCAST_Model`).
   pub fn build_tracer(&self) -> BvhTracer {
-    BvhTracer::of_triangles(
-      self
-        .faces
-        .iter()
-        .map(|face| Triangle::new(face.vertices.map(|index| Vec3::from(&self.vertices[index as usize]))))
-        .collect(),
-    )
+    BvhTracer::of_triangles(self.get_triangles())
+  }
+
+  /// The form's faces as triangles, in its order, for a tracer of another kind ([`xrf_geometry::XrlcTracer`]).
+  pub fn get_triangles(&self) -> Vec<Triangle> {
+    self
+      .faces
+      .iter()
+      .map(|face| Triangle::new(face.vertices.map(|index| Vec3::from(&self.vertices[index as usize]))))
+      .collect()
   }
 
   /// Refuses a face naming a vertex the form does not hold, and raycast records that are not one per face, which is

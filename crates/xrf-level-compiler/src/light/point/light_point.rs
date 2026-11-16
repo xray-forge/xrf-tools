@@ -1,5 +1,5 @@
 use glam::Vec3;
-use xrf_geometry::{BvhTracer, Ray, TraceHit, Tracer};
+use xrf_geometry::{Ray, TraceHit, Tracer};
 use xrf_level::LevelLightRole;
 
 use crate::light::point::light_color::LightColor;
@@ -119,7 +119,7 @@ impl LightPoint {
     point: &LightSamplePoint,
     lights: &LightSources,
     roles: &[LevelLightRole],
-    tracer: &BvhTracer,
+    tracer: &impl Tracer,
     shadows: &ShadowMaterials,
   ) -> LightColor {
     self.evaluate_by(point, lights, roles, tracer, |hit| shadows.get_opacity(hit))
@@ -131,7 +131,7 @@ impl LightPoint {
     point: &LightSamplePoint,
     lights: &LightSources,
     roles: &[LevelLightRole],
-    tracer: &BvhTracer,
+    tracer: &impl Tracer,
     opacity: impl Fn(&TraceHit) -> f32,
   ) -> LightColor {
     self.gather(point, lights, roles, tracer, opacity, None)
@@ -145,7 +145,7 @@ impl LightPoint {
     point: &LightSamplePoint,
     lights: &LightSources,
     roles: &[LevelLightRole],
-    tracer: &BvhTracer,
+    tracer: &impl Tracer,
     opacity: impl Fn(&TraceHit) -> f32,
     occluders: &mut LightOccluders,
   ) -> LightColor {
@@ -157,7 +157,7 @@ impl LightPoint {
     point: &LightSamplePoint,
     lights: &LightSources,
     roles: &[LevelLightRole],
-    tracer: &BvhTracer,
+    tracer: &impl Tracer,
     opacity: impl Fn(&TraceHit) -> f32,
     mut occluders: Option<&mut LightOccluders>,
   ) -> LightColor {

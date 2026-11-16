@@ -9,6 +9,7 @@ the object compile and the level compilers use it alike.
 | -------------------- | ------------------------------------------------------------------------------------------------- |
 | `Tracer`             | The queries: every hit along a ray (one ray or a packet), faces in a box, nearest, blocked, along |
 | `BvhTracer`          | The tracer: `obvhs`' PLOC binary hierarchy walked by its own exact traversal                      |
+| `XrlcTracer`         | xrLC's ray model: xrCDB's Opcode tree and ray walk, which loses the rays xrLC loses at box corners |
 | `Triangle`           | `CDB::TestRayTri` (`cross`), the separating axis test against a box, `Fvector::mknormal`          |
 | `Ray`                | Origin, direction and range; a crossing counts ahead of the origin up to the range, inclusive     |
 | `TraceHit`           | A face a ray meets: its index, distance and barycentrics                                          |
@@ -47,6 +48,12 @@ test pins, and the queries run about 1.15 times faster for it. Its box test take
 as infinite and an origin exactly on a box's face as inside, where `obvhs`' own traversals lose faces on such rays.
 `for_each_packet_hit` traces many rays together, 256 at a time, which pays where they run close together, such as one
 set of points' rays toward one light.
+
+`XrlcTracer` is for results matched point for point against xrLC's. It builds the tree xrCDB builds with Opcode
+(`MODEL::build_internal`, `xrCDB/xrCDB.cpp`) and walks it as `ray_collider::_stab` does (`xrCDB/xrCDB_ray.cpp`), its
+box test `isect_sse` lane for lane. Opcode keeps a node's box as a centre and half extents, and given back they can end
+a rounding short of a corner: a ray along an axis exactly there misses the node and every face below it, in xrLC and
+here alike, where `BvhTracer` meets them. Its tests hold it to a walk over every face elsewhere.
 
 ## Develop
 

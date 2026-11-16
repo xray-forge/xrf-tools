@@ -1,4 +1,4 @@
-use xrf_geometry::BvhTracer;
+use xrf_geometry::XrlcTracer;
 use xrf_level::BuildPrjFile;
 
 use crate::input::compiler_shaders::CompilerShaders;
@@ -16,8 +16,8 @@ pub struct LightModelsInput<'a> {
   pub model_shadows: &'a ShadowMaterials,
   /// Where each model's faces start among them.
   pub model_starts: &'a [usize],
-  /// The level's ray model and what each of its faces lets through.
-  pub tracer: &'a BvhTracer,
+  /// The level's ray model, as xrLC builds it, and what each of its faces lets through.
+  pub tracer: &'a XrlcTracer,
   pub shadows: &'a ShadowMaterials,
   /// The samples each vertex takes ([`crate::LightQuality::get_model_samples`]).
   pub samples: u32,
