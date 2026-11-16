@@ -128,7 +128,7 @@ impl LevelInstanceLibrary {
       )
     };
 
-    for mesh in meshes {
+    for (index, mesh) in meshes.iter().enumerate() {
       for faces in &mesh.surface_faces {
         let Some(surface) = surfaces.iter().find(|surface| surface.name == faces.surface) else {
           continue;
@@ -160,6 +160,7 @@ impl LevelInstanceLibrary {
 
           if area > 0.0 {
             triangles.push(LevelLibraryTriangle {
+              mesh: index,
               texture,
               points,
               uvs: Self::get_uvs(mesh, &face.corners),

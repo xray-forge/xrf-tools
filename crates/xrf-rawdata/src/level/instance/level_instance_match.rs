@@ -10,6 +10,8 @@ pub(crate) struct LevelInstanceMatch {
   pub(crate) coverage: f64,
   /// The root mean square distance, metres, between the object's placed corners and the level's they were matched to.
   pub(crate) error: f64,
-  /// The level triangles the placement covers, which leave the shells, by their place in the index.
+  /// The level triangles the placement covers, which leave the shells, by their place in the index, sorted.
   pub(crate) claimed: Vec<u32>,
+  /// For each claimed triangle, the object's mesh it lies on, by its place in the object's meshes.
+  pub(crate) meshes: Vec<usize>,
 }

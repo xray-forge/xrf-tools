@@ -16,6 +16,7 @@ use xrf_ogf::{OgfGeometryContainerChunk, OgfHeaderChunk, OgfTreeColor, OgfTreeDe
 use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 
 use crate::level::tests::fixtures::GUID;
+use crate::object::decompile::object_decompile::ObjectDecompile;
 use crate::{
   LevelCollisionIndex, LevelCompilerShaderReason, LevelDecalIndex, LevelDecompileContext, LevelGeometryCensus,
   LevelGeometryConversion, LevelGeometryDecompile, LevelGeometrySources, LevelInstanceLibrary, LevelShaderPairings,
@@ -329,6 +330,63 @@ fn places_library_objects_found_in_the_shells_and_counts_their_triangles() -> Xr
     assert_eq!(sector.items.len(), 1);
     assert_eq!(sector.items[0].object, placed.object.name);
   }
+
+  Ok(())
+}
+
+#[test]
+fn keeps_each_sector_a_library_object_spans_by_the_meshes_it_holds() -> XrfResult {
+  // One library object of two meshes, a square in each sector: the editor puts each mesh in a sector of its own, so
+  // neither sector draws a shell and each names one mesh of the one placement.
+  let shells: Vec<ObjectDecompile> = decompile(&level((0, 1)))?
+    .objects
+    .into_iter()
+    .map(|object| object.decompile)
+    .collect();
+  let object: ObjectDecompile =
+    ObjectDecompile::merge_meshes(["west", "east"].into_iter().map(String::from).zip(shells).collect())
+      .expect("the shells are two parts");
+  let mut library: LevelInstanceLibrary = LevelInstanceLibrary::default();
+
+  library.add(
+    String::from("statics\\squares"),
+    PathBuf::from("squares.object"),
+    &object.object,
+    None,
+  );
+
+  let decompiled: LevelGeometryDecompile = decompile_from(
+    &level((0, 1)),
+    vec![drawable(0), drawable(1), hierarchy(vec![0])],
+    None,
+    None,
+    Some(&library),
+  )?;
+
+  assert_eq!(decompiled.census.instances, 1);
+  assert_eq!(decompiled.census.empty_sectors, 0);
+  assert!(decompiled.refused.is_empty(), "{:?}", decompiled.refused);
+  assert!(decompiled.objects.is_empty(), "no shell is left to write");
+
+  let placed: &str = decompiled.scene_objects.objects[0].object.name.as_str();
+  let sectors = &decompiled.sectors.objects;
+
+  assert_eq!(sectors.len(), 2, "every sector is kept");
+
+  let mut meshes: Vec<&str> = sectors
+    .iter()
+    .map(|sector| {
+      assert_eq!(sector.items.len(), 1, "{sector:?}");
+      assert_eq!(sector.items[0].object, placed);
+
+      sector.items[0].mesh.as_str()
+    })
+    .collect();
+
+  meshes.sort_unstable();
+
+  assert_eq!(meshes, ["east", "west"], "each sector names a mesh of its own");
+  assert_eq!(decompiled.portals.objects.len(), 1, "the portal joining them is kept");
 
   Ok(())
 }

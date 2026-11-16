@@ -155,9 +155,12 @@ impl LevelInstanceMatcher {
       / pairs.len().max(1) as f64)
       .sqrt();
 
+    let (claimed, meshes): (Vec<u32>, Vec<usize>) = Self::get_claimed(object, &fit, triangles).into_iter().unzip();
+
     Some(LevelInstanceMatch {
       object: index,
-      claimed: Self::get_claimed(object, &fit, triangles),
+      claimed,
+      meshes,
       fit,
       coverage: found / object.area,
       error,
@@ -286,23 +289,29 @@ impl LevelInstanceMatcher {
   }
 
   /// The level triangles of `object`'s textures whose every corner lies within the tolerance of the object's surface
-  /// placed by `fit`: its own triangles and the pieces xrLC cut them into.
-  fn get_claimed(object: &LevelLibraryObject, fit: &LevelInstanceFit, triangles: &LevelInstanceTriangles) -> Vec<u32> {
-    let mut claimed: Vec<u32> = object
+  /// placed by `fit`: its own triangles and the pieces xrLC cut them into, sorted, each with the object's mesh it lies
+  /// on, the lowest numbered where two meshes' triangles hold it.
+  fn get_claimed(
+    object: &LevelLibraryObject,
+    fit: &LevelInstanceFit,
+    triangles: &LevelInstanceTriangles,
+  ) -> Vec<(u32, usize)> {
+    let mut claimed: Vec<(u32, usize)> = object
       .triangles
       .iter()
       .flat_map(|triangle| {
         let placed: [DVec3; 3] = triangle.points.map(|point| fit.apply(point));
-
-        match Self::get_whole(triangle, &placed, triangles) {
+        let found: Vec<u32> = match Self::get_whole(triangle, &placed, triangles) {
           whole if whole.is_empty() => Self::get_pieces(triangle, &placed, triangles),
           whole => whole,
-        }
+        };
+
+        found.into_iter().map(|level| (level, triangle.mesh))
       })
       .collect();
 
     claimed.sort_unstable();
-    claimed.dedup();
+    claimed.dedup_by_key(|(level, _)| *level);
     claimed
   }
 

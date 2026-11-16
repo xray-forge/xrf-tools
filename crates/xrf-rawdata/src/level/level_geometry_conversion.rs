@@ -254,7 +254,9 @@ impl LevelGeometryConversion {
   ///   and `<level>_breakable_<N>` standing where their packets placed them ([`LevelLadderConversion`],
   ///   [`LevelBreakableConversion`]), each packet named in the decompile's folded entities.
   ///
-  /// A sector drawing no static geometry has no object to name, and the editor drops a sector of no item, which would
+  /// A sector names its shell and each mesh of a tree or library object placed in it, a library object's meshes each by
+  /// the sector holding most of its triangles. A sector drawing no static geometry of its own or of a placed mesh has
+  /// nothing to name, and the editor drops a sector of no item (`CSector::LoadStream`, `sector.cpp`), which would
   /// renumber every sector after it. Where one does, the objects come back without sectors or portals, each such sector
   /// refused, and the Build puts every face in its default sector.
   ///
@@ -480,13 +482,12 @@ impl LevelGeometryConversion {
 
       placement.object.clone_from(&object_name);
 
-      placed_items
-        .entry(placement.sector)
-        .or_default()
-        .extend(placement.meshes.iter().map(|mesh| EditableSectorItem {
+      for mesh in &placement.meshes {
+        placed_items.entry(mesh.sector).or_default().push(EditableSectorItem {
           object: object_name.clone(),
-          mesh: mesh.clone(),
-        }));
+          mesh: mesh.name.clone(),
+        });
+      }
       placed_objects.push(EditableSceneObject {
         object: EditableCustomObject::new(object_name, placement.transform),
         reference: placement.reference.clone(),

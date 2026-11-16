@@ -2,6 +2,7 @@ pub(crate) mod level_instance_fit;
 pub(crate) mod level_instance_library;
 pub(crate) mod level_instance_match;
 pub(crate) mod level_instance_matcher;
+pub(crate) mod level_instance_mesh;
 pub(crate) mod level_instance_placement;
 pub(crate) mod level_instance_recovery;
 pub(crate) mod level_instance_triangles;

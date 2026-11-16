@@ -11,7 +11,7 @@ pub struct LevelLibraryObject {
   /// `reference_name` names.
   pub reference: String,
   pub path: PathBuf,
-  /// Its meshes' names, which the sector holding a placement names.
+  /// Its meshes' names, each of which the sector holding that mesh's triangles of a placement names.
   pub meshes: Vec<String>,
   /// Its rendered triangles, the largest first.
   pub triangles: Vec<LevelLibraryTriangle>,
@@ -21,10 +21,12 @@ pub struct LevelLibraryObject {
   pub area: f64,
 }
 
-/// One rendered triangle of a library object: its texture, by its place in the library's texture table, its corners
-/// in the object's space, and their texture coordinates where its mesh maps them.
+/// One rendered triangle of a library object: its mesh, by its place in the object's meshes, its texture, by its place
+/// in the library's texture table, its corners in the object's space, and their texture coordinates where its mesh maps
+/// them.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct LevelLibraryTriangle {
+  pub mesh: usize,
   pub texture: u32,
   pub points: [DVec3; 3],
   pub uvs: Option<[DVec2; 3]>,

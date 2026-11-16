@@ -43,6 +43,7 @@ fn object(reference: &str, texture: u32, uv_offset: f64) -> LevelLibraryObject {
   let mut triangles: Vec<LevelLibraryTriangle> = wedge(texture, uv_offset)
     .into_iter()
     .map(|(points, uvs)| LevelLibraryTriangle {
+      mesh: 0,
       texture,
       points,
       uvs: Some(uvs),
@@ -97,6 +98,7 @@ fn place(object: &LevelLibraryObject, fit: &LevelInstanceFit, is_split: bool) ->
       ]
     })
     .map(|(points, uvs)| LevelLibraryTriangle {
+      mesh: 0,
       texture: triangle_texture(object),
       points,
       uvs: Some(uvs),
@@ -172,6 +174,7 @@ fn finds_each_placement_rigid_scaled_and_cut_and_claims_its_triangles() {
 
   // Structure of the same texture beside them, which no placement may claim.
   triangles.push(LevelLibraryTriangle {
+    mesh: 0,
     texture: 0,
     points: [
       DVec3::new(50.0, 0.0, 0.0),

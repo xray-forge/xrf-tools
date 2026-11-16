@@ -13,6 +13,7 @@ pub use crate::level::build::level_build_report::LevelBuildReport;
 pub use crate::level::build::level_build_request::LevelBuildRequest;
 pub use crate::level::build::level_build_sources::LevelBuildSources;
 pub use crate::level::instance::level_instance_library::LevelInstanceLibrary;
+pub use crate::level::instance::level_instance_mesh::LevelInstanceMesh;
 pub use crate::level::instance::level_instance_placement::LevelInstancePlacement;
 pub use crate::level::instance::level_library_object::{LevelLibraryObject, LevelLibraryTriangle};
 pub use crate::level::level_breakable_conversion::LevelBreakableConversion;

@@ -5,6 +5,7 @@ use xrf_math::Vector3d;
 
 use crate::level::instance::level_instance_library::LevelInstanceLibrary;
 use crate::level::instance::level_instance_matcher::LevelInstanceMatcher;
+use crate::level::instance::level_instance_mesh::LevelInstanceMesh;
 use crate::level::instance::level_instance_placement::LevelInstancePlacement;
 use crate::level::instance::level_instance_triangles::LevelInstanceTriangles;
 use crate::level::level_collision_index::LevelCollisionIndex;
@@ -20,9 +21,11 @@ pub(crate) struct LevelInstanceRecovery {
 }
 
 impl LevelInstanceRecovery {
-  /// The placements of `library`'s objects in `sectors`' static visuals, each sector's by its compiled index; a
-  /// placement belongs to the sector holding most of its triangles. Where `collision` is given, each placement's
-  /// collision-only triangles cover their faces there, so they come back with it rather than as collision of their own.
+  /// The placements of `library`'s objects in `sectors`' static visuals, each sector's by its compiled index; each mesh
+  /// of a placement belongs to the sector holding most of its triangles, as the editor puts a scene object's meshes in
+  /// sectors one by one (`CSector::AddMesh`, `sector.cpp`), and one the placement took none of to the sector holding
+  /// most of the placement's. Where `collision` is given, each placement's collision-only triangles cover their faces
+  /// there, so they come back with it rather than as collision of their own.
   ///
   /// # Errors
   ///
@@ -45,17 +48,23 @@ impl LevelInstanceRecovery {
     let mut placements: Vec<LevelInstancePlacement> = Vec::with_capacity(matches.len());
 
     for found in &matches {
+      let object = &library.objects[found.object];
+      // The triangles taken from each sector, by the whole placement and by each of its meshes.
       let mut held: BTreeMap<usize, usize> = BTreeMap::new();
+      let mut held_by_mesh: Vec<BTreeMap<usize, usize>> = vec![BTreeMap::new(); object.meshes.len()];
 
-      for triangle in &found.claimed {
+      for (triangle, mesh) in found.claimed.iter().zip(&found.meshes) {
         let triangle = &index.triangles[*triangle as usize];
         let (sector, visual) = owners[triangle.visual as usize];
 
         *held.entry(sector).or_default() += 1;
+
+        if let Some(counts) = held_by_mesh.get_mut(*mesh) {
+          *counts.entry(sector).or_default() += 1;
+        }
+
         taken[sector][visual].push(triangle.index);
       }
-
-      let object = &library.objects[found.object];
 
       if let Some(collision) = collision.as_deref_mut() {
         for points in &object.collision {
@@ -67,18 +76,22 @@ impl LevelInstanceRecovery {
         }
       }
 
-      let sector: usize = held
-        .into_iter()
-        .max_by_key(|(sector, count)| (*count, std::cmp::Reverse(*sector)))
-        .map_or(0, |(sector, _)| sector);
+      let sector: usize = Self::get_most_held(held).unwrap_or(0);
 
       placements.push(LevelInstancePlacement {
         reference: object.reference.clone(),
         path: object.path.clone(),
         object: String::new(),
-        meshes: object.meshes.clone(),
+        meshes: object
+          .meshes
+          .iter()
+          .zip(held_by_mesh)
+          .map(|(name, held)| LevelInstanceMesh {
+            name: name.clone(),
+            sector: u16::try_from(Self::get_most_held(held).unwrap_or(sector)).unwrap_or(u16::MAX),
+          })
+          .collect(),
         transform: found.fit.to_transform()?,
-        sector: u16::try_from(sector).unwrap_or(u16::MAX),
         coverage: found.coverage,
         error: found.error,
         triangles: found.claimed.len(),
@@ -91,5 +104,13 @@ impl LevelInstanceRecovery {
     }
 
     Ok(Self { placements, taken })
+  }
+
+  /// The sector `held` counts the most triangles in, the lowest numbered of a tie; none where it counts none.
+  fn get_most_held(held: BTreeMap<usize, usize>) -> Option<usize> {
+    held
+      .into_iter()
+      .max_by_key(|(sector, count)| (*count, std::cmp::Reverse(*sector)))
+      .map(|(sector, _)| sector)
   }
 }
