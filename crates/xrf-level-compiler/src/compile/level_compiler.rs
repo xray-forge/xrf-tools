@@ -94,8 +94,16 @@ impl LevelCompiler {
             },
           )
         }
-        LevelCompileStep::Details => (started.elapsed(), DetailStep::run(request, job)?),
-        LevelCompileStep::Ai => (started.elapsed(), AiStep::run(request, job)?),
+        LevelCompileStep::Details => {
+          let run: LevelCompileStepRun = DetailStep::run(request, job)?;
+
+          (started.elapsed(), run)
+        }
+        LevelCompileStep::Ai => {
+          let run: LevelCompileStepRun = AiStep::run(request, job)?;
+
+          (started.elapsed(), run)
+        }
       };
 
       reports.push(LevelCompileStepReport {
