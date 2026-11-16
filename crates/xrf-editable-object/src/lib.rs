@@ -31,5 +31,6 @@ pub use crate::motion::editable_motion::EditableMotion;
 pub use crate::object::editable_actor_transform::EditableActorTransform;
 pub use crate::object::editable_bone_part::EditableBonePart;
 pub use crate::object::editable_description::EditableDescription;
+pub use crate::object::editable_occluder::EditableOccluder;
 pub use crate::object::editable_surface::EditableSurface;
 pub use crate::object::editable_time_width::EditableTimeWidth;

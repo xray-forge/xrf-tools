@@ -41,7 +41,7 @@ pub(crate) use objects::{
 };
 pub(crate) use problem::{SceneProblem, SceneProblemKind};
 pub use render::ShownScenes;
-pub(crate) use render::{SceneObjectSphere, SceneRenderId, SceneRenderSource, SceneRenderSpace};
+pub(crate) use render::{SceneObjectSphere, SceneOccluderLook, SceneRenderId, SceneRenderSource, SceneRenderSpace};
 pub(crate) use spawn::{
   SceneSpawnModel, SceneSpawnModelDescription, SceneSpawnModels, SceneSpawnModelsPart, SceneSpawnVisualsPart,
 };

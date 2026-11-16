@@ -2,8 +2,8 @@ use xrf_chunk::{ChunkPayload, XRayByteOrder};
 use xrf_error::XrfResult;
 use xrf_test_utils::GeneratedResources;
 
-use crate::EditableObjectFile;
 use crate::tests::fixtures;
+use crate::{EditableObjectFile, EditableOccluder};
 
 fn read(bytes: Vec<u8>) -> XrfResult<EditableObjectFile> {
   EditableObjectFile::read_from_bytes::<XRayByteOrder>(bytes)
@@ -41,6 +41,29 @@ fn an_object_reads_as_the_chunks_the_editor_saved() -> XrfResult {
   assert_eq!(description.modifier, "\\\\MAINPC\\gladi");
   assert_eq!(description.modified_at, 1_200_000_000);
   assert!(object.layout.kept.is_empty());
+
+  Ok(())
+}
+
+#[test]
+fn an_occluder_is_read_from_its_flags_sight_before_sound() -> XrfResult {
+  let mut object: EditableObjectFile = read(fixtures::dynamic_object())?;
+  let mut occluder = |flags: u32| {
+    object.flags = flags;
+    object.get_occluder()
+  };
+
+  assert_eq!(occluder(EditableObjectFile::DYNAMIC_FLAG), None);
+  assert_eq!(occluder(EditableObjectFile::HOM_FLAG), Some(EditableOccluder::Hom));
+  assert_eq!(
+    occluder(EditableObjectFile::SOUND_OCCLUDER_FLAG),
+    Some(EditableOccluder::Sound)
+  );
+  assert_eq!(
+    occluder(EditableObjectFile::HOM_FLAG | EditableObjectFile::SOUND_OCCLUDER_FLAG),
+    Some(EditableOccluder::Hom),
+    "the editor tests the HOM flag first"
+  );
 
   Ok(())
 }

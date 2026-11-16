@@ -10,7 +10,7 @@ use xrf_utils::{StagedFile, format_path, narrow_format_size};
 use crate::editable_chunks::EditableChunks;
 use crate::{
   EditableActorTransform, EditableBone, EditableBonePart, EditableDescription, EditableMesh, EditableMotion,
-  EditableSurface,
+  EditableOccluder, EditableSurface,
 };
 
 /// An editable object, the `.object` file the SDK's Actor and Level editors open: meshes, the surfaces their faces
@@ -391,6 +391,18 @@ impl EditableObjectFile {
   /// geometry a level build merges.
   pub const fn is_dynamic(&self) -> bool {
     self.flags & Self::DYNAMIC_FLAG != 0
+  }
+
+  /// What the object occludes where it is flagged an occluder, sight before sound where it is flagged both, as the
+  /// Level Editor reads the flags to draw it; none for any other object.
+  pub const fn get_occluder(&self) -> Option<EditableOccluder> {
+    if self.flags & Self::HOM_FLAG != 0 {
+      Some(EditableOccluder::Hom)
+    } else if self.flags & Self::SOUND_OCCLUDER_FLAG != 0 {
+      Some(EditableOccluder::Sound)
+    } else {
+      None
+    }
   }
 
   /// Refuses a flags chunk `r_chunk` could not read into the flags: empty, or wider than them.

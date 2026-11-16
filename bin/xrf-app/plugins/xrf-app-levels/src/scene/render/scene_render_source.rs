@@ -6,7 +6,7 @@ use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_app_render::{ResolvedTexture, TextureResolver};
 use xrf_chunk::XRayByteOrder;
-use xrf_editable_object::EditableObjectFile;
+use xrf_editable_object::{EditableObjectFile, EditableOccluder};
 use xrf_environment::WeatherDescriptor;
 use xrf_error::{XrfError, XrfResult};
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope};
@@ -22,16 +22,17 @@ use xrf_world::{WorldLevelSource, WorldLevelWeather};
 
 use crate::report::LevelReport;
 use crate::scene::{
-  SceneDrawnObject, SceneDrawnObjects, SceneHelpersPart, SceneRenderId, SceneSpawnModels, SceneSpawnModelsPart,
-  SceneSpawnVisualsPart, SelectedScene,
+  SceneDrawnObject, SceneDrawnObjects, SceneHelpersPart, SceneOccluderLook, SceneRenderId, SceneSpawnModels,
+  SceneSpawnModelsPart, SceneSpawnVisualsPart, SelectedScene,
 };
 use crate::visuals::SpawnVisual;
 
 /// An open scene as the world plays it and the native renderer draws it: no sectors and no level, every scene object
-/// placing a library object found in its objects roots stood as a model compiled from that `.object`, every spawn
-/// point whose packet names a visual found in the scene's game data stood as that model in its rest pose, each lit by
-/// the open sky as a model alone is, and their textures read from the scene's game data; what has no geometry drawn as
-/// its helper. Each drawn thing is named by its object's [`SceneRenderId`].
+/// placing a library object found in its objects roots stood as a model compiled from that `.object`, an occluder's
+/// faces drawn as its fill ([`SceneOccluderLook`]), every spawn point whose packet names a visual found in the scene's
+/// game data stood as that model in its rest pose, each lit by the open sky as a model alone is, and their textures
+/// read from the scene's game data; what has no geometry drawn as its helper. Each drawn thing is named by its object's
+/// [`SceneRenderId`].
 pub struct SceneRenderSource {
   scene: Arc<SessionSnapshot<SelectedScene>>,
   assets: AssetMountState,
@@ -140,8 +141,9 @@ impl SceneRenderSource {
     }
   }
 
-  /// The model `object`'s library object compiles to, posed as stored, and how each of its submeshes draws as
-  /// `surfaces` answers it.
+  /// The model `object`'s library object compiles to, posed as stored, each of its submeshes dressed as `surfaces`
+  /// answers it, or as the occluder's fill where the library object is flagged an occluder, as the editor draws it
+  /// whatever its surfaces.
   ///
   /// # Errors
   ///
@@ -156,8 +158,9 @@ impl SceneRenderSource {
       .read(&object.logical_path)
       .and_then(EditableObjectFile::read_from_bytes::<XRayByteOrder>)
       .map_err(|error| format!("Library object '{}' does not read: {error}", object.logical_path))?;
+    let occluder: Option<EditableOccluder> = file.get_occluder();
     // A scene's object compiles with the CLI's default tangent method, which only a skeleton's compile reads.
-    let visual: ObjectVisual = ObjectVisual::compile(
+    let mut visual: ObjectVisual = ObjectVisual::compile(
       &file,
       &ObjectCompileSource {
         source_file: object.logical_path.clone(),
@@ -171,10 +174,15 @@ impl SceneRenderSource {
     // Let go before posing copies the package, which keeps a large shell's peak to the model and its copy.
     drop(file);
 
+    let surfaces: Vec<XraySurfaceDescriptor> = match occluder {
+      Some(occluder) => SceneOccluderLook::dress(occluder, &mut visual.package.description),
+      None => VisualSurfaces::describe(surfaces, &visual.package.description),
+    };
+
     Ok(RenderSpawnModel {
       name: object.reference.clone(),
       package: VisualPoser::pose(&visual.package, None),
-      surfaces: VisualSurfaces::describe(surfaces, &visual.package.description),
+      surfaces,
       skeleton: None,
     })
   }
@@ -185,8 +193,12 @@ impl RenderAssetSource for SceneRenderSource {
     self.textures.get_scope_key()
   }
 
+  /// An occluder's fill made here, any other texture read from the scene's game data.
   fn read_texture(&self, reference: &str) -> XrfResult<Option<Vec<u8>>> {
-    self.textures.read(&self.assets, reference)
+    match SceneOccluderLook::read_texture(reference)? {
+      Some(fill) => Ok(Some(fill)),
+      None => self.textures.read(&self.assets, reference),
+    }
   }
 
   fn forget_textures(&self, names: &[String]) {

@@ -13,12 +13,15 @@ use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionScopes, SessionSnapshot};
 use xrf_app_render::plugin::RenderPlugin;
 use xrf_chunk::XRayByteOrder;
+use xrf_dds::{DdsFile, RgbaImage};
 use xrf_editable_level::EditableSceneObject;
 use xrf_editable_object::EditableObjectFile;
 use xrf_job::ExecutionRequest;
+use xrf_material::XraySurfaceDraw;
 use xrf_math::{Aabb, Vector3d};
 use xrf_renderer::{
-  RenderAssetSource, RenderLevelSource, RenderLevelSpawn, RenderSpawnCategory, RenderSpawnModels, RenderViewportId,
+  RenderAssetSource, RenderLevelSource, RenderLevelSpawn, RenderSpawnCategory, RenderSpawnModel, RenderSpawnModels,
+  RenderViewportId,
 };
 use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots, XraySearch, XrayTransaction};
 use xrf_visual::VisualBounds;
@@ -27,8 +30,8 @@ use xrf_world::WorldLevelSource;
 use crate::commands::scene::show_scene::levels_show_scene;
 use crate::plugin::LevelsPlugin;
 use crate::scene::{
-  SceneDrawDescription, SceneDrawPart, SceneDrawProblemKind, SceneObjectId, SceneObjectSphere, SceneRenderId,
-  SceneRenderSource, SceneSource, SceneToolKind, SelectedScene, SelectedScenes, ShownScenes,
+  SceneDrawDescription, SceneDrawPart, SceneDrawProblemKind, SceneObjectId, SceneObjectSphere, SceneOccluderLook,
+  SceneRenderId, SceneRenderSource, SceneSource, SceneToolKind, SelectedScene, SelectedScenes, ShownScenes,
 };
 use crate::tests::fixtures::{
   new_scenes, open_scene, scene_custom_object, scene_library_object, scene_part, write_scene,
@@ -170,6 +173,87 @@ fn compiles_a_shared_library_object_once_and_lights_every_object_standing_as_it(
     [(drawn_id(0), [1.0; 6], 1.0), (drawn_id(2), [1.0; 6], 1.0)],
     "both tables under the open sky"
   );
+}
+
+#[test]
+fn draws_an_occluder_as_the_editor_does_its_faces_one_translucent_fill_of_its_colour() {
+  let source: SceneSource = write_tables(
+    "scene_render/occluders",
+    vec![
+      placed("hom_0000", "levels\\hom", 20.0),
+      placed("som_0000", "levels\\som", 30.0),
+    ],
+  );
+
+  for (reference, flags) in [
+    ("levels\\hom", EditableObjectFile::HOM_FLAG),
+    ("levels\\som", EditableObjectFile::SOUND_OCCLUDER_FLAG),
+  ] {
+    let mut occluder: EditableObjectFile = scene_library_object(&square());
+
+    occluder.flags |= flags;
+    write_scene_object_file(&source, reference, &occluder);
+  }
+
+  let (_, _, drawn) = show(&source);
+  let spawn: RenderLevelSpawn = drawn.read_spawn().expect("the spawn reads");
+  let models: RenderSpawnModels = drawn.read_spawn_models(&spawn.visuals).expect("the models read");
+  let textures = |name: &str| -> Vec<(Vec<String>, XraySurfaceDraw)> {
+    let model: &RenderSpawnModel = models
+      .models
+      .iter()
+      .find(|model| model.name == name)
+      .expect("the model is read");
+
+    model
+      .surfaces
+      .iter()
+      .map(|surface| (surface.textures.clone(), surface.draw))
+      .collect()
+  };
+  let blended: XraySurfaceDraw = XraySurfaceDraw::Blended { reference: 0 };
+
+  assert_eq!(
+    textures(TABLE),
+    [(vec![String::from("wood\\wood_planks")], XraySurfaceDraw::Opaque)],
+    "an object of no occluder flag keeps its surfaces"
+  );
+  assert_eq!(
+    textures("levels\\hom"),
+    [(vec![String::from(SceneOccluderLook::HOM_TEXTURE)], blended)]
+  );
+  assert_eq!(
+    textures("levels\\som"),
+    [(vec![String::from(SceneOccluderLook::SOUND_TEXTURE)], blended)]
+  );
+  assert!(
+    models
+      .models
+      .iter()
+      .find(|model| model.name == "levels\\hom")
+      .expect("the model is read")
+      .package
+      .description
+      .submeshes
+      .iter()
+      .all(|submesh| submesh.texture_name.as_deref() == Some(SceneOccluderLook::HOM_TEXTURE)),
+    "the renderer binds the fill, not the surface's texture"
+  );
+
+  for (texture, fill) in [
+    (SceneOccluderLook::HOM_TEXTURE, SceneOccluderLook::HOM_FILL),
+    (SceneOccluderLook::SOUND_TEXTURE, SceneOccluderLook::SOUND_FILL),
+  ] {
+    let bytes: Vec<u8> = drawn
+      .read_texture(texture)
+      .expect("the fill encodes")
+      .expect("the fill is made, no game data needed");
+    let decoded: RgbaImage = DdsFile::read_from_bytes(&bytes)
+      .and_then(|file| file.decode_rgba(0))
+      .expect("the fill decodes");
+
+    assert!(decoded.pixels().all(|pixel| pixel.0 == fill), "{texture}");
+  }
 }
 
 #[test]
