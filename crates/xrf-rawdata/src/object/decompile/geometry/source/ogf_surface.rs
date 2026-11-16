@@ -3,6 +3,7 @@ use xrf_level::DetailModel;
 use xrf_ogf::{OgfFile, OgfVertexData};
 
 use crate::level::level_visual_geometry::LevelVisualGeometry;
+use crate::object::decompile::geometry::source::collapsed_mapping::CollapsedMapping;
 use crate::object::decompile::geometry::source::ogf_corner::OgfCorner;
 use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 
@@ -65,7 +66,8 @@ impl OgfSurface {
   }
 
   /// A level visual's surface: its full-detail triangles over the vertices `level.geom` stores for it, their normals a
-  /// byte a component.
+  /// byte a component, and a triangle whose stored base coordinates collapsed to a point given a span again
+  /// ([`CollapsedMapping`]).
   ///
   /// # Errors
   ///
@@ -77,7 +79,10 @@ impl OgfSurface {
       texture: geometry.texture.clone(),
       shader: geometry.shader.clone(),
       dress: geometry.dress.clone(),
-      triangles: Self::list_triangles(&corners, &geometry.indices)?,
+      triangles: Self::list_triangles(&corners, &geometry.indices)?
+        .into_iter()
+        .map(CollapsedMapping::spread)
+        .collect(),
     })
   }
 

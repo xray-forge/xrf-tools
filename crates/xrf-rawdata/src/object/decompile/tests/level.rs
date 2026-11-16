@@ -1,4 +1,4 @@
-use xrf_editable_object::{EditableMesh, EditableObjectFile, EditableSurface};
+use xrf_editable_object::{EditableMesh, EditableObjectFile, EditableSurface, EditableVMap};
 use xrf_error::XrfResult;
 use xrf_level::LevelVertex;
 use xrf_math::{Vector2d, Vector3d};
@@ -231,6 +231,66 @@ fn halves_a_lone_triangle_the_level_editor_would_refuse() -> XrfResult {
       .iter()
       .all(EditableSurface::is_two_sided)
   );
+
+  Ok(())
+}
+
+/// Two faces of the flat plane running to vanilla pripyat's eastern edge, two-sided, as `level.geom` stores them: every
+/// corner at one base coordinate, which xrLC refuses as a face mapped to a point. They come back spread over just more
+/// than xrLC's least span, near the stored coordinate, and still fold with their mirrors.
+#[test]
+fn spreads_the_base_coordinates_of_a_face_stored_mapped_to_a_point() -> XrfResult {
+  let points: [[f32; 3]; 5] = [
+    [700.0, -9.46222, 1.259_250_2],
+    [694.625, -9.46222, 5.571_75],
+    [700.0, -9.46222, 11.1111],
+    [694.625, -9.46222, -4.2801],
+    [700.0, -9.46222, -8.5926],
+  ];
+  let stored: Vector2d = Vector2d::new(1.0 / 1024.0, 31.75);
+  let corner = |point: usize, normal: [f32; 3]| LevelVertex {
+    texture_coordinate: stored,
+    ..vertex(points[point], normal)
+  };
+  let object: EditableObjectFile = decompile(&[visual(
+    "terrain\\terrain_pripyat",
+    (0..5)
+      .map(|point| corner(point, UP))
+      .chain((0..5).map(|point| corner(point, DOWN)))
+      .collect(),
+    vec![0, 1, 2, 3, 0, 4, 7, 6, 5, 9, 5, 8],
+  )])?;
+  let mesh: &EditableMesh = mesh(&object);
+  let vmaps: &[EditableVMap] = mesh.vmaps.as_deref().unwrap_or_default();
+  let uv = |reference: u32| -> Vector2d {
+    let entry = &mesh.vmap_references[reference as usize].points[0];
+    let values: &[f32] = &vmaps[entry.vmap as usize].values;
+
+    Vector2d::new(values[entry.index as usize * 2], values[entry.index as usize * 2 + 1])
+  };
+
+  assert_eq!(mesh.faces.len(), 2, "each face folded with its mirror");
+  assert!(
+    object
+      .surfaces
+      .as_deref()
+      .unwrap_or_default()
+      .iter()
+      .all(EditableSurface::is_two_sided)
+  );
+
+  for face in &mesh.faces {
+    let [a, b, c] = face.corners.map(|corner| uv(corner.vmap_reference));
+    let distance = |first: &Vector2d, second: &Vector2d| (first.x - second.x).hypot(first.y - second.y);
+    let span: f32 = distance(&a, &b) + distance(&b, &c) + distance(&c, &a);
+
+    assert!(span >= 0.5 / 4096.0, "a span xrLC takes, not {span}");
+    assert!(span <= 1.0 / 1024.0, "a span of a texel at most, not {span}");
+    assert!(
+      [a, b, c].iter().all(|uv| distance(uv, &stored) <= 1.0 / 1024.0),
+      "near the stored coordinate"
+    );
+  }
 
   Ok(())
 }

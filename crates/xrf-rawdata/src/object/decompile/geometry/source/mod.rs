@@ -2,6 +2,7 @@
 //! precisely those are stored, texture coordinates and bones.
 
 pub(crate) mod bone_influences;
+pub(crate) mod collapsed_mapping;
 pub(crate) mod normal_precision;
 pub(crate) mod ogf_corner;
 pub(crate) mod ogf_surface;
