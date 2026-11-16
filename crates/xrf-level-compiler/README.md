@@ -40,6 +40,12 @@ the mesh loaded, welded and its long edges cut (`geometry/mesh/`), its normals, 
 is made of (`geometry/split/`), the static visuals, progressive above draft quality (`geometry/visual/`), the multi-use
 models' trees and LODs (`geometry/model/`), and the visual tree and sectors (`geometry/hierarchy/`).
 
+The two collision forms place each multi-use face's corners as SDK 0.7's xrLC binary does, which sums
+`transform_tiny`'s terms in its own order at each call (`GeometryPlacement`'s `RAY_MODEL_SUMS` and `COLLISION_SUMS`),
+and the ray model leaves out a model face repeating another's split corners, as it does a static one. On `jupiter`
+the ray model then holds the SDK's faces but for 115 and 83 of 3.09 million (one strip of static faces
+triangulated otherwise), and `level.cform` all but 1,693 and 1,771 of 2.1 million; `mp_darkvalley`'s ray model is the SDK's.
+
 The light step has no pass of its own. Where it runs, the geometry compile bakes the light within its pass
 (`LightBaker::bake`, `light/`), since the lightmap pages decide which splits join into a visual; the bake's time and
 census (`LightBake`) are reported as the light step's. Without it every lightmapped visual takes one pair of neutral

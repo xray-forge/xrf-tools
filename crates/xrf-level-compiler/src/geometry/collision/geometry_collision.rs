@@ -64,7 +64,7 @@ impl GeometryCollision {
 
         faces.push(Self::pack(
           &mut collector,
-          &GeometryPlacement::place(model, number, face, reference)?,
+          &GeometryPlacement::place(model, number, face, reference, &GeometryPlacement::COLLISION_SUMS)?,
           face.game_material,
           reference.sector,
         ));

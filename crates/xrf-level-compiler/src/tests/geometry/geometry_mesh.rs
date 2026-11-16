@@ -477,7 +477,7 @@ fn snaps_a_corner_to_a_coordinate_its_split_vertex_already_holds_within_eps() ->
 }
 
 #[test]
-fn casts_static_faces_once_a_split_corner_set_then_every_reference_face() -> XrfResult {
+fn casts_static_and_model_faces_once_a_split_corner_set() -> XrfResult {
   // The square, a drawn-only wall, the first face again wound the other way, and again as a back face.
   let mut file: BuildPrjFile = project(
     &[
@@ -509,7 +509,8 @@ fn casts_static_faces_once_a_split_corner_set_then_every_reference_face() -> Xrf
 
   file.faces[2].material = 2;
   file.faces[4].game_material = 6;
-  // A model's repeated face is kept, its drawn-only one left out.
+  // A model's repeated face is left out, its back face kept apart by the model's own smoothing split, and its
+  // drawn-only face left out.
   file.mu_models = vec![BuildPrjMuModel {
     name: String::from("crate"),
     vertices: vec![
@@ -517,9 +518,9 @@ fn casts_static_faces_once_a_split_corner_set_then_every_reference_face() -> Xrf
       Vector3d::new(1.0, 0.0, 0.0),
       Vector3d::new(0.0, 0.0, 1.0),
     ],
-    faces: vec![model_face(0), model_face(0), model_face(2)],
+    faces: vec![model_face(0), model_face(0), model_face(0), model_face(2)],
     lod: u16::MAX,
-    smoothing_groups: Some(vec![SOFT; 3]),
+    smoothing_groups: Some(vec![SOFT, SOFT, GeometryFace::BACK_FACE, SOFT]),
   }];
   file.mu_references = vec![BuildPrjMuReference {
     model: 0,
@@ -548,6 +549,14 @@ fn casts_static_faces_once_a_split_corner_set_then_every_reference_face() -> Xrf
   assert_eq!(
     form.faces.iter().map(|face| face.face_handle).collect::<Vec<_>>(),
     [0, 1, 2, 3, 4]
+  );
+
+  // Before the smoothing split the model's back face shares its front's vertices, and is left out with the repeat.
+  let welded: BuildCformFile = GeometryRayModel::build_welded(&mesh, &file, &shaders)?;
+
+  assert_eq!(
+    welded.faces.iter().map(|face| face.vertices).collect::<Vec<_>>(),
+    [[0, 1, 2], [0, 3, 1], [4, 5, 6]]
   );
   assert_eq!(
     form
