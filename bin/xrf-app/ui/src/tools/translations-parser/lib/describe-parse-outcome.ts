@@ -40,18 +40,20 @@ export function describeTranslationParseOutcome(
   }
 
   const findings: number = result ? listTranslationParseFindings(result).length : 0;
+  // Findings outrank the mode, as the result view says: a preview that found problems is a warning too.
+  const findingsSuffix: string = findings ? `, ${formatCount(findings)} finding(s)` : "";
 
   if (result?.isDryRun) {
     return {
       details: output,
-      severity: ENotificationSeverity.INFO,
-      title: `Import would change ${result.census.filesCreated + result.census.filesUpdated} file(s)`,
+      severity: findings ? ENotificationSeverity.WARNING : ENotificationSeverity.INFO,
+      title: `Import would change ${formatCount(result.census.filesCreated + result.census.filesUpdated)} file(s)${findingsSuffix}`,
     };
   }
 
   return {
     details: output,
     severity: findings ? ENotificationSeverity.WARNING : ENotificationSeverity.SUCCESS,
-    title: `Imported ${result?.census.filesRead ?? 0} table(s)${findings ? `, ${findings} finding(s)` : ""}`,
+    title: `Imported ${formatCount(result?.census.filesRead ?? 0)} table(s)${findingsSuffix}`,
   };
 }

@@ -49,7 +49,7 @@ describe("LevelWeatherAction", () => {
     getByRole("slider", { name: "Speed" }).focus();
     await userEvent.keyboard("{End}");
 
-    expect(weather.control.factor).toBeGreaterThan(12);
+    expect(weather.clock.control.factor).toBeGreaterThan(12);
   });
 
   it("copies the keyframe on screen as a weather config section", async () => {

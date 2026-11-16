@@ -170,17 +170,17 @@ describe("LevelViewerCaptureService", () => {
     mockFlow(weather, "cutTo", () => Promise.reject(new Error("no cycle 'map'")));
     mockFlow(weather, "release");
     jest.spyOn(render.captures, "captureMap").mockImplementation(async () => {
-      timeDuring.push(weather.time);
+      timeDuring.push(weather.clock.time);
 
       return { outcome: "completed", width: 2048, height: 2048 };
     });
 
-    weather.seekTo(3600);
+    weather.clock.seekTo(3600);
     service.open();
     await service.capture();
 
     expect(timeDuring).toEqual([LEVEL_WEATHER_NOON]);
-    expect(weather.time).toBe(3600);
+    expect(weather.clock.time).toBe(3600);
     expect(raised.map((it: INotificationPayload) => it.severity)).toEqual([ENotificationSeverity.SUCCESS]);
     expect(result.captured?.mode).toBe(ELevelCaptureMode.MAP);
   });
@@ -231,7 +231,7 @@ describe("LevelViewerCaptureService", () => {
     const captured: Array<RenderCubeCapture> = [];
 
     jest.spyOn(render.captures, "captureCube").mockImplementation(async (capture: RenderCubeCapture) => {
-      pausedDuring.push(weather.control.isPaused);
+      pausedDuring.push(weather.clock.control.isPaused);
       captured.push(capture);
 
       return { outcome: "completed", width: 2048, height: 1536 };

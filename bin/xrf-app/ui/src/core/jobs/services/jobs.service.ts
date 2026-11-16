@@ -23,20 +23,33 @@ import {
 } from "@/core/jobs/lib/jobs-types";
 import { JOB_PROFILES } from "@/core/jobs/metrics";
 import { emitNotification } from "@/core/notifications/lib";
+import { PolledCommand } from "@/core/operations/lib/polled-command";
 
 /**
- * Every backend job this window started, while it is running.
+ * Every backend job this window started, while it is running, and the backend's own listing while a view shows it.
  */
 @Injectable()
 export class JobsService {
   /** How often an adopted job is asked where it has got to. */
   private static readonly ADOPTION_POLL_INTERVAL: number = 1000;
 
+  /** How often a shown listing asks the backend what it is doing. */
+  private static readonly LISTING_POLL_INTERVAL: number = 1000;
+
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   /** Jobs currently running, in the order they were started. */
   @Observable()
   public jobs: Array<IJobState> = [];
+
+  /**
+   * Every job the backend is running and the last few it finished, whichever window started them. A listing that
+   * cannot be read keeps the last one: a backend briefly unreadable is no sign that nothing runs.
+   */
+  public readonly listing: PolledCommand<Array<JobDescription>> = new PolledCommand(this.log, {
+    read: () => jobsCommands.list(),
+    interval: JobsService.LISTING_POLL_INTERVAL,
+  });
 
   /** Timer watching adopted jobs, running only while there is one to watch. */
   private adoptionTimer: Nullable<ReturnType<typeof setInterval>> = null;

@@ -1,32 +1,18 @@
-import { systemCommands } from "@xrf/ipc/commands/system";
+import { useInjection } from "@wirestate/react";
 import { MemoryUsage } from "@xrf/ipc/types/xrf-app-system";
-import { Logger } from "@xrf/logging";
-import { useLogger } from "@xrf/logging/react";
-import { usePolledValue } from "@xrf/react/polled-value";
 import { Nullable } from "@xrf/types";
 
-/** How often memory is read: slow enough to cost nothing, fast enough to watch a level stream in. */
-const MEMORY_POLL_INTERVAL: number = 2_000;
+import { RuntimeUsageService } from "@/core/diagnostics/services/runtime-usage.service";
+import { usePolledCommand } from "@/core/operations/lib/use-polled-command";
 
 /**
- * Reads what the backend and the webview's processes hold, for as long as the caller is mounted and the window shown.
+ * Reads what the backend and the webview's processes hold, for as long as the caller is mounted and the window shown,
+ * sharing one poll with every other reader.
  *
- * @param select - Turns each reading into what the caller keeps, called as the reading lands.
- * @returns The most recent selection, or `null` before the first reading and on a platform that cannot say.
+ * @returns The most recent reading, or `null` before the first and on a platform that cannot say.
  */
-export function useMemoryUsage<T>(select: (usage: MemoryUsage) => T): Nullable<T> {
-  const log: Logger = useLogger(__MODULE_NAME__);
+export function useMemoryUsage(): Nullable<MemoryUsage> {
+  const runtimeUsageService: RuntimeUsageService = useInjection(RuntimeUsageService);
 
-  return usePolledValue(
-    () =>
-      systemCommands.getMemoryUsage().then(
-        (usage: Nullable<MemoryUsage>) => (usage ? select(usage) : null),
-        (error: unknown) => {
-          log.error("Failed to read memory usage:", error);
-
-          return null;
-        }
-      ),
-    MEMORY_POLL_INTERVAL
-  );
+  return usePolledCommand(runtimeUsageService.memory);
 }

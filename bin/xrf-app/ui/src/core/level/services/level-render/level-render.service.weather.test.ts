@@ -62,7 +62,7 @@ describe("LevelRenderWeather", () => {
     });
 
     mockInvoke.mockClear();
-    weather.setPlaying(true);
+    weather.clock.setPlaying(true);
     service.weather.seek(3_600);
     // The same time again seeks again: the clock has run on since.
     service.weather.seek(3_600);
@@ -78,7 +78,7 @@ describe("LevelRenderWeather", () => {
       { time: 3_600, viewport: LEVEL_VIEWPORT },
       { time: 3_600, viewport: LEVEL_VIEWPORT },
     ]);
-    expect(weather.time).toBe(3_600);
+    expect(weather.clock.time).toBe(3_600);
     expect(listMockInvokeCalls(ERenderCommand.PLAY_WEATHER_EFFECT)).toEqual([
       { name: "fx_storm", viewport: LEVEL_VIEWPORT },
     ]);
@@ -88,7 +88,7 @@ describe("LevelRenderWeather", () => {
     ]);
 
     emitViewportEvent({ kind: EWorldViewportEvent.WEATHER, report: mockWorldWeatherReport({ time: 4_000 }) });
-    expect(weather.time).toBe(4_000);
-    expect(weather.report?.between).toEqual([0, 43_200]);
+    expect(weather.clock.time).toBe(4_000);
+    expect(weather.clock.report?.between).toEqual([0, 43_200]);
   });
 });

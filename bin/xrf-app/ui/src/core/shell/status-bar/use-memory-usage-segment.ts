@@ -1,5 +1,6 @@
 import { MemoryUsage } from "@xrf/ipc/types/xrf-app-system";
 import { Nullable } from "@xrf/types";
+import { useMemo } from "react";
 
 import { useMemoryUsage } from "@/core/diagnostics/lib/use-memory-usage";
 import { TMemoryDetailSource } from "@/core/shell/status-bar/memory-detail-source";
@@ -10,16 +11,22 @@ import { IShellStatusSegment } from "@/core/shell/status-bar/shell-status-segmen
 /**
  * Polls memory into a status bar segment, each source adding its row to the hover as every reading lands.
  *
- * @param sources - Further hover rows, in order; the latest list is read, so it need not be stable.
+ * @param sources - Further hover rows, in order; a stable list, since a new one describes the reading again.
  * @returns The segment, or `null` before the first reading and on a platform that cannot say.
  */
 export function useMemoryUsageSegment(sources: ReadonlyArray<TMemoryDetailSource>): Nullable<IShellStatusSegment> {
-  return useMemoryUsage((usage: MemoryUsage) =>
-    describeMemoryUsage(
-      usage,
-      sources
-        .map((source: TMemoryDetailSource) => source())
-        .filter((detail: Nullable<IShellStatusDetail>): detail is IShellStatusDetail => detail !== null)
-    )
+  const usage: Nullable<MemoryUsage> = useMemoryUsage();
+
+  return useMemo(
+    () =>
+      usage
+        ? describeMemoryUsage(
+            usage,
+            sources
+              .map((source: TMemoryDetailSource) => source())
+              .filter((detail: Nullable<IShellStatusDetail>): detail is IShellStatusDetail => detail !== null)
+          )
+        : null,
+    [usage, sources]
   );
 }

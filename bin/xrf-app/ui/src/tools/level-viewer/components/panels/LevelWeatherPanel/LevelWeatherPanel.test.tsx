@@ -149,7 +149,7 @@ describe("LevelWeatherPanel", () => {
 
     await userEvent.click(getByRole("button", { name: "Play" }));
 
-    expect(weather.control.isPaused).toBe(false);
+    expect(weather.clock.control.isPaused).toBe(false);
     expect(getByRole("checkbox", { name: "Dynamic sun" })).not.toBeChecked();
   });
 
@@ -195,7 +195,7 @@ describe("LevelWeatherPanel", () => {
     expect(asked).toEqual(["effect fx_blowout"]);
 
     act(() =>
-      weather.noteReport(mockWorldWeatherReport({ effect: { name: "fx_blowout", remaining: 125 }, time: 43_300 }))
+      weather.clock.noteReport(mockWorldWeatherReport({ effect: { name: "fx_blowout", remaining: 125 }, time: 43_300 }))
     );
 
     await waitFor(() =>
@@ -212,7 +212,7 @@ describe("LevelWeatherPanel", () => {
     const { getByRole, getByTestId, weather } = await renderPanel();
 
     act(() =>
-      weather.noteReport(
+      weather.clock.noteReport(
         mockWorldWeatherReport({
           ambient: {
             effect: { name: "effect_6", particles: "nature\\fog_stormy_01", remaining: 4_000 },
@@ -259,7 +259,7 @@ describe("LevelWeatherPanel", () => {
 
     expect(section()).toMatch(/Volumes\s*1.*Around the camera\s*0/);
 
-    act(() => weather.noteReport(mockWorldWeatherReport({ modifiers: 1, weight: 1 })));
+    act(() => weather.clock.noteReport(mockWorldWeatherReport({ modifiers: 1, weight: 1 })));
 
     await waitFor(() => expect(section()).toMatch(/Around the camera\s*1/));
   });

@@ -10,6 +10,7 @@ import {
 import { AudioSettingsService } from "@/core/audio/services/audio-settings.service";
 import { KeybindCommandsService } from "@/core/commands";
 import { ROOT_KEYBIND_COMMANDS } from "@/core/container/root-commands";
+import { RuntimeUsageService } from "@/core/diagnostics/services/runtime-usage.service";
 import { HelpService } from "@/core/help/services/help.service";
 import { JobsService } from "@/core/jobs/services/jobs.service";
 import { KEYMAP_ROOT_COMMANDS } from "@/core/keybinds/lib/keymap-root-commands";
@@ -47,6 +48,7 @@ export const ROOT_BINDINGS: ReadonlyArray<Binding> = [
   KeymapService,
   NotificationsService,
   RenderSettingsService,
+  RuntimeUsageService,
   SessionChangesService,
   SettingsAboutService,
   SettingsDialogService,

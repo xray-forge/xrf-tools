@@ -437,7 +437,7 @@ describe("LevelRenderService", () => {
       [ELevelsCommand.OPEN_LEVEL]: mockSessionResponse(mockSelectedLevelDescription()),
       [ELevelsCommand.SHOW_LEVEL]: LEVEL_SCENE,
     });
-    await container.get(LevelLoadService).load({
+    await container.get(LevelLoadService).open({
       engine: EXrayEngineChoice.VANILLA,
       isDltx: false,
       roots: createRoots(["C:\\game"]),

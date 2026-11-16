@@ -38,7 +38,7 @@ describe("LevelWeatherService, set by hand", () => {
 
     expect(service.transition).toBe(EWorldWeatherTransition.CUT);
 
-    service.noteReport(mockWorldWeatherReport({ time: 50_000 }));
+    service.clock.noteReport(mockWorldWeatherReport({ time: 50_000 }));
     service.setSource(ELevelWeatherSource.MANUAL);
 
     expect(service.manual).toEqual(toLevelManualWeather(mockWorldWeatherReport({ time: 50_000 }).current));
@@ -64,7 +64,7 @@ describe("LevelWeatherService, set by hand", () => {
     const service: LevelWeatherService = createLevelWeatherService();
 
     await mockOpenLevelWeather(service, LEVEL_WEATHER_SELECTED);
-    service.noteReport(
+    service.clock.noteReport(
       mockWorldWeatherReport({
         current: { ...mockWorldWeatherReport().current, skyTexture: "sky\\sky_night" },
       })
@@ -99,7 +99,7 @@ describe("LevelWeatherService, set by hand", () => {
     const service: LevelWeatherService = createLevelWeatherService();
 
     await mockOpenLevelWeather(service, LEVEL_WEATHER_SELECTED);
-    service.noteReport(
+    service.clock.noteReport(
       mockWorldWeatherReport({
         current: {
           ...mockWorldWeatherReport().current,
@@ -144,8 +144,8 @@ describe("LevelWeatherService, set by hand", () => {
     const shown: Array<ILevelManualWeather> = [];
     const stop: () => void = autorun(() => void shown.push(service.shown));
 
-    service.noteReport(mockWorldWeatherReport());
-    service.noteReport(mockWorldWeatherReport());
+    service.clock.noteReport(mockWorldWeatherReport());
+    service.clock.noteReport(mockWorldWeatherReport());
 
     expect(shown).toHaveLength(2);
 
@@ -153,7 +153,7 @@ describe("LevelWeatherService, set by hand", () => {
 
     const seen: number = shown.length;
 
-    service.noteReport(mockWorldWeatherReport({ time: 50_000 }));
+    service.clock.noteReport(mockWorldWeatherReport({ time: 50_000 }));
     stop();
 
     expect(shown).toHaveLength(seen);
@@ -162,12 +162,12 @@ describe("LevelWeatherService, set by hand", () => {
   it("hears the clock from the renderer, and stands where it was sent", () => {
     const service: LevelWeatherService = createLevelWeatherService();
 
-    service.noteReport(mockWorldWeatherReport({ time: 50_000 }));
+    service.clock.noteReport(mockWorldWeatherReport({ time: 50_000 }));
 
-    expect(service.time).toBe(50_000);
+    expect(service.clock.time).toBe(50_000);
 
-    service.seekTo(3_600);
+    service.clock.seekTo(3_600);
 
-    expect(service.time).toBe(3_600);
+    expect(service.clock.time).toBe(3_600);
   });
 });

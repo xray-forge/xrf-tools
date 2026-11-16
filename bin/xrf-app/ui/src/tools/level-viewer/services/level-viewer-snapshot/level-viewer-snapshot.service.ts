@@ -219,8 +219,8 @@ export class LevelViewerSnapshotService {
       },
       weather: {
         ...(cycle ? { cycle } : {}),
-        time: Math.round(weather.report?.time ?? weather.time),
-        isPlaying: !weather.control.isPaused,
+        time: Math.round(weather.clock.report?.time ?? weather.clock.time),
+        isPlaying: !weather.clock.control.isPaused,
       },
       look: { source: look.source, ...(look.source === ELevelLookSource.CUSTOM ? { custom: look.custom } : {}) },
       output: toLevelOutput(
@@ -408,7 +408,7 @@ export class LevelViewerSnapshotService {
     }
 
     if (typeof weather.isPlaying === "boolean") {
-      this.weatherService.setPlaying(weather.isPlaying);
+      this.weatherService.clock.setPlaying(weather.isPlaying);
     }
 
     return failed;

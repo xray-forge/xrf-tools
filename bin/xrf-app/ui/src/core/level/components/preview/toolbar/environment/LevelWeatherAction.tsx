@@ -38,7 +38,8 @@ export function LevelWeatherAction({
   const weatherService: LevelWeatherService = useInjection(LevelWeatherService);
   const renderService: LevelRenderService = useInjection(LevelRenderService);
 
-  const { source, time, control, report, isManual, seed } = weatherService;
+  const { source, isManual, seed } = weatherService;
+  const { time, control, report } = weatherService.clock;
   const description: Nullable<LevelWeatherDescription> = weatherService.description.value;
   const cycle: Nullable<LevelWeatherCycle> = weatherService.cycle.value;
   const isPlayable: boolean = cycle !== null;
@@ -58,7 +59,7 @@ export function LevelWeatherAction({
         toLevelManualWeatherLtx({
           engine: weatherService.engine,
           manual: weatherService.shown,
-          time: weatherService.time,
+          time: weatherService.clock.time,
         })
       ),
     [copy, weatherService]
@@ -115,8 +116,8 @@ export function LevelWeatherAction({
             report={weatherService.weather !== null ? report : null}
             control={control}
             onSeek={renderService.weather.seek}
-            onPlaying={weatherService.setPlaying}
-            onFactor={weatherService.setFactor}
+            onPlaying={weatherService.clock.setPlaying}
+            onFactor={weatherService.clock.setFactor}
           />
         </EditorPopoverGroupSection>
       </EditorPopoverContent>

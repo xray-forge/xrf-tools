@@ -88,7 +88,7 @@ describe("LevelLoadService", () => {
 
     armLevel();
 
-    const opened: unknown = service.load({
+    const opened: unknown = service.open({
       engine: EXrayEngineChoice.VANILLA,
       isDltx: false,
       roots: ROOTS,
@@ -108,7 +108,7 @@ describe("LevelLoadService", () => {
 
     armLevel();
 
-    await service.load({ engine: EXrayEngineChoice.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
+    await service.open({ engine: EXrayEngineChoice.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
     await flush();
 
     expect(service.level.value?.selected.value.sectors).toHaveLength(1);
@@ -137,7 +137,7 @@ describe("LevelLoadService", () => {
       }),
     });
 
-    await service.load({ engine: EXrayEngineChoice.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
+    await service.open({ engine: EXrayEngineChoice.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
     await flush();
 
     expect(service.objects).toBeNull();
@@ -153,7 +153,7 @@ describe("LevelLoadService", () => {
 
     armLevel();
 
-    await service.load({ engine: EXrayEngineChoice.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
+    await service.open({ engine: EXrayEngineChoice.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
     await flush();
     await service.close();
 
@@ -168,7 +168,7 @@ describe("LevelLoadService", () => {
 
     armLevel();
 
-    await service.load({ engine: EXrayEngineChoice.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
+    await service.open({ engine: EXrayEngineChoice.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
     await flush();
 
     mockIpcCommands({
@@ -197,7 +197,7 @@ describe("LevelLoadService", () => {
 
     armLevel();
 
-    await service.load({ engine: EXrayEngineChoice.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
+    await service.open({ engine: EXrayEngineChoice.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
     await flush();
 
     mockIpcCommands({
@@ -218,7 +218,7 @@ describe("LevelLoadService", () => {
 
     armLevel();
 
-    await service.load({ engine: EXrayEngineChoice.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
+    await service.open({ engine: EXrayEngineChoice.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
     await flush();
 
     mockIpcCommands({
@@ -227,7 +227,7 @@ describe("LevelLoadService", () => {
       }),
     });
 
-    await service.load({ engine: EXrayEngineChoice.VANILLA, isDltx: false, roots: ROOTS, source: OTHER_SOURCE });
+    await service.open({ engine: EXrayEngineChoice.VANILLA, isDltx: false, roots: ROOTS, source: OTHER_SOURCE });
 
     expect(service.level.value).toBeNull();
     expect(service.level.error?.message).toBe("level carries no visuals chunk, so it draws nothing");
@@ -244,7 +244,7 @@ describe("LevelLoadService", () => {
       }),
     });
 
-    await service.load({ engine: EXrayEngineChoice.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
+    await service.open({ engine: EXrayEngineChoice.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
 
     expect(service.level.isFailed).toBe(true);
 
@@ -267,7 +267,7 @@ describe("LevelLoadService", () => {
       }),
     });
 
-    await service.load({ engine: EXrayEngineChoice.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
+    await service.open({ engine: EXrayEngineChoice.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
 
     expect(service.level.value).toBeNull();
     expect(service.level.error?.message).toBe("level carries no visuals chunk, so it draws nothing");

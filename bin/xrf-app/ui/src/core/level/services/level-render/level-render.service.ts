@@ -203,7 +203,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   }
 
   protected onWeather(report: Nullable<WorldWeatherReport>): void {
-    this.weatherService.noteReport(report);
+    this.weatherService.clock.noteReport(report);
   }
 
   protected onLoad(report: RenderLoadReport): void {

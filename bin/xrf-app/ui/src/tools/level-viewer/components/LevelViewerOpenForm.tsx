@@ -80,7 +80,7 @@ export function LevelViewerOpenForm({
       return;
     }
 
-    await loadService.load({
+    await loadService.open({
       engine: engine.choice,
       isDltx,
       roots: createRoots([root.value]),

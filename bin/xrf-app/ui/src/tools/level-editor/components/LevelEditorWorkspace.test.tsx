@@ -7,13 +7,13 @@ import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { mockRenderLoadReport } from "@/core/render/fixtures/render.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { LevelEditorLayout } from "@/tools/level-editor/components/LevelEditorLayout";
+import { LevelEditorWorkspace } from "@/tools/level-editor/components/LevelEditorWorkspace";
 import { container as LEVEL_EDITOR_CONTAINER } from "@/tools/level-editor/runtime";
 
 const SCENE: string = "C:\\rawdata\\levels\\labx8.level";
 
 function renderLayout(
-  overrides: Partial<Parameters<typeof LevelEditorLayout>[0]> = {},
+  overrides: Partial<Parameters<typeof LevelEditorWorkspace>[0]> = {},
   prepare: (container: Container) => void = () => undefined
 ): RenderResult {
   const container: Container = mockContainer([...(LEVEL_EDITOR_CONTAINER.bindings ?? [])]);
@@ -21,12 +21,12 @@ function renderLayout(
   prepare(container);
 
   return renderWithProviders(
-    <LevelEditorLayout name={SCENE} renderViewport={() => <div data-testid={"stub-viewport"} />} {...overrides} />,
+    <LevelEditorWorkspace name={SCENE} renderViewport={() => <div data-testid={"stub-viewport"} />} {...overrides} />,
     { container, route: "/level-editor" }
   );
 }
 
-describe("LevelEditorLayout", () => {
+describe("LevelEditorWorkspace", () => {
   beforeEach(() => {
     resetMockInvoke();
   });

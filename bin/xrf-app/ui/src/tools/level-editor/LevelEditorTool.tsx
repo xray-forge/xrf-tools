@@ -6,8 +6,8 @@ import { ReactElement, useCallback, useState } from "react";
 import { SessionTool } from "@/core/session/components/SessionTool";
 import { LevelEditorSceneService } from "@/tools/level-editor/services/level-editor-scene";
 
-import { LevelEditorLayout } from "./components/LevelEditorLayout";
 import { LevelEditorOpenForm } from "./components/LevelEditorOpenForm";
+import { LevelEditorWorkspace } from "./components/LevelEditorWorkspace";
 
 /**
  * Open a Level Editor scene and inspect what it holds, read-only. An open that fails shows why where the scene would
@@ -38,7 +38,7 @@ export function LevelEditorTool({
       isOpen={!isFormOpen && (path !== null || sceneService.scene.isLoading || sceneService.scene.state.isFailed)}
       openForm={<LevelEditorOpenForm onFinished={onFinished} />}
       workspace={
-        <LevelEditorLayout
+        <LevelEditorWorkspace
           data-testid={dataTestId}
           id={id}
           className={className}

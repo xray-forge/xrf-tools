@@ -1,14 +1,13 @@
+import { EMPTY_ARRAY } from "@xrf/collections";
 import { bytesToWholeMegabytes } from "@xrf/format";
 import { ArchivePatchConfig, EArchivePackMode } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
 import { EditorPanelProperty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Alert } from "@xrf/ui/feedback";
-import { Checkbox, FormControlLabel } from "@xrf/ui/form/control";
-import { Stack } from "@xrf/ui/layout/stack";
-import { Typography } from "@xrf/ui/typography";
 import { ReactElement } from "react";
 
+import { ArchiveRunConfirmSummary } from "@/core/archive/components/config-editor/ArchiveRunConfirmSummary";
 import { HEADER_ENTRY_POINT, readHeaderValue } from "@/core/archive/lib/header";
 import { ARCHIVE_VOLUME_SUFFIX } from "@/core/archive/lib/volume-options";
 
@@ -17,7 +16,7 @@ interface IPatcherConfirmSummaryProps extends BaseComponentProps {
   /** Whether the run reports the difference or writes it, which changes almost everything below. */
   isPreviewOnly: boolean;
   /** Volumes of this set the output already holds, which publishing refuses to replace unasked. */
-  publishedVolumes: Array<string>;
+  publishedVolumes: ReadonlyArray<string>;
   isForced: boolean;
   onForceChange: (isForced: boolean) => void;
 }
@@ -39,7 +38,18 @@ export function PatcherConfirmSummary({
   const volumeName: string = `${config.name}.${ARCHIVE_VOLUME_SUFFIX[config.volumeExtension]}`;
 
   return (
-    <Stack data-testid={dataTestId} id={id} className={className} spacing={1.5}>
+    <ArchiveRunConfirmSummary
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      publishedVolumes={isPreviewOnly ? EMPTY_ARRAY : publishedVolumes}
+      replaceWarning={
+        `The output already holds ${publishedVolumes.length} volume(s) of this set. ` +
+        "Replacing them cannot be undone if the run fails partway through."
+      }
+      isForced={isForced}
+      onForceChange={onForceChange}
+    >
       <EditorPanelProperty label={"Game"} value={config.input} isMonospace isInline />
 
       <EditorPanelProperty
@@ -84,22 +94,6 @@ export function PatcherConfirmSummary({
           />
         </>
       )}
-
-      {!isPreviewOnly && publishedVolumes.length ? (
-        <>
-          <Alert severity={"warning"}>
-            The output already holds {publishedVolumes.length} volume(s) of this set. Replacing them cannot be undone if
-            the run fails partway through.
-          </Alert>
-
-          <FormControlLabel
-            control={
-              <Checkbox size={"small"} checked={isForced} onChange={(event) => onForceChange(event.target.checked)} />
-            }
-            label={<Typography variant={"body2"}>Replace them</Typography>}
-          />
-        </>
-      ) : null}
-    </Stack>
+    </ArchiveRunConfirmSummary>
   );
 }

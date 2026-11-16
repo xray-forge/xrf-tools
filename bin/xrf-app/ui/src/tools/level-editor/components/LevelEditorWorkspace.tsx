@@ -21,7 +21,7 @@ import { LevelEditorShowAction } from "@/tools/level-editor/components/toolbar/L
 import { LevelEditorViewport } from "@/tools/level-editor/components/viewport/LevelEditorViewport";
 import { ELevelEditorPanelId } from "@/tools/level-editor/lib/panels/level-editor-panel-id";
 
-interface ILevelEditorLayoutProps extends BaseComponentProps {
+interface ILevelEditorWorkspaceProps extends BaseComponentProps {
   /** What the open scene is called, which heads the workspace. Its presence is what the viewport draws. */
   name?: Nullable<string>;
   /** What the scene being opened is called, which heads the workspace until it is open. */
@@ -43,9 +43,9 @@ interface ILevelEditorLayoutProps extends BaseComponentProps {
  * The level editor's chrome: the toolbar with what is shown and the camera, the scene's header, the viewport the scene
  * is drawn in, and the panel stripe listing, inspecting and checking what the scene holds.
  */
-export function LevelEditorLayout({
-  "data-testid": dataTestId = "level-editor-layout",
-  id = "level-editor-layout",
+export function LevelEditorWorkspace({
+  "data-testid": dataTestId = "level-editor-workspace",
+  id = "level-editor-workspace",
   className,
   name = null,
   pending = null,
@@ -56,7 +56,7 @@ export function LevelEditorLayout({
   onRetry,
   onBack,
   onClose = null,
-}: ILevelEditorLayoutProps): ReactElement {
+}: ILevelEditorWorkspaceProps): ReactElement {
   const isOpen: boolean = Boolean(name);
   const heading: Nullable<string> = name ?? pending;
 

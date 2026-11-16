@@ -16,12 +16,7 @@ import {
 } from "@xrf/ipc/types/xrf-app-levels";
 import { EXrayEngine, XrayEngine } from "@xrf/ipc/types/xrf-engine-target";
 import { EWeatherCycleKind, WeatherDescriptor } from "@xrf/ipc/types/xrf-environment";
-import {
-  EWorldWeatherPlay,
-  EWorldWeatherTransition,
-  WorldWeatherPlay,
-  WorldWeatherReport,
-} from "@xrf/ipc/types/xrf-world";
+import { EWorldWeatherPlay, EWorldWeatherTransition, WorldWeatherPlay } from "@xrf/ipc/types/xrf-world";
 import { Logger } from "@xrf/logging";
 import { Maybe, Nullable } from "@xrf/types";
 
@@ -35,12 +30,6 @@ import {
   DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS,
   ILevelSunShaftsOptions,
 } from "@/core/level/lib/weather/level-sun-shafts-options";
-import {
-  DEFAULT_LEVEL_WEATHER_CONTROL,
-  ILevelWeatherControl,
-  LEVEL_WEATHER_NOON,
-  toLevelWeatherFactor,
-} from "@/core/level/lib/weather/level-weather-control";
 import { ILevelWeatherHold } from "@/core/level/lib/weather/level-weather-hold";
 import {
   ILevelWeatherMemory,
@@ -51,6 +40,7 @@ import {
 import { ILevelWeatherSeed } from "@/core/level/lib/weather/level-weather-seed";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
 import { LevelLoadService } from "@/core/level/services/level-load";
+import { LevelWeatherClock } from "@/core/level/services/level-weather/level-weather.service.clock";
 
 /**
  * The open level's weather: what it plays, how, and where the renderer's clock stands. The renderer reads the cycle
@@ -97,20 +87,12 @@ export class LevelWeatherService {
   @RefObservable()
   public source: ELevelWeatherSource = ELevelWeatherSource.WEATHER;
 
-  @RefObservable()
-  public control: ILevelWeatherControl = DEFAULT_LEVEL_WEATHER_CONTROL;
-
   /** How the level's sun shafts step, and the floor under their density: remembered with its weather. */
   @RefObservable()
   public sunShafts: ILevelSunShaftsOptions = DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS;
 
-  /** Where the clock stands, in seconds since midnight: sent to, or heard back from the renderer. */
-  @RefObservable()
-  public time: number = LEVEL_WEATHER_NOON;
-
-  /** Where the renderer's weather stood when it last reported, or null before it has. */
-  @RefObservable()
-  public report: Nullable<WorldWeatherReport> = null;
+  /** How the renderer's clock runs, where it stands, and what it last reported. */
+  public readonly clock: LevelWeatherClock = new LevelWeatherClock(() => this.persist());
 
   /** The level whose weather is held or being read. */
   private sessionId: Nullable<string> = null;
@@ -187,7 +169,7 @@ export class LevelWeatherService {
   /** The keyframe on screen as one set by hand: the one set, or the weather's mix, which a first edit seeds it from. */
   @Computed()
   public get shown(): ILevelManualWeather {
-    const current: Maybe<WeatherDescriptor> = this.isManual ? undefined : this.report?.current;
+    const current: Maybe<WeatherDescriptor> = this.isManual ? undefined : this.clock.report?.current;
 
     return current ? toLevelManualWeather(current) : (this.manual ?? DEFAULT_LEVEL_MANUAL_WEATHER);
   }
@@ -262,11 +244,9 @@ export class LevelWeatherService {
     this.seed = null;
     this.isManualPlayed = false;
     this.transition = EWorldWeatherTransition.CUT;
-    this.report = null;
     this.source = ELevelWeatherSource.WEATHER;
-    this.control = DEFAULT_LEVEL_WEATHER_CONTROL;
     this.sunShafts = DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS;
-    this.time = LEVEL_WEATHER_NOON;
+    this.clock.reset();
   }
 
   /**
@@ -309,11 +289,11 @@ export class LevelWeatherService {
     const held: ILevelWeatherHold = {
       cycle: this.cycle.value?.name ?? this.remembered,
       source: this.source,
-      control: this.control,
-      time: this.time,
+      control: this.clock.control,
+      time: this.clock.time,
     };
 
-    this.control = { ...this.control, isPaused: true };
+    this.clock.hold();
 
     return held;
   }
@@ -367,7 +347,7 @@ export class LevelWeatherService {
     const shown: Nullable<WorldWeatherPlay> = this.weather;
 
     this.source = held.source;
-    this.control = held.control;
+    this.clock.release(held.control);
     this.noteShown(shown, EWorldWeatherTransition.CUT);
     this.persist();
   }
@@ -448,55 +428,6 @@ export class LevelWeatherService {
     this.isManualPlayed = true;
     this.noteShown(shown, EWorldWeatherTransition.EASE);
     this.persist();
-  }
-
-  @BoundAction()
-  public setPlaying(isPlaying: boolean): void {
-    this.control = { ...this.control, isPaused: !isPlaying };
-    this.persist();
-  }
-
-  /**
-   * @param factor - Game seconds a real second, kept within the engine's bounds.
-   */
-  @BoundAction()
-  public setFactor(factor: number): void {
-    this.control = { ...this.control, factor: toLevelWeatherFactor(factor) };
-    this.persist();
-  }
-
-  @BoundAction()
-  public setDynamicSun(isDynamicSun: boolean): void {
-    this.control = { ...this.control, isDynamicSun };
-    this.persist();
-  }
-
-  /**
-   * Notes where the clock was sent to, which is where it stands until the renderer reports otherwise.
-   *
-   * @param time - Seconds since midnight to play on from.
-   */
-  @BoundAction()
-  public seekTo(time: number): void {
-    this.time = time;
-    this.persist();
-  }
-
-  /**
-   * @param report - Where the renderer's weather stood when it reported, or null while none plays; one the same as the
-   *   last is dropped, so a paused clock redraws nothing that reads it.
-   */
-  @BoundAction()
-  public noteReport(report: Nullable<WorldWeatherReport>): void {
-    if (!comparer.structural(report, this.report)) {
-      this.report = report;
-    }
-
-    const time: Nullable<number> = report?.time ?? null;
-
-    if (time !== null && time !== this.time) {
-      this.time = time;
-    }
   }
 
   @BoundAction()
@@ -595,8 +526,7 @@ export class LevelWeatherService {
   @BoundAction()
   private restore(memory: ILevelWeatherMemory): void {
     this.source = memory.source;
-    this.control = memory.control;
-    this.time = memory.time;
+    this.clock.restore(memory);
     this.manual = memory.manual;
     this.base = memory.base;
     this.seed = memory.seed;
@@ -609,11 +539,11 @@ export class LevelWeatherService {
    * is kept whole as its base.
    */
   private seedManual(): ILevelManualWeather {
-    const current = this.report?.current;
+    const current = this.clock.report?.current;
     const weather: ILevelManualWeather = current ? toLevelManualWeather(current) : DEFAULT_LEVEL_MANUAL_WEATHER;
 
     this.base = current ?? null;
-    this.seed = current && this.cycle.value ? { cycle: this.cycle.value.name, time: this.time, weather } : null;
+    this.seed = current && this.cycle.value ? { cycle: this.cycle.value.name, time: this.clock.time, weather } : null;
 
     return weather;
   }
@@ -777,14 +707,14 @@ export class LevelWeatherService {
 
     if (this.memoryKey && (cycle || this.manual)) {
       writeLevelWeatherMemory(this.memoryKey, {
-        control: this.control,
+        control: this.clock.control,
         cycle,
         base: this.base,
         manual: this.manual,
         seed: this.seed,
         source: this.source,
         sunShafts: this.sunShafts,
-        time: this.time,
+        time: this.clock.time,
       });
     }
   }

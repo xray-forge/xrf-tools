@@ -103,7 +103,7 @@ async function renderPanel(
   ]);
   const service: LevelLoadService = container.get(LevelLoadService);
 
-  await service.load({
+  await service.open({
     source: { kind: "asset", logicalPath: "levels\\zaton" },
     roots: level.roots,
     isDltx: false,
@@ -403,7 +403,7 @@ describe("LevelOutlinerPanel", () => {
 
     // The level opening again redraws the panel as each of its steps lands.
     await act(async () => {
-      await service.load({
+      await service.open({
         source: { kind: "asset", logicalPath: "levels\\zaton" },
         roots: mockSelectedLevelDescription().roots,
         isDltx: false,

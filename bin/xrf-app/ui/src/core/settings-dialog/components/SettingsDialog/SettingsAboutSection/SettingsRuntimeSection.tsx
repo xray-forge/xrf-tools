@@ -1,16 +1,15 @@
+import { useInjection } from "@wirestate/react";
 import { formatBytes, formatDuration, formatInstant } from "@xrf/format";
-import { systemCommands } from "@xrf/ipc/commands/system";
 import { MemoryUsage, RuntimeSnapshot } from "@xrf/ipc/types/xrf-app-system";
-import { Logger } from "@xrf/logging";
-import { useLogger } from "@xrf/logging/react";
-import { usePolledValue } from "@xrf/react/polled-value";
 import { Nullable } from "@xrf/types";
 import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { StatFigure } from "@xrf/ui/stats";
 import { Typography } from "@xrf/ui/typography";
 import { ReactElement } from "react";
 
-import { useMemoryUsage } from "@/core/diagnostics/lib";
+import { useMemoryUsage } from "@/core/diagnostics/lib/use-memory-usage";
+import { RuntimeUsageService } from "@/core/diagnostics/services/runtime-usage.service";
+import { usePolledCommand } from "@/core/operations/lib/use-polled-command";
 
 import { describeBackendMemory, describeWebviewMemory } from "./SettingsRuntimeSection.utils";
 
@@ -18,18 +17,10 @@ import { describeBackendMemory, describeWebviewMemory } from "./SettingsRuntimeS
  * When this session started, and what it is costing the machine right now.
  */
 export function SettingsRuntimeSection(): ReactElement {
-  const log: Logger = useLogger(__MODULE_NAME__);
+  const runtimeUsageService: RuntimeUsageService = useInjection(RuntimeUsageService);
 
-  const snapshot: Nullable<RuntimeSnapshot> = usePolledValue(
-    () =>
-      systemCommands.getRuntimeSnapshot().catch((error: unknown) => {
-        log.error("Failed to read runtime snapshot:", error);
-
-        return null;
-      }),
-    1_000
-  );
-  const memory: Nullable<MemoryUsage> = useMemoryUsage((usage: MemoryUsage): MemoryUsage => usage);
+  const snapshot: Nullable<RuntimeSnapshot> = usePolledCommand(runtimeUsageService.snapshot);
+  const memory: Nullable<MemoryUsage> = useMemoryUsage();
 
   return (
     <DetailSection
