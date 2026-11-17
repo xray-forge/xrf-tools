@@ -54,8 +54,17 @@ pub(crate) struct LevelTreeDecompile {
   pub(crate) placements: Vec<LevelTreePlacement>,
   /// Each model's impostor strips, by its reference, where it has one.
   pub(crate) impostors: Vec<(String, LevelTreeImpostor)>,
+  /// Each model given its strips, with where its impostor was stood, for [`LevelTreeConversion::fit_impostor_boxes`].
+  pub(crate) frames: Vec<LevelTreeImpostorFrame>,
   /// The impostors that did not cut, the model coming back without one.
   pub(crate) refused: Vec<LevelSceneRefusal>,
+}
+
+/// Where a model's impostor was stood: its first placement's `MT_LOD`, by its visual's index, and that placement.
+pub(crate) struct LevelTreeImpostorFrame {
+  pub(crate) reference: String,
+  pub(crate) lod: u32,
+  pub(crate) placement: Matrix4x4,
 }
 
 /// A placed tree: the model it places by reference, the mesh its sector names, its transform and sector.
@@ -127,6 +136,7 @@ impl LevelTreeConversion {
       models: Vec::new(),
       placements: Vec::with_capacity(placements.len()),
       impostors: Vec::new(),
+      frames: Vec::new(),
       refused: Vec::new(),
     };
     // Each model's reference and mesh, by its subdivisions.
@@ -156,24 +166,20 @@ impl LevelTreeConversion {
 
           decompiled.object.flags |= EditableObjectFile::MULTIPLE_USAGE_FLAG;
 
-          if let Some((impostors, lod)) =
-            impostors.and_then(|impostors| Some((impostors, *impostors.lods.get(&parent?)?)))
-          {
+          if let Some((impostors, parent, lod)) = impostors.and_then(|impostors| {
+            let parent: u32 = parent?;
+
+            Some((impostors, parent, *impostors.lods.get(&parent)?))
+          }) {
             match impostors.atlas.cut(lod) {
               Ok(impostor) => {
                 decompiled.object.flags |= EditableObjectFile::USING_LOD_FLAG;
                 decompile.impostors.push((reference.clone(), impostor));
-
-                if !Self::fit_impostor_box(&mut decompiled.object, lod, &placement) {
-                  decompile.refused.push(LevelSceneRefusal {
-                    file: String::from(LevelFile::FILE_NAME),
-                    object: reference.clone(),
-                    reason: String::from(
-                      "The impostor's quads stand in no box around the model, so the Build stands them around the \
-                       model's own",
-                    ),
-                  });
-                }
+                decompile.frames.push(LevelTreeImpostorFrame {
+                  reference: reference.clone(),
+                  lod: parent,
+                  placement,
+                });
               }
               Err(error) => decompile.refused.push(LevelSceneRefusal {
                 file: String::from(LevelTreeImpostorAtlas::COLOR_FILE_NAME),
@@ -213,6 +219,32 @@ impl LevelTreeConversion {
     }
 
     Ok(decompile)
+  }
+
+  /// Fits the box of each model `trees` still holds to where its impostor was stood ([`Self::fit_impostor_box`]), its
+  /// `MT_LOD` read from `lods`, refusing the fit where it does not hold the model. A model a library tree stands for is
+  /// no longer held and takes no fit: the Build stands that tree's impostor in the library object's own box, which the
+  /// level's placements need not let through, such as one GSC scaled to nothing rather than delete (`mp_agroprom`).
+  pub(crate) fn fit_impostor_boxes(trees: &mut LevelTreeDecompile, lods: &HashMap<u32, &OgfLodDefinitionChunk>) {
+    for frame in std::mem::take(&mut trees.frames) {
+      let (Some(model), Some(lod)) = (
+        trees.models.iter_mut().find(|model| model.reference == frame.reference),
+        lods.get(&frame.lod),
+      ) else {
+        continue;
+      };
+
+      if !Self::fit_impostor_box(&mut model.decompile.object, lod, &frame.placement) {
+        trees.refused.push(LevelSceneRefusal {
+          file: String::from(LevelFile::FILE_NAME),
+          object: frame.reference,
+          reason: String::from(
+            "The impostor's quads stand in no box around the model, so the model is kept with its own box, around \
+             which the Build stands them",
+          ),
+        });
+      }
+    }
   }
 
   /// Widens `object`'s first mesh's stored box to the box its impostor `lod` was stood in by `placement`, as the Build

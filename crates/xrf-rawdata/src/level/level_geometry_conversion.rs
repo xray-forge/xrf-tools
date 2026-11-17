@@ -449,6 +449,10 @@ impl LevelGeometryConversion {
       decompile.census.library_tree_models = decompile.trees.len();
     }
 
+    if let Some(impostors) = &impostors {
+      LevelTreeConversion::fit_impostor_boxes(&mut trees, &impostors.lods);
+    }
+
     decompile.census.tree_impostors = trees.impostors.len();
     decompile.refused.append(&mut trees.refused);
 

@@ -673,6 +673,74 @@ fn names_the_strips_of_a_library_trees_impostor_for_it() -> XrfResult {
   Ok(())
 }
 
+/// A tree placed scaled to nothing, as GSC hid trees rather than delete them, stands its impostor where no box can be
+/// read back through the placement: a level model is kept with its own box and the fit refused, while a model a
+/// library tree stands for takes no fit, the Build standing the impostor in the library object's own box.
+#[test]
+fn fits_no_impostor_box_for_a_model_a_library_tree_stands_for() -> XrfResult {
+  // Far enough out that the impostor's corners, stored in the level's space, fall within a step of f32 of each other.
+  let placement: Matrix4x4 = Matrix4x4::from_translation(&Vector3d::new(118.3, 121.7, 115.9))
+    .multiply(&Matrix4x4::from_scale(&Vector3d::new(1e-6, 1e-6, 1e-6)));
+  let strips: [RgbaImage; 2] = [strip(7), strip(8)];
+  let merged: LevelBuildAtlas = LevelBuildAtlas::merge(&[&strips], &LevelBuildAtlas::LOD_SIZES).expect("a fit");
+  let atlas: LevelTreeImpostorAtlas = LevelTreeImpostorAtlas::new(merged.layers[0].clone(), merged.layers[1].clone())?;
+  let impostor: OgfLodDefinitionChunk = stood_lod(
+    &merged.places[0],
+    &bounds((-1.0, -1.0, -1.0), (1.0, 2.0, 1.0)),
+    &placement,
+  );
+  let visuals = || {
+    vec![
+      drawable(0),
+      drawable(1),
+      hierarchy(vec![0, 4]),
+      tree(2, placement),
+      LevelVisual {
+        lod: Some(Ok(impostor.clone())),
+        ..hierarchy(vec![3])
+      },
+    ]
+  };
+  let alone: LevelGeometryDecompile = decompile_from(&level((0, 1)), visuals(), None, None, None, Some(&atlas))?;
+
+  assert_eq!(
+    alone
+      .refused
+      .iter()
+      .map(|refusal| refusal.object.as_str())
+      .collect::<Vec<_>>(),
+    ["levels\\test\\test_tree_0"],
+    "the placement lets no box through"
+  );
+  assert_eq!((alone.census.tree_models, alone.census.tree_impostors), (1, 1));
+
+  let model: &EditableObjectFile = &alone
+    .objects
+    .iter()
+    .find(|object| object.reference.contains("_tree_"))
+    .expect("a tree model")
+    .decompile
+    .object;
+  let mut library: LevelInstanceLibrary = LevelInstanceLibrary::default();
+
+  library.add(String::from("trees\\bush"), PathBuf::from("bush.object"), model, None);
+
+  let decompiled: LevelGeometryDecompile =
+    decompile_from(&level((0, 1)), visuals(), None, None, Some(&library), Some(&atlas))?;
+
+  assert!(decompiled.refused.is_empty(), "{:?}", decompiled.refused);
+  assert_eq!(
+    (
+      decompiled.census.library_tree_models,
+      decompiled.census.tree_models,
+      decompiled.census.tree_impostors
+    ),
+    (1, 0, 1)
+  );
+
+  Ok(())
+}
+
 const STONE: u16 = 3;
 const EARTH: u16 = 5;
 
