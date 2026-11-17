@@ -190,16 +190,17 @@ impl DecompileCommand {
       xrf_output::info!(
         output,
         "Static geometry: {} objects under {}, {} faces from {} triangles ({} two-sided folds, {} repeats dropped); \
-         {} tree models placed {} times, {} with impostor strips under {}; {} collision faces no render triangle \
-         draws",
+         {} tree placements of {} tree models, {} of them library trees, {} with impostor strips under {}; {} \
+         collision faces no render triangle draws",
         geometry.objects,
         report.objects_root,
         geometry.census.faces,
         geometry.census.static_triangles,
         geometry.census.two_sided_faces,
         geometry.census.repeated_triangles,
-        geometry.census.tree_models,
         geometry.census.tree_placements,
+        geometry.census.library_tree_models + geometry.census.tree_models,
+        geometry.census.library_tree_models,
         geometry.census.tree_impostors,
         report.textures_root,
         geometry.census.collision_only_faces
@@ -232,7 +233,8 @@ impl DecompileCommand {
     if !report.refused.is_empty() {
       xrf_output::warning!(
         output,
-        "Left out {} objects the scene cannot hold, each named with its reason in the sidecar",
+        "Refused {} things the scene cannot hold as read, each named in the sidecar with its reason: what the scene \
+         left out, or kept another way",
         report.refused.len()
       );
     }
