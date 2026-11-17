@@ -232,7 +232,7 @@ export type LevelGeometryCensus = {
   instanceTriangles?: number;
   /** Impostors standing for trees afar, which the build makes again from the trees. */
   impostors: number;
-  /** Tree models given their impostor strips back, cut from the level's atlas. */
+  /** Tree models given their impostor strips back, cut from the level's atlas; a library tree's named for it. */
   treeImpostors?: number;
   /** Static triangles dropped as copies of wall marks ([`LevelDecalIndex`]), counted in the static triangles read. */
   decalTriangles: number;
