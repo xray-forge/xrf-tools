@@ -2,7 +2,7 @@ use tauri::State;
 use xrf_app_core::TauriResult;
 use xrf_app_core::window::{InvokingWindow, WindowReveals};
 
-/// Put the calling window on screen: its page has something themed to show. A page loaded over a window already shown
+/// Put the calling window on screen: its page has drawn its first screen. A page loaded over a window already shown
 /// changes nothing.
 ///
 /// Asynchronous so it runs off the main thread: a synchronous command runs inside the webview's message callback there,

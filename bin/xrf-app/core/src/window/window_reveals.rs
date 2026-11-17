@@ -16,11 +16,12 @@ pub struct WindowReveals {
 }
 
 impl WindowReveals {
-  /// How long a window stays hidden waiting for its page.
+  /// How long a window stays hidden waiting for its page's first screen.
   const TIMEOUT: Duration = Duration::from_secs(1);
 
   /// Holds `window` hidden until its page reveals it, and reveals it anyway once `Self::TIMEOUT` has passed, so a page
-  /// that never boots still leaves something on screen.
+  /// slow to draw its first screen, as a development one loading its modules is, or one that never boots, shows what
+  /// it has meanwhile.
   pub fn hold<R: Runtime>(&self, window: WebviewWindow<R>) {
     self.hold_for(window.label().to_owned(), Box::new(window), Self::TIMEOUT);
   }
@@ -46,7 +47,7 @@ impl WindowReveals {
       thread::sleep(timeout);
 
       if let Some(window) = reveals.take(&waited) {
-        log::warn!("Revealing window '{waited}' its page left hidden for {timeout:?}");
+        log::info!("Revealing window '{waited}' ahead of its page, which has drawn no screen for {timeout:?}");
 
         window.reveal();
       }

@@ -66,7 +66,7 @@ impl MainWindow {
       WindowGeometryTracker::track(&window, preferences, opened);
     }
 
-    // The configuration declares it hidden: its page reveals it once it has something themed to show.
+    // The configuration declares it hidden: its page reveals it once it has drawn its first screen.
     application.state::<WindowReveals>().hold(window);
 
     Ok(())
