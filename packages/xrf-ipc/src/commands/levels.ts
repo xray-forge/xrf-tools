@@ -106,7 +106,7 @@ export const levelsCommands = {
    * the steps, as `level compile` does, one job reporting both. A cancel stops the build between its steps and the
    * compile within its running step. The compile works on the directory the build wrote, whatever level `compile`
    * names, overwrites what it writes as the build does where the build is forced, and traces on D3D12 with the DXC the
-   * app bundles where it traces on the GPU.
+   * app bundles where it traces on the GPU ([`LevelBuildRun::new`]).
    */
   buildLevel: (
     request: LevelBuildRequest,

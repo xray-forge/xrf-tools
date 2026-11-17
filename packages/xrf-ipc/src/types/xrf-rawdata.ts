@@ -68,14 +68,17 @@ export type LevelBuildReport = {
 /**
  * A scene's build into a level directory, as a front-end asks for it: the game files always, and the level compiler's
  * files (`build.prj`, the occluders, `level.ltx`, details, AI map, impostors, breakables) where the game material
- * library is named, the objects read from the objects roots.
+ * library is named, the objects read from the objects roots ([`Self::get_objects_roots`]).
  */
 export type LevelBuildRequest = {
   /** The scene's main file, `<name>.level`, its parts in the directory beside it named after it. */
   source: string;
   /** The level directory the files are written into. */
   destination: string;
-  /** The objects roots (`$objects$`) the scene's objects are read from, each from the first holding it. */
+  /**
+   * The objects roots (`$objects$`) the scene's objects are read from, each from the first holding it; none for
+   * `<rawdata>/objects` beside the scene, where a decompile writes them.
+   */
   objects: Array<string>;
   /** The game material library, `gamemtl.xr`; the level compiler's files are written only where it is named. */
   gameMaterials: string | null;

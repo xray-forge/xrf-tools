@@ -75,8 +75,8 @@ export type LevelCompileRequest = {
   /** The game data the compilers read their libraries from (`$game_data$`): `gamemtl.xr` and `shaders_xrlc.xr`. */
   gamedata: string;
   /**
-   * The textures roots (`$game_textures$`), searched in order for each file: a `.thm` for every texture `build.prj`
-   * names, and the image where the texture has alpha or is lit implicitly.
+   * The textures roots (`$game_textures$`) searched before the game data's own `textures`, such as one a decompile
+   * wrote impostor strips into ([`Self::get_textures_roots`]).
    */
   textures: Array<string>;
   /** Whether a step overwrites a file it writes where the level's directory holds it, rather than refusing. */

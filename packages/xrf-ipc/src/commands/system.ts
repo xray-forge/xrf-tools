@@ -70,7 +70,7 @@ export const systemCommands = {
   /** Show a path in the desktop's own file manager. */
   revealPath: (path: string) => __TAURI_INVOKE<null>(ESystemCommand.REVEAL_PATH, { path }),
   /**
-   * Put the calling window on screen: its page has something themed to show. A page loaded over a window already shown
+   * Put the calling window on screen: its page has drawn its first screen. A page loaded over a window already shown
    * changes nothing.
    *
    * Asynchronous so it runs off the main thread: a synchronous command runs inside the webview's message callback there,
