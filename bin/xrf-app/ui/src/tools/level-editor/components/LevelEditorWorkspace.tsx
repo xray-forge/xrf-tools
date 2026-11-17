@@ -17,6 +17,7 @@ import { LevelEditorInspectorPanel } from "@/tools/level-editor/components/panel
 import { LevelEditorOutlinerPanel } from "@/tools/level-editor/components/panels/LevelEditorOutlinerPanel";
 import { LevelEditorProblemsPanel } from "@/tools/level-editor/components/panels/LevelEditorProblemsPanel";
 import { LevelEditorScenePanel } from "@/tools/level-editor/components/panels/LevelEditorScenePanel";
+import { LevelEditorBuildAction } from "@/tools/level-editor/components/toolbar/LevelEditorBuildAction";
 import { LevelEditorShowAction } from "@/tools/level-editor/components/toolbar/LevelEditorShowAction";
 import { LevelEditorViewport } from "@/tools/level-editor/components/viewport/LevelEditorViewport";
 import { ELevelEditorPanelId } from "@/tools/level-editor/lib/panels/level-editor-panel-id";
@@ -102,6 +103,7 @@ export function LevelEditorWorkspace({
             <>
               <LevelEditorShowAction />
               <LevelCameraAction />
+              <LevelEditorBuildAction />
             </>
           }
         />

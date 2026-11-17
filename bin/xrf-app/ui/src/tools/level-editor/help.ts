@@ -36,6 +36,9 @@ export const LEVEL_EDITOR_HELP: IToolHelp = {
       "objects shows them all.",
     "The Scene panel shows the `.level` itself: its GUID, the roots it reads from, build parameters, camera and every " +
       "tool's part files.",
+    "Build opens the level compiler holding the scene, its level directory `gamedata\\levels\\<level>` beside the " +
+      "scene's `rawdata`, the textures its decompile wrote there, and the game data the scene is drawn with other than " +
+      "that one; tick the steps there and build.",
   ],
   nuances: [
     "The scene is lit by a fixed sun and an even ambient light, not by a weather or baked light: it shows shape and " +
