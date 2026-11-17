@@ -459,7 +459,14 @@ their packets in `LevelGeometryDecompile::folded_entities`, which the entities t
   whose part is missing stays an entity, counted.
 
 Both stand where their packets placed them, `Affine3d::from_xyz` of the angles. Over vanilla, all 380 ladders and 173
-breakables fold back.
+breakables fold back. A placed library object keeps the faces the Build cut its ladders and breakables from, so
+`LevelInstanceCutouts` cuts the placements' parts as the Build does (`LevelBuildParts`, with the inference's game
+materials or `LevelGeometrySources::game_materials`) and folds a packet whose box one of them makes (within 5 cm, a
+ladder's length and width too) into its placement alone; folded into an object as well, it would be built twice. With
+no game material library, no packet is folded into a placement. Over the SDK's library, an object of their own would
+double 10 of the 135 ladders of zaton, jupiter and jupiter_underground and merge 4 more with the library's faces into a
+larger box; folded, those 14 keep vanilla's centre, length and width but come back thinner (12 flat), the SDK's
+objects differing from those GSC built them from by up to 10 cm of half thickness.
 
 Over vanilla CoP's 22 levels, 7,189,838 static triangles lie exactly on a collision face, 2,036,780 are traced to one
 and 601,675 lie on none. Where the SDK's objects dress the same texture and engine shader, the compiler shader is one

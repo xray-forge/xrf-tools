@@ -9,6 +9,7 @@ use xrf_editable_level::{
 };
 use xrf_editable_object::{EditableMesh, EditableObjectFile};
 use xrf_error::{XrfError, XrfResult};
+use xrf_gamemtl::GameMtlFile;
 use xrf_level::{
   LevelCformFile, LevelFile, LevelGeomFile, LevelGeomSource, LevelHomFile, LevelSectorComposition, LevelShadersChunk,
   LevelSomFile, LevelVisual, LevelVisualsChunk,
@@ -17,6 +18,7 @@ use xrf_math::{Matrix4x4, Vector3d};
 use xrf_ogf::OgfFile;
 use xrf_spawn::LevelSpawnFile;
 
+use crate::level::instance::level_instance_cutouts::LevelInstanceCutouts;
 use crate::level::instance::level_instance_library::LevelInstanceLibrary;
 use crate::level::instance::level_instance_placement::LevelInstancePlacement;
 use crate::level::instance::level_instance_recovery::LevelInstanceRecovery;
@@ -74,6 +76,10 @@ pub struct LevelGeometrySources<'a, D: ChunkDataSource> {
   pub impostors: Option<&'a LevelTreeImpostorAtlas>,
   /// The library objects looked for in the static geometry, each found placement placed by reference.
   pub library: Option<&'a LevelInstanceLibrary>,
+  /// The game material library telling which faces of the placed library objects the Build cuts into ladders and
+  /// breakables, read where the surfaces are not inferred; inferred surfaces tell it by their own. With neither, no
+  /// ladder or breakable is folded into a placement.
+  pub game_materials: Option<&'a GameMtlFile>,
 }
 
 /// One object the decompile writes, by the path the scene references it at, and where its scene object stands.
@@ -252,7 +258,8 @@ impl LevelGeometryConversion {
   /// - `level.hom` and `level.som`, as `<level>_hom` and `<level>_som` ([`LevelOccluderConversion`]);
   /// - with the spawn list, each ladder and breakable part the Build exported from the geometry, as `<level>_ladder_<N>`
   ///   and `<level>_breakable_<N>` standing where their packets placed them ([`LevelLadderConversion`],
-  ///   [`LevelBreakableConversion`]), each packet named in the decompile's folded entities.
+  ///   [`LevelBreakableConversion`]), each packet named in the decompile's folded entities; one a placed library
+  ///   object's own faces make again is folded into its placement alone, where a game material library tells which.
   ///
   /// A sector names its shell and each mesh of a tree or library object placed in it, a library object's meshes each by
   /// the sector holding most of its triangles. A sector drawing no static geometry of its own or of a placed mesh has
@@ -313,7 +320,16 @@ impl LevelGeometryConversion {
     }
 
     if let Some(spawn) = sources.spawn {
-      Self::decompile_entities::<T>(&mut decompile, name, spawn, sources.breakable_parts, context)?;
+      let cutouts: LevelInstanceCutouts = match surfaces
+        .as_deref()
+        .map(LevelSurfaceInference::get_game_materials)
+        .or(sources.game_materials)
+      {
+        Some(game_materials) => LevelInstanceCutouts::of::<T>(&decompile.instances, game_materials)?,
+        None => LevelInstanceCutouts::default(),
+      };
+
+      Self::decompile_entities::<T>(&mut decompile, name, spawn, sources.breakable_parts, &cutouts, context)?;
     }
 
     // With a sector left out, the rest would renumber, so none is written, and no portal joining them.
@@ -934,19 +950,26 @@ impl LevelGeometryConversion {
   /// Each entity of `spawn` the Build exported from the geometry as an object standing where the packet placed it, its
   /// packet's name folded into `decompile`: a ladder as its box ([`LevelLadderConversion`]), a breakable as its part of
   /// `parts` ([`LevelBreakableConversion`]), either refused, and left an entity, where its geometry does not decompile.
-  /// A packet that does not read is left to the spawn points, which refuse it, and a breakable whose part is missing
+  /// One a placed library object makes again (`cutouts`) is folded into its placement with no object of its own. A
+  /// packet that does not read is left to the spawn points, which refuse it, and a breakable whose part is missing
   /// stays an entity.
   fn decompile_entities<T: ByteOrder>(
     decompile: &mut LevelGeometryDecompile,
     name: &str,
     spawn: &LevelSpawnFile,
     parts: &BTreeMap<String, OgfFile>,
+    cutouts: &LevelInstanceCutouts,
     context: &mut LevelDecompileContext,
   ) -> XrfResult {
     for object in &spawn.objects {
       let Ok(entity) = object.read_alife_object::<T>() else {
         continue;
       };
+
+      if cutouts.is_made(&entity) {
+        decompile.folded_entities.push(object.name.clone());
+        continue;
+      }
 
       match LevelLadderConversion::decompile(name, decompile.census.ladders, &entity) {
         Ok(Some(ladder)) => {

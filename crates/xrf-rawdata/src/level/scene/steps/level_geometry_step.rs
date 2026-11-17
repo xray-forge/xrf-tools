@@ -90,6 +90,11 @@ impl LevelSceneStep for LevelGeometryStep {
       _ => None,
     };
     let library: Option<LevelInstanceLibrary> = Self::read_instance_library::<T>(options)?;
+    // The inference holds its own; without it, the placements' ladders and breakables are told by this one.
+    let game_materials: Option<GameMtlFile> = match (&surfaces, &library, &options.game_materials) {
+      (None, Some(_), Some(path)) => Some(GameMtlFile::read_from_path::<T, _>(path)?),
+      _ => None,
+    };
     let mut geometry: LevelGeometryDecompile = LevelGeometryConversion::decompile::<T, _>(
       LevelGeometrySources {
         name: &options.name,
@@ -104,6 +109,7 @@ impl LevelSceneStep for LevelGeometryStep {
         breakable_parts: &breakable_parts,
         impostors: impostors.as_ref(),
         library: library.as_ref(),
+        game_materials: game_materials.as_ref(),
       },
       surfaces.as_mut().map(|(inference, _)| inference),
       &mut draft.context,

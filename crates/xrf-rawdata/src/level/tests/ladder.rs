@@ -1,14 +1,24 @@
+use std::path::PathBuf;
+
 use xrf_chunk::XRayByteOrder;
+use xrf_editable_level::EditableObjectTransform;
 use xrf_editable_object::{EditableMesh, EditableObjectFile};
 use xrf_error::XrfResult;
+use xrf_gamemtl::{GameMtlFile, GameMtlMaterial};
 use xrf_math::{Affine3d, Vector3d};
 use xrf_spawn::{
-  AlifeObject, AlifeObjectAbstract, AlifeObjectClimable, AlifeObjectInherited, AlifeObjectShape, ClsId, Shape,
-  SpawnPacketHeader,
+  AlifeObject, AlifeObjectAbstract, AlifeObjectBreakable, AlifeObjectClimable, AlifeObjectDynamicVisual,
+  AlifeObjectInherited, AlifeObjectShape, ClsId, Shape, SpawnPacketHeader,
 };
+use xrf_test_utils::GeneratedResources;
 
+use crate::level::instance::level_instance_cutouts::LevelInstanceCutouts;
+use crate::level::instance::level_instance_placement::LevelInstancePlacement;
+use crate::level::level_visual_geometry::LevelVisualGeometry;
 use crate::level::tests::entity::listed;
 use crate::level::tests::spawn_data::restrictor;
+use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
+use crate::object::decompile::object_decompiler::ObjectDecompiler;
 use crate::{LevelDecompiledLadder, LevelLadderConversion};
 
 /// A ladder as the Build exports one: a box of half sizes `half` in its frame, standing at `position` and turned by
@@ -160,6 +170,121 @@ fn dresses_a_ladder_with_its_game_material() -> XrfResult {
     (String::from(LevelLadderConversion::DEFAULT_GAME_MATERIAL), true)
   );
   assert_eq!(material("materials\\wood")?, (String::from("materials\\wood"), false));
+
+  Ok(())
+}
+
+/// A breakable as the Build exports one, standing at `position`.
+fn breakable(position: Vector3d) -> AlifeObject {
+  let ladder: AlifeObject = ladder(position, Vector3d::ZERO, [1.0; 3], "").expect("a ladder");
+
+  AlifeObject {
+    header: SpawnPacketHeader {
+      section: String::from("breakable_object"),
+      name: String::from("meshes\\brkbl#0.ogf"),
+      ..ladder.header
+    },
+    clsid: ClsId::OBrkbl,
+    inherited: AlifeObjectInherited::CseAlifeObjectBreakable(Box::new(AlifeObjectBreakable {
+      base: AlifeObjectDynamicVisual {
+        base: restrictor().state.base,
+        visual_name: String::from("meshes\\brkbl#0"),
+        visual_flags: 0,
+      },
+      health: 1.0,
+    })),
+  }
+}
+
+/// A library object of a ladder, an upright panel 0.8 m wide and 2 m high rising from its pivot, and a pane of glass
+/// 2 m beside it, written where a placement reads it from.
+fn library_ladder(path: &PathBuf) -> XrfResult {
+  let dress = |material: &str| SurfaceDress {
+    compiler_shader: String::from("default"),
+    game_material: material.to_owned(),
+  };
+  let panel = |x: f32, width: f32, height: f32| -> Vec<[Vector3d; 3]> {
+    let corner = |along: f32, up: f32| Vector3d::new(x + along, up, 0.0);
+
+    vec![
+      [corner(-width, 0.0), corner(width, 0.0), corner(width, height)],
+      [corner(-width, 0.0), corner(width, height), corner(-width, height)],
+    ]
+  };
+  let mut geometry: Vec<LevelVisualGeometry> = LevelVisualGeometry::of_triangles(
+    "prop\\prop_ladder",
+    "default",
+    &dress("materials\\fake_ladders"),
+    &panel(0.0, 0.4, 2.0),
+  );
+
+  geometry.extend(LevelVisualGeometry::of_triangles(
+    "glass\\glass_window",
+    "default",
+    &dress("materials\\glass"),
+    &panel(2.0, 0.5, 1.0),
+  ));
+
+  ObjectDecompiler::decompile_level_geometry(&geometry)?
+    .object
+    .write_to_path::<XRayByteOrder, _>(path)
+}
+
+/// A ladder and a breakable whose packets a placed library object's own faces make again are told from those it does
+/// not make: the object brings them back, and the Build cuts them out of it again.
+#[test]
+fn tells_the_ladders_and_breakables_a_placed_library_object_makes_again() -> XrfResult {
+  let path: PathBuf =
+    GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "cutouts"))?.join("ladder.object");
+  let mut ladders: GameMtlMaterial = GameMtlMaterial::new(7, "materials\\fake_ladders");
+  let mut glass: GameMtlMaterial = GameMtlMaterial::new(9, "materials\\glass");
+
+  ladders.flags |= GameMtlMaterial::FLAG_CLIMABLE;
+  glass.flags |= GameMtlMaterial::FLAG_BREAKABLE;
+  library_ladder(&path)?;
+
+  let placement: LevelInstancePlacement = LevelInstancePlacement {
+    reference: String::from("statics\\ladder"),
+    path,
+    object: String::from("ladder_0000"),
+    meshes: Vec::new(),
+    transform: EditableObjectTransform {
+      position: Vector3d::new(10.0, 5.0, 3.0),
+      ..EditableObjectTransform::default()
+    },
+    coverage: 1.0,
+    error: 0.0,
+    triangles: 4,
+  };
+  let cutouts: LevelInstanceCutouts =
+    LevelInstanceCutouts::of::<XRayByteOrder>(&[placement], &GameMtlFile::new(vec![ladders, glass], Vec::new()))?;
+  // The panel's middle, a metre above the placement.
+  let made: Vector3d = Vector3d::new(10.0, 6.0, 3.0);
+
+  assert!(cutouts.is_made(&ladder(made, Vector3d::new(1.2, 0.3, 0.0), [1.0, 0.0, 0.4], "")?));
+  assert!(
+    !cutouts.is_made(&ladder(
+      Vector3d::new(10.0, 6.0, 5.0),
+      Vector3d::ZERO,
+      [1.0, 0.0, 0.4],
+      ""
+    )?),
+    "a ladder standing elsewhere"
+  );
+  assert!(
+    cutouts.is_made(&ladder(made, Vector3d::ZERO, [1.0, 0.06, 0.4], "")?),
+    "a ladder GSC's object built thicker"
+  );
+  assert!(
+    !cutouts.is_made(&ladder(made, Vector3d::ZERO, [2.0, 0.0, 0.4], "")?),
+    "a ladder of another size standing there"
+  );
+  assert!(cutouts.is_made(&breakable(Vector3d::new(12.0, 5.5, 3.0))), "the glass");
+  assert!(!cutouts.is_made(&breakable(made)), "the ladder is no breakable");
+  assert!(
+    !LevelInstanceCutouts::default().is_made(&ladder(made, Vector3d::ZERO, [1.0, 0.0, 0.4], "")?),
+    "nothing is made where no game material library tells the faces apart"
+  );
 
   Ok(())
 }
