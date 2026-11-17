@@ -99,4 +99,40 @@ describe("LevelEditorShowAction", () => {
     expect(within(dialog).getByRole("checkbox", { name: "Spawn points" })).toBeDisabled();
     expect(rendered.getByRole("button", { name: "Show", hidden: true })).toHaveAccessibleDescription("No helpers");
   });
+
+  it("leaves the surfaces the game never draws out until asked, whatever the helpers", async () => {
+    const { container, rendered } = await renderShowAction();
+    const helpersService: LevelEditorHelpersService = container.get(LevelEditorHelpersService);
+    const dialog: HTMLElement = await openShow(rendered);
+    const collision: HTMLElement = within(dialog).getByRole("checkbox", { name: "Collision surfaces" });
+
+    expect(collision).not.toBeChecked();
+    expect(helpersService.isCollisionShown).toBe(false);
+
+    await userEvent.click(within(dialog).getByRole("checkbox", { name: "Helpers" }));
+
+    expect(collision).toBeEnabled();
+
+    await userEvent.click(collision);
+
+    expect(helpersService.isCollisionShown).toBe(true);
+    expect(collision).toBeChecked();
+    expect(helpersService.helpers.isShown).toBe(false);
+  });
+
+  it("leaves the surfaces dressed in marker textures out until asked, apart from the collision surfaces", async () => {
+    const { container, rendered } = await renderShowAction();
+    const helpersService: LevelEditorHelpersService = container.get(LevelEditorHelpersService);
+    const dialog: HTMLElement = await openShow(rendered);
+    const editorOnly: HTMLElement = within(dialog).getByRole("checkbox", { name: "Editor-only textures" });
+
+    expect(editorOnly).not.toBeChecked();
+    expect(helpersService.isEditorOnlyShown).toBe(false);
+
+    await userEvent.click(editorOnly);
+
+    expect(helpersService.isEditorOnlyShown).toBe(true);
+    expect(editorOnly).toBeChecked();
+    expect(helpersService.isCollisionShown).toBe(false);
+  });
 });

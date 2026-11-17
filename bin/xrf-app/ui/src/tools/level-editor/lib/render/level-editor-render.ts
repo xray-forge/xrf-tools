@@ -20,7 +20,7 @@ import {
   ILevelEditorHelperOptions,
   isLevelEditorHelperOn,
 } from "@/tools/level-editor/lib/helpers/level-editor-helper-options";
-import { toSceneRenderIds } from "@/tools/level-editor/lib/render/scene-render-id";
+import { toSceneRenderModelIds } from "@/tools/level-editor/lib/render/scene-render-id";
 
 /**
  * What a scene is lit by: a grey noon in place of a weather, since a scene carries no baked light and the editor shows
@@ -38,33 +38,47 @@ export const DEFAULT_LEVEL_EDITOR_LIGHTING: IRenderLighting = {
   sunIntensity: 1,
 };
 
+/** What a scene's world toggles are made of. */
+export interface ILevelEditorWorldTogglesInputs {
+  /** The scene objects hidden one by one, of any tool. */
+  hidden: ReadonlyArray<SceneObjectId>;
+  /**
+   * Which helpers the Show action has switched on: the spawn points' row, under the master switch, switches their
+   * models with their helpers.
+   */
+  helpers: ILevelEditorHelperOptions;
+  /** Whether the Show action draws the surfaces the game never draws. */
+  isCollisionShown: boolean;
+  /** Whether the Show action draws the surfaces dressed in the SDK's marker textures. */
+  isEditorOnlyShown: boolean;
+}
+
 /**
- * @param hidden - The scene objects hidden one by one, of any tool.
- * @param helpers - Which helpers the Show action has switched on: the spawn points' row, under the master switch,
- *   switches their models with their helpers.
- * @returns What of a scene's world plays: its scene objects, which stand in the props group, and its spawn points'
- *   models, which stand in the items group of their own, shown as the spawn points' helpers are; less the objects
- *   hidden, of any tool, named by their render ids as the scene's source names their models, ascending; and nothing
- *   else, since a scene plays no weather, burns no campfire and has no sound.
+ * @param inputs - What the toggles are made of.
+ * @returns What of a scene's world plays: its scene objects, which stand in the props group; their surfaces the game
+ *   never draws, which stand in the weapons group of their own, and those dressed in the SDK's marker textures, in the
+ *   lamps group of their own, each shown as asked; and its spawn points' models, which stand in the items group of
+ *   their own, shown as the spawn points' helpers are; less the objects hidden, of any tool, named by the render ids
+ *   of every model they stand as, ascending; and nothing else, since a scene plays no weather, burns no campfire and
+ *   has no sound.
  */
-export function toLevelEditorWorldToggles(
-  hidden: ReadonlyArray<SceneObjectId>,
-  helpers: ILevelEditorHelperOptions
-): WorldToggles {
+export function toLevelEditorWorldToggles(inputs: ILevelEditorWorldTogglesInputs): WorldToggles {
+  const { hidden, helpers, isCollisionShown, isEditorOnlyShown } = inputs;
+
   return toNativeWorldToggles(
     {
       isAmbientEffectPlayed: false,
       isCampfireLit: false,
       isRainy: false,
       isSpawnedItems: helpers.isShown && isLevelEditorHelperOn(helpers, ESceneToolKind.SPAWN),
-      isSpawnedLamps: false,
+      isSpawnedLamps: isEditorOnlyShown,
       isSpawnedProps: true,
       isSpawnedReleased: false,
-      isSpawnedWeapons: false,
+      isSpawnedWeapons: isCollisionShown,
       isThundering: false,
       isWindy: false,
     },
-    toSceneRenderIds(hidden),
+    toSceneRenderModelIds(hidden),
     { isAmbience: false, isHeard: false, isMusic: false, isWorld: false }
   );
 }

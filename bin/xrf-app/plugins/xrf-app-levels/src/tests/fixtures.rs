@@ -13,13 +13,14 @@ use xrf_editable_level::{
   EditableBuildParams, EditableCustomObject, EditableLevelCamera, EditableLevelFile, EditableLevelGuid,
   EditableLevelOptions, EditableObjectPart, EditableObjectTransform, EditableToolObject,
 };
-use xrf_editable_object::EditableObjectFile;
+use xrf_editable_object::{EditableObjectFile, EditableSurface, EditableSurfaceFaces};
 use xrf_engine_target::{XrayEngine, XrayEngineChoice};
 use xrf_environment::{EnvironmentCatalog, WeatherGraphs};
 use xrf_level::{LevelFile, LevelHeaderChunk, LevelShaderEntry, LevelShadersChunk, LevelVertex};
 use xrf_material::fixtures::FixtureTree;
 use xrf_math::{Vector2d, Vector3d};
 use xrf_rawdata::{LevelVisualGeometry, ObjectDecompiler, SurfaceDress};
+use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 use xrf_spawn::{AlifeObject, AlifeObjectAbstract, AlifeObjectInherited, ClsId, SpawnPacketHeader};
 use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayLookupScope, XrayMountId, XrayRevision, XrayRoots, XraySearch, XrayVfs};
@@ -220,6 +221,64 @@ pub(super) fn scene_library_object(triangles: &[[Vector3d; 3]]) -> EditableObjec
 
 /// The game material every test library object's surface is of.
 pub(super) const SCENE_GAME_MATERIAL: &str = "materials\\stone";
+
+/// The compiler shader of a tree's collision hull, which collides and is not drawn.
+pub(super) const COLLISION_COMPILER_SHADER: &str = "flora\\flora_collision";
+
+/// The compiler shader library holding `default`, drawn and colliding, and [`COLLISION_COMPILER_SHADER`].
+pub(super) fn compiler_library() -> ShaderCompilerFile {
+  let shader = |name: &str, flags: u32| ShaderCompilerShader {
+    name: String::from(name),
+    name_trailing: vec![0; ShaderCompilerShader::NAME_SIZE - name.len()],
+    flags,
+    vertex_translucency: 0.0,
+    vertex_ambient: 0.0,
+    lightmap_density: 1.0,
+  };
+
+  ShaderCompilerFile {
+    shaders: vec![
+      shader(
+        SurfaceDress::DEFAULT_SETTING,
+        ShaderCompilerShader::COLLISION | ShaderCompilerShader::RENDERING,
+      ),
+      shader(COLLISION_COMPILER_SHADER, ShaderCompilerShader::COLLISION),
+    ],
+  }
+}
+
+/// A unit square on the ground as [`scene_library_object`] makes it, its second triangle moved to a surface of
+/// `compiler_shader` named `hull`.
+pub(super) fn scene_parted_object(compiler_shader: &str) -> EditableObjectFile {
+  let [a, b, c, d] = [
+    Vector3d::new(0.0, 0.0, 0.0),
+    Vector3d::new(1.0, 0.0, 0.0),
+    Vector3d::new(1.0, 0.0, 1.0),
+    Vector3d::new(0.0, 0.0, 1.0),
+  ];
+  let mut object: EditableObjectFile = scene_library_object(&[[a, c, b], [a, d, c]]);
+  let surfaces: &mut Vec<EditableSurface> = object.surfaces.as_mut().expect("the object has surfaces");
+  let hull: EditableSurface = EditableSurface {
+    name: String::from("hull"),
+    compiler_shader: String::from(compiler_shader),
+    ..surfaces[0].clone()
+  };
+  let drawn: String = surfaces[0].name.clone();
+
+  surfaces.push(hull);
+
+  for mesh in object.meshes.iter_mut().flatten() {
+    let moved: Vec<u32> = mesh.surface_faces[0].faces.split_off(1);
+
+    mesh.surface_faces.push(EditableSurfaceFaces {
+      surface: String::from("hull"),
+      faces: moved,
+    });
+    assert_eq!(mesh.surface_faces[0].surface, drawn);
+  }
+
+  object
+}
 
 /// The text part of tool `T` holding `objects`, carrying the test scenes' GUID.
 pub(super) fn scene_part<T: EditableToolObject>(objects: Vec<T>) -> Vec<u8> {

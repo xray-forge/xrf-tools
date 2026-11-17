@@ -22,6 +22,10 @@ export const LEVEL_EDITOR_HELP: IToolHelp = {
       "and points, shapes, sound environments and fog volumes by their volumes, glows by their radius, portals by " +
       "their outline, and lights, sound sources and particles by an icon. Show switches them all, or tool by tool, " +
       "and counts each tool's.",
+    "Surfaces the game never draws - those whose compiler shader keeps them for collision or shadows alone, such as " +
+      "a tree's collision hull or a level's invisible walls - are left out until Show's Collision surfaces draws them.",
+    "Surfaces dressed in the SDK's marker textures (prop\\prop_fake_*), which only show the editor what a level holds " +
+      "unseen, such as a sun blocker or an occluder's sheet, are left out until Show's Editor-only textures draws them.",
     "The Outliner lists the tools in the SDK's order, each with its objects; filter by an object's name, the library " +
       "object or effect it places, or its entity's section, and pick one to show it in the Inspector.",
     "Click an object in the viewport to select it, Alt held to pick what stands behind glass: the Outliner opens its " +

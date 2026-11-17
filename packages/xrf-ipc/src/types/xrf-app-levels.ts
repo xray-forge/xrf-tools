@@ -385,6 +385,18 @@ export const SCENE_HELPER_TOOLS: Array<SceneHelperToolEntry> = [
 export const SCENE_OBJECTS_PART = "sceneObjects" as const;
 
 /**
+ * The bit a scene render id sets, above every tool's place, to name the model of its object's collision surfaces
+ * apart from the object's own: the renderer stands one model a spawn object, so each model needs an id.
+ */
+export const SCENE_RENDER_COLLISION_BIT: number = 2147483648;
+
+/**
+ * The bit a scene render id sets, above every tool's place, to name the model of its object's editor-only surfaces
+ * apart from the object's own.
+ */
+export const SCENE_RENDER_EDITOR_BIT: number = 1073741824;
+
+/**
  * The bits of a scene render id that hold its object's index among its tool's objects; the bits above them hold the
  * tool's place in the editor's order of its tools.
  */

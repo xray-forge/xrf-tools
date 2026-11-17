@@ -6,6 +6,7 @@ import {
   RenderHelperOptions,
   RenderViewOptions,
 } from "@xrf/ipc/types/xrf-renderer";
+import { WorldToggles } from "@xrf/ipc/types/xrf-world";
 
 import { mockRenderFeatures } from "@/core/render/fixtures/render.mocks";
 import { toNativeAssetLighting } from "@/core/render/lib/lighting/render-lighting";
@@ -16,9 +17,13 @@ import {
   mockSceneDrawDescription,
   mockSceneHelpersDescription,
 } from "@/tools/level-editor/fixtures/scene.mocks";
-import { DEFAULT_LEVEL_EDITOR_HELPER_OPTIONS } from "@/tools/level-editor/lib/helpers/level-editor-helper-options";
+import {
+  DEFAULT_LEVEL_EDITOR_HELPER_OPTIONS,
+  ILevelEditorHelperOptions,
+} from "@/tools/level-editor/lib/helpers/level-editor-helper-options";
 import {
   DEFAULT_LEVEL_EDITOR_LIGHTING,
+  ILevelEditorWorldTogglesInputs,
   toLevelEditorSceneBounds,
   toLevelEditorSceneSphere,
   toLevelEditorViewOptions,
@@ -64,9 +69,22 @@ describe("toLevelEditorViewOptions", () => {
 });
 
 describe("toLevelEditorWorldToggles", () => {
+  const none: ILevelEditorHelperOptions = { isShown: false, tools: {} };
+
+  /** The toggles of a scene whose Show action keeps its defaults but for `inputs`. */
+  function toToggles(inputs: Partial<ILevelEditorWorldTogglesInputs>): WorldToggles {
+    return toLevelEditorWorldToggles({
+      hidden: [],
+      helpers: DEFAULT_LEVEL_EDITOR_HELPER_OPTIONS,
+      isCollisionShown: false,
+      isEditorOnlyShown: false,
+      ...inputs,
+    });
+  }
+
   // Every scene object stands in the props group, which nothing hides; every spawn point's model in the items group.
   it("plays the scene's objects and its spawn points' models alone, silent", () => {
-    expect(toLevelEditorWorldToggles([], DEFAULT_LEVEL_EDITOR_HELPER_OPTIONS)).toMatchObject({
+    expect(toToggles({})).toMatchObject({
       hiddenSpawnObjects: [],
       isRainy: false,
       isSpawnedItems: true,
@@ -77,30 +95,47 @@ describe("toLevelEditorWorldToggles", () => {
     });
   });
 
-  it("switches the spawn points' models with their helpers' row and the master switch over it", () => {
-    expect(
-      toLevelEditorWorldToggles([], { isShown: true, tools: { [ESceneToolKind.SPAWN]: false } }).isSpawnedItems
-    ).toBe(false);
-    expect(toLevelEditorWorldToggles([], { isShown: false, tools: {} })).toMatchObject({
-      isSpawnedItems: false,
+  // The surfaces the game never draws stand in the weapons group, which nothing else of a scene stands in.
+  it("draws the surfaces the game never draws only where asked, whatever the helpers", () => {
+    expect(toToggles({ isCollisionShown: true })).toMatchObject({
+      isSpawnedLamps: false,
       isSpawnedProps: true,
+      isSpawnedWeapons: true,
     });
-    expect(
-      toLevelEditorWorldToggles([], { isShown: true, tools: { [ESceneToolKind.WAY]: false } }).isSpawnedItems
-    ).toBe(true);
+    expect(toToggles({ helpers: none, isCollisionShown: true }).isSpawnedWeapons).toBe(true);
   });
 
-  it("hides the objects hidden one by one by their render ids, ascending, whatever their tool", () => {
+  // The surfaces dressed in the SDK's marker textures stand in the lamps group, which nothing else of a scene stands in.
+  it("draws the surfaces dressed in marker textures only where asked, whatever the helpers", () => {
+    expect(toToggles({ isEditorOnlyShown: true })).toMatchObject({
+      isSpawnedLamps: true,
+      isSpawnedProps: true,
+      isSpawnedWeapons: false,
+    });
+    expect(toToggles({ helpers: none, isEditorOnlyShown: true }).isSpawnedLamps).toBe(true);
+  });
+
+  it("switches the spawn points' models with their helpers' row and the master switch over it", () => {
+    expect(toToggles({ helpers: { isShown: true, tools: { [ESceneToolKind.SPAWN]: false } } }).isSpawnedItems).toBe(
+      false
+    );
+    expect(toToggles({ helpers: none })).toMatchObject({ isSpawnedItems: false, isSpawnedProps: true });
+    expect(toToggles({ helpers: { isShown: true, tools: { [ESceneToolKind.WAY]: false } } }).isSpawnedItems).toBe(true);
+  });
+
+  it("hides the objects hidden one by one by their models' render ids, every kind of surface, ascending", () => {
     expect(
-      toLevelEditorWorldToggles(
-        [
+      toToggles({
+        hidden: [
           { index: 7, tool: ESceneToolKind.SCENE_OBJECT },
           { index: 2, tool: ESceneToolKind.SPAWN },
           { index: 3, tool: ESceneToolKind.SCENE_OBJECT },
         ],
-        DEFAULT_LEVEL_EDITOR_HELPER_OPTIONS
-      ).hiddenSpawnObjects
-    ).toEqual([0x0200_0003, 0x0200_0007, 0x0600_0002]);
+      }).hiddenSpawnObjects
+    ).toEqual([
+      0x0200_0003, 0x0200_0007, 0x0600_0002, 0x4200_0003, 0x4200_0007, 0x4600_0002, 0x8200_0003, 0x8200_0007,
+      0x8600_0002,
+    ]);
   });
 });
 

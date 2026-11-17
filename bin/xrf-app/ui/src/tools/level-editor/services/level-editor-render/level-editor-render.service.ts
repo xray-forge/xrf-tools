@@ -153,7 +153,13 @@ export class LevelEditorRenderService extends NativeRenderSurfaceService {
         { equals: comparer.structural, fireImmediately: true }
       ),
       reaction(
-        () => toLevelEditorWorldToggles(this.selectionService.hidden, this.helpersService.helpers),
+        () =>
+          toLevelEditorWorldToggles({
+            hidden: this.selectionService.hidden,
+            helpers: this.helpersService.helpers,
+            isCollisionShown: this.helpersService.isCollisionShown,
+            isEditorOnlyShown: this.helpersService.isEditorOnlyShown,
+          }),
         (toggles: WorldToggles) => viewport.setWorldToggles(toggles),
         { equals: comparer.structural, fireImmediately: true }
       ),

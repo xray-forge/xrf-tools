@@ -58,6 +58,16 @@ export const LEVEL_EDITOR_HELPERS_STORAGE_KEY: string = buildStorageKey(
   EStorageNamespace.PREFERENCE,
   "level-editor-helpers"
 );
+/** Whether the level editor draws the surfaces the game never draws, kept for collision or shadows alone. */
+export const LEVEL_EDITOR_COLLISION_STORAGE_KEY: string = buildStorageKey(
+  EStorageNamespace.PREFERENCE,
+  "level-editor-collision"
+);
+/** Whether the level editor draws the surfaces dressed in the SDK's marker textures, which a player never sees. */
+export const LEVEL_EDITOR_EDITOR_ONLY_STORAGE_KEY: string = buildStorageKey(
+  EStorageNamespace.PREFERENCE,
+  "level-editor-editor-only"
+);
 
 /** Chords a person bound themselves, as one command id to chords map. */
 export const KEYBINDS_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "keybinds");

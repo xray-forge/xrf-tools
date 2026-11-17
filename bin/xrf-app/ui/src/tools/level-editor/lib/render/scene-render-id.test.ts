@@ -1,6 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 import {
   ESceneToolKind,
+  SCENE_RENDER_COLLISION_BIT,
+  SCENE_RENDER_EDITOR_BIT,
   SCENE_RENDER_INDEX_BITS,
   SCENE_RENDER_TOOLS,
   SceneObjectId,
@@ -10,6 +12,7 @@ import {
 import {
   toSceneRenderId,
   toSceneRenderIds,
+  toSceneRenderModelIds,
   toSceneRenderObject,
 } from "@/tools/level-editor/lib/render/scene-render-id";
 
@@ -61,6 +64,20 @@ describe("scene render ids", () => {
       toSceneRenderId(box),
       toSceneRenderId(light),
       toSceneRenderId(stalker),
+    ]);
+  });
+
+  // The backend stands each other kind of a scene object's surfaces under its id with a top bit set (`SceneRenderId`).
+  it("names an object's other models with the kinds' bits, and reads a pick of any as the object", () => {
+    const box: SceneObjectId = { index: 3, tool: ESceneToolKind.SCENE_OBJECT };
+    const way: SceneObjectId = { index: 5, tool: ESceneToolKind.WAY };
+
+    expect(SCENE_RENDER_COLLISION_BIT).toBe(0x8000_0000);
+    expect(SCENE_RENDER_EDITOR_BIT).toBe(0x4000_0000);
+    expect(toSceneRenderObject(0x8200_0003)).toEqual(box);
+    expect(toSceneRenderObject(0x4200_0003)).toEqual(box);
+    expect(toSceneRenderModelIds([way, box])).toEqual([
+      0x0200_0003, 0x0700_0005, 0x4200_0003, 0x4700_0005, 0x8200_0003, 0x8700_0005,
     ]);
   });
 });

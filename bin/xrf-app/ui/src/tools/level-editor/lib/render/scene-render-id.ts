@@ -1,4 +1,6 @@
 import {
+  SCENE_RENDER_COLLISION_BIT,
+  SCENE_RENDER_EDITOR_BIT,
   SCENE_RENDER_INDEX_BITS,
   SCENE_RENDER_TOOLS,
   SceneObjectId,
@@ -11,6 +13,9 @@ const INDEX_MASK: number = 2 ** SCENE_RENDER_INDEX_BITS - 1;
 
 /** How far a tool's place stands above the index. */
 const TOOL_SCALE: number = 2 ** SCENE_RENDER_INDEX_BITS;
+
+/** The bits above every tool's place that name an object's other models, highest first. */
+const PART_BITS: ReadonlyArray<number> = [SCENE_RENDER_COLLISION_BIT, SCENE_RENDER_EDITOR_BIT];
 
 /**
  * @param object - A scene object.
@@ -36,11 +41,27 @@ export function toSceneRenderIds(objects: ReadonlyArray<SceneObjectId>): Array<n
 }
 
 /**
+ * @param objects - Scene objects.
+ * @returns The render ids of every model they stand as, ascending: each object's own, its collision surfaces' and its
+ *   editor-only surfaces', which the backend stands under the object's id with the kind's bit set; an id no model
+ *   stands under names nothing.
+ */
+export function toSceneRenderModelIds(objects: ReadonlyArray<SceneObjectId>): Array<number> {
+  return toSceneRenderIds(objects)
+    .flatMap((id: number) => [id, ...PART_BITS.map((bit: number) => id + bit)])
+    .sort((first: number, second: number) => first - second);
+}
+
+/**
  * @param id - A render id, as a pick of a model or a helper answers it.
- * @returns The scene object it names; null for an id no tool's place answers.
+ * @returns The scene object it names, a pick of any of its models included; null for an id no tool's place answers.
  */
 export function toSceneRenderObject(id: number): Nullable<SceneObjectId> {
-  const tool: Maybe<SceneToolKind> = id >= 0 ? SCENE_RENDER_TOOLS[Math.floor(id / TOOL_SCALE)] : undefined;
+  const own: number = PART_BITS.reduce(
+    (stripped: number, bit: number) => (stripped >= bit ? stripped - bit : stripped),
+    id
+  );
+  const tool: Maybe<SceneToolKind> = own >= 0 ? SCENE_RENDER_TOOLS[Math.floor(own / TOOL_SCALE)] : undefined;
 
-  return tool === undefined ? null : { index: id % TOOL_SCALE, tool };
+  return tool === undefined ? null : { index: own % TOOL_SCALE, tool };
 }

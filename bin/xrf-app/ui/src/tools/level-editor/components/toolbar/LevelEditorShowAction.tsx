@@ -16,8 +16,9 @@ import { LevelEditorSceneService } from "@/tools/level-editor/services/level-edi
 
 /**
  * What the editor shows over the scene beside its objects, as an editor's show menu gathers it: the helpers' master
- * switch heading a switch for each helped tool, with the picture its helpers draw and how many the open scene holds;
- * the spawn points' switch, and the master one over it, switch the spawn points' models too.
+ * switch heading a switch for each helped tool, with the picture its helpers draw and how many the open scene holds,
+ * the spawn points' switch, and the master one over it, switching the spawn points' models too; and the switches of the
+ * surfaces the game never draws and of those dressed in the SDK's marker textures, each off until asked for.
  */
 export function LevelEditorShowAction({
   "data-testid": dataTestId = "level-editor-show-action",
@@ -69,6 +70,26 @@ export function LevelEditorShowAction({
           );
         })}
       </EditorPopoverGroupSection>
+
+      <EditorPopoverGroupSection
+        label={"Collision surfaces"}
+        description={
+          "Draws the surfaces the game never draws, which their compiler shader keeps for collision or shadows alone: " +
+          "a tree's collision hull, a level's invisible walls."
+        }
+        isOn={helpersService.isCollisionShown}
+        onToggle={helpersService.toggleCollision}
+      />
+
+      <EditorPopoverGroupSection
+        label={"Editor-only textures"}
+        description={
+          "Draws the surfaces dressed in the SDK's marker textures, which only show the editor what a level holds " +
+          "unseen: a sun blocker, an occluder's sheet."
+        }
+        isOn={helpersService.isEditorOnlyShown}
+        onToggle={helpersService.toggleEditorOnly}
+      />
     </EditorPopoverGroup>
   );
 }

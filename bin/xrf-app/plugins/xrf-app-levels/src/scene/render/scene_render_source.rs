@@ -6,12 +6,10 @@ use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_app_render::{ResolvedTexture, TextureResolver};
 use xrf_chunk::XRayByteOrder;
-use xrf_editable_object::{EditableObjectFile, EditableOccluder};
+use xrf_editable_object::EditableObjectFile;
 use xrf_environment::WeatherDescriptor;
 use xrf_error::{XrfError, XrfResult};
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope};
-use xrf_object_visual::{ObjectVisual, VisualSurfaces};
-use xrf_rawdata::{ObjectCompileOptions, ObjectCompileSource};
 use xrf_renderer::{
   RenderAssetSource, RenderLevelDetails, RenderLevelHelpers, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn,
   RenderLoadFailure, RenderSpawnCategory, RenderSpawnLighting, RenderSpawnModel, RenderSpawnModels, RenderSpawnObject,
@@ -22,17 +20,19 @@ use xrf_world::{WorldLevelSource, WorldLevelWeather};
 
 use crate::report::LevelReport;
 use crate::scene::{
-  SceneDrawnObject, SceneDrawnObjects, SceneHelpersPart, SceneOccluderLook, SceneRenderId, SceneSpawnModels,
-  SceneSpawnModelsPart, SceneSpawnVisualsPart, SelectedScene,
+  SceneDrawnObject, SceneDrawnObjects, SceneHelpersPart, SceneObjectCompiler, SceneObjectModels, SceneOccluderLook,
+  SceneRenderId, SceneSpawnModels, SceneSpawnModelsPart, SceneSpawnVisualsPart, SceneSurfaceKind, SceneSurfaceKinds,
+  SelectedScene,
 };
 use crate::visuals::SpawnVisual;
 
 /// An open scene as the world plays it and the native renderer draws it: no sectors and no level, every scene object
 /// placing a library object found in its objects roots stood as a model compiled from that `.object`, an occluder's
-/// faces drawn as its fill ([`SceneOccluderLook`]), every spawn point whose packet names a visual found in the scene's
-/// game data stood as that model in its rest pose, each lit by the open sky as a model alone is, and their textures
-/// read from the scene's game data; what has no geometry drawn as its helper. Each drawn thing is named by its object's
-/// [`SceneRenderId`].
+/// faces drawn as its fill ([`SceneOccluderLook`]) and the faces a player never sees as a model of each kind in a group
+/// the page switches ([`SceneSurfaceKind`]), every spawn point whose packet names a visual found in the
+/// scene's game data stood as that model in its rest pose, each lit by the open sky as a model alone is, and their
+/// textures read from the scene's game data; what has no geometry drawn as its helper. Each drawn thing is named by its
+/// object's [`SceneRenderId`].
 pub struct SceneRenderSource {
   scene: Arc<SessionSnapshot<SelectedScene>>,
   assets: AssetMountState,
@@ -41,12 +41,11 @@ pub struct SceneRenderSource {
   textures: TextureResolver,
   /// The scene objects drawn, read the first time the renderer asks for its spawn.
   drawn: OnceLock<SceneDrawnObjects>,
+  /// Which kind each surface is, by the game data's compiler shaders, read the first time a model is.
+  kinds: OnceLock<SceneSurfaceKinds>,
 }
 
 impl SceneRenderSource {
-  /// The category every scene object stands in, so the page hides any of them one by one, never by group.
-  const CATEGORY: RenderSpawnCategory = RenderSpawnCategory::Props;
-
   /// The category every spawn point's model stands in, apart from the scene objects', so the page switches them all
   /// with the spawn points' helpers by its group alone: the renderer's items group, which nothing else of a scene
   /// stands in, whatever the entity's class.
@@ -61,6 +60,7 @@ impl SceneRenderSource {
       assets,
       textures,
       drawn: OnceLock::new(),
+      kinds: OnceLock::new(),
     }
   }
 
@@ -141,50 +141,17 @@ impl SceneRenderSource {
     }
   }
 
-  /// The model `object`'s library object compiles to, posed as stored, each of its submeshes dressed as `surfaces`
-  /// answers it, or as the occluder's fill where the library object is flagged an occluder, as the editor draws it
-  /// whatever its surfaces.
-  ///
-  /// # Errors
-  ///
-  /// Returns why the library object does not read, or does not compile.
-  fn read_model(
-    &self,
-    objects: &XraySearch,
-    object: &SceneDrawnObject,
-    surfaces: &XraySurfaceResolver,
-  ) -> TauriResult<RenderSpawnModel> {
-    let file: EditableObjectFile = objects
-      .read(&object.logical_path)
-      .and_then(EditableObjectFile::read_from_bytes::<XRayByteOrder>)
-      .map_err(|error| format!("Library object '{}' does not read: {error}", object.logical_path))?;
-    let occluder: Option<EditableOccluder> = file.get_occluder();
-    // A scene's object compiles with the CLI's default tangent method, which only a skeleton's compile reads.
-    let mut visual: ObjectVisual = ObjectVisual::compile(
-      &file,
-      &ObjectCompileSource {
-        source_file: object.logical_path.clone(),
-        convertor: String::from("xrf-app levels"),
-        built_at: 0,
-      },
-      &ObjectCompileOptions::default(),
-    )
-    .map_err(|error| format!("Library object '{}' does not compile: {error}", object.logical_path))?;
+  /// Which kind each surface is, by the compiler shaders `game` holds, read once.
+  fn get_kinds(&self, game: &XraySearch) -> &SceneSurfaceKinds {
+    self.kinds.get_or_init(|| SceneSurfaceKinds::open(game))
+  }
 
-    // Let go before posing copies the package, which keeps a large shell's peak to the model and its copy.
-    drop(file);
-
-    let surfaces: Vec<XraySurfaceDescriptor> = match occluder {
-      Some(occluder) => SceneOccluderLook::dress(occluder, &mut visual.package.description),
-      None => VisualSurfaces::describe(surfaces, &visual.package.description),
-    };
-
-    Ok(RenderSpawnModel {
-      name: object.reference.clone(),
-      package: VisualPoser::pose(&visual.package, None),
-      surfaces,
-      skeleton: None,
-    })
+  /// The kinds of `object`'s models that the visuals `names` ask for.
+  fn list_asked(object: &SceneDrawnObject, names: &[String]) -> Vec<SceneSurfaceKind> {
+    SceneSurfaceKind::ALL
+      .into_iter()
+      .filter(|kind| names.contains(&kind.format_model_name(&object.reference)))
+      .collect()
   }
 }
 
@@ -244,9 +211,12 @@ impl WorldLevelSource for SceneRenderSource {
     )))
   }
 
-  /// Every scene object drawn in the props group, then every spawn point drawn as a model in a group of their own, each
-  /// named by its [`SceneRenderId`], so a pick answers it as the page names it; each library object a visual named by
-  /// its reference and each spawn point's model one named by its file, in the order first placed.
+  /// Every scene object drawn in the props group, each other kind of its surfaces in a group of its own
+  /// ([`SceneSurfaceKind`]), then every spawn point drawn as a model in a group of their own, each named by its
+  /// [`SceneRenderId`], so a pick answers it as the page names it; each library object a visual named by its reference
+  /// with its other kinds' right after it, and each spawn point's model one named by its file, in the order first
+  /// placed. Which kinds a library object holds is known only once it is read, so one holding none of a kind answers no
+  /// model for that visual.
   fn read_spawn(&self) -> XrfResult<RenderLevelSpawn> {
     let drawn: &SceneDrawnObjects = self.get_drawn()?;
     let models: Arc<SceneSpawnModels> = self.get_spawn_models()?;
@@ -259,17 +229,21 @@ impl WorldLevelSource for SceneRenderSource {
         (visuals.len() - 1) as u32
       })
     };
-    let mut objects: Vec<RenderSpawnObject> = Vec::with_capacity(drawn.objects.len() + models.objects.len());
+    let mut objects: Vec<RenderSpawnObject> =
+      Vec::with_capacity(drawn.objects.len() * SceneSurfaceKind::ALL.len() + models.objects.len());
 
     for object in &drawn.objects {
       if let Some(id) = SceneRenderId::of(&object.id) {
-        objects.push(RenderSpawnObject {
-          index: id.0,
-          category: Self::CATEGORY,
-          is_released: false,
-          visual: stand(object.reference.clone()),
-          transform: object.get_render_transform(),
-        });
+        // Its visuals stand side by side, so a batch of the renderer's reads mostly reads the object once for all.
+        for kind in SceneSurfaceKind::ALL {
+          objects.push(RenderSpawnObject {
+            index: id.get_part(kind).0,
+            category: kind.get_category(),
+            is_released: false,
+            visual: stand(kind.format_model_name(&object.reference)),
+            transform: object.get_render_transform(),
+          });
+        }
       }
     }
 
@@ -292,31 +266,57 @@ impl WorldLevelSource for SceneRenderSource {
     })
   }
 
-  /// Each model named: a library object compiled once whatever stands as it, a spawn point's visual read once through
-  /// the visuals the scene keeps; one that does not read or compile is left out and reported.
+  /// Each model named: a library object read once a batch whatever stands as it, each kind of its surfaces the batch
+  /// asks for compiled to a model of its own, a spawn point's visual read once through the visuals the scene keeps; one
+  /// that does not read or compile is left out and reported by its library object's reference alone.
   fn read_spawn_models(&self, names: &[String]) -> XrfResult<RenderSpawnModels> {
     let drawn: &SceneDrawnObjects = self.get_drawn()?;
     let objects: XraySearch = self.search_objects()?;
     let game: XraySearch = self.search_game()?;
     let spawn_models: Arc<SceneSpawnModels> = SceneSpawnModelsPart::get(&self.scene, &game);
     let surfaces: XraySurfaceResolver = XraySurfaceResolver::open(&game, XrayTextureScope::shared());
+    let compiler: SceneObjectCompiler<'_> = SceneObjectCompiler {
+      surfaces: &surfaces,
+      kinds: self.get_kinds(&game),
+    };
+    let read_models = |object: &SceneDrawnObject| -> TauriResult<SceneObjectModels> {
+      objects
+        .read(&object.logical_path)
+        .and_then(EditableObjectFile::read_from_bytes::<XRayByteOrder>)
+        .map_err(|error| format!("Library object '{}' does not read: {error}", object.logical_path))
+        .and_then(|file| compiler.compile(object, file, &Self::list_asked(object, names)))
+        .inspect_err(|reason| LevelReport::undrawn_scene_object(&object.reference, reason))
+    };
+    // Each library object's models by its reference, compiled for the first of its visuals this batch asks for.
+    let mut compiled: HashMap<String, TauriResult<SceneObjectModels>> = HashMap::new();
     let mut models: Vec<RenderSpawnModel> = Vec::with_capacity(names.len());
     let mut failures: Vec<RenderLoadFailure> = Vec::new();
 
     SceneSpawnVisualsPart::with_reader(&self.scene, &game, |reader| {
       for name in names {
-        let read: TauriResult<RenderSpawnModel> = match (drawn.find(name), spawn_models.find_model(name)) {
-          (Some(object), _) => self
-            .read_model(&objects, object, &surfaces)
-            .inspect_err(|reason| LevelReport::undrawn_scene_object(name, reason)),
-          // The reader reports a visual that does not read.
-          (None, Some(model)) => reader.get(&model.visual).map(|visual| self.pose_visual(name, &visual)),
-          (None, None) => Err(format!("No scene object or spawn point stands as model '{name}'"))
-            .inspect_err(|reason| LevelReport::undrawn_scene_object(name, reason)),
+        let kind: SceneSurfaceKind = SceneSurfaceKind::of_model(name);
+        let read: TauriResult<Option<RenderSpawnModel>> = match drawn.find(kind.get_reference(name)) {
+          Some(object) => match compiled
+            .entry(object.reference.clone())
+            .or_insert_with(|| read_models(object))
+          {
+            Ok(models) => Ok(models.take(kind)),
+            // What does not compile is reported once, by the object's own model.
+            Err(reason) if kind == SceneSurfaceKind::Drawn => Err(reason.clone()),
+            Err(_) => Ok(None),
+          },
+          None => match spawn_models.find_model(name) {
+            // The reader reports a visual that does not read.
+            Some(model) => reader
+              .get(&model.visual)
+              .map(|visual| Some(self.pose_visual(name, &visual))),
+            None => Err(format!("No scene object or spawn point stands as model '{name}'"))
+              .inspect_err(|reason| LevelReport::undrawn_scene_object(name, reason)),
+          },
         };
 
         match read {
-          Ok(model) => models.push(model),
+          Ok(model) => models.extend(model),
           Err(reason) => failures.push(RenderLoadFailure {
             name: name.clone(),
             reason,
@@ -329,8 +329,13 @@ impl WorldLevelSource for SceneRenderSource {
     let lighting: Vec<RenderSpawnLighting> = drawn
       .objects
       .iter()
-      .filter(|object| is_read(&object.reference))
-      .filter_map(|object| SceneRenderId::of(&object.id))
+      .filter_map(|object| Some((object, SceneRenderId::of(&object.id)?)))
+      .flat_map(|(object, id)| {
+        SceneSurfaceKind::ALL
+          .into_iter()
+          .filter(|kind| is_read(&kind.format_model_name(&object.reference)))
+          .map(move |kind| id.get_part(kind))
+      })
       .chain(
         spawn_models
           .objects

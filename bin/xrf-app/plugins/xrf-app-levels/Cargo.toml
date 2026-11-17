@@ -51,6 +51,7 @@ xrf-ogf = { workspace = true }
 xrf-particles = { workspace = true }
 xrf-rawdata = { workspace = true }
 xrf-renderer = { workspace = true }
+xrf-shaders = { workspace = true }
 xrf-sound = { workspace = true }
 xrf-spawn = { workspace = true }
 xrf-texture = { workspace = true }

@@ -12,30 +12,33 @@ use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionScopes, SessionSnapshot};
 use xrf_app_render::plugin::RenderPlugin;
-use xrf_chunk::XRayByteOrder;
+use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_dds::{DdsFile, RgbaImage};
 use xrf_editable_level::EditableSceneObject;
 use xrf_editable_object::EditableObjectFile;
 use xrf_job::ExecutionRequest;
 use xrf_material::XraySurfaceDraw;
 use xrf_math::{Aabb, Vector3d};
+use xrf_rawdata::SurfaceDress;
 use xrf_renderer::{
   RenderAssetSource, RenderLevelSource, RenderLevelSpawn, RenderSpawnCategory, RenderSpawnModel, RenderSpawnModels,
   RenderViewportId,
 };
+use xrf_shaders::ShaderCompilerFile;
 use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots, XraySearch, XrayTransaction};
-use xrf_visual::VisualBounds;
+use xrf_visual::{VisualBounds, VisualSubmesh};
 use xrf_world::WorldLevelSource;
 
 use crate::commands::scene::show_scene::levels_show_scene;
 use crate::plugin::LevelsPlugin;
 use crate::scene::{
   SceneDrawDescription, SceneDrawPart, SceneDrawProblemKind, SceneObjectId, SceneObjectSphere, SceneOccluderLook,
-  SceneRenderId, SceneRenderSource, SceneSource, SceneToolKind, SelectedScene, SelectedScenes, ShownScenes,
+  SceneRenderId, SceneRenderSource, SceneSource, SceneSurfaceKind, SceneToolKind, SelectedScene, SelectedScenes,
+  ShownScenes,
 };
 use crate::tests::fixtures::{
-  new_scenes, open_scene, scene_custom_object, scene_library_object, scene_part, write_scene,
-  write_scene_library_object, write_scene_object_file, write_scene_part,
+  COLLISION_COMPILER_SHADER, compiler_library, new_scenes, open_scene, scene_custom_object, scene_library_object,
+  scene_part, scene_parted_object, write_scene, write_scene_library_object, write_scene_object_file, write_scene_part,
 };
 
 /// The library object two scene objects place.
@@ -110,6 +113,45 @@ fn drawn_id(index: u32) -> u32 {
   SceneRenderId::of(&scene_object(index)).expect("an index an id holds").0
 }
 
+/// Writes the test compiler shader library into the game data beside `source`'s rawdata tree.
+fn write_compiler_library(source: &SceneSource) {
+  let game_data: PathBuf = Path::new(&source.path)
+    .ancestors()
+    .nth(3)
+    .expect("the scene lies in a rawdata tree")
+    .join(SceneSource::GAME_DATA_DIRECTORY);
+  let mut library: ChunkWriter = ChunkWriter::new();
+
+  compiler_library()
+    .write::<XRayByteOrder>(&mut library)
+    .expect("the library writes");
+  fs::create_dir_all(&game_data).unwrap();
+  fs::write(game_data.join(ShaderCompilerFile::FILE_NAME), library.buffer).unwrap();
+}
+
+/// The id the renderer knows the surfaces of `kind` of the scene object at `index` by.
+fn part_id(index: u32, kind: SceneSurfaceKind) -> u32 {
+  SceneRenderId::of(&scene_object(index))
+    .expect("an index an id holds")
+    .get_part(kind)
+    .0
+}
+
+/// The id the renderer knows the collision surfaces of the scene object at `index` by.
+fn collision_id(index: u32) -> u32 {
+  part_id(index, SceneSurfaceKind::Collision)
+}
+
+/// The model of the collision surfaces of the library object `reference`.
+fn collision_model(reference: &str) -> String {
+  SceneSurfaceKind::Collision.format_model_name(reference)
+}
+
+/// The model of the editor-only surfaces of the library object `reference`.
+fn editor_model(reference: &str) -> String {
+  SceneSurfaceKind::EditorOnly.format_model_name(reference)
+}
+
 #[test]
 fn lists_each_scene_object_found_by_its_place_its_reference_and_where_it_stands() {
   let (_, _, drawn) = show(&write_tables("scene_render/spawn", Vec::new()));
@@ -117,8 +159,8 @@ fn lists_each_scene_object_found_by_its_place_its_reference_and_where_it_stands(
 
   assert_eq!(
     spawn.visuals,
-    [TABLE],
-    "a library object is one visual, however often placed"
+    [String::from(TABLE), collision_model(TABLE), editor_model(TABLE)],
+    "a library object is one visual and each other kind of its surfaces another, however often placed"
   );
   assert_eq!(
     spawn
@@ -128,13 +170,18 @@ fn lists_each_scene_object_found_by_its_place_its_reference_and_where_it_stands(
       .collect::<Vec<_>>(),
     [
       (0x0200_0000, 0, RenderSpawnCategory::Props, false),
-      (0x0200_0002, 0, RenderSpawnCategory::Props, false)
+      (0x8200_0000, 1, RenderSpawnCategory::Weapons, false),
+      (0x4200_0000, 2, RenderSpawnCategory::Lamps, false),
+      (0x0200_0002, 0, RenderSpawnCategory::Props, false),
+      (0x8200_0002, 1, RenderSpawnCategory::Weapons, false),
+      (0x4200_0002, 2, RenderSpawnCategory::Lamps, false)
     ],
-    "each named by its tool's place above its place among the scene's objects, the one not found left out"
+    "each named by its tool's place above its place among the scene's objects, the one not found left out, its \
+     collision surfaces in a group of their own under its id with the top bit set, its editor-only ones with the next"
   );
   // Standing at `x, 2, 3` unturned, which renderer space mirrors through `z`.
   assert_eq!(
-    spawn.objects[1].transform,
+    spawn.objects[3].transform,
     [
       1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 10.0, 2.0, -3.0, 1.0
     ]
@@ -257,6 +304,117 @@ fn draws_an_occluder_as_the_editor_does_its_faces_one_translucent_fill_of_its_co
 }
 
 #[test]
+fn draws_the_faces_a_player_never_sees_as_a_model_of_each_kind_by_their_compiler_shaders_and_marker_textures() {
+  let source: SceneSource = write_tables(
+    "scene_render/collision",
+    vec![
+      placed("tree_0000", "trees\\tree", 20.0),
+      placed("hull_0000", "levels\\hull", 30.0),
+      placed("blocker_0000", "levels\\blocker", 40.0),
+    ],
+  );
+  let mut tree: EditableObjectFile = scene_parted_object(COLLISION_COMPILER_SHADER);
+  let mut hull: EditableObjectFile = scene_parted_object(COLLISION_COMPILER_SHADER);
+  let mut blocker: EditableObjectFile = scene_parted_object(SurfaceDress::DEFAULT_SETTING);
+
+  for surface in hull.surfaces.iter_mut().flatten() {
+    surface.compiler_shader = String::from(COLLISION_COMPILER_SHADER);
+  }
+
+  // A hull dressed in a marker texture is a collision one still: its compiler shader tells first.
+  for (object, texture) in [
+    (&mut tree, "prop\\prop_fake_kollision"),
+    (&mut blocker, "PROP\\Prop_Fake_Nosun"),
+  ] {
+    object.surfaces.as_mut().expect("the object has surfaces")[1].texture = String::from(texture);
+  }
+
+  write_scene_object_file(&source, "trees\\tree", &tree);
+  write_scene_object_file(&source, "levels\\hull", &hull);
+  write_scene_object_file(&source, "levels\\blocker", &blocker);
+  write_compiler_library(&source);
+
+  let (_, _, drawn) = show(&source);
+  let spawn: RenderLevelSpawn = drawn.read_spawn().expect("the spawn reads");
+  let models: RenderSpawnModels = drawn.read_spawn_models(&spawn.visuals).expect("the models read");
+  let triangles = |name: &str| -> Option<u32> {
+    let model: &RenderSpawnModel = models.models.iter().find(|model| model.name == name)?;
+
+    Some(
+      model
+        .package
+        .description
+        .submeshes
+        .iter()
+        .filter_map(VisualSubmesh::geometry)
+        .map(|geometry| geometry.index_count / 3)
+        .sum(),
+    )
+  };
+
+  assert!(models.failures.is_empty(), "{:?}", models.failures);
+  assert_eq!(
+    triangles(TABLE),
+    Some(2),
+    "an object of no collision surface is drawn whole"
+  );
+  assert_eq!(triangles(&collision_model(TABLE)), None);
+  assert_eq!(triangles(&editor_model(TABLE)), None);
+  assert_eq!(triangles("trees\\tree"), Some(1));
+  assert_eq!(triangles(&collision_model("trees\\tree")), Some(1), "its hull apart");
+  assert_eq!(triangles(&editor_model("trees\\tree")), None);
+  assert_eq!(triangles("levels\\hull"), None, "nothing of it is drawn");
+  assert_eq!(triangles(&collision_model("levels\\hull")), Some(2));
+  assert_eq!(triangles("levels\\blocker"), Some(1));
+  assert_eq!(
+    triangles(&editor_model("levels\\blocker")),
+    Some(1),
+    "its marker apart, its texture matched as the game matches a name"
+  );
+  assert_eq!(
+    models
+      .lighting
+      .iter()
+      .map(|lighting| lighting.object)
+      .collect::<Vec<_>>(),
+    [
+      drawn_id(0),
+      drawn_id(2),
+      drawn_id(3),
+      collision_id(3),
+      collision_id(4),
+      drawn_id(5),
+      part_id(5, SceneSurfaceKind::EditorOnly)
+    ],
+    "each model read lit under its own id, an object drawn by its collision surfaces alone too"
+  );
+}
+
+#[test]
+fn compiles_only_the_kinds_of_an_object_a_batch_asks_for() {
+  let source: SceneSource = write_tables("scene_render/batches", vec![placed("tree_0000", "trees\\tree", 20.0)]);
+
+  write_scene_object_file(&source, "trees\\tree", &scene_parted_object(COLLISION_COMPILER_SHADER));
+  write_compiler_library(&source);
+
+  let (_, _, drawn) = show(&source);
+  let names = |models: &RenderSpawnModels| -> Vec<String> { models.models.iter().map(|it| it.name.clone()).collect() };
+  let first: RenderSpawnModels = drawn
+    .read_spawn_models(&[String::from("trees\\tree")])
+    .expect("the models read");
+  let second: RenderSpawnModels = drawn
+    .read_spawn_models(&[collision_model("trees\\tree"), editor_model("trees\\tree")])
+    .expect("the models read");
+
+  assert_eq!(names(&first), ["trees\\tree"]);
+  assert_eq!(
+    names(&second),
+    [collision_model("trees\\tree")],
+    "a batch past the object's own model reads its other kinds"
+  );
+}
+
+#[test]
 fn reports_by_scene_object_what_is_missing_or_unreadable_and_leaves_out_by_reference_what_does_not_compile() {
   let source: SceneSource = write_tables(
     "scene_render/problems",
@@ -279,8 +437,11 @@ fn reports_by_scene_object_what_is_missing_or_unreadable_and_leaves_out_by_refer
 
   assert_eq!(
     spawn.objects.iter().map(|object| object.index).collect::<Vec<_>>(),
-    [0, 2, 3, 4].map(drawn_id),
-    "an object found is listed before it is read"
+    [0, 2, 3, 4]
+      .into_iter()
+      .flat_map(|index| SceneSurfaceKind::ALL.map(|kind| part_id(index, kind)))
+      .collect::<Vec<_>>(),
+    "an object found is listed before it is read, with each other kind of its surfaces"
   );
   assert_eq!(
     models

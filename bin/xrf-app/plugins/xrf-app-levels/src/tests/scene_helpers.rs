@@ -20,7 +20,8 @@ use xrf_world::WorldLevelSource;
 
 use crate::scene::{
   SCENE_HELPER_TOOLS, SceneDrawPart, SceneHelperToolCount, SceneHelpers, SceneHelpersPart, SceneObjectId,
-  SceneObjectSphere, SceneRenderId, SceneRenderSource, SceneSource, SceneToolKind, SelectedScene, ShownScenes,
+  SceneObjectSphere, SceneRenderId, SceneRenderSource, SceneSource, SceneSurfaceKind, SceneToolKind, SelectedScene,
+  ShownScenes,
 };
 use crate::tests::fixtures::{new_scenes, open_scene, scene_custom_object, scene_part, write_scene, write_scene_part};
 
@@ -290,6 +291,19 @@ fn names_an_object_to_the_renderer_by_its_tool_and_index_both_ways() {
     }),
     Some(SceneRenderId(0x0200_0003))
   );
+  // Its other models set a bit above the tools' places each, and name the object as its own model does.
+  assert_eq!(
+    SceneRenderId(0x0200_0003).get_part(SceneSurfaceKind::Collision),
+    SceneRenderId(0x8200_0003)
+  );
+  assert_eq!(
+    SceneRenderId(0x0200_0003).get_part(SceneSurfaceKind::EditorOnly),
+    SceneRenderId(0x4200_0003)
+  );
+
+  for id in [0x8200_0003, 0x4200_0003] {
+    assert_eq!(SceneRenderId(id).get_object(), SceneRenderId(0x0200_0003).get_object());
+  }
   assert_eq!(
     SceneRenderId::of(&SceneObjectId {
       tool: SceneToolKind::Way,

@@ -2,7 +2,12 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { ERenderCommand } from "@xrf/ipc/commands/render";
 import { listMockInvokeCalls, mockInvoke, mockIpcCommands, resetMockChannels, resetMockInvoke } from "@xrf/ipc/testing";
-import { ESceneToolKind, SceneObjectId } from "@xrf/ipc/types/xrf-app-levels";
+import {
+  ESceneToolKind,
+  SCENE_RENDER_COLLISION_BIT,
+  SCENE_RENDER_EDITOR_BIT,
+  SceneObjectId,
+} from "@xrf/ipc/types/xrf-app-levels";
 import { ERenderLevelHit, ERenderSelectionTarget, RenderHelperOptions } from "@xrf/ipc/types/xrf-renderer";
 
 import { clearLocalStorage } from "@/core/storage";
@@ -139,7 +144,7 @@ describe("LevelEditorRenderPicks", () => {
     expect(listMockInvokeCalls(ERenderCommand.PICK)).toHaveLength(picks);
   });
 
-  it("hides an object's model and its helper one by one, by one id", async () => {
+  it("hides an object's models and its helper one by one, by its id and its other models' ids", async () => {
     const { container } = await mockAttachedSceneRender();
     const selection: LevelEditorSelectionService = container.get(LevelEditorSelectionService);
 
@@ -150,6 +155,10 @@ describe("LevelEditorRenderPicks", () => {
     expect(listMockInvokeCalls(ERenderCommand.SET_WORLD_TOGGLES).at(-1)?.toggles.hiddenSpawnObjects).toEqual([
       toId(BOX),
       toId(STALKER),
+      toId(BOX) + SCENE_RENDER_EDITOR_BIT,
+      toId(STALKER) + SCENE_RENDER_EDITOR_BIT,
+      toId(BOX) + SCENE_RENDER_COLLISION_BIT,
+      toId(STALKER) + SCENE_RENDER_COLLISION_BIT,
     ]);
     expect(lastHelpers().hidden).toEqual([toId(BOX), toId(STALKER)]);
 
