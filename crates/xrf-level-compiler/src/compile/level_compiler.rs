@@ -180,12 +180,13 @@ impl LevelCompiler {
 
     let project: BuildPrjFile =
       BuildPrjFile::read_from_path::<XRayByteOrder, _>(&request.level.join(BuildPrjFile::FILE_NAME))?;
+    let roots: Vec<PathBuf> = request.get_textures_roots();
     let missing: Vec<String> = project
       .textures
       .iter()
       .map(|texture| CompilerTextures::get_name(&texture.name.value))
       .filter(|name| name != CompilerTextures::UNLOADED)
-      .filter(|name| CompilerTextures::find(&request.textures, name, "thm").is_none())
+      .filter(|name| CompilerTextures::find(&roots, name, "thm").is_none())
       .collect();
 
     match missing.as_slice() {
@@ -193,7 +194,7 @@ impl LevelCompiler {
       [first, ..] => Err(XrfError::new_not_found_error(format!(
         "{} of the textures build.prj names have no .thm under {}, which the compilers need, such as {first}",
         missing.len(),
-        Self::describe_roots(&request.textures)
+        Self::describe_roots(&roots)
       ))),
     }
   }
@@ -230,13 +231,10 @@ impl LevelCompiler {
 
   /// The textures roots as a message names them.
   fn describe_roots(roots: &[PathBuf]) -> String {
-    match roots {
-      [] => String::from("no textures root"),
-      roots => roots
-        .iter()
-        .map(|root| format_path(root).to_string())
-        .collect::<Vec<_>>()
-        .join(", "),
-    }
+    roots
+      .iter()
+      .map(|root| format_path(root).to_string())
+      .collect::<Vec<_>>()
+      .join(", ")
   }
 }

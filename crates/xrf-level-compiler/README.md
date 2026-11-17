@@ -18,8 +18,8 @@ The root spawn (xrAI `-s`) is not a step: it works on every level of a game at o
 ## Compiling a level
 
 `LevelCompiler::compile` takes a `LevelCompileRequest`: the level's directory, the steps (every one when none, always
-run in the table's order), the game data whose `gamemtl.xr` and `shaders_xrlc.xr` the compilers read, the textures
-roots, searched in order, whether the outputs may be overwritten, what traces the rays (`RayBackend`, DXC's library,
+run in the table's order), the game data whose `gamemtl.xr`, `shaders_xrlc.xr` and `textures` the compilers read, the
+textures roots searched in order before the game data's, whether the outputs may be overwritten, what traces the rays (`RayBackend`, DXC's library,
 `RayGpu`), the AI map's covers (`AiMapCovers`) and the light's quality (`LightQuality`). `xrf-cli level compile` and
 the app's level compiler call it.
 
@@ -228,7 +228,8 @@ hardware takes alone and which end a ray at the first; and the alpha faces, whic
 
 `ShadowMaterials::load` (`shadow/`) reads how each face of xrLC's ray model (`build.cform`) meets a light ray, as the
 SDK's light compilers read it. It takes a `ShadowMaterialsRequest`: `build.prj`, the ray model's faces,
-`shaders_xrlc.xr` and the textures roots, searched in order.
+`shaders_xrlc.xr` and the textures roots, searched in order: the roots the request names, then the game data's own
+`textures` (`LevelCompileRequest::get_textures_roots`).
 
 | Class    | When                                                                                             |
 | -------- | ------------------------------------------------------------------------------------------------ |

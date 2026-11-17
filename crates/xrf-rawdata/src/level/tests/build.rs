@@ -3,7 +3,6 @@
 
 use std::path::PathBuf;
 
-use crate::LevelBuildExport;
 use crate::level::build::level_build_breakables::LevelBuildBreakables;
 use crate::level::build::level_build_climbables::LevelBuildClimbables;
 use crate::level::build::level_build_geometry::LevelBuildGeometry;
@@ -20,6 +19,7 @@ use crate::level::level_occluder_conversion::LevelOccluderConversion;
 use crate::level::level_visual_geometry::LevelVisualGeometry;
 use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
+use crate::{LevelBuildExport, LevelBuildRequest};
 use xrf_chunk::XRayByteOrder;
 use xrf_editable_level::{
   EditableCustomObject, EditableLevelOptions, EditableObjectTransform, EditableSceneObject, EditableSectorItem,
@@ -556,6 +556,32 @@ fn builds_a_multi_use_model_once_and_references_it_per_placement() -> XrfResult 
       .collect::<Vec<_>>(),
     [(0, 10.0, 1), (0, 30.0, 2)],
     "each placement in the sector naming its first mesh, else the default"
+  );
+
+  Ok(())
+}
+
+#[test]
+fn reads_the_objects_beside_a_decompiled_scene_where_no_root_is_named() -> XrfResult {
+  let rawdata: PathBuf = GeneratedResources::create_dir("level-build-objects-roots")?;
+  let request = |objects: Vec<PathBuf>| LevelBuildRequest {
+    source: rawdata.join("levels").join("labx8.level"),
+    objects,
+    ..LevelBuildRequest::default()
+  };
+
+  assert!(
+    request(Vec::new()).get_objects_roots().is_empty(),
+    "none where the rawdata keeps no objects"
+  );
+
+  std::fs::create_dir_all(rawdata.join("objects"))?;
+
+  assert_eq!(request(Vec::new()).get_objects_roots(), [rawdata.join("objects")]);
+  assert_eq!(
+    request(vec![PathBuf::from("C:/SDK/editors/rawdata/objects")]).get_objects_roots(),
+    [PathBuf::from("C:/SDK/editors/rawdata/objects")],
+    "the roots named are kept as they are"
   );
 
   Ok(())

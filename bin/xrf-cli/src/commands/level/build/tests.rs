@@ -116,6 +116,27 @@ fn needs_the_game_materials_beside_the_objects_to_write_build_prj() -> XrfResult
 }
 
 #[test]
+fn needs_objects_named_or_beside_the_scene_to_write_build_prj() -> XrfResult {
+  let root: PathBuf = scene_root("objects-default")?;
+  let built: PathBuf = root.join("built");
+  let game_materials: String = root.join("gamemtl.xr").display().to_string();
+  let error: String = get_error(run(
+    "build",
+    &root.join("scenes/test_level.level"),
+    &built,
+    &["--game-materials", &game_materials],
+  ));
+
+  assert!(
+    error.contains("objects directory lies beside the scene's"),
+    "Expect the refusal to name the objects it looked for: {error}"
+  );
+  assert!(!built.join("level.game").exists(), "a refusal writes nothing");
+
+  Ok(())
+}
+
+#[test]
 fn refuses_to_replace_a_levels_files_without_force() -> XrfResult {
   let root: PathBuf = scene_root("existing")?;
   let level: PathBuf = root.join("level");

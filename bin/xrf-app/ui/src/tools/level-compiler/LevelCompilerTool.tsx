@@ -20,6 +20,7 @@ import { ChoiceFormRow } from "@xrf/ui/form/choice-row";
 import { StringListFormRow } from "@xrf/ui/form/string-list-row";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
+import { ELevelCompilerField } from "@/core/level/lib/compiler/level-compiler-field";
 import { LEVEL_SCENE_FILE_FILTERS, XR_LIBRARY_FILE_FILTERS } from "@/core/path/file-filters";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { EToolId } from "@/core/routing/tool";
@@ -61,7 +62,7 @@ export function LevelCompilerTool(): ReactElement {
 
   const source: IPathField = usePathField({
     tool: EToolId.LEVEL_COMPILER,
-    id: "source",
+    id: ELevelCompilerField.SOURCE,
     title: "Select scene file",
     filters: LEVEL_SCENE_FILE_FILTERS,
     isDisabled: isRunning,
@@ -69,7 +70,7 @@ export function LevelCompilerTool(): ReactElement {
 
   const destination: IPathField = usePathField({
     tool: EToolId.LEVEL_COMPILER,
-    id: "destination",
+    id: ELevelCompilerField.DESTINATION,
     title: "Select level directory",
     isDirectory: true,
     isSave: true,
@@ -78,7 +79,7 @@ export function LevelCompilerTool(): ReactElement {
 
   const gameMaterials: IPathField = usePathField({
     tool: EToolId.LEVEL_COMPILER,
-    id: "game-materials",
+    id: ELevelCompilerField.GAME_MATERIALS,
     title: "Select game materials",
     filters: XR_LIBRARY_FILE_FILTERS,
     isRequired: false,
@@ -87,7 +88,7 @@ export function LevelCompilerTool(): ReactElement {
 
   const textures: IPathField = usePathField({
     tool: EToolId.LEVEL_COMPILER,
-    id: "textures",
+    id: ELevelCompilerField.TEXTURES,
     title: "Select game textures root",
     isDirectory: true,
     isRequired: false,
@@ -96,7 +97,7 @@ export function LevelCompilerTool(): ReactElement {
 
   const gamedata: IPathField = usePathField({
     tool: EToolId.LEVEL_COMPILER,
-    id: "gamedata",
+    id: ELevelCompilerField.GAMEDATA,
     title: "Select game data",
     isDirectory: true,
     isRequired: false,
@@ -105,8 +106,6 @@ export function LevelCompilerTool(): ReactElement {
 
   const scenePath: Nullable<string> = source.value;
   const levelPath: Nullable<string> = destination.value;
-  // The build project needs the objects its placements name; the game files alone do not.
-  const isMissingObjects: boolean = gameMaterials.value !== null && objects.length === 0;
   // The rays trace on the GPU the renderer's settings choose, the automatic one where they choose none.
   const rayGpu: Nullable<RenderGpu> = renderSettingsService.renderGpu;
   const isTracing: boolean =
@@ -165,7 +164,6 @@ export function LevelCompilerTool(): ReactElement {
         !gameMaterials.isValid ||
         !textures.isValid ||
         !gamedata.isValid ||
-        isMissingObjects ||
         compileProblem !== null
       }
       title={"Build a level"}
@@ -193,10 +191,13 @@ export function LevelCompilerTool(): ReactElement {
 
       <StringListFormRow
         label={"Objects roots"}
-        description={"Where the scene's objects are read from, each from the first root holding it"}
+        description={
+          "Where the scene's objects are read from, each from the first root holding it; none for objects beside the " +
+          "scene's directory, where a decompile writes them"
+        }
         values={objects}
         addLabel={"Add root"}
-        emptyLabel={isMissingObjects ? "The build project needs an objects root" : "No root: game files only"}
+        emptyLabel={"None: objects beside the scene's directory"}
         placeholder={"C:\\SDK\\editors\\rawdata\\objects"}
         isDisabled={isRunning}
         onChange={setObjects}
@@ -213,8 +214,8 @@ export function LevelCompilerTool(): ReactElement {
         isDisabled={isRunning}
         label={"Textures root"}
         description={
-          "Where the details' textures and the impostor strips are read from, and, to compile, every texture " +
-          "build.prj names"
+          "Where the details' textures and the impostor strips are read from, such as the one a decompile wrote; " +
+          "the compile reads it before the game data's own textures"
         }
         field={textures}
       />
@@ -280,8 +281,7 @@ export function LevelCompilerTool(): ReactElement {
         label={"Game data"}
         description={
           compileProblem ??
-          "Where the compilers read gamemtl.xr and shaders_xrlc.xr from; they read textures from the textures root " +
-            "above"
+          "Where the compilers read gamemtl.xr, shaders_xrlc.xr and the textures from, after the textures root above"
         }
         field={gamedata}
       />

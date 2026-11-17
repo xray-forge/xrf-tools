@@ -21,8 +21,8 @@ pub struct LevelCompileRequest {
   pub steps: Vec<LevelCompileStep>,
   /// The game data the compilers read their libraries from (`$game_data$`): `gamemtl.xr` and `shaders_xrlc.xr`.
   pub gamedata: PathBuf,
-  /// The textures roots (`$game_textures$`), searched in order for each file: a `.thm` for every texture `build.prj`
-  /// names, and the image where the texture has alpha or is lit implicitly.
+  /// The textures roots (`$game_textures$`) searched before the game data's own `textures`, such as one a decompile
+  /// wrote impostor strips into ([`Self::get_textures_roots`]).
   pub textures: Vec<PathBuf>,
   /// Whether a step overwrites a file it writes where the level's directory holds it, rather than refusing.
   pub is_forced: bool,
@@ -41,6 +41,23 @@ pub struct LevelCompileRequest {
 }
 
 impl LevelCompileRequest {
+  /// The directory below the game data holding the game's own textures.
+  pub const TEXTURES_DIRECTORY: &'static str = "textures";
+
+  /// The textures roots the steps search in order for each file, a `.thm` for every texture `build.prj` names and the
+  /// image where the texture has alpha or is lit implicitly: the roots named, then the game data's `textures` unless it
+  /// is among them, so a root holding only what a decompile wrote finds every other texture in the game's.
+  pub fn get_textures_roots(&self) -> Vec<PathBuf> {
+    let game: PathBuf = self.gamedata.join(Self::TEXTURES_DIRECTORY);
+    let mut roots: Vec<PathBuf> = self.textures.clone();
+
+    if !roots.contains(&game) {
+      roots.push(game);
+    }
+
+    roots
+  }
+
   /// What traces the steps' rays, as the request names it.
   pub fn get_tracing(&self) -> RayTracing<'_> {
     RayTracing {

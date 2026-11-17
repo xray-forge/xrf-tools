@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, HashMap};
+use std::path::PathBuf;
 
 use byteorder::ByteOrder;
 use xrf_editable_level::{
@@ -361,8 +362,8 @@ impl LevelBuildExporter {
   ///
   /// # Errors
   ///
-  /// Returns an error when the scene or the game materials do not read, the request names game materials but no
-  /// objects root, the export fails, a file exists and the request is not forced, the job is cancelled before writing,
+  /// Returns an error when the scene or the game materials do not read, the request names game materials but has no
+  /// objects root ([`LevelBuildRequest::get_objects_roots`]), the export fails, a file exists and the request is not forced, the job is cancelled before writing,
   /// or a file does not write.
   pub fn build_to_directory<T: ByteOrder>(request: &LevelBuildRequest, job: &JobHandle) -> XrfResult<LevelBuildReport> {
     let (source, destination) = (&request.source, &request.destination);
@@ -382,17 +383,21 @@ impl LevelBuildExporter {
 
     let (mut files, census, entities, refused) = match &request.game_materials {
       Some(game_materials) => {
-        if request.objects.is_empty() {
-          return Err(XrfError::new_invalid_error(
-            "The build project needs the objects roots the scene's objects are read from",
-          ));
+        let objects: Vec<PathBuf> = request.get_objects_roots();
+
+        if objects.is_empty() {
+          return Err(XrfError::new_invalid_error(format!(
+            "The build project needs the objects roots the scene's objects are read from: none is named, and no {} \
+             directory lies beside the scene's",
+            LevelBuildRequest::OBJECTS_DIRECTORY
+          )));
         }
 
         let game_materials: GameMtlFile = GameMtlFile::read_from_path::<T, _>(game_materials)?;
         let mut export: LevelBuildExport = Self::export::<T>(
           &scene,
           &LevelBuildSources {
-            objects: &request.objects,
+            objects: &objects,
             game_materials: &game_materials,
             textures: request.textures.as_deref(),
             impostor_limit: request.impostor_limit,

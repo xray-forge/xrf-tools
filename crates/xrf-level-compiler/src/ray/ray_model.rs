@@ -36,7 +36,7 @@ impl RayModel {
       project: &project,
       faces: &cform.raycast_faces,
       library: &library,
-      textures: &request.textures,
+      textures: &request.get_textures_roots(),
     })?;
 
     Ok(Self {

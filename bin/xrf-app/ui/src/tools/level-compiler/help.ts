@@ -10,9 +10,10 @@ export const LEVEL_COMPILER_HELP: IToolHelp = {
   workflow: [
     "Pick the scene's `.level`; its parts are read from the directory beside it.",
     "Pick the level directory to write into.",
-    "Add the objects roots the scene's objects are read from, such as the scene's own `rawdata\\objects` and the SDK's.",
+    "Leave the objects roots empty for a decompiled scene, whose objects lie in `rawdata\\objects` beside its " +
+      "`levels`; add roots, such as the SDK's, for objects kept elsewhere.",
     "Pick the game materials, `gamemtl.xr`, to write `build.prj`, and the textures root where the scene holds details " +
-      "or impostors.",
+      "or impostors, such as the one its decompile wrote.",
     "To compile as well, tick the steps (geometry, light, details, AI map), choose the light quality, and pick the " +
       "game data the compilers read.",
     "`Build` reports every file written and what it replaced, and lists any part it could not make; with steps " +
@@ -28,7 +29,8 @@ export const LEVEL_COMPILER_HELP: IToolHelp = {
     "Files the build writes that the directory already holds are replaced only when overwriting is chosen, and a file " +
       "of the build's own it would not write again is refused, since the SDK's Build would move it aside.",
     "Before any step starts, the compile checks each step's inputs and a texture description (`.thm`) for every " +
-      "texture `build.prj` names. Stopping the job stops the running step and keeps what was already written.",
+      "texture `build.prj` names, each from the textures root first and the game data's `textures` after it. " +
+      "Stopping the job stops the running step and keeps what was already written.",
     "The light is baked in the same pass as the geometry, so ticking the geometry ticks the light, and the light is " +
       "offered only with the geometry. Geometry compiled without its light gets flat neutral light: enough to walk " +
       "the level, not to judge its look.",
@@ -36,6 +38,10 @@ export const LEVEL_COMPILER_HELP: IToolHelp = {
       "it supports ray tracing, or on the CPU, the reference, when chosen or where no GPU can. Existing " +
       "`level.details` and `level.ai` are replaced only when overwriting is chosen.",
   ],
-  limitations: ["The objects roots are typed rather than picked."],
+  limitations: [
+    "The objects roots are typed rather than picked.",
+    "Ticking the details for a level whose scene holds none stops the compile after the build: the build writes no " +
+      "`build.details` to light.",
+  ],
   relatedTools: [EToolId.LEVEL_DECOMPILER, EToolId.LEVEL_VIEWER],
 };

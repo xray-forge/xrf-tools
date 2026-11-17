@@ -25,7 +25,7 @@ impl GenericCommand for BuildCommand {
         "Build an SDK Level Editor scene into a level directory, as the editor's Build writes it. From the scene's \
          parts it writes level.game, level.env_mod and level.fog_vol, and level.spawn, level_rs.spawn, \
          level.ps_static, level.snd_static, level.snd_env and level.wallmarks where the scene holds them. Given \
-         --objects and --game-materials it also writes what level compile reads: build.prj with the scene's build \
+         --game-materials it also writes what level compile reads, from the scene's objects: build.prj with the scene's build \
          options, level.ltx, level.hom and level.som where objects occlude, build.details and its atlas \
          build_details.dds where the scene holds details, build.aimap where it holds an AI map, the impostor atlas \
          level_lods.dds and level_lods_nm.dds where a multi-use object has an impostor, and each breakable part as \
@@ -51,7 +51,8 @@ impl GenericCommand for BuildCommand {
         Arg::new("objects")
           .help(
             "Objects root ($objects$) the scene's objects are read from, repeatable, each object from the first root \
-             holding it; with --game-materials, the build writes build.prj, level.ltx and the occluders",
+             holding it; by default the objects directory beside the scene's levels directory, where level \
+             decompile writes them",
           )
           .long("objects")
           .action(ArgAction::Append)
@@ -66,14 +67,16 @@ impl GenericCommand for BuildCommand {
              level_lods_nm.dds; a scene of details or impostors needs it",
           )
           .long("textures")
-          .requires("objects")
+          .requires("game-materials")
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
         Arg::new("game-materials")
-          .help("Game material library, gamemtl.xr, the objects' surfaces name their game materials from")
+          .help(
+            "Game material library, gamemtl.xr, the objects' surfaces name their game materials from; with it, the \
+             build writes build.prj, level.ltx and the occluders",
+          )
           .long("game-materials")
-          .requires("objects")
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
@@ -83,7 +86,7 @@ impl GenericCommand for BuildCommand {
              Level Editor does; by default it grows to 4096 a side, as Anomaly's largest levels ship it",
           )
           .long("sdk-impostor-atlas")
-          .requires("objects")
+          .requires("game-materials")
           .action(ArgAction::SetTrue),
       )
       .arg(

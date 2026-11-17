@@ -41,7 +41,8 @@ impl GeometryStep {
     let project: BuildPrjFile = BuildPrjFile::read_from_path::<XRayByteOrder, _>(&level.join(BuildPrjFile::FILE_NAME))?;
     let library: ShaderCompilerFile =
       ShaderCompilerFile::read_from_path::<XRayByteOrder, _>(&request.gamedata.join(ShaderCompilerFile::FILE_NAME))?;
-    let textures: Vec<CompilerTexture> = CompilerTexture::resolve_all(&project, &request.textures)?;
+    let roots: Vec<PathBuf> = request.get_textures_roots();
+    let textures: Vec<CompilerTexture> = CompilerTexture::resolve_all(&project, &roots)?;
 
     job.check_cancelled()?;
 
@@ -49,7 +50,7 @@ impl GeometryStep {
       project: &project,
       library: &library,
       textures: &textures,
-      roots: &request.textures,
+      roots: &roots,
       quality: request.light_quality,
       light,
     })?;

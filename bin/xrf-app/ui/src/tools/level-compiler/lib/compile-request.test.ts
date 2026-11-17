@@ -56,8 +56,12 @@ describe("toCompileRequest", () => {
     expect(getCompileProblem(choice([ELevelCompileStep.LIGHT]))).toContain("geometry");
     expect(toCompileRequest(choice([ELevelCompileStep.LIGHT, ELevelCompileStep.DETAILS]))).toBeNull();
     expect(getCompileProblem(choice([ELevelCompileStep.DETAILS], { gamedata: null }))).toContain("game data");
-    expect(getCompileProblem(choice([ELevelCompileStep.DETAILS], { textures: null }))).toContain("textures");
-    expect(toCompileRequest(choice([ELevelCompileStep.DETAILS], { textures: null }))).toBeNull();
+    expect(toCompileRequest(choice([ELevelCompileStep.DETAILS], { gamedata: null }))).toBeNull();
+  });
+
+  it("names no textures root where none is chosen, leaving the game data's to the backend", () => {
+    expect(getCompileProblem(choice([ELevelCompileStep.DETAILS], { textures: null }))).toBeNull();
+    expect(toCompileRequest(choice([ELevelCompileStep.DETAILS], { textures: null }))?.textures).toEqual([]);
   });
 });
 

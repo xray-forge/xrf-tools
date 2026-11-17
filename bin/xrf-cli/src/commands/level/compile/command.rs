@@ -53,8 +53,8 @@ impl GenericCommand for CompileCommand {
       .arg(
         Arg::new("gamedata")
           .help(
-            "Game data directory to read gamemtl.xr and shaders_xrlc.xr from; by default the gamedata directory \
-             holding the level's levels directory",
+            "Game data directory to read gamemtl.xr, shaders_xrlc.xr and the textures from; by default the gamedata \
+             directory holding the level's levels directory",
           )
           .long("gamedata")
           .value_parser(value_parser!(PathBuf)),
@@ -62,9 +62,9 @@ impl GenericCommand for CompileCommand {
       .arg(
         Arg::new("textures")
           .help(
-            "Textures root holding a .thm for every texture build.prj names, and the image of each texture with \
-             alpha; repeatable, each file taken from the first root holding it; by default the game data's textures \
-             directory",
+            "Textures root searched for the .thm of every texture build.prj names, and the image of each texture \
+             with alpha, before the game data's textures directory, which is always read last; repeatable, each file \
+             taken from the first root holding it",
           )
           .long("textures")
           .action(ArgAction::Append)
@@ -125,16 +125,15 @@ impl GenericCommand for CompileCommand {
       .get_one::<PathBuf>("gamedata")
       .cloned()
       .unwrap_or_else(|| Self::get_gamedata(&level));
-    let textures: Vec<PathBuf> = matches
-      .get_many::<PathBuf>("textures")
-      .map(|roots| roots.cloned().collect())
-      .unwrap_or_else(|| vec![gamedata.join("textures")]);
     let request: LevelCompileRequest = LevelCompileRequest {
       steps: matches
         .get_many::<String>("steps")
         .map(|steps| steps.filter_map(|step| LevelCompileStep::from_name(step)).collect())
         .unwrap_or_default(),
-      textures,
+      textures: matches
+        .get_many::<PathBuf>("textures")
+        .map(|roots| roots.cloned().collect())
+        .unwrap_or_default(),
       gamedata,
       is_forced: matches.get_flag("force"),
       backend: matches

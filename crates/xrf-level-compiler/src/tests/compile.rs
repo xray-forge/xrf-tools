@@ -54,6 +54,24 @@ fn runs_each_step_once_in_its_order_and_every_step_when_none_is_named() {
 }
 
 #[test]
+fn searches_the_game_data_textures_after_the_roots_named_and_once() {
+  let game: PathBuf = PathBuf::from("C:/game/gamedata/textures");
+  let roots = |textures: Vec<PathBuf>| {
+    LevelCompileRequest {
+      gamedata: PathBuf::from("C:/game/gamedata"),
+      textures,
+      ..LevelCompileRequest::default()
+    }
+    .get_textures_roots()
+  };
+  let strips: PathBuf = PathBuf::from("C:/rawdata/../gamedata/textures");
+
+  assert_eq!(roots(Vec::new()), std::slice::from_ref(&game));
+  assert_eq!(roots(vec![strips.clone()]), [strips, game.clone()]);
+  assert_eq!(roots(vec![game.clone()]), [game]);
+}
+
+#[test]
 fn refuses_the_light_step_without_the_geometry_step_before_running_anything() -> XrfResult {
   let level: PathBuf = level("light_alone", &["build.prj"])?;
   let error: String = LevelCompiler::compile(

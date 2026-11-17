@@ -15,13 +15,14 @@ use xrf_utils::format_path;
 
 use crate::ipc::levels::LEVELS_JOB_BUILD;
 use crate::rawdata::level_build_result::LevelBuildResult;
+use crate::rawdata::level_build_run::LevelBuildRun;
 use crate::rawdata::level_compiler_libraries::LevelCompilerLibraries;
 
 /// Build a Level Editor scene into a level directory, as `level build` does, then compile it where `compile` names
 /// the steps, as `level compile` does, one job reporting both. A cancel stops the build between its steps and the
 /// compile within its running step. The compile works on the directory the build wrote, whatever level `compile`
 /// names, overwrites what it writes as the build does where the build is forced, and traces on D3D12 with the DXC the
-/// app bundles where it traces on the GPU.
+/// app bundles where it traces on the GPU ([`LevelBuildRun::new`]).
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "build_level")]
 pub(crate) async fn levels_build_level(
@@ -33,12 +34,10 @@ pub(crate) async fn levels_build_level(
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<LevelBuildResult> {
-  let compile: Option<LevelCompileRequest> = compile.map(|compile| LevelCompileRequest {
-    level: request.destination.clone(),
-    is_forced: request.is_forced,
-    dxc: libraries.dxc.clone(),
-    ..compile
-  });
+  let LevelBuildRun {
+    build: request,
+    compile,
+  } = LevelBuildRun::new(request, compile, libraries.dxc.clone());
   let start: JobStart = JobStart::new(job_id, LEVELS_JOB_BUILD)
     .with_request(&request)
     .with_kind_exclusion()

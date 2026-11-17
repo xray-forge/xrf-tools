@@ -14,7 +14,10 @@ export interface ICompileChoice {
   steps: ReadonlySet<LevelCompileStep>;
   /** The game data holding `gamemtl.xr` and `shaders_xrlc.xr`. */
   gamedata: Nullable<string>;
-  /** The textures root, with a `.thm` for every texture `build.prj` names. */
+  /**
+   * The textures root read before the game data's own `textures`, such as the one a decompile wrote impostor strips
+   * into; none to read the game data's alone. Between them they hold a `.thm` for every texture `build.prj` names.
+   */
   textures: Nullable<string>;
   /** What traces the rays: the light's lightmap and terrain rays, the details' shadow rays and the AI map's cover rays. */
   rayBackend: RayBackend;
@@ -72,8 +75,8 @@ export function toggleCompileStep(
 }
 
 /**
- * Whether the compile the form names cannot run: a step is chosen but the game data or the textures root is not
- * named, or the light is chosen without the geometry it is baked with.
+ * Whether the compile the form names cannot run: a step is chosen but the game data is not named, or the light is
+ * chosen without the geometry it is baked with.
  *
  * @param choice - What the form names.
  * @returns Why it cannot run, or null where it can or no step is chosen.
@@ -88,11 +91,7 @@ export function getCompileProblem(choice: ICompileChoice): Nullable<string> {
   }
 
   if (!choice.gamedata) {
-    return "Name the game data the compilers read their libraries from";
-  }
-
-  if (!choice.textures) {
-    return "Name the textures root the compilers read the textures from";
+    return "Name the game data the compilers read their libraries and textures from";
   }
 
   return null;
@@ -106,17 +105,17 @@ export function getCompileProblem(choice: ICompileChoice): Nullable<string> {
  * @returns The request, or null.
  */
 export function toCompileRequest(choice: ICompileChoice): Nullable<LevelCompileRequest> {
-  if (choice.steps.size === 0 || getCompileProblem(choice) || !choice.gamedata || !choice.textures) {
+  if (choice.steps.size === 0 || getCompileProblem(choice) || !choice.gamedata) {
     return null;
   }
 
   return {
-    // The backend runs the compile on the build's destination, forces it as the build is forced, and gives it the DXC
-    // the app bundles, whatever is named here.
+    // The backend runs the compile on the build's destination, forces it as the build is forced, gives it the DXC the
+    // app bundles, whatever is named here, and reads the game data's textures after the roots named.
     level: "",
     steps: COMPILE_STEPS.filter((step: LevelCompileStep) => choice.steps.has(step)),
     gamedata: choice.gamedata,
-    textures: [choice.textures],
+    textures: choice.textures ? [choice.textures] : [],
     isForced: false,
     backend: choice.rayBackend,
     dxc: null,
