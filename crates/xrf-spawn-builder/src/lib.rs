@@ -13,6 +13,7 @@ mod tests;
 
 pub use crate::gamedata::spawn_game_level::SpawnGameLevel;
 pub use crate::gamedata::spawn_level_files::SpawnLevelFiles;
+pub use crate::gamedata::spawn_listed_level::SpawnListedLevel;
 pub use crate::gamedata::spawn_root_gamedata::SpawnRootGamedata;
 pub use crate::gamedata::spawn_root_outcome::SpawnRootOutcome;
 pub use crate::gamedata::spawn_root_request::SpawnRootRequest;

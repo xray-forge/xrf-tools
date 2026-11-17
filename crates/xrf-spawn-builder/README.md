@@ -5,11 +5,15 @@ Builds a game's root spawn as SDK 0.7's `xrAI -s` does, without xrAI: every leve
 of `xrf-level-compiler`, since it works on every level of a game at once.
 
 `SpawnRootGamedata::build` runs it over a gamedata root, as xrAI runs over `$game_levels$` and writes `$game_spawn$`.
-It takes a `SpawnRootRequest` (the root holding `configs/game_levels.ltx` and the levels under `levels/`, the levels to
-build, every listed one whose directory holds the three files when none are named, the spawn's name, the
-`SpawnRootOptions` and whether it may write over the game's own `all.spawn`), reads the levels the game lists
-(`SpawnGameLevels`), each level's files and graph (`SpawnLevelFiles`, in parallel; the result is the same), builds the
-spawn and writes it to `spawns/<name>.spawn`, giving a `SpawnRootOutcome`. `xrf-cli spawn build` calls it.
+It takes a `SpawnRootRequest` (the root holding `configs/game_levels.ltx`, the directory holding the levels, `levels/`
+under the root by default, the levels to build, every listed one whose directory holds the three files when none are
+named, the directory the spawn is written into, `spawns/` under the root by default, the spawn's name, the
+`SpawnRootOptions` and whether it may write over the game's own `all.spawn`) and a job it reports its three stages to
+and stops between, reads the levels the game lists (`SpawnGameLevels`), each level's files and graph
+(`SpawnLevelFiles`, in parallel; the result is the same), builds the spawn and writes it as `<name>.spawn`, giving a
+`SpawnRootOutcome`. `SpawnRootGamedata::list_levels` gives the levels the list names, each marked by whether its
+directory is complete (`SpawnListedLevel`). `xrf-cli spawn build` and the app's spawn compiler (`spawn|build_spawn`)
+call it.
 
 ## The build
 
@@ -101,4 +105,7 @@ objects' order and numbering, the changers' links, the zones' offsets, the patro
 actor moved only to another start level, the spawn GUID, the report (a connection left out, a wall across the map and
 its strict refusal), and the refusals (no actor or two, a shared story id, a level of no entity, a changer leading
 nowhere built or to a point its level lacks, two patrols of a name, an unknown start level). They take the objects'
-`new_mock` constructors through `xrf-spawn`'s `mocks` feature.
+`new_mock` constructors through `xrf-spawn`'s `mocks` feature. The gamedata tests take a level list and placeholder
+level files: the request's default levels and spawn directories, the listing, and the refusals before any level is read
+(no level asked for, a name that is no file name, an unlisted level, one asked for twice, none built, the game's own
+spawn unforced).

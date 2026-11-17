@@ -5,6 +5,7 @@ use xrf_output::OutputOptions;
 use xrf_spawn_builder::{SpawnRootGamedata, SpawnRootOptions, SpawnRootOutcome, SpawnRootRequest};
 
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::terminal::CliJob;
 
 /// Builds a root spawn from a gamedata root's levels, as SDK 0.7's `xrAI -s` does.
 #[derive(Default)]
@@ -20,14 +21,30 @@ impl GenericCommand for BuildCommand {
       .about(
         "Build a root spawn from a gamedata root's levels, as SDK 0.7's xrAI -s does: each level's level.ai, \
          level.spawn and level.game into one spawn with the game graph, its cross tables, the entities, artefact \
-         points and patrols, written as `spawns/<out>.spawn`. The same levels give the same file",
+         points and patrols, written as `<out>.spawn`. The same levels give the same file",
       )
       .arg(
         Arg::new("path")
-          .help("Gamedata root holding configs/game_levels.ltx and the levels' directories under levels/")
+          .help(
+            "Gamedata root holding configs/game_levels.ltx, and by default the levels' directories under levels/ and \
+             the spawns under spawns/",
+          )
           .short('p')
           .long("path")
           .required(true)
+          .value_parser(value_parser!(PathBuf)),
+      )
+      .arg(
+        Arg::new("levels-root")
+          .help("Directory holding the levels' directories; by default levels/ under the gamedata root")
+          .long("levels-root")
+          .value_parser(value_parser!(PathBuf)),
+      )
+      .arg(
+        Arg::new("dest")
+          .help("Directory the spawn is written into; by default spawns/ under the gamedata root")
+          .short('d')
+          .long("dest")
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
@@ -43,7 +60,7 @@ impl GenericCommand for BuildCommand {
       )
       .arg(
         Arg::new("out")
-          .help("Name of the spawn to write, `spawns/<out>.spawn`; `all` is the game's own")
+          .help("Name of the spawn to write, `<out>.spawn`; `all` is the game's own")
           .long("out")
           .required(true)
           .value_parser(value_parser!(String)),
@@ -67,7 +84,7 @@ impl GenericCommand for BuildCommand {
       )
       .arg(
         Arg::new("force")
-          .help("Overwrite spawns/all.spawn, the game's own spawn, where it already exists")
+          .help("Overwrite all.spawn, the game's own spawn, where the spawn's directory already holds it")
           .short('f')
           .long("force")
           .action(ArgAction::SetTrue),
@@ -80,9 +97,11 @@ impl GenericCommand for BuildCommand {
         .get_one::<PathBuf>("path")
         .expect("the path is required")
         .clone(),
+      levels_root: matches.get_one::<PathBuf>("levels-root").cloned(),
       levels: matches
         .get_many::<String>("levels")
         .map(|levels| levels.cloned().collect()),
+      destination: matches.get_one::<PathBuf>("dest").cloned(),
       name: matches.get_one::<String>("out").expect("the name is required").clone(),
       options: SpawnRootOptions {
         start: matches.get_one::<String>("start").cloned(),
@@ -90,7 +109,7 @@ impl GenericCommand for BuildCommand {
       },
       is_forced: matches.get_flag("force"),
     };
-    let outcome: SpawnRootOutcome = SpawnRootGamedata::build(&request)?;
+    let outcome: SpawnRootOutcome = SpawnRootGamedata::build(&request, &CliJob::for_output(context.get_output()))?;
 
     Self::print(context.get_output(), &outcome);
     context.set_result(|| &outcome)?;

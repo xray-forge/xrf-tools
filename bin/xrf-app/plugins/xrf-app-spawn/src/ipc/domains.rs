@@ -5,7 +5,9 @@ macro_rules! for_each_spawn_domain {
   ($consumer:ident) => {
     $consumer! {
       spawn => "spawn" {
+        build_spawn => crate::commands::build_spawn::spawn_build_spawn,
         close_file => crate::commands::close_file::spawn_close_file,
+        list_levels => crate::commands::list_levels::spawn_list_levels,
         open_file => crate::commands::open_file::spawn_open_file,
         pack_file => crate::commands::pack_file::spawn_pack_file,
         read_chunk => crate::commands::read_chunk::spawn_read_chunk,
@@ -15,6 +17,8 @@ macro_rules! for_each_spawn_domain {
         unpack_file => crate::commands::unpack_file::spawn_unpack_file,
       }
       @jobs {
+        /// Building a root spawn from a game's levels.
+        SPAWN_JOB_BUILD => "build",
         /// Packing a directory of spawn chunks into one file.
         SPAWN_JOB_PACK => "pack",
         /// Unpacking a spawn file into a directory of chunks.

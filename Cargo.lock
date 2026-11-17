@@ -8214,9 +8214,11 @@ dependencies = [
  "uuid",
  "xrf-app-core",
  "xrf-chunk",
+ "xrf-error",
  "xrf-ipc",
  "xrf-job",
  "xrf-spawn",
+ "xrf-spawn-builder",
  "xrf-test-utils",
  "xrf-utils",
 ]
@@ -9245,11 +9247,13 @@ dependencies = [
  "xrf-chunk",
  "xrf-error",
  "xrf-geometry",
+ "xrf-job",
  "xrf-level",
  "xrf-ltx",
  "xrf-math",
  "xrf-report",
  "xrf-spawn",
+ "xrf-test-utils",
 ]
 
 [[package]]

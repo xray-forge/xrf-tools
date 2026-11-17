@@ -8,12 +8,22 @@ import {
   SpawnHeaderChunk,
   SpawnPatrolsChunk,
 } from "#/types/xrf-spawn";
+import { SpawnRootOutcome } from "#/types/xrf-spawn-builder";
+
+/** Building a root spawn from a game's levels. */
+export const SPAWN_JOB_BUILD = "spawn.build" as const;
 
 /** Packing a directory of spawn chunks into one file. */
 export const SPAWN_JOB_PACK = "spawn.pack" as const;
 
 /** Unpacking a spawn file into a directory of chunks. */
 export const SPAWN_JOB_UNPACK = "spawn.unpack" as const;
+
+/** How a root spawn's build ended: what it wrote where it finished, nothing where it was stopped first. */
+export type SpawnBuildResult = {
+  outcome: JobOutcome;
+  spawn: SpawnRootOutcome | null;
+};
 
 /** One large chunk of an opened spawn, tagged by its `kind` as [`crate::SpawnChunkKind`] names it. */
 export type SpawnChunk =

@@ -1,5 +1,6 @@
 //! What `spawn build` refuses before it builds anything: a gamedata root without its level list, a level the list does
-//! not name, a level directory missing its files, and the game's own spawn without `--force`.
+//! not name, a level directory missing its files, and the game's own spawn without `--force`; and that `--levels-root`
+//! and `--dest` move where the levels are read and the spawn written.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -83,6 +84,41 @@ fn refuses_levels_it_cannot_build() -> XrfResult {
     none.contains("No level the game lists holds"),
     "Unexpected error: {none}"
   );
+
+  Ok(())
+}
+
+#[test]
+fn reads_the_levels_and_writes_the_spawn_where_named() -> XrfResult {
+  let root: PathBuf = gamedata("elsewhere")?;
+  let built: PathBuf = root.join("built");
+  let spawns: PathBuf = root.join("spawn");
+
+  fs::create_dir_all(built.join("zaton"))?;
+
+  for file in ["level.ai", "level.spawn", "level.game"] {
+    fs::write(built.join("zaton").join(file), b"")?;
+  }
+
+  fs::create_dir_all(&spawns)?;
+  fs::write(spawns.join("all.spawn"), [0u8; 4])?;
+
+  let levels_root: String = built.display().to_string();
+  let dest: String = spawns.display().to_string();
+
+  // The game's own spawn is looked for in the directory named, not under spawns/.
+  let error: String = get_error(run(&root, &["--out", "all", "--dest", &dest]));
+
+  assert!(error.contains("is the game's own spawn"), "Unexpected error: {error}");
+
+  // The levels are read from the directory named, where zaton is complete, so its empty files are what refuse.
+  let error: String = get_error(run(
+    &root,
+    &["--out", "test", "--levels-root", &levels_root, "--dest", &dest],
+  ));
+
+  assert!(error.contains("Level zaton:"), "Unexpected error: {error}");
+  assert!(!spawns.join("test.spawn").exists());
 
   Ok(())
 }

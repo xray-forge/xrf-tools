@@ -1,7 +1,8 @@
 # xrf-app-spawn
 
 `all.spawn` files in the XRF desktop application: a spawn opened as a session, read chunk by chunk, saved, and packed or
-unpacked as jobs. The spawn format is `xrf-spawn`; this crate holds an opened spawn and answers the editors.
+unpacked as jobs, and a root spawn built from a game's levels as a job. The spawn format is `xrf-spawn` and the build
+`xrf-spawn-builder`; this crate holds an opened spawn, answers the editors and runs the build.
 
 ## Layout
 
@@ -15,15 +16,19 @@ One type to a file, grouped by concern:
 - `conversion/`: `SpawnConversion` and `SpawnConversionResult`, packing a directory of chunks into one file or
   unpacking a file into one, run as a job on one lane shared by both, and what reached disk. A conversion gives up only
   before it starts writing.
+- `build/`: `SpawnBuild` and `SpawnBuildResult`, a root spawn built from a game's levels by `xrf-spawn-builder`, as
+  `xrf-cli spawn build` builds it, run as a job one at a time, stopped between its stages and never once it writes, and
+  how it ended.
 - `request/`: `SpawnConvertRequest`, the source and output paths of a conversion.
 - `commands/`: opening, restoring and closing a spawn; reading one chunk; saving a spawn as a packed file or as a
-  directory of unpacked chunks; and packing and unpacking.
+  directory of unpacked chunks; packing and unpacking; and listing the levels a spawn can be built from and building
+  one.
 - `plugin` and `ipc`: `SpawnPlugin` and its command domain.
 - `tests`: the crate's tests and a synthetic spawn they share.
 
 ## In the application
 
-`SpawnPlugin` manages `SpawnFiles`. The `spawn` domain runs the jobs `spawn.pack` and `spawn.unpack`.
+`SpawnPlugin` manages `SpawnFiles`. The `spawn` domain runs the jobs `spawn.build`, `spawn.pack` and `spawn.unpack`.
 
 ## Checks
 

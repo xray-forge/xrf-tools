@@ -7,16 +7,20 @@ import { IIpcCommandSignature } from "#/signature";
 import { SessionId, SessionRestore, SessionSnapshot } from "#/types/xrf-app-core";
 import {
   ESpawnChunkKind,
+  SpawnBuildResult,
   SpawnChunk,
   SpawnConversionResult,
   SpawnConvertRequest,
   SpawnSessionDescriptor,
 } from "#/types/xrf-app-spawn";
 import { JobProgress } from "#/types/xrf-job";
+import { SpawnListedLevel, SpawnRootRequest } from "#/types/xrf-spawn-builder";
 
 /** The wire name of every command of the `spawn` plugin. */
 export enum ESpawnCommand {
+  BUILD_SPAWN = "plugin:spawn|build_spawn",
   CLOSE_FILE = "plugin:spawn|close_file",
+  LIST_LEVELS = "plugin:spawn|list_levels",
   OPEN_FILE = "plugin:spawn|open_file",
   PACK_FILE = "plugin:spawn|pack_file",
   READ_CHUNK = "plugin:spawn|read_chunk",
@@ -28,8 +32,20 @@ export enum ESpawnCommand {
 
 /** Commands */
 export const spawnCommands = {
+  /**
+   * Build a root spawn from a game's levels and write it, as `spawn build` does, as a job a cancel stops before it
+   * writes.
+   */
+  buildSpawn: (request: SpawnRootRequest, jobId: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<SpawnBuildResult>(ESpawnCommand.BUILD_SPAWN, { request, jobId, progress }),
   /** Close the spawns `session_ids` name, committed or opening; a closed one answers no read. */
   closeFile: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<void>(ESpawnCommand.CLOSE_FILE, { sessionIds }),
+  /**
+   * The levels a spawn can be built from: every level `gamedata`'s `configs/game_levels.ltx` lists, in its order, each
+   * marked by whether its directory under `levels_root` holds `level.ai`, `level.spawn` and `level.game`.
+   */
+  listLevels: (gamedata: string, levelsRoot: string) =>
+    __TAURI_INVOKE<Array<SpawnListedLevel>>(ESpawnCommand.LIST_LEVELS, { gamedata, levelsRoot }),
   /** Open the packed spawn at `path`, read on the pool, answering what describes it without its large chunks. */
   openFile: (sessionId: SessionId, path: string) =>
     __TAURI_INVOKE<SessionSnapshot<SpawnSessionDescriptor>>(ESpawnCommand.OPEN_FILE, { sessionId, path }),
@@ -54,7 +70,9 @@ export const spawnCommands = {
 
 /** What each command of the `spawn` plugin takes and resolves to, keyed by its wire name. */
 export interface ISpawnCommandSignatures {
+  [ESpawnCommand.BUILD_SPAWN]: IIpcCommandSignature<typeof spawnCommands.buildSpawn, ["request", "jobId", "progress"]>;
   [ESpawnCommand.CLOSE_FILE]: IIpcCommandSignature<typeof spawnCommands.closeFile, ["sessionIds"]>;
+  [ESpawnCommand.LIST_LEVELS]: IIpcCommandSignature<typeof spawnCommands.listLevels, ["gamedata", "levelsRoot"]>;
   [ESpawnCommand.OPEN_FILE]: IIpcCommandSignature<typeof spawnCommands.openFile, ["sessionId", "path"]>;
   [ESpawnCommand.PACK_FILE]: IIpcCommandSignature<typeof spawnCommands.packFile, ["request", "jobId", "progress"]>;
   [ESpawnCommand.READ_CHUNK]: IIpcCommandSignature<typeof spawnCommands.readChunk, ["sessionId", "chunk"]>;

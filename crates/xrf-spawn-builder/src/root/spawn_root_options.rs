@@ -1,5 +1,9 @@
+use serde::{Deserialize, Serialize};
+
 /// How a root spawn is built beyond its levels.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SpawnRootOptions {
   /// The level the actor starts on, where it is not the actor's own: xrAI's `-start`.
   pub start: Option<String>,
