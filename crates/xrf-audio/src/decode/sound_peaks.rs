@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
-use xrf_error::XrfResult;
+use xrf_error::{XrfError, XrfResult};
 
 use crate::decode::sound_decoder::SoundDecoder;
 
@@ -20,13 +20,25 @@ pub struct SoundPeaks {
 }
 
 impl SoundPeaks {
+  /// The most stretches a waveform is read in: far past any drawn width, and small enough that a count asked for
+  /// against a sound claiming any length sizes nothing the memory cannot hold.
+  pub const MAX_COUNT: usize = 1 << 16;
+
   /// Peaks of `count` stretches of the sound in `bytes`, decoded as it streams so a long sound is never held whole.
   /// A sound shorter than `count` frames gives one peak a frame.
   ///
   /// # Errors
   ///
-  /// Returns an error when the bytes are not a sound [`SoundDecoder`] opens or its audio fails to decode.
+  /// Returns an error when `count` is past [`Self::MAX_COUNT`], or the bytes are not a sound [`SoundDecoder`] opens
+  /// or its audio fails to decode.
   pub fn read(bytes: Arc<[u8]>, count: usize) -> XrfResult<Self> {
+    if count > Self::MAX_COUNT {
+      return Err(XrfError::new_invalid_error(format!(
+        "A waveform of {count} stretches was asked for, past the {} one is read in",
+        Self::MAX_COUNT
+      )));
+    }
+
     let mut decoder: SoundDecoder = SoundDecoder::open(bytes)?;
     let channels: usize = decoder.get_channels().get_count();
     let frames_count: u64 = decoder.get_frames_count();

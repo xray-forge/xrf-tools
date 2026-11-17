@@ -55,6 +55,15 @@ fn refuses_objects_its_header_counts_but_does_not_hold() -> XrfResult {
 }
 
 #[test]
+fn refuses_a_count_past_the_parts_sections_before_sizing_by_it() -> XrfResult {
+  let part: EditableTextPart = EditableTextPart::read_from_bytes(spawn_part_text(&GUID, u32::MAX)?.as_bytes())?;
+
+  assert!(part.get_objects().is_err());
+
+  Ok(())
+}
+
+#[test]
 fn a_binary_part_comes_back_in_the_order_its_file_stored_it() -> XrfResult {
   // The tool data stored before the GUID, and a chunk the editor never writes between them.
   let bytes: Vec<u8> = binary_part_bytes(&[

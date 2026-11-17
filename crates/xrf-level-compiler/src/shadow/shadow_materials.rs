@@ -261,7 +261,8 @@ impl ShadowMaterials {
     let mut materials: Vec<Option<ShadowMaterial>> = Vec::with_capacity(request.project.materials.len());
 
     for (index, material) in request.project.materials.iter().enumerate() {
-      let Some(shader) = shaders.get(index as u16) else {
+      // A face names its material in 16 bits, so a material past them is one no face reaches.
+      let Some(shader) = u16::try_from(index).ok().and_then(|index| shaders.get(index)) else {
         materials.push(None);
         continue;
       };

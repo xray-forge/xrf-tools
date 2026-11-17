@@ -28,8 +28,8 @@ impl SkinCorner {
   ///
   /// # Errors
   ///
-  /// Returns an error where [`MeshCorners`] refuses the mesh, an entry holds too few values for its map's kind, or a
-  /// weight map belongs to no bone.
+  /// Returns an error where [`MeshCorners`] refuses the mesh, an entry holds too few values for its map's kind, a
+  /// weight map belongs to no bone, or a corner's weights sum to nothing.
   pub(crate) fn of_mesh(mesh: &EditableMesh, bone_of_map: &HashMap<&str, u16>) -> XrfResult<Vec<[Self; 3]>> {
     MeshCorners::of(mesh)?.read_faces(|corner| Self::of_corner(corner, bone_of_map))
   }
@@ -62,6 +62,14 @@ impl SkinCorner {
     weights.truncate(Self::INFLUENCE);
 
     let sum: f32 = weights.iter().map(|bone| bone.weight).sum();
+
+    // Weights summing to nothing follow no bone, and dividing by them would write weights that are not numbers.
+    if !weights.is_empty() && !(sum.is_finite() && sum > 0.0) {
+      return Err(XrfError::new_invalid_error(format!(
+        "A vertex at {:?} weighs {sum} in all across its bones, so it follows none",
+        corner.position
+      )));
+    }
 
     for bone in &mut weights {
       bone.weight /= sum;

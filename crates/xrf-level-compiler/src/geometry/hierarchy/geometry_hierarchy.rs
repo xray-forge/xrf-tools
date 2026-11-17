@@ -1,6 +1,7 @@
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::BuildPrjFile;
 use xrf_math::{Aabb, EPS_L, Vector3d};
+use xrf_utils::narrow_format_size;
 
 use crate::geometry::hierarchy::geometry_bounds::GeometryBounds;
 use crate::geometry::hierarchy::geometry_node::GeometryNode;
@@ -113,12 +114,14 @@ impl GeometryHierarchy {
     }
 
     for (index, portal) in project.portals.iter().enumerate() {
+      let number: u16 = narrow_format_size(index, "A portal number")?;
+
       for side in [portal.sector_front, portal.sector_back] {
         sectors
           .get_mut(usize::from(side))
           .ok_or_else(|| XrfError::new_invalid_error(format!("Portal {index} faces sector {side} of {sector_count}")))?
           .portals
-          .push(index as u16);
+          .push(number);
       }
     }
 

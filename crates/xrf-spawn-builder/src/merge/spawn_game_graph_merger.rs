@@ -7,6 +7,7 @@ use xrf_spawn::{
   GraphCrossTable, GraphCrossTableCell, GraphEdge, GraphHeader, GraphLevel, GraphLevelPoint, GraphVertex,
   SpawnGraphsChunk,
 };
+use xrf_utils::narrow_format_size;
 
 use crate::merge::spawn_game_graph_merge::SpawnGameGraphMerge;
 use crate::merge::spawn_merge_level::SpawnMergeLevel;
@@ -43,15 +44,14 @@ impl SpawnGameGraphMerger {
 
     Self::assert_mergeable(&ordered)?;
 
-    let firsts: Vec<u32> = ordered
-      .iter()
-      .scan(0u32, |first, level| {
-        let this: u32 = *first;
+    let mut firsts: Vec<u32> = Vec::with_capacity(ordered.len());
+    let mut first: usize = 0;
 
-        *first += level.points.len() as u32;
-        Some(this)
-      })
-      .collect();
+    for level in &ordered {
+      firsts.push(narrow_format_size(first, "A game vertex id")?);
+      first += level.points.len();
+    }
+
     let mut vertices: Vec<GraphVertex> = Vec::new();
     let mut vertex_edges: Vec<Vec<GraphEdge>> = Vec::new();
     let mut points: Vec<GraphLevelPoint> = Vec::new();
@@ -75,14 +75,14 @@ impl SpawnGameGraphMerger {
           edges_offset: 0,
           level_points_offset: 0,
           edges_count: 0,
-          level_points_count: Self::narrow(drawn.len(), "level points of a vertex")?,
+          level_points_count: narrow_format_size(drawn.len(), "A vertex's level point count")?,
         });
         vertex_edges.push(
           edges
             .iter()
             .map(|edge| {
               Ok(GraphEdge {
-                game_vertex_id: Self::narrow(*first as usize + usize::from(edge.target), "game vertices")?,
+                game_vertex_id: narrow_format_size(*first as usize + usize::from(edge.target), "A game vertex id")?,
                 distance: edge.distance,
               })
             })
@@ -95,7 +95,7 @@ impl SpawnGameGraphMerger {
     let skipped: Vec<SpawnSkippedConnection> = Self::connect(&ordered, &firsts, &vertices, &mut vertex_edges)?;
 
     for (vertex, edges) in vertices.iter_mut().zip(&vertex_edges) {
-      vertex.edges_count = Self::narrow(edges.len(), "edges of a vertex")?;
+      vertex.edges_count = narrow_format_size(edges.len(), "A vertex's edge count")?;
     }
 
     let mut graph: SpawnGraphsChunk = SpawnGraphsChunk {
@@ -123,22 +123,29 @@ impl SpawnGameGraphMerger {
       cross_tables: ordered
         .iter()
         .zip(&firsts)
-        .map(|(level, first)| GraphCrossTable {
-          version: u32::from(Self::VERSION),
-          nodes_count: level.cells.len() as u32,
-          vertices_count: level.points.len() as u32,
-          level_guid: level.get_guid(),
-          game_guid: Uuid::nil(),
-          cells: level
-            .cells
-            .iter()
-            .map(|cell| GraphCrossTableCell {
-              game_vertex_id: cell.game_vertex_id + *first as u16,
-              distance: cell.distance,
-            })
-            .collect(),
+        .map(|(level, first)| {
+          Ok(GraphCrossTable {
+            version: u32::from(Self::VERSION),
+            nodes_count: narrow_format_size(level.cells.len(), "A cross table's node count")?,
+            vertices_count: narrow_format_size(level.points.len(), "A cross table's vertex count")?,
+            level_guid: level.get_guid(),
+            game_guid: Uuid::nil(),
+            cells: level
+              .cells
+              .iter()
+              .map(|cell| {
+                Ok(GraphCrossTableCell {
+                  game_vertex_id: narrow_format_size(
+                    usize::from(cell.game_vertex_id) + *first as usize,
+                    "A game vertex id",
+                  )?,
+                  distance: cell.distance,
+                })
+              })
+              .collect::<XrfResult<_>>()?,
+          })
         })
-        .collect(),
+        .collect::<XrfResult<_>>()?,
     };
 
     graph.derive_layout()?;
@@ -273,7 +280,7 @@ impl SpawnGameGraphMerger {
         let (from, to): (usize, usize) = (*first as usize + index, *target_first as usize + target);
 
         edges[from].push(GraphEdge {
-          game_vertex_id: Self::narrow(to, "game vertices")?,
+          game_vertex_id: narrow_format_size(to, "A game vertex id")?,
           distance: Self::distance(&vertices[from].game_point, &vertices[to].game_point),
         });
       }
@@ -314,9 +321,5 @@ impl SpawnGameGraphMerger {
     let (dx, dy, dz) = (a.x - b.x, a.y - b.y, a.z - b.z);
 
     (dx * dx + dy * dy + dz * dz).sqrt()
-  }
-
-  fn narrow<T: TryFrom<usize>>(value: usize, what: &str) -> XrfResult<T> {
-    T::try_from(value).map_err(|_| XrfError::new_invalid_error(format!("Too many {what} for the game graph's format")))
   }
 }

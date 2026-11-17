@@ -77,7 +77,7 @@ impl SpawnLevelFiles {
       .is_file()
       .then(|| LevelGameFile::read_from_path::<XRayByteOrder, _>(&game_path))
       .transpose()?;
-    let map: SpawnAiMap = SpawnAiMap::new(file.header, &nodes);
+    let map: SpawnAiMap = SpawnAiMap::new(file.header, &nodes)?;
     let points: SpawnGraphPoints = SpawnGraphPoints::read(&spawn, &map)?;
     let nodes_of_points: Vec<u32> = points.points.iter().map(|point| point.node).collect();
     let cells: Vec<GraphCrossTableCell> = SpawnCrossTable::build(&map, &nodes_of_points)?;

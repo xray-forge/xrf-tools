@@ -6,6 +6,7 @@
 use std::path::Path;
 use std::time::Duration;
 
+use windows::Win32::Foundation::{E_INVALIDARG, E_OUTOFMEMORY};
 use windows::Win32::Media::MediaFoundation::{
   CODECAPI_AVEncMPVDefaultBPictureCount, IMFAttributes, IMFMediaBuffer, IMFMediaType, IMFSample, IMFSinkWriter,
   IMFSinkWriterEx, IMFTransform, MF_MT_AUDIO_AVG_BYTES_PER_SECOND, MF_MT_AUDIO_BITS_PER_SAMPLE,
@@ -474,15 +475,27 @@ impl MediaSink {
 
   /// A sample of `data` from `time` for `duration`, both in ticks.
   unsafe fn new_sample(data: &[u8], time: i64, duration: i64) -> windows::core::Result<IMFSample> {
-    // SAFETY: the buffer, `data.len()` bytes long, is locked while `data` is copied into it.
-    unsafe {
-      let buffer: IMFMediaBuffer = MFCreateMemoryBuffer(data.len() as u32)?;
-      let mut target: *mut u8 = std::ptr::null_mut();
+    // A Media Foundation buffer's length is 32 bits wide; a longer sample is refused before any buffer is asked for.
+    let length: u32 = u32::try_from(data.len()).map_err(|_| windows::core::Error::from(E_INVALIDARG))?;
 
-      buffer.Lock(&raw mut target, None, None)?;
+    // SAFETY: the buffer is locked while `data` is copied into it, and the copy is made only once the lock reports
+    // room for all of it.
+    unsafe {
+      let buffer: IMFMediaBuffer = MFCreateMemoryBuffer(length)?;
+      let mut target: *mut u8 = std::ptr::null_mut();
+      let mut capacity: u32 = 0;
+
+      buffer.Lock(&raw mut target, Some(&raw mut capacity), None)?;
+
+      if target.is_null() || capacity < length {
+        buffer.Unlock()?;
+
+        return Err(windows::core::Error::from(E_OUTOFMEMORY));
+      }
+
       std::ptr::copy_nonoverlapping(data.as_ptr(), target, data.len());
       buffer.Unlock()?;
-      buffer.SetCurrentLength(data.len() as u32)?;
+      buffer.SetCurrentLength(length)?;
 
       let sample: IMFSample = MFCreateSample()?;
 

@@ -55,10 +55,10 @@ pub(crate) fn grid(columns: u32, rows: u32, holes: &[(u32, u32)], guid: Uuid) ->
     guid,
   };
 
-  Ok(SpawnAiMap::new(
+  SpawnAiMap::new(
     header,
     &LevelAiNodes::from_nodes::<XRayByteOrder>(LevelAiVersion::CsCop, &nodes)?,
-  ))
+  )
 }
 
 /// A graph point standing on its cell's node, connecting nowhere.

@@ -6,6 +6,7 @@ use xrf_math::{Affine3d, Vector3d};
 use xrf_skeleton::{
   SkeletonMotion, SkeletonMotionDefinition, SkeletonMotionParametersChunk, SkeletonMotionsChunk, SkeletonPart,
 };
+use xrf_utils::narrow_format_size;
 
 use crate::object::compile::motion::motion_keys::MotionKeys;
 use crate::object::compile::skeleton::skeleton_hierarchy::SkeletonHierarchy;
@@ -24,6 +25,9 @@ impl MotionExport {
 
   /// `BI_NONE`: a motion playing on every bone rather than one part.
   const ALL_PARTS: u16 = u16::MAX;
+
+  /// The most frames a motion holds: `CMotion` keeps its frame count in 24 bits.
+  const MAX_FRAMES: u32 = (1 << 24) - 1;
 
   /// The object's own motions, none for an object that keeps none or references motion files instead, which the
   /// export then leaves to those files.
@@ -88,17 +92,24 @@ impl MotionExport {
 
     let count: u32 = u32::try_from(motion.get_length())
       .ok()
-      .filter(|count| *count > 0)
+      .filter(|count| (1..=Self::MAX_FRAMES).contains(count))
       .ok_or_else(|| {
         XrfError::new_invalid_error(format!(
           "Motion '{}' spans frames {} to {}, which no motion's frame count holds",
           motion.name, motion.frame_start, motion.frame_end
         ))
       })?;
+
+    if !motion.fps.is_finite() || motion.fps <= 0.0 {
+      return Err(XrfError::new_invalid_error(format!(
+        "Motion '{}' plays at {} frames a second, which times no frame",
+        motion.name, motion.fps
+      )));
+    }
+
     let channels: Vec<EditableBoneMotion> = Self::by_skeleton(motion, bones);
-    let frames: usize = count as usize;
-    let mut rotations: Vec<Vec<[i16; 4]>> = vec![Vec::with_capacity(frames); bones.len()];
-    let mut translations: Vec<Vec<Vector3d>> = vec![Vec::with_capacity(frames); bones.len()];
+    let mut rotations: Vec<Vec<[i16; 4]>> = Self::new_key_streams(motion, bones.len(), count)?;
+    let mut translations: Vec<Vec<Vector3d>> = Self::new_key_streams(motion, bones.len(), count)?;
 
     for frame in motion.frame_start..=motion.frame_end {
       let time: f32 = frame as f32 / motion.fps;
@@ -126,6 +137,25 @@ impl MotionExport {
       count,
       keys,
     })
+  }
+
+  /// One key stream per bone, each holding a key for every frame, reserved fallibly: the frame count comes from the
+  /// file, so a stream the memory cannot hold is refused rather than aborting the process.
+  fn new_key_streams<K>(motion: &EditableMotion, bones: usize, frames: u32) -> XrfResult<Vec<Vec<K>>> {
+    (0..bones)
+      .map(|_| {
+        let mut keys: Vec<K> = Vec::new();
+
+        keys.try_reserve_exact(frames as usize).map_err(|error| {
+          XrfError::new_invalid_error(format!(
+            "Motion '{}' needs {frames} keys for each of {bones} bones, more than can be held: {error}",
+            motion.name
+          ))
+        })?;
+
+        Ok(keys)
+      })
+      .collect()
   }
 
   /// Each bone's transform under its parent at a time, `CalculateAnimBone`. A bone keeping its world orientation
@@ -224,8 +254,8 @@ impl MotionExport {
         bones: bones
           .iter()
           .enumerate()
-          .map(|(index, bone)| (bone.definition.name.clone(), index as u32))
-          .collect(),
+          .map(|(index, bone)| Ok((bone.definition.name.clone(), narrow_format_size(index, "A bone index")?)))
+          .collect::<XrfResult<_>>()?,
       }]),
       Some(parts) => {
         let mut is_placed: Vec<bool> = vec![false; bones.len()];
@@ -238,7 +268,9 @@ impl MotionExport {
                 .bones
                 .iter()
                 .map(|name| match index_of(name) {
-                  Some(index) if !std::mem::replace(&mut is_placed[index], true) => Ok((name.clone(), index as u32)),
+                  Some(index) if !std::mem::replace(&mut is_placed[index], true) => {
+                    Ok((name.clone(), narrow_format_size(index, "A bone index")?))
+                  }
                   _ => Err(XrfError::new_invalid_error(format!(
                     "Bone part '{}' names bone '{name}', which the skeleton lacks or another part holds",
                     part.alias

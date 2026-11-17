@@ -187,7 +187,7 @@ impl GeometryModels {
 
         visuals.push(GeometryPackedVisual {
           vertices: geometry.add_vertices(&declaration, &bytes)?,
-          indices: geometry.add_indices(visual.faces.as_flattened()),
+          indices: geometry.add_indices(visual.faces.as_flattened())?,
           fast_vertices: None,
           fast_indices: None,
           slide_window,
@@ -271,7 +271,9 @@ impl GeometryModels {
           }
         });
 
-        visual.add_face(corners, &texel, GeometryFastPath::Left);
+        visual
+          .add_face(corners, &texel, GeometryFastPath::Left)
+          .map_err(|error| XrfError::new_invalid_error(format!("Multi-use model '{}': {error}", model.name)))?;
       }
 
       if shader.optimizes_uv() {

@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
-use xrf_error::XrfResult;
+use xrf_error::{XrfError, XrfResult};
 use xrf_math::{Aabb, AiNodePosition, EPS_L, Vector3d};
 
 use crate::ai::level_ai_node::LevelAiNode;
@@ -53,6 +53,30 @@ impl LevelAiHeader {
       AiNodePosition::unpack_height(node.packed_y, self.bounds.min.y, self.size_y),
       (node.packed_xz % row_length) as f32 * self.size + self.bounds.min.z,
     )
+  }
+
+  /// Checks the grid the nodes are packed over is one `CLevelGraph` can unpack them from.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for a cell size that is not finite and positive, or a box that spans no cell along either side:
+  /// the engine divides every packed cell by the row length.
+  pub fn assert_grid(&self) -> XrfResult {
+    if !self.size.is_finite() || self.size <= 0.0 {
+      return Err(XrfError::new_invalid_error(format!(
+        "Level AI map cell size {} is not a positive size",
+        self.size
+      )));
+    }
+
+    if self.get_row_length() == 0 || self.get_column_length() == 0 {
+      return Err(XrfError::new_invalid_error(format!(
+        "Level AI map box from {:?} to {:?} spans no cell",
+        self.bounds.min, self.bounds.max
+      )));
+    }
+
+    Ok(())
   }
 
   /// `iFloor(extent / cell_size + EPS_L + 1.5f)`, as `CLevelGraph::Initialize` computes both grid sides.

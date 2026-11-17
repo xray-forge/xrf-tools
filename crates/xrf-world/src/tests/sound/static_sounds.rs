@@ -131,6 +131,30 @@ fn follows_its_active_window_of_the_day() {
   assert_eq!(playing(&emitters, seconds(2))[0].emitter.stop, Some(seconds(2)));
 }
 
+// A frequency so slow the sound would outlast any clock never ends; one that is no speed at all plays at its own.
+#[test]
+fn plays_one_slowed_past_any_clock_without_an_end() {
+  for (frequency, end) in [
+    (1e-30, Duration::MAX),
+    (f32::MIN_POSITIVE / 2.0, Duration::MAX),
+    (f32::INFINITY, seconds(4)),
+    (f32::NAN, seconds(4)),
+  ] {
+    let mut sounds: StaticSounds = StaticSounds::new(vec![WorldStaticSound {
+      frequency,
+      ..record([0, 0], [0, 0], [2000, 3000])
+    }]);
+    let mut emitters: SoundEmitters = SoundEmitters::default();
+
+    sounds.update(&mut emitters, XrayEngine::Vanilla, 0, Duration::ZERO);
+
+    let live: Vec<LiveEmitter> = playing(&emitters, Duration::ZERO);
+
+    assert_eq!(live.len(), 1, "frequency {frequency}");
+    assert_eq!(live[0].end, Some(end), "frequency {frequency}");
+  }
+}
+
 #[test]
 fn plays_nothing_for_a_missing_file() {
   let mut sounds: StaticSounds = StaticSounds::new(vec![WorldStaticSound {

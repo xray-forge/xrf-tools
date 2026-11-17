@@ -76,6 +76,16 @@ impl EditableTextPart {
       return Ok(Vec::new());
     };
     let count: usize = main.get_parsed::<u32>(EditablePartHeader::OBJECTS_COUNT_KEY)? as usize;
+
+    // Every counted object needs a section of its own, so a count past the file's sections is refused before it sizes
+    // anything.
+    if count > self.ini.sections.len() {
+      return Err(XrfError::new_parsing_error(format!(
+        "Part counts {count} objects but holds only {} sections",
+        self.ini.sections.len()
+      )));
+    }
+
     let mut sections: Vec<Option<&IniSection>> = vec![None; count];
     let mut children: Vec<Vec<&IniSection>> = vec![Vec::new(); count];
 

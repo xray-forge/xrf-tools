@@ -50,13 +50,18 @@ impl DdsSdkAlphaDecoder {
       None if format.flags.contains(PixelFormatFlags::RGB) => match format.rgb_bit_count {
         Some(32) if format.flags.contains(PixelFormatFlags::ALPHA_PIXELS) => {
           // FreeImage copies each pixel's four bytes as they are, and the alpha it reads is the last of them.
-          let level: &[u8] = Self::get_level(dds, width as usize * height as usize * 4)?;
+          let level: &[u8] = Self::get_level(dds, u128::from(width) * u128::from(height) * 4)?;
 
           Ok(GrayImage::from_fn(width, height, |x, y| {
-            image::Luma([level[(y * width + x) as usize * 4 + 3]])
+            image::Luma([level[(y as usize * width as usize + x as usize) * 4 + 3]])
           }))
         }
-        Some(16 | 24 | 32) => Ok(GrayImage::from_pixel(width, height, image::Luma([u8::MAX]))),
+        Some(bits @ (16 | 24 | 32)) => {
+          // No alpha is read, but the level must still be there before an image of its size is made.
+          Self::get_level(dds, u128::from(width) * u128::from(height) * u128::from(bits / 8))?;
+
+          Ok(GrayImage::from_pixel(width, height, image::Luma([u8::MAX])))
+        }
         bits => Err(XrfError::new_texture_processing_error(format!(
           "The SDK's image library does not load an uncompressed layout of {bits:?} bits"
         ))),
@@ -79,7 +84,10 @@ impl DdsSdkAlphaDecoder {
 
     let blocks_wide: u32 = width / Self::BLOCK_SIDE;
     let blocks_high: u32 = height / Self::BLOCK_SIDE;
-    let level: &[u8] = Self::get_level(dds, blocks_wide as usize * blocks_high as usize * block_bytes)?;
+    let level: &[u8] = Self::get_level(
+      dds,
+      u128::from(blocks_wide) * u128::from(blocks_high) * block_bytes as u128,
+    )?;
     let mut image: GrayImage = GrayImage::new(width, height);
     let mut alphas: [u8; 16] = [0; 16];
 
@@ -149,14 +157,18 @@ impl DdsSdkAlphaDecoder {
     }
   }
 
-  /// The base level's bytes, which come first in the payload.
-  fn get_level(dds: &Dds, length: usize) -> XrfResult<&[u8]> {
-    dds.data.get(..length).ok_or_else(|| {
-      XrfError::new_texture_processing_error(format!(
-        "DDS payload holds {} bytes, and its base level needs {length}",
-        dds.data.len()
-      ))
-    })
+  /// The base level's bytes, which come first in the payload. `length` is taken wide, so a product of a header's sides
+  /// cannot wrap short of what it claims.
+  fn get_level(dds: &Dds, length: u128) -> XrfResult<&[u8]> {
+    usize::try_from(length)
+      .ok()
+      .and_then(|length| dds.data.get(..length))
+      .ok_or_else(|| {
+        XrfError::new_texture_processing_error(format!(
+          "DDS payload holds {} bytes, and its base level needs {length}",
+          dds.data.len()
+        ))
+      })
   }
 }
 
@@ -302,6 +314,7 @@ mod tests {
     let with_alpha: Dds = dds([2, 2], 0x40 | 0x1, 0, 32, argb, &pixels);
     let without_alpha: Dds = dds([2, 2], 0x40, 0, 32, [argb[0], argb[1], argb[2], 0], &pixels);
     let sixteen_bits: Dds = dds([2, 2], 0x40 | 0x1, 0, 16, [0x7c00, 0x03e0, 0x001f, 0x8000], &[0; 8]);
+    let twenty_four_bits: Dds = dds([2, 2], 0x40, 0, 24, [argb[0], argb[1], argb[2], 0], &[0; 12]);
 
     assert_eq!(
       alphas(&DdsSdkAlphaDecoder::decode(&with_alpha)?),
@@ -309,6 +322,7 @@ mod tests {
     );
     assert_eq!(alphas(&DdsSdkAlphaDecoder::decode(&without_alpha)?), vec![255; 4]);
     assert_eq!(alphas(&DdsSdkAlphaDecoder::decode(&sixteen_bits)?), vec![255; 4]);
+    assert_eq!(alphas(&DdsSdkAlphaDecoder::decode(&twenty_four_bits)?), vec![255; 4]);
 
     Ok(())
   }
@@ -319,8 +333,18 @@ mod tests {
     let partial_blocks: Dds = dds([2, 2], 0x4, FourCC::DXT5, 0, [0; 4], &dxt5_block([0, 0], 0));
     let short: Dds = dds([8, 8], 0x4, FourCC::DXT5, 0, [0; 4], &dxt5_block([0, 0], 0));
     let empty: Dds = dds([0, 4], 0x4, FourCC::DXT5, 0, [0; 4], &[]);
+    // A header claiming a side no payload holds, which must not size an image before the payload is checked.
+    let huge_without_alpha: Dds = dds([65_535, 65_535], 0x40, 0, 16, [0x7c00, 0x03e0, 0x001f, 0], &[0; 8]);
+    let huge_blocks: Dds = dds([1 << 30, 1 << 30], 0x4, FourCC::DXT5, 0, [0; 4], &dxt5_block([0, 0], 0));
 
-    for dds in [alpha_only, partial_blocks, short, empty] {
+    for dds in [
+      alpha_only,
+      partial_blocks,
+      short,
+      empty,
+      huge_without_alpha,
+      huge_blocks,
+    ] {
       assert!(DdsSdkAlphaDecoder::decode(&dds).is_err());
     }
   }

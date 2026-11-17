@@ -26,29 +26,40 @@ impl AiMapCompiler {
     }
 
     let (bounds, size) = (&aimap.bounds, aimap.params.patch_size);
-    let grid: AiGrid = AiGrid::new(bounds, size);
+    let grid: AiGrid = AiGrid::new(bounds, size)?;
+    let count: usize = aimap.nodes.len();
 
-    Ok(
-      aimap
-        .nodes
-        .iter()
-        .map(|node: &BuildAimapNode| {
-          let (x, z) = grid.unpack(grid.pack(f32::from(node.position.x) * size, f32::from(node.position.z) * size));
+    aimap
+      .nodes
+      .iter()
+      .enumerate()
+      .map(|(index, node): (usize, &BuildAimapNode)| {
+        let (x, z) = grid.unpack(grid.pack(f32::from(node.position.x) * size, f32::from(node.position.z) * size)?);
+        let links: [u32; 4] = node.links.map(|link| link & AiVertex::NO_LINK);
 
-          AiVertex {
-            links: node.links.map(|link| link & AiVertex::NO_LINK),
-            normal: Self::normalize(&Vector3d::from_compressed_normal(node.plane)),
-            position: Vector3d::new(
-              x,
-              AiNodePosition::unpack_height(node.position.y, bounds.min.y, bounds.max.y - bounds.min.y),
-              z,
-            ),
-            high_cover: [0.0; 4],
-            low_cover: [0.0; 4],
-          }
+        // The later passes walk the links by index, so one past the nodes is refused here rather than read there.
+        if let Some(link) = links
+          .iter()
+          .find(|link| **link != AiVertex::NO_LINK && **link as usize >= count)
+        {
+          return Err(XrfError::new_invalid_error(format!(
+            "Build AI map node {index} links to node {link}, past the {count} it holds"
+          )));
+        }
+
+        Ok(AiVertex {
+          links,
+          normal: Self::normalize(&Vector3d::from_compressed_normal(node.plane)),
+          position: Vector3d::new(
+            x,
+            AiNodePosition::unpack_height(node.position.y, bounds.min.y, bounds.max.y - bounds.min.y),
+            z,
+          ),
+          high_cover: [0.0; 4],
+          low_cover: [0.0; 4],
         })
-        .collect(),
-    )
+      })
+      .collect()
   }
 
   /// `Fvector::normalize`, in single precision: each component times `sqrt(1 / (x * x + y * y + z * z))`.

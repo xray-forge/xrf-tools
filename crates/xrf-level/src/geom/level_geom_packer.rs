@@ -1,4 +1,5 @@
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::narrow_format_size;
 
 use crate::geom::buffers::level_geom_vertex_element::LevelGeomVertexElement;
 use crate::geom::level_geom_buffers::LevelGeomBuffers;
@@ -33,7 +34,8 @@ impl LevelGeomPacker {
   ///
   /// # Errors
   ///
-  /// Returns an error for no vertex, a declaration of no known stride, or bytes that are not whole vertices of it.
+  /// Returns an error for no vertex, a declaration of no known stride, bytes that are not whole vertices of it, or
+  /// buffers past what the file numbers.
   pub fn add_vertices(&mut self, declaration: &[LevelGeomVertexElement], bytes: &[u8]) -> XrfResult<LevelGeomRange> {
     let added: LevelGeomVertexData = LevelGeomVertexData {
       declaration: declaration.to_vec(),
@@ -59,40 +61,44 @@ impl LevelGeomPacker {
       held.bytes.extend_from_slice(bytes);
 
       return Ok(LevelGeomRange {
-        buffer: buffer as u32,
-        start: already as u32,
+        buffer: narrow_format_size(buffer, "A vertex buffer number")?,
+        start: narrow_format_size(already, "A vertex buffer's start")?,
       });
     }
 
     self.vertex_buffers.push(added);
 
     Ok(LevelGeomRange {
-      buffer: (self.vertex_buffers.len() - 1) as u32,
+      buffer: narrow_format_size(self.vertex_buffers.len() - 1, "A vertex buffer number")?,
       start: 0,
     })
   }
 
   /// Packs a visual's indices and says where they went.
-  pub fn add_indices(&mut self, indices: &[u16]) -> LevelGeomRange {
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the buffers are past what the file numbers.
+  pub fn add_indices(&mut self, indices: &[u16]) -> XrfResult<LevelGeomRange> {
     for (buffer, held) in self.index_buffers.iter_mut().enumerate() {
       if held.len() + indices.len() < Self::INDEX_LIMIT {
         let start: usize = held.len();
 
         held.extend_from_slice(indices);
 
-        return LevelGeomRange {
-          buffer: buffer as u32,
-          start: start as u32,
-        };
+        return Ok(LevelGeomRange {
+          buffer: narrow_format_size(buffer, "An index buffer number")?,
+          start: narrow_format_size(start, "An index buffer's start")?,
+        });
       }
     }
 
     self.index_buffers.push(indices.to_vec());
 
-    LevelGeomRange {
-      buffer: (self.index_buffers.len() - 1) as u32,
+    Ok(LevelGeomRange {
+      buffer: narrow_format_size(self.index_buffers.len() - 1, "An index buffer number")?,
       start: 0,
-    }
+    })
   }
 
   /// The geometry file of everything packed, under `header`, with `slide_windows`.

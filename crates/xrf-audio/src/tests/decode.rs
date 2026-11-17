@@ -128,3 +128,11 @@ fn reads_one_peak_a_frame_from_a_sound_shorter_than_the_count() {
 
   assert_eq!(peaks.peaks, vec![0.5, 0.25]);
 }
+
+#[test]
+fn refuses_a_waveform_of_more_stretches_than_it_reads_in() {
+  let bytes: Arc<[u8]> = wav(RATE, 1, &[0; 16]);
+
+  assert!(SoundPeaks::read(Arc::clone(&bytes), SoundPeaks::MAX_COUNT).is_ok());
+  assert!(SoundPeaks::read(bytes, SoundPeaks::MAX_COUNT + 1).is_err());
+}

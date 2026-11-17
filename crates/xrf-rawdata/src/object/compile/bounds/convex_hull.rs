@@ -55,7 +55,7 @@ impl ConvexHull {
   /// The tolerance against the points' extent.
   const RELATIVE_TOLERANCE: f64 = 1e-9;
 
-  /// The hull of `points`, or nothing when they span no volume beyond the tolerance.
+  /// The hull of `points`, or nothing when they span no volume beyond the tolerance or rounding leaves the hull open.
   pub(crate) fn of(points: &[DVec3]) -> Option<Self> {
     if points.len() < 4 {
       return None;
@@ -91,7 +91,7 @@ impl ConvexHull {
     }
 
     while let Some(start) = faces.iter().position(|face| face.is_alive && !face.outside.is_empty()) {
-      Self::add_point(points, tolerance, start, &mut faces, &mut owners);
+      Self::add_point(points, tolerance, start, &mut faces, &mut owners)?;
     }
 
     Some(Self {
@@ -112,14 +112,15 @@ impl ConvexHull {
     vertices
   }
 
-  /// Puts the point farthest outside face `start` on the hull.
+  /// Puts the point farthest outside face `start` on the hull; nothing where rounding has left an edge with no face
+  /// across it, so the hull is no longer closed and is given up rather than walked on.
   fn add_point(
     points: &[DVec3],
     tolerance: f64,
     start: usize,
     faces: &mut Vec<HullFace>,
     owners: &mut HashMap<(usize, usize), usize>,
-  ) {
+  ) -> Option<()> {
     let eye: usize = *faces[start]
       .outside
       .iter()
@@ -142,7 +143,7 @@ impl ConvexHull {
       next += 1;
 
       for (a, b) in faces[face].edges() {
-        let neighbour: usize = owners[&(b, a)];
+        let neighbour: usize = *owners.get(&(b, a))?;
 
         if let Entry::Vacant(entry) = sees.entry(neighbour) {
           let is_seen: bool = faces[neighbour].distance(points[eye]) > tolerance;
@@ -157,10 +158,11 @@ impl ConvexHull {
     }
 
     // The horizon: the visible region's edges whose other side is not visible, in the visible faces' order.
+    // Every edge of a visible face was crossed by the walk above, so each neighbour is already answered in `sees`.
     let horizon: Vec<(usize, usize)> = visible
       .iter()
       .flat_map(|face| faces[*face].edges())
-      .filter(|(a, b)| !sees[&owners[&(*b, *a)]])
+      .filter(|(a, b)| owners.get(&(*b, *a)).and_then(|neighbour| sees.get(neighbour)) != Some(&true))
       .collect();
     let mut orphans: Vec<usize> = Vec::new();
 
@@ -193,6 +195,8 @@ impl ConvexHull {
         face.outside.push(point);
       }
     }
+
+    Some(())
   }
 
   /// The widest tetrahedron the points give, as four outward faces: the two points farthest apart of the six extremes

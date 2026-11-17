@@ -15,7 +15,10 @@ impl SteamAllocator {
   pub(crate) unsafe extern "C" fn allocate(size: usize, alignment: usize) -> *mut c_void {
     let alignment: usize = alignment.max(align_of::<usize>()).next_power_of_two();
     let header: usize = Self::HEADER.max(alignment);
-    let Ok(layout) = Layout::from_size_align(size + header, alignment) else {
+    let Some(Ok(layout)) = size
+      .checked_add(header)
+      .map(|total| Layout::from_size_align(total, alignment))
+    else {
       return std::ptr::null_mut();
     };
     // SAFETY: the layout is not zero-sized: it holds the header at least.

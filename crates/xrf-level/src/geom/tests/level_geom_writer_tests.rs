@@ -171,12 +171,12 @@ fn packs_visuals_into_the_first_buffer_of_their_declaration_they_fit() -> XrfRes
   );
 
   // An index buffer holds fewer than its limit.
-  assert_eq!(packer.add_indices(&[0, 1, 2]), LevelGeomRange { buffer: 0, start: 0 });
+  assert_eq!(packer.add_indices(&[0, 1, 2])?, LevelGeomRange { buffer: 0, start: 0 });
   assert_eq!(
-    packer.add_indices(&vec![0; LevelGeomPacker::INDEX_LIMIT - 3]),
+    packer.add_indices(&vec![0; LevelGeomPacker::INDEX_LIMIT - 3])?,
     LevelGeomRange { buffer: 1, start: 0 }
   );
-  assert_eq!(packer.add_indices(&[3, 4, 5]), LevelGeomRange { buffer: 0, start: 3 });
+  assert_eq!(packer.add_indices(&[3, 4, 5])?, LevelGeomRange { buffer: 0, start: 3 });
 
   Ok(())
 }
@@ -190,7 +190,7 @@ fn writes_a_geometry_file_that_reads_back_whole() -> XrfResult {
   vertex_lit(1.0).write_into::<XRayByteOrder>(&layout, &mut bytes[..32])?;
   vertex_lit(2.0).write_into::<XRayByteOrder>(&layout, &mut bytes[32..])?;
   packer.add_vertices(&LevelVertexDeclaration::get_vertex_lit(), &bytes)?;
-  packer.add_indices(&[0, 1, 1]);
+  packer.add_indices(&[0, 1, 1])?;
 
   let buffers: LevelGeomBuffers = packer.into_buffers(
     LevelHeaderChunk {

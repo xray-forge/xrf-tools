@@ -29,7 +29,7 @@ impl LevelSceneStep for LevelDetailStep {
     };
     let atlas: Option<LevelDetailAtlas> = Self::read_atlas(sources, draft);
     let library: LevelDetailLibrary = LevelDetailLibrary::read_from_roots::<T>(&options.libraries)?;
-    let decompile: LevelDetailDecompile = LevelDetailConversion::decompile(&file, &library, atlas.as_ref());
+    let decompile: LevelDetailDecompile = LevelDetailConversion::decompile(&file, &library, atlas.as_ref())?;
 
     draft.refused.extend(decompile.refused);
     draft.textures.extend(decompile.textures);

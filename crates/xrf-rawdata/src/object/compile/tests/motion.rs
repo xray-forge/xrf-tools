@@ -69,13 +69,27 @@ fn quantises_a_short_move_to_8_bits_and_a_long_one_to_16() -> XrfResult {
 /// [`authored`] playing a motion of its own instead of referencing motion files: `lid` rising a metre over a second,
 /// `link` and `hinge` left to their bind poses.
 fn animated(flags: u8) -> XrfResult<EditableObjectFile> {
+  playing(opening(flags))
+}
+
+/// [`authored`] playing `motion` of its own.
+fn playing(motion: EditableMotion) -> XrfResult<EditableObjectFile> {
   let mut object: EditableObjectFile = authored()?;
+
+  object.motion_references = None;
+  object.embedded_motions = Some(EditableMotion::write_list::<XRayByteOrder>(&[motion])?);
+
+  Ok(object)
+}
+
+/// `lid` rising a metre over a second.
+fn opening(flags: u8) -> EditableMotion {
   let mut rise: AnimationEnvelope = AnimationEnvelope::default();
 
   rise.insert_key(0.0, 0.0);
   rise.insert_key(1.0, 1.0);
 
-  let motion: EditableMotion = EditableMotion {
+  EditableMotion {
     name: String::from("open"),
     frame_start: 0,
     frame_end: 30,
@@ -100,12 +114,7 @@ fn animated(flags: u8) -> XrfResult<EditableObjectFile> {
       ],
     }],
     marks: Vec::new(),
-  };
-
-  object.motion_references = None;
-  object.embedded_motions = Some(EditableMotion::write_list::<XRayByteOrder>(&[motion])?);
-
-  Ok(object)
+  }
 }
 
 #[test]
@@ -226,6 +235,25 @@ fn refuses_a_motion_moving_the_object_through_its_root() -> XrfResult {
     error.contains("moves the object through its root"),
     "Unexpected error: {error}"
   );
+
+  Ok(())
+}
+
+#[test]
+fn refuses_a_frame_range_or_rate_that_times_no_motion_before_sampling() -> XrfResult {
+  for (frame_end, fps, reason) in [
+    (i32::MAX, 30.0, "a range past the engine's 24-bit frame count"),
+    (30, 0.0, "no frames a second"),
+    (30, f32::NAN, "a rate that is not a number"),
+  ] {
+    let motion: EditableMotion = EditableMotion {
+      frame_end,
+      fps,
+      ..opening(EditableMotion::STOP_AT_END_FLAG)
+    };
+
+    assert!(compile(&playing(motion)?).is_err(), "a motion with {reason} compiled");
+  }
 
   Ok(())
 }

@@ -1,3 +1,4 @@
+use xrf_error::XrfResult;
 use xrf_level::{BuildPrjFile, BuildPrjName, BuildPrjShader};
 use xrf_math::{Aabb, Vector2d, Vector3d};
 use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
@@ -134,7 +135,7 @@ fn corner(position: [f32; 3], coordinate: [f32; 2], tangent: u8) -> GeometryVisu
 }
 
 #[test]
-fn welds_a_visuals_corners_drops_closed_and_repeated_faces_and_keeps_an_opaque_fast_path() {
+fn welds_a_visuals_corners_drops_closed_and_repeated_faces_and_keeps_an_opaque_fast_path() -> XrfResult {
   let texel: [Vector2d; 1] = [Vector2d::new(1.0 / 256.0, 1.0 / 256.0)];
   let mut visual: GeometryVisual = GeometryVisual::new(
     0,
@@ -148,24 +149,24 @@ fn welds_a_visuals_corners_drops_closed_and_repeated_faces_and_keeps_an_opaque_f
   let c = corner([1.0, 0.0, 1.0], [1.0, 1.0], 255);
   let d = corner([0.0, 0.0, 1.0], [0.0, 1.0], 255);
 
-  visual.add_face([a, c, b], &texel, GeometryFastPath::Joined);
+  visual.add_face([a, c, b], &texel, GeometryFastPath::Joined)?;
   // Shares `a` and `c`, one within a basis step and a coordinate texel of the first `a`.
   visual.add_face(
     [corner([0.0005, 0.0, 0.0], [0.003, 0.0], 254), d, c],
     &texel,
     GeometryFastPath::Joined,
-  );
+  )?;
 
   assert_eq!(visual.vertices.len(), 4);
   assert_eq!(visual.faces, vec![[0, 1, 2], [0, 3, 1]]);
 
   // A repeat in another order is left out; a face closing on itself takes no vertex.
-  visual.add_face([b, a, c], &texel, GeometryFastPath::Joined);
+  visual.add_face([b, a, c], &texel, GeometryFastPath::Joined)?;
   visual.add_face(
     [a, corner([3.0, 0.0, 0.0], [5.0, 5.0], 0), a],
     &texel,
     GeometryFastPath::Joined,
-  );
+  )?;
 
   assert_eq!((visual.vertices.len(), visual.faces.len()), (4, 2));
   assert_eq!((visual.fast_vertices.len(), visual.fast_faces.len()), (4, 2));
@@ -175,19 +176,21 @@ fn welds_a_visuals_corners_drops_closed_and_repeated_faces_and_keeps_an_opaque_f
     [corner([0.0, 0.0, 0.0], [0.0, 0.0], 252), b, c],
     &texel,
     GeometryFastPath::Left,
-  );
+  )?;
   visual.add_face(
     [corner([0.0, 0.0, 0.0], [0.004, 0.0], 255), d, c],
     &texel,
     GeometryFastPath::Left,
-  );
+  )?;
 
   assert_eq!(visual.vertices.len(), 6);
   assert_eq!(visual.fast_faces.len(), 2);
+
+  Ok(())
 }
 
 #[test]
-fn shifts_each_joined_groups_coordinates_by_the_whole_tiles_at_its_middle() {
+fn shifts_each_joined_groups_coordinates_by_the_whole_tiles_at_its_middle() -> XrfResult {
   let texel: [Vector2d; 1] = [Vector2d::new(1.0 / 256.0, 1.0 / 256.0)];
   let mut visual: GeometryVisual = GeometryVisual::new(
     0,
@@ -206,7 +209,7 @@ fn shifts_each_joined_groups_coordinates_by_the_whole_tiles_at_its_middle() {
     ],
     &texel,
     GeometryFastPath::Joined,
-  );
+  )?;
   visual.add_face(
     [
       corner([5.0, 0.0, 0.0], [-2.0, 0.0], 255),
@@ -215,7 +218,7 @@ fn shifts_each_joined_groups_coordinates_by_the_whole_tiles_at_its_middle() {
     ],
     &texel,
     GeometryFastPath::Joined,
-  );
+  )?;
   visual.shift_texture_coordinates();
 
   // The first group's middle is 3.5 along u, and it moves 3 tiles. The second's span reaches up from the smallest
@@ -223,4 +226,36 @@ fn shifts_each_joined_groups_coordinates_by_the_whole_tiles_at_its_middle() {
   assert_eq!(visual.vertices[0].texture_coordinate, Vector2d::new(0.0, 0.0));
   assert_eq!(visual.vertices[3].texture_coordinate, Vector2d::new(-1.0, 0.0));
   assert_eq!(visual.vertices[4].texture_coordinate, Vector2d::new(0.0, 1.0));
+
+  Ok(())
+}
+
+#[test]
+fn refuses_a_vertex_past_what_the_visuals_16_bit_indices_reach() {
+  let texel: [Vector2d; 1] = [Vector2d::new(1.0 / 256.0, 1.0 / 256.0)];
+  let mut visual: GeometryVisual = GeometryVisual::new(
+    7,
+    0,
+    vec![String::from("ground")],
+    String::from("default/ground"),
+    GeometryVisualLight::Vertex,
+  );
+
+  // Every index a visual holds already taken, by vertices far from the face's.
+  visual.vertices = vec![corner([-100.0, 0.0, 0.0], [0.0, 0.0], 255); usize::from(u16::MAX) + 1];
+
+  let error: String = visual
+    .add_face(
+      [
+        corner([0.0, 0.0, 0.0], [0.0, 0.0], 255),
+        corner([1.0, 0.0, 0.0], [1.0, 0.0], 255),
+        corner([1.0, 0.0, 1.0], [1.0, 1.0], 255),
+      ],
+      &texel,
+      GeometryFastPath::Joined,
+    )
+    .expect_err("a vertex past the indices is refused")
+    .to_string();
+
+  assert!(error.contains("material 7 (default/ground)"), "{error}");
 }

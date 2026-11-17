@@ -174,6 +174,22 @@ fn merges_corners_within_eps_as_the_editors_collector_does() -> XrfResult {
 }
 
 #[test]
+fn refuses_a_box_naming_an_environment_the_file_does_not_hold() -> XrfResult {
+  let mut file: LevelSndEnvFile = export(&part(vec![volume(
+    "cave",
+    "default",
+    EditableObjectTransform::default(),
+    Affine3d::IDENTITY,
+  )]))?;
+
+  file.environments.truncate(1);
+
+  assert!(decompile(&file).is_err());
+
+  Ok(())
+}
+
+#[test]
 fn refuses_what_the_editor_asserts_on_and_bounds_a_skipped_sphere() -> XrfResult {
   let boxed = volume(
     "cave",

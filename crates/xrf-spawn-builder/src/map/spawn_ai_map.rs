@@ -1,4 +1,5 @@
 use xrf_chunk::XRayByteOrder;
+use xrf_error::{XrfError, XrfResult};
 use xrf_level::{LevelAiHeader, LevelAiNode, LevelAiNodes};
 use xrf_math::{Aabb, Vector3d};
 
@@ -16,13 +17,29 @@ pub struct SpawnAiMap {
 }
 
 impl SpawnAiMap {
-  pub fn new(header: LevelAiHeader, nodes: &LevelAiNodes) -> Self {
-    Self {
+  /// # Errors
+  ///
+  /// Returns an error for a header whose grid does not unpack ([`LevelAiHeader::assert_grid`]) or whose node count
+  /// differs from the nodes held, which the lookups would read past.
+  pub fn new(header: LevelAiHeader, nodes: &LevelAiNodes) -> XrfResult<Self> {
+    header.assert_grid()?;
+
+    let nodes: Vec<LevelAiNode> = nodes.iter_nodes::<XRayByteOrder>().collect();
+
+    if nodes.len() != header.count as usize {
+      return Err(XrfError::new_invalid_error(format!(
+        "Level AI map header counts {} nodes but holds {}",
+        header.count,
+        nodes.len()
+      )));
+    }
+
+    Ok(Self {
       row_length: i64::from(header.get_row_length()),
       column_length: i64::from(header.get_column_length()),
-      nodes: nodes.iter_nodes::<XRayByteOrder>().collect(),
+      nodes,
       header,
-    }
+    })
   }
 
   pub fn get_header(&self) -> &LevelAiHeader {

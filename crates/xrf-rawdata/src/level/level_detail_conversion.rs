@@ -2,6 +2,7 @@ use xrf_editable_level::{EditableDetailHeader, EditableDetailObject, EditableDet
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{DetailModel, LevelDetailsFile, LevelDetailsLight, LevelDetailsSlot};
 use xrf_math::{Aabb, Vector3d};
+use xrf_utils::narrow_format_size;
 
 use crate::level::build::level_build_details::LevelBuildDetails;
 use crate::level::level_detail_atlas::LevelDetailAtlas;
@@ -35,11 +36,15 @@ impl LevelDetailConversion {
   /// Each found object's texture is cut from `atlas`, the level's `build_details.dds`, where given: the game ships
   /// that atlas but not the textures it merges, which the SDK keeps with its own editors. A texture that does not cut
   /// is refused, and a build then needs the library's own.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when more objects are found than the tool's header counts.
   pub(crate) fn decompile(
     file: &LevelDetailsFile,
     library: &LevelDetailLibrary,
     atlas: Option<&LevelDetailAtlas>,
-  ) -> LevelDetailDecompile {
+  ) -> XrfResult<LevelDetailDecompile> {
     let mut refused: Vec<LevelSceneRefusal> = Vec::new();
     let mut objects: Vec<EditableDetailObject> = Vec::new();
     let mut found: Vec<LevelDetailMatch<'_>> = Vec::new();
@@ -73,11 +78,11 @@ impl LevelDetailConversion {
       atlas.map_or_else(Vec::new, |atlas| Self::cut_textures(atlas, &found, &mut refused));
 
     if objects.is_empty() {
-      return LevelDetailDecompile {
+      return Ok(LevelDetailDecompile {
         tool: None,
         textures,
         refused,
-      };
+      });
     }
 
     let slots: Vec<[u32; EditableDetailObjectTool::SLOT_WORDS]> = file
@@ -98,12 +103,12 @@ impl LevelDetailConversion {
       })
       .collect();
 
-    LevelDetailDecompile {
+    Ok(LevelDetailDecompile {
       tool: Some(EditableDetailObjectTool {
         flags: EditableDetailObjectTool::OBJECTS_DRAW,
         header: EditableDetailHeader {
           version: file.header.version,
-          object_count: objects.len() as u32,
+          object_count: narrow_format_size(objects.len(), "A detail tool's object count")?,
           offset_x: file.header.offset_x,
           offset_z: file.header.offset_z,
           size_x: file.header.size_x,
@@ -119,7 +124,7 @@ impl LevelDetailConversion {
       }),
       textures,
       refused,
-    }
+    })
   }
 
   /// Each texture the `found` objects draw, once, cut from `atlas` at the place of the first object drawing it whose

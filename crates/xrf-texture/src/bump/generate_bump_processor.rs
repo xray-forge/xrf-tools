@@ -48,10 +48,18 @@ impl GenerateBumpProcessor {
   ///
   /// # Errors
   ///
-  /// Returns an error when an external normal map does not match the height in size, when either half cannot be
-  /// encoded, or when either file cannot be written. A gloss too dark to be useful is reported in the result rather
-  /// than refused; see [`GenerateBumpResult::is_gloss_too_dark`].
+  /// Returns an error when the height picture holds no texel, when an external normal map does not match the height
+  /// in size, when either half cannot be encoded, or when either file cannot be written. A gloss too dark to be useful
+  /// is reported in the result rather than refused; see [`GenerateBumpResult::is_gloss_too_dark`].
   pub fn generate(options: &GenerateBumpOptions) -> XrfResult<GenerateBumpResult> {
+    if options.height.width() == 0 || options.height.height() == 0 {
+      return Err(XrfError::new_texture_processing_error(format!(
+        "A {} by {} height picture holds no texel to derive a bump from",
+        options.height.width(),
+        options.height.height()
+      )));
+    }
+
     let steps: JobScope = options.job.enter(TEXTURE_PHASE_GENERATE_BUMP, Some(GENERATE_STEPS));
     let [bump_path, companion_path]: [PathBuf; 2] = Self::pair_paths(&options.bump);
 
@@ -353,6 +361,15 @@ mod tests {
   /// The base level of a written half, as the four channels it stores.
   fn decode(path: &PathBuf) -> XrfResult<RgbaImage> {
     DdsFile::read_from_path(path)?.decode_rgba(0)
+  }
+
+  #[test]
+  fn refuses_a_height_picture_of_no_texel() {
+    for (width, height) in [(0, 8), (8, 0)] {
+      let empty: RgbaImage = RgbaImage::new(width, height);
+
+      assert!(GenerateBumpProcessor::generate(&options("empty", empty)).is_err());
+    }
   }
 
   #[test]

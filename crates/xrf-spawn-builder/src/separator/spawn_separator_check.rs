@@ -30,7 +30,8 @@ impl<'a> SpawnSeparatorCheck<'a> {
   const NO_PIECE: u32 = u32::MAX;
 
   pub(crate) fn new(map: &'a SpawnAiMap) -> Self {
-    let count: u32 = map.get_node_count() as u32;
+    // The map holds exactly as many nodes as its header counts.
+    let count: u32 = map.get_header().count;
     let mut parents: Vec<u32> = (0..count).collect();
 
     for node in 0..count {
@@ -59,6 +60,7 @@ impl<'a> SpawnSeparatorCheck<'a> {
 
   fn find_cut(&self, level: &str, restrictor: &SpawnRestrictor) -> Option<SpawnSeparatorCut> {
     let bounds: Aabb = restrictor.get_bounds()?;
+    let nodes: u32 = self.map.get_header().count;
     let count: usize = self.map.get_node_count();
     let mut is_held: Vec<bool> = vec![false; count];
     let mut is_border: Vec<bool> = vec![false; count];
@@ -90,17 +92,21 @@ impl<'a> SpawnSeparatorCheck<'a> {
     // The part each piece lies in, beside its size.
     let mut piece_parts: Vec<u32> = Vec::new();
     let mut queue: VecDeque<u32> = VecDeque::new();
+    let mut next_piece: u32 = 0;
 
-    for start in 0..count {
-      if is_held[start] || pieces[start] != Self::NO_PIECE || !is_touched(start) {
+    for start in 0..nodes {
+      let index: usize = start as usize;
+
+      if is_held[index] || pieces[index] != Self::NO_PIECE || !is_touched(index) {
         continue;
       }
 
-      let piece: u32 = piece_sizes.len() as u32;
+      let piece: u32 = next_piece;
       let mut size: u32 = 0;
 
-      pieces[start] = piece;
-      queue.push_back(start as u32);
+      next_piece += 1;
+      pieces[index] = piece;
+      queue.push_back(start);
 
       while let Some(node) = queue.pop_front() {
         size += u32::from(!is_held[node as usize]);
@@ -114,7 +120,7 @@ impl<'a> SpawnSeparatorCheck<'a> {
       }
 
       piece_sizes.push(size);
-      piece_parts.push(self.parts[start]);
+      piece_parts.push(self.parts[index]);
     }
 
     // The part's largest piece stays, the first of equals; the rest is cut off.
@@ -122,20 +128,23 @@ impl<'a> SpawnSeparatorCheck<'a> {
 
     for part in &touched {
       kept.extend(
-        (0..piece_parts.len() as u32)
+        (0..next_piece)
           .filter(|piece| piece_parts[*piece as usize] == *part)
           .max_by_key(|piece| (piece_sizes[*piece as usize], std::cmp::Reverse(*piece))),
       );
     }
 
-    let mut cut =
-      (0..count).filter(|node| !is_held[*node] && pieces[*node] != Self::NO_PIECE && !kept.contains(&pieces[*node]));
-    let first: u32 = cut.next()? as u32;
+    let mut cut = (0..nodes).filter(|node| {
+      let node: usize = *node as usize;
+
+      !is_held[node] && pieces[node] != Self::NO_PIECE && !kept.contains(&pieces[node])
+    });
+    let first: u32 = cut.next()?;
 
     Some(SpawnSeparatorCut {
       level: level.to_owned(),
       restrictor: restrictor.name.clone(),
-      nodes: 1 + cut.count() as u32,
+      nodes: cut.fold(1, |nodes, _| nodes + 1),
       first_node: first,
       first_position: self.map.get_node_position(first),
     })

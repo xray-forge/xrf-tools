@@ -151,7 +151,13 @@ impl GeometrySplits {
   /// Only splits of one material and page can join, so each looks for its candidates among the later splits of its own
   /// kind alone, in their order, which gives xrLC's choice without its search over every split.
   pub fn merge(&mut self, mesh: &GeometryMesh, pages: Option<&[Option<u32>]>) {
-    let mut splits: Vec<Option<Vec<u32>>> = self.splits.drain(..).map(Some).collect();
+    // A split of no face has no kind to join by, and draws nothing.
+    let mut splits: Vec<Option<Vec<u32>>> = self
+      .splits
+      .drain(..)
+      .filter(|split| !split.is_empty())
+      .map(Some)
+      .collect();
     let mut boxes: Vec<GeometrySplitBox> = splits
       .iter()
       .flatten()

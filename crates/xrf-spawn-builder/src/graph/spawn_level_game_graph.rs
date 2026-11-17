@@ -2,6 +2,7 @@ use std::cmp::Ordering;
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_spawn::GraphCrossTableCell;
+use xrf_utils::narrow_format_size;
 
 use crate::graph::spawn_game_edge::SpawnGameEdge;
 use crate::graph::spawn_graph_point::SpawnGraphPoint;
@@ -30,14 +31,16 @@ impl SpawnLevelGameGraph {
   ///
   /// # Errors
   ///
-  /// Returns an error where no path joins two neighbouring vertices, or a vertex would have more than 255 edges.
+  /// Returns an error where no path joins two neighbouring vertices, a vertex would have more than 255 edges, or the
+  /// level holds more graph points than a game graph numbers.
   pub fn build(map: &SpawnAiMap, points: &[SpawnGraphPoint], cells: &[GraphCrossTableCell]) -> XrfResult<Self> {
     let mut distance: SpawnPathDistance<'_> = SpawnPathDistance::new(map);
     let mut marks: Vec<u32> = vec![u32::MAX; map.get_node_count()];
     let mut edges: Vec<Vec<SpawnGameEdge>> = Vec::with_capacity(points.len());
 
     for (vertex, point) in points.iter().enumerate() {
-      let neighbours: Vec<u16> = Self::find_neighbours(map, cells, &mut marks, vertex as u16, point.node);
+      let vertex: u16 = narrow_format_size(vertex, "A game vertex id")?;
+      let neighbours: Vec<u16> = Self::find_neighbours(map, cells, &mut marks, vertex, point.node);
 
       if neighbours.len() > usize::from(u8::MAX) {
         return Err(XrfError::new_invalid_error(format!(
@@ -118,9 +121,8 @@ impl SpawnLevelGameGraph {
   fn drop_triangles(&mut self) {
     let mut pairs: Vec<SpawnEdgePair> = Vec::new();
 
-    for (from, edges) in self.edges.iter().enumerate() {
-      let from: u16 = from as u16;
-
+    // `build` refuses a level of more vertices than 16 bits number, so numbering them so loses none.
+    for (from, edges) in (0..=u16::MAX).zip(&self.edges) {
       for edge in edges {
         let back: Option<&SpawnGameEdge> = self.find_edge(edge.target, from);
 

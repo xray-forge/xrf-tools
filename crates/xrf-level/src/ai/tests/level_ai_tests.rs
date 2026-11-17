@@ -308,3 +308,32 @@ fn writing_nodes_the_header_does_not_count_is_refused() -> XrfResult {
 
   Ok(())
 }
+
+#[test]
+fn refuses_a_grid_its_nodes_cannot_unpack_from() -> XrfResult {
+  let sound: LevelAiHeader = header(LevelAiVersion::CsCop, 1);
+  let inverted: Aabb = Aabb {
+    min: Vector3d::new(5.0, -10.0, 3.0),
+    max: Vector3d::new(-5.0, 10.0, -3.0),
+  };
+
+  sound.assert_grid()?;
+
+  for size in [0.0, -0.7, f32::NAN, f32::INFINITY] {
+    assert!(
+      LevelAiHeader { size, ..sound.clone() }.assert_grid().is_err(),
+      "a cell size of {size}"
+    );
+  }
+
+  assert!(
+    LevelAiHeader {
+      bounds: inverted,
+      ..sound
+    }
+    .assert_grid()
+    .is_err()
+  );
+
+  Ok(())
+}

@@ -9254,6 +9254,7 @@ dependencies = [
  "xrf-report",
  "xrf-spawn",
  "xrf-test-utils",
+ "xrf-utils",
 ]
 
 [[package]]

@@ -35,7 +35,11 @@ impl SoundEmitters {
     // A two-channel file always plays 2D, from the listener (`set_position`, `switch_to_2D`).
     let is_2d: bool = play.is_2d || info.is_stereo;
     let position: [f32; 3] = if info.is_stereo { [0.0; 3] } else { play.position };
-    let frequency: f32 = if play.frequency > 0.0 { play.frequency } else { 1.0 };
+    let frequency: f32 = if play.frequency.is_finite() && play.frequency > 0.0 {
+      play.frequency
+    } else {
+      1.0
+    };
     let [min_distance, max_distance] = play.range.unwrap_or([info.min_distance, info.max_distance]);
 
     self.live.push(LiveEmitter {
@@ -59,8 +63,13 @@ impl SoundEmitters {
       },
       kind: play.kind,
       object: play.object,
-      // `fTimeToStop`: what is left of the file at the sound's speed.
-      end: (!play.is_looped).then(|| play.start + info.length.saturating_sub(play.offset).div_f32(frequency)),
+      // `fTimeToStop`: what is left of the file at the sound's speed. A file's frequency can be slow enough that the
+      // sound outlasts any clock, which then never sees it end.
+      end: (!play.is_looped).then(|| {
+        let left: f64 = info.length.saturating_sub(play.offset).as_secs_f64() / f64::from(frequency);
+
+        Duration::try_from_secs_f64(left).map_or(Duration::MAX, |left| play.start.saturating_add(left))
+      }),
       is_new: true,
     });
 

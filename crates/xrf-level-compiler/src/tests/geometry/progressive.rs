@@ -32,16 +32,14 @@ fn grid_visual(side: u16) -> GeometryVisual {
 
   for z in 0..side - 1 {
     for x in 0..side - 1 {
-      visual.add_face(
+      for corners in [
         [corner(x, z), corner(x, z + 1), corner(x + 1, z)],
-        &texel,
-        GeometryFastPath::Joined,
-      );
-      visual.add_face(
         [corner(x + 1, z), corner(x, z + 1), corner(x + 1, z + 1)],
-        &texel,
-        GeometryFastPath::Joined,
-      );
+      ] {
+        visual
+          .add_face(corners, &texel, GeometryFastPath::Joined)
+          .expect("a small grid welds within the 16-bit indices");
+      }
     }
   }
 

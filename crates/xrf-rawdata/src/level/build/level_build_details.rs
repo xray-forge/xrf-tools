@@ -4,6 +4,7 @@ use xrf_editable_level::{EditableDetailObject, EditableDetailObjectTool};
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{DetailModel, DetailVertex, LevelDetailsFile, LevelDetailsHeader, LevelDetailsLight, LevelDetailsSlot};
+use xrf_utils::narrow_format_size;
 
 use crate::level::build::level_build_atlas::{LevelBuildAtlas, LevelBuildAtlasPlace};
 use crate::level::build::level_build_library::LevelBuildLibrary;
@@ -121,7 +122,7 @@ impl LevelBuildDetails {
       file: LevelDetailsFile {
         header: LevelDetailsHeader {
           version: LevelDetailsFile::CURRENT_VERSION,
-          object_count: objects.len() as u32,
+          object_count: narrow_format_size(objects.len(), "A details file's object count")?,
           offset_x: tool.header.offset_x,
           offset_z: tool.header.offset_z,
           size_x: tool.header.size_x,

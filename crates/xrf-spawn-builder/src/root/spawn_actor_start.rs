@@ -65,7 +65,8 @@ impl SpawnActorStart {
     let origin = graph.vertices[usize::from(from)].game_point;
     let mut best: Option<(u16, f32)> = None;
 
-    for (index, vertex) in graph.vertices.iter().enumerate() {
+    // A game graph numbers its vertices in 16 bits, as the merge that built it checked.
+    for (index, vertex) in (0..=u16::MAX).zip(&graph.vertices) {
       if vertex.level_id != level_id {
         continue;
       }
@@ -78,7 +79,7 @@ impl SpawnActorStart {
       let distance: f32 = dx * dx + dy * dy + dz * dz;
 
       if best.is_none_or(|(_, known)| distance < known) {
-        best = Some((index as u16, distance));
+        best = Some((index, distance));
       }
     }
 

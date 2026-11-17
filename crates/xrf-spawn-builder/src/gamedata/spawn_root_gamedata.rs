@@ -5,6 +5,7 @@ use rayon::prelude::*;
 use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::{JobHandle, JobScope};
+use xrf_utils::narrow_format_size;
 
 use crate::gamedata::spawn_game_level::SpawnGameLevel;
 use crate::gamedata::spawn_game_levels::SpawnGameLevels;
@@ -94,8 +95,8 @@ impl SpawnRootGamedata {
       guid: build.spawn.header.guid,
       graph_guid: build.spawn.graphs.header.guid,
       objects: build.spawn.header.objects_count,
-      artefact_points: build.spawn.artefact_spawn.nodes.len() as u32,
-      patrols: build.spawn.patrols.patrols.len() as u32,
+      artefact_points: narrow_format_size(build.spawn.artefact_spawn.nodes.len(), "A spawn's artefact point count")?,
+      patrols: narrow_format_size(build.spawn.patrols.patrols.len(), "A spawn's patrol count")?,
       report: build.report,
     })
   }

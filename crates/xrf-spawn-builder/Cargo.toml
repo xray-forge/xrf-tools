@@ -24,6 +24,7 @@ xrf-ltx = { workspace = true }
 xrf-math = { workspace = true, features = ["glam"] }
 xrf-report = { workspace = true }
 xrf-spawn = { workspace = true }
+xrf-utils = { workspace = true }
 
 [dev-dependencies]
 xrf-spawn = { workspace = true, features = ["mocks"] }

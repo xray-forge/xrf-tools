@@ -206,3 +206,40 @@ fn refuses_what_xrai_refuses_and_full_covers_with_no_ray_model() {
     .contains("no node")
   );
 }
+
+#[test]
+fn refuses_a_map_its_nodes_cannot_be_placed_or_walked_on() {
+  let refuse = |aimap: BuildAimapFile| {
+    AiMapCompiler::compile(
+      AiMapRequest {
+        aimap: &aimap,
+        covers: AiMapCovers::None,
+        scene: None,
+        tracing: on_cpu(),
+        replaced: None,
+      },
+      &JobHandle::inert(),
+    )
+    .expect_err("the map is refused")
+    .to_string()
+  };
+  let sized = |patch_size: f32| BuildAimapFile {
+    params: BuildAimapParams {
+      patch_size,
+      ..aimap().params
+    },
+    ..aimap()
+  };
+  let mut dangling: BuildAimapFile = aimap();
+  let mut before_the_box: BuildAimapFile = aimap();
+
+  dangling.nodes[1].links[0] = 4;
+  before_the_box.nodes[3].position.x = -5;
+
+  for size in [0.0, -0.7, f32::NAN, f32::INFINITY] {
+    assert!(refuse(sized(size)).contains("cell size"), "a cell size of {size}");
+  }
+
+  assert!(refuse(dangling).contains("links to node 4"));
+  assert!(refuse(before_the_box).contains("outside the map's cells"));
+}

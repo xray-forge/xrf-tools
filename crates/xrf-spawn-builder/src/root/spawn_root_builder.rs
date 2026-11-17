@@ -10,6 +10,7 @@ use xrf_spawn::{
   AlifeBuiltFields, AlifeObject, ArtefactSpawnPoint, Patrol, SpawnALifeSpawnsChunk, SpawnArtefactSpawnsChunk,
   SpawnFile, SpawnGraphsChunk, SpawnHeaderChunk, SpawnPatrolsChunk,
 };
+use xrf_utils::narrow_format_size;
 
 use crate::entity::spawn_level_changer_links::SpawnLevelChangerLinks;
 use crate::entity::spawn_level_entities::SpawnLevelEntities;
@@ -89,7 +90,7 @@ impl SpawnRootBuilder {
         patrols.extend(SpawnPatrols::build(merge_level, game, &vertices));
       }
 
-      first += merge_level.points.len() as u16;
+      first = narrow_format_size(usize::from(first) + merge_level.points.len(), "A game vertex id")?;
     }
 
     Self::assert_story_ids(&merges, &entities)?;
@@ -103,7 +104,7 @@ impl SpawnRootBuilder {
         guid: Uuid::nil(),
         graph_guid: merge.graph.header.guid,
         objects_count: 0,
-        levels_count: merges.len() as u32,
+        levels_count: narrow_format_size(merges.len(), "A spawn's level count")?,
       },
       alife_spawn: SpawnALifeSpawnsChunk { objects: Vec::new() },
       artefact_spawn: SpawnArtefactSpawnsChunk { nodes: Vec::new() },
@@ -175,7 +176,7 @@ impl SpawnRootBuilder {
           .map_err(|_| XrfError::new_invalid_error("The levels hold more objects than a spawn numbers"))?;
 
         if let Some(points) = points {
-          fields.artefact_position_offset = Some(Self::narrow(artefacts.len(), "artefact points")?);
+          fields.artefact_position_offset = Some(narrow_format_size(artefacts.len(), "An artefact point offset")?);
           artefacts.extend(points);
         }
 
@@ -184,14 +185,9 @@ impl SpawnRootBuilder {
       }
     }
 
-    spawn.header.objects_count = Self::narrow(objects.len(), "objects")?;
+    spawn.header.objects_count = narrow_format_size(objects.len(), "A spawn's object count")?;
 
     Ok(())
-  }
-
-  fn narrow(count: usize, what: &str) -> XrfResult<u32> {
-    u32::try_from(count)
-      .map_err(|_| XrfError::new_invalid_error(format!("The levels hold more {what} than a spawn counts")))
   }
 
   /// `process_actor`: the one actor of the build, moved to the start level's first vertex a search from its own

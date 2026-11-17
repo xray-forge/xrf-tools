@@ -5,6 +5,7 @@ use xrf_editable_level::{
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{LevelSndEnvFace, LevelSndEnvFile};
 use xrf_math::{Aabb, Affine3d, EPS, Matrix4x4, Vector3d};
+use xrf_utils::narrow_format_size;
 
 use crate::level::level_decompile_context::LevelDecompileContext;
 
@@ -47,8 +48,8 @@ impl LevelSoundEnvironmentConversion {
   ///
   /// # Errors
   ///
-  /// Returns an error when the mesh is not whole boxes in the exporter's layout, or a box's faces name different
-  /// environments.
+  /// Returns an error when the mesh is not whole boxes in the exporter's layout, a box's faces name different
+  /// environments, or an environment the file does not hold.
   pub fn decompile(
     file: &LevelSndEnvFile,
     context: &mut LevelDecompileContext,
@@ -89,14 +90,22 @@ impl LevelSoundEnvironmentConversion {
           )));
         }
 
+        let (Some(inner), Some(outer)) = (file.get_back_environment(first), file.get_front_environment(first)) else {
+          return Err(XrfError::new_invalid_error(format!(
+            "Sound environment box {index} names environments {} and {}, past the {} the file holds",
+            first.back,
+            first.front,
+            file.environments.len()
+          )));
+        };
         let corners: [Vector3d; 8] = std::array::from_fn(|corner| file.vertices[base + slots[corner]]);
         let (transform, shape) = Self::get_placement(&corners);
 
         Ok(EditableSoundEnvironmentObject {
           object: EditableCustomObject::new(context.names.get_next(Self::NAME_PREFIX), transform),
           shape,
-          inner: file.environments[usize::from(first.back)].clone(),
-          outer: file.environments[usize::from(first.front)].clone(),
+          inner: inner.to_owned(),
+          outer: outer.to_owned(),
         })
       })
       .collect::<XrfResult<Vec<EditableSoundEnvironmentObject>>>()?;
@@ -144,8 +153,14 @@ impl LevelSoundEnvironmentConversion {
       let corners: [Vector3d; 8] = EditableShape::place_unit_box(&matrix);
 
       for face in Self::BOX_FACES {
+        let [first, second, third] = face;
+
         faces.push(LevelSndEnvFace {
-          vertices: face.map(|corner| Self::pack_vertex(&mut vertices, &corners[corner])),
+          vertices: [
+            Self::pack_vertex(&mut vertices, &corners[first])?,
+            Self::pack_vertex(&mut vertices, &corners[second])?,
+            Self::pack_vertex(&mut vertices, &corners[third])?,
+          ],
           front,
           back,
         });
@@ -253,7 +268,7 @@ impl LevelSoundEnvironmentConversion {
   }
 
   /// `VPack`: the index of an earlier vertex within `EPS` on every axis, else of the vertex appended.
-  fn pack_vertex(vertices: &mut Vec<Vector3d>, vertex: &Vector3d) -> u32 {
+  fn pack_vertex(vertices: &mut Vec<Vector3d>, vertex: &Vector3d) -> XrfResult<u32> {
     let index: usize = vertices
       .iter()
       .position(|it| (it.x - vertex.x).abs() < EPS && (it.y - vertex.y).abs() < EPS && (it.z - vertex.z).abs() < EPS)
@@ -262,7 +277,7 @@ impl LevelSoundEnvironmentConversion {
         vertices.len() - 1
       });
 
-    index as u32
+    narrow_format_size(index, "A sound environment vertex index")
   }
 
   /// An environment's index among those named so far, appended when new.

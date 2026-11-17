@@ -1,3 +1,4 @@
+use xrf_error::{XrfError, XrfResult};
 use xrf_geometry::{ProgressiveMesh, ProgressivePoint, ProgressiveWindow};
 use xrf_math::{EPS_L, Vector2d, Vector3d};
 
@@ -141,69 +142,100 @@ impl GeometryVisual {
   /// is left out with its vertices kept; a face taken is added to the fast path too as `fast_path` says.
   ///
   /// `texel` is a texel of each coordinate channel's texture, `1 / width` and `1 / height`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a corner would be the visual's 65,537th vertex, past what its 16-bit indices reach, where
+  /// xrLC wraps the index onto another vertex.
   pub(crate) fn add_face(
     &mut self,
     corners: [GeometryVisualVertex; 3],
     texel: &[Vector2d],
     fast_path: GeometryFastPath,
-  ) {
+  ) -> XrfResult {
     let held: usize = self.vertices.len();
-    let face: [u16; 3] = corners.map(|corner| self.weld(corner, texel));
+    let [first, second, third] = corners;
+    let face: [u16; 3] = [
+      self.weld(first, texel)?,
+      self.weld(second, texel)?,
+      self.weld(third, texel)?,
+    ];
 
     if Self::is_degenerate(&face) {
       self.vertices.truncate(held);
-      return;
+      return Ok(());
     }
 
     if self.faces.iter().any(|other| Self::is_same(other, &face)) {
-      return;
+      return Ok(());
     }
 
     self.faces.push(face);
 
     if fast_path == GeometryFastPath::Joined {
-      self.add_fast_face(corners.map(|corner| corner.position));
+      self.add_fast_face(corners.map(|corner| corner.position))?;
     }
+
+    Ok(())
   }
 
   /// `OGF::x_BuildFace`: the corners' positions welded within `EPS_L`, a face closing on itself dropping the vertices
   /// it added.
-  fn add_fast_face(&mut self, corners: [Vector3d; 3]) {
+  fn add_fast_face(&mut self, [first, second, third]: [Vector3d; 3]) -> XrfResult {
     let held: usize = self.fast_vertices.len();
-    let face: [u16; 3] = corners.map(|corner| {
-      match self
-        .fast_vertices
-        .iter()
-        .position(|vertex| Self::is_near(vertex, &corner))
-      {
-        Some(index) => index as u16,
-        None => {
-          self.fast_vertices.push(corner);
-          (self.fast_vertices.len() - 1) as u16
-        }
-      }
-    });
+    let face: [u16; 3] = [self.weld_fast(first)?, self.weld_fast(second)?, self.weld_fast(third)?];
 
     if Self::is_degenerate(&face) {
       self.fast_vertices.truncate(held);
     } else {
       self.fast_faces.push(face);
     }
+
+    Ok(())
   }
 
   /// `OGF::_BuildVertex`.
-  fn weld(&mut self, corner: GeometryVisualVertex, texel: &[Vector2d]) -> u16 {
+  fn weld(&mut self, corner: GeometryVisualVertex, texel: &[Vector2d]) -> XrfResult<u16> {
     match self
       .vertices
       .iter()
       .position(|vertex| Self::is_similar(vertex, &corner, texel))
     {
-      Some(index) => index as u16,
+      Some(index) => self.get_index(index),
       None => {
+        let index: u16 = self.get_index(self.vertices.len())?;
+
         self.vertices.push(corner);
-        (self.vertices.len() - 1) as u16
+        Ok(index)
       }
     }
+  }
+
+  /// `OGF::x_BuildVertex`: the fast path's vertex within `EPS_L` of `corner`, or `corner` added.
+  fn weld_fast(&mut self, corner: Vector3d) -> XrfResult<u16> {
+    match self
+      .fast_vertices
+      .iter()
+      .position(|vertex| Self::is_near(vertex, &corner))
+    {
+      Some(index) => self.get_index(index),
+      None => {
+        let index: u16 = self.get_index(self.fast_vertices.len())?;
+
+        self.fast_vertices.push(corner);
+        Ok(index)
+      }
+    }
+  }
+
+  /// A vertex's place as the visual's 16-bit indices hold it.
+  fn get_index(&self, index: usize) -> XrfResult<u16> {
+    u16::try_from(index).map_err(|_| {
+      XrfError::new_invalid_error(format!(
+        "A visual of material {} ({}) welds more than 65,536 vertices, past what its 16-bit indices reach",
+        self.material, self.shader
+      ))
+    })
   }
 
   /// `OGF_Vertex::similar`: position and normal within `EPS_L`, the basis within a step, each coordinate within a texel

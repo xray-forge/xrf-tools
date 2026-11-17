@@ -68,6 +68,26 @@ pub(super) fn compile(object: &EditableObjectFile) -> XrfResult<OgfFile> {
 }
 
 #[test]
+fn refuses_a_corner_whose_weights_sum_to_nothing() -> XrfResult {
+  let [a, b, c] = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 0.0, 1.0]];
+  let weightless: EditableObjectFile = object(
+    assemble(&[surface(vec![[
+      corner(a, UP),
+      corner(b, UP),
+      with_links(corner(c, UP), &[(0, 0.0), (1, 0.0)]),
+    ]])])?,
+    chain(),
+  );
+  let error: String = compile(&weightless)
+    .expect_err("a corner following no bone is refused")
+    .to_string();
+
+  assert!(error.contains("follows none"), "Unexpected error: {error}");
+
+  Ok(())
+}
+
+#[test]
 fn writes_an_ogf_the_reader_takes_whole() -> XrfResult {
   let file: OgfFile = compile(&authored()?)?;
   let child: &OgfFile = &file.children.as_ref().expect("Expect children").nested[0];

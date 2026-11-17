@@ -29,21 +29,23 @@ impl AiMapCompiler {
     let bounds: Aabb = Aabb::from_points(vertices.iter().map(|vertex| vertex.position))
       .ok_or_else(|| XrfError::new_invalid_error("Level AI-map holds no node to save"))?;
     let size_y: f32 = bounds.max.y - bounds.min.y + EPS_L;
-    let grid: AiGrid = AiGrid::new(&bounds, cell_size);
+    let grid: AiGrid = AiGrid::new(&bounds, cell_size)?;
     let count: u32 = u32::try_from(vertices.len())
       .map_err(|_| XrfError::new_invalid_error("Level AI-map holds more nodes than a header counts"))?;
     let compressed: Vec<LevelAiNode> = vertices
       .iter()
-      .map(|vertex| LevelAiNode {
-        links: vertex.links,
-        high_cover: vertex.high_cover.map(Self::compress_cover),
-        low_cover: vertex.low_cover.map(Self::compress_cover),
-        plane: vertex.normal.to_compressed_normal(),
-        packed_xz: grid.pack(vertex.position.x, vertex.position.z),
-        packed_y: AiNodePosition::pack_height(vertex.position.y, bounds.min.y, size_y),
-        light: Self::LIGHT,
+      .map(|vertex| {
+        Ok(LevelAiNode {
+          links: vertex.links,
+          high_cover: vertex.high_cover.map(Self::compress_cover),
+          low_cover: vertex.low_cover.map(Self::compress_cover),
+          plane: vertex.normal.to_compressed_normal(),
+          packed_xz: grid.pack(vertex.position.x, vertex.position.z)?,
+          packed_y: AiNodePosition::pack_height(vertex.position.y, bounds.min.y, size_y),
+          light: Self::LIGHT,
+        })
       })
-      .collect();
+      .collect::<XrfResult<_>>()?;
     let mut sorted: Vec<usize> = (0..compressed.len()).collect();
 
     sorted.sort_by_key(|index| compressed[*index].packed_xz);

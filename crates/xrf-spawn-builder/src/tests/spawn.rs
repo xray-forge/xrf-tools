@@ -50,10 +50,10 @@ fn map() -> XrfResult<SpawnAiMap> {
     guid: Uuid::nil(),
   };
 
-  Ok(SpawnAiMap::new(
+  SpawnAiMap::new(
     header,
     &LevelAiNodes::from_nodes::<XRayByteOrder>(LevelAiVersion::CsCop, &nodes)?,
-  ))
+  )
 }
 
 fn cell(game_vertex_id: u16, cells: u32) -> GraphCrossTableCell {
@@ -61,6 +61,29 @@ fn cell(game_vertex_id: u16, cells: u32) -> GraphCrossTableCell {
     game_vertex_id,
     distance: cells as f32,
   }
+}
+
+#[test]
+fn refuses_a_header_its_grid_or_nodes_cannot_follow() -> XrfResult {
+  let header: LevelAiHeader = LevelAiHeader {
+    count: 1,
+    ..map()?.get_header().clone()
+  };
+  let nodes: LevelAiNodes =
+    LevelAiNodes::from_nodes::<XRayByteOrder>(LevelAiVersion::CsCop, &[node(0, 0, NONE, NONE)])?;
+  let refused = |header: LevelAiHeader| SpawnAiMap::new(header, &nodes).is_err();
+
+  assert!(SpawnAiMap::new(header.clone(), &nodes).is_ok());
+  assert!(
+    refused(LevelAiHeader { size: 0.0, ..header }),
+    "a grid that unpacks nothing"
+  );
+  assert!(
+    refused(LevelAiHeader { count: 2, ..header }),
+    "a count past the nodes held"
+  );
+
+  Ok(())
 }
 
 #[test]

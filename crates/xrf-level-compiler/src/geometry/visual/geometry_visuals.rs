@@ -39,8 +39,8 @@ impl GeometryVisuals {
   ///
   /// # Errors
   ///
-  /// Returns an error for a material, texture or render shader the project or its textures lack, or a material of no
-  /// compiler shader.
+  /// Returns an error for a material, texture or render shader the project or its textures lack, a material of no
+  /// compiler shader, or a split that welds into more vertices than a visual's 16-bit indices reach.
   pub fn build(request: &GeometryVisualsRequest<'_>) -> XrfResult<Self> {
     let GeometryVisualsRequest {
       mesh,
@@ -149,7 +149,7 @@ impl GeometryVisuals {
           }
         });
 
-        visual.add_face(corners, &texel, fast_path);
+        visual.add_face(corners, &texel, fast_path)?;
       }
 
       if shader.optimizes_uv() {
@@ -206,7 +206,7 @@ impl GeometryVisuals {
         }
 
         fast_vertices = Some(fast.add_vertices(&LevelVertexDeclaration::get_fast_path(), &bytes)?);
-        fast_indices = Some(fast.add_indices(visual.fast_faces.as_flattened()));
+        fast_indices = Some(fast.add_indices(visual.fast_faces.as_flattened())?);
       }
 
       let (declaration, layout) = match visual.light {
@@ -227,7 +227,7 @@ impl GeometryVisuals {
 
       packed[index] = Some(GeometryPackedVisual {
         vertices: geometry.add_vertices(&declaration, &bytes)?,
-        indices: geometry.add_indices(visual.faces.as_flattened()),
+        indices: geometry.add_indices(visual.faces.as_flattened())?,
         fast_vertices,
         fast_indices,
         slide_window: None,

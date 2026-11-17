@@ -105,7 +105,10 @@ impl LightChart {
         visit(neighbour, &mut faces, &mut stack);
       }
 
-      charts.push(Self::of(faces, scene));
+      // A seed whose own normal it refuses, one of no finite direction, starts no chart.
+      if !faces.is_empty() {
+        charts.push(Self::of(faces, scene));
+      }
     }
 
     charts

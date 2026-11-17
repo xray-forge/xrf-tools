@@ -150,7 +150,7 @@ impl GeometryLevel {
     let mut table: GeometryShaderTable = GeometryShaderTable::default();
 
     // An empty first entry, then the glows', then the visuals' as they are saved (`xrLC/Build.cpp`).
-    table.register("");
+    table.register("")?;
 
     let glows: Vec<LevelGlow> = project
       .glows
@@ -159,7 +159,7 @@ impl GeometryLevel {
         Ok(LevelGlow {
           position: glow.position,
           radius: glow.size,
-          shader: table.register(&Self::get_dress(project, textures, glow.material)?),
+          shader: table.register(&Self::get_dress(project, textures, glow.material)?)?,
         })
       })
       .collect::<XrfResult<_>>()?;
@@ -190,7 +190,7 @@ impl GeometryLevel {
           };
 
           LevelVisualRecord {
-            header: header(model_type, table.register(&visual.shader)),
+            header: header(model_type, table.register(&visual.shader)?),
             texture: None,
             geometry: Some(Self::get_container(placed, visual.vertices.len(), visual.faces.len())?),
             swi: visual.windows.as_deref().map(Self::get_windows),
@@ -229,7 +229,7 @@ impl GeometryLevel {
           };
 
           LevelVisualRecord {
-            header: header(model_type, table.register(&visual.shader)),
+            header: header(model_type, table.register(&visual.shader)?),
             texture: None,
             geometry: Some(Self::get_container(placed, visual.vertices.len(), visual.faces.len())?),
             swi: None,
@@ -259,7 +259,7 @@ impl GeometryLevel {
           LevelVisualRecord {
             header: header(
               OgfModelType::Lod,
-              table.register(&Self::get_dress(project, textures, u32::from(material))?),
+              table.register(&Self::get_dress(project, textures, u32::from(material))?)?,
             ),
             texture: None,
             geometry: None,

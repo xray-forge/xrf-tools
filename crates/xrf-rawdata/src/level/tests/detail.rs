@@ -90,7 +90,8 @@ fn decompiles_details_into_the_library_objects_drawing_them() {
     vec![atlas, unknown, turned],
     vec![slot([0, 1, 2, 63]), slot([63, 63, 63, 63])],
   );
-  let LevelDetailDecompile { tool, refused, .. } = LevelDetailConversion::decompile(&file, &library(), None);
+  let LevelDetailDecompile { tool, refused, .. } =
+    LevelDetailConversion::decompile(&file, &library(), None).expect("the details decompile");
   let tool: EditableDetailObjectTool = tool.expect("two models found");
 
   assert_eq!(
@@ -127,7 +128,8 @@ fn decompiles_details_into_the_library_objects_drawing_them() {
 #[test]
 fn leaves_the_tool_out_where_no_model_is_found() {
   let file: LevelDetailsFile = details(vec![quad(3.0, |u, v| (u, v))], vec![slot([0, 63, 63, 63])]);
-  let decompile: LevelDetailDecompile = LevelDetailConversion::decompile(&file, &LevelDetailLibrary::default(), None);
+  let decompile: LevelDetailDecompile =
+    LevelDetailConversion::decompile(&file, &LevelDetailLibrary::default(), None).expect("the details decompile");
 
   assert!(decompile.tool.is_none());
   assert_eq!(decompile.refused.len(), 1);
@@ -209,7 +211,7 @@ fn cuts_the_found_objects_textures_from_the_level_atlas() -> XrfResult {
     tool,
     textures,
     refused,
-  } = LevelDetailConversion::decompile(&file, &library, Some(&atlas));
+  } = LevelDetailConversion::decompile(&file, &library, Some(&atlas))?;
   let cut = |index: usize| -> XrfResult<RgbaImage> { DdsFile::read_from_bytes(&textures[index].bytes)?.decode_rgba(0) };
 
   assert_eq!(tool.expect("all found").objects.len(), 4);
@@ -364,7 +366,7 @@ fn exports_the_planted_details_with_their_atlas() -> XrfResult {
     vec![quad(2.0, |u, v| (u, v)), quad(1.0, |u, v| (u, v))],
     vec![slot([0, 63, 0, 63]), slot([63; 4])],
   );
-  let tool: EditableDetailObjectTool = LevelDetailConversion::decompile(&file, &library(), None)
+  let tool: EditableDetailObjectTool = LevelDetailConversion::decompile(&file, &library(), None)?
     .tool
     .expect("both found");
   let exported: LevelBuildDetails = LevelBuildDetails::export::<XRayByteOrder>(
