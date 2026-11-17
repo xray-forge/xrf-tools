@@ -149,10 +149,7 @@ impl GenericCommand for DecompileCommand {
     let report: LevelDecompileReport = LevelSceneDecompiler::decompile_to_path::<XRayByteOrder>(
       &request,
       "xrf-cli level decompile",
-      &match build.short_commit() {
-        Some(commit) => format!("{} ({commit})", build.version),
-        None => build.version.to_string(),
-      },
+      &build.get_tool_version(),
       &CliJob::for_output(context.get_output()),
     )?;
 

@@ -78,6 +78,8 @@ Output helpers:
   use `print!`.
 - `short_commit()` returns the first seven characters of the commit, or `None`. A `GITHUB_SHA` override is not checked
   to be a hash.
+- `get_tool_version()` is the version a file the binary writes records as its tool's: `<version> (<short commit>)`, or
+  the version alone without a commit. The CLI's and the app's decompilers and the CLI's object compile stamp it.
 - `BuildInfo` and `BuildKind` serialize in camelCase (`builtAt`, `"development"`). The `typescript-bindings` feature
   adds Specta types for the frontend.
 

@@ -8130,6 +8130,7 @@ dependencies = [
  "xrf-app-core",
  "xrf-app-render",
  "xrf-audio",
+ "xrf-build-info",
  "xrf-chunk",
  "xrf-dds",
  "xrf-dltx",

@@ -137,10 +137,7 @@ impl CompileCommand {
         &object,
         &ObjectCompileSource {
           source_file: format_path(source).to_string(),
-          convertor: match build.short_commit() {
-            Some(commit) => format!("xrf-cli object compile {} ({commit})", build.version),
-            None => format!("xrf-cli object compile {}", build.version),
-          },
+          convertor: format!("xrf-cli object compile {}", build.get_tool_version()),
           built_at: SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_or(0, |elapsed| elapsed.as_secs()),

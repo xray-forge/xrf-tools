@@ -96,10 +96,7 @@ impl DecompileCommand {
       format_path(source).to_string(),
       &bytes,
       "xrf-cli object decompile",
-      match build.short_commit() {
-        Some(commit) => format!("{} ({commit})", build.version),
-        None => build.version.to_string(),
-      },
+      build.get_tool_version(),
       decompile.inferred.clone(),
       decompile.tangents,
     )

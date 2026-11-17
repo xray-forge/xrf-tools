@@ -26,6 +26,8 @@ xrf-anm = { workspace = true }
 xrf-app-core = { workspace = true }
 xrf-app-render = { workspace = true }
 xrf-audio = { workspace = true }
+# The build the app is, which the scenes it decompiles record as their tool's version.
+xrf-build-info = { workspace = true }
 xrf-chunk = { workspace = true }
 xrf-dds = { workspace = true }
 xrf-dltx = { workspace = true }

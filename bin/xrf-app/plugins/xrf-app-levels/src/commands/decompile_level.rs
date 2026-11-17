@@ -6,6 +6,7 @@ use uuid::Uuid;
 use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::jobs::{JobRegistry, JobResource, JobStart};
+use xrf_build_info::BuildInfo;
 use xrf_chunk::XRayByteOrder;
 use xrf_job::{JobOutcome, JobProgress};
 use xrf_rawdata::{LevelDecompileRequest, LevelSceneDecompiler};
@@ -21,10 +22,13 @@ use crate::rawdata::level_decompile_result::LevelDecompileResult;
 pub(crate) async fn levels_decompile_level(
   execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
+  build: State<'_, BuildInfo>,
   request: LevelDecompileRequest,
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<LevelDecompileResult> {
+  // The sidecar names the build that wrote the scene, as the CLI's does, so a scene traces back to its commit.
+  let tool_version: String = build.get_tool_version();
   let start: JobStart = JobStart::new(job_id, LEVELS_JOB_DECOMPILE)
     .with_request(&request)
     .with_kind_exclusion()
@@ -50,7 +54,7 @@ pub(crate) async fn levels_decompile_level(
       move |job| match LevelSceneDecompiler::decompile_to_path::<XRayByteOrder>(
         &request,
         "xrf-app level decompiler",
-        env!("CARGO_PKG_VERSION"),
+        &tool_version,
         &job,
       ) {
         Ok(report) => Ok(LevelDecompileResult {

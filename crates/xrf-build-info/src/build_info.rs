@@ -43,6 +43,15 @@ impl BuildInfo {
       .commit
       .map(|commit| commit.char_indices().nth(7).map_or(commit, |(end, _)| &commit[..end]))
   }
+
+  /// The version a file this binary writes records as its tool's: the crate version, and the short commit where the
+  /// build knows it, so two writes by builds of one version still tell their sources apart.
+  pub fn get_tool_version(&self) -> String {
+    match self.short_commit() {
+      Some(commit) => format!("{} ({commit})", self.version),
+      None => self.version.to_string(),
+    }
+  }
 }
 
 impl fmt::Display for BuildInfo {
@@ -124,6 +133,12 @@ mod tests {
       "a shorter value is kept whole"
     );
     assert_eq!(build(None).short_commit(), None);
+  }
+
+  #[test]
+  fn a_tool_version_names_the_commit_where_the_build_knows_it() {
+    assert_eq!(build(Some("1c84ad228f00")).get_tool_version(), "1.2.3 (1c84ad2)");
+    assert_eq!(build(None).get_tool_version(), "1.2.3");
   }
 
   #[test]
