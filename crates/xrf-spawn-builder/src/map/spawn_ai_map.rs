@@ -1,6 +1,6 @@
 use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
-use xrf_level::{LevelAiHeader, LevelAiNode, LevelAiNodes};
+use xrf_level::{LevelAiGrid, LevelAiHeader, LevelAiNode, LevelAiNodes};
 use xrf_math::{Aabb, Vector3d};
 
 use xrf_geometry::Box2Pick;
@@ -9,21 +9,17 @@ use xrf_geometry::Box2Pick;
 /// cell, with the lookups that place a graph point, an entity or a patrol point on a node.
 pub struct SpawnAiMap {
   header: LevelAiHeader,
+  grid: LevelAiGrid,
   nodes: Vec<LevelAiNode>,
-  /// Cells along z, the stride a packed cell counts x in.
-  row_length: i64,
-  /// Cells along x.
-  column_length: i64,
 }
 
 impl SpawnAiMap {
   /// # Errors
   ///
-  /// Returns an error for a header whose grid does not unpack ([`LevelAiHeader::assert_grid`]) or whose node count
+  /// Returns an error for a header whose grid does not unpack ([`LevelAiHeader::get_grid`]) or whose node count
   /// differs from the nodes held, which the lookups would read past.
   pub fn new(header: LevelAiHeader, nodes: &LevelAiNodes) -> XrfResult<Self> {
-    header.assert_grid()?;
-
+    let grid: LevelAiGrid = header.get_grid()?;
     let nodes: Vec<LevelAiNode> = nodes.iter_nodes::<XRayByteOrder>().collect();
 
     if nodes.len() != header.count as usize {
@@ -34,12 +30,7 @@ impl SpawnAiMap {
       )));
     }
 
-    Ok(Self {
-      row_length: i64::from(header.get_row_length()),
-      column_length: i64::from(header.get_column_length()),
-      nodes,
-      header,
-    })
+    Ok(Self { header, grid, nodes })
   }
 
   pub fn get_header(&self) -> &LevelAiHeader {
@@ -73,9 +64,9 @@ impl SpawnAiMap {
       return false;
     }
 
-    let (x, z) = self.get_cell(position);
+    let (x, z) = self.grid.find_cell(position.x, position.z);
 
-    z < self.row_length && x < self.column_length
+    z < self.get_row_length() && x < i64::from(self.grid.get_column_length())
   }
 
   /// `CLevelGraph::vertex_id(position)`: among the nodes of the position's cell, the nearest at or under it, else the
@@ -224,7 +215,7 @@ impl SpawnAiMap {
   pub(crate) fn get_node_cell(&self, node: u32) -> (i64, i64) {
     let packed: i64 = i64::from(self.nodes[node as usize].packed_xz);
 
-    (packed / self.row_length, packed % self.row_length)
+    (packed / self.get_row_length(), packed % self.get_row_length())
   }
 
   /// A node's position, `vertex_position`: its cell centre at its packed height. The 2009 build computes the height
@@ -240,9 +231,7 @@ impl SpawnAiMap {
 
   /// Where a node's cell centre stands across the ground, `unpack_xz`.
   pub(crate) fn get_node_xz(&self, node: u32) -> (f32, f32) {
-    let position: Vector3d<f32> = self.header.get_node_position(&self.nodes[node as usize]);
-
-    (position.x, position.z)
+    self.grid.unpack(self.nodes[node as usize].packed_xz)
   }
 
   /// `CLevelGraph::check_position_in_direction`: the node a straight walk from `start`, standing at `from`, reaches at
@@ -313,13 +302,14 @@ impl SpawnAiMap {
 
   /// The nodes, in node order, whose cells lie across the ground within `bounds` grown by a cell.
   pub(crate) fn get_nodes_within(&self, bounds: &Aabb) -> Vec<u32> {
-    let size: f32 = self.header.size;
-    let (min_x, min_z) = self.get_cell(&Vector3d::new(bounds.min.x - size, 0.0, bounds.min.z - size));
-    let (max_x, max_z) = self.get_cell(&Vector3d::new(bounds.max.x + size, 0.0, bounds.max.z + size));
+    let size: f32 = self.grid.get_cell_size();
+    let row_length: i64 = self.get_row_length();
+    let (min_x, min_z) = self.grid.find_cell(bounds.min.x - size, bounds.min.z - size);
+    let (max_x, max_z) = self.grid.find_cell(bounds.max.x + size, bounds.max.z + size);
     let mut nodes: Vec<u32> = Vec::new();
 
-    for x in min_x.max(0)..=max_x.min(self.column_length - 1) {
-      let packed = |z: i64| (x * self.row_length + z.clamp(0, self.row_length)) as u32;
+    for x in min_x.max(0)..=max_x.min(i64::from(self.grid.get_column_length()) - 1) {
+      let packed = |z: i64| (x * row_length + z.clamp(0, row_length)) as u32;
       let (from, to) = (packed(min_z), packed(max_z + 1));
       let first: usize = self.nodes.partition_point(|node| node.packed_xz < from);
       let last: usize = self.nodes.partition_point(|node| node.packed_xz < to);
@@ -332,18 +322,13 @@ impl SpawnAiMap {
 
   /// The packed cell a point across the ground falls in.
   fn get_packed_xz(&self, x: f32, z: f32) -> u32 {
-    let (cell_x, cell_z) = self.get_cell(&Vector3d::new(x, 0.0, z));
+    let (cell_x, cell_z) = self.grid.find_cell(x, z);
 
-    (cell_x * self.row_length + cell_z) as u32
+    (cell_x * self.get_row_length() + cell_z) as u32
   }
 
-  /// The cell a position falls in, `iFloor((v - min) / size + 0.5)` along x and z.
-  fn get_cell(&self, position: &Vector3d<f32>) -> (i64, i64) {
-    let min = &self.header.bounds.min;
-
-    (
-      ((position.x - min.x) / self.header.size + 0.5).floor() as i64,
-      ((position.z - min.z) / self.header.size + 0.5).floor() as i64,
-    )
+  /// Cells along z, the stride a packed cell counts x in, as the cell arithmetic here takes it.
+  fn get_row_length(&self) -> i64 {
+    i64::from(self.grid.get_row_length())
   }
 }

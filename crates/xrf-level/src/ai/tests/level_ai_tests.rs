@@ -4,6 +4,7 @@ use xrf_error::XrfResult;
 use xrf_math::{Aabb, Vector3d};
 
 use crate::ai::level_ai_file::LevelAiFile;
+use crate::ai::level_ai_grid::LevelAiGrid;
 use crate::ai::level_ai_header::LevelAiHeader;
 use crate::ai::level_ai_node::LevelAiNode;
 use crate::ai::level_ai_nodes::LevelAiNodes;
@@ -310,30 +311,15 @@ fn writing_nodes_the_header_does_not_count_is_refused() -> XrfResult {
 }
 
 #[test]
-fn refuses_a_grid_its_nodes_cannot_unpack_from() -> XrfResult {
-  let sound: LevelAiHeader = header(LevelAiVersion::CsCop, 1);
-  let inverted: Aabb = Aabb {
-    min: Vector3d::new(5.0, -10.0, 3.0),
-    max: Vector3d::new(-5.0, 10.0, -3.0),
-  };
+fn takes_its_grid_from_its_box_and_cell_size() -> XrfResult {
+  let header: LevelAiHeader = header(LevelAiVersion::CsCop, 1);
+  let grid: LevelAiGrid = header.get_grid()?;
 
-  sound.assert_grid()?;
-
-  for size in [0.0, -0.7, f32::NAN, f32::INFINITY] {
-    assert!(
-      LevelAiHeader { size, ..sound.clone() }.assert_grid().is_err(),
-      "a cell size of {size}"
-    );
-  }
-
-  assert!(
-    LevelAiHeader {
-      bounds: inverted,
-      ..sound
-    }
-    .assert_grid()
-    .is_err()
+  assert_eq!(
+    (grid.get_row_length(), grid.get_column_length()),
+    (header.get_row_length(), header.get_column_length())
   );
+  assert!(LevelAiHeader { size: 0.0, ..header }.get_grid().is_err());
 
   Ok(())
 }

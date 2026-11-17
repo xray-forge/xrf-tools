@@ -2,10 +2,9 @@ use sha2::{Digest, Sha256};
 use uuid::Uuid;
 use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
-use xrf_level::{LevelAiFile, LevelAiHeader, LevelAiNode, LevelAiNodes, LevelAiVersion};
+use xrf_level::{LevelAiFile, LevelAiGrid, LevelAiHeader, LevelAiNode, LevelAiNodes, LevelAiVersion};
 use xrf_math::{Aabb, AiNodePosition, EPS_L};
 
-use crate::ai::ai_grid::AiGrid;
 use crate::ai::ai_map::AiMap;
 use crate::ai::ai_map_compilation::AiMapCompilation;
 use crate::ai::ai_map_compiler::AiMapCompiler;
@@ -29,7 +28,7 @@ impl AiMapCompiler {
     let bounds: Aabb = Aabb::from_points(vertices.iter().map(|vertex| vertex.position))
       .ok_or_else(|| XrfError::new_invalid_error("Level AI-map holds no node to save"))?;
     let size_y: f32 = bounds.max.y - bounds.min.y + EPS_L;
-    let grid: AiGrid = AiGrid::new(&bounds, cell_size)?;
+    let grid: LevelAiGrid = LevelAiGrid::new(&bounds, cell_size)?;
     let count: u32 = u32::try_from(vertices.len())
       .map_err(|_| XrfError::new_invalid_error("Level AI-map holds more nodes than a header counts"))?;
     let compressed: Vec<LevelAiNode> = vertices
@@ -40,7 +39,7 @@ impl AiMapCompiler {
           high_cover: vertex.high_cover.map(Self::compress_cover),
           low_cover: vertex.low_cover.map(Self::compress_cover),
           plane: vertex.normal.to_compressed_normal(),
-          packed_xz: grid.pack(vertex.position.x, vertex.position.z)?,
+          packed_xz: grid.compress_cell(vertex.position.x, vertex.position.z)?,
           packed_y: AiNodePosition::pack_height(vertex.position.y, bounds.min.y, size_y),
           light: Self::LIGHT,
         })

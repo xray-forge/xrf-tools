@@ -2,9 +2,10 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
-use xrf_error::{XrfError, XrfResult};
-use xrf_math::{Aabb, AiNodePosition, EPS_L, Vector3d};
+use xrf_error::XrfResult;
+use xrf_math::{Aabb, AiNodePosition, Vector3d};
 
+use crate::ai::level_ai_grid::LevelAiGrid;
 use crate::ai::level_ai_node::LevelAiNode;
 
 /// `hdrNODES` in c++ codebase, stored raw at the very start of the `level.ai` file.
@@ -32,56 +33,36 @@ impl LevelAiHeader {
   /// Byte size of the header as laid out by the engine.
   pub const SIZE: u64 = 56;
 
-  /// Cells along z, the stride a node's packed cell counts x in (`m_row_length`).
-  pub fn get_row_length(&self) -> u32 {
-    Self::get_cells_across(self.bounds.min.z, self.bounds.max.z, self.size)
+  /// The grid the nodes are packed over, checked to be one `CLevelGraph` can unpack them from.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error where [`LevelAiGrid::new`] refuses the header's box and cell size.
+  pub fn get_grid(&self) -> XrfResult<LevelAiGrid> {
+    LevelAiGrid::new(&self.bounds, self.size)
   }
 
-  /// Cells along x (`m_column_length`).
+  /// Cells along z, the stride a node's packed cell counts x in (`m_row_length`), however the header is formed.
+  pub fn get_row_length(&self) -> u32 {
+    LevelAiGrid::covering(&self.bounds, self.size).get_row_length()
+  }
+
+  /// Cells along x (`m_column_length`), however the header is formed.
   pub fn get_column_length(&self) -> u32 {
-    Self::get_cells_across(self.bounds.min.x, self.bounds.max.x, self.size)
+    LevelAiGrid::covering(&self.bounds, self.size).get_column_length()
   }
 
   /// Where a node sits in the world: the centre of its cell, at its packed height (`CLevelGraph::vertex_position`).
   ///
   /// The height is the node's own, not its plane's at another point: the plane passes through this position.
   pub fn get_node_position(&self, node: &LevelAiNode) -> Vector3d<f32> {
-    let row_length: u32 = self.get_row_length().max(1);
+    let (x, z) = LevelAiGrid::covering(&self.bounds, self.size).unpack(node.packed_xz);
 
     Vector3d::new(
-      (node.packed_xz / row_length) as f32 * self.size + self.bounds.min.x,
+      x,
       AiNodePosition::unpack_height(node.packed_y, self.bounds.min.y, self.size_y),
-      (node.packed_xz % row_length) as f32 * self.size + self.bounds.min.z,
+      z,
     )
-  }
-
-  /// Checks the grid the nodes are packed over is one `CLevelGraph` can unpack them from.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error for a cell size that is not finite and positive, or a box that spans no cell along either side:
-  /// the engine divides every packed cell by the row length.
-  pub fn assert_grid(&self) -> XrfResult {
-    if !self.size.is_finite() || self.size <= 0.0 {
-      return Err(XrfError::new_invalid_error(format!(
-        "Level AI map cell size {} is not a positive size",
-        self.size
-      )));
-    }
-
-    if self.get_row_length() == 0 || self.get_column_length() == 0 {
-      return Err(XrfError::new_invalid_error(format!(
-        "Level AI map box from {:?} to {:?} spans no cell",
-        self.bounds.min, self.bounds.max
-      )));
-    }
-
-    Ok(())
-  }
-
-  /// `iFloor(extent / cell_size + EPS_L + 1.5f)`, as `CLevelGraph::Initialize` computes both grid sides.
-  fn get_cells_across(minimum: f32, maximum: f32, cell_size: f32) -> u32 {
-    ((maximum - minimum) / cell_size + EPS_L + 1.5).floor().max(0.0) as u32
   }
 }
 

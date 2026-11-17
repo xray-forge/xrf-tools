@@ -1,8 +1,7 @@
 use xrf_error::{XrfError, XrfResult};
-use xrf_level::{BuildAimapFile, BuildAimapNode};
+use xrf_level::{BuildAimapFile, BuildAimapNode, LevelAiGrid};
 use xrf_math::{AiNodePosition, Vector3d};
 
-use crate::ai::ai_grid::AiGrid;
 use crate::ai::ai_map_compiler::AiMapCompiler;
 use crate::ai::ai_vertex::AiVertex;
 
@@ -26,7 +25,7 @@ impl AiMapCompiler {
     }
 
     let (bounds, size) = (&aimap.bounds, aimap.params.patch_size);
-    let grid: AiGrid = AiGrid::new(bounds, size)?;
+    let grid: LevelAiGrid = LevelAiGrid::new(bounds, size)?;
     let count: usize = aimap.nodes.len();
 
     aimap
@@ -34,7 +33,8 @@ impl AiMapCompiler {
       .iter()
       .enumerate()
       .map(|(index, node): (usize, &BuildAimapNode)| {
-        let (x, z) = grid.unpack(grid.pack(f32::from(node.position.x) * size, f32::from(node.position.z) * size)?);
+        let (x, z) =
+          grid.unpack(grid.compress_cell(f32::from(node.position.x) * size, f32::from(node.position.z) * size)?);
         let links: [u32; 4] = node.links.map(|link| link & AiVertex::NO_LINK);
 
         // The later passes walk the links by index, so one past the nodes is refused here rather than read there.

@@ -25,6 +25,7 @@ pub(crate) mod wallmarks;
 mod tests;
 
 pub use crate::ai::level_ai_file::*;
+pub use crate::ai::level_ai_grid::*;
 pub use crate::ai::level_ai_header::*;
 pub use crate::ai::level_ai_node::*;
 pub use crate::ai::level_ai_nodes::*;
