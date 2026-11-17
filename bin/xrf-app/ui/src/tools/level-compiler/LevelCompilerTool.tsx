@@ -172,7 +172,9 @@ export function LevelCompilerTool(): ReactElement {
         "compiles it with the steps chosen."
       }
       submitLabel={steps.size > 0 ? "Build and compile" : "Build"}
-      renderResult={(result) => <LevelBuildResultView result={result} outputPath={levelPath} />}
+      renderResult={(result) => (
+        <LevelBuildResultView result={result} outputPath={levelPath} gamedata={gamedata.value} />
+      )}
       onSubmit={onBuild}
     >
       <PathFormRow

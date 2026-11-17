@@ -1,6 +1,6 @@
 import { SelectedSceneDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { XrayRoot } from "@xrf/ipc/types/xrf-vfs";
-import { getPathDirectory, isSamePath } from "@xrf/path";
+import { getPathDirectory, getPathSeparator, isSamePath } from "@xrf/path";
 import { Nullable } from "@xrf/types";
 
 /** The level compiler's paths for building the scene the editor shows. */
@@ -30,7 +30,7 @@ export interface ILevelEditorBuildPaths {
  */
 export function getLevelEditorBuildPaths(scene: SelectedSceneDescription): ILevelEditorBuildPaths {
   const path: string = scene.source.path;
-  const separator: string = getSeparator(path);
+  const separator: string = getPathSeparator(path);
   const beside: string = [getPathDirectory(getPathDirectory(getPathDirectory(path))), "gamedata"].join(separator);
   const game: Nullable<string> =
     scene.game.roots.roots.map((root: XrayRoot) => root.path).find((root: string) => !isSamePath(root, beside)) ?? null;
@@ -40,11 +40,6 @@ export function getLevelEditorBuildPaths(scene: SelectedSceneDescription): ILeve
     destination: [beside, "levels", scene.name].join(separator),
     textures: [beside, "textures"].join(separator),
     gamedata: game,
-    gameMaterials: game === null ? null : [game.replace(/[\\/]+$/, ""), "gamemtl.xr"].join(getSeparator(game)),
+    gameMaterials: game === null ? null : [game.replace(/[\\/]+$/, ""), "gamemtl.xr"].join(getPathSeparator(game)),
   };
-}
-
-/** The separator a path is written with, a backslash where it holds one. */
-function getSeparator(path: string): string {
-  return path.includes("\\") ? "\\" : "/";
 }

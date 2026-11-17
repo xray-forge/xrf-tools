@@ -13,6 +13,8 @@ import { EToolId } from "@/core/routing/tool";
 import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
 import { describeBuildHeadline } from "@/tools/level-compiler/lib/describe-build-headline";
 
+import { LevelBuildSpawnAction } from "./LevelBuildSpawnAction";
+
 const PREVIOUS_LABELS: Record<ELevelExportedPrevious, string> = {
   [ELevelExportedPrevious.NEW]: "new",
   [ELevelExportedPrevious.SAME]: "unchanged",
@@ -23,6 +25,8 @@ interface ILevelBuildResultViewProps extends BaseComponentProps {
   result: LevelBuildResult;
   /** Where the run was told to write, to reveal it; the report's paths are display text. */
   outputPath: Nullable<string>;
+  /** The game data the compile read, handed to the spawn compiler with the level's directory. */
+  gamedata: Nullable<string>;
 }
 
 /**
@@ -34,6 +38,7 @@ export function LevelBuildResultView({
   className,
   result,
   outputPath,
+  gamedata,
 }: ILevelBuildResultViewProps): ReactElement {
   const report: Nullable<LevelBuildReport> = result.report;
 
@@ -92,7 +97,12 @@ export function LevelBuildResultView({
       headline={describeBuildHeadline(report, result.compile, isCompileStopped)}
       tone={report.refused.length > 0 || isCompileStopped ? "warning" : "success"}
       stats={stats}
-      actions={<RevealPathButton tool={EToolId.LEVEL_COMPILER} path={outputPath} label={"Show level"} />}
+      actions={
+        <>
+          <RevealPathButton tool={EToolId.LEVEL_COMPILER} path={outputPath} label={"Show level"} />
+          <LevelBuildSpawnAction level={outputPath} gamedata={gamedata} />
+        </>
+      }
     >
       <CommandResultPathList
         paths={files}

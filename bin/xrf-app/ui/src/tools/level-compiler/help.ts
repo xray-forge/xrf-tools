@@ -18,6 +18,8 @@ export const LEVEL_COMPILER_HELP: IToolHelp = {
       "game data the compilers read.",
     "`Build` reports every file written and what it replaced, and lists any part it could not make; with steps " +
       "ticked, `Build and compile` also reports each step's time.",
+    "`Build spawn` in the result opens the spawn compiler holding the directory the level was built into, a " +
+      "`spawns` directory beside it and the game data the compile read; tick the levels there and build.",
   ],
   nuances: [
     "Without the game materials only the game files are written, as for a scene of no geometry.",
@@ -43,5 +45,5 @@ export const LEVEL_COMPILER_HELP: IToolHelp = {
     "Ticking the details for a level whose scene holds none stops the compile after the build: the build writes no " +
       "`build.details` to light.",
   ],
-  relatedTools: [EToolId.LEVEL_DECOMPILER, EToolId.LEVEL_VIEWER],
+  relatedTools: [EToolId.LEVEL_DECOMPILER, EToolId.LEVEL_VIEWER, EToolId.SPAWN_COMPILER],
 };

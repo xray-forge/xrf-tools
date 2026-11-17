@@ -34,6 +34,17 @@ export function findLastSeparator(path: string): number {
 }
 
 /**
+ * The separator to extend a host path with, so a path built from it reads in the style it arrived in: a backslash where
+ * it carries one, else a forward slash.
+ *
+ * @param path - A path from the host, in either separator style.
+ * @returns The separator it is written with.
+ */
+export function getPathSeparator(path: string): string {
+  return path.includes("\\") ? "\\" : "/";
+}
+
+/**
  * The last segment of a path: the file's own name, whichever separator style placed it.
  *
  * @param path - A path from the host, in either separator style.
