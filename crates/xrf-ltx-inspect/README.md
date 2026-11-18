@@ -104,8 +104,8 @@ an optional section, field and value.
 Matching follows resolution, so a found section is the one `read_sections` resolves under that name:
 
 - Field names match whole and case-sensitively.
-- Section names match whole and case-sensitively, unless `is_section_case_folded` is set (from
-  `LtxDialect::is_folding_section_names`, which is true for DLTX).
+- Section names match whole, in any case when `is_section_case_folded` is set. Both shipped dialects set it
+  (`LtxDialect::is_folding_section_names`), because the game ignores the case of section names.
 - Values match as case-sensitive substrings.
 - A query naming only a section answers headers; one naming a field or value answers field lines.
 

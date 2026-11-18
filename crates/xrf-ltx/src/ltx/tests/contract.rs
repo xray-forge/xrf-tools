@@ -473,17 +473,42 @@ fn trims_keys_values_and_inline_comments() -> XrfResult {
   Ok(())
 }
 
+/// Section names fold as `CInifile` folds them: stored lowercased, looked up in any case, a parent named in another
+/// case found, and a second header differing only in case refused as the duplicate it is.
 #[test]
-fn a_semicolon_anywhere_in_a_value_starts_a_comment() -> XrfResult {
-  let ltx: Ltx = Ltx::read_from_str("[section]\nno_space = a;b\nspaced = value ; dropped\nquoted = \"a;b\"\n")?;
+fn section_names_fold_as_the_engine_folds_them() -> XrfResult {
+  let ltx: Ltx = Ltx::read_from_str("[Weapon]\nammo = 5\n[child]:WEAPON\n")?.into_inherited()?;
+
+  assert_eq!(ltx.sections().collect::<Vec<_>>(), ["weapon", "child"]);
+  assert_eq!(ltx.get_from("WEAPON", "ammo"), Some("5"));
+  assert_eq!(
+    ltx.get_from("child", "ammo"),
+    Some("5"),
+    "the parent found in another case"
+  );
+  assert!(Ltx::read_from_str("[Weapon]\n[weapon]\n").is_err());
+
+  Ok(())
+}
+
+/// A value is cut as `CInifile::Load` cuts its line: at the first `;` or `//`, whitespace before it or not, unless that
+/// falls inside the line's first quotes.
+#[test]
+fn a_value_is_cut_at_a_comment_as_the_engine_cuts_it() -> XrfResult {
+  let ltx: Ltx = Ltx::read_from_str(
+    "[section]\nno_space = a;b\nspaced = value ; dropped\nquoted = \"a;b\"\nslashes = 1 // note\nslash = a/b\n\
+     quoted_slashes = \"http://x\"\nsemicolon_first = a ; b // c\nslashes_first = a // b ; c\n",
+  )?;
   let section: &Section = ltx.section("section").expect("section");
 
-  // A value is cut at its first semicolon whether or not whitespace precedes it, and quoting does not protect one.
-  // The engine's own parser is quote-aware here (`Xr_ini.cpp` `_parse`), so a quoted semicolon is a known divergence
-  // rather than a rule to preserve on purpose; it is pinned so a representation change cannot move it silently.
   assert_eq!(section.get("no_space"), Some("a"));
   assert_eq!(section.get("spaced"), Some("value"));
-  assert_eq!(section.get("quoted"), Some("\"a"));
+  assert_eq!(section.get("quoted"), Some("\"a;b\""));
+  assert_eq!(section.get("slashes"), Some("1"));
+  assert_eq!(section.get("slash"), Some("a/b"));
+  assert_eq!(section.get("quoted_slashes"), Some("\"http://x\""));
+  assert_eq!(section.get("semicolon_first"), Some("a"));
+  assert_eq!(section.get("slashes_first"), Some("a"));
 
   Ok(())
 }

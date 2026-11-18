@@ -37,8 +37,10 @@ impl IniFormat {
 
   /// What the engine's and the SDK's `CInifile::save_as` writes (`xrCore/xr_ini.cpp`): Windows-1251 and `\r\n`, a field
   /// as `%8s%-32s = %-32s` trimmed at the right, a line holding one space after every section, sections and fields in
-  /// `strcmp` order as `CInifile` keeps them. Read as `CInifile::Load` reads: a quoted value may span lines, and a key
-  /// set twice keeps its last value.
+  /// `strcmp` order. A quoted value may span lines, and a key set twice keeps its last value, as in the engine.
+  ///
+  /// Values are written as set, without the engine's reformatting. The crate's README lists where reading a hand-edited
+  /// file differs from the engine.
   pub const XRAY_SAVE_AS: Self = Self {
     encoding: IniEncoding::Windows1251,
     line_end: "\r\n",

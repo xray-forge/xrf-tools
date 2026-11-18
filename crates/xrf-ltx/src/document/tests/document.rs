@@ -164,6 +164,17 @@ fn one_parse_answers_resolution_formatting_and_the_include_list() -> XrfResult {
 }
 
 #[test]
+fn formatting_keeps_a_quoted_semicolon_in_the_value() -> XrfResult {
+  // The engine keeps a `;` inside the line's first quote pair, so a rewrite to `"a ; b"` would change the value read.
+  assert_eq!(
+    Ltx::format_from_str("[s]\nx=\"a;b\" ; note\ny = 1 // note\n")?,
+    "[s]\r\nx = \"a;b\" ; note\r\ny = 1 ; note\r\n"
+  );
+
+  Ok(())
+}
+
+#[test]
 fn formatting_a_patch_file_keeps_its_prefixes_outside_the_brackets() -> XrfResult {
   let document: LtxDocument = Ltx::read_document_from_str("![wpn_ak74]:base\n!cost\n>ammo_class=a,b\n")?;
 

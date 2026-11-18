@@ -179,7 +179,14 @@ impl LtxInheritConvertor {
 
       destination.insert(section_name.into(), section.clone());
     } else {
-      for inherited in &section.inherited {
+      // A parent is named as authored, `[child]:Weapon`, and found in any case, as the engine finds it.
+      let parents: Vec<String> = section
+        .inherited
+        .iter()
+        .map(|parent| ltx.get_stored_name(parent).into_owned())
+        .collect();
+
+      for inherited in &parents {
         if section_name == inherited {
           return Err(XrfError::new_convert_error(format!(
             "Failed to inherit section '{inherited}' in '{section_name}', cannot inherit self"
@@ -193,7 +200,7 @@ impl LtxInheritConvertor {
 
       // Shared, not copied: a parent's fields end up in every child that inherits it, and on a weapon tree that is the
       // same text stored dozens of times over.
-      for inherited in &section.inherited {
+      for inherited in &parents {
         let parent: &Section = destination.get(inherited).ok_or_else(|| {
           XrfError::new_convert_error(format!(
             "Failed to inherit section '{inherited}' in '{section_name}', it was not resolved before its child"
@@ -210,7 +217,7 @@ impl LtxInheritConvertor {
 
       // Parents folded left then the section's own fields on top, which is the order the two `extend_shared` passes
       // above apply, so the recorded winner is the one the value came from.
-      self.attribute_own(section_name, section, Some(&section.inherited));
+      self.attribute_own(section_name, section, Some(&parents));
 
       destination.insert(section_name.into(), new_props);
     }

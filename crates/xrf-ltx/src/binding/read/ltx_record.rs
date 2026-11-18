@@ -1,5 +1,5 @@
 use crate::binding::{LtxFieldIndex, LtxRead, LtxSectionRead};
-use crate::syntax::ROOT_SECTION;
+use crate::syntax::{ROOT_SECTION, fold_section_name};
 
 /// One section of a record file as [`crate::LtxRecordReader`] parsed it, its text borrowed from the file.
 ///
@@ -69,8 +69,9 @@ impl<'t> LtxRecord<'t> {
 impl<'t> LtxRead for LtxRecord<'t> {
   type Section = Self;
 
+  /// This record when `name` is its name in any case, as a config looks sections up.
   fn section(&self, name: &str) -> Option<&Self> {
-    (name == self.name).then_some(self)
+    (name == self.name || fold_section_name(name) == fold_section_name(self.name)).then_some(self)
   }
 }
 

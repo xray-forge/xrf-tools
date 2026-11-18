@@ -429,28 +429,29 @@ impl LtxParser<'_> {
     Ok((name, comment.filter(|it| !it.is_empty())))
   }
 
-  /// Parse line key, value and comment from provided line, the statement starting at `span`.
+  /// The key, value and comment of a field line, the statement starting at `span`. The comment is cut where the engine
+  /// cuts it ([`Self::strip_engine_comment`]), so `"a;b"` stays one value.
   ///
-  /// A section's value whose quotes the engine sees left open is refused at `span`: `CInifile::Load` reads the lines
-  /// after it into the value until they close, which one line per statement cannot follow.
+  /// A value inside a section with an odd number of quotes is refused: the engine would read the following lines into
+  /// it, and this parser reads one line per statement.
   fn parse_key_value_from_line<'line>(&self, line: &'line str, span: LtxSpan) -> XrfResult<ParsedKeyValue<'line>> {
     if line.is_empty() {
       return self.error("Failed to parse empty value statement");
     }
 
-    let (data, comment) = match line.split_once(LTX_SYMBOL_COMMENT) {
-      None => (line.trim(), None),
-      Some((data, comment)) => (data.trim(), Some(comment.trim())),
-    };
+    let kept: &str = Self::strip_engine_comment(line);
+    let comment: Option<&str> = line[kept.len()..]
+      .strip_prefix(LTX_SYMBOL_COMMENT)
+      .or_else(|| line[kept.len()..].strip_prefix("//"))
+      .map(str::trim);
+    let data: &str = kept.trim();
 
     let (key, value) = match data.split_once('=') {
       None => (data.trim(), None),
       Some((key, value)) => (key.trim(), Some(value.trim())),
     };
 
-    // With no quote before the first `;`, the engine cuts there or earlier too and sees no quote at all, so most lines
-    // pay this one search and nothing more.
-    if self.is_in_section && data.as_bytes().contains(&b'"') && Self::is_engine_quote_open(line) {
+    if self.is_in_section && value.is_some_and(|value| value.bytes().filter(|&byte| byte == b'"').count() % 2 == 1) {
       return Err(XrfError::new_ltx_parse_error(
         span.get_line(),
         span.get_column(),
@@ -461,21 +462,9 @@ impl LtxParser<'_> {
     Ok((key, value, comment.filter(|it| !it.is_empty())))
   }
 
-  /// Whether `CInifile::Load` sees an odd number of quotes in the value of `line`, and so reads the lines after it into
-  /// that value.
-  ///
-  /// Counted after the first `=` of what the engine's comment cut keeps of the line, as `_parse` counts them there.
-  fn is_engine_quote_open(line: &str) -> bool {
-    Self::strip_engine_comment(line)
-      .split_once('=')
-      .is_some_and(|(_, value)| value.bytes().filter(|&byte| byte == b'"').count() % 2 == 1)
-  }
-
-  /// `line` as `CInifile::Load` keeps it before reading a field from it: cut at the first `;`, or at the line's first
-  /// `/` when a second follows it and the first `;` does not come earlier, but kept whole when that point lies between
-  /// the line's first quote and the next one.
-  ///
-  /// Not this parser's own cut, which takes any first `;` and leaves `//` in the text.
+  /// What the engine keeps of `line` before reading a field from it (`xr_ini.cpp:417-450`): everything before the first
+  /// `;`, or before the first `/` if a second `/` follows it. If that cut falls between the line's first two quotes, the
+  /// line is kept whole. Only the first `/` counts, so `a/b // c` keeps its `// c`, as in the engine.
   fn strip_engine_comment(line: &str) -> &str {
     let semicolon: Option<usize> = line.find(LTX_SYMBOL_COMMENT);
     let slashes: Option<usize> = line.find('/').filter(|&slash| line[slash + 1..].starts_with('/'));

@@ -24,6 +24,9 @@ pub struct LtxRecordWriter {
   field_keys: LtxFieldIndex,
   /// The first section written to again after another had started.
   reopened: Option<String>,
+  /// Whether the root section was opened after another. Root fields have no header, so read back they would belong to
+  /// the section before them.
+  is_root_late: bool,
 }
 
 /// A run of the writer's text.
@@ -79,13 +82,26 @@ impl LtxRecordWriter {
       )));
     }
 
+    if self.is_root_late {
+      return Err(XrfError::new_convert_error(
+        "The root section is written to after another section started; its fields would read back as that section's",
+      ));
+    }
+
     Ok(encode_string_into_w1251_bytes(self.text)?)
   }
 
-  /// Make `name` the open section, finishing the one before it; false when `name` was finished already.
+  /// Make `name` the open section, finishing the one before it; false when `name` was finished already, or is the root
+  /// section opened after another.
   pub(crate) fn open_section(&mut self, name: &str) -> bool {
     if self.open.is_some_and(|open| open.of(&self.text) == name) {
       return true;
+    }
+
+    if name == ROOT_SECTION && (self.open.is_some() || !self.finished.is_empty()) {
+      self.is_root_late = true;
+
+      return false;
     }
 
     let text: &str = &self.text;
@@ -282,11 +298,34 @@ mod test {
       .with_section("optional")
       .set_optional("some", Some("value"))
       .set_optional("none", None::<u8>);
-    writer.with_section(ROOT_SECTION).set("root", "after sections");
     writer
       .with_section("text")
       .set("ukrainian", "мова")
       .set("spaced", " a b ");
+  }
+
+  /// Root fields have no header. A config writes them first wherever they were set; a record writer, which writes as it
+  /// goes, refuses them after another section.
+  #[test]
+  fn keeps_root_fields_set_late_out_of_the_section_before_them() -> XrfResult {
+    fn write_root_late<W: LtxWrite>(writer: &mut W) {
+      writer.with_section("first").set("a", 1);
+      writer.with_section(ROOT_SECTION).set("root", "late");
+    }
+
+    let mut ltx: Ltx = Ltx::new();
+    let mut writer: LtxRecordWriter = LtxRecordWriter::new();
+
+    write_root_late(&mut ltx);
+    write_root_late(&mut writer);
+
+    let reread: Ltx = Ltx::read_from_str(&String::from_utf8(ltx.write_to_bytes()?).expect("ASCII text"))?;
+
+    assert_eq!(reread.get_from(ROOT_SECTION, "root"), Some("late"));
+    assert_eq!(reread.get_from("first", "root"), None);
+    assert!(writer.into_bytes().is_err());
+
+    Ok(())
   }
 
   #[test]

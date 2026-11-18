@@ -1,15 +1,16 @@
+use std::borrow::Cow;
 use std::collections::HashSet;
 use std::fs::File;
 use std::path::Path;
 
 use rustc_hash::FxBuildHasher;
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::read_as_string_from_w1251_encoded;
+use xrf_utils::{format_path, read_as_string_from_w1251_encoded};
 
 use crate::binding::{LtxImportExport, LtxRecord};
 use crate::dialect::LtxStandardLowering;
 use crate::document::{LtxItem, LtxItemKind, LtxParser};
-use crate::ltx::Ltx;
+use crate::syntax::fold_section_name;
 
 /// Reads a record file one section at a time as it is parsed, without building a config of it.
 ///
@@ -33,8 +34,8 @@ struct LtxRecordReading<'t, V> {
   record: LtxRecord<'t>,
   /// Whether a header opened the open section, as opposed to fields arriving before any header did.
   is_declared: bool,
-  /// Every section handed over so far, to refuse one declared twice.
-  read: HashSet<&'t str, FxBuildHasher>,
+  /// Every section handed over so far, lowercased, to refuse one declared twice in any case.
+  read: HashSet<Cow<'t, str>, FxBuildHasher>,
   includes: Vec<&'t str>,
   visit: V,
   /// What the visit answered with first, after which it is not asked again.
@@ -46,17 +47,17 @@ impl LtxRecordReader {
   ///
   /// # Errors
   ///
-  /// Returns an error when the file cannot be read or decoded, for what [`Self::read_str`] refuses, or the first error
-  /// `visit` answers with.
+  /// Returns an error naming the file when it cannot be read or decoded, for what [`Self::read_str`] refuses, or the
+  /// first error `visit` answers with.
   pub fn read_path<P, V>(path: P, visit: V) -> XrfResult
   where
     P: AsRef<Path>,
     V: FnMut(&LtxRecord<'_>) -> XrfResult,
   {
-    Self::read_str(
-      &read_as_string_from_w1251_encoded(&mut File::open(path.as_ref())?)?,
-      visit,
-    )
+    let path: &Path = path.as_ref();
+    let read = || -> XrfResult { Self::read_str(&read_as_string_from_w1251_encoded(&mut File::open(path)?)?, visit) };
+
+    read().map_err(|error| XrfError::new_read_error(format!("{} was not read: {error}", format_path(path))))
   }
 
   /// Read `text` and hand each section to `visit`, which is not asked again once it answers with an error.
@@ -115,13 +116,13 @@ impl LtxRecordReader {
   /// The `count` records of the file at `path` named `0` to `count - 1`, as importing each by its index from the config
   /// the file lowers to answers.
   ///
-  /// Sections in any order are found, sections named otherwise are left alone, and the lowest index that fails answers
-  /// for the file: a record the file lacks is imported from a config without it, which is how a lookup by name refused
-  /// it.
+  /// Sections may come in any order, and sections with other names are ignored. Every index below `count` must have a
+  /// section, so a `count` larger than the file fails at the first missing record.
   ///
   /// # Errors
   ///
-  /// Returns an error for what [`Self::read_path`] refuses, or the error the lowest failing index's import answers with.
+  /// Returns an error for what [`Self::read_path`] refuses, for the lowest missing index, or for the lowest index whose
+  /// import fails.
   pub fn import_indexed<T, P>(path: P, count: usize) -> XrfResult<Vec<T>>
   where
     T: LtxImportExport,
@@ -132,7 +133,7 @@ impl LtxRecordReader {
     let mut read: Vec<LtxIndexedRecord<T>> = Vec::new();
     let mut failure: Option<(usize, XrfError)> = None;
 
-    Self::read_path(path, |record| {
+    Self::read_path(&path, |record| {
       let Some(index) = Self::index_named(record.name()).filter(|&index| index < count) else {
         return Ok(());
       };
@@ -161,7 +162,12 @@ impl LtxRecordReader {
 
       imported.push(match read.next_if(|record| record.index == index) {
         Some(record) => record.imported,
-        None => T::import(&index.to_string(), &Ltx::new())?,
+        None => {
+          return Err(XrfError::new_not_found_error(format!(
+            "{} counts {count} records but holds no section [{index}]",
+            format_path(path.as_ref())
+          )));
+        }
       });
     }
 
@@ -223,7 +229,7 @@ where
         // Handed over first, so a section declared twice is caught by the second header.
         self.hand_over();
 
-        if self.read.contains(name) {
+        if self.read.contains(&fold_section_name(name)) {
           return Err(LtxStandardLowering::new_repeated_section_error(item, name));
         }
 
@@ -254,7 +260,7 @@ where
       return;
     }
 
-    self.read.insert(self.record.name());
+    self.read.insert(fold_section_name(self.record.name()));
 
     if self.rejection.is_none()
       && let Err(error) = (self.visit)(&self.record)
@@ -454,12 +460,15 @@ mod test {
   }
 
   /// A count is the caller's word for how many records there are, read from another file; one far past what the file
-  /// holds answers with the first record missing instead of reserving room for every one it names.
+  /// holds answers with the first record missing instead of reserving room for every one it names, even for a type
+  /// whose import accepts an empty section.
   #[test]
   fn answers_a_count_past_the_file_with_the_first_record_missing() {
-    let error: XrfError = import_read("[0]\nvalue = 1\n[1]\nvalue = 2\n", usize::MAX).expect_err("record 2 missing");
+    let error: String = import_read("[0]\nvalue = 1\n[1]\nvalue = 2\n", usize::MAX)
+      .expect_err("record 2 missing")
+      .to_string();
 
-    assert_eq!(error.to_string(), "Parsing error: Point section '2' should be defined");
+    assert!(error.contains("holds no section [2]"), "{error}");
   }
 
   #[test]
@@ -479,9 +488,13 @@ mod test {
 
       std::fs::remove_file(path)?;
 
+      // The same error, prefixed with the file.
       match (read, lowered) {
         (Ok(read), Ok(lowered)) => assert_eq!(read, lowered, "{text:?}"),
-        (Err(read), Err(lowered)) => assert_eq!(read.to_string(), lowered.to_string(), "{text:?}"),
+        (Err(read), Err(lowered)) => assert!(
+          read.to_string().ends_with(&lowered.to_string()),
+          "{text:?}: {read} against {lowered}"
+        ),
         (read, lowered) => panic!("{text:?} read as {read:?}, lowered as {lowered:?}"),
       }
     }
@@ -508,9 +521,13 @@ mod test {
       let read: XrfResult<Vec<Point>> = import_read(text, count);
       let lowered: XrfResult<Vec<Point>> = import_lowered(text, count);
 
+      // The reader reports a missing record itself; any other error is the same, prefixed with the file.
       match (read, lowered) {
         (Ok(read), Ok(lowered)) => assert_eq!(read, lowered, "{text:?}"),
-        (Err(read), Err(lowered)) => assert_eq!(read.to_string(), lowered.to_string(), "{text:?}"),
+        (Err(read), Err(lowered)) => assert!(
+          read.to_string().contains("holds no section") || read.to_string().ends_with(&lowered.to_string()),
+          "{text:?}: {read} against {lowered}"
+        ),
         (read, lowered) => panic!("{text:?} read as {read:?}, lowered as {lowered:?}"),
       }
     }

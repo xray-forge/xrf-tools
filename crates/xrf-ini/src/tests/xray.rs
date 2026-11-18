@@ -2,7 +2,7 @@ use xrf_error::XrfResult;
 use xrf_test_utils::GeneratedResources;
 use xrf_utils::encode_string_to_w1251_bytes;
 
-use crate::{IniEncoding, IniFile, IniFormat, IniOverride};
+use crate::{IniEncoding, IniField, IniFile, IniFormat, IniOverride, IniSection};
 
 /// A file shaped as the SDK's `CInifile::save_as` writes one: a long key past the column, a key with no value, a
 /// decorated vector, Cyrillic text, and a spawn object's custom data spanning lines with `;`, `=` and brackets inside.
@@ -120,4 +120,47 @@ fn a_file_written_to_a_path_reads_back() -> XrfResult {
   assert_eq!(IniFile::read_from_path_as(&path, &IniFormat::XRAY_SAVE_AS)?, file);
 
   Ok(())
+}
+
+/// Some text editors add a byte order mark, which a read skips.
+#[test]
+fn reads_past_a_byte_order_mark_in_either_encoding() -> XrfResult {
+  let bytes: Vec<u8> = [&[0xEF, 0xBB, 0xBF][..], b"[main]\r\nkey = 1\r\n"].concat();
+
+  for format in [&IniFormat::XRAY_SAVE_AS, &IniFormat::PLAIN] {
+    let file: IniFile = IniFile::read_from_bytes_as(&bytes, format)?;
+
+    assert_eq!(file.get("main", "key"), Some("1"), "{format:?}");
+  }
+
+  Ok(())
+}
+
+/// A write refuses what would not read back as written.
+#[test]
+fn refuses_to_write_what_would_not_read_back_as_itself() {
+  let mut sections: IniFile = IniFile::default();
+
+  sections.section_mut("a").set("key", "1");
+  sections.sections.push(IniSection::new("a"));
+
+  let mut keys: IniFile = IniFile::default();
+
+  keys.section_mut("a").set("key", "1");
+  keys.sections[0].fields.push(IniField::new("key", "2"));
+
+  let mut quote: IniFile = IniFile::default();
+
+  quote.section_mut("a").set("key", "\"open");
+
+  for (file, what) in [
+    (&sections, "a section twice"),
+    (&keys, "a key twice"),
+    (&quote, "an open quote"),
+  ] {
+    assert!(
+      file.write_to_string_as(&IniFormat::XRAY_SAVE_AS).is_err(),
+      "{what} was written"
+    );
+  }
 }

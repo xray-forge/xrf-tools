@@ -97,6 +97,9 @@ Opening lists every `.ltx` file, reads each one's includes in parallel, and reco
 
 - Standard LTX is the default. Pass [xrf-dltx](../xrf-dltx/README.md)'s dialect with
   `LtxProjectOptions::with_dialect`; the project keeps it for every later read.
+- Both dialects read lines as the game does. A comment starts at the first `;` or `//`, except inside the first pair of
+  quotes on the line, so `x = "a;b"` keeps `"a;b"`. Section names ignore case: `[Weapon]` and `[weapon]` are the same
+  section, so declaring both is an error, and `Ltx::section("WEAPON")` finds it.
 - `read_full_in_search` resolves a config outside the project's prefix, such as a level's, under the project's dialect.
 - `document_source` gives readers such as [xrf-ltx-inspect](../xrf-ltx-inspect/README.md) the project's documents
   through its cache and read counters.

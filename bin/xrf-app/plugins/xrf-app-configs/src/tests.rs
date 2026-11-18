@@ -160,14 +160,15 @@ fn a_declaration_search_compares_sections_as_the_dialect_does_and_caps_its_answe
     ..LtxDeclarationQuery::default()
   };
 
-  // The page never says how names compare: DLTX lowercases section names, so both headers name one section there.
+  // The page never says how names compare: both dialects lowercase section names as the engine does, so both headers
+  // name one section under either.
   let dltx: ConfigsDeclarationSearch = find(true, section("wpn_ak74"));
   let standard: ConfigsDeclarationSearch = find(false, section("wpn_ak74"));
 
   assert_eq!(dltx.total, 2);
   assert!(dltx.search.query.is_section_case_folded);
-  assert_eq!(standard.total, 1);
-  assert!(!standard.search.query.is_section_case_folded);
+  assert_eq!(standard.total, 2);
+  assert!(standard.search.query.is_section_case_folded);
 
   let capped: ConfigsDeclarationSearch = find(
     false,

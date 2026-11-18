@@ -2,7 +2,9 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{LtxDocumentSource, LtxItemKind, LtxKeyOperation, LtxSectionOperation, LtxTextInterner};
+use xrf_ltx::{
+  LtxDocumentSource, LtxItemKind, LtxKeyOperation, LtxSectionOperation, LtxTextInterner, fold_section_name,
+};
 
 use crate::discovery::dltx_attachment::DltxAttachment;
 use crate::discovery::dltx_discovery::DltxDiscovery;
@@ -125,7 +127,7 @@ impl<'a> DltxLoader<'a> {
     path: &str,
   ) -> XrfResult<DltxTarget> {
     // Section names are lowercased at parse time; parent names are not, which is a real trap and preserved as one.
-    let section: String = name.to_lowercase();
+    let section: String = fold_section_name(name).into_owned();
 
     match operation {
       LtxSectionOperation::Delete => {

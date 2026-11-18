@@ -42,8 +42,8 @@ impl GenericCommand for FindCommand {
       .arg(
         Arg::new(SECTION_ARGUMENT)
           .help(
-            "Section to find, without brackets or operation prefix. Matches the whole name, case-sensitively, except \
-             under --dltx, which lowercases section names as the engine does",
+            "Section to find, without brackets or operation prefix. Matches the whole name in any case, as the engine \
+             lowercases section names",
           )
           .long(SECTION_ARGUMENT)
           .value_parser(Self::parse_section),

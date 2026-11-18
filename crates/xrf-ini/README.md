@@ -42,11 +42,22 @@ fn main() -> xrf_error::XrfResult {
 A format is a plain struct, so a caller with other conventions can build its own.
 
 `IniFormat::XRAY_SAVE_AS` matches the engine's and SDK's `CInifile::save_as` (`xrCore/xr_ini.cpp`); the Level Editor
-saves its scenes and text parts this way. It reads as `CInifile::Load` does:
+saves its scenes and text parts this way. A file `save_as` wrote reads as the engine reads it:
 
 - A value may be a double-quoted string spanning lines, as a spawn object's custom data is.
 - A key set twice in a section keeps its last value, which other tools' scenes need (bardak's converter writes a glow's
   `flags` twice). Each dropped value is listed in `IniFile::overridden` and left out of a write.
+
+A file edited by hand can hold things `save_as` never writes. There `xrf-ini` keeps the file as it is rather than
+reading it the engine's way:
+
+- In `key = 1 ; note` the value is `1 ; note`; only lines starting with `;` are comments. Use
+  [xrf-ltx](../xrf-ltx/README.md) for the engine's comment rules.
+- Section names keep their case: `[A]` and `[a]` are two sections, where the engine sees one.
+- A line `= value` with no key is an error.
+
+Values are written exactly as set. The engine reformats some values as it saves them, writing a list as `1, 2, 3`;
+format a value that way before setting it when the output must match the editor's byte for byte.
 
 ```rust
 use xrf_ini::{IniFile, IniFormat};
@@ -71,6 +82,7 @@ fn main() -> xrf_error::XrfResult {
 - Blank lines and lines starting with `;` are skipped.
 - Values are kept as written, quotes included. A multi-line value's line breaks are joined with the format's line end.
 - Both `\n` and `\r\n` are accepted.
+- A byte order mark at the start of the file is skipped.
 
 ## Errors
 
@@ -83,10 +95,11 @@ Reads refuse, naming the line:
 
 Writes refuse what would not read back as itself:
 
-- an empty or bracketed section name;
-- a key that is empty, padded, starts with `;` or `[`, or holds `=` or a line break;
+- an empty or bracketed section name, or a section named twice;
+- a key that is empty, padded, starts with `;` or `[`, holds `=` or a line break, or is set twice in its section;
 - a value padded with whitespace;
-- a line break in a value, unless inside a quoted string the format reads across lines.
+- a line break in a value, unless inside a quoted string the format reads across lines;
+- a value with an unclosed quote, where the format would read the next lines into it.
 
 ## Checks
 

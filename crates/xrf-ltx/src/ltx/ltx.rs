@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::ops::{Index, IndexMut};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -8,7 +9,7 @@ use crate::binding::LtxSectionWrite;
 use crate::dialect::LtxProvenance;
 use crate::document::LtxCheck;
 use crate::ltx::{LtxInheritConvertor, LtxSections, Section, SectionEntry, SectionSetter};
-use crate::syntax::ROOT_SECTION;
+use crate::syntax::{ROOT_SECTION, fold_section_name};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Ltx {
@@ -71,14 +72,24 @@ impl Ltx {
     self.entry(ROOT_SECTION.into()).or_insert_with(Default::default)
   }
 
-  /// Get a immutable section
+  /// The section named `name` in any case, as the engine looks sections up.
   pub fn section(&self, name: &str) -> Option<&Section> {
-    self.sections.get(name)
+    self.sections.get(self.get_stored_name(name).as_ref())
   }
 
-  /// Check whether ltx has section with name.
+  /// Whether a section named `name` in any case is held.
   pub fn has_section(&self, name: &str) -> bool {
-    self.sections.contains_key(name)
+    self.section(name).is_some()
+  }
+
+  /// The key `name` is held under: itself when a section was built in code under that exact name, otherwise the
+  /// lowercase name a read config stores.
+  pub(crate) fn get_stored_name<'n>(&self, name: &'n str) -> Cow<'n, str> {
+    if self.sections.contains_key(name) {
+      Cow::Borrowed(name)
+    } else {
+      fold_section_name(name)
+    }
   }
 
   /// Sets the source path on sections without an origin, preserving included sections' origins.
@@ -95,9 +106,11 @@ impl Ltx {
     self.sections.insert(name, section);
   }
 
-  /// Get a mutable section
+  /// The section named `name` in any case, to change.
   pub fn section_mut(&mut self, name: &str) -> Option<&mut Section> {
-    self.sections.get_mut(name)
+    let stored: Cow<'_, str> = self.get_stored_name(name);
+
+    self.sections.get_mut(stored.as_ref())
   }
 
   pub fn entry(&mut self, name: String) -> SectionEntry<'_> {
@@ -141,7 +154,7 @@ impl Ltx {
 
   /// Get the first value from the sections with key
   pub fn get_from(&self, section: &str, key: &str) -> Option<&str> {
-    self.sections.get(section).and_then(|section| section.get(key))
+    self.section(section).and_then(|section| section.get(key))
   }
 
   /// Get the first value from the sections with key, return the default value if it does not exist
@@ -578,7 +591,8 @@ Stuff = Other
     let ltx: Ltx = Ltx::read_from_str(input).unwrap();
     assert_eq!(
       ltx.get_from("section name", "Key").unwrap(),
-      "\"Value   # This is not a comment"
+      "\"Value   # This is not a comment ; at all\"",
+      "a `;` inside the line's first quotes is the value's, as the engine reads it"
     );
   }
 

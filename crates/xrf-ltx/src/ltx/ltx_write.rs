@@ -88,7 +88,15 @@ impl Ltx {
       emit(LTX_LINE_SEPARATOR);
     }
 
-    for (section, props) in &self.sections {
+    // The root section goes first: its fields have no header, so after another section they would read back as that
+    // section's.
+    let root = self.sections.get_key_value(ROOT_SECTION).into_iter();
+    let named = self
+      .sections
+      .iter()
+      .filter(|(section, _)| section.as_str() != ROOT_SECTION);
+
+    for (section, props) in root.chain(named) {
       // If root section with data or generic section.
       if section != ROOT_SECTION || !props.data.is_empty() {
         if firstline {

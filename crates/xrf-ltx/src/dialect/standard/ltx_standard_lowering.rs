@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::mem;
 use std::sync::Arc;
 
@@ -6,6 +7,7 @@ use xrf_error::{XrfError, XrfResult};
 use crate::dialect::{LtxOpenSection, LtxTextInterner};
 use crate::document::{LtxCheck, LtxItem, LtxItemKind};
 use crate::ltx::Ltx;
+use crate::syntax::fold_section_name;
 
 /// One document's statements turned into a resolved [`Ltx`] under standard rules, a statement at a time.
 ///
@@ -70,17 +72,19 @@ impl<'a> LtxStandardLowering<'a> {
       }
 
       LtxItemKind::Section { name, parents, .. } => {
-        let name: &str = name.as_ref();
+        // `[A]` and `[a]` are one section to the engine, so the second is a repeat. Parents keep their case and are
+        // found in any case when inherited.
+        let name: Cow<'_, str> = fold_section_name(name.as_ref());
 
         // Closed first, so a section declared twice is caught by the second header rather than missed because the
         // first one had not landed yet.
         mem::take(&mut self.open).close_into(&mut self.ltx);
 
-        if self.ltx.has_section(name) {
-          return Err(Self::new_repeated_section_error(item, name));
+        if self.ltx.has_section(&name) {
+          return Err(Self::new_repeated_section_error(item, &name));
         }
 
-        self.open = LtxOpenSection::declared(name, parents);
+        self.open = LtxOpenSection::declared(&name, parents);
       }
 
       LtxItemKind::Key { name, value, .. } => {

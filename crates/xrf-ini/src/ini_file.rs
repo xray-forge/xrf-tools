@@ -244,22 +244,38 @@ impl IniFile {
   ///
   /// # Errors
   ///
-  /// Returns an error for anything that would not read back as itself: an empty section name or one holding a
-  /// bracket or line break, a key that is empty, starts with `;` or `[`, or holds `=` or a line break, a value with
-  /// a line break where the format has none or outside a quoted string, or one that starts or ends with whitespace.
+  /// Returns an error for anything that would not read back as written, such as a section or key named twice or a
+  /// value with an unclosed quote; the crate's README lists every case.
   pub fn write_to_string_as(&self, format: &IniFormat) -> XrfResult<String> {
     let mut text: String = String::new();
+    let mut names: HashSet<&str> = HashSet::new();
 
     for section in Self::ordered(&self.sections, format, |section| &section.name) {
       Self::check_section_name(&section.name)?;
+
+      if !names.insert(&section.name) {
+        return Err(XrfError::new_invalid_error(format!(
+          "Section [{}] is written twice",
+          section.name
+        )));
+      }
 
       text.push('[');
       text.push_str(&section.name);
       text.push(']');
       text.push_str(format.line_end);
 
+      let mut keys: HashSet<&str> = HashSet::new();
+
       for field in Self::ordered(&section.fields, format, |field| &field.key) {
         Self::check_field(&section.name, field, format)?;
+
+        if !keys.insert(&field.key) {
+          return Err(XrfError::new_invalid_error(format!(
+            "Key {} is written twice in section [{}]",
+            field.key, section.name
+          )));
+        }
 
         let line: String = format!(
           "{:indent$}{:<width$} = {:<width$}",
@@ -331,6 +347,12 @@ impl IniFile {
         }
         _ => {}
       }
+    }
+
+    if is_quoted && format.is_multiline_quoted {
+      return Err(XrfError::new_invalid_error(format!(
+        "Value of [{section}] {key} has an unclosed quote, so a read would take the next lines into it"
+      )));
     }
 
     Ok(())

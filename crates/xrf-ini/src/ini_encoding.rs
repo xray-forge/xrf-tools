@@ -1,7 +1,10 @@
 use std::cmp::Ordering;
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{decode_w1251_field_to_string, encode_string_into_w1251_bytes, encode_string_to_w1251_bytes};
+use xrf_utils::{
+  decode_bytes_to_string, decode_w1251_bytes_to_string, encode_string_into_w1251_bytes, encode_string_to_w1251_bytes,
+  new_utf8_encoder,
+};
 
 /// How a file's text is stored as bytes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -12,14 +15,16 @@ pub enum IniEncoding {
 }
 
 impl IniEncoding {
+  /// The text of a file stored as `bytes`, skipping a byte order mark at the start, which some text editors add.
+  ///
   /// # Errors
   ///
   /// Returns an encoding error when the bytes are not valid in this encoding.
   pub fn decode(self, bytes: &[u8]) -> XrfResult<String> {
     match self {
-      Self::Utf8 => String::from_utf8(bytes.to_vec())
+      Self::Utf8 => decode_bytes_to_string(bytes, new_utf8_encoder())
         .map_err(|error| XrfError::new_encoding_error(format!("INI text is not UTF-8: {error}"))),
-      Self::Windows1251 => Ok(decode_w1251_field_to_string(bytes)?),
+      Self::Windows1251 => Ok(decode_w1251_bytes_to_string(bytes)?),
     }
   }
 

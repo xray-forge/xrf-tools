@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{LtxDocumentSource, LtxProject, LtxResolution};
+use xrf_ltx::{LtxDocumentSource, LtxProject, LtxResolution, fold_section_name};
 use xrf_ltx_inspect::{
   LtxDeclarationQuery, LtxDeclarationReader, LtxInventory, LtxInventoryReader, LtxResolvedDiagnostic, LtxResolvedField,
   LtxResolvedFieldOrigin, LtxResolvedSection, LtxRootReader,
@@ -73,6 +73,12 @@ impl GenericCommand for InspectCommand {
     xrf_output::heading!(output, "Inspect path: {}", format_path(path));
 
     let project: LtxProject = LtxProjectOpening::open(path, matches, &output)?;
+    // Lowercased once, as the dialect stores section names, so the comparisons below match.
+    let section: &String = &if project.get_dialect().is_folding_section_names() {
+      fold_section_name(section).into_owned()
+    } else {
+      section.clone()
+    };
     let entry: XrayLogicalPath = Self::locate(&project, section, matches.get_one::<String>("entry"), &output)?;
 
     let resolution: LtxResolution = project.resolve_explained(&entry)?;

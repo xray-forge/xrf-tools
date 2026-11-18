@@ -436,6 +436,19 @@ fn refuses_a_shared_story_id_and_a_level_of_no_entity() -> XrfResult {
   Ok(())
 }
 
+/// The engine lowercases a section's name as it reads it, so a mod listing `Level01` over a `[Level01]` names the level.
+#[test]
+fn reads_a_level_listed_and_declared_in_capitals() -> XrfResult {
+  let ltx =
+    xrf_ltx::Ltx::read_from_str("[levels]\nLevel01\n\n[Level01]\nname = Mod_Level\noffset = 0, 0, 0\nid = 1\n")?;
+  let levels: SpawnGameLevels = SpawnGameLevels::from_ltx(&ltx)?;
+
+  assert!(levels.skipped.is_empty(), "{:?}", levels.skipped);
+  assert_eq!(levels.find("mod_level")?.section, "level01");
+
+  Ok(())
+}
+
 #[test]
 fn reads_the_levels_the_game_lists() -> XrfResult {
   let ltx = xrf_ltx::Ltx::read_from_str(
