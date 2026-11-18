@@ -5,6 +5,7 @@ use tauri::ipc::Channel;
 use xrf_app_core::TauriResult;
 use xrf_app_core::directories::AppDirectories;
 use xrf_app_core::execution::ExecutionState;
+use xrf_app_core::window::InvokingWindow;
 use xrf_app_render::{Renderer, WorldState};
 use xrf_audio::AudioServer;
 use xrf_renderer::{RenderFrameReport, RenderViewportId};
@@ -16,7 +17,8 @@ use crate::viewer::recording::{LevelRecordings, RecordingProgress};
 
 /// Record a viewport with what its camera hears into a new video of the level viewer's recordings named as asked, at
 /// the size it is drawn at now, its camera heard whatever window takes the focus until it stops; `progress` is told
-/// where it stands a few times a second, and why where it ends by itself. Answers the file.
+/// where it stands a few times a second, and why where it ends by itself. The recording goes with the asking window: it
+/// stops and finishes when that window's page loads again or the window closes. Answers the file.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "start_recording")]
 #[expect(
@@ -24,6 +26,7 @@ use crate::viewer::recording::{LevelRecordings, RecordingProgress};
   reason = "Tauri injects each managed state as an argument of its own"
 )]
 pub(crate) async fn levels_start_recording(
+  window: InvokingWindow,
   renderer: State<'_, Renderer>,
   shown: State<'_, ShownLevels>,
   world: State<'_, WorldState>,
@@ -51,6 +54,7 @@ pub(crate) async fn levels_start_recording(
   let renderer: Renderer = renderer.inner().clone();
   let recordings: LevelRecordings = recordings.inner().clone();
   let world: WorldState = world.inner().clone();
+  let window: String = window.get_label().to_owned();
 
   #[cfg(windows)]
   {
@@ -76,13 +80,14 @@ pub(crate) async fn levels_start_recording(
           &renderer,
           &server,
           viewport,
+          window,
           (frame.width, frame.height),
           file.clone(),
           progress,
         )?);
-        drop(active);
-
+        // Pinned under the slot's lock, so a stop waiting on it unpins after, never before.
         world.lock().pin_listener(Some(viewport));
+        drop(active);
 
         Ok(file)
       })
@@ -92,7 +97,7 @@ pub(crate) async fn levels_start_recording(
   #[cfg(not(windows))]
   {
     let _ = (
-      frame, folder, renderer, recordings, world, execution, server, name, progress,
+      frame, folder, renderer, recordings, world, execution, server, name, progress, window,
     );
 
     Err(MediaProbe::MEDIA_FOUNDATION.load().err().unwrap_or_default())

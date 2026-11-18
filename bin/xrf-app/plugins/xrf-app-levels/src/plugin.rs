@@ -1,5 +1,6 @@
 use tauri::plugin::TauriPlugin;
-use tauri::{Manager, Runtime, State};
+use tauri::webview::{PageLoadEvent, PageLoadPayload};
+use tauri::{AppHandle, Manager, RunEvent, Runtime, State, Webview, WindowEvent};
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::SessionScopes;
@@ -14,7 +15,7 @@ use crate::viewer::recording::LevelRecordings;
 
 /// The `levels` plugin: compiled levels opened as documents whose parts follow commits, shown in a viewport, and
 /// captured or exported through the viewer; and Level Editor scenes opened as documents beside them and shown in a
-/// viewport too.
+/// viewport too. Its hooks finish a window's recording as the window's page loads again or the window goes.
 pub struct LevelsPlugin;
 
 impl LevelsPlugin {
@@ -67,6 +68,36 @@ impl LevelsPlugin {
 
         Ok(())
       })
+      .on_page_load(Self::on_page_load)
+      .on_event(Self::on_event)
       .build()
+  }
+
+  /// Releases a window's recording as a page starts loading over it, since the page that would stop it is gone.
+  fn on_page_load<R: Runtime>(webview: &Webview<R>, payload: &PageLoadPayload<'_>) {
+    if payload.event() == PageLoadEvent::Started {
+      Self::release_window(webview.app_handle(), webview.window().label());
+    }
+  }
+
+  /// Releases a destroyed window's recording.
+  fn on_event<R: Runtime>(application: &AppHandle<R>, event: &RunEvent) {
+    if let RunEvent::WindowEvent {
+      label,
+      event: WindowEvent::Destroyed,
+      ..
+    } = event
+    {
+      Self::release_window(application, label);
+    }
+  }
+
+  fn release_window<R: Runtime>(application: &AppHandle<R>, window: &str) {
+    if let (Some(recordings), Some(world)) = (
+      application.try_state::<LevelRecordings>(),
+      application.try_state::<WorldState>(),
+    ) {
+      recordings.release_window(window, &world);
+    }
   }
 }

@@ -171,6 +171,11 @@ impl LevelSound {
     self.send(drive, engine);
   }
 
+  /// Whether the host opened a place for the scene's sound to play, so a burst of it has sound to take.
+  pub(crate) fn has_outlet(&self) -> bool {
+    self.outlet.is_some()
+  }
+
   /// What the scene plays as the world schedules it; the host's audio fills how each is heard.
   pub(crate) fn report(&self, weather: Option<&WorldLevelWeather>) -> WorldSoundReport {
     let listener: Vec3 = Vec3::from(self.listener.position);

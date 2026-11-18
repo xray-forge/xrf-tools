@@ -223,6 +223,11 @@ impl WorldLevel {
   }
 
   /// What its sound plays as the world schedules it.
+  /// Whether the level's sound plays anywhere, as the host opened a place for it.
+  pub(crate) fn has_sound(&self) -> bool {
+    self.sound.has_outlet()
+  }
+
   pub(crate) fn report_sound(&mut self) -> WorldSoundReport {
     let weather: Option<Arc<WorldLevelWeather>> = self.weather.poll().cloned();
 

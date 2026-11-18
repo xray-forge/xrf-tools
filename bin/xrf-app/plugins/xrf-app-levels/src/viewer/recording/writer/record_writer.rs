@@ -14,6 +14,8 @@ use crate::viewer::recording::writer::{
 pub(crate) struct RecordWriter {
   samples: SyncSender<RecordSample>,
   thread: Option<JoinHandle<TauriResult<RecordSummary>>>,
+  /// Why the writer's thread stopped early, once a write found it gone, for the finish to answer.
+  failure: Option<String>,
 }
 
 impl RecordWriter {
@@ -39,6 +41,7 @@ impl RecordWriter {
     let mut writer: Self = Self {
       samples,
       thread: Some(thread),
+      failure: None,
     };
     let refused: String = match opening.recv() {
       Ok(Ok(())) => return Ok(writer),
@@ -70,18 +73,29 @@ impl RecordWriter {
   ///
   /// Returns why the writer stopped, where it did, or the file could not be finished.
   pub(crate) fn finish(self) -> TauriResult<RecordSummary> {
-    let Self { samples, thread } = self;
+    let Self {
+      samples,
+      thread,
+      failure,
+    } = self;
 
     drop(samples);
 
-    Self::join(thread)
+    match failure {
+      Some(failure) => Err(failure),
+      None => Self::join(thread),
+    }
   }
 
-  /// Why the writer's thread ended early, joined.
+  /// Why the writer's thread ended early, joined, and kept for the finish.
   fn take_error(&mut self) -> String {
-    Self::join(self.thread.take())
+    let failure: String = Self::join(self.thread.take())
       .err()
-      .unwrap_or_else(|| String::from("The recording ended early"))
+      .unwrap_or_else(|| String::from("The recording ended early"));
+
+    self.failure = Some(failure.clone());
+
+    failure
   }
 
   fn join(thread: Option<JoinHandle<TauriResult<RecordSummary>>>) -> TauriResult<RecordSummary> {
@@ -102,17 +116,20 @@ impl RecordWriter {
     let session: MediaSession = MediaSession::start().inspect_err(|error| {
       let _ = opened.send(Err(error.clone()));
     })?;
-    let mut sink: MediaSink = MediaSink::open(file, format).inspect_err(|error| {
-      let _ = opened.send(Err(error.clone()));
-    })?;
-    let _ = opened.send(Ok(()));
+    // The sink lives in this block alone, so its objects are released before Media Foundation shuts down whether the
+    // writes succeed or not: a hardware encoder released after the shutdown can fault.
+    let written: TauriResult<RecordSummary> = {
+      let mut sink: MediaSink = MediaSink::open(file, format).inspect_err(|error| {
+        let _ = opened.send(Err(error.clone()));
+      })?;
+      let _ = opened.send(Ok(()));
 
-    let written: TauriResult<RecordSummary> = samples
-      .iter()
-      .try_for_each(|sample| sink.write(sample))
-      .and_then(|()| sink.finish());
+      samples
+        .iter()
+        .try_for_each(|sample| sink.write(sample))
+        .and_then(|()| sink.finish())
+    };
 
-    // The sink's objects are released before Media Foundation shuts down.
     drop(session);
 
     written

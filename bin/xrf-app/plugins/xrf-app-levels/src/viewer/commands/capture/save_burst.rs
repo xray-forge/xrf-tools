@@ -5,7 +5,7 @@ use tauri::State;
 use xrf_app_core::TauriResult;
 use xrf_app_core::directories::AppDirectories;
 use xrf_app_core::execution::ExecutionState;
-use xrf_app_render::Renderer;
+use xrf_app_render::{Renderer, WorldState};
 use xrf_renderer::BurstEvent;
 
 use crate::render::{LevelAudio, ShownLevels};
@@ -15,11 +15,13 @@ use crate::viewer::recording::writer::MediaProbe;
 
 /// Draw a burst of consecutive frames in a viewport and write each, with its G-buffer's marks, into a new folder of
 /// the level viewer's bursts named as asked, the sound its camera hears at the burst's times beside them, and the frames
-/// with that sound as one video, where asked; answers once the last is written.
+/// with that sound as one video, where asked; answers once the last is written. A burst with sound of a viewport whose
+/// level plays none is refused before anything is drawn or written.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "save_burst")]
 pub(crate) async fn levels_save_burst(
   renderer: State<'_, Renderer>,
+  world: State<'_, WorldState>,
   shown: State<'_, ShownLevels>,
   directories: State<'_, AppDirectories>,
   execution: State<'_, ExecutionState>,
@@ -32,6 +34,13 @@ pub(crate) async fn levels_save_burst(
     has_sound,
     has_video,
   } = request;
+
+  if has_sound && !world.lock().has_sound(viewport) {
+    return Err(String::from(
+      "The viewport's level plays no sound, so a burst has none to record",
+    ));
+  }
+
   let bursts: PathBuf = LevelViewerFolder::Bursts.get_path(&directories)?;
   let renderer: Renderer = renderer.inner().clone();
   let audio: LevelAudio = shown.get_audio().clone();

@@ -83,6 +83,17 @@ impl World {
     })
   }
 
+  /// Whether the scene a viewport shows plays sound, so a burst of it has sound to take: not for a viewport showing no
+  /// level, or a level whose host opened no place for its sound.
+  pub fn has_sound(&self, viewport: RenderViewportId) -> bool {
+    self
+      .viewports
+      .get(&viewport)
+      .and_then(|world| world.scene)
+      .and_then(|id| self.scenes.get(&id))
+      .is_some_and(|scene| scene.level.has_sound())
+  }
+
   /// Does what a viewer asks of the music of the scene a viewport shows, answering whether it could: none can for a
   /// viewport showing no level, or before its sounds are read.
   pub fn command_music(&mut self, viewport: RenderViewportId, command: &WorldMusicCommand) -> bool {

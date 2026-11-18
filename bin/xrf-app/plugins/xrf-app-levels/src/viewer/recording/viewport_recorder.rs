@@ -11,6 +11,7 @@ use xrf_app_core::TauriResult;
 use xrf_app_render::Renderer;
 use xrf_audio::{AudioClockAnchor, AudioMixerMeter, AudioServer, AudioTap, AudioTapBlock};
 use xrf_renderer::{RecordEvent, RecordFrame, RenderViewportId};
+use xrf_utils::format_path;
 
 use crate::viewer::recording::writer::{RecordFormat, RecordSample, RecordSoundFormat, RecordSummary, RecordWriter};
 use crate::viewer::recording::{RecordingOutcome, RecordingProgress};
@@ -23,6 +24,8 @@ use crate::viewer::recording::{RecordingOutcome, RecordingProgress};
 pub(crate) struct ViewportRecorder {
   renderer: Renderer,
   viewport: RenderViewportId,
+  /// The label of the window whose page started it, which the recording goes with.
+  window: String,
   is_stopped: Arc<AtomicBool>,
   thread: Option<JoinHandle<TauriResult<RecordingOutcome>>>,
 }
@@ -69,8 +72,8 @@ impl ViewportRecorder {
   /// How often the page is told where the recording stands.
   const PROGRESS_EVERY: Duration = Duration::from_millis(250);
 
-  /// Starts recording `viewport` at `size`, even both ways as H.264 takes, into `file`, with `server`'s mix; tells
-  /// `progress` where it stands.
+  /// Starts recording `viewport` of the window labelled `window` at `size`, even both ways as H.264 takes, into `file`,
+  /// with `server`'s mix; tells `progress` where it stands.
   ///
   /// # Errors
   ///
@@ -79,6 +82,7 @@ impl ViewportRecorder {
     renderer: &Renderer,
     server: &AudioServer,
     viewport: RenderViewportId,
+    window: String,
     size: (u32, u32),
     file: PathBuf,
     progress: Channel<RecordingProgress>,
@@ -116,9 +120,15 @@ impl ViewportRecorder {
     Ok(Self {
       renderer: renderer.clone(),
       viewport,
+      window,
       is_stopped,
       thread: Some(thread),
     })
+  }
+
+  /// The label of the window whose page started it.
+  pub(crate) fn get_window(&self) -> &str {
+    &self.window
   }
 
   /// Whether it ended by itself, and is only to be collected.
@@ -188,7 +198,13 @@ impl RecorderInputs {
       return Err(state.ended.unwrap_or_else(|| String::from("No frame was recorded")));
     }
 
-    let summary: RecordSummary = finished?;
+    // A writer that stopped mid-way leaves the fragmented file playable to where it stopped, so the error names it.
+    let summary: RecordSummary = finished.map_err(|cause| {
+      format!(
+        "The recording stopped early; {} holds it up to there: {cause}",
+        format_path(&self.file)
+      )
+    })?;
 
     Ok(RecordingOutcome {
       file: self.file,
