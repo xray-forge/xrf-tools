@@ -15,18 +15,17 @@ use crate::frame::targets::view_targets::ViewTargets;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::view::view_binding::ViewBinding;
 
-/// What the window pass puts the view's finished frame into its rectangle by: the debug view shown, the distortion,
-/// the corrections, the bloom laid over it, the selection's outline and the tonemap where the scene holds linear light.
+/// What the window pass presents the view's finished frame by: the debug view, the distortion, the corrections, the
+/// bloom, the selection's outline and the tonemap where the scene holds linear light.
 #[derive(Default)]
 pub(crate) struct PresentFeature {
   uniform: PresentUniform,
-  /// How far the distortion target moves the frame before the resolve and whether it blurs it, and the tiles of the
-  /// frame it was written in; none where nothing wrote it this frame.
+  /// The distortion's strength and blur, and the tiles its target was written in; none where nothing wrote it.
   distortion: Option<(DistortUniform, ScreenTiles)>,
 }
 
 impl PresentFeature {
-  /// Takes this frame's present into `output`, once every other unit has decided what it reads (`inputs`).
+  /// Prepares this frame's present into `output`, once every other unit has settled its `inputs`.
   pub(crate) fn prepare(&mut self, options: &RenderViewOptions, output: RenderRect, inputs: PresentInputs) {
     let water = &options.features.water;
 
@@ -71,10 +70,10 @@ impl PresentFeature {
     &self.uniform
   }
 
-  /// Moves the frame (`handles.scene`, at the drawn size) where the water, the particles, the rain and the distorting
-  /// surfaces wrote the distortion target, and blurs it towards the engine's bloom by its `z` where a bloom draws,
-  /// before the resolve, so the resolve smooths it as it smooths the rest: a copy of the frame read where the target
-  /// says, drawn back into it, both only about the tiles the target was written in. Nothing where nothing distorts.
+  /// Moves the scene where the distortion target was written, blurring towards the engine's bloom by its `z`, within
+  /// the written tiles alone; nothing where nothing distorts.
+  ///
+  /// Runs before the resolve, at the drawn size, so the resolve smooths the moved frame as it smooths the rest.
   pub(crate) fn add_distortion_pass<'a>(
     &self,
     GraphDeclaration { graph, runtime, .. }: GraphDeclaration<'_, 'a>,
@@ -87,8 +86,8 @@ impl PresentFeature {
     };
 
     let (width, height) = handles.size;
-    // A texel reads at most this share of the screen away, and a pixel more for the truncation to a texel: the copy
-    // reaches that many tiles past those the target was written in.
+    // A texel reads at most this share of the screen away, plus a pixel for truncation, so the copy grows by as many
+    // tiles.
     let farthest: f32 = (1.0 - ViewTargets::NEUTRAL_DISTORTION as f32) * distortion.strength;
     let reach = |size: u32, tiles: u32| ((farthest * size as f32 + 1.0) * tiles as f32 / size as f32).ceil() as u32;
     let copied: Vec<RenderRect> = tiles

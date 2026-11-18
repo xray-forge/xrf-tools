@@ -7,11 +7,11 @@ use xrf_vfs::XraySearch;
 
 use crate::level::{LevelSource, SelectedLevel};
 
-/// What a change event calls what a level's AI map was read from when it goes stale.
+/// The part name a change event uses when a level's AI map goes stale.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
 pub(crate) const LEVEL_AI_MAP_PART: &str = "aiMap";
 
-/// What a level's AI map was read from, `level.ai`; the renderer holds the map its debug views show.
+/// The inputs of a level's AI map, `level.ai`; the renderer holds the map itself.
 pub(crate) struct LevelAiMapPart;
 
 impl SessionPart for LevelAiMapPart {
@@ -23,8 +23,7 @@ impl SessionPart for LevelAiMapPart {
 }
 
 impl LevelAiMapPart {
-  /// The open level's AI map as the renderer shows it, what it is read from recorded as its AI map part, or `None` for a
-  /// level that ships none.
+  /// Read the open level's AI map for the renderer, recording its inputs; `None` for a level without one.
   ///
   /// # Errors
   ///
@@ -38,7 +37,6 @@ impl LevelAiMapPart {
       .record_read::<Self, _>(search, |search| Self::read_recorded(&current.source, search))
   }
 
-  /// The map read, through `search`.
   fn read_recorded(source: &LevelSource, search: &XraySearch) -> TauriResult<Option<RenderLevelAiMap>> {
     let Some(bytes) = source.read_optional_file(search, LevelAiFile::FILE_NAME)? else {
       return Ok(None);
@@ -49,7 +47,7 @@ impl LevelAiMapPart {
     Ok(Some(Self::describe(&file.header, &nodes)))
   }
 
-  /// The map of `header` and `nodes` as its debug views read it.
+  /// Pack `header` and `nodes` into the renderer's debug-view map.
   fn describe(header: &LevelAiHeader, nodes: &LevelAiNodes) -> RenderLevelAiMap {
     let pack_cover = |cover: [u8; 4]| {
       cover.iter().zip([0, 4, 8, 12]).fold(0u16, |packed, (value, shift)| {

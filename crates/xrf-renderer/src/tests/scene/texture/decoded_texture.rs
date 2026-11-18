@@ -105,7 +105,6 @@ fn reads_a_cube_as_six_faces_and_a_volume_as_a_layer_a_slice() {
   assert!(volume.is_volume);
 }
 
-/// A one level texture of a format holding these bytes, as many texels as they make.
 fn create_flat(format: wgpu::TextureFormat, bytes: Vec<u8>) -> DecodedTexture {
   DecodedTexture {
     format,
@@ -119,7 +118,7 @@ fn create_flat(format: wgpu::TextureFormat, bytes: Vec<u8>) -> DecodedTexture {
   }
 }
 
-/// A BC3 block whose colour endpoints are these 5:6:5 colours, its alpha and indices all set.
+// Alpha and indices all set, so only the endpoints decide.
 fn create_bc3_block(first: u16, second: u16) -> Vec<u8> {
   [
     [0xff; 8].as_slice(),
@@ -130,8 +129,6 @@ fn create_bc3_block(first: u16, second: u16) -> Vec<u8> {
   .concat()
 }
 
-// A block compressed texture holds blue where a block's colour endpoints do, whatever its alpha and indices; an eight bit
-// one where a texel does, in its own channel order; any other layout is taken to.
 #[test]
 fn finds_blue_by_a_blocks_endpoints_or_a_texels_channel() {
   let (red, green, blue): (u16, u16, u16) = (0xf800, 0x07e0, 0x0001);

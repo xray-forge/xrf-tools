@@ -186,7 +186,7 @@ fn draws_the_kinds_switched_on_less_the_hidden_and_marks_the_selected_unfaded() 
   assert!(singled.iter().all(|it| it.color[3] == 1.0 && it.fade[0] == 0.0));
 }
 
-// An object whose sound plays is drawn apart, lit, fading with distance as it would unlit; a selection outranks it.
+// A selection outranks a sounding object.
 #[test]
 fn lights_the_sounding_objects_apart_still_fading() {
   let helpers: LevelHelpers = new_helpers();

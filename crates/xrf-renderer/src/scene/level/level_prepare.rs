@@ -6,15 +6,12 @@ use crate::scene::level::view::view_time::ViewTime;
 use crate::scene::level::wetness::level_wetness::LevelWetness;
 use crate::scene::static_scene::draw::static_sight::StaticSight;
 
-/// What the level gives every unit readying a view's frame, taken from the scene once that frame: its clock as the view
-/// reads it, the wind its ambient effects blow, how wet it is, what of it the view may see, and how sheltered the
-/// driving camera stands. The scene's stores (its statics, grass, lights, particles and trace) stay the scene's, read by
-/// the units drawing them; what the level places for every view to read, such as fog volumes, joins these values.
+/// Per-frame level state every unit preparing a view reads: clock, ambient wind, wetness, sight and camera hemi.
+///
+/// The scene's stores (statics, grass, lights, particles, trace) stay on the scene, read by the units that draw them.
 #[derive(Clone, Copy)]
 pub(crate) struct LevelPrepare {
-  /// How long the level has lived at this frame, on the frames' clock, and at the view's last frame: what its clouds,
-  /// sway, water, lights and effects move by, each by its own phase of it, and what is stepped on from frame to frame
-  /// steps by.
+  /// The level's clock at this frame and at the view's last frame, which animations and per-frame steps read.
   pub time: ViewTime,
   pub gust: AmbientGust,
   pub wetness: LevelWetness,
@@ -26,7 +23,7 @@ pub(crate) struct LevelPrepare {
 }
 
 impl LevelPrepare {
-  /// What `scene` gives a view seeing it through `view` this frame, its last frame drawn at `previous`.
+  /// Takes the state for `view` from `scene`, the view's last frame drawn at `previous`.
   pub(crate) fn of(scene: &LevelScene, view: &CameraView, previous: Option<LevelTime>) -> Self {
     Self {
       time: ViewTime {

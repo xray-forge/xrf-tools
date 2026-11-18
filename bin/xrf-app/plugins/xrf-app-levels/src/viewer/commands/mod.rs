@@ -1,5 +1,4 @@
-//! The level viewer's commands, by what they make: captures of a viewport, exports of a capture, recordings,
-//! screenshots and views.
+//! The level viewer's commands: viewport captures and their exports, recordings, screenshots and views.
 
 pub(crate) mod capture;
 pub(crate) mod export;

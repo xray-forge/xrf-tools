@@ -49,7 +49,7 @@ const IDLE_WAIT: Duration = Duration::from_millis(50);
 /// high resolution, where a channel's timeout rounds up to the system timer's tick of about 16 milliseconds.
 const PACING_POLL: Duration = Duration::from_millis(1);
 
-/// How long the thread keeps the GPU once no viewport or hold is left, so a view shown again soon starts at once.
+/// How long the GPU is kept once no viewport or hold is left, so a view shown again soon starts at once.
 const IDLE_STOP: Duration = Duration::from_secs(5);
 
 /// How often the textures no scene samples any more are freed.
@@ -100,9 +100,9 @@ pub(crate) struct RenderThread {
   scenes: HashMap<RenderSceneId, LevelScene>,
   /// The scenes viewports showed when the GPU was let go, held back until they are whole again.
   reopening: ReopeningScenes,
-  /// What keeps the GPU started while no viewport draws.
+  /// Holds keeping the GPU started while no viewport draws.
   holds: BTreeSet<RenderHoldId>,
-  /// When the last viewport detached or the last hold was released, while neither is left.
+  /// When the last viewport or hold went; none while either is left.
   idle_since: Option<Instant>,
   last_frame: Instant,
   /// The time every scene's frames are drawn at, which a tool may step; a burst paces its own while it draws. When the
@@ -119,7 +119,7 @@ pub(crate) struct RenderThread {
   textures_swept: Instant,
   /// Who asked the thread to stop at once, answered once it stopped.
   stopping: Option<Sender<()>>,
-  /// Failures that repeat every frame until something changes: the frame's own, the grid's, the composition's.
+  /// Per-frame repeating failures (frame, grid, composition), logged once until they change.
   frame_failures: FrameFailureLog,
 }
 
@@ -169,8 +169,8 @@ impl RenderThread {
     }
   }
 
-  /// Runs the thread until it idles past `IDLE_STOP` or is asked to stop: draws a frame while any viewport draws, paced
-  /// to the settings' rate, keeps the GPU started while a hold is taken, and handles the commands sent between frames.
+  /// Runs until idle past `IDLE_STOP` or asked to stop, drawing paced frames while any viewport draws and handling
+  /// commands between them.
   pub(crate) fn run(mut self) {
     log::info!("Render thread started");
 
@@ -236,8 +236,7 @@ impl RenderThread {
 
       self.ensure_gpu();
 
-      // A frame presenting nothing waited on no display: without a GPU, a window or a graph wgpu took, the next would
-      // follow at once and spin the thread, so it waits for a command or the idle wait, as a thread drawing nothing.
+      // A frame that presented nothing waited on no display; wait for a command so the thread does not spin.
       if !self.frame() {
         match self.receiver.recv_timeout(IDLE_WAIT) {
           Ok(command) => self.handle(command),

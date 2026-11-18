@@ -5,14 +5,13 @@ use xrf_visual::{VisualPackage, VisualRestPose};
 
 use crate::parts::LevelTextureReference;
 
-/// A visual a spawned object stands as: packed, posed as it stands still, and dressed.
+/// A spawned object's visual: packed, posed at rest, and dressed.
 pub(crate) struct SpawnVisual {
   pub package: VisualPackage,
-  /// Its bones as the object stands: the `idle` cycle's first frame, or the bind pose; `None` for a visual without
-  /// bones.
+  /// The `idle` cycle's first frame, or the bind pose; `None` for a visual without bones.
   pub rest: Option<Arc<VisualRestPose>>,
-  /// How the renderer draws each submesh, in their order.
+  /// One per submesh, in order.
   pub surfaces: Vec<XraySurfaceDescriptor>,
-  /// What each texture its surfaces bind resolved to: each base, and the bump pair and detail beside it.
+  /// The resolved textures its surfaces bind: each base with its bump pair and detail.
   pub textures: Vec<LevelTextureReference>,
 }

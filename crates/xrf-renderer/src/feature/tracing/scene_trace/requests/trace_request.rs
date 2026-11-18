@@ -1,21 +1,24 @@
 use glam::UVec2;
 use xrf_renderer_core::ShaderStruct;
 
-/// A reflection ray the screen left unanswered on its turn, which the scene pass traces against the level's geometry,
-/// in ten words, a list as large as the frame being one of the frame's largest buffers: where it starts in renderer
-/// space; how far it reaches, then the length of what the screen answered where it holds most (two halves); what the
-/// screen answered, its colour already weighed by its share, then the share (four halves); its cone's width where it
-/// starts and its spread (two halves); its direction (octahedral, two snorm halves); its traced pixel (`x` in the low
-/// half, `y` in the high); and the reason its ends take on a hit.
+/// A reflection ray the screen left unanswered, which the scene pass traces against the level's geometry.
+///
+/// Packed into ten words, as a frame-sized list is one of the frame's largest buffers.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "TraceRequest")]
 pub(crate) struct TraceRequest {
+  /// Where it starts, in renderer space.
   pub origin: [f32; 3],
+  /// How far it reaches, then the length of what the screen answered where it holds most, as halves.
   pub reach: u32,
+  /// What the screen answered, its colour already weighed by its share, then the share, as four halves.
   pub screen: UVec2,
+  /// Its cone's width where it starts and its spread, as halves.
   pub cone: u32,
+  /// Its direction, octahedral, as two snorm halves.
   pub toward: u32,
+  /// Its traced pixel, `x` in the low half and `y` in the high.
   pub pixel: u32,
   /// The reason the pixel's ends take where the ray meets something.
   pub hit_end: u32,

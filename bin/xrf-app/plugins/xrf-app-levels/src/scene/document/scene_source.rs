@@ -6,8 +6,8 @@ use xrf_app_core::TauriResult;
 use xrf_editable_level::EditableLevelFile;
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
-/// Where a Level Editor scene is read from: its `.level` on disk. The scene is searched for from the directory holding
-/// the `.level`, its parts in the directory beside it named after it, so a scene opens wherever it lies.
+/// A Level Editor scene's `.level` on disk. The scene is searched from the directory holding it, its parts in the
+/// directory beside it named after it, so a scene opens wherever it lies.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -43,8 +43,8 @@ impl SceneSource {
       .ok_or_else(|| format!("Scene '{}' names no .{} file", self.path, EditableLevelFile::EXTENSION))
   }
 
-  /// The roots the scene is searched in: the directory holding its `.level`, mounted as a loose tree whatever lies
-  /// beside it, so its files are read by their paths below it and a commit to any of them is followed.
+  /// The directory holding the `.level`, mounted as a loose tree whatever lies beside it, so the scene's files are read
+  /// by their paths below it and a commit to any of them is followed.
   ///
   /// # Errors
   ///
@@ -62,7 +62,7 @@ impl SceneSource {
   }
 
   /// Where the scene's library objects are looked for: the directories `given`, in search order, else `objects` beside
-  /// the directory holding the `.level`, as a rawdata tree keeps `levels` and `objects` side by side.
+  /// the directory holding the `.level`, as in a rawdata tree.
   pub fn get_objects_roots(&self, given: Option<Vec<String>>) -> XrayRoots {
     let paths: Vec<PathBuf> = match given {
       Some(given) => given.into_iter().map(PathBuf::from).collect(),
@@ -77,9 +77,8 @@ impl SceneSource {
     XrayRoots::from_paths(paths, XrayMountMode::Directory)
   }
 
-  /// Where the scene's textures and shaders are searched for: the roots `given`, else `gamedata` beside the `rawdata`
-  /// directory holding the scene's `levels`, as an SDK keeps them side by side, where that directory exists; none
-  /// otherwise, the scene drawn with no game data.
+  /// Where the scene's textures and shaders are searched for: the roots `given`, else the SDK's `gamedata` beside the
+  /// `rawdata` holding the scene's `levels` where it exists, else none.
   pub fn get_game_roots(&self, given: Option<XrayRoots>) -> XrayRoots {
     given.unwrap_or_else(|| {
       XrayRoots::from_paths(

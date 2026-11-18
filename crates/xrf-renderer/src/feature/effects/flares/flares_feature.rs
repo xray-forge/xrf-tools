@@ -268,9 +268,8 @@ impl ViewFeature for FlaresFeature {
     self.is_drawn = false;
   }
 
-  /// Its motion restarted, the fade settles on the lens flare named at the next frame (`LensFlareFade::settle`), the
-  /// sun's eased visibility starts again from none as at a view's first frame, and the step is taken from that frame
-  /// on; a cut leaves them, the visibility easing to the new place as it eases to a sun stepping behind a wall.
+  /// A motion restart settles the fade (`LensFlareFade::settle`) and eases the sun's visibility from none again, as at
+  /// a view's first frame; a cut leaves them, the visibility easing to the new place.
   fn restart(&mut self, restart: ViewRestart) {
     if restart == ViewRestart::Motion {
       self.fade.settle();

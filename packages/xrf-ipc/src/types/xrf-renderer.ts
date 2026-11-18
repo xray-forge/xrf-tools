@@ -728,7 +728,7 @@ export type RenderAppliedReport = {
   reflections: RenderAppliedReflections | null;
   /** The enhanced height fog, or none where the engine's fog alone is drawn or none at all. */
   heightFog: RenderAppliedHeightFog | null;
-  /** Whether the sky is drawn with its textures smoothed where they band. */
+  /** Whether the sky is debanded. */
   isSkyDebanded: boolean;
   /** Which bloom is drawn, or none where the frame blooms nothing. */
   bloom: RenderBloomMode | null;
@@ -977,17 +977,14 @@ export type RenderCubeCapture = {
 export enum ERenderDebandingMode {
   /** The engine's own: the sky as drawn. */
   ENGINE = "engine",
-  /**
-   * Sky debanding: the sky's cubes and clouds smoothed where their stored steps band, each texel averaged with
-   * neighbours less than a step apart, before the sky is drawn with them.
-   */
+  /** Smooths banding in the sky's cubes and clouds by averaging each texel with neighbours less than a step apart. */
   ENHANCED = "enhanced",
 }
 
 /** Every `ERenderDebandingMode` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type RenderDebandingMode = `${ERenderDebandingMode}`;
 
-/** Whether the sky's colour bands are smoothed. */
+/** Sky debanding settings. */
 export type RenderDebandingSettings = {
   mode: RenderDebandingMode;
 };
@@ -1071,29 +1068,24 @@ export enum ERenderDebugView {
   /** The specular the sun and the lights accumulated, kept apart from their diffuse in the light target's alpha. */
   SPECULAR = "specular",
   /**
-   * The sun the level's detail slots store, `c_dir`, over the ground each slot covers and the tufts on it: black none
-   * to white full, its sixteen steps as greys, the slots' edges darkened; a dim grey of the albedo elsewhere, over a
-   * slot planting nothing or above a slot's heights.
+   * The detail slots' stored sun (`c_dir`) over their ground and tufts, sixteen greys from black to white with slot
+   * edges darkened; dim albedo grey over empty slots, above their heights or elsewhere.
    */
   DETAIL_SUN = "detailSun",
-  /** The hemisphere the detail slots store, `c_hemi`, shown as `DetailSun` is. */
+  /** The detail slots' stored hemisphere (`c_hemi`), shown as `DetailSun`. */
   DETAIL_HEMI = "detailHemi",
-  /**
-   * The light the detail slots store from the level's lamps, `c_r`, `c_g` and `c_b`, as one colour, shown as
-   * `DetailSun` is.
-   */
+  /** The detail slots' stored lamp light (`c_r`, `c_g`, `c_b`) as one colour, shown as `DetailSun`. */
   DETAIL_LIGHT = "detailLight",
   /**
-   * The cover each AI map node stores from standing height, over the ground its cell covers: the mean of its four
-   * directions from black, covered, to white, open, its sixteen steps as greys, the cells' edges darkened; a dim grey of
-   * the albedo elsewhere, off the map or above a node.
+   * Each AI map node's standing cover over its cell: the mean of its four directions in sixteen greys, black covered
+   * to white open, cell edges darkened; dim albedo grey off the map or above a node.
    */
   AI_HIGH_COVER = "aiHighCover",
-  /** The cover each AI map node stores from crouching height, shown as `AiHighCover` is. */
+  /** Each AI map node's crouching cover, shown as `AiHighCover`. */
   AI_LOW_COVER = "aiLowCover",
   /**
-   * How many neighbours each AI map node lacks, shown over its cell as `AiHighCover` is: green none, then yellow,
-   * orange, red and dark red for one to four.
+   * How many neighbours each AI map node lacks, shown as `AiHighCover`: green for none, then yellow, orange, red and
+   * dark red for one to four.
    */
   AI_LINKS = "aiLinks",
   /**
@@ -1480,7 +1472,7 @@ export type RenderFrameReport = {
   meter: RenderMeterReading | null;
   /** What the frame graph made of its latest frame, none before its first. */
   graph: RenderGraphReport | null;
-  /** The long job it runs, none while it runs none. */
+  /** The long job the viewport runs, if any. */
   job: RenderViewportJob | null;
 };
 
@@ -1659,7 +1651,7 @@ export enum ERenderHelperIcon {
   PATROL_POINT = "patrolPoint",
   GRAPH_POINT = "graphPoint",
   RESPAWN_POINT = "respawnPoint",
-  /** A spawn point whose entity is known by its section alone, as a scene places one before any game config is read. */
+  /** A spawn point known only by its section, before any game config is read. */
   SPAWN_POINT = "spawnPoint",
 }
 
@@ -1698,7 +1690,7 @@ export type RenderHelperOptions = {
   isRestFaded: boolean;
 };
 
-/** One hold on the renderer, which keeps its GPU started while no viewport draws, numbered as it is taken. */
+/** A numbered hold that keeps the renderer's GPU started while no viewport draws. */
 export type RenderHoldId = number;
 
 /**
@@ -2430,11 +2422,12 @@ export type RenderReflectionSettings = {
    */
   traceInterval: number;
   /**
-   * Whether, while traced, the water traces every pixel's ray every frame, meeting the grass's cards within their
-   * reach, and the screen answers only the plants past them, which the level's trace does not hold: what the screen
-   * cannot show (a cable's lit side, a pipe's underside, a reed's blades) reflected as it is, at a ray a water pixel a
-   * frame, a request list as large as the frame and the cards stood for it; off, the screen answers first and the
-   * trace takes what it misses, on its turns.
+   * Whether, while traced, the water traces every pixel every frame, hitting grass cards within their reach, with the
+   * screen answering only plants beyond them.
+   *
+   * This reflects what the screen cannot show (a cable's lit side, a pipe's underside, reed blades) at a ray per water
+   * pixel per frame plus a frame-sized request list. Off, the screen answers first and the trace takes its misses on
+   * its turns.
    */
   isWaterFullyTraced: boolean;
 };
@@ -2584,10 +2577,7 @@ export type RenderShadowSettings = {
   cascades: Array<number | null>;
   /** Texels each cascade's map is across. */
   resolution: number;
-  /**
-   * Texels the filter reaches from the one sampled, each way: zero for the four about the point, one for a three by
-   * three.
-   */
+  /** Filter reach in texels each way: zero for the four around the point, one for a 3x3. */
   filter: number;
   /** How far a point is moved along its normal before it is compared, in texels of its cascade. */
   bias: number | null;
@@ -2978,10 +2968,7 @@ export type RenderViewportEvent =
 /** One viewport of the renderer, numbered by the renderer as it is attached. */
 export type RenderViewportId = number;
 
-/**
- * The long job a viewport runs, one at a time over every viewport: its frames recorded, a burst it draws, or a level
- * map or cubemap it captures in place of its own frames.
- */
+/** A viewport's long job, one at a time across all viewports: a recording, a burst, or a map or cubemap capture. */
 export enum ERenderViewportJob {
   RECORDING = "recording",
   BURST = "burst",
@@ -3054,8 +3041,8 @@ export type RenderWaterSettings = {
   /** Whether water writes the distortion it causes, moving what is seen through it. */
   isDistorted: boolean;
   /**
-   * How high the waves lift the engine's water, in metres: `W_POSITION_SHIFT_HEIGHT`, 1/60 on the setting's step. The
-   * enhanced water stands flat, its waves in its maps.
+   * Engine water wave height in metres (`W_POSITION_SHIFT_HEIGHT`, 1/60 at the setting's step); the enhanced water
+   * stays flat, its waves in its maps.
    */
   waveHeight: number | null;
   /** How fast they run: `W_POSITION_SHIFT_SPEED`. */

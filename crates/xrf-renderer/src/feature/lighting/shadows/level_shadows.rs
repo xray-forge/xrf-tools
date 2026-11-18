@@ -74,8 +74,8 @@ const NEAR_BLENDED: usize = 2;
 /// The first cascade that keeps a second static layer, which its next is drawn into ahead of the turn that would stale
 /// the one shown: the far ones, whose static draws cost the most.
 const BANDED_FROM: usize = 2;
-/// Bands a static layer drawn ahead, or a sweep of the trees' sway, is drawn in, at most one a frame (four frames of the
-/// sway's 30 Hz at 120); and frames a band drawn ahead waits at most.
+/// Bands a static layer drawn ahead, or a sweep of the trees' sway, is drawn in, one a frame at most: four frames at
+/// 120 Hz keep the sway's 30 Hz. Then the most frames a band drawn ahead waits.
 const BANDS: u32 = 4;
 const BAND_WAIT_MOST: u32 = 2;
 /// The share of what a static layer may hold past which its next is drawn ahead.
@@ -94,8 +94,8 @@ enum CascadeDraw {
   Swaying,
   /// Its kept layer copied into its map, what moves every frame over it: the trees as last drawn, waiting their turn.
   Kept,
-  /// One band of a cascade's rows: its static layer's rows restored into its map, the trees over them, so a sway
-  /// redraw spreads over `BANDS` frames rather than landing on one.
+  /// One band of its rows: its static layer's rows restored into its map, the trees over them, so a sway redraw
+  /// spreads over `BANDS` frames.
   Banded(u32),
 }
 

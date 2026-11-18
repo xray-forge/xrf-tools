@@ -38,12 +38,11 @@ pub enum RenderCommand {
   Detach {
     id: RenderViewportId,
   },
-  /// Keeps the GPU started, starting it where it is not, until the hold is released: for a tool whose viewports come
-  /// and go, so showing one again never waits for the GPU to start.
+  /// Starts the GPU if needed and keeps it until released, so a tool whose viewports come and go never waits for it.
   Hold {
     id: RenderHoldId,
   },
-  /// Lets a hold go; the GPU goes a few seconds after the last hold and viewport.
+  /// Releases a hold; the GPU stops a few seconds after the last hold and viewport.
   Release {
     id: RenderHoldId,
   },
@@ -58,7 +57,7 @@ pub enum RenderCommand {
     id: RenderViewportId,
     options: Box<RenderViewOptions>,
   },
-  /// Replaces what a viewport draws over its frame: at once, or from the frame it shows `scene`.
+  /// Replaces a viewport's overlays, at once or from the first frame it shows `scene`.
   Overlays {
     id: RenderViewportId,
     overlays: Vec<RenderOverlay>,
@@ -142,16 +141,15 @@ pub enum RenderCommand {
     burst: RenderBurst,
     events: Sender<BurstEvent>,
   },
-  /// Records a viewport's frames as they are presented, a sixtieth of a second apart at most, at `size` pixels across
-  /// and down, its view scaled into it should it resize, telling `events` of each frame as it comes back. Dropping the
-  /// receiving end stops it, at its next frame.
+  /// Records a viewport's presented frames at up to 60 a second, scaled to `size` pixels, sending each to `events`.
+  /// Dropping the receiver stops it at its next frame.
   Record {
     id: RenderViewportId,
     size: (u32, u32),
     events: Sender<RecordEvent>,
   },
-  /// Stops a viewport's recording at once, as its recorder goes: a viewport drawing nothing sends no frame whose failed
-  /// send would end it, and would otherwise hold off every other long job.
+  /// Stops a viewport's recording at once; an idle viewport sends no frame whose failed send would end it, and would
+  /// otherwise block every other long job.
   StopRecord {
     id: RenderViewportId,
   },

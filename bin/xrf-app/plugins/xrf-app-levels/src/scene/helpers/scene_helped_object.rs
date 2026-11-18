@@ -11,22 +11,22 @@ use crate::scene::{SceneHelperLook, SceneRenderSpace};
 /// The section an actor's spawn point names, where the game starts the player.
 const ACTOR_SECTION: &str = "actor";
 
-/// An object tool's typed object the editor draws a helper for, as the SDK's editor marks what has no geometry.
+/// An object tool's typed object the editor draws a helper for, marking what has no geometry as the SDK's editor does.
 pub(crate) trait SceneHelpedObject: EditableToolObject {
   /// What its helper draws and where; none for an object drawing none.
   fn get_look(&self) -> Option<SceneHelperLook>;
 
-  /// What its helper draws beside the model it stands as, which stands in for its icon; none by default, the model
-  /// being all such an object shows.
+  /// What its helper draws beside the model it is drawn as, in place of its icon; none by default, the model being all
+  /// it shows.
   fn get_modelled_look(&self) -> Option<SceneHelperLook> {
     None
   }
 }
 
-/// A spawn point by what it places: an entity's volume where a shape is attached to it, else an icon by what its
-/// section or type says without the game's configs (the actor's start, a multiplayer respawn point, any other entity),
-/// and an environment modifier by the sphere it reaches, as the level viewer draws `level.env_mod`'s. An entity drawn
-/// as its model keeps its volume and loses its icon.
+/// A spawn point by what it places: an entity by its attached shape's volume, else an icon chosen by section or type
+/// without the game's configs (actor start, multiplayer respawn point, other entity); an environment modifier by the
+/// sphere it reaches, as the level viewer draws `level.env_mod`'s. An entity drawn as its model keeps its volume and
+/// loses its icon.
 impl SceneHelpedObject for EditableSpawnPointObject {
   fn get_look(&self) -> Option<SceneHelperLook> {
     let transform: &EditableObjectTransform = &self.object.transform;
@@ -57,8 +57,8 @@ impl SceneHelpedObject for EditableSpawnPointObject {
     }
   }
 
-  /// An entity's volume where a shape is attached to it. The build gives an entity its spawn point's place and turn
-  /// and the attached shape's elements with its scale applied, so the volume stands as the game's object holds it.
+  /// An entity's attached shape volume, placed as the build gives it to the game object: the spawn point's position
+  /// and rotation, and the shape's elements with its scale applied.
   fn get_modelled_look(&self) -> Option<SceneHelperLook> {
     self.attached.as_ref().and_then(|attached| {
       let elements: Vec<EditableShapeElement> = attached.get_scaled_elements();
@@ -95,8 +95,8 @@ impl SceneHelpedObject for EditableSoundEnvironmentObject {
   }
 }
 
-/// A fog volume by the unit box its transform alone places, which is what the build exports and the renderer fills,
-/// whatever its shape's own elements.
+/// A fog volume by the unit box its transform places, which the build exports and the renderer fills whatever its
+/// shape's elements.
 impl SceneHelpedObject for EditableFogVolumeObject {
   fn get_look(&self) -> Option<SceneHelperLook> {
     Some(SceneHelperLook::of_unit_box(&self.object.transform))
@@ -113,7 +113,7 @@ impl SceneHelpedObject for EditableLightObject {
   }
 }
 
-/// A glow by the sphere of the radius it is drawn and culled at, the light's icon for one of no radius.
+/// A glow by the sphere of its draw and cull radius, or the light icon for one with no radius.
 impl SceneHelpedObject for EditableGlowObject {
   fn get_look(&self) -> Option<SceneHelperLook> {
     SceneHelperLook::of_sphere(&self.object.transform.position, self.radius).or_else(|| {
@@ -125,9 +125,8 @@ impl SceneHelpedObject for EditableGlowObject {
   }
 }
 
-/// A sound source by its icon where the sound stands, its own position, which its transform does not move. Its
-/// distances are not drawn: the scene saves them as they were when last read from the sound's file, a decompiled
-/// scene the defaults, and the file is not read here.
+/// A sound source by its icon at its own position, which its transform does not move. Its distances are not drawn: the
+/// scene saves them as last read from the sound file (a decompiled scene the defaults), which is not read here.
 impl SceneHelpedObject for EditableSoundSourceObject {
   fn get_look(&self) -> Option<SceneHelperLook> {
     Some(SceneHelperLook::icon_at(

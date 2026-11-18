@@ -97,8 +97,8 @@ fn steps_a_late_job_off_the_large_draw_it_met() {
   let mut waited: u32 = 0;
   let mut drawn: Vec<u32> = Vec::new();
 
-  // A large draw that must land every fourth frame, and one that may wait two frames and never fits the budget: the
-  // second is granted as it falls due unless the first lands then, a frame later otherwise.
+  // A must-draw every fourth frame, and an over-budget job that may wait two frames: the second lands when due,
+  // or a frame later where the first lands then.
   for frame in 0..24 {
     scheduler.begin(0.5, &[], &[]);
 

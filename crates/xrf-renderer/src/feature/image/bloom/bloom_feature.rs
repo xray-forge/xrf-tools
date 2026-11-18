@@ -89,8 +89,8 @@ impl BloomFeature {
       });
   }
 
-  /// Builds the engine's bloom under the enhanced one only where the frame's distortion may blur it (`is_blurring`),
-  /// which blurs towards the engine's bloom as `combine_2`'s does; once every unit knows what it draws.
+  /// Keeps the engine's bloom under the enhanced one only where the distortion may blur towards it, as `combine_2`'s
+  /// does; called once every unit knows what it draws.
   pub(crate) fn keep_for_distortion(&mut self, is_blurring: bool) {
     if !self.is_engine_shown && !is_blurring {
       self.engine = None;

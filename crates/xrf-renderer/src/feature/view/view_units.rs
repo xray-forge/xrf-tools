@@ -1,5 +1,5 @@
-/// Lists a group of a view's units from one list, so the count and the units never disagree: how many it holds, and
-/// each as what every unit answers alike.
+/// Declares a group of a view's units, their count and each as a `ViewFeature`, from one list so the two never
+/// disagree.
 macro_rules! view_units {
   ($owner:ty { $($unit:ident),+ $(,)? }) => {
     impl $owner {

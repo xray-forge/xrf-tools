@@ -5,9 +5,9 @@ use image::RgbaImage;
 use xrf_app_core::TauriResult;
 use xrf_app_render::CaptureFile;
 
-/// A burst's pictures encoded as PNG and written on the worker pool, a few at once, so the burst's frames keep coming
-/// while they are: a fullscreen frame's PNG takes about 200 ms to encode, its marks' 90 ms, longer than the renderer
-/// takes to draw the next. A write that failed is answered by a later call.
+/// Writes a burst's pictures as PNG on the worker pool, a few at once, so frames keep coming meanwhile: a fullscreen
+/// frame's PNG takes about 200 ms to encode and its marks' 90 ms, longer than the next frame takes to draw. A failed
+/// write is reported by a later call.
 pub(crate) struct BurstFiles {
   sender: Sender<TauriResult>,
   written: Receiver<TauriResult>,
@@ -15,7 +15,7 @@ pub(crate) struct BurstFiles {
 }
 
 impl BurstFiles {
-  /// Pictures encoding at once before the next waits: four frames and their marks, about 230 MB at 3730×1930.
+  /// Pictures encoding at once: four frames and their marks, about 230 MB at 3730×1930.
   const MOST_PENDING: usize = 8;
 
   pub(crate) fn new() -> Self {
@@ -28,11 +28,11 @@ impl BurstFiles {
     }
   }
 
-  /// Writes `picture` to `path` on the pool, its errors naming it `name`, waiting while the most are under way.
+  /// Write `picture` to `path` on the pool, named `name` in errors; waits while [`Self::MOST_PENDING`] are under way.
   ///
   /// # Errors
   ///
-  /// Returns an error when a picture written before could not be.
+  /// Returns an error when an earlier picture could not be written.
   pub(crate) fn write(&mut self, picture: RgbaImage, path: PathBuf, name: &'static str) -> TauriResult {
     while self.pending >= Self::MOST_PENDING {
       self.wait_one()?;
@@ -48,11 +48,11 @@ impl BurstFiles {
     Ok(())
   }
 
-  /// Waits for every picture under way.
+  /// Wait for every picture under way.
   ///
   /// # Errors
   ///
-  /// Returns the first error of a picture that could not be written.
+  /// Returns the first picture's write error.
   pub(crate) fn finish(mut self) -> TauriResult {
     let mut result: TauriResult = Ok(());
 

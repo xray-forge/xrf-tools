@@ -5,16 +5,16 @@ use crate::frame::targets::frame_texture::FrameTexture;
 use crate::frame::targets::history::History;
 use crate::frame::targets::view_targets::ViewTargets;
 
-/// The enhanced water's reflection: two histories at the drawn size, one written each frame over the other it reads;
-/// where the scene pass takes the rays the screen does not answer, the list they are left in, an eighth of the drawn
-/// pixels while they trace on their turns, or a record at each pixel while every pixel traces every frame, either a
-/// stub otherwise; and the pyramid of the frame's nearest depth its rays walk over.
+/// The enhanced water's reflection, its histories, what it leaves the scene pass, and its depth pyramid.
 pub(crate) struct WaterReflection {
+  /// Two histories at the drawn size, one written each frame over the other it reads.
   pub histories: History<FrameTexture>,
+  /// The rays left to the scene pass while they trace on their turns; a stub otherwise (`fit_trace`).
   pub requests: TraceRequestList,
+  /// The records left to the scene pass while every pixel traces; a stub otherwise (`fit_trace`).
   pub rays: WaterRays,
-  /// The frame's depth as the water finds it, the grass in it, reduced to its nearest: its own, as the surfaces' is
-  /// built before the grass draws, which the water reflects.
+  /// The frame's nearest depth as the water finds it, with the grass the water reflects; its own, as the surfaces'
+  /// pyramid is built before the grass draws.
   pub pyramid: DepthPyramid,
   /// The size it was made at, the targets' drawn size.
   pub size: (u32, u32),
@@ -51,8 +51,8 @@ impl WaterReflection {
     }
   }
 
-  /// Fits what it leaves the scene pass to how it traces: none untraced, a list an eighth of the drawn pixels large
-  /// while the screen answers first, a record at every drawn pixel while every pixel traces every frame.
+  /// Fits what it leaves the scene pass to how it traces: nothing untraced, a list of an eighth of the drawn pixels
+  /// while the screen answers first, a record a drawn pixel while every pixel traces.
   pub(crate) fn fit_trace(&mut self, device: &wgpu::Device, is_traced: bool, is_fully_traced: bool) {
     let pixels: u32 = self.size.0 * self.size.1;
 

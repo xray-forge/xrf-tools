@@ -8,8 +8,8 @@ use crate::host::level::ai_map::render_level_ai_map::RenderLevelAiMap;
 /// A level's AI map as its debug views read it: a grid of cells, each naming the run of nodes standing on it, and each
 /// node's height, covers and missing links.
 pub(crate) struct AiMapLevel {
-  /// One word a cell, x in rows of the cells along z: the first node standing on it shifted up by eight, the nodes
-  /// standing on it in the low eight bits, none there where zero. The map keeps a cell's nodes side by side.
+  /// One word a cell, x in rows of the cells along z: its first node shifted up by eight and its node count in the low
+  /// eight bits, zero for none. A cell's nodes are contiguous.
   pub cells: wgpu::Buffer,
   /// Two words a node: its packed height with its missing links' bits above it, and its high covers with its low ones
   /// above them.
@@ -28,8 +28,7 @@ impl AiMapLevel {
   /// Nodes a cell's word can name the first of.
   const MAX_NODES: usize = 1 << 24;
 
-  /// The map's buffers, none for a map whose grid or nodes are past what the words hold or a storage binding of the
-  /// device holds.
+  /// The map's buffers; none where its grid or nodes exceed what the words or a storage binding hold.
   pub(crate) fn new(device: &wgpu::Device, map: &RenderLevelAiMap) -> Option<Self> {
     let cell_count: u64 = u64::from(map.row_length) * u64::from(map.column_length);
     let limits: wgpu::Limits = device.limits();

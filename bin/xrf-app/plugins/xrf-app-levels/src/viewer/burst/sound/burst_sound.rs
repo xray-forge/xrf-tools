@@ -12,46 +12,45 @@ use xrf_renderer::RenderBurst;
 
 use crate::viewer::burst::{BurstSoundChunk, BurstSoundFrame, BurstSoundOutcome, BurstSoundTee};
 
-/// A burst's sound, rendered as the burst draws on a thread of its own: the scene's frames the burst drew, played in
-/// order through an offline session of their own on the burst's clock, the scene's walls and rooms simulated in step,
-/// so a burst from one time plays alike however fast it draws. Its sample `n` plays at the burst's start plus
-/// `n / RATE` seconds; what plays from the first frame read back to the last one's end is kept, and handed to the
-/// burst's video as it is where one is made.
+/// A burst's sound, rendered on its own thread as the burst draws: the burst's scene frames play in order through an
+/// offline session on the burst's clock, acoustics stepped with them, so a burst sounds the same however fast it draws.
+/// Sample `n` plays `n / RATE` seconds after the burst's start; what plays from the first frame read back to the last
+/// one's end is kept and streamed to the video when one is made.
 ///
-/// The scene fades in over its first quarter of a second, and a sound starting with the burst's first frame lands up to
-/// a tick late, which a lead-in covers. Dropped before it is written, it stops taking frames and its thread ends.
+/// The scene fades in over its first quarter second, and a sound starting on the first frame lands up to a tick late;
+/// a lead-in covers both. Dropping it before writing disarms the tee and ends its thread.
 pub(crate) struct BurstSound {
   tee: BurstSoundTee,
   thread: Option<JoinHandle<TauriResult<Vec<f32>>>>,
   offsets: Vec<u64>,
 }
 
-/// Where the burst's sound stands on its own thread.
+/// The burst sound's state on its own thread.
 struct BurstSoundRender {
   timing: BurstSoundTiming,
   acoustics: AudioAcoustics,
   spatialization: AudioSpatialization,
-  /// The scene's time of the burst's first frame, which the sound starts at: the level's sound runs on a clock of its
-  /// own, begun as the level opened rather than as its picture did.
+  /// The scene time of the burst's first frame, where the sound starts; the level's sound clock began when the level
+  /// opened, not with its picture.
   started: Duration,
   played: Option<PlayedScene>,
   /// Frames the session has rendered.
   rendered: u64,
-  /// What plays from the first frame read back on, interleaved stereo.
+  /// Interleaved stereo from the first frame read back on.
   kept: Vec<f32>,
-  /// Where each stretch kept goes as it is, for the burst's video; gone with the video.
+  /// Receives each kept stretch for the burst's video; dropped once the video stops.
   video: Option<Sender<BurstSoundChunk>>,
-  /// Where each render lands before what is kept of it is.
+  /// Each render's buffer before its kept part is copied out.
   scratch: Vec<f32>,
 }
 
-/// The session the burst's scene plays in, and the scene's inbox.
+/// The offline session the burst's scene plays in, and the scene's inbox.
 struct PlayedScene {
   session: OfflineSession,
   inbox: AudioSceneInbox,
 }
 
-/// The burst's frames on the sound's clock: a step apart from the first, and which of them are kept.
+/// The burst's frames on the sound's clock: `step` seconds apart, the first `lead_in` not kept.
 #[derive(Clone, Copy)]
 struct BurstSoundTiming {
   step: f64,
@@ -60,14 +59,14 @@ struct BurstSoundTiming {
 }
 
 impl BurstSound {
-  /// Frames a second of `sound.wav`, which takes its two channels as 32-bit floats.
+  /// Sample rate of `sound.wav`, stereo 32-bit float.
   pub(crate) const RATE: u32 = 48_000;
 
-  /// Frames rendered at once, a tenth of a second.
+  /// Frames rendered per call, a tenth of a second.
   const CHUNK_FRAMES: usize = Self::RATE as usize / 10;
 
-  /// Starts taking the frames `burst` draws through `tee`, played through `server`'s acoustics for its ears, each
-  /// stretch kept sent on to `video` where there is one.
+  /// Start taking `burst`'s frames through `tee`, played with `server`'s acoustics and spatialization, streaming kept
+  /// stretches to `video` when given.
   ///
   /// # Errors
   ///
@@ -112,12 +111,12 @@ impl BurstSound {
     })
   }
 
-  /// Stops taking frames, renders the sound to the last frame's end and writes it into `folder` as `sound.wav`,
-  /// answering where each frame read back starts in it.
+  /// Stop taking frames, render to the last frame's end and write `sound.wav` into `folder`, with where each frame
+  /// starts in it.
   ///
   /// # Errors
   ///
-  /// Returns an error when no frame of the burst's sound came, or the file cannot be written.
+  /// Returns an error when no sound frame came, or the file cannot be written.
   pub(crate) fn write(mut self, folder: &Path) -> TauriResult<BurstSoundOutcome> {
     self.tee.disarm();
 
@@ -159,7 +158,7 @@ impl BurstSound {
     bytes.extend_from_slice(&block_align.to_le_bytes());
     bytes.extend_from_slice(&32u16.to_le_bytes());
     bytes.extend_from_slice(&0u16.to_le_bytes());
-    // A float format names how many frames it holds.
+    // A float format needs a `fact` chunk with its frame count.
     bytes.extend_from_slice(b"fact");
     bytes.extend_from_slice(&4u32.to_le_bytes());
     bytes.extend_from_slice(&((samples.len() / 2) as u32).to_le_bytes());
@@ -181,8 +180,7 @@ impl Drop for BurstSound {
 }
 
 impl BurstSoundRender {
-  /// Plays each frame as it comes, until the tee stops sending, then renders on to the last frame's end and answers
-  /// what was kept.
+  /// Play each frame until the tee closes, then render to the last frame's end and answer what was kept.
   fn play(mut self, frames: &Receiver<BurstSoundFrame>) -> TauriResult<Vec<f32>> {
     while let Ok(frame) = frames.recv() {
       self.take(frame);
@@ -199,9 +197,8 @@ impl BurstSoundRender {
     Ok(self.kept)
   }
 
-  /// Sends `sound`'s frame to the scene, the session opened on the first, the burst's first, which the sound starts
-  /// at and the scene's clock is anchored by; each after it goes as far ahead of its time as the session asks, so every
-  /// sound it starts lands on its frame.
+  /// Send `sound`'s frame to the scene. The first opens the session and anchors the clock; each later one is sent
+  /// the session's lead ahead of its time, so the sounds it starts land on its frame.
   fn take(&mut self, sound: BurstSoundFrame) {
     let BurstSoundFrame {
       frame,
@@ -234,12 +231,12 @@ impl BurstSoundRender {
     self.send(frame);
   }
 
-  /// The sound's frame the scene's `time` plays at.
+  /// The sound frame scene `time` plays at.
   fn get_position(&self, time: Duration) -> u64 {
     (time.saturating_sub(self.started).as_secs_f64() * f64::from(BurstSound::RATE)).round() as u64
   }
 
-  /// Hands `frame` to the scene; one its inbox has no room for is dropped, the next carrying everything again.
+  /// Hand `frame` to the scene; dropped when the inbox is full, as the next carries everything again.
   fn send(&mut self, frame: Box<AudioSceneFrame>) {
     if let Some(played) = &mut self.played {
       while played.inbox.take_spent().is_some() {}
@@ -248,7 +245,7 @@ impl BurstSoundRender {
     }
   }
 
-  /// Renders the session on to its frame `end`, keeping what plays from the first frame read back on.
+  /// Render the session up to frame `end`, keeping what plays from the first frame read back on.
   fn render_to(&mut self, end: u64) {
     let Some(played) = &mut self.played else {
       return;
@@ -273,7 +270,7 @@ impl BurstSoundRender {
           })
           .is_err()
       {
-        // The video stopped, and says why itself.
+        // The video stopped and reports why itself.
         self.video = None;
       }
 
@@ -284,7 +281,7 @@ impl BurstSoundRender {
 }
 
 impl BurstSoundTiming {
-  /// The sound's frame the burst's frame `index` is drawn at, the lead-in's counted.
+  /// The sound frame burst frame `index` is drawn at, counting lead-in frames.
   fn get_position(&self, index: u32) -> u64 {
     (f64::from(index) * self.step * f64::from(BurstSound::RATE)).round() as u64
   }

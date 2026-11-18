@@ -41,7 +41,7 @@ fn what_a_render_read_recorded_reloads_that_package_alone() {
     (LevelWeatherPart::NAME, LevelPart::Weather),
     (LevelObjectMotionsPart::NAME, LevelPart::Motions),
     (LevelDetailsPart::NAME, LevelPart::Grass),
-    // The level objects, which the helpers draw and the level's sounds are read from.
+    // Level objects feed both the helpers and the sound emitters.
     (LevelGraphPart::NAME, LevelPart::Helpers),
     (LevelPlacementsPart::NAME, LevelPart::Helpers),
   ] {

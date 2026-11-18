@@ -1,4 +1,4 @@
-//! A burst's frames and its sound written as one video beside them.
+//! A burst's frames and sound written as one video beside them.
 
 mod burst_video;
 mod burst_video_outcome;

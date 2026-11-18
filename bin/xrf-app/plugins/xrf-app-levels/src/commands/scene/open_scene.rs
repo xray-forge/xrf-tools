@@ -13,8 +13,8 @@ use crate::scene::{
   OpenedScene, SceneGameData, SceneOpenRequest, SelectedScene, SelectedSceneDescription, SelectedScenes,
 };
 
-/// Open a Level Editor scene from its `.level`, listing its tools' part files and what the editor would skip or refuse
-/// of them, without reading their objects, and keeping the game data it is drawn with.
+/// Open a Level Editor scene from its `.level`, listing its tools' part files and what the editor would skip or refuse,
+/// without reading their objects.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "open_scene")]
 pub(crate) async fn levels_open_scene(
@@ -59,6 +59,6 @@ pub(crate) async fn levels_open_scene(
 
   LevelReport::opened_scene(&opened, started);
 
-  // The scene itself reads nothing to describe; the page asks for each part it shows apart from it.
+  // The page asks for each part's description separately.
   Ok(opened.map(SelectedScene::describe))
 }

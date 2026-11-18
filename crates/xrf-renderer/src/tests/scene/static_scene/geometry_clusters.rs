@@ -2,8 +2,8 @@ use xrf_visual::{SectorGeometry, VisualClusters, VisualSection};
 
 use crate::scene::static_scene::geometry::geometry_clusters::GeometryClusters;
 
-// A range a damaged mesh ends in one or two indices past its last whole triangle is cut into clusters of its whole
-// triangles alone: no cluster of none, which the rows' cull and draw would count back from nought.
+// A damaged mesh may end in one or two stray indices; an empty cluster would make the rows' cull and draw count back
+// from zero.
 #[test]
 fn cuts_a_range_into_its_whole_triangles_alone() {
   let positions: [f32; 9] = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0];

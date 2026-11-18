@@ -53,8 +53,7 @@ impl RenderThread {
         };
 
         if let Some(reply) = viewport.take_capture() {
-          // A swapchain the platform allows no copy out of is refused here, rather than failing the frame's every
-          // window as the graph refuses the copy.
+          // Refused here for a swapchain the platform cannot copy from, rather than failing every window's frame.
           let capture: XrfResult<FrameCapture> = if window.is_copyable {
             FrameCapture::new(device, window.target.format, *shown, viewport.get_frame())
           } else {
@@ -184,8 +183,8 @@ impl RenderThread {
     shots
   }
 
-  /// The recordings' frames this frame copies out, each where its viewport is readied this frame (`frames`) and a
-  /// sixtieth on from its last at `now`. No map or cubemap is captured meanwhile: one long job runs at a time.
+  /// The recording frames to copy out: for each viewport prepared this frame (`frames`) at least a sixtieth of a second
+  /// after its last at `now`.
   pub(super) fn take_record_shots(
     &mut self,
     device: &wgpu::Device,
@@ -367,9 +366,8 @@ impl RenderThread {
       });
   }
 
-  /// Declares a recording's frame: its viewport's frame (`output`) presented into a texture of its own at the
-  /// recording's size, as a screenshot is, a resized viewport scaled into it, then copied into the recording's buffer.
-  /// Its two passes are the recording's span in the frame's timings.
+  /// Declares a recording frame: the viewport's frame presented at the recording's size, as a screenshot is, then
+  /// copied into the recording's buffer. Its two passes form the recording's span in the frame timings.
   pub(super) fn declare_record_shot<'a>(
     GraphDeclaration { graph, runtime, .. }: GraphDeclaration<'_, 'a>,
     gpu: &'a GpuState,
@@ -410,9 +408,8 @@ impl RenderThread {
       });
   }
 
-  /// Declares `frame`'s view's finished frame presented into a texture of its own, at the size and in the format given,
-  /// without overlays or the selection's outline, and with its helpers' marks and fading and their wires and icons over
-  /// it where it gives them; answers the texture, for its copy.
+  /// Declares `frame`'s finished frame presented into its own texture, without overlays or selection outline but with
+  /// its helpers where given; returns the texture to copy.
   fn declare_finished_frame<'a>(
     graph: &mut FrameGraph<'a>,
     runtime: &mut GraphRuntime,
@@ -481,8 +478,7 @@ impl RenderThread {
   }
 }
 
-/// A view's finished frame a capture copies out: the GPU's passes, the view, its camera and the frame it left, the
-/// pass's name, the size and format it is drawn at, and its helpers' draws where they are drawn over it.
+/// What declaring a capture's finished frame needs: the view and its output, the pass name, size, format and helpers.
 struct FinishedFrame<'a, 'v> {
   gpu: &'a GpuState,
   view: &'v SceneView,

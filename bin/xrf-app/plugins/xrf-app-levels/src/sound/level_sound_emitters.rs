@@ -17,23 +17,22 @@ use crate::parts::{LevelPlacements, LevelPlacementsPart, LevelSectionsPart, Leve
 use crate::report::LevelReport;
 use crate::sound::LevelSoundFiles;
 
-/// What a level plays at points of its own whatever its weather: its static sounds (`level.snd_static`) and its zones'
-/// sounds (`CCustomZone`'s `idle_sound`, `CZoneCampfire`'s `disabled_sound`), each named by its level object's place in
-/// the level's listing, which its helper carries.
+/// A level's point sounds, independent of weather: static sounds (`level.snd_static`) and zone sounds (`CCustomZone`'s
+/// `idle_sound`, `CZoneCampfire`'s `disabled_sound`), each named by its level object's place in the listing.
 pub(crate) struct LevelSoundEmitters {
   pub statics: Vec<WorldStaticSound>,
   pub zones: Vec<WorldZoneSound>,
 }
 
 impl LevelSoundEmitters {
-  /// The sound emitters' helpers' colour, sRGB from 0 to 1: amber, apart from every kind's.
+  /// Amber sRGB, distinct from every kind's colour.
   const HELPER_COLOR: [f32; 3] = [1.0, 0.7, 0.0];
 
   /// Metres from the camera past which an emitter's spheres fade out.
   const HELPER_DRAW_DISTANCE: f32 = 300.0;
 
-  /// Reads the level's sound emitters through `files`, each named by its place among `objects`, none where the level's
-  /// objects could not be listed; a level whose spawn or configs cannot be read sounds no zone.
+  /// Read the level's sound emitters, each named by its place among `objects` when listed. An unreadable spawn or
+  /// configs leaves no zone sounds.
   pub(crate) fn read(
     level: &SessionSnapshot<SelectedLevel>,
     search: &XraySearch,
@@ -74,8 +73,8 @@ impl LevelSoundEmitters {
     Self { statics, zones }
   }
 
-  /// Each emitter's spheres out to its sound's minimum and maximum distance where it stands, as the helpers the sound
-  /// emitters' kind switches, named as its level object is; none for a sound whose file is missing.
+  /// Each emitter's helper: spheres at its sound's minimum and maximum distance, skipped for an unnamed emitter or a
+  /// missing sound file.
   pub(crate) fn to_helpers(&self) -> Vec<RenderHelperObject> {
     let statics = self
       .statics
@@ -98,7 +97,7 @@ impl LevelSoundEmitters {
         kind: LEVEL_SOUND_EMITTERS_HELPER_KIND,
         color: Self::HELPER_COLOR,
         draw_distance: Self::HELPER_DRAW_DISTANCE,
-        // In renderer space, as every helper stands.
+        // Helpers stand in renderer space.
         transform: Mat4::from_translation(Vec3::new(x, y, -z)).to_cols_array(),
         shapes: [info.min_distance, info.max_distance]
           .into_iter()
@@ -129,8 +128,8 @@ impl LevelSoundEmitters {
     }
   }
 
-  /// `CCustomZone::Load`: every zone a new game keeps whose section names an `idle_sound`, and every campfire, in the
-  /// spawn's order.
+  /// `CCustomZone::Load`: each zone a new game keeps whose section names an `idle_sound`, and each campfire, in spawn
+  /// order.
   fn read_zones(
     spawn: &LevelSpawn,
     sections: &Ltx,

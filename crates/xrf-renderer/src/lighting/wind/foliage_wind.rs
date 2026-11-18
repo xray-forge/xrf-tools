@@ -9,9 +9,10 @@ use crate::lighting::wind::render_wind::RenderWind;
 use crate::scene::level::level_time::LevelTime;
 use crate::scene::level::view::view_time::ViewTime;
 
-/// How far the enhanced foliage's flow fields have drifted, summed frame by frame at each frame's wind, so a change of
-/// wind changes how fast they move from then on, never where they stand; summed in `f64`, so a frame's few milliseconds
-/// still add to a day's sum.
+/// How far the enhanced foliage's flow fields have drifted.
+///
+/// Summed in `f64` at each frame's wind, so a change of wind changes their speed, never where they stand, and a frame
+/// still adds to a day's sum.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub(crate) struct FoliageWind {
   /// Drifted across the engine's ground in `xy`, the trunks' clock in `z`, seconds in `w`.
@@ -27,8 +28,8 @@ impl FoliageWind {
   /// The least velocity the fields drift at, so a near calm does not crawl in slow motion.
   const LEAST_VELOCITY: f32 = 200.0;
 
-  /// Moves the fields on by the seconds since the view's last frame, never back, at this frame's `wind`, as far as `motion` lets them;
-  /// `wetness`, from nothing to one, bends the leaves' normals harder.
+  /// Moves the fields on by the view's step at this frame's `wind`, as far as `motion` lets them; `wetness`, from
+  /// nothing to one, bends the leaves' normals harder.
   pub(crate) fn advance(
     &mut self,
     time: ViewTime,
@@ -91,8 +92,8 @@ impl FoliageWind {
     }
   }
 
-  /// The drift as `shaders/common/foliage_wind.wgsl` reads it: the trunks' clock taken within the turn their swing
-  /// repeats over at `trunk_speed`, `cos(phase) * sin(phase * 5)` with the phase the clock times that speed.
+  /// The drift as `shaders/common/foliage_wind.wgsl` reads it, the trunks' clock wrapped within the period of their
+  /// `cos(phase) * sin(phase * 5)` swing at `trunk_speed`.
   fn get_anim(anim: DVec4, trunk_speed: f32) -> Vec4 {
     let swing: f64 = std::f64::consts::TAU / f64::from(trunk_speed);
 

@@ -4,8 +4,8 @@ use xrf_error::XrfResult;
 use xrf_material::{XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw};
 use xrf_visual::VisualDescription;
 
-/// How a scene draws an object flagged as an occluder: as the Level Editor does (`CEditableObject::Render`), every face
-/// one translucent fill of the occluder's colour in place of its surfaces, which the game never draws.
+/// How a scene draws an occluder object, as the Level Editor does (`CEditableObject::Render`): every face one
+/// translucent fill of the occluder's colour in place of its surfaces, which the game never draws.
 // todo: Draw an occluder's edges over its fill in the editor's edge colour (`0x40B64646` for sight, `0xFF000000` for
 // sound); the renderer has no wire draw for one model alone.
 pub(crate) struct SceneOccluderLook;
@@ -26,8 +26,8 @@ impl SceneOccluderLook {
   /// Texels along a fill texture's edge: one block, the least a block-compressed texture holds.
   const FILL_SIZE: u32 = DdsEncoding::BLOCK_SIZE;
 
-  /// Dresses every submesh `description` declares in an `occluder`'s fill, the texture the renderer binds included,
-  /// and answers how each is drawn: blended over what stands behind it, every texel kept.
+  /// Dresses every submesh of `description` in the `occluder`'s fill texture and returns each one's surface: blended,
+  /// every texel kept.
   pub(crate) fn dress(occluder: EditableOccluder, description: &mut VisualDescription) -> Vec<XraySurfaceDescriptor> {
     let texture: String = String::from(Self::get_texture(occluder));
     let fill: XraySurfaceDescriptor = XraySurfaceDescriptor {
@@ -43,12 +43,12 @@ impl SceneOccluderLook {
     vec![fill; description.submeshes.len()]
   }
 
-  /// The bytes of the fill texture `reference` names, a flat block of its occluder's colour; none for a reference that
-  /// names no fill, which the game data answers.
+  /// The DDS bytes of the fill texture `reference`, one flat block of its occluder's colour; none for any other
+  /// reference, which the game data answers.
   ///
   /// # Errors
   ///
-  /// Returns an error where the fill does not encode.
+  /// Returns an error when the fill does not encode.
   pub(crate) fn read_texture(reference: &str) -> XrfResult<Option<Vec<u8>>> {
     let fill: [u8; 4] = match reference {
       Self::HOM_TEXTURE => Self::HOM_FILL,

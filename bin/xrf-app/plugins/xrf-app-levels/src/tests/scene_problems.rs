@@ -1,6 +1,3 @@
-//! What the Level Editor would skip or refuse of a scene's parts, each kept as a problem on its tool while the scene
-//! opens and the rest of it reads; a part saved for another scene refuses the open.
-
 use std::sync::Arc;
 
 use xrf_app_core::assets::AssetMountState;
@@ -23,7 +20,6 @@ use crate::tests::fixtures::{
   SCENE_GUID, new_scenes, open_scene, read_scene, scene_custom_object, scene_part, write_scene, write_scene_part,
 };
 
-/// A text part of the test scenes as `edit` leaves its file.
 fn edited_part(part: Vec<u8>, edit: impl FnOnce(&mut IniFile)) -> Vec<u8> {
   let mut part: EditableTextPart = EditableTextPart::read_from_bytes(&part).expect("the part reads");
 
@@ -83,8 +79,8 @@ fn open(assets: &AssetMountState, source: &SceneSource) -> Arc<SessionSnapshot<S
   open_scene(&scenes, assets, source)
 }
 
-/// A part saved for another scene is a stale copy the editor skips; opening the scene without that tool's objects would
-/// show a different scene, so the open refuses, as the build does.
+// The editor skips such a stale copy, but opening without that tool's objects would show a different scene, so the
+// open refuses, as the build does.
 #[test]
 fn refuses_a_scene_holding_a_part_saved_for_another_scene() {
   let source: SceneSource = write_scene("scene_problems/stale");

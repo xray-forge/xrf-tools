@@ -105,8 +105,6 @@ fn the_cull_counts_classes_as_rust_does() {
   );
 }
 
-/// The enhanced water turns, tiles and scales its map reads as Rust works out where each has scrolled to, so each
-/// read's offset lands where the shader's own coordinates would have put it.
 #[test]
 fn the_enhanced_water_reads_its_maps_as_rust_scrolls_them() {
   let library: ShaderLibrary = ShaderLibrary::default();
@@ -138,9 +136,7 @@ fn the_enhanced_water_reads_its_maps_as_rust_scrolls_them() {
   );
 }
 
-/// The water's and the rain's clocks wrap where every reader of them repeats a whole number of times, so a wrap moves
-/// nothing they draw: the engine water's wave and its normal layers' circle; the wet surfaces' splashes at either
-/// engine's pace, their flow at each slope's step and either engine's pace, and their rain rings' layers.
+// Every reader must repeat a whole number of times per wrap, or the wrap would move what it draws.
 #[test]
 fn the_water_and_rain_clocks_wrap_where_their_readers_repeat() {
   let library: ShaderLibrary = ShaderLibrary::default();
@@ -173,8 +169,7 @@ fn the_water_and_rain_clocks_wrap_where_their_readers_repeat() {
   }
 }
 
-/// The puddles' gusts drift over a repeat each of the gust noise's two readings fits a whole number of times in, the
-/// second reading at half the drift.
+// The second noise reading drifts at half the rate.
 #[test]
 fn the_puddles_gusts_repeat_where_both_readings_do() {
   let library: ShaderLibrary = ShaderLibrary::default();
@@ -259,8 +254,7 @@ fn the_calibration_draws_its_spheres_as_rust_counts_them() {
   );
 }
 
-/// The rain rings' draw takes as many vertices a near drop as `vs_ring` lays its two falls' copies out over, so every
-/// near drop rings.
+// `vs_ring` lays out two falls' copies per near drop.
 #[test]
 fn the_rain_rings_draw_every_near_drops_vertices() {
   let library: ShaderLibrary = ShaderLibrary::default();
@@ -317,7 +311,6 @@ fn the_present_numbers_debug_views_as_rust_does() {
   assert!(RenderDebugView::FsrFrameShare.get_index() > RenderDebugView::FsrMasks.get_index());
 }
 
-/// The slots' light view tells the value it shows as Rust numbers it.
 #[test]
 fn the_slot_light_numbers_its_values_as_rust_does() {
   let library: ShaderLibrary = ShaderLibrary::default();
@@ -331,7 +324,6 @@ fn the_slot_light_numbers_its_values_as_rust_does() {
   }
 }
 
-/// The AI map's view tells the field it shows as Rust numbers it.
 #[test]
 fn the_ai_map_view_numbers_its_fields_as_rust_does() {
   let library: ShaderLibrary = ShaderLibrary::default();
@@ -582,8 +574,6 @@ fn the_static_draws_read_a_vertex_s_words_where_rust_packs_them() {
   assert_eq!(get("VERTEX_EXTRA"), StaticLayout::EXTRA);
 }
 
-/// The scene trace reads a record's flags as `StaticTraceRecord` sets them, an instance's as `StaticTraceInstance` does,
-/// and a cut-out triangle's density word as `StaticTraceDensity` packs it.
 #[test]
 fn the_scene_trace_reads_its_records_instances_and_densities_as_rust_writes_them() {
   let library: ShaderLibrary = ShaderLibrary::default();
@@ -645,8 +635,7 @@ fn a_static_surface_is_as_large_as_its_shaders_read() {
   );
 }
 
-/// A trace request takes ten words in the scene pass as in Rust: no member holds it to a vector's alignment, so a list
-/// as large as the frame stays a sixth smaller than one of twelve.
+// No member forces vector alignment, so a frame-sized list stays a sixth smaller than at twelve words.
 #[test]
 fn a_trace_request_takes_ten_words() {
   let library: ShaderLibrary = ShaderLibrary::default();
@@ -674,7 +663,6 @@ fn get_struct_size(library: &ShaderLibrary, name: &str, type_name: &str) -> u32 
   layouter[handle].size
 }
 
-/// The reflected rays, the surfaces' and the water's, climb a nearest depth's pyramid no higher than its last level.
 #[test]
 fn the_rays_climb_the_pyramid_as_high_as_rust_makes_it() {
   let library: ShaderLibrary = ShaderLibrary::default();
@@ -685,7 +673,6 @@ fn the_rays_climb_the_pyramid_as_high_as_rust_makes_it() {
   );
 }
 
-/// The water's every-pixel ray records take the words Rust makes room for at each pixel.
 #[test]
 fn the_water_ray_records_fill_the_room_rust_makes() {
   let library: ShaderLibrary = ShaderLibrary::default();

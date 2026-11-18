@@ -10,15 +10,15 @@ use xrf_utils::StagedFile;
 use crate::viewer::ViewerImage;
 use crate::viewer::export::cube::{CubeExportFormat, CubeExportRequest};
 
-/// A cubemap's capture written again: its faces resized, as one cube DDS, six uncompressed TGAs or six PNGs.
+/// Re-exports a cubemap capture with resized faces as one cube DDS, six uncompressed TGAs or six PNGs.
 pub(crate) struct CubeExporter;
 
 impl CubeExporter {
-  /// Each face's name as six PNGs name it, in the engine's order `+x -x +y -y +z -z`.
+  /// PNG face suffixes, in the engine's order `+x -x +y -y +z -z`.
   pub(crate) const FACE_NAMES: [&str; 6] = ["px", "nx", "py", "ny", "pz", "nz"];
 
-  /// The files the export `request` asks for: one DDS at its target, or a file a face in its target folder, the TGAs
-  /// `1.tga` to `6.tga` as `CDemoRecord` names its faces and the PNGs the capture's name and the face's.
+  /// The files `request` writes: one DDS at its target, or one file per face in its target folder, `1.tga` to `6.tga`
+  /// as `CDemoRecord` names them, or `<capture>_<face>.png`.
   pub(crate) fn list_paths(request: &CubeExportRequest) -> Vec<PathBuf> {
     let CubeExportRequest {
       path, target, format, ..
@@ -42,7 +42,7 @@ impl CubeExporter {
     }
   }
 
-  /// Writes the export `request` asks for, answering the files written.
+  /// Write the export `request` asks for, answering the files written.
   ///
   /// # Errors
   ///
@@ -57,7 +57,7 @@ impl CubeExporter {
     let cross: RgbaImage = ViewerImage::read_capture(source)?;
     let faces: Vec<RgbaImage> = CubeAssembly::split(&cross).map_err(|error| error.to_string())?;
     let captured: u32 = cross.width() / 4;
-    // A DDS takes whole blocks, which every face size offered already is.
+    // A DDS needs whole blocks; every offered face size already is.
     let (side, _): (u32, u32) = match format {
       CubeExportFormat::Dds(_) => ViewerImage::get_dds_export_size((captured, captured), *size),
       _ => ViewerImage::get_export_size((captured, captured), *size),
@@ -91,7 +91,7 @@ impl CubeExporter {
           .map_err(|error| format!("Failed to write cubemap '{}': {error}", target.display()))?;
       }
       CubeExportFormat::Tga | CubeExportFormat::Png => {
-        // Every face encoded before the first is written, so a failure leaves no half set.
+        // Encode every face before writing any, so a failure leaves no partial set.
         let encoded: Vec<Vec<u8>> = faces
           .iter()
           .zip(&paths)

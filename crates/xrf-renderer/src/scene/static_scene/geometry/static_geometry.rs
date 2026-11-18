@@ -15,9 +15,9 @@ use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 use crate::scene::static_scene::item::static_place::StaticPlace;
 use crate::scene::static_scene::item::static_scene_writer::StaticSceneWriter;
 
-/// A static scene's geometry on the GPU: span buffers of vertices, indices, clusters, slots, places, impostors, skins,
-/// bones and traced density words each item takes a range of, and the rows a store keeps dense for the cull to walk. A cull walks the
-/// clusters and impostors whole, so a range is cleared as it is freed and reads as nothing.
+/// A static scene's geometry on the GPU: span buffers each item takes a range of, and the dense rows the cull walks.
+///
+/// A cull walks the clusters and impostors whole, so a freed range is cleared to read as nothing.
 pub(crate) struct StaticGeometry {
   /// Each layout's vertices, which an acceleration structure reads in place where rays are traced.
   pub words: [SpanBuffer; StaticLayout::COUNT],
@@ -35,7 +35,7 @@ pub(crate) struct StaticGeometry {
   /// Skinned models' links, two words a vertex, and the objects' bone matrices, three rows a bone.
   pub skins: SpanBuffer,
   pub bones: SpanBuffer,
-  /// A word a cut-out traced triangle, which a ray tests its holes by (`StaticTraceDensity`).
+  /// One density word per cut-out traced triangle, for the ray's hole test (`StaticTraceDensity`).
   pub trace_densities: SpanBuffer,
   row_records: ProxyStore<StaticRow>,
   /// Place zero, where every single draw stands: its geometry is in renderer space already. Never freed.
@@ -364,7 +364,7 @@ impl StaticGeometry {
   }
 }
 
-/// How full a span buffer is: its elements held, and its capacity.
+/// A span buffer's elements held and its capacity.
 impl From<&SpanBuffer> for RenderPoolUse {
   fn from(buffer: &SpanBuffer) -> Self {
     Self {

@@ -1,7 +1,3 @@
-//! A viewport's recording: a frame kept a sixtieth of a second apart, read back through a ring of four buffers the
-//! recorder holds, a frame due with none free dropped and counted rather than waited for, each told with the time it
-//! was presented.
-
 use std::sync::mpsc::{Receiver, channel};
 use std::time::{Duration, Instant};
 
@@ -12,10 +8,9 @@ use crate::capture::record::record_shot::RecordShot;
 use crate::context::gpu_context::GpuContext;
 use crate::tests::support::test_context::create_test_context;
 
-/// The recording's size, odd across so a row of its copy is padded.
+// Odd width, so the copy's rows are padded.
 const SIZE: (u32, u32) = (17, 8);
 
-/// A frame presented at `SIZE`, each texel's blue its column, green its row.
 struct Presented {
   texture: wgpu::Texture,
   pixels: Vec<u8>,
@@ -58,9 +53,7 @@ fn present(context: &GpuContext) -> Presented {
   Presented { texture, pixels }
 }
 
-/// A frame at `now` as the render thread draws one: its shot taken where one is due and a buffer free, copied out of
-/// `presented`, submitted, ended and presented a millisecond on, then what came back polled for, the GPU waited on as a
-/// later frame would find it done. Answers whether a shot was taken.
+// Draws a frame as the render thread does, waiting on the GPU as a later frame would find it done.
 fn draw(job: &mut RecordJob, context: &GpuContext, presented: &Presented, now: Instant) -> bool {
   let shot: Option<RecordShot> = job.take_shot(&context.device, now);
   let is_shot: bool = shot.is_some();
@@ -83,7 +76,6 @@ fn draw(job: &mut RecordJob, context: &GpuContext, presented: &Presented, now: I
   is_shot
 }
 
-/// Every frame `events` holds now.
 fn take_frames(events: &Receiver<RecordEvent>) -> Vec<RecordFrame> {
   events
     .try_iter()
@@ -94,8 +86,6 @@ fn take_frames(events: &Receiver<RecordEvent>) -> Vec<RecordFrame> {
     .collect()
 }
 
-// A frame is kept a sixtieth of a second on from the last, a frame a little early or late keeping its place; each is
-// told with its place and the time it was presented, and read back blue first, its rows unpadded.
 #[test]
 fn keeps_a_frame_a_sixtieth_apart_told_with_its_present_time() {
   let Some(context) = create_test_context("to record frames") else {
@@ -131,8 +121,6 @@ fn keeps_a_frame_a_sixtieth_apart_told_with_its_present_time() {
   }
 }
 
-// A recorder holding every buffer is a frame due with none free, dropped and counted, never waited for; a buffer
-// let go takes the next frame due.
 #[test]
 fn drops_a_frame_rather_than_waits_while_the_recorder_holds_every_buffer() {
   let Some(context) = create_test_context("to record frames") else {
@@ -156,7 +144,6 @@ fn drops_a_frame_rather_than_waits_while_the_recorder_holds_every_buffer() {
   assert!(taking.elapsed() < Duration::from_secs(1), "a frame due waited");
   assert_eq!((held.len(), job.get_dropped()), (RecordJob::RING, 2));
 
-  // The recorder reads one; its buffer comes back with the next poll.
   held.remove(0).read().expect("the frame to be read");
   job.poll();
 
@@ -169,14 +156,13 @@ fn drops_a_frame_rather_than_waits_while_the_recorder_holds_every_buffer() {
     [(6, 2)]
   );
 
-  // One dropped unread goes back too.
+  // A frame dropped unread frees its buffer too.
   drop(held.remove(0));
   job.poll();
 
   assert!(draw(&mut job, &context, &presented, at(7)));
 }
 
-// The recorder gone ends the recording at its next frame back.
 #[test]
 fn ends_once_its_recorder_goes() {
   let Some(context) = create_test_context("to record frames") else {

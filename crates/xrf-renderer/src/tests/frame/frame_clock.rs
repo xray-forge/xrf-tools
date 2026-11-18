@@ -34,8 +34,6 @@ fn frames_draw_at_the_wall_clock_until_stepped_then_a_step_a_frame() {
   );
 }
 
-// Frames drawn faster than their step run the clock ahead of the wall; once the step is cleared it keeps that lead and
-// follows the wall from where it stood, never going back to it.
 #[test]
 fn a_cleared_step_keeps_the_lead_its_frames_ran_ahead_by() {
   let start: Instant = Instant::now();
@@ -49,7 +47,7 @@ fn a_cleared_step_keeps_the_lead_its_frames_ran_ahead_by() {
     clock.tick(start + Duration::from_millis(frame * 10));
   }
 
-  // Ten frames a hundredth of a second apart stood ten seconds on: nine point nine ahead of the wall.
+  // Ten one-second steps over 100 ms of wall time: 9.9 s ahead.
   let stepped: Instant = start + step * 10;
 
   clock.set_step(None);

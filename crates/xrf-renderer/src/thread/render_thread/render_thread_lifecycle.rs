@@ -42,17 +42,15 @@ impl RenderThread {
     self.start_idle_clock();
   }
 
-  /// Starts the idle clock once no viewport draws and no hold keeps the GPU, unless it runs.
+  /// Starts the idle clock, if not running, once no viewport or hold is left.
   pub(super) fn start_idle_clock(&mut self) {
     if self.viewports.is_empty() && self.holds.is_empty() && self.idle_since.is_none() {
       self.idle_since = Some(Instant::now());
     }
   }
 
-  /// What a held thread with no viewport keeps: the GPU and its passes, ready for the next viewport, but none of what
-  /// the last ones drew. The world keeps no scene no viewport shows, so each goes as the next frame would let it go, and
-  /// the textures only they sampled with it; the frames' caches go too, which would otherwise hold the last view's
-  /// targets alive; and the device is polled as a frame's report polls it, since wgpu frees what was dropped only then.
+  /// Keeps a held thread with no viewport at just the GPU and its passes: frees the unshown scenes, their textures and
+  /// the frame caches, then polls the device, since wgpu frees dropped resources only on a poll.
   pub(super) fn keep_held(&mut self, now: Instant) {
     self.retain_scenes(&HashSet::new());
     self.sweep_textures(now);
@@ -115,8 +113,7 @@ impl RenderThread {
       .unwrap_or_else(PoisonError::into_inner)
       .restart_scenes();
 
-    // The captures are told the GPU went before the viewport leaves its view, which would tell them it shows another
-    // scene.
+    // Captures are released before `hide`, which would report the viewport as showing another scene.
     for viewport in self.viewports.values_mut() {
       viewport.forget_binding();
       viewport.release_captures();

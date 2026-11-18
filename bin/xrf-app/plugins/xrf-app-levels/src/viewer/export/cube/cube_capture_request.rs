@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use xrf_renderer::{RenderCubeCapture, RenderViewportId};
 
-/// A cubemap asked of a viewport, and the cross PNG it is written to.
+/// A cubemap capture asked of a viewport, written as a cross PNG to `path`.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]

@@ -15,9 +15,10 @@ use crate::scene::level::view::record::view_record::ViewRecord;
 pub(crate) struct SunFeature;
 
 impl SunFeature {
-  /// Draws the sun shadowed by the `contact` shadows and what its trace saw (`sun_traced`), its cascades where none is
-  /// traced, filtered `filter_reach` texels each way, over the surface the wetting gives a water film at the anchored
-  /// levels. Answers how much of the sun each pixel sees.
+  /// Draws the sun shadowed by the `contact` shadows and its trace (`sun_traced`), or its cascades filtered
+  /// `filter_reach` texels each way where none is traced; answers how much of the sun each pixel sees.
+  ///
+  /// At the anchored levels it lights the water film the wetting gives the surface.
   pub(crate) fn add_passes<'a>(
     &self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,

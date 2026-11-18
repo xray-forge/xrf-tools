@@ -5,20 +5,19 @@ use crate::scene::{
   SceneDrawProblem, SceneDrawProblemKind, SceneDrawnObject, SceneObjectId, SceneToolKind, SelectedScene,
 };
 
-/// The scene objects a scene draws, each placing a library object found in its objects roots, and those it cannot,
-/// each a problem.
+/// The scene objects whose library object was found in the objects roots, and a problem for each one whose was not.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct SceneDrawnObjects {
   /// Every scene object whose `.object` was found, in the scene's order of its objects.
   pub objects: Vec<SceneDrawnObject>,
-  /// Every scene object whose `.object` was not, in the same order.
+  /// Every scene object whose `.object` was not found, in the same order.
   pub problems: Vec<SceneDrawProblem>,
 }
 
 impl SceneDrawnObjects {
-  /// The scene objects of `scene`'s scene object tool as the editor loads them, the groups' members first, each named
-  /// by its place among them as the scene's objects are, and its `.object` looked for through `objects`, a search of
-  /// the scene's objects roots; none where the tool's objects do not read, which the scene's objects report.
+  /// Looks up each object of the scene object tool, as the editor loads them with group members first and indexed as
+  /// the scene's objects are, through `objects`. Empty where the tool's objects do not read; the scene's objects report
+  /// that.
   pub(crate) fn read(scene: &SelectedScene, objects: &XraySearch) -> Self {
     let Ok(read) = EditableToolObjects::<EditableSceneObject>::read(&scene.scene, scene.guid) else {
       return Self::default();
@@ -57,7 +56,7 @@ impl SceneDrawnObjects {
     drawn
   }
 
-  /// The first scene object drawn as the library object `reference`, which every other placing it shares a model with.
+  /// The first scene object placing the library object `reference`; every other placing it shares its model.
   pub(crate) fn find(&self, reference: &str) -> Option<&SceneDrawnObject> {
     self.objects.iter().find(|object| object.reference == reference)
   }

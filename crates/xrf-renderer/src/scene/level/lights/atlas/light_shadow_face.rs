@@ -12,7 +12,7 @@ pub(crate) struct LightShadowFace {
   pub drawn: Option<usize>,
   /// What the scene held when its static tile was last drawn, none before it was or since it went stale.
   pub drawn_static: Option<usize>,
-  /// The level's clock it was last drawn at.
+  /// Level time of the last draw.
   pub drawn_at: LevelTime,
   /// Frames it has waited for a draw it wants.
   pub waited: u32,

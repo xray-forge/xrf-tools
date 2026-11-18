@@ -19,8 +19,8 @@ pub struct RenderImageCorrections {
 }
 
 impl RenderImageCorrections {
-  /// The same, each held within the range Anomaly's console takes it in (`xrRender_console.cpp`), and a value that is
-  /// no finite number taken as nothing corrected: no gamma of nought for the present to divide by.
+  /// Clamps each value to Anomaly's console range (`xrRender_console.cpp`); a non-finite value becomes neutral, so
+  /// gamma is never zero.
   pub fn clamped(&self) -> Self {
     let neutral: Self = Self::default();
     let hold = |value: f32, otherwise: f32, range: RangeInclusive<f32>| {

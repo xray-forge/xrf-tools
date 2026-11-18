@@ -8,7 +8,7 @@ use xrf_app_core::execution::ExecutionState;
 
 use crate::viewer::LevelViewerFolder;
 
-/// Delete a recording of the recordings folder for good.
+/// Permanently delete a video from the recordings folder.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "delete_recording")]
 pub(crate) async fn levels_delete_recording(

@@ -1,20 +1,19 @@
 use glam::Vec4;
 use xrf_renderer_core::ShaderStruct;
 
-/// What resolving one face of the surroundings cube reads as its `Surroundings`: towards the sun in renderer space,
-/// then the face, the cube's texels a side, the face's G-buffer's texels a side and the layer of the G-buffer arrays
-/// the face keeps.
+/// What resolving one face of the surroundings cube reads as its `Surroundings`.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Surroundings")]
 pub(crate) struct SurroundingsUniform {
+  /// Towards the sun, in renderer space.
   pub to_sun: Vec4,
+  /// The face, the cube's texels a side, the G-buffer's texels a side, and the face's layer of the G-buffer arrays.
   pub face: Vec4,
 }
 
 impl SurroundingsUniform {
-  /// Face `face` of a cube `size` texels a side, drawn into `layer` of G-buffer arrays `drawn` texels a side, lit by a
-  /// sun whose light comes from `to_sun`.
+  /// Face `face` of a cube `size` texels a side, drawn into `layer` of G-buffer arrays `drawn` texels a side.
   pub(crate) fn new(to_sun: glam::Vec3, (face, layer): (u32, u32), (size, drawn): (u32, u32)) -> Self {
     Self {
       to_sun: to_sun.extend(0.0),

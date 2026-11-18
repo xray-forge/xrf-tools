@@ -92,9 +92,8 @@ impl LensFlareFade {
     self.blend = self.blend.clamp(0.0, 1.0);
   }
 
-  /// Settles at its next step on the lens flare named then, shown whole, as if it had stood since long before, and
-  /// steps from that frame on: what it shows from then on follows from the frames since alone, without a fade from
-  /// whatever stood before.
+  /// Settles at its next step on the lens flare named then, shown whole with no fade from what stood before, and steps
+  /// from that frame on.
   pub(crate) fn settle(&mut self) {
     self.current = None;
     self.step = None;

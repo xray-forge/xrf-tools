@@ -2,22 +2,22 @@ use glam::{Vec2, Vec3};
 
 use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 
-/// A cut-out triangle's density word, which the scene trace's test of its holes reads in place of its corners'
-/// positions (`cut_out_lod` in `shaders/common/scene_trace.wgsl`). The low half holds the base-2 logarithm of its base
-/// coordinate's units a metre of it spans in its geometry's own space, fixed point; the high half the direction of its
-/// corners' cross, octahedral, a byte a channel, by which an instance scaling unevenly stretches its area where it is
-/// read (`StaticTraceInstance`).
+/// A cut-out triangle's density word, read by the trace's hole test instead of its corners (`cut_out_lod` in
+/// `shaders/common/scene_trace.wgsl`).
+///
+/// Low half: fixed-point log2 of base UV units per metre in geometry space. High half: the triangle normal, octahedral,
+/// a byte per channel, for an unevenly scaled instance (`StaticTraceInstance`).
 pub(crate) struct StaticTraceDensity;
 
 impl StaticTraceDensity {
-  /// Steps a unit of the logarithm is stored in, and the offset that keeps it unsigned: a 256th of a level of detail,
-  /// over densities from 2⁻¹²⁸ to 2¹²⁸.
+  /// Fixed-point steps per unit of the logarithm (a 256th of a level of detail), and the bias that keeps it unsigned
+  /// over densities 2⁻¹²⁸ to 2¹²⁸.
   pub(crate) const STEPS: f32 = 256.0;
   pub(crate) const BIAS: f32 = 128.0;
 
-  /// The density words of a geometry's triangles, its `indices` counted from its first vertex (`vertex_start`) in its
-  /// layout's `words`. A triangle of no area is stored densest and one whose base coordinates span none sparsest, as
-  /// the test reads it from its corners; a corner past the words reads as none.
+  /// Density words of a geometry's triangles, `indices` relative to `vertex_start` in the layout's `words`.
+  ///
+  /// A zero-area triangle stores densest and a zero-UV-area one sparsest; a corner past `words` reads as zero.
   pub(crate) fn measure(layout: StaticLayout, words: &[u32], vertex_start: u32, indices: &[u32]) -> Vec<u32> {
     let corner = |index: u32| -> (Vec3, Vec2) {
       let at: usize = (vertex_start + index) as usize * StaticLayout::STRIDE as usize;
@@ -40,7 +40,7 @@ impl StaticTraceDensity {
       .collect()
   }
 
-  /// A triangle's word from its three corners, each its position and base coordinate.
+  /// Packs a triangle's word from its corners' positions and base UVs.
   fn pack([(p0, uv0), (p1, uv1), (p2, uv2)]: [(Vec3, Vec2); 3]) -> u32 {
     let across: Vec3 = (p1 - p0).cross(p2 - p0);
     let area: f32 = across.length();
@@ -62,9 +62,8 @@ impl StaticTraceDensity {
     stored | (x << 16) | (y << 24)
   }
 
-  /// A vertex's base coordinate as the scene trace decodes it from its layout's words (`scene_base_uvs`): a tree's two
-  /// shorts over 2048, a spawned model's two floats, a sector's two shorts with their fraction in its tangent's and
-  /// binormal's fourth bytes, over 1024.
+  /// A vertex's base UV as `scene_base_uvs` decodes it: tree shorts over 2048, model floats, or baked shorts plus the
+  /// tangent and binormal fourth-byte fractions over 1024.
   fn get_base_uv(layout: StaticLayout, vertex: &[u32]) -> Vec2 {
     let word: u32 = vertex[StaticLayout::UV];
     let shorts: Vec2 = Vec2::new(
@@ -88,7 +87,7 @@ impl StaticTraceDensity {
     }
   }
 
-  /// A unit direction folded onto two channels, as `octahedral_encode` in `shaders/common/octahedral.wgsl` folds it.
+  /// Octahedral encoding of a unit direction, as `octahedral_encode` in `shaders/common/octahedral.wgsl`.
   fn encode_direction(direction: Vec3) -> Vec2 {
     let folded: Vec3 = direction / (direction.x.abs() + direction.y.abs() + direction.z.abs());
     let sign = |value: f32| if value >= 0.0 { 1.0 } else { -1.0 };

@@ -85,10 +85,10 @@ impl LevelConsoleDefaults {
     })
   }
 
-  /// The commands of a console file this viewer draws by, `r2_sun_lumscale 2.0` and its kin; a command it cannot read,
-  /// or one past the range the engine's console takes it in, is left to the engine, as the engine leaves its own value
-  /// on refusing it (`CCC_Float::Execute`, `CCC_Vector3::Execute`). Whether the game ships such a file is its reader's
-  /// to say.
+  /// Read the drawing commands of a console file, such as `r2_sun_lumscale 2.0`.
+  ///
+  /// An unreadable or out-of-range command stays unset, as the engine keeps its own value on refusing one
+  /// (`CCC_Float::Execute`, `CCC_Vector3::Execute`).
   pub(crate) fn parse(text: &str) -> Self {
     let mut defaults: Self = Self::default();
 
@@ -100,8 +100,8 @@ impl LevelConsoleDefaults {
       let value: &str = value.trim();
       let number = |range: RangeInclusive<f32>| Self::parse_number(value, &range);
 
-      // The ranges `xrRender_console.cpp` registers each command with, alike in both engines but for the bloom's
-      // kernel scale, which OpenXRay takes from 0.5 and Anomaly from 0.05; the `r__` image commands are Anomaly's.
+      // The ranges `xrRender_console.cpp` registers. Engines differ only on the bloom kernel scale's minimum
+      // (OpenXRay 0.5, Anomaly 0.05); the `r__` commands are Anomaly's.
       match name.to_ascii_lowercase().as_str() {
         "r2_tonemap" => defaults.is_tonemapped = Self::parse_switch(value),
         "r2_tonemap_amount" => defaults.tonemap_amount = number(0.0..=1.0),
@@ -125,8 +125,7 @@ impl LevelConsoleDefaults {
     defaults
   }
 
-  /// A console number within `range`, which the engine's console takes a hair past (`EPS`); none past it, or for no
-  /// finite number.
+  /// A console number within `range`, widened by `EPS` as the engine's console does; none outside it or for NaN.
   fn parse_number(value: &str, range: &RangeInclusive<f32>) -> Option<f32> {
     value
       .parse::<f32>()
@@ -170,7 +169,7 @@ impl LevelConsoleDefaults {
     }
   }
 
-  /// A console colour vector: `(r, g, b)`, each from nought to one as the engine takes `r__color_grading`; none past it.
+  /// A console colour vector `(r, g, b)`, each channel within 0..=1 as for `r__color_grading`; none outside it.
   fn parse_vector(value: &str) -> Option<[f32; 3]> {
     let parts: Vec<f32> = value
       .trim_matches(|it| it == '(' || it == ')')

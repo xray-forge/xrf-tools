@@ -16,23 +16,23 @@ use xrf_utils::format_path;
 use crate::viewer::recording::writer::{RecordFormat, RecordSample, RecordSoundFormat, RecordSummary, RecordWriter};
 use crate::viewer::recording::{RecordingOutcome, RecordingProgress};
 
-/// A viewport recorded with what its camera hears into one video, on a thread of its own: the renderer's frames as they
-/// were presented and the mix before the master as the device plays it, put on one line by the audio's clock. Time zero
-/// is the first frame's present; the sound from the mixer's frame its anchor places there, each block at its own frame
-/// on from it, so a block the tap had no room for is a gap, not a shift. It ends when stopped, or by itself where the
-/// renderer stops recording, the audio goes on at another rate or the writer refuses a frame or sound, the file
-/// finished to there; a writer that fails to finish leaves it playable to where it stopped, and a recording with no
-/// frame leaves no file.
+/// Records a viewport and what its camera hears into one video on its own thread: presented frames and the pre-master
+/// mix, aligned by the audio clock. Time zero is the first frame's present and the mixer frame the clock anchor places
+/// there; each sound block goes at its own frame from it, so a block the tap dropped is a gap, not a shift.
+///
+/// It ends when stopped, or by itself when the renderer stops recording, the audio rate changes, or the writer refuses
+/// a sample; the file is finished up to there. A failed finish leaves the file playable to where it stopped; a
+/// recording with no frame leaves no file.
 pub(crate) struct ViewportRecorder {
   renderer: Renderer,
   viewport: RenderViewportId,
-  /// The label of the window whose page started it, which the recording goes with.
+  /// The label of the window whose page started it; the recording ends with that page.
   window: String,
   is_stopped: Arc<AtomicBool>,
   thread: Option<JoinHandle<TauriResult<RecordingOutcome>>>,
 }
 
-/// What the recorder's thread works with.
+/// The recorder thread's inputs.
 struct RecorderInputs {
   frames: Receiver<RecordEvent>,
   tap: AudioTap,
@@ -44,12 +44,12 @@ struct RecorderInputs {
   is_stopped: Arc<AtomicBool>,
 }
 
-/// Where a recording stands on its thread.
+/// A recording's state on its thread.
 #[derive(Default)]
 struct RecorderState {
   zero: Option<RecordZero>,
-  /// The sound tapped before the first frame came, which reaches the recorder after the sound playing at its present
-  /// was tapped: kept, at most [`ViewportRecorder::EARLY`] of it, so the recording's sound starts with its picture.
+  /// Sound tapped before the first frame arrived, up to [`ViewportRecorder::EARLY`] of it. The first frame arrives
+  /// after the sound playing at its present was tapped, so this lets the sound start with the picture.
   early: VecDeque<AudioTapBlock>,
   frames: u32,
   end: Duration,
@@ -57,7 +57,7 @@ struct RecorderState {
   ended: Option<String>,
 }
 
-/// A recording's time zero: the first frame's present, and the mixer's frame playing then.
+/// A recording's time zero: the first frame's present, and the mixer frame playing then.
 #[derive(Clone, Copy)]
 struct RecordZero {
   presented: Instant,
@@ -65,17 +65,17 @@ struct RecordZero {
 }
 
 impl ViewportRecorder {
-  /// The sound the tap holds before a block drops: the recorder takes it every frame.
+  /// Sound the tap holds before dropping a block; the recorder drains it every frame.
   const TAP_LENGTH: Duration = Duration::from_secs(2);
 
-  /// The sound kept from before the first frame came, past the device's latency and a frame's readback.
+  /// Sound kept from before the first frame, covering the device latency and a frame's readback.
   const EARLY: Duration = Duration::from_millis(500);
 
-  /// How often the page is told where the recording stands.
+  /// How often progress is sent to the page.
   const PROGRESS_EVERY: Duration = Duration::from_millis(250);
 
-  /// Starts recording `viewport` of the window labelled `window` at `size`, even both ways as H.264 takes, into `file`,
-  /// with `server`'s mix; tells `progress` where it stands.
+  /// Start recording `viewport` for `window` into `file` with `server`'s mix, at `size` rounded down to even sides as
+  /// H.264 needs, reporting to `progress`.
   ///
   /// # Errors
   ///
@@ -128,18 +128,17 @@ impl ViewportRecorder {
     })
   }
 
-  /// The label of the window whose page started it.
   pub(crate) fn get_window(&self) -> &str {
     &self.window
   }
 
-  /// Whether it ended by itself, and is only to be collected.
+  /// Whether it ended by itself and only awaits collection.
   pub(crate) fn is_ended(&self) -> bool {
     self.thread.as_ref().is_none_or(JoinHandle::is_finished)
   }
 
-  /// Stops it and finishes the file, answering what was written. The renderer is told before the next command, so a
-  /// recording of a viewport drawing nothing holds off no other long job, and a recording started next follows it.
+  /// Stop and finish the file, answering what was written. The renderer is told before its next command, so a
+  /// recording of an idle viewport blocks no other long job and the next recording queues after it.
   ///
   /// # Errors
   ///
@@ -164,13 +163,13 @@ impl Drop for ViewportRecorder {
 }
 
 impl RecorderInputs {
-  /// Takes frames and sound until stopped or ended, telling the page where it stands, then finishes the file.
+  /// Take frames and sound until stopped or ended, reporting progress, then finish the file.
   fn run(mut self) -> TauriResult<RecordingOutcome> {
     let mut state: RecorderState = RecorderState::default();
     let mut told: Instant = Instant::now();
 
-    // A frame or sound the writer refuses ends the recording as the renderer stopping it does, so its file is finished,
-    // or let go of where nothing was written.
+    // A refused frame or sound ends the recording as a renderer stop does, so its file is still finished, or removed
+    // when empty.
     while !self.is_stopped.load(Ordering::Acquire) && state.ended.is_none() {
       let received: TauriResult = match self.frames.recv_timeout(Duration::from_millis(5)) {
         Ok(RecordEvent::Frame(frame)) => self.take_frame(frame, &mut state),
@@ -178,7 +177,7 @@ impl RecorderInputs {
         Err(RecvTimeoutError::Timeout) => Ok(()),
         Err(RecvTimeoutError::Disconnected) => Err(String::from("The renderer stopped recording")),
       };
-      // The sound tapped up to where it ended is written all the same.
+      // Sound tapped up to the end is still written.
       let sounded: TauriResult = self.take_sound(&mut state);
 
       if let Err(error) = received.and(sounded) {
@@ -193,14 +192,14 @@ impl RecorderInputs {
 
     let finished: TauriResult<RecordSummary> = self.writer.finish();
 
-    // A recording refused before its first frame, as while another long job runs, leaves no empty file behind.
+    // A recording refused before its first frame, such as while another long job runs, leaves no empty file.
     if state.frames == 0 {
       let _ = std::fs::remove_file(&self.file);
 
       return Err(state.ended.unwrap_or_else(|| String::from("No frame was recorded")));
     }
 
-    // A writer that stopped mid-way leaves the fragmented file playable to where it stopped, so the error names it.
+    // A writer stopped mid-way leaves the fragmented file playable up to there, so the error names it.
     let summary: RecordSummary = finished.map_err(|cause| {
       format!(
         "The recording stopped early; {} holds it up to there: {cause}",
@@ -220,7 +219,7 @@ impl RecorderInputs {
     })
   }
 
-  /// Writes `frame` at its present, the first setting the recording's zero and the mixer's frame playing then.
+  /// Write `frame` at its present time; the first frame sets the recording's zero.
   fn take_frame(&mut self, frame: RecordFrame, state: &mut RecorderState) -> TauriResult {
     let presented: Instant = frame.presented;
     let rate: u32 = self.tap.get_rate();
@@ -250,8 +249,8 @@ impl RecorderInputs {
     Ok(())
   }
 
-  /// Writes the sound the tap holds from the recording's zero on, each block at its frame from the zero's; before the
-  /// first frame it is kept, the last [`ViewportRecorder::EARLY`] of it, for the zero to start from.
+  /// Write the tapped sound from the recording's zero on, each block at its offset from the zero frame. Before the
+  /// first frame, keep the last [`ViewportRecorder::EARLY`] of it for the zero to start from.
   fn take_sound(&mut self, state: &mut RecorderState) -> TauriResult {
     if let Some(zero) = state.zero {
       while let Some(block) = state.early.pop_front() {
@@ -282,7 +281,7 @@ impl RecorderInputs {
     }
   }
 
-  /// Writes the part of `block` from `zero`'s frame on, at its frame from it.
+  /// Write the part of `block` from `zero`'s frame on, at its offset from it.
   fn write_sound(&mut self, block: AudioTapBlock, zero: RecordZero) -> TauriResult {
     let end: u64 = block.frame + AudioTapBlock::FRAMES as u64;
 

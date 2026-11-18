@@ -46,8 +46,8 @@ pub(crate) struct CompositedFeature {
 }
 
 impl CompositedFeature {
-  /// Takes this frame's composited surfaces through the camera, with what of the `scene` is in `sight`: the sorted list
-  /// written through `encoder`, whether the enhanced glass draws, and where on the frame a distorting surface may.
+  /// Prepares this frame's composited surfaces of the `scene` in `sight`: writes their sorted list through `encoder`,
+  /// and settles whether the enhanced glass draws and which tiles a distorting surface may touch.
   pub(crate) fn prepare(
     &mut self,
     &ViewPrepare {

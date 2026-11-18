@@ -22,8 +22,8 @@ pub(crate) enum TextureRole {
   TerrainHeight,
   /// A water's normal map, neutral facing straight out of the surface: two reads of it summed less one give its normal.
   WaterNormal,
-  /// What a distorting particle or surface draws into the distortion target, neutral at mid grey as a detail is; read
-  /// as it loads for whether it holds any blue, which blurs the frame (`TextureCache::is_blue_free`).
+  /// A distortion map, neutral at mid grey; checked on load for blue, which blurs the frame
+  /// (`TextureCache::is_blue_free`).
   Distortion,
 }
 

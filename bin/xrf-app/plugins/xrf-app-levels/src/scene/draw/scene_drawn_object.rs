@@ -15,14 +15,12 @@ pub(crate) struct SceneDrawnObject {
 }
 
 impl SceneDrawnObject {
-  /// Where the `.object` a scene object places is looked for below the objects roots: its reference, the extension
-  /// added.
+  /// The path a scene object's `.object` is looked for at below the objects roots: its reference plus the extension.
   pub(crate) fn format_object_path(object: &EditableSceneObject) -> String {
     format!("{}.{}", object.reference, XrayExtension::Object.as_str())
   }
 
-  /// Where it stands as the renderer places its model, sixteen floats column by column: its transform in renderer
-  /// space, as the model's vertices are.
+  /// Its transform in renderer space, where the model's vertices are, as sixteen column-major floats.
   pub(crate) fn get_render_transform(&self) -> [f32; 16] {
     SceneRenderSpace::place(&self.transform)
   }

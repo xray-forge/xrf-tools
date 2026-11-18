@@ -1,19 +1,15 @@
-//! RCAS's sharpening (`common/rcas`) on the GPU, over grey texels of the reversible tonemap a linear-light frame is
-//! sharpened in: what it answers must undo to finite light, as the upscale pass undoes it.
-
 use glam::Vec4;
 
 use crate::contract::feature::image::resolve::render_upscaling_settings::RenderUpscalingSettings;
 use crate::tests::shader::wgsl_probe::run_wgsl_probe;
 
-/// The texel `e` among the four neighbours `ring` at `sharpness`.
 struct RcasCase {
   ring: [f32; 4],
   e: f32,
   sharpness: f32,
 }
 
-/// Each case sharpened as a display-encoded frame is (`x`) and as a linear-light one is (`y`).
+// `x` sharpened as a display-encoded frame, `y` as a linear-light one.
 fn sharpen(cases: &[RcasCase]) -> Option<Vec<Vec4>> {
   let probes: Vec<(Vec4, Vec4)> = cases
     .iter()
@@ -37,14 +33,12 @@ fn sharpen(cases: &[RcasCase]) -> Option<Vec<Vec4>> {
   )
 }
 
-/// A texel of the reversible tonemap undone to linear light, as the upscale pass's `stored` undoes it.
+// The reversible tonemap undone, as the upscale pass's `stored` does.
 fn undone(shown: f32) -> f32 {
   shown / (1.0 - shown).max(1e-4)
 }
 
-// A lamp far brighter than its dark surrounding, and a dark texel among bright ones, at the default
-// sharpening and at the most: the sharpened texel stays within the tonemap's range, where the upscale pass undoes it
-// to finite light, and a linear frame's is held near enough its brightest tap to undo to light of its order.
+// The upscale pass undoes the tonemap, so a sharpened texel outside its range would undo to infinite light.
 #[test]
 fn rcas_keeps_a_sharpened_texel_within_the_range_it_undoes_from() {
   let default: f32 = RenderUpscalingSettings::default().get_sharpness();
@@ -96,7 +90,6 @@ fn rcas_keeps_a_sharpened_texel_within_the_range_it_undoes_from() {
   }
 }
 
-// A flat neighbourhood is left as it is at any sharpening, and a bright texel among dark ones is still sharpened.
 #[test]
 fn rcas_leaves_a_flat_area_and_crisps_an_edge() {
   let default: f32 = RenderUpscalingSettings::default().get_sharpness();

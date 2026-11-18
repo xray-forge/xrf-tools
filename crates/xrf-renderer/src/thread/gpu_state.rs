@@ -57,7 +57,7 @@ pub(crate) struct GpuState {
   pub overlay: OverlayPass,
   /// The grid pass for each target format drawn into.
   grids: HashMap<wgpu::TextureFormat, GridPass>,
-  /// Why the grid pass for a format would not build, built again only once a shader reloads.
+  /// Why a format's grid pass failed to build; retried only after a shader reload.
   grid_failures: HashMap<wgpu::TextureFormat, String>,
   /// The name the driver's pipelines are kept under for this adapter and driver, none where its backend keeps none.
   driver_cache_key: Option<String>,
@@ -181,12 +181,11 @@ impl GpuState {
     }
   }
 
-  /// Builds the grid pass drawing into a format, unless it is built.
+  /// Builds the grid pass for a format unless it is built.
   ///
   /// # Errors
   ///
-  /// Returns an error when its shader does not compose or compile, the same one without building it again until a
-  /// shader reloads.
+  /// Returns an error when its shader does not compose or compile; the same error repeats until a shader reloads.
   pub(crate) fn ensure_grid(&mut self, shaders: &ShaderLibrary, format: wgpu::TextureFormat) -> XrfResult {
     if self.grids.contains_key(&format) {
       return Ok(());
@@ -207,7 +206,7 @@ impl GpuState {
       }
     }
 
-    // The same error at every frame it is asked, so a log that skips a repeated failure logs it once.
+    // The same error every frame, so a log that skips repeats logs it once.
     let reason: &str = self.grid_failures.get(&format).map_or("", String::as_str);
 
     Err(XrfError::new_unexpected_error(format!(
@@ -233,8 +232,7 @@ impl GpuState {
     }
   }
 
-  /// Rebuilds the pipelines made from the modules a reload `changed`, or from any module importing one, and tries the
-  /// grids that would not build again; every other pipeline stays as it was made.
+  /// Rebuilds the pipelines depending on the reloaded modules in `changed`, and retries failed grids.
   pub(crate) fn refresh(&mut self, shaders: &ShaderLibrary, changed: &[&str]) {
     for module in shaders.list_dependents(changed) {
       self.pipelines.invalidate_module(module);

@@ -16,8 +16,8 @@ use crate::scene::{
   SceneSpawnModels, SceneToolKind, SelectedScene,
 };
 
-/// A scene's helpers: the renderer's helper of every object of a helped tool that draws one, each named by its
-/// [`SceneRenderId`] and switched by its tool's place, and what the page is told of them.
+/// A scene's helpers: the renderer helper of every helped tool object that draws one, each named by its
+/// [`SceneRenderId`] and switched by its tool's place, and the page's description of them.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct SceneHelpers {
   pub helpers: RenderLevelHelpers,
@@ -25,9 +25,9 @@ pub(crate) struct SceneHelpers {
 }
 
 impl SceneHelpers {
-  /// Every helped tool's objects as the editor loads them, the groups' members first, each helped in its tool's look,
-  /// read from the parts the open kept and nothing else, a spawn point among `models` helped beside its model; a tool
-  /// whose objects do not read draws none, which the scene's objects report.
+  /// Builds every helped tool's helpers from the parts the open kept, objects in editor load order with group members
+  /// first, a spawn point among `models` helped beside its model. A tool whose objects do not read draws none; the
+  /// scene's objects report that.
   pub(crate) fn read(scene: &SelectedScene, models: &SceneSpawnModels) -> Self {
     profiling::scope!("scene helpers");
 
@@ -64,7 +64,7 @@ impl SceneHelpers {
       }
     }
 
-    // A spawn point standing as its model alone still stands within the extent framed, at its place.
+    // A spawn point drawn only as its model still counts in the framed extent, at its position.
     let modelled: Vec<Vec3> = models
       .objects
       .iter()
@@ -81,8 +81,8 @@ impl SceneHelpers {
     }
   }
 
-  /// The sphere about the extent of `object`'s helper, in renderer space, as the scene's extent is bounded; none for an
-  /// object that draws no helper.
+  /// The sphere about `object`'s helper extent, in renderer space, bounded as the scene's extent is; none for an object
+  /// that draws no helper.
   pub(crate) fn find_sphere(&self, object: &SceneObjectId) -> Option<Sphere> {
     let id: SceneRenderId = SceneRenderId::of(object)?;
     // Ids sort by tool, then by index, and the helpers are read in that order.
@@ -95,8 +95,8 @@ impl SceneHelpers {
     Self::bound(&self.helpers.objects[found..=found], &[]).map(|bounds| bounds.bounding_sphere)
   }
 
-  /// The box holding every point each helper draws through, its spheres by their boxes, where it stands, and `extra`
-  /// points of renderer space; none for no helper and no point.
+  /// The box holding every placed point the helpers draw through, spheres by their boxes, and the renderer space
+  /// `extra` points; none for no helper and no point.
   fn bound(objects: &[RenderHelperObject], extra: &[Vec3]) -> Option<VisualBounds> {
     let mut points: Vec<Vector3d> = extra
       .iter()
@@ -147,7 +147,7 @@ impl SceneHelpers {
   }
 }
 
-/// One helped tool's objects read into helpers: the scene, the tool's row, and the spawn points standing as models.
+/// What reading one helped tool's objects into helpers needs: the scene, the tool's row, and the spawn models.
 struct SceneHelperRead<'a> {
   scene: &'a SelectedScene,
   entry: &'a SceneHelperToolEntry,
@@ -155,8 +155,8 @@ struct SceneHelperRead<'a> {
 }
 
 impl SceneHelperRead<'_> {
-  /// The helpers of the tool's objects, of type `O`, added to `objects`; answers how many of its objects are helped,
-  /// one standing as its model counted though its model is all it shows.
+  /// Adds the helpers of the tool's `O` objects to `objects` and returns how many objects are helped, counting one
+  /// drawn only as its model.
   fn read_tool<O: SceneHelpedObject>(&self, objects: &mut Vec<RenderHelperObject>) -> u32 {
     let Self { scene, entry, models } = self;
     let Ok(read) = EditableToolObjects::<O>::read(&scene.scene, scene.guid) else {

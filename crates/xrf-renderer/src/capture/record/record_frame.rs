@@ -6,25 +6,25 @@ use xrf_error::{XrfError, XrfResult};
 use crate::capture::record::record_layout::RecordLayout;
 use crate::frame::readback::gpu_readback::GpuReadback;
 
-/// A recorded frame back from the GPU and mapped, handed to the recorder to read on its own thread: its buffer goes back
-/// to the recording's ring once read, or once this is dropped unread, so a recorder that keeps frames holds buffers and
-/// the frames after them drop. Its pixels are four bytes, blue, green, red, alpha, at the recording's size.
+/// A mapped recorded frame for the recorder to read on its own thread; BGRA pixels at the recording's size.
+///
+/// Its buffer returns to the recording's ring when read or dropped, so a recorder that keeps frames makes later frames
+/// drop.
 #[derive(Debug)]
 pub struct RecordFrame {
   readback: Arc<GpuReadback>,
   layout: RecordLayout,
-  /// Its place among the recording's sixtieths of a second, counted from its first frame.
+  /// Its slot in sixtieths of a second since the recording's first frame.
   pub index: u64,
-  /// When it was presented, which a video places it at.
+  /// When it was presented; where a video places it.
   pub presented: Instant,
-  /// Frames the recording dropped so far, its buffers all held.
+  /// Frames dropped so far because every buffer was held.
   pub dropped: u64,
   is_read: bool,
 }
 
 impl RecordFrame {
-  /// The time between the frames a recording keeps, a sixtieth of a second: how long a frame shows where the next has
-  /// not come.
+  /// Interval between recorded frames, a sixtieth of a second; a frame shows this long while the next is missing.
   pub const INTERVAL: Duration = Duration::from_nanos(16_666_667);
 
   pub(crate) fn new(
@@ -44,12 +44,12 @@ impl RecordFrame {
     }
   }
 
-  /// Pixels across and down.
+  /// Width and height in pixels.
   pub fn get_size(&self) -> (u32, u32) {
     self.layout.size
   }
 
-  /// Its pixels, rows top down, each four bytes blue first; its buffer goes back to the ring.
+  /// Reads its BGRA pixels, rows top down, and returns its buffer to the ring.
   ///
   /// # Errors
   ///

@@ -1,5 +1,4 @@
-//! A burst's sound: the scene's frames a burst draws teed off the live scene, played on the burst's clock and written
-//! beside its frames.
+//! A burst's sound: frames teed off the live scene, played on the burst's clock and written beside its frames.
 
 mod burst_sound;
 mod burst_sound_chunk;

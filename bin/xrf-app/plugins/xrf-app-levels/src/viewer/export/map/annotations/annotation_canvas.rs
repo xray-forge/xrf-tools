@@ -15,9 +15,9 @@ use crate::viewer::export::map::annotations::{
   MapAnnotationsWriteRequest,
 };
 
-/// How a map's annotations are drawn: the area the map covers onto its pixels, the kinds of level object drawn, and
-/// whether every object is named rather than the smart terrains and level changers alone (a level has hundreds of
-/// patrols, whose names would bury the map).
+/// Draws a map's annotations: the covered area mapped onto the map's pixels, the object kinds drawn, and whether every
+/// object is named rather than only smart terrains and level changers (a level's hundreds of patrol names would bury
+/// the map).
 pub(crate) struct AnnotationCanvas {
   pub area: LevelMapArea,
   pub width: u32,
@@ -27,25 +27,25 @@ pub(crate) struct AnnotationCanvas {
 }
 
 impl AnnotationCanvas {
-  /// The map's longer side the sizes below are given at. A larger map is read zoomed in, so its marks grow by only the
-  /// root of how much larger it is: twice as large at four times the side.
+  /// The longer map side the sizes below apply at. A larger map is viewed zoomed in, so marks grow with the square
+  /// root of its size: twice as large at four times the side.
   const BASE_SIDE: f32 = 4096.0;
 
-  /// Pixels a label stands at the base side, and the fewest it does on a smaller map.
+  /// Label height in pixels at the base side, and its minimum on a smaller map.
   const LABEL_AT_BASE: f32 = 9.0;
   const LABEL_LEAST: f32 = 7.0;
 
-  /// Pixels a line takes at the base side, and the fewest it does on a smaller map.
+  /// Line width in pixels at the base side, and its minimum on a smaller map.
   const STROKE_AT_BASE: f32 = 0.6;
   const STROKE_LEAST: f32 = 0.35;
 
-  /// What is written beside a dot against a label.
+  /// A dot's tag size relative to a label.
   const TAG_SHARE: f32 = 0.75;
 
-  /// A restrictor keeping the actor in, apart from the kind's blue keeping him out.
+  /// Colour of a restrictor keeping the actor in, distinct from the kind's blue for keeping him out.
   const RESTRICTOR_IN_COLOUR: &str = "#90caf9";
 
-  /// The canvas a write request asks for, over its map's pixels.
+  /// The canvas `request` asks for, sized to its map's pixels.
   ///
   /// # Errors
   ///
@@ -63,7 +63,7 @@ impl AnnotationCanvas {
     })
   }
 
-  /// Draws `annotations` and writes them to `target` whole; answers the SVG written.
+  /// Draw `annotations` and write the SVG to `target` whole; answers the SVG.
   ///
   /// # Errors
   ///
@@ -77,8 +77,8 @@ impl AnnotationCanvas {
     Ok(svg)
   }
 
-  /// The layer a kind is drawn in, the lowest first: the dots, then the outlines, the patrols' many lines, and the
-  /// volumes always named on top, so the names that matter stand over everything.
+  /// A kind's layer, lowest first: dots, outlines, patrol lines, then the always-named volumes on top, so the names
+  /// that matter stand over everything.
   fn get_layer(kind: LevelObjectKind) -> u8 {
     match kind {
       LevelObjectKind::SmartTerrains | LevelObjectKind::LevelChangers => 3,
@@ -107,13 +107,13 @@ impl AnnotationCanvas {
     }
   }
 
-  /// A kind's group id in the SVG: its label in kebab case.
+  /// A kind's SVG group id: its label in kebab case.
   fn format_group_id(entry: &LevelObjectKindEntry) -> String {
     entry.label.to_lowercase().replace(' ', "-")
   }
 
-  /// The annotations as an SVG over the map: its view box the map's pixels, a group a kind in its kind's colour, the
-  /// lowest layer first.
+  /// The annotations as an SVG whose view box is the map's pixels, one group per kind in its colour, lowest layer
+  /// first.
   pub(crate) fn draw(&self, annotations: &LevelAnnotations) -> String {
     let growth: f32 = (self.width.max(self.height) as f32 / Self::BASE_SIDE).sqrt();
     let pen: AnnotationPen = AnnotationPen {
@@ -166,8 +166,7 @@ impl AnnotationCanvas {
     svg
   }
 
-  /// Where an engine-space point lands on the map, in its pixels from the top left: `+x` right and `+z` up, as
-  /// `CDemoRecord` lays its map.
+  /// An engine-space point in map pixels from the top left, `+x` right and `+z` up, as `CDemoRecord` lays its map.
   pub(crate) fn to_pixel(&self, [x, z]: AnnotationPoint) -> (f32, f32) {
     let LevelMapArea {
       min_x,
@@ -182,12 +181,12 @@ impl AnnotationCanvas {
     )
   }
 
-  /// Pixels a metre spans across.
+  /// Pixels per metre.
   fn get_scale(&self) -> f32 {
     self.width as f32 / (self.area.max_x - self.area.min_x)
   }
 
-  /// A volume's outlines, filled faintly, and its name where it is named: a level changer's with an arrow toward its
+  /// A volume's faintly filled outlines and, when named, its name; a level changer gets an arrow toward its
   /// destination.
   fn draw_volume(&self, svg: &mut String, volume: &AnnotationVolume, pen: AnnotationPen) {
     let AnnotationPen { stroke, label } = pen;
@@ -256,7 +255,7 @@ impl AnnotationCanvas {
     }
   }
 
-  /// The patrols' links as lines and points as dots, each named at its first point where every object is named.
+  /// Patrol links as lines and points as dots, each patrol named at its first point when every object is named.
   fn draw_patrols(&self, svg: &mut String, patrols: &[AnnotationPatrol], pen: AnnotationPen) {
     let AnnotationPen { stroke, label } = pen;
     let radius: f32 = (stroke * 2.5).max(1.0);
@@ -284,7 +283,7 @@ impl AnnotationCanvas {
     }
   }
 
-  /// `markers` as dots, each with its tag beside it, or its name where every object is named.
+  /// `markers` as dots, each beside its tag, or its name when every object is named.
   fn draw_markers<'a>(
     &self,
     svg: &mut String,
@@ -318,7 +317,7 @@ impl AnnotationCanvas {
     }
   }
 
-  /// `text` at `x` across and `y` down in its group's colour, a thin dark outline under it so it reads over any ground.
+  /// `text` at (`x`, `y`) in its group's colour, over a thin dark outline so it reads on any ground.
   fn draw_label(svg: &mut String, x: f32, y: f32, text: &str, size: f32) {
     let _ = write!(
       svg,
@@ -328,8 +327,8 @@ impl AnnotationCanvas {
     );
   }
 
-  /// `svg` rasterised at `width` by `height` pixels, its view box stretched over them, its text set in the system's
-  /// fonts; transparent where it draws nothing, its alpha straight.
+  /// `svg` rasterised to `width` by `height` with its view box stretched over them and text in system fonts; straight
+  /// alpha, transparent where nothing is drawn.
   ///
   /// # Errors
   ///
@@ -362,7 +361,7 @@ impl AnnotationCanvas {
     Ok(image)
   }
 
-  /// The system's fonts, read once a run: reading them takes a few hundred milliseconds.
+  /// The system fonts, read once per run since reading takes a few hundred milliseconds.
   fn get_system_fonts() -> Arc<Database> {
     static SYSTEM_FONTS: OnceLock<Arc<Database>> = OnceLock::new();
 
@@ -375,7 +374,6 @@ impl AnnotationCanvas {
     }))
   }
 
-  /// `text` as SVG character data.
   fn escape(text: &str) -> String {
     text
       .replace('&', "&amp;")
@@ -385,7 +383,7 @@ impl AnnotationCanvas {
   }
 }
 
-/// The sizes the annotations are drawn at on a map, in its pixels: a line's width and a label's height.
+/// Annotation sizes in map pixels: line width and label height.
 #[derive(Clone, Copy)]
 struct AnnotationPen {
   stroke: f32,

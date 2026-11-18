@@ -1,6 +1,3 @@
-//! A Level Editor scene opened as a document: what its open lists of its tools' part files, where it looks for its
-//! library objects, and how a tool restores and closes it.
-
 use std::path::Path;
 use std::sync::Arc;
 
@@ -80,9 +77,9 @@ fn opens_a_scene_listing_its_tools_part_files_and_what_its_level_holds() {
   write_scene_part(&source, "sector.part", &sectors);
   write_scene_part(&source, "ai_map.part", ai_map_part());
   write_scene_part(&source, "wallmark.part", wallmark_part());
-  // A tool the editor does not save, whose name sorts before every tool it does.
+  // A tool the editor does not save, named to sort before every tool it does.
   write_scene_part(&source, "a_custom.part", &sectors);
-  // The editor's backup of an earlier save, which is no part of the scene.
+  // The editor's backup of an earlier save, not part of the scene.
   write_scene_part(&source, "sector.~part", "an earlier save");
 
   let assets: AssetMountState = AssetMountState::new();
@@ -248,7 +245,7 @@ fn a_tool_restores_the_scene_it_holds_until_it_closes_it() {
   let assets: AssetMountState = AssetMountState::new();
   let scenes: SelectedScenes = new_scenes(&assets);
   let opened: Arc<SessionSnapshot<SelectedScene>> = open_scene(&scenes, &assets, &source);
-  // What a fixture's open binds its handle to, as a tool's scope.
+  // The scope a fixture's open binds its handle to.
   let scope: SessionScope = SessionScope::new("fixture", opened.session_id.to_string());
   let restored: SessionSnapshot<SelectedSceneDescription> = scenes
     .restore_as(&scope, SelectedScene::describe)

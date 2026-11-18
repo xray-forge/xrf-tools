@@ -80,8 +80,8 @@ impl RenderCameraSettings {
     self.is_motion_blurred || self.is_defocused
   }
 
-  /// The same with every effect off, as a picture made of several views (a cubemap's faces, a map's tiles) is drawn:
-  /// each view's own lens, blur and grain would part it at every seam.
+  /// The same with every effect off, for pictures stitched from several views (cubemap faces, map tiles), whose seams
+  /// per-view effects would break.
   pub fn without_effects(&self) -> Self {
     Self {
       is_motion_blurred: false,

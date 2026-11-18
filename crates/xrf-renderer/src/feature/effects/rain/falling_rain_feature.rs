@@ -144,8 +144,7 @@ impl FallingRainFeature {
     Some(uniform)
   }
 
-  /// The rain's clock in seconds, as it last fell: what the wet surfaces' splashes, flow and ripples run by while it
-  /// rains.
+  /// The rain's clock in seconds at its last frame, which the wet surfaces' splashes, flow and ripples run by.
   pub(crate) fn get_clock(&self) -> f64 {
     self.clock
   }
@@ -388,8 +387,8 @@ impl ViewFeature for FallingRainFeature {
     *self = Self::default();
   }
 
-  /// Its motion restarted, its clock, its drops' square and its eased pace and lean start again from nothing, as at a
-  /// view's first frame; a cut leaves them, the drops falling on around the camera wherever it stands.
+  /// A motion restart starts the clock, the drops' square and the eased pace and lean over, as at a view's first frame;
+  /// a cut leaves them.
   fn restart(&mut self, restart: ViewRestart) {
     if restart == ViewRestart::Motion {
       self.clock = 0.0;

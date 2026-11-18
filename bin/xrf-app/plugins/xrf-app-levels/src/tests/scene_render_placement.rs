@@ -1,5 +1,3 @@
-//! Where the renderer stands a scene object's model, against where the level build places the same object's points.
-
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -22,14 +20,14 @@ use crate::tests::fixtures::{
   write_scene_part,
 };
 
-/// How far a drawn point may lie from where the build placed it, the two composed in different orders in `f32`.
+// The two sides compose in different orders in `f32`.
 const TOLERANCE: f32 = 1e-4;
 
 #[test]
 fn a_scene_object_stands_where_the_level_build_places_its_points() {
   let source: SceneSource = write_scene("scene_render/placement");
-  // Turned about every axis and scaled unevenly, so a basis taken by rows rather than columns, an angle's sign or a
-  // mirror applied on one side only would each show.
+  // Turned about every axis and scaled unevenly, so a row-major basis, a flipped angle sign or a one-sided mirror
+  // shows.
   let transform: EditableObjectTransform = EditableObjectTransform {
     position: Vector3d::new(12.5, -3.0, 7.25),
     rotation: Vector3d::new(0.4, -1.1, 0.7),
@@ -82,11 +80,10 @@ fn a_scene_object_stands_where_the_level_build_places_its_points() {
   let placement: Mat4 = Mat4::from_cols_array(&spawn.objects[0].transform);
   let points: &[Vector3d] = &object.meshes.as_ref().expect("the object has a mesh")[0].points;
 
-  // The build places every point of the object's one mesh, in order, in engine space.
   assert_eq!(built.project.vertices.len(), points.len());
 
   for (point, placed) in points.iter().zip(&built.project.vertices) {
-    // A model's vertex is the point in renderer space, which the drawn transform stands where it lands.
+    // A model vertex is the point in renderer space.
     let model: Vector3d = convert_vector(point);
     let drawn: Vec3 = placement.transform_point3(Vec3::new(model.x, model.y, model.z));
     let expected: Vector3d = convert_vector(placed);

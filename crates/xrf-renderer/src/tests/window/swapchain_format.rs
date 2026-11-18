@@ -1,9 +1,6 @@
-//! Which of a window surface's formats its swapchain takes.
-
 use crate::window::render_window::RenderWindow;
 
-/// The present writes display-encoded eight-bit values, so a surface offering an eight-bit unorm format gets it, the
-/// blue-first one where it offers both.
+// The present writes display-encoded eight-bit values.
 #[test]
 fn takes_an_eight_bit_unorm_format_the_surface_offers() {
   let offered = [
@@ -22,8 +19,7 @@ fn takes_an_eight_bit_unorm_format_the_surface_offers() {
   );
 }
 
-/// A surface offering only formats the present has no path for (an sRGB one would encode the picture twice, a ten-bit
-/// or half-float one would take its dither at the wrong step) is refused, naming them, rather than drawn into wrong.
+// sRGB would encode twice; ten-bit or half-float would dither at the wrong step.
 #[test]
 fn refuses_a_surface_offering_no_format_the_present_writes_for() {
   let offered = [wgpu::TextureFormat::Bgra8UnormSrgb, wgpu::TextureFormat::Rgb10a2Unorm];

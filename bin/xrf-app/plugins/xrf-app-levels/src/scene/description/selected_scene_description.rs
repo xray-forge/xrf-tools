@@ -5,8 +5,8 @@ use crate::scene::{
   SceneBuildParamsDescription, SceneCameraDescription, SceneGameData, SceneProblem, SceneSource, SceneToolDescription,
 };
 
-/// What the page is shown of an open scene itself: what names it, what its `.level` holds worth showing, its tools'
-/// part files and what is wrong with them. The tools' objects are parts with queries of their own.
+/// What the page shows of an open scene itself: its names, its `.level` settings, its tools' part files and their
+/// problems. The tools' objects are parts with queries of their own.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -18,13 +18,13 @@ pub struct SelectedSceneDescription {
   pub guid: String,
   /// Where its scene objects' library objects are looked for.
   pub objects_roots: XrayRoots,
-  /// The game data it is drawn with: the roots its textures and shaders are searched in, none where it has none.
+  /// The game data roots its textures and shaders are searched in, if it has any.
   pub game: SceneGameData,
   /// What its `[build_params]` set, none where they do not read.
   pub build_params: Option<SceneBuildParamsDescription>,
   /// Where the editor's camera stood, none where `[camera]` does not read.
   pub camera: Option<SceneCameraDescription>,
-  /// Every tool it holds part files of, in the editor's order, those it does not save after them by name.
+  /// Every tool it holds part files of, in the editor's order, then the tools the editor does not save, by name.
   pub tools: Vec<SceneToolDescription>,
   /// What the open found the editor would skip or refuse of its part files.
   pub problems: Vec<SceneProblem>,

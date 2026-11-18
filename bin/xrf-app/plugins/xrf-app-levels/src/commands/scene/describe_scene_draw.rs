@@ -8,9 +8,11 @@ use xrf_app_core::session::{SessionId, SessionSnapshot};
 
 use crate::scene::{SceneDrawDescription, SceneDrawPart, SelectedScenes};
 
-/// Describe what the page needs of the open scene's picture beside it: the extent of the scene objects drawn, to frame
-/// a camera on, and each scene object not drawn, its library object missing or unreadable; read again where a commit
-/// let the library objects go. What the renderer could not compile or texture is the viewport's to answer.
+/// Describe the open scene's drawing: the extent of the drawn objects, to frame a camera on, and each object not drawn
+/// because its library object is missing or unreadable.
+///
+/// Call again after a commit that invalidates the library objects. Compile and texture failures are reported by the
+/// viewport, not here.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_scene_draw")]
 pub(crate) async fn levels_describe_scene_draw(

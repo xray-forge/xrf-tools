@@ -12,7 +12,7 @@ pub(crate) struct SceneObjectDescription {
   pub id: SceneObjectId,
   /// Unique within the scene.
   pub name: String,
-  /// The group it is a member of, by the group's name; none for an object of its tool's own part.
+  /// The name of the group it belongs to; none for an object of its tool's own part.
   pub group: Option<String>,
   /// `co_flags`: motion, grouping and the editor's other states.
   pub flags: u32,
@@ -21,7 +21,7 @@ pub(crate) struct SceneObjectDescription {
 }
 
 impl SceneObjectDescription {
-  /// An object of no group named by `id`, saved first as `custom`, its kind keeping `properties`.
+  /// An ungrouped object `id` from its common fields `custom` and its kind's `properties`.
   pub(crate) fn new(id: SceneObjectId, custom: &EditableCustomObject, properties: SceneObjectProperties) -> Self {
     Self {
       id,
@@ -33,8 +33,7 @@ impl SceneObjectDescription {
     }
   }
 
-  /// A tool's typed object of no group named by `id`, its library object looked for through `objects` where it places
-  /// one.
+  /// An ungrouped typed object `id`, its library object, if it places one, looked for through `objects`.
   pub(crate) fn of(id: SceneObjectId, object: &impl SceneToolObject, objects: &XraySearch) -> Self {
     Self::new(id, object.get_custom(), object.describe(objects))
   }

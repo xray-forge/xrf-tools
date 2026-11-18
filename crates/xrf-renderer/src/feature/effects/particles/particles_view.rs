@@ -22,9 +22,8 @@ use crate::scene::texture::texture_cache::TextureCache;
 /// Quads the vertex buffer holds at first; it doubles past them.
 const INITIAL_QUADS: u64 = 4096;
 
-/// A level's particles as one view draws them: the quads of the effects in its camera, far to near, filled by the
-/// scene's `LevelParticles::fill` each frame, the batches drawing their colour and the runs drawing their distortion
-/// where it reaches the screen.
+/// A level's particles as one view draws them: its camera's effect quads, far to near, filled each frame by
+/// `LevelParticles::fill`.
 #[derive(Default)]
 pub(crate) struct ParticlesView {
   vertices: Vec<ParticleVertex>,
@@ -38,7 +37,7 @@ pub(crate) struct ParticlesView {
   distortion_slots: Vec<u32>,
   /// How many effects it draws this frame.
   drawn: u32,
-  /// The quads drawn, made with the first quads to draw; none until then, or once let go.
+  /// The quads' buffer, made with the first quads to draw; none until then, or once released.
   vertex_buffer: Option<wgpu::Buffer>,
 }
 
@@ -56,9 +55,8 @@ impl ParticlesView {
     self.drawn = 0;
   }
 
-  /// Adds an effect's quads after those added before, as `sprite` faces them with its `surface`: into its equation's
-  /// batch where it blends, into a distortion run where it distorts, as the surface draws (`drawing`), and one of its
-  /// quads reaches the screen of `view_projection`.
+  /// Appends an effect's quads as `sprite` faces them: to its equation's batch where `drawing` blends, and to a
+  /// distortion run where it distorts and a quad reaches the screen of `view_projection`.
   pub(crate) fn push_effect(
     &mut self,
     sprite: &ParticleSprite,
@@ -120,8 +118,8 @@ impl ParticlesView {
     self.drawn
   }
 
-  /// Writes the quads filled this frame, growing the buffer past them up to the most one binding may hold; the nearest
-  /// quads past that are not drawn.
+  /// Writes this frame's quads, growing the buffer up to what one binding may hold; the nearest quads past that are
+  /// not drawn.
   pub(crate) fn upload(&mut self, device: &wgpu::Device, encoder: &mut FrameEncoder) {
     let most_quads: u64 = device.limits().max_storage_buffer_binding_size / Self::QUAD_BYTES;
 
@@ -227,8 +225,8 @@ impl ParticlesView {
     &self.distortion_tiles
   }
 
-  /// Whether this frame's particles may blur the frame: one drawn into the distortion target whose map holds some blue
-  /// or is not yet up (`TextureCache::is_blue_free`).
+  /// Whether this frame's particles may blur the frame: a distorting one's map holds some blue or is not yet loaded
+  /// (`TextureCache::is_blue_free`).
   pub(crate) fn is_blurring(&self, textures: &TextureCache) -> bool {
     self.distortion_slots.iter().any(|slot| !textures.is_blue_free(*slot))
   }

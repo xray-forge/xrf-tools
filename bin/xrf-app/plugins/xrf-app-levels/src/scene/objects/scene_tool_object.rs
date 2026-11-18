@@ -7,12 +7,12 @@ use xrf_vfs::XraySearch;
 
 use crate::scene::{SceneDrawnObject, SceneObjectProperties};
 
-/// An object tool's typed object as the page is shown it: what every object saves first, and what its kind adds.
+/// An object tool's typed object as the page shows it: the fields every object saves first, and what its kind adds.
 pub(crate) trait SceneToolObject: EditableToolObject {
   /// Its flags, name and transform.
   fn get_custom(&self) -> &EditableCustomObject;
 
-  /// What its kind keeps, its library object looked for through `objects` where it places one.
+  /// What its kind keeps, its library object, if it places one, looked for through `objects`.
   fn describe(&self, objects: &XraySearch) -> SceneObjectProperties;
 }
 
@@ -21,7 +21,7 @@ impl SceneToolObject for EditableSceneObject {
     &self.object
   }
 
-  /// Its `.object` looked for by its reference below the objects roots; a reference no lookup takes is not found.
+  /// Looks for its `.object` by reference below the objects roots; a failed lookup counts as not found.
   fn describe(&self, objects: &XraySearch) -> SceneObjectProperties {
     SceneObjectProperties::SceneObject {
       reference: self.reference.clone(),

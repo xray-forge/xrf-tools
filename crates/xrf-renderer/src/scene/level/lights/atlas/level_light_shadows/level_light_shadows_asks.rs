@@ -96,10 +96,9 @@ impl LevelLightShadows {
     Some(asked)
   }
 
-  /// Gives a light faces of the `asked` size: drawing them already, it keeps those; back at the size it shows while
-  /// another was being drawn, the shown faces stand and the other goes; at a size it neither shows nor draws, new faces
-  /// replace those it draws. Faces given smaller squares than their size, the atlas too full when they were made, take
-  /// larger ones in their place once room can be made (`grow_set`), so a light shrunk under pressure grows back.
+  /// Gives a light faces of the `asked` size, keeping a next or shown set already at that size.
+  ///
+  /// A set made at smaller squares while the atlas was full grows back once room can be made (`grow_set`).
   fn replace_set(&mut self, ask: &LightShadowAsk<'_>, asked: u32) {
     // Out of the map while the faces are made, which may evict another light's.
     let Some(mut entry) = self.entries.remove(&ask.handle) else {
@@ -134,8 +133,7 @@ impl LevelLightShadows {
     self.entries.insert(ask.handle, entry);
   }
 
-  /// Faces at `shrunk`'s size, or at the largest square under it that is larger than its faces' squares, room made from
-  /// the lights out of view longest where a view sees it, as for new faces; none where no larger square fits yet.
+  /// Faces for `shrunk` at its size or the largest fitting square above its current one; none where none fits yet.
   fn grow_set(&mut self, ask: &LightShadowAsk<'_>, shrunk: &LightShadowSet) -> Option<LightShadowSet> {
     let least: u32 = shrunk.faces.first().map_or(shrunk.size, |face| face.tile.size * 2);
 
@@ -262,8 +260,7 @@ impl LevelLightShadows {
     self.create_set_within(ask, size, LIGHT_SHADOW_MIN_SIZE)
   }
 
-  /// The faces a light asks for (`ask`) at a size, room made from the lights out of view longest where a view sees it,
-  /// and at smaller squares where there is still none, none under `least`.
+  /// [`Self::create_set`], giving up below squares of `least`.
   fn create_set_within(&mut self, ask: &LightShadowAsk<'_>, size: u32, least: u32) -> Option<LightShadowSet> {
     let LightShadowAsk {
       light,

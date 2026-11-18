@@ -5,11 +5,9 @@ use crate::contract::feature::scene::render_grass_settings::RenderGrassSettings;
 use crate::feature::scene::grass::cards::grass_cards::GrassCards;
 use crate::tests::shader::wgsl_probe::run_wgsl_probe;
 
-/// The largest chance `card_chance` gives, its 24 bits' last step.
+// The largest chance `card_chance` gives from its 24 bits.
 const CHANCE_MOST: f32 = 1.0 - 1.0 / 16_777_216.0;
 
-/// The share of its size each tuft stands at as a card, a case's `x` metres from the eye and of chance `y`, where the
-/// cards thin past `thin_from` (`grass/card_thinning`).
 fn thinned_from(cases: &[(f32, f32)], thin_from: f32) -> Option<Vec<f32>> {
   let probes: Vec<(Vec4, Vec4)> = cases
     .iter()
@@ -24,13 +22,11 @@ fn thinned_from(cases: &[(f32, f32)], thin_from: f32) -> Option<Vec<f32>> {
   Some(answered.iter().map(|answer| answer.x).collect())
 }
 
-/// The share of its size each tuft stands at as a card where the cards only cast the cascades' shadows.
 fn thinned(cases: &[(f32, f32)]) -> Option<Vec<f32>> {
   thinned_from(cases, GrassCards::get_thin_from(false))
 }
 
-// Traced, the cards are never thinned: every tuft stands whole as far as they reach, so a reflection keeps its look as
-// the eye comes nearer.
+// A thinned traced card would change a reflection's look as the eye comes nearer.
 #[test]
 fn stands_every_traced_tuft_whole_however_far() {
   let cases: Vec<(f32, f32)> = [40.0, 60.0, 150.0]
@@ -46,7 +42,6 @@ fn stands_every_traced_tuft_whole_however_far() {
   }
 }
 
-// Short of the thinning every tuft stands whole as a card, whatever its chance: there, none joins or leaves.
 #[test]
 fn stands_every_tuft_whole_short_of_the_thinning() {
   let mut cases: Vec<(f32, f32)> = Vec::new();
@@ -66,7 +61,6 @@ fn stands_every_tuft_whole_short_of_the_thinning() {
   }
 }
 
-// Past the thinning a tuft shrinks and grows smoothly as the eye moves, never popping, and far off only a few stand.
 #[test]
 fn thins_the_tufts_smoothly_past_where_the_thinning_starts() {
   const STEP: f32 = 0.25;
@@ -116,8 +110,7 @@ fn sizes_the_cards_to_what_their_tufts_ask() {
   assert_eq!(GrassCards::get_capacity(grown, 20_000), 32_768);
 }
 
-// The traced cards, never thinned, stand every tuft whole as far as their fade starts, at any shadow radius: the water's
-// rays meet them there rather than walking the grass's layers.
+// The water's rays meet the cards there rather than walking the grass's layers.
 #[test]
 fn stands_every_traced_tuft_whole_as_far_as_the_fade() {
   for shadow_radius in [5.0, 20.0, 45.0, 50.0, 60.0, 75.0, 100.0, 150.0] {

@@ -1,5 +1,3 @@
-//! The sky debanding: the sky's textures smoothed at their source, which the combine draws the sky with.
-
 use crate::contract::feature::image::display::render_debanding_mode::RenderDebandingMode;
 use crate::contract::feature::image::display::render_debanding_settings::RenderDebandingSettings;
 use crate::contract::view::render_view_options::RenderViewOptions;

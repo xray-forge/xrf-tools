@@ -9,7 +9,6 @@ pub enum RenderDebandingMode {
   /// The engine's own: the sky as drawn.
   #[default]
   Engine,
-  /// Sky debanding: the sky's cubes and clouds smoothed where their stored steps band, each texel averaged with
-  /// neighbours less than a step apart, before the sky is drawn with them.
+  /// Smooths banding in the sky's cubes and clouds by averaging each texel with neighbours less than a step apart.
   Enhanced,
 }

@@ -3,29 +3,28 @@ use std::sync::Arc;
 use crate::capture::record::record_layout::RecordLayout;
 use crate::frame::readback::gpu_readback::GpuReadback;
 
-/// A recording's frame this frame draws: the viewport's finished frame presented at the recording's size into a texture
-/// of its own and copied into a buffer of the recording's ring.
+/// A recording frame drawn this frame: the viewport's finished frame at the recording's size, copied to a ring buffer.
 pub(crate) struct RecordShot {
-  /// Its buffer's place in the ring, and the buffer.
+  /// Its buffer's index in the ring.
   pub(crate) slot: usize,
   readback: Arc<GpuReadback>,
   layout: RecordLayout,
 }
 
 impl RecordShot {
-  /// The format a recording's frames are drawn in: blue first, as Media Foundation's RGB32 takes them.
+  /// Recording frame format: BGRA, as Media Foundation's RGB32 takes it.
   pub(crate) const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8Unorm;
 
   pub(crate) fn new(slot: usize, readback: Arc<GpuReadback>, layout: RecordLayout) -> Self {
     Self { slot, readback, layout }
   }
 
-  /// Pixels across and down, the recording's.
+  /// The recording's size in pixels.
   pub(crate) fn get_size(&self) -> (u32, u32) {
     self.layout.size
   }
 
-  /// Copies the frame out of `texture`, presented at its size; asked for once the copy is submitted.
+  /// Encodes the copy out of `texture`, which must be at the recording's size; requested back after submission.
   pub(crate) fn encode(&self, encoder: &mut wgpu::CommandEncoder, texture: &wgpu::Texture) {
     let (width, height): (u32, u32) = self.layout.size;
 

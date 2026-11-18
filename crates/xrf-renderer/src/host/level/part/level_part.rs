@@ -17,7 +17,7 @@ pub enum LevelPart {
   Weather,
   /// The object motions its moving zones follow, each read again the next time something it carries asks.
   Motions,
-  /// Its AI map, which the debug views show over the ground.
+  /// Its AI map, for the debug views.
   AiMap,
 }
 

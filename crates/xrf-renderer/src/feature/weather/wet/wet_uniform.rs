@@ -11,8 +11,7 @@ use crate::pass::view::noise_turn::NoiseTurn;
 pub(crate) struct WetUniform {
   /// `RainDensity.x`, the falling rain's, which splashes and ripples by; none once it stops.
   pub density: f32,
-  /// Seconds the rain has fallen, within `RainUniform::CLOCK_PERIOD`, over which each of the splashes, the flow and the
-  /// ripples repeats a whole number of times.
+  /// Seconds the rain has fallen, within `RainUniform::CLOCK_PERIOD`.
   pub time: f32,
   /// One on Anomaly's engine.
   pub is_extended: f32,
@@ -37,8 +36,8 @@ pub(crate) struct WetUniform {
   /// trace, rather than over the metres the engine fades its splashes over; then the metres it reaches; the rest
   /// unused.
   pub reach: Vec4,
-  /// How far gusts have drifted across the puddles, metres in renderer `x` and `z` within `GUST_REPEAT`; then how far
-  /// the puddles' calm waves have scrolled, within their map's repeat; `w` unused.
+  /// The gusts' drift in metres along renderer `x` and `z` within `GUST_REPEAT`, then the calm waves' scroll within
+  /// their map's repeat (`WetDrift::get`).
   pub drift: Vec4,
   /// The level's water map's centre in `x` and `z`, its half width, and the height it is seen from, laid out as the
   /// surface map's, which the ground under the water is told by.
@@ -57,8 +56,8 @@ pub(crate) struct WetUniform {
 impl WetUniform {
   /// Metres a second gusts drift at for a keyframe's `wind_velocity`, a hundredth of it, and the least and most.
   const GUST_SPEED: (f32, f32, f32) = (0.01, 1.0, 12.0);
-  /// Metres the gusts' drift repeats over: the regional noise is read over 70 m with the whole drift and over 29 m with
-  /// half of it (`GUST_TILES` in `shaders/frame/wet_patch.wgsl`), each a whole number of repeats in it.
+  /// Metres the gusts' drift repeats over: a whole number of the noise's 70 m and, at half the drift, 29 m tiles
+  /// (`GUST_TILES` in `shaders/frame/wet_patch.wgsl`).
   pub(crate) const GUST_REPEAT: f64 = 2030.0;
 
   /// Metres the wetness creeps under a cover from its wet edges once a long rain has soaked the level through.

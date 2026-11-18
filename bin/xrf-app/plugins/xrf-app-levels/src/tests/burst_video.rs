@@ -1,6 +1,3 @@
-//! A burst's video: its frames and its sound written as one MP4 through Media Foundation as they come, read back
-//! through its Source Reader, and refused where Media Foundation does not load.
-
 #![expect(
   unsafe_code,
   reason = "reads the written video back through Media Foundation's COM calls"
@@ -25,7 +22,6 @@ use crate::viewer::recording::writer::{
   MediaProbe, MediaSession, RecordFormat, RecordSample, RecordSoundFormat, RecordSummary, RecordWriter,
 };
 
-/// Half a second of frames 1/60 s apart.
 const BURST: RenderBurst = RenderBurst {
   at: 600.0,
   step: 1.0 / 60.0,
@@ -34,13 +30,11 @@ const BURST: RenderBurst = RenderBurst {
   samples: None,
 };
 
-/// The sound's frames each burst frame lasts, at 48 kHz.
+// Sound frames per burst frame at 48 kHz.
 const FRAME_SOUND: u64 = 800;
 
-/// Ticks of Media Foundation's clock a second.
 const TICKS: i64 = 10_000_000;
 
-/// A burst's folder, made empty.
 fn folder(name: &str) -> PathBuf {
   let folder: PathBuf = GeneratedResources::path(&format!("burst_video/{name}"));
 
@@ -50,7 +44,6 @@ fn folder(name: &str) -> PathBuf {
   folder
 }
 
-/// What a stream of a file holds: its samples, the first's time, and the last's end, in ticks.
 #[derive(Debug, Default)]
 struct ReadStream {
   samples: u32,
@@ -58,7 +51,6 @@ struct ReadStream {
   end: i64,
 }
 
-/// Reads `stream` of `file` through to its end, as a player would, its samples left as they were written.
 fn read_stream(file: &Path, stream: u32) -> ReadStream {
   let _session: MediaSession = MediaSession::start().expect("Media Foundation to start");
   let path: HSTRING = HSTRING::from(file.as_os_str());
@@ -101,7 +93,6 @@ fn read_stream(file: &Path, stream: u32) -> ReadStream {
   read
 }
 
-/// A frame's sound, a step of a tone.
 fn sound_of(index: u32) -> BurstSoundChunk {
   BurstSoundChunk {
     at: u64::from(index) * FRAME_SOUND,
@@ -111,10 +102,7 @@ fn sound_of(index: u32) -> BurstSoundChunk {
   }
 }
 
-/// A burst of `width` by `height` frames and its sound written as a video into the folder `name` as a burst hands them
-/// over, the sound coming two frames behind them and the rest after the last, and its file read back: each frame once,
-/// a step apart from zero, the sound beside them from the same start to the same end, an odd size cut to the even one
-/// under it.
+// The sound trails the frames by two, as a burst's does, and the rest comes after the last frame.
 fn write_and_read(name: &str, width: u32, height: u32) {
   let folder: PathBuf = folder(name);
   let mut video: BurstVideo =
@@ -155,18 +143,18 @@ fn write_and_read(name: &str, width: u32, height: u32) {
   assert!((outcome.duration - 0.5).abs() < 1e-6, "{outcome:?}");
   assert!(!outcome.encoder.is_empty());
   assert_eq!(video.samples, BURST.frames, "{video:?}");
-  // A frame the encoder reorders would start the picture a frame late, behind the sound.
+  // A reordered frame would start the picture a frame behind the sound.
   assert_eq!(
     (video.first, audio.first),
     (Some(0), Some(0)),
     "{outcome:?} {video:?} {audio:?}"
   );
   assert!((video.end - burst_end).abs() <= 1, "{video:?}");
-  // AAC holds 1024 frames a packet, so the sound ends within one of the picture.
+  // AAC packets hold 1024 frames, so the sound ends within one packet of the picture.
   assert!((audio.end - burst_end).abs() <= 1024 * TICKS / 48_000, "{audio:?}");
 }
 
-// Through Microsoft's software encoder, which takes a size too small for a GPU's.
+// Too small for a GPU encoder, so Microsoft's software encoder writes it.
 #[test]
 fn writes_a_small_bursts_frames_and_sound_as_one_video() {
   write_and_read("small", 129, 73);
@@ -178,8 +166,7 @@ fn writes_a_bursts_frames_and_sound_as_one_video() {
   write_and_read("larger", 321, 181);
 }
 
-// The viewer's widest burst at its default step, 3730×1930 frames 1/120 s apart, past what H.264's highest common
-// level names a frame rate for, is written as given.
+// Past H.264 level 5.2's throughput, so the stream must name a higher level.
 #[test]
 fn writes_the_viewers_widest_burst_at_its_default_step() {
   let file: PathBuf = folder("widest").join("burst.mp4");
@@ -214,8 +201,7 @@ fn writes_the_viewers_widest_burst_at_its_default_step() {
   assert!((video.end - TICKS / 10).abs() <= 1, "{summary:?} {video:?}");
 }
 
-// Sound from a device at a rate AAC does not take is brought to 48 kHz on its own clock: a block missing between two
-// does not slide what comes after, and the sound ends with the picture.
+// A dropped block must not slide the resampled sound after it.
 #[test]
 fn writes_sound_from_a_rate_aac_does_not_take() {
   let file: PathBuf = folder("resampled").join("burst.mp4");
@@ -236,7 +222,7 @@ fn writes_sound_from_a_rate_aac_does_not_take() {
   .expect("the writer to take the sound's rate");
 
   for index in 0..30u32 {
-    // Half a second of 96 kHz in blocks of 256 frames, one skipped as a full tap drops it.
+    // 96 kHz in 256-frame blocks, one skipped as a full tap drops it.
     for block in (index * 1600 / 256)..((index + 1) * 1600 / 256) {
       if block != 40 {
         writer
@@ -265,8 +251,7 @@ fn writes_sound_from_a_rate_aac_does_not_take() {
   assert!((audio.end - TICKS / 2).abs() <= 1024 * TICKS / 48_000, "{audio:?}");
 }
 
-// Frames handed over seconds ahead of their sound, as a burst's come while its sound waits on a level's walls, are
-// written with it, the writer waiting on neither.
+// A burst's sound can trail by seconds while a level's walls build.
 #[test]
 fn writes_frames_handed_over_seconds_ahead_of_their_sound() {
   let file: PathBuf = folder("frames-ahead").join("burst.mp4");
@@ -316,12 +301,11 @@ fn writes_frames_handed_over_seconds_ahead_of_their_sound() {
     (frames, Some(0), Some(0)),
     "{video:?} {audio:?}"
   );
-  // The file's timescale rounds a frame's time to well under a millisecond.
+  // The file's timescale rounds frame times by well under a millisecond.
   assert!((video.end - 5 * TICKS).abs() <= TICKS / 1000, "{video:?}");
   assert!((audio.end - 5 * TICKS).abs() <= 1024 * TICKS / 48_000, "{audio:?}");
 }
 
-// A frame goes to the encoder blue first, an odd size's last column and row left out.
 #[test]
 fn hands_a_frame_over_blue_first_at_its_even_size() {
   let picture: RgbaImage = RgbaImage::from_fn(3, 3, |x, y| Rgba([x as u8, y as u8, 10 + x as u8, 255]));
@@ -332,7 +316,6 @@ fn hands_a_frame_over_blue_first_at_its_even_size() {
   );
 }
 
-// Where Media Foundation does not load, a video is refused before anything draws, naming what is missing.
 #[test]
 fn refuses_a_video_where_media_foundation_does_not_load() {
   let error: String = BurstVideo::new(

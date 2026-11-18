@@ -256,7 +256,6 @@ fn draws_a_tile_as_the_engine_draws_its_map_through_the_lens_of_its_view() -> Xr
 
   let look: RenderViewOptions = MapCaptureLook::apply(&options, tile);
 
-  // The map's own look: no fog, particles, bloom or camera effects, drawn at the tile's own pixels.
   assert!(!look.show.is_fogged && !look.show.is_particled && !look.features.bloom.is_enabled);
   assert_eq!(look.features.camera, options.features.camera.without_effects());
   assert!(!look.features.camera.is_aberrated && !look.features.camera.is_grained);

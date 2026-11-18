@@ -2,11 +2,11 @@ use xrf_audio::AudioServer;
 
 use crate::viewer::burst::BurstSoundTee;
 
-/// Where shown levels are heard: the application's audio server, and the tee a burst's sound frames leave by for the
-/// burst's own session. A clone shares both.
+/// Where shown levels are heard: the application's audio server, and the tee that copies sound frames to a running
+/// burst. A clone shares both.
 ///
-/// The audio plugin always starts the server: with no output device it plays to nothing and reports why in its output
-/// status, so a level is shown, recorded and burst the same with or without one.
+/// The server always runs: without an output device it plays to nothing and says why in its output status, so showing,
+/// recording and bursts behave the same either way.
 #[derive(Clone)]
 pub struct LevelAudio {
   pub server: AudioServer,
@@ -14,7 +14,6 @@ pub struct LevelAudio {
 }
 
 impl LevelAudio {
-  /// Levels heard through `server`.
   pub fn new(server: AudioServer) -> Self {
     Self {
       server,

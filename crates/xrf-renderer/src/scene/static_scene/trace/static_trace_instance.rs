@@ -1,32 +1,28 @@
 use glam::{Mat3, Vec3};
 use xrf_renderer_core::ShaderStruct;
 
-/// One top-level instance of the level's acceleration structure as a traced hit reads it, by the instance's custom
-/// index: the first record of its geometries, the place it stands at, whose hemisphere lights it, and what its
-/// transform does to its cut-out triangles' densities (`StaticTraceDensity`).
+/// A top-level acceleration structure instance as a traced hit reads it by custom index: its first geometry record,
+/// its place (which also gives its hemisphere), and its transform's effect on cut-out densities
+/// (`StaticTraceDensity`).
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "TraceInstance")]
 pub(crate) struct StaticTraceInstance {
   pub first_record: u32,
   pub place: u32,
-  /// The base-2 logarithm its transform adds to each of its triangles' densities where it turns and scales alike each
-  /// way: minus that of its scale. Nought where it scales unevenly.
+  /// Log2 added to each triangle's density under uniform scale, minus log2 of the scale; zero under uneven scale.
   pub density_scale: f32,
-  /// `UNEVEN` where its transform scales unevenly, so each triangle's density changes with the way it faces, worked
-  /// out where it is read.
+  /// `UNEVEN` under uneven scale, where the density depends on the triangle's facing and is worked out on read.
   pub flags: u32,
 }
 
 impl StaticTraceInstance {
   pub(crate) const UNEVEN: u32 = 1;
 
-  /// How far a transform's axes may differ in length, or lean from square, as a share of their length, and still be
-  /// taken as scaling alike each way.
+  /// Relative tolerance on axis length and orthogonality for a transform to count as uniformly scaled.
   const EVEN_TOLERANCE: f32 = 1e-4;
 
-  /// An instance standing its first record's geometries at a place by a transform, three rows of its linear part each
-  /// closed by its translation's coordinate.
+  /// An instance from a row-major 3x4 `transform` (three rows of the linear part, each ending in the translation).
   pub(crate) fn new(first_record: u32, place: u32, transform: &[f32; 12]) -> Self {
     let linear: Mat3 = Mat3::from_cols(
       Vec3::new(transform[0], transform[4], transform[8]),
@@ -50,8 +46,7 @@ impl StaticTraceInstance {
     }
   }
 
-  /// The one scale a linear part stands everything at, where it is a turn by it: its axes as long and square to each
-  /// other; none otherwise.
+  /// The uniform scale of a rotation-and-scale linear part (equal, orthogonal axes); none otherwise.
   fn get_even_scale(linear: &Mat3) -> Option<f32> {
     let axes: [Vec3; 3] = [linear.x_axis, linear.y_axis, linear.z_axis];
     let lengths: [f32; 3] = axes.map(Vec3::length);

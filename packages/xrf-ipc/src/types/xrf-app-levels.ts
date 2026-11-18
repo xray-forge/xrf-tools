@@ -39,7 +39,7 @@ export const LEVELS_JOB_CAPTURE_MAP = "levels.capture-map" as const;
 /** Decompiling a compiled level into a Level Editor scene. */
 export const LEVELS_JOB_DECOMPILE = "levels.decompile" as const;
 
-/** What a change event calls what a level's AI map was read from when it goes stale. */
+/** The part name a change event uses when a level's AI map goes stale. */
 export const LEVEL_AI_MAP_PART = "aiMap" as const;
 
 /** What a change event calls a level's collision form when it goes stale. */
@@ -330,18 +330,18 @@ export const LEVEL_PLACEMENTS_PART = "placements" as const;
 export const LEVEL_SECTIONS_PART = "sections" as const;
 
 /**
- * The bit a view switches the sound emitters' helpers by, past the kind table's: each static and zone sound's spheres
- * out to its minimum and maximum distance, named as its level object is.
+ * The helper kind bit, after the kind table's, that switches the sound emitter helpers: each static and zone sound's
+ * spheres at its minimum and maximum distance.
  */
 export const LEVEL_SOUND_EMITTERS_HELPER_KIND: number = 24;
 
-/** What a change event calls the sound files a level's emitters, music and weather read when they go stale. */
+/** The part name a change event uses when the sound files a level reads go stale. */
 export const LEVEL_SOUND_FILES_PART = "soundFiles" as const;
 
 /** What a change event calls a level's spawn when it goes stale. */
 export const LEVEL_SPAWN_PART = "spawn" as const;
 
-/** What a change event calls a level's spawned objects' visuals when they go stale. */
+/** The part name a change event uses when a level's spawned visuals go stale. */
 export const LEVEL_SPAWN_VISUALS_PART = "spawnVisuals" as const;
 
 /** What a change event calls where a level opens when it goes stale. */
@@ -356,23 +356,23 @@ export const LEVEL_TEXTURES_PART = "textures" as const;
 /** What a change event calls what a level's weather plays with beyond its environment when it goes stale. */
 export const LEVEL_WEATHER_PART = "weather" as const;
 
-/** What a change event calls a scene's binary tools' counts when they go stale. */
+/** The change event name for stale binary tool counts. */
 export const SCENE_BINARY_TOOLS_PART = "sceneBinaryTools" as const;
 
-/** What a change event calls the scene objects a scene draws when it goes stale. */
+/** The change event name for stale drawn scene objects. */
 export const SCENE_DRAWN_OBJECTS_PART = "sceneDrawnObjects" as const;
 
-/** What a change event calls what the page needs of a drawn scene beside its picture when it goes stale. */
+/** The change event name for a stale scene draw description. */
 export const SCENE_DRAW_PART = "sceneDraw" as const;
 
-/** What a change event calls a scene's helpers when they go stale. */
+/** The change event name for stale scene helpers. */
 export const SCENE_HELPERS_PART = "sceneHelpers" as const;
 
 /**
- * Every tool whose objects the editor draws a helper for, in the editor's order of its tools, each switched by its
- * place in that order. What has a counterpart in the level viewer's kind table looks as it does there: spawn points as
- * its characters, ways as its patrols, lights, sound sources, sound environments, particles and fog volumes as its
- * own, shapes as its restrictors; glows are amber and portals pale green, which nothing else is.
+ * Every tool whose objects the editor draws a helper for, in the editor's tool order. Each with a counterpart in the
+ * level viewer's kind table looks as it does there: spawn points as its characters, ways as its patrols, shapes as its
+ * restrictors, lights, sounds, particles and fog volumes as their own; glows are amber and portals pale green, which
+ * nothing else is.
  */
 export const SCENE_HELPER_TOOLS: Array<SceneHelperToolEntry> = [
   { color: "#ffb74d", drawDistance: 150.0, icon: null, isHelpedByDefault: true, kind: 1, tool: "glow" },
@@ -387,30 +387,30 @@ export const SCENE_HELPER_TOOLS: Array<SceneHelperToolEntry> = [
   { color: "#9575cd", drawDistance: 150.0, icon: null, isHelpedByDefault: true, kind: 15, tool: "fog_volume" },
 ];
 
-/** What a change event calls a scene's object tools' objects when they go stale. */
+/** The change event name for stale scene objects. */
 export const SCENE_OBJECTS_PART = "sceneObjects" as const;
 
 /**
- * The bit a scene render id sets, above every tool's place, to name the model of its object's collision surfaces
- * apart from the object's own: the renderer stands one model a spawn object, so each model needs an id.
+ * The scene render id bit, above the tool bits, naming the model of an object's collision surfaces apart from its
+ * own: the renderer holds one model per spawn object, so each model needs an id.
  */
 export const SCENE_RENDER_COLLISION_BIT: number = 2147483648;
 
 /**
- * The bit a scene render id sets, above every tool's place, to name the model of its object's editor-only surfaces
- * apart from the object's own.
+ * The scene render id bit, above the tool bits, naming the model of an object's editor-only surfaces apart from its
+ * own.
  */
 export const SCENE_RENDER_EDITOR_BIT: number = 1073741824;
 
 /**
- * The bits of a scene render id that hold its object's index among its tool's objects; the bits above them hold the
- * tool's place in the editor's order of its tools.
+ * The low bits of a scene render id, holding its object's index among its tool's objects; the bits above hold the
+ * tool's place in the editor's tool order.
  */
 export const SCENE_RENDER_INDEX_BITS: number = 24;
 
 /**
- * Every tool in the editor's order, the place a scene render id's tool bits name each by. Only the page reads it: the
- * backend reads a tool's place off its variant.
+ * Every tool in the editor's order, which a scene render id's tool bits index. Only the page reads it; the backend
+ * takes a tool's place from its variant.
  */
 export const SCENE_RENDER_TOOLS: Array<SceneToolKind> = [
   "group",
@@ -431,16 +431,15 @@ export const SCENE_RENDER_TOOLS: Array<SceneToolKind> = [
   "fog_volume",
 ];
 
-/** What a change event calls which of a scene's spawn points stand as models when it goes stale. */
+/** The change event name for stale spawn models. */
 export const SCENE_SPAWN_MODELS_PART = "sceneSpawnModels" as const;
 
-/** What a change event calls the visuals a scene's spawn points stand as when they go stale. */
+/** The change event name for stale spawn visuals. */
 export const SCENE_SPAWN_VISUALS_PART = "sceneSpawnVisuals" as const;
 
 /**
- * A burst asked of a viewport, the name of the folder of the level viewer's bursts it is written into, whether it
- * records the sound the viewport's camera hears at the burst's times as `sound.wav` beside its frames, and whether it
- * writes its frames with that sound as `burst.mp4`.
+ * A burst asked of a viewport: `name` is its folder among the level viewer's bursts, `has_sound` records what the
+ * camera hears as `sound.wav`, and `has_video` writes the frames with that sound as `burst.mp4`.
  */
 export type BurstCaptureRequest = {
   viewport: RenderViewportId;
@@ -451,8 +450,8 @@ export type BurstCaptureRequest = {
 };
 
 /**
- * A burst written: its folder, the scene's seconds each frame was drawn at in the order written, the sizes of its
- * frames and of their marks, its sound where it was asked to record one, and its video where it was asked to make one.
+ * A written burst: its folder, each frame's scene time in seconds in write order, the frame and marks sizes, and its
+ * sound and video when asked for.
  */
 export type BurstOutcome = {
   folder: string;
@@ -466,8 +465,8 @@ export type BurstOutcome = {
 };
 
 /**
- * A burst's sound written: its file, its frames a second and channels, and the sound's frame each frame read back
- * starts at, in the order written.
+ * A written burst sound: its file, sample rate and channels, and the sound frame each burst frame starts at, in write
+ * order.
  */
 export type BurstSoundOutcome = {
   file: string;
@@ -476,10 +475,7 @@ export type BurstSoundOutcome = {
   offsets: Array<number>;
 };
 
-/**
- * A burst's video written: its file, the frames in it and the last one's end in seconds, the size it was written at,
- * and the H.264 encoder that wrote it, by its name.
- */
+/** A written burst video: its file, frame count, duration in seconds, size, and the H.264 encoder's name. */
 export type BurstVideoOutcome = {
   file: string;
   frames: number;
@@ -489,7 +485,7 @@ export type BurstVideoOutcome = {
   encoder: string;
 };
 
-/** A cubemap asked of a viewport, and the cross PNG it is written to. */
+/** A cubemap capture asked of a viewport, written as a cross PNG to `path`. */
 export type CubeCaptureRequest = {
   viewport: RenderViewportId;
   capture: RenderCubeCapture;
@@ -497,8 +493,8 @@ export type CubeCaptureRequest = {
 };
 
 /**
- * What a cubemap is exported as: one cube DDS, six TGAs named `1` to `6` as `CDemoRecord` writes its faces, or six
- * PNGs named by face.
+ * A cubemap export format: one cube DDS, six TGAs named `1` to `6` as `CDemoRecord` writes them, or six PNGs named by
+ * face.
  */
 export type CubeExportFormat =
   | { kind: "png" }
@@ -507,14 +503,14 @@ export type CubeExportFormat =
       kind: "dds";
     } & ViewerDdsExport);
 
-/** A cubemap's capture written again in another shape. */
+/** A request to re-export a cubemap capture in another format or size. */
 export type CubeExportRequest = {
   /** The capture's cross PNG in the screenshots folder. */
   path: string;
-  /** The DDS written, or the folder six faces are written into. */
+  /** The DDS file, or the folder the six faces go into. */
   target: string;
   format: CubeExportFormat;
-  /** Pixels a face takes on a side, at most the capture's. */
+  /** Face side in pixels, at most the capture's. */
   size: number;
 };
 
@@ -529,8 +525,8 @@ export type EnvironmentCycleEntry = {
 };
 
 /**
- * How a scene's build into a level directory, and the compile after it, ended: what the build wrote where it got that
- * far, and what the compile ran where one was asked for and finished.
+ * How a scene's build, and the compile after it, ended: the build's report once it finished, and the compile's once
+ * one was asked for and finished.
  */
 export type LevelBuildResult = {
   outcome: JobOutcome;
@@ -567,7 +563,7 @@ export type LevelConsoleDefaults = {
   bloomStrength: number | null;
 };
 
-/** How a level's decompile into a scene ended: what it wrote where it completed, none where it was cancelled first. */
+/** How a level's decompile into a scene ended, with its report once it completed. */
 export type LevelDecompileResult = {
   outcome: JobOutcome;
   report: LevelDecompileReport | null;
@@ -1087,8 +1083,8 @@ export type LevelWeatherTexture = {
 };
 
 /**
- * The annotations asked of a level map: its PNG in the screenshots folder, beside which they are written as an SVG,
- * the ground it covers, the kinds of level object drawn, and whether every object is named.
+ * Annotations asked of a level map: `path` is its PNG in the screenshots folder, the SVG is written beside it, `area`
+ * is the ground it covers, `kinds` the object kinds drawn, and `is_labelled` names every object.
  */
 export type MapAnnotationsWriteRequest = {
   path: string;
@@ -1097,18 +1093,18 @@ export type MapAnnotationsWriteRequest = {
   isLabelled: boolean;
 };
 
-/** A level map asked of a viewport, and the PNG it is written to. */
+/** A level map capture asked of a viewport, written as a PNG to `path`. */
 export type MapCaptureRequest = {
   viewport: RenderViewportId;
   capture: RenderMapCapture;
   path: string;
 };
 
-/** How a level map's annotations, the SVG beside its capture, go into an export of it. */
+/** How a map export includes the annotations SVG written beside its capture. */
 export enum EMapExportAnnotations {
   /** Drawn over the map. */
   OVER = "over",
-  /** Alone, clear where they draw nothing. */
+  /** Alone, transparent where they draw nothing. */
   ALONE = "alone",
 }
 
@@ -1116,8 +1112,8 @@ export enum EMapExportAnnotations {
 export type MapExportAnnotations = `${EMapExportAnnotations}`;
 
 /**
- * What a level map is exported as: `CDemoRecord`'s own uncompressed TGA, a PNG, a DDS as the game loads a map, or, for
- * its annotations alone, their SVG.
+ * A level map export format: a PNG, an uncompressed TGA as `CDemoRecord` writes, a DDS as the game loads maps, or SVG
+ * for the annotations alone.
  */
 export type MapExportFormat =
   | { kind: "png" }
@@ -1127,35 +1123,35 @@ export type MapExportFormat =
       kind: "dds";
     } & ViewerDdsExport);
 
-/** A level map exported: its pixels across and down, the capture's own for its annotations alone as an SVG. */
+/** An exported level map's size in pixels; the capture's size for an annotations-only SVG. */
 export type MapExportOutcome = {
   width: number;
   height: number;
 };
 
-/** A level map's capture written again in another shape. */
+/** A request to re-export a level map capture in another format or size. */
 export type MapExportRequest = {
-  /** The capture's PNG in the screenshots folder, its coverage in alpha. */
+  /** The capture's PNG in the screenshots folder, with coverage in alpha. */
   path: string;
   target: string;
   format: MapExportFormat;
-  /** Pixels the longer side takes, at most the capture's; the shorter follows the capture's shape. */
+  /** The longer side in pixels, at most the capture's; the shorter keeps the capture's aspect. */
   longSide: number;
-  /** The colour the map is laid over, its alpha made opaque, or none to keep its coverage. */
+  /** A colour to flatten the map onto, making it opaque; none keeps the coverage alpha. */
   backdrop: [number, number, number] | null;
-  /** Whether and how its annotations go in, or none for the map alone. */
+  /** How the annotations are included; none for the map alone. */
   annotations: MapExportAnnotations | null;
 };
 
-/** Whether this machine can record a viewport, and why not where it cannot: no Media Foundation, or no audio. */
+/** Whether this machine can record a viewport, and the reason when it cannot (no Media Foundation, or no audio). */
 export type RecordingAvailability = {
   isAvailable: boolean;
   reason: string | null;
 };
 
 /**
- * A recording written: its file, its length in seconds, its frames, the frames and sound blocks dropped, its size, and
- * the H.264 encoder that wrote it, by its name.
+ * A written recording: its file, duration in seconds, frame count, dropped frames and sound blocks, size, and the
+ * H.264 encoder's name.
  */
 export type RecordingOutcome = {
   file: string;
@@ -1169,9 +1165,8 @@ export type RecordingOutcome = {
 };
 
 /**
- * Where a recording stands, sent a few times a second while it runs: the seconds of it written since its first frame,
- * its frames, and the frames and sound blocks dropped, the recorder having fallen behind. Its last, where it ended by
- * itself, says why.
+ * A running recording's progress, sent a few times a second: seconds written since its first frame, frames, and the
+ * frames and sound blocks dropped when the recorder fell behind. `ended` gives the reason when it ends by itself.
  */
 export type RecordingProgress = {
   elapsed: number | null;
@@ -1185,20 +1180,20 @@ export type RecordingProgress = {
 export enum ESceneBinaryToolDescription {
   /** `ai_map.part`: the nodes the AI walks. */
   AI_MAP = "ai_map",
-  /** `detail_object.part`: the detail objects the library plants, and the grid's slots planting them. */
+  /** `detail_object.part`: the detail objects it plants, and the grid slots planting them. */
   DETAIL_OBJECT = "detail_object",
   /** `wallmark.part`: the decals, in slots of one shader and texture each. */
   WALLMARK = "wallmark",
 }
 
 /**
- * What one binary tool of a scene holds, counted: its payload stays in the backend. Told apart by its tool, spelled as
- * that tool's `SceneToolKind`: the name its part files carry.
+ * Counts of what one binary tool of a scene holds; the payload stays in the backend. Tagged `tool` with the tool's
+ * part file name.
  */
 export type SceneBinaryToolDescription =
   /** `ai_map.part`: the nodes the AI walks. */
   | { tool: "ai_map"; nodes: number }
-  /** `detail_object.part`: the detail objects the library plants, and the grid's slots planting them. */
+  /** `detail_object.part`: the detail objects it plants, and the grid slots planting them. */
   | { tool: "detail_object"; objects: number; slots: number }
   /** `wallmark.part`: the decals, in slots of one shader and texture each. */
   | { tool: "wallmark"; slots: number; marks: number };
@@ -1230,16 +1225,13 @@ export type SceneCameraDescription = {
 };
 
 /**
- * What the page needs of a drawn scene beside its picture: where its drawn objects stand, to frame a camera on, and
- * each scene object it does not draw.
+ * What the page needs of a drawn scene beside its picture: the extent to frame a camera on, and each scene object it
+ * does not draw.
  */
 export type SceneDrawDescription = {
-  /**
-   * The extent of the scene objects drawn, each `.object`'s meshes' boxes placed, in renderer space; none where the
-   * scene draws no object.
-   */
+  /** The extent of the drawn objects' placed mesh boxes, in renderer space; none where the scene draws no object. */
   bounds: VisualBounds | null;
-  /** Each scene object not drawn, in the scene's order of its objects. */
+  /** Each scene object not drawn, in scene object order. */
   problems: Array<SceneDrawProblem>;
 };
 
@@ -1265,9 +1257,8 @@ export enum ESceneDrawProblemKind {
 export type SceneDrawProblemKind = `${ESceneDrawProblemKind}`;
 
 /**
- * The game data a scene is drawn with, which its surfaces' textures and shaders are found in: the trees searched, and
- * how the game's configs in them read, as a compiled level is opened with them. A scene with no game data opens and
- * draws, its textures missing.
+ * The game data a scene's textures and shaders are found in, given as a compiled level's is. A scene with no game data
+ * still opens and draws, its textures missing.
  */
 export type SceneGameData = {
   /** Trees the scene's textures and shaders are searched in, in search order; none for a scene with no game data. */
@@ -1285,45 +1276,39 @@ export type SceneHelperToolCount = {
 };
 
 /**
- * One helped tool's row of the scene's helper table: what the Show action names, colours, pictures and switches its
- * helpers by.
+ * One helped tool's row of the scene's helper table: how the Show action names, colours, pictures and switches its
+ * helpers.
  */
 export type SceneHelperToolEntry = {
   tool: SceneToolKind;
   /**
-   * The bit of `RenderHelperOptions::kinds` its helpers are switched by: the tool's place in the editor's order of
-   * its tools, which tops each of its helpers' ids too.
+   * The bit of `RenderHelperOptions::kinds` switching its helpers: the tool's place in the editor's tool order, which
+   * also leads each of its helpers' ids.
    */
   kind: number;
   /** Its helpers' colour, `#rrggbb` in sRGB. */
   color: string;
-  /**
-   * The icon its objects draw where they stand with no shape of their own; none for a tool whose every object has a
-   * shape.
-   */
+  /** The icon its objects without a shape draw; none for a tool whose every object has a shape. */
   icon: RenderHelperIcon | null;
   /** Metres from the camera past which its helpers fade out. */
   drawDistance: number | null;
-  /** Whether its helpers are drawn until the editor is told otherwise. */
+  /** Whether its helpers draw until switched off. */
   isHelpedByDefault: boolean;
 };
 
 /**
- * What the page needs of a scene's helpers beside their picture: where they reach, to frame a camera on a scene that
- * draws them alone, how many each helped tool draws, and which spawn points stand as their models in place of an icon.
+ * What the page needs of a scene's helpers beside their picture: their extent, to frame a scene that draws only
+ * helpers, each helped tool's count, and the spawn points drawn as models in place of an icon.
  */
 export type SceneHelpersDescription = {
   /**
-   * The extent of every helper's shapes and icons and of where each spawn point drawn as a model stands, in renderer
-   * space; none where the scene draws no helper.
+   * The extent of every helper's shapes and icons and of each spawn model's position, in renderer space; none where
+   * the scene draws no helper.
    */
   bounds: VisualBounds | null;
-  /**
-   * Each helped tool helping at least one object, in the editor's order of its tools, a spawn point drawn as its model
-   * counted.
-   */
+  /** Each helped tool helping at least one object, in the editor's tool order; spawn points drawn as models count. */
   tools: Array<SceneHelperToolCount>;
-  /** Each spawn point drawn as its entity's model, in the scene's order of its spawn points. */
+  /** Each spawn point drawn as its entity's model, in spawn point order. */
   spawnModels: Array<SceneSpawnModelDescription>;
 };
 
@@ -1355,7 +1340,7 @@ export type SceneObjectDescription = {
   id: SceneObjectId;
   /** Unique within the scene. */
   name: string;
-  /** The group it is a member of, by the group's name; none for an object of its tool's own part. */
+  /** The name of the group it belongs to; none for an object of its tool's own part. */
   group: string | null;
   /** `co_flags`: motion, grouping and the editor's other states. */
   flags: number;
@@ -1364,8 +1349,8 @@ export type SceneObjectDescription = {
 };
 
 /**
- * What names one scene object for as long as its scene's read stands: its tool, and its place in the tool's objects as
- * the editor loads them, the groups' members first.
+ * Names one scene object until its scene is read again: its tool, and its index in the tool's objects in editor load
+ * order, group members first.
  */
 export type SceneObjectId = {
   tool: SceneToolKind;
@@ -1403,7 +1388,7 @@ export enum ESceneObjectProperties {
 }
 
 /**
- * What one scene object's kind keeps beyond its name and transform, as an inspector shows it: one variant per object
+ * What one scene object's kind keeps beyond its name and transform, as an inspector shows it; one variant per object
  * tool.
  */
 export type SceneObjectProperties =
@@ -1439,7 +1424,7 @@ export type SceneObjectProperties =
   | {
       kind: "light";
       lightType: SceneLightType;
-      /** Red, green, blue and alpha, lit with times the brightness. */
+      /** Red, green, blue and alpha, which light at `brightness` times. */
       color: [number | null, number | null, number | null, number | null];
       brightness: number | null;
       range: number | null;
@@ -1455,7 +1440,7 @@ export type SceneObjectProperties =
       /** The light animation it plays, empty for none. */
       animation: string;
       falloffTexture: string;
-      /** The points a fuzzy point light spreads over, in its own space; none for another light. */
+      /** The points a fuzzy point light spreads over, in its own space; empty for any other light. */
       fuzzyPoints: Array<Vector3d>;
     }
   /** A light flare, `glow.part`. */
@@ -1508,14 +1493,11 @@ export type SceneObjectProperties =
   /** A group, `group.part`, whose members are described under their own tools. */
   | {
       kind: "group";
-      /** How many members of the tools described name it as their group. */
+      /** How many objects of the described tools name it as their group. */
       members: number;
     };
 
-/**
- * One object tool of a scene and its objects, in the order the editor loads them: the groups' members of its class,
- * then its own part's.
- */
+/** One object tool of a scene and its objects in editor load order: group members of its class, then its own part's. */
 export type SceneObjectToolDescription = {
   tool: SceneToolKind;
   objects: Array<SceneObjectDescription>;
@@ -1530,18 +1512,18 @@ export type SceneObjectTransform = {
 };
 
 /**
- * What a scene's object tools hold, typed: every tool with a part or a group's member, and why any tool's objects did
+ * A scene's object tools' typed objects: every tool with a part or a group member, and why any tool's objects did
  * not read.
  */
 export type SceneObjectsDescription = {
-  /** The tools whose objects read, by name. */
+  /** The tools whose objects read, in the editor's tool order. */
   tools: Array<SceneObjectToolDescription>;
   /** The tools whose objects did not read, each left out of [`Self::tools`]. */
   problems: Array<SceneProblem>;
 };
 
 /**
- * What opening a Level Editor scene was asked to read, where its library objects are looked for, and the game data it
+ * A request to open a Level Editor scene: its `.level`, where its library objects are looked for, and the game data it
  * is drawn with.
  */
 export type SceneOpenRequest = {
@@ -1553,7 +1535,7 @@ export type SceneOpenRequest = {
   objectsRoots: Array<string> | null;
   /**
    * Trees the scene's textures and shaders are searched in; where none are given, `gamedata` beside the `rawdata`
-   * directory holding the scene's `levels` where that directory exists, else no game data.
+   * holding the scene's `levels` where it exists, else no game data.
    */
   gameRoots: XrayRoots | null;
   /** Whether the game's configs resolve with the Monolith/Anomaly DLTX patch dialect. */
@@ -1573,27 +1555,27 @@ export type ScenePartFileDescription = {
 };
 
 /**
- * Something of a scene the Level Editor would skip or refuse, kept on the tool it belongs to: what an open or a part's
- * read found, never a refused open.
+ * Something of a scene the Level Editor would skip or refuse, found by the open or a part's read and kept on its tool;
+ * never a refused open.
  */
 export type SceneProblem = {
   kind: SceneProblemKind;
   /** The tool it belongs to, by the name its part files carry: `scene_object`, `spawn`, `ai_map` and the rest. */
   tool: string;
   /**
-   * The part file it was found in, `<tool>.part` or a numbered one; none where it is the tool's objects as a whole that
-   * do not read, its groups' members among them.
+   * The part file it was found in, `<tool>.part` or a numbered one; none where the tool's objects as a whole, group
+   * members included, do not read.
    */
   file: string | null;
   message: string;
 };
 
 /**
- * Why the Level Editor would skip or refuse one of a scene's parts, as it does rather than refusing the scene. A part
- * carrying another scene's GUID is none of these: it refuses the scene.
+ * Why the Level Editor would skip or refuse one of a scene's parts while still opening the scene. A part carrying
+ * another scene's GUID is none of these: it refuses the scene.
  */
 export enum ESceneProblemKind {
-  /** The file does not read as a part, or what its tool keeps in it does not read as that tool's. */
+  /** The file does not read as a part, or its content does not read as its tool's. */
   UNREADABLE = "unreadable",
   /** The part's `[main]` holds a tool version other than the one its tool reads. */
   WRONG_VERSION = "wrongVersion",
@@ -1649,8 +1631,8 @@ export type SceneShapeUsage =
   | { kind: "unknown"; value: number };
 
 /**
- * Where a Level Editor scene is read from: its `.level` on disk. The scene is searched for from the directory holding
- * the `.level`, its parts in the directory beside it named after it, so a scene opens wherever it lies.
+ * A Level Editor scene's `.level` on disk. The scene is searched from the directory holding it, its parts in the
+ * directory beside it named after it, so a scene opens wherever it lies.
  */
 export type SceneSource = {
   /** The `.level` file's filesystem path. */
@@ -1658,8 +1640,8 @@ export type SceneSource = {
 };
 
 /**
- * One field of a spawned entity's data as the scene saves it, `[object_N_spawndata]`: the packet's values numbered in
- * the order they are written, its custom data among them.
+ * One field of a spawned entity's data as the scene saves it in `[object_N_spawndata]`: the packet's values numbered
+ * in write order, custom data among them.
  */
 export type SceneSpawnField = {
   key: string;
@@ -1717,8 +1699,8 @@ export type SceneSpawnKind =
     };
 
 /**
- * A spawn point drawn as its entity's model, as the page is told of it: which object, and the name the renderer knows
- * the model by, which a model the renderer could not read is reported under.
+ * A spawn point drawn as its entity's model: the object, and the renderer's name for the model, under which a model
+ * the renderer could not read is reported.
  */
 export type SceneSpawnModelDescription = {
   object: SceneObjectId;
@@ -1735,7 +1717,7 @@ export type SceneToolDescription = {
   format: SceneToolFormat | null;
   /** Its files' sizes summed, in bytes. */
   size: number;
-  /** Its files in the order the editor reads them, those it skips among them. */
+  /** Its files in the editor's read order, including those it skips. */
   files: Array<ScenePartFileDescription>;
 };
 
@@ -1751,12 +1733,10 @@ export enum ESceneToolFormat {
 export type SceneToolFormat = `${ESceneToolFormat}`;
 
 /**
- * A Level Editor tool a scene's part file belongs to, by the name the file carries, and what the editor requires of
- * the tool's part before it loads it.
+ * A Level Editor tool, by the name its part files carry, and what the editor requires of its part before loading it.
  *
- * Declared in the order of the editor's class ids (`ObjClassID`), which is the order it keeps and lists its tools in.
- * Each crosses IPC as the name its part files carry, written per variant rather than derived: no case convention
- * spells `ps` or `sound_src`.
+ * Declared in the editor's class id order (`ObjClassID`), the order it keeps and lists its tools in. Each crosses IPC
+ * as its part file name, written per variant because no case convention spells `ps` or `sound_src`.
  */
 export enum ESceneToolKind {
   /** Groups of other tools' objects, `OBJCLASS_GROUP`. */
@@ -1875,8 +1855,8 @@ export type SelectedLevelDescription = {
 };
 
 /**
- * What the page is shown of an open scene itself: what names it, what its `.level` holds worth showing, its tools'
- * part files and what is wrong with them. The tools' objects are parts with queries of their own.
+ * What the page shows of an open scene itself: its names, its `.level` settings, its tools' part files and their
+ * problems. The tools' objects are parts with queries of their own.
  */
 export type SelectedSceneDescription = {
   source: SceneSource;
@@ -1886,13 +1866,13 @@ export type SelectedSceneDescription = {
   guid: string;
   /** Where its scene objects' library objects are looked for. */
   objectsRoots: XrayRoots;
-  /** The game data it is drawn with: the roots its textures and shaders are searched in, none where it has none. */
+  /** The game data roots its textures and shaders are searched in, if it has any. */
   game: SceneGameData;
   /** What its `[build_params]` set, none where they do not read. */
   buildParams: SceneBuildParamsDescription | null;
   /** Where the editor's camera stood, none where `[camera]` does not read. */
   camera: SceneCameraDescription | null;
-  /** Every tool it holds part files of, in the editor's order, those it does not save after them by name. */
+  /** Every tool it holds part files of, in the editor's order, then the tools the editor does not save, by name. */
   tools: Array<SceneToolDescription>;
   /** What the open found the editor would skip or refuse of its part files. */
   problems: Array<SceneProblem>;

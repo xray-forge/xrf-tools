@@ -15,8 +15,7 @@ pub(crate) struct LightsFrame {
   pub engine: XrayEngine,
   /// The progressive meshes' `start` and `end` screen areas, which a shadowed light fades between.
   pub lod: (f32, f32),
-  /// The wind's amplitude the trees lean by, which has a face over them drawn again; a face's last draw is timed by
-  /// `time`.
+  /// The wind amplitude the trees lean by; a face over swaying trees is drawn again.
   pub sway_amplitude: f32,
   /// What the drawable kinds beside the static scene cast into the faces of the lights near the eye (the grass's cards).
   pub casters: Option<LightCasters>,
@@ -33,7 +32,7 @@ pub(crate) struct LightsFrame {
   /// The scale a local light in the engine's units is written at: its unit (`LightUnits::local`) by the lights' gain
   /// (`LightUnits::light_gain`) at the pre-exposure.
   pub light_scale: f32,
-  /// The level's clock, which the lights' animations and shafts' noise move by and their faces' draws are timed by.
+  /// The level's clock for the lights' animations, shaft noise and face draw times.
   pub time: LevelTime,
 }
 

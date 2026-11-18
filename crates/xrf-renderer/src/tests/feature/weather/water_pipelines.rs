@@ -1,11 +1,7 @@
-//! What a device must allow for the enhanced water to write ray reconstruction's guides.
-
 use crate::feature::weather::water::draw::water_pipelines::WaterPipelines;
 use crate::frame::targets::view_targets::ViewTargets;
 
-/// The guided surface's targets take the bytes a sample the device is checked for, as WebGPU counts them: each target's
-/// cost after aligning to its component, the surface's own three (the scene, its distortion, its motion) then the
-/// guides.
+// Bytes per sample as WebGPU counts them: each target aligned to its component, in attachment order.
 #[test]
 fn checks_the_device_for_the_bytes_the_guided_water_takes() {
   let formats = [ViewTargets::SCENE, ViewTargets::DISTORTION, ViewTargets::MOTION]

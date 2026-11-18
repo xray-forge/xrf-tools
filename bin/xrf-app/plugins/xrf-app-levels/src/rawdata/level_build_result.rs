@@ -3,8 +3,8 @@ use xrf_job::JobOutcome;
 use xrf_level_compiler::LevelCompileReport;
 use xrf_rawdata::LevelBuildReport;
 
-/// How a scene's build into a level directory, and the compile after it, ended: what the build wrote where it got that
-/// far, and what the compile ran where one was asked for and finished.
+/// How a scene's build, and the compile after it, ended: the build's report once it finished, and the compile's once
+/// one was asked for and finished.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]

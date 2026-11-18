@@ -35,7 +35,7 @@ impl LightFades {
     shown: 1.0,
   };
 
-  /// How far a shadowed light has faded from `eye` over the cull's levels of detail, `start` to `end` metres.
+  /// How far a shadowed light has faded from `eye` (`light::get_LOD`), between the `start` and `end` screen areas.
   pub(crate) fn of(light: &LightDescription, basis: &LightBasis, eye: Vec3, (start, end): (f32, f32)) -> Self {
     if matches!(light.kind, LightKind::Spot) {
       let fade: f32 = LightBasis::get_light_lod(basis.get_spatial_sphere(light), eye, start, end);

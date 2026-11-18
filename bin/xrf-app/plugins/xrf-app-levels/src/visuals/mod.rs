@@ -1,6 +1,5 @@
-//! What spawned objects' visuals are read as wherever the plugin draws them, a compiled level's spawn and a scene's
-//! spawn points alike: each visual packed, posed and dressed, the visuals a session keeps, and the reader that fills
-//! them through the search its session hands it.
+//! Spawned objects' visuals, shared by a compiled level's spawn and a scene's spawn points: each visual packed, posed
+//! and dressed, the per-session cache, and its reader.
 
 mod spawn_visual;
 mod spawn_visual_reader;

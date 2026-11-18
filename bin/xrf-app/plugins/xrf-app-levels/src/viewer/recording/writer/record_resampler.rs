@@ -1,32 +1,32 @@
 use std::f64::consts::PI;
 
-/// Interleaved stereo sound brought from a device's rate to 48 kHz, for a device at a rate AAC does not take (it takes
-/// 44.1 and 48 kHz): a windowed sinc low-passed under the lower rate's half, its taps centred on each output frame, so
-/// output frame `n` is the input at `n × from / 48 kHz` with nothing shifted in time. It streams: each call takes the
-/// next input and gives every output frame its taps reach, holding the rest for the next.
+/// Streams interleaved stereo from a device rate AAC does not take (it takes 44.1 and 48 kHz) to 48 kHz. A windowed
+/// sinc low-passed under the lower rate's Nyquist, its taps centred on each output frame, makes output frame `n` the
+/// input at `n × from / 48 kHz` with no time shift. Each call emits every output frame its taps reach and holds the
+/// rest.
 pub(crate) struct RecordResampler {
   from: u32,
-  /// Input frames held for the taps, the stream's first preceded by silence.
+  /// Input frames held for the taps; a stream starts with silence.
   held: Vec<[f32; 2]>,
-  /// Where the next output frame falls among the held frames.
+  /// The next output frame's position among the held frames.
   position: f64,
-  /// Input frames an output frame steps over.
+  /// Input frames per output frame.
   step: f64,
-  /// The low pass, a share of the input's half rate.
+  /// The low-pass cutoff as a share of the input's Nyquist.
   cutoff: f64,
 }
 
 impl RecordResampler {
-  /// The rate it brings sound to.
+  /// The output rate.
   pub(crate) const RATE: u32 = 48_000;
 
-  /// Input frames each side of an output frame its taps reach.
+  /// Taps on each side of an output frame.
   const HALF_TAPS: usize = 16;
 
-  /// How far under the lower rate's half the low pass sits, leaving its window room to fall.
+  /// The cutoff's share of the lower Nyquist, leaving the window room to roll off.
   const PASS: f64 = 0.9;
 
-  /// A resampler from `rate`, none for a rate AAC takes as it is.
+  /// A resampler from `rate`; none for a rate AAC takes as is, or zero.
   pub(crate) fn for_rate(rate: u32) -> Option<Self> {
     if rate == 44_100 || rate == Self::RATE || rate == 0 {
       return None;
@@ -43,19 +43,18 @@ impl RecordResampler {
     })
   }
 
-  /// The rate it takes sound at.
   pub(crate) fn get_input_rate(&self) -> u32 {
     self.from
   }
 
-  /// Forgets what it holds, its next input the start of a stream again, preceded by silence.
+  /// Drop held input so the next input starts a new stream, preceded by silence.
   pub(crate) fn restart(&mut self) {
     self.held.clear();
     self.held.resize(Self::HALF_TAPS, [0.0; 2]);
     self.position = Self::HALF_TAPS as f64;
   }
 
-  /// Takes interleaved stereo `input`, appending to `output` every frame at 48 kHz its taps now reach.
+  /// Take interleaved stereo `input`, appending every 48 kHz frame its taps now reach to `output`.
   pub(crate) fn push(&mut self, input: &[f32], output: &mut Vec<f32>) {
     self.held.extend(input.as_chunks::<2>().0.iter().copied());
 
@@ -76,14 +75,14 @@ impl RecordResampler {
       self.position += self.step;
     }
 
-    // The frames no later output frame's taps reach.
+    // Frames no later output frame's taps reach.
     let spent: usize = (self.position.floor() as usize + 1).saturating_sub(Self::HALF_TAPS);
 
     self.held.drain(..spent.min(self.held.len()));
     self.position -= spent as f64;
   }
 
-  /// The tap `offset` input frames from an output frame: the low pass's sinc under a Blackman window over the taps.
+  /// The weight of the tap `offset` input frames from an output frame: the low-pass sinc under a Blackman window.
   fn get_weight(&self, offset: f64) -> f64 {
     let span: f64 = Self::HALF_TAPS as f64;
 

@@ -5,8 +5,8 @@ use xrf_app_core::window::InvokingWindow;
 
 use crate::scene::{SelectedScene, SelectedSceneDescription, SelectedScenes};
 
-/// Restore the scene `tool` holds in the asking window, the newest it opened, without reading the scene again: as a
-/// page attaches to it, or reads it again after a commit derived it anew. Its parts are read by their own queries.
+/// Restore the newest scene `tool` opened in the asking window without reading it again, for a page attaching to it or
+/// refreshing after a commit. Its parts have their own queries.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "restore_scene")]
 pub(crate) async fn levels_restore_scene(

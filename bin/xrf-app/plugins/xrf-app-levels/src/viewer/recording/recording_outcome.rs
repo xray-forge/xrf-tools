@@ -2,8 +2,8 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-/// A recording written: its file, its length in seconds, its frames, the frames and sound blocks dropped, its size, and
-/// the H.264 encoder that wrote it, by its name.
+/// A written recording: its file, duration in seconds, frame count, dropped frames and sound blocks, size, and the
+/// H.264 encoder's name.
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]

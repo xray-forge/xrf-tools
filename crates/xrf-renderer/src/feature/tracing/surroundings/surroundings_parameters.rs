@@ -4,10 +4,8 @@ use crate::feature::image::exposure::reading::exposure_head::ExposureHead;
 use crate::feature::tracing::surroundings::surroundings_uniform::SurroundingsUniform;
 use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 
-/// What resolving one face of the surroundings cube reads and writes: the faces' G-buffer arrays as the static scene
-/// drew them, read at the face's layer, the material table, both keyframes' sky and irradiance cubes and clouds and
-/// their samplers, the lighting, the exposure whose scale the sky is drawn on, the face's settings, and the cube's
-/// first mip, whose face it writes.
+/// What resolving one face of the surroundings cube reads and writes: the faces' G-buffer arrays, read at the face's
+/// layer, both keyframes' skies, the lighting and exposure, and the cube's first mip, whose face it writes.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
 pub(crate) struct SurroundingsParameters<'a> {

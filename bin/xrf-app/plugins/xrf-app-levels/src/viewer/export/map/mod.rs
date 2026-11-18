@@ -1,4 +1,4 @@
-//! A level map: its capture's request, its annotations drawn over it, and its export.
+//! Level map capture requests, annotations and exports.
 
 pub(crate) mod annotations;
 mod map_capture_request;

@@ -1,19 +1,16 @@
 use std::path::{Path, PathBuf};
 
-/// The libraries the app hands the level compiler: DXC's, with which the GPU backend traces the light, details and AI
-/// steps' rays on D3D12, as the app bundles it for the renderer.
+/// The libraries the app hands the level compiler: the renderer's bundled DXC, which lets the GPU steps trace on D3D12.
 pub(crate) struct LevelCompilerLibraries {
   pub(crate) dxc: Option<PathBuf>,
 }
 
 impl LevelCompilerLibraries {
-  /// Where the app bundles DXC, as `tauri.windows.conf.json` maps it; and where a development build finds it in the
-  /// checkout.
+  /// DXC in the app's resources, as `tauri.windows.conf.json` maps it, and in a development checkout.
   const PACKAGED_DXC: &'static str = "resources/renderer/dxc/dxcompiler.dll";
   const CHECKOUT_DXC: &'static str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../../.sdks/dxc/dxcompiler.dll");
 
-  /// The libraries under the app's resources, or the checkout's where nothing was packaged; DXC none where neither
-  /// holds it, and the steps then trace on Vulkan.
+  /// The libraries in the app's resources, else in the checkout; without DXC the steps trace on Vulkan.
   pub(crate) fn locate(resource_dir: Option<&Path>) -> Self {
     let dxc: Option<PathBuf> = resource_dir
       .map(|directory| directory.join(Self::PACKAGED_DXC))

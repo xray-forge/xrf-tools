@@ -2,9 +2,8 @@ use crate::contract::overlay::render_helper_options::RenderHelperOptions;
 use crate::scene::level::page::helpers::level_helpers::LevelHelpers;
 use crate::scene::static_scene::static_scene::StaticScene;
 
-/// What a view builds its helpers from: the scene's helpers and those whose objects sound, by their ids ascending, the
-/// spawned objects standing in its scene, the view's options, and the layout the marks are bound by
-/// (`StaticGBufferPass::get_marks_layout`).
+/// Inputs a view builds its helpers from; `sounding` holds object ids ascending, and `marks_layout` comes from
+/// `StaticGBufferPass::get_marks_layout`.
 #[derive(Clone, Copy)]
 pub(crate) struct HelperSources<'a> {
   pub helpers: &'a LevelHelpers,

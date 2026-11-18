@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-/// Where a recording stands, sent a few times a second while it runs: the seconds of it written since its first frame,
-/// its frames, and the frames and sound blocks dropped, the recorder having fallen behind. Its last, where it ended by
-/// itself, says why.
+/// A running recording's progress, sent a few times a second: seconds written since its first frame, frames, and the
+/// frames and sound blocks dropped when the recorder fell behind. `ended` gives the reason when it ends by itself.
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]

@@ -11,12 +11,12 @@ use crate::viewer::export::map::annotations::AnnotationCanvas;
 use crate::viewer::export::map::{MapExportAnnotations, MapExportFormat, MapExportOutcome, MapExportRequest};
 use crate::viewer::{LevelViewerFolder, ViewerImage};
 
-/// A level map's capture written again: resized, flattened or not, as a PNG, an uncompressed TGA or a DDS, or its
-/// annotations alone as their SVG.
+/// Re-exports a level map capture, resized and optionally flattened, as a PNG, uncompressed TGA or DDS, or its
+/// annotations alone as SVG.
 pub(crate) struct MapExporter;
 
 impl MapExporter {
-  /// Writes the export `request` asks for, answering its pixels across and down.
+  /// Write the export `request` asks for, answering its size.
   ///
   /// # Errors
   ///
@@ -38,7 +38,7 @@ impl MapExporter {
       })
       .transpose()?;
 
-    // The annotations alone as they were drawn, a vector at any size.
+    // The annotations alone, copied as drawn: a vector needs no resize.
     if let MapExportFormat::Svg = format {
       let (Some(MapExportAnnotations::Alone), Some(svg)) = (annotations, &svg) else {
         return Err(Self::refuse_svg());
@@ -100,7 +100,6 @@ impl MapExporter {
     Ok(MapExportOutcome { width, height })
   }
 
-  /// Why an export other than the annotations alone is refused as an SVG.
   fn refuse_svg() -> String {
     "Only a level map's annotations alone are exported as an SVG".to_string()
   }

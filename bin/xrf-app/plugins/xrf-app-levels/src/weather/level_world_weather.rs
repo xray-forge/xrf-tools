@@ -31,7 +31,6 @@ impl LevelWorldWeather {
     })
   }
 
-  /// [`Self::read`], its sounds read through `files`.
   fn read_with(
     level: &SessionSnapshot<SelectedLevel>,
     environment: &LevelEnvironment,
@@ -82,7 +81,7 @@ impl LevelWorldWeather {
   /// The rain's loop, `CEffect_Rain::snd_Ambient`.
   const RAIN_SOUND: &'static str = "ambient\\rain";
 
-  /// Each bolt's `sound` that names one, by the bolt's section.
+  /// Each bolt's `sound`, by the bolt's section; bolts naming none are skipped.
   fn read_thunder_sounds(
     catalog: &EnvironmentCatalog,
     thunder: &LevelThunderbolts,

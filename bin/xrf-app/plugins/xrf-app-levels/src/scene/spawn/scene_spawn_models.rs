@@ -5,18 +5,17 @@ use xrf_rawdata::LevelSpawnDataFields;
 use crate::scene::{SceneObjectId, SceneSpawnModel, SceneToolKind, SelectedScene};
 use crate::visuals::SpawnVisualReader;
 
-/// The spawn points a scene draws as their entities' models, as the SDK's editor draws a spawn point whose packet names
-/// a visual: each whose packet reads and names one that the scene's game data holds. The rest keep their icon.
+/// The spawn points a scene draws as their entities' models, as the SDK's editor does: each whose packet reads and
+/// names a visual the scene's game data holds. The rest keep their icon.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct SceneSpawnModels {
-  /// Every spawn point drawn as a model, in the scene's order of its spawn points.
+  /// Every spawn point drawn as a model, in spawn point order.
   pub objects: Vec<SceneSpawnModel>,
 }
 
 impl SceneSpawnModels {
-  /// The spawn points of `scene` as the editor loads them, the groups' members first, each named by its place among
-  /// them as the scene's objects are, whose packet names a visual `reader` finds a file of; none where the scene has
-  /// no game data, or its spawn points do not read, which the scene's objects report.
+  /// The spawn points of `scene`, indexed as the scene's objects are, whose packet names a visual `reader` finds. Empty
+  /// where the scene has no game data or its spawn points do not read; the scene's objects report the latter.
   pub(crate) fn read(scene: &SelectedScene, reader: &SpawnVisualReader) -> Self {
     profiling::scope!("scene spawn models");
 
@@ -53,7 +52,7 @@ impl SceneSpawnModels {
     models
   }
 
-  /// The spawn point at `index` among the scene's spawn points, where it is drawn as a model.
+  /// The spawn point at `index`, if it is drawn as a model.
   pub(crate) fn find(&self, index: u32) -> Option<&SceneSpawnModel> {
     self
       .objects
@@ -62,7 +61,7 @@ impl SceneSpawnModels {
       .map(|found| &self.objects[found])
   }
 
-  /// The first spawn point drawn as the model the renderer knows by `name`, which every other standing as it shares.
+  /// The first spawn point drawn as the renderer's model `name`; every other drawn as it shares that model.
   pub(crate) fn find_model(&self, name: &str) -> Option<&SceneSpawnModel> {
     self.objects.iter().find(|model| model.get_model_name() == name)
   }

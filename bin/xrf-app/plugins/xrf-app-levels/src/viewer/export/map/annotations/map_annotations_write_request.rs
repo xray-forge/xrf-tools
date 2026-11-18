@@ -5,8 +5,8 @@ use serde::Deserialize;
 use crate::objects::LevelObjectKind;
 use crate::parts::LevelMapArea;
 
-/// The annotations asked of a level map: its PNG in the screenshots folder, beside which they are written as an SVG,
-/// the ground it covers, the kinds of level object drawn, and whether every object is named.
+/// Annotations asked of a level map: `path` is its PNG in the screenshots folder, the SVG is written beside it, `area`
+/// is the ground it covers, `kinds` the object kinds drawn, and `is_labelled` names every object.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]

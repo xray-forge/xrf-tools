@@ -16,26 +16,24 @@ use crate::parts::LevelTextureReference;
 use crate::report::LevelReport;
 use crate::visuals::{SpawnVisual, SpawnVisuals};
 
-/// Reads spawned objects' visuals within one search into the visuals they are kept in, opening the shader library once
-/// for all of them, and only if one is read at all. A level and a scene each hand it the visuals their session keeps
-/// and the search their game data is read through.
+/// Reads spawned objects' visuals through one search into a session's [`SpawnVisuals`], opening the shader library
+/// once, and only when a visual is read.
 pub(crate) struct SpawnVisualReader {
   visuals: Arc<SpawnVisuals>,
   search: XraySearch,
-  /// The level's own directory, the engine's `$level$`, where a level's breakables are compiled to; none for a scene,
-  /// whose visuals are the game's alone.
+  /// The level's own directory, the engine's `$level$`, holding its compiled breakables; none for a scene.
   level: Option<XrayLogicalPath>,
   scope: XrayTextureScope,
-  /// Shared with the pool a visual is read on, so held in a lock.
+  /// Opened on the first read, which may run on a pool worker.
   resolver: OnceLock<XraySurfaceResolver>,
 }
 
 impl SpawnVisualReader {
-  /// The cycle a lamp plays from the moment it spawns (`CHangingLamp::net_Spawn`), whose first frame it stands in.
+  /// The cycle a lamp plays from spawn (`CHangingLamp::net_Spawn`); its first frame is the rest pose.
   const IDLE_MOTION: &'static str = "idle";
 
-  /// A reader of visuals into `visuals` through `search`, their textures resolved in `scope`, looked for in the shared
-  /// meshes alone until [`Self::beside`] names a level's directory.
+  /// A reader into `visuals`, resolving textures in `scope` and finding visuals in the shared meshes alone until
+  /// [`Self::beside`] names a level's directory.
   pub(crate) fn new(visuals: Arc<SpawnVisuals>, search: XraySearch, scope: XrayTextureScope) -> Self {
     Self {
       visuals,
@@ -46,16 +44,16 @@ impl SpawnVisualReader {
     }
   }
 
-  /// The same reader looking for each visual beside `level` first, a level's own directory, as the engine does.
+  /// The same reader looking in the level directory `level` first, as the engine does.
   pub(crate) fn beside(self, level: Option<XrayLogicalPath>) -> Self {
     Self { level, ..self }
   }
 
-  /// A spawned object's visual, read and packed the first time anything asks for it and kept with the visuals.
+  /// A spawned object's visual, read and packed on first ask and kept.
   ///
   /// # Errors
   ///
-  /// Returns why it cannot be read, reported the once it is tried: it is not read again.
+  /// Returns why it cannot be read; the failure is reported once and kept, not retried.
   pub(crate) fn get(&self, name: &str) -> TauriResult<Arc<SpawnVisual>> {
     self.visuals.get_or_read(name, || {
       self
@@ -65,7 +63,7 @@ impl SpawnVisualReader {
     })
   }
 
-  /// Whether the visual `name` has a file where [`Self::get`] would read it, looked up without reading it.
+  /// Whether [`Self::get`] would find a file for `name`, without reading it.
   pub(crate) fn is_found(&self, name: &str) -> bool {
     self.find_asset(name).is_ok()
   }
@@ -91,7 +89,7 @@ impl SpawnVisualReader {
       .collect();
 
     Ok(SpawnVisual {
-      // Resolved as a level's own surfaces are, so a model shades with the bump pair and the detail its base declares.
+      // Resolved as level surfaces are, so a model shades with its base's bump pair and detail.
       textures: LevelTextureReference::resolve_bound(references, &surfaces, search, &self.scope),
       package,
       rest,
@@ -99,8 +97,7 @@ impl SpawnVisualReader {
     })
   }
 
-  /// The visual's file, parsed through the search, so a model another level, scene or the model viewer read is served
-  /// as it was parsed.
+  /// The visual's file, parsed through the search's cache, shared with other levels, scenes and the model viewer.
   fn read_file(&self, name: &str) -> XrfResult<Arc<OgfFile>> {
     let asset: XrayAsset = self.find_asset(name)?;
 
@@ -109,8 +106,8 @@ impl SpawnVisualReader {
       .read_parsed(&asset, OgfFile::read_from_bytes::<XRayByteOrder>)
   }
 
-  /// `CModelPool::Instance_Load`: beside the level first, then the shared meshes; a name no path beside the level can
-  /// spell is looked up in the shared meshes alone, as a texture's is.
+  /// `CModelPool::Instance_Load`: the level directory first, then the shared meshes; a name no level path can spell
+  /// goes to the shared meshes alone, as a texture's does.
   fn find_asset(&self, name: &str) -> XrfResult<XrayAsset> {
     let beside: Option<XrayAsset> = self
       .level
@@ -127,8 +124,7 @@ impl SpawnVisualReader {
     }
   }
 
-  /// `PlayCycle("idle")` then `CalculateBones`: the first frame of the visual's idle cycle where it has one, its bind
-  /// pose where it does not.
+  /// `PlayCycle("idle")` then `CalculateBones`: the idle cycle's first frame, else the bind pose.
   fn find_rest_pose(
     search: &XraySearch,
     name: &str,

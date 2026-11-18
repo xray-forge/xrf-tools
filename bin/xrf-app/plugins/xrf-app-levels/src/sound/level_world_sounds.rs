@@ -10,17 +10,14 @@ use crate::level::{LevelConfigs, SelectedLevel};
 use crate::objects::LevelObjectsDescription;
 use crate::sound::{LevelSoundEmitters, LevelSoundFiles, LevelSoundFilesPart};
 
-/// What a level plays whatever its weather, as the world takes it (`CLevelSoundManager::Load`, `CCustomZone::Load`):
-/// its static sounds and zones' sounds (`LevelSoundEmitters`), and the music tracks of the section its `game.ltx`
-/// section names by `music_tracks`, each sound read for what its file says.
+/// A level's weather-independent sounds for the world (`CLevelSoundManager::Load`, `CCustomZone::Load`): its emitters
+/// (`LevelSoundEmitters`) and the music tracks its `game.ltx` section names by `music_tracks`.
 pub(crate) struct LevelWorldSounds;
 
 impl LevelWorldSounds {
-  /// The config the level's music is named in.
   const GAME: &'static str = "game.ltx";
 
-  /// Reads the level's sounds through `search`, each emitter named by its level object's place in the listing, none
-  /// where the listing cannot be read, which its report says.
+  /// Read the level's sounds; emitters are unnamed when the object listing cannot be read.
   ///
   /// # Errors
   ///
@@ -44,8 +41,7 @@ impl LevelWorldSounds {
     })
   }
 
-  /// The tracks of the level's music section, in the config's order, each sound read through `files`; none where
-  /// `game.ltx` or the section names none.
+  /// The level's music tracks in config order; none without `game.ltx` or a `music_tracks` section.
   fn read_music(
     level: &SessionSnapshot<SelectedLevel>,
     search: &XraySearch,
@@ -85,8 +81,8 @@ impl LevelWorldSounds {
     )
   }
 
-  /// `SMusicTrack::Load`: `from_hour, to_hour, volume, pause_from_s, pause_to_s` read as `sscanf` reads them, each value
-  /// it cannot read left at its default; a pause whose two ends are equal widens by one.
+  /// `SMusicTrack::Load`: `from_hour, to_hour, volume, pause_from_s, pause_to_s`, each unreadable value left at its
+  /// default; a pause with equal ends widens by one second.
   fn read_track(track: &str, parameters: &str, files: &LevelSoundFiles<'_>) -> WorldMusicTrack {
     let values: Vec<&str> = parameters.split(',').map(str::trim).collect();
     let integer = |index: usize| values.get(index).and_then(|value| value.parse::<i64>().ok());

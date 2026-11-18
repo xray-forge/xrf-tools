@@ -53,8 +53,8 @@ impl DepthPyramidPass {
     }
   }
 
-  /// Declares `pyramid` reduced from the frame's `depth` as it stands then, as the compute pass `name`: each level its
-  /// own resource, the depth reduced into the first and each into the next, keeping the depth `reduction` names.
+  /// Declares the compute pass `name` reducing the frame's `depth`, as it stands then, into `pyramid`, level by level,
+  /// keeping the depth `reduction` names; each level is its own graph resource.
   pub(crate) fn add_passes<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,

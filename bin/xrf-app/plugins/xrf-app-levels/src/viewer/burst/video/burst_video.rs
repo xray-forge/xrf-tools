@@ -14,33 +14,32 @@ use crate::viewer::recording::writer::MediaProbe;
 #[cfg(windows)]
 use crate::viewer::recording::writer::{RecordFormat, RecordSample, RecordSoundFormat, RecordSummary, RecordWriter};
 
-/// A burst written as one video as it comes, `burst.mp4` in its folder: each frame handed over as it is read back,
-/// frame `k` shown from `k × step` for a step, and its sound from the first frame's start as the sound's thread renders
-/// it, so each frame plays with what its camera heard. The writer waits on neither: the sound comes seconds behind the
-/// frames where a level's walls take that long to build, and is put in before each frame as far as it has come. A
-/// frame of an odd size loses its last column or row, which H.264 does not take.
+/// Writes a burst as `burst.mp4` in its folder as it comes: frame `k` shows from `k × step` for one step, with the
+/// sound from the first frame's start, so each frame plays with what its camera heard.
+///
+/// The writer waits on neither stream: sound can trail by seconds while a level's walls build, so each frame goes in
+/// after whatever sound has arrived. An odd-sized frame loses its last column or row, which H.264 rejects.
 pub(crate) struct BurstVideo {
   file: PathBuf,
   step: f64,
-  /// The sound's way in, kept for the sound until it takes it, and what it sends.
+  /// The sound's sender, held until the sound takes it, and its receiver.
   sound: Option<Sender<BurstSoundChunk>>,
   heard: Receiver<BurstSoundChunk>,
   is_heard: bool,
-  /// The size the first frame came at, and the writer it opened.
+  /// The first frame's size, and the writer it opened.
   size: Option<(u32, u32)>,
   #[cfg(windows)]
   writer: Option<RecordWriter>,
 }
 
 impl BurstVideo {
-  /// The video's file in the burst's folder.
   pub(crate) const FILE: &'static str = "burst.mp4";
 
-  /// A video of `burst`'s frames into `folder`, where `probe` finds what writes one.
+  /// A video of `burst`'s frames in `folder`.
   ///
   /// # Errors
   ///
-  /// Returns why no video can be written here: the probe's answer.
+  /// Returns the probe's reason when no video can be written here.
   pub(crate) fn new(burst: &RenderBurst, probe: &MediaProbe, folder: &Path) -> TauriResult<Self> {
     probe.load()?;
 
@@ -58,8 +57,8 @@ impl BurstVideo {
     })
   }
 
-  /// Where the burst's sound sends what it renders, taken once; a video whose sound is not taken before its first frame
-  /// is silent.
+  /// The sender for the burst's rendered sound, taken once; a video whose sound is not taken before its first frame is
+  /// silent.
   pub(crate) fn take_sound(&mut self) -> Option<Sender<BurstSoundChunk>> {
     let sound: Option<Sender<BurstSoundChunk>> = self.sound.take();
 
@@ -68,8 +67,7 @@ impl BurstVideo {
     sound
   }
 
-  /// Writes frame `index`, `picture`, with the sound that has come so far before it, the first opening the file at its
-  /// size.
+  /// Write frame `index` after the sound received so far; the first frame opens the file at its size.
   ///
   /// # Errors
   ///
@@ -88,7 +86,7 @@ impl BurstVideo {
     }
   }
 
-  /// Writes the rest of the sound, once its thread has ended, and closes the file.
+  /// Write the rest of the sound once its thread has ended, and close the file.
   ///
   /// # Errors
   ///
@@ -121,7 +119,7 @@ impl BurstVideo {
           ));
         }
 
-        // A sound not taken by now never comes; its way in let go, `finish` waits on none.
+        // A sound not taken by now never comes; dropping its sender keeps `finish` from waiting on it.
         self.sound = None;
         self.size = Some(size);
         self.writer = Some(RecordWriter::start(
@@ -149,7 +147,7 @@ impl BurstVideo {
     let (time, end) = (self.get_time(index), self.get_time(index + 1));
     let writer: &mut RecordWriter = self.writer.as_mut().ok_or("The burst's video stopped")?;
 
-    // The sound as far as it has come goes in before the frame, so the two arrive interleaved where they can.
+    // Sound received so far goes in before the frame, interleaving the two where it can.
     while let Ok(chunk) = self.heard.try_recv() {
       Self::write_sound(writer, chunk)?;
     }
@@ -165,7 +163,7 @@ impl BurstVideo {
     let mut writer: RecordWriter = self.writer.take().ok_or("The burst drew no frame to make a video of")?;
     let (width, height) = self.size.map_or((0, 0), |(width, height)| (width & !1, height & !1));
 
-    // What the sound's thread rendered after the last frame, to its end; its way in goes with the thread.
+    // The sound rendered after the last frame; the loop ends when the sound's thread drops its sender.
     for chunk in &self.heard {
       Self::write_sound(&mut writer, chunk)?;
     }
@@ -189,13 +187,12 @@ impl BurstVideo {
     })
   }
 
-  /// When frame `index` shows.
   fn get_time(&self, index: u32) -> Duration {
     Duration::from_secs_f64(f64::from(index) * self.step)
   }
 
-  /// `picture`'s top left `width` by `height`, blue first: each row copied whole, then red and blue swapped in place,
-  /// which the compiler vectorizes, a fullscreen frame being 29 MB.
+  /// `picture`'s top-left `width` by `height` as BGRA. Rows are copied whole, then red and blue swapped in place, a
+  /// loop the compiler vectorizes; a fullscreen frame is 29 MB.
   pub(crate) fn copy_bgra(picture: &RgbaImage, width: u32, height: u32) -> Vec<u8> {
     let (row, kept) = (picture.width() as usize * 4, width as usize * 4);
     let mut bgra: Vec<u8> = Vec::with_capacity(kept * height as usize);

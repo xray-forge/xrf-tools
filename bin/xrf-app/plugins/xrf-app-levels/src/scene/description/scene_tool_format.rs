@@ -12,7 +12,7 @@ pub enum SceneToolFormat {
   Binary,
 }
 
-/// How a part is saved, as its first byte tells: for a tool the editor does not know.
+/// The format a part's first byte tells, for a tool the editor does not know.
 impl From<&EditableLevelPart> for SceneToolFormat {
   fn from(part: &EditableLevelPart) -> Self {
     match part {

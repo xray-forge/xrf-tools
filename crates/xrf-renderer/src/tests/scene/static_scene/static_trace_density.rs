@@ -1,5 +1,3 @@
-//! A cut-out triangle's density word, which the scene trace tests its holes by.
-
 use glam::{Vec2, Vec3};
 
 use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
@@ -7,7 +5,6 @@ use crate::scene::static_scene::item::static_scene_writer::StaticSceneWriter;
 use crate::scene::static_scene::trace::static_trace_density::StaticTraceDensity;
 use crate::scene::static_scene::trace::static_trace_geometry::StaticTraceGeometry;
 
-/// A triangle's vertices in a layout's words: its positions, and each base coordinate's words as the layout packs it.
 fn create_words(positions: [Vec3; 3], uvs: [[u32; 4]; 3]) -> Vec<u32> {
   let mut words: Vec<u32> = vec![0; StaticLayout::STRIDE as usize * 3];
 
@@ -28,12 +25,11 @@ fn create_words(positions: [Vec3; 3], uvs: [[u32; 4]; 3]) -> Vec<u32> {
   words
 }
 
-/// Two signed shorts in a word, the first low, as the arenas pack a base coordinate.
 fn pack_shorts(x: i16, y: i16) -> u32 {
   u32::from(x.cast_unsigned()) | (u32::from(y.cast_unsigned()) << 16)
 }
 
-/// A word's logarithm and direction, as `cut_out_lod` in `shaders/common/scene_trace.wgsl` reads them.
+// As `cut_out_lod` in `shaders/common/scene_trace.wgsl` reads a word.
 fn read(word: u32) -> (f32, Vec2) {
   let byte = |shift: u32| f32::from((word >> shift) as u8) / 255.0 * 2.0 - 1.0;
 
@@ -43,8 +39,7 @@ fn read(word: u32) -> (f32, Vec2) {
   )
 }
 
-/// A spawned model's triangle two metres by one, its base coordinate spanning a unit by a half: a quarter of a unit of
-/// area a metre of its own, half a unit a metre each way, and the direction of its corners' cross straight down `y`.
+// Two metres by one over a UV unit by a half: half a unit per metre (log2 of -1), normal straight down `y`.
 #[test]
 fn measures_a_model_triangle_s_density_and_its_cross() {
   let uv = |x: f32, y: f32| [x.to_bits(), y.to_bits(), 0, 0];
@@ -57,20 +52,18 @@ fn measures_a_model_triangle_s_density_and_its_cross() {
 
   assert_eq!(measured.len(), 1);
   assert!((logarithm + 1.0).abs() < 1.0 / 512.0, "{logarithm}");
-  // Within a byte's step over -1..1, which nought falls between.
+  // Zero falls between two byte steps over -1..1.
   assert!(
     (across - Vec2::new(0.0, -1.0)).abs().max_element() <= 2.0 / 255.0,
     "{across}"
   );
 }
 
-/// A sector's base coordinate is read with its fraction from its tangent's and binormal's fourth bytes, over 1024, and
-/// a tree's over 2048, as the trace reads them.
 #[test]
 fn reads_a_sector_s_and_a_tree_s_base_coordinates_as_the_trace_does() {
   let positions: [Vec3; 3] = [Vec3::ZERO, Vec3::new(1.0, 0.0, 0.0), Vec3::new(0.0, 1.0, 0.0)];
   let half: u32 = 128 << 24;
-  // Corners at (0, 0), (2.5, 0) and (0, 2.5) units of 1024, each half from its fourth bytes.
+  // Corners at (0, 0), (2.5, 0) and (0, 2.5) over 1024, each half from a fourth byte.
   let baked: Vec<u32> = create_words(
     positions,
     [
@@ -99,8 +92,6 @@ fn reads_a_sector_s_and_a_tree_s_base_coordinates_as_the_trace_does() {
   assert!((leaf - expected(0.5)).abs() < 1.0 / 512.0, "{leaf}");
 }
 
-/// A triangle of no area is stored densest, read at its coarsest, and one whose base coordinates span none sparsest,
-/// read at its finest, as the trace reads them from its corners.
 #[test]
 fn stores_a_triangle_of_no_area_densest_and_one_of_no_coordinates_sparsest() {
   let uv = |x: f32, y: f32| [x.to_bits(), y.to_bits(), 0, 0];
@@ -123,8 +114,6 @@ fn stores_a_triangle_of_no_area_densest_and_one_of_no_coordinates_sparsest() {
   );
 }
 
-/// A writer measures a cut-out geometry's triangles after the words it put, starting it where they start, and none of
-/// an opaque one's.
 #[test]
 fn puts_the_density_words_of_cut_out_geometry_alone() {
   let uv = |x: f32, y: f32| [x.to_bits(), y.to_bits(), 0, 0];

@@ -561,9 +561,8 @@ impl SurroundingsCube {
       });
   }
 
-  /// Declares a cull by `cut` and its draw into `layer` of the faces' G-buffer arrays, `targets` their albedo, normal,
-  /// material and depth, under the cull's and draw's pass `names`: the whole face, cleared, or `band` of it, the first
-  /// band clearing the rest.
+  /// Declares a cull by `cut` and its draw into `layer` of the faces' G-buffer `targets`: the whole face, cleared, or
+  /// one `band` of it, the first band clearing the rest.
   fn add_draw_passes<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,

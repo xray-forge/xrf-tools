@@ -6,11 +6,11 @@ use crate::scene::{
   SelectedSceneDescription,
 };
 
-/// The Level Editor scene a tool has open as the open read it: what names it, its `.level` and the tools' parts the
-/// editor would load, and every part file beside it with what the open found wrong with them.
+/// The Level Editor scene a tool has open: its names, its `.level` and the parts the editor would load, and every part
+/// file beside it with the problems the open found.
 ///
-/// What a tool's parts hold, typed, is kept as the session snapshot's parts by the part type that reads it
-/// (`SceneObjectsPart`, `SceneBinaryToolsPart`), read the first time anything asks.
+/// What the parts hold, typed, is read on first use into session snapshot parts (`SceneObjectsPart`,
+/// `SceneBinaryToolsPart`).
 pub struct SelectedScene {
   pub source: SceneSource,
   /// The `.level`'s name, which names its part directory and every file of the scene's search.
@@ -22,19 +22,17 @@ pub struct SelectedScene {
   /// The game data the scene is drawn with, kept so every draw searches what the open was given.
   pub game: SceneGameData,
   pub guid: EditableLevelGuid,
-  /// The `.level`, and each tool's parts that read, carry the scene's GUID and are the tool's to load, in the order
-  /// the editor reads them; the parts it would skip are left out.
+  /// The `.level` and, in the editor's read order, each tool's parts the editor would load; those it would skip are
+  /// left out.
   pub scene: EditableLevelScene,
-  /// Every tool with a part file beside the scene, in the editor's order and those it does not save after them by
-  /// name, the files the editor skips among them.
+  /// Every tool with a part file beside the scene, in the editor's order, then the tools it does not save, by name.
   pub tools: Vec<SceneToolDescription>,
-  /// Why each part file left out of [`Self::scene`] was.
+  /// Why each part file left out of [`Self::scene`] was left out.
   pub problems: Vec<SceneProblem>,
 }
 
 impl SelectedScene {
-  /// What the page is shown of the open scene itself, which reads nothing: each part it shows beside it has a query
-  /// of its own.
+  /// What the page shows of the open scene itself, reading nothing; its parts have queries of their own.
   pub fn describe(&self) -> SelectedSceneDescription {
     SelectedSceneDescription {
       source: self.source.clone(),
@@ -61,7 +59,7 @@ impl SelectedScene {
     }
   }
 
-  /// A scene's GUID as the page is shown it, its two words as the editor's `xrGUID` holds them.
+  /// A scene's GUID as the page shows it, `g0:g1`, the two words of the editor's `xrGUID`.
   pub fn format_guid(guid: &EditableLevelGuid) -> String {
     format!("{}:{}", guid.g0, guid.g1)
   }

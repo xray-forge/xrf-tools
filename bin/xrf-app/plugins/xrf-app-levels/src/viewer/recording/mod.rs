@@ -1,5 +1,5 @@
-//! A viewport recorded with what its camera hears into one video, through the renderer's recording, the audio's tap
-//! and its clock, and Media Foundation's writer.
+//! Recording a viewport and what its camera hears into one video, through the renderer's recording, the audio tap and
+//! clock, and Media Foundation's writer.
 
 mod level_recordings;
 mod recording_availability;

@@ -205,7 +205,7 @@ impl StaticScene {
 
         let sight: StaticSight = StaticSight::of(class, passes);
 
-        // By its clusters' spheres, which bound a wide lake or a building's windows far closer than the section's.
+        // Cluster spheres bound a wide lake or a building's windows far tighter than the section's sphere.
         if !sight.is_empty() {
           writer
             .sights

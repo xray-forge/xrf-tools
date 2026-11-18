@@ -5,15 +5,15 @@ use xrf_world::{WorldSoundFrame, WorldSoundSink};
 
 use crate::viewer::burst::{BurstSoundFrame, BurstSoundTee};
 
-/// A shown level's sound on its way from the world to the audio's control thread: each frame the world fills is the
-/// audio's own, handed to the scene's inbox as it is, and every frame the control thread hands back goes back to the
-/// world to fill again. A burst's frames are sent on through the tee, and silenced on the device.
+/// Carries a shown level's sound from the world to the audio's control thread. Frames are the audio's own and pass to
+/// the scene's inbox as filled; frames handed back return to the world for refilling. During a burst, frames also go
+/// to the tee and are silenced on the device.
 pub(crate) struct LevelSoundSink {
   inbox: AudioSceneInbox,
   tee: BurstSoundTee,
   assets: Arc<dyn AudioAssetSource>,
   geometry: Arc<dyn AudioSceneGeometry>,
-  /// Frames the inbox had no room for, back to the world first; the next frame carries everything again.
+  /// Frames the inbox had no room for, returned to the world first; the next frame carries everything again.
   #[expect(
     clippy::vec_box,
     reason = "boxed as the inbox's rings carry them, so a frame moves between threads by its pointer"
@@ -22,8 +22,7 @@ pub(crate) struct LevelSoundSink {
 }
 
 impl LevelSoundSink {
-  /// A sink into `inbox`, the scene's sounds read through `assets` and its walls from `geometry`, a burst's frames sent
-  /// on through `tee`.
+  /// A sink into `inbox`, reading sounds through `assets` and walls from `geometry`, copying burst frames to `tee`.
   pub(crate) fn new(
     inbox: AudioSceneInbox,
     tee: BurstSoundTee,

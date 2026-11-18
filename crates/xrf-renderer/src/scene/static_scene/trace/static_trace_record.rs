@@ -3,8 +3,8 @@ use xrf_renderer_core::ShaderStruct;
 use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 use crate::scene::static_scene::trace::static_trace_geometry::StaticTraceGeometry;
 
-/// One geometry of the level's acceleration structure as a traced hit reads it, by its instance's first record and the
-/// geometry's index: where its triangles' indices, vertices and density words start, and its surface.
+/// A traced geometry as a hit reads it, at its instance's first record plus the geometry index: where its indices,
+/// vertices and density words start, and its surface.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "TraceRecord")]

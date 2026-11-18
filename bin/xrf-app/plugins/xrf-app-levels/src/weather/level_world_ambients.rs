@@ -40,7 +40,7 @@ impl LevelWorldAmbients {
       .collect()
   }
 
-  /// Every effect an ambient may play, `CEnvAmbient::create_effect`, its sound read by `read_sound`.
+  /// Every effect an ambient may play, `CEnvAmbient::create_effect`.
   pub(crate) fn read_effects(
     catalog: &EnvironmentCatalog,
     read_sound: &mut dyn FnMut(&str) -> WorldSound,
@@ -60,7 +60,7 @@ impl LevelWorldAmbients {
       .collect()
   }
 
-  /// Every sound channel an ambient may play, `CEnvAmbient::SSndChannel::load`, its sounds read by `read_sound`.
+  /// Every sound channel an ambient may play, `CEnvAmbient::SSndChannel::load`.
   pub(crate) fn read_channels(
     catalog: &EnvironmentCatalog,
     read_sound: &mut dyn FnMut(&str) -> WorldSound,
@@ -84,7 +84,8 @@ impl LevelWorldAmbients {
       .collect()
   }
 
-  /// `m_sound_dist`: OpenXRay's `sound_dist`, nearest first, which either key still overrides, else the two keys.
+  /// `m_sound_dist`: OpenXRay's `sound_dist` sorted nearest first, with either distance key overriding its end; else
+  /// the two distance keys.
   fn get_channel_distance(channel: &SoundChannel, engine: XrayEngine) -> [f32; 2] {
     if engine == XrayEngine::Vanilla && channel.has(SoundChannelKey::SoundDist) {
       let [a, b] = channel.get_vector::<2>(SoundChannelKey::SoundDist, engine);
@@ -107,9 +108,9 @@ impl LevelWorldAmbients {
     ]
   }
 
-  /// `m_sound_period` in milliseconds: OpenXRay's `sound_period` in seconds, four values (pre-Clear Sky) or two for
-  /// both halves (Shadow of Chernobyl), each `period0`..`period3` written beside it overriding its value in seconds;
-  /// else the four keys in milliseconds, as Call of Pripyat and Monolith write them.
+  /// `m_sound_period` in milliseconds. OpenXRay reads `sound_period` in seconds, four values (pre-Clear Sky) or two
+  /// used for both halves (Shadow of Chernobyl), each overridden in seconds by a written `period0`..`period3`; else the
+  /// four keys in milliseconds, as Call of Pripyat and Monolith write them.
   fn get_channel_period(channel: &SoundChannel, engine: XrayEngine) -> [u32; 4] {
     const KEYS: [SoundChannelKey; 4] = [
       SoundChannelKey::Period0,

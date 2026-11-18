@@ -1,5 +1,3 @@
-//! When a view traces the sun's shadow.
-
 use glam::Vec4;
 
 use crate::contract::view::render_view_options::RenderViewOptions;
@@ -7,8 +5,7 @@ use crate::feature::image::resolve::resolve_decisions::ResolveDecisions;
 use crate::feature::tracing::sun_trace::sun_trace_feature::SunTraceFeature;
 use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 
-/// A lit view under ray reconstruction traces the sun while it has a colour, and not at a weather's night between the
-/// sun and the moon, whose sun adds nothing for a shadow to take away.
+// At night between sun and moon the sun adds nothing for a shadow to take away.
 #[test]
 fn traces_the_sun_only_while_it_has_a_colour() {
   let mut options: RenderViewOptions = RenderViewOptions::default();

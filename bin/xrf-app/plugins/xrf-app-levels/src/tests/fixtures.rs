@@ -1,6 +1,5 @@
-//! What several test modules build the same way: a level of shader entries, a search over a fixture tree, an empty
-//! environment catalog, a spawned object, a Level Editor scene written into a rawdata tree with its library objects,
-//! and opened, and an audio server with no device.
+//! Shared test builders: levels, searches, catalogs, spawned objects, Level Editor scenes on disk, and a silent audio
+//! server.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -29,16 +28,16 @@ use xrf_vfs::{XrayLookupScope, XrayMountId, XrayRevision, XrayRoots, XraySearch,
 
 use crate::scene::{OpenedScene, SceneGameData, SceneSource, SelectedScene, SelectedScenes};
 
-/// The GUID every test scene and its parts carry, `labx8`'s.
+/// The GUID of every test scene and its parts (`labx8`'s).
 pub(super) const SCENE_GUID: EditableLevelGuid = EditableLevelGuid {
   g0: 5065284203709945560,
   g1: 13177767572218497455,
 };
 
-/// The name of every test scene, which names its part directory.
+/// The name of every test scene and its part directory.
 pub(super) const SCENE_NAME: &str = "labx8";
 
-/// An audio server playing to no device, as the application's audio plugin starts it on a machine without one.
+/// An audio server with no device, as the audio plugin starts on a machine without one.
 pub(super) fn silent_server() -> AudioServer {
   let AudioEngineParts { engine, .. } = AudioEngineParts::new(AudioEngineSettings::default());
 
@@ -132,8 +131,8 @@ pub(super) fn new_object(name: &str, section: &str, clsid: ClsId, inherited: Ali
   }
 }
 
-/// A rawdata tree made afresh under `resource`, holding the scene `labx8` in `levels` with its `.level` alone, as the
-/// CoP SDK's editor saves a new one; answers where it is read from.
+/// A fresh rawdata tree under `resource` holding scene `labx8` with only its `.level`, as the CoP SDK editor saves a
+/// new scene.
 pub(super) fn write_scene(resource: &str) -> SceneSource {
   let levels: PathBuf = GeneratedResources::create_dir(resource)
     .expect("the tree is made")
@@ -157,14 +156,14 @@ pub(super) fn write_scene(resource: &str) -> SceneSource {
   }
 }
 
-/// Writes `bytes` as the scene's part file `file`, beside its `.level`.
+/// Write `bytes` as the scene's part file `file`.
 pub(super) fn write_scene_part(source: &SceneSource, file: &str, bytes: impl AsRef<[u8]>) {
   let parts: PathBuf = Path::new(&source.path).with_extension("");
 
   fs::write(parts.join(file), bytes).expect("the part is written");
 }
 
-/// Writes a library object at `reference` into the `objects` directory of the scene's rawdata tree.
+/// Write a placeholder library object at `reference` into the tree's `objects` directory.
 pub(super) fn write_scene_library_object(source: &SceneSource, reference: &str) {
   let path: PathBuf = Path::new(&source.path)
     .parent()
@@ -177,7 +176,7 @@ pub(super) fn write_scene_library_object(source: &SceneSource, reference: &str) 
   fs::write(path, "object").expect("the object is written");
 }
 
-/// Writes `object` as the library object at `reference` into the `objects` directory of the scene's rawdata tree.
+/// Write `object` as the library object at `reference` into the tree's `objects` directory.
 pub(super) fn write_scene_object_file(source: &SceneSource, reference: &str, object: &EditableObjectFile) {
   let path: PathBuf = Path::new(&source.path)
     .parent()
@@ -192,8 +191,8 @@ pub(super) fn write_scene_object_file(source: &SceneSource, reference: &str, obj
     .expect("the object is written");
 }
 
-/// A static library object of one surface of `triangles`, drawn with `models\model` and a wood texture and of the game
-/// material [`SCENE_GAME_MATERIAL`], as a level's visuals decompile into one.
+/// A static library object of one `models\model` wood surface of `triangles` and game material
+/// [`SCENE_GAME_MATERIAL`], as level visuals decompile.
 pub(super) fn scene_library_object(triangles: &[[Vector3d; 3]]) -> EditableObjectFile {
   let vertices: Vec<LevelVertex> = triangles
     .iter()
@@ -228,13 +227,12 @@ pub(super) fn scene_library_object(triangles: &[[Vector3d; 3]]) -> EditableObjec
   .object
 }
 
-/// The game material every test library object's surface is of.
 pub(super) const SCENE_GAME_MATERIAL: &str = "materials\\stone";
 
-/// The compiler shader of a tree's collision hull, which collides and is not drawn.
+/// A tree collision hull's compiler shader: collides, not drawn.
 pub(super) const COLLISION_COMPILER_SHADER: &str = "flora\\flora_collision";
 
-/// The compiler shader library holding `default`, drawn and colliding, and [`COLLISION_COMPILER_SHADER`].
+/// A compiler shader library of `default` (drawn and colliding) and [`COLLISION_COMPILER_SHADER`].
 pub(super) fn compiler_library() -> ShaderCompilerFile {
   let shader = |name: &str, flags: u32| ShaderCompilerShader {
     name: String::from(name),
@@ -256,8 +254,8 @@ pub(super) fn compiler_library() -> ShaderCompilerFile {
   }
 }
 
-/// A unit square on the ground as [`scene_library_object`] makes it, its second triangle moved to a surface of
-/// `compiler_shader` named `hull`.
+/// A ground unit square from [`scene_library_object`] with its second triangle on a `hull` surface of
+/// `compiler_shader`.
 pub(super) fn scene_parted_object(compiler_shader: &str) -> EditableObjectFile {
   let [a, b, c, d] = [
     Vector3d::new(0.0, 0.0, 0.0),
@@ -289,7 +287,7 @@ pub(super) fn scene_parted_object(compiler_shader: &str) -> EditableObjectFile {
   object
 }
 
-/// The text part of tool `T` holding `objects`, carrying the test scenes' GUID.
+/// Tool `T`'s text part holding `objects`, with the test scene GUID.
 pub(super) fn scene_part<T: EditableToolObject>(objects: Vec<T>) -> Vec<u8> {
   EditableObjectPart::new(SCENE_GUID, objects)
     .to_text_part()
@@ -297,7 +295,7 @@ pub(super) fn scene_part<T: EditableToolObject>(objects: Vec<T>) -> Vec<u8> {
     .expect("the part writes")
 }
 
-/// An object named `name` standing at `x` along the scene's first axis.
+/// An object named `name` at `x` along the first axis.
 pub(super) fn scene_custom_object(name: &str, x: f32) -> EditableCustomObject {
   EditableCustomObject::new(
     name,
@@ -308,13 +306,12 @@ pub(super) fn scene_custom_object(name: &str, x: f32) -> EditableCustomObject {
   )
 }
 
-/// The scenes as the plugin holds them, read again inside the commit that moved what one was read from, so a test reads
-/// what a commit moved as soon as it returns.
+/// The plugin's scenes, derived again inside the commit itself, so a test sees a commit's effect as soon as it returns.
 pub(super) fn new_scenes(assets: &AssetMountState) -> SelectedScenes {
   SelectedScenes::new("scene", &SessionScopes::default()).with_derivation(assets, OpenedScene::derive)
 }
 
-/// Reads the scene `source` names as an open does, without opening it: what [`open_scene`] commits, or why it refuses.
+/// Read the scene at `source` as an open does without opening it: what [`open_scene`] commits, or why it refuses.
 pub(super) fn read_scene(assets: &AssetMountState, source: &SceneSource) -> TauriResult<SessionDerived<SelectedScene>> {
   let roots: XrayRoots = source.get_roots().expect("the scene lies in a directory");
   let search: XraySearch = assets.search(&roots).expect("the scene's directory mounts");
@@ -331,9 +328,8 @@ pub(super) fn read_scene(assets: &AssetMountState, source: &SceneSource) -> Taur
   .read(search)
 }
 
-/// Opens the scene `source` names as one more handle of `scenes`, as `levels|open_scene` does, its library objects
-/// looked for in the `objects` directory beside its `levels` and its game data in `gamedata` beside its `rawdata` where
-/// that directory exists.
+/// Open the scene at `source` as one more handle of `scenes`, as `levels|open_scene` does, with the default objects and
+/// game data roots.
 pub(super) fn open_scene(
   scenes: &SelectedScenes,
   assets: &AssetMountState,

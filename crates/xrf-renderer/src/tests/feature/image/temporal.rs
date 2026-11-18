@@ -101,8 +101,6 @@ fn reads_textures_sharper_by_what_the_upscale_loses() {
   assert_eq!(ResolveFeature::get_bias(None, 2.0), 0.0);
 }
 
-// A frame declares the rescaled frame only where it may write it: drawn at another size and rescaled, or left at the
-// drawn size by a ray reconstruction that drew nothing; never where a resolve upscaled it into the viewport's size.
 #[test]
 fn declares_the_rescaled_frame_only_where_a_frame_writes_it() {
   let (viewport, smaller): ((u32, u32), (u32, u32)) = ((1920, 1080), (1280, 720));
@@ -120,7 +118,7 @@ fn declares_the_rescaled_frame_only_where_a_frame_writes_it() {
     viewport
   ));
   assert!(ResolveFeature::is_upscale_written(None, true, smaller, viewport));
-  // DLSS or FSR resolving into the viewport's size, and a temporal resolve at it.
+  // DLSS or FSR upscaling into the viewport's size, or a temporal resolve at it.
   assert!(!ResolveFeature::is_upscale_written(None, false, smaller, viewport));
   assert!(!ResolveFeature::is_upscale_written(None, false, viewport, viewport));
   assert!(!ResolveFeature::is_upscale_written(None, true, viewport, viewport));

@@ -18,7 +18,6 @@ impl LevelViewerFolder {
   /// The extension of the screenshots' images.
   pub(crate) const SCREENSHOT_EXTENSION: &'static str = "png";
 
-  /// The extension of a recording's video.
   pub(crate) const RECORDING_EXTENSION: &'static str = "mp4";
 
   /// The extension of a screenshot's report beside it.
@@ -79,8 +78,8 @@ impl LevelViewerFolder {
     }
   }
 
-  /// Refuses a path other than a recording's video directly in the recordings folder, the only files the page may have
-  /// deleted there; checks the path alone.
+  /// Refuse any path but a video directly in the recordings folder, the only files the page may delete there; checks
+  /// the path alone.
   ///
   /// # Errors
   ///
@@ -120,7 +119,7 @@ impl LevelViewerFolder {
     Self::find_free(folder, name, Self::SCREENSHOT_EXTENSION, "screenshot")
   }
 
-  /// The first free path in the recordings folder (`folder`) for a recording named `name`, as a screenshot's is found.
+  /// The first free path in the recordings folder (`folder`) for a recording named `name`, numbered as screenshots are.
   ///
   /// # Errors
   ///
@@ -129,8 +128,7 @@ impl LevelViewerFolder {
     Self::find_free(folder, name, Self::RECORDING_EXTENSION, "recording")
   }
 
-  /// The first free path in `folder` for a `what` named `name` with `extension`, `-2`, `-3` and on added for one made
-  /// within the same second.
+  /// The first free path in `folder` for `name` with `extension`, adding `-2`, `-3` and on when taken.
   fn find_free(folder: &Path, name: &str, extension: &str, what: &str) -> TauriResult<PathBuf> {
     let name: HostFileName = HostFileName::new(name, &format!("A {what}'s name")).map_err(|error| error.to_string())?;
 
@@ -193,12 +191,10 @@ impl LevelViewerFolder {
     Self::is_in(folder, path, Self::SCREENSHOT_EXTENSION)
   }
 
-  /// Whether `path` is a video directly in the recordings folder (`folder`).
   pub(crate) fn is_recording(folder: &Path, path: &Path) -> bool {
     Self::is_in(folder, path, Self::RECORDING_EXTENSION)
   }
 
-  /// Whether `path` is a file of `extension` directly in `folder`.
   fn is_in(folder: &Path, path: &Path, extension: &str) -> bool {
     path.parent() == Some(folder)
       && path.file_name().is_some()

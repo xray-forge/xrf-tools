@@ -28,21 +28,21 @@ impl GrassCards {
   /// Bytes a triangle's corners and its record take.
   const VERTEX_BYTES: u64 = 36;
   const TRIANGLE_BYTES: u64 = 16;
-  /// The top-level instance's custom index (`SCENE_GRASS_CARDS`), past any of the scene's; its mask's bit for the rays
-  /// asking whether the light is blocked (`SCENE_MASK_CARD_SHADOWS`), set while the grass casts its shadows, and for
-  /// the water's reflected rays (`SCENE_MASK_CARD_REFLECTIONS`), set whenever the cards are traced. A surfaces' ray
-  /// leaves both out (`SCENE_MASK_SCENE`).
+  /// The top-level instance's custom index (`SCENE_GRASS_CARDS`), past any of the scene's.
   pub(crate) const INSTANCE: u32 = 0x00ff_ffff;
+  /// The instance mask's bit for shadow rays (`SCENE_MASK_CARD_SHADOWS`), set while the grass casts its shadows.
+  /// A surfaces' ray leaves this and `REFLECTION_MASK` out (`SCENE_MASK_SCENE`).
   pub(crate) const SHADOW_MASK: u8 = 0x02;
+  /// The instance mask's bit for the water's reflected rays (`SCENE_MASK_CARD_REFLECTIONS`), set whenever the cards
+  /// are traced.
   pub(crate) const REFLECTION_MASK: u8 = 0x04;
   /// The share of their reach over which the cards fade out.
   const FADE_SHARE: f32 = 0.2;
   /// Metres from the eye past which only a share of the tufts stand as cards while they only cast the cascades'
-  /// shadows (`card_kept` in `shaders/grass/card_thinning.wgsl`): every far tuft drawn into four cascades a frame once
-  /// made 150 m of grass shadow cost three milliseconds.
+  /// shadows (`card_kept` in `shaders/grass/card_thinning.wgsl`); every far tuft cost three milliseconds over 150 m.
   pub(crate) const THIN_FROM: f32 = 40.0;
-  /// A distance past any tuft the cards stand, from which traced cards would thin: finite, as the GPU divides through a
-  /// reciprocal that the largest float's flushes to nought.
+  /// A thinning distance past any tuft, for traced cards: finite, as the GPU flushes the largest float's reciprocal to
+  /// nought.
   const NEVER_THINNED: f32 = 1.0e6;
 
   /// Cards holding `capacity` triangles at most, and the structure over them where the device traces rays.
@@ -120,19 +120,16 @@ impl GrassCards {
     (reach, reach * Self::FADE_SHARE)
   }
 
-  /// Metres from the eye within which the traced cards stand every tuft whole for `settings`, short of their fade, as
-  /// traced cards are never thinned (`get_thin_from`): where a water's ray meets the grass as its cards, and past which
-  /// it walks the grass's layers.
+  /// Metres from the eye within which the traced cards stand every tuft whole, short of their fade: a water's ray
+  /// meets the grass as cards within it and walks the grass's layers past it.
   pub(crate) fn get_whole_reach(settings: &RenderGrassSettings) -> f32 {
     let (reach, fade): (f32, f32) = Self::get_reach(settings, None);
 
     reach - fade
   }
 
-  /// Metres from the eye past which only a share of the tufts stand as cards: `THIN_FROM` while they only cast the
-  /// cascades' shadows, where the far tufts' cost lay; past any tuft (`NEVER_THINNED`) while they are traced
-  /// (`is_traced`), so the water's rays and the traced sun meet every tuft whole and a reflection does not change its
-  /// look as the eye comes nearer.
+  /// Metres from the eye past which only a share of the tufts stand as cards: `THIN_FROM` for the cascades alone, and
+  /// never while `is_traced`, so a reflection does not change its look as the eye comes nearer.
   pub(crate) fn get_thin_from(is_traced: bool) -> f32 {
     if is_traced {
       Self::NEVER_THINNED

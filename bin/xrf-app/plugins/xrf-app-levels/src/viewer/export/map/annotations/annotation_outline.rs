@@ -6,19 +6,19 @@ use xrf_visual::VisualTransform;
 use crate::objects::LevelObjectShape;
 use crate::viewer::export::map::annotations::AnnotationPoint;
 
-/// What a volume's shape covers seen from above.
+/// A volume shape's footprint seen from above.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum AnnotationOutline {
   Circle {
     center: AnnotationPoint,
     radius: f32,
   },
-  /// A box's corners from above, their convex hull counterclockwise.
+  /// A box's footprint: the convex hull of its corners, counterclockwise.
   Polygon(Vec<AnnotationPoint>),
 }
 
 impl AnnotationOutline {
-  /// `shape` from above, through its object's transform `to_world`, both in renderer space.
+  /// `shape` from above, placed by its object's `to_world`, both in renderer space.
   pub(crate) fn of(shape: &LevelObjectShape, to_world: &VisualTransform) -> Self {
     match shape {
       LevelObjectShape::Sphere { center, radius } => Self::Circle {
@@ -29,8 +29,7 @@ impl AnnotationOutline {
         axes: [i, j, k],
         center: c,
       } => {
-        // The unit cube about the origin through the box's axes and offset, as `CCF_Shape` and the bounding sphere
-        // take it.
+        // The origin-centred unit cube through the box's axes and offset, as `CCF_Shape` reads it.
         let corners: Vec<AnnotationPoint> = [-0.5f32, 0.5]
           .iter()
           .flat_map(|x| {
@@ -48,7 +47,7 @@ impl AnnotationOutline {
           .map(|local| Self::from_renderer_point(&to_world.apply_to_point(&local)))
           .collect();
 
-        // Every hull corner is one of the corners, so the round trip through double precision gives each back exactly.
+        // Hull corners are input corners, so the round trip through `f64` returns each exactly.
         let corners: Vec<DVec2> = corners
           .iter()
           .map(|[x, z]| DVec2::new(f64::from(*x), f64::from(*z)))
@@ -64,12 +63,12 @@ impl AnnotationOutline {
     }
   }
 
-  /// A point of renderer space from above, in engine space: mirrored back through `z`.
+  /// A renderer-space point from above, in engine space: `z` mirrored back.
   pub(crate) fn from_renderer_point(point: &Vector3d) -> AnnotationPoint {
     [point.x, -point.z]
   }
 
-  /// Its middle: a circle's centre, a polygon's mean corner.
+  /// A circle's centre, or a polygon's mean corner.
   pub(crate) fn get_center(&self) -> AnnotationPoint {
     match self {
       Self::Circle { center, .. } => *center,

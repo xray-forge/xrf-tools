@@ -1,15 +1,15 @@
 use crate::frame::targets::view_targets::ViewTargets;
 
-/// The surroundings cube's faces as last drawn: each face's G-buffer kept at the size it is drawn at, so a face whose
-/// geometry still stands is lit again from it rather than culled and drawn again; and a spare, which a face drawn
-/// again band by band is drawn into before it takes the face's place. Each target is one array of layers, a face's or
-/// the spare's a layer of it, which the frame graph imports whole: a draw attaches its layer and the resolve reads it
-/// at its index. A view of one layer imported on its own is declared as the array behind it, and a draw into it
-/// attaches the array's first layer whatever layer the view shows.
+/// The surroundings cube's faces' G-buffers as last drawn, so a face whose geometry still stands is lit again rather
+/// than drawn again, and a spare a face redrawn band by band is drawn into before it takes the face's place.
+///
+/// Each target is one array, a layer a face or the spare, imported into the frame graph whole: a draw attaches its
+/// layer and the resolve reads it by index. A one-layer view imported alone would be declared as the array behind it,
+/// so a draw into it would attach the first layer whatever layer the view shows.
 pub(crate) struct SurroundingsFaces {
   /// Texels a side each face is drawn at.
   pub drawn: u32,
-  /// The albedo, normal, material and depth arrays, in the order `SurroundingsFaces::FORMATS` names them, viewed whole.
+  /// The arrays in the order `SurroundingsFaces::FORMATS` names them, viewed whole.
   arrays: [wgpu::TextureView; 4],
   /// The layer each face keeps, and the spare.
   slots: [u32; 6],
@@ -72,7 +72,7 @@ impl SurroundingsFaces {
     self.spare
   }
 
-  /// Lets the spare, drawn whole, take a face's place, the face's old layer the spare.
+  /// Lets the spare, once drawn whole, take a face's place, the face's old layer becoming the spare.
   pub(crate) fn swap(&mut self, face: u32) {
     std::mem::swap(&mut self.slots[face as usize], &mut self.spare);
   }

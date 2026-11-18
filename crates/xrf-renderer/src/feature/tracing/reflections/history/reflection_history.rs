@@ -142,9 +142,8 @@ impl ReflectionHistory {
     self.is_source_valid = true;
   }
 
-  /// Starts again what it keeps, as `restart` asks: the denoiser's frames and the scene and depth kept left nothing to
-  /// read, the last place's leading nowhere true; its motion restarted, the frames counted and the noise turning from
-  /// none again too, as if just made.
+  /// Drops the denoiser's frames and the kept scene and depth; a motion restart also starts the frame count and the
+  /// noise over, as if just made.
   pub(crate) fn restart(&mut self, restart: ViewRestart) {
     if let Some(frames) = &mut self.frames {
       match restart {

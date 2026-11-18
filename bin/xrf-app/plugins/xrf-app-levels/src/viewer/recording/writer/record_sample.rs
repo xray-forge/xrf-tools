@@ -1,15 +1,14 @@
 use std::time::Duration;
 
-/// What a recording is handed, on its own clock from zero.
+/// A sample handed to a recording, timed on its own clock from zero.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum RecordSample {
-  /// A frame's pixels at the recording's size, rows top down, four bytes a pixel in blue, green, red, alpha order;
-  /// shown from `time` for `duration`.
+  /// A BGRA frame at the recording's size, rows top down, shown from `time` for `duration`.
   Frame {
     bgra: Vec<u8>,
     time: Duration,
     duration: Duration,
   },
-  /// Interleaved sound in -1 to 1, its first frame the recording's sound frame `at`.
+  /// Interleaved sound in -1..=1, starting at the recording's sound frame `at`.
   Sound { samples: Vec<f32>, at: u64 },
 }

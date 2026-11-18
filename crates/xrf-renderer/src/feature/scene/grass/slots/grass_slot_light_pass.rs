@@ -7,8 +7,8 @@ use crate::pass::build::fullscreen_pipeline::create_fullscreen_pipeline;
 use crate::pass::build::pipeline_source::PipelineSource;
 use crate::pass::view::view_binding::ViewBinding;
 
-/// Writes over the light target, for a debug view, the light value each drawn pixel's detail slot stores, the slot found
-/// by where the pixel stands; the present shows it in place of the frame.
+/// Writes over the light target, for a debug view, the light value stored by the detail slot each drawn pixel stands
+/// on; the present shows it in place of the frame.
 pub(crate) struct GrassSlotLightPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,

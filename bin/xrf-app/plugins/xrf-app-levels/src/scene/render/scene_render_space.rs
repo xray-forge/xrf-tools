@@ -3,14 +3,14 @@ use xrf_editable_level::EditableObjectTransform;
 use xrf_math::{Affine3d, Vector3d};
 use xrf_visual::{VisualTransform, convert_vector};
 
-/// Where a scene's engine space, as the editor saves it, stands in the renderer's: mirrored through `z`, as a model's
-/// vertices are, so whatever the scene places is drawn where its models stand.
+/// The mapping from a scene's saved engine space into renderer space: mirrored through `z`, as a model's vertices are,
+/// so whatever the scene places is drawn where its models stand.
 pub(crate) struct SceneRenderSpace;
 
 impl SceneRenderSpace {
-  /// What stands a thing given in its own renderer space where `transform` places it, sixteen floats column by column:
-  /// the world transform `CCustomObject::OnUpdateTransform` composes, which the level build places its meshes' points
-  /// by, mirrored through `z` on both sides.
+  /// Places a thing given in its own renderer space where `transform` puts it, as sixteen column-major floats: the
+  /// world transform `CCustomObject::OnUpdateTransform` composes and the level build places mesh points by, mirrored
+  /// through `z` on both sides.
   pub(crate) fn place(transform: &EditableObjectTransform) -> [f32; 16] {
     let placement: Affine3d = transform.to_matrix().to_affine();
 
@@ -24,7 +24,7 @@ impl SceneRenderSpace {
     .to_matrix()
   }
 
-  /// What stands a thing at the engine space point `position`, unturned and unscaled.
+  /// Places a thing at the engine space point `position`, unrotated and unscaled.
   pub(crate) fn place_at(position: &Vector3d) -> [f32; 16] {
     Mat4::from_translation(Self::convert_point(position)).to_cols_array()
   }

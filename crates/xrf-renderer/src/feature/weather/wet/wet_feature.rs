@@ -36,15 +36,13 @@ pub(crate) struct WetFeature {
   uniform: WetUniform,
   /// The splash volume and the flow, as the weather textures hold them, while the surfaces are wetted.
   views: Option<[wgpu::TextureView; 2]>,
-  /// How far the gusts and the calm waves have moved across the puddles, stepped every frame wet or dry, so the wet
-  /// surfaces come back where they would stand.
+  /// The gusts' and calm waves' drift, stepped every frame wet or dry, so wet surfaces return where they would stand.
   drift: WetDrift,
 }
 
 impl WetFeature {
-  /// Takes this frame's wetting from the level's wetness (`level`) on `clock`: with the falling rain's uniform where it
-  /// falls, over the overhead maps where they stand (`windows`), its cover's noise turned by `noise_frame`; dry for an
-  /// orthographic view, which has no eye for the overhead maps to stand about. The drift moves on by the view's step
+  /// Prepares this frame's wetting from the level's wetness on `clock`, over the overhead maps where they stand
+  /// (`windows`); dry for an orthographic view, which has no eye for the maps to stand about. The drift steps on
   /// whatever it draws.
   pub(crate) fn prepare(
     &mut self,
@@ -304,8 +302,8 @@ impl ViewFeature for WetFeature {
     self.views = None;
   }
 
-  /// Its motion restarted, the drift starts again from nothing, as at a view's first frame; a cut leaves it, which
-  /// follows the time and not the camera.
+  /// A motion restart starts the drift over, as at a view's first frame; a cut leaves it, as it follows the time, not
+  /// the camera.
   fn restart(&mut self, restart: ViewRestart) {
     if restart == ViewRestart::Motion {
       self.drift = WetDrift::default();

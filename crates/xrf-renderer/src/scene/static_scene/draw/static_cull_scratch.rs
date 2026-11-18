@@ -5,15 +5,15 @@ use crate::scene::static_scene::draw::static_batch::StaticBatch;
 use crate::scene::static_scene::draw::static_region::StaticRegion;
 use crate::scene::static_scene::geometry::static_geometry::StaticGeometry;
 
-/// What every cull of a static scene starts from: each draw list's run of a visible list, and the draw arguments' and
-/// the late arguments' templates, which a cull's own are reset from before it; sized by the entries each draw list may
-/// need. Each cull writes lists and arguments of its own: a view's camera (`StaticViewCull`), a shadow's (`ShadowCut`),
-/// a light's shadow faces.
+/// Shared starting state for every cull of a static scene: each draw list's region of the visible list, and the
+/// templates a cull's draw and late arguments are reset from.
+///
+/// Each cull (`StaticViewCull`, `ShadowCut`, a light's faces) writes its own lists and arguments.
 pub(crate) struct StaticCullScratch {
   pub regions: wgpu::Buffer,
-  /// Every batch's draw arguments as a cull starts them, copied into a cull's own before it.
+  /// Initial draw arguments of every batch, copied into a cull's own before it runs.
   pub args_template: wgpu::Buffer,
-  /// The late draw arguments as a camera's cull starts them, copied into its own before it.
+  /// Initial late draw arguments, copied into a camera cull's own before it runs.
   pub late_template: wgpu::Buffer,
   /// Entries of the visible list each draw list may need: its clusters, each counted once per place drawing it.
   capacities: [u32; StaticBatch::LIST_COUNT],
@@ -36,7 +36,7 @@ impl StaticCullScratch {
   /// Bytes a cull's draw arguments take.
   pub(crate) const ARGS_SIZE: u64 = Self::IMPOSTOR_ARGS_OFFSET + 16;
 
-  /// Bytes the late draw arguments take, the late phase's dispatch and the candidates' count with them.
+  /// Bytes of the late draw arguments, including the late dispatch and the candidate count.
   pub(crate) const LATE_SIZE: u64 = Self::LATE_DISPATCH_OFFSET + 16;
 
   /// Bytes an entry of the visible list takes.
@@ -108,8 +108,7 @@ impl StaticCullScratch {
     }
   }
 
-  /// Writes the runs of the visible list and the templates the culls' arguments are reset from, where the capacities
-  /// changed since they were last written.
+  /// Rewrites the regions and templates when the capacities changed since the last write.
   pub(crate) fn prepare(&mut self, encoder: &mut FrameEncoder) {
     if self.written != Some(self.capacities) {
       self.write(encoder);
@@ -126,7 +125,7 @@ impl StaticCullScratch {
     self.list_capacity
   }
 
-  /// Bytes one copy of the visible list takes, at least an entry's, which every cull's lists are made at.
+  /// Bytes of one copy of the visible list, at least one entry; every cull's lists are sized by it.
   pub(crate) fn get_list_bytes(&self) -> u64 {
     u64::from(self.list_capacity.max(1)) * Self::ENTRY_BYTES
   }

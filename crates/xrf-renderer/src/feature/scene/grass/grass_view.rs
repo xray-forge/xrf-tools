@@ -69,14 +69,14 @@ pub(crate) struct GrassView {
   planted: Option<(u64, i32, u32, u32)>,
   /// Whether this frame plants and draws.
   is_drawn: bool,
-  /// The cards casting the grass's shadows while it casts them, and standing for it in the water's every reflected ray
-  /// while the water traces those; whether the view traces them, and the mask their instance carries
-  /// (`GrassCards::SHADOW_MASK`, `GrassCards::REFLECTION_MASK`); and the metres from the eye its sun cascades draw them
-  /// to this frame, none where they draw none: traced, the cards stand further out than the cascades they are asked in
-  /// reach.
+  /// The cards standing for the grass in its shadows and in the water's every-pixel reflected rays.
   cards: Option<GrassCards>,
+  /// Whether the view traces the cards, and the mask their instance carries (`GrassCards::SHADOW_MASK`,
+  /// `GrassCards::REFLECTION_MASK`).
   is_card_traced: bool,
   card_mask: u8,
+  /// Metres from the eye the sun cascades draw the cards to this frame, none where they draw none; traced cards may
+  /// stand further out.
   card_cascade_reach: Option<f32>,
   /// The planting as a traced hit reads it, no models while none is drawn.
   trace: TraceGrassUniform,
@@ -158,8 +158,8 @@ impl GrassView {
       return;
     };
 
-    // The cards stand while the grass casts its shadows, by the trace or the cascades, or while the water's every ray
-    // meets them; traced for either, the water's rays meet them.
+    // The cards stand while the grass casts shadows or the water traces every pixel; traced cards always carry the
+    // reflection bit.
     let is_shadow_traced: bool = is_traced && settings.is_shadowed;
 
     self.is_card_traced = is_shadow_traced || is_reflected;

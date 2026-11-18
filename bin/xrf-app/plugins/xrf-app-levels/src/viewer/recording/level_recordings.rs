@@ -9,9 +9,8 @@ use xrf_utils::format_path;
 #[cfg(windows)]
 use crate::viewer::recording::ViewportRecorder;
 
-/// The level viewer's recording, one at a time: the recorder while it runs, and once it ended by itself until it is
-/// stopped and collected, or its window goes. While a recorder is in the slot, the world hears its viewport. Off Windows
-/// nothing records.
+/// The level viewer's single recording slot: it holds the recorder while it runs, and after it ends by itself until it
+/// is stopped or its window goes. While occupied, the world hears its viewport. Nothing records off Windows.
 #[derive(Clone, Default)]
 pub(crate) struct LevelRecordings {
   #[cfg(windows)]
@@ -21,14 +20,13 @@ pub(crate) struct LevelRecordings {
 }
 
 impl LevelRecordings {
-  /// The recording, while there is one. A start holds this for as long as its writer takes to open, so it is taken on
-  /// the pool, never on the async runtime.
+  /// The recording slot. A start holds it while its writer opens, so lock it on the pool, never on the async runtime.
   #[cfg(windows)]
   pub(crate) fn lock(&self) -> MutexGuard<'_, Option<ViewportRecorder>> {
     self.active.lock().unwrap_or_else(PoisonError::into_inner)
   }
 
-  /// Whether a recording runs or is starting, none off Windows. Never waits, so the async runtime may ask.
+  /// Whether a recording runs or is starting; never blocks, so the async runtime may call it.
   pub(crate) fn is_recording(&self) -> bool {
     let active = match self.active.try_lock() {
       Ok(active) => active,
@@ -48,9 +46,8 @@ impl LevelRecordings {
     }
   }
 
-  /// Stops and finishes the recording the window labelled `window` started, as its page loads again or the window
-  /// goes: no page is left to stop it or hear how it ended, so the outcome goes to the log, and the world hears the
-  /// focused viewport again.
+  /// Stop and finish the recording `window` started, when its page reloads or the window goes. No page is left to
+  /// hear the outcome, so it goes to the log; the world hears the focused viewport again.
   pub(crate) fn release_window(&self, window: &str, world: &WorldState) {
     #[cfg(windows)]
     {

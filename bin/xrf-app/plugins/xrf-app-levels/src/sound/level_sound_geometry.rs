@@ -14,9 +14,9 @@ use crate::level::SelectedLevel;
 use crate::parts::LevelCollisionPart;
 use crate::report::LevelReport;
 
-/// What shapes a shown level's sound: its collision form's triangles, each with the acoustics of the game material it
-/// is made of (`SGameMtl::MtlAcoustics`, or the engine's predefined set by name), read when the audio's simulation asks,
-/// on its thread. A face things walk through, as bushes are, lets sound through and is left out.
+/// The geometry a shown level's sound travels through: its collision triangles, each with its game material's
+/// acoustics (`SGameMtl::MtlAcoustics`, or the engine's predefined set by name), read on the audio simulation's thread
+/// when it asks. Passable faces, such as bushes, let sound through and are left out.
 pub(crate) struct LevelSoundGeometry {
   level: Arc<SessionSnapshot<SelectedLevel>>,
   assets: AssetMountState,
@@ -27,7 +27,7 @@ impl LevelSoundGeometry {
     Self { level, assets }
   }
 
-  /// The game materials by their ids, none where the library cannot be read, every face then taking the default.
+  /// The game materials by id; empty when the library cannot be read, so every face takes the default.
   fn read_materials(search: &XraySearch) -> HashMap<u16, GameMtlMaterial> {
     match search
       .read(GameMtlFile::FILE_NAME)
@@ -64,7 +64,7 @@ impl AudioSceneGeometry for LevelSoundGeometry {
     let geometry: LevelCformGeometry =
       LevelCollisionPart::read_geometry(&self.level.source, &search).map_err(XrfError::new_asset_error)?;
     let library: HashMap<u16, GameMtlMaterial> = Self::read_materials(&search);
-    // Each game material a kept face names, by the index the mesh gives it.
+    // Each kept face's game material id, mapped to its mesh material index.
     let mut indices: HashMap<u16, u32> = HashMap::new();
     let mut mesh: AudioSceneMesh = AudioSceneMesh {
       vertices: geometry

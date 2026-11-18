@@ -42,8 +42,7 @@ fn spheres(helper: &RenderHelperObject) -> Vec<f32> {
     .collect()
 }
 
-// Each sound's spheres stand where it plays, in renderer space, named as its object; a sound whose file is missing or
-// whose object is not listed draws none, and a campfire draws its idle and its disabled sound alike.
+// A missing file or unlisted object draws nothing; a campfire draws both its idle and disabled sounds.
 #[test]
 fn draws_each_emitters_spheres_at_its_place_named_as_its_object() {
   let emitters: LevelSoundEmitters = LevelSoundEmitters {

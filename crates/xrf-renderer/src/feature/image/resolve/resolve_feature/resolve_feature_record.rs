@@ -194,8 +194,7 @@ impl ResolveFeature {
     opaque: Option<GraphTexture>,
     guides: Option<RayGuides>,
   ) -> ImageChain {
-    // The frames at the viewport's size are this frame's own, read by its passes alone, so the graph pools them with
-    // its other textures of their kind.
+    // The frames at the viewport's size are read within this frame alone, so the graph pools them.
     let mut shown_texture = |label: &'static str, is_written: bool| {
       self.shown_size.filter(|_| is_written).map(|(width, height)| {
         graph.create_texture(GraphTextureDescriptor::new_2d(

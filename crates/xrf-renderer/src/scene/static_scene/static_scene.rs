@@ -234,8 +234,7 @@ impl StaticScene {
     seen
   }
 
-  /// The spheres about the sectors' slots and the objects that bring what `is_wanted` asks for into sight, of those that
-  /// stand within a view's `frustum`.
+  /// Bounding spheres within `frustum` of the sector slots and objects whose sight `is_wanted` accepts.
   pub(crate) fn list_seen_spheres<'s>(
     &'s self,
     frustum: &'s CameraFrustum,
@@ -247,7 +246,7 @@ impl StaticScene {
       .map(|(sphere, _)| *sphere)
   }
 
-  /// The sectors' slots and the objects drawn by passes of their own, each with the sphere about it.
+  /// The sector slots and own-pass objects, each with its bounding sphere.
   fn list_sights(&self) -> impl Iterator<Item = (&Vec4, StaticSight)> {
     let sectors = self
       .sectors

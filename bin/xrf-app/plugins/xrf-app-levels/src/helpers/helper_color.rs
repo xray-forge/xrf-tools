@@ -1,8 +1,8 @@
-/// A helper's colour as a kind table writes it, `#rrggbb` in sRGB, read as the renderer takes it.
+/// A helper's `#rrggbb` sRGB colour from a kind table, read for the renderer.
 pub(crate) struct HelperColor;
 
 impl HelperColor {
-  /// `color` as sRGB floats from 0 to 1, a channel not written as two hex digits read as zero.
+  /// `color` as sRGB floats from 0 to 1; a channel that is not two hex digits reads as zero.
   pub(crate) fn parse_rgb(color: &str) -> [f32; 3] {
     let channel = |at: usize| -> f32 {
       color

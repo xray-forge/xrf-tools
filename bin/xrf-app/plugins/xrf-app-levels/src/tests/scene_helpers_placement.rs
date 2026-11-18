@@ -1,6 +1,3 @@
-//! Where the renderer stands a scene object's helper, against where the scene's own transform places the same object's
-//! shapes and points in engine space.
-
 use std::sync::Arc;
 
 use glam::{Mat4, Vec3};
@@ -19,18 +16,16 @@ use xrf_world::WorldLevelSource;
 use crate::scene::{SceneRenderSource, SceneSource, SelectedScene, ShownScenes};
 use crate::tests::fixtures::{new_scenes, open_scene, scene_part, write_scene, write_scene_part};
 
-/// How far a drawn point may lie from where the scene places it, the two composed in different orders in `f32`.
+// The two sides compose in different orders in `f32`.
 const TOLERANCE: f32 = 1e-4;
 
-/// Turned about every axis and scaled unevenly, so a basis taken by rows rather than columns, an angle's sign or a
-/// mirror applied on one side only would each show.
+// Turned about every axis and scaled unevenly, so a row-major basis, a flipped angle sign or a one-sided mirror shows.
 const TRANSFORM: EditableObjectTransform = EditableObjectTransform {
   position: Vector3d::new(12.5, -3.0, 7.25),
   rotation: Vector3d::new(0.4, -1.1, 0.7),
   scale: Vector3d::new(2.0, 0.5, 1.5),
 };
 
-/// A box element turned, stretched and moved off its object's origin.
 const BOX: Affine3d = Affine3d {
   x_axis: Vector3d::new(1.5, 0.2, 0.0),
   y_axis: Vector3d::new(0.0, 0.8, 0.3),
@@ -38,10 +33,8 @@ const BOX: Affine3d = Affine3d {
   translation: Vector3d::new(1.0, -2.0, 0.5),
 };
 
-/// A sphere element off its object's origin.
 const SPHERE_CENTER: Vector3d = Vector3d::new(0.5, 1.0, -1.0);
 
-/// The helpers of the scene `source` names, as the renderer reads them.
 fn read_helpers(source: &SceneSource) -> RenderLevelHelpers {
   let assets: AssetMountState = AssetMountState::new();
   let opened: Arc<SessionSnapshot<SelectedScene>> = open_scene(&new_scenes(&assets), &assets, source);
@@ -50,12 +43,10 @@ fn read_helpers(source: &SceneSource) -> RenderLevelHelpers {
   drawn.read_helpers().expect("the helpers read")
 }
 
-/// Where `transform` stands the point `local`, given in its helper's own space.
 fn stand(object: &RenderHelperObject, local: [f32; 3]) -> Vec3 {
   Mat4::from_cols_array(&object.transform).transform_point3(Vec3::from_array(local))
 }
 
-/// The engine space point `point` in renderer space.
 fn convert(point: &Vector3d) -> Vec3 {
   Vec3::from(convert_vector(point))
 }
@@ -67,7 +58,6 @@ fn assert_near(drawn: Vec3, expected: Vec3) {
   );
 }
 
-/// A box shape's corners where its helper stands them, in the order of the unit box's corners.
 fn list_box_corners(object: &RenderHelperObject, shape: &RenderHelperShape) -> Vec<Vec3> {
   let RenderHelperShape::Box { axes, center } = shape else {
     panic!("{shape:?} is no box");

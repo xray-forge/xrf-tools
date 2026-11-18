@@ -19,7 +19,7 @@ pub(crate) struct ShadowSway<'a> {
   pub amplitude: f32,
   /// The farthest any tree reaches, in metres, weighted by its rigidity.
   pub reach: f32,
-  /// The level's clock, which a map's last draw is timed by.
+  /// Level time that a map's wait since its last draw is measured against.
   pub time: LevelTime,
   /// The bounding sphere of every place that sways, and its own reach.
   pub places: &'a [(Vec4, f32)],
@@ -30,8 +30,7 @@ impl<'a> ShadowSway<'a> {
   /// over the trees costs a light face's or a cascade's cull and draw.
   pub(crate) const INTERVAL: f32 = 1.0 / 60.0;
 
-  /// The sway the shadows see this frame at the level's clock `time`: the `wind`, the trees' reach in `scene`, and
-  /// where they stand.
+  /// This frame's sway from the `wind` and the swaying places of `scene`, at level time `time`.
   pub(crate) fn of(scene: &'a StaticScene, wind: &WindFeature, time: LevelTime) -> Self {
     Self {
       amplitude: wind.get_sway_amplitude(),
@@ -56,13 +55,13 @@ impl<'a> ShadowSway<'a> {
         .is_none_or(|waited| waited >= interval * (1.0 - SWAY_SLACK))
   }
 
-  /// Whether a map drawn at `drawn_at` may wait yet for its next draw, for less than `most` seconds.
+  /// Whether a map drawn at `drawn_at` has waited less than `most` seconds.
   pub(crate) fn can_wait(&self, drawn_at: LevelTime, most: f32) -> bool {
     self.get_waited(drawn_at).is_some_and(|waited| waited < most)
   }
 
-  /// Seconds a map drawn at `drawn_at` has waited by the level's clock; none where it was drawn after the clock now
-  /// stands, as a burst from an earlier time leaves every map: such a map is due, however near the clock reads.
+  /// Seconds since `drawn_at`; none where it lies ahead of the clock, as after a burst from an earlier time, which
+  /// makes such a map due.
   fn get_waited(&self, drawn_at: LevelTime) -> Option<f32> {
     (drawn_at <= self.time).then(|| self.time.get_since(drawn_at))
   }

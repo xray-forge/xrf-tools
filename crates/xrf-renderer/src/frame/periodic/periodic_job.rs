@@ -52,7 +52,7 @@ impl PeriodicJob {
     !self.is_now() && self.waited >= self.wait_most
   }
 
-  /// Whether it waited a frame past as long as it may, which no frame defers further.
+  /// Whether it waited a frame past its limit; such a job is never deferred again.
   pub(crate) fn is_late(&self) -> bool {
     !self.is_now() && self.waited > self.wait_most
   }

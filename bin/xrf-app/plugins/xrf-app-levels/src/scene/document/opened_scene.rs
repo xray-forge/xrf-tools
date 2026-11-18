@@ -16,9 +16,8 @@ use crate::scene::{
   SceneToolFormat, SceneToolKind, SelectedScene,
 };
 
-/// A Level Editor scene as an open reads it through the shared asset state, and a commit's follow again once it moved a
-/// file the scene was read from: the `.level` it is read from, where its library objects are looked for and the game
-/// data it is drawn with.
+/// A Level Editor scene to read through the shared asset state, on open or after a commit moved one of its files: its
+/// `.level`, where its library objects are looked for, and the game data it is drawn with.
 pub(crate) struct OpenedScene {
   pub source: SceneSource,
   pub objects_roots: XrayRoots,
@@ -39,15 +38,15 @@ struct SceneToolRead {
 }
 
 impl OpenedScene {
-  /// Reads the scene its source names through `search`, a search of the directory holding its `.level`: the `.level`,
-  /// the listing of its part directory and each tool's part files as the editor finds them, every read recorded as the
-  /// scene's inputs, so a commit to any of them, or a part file come or gone, reads the scene again. Its library objects
-  /// are looked for in its objects roots where they are described, and it is drawn with its game data.
+  /// Reads the scene through `search`, a search of the directory holding its `.level`. Every read, the part directory
+  /// listing included, is recorded as the scene's inputs, so a commit to any of them, or a part file added or removed,
+  /// reads the scene again.
   ///
   /// # Errors
   ///
   /// Returns an error when its source names no `.level`, the `.level` is not found or does not read as a scene's, its
-  /// part directory cannot be listed, or a part carries another scene's GUID ([`EditableLevelScene::read_from_source`]).
+  /// part directory cannot be listed, or a part carries another scene's GUID
+  /// ([`EditableLevelScene::read_from_source`]).
   /// A part file that does not read, or one the editor would not load as its tool's, is kept as a problem on its tool.
   pub(crate) fn read(self, search: XraySearch) -> TauriResult<SessionDerived<SelectedScene>> {
     profiling::scope!("scene open");
@@ -117,12 +116,11 @@ impl OpenedScene {
     ))
   }
 
-  /// The open scene read again over the source it was opened from, its library objects looked for where they were and
-  /// drawn with the same game data.
+  /// Reads the open scene again from its source, with the same objects roots and game data.
   ///
   /// # Errors
   ///
-  /// As [`Self::read`], or where the scene's roots cannot be searched.
+  /// As [`Self::read`], or when the scene's roots cannot be searched.
   pub(crate) fn derive(
     current: &SessionSnapshot<SelectedScene>,
     assets: &AssetMountState,
@@ -135,7 +133,7 @@ impl OpenedScene {
     .read(assets.search(&current.roots)?)
   }
 
-  /// The tools a read reached a file of, in the editor's order, those it does not save after them by name.
+  /// The tools a read reached a file of, in the editor's order, then the tools it does not save, by name.
   fn list_tool_names(files: &[EditableScenePartFile]) -> Vec<String> {
     let mut names: Vec<String> = Vec::new();
 
@@ -187,9 +185,8 @@ impl ScenePartFiles<'_> {
 }
 
 impl SceneToolRead {
-  /// The tool's files as the scene read reached them, and its parts as read: each file described, one the read stopped
-  /// at a problem, and the parts kept up to the first the editor would not load as the tool's (another class, another
-  /// version), since the parts after it would no longer stand in their files' places.
+  /// Describes the tool's files, each that did not read as a problem, and keeps its parts up to the first the editor
+  /// would not load as the tool's (another class or version), since later parts would no longer match their files.
   fn new(name: String, tool: Option<EditableSceneTool>, files: &[EditableScenePartFile]) -> Self {
     let tool_kind: Option<SceneToolKind> = SceneToolKind::of(&name);
     let mut tool: EditableSceneTool = tool.unwrap_or_else(|| EditableSceneTool {

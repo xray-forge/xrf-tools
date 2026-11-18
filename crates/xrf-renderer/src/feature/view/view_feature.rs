@@ -1,8 +1,7 @@
 use crate::feature::view::view_frame_end::ViewFrameEnd;
 use crate::feature::view::view_restart::ViewRestart;
 
-/// What every feature unit of a view answers alike, whatever its own frame looks like: letting all it holds go, its
-/// history moving on as a frame ends, and what it carries from frame to frame started again.
+/// What every feature unit of a view answers alike: release, the end of a frame, and a restart.
 pub(crate) trait ViewFeature {
   /// Lets go of everything it holds, as when its view goes.
   fn release(&mut self);
@@ -11,8 +10,7 @@ pub(crate) trait ViewFeature {
   /// history.
   fn end_frame(&mut self, _end: &mut ViewFrameEnd<'_>) {}
 
-  /// Starts again what it carries from frame to frame, as `restart` asks, before its next frame prepares: every view
-  /// asks each of its units alike, so a unit carrying a clock, an easing, a noise turn or a history answers here.
-  /// Nothing for a unit carrying none.
+  /// Starts over what it carries between frames, as `restart` asks, before its next frame prepares. A unit carrying a
+  /// clock, an easing, a noise turn or a history must answer here; nothing for one carrying none.
   fn restart(&mut self, _restart: ViewRestart) {}
 }

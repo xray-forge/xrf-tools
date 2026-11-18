@@ -15,7 +15,6 @@ const DOWN: Vec3 = Vec3::new(0.0, -1.0, 0.0);
 /// A level standing four hundred metres either way along the light from the origin.
 const SPAN: Option<(f32, f32)> = Some((-400.0, 400.0));
 
-/// A level's sectors a few hundred metres across and off the origin, as the static scene keeps their spheres.
 const LEVEL: [Vec4; 4] = [
   Vec4::new(-150.0, 0.0, -120.0, 90.0),
   Vec4::new(180.0, 10.0, -60.0, 120.0),
@@ -23,7 +22,7 @@ const LEVEL: [Vec4; 4] = [
   Vec4::new(-220.0, -10.0, 200.0, 80.0),
 ];
 
-/// How far along `light` the `sectors` stand, nearest and farthest, as `StaticScene::get_span` measures a level.
+// As `StaticScene::get_span` measures a level.
 fn get_span(sectors: &[Vec4], light: Vec3) -> Option<(f32, f32)> {
   sectors
     .iter()
@@ -92,7 +91,6 @@ fn fit_first(camera: &CameraView, light: Vec3, width: f32) -> SunCascade {
   cascade
 }
 
-/// The first cascade over a level of `sectors`, its span measured along `light` as the level's is each frame.
 fn fit_over(camera: &CameraView, light: Vec3, width: f32, sectors: &[Vec4]) -> SunCascade {
   let mut rays: SunViewRays = SunViewRays::new(camera);
   let mut cascade: SunCascade = SunCascade::default();
@@ -236,9 +234,8 @@ fn sun_cascade_is_held_by_its_map_through_a_walk_but_not_a_sharp_turn() {
   assert!(!fit_first(&create_camera(position, position - Vec3::Z), DOWN, 160.0).is_held_by(&drawn));
 }
 
-// A running clock turns the sun a little every frame: a map waits for its turn through a turn moving a caster at the
-// reach half a texel, and draws at once past it. Each side measures the level along its own light, as every frame
-// does, so the turn moves the level's span too.
+// A running clock turns the sun a little every frame; each side measures the level along its own light, so the turn
+// moves the level's span too.
 #[test]
 fn sun_cascade_is_held_by_its_map_through_a_clocks_turn_but_not_a_seek() {
   let camera: CameraView = create_forward_camera(Vec3::new(0.0, 1.7, 0.0));
@@ -246,8 +243,7 @@ fn sun_cascade_is_held_by_its_map_through_a_clocks_turn_but_not_a_seek() {
   let turned = |angle: f32| glam::Quat::from_rotation_z(angle) * light;
   let drawn: SunCascade = fit_over(&camera, light, 160.0, &LEVEL);
   let (nearest, _) = get_span(&LEVEL, light).unwrap_or_default();
-  // Half a texel of 160 m at 2048 across, over how far towards the sun the map reaches: the level's nearest from the
-  // camera's place along the light, and a step of a sixteenth of the width.
+  // Half a texel of 160 m at 2048, over the map's reach towards the sun: the level's nearest plus a sixteenth width.
   let limit: f32 = 0.5 * 160.0 / 2048.0 / (-nearest + 160.0 / 16.0);
 
   assert_ne!(get_span(&LEVEL, turned(limit * 0.5)), get_span(&LEVEL, light));
@@ -256,8 +252,7 @@ fn sun_cascade_is_held_by_its_map_through_a_clocks_turn_but_not_a_seek() {
   assert!(!fit_over(&camera, turned(0.01), 160.0, &LEVEL).is_held_by(&drawn));
 }
 
-/// The level with a caster two metres across standing over the ground ahead of the camera, its side towards the sun
-/// `past` metres beyond the level's nearest along `light`; and that side.
+// A two-metre caster whose sunward side stands `past` metres beyond the level's nearest along `light`.
 fn create_level_with_caster(light: Vec3, past: f32) -> (Vec<Vec4>, Vec3) {
   let (nearest, _) = get_span(&LEVEL, light).unwrap_or_default();
   let ground: Vec3 = Vec3::new(0.0, 0.0, 40.0);
@@ -266,8 +261,7 @@ fn create_level_with_caster(light: Vec3, past: f32) -> (Vec<Vec4>, Vec3) {
   ([LEVEL.as_slice(), &[(side + light).extend(1.0)]].concat(), side)
 }
 
-// A map is drawn a step of a sixteenth of its width past the level's nearest towards the sun: a caster coming into the
-// level within it still stands in the map's depth, one past it does not and draws the map again.
+// A map reaches a sixteenth of its width past the level's nearest towards the sun.
 #[test]
 fn sun_cascade_is_held_by_its_map_while_a_caster_stands_within_its_depth() {
   let camera: CameraView = create_forward_camera(Vec3::new(0.0, 1.7, 0.0));
@@ -282,8 +276,7 @@ fn sun_cascade_is_held_by_its_map_while_a_caster_stands_within_its_depth() {
   assert!(!fit_over(&camera, light, 160.0, &beyond).is_held_by(&drawn));
 }
 
-// A map nearing what it holds has its next drawn ahead: within a share, a turn and a caster coming into the level each
-// hold it for less.
+// A map nearing its limits has its next drawn ahead of time.
 #[test]
 fn sun_cascade_is_held_within_a_share_of_its_map_for_less_of_a_turn_and_of_the_level() {
   let camera: CameraView = create_forward_camera(Vec3::new(0.0, 1.7, 0.0));

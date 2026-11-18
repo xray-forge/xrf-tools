@@ -31,8 +31,7 @@ fn leaves_to_the_engine_whatever_no_command_sets_or_it_cannot_read() {
   assert_eq!(defaults.image_gamma, None);
 }
 
-// The engine's console refuses a value past a command's range and keeps its own, so the viewer leaves it to the
-// engine too, and a value no finite number never reaches the frame.
+// The engine keeps its own value on refusing an out-of-range one, so the viewer leaves such values unset.
 #[test]
 fn leaves_to_the_engine_a_value_past_its_commands_range() {
   let defaults: LevelConsoleDefaults = LevelConsoleDefaults::parse(

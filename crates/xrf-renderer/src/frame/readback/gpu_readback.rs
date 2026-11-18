@@ -10,9 +10,9 @@ const MAPPING: u8 = 2;
 const MAPPED: u8 = 3;
 const FAILED: u8 = 4;
 
-/// A buffer the GPU copies into and the CPU reads without ever waiting on it: a copy goes out with a frame, the buffer
-/// is mapped once that frame's work is done, which a later frame's poll reports, and it is read then and freed again.
-/// Its state is shared, so another thread may read and free it once it is mapped.
+/// A GPU-to-CPU copy buffer read without waiting: mapped once a later poll reports its frame done, then read and freed.
+///
+/// Its state is shared, so another thread may read and free it once mapped.
 #[derive(Debug)]
 pub(crate) struct GpuReadback {
   buffer: wgpu::Buffer,

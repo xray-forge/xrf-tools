@@ -8,22 +8,22 @@ use crate::viewer::recording::writer::{
   MediaProbe, MediaSession, MediaSink, RecordFormat, RecordSample, RecordSummary,
 };
 
-/// A recording written as fragmented MP4 on a thread of its own, which holds Media Foundation and the Sink Writer for
-/// the recording's life: samples handed over queue a few deep, so one handed faster than the encoders take it waits.
-/// Dropped unfinished, it finishes the file as far as it was handed.
+/// Writes a recording as fragmented MP4 on its own thread, which holds Media Foundation and the Sink Writer for the
+/// recording's life. Samples queue a few deep, so a writer faster than the encoders waits. Dropped unfinished, it
+/// finishes the file with what it was handed.
 pub(crate) struct RecordWriter {
   samples: SyncSender<RecordSample>,
   thread: Option<JoinHandle<TauriResult<RecordSummary>>>,
-  /// Why the writer's thread stopped early, once a write found it gone, for the finish to answer.
+  /// Why the writer's thread stopped early, kept once a write finds it gone, for `finish` to return.
   failure: Option<String>,
 }
 
 impl RecordWriter {
-  /// Samples queued for the writer's thread before one more waits.
+  /// Samples queued before a write waits.
   const QUEUED: usize = 4;
 
-  /// Starts writing a recording of `format` into `file`, replacing one there. A writer that cannot open leaves no file:
-  /// the Sink Writer makes it before it refuses the stream.
+  /// Start writing a recording of `format` into `file`, replacing any there. A failed open removes the file, which the
+  /// Sink Writer creates before refusing the stream.
   ///
   /// # Errors
   ///
@@ -58,20 +58,20 @@ impl RecordWriter {
     Err(refused)
   }
 
-  /// Hands `sample` to the writer's thread, waiting while its queue is full.
+  /// Hand `sample` to the writer's thread, waiting while its queue is full.
   ///
   /// # Errors
   ///
-  /// Returns why the writer stopped, where it did.
+  /// Returns why the writer stopped, if it did.
   pub(crate) fn write(&mut self, sample: RecordSample) -> TauriResult {
     self.samples.send(sample).map_err(|_| self.take_error())
   }
 
-  /// Writes what was handed over to the file's end and closes it, answering what was written.
+  /// Write everything handed over, close the file, and answer what was written.
   ///
   /// # Errors
   ///
-  /// Returns why the writer stopped, where it did, or the file could not be finished.
+  /// Returns why the writer stopped, if it did, or why the file could not be finished.
   pub(crate) fn finish(self) -> TauriResult<RecordSummary> {
     let Self {
       samples,
@@ -87,7 +87,7 @@ impl RecordWriter {
     }
   }
 
-  /// Why the writer's thread ended early, joined, and kept for the finish.
+  /// Join the early-ended writer thread and keep its error for `finish`.
   fn take_error(&mut self) -> String {
     let failure: String = Self::join(self.thread.take())
       .err()
@@ -105,8 +105,8 @@ impl RecordWriter {
       .map_err(|_| String::from("The recording stopped on a panic"))?
   }
 
-  /// The writer's thread: opens the file, telling `opened` whether it could, then writes each sample as it comes until
-  /// the writer is finished or dropped, and closes the file.
+  /// The writer thread: open the file and report it on `opened`, write each sample until the writer is finished or
+  /// dropped, then close the file.
   fn write_all(
     file: &Path,
     format: RecordFormat,
@@ -116,8 +116,8 @@ impl RecordWriter {
     let session: MediaSession = MediaSession::start().inspect_err(|error| {
       let _ = opened.send(Err(error.clone()));
     })?;
-    // The sink lives in this block alone, so its objects are released before Media Foundation shuts down whether the
-    // writes succeed or not: a hardware encoder released after the shutdown can fault.
+    // The sink is scoped to this block so its objects are released before Media Foundation shuts down, success or
+    // not: a hardware encoder released after shutdown can fault.
     let written: TauriResult<RecordSummary> = {
       let mut sink: MediaSink = MediaSink::open(file, format).inspect_err(|error| {
         let _ = opened.send(Err(error.clone()));

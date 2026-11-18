@@ -229,9 +229,10 @@ impl RenderThread {
     }
   }
 
-  /// The long job running, named for a refusal, none while none runs: a recording, a burst or a level map's or
-  /// cubemap's capture, one at a time over every viewport, as a burst paces every scene's clock and a capture draws its
-  /// viewport's frames in place of its own. A screenshot is drawn apart and runs beside any.
+  /// A refusal naming the running long job (recording, burst, map or cubemap capture); none while none runs.
+  ///
+  /// One long job runs at a time over all viewports: a burst paces every scene's clock and a capture replaces its
+  /// viewport's frames. Screenshots run beside any.
   fn find_running_job(&self) -> Option<String> {
     self.viewports.values().find_map(|viewport| {
       let id: u32 = viewport.get_id().0;
@@ -244,8 +245,8 @@ impl RenderThread {
     })
   }
 
-  /// Starts recording a viewport's frames; refused, through `events`, where the viewport is gone, another long job runs
-  /// (`find_running_job`), or the size is nothing or past the GPU's largest texture.
+  /// Starts recording a viewport, or sends a refusal to `events`: the viewport is gone, another long job runs, or the
+  /// size is zero or past the GPU's largest texture.
   fn begin_record(&mut self, id: RenderViewportId, size: (u32, u32), events: Sender<RecordEvent>) {
     let most: u32 = self.get_most_texture();
     let refusal: Option<String> = match self.viewports.get(&id) {
@@ -270,8 +271,8 @@ impl RenderThread {
     }
   }
 
-  /// Starts a viewport's burst; refused, through `events`, where the viewport is gone or shows no level, another long
-  /// job runs (`find_running_job`), or the burst cannot be drawn.
+  /// Starts a viewport's burst, or sends a refusal to `events`: the viewport is gone or shows no level, another long
+  /// job runs, or the burst is invalid.
   fn begin_burst(&mut self, id: RenderViewportId, burst: RenderBurst, events: Sender<BurstEvent>) {
     let refusal: Option<String> = match self.viewports.get(&id) {
       None => Some(format!("Viewport {} is no longer drawn", id.0)),
@@ -308,8 +309,8 @@ impl RenderThread {
       })
   }
 
-  /// Starts a viewport's capture as `plan` plans it from the viewport; refused, through `events`, where the viewport is
-  /// gone or shows no level, another long job runs (`find_running_job`), or the capture cannot be drawn.
+  /// Starts a viewport's capture as `plan` plans it, or sends a refusal to `events`: the viewport is gone or shows no
+  /// level, another long job runs, or the plan fails.
   fn begin_capture(
     &mut self,
     id: RenderViewportId,

@@ -8,22 +8,25 @@ use crate::pass::level_passes::LevelPasses;
 use crate::scene::texture::weather_texture_upload::WeatherTextureUpload;
 use crate::scene::texture::weather_textures::WeatherTextures;
 
-/// The sky's textures as the frame draws them, smoothed where their stored steps band (`common/sky_deband.wgsl`): both
-/// keyframes' cubes and clouds, each copied into float once its texture is up and again when the weather names
-/// another or its file is read again, the combine reading the copies and every other reader the textures as they are.
+/// Float copies of both keyframes' sky cubes and clouds, smoothed where their stored steps band
+/// (`common/sky_deband.wgsl`).
+///
+/// Only the combine reads the copies; every other reader takes the textures as they are.
 #[derive(Default)]
 pub(crate) struct SkyDeband {
   /// The cubes' copies, then the clouds', none for a texture not up or not drawn.
   slots: [Option<SkyDebandSlot>; 4],
 }
 
-/// One texture's smoothed copy: the texture it was made from and which upload of it, the copy as the sky reads it and
-/// as the smoothing writes it, and whether this frame smooths it.
+/// One texture's smoothed copy, and the upload it was made from.
 struct SkyDebandSlot {
   reference: String,
   upload: WeatherTextureUpload,
+  /// The copy as the sky reads it.
   sampled: wgpu::TextureView,
+  /// The copy as the smoothing writes it.
   written: wgpu::TextureView,
+  /// Whether this frame smooths it.
   is_due: bool,
   is_filled: bool,
 }
@@ -45,9 +48,8 @@ impl SkyDeband {
     is_shown && options.features.debanding.is_drawn()
   }
 
-  /// Takes this frame's sky: a texture up for the first time, named in place of the one copied, or read again from its
-  /// changed file, is copied again this frame; one not up, or clouds not drawn (`is_clouded`), keeps no copy, the sky
-  /// reading it as it stands.
+  /// Prepares this frame's sky: a texture newly up, newly named or newly uploaded is copied again; one not up, or
+  /// clouds not drawn (`is_clouded`), keeps no copy.
   pub(crate) fn prepare(
     &mut self,
     device: &wgpu::Device,
@@ -87,8 +89,7 @@ impl SkyDeband {
     }
   }
 
-  /// The sky's parameters (`sky`) with the copies in place of the textures they were made from, each smoothed first
-  /// where this frame copies it.
+  /// `sky` with the copies in place of their textures, declaring the smoothing of those due this frame.
   pub(crate) fn add_passes<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
@@ -150,8 +151,7 @@ impl SkyDeband {
 }
 
 impl SkyDebandSlot {
-  /// A float copy of an upload of a texture, at its size (a face's, six faces for a cube), smoothed on the frame it is
-  /// made.
+  /// A float copy of `upload` at its size (a face's, six faces for a cube), smoothed on the frame it is made.
   fn new(device: &wgpu::Device, reference: &str, upload: WeatherTextureUpload, is_cube: bool) -> Self {
     let size: (u32, u32) = upload.size;
     let texture: wgpu::Texture = device.create_texture(&wgpu::TextureDescriptor {

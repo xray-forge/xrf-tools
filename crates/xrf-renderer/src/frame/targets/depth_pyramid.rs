@@ -12,8 +12,8 @@ pub(crate) struct DepthPyramid {
 
 impl DepthPyramid {
   pub(crate) const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
-  /// Levels of a nearest depth's pyramid a reflected ray climbs through: the depth itself and six halvings, up to
-  /// `common/reflection_trace`'s `RAY_TOP_LEVEL`.
+  /// Nearest-depth pyramid levels a reflected ray climbs: the depth and six halvings, matching `RAY_TOP_LEVEL` in
+  /// `common/reflection_trace`.
   pub(crate) const RAY_LEVELS: u32 = 7;
 
   /// The farthest depth's pyramid over a depth of this size: its first level the largest power of two within it each

@@ -1,5 +1,3 @@
-//! How the lights' shadow faces share the atlas under pressure, and in what order those wanting a draw are taken.
-
 use std::cmp::Ordering;
 
 use glam::Vec3;
@@ -17,7 +15,7 @@ use crate::scene::static_scene::static_scene::StaticScene;
 use crate::tests::support::test_context::create_test_context;
 use crate::tests::support::test_time::at;
 
-/// A shadowed light near the eye, which looks down `+z`: wide enough, long and facing it to want the largest square.
+// Near the eye, wide and long enough to want the largest square.
 fn light(kind: LightKind, x: f32) -> LightDescription {
   LightDescription {
     kind,
@@ -41,9 +39,8 @@ fn light(kind: LightKind, x: f32) -> LightDescription {
   }
 }
 
-/// A light given smaller squares while every other light was in view takes squares of its own size again once room
-/// can be made for them: fifteen spots take fifteen of the atlas's sixteen largest squares, a point light asked at the
-/// largest gets its six faces at a quarter of it, and the next frame, the spots out of view, its ask grows it back.
+// Fifteen spots take fifteen of the atlas's sixteen largest squares, leaving the point light a quarter size until
+// the spots leave view.
 #[test]
 fn grows_a_light_given_smaller_squares_back_once_room_is_made() {
   let Some(context) = create_test_context("to hold the lights' shadow atlas") else {
@@ -102,8 +99,7 @@ fn grows_a_light_given_smaller_squares_back_once_room_is_made() {
   );
 }
 
-/// Faces drawn a tenth of a second apart are taken the longest drawn first however long the level's clock has run: a
-/// year in, seconds as `f32` step by two, and the two would tie.
+// A year in, `f32` seconds step by two and the two draws would tie.
 #[test]
 fn takes_the_face_drawn_longest_ago_first_a_year_into_the_level() {
   let year: f64 = 365.0 * 24.0 * 3600.0;

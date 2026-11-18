@@ -9,12 +9,10 @@ use xrf_editable_level::{
 
 use crate::scene::{SceneProblem, SceneProblemKind, SceneToolFormat};
 
-/// A Level Editor tool a scene's part file belongs to, by the name the file carries, and what the editor requires of
-/// the tool's part before it loads it.
+/// A Level Editor tool, by the name its part files carry, and what the editor requires of its part before loading it.
 ///
-/// Declared in the order of the editor's class ids (`ObjClassID`), which is the order it keeps and lists its tools in.
-/// Each crosses IPC as the name its part files carry, written per variant rather than derived: no case convention
-/// spells `ps` or `sound_src`.
+/// Declared in the editor's class id order (`ObjClassID`), the order it keeps and lists its tools in. Each crosses IPC
+/// as its part file name, written per variant because no case convention spells `ps` or `sound_src`.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum SceneToolKind {
@@ -94,12 +92,12 @@ impl SceneToolKind {
     Self::ALL.into_iter().find(|kind| kind.get_name() == name)
   }
 
-  /// Its place in [`Self::ALL`], which the variants are declared in the order of.
+  /// Its place in [`Self::ALL`], which is the variants' declaration order.
   pub(crate) const fn get_ordinal(self) -> u32 {
     self as u32
   }
 
-  /// Whether every tool of [`Self::ALL`] stands at its own ordinal, which a helper's id and switch rest on.
+  /// Whether each tool of [`Self::ALL`] stands at its own ordinal, which helper ids and switches rely on.
   const fn is_ordered() -> bool {
     let mut place: usize = 0;
 
@@ -144,9 +142,8 @@ impl SceneToolKind {
     }
   }
 
-  /// Why the editor would not load `part`, the tool's file named `file`, as this tool's part, where it would not: a
-  /// part saved as another tool's class, an object tool's part of another tool version, or one holding an object of
-  /// another class. The objects themselves are read where they are described.
+  /// Why the editor would not load `part`, the tool's file `file`, as this tool's part: saved as another tool's class,
+  /// of another tool version, or holding an object of another class. Object contents are not read here.
   pub(crate) fn check(self, file: &str, part: &EditableLevelPart) -> Option<SceneProblem> {
     match (part, self.get_binary_class()) {
       (EditableLevelPart::Binary(part), Some(class_id)) if part.class_id == class_id => None,
@@ -171,7 +168,7 @@ impl SceneToolKind {
     }
   }
 
-  /// The class an object tool's text part is checked against, by the type its objects read as.
+  /// Checks an object tool's text part against the tool's object type.
   fn check_text(self, file: &str, part: &EditableTextPart) -> Option<SceneProblem> {
     match self {
       Self::SceneObject => self.check_objects::<EditableSceneObject>(file, part),
@@ -192,8 +189,8 @@ impl SceneToolKind {
     }
   }
 
-  /// An object tool's part as its `LoadLTX` checks it before reading an object: `[main]`'s version, then each object's
-  /// class.
+  /// Checks an object tool's part as its `LoadLTX` does before reading an object: `[main]`'s version, then each
+  /// object's class.
   fn check_objects<T: EditableToolObject>(self, file: &str, part: &EditableTextPart) -> Option<SceneProblem> {
     match part.get_header(T::TOOL_VERSION_KEY) {
       Err(error) => Some(self.report(
@@ -215,7 +212,7 @@ impl SceneToolKind {
     }
   }
 
-  /// The first object of the part that is not of `class_id`, or whose objects do not gather.
+  /// The problem of the part's first object not of `class_id`, or of objects that do not read.
   fn check_classes(self, file: &str, part: &EditableTextPart, class_id: i32) -> Option<SceneProblem> {
     let objects: Vec<EditablePartObject<'_>> = match part.get_objects() {
       Ok(objects) => objects,

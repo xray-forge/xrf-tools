@@ -15,9 +15,9 @@ use crate::scene::static_scene::geometry::static_geometry::StaticGeometry;
 use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 use crate::scene::static_scene::static_scene::StaticScene;
 
-/// The static scene's buffers as a view's frame graph imports them, with the uniforms its culls and draws read pushed:
-/// what every cull and static draw of the view binds, the camera's lists and arguments its own (`StaticViewCull`), and
-/// each shadow cull adding its own.
+/// The static scene's buffers and uniforms imported into a view's frame graph, bound by every cull and static draw.
+///
+/// The camera's lists and arguments are the view's own (`StaticViewCull`); each shadow cull adds its own.
 #[derive(Clone, Copy)]
 pub(crate) struct StaticSceneHandles {
   pub clusters: GraphBuffer,
@@ -36,8 +36,7 @@ pub(crate) struct StaticSceneHandles {
   pub corners: GraphBuffer,
   pub terms: GraphBuffer,
   pub impostor_list: GraphBuffer,
-  /// The view's camera's visible list and draw arguments, its late phase's, and what a cull's arguments and the
-  /// camera's late ones start from.
+  /// The camera's visible list, draw and late-phase arguments, and the templates they are reset from.
   pub lists: GraphBuffer,
   pub args: GraphBuffer,
   pub candidates: GraphBuffer,
@@ -53,9 +52,7 @@ pub(crate) struct StaticSceneHandles {
 }
 
 impl StaticSceneHandles {
-  /// Imports the static scene into a view's frame graph: its buffers, the view's camera lists, arguments and candidates
-  /// (`camera`), the occlusion pyramid, and the cull's, occlusion's and wind's uniforms pushed, for every cull and
-  /// static draw of the view to bind.
+  /// Imports the static scene, the `camera` lists, the occlusion pyramid and the cull, occlusion and wind uniforms.
   pub(crate) fn import<'r>(
     GraphDeclaration {
       graph,
@@ -176,7 +173,7 @@ impl StaticSceneHandles {
     }
   }
 
-  /// The camera's cull, into the view's own list and arguments.
+  /// The camera cull, writing the view's own list and arguments.
   pub(crate) fn get_camera_cull(&self) -> StaticCullParameters {
     self.get_cull_parameters(StorageArrayMut::new(self.lists), StorageArrayMut::new(self.args))
   }

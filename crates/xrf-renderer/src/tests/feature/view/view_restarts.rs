@@ -9,7 +9,6 @@ use crate::tests::support::test_context::create_test_context;
 
 const SIZE: (u32, u32) = (64, 48);
 
-/// The enhanced reflections' trace at the default settings.
 fn enhanced_trace() -> ReflectionTrace {
   let mut options: RenderViewOptions = RenderViewOptions::default();
 
@@ -21,9 +20,7 @@ fn enhanced_trace() -> ReflectionTrace {
   ReflectionTrace::new(&options).expect("the enhanced reflections trace")
 }
 
-/// A camera cut leaves the reflections nothing of the place it left to read, their denoiser's frames nor the scene and
-/// depth kept, while their noise turns on; a restarted motion starts the noise from none as well. Skipped, and says so,
-/// on a machine with no adapter at all.
+// A cut keeps the noise turning; only a motion restart resets it.
 #[test]
 fn a_cut_and_a_restart_leave_the_reflections_nothing_of_the_place_before() {
   let Some(context) = create_test_context("to hold the reflections' history") else {

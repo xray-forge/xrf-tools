@@ -7,9 +7,7 @@ use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::view::view_restart::ViewRestart;
 use crate::tests::support::test_context::create_test_context;
 
-/// A restarted exposure takes its next frame's measure whole, under the engine's light and the physical alike, rather
-/// than easing from the scale the frames before it left, and eases again from the frame after: two bursts from one time
-/// start from the same exposure whatever came before them. Skipped, and says so, on a machine with no adapter at all.
+// Two bursts from one time must start from the same exposure, whatever came before them.
 #[test]
 fn a_restarted_exposure_takes_its_next_measure_whole() {
   let Some(context) = create_test_context("to adapt with") else {

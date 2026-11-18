@@ -3,9 +3,10 @@ use xrf_app_render::WorldState;
 use xrf_renderer::RenderViewportId;
 use xrf_world::WorldMusicCommand;
 
-/// Plays the music of the level a viewport shows as asked: by the game's schedule, one track by hand, or the track
-/// playing from a point; answers whether it could, which it cannot for a viewport showing no level, a track the level
-/// does not have, or a seek between tracks.
+/// Control the music of the level a viewport shows: the game's schedule, one chosen track, or a seek within the playing
+/// track.
+///
+/// Answers false for a viewport showing no level, a track the level lacks, or a seek across tracks.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "command_music")]
 pub(crate) fn levels_command_music(

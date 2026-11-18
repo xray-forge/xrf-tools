@@ -175,10 +175,10 @@ impl DecodedTexture {
     !self.is_volume && self.layers == 1
   }
 
-  /// Whether any texel of any level may hold some blue: a block compressed one's where a block's colour endpoints hold
-  /// some, since each texel's colour lies between them; an eight bit one's where a texel does; any other layout may.
+  /// Whether any texel may hold blue, judged by block colour endpoints for compressed layouts and by texels for 8-bit
+  /// ones; any other layout counts as blue.
   pub(crate) fn has_blue(&self) -> bool {
-    // A block's bytes, and where its colour endpoints stand in it, each a little endian 5:6:5 colour, blue lowest.
+    // Block size and colour endpoint offset; each endpoint is little-endian 5:6:5, blue lowest.
     let block = |size: usize, colors: usize| {
       self.levels.iter().any(|level| {
         level.chunks_exact(size).any(|block| {

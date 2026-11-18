@@ -7,33 +7,32 @@ use xrf_visual::VisualBounds;
 use crate::scene::{SceneObjectId, SceneRenderSpace};
 
 /// One spawn point the scene draws as its entity's model: the visual its packet names, found in the scene's game data,
-/// and where the spawn point stands.
+/// and the spawn point's transform.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct SceneSpawnModel {
   pub id: SceneObjectId,
-  /// The visual its entity's packet names, as the game data's meshes hold it.
+  /// The visual its entity's packet names, a path below the game data's meshes.
   pub visual: String,
   pub transform: EditableObjectTransform,
 }
 
 impl SceneSpawnModel {
-  /// The name the renderer knows the model of `visual` by: its file's, so no library object's reference spells it.
+  /// The renderer's name for the model of `visual`: its file name, which no library object reference can collide with.
   pub(crate) fn format_model_name(visual: &str) -> String {
     format!("{visual}.{}", XrayExtension::Ogf.as_str())
   }
 
-  /// The name the renderer knows its model by.
+  /// The renderer's name for its model.
   pub(crate) fn get_model_name(&self) -> String {
     Self::format_model_name(&self.visual)
   }
 
-  /// Where it stands as the renderer places its model, sixteen floats column by column: the spawn point's transform in
-  /// renderer space, as a scene object's is.
+  /// The spawn point's transform in renderer space, as a scene object's is, as sixteen column-major floats.
   pub(crate) fn get_render_transform(&self) -> [f32; 16] {
     SceneRenderSpace::place(&self.transform)
   }
 
-  /// The sphere about the box `bounds` reach, a model's own in renderer space, once placed where it stands.
+  /// The sphere about the model's renderer space `bounds` box once placed at the spawn point.
   pub(crate) fn place_bounds(&self, bounds: &VisualBounds) -> Sphere {
     let placement: Mat4 = Mat4::from_cols_array(&self.get_render_transform());
     let Aabb { min, max } = bounds.bounding_box;

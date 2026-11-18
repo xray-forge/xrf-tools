@@ -3,8 +3,7 @@ use crate::thread::copies::capture_copy::CaptureCopy;
 use crate::thread::copies::record_copy::RecordCopy;
 use crate::thread::copies::shot_copy::ShotCopy;
 
-/// What the frame copies out of its viewports and windows: the screenshots and finished frames captured, a capture's
-/// shots, the burst's frames and the recordings'.
+/// Everything a frame copies out of its viewports and windows: captures, shots, burst frames and recording frames.
 pub(crate) struct FrameCopies {
   pub captures: Vec<CaptureCopy>,
   pub shots: Vec<ShotCopy>,

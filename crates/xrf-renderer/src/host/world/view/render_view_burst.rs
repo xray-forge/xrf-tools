@@ -1,9 +1,8 @@
-/// A burst a viewport draws this frame, as the world hears of it: the burst's frames carry times of its own, which the
-/// scene's sound follows from a start of its own.
+/// A burst a viewport draws this frame at its own times, which the scene's sound follows from the burst's start.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RenderViewBurst {
-  /// Its first frame, drawn from its start.
+  /// Its first frame.
   Starting,
-  /// One of its later frames, or the time it holds while frames come back.
+  /// A later frame, or the held time while frames come back.
   Drawing,
 }

@@ -1,8 +1,3 @@
-//! A Level Editor scene's spawn points drawn as their entities' models: each whose packet names a visual the scene's
-//! game data holds stood as it, named by its render id in a group of its own and lit by the open sky, its attached
-//! volume kept and its icon dropped; the rest keep their icon; a model found and not read is a load failure; and a
-//! spawn point drawn as a model is located by its model's placed bounds.
-
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -30,16 +25,13 @@ use crate::tests::fixtures::{
   write_scene_part,
 };
 
-/// The visual two spawn points' packets name, which the game data holds.
 const BOX: &str = "dynamics\\box\\box_wood";
 
-/// A visual a packet names that the game data does not hold.
+// The game data does not hold it.
 const GONE: &str = "dynamics\\box\\box_gone";
 
-/// The name the renderer knows [`BOX`]'s model by.
 const BOX_MODEL: &str = "dynamics\\box\\box_wood.ogf";
 
-/// A breakable box's spawn packet as the editor saves it, drawn as `visual`.
 fn packet(visual: &str) -> IniSection {
   let mut entity: AlifeObject = new_object(
     "box",
@@ -57,7 +49,7 @@ fn packet(visual: &str) -> IniSection {
   let mut recorder: ChunkFieldRecorder = ChunkFieldRecorder::new();
   let mut data: IniSection = IniSection::new("spawndata");
 
-  // The flags every packet the editor saves carries, its version among them (`M_SPAWN_VERSION`).
+  // The flags every editor-saved packet carries, including `M_SPAWN_VERSION`.
   entity.header.script_flags = 33;
   entity
     .write_spawn_packet::<XRayByteOrder, _>(&mut recorder)
@@ -67,7 +59,6 @@ fn packet(visual: &str) -> IniSection {
   data
 }
 
-/// An entity's spawn point named `name` standing at `x`, its packet `data`, a unit box attached where `is_volumed`.
 fn spawn_point(name: &str, x: f32, data: IniSection, is_volumed: bool) -> EditableSpawnPointObject {
   EditableSpawnPointObject {
     object: scene_custom_object(name, x),
@@ -83,7 +74,6 @@ fn spawn_point(name: &str, x: f32, data: IniSection, is_volumed: bool) -> Editab
   }
 }
 
-/// The game data beside the rawdata tree the scene lies in.
 fn game_data(source: &SceneSource) -> PathBuf {
   Path::new(&source.path)
     .ancestors()
@@ -92,7 +82,6 @@ fn game_data(source: &SceneSource) -> PathBuf {
     .join(SceneSource::GAME_DATA_DIRECTORY)
 }
 
-/// Writes `bytes` as the model `visual` into the game data's meshes.
 fn write_model(source: &SceneSource, visual: &str, bytes: &[u8]) {
   let path: PathBuf = game_data(source)
     .join("meshes")
@@ -102,7 +91,6 @@ fn write_model(source: &SceneSource, visual: &str, bytes: &[u8]) {
   fs::write(path, bytes).expect("the model is written");
 }
 
-/// A unit square on the ground compiled as the game's model of a static object.
 fn square_model() -> Vec<u8> {
   let [a, b, c, d] = [
     Vector3d::new(0.0, 0.0, 0.0),
@@ -124,8 +112,7 @@ fn square_model() -> Vec<u8> {
   .bytes
 }
 
-/// A scene of four spawn points: two boxes drawn as [`BOX`] at 0 and 10, the second with a volume attached, a box
-/// naming [`GONE`] at 20 and an entity whose packet does not read at 30; its game data holding `model` as [`BOX`].
+// The last spawn point's empty packet does not read.
 fn write_spawn_scene(resource: &str, model: Option<&[u8]>) -> SceneSource {
   let source: SceneSource = write_scene(resource);
 
@@ -147,7 +134,6 @@ fn write_spawn_scene(resource: &str, model: Option<&[u8]>) -> SceneSource {
   source
 }
 
-/// The scene `source` names opened, and the source drawing it.
 fn show(
   source: &SceneSource,
 ) -> (
@@ -162,7 +148,6 @@ fn show(
   (assets, opened, drawn)
 }
 
-/// The spawn point at `index`.
 fn spawn_point_id(index: u32) -> SceneObjectId {
   SceneObjectId {
     tool: SceneToolKind::Spawn,
@@ -170,14 +155,12 @@ fn spawn_point_id(index: u32) -> SceneObjectId {
   }
 }
 
-/// The id the renderer knows the spawn point at `index` by: the spawn tool's place, 6, above its index.
 fn drawn_id(index: u32) -> u32 {
   SceneRenderId::of(&spawn_point_id(index))
     .expect("an index an id holds")
     .0
 }
 
-/// The helpers of the spawn points, by their index.
 fn list_spawn_helpers(helpers: &RenderLevelHelpers) -> Vec<(u32, &RenderHelperObject)> {
   helpers
     .objects
@@ -209,7 +192,7 @@ fn stands_each_spawn_point_whose_visual_is_found_as_its_model_in_a_group_of_its_
     ],
     "named by the spawn tool's place above their index, the visual not found and the unread packet left out"
   );
-  // Standing at `10, 2, 3` unturned, which renderer space mirrors through `z`, as a scene object stands.
+  // At `10, 2, 3` unturned, `z` mirrored into renderer space.
   assert_eq!(
     spawn.objects[1].transform,
     [

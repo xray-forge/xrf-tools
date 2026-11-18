@@ -213,7 +213,7 @@ fn draws_a_face_with_the_whole_look_but_its_lens_flare_and_camera_and_a_tile_wit
   let look: RenderViewOptions = face.apply_look(&options);
 
   assert!(look.show.is_sky_visible && look.show.is_fogged && !look.show.is_lens_flared);
-  // Each face's vignette and focus would part the cubemap at its seams.
+  // Per-face vignette and focus would break the seams.
   assert!(!look.features.camera.is_vignetted && !look.features.camera.is_defocused);
   assert_eq!(
     look.features.camera.vignette_strength,

@@ -6,7 +6,7 @@ use xrf_app_core::session::{SessionId, SessionSnapshot};
 
 use crate::scene::{SceneRenderSource, SelectedScene};
 
-/// The source each scene session is drawn from, while anything draws it: every viewport showing a snapshot shares one,
+/// The source each scene session is drawn from while anything draws it. Every viewport showing a snapshot shares one,
 /// so what one compiled the others draw. A clone holds the same sources.
 #[derive(Clone, Default)]
 pub struct ShownScenes {
@@ -14,8 +14,7 @@ pub struct ShownScenes {
 }
 
 impl ShownScenes {
-  /// The source drawing `scene`: the one drawing it already, else a new one, which reads nothing until the renderer
-  /// asks.
+  /// The source already drawing `scene`, else a new one that reads nothing until the renderer asks.
   pub fn get_source(
     &self,
     scene: Arc<SessionSnapshot<SelectedScene>>,

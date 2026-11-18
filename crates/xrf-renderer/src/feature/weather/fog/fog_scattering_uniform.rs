@@ -21,8 +21,7 @@ pub(crate) struct FogScatteringUniform {
 }
 
 impl FogScatteringUniform {
-  /// Seconds the debanding noise's clock repeats over: any span will do, as the noise follows no pattern in time that a
-  /// repeat would break; an hour keeps a level's first hour as it always was.
+  /// Seconds the debanding noise's clock repeats over; any span would do, as the noise has no pattern in time.
   pub(crate) const NOISE_PERIOD: f64 = 3600.0;
 
   /// What a view scatters a frame `size` texels across with, or none: the engine's fog asked for, a scattering of none,

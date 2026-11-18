@@ -35,15 +35,13 @@ struct BurstSample {
   sample: u32,
 }
 
-/// A burst's frames written into its folder as they come back: `frame-NNN.png` each frame read back, or for a
-/// reference `reference-NNN.png` each frame's samples averaged; and beside each `marks-NNN.png`, the share of its
-/// samples each texel of the G-buffer was a plant (red), grass (green) or moved by itself (blue), at the size the scene
-/// was drawn at; and once the last is in, its sound as `sound.wav` where it records one, and its frames with their sound
-/// as `burst.mp4` where it makes a video.
+/// Writes a burst's frames into its folder as they come back: `frame-NNN.png`, or for a reference `reference-NNN.png`
+/// averaging its samples; beside each, `marks-NNN.png` at the scene's drawn size, holding the share of samples each
+/// G-buffer texel was a plant (red), grass (green) or self-moved (blue). At the end it writes `sound.wav` and
+/// `burst.mp4` when asked for.
 ///
-/// The renderer waits on the writer while it holds as many frames as it keeps in flight, so the writer keeps each
-/// frame's work off its own thread where it can: a frame drawn once is its picture as it came, a reference's samples are
-/// summed and averaged across the pool, and the PNGs are encoded there, a few frames at once ([`BurstFiles`]).
+/// The renderer stalls while the writer holds its in-flight frames, so summing and PNG encoding run on the pool
+/// ([`BurstFiles`]).
 pub(crate) struct BurstWriter {
   folder: PathBuf,
   /// Samples each frame is drawn at, one but for a reference, and what its frames' files are named.
@@ -81,7 +79,6 @@ impl BurstWriter {
     }
   }
 
-  /// The writer recording `sound` beside the frames.
   pub(crate) fn with_sound(self, sound: BurstSound) -> Self {
     Self {
       sound: Some(sound),
@@ -89,7 +86,6 @@ impl BurstWriter {
     }
   }
 
-  /// The writer making `video` of the frames and their sound.
   pub(crate) fn with_video(self, video: BurstVideo) -> Self {
     Self {
       video: Some(video),
@@ -97,13 +93,12 @@ impl BurstWriter {
     }
   }
 
-  /// Writes each frame `events` tells of as it comes, until the burst finishes, then its sound and its video, and
-  /// waits for its pictures; answers what was written.
+  /// Write each frame from `events` until the burst finishes, then its sound and video, and wait for its pictures.
   ///
   /// # Errors
   ///
-  /// Returns an error when the burst stops, the renderer tells nothing for `SILENCE`, its frames come out of order, or
-  /// a picture, the sound or the video cannot be written.
+  /// Returns an error when the burst stops, the renderer is silent for `SILENCE`, frames arrive out of order, or a
+  /// picture, the sound or the video cannot be written.
   pub(crate) fn receive(mut self, events: &Receiver<BurstEvent>) -> TauriResult<BurstOutcome> {
     loop {
       match events.recv_timeout(Self::SILENCE) {
@@ -115,7 +110,7 @@ impl BurstWriter {
           marks,
         }) => self.take(index, sample.unwrap_or(0), time, picture, &marks)?,
         Ok(BurstEvent::Finished) => {
-          // The sound's thread ends first, having sent the video the last of its sound.
+          // The sound's thread ends first, having sent the video the rest of its sound.
           if let Some(sound) = self.sound.take() {
             self.outcome.sound = Some(sound.write(&self.folder)?);
           }
@@ -142,8 +137,8 @@ impl BurstWriter {
     }
   }
 
-  /// Takes sample `sample` of frame `index`, drawn at the scene's `time` in seconds: a frame drawn once is written as it
-  /// came, a reference's added to its sum, the first starting it, and written once its last is in.
+  /// Take sample `sample` of frame `index`, drawn at scene `time` in seconds. A single-sample frame is written at once;
+  /// a reference's samples are summed and written once the last is in.
   fn take(&mut self, index: u32, sample: u32, time: f64, picture: RenderCapture, marks: &BurstMarks) -> TauriResult {
     let due: BurstSample = self.sum.as_ref().map_or_else(
       || BurstSample {
@@ -234,7 +229,7 @@ impl BurstWriter {
     }
   }
 
-  /// Writes frame `index`'s picture and its marks' shares, hands the picture to the video, and notes it in the outcome.
+  /// Write frame `index`'s picture and marks, hand the picture to the video, and note it in the outcome.
   fn write(&mut self, index: u32, time: f64, picture: RgbaImage, shares: RgbaImage) -> TauriResult {
     if let Some(video) = &mut self.video {
       video.write_frame(index, &picture)?;
@@ -253,7 +248,7 @@ impl BurstWriter {
       .write(shares, self.folder.join(format!("marks-{index:03}.png")), "burst marks")
   }
 
-  /// How many of one sample held each of `MARKS`, texel by texel.
+  /// Per texel, which of `MARKS` a single sample holds, as counts of 0 or 1.
   fn count_once(marks: &[u8]) -> Vec<[u16; 3]> {
     marks
       .par_iter()
@@ -261,7 +256,7 @@ impl BurstWriter {
       .collect()
   }
 
-  /// The marks' image of `counts` over `samples`: each mark's share of the samples in its channel, alpha whole.
+  /// The marks image: each mark's share of `samples` in its channel, alpha opaque.
   fn draw_shares(index: u32, size: BurstSize, samples: u32, counts: &[[u16; 3]]) -> TauriResult<RgbaImage> {
     let mut shares: Vec<u8> = vec![0; counts.len() * 4];
 

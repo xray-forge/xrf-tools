@@ -1,13 +1,10 @@
-//! A Level Editor scene as a document beside the compiled level: its `.level` and its tools' part files read through a
-//! search of the directory holding the `.level`, so a commit to any of them reads it again (`document`); what the page
-//! is shown of it (`description`); its object tools' typed objects (`objects`) and its binary tools' counts (`binary`),
-//! each a part of its session read on demand with a query of its own; what the editor would skip or refuse of a part,
-//! kept as a problem on its tool rather than refusing the open (`problem`); the scene objects it draws, where they
-//! stand and which it cannot draw (`draw`); the spawn points it draws as their entities' models and the visuals they
-//! are read as (`spawn`); the helpers drawn for what has no geometry, each named by its object (`helpers`); and the
-//! scene as the native renderer draws it, each scene object a model compiled from its `.object`, with the source each
-//! session is drawn from, the one id every drawn thing of an object carries, the space it stands in and where one
-//! object stands for a camera to frame it (`render`).
+//! Level Editor scenes as documents beside the compiled level. `document` reads a `.level` and its tools' part files
+//! through a search of its directory, so a commit to any of them reads it again; `description` is what the page shows;
+//! `objects` and `binary` hold the tools' typed objects and counts, each a session part with its own query; `problem`
+//! keeps what the editor would skip or refuse of a part on its tool instead of failing the open; `draw` places the
+//! scene objects; `spawn` draws spawn points as their entities' models; `helpers` marks what has no geometry; `render`
+//! draws the scene in the native renderer, each scene object a model compiled from its `.object`, with the id, space
+//! and camera framing every drawn object shares.
 
 mod binary;
 mod description;

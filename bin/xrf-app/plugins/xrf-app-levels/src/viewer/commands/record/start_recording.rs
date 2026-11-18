@@ -15,10 +15,12 @@ use crate::viewer::LevelViewerFolder;
 use crate::viewer::recording::writer::MediaProbe;
 use crate::viewer::recording::{LevelRecordings, RecordingProgress};
 
-/// Record a viewport with what its camera hears into a new video of the level viewer's recordings named as asked, at
-/// the size it is drawn at now, its camera heard whatever window takes the focus until it stops; `progress` is told
-/// where it stands a few times a second, and why where it ends by itself. The recording goes with the asking window: it
-/// stops and finishes when that window's page loads again or the window closes. Answers the file.
+/// Record a viewport and what its camera hears into a new video in the recordings folder, at its current drawn size;
+/// answers the file.
+///
+/// Until it stops, the recorded camera is heard whichever window has focus. `progress` gets a few updates a second,
+/// and the reason when the recording ends by itself. The recording stops and finishes when the asking window's page
+/// reloads or the window closes.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "start_recording")]
 #[expect(
@@ -62,14 +64,14 @@ pub(crate) async fn levels_start_recording(
 
     execution
       .run_blocking("Starting a recording", move || -> TauriResult<PathBuf> {
-        // Held from the check to the recorder taking its place, so two starts asked at once never both pass it.
+        // Held from the check until the recorder is in place, so two concurrent starts never both pass.
         let mut active = recordings.lock();
 
         if active.as_ref().is_some_and(|recorder| !recorder.is_ended()) {
           return Err(String::from("A recording runs already"));
         }
 
-        // One that ended by itself is collected, its file finished already, before the next opens its tap.
+        // Collect a recording that ended by itself (its file already finished) before the next opens its tap.
         if let Some(ended) = active.take() {
           let _ = ended.stop();
         }
@@ -85,7 +87,7 @@ pub(crate) async fn levels_start_recording(
           file.clone(),
           progress,
         )?);
-        // Pinned under the slot's lock, so a stop waiting on it unpins after, never before.
+        // Pinned under the slot's lock, so a waiting stop unpins after, never before.
         world.lock().pin_listener(Some(viewport));
         drop(active);
 

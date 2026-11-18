@@ -205,9 +205,9 @@ impl RenderThread {
     windows
   }
 
-  /// Draws every window's viewports: `update` is what the frame spent before any window, `span` the GPU's milliseconds
-  /// on the latest frame read back, where one came back. The running GPU is taken out for the frame, so each phase is a
-  /// method of the thread's own. Answers whether the windows were presented, which paces the next frame.
+  /// Draws every window's viewports and returns whether they were presented, which paces the next frame.
+  ///
+  /// `update` is the frame's time before any window; `span` the GPU milliseconds of the latest frame read back.
   pub(super) fn draw_windows(&mut self, update: Duration, span: Option<f32>, mut encoder: FrameEncoder) -> bool {
     let windows: Vec<WindowFrame> = self.ready_windows(&mut encoder);
 
@@ -249,10 +249,7 @@ impl RenderThread {
     }
   }
 
-  /// The frame proper, over windows to draw into: the views readied, the periodic work committed, the composition's
-  /// pipelines readied, the captures and bursts' frames taken, the graph recorded and executed, the frame submitted,
-  /// each view's frame ended and each window presented. Answers whether it got as far as presenting, not where the
-  /// frame was abandoned.
+  /// Prepares, records, submits and presents the frame into `windows`; returns false where the frame was abandoned.
   fn draw_frame(
     &mut self,
     running: &mut RunningGpu,
@@ -374,9 +371,8 @@ impl RenderThread {
     }
   }
 
-  /// Readies the present's and the overlays' pipelines for what this frame presents into: each window's target, the
-  /// captures' own where the frame draws a screenshot, a capture's shot or a burst's frame apart (`copies`), and a
-  /// recording's. A pipeline that cannot be built is logged here, and what it would present is left undrawn.
+  /// Prepares the present and overlay pipelines for every target this frame presents into: windows, `copies` and
+  /// recordings. A pipeline that fails to build is logged and its target left undrawn.
   fn prepare_composition(&mut self, gpu: &mut GpuState, windows: &[WindowFrame], copies: &FrameCopies) {
     let is_drawn_apart: bool = copies.captures.iter().any(|copy| copy.capture.is_screenshot())
       || !copies.shots.is_empty()
@@ -617,8 +613,8 @@ impl RenderThread {
       compiled.execute((&gpu.context.device, &gpu.context.queue), runtime, &bindings)
     });
 
-    // The one graph draws every viewport, so what it left unused no view draws with: a view drawn at another size lets
-    // what its last size keyed go now, rather than as many frames later as a drag's sizes can slow to a few a second.
+    // One graph draws every viewport, so after a resize its unused resources are freed now rather than frames later,
+    // which a window drag can slow to a few a second.
     if is_resized {
       runtime.forget_unused();
     }

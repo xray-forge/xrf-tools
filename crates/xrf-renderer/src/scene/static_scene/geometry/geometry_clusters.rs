@@ -39,9 +39,10 @@ impl<'a> GeometryClusters<'a> {
     }
   }
 
-  /// The clusters covering an index range, as `(first index, triangles, sphere)`: the packer's own where they tile it
-  /// exactly, else the range's whole triangles cut in runs of `CLUSTER_TRIANGLES` with spheres taken from their
-  /// vertices, the one or two indices a damaged range ends in past its last triangle left out.
+  /// The clusters covering an index range, as `(first index, triangles, sphere)`.
+  ///
+  /// Uses the packer's clusters where they tile the range exactly, else cuts runs of `CLUSTER_TRIANGLES` with spheres
+  /// from their vertices. Trailing indices of a damaged range that form no whole triangle are left out.
   pub(crate) fn cut(&self, start: u32, count: u32) -> Vec<(u32, u32, Vec4)> {
     // A pack whose spheres are fewer than its ranges is cut anew, as one without clusters is.
     if let Some(run) = self.find_run(start, count)

@@ -25,7 +25,7 @@ pub(crate) fn add_texture_copy(
     });
 }
 
-/// Adds a pass copying `rects` of one texture into the same rectangles of another of its size.
+/// Adds a pass copying `rects` between two textures of the same size.
 pub(crate) fn add_texture_rects_copy(
   graph: &mut FrameGraph<'_>,
   name: &'static str,

@@ -16,7 +16,7 @@ impl LightShadowSet {
     self.faces.iter().all(|face| face.drawn.is_some())
   }
 
-  /// Whether its faces took smaller squares than its size, the atlas too full for that size when they were made.
+  /// Whether its faces got smaller squares than its size because the atlas was full.
   pub(crate) fn is_shrunk(&self) -> bool {
     self.faces.first().is_some_and(|face| face.tile.size < self.size)
   }

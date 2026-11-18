@@ -9,14 +9,14 @@ use crate::scene::SceneRenderSpace;
 /// What one scene object's helper draws and where it stands, in renderer space.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct SceneHelperLook {
-  /// What stands its shapes where the object stands, sixteen floats column by column.
+  /// The transform placing its shapes at the object, sixteen column-major floats.
   pub transform: [f32; 16],
-  /// Its shapes in its own renderer space, never none.
+  /// Its shapes in its own renderer space, never empty.
   pub shapes: Vec<RenderHelperShape>,
 }
 
 impl SceneHelperLook {
-  /// `icon` standing where `transform` places the object.
+  /// `icon` where `transform` places the object.
   pub(crate) fn icon_at(transform: [f32; 16], icon: RenderHelperIcon) -> Self {
     Self {
       transform,
@@ -24,8 +24,8 @@ impl SceneHelperLook {
     }
   }
 
-  /// A shape's `elements`, given in its object's own space, where `transform` places them, as `CEditShape` draws them;
-  /// none for a shape of no element.
+  /// A shape's `elements`, in its object's own space, where `transform` places them, as `CEditShape` draws them; none
+  /// for a shape with no element.
   pub(crate) fn of_elements(transform: &EditableObjectTransform, elements: &[EditableShapeElement]) -> Option<Self> {
     (!elements.is_empty()).then(|| Self {
       transform: SceneRenderSpace::place(transform),
@@ -44,7 +44,7 @@ impl SceneHelperLook {
     }
   }
 
-  /// A sphere of `radius` metres about the engine space point `center`; none for a sphere of no size.
+  /// A sphere of `radius` metres about the engine space point `center`; none for a radius that is not positive.
   pub(crate) fn of_sphere(center: &Vector3d, radius: f32) -> Option<Self> {
     (radius > 0.0).then(|| Self {
       transform: SceneRenderSpace::place_at(center),
@@ -55,8 +55,8 @@ impl SceneHelperLook {
     })
   }
 
-  /// A way's `points`, in engine space, standing at its first: its points' links as arrowed lines where it has any, as
-  /// the level viewer draws a patrol path's, and `icon` at each point; none for a way of no point.
+  /// A way's engine space `points`, placed at the first: its links as arrowed lines, as the level viewer draws a patrol
+  /// path, and `icon` at each point; none for a way with no point.
   pub(crate) fn of_path(points: &[EditableWayPoint], icon: RenderHelperIcon) -> Option<Self> {
     let origin: &Vector3d = &points.first()?.position;
     let start: Vec3 = SceneRenderSpace::convert_point(origin);
@@ -74,7 +74,7 @@ impl SceneHelperLook {
       }
     }
 
-    // A way of one point, as many a scene's look and camp paths are, links nothing.
+    // A one-point way, as many look and camp paths are, links nothing.
     let mut shapes: Vec<RenderHelperShape> = if ends.is_empty() {
       Vec::new()
     } else {
@@ -92,7 +92,7 @@ impl SceneHelperLook {
     })
   }
 
-  /// A polygon of engine space `corners` as its closed outline, standing at their mean; none for fewer than two corners.
+  /// The closed outline of engine space `corners`, placed at their mean; none for fewer than two corners.
   pub(crate) fn of_outline(corners: &[Vector3d]) -> Option<Self> {
     if corners.len() < 2 {
       return None;
@@ -112,8 +112,8 @@ impl SceneHelperLook {
     })
   }
 
-  /// One element of a shape, given in its object's own engine space, in that object's own renderer space: every point
-  /// and axis mirrored through `z`, which the transform mirroring on both sides stands where the engine places it.
+  /// A shape element from its object's engine space into its renderer space: every point and axis mirrored through `z`,
+  /// which the transform's mirroring on both sides places where the engine does.
   fn convert_element(element: &EditableShapeElement) -> RenderHelperShape {
     match element {
       EditableShapeElement::Sphere { center, radius } => RenderHelperShape::Sphere {

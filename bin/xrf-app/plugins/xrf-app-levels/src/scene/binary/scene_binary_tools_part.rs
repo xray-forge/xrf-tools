@@ -9,12 +9,12 @@ use crate::scene::{
   SceneBinaryToolDescription, SceneBinaryToolsDescription, SceneProblem, SceneProblemKind, SceneToolKind, SelectedScene,
 };
 
-/// What a change event calls a scene's binary tools' counts when they go stale.
+/// The change event name for stale binary tool counts.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
 pub(crate) const SCENE_BINARY_TOOLS_PART: &str = "sceneBinaryTools";
 
-/// The scene's binary tools counted, read the first time anything asks from the parts its open kept: it reads no file of
-/// its own, so it goes with the scene. Pooled, as parts are by default: a large AI map takes a while to read.
+/// The scene's binary tool counts, read on first use from the parts the open kept, so it reads no file of its own.
+/// Pooled, as parts are by default, because a large AI map is slow to read.
 pub(crate) struct SceneBinaryToolsPart;
 
 impl SessionPart for SceneBinaryToolsPart {
@@ -24,13 +24,13 @@ impl SessionPart for SceneBinaryToolsPart {
 }
 
 impl SceneBinaryToolsPart {
-  /// The open scene's binary tools counted, read the first time anything asks and kept.
+  /// The open scene's binary tool counts, read on first use and kept.
   pub(crate) fn get(current: &SessionSnapshot<SelectedScene>) -> Arc<SceneBinaryToolsDescription> {
     current.parts.get_or_init::<Self>(|| Arc::new(Self::read(current)))
   }
 
-  /// Every binary tool the scene holds a part of, counted, in the order the tools are listed; a tool whose stream does
-  /// not read is left out with a problem.
+  /// Counts every binary tool the scene holds a part of, in tool order; a tool whose stream does not read becomes a
+  /// problem instead.
   pub(crate) fn read(scene: &SelectedScene) -> SceneBinaryToolsDescription {
     profiling::scope!("scene binary tools");
 

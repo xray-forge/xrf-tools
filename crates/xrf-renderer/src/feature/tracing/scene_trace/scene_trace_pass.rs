@@ -17,15 +17,15 @@ use crate::feature::tracing::scene_trace::scene_trace_request::SceneTraceRequest
 use crate::feature::tracing::view_trace::trace_parameters::TraceParameters;
 use crate::pass::build::pipeline_source::PipelineSource;
 
-/// The scene pass's two ways in: the rays a list holds, a thread a request, and the water's every-pixel rays
-/// (`WaterRays`), a thread a drawn pixel.
+/// The scene pass's two ways in.
 struct SceneTracePipelines {
+  /// A request list's rays, a thread a request.
   listed: wgpu::ComputePipeline,
+  /// The water's every-pixel rays (`WaterRays`), a thread a drawn pixel.
   pixels: wgpu::ComputePipeline,
 }
 
-/// The layouts the scene pass's pipelines bind beside the view's and the sky's, on a device with ray queries: its own
-/// group, the trace's, the texture cache's, and each way in's rays.
+/// The layouts the scene pass's pipelines bind beside the view's and the sky's, on a device with ray queries.
 struct SceneTraceLayouts {
   scene: wgpu::BindGroupLayout,
   trace: wgpu::BindGroupLayout,
@@ -34,11 +34,11 @@ struct SceneTraceLayouts {
   water_rays: wgpu::BindGroupLayout,
 }
 
-/// The reflections' scene pass, the surfaces' and the water's alike: a pass listing the rays it leaves unanswered
-/// (`TraceRequestList`) has its list emptied before it, then the scene pass traces exactly the rays listed against the
-/// level's static geometry by hardware ray query (`frame/reflection_scene`), as many workgroups as were counted, and
-/// writes each that meets something into the list's target; the water tracing every pixel leaves a record at each
-/// pixel instead (`WaterRays`), which the pass traces a thread a pixel. Nothing traces on a device without ray queries.
+/// The reflections' scene pass, for the surfaces and the water: traces the rays the screen left unanswered against the
+/// level's static geometry by hardware ray query (`frame/reflection_scene`).
+///
+/// Rays come from a `TraceRequestList`, emptied before the pass filling it and dispatched by its count, or from the
+/// water's every-pixel `WaterRays`. Nothing traces on a device without ray queries.
 pub(crate) struct SceneTracePass {
   view_layout: wgpu::BindGroupLayout,
   sky_layout: wgpu::BindGroupLayout,
@@ -174,8 +174,8 @@ impl SceneTracePass {
     handles
   }
 
-  /// Traces the rays a `request`'s list holds once the pass filling it has run: its dispatch copied out of its head,
-  /// then the scene pass over the list and the `bindings`, whose parameters name the targets its hits write.
+  /// Traces the rays in a `request`'s list once the pass filling it has run, dispatched by the count in its head; the
+  /// `bindings` name the targets its hits write.
   pub(crate) fn add_trace<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
@@ -216,8 +216,7 @@ impl SceneTracePass {
       });
   }
 
-  /// Traces the water's every-pixel rays (`rays`) once the pass writing them has run, as `label`: a thread a pixel of
-  /// the drawn `size`, over the `bindings`, a record another frame wrote passed over.
+  /// Traces the water's every-pixel `rays` once the pass writing them has run, a thread a pixel of the drawn size.
   pub(crate) fn add_trace_pixels<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
@@ -243,8 +242,7 @@ impl SceneTracePass {
       });
   }
 
-  /// Binds the `bindings`, the way the rays come in (`rays`, at its own group) and the pipeline `pick` chooses, on a
-  /// device that traces.
+  /// Binds the `bindings`, the `rays` group and the pipeline `pick` chooses; none on a device that does not trace.
   fn begin<'c, P: PassParameters>(
     &self,
     context: &'c mut ComputeContext<'_>,
@@ -270,8 +268,8 @@ impl SceneTracePass {
     Some(pass)
   }
 
-  /// Each way in binds its own rays' group, the list's (`SceneListParameters`) or the water's every-pixel records'
-  /// (`WaterRayParameters`), and leaves the other's slot a gap.
+  /// Each way in binds its own rays' group (`SceneListParameters` or `WaterRayParameters`) and leaves the other's slot
+  /// a gap.
   fn create_pipelines(
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,

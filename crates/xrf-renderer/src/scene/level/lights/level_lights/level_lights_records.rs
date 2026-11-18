@@ -100,8 +100,8 @@ impl LevelLights {
           camera.view,
         );
 
-        // The colour and its specular weight at the light's scale: under the engine's light the weight is a curve over
-        // the light itself (`get_light_specular`), so it is taken before the scale.
+        // Scaled after the specular weight, which the engine's light takes as a curve of the unscaled colour
+        // (`get_light_specular`).
         record.color *= light_scale;
 
         let shafts: Option<LightShafts> = set.and_then(|_| Self::find_shafts(light, &it.basis, eye, engine, &settings));

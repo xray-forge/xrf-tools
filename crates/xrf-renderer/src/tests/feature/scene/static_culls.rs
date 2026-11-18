@@ -38,7 +38,6 @@ use crate::thread::gpu_state::GpuState;
 const WIDTH: u32 = 256;
 const HEIGHT: u32 = 192;
 
-/// A model of one triangle in one cluster a metre about its origin.
 fn create_model() -> StaticModel {
   StaticModel {
     words: vec![0; StaticLayout::STRIDE as usize * 3],
@@ -60,7 +59,6 @@ fn create_model() -> StaticModel {
   }
 }
 
-/// A view of the scene: its camera, binding, targets and statics.
 struct TestView {
   camera: CameraView,
   binding: ViewBinding,
@@ -69,7 +67,6 @@ struct TestView {
 }
 
 impl TestView {
-  /// A view from the origin looking along `look`.
   fn new(gpu: &GpuState, look: Vec3) -> Self {
     let device: &wgpu::Device = &gpu.context.device;
     let mut statics: StaticsFeature = StaticsFeature::new(device);
@@ -91,7 +88,6 @@ impl TestView {
     }
   }
 
-  /// Readies its cull of `scene` and writes its camera.
   fn prepare(&mut self, device: &wgpu::Device, scene: &StaticScene, encoder: &mut FrameEncoder) {
     self.statics.prepare(
       device,
@@ -116,9 +112,8 @@ impl TestView {
   }
 }
 
-/// Culls and draws `scene` through each of `views` in turn in one frame's graph, as a frame draws the viewports showing
-/// one level, and answers what the last view's camera arguments count once it culled: its clusters and triangles kept,
-/// then occluded.
+// Draws every view in one frame graph, as a frame draws the viewports of one level; answers the last view's cull
+// counts: clusters and triangles kept, then occluded.
 fn draw_views(
   gpu: &GpuState,
   shaders: &ShaderLibrary,
@@ -128,7 +123,7 @@ fn draw_views(
   let (device, queue): (&wgpu::Device, &wgpu::Queue) = (&gpu.context.device, &gpu.context.queue);
   let mut encoder: FrameEncoder = FrameEncoder::new(device, FrameEncoder::create_belt(device));
 
-  // The scene readies its draws once a frame, as `LevelScene::advance` does, before any view culls it.
+  // Once a frame before any view culls, as `LevelScene::advance` does.
   scene.prepare_draws(device, queue, &mut encoder);
 
   let scene: &StaticScene = scene;
@@ -230,8 +225,6 @@ fn draw_views(
   counts
 }
 
-/// Two viewports showing one level each cull into lists and arguments of their own: the second view's cull counts what
-/// it sees alone, not what the first saw as well. Skipped, and says so, on a machine with no adapter at all.
 #[test]
 fn a_second_view_of_a_shared_scene_counts_its_own_cull_alone() {
   let Some(context) = create_test_context("to draw with") else {
@@ -265,7 +258,7 @@ fn a_second_view_of_a_shared_scene_counts_its_own_cull_alone() {
       )
       .unwrap();
 
-    // Three models standing ahead along `x`, which a view looking along `x` sees and one looking back does not.
+    // Ahead along `x`: seen looking along `x`, not looking back.
     for object in 1..=3u32 {
       let place: StaticModelPlace = StaticModelPlace {
         object,

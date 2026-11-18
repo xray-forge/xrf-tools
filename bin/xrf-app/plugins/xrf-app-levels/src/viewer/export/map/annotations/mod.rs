@@ -1,4 +1,4 @@
-//! A level map's annotations: the level objects of the kinds asked for drawn as an SVG over it.
+//! Level map annotations: level objects of the asked kinds drawn as an SVG over the map.
 
 mod annotation_canvas;
 mod annotation_marker;

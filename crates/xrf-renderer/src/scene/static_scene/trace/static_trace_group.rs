@@ -20,7 +20,7 @@ impl StaticTraceGroup {
     std::array::from_fn(|at| rows[at / 4][at % 4])
   }
 
-  /// An instance's transform as the matrix it was made from (`pack_transform`).
+  /// Inverse of [`Self::pack_transform`].
   pub fn unpack_transform(transform: &[f32; 12]) -> Mat4 {
     Mat4::from_cols(
       Vec4::new(transform[0], transform[4], transform[8], 0.0),

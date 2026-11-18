@@ -5,12 +5,11 @@ use xrf_sound::{SoundFile, XRaySoundParameters};
 use xrf_vfs::XraySearch;
 use xrf_world::{WorldSound, WorldSoundInfo};
 
-/// The sounds a level's reads name, each file read once a snapshot through the level's search (`LevelSoundFilesPart`)
-/// for what the engine reads of it as it loads a sound: its length, its channels and its source parameters. An Ogg
-/// file's length is its last page's, so the file is read whole.
+/// The sounds a level names, each file read once per snapshot (`LevelSoundFilesPart`) for what the engine reads on
+/// load: length, channels and source parameters. An Ogg file's length is its last page's, so it is read whole.
 pub(crate) struct LevelSoundFiles<'a> {
   search: &'a XraySearch,
-  /// What each file said, kept by the part for every reader of the snapshot.
+  /// Each file's result, kept by the part for every reader of the snapshot.
   known: &'a Mutex<HashMap<String, Option<WorldSoundInfo>>>,
 }
 
@@ -19,17 +18,16 @@ impl<'a> LevelSoundFiles<'a> {
     Self { search, known }
   }
 
-  /// Where the engine finds a sound by its reference: `$game_sounds$`, as an Ogg file.
+  /// The path the engine finds a sound reference at: an Ogg file under `$game_sounds$`.
   pub(crate) fn resolve_path(reference: &str) -> String {
     format!("sounds\\{}.ogg", reference.trim())
   }
 
-  /// The sound `reference` names, with what its file says, none where it is missing or not a sound the engine loads.
+  /// The sound `reference` names, without info when its file is missing or not a sound the engine loads.
   pub(crate) fn get(&self, reference: &str) -> WorldSound {
     let reference: &str = reference.trim();
     let known: Option<Option<WorldSoundInfo>> = self.lock_known().get(reference).copied();
-    // Read outside the lock, so other readers of the snapshot are not held behind one file's read; two asking for the
-    // same file at once both read it, and agree.
+    // Read outside the lock so one file's read blocks no other reader; two racing reads of a file agree.
     let info: Option<WorldSoundInfo> = known.unwrap_or_else(|| {
       let info: Option<WorldSoundInfo> = self.read_info(reference);
 
@@ -42,7 +40,7 @@ impl<'a> LevelSoundFiles<'a> {
   }
 
   fn lock_known(&self) -> MutexGuard<'_, HashMap<String, Option<WorldSoundInfo>>> {
-    // A reader that panicked left the map whole: each entry is inserted complete.
+    // A panicked reader leaves the map whole: each entry is inserted complete.
     self.known.lock().unwrap_or_else(PoisonError::into_inner)
   }
 

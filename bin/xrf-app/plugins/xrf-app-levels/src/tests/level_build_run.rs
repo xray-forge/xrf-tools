@@ -38,7 +38,6 @@ fn compiles_the_directory_the_build_writes_forced_as_the_build_is() {
   );
 }
 
-/// A compile the build cannot feed, or one that would refuse its directory, refuses the run before the build writes.
 #[test]
 fn refuses_the_whole_run_before_writing_where_the_compile_would_refuse() -> XrfResult {
   let root: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "refused"))?;
@@ -65,7 +64,7 @@ fn refuses_the_whole_run_before_writing_where_the_compile_would_refuse() -> XrfR
   std::fs::create_dir_all(&destination)?;
   std::fs::create_dir_all(&gamedata)?;
   std::fs::write(gamedata.join(ShaderCompilerFile::FILE_NAME), b"")?;
-  // An earlier compile's details, and the inputs the details read that the build does not write.
+  // An earlier compile's details, plus the details step's inputs the build does not write.
   std::fs::write(destination.join(LevelDetailsFile::FILE_NAME), b"kept")?;
   std::fs::write(destination.join(BuildCformFile::FILE_NAME), b"")?;
   std::fs::write(destination.join(LevelLightsFile::FILE_NAME), b"")?;

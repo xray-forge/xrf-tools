@@ -14,13 +14,12 @@ use crate::scene::{
   SceneDrawnObjectsPart, SelectedScene,
 };
 
-/// What a change event calls what the page needs of a drawn scene beside its picture when it goes stale.
+/// The change event name for a stale scene draw description.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
 pub(crate) const SCENE_DRAW_PART: &str = "sceneDraw";
 
-/// Where a scene's drawn objects stand and which it does not draw, read the first time anything asks. It records every
-/// `.object` it looked for and read, so one come, gone or changed in the objects roots moves this part and not the
-/// scene.
+/// Where a scene's drawn objects stand and which it does not draw, read on first use. It records every `.object` it
+/// looked for and read, so one added, removed or changed in the objects roots moves this part and not the scene.
 pub(crate) struct SceneDrawPart;
 
 impl SessionPart for SceneDrawPart {
@@ -30,17 +29,16 @@ impl SessionPart for SceneDrawPart {
 }
 
 impl SceneDrawPart {
-  /// What the open scene's drawn objects come to, read the first time anything asks and kept, its library objects read
-  /// through `objects`, a search of the scene's objects roots.
+  /// The open scene's draw, read on first use and kept, its library objects read through `objects`, a search of the
+  /// scene's objects roots.
   pub(crate) fn get(current: &SessionSnapshot<SelectedScene>, objects: &XraySearch) -> Arc<SceneDraw> {
     current.parts.get_or_record::<Self>(objects, |objects| {
       Arc::new(Self::read(&SceneDrawnObjectsPart::get(current, objects), objects))
     })
   }
 
-  /// The extent of the scene objects `drawn` and each one's sphere, each `.object`'s meshes' boxes placed as
-  /// `CSceneObject::GetBox` places them, read once a library object without compiling it; and each scene object not
-  /// drawn: its `.object` not found, or found and not read.
+  /// The extent and per-object spheres of the scene objects `drawn`, from each `.object`'s mesh boxes placed as
+  /// `CSceneObject::GetBox` places them, each library object read once without compiling it; and each object not drawn.
   fn read(drawn: &SceneDrawnObjects, objects: &XraySearch) -> SceneDraw {
     profiling::scope!("scene draw");
 
@@ -89,8 +87,7 @@ impl SceneDrawPart {
     }
   }
 
-  /// The box of the library object `object` places, in its own space, the union of its meshes'; none for an object of
-  /// no mesh.
+  /// The union of the placed library object's mesh boxes, in its own space; none for an object with no mesh.
   fn read_box(objects: &XraySearch, object: &SceneDrawnObject) -> XrfResult<Option<Aabb>> {
     let file: EditableObjectFile = objects
       .read(&object.logical_path)

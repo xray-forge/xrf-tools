@@ -2,9 +2,8 @@ use xrf_renderer::RenderSpawnCategory;
 
 use crate::scene::render::scene_render_id::{SCENE_RENDER_COLLISION_BIT, SCENE_RENDER_EDITOR_BIT};
 
-/// How a scene draws a surface of a library object: each kind is a model of its own, named after the object's
-/// reference, standing under the object's id with the kind's bit set and in a group of its own, so the page shows each
-/// kind all or none by its group alone.
+/// How a scene draws a library object's surface. Each kind is a model of its own, named after the object's reference,
+/// under the object's id with the kind's bit set and in its own group, so the page switches each kind by group alone.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum SceneSurfaceKind {
   /// A surface the game draws, the object's own model.
@@ -13,8 +12,8 @@ pub(crate) enum SceneSurfaceKind {
   /// collision, as a tree's hull is, or for shadows alone.
   Collision,
   /// A surface the game may draw but a player never sees, dressed in one of the SDK's marker textures
-  /// (`prop\prop_fake_*`) to show the editor what it stands for: a sun blocker, an occluder's sheet, a ladder or a
-  /// collision hull.
+  /// (`prop\prop_fake_*`) to show the editor what it is: a sun blocker, an occluder's sheet, a ladder or a collision
+  /// hull.
   EditorOnly,
 }
 
@@ -22,7 +21,7 @@ impl SceneSurfaceKind {
   /// Every kind, the object's own model first.
   pub(crate) const ALL: [Self; 3] = [Self::Drawn, Self::Collision, Self::EditorOnly];
 
-  /// The kind of the model `name` names: a kind's suffix after a reference, else the object's own model.
+  /// The kind of the model `name`, by its suffix; the object's own model where it has none.
   pub(crate) fn of_model(name: &str) -> Self {
     Self::ALL
       .into_iter()
@@ -30,17 +29,17 @@ impl SceneSurfaceKind {
       .unwrap_or(Self::Drawn)
   }
 
-  /// The model the surfaces of this kind of the library object `reference` names draw as.
+  /// The model name of this kind's surfaces of the library object `reference`.
   pub(crate) fn format_model_name(self, reference: &str) -> String {
     format!("{reference}{}", self.get_suffix())
   }
 
-  /// The reference of the library object whose model of this kind `name` names.
+  /// The library object reference of this kind's model `name`.
   pub(crate) fn get_reference(self, name: &str) -> &str {
     name.strip_suffix(self.get_suffix()).unwrap_or(name)
   }
 
-  /// The bit its model's scene render id sets over its object's.
+  /// The bit its model's scene render id sets over the object's.
   pub(crate) const fn get_render_bit(self) -> u32 {
     match self {
       Self::Drawn => 0,
@@ -49,8 +48,8 @@ impl SceneSurfaceKind {
     }
   }
 
-  /// The group its models stand in: the props group, which the page never hides, for the object's own model, and for
-  /// each other kind a group nothing else of a scene stands in, the renderer's weapons and lamps groups.
+  /// The group of its models: props, which the page never hides, for the object's own model; for the other kinds the
+  /// renderer's weapons and lamps groups, which nothing else of a scene uses.
   pub(crate) const fn get_category(self) -> RenderSpawnCategory {
     match self {
       Self::Drawn => RenderSpawnCategory::Props,
@@ -64,7 +63,7 @@ impl SceneSurfaceKind {
     self as usize
   }
 
-  /// What its model's name adds after the reference, which no reference spells; nothing for the object's own model.
+  /// The suffix its model's name adds to the reference, which no reference contains; empty for the object's own model.
   const fn get_suffix(self) -> &'static str {
     match self {
       Self::Drawn => "",

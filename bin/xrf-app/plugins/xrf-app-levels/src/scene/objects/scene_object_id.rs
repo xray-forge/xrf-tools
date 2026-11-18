@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::scene::SceneToolKind;
 
-/// What names one scene object for as long as its scene's read stands: its tool, and its place in the tool's objects as
-/// the editor loads them, the groups' members first.
+/// Names one scene object until its scene is read again: its tool, and its index in the tool's objects in editor load
+/// order, group members first.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Hash, Serialize)]
 #[serde(rename_all = "camelCase")]

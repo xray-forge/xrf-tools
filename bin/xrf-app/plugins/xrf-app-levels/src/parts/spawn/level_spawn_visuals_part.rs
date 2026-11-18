@@ -7,13 +7,12 @@ use xrf_vfs::XraySearch;
 use crate::level::SelectedLevel;
 use crate::visuals::{SpawnVisualReader, SpawnVisuals};
 
-/// What a change event calls a level's spawned objects' visuals when they go stale.
+/// The part name a change event uses when a level's spawned visuals go stale.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
 pub(crate) const LEVEL_SPAWN_VISUALS_PART: &str = "spawnVisuals";
 
-/// Each visual a level's spawned objects stand as, read the first time anything asks and kept, or why it cannot be:
-/// packed once a level and shared by whatever reads them, the models drawn and the lights placed on their bones. Read
-/// through a `SpawnVisualReader` [`Self::with_reader`] hands out.
+/// The visuals of a level's spawned objects, each read on first ask and kept with its failure, shared by drawn models
+/// and bone-placed lights. Read through [`Self::with_reader`].
 pub(crate) struct LevelSpawnVisualsPart;
 
 impl SessionPart for LevelSpawnVisualsPart {
@@ -26,8 +25,8 @@ impl SessionPart for LevelSpawnVisualsPart {
 }
 
 impl LevelSpawnVisualsPart {
-  /// Runs `read` with a reader of the open level's spawned visuals, looking beside the level first and resolving
-  /// textures in its scope, whatever it reads recorded as this part read it.
+  /// Run `read` with a reader of the open level's spawned visuals, recording its reads as this part's inputs. The
+  /// reader looks beside the level first and resolves textures in the level's scope.
   pub(crate) fn with_reader<T>(
     current: &SessionSnapshot<SelectedLevel>,
     search: &XraySearch,

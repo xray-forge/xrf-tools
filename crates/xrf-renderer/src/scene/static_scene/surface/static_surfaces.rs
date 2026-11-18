@@ -22,7 +22,7 @@ pub(crate) struct StaticSurfaces {
   pub texture_slots: BTreeSet<u32>,
   /// Every environment slot its environment-mapped surfaces sample.
   pub environment_slots: BTreeSet<u32>,
-  /// The slots its distorting surfaces draw into the distortion target.
+  /// Texture slots of the surfaces that draw into the distortion target.
   pub distortion_slots: BTreeSet<u32>,
   /// Each surface's row and class, once asked for; `None` for one no static draw draws.
   rows: HashMap<StaticSurfaceKey, Option<StaticSurfaceUse>>,
@@ -127,9 +127,9 @@ impl StaticSurfaces {
     row
   }
 
-  /// Whether a distorting surface may blur the frame: one whose map holds some blue or is not yet up
-  /// (`TextureCache::is_blue_free`). Asked of every distorting surface the scene holds, which are few, rather than of
-  /// those in sight.
+  /// Whether any distorting surface's map has blue or is not yet loaded (`TextureCache::is_blue_free`).
+  ///
+  /// Checks every distorting surface, which are few, rather than only those in sight.
   pub(crate) fn is_distortion_blurring(&self, textures: &TextureCache) -> bool {
     self.distortion_slots.iter().any(|slot| !textures.is_blue_free(*slot))
   }

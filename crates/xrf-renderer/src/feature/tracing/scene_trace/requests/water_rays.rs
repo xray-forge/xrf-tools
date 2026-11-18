@@ -1,8 +1,9 @@
-/// The rays a water draw leaves the scene pass while every pixel traces every frame ("Trace all water"), in place of a
-/// request list as large as the frame: a record of `WORDS` words at each drawn pixel's place (`common/water_rays`),
-/// the ray's direction, what the screen answered and its distance and the frame it was written on, the ray's start
-/// read back from the water's own depth. A third of a request's bytes, never cleared: a record another frame wrote is
-/// passed over by its stamp. A record of nothing while the water does not trace every pixel.
+/// The rays a water draw leaves the scene pass while every pixel traces ("Trace all water"), in place of a frame-sized
+/// request list.
+///
+/// One `WORDS`-word record per drawn pixel (`common/water_rays`), a third of a request's bytes; the start is read back
+/// from the water's depth. Never cleared: a record another frame wrote is skipped by its frame stamp. One empty record
+/// while the water does not trace every pixel.
 pub(crate) struct WaterRays {
   label: String,
   pixels: u32,
@@ -23,8 +24,7 @@ impl WaterRays {
     }
   }
 
-  /// Makes the records anew where they hold another number of pixels: the drawn size's while every pixel traces, none
-  /// otherwise.
+  /// Remakes the records for another number of `pixels`: the drawn size's while every pixel traces, none otherwise.
   pub(crate) fn fit(&mut self, device: &wgpu::Device, pixels: u32) {
     if pixels != self.pixels {
       self.pixels = pixels;

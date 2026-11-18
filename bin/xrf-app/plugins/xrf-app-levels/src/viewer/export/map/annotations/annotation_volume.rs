@@ -3,21 +3,21 @@ use xrf_spawn::SpawnLevelGraph;
 use crate::objects::{LevelObject, LevelObjectKind, LevelObjectShape, LevelObjectVolume, LevelRestriction};
 use crate::viewer::export::map::annotations::{AnnotationOutline, AnnotationPoint};
 
-/// One object of the level covering a space, seen from above: a logic volume, or a placement covering one.
+/// A level object covering a space, seen from above: a logic volume or a placement with shapes.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct AnnotationVolume {
   pub kind: LevelObjectKind,
   pub name: String,
   pub outlines: Vec<AnnotationOutline>,
-  /// Whether it keeps the actor inside it, as a restrictor of the in type does.
+  /// Whether it keeps the actor inside, as an in-type restrictor does.
   pub is_in: bool,
-  /// A level changer's destination: the level's name, and the way toward it from this level across the world the
-  /// levels share, engine `x` and `z`, where the graph places both.
+  /// A level changer's destination level, and the unit direction toward it in engine `x` and `z` when the graph places
+  /// both levels.
   pub destination: Option<(String, Option<AnnotationPoint>)>,
 }
 
 impl AnnotationVolume {
-  /// `object`'s space from above on the level named `level`, or `None` for an object covering none.
+  /// `object`'s footprint on the level named `level`; `None` for an object without shapes.
   pub(crate) fn of(object: &LevelObject, graph: &SpawnLevelGraph, level: &str) -> Option<Self> {
     let shapes: &[LevelObjectShape] = object.get_shapes()?;
     let volume: Option<&LevelObjectVolume> = object.volume.as_ref();
@@ -36,8 +36,8 @@ impl AnnotationVolume {
     })
   }
 
-  /// The way from `level` toward `destination` across the world the graph places every level in, as a unit, or `None`
-  /// where the graph lacks either or places them together.
+  /// The unit direction from `level` toward `destination` in the graph's world; `None` when the graph lacks either or
+  /// places them at one point.
   fn get_toward(graph: &SpawnLevelGraph, level: &str, destination: &str) -> Option<AnnotationPoint> {
     let (from, to) = (&graph.get_level(level)?.offset, &graph.get_level(destination)?.offset);
     let (x, z): (f32, f32) = (to.x - from.x, to.z - from.z);

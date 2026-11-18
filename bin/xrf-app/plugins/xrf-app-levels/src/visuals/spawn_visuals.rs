@@ -6,29 +6,27 @@ use xrf_job::PoolOnceLock;
 
 use crate::visuals::SpawnVisual;
 
-/// One visual's place: empty until it is read, then the visual, or why it cannot be. Filled from the renderer's loaders,
-/// which are pool workers, so one waiting on another's read keeps working the pool rather than blocking it.
+/// One visual's slot: empty until read, then the visual or its failure. The renderer's loaders are pool workers, so one
+/// waiting on another's read keeps working the pool rather than blocking it.
 type Cell = Arc<PoolOnceLock<TauriResult<Arc<SpawnVisual>>>>;
 
-/// The visuals spawned objects stand as, each read the first time anything asks and kept: a level's spawn, or a
-/// scene's spawn points, each keeping its own.
+/// A session's spawned visuals, each read on first ask and kept.
 pub(crate) struct SpawnVisuals {
   cells: Mutex<HashMap<String, Cell>>,
 }
 
 impl SpawnVisuals {
-  /// No visual read yet.
   pub(crate) fn new() -> Self {
     Self {
       cells: Mutex::new(HashMap::new()),
     }
   }
 
-  /// The visual by name, read by `read` the first time anything asks; a second ask made while it is read waits for it.
+  /// The visual `name`, read by `read` on first ask; a concurrent ask waits for that read.
   ///
   /// # Errors
   ///
-  /// Returns why the visual cannot be read, which every later ask answers with again.
+  /// Returns why the visual cannot be read, as every later ask does too.
   pub(crate) fn get_or_read(
     &self,
     name: &str,
@@ -39,7 +37,7 @@ impl SpawnVisuals {
     cell.get_or_init(read).clone()
   }
 
-  /// The cells, whole even after a panic under the lock: all it guards is the insert of an empty cell.
+  /// The cells, whole even after a panic: the lock guards only inserting an empty cell.
   fn lock(&self) -> MutexGuard<'_, HashMap<String, Cell>> {
     self.cells.lock().unwrap_or_else(PoisonError::into_inner)
   }

@@ -24,10 +24,8 @@ impl LevelRenderParts {
     format!("level {session_id}")
   }
 
-  /// What the renderer reads again of a level whose next snapshot let `stale_parts` go: each package whose read asks
-  /// for any of them, or recorded what it read as one of them. The sectors stream afresh instead, on their geometry or
-  /// surfaces (`VIEW_PARTS`); the map and the textures' list are the page's, and the start only matters where a viewer
-  /// first stands.
+  /// The renderer parts to reload when `stale_parts` went stale: each one read from any of them. Sectors stream afresh
+  /// instead (`VIEW_PARTS`); the map and texture list are the page's, and the start matters only on first show.
   pub(crate) fn select_reload(stale_parts: &[&str]) -> LevelParts {
     LevelPart::ALL
       .into_iter()
@@ -39,10 +37,8 @@ impl LevelRenderParts {
       .collect()
   }
 
-  /// The session parts the renderer's read of `part` is built from, as `LevelRenderSource` reads it. The sectors
-  /// stream afresh on theirs instead (`VIEW_PARTS`). The helpers are the level objects, which the level's sounds are
-  /// read from too: the spawn, the graph, the placements (`level.snd_static` among them) and the sections, and the sound
-  /// files whose distances size the emitters' spheres; the weather reads its rain, thunder and ambients' files too.
+  /// The session parts `LevelRenderSource` reads `part` from; sectors have none (`VIEW_PARTS`). Helpers include the
+  /// sound emitters, whose files' distances size their spheres; weather reads its rain, thunder and ambient sounds.
   fn list_read_from(part: LevelPart) -> &'static [&'static str] {
     match part {
       LevelPart::Spawn => &[

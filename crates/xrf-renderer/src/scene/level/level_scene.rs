@@ -55,7 +55,7 @@ use crate::thread::queue::render_workers::RenderWorkers;
 pub(crate) struct LevelScene {
   pub source: Arc<dyn RenderLevelSource>,
   pub grass: LevelGrass,
-  /// The level's AI map, which the debug views show over the ground, none before it is posted or for a level without.
+  /// The level's AI map for the debug views; none until posted or for a level without one.
   pub ai_map: Option<AiMapLevel>,
   pub statics: StaticScene,
   /// The static geometry's acceleration structures, while a view of it traces rays on a device that can: tracing is
@@ -64,8 +64,7 @@ pub(crate) struct LevelScene {
   /// The cubes the scene's environment-mapped models mix toward, by environment slot from the second, as of the cache's
   /// generation of them.
   pub environments: (u64, Vec<String>),
-  /// When the level's clock began on the frames' clock, as the world plays it (`RenderSceneFrame::opened`), which the
-  /// clouds drift and the trees sway from, and the time this frame is drawn at on it.
+  /// When the level's clock began (`RenderSceneFrame::opened`) and this frame's time, both on the frames' clock.
   started: Instant,
   now: Instant,
   pub lights: LevelLights,
@@ -80,8 +79,7 @@ pub(crate) struct LevelScene {
   driver: Option<RenderViewportId>,
   /// Every skinned object's bones as segments, which the skeleton overlay draws.
   pub skeleton_segments: Arc<[(Vec3, Vec3)]>,
-  /// The level objects' helpers as wires, which every view draws as its options ask, and those whose objects sound, by
-  /// their ids ascending, which it draws lit.
+  /// The level objects' helper wires, and the ids of those whose objects sound, ascending, which draw lit.
   pub helpers: LevelHelpers,
   pub sounding: Vec<u32>,
   /// The wind the ambient effects blow, and how much of each campfire's idle light shows.
@@ -91,8 +89,7 @@ pub(crate) struct LevelScene {
   pub camera_hemi: Option<f32>,
   /// How wet the level is and how full its puddles, which every view of it wets its surfaces by.
   pub(super) wetness: LevelWetness,
-  /// The engine's time at this frame, as the world steps it (`RenderSceneFrame::engine_time`), which its particles step
-  /// and start by.
+  /// The engine's time at this frame (`RenderSceneFrame::engine_time`), which the particles step and start by.
   engine_time: Duration,
   /// The sectors and the spawned models it could not take in since the world was last told.
   sector_failures: Vec<RenderSectorFailure>,
@@ -106,8 +103,7 @@ pub(crate) struct LevelScene {
 static SECTOR_PASSES: [&str; 1] = ["sector add"];
 
 impl LevelScene {
-  /// A scene of the level `source`, made on the first frame the world gives it, its clock begun at `opened` on the
-  /// frames' clock as the world's is (`RenderSceneFrame::opened`).
+  /// Makes the scene of `source` on its first frame, its clock begun at `opened` (`RenderSceneFrame::opened`).
   pub(crate) fn new(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
@@ -116,8 +112,7 @@ impl LevelScene {
     workers: &RenderWorkers,
     opened: Instant,
   ) -> Self {
-    // Taken before anything is made, so the load is timed from the moment the scene began to be made, until the world
-    // says when it began opening the level.
+    // Taken first, so the load is timed from the start of making the scene.
     let made: Instant = Instant::now();
     let statics: StaticScene = StaticScene::new(device, queue);
 
@@ -171,7 +166,7 @@ impl LevelScene {
   ) {
     let RenderSceneFrame {
       source,
-      // The level's clock begins once, with the scene's (`LevelScene::new`).
+      // The level's clock begins once, in `LevelScene::new`.
       opened: _,
       engine_time,
       driver,
@@ -187,7 +182,7 @@ impl LevelScene {
 
     // The world moves a scene onto a next source of its level, which every read from now on goes through.
     self.source = source;
-    // Before its updates, which start effects at it.
+    // Set before the updates, which start effects at this time.
     self.engine_time = engine_time;
 
     let assets: Arc<dyn RenderAssetSource> = Arc::clone(&self.source) as Arc<dyn RenderAssetSource>;
@@ -258,10 +253,9 @@ impl LevelScene {
     self.sector_time
   }
 
-  /// Begins this frame's step, once before any of its views readies, by the view standing for the actor: its camera
-  /// `actor`, the `options` it draws with and the `lighting` it plays. The effects start stepping on the workers to the
-  /// engine's time the world gave (`RenderSceneFrame::engine_time`), which its settle (`settle`) joins, and the wetness
-  /// every view wets its surfaces by moves on by that view's rain on the scene's clock.
+  /// Begins this frame's step by the actor's view, once before any view prepares.
+  ///
+  /// Starts the particle step on the workers, joined in [`Self::settle`], and advances the wetness by that view's rain.
   pub(crate) fn begin_frame(&mut self, actor: &CameraView, options: &RenderViewOptions, lighting: &RenderLighting) {
     let time: LevelTime = self.get_time();
 
@@ -329,14 +323,12 @@ impl LevelScene {
     LevelTime::new(self.now.saturating_duration_since(self.started))
   }
 
-  /// The time on the frames' clock that stands `time` after it began opening; none past what the platform's clock can
-  /// stand for.
+  /// The frames' clock instant `time` after the level began opening; none if the platform clock overflows.
   pub(crate) fn get_instant(&self, time: Duration) -> Option<Instant> {
     self.started.checked_add(time)
   }
 
-  /// What it tells the world of the frames since the last: the sectors and the spawned models it could not take in,
-  /// the effects whose particles stopped playing, and whether it has stood ready.
+  /// Takes the feedback for the world since the last call: failed sectors and models, finished effects, readiness.
   pub(crate) fn take_feedback(&mut self) -> RenderSceneFeedback {
     RenderSceneFeedback {
       sector_failures: std::mem::take(&mut self.sector_failures),

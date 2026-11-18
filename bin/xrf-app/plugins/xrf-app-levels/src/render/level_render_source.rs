@@ -55,7 +55,6 @@ pub struct LevelRenderSource {
   textures: Arc<TextureResolver>,
   /// The textures the game loads a step coarser at the same texture quality, out of the sections read as it opened.
   reduced: XrayReducedTextures,
-  /// Where the scene's sound plays.
   audio: LevelAudio,
 }
 
@@ -71,8 +70,7 @@ impl LevelRenderSource {
     uvs: true,
   };
 
-  /// The level `level` holds as the renderer draws it, its surfaces and textures as its parts hold them, and its sound
-  /// played through `audio`.
+  /// A source drawing `level` with its parts' surfaces and textures, playing its sound through `audio`.
   pub fn new(level: Arc<SessionSnapshot<SelectedLevel>>, assets: AssetMountState, audio: LevelAudio) -> Self {
     let DrawnSurfaces { surfaces, textures } = Self::find_surfaces(&level, &assets);
     let resolver: TextureResolver = TextureResolver::new(

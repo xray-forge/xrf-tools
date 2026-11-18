@@ -72,10 +72,11 @@ impl RenderWindow {
     })
   }
 
-  /// The swapchain format of those a window's surface `offered` that the present writes for: eight-bit unorm, as the
-  /// present writes display-encoded values and dithers them by an eight-bit step. Not sRGB, which would encode them
-  /// again, and so the page's colours are cleared as stated and the area around a viewport matches the page exactly.
-  /// DX12 and Metal surfaces always offer `Bgra8Unorm`; a Vulkan one offers what its driver lists.
+  /// The eight-bit unorm swapchain format, of those the surface `offered`, the present writes for.
+  ///
+  /// Not sRGB: the present writes display-encoded values dithered by an eight-bit step, and an sRGB target would encode
+  /// them again, so the page's cleared colours would not match the area around a viewport. DX12 and Metal surfaces
+  /// always offer `Bgra8Unorm`; a Vulkan one offers what its driver lists.
   ///
   /// # Errors
   ///
@@ -106,8 +107,7 @@ impl RenderWindow {
     DisplayTarget { format: self.format }
   }
 
-  /// Whether its images may be copied out of, which a capture of what the window shows needs: as far as the platform's
-  /// swapchain allows.
+  /// Whether its swapchain images may be copied out of, which a capture of the window needs; the platform decides.
   pub(crate) fn is_copyable(&self) -> bool {
     self.usages.contains(wgpu::TextureUsages::COPY_SRC)
   }

@@ -8,9 +8,10 @@ use xrf_app_core::session::{SessionId, SessionSnapshot};
 
 use crate::scene::{SceneHelpersDescription, SceneHelpersPart, SelectedScenes};
 
-/// Describe the open scene's helpers beside their picture: where they reach, to frame a camera on a scene drawing them
-/// alone, how many each helped tool draws, and which spawn points stand as their models; read again where a commit let
-/// them go.
+/// Describe the open scene's helpers: their extent, to frame a camera on a scene drawing only them, how many each
+/// helped tool draws, and which spawn points draw as their models.
+///
+/// Call again after a commit that invalidates them.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_scene_helpers")]
 pub(crate) async fn levels_describe_scene_helpers(

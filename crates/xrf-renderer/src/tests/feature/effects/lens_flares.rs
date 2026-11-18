@@ -91,8 +91,7 @@ fn completes_every_fade_at_once_while_the_clock_is_paused() {
   assert_eq!((fade.get_shown(), fade.get_blend()), (Some("day"), 1.0));
 }
 
-// A restarted view's fade settles on the lens flare named then, shown whole, wherever the fade stood before: two bursts
-// from one time show the same sun however the frames before them faded it.
+// Two bursts from one time must show the same sun, whatever the frames before them faded.
 #[test]
 fn settles_on_the_lens_flare_named_next_shown_whole() {
   let start: Instant = Instant::now();

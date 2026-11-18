@@ -4,8 +4,7 @@ use crate::contract::feature::image::display::render_image_corrections::RenderIm
 use crate::feature::image::present::present_frame::PresentFrame;
 use crate::feature::image::present::present_uniform::PresentUniform;
 
-// The present divides by the gamma and multiplies by the rest: each reaches it within the engine's console ranges, and
-// one that is no finite number corrects nothing.
+// The present divides by the gamma, so a zero gamma must not reach it.
 #[test]
 fn holds_the_corrections_within_the_engines_ranges() {
   let present = |corrections: RenderImageCorrections| PresentUniform::new(PresentFrame::default(), &corrections);

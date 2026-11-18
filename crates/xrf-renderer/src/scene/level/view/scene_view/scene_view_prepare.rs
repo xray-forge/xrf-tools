@@ -307,8 +307,7 @@ impl SceneView {
     }
   }
 
-  /// The tiles of the frame the level's water in sight may touch, by the spheres about its slots; none where the view
-  /// sees none.
+  /// Screen tiles the bounding spheres of the visible water cover; empty where no water is in sight.
   fn get_water_tiles(scene: &LevelScene, frame: &ViewPrepare<'_>, level: &LevelPrepare) -> ScreenTiles {
     let mut tiles: ScreenTiles = ScreenTiles::default();
 
@@ -324,9 +323,8 @@ impl SceneView {
     tiles
   }
 
-  /// Where on the frame the water, the particles, the enhanced rain's splashes and the distorting surfaces of the scene
-  /// move what is seen through it, once every unit knows what it draws: every tile where the water or the splashes do,
-  /// which keep no bound; none where nothing does.
+  /// Screen tiles the frame's distortion touches: the whole screen for water or rain splashes, which keep no bound,
+  /// otherwise the particles' and distorting surfaces' tiles.
   pub(super) fn get_distortion_tiles(&self, options: &RenderViewOptions) -> ScreenTiles {
     let features: &SceneFeatures = &self.features;
 
@@ -345,9 +343,8 @@ impl SceneView {
     tiles
   }
 
-  /// Whether this frame's distortion may blur the frame towards the engine's bloom, which is built for it then: where a
-  /// writer drawn this frame writes some blue, the water, or a particle or a surface of the `scene` whose map holds some
-  /// or is not yet up in `textures`; the enhanced rain's splashes write none.
+  /// Whether the distortion may blur toward the engine's bloom, which then must be built: true for water, or for a
+  /// particle or surface whose map has blue or is not yet loaded. The enhanced rain's splashes write no blue.
   pub(super) fn is_distortion_blurring(
     &self,
     scene: &LevelScene,
@@ -366,8 +363,7 @@ impl SceneView {
         && scene.statics.surfaces.is_distortion_blurring(textures))
   }
 
-  /// Whether water draws its distortion this frame; the enhanced water refracts what is behind it itself and writes
-  /// none.
+  /// Whether water draws distortion this frame; the enhanced water refracts by itself and writes none.
   fn is_water_distorting(&self, options: &RenderViewOptions) -> bool {
     let water: &RenderWaterSettings = &options.features.water;
 
@@ -377,8 +373,8 @@ impl SceneView {
       && options.mode.is_lit
   }
 
-  /// Notes what the window pass reads, once every other unit knows what it draws: where the frame distorts
-  /// (`distortion`), which bloom it lays over the frame, and the film's grain, drawn for `noise_frame`.
+  /// Prepares the window pass's inputs, after every other unit: the `distortion` tiles, the bloom, and the film grain
+  /// for `noise_frame`.
   pub(super) fn prepare_present(
     &mut self,
     options: &RenderViewOptions,

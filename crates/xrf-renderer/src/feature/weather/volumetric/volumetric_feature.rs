@@ -253,8 +253,8 @@ impl ViewFeature for VolumetricFeature {
     }
   }
 
-  /// Its motion restarted, the froxels' history starts again as if just made, their points' jitter from its first
-  /// step; a cut leaves it nothing to read, the last place's scattering leading nowhere true, the jitter stepping on.
+  /// A motion restart starts the froxels' history over as if just made, jitter included; a cut only drops the
+  /// history, the jitter stepping on.
   fn restart(&mut self, restart: ViewRestart) {
     if let Some(froxels) = &mut self.froxels {
       match restart {

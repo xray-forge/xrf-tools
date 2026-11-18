@@ -13,13 +13,12 @@ use crate::render::{LevelRenderParts, LevelSceneFollower, ShownLevels};
 use crate::scene::{OpenedScene, SelectedScenes, ShownScenes};
 use crate::viewer::recording::LevelRecordings;
 
-/// The `levels` plugin: compiled levels opened as documents whose parts follow commits, shown in a viewport, and
-/// captured or exported through the viewer; and Level Editor scenes opened as documents beside them and shown in a
-/// viewport too. Its hooks finish a window's recording as the window's page loads again or the window goes.
+/// The `levels` plugin: compiled levels and Level Editor scenes opened as documents and shown in viewports, with the
+/// viewer's capture and export. A window's recording is released when its page reloads or the window closes.
 pub struct LevelsPlugin;
 
 impl LevelsPlugin {
-  /// The plugin, its levels, scenes and the sources each is shown from managed as it sets up.
+  /// Build the plugin; its setup manages the level and scene documents and their shown sources.
   pub fn init<R: Runtime>() -> TauriPlugin<R> {
     crate::ipc::levels::builder()
       .setup(|application, _| {
@@ -38,7 +37,7 @@ impl LevelsPlugin {
             OpenedLevel::derive,
           )
           .with_view_parts(LevelRenderParts::VIEW_PARTS);
-        // An open scene records the files it was read from as a level does, and is read again on the pool the same way.
+        // A scene records its inputs and is derived again on the pool as a level is.
         let scenes: SelectedScenes = SelectedScenes::new("scene", &application.state::<SessionScopes>())
           .with_deferred_derivation(
             &assets,
@@ -54,8 +53,8 @@ impl LevelsPlugin {
           shown: shown.clone(),
           world,
         });
-        // todo: follow a shown scene's session through commits as `LevelSceneFollower` follows a level's, moving its
-        // scene onto a source over the next snapshot and reloading the models whose library objects a commit moved.
+        // todo: follow a shown scene's session through commits as `LevelSceneFollower` follows a level's, reloading the
+        // models whose library objects a commit changed.
 
         application.manage(levels);
         application.manage(scenes);
@@ -73,14 +72,14 @@ impl LevelsPlugin {
       .build()
   }
 
-  /// Releases a window's recording as a page starts loading over it, since the page that would stop it is gone.
+  /// Release a window's recording as a page starts loading, since the page that would stop it is gone.
   fn on_page_load<R: Runtime>(webview: &Webview<R>, payload: &PageLoadPayload<'_>) {
     if payload.event() == PageLoadEvent::Started {
       Self::release_window(webview.app_handle(), webview.window().label());
     }
   }
 
-  /// Releases a destroyed window's recording.
+  /// Release a destroyed window's recording.
   fn on_event<R: Runtime>(application: &AppHandle<R>, event: &RunEvent) {
     if let RunEvent::WindowEvent {
       label,

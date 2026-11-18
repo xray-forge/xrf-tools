@@ -2,8 +2,8 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-/// A burst's sound written: its file, its frames a second and channels, and the sound's frame each frame read back
-/// starts at, in the order written.
+/// A written burst sound: its file, sample rate and channels, and the sound frame each burst frame starts at, in write
+/// order.
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]

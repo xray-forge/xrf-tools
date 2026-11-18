@@ -8,9 +8,8 @@ use xrf_world::{WorldSceneSound, WorldSoundReport};
 
 use crate::sound::LevelSoundReport;
 
-/// What the level a viewport shows plays and why: each sound, where it stands and how loud it is heard, the music, the
-/// ambient's channels, and every sound that could not play; none for a viewport showing no level. The world says what
-/// it schedules, the audio how each is heard, asked on a blocking thread since it answers from its own.
+/// Describe what the level a viewport shows plays: each sound with its position and heard loudness, the music, the
+/// ambient channels, and every sound that could not play; none for a viewport showing no level.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_sound")]
 pub(crate) async fn levels_describe_sound(

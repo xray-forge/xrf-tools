@@ -29,8 +29,8 @@ impl SunTraceFeature {
     self.uniform = SunTraceUniform::new(lighting.to_sun, resolve.noise_frame);
   }
 
-  /// Whether a view traces the sun's shadow, the scene's trace allowing: where DLSS ray reconstruction resolves its
-  /// frame, as its `resolve` decided, lit and solid, while its `lighting`'s sun has a colour to shadow.
+  /// Whether a view traces the sun's shadow, the scene's trace allowing: under DLSS ray reconstruction, lit and solid,
+  /// with a sun that has a colour.
   pub(crate) fn is_asked(options: &RenderViewOptions, lighting: &LightingUniform, resolve: ResolveDecisions) -> bool {
     resolve.is_ray_reconstructed && options.mode.is_lit && !options.mode.is_wireframe && lighting.is_sunlit()
   }

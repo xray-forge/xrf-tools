@@ -1,5 +1,5 @@
-//! Media Foundation itself: its libraries are delay-loaded, so the probe answers whether this Windows has them before
-//! anything binds to them; the session holds it started on a thread, and the sink is its Sink Writer.
+//! Media Foundation bindings: the probe checks the delay-loaded libraries exist before anything binds to them, the
+//! session keeps it started on a thread, and the sink wraps its Sink Writer.
 
 mod media_probe;
 #[cfg(windows)]

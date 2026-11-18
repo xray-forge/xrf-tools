@@ -228,9 +228,8 @@ impl LevelShadows {
       *is_trees_taken = true;
     }
 
-    // A cascade redraws its trees for the sway alone band by band, a sweep at a time, unless what moves every frame lands
-    // in it, which draws over its kept layer every frame. A near cascade's bands are drawn on the frame they are due,
-    // so its sweep keeps the sway's rate and its rows a frame apart rather than one frame carrying the whole redraw.
+    // A sway-only redraw goes band by band, unless what moves every frame lands in the cascade and draws over its kept
+    // layer each frame. A near cascade's bands are drawn when due, so its sweep keeps the sway's rate.
     if !has_moving && !is_stale && (cascade.sway_sweep.is_some() || is_swayed) {
       let band: u32 = cascade.sway_sweep.map_or(0, |(_, band)| band);
 

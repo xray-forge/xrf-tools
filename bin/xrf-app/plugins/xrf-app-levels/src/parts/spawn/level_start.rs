@@ -20,8 +20,7 @@ pub(crate) struct LevelStart {
 }
 
 impl LevelStart {
-  /// An `eye` of the engine's space in the renderer's, turned to `heading` as `CActor::MoveActor` turns it: the forward
-  /// axis of `setHP` of the heading.
+  /// A start at engine-space `eye`, converted to renderer space, facing `heading` as `CActor::MoveActor` turns it.
   pub(crate) fn of(eye: &Vector3d, heading: f32, origin: LevelStartOrigin) -> Self {
     Self {
       direction: convert_vector(&Vector3d::new(-heading.sin(), 0.0, heading.cos())),

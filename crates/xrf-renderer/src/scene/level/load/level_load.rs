@@ -83,7 +83,7 @@ impl LevelLoad {
     }
   }
 
-  /// Whether the level has stood ready once since its scene was made, as its load reports the moment.
+  /// Whether the level has been ready at least once since its scene was made.
   pub(crate) fn has_stood_ready(&self) -> bool {
     self.durations.ready.is_some()
   }

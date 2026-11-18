@@ -1,7 +1,3 @@
-//! A Level Editor scene's helpers: one for each object of a helped tool, named by its tool and index both ways,
-//! switched by its tool, in its tool's look, and the extent and counts the page frames and lists by, and where each
-//! helped object stands for a camera to frame it.
-
 use std::sync::Arc;
 
 use glam::Vec3;
@@ -25,8 +21,6 @@ use crate::scene::{
 };
 use crate::tests::fixtures::{new_scenes, open_scene, scene_custom_object, scene_part, write_scene, write_scene_part};
 
-/// An entity's spawn point named `name` of `section`, standing at `x` along the scene's first axis, its volume
-/// `attached` where it has one.
 fn entity(name: &str, section: &str, x: f32, attached: Option<EditableShapeObject>) -> EditableSpawnPointObject {
   EditableSpawnPointObject {
     object: scene_custom_object(name, x),
@@ -39,7 +33,6 @@ fn entity(name: &str, section: &str, x: f32, attached: Option<EditableShapeObjec
   }
 }
 
-/// A respawn point and an environment modifier of `radius`, each standing at `x`.
 fn spawn_points(x: f32, radius: f32) -> [EditableSpawnPointObject; 2] {
   [
     EditableSpawnPointObject {
@@ -70,7 +63,6 @@ fn spawn_points(x: f32, radius: f32) -> [EditableSpawnPointObject; 2] {
   ]
 }
 
-/// A way of three points along the scene's first axis, the first leading to the second and the second to the third.
 fn way() -> EditableWayObject {
   let point = |name: &str, x: f32, to: Option<usize>| EditableWayPoint {
     name: String::from(name),
@@ -94,7 +86,7 @@ fn way() -> EditableWayObject {
   }
 }
 
-/// A scene holding one or more objects of every helped tool, a scene object and a sector, which draw no helper.
+// Also a scene object and a sector, which draw no helper.
 fn write_helped_scene(resource: &str) -> SceneSource {
   let source: SceneSource = write_scene(resource);
   let [respawn, modifier] = spawn_points(30.0, 5.0);
@@ -247,12 +239,10 @@ fn open(source: &SceneSource) -> (AssetMountState, Arc<SessionSnapshot<SelectedS
   (assets, opened)
 }
 
-/// The open scene's helpers, its spawn points' models looked for in its game data.
 fn read_helpers(assets: &AssetMountState, opened: &SessionSnapshot<SelectedScene>) -> Arc<SceneHelpers> {
   SceneHelpersPart::get(opened, &assets.search(&opened.game.roots).unwrap())
 }
 
-/// The helpers of `tool`'s objects, in their order.
 fn list_tool(helpers: &RenderLevelHelpers, tool: SceneToolKind) -> Vec<&RenderHelperObject> {
   helpers
     .objects
@@ -261,7 +251,6 @@ fn list_tool(helpers: &RenderLevelHelpers, tool: SceneToolKind) -> Vec<&RenderHe
     .collect()
 }
 
-/// The icons a helper draws.
 fn list_icons(object: &RenderHelperObject) -> Vec<RenderHelperIcon> {
   object
     .shapes
@@ -291,7 +280,7 @@ fn names_an_object_to_the_renderer_by_its_tool_and_index_both_ways() {
     }),
     Some(SceneRenderId(0x0200_0003))
   );
-  // Its other models set a bit above the tools' places each, and name the object as its own model does.
+  // Its other models each set a bit above the tool places.
   assert_eq!(
     SceneRenderId(0x0200_0003).get_part(SceneSurfaceKind::Collision),
     SceneRenderId(0x8200_0003)
@@ -449,7 +438,6 @@ fn helps_each_object_of_a_helped_tool_in_its_tools_look() {
   );
 }
 
-/// Asserts `sphere` stands about `center` with `radius`, to a float's rounding.
 fn assert_sphere(sphere: Option<Sphere>, center: [f32; 3], radius: f32) {
   let sphere: Sphere = sphere.expect("a sphere");
 

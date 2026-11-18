@@ -48,9 +48,8 @@ pub(crate) struct ResolveFeature {
   is_light_physical: bool,
   /// The size the frame is resolved at, which a temporal resolve resolves into.
   resolved: (u32, u32),
-  /// The viewport's size while the frame shown is one apart from the frame as drawn (`is_rescaled`): rescaled into a
-  /// frame graph texture of that size where `is_upscaled`, sharpened into another where `is_sharpened`, each made by the
-  /// frame that writes it and read within it alone.
+  /// The viewport's size while the frame shown is apart from the frame drawn (`is_rescaled`), the size of the frame
+  /// graph textures the frame is rescaled and sharpened into.
   shown_size: Option<(u32, u32)>,
   /// Whether this frame may write the rescaled frame (`is_upscale_written`).
   is_upscaled: bool,
@@ -210,7 +209,7 @@ impl ResolveFeature {
     is_cut
   }
 
-  /// Whether this frame's camera cut away from the last one's, as `next_motion` found it, until the prepare takes it.
+  /// Whether this frame's camera cut away from the last one's, as `next_motion` found it.
   pub(crate) fn is_camera_cut(&self) -> bool {
     self.is_camera_cut
   }

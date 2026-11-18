@@ -32,8 +32,8 @@ pub struct StaticSectorProxy {
   pub trace_groups: Vec<StaticTraceGroup>,
   /// Its strictly sorted composited runs, which a view draws back to front.
   pub sorted_runs: Vec<StaticSortedRun>,
-  /// The bounding sphere in the world of each cluster of its sections and of each of its placed meshes drawn by a pass
-  /// of its own, and what of them it brings into sight, which a view tests its frustum against.
+  /// World bounding spheres of its section clusters and own-pass meshes, with what each brings into sight, tested
+  /// against a view's frustum.
   pub sights: Vec<(Vec4, StaticSight)>,
   /// The bounding sphere of each of its places that sways, and its reach.
   pub swaying: Vec<(Vec4, f32)>,

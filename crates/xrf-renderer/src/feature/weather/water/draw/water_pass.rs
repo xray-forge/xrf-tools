@@ -393,8 +393,7 @@ impl WaterPass {
       |it| &it.reflection,
     );
 
-    // The rays the screen left, traced against the level's geometry, their hits written into the reflection: the
-    // list's, or every pixel's records where every pixel traces.
+    // The rays the screen left, from the list or every pixel's records, traced into the reflection.
     if let Some(TracedWater {
       sky,
       scene: TracedScene { trace, textures },

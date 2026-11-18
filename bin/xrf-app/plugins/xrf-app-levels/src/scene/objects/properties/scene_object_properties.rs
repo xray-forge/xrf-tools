@@ -8,7 +8,7 @@ use xrf_math::{Vector2d, Vector3d};
 
 use crate::scene::{SceneLightType, SceneSectorItem, SceneShape, SceneSpawnKind, SceneWayPoint, SceneWayType};
 
-/// What one scene object's kind keeps beyond its name and transform, as an inspector shows it: one variant per object
+/// What one scene object's kind keeps beyond its name and transform, as an inspector shows it; one variant per object
 /// tool.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -42,7 +42,7 @@ pub(crate) enum SceneObjectProperties {
   /// A light, `light.part`.
   Light {
     light_type: SceneLightType,
-    /// Red, green, blue and alpha, lit with times the brightness.
+    /// Red, green, blue and alpha, which light at `brightness` times.
     color: [f32; 4],
     brightness: f32,
     range: f32,
@@ -58,7 +58,7 @@ pub(crate) enum SceneObjectProperties {
     /// The light animation it plays, empty for none.
     animation: String,
     falloff_texture: String,
-    /// The points a fuzzy point light spreads over, in its own space; none for another light.
+    /// The points a fuzzy point light spreads over, in its own space; empty for any other light.
     fuzzy_points: Vec<Vector3d>,
   },
   /// A light flare, `glow.part`.
@@ -122,7 +122,7 @@ pub(crate) enum SceneObjectProperties {
   },
   /// A group, `group.part`, whose members are described under their own tools.
   Group {
-    /// How many members of the tools described name it as their group.
+    /// How many objects of the described tools name it as their group.
     members: u32,
   },
 }

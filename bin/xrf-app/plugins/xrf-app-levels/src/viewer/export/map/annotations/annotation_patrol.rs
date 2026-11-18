@@ -1,7 +1,7 @@
 use crate::objects::{LevelObject, LevelObjectPatrol};
 use crate::viewer::export::map::annotations::{AnnotationOutline, AnnotationPoint};
 
-/// A patrol path from above: its points, and the links between them by index.
+/// A patrol path from above: its points, and links between them by index.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct AnnotationPatrol {
   pub name: String,
@@ -10,7 +10,7 @@ pub(crate) struct AnnotationPatrol {
 }
 
 impl AnnotationPatrol {
-  /// `object`'s path from above, or `None` for an object that is no patrol path.
+  /// `object`'s path from above; `None` unless it is a patrol path.
   pub(crate) fn of(object: &LevelObject) -> Option<Self> {
     let patrol: &LevelObjectPatrol = object.patrol.as_ref()?;
 

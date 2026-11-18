@@ -1,13 +1,9 @@
-//! The grass about a puddle (`common/puddle_site`'s `puddle_tuft` and `puddle_drawn`) on the GPU: a tuft stands
-//! where the puddle is not drawn, and shrinks smoothly as a puddle grows over it or fades in with the distance.
-
 use glam::Vec4;
 
 use crate::tests::shader::wgsl_probe::run_wgsl_probe;
 
-/// Each case's `x`, how far out from a puddle's site a tuft's foot stands as a share of its radius, and `y`, how far
-/// from the eye, the puddles drawn to `z` metres: the share of its size the tuft stands at, and how much of the
-/// puddle is drawn there.
+// Cases are (offset from the site as a share of its radius, metres from the eye, puddle draw distance); answers are
+// (tuft share, puddle drawn).
 fn kept(cases: &[(f32, f32, f32)]) -> Option<Vec<Vec4>> {
   let probes: Vec<(Vec4, Vec4)> = cases
     .iter()
@@ -22,8 +18,6 @@ fn kept(cases: &[(f32, f32, f32)]) -> Option<Vec<Vec4>> {
   )
 }
 
-// Where no puddle is drawn, past the puddles' distance, every tuft stands whole however deep in its site it stands;
-// short of it, none stands deep in the water and every one stands well outside it.
 #[test]
 fn stands_a_tuft_wherever_no_puddle_is_drawn() {
   let cases: [(f32, f32, f32); 5] = [
@@ -44,8 +38,6 @@ fn stands_a_tuft_wherever_no_puddle_is_drawn() {
   assert_eq!(answered[4].x, 1.0, "{:?}: {}", cases[4], answered[4]);
 }
 
-// A tuft shrinks smoothly as a growing puddle's rim passes it, and as the eye comes nearer through the puddles' fade:
-// it never pops in or out whole.
 #[test]
 fn shrinks_a_tuft_smoothly_as_a_puddle_reaches_it() {
   let across: Vec<(f32, f32, f32)> = (0..=120).map(|step| (step as f32 * 0.01, 10.0, 30.0)).collect();

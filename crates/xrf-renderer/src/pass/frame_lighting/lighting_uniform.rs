@@ -51,8 +51,8 @@ pub(crate) struct LightingUniform {
   pub sky: Vec4,
   /// The sky's rotation and the clouds'; the rest unused.
   pub sky_params: Vec4,
-  /// How far the clouds' two layers have drifted over their textures, each within the textures' repeat
-  /// (`SkyFeature::get_cloud_drift`): the first layer's in `xy`, the second's in `zw`.
+  /// The clouds' two layers' drift over their textures, wrapped within the repeat (`SkyFeature::get_cloud_drift`):
+  /// the first in `xy`, the second in `zw`.
   pub cloud_drift: Vec4,
   /// The clouds' colour and cover; nothing where they are hidden.
   pub clouds: Vec4,
@@ -308,8 +308,8 @@ impl LightingUniform {
     self.environment.w > 0.5
   }
 
-  /// Whether the sun has a colour: one of none (a weather's night between the sun and the moon) lights nothing, so
-  /// nothing of it is shadowed.
+  /// Whether the sun has a colour; a black one, as in a weather's night between sun and moon, lights and shadows
+  /// nothing.
   pub(crate) fn is_sunlit(&self) -> bool {
     self.sun.truncate() != Vec3::ZERO
   }

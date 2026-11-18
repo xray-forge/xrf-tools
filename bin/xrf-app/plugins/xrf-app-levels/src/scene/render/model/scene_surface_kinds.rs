@@ -7,19 +7,17 @@ use xrf_vfs::XraySearch;
 
 use crate::scene::{SceneObjectParts, SceneSurfaceKind};
 
-/// Which kind each surface of a scene's library objects is ([`SceneSurfaceKind`]): one the game never draws by its
-/// compiler shader, one dressed in an editor's marker texture, else one drawn. A scene draws each kind as a model of
-/// its own beside the object's, which the page shows on asking.
+/// Tells each surface of a scene's library objects its [`SceneSurfaceKind`]: not drawn by its compiler shader, dressed
+/// in an editor marker texture, else drawn.
 pub(crate) struct SceneSurfaceKinds {
-  /// The compiler shader library of the scene's game data, none where it holds none that reads, which leaves no
-  /// surface told a collision one.
+  /// The game data's compiler shader library; none where it holds none that reads, so no surface is a collision one.
   library: Option<ShaderCompilerFile>,
 }
 
 impl SceneSurfaceKinds {
-  /// What the SDK's marker textures are named from: GSC's placeholders for what a level holds but a player never sees
-  /// (`prop_fake_nosun`, `prop_fake_occ`, `prop_fake_sound`, `prop_fake_kollision`, `prop_fake_ladder`,
-  /// `prop_fake_dead`, `prop_fake_bed_fireplace`), which no real surface of the game's textures is dressed in.
+  /// The prefix of the SDK's marker textures, GSC's placeholders for what a player never sees (`prop_fake_nosun`,
+  /// `prop_fake_occ`, `prop_fake_sound`, `prop_fake_kollision`, `prop_fake_ladder`, `prop_fake_dead`,
+  /// `prop_fake_bed_fireplace`), which no real game surface uses.
   const EDITOR_TEXTURE_PREFIX: &'static str = "prop\\prop_fake_";
 
   /// Surfaces told apart by `library`'s compiler shaders.
@@ -27,8 +25,8 @@ impl SceneSurfaceKinds {
     Self { library }
   }
 
-  /// Surfaces told apart by the compiler shader library `game` holds; none told a collision one where it holds none, or
-  /// one that does not read, which is logged.
+  /// Surfaces told apart by the compiler shader library in `game`; with none, or one that does not read (logged), no
+  /// surface is a collision one.
   pub(crate) fn open(game: &XraySearch) -> Self {
     let library: Option<ShaderCompilerFile> = match game.find(ShaderCompilerFile::FILE_NAME) {
       Ok(Some(_)) => game
@@ -48,8 +46,8 @@ impl SceneSurfaceKinds {
     Self::new(library)
   }
 
-  /// The kind `surface` is: a collision one where its compiler shader, found in the library, renders nothing; else an
-  /// editor-only one where its texture is a marker; else drawn, as anything is that cannot be told.
+  /// The kind of `surface`: collision where its compiler shader, found in the library, renders nothing; else
+  /// editor-only where its texture is a marker; else drawn, as is anything that cannot be told.
   pub(crate) fn get_kind(&self, surface: &EditableSurface) -> SceneSurfaceKind {
     let is_collision: bool = self
       .library
@@ -70,8 +68,8 @@ impl SceneSurfaceKinds {
     }
   }
 
-  /// The parts of `object` of each of `kinds` it holds a face of, each the object with its other kinds' faces left out,
-  /// so it compiles as the object would; an object of one kind alone is that part whole.
+  /// Splits `object` into a part per asked kind it has faces of, each the object without the other kinds' faces so it
+  /// compiles as the object would; an object of one kind alone is that part whole.
   pub(crate) fn split(&self, object: EditableObjectFile, kinds: &[SceneSurfaceKind]) -> SceneObjectParts {
     // Owned, since the last part takes the object they would borrow.
     let surface_kinds: HashMap<String, SceneSurfaceKind> = object
@@ -93,7 +91,7 @@ impl SceneSurfaceKinds {
       _ => {
         let asked: Vec<SceneSurfaceKind> = held.into_iter().filter(|kind| kinds.contains(kind)).collect();
 
-        // The last part takes the object itself, so a large shell is held once more at most while it is parted.
+        // The last part takes the object itself, so a large shell is held at most twice while it is split.
         if let Some((last, rest)) = asked.split_last() {
           for kind in rest {
             parts.insert(*kind, Self::keep(object.clone(), |name| kind_of(name) == *kind));

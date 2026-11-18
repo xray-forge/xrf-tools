@@ -15,13 +15,12 @@ use crate::scene::{
   SceneProblem, SceneProblemKind, SceneToolKind, SceneToolObject, SelectedScene,
 };
 
-/// What a change event calls a scene's object tools' objects when they go stale.
+/// The change event name for stale scene objects.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
 pub(crate) const SCENE_OBJECTS_PART: &str = "sceneObjects";
 
-/// The scene's object tools' objects, typed, read the first time anything asks from the parts its open kept. What it
-/// records is where it looked for the scene objects' library objects, so an `.object` come or gone moves this part and
-/// not the scene.
+/// The scene's object tools' typed objects, read on first use from the parts the open kept. It records where it looked
+/// for library objects, so an `.object` added or removed moves this part and not the scene.
 pub(crate) struct SceneObjectsPart;
 
 impl SessionPart for SceneObjectsPart {
@@ -31,17 +30,16 @@ impl SessionPart for SceneObjectsPart {
 }
 
 impl SceneObjectsPart {
-  /// The open scene's object tools' objects, read the first time anything asks and kept, the library objects looked for
-  /// through `objects`, a search of the scene's objects roots.
+  /// The open scene's object tools' objects, read on first use and kept, library objects looked for through `objects`,
+  /// a search of the scene's objects roots.
   pub(crate) fn get(current: &SessionSnapshot<SelectedScene>, objects: &XraySearch) -> Arc<SceneObjectsDescription> {
     current
       .parts
       .get_or_record::<Self>(objects, |objects| Arc::new(Self::read(current, objects)))
   }
 
-  /// Every object tool's objects the scene holds, in the editor's order of its tools: a tool whose objects do not read,
-  /// its groups' members of its class among them, is left out with a problem, as the editor fails to load it while
-  /// loading the rest.
+  /// Every object tool's objects, in the editor's tool order. A tool whose objects, group members included, do not read
+  /// becomes a problem, as the editor fails that tool and loads the rest.
   pub(crate) fn read(scene: &SelectedScene, objects: &XraySearch) -> SceneObjectsDescription {
     profiling::scope!("scene objects");
 
@@ -64,9 +62,9 @@ impl SceneObjectsPart {
         SceneToolKind::SoundSource => Self::read_tool::<EditableSoundSourceObject>(kind, scene, objects),
         SceneToolKind::SoundEnvironment => Self::read_tool::<EditableSoundEnvironmentObject>(kind, scene, objects),
         SceneToolKind::FogVolume => Self::read_tool::<EditableFogVolumeObject>(kind, scene, objects),
-        // The groups are counted by the members the other tools read, so they are read once those are.
+        // Groups count the members the other tools read, so they are read last.
         SceneToolKind::Group => continue,
-        // Binary tools keep no objects to list: their counts are a part of their own.
+        // Binary tools keep no objects; their counts are a part of their own.
         SceneToolKind::AiMap | SceneToolKind::DetailObject | SceneToolKind::Wallmark => continue,
       };
 
@@ -81,8 +79,8 @@ impl SceneObjectsPart {
     description
   }
 
-  /// One tool's objects as the editor loads them, the groups' members of its class first, each member named with its
-  /// group; none where the scene has neither a part of the tool `kind` nor a member of its class.
+  /// One tool's objects in editor load order, group members first and named with their group; none where the scene has
+  /// neither a part of the tool `kind` nor a group member of its class.
   fn read_tool<O: SceneToolObject>(
     kind: SceneToolKind,
     scene: &SelectedScene,
@@ -109,8 +107,7 @@ impl SceneObjectsPart {
     }))
   }
 
-  /// The groups of the group tool's parts, each counting the members `tools` name it in; none where the scene has no
-  /// group tool.
+  /// The group tool's groups, each counting the objects of `tools` naming it; none where the scene has no group tool.
   fn read_groups(
     scene: &SelectedScene,
     tools: &[SceneObjectToolDescription],
@@ -149,7 +146,7 @@ impl SceneObjectsPart {
     }))
   }
 
-  /// `read`, the tool `kind`'s objects, kept in `description`, or the reason they did not read.
+  /// Adds the tool `kind`'s `read` objects to `description`, or the reason they did not read.
   fn keep(
     description: &mut SceneObjectsDescription,
     kind: SceneToolKind,

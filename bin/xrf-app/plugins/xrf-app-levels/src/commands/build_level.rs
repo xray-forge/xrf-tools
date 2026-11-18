@@ -16,11 +16,11 @@ use crate::rawdata::level_build_result::LevelBuildResult;
 use crate::rawdata::level_build_run::LevelBuildRun;
 use crate::rawdata::level_compiler_libraries::LevelCompilerLibraries;
 
-/// Build a Level Editor scene into a level directory, as `level build` does, then compile it where `compile` names
-/// the steps, as `level compile` does, one job reporting both ([`LevelBuildRun::run`]). A cancel stops the build between
-/// its steps and the compile within its running step. The compile works on the directory the build wrote, whatever
-/// level `compile` names, is forced as the build is, and traces on D3D12 with the DXC the app bundles where it traces on
-/// the GPU ([`LevelBuildRun::new`]).
+/// Build a Level Editor scene into a level directory, as `level build` does, then compile it when `compile` is given,
+/// as `level compile` does, in one job.
+///
+/// A cancel stops the build between steps and the compile within its running step. The compile always works on the
+/// directory the build wrote and is forced when the build is ([`LevelBuildRun::new`]).
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "build_level")]
 pub(crate) async fn levels_build_level(

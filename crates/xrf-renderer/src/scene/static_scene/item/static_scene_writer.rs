@@ -41,15 +41,14 @@ pub(crate) struct StaticSceneWriter {
   pub slot_infos: Vec<StaticSlotInfo>,
   pub cluster_slots: Vec<u32>,
   pub impostor_shaders: Vec<u16>,
-  /// Its deferred baked sections and instanced meshes, which the level's acceleration structures take, and the density
-  /// words of the cut-out ones' triangles.
+  /// Its deferred sections and instanced meshes for the acceleration structures, and its cut-out triangles' density
+  /// words.
   pub trace_geometries: Vec<StaticTraceGeometry>,
   pub trace_groups: Vec<StaticTraceGroup>,
   pub trace_densities: Vec<u32>,
   /// Its strictly sorted composited runs, which a view draws back to front.
   pub sorted_runs: Vec<StaticSortedRun>,
-  /// The bounding sphere in the world of each cluster of its sections and of each of its placed meshes drawn by a pass
-  /// of its own, and what of them it brings into sight.
+  /// World bounding spheres of its section clusters and own-pass meshes, with what each brings into sight.
   pub sights: Vec<(Vec4, StaticSight)>,
   pub capacities: [u32; StaticBatch::LIST_COUNT],
 }
@@ -68,8 +67,7 @@ impl StaticSceneWriter {
     base
   }
 
-  /// A deferred geometry of the words and indices put, as the acceleration structures take it: a cut-out one's
-  /// triangles' density words put, which it starts at.
+  /// Appends a cut-out geometry's triangle density words and points `first_density` at them; zero otherwise.
   pub(crate) fn put_densities(&mut self, mut geometry: StaticTraceGeometry) -> StaticTraceGeometry {
     geometry.first_density = 0;
 

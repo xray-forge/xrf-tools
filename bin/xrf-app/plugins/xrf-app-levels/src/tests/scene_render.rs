@@ -1,7 +1,3 @@
-//! A Level Editor scene as the native renderer draws it: each scene object placing a library object found in the
-//! objects roots stood as a model compiled once from its `.object`, what is not drawn reported by scene object, where
-//! each drawn one stands for a camera to frame it, and the game data its textures are read from.
-
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -42,13 +38,11 @@ use crate::tests::fixtures::{
   write_scene_part,
 };
 
-/// The library object two scene objects place.
 const TABLE: &str = "statics\\table";
 
-/// A library object no objects root holds.
+// No objects root holds it.
 const LOST: &str = "statics\\lost";
 
-/// A scene object named `name` placing `reference`, standing at `x` along the scene's first axis.
 fn placed(name: &str, reference: &str, x: f32) -> EditableSceneObject {
   EditableSceneObject {
     object: scene_custom_object(name, x),
@@ -57,7 +51,6 @@ fn placed(name: &str, reference: &str, x: f32) -> EditableSceneObject {
   }
 }
 
-/// A unit square on the ground, as two triangles facing up.
 fn square() -> Vec<[Vector3d; 3]> {
   let [a, b, c, d] = [
     Vector3d::new(0.0, 0.0, 0.0),
@@ -69,8 +62,6 @@ fn square() -> Vec<[Vector3d; 3]> {
   vec![[a, c, b], [a, d, c]]
 }
 
-/// A scene placing the table at 0 and 10 along `x`, and between them a library object it does not find, `extra` scene
-/// objects after them; the table written into its objects root.
 fn write_tables(resource: &str, extra: Vec<EditableSceneObject>) -> SceneSource {
   let source: SceneSource = write_scene(resource);
   let mut objects: Vec<EditableSceneObject> = vec![
@@ -86,7 +77,6 @@ fn write_tables(resource: &str, extra: Vec<EditableSceneObject>) -> SceneSource 
   source
 }
 
-/// The scene `source` names opened, and the source drawing it.
 fn show(
   source: &SceneSource,
 ) -> (
@@ -101,7 +91,6 @@ fn show(
   (assets, opened, drawn)
 }
 
-/// The scene object of the scene object tool at `index`.
 fn scene_object(index: u32) -> SceneObjectId {
   SceneObjectId {
     tool: SceneToolKind::SceneObject,
@@ -109,12 +98,10 @@ fn scene_object(index: u32) -> SceneObjectId {
   }
 }
 
-/// The id the renderer knows the scene object at `index` by: the scene object tool's place, 2, above its index.
 fn drawn_id(index: u32) -> u32 {
   SceneRenderId::of(&scene_object(index)).expect("an index an id holds").0
 }
 
-/// Writes the test compiler shader library into the game data beside `source`'s rawdata tree.
 fn write_compiler_library(source: &SceneSource) {
   let game_data: PathBuf = Path::new(&source.path)
     .ancestors()
@@ -130,7 +117,6 @@ fn write_compiler_library(source: &SceneSource) {
   fs::write(game_data.join(ShaderCompilerFile::FILE_NAME), library.buffer).unwrap();
 }
 
-/// The id the renderer knows the surfaces of `kind` of the scene object at `index` by.
 fn part_id(index: u32, kind: SceneSurfaceKind) -> u32 {
   SceneRenderId::of(&scene_object(index))
     .expect("an index an id holds")
@@ -138,17 +124,14 @@ fn part_id(index: u32, kind: SceneSurfaceKind) -> u32 {
     .0
 }
 
-/// The id the renderer knows the collision surfaces of the scene object at `index` by.
 fn collision_id(index: u32) -> u32 {
   part_id(index, SceneSurfaceKind::Collision)
 }
 
-/// The model of the collision surfaces of the library object `reference`.
 fn collision_model(reference: &str) -> String {
   SceneSurfaceKind::Collision.format_model_name(reference)
 }
 
-/// The model of the editor-only surfaces of the library object `reference`.
 fn editor_model(reference: &str) -> String {
   SceneSurfaceKind::EditorOnly.format_model_name(reference)
 }
@@ -322,7 +305,7 @@ fn draws_the_faces_a_player_never_sees_as_a_model_of_each_kind_by_their_compiler
     surface.compiler_shader = String::from(COLLISION_COMPILER_SHADER);
   }
 
-  // A hull dressed in a marker texture is a collision one still: its compiler shader tells first.
+  // A hull with a marker texture is still collision: the compiler shader decides first.
   for (object, texture) in [
     (&mut tree, "prop\\prop_fake_kollision"),
     (&mut blocker, "PROP\\Prop_Fake_Nosun"),
@@ -664,7 +647,7 @@ fn refuses_to_show_a_session_that_holds_no_scene() {
     .manage(SessionScopes::default())
     .manage(AssetMountState::new())
     .manage(ExecutionState::new(ExecutionRequest::Auto).expect("the pool starts"))
-    // What the audio plugin manages before the domains' plugins set up.
+    // The audio plugin manages this before the domain plugins set up.
     .manage(silent_server())
     .plugin(RenderPlugin::init())
     .plugin(LevelsPlugin::init())

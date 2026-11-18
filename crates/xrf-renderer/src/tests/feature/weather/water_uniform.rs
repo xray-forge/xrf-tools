@@ -1,5 +1,3 @@
-//! What the water's uniform takes of its settings.
-
 use crate::contract::feature::weather::water::render_water_mode::RenderWaterMode;
 use crate::contract::feature::weather::water::render_water_settings::RenderWaterSettings;
 use crate::feature::weather::water::water_uniform::WaterUniform;

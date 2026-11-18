@@ -5,14 +5,12 @@ use crate::host::world::feedback::render_model_failure::RenderModelFailure;
 use crate::host::world::feedback::render_sector_failure::RenderSectorFailure;
 use crate::scene::level::particles::placed::particle_emitter_proxy::ParticleEmitterProxy;
 
-/// What a scene tells the world of the last frame: the sectors and the spawned models it could not take in, the effects
-/// whose particles stopped playing, and whether the level has stood ready.
+/// A scene's report to the world since the last: failed sectors and models, finished effects, and readiness.
 #[derive(Default)]
 pub struct RenderSceneFeedback {
   pub sector_failures: Vec<RenderSectorFailure>,
   pub model_failures: Vec<RenderModelFailure>,
   pub finished_effects: Vec<(ProxyHandle<ParticleEmitterProxy>, PlacedEffect)>,
-  /// Whether everything the level opens with has been resident once since its scene was made, so it drew as it will:
-  /// from the moment its load reports it ready on.
+  /// Whether everything the level opens with has been resident at least once since its scene was made.
   pub has_stood_ready: bool,
 }

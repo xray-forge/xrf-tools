@@ -26,27 +26,24 @@ use crate::scene::{
 };
 use crate::visuals::SpawnVisual;
 
-/// An open scene as the world plays it and the native renderer draws it: no sectors and no level, every scene object
-/// placing a library object found in its objects roots stood as a model compiled from that `.object`, an occluder's
-/// faces drawn as its fill ([`SceneOccluderLook`]) and the faces a player never sees as a model of each kind in a group
-/// the page switches ([`SceneSurfaceKind`]), every spawn point whose packet names a visual found in the
-/// scene's game data stood as that model in its rest pose, each lit by the open sky as a model alone is, and their
-/// textures read from the scene's game data; what has no geometry drawn as its helper. Each drawn thing is named by its
-/// object's [`SceneRenderId`].
+/// An open scene as the native renderer draws it, with no sectors and no level. Each scene object whose `.object` is
+/// found is a model compiled from it: an occluder's faces as its fill ([`SceneOccluderLook`]), the faces a player never
+/// sees as one model per kind in a group the page switches ([`SceneSurfaceKind`]). Each spawn point whose packet names
+/// a visual in the game data is that model in its rest pose. Models are lit by the open sky and textured from the game
+/// data; what has no geometry draws as its helper. Everything is named by its object's [`SceneRenderId`].
 pub struct SceneRenderSource {
   scene: Arc<SessionSnapshot<SelectedScene>>,
   assets: AssetMountState,
-  /// Where each texture reference resolved once asked for, in the scene's game data and the shared scope; nothing
-  /// resolves for a scene with no game data, whose surfaces draw the renderer's placeholder.
+  /// Texture references resolved on demand in the scene's game data and the shared scope; a scene with no game data
+  /// resolves none and draws the renderer's placeholder.
   textures: TextureResolver,
-  /// Which kind each surface is, by the game data's compiler shaders, read the first time a model is.
+  /// Which kind each surface is, by the game data's compiler shaders, read with the first model.
   kinds: OnceLock<SceneSurfaceKinds>,
 }
 
 impl SceneRenderSource {
-  /// The category every spawn point's model stands in, apart from the scene objects', so the page switches them all
-  /// with the spawn points' helpers by its group alone: the renderer's items group, which nothing else of a scene
-  /// stands in, whatever the entity's class.
+  /// The category of every spawn point's model whatever the entity's class: the renderer's items group, which nothing
+  /// else of a scene uses, so the page switches them with the spawn helpers by group alone.
   const SPAWN_CATEGORY: RenderSpawnCategory = RenderSpawnCategory::Items;
 
   /// The scene `scene` holds as the renderer draws it.
@@ -61,7 +58,7 @@ impl SceneRenderSource {
     }
   }
 
-  /// What every source of a scene session shares its scene by, whichever of its snapshots it draws.
+  /// The key every source of a scene session shares its scene by, whichever snapshot it draws.
   pub fn format_scene_key(session_id: SessionId) -> String {
     format!("scene {session_id}")
   }
@@ -71,7 +68,7 @@ impl SceneRenderSource {
     &self.scene
   }
 
-  /// The scene objects drawn, the session's one read of them, which the page's frame comes from too.
+  /// The scene objects drawn: the session's one read of them, which the page's frame also comes from.
   ///
   /// # Errors
   ///
@@ -96,17 +93,17 @@ impl SceneRenderSource {
       .map_err(XrfError::new_asset_error)
   }
 
-  /// The spawn points drawn as models, looked for the first time anything asks.
+  /// The spawn points drawn as models, looked for on first use.
   ///
   /// # Errors
   ///
-  /// Returns an error when the scene's game data cannot be searched the first time.
+  /// Returns an error when the scene's game data cannot be searched.
   fn get_spawn_models(&self) -> XrfResult<Arc<SceneSpawnModels>> {
     Ok(SceneSpawnModelsPart::get(&self.scene, &self.search_game()?))
   }
 
-  /// How a model standing as `object` is lit: by the open sky on every side, no level standing around a scene's
-  /// objects to shade their hemisphere.
+  /// Open-sky lighting on every side for the model of `object`, as no level surrounds a scene's objects to shade
+  /// their hemisphere.
   fn light_open(object: SceneRenderId) -> RenderSpawnLighting {
     RenderSpawnLighting {
       object: object.0,
@@ -115,8 +112,8 @@ impl SceneRenderSource {
     }
   }
 
-  /// The model the spawn points standing as `visual` draw as, posed as they stand still, its textures known to the
-  /// resolver as a level's spawned models' are.
+  /// The model of the spawn points drawn as `visual`, in its rest pose, its textures registered with the resolver as a
+  /// level's spawned models' are.
   fn pose_visual(&self, name: &str, visual: &SpawnVisual) -> RenderSpawnModel {
     self.textures.extend(visual.textures.iter().map(ResolvedTexture::from));
 
@@ -175,7 +172,7 @@ impl RenderLevelSource for SceneRenderSource {
 }
 
 impl WorldLevelSource for SceneRenderSource {
-  /// The scene's session: every viewport showing one opening shares its scene.
+  /// The scene's session, so every viewport showing one opening shares its scene.
   fn get_scene_key(&self) -> Option<String> {
     Some(Self::format_scene_key(self.scene.session_id))
   }
@@ -198,12 +195,11 @@ impl WorldLevelSource for SceneRenderSource {
     )))
   }
 
-  /// Every scene object drawn in the props group, each other kind of its surfaces in a group of its own
-  /// ([`SceneSurfaceKind`]), then every spawn point drawn as a model in a group of their own, each named by its
-  /// [`SceneRenderId`], so a pick answers it as the page names it; each library object a visual named by its reference
-  /// with its other kinds' right after it, and each spawn point's model one named by its file, in the order first
-  /// placed. Which kinds a library object holds is known only once it is read, so one holding none of a kind answers no
-  /// model for that visual.
+  /// Every scene object in the props group, each other surface kind in a group of its own ([`SceneSurfaceKind`]), then
+  /// every spawn model in its own group, each named by its [`SceneRenderId`] so a pick answers as the page names it.
+  /// Visuals are named by library object reference, its other kinds right after, and by file for a spawn model, in
+  /// first-placed order. Which kinds an object holds is known only once it is read, so a kind it lacks answers no
+  /// model.
   fn read_spawn(&self) -> XrfResult<RenderLevelSpawn> {
     let drawn: Arc<SceneDrawnObjects> = self.get_drawn()?;
     let models: Arc<SceneSpawnModels> = self.get_spawn_models()?;
@@ -253,9 +249,9 @@ impl WorldLevelSource for SceneRenderSource {
     })
   }
 
-  /// Each model named: a library object read once a batch whatever stands as it, each kind of its surfaces the batch
-  /// asks for compiled to a model of its own, a spawn point's visual read once through the visuals the scene keeps; one
-  /// that does not read or compile is left out and reported by its library object's reference alone.
+  /// Each named model: a library object read once per batch, each surface kind asked for compiled to its own model; a
+  /// spawn visual read once through the scene's kept visuals. An object that does not read or compile is left out and
+  /// reported once, under its own model.
   fn read_spawn_models(&self, names: &[String]) -> XrfResult<RenderSpawnModels> {
     let drawn: Arc<SceneDrawnObjects> = self.get_drawn()?;
     let objects: XraySearch = self.search_objects()?;
@@ -312,7 +308,7 @@ impl WorldLevelSource for SceneRenderSource {
       }
     });
 
-    // Looked up once a drawn object's kind and once a spawn point, so a set rather than a scan of the batch.
+    // Looked up per drawn object kind and per spawn point, so a set rather than a batch scan.
     let read_names: HashSet<&str> = models.iter().map(|model| model.name.as_str()).collect();
     let is_read = |name: &str| read_names.contains(name);
     let lighting: Vec<RenderSpawnLighting> = drawn
@@ -342,8 +338,8 @@ impl WorldLevelSource for SceneRenderSource {
     })
   }
 
-  /// The helpers of what the scene holds with no geometry, each named by its scene object's [`SceneRenderId`] and
-  /// switched by its tool, a spawn point standing as its model helped by its volume alone.
+  /// The helpers of what has no geometry, each named by its object's [`SceneRenderId`] and switched by its tool; a
+  /// spawn point drawn as a model is helped by its volume alone.
   fn read_helpers(&self) -> XrfResult<RenderLevelHelpers> {
     Ok(SceneHelpersPart::get(&self.scene, &self.search_game()?).helpers.clone())
   }

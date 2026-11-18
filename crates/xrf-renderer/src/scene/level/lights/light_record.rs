@@ -41,8 +41,9 @@ impl LightRecord {
   /// What a light without a cone writes as its cone's cosine: every point passes its test.
   pub(crate) const NO_CONE: f32 = -2.0;
 
-  /// A light's record, in view space: standing as `it` sees it, of `color` and `specular` weight, out to `range`, its
-  /// projector's slot looked up in `projectors`. Unshadowed and unscattered until the frame fills those in.
+  /// A light's view-space record, its projector slot looked up in `projectors`.
+  ///
+  /// Shadow and scattering stay unset until the frame fills them in.
   pub(crate) fn of(
     projectors: &[u32],
     light: &LightDescription,

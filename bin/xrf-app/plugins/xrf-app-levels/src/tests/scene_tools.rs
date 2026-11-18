@@ -1,6 +1,3 @@
-//! What names a scene's tools and its objects' typed values as they cross to the page: each tool by the name its part
-//! files carry, in the editor's order, and each value the editor saves as a number by what it stands for.
-
 use xrf_editable_level::{
   EditableFogVolumeKind, EditableFogVolumeObject, EditableSectorObject, EditableShape, EditableWayObject,
 };

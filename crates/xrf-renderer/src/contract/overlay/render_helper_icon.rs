@@ -19,7 +19,7 @@ pub enum RenderHelperIcon {
   PatrolPoint,
   GraphPoint,
   RespawnPoint,
-  /// A spawn point whose entity is known by its section alone, as a scene places one before any game config is read.
+  /// A spawn point known only by its section, before any game config is read.
   SpawnPoint,
 }
 

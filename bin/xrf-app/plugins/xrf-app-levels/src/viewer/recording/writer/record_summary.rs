@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-/// A recording written: the video encoder that ran, by its name, the frames written, and the last one's end.
+/// A written recording: the video encoder's name, the frames written, and the last one's end.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct RecordSummary {
   pub encoder: String,

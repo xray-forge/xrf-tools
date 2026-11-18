@@ -79,7 +79,7 @@ pub(crate) struct RenderViewport {
   capture: Option<CaptureJob>,
   /// The burst its own view draws, pacing the frames' clock until it ends.
   burst: Option<BurstJob>,
-  /// The recording of its frames as they are presented, until its recorder goes.
+  /// Its recording, until the recorder goes.
   record: Option<RecordJob>,
   /// Picks asked for, drawn one a frame while a readback is free, and those drawn, answered once they are back.
   picks: Vec<PendingPick>,
@@ -134,7 +134,7 @@ impl RenderViewport {
     self.options = options;
   }
 
-  /// Takes what it draws over its frame: from now on for no scene, else from the frame it shows `scene`.
+  /// Sets its overlays, at once without a `scene`, else from the first frame showing `scene`.
   pub(crate) fn set_overlays(&mut self, overlays: Vec<RenderOverlay>, scene: Option<RenderSceneId>) {
     let shown: Option<RenderSceneId> = self.get_shown_scene();
 
@@ -280,17 +280,16 @@ impl RenderViewport {
     self.burst = Some(burst);
   }
 
-  /// The recording of its frames, while one runs.
+  /// Its running recording, if any.
   pub(crate) fn get_record_mut(&mut self) -> Option<&mut RecordJob> {
     self.record.as_mut().filter(|record| !record.is_ended())
   }
 
-  /// Whether its frames are recorded.
   pub(crate) fn is_recording(&self) -> bool {
     self.record.as_ref().is_some_and(|record| !record.is_ended())
   }
 
-  /// The long job it runs, none while it runs none.
+  /// Its running long job, if any.
   pub(crate) fn get_job(&self) -> Option<RenderViewportJob> {
     if self.is_recording() {
       Some(RenderViewportJob::Recording)
@@ -303,12 +302,11 @@ impl RenderViewport {
     }
   }
 
-  /// Starts recording its frames as they are presented.
   pub(crate) fn start_record(&mut self, record: RecordJob) {
     self.record = Some(record);
   }
 
-  /// Stops the recording of its frames, telling its recorder why.
+  /// Stops its recording, sending `reason` to the recorder.
   pub(crate) fn stop_record(&mut self, reason: &str) {
     if let Some(mut record) = self.record.take() {
       record.stop(XrfError::new_invalid_error(reason.to_string()));
@@ -469,7 +467,7 @@ impl RenderViewport {
     }
   }
 
-  /// Shows the scene `scene` through `view`, a view of it of its own, with the overlays given for it.
+  /// Shows `scene` through its own `view`, with the overlays pending for it.
   pub(crate) fn show(&mut self, scene: RenderSceneId, view: SceneView) {
     self.leave_shown();
     self.shown = Some(ShownView { scene, view });

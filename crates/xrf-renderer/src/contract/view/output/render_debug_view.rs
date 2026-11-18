@@ -64,23 +64,20 @@ pub enum RenderDebugView {
   SampledMip,
   /// The specular the sun and the lights accumulated, kept apart from their diffuse in the light target's alpha.
   Specular,
-  /// The sun the level's detail slots store, `c_dir`, over the ground each slot covers and the tufts on it: black none
-  /// to white full, its sixteen steps as greys, the slots' edges darkened; a dim grey of the albedo elsewhere, over a
-  /// slot planting nothing or above a slot's heights.
+  /// The detail slots' stored sun (`c_dir`) over their ground and tufts, sixteen greys from black to white with slot
+  /// edges darkened; dim albedo grey over empty slots, above their heights or elsewhere.
   DetailSun,
-  /// The hemisphere the detail slots store, `c_hemi`, shown as `DetailSun` is.
+  /// The detail slots' stored hemisphere (`c_hemi`), shown as `DetailSun`.
   DetailHemi,
-  /// The light the detail slots store from the level's lamps, `c_r`, `c_g` and `c_b`, as one colour, shown as
-  /// `DetailSun` is.
+  /// The detail slots' stored lamp light (`c_r`, `c_g`, `c_b`) as one colour, shown as `DetailSun`.
   DetailLight,
-  /// The cover each AI map node stores from standing height, over the ground its cell covers: the mean of its four
-  /// directions from black, covered, to white, open, its sixteen steps as greys, the cells' edges darkened; a dim grey of
-  /// the albedo elsewhere, off the map or above a node.
+  /// Each AI map node's standing cover over its cell: the mean of its four directions in sixteen greys, black covered
+  /// to white open, cell edges darkened; dim albedo grey off the map or above a node.
   AiHighCover,
-  /// The cover each AI map node stores from crouching height, shown as `AiHighCover` is.
+  /// Each AI map node's crouching cover, shown as `AiHighCover`.
   AiLowCover,
-  /// How many neighbours each AI map node lacks, shown over its cell as `AiHighCover` is: green none, then yellow,
-  /// orange, red and dark red for one to four.
+  /// How many neighbours each AI map node lacks, shown as `AiHighCover`: green for none, then yellow, orange, red and
+  /// dark red for one to four.
   AiLinks,
   /// FSR's masks at each pixel's drawn texel: how reactive it is (moving apart from what it lands on, or a plant the
   /// wind moved) in red, how disoccluded in green, how far its shading changed in blue.

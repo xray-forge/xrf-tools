@@ -1,13 +1,9 @@
-//! Which kind each surface of a scene's library objects is, told by its compiler shader and its texture, and a library
-//! object parted by them into what the scene draws and what it shows on asking.
-
 use xrf_editable_object::{EditableObjectFile, EditableSurface};
 use xrf_rawdata::SurfaceDress;
 
 use crate::scene::{SceneObjectParts, SceneSurfaceKind, SceneSurfaceKinds};
 use crate::tests::fixtures::{COLLISION_COMPILER_SHADER, compiler_library, scene_parted_object};
 
-/// The surface names each mesh of `part` holds faces of, and how many, mesh by mesh.
 fn list_faces(part: &EditableObjectFile) -> Vec<(String, usize)> {
   part
     .meshes
@@ -18,7 +14,6 @@ fn list_faces(part: &EditableObjectFile) -> Vec<(String, usize)> {
     .collect()
 }
 
-/// A surface of `compiler_shader` dressed in `texture`, the rest of it as a test object's.
 fn surface(compiler_shader: &str, texture: &str) -> EditableSurface {
   EditableSurface {
     compiler_shader: String::from(compiler_shader),
@@ -30,7 +25,6 @@ fn surface(compiler_shader: &str, texture: &str) -> EditableSurface {
   }
 }
 
-/// The test object whose second surface, `hull`, is of `compiler_shader` and dressed in `texture`.
 fn parted(compiler_shader: &str, texture: &str) -> EditableObjectFile {
   let mut object: EditableObjectFile = scene_parted_object(compiler_shader);
 

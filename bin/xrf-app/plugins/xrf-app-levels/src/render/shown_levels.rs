@@ -13,12 +13,10 @@ use crate::render::{LevelAudio, LevelRenderSource};
 #[derive(Clone)]
 pub struct ShownLevels {
   sources: Arc<Mutex<HashMap<SessionId, Weak<LevelRenderSource>>>>,
-  /// Where every source plays its scene's sound.
   audio: LevelAudio,
 }
 
 impl ShownLevels {
-  /// Shown levels heard through `audio`.
   pub fn new(audio: AudioServer) -> Self {
     Self {
       sources: Arc::default(),
@@ -26,12 +24,11 @@ impl ShownLevels {
     }
   }
 
-  /// Where shown levels are heard.
   pub fn get_audio(&self) -> &LevelAudio {
     &self.audio
   }
 
-  /// A new source drawing `level`, sharing nothing with one before it.
+  /// A new source drawing `level`, sharing no resolved textures with an earlier one.
   pub fn build_source(
     &self,
     level: Arc<SessionSnapshot<SelectedLevel>>,

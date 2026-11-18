@@ -11,14 +11,10 @@ use crate::scene::static_scene::surface::static_surface::StaticSurface;
 use crate::scene::static_scene::trace::static_trace_instance::StaticTraceInstance;
 use crate::scene::static_scene::trace::static_trace_record::StaticTraceRecord;
 
-/// What a pass tracing rays against the level's static geometry binds (`StaticTrace`): the top-level structure; each
-/// instance's first record and place, and each geometry's record naming its indices, vertices and surface; the places,
-/// whose hemisphere lights an instance; each layout's vertices and the indices a hit's corners are read from; and the
-/// surfaces; the view's local lights, how many and how their shadows compare, and the shadow atlas, which light a hit;
-/// the sun's cascades and what they were drawn with, which shadow a hit they cover; and the level's grass as the view
-/// plants it, its slot grid, slots, models and their colours, which covers a terrain hit, and the cards it stands near
-/// its eye, whose holes a ray passes; and the cut-out geometry's triangles' density words, which its holes are tested
-/// by. The bindless textures a hit is shaded from are the texture cache's own group.
+/// What a pass tracing rays against the level's static geometry binds (`StaticTrace`): the structure and its records,
+/// the lights and shadows that light a hit, and the grass that covers a terrain hit.
+///
+/// The bindless textures a hit is shaded from are the texture cache's own group.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 3)]
 pub(crate) struct TraceParameters<'a> {
@@ -66,8 +62,7 @@ pub(crate) struct TraceParameters<'a> {
   /// widths a metre of it spans, then each corner's coordinate (`shaders/grass/cards.wgsl`).
   #[storage]
   pub trace_grass_cards: StorageArray<u32>,
-  /// A word a cut-out geometry's triangle, which its holes are tested by (`StaticTraceDensity`), from its record's
-  /// first.
+  /// A word per cut-out triangle, from its record's first, that its holes are tested by (`StaticTraceDensity`).
   #[storage]
   pub trace_densities: StorageArray<u32>,
   /// The comparison the sun's cascades are filtered through (`SunPass::get_compare`).

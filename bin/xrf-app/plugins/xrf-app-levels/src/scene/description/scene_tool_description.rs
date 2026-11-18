@@ -15,6 +15,6 @@ pub struct SceneToolDescription {
   pub format: Option<SceneToolFormat>,
   /// Its files' sizes summed, in bytes.
   pub size: u64,
-  /// Its files in the order the editor reads them, those it skips among them.
+  /// Its files in the editor's read order, including those it skips.
   pub files: Vec<ScenePartFileDescription>,
 }

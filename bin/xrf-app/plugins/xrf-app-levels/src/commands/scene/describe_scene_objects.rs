@@ -8,8 +8,9 @@ use xrf_app_core::session::{SessionId, SessionSnapshot};
 
 use crate::scene::{SceneObjectsDescription, SceneObjectsPart, SelectedScenes};
 
-/// Describe the open scene's object tools' objects, typed, each scene object's library object looked for in the objects
-/// roots the scene was opened with; read again where a commit let them go.
+/// Describe the objects of the open scene's object tools, resolving each library object in the scene's objects roots.
+///
+/// Call again after a commit that invalidates them.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_scene_objects")]
 pub(crate) async fn levels_describe_scene_objects(

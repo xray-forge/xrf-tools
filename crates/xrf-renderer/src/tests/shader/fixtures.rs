@@ -1,5 +1,4 @@
-//! Reading what a shader module declares: its constants' values and the module itself as naga parses it, for tests
-//! holding WGSL to Rust or reading the bounds a shader works within.
+//! Reads a shader module's constants and naga parse, for tests that hold WGSL to Rust.
 
 use crate::shader::shader_library::ShaderLibrary;
 
@@ -23,14 +22,14 @@ pub(crate) fn get_signed_constant(library: &ShaderLibrary, name: &str, constant:
   }
 }
 
-/// The value a module declares a float constant as.
+/// An `f32` constant's value in a module.
 pub(crate) fn get_float_constant(library: &ShaderLibrary, name: &str, constant: &str) -> f32 {
   let module: naga::Module = parse(library, name);
 
   read_float(&module, name, get_declared(&module, name, constant).init)
 }
 
-/// The components a module declares a float vector constant with.
+/// A float vector constant's components in a module.
 pub(crate) fn get_vector_constant(library: &ShaderLibrary, name: &str, constant: &str) -> Vec<f32> {
   let module: naga::Module = parse(library, name);
 
@@ -43,7 +42,7 @@ pub(crate) fn get_vector_constant(library: &ShaderLibrary, name: &str, constant:
   }
 }
 
-/// A module composed from the library and parsed by naga.
+/// A module composed from the library and parsed by naga; panics where either fails.
 pub(crate) fn parse(library: &ShaderLibrary, name: &str) -> naga::Module {
   let source: String = library.compose(name).expect("composes");
 

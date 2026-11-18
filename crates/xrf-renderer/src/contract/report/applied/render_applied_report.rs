@@ -37,7 +37,7 @@ pub struct RenderAppliedReport {
   pub reflections: Option<RenderAppliedReflections>,
   /// The enhanced height fog, or none where the engine's fog alone is drawn or none at all.
   pub height_fog: Option<RenderAppliedHeightFog>,
-  /// Whether the sky is drawn with its textures smoothed where they band.
+  /// Whether the sky is debanded.
   pub is_sky_debanded: bool,
   /// Which bloom is drawn, or none where the frame blooms nothing.
   pub bloom: Option<RenderBloomMode>,

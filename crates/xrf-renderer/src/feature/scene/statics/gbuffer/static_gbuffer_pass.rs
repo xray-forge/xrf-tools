@@ -134,9 +134,8 @@ impl StaticGBufferPass {
     }
   }
 
-  /// Draws the visible clusters an argument buffer lists into the G-buffer the pass draws into, the part of the draw
-  /// `draw` names: the cut-out surfaces' depth and the opaque ones' where it prepasses, every surface's shading, or the
-  /// impostors.
+  /// Draws the visible clusters an argument buffer lists into the pass's G-buffer, for the part `draw` names
+  /// (`StaticGbufferPart`).
   pub(crate) fn record(
     &self,
     context: &mut RasterContext<'_>,

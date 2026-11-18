@@ -10,9 +10,9 @@ use crate::scene::{
   SceneDrawnObject, SceneObjectModels, SceneObjectParts, SceneOccluderLook, SceneSurfaceKind, SceneSurfaceKinds,
 };
 
-/// How a scene compiles its library objects to models: each surface dressed as the scene's game data answers it, each
-/// kind of surface ([`SceneSurfaceKind`]) parted into a model of its own, and an occluder drawn whole as its fill, as
-/// the editor draws it whatever its surfaces.
+/// Compiles a scene's library objects to models: surfaces dressed from the scene's game data, each surface kind
+/// ([`SceneSurfaceKind`]) a model of its own, and an occluder drawn whole as its fill whatever its surfaces, as the
+/// editor draws it.
 pub(crate) struct SceneObjectCompiler<'a> {
   /// How the scene's game data dresses a surface.
   pub surfaces: &'a XraySurfaceResolver,
@@ -21,8 +21,8 @@ pub(crate) struct SceneObjectCompiler<'a> {
 }
 
 impl SceneObjectCompiler<'_> {
-  /// The models of `kinds` that `file`, the library object `object` places, compiles to; those of other kinds are not
-  /// compiled, so a batch asking for some of an object's models compiles no more than it asks.
+  /// Compiles only the `kinds` models of `file`, the library object `object` places, so a batch compiles no more than
+  /// it asks for.
   ///
   /// # Errors
   ///
@@ -55,8 +55,8 @@ impl SceneObjectCompiler<'_> {
   }
 }
 
-/// What every part of one scene object's library object compiles with: the object, how its surfaces are dressed, and
-/// the occluder whose fill dresses them instead.
+/// What every part of one library object compiles with: the object, the surface resolver, and the occluder whose fill
+/// replaces its surfaces.
 struct ScenePartCompile<'a> {
   object: &'a SceneDrawnObject,
   surfaces: &'a XraySurfaceResolver,
@@ -64,8 +64,8 @@ struct ScenePartCompile<'a> {
 }
 
 impl ScenePartCompile<'_> {
-  /// The model `part`, a part of the library object, compiles to, posed as stored and named `name`, each of its
-  /// submeshes dressed as the surfaces answer it, or as the occluder's fill; none for no part.
+  /// Compiles `part` to the model `name`, posed as stored, its submeshes dressed by the surfaces or the occluder's
+  /// fill; none for no part.
   ///
   /// # Errors
   ///
@@ -91,7 +91,7 @@ impl ScenePartCompile<'_> {
     )
     .map_err(|error| format!("Library object '{}' does not compile: {error}", object.logical_path))?;
 
-    // Let go before posing copies the package, which keeps a large shell's peak to the model and its copy.
+    // Dropped before posing copies the package, so a large shell's peak is the model and its copy.
     drop(part);
 
     let surfaces: Vec<XraySurfaceDescriptor> = match occluder {

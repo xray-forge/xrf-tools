@@ -2,15 +2,15 @@ use xrf_editable_object::EditableObjectFile;
 
 use crate::scene::SceneSurfaceKind;
 
-/// A library object's faces parted by the kind of their surfaces (`SceneSurfaceKinds::split`), each part the object
-/// with the other kinds' faces left out; none for a kind it holds no face of.
+/// A library object split by surface kind (`SceneSurfaceKinds::split`), each part the object without the other kinds'
+/// faces; none for a kind it has no face of.
 #[derive(Debug, Default, PartialEq)]
 pub(crate) struct SceneObjectParts {
   parts: [Option<EditableObjectFile>; SceneSurfaceKind::ALL.len()],
 }
 
 impl SceneObjectParts {
-  /// `object` whole, every face of it of `kind`.
+  /// `object` whole as the part of `kind`.
   pub(crate) fn whole(kind: SceneSurfaceKind, object: EditableObjectFile) -> Self {
     let mut parts: Self = Self::default();
 

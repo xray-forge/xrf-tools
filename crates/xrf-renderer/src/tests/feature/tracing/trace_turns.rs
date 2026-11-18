@@ -1,6 +1,3 @@
-//! The traces' turns (`common/trace_turns`) on the GPU: under ray budgets a quad tracing one ray a frame passes it
-//! from pixel to pixel, and asks the scene for its ray once in its `turns`; the two must meet.
-
 use std::collections::BTreeSet;
 
 use glam::Vec4;
@@ -10,9 +7,6 @@ use crate::shader::shader_library::ShaderLibrary;
 use crate::tests::shader::fixtures::get_constant;
 use crate::tests::shader::gpu_probe::run_gpu_probe;
 
-/// Every `turns` a reflection's pixel can wait for its scene ray (`is_trace_turn`): each trace interval the settings
-/// take, by one or a still, dim pixel's `DIM_TURNS`, by each wait the list stretches its turns by, up to
-/// `TRACE_REQUEST_WAIT_MOST`.
 fn every_turns() -> Vec<u32> {
   let library: ShaderLibrary = ShaderLibrary::default();
   let dim: u32 = get_constant(&library, "frame/reflections", "DIM_TURNS");
@@ -30,11 +24,9 @@ fn every_turns() -> Vec<u32> {
   every.into_iter().collect()
 }
 
-// Each four frames from a multiple of four a quad's rays start once at each of its pixels, so one ray a frame walks
-// them all.
 #[test]
 fn a_quad_s_rays_start_at_each_pixel_in_four_frames() {
-  // Each start's bits ride a float, as the probe's cases are floats.
+  // The probe's cases are floats, so each start's bits ride one.
   let starts: [u32; 5] = [0, 4, 1_000, 1 << 20, u32::MAX - 3];
   let cases: Vec<(Vec4, Vec4)> = starts
     .iter()
@@ -64,8 +56,7 @@ fn a_quad_s_rays_start_at_each_pixel_in_four_frames() {
   }
 }
 
-// A quad tracing one ray a frame traces each of its pixels on frames of every residue of four within 64 frames, so a
-// pixel traces each cell of its block in turn, whatever its noise picks.
+// So a pixel traces each cell of its block in turn, whatever its noise picks.
 #[test]
 fn a_one_ray_quad_traces_each_pixel_on_every_residue_of_four() {
   let cases: Vec<(Vec4, Vec4)> = [0_u32, 1_000, 1 << 20]
@@ -79,7 +70,7 @@ fn a_one_ray_quad_traces_each_pixel_on_every_residue_of_four() {
       })
     })
     .collect();
-  // Each corner's residues of four seen, four bits a corner.
+  // Four bits per corner, one per residue of four.
   let body: &str = "let start: u32 = u32(second.x);
   var seen: u32 = 0u;
 
@@ -99,10 +90,7 @@ fn a_one_ray_quad_traces_each_pixel_on_every_residue_of_four() {
   }
 }
 
-// A quad tracing one ray a frame asks the scene within its `turns` frames, whatever `turns` the interval, a dim
-// pixel's scale and the list's wait make: some pixel of it both traces and takes its turn, at every place of the 8 × 8
-// dither, for every pixel its noise picks to start from, from any frame. A quad that misses its turn holds what it
-// reflected the frame before until it meets one; past `turns` frames it lags the pixels about it.
+// A quad missing its turn holds its last reflection, so past `turns` frames it would lag the pixels around it.
 #[test]
 fn a_one_ray_quad_asks_the_scene_within_its_turns() {
   const STARTS: [u32; 12] = [0, 1, 2, 3, 5, 8, 13, 101, 997, 4_093, 65_537, 1_048_573];
@@ -125,8 +113,7 @@ fn a_one_ray_quad_asks_the_scene_within_its_turns() {
 
     cases
   };
-  // Each case's first frame on which its quad's traced pixel takes its turn, counted from its start; none within 64
-  // times its turns as -1.
+  // Frames from the start until the traced pixel takes its turn; -1 for none within 64 times `turns`.
   let body: &str = "let quad: vec2<u32> = vec2<u32>(u32(first.x), u32(first.y)) * 2u;
   let picked: u32 = u32(first.z);
   let turns: u32 = u32(first.w);
@@ -143,8 +130,7 @@ fn a_one_ray_quad_asks_the_scene_within_its_turns() {
   }
 
   answer = vec3<f32>(met, 0.0, 0.0);";
-  // The most frames any quad waits at each `turns`, none met as `u32::MAX`; a probe holds as many `turns` as one
-  // dispatch's workgroups can, a case each.
+  // One dispatch holds at most 65,535 workgroups, a case each.
   let per_probe: usize = 65_535 / cases_of(1).len();
   let mut worst: Vec<(u32, u32)> = Vec::new();
 

@@ -12,10 +12,11 @@ use xrf_world::WorldLevelSource;
 use crate::report::LevelReport;
 use crate::scene::{SceneRenderSource, SelectedScene, SelectedScenes, ShownScenes};
 
-/// Draw the open scene in a viewport, each scene object a model compiled from its `.object` as the renderer asks, its
-/// textures read from the scene's game data; no session draws none. Answers the scene drawn, which the viewport's load
-/// reports name, or none. The source is made on the pool, after the ticket that keeps a scene asked for later from being
-/// replaced by this one.
+/// Draw the open scene in a viewport, or nothing without a session; answers the drawn scene's id, which the viewport's
+/// load reports carry, or none.
+///
+/// Each object's model is compiled from its `.object` on demand, with textures from the scene's game data. A later show
+/// on the same viewport wins over this one.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "show_scene")]
 #[expect(

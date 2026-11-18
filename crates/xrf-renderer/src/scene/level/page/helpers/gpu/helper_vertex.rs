@@ -4,7 +4,7 @@
 #[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 pub(crate) struct HelperVertex {
   pub position: [f32; 3],
-  /// sRGB, then how its object is singled out: [`Self::SELECTED`], [`Self::HOVERED`], [`Self::SOUNDING`] or nought.
+  /// sRGB, then the highlight: [`Self::SELECTED`], [`Self::HOVERED`], [`Self::SOUNDING`] or zero.
   pub color: [f32; 4],
   /// The distance it has faded out by, none for a singled out object's, then how strongly it shows behind what is
   /// drawn.
@@ -16,8 +16,8 @@ impl HelperVertex {
   /// Bytes a vertex takes.
   pub(crate) const SIZE: u64 = size_of::<Self>() as u64;
 
-  /// The colour's last channel for an object selected, for one hovered and for one whose sound plays, which `fs_helper`
-  /// lifts toward white by; a sounding one still fades with distance.
+  /// Highlight values in the colour's last channel, which `fs_helper` lifts toward white by; a sounding object still
+  /// fades with distance.
   pub(crate) const SELECTED: f32 = 1.0;
   pub(crate) const HOVERED: f32 = 0.5;
   pub(crate) const SOUNDING: f32 = 0.75;

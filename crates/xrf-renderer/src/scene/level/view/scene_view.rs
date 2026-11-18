@@ -63,7 +63,7 @@ pub(crate) struct SceneView {
   shared: ViewFrame,
   /// The G-buffer, depth, light and scene it draws into, once its size is known.
   targets: Option<ViewTargets>,
-  /// Whether this frame's prepare made its targets anew at another size, which leaves what the last size keyed unused.
+  /// Whether this frame's prepare remade the targets at a new size, leaving what the old size keyed unused.
   is_resized: bool,
   /// Its units shared across its frame's parts.
   features: SceneFeatures,
@@ -71,8 +71,7 @@ pub(crate) struct SceneView {
   stages: ViewStages,
   /// The time its frames are drawn at: its scene's, or a step a frame of its own.
   clock: FrameClock,
-  /// The level's clock at its last frame, which its units step on from; none before its first frame and once its
-  /// motion starts over.
+  /// Level time of the last frame, which units step from; none before the first frame and after a motion restart.
   last_time: Option<LevelTime>,
 }
 
@@ -188,14 +187,13 @@ impl SceneView {
     SceneAsks { lights }
   }
 
-  /// Whether this frame's prepare made its targets anew at another size (`prepare`).
+  /// Whether this frame's [`Self::prepare`] remade the targets at a new size.
   pub(crate) fn is_resized(&self) -> bool {
     self.is_resized
   }
 
-  /// Finishes readying its frame once its scene settled every view's asks (`LevelScene::settle`): writes its lights as
-  /// it asked for them, the faces now settled, and fills its effects' quads from the step the scene joined, with
-  /// `options` as its frame was prepared. `finish_present` follows.
+  /// Writes the lights and fills the particle quads once the scene has settled every view's asks
+  /// (`LevelScene::settle`); [`Self::finish_present`] follows.
   pub(crate) fn finish_prepare(
     &mut self,
     scene: &LevelScene,
@@ -215,9 +213,7 @@ impl SceneView {
     self.features.particles.upload(device, &mut *encoder);
   }
 
-  /// Once every unit knows what it draws (`finish_prepare`): keeps the engine's bloom where the frame's distortion may
-  /// blur it, by the blue of the maps its writers draw in `textures`, and notes what the window pass reads, with
-  /// `options` and over `output` as its frame was prepared.
+  /// Prepares the window pass after [`Self::finish_prepare`], keeping the engine's bloom where distortion may blur it.
   pub(crate) fn finish_present(
     &mut self,
     scene: &LevelScene,

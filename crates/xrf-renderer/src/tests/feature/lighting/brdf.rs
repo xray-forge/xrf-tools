@@ -85,9 +85,7 @@ fn the_direct_light_is_the_published_lobe() {
   }
 }
 
-// A surface of no roughness, a calm puddle's water, seen along a light's mirror direction, where the half vector is its
-// normal: the lobe is taken at its least alpha, a finite glint, from a point and from a sphere's nearest point alike,
-// not GGX's nought over nought.
+// Zero roughness (a calm puddle) along the mirror direction would be GGX's zero over zero without a least alpha.
 #[test]
 fn a_smooth_surface_glints_finite_along_the_mirror() {
   let cases: Vec<(Vec4, Vec4)> = [0.9_f32, 0.5, 0.2]

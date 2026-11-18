@@ -42,13 +42,12 @@ impl LevelReport {
     log::info!("Opening level: {}", source.get_label());
   }
 
-  /// That a scene's open has begun, before anything is read.
+  /// That a scene's open has begun.
   pub(crate) fn opening_scene(source: &SceneSource) {
     log::info!("Opening scene: {}", source.path);
   }
 
-  /// What one scene's open came to, read off the snapshot it committed, and each part file the editor would skip or
-  /// refuse, by name.
+  /// What a scene's open read, and each part file the editor would skip or refuse.
   pub(crate) fn opened_scene(opened: &SessionSnapshot<SelectedScene>, started: Instant) {
     let scene: &SelectedScene = &opened.value;
 
@@ -82,7 +81,7 @@ impl LevelReport {
     log::info!("Showing level {} in native viewport {viewport}", source.get_label());
   }
 
-  /// That a scene is shown in a viewport, and the game data its textures are read from.
+  /// That a scene is shown in a viewport, and where its textures come from.
   pub(crate) fn showing_scene(scene: &SelectedScene, viewport: RenderViewportId) {
     log::info!(
       "Showing scene {} in native viewport {viewport}, its textures from {}",
@@ -91,7 +90,7 @@ impl LevelReport {
     );
   }
 
-  /// That a library object a scene places could not be read or compiled, so nothing standing as it is drawn.
+  /// That a scene's library object could not be read or compiled, so its placements draw nothing.
   pub(crate) fn undrawn_scene_object(reference: &str, reason: &str) {
     log::warn!("Scene library object '{reference}' is not drawn: {reason}");
   }
@@ -484,7 +483,7 @@ impl LevelReport {
     log::warn!("Zones of {} play no particles: {error}", source.get_label());
   }
 
-  /// That the level's zones play no sound, their spawn or the configs naming their sounds being unreadable.
+  /// That the level's zones play no sound because their spawn or sound configs are unreadable.
   pub(crate) fn missing_zone_sounds(source: &LevelSource, error: &impl Display) {
     log::warn!("Zones of {} play no sound: {error}", source.get_label());
   }

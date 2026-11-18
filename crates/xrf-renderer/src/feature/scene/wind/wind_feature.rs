@@ -13,8 +13,8 @@ use crate::scene::level::view::view_time::ViewTime;
 /// reach, a tall crown's trunk swing over its height.
 const FOLIAGE_SHADOW_AMPLITUDE: f32 = 0.02;
 
-/// How the wind moves the view's trees and grass: the enhanced foliage motion stepped from frame to frame, the trees'
-/// sway following the last frame's, which every static draw reads, and the amplitude the shadows sway by.
+/// How the wind moves the view's trees and grass: the enhanced foliage motion, the trees' sway every static draw reads,
+/// and the amplitude the shadows sway by.
 #[derive(Default)]
 pub(crate) struct WindFeature {
   foliage: FoliageWind,
@@ -22,7 +22,7 @@ pub(crate) struct WindFeature {
   uniform: WindUniform,
   /// The last frame's sway, which this frame's follows.
   last: Option<WindUniform>,
-  /// The wind's amplitude: what has still shadows drawn again.
+  /// The wind's amplitude, which decides when still shadows are drawn again.
   sway_amplitude: f32,
 }
 
@@ -72,8 +72,8 @@ impl WindFeature {
 impl ViewFeature for WindFeature {
   fn release(&mut self) {}
 
-  /// Its motion restarted, the foliage's drift and the trees' sway start again from nothing, as at a view's first
-  /// frame; a cut leaves them, which follow the time and not the camera.
+  /// A motion restart starts the foliage's drift and the trees' sway over, as at a view's first frame; a cut leaves
+  /// them, as they follow the time, not the camera.
   fn restart(&mut self, restart: ViewRestart) {
     if restart == ViewRestart::Motion {
       *self = Self::default();

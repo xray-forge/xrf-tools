@@ -33,8 +33,8 @@ pub(crate) struct GpuContext {
   pub adapter_name: String,
   /// The GPU drawn on.
   pub gpu: RenderGpu,
-  /// DLSS where the build and the GPU both have it: an RTX GPU, on Vulkan or D3D12. It starts beside the passes, the
-  /// first frame asking for it waiting for what remains.
+  /// DLSS where the build and the GPU have it: an RTX GPU on Vulkan or D3D12. It starts in the background; the first
+  /// frame asking for it waits for it.
   pub dlss: DlssTask,
   lost: Arc<AtomicBool>,
 }

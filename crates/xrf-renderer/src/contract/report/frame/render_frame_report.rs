@@ -88,6 +88,6 @@ pub struct RenderFrameReport {
   pub meter: Option<RenderMeterReading>,
   /// What the frame graph made of its latest frame, none before its first.
   pub graph: Option<Box<RenderGraphReport>>,
-  /// The long job it runs, none while it runs none.
+  /// The long job the viewport runs, if any.
   pub job: Option<RenderViewportJob>,
 }

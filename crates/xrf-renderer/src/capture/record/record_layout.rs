@@ -1,5 +1,4 @@
-/// How a recording's frames lie in the buffers they are copied into: pixels across and down, and the bytes a row of a
-/// copy takes, aligned as copies need.
+/// A recording frame's buffer layout: size in pixels and the copy-aligned bytes per row.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct RecordLayout {
   pub(crate) size: (u32, u32),
@@ -7,7 +6,7 @@ pub(crate) struct RecordLayout {
 }
 
 impl RecordLayout {
-  /// Frames `size` pixels across and down, four bytes each.
+  /// The layout of `size`-pixel frames at four bytes a pixel.
   pub(crate) fn new(size: (u32, u32)) -> Self {
     Self {
       size,
@@ -15,7 +14,7 @@ impl RecordLayout {
     }
   }
 
-  /// Bytes a frame's buffer takes.
+  /// Bytes of one frame's buffer.
   pub(crate) fn get_buffer_size(&self) -> u64 {
     u64::from(self.row) * u64::from(self.size.1)
   }

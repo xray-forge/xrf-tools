@@ -1,13 +1,13 @@
-/// One node of a level's AI map, as its debug views show it.
+/// One AI map node, as the debug views show it.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct RenderAiMapNode {
-  /// Its packed cell, `x * row_length + z`.
+  /// Packed cell, `x * row_length + z`.
   pub cell: u32,
-  /// Its height packed across the map's extent, 0 at its floor.
+  /// Height quantized over the map's extent, 0 at its floor.
   pub height: u16,
-  /// Its four covers from standing height and from crouching height, each 0 to 15 in four bits, the first lowest.
+  /// Four directional covers from standing and crouching height, four bits each (0 to 15), first lowest.
   pub high_cover: u16,
   pub low_cover: u16,
-  /// One bit a side, left, forward, right and back from the lowest, set where the node has no neighbour.
+  /// One bit per side, from the lowest: left, forward, right, back; set where the node has no neighbour.
   pub missing_links: u8,
 }

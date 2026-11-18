@@ -1,6 +1,3 @@
-//! A burst's sound: the scene's frames a burst draws, played on the burst's clock into `sound.wav`, the same for two
-//! bursts from one time, each sound from the frame it starts on.
-
 use std::collections::HashMap;
 use std::f32::consts::TAU;
 use std::fs;
@@ -18,7 +15,7 @@ use xrf_test_utils::GeneratedResources;
 
 use crate::viewer::burst::{BurstSound, BurstSoundChunk, BurstSoundFrame, BurstSoundOutcome, BurstSoundTee};
 
-/// The viewer's defaults but for fewer frames: 1/120 s apart from 600 s after a lead-in of 60.
+// The viewer's defaults with fewer frames.
 const BURST: RenderBurst = RenderBurst {
   at: 600.0,
   step: 1.0 / 120.0,
@@ -27,16 +24,13 @@ const BURST: RenderBurst = RenderBurst {
   samples: None,
 };
 
-/// The level's sound clock at the burst's first frame: it runs on its own, begun as the level opened, ahead of the
-/// picture's that the burst's start is given on.
+// The sound clock began when the level opened, so it runs ahead of the picture clock `BURST.at` is given on.
 const SOUND_AT: f64 = 601.9512;
 
-/// The sound's clock at the burst's frame `index`, the lead-in's counted.
 fn at(index: u32) -> Duration {
   Duration::from_secs_f64(SOUND_AT + f64::from(index) * f64::from(BURST.step))
 }
 
-/// Sounds held in memory by reference.
 struct Sounds(HashMap<String, Arc<[u8]>>);
 
 impl AudioAssetSource for Sounds {
@@ -49,7 +43,6 @@ impl AudioAssetSource for Sounds {
   }
 }
 
-/// A scene with no walls.
 struct NoWalls;
 
 impl AudioSceneGeometry for NoWalls {
@@ -58,7 +51,6 @@ impl AudioSceneGeometry for NoWalls {
   }
 }
 
-/// A 16-bit mono WAV file of `samples` at 48 kHz.
 fn wav(samples: &[i16]) -> Arc<[u8]> {
   let length: u32 = (samples.len() * 2) as u32;
   let mut bytes: Vec<u8> = Vec::new();
@@ -82,7 +74,6 @@ fn wav(samples: &[i16]) -> Arc<[u8]> {
   bytes.into()
 }
 
-/// A second of a 440 Hz tone, and a tenth of a second at a constant level, its first frame heard alone.
 fn sounds() -> Arc<dyn AudioAssetSource> {
   let tone: Vec<i16> = (0..48_000)
     .map(|frame| ((TAU * 440.0 * frame as f32 / 48_000.0).sin() * 12_000.0) as i16)
@@ -100,7 +91,7 @@ fn emitter(id: u64, sound: &str, position: [f32; 3]) -> AudioSceneEmitter {
     sound: Arc::from(sound),
     bus: AudioBus::Ambience,
     position,
-    // Started before the burst, so it plays from where its clock has it.
+    // Started before the burst, so the burst joins it mid-sound.
     start: Duration::from_secs(590),
     offset: Duration::ZERO,
     stop: None,
@@ -115,9 +106,7 @@ fn emitter(id: u64, sound: &str, position: [f32; 3]) -> AudioSceneEmitter {
   }
 }
 
-/// The sound a burst records of frames `emitters` gives each moment, sent as the world sends them, sixty a second,
-/// into the folder `name`; answers what was written and the file's bytes, having checked that what the burst's video
-/// was sent as it rendered is the file's sound, in order and whole.
+// Frames go at sixty a second, as the world sends them. Also checks the video was sent exactly the file's sound.
 fn record(name: &str, emitters: impl Fn(Duration) -> Vec<AudioSceneEmitter>) -> (BurstSoundOutcome, Vec<u8>) {
   let folder: PathBuf = GeneratedResources::path(&format!("burst_sound/{name}"));
   let AudioEngineParts { engine, .. } = AudioEngineParts::new(AudioEngineSettings::default());
@@ -172,7 +161,6 @@ fn record(name: &str, emitters: impl Fn(Duration) -> Vec<AudioSceneEmitter>) -> 
   (outcome, bytes)
 }
 
-/// The left channel of a `sound.wav`'s float samples.
 fn lefts(bytes: &[u8]) -> Vec<f32> {
   bytes[58..]
     .as_chunks::<8>()
@@ -182,8 +170,7 @@ fn lefts(bytes: &[u8]) -> Vec<f32> {
     .collect()
 }
 
-// Two bursts from one time write the same file to the byte: a tone either side of a moving listener, two as loud as
-// each other, and a sound starting between frames.
+// Tones either side of a moving listener, two equally loud, and a click starting between frames.
 #[test]
 fn writes_the_same_sound_for_two_bursts_from_one_time() {
   let emitters = |_: Duration| {
@@ -206,7 +193,7 @@ fn writes_the_same_sound_for_two_bursts_from_one_time() {
   assert_eq!(first.rate, 48_000);
   assert_eq!(first.channels, 2);
   assert_eq!(&first_bytes[..4], b"RIFF");
-  // 48 frames at 400 samples each, every frame's offset where its time falls.
+  // 400 samples per frame at 120 frames a second.
   assert_eq!(frames, 48 * 400);
   assert_eq!(first.offsets.len(), 48);
   assert_eq!(first.offsets[1], 400);
@@ -216,7 +203,6 @@ fn writes_the_same_sound_for_two_bursts_from_one_time() {
   assert!(first_bytes == second_bytes, "the two bursts' sounds differ");
 }
 
-// One burst records its sound at a time, and the next may once it is written or let go.
 #[test]
 fn refuses_a_second_bursts_sound_while_one_records() {
   let AudioEngineParts { engine, .. } = AudioEngineParts::new(AudioEngineSettings::default());
@@ -231,7 +217,7 @@ fn refuses_a_second_bursts_sound_while_one_records() {
   assert!(BurstSound::start(&BURST, &server, &tee, None).is_ok());
 }
 
-/// The first sample of the left channel heard, of a click starting at `start`, named only by frames from `named` on.
+// Only frames from `named` on carry the click.
 fn first_heard(name: &str, start: Duration, named: Duration) -> Option<usize> {
   let (_, bytes) = record(name, |time| {
     (time >= named)
@@ -248,8 +234,7 @@ fn first_heard(name: &str, start: Duration, named: Duration) -> Option<usize> {
   lefts(&bytes).iter().position(|sample| *sample != 0.0)
 }
 
-// A sound plays its first sample on the frame of the sound its start falls on: one the world starts with a frame, at
-// that frame's time, and one it names ahead of its start, between two frames.
+// One click starts with the frame that names it; the other is named ahead of a start between two frames.
 #[test]
 fn lands_a_sound_on_the_sample_its_start_falls_on() {
   let between: Duration = at(0) + Duration::from_secs_f64(0.7123);

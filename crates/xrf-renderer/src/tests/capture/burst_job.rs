@@ -38,7 +38,6 @@ fn refuses_a_burst_that_reads_nothing_back_or_steps_by_no_time() {
   }
 }
 
-// Its last frame's time is bounded, so no frame's time passes what the platform's clock can stand for.
 #[test]
 fn refuses_a_burst_drawn_past_the_latest_time() {
   for burst in [
@@ -86,7 +85,6 @@ fn draws_its_lead_in_then_its_frames_a_step_apart() {
   assert_eq!(job.get_reference(), None);
 }
 
-// Hours into a level, a burst still starts at the millisecond asked and reports its frames' times as finely.
 #[test]
 fn keeps_its_time_to_the_millisecond_hours_into_a_level() {
   let (job, _events) = start(RenderBurst {

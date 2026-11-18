@@ -14,6 +14,6 @@ pub enum RenderLevelPart {
   Helpers(RenderLevelHelpers),
   /// What the level's particles are made from; the world places their emitters itself.
   Particles(RenderParticleDefinitions),
-  /// The level's AI map, which its debug views show over the ground; none for a level without one.
+  /// The level's AI map for the debug views; none for a level without one.
   AiMap(Option<RenderLevelAiMap>),
 }

@@ -33,8 +33,8 @@ pub(crate) struct WindUniform {
 }
 
 impl WindUniform {
-  /// The sway at a time, still for none or for no amplitude: the wind's turn taken within its rotation, and the wave's
-  /// phase within the turn `shaders/static/sway.wgsl`'s `cyclic` repeats over.
+  /// The sway at a time, still without `trees` or amplitude; the wind's turn and the wave's phase are wrapped within
+  /// their periods (`cyclic` in `shaders/static/sway.wgsl`).
   pub(crate) fn new(trees: Option<&RenderTreeWind>, time: LevelTime) -> Self {
     let Some(trees) = trees.filter(|trees| trees.amplitude > 0.0) else {
       return Self::default();

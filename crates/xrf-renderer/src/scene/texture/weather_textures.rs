@@ -25,7 +25,7 @@ impl<'a> WeatherTextures<'a> {
     self.cache.is_up(self.scope, reference)
   }
 
-  /// A texture's upload, once up.
+  /// A texture's upload; none until uploaded.
   pub(crate) fn get_upload(&self, reference: &str) -> Option<WeatherTextureUpload> {
     self.cache.get_upload(self.scope, reference)
   }

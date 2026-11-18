@@ -21,10 +21,10 @@ impl SceneView {
     self.clock.set_step(step);
   }
 
-  /// Starts what it carries from frame to frame and moves by the time again from nothing at its next frame: its last
-  /// frame's time, which every unit steps on from, and each unit's clocks, easings, noise turns and histories
-  /// (`ViewRestart::Motion`). What it draws from then on follows from its frames since alone, as two bursts from one
-  /// time must.
+  /// Restarts everything carried between frames: the last frame's time and each unit's clocks, easings, noise and
+  /// histories (`ViewRestart::Motion`).
+  ///
+  /// What it draws afterwards depends only on the frames since, so two bursts from one time match.
   pub(crate) fn restart_motion(&mut self) {
     self.last_time = None;
     self.restart_units(ViewRestart::Motion);
@@ -36,9 +36,7 @@ impl SceneView {
     self.features.resolve.set_reference(reference);
   }
 
-  /// What this frame, seen through `view` and drawn by the `jittered` view projection, measures its motion and
-  /// reprojects by; none moved across a cut, after which no unit reads a history of the place the camera left
-  /// (`ViewRestart::Cut`).
+  /// This frame's motion for reprojection; on a camera cut the units drop their histories (`ViewRestart::Cut`).
   pub(crate) fn next_motion(&mut self, view: &CameraView, jittered: Mat4) -> ViewMotion {
     let motion: ViewMotion = self.features.resolve.next_motion(view, jittered);
 
@@ -49,7 +47,7 @@ impl SceneView {
     motion
   }
 
-  /// Asks every unit of the view to start again what it carries, as `restart` asks.
+  /// Passes `restart` to every unit of the view.
   fn restart_units(&mut self, restart: ViewRestart) {
     for unit in self.features.list_mut().into_iter().chain(self.stages.list_mut()) {
       unit.restart(restart);

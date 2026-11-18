@@ -5,13 +5,13 @@ use xrf_math::Sphere;
 
 use crate::scene::SceneDrawDescription;
 
-/// A scene's drawn objects as its session keeps them: what the page is told of them, and where each stands for a
-/// camera to frame it.
+/// A scene's drawn objects as its session keeps them: the page's description, and each object's sphere for a camera to
+/// frame.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct SceneDraw {
   pub description: Arc<SceneDrawDescription>,
-  /// The sphere about each drawn object's placed box, in renderer space, by the object's index among the scene's
-  /// objects; none for an object whose library object has no mesh.
+  /// The sphere about each drawn object's placed box, in renderer space, by scene object index; none for an object
+  /// whose library object has no mesh.
   pub spheres: HashMap<u32, Sphere>,
 }
 

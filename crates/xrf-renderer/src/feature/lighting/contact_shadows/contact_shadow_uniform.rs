@@ -29,8 +29,8 @@ pub(crate) struct ContactShadowUniform {
   pub stride: u32,
   /// Metres from the eye grass hides a ray to, none where the grass casts none, and from where it fades out; unused.
   pub grass: Vec4,
-  /// The texel of each two by two a half-size march starts from, turning through all four with the noise's frames, so
-  /// a temporal resolve sees every texel of a block as it sees the jitter; one texel where the noise holds still.
+  /// The texel of each two by two a half-size march starts from, cycled with the noise's frames so a temporal resolve
+  /// covers the block; fixed where the noise holds still.
   pub phase: UVec2,
   pub _pad: [u32; 2],
 }

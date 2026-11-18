@@ -14,6 +14,6 @@ pub struct RenderViewInput<'a> {
   pub options: &'a RenderViewOptions,
   /// The weather's skies, asked for ahead of being drawn.
   pub skies: &'a mut dyn RenderSkyTextures,
-  /// The burst the viewport draws this frame at its own time, none while it draws on the frames' clock.
+  /// The burst drawn this frame at its own time; none on the frames' clock.
   pub burst: Option<RenderViewBurst>,
 }

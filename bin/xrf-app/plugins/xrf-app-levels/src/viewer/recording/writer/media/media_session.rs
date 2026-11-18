@@ -6,19 +6,18 @@
 use windows::Win32::Media::MediaFoundation::{MF_VERSION, MFSTARTUP_LITE, MFShutdown, MFStartup};
 use windows::Win32::System::Com::{COINIT_MULTITHREADED, CoInitializeEx, CoUninitialize};
 
-/// COM and Media Foundation started on the calling thread, which a recording's own thread holds for its life; dropped,
-/// both shut down. Every Media Foundation object the thread made must be released first.
+/// COM and Media Foundation started on the calling thread, held by a recording thread for its life and shut down on
+/// drop. Release every Media Foundation object the thread made before dropping it.
 pub(crate) struct MediaSession;
 
 impl MediaSession {
-  /// Starts both on this thread, after `MediaProbe` loaded the libraries.
+  /// Start both on this thread; `MediaProbe` must have loaded the libraries.
   ///
   /// # Errors
   ///
   /// Returns an error when COM or Media Foundation does not start.
   pub(crate) fn start() -> Result<Self, String> {
-    // SAFETY: a thread of the recording's own joins the multithreaded apartment once, leaving it as the session drops
-    // or below.
+    // SAFETY: the recording's own thread joins the multithreaded apartment once, leaving it on drop or below.
     unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) }
       .ok()
       .map_err(|error| format!("COM does not start for the recording: {}", error.message()))?;

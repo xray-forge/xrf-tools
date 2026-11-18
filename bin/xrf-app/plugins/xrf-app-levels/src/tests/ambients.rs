@@ -45,7 +45,6 @@ fn new_effect(name: &str, particles: &str, values: &[(AmbientEffectKey, f32)]) -
   effect
 }
 
-/// Every sound found, a second long.
 fn read_sound(reference: &str) -> WorldSound {
   WorldSound::new(reference, Some(WorldSoundInfo::default()))
 }
@@ -57,8 +56,8 @@ fn new_channel(name: &str, values: Vec<(SoundChannelKey, EnvironmentValue)>) -> 
   channel
 }
 
-// Call of Pripyat's periods are milliseconds; Shadow of Chernobyl's two `sound_period` seconds stand for both halves,
-// and a `periodN` beside them overrides its half in seconds too; `sound_dist` is read nearest first.
+// CoP periods are milliseconds; SoC's two `sound_period` seconds cover both halves, a `periodN` beside them overrides
+// in seconds, and `sound_dist` is sorted nearest first.
 #[test]
 fn reads_a_channels_periods_and_distances_in_each_shape() {
   let mut catalog: EnvironmentCatalog = new_catalog();

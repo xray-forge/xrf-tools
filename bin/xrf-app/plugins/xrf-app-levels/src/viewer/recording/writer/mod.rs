@@ -1,5 +1,5 @@
-//! Video written with its sound into one file through Media Foundation's Sink Writer, on Windows only, which a recording
-//! and a burst's video write through alike.
+//! Video and sound written into one file through Media Foundation's Sink Writer (Windows only), shared by recordings
+//! and burst videos.
 
 pub(crate) mod media;
 #[cfg(windows)]

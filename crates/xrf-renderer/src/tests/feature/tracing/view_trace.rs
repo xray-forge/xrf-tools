@@ -1,5 +1,3 @@
-//! Which trees a view sways in its own top level.
-
 use glam::Vec3;
 
 use crate::feature::tracing::view_trace::view_trace_feature::ViewTraceFeature;
@@ -7,7 +5,6 @@ use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 use crate::scene::static_scene::trace::static_trace_geometry::StaticTraceGeometry;
 use crate::scene::static_scene::trace::static_trace_swaying::StaticTraceSwaying;
 
-/// A tree standing `x` metres along from the camera, its instance `index`.
 fn create_tree(index: u32, x: f32) -> StaticTraceSwaying {
   StaticTraceSwaying {
     index,
@@ -27,8 +24,7 @@ fn create_tree(index: u32, x: f32) -> StaticTraceSwaying {
   }
 }
 
-/// The wind sways the near trees, nearest first, and none past the reach; with no wind none is swayed, each standing
-/// as the scene's trace holds it, so the view keeps the scene's shared structures.
+// Without wind the view keeps the scene's shared structures.
 #[test]
 fn sways_the_near_trees_only_while_the_wind_blows() {
   let trees: [StaticTraceSwaying; 3] = [create_tree(0, 30.0), create_tree(1, 10.0), create_tree(2, 500.0)];

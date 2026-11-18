@@ -2,8 +2,8 @@ use serde::Serialize;
 
 use crate::scene::{SceneObjectId, SceneSpawnModel};
 
-/// A spawn point drawn as its entity's model, as the page is told of it: which object, and the name the renderer knows
-/// the model by, which a model the renderer could not read is reported under.
+/// A spawn point drawn as its entity's model: the object, and the renderer's name for the model, under which a model
+/// the renderer could not read is reported.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]

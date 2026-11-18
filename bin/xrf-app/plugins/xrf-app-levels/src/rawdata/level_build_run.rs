@@ -8,8 +8,7 @@ use xrf_rawdata::{LevelBuildExport, LevelBuildExporter, LevelBuildReport, LevelB
 
 use crate::rawdata::level_build_result::LevelBuildResult;
 
-/// A build and the compile after it as the app runs them in one job: the compile works on what the build wrote,
-/// whatever the level compiler's form names for it.
+/// A build and an optional compile of its output, run as one job.
 #[derive(Debug)]
 pub(crate) struct LevelBuildRun {
   pub(crate) build: LevelBuildRequest,
@@ -18,9 +17,8 @@ pub(crate) struct LevelBuildRun {
 }
 
 impl LevelBuildRun {
-  /// The run of `build` and `compile`, the compile on the build's directory, forced as the build is and tracing on
-  /// D3D12 with `dxc`. What either leaves to its defaults, the objects beside the scene and the game data's textures,
-  /// their requests resolve as the CLI's do.
+  /// The run of `build` and `compile`, the compile pointed at the build's directory, forced when the build is, and
+  /// tracing on D3D12 with `dxc` when given. Unset defaults resolve as the CLI's do.
   pub(crate) fn new(build: LevelBuildRequest, compile: Option<LevelCompileRequest>, dxc: Option<PathBuf>) -> Self {
     let compile: Option<LevelCompileRequest> = compile.map(|compile| LevelCompileRequest {
       level: build.destination.clone(),
@@ -32,13 +30,12 @@ impl LevelBuildRun {
     Self { build, compile }
   }
 
-  /// Runs the build, then the compile, on the job's thread; cancelled where the job was cancelled before either
-  /// finished, the build's report kept where it was the compile that stopped.
+  /// Run the build, then the compile, on the job's thread. A cancel during the compile keeps the build's report.
   ///
   /// # Errors
   ///
-  /// Returns an error when a compile is asked for of a build naming no game materials, which writes no build project,
-  /// when the compile or the build refuses, or when either fails.
+  /// Returns an error when a compile is asked of a build naming no game materials (it writes no build project), or
+  /// when the build or the compile refuses or fails.
   pub(crate) fn run(&self, job: &JobHandle) -> XrfResult<LevelBuildResult> {
     if let Some(compile) = &self.compile {
       if self.build.game_materials.is_none() {

@@ -72,8 +72,7 @@ fn sways_the_grass_on_its_two_winds_and_stills_it_without_wind() {
   );
 }
 
-// A frame drawn before the last, as a burst at an earlier time is, or past a second after it turns the winds by
-// `hw_Render`'s fallback step, neither back nor by the whole gap.
+// The clock runs back for a burst at an earlier time; `hw_Render` falls back to a fixed step past a second.
 #[test]
 fn turns_by_the_fallback_step_where_the_clock_ran_back_or_leapt() {
   let turned = |previous: f64, now: f64| {

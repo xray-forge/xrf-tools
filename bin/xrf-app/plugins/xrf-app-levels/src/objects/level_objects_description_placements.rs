@@ -298,8 +298,8 @@ struct SoundEnvironmentPair {
 }
 
 impl SoundEnvironmentPair {
-  /// The environments outside and inside box `index` of `file`, by its first face's front and back, as the editor
-  /// writes them.
+  /// The environments outside and inside box `index` of `file`: its first face's front and back, as the editor writes
+  /// them.
   fn of(file: &LevelSndEnvFile, index: usize) -> Self {
     let face = file.faces.get(index * LevelObjectsDescription::SOUND_BOX_FACES);
     let name = |name: Option<&str>| name.unwrap_or("unnamed").to_owned();

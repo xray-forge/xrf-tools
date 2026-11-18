@@ -2,8 +2,8 @@ use std::cmp::Ordering;
 
 use crate::scene::level::level_time::LevelTime;
 
-/// What orders a light's faces wanting a draw within their kind: a stale face by its light's distance from the eye, the
-/// nearest first; a current one, moved or swaying, by when it was drawn, the longest ago first.
+/// Draw priority of a shadow face: a stale face by its light's distance from the eye, nearest first; a current
+/// (moved or swaying) face by when it was last drawn, oldest first.
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum LightFaceRank {
   Distance(f32),
@@ -11,7 +11,7 @@ pub(crate) enum LightFaceRank {
 }
 
 impl LightFaceRank {
-  /// The order of two ranks, a stale one before a current one where they are of either kind.
+  /// Orders two ranks; a stale rank sorts before a current one.
   pub(crate) fn compare(self, other: Self) -> Ordering {
     match (self, other) {
       (Self::Distance(a), Self::Distance(b)) => a.total_cmp(&b),

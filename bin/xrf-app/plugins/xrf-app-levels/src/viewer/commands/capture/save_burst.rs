@@ -13,10 +13,10 @@ use crate::viewer::LevelViewerFolder;
 use crate::viewer::burst::{BurstCaptureRequest, BurstOutcome, BurstSound, BurstVideo, BurstWriter};
 use crate::viewer::recording::writer::MediaProbe;
 
-/// Draw a burst of consecutive frames in a viewport and write each, with its G-buffer's marks, into a new folder of
-/// the level viewer's bursts named as asked, the sound its camera hears at the burst's times beside them, and the frames
-/// with that sound as one video, where asked; answers once the last is written. A burst with sound of a viewport whose
-/// level plays none is refused before anything is drawn or written.
+/// Draw a burst of consecutive frames in a viewport and write each with its G-buffer marks into a new bursts folder,
+/// plus the camera's sound and a video when asked; answers once the last is written.
+///
+/// A burst with sound is refused up front when the viewport's level plays none.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "save_burst")]
 pub(crate) async fn levels_save_burst(
@@ -48,12 +48,11 @@ pub(crate) async fn levels_save_burst(
   execution
     .run_blocking("Saving a burst", move || -> TauriResult<BurstOutcome> {
       let folder: PathBuf = LevelViewerFolder::find_new_burst(&bursts, &name)?;
-      // Refused before anything draws where this Windows cannot write video.
+      // Refused before anything draws when this system cannot write video.
       let mut video: Option<BurstVideo> = has_video
         .then(|| BurstVideo::new(&burst, &MediaProbe::MEDIA_FOUNDATION, &folder))
         .transpose()?;
-      // The sound takes the burst's frames from its first, so it starts before the burst does, sending the video what
-      // it renders.
+      // The sound needs the burst's first frame, so it starts before the burst.
       let sound: Option<BurstSound> = has_sound
         .then(|| {
           BurstSound::start(

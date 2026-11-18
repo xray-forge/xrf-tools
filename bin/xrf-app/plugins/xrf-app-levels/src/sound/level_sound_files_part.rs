@@ -8,13 +8,13 @@ use xrf_world::WorldSoundInfo;
 use crate::level::SelectedLevel;
 use crate::sound::LevelSoundFiles;
 
-/// What a change event calls the sound files a level's emitters, music and weather read when they go stale.
+/// The part name a change event uses when the sound files a level reads go stale.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
 pub(crate) const LEVEL_SOUND_FILES_PART: &str = "soundFiles";
 
-/// What each sound file a level names says, read the first time anything asks and kept, once a snapshot for the helpers,
-/// the sounds and the weather alike. It records every file read, so one changed, come or gone moves this part and every
-/// renderer part read from it.
+/// The sound files a level names, each read on first ask and kept for the snapshot, shared by helpers, sounds and
+/// weather. Every file read is recorded, so changing, adding or removing one invalidates this part and the renderer
+/// parts read from it.
 pub(crate) struct LevelSoundFilesPart;
 
 impl SessionPart for LevelSoundFilesPart {
@@ -27,8 +27,7 @@ impl SessionPart for LevelSoundFilesPart {
 }
 
 impl LevelSoundFilesPart {
-  /// Runs `read` with the open level's sound files, read through `search`, whatever it reads recorded as this part
-  /// read it.
+  /// Run `read` with the open level's sound files, recording its reads as this part's inputs.
   pub(crate) fn with_files<T>(
     current: &SessionSnapshot<SelectedLevel>,
     search: &XraySearch,

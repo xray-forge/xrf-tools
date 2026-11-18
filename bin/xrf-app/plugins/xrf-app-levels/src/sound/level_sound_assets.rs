@@ -5,11 +5,11 @@ use xrf_vfs::{XrayRoots, XraySearch};
 
 use crate::sound::LevelSoundFiles;
 
-/// Where a shown level's sounds are read from: the roots it was opened in, through the shared mount.
+/// A shown level's sound source: its opened roots, read through the shared mount.
 pub(crate) struct LevelSoundAssets {
   assets: AssetMountState,
   roots: XrayRoots,
-  /// What tells its sounds apart from another level's: its roots, as its textures are told apart.
+  /// Keeps its sounds apart from another level's, keyed by its roots as its textures are.
   scope: String,
 }
 

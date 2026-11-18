@@ -6,14 +6,12 @@ use crate::host::world::render_scene_id::RenderSceneId;
 pub(crate) struct ViewportOverlays {
   pub overlays: Vec<RenderOverlay>,
   pub version: u64,
-  /// A set given for a scene the viewport does not show yet, drawn from the frame it does: a model's grid sized to it
-  /// never stands over the model it replaces while it loads.
+  /// A set for a scene not shown yet, drawn once it is, so a grid sized to a new model never covers the old one.
   waiting: Option<(RenderSceneId, Vec<RenderOverlay>)>,
 }
 
 impl ViewportOverlays {
-  /// Takes another set, the latest given winning: at once where it is for no scene or the one `shown`, else once that
-  /// scene is shown.
+  /// Takes a set, replacing any waiting one: at once for no scene or the `shown` one, else once its scene is shown.
   pub(crate) fn set(
     &mut self,
     overlays: Vec<RenderOverlay>,
@@ -28,7 +26,7 @@ impl ViewportOverlays {
     }
   }
 
-  /// Draws the set waiting for `scene`, now shown, if one does.
+  /// Applies the set waiting for `scene`, now shown, if any.
   pub(crate) fn show(&mut self, scene: RenderSceneId) {
     if let Some((_, overlays)) = self.waiting.take_if(|(waiting, _)| *waiting == scene) {
       self.replace(overlays);

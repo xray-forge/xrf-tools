@@ -25,20 +25,17 @@ pub(crate) struct WaterUniform {
   pub soft: f32,
   /// One while the water writes the distortion it causes.
   pub distorted: f32,
-  /// Seconds the water had moved at the last frame, within `PERIOD`, where its wave stood then, which its motion is
-  /// measured from.
+  /// `time` at the last frame, which the wave's motion is measured from.
   pub previous_time: f32,
 }
 
 impl WaterUniform {
-  /// Seconds the water's clock repeats over: its wave runs on `sin(time)` and its normal layers turn about a circle at a
-  /// tenth of it, which repeat over 2π and 20π; this spans the slower a hundred times, so a level's first hour and more
-  /// runs as it always did. Its other readers, the reflection's march noise and jitter, follow no pattern a repeat
-  /// breaks.
+  /// Seconds the water's clock repeats over: a hundred of the normal layers' 20π turn, a whole number of the wave's 2π,
+  /// so a level's first hour and more runs unchanged. The march noise and jitter it also drives show no repeat.
   pub(crate) const PERIOD: f64 = 2000.0 * std::f64::consts::PI;
 
-  /// The settings at `time`, under the weather's `water_intensity`, its wave still since the last frame until it
-  /// follows one. The enhanced water stands flat (`get_wave_height`).
+  /// The settings at `time` under the weather's `water_intensity`, the wave still until it follows a last frame
+  /// (`following`).
   pub(crate) fn new(settings: &RenderWaterSettings, intensity: f32, time: LevelTime) -> Self {
     let time: f32 = time.get_phase(Self::PERIOD);
 
@@ -55,11 +52,11 @@ impl WaterUniform {
     }
   }
 
-  /// How high the wave lifts the surface: the engine's water as the settings ask, the enhanced water not at all. The
-  /// enhanced water's waves are its maps' and its parallax's; a lift of its geometry, too low to see as a shape, slides
-  /// where a grazing view meets the surface by tens of times its height, and its reflection shimmers with it: a still
-  /// view's reflection moved three to eighteen times as much over eight seconds lifted as flat, under every
-  /// antialiasing, SMAA's included.
+  /// How high the wave lifts the surface: the engine's water as the settings ask, the enhanced water not at all.
+  ///
+  /// The enhanced water's waves are its maps and parallax; lifting its geometry slides a grazing view's hit by tens of
+  /// times the height, and a still view's reflection shimmered three to eighteen times as much under every
+  /// antialiasing.
   fn get_wave_height(settings: &RenderWaterSettings) -> f32 {
     match settings.mode {
       RenderWaterMode::Engine => settings.wave_height,

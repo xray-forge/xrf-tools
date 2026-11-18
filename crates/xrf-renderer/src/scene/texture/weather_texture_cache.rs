@@ -45,7 +45,7 @@ pub(crate) struct WeatherTextureCache {
   placeholder_flat: wgpu::TextureView,
   placeholder_volume: wgpu::TextureView,
   frame: u64,
-  /// Textures uploaded so far, numbering each upload.
+  /// Uploads so far, which numbers each upload.
   uploads: u64,
   workers: RenderWorkers,
 }
@@ -206,7 +206,7 @@ impl WeatherTextureCache {
       })
   }
 
-  /// A texture of a scope's upload, once up.
+  /// The upload of a scope's texture; none until uploaded.
   pub(crate) fn get_upload(&self, scope: &str, reference: &str) -> Option<WeatherTextureUpload> {
     self
       .get_entry(scope, reference)

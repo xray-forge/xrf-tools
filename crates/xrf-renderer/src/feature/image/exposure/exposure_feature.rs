@@ -63,8 +63,7 @@ pub(crate) struct ExposureFeature {
   /// Whether the scale holds where it stands, metered no more: a capture's tiles or faces share one exposure, or
   /// their seams show.
   is_frozen: bool,
-  /// Whether the next frame it meters takes its measure whole, the view having restarted what it carries between
-  /// frames.
+  /// Whether the next metered frame takes its measure whole, the view having restarted.
   is_restarted: bool,
 }
 
@@ -223,7 +222,7 @@ impl ExposureFeature {
     }
 
     let delta: Duration = self.get_delta(now);
-    // A restarted view's first metered frame moves the scale all the way, from wherever the frames before left it.
+    // A restarted view's first metered frame moves the scale all the way.
     let blend: f32 = if std::mem::take(&mut self.is_restarted) {
       1.0
     } else {

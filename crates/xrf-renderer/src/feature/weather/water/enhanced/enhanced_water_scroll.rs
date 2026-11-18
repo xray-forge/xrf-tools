@@ -3,11 +3,10 @@ use glam::Vec4;
 use crate::feature::weather::water::enhanced::water_flow::WaterFlow;
 use crate::scene::level::level_time::LevelTime;
 
-/// Where each of the enhanced water's map reads stands this frame, as `shaders/static/water_enhanced.wgsl` adds it to
-/// its unscrolled coordinates: the flow's sums multiplied out in `f64` and taken within the map's repeat of one, so
-/// each read moves as finely after a day as in a level's first minute, where the sums themselves as `f32` would step
-/// and stall. The waves' scroll moves every read off the waves' coordinates by its own share, turned and tiled as that
-/// read is, so it is worked out here for each read.
+/// The offsets `shaders/static/water_enhanced.wgsl` adds to each of the enhanced water's map reads this frame.
+///
+/// Worked out in `f64` and wrapped within the map's repeat, so a read moves as finely after a day as in the first
+/// minute. The waves' scroll is turned and tiled per read, so it is worked out here for each.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub(crate) struct EnhancedWaterScroll {
   /// The heights' two scrolls, the first in `xy`, the second (read backwards) in `zw`.
@@ -34,8 +33,8 @@ impl EnhancedWaterScroll {
   pub(crate) const RIPPLE_MAP_SCALE: f32 = 0.6;
   pub(crate) const RIPPLE_LAYER_SCALES: [f32; 2] = [0.61, 0.87];
 
-  /// The waves' scroll across and down a second of their pace, and the map's repeats a wave-clock second a layer tiled
-  /// once runs along its own axis.
+  /// The waves' scroll across and down a second of their pace, then the map repeats a once-tiled layer runs along its
+  /// axis a wave-clock second.
   const WAVE_SCROLL: [f64; 2] = [0.065, 0.445];
   const WAVE_PACE: f64 = 0.3;
   /// The heights' two scrolls a second of their pace.
@@ -45,8 +44,8 @@ impl EnhancedWaterScroll {
   /// How fast each of the rain ripples' three layers ripples, a second at the ripples' pace (`WaterFlow::ripples`).
   const RIPPLE_SPEEDS: [f64; 3] = [1.05, 1.31, 1.58];
 
-  /// The reads at the `flow`'s sums; the waves' scroll moves none where the parallax is `is_marched`, as its march sets
-  /// the waves' coordinates in its place.
+  /// The reads at the `flow`'s sums; no wave scroll where the parallax `is_marched`, as the march sets the waves'
+  /// coordinates instead.
   pub(crate) fn new(flow: &WaterFlow, is_marched: bool) -> Self {
     let wrap = |value: f64| LevelTime::wrap(value, 1.0);
     let scroll: [f64; 2] = if is_marched {

@@ -76,10 +76,9 @@ impl SkyFeature {
   const REFILL_WAIT_MOST: u32 = 4;
   /// Milliseconds a refill costs before the timer measured one.
   const REFILL_SEED: f32 = 0.2;
-  /// The clouds' two layers' drift over their textures a second, `xy` the first's and `zw` the second's: each layer's
-  /// way, `setHP(PI_DIV_4, 0)` and `setHP(PI_DIV_4 + PI_DIV_8, 0)` in `x` and `z` through the byte `RenderClouds` packs
-  /// a direction into, times its speed, `CLOUD_SPEED0` and `CLOUD_SPEED1` (`shared/cloudconfig.h`), on `timers.z`
-  /// run a tenth as fast.
+  /// The clouds' two layers' drift a second, `xy` the first's and `zw` the second's: the ways `setHP(PI_DIV_4, 0)` and
+  /// `setHP(PI_DIV_4 + PI_DIV_8, 0)` as `RenderClouds` packs them into bytes, times `CLOUD_SPEED0` and `CLOUD_SPEED1`
+  /// (`shared/cloudconfig.h`), on `timers.z`, which runs a tenth as fast.
   const CLOUD_DRIFT: [f64; 4] = [
     -0.709_803_9 * 0.1 * 0.1,
     0.701_960_8 * 0.1 * 0.1,
@@ -87,8 +86,8 @@ impl SkyFeature {
     0.380_392_2 * 0.05 * 0.1,
   ];
 
-  /// How far the clouds' layers have drifted over their textures at `time`, each within the textures' repeat of one,
-  /// the first's in `xy` and the second's in `zw`.
+  /// How far the clouds' layers have drifted at `time`, wrapped within the textures' repeat, the first in `xy` and the
+  /// second in `zw`.
   pub(crate) fn get_cloud_drift(time: LevelTime) -> Vec4 {
     Vec4::from_array(Self::CLOUD_DRIFT.map(|rate| time.get_turns(rate)))
   }
@@ -260,10 +259,8 @@ impl SkyFeature {
       .record(move |context| passes.weather.sky_motion.record(context, view, &sky_motion));
   }
 
-  /// What the lighting draws the sky with this frame: a keyframe whose textures are not all up blended out, so a sky
-  /// still going up shows the other one; whether both irradiance cubes are up; the clouds' drift at `time`; the sun's sprite
-  /// while its texture is up; the exposure and the display the view decided (`shared`); at the physical light levels the
-  /// world's light, and the units the light is in by the sky last projected.
+  /// What the lighting draws the sky with this frame. A keyframe whose textures are not all up is blended out, so a
+  /// sky still loading shows the other one.
   pub(crate) fn get_lighting_frame(
     &self,
     &ViewPrepare {
@@ -380,9 +377,8 @@ impl SkyFeature {
     Some(sky)
   }
 
-  /// The sky's parameters as the combine draws the sky, from those `add_passes` answered (`sky`): with the enhanced
-  /// debanding, its textures' smoothed copies in their place, each smoothed first where this frame copies it; every
-  /// other reader of the sky keeps the textures as they are.
+  /// The sky's parameters as the combine draws it: `sky`, with the enhanced debanding's smoothed copies in place of its
+  /// textures (`SkyDeband::add_passes`).
   pub(crate) fn add_drawn_sky<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,

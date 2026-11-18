@@ -33,8 +33,7 @@ impl MapCaptureLook {
 
     // An experiment: the grass planted over the whole tile, its tufts alike from edge to edge.
     features.grass.is_enabled = tile.is_grassed;
-    // The bloom's blur reaches past a tile's margin, and the camera's vignette, blur, grain and aberration are each
-    // tile's own, so neighbouring tiles would not meet.
+    // Bloom reaches past a tile's margin and camera effects are per tile, so neighbouring tiles would not meet.
     features.bloom.is_enabled = false;
     features.enhanced_bloom.mode = RenderBloomMode::Engine;
     features.camera = features.camera.without_effects();

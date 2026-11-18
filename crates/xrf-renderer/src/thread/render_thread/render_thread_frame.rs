@@ -29,11 +29,9 @@ use crate::viewport::reported_graph::ReportedGraph;
 use crate::viewport::viewport_device::ViewportDevice;
 
 impl RenderThread {
-  /// One frame: the world advanced to the frames' clock, the shaders reloaded where they changed, the scenes fed what
-  /// the world posted (whether or not any window can be drawn, so no post is lost), each viewport shown the scene it
-  /// asks for, the scenes no one needs let go, the textures kept, every window drawn, then the reports. Answers whether
-  /// the windows were presented: a frame without a GPU, a window or a graph wgpu took presents nothing, and nothing
-  /// waits for the display after it.
+  /// Runs one frame and returns whether the windows were presented; without a GPU, a window or a graph nothing is.
+  ///
+  /// The scenes take what the world posted even when no window can be drawn, so no post is lost.
   pub(super) fn frame(&mut self) -> bool {
     profiling::scope!("frame");
 
@@ -185,9 +183,10 @@ impl RenderThread {
     Some((encoder, span))
   }
 
-  /// Feeds each scene what the world posted for it, making it where it is new, its clock begun where the world's began
-  /// (`RenderSceneFrame::opened`); a scene keeps its acceleration structures only while a viewport traces rays in it
-  /// (`RenderViewOptions::is_scene_traced`). Answers the scenes the world still holds.
+  /// Feeds each scene what the world posted, making new ones (`RenderSceneFrame::opened`); returns the scenes the world
+  /// still holds.
+  ///
+  /// A scene keeps its acceleration structures only while a viewport traces it (`RenderViewOptions::is_scene_traced`).
   fn ingest_scenes(
     &mut self,
     mut scene_frames: HashMap<RenderSceneId, RenderSceneFrame>,
@@ -320,7 +319,7 @@ impl RenderThread {
     gpu.weather_textures.update(&gpu.context.device, &gpu.context.queue);
   }
 
-  /// Lets go of the textures no scene samples, every `TEXTURE_SWEEP`.
+  /// Frees the textures no scene samples, at most every `TEXTURE_SWEEP`.
   pub(super) fn sweep_textures(&mut self, now: Instant) {
     let Some(RunningGpu { gpu, .. }) = &mut self.running else {
       return;
@@ -374,9 +373,8 @@ impl RenderThread {
       ray_reconstruction,
     };
 
-    // The windows' own passes, composition and captures, are every viewport's: taken once a round any report is due in,
-    // and handed to each viewport reporting, rather than to whichever reports first. Only a report due reads the
-    // allocator, which lists every allocation it holds.
+    // The windows' own passes belong to every viewport, so they go to each viewport reporting, not only the first.
+    // Only a due report reads the allocator, which lists every allocation.
     let is_any_due: bool = self.viewports.values().any(|viewport| viewport.is_report_due(now));
     let allocator: Option<&GpuMemory> = if is_any_due {
       Self::read_allocator_report(

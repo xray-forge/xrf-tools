@@ -139,7 +139,7 @@ impl WaterFeature {
     }
 
     let is_traced: bool = reflections.is_traced && can_trace(device);
-    // Every pixel tracing every frame leaves a record at its place, at a turn of one, never waiting dim.
+    // Fully traced, every pixel traces every frame and never waits dim.
     let is_fully_traced: bool = is_traced && reflections.is_water_fully_traced;
 
     self.frame = self.frame.wrapping_add(1);
@@ -184,8 +184,7 @@ impl WaterFeature {
     self.is_drawn
   }
 
-  /// Whether this frame's enhanced water draws and traces every pixel's reflected ray, which the grass's cards stand
-  /// in.
+  /// Whether this frame's enhanced water draws and traces every pixel's reflected ray, which meets the grass's cards.
   pub(crate) fn is_fully_traced(&self) -> bool {
     self.is_fully_traced
   }
@@ -211,9 +210,8 @@ impl WaterFeature {
     self.enhanced.rings_strength = rings.strength;
   }
 
-  /// Follows the grass's cards this frame, readied after the water: the metres from the eye within which the trace
-  /// stands every tuft whole (`TraceGrassUniform::card_reach`, none where it traces none), so the screen leaves the
-  /// plants there to the trace while every pixel traces, and answers them where the trace would meet nothing.
+  /// Follows the grass's cards, readied after the water: while every pixel traces, the screen leaves plants within
+  /// `card_reach` (`TraceGrassUniform::card_reach`) to the trace and answers them beyond it.
   pub(crate) fn follow_grass_cards(&mut self, card_reach: f32) {
     self.enhanced.plant_reach = if self.is_fully_traced { card_reach } else { 0.0 };
   }
@@ -246,9 +244,8 @@ impl ViewFeature for WaterFeature {
     }
   }
 
-  /// Its motion restarted, its maps' scroll, its traced pixels' turn and its reflection's histories start again from
-  /// nothing, its wave's last place over with the view's last frame; a cut leaves the reflection's history nothing to
-  /// read, its scroll running on.
+  /// A motion restart starts the maps' scroll, the traced pixels' turn and the reflection's histories over; a cut only
+  /// drops the reflection's history.
   fn restart(&mut self, restart: ViewRestart) {
     match restart {
       ViewRestart::Motion => {

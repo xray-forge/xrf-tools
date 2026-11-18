@@ -1,5 +1,3 @@
-//! How far the enhanced water's maps scroll, summed frame by frame, and where each map read stands.
-
 use crate::contract::feature::weather::water::render_enhanced_water_settings::RenderEnhancedWaterSettings;
 use crate::feature::weather::water::enhanced::enhanced_water_scroll::EnhancedWaterScroll;
 use crate::feature::weather::water::enhanced::water_flow::WaterFlow;
@@ -7,7 +5,6 @@ use crate::feature::weather::water::enhanced::water_weather::WaterWeather;
 use crate::lighting::wind::render_wind::RenderWind;
 use crate::tests::support::test_time::frame_at;
 
-/// A wind of `velocity` from the north, under a rain of half its density.
 fn wind(velocity: f32) -> WaterWeather {
   WaterWeather {
     wind: RenderWind {
@@ -53,13 +50,9 @@ fn the_flow_scales_every_scroll_and_none_stills_them() {
     [flow.seconds, flow.waves, flow.heights, flow.gusts[0], flow.gusts[1]],
     [0.0; 5]
   );
-  // The rain ripples on whatever the water's flow, as the rain falls.
   assert!(flow.ripples > 0.0);
 }
 
-/// The rain ripples run by each frame's seconds at that frame's rain, so a rain thickening late in a long level
-/// changes how fast they run from then on, never where they stand; before, the whole level's time times the new
-/// rain's pace spun them several times too fast for as long as the rain changed.
 #[test]
 fn a_change_of_rain_changes_how_fast_the_ripples_run_not_where_they_stand() {
   let settings: RenderEnhancedWaterSettings = RenderEnhancedWaterSettings::default();
@@ -73,13 +66,11 @@ fn a_change_of_rain_changes_how_fast_the_ripples_run_not_where_they_stand() {
 
   flow.advance(frame_at(36_100.1, Some(36_100.0)), &settings, rain(0.625));
 
-  // A hundred seconds at the light rain's pace, its density 1.6 times over; then a tenth of a second at the heavy's.
+  // 100 s at the light rain's pace (density times 1.6), then 0.1 s at the heavy rain's.
   assert!((light.ripples - 100.0 * 0.64_f64.max(0.65)).abs() < 1e-6);
   assert!((flow.ripples - light.ripples - 0.1 * 1.0).abs() < 1e-6);
 }
 
-/// A frame's step after a day of flowing moves the maps as far as one in the first minute: the sums keep it, and each
-/// read is taken within its map's repeat before it becomes `f32`.
 #[test]
 fn a_frame_moves_the_maps_alike_after_a_day() {
   let settings: RenderEnhancedWaterSettings = RenderEnhancedWaterSettings::default();
@@ -119,8 +110,6 @@ fn a_frame_moves_the_maps_alike_after_a_day() {
   }
 }
 
-/// Each read stands where the sums put it, taken within one repeat: the waves' scroll added to each layer as the layer
-/// turns and tiles its coordinates, none of it where the parallax marches them.
 #[test]
 fn each_read_stands_where_the_sums_put_it() {
   let mut flow: WaterFlow = WaterFlow::default();
@@ -142,7 +131,6 @@ fn each_read_stands_where_the_sums_put_it() {
   assert!((scroll.map_offsets[1].z - wrap((across + 0.75) * 0.1)).abs() < 1e-6);
   assert!((marched.map_offsets[1].w - wrap(-1.5 * 0.1)).abs() < 1e-6);
   assert!((scroll.flow_scrolls.y - wrap(12.5 * 0.07)).abs() < 1e-6);
-  // The ripples' clocks at their layers' speeds over the seconds at the ripples' pace.
   assert!((scroll.ripple_clocks.x - wrap(8.0 * 1.05)).abs() < 1e-6);
   assert!((scroll.ripple_clocks.z - wrap(8.0 * 1.58)).abs() < 1e-6);
 }

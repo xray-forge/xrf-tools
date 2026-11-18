@@ -1,6 +1,4 @@
-//! The Level Editor scene's commands: opening, restoring and closing a scene, describing its object tools' objects and
-//! its binary tools' counts, showing it in a viewport, describing what the page needs of its picture and its helpers
-//! beside it, and locating one object for a camera to frame.
+//! Commands for an open Level Editor scene: its lifecycle, descriptions of its parts, and drawing it in a viewport.
 
 pub(crate) mod close_scene;
 pub(crate) mod describe_scene_binary_tools;

@@ -1,4 +1,4 @@
-//! A cubemap: its capture's request and its export.
+//! Cubemap capture requests and exports.
 
 mod cube_capture_request;
 mod cube_export_format;

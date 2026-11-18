@@ -1,5 +1,5 @@
-//! A level drawn by the native renderer and played by the world: its source, how its session parts feed its scene, the
-//! source each session is drawn from, where it is heard, and how a shown level follows a commit.
+//! A level drawn by the native renderer and played by the world: its source, its session parts, its audio, and how a
+//! shown level follows commits.
 
 mod level_audio;
 mod level_particle_collider;

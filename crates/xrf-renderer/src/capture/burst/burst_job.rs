@@ -30,20 +30,19 @@ impl BurstJob {
   /// Frames a burst reads back at most, and samples a reference draws each at.
   pub(crate) const MOST_FRAMES: u32 = 480;
   pub(crate) const MOST_SAMPLES: u32 = 256;
-  /// The scene's latest second a burst's frame may be drawn at, a year of it: far past any level left open, and far
-  /// short of what the platform's clock can stand for past the level's start.
+  /// Latest scene second a burst frame may be drawn at: a year, past any open level and well within the platform clock.
   pub(crate) const LATEST_SECONDS: f64 = 365.0 * 24.0 * 3600.0;
 
   /// Frames on their way back at most: the next waits, its clock held, rather than hold more of them.
   const MOST_IN_FLIGHT: usize = 8;
 
-  /// A burst as asked.
+  /// Validates a burst.
   ///
   /// # Errors
   ///
-  /// Returns an error for a burst that reads back no frame or more than `MOST_FRAMES`, a lead-in longer than that, a
-  /// reference of no sample or more than `MOST_SAMPLES`, a step that is not a positive time, a start that is not a
-  /// time of the scene's, or a last frame drawn past `LATEST_SECONDS`.
+  /// Returns an error when frames or lead-in are outside `1..=MOST_FRAMES` (lead-in may be zero), samples outside
+  /// `1..=MOST_SAMPLES`, the step not positive, the start negative or not finite, or the last frame past
+  /// `LATEST_SECONDS`.
   pub(crate) fn new(burst: RenderBurst, events: Sender<BurstEvent>) -> XrfResult<Self> {
     if !(1..=Self::MOST_FRAMES).contains(&burst.frames) || burst.lead_in > Self::MOST_FRAMES {
       return Err(XrfError::new_invalid_error(format!(
@@ -120,7 +119,7 @@ impl BurstJob {
     Duration::try_from_secs_f64(Self::get_seconds(&self.burst, frame)).ok()
   }
 
-  /// The scene's seconds `burst`'s frame `frame` is drawn at, the lead-in's counted.
+  /// Scene seconds of `burst`'s frame `frame`, counting lead-in frames.
   fn get_seconds(burst: &RenderBurst, frame: u32) -> f64 {
     burst.at + f64::from(frame) * f64::from(burst.step)
   }

@@ -10,16 +10,17 @@ use crate::frame::periodic::periodic_ticket::PeriodicTicket;
 /// What a frame was granted: each job's passes, the units it drew and what a unit cost before any was learned.
 type FrameGrants = Vec<(&'static [&'static str], f32, f32)>;
 
-/// The work every view and scene draws once in so many frames, and what streams in, decided for all of them so the
-/// frame carries about the same share of it every time: each offers its due jobs, the scheduler grants them, and each
-/// does what it was granted. A frame decides in rounds sharing its budget: what streams in as the scenes take their
-/// updates, then what is drawn once every view prepared. A job that must be done this frame is granted whatever it
-/// costs, and spends the budget like any other, so what may wait fills only what it leaves; then the one waited longest
-/// past its deadline, whatever the budget, one a frame, though where what must draw already spent the budget a job just
-/// at its deadline waits one frame more, so two large draws do not land on one frame; then the rest by how near their
-/// deadline they stand, while they fit. A job's cost is its units at the milliseconds a unit last cost: as the timer
-/// measured its passes where they are timed, else as the frames' GPU times show it, fitted over the jobs each frame was
-/// granted; its seed before either.
+/// Grants the periodic and streaming work of every view and scene against one GPU budget, so each frame carries a
+/// similar share: owners offer due jobs, the scheduler grants, owners do what was granted.
+///
+/// A frame decides in rounds sharing the budget: streaming as scenes take their updates, then draws once every view
+/// prepared. Grant order: jobs due now, whatever they cost, spending the budget so work that may wait fills only what
+/// they leave; then the one longest past its deadline, one a frame
+/// regardless of budget, unless due-now work already spent the budget and it is only just at its deadline, so two
+/// large draws do not share a frame; then the rest by nearest deadline while they fit.
+///
+/// A job's cost is its units times the last cost per unit: from the timer where its passes are timed, else fitted from
+/// frame GPU times over each frame's grants, else its seed.
 pub(crate) struct PeriodicScheduler {
   /// Milliseconds of GPU time a frame's work that may wait fills.
   budget: f32,

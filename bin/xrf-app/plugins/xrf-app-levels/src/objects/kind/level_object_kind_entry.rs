@@ -262,11 +262,10 @@ pub(crate) const LEVEL_OBJECT_KINDS: &[LevelObjectKindEntry] = &[
   },
 ];
 
-/// The bit a view switches the sound emitters' helpers by, past the kind table's: each static and zone sound's spheres
-/// out to its minimum and maximum distance, named as its level object is.
+/// The helper kind bit, after the kind table's, that switches the sound emitter helpers: each static and zone sound's
+/// spheres at its minimum and maximum distance.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
 pub(crate) const LEVEL_SOUND_EMITTERS_HELPER_KIND: u32 = LEVEL_OBJECT_KINDS.len() as u32;
 
-// A view switches the helpers a bit a kind (`RenderHelperOptions::kinds`), so a kind past the mask's width would never
-// draw; widen the mask before the table and the sound emitters outgrow it.
+// `RenderHelperOptions::kinds` holds one bit per kind, so a kind past its width would never draw: widen the mask first.
 const _: () = assert!(LEVEL_SOUND_EMITTERS_HELPER_KIND < u32::BITS);

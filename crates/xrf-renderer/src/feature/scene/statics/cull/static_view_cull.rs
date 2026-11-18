@@ -1,9 +1,9 @@
 use crate::scene::static_scene::draw::static_cull_scratch::StaticCullScratch;
 
-/// What a view's camera cull writes and its draws read: the visible list, the candidates its early phase sets aside for
-/// the late, its draw and late arguments, and the late phase's dispatch. Each view holds its own, so the views of one
-/// scene cull and draw apart whatever order a frame declares them in; the scene keeps what every cull starts from, the
-/// lists' regions and the arguments' templates (`StaticCullScratch`).
+/// What a view's camera cull writes and its draws read.
+///
+/// Each view holds its own, so the views of one scene cull and draw apart in any order; the scene keeps what every
+/// cull starts from (`StaticCullScratch`).
 pub(crate) struct StaticViewCull {
   pub lists: wgpu::Buffer,
   /// Clusters the early phase set aside, for the late phase to test again: as many entries as the visible list.
@@ -46,8 +46,8 @@ impl StaticViewCull {
     }
   }
 
-  /// Makes `held` hold lists of at least `list_bytes`, made again doubled where they are too small; a cull fills them
-  /// whole, so nothing they held is kept.
+  /// Makes `held` hold lists of at least `list_bytes`, remade at least doubled where too small, keeping nothing, as a
+  /// cull fills them whole.
   pub(crate) fn fit(held: &mut Option<Self>, device: &wgpu::Device, list_bytes: u64) {
     match held {
       Some(cull) if cull.lists.size() >= list_bytes => {}

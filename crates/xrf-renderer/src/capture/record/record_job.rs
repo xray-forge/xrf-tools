@@ -10,8 +10,8 @@ use crate::capture::record::record_layout::RecordLayout;
 use crate::capture::record::record_shot::RecordShot;
 use crate::frame::readback::gpu_readback::GpuReadback;
 
-/// Where a buffer of the ring stands: free, copied into by the frame being drawn, asked back with its frame's present
-/// time once that is known, or with the recorder.
+/// A ring buffer's state: free, copied into this frame, awaiting readback (with its present time once known), or held
+/// by the recorder.
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum RecordSlot {
   Free,
@@ -20,15 +20,15 @@ enum RecordSlot {
   Sent,
 }
 
-/// A viewport recorded as it is presented, alongside what it draws: a frame kept a sixtieth of a second on from the
-/// last, presented at the size locked at the start and copied into one of a ring of four buffers, which the recorder
-/// reads on its own thread. With every buffer on its way or held by the recorder, a frame due is dropped and counted,
-/// so the render thread never waits on a recording.
+/// A viewport recording: up to 60 presented frames a second at a fixed size, copied into a ring of buffers the
+/// recorder reads on its own thread.
+///
+/// A due frame finding no free buffer is dropped and counted, so the render thread never waits on a recording.
 pub(crate) struct RecordJob {
   layout: RecordLayout,
   readbacks: Vec<Arc<GpuReadback>>,
   slots: [RecordSlot; Self::RING],
-  /// When the first frame was due, which the sixtieths are counted from, and the last one taken or dropped.
+  /// When the first frame was due, which indices count from, and the last index taken or dropped.
   started: Option<Instant>,
   last: Option<u64>,
   dropped: u64,
@@ -37,10 +37,10 @@ pub(crate) struct RecordJob {
 }
 
 impl RecordJob {
-  /// Buffers a recording's frames go back through.
+  /// Buffers in the readback ring.
   pub(crate) const RING: usize = 4;
 
-  /// A recording of frames `size` pixels across, told to `events`.
+  /// A recording at `size` pixels, reporting to `events`.
   pub(crate) fn new(size: (u32, u32), events: Sender<RecordEvent>) -> Self {
     Self {
       layout: RecordLayout::new(size),
@@ -54,14 +54,14 @@ impl RecordJob {
     }
   }
 
-  /// The frame this frame draws at `now`, where one is due a sixtieth on from the last and a buffer is free; a frame
-  /// due with none free is dropped and counted. The buffers are made with the first.
+  /// The shot to draw at `now` if a frame is due and a buffer free; a due frame without one is dropped and counted.
+  /// The buffers are made on the first call.
   pub(crate) fn take_shot(&mut self, device: &wgpu::Device, now: Instant) -> Option<RecordShot> {
     if self.is_ended {
       return None;
     }
 
-    // Counted to the nearest sixtieth, so a frame presented a little early or late keeps its place.
+    // Rounded to the nearest sixtieth, so a slightly early or late frame keeps its slot.
     let started: Instant = *self.started.get_or_insert(now);
     let index: u64 = (now.duration_since(started).as_secs_f64() / RecordFrame::INTERVAL.as_secs_f64()).round() as u64;
 
@@ -90,7 +90,7 @@ impl RecordJob {
     Some(RecordShot::new(slot, Arc::clone(&self.readbacks[slot]), self.layout))
   }
 
-  /// Ends the frame `shot` was drawn in, submitted: its copy asked back, or its buffer freed where the frame drew none.
+  /// After submission, requests `shot`'s copy back, or frees its buffer where nothing was copied.
   pub(crate) fn advance(&mut self, shot: RecordShot) {
     let readback: &GpuReadback = &self.readbacks[shot.slot];
 
@@ -108,13 +108,13 @@ impl RecordJob {
     };
   }
 
-  /// Frees the buffer of `shot`, drawn in a frame that was never submitted.
+  /// Frees `shot`'s buffer when its frame was never submitted.
   pub(crate) fn abandon(&mut self, shot: &RecordShot) {
     self.readbacks[shot.slot].abandon();
     self.slots[shot.slot] = RecordSlot::Free;
   }
 
-  /// Notes `at` as the present time of the frames asked back that had none, the frame just presented.
+  /// Sets `at` as the present time of every awaited frame that has none yet.
   pub(crate) fn present(&mut self, at: Instant) {
     for slot in &mut self.slots {
       if let RecordSlot::Asked { presented, .. } = slot {
@@ -123,7 +123,7 @@ impl RecordJob {
     }
   }
 
-  /// Sends the recorder each frame back since and presented, and takes back the buffers it read or let go.
+  /// Sends the recorder every frame back and presented, and reclaims the buffers it read or dropped.
   pub(crate) fn poll(&mut self) {
     for slot in 0..self.slots.len() {
       match self.slots[slot] {

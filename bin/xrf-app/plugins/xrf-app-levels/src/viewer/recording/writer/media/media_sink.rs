@@ -23,10 +23,10 @@ use windows::core::{GUID, HSTRING, Interface, PCWSTR};
 
 use crate::viewer::recording::writer::{RecordFormat, RecordResampler, RecordSample, RecordSoundFormat, RecordSummary};
 
-/// Media Foundation's Sink Writer writing one recording as fragmented MP4: H.264 High from frames handed over as RGB32,
-/// which the writer converts for the encoder, a hardware one where the GPU has it; and AAC from 16-bit PCM, sound at a
-/// rate AAC does not take brought to 48 kHz first. Each fragment is whole once written, so a recording cut short plays
-/// to its last. Made and used on the thread holding a `MediaSession`.
+/// Media Foundation's Sink Writer writing one recording as fragmented MP4: H.264 High from RGB32 frames, on a hardware
+/// encoder when the GPU has one, and AAC from 16-bit PCM, resampled to 48 kHz when AAC does not take the rate. Each
+/// written fragment is whole, so a recording cut short plays to its last. Made and used on the thread holding a
+/// `MediaSession`.
 pub(crate) struct MediaSink {
   writer: IMFSinkWriter,
   format: RecordFormat,
@@ -37,46 +37,46 @@ pub(crate) struct MediaSink {
   end: Duration,
 }
 
-/// The sound stream: its index, what the encoder takes, and the resampler that brings the sound to it where it must.
+/// The sound stream: its index, the encoder's format, and the resampler when the input rate needs one.
 struct SinkSound {
   stream: u32,
   encoded: RecordSoundFormat,
   resampling: Option<SinkResampling>,
 }
 
-/// Sound brought to 48 kHz as it comes: a gap in what comes (a block the tap had no room for) starts the resampler
-/// again at the next sound's own time, so nothing after it slides.
+/// Streaming resampling to 48 kHz. A gap in the input (a block the tap dropped) restarts the resampler at the next
+/// sound's own time, so nothing after it slides.
 struct SinkResampling {
   resampler: RecordResampler,
-  /// The input frame the sound handed over so far ends at, none before the first.
+  /// The input frame the sound so far ends at; none before the first.
   next: Option<u64>,
-  /// The output frame the resampler last started again at, and the frames it gave since.
+  /// The output frame of the last restart, and the frames given since.
   base: u64,
   given: u64,
 }
 
 impl MediaSink {
-  /// Ticks of Media Foundation's clock a second.
+  /// Media Foundation clock ticks per second.
   const TICKS: u64 = 10_000_000;
 
-  /// The video's bits a pixel of each frame, so the bitrate follows the size and the frame rate.
+  /// Video bits per pixel per frame, so the bitrate follows size and frame rate.
   const BITS_PER_PIXEL: f64 = 0.1;
 
-  /// Macroblocks a second H.264's level 5.2 takes; past it a stream names level 6.2, its highest, which NVIDIA's
-  /// encoder writes.
+  /// H.264 level 5.2's macroblocks per second; past it a stream names level 6.2, the highest, which NVIDIA's encoder
+  /// writes.
   const LEVEL_5_2_MACROBLOCKS_PER_SECOND: f64 = 2_073_600.0;
   const LEVEL_6_2: u32 = 62;
 
-  /// AAC's highest stereo bitrate the encoder takes, bytes a second, and the bits of each sample handed to it.
+  /// The encoder's highest AAC stereo bitrate in bytes per second, and the bits per input sample.
   const AAC_BYTES_PER_SECOND: u32 = 24_000;
   const SOUND_BITS: u16 = 16;
 
-  /// Opens `file` for a recording of `format` and begins writing it.
+  /// Open `file` for a recording of `format` and begin writing.
   ///
   /// # Errors
   ///
-  /// Returns an error, naming the step, when the writer cannot be made or takes no stream of the format: an odd size,
-  /// a size and rate past the encoder, or sound to resample in other than stereo.
+  /// Returns an error naming the step when the writer cannot be made or refuses the format: an odd size, a size and
+  /// rate past the encoder, or non-stereo sound needing resampling.
   pub(crate) fn open(file: &Path, format: RecordFormat) -> Result<Self, String> {
     let fail = |step: &'static str| move |error: windows::core::Error| format!("{step}: {}", error.message());
     let path: HSTRING = HSTRING::from(file.as_os_str());
@@ -103,8 +103,8 @@ impl MediaSink {
         .map_err(fail("Adding the H.264 stream"))?;
       let encoding: IMFAttributes = Self::new_attributes(1).map_err(fail("Making the encoder's settings"))?;
 
-      // No B-frames: the fragmented MP4 sink writes no edit list, so a frame shown after one decoded later would start
-      // the picture a frame behind its sound.
+      // No B-frames: the fragmented MP4 sink writes no edit list, so reordered frames would start the picture a frame
+      // behind its sound.
       encoding
         .SetUINT32(&CODECAPI_AVEncMPVDefaultBPictureCount, 0)
         .map_err(fail("Turning B-frames off"))?;
@@ -186,11 +186,11 @@ impl MediaSink {
     }
   }
 
-  /// Hands `sample` to its stream's encoder.
+  /// Hand `sample` to its stream's encoder.
   ///
   /// # Errors
   ///
-  /// Returns an error when a frame is not the recording's size, sound comes to a recording without it or not in whole
+  /// Returns an error when a frame is not the recording's size, sound arrives for a silent recording or in partial
   /// frames, or the writer refuses the sample.
   pub(crate) fn write(&mut self, sample: RecordSample) -> Result<(), String> {
     match sample {
@@ -247,7 +247,7 @@ impl MediaSink {
     }
   }
 
-  /// Writes `samples`, 16-bit at the rate the encoder takes, its first frame the sound's frame `at`.
+  /// Write `samples` as 16-bit PCM at the encoder's rate, starting at sound frame `at`.
   fn write_pcm(writer: &IMFSinkWriter, sound: &SinkSound, samples: &[f32], at: u64) -> Result<(), String> {
     let frames: u64 = (samples.len() / usize::from(sound.encoded.channels)) as u64;
 
@@ -272,7 +272,7 @@ impl MediaSink {
     }
   }
 
-  /// Writes what the encoders still hold and closes the file.
+  /// Flush the encoders and close the file.
   ///
   /// # Errors
   ///
@@ -288,23 +288,22 @@ impl MediaSink {
     })
   }
 
-  /// `time` on Media Foundation's clock, to the nearest tick.
+  /// `time` in Media Foundation ticks, rounded to the nearest.
   fn get_ticks(time: Duration) -> i64 {
     ((time.as_nanos() + 50) / 100) as i64
   }
 
-  /// The sound's frame `at` on Media Foundation's clock.
+  /// Sound frame `at` in Media Foundation ticks.
   fn get_sound_ticks(at: u64, sound: RecordSoundFormat) -> i64 {
     (u128::from(at) * u128::from(Self::TICKS) / u128::from(sound.rate)) as i64
   }
 
-  /// Frames a second of `format`'s frames.
   fn get_frames_per_second(format: &RecordFormat) -> f64 {
     Self::TICKS as f64 / Self::get_ticks(format.frame).max(1) as f64
   }
 
-  /// The frame rate the file names for `format`, its frames' own: whole where it is within a thousandth of one, else as
-  /// ticks. An encoder drops frames that come faster than it (NVIDIA's did).
+  /// The frame rate the file declares for `format`: whole when within a thousandth of one, else as a tick ratio. It
+  /// must match the frames, as an encoder drops frames arriving faster (NVIDIA's did).
   fn get_frame_rate(format: &RecordFormat) -> (u32, u32) {
     let rate: f64 = Self::get_frames_per_second(format);
 
@@ -315,15 +314,15 @@ impl MediaSink {
     }
   }
 
-  /// Whether `format` passes what H.264's level 5.2 takes a second, which an encoder left to choose refuses.
+  /// Whether `format` exceeds H.264 level 5.2's throughput, which an encoder choosing its own level refuses.
   fn is_past_level_5_2(format: &RecordFormat) -> bool {
     let macroblocks: u32 = format.width.div_ceil(16) * format.height.div_ceil(16);
 
     f64::from(macroblocks) * Self::get_frames_per_second(format) > Self::LEVEL_5_2_MACROBLOCKS_PER_SECOND
   }
 
-  /// The video encoder's name, from the writer's transforms on `stream`: a hardware one's with its device, Microsoft's
-  /// software one's as it names itself.
+  /// The video encoder's name from the writer's transforms on `stream`: a hardware encoder with its device, or
+  /// Microsoft's software encoder's own name.
   unsafe fn find_encoder(writer: &IMFSinkWriter, stream: u32) -> String {
     let Ok(writer) = writer.cast::<IMFSinkWriterEx>() else {
       return String::from("unknown");
@@ -475,7 +474,7 @@ impl MediaSink {
 
   /// A sample of `data` from `time` for `duration`, both in ticks.
   unsafe fn new_sample(data: &[u8], time: i64, duration: i64) -> windows::core::Result<IMFSample> {
-    // A Media Foundation buffer's length is 32 bits wide; a longer sample is refused before any buffer is asked for.
+    // Media Foundation buffer lengths are 32-bit; refuse a longer sample before allocating.
     let length: u32 = u32::try_from(data.len()).map_err(|_| windows::core::Error::from(E_INVALIDARG))?;
 
     // SAFETY: the buffer is locked while `data` is copied into it, and the copy is made only once the lock reports
@@ -509,8 +508,7 @@ impl MediaSink {
 }
 
 impl SinkResampling {
-  /// `samples` from the input's frame `at`, brought to 48 kHz: what the resampler gives now, and the output frame it
-  /// starts at.
+  /// Resample `samples`, starting at input frame `at`, to 48 kHz: the output ready now and its starting output frame.
   fn push(&mut self, samples: &[f32], at: u64) -> (Vec<f32>, u64) {
     let rate: u32 = self.resampler.get_input_rate();
 

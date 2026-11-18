@@ -32,18 +32,16 @@ use crate::scene::static_scene::static_scene::StaticScene;
 /// What the camera's lens is scaled by for the frustum a sun cascade's trees are kept for: a third or so wider each way
 /// at the usual lenses, so a camera turning between the trees' redraws still finds their shadows drawn.
 const RECEIVER_WIDEN: f32 = 0.6;
-/// The first G-buffer draw's passes, a part each (`StaticGbufferPart`): the depth drawn ahead, which clears the G-buffer,
-/// the shading and the impostors; and the late draw's, which no impostor waits for.
+/// The first G-buffer draw's passes, a `StaticGbufferPart` each, the depth clearing the G-buffer; then the late
+/// draw's, which has no impostors.
 const GBUFFER_PASSES: [&str; 3] = ["g-buffer depth", "g-buffer", "impostors"];
 const LATE_GBUFFER_PASSES: [&str; 2] = ["late g-buffer depth", "late g-buffer"];
 
-/// The static scene as the view culls and draws it: the cull's parameters this frame and the lists and arguments it
-/// fills, the depth pyramid the next frame's occlusion is tested against and the camera it was reduced through, the
-/// counts the cull read back, whether the wall marks are drawn, and whether its surfaces are counted for the overdraw's
-/// debug view.
+/// The static scene as the view culls and draws it, with the depth pyramid the next frame's occlusion is tested
+/// against.
 pub(crate) struct StaticsFeature {
   cull: StaticCullUniform,
-  /// The camera cull's lists and arguments, the view's own, made with its first cull and as large as the scene's lists.
+  /// The camera cull's lists and arguments, made with the view's first cull as large as the scene's lists.
   camera: Option<StaticViewCull>,
   occlusion: StaticOcclusionUniform,
   /// The farthest depth's pyramid over the frame's targets.
@@ -91,8 +89,8 @@ impl StaticsFeature {
     self.history = None;
   }
 
-  /// Takes this frame's cull of `statics` through `view` over a frame `width` by `height`, the lists it fills made as
-  /// large as the scene's, and what the occlusion tests against.
+  /// Prepares this frame's cull of `statics` through `view` over a `width` by `height` frame, and what the occlusion
+  /// tests against.
   pub(crate) fn prepare(
     &mut self,
     device: &wgpu::Device,
@@ -202,9 +200,7 @@ impl StaticsFeature {
     }
   }
 
-  /// The static scene's handles for this frame: its buffers, the view's lists and arguments, the pyramid, the cull's
-  /// parameters, what the occlusion tests against and the trees' sway pushed; none before the pyramid is made or the
-  /// view first culled.
+  /// The static scene's handles for this frame; none before the pyramid is made or the view first culled.
   pub(crate) fn import<'a>(
     &'a self,
     GraphDeclaration {
@@ -301,7 +297,7 @@ impl StaticsFeature {
     let depth: GraphTexture = targets.depth;
     let is_inspected: bool = self.is_inspected;
     let is_prepassed: bool = self.is_prepassed;
-    // A pass a part of a draw, so the frame times them apart, the frame's first clearing the G-buffer.
+    // A pass a part, so the frame times them apart.
     let add_part = |graph: &mut FrameGraph<'a>,
                     name: &'static str,
                     draw_args: GraphBuffer,
@@ -344,8 +340,7 @@ impl StaticsFeature {
         );
       });
     };
-    // A draw's parts in order, as many as it names passes: the first draw draws the impostors too, as no occlusion sets
-    // one aside, and its depth clears the G-buffer.
+    // The first draw also draws the impostors, which no occlusion sets aside, and its depth clears the G-buffer.
     let add_draw = |graph: &mut FrameGraph<'a>, names: &[&'static str], draw_args: GraphBuffer, is_first: bool| {
       let parts = [
         StaticGbufferPart::Depth,

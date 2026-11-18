@@ -56,7 +56,7 @@ pub(crate) struct TextureCache {
   references: Vec<String>,
   /// What each slot is sampled as, which decides what stands in for it.
   roles: Vec<TextureRole>,
-  /// Whether each slot's texture is a distortion map uploaded without any blue (`is_blue_free`).
+  /// Per slot, [`Self::is_blue_free`].
   blue_free: Vec<bool>,
   /// What stands in for a texture of each role while it loads, by `TextureRole as usize`.
   neutral: Vec<wgpu::TextureView>,
@@ -361,8 +361,9 @@ impl TextureCache {
     })
   }
 
-  /// Whether a slot holds a distortion map uploaded without any blue, which never blurs the frame where it is drawn into
-  /// the distortion target; not while it loads, stands in, or was asked for as anything else.
+  /// Whether a slot holds an uploaded distortion map with no blue, which never blurs the frame.
+  ///
+  /// False while it loads, while a placeholder stands in, or for any other role.
   pub(crate) fn is_blue_free(&self, slot: u32) -> bool {
     self.blue_free.get(slot as usize).copied().unwrap_or(false)
   }

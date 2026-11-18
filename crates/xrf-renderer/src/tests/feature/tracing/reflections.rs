@@ -301,9 +301,7 @@ fn writes_the_settings_the_trace_reads() {
   );
 }
 
-// Each frame turns the pixels' noise however long the view has run: past 2²⁴ frames, under three days at 60 frames a
-// second, a frame's count times the R2 steps in `f32` holds no fraction, and every pixel would draw the same sample
-// each frame.
+// Past 2²⁴ frames (under three days at 60 Hz) the frame count times the R2 steps in `f32` has no fraction left.
 #[test]
 fn turns_the_noise_each_frame_however_long_the_view_runs() {
   let noise = |frame: u32| {

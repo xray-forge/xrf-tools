@@ -101,8 +101,7 @@ impl RenderAssetSource for CubeSource {
   }
 }
 
-/// A source answering `blue` with a flat 4x4 DXT1 texture whose colour endpoints hold some blue, and any other with one
-/// of none.
+// Answers `blue` with a DXT1 texture whose endpoints hold blue, any other reference with one without.
 struct DistortionSource;
 
 impl RenderAssetSource for DistortionSource {
@@ -130,8 +129,6 @@ impl RenderAssetSource for DistortionSource {
   }
 }
 
-// A distortion map is blue-free once uploaded without any blue: never while it loads, never with some, and never as a
-// texture asked for as anything else.
 #[test]
 fn tells_a_distortion_map_without_blue_once_it_is_up() {
   let Some(context) = create_test_context("to upload to") else {

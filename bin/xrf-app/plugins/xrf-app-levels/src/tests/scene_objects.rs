@@ -1,6 +1,3 @@
-//! A scene's object tools' objects as the page is shown them: typed per tool, each group's members under their own
-//! tool with the group's name, and each scene object's library object looked for.
-
 use std::sync::Arc;
 
 use xrf_app_core::assets::AssetMountState;
@@ -25,7 +22,6 @@ use crate::tests::fixtures::{
   write_scene_part,
 };
 
-/// The section of the one group a test's group part holds.
 const GROUP_SECTION: &str = "object_0";
 
 fn scene_object(name: &str, reference: &str) -> EditableSceneObject {
@@ -99,8 +95,7 @@ fn sound_source() -> EditableSoundSourceObject {
   }
 }
 
-/// A group tool's part holding one group, `name`, its members as `write_members` adds them with [`write_member`], as
-/// the editor saves a group (`CGroupObject::SaveLTX`).
+// Laid out as `CGroupObject::SaveLTX` saves a group.
 fn group_part(name: &str, write_members: impl FnOnce(&mut IniFile)) -> Vec<u8> {
   let mut ini: IniFile = IniFile::default();
 
@@ -122,7 +117,6 @@ fn group_part(name: &str, write_members: impl FnOnce(&mut IniFile)) -> Vec<u8> {
     .into_bytes()
 }
 
-/// Writes `object` as the group's member at `index`, with its class, counting it among the group's members.
 fn write_member<T: EditableToolObject>(ini: &mut IniFile, index: usize, object: &T) {
   let section: String = format!("{GROUP_SECTION}_ingroup_{index}");
 

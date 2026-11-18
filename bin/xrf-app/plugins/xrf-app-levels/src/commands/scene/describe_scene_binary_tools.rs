@@ -7,8 +7,9 @@ use xrf_app_core::session::{SessionId, SessionSnapshot};
 
 use crate::scene::{SceneBinaryToolsDescription, SceneBinaryToolsPart, SelectedScenes};
 
-/// Describe the open scene's AI map, detail objects and wall marks by their counts, none of their payload; read again
-/// where a commit let them go.
+/// Describe the open scene's AI map, detail objects and wall marks by their counts alone.
+///
+/// Call again after a commit that invalidates them.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_scene_binary_tools")]
 pub(crate) async fn levels_describe_scene_binary_tools(

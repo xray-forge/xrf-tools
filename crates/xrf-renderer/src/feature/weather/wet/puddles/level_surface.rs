@@ -123,9 +123,8 @@ impl LevelSurface {
     }
   }
 
-  /// Where the puddles stood last frame as the grass plants around them: a surface's puddles and the window they cover,
-  /// or the dry stand-in (`dry`) where none is made; marked as puddles only where the `wet` surfaces draw any, as far
-  /// as they draw them.
+  /// Last frame's puddles for the grass to plant around: a surface's and its window, or the `dry` stand-in where none
+  /// is made; marked as puddles only where the `wet` surfaces draw any, as far as they draw them.
   pub(crate) fn get_grass_puddles<'a>(
     surface: Option<&'a Self>,
     dry: &'a wgpu::TextureView,

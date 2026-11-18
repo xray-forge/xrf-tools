@@ -2,7 +2,7 @@ use serde::Serialize;
 use xrf_job::JobOutcome;
 use xrf_rawdata::LevelDecompileReport;
 
-/// How a level's decompile into a scene ended: what it wrote where it completed, none where it was cancelled first.
+/// How a level's decompile into a scene ended, with its report once it completed.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]

@@ -3,12 +3,8 @@ use xrf_renderer_core::{GraphTexture, PassParameters, StorageValue, UniformBindi
 use crate::feature::image::exposure::reading::exposure_head::ExposureHead;
 use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 
-/// What the reflections' scene pass reads and writes whichever way its rays come in (a list's, `SceneListParameters`,
-/// or the water's every-pixel records, `WaterRayParameters`): the lighting and the material table a hit is lit by, and
-/// the exposure a water's is tonemapped at; the target and the ends into which each ray that meets the level's
-/// geometry writes its answer, the surfaces' traced reflection and its ends or the water's reflection and no ends; and
-/// the scene and depth a hit is read from where that screen showed it: the last frame's for the surfaces, this frame's
-/// copied before the water for the water.
+/// What the reflections' scene pass reads and writes, whichever way its rays come in (`SceneListParameters` or
+/// `WaterRayParameters`).
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
 pub(crate) struct ReflectionSceneParameters<'a> {
@@ -18,12 +14,17 @@ pub(crate) struct ReflectionSceneParameters<'a> {
   pub material_lut: GraphTexture,
   #[sampler(filtering)]
   pub lut_sampler: &'a wgpu::Sampler,
+  /// The exposure a water's hit is tonemapped at.
   #[storage]
   pub exposure: StorageValue<ExposureHead>,
+  /// The surfaces' traced reflection, or the water's reflection.
   #[storage_texture(d2, rgba16float, write)]
   pub traced_out: GraphTexture,
+  /// The surfaces' ray ends; unused for the water.
   #[storage_texture(d2, r32float, write)]
   pub ends_out: GraphTexture,
+  /// The scene a hit the screen showed is read from: the last frame's for the surfaces, this frame's copied before
+  /// the water for the water; likewise its depth.
   #[texture(d2, float)]
   pub screen_scene: GraphTexture,
   #[texture(d2, depth)]

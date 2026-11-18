@@ -93,11 +93,9 @@ impl OpenedLevel {
     let spawn_inputs: XrayInputRecord = XrayInputRecord::new();
     let sections_inputs: XrayInputRecord = XrayInputRecord::new();
     let start_inputs: XrayInputRecord = XrayInputRecord::new();
-    // Two lines of reads, each waiting only on what it needs: the level, its geometry and then the surfaces and textures
-    // its shader table names; and beside them the spawn and then what stands over the places it has an actor at, while
-    // the game's configs are read alongside and the sections the spawn names kept out of them once both are in. The
-    // configs are the open's longest read, so they start at once rather than after the spawn. The renderer's first
-    // texture asks whether the configs reduce it, so the sections are read with the level rather than after it.
+    // Two parallel lines of reads: the level and its geometry, then its surfaces and textures; and the spawn, then its
+    // start places, beside the game's configs. The configs are the longest read, so they start at once rather than
+    // after the spawn; the renderer's first texture needs them, so they are read with the level, not after it.
     let ((dressed, geometry), (spawn, open, sections)) = rayon::join(
       || {
         let (bundle, geometry) = rayon::join(
@@ -119,7 +117,7 @@ impl OpenedLevel {
             let surfaces: Vec<XraySurfaceDescriptor> =
               LevelSurfacesPart::resolve(&bundle.level, &search.clone().with_recording(&surfaces_inputs), &scope);
 
-            // The textures are resolved over the surfaces, so what moves the surfaces moves them too.
+            // Textures resolve over the surfaces, so the surfaces' inputs invalidate them too.
             textures_inputs.extend_from(&surfaces_inputs);
 
             let textures: Vec<LevelTextureReference> = LevelTexturesPart::resolve(
@@ -143,7 +141,7 @@ impl OpenedLevel {
               LevelSpawnPart::read(source, &search.clone().with_recording(&spawn_inputs))
             };
 
-            // Where the level starts is decided over its spawn.
+            // The start is found over the spawn, so its inputs invalidate it too.
             start_inputs.extend_from(&spawn_inputs);
 
             let open: Vec<bool> = spawn.as_deref().map_or_else(
@@ -169,7 +167,7 @@ impl OpenedLevel {
         );
         let (spawn, open) = spawned;
 
-        // The sections are those the spawn names.
+        // The sections kept are those the spawn names.
         sections_inputs.extend_from(&spawn_inputs);
 
         let sections: Option<TauriResult<Arc<Ltx>>> = spawn

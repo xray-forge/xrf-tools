@@ -19,16 +19,16 @@ use crate::viewport::render_viewport::RenderViewport;
 use crate::window::window_frame::WindowFrame;
 
 impl RenderThread {
-  /// What the frame failure log knows a frame its graph could not draw by, and the uploads such a frame could not
-  /// submit: failed where a frame is given up (`abandon_frame`), recovered once one draws (`draw_frame`).
+  /// Failure-log keys for an undrawable frame and its unsubmitted uploads: failed in `abandon_frame`, recovered in
+  /// `draw_frame`.
   pub(super) const UNDRAWN_FRAME: &'static str = "The frame cannot be drawn";
   pub(super) const UNSUBMITTED_UPLOADS: &'static str = "The frame's uploads cannot be submitted";
 
-  /// Gives up a frame its graph could not draw: what the frame's own encoder holds is not of the frame (the uploads and
-  /// the acceleration structures the scenes built, which they count as done) and still goes up; the uniforms its graph
-  /// pushed are dropped, as is what it copied out for reading back; its picks wait for the next frame, and its captures
-  /// and bursts are refused, a burst's frames no longer following one another; a recording's frame is dropped, its
-  /// buffer freed.
+  /// Gives up a frame its graph could not draw.
+  ///
+  /// The encoder's uploads and acceleration structure builds, which the scenes count as done, are still submitted.
+  /// Graph uniforms and readback copies are dropped, picks wait for the next frame, captures and bursts are refused (a
+  /// burst's frames would no longer be consecutive), and a recording frame is dropped.
   pub(super) fn abandon_frame(
     &mut self,
     running: &mut RunningGpu,
@@ -150,8 +150,8 @@ impl RenderThread {
     executed.groups
   }
 
-  /// Ends each view's submitted frame: its history kept, its stats and its pick asked for back, its burst moved on with
-  /// the frame copied out of it; each capture asked for back; and each recording's frame.
+  /// Ends each submitted view frame: keeps its history, requests its stats, pick and captures back, and advances its
+  /// burst and recording.
   pub(super) fn end_view_frames(
     &mut self,
     frames: Vec<ReadiedView>,
@@ -282,7 +282,7 @@ impl RenderThread {
       }
     }
 
-    // A recorded viewport whose window gave no image this frame was drawn all the same, its frame done now.
+    // A recorded viewport whose window gave no image was still drawn; its frame is done now.
     let done: Instant = Instant::now();
 
     for record in self.viewports.values_mut().filter_map(RenderViewport::get_record_mut) {

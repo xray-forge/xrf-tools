@@ -8,9 +8,7 @@ use crate::feature::scene::calibration::calibration_feature::CalibrationFeature;
 use crate::feature::view::view_units::view_units;
 use crate::scene::level::view::record::view_record::ViewRecord;
 
-/// The units of a view's scene that draw in it alone: the calibration props drawn into the G-buffer, and the AI map's
-/// debug views written over the light. The statics, the grass, the reflections' depth and the sky's motion record
-/// around them.
+/// The units of a view's scene that draw in it alone: the calibration props and the AI map's debug views.
 #[derive(Default)]
 pub(crate) struct SceneStage {
   calibration: CalibrationFeature,
@@ -42,8 +40,7 @@ impl SceneStage {
     );
   }
 
-  /// Writes the AI map's debug view over `light` where the view shows one: a field of each drawn pixel's node of
-  /// `level`.
+  /// Writes the AI map's debug view of `level` over `light` where the view shows one.
   pub(crate) fn add_ai_map<'a>(
     &self,
     declaration: GraphDeclaration<'_, 'a>,

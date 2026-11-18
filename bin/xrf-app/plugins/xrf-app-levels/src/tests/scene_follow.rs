@@ -1,7 +1,3 @@
-//! An open scene through commits: its loose files are found and listed through a search of the directory holding its
-//! `.level`, a commit to one of them or a part file come reads the scene again, and a library object come into its
-//! objects roots names only its objects part stale.
-
 use std::sync::{Arc, Mutex};
 
 use xrf_app_core::assets::{AssetChangeEvent, AssetChangeSubscriber, AssetMountState};
@@ -17,7 +13,6 @@ use crate::tests::fixtures::{
   write_scene_part,
 };
 
-/// Every session change a subscriber took, in order.
 #[derive(Clone, Default)]
 struct ChangeLog {
   taken: Arc<Mutex<Vec<SessionChange>>>,
@@ -43,7 +38,6 @@ fn scene_object(reference: &str) -> EditableSceneObject {
   }
 }
 
-/// Whether the scene's one scene object's library object is found, as its objects part says now.
 fn is_found(scene: &SessionSnapshot<SelectedScene>, objects: &XraySearch) -> bool {
   let described: Arc<SceneObjectsDescription> = SceneObjectsPart::get(scene, objects);
 

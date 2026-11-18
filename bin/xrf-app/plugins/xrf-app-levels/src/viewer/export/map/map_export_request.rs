@@ -4,19 +4,19 @@ use serde::Deserialize;
 
 use crate::viewer::export::map::{MapExportAnnotations, MapExportFormat};
 
-/// A level map's capture written again in another shape.
+/// A request to re-export a level map capture in another format or size.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct MapExportRequest {
-  /// The capture's PNG in the screenshots folder, its coverage in alpha.
+  /// The capture's PNG in the screenshots folder, with coverage in alpha.
   pub path: PathBuf,
   pub target: PathBuf,
   pub format: MapExportFormat,
-  /// Pixels the longer side takes, at most the capture's; the shorter follows the capture's shape.
+  /// The longer side in pixels, at most the capture's; the shorter keeps the capture's aspect.
   pub long_side: u32,
-  /// The colour the map is laid over, its alpha made opaque, or none to keep its coverage.
+  /// A colour to flatten the map onto, making it opaque; none keeps the coverage alpha.
   pub backdrop: Option<[u8; 3]>,
-  /// Whether and how its annotations go in, or none for the map alone.
+  /// How the annotations are included; none for the map alone.
   pub annotations: Option<MapExportAnnotations>,
 }

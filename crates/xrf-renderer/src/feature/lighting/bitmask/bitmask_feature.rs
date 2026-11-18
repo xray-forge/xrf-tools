@@ -406,8 +406,8 @@ impl ViewFeature for BitmaskFeature {
     self.light = None;
   }
 
-  /// Its motion restarted, its accumulations start again as if just made, their noise from its first turn; a cut
-  /// leaves them nothing to read, the last place's occlusion and light leading nowhere true, their noise turning on.
+  /// A motion restart starts the accumulations over as if just made, noise included; a cut only drops their history,
+  /// which no longer matches the place, the noise turning on.
   fn restart(&mut self, restart: ViewRestart) {
     for history in [&mut self.occlusion, &mut self.light].into_iter().flatten() {
       match restart {

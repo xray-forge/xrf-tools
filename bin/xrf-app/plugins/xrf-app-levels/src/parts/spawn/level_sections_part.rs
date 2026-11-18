@@ -51,8 +51,7 @@ impl LevelSectionsPart {
     parts.with::<Self>(sections, inputs)
   }
 
-  /// The sections a level's spawned objects name and [`XrayReducedTextures::SECTION`], out of the configs
-  /// [`Self::resolve`] reads.
+  /// The sections a level's spawned objects name, plus [`XrayReducedTextures::SECTION`], from the resolved configs.
   ///
   /// # Errors
   ///
@@ -69,9 +68,9 @@ impl LevelSectionsPart {
     Ok(Self::keep(source, &resolved, started.elapsed(), spawn))
   }
 
-  /// `system.ltx` with its includes merged and every section's parents resolved, read through `search` with the dialect
-  /// the level is opened with. It needs nothing of the spawn, so an open reads it beside the spawn: it is the longest
-  /// read of the open.
+  /// `system.ltx` with includes merged and parents resolved, in the level's dialect.
+  ///
+  /// It needs nothing of the spawn, so an open reads it beside the spawn: it is the open's longest read.
   ///
   /// # Errors
   ///
@@ -87,8 +86,8 @@ impl LevelSectionsPart {
       .map_err(|error| format!("Failed to read 'system.ltx' for {}: {error}", source.get_label()))
   }
 
-  /// The sections `spawn`'s objects name and [`XrayReducedTextures::SECTION`], out of the configs [`Self::resolve`]
-  /// read in `read_in`.
+  /// Keep the sections `spawn`'s objects name, plus [`XrayReducedTextures::SECTION`], out of `resolved`; `read_in` is
+  /// how long the resolve took.
   pub(crate) fn keep(
     source: &LevelSource,
     resolved: &LtxResolution,

@@ -2,11 +2,11 @@ use xrf_error::XrfError;
 
 use crate::capture::record::record_frame::RecordFrame;
 
-/// What a recording tells its recorder as it goes.
+/// A recording's message to its recorder.
 #[derive(Debug)]
 pub enum RecordEvent {
-  /// A frame kept and back from the GPU, for the recorder to read.
+  /// A frame back from the GPU, ready to read.
   Frame(RecordFrame),
-  /// It stopped, its viewport or the GPU gone, and keeps nothing more.
+  /// The recording stopped, for instance because its viewport or the GPU went; no more frames follow.
   Stopped { error: XrfError },
 }

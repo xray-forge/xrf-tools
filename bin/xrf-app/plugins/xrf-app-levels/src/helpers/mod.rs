@@ -1,5 +1,4 @@
-//! What the renderer's helpers look like wherever the plugin draws them, the compiled level's objects and a scene's
-//! alike: a link's arrowed lines and a kind's colour.
+//! Helper looks shared by compiled levels and scenes: arrowed link lines and kind colours.
 
 mod helper_color;
 mod helper_link_lines;

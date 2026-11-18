@@ -5,20 +5,21 @@ use crate::host::world::render_scene_id::RenderSceneId;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::texture::texture_cache::TextureCache;
 
-/// The scenes viewports showed when the GPU was let go, each held back once made again until it is whole, so a restart
-/// shows the level at once rather than streaming in; held at most `WAIT_MOST` from when it was first asked for made
-/// again, after which it is shown as it is. The GPU's start and its retries count none of that wait.
+/// Scenes shown when the GPU was released, each held back once remade until it is whole, so a restart shows the level
+/// at once rather than streaming in.
+///
+/// A scene is held at most `WAIT_MOST` from its first remade frame; the GPU's start and retries do not count.
 #[derive(Default)]
 pub(crate) struct ReopeningScenes {
-  /// Each held scene, by when it was first asked for once made again; none until it is.
+  /// Each held scene, with when it was first asked for once remade; none until then.
   held: HashMap<RenderSceneId, Option<Instant>>,
 }
 
 impl ReopeningScenes {
-  /// The longest a scene made again is held back for being whole.
+  /// The longest a remade scene is held back waiting to be whole.
   pub(crate) const WAIT_MOST: Duration = Duration::from_secs(10);
 
-  /// Holds `scenes` back, the GPU they were shown on let go.
+  /// Holds `scenes` back after their GPU was released.
   pub(crate) fn hold(&mut self, scenes: impl IntoIterator<Item = RenderSceneId>) {
     self.held.extend(scenes.into_iter().map(|scene| (scene, None)));
   }
@@ -27,9 +28,8 @@ impl ReopeningScenes {
     self.held.contains_key(&scene)
   }
 
-  /// Whether a held scene, made again as `level`, may be shown now: once it is whole, or once it was held `WAIT_MOST`
-  /// since it was first asked for made again, letting it go then and logging how long it was held and, where it is not
-  /// whole, what it still waits for.
+  /// Whether a held scene, remade as `level`, may be shown: once whole or after `WAIT_MOST`. Releasing it logs the wait
+  /// and, if not whole, what it still lacks.
   pub(crate) fn release(&mut self, scene: RenderSceneId, level: &LevelScene, textures: &TextureCache) -> bool {
     let Some(asked) = self.held.get_mut(&scene) else {
       return true;

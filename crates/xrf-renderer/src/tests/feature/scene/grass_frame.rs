@@ -163,8 +163,6 @@ impl GrassFrames {
     }
   }
 
-  /// Readies `level`'s grass for one frame of `grass`, the view's light traced or not and its water tracing every
-  /// reflected ray or not (`is_traced`, `is_reflected`), its sun cascades drawing to 40 metres.
   fn prepare(&self, context: &GpuContext, grass: &mut GrassView, level: &GrassLevel, frame: u32, traced: (bool, bool)) {
     grass.prepare(
       &context.device,
@@ -189,8 +187,6 @@ impl GrassFrames {
     );
   }
 
-  /// Plants, culls, stands the cards of, draws and casts into a sun cascade `level`'s grass for one frame of `grass`
-  /// through the frame graph, every pass declared, and submits it.
   fn draw(&mut self, context: &GpuContext, grass: &mut GrassView, level: &GrassLevel, frame: u32) {
     let device: &wgpu::Device = &context.device;
 
@@ -304,10 +300,6 @@ fn plants_draws_and_casts_the_grass_without_a_validation_error() {
   assert!(pollster::block_on(scope.pop()).is_none());
 }
 
-/// The cards stand traced for a view whose water traces every reflected ray though the grass casts no shadow, meeting
-/// the water's rays alone and telling a traced hit how far they stand whole; while the grass shadows a traced view
-/// they meet the rays asking whether the light is blocked too; and with neither, none is traced and every hit walks the
-/// grass's layers. Skipped, and says so, on a machine whose adapter traces no rays.
 #[test]
 fn the_cards_stand_for_the_waters_trace_whether_or_not_they_shadow() {
   let Some(context) = create_test_context("to trace with") else {

@@ -24,18 +24,16 @@ use crate::scene::level::page::helpers::view::helper_part_draws::HelperPartDraws
 use crate::scene::level::page::helpers::view::helper_sources::HelperSources;
 use crate::scene::static_scene::item::object::static_object_box::StaticObjectBox;
 
-/// What a view draws of its scene's helpers: the wires and icons its options keep, which the window pass draws and a
-/// pick draws again, and the spawned models they mark, which the helper marks pass draws in their colours for the
-/// present to tint and outline. Every kept object's are built again only when the scene's set, its spawned objects or
-/// the options the selection and hovering aside change; the selected, hovered and sounding objects' are built apart and
-/// drawn over them, so the pointer moving over the scene, or a sound starting, rebuilds a handful of wires rather than
-/// every helper.
+/// What a view draws of its scene's helpers: the wires and icons its options keep, and the spawned models they mark.
+///
+/// The selected, hovered and sounding objects are built apart and drawn over the rest, so hovering or a sound starting
+/// rebuilds a handful of wires rather than every helper.
 #[derive(Default)]
 pub(crate) struct HelpersFeature {
   /// Every kept object's wires and icons, none singled out.
   every: Option<HelperBuild>,
-  /// The selected, hovered and sounding objects' wires, the selected and hovered models' boxes among them, and icons,
-  /// lifted and never dimmed behind what is drawn; the selected and hovered never fade.
+  /// The selected, hovered and sounding objects' wires, boxes and icons, never dimmed behind what is drawn; the
+  /// selected and hovered never fade.
   singled: Option<HelperBuild>,
   /// The marked models' places and colours, bound as the helper marks pass reads them.
   marks: Option<HelperMarks>,
@@ -164,8 +162,8 @@ impl HelpersFeature {
     Some(target)
   }
 
-  /// The objects of `helpers` that `options` draws, of `part`: the kinds switched on and not hidden, none while
-  /// helpers are off; for the singled out part, those selected, hovered or among `sounding`.
+  /// The objects of `helpers` that `options` draws in `part`: kinds switched on and not hidden, none while helpers are
+  /// off; the singled out part keeps only those selected, hovered or `sounding`.
   fn list_kept<'a>(
     helpers: &'a LevelHelpers,
     options: &'a RenderHelperOptions,
@@ -181,8 +179,8 @@ impl HelpersFeature {
     })
   }
 
-  /// How `object` is singled out under `options`, its sound playing where `sounding` holds it:
-  /// [`HelperVertex::SELECTED`], [`HelperVertex::HOVERED`], [`HelperVertex::SOUNDING`] or nought.
+  /// How `object` is singled out: [`HelperVertex::SELECTED`], [`HelperVertex::HOVERED`], [`HelperVertex::SOUNDING`]
+  /// or nought.
   fn get_singled(object: &LevelHelperObject, options: &RenderHelperOptions, sounding: &[u32]) -> f32 {
     if options.selected.binary_search(&object.id).is_ok() {
       HelperVertex::SELECTED
@@ -195,8 +193,8 @@ impl HelpersFeature {
     }
   }
 
-  /// The ends of every wire `options` keeps of `helpers` for `part`, `sounding` the objects whose sounds play, a
-  /// selected or hovered model's box among them where `boxes` stands it (`StaticScene::get_object_box`).
+  /// The ends of every wire `options` keeps of `helpers` for `part`, with a selected or hovered model's box where
+  /// `boxes` has one (`StaticScene::get_object_box`).
   pub(crate) fn list_vertices(
     helpers: &LevelHelpers,
     options: &RenderHelperOptions,
@@ -278,18 +276,19 @@ impl ViewFeature for HelpersFeature {
   }
 }
 
-/// What a part of a view's helpers was built from: the scene's set by its version, the scene's spawned objects by how
-/// many were added and removed so far, the options it was built under, and the objects it drew sounding.
+/// What a part of a view's helpers was built from.
 #[derive(Debug)]
 struct HelperBuildKey {
+  /// The scene's helper set's version.
   version: u64,
+  /// The scene's spawned objects, by how many were added and removed so far.
   contents: usize,
   options: RenderHelperOptions,
   sounding: Vec<u32>,
 }
 
 impl HelperBuildKey {
-  /// What `sources` hold, under `options`, with `sounding` drawn lit.
+  /// The key of `sources` built under `options` and `sounding`.
   fn of(sources: HelperSources<'_>, options: RenderHelperOptions, sounding: &[u32]) -> Self {
     Self {
       version: sources.helpers.version,
@@ -299,9 +298,8 @@ impl HelperBuildKey {
     }
   }
 
-  /// Whether `part` built from it would be built from `sources` alike, copying nothing: the singled out objects' under
-  /// the options and sounds as they are, every kept object's under the options with nothing selected or hovered and
-  /// nothing sounding.
+  /// Whether `part` built from it matches `sources`, copying nothing; the every-object part ignores the selection,
+  /// hovering and sounds.
   fn is_of(&self, sources: HelperSources<'_>, part: HelperPart) -> bool {
     self.version == sources.helpers.version
       && self.contents == sources.statics.get_contents()
@@ -352,8 +350,7 @@ impl HelperBuild {
     }
   }
 
-  /// `part`'s wires' ends and icons of `helpers` under `options`, `sounding` lit, its models' boxes where `boxes` stands
-  /// them.
+  /// `part`'s wire ends, boxes included, and icons.
   fn build(
     helpers: &LevelHelpers,
     options: &RenderHelperOptions,
@@ -387,7 +384,7 @@ struct HelperGeometry {
   icons: Vec<HelperIconInstance>,
 }
 
-/// The marked models' places and colours, bound as the helper marks pass reads them; the bind group keeps the buffer.
+/// The marked models' places and colours, bound for the helper marks pass; the bind group keeps the buffer alive.
 struct HelperMarks {
   group: wgpu::BindGroup,
 }
@@ -413,18 +410,19 @@ impl HelperMarks {
   }
 }
 
-/// How one object's helpers draw in a part: its colour with how it is singled out in alpha, nought for every kept
-/// object's, then the distance it fades out by, none for a selected or hovered one, and how strongly it shows hidden.
+/// How one object's helpers draw in a part.
 #[derive(Clone, Copy)]
 struct HelperLook {
+  /// Its colour, with how it is singled out in alpha (nought in the every-object part).
   color: [f32; 4],
+  /// The distance it fades out by, none for a selected or hovered one, and how strongly it shows hidden.
   fade: [f32; 2],
   /// Whether it is selected or hovered, which draws a model's box.
   is_picked: bool,
 }
 
 impl HelperLook {
-  /// How `object` draws under `options`, `sounding` lit, built for `part`.
+  /// How `object` draws in `part`.
   fn of(object: &LevelHelperObject, options: &RenderHelperOptions, sounding: &[u32], part: HelperPart) -> Self {
     let singled: f32 = match part {
       HelperPart::Every => 0.0,
