@@ -8,6 +8,7 @@ use xrf_level_compiler::{
 };
 use xrf_output::OutputOptions;
 
+use crate::core::arguments::JobsArgument;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 use crate::core::terminal::CliJob;
 
@@ -22,7 +23,7 @@ impl GenericCommand for CompileCommand {
   }
 
   fn declare(&self, command: Command) -> Command {
-    command
+    let command: Command = command
       .about(
         "Compile a level directory that level build wrote into the files the game loads. The steps run in this \
          process, in order: geometry (level, level.geom, level.geomx and level.cform, as xrLC builds them, and the \
@@ -115,7 +116,9 @@ impl GenericCommand for CompileCommand {
           .long("quality")
           .default_value(LightQuality::default().get_name())
           .value_parser(LightQuality::ALL.map(LightQuality::get_name).to_vec()),
-      )
+      );
+
+    JobsArgument::declare(command)
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {

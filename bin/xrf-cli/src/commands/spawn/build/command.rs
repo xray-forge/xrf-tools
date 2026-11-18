@@ -1,9 +1,12 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
+use xrf_error::{XrfError, XrfResult};
 use xrf_output::OutputOptions;
 use xrf_spawn_builder::{SpawnRootGamedata, SpawnRootOptions, SpawnRootOutcome, SpawnRootRequest};
+use xrf_utils::format_path;
 
+use crate::core::arguments::JobsArgument;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 use crate::core::terminal::CliJob;
 
@@ -17,20 +20,19 @@ impl GenericCommand for BuildCommand {
   }
 
   fn declare(&self, command: Command) -> Command {
-    command
+    let command: Command = command
       .about(
         "Build a root spawn from a gamedata root's levels, as SDK 0.7's xrAI -s does: each level's level.ai, \
          level.spawn and level.game into one spawn with the game graph, its cross tables, the entities, artefact \
-         points and patrols, written as `<out>.spawn`. The same levels give the same file",
+         points and patrols. The same levels give the same file",
       )
       .arg(
-        Arg::new("path")
+        Arg::new("gamedata")
           .help(
             "Gamedata root holding configs/game_levels.ltx, and by default the levels' directories under levels/ and \
-             the spawns under spawns/",
+             the spawn written under spawns/",
           )
-          .short('p')
-          .long("path")
+          .long("gamedata")
           .required(true)
           .value_parser(value_parser!(PathBuf)),
       )
@@ -42,7 +44,7 @@ impl GenericCommand for BuildCommand {
       )
       .arg(
         Arg::new("dest")
-          .help("Directory the spawn is written into; by default spawns/ under the gamedata root")
+          .help("The .spawn file to write; by default spawns/all.spawn under the gamedata root, the game's own")
           .short('d')
           .long("dest")
           .value_parser(value_parser!(PathBuf)),
@@ -56,13 +58,6 @@ impl GenericCommand for BuildCommand {
           .long("levels")
           .action(ArgAction::Append)
           .value_delimiter(',')
-          .value_parser(value_parser!(String)),
-      )
-      .arg(
-        Arg::new("out")
-          .help("Name of the spawn to write, `<out>.spawn`; `all` is the game's own")
-          .long("out")
-          .required(true)
           .value_parser(value_parser!(String)),
       )
       .arg(
@@ -88,21 +83,24 @@ impl GenericCommand for BuildCommand {
           .short('f')
           .long("force")
           .action(ArgAction::SetTrue),
-      )
+      );
+
+    JobsArgument::declare(command)
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
+    let (destination, name) = Self::split_destination(matches.get_one::<PathBuf>("dest"))?;
     let request: SpawnRootRequest = SpawnRootRequest {
       gamedata: matches
-        .get_one::<PathBuf>("path")
-        .expect("the path is required")
+        .get_one::<PathBuf>("gamedata")
+        .expect("the gamedata root is required")
         .clone(),
       levels_root: matches.get_one::<PathBuf>("levels-root").cloned(),
       levels: matches
         .get_many::<String>("levels")
         .map(|levels| levels.cloned().collect()),
-      destination: matches.get_one::<PathBuf>("dest").cloned(),
-      name: matches.get_one::<String>("out").expect("the name is required").clone(),
+      destination,
+      name,
       options: SpawnRootOptions {
         start: matches.get_one::<String>("start").cloned(),
         is_separator_strict: matches.get_flag("strict-separators"),
@@ -119,6 +117,38 @@ impl GenericCommand for BuildCommand {
 }
 
 impl BuildCommand {
+  /// The spawn the game loads, written where no destination is named.
+  const DEFAULT_NAME: &'static str = "all";
+
+  /// The directory and name of the `.spawn` file `dest` names: none and the game's own name where it names none.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error where `dest` does not name a `.spawn` file.
+  fn split_destination(dest: Option<&PathBuf>) -> XrfResult<(Option<PathBuf>, String)> {
+    let Some(dest) = dest else {
+      return Ok((None, String::from(Self::DEFAULT_NAME)));
+    };
+    let name: Option<&str> = dest
+      .extension()
+      .filter(|extension| extension.eq_ignore_ascii_case("spawn"))
+      .and_then(|_| dest.file_stem())
+      .and_then(|stem| stem.to_str())
+      .filter(|stem| !stem.is_empty());
+    let Some(name) = name else {
+      return Err(XrfError::new_invalid_error(format!(
+        "{} names no .spawn file to write",
+        format_path(dest)
+      )));
+    };
+    let directory: PathBuf = dest
+      .parent()
+      .filter(|parent| !parent.as_os_str().is_empty())
+      .map_or_else(|| PathBuf::from("."), Path::to_path_buf);
+
+    Ok((Some(directory), String::from(name)))
+  }
+
   /// What the build found, then what it wrote.
   fn print(output: &OutputOptions, outcome: &SpawnRootOutcome) {
     for check in outcome.report.checks() {

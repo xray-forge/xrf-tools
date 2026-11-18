@@ -401,12 +401,13 @@ impl LevelBuildExporter {
         }
 
         let game_materials: GameMtlFile = GameMtlFile::read_from_path::<T, _>(game_materials)?;
+        let textures: PathBuf = request.get_textures_root();
         let mut export: LevelBuildExport = Self::export::<T>(
           &scene,
           &LevelBuildSources {
             objects: &objects,
             game_materials: &game_materials,
-            textures: request.textures.as_deref(),
+            textures: Some(&textures),
             impostor_limit: request.impostor_limit,
             held: None,
           },

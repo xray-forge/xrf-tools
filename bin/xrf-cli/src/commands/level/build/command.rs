@@ -64,7 +64,8 @@ impl GenericCommand for BuildCommand {
           .help(
             "Textures root ($game_textures$) the detail objects' textures are merged from into build_details.dds, and \
              the multi-use objects' impostor strips (lod/lod_<object>.dds and _nm) into level_lods.dds and \
-             level_lods_nm.dds; a scene of details or impostors needs it",
+             level_lods_nm.dds; by default gamedata/textures beside the scene's rawdata directory, where level \
+             decompile writes them",
           )
           .long("textures")
           .requires("game-materials")

@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 
 use clap::{Arg, ArgGroup, ArgMatches, Command, value_parser};
+use xrf_error::XrfError;
 use xrf_ltx::{LtxDocumentSource, LtxProject};
 use xrf_ltx_inspect::{
   LtxDeclaration, LtxDeclarationQuery, LtxDeclarationReader, LtxDeclarationSearch, LtxDeclarationStatement,
@@ -30,7 +31,10 @@ impl GenericCommand for FindCommand {
 
   fn declare(&self, command: Command) -> Command {
     let command: Command = command
-      .about("Find where a section or field is written, declared or patched, across every config a project holds")
+      .about(
+        "Find where a section or field is written, declared or patched, across every config a project holds. A \
+         config that does not parse is reported as not searched, and the run fails, since it may hold the answer",
+      )
       .arg(
         Arg::new("path")
           .help(LtxInstallation::PATH_HELP)
@@ -137,6 +141,18 @@ impl GenericCommand for FindCommand {
     let dialect: &str = project.get_dialect().get_name();
 
     context.set_result(|| LtxFindReport::new(dialect, &search))?;
+
+    // A config that does not parse may hold what was asked for, so "not found" would be no answer: the run fails,
+    // its report naming what was not searched.
+    if !search.unreadable.is_empty() {
+      return Err(
+        XrfError::new_verify_error(format!(
+          "The search is incomplete: {} config(s) do not parse",
+          search.unreadable.len()
+        ))
+        .into(),
+      );
+    }
 
     Ok(())
   }

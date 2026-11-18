@@ -6,6 +6,7 @@ use xrf_chunk::XRayByteOrder;
 use xrf_output::OutputOptions;
 use xrf_rawdata::{LevelDecompileReport, LevelDecompileRequest, LevelSceneDecompiler, LevelSurfaces};
 
+use crate::core::arguments::JobsArgument;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 use crate::core::terminal::CliJob;
 
@@ -19,7 +20,7 @@ impl GenericCommand for DecompileCommand {
   }
 
   fn declare(&self, command: Command) -> Command {
-    command
+    let command: Command = command
       .about(
         "Decompile a compiled level's directory into an SDK Level Editor scene (.level and its parts), with a \
          .level.xrf.json provenance sidecar beside it. The scene holds the parts the build passes through (particles, \
@@ -121,7 +122,9 @@ impl GenericCommand for DecompileCommand {
           .short('f')
           .long("force")
           .action(ArgAction::SetTrue),
-      )
+      );
+
+    JobsArgument::declare(command)
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {

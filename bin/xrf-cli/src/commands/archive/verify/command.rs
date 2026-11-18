@@ -11,6 +11,7 @@ use xrf_vfs::{XrayArchiveSource, XrayPathCollision, XrayShadowingEntry};
 
 use super::report::ArchiveVerifyReport;
 use crate::commands::archive::list::ArchiveEntrySelection;
+use crate::core::arguments::JobsArgument;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 use crate::core::report::ReportVerdict;
 use crate::core::terminal::SourceReachability;
@@ -38,7 +39,7 @@ impl GenericCommand for VerifyCommand {
   }
 
   fn declare(&self, command: Command) -> Command {
-    command
+    let command: Command = command
       .about("Read every archive payload and verify decompression and CRC checks")
       .arg(
         Arg::new("path")
@@ -47,7 +48,9 @@ impl GenericCommand for VerifyCommand {
           .long("path")
           .required(true)
           .value_parser(value_parser!(PathBuf)),
-      )
+      );
+
+    JobsArgument::declare(command)
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {

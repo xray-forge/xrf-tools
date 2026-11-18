@@ -24,7 +24,8 @@ pub struct LevelBuildRequest {
   pub objects: Vec<PathBuf>,
   /// The game material library, `gamemtl.xr`; the level compiler's files are written only where it is named.
   pub game_materials: Option<PathBuf>,
-  /// The textures root (`$game_textures$`) the details' textures and the impostors' strips are read from.
+  /// The textures root (`$game_textures$`) the details' textures and the impostors' strips are read from; none for
+  /// where a decompile writes them ([`Self::get_textures_root`]).
   pub textures: Option<PathBuf>,
   /// How large the impostor atlas may grow.
   pub impostor_limit: LevelBuildImpostorLimit,
@@ -60,13 +61,33 @@ impl LevelBuildRequest {
     }
 
     self
-      .source
-      .parent()
-      .and_then(Path::parent)
-      .filter(|rawdata| !rawdata.as_os_str().is_empty())
+      .get_rawdata()
       .map(|rawdata| rawdata.join(Self::OBJECTS_DIRECTORY))
       .filter(|objects| objects.is_dir())
       .into_iter()
       .collect()
+  }
+
+  /// The textures root the details' textures and the impostors' strips are read from: the one named, else
+  /// `<rawdata>/../gamedata/textures`, where a decompile of the scene writes them, as the SDK's `fs.ltx` puts
+  /// `$game_textures$` under the gamedata beside its rawdata.
+  pub fn get_textures_root(&self) -> PathBuf {
+    self.textures.clone().unwrap_or_else(|| {
+      self
+        .get_rawdata()
+        .map_or_else(|| self.source.join("..").join(".."), Path::to_path_buf)
+        .join("..")
+        .join("gamedata")
+        .join("textures")
+    })
+  }
+
+  /// The rawdata directory holding the scene's `levels` directory, where the scene's path names one.
+  fn get_rawdata(&self) -> Option<&Path> {
+    self
+      .source
+      .parent()
+      .and_then(Path::parent)
+      .filter(|rawdata| !rawdata.as_os_str().is_empty())
   }
 }
