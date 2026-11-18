@@ -19,15 +19,25 @@ use xrf_test_utils::GeneratedResources;
 
 use crate::level::build::level_build_atlas::LevelBuildAtlas;
 use crate::level::build::level_build_textures::LevelBuildTextures;
-use crate::level::level_lod_strip::LevelLodStrip;
+use crate::level::geometry::level_collision_index::LevelCollisionIndex;
+use crate::level::geometry::level_decal_index::LevelDecalIndex;
+use crate::level::geometry::level_geometry_census::LevelGeometryCensus;
+use crate::level::geometry::level_geometry_conversion::LevelGeometryConversion;
+use crate::level::geometry::level_geometry_decompile::LevelGeometryDecompile;
+use crate::level::geometry::level_geometry_sources::LevelGeometrySources;
+use crate::level::instance::level_instance_library::LevelInstanceLibrary;
+use crate::level::level_decompile_context::LevelDecompileContext;
+use crate::level::scene::level_scene_texture_file::LevelSceneTextureFile;
+use crate::level::surfaces::level_compiler_shader_reason::LevelCompilerShaderReason;
+use crate::level::surfaces::level_shader_pairings::LevelShaderPairings;
+use crate::level::surfaces::level_surface_census::LevelSurfaceCensus;
+use crate::level::surfaces::level_surface_inference::LevelSurfaceInference;
 use crate::level::tests::fixtures::GUID;
 use crate::level::tests::impostor::{bounds, lod as stood_lod, strip};
+use crate::level::trees::level_lod_strip::LevelLodStrip;
+use crate::level::trees::level_tree_impostor_atlas::LevelTreeImpostorAtlas;
+use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 use crate::object::decompile::object_decompile::ObjectDecompile;
-use crate::{
-  LevelCollisionIndex, LevelCompilerShaderReason, LevelDecalIndex, LevelDecompileContext, LevelGeometryCensus,
-  LevelGeometryConversion, LevelGeometryDecompile, LevelGeometrySources, LevelInstanceLibrary, LevelSceneTextureFile,
-  LevelShaderPairings, LevelSurfaceCensus, LevelSurfaceInference, LevelTreeImpostorAtlas, SurfaceDress,
-};
 
 /// A square of render geometry two metres across on the ground, centred on `x`.
 fn square(x: f32) -> [[f32; 3]; 4] {

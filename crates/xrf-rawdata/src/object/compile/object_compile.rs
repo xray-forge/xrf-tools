@@ -1,4 +1,4 @@
-use crate::object::compile::object_compile_options::TangentMethod;
+use crate::object::compile::tangent_method::TangentMethod;
 
 /// An editable object compiled: the file's bytes, an OGF or a detail model, and what the export made of the geometry.
 #[derive(Clone, Debug, PartialEq, Eq)]

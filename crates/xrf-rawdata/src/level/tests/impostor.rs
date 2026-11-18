@@ -9,18 +9,20 @@ use xrf_math::{Aabb, Matrix4x4, Vector2d, Vector3d};
 use xrf_ogf::{OgfLodDefinitionChunk, OgfLodFacet, OgfLodVertex};
 use xrf_test_utils::GeneratedResources;
 
-use crate::level::build::level_build_atlas::{LevelBuildAtlas, LevelBuildAtlasPlace};
+use crate::level::build::level_build_atlas::LevelBuildAtlas;
+use crate::level::build::level_build_atlas_place::LevelBuildAtlasPlace;
 use crate::level::build::level_build_impostor_limit::LevelBuildImpostorLimit;
 use crate::level::build::level_build_impostors::LevelBuildImpostors;
 use crate::level::build::level_build_models::LevelBuildModels;
 use crate::level::build::level_build_sectors::LevelBuildSectors;
 use crate::level::build::level_build_tables::LevelBuildTables;
 use crate::level::build::level_build_textures::LevelBuildTextures;
-use crate::level::level_lod_strip::LevelLodStrip;
-use crate::level::level_tree_conversion::LevelTreeConversion;
-use crate::level::level_tree_impostor::{LevelTreeImpostor, LevelTreeImpostorAtlas};
-use crate::level::level_visual_geometry::LevelVisualGeometry;
-use crate::level::scene::level_scene_decompile::LevelSceneTextureFile;
+use crate::level::geometry::level_visual_geometry::LevelVisualGeometry;
+use crate::level::scene::level_scene_texture_file::LevelSceneTextureFile;
+use crate::level::trees::level_lod_strip::LevelLodStrip;
+use crate::level::trees::level_tree_conversion::LevelTreeConversion;
+use crate::level::trees::level_tree_impostor::LevelTreeImpostor;
+use crate::level::trees::level_tree_impostor_atlas::LevelTreeImpostorAtlas;
 use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
 

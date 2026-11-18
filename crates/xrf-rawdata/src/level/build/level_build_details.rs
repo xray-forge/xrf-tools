@@ -6,7 +6,8 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_level::{DetailModel, DetailVertex, LevelDetailsFile, LevelDetailsHeader, LevelDetailsLight, LevelDetailsSlot};
 use xrf_utils::narrow_format_size;
 
-use crate::level::build::level_build_atlas::{LevelBuildAtlas, LevelBuildAtlasPlace};
+use crate::level::build::level_build_atlas::LevelBuildAtlas;
+use crate::level::build::level_build_atlas_place::LevelBuildAtlasPlace;
 use crate::level::build::level_build_library::LevelBuildLibrary;
 use crate::level::build::level_build_textures::LevelBuildTextures;
 use crate::object::compile::detail::detail_model_builder::DetailModelBuilder;

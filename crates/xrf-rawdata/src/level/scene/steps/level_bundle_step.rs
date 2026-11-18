@@ -3,13 +3,13 @@ use xrf_editable_level::EditableLevelOptions;
 use xrf_error::XrfResult;
 use xrf_level::{LevelFile, LevelLightsFile};
 
-use crate::level::level_glow_conversion::LevelGlowConversion;
-use crate::level::level_light_conversion::LevelLightConversion;
+use crate::level::parts::level_glow_conversion::LevelGlowConversion;
+use crate::level::parts::level_light_conversion::LevelLightConversion;
 use crate::level::scene::level_decompile_options::LevelDecompileOptions;
 use crate::level::scene::level_scene_draft::LevelSceneDraft;
 use crate::level::scene::level_scene_sources::LevelSceneSources;
 use crate::level::scene::steps::level_scene_step::LevelSceneStep;
-use crate::provenance::level_scene_provenance::LevelSceneInference;
+use crate::provenance::level_scene_inference::LevelSceneInference;
 
 /// What the compiled bundle and the level compiler's light list give besides geometry: glows, lights, and the light
 /// qualities of the level options, from the generated sky and sun.

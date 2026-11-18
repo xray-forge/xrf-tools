@@ -15,10 +15,13 @@ use xrf_level::{BuildAimapFile, BuildPrjFile, BuildPrjGlow, BuildPrjParams, Buil
 use xrf_math::{Aabb, Vector3d};
 use xrf_utils::{OutputFiles, format_path};
 
-use crate::level::build::level_build_breakables::{LevelBuildBreakableExport, LevelBuildBreakables};
-use crate::level::build::level_build_climbables::{LevelBuildClimbableExport, LevelBuildClimbables};
+use crate::level::build::level_build_breakable_export::LevelBuildBreakableExport;
+use crate::level::build::level_build_breakables::LevelBuildBreakables;
+use crate::level::build::level_build_census::LevelBuildCensus;
+use crate::level::build::level_build_climbable_export::LevelBuildClimbableExport;
+use crate::level::build::level_build_climbables::LevelBuildClimbables;
 use crate::level::build::level_build_details::LevelBuildDetails;
-use crate::level::build::level_build_export::{LevelBuildCensus, LevelBuildExport};
+use crate::level::build::level_build_export::LevelBuildExport;
 use crate::level::build::level_build_geometry::LevelBuildGeometry;
 use crate::level::build::level_build_library::LevelBuildLibrary;
 use crate::level::build::level_build_lights::LevelBuildLights;
@@ -29,15 +32,17 @@ use crate::level::build::level_build_report::LevelBuildReport;
 use crate::level::build::level_build_request::LevelBuildRequest;
 use crate::level::build::level_build_sectors::LevelBuildSectors;
 use crate::level::build::level_build_sources::LevelBuildSources;
-use crate::level::build::level_build_tables::{LevelBuildTableRecords, LevelBuildTables};
+use crate::level::build::level_build_table_records::LevelBuildTableRecords;
+use crate::level::build::level_build_tables::LevelBuildTables;
 use crate::level::build::level_build_textures::LevelBuildTextures;
-use crate::level::level_ai_map_conversion::LevelAiMapConversion;
-use crate::level::level_entity_conversion::LevelEntityConversion;
-use crate::level::level_exported_file::LevelExportedFile;
-use crate::level::level_map_conversion::LevelMapConversion;
+use crate::level::build::level_exported_file::LevelExportedFile;
+use crate::level::entities::level_entity_conversion::LevelEntityConversion;
 use crate::level::level_scene_exporter::LevelSceneExporter;
-use crate::level::scene::level_scene_decompile::{LevelSceneObjectFile, LevelSceneTextureFile};
-use crate::provenance::level_scene_provenance::LevelSceneRefusal;
+use crate::level::parts::level_ai_map_conversion::LevelAiMapConversion;
+use crate::level::parts::level_map_conversion::LevelMapConversion;
+use crate::level::scene::level_scene_object_file::LevelSceneObjectFile;
+use crate::level::scene::level_scene_texture_file::LevelSceneTextureFile;
+use crate::provenance::level_scene_refusal::LevelSceneRefusal;
 
 /// Exports a scene into the `build.prj` the Level Editor's Build hands xrLC (`SceneBuilder::CompileStatic` and
 /// `SaveBuild`, `BuilderRemote.cpp:1421`, `:357`): the sky and the sun generated from the level options, then each tool

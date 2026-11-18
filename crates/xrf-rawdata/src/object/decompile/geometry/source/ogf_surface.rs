@@ -2,7 +2,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_level::DetailModel;
 use xrf_ogf::{OgfFile, OgfVertexData};
 
-use crate::level::level_visual_geometry::LevelVisualGeometry;
+use crate::level::geometry::level_visual_geometry::LevelVisualGeometry;
 use crate::object::decompile::geometry::source::collapsed_mapping::CollapsedMapping;
 use crate::object::decompile::geometry::source::ogf_corner::OgfCorner;
 use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;

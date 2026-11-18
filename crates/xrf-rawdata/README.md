@@ -7,10 +7,10 @@ Converts between the game's compiled assets and the SDK's rawdata, the tree the 
 | OGF → editable `.object`             | `ObjectDecompiler::decompile`                |
 | `.dm` detail model → `.object`       | `ObjectDecompiler::decompile_detail`         |
 | Level visuals → one static `.object` | `ObjectDecompiler::decompile_level_geometry` |
-| Level files ↔ Level Editor parts     | `Level*Conversion::decompile` and `export`   |
+| Level files ↔ Level Editor parts     | `parts::Level*Conversion`                    |
 | Level directory → Level Editor scene | `LevelSceneDecompiler::decompile`            |
 | … written to disk, for a front-end   | `LevelSceneDecompiler::decompile_to_path`    |
-| Level Editor scene → its game files  | `LevelSceneExporter::export`                 |
+| Level Editor scene → its game files  | `parts::LevelSceneExporter::export`          |
 | Level Editor scene → `build.prj`     | `LevelBuildExporter::export`                 |
 | … the whole Build into a directory   | `LevelBuildExporter::build_to_directory`     |
 | `.object` → OGF                      | `ObjectCompiler::compile`                    |
@@ -25,6 +25,11 @@ entry points: they take a `LevelDecompileRequest` or `LevelBuildRequest`, resolv
 (the gamedata beside a level, its root spawn and libraries, the objects and textures roots beside a scene), refuse to
 overwrite unless asked, report to an `xrf-job` `JobHandle` and stop between steps once it is cancelled, and return a
 `LevelDecompileReport` or `LevelBuildReport`.
+
+The crate root exports those front-ends, the object compiler, decompiler and verifier, and the data they take and
+return. `xrf_rawdata::parts` exports the pieces beneath them, one at a time: each scene part's conversion, the
+geometry, surface and entity passes and the context they share, the library instances, and a compile's skeleton split.
+They let a check run one part against its compiled file, and change with the pipeline.
 
 ## Decompile an OGF
 

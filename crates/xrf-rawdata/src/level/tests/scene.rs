@@ -8,6 +8,7 @@ use xrf_editable_level::{
   EditableBuildParams, EditableLevelCamera, EditableLevelFile, EditableLevelGuid, EditableLevelOptions,
   EditableLevelScene, EditableObjectPart, EditableSpawnPointObject, EditableWayObject,
 };
+use xrf_editable_object::EditableObjectFile;
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::{JobHandle, ProgressSink, RecordingSink};
 use xrf_level::{
@@ -17,15 +18,24 @@ use xrf_level::{
 use xrf_math::Vector3d;
 use xrf_test_utils::GeneratedResources;
 
-use xrf_editable_object::EditableObjectFile;
-
-use crate::level::level_visual_geometry::LevelVisualGeometry;
+use crate::level::build::level_exported_previous::LevelExportedPrevious;
+use crate::level::geometry::level_visual_geometry::LevelVisualGeometry;
+use crate::level::level_scene_exporter::LevelSceneExporter;
+use crate::level::parts::level_fog_volume_conversion::LevelFogVolumeConversion;
+use crate::level::scene::level_decompile_options::LevelDecompileOptions;
+use crate::level::scene::level_decompile_report::LevelDecompileReport;
+use crate::level::scene::level_decompile_request::LevelDecompileRequest;
+use crate::level::scene::level_scene_decompile::LevelSceneDecompile;
+use crate::level::scene::level_scene_decompiler::LevelSceneDecompiler;
+use crate::level::scene::level_scene_library_file::LevelSceneLibraryFile;
+use crate::level::scene::level_scene_object_file::LevelSceneObjectFile;
+use crate::level::scene::level_scene_texture_file::LevelSceneTextureFile;
 use crate::level::tests::fixtures::GUID;
-use crate::{
-  LevelDecompileOptions, LevelDecompileReport, LevelDecompileRequest, LevelExportedPrevious, LevelFogVolumeConversion,
-  LevelSceneDecompile, LevelSceneDecompiler, LevelSceneExporter, LevelSceneInference, LevelSceneLibraryFile,
-  LevelSceneObjectFile, LevelSceneProvenance, LevelSceneTextureFile, ObjectDecompiler, ObjectProvenance, SurfaceDress,
-};
+use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
+use crate::object::decompile::object_decompiler::ObjectDecompiler;
+use crate::provenance::level_scene_inference::LevelSceneInference;
+use crate::provenance::level_scene_provenance::LevelSceneProvenance;
+use crate::provenance::object_provenance::ObjectProvenance;
 
 fn respawn_point(game_types: u16) -> LevelGameRPoint {
   LevelGameRPoint {

@@ -5,7 +5,7 @@ use xrf_gamemtl::GameMtlFile;
 use xrf_level::{LevelHomFile, LevelHomPolygon, LevelSomFile, LevelSomPolygon};
 use xrf_math::{Matrix4x4, Vector3d};
 
-use crate::level::level_occluder_conversion::LevelOccluderConversion;
+use crate::level::parts::level_occluder_conversion::LevelOccluderConversion;
 
 /// The occluders a build writes beside `build.prj`, from every placed object whatever kind it is:
 /// `SceneBuilder::BuildHOMModel` (`BuilderOGF.cpp:17`) takes each face of an object flagged `eoHOM` and each face of a

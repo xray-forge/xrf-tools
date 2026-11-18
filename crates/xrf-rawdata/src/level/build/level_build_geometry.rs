@@ -8,7 +8,7 @@ use xrf_math::{Matrix4x4, Vector2d, Vector3d};
 
 use crate::level::build::level_build_sectors::LevelBuildSectors;
 use crate::level::build::level_build_tables::LevelBuildTables;
-use crate::level::level_occluder_conversion::LevelOccluderConversion;
+use crate::level::parts::level_occluder_conversion::LevelOccluderConversion;
 use crate::object::compile::geometry::source::mesh_corners::MeshCorners;
 
 /// The static geometry a build hands xrLC: every vertex in world space, the faces over them and a smoothing group per

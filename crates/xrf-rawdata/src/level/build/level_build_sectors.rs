@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use xrf_editable_level::EditableSectorObject;
 use xrf_math::{Aabb, Sphere, Vector3d};
 
+use crate::level::build::level_build_visibility::LevelBuildVisibility;
+
 /// A scene's sectors as the Build numbers and tests them: each numbered in the order the scene lists it
 /// (`SceneBuilder::RenumerateSectors`, `BuilderCore.cpp:75`), the default sector the one marked so or else one past
 /// the last, each item's object and mesh looked up to its sector (`PortalUtils.FindSector`), and each sector's volume
@@ -13,15 +15,6 @@ pub(crate) struct LevelBuildSectors {
   items: HashMap<(String, String), u16>,
   volumes: Vec<Option<(Aabb, Sphere)>>,
   default: u16,
-}
-
-/// How a sphere lies against a sector's volume, `EVisible` as `CSector::Intersect` gives it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum LevelBuildVisibility {
-  None,
-  PartialOutside,
-  PartialInside,
-  Fully,
 }
 
 impl LevelBuildSectors {

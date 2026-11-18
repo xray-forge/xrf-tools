@@ -3,8 +3,9 @@ use xrf_error::XrfResult;
 use xrf_level::{LevelFile, LevelGlow, LevelGlowsChunk, LevelHeaderChunk, LevelShaderEntry, LevelShadersChunk};
 use xrf_math::Vector3d;
 
+use crate::level::level_decompile_context::LevelDecompileContext;
+use crate::level::parts::level_glow_conversion::LevelGlowConversion;
 use crate::level::tests::fixtures::GUID;
-use crate::{LevelDecompileContext, LevelGlowConversion};
 
 /// A compiled level of these shader table rows and glows, and nothing else.
 fn level(shaders: &[&str], glows: Vec<LevelGlow>) -> LevelFile {

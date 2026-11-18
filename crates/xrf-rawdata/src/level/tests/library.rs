@@ -10,9 +10,10 @@ use xrf_job::JobHandle;
 use xrf_math::Vector3d;
 use xrf_test_utils::{GeneratedResources, HostFilesystem};
 
+use crate::level::geometry::level_visual_geometry::LevelVisualGeometry;
 use crate::level::level_object_library::LevelObjectLibrary;
-use crate::level::level_visual_geometry::LevelVisualGeometry;
-use crate::{ObjectDecompiler, SurfaceDress};
+use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
+use crate::object::decompile::object_decompiler::ObjectDecompiler;
 
 /// One triangle's object, written at `path`.
 fn write_object(path: &Path) -> XrfResult {

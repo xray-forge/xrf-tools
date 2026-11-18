@@ -18,16 +18,18 @@ use xrf_level::{
 use xrf_spawn::{AlifeObject, LevelSpawnFile, LevelSpawnObject};
 use xrf_utils::{StagedFile, format_path};
 
-use crate::level::level_entity_conversion::{LevelEntityConversion, LevelEntityExport};
-use crate::level::level_exported_file::{LevelExportedFile, LevelExportedPrevious};
-use crate::level::level_fog_volume_conversion::LevelFogVolumeConversion;
-use crate::level::level_particle_conversion::LevelParticleConversion;
+use crate::level::build::level_exported_file::LevelExportedFile;
+use crate::level::build::level_exported_previous::LevelExportedPrevious;
+use crate::level::entities::level_entity_conversion::LevelEntityConversion;
+use crate::level::entities::level_entity_export::LevelEntityExport;
 use crate::level::level_scene_tool_objects::LevelSceneToolObjects;
-use crate::level::level_sound_environment_conversion::LevelSoundEnvironmentConversion;
-use crate::level::level_sound_source_conversion::LevelSoundSourceConversion;
-use crate::level::level_spawn_point_conversion::LevelSpawnPointConversion;
-use crate::level::level_wallmark_conversion::LevelWallmarkConversion;
-use crate::level::level_way_conversion::LevelWayConversion;
+use crate::level::parts::level_fog_volume_conversion::LevelFogVolumeConversion;
+use crate::level::parts::level_particle_conversion::LevelParticleConversion;
+use crate::level::parts::level_sound_environment_conversion::LevelSoundEnvironmentConversion;
+use crate::level::parts::level_sound_source_conversion::LevelSoundSourceConversion;
+use crate::level::parts::level_spawn_point_conversion::LevelSpawnPointConversion;
+use crate::level::parts::level_wallmark_conversion::LevelWallmarkConversion;
+use crate::level::parts::level_way_conversion::LevelWayConversion;
 
 /// Exports a scene's parts into the level files the Level Editor's Build writes from them with no compiler between:
 /// `SceneBuilder::BuildGame` (`BuilderGame.cpp:17`) and `BuildWallmarks` (`BuilderOGF.cpp:172`), plus `level.snd_env`,

@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::level::level_surface_inference::LevelSurfaces;
+use crate::level::surfaces::level_surfaces::LevelSurfaces;
 
 /// What a level's decompile takes besides the level's directory, the one set of options every front-end fills.
 #[derive(Clone, Debug, PartialEq, Eq)]

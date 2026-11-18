@@ -2,9 +2,11 @@ use std::collections::HashMap;
 
 use glam::{DVec2, DVec3};
 
+use crate::level::geometry::level_visual_geometry::LevelVisualGeometry;
 use crate::level::instance::level_instance_library::LevelInstanceLibrary;
-use crate::level::instance::level_library_object::{LevelLibraryObject, LevelLibraryTriangle};
-use crate::level::level_visual_geometry::LevelVisualGeometry;
+use crate::level::instance::level_instance_triangle::LevelInstanceTriangle;
+use crate::level::instance::level_library_object::LevelLibraryObject;
+use crate::level::instance::level_library_triangle::LevelLibraryTriangle;
 
 /// A level's static triangles of textures a library object draws, indexed four ways for instance recovery: by their
 /// texture and edge lengths, which a library triangle placed rigidly keeps; by their edges' ratios, which a scaled
@@ -17,18 +19,6 @@ pub(crate) struct LevelInstanceTriangles {
   by_ratios: HashMap<(u32, [i64; 2]), Vec<u32>>,
   by_corner: HashMap<(u32, [i64; 3]), Vec<u32>>,
   by_area: HashMap<(u32, [i64; 3]), Vec<u32>>,
-}
-
-/// One static triangle of the level: its texture in the library's table, corners, and where it is read from.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) struct LevelInstanceTriangle {
-  pub(crate) texture: u32,
-  pub(crate) points: [DVec3; 3],
-  pub(crate) uvs: [DVec2; 3],
-  /// Its visual, by its place in the list the index was built from, and its place among the visual's triangles.
-  pub(crate) visual: u32,
-  pub(crate) index: u32,
-  pub(crate) is_claimed: bool,
 }
 
 impl LevelInstanceTriangles {

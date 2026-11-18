@@ -1,18 +1,18 @@
 use std::collections::BTreeMap;
 
 use byteorder::ByteOrder;
-use serde::Serialize;
 use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 use xrf_level::{BuildAimapFile, BuildPrjFile, LevelHomFile, LevelSomFile};
 use xrf_spawn::AlifeObject;
 
-use crate::level::build::level_build_breakables::LevelBuildBreakablePart;
+use crate::level::build::level_build_breakable_part::LevelBuildBreakablePart;
+use crate::level::build::level_build_census::LevelBuildCensus;
 use crate::level::build::level_build_details::LevelBuildDetails;
-use crate::level::build::level_build_impostors::LevelBuildImpostorAtlas;
-use crate::level::level_map_conversion::LevelMapConversion;
-use crate::level::level_tree_impostor::LevelTreeImpostorAtlas;
-use crate::provenance::level_scene_provenance::LevelSceneRefusal;
+use crate::level::build::level_build_impostor_atlas::LevelBuildImpostorAtlas;
+use crate::level::parts::level_map_conversion::LevelMapConversion;
+use crate::level::trees::level_tree_impostor_atlas::LevelTreeImpostorAtlas;
+use crate::provenance::level_scene_refusal::LevelSceneRefusal;
 
 /// A scene exported for the level compiler: `build.prj`, the occluders and the map's settings written beside it, and
 /// what went into them.
@@ -35,48 +35,11 @@ pub struct LevelBuildExport {
   pub(crate) breakable_parts: Vec<LevelBuildBreakablePart>,
   /// The entities the build cuts from the geometry, the breakables (`breakable_object`) and then the ladders
   /// (`climable_object`), which `level.spawn` opens with: what
-  /// [`LevelSceneExporter::export`](crate::LevelSceneExporter::export) takes as built.
+  /// [`LevelSceneExporter::export`](crate::parts::LevelSceneExporter::export) takes as built.
   pub entities: Vec<AlifeObject>,
   /// The parts the build made no entity of, and why, as it reports them and goes on.
   pub refused: Vec<LevelSceneRefusal>,
   pub census: LevelBuildCensus,
-}
-
-/// What a build took from the scene and left out.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LevelBuildCensus {
-  /// Static objects whose meshes went into the geometry.
-  pub static_objects: usize,
-  /// Objects of no static geometry: dynamic ones, and occluders, which `level.hom` and `level.som` take.
-  pub other_objects: usize,
-  pub faces: usize,
-  /// Faces of occluder, breakable and climbable surfaces, which other exports take.
-  pub skipped_faces: usize,
-  /// Faces of no area left out: the objects' faces, which the Build drops, and the wall marks' triangles, which xrLC
-  /// would stop on.
-  pub invalid_faces: usize,
-  pub static_lights: usize,
-  pub dynamic_lights: usize,
-  pub glows: usize,
-  pub portals: usize,
-  pub occluder_polygons: usize,
-  pub sound_occluder_polygons: usize,
-  /// Multi-use models and the placements referencing them.
-  pub multi_use_models: usize,
-  pub multi_use_references: usize,
-  /// Impostors of those models, whose strips the atlas merges.
-  pub impostors: usize,
-  /// AI map nodes the map holds.
-  pub ai_map_nodes: usize,
-  /// Detail objects the slots plant, and the textures their atlas merges.
-  pub detail_objects: usize,
-  pub detail_textures: usize,
-  /// Breakables and ladders made of breakable and climbable faces, and parts of either refused.
-  pub breakable_objects: usize,
-  pub climbable_objects: usize,
-  pub refused_parts: usize,
 }
 
 impl LevelBuildExport {

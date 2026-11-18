@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-use crate::level::build::level_build_atlas::{LevelBuildAtlas, LevelBuildAtlasSizes};
+use crate::level::build::level_build_atlas::LevelBuildAtlas;
+use crate::level::build::level_build_atlas_sizes::LevelBuildAtlasSizes;
 
 /// How large a build lets the impostor atlas, `level_lods.dds` and `_nm`, grow.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

@@ -4,8 +4,8 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_level::DetailModel;
 use xrf_ogf::{OgfDescriptionChunk, OgfDescriptionTimeWidth, OgfFile, OgfModelType};
 
-use crate::level::level_visual_geometry::LevelVisualGeometry;
-use crate::object::compile::object_compile_options::TangentMethod;
+use crate::level::geometry::level_visual_geometry::LevelVisualGeometry;
+use crate::object::compile::tangent_method::TangentMethod;
 use crate::object::decompile::geometry::repeated_faces::RepeatedFaces;
 use crate::object::decompile::geometry::smoothing_inference::SmoothingInference;
 use crate::object::decompile::geometry::source::bone_influences::BoneInfluences;
@@ -20,7 +20,8 @@ use crate::object::decompile::mesh::mesh_kind::MeshKind;
 use crate::object::decompile::object_decompile::ObjectDecompile;
 use crate::object::decompile::object_inference::ObjectInference;
 use crate::object::decompile::skeleton::bone_converter::BoneConverter;
-use crate::object::decompile::skeleton::motion_converter::{ConvertedMotions, MotionConverter};
+use crate::object::decompile::skeleton::converted_motions::ConvertedMotions;
+use crate::object::decompile::skeleton::motion_converter::MotionConverter;
 use crate::object::detail_parameters::DetailParameters;
 
 /// Turns an OGF the Actor Editor exported back into the editable object it was exported from, as near as the OGF

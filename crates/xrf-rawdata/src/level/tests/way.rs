@@ -4,8 +4,9 @@ use xrf_error::XrfResult;
 use xrf_level::{LevelGameFile, LevelGameWay, LevelGameWayLink, LevelGameWayPoint};
 use xrf_math::Vector3d;
 
+use crate::level::level_decompile_context::LevelDecompileContext;
+use crate::level::parts::level_way_conversion::LevelWayConversion;
 use crate::level::tests::fixtures::GUID;
-use crate::{LevelDecompileContext, LevelWayConversion};
 
 fn way(name: &str, points: usize, links: &[(u16, u16, f32)]) -> LevelGameWay {
   LevelGameWay {

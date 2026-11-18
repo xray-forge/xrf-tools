@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use glam::{DVec3, Vec3};
 use xrf_chunk::ChunkLayout;
 use xrf_editable_level::EditableSceneObject;
@@ -16,16 +15,16 @@ use xrf_spawn::{
   SpawnPacketHeader,
 };
 
+use crate::level::build::level_build_breakable_export::LevelBuildBreakableExport;
+use crate::level::build::level_build_breakable_part::LevelBuildBreakablePart;
 use crate::level::build::level_build_part_box::LevelBuildPartBox;
 use crate::level::build::level_build_parts::LevelBuildParts;
-use crate::level::level_breakable_conversion::LevelBreakableConversion;
+use crate::level::parts::level_breakable_conversion::LevelBreakableConversion;
 use crate::object::compile::bounds::bone_boxes::BoneBoxes;
-use crate::object::compile::object_compile_options::TangentMethod;
-use crate::object::compile::object_compile_source::ObjectCompileSource;
 use crate::object::compile::skeleton::skeleton_geometry::SkeletonGeometry;
 use crate::object::compile::skeleton::skeleton_geometry_builder::SkeletonGeometryBuilder;
-use crate::object::compile::skeleton::skeleton_ogf_writer::SkeletonOgfWriter;
 use crate::object::compile::skeleton::skin_corner::SkinCorner;
+use crate::object::compile::tangent_method::TangentMethod;
 
 /// The breakables a build cuts out of the geometry (`ESceneObjectTool::ExportBreakableObjects`,
 /// `ESceneObjectToolsExportBreakable.cpp:105`): the parts of the static objects' faces of a breakable game material
@@ -35,43 +34,6 @@ use crate::object::compile::skeleton::skin_corner::SkinCorner;
 pub(crate) struct LevelBuildBreakables {
   parts: LevelBuildParts,
   random: EditorRandom,
-}
-
-/// The breakables a build made: each part's skeleton, the entities placing them, and the parts it could not make one
-/// of.
-pub(crate) struct LevelBuildBreakableExport {
-  pub(crate) parts: Vec<LevelBuildBreakablePart>,
-  pub(crate) entities: Vec<AlifeObject>,
-  /// Each part refused, by its name, with why.
-  pub(crate) refused: Vec<(String, String)>,
-}
-
-/// One part's rigid skeleton, kept unwritten so that it takes the byte order of the level's other files.
-#[derive(Clone, Debug, PartialEq)]
-pub(crate) struct LevelBuildBreakablePart {
-  /// Its path in the level's directory, `meshes/brkbl#<n>.ogf`.
-  pub(crate) path: String,
-  object: EditableObjectFile,
-  geometry: SkeletonGeometry,
-}
-
-impl LevelBuildBreakablePart {
-  /// The part's OGF in `T`'s byte order, with a description of nothing (`ogf_desc`'s defaults).
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when the skeleton does not write.
-  pub(crate) fn write<T: ByteOrder>(&self) -> XrfResult<Vec<u8>> {
-    SkeletonOgfWriter::write::<T>(
-      &self.object,
-      &self.geometry,
-      &ObjectCompileSource {
-        source_file: String::new(),
-        convertor: String::new(),
-        built_at: 0,
-      },
-    )
-  }
 }
 
 /// One fragment of a part, `SBBone`: the game material of the face it grew from, how many faces it grew and their area,

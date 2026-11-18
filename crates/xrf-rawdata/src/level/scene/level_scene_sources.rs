@@ -7,18 +7,13 @@ use sha2::{Digest, Sha256};
 use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
 use xrf_editable_level::EditableLevelGuid;
 use xrf_error::{XrfError, XrfResult};
-use xrf_level::{LevelFile, LevelVisualsChunk};
+use xrf_level::LevelFile;
 use xrf_utils::format_path;
 
+use crate::level::scene::level_bundle::LevelBundle;
 use crate::level::scene::level_scene_listing::LevelSceneListing;
-use crate::provenance::level_scene_provenance::LevelSceneSource;
+use crate::provenance::level_scene_source::LevelSceneSource;
 use crate::provenance::sidecar::Sidecar;
-
-/// The compiled bundle (`level`), read once for every step that needs it: the file, and its visuals where it holds any.
-pub(crate) struct LevelBundle {
-  pub(crate) file: LevelFile,
-  pub(crate) visuals: Option<LevelVisualsChunk>,
-}
 
 /// The files of a level's directory a decompile reads: each one's bytes until a step takes them, the bundle once
 /// parsed, and what the sidecar records of each, hashed as it was read.

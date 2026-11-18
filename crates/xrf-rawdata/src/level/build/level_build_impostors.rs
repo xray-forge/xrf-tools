@@ -4,11 +4,13 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_level::{BuildPrjLod, BuildPrjLodFace};
 use xrf_math::{Aabb, Vector2d};
 
-use crate::level::build::level_build_atlas::{LevelBuildAtlas, LevelBuildAtlasSizes};
+use crate::level::build::level_build_atlas::LevelBuildAtlas;
+use crate::level::build::level_build_atlas_sizes::LevelBuildAtlasSizes;
+use crate::level::build::level_build_impostor_atlas::LevelBuildImpostorAtlas;
 use crate::level::build::level_build_impostor_limit::LevelBuildImpostorLimit;
 use crate::level::build::level_build_tables::LevelBuildTables;
 use crate::level::build::level_build_textures::LevelBuildTextures;
-use crate::level::level_lod_strip::LevelLodStrip;
+use crate::level::trees::level_lod_strip::LevelLodStrip;
 
 /// The impostors a build draws its multi-use models as from afar (`SceneBuilder::BuildObjectLOD`,
 /// `BuilderLODs.cpp:54`): for each model flagged `eoUsingLOD`, eight quads standing through its box in its own space,
@@ -19,14 +21,6 @@ pub(crate) struct LevelBuildImpostors {
   lods: Vec<BuildPrjLod>,
   /// Each impostor's strip and its normals, as loaded.
   strips: Vec<[RgbaImage; 2]>,
-}
-
-/// The impostor atlas a build writes beside `build.prj`, as the level ships it: `level_lods.dds` and
-/// `level_lods_nm.dds`, DXT5 with mips.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct LevelBuildImpostorAtlas {
-  pub color: Vec<u8>,
-  pub normal: Vec<u8>,
 }
 
 impl LevelBuildImpostors {

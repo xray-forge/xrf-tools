@@ -7,7 +7,8 @@ use glam::{DMat3, DVec2, DVec3};
 use crate::level::instance::level_instance_fit::LevelInstanceFit;
 use crate::level::instance::level_instance_matcher::LevelInstanceMatcher;
 use crate::level::instance::level_instance_triangles::LevelInstanceTriangles;
-use crate::level::instance::level_library_object::{LevelLibraryObject, LevelLibraryTriangle};
+use crate::level::instance::level_library_object::LevelLibraryObject;
+use crate::level::instance::level_library_triangle::LevelLibraryTriangle;
 
 /// A wedge of five faces, no two alike, so a placement fits it one way only: a 2 by 1 by 0.5 metre block cut on a slant.
 fn wedge(texture: u32, uv_offset: f64) -> Vec<([DVec3; 3], [DVec2; 3])> {

@@ -7,8 +7,9 @@ use xrf_error::XrfResult;
 use xrf_level::LevelFogVolFile;
 use xrf_math::Vector3d;
 
+use crate::level::level_decompile_context::LevelDecompileContext;
+use crate::level::parts::level_fog_volume_conversion::LevelFogVolumeConversion;
 use crate::level::tests::fixtures::GUID;
-use crate::{LevelDecompileContext, LevelFogVolumeConversion};
 
 fn volume(kind: EditableFogVolumeKind, group: u32, position: [f32; 3], rotation: [f32; 3]) -> EditableFogVolumeObject {
   EditableFogVolumeObject {

@@ -5,7 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
 use xrf_error::{XrfError, XrfResult};
 
-use crate::object::compile::object_compile_options::TangentMethod;
+use crate::object::compile::tangent_method::TangentMethod;
 use crate::object::decompile::object_inference::ObjectInference;
 use crate::object::detail_parameters::DetailParameters;
 use crate::provenance::sidecar::Sidecar;

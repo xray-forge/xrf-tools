@@ -3,7 +3,7 @@ use xrf_error::XrfResult;
 use xrf_level::LevelVertex;
 use xrf_math::{Vector2d, Vector3d};
 
-use crate::level::level_visual_geometry::LevelVisualGeometry;
+use crate::level::geometry::level_visual_geometry::LevelVisualGeometry;
 use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
 

@@ -7,14 +7,15 @@ use xrf_job::{JobHandle, JobScope};
 use xrf_spawn::LevelSpawnFile;
 use xrf_utils::format_path;
 
-use crate::level::level_entity_conversion::LevelEntityConversion;
+use crate::level::entities::level_entity_conversion::LevelEntityConversion;
 use crate::level::level_object_library::LevelObjectLibrary;
+use crate::level::scene::level_decompile_geometry::LevelDecompileGeometry;
 use crate::level::scene::level_decompile_options::LevelDecompileOptions;
-use crate::level::scene::level_decompile_report::{
-  LevelDecompileGeometry, LevelDecompileReport, LevelDecompileReportTool, LevelDecompileRootSpawn,
-  LevelDecompileSurfaces,
-};
+use crate::level::scene::level_decompile_report::LevelDecompileReport;
+use crate::level::scene::level_decompile_report_tool::LevelDecompileReportTool;
 use crate::level::scene::level_decompile_request::LevelDecompileRequest;
+use crate::level::scene::level_decompile_root_spawn::LevelDecompileRootSpawn;
+use crate::level::scene::level_decompile_surfaces::LevelDecompileSurfaces;
 use crate::level::scene::level_scene_decompile::LevelSceneDecompile;
 use crate::level::scene::level_scene_draft::LevelSceneDraft;
 use crate::level::scene::level_scene_listing::LevelSceneListing;

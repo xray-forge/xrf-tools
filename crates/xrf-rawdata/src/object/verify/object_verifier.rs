@@ -8,8 +8,10 @@ use xrf_ogf::{OgfBoneIkData, OgfFile, OgfJointIkData, OgfModelType};
 
 use crate::object::compile::object_compile_source::ObjectCompileSource;
 use crate::object::compile::object_compiler::ObjectCompiler;
-use crate::object::verify::object_verification::{ObjectGeometryCensus, ObjectVerification};
-use crate::object::verify::ogf_material_geometry::{OgfMaterialComparison, OgfMaterialGeometry};
+use crate::object::verify::object_geometry_census::ObjectGeometryCensus;
+use crate::object::verify::object_verification::ObjectVerification;
+use crate::object::verify::ogf_material_comparison::OgfMaterialComparison;
+use crate::object::verify::ogf_material_geometry::OgfMaterialGeometry;
 
 /// Compiles an object and compares the OGF with one it should stand in for, by what the engine reads: the model, the
 /// skeleton and its physics, the motions, and the geometry.

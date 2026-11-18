@@ -4,7 +4,7 @@ use xrf_dds::{DdsFile, RgbaImage};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
-use crate::level::scene::level_scene_decompile::LevelSceneTextureFile;
+use crate::level::scene::level_scene_texture_file::LevelSceneTextureFile;
 
 /// The textures a build merges into its atlases, the detail objects' and the impostors' strips: those held in memory
 /// (a decompile's own, by name) before those under the textures root (`$game_textures$`), each as `Surface_Load` reads

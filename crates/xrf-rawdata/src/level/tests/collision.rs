@@ -2,7 +2,8 @@ use xrf_error::XrfResult;
 use xrf_level::{LevelCformFace, LevelCformGeometry};
 use xrf_math::Vector3d;
 
-use crate::{LevelCollisionIndex, LevelCollisionLookup};
+use crate::level::geometry::level_collision_index::LevelCollisionIndex;
+use crate::level::geometry::level_collision_lookup::LevelCollisionLookup;
 
 fn face(vertices: [u32; 3]) -> LevelCformFace {
   LevelCformFace {

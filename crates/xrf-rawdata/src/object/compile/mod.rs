@@ -9,6 +9,7 @@ pub(crate) mod object_compiler;
 pub(crate) mod ogf_export_chunks;
 pub(crate) mod rigid;
 pub(crate) mod skeleton;
+pub(crate) mod tangent_method;
 
 #[cfg(test)]
 mod tests;

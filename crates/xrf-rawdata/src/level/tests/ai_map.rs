@@ -3,7 +3,7 @@ use xrf_editable_level::{EditableAiMapNode, EditableAiMapTool};
 use xrf_level::{BuildAimapFile, LevelAiHeader, LevelAiNode};
 use xrf_math::{Aabb, AiNodePosition, EPS_L, Vector3d};
 
-use crate::level::level_ai_map_conversion::LevelAiMapConversion;
+use crate::level::parts::level_ai_map_conversion::LevelAiMapConversion;
 
 /// A map xrAI saved over nodes from a box `floor` to `top`, with cells 0.7 across over 14 metres square, 21 cells
 /// along z: its height the box's plus `EPS_L`, as `CalculateHeight` gives it.

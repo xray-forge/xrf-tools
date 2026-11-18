@@ -10,7 +10,7 @@ use xrf_job::JobHandle;
 use xrf_utils::format_path;
 
 use crate::level::level_object_library_entry::LevelObjectLibraryEntry;
-use crate::provenance::level_scene_provenance::LevelSceneRefusal;
+use crate::provenance::level_scene_refusal::LevelSceneRefusal;
 
 /// The `.object` files under a decompile's object library roots, listed once for every step that looks in them, and
 /// each one under them that could not be read, with why.

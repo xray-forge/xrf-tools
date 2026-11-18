@@ -5,9 +5,9 @@ use xrf_math::{Aabb, Vector3d};
 use xrf_ogf::{OgfFile, OgfModelType};
 use xrf_skeleton::SkeletonJointLimit;
 
-use crate::object::compile::object_compile_options::TangentMethod;
 use crate::object::compile::object_compile_source::ObjectCompileSource;
 use crate::object::compile::object_compiler::ObjectCompiler;
+use crate::object::compile::tangent_method::TangentMethod;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
 use crate::object::decompile::tests::fixtures::{UP, assemble, chain, corner, object, surface, with_links};
 

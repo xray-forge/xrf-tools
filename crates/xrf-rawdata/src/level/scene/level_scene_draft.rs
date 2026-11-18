@@ -6,20 +6,24 @@ use xrf_job::JobHandle;
 use xrf_spawn::LevelSpawnFile;
 use xrf_utils::format_path;
 
+use crate::level::entities::level_entity_conversion::LevelEntityConversion;
+use crate::level::entities::level_entity_sources::LevelEntitySources;
+use crate::level::geometry::level_decompiled_object::LevelDecompiledObject;
 use crate::level::level_decompile_context::LevelDecompileContext;
-use crate::level::level_entity_conversion::{LevelEntityConversion, LevelEntitySources};
-use crate::level::level_geometry_conversion::LevelDecompiledObject;
-use crate::level::level_map_conversion::LevelMapSettings;
 use crate::level::level_object_library::LevelObjectLibrary;
+use crate::level::parts::level_map_settings::LevelMapSettings;
 use crate::level::scene::level_decompile_options::LevelDecompileOptions;
-use crate::level::scene::level_scene_decompile::{
-  LevelSceneDecompile, LevelSceneLibraryFile, LevelSceneObjectFile, LevelSceneTextureFile,
-};
+use crate::level::scene::level_scene_decompile::LevelSceneDecompile;
+use crate::level::scene::level_scene_library_file::LevelSceneLibraryFile;
+use crate::level::scene::level_scene_object_file::LevelSceneObjectFile;
 use crate::level::scene::level_scene_sources::LevelSceneSources;
+use crate::level::scene::level_scene_texture_file::LevelSceneTextureFile;
 use crate::level::scene::steps::level_root_spawn::LevelRootSpawn;
-use crate::provenance::level_scene_provenance::{
-  LevelSceneFile, LevelSceneGeometry, LevelSceneInference, LevelSceneProvenance, LevelSceneRefusal,
-};
+use crate::provenance::level_scene_file::LevelSceneFile;
+use crate::provenance::level_scene_geometry::LevelSceneGeometry;
+use crate::provenance::level_scene_inference::LevelSceneInference;
+use crate::provenance::level_scene_provenance::LevelSceneProvenance;
+use crate::provenance::level_scene_refusal::LevelSceneRefusal;
 use crate::provenance::object_provenance::ObjectProvenance;
 
 /// A scene being decompiled, as the steps build it: the context its parts share, its level options and the files they

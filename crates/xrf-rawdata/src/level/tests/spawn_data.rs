@@ -9,7 +9,7 @@ use xrf_spawn::{
   AlifeObjectSpaceRestrictor, ClsId, Shape, SpawnPacket, SpawnPacketHeader,
 };
 
-use crate::LevelSpawnDataFields;
+use crate::level::entities::level_spawn_data_fields::LevelSpawnDataFields;
 
 /// The section the editor saves the packet under.
 const SECTION: &str = "object_1_spawndata";

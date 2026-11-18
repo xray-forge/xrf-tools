@@ -3,16 +3,16 @@ use xrf_editable_level::EditableSceneTool;
 use xrf_error::XrfResult;
 use xrf_level::{LevelFogVolFile, LevelPsStaticFile, LevelSndEnvFile, LevelSndStaticFile, LevelWallmarksFile};
 
-use crate::level::level_fog_volume_conversion::LevelFogVolumeConversion;
-use crate::level::level_particle_conversion::LevelParticleConversion;
-use crate::level::level_sound_environment_conversion::LevelSoundEnvironmentConversion;
-use crate::level::level_sound_source_conversion::LevelSoundSourceConversion;
-use crate::level::level_wallmark_conversion::LevelWallmarkConversion;
+use crate::level::parts::level_fog_volume_conversion::LevelFogVolumeConversion;
+use crate::level::parts::level_particle_conversion::LevelParticleConversion;
+use crate::level::parts::level_sound_environment_conversion::LevelSoundEnvironmentConversion;
+use crate::level::parts::level_sound_source_conversion::LevelSoundSourceConversion;
+use crate::level::parts::level_wallmark_conversion::LevelWallmarkConversion;
 use crate::level::scene::level_decompile_options::LevelDecompileOptions;
 use crate::level::scene::level_scene_draft::LevelSceneDraft;
 use crate::level::scene::level_scene_sources::LevelSceneSources;
 use crate::level::scene::steps::level_scene_step::LevelSceneStep;
-use crate::provenance::level_scene_provenance::LevelSceneInference;
+use crate::provenance::level_scene_inference::LevelSceneInference;
 
 /// The files the build writes each straight from one part (`BuilderGame.cpp`), each back into its part: particles,
 /// sounds, sound environments, fog volumes and wall marks.

@@ -2,12 +2,14 @@ use byteorder::ByteOrder;
 use xrf_editable_level::{EditableObjectPart, EditableShapeObject};
 use xrf_error::XrfResult;
 
-use crate::level::level_map_conversion::{LevelMapConversion, LevelMapSettings};
+use crate::level::parts::level_map_conversion::LevelMapConversion;
+use crate::level::parts::level_map_settings::LevelMapSettings;
 use crate::level::scene::level_decompile_options::LevelDecompileOptions;
 use crate::level::scene::level_scene_draft::LevelSceneDraft;
 use crate::level::scene::level_scene_sources::LevelSceneSources;
 use crate::level::scene::steps::level_scene_step::LevelSceneStep;
-use crate::provenance::level_scene_provenance::{LevelSceneInference, LevelSceneRefusal};
+use crate::provenance::level_scene_inference::LevelSceneInference;
+use crate::provenance::level_scene_refusal::LevelSceneRefusal;
 
 /// What `level.ltx` gives ([`LevelMapConversion`]): the map's version, game types and the sections the Build does not
 /// write itself (as the build options' text) into the level options, the map's rectangle as a level-bound shape, and

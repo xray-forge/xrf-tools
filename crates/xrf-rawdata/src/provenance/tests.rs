@@ -4,7 +4,8 @@ use std::path::PathBuf;
 use xrf_error::XrfResult;
 use xrf_test_utils::GeneratedResources;
 
-use crate::object::compile::object_compile_options::{ObjectCompileOptions, TangentMethod};
+use crate::object::compile::object_compile_options::ObjectCompileOptions;
+use crate::object::compile::tangent_method::TangentMethod;
 use crate::object::decompile::object_inference::ObjectInference;
 use crate::object::detail_parameters::DetailParameters;
 use crate::provenance::object_provenance::ObjectProvenance;

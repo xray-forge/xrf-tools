@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use xrf_editable_object::{EditableMesh, EditableObjectFile, EditableSurface};
 
-use crate::object::compile::object_compile_options::TangentMethod;
+use crate::object::compile::tangent_method::TangentMethod;
 use crate::object::decompile::object_inference::ObjectInference;
 use crate::object::detail_parameters::DetailParameters;
 

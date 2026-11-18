@@ -1,0 +1,49 @@
+//! The decompile's and the build's pieces, one scene part or step at a time, beneath the front-end the crate root
+//! exports: each tool part's conversion with the context and sources it takes, the geometry, surface and entity passes,
+//! the library instances, and the skeleton a compile splits. They answer for one part where the front-end answers for a
+//! whole level, so a check can run a part alone against its compiled file. They change with the pipeline; a caller
+//! that wants a level or an object decompiled, built or compiled uses the crate root.
+
+pub use crate::level::entities::level_entity_conversion::LevelEntityConversion;
+pub use crate::level::entities::level_entity_decompile::LevelEntityDecompile;
+pub use crate::level::entities::level_entity_export::LevelEntityExport;
+pub use crate::level::entities::level_entity_sources::LevelEntitySources;
+pub use crate::level::geometry::level_collision_index::LevelCollisionIndex;
+pub use crate::level::geometry::level_collision_lookup::LevelCollisionLookup;
+pub use crate::level::geometry::level_decal_index::LevelDecalIndex;
+pub use crate::level::geometry::level_decompiled_object::LevelDecompiledObject;
+pub use crate::level::geometry::level_geometry_census::LevelGeometryCensus;
+pub use crate::level::geometry::level_geometry_conversion::LevelGeometryConversion;
+pub use crate::level::geometry::level_geometry_decompile::LevelGeometryDecompile;
+pub use crate::level::geometry::level_geometry_sources::LevelGeometrySources;
+pub use crate::level::instance::level_instance_library::LevelInstanceLibrary;
+pub use crate::level::instance::level_instance_mesh::LevelInstanceMesh;
+pub use crate::level::instance::level_instance_placement::LevelInstancePlacement;
+pub use crate::level::instance::level_library_object::LevelLibraryObject;
+pub use crate::level::instance::level_library_triangle::LevelLibraryTriangle;
+pub use crate::level::instance::level_tree_match::LevelTreeMatch;
+pub use crate::level::level_decompile_context::LevelDecompileContext;
+pub use crate::level::level_object_names::LevelObjectNames;
+pub use crate::level::level_scene_exporter::LevelSceneExporter;
+pub use crate::level::parts::level_breakable_conversion::LevelBreakableConversion;
+pub use crate::level::parts::level_decompiled_ladder::LevelDecompiledLadder;
+pub use crate::level::parts::level_fog_volume_conversion::LevelFogVolumeConversion;
+pub use crate::level::parts::level_glow_conversion::LevelGlowConversion;
+pub use crate::level::parts::level_ladder_conversion::LevelLadderConversion;
+pub use crate::level::parts::level_light_conversion::LevelLightConversion;
+pub use crate::level::parts::level_occluder_conversion::LevelOccluderConversion;
+pub use crate::level::parts::level_particle_conversion::LevelParticleConversion;
+pub use crate::level::parts::level_sound_environment_conversion::LevelSoundEnvironmentConversion;
+pub use crate::level::parts::level_sound_occluder_census::LevelSoundOccluderCensus;
+pub use crate::level::parts::level_sound_source_conversion::LevelSoundSourceConversion;
+pub use crate::level::parts::level_spawn_point_conversion::LevelSpawnPointConversion;
+pub use crate::level::parts::level_wallmark_conversion::LevelWallmarkConversion;
+pub use crate::level::parts::level_way_conversion::LevelWayConversion;
+pub use crate::level::surfaces::level_compiler_shader_choice::LevelCompilerShaderChoice;
+pub use crate::level::surfaces::level_compiler_shader_reason::LevelCompilerShaderReason;
+pub use crate::level::surfaces::level_shader_pairings::LevelShaderPairings;
+pub use crate::level::surfaces::level_surface_census::LevelSurfaceCensus;
+pub use crate::level::surfaces::level_surface_inference::LevelSurfaceInference;
+pub use crate::level::trees::level_tree_impostor_atlas::LevelTreeImpostorAtlas;
+pub use crate::object::compile::skeleton::skeleton_geometry::SkeletonGeometry;
+pub use crate::object::compile::skeleton::skeleton_split::SkeletonSplit;

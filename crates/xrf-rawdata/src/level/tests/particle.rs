@@ -8,8 +8,9 @@ use xrf_error::XrfResult;
 use xrf_level::{LevelPsStaticFile, LevelPsStaticPlacement};
 use xrf_math::{Matrix4x4, Vector3d};
 
+use crate::level::level_decompile_context::LevelDecompileContext;
+use crate::level::parts::level_particle_conversion::LevelParticleConversion;
 use crate::level::tests::fixtures::GUID;
-use crate::{LevelDecompileContext, LevelParticleConversion};
 
 /// A placement the editor exported from an object whose saved text held these values.
 fn placement(effect: &str, position: Vector3d, rotation: Vector3d) -> LevelPsStaticPlacement {

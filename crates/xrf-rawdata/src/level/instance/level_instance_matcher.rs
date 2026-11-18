@@ -2,8 +2,10 @@ use glam::{DVec2, DVec3};
 
 use crate::level::instance::level_instance_fit::LevelInstanceFit;
 use crate::level::instance::level_instance_match::LevelInstanceMatch;
-use crate::level::instance::level_instance_triangles::{LevelInstanceTriangle, LevelInstanceTriangles};
-use crate::level::instance::level_library_object::{LevelLibraryObject, LevelLibraryTriangle};
+use crate::level::instance::level_instance_triangle::LevelInstanceTriangle;
+use crate::level::instance::level_instance_triangles::LevelInstanceTriangles;
+use crate::level::instance::level_library_object::LevelLibraryObject;
+use crate::level::instance::level_library_triangle::LevelLibraryTriangle;
 
 /// Finds library objects placed in a level's static geometry, which the Build merged into it.
 ///

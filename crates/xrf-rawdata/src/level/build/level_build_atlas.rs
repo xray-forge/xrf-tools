@@ -1,32 +1,8 @@
 use xrf_dds::{Rgba, RgbaImage};
 use xrf_math::Vector2d;
 
-/// Where one texture stands in an atlas: its corner and size as fractions of the atlas, and whether it was turned a
-/// quarter to fit, its rows becoming the atlas's columns.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) struct LevelBuildAtlasPlace {
-  pub(crate) offset: Vector2d,
-  pub(crate) scale: Vector2d,
-  pub(crate) is_rotated: bool,
-}
-
-impl LevelBuildAtlasPlace {
-  /// A texture coordinate of the texture moved to its place in the atlas, `MergedTextureRemapUV`
-  /// (`ImageManagerDO.cpp:352`).
-  pub(crate) fn remap(&self, u: f32, v: f32) -> (f32, f32) {
-    let (u, v) = if self.is_rotated { (v, u) } else { (u, v) };
-
-    (self.scale.x * u + self.offset.x, self.scale.y * v + self.offset.y)
-  }
-}
-
-/// The sizes an atlas may take, width and height: it starts at the smallest and doubles its narrower side up to the
-/// largest.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct LevelBuildAtlasSizes {
-  pub(crate) smallest: (u32, u32),
-  pub(crate) largest: (u32, u32),
-}
+use crate::level::build::level_build_atlas_place::LevelBuildAtlasPlace;
+use crate::level::build::level_build_atlas_sizes::LevelBuildAtlasSizes;
 
 /// Textures merged into one, as `CImageManager::CreateMergedTexture` (`ImageManagerDO.cpp:145`, `:238`) merges the
 /// detail objects' textures for `build_details.dds` and the impostors' strips and their normals for `level_lods.dds`

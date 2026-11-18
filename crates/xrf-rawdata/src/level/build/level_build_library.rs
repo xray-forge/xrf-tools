@@ -6,7 +6,7 @@ use xrf_editable_object::EditableObjectFile;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
-use crate::level::scene::level_scene_decompile::LevelSceneObjectFile;
+use crate::level::scene::level_scene_object_file::LevelSceneObjectFile;
 
 /// The library objects a scene names: those held in memory (a decompile's own) by their reference, else read from
 /// objects roots (`$objects$`) the first time each is named, from the first root holding it: a reference

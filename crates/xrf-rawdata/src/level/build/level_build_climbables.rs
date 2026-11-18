@@ -9,6 +9,7 @@ use xrf_spawn::{
   SpawnPacketHeader,
 };
 
+use crate::level::build::level_build_climbable_export::LevelBuildClimbableExport;
 use crate::level::build::level_build_part_box::LevelBuildPartBox;
 use crate::level::build::level_build_parts::LevelBuildParts;
 
@@ -19,13 +20,6 @@ use crate::level::build::level_build_parts::LevelBuildParts;
 /// last face's.
 pub(crate) struct LevelBuildClimbables {
   parts: LevelBuildParts,
-}
-
-/// The ladders a build made of the climbable faces, and the parts it could not make one of.
-pub(crate) struct LevelBuildClimbableExport {
-  pub(crate) entities: Vec<AlifeObject>,
-  /// Each part refused, by its name, with why.
-  pub(crate) refused: Vec<(String, String)>,
 }
 
 impl Default for LevelBuildClimbables {

@@ -10,9 +10,11 @@ use crate::object::compile::object_compile_source::ObjectCompileSource;
 use crate::object::compile::object_compiler::ObjectCompiler;
 use crate::object::decompile::tests::fixtures::{UP, assemble, chain, corner, object, surface, with_links};
 use crate::object::verify::material_vertex::MaterialVertex;
-use crate::object::verify::object_verification::{ObjectGeometryCensus, ObjectVerification};
+use crate::object::verify::object_geometry_census::ObjectGeometryCensus;
+use crate::object::verify::object_verification::ObjectVerification;
 use crate::object::verify::object_verifier::ObjectVerifier;
-use crate::object::verify::ogf_material_geometry::{OgfMaterialComparison, OgfMaterialGeometry};
+use crate::object::verify::ogf_material_comparison::OgfMaterialComparison;
+use crate::object::verify::ogf_material_geometry::OgfMaterialGeometry;
 
 /// A quad on a chain of three bones, one corner blended between the first two, with LODs and motion references.
 fn quad() -> XrfResult<EditableObjectFile> {

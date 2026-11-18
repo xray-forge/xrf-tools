@@ -4,7 +4,8 @@ use xrf_gamemtl::{GameMtlFile, GameMtlMaterial};
 use xrf_level::{LevelHomFile, LevelHomPolygon, LevelSomFile, LevelSomPolygon};
 use xrf_math::Vector3d;
 
-use crate::{LevelDecompiledObject, LevelOccluderConversion};
+use crate::level::geometry::level_decompiled_object::LevelDecompiledObject;
+use crate::level::parts::level_occluder_conversion::LevelOccluderConversion;
 
 /// A triangle standing up at `x`.
 fn wall(x: f32) -> [Vector3d; 3] {

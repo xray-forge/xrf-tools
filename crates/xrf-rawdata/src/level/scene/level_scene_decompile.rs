@@ -2,127 +2,14 @@ use std::path::{Path, PathBuf};
 
 use byteorder::ByteOrder;
 use xrf_editable_level::EditableLevelScene;
-use xrf_editable_object::EditableObjectFile;
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{HostRelativePath, StagedFile, format_path};
+use xrf_utils::{StagedFile, format_path};
 
+use crate::level::scene::level_scene_library_file::LevelSceneLibraryFile;
+use crate::level::scene::level_scene_object_file::LevelSceneObjectFile;
+use crate::level::scene::level_scene_texture_file::LevelSceneTextureFile;
 use crate::provenance::level_scene_provenance::LevelSceneProvenance;
 use crate::provenance::object_provenance::ObjectProvenance;
-
-/// One object a decompiled scene places, written under the objects root (`$objects$`) with its own sidecar.
-#[derive(Clone, Debug, PartialEq)]
-pub struct LevelSceneObjectFile {
-  /// Its path under the objects root without the extension, as the scene object's `reference_name` names it.
-  pub reference: String,
-  pub object: EditableObjectFile,
-  pub provenance: ObjectProvenance,
-}
-
-impl LevelSceneObjectFile {
-  /// The extension the reference leaves off.
-  pub const EXTENSION: &'static str = "object";
-
-  /// Its path under `objects_root`, the reference's folders as directories.
-  ///
-  /// # Errors
-  ///
-  /// As [`Self::get_reference_path`].
-  pub fn get_path(&self, objects_root: &Path) -> XrfResult<PathBuf> {
-    Self::get_reference_path(objects_root, &self.reference)
-  }
-
-  /// The path under `objects_root` of the object `reference` names, as the Level Editor resolves `$objects$`.
-  ///
-  /// # Errors
-  ///
-  /// Returns an invalid error when the reference, taken from a scene or a library, names no file below the root: one
-  /// climbing out of it with `..`, carrying a drive, or empty.
-  pub fn get_reference_path(objects_root: &Path, reference: &str) -> XrfResult<PathBuf> {
-    let relative: HostRelativePath = HostRelativePath::new_file(reference, "Object reference")?;
-
-    Ok(objects_root.join(relative.with_extension(Self::EXTENSION)))
-  }
-}
-
-/// One library object a decompiled scene places by reference, copied as its library holds it, with the thumbnail
-/// beside it where the library has one, so the scene opens and builds from the decompile's objects alone.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct LevelSceneLibraryFile {
-  /// Its path under the objects root without the extension, the library's own.
-  pub reference: String,
-  pub object: Vec<u8>,
-  pub thumbnail: Option<Vec<u8>>,
-}
-
-impl LevelSceneLibraryFile {
-  /// The extension of the thumbnail the Level Editor lists an object by.
-  pub const THUMBNAIL_EXTENSION: &'static str = "thm";
-
-  /// Its object's path under `objects_root`, and its thumbnail's.
-  ///
-  /// # Errors
-  ///
-  /// As [`LevelSceneObjectFile::get_reference_path`].
-  pub fn get_paths(&self, objects_root: &Path) -> XrfResult<(PathBuf, PathBuf)> {
-    let path: PathBuf = LevelSceneObjectFile::get_reference_path(objects_root, &self.reference)?;
-    let thumbnail: PathBuf = path.with_extension(Self::THUMBNAIL_EXTENSION);
-
-    Ok((path, thumbnail))
-  }
-}
-
-/// One texture a decompiled scene's objects need for the Build, written under the game textures root
-/// (`$game_textures$`), such as a tree model's impostor strip.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct LevelSceneTextureFile {
-  /// Its name under the textures root without the extension, as the editor asks for it: `lod\lod_<model>`.
-  pub name: String,
-  /// The texture, a DDS file.
-  pub bytes: Vec<u8>,
-  /// Whether it stands in for a library object's own texture, such as a library tree's impostor strip cut from the
-  /// level: a textures root holding the library's own keeps it.
-  pub is_library: bool,
-}
-
-impl LevelSceneTextureFile {
-  /// The extension the name leaves off.
-  pub const EXTENSION: &'static str = "dds";
-
-  /// Its path under `textures_root`, the name's folders as directories.
-  ///
-  /// # Errors
-  ///
-  /// As [`Self::get_named_path`].
-  pub fn get_path(&self, textures_root: &Path) -> XrfResult<PathBuf> {
-    Self::get_named_path(textures_root, &self.name)
-  }
-
-  /// Whether `textures_root` already holds the library's own texture this one stands in for, which a write leaves be.
-  ///
-  /// # Errors
-  ///
-  /// As [`Self::get_named_path`].
-  pub fn is_held_by(&self, textures_root: &Path) -> XrfResult<bool> {
-    Ok(self.is_held_at(&self.get_path(textures_root)?))
-  }
-
-  /// As [`Self::is_held_by`], for its path under the root once resolved.
-  fn is_held_at(&self, path: &Path) -> bool {
-    self.is_library && path.exists()
-  }
-
-  /// The path under `textures_root` of the texture `name` names, as the editor resolves `$game_textures$`.
-  ///
-  /// # Errors
-  ///
-  /// Returns an invalid error when the name, taken from a library object's surface or a scene, names no file below the
-  /// root: one climbing out of it with `..`, carrying a drive, or empty.
-  pub fn get_named_path(textures_root: &Path, name: &str) -> XrfResult<PathBuf> {
-    let relative: HostRelativePath = HostRelativePath::new_file(name, "Texture name")?;
-
-    Ok(textures_root.join(relative.with_extension(Self::EXTENSION)))
-  }
-}
 
 /// A decompiled level: its scene, the provenance written beside it, the objects it places, and the textures they need.
 #[derive(Clone, Debug, PartialEq)]

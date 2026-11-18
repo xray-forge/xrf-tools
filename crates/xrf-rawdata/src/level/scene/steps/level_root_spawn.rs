@@ -6,7 +6,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_spawn::{AlifeObject, SpawnFile, SpawnLevelObjects};
 use xrf_utils::format_path;
 
-use crate::provenance::level_scene_provenance::LevelSceneRootSpawn;
+use crate::provenance::level_scene_root_spawn::LevelSceneRootSpawn;
 use crate::provenance::sidecar::Sidecar;
 
 /// A root spawn read for one level: what the sidecar records of it, and its objects on the level, which

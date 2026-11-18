@@ -4,10 +4,10 @@ use xrf_error::XrfResult;
 use xrf_level::{LevelWallmark, LevelWallmarkSlot, LevelWallmarkVertex, LevelWallmarksFile};
 use xrf_math::{Aabb, Vector3d};
 
-use crate::LevelWallmarkConversion;
 use crate::level::build::level_build_geometry::LevelBuildGeometry;
 use crate::level::build::level_build_sectors::LevelBuildSectors;
 use crate::level::build::level_build_tables::LevelBuildTables;
+use crate::level::parts::level_wallmark_conversion::LevelWallmarkConversion;
 use crate::level::tests::fixtures::GUID;
 
 fn decal(offset: f32, vertices: usize) -> LevelWallmark {

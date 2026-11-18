@@ -3,14 +3,16 @@ use xrf_error::XrfResult;
 use xrf_level::LevelDetailsFile;
 
 use crate::level::build::level_build_details::LevelBuildDetails;
-use crate::level::level_detail_atlas::LevelDetailAtlas;
-use crate::level::level_detail_conversion::{LevelDetailConversion, LevelDetailDecompile};
-use crate::level::level_detail_library::LevelDetailLibrary;
+use crate::level::details::level_detail_atlas::LevelDetailAtlas;
+use crate::level::details::level_detail_conversion::LevelDetailConversion;
+use crate::level::details::level_detail_decompile::LevelDetailDecompile;
+use crate::level::details::level_detail_library::LevelDetailLibrary;
 use crate::level::scene::level_decompile_options::LevelDecompileOptions;
 use crate::level::scene::level_scene_draft::LevelSceneDraft;
 use crate::level::scene::level_scene_sources::LevelSceneSources;
 use crate::level::scene::steps::level_scene_step::LevelSceneStep;
-use crate::provenance::level_scene_provenance::{LevelSceneInference, LevelSceneRefusal};
+use crate::provenance::level_scene_inference::LevelSceneInference;
+use crate::provenance::level_scene_refusal::LevelSceneRefusal;
 
 /// The level's details ([`LevelDetailConversion`]): the detail object tool, each model found among the detail objects
 /// of the options' object libraries, and their textures cut from the level's atlas, `build_details.dds`.

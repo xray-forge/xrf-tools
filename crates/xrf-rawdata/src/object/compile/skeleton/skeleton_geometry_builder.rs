@@ -7,12 +7,13 @@ use xrf_math::Aabb;
 
 use crate::object::compile::geometry::object_bounds::ObjectBounds;
 use crate::object::compile::geometry::source::mesh_surface_faces::MeshSurfaceFaces;
-use crate::object::compile::object_compile_options::{ObjectCompileOptions, TangentMethod};
+use crate::object::compile::object_compile_options::ObjectCompileOptions;
 use crate::object::compile::skeleton::breakable_parts::BreakableParts;
 use crate::object::compile::skeleton::mikktspace_basis::MikkTSpaceBasis;
 use crate::object::compile::skeleton::skeleton_geometry::SkeletonGeometry;
 use crate::object::compile::skeleton::skeleton_split::SkeletonSplit;
 use crate::object::compile::skeleton::skin_corner::SkinCorner;
+use crate::object::compile::tangent_method::TangentMethod;
 
 /// Builds a skeleton object's splits as `CExportSkeleton::PrepareGeometry` does, its tangent pass included.
 ///

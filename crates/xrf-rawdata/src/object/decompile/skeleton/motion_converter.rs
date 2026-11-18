@@ -6,20 +6,14 @@ use xrf_math::{Quaternion, Vector3d};
 use xrf_ogf::OgfFile;
 use xrf_skeleton::{SkeletonBoneMotion, SkeletonMotion, SkeletonMotionDefinition, SkeletonMotionParametersChunk};
 
+use crate::object::decompile::skeleton::converted_motions::ConvertedMotions;
+
 /// Rebuilds the motions an OGF keeps itself into the object's own, which `CExportSkeleton::ExportMotions` sampled
 /// them from: each bone keyed at every frame, linearly between them, and the bone parts they play on.
 ///
 /// What the keys cannot give back is inferred: the authored curves between frames, and which bones kept their world
 /// orientation, since a key holds the pose the bone took under its parent.
 pub(crate) struct MotionConverter;
-
-/// What [`MotionConverter`] rebuilds.
-pub(crate) struct ConvertedMotions {
-  pub(crate) motions: Vec<EditableMotion>,
-  pub(crate) parts: Vec<EditableBonePart>,
-  /// Whether a motion is as long as its keys rather than as it declares (see [`MotionConverter::decode_runs`]).
-  pub(crate) is_lengthened: bool,
-}
 
 impl MotionConverter {
   /// `SAMPLE_FPS`, the rate every OGF motion is sampled at.

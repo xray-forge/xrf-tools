@@ -4,10 +4,8 @@ use xrf_math::Vector3d;
 use xrf_ogf::{OgfFile, OgfVertexData};
 
 use crate::object::verify::material_vertex::MaterialVertex;
-
-/// A vertex's position bits: the export copies one source point into every vertex standing at it, so equal bits pair a
-/// compiled vertex with a reference one and never merge two that are merely close.
-pub(crate) type PositionKey = [u32; 3];
+use crate::object::verify::ogf_material_comparison::OgfMaterialComparison;
+use crate::object::verify::position_key::PositionKey;
 
 /// Everything an OGF draws with one texture and shader, over every child drawing with them, as the comparison reads it:
 /// its vertices and the faces it draws at full detail.
@@ -24,22 +22,6 @@ pub(crate) struct OgfMaterialGeometry<'a> {
   pub(crate) vertices: Vec<MaterialVertex>,
   /// Their faces over [`Self::vertices`].
   pub(crate) faces: Vec<[u32; 3]>,
-}
-
-/// How a compiled texture and shader's geometry compares with the reference's.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub(crate) struct OgfMaterialComparison {
-  /// Compiled vertices one of the reference's stands in for.
-  pub(crate) vertices_matched: usize,
-  /// Compiled vertices that would match but for their normal.
-  pub(crate) vertices_normal_only: usize,
-  /// Reference faces the compile draws too.
-  pub(crate) faces_matched: usize,
-  /// Reference faces with two corners at one position.
-  pub(crate) reference_flat_faces: usize,
-  /// Reference faces the compile does not draw, and faces it draws the reference does not.
-  pub(crate) faces_missing: usize,
-  pub(crate) faces_extra: usize,
 }
 
 impl<'a> OgfMaterialGeometry<'a> {

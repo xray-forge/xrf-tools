@@ -1,6 +1,8 @@
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{BuildPrjMaterial, BuildPrjName, BuildPrjShader, BuildPrjTexture};
 
+use crate::level::build::level_build_table_records::LevelBuildTableRecords;
+
 /// The material, shader and texture tables of a build, filled as the faces and glows name them
 /// (`SceneBuilder::BuildMaterial`, `BuildShader`, `BuildShaderXRLC`, `BuildTexture`, `BuilderRemote.cpp:1208`): each
 /// name kept once in the order first named, shaders compared exactly and textures without case, and a material once
@@ -11,14 +13,6 @@ pub(crate) struct LevelBuildTables {
   render_shaders: Vec<String>,
   compiler_shaders: Vec<String>,
   textures: Vec<String>,
-}
-
-/// The tables as `build.prj` stores them.
-pub(crate) struct LevelBuildTableRecords {
-  pub(crate) materials: Vec<BuildPrjMaterial>,
-  pub(crate) render_shaders: Vec<BuildPrjShader>,
-  pub(crate) compiler_shaders: Vec<BuildPrjShader>,
-  pub(crate) textures: Vec<BuildPrjTexture>,
 }
 
 impl LevelBuildTables {

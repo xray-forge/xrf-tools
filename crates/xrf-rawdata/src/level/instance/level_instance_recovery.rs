@@ -3,13 +3,13 @@ use std::collections::BTreeMap;
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
+use crate::level::geometry::level_collision_index::LevelCollisionIndex;
+use crate::level::geometry::level_visual_geometry::LevelVisualGeometry;
 use crate::level::instance::level_instance_library::LevelInstanceLibrary;
 use crate::level::instance::level_instance_matcher::LevelInstanceMatcher;
 use crate::level::instance::level_instance_mesh::LevelInstanceMesh;
 use crate::level::instance::level_instance_placement::LevelInstancePlacement;
 use crate::level::instance::level_instance_triangles::LevelInstanceTriangles;
-use crate::level::level_collision_index::LevelCollisionIndex;
-use crate::level::level_visual_geometry::LevelVisualGeometry;
 
 /// The library objects found placed in a level's static geometry, sector by sector ([`LevelInstanceMatcher`]): each
 /// placement, and the triangles it takes out of each visual.

@@ -1,13 +1,13 @@
 use xrf_editable_level::EditableObjectTransform;
 use xrf_error::XrfResult;
 
+use crate::level::geometry::level_decompiled_object::LevelDecompiledObject;
 use crate::level::instance::level_instance_library::LevelInstanceLibrary;
 use crate::level::instance::level_instance_matcher::LevelInstanceMatcher;
 use crate::level::instance::level_instance_triangles::LevelInstanceTriangles;
-use crate::level::instance::level_library_object::LevelLibraryTriangle;
+use crate::level::instance::level_library_triangle::LevelLibraryTriangle;
 use crate::level::instance::level_tree_match::LevelTreeMatch;
-use crate::level::level_geometry_conversion::LevelDecompiledObject;
-use crate::level::level_tree_conversion::LevelTreeDecompile;
+use crate::level::trees::level_tree_decompile::LevelTreeDecompile;
 
 /// The tree models of a level that a library's trees draw, found as a static object is found ([`LevelInstanceMatcher`],
 /// the model standing for the level).

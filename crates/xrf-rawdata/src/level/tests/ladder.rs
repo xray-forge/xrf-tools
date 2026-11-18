@@ -12,14 +12,15 @@ use xrf_spawn::{
 };
 use xrf_test_utils::GeneratedResources;
 
+use crate::level::geometry::level_visual_geometry::LevelVisualGeometry;
 use crate::level::instance::level_instance_cutouts::LevelInstanceCutouts;
 use crate::level::instance::level_instance_placement::LevelInstancePlacement;
-use crate::level::level_visual_geometry::LevelVisualGeometry;
+use crate::level::parts::level_decompiled_ladder::LevelDecompiledLadder;
+use crate::level::parts::level_ladder_conversion::LevelLadderConversion;
 use crate::level::tests::entity::listed;
 use crate::level::tests::spawn_data::restrictor;
 use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
-use crate::{LevelDecompiledLadder, LevelLadderConversion};
 
 /// A ladder as the Build exports one: a box of half sizes `half` in its frame, standing at `position` and turned by
 /// `direction`, of `material`.

@@ -3,23 +3,6 @@
 
 use std::path::PathBuf;
 
-use crate::LevelBuildRequest;
-use crate::level::build::level_build_breakables::LevelBuildBreakables;
-use crate::level::build::level_build_climbables::LevelBuildClimbables;
-use crate::level::build::level_build_geometry::LevelBuildGeometry;
-use crate::level::build::level_build_lights::LevelBuildLights;
-use crate::level::build::level_build_models::LevelBuildModels;
-use crate::level::build::level_build_occluders::LevelBuildOccluders;
-use crate::level::build::level_build_portal::LevelBuildPortal;
-use crate::level::build::level_build_sectors::LevelBuildSectors;
-use crate::level::build::level_build_tables::LevelBuildTables;
-use crate::level::build::level_build_textures::LevelBuildTextures;
-use crate::level::level_breakable_conversion::LevelBreakableConversion;
-use crate::level::level_map_conversion::LevelMapConversion;
-use crate::level::level_occluder_conversion::LevelOccluderConversion;
-use crate::level::level_visual_geometry::LevelVisualGeometry;
-use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
-use crate::object::decompile::object_decompiler::ObjectDecompiler;
 use xrf_chunk::XRayByteOrder;
 use xrf_editable_level::{
   EditableCustomObject, EditableLevelOptions, EditableObjectTransform, EditableSceneObject, EditableSectorItem,
@@ -33,6 +16,24 @@ use xrf_math::{Aabb, Affine3d, Vector2d, Vector3d};
 use xrf_ogf::{OgfFile, OgfModelType};
 use xrf_spawn::{AlifeObjectInherited, Shape};
 use xrf_test_utils::GeneratedResources;
+
+use crate::level::build::level_build_breakables::LevelBuildBreakables;
+use crate::level::build::level_build_climbables::LevelBuildClimbables;
+use crate::level::build::level_build_geometry::LevelBuildGeometry;
+use crate::level::build::level_build_lights::LevelBuildLights;
+use crate::level::build::level_build_models::LevelBuildModels;
+use crate::level::build::level_build_occluders::LevelBuildOccluders;
+use crate::level::build::level_build_portal::LevelBuildPortal;
+use crate::level::build::level_build_request::LevelBuildRequest;
+use crate::level::build::level_build_sectors::LevelBuildSectors;
+use crate::level::build::level_build_tables::LevelBuildTables;
+use crate::level::build::level_build_textures::LevelBuildTextures;
+use crate::level::geometry::level_visual_geometry::LevelVisualGeometry;
+use crate::level::parts::level_breakable_conversion::LevelBreakableConversion;
+use crate::level::parts::level_map_conversion::LevelMapConversion;
+use crate::level::parts::level_occluder_conversion::LevelOccluderConversion;
+use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
+use crate::object::decompile::object_decompiler::ObjectDecompiler;
 
 fn sector(name: &str, is_default: bool, object: &str) -> EditableSectorObject {
   EditableSectorObject {

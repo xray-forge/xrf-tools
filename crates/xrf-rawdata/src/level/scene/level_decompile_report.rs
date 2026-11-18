@@ -1,7 +1,10 @@
 use serde::Serialize;
 
-use crate::level::level_geometry_conversion::LevelGeometryCensus;
-use crate::provenance::level_scene_provenance::{LevelSceneInference, LevelSceneRefusal};
+use crate::level::scene::level_decompile_geometry::LevelDecompileGeometry;
+use crate::level::scene::level_decompile_report_tool::LevelDecompileReportTool;
+use crate::level::scene::level_decompile_root_spawn::LevelDecompileRootSpawn;
+use crate::provenance::level_scene_inference::LevelSceneInference;
+use crate::provenance::level_scene_refusal::LevelSceneRefusal;
 
 /// What a decompile into a scene on disk wrote ([`crate::LevelSceneDecompiler::decompile_to_path`]), as the front-ends
 /// report it.
@@ -29,56 +32,4 @@ pub struct LevelDecompileReport {
   pub removed: Vec<String>,
   /// The static geometry, counted, where the level held `level.geom`; the sidecar lists each object.
   pub geometry: Option<LevelDecompileGeometry>,
-}
-
-/// One tool of the scene a decompile wrote, and what its part holds.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LevelDecompileReportTool {
-  pub name: String,
-  /// The objects its text part holds; none for a binary part.
-  pub objects: Option<usize>,
-}
-
-/// The static geometry a decompile wrote, counted.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LevelDecompileGeometry {
-  /// The objects written, one per sector drawing static geometry.
-  pub objects: usize,
-  #[serde(flatten)]
-  pub census: LevelGeometryCensus,
-  /// How the surfaces were dressed, where they were inferred; the sidecar lists each compiler shader chosen.
-  pub surfaces: Option<LevelDecompileSurfaces>,
-}
-
-/// The surfaces a decompile inferred, counted.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LevelDecompileSurfaces {
-  /// Triangles on a collision face of the same three points.
-  pub exact_triangles: usize,
-  /// Triangles a short ray found a collision face beneath.
-  pub traced_triangles: usize,
-  /// Triangles on no collision face.
-  pub uncollided_triangles: usize,
-  /// Compiler shaders chosen, one per engine shader and kind of evidence.
-  pub compiler_shaders: usize,
-  /// Collision materials the game material library does not define.
-  pub unknown_game_materials: usize,
-}
-
-/// The root spawn a decompile read, counted.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LevelDecompileRootSpawn {
-  pub file: String,
-  /// Its objects on the level, which the scene's entities came from; none where it does not hold the level.
-  pub objects: usize,
-  pub disagreements: usize,
-  pub update_packets: usize,
 }

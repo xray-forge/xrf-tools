@@ -3,14 +3,16 @@ use xrf_editable_level::{EditableLevelOptions, EditableSpawnPointObject};
 use xrf_error::XrfResult;
 use xrf_level::{LevelEnvModFile, LevelGameFile, LevelGameRPoint};
 
-use crate::level::level_entity_conversion::{LevelEntityConversion, LevelEntityDecompile, LevelEntitySources};
-use crate::level::level_spawn_point_conversion::LevelSpawnPointConversion;
-use crate::level::level_way_conversion::LevelWayConversion;
+use crate::level::entities::level_entity_conversion::LevelEntityConversion;
+use crate::level::entities::level_entity_decompile::LevelEntityDecompile;
+use crate::level::entities::level_entity_sources::LevelEntitySources;
+use crate::level::parts::level_spawn_point_conversion::LevelSpawnPointConversion;
+use crate::level::parts::level_way_conversion::LevelWayConversion;
 use crate::level::scene::level_decompile_options::LevelDecompileOptions;
 use crate::level::scene::level_scene_draft::LevelSceneDraft;
 use crate::level::scene::level_scene_sources::LevelSceneSources;
 use crate::level::scene::steps::level_scene_step::LevelSceneStep;
-use crate::provenance::level_scene_provenance::LevelSceneInference;
+use crate::provenance::level_scene_inference::LevelSceneInference;
 
 /// What `level.game`, `level.env_mod` and the draft's spawn lists give: ways, spawn points (respawn points, environment
 /// modifiers and entities, from the root spawn where the draft holds one), and the game modes the level serves where

@@ -9,11 +9,13 @@ use xrf_error::XrfResult;
 use xrf_test_utils::GeneratedResources;
 
 use crate::level::level_decompile_context::LevelDecompileContext;
+use crate::level::parts::level_map_conversion::LevelMapConversion;
+use crate::level::parts::level_map_settings::LevelMapSettings;
+use crate::level::scene::level_decompile_options::LevelDecompileOptions;
+use crate::level::scene::level_scene_decompile::LevelSceneDecompile;
+use crate::level::scene::level_scene_decompiler::LevelSceneDecompiler;
 use crate::level::tests::fixtures::GUID;
-use crate::{
-  LevelDecompileOptions, LevelMapConversion, LevelMapSettings, LevelSceneDecompile, LevelSceneDecompiler,
-  LevelSceneInference,
-};
+use crate::provenance::level_scene_inference::LevelSceneInference;
 
 /// `labx8`'s `level.ltx` as shipped, saved again after the Build: spaced keys, blank lines; with two game types, an
 /// extra section and a build options' line ended by a zero byte.

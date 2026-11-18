@@ -12,28 +12,38 @@ use xrf_ogf::OgfFile;
 use xrf_shaders::ShaderCompilerFile;
 use xrf_utils::format_path;
 
+use crate::level::entities::level_entity_conversion::LevelEntityConversion;
+use crate::level::geometry::level_collision_index::LevelCollisionIndex;
+use crate::level::geometry::level_decal_index::LevelDecalIndex;
+use crate::level::geometry::level_geometry_conversion::LevelGeometryConversion;
+use crate::level::geometry::level_geometry_decompile::LevelGeometryDecompile;
+use crate::level::geometry::level_geometry_sources::LevelGeometrySources;
 use crate::level::instance::level_instance_library::LevelInstanceLibrary;
 use crate::level::instance::level_instance_placement::LevelInstancePlacement;
 use crate::level::instance::level_tree_match::LevelTreeMatch;
-use crate::level::level_breakable_conversion::LevelBreakableConversion;
-use crate::level::level_collision_index::LevelCollisionIndex;
-use crate::level::level_decal_index::LevelDecalIndex;
-use crate::level::level_entity_conversion::LevelEntityConversion;
-use crate::level::level_geometry_conversion::{LevelGeometryConversion, LevelGeometryDecompile, LevelGeometrySources};
-use crate::level::level_map_conversion::LevelMapConversion;
 use crate::level::level_object_library::LevelObjectLibrary;
-use crate::level::level_surface_inference::{LevelShaderPairings, LevelSurfaceInference, LevelSurfaces};
-use crate::level::level_tree_impostor::LevelTreeImpostorAtlas;
+use crate::level::parts::level_breakable_conversion::LevelBreakableConversion;
+use crate::level::parts::level_map_conversion::LevelMapConversion;
 use crate::level::scene::level_decompile_options::LevelDecompileOptions;
-use crate::level::scene::level_scene_decompile::LevelSceneLibraryFile;
 use crate::level::scene::level_scene_draft::LevelSceneDraft;
+use crate::level::scene::level_scene_library_file::LevelSceneLibraryFile;
 use crate::level::scene::level_scene_listing::LevelSceneListing;
 use crate::level::scene::level_scene_sources::LevelSceneSources;
 use crate::level::scene::steps::level_scene_step::LevelSceneStep;
-use crate::provenance::level_scene_provenance::{
-  LevelSceneGeometry, LevelSceneInference, LevelSceneInstancePlacement, LevelSceneInstances, LevelSceneLibraryObject,
-  LevelSceneRefusal, LevelSceneSource, LevelSceneSurfaceLibraries, LevelSceneSurfaces, LevelSceneTreeMatch,
-};
+use crate::level::surfaces::level_shader_pairings::LevelShaderPairings;
+use crate::level::surfaces::level_surface_inference::LevelSurfaceInference;
+use crate::level::surfaces::level_surfaces::LevelSurfaces;
+use crate::level::trees::level_tree_impostor_atlas::LevelTreeImpostorAtlas;
+use crate::provenance::level_scene_geometry::LevelSceneGeometry;
+use crate::provenance::level_scene_inference::LevelSceneInference;
+use crate::provenance::level_scene_instance_placement::LevelSceneInstancePlacement;
+use crate::provenance::level_scene_instances::LevelSceneInstances;
+use crate::provenance::level_scene_library_object::LevelSceneLibraryObject;
+use crate::provenance::level_scene_refusal::LevelSceneRefusal;
+use crate::provenance::level_scene_source::LevelSceneSource;
+use crate::provenance::level_scene_surface_libraries::LevelSceneSurfaceLibraries;
+use crate::provenance::level_scene_surfaces::LevelSceneSurfaces;
+use crate::provenance::level_scene_tree_match::LevelSceneTreeMatch;
 use crate::provenance::sidecar::Sidecar;
 
 /// The level's geometry ([`LevelGeometryConversion`]): the objects of its static geometry, collision, occluders,

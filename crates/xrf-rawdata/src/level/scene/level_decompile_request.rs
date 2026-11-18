@@ -5,8 +5,9 @@ use xrf_editable_level::EditableLevelFile;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{OutputFiles, format_path};
 
-use crate::level::level_surface_inference::{LevelSurfaceInference, LevelSurfaces};
 use crate::level::scene::level_decompile_options::LevelDecompileOptions;
+use crate::level::surfaces::level_surface_inference::LevelSurfaceInference;
+use crate::level::surfaces::level_surfaces::LevelSurfaces;
 use crate::provenance::level_scene_provenance::LevelSceneProvenance;
 
 /// A level's decompile into a scene on disk, as a front-end asks for it: the paths, and the options it may leave to

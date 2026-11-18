@@ -8,13 +8,15 @@ use xrf_level::{DetailModel, DetailVertex, LevelDetailsFile, LevelDetailsHeader,
 use xrf_math::{Vector2d, Vector3d};
 use xrf_test_utils::GeneratedResources;
 
-use crate::level::build::level_build_atlas::{LevelBuildAtlas, LevelBuildAtlasPlace};
+use crate::level::build::level_build_atlas::LevelBuildAtlas;
+use crate::level::build::level_build_atlas_place::LevelBuildAtlasPlace;
 use crate::level::build::level_build_details::LevelBuildDetails;
 use crate::level::build::level_build_library::LevelBuildLibrary;
 use crate::level::build::level_build_textures::LevelBuildTextures;
-use crate::level::level_detail_atlas::LevelDetailAtlas;
-use crate::level::level_detail_conversion::{LevelDetailConversion, LevelDetailDecompile};
-use crate::level::level_detail_library::LevelDetailLibrary;
+use crate::level::details::level_detail_atlas::LevelDetailAtlas;
+use crate::level::details::level_detail_conversion::LevelDetailConversion;
+use crate::level::details::level_detail_decompile::LevelDetailDecompile;
+use crate::level::details::level_detail_library::LevelDetailLibrary;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
 
 /// A model of one quad, `size` across, its coordinates `uv` gives each corner's.

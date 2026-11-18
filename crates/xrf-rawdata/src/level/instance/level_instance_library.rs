@@ -5,7 +5,8 @@ use glam::{DVec2, DVec3};
 use xrf_editable_object::{EditableFaceCorner, EditableMesh, EditableObjectFile, EditableSurface, EditableVMapKind};
 use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 
-use crate::level::instance::level_library_object::{LevelLibraryObject, LevelLibraryTriangle};
+use crate::level::instance::level_library_object::LevelLibraryObject;
+use crate::level::instance::level_library_triangle::LevelLibraryTriangle;
 
 /// The objects of object libraries a decompile looks for in a level: every static object added with a surface that
 /// renders (not dynamic, an occluder or a sound occluder, which the Build does not merge into the geometry), the

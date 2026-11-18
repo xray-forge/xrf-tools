@@ -5,8 +5,8 @@ use xrf_utils::OutputFiles;
 
 use crate::level::build::level_build_export::LevelBuildExport;
 use crate::level::build::level_build_impostor_limit::LevelBuildImpostorLimit;
-use crate::level::level_breakable_conversion::LevelBreakableConversion;
 use crate::level::level_scene_exporter::LevelSceneExporter;
+use crate::level::parts::level_breakable_conversion::LevelBreakableConversion;
 
 /// A scene's build into a level directory, as a front-end asks for it: the game files always, and the level compiler's
 /// files (`build.prj`, the occluders, `level.ltx`, details, AI map, impostors, breakables) where the game material

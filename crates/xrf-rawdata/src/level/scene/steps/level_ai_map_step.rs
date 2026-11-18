@@ -3,12 +3,12 @@ use xrf_editable_level::EditableAiMapTool;
 use xrf_error::XrfResult;
 use xrf_level::{LevelAiFile, LevelAiNodes};
 
-use crate::level::level_ai_map_conversion::LevelAiMapConversion;
+use crate::level::parts::level_ai_map_conversion::LevelAiMapConversion;
 use crate::level::scene::level_decompile_options::LevelDecompileOptions;
 use crate::level::scene::level_scene_draft::LevelSceneDraft;
 use crate::level::scene::level_scene_sources::LevelSceneSources;
 use crate::level::scene::steps::level_scene_step::LevelSceneStep;
-use crate::provenance::level_scene_provenance::LevelSceneInference;
+use crate::provenance::level_scene_inference::LevelSceneInference;
 
 /// The level's AI map ([`LevelAiMapConversion`]): the AI map tool, where the directory holds a `level.ai`.
 pub(crate) struct LevelAiMapStep;
