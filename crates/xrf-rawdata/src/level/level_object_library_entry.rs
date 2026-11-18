@@ -2,10 +2,10 @@ use std::path::{Path, PathBuf};
 
 /// One `.object` file under an object library root, and the reference a scene object names it by.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct LevelObjectLibraryEntry {
-  pub(crate) path: PathBuf,
+pub struct LevelObjectLibraryEntry {
+  pub path: PathBuf,
   /// Its path under the root without the extension, folders joined by `\`, as `$objects$` references name it.
-  pub(crate) reference: String,
+  pub reference: String,
 }
 
 impl LevelObjectLibraryEntry {

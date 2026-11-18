@@ -1,8 +1,8 @@
 //! The decompile's and the build's pieces, one scene part or step at a time, beneath the front-end the crate root
 //! exports: each tool part's conversion with the context and sources it takes, the geometry, surface and entity passes,
-//! the library instances, and the skeleton a compile splits. They answer for one part where the front-end answers for a
-//! whole level, so a check can run a part alone against its compiled file. They change with the pipeline; a caller
-//! that wants a level or an object decompiled, built or compiled uses the crate root.
+//! the object library and its instances, and the skeleton a compile splits. They answer for one part where the
+//! front-end answers for a whole level, so a check can run a part alone against its compiled file. They change with
+//! the pipeline; a caller that wants a level or an object decompiled, built or compiled uses the crate root.
 
 pub use crate::level::entities::level_entity_conversion::LevelEntityConversion;
 pub use crate::level::entities::level_entity_decompile::LevelEntityDecompile;
@@ -23,6 +23,8 @@ pub use crate::level::instance::level_library_object::LevelLibraryObject;
 pub use crate::level::instance::level_library_triangle::LevelLibraryTriangle;
 pub use crate::level::instance::level_tree_match::LevelTreeMatch;
 pub use crate::level::level_decompile_context::LevelDecompileContext;
+pub use crate::level::level_object_library::LevelObjectLibrary;
+pub use crate::level::level_object_library_entry::LevelObjectLibraryEntry;
 pub use crate::level::level_object_names::LevelObjectNames;
 pub use crate::level::level_scene_exporter::LevelSceneExporter;
 pub use crate::level::parts::level_breakable_conversion::LevelBreakableConversion;

@@ -28,7 +28,8 @@ overwrite unless asked, report to an `xrf-job` `JobHandle` and stop between step
 
 The crate root exports those front-ends, the object compiler, decompiler and verifier, and the data they take and
 return. `xrf_rawdata::parts` exports the pieces beneath them, one at a time: each scene part's conversion, the
-geometry, surface and entity passes and the context they share, the library instances, and a compile's skeleton split.
+geometry, surface and entity passes and the context they share, the object library and its instances, and a
+compile's skeleton split.
 They let a check run one part against its compiled file, and change with the pipeline.
 
 ## Decompile an OGF

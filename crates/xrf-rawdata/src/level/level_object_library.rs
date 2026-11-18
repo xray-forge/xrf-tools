@@ -18,8 +18,8 @@ use crate::provenance::level_scene_refusal::LevelSceneRefusal;
 /// Each root is walked in name order, so a library numbers what it finds the same on every machine, through the links
 /// and junctions a mod manager lays a library out with; a link back to a folder above it, or to nothing, is recorded,
 /// not followed.
-#[derive(Clone, Debug, Default, PartialEq)]
-pub(crate) struct LevelObjectLibrary {
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct LevelObjectLibrary {
   entries: Vec<LevelObjectLibraryEntry>,
   /// What was not read, by file: a file failing for two steps is recorded once.
   unread: BTreeMap<PathBuf, String>,
@@ -33,7 +33,7 @@ impl LevelObjectLibrary {
   /// # Errors
   ///
   /// Returns an error when a root is not a directory, or a folder under one cannot be listed.
-  pub(crate) fn list(roots: &[PathBuf]) -> XrfResult<Self> {
+  pub fn list(roots: &[PathBuf]) -> XrfResult<Self> {
     let mut library: Self = Self::default();
 
     for root in roots {
@@ -62,7 +62,7 @@ impl LevelObjectLibrary {
   /// # Errors
   ///
   /// Returns the first error `visit` returns, or a cancelled error once `job` is cancelled.
-  pub(crate) fn read_each<T: ByteOrder>(
+  pub fn read_each<T: ByteOrder>(
     &mut self,
     job: &JobHandle,
     is_wanted: impl Fn(&LevelObjectLibraryEntry) -> bool,
@@ -88,7 +88,7 @@ impl LevelObjectLibrary {
   }
 
   /// What was not read, as the decompile's refusals: each file, and why nothing in the scene can come from it.
-  pub(crate) fn get_refusals(&self) -> Vec<LevelSceneRefusal> {
+  pub fn get_refusals(&self) -> Vec<LevelSceneRefusal> {
     self
       .unread
       .iter()
