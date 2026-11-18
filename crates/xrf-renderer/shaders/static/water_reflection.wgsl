@@ -159,6 +159,17 @@ fn write_water_ray(pixel: vec2<u32>, toward: vec3<f32>, answer: vec4<f32>, share
   water_rays[at + 3u] = water_ray_last(answer.w, enhanced.trace_frame);
 }
 
+// Marks the pixel's record as asking for no ray this frame, while every pixel traces every frame.
+fn write_no_water_ray(pixel: vec2<u32>) {
+  let at: u32 = water_ray_at(pixel);
+
+  if (at + WATER_RAY_WORDS > arrayLength(&water_rays)) {
+    return;
+  }
+
+  water_rays[at + 3u] = water_ray_none(enhanced.trace_frame);
+}
+
 @vertex
 fn vs_water(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) instance_index: u32) -> WaterVarying {
   return water_vertex(vertex_index, instance_index, water);
@@ -337,6 +348,9 @@ fn fs_water_reflection(in: WaterVarying) -> @location(0) vec4<f32> {
       request_water_trace(pixel, in.world, normal, flat_reflected, -position.z, answer, share))) {
       met_distance = WATER_HELD;
     }
+  } else if (enhanced.fully_traced != 0u) {
+    // Every drawn pixel leaves a record each frame, so none is older than the frame it is read on.
+    write_no_water_ray(vec2<u32>(floor(in.clip.xy)));
   }
 
   return vec4<f32>(mix(sky, scene, share), met_distance);

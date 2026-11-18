@@ -90,7 +90,7 @@ fn keep_trace_wait() {
 
 // The water's every-pixel rays (`WaterRays`): a thread a drawn pixel, its record traced as the request it stands in
 // for, its start read back from the water's depth there and lifted along the normal its reflection leaves by; a pixel
-// no record was written at this frame (the screen answered it whole), or where no water drew, passed over.
+// whose record asks for no ray this frame (the screen answered it whole), or where no water drew, passed over.
 @compute @workgroup_size(8, 8)
 fn cs_water_scene(@builtin(global_invocation_id) id: vec3<u32>) {
   let size: vec2<u32> = vec2<u32>(camera.viewport.xy);

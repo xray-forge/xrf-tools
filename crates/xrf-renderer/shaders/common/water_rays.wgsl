@@ -22,6 +22,12 @@ fn water_ray_last(screen_length: f32, frame: u32) -> u32 {
   return (pack2x16float(vec2<f32>(screen_length, 0.0)) & 0xffffu) | (frame << 16u);
 }
 
+// A record's last word where a pixel drawn on `frame` asks for no ray, the screen answering it whole: stamped with the
+// frame before, so the scene pass passes it over, rather than left to match `frame` again once the stamp's half wraps.
+fn water_ray_none(frame: u32) -> u32 {
+  return (frame - 1u) << 16u;
+}
+
 // Whether a record's last word was written on `frame`.
 fn is_water_ray_of(last: u32, frame: u32) -> bool {
   return (last >> 16u) == (frame & 0xffffu);

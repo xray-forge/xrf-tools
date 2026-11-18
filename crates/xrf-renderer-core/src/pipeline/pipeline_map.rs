@@ -13,7 +13,7 @@ use crate::pipeline::pipeline_cache::PipelineCache;
 pub struct PipelineMap<K, T> {
   pipelines: HashMap<K, T>,
   /// Why each key refused on first use, kept until the cache changes.
-  refused: HashMap<K, String>,
+  refused: HashMap<K, XrfError>,
   generation: u64,
 }
 
@@ -31,8 +31,8 @@ impl<K: Copy + Eq + Hash, T> PipelineMap<K, T> {
   ///
   /// # Errors
   ///
-  /// Returns `make`'s refusal, nothing kept for `key`, and the same refusal word for word at every ask after it until
-  /// the cache changes, so a log that skips a repeated failure tells it once.
+  /// Returns `make`'s refusal, nothing kept for `key`, and the same refusal, of the same kind and word for word, at
+  /// every ask after it until the cache changes, so a log that skips a repeated failure tells it once.
   pub fn prepare(&mut self, key: K, make: impl FnOnce(K) -> XrfResult<T>) -> XrfResult {
     if let Entry::Vacant(entry) = self.pipelines.entry(key)
       && !self.refused.contains_key(&key)
@@ -42,13 +42,13 @@ impl<K: Copy + Eq + Hash, T> PipelineMap<K, T> {
           entry.insert(pipelines);
         }
         Err(error) => {
-          self.refused.insert(key, error.to_string());
+          self.refused.insert(key, error);
         }
       }
     }
 
     match self.refused.get(&key) {
-      Some(refusal) => Err(XrfError::new_unexpected_error(refusal.clone())),
+      Some(refusal) => Err(refusal.clone()),
       None => Ok(()),
     }
   }

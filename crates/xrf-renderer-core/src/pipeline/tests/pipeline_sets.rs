@@ -75,12 +75,17 @@ fn makes_a_refused_key_again_only_once_the_cache_changes() {
     Err(XrfError::new_invalid_error("refused"))
   };
 
-  let first: String = map.prepare(1, refuse).unwrap_err().to_string();
-  let again: String = map.prepare(1, refuse).unwrap_err().to_string();
+  let first: XrfError = map.prepare(1, refuse).unwrap_err();
+  let again: XrfError = map.prepare(1, refuse).unwrap_err();
 
   assert_eq!(
-    first, again,
+    first.to_string(),
+    again.to_string(),
     "the refusal stands, word for word, so a log skipping a repeat tells it once"
+  );
+  assert!(
+    matches!(again, XrfError::Invalid { .. }),
+    "the refusal keeps its kind: {again:?}"
   );
   assert_eq!(
     (map.get(&1), made.get()),
