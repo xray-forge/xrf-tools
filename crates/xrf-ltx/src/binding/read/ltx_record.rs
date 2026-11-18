@@ -3,9 +3,8 @@ use crate::syntax::{ROOT_SECTION, fold_section_name};
 
 /// One section of a record file as [`crate::LtxRecordReader`] parsed it, its text borrowed from the file.
 ///
-/// Read through [`LtxRead`] it is a config holding this one section, so an import that reads its own section, nested
-/// imports reading the same one included, reads it as it would read the config the file lowers to. Its fields are
-/// kept as a config keeps them: a key written twice holds the first place and the last value.
+/// Through [`LtxRead`] it is a config holding this one section, so an import, nested imports of the same section
+/// included, reads it as it would the config the file lowers to. A repeated key keeps its first place and last value.
 #[derive(Default)]
 pub struct LtxRecord<'t> {
   name: &'t str,
@@ -26,24 +25,23 @@ impl<'t> LtxRecord<'t> {
     self.name
   }
 
-  /// Whether the section holds no field.
   pub fn is_empty(&self) -> bool {
     self.fields.is_empty()
   }
 
-  /// Start over as the section `name`, holding nothing yet.
+  /// Starts over as the empty section `name`.
   pub(crate) fn open(&mut self, name: &'t str) {
     self.name = name;
     self.fields.clear();
     self.keys.clear();
   }
 
-  /// Start over as the root section, which holds the fields written before any header.
+  /// Starts over as the root section, which holds the fields written before any header.
   pub(crate) fn open_root(&mut self) {
     self.open(ROOT_SECTION);
   }
 
-  /// Set a field, replacing the value of a key already set and keeping its place.
+  /// Sets a field; a key already set keeps its place.
   pub(crate) fn set(&mut self, key: &'t str, value: &'t str) {
     let fields: &[LtxRecordField<'_>] = &self.fields;
 
@@ -59,7 +57,6 @@ impl<'t> LtxRecord<'t> {
     }
   }
 
-  /// The fields in written order, to compare against a config's.
   #[cfg(test)]
   pub(crate) fn fields(&self) -> impl Iterator<Item = (&'t str, &'t str)> + '_ {
     self.fields.iter().map(|field| (field.key, field.value))
@@ -69,7 +66,7 @@ impl<'t> LtxRecord<'t> {
 impl<'t> LtxRead for LtxRecord<'t> {
   type Section = Self;
 
-  /// This record when `name` is its name in any case, as a config looks sections up.
+  /// This record when `name` is its name in any case.
   fn section(&self, name: &str) -> Option<&Self> {
     (name == self.name || fold_section_name(name) == fold_section_name(self.name)).then_some(self)
   }

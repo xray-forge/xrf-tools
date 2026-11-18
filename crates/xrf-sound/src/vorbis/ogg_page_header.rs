@@ -1,5 +1,4 @@
-/// What an Ogg page's header says of the page, read without its body or checksum: where it lies, which stream it
-/// belongs to, and the granule position it places.
+/// An Ogg page's header, read without checking its body or checksum.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct OggPageHeader {
   /// Where the page starts in the bytes it was read from.
@@ -9,12 +8,12 @@ pub(crate) struct OggPageHeader {
   pub(crate) serial: u32,
   /// The granule position of the last packet ending on the page, or none where no packet ends.
   pub(crate) granule: Option<u64>,
-  /// Whether a packet ending on the page also starts on it, so that a reader starting at the page is handed one.
+  /// Whether a packet both starts and ends on the page, so a reader starting there is handed one.
   pub(crate) has_whole_packet: bool,
 }
 
 impl OggPageHeader {
-  /// The capture pattern every Ogg page starts with, so an Ogg stream's first bytes.
+  /// The capture pattern every Ogg page, and so every Ogg stream, starts with.
   pub(crate) const CAPTURE: &'static [u8] = b"OggS";
 
   const FIXED_LENGTH: usize = 27;

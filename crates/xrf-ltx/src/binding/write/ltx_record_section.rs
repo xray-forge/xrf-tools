@@ -6,7 +6,7 @@ use crate::binding::{LtxRecordWriter, LtxSectionWrite};
 pub struct LtxRecordSection<'a> {
   writer: &'a mut LtxRecordWriter,
   name: &'a str,
-  /// Whether the writer's open section is this one, known after the first field so the rest skip the comparison.
+  /// Whether the writer's open section is this one, so fields after the first skip the comparison.
   is_open: bool,
 }
 

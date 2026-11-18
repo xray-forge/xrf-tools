@@ -19,8 +19,8 @@ pub struct EditableWallmarkSlot {
 }
 
 /// The wall mark tool's part, `wallmark.part`: its brush settings and its decals in slots, as
-/// `ESceneWallmarkTool::SaveStream` writes them into the part's data chunk. The editor exports the decals into
-/// `level.wallmarks`, and hands their fans to the compiler as faces too.
+/// `ESceneWallmarkTool::SaveStream` writes them. The editor exports the decals into `level.wallmarks`, and hands their
+/// fans to the compiler as faces too.
 #[derive(Clone, Debug, PartialEq)]
 pub struct EditableWallmarkTool {
   /// `flDrawWallmark` and `flAxisAlign`.
@@ -33,8 +33,7 @@ pub struct EditableWallmarkTool {
   pub texture: String,
   /// The slots in their stored order, an empty one kept as stored; the editor drops it on load.
   pub slots: Vec<EditableWallmarkSlot>,
-  /// How the stream laid its chunks out, and any chunk the tool does not save, such as a converter's own, kept as
-  /// stored.
+  /// How the stream laid its chunks out, with any chunk the tool does not save, such as a converter's own, as stored.
   pub layout: ChunkLayout,
 }
 
@@ -64,7 +63,7 @@ impl EditableWallmarkTool {
   const OLD_ITEMS_CHUNK_ID: u32 = 4;
   const ITEMS_CHUNK_ID: u32 = 5;
 
-  /// A tool of no decal, with the brush a new one takes.
+  /// A tool of `slots`, with the brush a new tool takes.
   pub fn new(slots: Vec<EditableWallmarkSlot>) -> Self {
     Self {
       flags: Self::DRAW,
@@ -93,15 +92,14 @@ impl EditableWallmarkTool {
     Self::read_from_bytes::<T>(part.data.clone())
   }
 
-  /// The tool's stream as `ESceneWallmarkTool::LoadStream` reads it, from version 3 or 4: its decals from the older
-  /// chunk where one is stored, which keeps no size or turn, else from the current one.
+  /// The tool's stream as `ESceneWallmarkTool::LoadStream` reads it, at [`Self::OLD_VERSION`] or [`Self::VERSION`].
+  /// The decals come from the older chunk where one is stored, which keeps no size or turn, else from the current one;
+  /// the other decal chunk is passed over, as the editor does.
   ///
   /// # Errors
   ///
   /// Returns an error when a chunk the editor asserts on is missing, the version is another, a chunk does not hold
-  /// exactly what it is read as, the slots are not numbered from 0 as the editor opens them, or a slot does not hold
-  /// exactly what it counts. A chunk the tool does not save, such as a converter's own, is kept in [`Self::layout`]
-  /// and comes back on write; the decal chunk the editor passes over is read past, as it is.
+  /// exactly what it is read as, the slots are not numbered from 0, or a slot does not hold exactly what it counts.
   pub fn read_from_bytes<T: ByteOrder>(data: Vec<u8>) -> XrfResult<Self> {
     let mut version: Option<u16> = None;
     let mut flags: Option<u32> = None;
@@ -178,12 +176,12 @@ impl EditableWallmarkTool {
     })
   }
 
-  /// The tool's stream as `ESceneWallmarkTool::SaveStream` writes it, at [`Self::VERSION`].
+  /// The tool's stream as `ESceneWallmarkTool::SaveStream` writes it, at [`Self::VERSION`], in [`Self::layout`]'s
+  /// chunk order with its kept chunks.
   ///
   /// # Errors
   ///
-  /// Returns an error when a count is past what its `u32` holds. The chunks go down in the order and with the kept
-  /// chunks of [`Self::layout`].
+  /// Returns an error when a count overflows its `u32`.
   pub fn write_to_bytes<T: ByteOrder>(&self) -> XrfResult<Vec<u8>> {
     let mut sequence: ChunkSequence = ChunkSequence::new();
 
@@ -246,7 +244,7 @@ impl EditableWallmarkTool {
   ///
   /// # Errors
   ///
-  /// Returns an error when the tool is not [`Self::TOOL_NAME`], holds other than one part, or holds a text part, or as
+  /// Returns an error when the tool is not [`Self::TOOL_NAME`] or holds other than one binary part, or as
   /// [`Self::read_from_part`] does.
   pub fn read_from_scene_tool<T: ByteOrder>(tool: &EditableSceneTool) -> XrfResult<Self> {
     match tool.parts.as_slice() {

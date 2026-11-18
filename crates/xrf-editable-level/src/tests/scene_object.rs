@@ -4,8 +4,7 @@ use xrf_ini::{IniFile, IniFormat, IniSection};
 use crate::tests::fixtures::GUID;
 use crate::{EditableObjectPart, EditableSceneObject, EditableTextPart};
 
-/// A scene object tool's part as the CoP SDK saves `labx8`'s: its own `[appendrandom]`, `[main]` keeping flags, and one
-/// placed library object (at a transform `%f` prints exactly), with its fields replaced or added.
+// As the CoP SDK saves `labx8`'s, at a transform `%f` prints exactly.
 fn scene_object_part_text(fields: &[(&str, &str)]) -> XrfResult<String> {
   let mut file: IniFile = IniFile::default();
 
@@ -68,8 +67,7 @@ fn reads_a_scene_object_part_typed_and_writes_it_back_with_the_tools_own_data() 
   Ok(())
 }
 
-/// A new part holds the tool's `[appendrandom]` as a new tool saves it, which the editor's loader requires: GSC's own,
-/// as `labx8`'s part holds it.
+// The editor's loader requires the tool's `[appendrandom]`.
 #[test]
 fn writes_a_new_part_with_the_tools_own_data_as_a_new_tool_holds_it() -> XrfResult {
   let gsc: EditableObjectPart<EditableSceneObject> = read_scene_objects(&scene_object_part_text(&[])?)?;

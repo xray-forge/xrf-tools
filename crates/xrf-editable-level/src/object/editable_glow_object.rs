@@ -6,8 +6,8 @@ use crate::object::editable_custom_object::EditableCustomObject;
 use crate::object::editable_tool_object::EditableToolObject;
 use crate::part::editable_part_object::EditablePartObject;
 
-/// A light flare the scene places, `CGlow`: an object of `glow.part`, which the build hands the level compiler as a
-/// `b_glow` (`SceneBuilder::BuildGlow`, `BuilderRemote.cpp:1161`) and the compiled level keeps in `fsL_GLOWS`.
+/// A light flare the scene places, `CGlow`, in `glow.part`. The build hands it to the level compiler as a `b_glow`
+/// (`SceneBuilder::BuildGlow`), and the compiled level keeps it in `fsL_GLOWS`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct EditableGlowObject {
   pub object: EditableCustomObject,

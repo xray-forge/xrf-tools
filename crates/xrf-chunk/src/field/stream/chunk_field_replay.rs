@@ -6,9 +6,10 @@ use crate::field::chunk_field_kind::ChunkFieldKind;
 use crate::field::chunk_field_reader::ChunkFieldReader;
 use crate::field::stream::chunk_field_source::ChunkFieldSource;
 
-/// Reads values from fields, as a `NET_Packet` with an ini stream attached reads one field per primitive; the reverse
-/// of a [`crate::ChunkFieldRecorder`]. Its position counts the bytes the values take, as the recorder's does. A raw
-/// read of no bytes reads nothing, any other is refused.
+/// Reads one field per primitive, as a `NET_Packet` with an ini stream attached does; the reverse of a
+/// [`crate::ChunkFieldRecorder`].
+///
+/// Its position counts the bytes the values would take. An empty raw read is a no-op, any other is refused.
 pub struct ChunkFieldReplay<'s, S: ChunkFieldSource + ?Sized> {
   source: &'s mut S,
   position: usize,

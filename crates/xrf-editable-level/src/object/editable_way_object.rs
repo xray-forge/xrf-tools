@@ -106,9 +106,8 @@ impl EditableToolObject for EditableWayObject {
   const CLASS_ID: i32 = 7;
   const TOOL_NAME: &'static str = "way";
 
-  /// As `CWayObject::LoadLTX` reads it: another version or an empty name refused, the points, then each link in the
-  /// order its key sorts, appended to its point; a key the editor's `sscanf` cannot read, or a link
-  /// [`Self::check_links`] refuses, is refused.
+  /// As `CWayObject::LoadLTX` reads it, each link appended to its point in key order. Refuses another version, an empty
+  /// name, a link key the editor's `sscanf` cannot read, and a link [`Self::check_links`] refuses.
   fn read_from_object(object: &EditablePartObject<'_>) -> XrfResult<Self> {
     let section: &IniSection = object.section;
     let version: u32 = section.get_parsed::<u32>("version")?;
@@ -171,8 +170,8 @@ impl EditableToolObject for EditableWayObject {
     Ok(way)
   }
 
-  /// As `CWayObject::SaveLTX` writes it, at [`Self::VERSION`]; the links as they are, which every reader and the
-  /// level's export check with [`Self::check_links`].
+  /// As `CWayObject::SaveLTX` writes it, at [`Self::VERSION`]. Links are written unchecked; every reader and the
+  /// level's export run [`Self::check_links`].
   fn write_to_ini(&self, ini: &mut IniFile, section: &str) {
     let section: &mut IniSection = ini.section_mut(section);
 

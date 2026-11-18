@@ -65,7 +65,7 @@ fn refuses_a_count_past_the_parts_sections_before_sizing_by_it() -> XrfResult {
 
 #[test]
 fn a_binary_part_comes_back_in_the_order_its_file_stored_it() -> XrfResult {
-  // The tool data stored before the GUID, and a chunk the editor never writes between them.
+  // Tool data before the GUID, with a chunk the editor never writes between them.
   let bytes: Vec<u8> = binary_part_bytes(&[
     chunk(0x8000 + 13, b"nodes"),
     chunk(0x0042, b"x"),
@@ -82,7 +82,6 @@ fn a_binary_part_comes_back_in_the_order_its_file_stored_it() -> XrfResult {
   Ok(())
 }
 
-/// The editor opens the data chunk of the class of the tool the file is named after; another class's chunk is kept.
 #[test]
 fn reads_the_data_chunk_of_the_tools_class_where_the_part_holds_two() -> XrfResult {
   let bytes: Vec<u8> = binary_part_bytes(&[

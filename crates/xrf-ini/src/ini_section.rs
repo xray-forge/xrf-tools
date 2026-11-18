@@ -55,7 +55,7 @@ impl IniSection {
     })
   }
 
-  /// Sets a field: replaces the value of one with that key, or adds it after the others.
+  /// Sets a field in place, or adds it after the others.
   pub fn set(&mut self, key: impl Into<String>, value: impl Into<String>) {
     let field: IniField = IniField::new(key, value);
 
@@ -65,7 +65,7 @@ impl IniSection {
     }
   }
 
-  /// Removes a field, answering its value.
+  /// Removes a field and returns its value.
   pub fn remove(&mut self, key: &str) -> Option<String> {
     let index: usize = self.fields.iter().position(|field| field.key == key)?;
 

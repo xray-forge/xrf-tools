@@ -5,8 +5,8 @@ use xrf_error::XrfResult;
 
 use crate::writer::chunk_writer::ChunkWriter;
 
-/// One chunk as its id and the payload bytes it stores, without the header: what a container keeps of a child no
-/// field of it takes, and what [`crate::ChunkSequence`] holds before putting a child down.
+/// One chunk's id and payload, without the header: a child kept as stored, or one a [`crate::ChunkSequence`] holds
+/// before writing it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ChunkPayload {
   pub id: u32,

@@ -8,8 +8,6 @@ use crate::fixtures::VorbisNoiseFixture;
 use crate::vorbis::ogg_page_header::OggPageHeader;
 use crate::{SoundFile, VorbisDecoder};
 
-/// Every frame of `bytes` decoded from the start, interleaved, checking each packet starts where the one before it
-/// stopped.
 fn decode_whole(bytes: &[u8]) -> XrfResult<Vec<f32>> {
   let mut decoder: VorbisDecoder<&[u8]> = VorbisDecoder::open(bytes)?;
   let channels: usize = usize::from(decoder.get_channels());
@@ -137,12 +135,9 @@ fn a_seek_to_the_end_leaves_nothing_to_decode() -> XrfResult {
   Ok(())
 }
 
-/// The serial of a stream multiplexed beside the fixture's.
 const OTHER_SERIAL: u32 = 0x4F54_4852;
 
-/// The packets of `bytes` written again, each through `change` by its index and ending a page where it ended one, with
-/// `between`, when given, written as a page of another stream after each page from the setup on. The pages decode as
-/// the original's, though the writer may place their bytes otherwise.
+// Pages end where the original's did; `between` becomes another stream's page after each page from the setup on.
 fn rewrite(bytes: &[u8], mut change: impl FnMut(usize, Vec<u8>) -> Vec<u8>, between: Option<&[u8]>) -> Vec<u8> {
   let mut reader: PacketReader<Cursor<&[u8]>> = PacketReader::new(Cursor::new(bytes));
   let mut writer: PacketWriter<'_, Vec<u8>> = PacketWriter::new(Vec::new());
@@ -177,7 +172,7 @@ fn rewrite(bytes: &[u8], mut change: impl FnMut(usize, Vec<u8>) -> Vec<u8>, betw
   writer.into_inner()
 }
 
-/// The header of a page of `serial` whose two full lacing values claim 510 bytes of body.
+// Two full lacing values, claiming 510 bytes of body.
 fn claiming_header(serial: u32) -> Vec<u8> {
   let mut header: Vec<u8> = OggPageHeader::CAPTURE.to_vec();
 

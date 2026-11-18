@@ -3,8 +3,7 @@ use xrf_utils::encode_string_to_w1251_bytes;
 
 use crate::field::chunk_field_kind::ChunkFieldKind;
 
-/// One value as a [`crate::ChunkFieldWriter`] writes it, with the primitive that wrote it: what the engine's
-/// `NET_Packet` saves as one field when an ini stream is attached to it.
+/// One value tagged with the primitive that wrote it, one field of a `NET_Packet` ini stream.
 #[derive(Clone, Debug, PartialEq)]
 pub enum ChunkField {
   U8(u8),
@@ -29,7 +28,7 @@ impl ChunkField {
     }
   }
 
-  /// The bytes the value takes written as bytes: a string its Windows-1251 encoding and terminator.
+  /// Bytes the value takes in byte form; a string takes its Windows-1251 encoding and terminator.
   ///
   /// # Errors
   ///

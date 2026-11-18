@@ -3,9 +3,8 @@ use std::str;
 
 /// A value's text as [`Display`] writes it, held on the stack while it fits.
 ///
-/// The text is copied once more into the field that keeps it, so formatting through `to_string` first paid a second,
-/// short-lived allocation per field: about a sixth of building a spawn's graph points, 2.3 million of them. A value
-/// longer than the stack space, such as a script's custom data, moves to the heap as `to_string` would.
+/// The field copies the text again, so a `to_string` allocation per field cost about a sixth of building a spawn's 2.3
+/// million graph points. Longer text, such as a script's custom data, moves to the heap.
 pub(crate) struct SectionValueText {
   stack: [u8; Self::STACK_BYTES],
   length: usize,
@@ -87,8 +86,7 @@ mod test {
     }
   }
 
-  /// What a record exports is numbers, so their edges are pinned against `to_string`, which the setter's callers used to
-  /// write: signed zero, the infinities, NaN, the smallest subnormal and the largest values, whose text passes the stack.
+  // The largest values' text passes the stack.
   #[test]
   fn writes_every_edge_of_a_number_as_to_string_does() {
     let floats: [f32; 12] = [

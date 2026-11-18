@@ -33,9 +33,8 @@ pub struct EditableDetailColorIndex {
 }
 
 /// The detail object tool's part, `detail_object.part`: its library of detail objects and the slot grid planting them,
-/// as `EDetailManager::SaveStream` (`LevelEditor/Edit/ESceneDOTools.cpp:454`) writes them into the part's data chunk.
-/// The Build exports it into `build.details` (`EDetailManager::Export`), which the detail lighter turns into
-/// `level.details`.
+/// as `EDetailManager::SaveStream` writes them. The Build exports it into `build.details` (`EDetailManager::Export`),
+/// which the detail lighter turns into `level.details`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct EditableDetailObjectTool {
   /// `flObjectsDraw` and the editor's other drawing flags.
@@ -55,8 +54,7 @@ pub struct EditableDetailObjectTool {
   pub density: f32,
   /// The scene objects the base texture was laid over, by name.
   pub snap_objects: Vec<String>,
-  /// How the stream laid its chunks out, and any chunk the tool does not save, such as a converter's own, kept as
-  /// stored.
+  /// How the stream laid its chunks out, with any chunk the tool does not save, such as a converter's own, as stored.
   pub layout: ChunkLayout,
 }
 
@@ -103,15 +101,14 @@ impl EditableDetailObjectTool {
     Self::read_from_bytes::<T>(part.data.clone())
   }
 
-  /// The tool's stream as `EDetailManager::LoadStream` reads it, the base texture's name kept whether or not the
+  /// The tool's stream as `EDetailManager::LoadStream` reads it, keeping the base texture's name whether or not the
   /// texture loads.
   ///
   /// # Errors
   ///
   /// Returns an error when a chunk the editor asserts on is missing, the version is another, a chunk does not hold
-  /// exactly what it is read as, the objects are not numbered from 0 as the editor opens them, the slots do not fill
-  /// the header's grid, or an object does not read. A chunk the tool does not save, such as a converter's own, is kept
-  /// in [`Self::layout`] and comes back on write.
+  /// exactly what it is read as, the objects are not numbered from 0, the slots do not fill the header's grid, or an
+  /// object does not read.
   pub fn read_from_bytes<T: ByteOrder>(data: Vec<u8>) -> XrfResult<Self> {
     let mut version: Option<u32> = None;
     let mut header: Option<EditableDetailHeader> = None;
@@ -242,12 +239,13 @@ impl EditableDetailObjectTool {
     })
   }
 
-  /// The tool's stream as `EDetailManager::SaveStream` writes it, at [`Self::VERSION`].
+  /// The tool's stream as `EDetailManager::SaveStream` writes it, at [`Self::VERSION`], in [`Self::layout`]'s chunk
+  /// order with its kept chunks.
   ///
   /// # Errors
   ///
-  /// Returns an error when the slots do not fill the header's grid, a count is past what its field holds, or a name
-  /// does not encode. The chunks go down in the order and with the kept chunks of [`Self::layout`].
+  /// Returns an error when the slots do not fill the header's grid, a count overflows its field, or a name does not
+  /// encode.
   pub fn write_to_bytes<T: ByteOrder>(&self) -> XrfResult<Vec<u8>> {
     Self::check_grid(&self.header, self.slots.len())?;
 
@@ -355,7 +353,7 @@ impl EditableDetailObjectTool {
   ///
   /// # Errors
   ///
-  /// Returns an error when the tool is not [`Self::TOOL_NAME`], holds other than one part, or holds a text part, or as
+  /// Returns an error when the tool is not [`Self::TOOL_NAME`] or holds other than one binary part, or as
   /// [`Self::read_from_part`] does.
   pub fn read_from_scene_tool<T: ByteOrder>(tool: &EditableSceneTool) -> XrfResult<Self> {
     match tool.parts.as_slice() {

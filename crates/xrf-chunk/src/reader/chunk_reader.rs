@@ -291,7 +291,7 @@ impl<T: ChunkDataSource> Read for ChunkReader<T> {
     self.data.read(buf)
   }
 
-  /// The source's own, which for bytes in memory reserves once rather than growing by probing reads.
+  /// Defers to the source, which for bytes in memory reserves once instead of growing by probing reads.
   fn read_to_end(&mut self, buf: &mut Vec<u8>) -> std::io::Result<usize> {
     self.data.read_to_end(buf)
   }
@@ -318,7 +318,6 @@ mod tests {
   use crate::reader::chunk_reader::ChunkReader;
   use crate::source::chunk_memory_source::InMemoryChunkDataSource;
 
-  /// Lay out one chunk the way the format does: id, payload length, then the payload.
   fn new_chunk_bytes(id: u32, payload: &[u8]) -> Vec<u8> {
     let mut bytes: Vec<u8> = Vec::with_capacity(8 + payload.len());
 
@@ -329,13 +328,11 @@ mod tests {
     bytes
   }
 
-  /// Every constructor answers this for an empty source, so the wording is asserted once.
   const EMPTY_SOURCE_ERROR: &str = "Invalid error: Failed to create chunk from empty source";
 
   #[test]
   fn rejects_an_empty_source() -> XrfResult {
-    // Kept file-backed so the two empty sources that come off a real handle - the file and a slice of it - stay
-    // covered, rather than only the in-memory buffers the other three constructors take.
+    // File-backed so the empty sources off a real handle, a file and a slice of it, stay covered.
     let path: String = GeneratedResources::sample_name(file!(), "rejects_an_empty_source");
 
     GeneratedResources::write(&path, b"")?;
@@ -363,8 +360,7 @@ mod tests {
 
   #[test]
   fn rejects_an_empty_in_memory_source() -> XrfResult {
-    // The asymmetry this pins: an archived entry reaches the reader as bytes, so a zero-length volume entry must be
-    // refused exactly as the same asset read loose is.
+    // An archived entry arrives as bytes, so a zero-length one must be refused as the same file read loose is.
     for result in [
       ChunkReader::from_bytes(&[]),
       ChunkReader::from_vec(Vec::new()),
@@ -383,8 +379,7 @@ mod tests {
 
   #[test]
   fn accepts_a_child_that_declares_no_payload() -> XrfResult {
-    // The guard is about opening a reader over nothing, not about an empty chunk: children are cut by the iterator,
-    // and a chunk with no payload is ordinary in the format.
+    // The guard refuses an empty source, not an empty chunk, which is ordinary in the format.
     let reader: ChunkReader<InMemoryChunkDataSource> =
       ChunkReader::from_bytes(&new_chunk_bytes(0, &[]))?.read_child_by_index(0)?;
 
@@ -396,7 +391,7 @@ mod tests {
 
   #[test]
   fn reads_a_single_empty_child() -> XrfResult {
-    // Kept file-backed so reading through a `FileSlice`, not just constructing over one, stays covered here.
+    // File-backed so reading through a `FileSlice`, not only constructing one, stays covered.
     let path: String = GeneratedResources::sample_name(file!(), "reads_a_single_empty_child.chunk");
 
     GeneratedResources::write(&path, new_chunk_bytes(0, &[]))?;
@@ -438,7 +433,7 @@ mod tests {
 
   #[test]
   fn reads_children_in_declaration_order() -> XrfResult {
-    // Ids descend, so a reader that sorted them or assumed they ascend would report a different order.
+    // Descending ids catch a reader that sorts them.
     let bytes: Vec<u8> = [4, 3, 2, 1, 0].map(|id| new_chunk_bytes(id, &[])).concat();
     let children: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_bytes(&bytes)?.get_children_cloned()?;
 
@@ -461,8 +456,7 @@ mod tests {
     assert_eq!(children.len(), 1, "Expect single chunk");
     assert_eq!(children.first().unwrap().size, 8);
 
-    // Sizes differ per child, including an empty one in the middle, so a reader that reused the previous size or
-    // skipped a fixed stride would land off the next header.
+    // Uneven sizes with an empty child mid-way catch a reader that reuses a size or skips a fixed stride.
     let sizes: [usize; 5] = [8, 24, 16, 0, 40];
     let five: Vec<u8> = sizes
       .iter()
@@ -505,7 +499,6 @@ mod tests {
     assert_eq!(trailing.position, 16, "Expect the offset of the first unaccounted byte");
     assert_eq!(trailing.size, 8);
 
-    // The same walk over the same bytes must still be able to refuse them, with the message it always used.
     let strict: String = ChunkReader::from_bytes(&bytes)?
       .read_children()
       .expect_err("Expected the strict walk to reject unaccounted trailing bytes")

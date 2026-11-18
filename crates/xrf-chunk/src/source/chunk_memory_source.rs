@@ -140,7 +140,7 @@ impl ChunkDataSource for InMemoryChunkDataSource {
     }
   }
 
-  /// Copies straight out of the shared bytes, where the default zeroes a buffer first and then fills it.
+  /// Copies straight from the shared bytes, without the default's zeroed buffer.
   fn read_bytes(&mut self, count: usize) -> IoResult<Vec<u8>> {
     self.read_with(count, <[u8]>::to_vec)
   }
@@ -170,7 +170,7 @@ impl InMemoryChunkDataSource {
     &self.data[self.index_of(self.position)..self.end]
   }
 
-  /// What a read reaching past the window answers, in the words `Read::read_exact` uses for it.
+  /// The error a read past the window returns, worded as `Read::read_exact` words it.
   fn short_read_error() -> IoError {
     IoError::new(ErrorKind::UnexpectedEof, "failed to fill whole buffer")
   }
@@ -187,7 +187,7 @@ impl Read for InMemoryChunkDataSource {
     Ok(count)
   }
 
-  /// Reserves the rest of the window once and copies it, where the default grows the buffer by probing reads.
+  /// Reserves the rest of the window once and copies it, instead of the default's probing reads.
   fn read_to_end(&mut self, buf: &mut Vec<u8>) -> IoResult<usize> {
     let remaining: &[u8] = self.remaining();
     let count: usize = remaining.len();
@@ -232,7 +232,6 @@ mod tests {
     let mut child: InMemoryChunkDataSource = source().slice(8..12);
     let mut buffer: [u8; 4] = [0; 4];
 
-    // A child counts from its own beginning, which is what a chunk reader reports as its position.
     assert_eq!(child.start_pos(), 0);
     assert_eq!(child.end_pos(), 4);
 
@@ -258,7 +257,6 @@ mod tests {
     let children: Vec<InMemoryChunkDataSource> = (0..8).map(|index| parent.slice(index..index + 2)).collect();
     let clones: Vec<InMemoryChunkDataSource> = children.clone();
 
-    // The whole point of the shape: slicing and cloning must not copy the bytes.
     assert_eq!(Arc::strong_count(&parent.data), 1 + children.len() + clones.len());
   }
 
@@ -281,7 +279,7 @@ mod tests {
     assert_eq!(source.set_seek(SeekFrom::Start(8)).unwrap(), 8);
     assert_eq!(source.set_seek(SeekFrom::Current(4)).unwrap(), 12);
     assert_eq!(source.set_seek(SeekFrom::End(-2)).unwrap(), 30);
-    // Past the end is allowed and reads nothing, as a cursor over a vector does.
+    // Past the end is allowed, as for a cursor over a vector.
     assert_eq!(source.set_seek(SeekFrom::Start(64)).unwrap(), 64);
     assert_eq!(source.read(&mut [0; 4]).unwrap(), 0);
     assert!(source.set_seek(SeekFrom::Current(-128)).is_err());
@@ -299,8 +297,7 @@ mod tests {
 
   #[test]
   fn fails_a_short_read_as_read_exact_does() {
-    // The words and the cursor match the standard `read_exact`, so a reader's error and position do not depend on
-    // whether it decoded the bytes where they lie or copied them out.
+    // A reader's error and position must not depend on whether it lent or copied the bytes.
     let mut lent: InMemoryChunkDataSource = source().slice(0..4);
     let mut exact: InMemoryChunkDataSource = source().slice(0..4);
     let mut copied: InMemoryChunkDataSource = source().slice(0..4);
@@ -326,7 +323,7 @@ mod tests {
 
   #[test]
   fn answers_an_empty_window_for_a_range_beyond_the_end() {
-    // A corrupt chunk header must not panic the reader it is being read through.
+    // A corrupt chunk header must not panic its reader.
     let child: InMemoryChunkDataSource = source().slice(64..128);
 
     assert_eq!(child.end_pos(), 0);

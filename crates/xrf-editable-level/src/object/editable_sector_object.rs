@@ -66,8 +66,8 @@ impl EditableToolObject for EditableSectorObject {
   const TOOL_NAME: &'static str = "sector";
   const KEEPS_FLAGS: bool = true;
 
-  /// As `CSector::LoadLTX` reads it (`sector.cpp:525`), refusing a version before 17, or a sector of no item, which it
-  /// does not load.
+  /// As `CSector::LoadLTX` reads it, refusing what it does not load: a version before [`Self::MIN_VERSION`], or a
+  /// sector of no item.
   fn read_from_object(object: &EditablePartObject<'_>) -> XrfResult<Self> {
     let section: &IniSection = object.section;
     let version: u32 = section.get_parsed::<u32>("version")?;
@@ -104,7 +104,7 @@ impl EditableToolObject for EditableSectorObject {
     })
   }
 
-  /// As `CSector::SaveLTX` writes it (`sector.cpp:556`), at [`Self::VERSION`].
+  /// As `CSector::SaveLTX` writes it, at [`Self::VERSION`].
   fn write_to_ini(&self, ini: &mut IniFile, section: &str) {
     let section: &mut IniSection = ini.section_mut(section);
     let [red, green, blue, alpha] = self.color;

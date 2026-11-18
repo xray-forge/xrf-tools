@@ -3,24 +3,22 @@ use std::hash::BuildHasher;
 use hashbrown::HashTable;
 use rustc_hash::FxBuildHasher;
 
-/// Finds a section's field by key among fields its owner keeps in written order, so a key set twice can take the place
-/// it was first written in.
+/// Finds a section's field by key among fields its owner keeps in written order and names by position.
 ///
-/// A record has a few fields or many: a spawn's graph point three, an ALife object dozens. A scan finds one of a few
-/// faster than hashing it; past that a table of the fields' positions keeps a section of many from costing a scan per
-/// field. The owner keeps the keys and names them by position.
+/// A spawn's graph point has three fields, an ALife object dozens: a scan beats hashing a few, and past that a table
+/// of positions saves a scan per field.
 #[derive(Default)]
 pub(crate) struct LtxFieldIndex {
-  /// The fields' positions by key, filled once there are more than a scan covers.
+  /// The fields' positions by key, filled past [`Self::SCANNED_FIELDS`].
   positions: HashTable<usize>,
   count: usize,
 }
 
 impl LtxFieldIndex {
-  /// Fields a section holds before they are found by key instead of by scanning them all.
+  /// Fields found by scanning before the index hashes them.
   const SCANNED_FIELDS: usize = 8;
 
-  /// Where `key` is among the fields, `key_of` naming the key at each position.
+  /// The position of `key`, `key_of` naming the key at each position.
   pub(crate) fn find<'k>(&self, key: &str, key_of: impl Fn(usize) -> &'k str) -> Option<usize> {
     if self.count <= Self::SCANNED_FIELDS {
       (0..self.count).position(|index| key_of(index) == key)
@@ -32,7 +30,7 @@ impl LtxFieldIndex {
     }
   }
 
-  /// Take in the field just added at the end, `key_of` naming the key at each position.
+  /// Indexes the field just added at the end.
   pub(crate) fn push<'k>(&mut self, key_of: impl Fn(usize) -> &'k str) {
     self.count += 1;
 
@@ -54,7 +52,7 @@ impl LtxFieldIndex {
     }
   }
 
-  /// Forget every field, for the next section.
+  /// Forgets every field, for the next section.
   pub(crate) fn clear(&mut self) {
     if self.count > Self::SCANNED_FIELDS {
       self.positions.clear();

@@ -8,8 +8,8 @@ use crate::reader::chunk_reader::ChunkReader;
 use crate::source::chunk_data_source::ChunkDataSource;
 use crate::writer::chunk_writer::ChunkWriter;
 
-/// A typed payload written once through the engine's `NET_Packet` primitives, so it is read and written both as bytes
-/// and as fields of their kinds. Its [`ChunkReadWrite`] is its fields over a [`ChunkReader`] and [`ChunkWriter`].
+/// A typed payload written once through the engine's `NET_Packet` primitives, so it reads and writes both as bytes and
+/// as fields. Implementors get [`ChunkReadWrite`] over a [`ChunkReader`] and [`ChunkWriter`].
 pub trait ChunkFieldReadWrite: Sized {
   /// # Errors
   ///

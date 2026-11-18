@@ -4,8 +4,8 @@ use xrf_error::XrfResult;
 use crate::layout::chunk_payload::ChunkPayload;
 use crate::writer::chunk_writer::ChunkWriter;
 
-/// A container's children being written: encoded one by one in the order its format's own writer puts them, then put
-/// down by a [`crate::ChunkLayout`] in the order a file stored them.
+/// A container's children, encoded in the format's own order, then written by a [`crate::ChunkLayout`] in a file's
+/// stored order.
 #[derive(Debug, Default)]
 pub struct ChunkSequence {
   chunks: Vec<ChunkPayload>,
@@ -39,8 +39,7 @@ impl ChunkSequence {
     self.chunks.extend_from_slice(kept);
   }
 
-  /// Puts every child down: first in `order`, each id taking the first child with that id not yet written, then the
-  /// rest in the order they were pushed.
+  /// Writes every child in `order`, each id taking the first unwritten child with it, then the rest in push order.
   pub(crate) fn write_in_order<T: ByteOrder>(self, destination: &mut ChunkWriter, order: &[u32]) -> XrfResult {
     let mut is_written: Vec<bool> = vec![false; self.chunks.len()];
 

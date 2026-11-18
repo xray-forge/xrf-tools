@@ -3,8 +3,7 @@ use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::AiNodePosition;
 
-/// One node of the AI map tool, `SAINode` as `SAINode::SaveStream` writes it: its four neighbours, its plane, its cell
-/// and height packed against the tool's box, and the editor's flags for it.
+/// One node of the AI map tool, `SAINode` as `SAINode::SaveStream` writes it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct EditableAiMapNode {
   /// The neighbours across each edge, by node index, [`Self::NO_LINK`] for none.

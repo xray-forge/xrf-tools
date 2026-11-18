@@ -5,9 +5,8 @@ use xrf_math::{Vector2d, Vector3d};
 /// How the editor writes and reads its typed values: `CInifile::w_float`, `w_fvector2` and `w_fvector3` format with
 /// `%f`, `w_u32` with `%d`, and `save_as` puts a space after every comma outside quotes (`_decorate`).
 ///
-/// Not every number a saved scene holds is an `f32` printed with `%f`: `labx8.level`'s camera stands at `-80.052984`,
-/// which no `f32` prints as. A typed read is therefore close to the text rather than equal to it, and a file writes
-/// back byte for byte through the text its `IniFile` keeps, not through typed values.
+/// Not every saved number is an `f32` printed with `%f` (`labx8.level`'s camera stands at `-80.052984`), so a typed
+/// read is close to the text, not equal. A file writes back byte for byte through the text its `IniFile` keeps.
 pub struct EditableLevelValue;
 
 impl EditableLevelValue {
@@ -16,20 +15,18 @@ impl EditableLevelValue {
     format!("{value:.6}")
   }
 
-  /// The value a float reads back as once saved with [`Self::format_f32`], a zero of either sign as a positive one,
-  /// which is how the editor's own files print it (`0.000000`).
+  /// A float as it reads back once saved with [`Self::format_f32`], negative zero as `0.000000` as the editor prints.
   ///
-  /// A transform decomposed from a compiled matrix is a few units in the last place off the angles the editor composed
-  /// it from; rounded this way it composes into the same bits again, as the scene's text would.
+  /// A transform decomposed from a compiled matrix is a few ULPs off the editor's angles; rounded this way, it composes
+  /// into the same bits as the scene's text would.
   pub fn round_as_saved(value: f32) -> f32 {
     let saved: f32 = Self::format_f32(value).parse::<f32>().unwrap_or(value);
 
     if saved == 0.0 { 0.0 } else { saved }
   }
 
-  /// The saved values nearest `value`, it rounded first, then a step either way and two, the step the coarser of the
-  /// `%f` grid and the float's own: where a value is recovered from what the editor computed from it, the rounded one
-  /// can land a step off the one it saved.
+  /// The saved values nearest `value`: it rounded, then one and two steps either way, a step being the coarser of the
+  /// `%f` grid and the float's own. A value recovered from what the editor computed can round a step off its saved one.
   pub fn get_saved_neighbours(value: f32) -> [f32; 5] {
     let step: f32 = (value.next_up() - value).max(1e-6);
 
@@ -60,8 +57,8 @@ impl EditableLevelValue {
     )
   }
 
-  /// An unsigned integer as `w_u32` writes it, through `%d`: a value past `i32::MAX` prints negative, as
-  /// uninitialised flag bits in GSC's sound sources do.
+  /// An unsigned integer as `w_u32` writes it, through `%d`: past `i32::MAX` it prints negative, as uninitialised flag
+  /// bits in GSC's sound sources do.
   pub fn format_u32(value: u32) -> String {
     value.cast_signed().to_string()
   }

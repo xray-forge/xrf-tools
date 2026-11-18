@@ -16,14 +16,13 @@ use crate::scene::editable_scene_tool::EditableSceneTool;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EditableObjectPart<T> {
   pub guid: EditableLevelGuid,
-  /// The tool's flags in `[main]`: present for a tool that keeps them ([`EditableToolObject::KEEPS_FLAGS`]), and for
-  /// another kept as its part stored them, which the editor ignores.
+  /// The tool's `[main]` flags: present for a tool that keeps them ([`EditableToolObject::KEEPS_FLAGS`]), and kept as
+  /// stored for another, which the editor ignores.
   pub flags: Option<u32>,
   pub modification: EditablePartModification,
   pub objects: Vec<T>,
-  /// What the tool itself saves beyond its header, kept as stored: further `[main]` keys and sections of its own, such
-  /// as the light tool's `sun_shadow_dir`, `lcontrol_last_idx` and `[lcontrols]` (`ESceneLightTool::SaveLTX`). Empty for
-  /// a tool saving nothing more.
+  /// What the tool saves beyond its header, as stored: further `[main]` keys and its own sections, such as the light
+  /// tool's `[lcontrols]`. Empty for a tool saving nothing more.
   pub tool_data: IniFile,
 }
 
@@ -75,9 +74,8 @@ impl<T: EditableToolObject> EditableObjectPart<T> {
 
   /// # Errors
   ///
-  /// Returns an error, as the tool's `LoadLTX` refuses the part, when it has no `[main]` or `[modif]`, its version is
-  /// not the tool's, it keeps no flags where the tool requires them, an object is of another tool's class, or a field
-  /// an object needs is missing or malformed.
+  /// Returns an error where the tool's `LoadLTX` refuses the part: no `[main]` or `[modif]`, another version, no flags
+  /// where the tool requires them, an object of another class, or an object field missing or malformed.
   pub fn read_from_text_part(part: &EditableTextPart) -> XrfResult<Self> {
     let header: EditablePartHeader = part
       .get_header(T::TOOL_VERSION_KEY)?
@@ -169,8 +167,8 @@ impl<T: EditableToolObject> EditableObjectPart<T> {
   ///
   /// # Errors
   ///
-  /// Returns an error when the tool is not this one ([`EditableToolObject::TOOL_NAME`]), holds other than one part, or
-  /// holds a binary part, or as [`Self::read_from_text_part`] does.
+  /// Returns an error when the tool is not this one ([`EditableToolObject::TOOL_NAME`]) or holds other than one text
+  /// part, or as [`Self::read_from_text_part`] does.
   pub fn read_from_scene_tool(tool: &EditableSceneTool) -> XrfResult<Self> {
     match tool.parts.as_slice() {
       [EditableLevelPart::Text(part)] if tool.name == T::TOOL_NAME => Self::read_from_text_part(part),

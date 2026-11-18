@@ -121,7 +121,6 @@ fn reads_a_sound_environment_part_typed_and_writes_it_back_as_the_editor_saved_i
   assert_eq!(volume.shape.usage, 0);
   assert_eq!(volume.shape.elements, [EditableShapeElement::Box(Affine3d::IDENTITY)]);
   assert!(volume.is_exported());
-  // The unit box, placed by the object's own transform alone.
   assert_eq!(volume.get_box(), Some(volume.object.transform.to_matrix()));
   assert_eq!(String::from_utf8_lossy(&part.to_text_part()?.write_to_bytes()?), text);
 
@@ -200,8 +199,7 @@ fn reads_a_particle_part_typed_and_writes_it_back_as_the_editor_saved_it() -> Xr
   assert_eq!(effect.reference, "industrial_particles\\exhaust_isparenie_blue_down");
   assert_eq!(effect.game_types, EditableParticleObject::ALL_GAME_TYPES);
   assert_eq!(effect.object.transform.rotation, Vector3d::new(1.221731, 0.0, 0.0));
-  // The editor's `%f` rounds two of the position's last digits otherwise than an exact print of the same floats does;
-  // the text reads back to the same part, and is the editor's in everything else.
+  // The editor's `%f` rounds two of the position's last digits otherwise than an exact print does.
   assert_eq!(read_particles(&written)?, part);
   assert_eq!(written, text.replace("-25.461156, 70.090608", "-25.461157, 70.090607"));
 
@@ -332,7 +330,6 @@ fn refuses_a_matrix_no_object_stands_at() {
 
 #[test]
 fn finds_the_saved_transform_a_matrix_composes_from_as_the_whole_search_does() -> XrfResult {
-  // A small deterministic generator, so the transforms are the same every run.
   let mut state: u64 = 11;
   let mut next = |low: f32, high: f32| -> f32 {
     state = state

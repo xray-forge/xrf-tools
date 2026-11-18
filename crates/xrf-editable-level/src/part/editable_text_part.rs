@@ -6,11 +6,9 @@ use crate::part::editable_part_header::EditablePartHeader;
 use crate::part::editable_part_object::EditablePartObject;
 
 /// A tool's part saved as text (`EScene::SaveToolLTX`): its scene's GUID, the tool's `[main]` and `[modif]`, and one
-/// `[object_N]` section per object with the sections named after it. Scene objects, spawns, lights, sectors, portals,
-/// ways and the other object tools save this way.
+/// `[object_N]` section per object with the sections named after it. Every object tool saves this way.
 ///
-/// The file is kept whole as the [`IniFile`] it was read as, so it writes back byte for byte; a spawn's data is the
-/// `[object_N_spawndata]` section's numbered fields, one per value its packet holds (`SIniFileStream`).
+/// Kept whole as the [`IniFile`] it was read as, so it writes back byte for byte.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct EditableTextPart {
   pub ini: IniFile,
@@ -65,8 +63,8 @@ impl EditableTextPart {
       .transpose()
   }
 
-  /// The objects `[main]` counts, each with the sections named after it, gathered in one pass over the sections: a
-  /// decompiled outdoor level holds tens of thousands.
+  /// The objects `[main]` counts, each with the sections named after it, gathered in one pass: a decompiled outdoor
+  /// level holds tens of thousands.
   ///
   /// # Errors
   ///

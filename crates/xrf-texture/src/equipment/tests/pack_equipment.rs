@@ -157,10 +157,9 @@ fn completed_pack_publishes_every_icon() {
   }
 }
 
-/// A marker without its separator, or a path relative to a config that was not read from a directory, names no root
-/// the icon can be found under; the packer refuses it as the icon's error rather than panicking mid-pack.
 #[test]
 fn refuses_a_custom_icon_path_it_cannot_resolve() {
+  // A marker without its separator, or a relative path in a config read from no directory: an error, not a panic.
   for (custom, is_from_directory) in [("~ui\\icon", true), ("#ui\\icon", true), ("ui\\icon", false)] {
     let mut options = options("unresolvable-custom-icon", 1, false);
     options.ltx.with_section("icon_0").set("$inventory_icon_path", custom);

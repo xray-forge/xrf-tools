@@ -5,8 +5,7 @@ use xrf_math::Vector3d;
 use crate::tests::fixtures::GUID;
 use crate::{EditableObjectPart, EditablePortalObject, EditableTextPart};
 
-/// A portal tool's part as the CoP SDK saves `labx8`'s: `[main]` keeping flags, and one portal of `labx8`'s shape (at
-/// corners `%f` prints exactly), closing on its first corner as GSC's do, with its fields replaced or added.
+// As the CoP SDK saves `labx8`'s, at corners `%f` prints exactly, closing on its first corner as GSC's do.
 fn portal_part_text(fields: &[(&str, &str)]) -> XrfResult<String> {
   let mut file: IniFile = IniFile::default();
 

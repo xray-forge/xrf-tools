@@ -9,7 +9,6 @@ use crate::syntax::read_engine_bool;
 ///
 /// A key written twice reads as the last value it was given.
 pub trait LtxSectionRead {
-  /// The value of `key`, if the section has the field.
   fn get(&self, key: &str) -> Option<&str>;
 
   /// The value as `CInifile::r_bool` reads it; `None` for a key the section lacks.
@@ -17,7 +16,7 @@ pub trait LtxSectionRead {
     self.get(key).map(read_engine_bool)
   }
 
-  /// The value of a field a record requires, parsed as `T` strictly, which is how an exported record is read back.
+  /// A required field parsed strictly as `T`, as an exported record is read back.
   ///
   /// # Errors
   ///
@@ -35,7 +34,7 @@ pub trait LtxSectionRead {
     })
   }
 
-  /// The value of a field a record may leave out, parsed as `T` strictly; `None` for a key the section lacks.
+  /// An optional field parsed strictly as `T`; `None` for a key the section lacks.
   ///
   /// # Errors
   ///

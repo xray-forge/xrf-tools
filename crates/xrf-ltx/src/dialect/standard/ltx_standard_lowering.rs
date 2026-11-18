@@ -9,25 +9,23 @@ use crate::document::{LtxCheck, LtxItem, LtxItemKind};
 use crate::ltx::Ltx;
 use crate::syntax::fold_section_name;
 
-/// One document's statements turned into a resolved [`Ltx`] under standard rules, a statement at a time.
+/// Lowers one document's statements into a resolved [`Ltx`] under standard rules, a statement at a time.
 ///
-/// Fed from a held document when a root and its includes are resolved, or straight from the parser when one document
-/// is read on its own, so that a read of a few hundred thousand records never holds every statement beside what it
-/// becomes.
+/// Fed from a held document when a root and its includes resolve, or straight from the parser for one document read on
+/// its own, so a few hundred thousand records are never held both as statements and as a config.
 pub(crate) struct LtxStandardLowering<'a> {
   ltx: Ltx,
   open: LtxOpenSection,
   interner: &'a mut LtxTextInterner,
   /// Whether values go through the interner as keys do.
   ///
-  /// A resolved tree repeats its values across files and sections (a vanilla tree holds ten copies of each), so sharing
-  /// them pays. One document read on its own is mostly records, whose values are their own numbers: interning those
-  /// keeps a table of every one only to share nothing, and took over a third of lowering a spawn's graph points.
+  /// A vanilla tree holds ten copies of each value, so sharing pays. A document read on its own is mostly records of
+  /// unique numbers, where interning shares nothing and took over a third of lowering a spawn's graph points.
   is_sharing_values: bool,
 }
 
 impl<'a> LtxStandardLowering<'a> {
-  /// A lowering that shares keys and values through `interner`, for a document of a resolved tree.
+  /// Shares keys and values through `interner`, for a document of a resolved tree.
   pub(crate) fn sharing_keys_and_values(interner: &'a mut LtxTextInterner) -> Self {
     Self {
       ltx: Ltx::new(),
@@ -37,8 +35,7 @@ impl<'a> LtxStandardLowering<'a> {
     }
   }
 
-  /// A lowering that shares keys through `interner` and gives each value its own text, for one document read on its
-  /// own.
+  /// Shares keys through `interner` but not values, for one document read on its own.
   pub(crate) fn sharing_keys(interner: &'a mut LtxTextInterner) -> Self {
     Self {
       is_sharing_values: false,
@@ -46,12 +43,12 @@ impl<'a> LtxStandardLowering<'a> {
     }
   }
 
-  /// Lower one statement.
+  /// Lowers one statement.
   ///
   /// # Errors
   ///
   /// Returns an error when a section is declared twice, an include is named twice, or the statement is a DLTX
-  /// operation, which standard mode cannot evaluate.
+  /// operation.
   pub(crate) fn push<S: AsRef<str>>(&mut self, item: &LtxItem<S>) -> XrfResult {
     if item.is_patch_operation() {
       return Err(Self::new_patch_operation_error(item));
@@ -112,7 +109,7 @@ impl<'a> LtxStandardLowering<'a> {
     ltx
   }
 
-  /// The diagnostic an include named a second time gets.
+  /// The diagnostic for an include named twice.
   pub(crate) fn new_repeated_include_error<S: AsRef<str>>(item: &LtxItem<S>, path: &str) -> XrfError {
     XrfError::new_ltx_parse_error(
       item.span.get_line(),
@@ -121,7 +118,7 @@ impl<'a> LtxStandardLowering<'a> {
     )
   }
 
-  /// The diagnostic a section declared a second time gets, at the second header.
+  /// The diagnostic for a section declared twice, at the second header.
   pub(crate) fn new_repeated_section_error<S: AsRef<str>>(item: &LtxItem<S>, name: &str) -> XrfError {
     XrfError::new_ltx_parse_error(
       item.span.get_line(),
@@ -130,9 +127,7 @@ impl<'a> LtxStandardLowering<'a> {
     )
   }
 
-  /// The diagnostic a DLTX statement gets in standard mode.
-  ///
-  /// Names the flag, because a patch file read without it is a mode mistake rather than a broken config.
+  /// The diagnostic for a DLTX statement in standard mode, naming the flag: such a read is a mode mistake.
   pub(crate) fn new_patch_operation_error<S: AsRef<str>>(item: &LtxItem<S>) -> XrfError {
     let statement: String = match &item.kind {
       LtxItemKind::Section { name, operation, .. } => {

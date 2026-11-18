@@ -1,5 +1,3 @@
-//! A tool's objects as the editor loads them: the groups' members of its class first, then its own part's.
-
 use xrf_error::XrfResult;
 use xrf_ini::{IniFile, IniSection};
 
@@ -18,7 +16,6 @@ fn scene_object(name: &str) -> EditableSceneObject {
   }
 }
 
-/// The group tool holding one group, `name`, of `members`.
 fn group_tool(name: &str, members: &[EditableSceneObject]) -> EditableSceneTool {
   let mut ini: IniFile = IniFile::default();
 

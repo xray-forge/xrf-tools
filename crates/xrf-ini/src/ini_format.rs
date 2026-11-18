@@ -1,8 +1,9 @@
 use crate::ini_encoding::IniEncoding;
 use crate::ini_repeated_key::IniRepeatedKey;
 
-/// How a file is read and written. Nothing is assumed beyond `[section]` headers and `key = value` fields: every other
-/// convention is a field here, and a writer that wants one names a format that has it.
+/// How a file is read and written.
+///
+/// Beyond `[section]` headers and `key = value` fields, every convention is a field here, so nothing is assumed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct IniFormat {
   pub encoding: IniEncoding,
@@ -35,12 +36,11 @@ impl IniFormat {
     is_sorted: false,
   };
 
-  /// What the engine's and the SDK's `CInifile::save_as` writes (`xrCore/xr_ini.cpp`): Windows-1251 and `\r\n`, a field
-  /// as `%8s%-32s = %-32s` trimmed at the right, a line holding one space after every section, sections and fields in
-  /// `strcmp` order. A quoted value may span lines, and a key set twice keeps its last value, as in the engine.
+  /// What the engine's and the SDK's `CInifile::save_as` in `xr_ini.cpp` writes.
   ///
-  /// Values are written as set, without the engine's reformatting. The crate's README lists where reading a hand-edited
-  /// file differs from the engine.
+  /// Windows-1251, `\r\n`, fields as `%8s%-32s = %-32s` trimmed at the right, a one-space line after each section, and
+  /// `strcmp` order. Quoted values may span lines and a repeated key keeps its last value, as in the engine. Values are
+  /// written as set, without the engine's reformatting; the README lists where reading hand-edited files differs.
   pub const XRAY_SAVE_AS: Self = Self {
     encoding: IniEncoding::Windows1251,
     line_end: "\r\n",

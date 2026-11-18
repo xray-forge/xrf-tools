@@ -28,8 +28,7 @@ pub struct DdsFile {
 }
 
 impl DdsFile {
-  /// The most bytes a header occupies, the DX10 extension included: a reader taking this many from a file's start holds
-  /// its whole header, which is all [`Self::read_xray_compatibility_from_bytes`] reads.
+  /// The longest header, DX10 extension included: a file's first this many bytes hold its whole header.
   pub const MAX_HEADER_SIZE: usize = DX10_HEADER_SIZE as usize;
 
   /// Reads a whole texture, payload included, from a file.
@@ -102,8 +101,7 @@ impl DdsFile {
     Self::from_parsed(dds, file_size)
   }
 
-  /// Reads a whole texture from bytes handed over, keeping them as its payload where [`Self::read_from_bytes`] copies
-  /// the payload out: a reader holding many textures at once holds each once.
+  /// Reads a whole texture, keeping the bytes handed over as its payload where [`Self::read_from_bytes`] copies it.
   ///
   /// # Errors
   ///
@@ -151,9 +149,8 @@ impl DdsFile {
 
   /// Decode one mip level to RGBA, for whatever wants pixels rather than the file.
   ///
-  /// Two decoders, in order. `image_dds` owns every block compressed layout and the packings it has names for, a flat
-  /// texture's block-compressed level split into stripes of rows decoded on every worker; what it refuses goes to
-  /// `decode_uncompressed`, which expands a packing from the channel masks its header declares.
+  /// Two decoders, in order: `image_dds` for every block-compressed layout and the packings it names, then
+  /// `decode_uncompressed`, which expands a packing from its header's channel masks.
   /// Between them they cover every layout in the reference trees - 28,606 files across `gamedata`, `gamedata-anomaly`,
   /// `gamedata-coc`, `gamedata-cop-ee`, `gamedata-cs` and `gamedata-openxray-gunslinger`:
   ///
@@ -191,9 +188,10 @@ impl DdsFile {
     }
   }
 
-  /// The base level's alpha as the X-Ray SDK's compilers read it through their image library, FreeImage 3.9: one byte a
-  /// texel, top row first. It differs from [`Self::decode_rgba`]'s alpha where FreeImage does: a DXT5 block's
-  /// interpolated alpha rounds to nearest, and a 16-bit or 24-bit packing reads opaque.
+  /// The base level's alpha as the X-Ray SDK's compilers read it through FreeImage 3.9: a byte a texel, top row first.
+  ///
+  /// It differs from [`Self::decode_rgba`]'s alpha where FreeImage does: DXT5 interpolated alpha rounds to nearest,
+  /// and 16-bit and 24-bit packings read opaque.
   ///
   /// # Errors
   ///
@@ -250,11 +248,10 @@ impl DdsFile {
     Self::is_xray_compatible_header(&self.dds)
   }
 
-  /// [`Self::is_xray_compatible`] for the texture whose file these bytes are, answered from its header alone.
+  /// [`Self::is_xray_compatible`] for a file's bytes, answered from its header alone.
   ///
-  /// The question a check asks of every texture a tree holds, ten gigabytes of them: reading each whole would copy its
-  /// payload out only to look at the first 148 bytes. The header is read from the same bytes a whole read would start
-  /// with, so the answer and any error are the ones [`Self::read_from_bytes`] would give.
+  /// A check over a whole tree, ten gigabytes of textures, need not copy each payload. The answer and any error are
+  /// those [`Self::read_from_bytes`] would give.
   ///
   /// # Errors
   ///
@@ -294,10 +291,9 @@ impl DdsFile {
     }
   }
 
-  /// The header the start of a file's bytes holds, with the few bytes after it as its payload.
+  /// The header at the start of `bytes`, with the few bytes after it as its payload.
   ///
-  /// `Dds::read` takes whatever follows the header as the payload and checks no length against it, so reading no more
-  /// than the longest header yields the whole header (see [`Self::read_metadata_from_path`]).
+  /// `Dds::read` checks no payload length, so the longest header's worth of bytes yields the whole header.
   fn read_header(bytes: &[u8]) -> Result<Dds, ddsfile::Error> {
     Dds::read(&mut Cursor::new(&bytes[..bytes.len().min(Self::MAX_HEADER_SIZE)]))
   }
@@ -397,10 +393,9 @@ mod tests {
     RefusedPublication::assert_left_previous(&path, b"previous");
   }
 
-  /// The header-only answer is only worth having if it is the whole read's, refusals included: a DX9 layout and DX10
-  /// ones the D3D9 path loads and refuses, and a file cut short inside its header.
   #[test]
   fn answers_compatibility_from_the_header_as_the_whole_read_does() {
+    // DX10 layouts the D3D9 path loads and refuses, and a file cut short inside its header.
     let files: Vec<DdsFile> = vec![
       encoded_file(8, 8, DdsMipmaps::Disabled),
       dx10_file(DxgiFormat::BC3_UNorm),

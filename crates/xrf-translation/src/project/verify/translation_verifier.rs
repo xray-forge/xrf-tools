@@ -110,15 +110,14 @@ impl TranslationVerifier {
     Ok(result)
   }
 
-  /// Verify one source, skipping anything that is not a multi-language JSON.
+  /// Verify one file, skipping any path that is not a multi-language JSON source.
   ///
-  /// The path-taking convenience, for a caller holding one file and no mounted roots - the same shape
-  /// `TranslationJsonReader::read` keeps, and the reason `--path <one file>` still works. A VFS mounts a directory,
-  /// never a file.
+  /// For a caller holding one file and no mounted roots, such as `--path <one file>`: a VFS mounts a directory, never
+  /// a file.
   ///
   /// # Errors
   ///
-  /// Returns a parsing error for an unreadable source.
+  /// Returns an error when the source cannot be read or parsed.
   pub fn verify_file<P: AsRef<Path>>(
     path: &P,
     options: &TranslationVerifyOptions,

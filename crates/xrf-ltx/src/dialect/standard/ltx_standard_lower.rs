@@ -16,8 +16,7 @@ impl LtxStandardDialect {
   ///
   /// # Errors
   ///
-  /// Returns an error when a section is declared twice, an include is named twice, or the file carries a DLTX
-  /// operation, which standard mode cannot evaluate.
+  /// Returns an error when a section is declared twice, an include is named twice, or the file has a DLTX operation.
   pub(crate) fn lower_with(document: &LtxDocument, interner: &mut LtxTextInterner) -> XrfResult<Ltx> {
     let mut lowering: LtxStandardLowering<'_> = LtxStandardLowering::sharing_keys_and_values(interner);
 
@@ -30,9 +29,8 @@ impl LtxStandardDialect {
 
   /// Parses and lowers one document on its own, each statement lowered as it is read and let go.
   ///
-  /// Answers exactly what lowering the parsed document would, refusals included: a statement that does not parse is
-  /// reported ahead of any lowering refusal, wherever each sits in the text, as it was when the whole document was
-  /// parsed first. Keys are shared, values are not (see [`LtxStandardLowering`]).
+  /// Answers exactly as lowering the parsed document would: a parse error outranks any lowering refusal, wherever each
+  /// sits. Keys are shared, values are not (see [`LtxStandardLowering`]).
   ///
   /// # Errors
   ///

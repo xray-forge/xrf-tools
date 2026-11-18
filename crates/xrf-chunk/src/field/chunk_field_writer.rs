@@ -6,14 +6,13 @@ use crate::read_write::chunk_field_read_write::ChunkFieldReadWrite;
 use crate::read_write::chunk_field_read_write_list::ChunkFieldReadWriteList;
 use crate::read_write::chunk_field_read_write_optional::ChunkFieldReadWriteOptional;
 
-/// Where a [`ChunkFieldReadWrite`] value writes itself: the engine's `NET_Packet` primitives, each one value
-/// (`NET_utils.h`). A [`crate::ChunkWriter`] writes their bytes; a [`crate::ChunkFieldRecorder`] records each as a
-/// field of its kind, as `NET_Packet` saves one with an ini stream attached.
+/// What a [`ChunkFieldReadWrite`] value writes itself to, the engine's `NET_Packet` primitives (`NET_utils.h`): bytes
+/// through a [`crate::ChunkWriter`], one field per primitive through a [`crate::ChunkFieldRecorder`].
 ///
-/// The names are [`crate::ChunkWriter`]'s own, so a value's code reads the same over either writer.
+/// Method names match [`crate::ChunkWriter`]'s, so a value's code reads the same over either.
 pub trait ChunkFieldWriter {
-  /// Whether values become fields rather than bytes, `NET_Packet::inistream != nullptr`: where the engine writes a
-  /// value otherwise for an ini stream, it asks this.
+  /// Whether values become fields rather than bytes, `NET_Packet::inistream != nullptr`. Check it where the engine
+  /// writes a value differently for an ini stream.
   fn is_field_form(&self) -> bool;
 
   fn write_u8(&mut self, value: u8) -> XrfResult;

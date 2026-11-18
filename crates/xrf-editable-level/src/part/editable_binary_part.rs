@@ -7,12 +7,12 @@ use crate::tool::editable_ai_map_tool::EditableAiMapTool;
 use crate::tool::editable_detail_object_tool::EditableDetailObjectTool;
 use crate::tool::editable_wallmark_tool::EditableWallmarkTool;
 
-/// A tool's part saved as chunks rather than text (`EScene::SaveLTX` for a tool that cannot use an INI file): the AI
-/// map, the detail objects and the wall marks. The file is the scene's GUID under [`Self::GUID_CHUNK_ID`] and the
-/// tool's own stream under [`Self::DATA_CHUNK_ID`] plus its class id, as `EScene::LoadLevelPart` finds them.
+/// A tool's part saved as chunks rather than text (`EScene::SaveLTX`): the AI map, detail objects and wall marks. The
+/// file is the scene's GUID under [`Self::GUID_CHUNK_ID`] and the tool's stream under [`Self::DATA_CHUNK_ID`] plus its
+/// class id.
 ///
-/// The tool's stream is kept as its bytes, read by the tool's own type (`EditableAiMapTool`,
-/// `EditableDetailObjectTool`, `EditableWallmarkTool`).
+/// The stream is kept as bytes, which the tool's own type reads ([`EditableAiMapTool`], [`EditableDetailObjectTool`],
+/// [`EditableWallmarkTool`]).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EditableBinaryPart {
   pub guid: EditableLevelGuid,
@@ -44,10 +44,9 @@ impl EditableBinaryPart {
     }
   }
 
-  /// Reads a binary part: the GUID chunk, and the tool's stream from the data chunk of `class_id`, as
-  /// `EScene::LoadLevelPart` opens `CHUNK_TOOLS_DATA` plus the class of the tool the file is named after. With no class,
-  /// or none of it held, the first data chunk is the stream, so a part saved for another tool still reads and its
-  /// class tells it apart; any other data chunk is kept in the layout.
+  /// Reads a binary part as `EScene::LoadLevelPart` does, the stream from the data chunk of `class_id`. With no class,
+  /// or none of it held, the first data chunk is the stream, so a part saved for another tool still reads and
+  /// [`Self::class_id`] tells it apart; other data chunks stay in the layout.
   ///
   /// # Errors
   ///

@@ -8,8 +8,7 @@ use crate::source::LtxDocumentSource;
 /// Standard LTX: what the vanilla engine and OpenXRay load.
 ///
 /// Includes merge in read order, and inheritance resolves against sections already declared. Section names ignore
-/// case, so `[A]` after `[a]` is a duplicate and refused. A patch operation is refused, because nothing here can
-/// evaluate one.
+/// case, so `[A]` after `[a]` is a refused duplicate. Patch operations are refused, since nothing here evaluates them.
 #[derive(Debug, Default)]
 pub struct LtxStandardDialect;
 

@@ -37,8 +37,7 @@ impl EditableToolObject for EditablePortalObject {
   const TOOL_NAME: &'static str = "portal";
   const KEEPS_FLAGS: bool = true;
 
-  /// As `CPortal::LoadLTX` reads it (`portal.cpp:497`), refusing another version or fewer than three corners as it
-  /// does.
+  /// As `CPortal::LoadLTX` reads it, refusing another version or fewer than [`Self::MIN_VERTICES`] corners.
   fn read_from_object(object: &EditablePartObject<'_>) -> XrfResult<Self> {
     let section: &IniSection = object.section;
     let version: u32 = section.get_parsed::<u32>("version")?;
@@ -71,7 +70,7 @@ impl EditableToolObject for EditablePortalObject {
     })
   }
 
-  /// As `CPortal::SaveLTX` writes it (`portal.cpp:539`), at [`Self::VERSION`].
+  /// As `CPortal::SaveLTX` writes it, at [`Self::VERSION`].
   fn write_to_ini(&self, ini: &mut IniFile, section: &str) {
     let section: &mut IniSection = ini.section_mut(section);
 

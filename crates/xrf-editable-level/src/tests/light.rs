@@ -5,9 +5,7 @@ use xrf_math::Vector3d;
 use crate::tests::fixtures::GUID;
 use crate::{EditableLightObject, EditableObjectPart, EditableTextPart, EditableToolObject};
 
-/// A light tool's part as the CoP SDK saves `labx8`'s: `[main]` with the tool's own sun direction and last control
-/// index, `[lcontrols]`, and one fuzzy light shaped as `light_galogen_1m_ambient_0018` (at values `%f` prints
-/// exactly), with its fields replaced or added.
+// As the CoP SDK saves `labx8`'s, at values `%f` prints exactly.
 fn light_part_text(fields: &[(&str, &str)]) -> XrfResult<String> {
   let mut file: IniFile = IniFile::default();
 

@@ -8,9 +8,7 @@ use crate::{
   EditableObjectTransform, EditableSceneObject, EditableSceneTool, EditableTextPart, EditableToolObject,
 };
 
-/// One group part as GSC's `labx8` saves them: groups (class 0) up to `group`, the last of a member per class of
-/// `classes`, each member's fields a scene object's at its own place in the level, the second carrying a section named
-/// after it.
+// As GSC's `labx8` saves them: only the last group holds members, the second with a spawn data section.
 fn group_part(group: usize, classes: &[i32]) -> XrfResult<EditableLevelPart> {
   let mut file: IniFile = IniFile::default();
   let name: String = format!("object_{group}");
@@ -85,8 +83,7 @@ fn reads_each_groups_members_of_a_class_in_place_across_its_files() -> XrfResult
   Ok(())
 }
 
-/// The SDK saves sections sorted as strings, `ingroup_0, ingroup_1, ingroup_10, ingroup_11, ingroup_2`; the editor loads
-/// them by number.
+// The SDK saves sections sorted as strings, `ingroup_10` before `ingroup_2`; the editor loads them by number.
 #[test]
 fn reads_a_groups_members_in_the_editors_numeric_order() -> XrfResult {
   let tool: EditableSceneTool = EditableSceneTool {
@@ -106,8 +103,6 @@ fn reads_a_groups_members_in_the_editors_numeric_order() -> XrfResult {
   Ok(())
 }
 
-/// A member section the count leaves out, or a counted member with no section, is refused with a reason rather than
-/// read or dropped.
 #[test]
 fn refuses_a_member_past_the_count_and_a_counted_member_missing() -> XrfResult {
   for count in ["1", "3"] {

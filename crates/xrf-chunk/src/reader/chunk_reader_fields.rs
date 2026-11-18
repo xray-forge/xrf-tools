@@ -5,7 +5,7 @@ use crate::field::chunk_field_reader::ChunkFieldReader;
 use crate::reader::chunk_reader::ChunkReader;
 use crate::source::chunk_data_source::ChunkDataSource;
 
-/// The primitives read from bytes, which is what a `NET_Packet` without an ini stream reads.
+/// The primitives as bytes, as a `NET_Packet` without an ini stream reads them.
 impl<D: ChunkDataSource> ChunkFieldReader for ChunkReader<D> {
   #[inline]
   fn is_field_form(&self) -> bool {

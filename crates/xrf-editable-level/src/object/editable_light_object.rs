@@ -10,7 +10,7 @@ use crate::object::editable_tool_object::EditableToolObject;
 use crate::part::editable_part_object::EditablePartObject;
 
 /// The points a fuzzy point light spreads over, `CLight::SFuzzyData`: the build makes a static light of each, sharing
-/// the light's energy (`SceneBuilder::BuildPointLight`, `BuilderRemote.cpp:1034`).
+/// the light's energy (`SceneBuilder::BuildPointLight`).
 #[derive(Clone, Debug, PartialEq)]
 pub struct EditableLightFuzzy {
   /// `EShapeType`: 0 a sphere, 1 a box, the volume new points are spread through.
@@ -21,8 +21,8 @@ pub struct EditableLightFuzzy {
   pub points: Vec<Vector3d>,
 }
 
-/// A light the scene places, `CLight`: an object of `light.part` or of a group, which the build hands the level
-/// compiler as a static light, a dynamic one, or both (`SceneBuilder::BuildLight`, `BuilderRemote.cpp:1080`).
+/// A light the scene places, `CLight`, in `light.part` or a group. The build hands it to the level compiler as static,
+/// dynamic or both (`SceneBuilder::BuildLight`).
 #[derive(Clone, Debug, PartialEq)]
 pub struct EditableLightObject {
   pub object: EditableCustomObject,
@@ -37,9 +37,9 @@ pub struct EditableLightObject {
   pub cone: f32,
   pub virtual_size: f32,
   pub use_in_d3d: bool,
-  /// [`Self::AFFECT_STATIC`], [`Self::AFFECT_DYNAMIC`], [`Self::PROCEDURAL`] and any bit the editor does not name,
-  /// without [`Self::POINT_FUZZY`]: [`Self::fuzzy`] stands for it, so a fuzzy flag without points (which `LoadLTX`
-  /// would fail on) cannot be written.
+  /// [`Self::AFFECT_STATIC`], [`Self::AFFECT_DYNAMIC`], [`Self::PROCEDURAL`] and unnamed bits, never
+  /// [`Self::POINT_FUZZY`]: [`Self::fuzzy`] stands for it, so a fuzzy flag without points, which `LoadLTX` fails on,
+  /// cannot be written.
   pub flags: u32,
   /// The light control it answers to, by its index in the light tool's `[lcontrols]`.
   pub control: u32,
@@ -63,15 +63,14 @@ impl EditableLightObject {
   /// `ELight::flPointFuzzy`: spread over [`Self::fuzzy`]'s points.
   pub const POINT_FUZZY: u32 = 1 << 4;
 
-  /// `$static`'s index in a new scene's light controls, baked into lightmaps by the level compiler's static layer.
+  /// `$static`'s index in a new scene's light controls: the level compiler's static layer.
   pub const STATIC_CONTROL: u32 = 0;
   /// `$hemi`'s index: the level compiler's hemisphere layer.
   pub const HEMI_CONTROL: u32 = 1;
   /// `$sun`'s index: the level compiler's sun layer.
   pub const SUN_CONTROL: u32 = 2;
 
-  /// A new light as `CLight::Construct` makes one (`ELight.cpp:40`), standing at `object`: a white point light of
-  /// brightness 1, range 8, attenuation 1, 0, 0, a cone of `PI / 8`, affecting static lighting under `$static`.
+  /// A new light as `CLight::Construct` makes one: a white point light affecting static lighting under `$static`.
   pub fn new(object: EditableCustomObject) -> Self {
     Self {
       object,
@@ -102,8 +101,8 @@ impl EditableLightObject {
   /// sun along (`SceneBuilder::BuildSun`).
   pub const SUN_DIRECTION_KEY: &'static str = "sun_shadow_dir";
 
-  /// A new light tool's sun direction, -25 and 292 degrees. `deg2rad` multiplies by `PI / 180` in double precision;
-  /// GSC's scenes hold `-0.436332, 5.096362`.
+  /// A new light tool's sun direction, -25 and 292 degrees converted in double precision as `deg2rad` does: GSC's
+  /// scenes hold `-0.436332, 5.096362`.
   pub fn get_default_sun_direction() -> Vector2d {
     Vector2d::new((-25.0_f64).to_radians() as f32, 292.0_f64.to_radians() as f32)
   }
@@ -292,9 +291,8 @@ impl EditableToolObject for EditableLightObject {
     }
   }
 
-  /// The light tool's own data as a new scene's tool saves it (`ESceneLightTool::Clear`, `ESceneLightTools.cpp:27`):
-  /// the controls `$static`, `$hemi` and `$sun` at 0, 1 and 2, the next control index 3, and the default sun shadow
-  /// direction, -25 and 292 degrees.
+  /// The data a new scene's light tool saves (`ESceneLightTool::Clear`): controls `$static`, `$hemi` and `$sun`, the
+  /// next control index 3, and [`Self::get_default_sun_direction`].
   fn write_new_tool_data(tool_data: &mut IniFile) {
     for (name, index) in [
       ("$static", Self::STATIC_CONTROL),

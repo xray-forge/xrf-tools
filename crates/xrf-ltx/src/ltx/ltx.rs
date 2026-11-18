@@ -77,13 +77,11 @@ impl Ltx {
     self.sections.get(self.get_stored_name(name).as_ref())
   }
 
-  /// Whether a section named `name` in any case is held.
   pub fn has_section(&self, name: &str) -> bool {
     self.section(name).is_some()
   }
 
-  /// The key `name` is held under: itself when a section was built in code under that exact name, otherwise the
-  /// lowercase name a read config stores.
+  /// The key `name` is held under: itself when a section was built in code so, otherwise its lowercase form.
   pub(crate) fn get_stored_name<'n>(&self, name: &'n str) -> Cow<'n, str> {
     if self.sections.contains_key(name) {
       Cow::Borrowed(name)
@@ -106,7 +104,7 @@ impl Ltx {
     self.sections.insert(name, section);
   }
 
-  /// The section named `name` in any case, to change.
+  /// The section named `name` in any case, mutably.
   pub fn section_mut(&mut self, name: &str) -> Option<&mut Section> {
     let stored: Cow<'_, str> = self.get_stored_name(name);
 

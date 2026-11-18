@@ -41,7 +41,7 @@ impl EditableBuildParams {
     reserved: [0.0; Self::RESERVED_FLOATS],
   };
 
-  /// The reserved fields read as zero where the section lacks them, as an early decompiled scene does.
+  /// Reads the section, taking a reserved field it lacks as zero, as an early decompiled scene lacks them.
   ///
   /// # Errors
   ///
@@ -73,8 +73,8 @@ impl EditableBuildParams {
     })
   }
 
-  /// Writes every field `b_params::LoadLTX` reads: the SDK's editor refuses a scene lacking a reserved one (`Can't find
-  /// variable reserved_1 in [build_params]`), and every GSC scene of SDK 0.7 holds the quality's and all six floats.
+  /// Writes every field `b_params::LoadLTX` reads, reserved ones included: the SDK's editor refuses a scene lacking one
+  /// (`Can't find variable reserved_1 in [build_params]`).
   pub fn write_to_section(&self, section: &mut IniSection) {
     section.set("smooth_angle", EditableLevelValue::format_f32(self.smooth_angle));
     section.set("weld_distance", EditableLevelValue::format_f32(self.weld_distance));

@@ -6,7 +6,7 @@ use xrf_error::{XrfError, XrfResult};
 use crate::field::chunk_field_writer::ChunkFieldWriter;
 use crate::writer::chunk_writer::ChunkWriter;
 
-/// The primitives as bytes, which is what a `NET_Packet` without an ini stream writes.
+/// The primitives as bytes, as a `NET_Packet` without an ini stream writes them.
 impl ChunkFieldWriter for ChunkWriter {
   #[inline]
   fn is_field_form(&self) -> bool {

@@ -4,8 +4,7 @@ use xrf_ini::IniSection;
 use crate::object::editable_object_transform::EditableObjectTransform;
 
 /// One object of a text part: its `[object_N]` section and the sections named after it, such as a spawn's
-/// `[object_N_spawndata]` or an attached shape's `[object_N_attached_0]`. What every object writes first is
-/// `CCustomObject::SaveLTX`'s: its class, name and transform.
+/// `[object_N_spawndata]` or an attached shape's `[object_N_attached_0]`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EditablePartObject<'a> {
   pub index: usize,

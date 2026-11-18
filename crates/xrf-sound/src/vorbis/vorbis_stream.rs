@@ -76,8 +76,7 @@ impl VorbisStream {
 
   /// The stream's audio codec, symphonia's Vorbis decoder set up from the identification and setup packets.
   ///
-  /// It trims as libvorbis does: the first packet after it starts or resets renders nothing, so each later packet
-  /// renders from where the one before it ended.
+  /// It trims as libvorbis does: the first packet after a start or reset renders nothing.
   pub(crate) fn make_decoder(&self) -> Result<Box<dyn AudioDecoder>, String> {
     let mut extra_data: Vec<u8> = Vec::with_capacity(self.identification_packet.len() + self.setup_packet.len());
 

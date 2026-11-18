@@ -12,9 +12,8 @@ use crate::structure::LtxStructureParseError;
 
 /// Searches every config an inventory holds for the statements that write a section or a field.
 ///
-/// Reads documents, never resolutions: the question is where something is written, and resolving would answer a
-/// different one - which value survives - while costing a resolution per entry point. The inventory supplies the
-/// configs, so this searches exactly what `ltx list` and `ltx verify` see, archived configs included.
+/// Reads documents, never resolutions: resolving would answer which value survives, at a resolution per entry point.
+/// It searches exactly the configs `ltx list` and `ltx verify` see, archived ones included.
 pub struct LtxDeclarationReader<'a> {
   inventory: &'a LtxInventory,
   source: &'a dyn LtxDocumentSource,
@@ -30,8 +29,7 @@ impl<'a> LtxDeclarationReader<'a> {
   ///
   /// # Errors
   ///
-  /// Returns an error when a config the inventory lists is no longer in scope, or cannot be read for any reason other
-  /// than its own syntax.
+  /// Returns an error when a listed config is no longer in scope, or fails to read for a reason other than its syntax.
   pub fn search(&self, query: &LtxDeclarationQuery) -> XrfResult<LtxDeclarationSearch> {
     let mut declarations: Vec<LtxDeclaration> = Vec::new();
     let mut unreadable: Vec<LtxUnreadableConfig> = Vec::new();
@@ -62,22 +60,18 @@ impl<'a> LtxDeclarationReader<'a> {
 
   /// Entry points whose resolution can hold the section `query` names, sorted, or `None` when nothing bounds them.
   ///
-  /// A superset of the entry points that do hold it, read from headers without resolving anything, so a caller can
-  /// resolve those few rather than every root of the tree. A section reaches a resolution two ways, and both count:
-  /// a header naming it, compared as `query` compares section names, and a header naming it as a parent, compared
-  /// exactly as both dialects compare parents - where nothing declares that parent, the engine creates it empty. Each
-  /// counts through the entry points above its config. A config that will not parse names none, and needs to: neither
-  /// it nor anything including it resolves.
+  /// A superset read from headers without resolving, so a caller resolves those few rather than every root. A header
+  /// counts by naming the section (compared as `query` compares names) or naming it as a parent (compared exactly; the
+  /// engine creates an undeclared parent empty), through the entry points above its config. A config that will not
+  /// parse counts for none, since neither it nor anything including it resolves.
   ///
-  /// `None` when an attachment could add the section to a root, since a dialect's attachment plan drops which root
-  /// each attachment patches: a plain or `@` header naming it creates it, and naming it as a parent can. An
-  /// attachment's `!` or `!!` header for it only edits a section some config already declares. A query naming no
-  /// section bounds nothing either.
+  /// `None` when an attachment's plain or `@` header names the section, or any of its headers names it as a parent,
+  /// since the attachment plan does not record which root it patches; its `!` or `!!` header only edits an existing
+  /// section. A query naming no section is `None` too.
   ///
   /// # Errors
   ///
-  /// Returns an error when a config the inventory lists is no longer in scope, or cannot be read for any reason other
-  /// than its own syntax.
+  /// Returns an error when a listed config is no longer in scope, or fails to read for a reason other than its syntax.
   pub fn list_holding_entry_points(&self, query: &LtxDeclarationQuery) -> XrfResult<Option<Vec<String>>> {
     let Some(section) = query.section.as_deref() else {
       return Ok(None);
@@ -129,8 +123,8 @@ impl<'a> LtxDeclarationReader<'a> {
 
   /// One listed config's document.
   ///
-  /// A parse error passes through for the caller to judge; a config the inventory lists but the source no longer
-  /// holds is an error, since the inventory and the source were read from one project.
+  /// A parse error passes through for the caller to judge. A listed config the source lacks is an error, since both
+  /// were read from one project.
   fn read_document(&self, file: &LtxInventoryFile) -> XrfResult<Arc<LtxDocument>> {
     match self.source.read_document(&file.path)? {
       Some(document) => Ok(document),
@@ -141,10 +135,9 @@ impl<'a> LtxDeclarationReader<'a> {
     }
   }
 
-  /// The statements of one document answering `query`, appended in document order.
+  /// Appends the statements of one document answering `query`, in document order.
   ///
-  /// A statement carries no section of its own, so the header above it is tracked while walking: a field belongs to
-  /// the last header written before it, and to none before the first.
+  /// A field belongs to the last header written before it, and to none before the first.
   fn search_document(
     file: &LtxInventoryFile,
     document: &LtxDocument,

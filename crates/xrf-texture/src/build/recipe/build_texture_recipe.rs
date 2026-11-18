@@ -14,8 +14,7 @@ pub struct BuildTextureRecipe {
   pub layout: BuildTextureLayout,
   /// The layout to write, from the descriptor's own format.
   pub format: ImageFormat,
-  /// Whether BC1's one bit of alpha cuts out the transparent texels, `tfADXT1` where `tfDXT1` writes every block
-  /// opaque.
+  /// Whether BC1 cuts out the transparent texels, `tfADXT1`; `tfDXT1` writes every block opaque.
   pub is_cut_out: bool,
   pub mipmaps: BuildTextureMipmaps,
   /// Recipe fields this build does not honour, in the order the descriptor declares them.
@@ -68,7 +67,7 @@ impl BuildTextureRecipe {
     })
   }
 
-  /// How the recipe's texture is encoded at `quality`: its format, BC1 with its cut-out where the descriptor asks.
+  /// How the texture is encoded at `quality`, with BC1's cut-out where the descriptor asks.
   pub fn get_encoding(&self, quality: Quality) -> DdsEncoding {
     let encoding: DdsEncoding = DdsEncoding::new(self.format, quality);
 

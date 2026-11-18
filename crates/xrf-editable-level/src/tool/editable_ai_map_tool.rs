@@ -34,8 +34,8 @@ impl Default for EditableAiMapParams {
 }
 
 /// The AI map tool's part, `ai_map.part`: its nodes and the settings they were generated with, as
-/// `ESceneAIMapTool::SaveStream` (`LevelEditor/Edit/ESceneAIMapTools.cpp:393`) writes them into the part's data chunk.
-/// The Build exports the nodes into `build.aimap`, which xrAI turns into `level.ai`.
+/// `ESceneAIMapTool::SaveStream` writes them. The Build exports the nodes into `build.aimap`, which xrAI turns into
+/// `level.ai`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct EditableAiMapTool {
   /// The tool's flags, `m_Flags`.
@@ -50,8 +50,7 @@ pub struct EditableAiMapTool {
   pub smooth_height: f32,
   /// The scene objects the nodes were generated over, by name.
   pub snap_objects: Vec<String>,
-  /// How the stream laid its chunks out, and any chunk the tool does not save, such as a converter's own, kept as
-  /// stored.
+  /// How the stream laid its chunks out, with any chunk the tool does not save, such as a converter's own, as stored.
   pub layout: ChunkLayout,
 }
 
@@ -65,7 +64,7 @@ impl EditableAiMapTool {
   /// `AIMAP_VERSION`, the only one the editor loads.
   pub const VERSION: u16 = 2;
 
-  /// What a new tool takes: no flags, nodes drawn 30 metres out, a brush of one, a smoothing height of 0.5.
+  /// The editor's own settings a new tool takes.
   pub const DEFAULT_VIS_RADIUS: f32 = 30.0;
   pub const DEFAULT_BRUSH_SIZE: u32 = 1;
   pub const DEFAULT_SMOOTH_HEIGHT: f32 = 0.5;
@@ -79,7 +78,7 @@ impl EditableAiMapTool {
   const INTERNAL_DATA_CHUNK_ID: u32 = 0x0008;
   const INTERNAL_DATA2_CHUNK_ID: u32 = 0x0009;
 
-  /// A tool of `nodes` packed against `bounds` with `params`, the editor's own settings a new tool's.
+  /// A new tool of `nodes` packed against `bounds` with `params`, with no flags.
   pub fn new(bounds: Aabb, params: EditableAiMapParams, nodes: Vec<EditableAiMapNode>) -> Self {
     Self {
       flags: 0,
@@ -94,8 +93,7 @@ impl EditableAiMapTool {
     }
   }
 
-  /// Where `node` stands, `ESceneAIMapTool::UnpackPosition`: its cell scaled by the patch size, its height spread
-  /// across the box.
+  /// Where `node` stands, `ESceneAIMapTool::UnpackPosition`.
   pub fn get_node_position(&self, node: &EditableAiMapNode) -> Vector3d {
     node.position.unpack(self.params.patch_size, &self.bounds)
   }
@@ -120,8 +118,7 @@ impl EditableAiMapTool {
   /// # Errors
   ///
   /// Returns an error when a chunk the editor asserts on is missing, the version is another, or a chunk does not hold
-  /// exactly what it is read as. A chunk the tool does not save, such as a converter's own, is kept in
-  /// [`Self::layout`] and comes back on write.
+  /// exactly what it is read as.
   pub fn read_from_bytes<T: ByteOrder>(data: Vec<u8>) -> XrfResult<Self> {
     let mut version: Option<u16> = None;
     let mut flags: Option<u32> = None;
@@ -234,13 +231,12 @@ impl EditableAiMapTool {
     })
   }
 
-  /// The tool's stream as `ESceneAIMapTool::SaveStream` writes it, at [`Self::VERSION`], in the order and with the kept
-  /// chunks of [`Self::layout`].
+  /// The tool's stream as `ESceneAIMapTool::SaveStream` writes it, at [`Self::VERSION`], in [`Self::layout`]'s chunk
+  /// order with its kept chunks.
   ///
   /// # Errors
   ///
-  /// Returns an error when a count is past what its `u32` holds, a link past its three bytes, or a name does not
-  /// encode.
+  /// Returns an error when a count overflows its `u32`, a link its three bytes, or a name does not encode.
   pub fn write_to_bytes<T: ByteOrder>(&self) -> XrfResult<Vec<u8>> {
     let mut sequence: ChunkSequence = ChunkSequence::new();
     let mut chunk = |id: u32, write: &dyn Fn(&mut ChunkWriter) -> XrfResult| -> XrfResult { sequence.push(id, write) };
@@ -322,7 +318,7 @@ impl EditableAiMapTool {
   ///
   /// # Errors
   ///
-  /// Returns an error when the tool is not [`Self::TOOL_NAME`], holds other than one part, or holds a text part, or as
+  /// Returns an error when the tool is not [`Self::TOOL_NAME`] or holds other than one binary part, or as
   /// [`Self::read_from_part`] does.
   pub fn read_from_scene_tool<T: ByteOrder>(tool: &EditableSceneTool) -> XrfResult<Self> {
     match tool.parts.as_slice() {

@@ -5,9 +5,7 @@ use xrf_math::Vector3d;
 use crate::tests::fixtures::GUID;
 use crate::{EditableGlowObject, EditableObjectPart, EditableSpawnPointObject, EditableTextPart};
 
-/// A glow tool's part as the CoP SDK saves one: `[main]` keeping flags and the tool's version under
-/// `glow_tool_version`, and one glow as GSC's `labx8` holds `glow_galogen_0009` (at a position `%f` prints exactly),
-/// with its fields replaced or added.
+// As the CoP SDK saves one, at a position `%f` prints exactly.
 fn glow_part_text(fields: &[(&str, &str)]) -> XrfResult<String> {
   let mut file: IniFile = IniFile::default();
 

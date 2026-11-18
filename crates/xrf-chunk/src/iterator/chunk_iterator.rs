@@ -154,7 +154,7 @@ mod tests {
       .expect_err("Expected oversized chunk to fail")
       .to_string();
 
-    // The bytes that remain are the number a reader needs; making it subtract them reads as a reader defect.
+    // States what remains, so a reader need not subtract.
     assert!(
       error.contains("declares 10 bytes, 2 remain before source end 10"),
       "Unexpected error: {error}"

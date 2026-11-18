@@ -19,8 +19,7 @@ pub trait LtxDialect: Debug + Send + Sync {
 
   /// Whether this dialect lowercases section names as it reads them, so headers differing only in case name one section.
   ///
-  /// A reader matching authored headers against resolved sections asks this to compare names the way resolution did.
-  /// Only section names: neither dialect folds a field name or a parent named after `:`.
+  /// Neither dialect folds field names or parents named after `:`.
   fn is_folding_section_names(&self) -> bool;
 
   /// Files that patch another config rather than standing on their own.

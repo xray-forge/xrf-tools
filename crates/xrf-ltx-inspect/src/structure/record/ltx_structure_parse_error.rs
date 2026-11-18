@@ -15,8 +15,7 @@ pub struct LtxStructureParseError {
 impl LtxStructureParseError {
   /// The record for where the parser stopped, as `XrfError::LtxParse` reports it.
   ///
-  /// Positions are saturated rather than wrapped: no config reaches four billion lines, and a wrapped number would point
-  /// at a line that is not the one that broke.
+  /// Positions saturate rather than wrap, so an absurd position never names a wrong line.
   pub(crate) fn new(line: usize, column: usize, message: String) -> Self {
     Self {
       column: u32::try_from(column).unwrap_or(u32::MAX),

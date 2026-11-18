@@ -8,7 +8,7 @@ use crate::{
   ChunkFieldSource, ChunkFieldWriter, ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder,
 };
 
-/// Fields handed out in order whatever kind is asked, so the replay's own check of the kind is what a test sees.
+// Ignores the kind asked, so the replay's own kind check is what a test sees.
 struct QueuedFields(VecDeque<ChunkField>);
 
 impl ChunkFieldSource for QueuedFields {
@@ -24,7 +24,7 @@ impl ChunkFieldSource for QueuedFields {
   }
 }
 
-/// A value of every primitive, closed by the size of its body patched in ahead of it, as `Spawn_Write` does.
+// Every primitive, with its body size patched in ahead of it as `Spawn_Write` does.
 #[derive(Debug, PartialEq)]
 struct Sample {
   flag: u8,
@@ -82,8 +82,7 @@ fn new_sample() -> Sample {
   }
 }
 
-/// One write serves both forms: the bytes read back through `ChunkReadWrite`, and the fields record each value with its
-/// kind, the patched size kept as written, at the position the bytes reach.
+// The fields keep the size as first written; only the bytes are patched.
 #[test]
 fn writes_bytes_and_fields_from_one_write() -> XrfResult {
   let sample: Sample = new_sample();
@@ -125,7 +124,6 @@ fn writes_bytes_and_fields_from_one_write() -> XrfResult {
   Ok(())
 }
 
-/// The fields read back into the same value, the replay counting the bytes they stand for.
 #[test]
 fn replays_recorded_fields() -> XrfResult {
   let sample: Sample = new_sample();
@@ -154,7 +152,7 @@ fn refuses_a_field_of_another_kind() {
   assert!(error.contains("A U8 field stands where a U16 is read"), "{error}");
 }
 
-/// Raw bytes make no field: none is nothing in either direction, any is refused.
+// No bytes pass in either direction; any are refused.
 #[test]
 fn refuses_raw_bytes_in_fields() -> XrfResult {
   let mut recorder: ChunkFieldRecorder = ChunkFieldRecorder::new();

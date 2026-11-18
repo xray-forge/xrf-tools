@@ -3,10 +3,9 @@ use xrf_error::{XrfError, XrfResult};
 
 use crate::mip::dds_mip_chain::DdsMipChain;
 
-/// The levels of one surface as the encoder writes them, borrowed from the chains that hold them: every layer's levels
-/// in turn, base first, each layer alike in the size of every level.
+/// The levels of one surface as the encoder writes them, borrowed from their chains: each layer's levels in turn, base
+/// first, every layer alike in level sizes.
 pub(crate) struct DdsSurfaceLevels<'a> {
-  /// Layers the surface holds.
   layers: usize,
   levels: Vec<&'a RgbaImage>,
 }
@@ -16,7 +15,7 @@ impl<'a> DdsSurfaceLevels<'a> {
   ///
   /// # Errors
   ///
-  /// Returns an error when the chain holds no level, which no chain built here does.
+  /// Returns an error when the chain holds no level.
   pub(crate) fn of_chain(chain: &'a DdsMipChain) -> XrfResult<Self> {
     Self::of_layers(std::slice::from_ref(chain))
   }
@@ -25,7 +24,7 @@ impl<'a> DdsSurfaceLevels<'a> {
   ///
   /// # Errors
   ///
-  /// Returns an error unless there are six faces, square and alike in the size of every level.
+  /// Returns an error unless there are six square faces alike in level sizes.
   pub(crate) fn of_cube(faces: &'a [DdsMipChain]) -> XrfResult<Self> {
     let surface: Self = Self::of_layers(faces)?;
     let (width, height): (u32, u32) = surface.base().dimensions();
@@ -40,11 +39,11 @@ impl<'a> DdsSurfaceLevels<'a> {
     Ok(surface)
   }
 
-  /// Chains alike in the size of every level as one surface, a layer each.
+  /// Chains alike in level sizes as one surface, a layer each.
   ///
   /// # Errors
   ///
-  /// Returns an error when there is no layer or level, or the layers differ in the size of a level.
+  /// Returns an error when there is no layer or level, or the layers differ in level sizes.
   fn of_layers(layers: &'a [DdsMipChain]) -> XrfResult<Self> {
     let [first, ..] = layers else {
       return Err(XrfError::new_texture_processing_error(
@@ -142,7 +141,6 @@ mod tests {
     assert!(DdsSurfaceLevels::of_cube(&[]).is_err());
 
     let oblong: Vec<DdsMipChain> = (0..6).map(|_| chain(8, 4)).collect::<XrfResult<_>>()?;
-    // Six squares, the last twice the size of the others.
     let uneven: Vec<DdsMipChain> = [4, 4, 4, 4, 4, 8]
       .into_iter()
       .map(|side| chain(side, side))

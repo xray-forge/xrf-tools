@@ -9,14 +9,13 @@ use crate::encode::dds_surface_levels::DdsSurfaceLevels;
 use crate::file::dds_file::DdsFile;
 use crate::mip::dds_mip_chain::DdsMipChain;
 
-/// How a texture is written: the layout its pixels are packed into, how hard the encoder works at it, and for BC1
-/// whether its one bit of alpha cuts out the pixels below half ([`Self::with_cut_out`]).
+/// How a texture is written: its layout, the encoder's effort, and for BC1 whether alpha below half is cut out
+/// ([`Self::with_cut_out`]).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct DdsEncoding {
   pub format: ImageFormat,
   pub quality: Quality,
-  /// BC1 only: the blocks covering a pixel of alpha below half written in three colours and transparent, the SDK's
-  /// `tfADXT1`; off, every BC1 block is opaque.
+  /// BC1 only: pixels of alpha below half cut out, the SDK's `tfADXT1`; off, every BC1 block is opaque.
   pub is_cut_out: bool,
 }
 
@@ -24,7 +23,7 @@ impl DdsEncoding {
   /// Pixels along one edge of a block, which every block-compressed family in this format shares.
   pub const BLOCK_SIZE: u32 = 4;
 
-  /// Rows of a level encoded as one piece, a whole number of blocks high so no piece but a level's last is padded.
+  /// Rows of a level encoded as one piece, whole blocks high so only a level's last piece is padded.
   const STRIPE_ROWS: u32 = 16 * Self::BLOCK_SIZE;
 
   pub fn new(format: ImageFormat, quality: Quality) -> Self {
@@ -35,8 +34,7 @@ impl DdsEncoding {
     }
   }
 
-  /// The encoding with BC1's cut-out alpha written (`DdsBc1CutOut`), as a detail atlas needs; other formats keep their
-  /// alpha whole and ignore it.
+  /// The encoding with BC1's cut-out alpha, as a detail atlas needs; other formats ignore it.
   pub fn with_cut_out(self) -> Self {
     Self {
       is_cut_out: true,
@@ -114,9 +112,8 @@ impl DdsEncoding {
 
   /// Every level encoded and laid end to end, as one surface's payload stores them.
   ///
-  /// A level is encoded in stripes of [`Self::STRIPE_ROWS`] on every worker at once. Each block is encoded from its
-  /// own sixteen pixels alone and a payload is its blocks row by row, so the stripes laid end to end are the bytes the
-  /// level encoded whole would be; only a level's last stripe is padded out to whole blocks, as the whole level is.
+  /// Levels are encoded in stripes of [`Self::STRIPE_ROWS`] on every worker. A block encodes from its own pixels
+  /// alone, so the stripes laid end to end are byte for byte the level encoded whole.
   fn encode_levels(&self, levels: &[&RgbaImage]) -> XrfResult<Vec<u8>> {
     let is_cut_out: bool = self.is_cut_out && self.format == ImageFormat::BC1RgbaUnorm;
     let stripes: Vec<SurfaceRgba8<&[u8]>> = levels.iter().flat_map(|level| Self::stripes_of(level)).collect();
@@ -318,7 +315,6 @@ mod tests {
 
   #[test]
   fn writes_bc1_cut_out_alpha_only_when_asked() -> XrfResult {
-    // A leaf on clear: the left half opaque green, the right half cut out.
     let base: RgbaImage = RgbaImage::from_fn(16, 8, |x, _| {
       if x < 8 {
         Rgba([40, 160, 40, u8::MAX])

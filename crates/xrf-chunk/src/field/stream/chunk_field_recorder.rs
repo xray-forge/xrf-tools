@@ -4,12 +4,12 @@ use xrf_error::{XrfError, XrfResult};
 use crate::field::chunk_field::ChunkField;
 use crate::field::chunk_field_writer::ChunkFieldWriter;
 
-/// Records each value written as a field of its kind, as a `NET_Packet` with an ini stream attached saves one per
-/// primitive (the Level Editor's `SIniFileStream`).
+/// Records one field per primitive written, as a `NET_Packet` with an ini stream attached does (the Level Editor's
+/// `SIniFileStream`).
 ///
-/// Its position counts the bytes the values take, as the packet's own count does, so a size or save marker taken from
-/// it is the one the bytes would hold. A patch is a seek over the bytes alone and leaves the fields as written. A raw
-/// write makes no field: one of no bytes writes nothing, any other is refused, as `NET_Packet::w` asserts there.
+/// Its position counts the bytes the values would take, so a size or marker taken from it matches the byte form.
+/// Patches leave the fields as written. Raw bytes make no field: an empty write is a no-op, any other is refused, as
+/// `NET_Packet::w` asserts.
 #[derive(Debug, Default)]
 pub struct ChunkFieldRecorder {
   fields: Vec<ChunkField>,

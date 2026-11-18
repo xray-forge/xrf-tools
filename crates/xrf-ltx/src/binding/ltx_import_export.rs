@@ -7,8 +7,7 @@ pub const META_TYPE_FIELD: &str = "$type";
 
 /// A record that is read from and written to one section of a config or a record file.
 ///
-/// `import` names its reader's type, unlike `export`'s writer, so an import can name the section type it reads
-/// (`&L::Section`).
+/// `import` takes a named reader type so it can name the section type it reads (`&L::Section`).
 pub trait LtxImportExport: Sized {
   fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self>;
 

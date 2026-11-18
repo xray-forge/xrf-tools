@@ -17,8 +17,7 @@ use crate::ini_section::IniSection;
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct IniFile {
   pub sections: Vec<IniSection>,
-  /// Values a read dropped because a later line set the same key again, under a format that keeps the last value;
-  /// a write leaves them out, as the engine does.
+  /// Values a read dropped for a later line of the same key.
   pub overridden: Vec<IniOverride>,
 }
 
@@ -86,8 +85,7 @@ impl IniFile {
 
   /// # Errors
   ///
-  /// Returns an error when the bytes are not valid in the format's encoding, or not text [`Self::read_from_str_as`]
-  /// reads.
+  /// Returns an error when the bytes are invalid in the format's encoding, or as [`Self::read_from_str_as`] does.
   pub fn read_from_bytes_as(bytes: &[u8], format: &IniFormat) -> XrfResult<Self> {
     Self::read_from_str_as(&format.encoding.decode(bytes)?, format)
   }
@@ -99,17 +97,16 @@ impl IniFile {
     Self::read_from_str_as(text, &IniFormat::PLAIN)
   }
 
-  /// Reads text: a `[name]` line opens a section, a `key = value` line is a field (a line with no `=` is a key with an
-  /// empty value), and blank lines and lines starting with `;` are skipped. Keys and values are trimmed at both ends.
-  /// Where the format reads multi-line quoted values, a value leaving a double quote open takes the next lines, joined
-  /// by the format's line end, until it closes. A key set twice in a section is refused, or keeps its last value in its
-  /// first place with the dropped one named in [`Self::overridden`], as the format says.
+  /// Reads `[name]` headers and `key = value` fields, skipping blank and `;` lines; no `=` means an empty value.
+  ///
+  /// Keys and values are trimmed. Under a multi-line format, a value leaving a double quote open takes the next lines,
+  /// joined by the format's line end. A repeated key is refused or keeps its last value in the first one's place, as
+  /// [`IniFormat::repeated_key`] says.
   ///
   /// # Errors
   ///
-  /// Returns an error, with the line, for a field before any section, a header with anything but a `;` comment after
-  /// its `]` (parents are an LTX feature, read by `xrf-ltx`), a field with no key, a key set twice in a section where
-  /// the format refuses it, a section declared twice, or a quote still open at the end of the text.
+  /// Returns an error, with the line, for a field before any section, anything but a `;` comment after a header's `]`
+  /// (LTX parents included), a field with no key, a refused repeated key, a repeated section, or an unclosed quote.
   pub fn read_from_str_as(text: &str, format: &IniFormat) -> XrfResult<Self> {
     let mut file: Self = Self::default();
     let mut names: HashSet<String> = HashSet::new();
@@ -225,8 +222,7 @@ impl IniFile {
 
   /// # Errors
   ///
-  /// Returns an error as [`Self::write_to_string_as`] does, or when the text has a character the format's encoding
-  /// has no byte for.
+  /// Returns an error as [`Self::write_to_string_as`] does, or for a character the format's encoding cannot hold.
   pub fn write_to_bytes_as(&self, format: &IniFormat) -> XrfResult<Vec<u8>> {
     format.encoding.encode(self.write_to_string_as(format)?)
   }
@@ -238,14 +234,14 @@ impl IniFile {
     self.write_to_string_as(&IniFormat::PLAIN)
   }
 
-  /// Writes the text: every section's `[name]`, then each field as the format's indent, the key padded to its column
-  /// width, ` = ` and the value padded the same, trimmed at the right, then the format's section end line, each line
-  /// ended with the format's line end. A sorted format writes sections and fields in `strcmp` order.
+  /// Writes the text in `format`'s layout: indent, padded columns trimmed at the right, section end line, line end.
+  ///
+  /// A sorted format writes sections and fields in `strcmp` order.
   ///
   /// # Errors
   ///
-  /// Returns an error for anything that would not read back as written, such as a section or key named twice or a
-  /// value with an unclosed quote; the crate's README lists every case.
+  /// Returns an error for anything that would not read back as written, such as a repeated section or key or an
+  /// unclosed quote; the crate's README lists every case.
   pub fn write_to_string_as(&self, format: &IniFormat) -> XrfResult<String> {
     let mut text: String = String::new();
     let mut names: HashSet<&str> = HashSet::new();
@@ -299,7 +295,7 @@ impl IniFile {
     Ok(text)
   }
 
-  /// The items in the order the format writes them: as given, or sorted by name as `strcmp` sorts the encoded bytes.
+  /// The items in write order: as given, or by name as `strcmp` sorts the encoded bytes.
   fn ordered<'a, T>(items: &'a [T], format: &IniFormat, name: impl Fn(&T) -> &String) -> Vec<&'a T> {
     let mut ordered: Vec<&T> = items.iter().collect();
 

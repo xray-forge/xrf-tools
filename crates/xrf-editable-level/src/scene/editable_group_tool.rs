@@ -9,10 +9,9 @@ use crate::part::editable_text_part::EditableTextPart;
 use crate::scene::editable_group_member::EditableGroupMember;
 use crate::scene::editable_scene_tool::EditableSceneTool;
 
-/// The group tool's parts, `group.part` and on (`ESceneGroupTool`): each group an `[object_N]` of class 0 and its
-/// members `[object_N_ingroup_M]`, each with the sections named after it, such as a spawn point's
-/// `[object_N_ingroup_M_spawndata]`. A member keeps its own transform in the level, not the group's, and the editor
-/// loads it into its own tool's list beside the objects the tool's part holds.
+/// The group tool's parts, `group.part` and on (`ESceneGroupTool`): each group an `[object_N]` of class 0, its members
+/// `[object_N_ingroup_M]` with their own named sections. A member keeps its own world transform, not one relative to
+/// the group, and the editor loads it into its own tool's list.
 pub struct EditableGroupTool;
 
 impl EditableGroupTool {
@@ -28,8 +27,7 @@ impl EditableGroupTool {
   /// The group's field counting its members, which the editor loads `0..count` of (`EScene::ReadObjectsLTX`).
   pub const MEMBER_COUNT_KEY: &'static str = "ingroup_count";
 
-  /// Every group the tool's parts hold, `[object_N]`, as what every object saves first, in the order the files hold
-  /// them.
+  /// Every group the tool's parts hold, in file order, read as [`EditableCustomObject`].
   ///
   /// # Errors
   ///
@@ -46,16 +44,14 @@ impl EditableGroupTool {
     Ok(groups)
   }
 
-  /// Every member of class `T` of every group the tool's parts hold, each group's in the order the editor loads them,
-  /// `0..ingroup_count` by number, and the groups in the order the files hold them; each with the name of the group
-  /// holding it.
+  /// Every group member of class `T`, with its group's name: groups in file order, each group's members
+  /// `0..ingroup_count` as the editor loads them.
   ///
   /// # Errors
   ///
-  /// Returns an error when the tool holds a binary part, a part's objects do not read, a group has no member count, a
-  /// counted member has no section, a member section stands past the count (the editor would leave it out), a group
-  /// holding a member of class `T` has no name, a member's class is not a number, or a member of class `T` does not
-  /// read.
+  /// Returns an error when the tool holds a binary part, a part's objects do not read, a group lacks its member count
+  /// or a counted member, a member section stands past the count (which the editor would leave out), or a member's
+  /// class, a member of class `T` or its group's name does not read.
   pub fn read_grouped_members<T: EditableToolObject>(
     tool: &EditableSceneTool,
   ) -> XrfResult<Vec<EditableGroupMember<T>>> {

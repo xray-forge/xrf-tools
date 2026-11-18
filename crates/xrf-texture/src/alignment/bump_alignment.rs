@@ -5,8 +5,8 @@ use xrf_dds::RgbaImage;
 
 use crate::alignment::{BumpAlignmentLevel, BumpAlignmentVerdict};
 
-/// One value a texel, as both textures are brought to before they are compared: `f32` storage for a texture-sized
-/// buffer, the correlation over it taken in `f64`.
+/// One value a texel, as both textures are compared: `f32` storage for a texture-sized buffer, the correlation taken
+/// in `f64`.
 type Field = ImageBuffer<Luma<f32>, Vec<f32>>;
 
 /// Whether a bump belongs to its diffuse: how closely the bump's edges follow the diffuse's, against how closely they
@@ -49,8 +49,8 @@ impl BumpAlignment {
 
   /// Compares a diffuse with its bump, each read at its largest level within [`Self::MEASURED_SIDE`].
   ///
-  /// A caller reading many pairs reads each with [`BumpAlignmentLevel::read`] and lets the file go before comparing
-  /// them: the comparison is most of the time, and the whole files need not be held through it.
+  /// A caller comparing many pairs can let each file go once [`BumpAlignmentLevel::read`] has read it: the comparison
+  /// takes most of the time.
   pub fn compare(diffuse: &BumpAlignmentLevel, bump: &BumpAlignmentLevel) -> Self {
     Self::measure(diffuse.base_size, &diffuse.image, bump.base_size, &bump.image)
   }
@@ -122,11 +122,8 @@ impl BumpAlignment {
     Self::edges_of(image, [3, 2, 1], |value| value / 255.0 * 2.0 - 1.0, width, height)
   }
 
-  /// How sharply the picture `channels` of `image` hold changes at each texel, each byte read as `value` answers for
-  /// it, at `width` by `height`: the length of every channel's gradient together.
-  ///
-  /// A level already that size is read where it lies, through a table of what each byte stands for; only one to be
-  /// resized is first spread into a field a channel.
+  /// How sharply the picture in `channels` of `image` changes at each texel at `width` by `height`, each byte read
+  /// through `value`: every channel's gradient length together.
   fn edges_of(image: &RgbaImage, channels: [usize; 3], value: impl Fn(f32) -> f32, width: u32, height: u32) -> Field {
     if image.dimensions() == (width, height) {
       let mut table: [f32; 256] = [0.0; 256];
@@ -156,8 +153,8 @@ impl BumpAlignment {
     Self::edges_from(width, height, |channel, texel| planes[channel].as_raw()[texel])
   }
 
-  /// The length of three channels' gradients together at each texel, `sample` answering a channel's value at a texel
-  /// index; each gradient by Sobel's kernels across the tile's wrapped edges.
+  /// Three channels' Sobel gradient lengths together at each texel, wrapping at the tile's edges; `sample` answers a
+  /// channel's value at a texel index.
   fn edges_from(width: u32, height: u32, sample: impl Fn(usize, usize) -> f32) -> Field {
     let (columns, rows): (usize, usize) = (width as usize, height as usize);
     let mut edges: Field = Field::new(width, height);
@@ -192,17 +189,15 @@ impl BumpAlignment {
     edges
   }
 
-  /// An index past the end of an axis `length` long, by less than a length, brought back from its start: the tile's
-  /// wrap, without the division a remainder takes on every texel.
+  /// `index`, less than a `length` past the axis's end, wrapped back into it without a division per texel.
   fn wrapped(index: usize, length: usize) -> usize {
     if index >= length { index - length } else { index }
   }
 
-  /// Pearson's correlation of two fields of one size at each of `shifts`, the second read that many texels along the
+  /// Pearson's correlation of two same-sized fields at each of `shifts`, the second read that many texels along the
   /// tile; `None` where either is as good as constant.
   ///
-  /// One pass serves every shift, each one's sums kept apart and taken texel by texel in the order a pass of its own
-  /// would take them, so each answer is what correlating at that shift alone gives.
+  /// One pass serves every shift, and each answer is exactly what correlating at that shift alone gives.
   fn correlations(first: &Field, second: &Field, shifts: [(u32, u32); Self::SHIFTS]) -> [Option<f64>; Self::SHIFTS] {
     let (width, height): (u32, u32) = first.dimensions();
     let count: f64 = f64::from(width) * f64::from(height);

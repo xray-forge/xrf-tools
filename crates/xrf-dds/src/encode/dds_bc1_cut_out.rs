@@ -1,7 +1,8 @@
-/// BC1's one bit of alpha, which the block encoder leaves out, written back into the blocks that need it: the format the
-/// SDK calls `tfADXT1`. A block whose two endpoints stand in ascending order decodes in three colours, its fourth index
-/// transparent black; so a block covering a pixel of alpha below [`Self::THRESHOLD`] is rewritten that way, its endpoints
-/// taken from the opaque encoding, ordered, and each opaque pixel given the nearest of the three colours.
+/// BC1's one bit of alpha, which the block encoder leaves out, written back into the blocks that need it: the SDK's
+/// `tfADXT1`.
+///
+/// A block with ascending endpoints decodes in three colours and transparent black. A block covering a pixel of alpha
+/// below [`Self::THRESHOLD`] is rewritten so: its opaque endpoints ordered, each opaque pixel the nearest colour.
 pub(crate) struct DdsBc1CutOut;
 
 impl DdsBc1CutOut {
@@ -14,8 +15,8 @@ impl DdsBc1CutOut {
   /// The index a three-colour block draws transparent.
   const TRANSPARENT: u32 = 3;
 
-  /// Rewrites each block of `blocks`, an image `width` by `height`'s BC1 blocks row by row, that covers a cut-out pixel
-  /// of `pixels`, its RGBA row by row. A block past the image's edge takes its pixels as cut out where none stands.
+  /// Rewrites the blocks that cover a cut-out pixel. `blocks` are the BC1 blocks of a `width` by `height` image and
+  /// `pixels` its RGBA, both row by row; a rewritten block draws its texels past the image's edge transparent.
   pub(crate) fn apply(blocks: &mut [u8], pixels: &[u8], width: u32, height: u32) {
     let blocks_across: usize = width.div_ceil(4) as usize;
 
@@ -38,8 +39,8 @@ impl DdsBc1CutOut {
     }
   }
 
-  /// `block` in three colours: its endpoints ordered, each opaque pixel the nearest of them and their midpoint, each
-  /// cut-out pixel transparent.
+  /// `block` in three colours: endpoints ordered, opaque pixels the nearest of them and their midpoint, the rest
+  /// transparent.
   fn rewrite(block: &mut [u8; Self::BLOCK_BYTES], texels: &[Option<[u8; 4]>; 16]) {
     let first: u16 = u16::from_le_bytes([block[0], block[1]]);
     let second: u16 = u16::from_le_bytes([block[2], block[3]]);
@@ -96,7 +97,7 @@ impl DdsBc1CutOut {
 mod tests {
   use super::DdsBc1CutOut;
 
-  /// One block, opaque red and green endpoints in descending order, its indices all 0.
+  // Red and green endpoints in descending order, the four-colour mode.
   fn opaque_block() -> [u8; 8] {
     let (red, green): (u16, u16) = (0xF800, 0x07E0);
     let mut block: [u8; 8] = [0; 8];
@@ -110,7 +111,6 @@ mod tests {
   fn rewrites_a_block_covering_a_cut_out_pixel_in_three_colours() {
     let mut pixels: Vec<u8> = [255, 0, 0, 255].repeat(16);
 
-    // The second pixel cut out, the third green.
     pixels[4..8].copy_from_slice(&[0, 0, 0, 0]);
     pixels[8..12].copy_from_slice(&[0, 255, 0, 255]);
 

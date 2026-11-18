@@ -4,8 +4,8 @@ use crate::declaration::LtxDeclarationStatement;
 
 /// One statement that writes a section or a field, where it is written, and how.
 ///
-/// This is authored text, not a resolved value: a field found here can be overridden by a later patch, deleted, or
-/// never reached at all. Which value survives is what `LtxRootReader::read_sections` answers.
+/// Authored text, not a resolved value: a later patch can override or delete it. `LtxRootReader::read_sections`
+/// answers which value survives.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -20,12 +20,11 @@ pub struct LtxDeclaration {
   pub line: u32,
   /// The header the statement sits under, or is; absent for a key written before the first header.
   pub section: Option<String>,
-  /// That header's operation prefix, spelled as the engine spells it: empty, `!`, `@` or `!!`.
+  /// That header's operation prefix: empty, `!`, `@` or `!!`.
   pub section_operation: String,
-  /// Whether the statement is written as a patch, by a prefix on itself or on its header.
+  /// Whether a prefix on the statement or its header makes it a patch, read from the text alone.
   ///
-  /// Read from the text alone. Standard LTX refuses every such statement; under DLTX it edits whatever an earlier
-  /// config declared.
+  /// Standard LTX refuses patches; under DLTX one edits what an earlier config declared.
   pub is_patch: bool,
   #[serde(flatten)]
   pub statement: LtxDeclarationStatement,

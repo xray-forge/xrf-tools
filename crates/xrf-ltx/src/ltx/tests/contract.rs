@@ -473,8 +473,6 @@ fn trims_keys_values_and_inline_comments() -> XrfResult {
   Ok(())
 }
 
-/// Section names fold as `CInifile` folds them: stored lowercased, looked up in any case, a parent named in another
-/// case found, and a second header differing only in case refused as the duplicate it is.
 #[test]
 fn section_names_fold_as_the_engine_folds_them() -> XrfResult {
   let ltx: Ltx = Ltx::read_from_str("[Weapon]\nammo = 5\n[child]:WEAPON\n")?.into_inherited()?;
@@ -491,8 +489,6 @@ fn section_names_fold_as_the_engine_folds_them() -> XrfResult {
   Ok(())
 }
 
-/// A value is cut as `CInifile::Load` cuts its line: at the first `;` or `//`, whitespace before it or not, unless that
-/// falls inside the line's first quotes.
 #[test]
 fn a_value_is_cut_at_a_comment_as_the_engine_cuts_it() -> XrfResult {
   let ltx: Ltx = Ltx::read_from_str(

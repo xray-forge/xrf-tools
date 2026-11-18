@@ -1,9 +1,8 @@
 //! How a typed record is read out of a config and written back into one, a section or a whole file at a time.
 //!
-//! A record reads its fields through [`LtxRead`] and [`LtxSectionRead`]: from an [`crate::Ltx`] when the caller holds
-//! the config, or one section at a time through [`LtxRecordReader`] as a record file is parsed. It writes them through
-//! [`LtxWrite`]: into an [`crate::Ltx`] when the caller keeps the config, or straight into a file's text through
-//! [`LtxRecordWriter`] when it only writes the file.
+//! A record reads through [`LtxRead`] from an [`crate::Ltx`] or, section by section as a file parses, through
+//! [`LtxRecordReader`]. It writes through [`LtxWrite`] into an [`crate::Ltx`] or, straight to a file's text, through
+//! [`LtxRecordWriter`].
 
 pub(crate) mod file_import_export;
 pub(crate) mod ltx_field_index;

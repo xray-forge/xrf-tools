@@ -1,10 +1,10 @@
 use ogg::writing::{PacketWriteEndInfo, PacketWriter};
 
-/// An Ogg/Vorbis sound of noise written without an encoder: a setup of one codebook of the values -1 and 1, a flat
-/// floor and one residue, then audio packets of random bits, so the frames a decode renders do not repeat.
+/// An Ogg/Vorbis sound of noise written without an encoder: a codebook of -1 and 1, a flat floor and one residue, then
+/// audio packets of random bits, so decoded frames do not repeat.
 ///
-/// The packets mix short and long blocks and the pages hold one to six of them; one packet runs over three pages, and
-/// the last page trims the stream by [`Self::TRIMMED_FRAMES`], so seeks meet every layout a decoder has to place.
+/// Packets mix short and long blocks, one to six a page; one runs over three pages, and the last page trims
+/// [`Self::TRIMMED_FRAMES`], so seeks meet every layout a decoder has to place.
 pub struct VorbisNoiseFixture;
 
 impl VorbisNoiseFixture {
@@ -95,8 +95,8 @@ impl VorbisNoiseFixture {
     writer.into_inner()
   }
 
-  /// A sound whose pages count the frames of `packets_count` short packets, each audio packet one the codec refuses (its
-  /// first bit marks it as no audio packet), as a damaged file can be: frames claimed, none rendered.
+  /// A sound whose pages claim the frames of `packets_count` short packets the codec refuses, as in a damaged file:
+  /// frames claimed, none rendered.
   pub fn refused(channels: u16, packets_count: usize) -> Vec<u8> {
     let mut writer: PacketWriter<'_, Vec<u8>> = PacketWriter::new(Vec::new());
     let half_block: u64 = Self::get_block_size(false) / 2;
@@ -154,8 +154,8 @@ impl VorbisNoiseFixture {
     packet
   }
 
-  /// Codebooks of two one-bit entries valued -1 and 1, one flat floor 1, one residue 1 coding the first
-  /// [`Self::CODED_COEFFICIENTS`] with them, one mapping, and a short and a long mode.
+  /// Codebooks of one-bit entries -1 and 1, a flat floor 1, a residue 1 over the first [`Self::CODED_COEFFICIENTS`],
+  /// one mapping, and a short and a long mode.
   fn setup() -> Vec<u8> {
     let mut bits: NoiseBits = NoiseBits::default();
 

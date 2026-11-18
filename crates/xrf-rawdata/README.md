@@ -501,13 +501,12 @@ for: a level of no light records no light inference. The object and scene sideca
 it has no such tool; the rest only where their tool exports something. All 22 vanilla CoP levels decompile and export
 every such file byte for byte. Across the other trees the differences are the ones each conversion above names, plus
 nine Anomaly and GAMMA underground levels that ship no `level.env_mod` or `level.fog_vol`, which CoP's Build always
-writes. `write_to_directory` writes them, each staged,
-saying of each whether it is new, the same or changed. Since the editor's Build moves every file it may write aside
+writes. `write_to_directory` writes them, each staged, saying of each whether it is new, the same or changed. Since the editor's Build moves every file it may write aside
 first, it refuses a directory holding one the scene does not build rather than delete it. Whether existing files may be
 replaced is the front-end's to ask (`--force`, a confirmation), as `LevelSceneDecompile::get_existing_paths` lets it ask
-before a decompile and `get_existing_object_paths` after it. Vanilla CoP's `labx8`, `zaton` and `mp_atp`,
-and CS's `agroprom_underground`, decompile, read back to the same bytes, and export every file byte for byte; so does
-GSC's own `labx8` scene.
+before a decompile and `get_existing_object_paths` after it. Vanilla CoP's `labx8`, `zaton` and `mp_atp`, and CS's
+`agroprom_underground`, decompile, read back to the same bytes, and export every file byte for byte; so does GSC's own
+`labx8` scene.
 
 Every export reads a tool's objects with the groups' members of its class first (`EditableGroupTool`), as the editor
 loads the group tool before the others and keeps a member's transform in the level. `xrf-editable-level`'s
@@ -515,7 +514,7 @@ loads the group tool before the others and keeps a member's transform in the lev
 `into_part` the part the editor holds once loaded, which every export reads. GSC's `labx8` holds 99 scene objects, 229
 lights, 43 spawn points and 29 glows in groups; with them its scene exports 361 of the shipped `level.spawn`'s 379
 packets byte for byte and in its order. The other 18 are the climbable objects the Build cuts out of the geometry,
-which `LevelBuildClimbables` makes from it (below), matching SDK 0.7's but for its single-precision fit's noise.
+which `LevelBuildClimbables` makes (below).
 
 `LevelBuildExporter::export` writes the `build.prj` the Build hands xrLC (`CompileStatic`, `SaveBuild`), reading each
 placed object from an objects root and its game materials from `gamemtl.xr`: the sky and the sun generated from the

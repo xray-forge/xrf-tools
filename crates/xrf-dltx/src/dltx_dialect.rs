@@ -27,7 +27,7 @@ impl LtxDialect for DltxDialect {
     "dltx"
   }
 
-  /// Yes: the loader lowercases every section name it records, as Monolith's engine does, while parents stay as written.
+  /// Yes: the loader lowercases section names, as Monolith's engine does; parents stay as written.
   fn is_folding_section_names(&self) -> bool {
     true
   }

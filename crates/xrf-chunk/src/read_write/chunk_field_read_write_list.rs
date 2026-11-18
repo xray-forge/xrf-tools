@@ -8,9 +8,8 @@ use crate::reader::chunk_reader::ChunkReader;
 use crate::source::chunk_data_source::ChunkDataSource;
 use crate::writer::chunk_writer::ChunkWriter;
 
-/// A list a format frames through the engine's `NET_Packet` primitives (a count, then each entry), read and written
-/// both as bytes and as fields, as [`crate::ChunkFieldReadWrite`] is for one value. Its [`ChunkReadWriteList`] is its
-/// fields over a [`ChunkReader`] and [`ChunkWriter`].
+/// A list framed through the engine's `NET_Packet` primitives (a count, then each entry), the list form of
+/// [`crate::ChunkFieldReadWrite`]. Implementors get [`ChunkReadWriteList`] over a [`ChunkReader`] and [`ChunkWriter`].
 pub trait ChunkFieldReadWriteList: Sized {
   /// # Errors
   ///

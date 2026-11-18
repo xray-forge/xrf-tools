@@ -5,20 +5,19 @@ use image::RgbaImage;
 use image_dds::{ImageFormat, Surface, mip_dimension};
 use rayon::prelude::*;
 
-/// The decoder [`crate::DdsFile::decode_rgba`] tries first, for the layouts whose blocks it knows.
+/// The decoder [`crate::DdsFile::decode_rgba`] tries first, for block-compressed layouts.
 pub(crate) struct DdsBlockDecoder;
 
 impl DdsBlockDecoder {
-  /// Pixels along one edge of a block of every layout this decodes.
+  /// Pixels along one edge of a block.
   const BLOCK_SIDE: u32 = 4;
   /// Rows of a level decoded as one piece, a whole number of blocks high.
   const STRIPE_ROWS: u32 = 16 * Self::BLOCK_SIDE;
 
-  /// One level of a flat texture, or `None` where this does not decode it: a cube, an array or a volume, a layout
-  /// other than BC1 to BC7, or a payload `image_dds` refuses, each of which the caller decodes as before.
+  /// One level of a flat BC1 to BC7 texture, or `None` for a cube, an array, a volume, another layout or a payload
+  /// `image_dds` refuses, which the caller then decodes whole.
   ///
-  /// A block decodes from its own bytes alone, and a level is its rows of blocks in turn, so the stripes laid end to end
-  /// are the pixels the whole level decodes to; only the last stripe ends inside a block, as the level does.
+  /// A block decodes from its own bytes alone, so the stripes are the pixels the whole level decodes to.
   pub(crate) fn decode(dds: &Dds, mipmap_level: u32) -> Option<RgbaImage> {
     let surface: Surface<&[u8]> = Surface::from_dds(dds).ok()?;
 

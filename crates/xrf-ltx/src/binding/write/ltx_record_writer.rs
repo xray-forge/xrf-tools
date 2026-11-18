@@ -16,7 +16,7 @@ pub struct LtxRecordWriter {
   text: String,
   /// Where each finished section's name lies in the text.
   finished: HashTable<TextSpan>,
-  /// Where the open section's name lies in the text, once a field has opened one.
+  /// Where the open section's name lies in the text, once a field opened one.
   open: Option<TextSpan>,
   /// The open section's fields, in written order.
   fields: Vec<FieldLine>,
@@ -24,8 +24,7 @@ pub struct LtxRecordWriter {
   field_keys: LtxFieldIndex,
   /// The first section written to again after another had started.
   reopened: Option<String>,
-  /// Whether the root section was opened after another. Root fields have no header, so read back they would belong to
-  /// the section before them.
+  /// Whether the root section was opened after another, where its headerless fields would read back as that one's.
   is_root_late: bool,
 }
 
@@ -55,13 +54,11 @@ impl LtxRecordWriter {
     Self::default()
   }
 
-  /// Write the file, making the directories above it: encoded whole first and staged beside it, as
-  /// [`crate::Ltx::write_to_path`] writes it.
+  /// Writes the file through a staged file, creating its directories, as [`crate::Ltx::write_to_path`] does.
   ///
   /// # Errors
   ///
-  /// Returns an error when a section was written to after another had started, when a value has no Windows-1251
-  /// encoding, or when the file cannot be written.
+  /// Returns an error for what [`Self::into_bytes`] refuses, or when the file cannot be written.
   pub fn write_to_path<P: AsRef<Path>>(self, path: P) -> XrfResult {
     Ok(StagedFile::write_creating_directories(
       path.as_ref(),
@@ -73,8 +70,8 @@ impl LtxRecordWriter {
   ///
   /// # Errors
   ///
-  /// Returns an error when a section was written to after another had started, or a value has no Windows-1251
-  /// encoding.
+  /// Returns an error when a section, the root included, was written to after another started, or a value has no
+  /// Windows-1251 encoding.
   pub fn into_bytes(self) -> XrfResult<Vec<u8>> {
     if let Some(section) = self.reopened {
       return Err(XrfError::new_convert_error(format!(
@@ -91,8 +88,7 @@ impl LtxRecordWriter {
     Ok(encode_string_into_w1251_bytes(self.text)?)
   }
 
-  /// Make `name` the open section, finishing the one before it; false when `name` was finished already, or is the root
-  /// section opened after another.
+  /// Opens `name`, finishing the section before it; false when `name` was finished, or is a late root section.
   pub(crate) fn open_section(&mut self, name: &str) -> bool {
     if self.open.is_some_and(|open| open.of(&self.text) == name) {
       return true;
@@ -149,7 +145,6 @@ impl LtxRecordWriter {
     true
   }
 
-  /// Set a field of the open section.
   pub(crate) fn set_field<V: Display>(&mut self, key: &str, value: V) {
     match self.find_field(key) {
       Some(index) => self.replace_value(index, value),
@@ -201,7 +196,7 @@ impl LtxRecordWriter {
     self.field_keys.push(|index| fields[index].key.of(text));
   }
 
-  /// Write the field's value over the one its line holds, moving the lines after it.
+  /// Overwrites a field's value in place, shifting the lines after it.
   fn replace_value<V: Display>(&mut self, index: usize, value: V) {
     let mut written: String = String::new();
 
@@ -258,7 +253,6 @@ mod test {
   use crate::ltx::Ltx;
   use crate::syntax::ROOT_SECTION;
 
-  /// Records of every shape an export writes, through whichever writer it is handed.
   fn export_records<W: LtxWrite>(writer: &mut W) {
     writer
       .with_section("0")
@@ -304,8 +298,7 @@ mod test {
       .set("spaced", " a b ");
   }
 
-  /// Root fields have no header. A config writes them first wherever they were set; a record writer, which writes as it
-  /// goes, refuses them after another section.
+  // A config writes root fields first wherever they were set; a record writer, writing as it goes, cannot.
   #[test]
   fn keeps_root_fields_set_late_out_of_the_section_before_them() -> XrfResult {
     fn write_root_late<W: LtxWrite>(writer: &mut W) {

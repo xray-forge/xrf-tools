@@ -30,9 +30,8 @@ impl XRaySoundCommentVersion {
 
   /// The version of the parameter block a comment holds, or none for a comment that is not one the engine reads.
   ///
-  /// A comment shorter than its `u32` holds none: `LoadWave` reads the version past its end, as `IReader` checks its
-  /// bounds only in debug builds, and finds no version it knows there, so it plays the sound with its defaults.
-  /// Re-encoded sounds carry such comments: GAMMA's blowout and soundscape sounds hold two bytes.
+  /// A comment shorter than its `u32` holds none: a release `LoadWave` reads past its end unchecked, finds no version
+  /// it knows, and plays the sound with its defaults. GAMMA's re-encoded blowout and soundscape sounds carry two bytes.
   pub(crate) fn read(comment: &[u8]) -> Option<Self> {
     Self::from_code(u32::from_le_bytes(comment.get(..Self::SIZE)?.try_into().ok()?))
   }

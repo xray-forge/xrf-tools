@@ -4,8 +4,7 @@ use xrf_ini::{IniFile, IniFormat, IniSection};
 use crate::tests::fixtures::GUID;
 use crate::{EditableObjectPart, EditableSectorItem, EditableSectorObject, EditableTextPart};
 
-/// A sector tool's part as the CoP SDK saves `labx8`'s: `[main]` keeping its flags printed through `%d`, and one
-/// sector as `labx8`'s `sector_0000`, with its fields replaced or added.
+// As the CoP SDK saves `labx8`'s, its flags printed through `%d`.
 fn sector_part_text(fields: &[(&str, &str)]) -> XrfResult<String> {
   let mut file: IniFile = IniFile::default();
 

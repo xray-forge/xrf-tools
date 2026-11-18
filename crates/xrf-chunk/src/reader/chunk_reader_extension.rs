@@ -151,8 +151,8 @@ impl<D: ChunkDataSource> ChunkReader<D> {
     Ok(self.data.read_bytes(count)?)
   }
 
-  /// Hand the next `count` bytes to `visit` and move past them, for a reader that decodes a run of bytes and keeps none
-  /// of them; see [`ChunkDataSource::read_with`] for why.
+  /// Hand the next `count` bytes to `visit` and move past them, without a copy where the source allows
+  /// ([`ChunkDataSource::read_with`]).
   ///
   /// # Errors
   ///
@@ -163,7 +163,7 @@ impl<D: ChunkDataSource> ChunkReader<D> {
     Ok(self.data.read_with(count, visit)?)
   }
 
-  /// Move past the next `count` bytes without reading them, for a payload a reader has no use for.
+  /// Move past the next `count` bytes without reading them.
   ///
   /// # Errors
   ///
@@ -177,7 +177,7 @@ impl<D: ChunkDataSource> ChunkReader<D> {
     Ok(())
   }
 
-  /// Refuse a read of `count` bytes the chunk does not hold, before any of it is read.
+  /// Refuse a read of more bytes than the chunk has left.
   fn assert_bytes_remain(&self, count: usize) -> XrfResult {
     if count as u64 > self.read_bytes_remain() {
       return Err(XrfError::new_invalid_error(format!(
@@ -189,8 +189,7 @@ impl<D: ChunkDataSource> ChunkReader<D> {
     Ok(())
   }
 
-  /// Hand the rest of the chunk to `visit` and move past it, for a reader that decodes the bytes and keeps none of them;
-  /// see [`ChunkDataSource::read_with`] for why.
+  /// Hand the rest of the chunk to `visit` and move past it, as [`Self::read_with`] does.
   pub fn read_remaining_with<R>(&mut self, visit: impl FnOnce(&[u8]) -> R) -> XrfResult<R> {
     let count: usize = usize::try_from(self.read_bytes_remain())
       .map_err(|_| XrfError::new_invalid_error("Chunk remainder is over the platform limit"))?;
@@ -207,7 +206,7 @@ impl<D: ChunkDataSource> ChunkReader<D> {
     Ok(buf)
   }
 
-  /// Reads one value and proves it was the whole payload, so no byte of the chunk is dropped on the way back.
+  /// Reads one value and checks it was the whole payload, so no byte is dropped on a round trip.
   ///
   /// # Errors
   ///
@@ -220,14 +219,13 @@ impl<D: ChunkDataSource> ChunkReader<D> {
     Ok(value)
   }
 
-  /// Reads the children numbered from zero, refusing any other numbering: the SDK opens such a list as `open_chunk(i)`
-  /// for `i` from 0 up to the first number missing, so a gap would hide what follows it from the editor while a reader
-  /// of every child kept it. `what` names the children in the error.
+  /// Reads children numbered 0, 1, 2 in order, refusing any other numbering. The SDK opens such a list with
+  /// `open_chunk(i)` up to the first missing number, so the editor would not see children past a gap.
   ///
   /// # Errors
   ///
-  /// Returns an error when the children are not well-formed chunks, one stands out of its number's place, or `read`
-  /// returns one.
+  /// Returns an error when the children are not well-formed chunks or one is out of place (named by `what`), or
+  /// `read`'s error.
   pub fn read_numbered_children<I>(
     &mut self,
     what: &str,
@@ -312,8 +310,6 @@ mod tests {
     Ok(())
   }
 
-  /// A skip and a lent read move the cursor as a read of the same bytes would, and refuse a count past the payload as
-  /// `read_bytes` does, before moving at all.
   #[test]
   fn skips_and_lends_bytes_within_the_payload_only() -> XrfResult {
     let mut chunk: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[0, 1, 2, 3, 4, 5, 6, 7])?;
@@ -348,7 +344,7 @@ mod tests {
   fn test_read_remaining() -> XrfResult {
     assert_eq!(ChunkReader::from_bytes(&[0, 1, 2])?.read_remaining()?, vec![0, 1, 2]);
     assert_eq!(ChunkReader::from_bytes(&[0])?.read_remaining()?, vec![0]);
-    // Nothing left to read is reached through an empty chunk, since a reader cannot be opened over an empty source.
+    // An empty chunk, since a reader cannot be opened over an empty source.
     let mut empty: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[0; 8])?.read_child_by_index(0)?;
 
     assert_eq!(empty.read_remaining()?, Vec::<u8>::new());
@@ -403,7 +399,6 @@ mod tests {
     Ok(())
   }
 
-  /// A four byte record, the smallest a test needs.
   #[derive(Debug, PartialEq)]
   struct Record(u32);
 
@@ -445,7 +440,6 @@ mod tests {
     Ok(())
   }
 
-  /// Children of `ids`, in that order, each holding its own id.
   fn children_of(ids: &[u32]) -> XrfResult<Vec<u8>> {
     let mut parent: ChunkWriter = ChunkWriter::new();
 

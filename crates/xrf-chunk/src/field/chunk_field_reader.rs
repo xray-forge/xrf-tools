@@ -5,11 +5,10 @@ use crate::read_write::chunk_field_read_write::ChunkFieldReadWrite;
 use crate::read_write::chunk_field_read_write_list::ChunkFieldReadWriteList;
 use crate::read_write::chunk_field_read_write_optional::ChunkFieldReadWriteOptional;
 
-/// Where a [`ChunkFieldReadWrite`] value reads itself from, the reads matching [`crate::ChunkFieldWriter`]'s
-/// writes. A [`crate::ChunkReader`] reads bytes; a [`crate::ChunkFieldReplay`] takes fields, as `NET_Packet` reads its
-/// ini stream.
+/// What a [`ChunkFieldReadWrite`] value reads itself from, mirroring [`crate::ChunkFieldWriter`]: bytes through a
+/// [`crate::ChunkReader`], fields through a [`crate::ChunkFieldReplay`] as `NET_Packet` reads its ini stream.
 ///
-/// The names are [`crate::ChunkReader`]'s own, so a value's code reads the same over either reader.
+/// Method names match [`crate::ChunkReader`]'s, so a value's code reads the same over either.
 pub trait ChunkFieldReader {
   /// Whether values come from fields rather than bytes, `NET_Packet::inistream != nullptr`.
   fn is_field_form(&self) -> bool;
@@ -39,9 +38,9 @@ pub trait ChunkFieldReader {
   /// Whether nothing is left to read, `r_eof`.
   fn is_ended(&self) -> bool;
 
-  /// A vector for the `count` records a value declares, each at least `min_record_size` bytes, refused where they
-  /// cannot fit what is left. Fields carry no byte budget to bound a count by, so they reserve nothing and a count past
-  /// them fails when the fields run out.
+  /// An empty vector sized for `count` declared records of at least `min_record_size` bytes each.
+  ///
+  /// Fields have no byte budget, so the default reserves nothing; a count too large fails when the fields run out.
   ///
   /// # Errors
   ///

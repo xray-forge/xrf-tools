@@ -65,7 +65,7 @@ fn becomes_the_scene_tool_its_part_is_saved_under() -> XrfResult {
 
 #[test]
 fn appends_links_in_the_order_their_keys_sort() -> XrfResult {
-  // Ten links of one point: the padding sorts `   9` before `  10`, so the order is the links' numbers.
+  // The padding sorts `   9` before `  10`, so the order is the links' numbers.
   let links: Vec<(String, String)> = (0..11)
     .map(|link| {
       (

@@ -53,8 +53,8 @@ impl TextureAlbedo {
   }
 
   /// Measures decoded texels, those whose alpha falls below `alpha_reference` left out as the alpha test kills them;
-  /// `None` where none is left. Each channel is decoded as the renderer decodes a colour texture, in its `f32`; the
-  /// statistics over the texels are taken in `f64`.
+  /// `None` where none is left. Channels decode in `f32`, as the renderer decodes a colour texture; statistics are
+  /// taken in `f64`.
   pub fn measure(image: &RgbaImage, alpha_reference: Option<u8>) -> Option<Self> {
     let decode: [f32; 256] = std::array::from_fn(|value| srgb_decoded(value as f32 / 255.0));
     let (width, height): (u32, u32) = image.dimensions();

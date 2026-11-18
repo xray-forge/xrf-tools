@@ -8,8 +8,7 @@ use xrf_test_utils::GeneratedResources;
 use crate::tests::fixtures::{GUID, binary_part_bytes, chunk, guid_bytes, level_text, spawn_part_text};
 use crate::{EditableLevelGuid, EditableLevelPart, EditableLevelScene};
 
-/// A scene on disk: the `.level`, a spawn part, a group saved over two files, an AI map part, and a `.~part` copy of
-/// an earlier save, which is no part of the scene.
+// `group.part3` follows a gap the editor stops at, and `spawn.~part` is an earlier save's copy, not a part.
 fn write_scene(root: &Path, part_guid: &EditableLevelGuid) -> XrfResult<PathBuf> {
   let level: PathBuf = root.join("labx8.level");
   let parts: PathBuf = root.join("labx8");
@@ -69,7 +68,7 @@ fn refuses_to_write_beside_a_part_the_scene_would_not_write() -> XrfResult {
   let level: PathBuf = write_scene(&root, &GUID)?;
   let scene: EditableLevelScene = EditableLevelScene::read_from_path::<XRayByteOrder, _>(&level)?;
 
-  // `group.part3`, past the gap the read stopped at, would be read as the scene's if a `group.part2` were written.
+  // `group.part3`, past the gap, would join the scene once a `group.part2` were written.
   assert!(scene.write_to_path::<XRayByteOrder, _>(&level).is_err());
 
   fs::remove_file(root.join("labx8/group.part3"))?;
@@ -80,7 +79,7 @@ fn refuses_to_write_beside_a_part_the_scene_would_not_write() -> XrfResult {
   Ok(())
 }
 
-/// Windows and the editor compare names without case, so a part held as `SPAWN.part` is the one `spawn.part` replaces.
+// Windows and the editor compare names without case.
 #[test]
 fn writes_over_a_part_held_in_another_case() -> XrfResult {
   let root: PathBuf = GeneratedResources::create_dir("xrf-editable-level/scene/part-case")?;
@@ -95,8 +94,7 @@ fn writes_over_a_part_held_in_another_case() -> XrfResult {
   Ok(())
 }
 
-/// A tool's name names its files, so one that is not a single file name would write outside the part directory, and
-/// two that differ only in case would write the same file.
+// A tool's name names its files: two differing only in case would write the same file.
 #[test]
 fn refuses_a_tool_name_that_is_not_one_file_name() -> XrfResult {
   let root: PathBuf = GeneratedResources::create_dir("xrf-editable-level/scene/tool-name")?;

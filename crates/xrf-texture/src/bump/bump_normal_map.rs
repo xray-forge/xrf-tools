@@ -24,8 +24,7 @@ impl BumpNormalMap {
   /// answers straight up and a steep one leans against the slope. Each kernel is summed in the order its elements are
   /// listed, as the convolver sums them.
   ///
-  /// Rows are derived on every worker at once: packing a normal searches its byte neighbourhood, up to 125 candidates
-  /// a texel, and no texel's answer depends on another's.
+  /// Rows are derived on every worker at once, no texel depending on another.
   pub(crate) fn derive(height: &GreyPlane, virtual_height: f32) -> RgbaImage {
     let scale: f32 = virtual_height * Self::HEIGHT_SCALE;
     let mut normals: RgbaImage = RgbaImage::new(height.width, height.height);

@@ -1,5 +1,6 @@
-/// A value a later line of the same key replaced on reading, under [`crate::IniRepeatedKey::LastValueKept`]: it is not
-/// in the file read, and a write leaves it out.
+/// A value a later line of the same key replaced on reading, under [`crate::IniRepeatedKey::LastValueKept`].
+///
+/// A write leaves it out, as the engine does.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct IniOverride {
   pub section: String,

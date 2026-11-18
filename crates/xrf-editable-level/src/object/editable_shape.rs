@@ -53,9 +53,8 @@ impl EditableShape {
     Self::UNIT_BOX_CORNERS.map(|corner| matrix.transform_point(&Vector3d::from(corner)))
   }
 
-  /// The box holding every element in the object's own space, `CEditShape::ComputeBounds`: a sphere's lowest and
-  /// highest corner, a box's eight placed corners. None for a shape of no elements, whose bounds the editor leaves
-  /// invalid.
+  /// The box holding every element in the object's own space, `CEditShape::ComputeBounds`. None for a shape of no
+  /// elements, whose bounds the editor leaves invalid.
   pub fn get_bounds(&self) -> Option<Aabb> {
     Aabb::from_points(self.elements.iter().flat_map(|element| match element {
       EditableShapeElement::Sphere { center, radius } => vec![

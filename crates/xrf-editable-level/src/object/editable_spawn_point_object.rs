@@ -51,7 +51,7 @@ pub enum EditableSpawnPointKind {
 pub struct EditableSpawnPointObject {
   pub object: EditableCustomObject,
   pub kind: EditableSpawnPointKind,
-  /// The one object `SaveObjectsLTX` writes under `attached`, a shape for every spawn point the editor attaches to.
+  /// The one shape `SaveObjectsLTX` writes under `attached`.
   pub attached: Option<EditableShapeObject>,
 }
 
@@ -73,7 +73,7 @@ impl EditableSpawnPointObject {
   pub const ENVIRONMENT_MODIFIER: u32 = 1;
   pub const ENTITY: u32 = 2;
 
-  /// The values of a new environment modifier (`CSpawnPoint::Construct`), its flags all set.
+  /// Every value mixed in: a new environment modifier's flags (`CSpawnPoint::Construct`), and an older version's.
   pub const DEFAULT_ENVIRONMENT_FLAGS: u16 = u16::MAX;
 
   /// `eSDTypeRespawn`, the entity flag (the editor's "MP respawn") that exports it into `level_rs.spawn`.
@@ -83,7 +83,7 @@ impl EditableSpawnPointObject {
   const ENTITY_SECTION: &'static str = "name";
   const ENTITY_FLAGS: &'static str = "fl";
 
-  /// What the attached objects' section names and count take, `SaveObjectsLTX(..., "attached", ...)`.
+  /// The prefix of the attached objects' section names and count, `SaveObjectsLTX(..., "attached", ...)`.
   const ATTACHED: &'static str = "attached";
 
   /// The `type` the kind is saved as.
@@ -204,7 +204,7 @@ impl EditableToolObject for EditableSpawnPointObject {
   const CLASS_ID: i32 = 6;
   const TOOL_NAME: &'static str = "spawn";
 
-  /// The spawn tool keeps flags (`ESceneSpawnToolsIO.cpp:28`).
+  /// The spawn tool keeps flags (`ESceneSpawnToolsIO.cpp`).
   const KEEPS_FLAGS: bool = true;
 
   /// As `CSpawnPoint::LoadLTX` reads it, from version 0x15; version 0x14's single-mode game type is refused.

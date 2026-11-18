@@ -34,13 +34,11 @@ impl EditableShapeObject {
     self.shape.write_to_section(section);
   }
 
-  /// The elements with the object's scale applied, `CEditShape::ApplyScale`, which the build gives an entity holding
-  /// the shape attached: a sphere's centre placed by the scale and its radius times the scale along x, a box's matrix
-  /// scaled after itself (`mulA_43`). The object's position and turn are not applied.
+  /// The elements with the object's scale applied, `CEditShape::ApplyScale`, as the build hands them to an entity the
+  /// shape is attached to. A sphere's radius scales by `x` alone; the object's position and turn are not applied.
   ///
-  /// A unit scale leaves the elements as stored. Summed as `mul_43` sums them, a box's negative zero would turn
-  /// positive, yet GSC's build kept it: vanilla `zaton`'s `zat_surge_hide_a2` and `zat_a2_sr_light` hold such zeros in
-  /// `level.spawn`.
+  /// A unit scale leaves the elements as stored: `mul_43` would turn a box's negative zero positive, yet GSC's build
+  /// kept it (vanilla `zaton`'s `zat_surge_hide_a2` in `level.spawn`).
   pub fn get_scaled_elements(&self) -> Vec<EditableShapeElement> {
     if self.object.transform.scale == Vector3d::ONE {
       return self.shape.elements.clone();

@@ -4,8 +4,7 @@ use xrf_utils::encode_string_to_w1251_bytes;
 
 use crate::{IniEncoding, IniField, IniFile, IniFormat, IniOverride, IniSection};
 
-/// A file shaped as the SDK's `CInifile::save_as` writes one: a long key past the column, a key with no value, a
-/// decorated vector, Cyrillic text, and a spawn object's custom data spanning lines with `;`, `=` and brackets inside.
+// As `CInifile::save_as` writes: a key past the column, an empty value, Cyrillic, and custom data spanning lines.
 const SAVED: &str = concat!(
   "[guid]\r\n",
   "        guid_g0                          = 5065284203709945560\r\n",
@@ -60,8 +59,7 @@ fn writes_sections_and_fields_in_strcmp_order() -> XrfResult {
 
 #[test]
 fn orders_windows_1251_names_by_their_bytes() {
-  // «№» is 0xB9 in Windows-1251 and «А» 0xC0, so `strcmp` puts «№» first; as code points (U+2116, U+0410) the order
-  // is the other way round.
+  // «№» is 0xB9 and «А» 0xC0 in Windows-1251, the reverse of their code point order (U+2116, U+0410).
   assert!(IniEncoding::Windows1251.compare("№", "А").is_lt());
   assert!(IniEncoding::Utf8.compare("№", "А").is_gt());
 }
@@ -122,7 +120,6 @@ fn a_file_written_to_a_path_reads_back() -> XrfResult {
   Ok(())
 }
 
-/// Some text editors add a byte order mark, which a read skips.
 #[test]
 fn reads_past_a_byte_order_mark_in_either_encoding() -> XrfResult {
   let bytes: Vec<u8> = [&[0xEF, 0xBB, 0xBF][..], b"[main]\r\nkey = 1\r\n"].concat();
@@ -136,7 +133,6 @@ fn reads_past_a_byte_order_mark_in_either_encoding() -> XrfResult {
   Ok(())
 }
 
-/// A write refuses what would not read back as written.
 #[test]
 fn refuses_to_write_what_would_not_read_back_as_itself() {
   let mut sections: IniFile = IniFile::default();

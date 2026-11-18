@@ -14,13 +14,10 @@ use crate::syntax::fold_section_name;
 
 /// Reads a record file one section at a time as it is parsed, without building a config of it.
 ///
-/// Each section is handed over once its last field is read, in file order, as the [`crate::Ltx`] the file lowers to
-/// would list it: the root section's fields first when there are any, a declared section even when it holds nothing.
-/// The file is held to the rules [`crate::Ltx::read_from_str`] holds it to, and refused with the same error: a
-/// statement that does not parse, a section or include named twice, a DLTX operation. Those outrank what the caller's
-/// visit answers, wherever each sits in the file, because the config was read whole before any record was imported
-/// from it. A record file holds up to hundreds of thousands of sections, and a config of them costs several times the
-/// text in memory, besides the time to build, look up and drop it.
+/// Sections arrive in file order once their last field is read, as the [`crate::Ltx`] the file lowers to lists them:
+/// root fields first when there are any, declared sections even when empty. The file is refused as
+/// [`crate::Ltx::read_from_str`] refuses it, and a refusal outranks the visit's errors wherever each sits. A record
+/// file holds up to hundreds of thousands of sections, whose config costs several times the text in memory.
 pub struct LtxRecordReader;
 
 /// A record imported from the section named by its index.
@@ -32,23 +29,23 @@ struct LtxIndexedRecord<T> {
 /// One file's reading under way: the section open, and what the rules and the visit have answered so far.
 struct LtxRecordReading<'t, V> {
   record: LtxRecord<'t>,
-  /// Whether a header opened the open section, as opposed to fields arriving before any header did.
+  /// Whether a header opened the open section, rather than fields before any header.
   is_declared: bool,
-  /// Every section handed over so far, lowercased, to refuse one declared twice in any case.
+  /// Every section handed over so far, lowercased, to refuse a repeat in any case.
   read: HashSet<Cow<'t, str>, FxBuildHasher>,
   includes: Vec<&'t str>,
   visit: V,
-  /// What the visit answered with first, after which it is not asked again.
+  /// The visit's first error, after which it is not asked again.
   rejection: Option<XrfError>,
 }
 
 impl LtxRecordReader {
-  /// Read the file at `path`, decoding strict Windows-1251, and hand each section to `visit`.
+  /// Reads the file at `path` as strict Windows-1251, handing each section to `visit`.
   ///
   /// # Errors
   ///
   /// Returns an error naming the file when it cannot be read or decoded, for what [`Self::read_str`] refuses, or the
-  /// first error `visit` answers with.
+  /// first error `visit` returns.
   pub fn read_path<P, V>(path: P, visit: V) -> XrfResult
   where
     P: AsRef<Path>,
@@ -60,13 +57,12 @@ impl LtxRecordReader {
     read().map_err(|error| XrfError::new_read_error(format!("{} was not read: {error}", format_path(path))))
   }
 
-  /// Read `text` and hand each section to `visit`, which is not asked again once it answers with an error.
+  /// Reads `text`, handing each section to `visit` until it returns an error.
   ///
   /// # Errors
   ///
-  /// Returns an error when the text does not parse, a section or include is named twice, or the text holds a DLTX
-  /// operation, in that order of precedence, as [`crate::Ltx::read_from_str`] would; otherwise the first error `visit`
-  /// answers with.
+  /// Returns an error, in this precedence as [`crate::Ltx::read_from_str`] would, when the text does not parse, names a
+  /// section or include twice, or holds a DLTX operation; otherwise the first error `visit` returns.
   pub fn read_str<V>(text: &str, visit: V) -> XrfResult
   where
     V: FnMut(&LtxRecord<'_>) -> XrfResult,
@@ -91,12 +87,11 @@ impl LtxRecordReader {
     reading.finish()
   }
 
-  /// A record imported from every section of the file at `path`, in file order, as importing each section the config
-  /// the file lowers to lists answers.
+  /// Imports a record from every section of the file at `path`, in file order, as from the config it lowers to.
   ///
   /// # Errors
   ///
-  /// Returns an error for what [`Self::read_path`] refuses, or the first error an import answers with.
+  /// Returns an error for what [`Self::read_path`] refuses, or the first error an import returns.
   pub fn import_all<T, P>(path: P) -> XrfResult<Vec<T>>
   where
     T: LtxImportExport,
@@ -113,11 +108,9 @@ impl LtxRecordReader {
     Ok(imported)
   }
 
-  /// The `count` records of the file at `path` named `0` to `count - 1`, as importing each by its index from the config
-  /// the file lowers to answers.
+  /// Imports sections `0` to `count - 1` of the file at `path`, as by index from the config it lowers to.
   ///
-  /// Sections may come in any order, and sections with other names are ignored. Every index below `count` must have a
-  /// section, so a `count` larger than the file fails at the first missing record.
+  /// Sections may come in any order; other names are ignored.
   ///
   /// # Errors
   ///
@@ -203,7 +196,7 @@ where
     }
   }
 
-  /// Take in one statement under the rules [`LtxStandardLowering`] holds a document to.
+  /// Takes in one statement under [`LtxStandardLowering`]'s rules.
   ///
   /// # Errors
   ///
@@ -243,7 +236,7 @@ where
     Ok(())
   }
 
-  /// Hand over the last section, then answer with what the visit answered.
+  /// Hands over the last section, then returns the visit's first error.
   fn finish(mut self) -> XrfResult {
     self.hand_over();
 
@@ -253,8 +246,8 @@ where
     }
   }
 
-  /// Hand the open section to the visit, when a config would hold it: a declared section even when empty, the root
-  /// section only when a field reached it.
+  /// Hands the open section to the visit when a config would hold it: declared even when empty, the root only with
+  /// fields.
   fn hand_over(&mut self) {
     if !self.is_declared && self.record.is_empty() {
       return;
@@ -279,7 +272,6 @@ mod test {
   use crate::binding::{LtxImportExport, LtxRead, LtxRecordReader, LtxSectionRead, LtxWrite};
   use crate::ltx::Ltx;
 
-  /// A section and its fields, in order.
   type Listed = (String, Vec<(String, String)>);
 
   fn list_read(text: &str) -> XrfResult<Vec<Listed>> {
@@ -317,12 +309,8 @@ mod test {
     )
   }
 
-  /// The reader has to hand over what lowering the text whole holds, in its order, or refuse it with the same error of
-  /// the same kind at the same line and column.
-  ///
-  /// Every ordered three lines of a pool holding each statement the parser reads and each it refuses, each refusal the
-  /// standard rules make (a section or include named twice, every DLTX operation), a key written twice and a header
-  /// with no name, under each line break.
+  // Every ordered three lines of a pool of each statement the parser reads or refuses and each standard-rule refusal,
+  // under each line break.
   #[test]
   fn hands_over_what_lowering_the_text_holds() {
     const LINES: [&str; 28] = [
@@ -379,8 +367,7 @@ mod test {
     assert_eq!(compared, 28 * 28 * 28 * 3);
   }
 
-  /// Records were imported only from a config read whole, so anything that refuses the file outranks what an import
-  /// answers, wherever each sits.
+  // A config was read whole before any import, so a refusal of the file outranks an import's error.
   #[test]
   fn a_refusal_below_a_failed_visit_is_the_one_reported() {
     let refused = |text: &str| -> String {
@@ -412,7 +399,6 @@ mod test {
     assert_eq!(visited, vec!["a", "b"]);
   }
 
-  /// A record of one field, imported as each spawn record is.
   #[derive(Debug, PartialEq)]
   struct Point {
     value: u32,
@@ -434,7 +420,6 @@ mod test {
     }
   }
 
-  /// What importing each index from the config the text lowers to answers, as the indexed loops did.
   fn import_lowered(text: &str, count: usize) -> XrfResult<Vec<Point>> {
     let ltx: Ltx = Ltx::read_from_str(text)?;
 
@@ -459,9 +444,7 @@ mod test {
     imported
   }
 
-  /// A count is the caller's word for how many records there are, read from another file; one far past what the file
-  /// holds answers with the first record missing instead of reserving room for every one it names, even for a type
-  /// whose import accepts an empty section.
+  // A count comes from another file, so one far past the file must not reserve room for every record it names.
   #[test]
   fn answers_a_count_past_the_file_with_the_first_record_missing() {
     let error: String = import_read("[0]\nvalue = 1\n[1]\nvalue = 2\n", usize::MAX)

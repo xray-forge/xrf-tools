@@ -24,8 +24,8 @@ impl Default for EditableObjectTransform {
 }
 
 impl EditableObjectTransform {
-  /// The largest cosine between two of a matrix's axes it still takes as square to each other: well above the noise of
-  /// a single-precision rotation (about `1e-6`), well below the shear an uneven scale composed with a turn leaves.
+  /// The largest cosine between two axes still taken as square: above single-precision rotation noise (about `1e-6`),
+  /// below the shear an uneven scale composed with a turn leaves.
   const SHEAR_TOLERANCE: f32 = 1e-4;
 
   /// The world transform, `CCustomObject::OnUpdateTransform`: scaled first, then turned by `setXYZi` of the negated
@@ -38,14 +38,13 @@ impl EditableObjectTransform {
       .multiply(&Matrix4x4::from_scale(&self.scale))
   }
 
-  /// The position, rotation and scale [`Self::to_matrix`] builds a matrix from: each axis row's length is its scale, a
-  /// mirroring matrix taking all three negative, and `Fmatrix::getHPB` of the rows divided by them gives the angles.
+  /// The transform [`Self::to_matrix`] builds `matrix` from, its angles by `Fmatrix::getHPB`. A mirroring matrix takes
+  /// all three scales negative.
   ///
   /// # Errors
   ///
-  /// Returns an error when the matrix is not affine (its fourth column is not `0, 0, 0, 1`), collapses an axis, or
-  /// shears its axes away from square, as a scale along axes other than the object's own does: a scene object scales
-  /// along its own axes before it turns, so no transform composes into such a matrix.
+  /// Returns an error when the matrix is not affine, collapses an axis, or shears its axes: a scene object scales along
+  /// its own axes before it turns, so no transform composes into a sheared matrix.
   pub fn from_matrix(matrix: &Matrix4x4) -> XrfResult<Self> {
     if matrix.get_fourth_column() != Matrix4x4::AFFINE_COLUMN {
       return Err(XrfError::new_invalid_error(format!(
@@ -101,9 +100,9 @@ impl EditableObjectTransform {
     })
   }
 
-  /// The saved transform composing into `matrix`'s very bits: [`Self::from_matrix`], then the first of
-  /// [`Self::find_saved`]'s neighbours whose [`Self::to_matrix`] is `matrix`, else the decomposed transform rounded as
-  /// saved, as for a matrix the editor composed from other angles (a pitch straight up or down) or no saved text gives.
+  /// The saved transform among [`Self::find_saved`]'s neighbours that composes into `matrix` bit for bit. A matrix
+  /// composed from other angles (a pitch straight up or down) or from no saved text gives the decomposed transform
+  /// rounded as saved.
   ///
   /// # Errors
   ///
@@ -118,10 +117,9 @@ impl EditableObjectTransform {
     )
   }
 
-  /// What [`Self::find_saved`] finds accepting only a transform whose [`Self::to_matrix`] is `matrix` bit for bit, in a
-  /// fraction of the compositions. The composed matrix's row of an axis is that axis's scale times the turned row alone,
-  /// a scale's zeros adding nothing (`Fmatrix::mul`), so under each rotation in turn each axis takes the first of its
-  /// scale's neighbours whose row matches; the transform so found is composed whole once more before it is taken.
+  /// [`Self::find_saved`] accepting only a bit-exact [`Self::to_matrix`], in a fraction of the compositions. An axis's
+  /// composed row depends on its own scale alone (`Fmatrix::mul`), so each scale is matched separately under each
+  /// rotation, and the whole is composed once to confirm.
   fn find_composing(&self, matrix: &Matrix4x4) -> Option<Self> {
     let rounded: Self = self.round_as_saved();
     let bits: [u32; 16] = matrix.values.map(f32::to_bits);
@@ -157,9 +155,8 @@ impl EditableObjectTransform {
   }
 
   /// The first saved transform near this one that `accepts`: this one rounded as saved, then each angle and scale a
-  /// `%f` step or two either way (`EditableLevelValue::get_saved_neighbours`). A transform decomposed from what the
-  /// editor computed off its saved text lands a few units in the last place off that text, which can be a whole step
-  /// (`16.000002` for a scale of 16); the position comes back exactly and is only rounded.
+  /// `%f` step or two either way. A transform decomposed from what the editor computed can be a whole step off its text
+  /// (`16.000002` for a scale of 16); the position comes back exact and is only rounded.
   pub fn find_saved(&self, accepts: impl Fn(&Self) -> bool) -> Option<Self> {
     let rounded: Self = self.round_as_saved();
     let scales: Vec<Vector3d> = Self::get_saved_neighbours(&rounded.scale);

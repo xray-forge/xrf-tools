@@ -12,8 +12,8 @@ use crate::level::editable_level_options::EditableLevelOptions;
 /// A scene's main file, the `.level` under `$maps$` the Level Editor opens (`EScene::SaveLTX`): the scene's GUID,
 /// version, level options, build parameters, camera and owner tag. Each tool's objects are in the scene's parts.
 ///
-/// The file is kept whole as the [`IniFile`] it was read as, so it writes back byte for byte; the typed getters and
-/// setters read and write its sections in the editor's own layout.
+/// Kept whole as the [`IniFile`] it was read as, so it writes back byte for byte; the typed accessors use the editor's
+/// own section layout.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct EditableLevelFile {
   pub ini: IniFile,
@@ -26,9 +26,7 @@ impl EditableLevelFile {
   /// The extension of a scene's main file.
   pub const EXTENSION: &str = "level";
 
-  /// A new scene's main file with every section `EScene::SaveLTX` writes and `EScene::LoadLTX` reads: the version, the
-  /// GUID its parts carry, the level options and build parameters (their reserved fields too), the camera, and the
-  /// owner tag.
+  /// A new scene's main file with every section `EScene::SaveLTX` writes, reserved fields included.
   pub fn new(
     guid: &EditableLevelGuid,
     options: &EditableLevelOptions,

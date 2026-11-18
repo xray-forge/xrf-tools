@@ -48,9 +48,9 @@ impl GenerateBumpProcessor {
   ///
   /// # Errors
   ///
-  /// Returns an error when the height picture holds no texel, when an external normal map does not match the height
-  /// in size, when either half cannot be encoded, or when either file cannot be written. A gloss too dark to be useful
-  /// is reported in the result rather than refused; see [`GenerateBumpResult::is_gloss_too_dark`].
+  /// Returns an error when the height holds no texel, a normal map or gloss mask differs from it in size, or either
+  /// half cannot be encoded or written. A gloss too dark to use is reported by
+  /// [`GenerateBumpResult::is_gloss_too_dark`], not refused.
   pub fn generate(options: &GenerateBumpOptions) -> XrfResult<GenerateBumpResult> {
     if options.height.width() == 0 || options.height.height() == 0 {
       return Err(XrfError::new_texture_processing_error(format!(
@@ -231,7 +231,7 @@ impl GenerateBumpProcessor {
     })
   }
 
-  /// A picture the size of `like`, each pixel what `pixel` answers for it, rows filled on every worker at once.
+  /// A picture the size of `like`, each pixel from `pixel`, rows filled on every worker at once.
   fn packed_by_rows(like: &RgbaImage, pixel: impl Fn(u32, u32) -> Rgba<u8> + Sync) -> RgbaImage {
     let (width, height): (u32, u32) = like.dimensions();
     let mut packed: RgbaImage = RgbaImage::new(width, height);

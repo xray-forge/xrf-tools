@@ -24,7 +24,7 @@ enum StatementOperation<'a> {
 /// Ltx parser.
 pub(crate) struct LtxParser<'a> {
   char: Option<char>,
-  /// The input from `char` on, so a line can be taken as a slice of it rather than rebuilt a character at a time.
+  /// The input from `char` on, so a line is sliced rather than rebuilt a character at a time.
   at_char: &'a str,
   reader: Chars<'a>,
   line: usize,
@@ -32,14 +32,13 @@ pub(crate) struct LtxParser<'a> {
   /// Whitespace consumed since the last line break, kept only to rebuild an authored line verbatim.
   indent: String,
   is_preserving_source: bool,
-  /// Whether nothing but comments has been read yet: only that leading block may carry `@xrf-ltx` directives.
+  /// Whether only comments have been read, the block that may carry `@xrf-ltx` directives.
   is_metadata_header: bool,
-  /// Whether a section header has been read: `CInifile::Load` drops every field line before the first one whole, so
-  /// an open quote there carries nothing into the lines after it.
+  /// Whether a header has been read. `CInifile::Load` drops field lines before the first one, open quotes included.
   is_in_section: bool,
   /// Checks the leading comment block opted out of, in the order first named.
   skipped_checks: Vec<LtxCheck>,
-  /// One authored line per statement read, when the parser keeps them.
+  /// One authored line per statement, when preserving source.
   source_lines: Vec<Box<str>>,
 }
 
@@ -109,10 +108,10 @@ impl<'a> LtxParser<'a> {
     })
   }
 
-  /// The next statement, its text borrowed from the input, or `None` once the input is spent.
+  /// The next statement, its text borrowed from the input, or `None` at the end.
   ///
-  /// What [`Self::parse_document`] collects, for a reader that spends each statement as it comes rather than holding
-  /// them all: a document of a few hundred thousand records otherwise holds every statement beside what it becomes.
+  /// For a reader that spends each statement as it comes rather than holding a document of them as
+  /// [`Self::parse_document`] does.
   pub(crate) fn parse_next_item(&mut self) -> XrfResult<Option<LtxItem<&'a str>>> {
     self.skip_whitespaces();
 
@@ -181,7 +180,7 @@ impl<'a> LtxParser<'a> {
     Ok(Some(LtxItem::new(kind, span)))
   }
 
-  /// The checks the leading comment block opted out of, taken from the parser.
+  /// Takes the checks the leading comment block opted out of.
   pub(crate) fn take_skipped_checks(&mut self) -> Vec<LtxCheck> {
     std::mem::take(&mut self.skipped_checks)
   }
@@ -324,8 +323,7 @@ impl<'a> LtxParser<'a> {
 
   /// The rest of the current line, leaving the cursor on the break that ends it.
   ///
-  /// Taken as one slice of the input rather than a character at a time: no break lies inside the line, so the cursor
-  /// only moves along it, one column per character, exactly as stepping through it would.
+  /// Sliced whole, the cursor still advancing one column per character, as stepping through it would.
   fn parse_until_eol(&mut self) -> &'a str {
     if matches!(self.char, None | Some('\n' | '\r')) {
       return "";
@@ -429,11 +427,10 @@ impl LtxParser<'_> {
     Ok((name, comment.filter(|it| !it.is_empty())))
   }
 
-  /// The key, value and comment of a field line, the statement starting at `span`. The comment is cut where the engine
-  /// cuts it ([`Self::strip_engine_comment`]), so `"a;b"` stays one value.
+  /// The key, value and comment of a field line starting at `span`, cut as [`Self::strip_engine_comment`] cuts it.
   ///
-  /// A value inside a section with an odd number of quotes is refused: the engine reads the following lines into it, or,
-  /// when one of them holds `[...]`, warns and drops the quote, and this parser reads one line per statement.
+  /// A value in a section with an odd number of quotes is refused: the engine reads the next lines into it, or warns
+  /// and drops the quote at a `[...]` line, and this parser reads one line per statement.
   fn parse_key_value_from_line<'line>(&self, line: &'line str, span: LtxSpan) -> XrfResult<ParsedKeyValue<'line>> {
     if line.is_empty() {
       return self.error("Failed to parse empty value statement");
@@ -465,9 +462,10 @@ impl LtxParser<'_> {
     Ok((key, value, comment.filter(|it| !it.is_empty())))
   }
 
-  /// What the engine keeps of `line` before reading a field from it (`xr_ini.cpp:417-450`): everything before the first
-  /// `;`, or before the first `/` if a second `/` follows it. If that cut falls between the line's first two quotes, the
-  /// line is kept whole. Only the first `/` counts, so `a/b // c` keeps its `// c`, as in the engine.
+  /// What `CInifile::Load` keeps of `line` before reading a field: everything before the first `;`, or the first `/`
+  /// when a second follows it, unless that cut falls between the line's first two quotes.
+  ///
+  /// Only the first `/` counts, so `a/b // c` keeps its `// c`, as in the engine.
   fn strip_engine_comment(line: &str) -> &str {
     let semicolon: Option<usize> = line.find(LTX_SYMBOL_COMMENT);
     let slashes: Option<usize> = line.find('/').filter(|&slash| line[slash + 1..].starts_with('/'));
@@ -507,8 +505,7 @@ mod test {
     );
   }
 
-  /// A line is taken whole, but the cursor still counts one column per character, wide or not, and a lone `\r` ends a
-  /// line without starting a new one, as stepping through the text a character at a time did.
+  // A line is sliced whole, yet columns count characters and a lone `\r` ends a line without starting a new one.
   #[test]
   fn places_an_error_by_characters_after_wide_text_and_lone_returns() {
     for (input, expected_line, expected_column) in [
@@ -681,8 +678,6 @@ mod test {
     );
   }
 
-  /// The engine keeps reading lines into a value whose quotes stay open, which a parser of one line per statement
-  /// cannot follow, so such a value is refused where its statement starts.
   #[test]
   fn refuses_a_value_whose_quote_stays_open_on_its_line() {
     for (input, expected) in [
@@ -707,8 +702,6 @@ mod test {
     }
   }
 
-  /// Quotes are counted in what the engine keeps of the line: it cuts at the first `;`, or at the first `/` when a
-  /// second follows it, unless that point sits between the line's first quote and the next one.
   #[test]
   fn counts_quotes_in_the_part_of_the_line_the_engine_keeps() {
     for refused in [
@@ -746,7 +739,7 @@ mod test {
     }
   }
 
-  /// The engine drops a field line before the first header whole, so its open quote takes no lines after it.
+  // The engine drops a field line before the first header whole, open quote included.
   #[test]
   fn reads_an_open_quote_before_the_first_section_as_one_line() {
     let ltx: Ltx = Ltx::read_from_str("root = \"open\n[s]\nx = 1\n").expect("a root field read as one line");
@@ -756,8 +749,6 @@ mod test {
     assert!(Ltx::read_from_str("root = \"open\n[s]\nx = \"open\n").is_err());
   }
 
-  /// A value spanning lines as a mod writes custom data is refused at the line it opens on, not read as the fields and
-  /// sections its later lines would make.
   #[test]
   fn refuses_custom_data_written_across_lines() {
     let input: &str = "[box]\r\ncustom_data = \"[logic]\r\ncfg = scripts\\\\box.ltx ; kept\r\n\r\n[story_object]\r\nstory_id = box\"\r\nname = box\r\n";
@@ -770,7 +761,6 @@ mod test {
     );
   }
 
-  /// The refusal belongs to the parser, so every reader built on it refuses alike.
   #[test]
   fn refuses_an_open_quote_through_every_reader() {
     let input: &str = "[box]\nx = \"open\ny = 1\n";

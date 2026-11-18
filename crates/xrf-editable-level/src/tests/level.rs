@@ -24,8 +24,7 @@ fn reads_a_scenes_main_file_and_writes_it_back_as_it_was() -> XrfResult {
     }
   );
   assert_eq!(level.get_build_params()?.weld_distance, 0.005);
-  // The editor wrote -80.052984, which no f32 prints as with `%f` (the nearest print as -80.052986 and -80.052979), so
-  // a typed read is close, and only the kept text writes back exactly.
+  // The editor wrote -80.052984, which no f32 prints as with `%f`: only the kept text writes back exactly.
   assert!((level.get_camera()?.position.x - (-80.052_98)).abs() < 1e-4);
   assert_eq!(
     EditableLevelValue::format_vector3(&level.get_camera()?.position),
@@ -56,7 +55,7 @@ fn writes_build_parameters_and_options_in_the_editors_layout() -> XrfResult {
   let restored: EditableLevelFile = EditableLevelFile::read_from_bytes(&level.write_to_bytes()?)?;
 
   assert_eq!(restored.get_build_params()?, params);
-  // GSC's text, `18011438074424197120000000.000000` as its editor's printf padded it, reads back to the same float.
+  // The value GSC's editor printed padded with zeros.
   assert_eq!(
     restored.get_build_params()?.reserved[0],
     "18011438074424197120000000.000000".parse::<f32>().unwrap_or_default()
@@ -66,7 +65,6 @@ fn writes_build_parameters_and_options_in_the_editors_layout() -> XrfResult {
   Ok(())
 }
 
-/// Each section's name and its keys, in the order the file holds them.
 fn layout(level: &EditableLevelFile) -> Vec<(String, Vec<String>)> {
   level
     .ini

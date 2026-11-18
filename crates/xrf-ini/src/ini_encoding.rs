@@ -15,7 +15,7 @@ pub enum IniEncoding {
 }
 
 impl IniEncoding {
-  /// The text of a file stored as `bytes`, skipping a byte order mark at the start, which some text editors add.
+  /// Decodes a file's bytes, skipping a leading byte order mark some text editors add.
   ///
   /// # Errors
   ///
@@ -30,7 +30,7 @@ impl IniEncoding {
 
   /// # Errors
   ///
-  /// Returns an encoding error when the text holds a character this encoding has no byte for.
+  /// Returns an encoding error for a character this encoding cannot hold.
   pub fn encode(self, text: String) -> XrfResult<Vec<u8>> {
     match self {
       Self::Utf8 => Ok(text.into_bytes()),

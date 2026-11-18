@@ -32,7 +32,7 @@ impl EditableToolObject for EditableSceneObject {
   const TOOL_NAME: &'static str = "scene_object";
   const KEEPS_FLAGS: bool = true;
 
-  /// As `CSceneObject::LoadLTX` reads it (`SceneObjectIO.cpp:18`), which takes any version.
+  /// As `CSceneObject::LoadLTX` reads it, which takes any version.
   fn read_from_object(object: &EditablePartObject<'_>) -> XrfResult<Self> {
     let section: &IniSection = object.section;
     let reference: &str = section.get_required("reference_name")?;
@@ -51,7 +51,7 @@ impl EditableToolObject for EditableSceneObject {
     })
   }
 
-  /// As `CSceneObject::SaveLTX` writes it (`SceneObjectIO.cpp:79`), at [`Self::VERSION`].
+  /// As `CSceneObject::SaveLTX` writes it, at [`Self::VERSION`].
   fn write_to_ini(&self, ini: &mut IniFile, section: &str) {
     let section: &mut IniSection = ini.section_mut(section);
 
@@ -61,9 +61,8 @@ impl EditableToolObject for EditableSceneObject {
     section.set("flags", EditableLevelValue::format_u32(self.flags));
   }
 
-  /// The scene object tool's `[appendrandom]` as a new tool holds it (`ESceneObjectTool::ESceneObjectTool`,
-  /// `ESceneObjectTools.cpp:17`): scale 1 to 1, rotation 0 to 0, no objects. Its `LoadLTX` reads every key
-  /// (`ESceneObjectToolsIO.cpp:31`), so a part without them does not open.
+  /// The `[appendrandom]` a new scene object tool holds (`ESceneObjectTool::ESceneObjectTool`): scale 1 to 1, rotation
+  /// 0 to 0, no objects. Its `LoadLTX` reads every key, so a part without them does not open.
   fn write_new_tool_data(tool_data: &mut IniFile) {
     let section: &mut IniSection = tool_data.section_mut(Self::APPEND_RANDOM_SECTION);
 

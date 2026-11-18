@@ -13,7 +13,7 @@ use crate::part::editable_part_object::EditablePartObject;
 pub struct EditableSoundEnvironmentObject {
   pub object: EditableCustomObject,
   pub shape: EditableShape,
-  /// `env_inner`, the environment inside the box; the export skips a volume whose two are the same or either empty.
+  /// `env_inner`, the environment inside the box.
   pub inner: String,
   /// `env_outer`, the environment outside it.
   pub outer: String,
@@ -23,8 +23,8 @@ impl EditableSoundEnvironmentObject {
   /// `SOUND_ENV_VERSION`, written over the shape's own `version` and the only one `LoadLTX` reads.
   pub const VERSION: u32 = 0x12;
 
-  /// The box the volume's environments are split by in world space, `ESoundEnvironment::get_box`: the object's
-  /// transform times its first element's matrix. None when the first element is not a box, which the editor asserts on.
+  /// The world-space box splitting the volume's environments, `ESoundEnvironment::get_box`. None when the first element
+  /// is not a box, which the editor asserts on.
   pub fn get_box(&self) -> Option<Matrix4x4> {
     match self.shape.elements.first()? {
       EditableShapeElement::Box(matrix) => Some(self.object.transform.to_matrix().multiply(&Matrix4x4::from(matrix))),
@@ -32,8 +32,8 @@ impl EditableSoundEnvironmentObject {
     }
   }
 
-  /// The box holding the volume in world space, `CEditShape::GetBox`: its shape's bounds placed by its transform. None
-  /// for a shape of no elements, which the editor asserts on.
+  /// The world-space box holding the volume, `CEditShape::GetBox`. None for a shape of no elements, which the editor
+  /// asserts on.
   pub fn get_bounds(&self) -> Option<Aabb> {
     Some(self.shape.get_bounds()?.transform(&self.object.transform.to_matrix()))
   }

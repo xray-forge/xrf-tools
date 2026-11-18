@@ -9,7 +9,7 @@ use crate::source::chunk_data_source::ChunkDataSource;
 use crate::writer::chunk_writer::ChunkWriter;
 
 /// A value a format may leave out, framed through the engine's `NET_Packet` primitives (such as a leading presence
-/// flag), read and written both as bytes and as fields. Its [`ChunkReadWriteOptional`] is its fields over a
+/// flag), the optional form of [`crate::ChunkFieldReadWrite`]. Implementors get [`ChunkReadWriteOptional`] over a
 /// [`ChunkReader`] and [`ChunkWriter`].
 pub trait ChunkFieldReadWriteOptional: Sized {
   /// # Errors

@@ -7,8 +7,8 @@ use crate::scene::editable_group_member::EditableGroupMember;
 use crate::scene::editable_group_tool::EditableGroupTool;
 use crate::scene::editable_level_scene::EditableLevelScene;
 
-/// One object tool's objects in a scene as the editor loads them: the group tool's members of the tool's class first,
-/// since it loads the group tool (class 0) before the others, then the objects of the tool's own part.
+/// One object tool's objects in a scene as the editor loads them: group members of the tool's class first, since the
+/// group tool (class 0) loads first, then the tool's own part.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EditableToolObjects<O> {
   /// The groups' members of the tool's class, in the order the group tool's files hold them.
@@ -18,12 +18,12 @@ pub struct EditableToolObjects<O> {
 }
 
 impl<O: EditableToolObject> EditableToolObjects<O> {
-  /// The objects of tool `O` the scene holds, a new tool's empty part standing for one it lacks, made with `guid`.
+  /// The objects of tool `O` the scene holds; a tool the scene lacks reads as a new empty part under `guid`.
   ///
   /// # Errors
   ///
-  /// Returns an error when the tool's part does not read as [`EditableObjectPart::read_from_scene_tool`] reads it, or
-  /// the group tool's members of its class do not read as [`EditableGroupTool::read_grouped_members`] reads them.
+  /// Returns an error as [`EditableObjectPart::read_from_scene_tool`] or [`EditableGroupTool::read_grouped_members`]
+  /// does.
   pub fn read(scene: &EditableLevelScene, guid: EditableLevelGuid) -> XrfResult<Self> {
     Ok(Self {
       members: match scene.get_tool(EditableGroupTool::TOOL_NAME) {
@@ -37,8 +37,8 @@ impl<O: EditableToolObject> EditableToolObjects<O> {
     })
   }
 
-  /// Every object in the order the editor holds them once loaded, the members then the part's own, each with its
-  /// place in that order: the index a scene's object is named by.
+  /// Every object in the editor's loaded order, members first, each with its index in that order, which a scene's
+  /// object is named by.
   pub fn iter_indexed(&self) -> impl Iterator<Item = (u32, &O)> {
     (0u32..).zip(
       self
@@ -49,7 +49,7 @@ impl<O: EditableToolObject> EditableToolObjects<O> {
     )
   }
 
-  /// The tool's part as the editor holds it once loaded: its objects the members, then its own.
+  /// The tool's part as the editor holds it once loaded, the members' objects before its own.
   pub fn into_part(self) -> EditableObjectPart<O> {
     let Self { members, mut part } = self;
     let mut objects: Vec<O> = members.into_iter().map(|member| member.object).collect();

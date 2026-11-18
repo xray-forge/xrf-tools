@@ -8,16 +8,14 @@ use crate::ltx::{Ltx, Section};
 
 /// Writes fields into one named section of a config, creating the section on the first write.
 ///
-/// A config can be written record by record, a setter each, so its costs are paid per field across hundreds of
-/// thousands of records: the section is found once, not per field, a key the section before it already holds shares
-/// that text instead of storing the name again, and a value is formatted straight into the text the field keeps. A
-/// caller that only writes the file uses [`crate::LtxRecordWriter`] instead, which builds no config.
+/// Built for hundreds of thousands of records: the section is found once, a key the previous section holds shares its
+/// text, and a value is formatted straight into the field. A caller that only writes the file uses
+/// [`crate::LtxRecordWriter`], which builds no config.
 pub struct SectionSetter<'a> {
   ltx: &'a mut Ltx,
-  /// The section's name until the first write places it, which then moves it into the config.
+  /// The section's name until the first write moves it into the config.
   section_name: String,
-  /// Where the section sits once a write has found or placed it. Nothing else can move it while this setter holds the
-  /// config.
+  /// Where the section sits once found or placed; nothing moves it while this setter holds the config.
   index: Option<usize>,
 }
 
@@ -30,7 +28,7 @@ impl<'a> SectionSetter<'a> {
     }
   }
 
-  /// Remove a field from this section, if the section and the field exist.
+  /// Removes a field, if the section and the field exist.
   pub fn delete(&'a mut self, key: &str) -> &'a mut Self {
     if let Some(index) = self.find() {
       self.ltx.sections[index].remove(key);
@@ -39,7 +37,6 @@ impl<'a> SectionSetter<'a> {
     self
   }
 
-  /// Get the entry in this section with `key`.
   pub fn get(&'a mut self, key: &str) -> Option<&'a str> {
     let index: usize = self.find()?;
 
@@ -56,7 +53,7 @@ impl<'a> SectionSetter<'a> {
     self.ltx.sections[index].insert_shared(key, Arc::from(value));
   }
 
-  /// Where the section is, if it is there yet.
+  /// Where the section is, if it exists yet.
   fn find(&mut self) -> Option<usize> {
     if self.index.is_none() {
       self.index = self.ltx.sections.get_index_of(self.section_name.as_str());
@@ -65,7 +62,7 @@ impl<'a> SectionSetter<'a> {
     self.index
   }
 
-  /// Where the section is, placed at the end of the config when it is not there yet.
+  /// Where the section is, placed at the end of the config when missing.
   fn place(&mut self) -> usize {
     match self.find() {
       Some(index) => index,

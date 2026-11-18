@@ -44,8 +44,8 @@ impl EditableDetailObject {
     }
   }
 
-  /// The object as `EDetail::Load` reads its chunk, but for the editor's fixes to a zero minimum scale and a maximum
-  /// below it, which happen as it loads and are kept as stored here.
+  /// The object as `EDetail::Load` reads its chunk, but keeping as stored a zero minimum scale or a maximum below it,
+  /// which the editor fixes on load.
   ///
   /// # Errors
   ///

@@ -7,29 +7,26 @@ use crate::reader::chunk_reader::ChunkReader;
 use crate::source::chunk_data_source::ChunkDataSource;
 use crate::writer::chunk_writer::ChunkWriter;
 
-/// How a container's children were laid out in a file, apart from what they hold: the order the file stored them in,
-/// and the children no field of the container takes, kept as stored.
+/// How a file laid out a container's children: their stored order, and the children no field takes, kept as stored.
 ///
-/// A format that finds its chunks by id gives that order no meaning, and its own writer puts chunks down in one order of
-/// its own; keeping the stored order is what lets a file another writer laid out come back byte for byte. The default
-/// is the layout of a container built in code: nothing kept, and the format's own order.
+/// Formats that find chunks by id ignore that order and write their own; keeping it lets a file from another writer
+/// round trip byte for byte. The default, for a container built in code, keeps nothing and uses the format's order.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ChunkLayout {
   /// The children's ids in the order the file stored them.
   pub order: Vec<u32>,
-  /// The children no field takes, a second copy of one that a field does included, in the order they were read.
+  /// Children no field takes, including a repeat of an id a field took, in read order.
   pub kept: Vec<ChunkPayload>,
 }
 
 impl ChunkLayout {
-  /// Reads every child of `reader`, handing each to `fold`, which takes it into a field and answers `true`, or answers
-  /// `false` to have it kept as stored.
+  /// Reads every child of `reader` through `fold`, which returns `true` when it took the child into a field and
+  /// `false` to keep it as stored.
   ///
   /// # Errors
   ///
-  /// Returns an error when the children are not well-formed chunks, one is compressed (which
-  /// [`ChunkReader::read_children`] refuses rather than keep bytes that would read as something else), or `fold`
-  /// returns one.
+  /// Returns an error when the children are not well-formed chunks, one is compressed (as
+  /// [`ChunkReader::read_children`] refuses), or `fold` fails.
   pub fn read<D: ChunkDataSource>(
     reader: &mut ChunkReader<D>,
     mut fold: impl FnMut(&mut ChunkReader<D>) -> XrfResult<bool>,
@@ -54,8 +51,8 @@ impl ChunkLayout {
     Ok(layout)
   }
 
-  /// Puts down the children `sequence` encoded and the kept ones: in [`Self::order`] first, each id taking the first
-  /// child with that id not yet written, then the rest in the order they were pushed, the kept ones last.
+  /// Writes the encoded and kept children in [`Self::order`], each id taking the first unwritten child with it, then
+  /// the rest in push order, kept ones last.
   ///
   /// # Errors
   ///
@@ -77,7 +74,6 @@ mod tests {
     ChunkLayout, ChunkPayload, ChunkReader, ChunkSequence, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder,
   };
 
-  /// Children framed one after another under a parent's payload.
   fn container(children: &[ChunkPayload]) -> XrfResult<ChunkReader<InMemoryChunkDataSource>> {
     let mut payload: ChunkWriter = ChunkWriter::new();
 
@@ -95,7 +91,6 @@ mod tests {
     }
   }
 
-  /// A container whose writer knows ids 10 and 20 and writes them in that order.
   struct Pair {
     first: Option<u8>,
     second: Option<u8>,
@@ -150,7 +145,7 @@ mod tests {
 
   #[test]
   fn a_container_comes_back_in_the_order_its_file_stored_it() -> XrfResult {
-    // Stored the other way round from the writer's own order, with a chunk nothing names in between.
+    // Reversed from the writer's order, with an unknown chunk in between.
     let stored: Vec<ChunkPayload> = vec![payload(20, &[2]), payload(99, &[9, 9]), payload(10, &[1])];
     let pair: Pair = Pair::read(&stored)?;
 

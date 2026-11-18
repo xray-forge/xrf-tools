@@ -7,8 +7,7 @@ use crate::mip::dds_mipmaps::DdsMipmaps;
 /// A base image and the reduced levels below it, ready to be encoded as they are.
 ///
 /// Every level is reduced from the base rather than from the level above it, so a wide kernel is applied once instead
-/// of compounding its own output. For a box kernel the two would be the same picture, since averaging four 2x2 averages
-/// is averaging 4x4, but for each level being rounded to bytes before the next is reduced from it.
+/// of compounding its own output, and no level inherits the one above's rounding to bytes.
 ///
 /// Channels are resampled independently and alpha is never premultiplied. That is wrong for a picture whose
 /// transparent texels carry no colour, and right for this format: X-Ray packs a bump pair's normal, gloss, error and

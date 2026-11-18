@@ -7,7 +7,7 @@ editor tool. The editor calls it `EScene`; this crate says "editable level", aft
 [xrf-editable-object](../xrf-editable-object/README.md), which reads the `.object` files a scene places.
 
 A scene read as an `EditableLevelScene` writes its files back byte for byte. A typed tool's `to_part` writes its part's
-two chunks in the editor's fixed order instead of the file's.
+two chunks in the editor's order, so a part stored in another order comes back reordered.
 
 ## Read a scene
 
@@ -70,12 +70,16 @@ Typed values are for use; the kept text is what writes back. Not every saved num
 
 ### Binary parts
 
-The AI map, detail objects and wall marks are saved as chunks. A binary part keeps the tool's stream as bytes, and its
-chunk order and any chunk the editor never writes in a `ChunkLayout`, which a typed tool's `to_part` does not carry
-over. Each typed tool does the same with its stream's chunks: every chunk it reads must be read whole, and one the tool
-does not save (xray-re's `0x7777` in all three) is kept in the tool's `layout` and written back. Detail objects and
-wall mark slots are numbered from 0 as the editor opens them, and the detail slots must fill the header's grid, on read
-and on write.
+The AI map, detail objects and wall marks are saved as chunks. A binary part keeps the tool's stream as bytes, with
+its chunk order and any chunk the editor never writes in a `ChunkLayout`; a typed tool's `to_part` does not carry that
+layout over.
+
+Each typed tool keeps its own stream's chunks the same way:
+
+- Every chunk it reads must be read whole.
+- A chunk the tool does not save (xray-re's `0x7777` in all three) is kept in the tool's `layout` and written back.
+- Detail objects and wall mark slots are numbered from 0 as the editor opens them, and the detail slots must fill the
+  header's grid, on read and on write.
 
 A tool's stream reads typed where its tool is typed. `EditableWallmarkTool` (`ESceneWallmarkTool`) holds the wall mark
 brush and its decals in slots, read as `LoadStream` reads versions 3 and 4 and written as `SaveStream` writes version
@@ -91,8 +95,8 @@ files read and write back byte for byte.
 `EditableAiMapTool` (`ESceneAIMapTool`) holds the AI map: the generator's settings (`EditableAiMapParams`, `SAIParams`),
 the box node heights are packed across, and each `EditableAiMapNode` (`SAINode`: four three-byte links, the packed
 plane normal, the cell and height as an `xrf-math` `AiNodePosition`, the editor's flags), with the editor's own
-settings and snap objects; `get_node_position` unpacks a node as `UnpackPosition` does. The SDK's four `ai_map.part` files, GSC's `labx8` of 6,781
-nodes among them, read and write back byte for byte.
+settings and snap objects; `get_node_position` unpacks a node as `UnpackPosition` does. The SDK's four `ai_map.part`
+files, GSC's `labx8` of 6,781 nodes among them, read and write back byte for byte.
 
 ## Typed objects
 

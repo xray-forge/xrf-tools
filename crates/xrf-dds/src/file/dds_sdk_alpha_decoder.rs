@@ -1,10 +1,9 @@
 //! The alpha the X-Ray SDK's compilers read from a texture, as their image library, FreeImage 3.9, decodes it.
 //!
-//! The compilers load an image through FreeImage, take its 32-bit pixels and flip them back into the file's row order,
-//! so a texel's alpha is the base level's, top row first. FreeImage interpolates a DXT5 block's alpha rounding to
-//! nearest, `((6 - i) * a0 + (1 + i) * a1 + 3) / 7`, where `image_dds` rounds `+ 1` and so reads some texels one step
-//! lower; it drops the alpha bits of a 16-bit packing and has none for a 24-bit one, whose texels then read opaque; and
-//! it reads no DX10 header, alpha-only or luminance layout at all.
+//! The compilers flip FreeImage's 32-bit pixels back into the file's row order, so alpha is the base level's, top row
+//! first. FreeImage rounds DXT5 interpolated alpha to nearest, `((6 - i) * a0 + (1 + i) * a1 + 3) / 7`, where
+//! `image_dds` adds 1 and reads some texels a step lower. It reads 16-bit and 24-bit packings opaque, and loads no DX10
+//! header, alpha-only or luminance layout.
 
 use ddsfile::{Dds, FourCC, PixelFormatFlags};
 use image::GrayImage;
@@ -21,8 +20,7 @@ impl DdsSdkAlphaDecoder {
   ///
   /// # Errors
   ///
-  /// Returns an error for a layout FreeImage 3.9 does not load, a level with no texels, a block-compressed level whose
-  /// sides are not whole blocks, or a payload shorter than the level.
+  /// Returns an error where [`crate::DdsFile::decode_sdk_alpha`] does.
   pub(crate) fn decode(dds: &Dds) -> XrfResult<GrayImage> {
     let format = &dds.header.spf;
     let (width, height) = (dds.get_width(), dds.get_height());
@@ -109,8 +107,7 @@ impl DdsSdkAlphaDecoder {
     Ok(image)
   }
 
-  /// A DXT1 block: its fourth colour is transparent where the first endpoint is not above the second, and every other
-  /// texel opaque.
+  /// A DXT1 block: index 3 transparent where the first endpoint is not above the second, every other texel opaque.
   fn decode_dxt1_block(block: &[u8], alphas: &mut [u8; 16]) {
     let first: u16 = u16::from_le_bytes([block[0], block[1]]);
     let second: u16 = u16::from_le_bytes([block[2], block[3]]);
@@ -131,7 +128,7 @@ impl DdsSdkAlphaDecoder {
     }
   }
 
-  /// A DXT5 block: two endpoints and three bits a texel choosing among them and the values between, FreeImage's way.
+  /// A DXT5 block, its interpolated alpha rounded FreeImage's way.
   fn decode_dxt5_block(block: &[u8], alphas: &mut [u8; 16]) {
     let first: u32 = u32::from(block[0]);
     let second: u32 = u32::from(block[1]);
@@ -157,8 +154,7 @@ impl DdsSdkAlphaDecoder {
     }
   }
 
-  /// The base level's bytes, which come first in the payload. `length` is taken wide, so a product of a header's sides
-  /// cannot wrap short of what it claims.
+  /// The base level's bytes, which lead the payload. `length` is `u128` so a product of a header's sides cannot wrap.
   fn get_level(dds: &Dds, length: u128) -> XrfResult<&[u8]> {
     usize::try_from(length)
       .ok()
@@ -186,7 +182,6 @@ mod tests {
   use crate::mip::dds_mip_chain::DdsMipChain;
   use crate::mip::dds_mipmaps::DdsMipmaps;
 
-  /// A DDS of `width` by `height` with the pixel format's flags, FourCC, bit count and masks, then `payload`.
   fn dds(size: [u32; 2], flags: u32, fourcc: u32, bits: u32, masks: [u32; 4], payload: &[u8]) -> Dds {
     let mut header: [u32; 31] = [0; 31];
 
@@ -211,7 +206,6 @@ mod tests {
     Dds::read(&mut Cursor::new(bytes)).expect("expect the crafted header to parse")
   }
 
-  /// A DXT5 block of two alpha endpoints whose sixteen texels all choose `index`, its colour black.
   fn dxt5_block(endpoints: [u8; 2], index: u64) -> Vec<u8> {
     let indices: u64 = (0..16).fold(0, |bits, texel| bits | (index << (texel * 3)));
     let mut block: Vec<u8> = endpoints.to_vec();
@@ -250,7 +244,6 @@ mod tests {
     Ok(())
   }
 
-  /// The alpha `image_dds` decodes the base level to.
   fn image_dds_alphas(dds: &Dds) -> Vec<u8> {
     image_dds::image_from_dds(dds, 0)
       .expect("expect image_dds to decode the level")
@@ -261,8 +254,7 @@ mod tests {
 
   #[test]
   fn reads_dxt1_alpha_as_image_dds_does() -> XrfResult {
-    // The texels cycle through the four indices; the fourth is transparent only where the first endpoint is not above
-    // the second, the three-colour mode.
+    // The texels cycle through the four indices; the fourth is transparent only in the three-colour mode.
     let indices: [u8; 4] = [0b1110_0100; 4];
     let three_colour: Vec<u8> = [&[0x00, 0x00, 0xff, 0xff][..], &indices].concat();
     let four_colour: Vec<u8> = [&[0xff, 0xff, 0x00, 0x00][..], &indices].concat();

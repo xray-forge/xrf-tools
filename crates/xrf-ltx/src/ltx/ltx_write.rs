@@ -55,15 +55,12 @@ impl Ltx {
 
   /// The file's bytes, in the Windows-1251 encoding the read path decodes.
   ///
-  /// Rendered as text first and encoded whole, because the text is Rust's UTF-8, which the next read would decode as
-  /// something else. ASCII text, as an exported spawn or particle library is, encodes to itself, so its buffer is
-  /// handed back as the bytes rather than copied.
+  /// ASCII text, as an exported spawn or particle library is, hands its buffer back as the bytes without a copy.
   pub fn write_to_bytes(&self) -> XrfResult<Vec<u8>> {
     Ok(encode_string_into_w1251_bytes(self.render())?)
   }
 
-  /// The text of the file, measured by a first pass so a document of tens of megabytes is laid down once rather than
-  /// copied each time a growing buffer doubles.
+  /// The text of the file, sized by a first pass so tens of megabytes are not copied each time a buffer doubles.
   fn render(&self) -> String {
     let mut length: usize = 0;
 
@@ -76,7 +73,7 @@ impl Ltx {
     rendered
   }
 
-  /// Hands `emit` the file's text piece by piece, in order: the one place its layout is written down.
+  /// Hands `emit` the file's text piece by piece, in order: the one place its layout is defined.
   fn render_pieces(&self, mut emit: impl FnMut(&str)) {
     let mut firstline: bool = true;
 
@@ -199,8 +196,6 @@ a3 = n3
     }
   }
 
-  /// Includes, parents and root fields each take their own branch of the layout, and the text is sized before it is
-  /// written, so the exact bytes are pinned here.
   #[test]
   fn writes_includes_parents_and_root_fields_in_their_places() {
     let mut ltx: Ltx = Ltx::new();

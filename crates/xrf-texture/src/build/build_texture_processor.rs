@@ -252,7 +252,7 @@ mod tests {
       u8::MAX
     );
 
-    // `tfADXT1` says the opposite: BC1 whose one bit of alpha cuts out the transparent texels of a fence or a leaf.
+    // `tfADXT1` says the opposite: BC1's one bit of alpha cuts the transparent texels out.
     let cut_out: BuildTextureResult = BuildTextureProcessor::build(&options(
       "dxt1a",
       descriptor(ThmFormat::Dxt1Alpha, &[], ThmMipFilter::Box),

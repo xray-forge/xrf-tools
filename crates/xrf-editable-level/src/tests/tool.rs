@@ -85,7 +85,7 @@ fn a_wall_mark_tool_saved_as_its_part_reads_back_the_same() -> XrfResult {
   Ok(())
 }
 
-/// GSC's multiplayer scenes keep a wall mark tool of no decal, its decal chunk empty.
+// As GSC's multiplayer scenes keep it.
 #[test]
 fn a_wall_mark_tool_of_no_decal_reads_back_the_same() -> XrfResult {
   let empty: EditableWallmarkTool = EditableWallmarkTool::new(Vec::new());
@@ -333,8 +333,6 @@ fn an_ai_map_tool_saved_as_its_part_reads_back_the_same() -> XrfResult {
   Ok(())
 }
 
-/// A node stands on its cell, the patch size from the world origin, at its height spread across the box.
-/// `stream` with one more chunk, `id`, after its own.
 fn with_chunk(mut stream: Vec<u8>, id: u32) -> XrfResult<Vec<u8>> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
@@ -344,8 +342,7 @@ fn with_chunk(mut stream: Vec<u8>, id: u32) -> XrfResult<Vec<u8>> {
   Ok(stream)
 }
 
-/// A chunk the tool does not save, as a converter such as xray-re adds (`0x7777`), comes back on a typed write rather
-/// than being lost.
+// As a converter such as xray-re adds (`0x7777`).
 #[test]
 fn each_binary_tool_keeps_a_chunk_it_does_not_save() -> XrfResult {
   let wallmarks: Vec<u8> = with_chunk(tool().write_to_bytes::<XRayByteOrder>()?, 0x7777)?;
@@ -368,7 +365,7 @@ fn each_binary_tool_keeps_a_chunk_it_does_not_save() -> XrfResult {
   Ok(())
 }
 
-/// The level's details index the slots by the header's grid, so slots that do not fill it are refused both ways.
+// The level's details index the slots by the header's grid.
 #[test]
 fn refuses_detail_slots_that_do_not_fill_the_grid() -> XrfResult {
   let mut wider: EditableDetailObjectTool = detail_tool();
@@ -390,6 +387,7 @@ fn refuses_detail_slots_that_do_not_fill_the_grid() -> XrfResult {
   Ok(())
 }
 
+// A node stands on its cell, the patch size from the world origin, at its height spread across the box.
 #[test]
 fn unpacks_a_nodes_position_as_the_editor_does() {
   let tool: EditableAiMapTool = ai_map_tool();

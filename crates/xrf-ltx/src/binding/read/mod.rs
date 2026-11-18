@@ -1,5 +1,4 @@
-//! Reading records: the trait an import reads through, and the reader that hands a record file's sections over one at
-//! a time as they are parsed.
+//! Reading records: the trait an import reads through, and a reader that streams a record file's sections.
 
 pub(crate) mod ltx_read;
 pub(crate) mod ltx_record;

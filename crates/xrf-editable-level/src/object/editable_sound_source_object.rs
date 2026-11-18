@@ -10,9 +10,9 @@ use crate::part::editable_part_object::EditablePartObject;
 /// A sound the scene plants, `ESoundSource`: an object of `sound_src.part`, which the build exports into
 /// `level.snd_static`.
 ///
-/// The sound stands at its own position: `ESoundSource` overrides `SetPosition`, so the object's transform stays where
-/// it was created and moves nothing. The distances are the sound file's own, which the editor reads again from the file
-/// on load (`ESoundSource::ResetSource`), and the export leaves them out.
+/// The sound stands at [`Self::position`]: `ESoundSource` overrides `SetPosition`, so the object's transform moves
+/// nothing. The editor rereads the distances from the sound file on load (`ESoundSource::ResetSource`), and the export
+/// leaves them out.
 #[derive(Clone, Debug, PartialEq)]
 pub struct EditableSoundSourceObject {
   pub object: EditableCustomObject,

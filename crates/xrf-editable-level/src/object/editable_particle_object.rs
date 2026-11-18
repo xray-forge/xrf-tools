@@ -10,7 +10,7 @@ use crate::part::editable_part_object::EditablePartObject;
 #[derive(Clone, Debug, PartialEq)]
 pub struct EditableParticleObject {
   pub object: EditableCustomObject,
-  /// The effect it plays, a definition inside `particles.xr` such as `industrial_particles\exhaust_isparenie_blue_down`.
+  /// The effect it plays, a definition in `particles.xr` such as `industrial_particles\exhaust_isparenie_blue_down`.
   pub reference: String,
   /// The game modes it plays in, one bit each (`GameTypeChooser`), all set for every mode.
   pub game_types: u16,

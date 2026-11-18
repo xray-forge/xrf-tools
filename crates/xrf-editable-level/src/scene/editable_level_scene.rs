@@ -34,8 +34,7 @@ impl EditableLevelScene {
   ///
   /// # Errors
   ///
-  /// Returns an error when the `.level` does not read, as [`Self::read_from_source`] does, or when a tool's walk stops
-  /// at a part that does not read.
+  /// Returns an error as [`Self::read_from_source`] does, or when the `.level` or any part does not read.
   pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(level_path: &P) -> XrfResult<Self> {
     let directory: EditableScenePartDirectory = EditableScenePartDirectory {
       directory: Self::get_parts_directory(level_path.as_ref()),
@@ -54,18 +53,16 @@ impl EditableLevelScene {
     Ok(read.scene)
   }
 
-  /// Reads a scene's parts from `source` as `EScene::LoadLevelPartLTX` finds them: for every `<tool>.part` the
-  /// directory holds, that file and the numbered ones after it as long as they follow without a gap, the tools by name.
-  /// A binary part's data is its tool's class ([`EditableBinaryPart::get_tool_class_id`]). Any other file, such as a
-  /// `.~part` copy of an earlier save, is not part of the scene. A file that is not read, does not read as a part or
-  /// carries no GUID stops its tool's walk there, so each tool's parts stay in their files' places; the read keeps it
-  /// beside the scene with why.
+  /// Reads a scene's parts from `source` as `EScene::LoadLevelPartLTX` finds them: for each `<tool>.part`, that file
+  /// and the numbered ones following it without a gap. Other files, such as a `.~part` copy, are not part of the scene.
+  ///
+  /// A file that does not read as a part with a GUID stops its tool's walk there, so each tool's parts keep their
+  /// files' places; the read keeps the file beside the scene with the reason.
   ///
   /// # Errors
   ///
-  /// Returns an error when `level` carries no GUID, the directory cannot be listed, or a part carries a GUID other than
-  /// the scene's: a stale part the editor would skip, which refuses the scene here rather than open it without the
-  /// tool's objects.
+  /// Returns an error when `level` carries no GUID, the directory cannot be listed, or a part carries another GUID: the
+  /// editor would skip that stale part, so the scene is refused rather than opened without the tool's objects.
   pub fn read_from_source<T: ByteOrder>(
     level: EditableLevelFile,
     source: &impl EditableScenePartSource,
@@ -157,9 +154,7 @@ impl EditableLevelScene {
   ///
   /// # Errors
   ///
-  /// Returns an error, before writing anything, when the directory holds a part file the scene would not write: the
-  /// editor would read it as part of the scene, a tool the scene no longer has or a numbered file past its last.
-  /// Returns an error too when a file cannot be written as its own writer says.
+  /// Returns an error, before writing anything, as [`Self::check_writable`] does, or when a file cannot be written.
   pub fn write_to_path<T: ByteOrder, P: AsRef<Path>>(&self, level_path: &P) -> XrfResult {
     self.check_writable(level_path.as_ref())?;
     self.level.write_to_path(level_path)?;
@@ -175,15 +170,14 @@ impl EditableLevelScene {
     Ok(())
   }
 
-  /// Checks, writing nothing, that [`Self::write_to_path`] would not refuse the scene at `level_path`: that every tool
-  /// names one file, no two of them the same, and the part directory beside it holds no part file the scene would not
-  /// write. Names are compared without case, as Windows and the editor compare them.
+  /// Checks, writing nothing, that [`Self::write_to_path`] would accept the scene at `level_path`. Names compare
+  /// without case, as Windows and the editor compare them.
   ///
   /// # Errors
   ///
-  /// Returns an error naming the first such file, which the editor would read as part of the scene: a tool the scene
-  /// does not have, or a numbered file past a tool's last. Returns an error too when a tool's name is not one file name,
-  /// two tools write the same file, or the directory cannot be listed.
+  /// Returns an error when a tool's name is not one file name, two tools write the same file, the directory cannot be
+  /// listed, or it holds a part file the scene would not write and the editor would read: a tool the scene lacks, or a
+  /// numbered file past a tool's last.
   pub fn check_writable(&self, level_path: &Path) -> XrfResult {
     let directory: PathBuf = Self::get_parts_directory(level_path);
     let mut written: HashSet<String> = HashSet::new();

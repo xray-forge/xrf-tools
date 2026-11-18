@@ -8,9 +8,8 @@ use crate::mip::dds_mip_filter::DdsMipFilter;
 /// Channels a texture carries, which the passes below walk one at a time.
 const CHANNELS: usize = 4;
 
-/// Bytes the horizontally reduced rows of one slab may take. A wide kernel reducing a large base would otherwise hold
-/// every source row reduced at once, `destination width x source height` values: 268 MB for the first level of a 4096
-/// square base.
+/// Bytes the horizontally reduced rows of one slab may take. Reducing every source row at once would hold 268 MB for
+/// the first level of a 4096 square base.
 const SLAB_BYTES: usize = 32 << 20;
 
 /// One reduction of an image to a smaller size, with the windows each destination pixel reads prepared up front.
@@ -38,10 +37,9 @@ impl DdsMipResampler {
 
   /// Applies the reduction, one axis after the other.
   ///
-  /// The horizontal pass answers rows that the vertical pass then reduces, and they are kept as `f64` between the two
-  /// so a value is rounded to a byte once, at the end, rather than at every axis. Destination rows are taken in slabs
-  /// whose source rows fit [`SLAB_BYTES`], a row of either pass at a time on every worker. Each value is summed over
-  /// its window in the window's order whichever worker takes it, so the result does not depend on the split.
+  /// Values stay `f64` between the passes and are rounded to a byte once, at the end. Destination rows go in slabs
+  /// whose source rows fit [`SLAB_BYTES`], spread over every worker; each value sums its window in order, so the split
+  /// never changes a byte.
   pub(crate) fn resample(&self, source: &RgbaImage) -> RgbaImage {
     let row_length: usize = self.width as usize * CHANNELS;
     let source_row_length: usize = source.width() as usize * CHANNELS;
@@ -75,8 +73,7 @@ impl DdsMipResampler {
     destination
   }
 
-  /// The slab starting at destination row `first`: as many rows as fit in `slab_rows` source rows, and at least one
-  /// whatever its window spans.
+  /// The slab from destination row `first`: the rows whose windows fit `slab_rows` source rows, at least one.
   fn next_slab(&self, first: usize, slab_rows: usize) -> DdsMipSlab {
     let mut sources: Range<usize> = self.vertical[first].span();
     let mut last: usize = first + 1;
@@ -118,8 +115,7 @@ impl DdsMipResampler {
     }
   }
 
-  /// One destination row: the reduced rows of `slab`, the first of which is source row `slab_start`, weighed down the
-  /// vertical window and rounded into bytes.
+  /// One destination row from the reduced rows of `slab`, which starts at source row `slab_start`, rounded to bytes.
   fn reduce_column(taps: &DdsMipTaps, slab: &[f64], slab_start: usize, sums: &mut [f64], row: &mut [u8]) {
     let row_length: usize = row.len();
 
@@ -245,8 +241,7 @@ mod tests {
       .collect()
   }
 
-  /// The reduction as one sum per pixel and channel over the whole window, read pixel by pixel: what the slabs must
-  /// answer byte for byte.
+  // One sum per pixel and channel over the whole window: what the slabs must answer byte for byte.
   fn reduced_directly(resampler: &DdsMipResampler, source: &RgbaImage) -> RgbaImage {
     let weigh = |taps: &DdsMipTaps, sample_at: &dyn Fn(usize) -> f64| -> f64 {
       taps
@@ -287,8 +282,7 @@ mod tests {
 
   #[test]
   fn answers_every_pixel_as_one_sum_over_its_window_whatever_the_slabs() {
-    // An oblong of noise in every channel, reduced by kernels with and without negative lobes, at sizes whose slabs
-    // hold a few rows each: the split must not show in a single byte.
+    // Kernels with and without negative lobes, at sizes whose slabs hold a few rows each.
     let byte = |value: u32| u8::try_from(value % 256).unwrap_or_default();
     let source: RgbaImage = RgbaImage::from_fn(67, 45, |x, y| {
       Rgba([

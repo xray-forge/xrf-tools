@@ -16,9 +16,8 @@ pub enum EditableFogVolumeKind {
   Occlusion,
 }
 
-/// A body of volumetric fog, `EFogVolume`: an object of `fog_volume.part`, a shape whose transform alone places the
-/// unit box the renderer simulates in. The build exports `level.fog_vol` from its groups, each one emitter and the
-/// occlusion volumes it flows around.
+/// A body of volumetric fog, `EFogVolume`, in `fog_volume.part`: a shape whose transform alone places the unit box the
+/// renderer simulates in. The build exports each group, one emitter and its occlusion volumes, into `level.fog_vol`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct EditableFogVolumeObject {
   pub object: EditableCustomObject,

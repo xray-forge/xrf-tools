@@ -31,8 +31,8 @@ impl EditableLevelOptions {
   /// `eGameIDSingle`, the game type of a single-player level.
   pub const SINGLE_PLAYER: u16 = 1;
 
-  /// The options of a new level named `name` serving `game_type`, as `st_LevelOptions::Reset` gives them otherwise:
-  /// built into and prefixed by its name, no build options, map version 1.0, both light qualities 3.
+  /// A new level's options as `st_LevelOptions::Reset` gives them, `name` as path and prefix: no build options, map
+  /// version 1.0, both light qualities 3.
   pub fn new(name: &str, game_type: u16) -> Self {
     Self {
       level_path: name.to_owned(),

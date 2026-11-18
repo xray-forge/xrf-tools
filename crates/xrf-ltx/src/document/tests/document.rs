@@ -6,7 +6,6 @@ use crate::dialect::{LtxStandardDialect, LtxTextInterner};
 use crate::document::{LtxCheck, LtxDocument, LtxItem, LtxItemKind};
 use crate::ltx::Ltx;
 
-/// A held document lowered under standard rules, as a root's resolution lowers each file it reads.
 fn lower(document: &LtxDocument) -> XrfResult<Ltx> {
   LtxStandardDialect::lower_with(document, &mut LtxTextInterner::default())
 }
@@ -264,13 +263,8 @@ fn the_header_directive_is_recorded_on_the_document() -> XrfResult {
   Ok(())
 }
 
-/// Reading one document lowers each statement as it is parsed, and has to answer exactly what lowering the whole parsed
-/// document answers: the same sections in the same order, root fields and empty declared sections included, and the
-/// same error, of the same kind and at the same line and column.
-///
-/// Every ordered three lines of a pool holding each statement the parser reads and each it refuses, and each refusal
-/// lowering makes (a section or include named twice, every DLTX operation), under each line break: so every error meets
-/// every other in both orders, and every refusal sits above and below every parse error.
+// Every ordered three lines of a pool of each statement the parser reads or refuses and each lowering refusal, under
+// each line break, so every error meets every other in both orders.
 #[test]
 fn reading_one_document_answers_what_lowering_its_parse_does() {
   const LINES: [&str; 26] = [
@@ -334,8 +328,7 @@ fn reading_one_document_answers_what_lowering_its_parse_does() {
   assert_eq!(compared, 26 * 26 * 26 * 3);
 }
 
-/// The whole text was parsed before anything was lowered, so a line that does not parse outranks a refusal written
-/// above it; reading statement by statement keeps that order.
+// Parsing whole before lowering made a parse error outrank a refusal above it; streaming keeps that order.
 #[test]
 fn a_parse_error_below_a_refusal_is_the_one_reported() {
   let error: String = Ltx::read_from_str("[twice]\n[twice]\n[not_closed\n")

@@ -6,10 +6,8 @@ use crate::document::{LtxKeyOperation, LtxSectionOperation};
 /// many lines held nothing, and a whitespace-only line is normalized to empty - which is what the formatter already
 /// does with it.
 ///
-/// Text is `Box<str>` rather than `String` in a held document: a statement is parsed once and never edited, so the
-/// growth capacity a `String` carries is eight bytes per field that nothing can ever use. The parser reads each
-/// statement with its text borrowed from the input (`S = &str`), and only a document it is kept in owns a copy: a
-/// statement lowered as it is read never allocates its text twice.
+/// A held document's text is `Box<str>`: a statement is never edited, so `String` capacity would waste eight bytes per
+/// field. The parser borrows text from the input (`S = &str`), and only a kept document owns a copy.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LtxItemKind<S = Box<str>> {
   /// A whole-line comment, without its leading `;`.

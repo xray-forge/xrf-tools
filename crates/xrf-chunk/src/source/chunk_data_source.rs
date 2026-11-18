@@ -38,9 +38,8 @@ pub trait ChunkDataSource: ReadBytesExt + Read + Clone {
 
   /// Hands the next `count` bytes to `visit` and moves past them.
   ///
-  /// For a reader that decodes a run of bytes into something else and keeps nothing of them: a source holding its bytes
-  /// in memory lends them where they lie, where reading them out first would copy every vertex and index payload once
-  /// more than decoding it does. This default reads them into a buffer.
+  /// An in-memory source lends them in place, sparing decoders of vertex and index payloads a copy. This default reads
+  /// them into a buffer.
   fn read_with<R>(&mut self, count: usize, visit: impl FnOnce(&[u8]) -> R) -> IoResult<R> {
     Ok(visit(&self.read_bytes(count)?))
   }

@@ -11,10 +11,10 @@ use xrf_error::{XrfError, XrfResult};
 use crate::vorbis::ogg_page_header::OggPageHeader;
 use crate::vorbis::vorbis_stream::VorbisStream;
 
-/// An Ogg/Vorbis sound held in `B` decoded packet by packet, each packet placed at the frame it starts on as libvorbis
-/// places it: from the stream's start, and after a seek from the granule position of the page it lands on.
+/// An Ogg/Vorbis sound held in `B`, decoded packet by packet, each placed at its first frame as libvorbis places it:
+/// counted from the stream's start, or after a seek from the granule position of the page it lands on.
 ///
-/// The headers are checked as [`crate::SoundFile`] checks them; the comments, the engine's binary parameter block among
+/// The headers are checked as [`crate::SoundFile`] checks them; the comments, the engine's parameter block among
 /// them, are not interpreted.
 pub struct VorbisDecoder<B: AsRef<[u8]>> {
   reader: PacketReader<Cursor<B>>,
@@ -23,17 +23,17 @@ pub struct VorbisDecoder<B: AsRef<[u8]>> {
   channels: u16,
   sample_rate: u32,
   samples_count: u64,
-  /// Where the first audio page starts, so the decoder seeks back to the stream's start without a page to place it.
+  /// Where the first audio page starts: a seek there needs no page to place it.
   audio_start: usize,
   /// The frame the next decoded packet starts on; unknown after a seek until a page's granule position places it.
   position: Option<u64>,
 }
 
 impl<B: AsRef<[u8]>> VorbisDecoder<B> {
-  /// Pages before a seek's landing are walked header by header once the bisection has narrowed it to this many bytes.
+  /// Bytes a seek's bisection narrows to before it walks the pages header by header.
   const WALKED_BYTES: usize = 64 * 1024;
 
-  /// Whether `bytes` start as an Ogg stream, the container this decoder reads; a sound in any other is not its to open.
+  /// Whether `bytes` start as an Ogg stream, the only container this decoder opens.
   pub fn is_ogg(bytes: &[u8]) -> bool {
     bytes.starts_with(OggPageHeader::CAPTURE)
   }
@@ -61,8 +61,8 @@ impl<B: AsRef<[u8]>> VorbisDecoder<B> {
     self.samples_count
   }
 
-  /// Moves to the last page placing a frame at or before `frame`, so the next packet decoded starts there or earlier
-  /// and the caller drops what comes before `frame` by the frame [`Self::decode_next`] answers.
+  /// Moves to the last page placing a frame at or before `frame`. The next packet starts there or earlier: the caller
+  /// drops what comes before `frame`, by the first frame [`Self::decode_next`] answers.
   ///
   /// # Errors
   ///
@@ -80,11 +80,11 @@ impl<B: AsRef<[u8]>> VorbisDecoder<B> {
     Ok(())
   }
 
-  /// Decodes the next packet that renders audio into `samples`, interleaved, replacing what they held, and answers the
-  /// frame it starts on; none once the stream has no audio left, leaving `samples` empty.
+  /// Decodes the next packet that renders audio into `samples`, interleaved, replacing their contents, and answers its
+  /// first frame; `None`, with `samples` empty, once no audio is left.
   ///
-  /// A packet the codec refuses as corrupt is skipped, as players do, and the packets after it wait for the next
-  /// page's granule position to place them.
+  /// A packet the codec refuses as corrupt is skipped, as players do; the packets after it are dropped until a page's
+  /// granule position places them.
   ///
   /// # Errors
   ///
@@ -160,9 +160,8 @@ impl<B: AsRef<[u8]>> VorbisDecoder<B> {
     }
   }
 
-  /// Where to read from to reach `frame`: the start of the last page placing a frame at or before it that hands a
-  /// reader starting there a packet, or the first audio page. A page's granule position grows with the stream, so a
-  /// bisection over the bytes narrows the search before the pages are walked.
+  /// Where to read from to reach `frame`: the last page placing a frame at or before it that hands a reader a packet,
+  /// or the first audio page. Granule positions grow with the stream, so a bisection narrows the search first.
   fn find_landing(&self, frame: u64) -> usize {
     let bytes: &[u8] = self.reader.get_ref().get_ref().as_ref();
     let mut landing: usize = self.audio_start;
@@ -192,8 +191,7 @@ impl<B: AsRef<[u8]>> VorbisDecoder<B> {
     landing
   }
 
-  /// The first page of the sound's stream at or after `offset` that places a frame and hands a reader starting on it
-  /// a packet.
+  /// The first page of the sound's stream at or after `offset` that places a frame and hands a reader a packet.
   fn find_placing_page(&self, bytes: &[u8], offset: usize) -> Option<OggPageHeader> {
     let mut start: usize = offset;
 
