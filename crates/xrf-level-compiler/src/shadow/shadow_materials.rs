@@ -226,7 +226,7 @@ impl ShadowMaterials {
         continue;
       }
 
-      let parameters: Option<ThmTextureParamChunk> = CompilerTextures::find(roots, name, "thm")
+      let parameters: Option<ThmTextureParamChunk> = CompilerTextures::find(roots, name, "thm")?
         .map(|path| ThmFile::read_from_path::<XRayByteOrder, _>(&path))
         .transpose()?
         .and_then(|thumbnail| thumbnail.texture_param);
@@ -288,7 +288,7 @@ impl ShadowMaterials {
 
   /// An alpha texture's image, its alpha decoded as the compilers' image library decodes it.
   fn read_texture(name: &str, size: [u32; 2], roots: &[PathBuf]) -> XrfResult<ShadowTexture> {
-    let path: PathBuf = CompilerTextures::find(roots, name, "dds").ok_or_else(|| {
+    let path: PathBuf = CompilerTextures::find(roots, name, "dds")?.ok_or_else(|| {
       XrfError::new_not_found_error(format!("The alpha texture {name} has no .dds under the texture roots"))
     })?;
     let alpha: GrayImage = DdsFile::read_from_path(&path)?.decode_sdk_alpha()?;

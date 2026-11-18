@@ -9,6 +9,7 @@ use crate::level::level_decompile_context::LevelDecompileContext;
 use crate::level::level_entity_conversion::{LevelEntityConversion, LevelEntitySources};
 use crate::level::level_geometry_conversion::LevelDecompiledObject;
 use crate::level::level_map_conversion::LevelMapSettings;
+use crate::level::level_object_library::LevelObjectLibrary;
 use crate::level::scene::level_decompile_options::LevelDecompileOptions;
 use crate::level::scene::level_scene_decompile::{
   LevelSceneDecompile, LevelSceneLibraryFile, LevelSceneObjectFile, LevelSceneTextureFile,
@@ -46,6 +47,9 @@ pub(crate) struct LevelSceneDraft {
   pub(crate) respawn: Option<LevelSpawnFile>,
   /// What `level.ltx` says, where the directory holds one: the sectors' parts of the map and the game types.
   pub(crate) map: Option<LevelMapSettings>,
+  /// The objects of the options' library roots, listed once for the steps that look in them, and what they could not
+  /// read, refused when the scene is finished.
+  pub(crate) object_library: LevelObjectLibrary,
 }
 
 impl LevelSceneDraft {
@@ -61,6 +65,7 @@ impl LevelSceneDraft {
     root_spawn: Option<LevelRootSpawn>,
     spawn: Option<LevelSpawnFile>,
     respawn: Option<LevelSpawnFile>,
+    object_library: LevelObjectLibrary,
   ) -> Self {
     let mut context: LevelDecompileContext = LevelDecompileContext::new(guid);
 
@@ -98,6 +103,7 @@ impl LevelSceneDraft {
       spawn,
       respawn,
       map: None,
+      object_library,
     }
   }
 
@@ -142,6 +148,7 @@ impl LevelSceneDraft {
     self
       .tools
       .sort_by(|(first, _), (second, _)| first.name.cmp(&second.name));
+    self.refused.extend(self.object_library.get_refusals());
 
     let files: Vec<LevelSceneFile> = std::iter::once(LevelSceneFile {
       written: format!("{}.{}", options.name, EditableLevelFile::EXTENSION),

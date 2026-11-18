@@ -33,6 +33,22 @@ impl HostRelativePath {
     Ok(Self(path))
   }
 
+  /// As [`Self::new`], for a name that must name a file: one with no component left names the root itself, which a
+  /// join would then read or write in place of the file.
+  ///
+  /// # Errors
+  ///
+  /// Returns an invalid error as [`Self::new`] does, or when no component is left.
+  pub fn new_file(name: &str, what: &str) -> XrfResult<Self> {
+    let path: Self = Self::new(name, what)?;
+
+    if path.is_empty() {
+      return Err(XrfError::new_invalid_error(format!("{what} '{name}' names no file")));
+    }
+
+    Ok(path)
+  }
+
   /// This path with one more file name below it.
   pub fn join(&self, name: &HostFileName) -> Self {
     Self(self.0.join(name))
@@ -137,6 +153,23 @@ mod tests {
         "'{name}' must not become a host path"
       );
     }
+  }
+
+  #[test]
+  fn refuses_a_file_name_that_names_no_file() {
+    for name in ["", "\\", "//"] {
+      assert!(
+        HostRelativePath::new_file(name, "Name").is_err(),
+        "'{name}' names no file"
+      );
+    }
+
+    assert_eq!(
+      HostRelativePath::new_file("lod\\lod_tree", "Name")
+        .expect("a file below the root")
+        .as_path(),
+      Path::new("lod").join("lod_tree")
+    );
   }
 
   #[test]

@@ -20,6 +20,7 @@ use crate::level::level_decal_index::LevelDecalIndex;
 use crate::level::level_entity_conversion::LevelEntityConversion;
 use crate::level::level_geometry_conversion::{LevelGeometryConversion, LevelGeometryDecompile, LevelGeometrySources};
 use crate::level::level_map_conversion::LevelMapConversion;
+use crate::level::level_object_library::LevelObjectLibrary;
 use crate::level::level_surface_inference::{LevelShaderPairings, LevelSurfaceInference, LevelSurfaces};
 use crate::level::level_tree_impostor::LevelTreeImpostorAtlas;
 use crate::level::scene::level_decompile_options::LevelDecompileOptions;
@@ -84,12 +85,34 @@ impl LevelSceneStep for LevelGeometryStep {
       .map(|wallmarks| LevelDecalIndex::new(&wallmarks));
     let breakable_parts: BTreeMap<String, OgfFile> = Self::read_breakable_parts::<T>(sources, draft);
     let impostors: Option<LevelTreeImpostorAtlas> = Self::read_impostors(sources, draft);
-    let mut surfaces: Option<(LevelSurfaceInference, LevelSceneSurfaceLibraries)> = match (options.surfaces, &collision)
-    {
-      (LevelSurfaces::Infer, Some(_)) => Some(Self::read_surface_inference::<T>(options)?),
+    let surface_libraries: Option<(GameMtlFile, ShaderCompilerFile, LevelSceneSurfaceLibraries)> =
+      match (options.surfaces, &collision) {
+        (LevelSurfaces::Infer, Some(_)) => Some(Self::read_surface_libraries::<T>(options)?),
+        _ => None,
+      };
+    // The one `shaders_xrlc.xr` the surfaces are dressed from tells the library objects' surfaces too.
+    let named_shaders: Option<ShaderCompilerFile> = match (&surface_libraries, &options.compiler_shaders) {
+      (None, Some(path)) if !options.libraries.is_empty() => Some(ShaderCompilerFile::read_from_path::<T, _>(path)?),
       _ => None,
     };
-    let library: Option<LevelInstanceLibrary> = Self::read_instance_library::<T>(options)?;
+    let compiler_shaders: Option<&ShaderCompilerFile> = surface_libraries
+      .as_ref()
+      .map(|(_, shaders, _)| shaders)
+      .or(named_shaders.as_ref());
+    let (pairings, library) = Self::read_object_library::<T>(
+      options,
+      &mut draft.object_library,
+      compiler_shaders,
+      surface_libraries.is_some(),
+    )?;
+    let mut surfaces: Option<(LevelSurfaceInference, LevelSceneSurfaceLibraries)> = surface_libraries
+      .zip(pairings)
+      .map(|((game_materials, compiler_shaders, libraries), pairings)| {
+        (
+          LevelSurfaceInference::new(game_materials, compiler_shaders, pairings),
+          libraries,
+        )
+      });
     // The inference holds its own; without it, the placements' ladders and breakables are told by this one.
     let game_materials: Option<GameMtlFile> = match (&surfaces, &library, &options.game_materials) {
       (None, Some(_), Some(path)) => Some(GameMtlFile::read_from_path::<T, _>(path)?),
@@ -167,14 +190,13 @@ impl LevelSceneStep for LevelGeometryStep {
       &[LevelSceneInference::LibraryInstances],
     );
 
-    let instances: Option<LevelSceneInstances> = match &library {
-      Some(library) => {
-        let (files, instances) = Self::copy_library(options, library, &geometry.instances, &geometry.trees)?;
+    let instances: Option<LevelSceneInstances> = if library.is_some() {
+      let (files, instances) = Self::copy_library(options, &geometry.instances, &geometry.trees)?;
 
-        draft.library = files;
-        Some(instances)
-      }
-      None => None,
+      draft.library = files;
+      Some(instances)
+    } else {
+      None
     };
 
     draft.refused.extend(geometry.refused);
@@ -204,7 +226,6 @@ impl LevelGeometryStep {
   /// Returns an error when a placed object's file cannot be read again.
   fn copy_library(
     options: &LevelDecompileOptions,
-    library: &LevelInstanceLibrary,
     placements: &[LevelInstancePlacement],
     trees: &[LevelTreeMatch],
   ) -> XrfResult<(Vec<LevelSceneLibraryFile>, LevelSceneInstances)> {
@@ -243,7 +264,6 @@ impl LevelGeometryStep {
         .iter()
         .map(|root| format_path(root).to_string())
         .collect(),
-      unread_objects: library.unread_objects,
       objects,
       placements: placements
         .iter()
@@ -269,28 +289,46 @@ impl LevelGeometryStep {
     Ok((files, instances))
   }
 
-  /// The objects of the library roots the options name, looked for in the static geometry; none without a root. A
-  /// surface renders where its compiler shader in the options' `shaders_xrlc.xr` says so, or where none is named.
-  fn read_instance_library<T: ByteOrder>(options: &LevelDecompileOptions) -> XrfResult<Option<LevelInstanceLibrary>> {
-    if options.libraries.is_empty() {
-      return Ok(None);
+  /// What the geometry takes from the objects of the library roots the options name, each read once: the shader
+  /// pairings where `is_inferring` surfaces, and the objects looked for in the static geometry, none without a root. A
+  /// surface renders where its compiler shader in `compiler_shaders` says so, or where none is named.
+  fn read_object_library<T: ByteOrder>(
+    options: &LevelDecompileOptions,
+    library: &mut LevelObjectLibrary,
+    compiler_shaders: Option<&ShaderCompilerFile>,
+    is_inferring: bool,
+  ) -> XrfResult<(Option<LevelShaderPairings>, Option<LevelInstanceLibrary>)> {
+    let mut pairings: Option<LevelShaderPairings> = is_inferring.then(LevelShaderPairings::default);
+    let mut instances: Option<LevelInstanceLibrary> =
+      (!options.libraries.is_empty()).then(LevelInstanceLibrary::default);
+
+    library.read_each::<T>(
+      |_| true,
+      |entry, object| {
+        if let Some(pairings) = &mut pairings {
+          pairings.add_object(&object);
+        }
+
+        if let Some(instances) = &mut instances {
+          instances.add(entry.reference.clone(), entry.path.clone(), &object, compiler_shaders);
+        }
+
+        Ok(())
+      },
+    )?;
+
+    if let Some(instances) = &mut instances {
+      // The decompile's own folder holds what an earlier decompile of this level wrote, whose shells would be found
+      // whole.
+      let own: String = format!("levels\\{}\\", options.name).to_lowercase();
+
+      instances.sort();
+      instances
+        .objects
+        .retain(|object| !object.reference.to_lowercase().starts_with(&own));
     }
 
-    let compiler_shaders: Option<ShaderCompilerFile> = options
-      .compiler_shaders
-      .as_ref()
-      .map(|path| ShaderCompilerFile::read_from_path::<T, _>(path))
-      .transpose()?;
-    let mut library: LevelInstanceLibrary =
-      LevelInstanceLibrary::read_from_roots::<T>(&options.libraries, compiler_shaders.as_ref())?;
-    // The decompile's own folder holds what an earlier decompile of this level wrote, whose shells would be found whole.
-    let own: String = format!("levels\\{}\\", options.name).to_lowercase();
-
-    library
-      .objects
-      .retain(|object| !object.reference.to_lowercase().starts_with(&own));
-
-    Ok(Some(library))
+    Ok((pairings, instances))
   }
 
   /// The trees' impostor atlas, where the directory holds both its files; one that does not read is refused, and the
@@ -337,10 +375,11 @@ impl LevelGeometryStep {
     parts
   }
 
-  /// What dresses the surfaces: the libraries the options name, each recorded with its hash.
-  fn read_surface_inference<T: ByteOrder>(
+  /// What dresses the surfaces beside the library's pairings: the game material and compiler shader libraries the
+  /// options name, each recorded with its hash.
+  fn read_surface_libraries<T: ByteOrder>(
     options: &LevelDecompileOptions,
-  ) -> XrfResult<(LevelSurfaceInference, LevelSceneSurfaceLibraries)> {
+  ) -> XrfResult<(GameMtlFile, ShaderCompilerFile, LevelSceneSurfaceLibraries)> {
     let read = |path: Option<&PathBuf>, what: &str| -> XrfResult<(Vec<u8>, LevelSceneSource)> {
       let path: &PathBuf = path.ok_or_else(|| {
         XrfError::new_invalid_error(format!(
@@ -362,7 +401,6 @@ impl LevelGeometryStep {
       options.compiler_shaders.as_ref(),
       "compiler shader library (shaders_xrlc.xr)",
     )?;
-    let pairings: LevelShaderPairings = LevelShaderPairings::read_from_roots::<T>(&options.libraries)?;
     let libraries: LevelSceneSurfaceLibraries = LevelSceneSurfaceLibraries {
       game_materials: game_materials_record,
       compiler_shaders: compiler_shaders_record,
@@ -371,15 +409,11 @@ impl LevelGeometryStep {
         .iter()
         .map(|root| format_path(root).to_string())
         .collect(),
-      unread_objects: pairings.unread_objects,
     };
 
     Ok((
-      LevelSurfaceInference::new(
-        GameMtlFile::read_from_bytes::<T>(game_materials)?,
-        ShaderCompilerFile::read_from_bytes::<T>(compiler_shaders)?,
-        pairings,
-      ),
+      GameMtlFile::read_from_bytes::<T>(game_materials)?,
+      ShaderCompilerFile::read_from_bytes::<T>(compiler_shaders)?,
       libraries,
     ))
   }

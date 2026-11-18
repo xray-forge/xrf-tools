@@ -637,9 +637,9 @@ fn names_the_strips_of_a_library_trees_impostor_for_it() -> XrfResult {
 
   let textures: PathBuf =
     GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "library_tree_strips"))?;
-  let path: PathBuf = decompiled.textures[0].get_path(&textures);
+  let path: PathBuf = decompiled.textures[0].get_path(&textures)?;
 
-  assert!(!decompiled.textures[0].is_held_by(&textures));
+  assert!(!decompiled.textures[0].is_held_by(&textures)?);
 
   let own: Vec<u8> = LevelLodStrip::encode(&strip(9))?;
   let read = |bytes: &[u8]| -> XrfResult<RgbaImage> { xrf_dds::DdsFile::read_from_bytes(bytes)?.decode_rgba(0) };
@@ -649,7 +649,7 @@ fn names_the_strips_of_a_library_trees_impostor_for_it() -> XrfResult {
   std::fs::write(&path, &own)?;
 
   assert!(
-    decompiled.textures[0].is_held_by(&textures),
+    decompiled.textures[0].is_held_by(&textures)?,
     "the library's own is kept"
   );
   assert_eq!(
@@ -667,7 +667,7 @@ fn names_the_strips_of_a_library_trees_impostor_for_it() -> XrfResult {
       is_library: false,
       ..decompiled.textures[0].clone()
     }
-    .is_held_by(&textures),
+    .is_held_by(&textures)?,
     "a model's own strip is written over its earlier decompile"
   );
 

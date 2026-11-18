@@ -386,6 +386,12 @@ under the ground, so the model's stored box is widened to the one the facets wer
 placement. An impostor that does not cut is refused and its model comes back without one. All 19 of `mp_darkvalley`'s
 cut, and rebuilt they stand within 0.05 mm of the shipped quads, sampling the same pixels but for DXT noise.
 
+A decompile lists its library roots once (`LevelObjectLibrary`): each root in name order, through links and junctions,
+a link back to a folder above it or to nothing recorded rather than followed, a folder that cannot be listed an error.
+The geometry reads each object once for both the shader pairings and the instance library; the details read the objects
+under `detail\`. A file that does not read or compile is one of the scene's refusals, with its path and the error,
+however many steps tried it.
+
 With a `LevelInstanceLibrary` (`LevelGeometrySources::library`, the static and multi-use objects of the decompile's
 library roots), the library objects the Build merged into the static geometry come back as placements of them
 (`LevelGeometryDecompile::instances`), found by `level/instance/`'s `LevelInstanceMatcher` before the shells decompile:

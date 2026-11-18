@@ -34,7 +34,8 @@ impl<'a> LevelBuildLibrary<'a> {
   ///
   /// # Errors
   ///
-  /// Returns an error naming the reference whose object no root holds or that does not read.
+  /// Returns an error naming the reference whose object no root holds or that does not read, or that names no file
+  /// below a root.
   pub(crate) fn load<'r, T: ByteOrder>(&mut self, references: impl IntoIterator<Item = &'r str>) -> XrfResult {
     for reference in references {
       if self.held.contains_key(reference) || self.objects.contains_key(reference) {
@@ -45,7 +46,7 @@ impl<'a> LevelBuildLibrary<'a> {
         .roots
         .iter()
         .map(|root| LevelSceneObjectFile::get_reference_path(root, reference))
-        .collect();
+        .collect::<XrfResult<_>>()?;
       let path: &Path = candidates
         .iter()
         .find(|path| path.is_file())

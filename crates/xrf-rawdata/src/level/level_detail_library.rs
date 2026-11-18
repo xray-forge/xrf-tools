@@ -1,14 +1,13 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use byteorder::ByteOrder;
-use xrf_editable_object::EditableObjectFile;
-use xrf_error::{XrfError, XrfResult};
+use xrf_error::XrfResult;
 use xrf_level::DetailModel;
 use xrf_math::Vector2d;
-use xrf_utils::format_path;
 
 use crate::level::build::level_build_atlas::LevelBuildAtlasPlace;
 use crate::level::level_detail_match::LevelDetailMatch;
+use crate::level::level_object_library::LevelObjectLibrary;
 use crate::object::compile::detail::detail_model_builder::DetailModelBuilder;
 use crate::object::detail_parameters::DetailParameters;
 
@@ -19,15 +18,11 @@ use crate::object::detail_parameters::DetailParameters;
 pub(crate) struct LevelDetailLibrary {
   /// Each object by its reference, in the order of their paths.
   sources: Vec<(String, DetailModel)>,
-  /// Objects under the roots' detail folders that did not read or compile, and so match nothing.
-  pub(crate) unread_objects: usize,
 }
 
 impl LevelDetailLibrary {
   /// The folder of an object library root the Level Editor's detail objects stand in.
   pub(crate) const DIRECTORY: &'static str = "detail";
-
-  const OBJECT_EXTENSION: &'static str = "object";
 
   /// How far a remapped texture coordinate may stand from the stored one, past single-precision rounding.
   const REMAP_TOLERANCE: f32 = 1e-5;
@@ -39,50 +34,35 @@ impl LevelDetailLibrary {
   /// [`Self::find`] tries them.
   #[cfg(test)]
   pub(crate) fn new(sources: Vec<(String, DetailModel)>) -> Self {
-    Self {
-      sources,
-      unread_objects: 0,
-    }
+    Self { sources }
   }
 
-  /// The detail objects under each of `roots`' [`Self::DIRECTORY`], a root without one holding none.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when a root is not a directory, or a folder under it cannot be listed.
-  pub(crate) fn read_from_roots<T: ByteOrder>(roots: &[PathBuf]) -> XrfResult<Self> {
-    let mut library: Self = Self::default();
+  /// The detail objects of `library`, those under each root's [`Self::DIRECTORY`], each compiled as `EDetail` exports
+  /// it; one that does not read or compile is recorded in `library` and matches nothing.
+  pub(crate) fn read_from_library<T: ByteOrder>(library: &mut LevelObjectLibrary) -> XrfResult<Self> {
+    let mut detail: Self = Self::default();
+    let mut uncompiled: Vec<(PathBuf, String)> = Vec::new();
 
-    for root in roots {
-      if !root.is_dir() {
-        return Err(XrfError::new_not_found_error(format!(
-          "Object library {} is not a directory",
-          format_path(root)
-        )));
-      }
-
-      let mut paths: Vec<PathBuf> = Vec::new();
-      let directory: PathBuf = root.join(Self::DIRECTORY);
-
-      if directory.is_dir() {
-        Self::list_objects(&directory, &mut paths)?;
-      }
-
-      paths.sort();
-
-      for path in paths {
-        let compiled: XrfResult<DetailModel> = EditableObjectFile::read_from_path::<T, _>(&path)
-          .and_then(|object| DetailModelBuilder::build_model(&object, &DetailParameters::default()))
-          .map(|(model, _)| model);
-
-        match compiled {
-          Ok(model) => library.sources.push((Self::get_reference(root, &path), model)),
-          Err(_) => library.unread_objects += 1,
+    library.read_each::<T>(
+      |entry| entry.is_under(Self::DIRECTORY),
+      |entry, object| {
+        match DetailModelBuilder::build_model(&object, &DetailParameters::default()) {
+          Ok((model, _)) => detail.sources.push((entry.reference.clone(), model)),
+          Err(error) => uncompiled.push((
+            entry.path.clone(),
+            format!("it did not compile as a detail object: {error}"),
+          )),
         }
-      }
+
+        Ok(())
+      },
+    )?;
+
+    for (path, cause) in uncompiled {
+      library.record_unread(&path, cause);
     }
 
-    Ok(library)
+    Ok(detail)
   }
 
   /// The first object drawing `stored`: the same positions and indices, its texture coordinates `stored`'s before
@@ -187,40 +167,6 @@ impl LevelDetailLibrary {
       .iter()
       .all(|pair| (remap.apply(pair.from) - pair.to).abs() <= Self::REMAP_TOLERANCE)
       .then_some(remap)
-  }
-
-  /// `path`'s reference under `root`: its path there without the extension, folders joined by `\`.
-  fn get_reference(root: &Path, path: &Path) -> String {
-    path
-      .strip_prefix(root)
-      .unwrap_or(path)
-      .with_extension("")
-      .components()
-      .map(|component| component.as_os_str().to_string_lossy())
-      .collect::<Vec<_>>()
-      .join("\\")
-  }
-
-  fn list_objects(directory: &Path, paths: &mut Vec<PathBuf>) -> XrfResult {
-    let entries = std::fs::read_dir(directory)
-      .map_err(|error| XrfError::new_read_error(format!("{} was not listed: {error}", format_path(directory))))?;
-
-    for entry in entries {
-      let path: PathBuf = entry
-        .map_err(|error| XrfError::new_read_error(format!("{} was not listed: {error}", format_path(directory))))?
-        .path();
-
-      if path.is_dir() {
-        Self::list_objects(&path, paths)?;
-      } else if path
-        .extension()
-        .is_some_and(|extension| extension.eq_ignore_ascii_case(Self::OBJECT_EXTENSION))
-      {
-        paths.push(path);
-      }
-    }
-
-    Ok(())
   }
 }
 

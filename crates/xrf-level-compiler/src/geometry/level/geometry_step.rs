@@ -124,7 +124,7 @@ impl GeometryStep {
         .zip([&map.base, &map.lightmap])
       {
         Self::write_texture(
-          &CompilerTextures::get_path(level, name, "dds"),
+          &CompilerTextures::get_path(level, name, "dds")?,
           texels,
           map.width,
           map.height,

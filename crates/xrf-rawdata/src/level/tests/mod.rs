@@ -10,6 +10,7 @@ mod glow;
 mod impostor;
 mod instance;
 mod ladder;
+mod library;
 mod light;
 mod map;
 mod occluder;

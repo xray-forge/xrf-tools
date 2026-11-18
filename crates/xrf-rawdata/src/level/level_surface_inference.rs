@@ -1,14 +1,10 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
-use std::path::{Path, PathBuf};
 
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_editable_object::EditableObjectFile;
-use xrf_error::{XrfError, XrfResult};
 use xrf_gamemtl::GameMtlFile;
 use xrf_math::Vector3d;
 use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
-use xrf_utils::format_path;
 
 use crate::level::level_collision_index::{LevelCollisionIndex, LevelCollisionLookup};
 use crate::level::level_visual_geometry::LevelVisualGeometry;
@@ -33,62 +29,14 @@ pub enum LevelSurfaces {
 pub struct LevelShaderPairings {
   /// Surfaces by engine shader, then by compiler shader, both lowercased.
   counts: HashMap<String, HashMap<String, usize>>,
-  /// Objects found under the roots that did not read, and so did not count.
-  pub unread_objects: usize,
 }
 
 impl LevelShaderPairings {
-  const OBJECT_EXTENSION: &'static str = "object";
-
-  /// The pairings of every `.object` under each of `roots`, searched through their folders.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when a root is not a directory that can be listed.
-  pub fn read_from_roots<T: ByteOrder>(roots: &[PathBuf]) -> XrfResult<Self> {
-    let mut pairings: Self = Self::default();
-
-    for root in roots {
-      if !root.is_dir() {
-        return Err(XrfError::new_not_found_error(format!(
-          "Object library {} is not a directory",
-          format_path(root)
-        )));
-      }
-
-      pairings.read_directory::<T>(root)?;
+  /// Counts every surface of `object`.
+  pub fn add_object(&mut self, object: &EditableObjectFile) {
+    for surface in object.surfaces.as_deref().unwrap_or_default() {
+      self.add(&surface.shader, &surface.compiler_shader);
     }
-
-    Ok(pairings)
-  }
-
-  fn read_directory<T: ByteOrder>(&mut self, directory: &Path) -> XrfResult {
-    let entries = std::fs::read_dir(directory)
-      .map_err(|error| XrfError::new_read_error(format!("{} was not listed: {error}", format_path(directory))))?;
-
-    for entry in entries {
-      let path: PathBuf = entry
-        .map_err(|error| XrfError::new_read_error(format!("{} was not listed: {error}", format_path(directory))))?
-        .path();
-
-      if path.is_dir() {
-        self.read_directory::<T>(&path)?;
-      } else if path
-        .extension()
-        .is_some_and(|extension| extension.eq_ignore_ascii_case(Self::OBJECT_EXTENSION))
-      {
-        match EditableObjectFile::read_from_path::<T, _>(&path) {
-          Ok(object) => {
-            for surface in object.surfaces.unwrap_or_default() {
-              self.add(&surface.shader, &surface.compiler_shader);
-            }
-          }
-          Err(_) => self.unread_objects += 1,
-        }
-      }
-    }
-
-    Ok(())
   }
 
   /// Counts one surface of `engine` shader paired with `compiler` shader.

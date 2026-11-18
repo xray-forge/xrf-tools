@@ -23,8 +23,8 @@ use crate::level::level_visual_geometry::LevelVisualGeometry;
 use crate::level::tests::fixtures::GUID;
 use crate::{
   LevelDecompileOptions, LevelDecompileReport, LevelDecompileRequest, LevelExportedPrevious, LevelFogVolumeConversion,
-  LevelSceneDecompile, LevelSceneDecompiler, LevelSceneExporter, LevelSceneInference, LevelSceneObjectFile,
-  LevelSceneProvenance, ObjectDecompiler, ObjectProvenance, SurfaceDress,
+  LevelSceneDecompile, LevelSceneDecompiler, LevelSceneExporter, LevelSceneInference, LevelSceneLibraryFile,
+  LevelSceneObjectFile, LevelSceneProvenance, LevelSceneTextureFile, ObjectDecompiler, ObjectProvenance, SurfaceDress,
 };
 
 fn respawn_point(game_types: u16) -> LevelGameRPoint {
@@ -245,7 +245,7 @@ fn writes_each_object_under_the_objects_root_after_its_sidecar() -> XrfResult {
   });
 
   assert!(
-    decompiled.get_existing_object_paths(&objects).is_empty(),
+    decompiled.get_existing_object_paths(&objects)?.is_empty(),
     "nothing written yet"
   );
 
@@ -266,9 +266,51 @@ fn writes_each_object_under_the_objects_root_after_its_sidecar() -> XrfResult {
     Some(decompiled.objects[0].provenance.clone())
   );
   assert_eq!(
-    decompiled.get_existing_object_paths(&objects),
+    decompiled.get_existing_object_paths(&objects)?,
     [ObjectProvenance::sidecar_path(&path), path],
     "a front-end asks about both before writing over them"
+  );
+
+  Ok(())
+}
+
+/// A texture named by a library object's surface, or an object by a scene, is data: one that would leave its root
+/// refuses the write before the sidecar or anything else lands.
+#[test]
+fn refuses_a_name_that_would_leave_its_root_and_writes_nothing() -> XrfResult {
+  let output: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "escaping_names"))?;
+  let level: PathBuf = output.join("scenes").join("test_level.level");
+  let decompiled: LevelSceneDecompile = decompile(&level_directory("escaping", 10.0)?)?;
+
+  for name in ["..\\..\\outside", "c:\\outside", "c:outside", ""] {
+    let mut texture: LevelSceneDecompile = decompiled.clone();
+    let mut object: LevelSceneDecompile = decompiled.clone();
+
+    texture.textures.push(LevelSceneTextureFile {
+      name: String::from(name),
+      bytes: vec![0],
+      is_library: false,
+    });
+    object.library.push(LevelSceneLibraryFile {
+      reference: String::from(name),
+      object: vec![0],
+      thumbnail: None,
+    });
+
+    for decompiled in [texture, object] {
+      assert!(
+        decompiled
+          .write_to_path::<XRayByteOrder>(&level, &output.join("objects"), &output.join("textures"))
+          .is_err(),
+        "'{name}' is refused"
+      );
+    }
+  }
+
+  assert_eq!(
+    std::fs::read_dir(&output)?.count(),
+    0,
+    "nothing is written, not even the sidecar"
   );
 
   Ok(())

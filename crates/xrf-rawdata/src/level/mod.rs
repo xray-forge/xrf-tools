@@ -18,6 +18,8 @@ pub(crate) mod level_ladder_conversion;
 pub(crate) mod level_light_conversion;
 pub(crate) mod level_lod_strip;
 pub(crate) mod level_map_conversion;
+pub(crate) mod level_object_library;
+pub(crate) mod level_object_library_entry;
 pub(crate) mod level_object_names;
 pub(crate) mod level_occluder_conversion;
 pub(crate) mod level_particle_conversion;

@@ -255,7 +255,7 @@ fn builds_an_impostor_from_the_strips_the_decompile_writes() -> XrfResult {
   .into_textures(reference)?;
 
   for texture in &strips {
-    let path: PathBuf = texture.get_path(&textures);
+    let path: PathBuf = texture.get_path(&textures)?;
 
     std::fs::create_dir_all(path.parent().expect("a folder"))?;
     std::fs::write(path, &texture.bytes)?;

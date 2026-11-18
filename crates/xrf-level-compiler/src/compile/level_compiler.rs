@@ -212,15 +212,17 @@ impl LevelCompiler {
     Self::get_outputs(request, steps, &implicit).assert_free(request.is_forced)
   }
 
-  /// Whether every texture `project` names has its `.thm` under `roots`.
+  /// Whether every texture `project` names names a file below the roots and has its `.thm` under one of them.
   fn check_textures(project: &BuildPrjFile, roots: &[PathBuf]) -> XrfResult {
-    let missing: Vec<String> = project
-      .textures
-      .iter()
-      .map(|texture| CompilerTextures::get_name(&texture.name.value))
-      .filter(|name| name != CompilerTextures::UNLOADED)
-      .filter(|name| CompilerTextures::find(roots, name, "thm").is_none())
-      .collect();
+    let mut missing: Vec<String> = Vec::new();
+
+    for texture in &project.textures {
+      let name: String = CompilerTextures::get_name(&texture.name.value);
+
+      if name != CompilerTextures::UNLOADED && CompilerTextures::find(roots, &name, "thm")?.is_none() {
+        missing.push(name);
+      }
+    }
 
     match missing.as_slice() {
       [] => Ok(()),

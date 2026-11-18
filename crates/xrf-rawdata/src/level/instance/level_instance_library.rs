@@ -1,17 +1,14 @@
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-use byteorder::ByteOrder;
 use glam::{DVec2, DVec3};
 use xrf_editable_object::{EditableFaceCorner, EditableMesh, EditableObjectFile, EditableSurface, EditableVMapKind};
-use xrf_error::{XrfError, XrfResult};
 use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
-use xrf_utils::format_path;
 
 use crate::level::instance::level_library_object::{LevelLibraryObject, LevelLibraryTriangle};
 
-/// The objects of object libraries a decompile looks for in a level: every static object under the roots with a surface
-/// that renders (not dynamic, an occluder or a sound occluder, which the Build does not merge into the geometry), the
+/// The objects of object libraries a decompile looks for in a level: every static object added with a surface that
+/// renders (not dynamic, an occluder or a sound occluder, which the Build does not merge into the geometry), the
 /// multi-use ones apart as the trees a level's tree models may be, and the textures their surfaces draw, each numbered
 /// once.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -22,41 +19,17 @@ pub struct LevelInstanceLibrary {
   pub trees: Vec<LevelLibraryObject>,
   /// Textures by their lowercased name.
   textures: HashMap<String, u32>,
-  /// Objects found under the roots that did not read.
-  pub unread_objects: usize,
 }
 
 impl LevelInstanceLibrary {
-  const OBJECT_EXTENSION: &'static str = "object";
-
   /// Object flags that keep an object out of the level's geometry.
   const UNBUILT_FLAGS: u32 =
     EditableObjectFile::DYNAMIC_FLAG | EditableObjectFile::HOM_FLAG | EditableObjectFile::SOUND_OCCLUDER_FLAG;
 
-  /// The objects under each of `roots`, searched through their folders, each surface's compiler shader looked up in
-  /// `compiler_shaders` for whether xrLC draws it and collides with it.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when a root is not a directory that can be listed.
-  pub fn read_from_roots<T: ByteOrder>(
-    roots: &[PathBuf],
-    compiler_shaders: Option<&ShaderCompilerFile>,
-  ) -> XrfResult<Self> {
-    let mut library: Self = Self::default();
-
-    for root in roots {
-      if !root.is_dir() {
-        return Err(XrfError::new_not_found_error(format!(
-          "Object library {} is not a directory",
-          format_path(root)
-        )));
-      }
-
-      library.read_directory::<T>(root, root, compiler_shaders)?;
-    }
-
-    for objects in [&mut library.objects, &mut library.trees] {
+  /// Orders the objects and the trees as they are tried, once every object is added: the largest first, then by
+  /// reference.
+  pub fn sort(&mut self) {
+    for objects in [&mut self.objects, &mut self.trees] {
       objects.sort_by(|left, right| {
         right
           .area
@@ -64,8 +37,6 @@ impl LevelInstanceLibrary {
           .then_with(|| left.reference.cmp(&right.reference))
       });
     }
-
-    Ok(library)
   }
 
   /// The number `texture` takes in the table, any case; none where no library object draws it.
@@ -186,56 +157,6 @@ impl LevelInstanceLibrary {
       triangles,
       collision,
     })
-  }
-
-  fn read_directory<T: ByteOrder>(
-    &mut self,
-    root: &Path,
-    directory: &Path,
-    compiler_shaders: Option<&ShaderCompilerFile>,
-  ) -> XrfResult {
-    let entries = std::fs::read_dir(directory)
-      .map_err(|error| XrfError::new_read_error(format!("{} was not listed: {error}", format_path(directory))))?;
-    let mut paths: Vec<PathBuf> = entries
-      .map(|entry| entry.map(|entry| entry.path()))
-      .collect::<Result<_, _>>()
-      .map_err(|error| XrfError::new_read_error(format!("{} was not listed: {error}", format_path(directory))))?;
-
-    // Listed in name order, so the library numbers its textures the same on every machine.
-    paths.sort();
-
-    for path in paths {
-      if path.is_dir() {
-        self.read_directory::<T>(root, &path, compiler_shaders)?;
-      } else if path
-        .extension()
-        .is_some_and(|extension| extension.eq_ignore_ascii_case(Self::OBJECT_EXTENSION))
-      {
-        match EditableObjectFile::read_from_path::<T, _>(&path) {
-          Ok(object) => {
-            let reference: String = Self::get_reference(root, &path);
-
-            self.add(reference, path, &object, compiler_shaders);
-          }
-          Err(_) => self.unread_objects += 1,
-        }
-      }
-    }
-
-    Ok(())
-  }
-
-  /// The reference a scene object names the object at `path` under `root` by: its folders and name, the extension
-  /// left off, joined by backslashes.
-  fn get_reference(root: &Path, path: &Path) -> String {
-    path
-      .strip_prefix(root)
-      .unwrap_or(path)
-      .with_extension("")
-      .components()
-      .map(|component| component.as_os_str().to_string_lossy().into_owned())
-      .collect::<Vec<String>>()
-      .join("\\")
   }
 
   /// A face's corners in the mesh's space, none where a corner names a point the mesh does not hold.

@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use byteorder::ByteOrder;
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::format_path;
+use xrf_utils::{HostFileName, format_path};
 
 use crate::level::editable_level_file::EditableLevelFile;
 use crate::level::editable_level_guid::EditableLevelGuid;
@@ -87,7 +87,7 @@ impl EditableLevelScene {
     self.level.write_to_path(level_path)?;
 
     for (path, part) in self
-      .get_part_paths(level_path.as_ref())
+      .get_part_paths(level_path.as_ref())?
       .iter()
       .zip(self.tools.iter().flat_map(|tool| &tool.parts))
     {
@@ -97,25 +97,36 @@ impl EditableLevelScene {
     Ok(())
   }
 
-  /// Checks, writing nothing, that [`Self::write_to_path`] would not refuse the scene at `level_path`: that the part
-  /// directory beside it holds no part file the scene would not write.
+  /// Checks, writing nothing, that [`Self::write_to_path`] would not refuse the scene at `level_path`: that every tool
+  /// names one file, no two of them the same, and the part directory beside it holds no part file the scene would not
+  /// write. Names are compared without case, as Windows and the editor compare them.
   ///
   /// # Errors
   ///
   /// Returns an error naming the first such file, which the editor would read as part of the scene: a tool the scene
-  /// does not have, or a numbered file past a tool's last. Returns an error too when the directory cannot be listed.
+  /// does not have, or a numbered file past a tool's last. Returns an error too when a tool's name is not one file name,
+  /// two tools write the same file, or the directory cannot be listed.
   pub fn check_writable(&self, level_path: &Path) -> XrfResult {
     let directory: PathBuf = Self::get_parts_directory(level_path);
-    let written: HashSet<String> = self
-      .get_part_paths(level_path)
-      .iter()
-      .filter_map(|path| path.file_name())
-      .map(|name| name.to_string_lossy().into_owned())
-      .collect();
+    let mut written: HashSet<String> = HashSet::new();
+
+    for path in self.get_part_paths(level_path)? {
+      let name: String = path
+        .file_name()
+        .map(|name| name.to_string_lossy().to_lowercase())
+        .unwrap_or_default();
+
+      if !written.insert(name) {
+        return Err(XrfError::new_invalid_error(format!(
+          "Level scene was not written: two of its tools write {}",
+          format_path(&path)
+        )));
+      }
+    }
 
     match Self::list_part_file_names(&directory)?
       .into_iter()
-      .find(|name| !written.contains(name))
+      .find(|name| !written.contains(&name.to_lowercase()))
     {
       Some(stale) => Err(XrfError::new_invalid_error(format!(
         "Level scene was not written: {} holds {stale}, which the scene does not write and the editor would read",
@@ -126,14 +137,24 @@ impl EditableLevelScene {
   }
 
   /// The part files a write of the scene at `level_path` writes, in the directory beside it, in the scene's order.
-  pub fn get_part_paths(&self, level_path: &Path) -> Vec<PathBuf> {
+  ///
+  /// # Errors
+  ///
+  /// Returns an invalid error when a tool's name is not one file name: empty, `.`, `..`, or holding a separator or a
+  /// colon, which would write outside the part directory.
+  pub fn get_part_paths(&self, level_path: &Path) -> XrfResult<Vec<PathBuf>> {
     let directory: PathBuf = Self::get_parts_directory(level_path);
+    let mut paths: Vec<PathBuf> = Vec::new();
 
-    self
-      .tools
-      .iter()
-      .flat_map(|tool| (0..tool.parts.len()).map(|index| directory.join(tool.get_file_name(index))))
-      .collect()
+    for tool in &self.tools {
+      HostFileName::new(&tool.name, "Scene tool name")?;
+
+      for index in 0..tool.parts.len() {
+        paths.push(directory.join(tool.get_file_name(index)));
+      }
+    }
+
+    Ok(paths)
   }
 
   pub fn get_tool(&self, name: &str) -> Option<&EditableSceneTool> {

@@ -58,7 +58,7 @@ impl CompilerTexture {
         continue;
       }
 
-      let parameters: Option<ThmTextureParamChunk> = CompilerTextures::find(roots, &name, "thm")
+      let parameters: Option<ThmTextureParamChunk> = CompilerTextures::find(roots, &name, "thm")?
         .map(|path| ThmFile::read_from_path::<XRayByteOrder, _>(&path))
         .transpose()?
         .and_then(|thumbnail| thumbnail.texture_param);
@@ -70,7 +70,7 @@ impl CompilerTexture {
       let is_implicitly_lit: bool = parameters.flags.has(ThmTextureFlag::ImplicitLighted);
       let has_image: bool = (has_alpha || is_implicitly_lit) && !name.starts_with(Self::LOD_FOLDER);
       let [width, height] = if has_image {
-        let image: PathBuf = CompilerTextures::find(roots, &name, "dds").ok_or_else(|| {
+        let image: PathBuf = CompilerTextures::find(roots, &name, "dds")?.ok_or_else(|| {
           XrfError::new_not_found_error(format!(
             "Texture {name}, whose image xrLC loads, has no image under the texture roots"
           ))

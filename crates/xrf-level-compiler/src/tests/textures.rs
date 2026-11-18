@@ -8,13 +8,35 @@ use xrf_test_utils::GeneratedResources;
 use crate::input::compiler_textures::CompilerTextures;
 
 #[test]
-fn names_a_texture_by_what_precedes_its_first_dot_lowered() {
+fn names_a_texture_by_what_precedes_its_first_dot_lowered() -> XrfResult {
   assert_eq!(CompilerTextures::get_name("Trees\\Leaf.Final.dds"), "trees\\leaf");
   assert_eq!(CompilerTextures::get_name("level_lods"), CompilerTextures::UNLOADED);
   assert_eq!(
-    CompilerTextures::get_path(Path::new("textures"), "trees\\leaf", "thm"),
+    CompilerTextures::get_path(Path::new("textures"), "trees\\leaf", "thm")?,
     Path::new("textures").join("trees").join("leaf.thm")
   );
+
+  Ok(())
+}
+
+/// A name from `build.prj` is data: one carrying a drive would discard the root on Windows, and an empty one would
+/// name the root itself.
+#[test]
+fn refuses_a_name_that_names_no_file_below_the_root() {
+  for name in [
+    CompilerTextures::get_name("c:\\windows\\x.dds"),
+    CompilerTextures::get_name("c:x"),
+    CompilerTextures::get_name(".dds"),
+  ] {
+    assert!(
+      CompilerTextures::get_path(Path::new("textures"), &name, "thm").is_err(),
+      "'{name}' is refused"
+    );
+    assert!(
+      CompilerTextures::find(&[PathBuf::from("textures")], &name, "thm").is_err(),
+      "'{name}' is refused"
+    );
+  }
 }
 
 #[test]
@@ -28,14 +50,14 @@ fn finds_each_file_under_the_first_root_holding_it() -> XrfResult {
   }
 
   assert_eq!(
-    CompilerTextures::find(&roots, "trees\\leaf", "thm"),
+    CompilerTextures::find(&roots, "trees\\leaf", "thm")?,
     Some(roots[0].join("trees").join("leaf.thm"))
   );
   assert_eq!(
-    CompilerTextures::find(&roots, "trees\\leaf", "dds"),
+    CompilerTextures::find(&roots, "trees\\leaf", "dds")?,
     Some(roots[1].join("trees").join("leaf.dds"))
   );
-  assert_eq!(CompilerTextures::find(&roots, "trees\\bark", "dds"), None);
+  assert_eq!(CompilerTextures::find(&roots, "trees\\bark", "dds")?, None);
 
   Ok(())
 }

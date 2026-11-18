@@ -80,6 +80,53 @@ fn refuses_to_write_beside_a_part_the_scene_would_not_write() -> XrfResult {
   Ok(())
 }
 
+/// Windows and the editor compare names without case, so a part held as `SPAWN.part` is the one `spawn.part` replaces.
+#[test]
+fn writes_over_a_part_held_in_another_case() -> XrfResult {
+  let root: PathBuf = GeneratedResources::create_dir("xrf-editable-level/scene/part-case")?;
+  let level: PathBuf = write_scene(&root, &GUID)?;
+  let scene: EditableLevelScene = EditableLevelScene::read_from_path::<XRayByteOrder, _>(&level)?;
+
+  fs::remove_file(root.join("labx8/group.part3"))?;
+  fs::rename(root.join("labx8/spawn.part"), root.join("labx8/SPAWN.part"))?;
+
+  scene.check_writable(&level)?;
+
+  Ok(())
+}
+
+/// A tool's name names its files, so one that is not a single file name would write outside the part directory, and
+/// two that differ only in case would write the same file.
+#[test]
+fn refuses_a_tool_name_that_is_not_one_file_name() -> XrfResult {
+  let root: PathBuf = GeneratedResources::create_dir("xrf-editable-level/scene/tool-name")?;
+  let level: PathBuf = write_scene(&root, &GUID)?;
+  let scene: EditableLevelScene = EditableLevelScene::read_from_path::<XRayByteOrder, _>(&level)?;
+  let copy: PathBuf = root.join("copy").join("labx8.level");
+
+  for name in ["..\\outside", "../outside", "c:outside", "nested\\spawn", "..", ""] {
+    let mut renamed: EditableLevelScene = scene.clone();
+
+    renamed.tools[0].name = String::from(name);
+
+    assert!(renamed.get_part_paths(&copy).is_err(), "'{name}' is refused");
+    assert!(
+      renamed.write_to_path::<XRayByteOrder, _>(&copy).is_err(),
+      "'{name}' is refused"
+    );
+  }
+
+  let mut doubled: EditableLevelScene = scene;
+
+  doubled.tools[0].name = String::from("SPAWN");
+  doubled.tools[1].name = String::from("spawn");
+
+  assert!(doubled.write_to_path::<XRayByteOrder, _>(&copy).is_err());
+  assert!(!copy.exists(), "nothing is written");
+
+  Ok(())
+}
+
 #[test]
 fn names_the_files_the_editor_reads_as_parts() {
   for (file_name, is_part) in [

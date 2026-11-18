@@ -8,6 +8,7 @@ use xrf_spawn::LevelSpawnFile;
 use xrf_utils::format_path;
 
 use crate::level::level_entity_conversion::LevelEntityConversion;
+use crate::level::level_object_library::LevelObjectLibrary;
 use crate::level::scene::level_decompile_options::LevelDecompileOptions;
 use crate::level::scene::level_decompile_report::{
   LevelDecompileGeometry, LevelDecompileReport, LevelDecompileReportTool, LevelDecompileRootSpawn,
@@ -145,7 +146,9 @@ impl LevelSceneDecompiler {
       LevelEntityConversion::RESPAWN_FILE_NAME,
       LevelSpawnFile::read_from_bytes::<T>,
     )?;
-    let mut draft: LevelSceneDraft = LevelSceneDraft::new(guid, &options.name, root_spawn, spawn, respawn);
+    let object_library: LevelObjectLibrary = LevelObjectLibrary::list(&options.libraries)?;
+    let mut draft: LevelSceneDraft =
+      LevelSceneDraft::new(guid, &options.name, root_spawn, spawn, respawn, object_library);
 
     begin(1)?;
     LevelMapStep::decompile::<T>(&mut sources, options, &mut draft)?;
@@ -192,17 +195,20 @@ impl LevelSceneDecompiler {
     object_outputs.assert_free(request.is_forced)?;
 
     let decompiled: LevelSceneDecompile = Self::decompile_with::<T>(source, &options, job)?;
+    // Resolved before anything is removed or written, so a name from the level or a library that would leave its root
+    // refuses the run whole.
+    let written_scene: Vec<PathBuf> = decompiled.get_written_scene_paths(destination)?;
+    let written_objects: Vec<PathBuf> = decompiled.get_written_object_paths(&objects)?;
+    let mut existing: Vec<PathBuf> = decompiled.get_existing_object_paths(&objects)?;
+
+    existing.extend(decompiled.get_existing_texture_paths(&textures)?);
 
     if !request.is_forced
-      && let Some(existing) = decompiled
-        .get_existing_object_paths(&objects)
-        .into_iter()
-        .chain(decompiled.get_existing_texture_paths(&textures))
-        .next()
+      && let Some(existing) = existing.first()
     {
       return Err(XrfError::new_invalid_error(format!(
         "{} already exists; overwrite to replace the scene's objects and textures",
-        format_path(&existing)
+        format_path(existing)
       )));
     }
 
@@ -215,9 +221,9 @@ impl LevelSceneDecompiler {
 
       job.set_detail(Some(format_path(destination).to_string()));
       // The parts an earlier scene had and this one has not go first: the editor would read them as this scene's.
-      removed.extend(scene_outputs.remove_stale(&decompiled.get_written_scene_paths(destination))?);
+      removed.extend(scene_outputs.remove_stale(&written_scene)?);
       decompiled.write_to_path::<T>(destination, &objects, &textures)?;
-      removed.extend(object_outputs.remove_stale(&decompiled.get_written_object_paths(&objects))?);
+      removed.extend(object_outputs.remove_stale(&written_objects)?);
     }
 
     Ok(LevelDecompileReport {

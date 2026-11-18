@@ -21,14 +21,14 @@ impl LevelSceneStep for LevelDetailStep {
 
   fn decompile<T: ByteOrder>(
     sources: &mut LevelSceneSources,
-    options: &LevelDecompileOptions,
+    _options: &LevelDecompileOptions,
     draft: &mut LevelSceneDraft,
   ) -> XrfResult {
     let Some(file) = sources.take_read(LevelDetailsFile::FILE_NAME, LevelDetailsFile::read_from_bytes::<T>)? else {
       return Ok(());
     };
     let atlas: Option<LevelDetailAtlas> = Self::read_atlas(sources, draft);
-    let library: LevelDetailLibrary = LevelDetailLibrary::read_from_roots::<T>(&options.libraries)?;
+    let library: LevelDetailLibrary = LevelDetailLibrary::read_from_library::<T>(&mut draft.object_library)?;
     let decompile: LevelDetailDecompile = LevelDetailConversion::decompile(&file, &library, atlas.as_ref())?;
 
     draft.refused.extend(decompile.refused);

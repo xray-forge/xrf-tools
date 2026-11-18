@@ -138,9 +138,8 @@ pub struct LevelSceneGeometry {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelSceneInstances {
-  /// The library roots looked in, and the objects there that did not read.
+  /// The library roots looked in; a file there that could not be used is among the scene's refusals.
   pub roots: Vec<String>,
-  pub unread_objects: usize,
   pub objects: Vec<LevelSceneLibraryObject>,
   pub placements: Vec<LevelSceneInstancePlacement>,
   /// The tree models found to be library trees.
@@ -201,10 +200,9 @@ pub struct LevelSceneSurfaces {
 pub struct LevelSceneSurfaceLibraries {
   pub game_materials: LevelSceneSource,
   pub compiler_shaders: LevelSceneSource,
-  /// The object library roots whose pairings broke ties, as given.
+  /// The object library roots whose pairings broke ties, as given; a file there that could not be used is among the
+  /// scene's refusals.
   pub object_roots: Vec<String>,
-  /// Objects under them that did not read.
-  pub unread_objects: usize,
 }
 
 /// What the decompile read but left out of the scene, with why.
@@ -212,9 +210,9 @@ pub struct LevelSceneSurfaceLibraries {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelSceneRefusal {
-  /// The compiled file holding it, such as `level.spawn`.
+  /// The compiled file holding it, such as `level.spawn`, or an object library's file that could not be used.
   pub file: String,
-  /// Its name there, such as an entity's.
+  /// Its name there, such as an entity's, or the library file's name.
   pub object: String,
   pub reason: String,
 }

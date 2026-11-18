@@ -1,5 +1,8 @@
 use std::path::{Path, PathBuf};
 
+use xrf_error::XrfResult;
+use xrf_utils::HostRelativePath;
+
 /// How the SDK's compilers name and find the textures `build.prj` names under the textures roots (`$game_textures$`).
 pub(crate) struct CompilerTextures;
 
@@ -15,18 +18,29 @@ impl CompilerTextures {
   }
 
   /// A texture's file under a root, `<root>\<name>.<extension>`, for a name [`Self::get_name`] gave.
-  pub(crate) fn get_path(root: &Path, name: &str, extension: &str) -> PathBuf {
-    name
-      .split(['\\', '/'])
-      .fold(root.to_path_buf(), |path, part| path.join(part))
-      .with_extension(extension)
+  ///
+  /// # Errors
+  ///
+  /// Returns an invalid error when the name, taken from `build.prj`, names no file below the root: one carrying a
+  /// drive, or empty.
+  pub(crate) fn get_path(root: &Path, name: &str, extension: &str) -> XrfResult<PathBuf> {
+    Ok(root.join(HostRelativePath::new_file(name, "Texture name")?.with_extension(extension)))
   }
 
   /// A texture's file under the first of `roots` holding it.
-  pub(crate) fn find(roots: &[PathBuf], name: &str, extension: &str) -> Option<PathBuf> {
-    roots
-      .iter()
-      .map(|root| Self::get_path(root, name, extension))
-      .find(|path| path.is_file())
+  ///
+  /// # Errors
+  ///
+  /// As [`Self::get_path`].
+  pub(crate) fn find(roots: &[PathBuf], name: &str, extension: &str) -> XrfResult<Option<PathBuf>> {
+    for root in roots {
+      let path: PathBuf = Self::get_path(root, name, extension)?;
+
+      if path.is_file() {
+        return Ok(Some(path));
+      }
+    }
+
+    Ok(None)
   }
 }

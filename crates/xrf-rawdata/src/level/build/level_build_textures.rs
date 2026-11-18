@@ -31,13 +31,16 @@ impl<'a> LevelBuildTextures<'a> {
   ///
   /// # Errors
   ///
-  /// Returns an error when no held texture has the name and the root names none, or the texture does not decode.
+  /// Returns an error when no held texture has the name and the root names none, the name names no file below the
+  /// root, or the texture does not decode.
   pub(crate) fn read(&self, kind: &str, name: &str) -> XrfResult<RgbaImage> {
-    if let Some(held) = self
-      .held
-      .iter()
-      .find(|held| held.name.eq_ignore_ascii_case(name) && !self.root.is_some_and(|root| held.is_held_by(root)))
-    {
+    for held in self.held.iter().filter(|held| held.name.eq_ignore_ascii_case(name)) {
+      if let Some(root) = self.root
+        && held.is_held_by(root)?
+      {
+        continue;
+      }
+
       return DdsFile::read_from_bytes(&held.bytes)
         .and_then(|file| file.decode_rgba(0))
         .map_err(|error| XrfError::new_read_error(format!("{kind} '{name}' held in memory does not read: {error}")));
@@ -46,7 +49,7 @@ impl<'a> LevelBuildTextures<'a> {
     let root: &Path = self.root.ok_or_else(|| {
       XrfError::new_invalid_error(format!("{kind} '{name}' is not held and no textures root is named"))
     })?;
-    let path: PathBuf = LevelSceneTextureFile::get_named_path(root, name);
+    let path: PathBuf = LevelSceneTextureFile::get_named_path(root, name)?;
 
     DdsFile::read_from_path(&path)
       .and_then(|file| file.decode_rgba(0))

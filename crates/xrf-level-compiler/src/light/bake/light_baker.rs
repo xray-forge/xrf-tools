@@ -216,7 +216,7 @@ impl LightBaker {
       .into_iter()
       .map(|(texture, faces)| {
         let texture: &CompilerTexture = &textures[usize::from(texture)];
-        let path: PathBuf = CompilerTextures::find(roots, &texture.name, "dds").ok_or_else(|| {
+        let path: PathBuf = CompilerTextures::find(roots, &texture.name, "dds")?.ok_or_else(|| {
           XrfError::new_not_found_error(format!(
             "The implicitly lit texture {} has no .dds under the texture roots",
             texture.name
