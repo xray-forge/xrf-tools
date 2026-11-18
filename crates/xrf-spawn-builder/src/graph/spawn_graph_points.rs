@@ -11,7 +11,7 @@ use crate::map::spawn_ai_map::SpawnAiMap;
 /// A level's game vertices to be, its graph points in `level.spawn`'s order (`load_graph_points`), with the ones the
 /// build leaves out and why.
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct SpawnGraphPoints {
+pub(crate) struct SpawnGraphPoints {
   pub points: Vec<SpawnGraphPoint>,
   pub removed: Vec<SpawnRemovedGraphPoint>,
 }
@@ -26,7 +26,7 @@ impl SpawnGraphPoints {
   /// # Errors
   ///
   /// Returns an error when a packet of the list does not read as its class.
-  pub fn read(spawn: &LevelSpawnFile, map: &SpawnAiMap, classes: &SpawnSectionClasses) -> XrfResult<Self> {
+  pub(crate) fn read(spawn: &LevelSpawnFile, map: &SpawnAiMap, classes: &SpawnSectionClasses) -> XrfResult<Self> {
     let mut graph_points: Self = Self::default();
 
     for packet in &spawn.objects {

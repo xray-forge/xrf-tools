@@ -3,11 +3,16 @@ use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 use xrf_spawn::{GraphCrossTableCell, GraphEdge};
 
+use crate::graph::spawn_graph_point::SpawnGraphPoint;
+use crate::graph::spawn_level_game_graph::SpawnLevelGameGraph;
+use crate::map::spawn_ai_map::SpawnAiMap;
+use crate::map::spawn_cross_table::SpawnCrossTable;
+use crate::merge::spawn_game_graph_merge::SpawnGameGraphMerge;
+use crate::merge::spawn_game_graph_merger::SpawnGameGraphMerger;
+use crate::merge::spawn_merge_level::SpawnMergeLevel;
+use crate::merge::spawn_random::SpawnRandom;
+use crate::merge::spawn_skipped_connection::SpawnSkippedConnection;
 use crate::tests::fixtures::{grid, point};
-use crate::{
-  SpawnAiMap, SpawnCrossTable, SpawnGameGraphMerge, SpawnGameGraphMerger, SpawnGraphPoint, SpawnLevelGameGraph,
-  SpawnMergeLevel, SpawnRandom, SpawnSkippedConnection,
-};
 
 /// A level's map, graph points connected as given, and the graph and cross table built from them.
 struct Level {

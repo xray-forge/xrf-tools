@@ -7,13 +7,19 @@ use xrf_spawn::{
   AlifeObject, AlifeObjectInherited, GraphCrossTableCell, LevelSpawnFile, SpawnFile, SpawnSectionClasses,
 };
 
+use crate::SpawnRootOptions;
+use crate::gamedata::spawn_game_level::SpawnGameLevel;
 use crate::gamedata::spawn_game_levels::SpawnGameLevels;
+use crate::graph::spawn_graph_points::SpawnGraphPoints;
+use crate::graph::spawn_level_game_graph::SpawnLevelGameGraph;
+use crate::map::spawn_ai_map::SpawnAiMap;
+use crate::map::spawn_cross_table::SpawnCrossTable;
+use crate::merge::spawn_merge_level::SpawnMergeLevel;
+use crate::root::spawn_root_build::SpawnRootBuild;
+use crate::root::spawn_root_builder::SpawnRootBuilder;
+use crate::root::spawn_root_level::SpawnRootLevel;
 use crate::tests::fixtures::{
   actor_object, changer_object, graph_point_object, grid, separator_object, spawn_file, zone_object,
-};
-use crate::{
-  SpawnAiMap, SpawnCrossTable, SpawnGameLevel, SpawnGraphPoints, SpawnLevelGameGraph, SpawnMergeLevel, SpawnRootBuild,
-  SpawnRootBuilder, SpawnRootLevel, SpawnRootOptions,
 };
 
 /// A level's files, and the graph and cross table built from them.

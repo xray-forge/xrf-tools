@@ -144,11 +144,11 @@ impl SpawnGraphsChunk {
       ));
     }
 
-    let mut ranked: Vec<&GraphLevel> = self.levels.iter().collect();
-
-    ranked.sort_by_key(|level| level.id);
-
-    for (level, table) in ranked.into_iter().zip(&self.cross_tables) {
+    for (level, table) in self.get_ranked_levels() {
+      // The counts are equal, checked above, so every level has its table.
+      let Some(table) = table else {
+        continue;
+      };
       let level_vertices: u32 = self
         .vertices
         .iter()
@@ -183,6 +183,20 @@ impl SpawnGraphsChunk {
     }
 
     Ok(())
+  }
+
+  /// Each level in the engine's order beside its cross table: `CGameGraph::set_current_level` walks the levels by
+  /// ascending id, so the `i`-th cross table is the `i`-th level's that way; none where the graph holds fewer tables.
+  pub fn get_ranked_levels(&self) -> Vec<(&GraphLevel, Option<&GraphCrossTable>)> {
+    let mut levels: Vec<&GraphLevel> = self.levels.iter().collect();
+
+    levels.sort_by_key(|level| level.id);
+
+    levels
+      .into_iter()
+      .enumerate()
+      .map(|(rank, level)| (level, self.cross_tables.get(rank)))
+      .collect()
   }
 
   /// The edge table and the level point table, after the vertices. Every record of the three is of fixed size, its

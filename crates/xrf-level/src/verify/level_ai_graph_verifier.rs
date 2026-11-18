@@ -7,7 +7,7 @@ use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
 use crate::verify::level_ai_graph_census::LevelAiGraphCensus;
 use crate::verify::level_ai_graph_verify_result::LevelAiGraphVerifyResult;
 use crate::verify::level_file_source::LevelFileSource;
-use crate::{LevelAiFile, LevelAiHeader, LevelAiNodes};
+use crate::{LevelAiFile, LevelAiHeader, LevelAiNodes, LevelAiParts};
 
 /// Checks a level's AI map as a graph, as xrAI's `-verify` does (`xrAI/verify_level_graph.cpp`): a node linked to
 /// itself fails the map, as it fails GSC's ("AI map is CORRUPTED"); links with no link back and parts of the map no link
@@ -61,8 +61,7 @@ impl LevelAiGraphVerifier {
     };
     let mut self_linked: Vec<u32> = Vec::new();
     let mut is_one_way_node: Vec<bool> = vec![false; links.len()];
-    let mut parts: Vec<u32> = (0..count).collect();
-    let mut sizes: Vec<u32> = vec![1; links.len()];
+    let mut parts: LevelAiParts = LevelAiParts::new(count);
 
     for (node, node_links) in (0u32..).zip(&links) {
       for (side, link) in node_links.iter().enumerate() {
@@ -88,13 +87,19 @@ impl LevelAiGraphVerifier {
           is_one_way_node[*link as usize] = true;
         }
 
-        Self::join(&mut parts, &mut sizes, node, *link);
+        parts.join(node, *link);
       }
     }
 
     census.one_way_nodes = is_one_way_node.iter().filter(|is_one_way| **is_one_way).count() as u32;
 
-    let roots: Vec<u32> = (0..count).map(|node| Self::find(&mut parts, node)).collect();
+    let roots: Vec<u32> = parts.into_names();
+    let mut sizes: Vec<u32> = vec![0; roots.len()];
+
+    for root in &roots {
+      sizes[*root as usize] += 1;
+    }
+
     let largest: Option<u32> = (0..count)
       .filter(|node| roots[*node as usize] == *node)
       .max_by_key(|root| (sizes[*root as usize], std::cmp::Reverse(*root)));
@@ -172,34 +177,6 @@ impl LevelAiGraphVerifier {
         },
       ],
     )
-  }
-
-  /// The part `node` belongs to, halving each path it walks.
-  fn find(parts: &mut [u32], mut node: u32) -> u32 {
-    while parts[node as usize] != node {
-      parts[node as usize] = parts[parts[node as usize] as usize];
-      node = parts[node as usize];
-    }
-
-    node
-  }
-
-  /// Joins the parts of `a` and `b`, the smaller under the larger.
-  fn join(parts: &mut [u32], sizes: &mut [u32], a: u32, b: u32) {
-    let (a, b) = (Self::find(parts, a), Self::find(parts, b));
-
-    if a == b {
-      return;
-    }
-
-    let (larger, smaller) = if sizes[a as usize] >= sizes[b as usize] {
-      (a, b)
-    } else {
-      (b, a)
-    };
-
-    parts[smaller as usize] = larger;
-    sizes[larger as usize] += sizes[smaller as usize];
   }
 
   fn new_finding(rule: &'static str, subject: &str, message: String) -> Finding {

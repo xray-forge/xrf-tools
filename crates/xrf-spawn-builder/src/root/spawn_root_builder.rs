@@ -39,11 +39,11 @@ use crate::separator::spawn_separator_cut::SpawnSeparatorCut;
 /// What xrAI asserts is refused, naming the level and the entity; what it lets through is reported: the connections to
 /// levels outside the build, and the restrictors whose border cuts an AI map apart (`SpawnSeparatorCheck`), refused
 /// only with [`SpawnRootOptions::is_separator_strict`].
-pub struct SpawnRootBuilder;
+pub(crate) struct SpawnRootBuilder;
 
 impl SpawnRootBuilder {
   /// `XRAI_CURRENT_VERSION`, the spawn's version.
-  pub const VERSION: u32 = 10;
+  pub(crate) const VERSION: u32 = 10;
 
   /// Builds the root spawn of `levels` as `options` asks.
   ///
@@ -53,7 +53,7 @@ impl SpawnRootBuilder {
   /// no entity, an entity does not read as its class, two entities share a story id, a level changer cannot be
   /// linked, two patrols share a name, the levels hold no actor or more than one, the start level is no level of the
   /// build, or, strict, a restrictor cuts an AI map apart.
-  pub fn build(levels: &[SpawnRootLevel<'_>], options: &SpawnRootOptions) -> XrfResult<SpawnRootBuild> {
+  pub(crate) fn build(levels: &[SpawnRootLevel<'_>], options: &SpawnRootOptions) -> XrfResult<SpawnRootBuild> {
     let mut ordered: Vec<&SpawnRootLevel<'_>> = levels.iter().collect();
 
     ordered.sort_by_key(|level| level.merge.id);

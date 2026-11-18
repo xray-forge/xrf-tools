@@ -12,7 +12,7 @@ use crate::map::spawn_ai_map::SpawnAiMap;
 /// A level's game graph as xrAI builds it from its graph points and cross table (`CGameGraphBuilder::build_graph`,
 /// `game_graph_builder.cpp:695`): a vertex a graph point, each with its edges, in order.
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct SpawnLevelGameGraph {
+pub(crate) struct SpawnLevelGameGraph {
   /// The edges leaving each vertex, a list a vertex, in the order xrAI adds them.
   pub edges: Vec<Vec<SpawnGameEdge>>,
 }
@@ -33,7 +33,7 @@ impl SpawnLevelGameGraph {
   ///
   /// Returns an error where no path joins two neighbouring vertices, a vertex would have more than 255 edges, or the
   /// level holds more graph points than a game graph numbers.
-  pub fn build(map: &SpawnAiMap, points: &[SpawnGraphPoint], cells: &[GraphCrossTableCell]) -> XrfResult<Self> {
+  pub(crate) fn build(map: &SpawnAiMap, points: &[SpawnGraphPoint], cells: &[GraphCrossTableCell]) -> XrfResult<Self> {
     let mut distance: SpawnPathDistance<'_> = SpawnPathDistance::new(map);
     let mut marks: Vec<u32> = vec![u32::MAX; map.get_node_count()];
     let mut edges: Vec<Vec<SpawnGameEdge>> = Vec::with_capacity(points.len());

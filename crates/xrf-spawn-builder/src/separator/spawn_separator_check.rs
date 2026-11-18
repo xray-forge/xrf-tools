@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 
 use rayon::prelude::*;
+use xrf_level::LevelAiParts;
 use xrf_math::Aabb;
 use xrf_spawn::AlifeObject;
 
@@ -20,7 +21,7 @@ use crate::separator::spawn_separator_cut::SpawnSeparatorCut;
 /// every piece but the part's largest, however GSC's first node falls.
 pub(crate) struct SpawnSeparatorCheck<'a> {
   map: &'a SpawnAiMap,
-  /// The part each node belongs to, named by its root node.
+  /// The part each node belongs to, named by its lowest node ([`LevelAiParts`]).
   parts: Vec<u32>,
 }
 
@@ -32,20 +33,18 @@ impl<'a> SpawnSeparatorCheck<'a> {
   pub(crate) fn new(map: &'a SpawnAiMap) -> Self {
     // The map holds exactly as many nodes as its header counts.
     let count: u32 = map.get_header().count;
-    let mut parents: Vec<u32> = (0..count).collect();
+    let mut parts: LevelAiParts = LevelAiParts::new(count);
 
     for node in 0..count {
       for neighbour in map.get_neighbours(node) {
-        let (a, b) = (Self::find(&mut parents, node), Self::find(&mut parents, neighbour));
-
-        // The lower root stays, so a part is named the same whatever the order of its links.
-        parents[a.max(b) as usize] = a.min(b);
+        parts.join(node, neighbour);
       }
     }
 
-    let parts: Vec<u32> = (0..count).map(|node| Self::find(&mut parents, node)).collect();
-
-    Self { map, parts }
+    Self {
+      map,
+      parts: parts.into_names(),
+    }
   }
 
   /// The cuts of the objects' restrictors flagged for the check, in the objects' order, on level `level`.
@@ -148,15 +147,5 @@ impl<'a> SpawnSeparatorCheck<'a> {
       first_node: first,
       first_position: self.map.get_node_position(first),
     })
-  }
-
-  /// The root of `node`'s part, halving each path it walks.
-  fn find(parents: &mut [u32], mut node: u32) -> u32 {
-    while parents[node as usize] != node {
-      parents[node as usize] = parents[parents[node as usize] as usize];
-      node = parents[node as usize];
-    }
-
-    node
   }
 }

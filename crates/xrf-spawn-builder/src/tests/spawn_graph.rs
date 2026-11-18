@@ -1,8 +1,12 @@
 use uuid::Uuid;
 use xrf_error::XrfResult;
 
+use crate::graph::spawn_game_edge::SpawnGameEdge;
+use crate::graph::spawn_graph_point::SpawnGraphPoint;
+use crate::graph::spawn_level_game_graph::SpawnLevelGameGraph;
+use crate::map::spawn_ai_map::SpawnAiMap;
+use crate::map::spawn_cross_table::SpawnCrossTable;
 use crate::tests::fixtures::{grid, point};
-use crate::{SpawnAiMap, SpawnCrossTable, SpawnGameEdge, SpawnGraphPoint, SpawnLevelGameGraph};
 
 fn build(map: &SpawnAiMap, points: &[SpawnGraphPoint]) -> XrfResult<SpawnLevelGameGraph> {
   let nodes: Vec<u32> = points.iter().map(|point| point.node).collect();

@@ -9,7 +9,8 @@ use xrf_spawn::{
   LastSpawnTime, LevelSpawnFile, LevelSpawnObject, Shape, SpawnPacketHeader,
 };
 
-use crate::{SpawnAiMap, SpawnGraphPoint};
+use crate::graph::spawn_graph_point::SpawnGraphPoint;
+use crate::map::spawn_ai_map::SpawnAiMap;
 
 /// No neighbour across an edge: past the map's nodes.
 const NONE: u32 = (1 << 23) - 1;

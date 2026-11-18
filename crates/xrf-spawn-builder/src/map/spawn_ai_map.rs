@@ -1,13 +1,13 @@
 use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{LevelAiGrid, LevelAiHeader, LevelAiNode, LevelAiNodes};
-use xrf_math::{Aabb, Vector3d};
+use xrf_math::{Aabb, AiNodePosition, Vector3d};
 
 use xrf_geometry::Box2Pick;
 
 /// A level's AI map as a root spawn build reads it, `CLevelGraph`: its nodes in their file order, sorted by packed
 /// cell, with the lookups that place a graph point, an entity or a patrol point on a node.
-pub struct SpawnAiMap {
+pub(crate) struct SpawnAiMap {
   header: LevelAiHeader,
   grid: LevelAiGrid,
   nodes: Vec<LevelAiNode>,
@@ -18,7 +18,7 @@ impl SpawnAiMap {
   ///
   /// Returns an error for a header whose grid does not unpack ([`LevelAiHeader::get_grid`]) or whose node count
   /// differs from the nodes held, which the lookups would read past.
-  pub fn new(header: LevelAiHeader, nodes: &LevelAiNodes) -> XrfResult<Self> {
+  pub(crate) fn new(header: LevelAiHeader, nodes: &LevelAiNodes) -> XrfResult<Self> {
     let grid: LevelAiGrid = header.get_grid()?;
     let nodes: Vec<LevelAiNode> = nodes.iter_nodes::<XRayByteOrder>().collect();
 
@@ -33,29 +33,30 @@ impl SpawnAiMap {
     Ok(Self { header, grid, nodes })
   }
 
-  pub fn get_header(&self) -> &LevelAiHeader {
+  pub(crate) fn get_header(&self) -> &LevelAiHeader {
     &self.header
   }
 
-  pub fn get_node_count(&self) -> usize {
+  pub(crate) fn get_node_count(&self) -> usize {
     self.nodes.len()
   }
 
   /// The nodes a node's links name; a link to no node, `u24::MAX` or past the map, is none.
-  pub fn get_neighbours(&self, node: u32) -> impl Iterator<Item = u32> + '_ {
+  pub(crate) fn get_neighbours(&self, node: u32) -> impl Iterator<Item = u32> + '_ {
     self.nodes[node as usize].get_neighbours(self.nodes.len() as u32)
   }
 
-  /// `vertex_plane_y`: the height of the node's plane at `x`, `z`.
+  /// `vertex_plane_y`: the height of the node's plane at `x`, `z`, through the node's position as `vertex_position`
+  /// gives it ([`Self::get_node_position`]).
   pub(crate) fn get_plane_y(&self, node: u32, x: f32, z: f32) -> f32 {
-    let vertex: &LevelAiNode = &self.nodes[node as usize];
-    let (point, normal): (Vector3d<f32>, Vector3d<f32>) = (self.header.get_node_position(vertex), vertex.get_normal());
+    let point: Vector3d<f32> = self.get_node_position(node);
+    let normal: Vector3d<f32> = self.nodes[node as usize].get_normal();
 
     point.y - (normal.x * (x - point.x) + normal.z * (z - point.z)) / normal.y
   }
 
   /// `valid_vertex_position`: the position lies over the map's grid, half a cell around its box.
-  pub fn is_valid_position(&self, position: &Vector3d<f32>) -> bool {
+  pub(crate) fn is_valid_position(&self, position: &Vector3d<f32>) -> bool {
     let (min, max) = (&self.header.bounds.min, &self.header.bounds.max);
     let half: f32 = self.header.size * 0.5;
 
@@ -104,14 +105,14 @@ impl SpawnAiMap {
   }
 
   /// `inside(vertex, position)`: the position lies over the grid, in the node's cell.
-  pub fn is_inside(&self, node: u32, position: &Vector3d<f32>) -> bool {
+  pub(crate) fn is_inside(&self, node: u32, position: &Vector3d<f32>) -> bool {
     self.is_valid_position(position)
       && self.nodes[node as usize].packed_xz == self.get_packed_xz(position.x, position.z)
   }
 
   /// `CLevelGraph::vertex(u32(-1), position)`: the node of the position's cell nearest at or under it
   /// (`Self::find_node`), else, with none or off the grid, `Self::find_nearest_node`.
-  pub fn place(&self, position: &Vector3d<f32>) -> u32 {
+  pub(crate) fn place(&self, position: &Vector3d<f32>) -> u32 {
     self
       .is_valid_position(position)
       .then(|| self.find_node(position))
@@ -218,13 +219,15 @@ impl SpawnAiMap {
     (packed / self.get_row_length(), packed % self.get_row_length())
   }
 
-  /// A node's position, `vertex_position`: its cell centre at its packed height. The 2009 build computes the height
-  /// `(float(y) / 65535) * factor_y + min.y` with the division as a multiply by the reciprocal, which every shipped
-  /// level point's height needs.
-  pub fn get_node_position(&self, node: u32) -> Vector3d<f32> {
-    let vertex: &LevelAiNode = &self.nodes[node as usize];
+  /// A node's position, `vertex_position`: its cell centre at its packed height as the shipped game unpacks it
+  /// ([`AiNodePosition::unpack_height_as_built`]); every lookup here takes a node's height from it, as the engine's do.
+  pub(crate) fn get_node_position(&self, node: u32) -> Vector3d<f32> {
     let (x, z) = self.get_node_xz(node);
-    let height: f32 = f32::from(vertex.packed_y) * (1.0 / 65535.0) * self.header.size_y + self.header.bounds.min.y;
+    let height: f32 = AiNodePosition::unpack_height_as_built(
+      self.nodes[node as usize].packed_y,
+      self.header.bounds.min.y,
+      self.header.size_y,
+    );
 
     Vector3d::new(x, height, z)
   }
@@ -239,7 +242,7 @@ impl SpawnAiMap {
   /// (`Fbox2::pick_exact`) and whose cell's middle comes no farther from `to`, never straight back; `None` where no
   /// link does, or `to` lies off the grid. A walk going round cells equally far from `to`, where the engine would never
   /// return, ends unreached once it has taken as many steps as there are nodes.
-  pub fn find_straight_walk(&self, start: u32, from: (f32, f32), to: (f32, f32)) -> Option<u32> {
+  pub(crate) fn find_straight_walk(&self, start: u32, from: (f32, f32), to: (f32, f32)) -> Option<u32> {
     let target: u32 = self.get_packed_xz(to.0, to.1);
 
     if self.nodes[start as usize].packed_xz == target {

@@ -8,7 +8,10 @@ use xrf_spawn::{
   SpawnSectionClasses,
 };
 
-use crate::{SpawnAiMap, SpawnCrossTable, SpawnGraphPointRemoval, SpawnGraphPoints};
+use crate::graph::spawn_graph_point_removal::SpawnGraphPointRemoval;
+use crate::graph::spawn_graph_points::SpawnGraphPoints;
+use crate::map::spawn_ai_map::SpawnAiMap;
+use crate::map::spawn_cross_table::SpawnCrossTable;
 
 /// No neighbour across an edge: past the map's nodes.
 const NONE: u32 = (1 << 23) - 1;
@@ -141,6 +144,21 @@ fn finds_the_node_nearest_at_or_under_a_position_in_its_cell() -> XrfResult {
   assert_eq!(map.find_node(&Vector3d::new(0.0, -1.0, 3.0)), Some(3));
   assert_eq!(map.find_node(&Vector3d::new(0.0, 0.0, 6.0)), None);
   assert!(!map.is_valid_position(&Vector3d::new(2.0, 0.0, 3.0)));
+
+  Ok(())
+}
+
+/// A node's plane passes through its position, as the engine's `vertex_plane_y` takes it from `vertex_position`: one
+/// height for both lookups.
+#[test]
+fn takes_a_node_plane_through_its_own_position() -> XrfResult {
+  let map: SpawnAiMap = map()?;
+
+  for node in 0..map.get_node_count() as u32 {
+    let position: Vector3d = map.get_node_position(node);
+
+    assert_eq!(map.get_plane_y(node, position.x, position.z), position.y, "node {node}");
+  }
 
   Ok(())
 }

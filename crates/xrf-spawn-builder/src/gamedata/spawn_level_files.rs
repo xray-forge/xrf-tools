@@ -15,7 +15,7 @@ use crate::root::spawn_root_level::SpawnRootLevel;
 
 /// A level's files as the root spawn build reads them from its directory, and what is built from the level alone: its
 /// graph points, cross table and game graph (`CGameGraphBuilder`, run over each level before the merge).
-pub struct SpawnLevelFiles {
+pub(crate) struct SpawnLevelFiles {
   map: SpawnAiMap,
   spawn: LevelSpawnFile,
   game: Option<LevelGameFile>,
@@ -44,14 +44,18 @@ impl SpawnLevelFiles {
   ///
   /// Returns an error naming the level when a file does not read, or its graph cannot be built (a graph point no path
   /// on the AI map reaches from a neighbour among them).
-  pub fn read(directory: &Path, name: &str, classes: &SpawnSectionClasses) -> XrfResult<Self> {
+  pub(crate) fn read(directory: &Path, name: &str, classes: &SpawnSectionClasses) -> XrfResult<Self> {
     Self::read_unnamed(directory, classes)
       .map_err(|error| XrfError::new_invalid_error(format!("Level {name}: {error}")))
   }
 
   /// The level as the build takes it, by its entry in the game's level list, its sections' classes as `classes` gives
   /// them.
-  pub fn get_input<'a>(&'a self, level: &SpawnGameLevel, classes: &'a SpawnSectionClasses) -> SpawnRootLevel<'a> {
+  pub(crate) fn get_input<'a>(
+    &'a self,
+    level: &SpawnGameLevel,
+    classes: &'a SpawnSectionClasses,
+  ) -> SpawnRootLevel<'a> {
     SpawnRootLevel {
       merge: SpawnMergeLevel {
         section: level.section.clone(),

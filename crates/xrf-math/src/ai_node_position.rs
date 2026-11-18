@@ -65,9 +65,16 @@ impl AiNodePosition {
       .clamp(0.0, Self::HEIGHT_STEPS) as u16
   }
 
-  /// The height a packed one names, `packed / 65535 * extent + floor`.
+  /// The height a packed one names, `packed / 65535 * extent + floor`, as the SDK's editor and converters divide.
   pub fn unpack_height(packed: u16, floor: f32, extent: f32) -> f32 {
     f32::from(packed) / Self::HEIGHT_STEPS * extent + floor
+  }
+
+  /// The height a packed one names as the shipped game computes it, `CLevelGraph::vertex_position`: the 2009 build
+  /// turns the division by 65535 into a multiply by its reciprocal, which can land an ulp from
+  /// [`Self::unpack_height`], and which every shipped level point's height needs.
+  pub fn unpack_height_as_built(packed: u16, floor: f32, extent: f32) -> f32 {
+    f32::from(packed) * (1.0 / Self::HEIGHT_STEPS) * extent + floor
   }
 }
 

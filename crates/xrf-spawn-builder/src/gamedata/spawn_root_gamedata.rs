@@ -36,7 +36,7 @@ impl SpawnRootGamedata {
   /// Returns an error when the spawn's name is no plain file name, the request names an empty list of levels, the
   /// level list does not read, names no level to build or not one asked for, the configs are there but do not read, a
   /// level's files do not read or hold an object of a section neither they nor the table give a class, the build
-  /// refuses ([`SpawnRootBuilder::build`]), the spawn is there in any case of its name and the request is not forced,
+  /// refuses (`SpawnRootBuilder::build`), the spawn is there in any case of its name and the request is not forced,
   /// the job is cancelled before writing, or the spawn cannot be written.
   pub fn build(request: &SpawnRootRequest, job: &JobHandle) -> XrfResult<SpawnRootOutcome> {
     if request.name.is_empty() || Path::new(&request.name).file_name() != Some(OsStr::new(&request.name)) {

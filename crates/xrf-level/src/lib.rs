@@ -29,6 +29,7 @@ pub use crate::ai::level_ai_grid::*;
 pub use crate::ai::level_ai_header::*;
 pub use crate::ai::level_ai_node::*;
 pub use crate::ai::level_ai_nodes::*;
+pub use crate::ai::level_ai_parts::*;
 pub use crate::ai::level_ai_version::*;
 pub use crate::build_aimap::build_aimap_file::*;
 pub use crate::build_aimap::build_aimap_node::*;
