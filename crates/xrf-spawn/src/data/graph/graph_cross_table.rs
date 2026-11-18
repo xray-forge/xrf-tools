@@ -34,9 +34,13 @@ impl GraphCrossTable {
   /// The header's bytes: version, both counts and both GUIDs.
   pub const HEADER_SIZE: u64 = 4 + 4 + 4 + 16 + 16;
 
-  /// Import cross tables from a separate gct chunk file.
+  /// Import cross tables from a separate gct chunk file; an empty file, as a graph of no level exports, holds none.
   pub fn import_list<T: ByteOrder>(file: &mut File) -> XrfResult<Vec<Self>> {
     let mut cross_tables: Vec<Self> = Vec::new();
+
+    if file.metadata()?.len() == 0 {
+      return Ok(cross_tables);
+    }
 
     for cross_table_reader in ChunkSizePackedIterator::from_current(&mut ChunkReader::from_file(file.try_clone()?)?) {
       let mut cross_table_reader: ChunkReader<InMemoryChunkDataSource> = cross_table_reader?;

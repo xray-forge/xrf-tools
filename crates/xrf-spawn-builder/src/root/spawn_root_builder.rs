@@ -57,6 +57,7 @@ impl SpawnRootBuilder {
     let mut ordered: Vec<&SpawnRootLevel<'_>> = levels.iter().collect();
 
     ordered.sort_by_key(|level| level.merge.id);
+    Self::assert_graph_points(&ordered)?;
 
     let merges: Vec<SpawnMergeLevel<'_>> = ordered.iter().map(|level| level.merge.clone()).collect();
     let mut random: SpawnRandom = SpawnRandom::new();
@@ -68,15 +69,10 @@ impl SpawnRootBuilder {
     let mut first: u16 = 0;
 
     for (level, merge_level) in ordered.iter().zip(&merges) {
-      let Some(first_vertex) = merge.graph.vertices.get(usize::from(first)) else {
-        return Err(XrfError::new_invalid_error(format!(
-          "Level {} has no graph point, so no game vertex its entities can stand on",
-          merge_level.name
-        )));
-      };
+      // Every level keeps a graph point, so the merged graph holds a vertex at each level's first.
       let vertices: SpawnLevelVertices = SpawnLevelVertices {
         first,
-        first_node: first_vertex.level_vertex_id,
+        first_node: merge.graph.vertices[usize::from(first)].level_vertex_id,
       };
 
       let level_entities: SpawnLevelEntities = SpawnLevelEntities::build(level, &vertices, &mut random)?;
@@ -124,6 +120,33 @@ impl SpawnRootBuilder {
         SpawnRootReport::get_separators(&cuts, separators_took),
       ]),
     })
+  }
+
+  /// A level keeps at least one graph point, the game vertex its entities stand on; one whose points were all left out
+  /// is refused with why each went, before the merge fails on its empty cross table.
+  fn assert_graph_points(levels: &[&SpawnRootLevel<'_>]) -> XrfResult {
+    let Some(level) = levels.iter().find(|level| level.merge.points.is_empty()) else {
+      return Ok(());
+    };
+
+    let removed: Vec<String> = level
+      .removed
+      .iter()
+      .map(|point| format!("{}, {}", point.name, point.removal))
+      .collect();
+
+    Err(XrfError::new_invalid_error(if removed.is_empty() {
+      format!(
+        "Level {} has no graph point, so no game vertex its entities can stand on",
+        level.merge.name
+      )
+    } else {
+      format!(
+        "Level {} keeps no graph point, so no game vertex its entities can stand on; left out: {}",
+        level.merge.name,
+        removed.join("; ")
+      )
+    }))
   }
 
   /// `add_story_object`: a story id names one entity of the whole build.

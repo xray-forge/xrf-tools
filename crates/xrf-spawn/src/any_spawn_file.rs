@@ -135,23 +135,26 @@ mod tests {
     Ok(())
   }
 
-  /// A root spawn's folder is imported as a root spawn. The empty spawn's graph writes an empty cross table file, which
-  /// does not import back, so the root import's own answer is what shows the folder was routed to it.
+  /// A root spawn's folder is imported as a root spawn, the empty spawn's graph, of no cross table, included.
   #[test]
   fn imports_a_root_spawns_folder_as_its_kind() -> XrfResult {
     let path: PathBuf = GeneratedResources::create_dir("any_spawn_file/root_folder")?;
+    let spawn: SpawnFile = EmptySpawnFile::build();
 
-    EmptySpawnFile::build().export_to_path::<XRayByteOrder, _>(&path)?;
+    spawn.export_to_path::<XRayByteOrder, _>(&path)?;
 
     assert_eq!(SpawnFileKind::of_folder(&path)?, SpawnFileKind::Root);
-    assert_eq!(
-      AnySpawnFile::import_from_path::<XRayByteOrder, _>(&path)
-        .map(|_| ())
-        .map_err(|error| error.to_string()),
-      SpawnFile::import_from_path::<XRayByteOrder, _>(&path)
-        .map(|_| ())
-        .map_err(|error| error.to_string())
-    );
+
+    let AnySpawnFile::Root(imported) = AnySpawnFile::import_from_path::<XRayByteOrder, _>(&path)? else {
+      panic!("Expected a root spawn");
+    };
+    let mut written: Vec<u8> = Vec::new();
+    let mut rewritten: Vec<u8> = Vec::new();
+
+    spawn.write_to::<XRayByteOrder>(&mut written)?;
+    imported.write_to::<XRayByteOrder>(&mut rewritten)?;
+
+    assert_eq!(rewritten, written);
 
     Ok(())
   }

@@ -43,7 +43,7 @@ impl LastSpawnTime {
 }
 
 impl ChunkFieldReadWrite for LastSpawnTime {
-  /// Read the trailing spawn time from whatever budget the object chunk has left.
+  /// Read the trailing spawn time from whatever budget the object chunk has left; a flag other than 0 or 1 is refused.
   fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     if reader.is_ended() {
       return Ok(Self::Absent);

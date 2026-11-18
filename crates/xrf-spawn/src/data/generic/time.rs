@@ -23,12 +23,14 @@ pub struct Time {
 }
 
 impl ChunkFieldReadWriteOptional for Time {
-  /// A flag of 1 ahead of the time, or of 0 for none.
+  /// A flag of 1 ahead of the time, or of 0 for none; any other flag is refused, as it would not write back.
   fn read_field_optional<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Option<Self>> {
-    if reader.read_u8()? == 1 {
-      Ok(Some(reader.read_xr::<T, _>()?))
-    } else {
-      Ok(None)
+    match reader.read_u8()? {
+      0 => Ok(None),
+      1 => Ok(Some(reader.read_xr::<T, _>()?)),
+      flag => Err(XrfError::new_invalid_error(format!(
+        "A time's flag is {flag}, where 0 stands for none and 1 for a time"
+      ))),
     }
   }
 
@@ -273,6 +275,18 @@ mod tests {
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
     assert_eq!(Time::read_optional::<XRayByteOrder, _>(&mut reader)?, None);
+
+    Ok(())
+  }
+
+  #[test]
+  fn refuses_a_flag_other_than_0_or_1() -> XrfResult {
+    let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[2, 0, 0, 0, 0, 0, 0, 0, 0])?;
+    let error: String = Time::read_optional::<XRayByteOrder, _>(&mut reader)
+      .expect_err("a flag of 2")
+      .to_string();
+
+    assert!(error.contains("A time's flag is 2"), "{error}");
 
     Ok(())
   }

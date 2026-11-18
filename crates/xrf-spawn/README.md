@@ -143,11 +143,10 @@ Each object's chunk carries a second packet, which the engine applies over the s
 `PhysicsNetState` models the state's mask. Its opening byte packs the item count with whether the body is enabled and
 whether each velocity is omitted; an omitted velocity is `None`.
 
-- The engine reads a physic object's empty packet as no state, and a state ending before its closing byte as awake. It
-  writes the zero byte and the closing byte. These two shapes, which no shipped spawn contains, are read and written as
-  the engine does.
+- The engine reads a physic object's empty packet as no state, and a state ending before its closing byte as awake.
+  Both shapes, which no shipped spawn contains, write back as read: `PhysicsClosingState::Absent`, and `awake: None`.
 - A physic object's state closes its packet, so a zero byte with bytes behind it is a state whose count and mask pack
-  to zero (`read_closing`, `write_closing`): the SDK's 2009 `xrSE_Factory` writes one for an object of no items and
+  to zero (`PhysicsClosingState`): the SDK's 2009 `xrSE_Factory` writes one for an object of no items and
   both velocities set, which the engine skips past its zero byte. A root spawn the SDK's xrAI builds holds one; an
   item's state, which other fields follow, keeps the zero byte as no state.
 - A quantised field keeps its stored byte; the float the engine reads is a derived accessor (`get_update_condition`).

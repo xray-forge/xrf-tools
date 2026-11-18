@@ -151,7 +151,10 @@ export const renderCommands = {
   /** Play a weather effect over a viewport's cycle from its clock's time, or end the one playing for none. */
   playWeatherEffect: (viewport: RenderViewportId, name: string | null) =>
     __TAURI_INVOKE<void>(ERenderCommand.PLAY_WEATHER_EFFECT, { viewport, name }),
-  /** Let a hold on the renderer go; the GPU goes a few seconds after the last hold and viewport. */
+  /**
+   * Let a hold the asking window's page took on the renderer go; the GPU goes a few seconds after the last hold and
+   * viewport. Another window's hold is left alone.
+   */
   releaseHold: (hold: RenderHoldId) => __TAURI_INVOKE<void>(ERenderCommand.RELEASE_HOLD, { hold }),
   /** Write a viewport's next presented frame to a PNG file, as the renderer drew it rather than as the screen shows it. */
   saveCapture: (viewport: RenderViewportId, path: string) =>

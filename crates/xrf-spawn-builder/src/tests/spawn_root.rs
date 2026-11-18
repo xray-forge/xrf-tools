@@ -436,6 +436,28 @@ fn refuses_a_shared_story_id_and_a_level_of_no_entity() -> XrfResult {
   Ok(())
 }
 
+#[test]
+fn refuses_a_level_whose_graph_points_are_all_left_out() -> XrfResult {
+  let (_, b) = levels()?;
+  let stray: Level = Level::new(
+    grid(4, 1, &[], Uuid::nil())?,
+    &[
+      graph_point_object("a_far", 50.0, 0.0, "", "")?,
+      zone_object("a_zone", 1.0, 0.0, 1.0, 1)?,
+    ],
+    Vec::new(),
+  )?;
+
+  assert_refused(
+    &stray,
+    &b,
+    None,
+    "Level a keeps no graph point, so no game vertex its entities can stand on; left out: a_far, outside the AI map",
+  );
+
+  Ok(())
+}
+
 /// The engine lowercases a section's name as it reads it, so a mod listing `Level01` over a `[Level01]` names the level.
 #[test]
 fn reads_a_level_listed_and_declared_in_capitals() -> XrfResult {

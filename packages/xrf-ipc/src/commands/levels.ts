@@ -168,7 +168,7 @@ export const levelsCommands = {
    */
   describeObjects: (sessionId: SessionId) =>
     __TAURI_INVOKE<SessionSnapshot<LevelObjectsDescription>>(ELevelsCommand.DESCRIBE_OBJECTS, { sessionId }),
-  /** Whether a viewport can be recorded here: Media Foundation loads and the audio started; why not where not. */
+  /** Whether a viewport can be recorded here: Media Foundation loads; why not where not. */
   describeRecording: () => __TAURI_INVOKE<RecordingAvailability>(ELevelsCommand.DESCRIBE_RECORDING),
   /**
    * Describe the open scene's AI map, detail objects and wall marks by their counts, none of their payload; read again
@@ -283,7 +283,8 @@ export const levelsCommands = {
   /**
    * Draw a burst of consecutive frames in a viewport and write each, with its G-buffer's marks, into a new folder of
    * the level viewer's bursts named as asked, the sound its camera hears at the burst's times beside them, and the frames
-   * with that sound as one video, where asked; answers once the last is written.
+   * with that sound as one video, where asked; answers once the last is written. A burst with sound of a viewport whose
+   * level plays none is refused before anything is drawn or written.
    */
   saveBurst: (request: BurstCaptureRequest) => __TAURI_INVOKE<BurstOutcome>(ELevelsCommand.SAVE_BURST, { request }),
   /**
@@ -311,7 +312,8 @@ export const levelsCommands = {
   /**
    * Record a viewport with what its camera hears into a new video of the level viewer's recordings named as asked, at
    * the size it is drawn at now, its camera heard whatever window takes the focus until it stops; `progress` is told
-   * where it stands a few times a second, and why where it ends by itself. Answers the file.
+   * where it stands a few times a second, and why where it ends by itself. The recording goes with the asking window: it
+   * stops and finishes when that window's page loads again or the window closes. Answers the file.
    */
   startRecording: (viewport: RenderViewportId, name: string, progress: Channel<RecordingProgress>) =>
     __TAURI_INVOKE<string>(ELevelsCommand.START_RECORDING, { viewport, name, progress }),

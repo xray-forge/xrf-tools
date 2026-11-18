@@ -706,7 +706,7 @@ export type AlifeObjectPhysic = {
    * The physics state the update packet carries. `CPhysicObject::net_Import` drops it for a local object, so a single
    * player game never applies it, which is why vanilla's are often left uninitialised.
    */
-  updateState: PhysicsNetState | null;
+  updateState: PhysicsClosingState;
 };
 
 export type AlifeObjectShape = {
@@ -1260,6 +1260,32 @@ export type PatrolPoint = {
   gameVertexId: number;
 };
 
+/** Every `type` the `PhysicsClosingState` union is told apart by, so a switch or a comparison names one. */
+export enum EPhysicsClosingState {
+  /** The packet ends before the state's byte. */
+  ABSENT = "Absent",
+  /** The zero byte of no state, as the engine writes it. */
+  UNSET = "Unset",
+  /** A state, one the SDK packed to zero among them. */
+  SET = "Set",
+}
+
+/**
+ * The physics state closing a physic object's update packet, `CSE_ALifeObjectPhysic::UPDATE_Read`'s, kept as it was
+ * stored. The engine reads an empty packet and a lone zero byte alike, as no state.
+ *
+ * A zero byte with bytes behind it is a state whose count and mask pack to zero, which the SDK's 2009 `xrSE_Factory`
+ * writes for an object of no items and both velocities set (its `UPDATE_Write` has no early return); the engine reads
+ * the zero byte and skips the rest.
+ */
+export type PhysicsClosingState =
+  /** The packet ends before the state's byte. */
+  | { type: "Absent" }
+  /** The zero byte of no state, as the engine writes it. */
+  | { type: "Unset" }
+  /** A state, one the SDK packed to zero among them. */
+  | { type: "Set"; value: PhysicsNetState };
+
 /**
  * The physics state an inventory item and a physic object carry in their update packets, `SPHNetState` behind the
  * byte `CSE_ALifeInventoryItem::UPDATE_Write` and `CSE_ALifeObjectPhysic::UPDATE_Write` open it with.
@@ -1267,7 +1293,7 @@ export type PatrolPoint = {
  * That byte packs the item count into its low five bits and, above them, a mask: whether the body is enabled, and
  * whether each velocity is left out as zero. A zero byte is a state that is not there at all, so an object without one
  * is `None` beside its other update fields rather than a state with dead fields; but for a physic object's state,
- * which closes its packet, a zero byte with bytes behind it is a state packed to zero (`read_closing`). The
+ * which closes its packet, a zero byte with bytes behind it is a state packed to zero (`PhysicsClosingState`). The
  * SDK writes some states without initialising them, so each float keeps the bits it is stored in.
  */
 export type PhysicsNetState = {
@@ -1284,8 +1310,11 @@ export type PhysicsNetState = {
   angularVelocity: [RawFloat, RawFloat, RawFloat] | null;
   /** `None` where the mask leaves the linear velocity out as zero. */
   linearVelocity: [RawFloat, RawFloat, RawFloat] | null;
-  /** The byte closing the state: zero freezes the object and anything else leaves it awake. */
-  awake: number;
+  /**
+   * The byte closing the state: zero freezes the object and anything else leaves it awake. `None` where the packet
+   * ends before it, which the engine reads as awake (`r_eof`), and which writes back without it.
+   */
+  awake: number | null;
 };
 
 /**

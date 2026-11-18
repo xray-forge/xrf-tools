@@ -9,7 +9,7 @@ use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynam
 use crate::data::alife::inherited::alife_object_skeleton::AlifeObjectSkeleton;
 use crate::data::alife::spawn_layout::SpawnLayout;
 use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
-use crate::data::physics::physics_net_state::PhysicsNetState;
+use crate::data::physics::physics_closing_state::PhysicsClosingState;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -22,18 +22,17 @@ pub struct AlifeObjectPhysic {
   pub fixed_bones: String,
   /// The physics state the update packet carries. `CPhysicObject::net_Import` drops it for a local object, so a single
   /// player game never applies it, which is why vanilla's are often left uninitialised.
-  pub update_state: Option<PhysicsNetState>,
+  pub update_state: PhysicsClosingState,
 }
 
 impl AlifePacketsReadWrite for AlifeObjectPhysic {
-  /// Nothing to set: the physic object leaves its physics state's count uninitialised, so no state stands for it.
-  fn set_spawned_update(&mut self, _: &SpawnPacketHeader) {}
+  /// No state: the physic object leaves its physics state's count uninitialised, so xrAI writes the zero byte that
+  /// stands for none.
+  fn set_spawned_update(&mut self, _: &SpawnPacketHeader) {
+    self.update_state = PhysicsClosingState::Unset;
+  }
 
-  /// Read a physic object from both packets.
-  ///
-  /// An empty update packet reads as no physics state, as `CSE_ALifeObjectPhysic::UPDATE_Read` reads it; it is
-  /// written back as the zero byte the engine writes for one. The state closes the packet, so it reads as
-  /// [`PhysicsNetState::read_closing`] reads one, a state the SDK packed to zero among them.
+  /// Read a physic object from both packets, the state closing the update packet as [`PhysicsClosingState`] keeps it.
   fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
     spawn: &mut S,
     update: &mut U,
@@ -45,7 +44,7 @@ impl AlifePacketsReadWrite for AlifeObjectPhysic {
       physic_type: spawn.read_u32::<T>()?,
       mass: spawn.read_f32::<T>()?,
       fixed_bones: spawn.read_w1251_string()?,
-      update_state: PhysicsNetState::read_closing::<T, _>(update)?,
+      update_state: PhysicsClosingState::read::<T, _>(update)?,
     })
   }
 
@@ -62,7 +61,7 @@ impl AlifePacketsReadWrite for AlifeObjectPhysic {
     spawn.write_f32::<T>(self.mass)?;
     spawn.write_w1251_string(&self.fixed_bones)?;
 
-    PhysicsNetState::write_closing::<T, _>(update, self.update_state.as_ref())
+    self.update_state.write::<T, _>(update)
   }
 
   /// Import ALife physic object data from ltx config section.
@@ -81,7 +80,7 @@ impl AlifePacketsReadWrite for AlifeObjectPhysic {
       physic_type: section.read_field("physic_type")?,
       mass: section.read_field("mass")?,
       fixed_bones: section.read_field("fixed_bones")?,
-      update_state: PhysicsNetState::import_optional(section, "physic.update_state")?,
+      update_state: PhysicsClosingState::import(section, "physic.update_state")?,
     })
   }
 
@@ -96,7 +95,7 @@ impl AlifePacketsReadWrite for AlifeObjectPhysic {
       .set("mass", self.mass)
       .set("fixed_bones", &self.fixed_bones);
 
-    PhysicsNetState::export_optional(self.update_state.as_ref(), section_name, "physic.update_state", ltx);
+    self.update_state.export(section_name, "physic.update_state", ltx);
 
     Ok(())
   }
@@ -105,7 +104,7 @@ impl AlifePacketsReadWrite for AlifeObjectPhysic {
 #[cfg(test)]
 mod tests {
   use byteorder::ReadBytesExt;
-  use xrf_chunk::{ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
@@ -116,6 +115,7 @@ mod tests {
   use crate::data::alife::inherited::alife_object_physic::AlifeObjectPhysic;
   use crate::data::alife::inherited::alife_object_skeleton::AlifeObjectSkeleton;
   use crate::data::alife::spawn_layout::SpawnLayout;
+  use crate::data::physics::physics_closing_state::PhysicsClosingState;
   use crate::data::physics::physics_net_state::PhysicsNetState;
   use crate::data::physics::raw_float::RawFloat;
 
@@ -143,7 +143,7 @@ mod tests {
       physic_type: 6,
       mass: 5.0,
       fixed_bones: String::from("fixed-bones"),
-      update_state: Some(PhysicsNetState::new_mock(Vector3d::new(10.0, 0.5, -3.0))),
+      update_state: PhysicsClosingState::Set(PhysicsNetState::new_mock(Vector3d::new(10.0, 0.5, -3.0))),
     }
   }
 
@@ -163,7 +163,7 @@ mod tests {
   fn reads_and_writes_an_object_without_a_physics_state() -> XrfResult {
     let mut original: AlifeObjectPhysic = new_object();
 
-    original.update_state = None;
+    original.update_state = PhysicsClosingState::Unset;
 
     assert_eq!(
       original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
@@ -173,15 +173,18 @@ mod tests {
     Ok(())
   }
 
-  /// `UPDATE_Read` returns at once on an empty packet, leaving the object without a physics state.
+  /// `UPDATE_Read` returns at once on an empty packet, leaving the object without a physics state; the packet writes
+  /// back empty.
   #[test]
-  fn reads_an_empty_update_packet_as_no_physics_state() -> XrfResult {
-    let mut expected: AlifeObjectPhysic = new_object();
-    let mut spawn: xrf_chunk::ChunkWriter = xrf_chunk::ChunkWriter::new();
-    let mut update: xrf_chunk::ChunkWriter = xrf_chunk::ChunkWriter::new();
+  fn keeps_an_empty_update_packet() -> XrfResult {
+    let mut original: AlifeObjectPhysic = new_object();
+    let mut spawn: ChunkWriter = ChunkWriter::new();
+    let mut update: ChunkWriter = ChunkWriter::new();
 
-    expected.update_state = None;
-    expected.write::<XRayByteOrder, _, _>(&mut spawn, &mut update, SpawnLayout::CALL_OF_PRIPYAT)?;
+    original.update_state = PhysicsClosingState::Absent;
+    original.write::<XRayByteOrder, _, _>(&mut spawn, &mut update, SpawnLayout::CALL_OF_PRIPYAT)?;
+
+    assert!(update.buffer.is_empty());
 
     let mut spawn_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&spawn.buffer)?;
     // The packet's length and `M_UPDATE` action, which `AlifeObject` reads, leaving nothing behind them.
@@ -195,7 +198,7 @@ mod tests {
         &mut update_reader,
         SpawnLayout::CALL_OF_PRIPYAT
       )?,
-      expected
+      original
     );
 
     Ok(())
@@ -212,7 +215,7 @@ mod tests {
     state.enabled = false;
     state.angular_velocity = Some([0.5, 0.0, 0.0].map(RawFloat::from));
     state.linear_velocity = Some([0.0, -1.0, 0.0].map(RawFloat::from));
-    original.update_state = Some(state);
+    original.update_state = PhysicsClosingState::Set(state);
 
     assert_eq!(
       original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
@@ -224,15 +227,24 @@ mod tests {
 
   #[test]
   fn test_import_export() -> XrfResult {
-    let original: AlifeObjectPhysic = new_object();
-    let mut ltx: Ltx = Ltx::new();
+    for update_state in [
+      new_object().update_state,
+      PhysicsClosingState::Unset,
+      PhysicsClosingState::Absent,
+    ] {
+      let original: AlifeObjectPhysic = AlifeObjectPhysic {
+        update_state,
+        ..new_object()
+      };
+      let mut ltx: Ltx = Ltx::new();
 
-    original.export("data", &mut ltx, SpawnLayout::CALL_OF_PRIPYAT)?;
+      original.export("data", &mut ltx, SpawnLayout::CALL_OF_PRIPYAT)?;
 
-    assert_eq!(
-      AlifeObjectPhysic::import("data", &ltx, SpawnLayout::CALL_OF_PRIPYAT)?,
-      original
-    );
+      assert_eq!(
+        AlifeObjectPhysic::import("data", &ltx, SpawnLayout::CALL_OF_PRIPYAT)?,
+        original
+      );
+    }
 
     Ok(())
   }

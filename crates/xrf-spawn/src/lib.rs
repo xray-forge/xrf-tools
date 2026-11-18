@@ -119,6 +119,7 @@ pub use crate::data::patrols::patrol::Patrol;
 pub use crate::data::patrols::patrol_link::PatrolLink;
 pub use crate::data::patrols::patrol_point::PatrolPoint;
 pub use crate::data::physics::actor_physics_state::ActorPhysicsState;
+pub use crate::data::physics::physics_closing_state::PhysicsClosingState;
 pub use crate::data::physics::physics_net_state::PhysicsNetState;
 pub use crate::data::physics::raw_float::RawFloat;
 pub use crate::data::physics::scaled_direction::ScaledDirection;

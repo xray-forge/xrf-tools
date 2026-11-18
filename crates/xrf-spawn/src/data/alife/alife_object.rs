@@ -299,6 +299,7 @@ mod tests {
   use crate::data::alife::inherited::alife_object_item_weapon::AlifeObjectItemWeapon;
   use crate::data::alife::inherited::alife_object_online_offline_group::AlifeObjectOnlineOfflineGroup;
   use crate::data::alife::inherited::alife_object_ph_skeleton_object::AlifeObjectPhSkeletonObject;
+  use crate::data::alife::inherited::alife_object_physic::AlifeObjectPhysic;
   use crate::data::alife::inherited::alife_object_skeleton::AlifeObjectSkeleton;
   use crate::data::alife::inherited::alife_object_stationary_mgun::AlifeObjectStationaryMgun;
   use crate::data::alife::inherited::alife_squad::AlifeSquad;
@@ -308,6 +309,7 @@ mod tests {
   use crate::data::generic::last_spawn_time::LastSpawnTime;
   use crate::data::meta::alife_class::AlifeClass;
   use crate::data::meta::cls_id::ClsId;
+  use crate::data::physics::physics_closing_state::PhysicsClosingState;
   use crate::data::physics::physics_net_state::PhysicsNetState;
   use crate::data::physics::raw_float::RawFloat;
   use crate::fixtures::{ClearSkyStates, GameWrittenPackets};
@@ -709,6 +711,36 @@ mod tests {
     read.write_spawn_packet::<XRayByteOrder, _>(&mut rewritten)?;
 
     assert_eq!(rewritten.buffer, writer.buffer);
+
+    Ok(())
+  }
+
+  /// A physic object read from its spawn packet alone holds no state, which writes the zero byte xrAI writes.
+  #[test]
+  fn reads_a_physic_object_alone_as_one_of_no_state() -> XrfResult {
+    let mut original: AlifeObject = new_graph_point_object();
+
+    original.header.section = String::from("physic_object");
+    original.clsid = ClsId::OPhysS;
+    original.inherited = AlifeObjectInherited::CseAlifeObjectPhysic(Box::new(AlifeObjectPhysic {
+      base: AlifeObjectCreature::new_mock(Vector3d::ZERO).base,
+      skeleton: AlifeObjectSkeleton {
+        name: String::from("$editor"),
+        flags: 0,
+        source_id: u16::MAX,
+      },
+      physic_type: 0,
+      mass: 10.0,
+      fixed_bones: String::new(),
+      update_state: PhysicsClosingState::Absent,
+    }));
+
+    let AlifeObjectInherited::CseAlifeObjectPhysic(physic) = original.get_fresh_entity::<XRayByteOrder>()?.inherited
+    else {
+      panic!("Expected a physic object payload");
+    };
+
+    assert_eq!(physic.update_state, PhysicsClosingState::Unset);
 
     Ok(())
   }

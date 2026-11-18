@@ -84,7 +84,10 @@ export type LevelBuildRequest = {
   objects: Array<string>;
   /** The game material library, `gamemtl.xr`; the level compiler's files are written only where it is named. */
   gameMaterials: string | null;
-  /** The textures root (`$game_textures$`) the details' textures and the impostors' strips are read from. */
+  /**
+   * The textures root (`$game_textures$`) the details' textures and the impostors' strips are read from; none for
+   * where a decompile writes them ([`Self::get_textures_root`]).
+   */
   textures: string | null;
   /** How large the impostor atlas may grow. */
   impostorLimit: LevelBuildImpostorLimit;

@@ -5,7 +5,7 @@ use xrf_renderer::{RenderHelperIcon, RenderHelperShape, RenderLevelHelpers};
 use xrf_spawn::{
   AlifeGraphPoint, AlifeObject, AlifeObjectAbstract, AlifeObjectDynamicVisual, AlifeObjectHangingLamp,
   AlifeObjectInherited, AlifeObjectItem, AlifeObjectPhysic, AlifeObjectSkeleton, AlifeObjectSpaceRestrictor, ClsId,
-  Patrol, PatrolLink, PatrolPoint, Shape, SpawnLevelGraph, SpawnLevelGraphPoint,
+  Patrol, PatrolLink, PatrolPoint, PhysicsClosingState, Shape, SpawnLevelGraph, SpawnLevelGraphPoint,
 };
 
 use crate::objects::{
@@ -39,7 +39,7 @@ fn new_physic(visual: &str, story_id: u32) -> AlifeObjectInherited {
     physic_type: 0,
     mass: 10.0,
     fixed_bones: String::new(),
-    update_state: None,
+    update_state: PhysicsClosingState::Unset,
   }))
 }
 

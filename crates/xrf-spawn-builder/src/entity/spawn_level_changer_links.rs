@@ -1,6 +1,8 @@
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
-use xrf_spawn::{AlifeObject, AlifeObjectInherited, GraphVertex, SpawnGraphsChunk};
+use xrf_spawn::{
+  AlifeBuiltDestination, AlifeBuiltFields, AlifeObject, AlifeObjectInherited, GraphVertex, SpawnGraphsChunk,
+};
 
 use crate::entity::spawn_level_entities::SpawnLevelEntities;
 use crate::merge::spawn_merge_level::SpawnMergeLevel;
@@ -19,7 +21,8 @@ impl SpawnLevelChangerLinks {
   /// # Errors
   ///
   /// Returns an error when a level changer leads to a level not built, names a graph point its level lacks, or the
-  /// point has no game vertex: xrAI's release build leaves such a changer unlinked and lists it.
+  /// point has no game vertex. xrAI's release build leaves the first two unlinked and lists them, and stops on the
+  /// third (`R_ASSERT3`).
   pub(crate) fn fill(
     levels: &[SpawnMergeLevel<'_>],
     entities: &mut [SpawnLevelEntities],
@@ -29,10 +32,10 @@ impl SpawnLevelChangerLinks {
 
     for (level, level_entities) in levels.iter().zip(entities.iter_mut()) {
       for object in &mut level_entities.objects {
-        let name: String = object.header.name.clone();
-        let AlifeObjectInherited::SeLevelChanger(changer) = &mut object.inherited else {
+        let AlifeObjectInherited::SeLevelChanger(changer) = &object.inherited else {
           continue;
         };
+        let name: &str = &object.header.name;
         let Some(target) = levels.iter().position(|level| level.name == changer.dest_level_name) else {
           return Err(XrfError::new_invalid_error(format!(
             "Level changer {name} on level {} leads to level {}, which is not built",
@@ -54,11 +57,15 @@ impl SpawnLevelChangerLinks {
             level.name, changer.dest_graph_point, changer.dest_level_name
           )));
         };
+        let mut fields: AlifeBuiltFields = object.get_built_fields();
 
-        changer.dest_game_vertex_id = vertex_id;
-        changer.dest_position = point.header.position;
-        changer.dest_direction = point.header.direction;
-        changer.dest_level_vertex_id = vertex.level_vertex_id;
+        fields.destination = Some(AlifeBuiltDestination {
+          game_vertex_id: vertex_id,
+          level_vertex_id: vertex.level_vertex_id,
+          position: point.header.position,
+          direction: point.header.direction,
+        });
+        object.set_built_fields(&fields);
       }
     }
 

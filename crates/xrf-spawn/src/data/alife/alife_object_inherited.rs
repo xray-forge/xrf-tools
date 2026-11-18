@@ -596,7 +596,7 @@ impl AlifeObjectInherited {
 
         return;
       }
-      Self::CseAlifeObjectPhysic(object) => object.update_state.as_mut(),
+      Self::CseAlifeObjectPhysic(object) => object.update_state.get_state_mut(),
       Self::CseAlifeItemBolt(object) => object.update_state.as_mut(),
       Self::CseAlifeItemTorch(object) => object.base.update_state.as_mut(),
       Self::CseAlifeItemDocument(object) => object.base.update_state.as_mut(),
