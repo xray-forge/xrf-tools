@@ -6,6 +6,7 @@ use xrf_editable_level::{
 };
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::{Aabb, Affine3d, Vector3d};
+use xrf_utils::{decode_w1251_bytes_to_string, encode_string_to_w1251_bytes};
 
 use crate::level::level_decompile_context::LevelDecompileContext;
 
@@ -60,14 +61,14 @@ impl LevelMapConversion {
 
   /// The settings `level.ltx` holds, read line by line as the Build writes them and a later save of the file leaves
   /// them: sections, `key = value` lines and bare names, `;` lines and blank ones skipped, a line read up to a zero
-  /// byte (which ends the build options' text).
+  /// byte (which ends the build options' text). The text is Windows-1251, as the game reads it.
   ///
   /// # Errors
   ///
   /// Returns an error for a `bound_rect` that is not four floats, or a `[sub_level_map]` line that is not a sector's
   /// number and a map's part.
   pub fn decompile(bytes: &[u8]) -> XrfResult<LevelMapSettings> {
-    let text: String = bytes.iter().map(|byte| char::from(*byte)).collect();
+    let text: String = decode_w1251_bytes_to_string(bytes)?;
     let mut settings: LevelMapSettings = LevelMapSettings::default();
     let mut section: String = String::new();
 
@@ -185,23 +186,28 @@ impl LevelMapConversion {
   /// ends them.
   ///
   /// The build options' text goes in as `w_stringZ` writes it, ended by a zero byte rather than a line break, so its
-  /// last line runs on into the `;` written after it, where a reader of the line stops at the zero.
-  pub fn export(options: &EditableLevelOptions, bounds: &Aabb, sectors: &[EditableSectorObject]) -> Vec<u8> {
-    let mut bytes: Vec<u8> = Vec::new();
+  /// last line runs on into the `;` written after it, where a reader of the line stops at the zero. The text is
+  /// Windows-1251, as the game reads it.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the text holds a character Windows-1251 has no byte for.
+  pub fn export(options: &EditableLevelOptions, bounds: &Aabb, sectors: &[EditableSectorObject]) -> XrfResult<Vec<u8>> {
+    let mut text: String = String::new();
 
-    Self::line(&mut bytes, "[map_usage]");
-    Self::line(&mut bytes, &format!("ver={}", options.map_version));
+    Self::line(&mut text, "[map_usage]");
+    Self::line(&mut text, &format!("ver={}", options.map_version));
 
     for (bit, name) in Self::GAME_TYPES {
       if options.game_type & bit != 0 {
-        Self::line(&mut bytes, name);
+        Self::line(&mut text, name);
       }
     }
 
-    Self::line(&mut bytes, ";");
-    Self::line(&mut bytes, "[level_map]");
+    Self::line(&mut text, ";");
+    Self::line(&mut text, "[level_map]");
     Self::line(
-      &mut bytes,
+      &mut text,
       &format!(
         "bound_rect = {},{},{},{}",
         EditableLevelValue::format_f32(bounds.min.x),
@@ -211,24 +217,29 @@ impl LevelMapConversion {
       ),
     );
     Self::line(
-      &mut bytes,
+      &mut text,
       &format!("texture = {}", Self::get_texture(&options.level_path)),
     );
-    Self::line(&mut bytes, ";");
+    Self::line(&mut text, ";");
 
     if !options.build_options.is_empty() {
-      bytes.extend_from_slice(options.build_options.as_bytes());
-      bytes.push(0);
+      text.push_str(&options.build_options);
+      text.push('\0');
     }
 
-    Self::line(&mut bytes, ";");
-    Self::line(&mut bytes, "[sub_level_map]");
+    Self::line(&mut text, ";");
+    Self::line(&mut text, "[sub_level_map]");
 
     for (number, sector) in sectors.iter().enumerate() {
-      Self::line(&mut bytes, &format!("{number} = {}", sector.map_index));
+      Self::line(&mut text, &format!("{number} = {}", sector.map_index));
     }
 
-    bytes
+    encode_string_to_w1251_bytes(&text).map_err(|error| {
+      XrfError::new_encoding_error(format!(
+        "{} has text Windows-1251 cannot hold: {error}",
+        Self::FILE_NAME
+      ))
+    })
   }
 
   /// The map's texture the Build names for a level built into `level_path`.
@@ -248,9 +259,9 @@ impl LevelMapConversion {
       .map_err(|_| XrfError::new_parsing_error(format!("bound_rect '{value}' is not four floats")))
   }
 
-  /// Writes `text` as `IWriter::w_string` does: the text, then a line break.
-  fn line(bytes: &mut Vec<u8>, text: &str) {
-    bytes.extend_from_slice(text.as_bytes());
-    bytes.extend_from_slice(b"\r\n");
+  /// Writes `line` as `IWriter::w_string` does: the line, then a line break.
+  fn line(text: &mut String, line: &str) {
+    text.push_str(line);
+    text.push_str("\r\n");
   }
 }

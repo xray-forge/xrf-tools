@@ -1,5 +1,9 @@
+use std::collections::BTreeSet;
+
+use xrf_dds::RgbaImage;
 use xrf_error::{XrfError, XrfResult};
 use xrf_geometry::ProgressiveWindow;
+use xrf_job::{JobHandle, JobScope};
 use xrf_level::{
   BuildCformFile, BuildPrjFile, LevelBundle, LevelCformFile, LevelCformGeometry, LevelCformHeader, LevelGeomBuffers,
   LevelGeomPacker, LevelGeomSlideWindowItem, LevelGlow, LevelHeaderChunk, LevelLightsFile, LevelPortal, LevelSector,
@@ -31,6 +35,7 @@ use crate::geometry::visual::geometry_visuals::GeometryVisuals;
 use crate::geometry::visual::geometry_visuals_request::GeometryVisualsRequest;
 use crate::input::compiler_shaders::CompilerShaders;
 use crate::input::compiler_texture::CompilerTexture;
+use crate::input::compiler_textures::CompilerTextures;
 use crate::light::bake::light_bake::LightBake;
 use crate::light::bake::light_bake_input::LightBakeInput;
 use crate::light::bake::light_bake_result::LightBakeResult;
@@ -61,7 +66,8 @@ pub(crate) struct GeometryLevel {
   /// ([`LightmapAtlas::compose_all`](crate::light::lightmap::atlas::lightmap_atlas::LightmapAtlas::compose_all)), or
   /// the one pair of neutral light ([`LightDraft::get_lightmaps`]).
   pub(crate) lightmaps: LightmapImages,
-  /// Each texture lit implicitly, such as terrain's; none unlit or at draft build quality.
+  /// Each implicitly lit texture's maps, such as terrain's: lit by the bake, or neutral ([`LightDraft::get_implicit_map`])
+  /// where the bake did not light it.
   pub(crate) implicit_maps: Vec<ImplicitMap>,
   /// What the compile made, for its report.
   pub(crate) census: GeometryLevelCensus,
@@ -73,6 +79,12 @@ impl GeometryLevel {
   /// `XRCL_PRODUCTION_VERSION`, the version the engine asserts a level carries.
   pub(crate) const VERSION: u16 = 14;
 
+  /// What a job reports the compile under: its phases, the mesh, the light, the visuals and tree, and the packing.
+  pub(crate) const PROGRESS_PHASES: &'static str = "geometry phases";
+
+  /// How many phases [`Self::PROGRESS_PHASES`] counts.
+  const PHASES: u64 = 4;
+
   /// The level the request's project compiles to, its compiler shaders from its library and its textures as it loads
   /// them: xrLC's geometry phases, then, where the request asks for light, the light baked at its quality
   /// ([`LightBaker::bake`]), its pages deciding which splits join into a visual; else the neutral light
@@ -80,16 +92,18 @@ impl GeometryLevel {
   ///
   /// # Errors
   ///
-  /// Returns an error where a phase refuses the project, for a static light layer `build.prj` lacks, and where the bake
-  /// fails ([`LightBaker::bake`]).
+  /// Returns an error where a phase refuses the project, for a static light layer `build.prj` lacks, where the bake
+  /// fails ([`LightBaker::bake`]), and when the job is cancelled.
   pub(crate) fn compile(request: &GeometryLevelRequest<'_>) -> XrfResult<Self> {
     let GeometryLevelRequest {
       project,
       library,
       textures,
       quality,
+      job,
       ..
     } = *request;
+    let scope: JobScope = job.enter(Self::PROGRESS_PHASES, Some(Self::PHASES));
     let shaders: CompilerShaders = CompilerShaders::resolve(project, library)?;
     let mut mesh: GeometryMesh = GeometryMesh::load(project)?;
 
@@ -102,6 +116,9 @@ impl GeometryLevel {
     let tangents: GeometryTangents = GeometryTangents::of(&mesh, &normals, &coordinates);
     let ray_model: BuildCformFile = GeometryRayModel::build(&mesh, &normals, &coordinates, project, &shaders)?;
     let lights: LevelLightsFile = LightLayers::build(project, quality)?;
+
+    Self::finish_phase(job, &scope)?;
+
     let (mut splits, light): (GeometrySplits, Option<LightBakeResult>) = match request.light {
       Some(tracing) => {
         let LightBaked { splits, light } = LightBaker::bake(&LightBakeInput {
@@ -119,6 +136,8 @@ impl GeometryLevel {
       }
       None => (GeometrySplits::cut(&mesh, &shaders, None).splits, None),
     };
+
+    Self::finish_phase(job, &scope)?;
 
     // Splits on one lightmap page only are joined, so the light decides the visuals.
     splits.merge(&mesh, light.as_ref().map(|light| light.faces.pages.as_slice()));
@@ -138,6 +157,9 @@ impl GeometryLevel {
     let models: GeometryModels =
       GeometryModels::build(project, &shaders, textures, light.as_ref().map(|light| &light.models))?;
     let hierarchy: GeometryHierarchy = GeometryHierarchy::build(&visuals, &models, project)?;
+
+    Self::finish_phase(job, &scope)?;
+
     let header: LevelHeaderChunk = LevelHeaderChunk {
       xrlc_version: Self::VERSION,
       xrlc_quality: project.params.quality,
@@ -310,10 +332,22 @@ impl GeometryLevel {
       trees: models.trees.len(),
       sectors: hierarchy.sectors.len(),
     };
-    let (lightmaps, implicit_maps, light) = match light {
+    let (lightmaps, mut implicit_maps, light) = match light {
       Some(light) => (light.lightmaps, light.implicit_maps, Some(light.bake)),
       None => (LightDraft::get_lightmaps(), Vec::new(), None),
     };
+
+    // A visual of an implicitly lit texture names its `_lm` whether or not the bake lit it, so one left unlit, with no
+    // light step or at draft quality, gets neutral maps rather than drawing with none.
+    for texture in Self::get_implicitly_lit(&visuals, project, textures) {
+      if !implicit_maps.iter().any(|map| map.name == texture.name) {
+        let image: RgbaImage = CompilerTextures::read_implicit_image(request.roots, &texture.name)?;
+
+        implicit_maps.push(LightDraft::get_implicit_map(texture.name.clone(), &image));
+      }
+    }
+
+    Self::finish_phase(job, &scope)?;
 
     Ok(Self {
       bundle: LevelBundle {
@@ -372,6 +406,33 @@ impl GeometryLevel {
     Ok(LevelCformFile {
       header: LevelCformHeader::of(&self.collision)?,
     })
+  }
+
+  /// Counts a phase as done, then stops where the job is cancelled.
+  fn finish_phase(job: &JobHandle, scope: &JobScope) -> XrfResult {
+    scope.advance();
+    job.check_cancelled()
+  }
+
+  /// The implicitly lit textures `visuals` are dressed with, each once, in `build.prj`'s texture order as the bake
+  /// lights them.
+  fn get_implicitly_lit<'t>(
+    visuals: &GeometryVisuals,
+    project: &BuildPrjFile,
+    textures: &'t [CompilerTexture],
+  ) -> Vec<&'t CompilerTexture> {
+    let used: BTreeSet<u16> = visuals
+      .visuals
+      .iter()
+      .filter_map(|visual| project.materials.get(usize::from(visual.material)))
+      .map(|material| material.texture)
+      .collect();
+
+    used
+      .into_iter()
+      .filter_map(|texture| textures.get(usize::from(texture)))
+      .filter(|texture| texture.is_implicitly_lit)
+      .collect()
   }
 
   /// A material's shader table entry, `<render shader>/<texture>`, as glows and LODs are dressed.

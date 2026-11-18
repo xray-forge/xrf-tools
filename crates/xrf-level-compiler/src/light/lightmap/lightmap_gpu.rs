@@ -1,6 +1,7 @@
 use glam::Vec3;
 use rayon::prelude::*;
 use xrf_error::{XrfError, XrfResult};
+use xrf_job::{JobHandle, JobScope};
 
 use crate::light::lightmap::chart::light_chart::LightChart;
 use crate::light::lightmap::lit::light_chart_lighter::LightChartLighter;
@@ -44,20 +45,25 @@ impl LightmapGpu<'_> {
   const CHUNK_POINTS: usize = 1 << 21;
 
   /// Every chart of `charts` lit and bordered as [`LightChartLighter::light`] lights it, chunk by chunk: each chunk's
-  /// charts' points lit together, each chart settled, those shrinking lit again together, each bordered.
+  /// charts' points lit together, each chart settled, those shrinking lit again together, each bordered, the chunk
+  /// counted to `scope`.
   ///
   /// # Errors
   ///
-  /// Returns an error when the GPU refuses a batch.
+  /// Returns an error when the GPU refuses a batch, or `job` is cancelled.
   pub(crate) fn light_charts(
     &self,
     lighter: &LightChartLighter<'_>,
     charts: &[LightChart],
+    job: &JobHandle,
+    scope: &JobScope,
   ) -> XrfResult<Vec<LitChart>> {
     let mut lit: Vec<LitChart> = Vec::with_capacity(charts.len());
     let mut start: usize = 0;
 
     while start < charts.len() {
+      job.check_cancelled()?;
+
       let mut end: usize = start;
       let mut points: usize = 0;
 
@@ -93,6 +99,7 @@ impl LightmapGpu<'_> {
         });
       }
 
+      scope.advance_by(chunk.len() as u64);
       start = end;
     }
 
@@ -179,10 +186,7 @@ impl LightmapGpu<'_> {
       let mut end: usize = start;
 
       while end < plans.len() {
-        let packets: usize = plans[end].groups.iter().filter(|group| group.is_packet()).count();
-        let singles: usize = plans[end].groups.len() - packets;
-
-        if batch.is_full(packets, singles) && end > start {
+        if batch.is_full_for(&plans[end]) && end > start {
           break;
         }
 

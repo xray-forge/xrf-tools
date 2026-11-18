@@ -2,8 +2,8 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use xrf_dds::{DdsFile, RgbaImage};
-use xrf_error::{XrfError, XrfResult};
+use xrf_dds::RgbaImage;
+use xrf_error::XrfResult;
 use xrf_geometry::{BvhTracer, XrlcTracer};
 use xrf_level::{BuildCformFile, BuildCformRaycastFace, BuildPrjFile};
 
@@ -53,8 +53,8 @@ impl LightBaker {
   /// # Errors
   ///
   /// Returns an error where the shadow materials cannot be loaded, a multi-use model refuses its light, an implicitly
-  /// lit texture's image is missing or unreadable, and for the GPU backend where this build has none, no GPU traces
-  /// rays or the GPU fails; `Auto` lights on the CPU instead where the GPU does not start.
+  /// lit texture's image is missing or unreadable, the job is cancelled, and for the GPU backend where this build has
+  /// none, no GPU traces rays or the GPU fails; `Auto` lights on the CPU instead where the GPU does not start.
   pub(crate) fn bake(request: &LightBakeInput<'_>) -> XrfResult<LightBaked> {
     let started: Instant = Instant::now();
     let LightBakeInput {
@@ -87,8 +87,13 @@ impl LightBaker {
     // The vertex passes trace through xrLC's own ray model, the lightmaps through the tree the GPU mirrors.
     let vertex_tracer: XrlcTracer = XrlcTracer::of_triangles(ray_model.get_triangles());
     let shadows: ShadowMaterials = load(&ray_model.raycast_faces)?;
+    level.job.check_cancelled()?;
+
     let vertices: Vec<LightColor> =
       LightVertices::of(mesh, normals, shaders, &hemispheres, &sources, &vertex_tracer, &shadows);
+
+    level.job.check_cancelled()?;
+
     let model_faces: LightModelFaces = LightModels::get_model_faces(project, shaders)?;
     let models: LightModels = LightModels::of(&LightModelsInput {
       project,
@@ -102,6 +107,7 @@ impl LightBaker {
     })?;
 
     drop(vertex_tracer);
+    level.job.check_cancelled()?;
 
     let tracer: BvhTracer = ray_model.build_tracer();
     let scene: LightChartScene<'_> = LightChartScene::of(
@@ -130,7 +136,7 @@ impl LightBaker {
       rms_shrink: 8_u32.midpoint(project.params.lightmap_rms),
     };
     let backend: LightmapBackend = LightmapBackend::start(&tracing, &lighter)?;
-    let lit: Vec<LitChart> = backend.light_charts(&lighter, &charts)?;
+    let lit: Vec<LitChart> = backend.light_charts(&lighter, &charts, level.job)?;
     let atlas: LightmapAtlas = LightmapAtlas::pack(&charts, &lit, &scene);
     let lightmaps: LightmapImages = atlas.compose_all(&lit);
 
@@ -145,6 +151,7 @@ impl LightBaker {
         &ImplicitLighter {
           lighter: &lighter,
           coordinates: &coordinates.faces,
+          job: level.job,
         },
         mesh,
         project,
@@ -216,13 +223,7 @@ impl LightBaker {
       .into_iter()
       .map(|(texture, faces)| {
         let texture: &CompilerTexture = &textures[usize::from(texture)];
-        let path: PathBuf = CompilerTextures::find(roots, &texture.name, "dds")?.ok_or_else(|| {
-          XrfError::new_not_found_error(format!(
-            "The implicitly lit texture {} has no .dds under the texture roots",
-            texture.name
-          ))
-        })?;
-        let image: RgbaImage = DdsFile::read_from_path(&path)?.decode_rgba(0)?;
+        let image: RgbaImage = CompilerTextures::read_implicit_image(roots, &texture.name)?;
         let (width, height) = image.dimensions();
         let base: Vec<[u8; 4]> = image.pixels().map(|pixel| pixel.0).collect();
 

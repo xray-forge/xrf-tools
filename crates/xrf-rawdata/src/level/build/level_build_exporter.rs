@@ -297,7 +297,7 @@ impl LevelBuildExporter {
       impostors,
       hom,
       som,
-      map: LevelMapConversion::export(&options, &map_bounds, &sector_part.objects),
+      map: LevelMapConversion::export(&options, &map_bounds, &sector_part.objects)?,
       details,
       ai_map,
       breakable_parts: breakables.parts,
@@ -416,6 +416,9 @@ impl LevelBuildExporter {
           std::mem::take(&mut export.entities),
           std::mem::take(&mut export.refused),
         );
+
+        // Packing the build project and geometry takes long on a large scene; a cancel need not wait for it.
+        job.check_cancelled()?;
 
         (export.into_files::<T>()?, Some(census), entities, refused)
       }

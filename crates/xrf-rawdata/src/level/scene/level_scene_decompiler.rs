@@ -106,7 +106,8 @@ impl LevelSceneDecompiler {
     Self::decompile_with::<T>(directory, options, &JobHandle::inert())
   }
 
-  /// [`Self::decompile`], reporting each step to `job` and stopping between them once it is cancelled.
+  /// [`Self::decompile`], reporting each step to `job` and stopping once it is cancelled: between steps, and between
+  /// the objects of a library walk.
   ///
   /// # Errors
   ///
@@ -147,8 +148,15 @@ impl LevelSceneDecompiler {
       LevelSpawnFile::read_from_bytes::<T>,
     )?;
     let object_library: LevelObjectLibrary = LevelObjectLibrary::list(&options.libraries)?;
-    let mut draft: LevelSceneDraft =
-      LevelSceneDraft::new(guid, &options.name, root_spawn, spawn, respawn, object_library);
+    let mut draft: LevelSceneDraft = LevelSceneDraft::new(
+      guid,
+      &options.name,
+      root_spawn,
+      spawn,
+      respawn,
+      object_library,
+      job.clone(),
+    );
 
     begin(1)?;
     LevelMapStep::decompile::<T>(&mut sources, options, &mut draft)?;

@@ -6,6 +6,7 @@ use byteorder::ByteOrder;
 use walkdir::{DirEntry, WalkDir};
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::{XrfError, XrfResult};
+use xrf_job::JobHandle;
 use xrf_utils::format_path;
 
 use crate::level::level_object_library_entry::LevelObjectLibraryEntry;
@@ -56,19 +57,22 @@ impl LevelObjectLibrary {
   }
 
   /// Reads each object `is_wanted` keeps once, in order, and hands it to `visit`; one that does not read is recorded
-  /// and skipped.
+  /// and skipped. A large library takes a while, so `job` is checked before each object.
   ///
   /// # Errors
   ///
-  /// Returns the first error `visit` returns.
+  /// Returns the first error `visit` returns, or a cancelled error once `job` is cancelled.
   pub(crate) fn read_each<T: ByteOrder>(
     &mut self,
+    job: &JobHandle,
     is_wanted: impl Fn(&LevelObjectLibraryEntry) -> bool,
     mut visit: impl FnMut(&LevelObjectLibraryEntry, EditableObjectFile) -> XrfResult,
   ) -> XrfResult {
     let Self { entries, unread } = self;
 
     for entry in entries.iter().filter(|entry| is_wanted(entry)) {
+      job.check_cancelled()?;
+
       match EditableObjectFile::read_from_path::<T, _>(&entry.path) {
         Ok(object) => visit(entry, object)?,
         Err(error) => Self::record(unread, &entry.path, error.to_string()),

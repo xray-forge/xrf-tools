@@ -1,6 +1,9 @@
+use std::ops::Range;
+
 use glam::Vec3;
 use rayon::prelude::*;
 use xrf_error::XrfResult;
+use xrf_job::{JobHandle, JobScope};
 use xrf_math::{Vector2d, Vector3d};
 
 use crate::geometry::surface::geometry_normals::GeometryNormals;
@@ -18,18 +21,27 @@ pub(crate) struct ImplicitLighter<'a> {
   pub(crate) lighter: &'a LightChartLighter<'a>,
   /// Each mesh face's base texture coordinates, as the tangent-basis pass leaves them.
   pub(crate) coordinates: &'a [[Vector2d; 3]],
+  /// The job a map's rows are counted to as each band is lit, and which stops the lighting when cancelled.
+  pub(crate) job: &'a JobHandle,
 }
 
 impl ImplicitLighter<'_> {
+  /// What a job reports a map's lighting under: its rows.
+  pub(crate) const PROGRESS_ROWS: &'static str = "implicit map rows";
+
   /// The texels a side of a cell of the grid the faces are found by.
   const CELL: u32 = 8;
+
+  /// About how many points a band of the map is lit with at once, as many as the GPU lights charts in at a time: a
+  /// terrain map's points all at once would hold gigabytes.
+  const BAND_POINTS: usize = 1 << 21;
 
   /// The map of texture `name`, of the texels `base` holds, over `faces` (mesh faces of it, in the mesh's order), its
   /// points lit on the CPU a row's worth at a time, each light first tested against the face that last stopped it.
   ///
   /// # Errors
   ///
-  /// Returns no error on the CPU; the result is a [`Self::light_by`]'s.
+  /// Returns an error when the job is cancelled.
   pub(crate) fn light(
     &self,
     name: String,
@@ -66,7 +78,7 @@ impl ImplicitLighter<'_> {
   ///
   /// # Errors
   ///
-  /// Returns an error when the GPU refuses a batch.
+  /// Returns an error when the GPU refuses a batch, or the job is cancelled.
   #[cfg(feature = "gpu")]
   pub(crate) fn light_on_gpu(
     &self,
@@ -82,7 +94,8 @@ impl ImplicitLighter<'_> {
     })
   }
 
-  /// The map of texture `name`, of the texels `base` holds, over `faces`, its points lit by `light_points`. A texel
+  /// The map of texture `name`, of the texels `base` holds, over `faces`, its points lit by `light_points` a band of
+  /// rows at a time ([`Self::BAND_POINTS`]). A texel
   /// sums the light of every face under each of its jitter samples (`ImplicitExecute::Execute`), a face lit at its
   /// place there facing its corners' normals blended there and normalised, the face itself let through, and takes the
   /// mean halved; the texels unlit are then filled ring by ring to the map's edges. Each texel's hemisphere becomes the
@@ -94,7 +107,7 @@ impl ImplicitLighter<'_> {
     width: u32,
     height: u32,
     faces: &[u32],
-    light_points: impl FnOnce(&[LightTexelPoint]) -> XrfResult<Vec<LightColor>>,
+    mut light_points: impl FnMut(&[LightTexelPoint]) -> XrfResult<Vec<LightColor>>,
   ) -> XrfResult<ImplicitMap> {
     let jitter: &[[f32; 2]] = self.lighter.scene.get_jitter();
     let (dimension_x, dimension_y) = (width as f32, height as f32);
@@ -102,44 +115,57 @@ impl ImplicitLighter<'_> {
     let (spread_x, spread_y) = (0.499 / dimension_x, 0.499 / dimension_y);
     let cells: Vec<Vec<u32>> = self.get_cells(faces, width, height);
     let columns: u32 = width.div_ceil(Self::CELL);
-    let points: Vec<LightTexelPoint> = (0..height)
-      .into_par_iter()
-      .map(|y| {
-        let mut row: Vec<LightTexelPoint> = Vec::new();
+    let mut layer: LightmapLayer = LightmapLayer::new(width, height);
+    let band: u32 = Self::get_band_rows(width, height, jitter.len());
+    let scope: JobScope = self.job.enter(Self::PROGRESS_ROWS, Some(u64::from(height)));
 
-        for x in 0..width {
-          let cell: &[u32] = &cells[((y / Self::CELL) * columns + x / Self::CELL) as usize];
+    for first in (0..height).step_by(band as usize) {
+      self.job.check_cancelled()?;
 
-          for [jitter_x, jitter_y] in jitter {
-            let sample: Vector2d = Vector2d::new(
-              x as f32 / dimension_x + half_x + jitter_x * spread_x,
-              y as f32 / dimension_y + half_y + jitter_y * spread_y,
-            );
+      let rows: Range<u32> = first..(first + band).min(height);
+      let row_count: u64 = u64::from(rows.end - rows.start);
+      let texels: Range<usize> = (rows.start * width) as usize..(rows.end * width) as usize;
+      let points: Vec<LightTexelPoint> = rows
+        .into_par_iter()
+        .map(|y| {
+          let mut row: Vec<LightTexelPoint> = Vec::new();
 
-            for face in cell {
-              if let Some(weights) = LightChartLighter::get_barycentric(&self.coordinates[*face as usize], &sample) {
-                let (point, normal) = self.get_sample(*face, &weights);
+          for x in 0..width {
+            let cell: &[u32] = &cells[((y / Self::CELL) * columns + x / Self::CELL) as usize];
 
-                row.push(LightTexelPoint {
-                  texel: y * width + x,
-                  face: *face,
-                  point,
-                  normal,
-                  is_edge: false,
-                });
+            for [jitter_x, jitter_y] in jitter {
+              let sample: Vector2d = Vector2d::new(
+                x as f32 / dimension_x + half_x + jitter_x * spread_x,
+                y as f32 / dimension_y + half_y + jitter_y * spread_y,
+              );
+
+              for face in cell {
+                if let Some(weights) = LightChartLighter::get_barycentric(&self.coordinates[*face as usize], &sample) {
+                  let (point, normal) = self.get_sample(*face, &weights);
+
+                  row.push(LightTexelPoint {
+                    texel: y * width + x,
+                    face: *face,
+                    point,
+                    normal,
+                    is_edge: false,
+                  });
+                }
               }
             }
           }
-        }
 
-        row
-      })
-      .collect::<Vec<_>>()
-      .into_iter()
-      .flatten()
-      .collect();
-    let colors: Vec<LightColor> = light_points(&points)?;
-    let mut layer: LightmapLayer = LightChartLighter::assemble(width, height, &points, &colors);
+          row
+        })
+        .collect::<Vec<_>>()
+        .into_iter()
+        .flatten()
+        .collect();
+      let colors: Vec<LightColor> = light_points(&points)?;
+
+      LightChartLighter::assemble_into(&mut layer, texels, &points, &colors);
+      scope.advance_by(row_count);
+    }
 
     layer.fill_borders(254);
 
@@ -154,6 +180,15 @@ impl ImplicitLighter<'_> {
       base,
       lightmap: layer.get_packed(),
     })
+  }
+
+  /// How many rows of a map `width` by `height` a band holds, at `samples` jitter samples a texel: as many as keep its
+  /// points near [`Self::BAND_POINTS`] where each sample falls on one face, as on terrain, and at least one. A texel's
+  /// samples never leave its row, so a band is lit whole on its own.
+  fn get_band_rows(width: u32, height: u32, samples: usize) -> u32 {
+    let row_points: usize = (width as usize * samples).max(1);
+
+    (Self::BAND_POINTS / row_points).clamp(1, height.max(1) as usize) as u32
   }
 
   /// The point at `weights` on `face`: its corners blended there, facing its corners' normals blended there and

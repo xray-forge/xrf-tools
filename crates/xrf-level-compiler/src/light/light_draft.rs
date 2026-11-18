@@ -1,6 +1,8 @@
 use glam::Vec3;
+use xrf_dds::RgbaImage;
 use xrf_math::Vector2d;
 
+use crate::light::implicit::implicit_map::ImplicitMap;
 use crate::light::lightmap::atlas::lightmap_image_pair::LightmapImagePair;
 use crate::light::lightmap::atlas::lightmap_images::LightmapImages;
 use crate::light::point::light_color::LightColor;
@@ -8,7 +10,7 @@ use crate::light::vertex::light_tree_color::LightTreeColor;
 
 /// The light a level compiled without the light step carries, neutral constants: an open sky for the sun, which the
 /// renderers shadow in real time, a middle hemisphere, and no static light, which they light in real time too. Every
-/// lightmapped visual samples the middle of one small pair of it.
+/// lightmapped visual samples the middle of one small pair of it, and every implicitly lit texture has maps of it.
 pub(crate) struct LightDraft;
 
 impl LightDraft {
@@ -54,6 +56,26 @@ impl LightDraft {
         first: vec![[0, 0, 0, sun]; texels],
         second: vec![[sun, sun, sun, LightColor::get_byte(Self::HEMISPHERE)]; texels],
       }],
+    }
+  }
+
+  /// The neutral maps of an implicitly lit texture named `name` whose image is `image`: the image with the middle
+  /// hemisphere in alpha, and a map of no static light and the open sun, the size of the image.
+  pub(crate) fn get_implicit_map(name: String, image: &RgbaImage) -> ImplicitMap {
+    let (width, height) = image.dimensions();
+    let hemisphere: u8 = LightColor::get_byte(Self::HEMISPHERE);
+    let base: Vec<[u8; 4]> = image
+      .pixels()
+      .map(|pixel| [pixel.0[0], pixel.0[1], pixel.0[2], hemisphere])
+      .collect();
+    let lightmap: Vec<[u8; 4]> = vec![[0, 0, 0, LightColor::get_byte(Self::SUN)]; base.len()];
+
+    ImplicitMap {
+      name,
+      width,
+      height,
+      base,
+      lightmap,
     }
   }
 

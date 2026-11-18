@@ -268,6 +268,7 @@ fn lights_an_implicit_map_over_its_faces_texture_coordinates_and_keeps_the_textu
   let map: ImplicitMap = ImplicitLighter {
     lighter: &lighter,
     coordinates: &coordinates,
+    job: &xrf_job::JobHandle::inert(),
   }
   .light(String::from("ground"), vec![[10, 20, 30, 255]; 16], 4, 4, &[0, 1])
   .expect("the CPU lights a map");
@@ -281,6 +282,21 @@ fn lights_an_implicit_map_over_its_faces_texture_coordinates_and_keeps_the_textu
       .all(|texel| texel[3] == LightColor::get_byte(LightColor::get_fixed(0.4)))
   );
   assert!(map.base.iter().all(|texel| *texel == [10, 20, 30, 0]));
+
+  // A cancel stops the map before its first band, not after the whole map.
+  let cancelled: xrf_job::JobHandle = xrf_job::JobHandle::inert();
+
+  cancelled.cancel();
+
+  assert!(
+    ImplicitLighter {
+      lighter: &lighter,
+      coordinates: &coordinates,
+      job: &cancelled,
+    }
+    .light(String::from("ground"), vec![[10, 20, 30, 255]; 16], 4, 4, &[0, 1])
+    .is_err()
+  );
 }
 
 #[test]

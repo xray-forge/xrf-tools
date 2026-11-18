@@ -94,7 +94,8 @@ impl GeometryModels {
         });
       }
 
-      if model.lod == u16::MAX {
+      // A model that draws nothing has no tree for its LOD to hold, so it gets no LOD.
+      if model.lod == u16::MAX || trees.len() == first {
         continue;
       }
 

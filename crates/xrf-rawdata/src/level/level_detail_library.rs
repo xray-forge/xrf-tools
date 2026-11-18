@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use byteorder::ByteOrder;
 use xrf_error::XrfResult;
+use xrf_job::JobHandle;
 use xrf_level::DetailModel;
 use xrf_math::Vector2d;
 
@@ -38,12 +39,14 @@ impl LevelDetailLibrary {
   }
 
   /// The detail objects of `library`, those under each root's [`Self::DIRECTORY`], each compiled as `EDetail` exports
-  /// it; one that does not read or compile is recorded in `library` and matches nothing.
-  pub(crate) fn read_from_library<T: ByteOrder>(library: &mut LevelObjectLibrary) -> XrfResult<Self> {
+  /// it; one that does not read or compile is recorded in `library` and matches nothing. The walk stops once `job` is
+  /// cancelled.
+  pub(crate) fn read_from_library<T: ByteOrder>(library: &mut LevelObjectLibrary, job: &JobHandle) -> XrfResult<Self> {
     let mut detail: Self = Self::default();
     let mut uncompiled: Vec<(PathBuf, String)> = Vec::new();
 
     library.read_each::<T>(
+      job,
       |entry| entry.is_under(Self::DIRECTORY),
       |entry, object| {
         match DetailModelBuilder::build_model(&object, &DetailParameters::default()) {

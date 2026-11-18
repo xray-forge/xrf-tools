@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
-use xrf_error::XrfResult;
+use xrf_dds::{DdsFile, RgbaImage};
+use xrf_error::{XrfError, XrfResult};
 use xrf_utils::HostRelativePath;
 
 /// How the SDK's compilers name and find the textures `build.prj` names under the textures roots (`$game_textures$`).
@@ -42,5 +43,21 @@ impl CompilerTextures {
     }
 
     Ok(None)
+  }
+
+  /// The top image of the `.dds` of an implicitly lit texture under the first of `roots` holding it, which its maps
+  /// are made from.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when no root holds the texture, or its image does not read.
+  pub(crate) fn read_implicit_image(roots: &[PathBuf], name: &str) -> XrfResult<RgbaImage> {
+    let path: PathBuf = Self::find(roots, name, "dds")?.ok_or_else(|| {
+      XrfError::new_not_found_error(format!(
+        "The implicitly lit texture {name} has no .dds under the texture roots"
+      ))
+    })?;
+
+    DdsFile::read_from_path(&path)?.decode_rgba(0)
   }
 }

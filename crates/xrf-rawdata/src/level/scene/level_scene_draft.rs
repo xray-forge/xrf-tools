@@ -2,6 +2,7 @@ use xrf_editable_level::{
   EditableBuildParams, EditableLevelCamera, EditableLevelFile, EditableLevelGuid, EditableLevelOptions,
   EditableLevelScene, EditableSceneTool,
 };
+use xrf_job::JobHandle;
 use xrf_spawn::LevelSpawnFile;
 use xrf_utils::format_path;
 
@@ -50,6 +51,8 @@ pub(crate) struct LevelSceneDraft {
   /// The objects of the options' library roots, listed once for the steps that look in them, and what they could not
   /// read, refused when the scene is finished.
   pub(crate) object_library: LevelObjectLibrary,
+  /// The decompile's job, which the library walks stop on when it is cancelled.
+  pub(crate) job: JobHandle,
 }
 
 impl LevelSceneDraft {
@@ -66,6 +69,7 @@ impl LevelSceneDraft {
     spawn: Option<LevelSpawnFile>,
     respawn: Option<LevelSpawnFile>,
     object_library: LevelObjectLibrary,
+    job: JobHandle,
   ) -> Self {
     let mut context: LevelDecompileContext = LevelDecompileContext::new(guid);
 
@@ -104,6 +108,7 @@ impl LevelSceneDraft {
       respawn,
       map: None,
       object_library,
+      job,
     }
   }
 

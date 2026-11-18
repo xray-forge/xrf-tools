@@ -135,6 +135,91 @@ fn builds_a_models_visuals_by_material_once_and_places_them_by_each_reference() 
   Ok(())
 }
 
+/// A model drawing nothing has no tree for a LOD to hold; a LOD made for it anyway would stop every later reference's
+/// LOD from reaching the hierarchy, and with it their trees.
+#[test]
+fn gives_no_lod_to_a_model_that_draws_nothing_and_keeps_the_lods_after_it() -> XrfResult {
+  use xrf_level::{BuildPrjFace, BuildPrjLod, BuildPrjLodFace, BuildPrjMuModel, BuildPrjMuReference};
+  use xrf_math::Matrix4x4;
+  use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
+
+  use crate::{CompilerShaders, CompilerTexture};
+
+  let model = |name: &str, material: u16| BuildPrjMuModel {
+    name: String::from(name),
+    vertices: vec![
+      Vector3d::new(0.0, 0.0, 0.0),
+      Vector3d::new(1.0, 0.0, 0.0),
+      Vector3d::new(0.0, 0.0, 1.0),
+    ],
+    faces: vec![BuildPrjFace {
+      vertices: [0, 2, 1],
+      texture_coordinates: [Vector2d::new(0.0, 0.0); 3],
+      material,
+      material_padding: 0,
+      game_material: 0,
+    }],
+    lod: 0,
+    smoothing_groups: Some(vec![0]),
+  };
+  let reference = |model: u32, x: f32| BuildPrjMuReference {
+    model,
+    transform: Matrix4x4::from_translation(&Vector3d::new(x, 0.0, 0.0)),
+    flags: 0,
+    sector: 0,
+    sector_padding: 0,
+    reserved: [0; 8],
+  };
+  let mut file: BuildPrjFile = project(&[[0.0; 3]], &[])?;
+
+  // Material 2's compiler shader, `ghost`, is neither drawn nor collides in this library.
+  file.mu_models = vec![model("hidden", 2), model("bush", 0)];
+  file.mu_references = vec![reference(0, 0.0), reference(1, 10.0)];
+  file.lods = vec![BuildPrjLod {
+    faces: std::array::from_fn(|_| BuildPrjLodFace {
+      vertices: [Vector3d::new(0.0, 0.0, 0.0); 4],
+      texture_coordinates: [Vector2d::new(0.0, 0.0); 4],
+    }),
+    material: 0,
+  }];
+
+  let shader = |name: &str, flags: u32| ShaderCompilerShader {
+    name: String::from(name),
+    name_trailing: vec![0; ShaderCompilerShader::NAME_SIZE - name.len()],
+    flags,
+    vertex_translucency: 0.5,
+    vertex_ambient: 0.0,
+    lightmap_density: 1.0,
+  };
+  let library: ShaderCompilerFile = ShaderCompilerFile {
+    shaders: vec![shader("default", ShaderCompilerShader::RENDERING), shader("ghost", 0)],
+  };
+  let textures: Vec<CompilerTexture> = vec![CompilerTexture {
+    name: String::from("ground"),
+    width: 256,
+    height: 256,
+    has_alpha: false,
+    has_image: false,
+    is_implicitly_lit: false,
+  }];
+  let models: GeometryModels =
+    GeometryModels::build(&file, &CompilerShaders::resolve(&file, &library)?, &textures, None)?;
+
+  assert_eq!(models.lods.iter().map(|lod| lod.reference).collect::<Vec<_>>(), vec![1]);
+
+  let visuals: GeometryVisuals = GeometryVisuals {
+    visuals: vec![visual_at(100.0, 0)],
+  };
+  let hierarchy: GeometryHierarchy = GeometryHierarchy::build(&visuals, &models, &file)?;
+
+  assert!(
+    hierarchy.nodes.iter().any(|node| node.kind == GeometryNodeKind::Lod(0)),
+    "the bush's LOD is in the tree"
+  );
+
+  Ok(())
+}
+
 #[test]
 fn bounds_a_geometry_in_its_grown_box_and_a_sphere_holding_every_point() {
   let points: [Vector3d; 4] = [

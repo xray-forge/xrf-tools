@@ -55,6 +55,35 @@ fn reads_the_maps_settings_as_the_build_wrote_them_and_a_later_save_left_them() 
   Ok(())
 }
 
+/// The game reads `level.ltx` as Windows-1251, so Cyrillic in the build options reads and writes back byte for byte,
+/// and text with no Windows-1251 byte is refused rather than written as UTF-8.
+#[test]
+fn reads_and_writes_the_maps_text_as_windows_1251() -> XrfResult {
+  // «зона» in Windows-1251.
+  let bytes: &[u8] = b"[map_usage]\r\nver=1.0\r\n;\r\n[anomalies]\r\nset1 = \xE7\xEE\xED\xE0\0;\r\n";
+  let settings: LevelMapSettings = LevelMapConversion::decompile(bytes)?;
+
+  assert_eq!(settings.build_options, "[anomalies]\r\nset1 = зона");
+
+  let mut options: EditableLevelOptions = EditableLevelOptions::new("labx8", EditableLevelOptions::SINGLE_PLAYER);
+  let bounds: xrf_math::Aabb = xrf_math::Aabb {
+    min: xrf_math::Vector3d::new(0.0, 0.0, 0.0),
+    max: xrf_math::Vector3d::new(1.0, 1.0, 1.0),
+  };
+
+  options.build_options = settings.build_options;
+
+  let written: Vec<u8> = LevelMapConversion::export(&options, &bounds, &[])?;
+
+  assert!(written.windows(9).any(|window| window == b"\xE7\xEE\xED\xE0\0;\r\n["));
+
+  options.build_options = String::from("[anomalies]\r\nset1 = 中");
+
+  assert!(LevelMapConversion::export(&options, &bounds, &[]).is_err());
+
+  Ok(())
+}
+
 #[test]
 fn gives_the_maps_rectangle_back_as_a_level_bound_shape_whose_box_writes_it_again() -> XrfResult {
   let shape: EditableShapeObject =
@@ -84,7 +113,7 @@ fn gives_the_maps_rectangle_back_as_a_level_bound_shape_whose_box_writes_it_agai
     &EditableLevelOptions::new("labx8", EditableLevelOptions::SINGLE_PLAYER),
     &placed,
     &[sector(255), sector(0)],
-  ))
+  )?)
   .into_owned();
 
   // GSC's file holds decimals no float prints (`126.614072` lies between two), so the floats they read as come back.

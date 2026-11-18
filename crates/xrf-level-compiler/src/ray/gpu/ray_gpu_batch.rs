@@ -78,6 +78,14 @@ impl RayGpuBatch {
     first_ray
   }
 
+  /// Whether the batch is to be traced before it takes `plan`, as [`Self::is_full`] answers for the plan's packets and
+  /// single rays.
+  pub(crate) fn is_full_for(&self, plan: &impl RayGpuPlan) -> bool {
+    let packets: usize = plan.get_groups().iter().filter(|group| group.is_packet()).count();
+
+    self.is_full(packets, plan.get_groups().len() - packets)
+  }
+
   /// Whether the batch is to be traced before it takes `next_packets` more packets and `next_singles` more single
   /// rays: it would hold more packets or single rays than a dispatch takes, or holds enough rays already.
   pub(crate) fn is_full(&self, next_packets: usize, next_singles: usize) -> bool {

@@ -7,6 +7,7 @@ use crate::detail::detail_lighter::DetailLighter;
 use crate::detail::detail_slot_fate::DetailSlotFate;
 use crate::detail::detail_slot_lighter::DetailSlotLighter;
 use crate::detail::detail_slot_stage::DetailSlotStage;
+use crate::detail::gpu::detail_gpu_waiting::DetailGpuWaiting;
 use crate::ray::gpu::ray_gpu_batch::RayGpuBatch;
 use crate::ray::gpu::ray_gpu_tracer::RayGpuTracer;
 
@@ -33,12 +34,9 @@ impl DetailGpuLighting<'_> {
     job: &JobHandle,
     scope: &JobScope,
   ) -> XrfResult<Vec<DetailSlotFate>> {
-    let tracer: &RayGpuTracer = self.tracer;
     let slots: &[[u32; 4]] = &details.slots;
     let mut fates: Vec<DetailSlotFate> = Vec::with_capacity(slots.len());
-    let mut waiting: Vec<DetailSlotStage> = Vec::new();
-    let mut batch: RayGpuBatch = RayGpuBatch::default();
-    let mut firsts: Vec<usize> = Vec::new();
+    let mut waiting: DetailGpuWaiting = DetailGpuWaiting::default();
     let mut next: usize = 0;
 
     while next < slots.len() {
@@ -50,36 +48,57 @@ impl DetailGpuLighting<'_> {
         .map(|cell| DetailLighter::plan(lighter, cell, &slots[cell]))
         .collect();
 
+      // Slot by slot, so a slot whose rays would overflow the dispatch, as many lamps reaching it can, goes in the next.
       for stage in planned {
-        firsts.push(match &stage {
-          DetailSlotStage::Planned(plan) => batch.push(plan.as_ref(), |face| tracer.get_skip(face)),
+        let first: usize = match &stage {
+          DetailSlotStage::Planned(plan) => {
+            if !waiting.stages.is_empty() && waiting.batch.is_full_for(plan.as_ref()) {
+              fates.extend(self.trace(&mut waiting, lighter, scope)?);
+            }
+
+            waiting.batch.push(plan.as_ref(), |face| self.tracer.get_skip(face))
+          }
           DetailSlotStage::Met(_) => 0,
-        });
-        waiting.push(stage);
+        };
+
+        waiting.firsts.push(first);
+        waiting.stages.push(stage);
       }
 
       next = end;
 
-      // Traced once no room is left for one more packet or single ray, or enough rays wait.
-      if batch.is_full(1, 1) || next == slots.len() {
-        let transmittances: Vec<f32> = tracer.trace(&batch, DetailSlotLighter::get_rules())?;
-        let finished: Vec<DetailSlotFate> = waiting
-          .par_drain(..)
-          .zip(firsts.par_drain(..))
-          .map(|(stage, first)| match stage {
-            DetailSlotStage::Met(fate) => fate,
-            DetailSlotStage::Planned(plan) => {
-              DetailSlotFate::Lit(lighter.finish(&plan, &transmittances[first..first + plan.ray_count]))
-            }
-          })
-          .collect();
-
-        scope.advance_by(finished.len() as u64);
-        fates.extend(finished);
-        batch = RayGpuBatch::default();
+      // Traced once no room is left for one more packet or single ray, or enough rays wait, or the slots run out.
+      if waiting.batch.is_full(1, 1) || next == slots.len() {
+        fates.extend(self.trace(&mut waiting, lighter, scope)?);
       }
     }
 
     Ok(fates)
+  }
+
+  /// The fates of the waiting slots, their rays traced, leaving nothing waiting.
+  fn trace(
+    &self,
+    waiting: &mut DetailGpuWaiting,
+    lighter: &DetailSlotLighter<'_>,
+    scope: &JobScope,
+  ) -> XrfResult<Vec<DetailSlotFate>> {
+    let batch: RayGpuBatch = std::mem::take(&mut waiting.batch);
+    let transmittances: Vec<f32> = self.tracer.trace(&batch, DetailSlotLighter::get_rules())?;
+    let finished: Vec<DetailSlotFate> = waiting
+      .stages
+      .par_drain(..)
+      .zip(waiting.firsts.par_drain(..))
+      .map(|(stage, first)| match stage {
+        DetailSlotStage::Met(fate) => fate,
+        DetailSlotStage::Planned(plan) => {
+          DetailSlotFate::Lit(lighter.finish(&plan, &transmittances[first..first + plan.ray_count]))
+        }
+      })
+      .collect();
+
+    scope.advance_by(finished.len() as u64);
+
+    Ok(finished)
   }
 }

@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use xrf_chunk::XRayByteOrder;
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::XrfResult;
+use xrf_job::JobHandle;
 use xrf_math::Vector3d;
 use xrf_test_utils::{GeneratedResources, HostFilesystem};
 
@@ -73,6 +74,7 @@ fn records_each_object_that_does_not_read_once_with_why() -> XrfResult {
 
   for _ in 0..2 {
     library.read_each::<XRayByteOrder>(
+      &JobHandle::inert(),
       |_| true,
       |entry, _: EditableObjectFile| {
         read.push(entry.reference.clone());
@@ -89,6 +91,17 @@ fn records_each_object_that_does_not_read_once_with_why() -> XrfResult {
   assert_eq!(refusals[0].object, "broken.object");
   assert!(refusals[0].file.ends_with("broken.object"), "{refusals:?}");
   assert!(!refusals[0].reason.is_empty());
+
+  // A cancelled decompile stops the walk before the next object, rather than after the whole library.
+  let cancelled: JobHandle = JobHandle::inert();
+
+  cancelled.cancel();
+
+  assert!(
+    library
+      .read_each::<XRayByteOrder>(&cancelled, |_| true, |_, _| Ok(()))
+      .is_err()
+  );
 
   Ok(())
 }

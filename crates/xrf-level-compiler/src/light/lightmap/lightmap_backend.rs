@@ -1,5 +1,6 @@
 use rayon::prelude::*;
 use xrf_error::XrfResult;
+use xrf_job::{JobHandle, JobScope};
 
 use crate::light::implicit::implicit_lighter::ImplicitLighter;
 use crate::light::implicit::implicit_map::ImplicitMap;
@@ -17,6 +18,9 @@ pub(crate) struct LightmapBackend {
 }
 
 impl LightmapBackend {
+  /// What a job reports the lightmaps under: the charts lit.
+  pub(crate) const PROGRESS_CHARTS: &'static str = "lightmap charts";
+
   /// The backend `tracing` names, started with `lighter`'s ray scene where it traces on a GPU; `Auto` on the CPU where
   /// the GPU does not start.
   ///
@@ -35,22 +39,37 @@ impl LightmapBackend {
     self.device.get_name()
   }
 
-  /// Every one of `charts` lit and bordered by `lighter`, the one the backend was started with.
+  /// Every one of `charts` lit and bordered by `lighter`, the one the backend was started with, each counted to `job`
+  /// as it is done.
   ///
   /// # Errors
   ///
-  /// Returns an error when the GPU refuses a batch.
+  /// Returns an error when the GPU refuses a batch, or the job is cancelled.
   pub(crate) fn light_charts(
     &self,
     lighter: &LightChartLighter<'_>,
     charts: &[LightChart],
+    job: &JobHandle,
   ) -> XrfResult<Vec<LitChart>> {
+    let scope: JobScope = job.enter(Self::PROGRESS_CHARTS, Some(charts.len() as u64));
+
     #[cfg(feature = "gpu")]
     if let Some(tracer) = self.device.get_gpu() {
-      return crate::light::lightmap::lightmap_gpu::LightmapGpu { tracer }.light_charts(lighter, charts);
+      return crate::light::lightmap::lightmap_gpu::LightmapGpu { tracer }.light_charts(lighter, charts, job, &scope);
     }
 
-    Ok(charts.par_iter().map(|chart| lighter.light(chart)).collect())
+    charts
+      .par_iter()
+      .map(|chart| {
+        job.check_cancelled()?;
+
+        let lit: LitChart = lighter.light(chart);
+
+        scope.advance();
+
+        Ok(lit)
+      })
+      .collect()
   }
 
   /// The implicit map of texture `name` by `implicit` ([`ImplicitLighter::light`]), whose lighter is the one the
@@ -58,7 +77,7 @@ impl LightmapBackend {
   ///
   /// # Errors
   ///
-  /// Returns an error when the GPU refuses a batch.
+  /// Returns an error when the GPU refuses a batch, or the job is cancelled.
   pub(crate) fn light_implicit(
     &self,
     implicit: &ImplicitLighter<'_>,

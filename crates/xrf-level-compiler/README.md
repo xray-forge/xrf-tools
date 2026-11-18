@@ -4,12 +4,12 @@ Compiles a level from the files `level build` writes (`xrf-rawdata`'s `LevelBuil
 game loads: the geometry with its lightmaps and collision, the details' light and the AI map. Each step ports an SDK
 compiler and runs in process.
 
-| Step       | Ports           | Reads from the level's directory                                   | Writes                                                                                               |
-| ---------- | --------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
-| `geometry` | xrLC's geometry | `build.prj`                                                        | `level`, `level.geom`, `level.geomx`, `level.cform`, `build.cform`, `build.lights`, neutral lightmap |
-| `light`    | xrLC's light    | as the geometry, in its pass                                       | the lit lightmap pages and the implicit maps, in place of the neutral lightmap                       |
-| `details`  | xrDO_Light      | `build.prj`, `build.details`, `build.cform`, `build.lights`        | `level.details`                                                                                      |
-| `ai`       | xrAI `-f`       | `build.aimap`; with full covers also `build.prj` and `build.cform` | `level.ai`                                                                                           |
+| Step       | Ports           | Reads from the level's directory                                   | Writes                                                                                                                 |
+| ---------- | --------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `geometry` | xrLC's geometry | `build.prj`                                                        | `level`, `level.geom`, `level.geomx`, `level.cform`, `build.cform`, `build.lights`, neutral lightmap and implicit maps |
+| `light`    | xrLC's light    | as the geometry, in its pass                                       | the lit lightmap pages and implicit maps, in place of the neutral ones                                                 |
+| `details`  | xrDO_Light      | `build.prj`, `build.details`, `build.cform`, `build.lights`        | `level.details`                                                                                                        |
+| `ai`       | xrAI `-f`       | `build.aimap`; with full covers also `build.prj` and `build.cform` | `level.ai`                                                                                                             |
 
 Every step but an AI map with no covers also reads the game data's `shaders_xrlc.xr` and the textures `build.prj` names.
 
@@ -114,6 +114,12 @@ such as terrain's: a map the texture's size over its own coordinates, each texel
 its jitter samples, lit with the chart lighter's `LightPoint`; the rings then fill the map, the texture's alpha takes
 the hemisphere and the map the static light and sun (`ImplicitMap`), which the step writes as `<texture>.dds` and
 `<texture>_lm.dds` in the level's folder. As xrLC, it lights none at draft quality.
+
+A terrain visual names its `<texture>_lm` whether or not the light step lit it. Without the light step, or at draft
+quality, the geometry step writes neutral maps instead (`LightDraft::get_implicit_map`): the texture with a middle
+hemisphere in alpha, and an `_lm` of no static light and full sun. A new level then draws its terrain lit by the
+renderer alone, rather than with a missing map or an older level's. These maps need the texture's `.dds` under the
+texture roots, as the lit ones do.
 
 ### On the GPU
 

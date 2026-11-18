@@ -257,11 +257,9 @@ fn writes_the_maps_settings_as_the_build_writes_them() {
   first.map_index = EditableSectorObject::NO_MAP;
 
   assert_eq!(
-    String::from_utf8_lossy(&LevelMapConversion::export(
-      &options,
-      &bounds,
-      &[first.clone(), second.clone()]
-    )),
+    String::from_utf8_lossy(
+      &LevelMapConversion::export(&options, &bounds, &[first.clone(), second.clone()]).expect("ASCII text")
+    ),
     "[map_usage]\r\nver=1.0\r\ndeathmatch\r\nartefacthunt\r\n;\r\n[level_map]\r\n\
      bound_rect = -1.500000,2.000000,3.250000,4.000000\r\ntexture = map\\map_test_level\r\n;\r\n;\r\n\
      [sub_level_map]\r\n0 = 255\r\n1 = 0\r\n"
@@ -269,7 +267,7 @@ fn writes_the_maps_settings_as_the_build_writes_them() {
 
   options.build_options = String::from("[extra]\r\nkey = value");
 
-  let written: Vec<u8> = LevelMapConversion::export(&options, &bounds, &[first, second]);
+  let written: Vec<u8> = LevelMapConversion::export(&options, &bounds, &[first, second]).expect("ASCII text");
 
   assert!(
     written.windows(14).any(|window| window == b"key = value\0;\r"),

@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use glam::Vec3;
 use xrf_geometry::TraceHit;
 use xrf_level::LevelLightRole;
@@ -88,7 +90,21 @@ impl LightChartLighter<'_> {
   /// its point's, halved, stored.
   pub(crate) fn assemble(width: u32, height: u32, points: &[LightTexelPoint], colors: &[LightColor]) -> LightmapLayer {
     let mut layer: LightmapLayer = LightmapLayer::new(width, height);
-    let mut sums: Vec<(LightColor, u32)> = vec![(LightColor::default(), 0); (width * height) as usize];
+
+    Self::assemble_into(&mut layer, 0..(width * height) as usize, points, colors);
+
+    layer
+  }
+
+  /// [`Self::assemble`] for the run `texels` of `layer`, which holds every texel of `points`, so a large map can be lit
+  /// a band at a time.
+  pub(crate) fn assemble_into(
+    layer: &mut LightmapLayer,
+    texels: Range<usize>,
+    points: &[LightTexelPoint],
+    colors: &[LightColor],
+  ) {
+    let mut sums: Vec<(LightColor, u32)> = vec![(LightColor::default(), 0); texels.len()];
 
     for (point, color) in points.iter().zip(colors) {
       let texel: usize = point.texel as usize;
@@ -99,7 +115,7 @@ impl LightChartLighter<'_> {
         continue;
       }
 
-      let (sum, count) = &mut sums[texel];
+      let (sum, count) = &mut sums[texel - texels.start];
 
       *sum = LightColor {
         rgb: sum.rgb + color.rgb,
@@ -109,14 +125,12 @@ impl LightChartLighter<'_> {
       *count += 1;
     }
 
-    for (texel, (sum, count)) in sums.iter().enumerate() {
+    for (texel, (sum, count)) in texels.zip(&sums) {
       if *count > 0 {
         layer.surface[texel] = sum.get_scaled(1.0 / *count as f32).get_scaled(0.5).get_stored();
         layer.marker[texel] = LightmapLayer::LIT;
       }
     }
-
-    layer
   }
 
   /// The points `chart` is lit at `width` by `height` texels, texel by texel, then the edges' (`L_Calculate`). A
@@ -453,7 +467,7 @@ impl LightChartLighter<'_> {
   }
 
   /// The texels whose samples may fall on `triangle`, over a layer `width` by `height`.
-  fn get_texels(triangle: &[Vector2d; 3], width: u32, height: u32) -> (std::ops::Range<u32>, std::ops::Range<u32>) {
+  fn get_texels(triangle: &[Vector2d; 3], width: u32, height: u32) -> (Range<u32>, Range<u32>) {
     let range = |values: [f32; 3], side: u32| {
       let low: f32 = values.into_iter().fold(f32::INFINITY, f32::min);
       let high: f32 = values.into_iter().fold(f32::NEG_INFINITY, f32::max);

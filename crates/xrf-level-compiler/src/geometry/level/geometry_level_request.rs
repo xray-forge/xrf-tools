@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use xrf_job::JobHandle;
 use xrf_level::BuildPrjFile;
 use xrf_shaders::ShaderCompilerFile;
 
@@ -24,4 +25,6 @@ pub(crate) struct GeometryLevelRequest<'a> {
   /// What traces the baked light's lightmap and implicit map shadow rays; none for the neutral light the renderers
   /// light over in real time ([`LightDraft`](crate::light::light_draft::LightDraft)).
   pub(crate) light: Option<RayTracing<'a>>,
+  /// The job the compile reports its phases, charts and implicit map rows to, and stops on when it is cancelled.
+  pub(crate) job: &'a JobHandle,
 }

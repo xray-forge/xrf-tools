@@ -73,6 +73,7 @@ impl GeometryStep {
       roots: &roots,
       quality: request.light_quality,
       light,
+      job,
     })?;
 
     job.check_cancelled()?;

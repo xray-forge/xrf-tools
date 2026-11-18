@@ -176,7 +176,11 @@ fn lights_a_chart_by_a_lamp_and_the_sun_as_the_cpu_does() -> XrfResult {
       gpu: None,
     };
     let on_gpu: Vec<LitChart> = charts::light_by(&mesh, &lights, |lighter, floor| {
-      LightmapBackend::start(&tracing, lighter)?.light_charts(lighter, std::slice::from_ref(floor))
+      LightmapBackend::start(&tracing, lighter)?.light_charts(
+        lighter,
+        std::slice::from_ref(floor),
+        &xrf_job::JobHandle::inert(),
+      )
     })?;
 
     assert_eq!(on_gpu, std::slice::from_ref(&on_cpu), "{dxc:?}");
