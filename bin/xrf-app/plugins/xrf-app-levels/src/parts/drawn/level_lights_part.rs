@@ -9,8 +9,7 @@ use xrf_vfs::XraySearch;
 use xrf_visual::{LightsDescription, LightsPacker};
 
 use crate::level::SelectedLevel;
-use crate::parts::LevelTextureReference;
-use crate::parts::{LevelSpawnPart, LevelSpawnVisualsPart, PackedLevelLights};
+use crate::parts::{LevelSpawnPart, LevelSpawnVisualsPart, LevelTextureReference, PackedLevelLights};
 use crate::report::LevelReport;
 
 /// What a change event calls what a level's lights were read from when it goes stale.

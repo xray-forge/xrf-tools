@@ -5,8 +5,7 @@ use xrf_math::{Aabb, Sphere, Vector3d};
 use xrf_spawn::SpawnLevelArrival;
 use xrf_visual::VisualBounds;
 
-use crate::parts::LevelStartPart;
-use crate::parts::{LevelSpawn, LevelStart, LevelStartOrigin};
+use crate::parts::{LevelSpawn, LevelStart, LevelStartOrigin, LevelStartPart};
 
 /// A level 200 m across and 100 m along, centred on the origin, in renderer space.
 fn new_bounds() -> VisualBounds {

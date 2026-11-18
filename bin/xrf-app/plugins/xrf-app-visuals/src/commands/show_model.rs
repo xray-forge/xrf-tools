@@ -4,8 +4,7 @@ use tauri::State;
 use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
-use xrf_app_render::TextureReloads;
-use xrf_app_render::ViewportShows;
+use xrf_app_render::{TextureReloads, ViewportShows};
 use xrf_renderer::RenderViewportId;
 use xrf_world::WorldLevelSource;
 

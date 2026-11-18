@@ -2,8 +2,7 @@ use tauri::State;
 use xrf_app_core::TauriResult;
 use xrf_app_core::directories::AppDirectories;
 use xrf_app_core::execution::ExecutionState;
-use xrf_app_render::CaptureFile;
-use xrf_app_render::Renderer;
+use xrf_app_render::{CaptureFile, Renderer};
 
 use crate::viewer::{LevelViewerFolder, ScreenshotSaveRequest};
 

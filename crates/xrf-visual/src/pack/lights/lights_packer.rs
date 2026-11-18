@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+
 use xrf_level::LevelDynamicLight;
 use xrf_light_anim::LightAnimFile;
 use xrf_ltx::{Ltx, Section};
 use xrf_math::Vector3d;
-
 use xrf_spawn::{AlifeObject, AlifeObjectHangingLamp, AlifeObjectInherited, AlifeObjectTorridZone, ClsId};
 
 use crate::data::lights::light_animator_description::LightAnimatorDescription;

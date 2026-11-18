@@ -13,8 +13,7 @@ use xrf_vfs::XraySearch;
 use xrf_visual::{HemiEstimator, VisualTransform};
 
 use crate::level::{LevelSource, SelectedLevel};
-use crate::parts::{LevelCollisionPart, LevelSpawnPart};
-use crate::parts::{LevelSpawn, LevelSpawnObjectHemi, NamedSpawnVisual};
+use crate::parts::{LevelCollisionPart, LevelSpawn, LevelSpawnObjectHemi, LevelSpawnPart, NamedSpawnVisual};
 use crate::report::LevelReport;
 use crate::spawn::LevelSpawnCategory;
 

@@ -14,8 +14,7 @@ use xrf_vfs::XraySearch;
 use xrf_visual::{VisualTransform, ZoneSphere};
 
 use crate::level::{LevelSource, SelectedLevel};
-use crate::parts::LevelTextureReference;
-use crate::parts::{LevelEnvironmentPart, LevelSpawnPart, PackedLevelParticles};
+use crate::parts::{LevelEnvironmentPart, LevelSpawnPart, LevelTextureReference, PackedLevelParticles};
 use crate::report::LevelReport;
 use crate::weather::LevelWorldAmbients;
 
