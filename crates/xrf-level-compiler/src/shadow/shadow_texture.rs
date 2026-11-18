@@ -3,7 +3,7 @@ use xrf_math::Vector2d;
 
 /// A texture a light ray is dimmed through: its alpha as the SDK's compilers read it, one byte a texel, top row first.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ShadowTexture {
+pub(crate) struct ShadowTexture {
   /// Its name as the compilers find it, `build.prj`'s cut at the first dot and lowered: `trees\trees_elka`.
   pub name: String,
   pub alpha: GrayImage,

@@ -13,8 +13,13 @@ use xrf_level::{
 };
 use xrf_math::Vector3d;
 
+use crate::detail::detail_light_request::DetailLightRequest;
+use crate::detail::detail_lighter::DetailLighter;
+use crate::detail::detail_lighting::DetailLighting;
+use crate::ray::ray_scene::RayScene;
+use crate::ray::ray_tracing::RayTracing;
 use crate::shadow::shadow_materials::ShadowMaterials;
-use crate::{DetailLightRequest, DetailLighter, DetailLighting, DetailSlotCounts, RayBackend, RayScene, RayTracing};
+use crate::{DetailSlotCounts, RayBackend};
 
 /// A row of five slots, 2 m each from the origin along x, each 1 m tall from its base at 0 m:
 ///

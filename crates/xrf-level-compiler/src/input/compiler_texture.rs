@@ -15,7 +15,7 @@ use crate::input::compiler_textures::CompilerTextures;
 /// not a `lod\` texture, and where the image's size differs from the `.thm`'s, the image's is taken. The merged
 /// impostors' atlas, `level_lods`, has no `.thm` read: 1024 a side, alpha, no image.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct CompilerTexture {
+pub(crate) struct CompilerTexture {
   /// The name cut at its first dot and lowered (`CompilerTextures::get_name`), as visuals name it.
   pub name: String,
   pub width: u32,
@@ -39,7 +39,7 @@ impl CompilerTexture {
   ///
   /// Returns an error listing the textures with no `.thm` describing a texture, and for an image xrLC would load that
   /// cannot be read.
-  pub fn resolve_all(project: &BuildPrjFile, roots: &[PathBuf]) -> XrfResult<Vec<Self>> {
+  pub(crate) fn resolve_all(project: &BuildPrjFile, roots: &[PathBuf]) -> XrfResult<Vec<Self>> {
     let mut missing: Vec<String> = Vec::new();
     let mut textures: Vec<Self> = Vec::with_capacity(project.textures.len());
 

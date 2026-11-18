@@ -1,6 +1,6 @@
 /// What `GeometryMesh::optimize` removed.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct GeometryOptimization {
+pub(crate) struct GeometryOptimization {
   /// Vertices welded onto another.
   pub(crate) welded_vertices: usize,
   /// Faces dropped as two of their corners welded together.

@@ -13,7 +13,7 @@ impl GeometryMesh {
   ///
   /// Returns an error for a model of no vertex, without a smoothing flag a face, or with a face naming a vertex it
   /// lacks, which xrLC would read past.
-  pub fn of_model(model: &BuildPrjMuModel) -> XrfResult<Self> {
+  pub(crate) fn of_model(model: &BuildPrjMuModel) -> XrfResult<Self> {
     let smoothing: &[u32] = model.smoothing_groups.as_deref().unwrap_or_default();
 
     if smoothing.len() != model.faces.len() {

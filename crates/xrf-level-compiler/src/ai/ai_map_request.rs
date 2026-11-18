@@ -5,9 +5,9 @@ use crate::ai::ai_map_covers::AiMapCovers;
 use crate::ray::ray_scene::RayScene;
 use crate::ray::ray_tracing::RayTracing;
 
-/// What [`crate::AiMapCompiler::compile`] compiles a level's AI map from, each already read.
+/// What [`crate::ai::ai_map_compiler::AiMapCompiler::compile`] compiles a level's AI map from, each already read.
 #[derive(Clone, Copy)]
-pub struct AiMapRequest<'a> {
+pub(crate) struct AiMapRequest<'a> {
   /// The nodes as the Build exported them, `build.aimap`.
   pub aimap: &'a BuildAimapFile,
   pub covers: AiMapCovers,

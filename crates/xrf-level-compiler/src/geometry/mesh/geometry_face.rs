@@ -2,7 +2,7 @@ use xrf_math::{Vector2d, Vector3d};
 
 /// One face of a level's static geometry as xrLC works on it (`Face`, `xrLC_Light/xrFace.h`).
 #[derive(Clone, Debug, PartialEq)]
-pub struct GeometryFace {
+pub(crate) struct GeometryFace {
   /// Its corners, by index into the mesh's vertices.
   pub vertices: [u32; 3],
   /// The base texture coordinate at each corner.
@@ -31,7 +31,7 @@ impl GeometryFace {
   }
 
   /// Whether edge `edge` is soft, `is_soft_edge`: its bit clear, a back face's edges numbered the other way round.
-  pub fn is_soft_edge(&self, edge: usize) -> bool {
+  pub(crate) fn is_soft_edge(&self, edge: usize) -> bool {
     self.smoothing & (1 << self.get_edge_bit(edge)) == 0
   }
 

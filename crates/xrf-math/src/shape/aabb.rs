@@ -63,10 +63,29 @@ impl Aabb {
     self.max = Vector3d::from(max);
   }
 
-  /// Grows to hold another box, `Fbox::merge`.
+  /// Grows to hold another box, [`Self::merge`].
   pub fn include_box(&mut self, other: &Self) {
-    self.include_point(&other.min);
-    self.include_point(&other.max);
+    *self = self.merge(other);
+  }
+
+  /// The box holding this one and `other`, `Fbox::merge`: the lower of the two least corners and the higher of the two
+  /// greatest, each side by `std::min` and `std::max`, which keep this box's of two equal values.
+  pub fn merge(&self, other: &Self) -> Self {
+    let lower = |own: f32, other: f32| if other < own { other } else { own };
+    let higher = |own: f32, other: f32| if own < other { other } else { own };
+
+    Self {
+      min: Vector3d::new(
+        lower(self.min.x, other.min.x),
+        lower(self.min.y, other.min.y),
+        lower(self.min.z, other.min.z),
+      ),
+      max: Vector3d::new(
+        higher(self.max.x, other.max.x),
+        higher(self.max.y, other.max.y),
+        higher(self.max.z, other.max.z),
+      ),
+    }
   }
 
   /// The box holding this one once `matrix` places it, `Fbox::xform`: the lowest corner placed, then each placed edge
@@ -170,6 +189,22 @@ mod tests {
         max: Vector3d::new(1.0, 3.0, 1.0),
       }
     );
+  }
+
+  /// An invalidated box, inverted as `Fbox::invalidate` leaves it, merges into another as nothing.
+  #[test]
+  fn merges_an_inverted_box_as_nothing() {
+    let bounds: Aabb = Aabb {
+      min: Vector3d::new(-1.0, -1.0, -1.0),
+      max: Vector3d::new(1.0, 1.0, 1.0),
+    };
+    let invalid: Aabb = Aabb {
+      min: Vector3d::new(f32::MAX, f32::MAX, f32::MAX),
+      max: Vector3d::new(-f32::MAX, -f32::MAX, -f32::MAX),
+    };
+
+    assert_eq!(bounds.merge(&invalid), bounds);
+    assert_eq!(invalid.merge(&bounds), bounds);
   }
 
   #[test]

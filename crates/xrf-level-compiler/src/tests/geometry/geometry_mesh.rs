@@ -7,10 +7,14 @@ use xrf_math::{Aabb, Matrix4x4, Vector2d, Vector3d};
 use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 
 use crate::geometry::collision::geometry_collector::GeometryCollector;
-use crate::{
-  CompilerShaders, GeometryBaseCoordinates, GeometryCollision, GeometryFace, GeometryMesh, GeometryNormals,
-  GeometryOptimization, GeometryRayModel,
-};
+use crate::geometry::collision::geometry_collision::GeometryCollision;
+use crate::geometry::collision::geometry_ray_model::GeometryRayModel;
+use crate::geometry::mesh::geometry_face::GeometryFace;
+use crate::geometry::mesh::geometry_mesh::GeometryMesh;
+use crate::geometry::mesh::geometry_optimization::GeometryOptimization;
+use crate::geometry::surface::geometry_base_coordinates::GeometryBaseCoordinates;
+use crate::geometry::surface::geometry_normals::GeometryNormals;
+use crate::input::compiler_shaders::CompilerShaders;
 
 /// The edge flags of a front face with every edge soft.
 const SOFT: u32 = 0;

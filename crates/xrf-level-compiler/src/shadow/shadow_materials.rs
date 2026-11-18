@@ -11,7 +11,9 @@ use xrf_utils::format_path;
 
 use crate::input::compiler_shaders::CompilerShaders;
 use crate::input::compiler_textures::CompilerTextures;
+#[cfg(test)]
 use crate::shadow::shadow_class::ShadowClass;
+#[cfg(test)]
 use crate::shadow::shadow_class_counts::ShadowClassCounts;
 use crate::shadow::shadow_face::ShadowFace;
 use crate::shadow::shadow_materials_request::ShadowMaterialsRequest;
@@ -27,7 +29,7 @@ use crate::shadow::shadow_texture::ShadowTexture;
 ///
 /// Faces are known by their index into the ray model, the tracer's face index.
 #[derive(Clone, Debug)]
-pub struct ShadowMaterials {
+pub(crate) struct ShadowMaterials {
   /// One per ray model face.
   faces: Vec<ShadowFace>,
   /// The texture and texture coordinates of each face dimming through alpha.
@@ -70,7 +72,7 @@ impl ShadowMaterials {
   /// Returns an error where the SDK's compilers stop: a texture with no `.thm` or none describing a texture under the
   /// roots, a compiler shader the library lacks, a face naming a material `build.prj` does not hold or one with no
   /// compiler shader, an alpha image missing, unreadable, or of another size than its `.thm` gives.
-  pub fn load(request: &ShadowMaterialsRequest<'_>) -> XrfResult<Self> {
+  pub(crate) fn load(request: &ShadowMaterialsRequest<'_>) -> XrfResult<Self> {
     let names: Vec<String> = request
       .project
       .textures
@@ -144,7 +146,8 @@ impl ShadowMaterials {
   /// # Panics
   ///
   /// Panics when `face` is not a face of the ray model these were loaded for.
-  pub fn get_class(&self, face: u32) -> ShadowClass {
+  #[cfg(test)]
+  pub(crate) fn get_class(&self, face: u32) -> ShadowClass {
     match self.faces[face as usize] {
       ShadowFace::Passes => ShadowClass::Passes,
       ShadowFace::Opaque => ShadowClass::Opaque,
@@ -159,7 +162,7 @@ impl ShadowMaterials {
   /// # Panics
   ///
   /// Panics when the hit's face is not a face of the ray model these were loaded for.
-  pub fn get_opacity(&self, hit: &TraceHit) -> f32 {
+  pub(crate) fn get_opacity(&self, hit: &TraceHit) -> f32 {
     match self.faces[hit.face as usize] {
       ShadowFace::Passes => 0.0,
       ShadowFace::Opaque => 1.0,
@@ -181,7 +184,8 @@ impl ShadowMaterials {
   }
 
   /// How many ray model faces are of each class.
-  pub fn count_classes(&self) -> ShadowClassCounts {
+  #[cfg(test)]
+  pub(crate) fn count_classes(&self) -> ShadowClassCounts {
     self
       .faces
       .iter()
@@ -197,7 +201,7 @@ impl ShadowMaterials {
   }
 
   /// The textures alpha faces dim light through, in the order faces first name them.
-  pub fn get_textures(&self) -> &[ShadowTexture] {
+  pub(crate) fn get_textures(&self) -> &[ShadowTexture] {
     &self.textures
   }
 

@@ -67,7 +67,7 @@ impl LightChart {
         continue;
       }
 
-      let normal: Vector3d = Self::normalize(&scene.face_normals[seed as usize]);
+      let normal: Vector3d = scene.face_normals[seed as usize].normalize();
       let accepts = |face: u32| normal.dot(&scene.face_normals[face as usize]) >= limit;
       let mut faces: Vec<u32> = Vec::new();
       // Each frame: a face placed on the chart, the corner and the adjacent face it goes on from.
@@ -137,7 +137,7 @@ impl LightChart {
 
     let length: f32 = (sum.x * sum.x + sum.y * sum.y + sum.z * sum.z).sqrt();
     let normal: Vector3d = if length > EPS_S && length.is_finite() {
-      Self::normalize(&sum)
+      sum.normalize()
     } else {
       Vector3d::new(0.0, 1.0, 0.0)
     };
@@ -226,17 +226,14 @@ impl LightChart {
     } else {
       Vector3d::new(0.0, 1.0, 0.0)
     };
-    let right: Vector3d = Self::normalize_safe(&Self::cross(&world_up, normal));
-    let up: Vector3d = Self::normalize_safe(&Self::cross(normal, &right));
+    let right: Vector3d = world_up.cross(normal).normalize_safe();
+    let up: Vector3d = normal.cross(&right).normalize_safe();
     // `build_camera`, from the normal towards the origin.
-    let view: Vector3d = Self::normalize(&Vector3d::new(-normal.x, -normal.y, -normal.z));
+    let view: Vector3d = Vector3d::new(-normal.x, -normal.y, -normal.z).normalize();
     let along: f32 = up.dot(&view);
-    let view_up: Vector3d = Self::normalize(&Vector3d::new(
-      view.x * -along + up.x,
-      view.y * -along + up.y,
-      view.z * -along + up.z,
-    ));
-    let view_right: Vector3d = Self::cross(&view_up, &view);
+    let view_up: Vector3d =
+      Vector3d::new(view.x * -along + up.x, view.y * -along + up.y, view.z * -along + up.z).normalize();
+    let view_right: Vector3d = view_up.cross(&view);
     let (shift_x, shift_y) = (-normal.dot(&view_right), -normal.dot(&view_up));
 
     faces
@@ -267,30 +264,5 @@ impl LightChart {
           Vector2d::new(maximum.x.max(corner.x), maximum.y.max(corner.y)),
         )
       })
-  }
-
-  /// `Fvector::crossproduct`.
-  fn cross(first: &Vector3d, second: &Vector3d) -> Vector3d {
-    Vector3d::new(
-      first.y * second.z - first.z * second.y,
-      first.z * second.x - first.x * second.z,
-      first.x * second.y - first.y * second.x,
-    )
-  }
-
-  /// `Fvector::normalize`: by the square root of the inverse square length.
-  fn normalize(vector: &Vector3d) -> Vector3d {
-    let scale: f32 = (1.0 / (vector.x * vector.x + vector.y * vector.y + vector.z * vector.z)).sqrt();
-
-    Vector3d::new(vector.x * scale, vector.y * scale, vector.z * scale)
-  }
-
-  /// `Fvector::normalize_safe`: normalised where its square length is a normal float, else as it is.
-  fn normalize_safe(vector: &Vector3d) -> Vector3d {
-    if vector.x * vector.x + vector.y * vector.y + vector.z * vector.z > f32::MIN_POSITIVE {
-      Self::normalize(vector)
-    } else {
-      *vector
-    }
   }
 }

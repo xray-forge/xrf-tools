@@ -19,7 +19,7 @@ impl GeometryMesh {
   /// # Errors
   ///
   /// Returns an error naming every problem found, up to a few of each kind with their counts.
-  pub fn load(project: &BuildPrjFile) -> XrfResult<Self> {
+  pub(crate) fn load(project: &BuildPrjFile) -> XrfResult<Self> {
     Self::check(project)?;
 
     let smoothing: &[u32] = project.smoothing_groups.as_deref().unwrap_or_default();

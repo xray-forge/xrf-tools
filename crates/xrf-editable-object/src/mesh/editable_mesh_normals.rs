@@ -36,7 +36,7 @@ impl EditableMeshNormals {
       .map(|face| {
         let [first, second, third] = face.corners.map(|corner| mesh.points[corner.point as usize]);
 
-        Self::normalize_safe(&(&second - &first).cross(&(&third - &second)))
+        (&second - &first).cross(&(&third - &second)).normalize_safe()
       })
       .collect();
     let corners: Vec<[Vector3d; 3]> = mesh
@@ -94,17 +94,6 @@ impl EditableMeshNormals {
         };
         mesh.faces.len()
       ]),
-    }
-  }
-
-  /// `Fvector::normalize_safe`: unit length, or the vector untouched when it has no length to divide by.
-  fn normalize_safe(vector: &Vector3d) -> Vector3d {
-    let length_squared: f32 = vector.length_squared();
-
-    if length_squared > f32::MIN_POSITIVE {
-      vector * (1.0 / length_squared).sqrt()
-    } else {
-      *vector
     }
   }
 

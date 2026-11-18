@@ -18,7 +18,7 @@ impl GeometryMesh {
   /// vertex at the edge's middle, with the base coordinate between the edge's two: the half before the edge in the
   /// face's winding first. A half keeps its face's back-face flag and its two outer edges' softness, and the new edge
   /// between the halves is soft. The cut faces are dropped at the end, the others keeping their order.
-  pub fn tessellate(&mut self) -> usize {
+  pub(crate) fn tessellate(&mut self) -> usize {
     let mut around: Vec<Vec<u32>> = self.get_faces_around_vertices();
     let mut is_cut: Vec<bool> = vec![false; self.faces.len()];
     let mut face: usize = 0;

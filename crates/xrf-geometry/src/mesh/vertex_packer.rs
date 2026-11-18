@@ -6,6 +6,7 @@ use xrf_math::{Aabb, Vector3d};
 use crate::mesh::mesh::Mesh;
 use crate::mesh::mesh_vertex::MeshVertex;
 use crate::mesh::vertex_packing::VertexPacking;
+use crate::weld::pack_grid::PackGrid;
 
 /// Packs one split's corners into vertices as `CSkeletonCollectorPacked` and `CObjectOGFCollectorPacked` do, by the
 /// grid and repeat rule of the [`VertexPacking`] given.
@@ -28,9 +29,8 @@ pub struct VertexPacker {
   /// Each face's vertices sorted, which a face in any winding shares with every other winding of it; filled only
   /// where the packing drops repeats.
   face_sets: Option<HashSet<[u32; 3]>>,
-  /// The vertices filed under each cell, in the order they were packed.
-  cells: Vec<Vec<u32>>,
-  cell_counts: [u32; 3],
+  /// The packed vertices by cell.
+  grid: PackGrid,
   minimum: Vector3d,
   scale: Vector3d,
   /// How far above itself on each axis a vertex is filed.
@@ -52,22 +52,16 @@ impl VertexPacker {
     let epsilon: Vector3d = Vector3d::new(Self::EPSILON, Self::EPSILON, Self::EPSILON);
     let (low, high): (Vector3d, Vector3d) = (&bounds.min - &grow, &bounds.max + &grow);
     let scale: Vector3d = &(&high - &low) + &epsilon;
-    let reach = |extent: f32, cells: u32| (extent / cells as f32 / 2.0).min(Self::POSITION_DELTA);
-    let [cells_x, cells_y, cells_z] = packing.cells;
+    let grid: PackGrid = PackGrid::new(packing.cells.map(|cells| cells as usize));
 
     Self {
       vertices: Vec::new(),
       faces: Vec::new(),
       dropped_faces: 0,
       face_sets: packing.drops_repeated_faces.then(HashSet::new),
-      cells: vec![Vec::new(); packing.cells.iter().map(|cells| *cells as usize + 1).product()],
-      cell_counts: packing.cells,
+      reach: grid.get_reach(&scale),
+      grid,
       minimum: &low - &epsilon,
-      reach: Vector3d::new(
-        reach(scale.x, cells_x),
-        reach(scale.y, cells_y),
-        reach(scale.z, cells_z),
-      ),
       scale,
     }
   }
@@ -102,7 +96,7 @@ impl VertexPacker {
   ///
   /// Returns an error when a corner stands outside the box the packer spans, or the split outgrows 32-bit indices.
   pub fn add_face(&mut self, corners: &mut [MeshVertex; 3]) -> XrfResult {
-    let is_near = |first: &Vector3d, second: &Vector3d| Self::is_within(first, second, Self::EPSILON);
+    let is_near = |first: &Vector3d, second: &Vector3d| first.similar(second, Self::EPSILON);
 
     if is_near(&corners[0].position, &corners[1].position)
       || is_near(&corners[0].position, &corners[2].position)
@@ -138,13 +132,13 @@ impl VertexPacker {
 
   /// `VPack`: the vertex `corner` is, packed now when no similar one is.
   fn pack(&mut self, corner: &mut MeshVertex) -> XrfResult<u32> {
-    let cell: [u32; 3] = self.get_cell(&corner.position)?;
+    let cell: [usize; 3] = self.get_cell(&corner.position)?;
     let mut near: Option<u32> = None;
 
-    for candidate in &self.cells[self.get_cell_index(cell)] {
+    for candidate in self.grid.get_filed(cell) {
       let vertex: &MeshVertex = &self.vertices[*candidate as usize];
 
-      if Self::is_within(&vertex.position, &corner.position, Self::POSITION_DELTA) {
+      if vertex.position.similar(&corner.position, Self::POSITION_DELTA) {
         if Self::is_similar(vertex, corner) {
           return Ok(*candidate);
         }
@@ -160,74 +154,34 @@ impl VertexPacker {
     let index: u32 = u32::try_from(self.vertices.len())
       .map_err(|_| XrfError::new_invalid_error("A split holds more vertices than 32-bit indices reach"))?;
 
+    let above: [usize; 3] = self.get_cell(&(&corner.position + &self.reach))?;
+
     self.vertices.push(corner.clone());
-    self.file(index, cell)?;
+    self.grid.file(index, cell, above);
 
     Ok(index)
   }
 
-  /// Files a packed vertex under its cell and the cells one reach above it.
-  fn file(&mut self, index: u32, cell: [u32; 3]) -> XrfResult {
-    let position: Vector3d = self.vertices[index as usize].position;
-    let above: [u32; 3] = self.get_cell(&(&position + &self.reach))?;
-    let [x, y, z] = cell;
-    let [x_above, y_above, z_above] = above;
-    let mut filed: Vec<[u32; 3]> = vec![cell];
-
-    for (is_x, is_y, is_z) in [
-      (true, false, false),
-      (false, true, false),
-      (false, false, true),
-      (true, true, false),
-      (true, false, true),
-      (false, true, true),
-      (true, true, true),
-    ] {
-      let is_moved: bool = (!is_x || x_above != x) && (!is_y || y_above != y) && (!is_z || z_above != z);
-
-      if is_moved {
-        filed.push([
-          if is_x { x_above } else { x },
-          if is_y { y_above } else { y },
-          if is_z { z_above } else { z },
-        ]);
-      }
-    }
-
-    for cell in filed {
-      let cell_index: usize = self.get_cell_index(cell);
-
-      self.cells[cell_index].push(index);
-    }
-
-    Ok(())
-  }
-
   /// The cell `position` falls in, `iFloor((p - min) / scale * cells)` on each axis.
-  fn get_cell(&self, position: &Vector3d) -> XrfResult<[u32; 3]> {
-    let axis = |value: f32, minimum: f32, scale: f32, cells: u32| -> XrfResult<u32> {
+  fn get_cell(&self, position: &Vector3d) -> XrfResult<[usize; 3]> {
+    let axis = |value: f32, minimum: f32, scale: f32, cells: usize| -> XrfResult<usize> {
       let cell: f32 = ((value - minimum) / scale * cells as f32).floor();
 
       if (0.0..=cells as f32).contains(&cell) {
-        Ok(cell as u32)
+        Ok(cell as usize)
       } else {
         Err(XrfError::new_invalid_error(format!(
           "A corner at {position} stands outside the box the packing spans, an object's its meshes' stored bounds"
         )))
       }
     };
+    let [cells_x, cells_y, cells_z] = self.grid.get_counts();
 
     Ok([
-      axis(position.x, self.minimum.x, self.scale.x, self.cell_counts[0])?,
-      axis(position.y, self.minimum.y, self.scale.y, self.cell_counts[1])?,
-      axis(position.z, self.minimum.z, self.scale.z, self.cell_counts[2])?,
+      axis(position.x, self.minimum.x, self.scale.x, cells_x)?,
+      axis(position.y, self.minimum.y, self.scale.y, cells_y)?,
+      axis(position.z, self.minimum.z, self.scale.z, cells_z)?,
     ])
-  }
-
-  fn get_cell_index(&self, [x, y, z]: [u32; 3]) -> usize {
-    let [_, cells_y, cells_z] = self.cell_counts.map(|cells| cells as usize + 1);
-
-    (x as usize * cells_y + y as usize) * cells_z + z as usize
   }
 
   /// `SSkelVert::similar`.
@@ -240,12 +194,7 @@ impl VertexPacker {
         .all(|(own, other)| own.bone == other.bone && (own.weight - other.weight).abs() < Self::POSITION_DELTA)
       && (first.texture_coordinate.x - second.texture_coordinate.x).abs() < Self::TEXTURE_DELTA
       && (first.texture_coordinate.y - second.texture_coordinate.y).abs() < Self::TEXTURE_DELTA
-      && Self::is_within(&first.position, &second.position, Self::POSITION_DELTA)
-      && Self::is_within(&first.normal, &second.normal, Self::POSITION_DELTA)
-  }
-
-  /// `Fvector::similar`: every component strictly within `delta`.
-  fn is_within(first: &Vector3d, second: &Vector3d, delta: f32) -> bool {
-    (first.x - second.x).abs() < delta && (first.y - second.y).abs() < delta && (first.z - second.z).abs() < delta
+      && first.position.similar(&second.position, Self::POSITION_DELTA)
+      && first.normal.similar(&second.normal, Self::POSITION_DELTA)
   }
 }

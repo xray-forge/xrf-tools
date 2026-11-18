@@ -1,6 +1,6 @@
 use xrf_error::{XrfError, XrfResult};
-use xrf_geometry::FaceArea;
-use xrf_math::{EPS_L, Vector2d, Vector3d};
+use xrf_geometry::{FaceArea, PackGrid};
+use xrf_math::{Vector2d, Vector3d};
 
 use crate::geometry::mesh::geometry_face::GeometryFace;
 use crate::geometry::mesh::geometry_mesh::GeometryMesh;
@@ -19,17 +19,16 @@ impl GeometryMesh {
   /// `CBuild::PreOptimize` (`xrLC/xrPreOptimize.cpp`): welds the vertices, drops the faces the weld leaves
   /// degenerate, refuses the build over any face `Face::Verify` fails, and drops the vertices no face uses.
   ///
-  /// A vertex welds to a kept one within `weld_distance` on every axis, strictly, found through a grid of
-  /// `Self::WELD_CELLS` over the scene's box: a kept vertex is filed under its cell, and under the cells one reach
-  /// above it on each axis (half a cell, at most `EPS_L`), and a vertex looks in its own cell only, in the order the
-  /// vertices were kept. Vertices are taken in `build.prj`'s order. So across a cell's border a weld reaches no further
-  /// than `EPS_L`, whatever the distance asked; and a distance of 0 welds nothing, not even vertices at one place.
+  /// A vertex welds to a kept one within `weld_distance` on every axis, strictly, found through a [`PackGrid`] of
+  /// `Self::WELD_CELLS` over the scene's box, the vertices taken in `build.prj`'s order. So across a cell's border a
+  /// weld reaches no further than `EPS_L`, whatever the distance asked; and a distance of 0 welds nothing, not even
+  /// vertices at one place.
   ///
   /// # Errors
   ///
   /// Returns an error listing the faces xrLC would refuse: an area under `EPS` or none at all, base coordinates
   /// spanning under `Self::TEXTURE_SPAN`, or no normal to be had.
-  pub fn optimize(&mut self, weld_distance: f32) -> XrfResult<GeometryOptimization> {
+  pub(crate) fn optimize(&mut self, weld_distance: f32) -> XrfResult<GeometryOptimization> {
     let welded: Vec<u32> = self.weld(weld_distance);
     let mut optimization: GeometryOptimization = GeometryOptimization {
       welded_vertices: welded
@@ -81,40 +80,18 @@ impl GeometryMesh {
 
   /// The kept vertex each vertex welds to, itself where none.
   fn weld(&self, weld_distance: f32) -> Vec<u32> {
-    let [cells_x, cells_y, cells_z] = Self::WELD_CELLS;
+    let mut grid: PackGrid = PackGrid::new(Self::WELD_CELLS);
     let size: Vector3d = &self.bounds.max - &self.bounds.min;
-    let minimum: Vector3d = self.bounds.min;
-    let reach: Vector3d = Vector3d::new(
-      (size.x / cells_x as f32 / 2.0).min(EPS_L),
-      (size.y / cells_y as f32 / 2.0).min(EPS_L),
-      (size.z / cells_z as f32 / 2.0).min(EPS_L),
-    );
-    let scale: Vector3d = Vector3d::new(
-      cells_x as f32 / size.x,
-      cells_y as f32 / size.y,
-      cells_z as f32 / size.z,
-    );
-    let cell_of = |position: &Vector3d| -> [usize; 3] {
-      let axis = |value: f32, minimum: f32, scale: f32, cells: usize| -> usize {
-        (((value - minimum) * scale).floor().max(0.0) as usize).min(cells)
-      };
-
-      [
-        axis(position.x, minimum.x, scale.x, cells_x),
-        axis(position.y, minimum.y, scale.y, cells_y),
-        axis(position.z, minimum.z, scale.z, cells_z),
-      ]
-    };
-    let index_of = |[x, y, z]: [usize; 3]| (x * (cells_y + 1) + y) * (cells_z + 1) + z;
-    let mut cells: Vec<Vec<u32>> = vec![Vec::new(); (cells_x + 1) * (cells_y + 1) * (cells_z + 1)];
+    let reach: Vector3d = grid.get_reach(&size);
     let mut welded: Vec<u32> = Vec::with_capacity(self.vertices.len());
 
     for (index, position) in self.vertices.iter().enumerate() {
-      let cell: [usize; 3] = cell_of(position);
-      let found: Option<u32> = cells[index_of(cell)]
+      let cell: [usize; 3] = self.get_weld_cell(position);
+      let found: Option<u32> = grid
+        .get_filed(cell)
         .iter()
         .copied()
-        .find(|kept| Self::is_similar(&self.vertices[*kept as usize], position, weld_distance));
+        .find(|kept| self.vertices[*kept as usize].similar(position, weld_distance));
 
       if let Some(kept) = found {
         welded.push(kept);
@@ -122,36 +99,29 @@ impl GeometryMesh {
       }
 
       let index: u32 = index as u32;
-      let above: [usize; 3] = cell_of(&(position + &reach));
-      let [x, y, z] = cell;
-      let [x_above, y_above, z_above] = above;
 
       welded.push(index);
-      cells[index_of(cell)].push(index);
-
-      // The cells one reach above, each where the reach crosses into it, in `PreOptimize`'s order.
-      for (is_x, is_y, is_z) in [
-        (true, false, false),
-        (false, true, false),
-        (false, false, true),
-        (true, true, false),
-        (true, false, true),
-        (false, true, true),
-        (true, true, true),
-      ] {
-        if (!is_x || x_above != x) && (!is_y || y_above != y) && (!is_z || z_above != z) {
-          let filed: [usize; 3] = [
-            if is_x { x_above } else { x },
-            if is_y { y_above } else { y },
-            if is_z { z_above } else { z },
-          ];
-
-          cells[index_of(filed)].push(index);
-        }
-      }
+      grid.file(index, cell, self.get_weld_cell(&(position + &reach)));
     }
 
     welded
+  }
+
+  /// The weld grid's cell `position` falls in: `(p - min) * (cells / size)` floored, a point below the box in the first
+  /// cell and one above in the last.
+  fn get_weld_cell(&self, position: &Vector3d) -> [usize; 3] {
+    let size: Vector3d = &self.bounds.max - &self.bounds.min;
+    let minimum: &Vector3d = &self.bounds.min;
+    let axis = |value: f32, minimum: f32, size: f32, cells: usize| -> usize {
+      (((value - minimum) * (cells as f32 / size)).floor().max(0.0) as usize).min(cells)
+    };
+    let [cells_x, cells_y, cells_z] = Self::WELD_CELLS;
+
+    [
+      axis(position.x, minimum.x, size.x, cells_x),
+      axis(position.y, minimum.y, size.y, cells_y),
+      axis(position.z, minimum.z, size.z, cells_z),
+    ]
   }
 
   /// Why `Face::Verify` refuses a face, if it does.
@@ -213,11 +183,6 @@ impl GeometryMesh {
     self.vertices = kept;
 
     isolated
-  }
-
-  /// `Fvector::similar`: every component strictly within `delta`.
-  fn is_similar(first: &Vector3d, second: &Vector3d, delta: f32) -> bool {
-    (first.x - second.x).abs() < delta && (first.y - second.y).abs() < delta && (first.z - second.z).abs() < delta
   }
 
   /// `Fvector2::distance_to`.

@@ -42,7 +42,7 @@ struct ChartedSplit {
 /// Which split a face lands in is not held to xrLC's, as xrLC's splits follow its lightmap pages, and this crate packs
 /// the charts onto pages its own way.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct GeometrySplits {
+pub(crate) struct GeometrySplits {
   /// Each split's faces, by index into the mesh's faces.
   pub splits: Vec<Vec<u32>>,
 }
@@ -58,7 +58,8 @@ impl GeometrySplits {
   pub(crate) const MAXIMUM_SIZE: f32 = 32.0;
 
   /// The splits of `mesh`'s faces whose compiler shader renders, by `shaders`, with no chart cut: cut and joined.
-  pub fn of(mesh: &GeometryMesh, shaders: &CompilerShaders) -> Self {
+  #[cfg(test)]
+  pub(crate) fn of(mesh: &GeometryMesh, shaders: &CompilerShaders) -> Self {
     let mut splits: Self = Self::cut(mesh, shaders, None).splits;
 
     splits.merge(mesh, None);
@@ -150,7 +151,7 @@ impl GeometrySplits {
   ///
   /// Only splits of one material and page can join, so each looks for its candidates among the later splits of its own
   /// kind alone, in their order, which gives xrLC's choice without its search over every split.
-  pub fn merge(&mut self, mesh: &GeometryMesh, pages: Option<&[Option<u32>]>) {
+  pub(crate) fn merge(&mut self, mesh: &GeometryMesh, pages: Option<&[Option<u32>]>) {
     // A split of no face has no kind to join by, and draws nothing.
     let mut splits: Vec<Option<Vec<u32>>> = self
       .splits

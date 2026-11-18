@@ -26,7 +26,7 @@ use crate::ray::ray_tracing::RayTracing;
 /// checked before any runs, so a missing file stops the compile at once rather than an hour in; then each runs in order
 /// in this process, reported to a job and stopped when it is cancelled. The geometry step compiles the level's geometry
 /// (`GeometryLevel`), baking its light in the same pass where the light step runs, which reports the bake; the details
-/// step lights the details ([`crate::DetailLighter`]) and the AI step compiles the AI map ([`crate::AiMapCompiler`]).
+/// step lights the details (`DetailLighter`) and the AI step compiles the AI map (`AiMapCompiler`).
 pub struct LevelCompiler;
 
 impl LevelCompiler {

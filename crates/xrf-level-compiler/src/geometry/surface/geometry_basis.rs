@@ -4,20 +4,20 @@ use xrf_math::Vector3d;
 /// A face corner's tangent and binormal as xrLC keeps them after its tangent-basis pass, `base_basis`: each a byte a
 /// component, `x`, `y`, `z`, from `[-1, 1]` to `[0, 255]`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct GeometryBasis {
+pub(crate) struct GeometryBasis {
   pub tangent: [u8; 3],
   pub binormal: [u8; 3],
 }
 
 impl GeometryBasis {
   /// The basis a vertex has before any pass gives it one, `base_basis::set(0, 0, 0)`.
-  pub const NONE: Self = Self {
+  pub(crate) const NONE: Self = Self {
     tangent: [127; 3],
     binormal: [127; 3],
   };
 
   /// A mender's tangent and binormal as `base_basis::set` keeps them.
-  pub fn of(tangent: &Vector3d, binormal: &Vector3d) -> Self {
+  pub(crate) fn of(tangent: &Vector3d, binormal: &Vector3d) -> Self {
     Self {
       tangent: Self::quantize(tangent),
       binormal: Self::quantize(binormal),

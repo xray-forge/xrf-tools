@@ -6,13 +6,13 @@ use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 /// `utils/Shader_xrLC.h`): the project's compiler shader the material names, found by name in the library, `None`
 /// for a material with none.
 #[derive(Clone, Debug)]
-pub struct CompilerShaders {
+pub(crate) struct CompilerShaders {
   by_material: Vec<Option<ShaderCompilerShader>>,
 }
 
 impl CompilerShaders {
   /// A material's compiler shader where it has none, as a glow's material has.
-  pub const NONE: u16 = u16::MAX;
+  pub(crate) const NONE: u16 = u16::MAX;
 
   /// Every material of `project` resolved in `library`.
   ///
@@ -20,7 +20,7 @@ impl CompilerShaders {
   ///
   /// Returns an error naming a material whose compiler shader the project does not hold, or every compiler shader the
   /// library lacks, on which the compilers assert.
-  pub fn resolve(project: &BuildPrjFile, library: &ShaderCompilerFile) -> XrfResult<Self> {
+  pub(crate) fn resolve(project: &BuildPrjFile, library: &ShaderCompilerFile) -> XrfResult<Self> {
     let mut missing: Vec<&str> = Vec::new();
     let mut by_material: Vec<Option<ShaderCompilerShader>> = Vec::with_capacity(project.materials.len());
 
@@ -60,7 +60,7 @@ impl CompilerShaders {
   }
 
   /// The compiler shader of material `material`, `None` for one with none or one the project does not hold.
-  pub fn get(&self, material: u16) -> Option<&ShaderCompilerShader> {
+  pub(crate) fn get(&self, material: u16) -> Option<&ShaderCompilerShader> {
     self.by_material.get(usize::from(material)).and_then(Option::as_ref)
   }
 

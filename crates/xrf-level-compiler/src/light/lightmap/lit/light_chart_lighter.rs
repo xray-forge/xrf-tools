@@ -30,7 +30,9 @@ pub(crate) struct LightChartLighter<'a> {
   pub(crate) lights: &'a LightSources,
   /// The ray model the lights are traced through, on either backend.
   pub(crate) rays: RayScene<'a>,
-  /// Each mesh face's index in the ray model ([`crate::GeometryRayModel::get_static_faces`]).
+  /// Each mesh face's index in the ray model ([`GeometryRayModel::get_static_faces`]).
+  ///
+  /// [`GeometryRayModel::get_static_faces`]: crate::geometry::collision::geometry_ray_model::GeometryRayModel::get_static_faces
   pub(crate) ray_faces: &'a [Option<u32>],
   /// The steps of 255 a chart may stray from its mean and be one colour, `(4 + rms_zero) / 2`.
   pub(crate) rms_zero: u32,
@@ -248,13 +250,9 @@ impl LightChartLighter<'_> {
     let normals: &GeometryNormals = self.scene.normals;
     let splits: [u32; 3] = normals.faces[face as usize];
     let point: Vector3d = Self::blend(splits.map(|split| normals.positions[split as usize]), weights);
-    let blended: Vector3d = GeometryNormals::exact_normalize(&Self::blend(
-      splits.map(|split| normals.normals[split as usize]),
-      weights,
-    ));
+    let blended: Vector3d = Self::blend(splits.map(|split| normals.normals[split as usize]), weights).exact_normalize();
     let own: &Vector3d = &self.scene.face_normals[face as usize];
-    let normal: Vector3d =
-      GeometryNormals::exact_normalize(&Vector3d::new(blended.x + own.x, blended.y + own.y, blended.z + own.z));
+    let normal: Vector3d = Vector3d::new(blended.x + own.x, blended.y + own.y, blended.z + own.z).exact_normalize();
 
     (
       Vec3::new(point.x, point.y, point.z),

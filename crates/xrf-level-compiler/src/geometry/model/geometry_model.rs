@@ -5,7 +5,7 @@ use crate::geometry::visual::geometry_visual::GeometryVisual;
 /// One multi-use model's visuals, built once and placed by each of its references (`calc_ogf`,
 /// `xrLC/xrMU_Model_Calc_ogf.cpp`).
 #[derive(Clone, Debug, PartialEq)]
-pub struct GeometryModel {
+pub(crate) struct GeometryModel {
   /// A visual a rendering material, in material order.
   pub visuals: Vec<GeometryVisual>,
   /// Where the wind terms are measured from (`export_geometry`): the middle of the model's box across, its floor up.

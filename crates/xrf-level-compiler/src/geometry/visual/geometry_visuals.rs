@@ -30,7 +30,7 @@ use crate::light::point::light_color::LightColor;
 /// then made progressive where it gains enough (`GeometryVisual::make_progressive`). Other faces keep the order they
 /// were taken in, where xrLC strips them.
 #[derive(Clone, Debug, PartialEq)]
-pub struct GeometryVisuals {
+pub(crate) struct GeometryVisuals {
   pub visuals: Vec<GeometryVisual>,
 }
 
@@ -41,7 +41,7 @@ impl GeometryVisuals {
   ///
   /// Returns an error for a material, texture or render shader the project or its textures lack, a material of no
   /// compiler shader, or a split that welds into more vertices than a visual's 16-bit indices reach.
-  pub fn build(request: &GeometryVisualsRequest<'_>) -> XrfResult<Self> {
+  pub(crate) fn build(request: &GeometryVisualsRequest<'_>) -> XrfResult<Self> {
     let GeometryVisualsRequest {
       mesh,
       normals,
@@ -176,7 +176,7 @@ impl GeometryVisuals {
   /// # Errors
   ///
   /// Returns an error when a visual's vertices cannot be packed.
-  pub fn pack(
+  pub(crate) fn pack(
     &self,
     geometry: &mut LevelGeomPacker,
     fast: &mut LevelGeomPacker,
@@ -246,14 +246,7 @@ impl GeometryVisuals {
   /// one its static light and sun as its colour, each by `u8_clr`; a lightmapped one its lightmap coordinates.
   fn get_stored(vertex: &GeometryVisualVertex, light: GeometryVisualLight) -> LevelVertexStored {
     let is_vertex_lit: bool = light == GeometryVisualLight::Vertex;
-    let length_squared: f32 =
-      vertex.normal.x * vertex.normal.x + vertex.normal.y * vertex.normal.y + vertex.normal.z * vertex.normal.z;
-    let scale: f32 = (1.0 / length_squared).sqrt();
-    let normal: Vector3d = Vector3d::new(
-      vertex.normal.x * scale,
-      vertex.normal.y * scale,
-      vertex.normal.z * scale,
-    );
+    let normal: Vector3d = vertex.normal.normalize();
     let u = LevelVertexQuantizer::get_base_coordinate(vertex.texture_coordinate.x);
     let v = LevelVertexQuantizer::get_base_coordinate(vertex.texture_coordinate.y);
     let term = LevelVertexQuantizer::get_light_term;

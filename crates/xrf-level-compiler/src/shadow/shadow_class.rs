@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 /// `xrLC_Light/detail_slot_calculate.cpp`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub enum ShadowClass {
+pub(crate) enum ShadowClass {
   /// Its compiler shader casts no shadow: the ray passes.
   Passes,
   /// Its texture has alpha and an image: the light is dimmed by the alpha where the ray crosses it, by `1 - alpha` or

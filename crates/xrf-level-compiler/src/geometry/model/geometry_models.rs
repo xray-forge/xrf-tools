@@ -37,10 +37,12 @@ use crate::light::vertex::light_reference::LightReference;
 ///   (`GeometryVisual::mend_basis`), and above draft quality made progressive where it gains enough
 ///   (`GeometryVisual::make_progressive`).
 /// - **A reference** places each of its model's visuals as a tree ([`GeometryTree`]), with its light's scale and bias
-///   ([`crate::LightModels`]). Where its model names a LOD, a [`GeometryLod`] node stands over them, its quads placed
-///   by the reference and their light the model's vertices' weighted by `1 / (1 + 100 d²)` from each corner.
+///   ([`LightModels`]). Where its model names a LOD, a [`GeometryLod`] node stands over them, its quads placed by the
+///   reference and their light the model's vertices' weighted by `1 / (1 + 100 d²)` from each corner.
+///
+/// [`LightModels`]: crate::light::vertex::light_models::LightModels
 #[derive(Clone, Debug, PartialEq)]
-pub struct GeometryModels {
+pub(crate) struct GeometryModels {
   /// Each `build.prj` multi-use model, in its order.
   pub models: Vec<GeometryModel>,
   /// Each reference's placements, in reference order, a model's visuals in theirs.
@@ -50,14 +52,16 @@ pub struct GeometryModels {
 }
 
 impl GeometryModels {
-  /// The models and placements of `project`, lit by `light` ([`crate::LightModels`]), or under the draft light where
-  /// none is given.
+  /// The models and placements of `project`, lit by `light` ([`LightModels`]), or under the draft light where none is
+  /// given.
+  ///
+  /// [`LightModels`]: crate::light::vertex::light_models::LightModels
   ///
   /// # Errors
   ///
   /// Returns an error for a model whose faces xrLC would read past, a face of a material with no compiler shader or
   /// one the project lacks, a reference naming a model the project lacks, or a model naming a LOD it lacks.
-  pub fn build(
+  pub(crate) fn build(
     project: &BuildPrjFile,
     shaders: &CompilerShaders,
     textures: &[CompilerTexture],
@@ -150,7 +154,7 @@ impl GeometryModels {
   /// # Errors
   ///
   /// Returns an error when a visual's vertices cannot be packed.
-  pub fn pack(
+  pub(crate) fn pack(
     &self,
     geometry: &mut LevelGeomPacker,
     slide_windows: &mut Vec<LevelGeomSlideWindowItem>,

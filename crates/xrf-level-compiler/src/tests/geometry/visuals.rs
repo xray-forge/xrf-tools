@@ -3,13 +3,17 @@ use xrf_level::{BuildPrjFile, BuildPrjName, BuildPrjShader};
 use xrf_math::{Aabb, Vector2d, Vector3d};
 use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 
+use crate::geometry::mesh::geometry_face::GeometryFace;
+use crate::geometry::mesh::geometry_mesh::GeometryMesh;
+use crate::geometry::split::geometry_splits::GeometrySplits;
+use crate::geometry::surface::geometry_basis::GeometryBasis;
 use crate::geometry::visual::geometry_fast_path::GeometryFastPath;
 use crate::geometry::visual::geometry_visual::GeometryVisual;
 use crate::geometry::visual::geometry_visual_light::GeometryVisualLight;
+use crate::geometry::visual::geometry_visual_vertex::GeometryVisualVertex;
+use crate::input::compiler_shaders::CompilerShaders;
+use crate::light::point::light_color::LightColor;
 use crate::tests::geometry::geometry_mesh::project;
-use crate::{
-  CompilerShaders, GeometryBasis, GeometryFace, GeometryMesh, GeometrySplits, GeometryVisualVertex, LightColor,
-};
 
 /// A face of `material` over `vertices`, mapped across the texture.
 fn face(vertices: [u32; 3], material: u16) -> GeometryFace {

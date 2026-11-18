@@ -78,14 +78,9 @@ impl SpawnLevelChangerLinks {
     level_id: u8,
     position: &Vector3d<f32>,
   ) -> Option<(u16, &'a GraphVertex)> {
-    let similar = |a: f32, b: f32| (a - b).abs() < Self::SIMILAR;
-
     // A game graph numbers its vertices in 16 bits, as the merge that built it checked.
-    (0..=u16::MAX).zip(&graph.vertices).find(|(_, vertex)| {
-      vertex.level_id == level_id
-        && similar(vertex.level_point.x, position.x)
-        && similar(vertex.level_point.y, position.y)
-        && similar(vertex.level_point.z, position.z)
-    })
+    (0..=u16::MAX)
+      .zip(&graph.vertices)
+      .find(|(_, vertex)| vertex.level_id == level_id && vertex.level_point.similar(position, Self::SIMILAR))
   }
 }

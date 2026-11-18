@@ -9,12 +9,18 @@ use xrf_job::JobHandle;
 use xrf_level::{BuildAimapFile, BuildCformFile, LevelAiFile};
 use xrf_report::Status;
 
+use crate::ai::ai_map::AiMap;
+use crate::ai::ai_map_compilation::AiMapCompilation;
+use crate::ai::ai_map_compiler::AiMapCompiler;
+use crate::ai::ai_map_request::AiMapRequest;
+use crate::ray::ray_scene::RayScene;
+use crate::ray::ray_tracing::RayTracing;
+use crate::shadow::shadow_materials::ShadowMaterials;
 use crate::tests::ai::ai_map::aimap;
 use crate::tests::detail::detail_step::Fixture;
 use crate::{
-  AiMap, AiMapCompilation, AiMapCompiler, AiMapCovers, AiMapGuid, AiMapRequest, LevelCompileReport,
-  LevelCompileRequest, LevelCompileStep, LevelCompileStepRun, LevelCompiler, RayBackend, RayScene, RayTracing,
-  ShadowMaterials,
+  AiMapCovers, AiMapGuid, LevelCompileReport, LevelCompileRequest, LevelCompileStep, LevelCompileStepRun,
+  LevelCompiler, RayBackend,
 };
 
 /// The details step's level, with the AI tests' four-node map as `build.aimap`.

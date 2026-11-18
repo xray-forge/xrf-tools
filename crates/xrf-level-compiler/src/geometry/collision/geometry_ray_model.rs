@@ -23,7 +23,7 @@ use crate::input::compiler_shaders::CompilerShaders;
 /// `GeometryCollector` over the scene's box, which is also the form's. A face's record holds its `build.prj` material,
 /// its game material and its base texture coordinates, a static face's as the tangent-basis pass leaves them
 /// (`GeometryBaseCoordinates`); its handle, xrLC's face address that no reader uses, is its index.
-pub struct GeometryRayModel;
+pub(crate) struct GeometryRayModel;
 
 impl GeometryRayModel {
   /// The ray model of `mesh`, split as `normals` with `coordinates`, and `project`'s multi-use references, by
@@ -34,7 +34,7 @@ impl GeometryRayModel {
   /// Returns an error when `normals` or `coordinates` is not of `mesh`'s faces, and where xrLC would read past a table:
   /// a reference naming a model the project lacks, a placed model with no vertex or without a smoothing flag a face, a
   /// model face naming a vertex the model lacks or a material of no compiler shader.
-  pub fn build(
+  pub(crate) fn build(
     mesh: &GeometryMesh,
     normals: &GeometryNormals,
     coordinates: &GeometryBaseCoordinates,
@@ -63,7 +63,7 @@ impl GeometryRayModel {
   /// # Errors
   ///
   /// As [`Self::build`], for the references.
-  pub fn build_welded(
+  pub(crate) fn build_welded(
     mesh: &GeometryMesh,
     project: &BuildPrjFile,
     shaders: &CompilerShaders,

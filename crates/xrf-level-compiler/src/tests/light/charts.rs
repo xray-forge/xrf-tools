@@ -6,6 +6,12 @@ use xrf_level::{BuildPrjFile, BuildPrjName, BuildPrjShader};
 use xrf_math::{Aabb, Vector2d, Vector3d};
 use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 
+use crate::geometry::mesh::geometry_face::GeometryFace;
+use crate::geometry::mesh::geometry_mesh::GeometryMesh;
+use crate::geometry::split::geometry_splits::GeometrySplits;
+use crate::geometry::surface::geometry_normals::GeometryNormals;
+use crate::input::compiler_shaders::CompilerShaders;
+use crate::input::compiler_texture::CompilerTexture;
 use crate::light::implicit::implicit_lighter::ImplicitLighter;
 use crate::light::implicit::implicit_map::ImplicitMap;
 use crate::light::lightmap::atlas::lightmap_atlas::LightmapAtlas;
@@ -20,11 +26,12 @@ use crate::light::lightmap::lit::light_chart_lighter::LightChartLighter;
 use crate::light::lightmap::lit::lightmap_layer::LightmapLayer;
 use crate::light::lightmap::lit::lightmap_resampler::LightmapResampler;
 use crate::light::lightmap::lit::lit_chart::LitChart;
+use crate::light::point::light_color::LightColor;
+use crate::light::source::light_source::LightSource;
+use crate::light::source::light_sources::LightSources;
+use crate::ray::ray_scene::RayScene;
+use crate::shadow::shadow_materials::ShadowMaterials;
 use crate::tests::geometry::geometry_mesh::project;
-use crate::{
-  CompilerShaders, CompilerTexture, GeometryFace, GeometryMesh, GeometryNormals, GeometrySplits, LightColor,
-  LightSource, LightSources, RayScene, ShadowMaterials,
-};
 
 /// A face of material 0 over `vertices`.
 fn face(vertices: [u32; 3]) -> GeometryFace {

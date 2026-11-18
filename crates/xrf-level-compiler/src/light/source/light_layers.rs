@@ -128,20 +128,7 @@ impl LightLayers {
       .filter(|range| !range.is_subnormal())
       .unwrap_or(0.0);
     let range_squared: f32 = range * range;
-    let length_squared: f32 = light.direction.x * light.direction.x
-      + light.direction.y * light.direction.y
-      + light.direction.z * light.direction.z;
-    let direction: Vector3d = if length_squared > f32::MIN_POSITIVE {
-      let scale: f32 = (1.0 / length_squared).sqrt();
-
-      Vector3d::new(
-        light.direction.x * scale,
-        light.direction.y * scale,
-        light.direction.z * scale,
-      )
-    } else {
-      light.direction
-    };
+    let direction: Vector3d = light.direction.normalize_safe();
 
     LevelLight {
       kind: if light.kind == LevelDynamicLight::KIND_DIRECTIONAL {

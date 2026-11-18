@@ -15,7 +15,10 @@ use xrf_test_utils::GeneratedResources;
 use xrf_thm::{ThmFile, ThmFormat, ThmTextureParamChunk};
 
 use crate::ray::ray_rules::RayRules;
-use crate::{ShadowClass, ShadowClassCounts, ShadowMaterials, ShadowMaterialsRequest};
+use crate::shadow::shadow_class::ShadowClass;
+use crate::shadow::shadow_class_counts::ShadowClassCounts;
+use crate::shadow::shadow_materials::ShadowMaterials;
+use crate::shadow::shadow_materials_request::ShadowMaterialsRequest;
 
 /// The compiler shader casting shadows, and the one letting light through.
 const CASTING: u16 = 0;

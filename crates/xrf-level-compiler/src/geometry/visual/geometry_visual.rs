@@ -9,7 +9,7 @@ use crate::geometry::visual::geometry_visual_vertex::GeometryVisualVertex;
 /// One static visual as xrLC builds it from a split (`Flex2OGF`, `xrLC/xrFlex2OGF.cpp`): its dress, its welded
 /// vertices and faces, and the fast path's positions for an opaque surface.
 #[derive(Clone, Debug, PartialEq)]
-pub struct GeometryVisual {
+pub(crate) struct GeometryVisual {
   /// The `build.prj` material of its faces.
   pub material: u16,
   pub sector: u16,
@@ -118,7 +118,7 @@ impl GeometryVisual {
   }
 
   /// Its triangles at full detail: a progressive visual's index buffer holds every level's run.
-  pub fn get_triangle_count(&self) -> usize {
+  pub(crate) fn get_triangle_count(&self) -> usize {
     self
       .windows
       .as_ref()
@@ -216,7 +216,7 @@ impl GeometryVisual {
     match self
       .fast_vertices
       .iter()
-      .position(|vertex| Self::is_near(vertex, &corner))
+      .position(|vertex| vertex.similar(&corner, EPS_L))
     {
       Some(index) => self.get_index(index),
       None => {
@@ -245,19 +245,14 @@ impl GeometryVisual {
       (one.x - other.x).abs() < texel.x && (one.y - other.y).abs() < texel.y
     };
 
-    Self::is_near(&first.position, &second.position)
-      && Self::is_near(&first.normal, &second.normal)
+    first.position.similar(&second.position, EPS_L)
+      && first.normal.similar(&second.normal, EPS_L)
       && first.basis.is_similar(&second.basis)
       && near(&first.texture_coordinate, &second.texture_coordinate, &texel[0])
       && match (first.lightmap_coordinate, second.lightmap_coordinate) {
         (Some(one), Some(other)) => near(&one, &other, &texel[1]),
         _ => true,
       }
-  }
-
-  /// `Fvector::similar` at its default: every component strictly within `EPS_L`.
-  fn is_near(first: &Vector3d, second: &Vector3d) -> bool {
-    (first.x - second.x).abs() < EPS_L && (first.y - second.y).abs() < EPS_L && (first.z - second.z).abs() < EPS_L
   }
 
   /// `OGF_Face::Degenerate`.

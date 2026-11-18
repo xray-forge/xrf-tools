@@ -10,7 +10,7 @@ use crate::geometry::mesh::geometry_face::GeometryFace;
 /// Order is kept as xrLC keeps it, since later steps read it: a face removed leaves the others in their order, a face
 /// added goes after them all.
 #[derive(Clone, Debug, PartialEq)]
-pub struct GeometryMesh {
+pub(crate) struct GeometryMesh {
   pub vertices: Vec<Vector3d>,
   pub faces: Vec<GeometryFace>,
   /// The box around every vertex `build.prj` holds, used or not, `scene_bb`: what the weld lays its grid over.

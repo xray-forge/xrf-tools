@@ -3,7 +3,7 @@ use xrf_level::LevelLight;
 
 /// One light of `build.lights` as the compilers light with it (`R_Light`, `xrLC_Light/R_light.h`).
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct LightSource {
+pub(crate) struct LightSource {
   /// `LT_DIRECT`: lit from `direction`, from nowhere in particular; any other kind is lit from `position`.
   pub(crate) is_directional: bool,
   /// `LT_POINT`: dropped for a place out of its reach; a light of any other kind reaches everywhere.
@@ -24,7 +24,7 @@ pub struct LightSource {
 impl LightSource {
   /// Whether the light reaches the sphere centred at `center` of radius `radius`: every light but a point one whose
   /// range ends short of it (`base_lighting::select`, `xrDO_Light/base_lighting.cpp`).
-  pub fn reaches(&self, center: Vec3, radius: f32) -> bool {
+  pub(crate) fn reaches(&self, center: Vec3, radius: f32) -> bool {
     !self.is_point || center.distance(self.position) <= radius + self.range
   }
 }

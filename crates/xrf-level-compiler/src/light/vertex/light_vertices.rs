@@ -17,7 +17,8 @@ use crate::light::source::light_sources::LightSources;
 use crate::shadow::shadow_materials::ShadowMaterials;
 
 /// Every split vertex's light as xrLC leaves it in the vertex (`LightVertex`, `xrLC_Light/xrLightVertex.cpp`): the sky
-/// term of the welded vertex it was split from ([`crate::LightHemisphere`]), and for a vertex of a vertex-lit face also
+/// term of the welded vertex it was split from ([`LightHemisphere`](super::light_hemisphere::LightHemisphere)), and for
+/// a vertex of a vertex-lit face also
 /// the static light and the sun from every light, halved; then, among the vertex-lit vertices within `EPS_L` of the
 /// first at a place, each moved toward the brightest of them by its faces' mean `vert_translucency`, never darker. Each
 /// term is kept as `base_color` stores it.
@@ -31,7 +32,7 @@ use crate::shadow::shadow_materials::ShadowMaterials;
 /// `L.tri`), which a vertex's ray is tested against before the query: where the tree loses a ray at a corner, the
 /// blocker of the vertex lit just before can still stop it. Each run of `Self::REMEMBERED_RUN` vertices is lit in
 /// order the same way, remembering from one vertex to the next.
-pub struct LightVertices;
+pub(crate) struct LightVertices;
 
 impl LightVertices {
   /// Vertices lit in order by one lighter, which remembers each light's last blocker from one to the next.
@@ -39,7 +40,7 @@ impl LightVertices {
 
   /// The light of each of `normals`' split vertices of `mesh`, by index, the welded vertices' sky terms `hemispheres`,
   /// the level's ray model in `tracer`.
-  pub fn of(
+  pub(crate) fn of(
     mesh: &GeometryMesh,
     normals: &GeometryNormals,
     shaders: &CompilerShaders,

@@ -63,6 +63,67 @@ impl Vector3d<f32> {
     if length > 0.0 { self / length } else { Self::ZERO }
   }
 
+  /// `Fvector::similar`: every component strictly within `epsilon` of `other`'s.
+  pub fn similar(&self, other: &Self, epsilon: f32) -> bool {
+    (self.x - other.x).abs() < epsilon && (self.y - other.y).abs() < epsilon && (self.z - other.z).abs() < epsilon
+  }
+
+  /// `Fvector::normalize`, in the engine's order: each component times `sqrt(1 / (x * x + y * y + z * z))`. A zero
+  /// vector comes out of it NaN, as the engine's does.
+  pub fn normalize(&self) -> Self {
+    let scale: f32 = (1.0 / self.length_squared()).sqrt();
+
+    Self::new(self.x * scale, self.y * scale, self.z * scale)
+  }
+
+  /// `Fvector::normalize_safe`: [`Self::normalize`] where the square length is a normal float, else as it is.
+  pub fn normalize_safe(&self) -> Self {
+    if self.length_squared() > f32::MIN_POSITIVE {
+      self.normalize()
+    } else {
+      *self
+    }
+  }
+
+  /// `exact_normalize` (`xrCore/_vector3d.h`): scaled by the inverse square root of its square length taken in double
+  /// precision; a vector too short for that by the inverse square root over its largest component, and a zero one
+  /// straight up.
+  pub fn exact_normalize(&self) -> Self {
+    let square: f64 = f64::from(self.length_squared());
+
+    if square > f64::from(1.192_092_9e-5_f32) {
+      let scale: f64 = 1.0 / square.sqrt();
+
+      return Self::new(
+        (f64::from(self.x) * scale) as f32,
+        (f64::from(self.y) * scale) as f32,
+        (f64::from(self.z) * scale) as f32,
+      );
+    }
+
+    let [x, y, z] = self.to_array().map(f64::from);
+    let [ax, ay, az] = [x.abs(), y.abs(), z.abs()];
+
+    if ay > ax && ay >= az {
+      let (x, z) = (x / ay, z / ay);
+      let scale: f64 = 1.0 / (x * x + z * z + 1.0).sqrt();
+
+      Self::new((x * scale) as f32, scale.copysign(y) as f32, (z * scale) as f32)
+    } else if (ay > ax && az > ay) || (ay <= ax && az > ax) {
+      let (x, y) = (x / az, y / az);
+      let scale: f64 = 1.0 / (x * x + y * y + 1.0).sqrt();
+
+      Self::new((x * scale) as f32, (y * scale) as f32, scale.copysign(z) as f32)
+    } else if ax > 0.0 {
+      let (y, z) = (y / ax, z / ax);
+      let scale: f64 = 1.0 / (y * y + z * z + 1.0).sqrt();
+
+      Self::new(scale.copysign(x) as f32, (y * scale) as f32, (z * scale) as f32)
+    } else {
+      Self::new(0.0, 1.0, 0.0)
+    }
+  }
+
   /// The smaller of each pair of components, which is how a box's lower corner grows to take in a point.
   pub fn min(&self, other: &Self) -> Self {
     Self::new(self.x.min(other.x), self.y.min(other.y), self.z.min(other.z))

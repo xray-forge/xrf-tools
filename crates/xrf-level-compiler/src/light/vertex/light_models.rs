@@ -61,7 +61,7 @@ struct LightPass<'a> {
 /// the model, placement, vertex and sample, so a compile gives the same light every time. Both ray models are xrLC's
 /// own ([`XrlcTracer`]), a model's built over its faces as `calc_lighting` builds its `CDB::MODEL`.
 #[derive(Clone, Debug, PartialEq)]
-pub struct LightModels {
+pub(crate) struct LightModels {
   /// Each model's vertices' light, by model in `build.prj`'s order and vertex as its normals pass splits them.
   pub models: Vec<Vec<LightColor>>,
   /// Each placement's, in `build.prj`'s order.
@@ -70,10 +70,10 @@ pub struct LightModels {
 
 impl LightModels {
   /// Samples a vertex above draft quality.
-  pub const SAMPLES: u32 = 6;
+  pub(crate) const SAMPLES: u32 = 6;
 
   /// Samples a vertex at draft quality.
-  pub const DRAFT_SAMPLES: u32 = 1;
+  pub(crate) const DRAFT_SAMPLES: u32 = 1;
 
   /// The cone a sample's normal is jittered within.
   pub(crate) const JITTER_DEGREES: f32 = 30.0;
@@ -87,7 +87,7 @@ impl LightModels {
   /// # Errors
   ///
   /// Returns an error for a model face naming a vertex the model lacks or a material of no compiler shader.
-  pub fn get_model_faces(project: &BuildPrjFile, shaders: &CompilerShaders) -> XrfResult<LightModelFaces> {
+  pub(crate) fn get_model_faces(project: &BuildPrjFile, shaders: &CompilerShaders) -> XrfResult<LightModelFaces> {
     let mut faces: Vec<BuildCformRaycastFace> = Vec::new();
     let mut starts: Vec<usize> = Vec::with_capacity(project.mu_models.len());
 
@@ -117,7 +117,7 @@ impl LightModels {
   /// # Errors
   ///
   /// Returns an error where a model cannot be loaded or a placement names a model the project lacks.
-  pub fn of(input: &LightModelsInput<'_>) -> XrfResult<Self> {
+  pub(crate) fn of(input: &LightModelsInput<'_>) -> XrfResult<Self> {
     let LightModelsInput {
       project,
       shaders,
@@ -267,7 +267,7 @@ impl LightModels {
       .map(|vertex| {
         let place: Vector3d = GeometryPlacement::transform(transform, &model.positions[vertex]);
         let turned: Vector3d = Self::rotate(transform, &model.normals[vertex]);
-        let normal: Vector3d = GeometryNormals::exact_normalize(&turned);
+        let normal: Vector3d = turned.exact_normalize();
         let axis: Vec3 = Vec3::new(normal.x, normal.y, normal.z);
         let mut sum: LightColor = LightColor::default();
 

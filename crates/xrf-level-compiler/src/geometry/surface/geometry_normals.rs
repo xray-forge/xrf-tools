@@ -12,7 +12,7 @@ use crate::geometry::mesh::geometry_mesh::GeometryMesh;
 /// normal the sum of its faces' normals in the order the group took them, normalised (`normalFromAdj`). A face's normal
 /// is `(v1 - v0) × (v2 - v1)` normalised (`CalcNormal`).
 #[derive(Clone, Debug, PartialEq)]
-pub struct GeometryNormals {
+pub(crate) struct GeometryNormals {
   /// Each vertex's place, as the mesh's vertex it was split from.
   pub positions: Vec<Vector3d>,
   pub normals: Vec<Vector3d>,
@@ -26,7 +26,7 @@ impl GeometryNormals {
   /// Vertices are taken in order, and a split vertex's faces stop sharing an edge through it with the faces of its
   /// other groups, so a split decides what later vertices find joined, as in xrLC. Split vertices are numbered past the
   /// mesh's own while the pass runs, as `CreateCopy_NOADJ` appends them, and from 0 in the result.
-  pub fn of(mesh: &GeometryMesh) -> Self {
+  pub(crate) fn of(mesh: &GeometryMesh) -> Self {
     let face_normals: Vec<Vector3d> = mesh
       .faces
       .iter()
@@ -57,7 +57,7 @@ impl GeometryNormals {
         }
 
         positions.push(mesh.vertices[vertex]);
-        normals.push(Self::exact_normalize(&sum));
+        normals.push(sum.exact_normalize());
         remaining.retain(|face| !group.contains(face));
       }
     }
@@ -136,52 +136,9 @@ impl GeometryNormals {
     let length: f32 = (cross.x * cross.x + cross.y * cross.y + cross.z * cross.z).sqrt();
 
     if length < EPS_S {
-      return Self::exact_normalize(&cross);
+      return cross.exact_normalize();
     }
 
-    let divided: Vector3d = Vector3d::new(cross.x / length, cross.y / length, cross.z / length);
-    // `Fvector::normalize`: by the square root of the inverse square length.
-    let scale: f32 = (1.0 / (divided.x * divided.x + divided.y * divided.y + divided.z * divided.z)).sqrt();
-
-    Vector3d::new(divided.x * scale, divided.y * scale, divided.z * scale)
-  }
-
-  /// `exact_normalize` (`xrCore/_vector3d.h`): scaled by the inverse square root of its square length taken in
-  /// double precision; a vector too short for that by the inverse square root over its largest component, and a zero
-  /// one straight up.
-  pub(crate) fn exact_normalize(vector: &Vector3d) -> Vector3d {
-    let square: f64 = f64::from(vector.x * vector.x + vector.y * vector.y + vector.z * vector.z);
-
-    if square > f64::from(1.192_092_9e-5_f32) {
-      let scale: f64 = 1.0 / square.sqrt();
-
-      return Vector3d::new(
-        (f64::from(vector.x) * scale) as f32,
-        (f64::from(vector.y) * scale) as f32,
-        (f64::from(vector.z) * scale) as f32,
-      );
-    }
-
-    let [x, y, z] = vector.to_array().map(f64::from);
-    let [ax, ay, az] = [x.abs(), y.abs(), z.abs()];
-
-    if ay > ax && ay >= az {
-      let (x, z) = (x / ay, z / ay);
-      let scale: f64 = 1.0 / (x * x + z * z + 1.0).sqrt();
-
-      Vector3d::new((x * scale) as f32, scale.copysign(y) as f32, (z * scale) as f32)
-    } else if (ay > ax && az > ay) || (ay <= ax && az > ax) {
-      let (x, y) = (x / az, y / az);
-      let scale: f64 = 1.0 / (x * x + y * y + 1.0).sqrt();
-
-      Vector3d::new((x * scale) as f32, (y * scale) as f32, scale.copysign(z) as f32)
-    } else if ax > 0.0 {
-      let (y, z) = (y / ax, z / ax);
-      let scale: f64 = 1.0 / (y * y + z * z + 1.0).sqrt();
-
-      Vector3d::new(scale.copysign(x) as f32, (y * scale) as f32, (z * scale) as f32)
-    } else {
-      Vector3d::new(0.0, 1.0, 0.0)
-    }
+    Vector3d::new(cross.x / length, cross.y / length, cross.z / length).normalize()
   }
 }

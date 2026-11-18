@@ -4,7 +4,7 @@ use xrf_level::LevelGeomRange;
 /// path's in `level.geomx` where it has one. A progressive multi-use visual's windows go to `level.geom`'s table too,
 /// as its `slide_window`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct GeometryPackedVisual {
+pub(crate) struct GeometryPackedVisual {
   pub vertices: LevelGeomRange,
   pub indices: LevelGeomRange,
   pub fast_vertices: Option<LevelGeomRange>,

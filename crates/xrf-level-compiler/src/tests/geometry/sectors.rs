@@ -2,13 +2,17 @@ use xrf_error::XrfResult;
 use xrf_level::{BuildPrjFile, BuildPrjPortal};
 use xrf_math::{EPS_L, Vector2d, Vector3d};
 
+use crate::geometry::hierarchy::geometry_bounds::GeometryBounds;
+use crate::geometry::hierarchy::geometry_hierarchy::GeometryHierarchy;
+use crate::geometry::hierarchy::geometry_node_kind::GeometryNodeKind;
+use crate::geometry::model::geometry_models::GeometryModels;
+use crate::geometry::surface::geometry_basis::GeometryBasis;
 use crate::geometry::visual::geometry_visual::GeometryVisual;
 use crate::geometry::visual::geometry_visual_light::GeometryVisualLight;
+use crate::geometry::visual::geometry_visual_vertex::GeometryVisualVertex;
+use crate::geometry::visual::geometry_visuals::GeometryVisuals;
+use crate::light::point::light_color::LightColor;
 use crate::tests::geometry::geometry_mesh::project;
-use crate::{
-  GeometryBasis, GeometryBounds, GeometryHierarchy, GeometryModels, GeometryNodeKind, GeometryVisualVertex,
-  GeometryVisuals, LightColor,
-};
 
 /// A visual of one triangle at `x`, a metre a side, in `sector`.
 fn visual_at(x: f32, sector: u16) -> GeometryVisual {
@@ -59,8 +63,9 @@ fn builds_a_models_visuals_by_material_once_and_places_them_by_each_reference() 
   use xrf_level::{BuildPrjFace, BuildPrjMuModel, BuildPrjMuReference};
   use xrf_math::Matrix4x4;
 
+  use crate::input::compiler_shaders::CompilerShaders;
+  use crate::input::compiler_texture::CompilerTexture;
   use crate::tests::geometry::geometry_mesh::library;
-  use crate::{CompilerShaders, CompilerTexture};
 
   let face = |vertices: [u32; 3], material: u16| BuildPrjFace {
     vertices,
@@ -143,7 +148,8 @@ fn gives_no_lod_to_a_model_that_draws_nothing_and_keeps_the_lods_after_it() -> X
   use xrf_math::Matrix4x4;
   use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 
-  use crate::{CompilerShaders, CompilerTexture};
+  use crate::input::compiler_shaders::CompilerShaders;
+  use crate::input::compiler_texture::CompilerTexture;
 
   let model = |name: &str, material: u16| BuildPrjMuModel {
     name: String::from(name),

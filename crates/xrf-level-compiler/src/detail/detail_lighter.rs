@@ -16,7 +16,7 @@ use crate::ray::ray_device::RayDevice;
 /// ray model lit from 225 points across it by every light that reaches it, the light scaled by what each shadow ray
 /// crosses. Unlike xrDO_Light, every shadow ray is a full query, never a test of the face that last blocked the light
 /// first, so the result is the same whatever the order and the thread count.
-pub struct DetailLighter;
+pub(crate) struct DetailLighter;
 
 impl DetailLighter {
   /// What a job reports the lighting under: the grid's slots.
@@ -31,7 +31,7 @@ impl DetailLighter {
   /// the GPU backend, an error when this build has none, no GPU traces rays, or the GPU fails; `Auto` lights on the
   /// CPU instead when the GPU does not start, but fails with a GPU that fails once started, as the slots it lit are
   /// already counted.
-  pub fn light(request: &DetailLightRequest<'_>, job: &JobHandle) -> XrfResult<DetailLighting> {
+  pub(crate) fn light(request: &DetailLightRequest<'_>, job: &JobHandle) -> XrfResult<DetailLighting> {
     let details: &LevelDetailsFile = request.details;
     let lights: LightSources = LightSources::from_file(request.lights);
     let lighter: DetailSlotLighter<'_> = DetailSlotLighter {

@@ -35,7 +35,7 @@ impl LightDraft {
   pub(crate) const HEMISPHERE: f32 = 0.5;
 
   /// The page of the one lightmap pair a lightmapped visual is dressed with where no charts are cut, the first
-  /// ([`crate::LightmapFaces::get_textures`] names it).
+  /// ([`crate::light::lightmap::atlas::lightmap_faces::LightmapFaces::get_textures`] names it).
   pub(crate) const LIGHTMAP_PAGE: u32 = 0;
 
   /// The lightmap's side in texels: one uniform colour needs no more.

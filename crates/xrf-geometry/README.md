@@ -20,6 +20,7 @@ the object compile and the level compilers use it alike.
 | `TangentBasis`       | The exports' MeshMender tangent pass: splits, orders and shifts a split's vertices                |
 | `SplitPartition`     | A split cut into children 16-bit indices reach                                                    |
 | `VertexCacheOrder`   | A child's faces ordered for the vertex cache (Forsyth), its vertices by first use                 |
+| `PackGrid`           | The grid `VPack` files packed vertices in, shared by the exports' and xrLC's packers              |
 | `PointWelder`        | Points welded within `EPS_L`, as the editor's `VCPacked::add_vert`                                |
 | `ProgressiveMesh`    | A mesh made progressive by sliding windows, as ETools' `VIPM_Convert` (Forsyth's VIPM, a quadric) |
 | `ProgressivePoint`   | A vertex of a mesh made progressive: the position and coordinate a collapse is measured by        |

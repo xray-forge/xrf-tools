@@ -16,14 +16,14 @@ use crate::geometry::surface::geometry_normals::GeometryNormals;
 /// both exports give it ([`TangentBasis::mend_in_place`]), and each corner takes its vertex's directions back
 /// (`set_face`), normalized safely and quantized to a byte a component ([`GeometryBasis::of`]).
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct GeometryTangents {
+pub(crate) struct GeometryTangents {
   /// Each face of the mesh, in its order, its three corners' bases.
   pub faces: Vec<[GeometryBasis; 3]>,
 }
 
 impl GeometryTangents {
   /// The bases of `mesh`'s faces over the vertices `normals` split them into, with `coordinates`.
-  pub fn of(mesh: &GeometryMesh, normals: &GeometryNormals, coordinates: &GeometryBaseCoordinates) -> Self {
+  pub(crate) fn of(mesh: &GeometryMesh, normals: &GeometryNormals, coordinates: &GeometryBaseCoordinates) -> Self {
     let mut vertices: Vec<MeshVertex> = Vec::new();
     let mut numbered: HashMap<(u32, [u32; 2]), u32> = HashMap::new();
     let faces: Vec<[u32; 3]> = normals

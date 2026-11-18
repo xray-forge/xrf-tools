@@ -49,7 +49,7 @@ impl AiMapCompiler {
 
         Ok(AiVertex {
           links,
-          normal: Self::normalize(&Vector3d::from_compressed_normal(node.plane)),
+          normal: Vector3d::from_compressed_normal(node.plane).normalize(),
           position: Vector3d::new(
             x,
             AiNodePosition::unpack_height(node.position.y, bounds.min.y, bounds.max.y - bounds.min.y),
@@ -60,12 +60,5 @@ impl AiMapCompiler {
         })
       })
       .collect()
-  }
-
-  /// `Fvector::normalize`, in single precision: each component times `sqrt(1 / (x * x + y * y + z * z))`.
-  fn normalize(vector: &Vector3d) -> Vector3d {
-    let scale: f32 = (1.0 / (vector.x * vector.x + vector.y * vector.y + vector.z * vector.z)).sqrt();
-
-    Vector3d::new(vector.x * scale, vector.y * scale, vector.z * scale)
   }
 }

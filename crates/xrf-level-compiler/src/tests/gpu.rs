@@ -9,18 +9,23 @@ use xrf_geometry::{BvhTracer, Ray};
 use xrf_renderer_core::{RayQueryAsk, RayQueryDevice};
 use xrf_test_utils::TestSkip;
 
+use crate::RayBackend;
 use crate::ai::cover::ai_node_covers::AiNodeCovers;
+use crate::detail::detail_lighting::DetailLighting;
+use crate::geometry::mesh::geometry_mesh::GeometryMesh;
 use crate::light::lightmap::lightmap_backend::LightmapBackend;
 use crate::light::lightmap::lit::lit_chart::LitChart;
+use crate::light::source::light_source::LightSource;
+use crate::light::source::light_sources::LightSources;
 use crate::ray::gpu::ray_gpu_batch::RayGpuBatch;
 use crate::ray::gpu::ray_gpu_single::RayGpuSingle;
 use crate::ray::gpu::ray_gpu_tracer::RayGpuTracer;
 use crate::ray::ray_rules::RayRules;
+use crate::ray::ray_tracing::RayTracing;
 use crate::shadow::shadow_materials::ShadowMaterials;
 use crate::tests::ai::ai_covers;
 use crate::tests::detail::detail_lighter::{lighting, lighting_on, tracer};
 use crate::tests::light::charts;
-use crate::{DetailLighting, GeometryMesh, LightSource, LightSources, RayBackend, RayTracing};
 
 /// The DXC each backend is asked with: none, for Vulkan, then the checkout's, for D3D12 first.
 fn dxcs() -> [Option<PathBuf>; 2] {

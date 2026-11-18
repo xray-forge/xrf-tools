@@ -10,10 +10,12 @@ use crate::input::compiler_texture::CompilerTexture;
 use crate::light::lightmap::atlas::lightmap_faces::LightmapFaces;
 use crate::light::point::light_color::LightColor;
 
-/// What [`crate::GeometryVisuals::build`] converts: a level's mesh as the earlier phases left it, its splits, and the
+/// What [`GeometryVisuals::build`] converts: a level's mesh as the earlier phases left it, its splits, and the
 /// project's tables.
+///
+/// [`GeometryVisuals::build`]: crate::geometry::visual::geometry_visuals::GeometryVisuals::build
 #[derive(Clone, Copy, Debug)]
-pub struct GeometryVisualsRequest<'a> {
+pub(crate) struct GeometryVisualsRequest<'a> {
   pub mesh: &'a GeometryMesh,
   pub normals: &'a GeometryNormals,
   pub coordinates: &'a GeometryBaseCoordinates,
@@ -23,7 +25,9 @@ pub struct GeometryVisualsRequest<'a> {
   pub shaders: &'a CompilerShaders,
   /// Each `build.prj` texture as xrLC loads it.
   pub textures: &'a [CompilerTexture],
-  /// Each split vertex's light ([`crate::LightVertices`]), by index; none for the draft light.
+  /// Each split vertex's light ([`LightVertices`]), by index; none for the draft light.
+  ///
+  /// [`LightVertices`]: crate::light::vertex::light_vertices::LightVertices
   pub lights: Option<&'a [LightColor]>,
   /// Each face's lightmap page and coordinates, as the light baker packed its charts (`LightmapAtlas`); none for the
   /// draft lightmap.

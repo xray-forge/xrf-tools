@@ -25,7 +25,7 @@ use crate::geometry::visual::geometry_visuals::GeometryVisuals;
 /// joins the tree with its bounds taken from all the geometry under it. The sector's root is the last node it grew, or
 /// its one node where it grew none. A portal is listed in both its sectors.
 #[derive(Clone, Debug, PartialEq)]
-pub struct GeometryHierarchy {
+pub(crate) struct GeometryHierarchy {
   pub nodes: Vec<GeometryNode>,
   pub sectors: Vec<GeometrySector>,
 }
@@ -40,7 +40,7 @@ impl GeometryHierarchy {
   ///
   /// Returns an error for a sector holding no visual, a portal naming a sector past the last or with the same sector
   /// on both sides, which xrLC asserts on.
-  pub fn build(visuals: &GeometryVisuals, models: &GeometryModels, project: &BuildPrjFile) -> XrfResult<Self> {
+  pub(crate) fn build(visuals: &GeometryVisuals, models: &GeometryModels, project: &BuildPrjFile) -> XrfResult<Self> {
     let mut points: Vec<Vec<Vector3d>> = Vec::new();
     let mut nodes: Vec<GeometryNode> = Vec::new();
 
@@ -148,7 +148,7 @@ impl GeometryHierarchy {
     let scene: Aabb = nodes
       .iter()
       .map(|node| node.bounds.bounds)
-      .reduce(|first, second| Self::merge(&first, &second))
+      .reduce(|first, second| first.merge(&second))
       .unwrap_or(Aabb {
         min: Vector3d::ZERO,
         max: Vector3d::ZERO,
@@ -189,7 +189,7 @@ impl GeometryHierarchy {
               continue;
             }
 
-            let merged: Aabb = Self::merge(&bounds, &nodes[*candidate].bounds.bounds);
+            let merged: Aabb = bounds.merge(&nodes[*candidate].bounds.bounds);
             let side: Vector3d = &merged.max - &merged.min;
 
             if [side.x, side.y, side.z].iter().any(|value| value + EPS_L > limit) {
@@ -209,7 +209,7 @@ impl GeometryHierarchy {
 
           children.push(chosen as u32);
           is_connected[chosen] = true;
-          bounds = Self::merge(&bounds, &nodes[chosen].bounds.bounds);
+          bounds = bounds.merge(&nodes[chosen].bounds.bounds);
         }
 
         if children.len() > 1 {
@@ -245,22 +245,6 @@ impl GeometryHierarchy {
       kind,
       sector,
       bounds: GeometryBounds::of(geometry),
-    }
-  }
-
-  /// `Fbox::merge`.
-  fn merge(first: &Aabb, second: &Aabb) -> Aabb {
-    Aabb {
-      min: Vector3d::new(
-        first.min.x.min(second.min.x),
-        first.min.y.min(second.min.y),
-        first.min.z.min(second.min.z),
-      ),
-      max: Vector3d::new(
-        first.max.x.max(second.max.x),
-        first.max.y.max(second.max.y),
-        first.max.z.max(second.max.z),
-      ),
     }
   }
 }

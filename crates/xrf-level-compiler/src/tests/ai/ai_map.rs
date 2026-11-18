@@ -7,7 +7,12 @@ use xrf_job::JobHandle;
 use xrf_level::{BuildAimapFile, BuildAimapNode, BuildAimapParams, LevelAiNode, LevelAiVersion};
 use xrf_math::{Aabb, AiNodePosition, EPS_L, Vector3d};
 
-use crate::{AiMap, AiMapCompilation, AiMapCompiler, AiMapCovers, AiMapGuid, AiMapRequest, RayBackend, RayTracing};
+use crate::ai::ai_map::AiMap;
+use crate::ai::ai_map_compilation::AiMapCompilation;
+use crate::ai::ai_map_compiler::AiMapCompiler;
+use crate::ai::ai_map_request::AiMapRequest;
+use crate::ray::ray_tracing::RayTracing;
+use crate::{AiMapCovers, AiMapGuid, RayBackend};
 
 const NO_LINK: u32 = BuildAimapNode::NARROW_LINK_MASK;
 

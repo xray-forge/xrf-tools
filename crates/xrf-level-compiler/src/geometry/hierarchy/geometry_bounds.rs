@@ -8,7 +8,7 @@ use xrf_math::{Aabb, EPS_L, Vector3d};
 /// spheres (a miniball and Magic's `MinSphere`) and takes the smallest valid one, so its radius may be smaller; a
 /// larger sphere only culls later.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct GeometryBounds {
+pub(crate) struct GeometryBounds {
   pub bounds: Aabb,
   pub center: Vector3d,
   pub radius: f32,
@@ -20,7 +20,7 @@ impl GeometryBounds {
     clippy::manual_midpoint,
     reason = "`Fbox::getcenter` sums and halves in single precision, which `f32::midpoint` does not"
   )]
-  pub fn of(points: &[Vector3d]) -> Self {
+  pub(crate) fn of(points: &[Vector3d]) -> Self {
     let mut min: Vector3d = points.first().copied().unwrap_or(Vector3d::ZERO);
     let mut max: Vector3d = min;
 
