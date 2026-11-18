@@ -71,6 +71,7 @@ export function LevelEditorProblemsPanel({
     toPartStatus("objects", objects) ??
     toPartStatus("binary tools", binaryTools) ??
     toPartStatus("library objects", drawing) ??
+    toPartStatus("helpers", sceneService.helpers.state) ??
     describeLevelResidentWait(renderService.resident.state, "what it could not draw", "the scene");
 
   if (!scene) {

@@ -42,6 +42,22 @@ impl SceneHelperToolEntry {
   pub(crate) fn get_rgb(&self) -> [f32; 3] {
     HelperColor::parse_rgb(self.color)
   }
+
+  /// Whether the rows of [`SCENE_HELPER_TOOLS`] climb strictly by their tool's place, as the helpers' ids then do:
+  /// `SceneHelpers::find_sphere` searches them by halves, and would miss every helper of a table out of order.
+  const fn is_ordered() -> bool {
+    let mut row: usize = 1;
+
+    while row < SCENE_HELPER_TOOLS.len() {
+      if SCENE_HELPER_TOOLS[row - 1].kind >= SCENE_HELPER_TOOLS[row].kind {
+        return false;
+      }
+
+      row += 1;
+    }
+
+    true
+  }
 }
 
 /// Every tool whose objects the editor draws a helper for, in the editor's order of its tools, each switched by its
@@ -81,3 +97,5 @@ pub(crate) const SCENE_HELPER_TOOLS: &[SceneHelperToolEntry] = &[
   ),
   SceneHelperToolEntry::new(SceneToolKind::FogVolume, "#9575cd", None, 150.0),
 ];
+
+const _: () = assert!(SceneHelperToolEntry::is_ordered());

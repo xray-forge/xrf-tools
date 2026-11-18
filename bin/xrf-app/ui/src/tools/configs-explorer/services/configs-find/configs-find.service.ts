@@ -1,5 +1,5 @@
-import { inject, Injectable } from "@wirestate/core";
-import { Observable, runInAction } from "@wirestate/mobx";
+import { inject, Injectable, OnDeprovision, OnProvision } from "@wirestate/core";
+import { BoundAction, Observable, reaction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
 import { call, cancelFlow, LatestFlow, TFlow } from "@xrf/flow";
@@ -43,17 +43,35 @@ export class ConfigsFindService {
   @Observable()
   public results: AsyncState<ConfigsDeclarationSearch> = AsyncState.idle();
 
+  private stopFollowing: Nullable<() => void> = null;
+
   public constructor(private readonly projectService: ConfigsProjectService = inject(ConfigsProjectService)) {}
+
+  @OnProvision()
+  public onProvision(): void {
+    this.stopFollowing?.();
+    // A search answers one session of the project: another session, or none, makes its rows point at lines and files
+    // that may have moved, however the project was left.
+    this.stopFollowing = reaction(
+      () => this.projectService.project.sessionId,
+      () => this.clear()
+    );
+  }
+
+  @OnDeprovision()
+  public onDeprovision(): void {
+    this.stopFollowing?.();
+    this.stopFollowing = null;
+  }
 
   /**
    * Change part of the query without searching.
    *
    * @param query - The fields to replace.
    */
+  @BoundAction()
   public setQuery(query: Partial<IConfigsFindQuery>): void {
-    runInAction(() => {
-      this.query = { ...this.query, ...query };
-    });
+    this.query = { ...this.query, ...query };
   }
 
   /**
@@ -110,15 +128,14 @@ export class ConfigsFindService {
   }
 
   /**
-   * Cancel the pending search and forget the query and its answer when the project goes.
+   * Cancel the pending search and forget the query and its answer, as the project's session changes or goes.
    */
+  @BoundAction()
   public clear(): void {
     cancelFlow(this, "results");
 
-    runInAction(() => {
-      this.query = ConfigsFindService.EMPTY_QUERY;
-      this.results = this.results.asIdle(null);
-    });
+    this.query = ConfigsFindService.EMPTY_QUERY;
+    this.results = this.results.asIdle(null);
   }
 
   /**

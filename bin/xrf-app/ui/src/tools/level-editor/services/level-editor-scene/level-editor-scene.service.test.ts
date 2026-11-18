@@ -187,6 +187,31 @@ describe("LevelEditorSceneService", () => {
     expect(listMockInvokeCalls(ELevelsCommand.OPEN_SCENE).at(-1)?.request).toEqual(OTHER_REQUEST);
   });
 
+  // A restore that failed shows Retry like an open that failed; with no open asked for, Retry restores again.
+  it("restores again on a retry after the restore failed", async () => {
+    const { service } = mockInjectedService(LevelEditorSceneService);
+
+    mockIpcCommands({
+      [ELevelsCommand.RESTORE_SCENE]: mockSessionResponse(() => {
+        throw new Error("The scene's parts are locked");
+      }),
+    });
+
+    await service.onProvision();
+
+    expect(service.scene.state.isFailed).toBe(true);
+
+    mockIpcCommands({
+      [ELevelsCommand.RESTORE_SCENE]: mockSessionResponse(mockSelectedSceneDescription()),
+      ...mockScenePartResponses(),
+    });
+
+    await service.retry();
+
+    expect(service.scene.value?.name).toBe("labx8");
+    expect(countCalls(ELevelsCommand.OPEN_SCENE)).toBe(0);
+  });
+
   it("lets the scene go at once when cleared", async () => {
     const { service } = mockInjectedService(LevelEditorSceneService);
 

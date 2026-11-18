@@ -10,6 +10,7 @@ import { ReactElement } from "react";
 import { SettingsAboutService } from "@/core/settings-dialog/services/settings-about";
 
 import { IAboutRow } from "./about-row";
+import { SettingsAboutPending } from "./SettingsAboutPending";
 import { describeVariables } from "./SettingsVariablesSection.utils";
 
 /**
@@ -29,7 +30,7 @@ export function SettingsVariablesSection(): ReactElement {
     >
       <Stack className={"mt-2"} spacing={0.5}>
         {rows === null ? (
-          <Typography variant={"caption"}>Reading environment variables...</Typography>
+          <SettingsAboutPending error={aboutService.variables.error} label={"Reading environment variables..."} />
         ) : rows.length === 0 ? (
           <Typography variant={"caption"}>None set. Every variable uses its default.</Typography>
         ) : (

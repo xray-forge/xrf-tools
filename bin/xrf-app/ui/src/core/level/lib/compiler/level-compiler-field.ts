@@ -11,6 +11,8 @@ export enum ELevelCompilerField {
   GAME_MATERIALS = "game-materials",
   /** The textures root read before the game data's own. */
   TEXTURES = "textures",
+  /** The objects roots the scene's objects are read from, a list kept through `LEVEL_COMPILER_OBJECTS_CODEC`. */
+  OBJECTS = "objects",
   /** The game data the compilers read their libraries and textures from. */
   GAMEDATA = "gamedata",
 }

@@ -97,6 +97,8 @@ impl RenderViewports {
   ///
   /// Returns an error once every hold number was handed.
   pub fn hold(&self, window: &str) -> TauriResult<RenderHoldId> {
+    // Taken and recorded under the windows' lock, so the window's page going in between still finds the hold to let go.
+    let mut windows: MutexGuard<'_, ViewportWindows> = self.lock_windows();
     let Some(hold) = self.renderer.hold() else {
       let error: String = format!("No renderer hold number is left to hold it for window '{window}'");
 
@@ -105,21 +107,27 @@ impl RenderViewports {
       return Err(error);
     };
 
-    self.lock_windows().insert_hold(hold, window);
+    windows.insert_hold(hold, window);
 
     log::info!("Held the renderer for window '{window}' as hold {hold}");
 
     Ok(hold)
   }
 
-  /// Lets a hold its page took go.
-  pub fn release_hold(&self, hold: RenderHoldId) {
-    let window: Option<String> = self.lock_windows().remove_hold(hold);
+  /// Lets a hold the page of the window labelled `window` took go; a hold another window took, or none did, stays.
+  pub fn release_hold(&self, window: &str, hold: RenderHoldId) {
+    let mut windows: MutexGuard<'_, ViewportWindows> = self.lock_windows();
 
-    match window {
-      Some(window) => log::info!("Released renderer hold {hold} of window '{window}'"),
-      None => log::info!("Released renderer hold {hold}, which no window held"),
+    if !windows.is_held_by(hold, window) {
+      log::warn!("Window '{window}' asked to release renderer hold {hold}, which it does not hold");
+
+      return;
     }
+
+    windows.remove_hold(hold);
+    drop(windows);
+
+    log::info!("Released renderer hold {hold} of window '{window}'");
 
     self.renderer.release_hold(hold);
   }

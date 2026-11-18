@@ -136,11 +136,14 @@ export class LevelEditorSceneService {
   }
 
   /**
-   * Opens the last scene asked for again, after it failed.
+   * Tries again what failed: the last scene asked for, or the restore of the scene the backend held where nothing was
+   * asked for since.
    */
   public async retry(): Promise<void> {
     if (this.request) {
       await this.open(this.request);
+    } else {
+      await this.restore();
     }
   }
 

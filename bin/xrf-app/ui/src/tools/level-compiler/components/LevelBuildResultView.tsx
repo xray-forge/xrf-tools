@@ -25,7 +25,10 @@ interface ILevelBuildResultViewProps extends BaseComponentProps {
   result: LevelBuildResult;
   /** Where the run was told to write, to reveal it; the report's paths are display text. */
   outputPath: Nullable<string>;
-  /** The game data the compile read, handed to the spawn compiler with the level's directory. */
+  /**
+   * The game data the form named for the compile, handed to the spawn compiler with the level's directory only where a
+   * compile ran and read it.
+   */
   gamedata: Nullable<string>;
 }
 
@@ -105,7 +108,7 @@ export function LevelBuildResultView({
       actions={
         <>
           <RevealPathButton tool={EToolId.LEVEL_COMPILER} path={outputPath} label={"Show level"} />
-          <LevelBuildSpawnAction level={outputPath} gamedata={gamedata} />
+          <LevelBuildSpawnAction level={outputPath} gamedata={result.compile ? gamedata : null} />
         </>
       }
     >

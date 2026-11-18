@@ -1,5 +1,5 @@
 import { Nullable } from "@xrf/types";
-import { ReactElement, ReactNode, useCallback, useEffect, useState } from "react";
+import { FocusEvent, ReactElement, ReactNode, useCallback, useEffect, useState } from "react";
 
 import { ButtonBase } from "#/button";
 import { EditorIconAction } from "#/editor/icon-action";
@@ -65,6 +65,7 @@ export function FileToast({
 }: IFileToastProps): ReactElement {
   const [shownFile, setShownFile] = useState<Nullable<string>>(null);
   const [isHovered, setHovered] = useState<boolean>(false);
+  const [isFocused, setFocused] = useState<boolean>(false);
   const [isDeleteArmed, setDeleteArmed] = useState<boolean>(false);
 
   const onOpen = useCallback(() => {
@@ -89,20 +90,32 @@ export function FileToast({
     setDeleteArmed(false);
   }, []);
 
+  // The keyboard's hover: a toast its actions are focused in stays, and a delete armed by keys disarms as focus goes.
+  const onFocus = useCallback(() => setFocused(true), []);
+
+  const onBlur = useCallback((event: FocusEvent<HTMLElement>) => {
+    if (event.currentTarget.contains(event.relatedTarget as Nullable<Node>)) {
+      return;
+    }
+
+    setFocused(false);
+    setDeleteArmed(false);
+  }, []);
+
   useEffect(() => {
     setShownFile(file);
     setDeleteArmed(false);
   }, [file]);
 
   useEffect(() => {
-    if (shownFile === null || isHovered) {
+    if (shownFile === null || isHovered || isFocused) {
       return;
     }
 
     const timeout: ReturnType<typeof setTimeout> = setTimeout(() => setShownFile(null), TOAST_LIFETIME);
 
     return () => clearTimeout(timeout);
-  }, [isHovered, shownFile]);
+  }, [isFocused, isHovered, shownFile]);
 
   if (file === null || shownFile !== file) {
     return <></>;
@@ -118,6 +131,8 @@ export function FileToast({
       aria-label={title}
       onMouseEnter={onEnter}
       onMouseLeave={onLeave}
+      onFocus={onFocus}
+      onBlur={onBlur}
     >
       {opening ? (
         <Tooltip title={opening.label}>

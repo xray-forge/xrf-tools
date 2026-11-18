@@ -44,6 +44,30 @@ describe("FileToast", () => {
     expect(queryByRole("status")).toBeNull();
   });
 
+  // A keyboard user tabbing to an action would otherwise have the toast taken from under the focus.
+  it("stays while focus is on one of its actions, and disarms a delete as focus leaves", () => {
+    jest.useFakeTimers();
+
+    const onDelete = jest.fn();
+    const { getByRole, queryByRole } = renderToast(jest.fn(), onDelete);
+    const remove: HTMLElement = getByRole("button", { name: "Delete" });
+
+    fireEvent.focus(remove);
+    fireEvent.click(remove);
+    act(() => void jest.advanceTimersByTime(10_000));
+
+    expect(queryByRole("status")).not.toBeNull();
+
+    fireEvent.blur(getByRole("button", { name: "Delete for good" }), { relatedTarget: null });
+
+    expect(getByRole("button", { name: "Delete" })).not.toBeNull();
+
+    act(() => void jest.advanceTimersByTime(10_000));
+
+    expect(queryByRole("status")).toBeNull();
+    expect(onDelete).not.toHaveBeenCalled();
+  });
+
   it("opens what its preview shows and goes as it does", () => {
     const onOpen = jest.fn();
     const { getByRole, queryByRole } = renderToast(onOpen);

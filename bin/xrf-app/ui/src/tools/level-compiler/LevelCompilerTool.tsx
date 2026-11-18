@@ -21,10 +21,12 @@ import { StringListFormRow } from "@xrf/ui/form/string-list-row";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { ELevelCompilerField } from "@/core/level/lib/compiler/level-compiler-field";
+import { LEVEL_COMPILER_OBJECTS_CODEC } from "@/core/level/lib/compiler/level-compiler-objects";
 import { LEVEL_SCENE_FILE_FILTERS, XR_LIBRARY_FILE_FILTERS } from "@/core/path/file-filters";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { EToolId } from "@/core/routing/tool";
 import { JobPickerForm } from "@/core/shell/chrome/JobPickerForm";
+import { getFieldValueStorageKey, useStoredValue } from "@/core/storage";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import {
   AI_COVERS_OPTIONS,
@@ -57,7 +59,11 @@ export function LevelCompilerTool(): ReactElement {
 
   const isRunning: boolean = compilerService.operation.isRunning;
 
-  const [objects, setObjects] = useState<Array<string>>([]);
+  // Remembered, so a scene handed over from the editor arrives with the roots it was opened with.
+  const [objects, setObjects] = useStoredValue(
+    getFieldValueStorageKey(EToolId.LEVEL_COMPILER, ELevelCompilerField.OBJECTS),
+    LEVEL_COMPILER_OBJECTS_CODEC
+  );
   const [isSdkImpostorAtlas, setIsSdkImpostorAtlas] = useState<boolean>(false);
   const [isForced, setIsForced] = useState<boolean>(false);
   const [steps, setSteps] = useState<ReadonlySet<LevelCompileStep>>(new Set());

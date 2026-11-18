@@ -129,11 +129,9 @@ export function SpawnCompilerTool(): ReactElement {
     void compilerService.listLevels(gamedata.value, levelsRoot.value);
   }, [compilerService, gamedata.value, levelsRoot.value]);
 
+  // No listing, being read again or failed, builds nothing: a level ticked under other paths is unticked, so Build never
+  // sends levels the form does not show.
   useEffect(() => {
-    if (listed === null) {
-      return;
-    }
-
     function isBuilt(level: string): boolean {
       return built.some((it: SpawnListedLevel) => it.name === level);
     }

@@ -26,9 +26,25 @@ describe("EditorPopoverNumberRow", () => {
     const onChange = jest.fn();
     const { getByRole } = renderWithTheme(<EditorPopoverNumberRow label={"Scale"} value={2} onChange={onChange} />);
 
-    fireEvent.change(getByRole("spinbutton", { name: "Scale" }), { target: { value: "" } });
+    const field: HTMLElement = getByRole("spinbutton", { name: "Scale" });
+
+    fireEvent.change(field, { target: { value: "" } });
 
     expect(onChange).not.toHaveBeenCalled();
+    // The owner's number is not written back over what the hand typed.
+    expect(field).toHaveValue(null);
+  });
+
+  it("takes a value set from elsewhere over what was typed", () => {
+    const { getByRole, rerender } = renderWithTheme(
+      <EditorPopoverNumberRow label={"Scale"} value={2} onChange={jest.fn()} />
+    );
+    const field: HTMLElement = getByRole("spinbutton", { name: "Scale" });
+
+    fireEvent.change(field, { target: { value: "" } });
+    rerender(<EditorPopoverNumberRow label={"Scale"} value={3} onChange={jest.fn()} />);
+
+    expect(field).toHaveValue(3);
   });
 
   it("shows a value there is no number for empty, and one it cannot change read-only", () => {

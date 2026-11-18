@@ -12,6 +12,7 @@ import { RenderSettingsService } from "@/core/render/services/render-settings.se
 import { SettingsAboutService } from "@/core/settings-dialog/services/settings-about";
 
 import { IAboutRow } from "./about-row";
+import { SettingsAboutPending } from "./SettingsAboutPending";
 import { describeGraphics, DLSS_ATTRIBUTION } from "./SettingsGraphicsSection.utils";
 
 /**
@@ -43,7 +44,7 @@ export function SettingsGraphicsSection(): ReactElement {
     >
       <Stack className={"mt-2"} spacing={0.5}>
         {rows.length === 0 ? (
-          <Typography variant={"caption"}>Reading graphics details...</Typography>
+          <SettingsAboutPending error={aboutService.libraries.error} label={"Reading graphics details..."} />
         ) : (
           rows.map((it: IAboutRow) => (
             <EditorPanelProperty key={it.label} label={it.label} value={it.value} isMonospace isInline />

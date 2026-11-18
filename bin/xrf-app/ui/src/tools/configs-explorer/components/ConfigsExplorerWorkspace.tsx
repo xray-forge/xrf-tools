@@ -13,7 +13,6 @@ import { EditorToolbar } from "@/core/shell/chrome/EditorToolbar";
 import { useShellPanels, useShellStatus } from "@/core/shell/contributions";
 import { ConfigsDocumentView } from "@/tools/configs-explorer/components/ConfigsDocumentView";
 import { ConfigsDocumentService, EConfigsDocumentMode } from "@/tools/configs-explorer/services/configs-document";
-import { ConfigsFindService } from "@/tools/configs-explorer/services/configs-find";
 import { ConfigsProjectService } from "@/tools/configs-explorer/services/configs-project";
 import { ConfigsResolvedService } from "@/tools/configs-explorer/services/configs-resolved";
 
@@ -30,7 +29,6 @@ export function ConfigsExplorerWorkspace({
   const projectService: ConfigsProjectService = useInjection(ConfigsProjectService);
   const documentService: ConfigsDocumentService = useInjection(ConfigsDocumentService);
   const resolvedService: ConfigsResolvedService = useInjection(ConfigsResolvedService);
-  const findService: ConfigsFindService = useInjection(ConfigsFindService);
 
   const project: Nullable<ConfigsProjectDescriptor> = projectService.project.value;
 
@@ -40,13 +38,12 @@ export function ConfigsExplorerWorkspace({
 
   const onDeselect = useCallback(() => documentService.clear(), [documentService]);
 
+  // A search is about the whole project, so it outlives a deselection; the find service drops it with the project.
   const onBack = useCallback(() => {
     onDeselect();
-    // A search is about the whole project, so it outlives a deselection and goes only with the project.
-    findService.clear();
 
     void projectService.close();
-  }, [findService, onDeselect, projectService]);
+  }, [onDeselect, projectService]);
 
   const onToggleMode = useCallback(
     () => documentService.setMode(isResolved ? EConfigsDocumentMode.AUTHORED : EConfigsDocumentMode.RESOLVED),

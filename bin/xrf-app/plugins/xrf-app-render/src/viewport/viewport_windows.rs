@@ -25,6 +25,11 @@ impl ViewportWindows {
     self.holds.insert(hold, window.to_string());
   }
 
+  /// Whether the page of the window labelled `window` took `hold`.
+  pub(crate) fn is_held_by(&self, hold: RenderHoldId, window: &str) -> bool {
+    self.holds.get(&hold).is_some_and(|label| label == window)
+  }
+
   /// Forgets a hold, answering the window it was taken for, if any held it.
   pub(crate) fn remove_hold(&mut self, hold: RenderHoldId) -> Option<String> {
     self.holds.remove(&hold)

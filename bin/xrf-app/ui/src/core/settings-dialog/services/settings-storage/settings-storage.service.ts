@@ -37,11 +37,13 @@ export class SettingsStorageService {
   }
 
   /**
-   * Clears one kind, then measures the folder again whether or not it cleared.
+   * Clears one kind, then measures the folder again whether or not it cleared. Its own lane, apart from the measure a
+   * section shown starts, so reopening the section never cancels the clear's report; a clear asked while one runs is
+   * ignored, as the section asks for one at a time.
    *
    * @param kind - What to clear.
    */
-  @LatestFlow("usage")
+  @ExclusiveFlow()
   public *clear(kind: EAppStorageKind): TFlow {
     yield* this.reporter.run({
       name: "Clear application storage",
