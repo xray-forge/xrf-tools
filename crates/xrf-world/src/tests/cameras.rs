@@ -43,7 +43,6 @@ fn key_up(code: &str) -> WorldInputEvent {
   WorldInputEvent::KeyUp { code: code.to_string() }
 }
 
-/// A drag of buttons with no modifier held.
 fn drag_start(buttons: WorldInputButtons) -> WorldInputEvent {
   WorldInputEvent::DragStart {
     buttons,
@@ -51,7 +50,6 @@ fn drag_start(buttons: WorldInputButtons) -> WorldInputEvent {
   }
 }
 
-/// A drag of buttons with Alt held.
 fn alt_drag_start(buttons: WorldInputButtons) -> WorldInputEvent {
   WorldInputEvent::DragStart {
     buttons,
@@ -72,7 +70,7 @@ fn drag_end() -> WorldInputEvent {
   }
 }
 
-/// A wheel turned by pixels, positive towards the person.
+// Pixels, positive towards the person.
 fn wheel(delta_y: f32) -> WorldInputEvent {
   WorldInputEvent::Wheel {
     delta_x: 0.0,
@@ -122,7 +120,6 @@ fn fly_keys_move_nothing_until_the_secondary_button_goes_down() {
   camera.update(Duration::from_millis(100));
   assert_near(camera.get_pose().position, [0.0, 0.0, 0.0]);
 
-  // The key held first flies as soon as the button joins it.
   camera.input(&drag_start(WorldInputButtons::SECONDARY));
   camera.update(Duration::from_millis(100));
   assert_near(camera.get_pose().position, [0.0, 0.0, -1.0]);
@@ -218,7 +215,7 @@ fn fly_drag_follows_its_buttons_as_they_change() {
   camera.input(&drag_move(100.0, 0.0));
   assert_near(camera.get_pose().position, [10.0, 0.0, 0.0]);
 
-  // The main button let go, the secondary left alone flies by the key held.
+  // The secondary alone flies by the key held.
   camera.input(&WorldInputEvent::DragButtons {
     buttons: WorldInputButtons::SECONDARY,
   });

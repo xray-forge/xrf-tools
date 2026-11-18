@@ -8,7 +8,6 @@ use xrf_sound::fixtures::VorbisNoiseFixture;
 use crate::tests::fixtures::{RATE, ramp, wav};
 use crate::{DecodedSound, SoundChannels, SoundDecoder, SoundPeaks};
 
-/// A ramp sample read back as the frame it was written at.
 fn get_frame(sample: f32) -> i64 {
   (sample * 32768.0).round() as i64
 }
@@ -45,7 +44,7 @@ fn seeks_to_the_exact_frame_asked_for() {
   assert_eq!(get_frame(packet[0]), 3);
 }
 
-/// A float WAV can hold any 32 bits; one that is no number would reach the device and the reverb as it is.
+// A float WAV can hold any 32 bits, and one that is no number would otherwise reach the device and the reverb.
 #[test]
 fn decodes_a_sample_that_is_no_number_as_silence() {
   let samples: [f32; 4] = [0.5, f32::NAN, f32::INFINITY, -0.25];

@@ -101,7 +101,7 @@ mod tests {
   use crate::data::alife::spawn_layout::SpawnLayout;
   use crate::data::physics::raw_float::RawFloat;
 
-  /// A gun as the game writes a new one: its working byte and aim never initialised.
+  // A new gun's working byte and aim are never initialised.
   fn new_object() -> AlifeObjectStationaryMgun {
     AlifeObjectStationaryMgun {
       base: AlifeObjectDynamicVisual {
@@ -123,7 +123,7 @@ mod tests {
     }
   }
 
-  /// A byte and three floats after the visual's empty update.
+  // A byte and three floats after the visual's empty update.
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectStationaryMgun = new_object();
@@ -137,7 +137,7 @@ mod tests {
     Ok(())
   }
 
-  /// The uninitialised aim survives text and JSON with its bits, a NaN's payload included.
+  // The uninitialised aim keeps its bits through text and JSON, a NaN's payload included.
   #[test]
   fn test_import_export() -> XrfResult {
     let original: AlifeObjectStationaryMgun = new_object();

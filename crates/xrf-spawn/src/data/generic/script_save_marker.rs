@@ -3,11 +3,11 @@ use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::narrow_format_size;
 
-/// The check a script server class closes its own fields with: a `u16` counting the bytes written since the marker
-/// opened (`set_save_marker` in vanilla scripts, `closeSaveMarker` in xrf-engine). Both loaders assert it, so it is
-/// derived from the fields it closes rather than kept beside them, and an edited field writes a marker that still holds.
+/// The check a script server class closes its own fields with: a `u16` counting the bytes since the marker opened
+/// (`set_save_marker` in vanilla scripts, `closeSaveMarker` in xrf-engine). Both loaders assert it, so it is derived
+/// from the fields rather than stored, and an edited field still writes a valid marker.
 ///
-/// The count is the packet's own (`w_tell`), so in fields it counts the bytes the values stand for, as the engine's
+/// The count is the packet's own (`w_tell`): in field form it counts the bytes the values stand for, as the engine
 /// does with an ini stream attached.
 pub(crate) struct ScriptSaveMarker;
 
@@ -52,10 +52,9 @@ impl ScriptSaveMarker {
     Ok(fields)
   }
 
-  /// Reads the fields as [`Self::read`] does or, in the editor's form when the fields end where they would begin, takes
-  /// the values the script class's constructor gives them. For a class whose SDK script returns from `STATE_Read`
-  /// before its own fields under `editor()` (`se_actor`, `se_level_changer`, `se_smart_terrain`), so a scene the editor
-  /// saved without them still loads; `se_actor` never writes them there either, its `m_registred` gate staying shut.
+  /// Reads the fields as [`Self::read`] does, or takes the constructor's values in the editor's field form when the
+  /// fields end where they would begin. Some SDK scripts return from `STATE_Read` before their own fields under
+  /// `editor()` (`se_actor`, `se_level_changer`, `se_smart_terrain`), so a scene the editor saved without them loads.
   ///
   /// # Errors
   ///
@@ -114,7 +113,7 @@ mod tests {
     Ok(())
   }
 
-  /// Fields that end where the script class's own begin take its constructor's values; bytes that end there are short.
+  // Packet bytes ending there are short, not the editor's form.
   #[test]
   fn takes_constructed_values_only_where_fields_end() -> XrfResult {
     fn read<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<u8> {

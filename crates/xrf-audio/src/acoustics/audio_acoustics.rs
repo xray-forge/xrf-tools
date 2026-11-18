@@ -4,10 +4,11 @@ use std::sync::Arc;
 #[cfg(feature = "steam-audio")]
 use crate::acoustics::steam::steam_audio::SteamAudio;
 
-/// Whether the audio's acoustics run, and through what: Steam Audio, loaded from the directory the host names, places
-/// every voice, muffles it through the scene's walls and gives the scene's rooms their reverb. Where it is not built in,
-/// its library does not load or is not the version this build binds, sound plays dry: one distance curve and panning,
-/// with no occlusion or reverb, and the reason is kept for the report. A clone shares the same library.
+/// The audio's acoustics: Steam Audio, loaded from the host's directory, places every voice, occludes it through the
+/// scene's walls and gives its rooms reverb. A clone shares the same library.
+///
+/// Where Steam Audio is not built in, does not load, or is not the version this build binds, sound plays dry (one
+/// distance curve and panning) and the reason is kept for the report.
 #[derive(Clone)]
 pub struct AudioAcoustics {
   state: Arc<AcousticsState>,

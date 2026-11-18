@@ -8,12 +8,12 @@ use crate::data::alife::alife_object::AlifeObject;
 use crate::level::level_spawn_export::LevelSpawnExport;
 use crate::level::level_spawn_object::LevelSpawnObject;
 
-/// An object's record in a level list's unpacked file, a section named by its place in the list.
+/// An object's record in a level list's unpacked file: a section named by the object's place in the list.
 ///
-/// An object the typed read accepts is written as a root spawn writes an ALife object ([`AlifeObject::export`]), so the
-/// two unpacked forms share their keys. One it refuses is written verbatim: its head under the keys the typed form uses
-/// for the same values, the rest of its packet in base64, and the reason, under a `form` key naming it, which a typed
-/// record never carries. Either holds the chunk the object was found under only where that differs from its place.
+/// A typed object is written as a root spawn writes an ALife object ([`AlifeObject::export`]), so both unpacked forms
+/// share keys. One the typed read refuses is written under `form = verbatim`, which a typed record never carries: its
+/// head under the typed keys, the rest of its packet in base64, and the reason. Either holds `chunk_id` only where it
+/// differs from the object's place.
 impl LevelSpawnObject {
   const FORM: &'static str = "form";
   const VERBATIM_FORM: &'static str = "verbatim";
@@ -62,8 +62,8 @@ impl LevelSpawnObject {
     Ok(())
   }
 
-  /// Reads the object a record holds, listed under its `chunk_id` or else the index its section is named by. A verbatim
-  /// record packs from its payload as written, whether or not that would now read typed, and its reason is not read.
+  /// Reads the object a record holds, under its `chunk_id` or else its section's index. A verbatim record packs from
+  /// its payload as written, even where it would now read typed; its reason is not read.
   ///
   /// # Errors
   ///
@@ -105,8 +105,8 @@ impl LevelSpawnObject {
     }
   }
 
-  /// The object typed, when the typed read accepts it and its typed form writes back the bytes it holds; otherwise the
-  /// reason it is written verbatim ([`Self::format_reason`]).
+  /// The object typed, when the typed read accepts it and writes back the same bytes; otherwise the reason it is
+  /// written verbatim ([`Self::format_reason`]).
   fn read_typed_record<T: ByteOrder>(&self) -> Result<AlifeObject, String> {
     let object: AlifeObject = self
       .read_alife_object::<T>()
@@ -124,10 +124,9 @@ impl LevelSpawnObject {
     Ok(object)
   }
 
-  /// The reason a refusal's `message` gives, as the object's record states it. It leaves out the object's name, which
-  /// the record holds beside it, so objects refused alike share one. It is kept to one line and holds no double quote,
-  /// as a record's value must: a message quoting a packet's text can carry an odd number, and a value leaving a quote
-  /// open is refused on import, since the engine reads the following lines into it, or warns and drops the quote.
+  /// The record's reason for a refusal `message`: without the object's name, so objects refused alike share one, on one
+  /// line, and with double quotes made single. A packet's text can carry an odd number of quotes, and a value leaving
+  /// one open is refused on import, as the engine reads the following lines into it or drops the quote.
   fn format_reason(&self, message: &str) -> String {
     message
       .replace(&format!(" '{}'", self.name), "")
@@ -149,8 +148,7 @@ mod tests {
   use crate::level::level_spawn_file::LevelSpawnFile;
   use crate::level::level_spawn_object::LevelSpawnObject;
 
-  /// A refusal quoting text the packet holds, as a script class's absent state does, can carry an odd number of double
-  /// quotes, and still writes a record that reads back.
+  // A script class's absent state quotes the packet's text, which can carry an odd number of double quotes.
   #[test]
   fn writes_a_reason_quoting_a_value_as_a_record_that_reads_back() -> XrfResult {
     let object: LevelSpawnObject = LevelSpawnObjects::shadow_of_chernobyl_graph_point(0, "l04u_graph_point_0")?;
@@ -176,7 +174,6 @@ mod tests {
     Ok(())
   }
 
-  /// The object's name is left out wherever a message quotes it, and the message is kept to one line.
   #[test]
   fn formats_a_reason_without_the_objects_name_on_one_line() -> XrfResult {
     let object: LevelSpawnObject = LevelSpawnObjects::shadow_of_chernobyl_graph_point(0, "esc_wolf")?;

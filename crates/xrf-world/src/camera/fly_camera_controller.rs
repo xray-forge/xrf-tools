@@ -70,10 +70,10 @@ impl FlyDrag {
   }
 }
 
-/// A free camera driven as an editor viewport is: the secondary button held looks around and lets the keys fly it, the
-/// wheel then asking for its speed, the main button walks it along the ground, both or the auxiliary pan it, the wheel
-/// moves it forward, and with Alt it turns around, dollies to and tracks a pivot ahead of it. It holds yaw and pitch itself, since a rotation read back
-/// cannot tell `+π` from `-π`.
+/// A free camera driven like an editor viewport, its drags mapped by `FlyDrag`; the wheel moves it forward, or sets its
+/// speed while the secondary button flies it.
+///
+/// It holds yaw and pitch itself, since a rotation read back cannot tell `+π` from `-π`.
 #[derive(Clone, Debug)]
 pub(crate) struct FlyCameraController {
   description: WorldCamera,
@@ -149,7 +149,7 @@ impl FlyCameraController {
     }
   }
 
-  /// The viewport's height in CSS pixels, against which a track is measured.
+  /// Takes the viewport's height in CSS pixels, at least one.
   pub(crate) fn resize(&mut self, height: f32) {
     self.height = height.max(1.0);
   }

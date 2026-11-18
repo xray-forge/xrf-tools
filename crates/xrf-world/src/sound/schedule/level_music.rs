@@ -20,16 +20,12 @@ const RECHECK: Duration = Duration::from_secs(10);
 /// Where OpenXRay plays a track's halves where its stereo file is missing, from the listener.
 const HALF_POSITIONS: [[f32; 3]; 2] = [[-0.5, 0.0, 0.3], [0.5, 0.0, 0.3]];
 
-/// A level's music as `CLevelSoundManager::Update` plays it: with no track playing and the level's clock past the next
-/// check, every track left playing stops and one eligible by the game's hour is picked, 2D and at its volume; none
-/// eligible checks again after ten seconds; once it ends, the next waits a drawn pause.
+/// A level's music as `CLevelSoundManager::Update` plays it, with the viewer's `WorldMusicCommand`s on top. When no
+/// track plays and the check is due, it picks one eligible by the game's hour, 2D at its volume, or checks again after
+/// ten seconds; a track that ends waits a drawn pause.
 ///
-/// OpenXRay picks at random among the eligible, and plays a track's halves where its stereo file is missing. Monolith
-/// shuffles the tracks once and takes the first eligible one not yet played; none left forgets what played and shuffles
-/// again.
-///
-/// A viewer may play one track by hand in place of the schedule, over and over until it asks the schedule back, and
-/// play the track playing from any point.
+/// OpenXRay picks at random among the eligible. Monolith shuffles the tracks once and takes the first eligible one not
+/// yet played, reshuffling when none is left.
 pub(crate) struct LevelMusic {
   tracks: Vec<WorldMusicTrack>,
   engine: XrayEngine,

@@ -16,8 +16,7 @@ use crate::data::graph::graph_level::GraphLevel;
 use crate::data::graph::graph_level_point::GraphLevelPoint;
 use crate::data::graph::graph_vertex::GraphVertex;
 
-/// One of a graph's tables after its vertices, its edges or its level points: where it spans, bytes from the first
-/// vertex, and the size of each of its records.
+/// A graph's edge or level point table: its span in bytes from the first vertex, and its record size.
 struct GraphTable {
   start: u64,
   end: u64,
@@ -54,9 +53,9 @@ impl SpawnGraphsChunk {
   /// The largest node id a vertex stores, in 24 bits.
   pub const MAX_LEVEL_VERTEX_ID: u32 = (1 << 24) - 1;
 
-  /// Lays the graph out as `CGameGraph` stores it, from what it holds: the header's counts, and each vertex's edge and
-  /// level point offsets, bytes from the first vertex, its edges and level points following those of the vertices
-  /// before it. A graph assembled in memory needs no offset set by hand.
+  /// Sets the header's counts and each vertex's edge and level point offsets as `CGameGraph` stores them: bytes from
+  /// the first vertex, each vertex's records following the previous vertex's. A graph built in memory needs no offset
+  /// set by hand.
   ///
   /// # Errors
   ///
@@ -88,10 +87,10 @@ impl SpawnGraphsChunk {
     Ok(())
   }
 
-  /// Refuses a graph the engine would read wrong: an edge to a vertex past the graph, a vertex on no level of the
-  /// header or past the node ids its 24 bits hold, edges or level points off their tables' records, and cross tables
-  /// that are not one a level in ascending level id order (`CGameGraph::set_current_level`), each naming its level and
-  /// this graph, sized to the level's vertices, every cell's vertex on that level.
+  /// Refuses a graph the engine would read wrong: an edge to a missing vertex, or a vertex on no listed level, past
+  /// 24-bit node ids, or with edges or level points off their tables' records. Cross tables must be one a level in
+  /// ascending level id order (`CGameGraph::set_current_level`), each naming its level and this graph, sized to the
+  /// level's vertices, with every cell's vertex on that level.
   ///
   /// # Errors
   ///
@@ -185,8 +184,8 @@ impl SpawnGraphsChunk {
     Ok(())
   }
 
-  /// Each level in the engine's order beside its cross table: `CGameGraph::set_current_level` walks the levels by
-  /// ascending id, so the `i`-th cross table is the `i`-th level's that way; none where the graph holds fewer tables.
+  /// Each level in ascending id order beside its cross table, as `CGameGraph::set_current_level` pairs them; `None`
+  /// where the graph holds fewer tables.
   pub fn get_ranked_levels(&self) -> Vec<(&GraphLevel, Option<&GraphCrossTable>)> {
     let mut levels: Vec<&GraphLevel> = self.levels.iter().collect();
 
@@ -199,8 +198,7 @@ impl SpawnGraphsChunk {
       .collect()
   }
 
-  /// The edge table and the level point table, after the vertices. Every record of the three is of fixed size, its
-  /// `MIN_SERIALIZED_SIZE`.
+  /// The edge and level point tables after the vertices, every record of the three its fixed `MIN_SERIALIZED_SIZE`.
   fn get_tables(&self) -> [GraphTable; 2] {
     let edges: u64 = self.vertices.len() as u64 * GraphVertex::MIN_SERIALIZED_SIZE;
     let points: u64 = edges + self.edges.len() as u64 * GraphEdge::MIN_SERIALIZED_SIZE;
@@ -656,7 +654,6 @@ mod tests {
     Ok(())
   }
 
-  /// A graphs header declaring the supplied collection counts and nothing else.
   fn mock_graphs_header(vertices_count: u16, edges_count: u32, points_count: u32, levels_count: u8) -> Vec<u8> {
     let mut bytes: Vec<u8> = vec![10];
 
@@ -727,8 +724,7 @@ mod tests {
     Ok(())
   }
 
-  /// Two levels listed out of id order, level 20 with two vertices joined both ways and a level point each, level 10
-  /// with one, each cross table one node a vertex; laid out by [`SpawnGraphsChunk::derive_layout`].
+  // Levels listed out of id order, so the cross tables pair with them by ascending id.
   fn laid_out_graph() -> SpawnGraphsChunk {
     let guid = uuid!("11111111-1111-1111-1111-111111111111");
     let level = |id: u8, name: &str, guid| GraphLevel {
@@ -844,7 +840,6 @@ mod tests {
     assert!(error.contains("count 2 edges"), "Unexpected error: {error}");
   }
 
-  /// The laid out graph changed by `change` is refused with an error naming `expected`.
   fn assert_refused(change: impl FnOnce(&mut SpawnGraphsChunk), expected: &str) {
     let mut graph: SpawnGraphsChunk = laid_out_graph();
 

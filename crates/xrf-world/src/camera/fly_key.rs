@@ -16,8 +16,8 @@ pub(crate) enum FlyKey {
 }
 
 impl FlyKey {
-  /// What a `KeyboardEvent.code` does: WASD and the numpad move the camera, `E` and `Q` or the page keys raise and lower
-  /// it, and the arrow keys turn it.
+  /// What a `KeyboardEvent.code` does: WASD and the numpad move the camera, `E` and `Q` or the page keys raise and
+  /// lower it, and the arrow keys turn it.
   pub(crate) fn from_code(code: &str) -> Option<Self> {
     Some(match code {
       "ArrowDown" => Self::LookDown,

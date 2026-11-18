@@ -2,8 +2,8 @@ use serde::Serialize;
 
 use crate::level::level_spawn_verbatim_group::LevelSpawnVerbatimGroup;
 
-/// What unpacking a level's spawn list wrote: how many objects it wrote typed, and those it wrote verbatim, grouped by
-/// the reason the typed read refused them.
+/// What unpacking a level's spawn list wrote: the objects written typed, and those written verbatim grouped by the
+/// reason the typed read refused them.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelSpawnExport {
@@ -18,7 +18,6 @@ impl LevelSpawnExport {
     self.verbatim_objects.iter().map(|group| group.objects).sum()
   }
 
-  /// Counts an object written typed.
   pub(crate) fn count_typed(&mut self) {
     self.typed_objects += 1;
   }

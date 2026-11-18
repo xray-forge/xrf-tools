@@ -7,8 +7,8 @@ use xrf_utils::narrow_format_size;
 
 use crate::data::generic::script_save_marker::ScriptSaveMarker;
 
-/// The crow shooting minigame's state, `CMGCrowKiller:save` (`gamedata-cs/scripts/minigame_crowkiller.script`): the
-/// parameters the minigames manager keeps for it, then the game's own counters, closed by a save marker.
+/// The crow shooting minigame's state, `CMGCrowKiller:save` (`minigame_crowkiller.script`): the manager's parameters
+/// for it, then the game's own counters, under a save marker.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -175,7 +175,7 @@ mod tests {
 
   use crate::data::alife::inherited::clear_sky::actor::minigame::clear_sky_crow_killer::ClearSkyCrowKiller;
 
-  /// The constructor's state as a Clear Sky level's actor saves it, closed by its marker counting 22 bytes.
+  // The constructor's state as a Clear Sky level's actor saves it, closed by its marker counting 22 bytes.
   const CONSTRUCTED: &[u8] = b"\0\x3c\0\0\x04\0\0\0\0\x0a\0\x64\0\0\0\0\0\0\x0a\0\0\0\x16\0";
 
   #[test]

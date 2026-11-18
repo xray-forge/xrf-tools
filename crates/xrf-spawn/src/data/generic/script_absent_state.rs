@@ -4,9 +4,9 @@ use byteorder::ByteOrder;
 use xrf_chunk::ChunkFieldReader;
 use xrf_error::{XrfError, XrfResult};
 
-/// A script class's field that only a running simulation fills: a list's count, a time's `nil` mark, a nested object's
-/// `nil` name. A spawn holds its empty form, which is read and checked and has no field of its own; any other value is
-/// refused, since the records behind it are not read and a rewrite would drop them.
+/// A script class's field only a running simulation fills: a list's count, a time's `nil` mark, a nested object's `nil`
+/// name. A spawn holds its empty form, read and checked but not kept; any other value is refused, as the records behind
+/// it are not read and a rewrite would drop them.
 pub(crate) struct ScriptAbsentState;
 
 impl ScriptAbsentState {

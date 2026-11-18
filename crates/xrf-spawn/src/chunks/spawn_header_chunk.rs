@@ -115,8 +115,7 @@ mod tests {
 
   #[test]
   fn test_read_empty() -> XrfResult {
-    // A container holding one child that declares no payload: id 0, size 0. Reading a spawn header out of that must
-    // fail rather than hand back a default-shaped one.
+    // One child of id 0 and size 0: the read must fail rather than answer a default header.
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[0; 8])?.read_child_by_index(0)?;
 
     let original: XrfResult<SpawnHeaderChunk> = SpawnHeaderChunk::read::<XRayByteOrder, _>(&mut reader);

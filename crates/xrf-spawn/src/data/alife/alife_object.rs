@@ -27,8 +27,8 @@ use crate::data::meta::spawn_section_classes::SpawnSectionClasses;
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AlifeObject {
-  /// What the spawn packet opens with, `CSE_Abstract::Spawn_Write`'s own fields; they sit beside the object's in
-  /// every serialized form.
+  /// The spawn packet's opening fields, `CSE_Abstract::Spawn_Write`'s own, flattened beside the object's in every
+  /// serialized form.
   #[serde(flatten)]
   pub header: SpawnPacketHeader,
   pub clsid: ClsId,
@@ -44,9 +44,8 @@ impl AlifeObject {
   /// One framed object chunk: its own header, plus the header and payload of the index chunk it must carry.
   pub const MIN_SERIALIZED_SIZE: u64 = 8 + 8 + 2;
 
-  /// Move the object to `position`, facing `direction` as the spawn packet's angles give it, in every packet that
-  /// stores where it stands. `CALifeSimulatorBase::create` reads the update packet over the spawn packet, so an object
-  /// moved in the spawn packet alone would start where its update packet still says.
+  /// Moves the object to `position`, facing `direction` as the spawn packet's angles give it, in every packet that
+  /// stores where it stands: `CALifeSimulatorBase::create` reads the update packet over the spawn packet.
   pub fn move_to(&mut self, position: Vector3d, direction: Vector3d) {
     self.inherited.move_to(&position, &direction);
     self.header.position = position;
@@ -65,8 +64,7 @@ impl AlifeObject {
     self.inherited.set_built_fields(fields);
   }
 
-  /// Write the object's update packet alone, its class's update fields, as a root spawn stores it after its length and
-  /// `M_UPDATE`.
+  /// Writes the object's update packet alone, as a root spawn stores it after its length and `M_UPDATE`.
   ///
   /// # Errors
   ///
@@ -75,9 +73,9 @@ impl AlifeObject {
     self.write_packets::<T, _, _>(&mut ChunkWriter::new(), writer)
   }
 
-  /// The object as a fresh server entity holds it, read from its own spawn packet ([`Self::read_spawn_packet`]): its
-  /// update fields derived from the spawn packet, or zero where the engine leaves them uninitialised. A root spawn xrAI
-  /// builds anew stores this object's update packet.
+  /// The object as a fresh server entity holds it, read back from its own spawn packet ([`Self::read_spawn_packet`]):
+  /// update fields derived from the spawn packet, zero where the engine leaves them uninitialised. A root spawn xrAI
+  /// builds anew stores this update packet.
   ///
   /// # Errors
   ///
@@ -92,9 +90,8 @@ impl AlifeObject {
     })
   }
 
-  /// Refuse an object whose payload is shaped for another class than its section's, which the engine would read with
-  /// that class in the game whose scripts its spawn version names: a Clear Sky script class's payload under a Call of
-  /// Pripyat header among them, and the reverse. A section the table of sections does not know, as a mod's, is held
+  /// Refuses a payload shaped for another class than the section's under its spawn version's dialect, such as a Clear
+  /// Sky script class's payload under a Call of Pripyat header. A section the table does not know, as a mod's, is held
   /// to the class it was read as.
   fn assert_class_matches_payload(&self) -> XrfResult {
     let dialect: ScriptDialect = SpawnLayout::from(&self.header).script_dialect();
@@ -115,8 +112,8 @@ impl AlifeObject {
     Ok(())
   }
 
-  /// Read an object from its spawn packet alone, as `level.spawn` holds it and the Level Editor saves it, its class
-  /// by the table of sections ([`Self::read_spawn_packet_by`]).
+  /// Reads an object from its spawn packet alone, as `level.spawn` holds it and the Level Editor saves it, typed by the
+  /// default section table ([`Self::read_spawn_packet_by`]).
   ///
   /// # Errors
   ///
@@ -125,9 +122,9 @@ impl AlifeObject {
     Self::read_spawn_packet_by::<T, _>(reader, &SpawnSectionClasses::default())
   }
 
-  /// Read an object from its spawn packet alone, its class as `classes` gives its section, bytes or fields: the update
-  /// fields as xrAI's freshly read server entity holds them when it writes a root spawn
-  /// (`AlifeObjectInherited::set_spawned_update`), the members the engine leaves uninitialised zero.
+  /// Reads an object from its spawn packet alone, bytes or fields, typed as `classes` gives its section. Its update
+  /// fields are those xrAI's fresh server entity holds when it writes a root spawn
+  /// (`AlifeObjectInherited::set_spawned_update`), with members the engine leaves uninitialised zero.
   ///
   /// # Errors
   ///
@@ -152,7 +149,7 @@ impl AlifeObject {
     Ok(object)
   }
 
-  /// Write the object's spawn packet alone, as `level.spawn` holds it and the Level Editor saves it.
+  /// Writes the object's spawn packet alone, as `level.spawn` holds it and the Level Editor saves it.
   ///
   /// # Errors
   ///
@@ -344,7 +341,6 @@ mod tests {
   use crate::data::physics::raw_float::RawFloat;
   use crate::fixtures::{ClearSkyStates, GameWrittenPackets};
 
-  /// A whole spawn packet header naming a section no class reads.
   fn new_unknown_section_header() -> SpawnPacketHeader {
     let mut header: SpawnPacketHeader = new_graph_point_object().header;
 
@@ -599,7 +595,7 @@ mod tests {
 
     Ok(())
   }
-  /// The smallest object the reader accepts: a graph point carries two strings and four bytes.
+  // The smallest object the reader accepts.
   fn new_graph_point_object() -> AlifeObject {
     AlifeObject {
       header: SpawnPacketHeader {
@@ -674,7 +670,7 @@ mod tests {
     );
   }
 
-  /// The actor starts where its update packet says, so a move that reached only the spawn packet would not move it.
+  // The actor starts where its update packet says.
   #[test]
   fn moves_an_actor_in_both_packets() -> XrfResult {
     let mut original: AlifeObject = new_graph_point_object();
@@ -704,8 +700,6 @@ mod tests {
     Ok(())
   }
 
-  /// The spawn packet alone reads back with the update fields a fresh server entity holds: a creature stands where its
-  /// spawn packet places it, turned by its angles, with its own health and team, and the rest of the spawn packet whole.
   #[test]
   fn reads_a_spawn_packet_alone_as_a_fresh_entity() -> XrfResult {
     let mut original: AlifeObject = new_graph_point_object();
@@ -745,7 +739,7 @@ mod tests {
     Ok(())
   }
 
-  /// A physic object read from its spawn packet alone holds no state, which writes the zero byte xrAI writes.
+  // xrAI writes the zero byte of no state.
   #[test]
   fn reads_a_physic_object_alone_as_one_of_no_state() -> XrfResult {
     let mut original: AlifeObject = new_graph_point_object();
@@ -775,7 +769,6 @@ mod tests {
     Ok(())
   }
 
-  /// A stalker and a monster written under their sections read back whole, each moved in both packets.
   #[test]
   fn writes_and_moves_a_stalker_and_a_monster() -> XrfResult {
     for (section, clsid, inherited) in [
@@ -819,7 +812,6 @@ mod tests {
     Ok(())
   }
 
-  /// Each section of a class Call of Pripyat creates reads back as that class through the object's two packets.
   #[test]
   fn writes_and_reads_every_class_by_its_section() -> XrfResult {
     let position: Vector3d = Vector3d::new(1.0, 2.0, 3.0);
@@ -930,7 +922,7 @@ mod tests {
     Ok(())
   }
 
-  /// An item's `UPDATE_Read` moves it to its physics state's position over its spawn packet's.
+  // An item's `UPDATE_Read` moves it to its physics state's position.
   #[test]
   fn moves_an_item_and_its_physics_state() {
     let mut original: AlifeObject = new_graph_point_object();
@@ -952,7 +944,6 @@ mod tests {
     );
   }
 
-  /// The fields xrAI fills in go back to a fresh entity's, and back again from another packet, nothing else changing.
   #[test]
   fn sets_the_fields_a_root_spawn_build_fills() {
     let mut original: AlifeObject = new_graph_point_object();
@@ -987,7 +978,6 @@ mod tests {
     assert_eq!(unbuilt, original, "nothing else changed");
   }
 
-  /// A class storing no position in its update packet moves in its spawn packet alone.
   #[test]
   fn moves_a_graph_point_in_its_spawn_packet() {
     let mut original: AlifeObject = new_graph_point_object();
@@ -1053,7 +1043,7 @@ mod tests {
     Ok(())
   }
 
-  /// `CSE_Abstract::Spawn_Read` reads client data whatever its size, so a spawn carrying some reads and writes back.
+  // `CSE_Abstract::Spawn_Read` reads client data of any size.
   #[test]
   fn carries_client_data_through_a_round_trip() -> XrfResult {
     let mut original: AlifeObject = new_graph_point_object();
@@ -1072,7 +1062,7 @@ mod tests {
     Ok(())
   }
 
-  /// The engine picks the payload's reader by section, so a payload of another class would be misread.
+  // The engine picks the payload's reader by section.
   #[test]
   fn refuses_to_write_a_payload_its_section_does_not_read() {
     let mut original: AlifeObject = new_graph_point_object();
@@ -1087,7 +1077,6 @@ mod tests {
     assert!(error.contains("of section 'medkit' (SFood, CseAlifeItem)"), "{error}");
   }
 
-  /// A spawn packet of Clear Sky's layout: a header at spawn `version` and script version 8, then `state` as stored.
   fn new_clear_sky_packet(section: &str, name: &str, version: u16, state: &str) -> XrfResult<Vec<u8>> {
     let mut header: SpawnPacketHeader = new_graph_point_object().header;
     let mut writer: ChunkWriter = ChunkWriter::new();
@@ -1103,8 +1092,6 @@ mod tests {
     Ok(writer.buffer)
   }
 
-  /// The object a spawn packet holds, after checking it writes back byte for byte and survives its LTX text with
-  /// `absent_keys` left out.
   fn read_clear_sky_packet(packet: &[u8], absent_keys: &[&str]) -> XrfResult<AlifeObject> {
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(packet)?;
     let object: AlifeObject = AlifeObject::read_spawn_packet::<XRayByteOrder, _>(&mut reader)?;
@@ -1125,8 +1112,7 @@ mod tests {
     Ok(object)
   }
 
-  /// Clear Sky's smart cover stores neither `can_fire` nor `se_smart_cover`'s fields: the engine copies the combat
-  /// cover flag into `can_fire`, and the script holds its constructor's empty description and loopholes.
+  // The engine copies the combat cover flag into `can_fire`; the script keeps its constructor's empty values.
   #[test]
   fn reads_and_writes_a_clear_sky_smart_cover() -> XrfResult {
     assert_eq!(GameWrittenPackets::bytes(ClearSkyStates::SMART_COVER).len(), 77);
@@ -1148,7 +1134,7 @@ mod tests {
     Ok(())
   }
 
-  /// Clear Sky's inventory box stores no access fields or tip, which hold `CSE_ALifeInventoryBox`'s constructor values.
+  // The fields the packet lacks hold `CSE_ALifeInventoryBox`'s constructor values.
   #[test]
   fn reads_and_writes_a_clear_sky_inventory_box() -> XrfResult {
     assert_eq!(GameWrittenPackets::bytes(ClearSkyStates::INVENTORY_BOX).len(), 77);
@@ -1183,7 +1169,7 @@ mod tests {
     Ok(())
   }
 
-  /// Clear Sky's climbable object stores no material, which holds `CSE_ALifeObjectClimable`'s constructor value.
+  // The material the packet lacks holds `CSE_ALifeObjectClimable`'s constructor value.
   #[test]
   fn reads_and_writes_a_clear_sky_climable_object() -> XrfResult {
     assert_eq!(GameWrittenPackets::bytes(ClearSkyStates::CLIMABLE).len(), 79);
@@ -1200,7 +1186,6 @@ mod tests {
     Ok(())
   }
 
-  /// Clear Sky's item of spawn version 123 stores no upgrades, which hold `CSE_ALifeInventoryItem`'s constructor's none.
   #[test]
   fn reads_and_writes_a_clear_sky_item_without_upgrades() -> XrfResult {
     assert_eq!(GameWrittenPackets::bytes(ClearSkyStates::ITEM_123).len(), 81);
@@ -1216,7 +1201,7 @@ mod tests {
     Ok(())
   }
 
-  /// Clear Sky's weapon of spawn version 123 stores its loaded grenades but no upgrades, one of 122 neither.
+  // Version 123 stores loaded grenades but no upgrades, 122 neither.
   #[test]
   fn reads_and_writes_clear_sky_weapons() -> XrfResult {
     for (section, name, version, state, size, absent_keys) in [
@@ -1258,8 +1243,6 @@ mod tests {
     Ok(())
   }
 
-  /// Each Clear Sky script class a level spawns reads as its Clear Sky type, writes back byte for byte and survives its
-  /// text: a level's monster, stalker, faction, smart terrain and actor.
   #[test]
   fn reads_and_writes_clear_sky_script_classes() -> XrfResult {
     for (section, name, state, size, class) in [
@@ -1310,8 +1293,7 @@ mod tests {
     Ok(())
   }
 
-  /// A section only Clear Sky's configs declare, or besides them only a mod of Call of Pripyat's, reads by the class
-  /// Clear Sky gives it: a named stalker, a boar, both kinds of anomalous zone, ammo, a door and a quest pda.
+  // Sections only Clear Sky's configs declare, or besides them only a Call of Pripyat mod's.
   #[test]
   fn reads_and_writes_clear_sky_sections_by_their_class() -> XrfResult {
     for (section, name, state, size, clsid, class) in [
@@ -1383,8 +1365,7 @@ mod tests {
     Ok(())
   }
 
-  /// `Z_MBALD` is an engine class with no script, so its zone stores nothing past the anomalous zone's fields, where
-  /// `ZS_MBALD`'s `se_zone_anom` appends its last spawn time's flag.
+  // `Z_MBALD` has no script class; `ZS_MBALD`'s `se_zone_anom` appends a last spawn time flag.
   #[test]
   fn reads_a_clear_sky_zone_tail_by_its_class() -> XrfResult {
     for (section, name, state, last_spawn_time) in [
@@ -1413,8 +1394,7 @@ mod tests {
     Ok(())
   }
 
-  /// Clear Sky's faction is `se_sim_faction`, its own class (`SFACTION`), where Call of Pripyat's section is a space
-  /// restrictor.
+  // Call of Pripyat's `sim_faction` section is a space restrictor.
   #[test]
   fn reads_a_clear_sky_faction_as_its_own_class() -> XrfResult {
     let packet: Vec<u8> = new_clear_sky_packet(
@@ -1442,8 +1422,7 @@ mod tests {
     Ok(())
   }
 
-  /// A Clear Sky payload under a Call of Pripyat header, or the reverse, would be read by the engine with the other
-  /// game's script class, so it is not written.
+  // The engine would read either with the other game's script class.
   #[test]
   fn refuses_a_payload_of_the_other_games_script_class() -> XrfResult {
     let packet: Vec<u8> = new_clear_sky_packet("dog_weak", "esc_dog_weak", 123, ClearSkyStates::MONSTER)?;
@@ -1483,7 +1462,7 @@ mod tests {
     Ok(())
   }
 
-  /// Clear Sky's scripts read fewer fields below their own script version, a layout no shipped object holds.
+  // Clear Sky's scripts read fewer fields below their version, a layout no shipped object holds.
   #[test]
   fn refuses_clear_sky_script_fields_of_another_script_version() -> XrfResult {
     let mut packet: Vec<u8> = new_clear_sky_packet("dog_weak", "esc_dog_weak", 123, ClearSkyStates::MONSTER)?;
@@ -1501,7 +1480,7 @@ mod tests {
     Ok(())
   }
 
-  /// A class whose update packet is empty reads none of it, so bytes there would be dropped by a rewrite.
+  // A rewrite would drop update bytes the class does not read.
   #[test]
   fn refuses_update_bytes_its_class_does_not_read() -> XrfResult {
     let original: AlifeObject = new_graph_point_object();
@@ -1512,7 +1491,7 @@ mod tests {
     let mut bytes: Vec<u8> = writer.flush_chunk_into_buffer::<XRayByteOrder>(0)?;
     let update_at: usize = 16 + XRayByteOrder::read_u32(&bytes[12..16]) as usize;
 
-    // One stray byte past the update packet's action: the outer chunk, the update chunk and its length each grow by one.
+    // One stray byte: the outer chunk, the update chunk and its length each grow by one.
     bytes.push(7);
 
     for at in [4, update_at + 4] {

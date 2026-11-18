@@ -1,5 +1,4 @@
-//! A level's zones' sounds, `CCustomZone` and `CZoneCampfire`: the idle sound with the idle, the far switch per engine,
-//! a torrid zone's sound moving with it, and a campfire's sounds through its switching.
+// A level's zones' sounds against `CCustomZone` and `CZoneCampfire`.
 
 use std::collections::HashMap;
 use std::time::Duration;
@@ -20,7 +19,6 @@ use crate::sound::schedule::zone_sounds::ZoneSounds;
 use crate::sound::schedule::zone_states::ZoneStates;
 use crate::tests::sound::{found, missing, seconds};
 
-/// The campfires as a view switches them and where each motion has its object.
 #[derive(Default)]
 struct States {
   campfires: LevelCampfires,
@@ -37,7 +35,6 @@ impl ZoneStates for States {
   }
 }
 
-/// An anomaly at the origin humming `anomaly\\hum`, measured to a sphere of five metres about it.
 fn anomaly() -> WorldZoneSound {
   WorldZoneSound {
     id: 4,
@@ -65,7 +62,7 @@ fn campfire() -> WorldZoneSound {
   }
 }
 
-/// What plays on at `now`, those fading out after a stop aside.
+// Leaves out what fades after a stop.
 fn playing(emitters: &SoundEmitters, now: Duration) -> Vec<LiveEmitter> {
   emitters
     .iter_playing(now)
@@ -81,7 +78,6 @@ fn sounds_of(emitters: &SoundEmitters, now: Duration) -> Vec<String> {
     .collect()
 }
 
-/// The camera `metres` along x from the origin.
 fn eye(metres: f32) -> Vec3 {
   Vec3::new(metres, 0.0, 0.0)
 }
@@ -108,8 +104,8 @@ fn hums_from_the_first_frame_looped_at_the_zone_as_its_object() {
   assert_eq!(hum[0].emitter.position, [0.0; 3]);
 }
 
-// Past a hundred metres from its sphere Monolith stops the idle, fading it out, and plays it afresh once the camera is
-// back; Vanilla's slowing touches its light alone, so the same play goes on.
+// Monolith stops the idle past a hundred metres from the sphere and plays it afresh on return; Vanilla's slowing
+// touches only the light, so the same play goes on.
 #[test]
 fn falls_silent_past_the_fast_distance_on_monolith_only() {
   for (engine, is_heard_far) in [(XrayEngine::Vanilla, true), (XrayEngine::Extended, false)] {
@@ -164,7 +160,6 @@ fn keeps_an_always_fast_zone_humming_however_far() {
   assert_eq!(playing(&emitters, Duration::ZERO).len(), 1);
 }
 
-// A torrid zone's sound stands where its motion has the zone, and Monolith measures the far switch from there.
 #[test]
 fn moves_a_torrid_zones_sound_with_its_motion() {
   let mut zones: ZoneSounds = ZoneSounds::new(vec![WorldZoneSound {
@@ -199,7 +194,7 @@ fn moves_a_torrid_zones_sound_with_its_motion() {
   assert_eq!(moved[0].emitter.id, id);
   assert_eq!(moved[0].emitter.position, [4.0, 2.0, 3.0]);
 
-  // The camera stands near the zone's spawn, but the motion has carried it two hundred metres off.
+  // Monolith measures the far switch from where the motion carried the zone, not its spawn.
   states
     .places
     .insert(String::from("torrid_path"), Vec3::new(200.0, 2.0, 3.0));
@@ -209,8 +204,7 @@ fn moves_a_torrid_zones_sound_with_its_motion() {
   assert!(playing(&emitters, seconds(2)).is_empty());
 }
 
-// Put out, a campfire loops its disabled sound at once and its idle stops half a second into the turn; lit again, the
-// disabled sound stops at once and the idle waits for the turn's last second.
+// Put out, the idle stops half a second into the turn; lit again, the idle waits for the turn's last second.
 #[test]
 fn switches_a_campfires_sounds_as_it_is_put_out_and_lit_again() {
   let mut zones: ZoneSounds = ZoneSounds::new(vec![campfire()]);
@@ -259,7 +253,6 @@ fn loops_the_disabled_sound_of_a_campfire_out_from_the_first() {
   assert!(out[0].emitter.is_looped);
 }
 
-// Monolith stops a lit campfire's idle past the fast distance as it does any zone's.
 #[test]
 fn quiets_a_far_campfire_on_monolith() {
   let mut zones: ZoneSounds = ZoneSounds::new(vec![campfire()]);

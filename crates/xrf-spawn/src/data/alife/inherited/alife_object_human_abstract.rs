@@ -34,9 +34,9 @@ impl AlifeObjectHumanAbstract {
     self.base.move_to(position, direction);
   }
 
-  /// Read a preference list as `load_data` reads an `xr_vector<u8>`: a `u32` count, then a byte each. The brain reads
-  /// it from bytes alone (`CALifeHumanBrain::on_state_read`): fields hold none, and the editor keeps the values its
-  /// constructor drew at random, which here read as none.
+  /// Reads a preference list as `load_data` reads an `xr_vector<u8>`: a `u32` count, then a byte each. The brain reads
+  /// it from bytes alone (`CALifeHumanBrain::on_state_read`), so fields hold none and the editor's random values read
+  /// as none.
   fn read_preferences<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Vec<u8>> {
     if reader.is_field_form() {
       return Ok(Vec::new());
@@ -166,10 +166,10 @@ mod tests {
   use crate::data::alife::inherited::alife_object_monster_abstract::AlifeObjectMonsterAbstract;
   use crate::data::alife::spawn_layout::SpawnLayout;
 
-  /// The mock trader's money, two strings, flags, profile, three ranks and two bytes.
+  // The mock trader's money, two strings, flags, profile, three ranks and two bytes.
   const TRADER_SIZE: usize = 4 + 1 + 4 + "sim_default_stalker_0".len() + 1 + 12 + 1 + 2;
 
-  /// The trader's fields come first, then the monster's, then two counted lists; the update packet is the monster's.
+  // The trader's fields come first, then the monster's, then two counted lists; the update packet is the monster's.
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectHumanAbstract = AlifeObjectHumanAbstract::new_mock(Vector3d::new(1.0, 2.0, 3.0));
@@ -183,7 +183,7 @@ mod tests {
     Ok(())
   }
 
-  /// The trader's money opens the packet where the actor's would hold its game vertex.
+  // The trader's money opens the packet where the actor's would hold its game vertex.
   #[test]
   fn opens_its_spawn_fields_with_the_trader() -> XrfResult {
     let mut original: AlifeObjectHumanAbstract = AlifeObjectHumanAbstract::new_mock(Vector3d::ZERO);
@@ -210,7 +210,7 @@ mod tests {
     Ok(())
   }
 
-  /// Up to spawn version 124 the trader stores no corpse access, so the monster's fields start two bytes earlier.
+  // Up to spawn version 124 the trader stores no corpse access, so the monster's fields start two bytes earlier.
   #[test]
   fn reads_its_trader_without_corpse_access_up_to_version_124() -> XrfResult {
     let original: AlifeObjectHumanAbstract = AlifeObjectHumanAbstract::new_mock(Vector3d::new(1.0, 2.0, 3.0));

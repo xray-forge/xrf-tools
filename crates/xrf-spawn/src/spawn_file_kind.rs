@@ -9,15 +9,13 @@ use xrf_utils::format_path;
 use crate::chunks::spawn_header_chunk::SpawnHeaderChunk;
 use crate::level::level_spawn_file::LevelSpawnFile;
 
-/// Which of the two formats sharing `.spawn` a file or its unpacked folder is, which its name cannot say: a root spawn
-/// such as `all.spawn` ([`SpawnFile`](crate::SpawnFile)), or the run of spawn packets a level's `level.spawn` holds
-/// ([`LevelSpawnFile`]).
+/// Which of the two formats sharing `.spawn` a file or its unpacked folder is: a root spawn such as `all.spawn`
+/// ([`SpawnFile`](crate::SpawnFile)), or a level's `level.spawn` run of spawn packets ([`LevelSpawnFile`]).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SpawnFileKind {
   /// A root spawn, which opens with its header chunk.
   Root,
-  /// A level's spawn list: anything not opening with a root's header, which the list's own read then confirms or
-  /// refuses.
+  /// A level's spawn list: anything not opening with a root's header, until the list's own read confirms or refuses it.
   Level,
 }
 
@@ -32,16 +30,15 @@ impl SpawnFileKind {
 
   /// The header that makes top-level chunks a root spawn, or `None` where they carry none.
   ///
-  /// A level's list numbers its packets from zero, so its first chunk has the header's id as well: what tells the two
-  /// apart is whether that chunk reads whole as a header.
+  /// A level list numbers its packets from zero, so its first chunk shares the header's id: only whether that chunk
+  /// reads whole as a header tells the two apart.
   pub fn read_root_header<T: ByteOrder, D: ChunkDataSource>(chunks: &[ChunkReader<D>]) -> Option<SpawnHeaderChunk> {
     ChunkReader::find_optional_by_id(chunks, SpawnHeaderChunk::CHUNK_ID)?
       .read_xr::<T, SpawnHeaderChunk>()
       .ok()
   }
 
-  /// The kind an unpacked folder holds, told by its files: a root spawn's holds its header's file, a level list's the
-  /// file of its objects.
+  /// The kind an unpacked folder holds: a root spawn's holds its header file, a level list's its objects file.
   ///
   /// # Errors
   ///
@@ -104,7 +101,6 @@ mod tests {
 
   #[test]
   fn tells_a_level_spawn_list_though_its_first_chunk_has_the_header_id() -> XrfResult {
-    // A list numbers its packets from zero, so its first chunk carries the header's id and only the bytes differ.
     let list: LevelSpawnFile = LevelSpawnFile {
       objects: vec![LevelSpawnObject {
         id: SpawnHeaderChunk::CHUNK_ID,

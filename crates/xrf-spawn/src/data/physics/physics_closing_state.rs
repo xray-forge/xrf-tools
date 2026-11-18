@@ -6,12 +6,11 @@ use xrf_ltx::{LtxSectionRead, LtxSectionWrite, LtxWrite};
 
 use crate::data::physics::physics_net_state::PhysicsNetState;
 
-/// The physics state closing a physic object's update packet, `CSE_ALifeObjectPhysic::UPDATE_Read`'s, kept as it was
-/// stored. The engine reads an empty packet and a lone zero byte alike, as no state.
+/// The physics state closing a physic object's update packet (`CSE_ALifeObjectPhysic::UPDATE_Read`), kept as stored.
+/// The engine reads an empty packet and a lone zero byte alike as no state.
 ///
-/// A zero byte with bytes behind it is a state whose count and mask pack to zero, which the SDK's 2009 `xrSE_Factory`
-/// writes for an object of no items and both velocities set (its `UPDATE_Write` has no early return); the engine reads
-/// the zero byte and skips the rest.
+/// A zero byte with bytes behind it is a state packing to zero, which the SDK's 2009 `xrSE_Factory` writes for an
+/// object of no items with both velocities set; the engine reads the zero byte and skips the rest.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "value")]
@@ -20,7 +19,7 @@ pub enum PhysicsClosingState {
   Absent,
   /// The zero byte of no state, as the engine writes it.
   Unset,
-  /// A state, one the SDK packed to zero among them.
+  /// A state, including one the SDK packed to zero.
   Set(PhysicsNetState),
 }
 

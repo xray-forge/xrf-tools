@@ -9,7 +9,7 @@ use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynam
 use crate::data::alife::spawn_layout::SpawnLayout;
 
 /// `CSE_ALifeInventoryBox`. Up to spawn version 124 the packet stores none of its own fields, which then hold the
-/// constructor's: open to taking, not closed, the `inventory_box_use` tip (`xrServer_Objects_ALife.cpp:1879`).
+/// constructor's: open to taking, not closed, the `inventory_box_use` tip.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -165,7 +165,6 @@ mod tests {
     }
   }
 
-  /// The bytes written at `layout`, and the box read back from them whole.
   fn read_back(
     inventory_box: &AlifeObjectInventoryBox,
     layout: SpawnLayout,

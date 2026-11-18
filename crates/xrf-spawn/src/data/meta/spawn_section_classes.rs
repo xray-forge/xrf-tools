@@ -7,25 +7,24 @@ use xrf_ltx::Ltx;
 use crate::data::alife::script_dialect::ScriptDialect;
 use crate::data::meta::cls_id::ClsId;
 
-/// Which class each section's objects are created as, as the game reads it: the `class` key of the section in the
-/// game's configs, its parents' where it sets none (`F_entity_Create`, `level_spawn_constructor.cpp:111`).
+/// Which class each section's objects are created as: the section's `class` key in the game's configs, or its
+/// parents' (`F_entity_Create`).
 ///
-/// Without configs, or for a section they do not declare as a class the tools read, the answer is the table of Call of
-/// Pripyat's sections, with Clear Sky's own beside it ([`ClsId::from_dialect_section`]). Every section of that table
-/// that vanilla Call of Pripyat's configs declare reads as the payload their class gives, and so does every one of
-/// Clear Sky's but two multiplayer weapons.
+/// Without configs, or for a section they give no class the tools read, the answer falls back to the table of Call of
+/// Pripyat's sections and Clear Sky's beside it ([`ClsId::from_dialect_section`]). That table reads every section
+/// vanilla Call of Pripyat's configs declare as their class's payload, and every one of Clear Sky's but two
+/// multiplayer weapons.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SpawnSectionClasses {
-  /// Each section of the configs that has a class, lowercase as the configs store it: its class, or the name of a
-  /// class the tools do not read.
+  /// Each config section with a class, lowercase as stored: its class, or the name of one the tools do not read.
   classes: HashMap<String, Result<ClsId, String>>,
 }
 
 impl SpawnSectionClasses {
-  /// Where a game data root keeps the configs' root.
+  /// The configs' root file under a game data root.
   pub const SYSTEM_LTX_PATH: &'static str = "configs/system.ltx";
 
-  /// The classes the configs, includes and parents resolved, declare.
+  /// The classes the configs declare, with includes and parents resolved.
   pub fn from_configs(ltx: &Ltx) -> Self {
     Self {
       classes: ltx
@@ -60,7 +59,7 @@ impl SpawnSectionClasses {
       .map_err(|error| XrfError::new_invalid_error(format!("The configs {}: {error}", path.display())))
   }
 
-  /// The class objects of `section` are created as, in a spawn of the game whose scripts `dialect` names.
+  /// The class objects of `section` are created as in a spawn of `dialect`'s game.
   ///
   /// # Errors
   ///
@@ -96,7 +95,6 @@ mod tests {
     ))
   }
 
-  /// A mod's section, which the table does not know, takes its class from its parent in the configs.
   #[test]
   fn reads_a_mod_section_by_the_class_its_parent_declares() -> XrfResult {
     let classes: SpawnSectionClasses =
@@ -115,8 +113,7 @@ mod tests {
     Ok(())
   }
 
-  /// The configs win over the table: Clear Sky declares its acid field an engine zone, where Call of Pripyat's is a
-  /// scripted one.
+  // Clear Sky declares its acid field an engine zone, where the table holds Call of Pripyat's scripted one.
   #[test]
   fn prefers_the_class_the_configs_declare_over_the_table() -> XrfResult {
     let classes: SpawnSectionClasses = read("[zone_field_acidic]\nclass = Z_RADIO\n")?;
@@ -133,8 +130,6 @@ mod tests {
     Ok(())
   }
 
-  /// A section the configs lack, or declare as a class the tools do not read, falls back to the table; one the table
-  /// lacks too is refused, naming its class where the configs give one.
   #[test]
   fn falls_back_to_the_table_and_names_an_unread_class() -> XrfResult {
     let classes: SpawnSectionClasses = read("[my_drone]\nclass = DRONE_S\n\n[detector_simple]\nclass = D_FORKED\n")?;

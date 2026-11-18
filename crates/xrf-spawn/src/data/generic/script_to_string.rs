@@ -59,7 +59,7 @@ mod tests {
     );
   }
 
-  /// `tostring` never writes an id this way, and reading it as one would write it back otherwise.
+  // `tostring` never writes an id this way, so reading one would not write back.
   #[test]
   fn refuses_an_id_it_would_not_write_back() {
     for value in ["0012", "-1", "12.5", ""] {

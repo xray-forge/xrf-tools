@@ -286,7 +286,6 @@ mod tests {
     }
   }
 
-  /// One object's chunk, its index then the data written into it.
   fn object_chunk(index: u16, data: &mut ChunkWriter) -> XrfResult<Vec<u8>> {
     let mut index_writer: ChunkWriter = ChunkWriter::new();
     let mut object_writer: ChunkWriter = ChunkWriter::new();
@@ -327,8 +326,7 @@ mod tests {
     Ok(())
   }
 
-  // A lenient reader answers the declared count as the spawn's total, so a chunk holding fewer objects than it declares
-  // is refused rather than overstating it.
+  // The declared count is answered as the spawn's total, so a chunk holding fewer objects must not overstate it.
   #[test]
   fn refuses_to_answer_a_count_the_objects_do_not_add_up_to() -> XrfResult {
     let mut readable: ChunkWriter = ChunkWriter::new();

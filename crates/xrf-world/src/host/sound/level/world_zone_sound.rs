@@ -3,8 +3,7 @@ use xrf_visual::ZoneSphere;
 use crate::contract::sound::world_sound_kind::WorldSoundKind;
 use crate::host::sound::world_sound::WorldSound;
 
-/// One of a level's zones that sounds (`CCustomZone`): its section's `idle_sound`, a campfire's `disabled_sound`, where
-/// it stands in engine space, the motion that carries it, and the sphere its distance from the camera is measured to.
+/// One of a level's zones that sounds (`CCustomZone`), its position in engine space.
 #[derive(Clone, Debug, PartialEq)]
 pub struct WorldZoneSound {
   /// The spawned object's id, which a campfire is switched by.
@@ -20,7 +19,8 @@ pub struct WorldZoneSound {
   pub disabled: Option<WorldSound>,
   /// The object motion a torrid zone follows (`motion_name`).
   pub motion: Option<String>,
-  /// None for a zone always fast (`[fast_mode] always_fast`), which never slows.
+  /// The sphere its distance from the camera is measured to; none for a zone always fast (`[fast_mode] always_fast`),
+  /// which never slows.
   pub zone_sphere: Option<ZoneSphere>,
 }
 

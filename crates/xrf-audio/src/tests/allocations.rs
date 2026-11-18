@@ -9,7 +9,7 @@ use crate::{
   VoiceSource,
 };
 
-/// Counts, rather than forbids, what the audio thread's code allocates or frees inside `assert_no_alloc`.
+// Counts, rather than forbids, what is allocated or freed inside `assert_no_alloc`.
 #[global_allocator]
 static ALLOCATOR: AllocDisabler = AllocDisabler;
 
@@ -59,8 +59,6 @@ fn renders_starts_stops_and_retires_voices_without_allocating() {
   engine.collect();
 }
 
-// A voice stamped to start inside a later block waits for it in silence, and one stamped before its block plays on
-// from as far as it would have got, neither allocating.
 #[test]
 fn starts_voices_stamped_to_their_frames_without_allocating() {
   let sound: Arc<DecodedSound> = Arc::new(sine(RATE, 4800, 440.0, 0.5, SoundChannels::Mono));
@@ -91,8 +89,7 @@ fn starts_voices_stamped_to_their_frames_without_allocating() {
   assert!(rms_left(&out) > 0.0);
 }
 
-// A tap takes the mix, drops what its full ring has no room for, and is let go of, none of it allocating or freeing on
-// the mixer: the tap goes back to be freed on the control side.
+// Filling the tap's ring and letting it go free nothing on the mixer: the tap is freed on the control side.
 #[test]
 fn taps_the_mix_without_allocating() {
   let sound: Arc<DecodedSound> = Arc::new(sine(RATE, 4800, 440.0, 0.5, SoundChannels::Mono));

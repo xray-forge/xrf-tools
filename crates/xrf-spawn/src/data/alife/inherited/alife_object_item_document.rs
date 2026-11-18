@@ -97,7 +97,7 @@ mod tests {
     }
   }
 
-  /// The info portion closes the item's spawn fields; the update packet is the item's alone.
+  // The info portion closes the item's spawn fields; the update packet is the item's alone.
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectItemDocument = new_object();

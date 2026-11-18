@@ -8,8 +8,7 @@ use crate::data::alife::alife_state_read_write::AlifeStateReadWrite;
 use crate::data::alife::spawn_layout::SpawnLayout;
 
 /// `CSE_ALifeTraderAbstract`, the trading part of a trader, a human and the actor. Up to spawn version 124 the packet
-/// stores neither of its corpse's access fields, which then hold the constructor's: open to taking, not closed
-/// (`xrServer_Objects_ALife_Monsters.cpp:138-139`).
+/// stores neither of its corpse's access fields, which hold the constructor's: open to taking, not closed.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -180,7 +179,6 @@ mod tests {
     }
   }
 
-  /// The bytes written at `layout`, and the trader read back from them whole.
   fn read_back(
     trader: &AlifeObjectTraderAbstract,
     layout: SpawnLayout,

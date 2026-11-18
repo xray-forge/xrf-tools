@@ -128,7 +128,7 @@ mod tests {
     object
   }
 
-  /// The skeleton closes the spawn packet and the start dialog the update packet.
+  // The skeleton closes the spawn packet and the start dialog the update packet.
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectHumanStalker = new_object();

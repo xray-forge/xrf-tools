@@ -57,10 +57,9 @@ impl AlifeObjectCreature {
 }
 
 impl AlifePacketsReadWrite for AlifeObjectCreature {
-  /// As `CSE_ALifeCreatureAbstract::STATE_Read` leaves them (`xrServer_Objects_ALife_Monsters.cpp:916-938`): health,
-  /// team, squad and group from the spawn packet, the position, the torso's pitch and heading from its angles. The
-  /// model's heading is taken from the torso before the torso is set, so it stays the constructor's zero, as does the
-  /// roll; the timestamp and flags are uninitialised.
+  /// As `CSE_ALifeCreatureAbstract::STATE_Read` leaves them: health, team, squad and group from the spawn packet, the
+  /// position, and the torso's pitch and heading from its angles. The model's heading is taken from the torso before
+  /// the torso is set, so it stays the constructor's zero, as does the roll; the timestamp and flags are uninitialised.
   fn set_spawned_update(&mut self, header: &SpawnPacketHeader) {
     self.update_health = self.health;
     self.update_position = header.position;
@@ -275,7 +274,7 @@ mod tests {
     object
   }
 
-  /// Health, timestamp, flags, position, four angles and three bytes: `CSE_ALifeCreatureAbstract::UPDATE_Write`.
+  // Health, timestamp, flags, position, four angles and three bytes: `CSE_ALifeCreatureAbstract::UPDATE_Write`.
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectCreature = new_object();

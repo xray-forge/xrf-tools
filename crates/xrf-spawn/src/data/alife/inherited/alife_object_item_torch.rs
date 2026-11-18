@@ -106,7 +106,7 @@ mod tests {
     }
   }
 
-  /// The flags byte follows the item's physics state.
+  // The flags byte follows the item's physics state.
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectItemTorch = new_object();

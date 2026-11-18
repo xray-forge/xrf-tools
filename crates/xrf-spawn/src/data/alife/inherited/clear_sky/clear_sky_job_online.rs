@@ -4,9 +4,9 @@ use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxSectionRead, LtxSectionWrite, LtxWrite};
 
-/// Whether a Clear Sky stalker or monster is kept online or offline by its job, `job_online` of `se_stalker` and
-/// `se_monster`: a byte, followed by the condition list when the byte is 3. The scripts read any byte past 2 as a
-/// condition list and write 3, so only 0 to 3 are accepted. A spawn holds `Unset`.
+/// Whether a Clear Sky stalker's or monster's job keeps it online or offline, `job_online` of `se_stalker` and
+/// `se_monster`: a byte, then a condition list when it is 3. The scripts read any byte past 2 as a condition list and
+/// write 3, so only 0 to 3 are accepted. A spawn holds `Unset`.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "value")]
@@ -141,7 +141,7 @@ mod tests {
     Ok(())
   }
 
-  /// The scripts read a kind past 3 as a condition list and would write 3 for it.
+  // The scripts read a kind past 3 as a condition list and would write 3 for it.
   #[test]
   fn refuses_a_kind_it_would_write_back_otherwise() -> XrfResult {
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(b"\x04x\0")?;

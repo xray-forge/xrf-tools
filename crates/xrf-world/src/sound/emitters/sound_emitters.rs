@@ -18,12 +18,10 @@ static NEXT_EMITTER: AtomicU64 = AtomicU64::new(1);
 /// from one (`update_culling`).
 const STOP_FADE: Duration = Duration::from_millis(100);
 
-/// What a scene plays: each sound started and not yet over, by when it ends on the level's clock, which is what says
-/// whether it still plays (`_feedback()`), never what was heard.
+/// Each sound a scene started and has not ended on the level's clock (`_feedback()`).
 #[derive(Default)]
 pub(crate) struct SoundEmitters {
-  /// Ascending by id, as ids only grow and each play is pushed last, so an emitter is found by halving rather than by
-  /// walking every one: each schedule asks after its own emitters every frame.
+  /// Ascending by id, since ids only grow and plays are pushed last, so the per-frame lookups binary search.
   live: Vec<LiveEmitter>,
 }
 

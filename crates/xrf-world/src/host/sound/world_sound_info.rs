@@ -1,7 +1,7 @@
 use std::time::Duration;
 
-/// What the engine reads of a sound file as it loads it (`CSoundRender_Source::LoadWave`): how long it plays, whether
-/// it is stereo, which always plays 2D, and its source parameters, the engine's defaults where it carries none.
+/// What the engine reads of a sound file as it loads it (`CSoundRender_Source::LoadWave`), its defaults where the file
+/// carries none. A stereo sound always plays 2D.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct WorldSoundInfo {
   /// Its length at its own rate, `get_length_sec`.

@@ -188,9 +188,8 @@ impl GameWrittenPackets {
   }
 }
 
-/// Spawn packet states of Clear Sky's level lists (`gamedata-cs/levels/<level>/level.spawn`), script version 8, each
-/// with the `u16` size `Spawn_Write` patches in before its fields: `agroprom`'s at spawn version 124, the others at the
-/// version their name ends with.
+/// Spawn packet states of Clear Sky's level lists (`levels/<level>/level.spawn`), script version 8, each opening with
+/// the `u16` size `Spawn_Write` patches in: `agroprom`'s at spawn version 124, the others at the version each names.
 pub(crate) struct ClearSkyStates;
 
 impl ClearSkyStates {
@@ -308,7 +307,7 @@ impl ClearSkyStates {
   );
 
   /// `hospital`'s `katacomb_zone_mine_field_strong_0000`, a `Z_MBALD` zone, spawn version 123: 78 bytes, the abstract
-  /// object, one sphere and its restrictor type, the custom zone's fields and the anomalous zone's, with no script tail.
+  /// object, one sphere and its restrictor type, the custom and anomalous zone's fields, with no script tail.
   pub(crate) const MINE_FIELD: &'static str = concat!(
     "4e00ffff0000000001000000ffffffff3effffff00ffffffffffffffff",
     "01000000000000000000000000000000803f00",

@@ -1,6 +1,3 @@
-//! The acoustics: sound played dry where Steam Audio is absent, and, with it, walls that occlude, doorways and materials
-//! that let sound through, rooms whose reverb follows their size, and an audio thread that still allocates nothing.
-
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
@@ -12,7 +9,6 @@ use crate::{
   AudioSceneReport, AudioSceneRules, OfflineSession,
 };
 
-/// The scene's name in every frame.
 const SCENE: u32 = 3;
 
 fn emitter(id: u64, sound: &str, position: [f32; 3]) -> AudioSceneEmitter {
@@ -47,8 +43,7 @@ fn frame(time: Duration, emitters: Vec<AudioSceneEmitter>) -> Box<AudioSceneFram
   })
 }
 
-/// Sends the scene's frame and renders `seconds` of it, ten milliseconds at a time as the world sends frames, answering
-/// what was rendered.
+// Ten milliseconds a frame, as the world sends them.
 fn play(
   session: &mut OfflineSession,
   inbox: &mut AudioSceneInbox,
@@ -96,7 +91,7 @@ fn plays_dry_and_says_why_where_steam_audio_is_absent() {
 
   assert!(report.acoustics.failure.is_some());
   assert!(report.emitters[0].is_real && !report.emitters[0].is_binaural);
-  // Dry, at the curve's half at four metres from a two-metre minimum, panned to the centre.
+  // The curve's half at four metres from a two-metre minimum.
   assert!(
     (report.emitters[0].gain - 0.5).abs() < 1e-3,
     "{}",
@@ -124,7 +119,6 @@ mod steam {
     AudioSceneReport, DecodedSound, OfflineRender, OfflineSession, SoundChannels,
   };
 
-  /// Steam Audio as `cargo make fetch-sdks` placed it in the checkout, as the application ships it.
   fn checkout_acoustics() -> AudioAcoustics {
     let directory: PathBuf = PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../../.sdks/steam-audio"));
     let acoustics: AudioAcoustics = AudioAcoustics::load(&directory);
@@ -147,14 +141,13 @@ mod steam {
     }
   }
 
-  /// Concrete, letting almost nothing through.
   const CONCRETE: AudioMaterial = AudioMaterial {
     absorption: [0.05, 0.07, 0.08],
     scattering: 0.05,
     transmission: [0.015, 0.002, 0.001],
   };
 
-  /// Adds a quad of `corners`, in order around it, facing towards `inside`.
+  // `corners` run in order around the quad.
   fn quad(mesh: &mut AudioSceneMesh, corners: [[f32; 3]; 4], inside: [f32; 3], material: u32) {
     let base: u32 = mesh.vertices.len() as u32;
     let [a, b, c, _] = corners;
@@ -182,7 +175,7 @@ mod steam {
     mesh.material_indices.extend([material, material]);
   }
 
-  /// A wall across `z`, filling `x` and `y` from -20 to 20 m but for the opening `hole`, `[x0, x1, y0, y1]`, if any.
+  // `hole` is an opening `[x0, x1, y0, y1]`.
   fn wall(z: f32, hole: Option<[f32; 4]>, material: AudioMaterial) -> AudioSceneMesh {
     let mut mesh: AudioSceneMesh = AudioSceneMesh {
       materials: vec![material],
@@ -211,7 +204,6 @@ mod steam {
     mesh
   }
 
-  /// A closed room `size` metres across, centred on the listener, its faces turned in.
   fn room([width, height, depth]: [f32; 3], material: AudioMaterial) -> AudioSceneMesh {
     let mut mesh: AudioSceneMesh = AudioSceneMesh {
       materials: vec![material],
@@ -259,19 +251,17 @@ mod steam {
     mesh
   }
 
-  /// What a listener hears of a tone: the scene's report, and half a second of it.
   struct Heard {
     report: AudioSceneReport,
     samples: Vec<f32>,
   }
 
-  /// How a room rings: the reverb's level 0.3 to 0.8 s after a burst ends, and its reported decay times.
+  // `tail` is the level 0.3 to 0.8 s after the burst ends.
   struct Ring {
     tail: f32,
     reverb_times: [f32; 3],
   }
 
-  /// A session over `mesh` with one looping tone, played until the simulation has heard the tone's way to the listener.
   fn hear_through(mesh: Option<AudioSceneMesh>, at: [f32; 3]) -> Heard {
     let mut session: OfflineSession =
       OfflineSession::with_acoustics(AudioEngineSettings::default(), RATE, checkout_acoustics());
@@ -335,7 +325,6 @@ mod steam {
     );
   }
 
-  /// Ground at `y`, 40 m across about the listener, facing up.
   fn ground(y: f32) -> AudioSceneMesh {
     let mut mesh: AudioSceneMesh = AudioSceneMesh {
       materials: vec![CONCRETE],
@@ -403,8 +392,6 @@ mod steam {
     );
   }
 
-  /// How a room `size` metres across rings after a tenth of a second's burst at two metres, once its reverb has been
-  /// simulated.
   fn ring(size: [f32; 3]) -> Ring {
     let absorbing: AudioMaterial = AudioMaterial {
       absorption: [0.3, 0.3, 0.3],
@@ -467,14 +454,11 @@ mod steam {
     );
   }
 
-  /// A stepped render, and how the scene played at its end.
   struct Stepped {
     heard: Vec<f32>,
     report: AudioSceneReport,
   }
 
-  /// Two seconds of placed tones moving around a listener walking through a room with a wall across it, the
-  /// simulation stepped inline: each sound's walls, both ears and, where the tones send it theirs, the reverb.
   fn hear_stepped(has_reverb: bool) -> Stepped {
     let mut mesh: AudioSceneMesh = room([12.0, 4.0, 12.0], CONCRETE);
     let across: AudioSceneMesh = wall(1.0, Some([-1.0, 1.0, -2.0, 2.0]), CONCRETE);
@@ -532,8 +516,8 @@ mod steam {
     Stepped { heard, report }
   }
 
-  /// Two renders a second apart, so Steam Audio, which seeds a simulator's rays by the wall clock's second as it is
-  /// made, traces other rays for the second's reverb.
+  // A second apart, so the second render's reverb traces other rays: Steam Audio seeds a simulator's rays by the wall
+  // clock's second as it is made.
   fn hear_stepped_twice(has_reverb: bool) -> [Stepped; 2] {
     let first: Stepped = hear_stepped(has_reverb);
 
@@ -542,8 +526,7 @@ mod steam {
     [first, hear_stepped(has_reverb)]
   }
 
-  // Two renders whose simulators are made within one second of the wall clock trace the same rays, so a stepped render
-  // repeats to the bit, the reverb included: what varies between runs is the second Steam Audio seeds its rays by.
+  // Simulators made within one wall-clock second trace the same rays, so the reverb repeats to the bit too.
   #[test]
   fn repeats_a_stepped_render_within_one_second() {
     let since_second: Duration = std::time::SystemTime::now()
@@ -569,7 +552,7 @@ mod steam {
     );
   }
 
-  // Stepped, the simulation hears each sound's walls from the same frames the same way, a second apart too.
+  // A second apart too: unlike the reverb, the walls do not depend on the seed.
   #[test]
   fn hears_the_walls_alike_with_the_simulation_stepped() {
     let walls = |stepped: &Stepped| -> Vec<(u64, u32, [u32; 3])> {
@@ -594,8 +577,7 @@ mod steam {
     assert_eq!(walls(&first), walls(&second));
   }
 
-  // A second apart the reverb's rays differ: each 120th of a second of the render stays 40 dB under its own level of the
-  // other run's.
+  // A second apart the reverb's rays differ, so each 120th of a second need only stay 40 dB under its own level.
   #[test]
   fn keeps_a_stepped_render_within_its_tolerance() {
     let [first, second] = hear_stepped_twice(true);
@@ -619,7 +601,6 @@ mod steam {
     );
   }
 
-  // Every reverb renders the same input the same, the first a thread makes too.
   #[test]
   fn renders_one_input_alike_through_every_reverb() {
     let acoustics: AudioAcoustics = checkout_acoustics();
@@ -642,8 +623,7 @@ mod steam {
     assert!(first.iter().zip(&second).all(|(a, b)| a.to_bits() == b.to_bits()));
   }
 
-  // A placed tone switching between the HRTF and panning every four blocks crosses between them over a block, so no
-  // step between two frames at a switch is much larger than the tone's own steps away from one.
+  // A step at a switch is measured against the tone's own steps away from one.
   #[test]
   fn crosses_between_the_hrtf_and_panning_without_a_step() {
     let acoustics: AudioAcoustics = checkout_acoustics();

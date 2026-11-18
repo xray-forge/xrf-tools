@@ -68,8 +68,8 @@ mod tests {
   use crate::data::alife::inherited::alife_object_trader_abstract::AlifeObjectTraderAbstract;
   use crate::data::alife::spawn_layout::SpawnLayout;
 
-  /// Shaped like the version 128 traders in the Call of Chernobyl and Anomaly spawns, whose rank and
-  /// reputation are stored with the high bit set.
+  // Like the version 128 traders of the Call of Chernobyl and Anomaly spawns: rank and reputation have the high bit
+  // set.
   fn new_mock() -> AlifeObjectTrader {
     AlifeObjectTrader {
       base: AlifeObjectDynamicVisual {

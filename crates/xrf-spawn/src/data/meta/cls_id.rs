@@ -230,9 +230,8 @@ impl ClsId {
     }
   }
 
-  /// The class a section's `class` key names, as the configs spell it: each class by its own name
-  /// ([`Self::get_class_name`]), and the engine, multiplayer and Clear Sky spellings the section table reads as the
-  /// class of the same payload. None for a class no spawned object is read as.
+  /// The class a `class` key names: each class by its own name ([`Self::get_class_name`]), plus the engine, multiplayer
+  /// and Clear Sky spellings of the class with the same payload. `None` for a class no spawned object is read as.
   pub fn from_class_name(class: &str) -> Option<Self> {
     let class: &str = match class.trim() {
       "AMMO" => "AMMO_S",
@@ -286,8 +285,8 @@ impl ClsId {
     })
   }
 
-  /// The class a section declares in the game whose scripts the object follows: Clear Sky's configs declare a few
-  /// otherwise, and some only there (`CLEAR_SKY_SECTION_TO_CLS_ID`).
+  /// The class a section declares under `dialect`: Clear Sky's configs declare a few otherwise, and some only there
+  /// (`CLEAR_SKY_SECTION_TO_CLS_ID`).
   pub fn from_dialect_section(section_name: &str, dialect: ScriptDialect) -> XrfResult<Self> {
     match dialect {
       ScriptDialect::ClearSky => match CLEAR_SKY_SECTION_TO_CLS_ID.get(section_name) {
@@ -312,7 +311,7 @@ mod tests {
     assert_eq!(ClsId::from_class_name("Z_ZONE"), None);
   }
 
-  /// Every class reads back from its own name, so a class added without one cannot be missed by the configs.
+  // A class added without a name would go unread from the configs.
   #[test]
   fn reads_every_class_by_its_own_name() {
     for cls_id in ClsId::all() {
@@ -324,7 +323,6 @@ mod tests {
     }
   }
 
-  /// An engine or multiplayer spelling reads as the class of the same payload the section table gives its sections.
   #[test]
   fn reads_an_engine_spelling_as_its_class() {
     assert_eq!(ClsId::from_class_name("W_AK74"), Some(ClsId::WpAk74));
@@ -337,7 +335,6 @@ mod tests {
     assert_eq!(ClsId::from_section("actor").unwrap(), ClsId::SActor);
   }
 
-  /// Clear Sky's faction is its own class, where Call of Pripyat's section is a space restrictor.
   #[test]
   fn maps_a_section_by_the_dialect_that_declares_it() {
     assert_eq!(

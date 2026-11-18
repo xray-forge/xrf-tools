@@ -11,10 +11,9 @@ use crate::data::alife::spawn_layout::SpawnLayout;
 use crate::data::generic::script_absent_state::ScriptAbsentState;
 use crate::data::generic::script_save_marker::ScriptSaveMarker;
 
-/// A smart terrain as Clear Sky's `se_smart_terrain` saves one (`gamedata-cs/scripts/smart_terrain.script`): the smart
-/// zone's spawn fields, then, closed by a save marker, its combat manager and the stalkers' jobs and the jobs' death
-/// times. The jobs and death times are records only a running simulation fills; a spawn holds none, so their counts are
-/// read as empty and any other value is refused rather than read.
+/// A smart terrain as Clear Sky's `se_smart_terrain` saves one (`smart_terrain.script`): the smart zone's spawn fields,
+/// then, under a save marker, its combat manager, the stalkers' jobs and the jobs' death times. A spawn holds no jobs
+/// or death times, so their counts are read as empty and any other value is refused.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -134,7 +133,7 @@ mod tests {
     }
   }
 
-  /// The terrain's own fields: the combat manager, two empty counts and the marker counting all of them.
+  // The terrain's own fields: the combat manager, two empty counts and the marker counting all of them.
   #[test]
   fn writes_the_tail_closed_by_its_marker() -> XrfResult {
     let original: AlifeClearSkySmartTerrain = new_terrain();
@@ -155,7 +154,7 @@ mod tests {
     Ok(())
   }
 
-  /// A stalker holding a job would be followed by its record, which is not read.
+  // A stalker holding a job would be followed by its record, which is not read.
   #[test]
   fn refuses_stalkers_holding_jobs() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();

@@ -9,14 +9,13 @@ use xrf_utils::vector_to_string;
 use crate::constants::NIL;
 use crate::data::physics::raw_float::RawFloat;
 
-/// The physics state an inventory item and a physic object carry in their update packets, `SPHNetState` behind the
-/// byte `CSE_ALifeInventoryItem::UPDATE_Write` and `CSE_ALifeObjectPhysic::UPDATE_Write` open it with.
+/// The physics state, `SPHNetState`, an inventory item's and a physic object's update packets carry behind an opening
+/// byte (`CSE_ALifeInventoryItem::UPDATE_Write`, `CSE_ALifeObjectPhysic::UPDATE_Write`).
 ///
-/// That byte packs the item count into its low five bits and, above them, a mask: whether the body is enabled, and
-/// whether each velocity is left out as zero. A zero byte is a state that is not there at all, so an object without one
-/// is `None` beside its other update fields rather than a state with dead fields; but for a physic object's state,
-/// which closes its packet, a zero byte with bytes behind it is a state packed to zero (`PhysicsClosingState`). The
-/// SDK writes some states without initialising them, so each float keeps the bits it is stored in.
+/// That byte packs the item count into its low five bits and a mask above them: whether the body is enabled, and
+/// whether each velocity is left out as zero. A zero byte means no state, so an object without one holds `None`; a
+/// physic object's closing state differs (`PhysicsClosingState`). The SDK writes some states uninitialised, so each
+/// float keeps its stored bits.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -34,8 +33,8 @@ pub struct PhysicsNetState {
   pub angular_velocity: Option<[RawFloat; 3]>,
   /// `None` where the mask leaves the linear velocity out as zero.
   pub linear_velocity: Option<[RawFloat; 3]>,
-  /// The byte closing the state: zero freezes the object and anything else leaves it awake. `None` where the packet
-  /// ends before it, which the engine reads as awake (`r_eof`), and which writes back without it.
+  /// The closing byte: zero freezes the object, anything else leaves it awake. `None` where the packet ends before it,
+  /// which the engine reads as awake (`r_eof`) and which writes back without it.
   pub awake: Option<u8>,
 }
 
@@ -63,8 +62,7 @@ impl PhysicsNetState {
     self.position = [position.x, position.y, position.z].map(RawFloat::from);
   }
 
-  /// The byte opening the state: its item count, and the mask of what follows. A byte packing to zero would read
-  /// back as no state at all.
+  /// The opening byte, refused where it packs to zero, which reads back as no state.
   fn get_packed(&self) -> XrfResult<u8> {
     let packed: u8 = self.pack()?;
 
@@ -103,7 +101,7 @@ impl PhysicsNetState {
     Ok(packed)
   }
 
-  /// The state behind its opening byte `packed`, its closing byte `None` where the packet ends before it.
+  /// The state behind its opening byte `packed`; its closing byte is `None` where the packet ends first.
   pub(crate) fn read_after<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R, packed: u8) -> XrfResult<Self> {
     Ok(Self {
       item_count: packed & Self::MAX_ITEM_COUNT,
@@ -130,7 +128,7 @@ impl PhysicsNetState {
     })
   }
 
-  /// The state behind its opening byte `packed`, as it was read.
+  /// Writes the opening byte `packed` and the state behind it, as read.
   pub(crate) fn write_after<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W, packed: u8) -> XrfResult {
     writer.write_u8(packed)?;
 
@@ -167,8 +165,7 @@ impl ChunkFieldReadWriteOptional for PhysicsNetState {
     Self::read_after::<T, _>(reader, packed).map(Some)
   }
 
-  /// Refuses a count past [`Self::MAX_ITEM_COUNT`], and a state that would pack into the zero byte, which reads back
-  /// as no state at all.
+  /// Refuses a count past [`Self::MAX_ITEM_COUNT`], and a state packing into the zero byte of no state.
   fn write_field_optional<T: ByteOrder, W: ChunkFieldWriter>(writer: &mut W, state: Option<&Self>) -> XrfResult {
     match state {
       Some(state) => state.write_after::<T, _>(writer, state.get_packed()?),
@@ -295,7 +292,7 @@ mod tests {
     Ok((writer.buffer.len(), read))
   }
 
-  /// The byte, three vectors, a quaternion and the closing byte: the 54-byte update most placed items carry.
+  // The 54-byte update most placed items carry.
   #[test]
   fn reads_and_writes_a_state_without_velocities() -> XrfResult {
     let state: PhysicsNetState = PhysicsNetState::new_mock(Vector3d::new(1.0, 2.0, 3.0));
@@ -305,7 +302,6 @@ mod tests {
     Ok(())
   }
 
-  /// The mask decides which velocities follow, so each one present adds its three floats.
   #[test]
   fn reads_and_writes_the_velocities_the_mask_keeps() -> XrfResult {
     let mut state: PhysicsNetState = PhysicsNetState::new_mock(Vector3d::new(1.0, 2.0, 3.0));
@@ -322,7 +318,7 @@ mod tests {
     Ok(())
   }
 
-  /// A vanilla spawn holds states the SDK never initialised, every float of them `0xffffffff`.
+  // Vanilla spawns hold states the SDK never initialised, their floats `0xffffffff`.
   #[test]
   fn keeps_the_bits_of_an_uninitialised_state() -> XrfResult {
     let mut state: PhysicsNetState = PhysicsNetState::new_mock(Vector3d::ZERO);
@@ -364,7 +360,7 @@ mod tests {
     Ok(())
   }
 
-  /// A count of zero beside mask bits is not the zero byte, so the state still follows it.
+  // The mask bits keep a zero count off the zero byte.
   #[test]
   fn reads_a_state_counting_no_items() -> XrfResult {
     let mut state: PhysicsNetState = PhysicsNetState::new_mock(Vector3d::ZERO);
@@ -403,7 +399,7 @@ mod tests {
     assert!(error.contains("item count 32 does not fit"), "{error}");
   }
 
-  /// `UPDATE_Read` takes a state ending its packet before the closing byte as awake; it writes back as short.
+  // `UPDATE_Read` takes such a state as awake.
   #[test]
   fn keeps_a_state_ending_its_packet_before_the_closing_byte() -> XrfResult {
     let mut state: PhysicsNetState = PhysicsNetState::new_mock(Vector3d::new(4.0, 5.0, 6.0));

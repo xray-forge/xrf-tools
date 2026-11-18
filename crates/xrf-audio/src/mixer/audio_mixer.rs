@@ -122,8 +122,8 @@ impl AudioMixer {
     self.output_rate
   }
 
-  /// Renders at `rate` from the next buffer on; the device sets it to the rate it opened with, before it plays, which
-  /// is when the reverb is made again for a new rate, and a tap's stream ends.
+  /// Renders at `rate` from the next buffer on, as the device sets before it plays. A new rate remakes the reverb and
+  /// ends a tap's stream.
   pub fn set_output_rate(&mut self, rate: u32) {
     let rate: u32 = rate.max(1);
 

@@ -7,9 +7,9 @@ use xrf_ltx::{LtxSectionRead, LtxSectionWrite, LtxWrite};
 use crate::data::generic::script_absent_state::ScriptAbsentState;
 use crate::data::generic::script_save_marker::ScriptSaveMarker;
 
-/// An id generator of Clear Sky's scripts, `object_collection:save` (`gamedata-cs/scripts/object_collection.script`):
-/// how many ids are given and the last one, then the freed and the given ids, closed by a save marker. A spawn holds a
-/// generator that gave none, so the two id lists are read as empty and any other count is refused rather than read.
+/// An id generator of Clear Sky's scripts, `object_collection:save` (`object_collection.script`): the id count and the
+/// last id, then the freed and the given ids, under a save marker. A spawn holds a generator that gave none, so both
+/// lists are read as empty and any other count is refused.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -91,7 +91,7 @@ mod tests {
     Ok(())
   }
 
-  /// A given id would be followed by the list holding it, which is not read.
+  // A given id would be followed by the list holding it, which is not read.
   #[test]
   fn refuses_given_ids() -> XrfResult {
     let error: String = ClearSkyObjectCollection::read::<XRayByteOrder, _>(

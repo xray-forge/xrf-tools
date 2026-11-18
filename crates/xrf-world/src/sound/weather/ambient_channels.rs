@@ -20,10 +20,9 @@ const SEED: u64 = 0xC4A7_7E15;
 /// Metres above the camera a channel's sound plays.
 const HEIGHT: f32 = 10.0;
 
-/// The weather ambient's sound channels as `CGamePersistent::WeathersUpdate` plays them, indoors too: each channel,
-/// by its place in the ambient's list, first waits a drawn time, then plays one of its sounds at random around the
-/// camera, a drawn distance out on the level and ten metres up, and waits the sound's length and a drawn pause before
-/// the next. The ambient is drawn each update between the two keyframes' by how far the weather stands between them.
+/// The weather ambient's sound channels as `CGamePersistent::WeathersUpdate` plays them, indoors too: each channel
+/// plays a random sound of its own around the camera, as `WorldSoundChannel` times and places it. Each update draws
+/// the ambient between the two keyframes' by how far the weather stands between them.
 pub(crate) struct AmbientChannels {
   /// `ambient_sound_next_time`, by the channel's place, which an ambient taking over keeps.
   next: Vec<Option<Duration>>,

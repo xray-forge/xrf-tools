@@ -8,9 +8,9 @@ use crate::decode::sound_format::SoundFormat;
 use crate::decode::stream::stream_pump_state::StreamPumpState;
 use crate::decode::stream::stream_shared::StreamShared;
 
-/// A stream's decoding: it opens the sound and seeks on its first fill, then decodes ahead into the ring its voice
-/// reads until the ring is full, the sound ends without looping, or the decoder fails. A stream's own thread runs it;
-/// an offline session runs it inline before each block, so a render with streams comes out the same every time.
+/// A stream's decoding: it opens and seeks on its first fill, then decodes ahead into its voice's ring until the ring
+/// is full, the sound ends without looping, or the decoder fails. An offline session runs it inline before each block
+/// rather than on the stream's thread, so a render with streams repeats exactly.
 pub struct StreamPump {
   opening: Option<StreamOpening>,
   decoder: Option<SoundDecoder>,

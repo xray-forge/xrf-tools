@@ -21,9 +21,11 @@ use crate::scene::render::bank::sound_bank::SoundBank;
 use crate::scene::render::stream_launcher::StreamLauncher;
 use crate::scene::report::audio_scene_report::AudioSceneReport;
 
-/// The audio's whole runtime without a device or a thread, on a clock of the frames it renders: the control side ticks
-/// every `Self::TICK` of them however the renders are cut, sounds are read and streams decode before each tick, so a
-/// render with scenes and streams comes out the same every time. What tests and captures play scenes through.
+/// The audio's whole runtime with no device or thread, clocked by the frames it renders: what tests and captures play
+/// scenes through.
+///
+/// The control side ticks every 10 ms of frames however the renders are cut, sounds read and streams decoded before
+/// each tick, so a render with scenes and streams comes out the same every time.
 pub struct OfflineSession {
   control: AudioControl,
   render: OfflineRender,
@@ -52,9 +54,8 @@ impl OfflineSession {
     Self::open(settings, output_rate, acoustics, SimulationPace::RealTime)
   }
 
-  /// A session whose placed voices are heard through `acoustics`, its scenes' simulations run inline as it ticks, at
-  /// the cadence they run at live but on the session's clock, so what they hear depends on the frames sent alone. A
-  /// scene's walls are built as it opens.
+  /// A session whose placed voices are heard through `acoustics`, simulated inline at their live cadence on the
+  /// session's clock, so what they hear depends on the frames sent alone. A scene's walls are built as it opens.
   pub fn with_stepped_acoustics(settings: AudioEngineSettings, output_rate: u32, acoustics: AudioAcoustics) -> Self {
     Self::open(settings, output_rate, acoustics, SimulationPace::Stepped)
   }
@@ -84,8 +85,7 @@ impl OfflineSession {
     }
   }
 
-  /// Opens a scene played from the frames sent through the inbox answered, its sounds read through `assets`, its walls
-  /// and rooms from `geometry` where there is one.
+  /// Opens a scene fed through the returned inbox, its sounds read through `assets` and its walls from `geometry`.
   pub fn open_scene(
     &mut self,
     assets: Arc<dyn AudioAssetSource>,
@@ -112,8 +112,8 @@ impl OfflineSession {
     self.render.get_output_rate()
   }
 
-  /// Frames a scene's frame is sent ahead of its time for every sound it starts to land on its frame: a tick and the
-  /// block its commands land in.
+  /// How many frames ahead of its time a scene's frame is sent for each sound it starts to land on its frame: a tick
+  /// and a mixer block.
   pub fn get_lead_frames(&self) -> u64 {
     (self.tick_frames + AudioMixer::BLOCK_FRAMES) as u64
   }
@@ -126,8 +126,7 @@ impl OfflineSession {
     out
   }
 
-  /// Fills `out` with the next stereo frames, interleaved: the control side ticks every `Self::TICK` of the
-  /// session's frames, the streams filling before each, wherever a render begins or ends.
+  /// Fills `out` with the next stereo frames, interleaved, ticking the control side on the session's clock.
   pub fn render_into(&mut self, out: &mut [f32]) {
     let mut written: usize = 0;
     let frames: usize = out.len() / 2;

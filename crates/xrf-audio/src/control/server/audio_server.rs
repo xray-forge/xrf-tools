@@ -30,10 +30,11 @@ use crate::scene::host::audio_asset_source::AudioAssetSource;
 use crate::scene::host::audio_scene_geometry::AudioSceneGeometry;
 use crate::scene::report::audio_scene_report::AudioSceneReport;
 
-/// The audio's control tier: a thread of its own owns the [`AudioEngine`] and every transport, takes requests from any
-/// thread, and tells its host what changed through an [`AudioEventSink`]. A clone is a handle on the same thread; the
-/// thread ends when the last handle goes or [`Self::shut_down`] runs. The sink must hold no handle, or the thread would
-/// keep itself alive.
+/// The audio's control tier: a thread owning the [`AudioEngine`] and every transport, taking requests from any thread
+/// and reporting changes through an [`AudioEventSink`].
+///
+/// A clone is a handle on the same thread, which ends when the last handle goes or [`Self::shut_down`] runs. The sink
+/// must hold no handle, or the thread keeps itself alive.
 #[derive(Clone)]
 pub struct AudioServer {
   shared: Arc<ServerShared>,

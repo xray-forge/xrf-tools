@@ -28,8 +28,6 @@ fn list_drivers(world: &mut World) -> HashMap<RenderSceneId, Option<RenderViewpo
     .collect()
 }
 
-// A recording pins its viewport as the one heard: the focus moving to another window's pane leaves it heard, and once
-// it is let go the pane last named is heard.
 #[test]
 fn hears_the_pinned_viewport_whatever_takes_the_focus_until_let_go() {
   let mut world: World = World::new(create_workers());
@@ -47,7 +45,6 @@ fn hears_the_pinned_viewport_whatever_takes_the_focus_until_let_go() {
 
   assert_eq!(world.get_listener(), Some(other));
 
-  // A pinned viewport detached is heard no more.
   world.pin_listener(Some(recorded));
   world.detach(recorded);
 

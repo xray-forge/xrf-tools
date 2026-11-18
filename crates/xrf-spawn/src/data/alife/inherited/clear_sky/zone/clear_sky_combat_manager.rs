@@ -10,11 +10,10 @@ use crate::data::generic::script_save_marker::ScriptSaveMarker;
 use crate::data::generic::script_to_string::ScriptToString;
 
 /// The combat state a Clear Sky smart terrain saves, `CCombat_manager:save` with its `CCover_manager:save`
-/// (`gamedata-cs/scripts/sim_combat.script`, `cover_manager.script`), each closed by its own save marker.
+/// (`sim_combat.script`, `cover_manager.script`), each under its own save marker.
 ///
-/// The squads in combat, the squads forced online, the cover table and the time the actor was last seen are records
-/// only a running simulation fills; a spawn holds none of them, so their counts and flags are read as empty and any
-/// other value is refused rather than read.
+/// A running simulation fills the squads in combat or forced online, the cover table and the time the actor was last
+/// seen; a spawn holds none, so their counts and flags are read as empty and any other value is refused.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -143,8 +142,8 @@ mod tests {
 
   use crate::data::alife::inherited::clear_sky::zone::clear_sky_combat_manager::ClearSkyCombatManager;
 
-  /// The constructor's state, as every Clear Sky level's smart terrain saves it: the cover manager's two bytes and its
-  /// marker sit inside the combat manager's, which counts them.
+  // The constructor's state every Clear Sky smart terrain saves: the cover manager's two bytes and marker sit inside
+  // the combat manager's, which counts them.
   const CONSTRUCTED: &[u8] = b"\0nil\0\xff\xffnil\0\0\0\0\0\0\0\x02\0\x13\0";
 
   #[test]
@@ -166,7 +165,7 @@ mod tests {
     Ok(())
   }
 
-  /// A squad in combat would be followed by its record, which is not read.
+  // A squad in combat would be followed by its record, which is not read.
   #[test]
   fn refuses_squads_in_combat() -> XrfResult {
     let mut bytes: Vec<u8> = CONSTRUCTED.to_vec();

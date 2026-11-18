@@ -23,7 +23,7 @@ pub struct Time {
 }
 
 impl ChunkFieldReadWriteOptional for Time {
-  /// A flag of 1 ahead of the time, or of 0 for none; any other flag is refused, as it would not write back.
+  /// A flag of 1 ahead of the time, or 0 for none; any other flag is refused, as it would not write back.
   fn read_field_optional<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Option<Self>> {
     match reader.read_u8()? {
       0 => Ok(None),
@@ -152,11 +152,7 @@ mod tests {
 
   use crate::data::generic::time::Time;
 
-  /// Reads a chunked value from bytes rather than from a file.
-  ///
-  /// This is what an archived asset requires: a `.db` volume entry has no file to slice, so its decompressed bytes are the
-  /// only way in. Until `ChunkReadWrite` became generic over `ChunkDataSource` this could not compile at all, which is why
-  /// nothing had ever read a chunked format out of an archive.
+  // An archive entry has no file to slice, only its decompressed bytes.
   #[test]
   fn reads_from_bytes_as_well_as_from_a_file() -> XrfResult {
     let original: Time = Time {

@@ -4,9 +4,8 @@ use xrf_audio_scene::AudioSceneEmitter;
 
 use crate::contract::sound::world_sound_kind::WorldSoundKind;
 
-/// One sound a scene plays, as the world schedules it: the emitter its frames hand the audio, what kind of sound it is
-/// and the level object it plays at, and when it plays out. Its place in the sound follows from the clock, never from
-/// what was heard.
+/// One sound a scene plays, as the world schedules it. Whether it still plays follows from the clock, never from what
+/// was heard.
 #[derive(Clone, Debug)]
 pub(crate) struct LiveEmitter {
   pub(crate) emitter: AudioSceneEmitter,

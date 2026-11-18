@@ -1,4 +1,4 @@
-//! The rain's loop, `CEffect_Rain::OnFrame`: when it starts and stops, and how loud, per engine.
+// The rain's loop against `CEffect_Rain::OnFrame`.
 
 use std::time::Duration;
 
@@ -11,7 +11,7 @@ use crate::sound::weather::rain_frame::RainFrame;
 use crate::sound::weather::rain_sound::RainSound;
 use crate::tests::sound::found;
 
-/// The loop after a second of frames at `frame`, its hemi eased all the way.
+// Ten seconds of frames, long enough for the hemi to ease all the way.
 fn rain(engine: XrayEngine, frame: RainFrame) -> Option<AudioSceneEmitter> {
   let sound: WorldSound = found("ambient\\rain", 30);
   let mut rain: RainSound = RainSound::default();

@@ -44,8 +44,7 @@ impl OrbitDrag {
   }
 }
 
-/// A camera orbiting a target: the main button turns it around the target, the others pan, and the wheel dollies; with
-/// Alt, the main button turns, the secondary dollies and the auxiliary pans.
+/// A camera orbiting a target, its drags mapped by `OrbitDrag`; the wheel dollies.
 #[derive(Clone, Debug)]
 pub(crate) struct OrbitCameraController {
   description: WorldCamera,

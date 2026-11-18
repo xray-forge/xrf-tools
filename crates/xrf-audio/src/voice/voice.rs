@@ -11,13 +11,11 @@ use crate::voice::shared::voice_spatial_parameters::VoiceSpatialParameters;
 use crate::voice::voice_source::VoiceSource;
 use crate::voice::voice_spatial::VoiceSpatial;
 
-/// A sound playing on the audio thread. Built on the control thread and boxed there, so the audio thread only moves it
-/// in and out of its slot and frees nothing.
+/// A sound playing on the audio thread, built and boxed on the control thread so the audio thread frees nothing.
 ///
-/// Each block it renders its source, resampled, into a block of the source's own channels, then writes that block to
-/// its bus: what the sound is and where it is heard stay apart, so what shapes the second leaves the first alone. A
-/// voice the acoustics place takes the second step through their effects and sends the listener's reverb its share; a
-/// dry one takes its two pan gains. A voice whose gain has settled at silence only moves on through its source.
+/// Each block renders its source, resampled, in the source's own channels, then writes that to its bus: through the
+/// acoustics' effects, with a share to the listener's reverb, for a placed voice, or by its two pan gains for a dry
+/// one. A voice settled at silence only moves on through its source.
 #[derive(Debug)]
 pub(crate) struct Voice {
   pub(crate) id: AudioVoiceId,
@@ -79,9 +77,8 @@ impl Voice {
     Self { at, ..self }
   }
 
-  /// Lines the voice up with the mixer's clock as the mixer takes it up for the block starting at mixer frame `block`
-  /// at `output_rate`: a start still ahead waits that many frames as silence; one already past moves on through its
-  /// source as far as it would have played, so it plays where its clock says rather than late.
+  /// Lines the voice up with the mixer's clock as the mixer takes it up for the block at mixer frame `block`: a start
+  /// still ahead waits as silence, and one already past skips through its source so it plays where its clock says.
   pub(crate) fn take_up(&mut self, block: u64, output_rate: u32) {
     let Some(at) = self.at.take() else {
       return;
@@ -148,10 +145,9 @@ impl Voice {
     self.fade.set_target(0.0, frames);
   }
 
-  /// Adds the voice's next frames to the stereo pairs of `out` at `output_rate`, and what it sends the listener's
-  /// reverb to `reverb`, one sample a frame, rendering its source into `block`, scratch of at least two samples a frame.
-  /// A placed voice takes whole mixer blocks. Frames before a start still ahead are silence. Answers `false` once it
-  /// has played out or faded out after a stop, when the mixer retires it.
+  /// Adds the voice's next frames to the stereo pairs of `out` at `output_rate`, and its reverb share to `reverb`, one
+  /// sample a frame, rendering its source into `block`, scratch of at least two samples a frame. A placed voice takes
+  /// whole mixer blocks. Answers `false` once it has played out or faded out after a stop, when the mixer retires it.
   pub(crate) fn mix(&mut self, out: &mut [f32], reverb: &mut [f32], block: &mut [f32], output_rate: u32) -> bool {
     if self.motion == VoiceMotion::Paused {
       return true;

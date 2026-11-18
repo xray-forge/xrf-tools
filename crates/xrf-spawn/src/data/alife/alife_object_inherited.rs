@@ -117,9 +117,8 @@ pub enum AlifeObjectInherited {
 }
 
 impl AlifeObjectInherited {
-  /// Read the payload of `alife_class` from both packets, laid out as `layout`: each class's `STATE_Read` from the
-  /// spawn packet, script fields included, and its `UPDATE_Read` from the update packet, which a class without update
-  /// fields leaves empty.
+  /// Reads the payload of `alife_class` at `layout`: each class's `STATE_Read` from the spawn packet, script fields
+  /// included, and its `UPDATE_Read` from the update packet, empty for a class without update fields.
   pub(crate) fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
     spawn: &mut S,
     update: &mut U,
@@ -407,9 +406,8 @@ impl AlifeObjectInherited {
     }
   }
 
-  /// The payload's fields of those xrAI fills in when it builds a root spawn, `spawn_id` aside: the game and level
-  /// vertices and the distance to the game vertex, a level changer's destination, an anomalous zone's artefact spawn
-  /// offset.
+  /// The payload's fields xrAI fills in when it builds a root spawn, `spawn_id` aside: game and level vertices, the
+  /// distance to the game vertex, a level changer's destination, an anomalous zone's artefact spawn offset.
   pub(crate) fn get_built_fields(&self, spawn_id: u16) -> AlifeBuiltFields {
     let base: Option<&AlifeObjectAbstract> = self.get_abstract();
 
@@ -456,9 +454,8 @@ impl AlifeObjectInherited {
     }
   }
 
-  /// The volume the object encloses, for a class whose `shape()` returns it to the Level Editor: space restrictors
-  /// with every class built on them (zones, smart terrains, level changers), climbable objects and smart covers. A
-  /// breakable object keeps its shape in its visual and has none here.
+  /// The volume the object encloses, for a class whose `shape()` gives it to the Level Editor: space restrictors and
+  /// the classes built on them, climbable objects and smart covers. A breakable object keeps its shape in its visual.
   pub fn get_shapes(&self) -> Option<&[Shape]> {
     match self {
       Self::CseAlifeSpaceRestrictor(object) => Some(&object.shape),
@@ -962,10 +959,9 @@ mod tests {
   use crate::data::alife::spawn_layout::SpawnLayout;
   use crate::fixtures::GameWrittenPackets;
 
-  /// The layout of the packets an XRF game writes, Call of Pripyat's.
+  // An XRF game writes Call of Pripyat's layout.
   const LAYOUT: SpawnLayout = SpawnLayout::CALL_OF_PRIPYAT;
 
-  /// What the game writes for a new object of each class reads whole as that class and writes back byte for byte.
   #[test]
   fn reads_and_writes_what_the_game_writes_for_each_class() -> XrfResult {
     for (section, class, spawn, update) in GameWrittenPackets::CLASSES {

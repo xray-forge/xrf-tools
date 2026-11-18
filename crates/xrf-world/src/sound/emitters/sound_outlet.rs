@@ -9,8 +9,8 @@ use crate::host::sound::sink::world_sound_sink::WorldSoundSink;
 /// rate gains nothing.
 const INTERVAL: Duration = Duration::from_nanos(1_000_000_000 / 60);
 
-/// Where a scene's sound frames leave the world: its sink, and the frames it handed back, filled again rather than
-/// allocated, at most every [`INTERVAL`] of the level's clock.
+/// Where a scene's sound frames leave the world for its sink, at most every [`INTERVAL`] of the level's clock, reusing
+/// the frames the sink hands back.
 pub(crate) struct SoundOutlet {
   sink: Box<dyn WorldSoundSink>,
   /// Frames to fill before the sink has handed any back.

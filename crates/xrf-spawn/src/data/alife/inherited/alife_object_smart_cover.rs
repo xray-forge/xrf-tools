@@ -10,7 +10,7 @@ use crate::data::alife::spawn_layout::SpawnLayout;
 use crate::data::generic::shape::Shape;
 
 /// `CSE_SmartCover`'s own fields. Below spawn version 128 the packet has no `can_fire`, which the engine then sets to
-/// the combat cover flag (`xrServer_Objects_Alife_Smartcovers.cpp:110`).
+/// the combat cover flag.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -187,7 +187,6 @@ mod tests {
     }
   }
 
-  /// The bytes written at `layout`, and the cover read back from them whole.
   fn read_back(cover: &AlifeObjectSmartCover, layout: SpawnLayout) -> XrfResult<(usize, AlifeObjectSmartCover)> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
@@ -215,7 +214,7 @@ mod tests {
     Ok(())
   }
 
-  /// Below version 128 the engine copies the combat cover flag into `can_fire`, so reading holds it there.
+  // Below version 128 the engine copies the combat cover flag into `can_fire`.
   #[test]
   fn reads_can_fire_as_the_combat_cover_flag_below_version_128() -> XrfResult {
     let cover: AlifeObjectSmartCover = AlifeObjectSmartCover {
@@ -255,7 +254,7 @@ mod tests {
     );
   }
 
-  /// The lowest accepted version, 122, already stores the combat cover flag.
+  // The lowest accepted version, 122, already stores the combat cover flag.
   #[test]
   fn reads_and_writes_the_combat_cover_flag_at_version_122() -> XrfResult {
     let cover: AlifeObjectSmartCover = new_smart_cover();
@@ -265,7 +264,6 @@ mod tests {
     Ok(())
   }
 
-  /// Text at a layout without `can_fire` leaves its key out and imports it as the combat cover flag.
   #[test]
   fn exports_and_imports_without_can_fire_below_version_128() -> XrfResult {
     let cover: AlifeObjectSmartCover = new_smart_cover();

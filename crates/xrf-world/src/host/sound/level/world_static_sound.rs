@@ -1,7 +1,7 @@
 use crate::host::sound::world_sound::WorldSound;
 
-/// One of a level's static sounds, `SStaticSound` (`level.snd_static`): where it stands in engine space, how loud and
-/// how fast it plays, and its windows in milliseconds, each `[from, to]`, both nought for none.
+/// One of a level's static sounds, `SStaticSound` (`level.snd_static`), in engine space. Its windows are
+/// `[from, to]` milliseconds, both nought for none.
 #[derive(Clone, Debug, PartialEq)]
 pub struct WorldStaticSound {
   pub sound: WorldSound,

@@ -334,7 +334,7 @@ mod tests {
     Ok(())
   }
 
-  /// The engine adds a link's edge by looking both points up, so a link past the last point is not written.
+  // The engine looks both points of a link up to add its edge.
   #[test]
   fn refuses_to_write_a_link_to_a_point_it_does_not_hold() {
     let patrol: Patrol = Patrol {
@@ -437,8 +437,7 @@ mod tests {
     Ok(())
   }
 
-  /// Anomaly ships patrol points whose names carry trailing whitespace. Ltx trims values, so the name survives only
-  /// in the section it was exported under, and importing has to take it from there or the repack loses those bytes.
+  // Anomaly ships point names with trailing whitespace, which ltx values trim: only the section name keeps it.
   #[test]
   fn test_import_export_preserves_padded_point_names() -> XrfResult {
     let original: Patrol = Patrol {

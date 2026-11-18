@@ -23,7 +23,7 @@ impl LevelSpawnFile {
   /// The file's name in a level's directory.
   pub const FILE_NAME: &'static str = "level.spawn";
 
-  /// The one file of the list's unpacked folder, which holds every object in the list's order.
+  /// The list's one unpacked file, holding every object in list order.
   pub const UNPACKED_FILE_NAME: &'static str = "level_spawns.ltx";
 
   /// Reads a level spawn list from a path.
@@ -62,14 +62,13 @@ impl LevelSpawnFile {
   ///
   /// # Errors
   ///
-  /// Returns an error when a chunk does not open with a spawn packet, which is what tells this format from the set
-  /// that shares its extension.
+  /// Returns an error when a chunk does not open with a spawn packet.
   pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Self::read_from_chunks::<T, D>(reader.read_children()?)
   }
 
-  /// Reads from a file's top-level chunks already walked, which is how a caller that first asked
-  /// [`SpawnFileKind`](crate::SpawnFileKind) avoids walking them again.
+  /// Reads from top-level chunks already walked, as for a caller that first asked
+  /// [`SpawnFileKind`](crate::SpawnFileKind).
   ///
   /// # Errors
   ///
@@ -102,8 +101,8 @@ impl LevelSpawnFile {
     Ok(())
   }
 
-  /// Writes the list to `path`, making the directories above it: encoded whole first and staged beside it, so a
-  /// failure leaves whatever was there before.
+  /// Writes the list to `path`, creating its directories. It is staged beside the target, so a failure leaves the
+  /// previous file.
   ///
   /// # Errors
   ///
@@ -134,8 +133,8 @@ impl LevelSpawnFile {
     Ok(Self { objects })
   }
 
-  /// Exports the list into the folder `path` as one record per object, named by its place in the list
-  /// (`LevelSpawnObject::export_record`), answering how many were written typed and how many verbatim.
+  /// Exports the list into the folder `path`, one record per object named by its place in the list
+  /// (`LevelSpawnObject::export_record`), and answers how many were written typed and verbatim.
   ///
   /// # Errors
   ///
@@ -183,7 +182,6 @@ mod tests {
   use crate::level::level_spawn_object::LevelSpawnObject;
   use crate::level::level_spawn_verbatim_group::LevelSpawnVerbatimGroup;
 
-  /// The bytes the list packs into.
   fn packed(list: &LevelSpawnFile) -> XrfResult<Vec<u8>> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
@@ -192,7 +190,6 @@ mod tests {
     writer.flush_raw_into_buffer()
   }
 
-  /// The list unpacked into a folder of its own and imported back, with what the unpack wrote and the text it wrote.
   fn unpack_and_import(list: &LevelSpawnFile, folder: &str) -> XrfResult<(LevelSpawnFile, LevelSpawnExport, String)> {
     let path: PathBuf = GeneratedResources::create_dir(folder)?;
     let export: LevelSpawnExport = list.export_to_path::<XRayByteOrder, _>(&path)?;
@@ -202,8 +199,7 @@ mod tests {
     Ok((imported, export, text))
   }
 
-  /// Typed objects of both games unpack with the keys a root spawn's ALife objects use, no more, and pack back into the
-  /// bytes they were read from.
+  // Typed records carry a root spawn's ALife object keys and nothing more.
   #[test]
   fn unpacks_typed_objects_and_packs_them_back_byte_for_byte() -> XrfResult {
     let list: LevelSpawnFile = LevelSpawnFile {
@@ -232,8 +228,7 @@ mod tests {
     Ok(())
   }
 
-  /// An object the typed read refuses is written as its head, its payload and the reason, which names no object, so
-  /// objects refused alike count as one reason; it packs back from the payload as written.
+  // The reason names no object, so objects refused alike share one group.
   #[test]
   fn unpacks_an_object_the_typed_read_refuses_verbatim_with_its_reason() -> XrfResult {
     let list: LevelSpawnFile = LevelSpawnFile {
@@ -272,7 +267,6 @@ mod tests {
     Ok(())
   }
 
-  /// A list whose chunks are not numbered by their place keeps each object's chunk, writing it only where it differs.
   #[test]
   fn keeps_chunk_ids_other_than_the_index() -> XrfResult {
     let list: LevelSpawnFile = LevelSpawnFile {
@@ -293,8 +287,7 @@ mod tests {
     Ok(())
   }
 
-  /// A verbatim record is the user's: its payload packs as written though it would now read typed, and its reason is
-  /// not checked against anything.
+  // A verbatim record is the user's: it packs as written, and its reason is not checked.
   #[test]
   fn packs_a_verbatim_record_from_its_payload_though_it_reads_typed() -> XrfResult {
     let bolt: LevelSpawnObject = LevelSpawnObjects::bolt(0)?;
@@ -317,7 +310,6 @@ mod tests {
     Ok(())
   }
 
-  /// A section is typed or verbatim by its `form` key alone, so a form neither names is refused rather than guessed.
   #[test]
   fn refuses_a_record_of_another_form() -> XrfResult {
     let path: PathBuf = GeneratedResources::create_dir("level_spawn_file/other_form")?;

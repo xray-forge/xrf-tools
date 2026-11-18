@@ -81,9 +81,8 @@ impl RenderedEmitter {
     acoustics.is_running() && !self.emitter.is_2d && self.sound.get_channel_count() == Some(1)
   }
 
-  /// Moves it on to the moment's time, its sound asked of `bank` through `assets` and a refused one noted in `refused`,
-  /// answering whether it is a candidate for a target: one starting within its horizon is, so its voice waits for its
-  /// first frame in the mixer.
+  /// Moves it on to the moment's time, asking `bank` for its sound and noting a refusal in `refused`. Answers whether
+  /// it is a candidate for a target, as one starting within the horizon is, so its voice waits in the mixer.
   pub(crate) fn simulate(
     &mut self,
     listener: &AudioListener,

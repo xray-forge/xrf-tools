@@ -113,7 +113,7 @@ mod tests {
     }
   }
 
-  /// The magazined weapon's fire mode, then a count of shells and each one's ammo type.
+  // The magazined weapon's fire mode, then a count of shells and each one's ammo type.
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectItemWeaponShotgun = new_object();
@@ -126,7 +126,7 @@ mod tests {
     Ok(())
   }
 
-  /// An empty shotgun without a physics state is the eleven-byte update packet placed ones carry.
+  // The eleven-byte update packet placed empty shotguns carry.
   #[test]
   fn reads_an_empty_shotgun() -> XrfResult {
     let mut original: AlifeObjectItemWeaponShotgun = new_object();

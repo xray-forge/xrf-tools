@@ -78,8 +78,8 @@ impl Shape {
     Aabb::from_points(shapes.iter().flat_map(Self::get_extreme_points)).map(|bounds: Aabb| bounds.get_bounding_sphere())
   }
 
-  /// The points whose box is the shape's own: a sphere's lowest and highest corner, a box's eight corners where its
-  /// transform places the unit cube's, `transform_tiny`.
+  /// The points the shape's box bounds: a sphere's lowest and highest corners, or the unit cube's eight corners as the
+  /// box's transform places them (`transform_tiny`).
   fn get_extreme_points(&self) -> Vec<Vector3d> {
     match self {
       Self::Sphere(sphere) => {
@@ -184,7 +184,6 @@ mod tests {
     })
   }
 
-  /// A box whose rows are the four given vectors, each `(n + 0.5, n + 0.7, n)` times `scale` for row `n`.
   fn box_of_rows(scale: f32) -> Shape {
     let row = |n: f32| Vector3d::new((n + 0.5) * scale, (n + 0.7) * scale, n * scale);
 
@@ -196,7 +195,6 @@ mod tests {
     })
   }
 
-  /// A truncated shape list is an error, not a panic that a release build turns into an abort.
   #[test]
   fn refuses_a_shape_list_cut_short() -> XrfResult {
     // A count with no shape tag, and a sphere tag with no sphere.
@@ -356,7 +354,7 @@ mod tests {
     Ok(())
   }
 
-  /// The config keys are the format's, kept from before the shapes had named fields: a box's rows are `a` to `d`.
+  // Existing configs name a box's rows `a` to `d`.
   #[test]
   fn exports_a_box_under_the_keys_existing_configs_use() {
     let mut ltx: Ltx = Ltx::new();

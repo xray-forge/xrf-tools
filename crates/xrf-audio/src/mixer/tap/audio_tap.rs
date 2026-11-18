@@ -8,10 +8,11 @@ use crate::mixer::tap::audio_tap_end::AudioTapEnd;
 use crate::mixer::tap::mixer_tap::MixerTap;
 use crate::mixer::tap::tap_shared::TapShared;
 
-/// The mix taken after the reverb and before the master, so the app's master volume and background mute stay out of
-/// it: blocks of the mixer's frames read from any one thread, through a ring as long as asked; a block the reader had
-/// no room for is dropped and counted, its frames missing between the blocks either side. Dropped, the tap leaves the
-/// mixer at its next block.
+/// The mix taken after the reverb and before the master, without the app's master volume or background mute, read
+/// in blocks from any one thread through a ring as long as asked.
+///
+/// A block the ring had no room for is dropped and counted, leaving a gap in the frames. Dropping the tap removes it
+/// from the mixer at its next block.
 pub struct AudioTap {
   blocks: Consumer<AudioTapBlock>,
   shared: Arc<TapShared>,

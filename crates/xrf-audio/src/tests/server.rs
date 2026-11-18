@@ -7,7 +7,6 @@ use crate::{
   AudioTransportPlayback, AudioTransportState, OfflineRender,
 };
 
-/// A server on an engine whose mixer the test renders, and the events it sends.
 fn server() -> (AudioServer, OfflineRender, Arc<Mutex<Vec<AudioEvent>>>) {
   let AudioEngineParts { engine, mixer } = engine(4);
   let events: Arc<Mutex<Vec<AudioEvent>>> = Arc::default();
@@ -20,7 +19,6 @@ fn server() -> (AudioServer, OfflineRender, Arc<Mutex<Vec<AudioEvent>>>) {
   (server, OfflineRender::new(mixer, RATE), events)
 }
 
-/// The states sent for `id` so far.
 fn sent_states(events: &Mutex<Vec<AudioEvent>>, id: AudioTransportId) -> Vec<AudioTransportState> {
   events
     .lock()
@@ -34,7 +32,6 @@ fn sent_states(events: &Mutex<Vec<AudioEvent>>, id: AudioTransportId) -> Vec<Aud
     .collect()
 }
 
-/// Renders until `is_done` holds or two seconds pass, the control thread and the stream's thread running meanwhile.
 fn render_until(render: &mut OfflineRender, mut is_done: impl FnMut() -> bool) {
   let deadline: Instant = Instant::now() + Duration::from_secs(2);
 

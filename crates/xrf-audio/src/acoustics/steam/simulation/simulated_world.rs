@@ -44,10 +44,9 @@ impl SimulatedWorld {
   /// How big a sound is taken to be for its occlusion, in metres.
   const OCCLUSION_RADIUS: f32 = 1.0;
 
-  /// Metres a sound's way through the walls is heard from above where it is placed. A level places a zone or an object
-  /// by its foot, on the ground or a little sunk into it, and a sound whose centre is under a surface is hidden from
-  /// every listener: a smaller radius or a single ray hears no more of it, while half a metre up it reaches a listener in
-  /// the open as it should, without lifting it through a ceiling it stands under.
+  /// Metres above its placed position a sound's occlusion is traced from. A level places zones and objects by their
+  /// foot, often a little sunk into the ground, where every listener would be occluded; half a metre up clears the
+  /// ground without passing through a ceiling above it.
   const OCCLUSION_LIFT: f32 = 0.5;
 
   /// Walls in the way whose transmission is counted, nearest the listener first.

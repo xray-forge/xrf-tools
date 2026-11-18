@@ -60,13 +60,13 @@ export type AlifeAnomalousZone = {
 };
 
 /**
- * The actor as Clear Sky's `se_actor` saves it (`gamedata-cs/scripts/se_actor.script`): the server class's fields, then,
- * closed by a save marker, the random task manager, the squads' id generator and the minigames manager, each closed by
- * its own marker. It adds nothing to the update packet.
+ * The actor as Clear Sky's `se_actor` saves it (`se_actor.script`): the server class's fields, then, under a save
+ * marker, the random task manager, the squads' id generator and the minigames manager, each under its own marker. It
+ * adds nothing to the update packet.
  *
  * The task manager (`CRandomTask:save`, `task_manager.script`) keeps the tasks given, the rewards and the upgrade
- * tasks, which a running game fills; a spawn holds none, so their counts are read as empty and any other is refused
- * rather than read, and only its task id generator is kept.
+ * tasks, which a running game fills. A spawn holds none, so their counts are read as empty and any other refused; only
+ * its task id generator is kept.
  */
 export type AlifeClearSkyActor = {
   base: AlifeObjectActor;
@@ -78,9 +78,9 @@ export type AlifeClearSkyActor = {
 };
 
 /**
- * A monster as Clear Sky's `se_monster` saves one (`gamedata-cs/scripts/se_monster.script`): the server class's spawn
- * fields, then whether its job keeps it online, the squad it belongs to and whether the simulation forces it online,
- * unmarked, adding nothing to the update packet.
+ * A monster as Clear Sky's `se_monster` saves one (`se_monster.script`): the server class's spawn fields, then,
+ * unmarked, whether its job keeps it online, its squad and whether the simulation forces it online. It adds nothing to
+ * the update packet.
  */
 export type AlifeClearSkyMonster = {
   base: AlifeObjectMonsterBase;
@@ -92,13 +92,13 @@ export type AlifeClearSkyMonster = {
 };
 
 /**
- * A faction as Clear Sky's `se_sim_faction` saves one (`gamedata-cs/scripts/sim_faction.script`), the class Clear Sky
- * registers for `SFACTION`: the smart zone's spawn fields, then, closed by a save marker, whether the player leads it,
- * whether its start position was filled and its expansion level, followed by its last spawn time and four tables.
+ * A faction as Clear Sky's `se_sim_faction` saves one (`sim_faction.script`), the class Clear Sky registers for
+ * `SFACTION`: the smart zone's spawn fields, then, under a save marker, whether the player leads it, whether its start
+ * position was filled, its expansion level, its last spawn time and four tables.
  *
- * The last spawn time, the squads' targets, the random tasks, the attack counts and the squads are what a running
- * simulation fills; a spawn holds `nil` and four empty tables, so those are read as such and any other value is refused
- * rather than read. The time is `utils.w_CTime`'s Clear Sky form, whose `nil` is a lone 255.
+ * A running simulation fills the time and the tables (squad targets, random tasks, attack counts, squads); a spawn
+ * holds `nil` and four empty tables, which are read as such, and any other value is refused. The time is
+ * `utils.w_CTime`'s Clear Sky form, whose `nil` is a lone 255.
  */
 export type AlifeClearSkySimFaction = {
   base: AlifeSmartZone;
@@ -110,10 +110,9 @@ export type AlifeClearSkySimFaction = {
 };
 
 /**
- * A smart terrain as Clear Sky's `se_smart_terrain` saves one (`gamedata-cs/scripts/smart_terrain.script`): the smart
- * zone's spawn fields, then, closed by a save marker, its combat manager and the stalkers' jobs and the jobs' death
- * times. The jobs and death times are records only a running simulation fills; a spawn holds none, so their counts are
- * read as empty and any other value is refused rather than read.
+ * A smart terrain as Clear Sky's `se_smart_terrain` saves one (`smart_terrain.script`): the smart zone's spawn fields,
+ * then, under a save marker, its combat manager, the stalkers' jobs and the jobs' death times. A spawn holds no jobs
+ * or death times, so their counts are read as empty and any other value is refused.
  */
 export type AlifeClearSkySmartTerrain = {
   base: AlifeSmartZone;
@@ -121,9 +120,9 @@ export type AlifeClearSkySmartTerrain = {
 };
 
 /**
- * A stalker as Clear Sky's `se_stalker` saves one (`gamedata-cs/scripts/se_stalker.script`): the server class's spawn
- * fields, then whether its job keeps it online, whether its corpse's loot was dropped, the squad it belongs to and
- * whether the simulation forces it online, unmarked, adding nothing to the update packet.
+ * A stalker as Clear Sky's `se_stalker` saves one (`se_stalker.script`): the server class's spawn fields, then,
+ * unmarked, whether its job keeps it online, whether its corpse's loot was dropped, its squad and whether the
+ * simulation forces it online. It adds nothing to the update packet.
  */
 export type AlifeClearSkyStalker = {
   base: AlifeObjectHumanStalker;
@@ -236,7 +235,7 @@ export type AlifeObjectCar = {
 
 /**
  * `CSE_ALifeObjectClimable`. Up to spawn version 126 the packet stores no game material, which then holds the
- * constructor's `materials\fake_ladders` (`xrServer_Objects_ALife.cpp:1727`).
+ * constructor's `materials\fake_ladders`.
  */
 export type AlifeObjectClimable = {
   base: AlifeObjectShape;
@@ -501,7 +500,7 @@ export type AlifeObjectInherited =
 
 /**
  * `CSE_ALifeInventoryBox`. Up to spawn version 124 the packet stores none of its own fields, which then hold the
- * constructor's: open to taking, not closed, the `inventory_box_use` tip (`xrServer_Objects_ALife.cpp:1879`).
+ * constructor's: open to taking, not closed, the `inventory_box_use` tip.
  */
 export type AlifeObjectInventoryBox = {
   base: AlifeObjectDynamicVisual;
@@ -512,8 +511,7 @@ export type AlifeObjectInventoryBox = {
 
 /**
  * An item, `CSE_ALifeItem`: a dynamic visual and an inventory item. Up to spawn version 123 the packet stores no
- * upgrades, and the item holds none, as `CSE_ALifeInventoryItem`'s constructor leaves `m_upgrades`
- * (`xrServer_Objects_ALife_Items.cpp:27`, read above 123 at `:92`).
+ * upgrades, and the item holds none, as `CSE_ALifeInventoryItem`'s constructor leaves `m_upgrades`.
  */
 export type AlifeObjectItem = {
   base: AlifeObjectDynamicVisual;
@@ -596,10 +594,10 @@ export type AlifeObjectItemTorch = {
 };
 
 /**
- * A weapon, `CSE_ALifeItemWeapon`. Its update packet repeats the rounds loaded, weapon state, addons and ammo type the
- * spawn packet stores, and the engine reads them over the spawn packet's, so those are what the game starts with. Up
- * to spawn version 122 the spawn packet stores no loaded grenades, which then hold the constructor's none of the first
- * type (`xrServer_Objects_ALife_Items.cpp:490-491`, read above 122 at `:565`), the byte `pack_to_byte` makes zero.
+ * A weapon, `CSE_ALifeItemWeapon`. Its update packet repeats the spawn packet's rounds loaded, state, addons and ammo
+ * type, and the engine reads them over the spawn packet's, so those are what the game starts with. Up to spawn
+ * version 122 the spawn packet stores no loaded grenades, which hold the constructor's none of the first type, the
+ * byte `pack_to_byte` makes zero.
  */
 export type AlifeObjectItemWeapon = {
   base: AlifeObjectItem;
@@ -723,7 +721,7 @@ export type AlifeObjectSkeleton = {
 
 /**
  * `CSE_SmartCover`'s own fields. Below spawn version 128 the packet has no `can_fire`, which the engine then sets to
- * the combat cover flag (`xrServer_Objects_Alife_Smartcovers.cpp:110`).
+ * the combat cover flag.
  */
 export type AlifeObjectSmartCover = {
   base: AlifeObjectDynamic;
@@ -767,8 +765,7 @@ export type AlifeObjectTrader = {
 
 /**
  * `CSE_ALifeTraderAbstract`, the trading part of a trader, a human and the actor. Up to spawn version 124 the packet
- * stores neither of its corpse's access fields, which then hold the constructor's: open to taking, not closed
- * (`xrServer_Objects_ALife_Monsters.cpp:138-139`).
+ * stores neither of its corpse's access fields, which hold the constructor's: open to taking, not closed.
  */
 export type AlifeObjectTraderAbstract = {
   money: number;
@@ -790,8 +787,8 @@ export type AlifeObjectVisual = {
 
 /**
  * `se_smart_cover`, the script class over the server smart cover. Below script version 9 its packet has no last
- * description or loopholes, which then hold the script constructor's empty values (`se_smart_cover.script`'s
- * `__init`); Call of Pripyat's script fills them from its smart cover descriptions, script config no packet carries.
+ * description or loopholes, which hold the script constructor's empty values (`se_smart_cover.script`'s `__init`);
+ * Call of Pripyat's script fills them from smart cover descriptions no packet carries.
  */
 export type AlifeSmartCover = {
   base: AlifeObjectSmartCover;
@@ -884,11 +881,10 @@ export type ArtefactSpawnPoint = {
 
 /**
  * The combat state a Clear Sky smart terrain saves, `CCombat_manager:save` with its `CCover_manager:save`
- * (`gamedata-cs/scripts/sim_combat.script`, `cover_manager.script`), each closed by its own save marker.
+ * (`sim_combat.script`, `cover_manager.script`), each under its own save marker.
  *
- * The squads in combat, the squads forced online, the cover table and the time the actor was last seen are records
- * only a running simulation fills; a spawn holds none of them, so their counts and flags are read as empty and any
- * other value is refused rather than read.
+ * A running simulation fills the squads in combat or forced online, the cover table and the time the actor was last
+ * seen; a spawn holds none, so their counts and flags are read as empty and any other value is refused.
  */
 export type ClearSkyCombatManager = {
   /** `actor_defence_come`, a `w_bool`. */
@@ -906,8 +902,8 @@ export type ClearSkyCombatManager = {
 };
 
 /**
- * The crow shooting minigame's state, `CMGCrowKiller:save` (`gamedata-cs/scripts/minigame_crowkiller.script`): the
- * parameters the minigames manager keeps for it, then the game's own counters, closed by a save marker.
+ * The crow shooting minigame's state, `CMGCrowKiller:save` (`minigame_crowkiller.script`): the manager's parameters
+ * for it, then the game's own counters, under a save marker.
  */
 export type ClearSkyCrowKiller = {
   highscore: number;
@@ -942,9 +938,9 @@ export enum EClearSkyJobOnline {
 }
 
 /**
- * Whether a Clear Sky stalker or monster is kept online or offline by its job, `job_online` of `se_stalker` and
- * `se_monster`: a byte, followed by the condition list when the byte is 3. The scripts read any byte past 2 as a
- * condition list and write 3, so only 0 to 3 are accepted. A spawn holds `Unset`.
+ * Whether a Clear Sky stalker's or monster's job keeps it online or offline, `job_online` of `se_stalker` and
+ * `se_monster`: a byte, then a condition list when it is 3. The scripts read any byte past 2 as a condition list and
+ * write 3, so only 0 to 3 are accepted. A spawn holds `Unset`.
  */
 export type ClearSkyJobOnline =
   /** `true`, written as 0. */
@@ -957,9 +953,8 @@ export type ClearSkyJobOnline =
   | { type: "Condlist"; value: string };
 
 /**
- * One minigame of Clear Sky's minigames manager, as `CMinigames:save` writes it
- * (`gamedata-cs/scripts/minigames_manager.script`): its name, its game's profile name, its state, then the game's own
- * state.
+ * One minigame of Clear Sky's minigames manager, as `CMinigames:save` writes it (`minigames_manager.script`): its
+ * name, its game's profile name, its state, then the game's own state.
  */
 export type ClearSkyMinigame = {
   name: string;
@@ -981,9 +976,9 @@ export type ClearSkyMinigameGame =
     } & ClearSkyShooting);
 
 /**
- * An id generator of Clear Sky's scripts, `object_collection:save` (`gamedata-cs/scripts/object_collection.script`):
- * how many ids are given and the last one, then the freed and the given ids, closed by a save marker. A spawn holds a
- * generator that gave none, so the two id lists are read as empty and any other count is refused rather than read.
+ * An id generator of Clear Sky's scripts, `object_collection:save` (`object_collection.script`): the id count and the
+ * last id, then the freed and the given ids, under a save marker. A spawn holds a generator that gave none, so both
+ * lists are read as empty and any other count is refused.
  */
 export type ClearSkyObjectCollection = {
   /** `m_count`. */
@@ -993,12 +988,11 @@ export type ClearSkyObjectCollection = {
 };
 
 /**
- * The shooting range minigame's state, `CMGShooting:save` (`gamedata-cs/scripts/minigame_shooting.script`): the
- * parameters the minigames manager keeps for it, the inventory it took from the actor and the game in progress, closed
- * by a save marker.
+ * The shooting range minigame's state, `CMGShooting:save` (`minigame_shooting.script`): the manager's parameters for
+ * it, the inventory taken from the actor and the game in progress, under a save marker.
  *
- * The targets, the inventory taken and the game in progress are what playing fills; a spawn holds no targets, nothing
- * taken and the game `nil`, so those are read as such and any other value is refused rather than read.
+ * Playing fills the targets, the inventory taken and the game; a spawn holds no targets, nothing taken and the game
+ * `nil`, which are read as such, and any other value is refused.
  */
 export type ClearSkyShooting = {
   gameType: string;
@@ -1269,35 +1263,33 @@ export enum EPhysicsClosingState {
   ABSENT = "Absent",
   /** The zero byte of no state, as the engine writes it. */
   UNSET = "Unset",
-  /** A state, one the SDK packed to zero among them. */
+  /** A state, including one the SDK packed to zero. */
   SET = "Set",
 }
 
 /**
- * The physics state closing a physic object's update packet, `CSE_ALifeObjectPhysic::UPDATE_Read`'s, kept as it was
- * stored. The engine reads an empty packet and a lone zero byte alike, as no state.
+ * The physics state closing a physic object's update packet (`CSE_ALifeObjectPhysic::UPDATE_Read`), kept as stored.
+ * The engine reads an empty packet and a lone zero byte alike as no state.
  *
- * A zero byte with bytes behind it is a state whose count and mask pack to zero, which the SDK's 2009 `xrSE_Factory`
- * writes for an object of no items and both velocities set (its `UPDATE_Write` has no early return); the engine reads
- * the zero byte and skips the rest.
+ * A zero byte with bytes behind it is a state packing to zero, which the SDK's 2009 `xrSE_Factory` writes for an
+ * object of no items with both velocities set; the engine reads the zero byte and skips the rest.
  */
 export type PhysicsClosingState =
   /** The packet ends before the state's byte. */
   | { type: "Absent" }
   /** The zero byte of no state, as the engine writes it. */
   | { type: "Unset" }
-  /** A state, one the SDK packed to zero among them. */
+  /** A state, including one the SDK packed to zero. */
   | { type: "Set"; value: PhysicsNetState };
 
 /**
- * The physics state an inventory item and a physic object carry in their update packets, `SPHNetState` behind the
- * byte `CSE_ALifeInventoryItem::UPDATE_Write` and `CSE_ALifeObjectPhysic::UPDATE_Write` open it with.
+ * The physics state, `SPHNetState`, an inventory item's and a physic object's update packets carry behind an opening
+ * byte (`CSE_ALifeInventoryItem::UPDATE_Write`, `CSE_ALifeObjectPhysic::UPDATE_Write`).
  *
- * That byte packs the item count into its low five bits and, above them, a mask: whether the body is enabled, and
- * whether each velocity is left out as zero. A zero byte is a state that is not there at all, so an object without one
- * is `None` beside its other update fields rather than a state with dead fields; but for a physic object's state,
- * which closes its packet, a zero byte with bytes behind it is a state packed to zero (`PhysicsClosingState`). The
- * SDK writes some states without initialising them, so each float keeps the bits it is stored in.
+ * That byte packs the item count into its low five bits and a mask above them: whether the body is enabled, and
+ * whether each velocity is left out as zero. A zero byte means no state, so an object without one holds `None`; a
+ * physic object's closing state differs (`PhysicsClosingState`). The SDK writes some states uninitialised, so each
+ * float keeps its stored bits.
  */
 export type PhysicsNetState = {
   /** The synchronised items, `m_u8NumItems`, at most the 31 its five bits hold. */
@@ -1314,8 +1306,8 @@ export type PhysicsNetState = {
   /** `None` where the mask leaves the linear velocity out as zero. */
   linearVelocity: [RawFloat, RawFloat, RawFloat] | null;
   /**
-   * The byte closing the state: zero freezes the object and anything else leaves it awake. `None` where the packet
-   * ends before it, which the engine reads as awake (`r_eof`), and which writes back without it.
+   * The closing byte: zero freezes the object, anything else leaves it awake. `None` where the packet ends before it,
+   * which the engine reads as awake (`r_eof`) and which writes back without it.
    */
   awake: number | null;
 };
@@ -1381,8 +1373,8 @@ export type SpawnHeaderChunk = {
 };
 
 /**
- * What every server entity's spawn packet opens with, `CSE_Abstract::Spawn_Write` (`xrServer_Object_Base.cpp:156`),
- * up to the size it patches in once its class's own fields, the state, are written.
+ * What every server entity's spawn packet opens with, `CSE_Abstract::Spawn_Write`, up to the size it patches in once
+ * its class's own fields, the state, are written.
  */
 export type SpawnPacketHeader = {
   id: number;

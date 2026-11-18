@@ -1,5 +1,3 @@
-//! A scene's sound frames: sent at most sixty times a second, out of the frames the sink hands back.
-
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -13,7 +11,7 @@ use crate::sound::emitters::sound_outlet::SoundOutlet;
 use crate::sound::emitters::sound_play::SoundPlay;
 use crate::tests::sound::found;
 
-/// A sink handing every frame straight back, noting the address each frame's emitters were held at.
+// Notes each frame's emitter address, which shows whether a frame was reused.
 #[derive(Clone, Default)]
 struct ReturningSink {
   sent: Arc<Mutex<Vec<(Duration, usize, usize)>>>,
@@ -50,7 +48,6 @@ fn sends_at_most_sixty_frames_a_second_from_the_frames_handed_back() {
     SoundPlay::new(&sound, WorldSoundKind::Static, [0.0; 3], Duration::ZERO),
   );
 
-  // A second of frames at 240 a second.
   for tick in 0..240 {
     let now: Duration = Duration::from_nanos(tick * 1_000_000_000 / 240);
 
@@ -68,7 +65,6 @@ fn sends_at_most_sixty_frames_a_second_from_the_frames_handed_back() {
   assert!(sent.iter().skip(1).all(|(_, _, held)| *held == sent[1].2));
 }
 
-// A sound shorter than a frame still reaches the next frame once, however short it played.
 #[test]
 fn carries_a_short_sound_to_the_next_frame() {
   let mut emitters: SoundEmitters = SoundEmitters::default();

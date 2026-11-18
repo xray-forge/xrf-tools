@@ -630,8 +630,8 @@ lazy_static! {
     "zone_mosquito_bald_strong" => ClsId::ZsMBald,
     "zone_mosquito_bald_weak" => ClsId::ZsMBald,
     "zone_zhar" => ClsId::ZsMBald,
-    // Multiplayer, CoP's `configs/mp`: each by the `class` it declares or inherits, whose server class reads its
-    // packet (a launcher's `W_AK74` and `W_GROZA` read one more byte than `W_PM`, `W_VAL` or `W_SVD`).
+    // Multiplayer, CoP's `configs/mp`, by the `class` each declares or inherits: a launcher's `W_AK74` and `W_GROZA`
+    // read one more byte than `W_PM`, `W_VAL` or `W_SVD`.
     "mp_af_electra_flash" => ClsId::ScrptArt, // ARTEFACT
     "mp_ammo_11.43x23_fmj" => ClsId::AmmoS, // AMMO
     "mp_ammo_11.43x23_hydro" => ClsId::AmmoS, // AMMO
@@ -725,8 +725,8 @@ lazy_static! {
     "mp_zone_witches_galantine" => ClsId::ZsMBald, // Z_MBALD
   };
 
-  /// The sections whose `class` Clear Sky's configs declare otherwise than Call of Pripyat's, which
-  /// `SECTION_TO_CLS_ID` follows, and those only Clear Sky declares, each by the `class` it inherits.
+  /// Sections whose `class` Clear Sky's configs declare otherwise than Call of Pripyat's (`SECTION_TO_CLS_ID`), and
+  /// those only Clear Sky declares, by the `class` each inherits.
   pub static ref CLEAR_SKY_SECTION_TO_CLS_ID: phf::Map<&'static str, ClsId> = phf_map! {
     "agr_barman" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_agroprom.ltx
     "agr_duty_base_trader" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_agroprom.ltx
@@ -885,8 +885,7 @@ mod tests {
   use crate::data::meta::cls_id::ClsId;
   use crate::data::meta::map::CLEAR_SKY_SECTION_TO_CLS_ID;
 
-  /// Groups, Shadow of Chernobyl sections and the spectator have no class to read, and a rocket's `CSE_Temporary` is no
-  /// alife object the simulation can hold.
+  // Groups, Shadow of Chernobyl sections and the spectator have no class; rockets are `CSE_Temporary`, no alife object.
   #[test]
   fn refuses_what_call_of_pripyat_creates_from_no_spawn() {
     for section in [
@@ -908,8 +907,7 @@ mod tests {
     }
   }
 
-  /// A multiplayer section reads as the class it declares, not as its single-player parent: CoP's `mp_wpn_mp5` is a
-  /// `W_AK74` with a launcher's byte though `wpn_mp5` is no such weapon here, and `mp_wpn_vintorez` a `W_VAL` without.
+  // Not by the single-player parent: `mp_wpn_mp5` is a `W_AK74` with a launcher's byte though `wpn_mp5` is not.
   #[test]
   fn maps_a_multiplayer_section_by_the_class_it_declares() {
     let class = |section: &str| AlifeClass::from_cls_id(&ClsId::from_section(section).expect("a multiplayer section"));
@@ -920,8 +918,7 @@ mod tests {
     assert_eq!(class("mp_exo_outfit"), AlifeClass::CseAlifeItemCustomOutfit);
   }
 
-  /// Every section of Clear Sky's own map reads as a class under Clear Sky's scripts, and none of them leaks into Call of
-  /// Pripyat's, where only `sim_faction` names a section at all, as a space restrictor.
+  // Of these, only `sim_faction` names a Call of Pripyat section, as a space restrictor.
   #[test]
   fn resolves_every_clear_sky_section_under_its_own_dialect_alone() {
     for (section, clsid) in CLEAR_SKY_SECTION_TO_CLS_ID.entries() {
@@ -948,8 +945,6 @@ mod tests {
     }
   }
 
-  /// Sections Clear Sky's levels place that Call of Pripyat or a mod of it declares with the same class read by that
-  /// class under either game's scripts.
   #[test]
   fn reads_a_section_both_games_declare_alike_under_either_dialect() {
     for (section, clsid) in [
@@ -970,9 +965,7 @@ mod tests {
     }
   }
 
-  /// Every zone CLSID `xray-16/src/xrServerEntities/object_factory_register.cpp` registers, paired with the server
-  /// class it registers it to. No spawn in the mounted corpora declares a section for most of them, so the registry is
-  /// what records the engine's answer.
+  // As `object_factory_register.cpp` registers them: no shipped spawn declares a section for most of these.
   #[test]
   fn maps_every_engine_zone_clsid_to_its_server_class() {
     for (cls_id, class) in [

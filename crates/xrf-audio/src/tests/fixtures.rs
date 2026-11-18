@@ -120,7 +120,6 @@ pub(crate) fn play_voices(engine: &mut AudioEngine, sound: &Arc<DecodedSound>, c
     .collect()
 }
 
-/// An engine of `voices_count` voices.
 pub(crate) fn engine(voices_count: usize) -> AudioEngineParts {
   AudioEngineParts::new(AudioEngineSettings {
     voices_count,

@@ -81,7 +81,7 @@ mod tests {
   use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
   use crate::data::alife::inherited::alife_object_skeleton::AlifeObjectSkeleton;
 
-  /// Shaped like the version 128 cars in the Call of Chernobyl and Anomaly spawns.
+  // Shaped like the version 128 cars in the Call of Chernobyl and Anomaly spawns.
   fn new_mock(health: f32) -> AlifeObjectCar {
     AlifeObjectCar {
       base: AlifeObjectDynamicVisual {
@@ -133,8 +133,7 @@ mod tests {
     Ok(())
   }
 
-  /// The engine normalizes health above one by dividing it, and writes the divided value back.
-  /// Preserving the stored value verbatim is what keeps unpack into pack byte identical.
+  // The engine divides health above one; keeping the stored value keeps unpack and pack byte identical.
   #[test]
   fn test_read_write_preserves_health_above_one() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();

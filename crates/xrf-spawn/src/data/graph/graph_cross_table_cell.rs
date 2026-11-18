@@ -4,9 +4,9 @@ use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
-/// One AI node's place in the game graph, `CGameLevelCrossTable::CCell`: the game vertex the node belongs to and how far
-/// it lies from it, in metres along links. A node no graph point reaches keeps the level's first vertex and the
-/// distance of `u32::MAX` cells.
+/// One AI node's place in the game graph, `CGameLevelCrossTable::CCell`: its game vertex and its distance from it, in
+/// metres along links. A node no graph point reaches keeps the level's first vertex and a distance whose bits are
+/// `u32::MAX`.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GraphCrossTableCell {
   /// The game vertex, numbered across the whole game graph.
@@ -18,8 +18,7 @@ impl GraphCrossTableCell {
   /// The bytes of one cell, packed to two (`#pragma pack(push,2)`).
   pub const SIZE: u64 = 2 + 4;
 
-  /// Decode a cell from its bytes: the one statement of its layout, which a single cell's read and a whole cross
-  /// table's both use.
+  /// Decodes a cell from its bytes, the one statement of its layout.
   pub fn decode<T: ByteOrder>(bytes: &[u8; Self::SIZE as usize]) -> Self {
     Self {
       game_vertex_id: T::read_u16(&bytes[..2]),

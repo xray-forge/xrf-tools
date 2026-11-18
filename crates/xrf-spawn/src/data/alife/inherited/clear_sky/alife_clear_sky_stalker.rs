@@ -12,9 +12,9 @@ use crate::data::alife::spawn_layout::SpawnLayout;
 use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 use crate::data::generic::script_to_string::ScriptToString;
 
-/// A stalker as Clear Sky's `se_stalker` saves one (`gamedata-cs/scripts/se_stalker.script`): the server class's spawn
-/// fields, then whether its job keeps it online, whether its corpse's loot was dropped, the squad it belongs to and
-/// whether the simulation forces it online, unmarked, adding nothing to the update packet.
+/// A stalker as Clear Sky's `se_stalker` saves one (`se_stalker.script`): the server class's spawn fields, then,
+/// unmarked, whether its job keeps it online, whether its corpse's loot was dropped, its squad and whether the
+/// simulation forces it online. It adds nothing to the update packet.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -143,8 +143,7 @@ mod tests {
   use crate::data::alife::inherited::clear_sky::clear_sky_job_online::ClearSkyJobOnline;
   use crate::data::alife::spawn_layout::SpawnLayout;
 
-  /// A level's stalker: the job byte for `nil`, the loot flag, the squad as `nil` and the forced flag close the spawn
-  /// packet.
+  // A level's stalker: the job byte for `nil`, the loot flag, the squad as `nil` and the forced flag.
   #[test]
   fn writes_the_tail_in_the_script_order() -> XrfResult {
     let original: AlifeClearSkyStalker = AlifeClearSkyStalker::new_mock(Vector3d::new(-12.5, 0.75, 310.0));

@@ -186,7 +186,6 @@ mod tests {
   use crate::data::graph::graph_cross_table::GraphCrossTable;
   use crate::data::graph::graph_cross_table_cell::GraphCrossTableCell;
 
-  /// A table of `nodes_count` cells, each naming a vertex and a distance of its own.
   fn table(level_guid: Uuid, game_guid: Uuid, nodes_count: u32, vertices_count: u32) -> GraphCrossTable {
     GraphCrossTable {
       version: 16,
@@ -328,8 +327,7 @@ mod tests {
     Ok(())
   }
 
-  /// The table's cells against the same cells read and written one at a time, by the bits of each field: the
-  /// unreached cell's distance is `u32::MAX` read as a float, a NaN that must come back bit for bit.
+  // An unreached cell's distance is `u32::MAX` as a float, a NaN that must come back bit for bit.
   fn assert_table_agrees_with_cells<T: ByteOrder>() -> XrfResult {
     let mut original: GraphCrossTable = table(Uuid::nil(), Uuid::nil(), 5, 300);
 

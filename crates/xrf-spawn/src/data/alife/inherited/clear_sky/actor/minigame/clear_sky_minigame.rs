@@ -8,9 +8,8 @@ use crate::data::alife::inherited::clear_sky::actor::minigame::clear_sky_crow_ki
 use crate::data::alife::inherited::clear_sky::actor::minigame::clear_sky_minigame_game::ClearSkyMinigameGame;
 use crate::data::alife::inherited::clear_sky::actor::minigame::clear_sky_shooting::ClearSkyShooting;
 
-/// One minigame of Clear Sky's minigames manager, as `CMinigames:save` writes it
-/// (`gamedata-cs/scripts/minigames_manager.script`): its name, its game's profile name, its state, then the game's own
-/// state.
+/// One minigame of Clear Sky's minigames manager, as `CMinigames:save` writes it (`minigames_manager.script`): its
+/// name, its game's profile name, its state, then the game's own state.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

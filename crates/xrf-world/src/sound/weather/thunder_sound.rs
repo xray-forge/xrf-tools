@@ -3,8 +3,7 @@ use std::time::{Duration, Instant};
 use glam::Vec3;
 
 /// A strike that thunders, `play_no_feedback` in `CEffect_Thunderbolt::Bolt`: the bolt's section, where it struck from
-/// in engine space, and how far from the camera; heard `distance / 300` seconds after it struck, over `distance / 2` to
-/// `distance * 2` metres.
+/// in engine space, and its distance from the camera.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct ThunderSound {
   pub bolt: String,
@@ -18,12 +17,12 @@ impl ThunderSound {
   /// The speed sound travels at, as the engine delays it.
   pub(crate) const SPEED: f32 = 300.0;
 
-  /// How long after the strike it is heard.
+  /// How long after the strike it is heard, `distance / SPEED`.
   pub(crate) fn get_delay(&self) -> Duration {
     Duration::try_from_secs_f32(self.distance / Self::SPEED).unwrap_or_default()
   }
 
-  /// The metres it is heard within.
+  /// The metres it is heard within, half to twice its distance.
   pub(crate) fn get_range(&self) -> [f32; 2] {
     [self.distance / 2.0, self.distance * 2.0]
   }

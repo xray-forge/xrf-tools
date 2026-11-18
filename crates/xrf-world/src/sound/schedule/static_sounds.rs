@@ -11,10 +11,8 @@ use crate::sound::sound_random::SoundRandom;
 /// What the static sounds' schedule draws from on every level open.
 const SEED: u64 = 0x57A7_1C50;
 
-/// A level's static sounds as `SStaticSound::Update` plays them each frame: within its active window and not playing,
-/// one with no pause loops for ever; any other plays once its next time comes, through once where it has no play
-/// window, else looped until a drawn stop, and waits a drawn pause after; one playing past its stop, or outside its
-/// window, stops deferred.
+/// A level's static sounds as `SStaticSound::Update` plays them each frame, by the windows `WorldStaticSound` holds.
+/// One playing past its stop or outside its active window stops deferred.
 pub(crate) struct StaticSounds {
   sounds: Vec<StaticSound>,
   random: SoundRandom,

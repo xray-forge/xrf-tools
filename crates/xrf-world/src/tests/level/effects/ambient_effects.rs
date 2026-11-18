@@ -203,7 +203,6 @@ impl AmbientScene {
     }
   }
 
-  /// Restarts the effects, as a burst's first frame does, and applies what they post.
   fn restart(&mut self) {
     let mut updates: Vec<RenderSceneUpdate> = Vec::new();
 
@@ -219,7 +218,6 @@ impl AmbientScene {
     }
   }
 
-  /// The effect playing in the scene and its emitter's seed, if any plays.
   fn get_playing_effect(&self) -> Option<(String, i32)> {
     self.emitters.values().find_map(|emitter| {
       let (object, _) = emitter.object.as_ref()?;
@@ -408,8 +406,7 @@ fn playing_one_now_ends_the_one_playing_and_starts_without_waiting() {
   assert!(scene.get_playing().is_none());
 }
 
-/// A restart, as a burst's first frame makes, takes what plays out of the scene and plays on as from the level's first
-/// frame: the effect it started first, at once, at the same seed, whatever played between.
+// A burst's first frame restarts the effects: the first effect plays again at once with its first seed.
 #[test]
 fn a_restart_ends_what_plays_and_plays_on_as_from_the_first_frame() {
   let names: [&str; 3] = ["fog", "leaves", "vortex"];

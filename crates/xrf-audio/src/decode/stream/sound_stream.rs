@@ -26,9 +26,9 @@ impl SoundStream {
   /// Starts decoding the sound in `bytes`, of `format`, from `start.frame` on a thread of its own; the reader goes to the
   /// voice that plays it.
   ///
-  /// The thread opens the sound and seeks before it decodes, so no caller waits on a seek. A voice reading the stream
-  /// is silent until the first frames come; a sound that cannot be opened, is not of `format`, or cannot be sought ends
-  /// the stream, and [`crate::StreamControl::get_failure`] says why.
+  /// The thread opens and seeks, so no caller waits on a seek, and the voice is silent until the first frames come. A
+  /// sound that cannot be opened or sought, or is not of `format`, ends the stream with
+  /// [`crate::StreamControl::get_failure`] saying why.
   ///
   /// # Errors
   ///

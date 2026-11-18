@@ -200,8 +200,7 @@ mod tests {
     }
   }
 
-  /// The creature's 40 bytes, then movement, two scaled directions, radiation, the weapon and the body's count: the
-  /// 61-byte update packet a new game's actor carries.
+  // The 61-byte update packet a new game's actor carries.
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectActor = AlifeObjectActor::new_mock(Vector3d::new(256.24, 19.81, 550.82));
@@ -212,7 +211,7 @@ mod tests {
     Ok(())
   }
 
-  /// The enabled byte, five vectors and a quaternion follow the count.
+  // The enabled byte, five vectors and a quaternion follow the count.
   #[test]
   fn reads_and_writes_a_living_body() -> XrfResult {
     let mut original: AlifeObjectActor = AlifeObjectActor::new_mock(Vector3d::ZERO);
@@ -226,7 +225,7 @@ mod tests {
     Ok(())
   }
 
-  /// A move carries a saved body by as far as the actor goes, so it stays where the actor stands.
+  // A saved body moves with the actor.
   #[test]
   fn moves_its_body_along_with_it() {
     let mut actor: AlifeObjectActor = AlifeObjectActor::new_mock(Vector3d::new(10.0, 0.0, 10.0));

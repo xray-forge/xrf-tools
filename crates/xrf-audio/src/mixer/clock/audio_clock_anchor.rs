@@ -1,8 +1,7 @@
 use std::time::{Duration, Instant};
 
-/// Where the mixer's frames play: frame `frame` was handed to the device at `at`, and plays `latency` after, so every
-/// frame plays a frame's length after the one before it. Video's present times go on the same line, so a recording
-/// places the two as they were seen and heard.
+/// Where the mixer's frames play: frame `frame` was handed to the device at `at` and plays `latency` after, every
+/// other frame spaced from it at the rate. A recording places video present times on the same line.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct AudioClockAnchor {
   pub frame: u64,

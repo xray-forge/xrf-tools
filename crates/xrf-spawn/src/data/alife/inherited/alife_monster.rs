@@ -110,7 +110,6 @@ mod tests {
   use crate::data::generic::offline_object_state::OfflineObjectState;
   use crate::fixtures::GameWrittenPackets;
 
-  /// What the game writes for a new monster reads whole and writes back byte for byte.
   #[test]
   fn reads_and_writes_what_the_game_writes() -> XrfResult {
     let spawn: Vec<u8> = GameWrittenPackets::bytes(GameWrittenPackets::MONSTER_SPAWN);
@@ -142,8 +141,7 @@ mod tests {
     Ok(())
   }
 
-  /// The tail in `Monster.ts`'s `STATE_Write` order - the level vertex and active section as strings - reads as the
-  /// offline state it saved.
+  // `Monster.ts`'s `STATE_Write` order: the level vertex and active section as strings.
   #[test]
   fn reads_the_tail_in_the_script_order() -> XrfResult {
     let original: AlifeMonster = AlifeMonster::new_mock(Vector3d::new(1.0, 2.0, 3.0));
@@ -173,7 +171,7 @@ mod tests {
     Ok(())
   }
 
-  /// A compiled spawn's tail: two `nil` strings follow the server class's spawn fields with no marker counting them.
+  // A compiled spawn's tail: two `nil` strings with no marker counting them.
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeMonster = AlifeMonster::new_mock(Vector3d::new(-12.5, 0.75, 310.0));

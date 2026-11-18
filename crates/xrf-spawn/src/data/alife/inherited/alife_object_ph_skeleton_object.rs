@@ -88,7 +88,7 @@ mod tests {
     }
   }
 
-  /// The visual's 27 alife bytes, its name and flags, then the skeleton's animation, flags and source.
+  // The visual's 27 alife bytes, its name and flags, then the skeleton's animation, flags and source.
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectPhSkeletonObject = new_object();

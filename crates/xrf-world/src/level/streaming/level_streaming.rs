@@ -31,9 +31,8 @@ const SECTORS_PER_FRAME: usize = 4;
 /// Spawned models posted at most in one frame.
 const MODELS_PER_FRAME: usize = 16;
 
-/// What streams a level into its scene: the workers reading its sectors, spawned models, lights, grass and AI map, how much of
-/// what they read is posted a frame, the handles its posts name, which spawn groups stand, and what came in and what
-/// could not.
+/// Streams a level into its scene: its sectors, spawned models, lights, grass, helpers and AI map, read on the workers
+/// and posted a share a frame, with what could not come in.
 pub(crate) struct LevelStreaming {
   source: Arc<dyn WorldLevelSource>,
   sectors: LevelLoader,
@@ -145,10 +144,8 @@ impl LevelStreaming {
     &self.source
   }
 
-  /// Streams on from `source`, a next source of the same level: the sectors posted stay, and those still being read
-  /// finish from the source they started from. Where `reload` names the spawn, every spawned model posted leaves the
-  /// scene with its objects and the spawn streams in again; where it names the helpers, the lights or the grass, they
-  /// are read again and replace those drawn once read.
+  /// Streams on from `source`, a next source of the same level. Posted sectors stay and those being read finish from
+  /// their old source; the spawn, helpers, lights or grass `reload` names are read again and replace what is drawn.
   pub(crate) fn follow(
     &mut self,
     updates: &mut Vec<RenderSceneUpdate>,
@@ -169,7 +166,7 @@ impl LevelStreaming {
       self.spawn = SpawnLoader::start(Arc::clone(&self.source), workers);
     }
 
-    // The helpers are the level objects, the spawned ones and the placed ones alike.
+    // The helpers cover spawned and placed level objects alike.
     if reload.contains(LevelPart::Helpers) {
       self.helpers = Self::read_helpers(&self.source, workers);
     }

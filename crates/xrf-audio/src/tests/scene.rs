@@ -1,6 +1,3 @@
-//! A scene on the control side: the one loudness model and its distance curve, the scene's clock on the mixer's, and
-//! an offline session playing emitters, sharing targets and refusing sounds.
-
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
@@ -18,7 +15,6 @@ use crate::{
   AudioSceneReport, AudioSceneRules, OfflineSession,
 };
 
-/// A second of a 440 Hz mono sine.
 fn tone() -> Arc<[u8]> {
   crate::tests::fixtures::tone(1.0)
 }
@@ -84,8 +80,7 @@ fn falls_with_distance_by_one_curve() {
   assert_eq!(DistanceCurve::get_attenuation(2.0, 50.0, f32::NAN), 0.0);
 }
 
-// A playing sound's walls ease toward each new simulation, about two thirds of the way in a tenth of a second, so a
-// sound moving behind an edge fades rather than steps.
+// About two thirds of the way in a tenth of a second, so a sound moving behind an edge fades rather than steps.
 #[test]
 fn eases_a_sounds_walls_toward_each_simulation() {
   let walled: SourceAcoustics = SourceAcoustics {
@@ -107,7 +102,7 @@ fn eases_a_sounds_walls_toward_each_simulation() {
   );
 }
 
-// Volume times the curve for a placed sound whatever the engine; past its maximum distance it is culled at once.
+// Volume times the curve; past its maximum distance it is culled at once.
 #[test]
 fn attenuates_every_engine_alike() {
   let mut played: AudioSceneEmitter = emitter(1, "a");
@@ -128,7 +123,6 @@ fn attenuates_every_engine_alike() {
   assert_eq!(loudness.get_gain(&played), 0.0);
 }
 
-// A stopping emitter fades out at ten a second, so it lets go of its sound a tenth of a second after the stop.
 #[test]
 fn fades_a_stopping_emitter_out_in_a_tenth_of_a_second() {
   let played: AudioSceneEmitter = emitter(1, "a");
@@ -148,7 +142,7 @@ fn fades_a_stopping_emitter_out_in_a_tenth_of_a_second() {
   assert!(loudness.is_faded());
 }
 
-// A sound ahead is ahead in Steam Audio's listener space, `-z`; one to the right is `+x`, as the listener turns.
+// Steam Audio's listener space: ahead is `-z`, right is `+x`.
 #[test]
 fn places_a_sound_in_the_listeners_own_space() {
   let listener: AudioListener = AudioListener {
@@ -168,7 +162,7 @@ fn places_a_sound_in_the_listeners_own_space() {
   assert!((ListenerSpace::get_direction(&turned, [15.0, 0.0, 10.0])[2] + 1.0).abs() < 1e-6);
 }
 
-// Closing in raises the pitch and parting lowers it; a camera's jump is held to a factor of one and a half.
+// A camera's jump is held to a factor of one and a half.
 #[test]
 fn shifts_the_pitch_of_a_sound_closing_in_or_parting() {
   let listener: AudioListener = AudioListener::default();
@@ -186,7 +180,6 @@ fn shifts_the_pitch_of_a_sound_closing_in_or_parting() {
   assert!(ListenerSpace::get_doppler(&jumping, at, [0.0; 3]) <= 1.5);
 }
 
-// The scene's clock is anchored on the mixer's once, then again only once a frame arrives more than 100 ms away from it.
 #[test]
 fn anchors_the_scene_clock_again_only_past_a_tenth_of_a_second() {
   let mut clock: SceneClock = SceneClock::default();
@@ -228,8 +221,7 @@ fn plays_an_emitter_where_the_scene_hears_it() {
   assert!(rms_left(&heard[heard.len() / 2..]) > 0.05);
 }
 
-// An emitter played once from 0.9 s into its second-long sound is over a tenth of a second after its start, as one
-// played from its first frame is not.
+// From 0.9 s into its second-long sound, one played once is over a tenth of a second in.
 #[test]
 fn plays_an_emitter_from_its_offset_into_its_sound() {
   let heard_from = |offset: Duration| -> f32 {
@@ -255,8 +247,8 @@ fn plays_an_emitter_from_its_offset_into_its_sound() {
   assert!(heard_from(Duration::from_millis(900)) < 1e-4);
 }
 
-// A clock stepped three times as fast as the mixer anchors again and again, and moves no playing voice: a voice is
-// started over only where it lags its own pace.
+// Stepped three times as fast as the mixer, the clock anchors again every frame; a voice restarts only where it lags
+// its own pace.
 #[test]
 fn moves_no_playing_voice_for_a_stepped_clock() {
   let (mut session, mut inbox) = session();
@@ -282,8 +274,8 @@ fn moves_no_playing_voice_for_a_stepped_clock() {
   assert_eq!(report.emitters[0].restarts, 0);
 }
 
-// A looped sound parting at 20 m/s plays about 5% slow for its Doppler shift, and keeps its voice: a voice is reckoned
-// at the rate it was set to, so a pitch shift never reads as a starved stream.
+// Parting at 20 m/s plays about 5% slow; a voice is reckoned at the rate it was set to, so the shift never reads as a
+// starved stream.
 #[test]
 fn keeps_the_voice_of_a_sound_shifted_by_its_motion() {
   let (mut session, mut inbox) = session();
@@ -358,7 +350,6 @@ fn refuses_a_sound_whose_file_is_missing() {
   assert_eq!(report.refused[0].sound, "ambient\\gone");
 }
 
-// A scene no longer heard fades out over a quarter of a second and plays on, silent.
 #[test]
 fn fades_a_scene_no_longer_heard() {
   let (mut session, mut inbox) = session();
@@ -410,7 +401,7 @@ fn fades_a_scene_no_longer_heard() {
   assert_eq!(report(&session).real_voices, 1);
 }
 
-/// A session holding the tone and `click`, a tenth of a second at a constant level, so its first frame is heard alone.
+// `click` holds one level, so its first frame is heard alone.
 fn clicking_session() -> (OfflineSession, AudioSceneInbox) {
   let mut session: OfflineSession = OfflineSession::new(AudioEngineSettings::default(), RATE);
   let inbox: AudioSceneInbox = session.open_scene(
@@ -424,8 +415,7 @@ fn clicking_session() -> (OfflineSession, AudioSceneInbox) {
   (session, inbox)
 }
 
-/// Plays `frames` of the scene `step` seconds apart from nought, frame `index` naming `emitters(index)` and sent `lead`
-/// mixer frames ahead of its time, and answers everything rendered up to the last frame's end.
+// Sends each frame `lead` mixer frames ahead of its time.
 fn play_ahead(
   session: &mut OfflineSession,
   inbox: &mut AudioSceneInbox,
@@ -459,8 +449,6 @@ fn play_ahead(
   heard
 }
 
-// A sound starting between two ticks and inside a mixer block plays its first frame on the frame its start falls on,
-// the scene's frames sent as far ahead as the session asks.
 #[test]
 fn lands_a_start_inside_a_block_on_its_frame() {
   let (mut session, mut inbox) = clicking_session();
@@ -479,8 +467,7 @@ fn lands_a_start_inside_a_block_on_its_frame() {
   assert_eq!(first, Some(start as usize));
 }
 
-// The same frames sent the same way give the same samples to the bit: equal emitters rank by their ids however they
-// are held, a sound starting meanwhile lands on its frame, and the session's ticks follow its own frames.
+// Covers equal emitters ranked by id, a start landing mid-render, and ticks following the session's own frames.
 #[test]
 fn plays_the_same_frames_the_same_to_the_bit() {
   let listen = || {
@@ -522,7 +509,6 @@ fn plays_the_same_frames_the_same_to_the_bit() {
   );
 }
 
-// Past its budget the bank lets go of the sounds no emitter holds, the least recently asked first.
 #[test]
 fn lets_go_of_unheld_sounds_past_the_banks_budget() {
   let assets: Arc<dyn AudioAssetSource> = Arc::new(MemorySounds(HashMap::from([

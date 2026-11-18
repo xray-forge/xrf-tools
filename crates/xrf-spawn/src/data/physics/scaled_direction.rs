@@ -96,7 +96,7 @@ mod tests {
     Ok(())
   }
 
-  /// 126 in the low bits is the compressed normal straight along y.
+  // 126 in the low bits is the compressed normal straight along y.
   #[test]
   fn reads_the_vector_the_engine_decompresses() {
     let vector: Vector3d = ScaledDirection {

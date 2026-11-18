@@ -10,9 +10,8 @@ const CULL: f32 = 0.01;
 /// the weather's 2D sounds keep theirs while placed sounds crowd in.
 const PRIORITY_2D: f32 = 100.0;
 
-/// How loud an emitter plays, one model for every engine: its volume, the distance curve from its minimum and maximum
-/// distance for a placed sound, and a fade in and out at ten a second, from which whether it deserves a voice, and how
-/// much, follow. How walls and rooms change it is the acoustics', not this.
+/// How loud an emitter plays, one model for every engine: its volume, a placed sound's distance curve, and a fade in
+/// and out at ten a second, which also decide how much it deserves a voice. Walls and rooms are the acoustics'.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct EmitterLoudness {
   fade: f32,
@@ -24,8 +23,8 @@ impl EmitterLoudness {
     Self { fade: 1.0 }
   }
 
-  /// `seconds` on, the listener `distance` metres away (none for a 2D sound), fading out while `is_stopping` or too
-  /// quiet to hear.
+  /// Moves on `seconds`, the listener `distance` metres away (none for a 2D sound), fading out while `is_stopping` or
+  /// too quiet to hear.
   pub(crate) fn update(
     &mut self,
     emitter: &AudioSceneEmitter,

@@ -10,10 +10,10 @@ use crate::output::device::audio_output_status::AudioOutputStatus;
 use crate::output::device::stream::output_request::OutputRequest;
 use crate::output::device::stream::output_thread::OutputThread;
 
-/// Plays a mixer on an output device from a thread of its own, which follows the system default or the chosen
-/// device and opens a new stream when a device goes. No device is not an error: the thread renders the mixer at a
-/// device's pace, drops the result, and tries a device again. A closed stream whose device keeps the mixer leaves it
-/// unrendered, and no device is tried, until the device hands it back.
+/// Plays a mixer on the system default or the chosen device from a thread of its own, reopening when a device goes.
+///
+/// No device is not an error: the mixer renders at a device's pace to nothing until one opens. A closed stream whose
+/// device keeps the mixer leaves it unrendered, and no device is tried, until the device hands it back.
 pub struct AudioOutput {
   requests: Sender<OutputRequest>,
   status: Arc<Mutex<AudioOutputStatus>>,

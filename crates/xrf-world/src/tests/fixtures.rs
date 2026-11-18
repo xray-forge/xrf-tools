@@ -40,9 +40,7 @@ impl TestLevelReads {
   }
 }
 
-/// A level holding nothing but what a test gives it: the key its scene is shared by, its sectors, each packed as
-/// `pack` says, its object motions by name, its sounds and where their frames go; everything else it is asked for is
-/// not there, each ask counted.
+/// A level holding only what a test gives it; anything else it is asked for is not found, each ask counted in `reads`.
 pub(crate) struct TestLevelSource {
   pub key: Option<String>,
   pub sectors: u32,
@@ -52,8 +50,7 @@ pub(crate) struct TestLevelSource {
   /// The sink the scene's sound frames go to, taken by the first scene asking.
   pub sound_sink: Mutex<Option<Box<dyn WorldSoundSink>>>,
   pub reads: Arc<TestLevelReads>,
-  /// How long reading its helpers takes, standing for a worker a loaded machine is slow to run: nothing waits on the
-  /// helpers, so they can be posted after every part a scene waits on has answered.
+  /// How long reading its helpers takes, standing for a slow worker on a loaded machine.
   pub helpers_delay: Duration,
 }
 
@@ -130,7 +127,7 @@ impl WorldLevelSource for TestLevelSource {
     Err(Self::none())
   }
 
-  /// No level objects, as the source's own default answers, but only once `helpers_delay` has passed.
+  /// No level objects, answered after `helpers_delay`.
   fn read_helpers(&self) -> XrfResult<RenderLevelHelpers> {
     std::thread::sleep(self.helpers_delay);
 

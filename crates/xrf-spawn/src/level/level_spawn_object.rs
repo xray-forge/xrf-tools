@@ -12,12 +12,12 @@ use crate::data::meta::spawn_section_classes::SpawnSectionClasses;
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelSpawnObject {
-  /// The chunk the object was found under. Every shipped file numbers them from zero, and the engine iterates
-  /// positionally rather than looking one up, so the value is carried rather than relied on.
+  /// The chunk the object was found under. Shipped files number them from zero and the engine walks them in order, so
+  /// the value is carried, not relied on.
   pub id: u32,
   /// `M_SPAWN`, which the engine asserts on before reading anything else.
   pub net_action: u16,
-  /// The config section the object is built from, which is what it is.
+  /// The config section the object is built from.
   pub section: String,
   /// The name the level gives this one, `s_name_replace`.
   pub name: String,
@@ -25,7 +25,7 @@ pub struct LevelSpawnObject {
   pub script_rp: u8,
   pub position: Vector3d,
   pub direction: Vector3d,
-  /// The rest of the packet, which is version- and class-dependent and is not read here.
+  /// The rest of the packet, version- and class-dependent and not read here.
   pub payload: Vec<u8>,
 }
 
@@ -88,8 +88,7 @@ impl LevelSpawnObject {
     Ok(writer.buffer)
   }
 
-  /// The object typed as its section's class by the table of sections, read from its spawn packet alone
-  /// ([`Self::read_alife_object_by`]).
+  /// The object typed as the default table gives its section ([`Self::read_alife_object_by`]).
   ///
   /// # Errors
   ///
@@ -180,7 +179,6 @@ mod tests {
     }
   }
 
-  /// A typed object listed under a chunk reads back as the same object.
   #[test]
   fn types_a_listed_object_and_lists_it_back() -> XrfResult {
     let listed: LevelSpawnObject = LevelSpawnObject::from_alife_object::<XRayByteOrder>(3, &graph_point())?;
@@ -191,7 +189,7 @@ mod tests {
     Ok(())
   }
 
-  /// Bytes past what the class reads would be dropped by a rewrite, so the object is refused.
+  // A rewrite would drop bytes past what the class reads.
   #[test]
   fn refuses_bytes_past_what_the_class_reads() -> XrfResult {
     let mut listed: LevelSpawnObject = LevelSpawnObject::from_alife_object::<XRayByteOrder>(0, &graph_point())?;

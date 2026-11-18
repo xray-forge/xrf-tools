@@ -39,10 +39,6 @@ impl DecodedCursor {
 
   /// Writes the next frames, `step` source frames apart, into `out` in the sound's own channels, leaving frames past a
   /// sound played once as they were. Answers `false` once the sound has played to its end without looping.
-  ///
-  /// It works in runs: a sound at the output rate is copied; elsewhere the frames whose four neighbours lie inside the
-  /// sound are interpolated without a bounds check, a mono sound once rather than in both channels, and only the few at
-  /// its edges read around them.
   pub(crate) fn render(&mut self, out: &mut [f32], step: f64) -> bool {
     let channels: usize = self.sound.get_channels().get_count();
     let frames: usize = self.sound.get_frames_count();

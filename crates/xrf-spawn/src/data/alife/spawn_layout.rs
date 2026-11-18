@@ -17,15 +17,15 @@ pub(crate) struct SpawnLayout {
 }
 
 impl SpawnLayout {
-  /// Shadow of Chernobyl's spawn version (`xrServer_Objects.h:154` of its engine), whose layout is not read.
+  /// Shadow of Chernobyl's spawn version (`xrServer_Objects.h` of its engine), whose layout is not read.
   pub(crate) const SHADOW_OF_CHERNOBYL_VERSION: u16 = 118;
 
-  /// The spawn versions of Clear Sky's layout its levels hold, 122 to its release's 124 (`xrServer_Objects.h:162` of
-  /// its engine). Below 122 an item's update packet and a smart cover's spawn fields take another layout
-  /// (`CSE_ALifeInventoryItem::UPDATE_Read`, `CSE_SmartCover::STATE_Read`), which no shipped object carries.
+  /// Clear Sky's spawn versions its levels hold, 122 to its release's 124 (`xrServer_Objects.h` of its engine). Below
+  /// 122 an item's update packet and a smart cover's spawn fields take another layout
+  /// (`CSE_ALifeInventoryItem::UPDATE_Read`, `CSE_SmartCover::STATE_Read`) that no shipped object carries.
   pub(crate) const CLEAR_SKY_VERSIONS: RangeInclusive<u16> = 122..=124;
 
-  /// Call of Pripyat's spawn version (`xrServer_Objects.h:168`), which the forks built on it keep.
+  /// Call of Pripyat's spawn version (`xrServer_Objects.h`), which the forks built on it keep.
   pub(crate) const CALL_OF_PRIPYAT_VERSION: u16 = 128;
 
   /// The first spawn version whose smart cover stores whether it can fire (`CSE_SmartCover::STATE_Read`).
@@ -55,8 +55,8 @@ impl SpawnLayout {
   /// engine reads them above 124 (`CSE_ALifeTraderAbstract::STATE_Read`).
   pub(crate) const TRADER_CORPSE_ACCESS_VERSION: u16 = 125;
 
-  /// The script version Clear Sky's script classes write (`current_server_entity_version` in its `system.ltx`), the
-  /// one every Clear Sky object of the reference levels carries. Its scripts read fewer fields below it, a layout no
+  /// The script version Clear Sky's script classes write (`current_server_entity_version` in its `system.ltx`), which
+  /// every Clear Sky object of the reference levels carries. Its scripts read fewer fields below it, a layout no
   /// shipped object holds and which is not read.
   pub(crate) const CLEAR_SKY_SCRIPT_VERSION: u16 = 8;
 
@@ -74,7 +74,7 @@ impl SpawnLayout {
     }
   }
 
-  /// Refuse a Clear Sky script class's fields at another script version than the one its scripts write.
+  /// Refuses a Clear Sky script class's fields at another script version than the one its scripts write.
   ///
   /// # Errors
   ///
@@ -126,8 +126,8 @@ impl SpawnLayout {
     self.version >= Self::TRADER_CORPSE_ACCESS_VERSION
   }
 
-  /// Refuse a value of a field the layout lacks unless it is `default`, the value the engine holds in its place, so a
-  /// write never drops what the packet cannot carry.
+  /// Refuses a value of a field the layout lacks unless it is `default`, the engine's value in its place, so a write
+  /// never drops what the packet cannot carry.
   ///
   /// # Errors
   ///
@@ -220,8 +220,7 @@ mod tests {
       );
     }
 
-    // The script version does not decide it: a Call of Pripyat packet at Clear Sky's script version stays Call of
-    // Pripyat's.
+    // A Call of Pripyat packet at Clear Sky's script version stays Call of Pripyat's.
     assert_eq!(
       SpawnLayout {
         version: 128,

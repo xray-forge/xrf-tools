@@ -16,8 +16,7 @@ use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 use crate::data::physics::physics_net_state::PhysicsNetState;
 
 /// An item, `CSE_ALifeItem`: a dynamic visual and an inventory item. Up to spawn version 123 the packet stores no
-/// upgrades, and the item holds none, as `CSE_ALifeInventoryItem`'s constructor leaves `m_upgrades`
-/// (`xrServer_Objects_ALife_Items.cpp:27`, read above 123 at `:92`).
+/// upgrades, and the item holds none, as `CSE_ALifeInventoryItem`'s constructor leaves `m_upgrades`.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -201,7 +200,7 @@ mod tests {
     }
   }
 
-  /// The upgrade count is the one spawn field the layout gates; the update packet is the same at every version.
+  // The upgrade count is the one spawn field the layout gates.
   #[test]
   fn writes_upgrades_above_version_123_only() -> XrfResult {
     let original: AlifeObjectItem = AlifeObjectItem::new_mock(Vector3d::new(1.0, 2.0, 3.0));
@@ -257,7 +256,7 @@ mod tests {
     Ok(())
   }
 
-  /// An item with no physics state writes the single zero byte the engine writes for one.
+  // The engine writes a single zero byte for no physics state.
   #[test]
   fn reads_and_writes_an_item_without_a_physics_state() -> XrfResult {
     let mut original: AlifeObjectItem = AlifeObjectItem::new_mock(Vector3d::ZERO);
@@ -272,7 +271,7 @@ mod tests {
     Ok(())
   }
 
-  /// An item placed upgraded carries each upgrade's section after the count, `save_data` of `m_upgrades`.
+  // Each upgrade's section follows the count, `save_data` of `m_upgrades`.
   #[test]
   fn reads_and_writes_the_upgrades_an_item_carries() -> XrfResult {
     let mut original: AlifeObjectItem = AlifeObjectItem::new_mock(Vector3d::ZERO);
@@ -295,7 +294,7 @@ mod tests {
     assert!((AlifeObjectItem::dequantize_condition(128) - 0.502).abs() < 1e-3);
   }
 
-  /// Rounded to the nearest of 255 steps, and wrapped as the engine's `u8` cast wraps a value outside `0..=1`.
+  // Wrapped as the engine's `u8` cast wraps a value outside `0..=1`.
   #[test]
   fn quantizes_a_condition_as_the_engine_does() {
     assert_eq!(AlifeObjectItem::quantize_condition(0.0), 0);

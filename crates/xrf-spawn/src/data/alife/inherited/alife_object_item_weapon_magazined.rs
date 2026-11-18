@@ -113,7 +113,7 @@ mod tests {
     Ok(())
   }
 
-  /// Without a physics state a magazined weapon's update packet is the ten bytes most placed ones carry.
+  // The ten-byte update packet most placed magazined weapons carry.
   #[test]
   fn reads_a_weapon_without_a_physics_state() -> XrfResult {
     let mut original: AlifeObjectItemWeaponMagazined = AlifeObjectItemWeaponMagazined::new_mock(Vector3d::ZERO);

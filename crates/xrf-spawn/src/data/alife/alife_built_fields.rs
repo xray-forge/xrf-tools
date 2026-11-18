@@ -1,8 +1,8 @@
 use xrf_math::Vector3d;
 
 /// The spawn packet fields xrAI fills in when it builds a root spawn from the levels' spawn lists
-/// (`level_spawn_constructor.cpp`, `game_spawn_constructor.cpp:270`), whatever the Level Editor wrote there. Each is
-/// `None` for a class that has no such field.
+/// (`CLevelSpawnConstructor`, `CGameSpawnConstructor`), whatever the Level Editor wrote. Each is `None` for a class
+/// without the field.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct AlifeBuiltFields {
   pub spawn_id: u16,
@@ -26,8 +26,7 @@ pub struct AlifeBuiltDestination {
 }
 
 impl AlifeBuiltFields {
-  /// What a server entity's constructor holds before xrAI fills the fields in (`xrServer_Objects_ALife.cpp:247`,
-  /// `:758`), set on every class that has them.
+  /// What a server entity's constructor holds before xrAI fills the fields in, set on every class that has them.
   pub const UNBUILT: Self = Self {
     spawn_id: u16::MAX,
     game_vertex_id: Some(u16::MAX),

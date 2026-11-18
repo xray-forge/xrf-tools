@@ -10,13 +10,13 @@ use crate::data::alife::spawn_layout::SpawnLayout;
 use crate::data::generic::script_absent_state::ScriptAbsentState;
 use crate::data::generic::script_save_marker::ScriptSaveMarker;
 
-/// A faction as Clear Sky's `se_sim_faction` saves one (`gamedata-cs/scripts/sim_faction.script`), the class Clear Sky
-/// registers for `SFACTION`: the smart zone's spawn fields, then, closed by a save marker, whether the player leads it,
-/// whether its start position was filled and its expansion level, followed by its last spawn time and four tables.
+/// A faction as Clear Sky's `se_sim_faction` saves one (`sim_faction.script`), the class Clear Sky registers for
+/// `SFACTION`: the smart zone's spawn fields, then, under a save marker, whether the player leads it, whether its start
+/// position was filled, its expansion level, its last spawn time and four tables.
 ///
-/// The last spawn time, the squads' targets, the random tasks, the attack counts and the squads are what a running
-/// simulation fills; a spawn holds `nil` and four empty tables, so those are read as such and any other value is refused
-/// rather than read. The time is `utils.w_CTime`'s Clear Sky form, whose `nil` is a lone 255.
+/// A running simulation fills the time and the tables (squad targets, random tasks, attack counts, squads); a spawn
+/// holds `nil` and four empty tables, which are read as such, and any other value is refused. The time is
+/// `utils.w_CTime`'s Clear Sky form, whose `nil` is a lone 255.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -165,7 +165,7 @@ mod tests {
     }
   }
 
-  /// The faction's own fields: three bytes, the `nil` time, four empty tables and the marker counting them.
+  // The faction's own fields: three bytes, the `nil` time, four empty tables and the marker counting them.
   #[test]
   fn writes_the_tail_closed_by_its_marker() -> XrfResult {
     let original: AlifeClearSkySimFaction = new_faction();
@@ -189,7 +189,7 @@ mod tests {
     Ok(())
   }
 
-  /// A faction that last spawned at some time would carry it in a form that is not read.
+  // A faction that last spawned at some time would carry it in a form that is not read.
   #[test]
   fn refuses_a_last_spawn_time() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();

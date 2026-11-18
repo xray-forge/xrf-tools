@@ -37,8 +37,7 @@ impl WorldSoundToggles {
       }
   }
 
-  /// Which of the audio's buses are heard, by [`AudioBus::get_index`]: each category's, a bus no category plays on
-  /// heard as the audio's own.
+  /// Which of the audio's buses are heard, by [`AudioBus::get_index`]; a bus no category plays on is always heard.
   pub fn get_heard_buses(&self) -> [bool; AudioBus::COUNT] {
     let mut heard: [bool; AudioBus::COUNT] = [true; AudioBus::COUNT];
 

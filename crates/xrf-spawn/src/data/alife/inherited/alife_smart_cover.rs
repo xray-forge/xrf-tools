@@ -11,8 +11,8 @@ use crate::data::alife::inherited::alife_smart_cover_loophole::AlifeSmartCoverLo
 use crate::data::alife::spawn_layout::SpawnLayout;
 
 /// `se_smart_cover`, the script class over the server smart cover. Below script version 9 its packet has no last
-/// description or loopholes, which then hold the script constructor's empty values (`se_smart_cover.script`'s
-/// `__init`); Call of Pripyat's script fills them from its smart cover descriptions, script config no packet carries.
+/// description or loopholes, which hold the script constructor's empty values (`se_smart_cover.script`'s `__init`);
+/// Call of Pripyat's script fills them from smart cover descriptions no packet carries.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -185,7 +185,6 @@ mod tests {
     }
   }
 
-  /// The bytes written at `layout`, and the cover read back from them whole.
   fn read_back(cover: &AlifeSmartCover, layout: SpawnLayout) -> XrfResult<(Vec<u8>, AlifeSmartCover)> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
@@ -254,7 +253,6 @@ mod tests {
     }
   }
 
-  /// Text below script version 9 leaves the script fields out and imports the constructor's empty values.
   #[test]
   fn exports_and_imports_without_script_fields_below_script_version_9() -> XrfResult {
     let cover: AlifeSmartCover = new_smart_cover("", Vec::new());

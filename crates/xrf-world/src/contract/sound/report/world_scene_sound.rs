@@ -2,8 +2,7 @@ use xrf_renderer::RenderSceneId;
 
 use crate::contract::sound::report::world_sound_report::WorldSoundReport;
 
-/// What the scene a viewport shows plays as the world schedules it, and the scene, which the host's audio is asked of
-/// by its id.
+/// The sound report the world schedules for a viewport's scene, keyed by the scene's id for the host's audio.
 #[derive(Clone, Debug, PartialEq)]
 pub struct WorldSceneSound {
   pub scene: RenderSceneId,

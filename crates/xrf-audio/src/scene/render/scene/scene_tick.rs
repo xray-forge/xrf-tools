@@ -16,7 +16,7 @@ pub(crate) struct SceneTick<'a> {
   pub(crate) mixer_frame: u64,
   /// The mixer's rate, frames a second.
   pub(crate) rate: u32,
-  /// How far past the mixer's frame a sound starting is given its voice now, stamped to the frame it starts at: past the
-  /// next tick and the block its commands land in, so no start waits for a tick and lands late.
+  /// How far past the mixer's frame a starting sound is given its voice now, stamped to its frame: past the next tick
+  /// and the block its commands land in, so no start lands late.
   pub(crate) lookahead: Duration,
 }

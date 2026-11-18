@@ -120,7 +120,7 @@ mod tests {
     actor
   }
 
-  /// The script class's byte and the marker counting it close the spawn packet; it adds nothing to the update.
+  // The script class's byte and its marker close the spawn packet; the update gains nothing.
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeActor = new_object();

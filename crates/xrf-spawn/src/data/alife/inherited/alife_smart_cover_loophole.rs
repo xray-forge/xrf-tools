@@ -84,8 +84,7 @@ mod tests {
     Ok(())
   }
 
-  /// Smart covers with no loopholes exist in the Call of Chernobyl and Anomaly spawns, and render as
-  /// an empty value that must read back as no loopholes rather than as one malformed entry.
+  // Call of Chernobyl and Anomaly ship smart covers with no loopholes: an empty value, not one malformed entry.
   #[test]
   fn test_empty_list_round_trip() -> XrfResult {
     let serialized: String = AlifeSmartCoverLoophole::list_to_string(&[]);

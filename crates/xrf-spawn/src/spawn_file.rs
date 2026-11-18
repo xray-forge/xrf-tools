@@ -25,14 +25,8 @@ use crate::data::graph::level_view::spawn_level_graph::SpawnLevelGraph;
 use crate::data::graph::level_view::spawn_level_graph_point::SpawnLevelGraphPoint;
 use crate::data::patrols::patrol::Patrol;
 
-/// Descriptor of generic spawn file used by xray game engine.
-///
-/// Root level samples by ID:
-/// 0 - header
-/// 1 - alife spawns
-/// 2 - alife objects
-/// 3 - patrols
-/// 4 - game graphs
+/// A root spawn file such as `all.spawn`: chunks 0 to 4 hold the header, the alife spawns, the artefact spawns, the
+/// patrols and the game graph.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -97,9 +91,8 @@ impl SpawnFile {
     )
   }
 
-  /// Refuses a file the engine would refuse or misread: the spawn's graph GUID not the graph's
-  /// (`CALifeSpawnRegistry::load`, `alife_spawn_registry.cpp:126`), or a graph [`SpawnGraphsChunk::assert_engine_layout`]
-  /// refuses.
+  /// Refuses a file the engine would refuse or misread: a spawn graph GUID other than the graph's
+  /// (`CALifeSpawnRegistry::load`), or a graph [`SpawnGraphsChunk::assert_engine_layout`] refuses.
   ///
   /// # Errors
   ///
@@ -260,12 +253,12 @@ impl SpawnFile {
     Ok(StagedFile::write_creating_directories(path.as_ref(), &bytes)?)
   }
 
-  /// Write spawn file data to the writer.
+  /// Writes the spawn file to `writer`.
   ///
   /// # Errors
   ///
-  /// Returns an error when the header's counts disagree with what the file holds, when the engine would refuse or
-  /// misread the file ([`Self::assert_engine_agreement`]), or a chunk cannot be written.
+  /// Returns an error when the header's counts disagree with what the file holds, the engine would refuse or misread
+  /// the file ([`Self::assert_engine_agreement`]), or a chunk cannot be written.
   pub fn write_to<T: ByteOrder>(&self, writer: &mut dyn Write) -> XrfResult {
     self.assert_header_counts()?;
     self.assert_engine_agreement()?;
@@ -380,7 +373,6 @@ mod tests {
     }
   }
 
-  /// A write that fails part way leaves the spawn a caller had, and nothing staged beside it.
   #[test]
   fn keeps_the_previous_file_when_publication_fails() -> XrfResult {
     let path: PathBuf = GeneratedResources::create_dir("spawn_file/publication")?.join("all.spawn");
@@ -395,7 +387,7 @@ mod tests {
     Ok(())
   }
 
-  /// A header counting objects the file does not hold would size the engine's registry wrong, so it is not written.
+  // The engine sizes its registry by the header's count.
   #[test]
   fn refuses_to_write_a_header_that_miscounts_its_objects() {
     let mut spawn: SpawnFile = EmptySpawnFile::build();

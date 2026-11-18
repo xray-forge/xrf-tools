@@ -65,10 +65,10 @@ impl VoiceEffects {
     })
   }
 
-  /// Renders one mono block of [`AudioMixer::BLOCK_FRAMES`] frames through the direct path and onto both ears. A block
-  /// that switches between the HRTF and panning crosses from the old way to the new over its frames, the new way
-  /// started afresh rather than from what it last heard, so a voice taking or losing one of the HRTF's places neither
-  /// clicks nor replays an old tail.
+  /// Renders one mono block of [`AudioMixer::BLOCK_FRAMES`] frames through the direct path and onto both ears.
+  ///
+  /// A block that switches between the HRTF and panning crossfades over its frames, the new effect started afresh, so
+  /// the switch neither clicks nor replays an old tail.
   pub(crate) fn apply(&mut self, parameters: &VoiceSpatialParameters, mono: &[f32]) -> PlacedBlock<'_> {
     let direct: DirectEffectParams = DirectEffectParams {
       distance_attenuation: Some(parameters.attenuation),

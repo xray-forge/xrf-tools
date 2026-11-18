@@ -103,7 +103,7 @@ mod tests {
     }
   }
 
-  /// The rounds left follow the physics state in the update packet as they follow the item in the spawn packet.
+  // The rounds left follow the physics state in the update packet as they follow the item in the spawn packet.
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectItemAmmo = new_object();

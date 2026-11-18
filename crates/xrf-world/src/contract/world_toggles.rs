@@ -5,8 +5,8 @@ use crate::contract::sound::world_sound_toggles::WorldSoundToggles;
 use crate::level::streaming::hidden_spawn_groups::HiddenSpawnGroups;
 use crate::level::streaming::spawn_filter::SpawnFilter;
 
-/// What of the level's world plays, rather than what is drawn of it: the weather's rain, bolts and wind, the campfires,
-/// the ambient effects, which groups of the spawned objects stream in, and what of its sound is heard.
+/// What of the level's world plays, rather than what is drawn of it: weather, campfires, ambient effects, spawned
+/// objects and sound.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]

@@ -61,8 +61,8 @@ impl AudioMixerMeter {
     });
   }
 
-  /// Anchors the clock at the next frame, rendered with no device for the time `at`, only where the anchor it has puts
-  /// that frame more than `most_drift` away, so the pace of a render with no device does not shake it.
+  /// Anchors the clock's next frame at `at` for a render with no device, only where the current anchor places it more
+  /// than `most_drift` away, so that render's uneven pace does not shake the clock.
   pub(crate) fn follow_anchor(&self, at: Instant, most_drift: Duration) {
     let frame: u64 = self.get_frames();
     let rate: u32 = self.get_rate();

@@ -5,12 +5,11 @@ use crate::{
   AudioBus, AudioEngine, AudioEngineParts, AudioTransport, AudioTransportPlayback, AudioTransportState, OfflineRender,
 };
 
-/// A transport over a mono ramp of `frames` at the test rate, so a rendered sample names the frame it came from.
+// A ramp, so a rendered sample names the frame it came from.
 fn transport(frames: usize) -> AudioTransport {
   AudioTransport::open(wav(RATE, 1, &ramp(frames)), AudioBus::Previews).expect("the sound opens")
 }
 
-/// Renders until the output sounds, answering the first frame heard, or `None` after two seconds.
 fn first_heard(render: &mut OfflineRender) -> Option<i64> {
   let deadline: Instant = Instant::now() + Duration::from_secs(2);
 
@@ -99,8 +98,7 @@ fn seeks_while_playing_and_while_held() {
     .seek(&mut engine, Duration::from_millis(300))
     .expect("a playing transport seeks");
 
-  // The old voice fades out as the new one's stream fills; once the new voice moves on from 14 400, each block plays
-  // on from the frame the transport reports.
+  // The old voice fades out while the new one's stream fills, from 14 400.
   let deadline: Instant = Instant::now() + Duration::from_secs(2);
 
   while get_frame(state(&mut transport, &engine).position) <= 14_400 && Instant::now() < deadline {
@@ -116,8 +114,7 @@ fn seeks_while_playing_and_while_held() {
   assert_eq!(state(&mut transport, &engine).playback, AudioTransportPlayback::Playing);
 }
 
-/// The voice a seek stops still fades out in its slot, so an engine of one voice refuses the restart; the transport
-/// then holds paused at the asked frame rather than ending.
+// The voice a seek stops still fades out in its slot, so an engine of one voice refuses the restart.
 #[test]
 fn holds_where_a_seek_asked_when_the_engine_refuses_the_restart() {
   let AudioEngineParts { mut engine, mixer } = engine(1);

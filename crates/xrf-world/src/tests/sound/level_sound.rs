@@ -1,6 +1,3 @@
-//! A level's sound as a whole: it waits for its scene to stand ready and runs on the scene's clock, and a burst starts
-//! every schedule afresh at its own time, so bursts from one time send the same frames whatever played before them.
-
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -31,7 +28,6 @@ use crate::tests::sound::found;
 use crate::tests::test_workers::create_workers;
 use crate::world::World;
 
-/// A sink keeping a copy of every frame it is sent and handing each straight back.
 #[derive(Clone, Default)]
 struct KeepingSink {
   sent: Arc<Mutex<Vec<WorldSoundFrame>>>,
@@ -50,7 +46,6 @@ impl WorldSoundSink for KeepingSink {
   }
 }
 
-/// No zones stand in the level.
 struct NoZones(LevelCampfires);
 
 impl ZoneStates for NoZones {
@@ -63,7 +58,7 @@ impl ZoneStates for NoZones {
   }
 }
 
-/// What a frame plays, but for the emitters' ids, which every play takes anew.
+// A frame's emitters without their ids, which every play takes anew.
 #[derive(Debug, PartialEq)]
 struct Played {
   time: Duration,
@@ -97,8 +92,7 @@ impl From<&WorldSoundFrame> for Played {
   }
 }
 
-/// A level whose sounds draw their times at random: a loop, a sound played in drawn windows, and music picked at random
-/// between drawn pauses.
+// Every sound here draws its times at random, so equal bursts prove the draws restart.
 fn sounds() -> WorldLevelSounds {
   let windowed = |reference: &str| WorldStaticSound {
     sound: found(reference, 1),
@@ -134,15 +128,13 @@ fn sounds() -> WorldLevelSounds {
   }
 }
 
-/// A level's sound, heard where the frames it sends go.
 struct Heard {
   sound: LevelSound,
   sent: Arc<Mutex<Vec<WorldSoundFrame>>>,
   opened: Instant,
-  /// Where its camera looks.
   forward: Vec3,
   zones: NoZones,
-  /// The workers its sounds are read on, kept while it plays.
+  // Kept alive while the sounds are read on them.
   workers: RenderWorkers,
 }
 
@@ -167,8 +159,6 @@ impl Heard {
     }
   }
 
-  /// Plays from `from`, a tenth of a second at a time, until its last frame is as `is_heard` wants, as its sounds are
-  /// read on a worker first; answers the time it reached.
   fn play_until(&mut self, from: f64, is_heard: impl Fn(&WorldSoundFrame) -> bool) -> f64 {
     let deadline: Instant = Instant::now() + Duration::from_secs(5);
     let mut at: f64 = from;
@@ -182,7 +172,6 @@ impl Heard {
     at
   }
 
-  /// Plays a frame at `now` on the level's clock, a burst's where `burst` says.
   fn advance(&mut self, now: Duration, burst: Option<RenderViewBurst>) {
     let drive: SoundDrive<'_> = SoundDrive {
       scene: RenderSceneId(1),
@@ -202,14 +191,12 @@ impl Heard {
     self.sound.advance(now, None, &drive, None, &mut self.zones);
   }
 
-  /// Plays the live clock from `from` for `seconds`, sixty frames a second.
   fn play(&mut self, from: f64, seconds: f64) {
     for frame in 0..(seconds * 60.0) as u32 {
       self.advance(Duration::from_secs_f64(from + f64::from(frame) / 60.0), None);
     }
   }
 
-  /// Draws a burst of 120 frames 1/120 s apart from 600 s, answering what its frames sent.
   fn burst(&mut self) -> Vec<Played> {
     let before: usize = self.sent.lock().unwrap().len();
 
@@ -231,9 +218,8 @@ impl Heard {
   }
 }
 
-// The level is shown two seconds before its first frame, as a long frame or a held lock delays it, and its scene stands
-// ready two seconds into its frames: the scene is told its clock began at the first frame, nothing is heard before it
-// stands ready, and then its sound starts on that clock, two seconds in, not four.
+// Shown two seconds before its first frame and ready two seconds into its frames, the sound starts two seconds into
+// the scene's clock, not four.
 #[test]
 fn starts_the_level_sound_once_its_scene_stands_ready_on_the_scenes_clock() {
   let sink: KeepingSink = KeepingSink::default();
@@ -315,7 +301,7 @@ fn sends_the_same_frames_for_two_bursts_from_one_time() {
 
   let first: Vec<Played> = heard.burst();
 
-  // Live again, the schedules start afresh: the next frame is no burst's and plays its loop from the live time.
+  // Live again, the schedules start afresh from the live time.
   heard.play(20.1, 1.0 / 60.0);
 
   let after: WorldSoundFrame = heard.sent.lock().unwrap().last().cloned().expect("a frame was sent");
@@ -338,8 +324,6 @@ fn sends_the_same_frames_for_two_bursts_from_one_time() {
   assert_eq!(first, second);
 }
 
-// A camera pitched down holds its up square to where it looks, as its view does, so the listener still has a whole
-// right ear; looking straight down, it keeps the up it last had.
 #[test]
 fn hears_from_the_cameras_own_up_as_it_pitches() {
   let mut heard: Heard = Heard::new();
@@ -370,8 +354,7 @@ fn hears_from_the_cameras_own_up_as_it_pitches() {
   assert!((down - Vec3::Z).length() < 1e-5, "{down}");
 }
 
-// A strike is heard on the level's clock as long after it struck as the sound takes to come, `distance / 300` seconds,
-// over half to twice its distance: one struck 600 m away a tenth of a second before the frame at 5 s starts at 6.9 s.
+// Struck 600 m away 0.1 s before the frame at 5 s, it starts at 5 - 0.1 + 600 / 300 = 6.9 s.
 #[test]
 fn hears_a_strike_on_the_levels_clock_as_far_after_as_it_struck() {
   let mut heard: Heard = Heard::new();
@@ -416,8 +399,6 @@ fn hears_a_strike_on_the_levels_clock_as_far_after_as_it_struck() {
   assert_eq!([thunder.min_distance, thunder.max_distance], [300.0, 1200.0]);
 }
 
-// A reload whose spawn changed reads the level's sounds again: what it read before plays on until the next are read,
-// then every schedule starts afresh from those at the clock's time, so a sound gone from the level stops.
 #[test]
 fn plays_the_sounds_read_again_on_a_reload() {
   let mut heard: Heard = Heard::new();

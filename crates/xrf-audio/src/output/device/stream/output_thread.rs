@@ -14,11 +14,11 @@ use crate::output::device::stream::open_failure::OpenFailure;
 use crate::output::device::stream::output_request::OutputRequest;
 use crate::output::device::stream::output_stream::OutputStream;
 
-/// The thread that owns the device stream: it opens one for the chosen device, follows the system default, and opens
-/// another when a device goes, keeping the same mixer and so the same voices throughout.
+/// The thread behind [`crate::AudioOutput`] that owns the device stream, keeping one mixer, and so the same voices,
+/// across every stream it opens.
 ///
-/// While no device plays, the thread renders the mixer itself at the pace a device would and drops what it renders,
-/// so commands are taken, voices advance and end, their slots come back, and the mixer's clock runs on.
+/// While no device plays, it renders the mixer to nothing at a device's pace, so commands are taken, voices end and
+/// free their slots, and the mixer's clock runs on.
 pub(crate) struct OutputThread {
   /// The mixer while no stream plays it.
   mixer: Option<AudioMixer>,

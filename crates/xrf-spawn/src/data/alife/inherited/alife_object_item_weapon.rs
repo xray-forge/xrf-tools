@@ -11,10 +11,10 @@ use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
 use crate::data::alife::spawn_layout::SpawnLayout;
 use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 
-/// A weapon, `CSE_ALifeItemWeapon`. Its update packet repeats the rounds loaded, weapon state, addons and ammo type the
-/// spawn packet stores, and the engine reads them over the spawn packet's, so those are what the game starts with. Up
-/// to spawn version 122 the spawn packet stores no loaded grenades, which then hold the constructor's none of the first
-/// type (`xrServer_Objects_ALife_Items.cpp:490-491`, read above 122 at `:565`), the byte `pack_to_byte` makes zero.
+/// A weapon, `CSE_ALifeItemWeapon`. Its update packet repeats the spawn packet's rounds loaded, state, addons and ammo
+/// type, and the engine reads them over the spawn packet's, so those are what the game starts with. Up to spawn
+/// version 122 the spawn packet stores no loaded grenades, which hold the constructor's none of the first type, the
+/// byte `pack_to_byte` makes zero.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -61,9 +61,8 @@ impl AlifeObjectItemWeapon {
 }
 
 impl AlifePacketsReadWrite for AlifeObjectItemWeapon {
-  /// The item's, then what `CSE_ALifeItemWeapon::STATE_Read` reads (`xrServer_Objects_ALife_Items.cpp:556-563`): the
-  /// condition quantised, the rounds loaded, the state, the addons and the ammo type; no weapon flags, as the
-  /// constructor leaves them. Whether it aims is uninitialised.
+  /// The item's, then what `CSE_ALifeItemWeapon::STATE_Read` reads: the quantised condition, rounds loaded, state,
+  /// addons and ammo type; no weapon flags, as the constructor leaves them. Whether it aims is uninitialised.
   fn set_spawned_update(&mut self, header: &SpawnPacketHeader) {
     self.base.set_spawned_update(header);
     self.update_condition = AlifeObjectItem::quantize_condition(self.base.condition);
@@ -239,7 +238,7 @@ mod tests {
     }
   }
 
-  /// The grenade byte is the weapon's one spawn field the layout gates; at 123 the item stores no upgrade count.
+  // The grenade byte is the weapon's one spawn field the layout gates; at 123 the item stores no upgrade count.
   #[test]
   fn writes_grenades_above_version_122_only() -> XrfResult {
     let original: AlifeObjectItemWeapon = AlifeObjectItemWeapon::new_mock(Vector3d::new(1.0, 2.0, 3.0));
@@ -286,7 +285,7 @@ mod tests {
     Ok(())
   }
 
-  /// Eight bytes follow the item's physics state in the update packet: `CSE_ALifeItemWeapon::UPDATE_Write`.
+  // Eight bytes follow the item's physics state in the update packet: `CSE_ALifeItemWeapon::UPDATE_Write`.
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectItemWeapon = AlifeObjectItemWeapon::new_mock(Vector3d::new(1.0, 2.0, 3.0));

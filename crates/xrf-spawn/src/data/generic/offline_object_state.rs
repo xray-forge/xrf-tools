@@ -87,7 +87,6 @@ mod tests {
     Ok((writer.buffer, read))
   }
 
-  /// A compiled spawn's object has run no logic and stood nowhere yet, so both strings are `nil`.
   #[test]
   fn writes_nil_for_a_new_object() -> XrfResult {
     assert_eq!(
@@ -110,7 +109,7 @@ mod tests {
     Ok(())
   }
 
-  /// `tostring` never writes a vertex as `0012`, and reading it as 12 would write it back otherwise.
+  // `tostring` never writes `0012`, so reading it as 12 would not write back.
   #[test]
   fn refuses_a_vertex_it_would_not_write_back() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();

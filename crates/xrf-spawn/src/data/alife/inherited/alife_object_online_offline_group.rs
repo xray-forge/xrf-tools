@@ -97,7 +97,7 @@ mod tests {
 
   use crate::data::alife::inherited::alife_object_online_offline_group::AlifeObjectOnlineOfflineGroup;
 
-  /// The alife object's 27 bytes, then the count and two bytes a member.
+  // The alife object's 27 bytes, then the count and two bytes a member.
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectOnlineOfflineGroup = AlifeObjectOnlineOfflineGroup::new_mock(vec![6511, 6523]);

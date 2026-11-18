@@ -9,8 +9,8 @@ use xrf_utils::{decode_bytes_from_base64, encode_bytes_to_base64, narrow_format_
 use crate::constants::NET_ACTION_SPAWN;
 use crate::data::alife::spawn_layout::SpawnLayout;
 
-/// What every server entity's spawn packet opens with, `CSE_Abstract::Spawn_Write` (`xrServer_Object_Base.cpp:156`),
-/// up to the size it patches in once its class's own fields, the state, are written.
+/// What every server entity's spawn packet opens with, `CSE_Abstract::Spawn_Write`, up to the size it patches in once
+/// its class's own fields, the state, are written.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -44,9 +44,9 @@ impl SpawnPacketHeader {
   /// `M_SPAWN_VERSION`: the packet stores its spawn version after the flags.
   pub const FLAG_SPAWN_VERSION: u16 = 1 << 5;
 
-  /// Refuse a spawn version whose layout is not read ([`SpawnLayout::is_supported_version`]), naming Shadow of
-  /// Chernobyl's. The game type follows the version only above 120 (`CSE_Abstract::Spawn_Read`), so a refused version
-  /// must stop the read before the fields after it.
+  /// Refuses a spawn version whose layout is not read ([`SpawnLayout::is_supported_version`]), naming Shadow of
+  /// Chernobyl's. The game type follows the version only above 120 (`CSE_Abstract::Spawn_Read`), so the read stops
+  /// here.
   fn assert_supported_version(version: u16, name: &str, script_flags: u16) -> XrfResult {
     if SpawnLayout::is_supported_version(version) {
       return Ok(());
@@ -63,8 +63,8 @@ impl SpawnPacketHeader {
     ))
   }
 
-  /// Writes the class's own fields after the `u16` that `Spawn_Write` patches with their size, its own two bytes
-  /// counted. The patch is a seek over the bytes alone (`NET_Packet::w_seek`), so fields keep the zero first written.
+  /// Writes the class's own fields after the `u16` size `Spawn_Write` patches in, counting its own two bytes. The patch
+  /// seeks over bytes alone (`NET_Packet::w_seek`), so fields keep the zero first written.
   ///
   /// # Errors
   ///
@@ -298,7 +298,6 @@ mod tests {
     }
   }
 
-  /// The header written at `version`, read back.
   fn read_back(version: u16) -> XrfResult<SpawnPacketHeader> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
@@ -307,7 +306,6 @@ mod tests {
     ChunkReader::<InMemoryChunkDataSource>::from_bytes(&writer.buffer)?.read_xr::<XRayByteOrder, _>()
   }
 
-  /// The header exported at `version`, imported back.
   fn import_back(version: u16) -> XrfResult<SpawnPacketHeader> {
     let mut ltx: Ltx = Ltx::new();
 

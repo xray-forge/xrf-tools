@@ -105,7 +105,7 @@ mod tests {
     }
   }
 
-  /// The quantised condition follows the item's physics state, one byte past it.
+  // The quantised condition follows the item's physics state, one byte past it.
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectItemCustomOutfit = new_object();
@@ -118,7 +118,7 @@ mod tests {
     Ok(())
   }
 
-  /// With no physics state the item's zero byte comes first, then the condition: the two bytes such an item carries.
+  // With no physics state: the item's zero byte, then the condition.
   #[test]
   fn reads_the_condition_after_an_absent_physics_state() -> XrfResult {
     let mut original: AlifeObjectItemCustomOutfit = new_object();

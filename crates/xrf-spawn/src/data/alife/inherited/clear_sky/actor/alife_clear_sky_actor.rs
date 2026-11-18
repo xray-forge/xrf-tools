@@ -19,13 +19,13 @@ use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 use crate::data::generic::script_absent_state::ScriptAbsentState;
 use crate::data::generic::script_save_marker::ScriptSaveMarker;
 
-/// The actor as Clear Sky's `se_actor` saves it (`gamedata-cs/scripts/se_actor.script`): the server class's fields, then,
-/// closed by a save marker, the random task manager, the squads' id generator and the minigames manager, each closed by
-/// its own marker. It adds nothing to the update packet.
+/// The actor as Clear Sky's `se_actor` saves it (`se_actor.script`): the server class's fields, then, under a save
+/// marker, the random task manager, the squads' id generator and the minigames manager, each under its own marker. It
+/// adds nothing to the update packet.
 ///
 /// The task manager (`CRandomTask:save`, `task_manager.script`) keeps the tasks given, the rewards and the upgrade
-/// tasks, which a running game fills; a spawn holds none, so their counts are read as empty and any other is refused
-/// rather than read, and only its task id generator is kept.
+/// tasks, which a running game fills. A spawn holds none, so their counts are read as empty and any other refused; only
+/// its task id generator is kept.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -235,7 +235,7 @@ mod tests {
   use crate::data::alife::inherited::clear_sky::actor::alife_clear_sky_actor::AlifeClearSkyActor;
   use crate::data::alife::spawn_layout::SpawnLayout;
 
-  /// The managers' markers nest inside the actor's, which counts every byte after the server class's fields.
+  // The managers' markers nest inside the actor's, which counts every byte after the server class's fields.
   #[test]
   fn writes_the_managers_closed_by_the_actors_marker() -> XrfResult {
     let original: AlifeClearSkyActor = AlifeClearSkyActor::new_mock(Vector3d::new(256.24, 19.81, 550.82));

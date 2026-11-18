@@ -276,7 +276,7 @@ mod tests {
     Ok((writer.buffer.len(), read))
   }
 
-  /// Three bones of ten bytes, as `CActor::net_ExportDeadBody` writes each: position, rotation and a velocity point.
+  // Bones of ten bytes, as `CActor::net_ExportDeadBody` writes each: position, rotation and a velocity point.
   fn new_dead_body() -> ActorPhysicsState {
     ActorPhysicsState::Dead {
       bone_count: 3,
@@ -306,7 +306,7 @@ mod tests {
     Ok(())
   }
 
-  /// Moving both corners moves every bone quantised within them.
+  // Bones are quantised within the corners, so moving the corners moves them.
   #[test]
   fn translates_a_dead_body_by_its_corners() {
     let mut body: ActorPhysicsState = new_dead_body();

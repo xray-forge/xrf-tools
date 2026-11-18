@@ -10,12 +10,11 @@ use crate::data::generic::script_absent_state::ScriptAbsentState;
 use crate::data::generic::script_save_marker::ScriptSaveMarker;
 use crate::data::generic::script_to_string::ScriptToString;
 
-/// The shooting range minigame's state, `CMGShooting:save` (`gamedata-cs/scripts/minigame_shooting.script`): the
-/// parameters the minigames manager keeps for it, the inventory it took from the actor and the game in progress, closed
-/// by a save marker.
+/// The shooting range minigame's state, `CMGShooting:save` (`minigame_shooting.script`): the manager's parameters for
+/// it, the inventory taken from the actor and the game in progress, under a save marker.
 ///
-/// The targets, the inventory taken and the game in progress are what playing fills; a spawn holds no targets, nothing
-/// taken and the game `nil`, so those are read as such and any other value is refused rather than read.
+/// Playing fills the targets, the inventory taken and the game; a spawn holds no targets, nothing taken and the game
+/// `nil`, which are read as such, and any other value is refused.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -190,7 +189,7 @@ mod tests {
   use crate::data::alife::inherited::clear_sky::actor::minigame::clear_sky_shooting::ClearSkyShooting;
   use crate::data::alife::inherited::clear_sky::actor::minigame::clear_sky_shooting_win::ClearSkyShootingWin;
 
-  /// The constructor's state as a Clear Sky level's actor saves it, closed by its marker counting 38 bytes.
+  // The constructor's state as a Clear Sky level's actor saves it, closed by its marker counting 38 bytes.
   const CONSTRUCTED: &[u8] = b"\0\0nil\0nil\0nil\0nil\0nil\0\x01\0\0\0\0\0\0\0\0\0\0\0nil\0\x26\0";
 
   #[test]
@@ -210,7 +209,7 @@ mod tests {
     Ok(())
   }
 
-  /// A game in progress would be followed by its own state, which is not read.
+  // A game in progress would be followed by its own state, which is not read.
   #[test]
   fn refuses_a_game_in_progress() -> XrfResult {
     let mut bytes: Vec<u8> = CONSTRUCTED[..CONSTRUCTED.len() - 6].to_vec();

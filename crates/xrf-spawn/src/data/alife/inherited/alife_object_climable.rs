@@ -9,7 +9,7 @@ use crate::data::alife::inherited::alife_object_shape::AlifeObjectShape;
 use crate::data::alife::spawn_layout::SpawnLayout;
 
 /// `CSE_ALifeObjectClimable`. Up to spawn version 126 the packet stores no game material, which then holds the
-/// constructor's `materials\fake_ladders` (`xrServer_Objects_ALife.cpp:1727`).
+/// constructor's `materials\fake_ladders`.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -159,7 +159,6 @@ mod tests {
     }
   }
 
-  /// The bytes written at `layout`, and the object read back from them whole.
   fn read_back(climable: &AlifeObjectClimable, layout: SpawnLayout) -> XrfResult<(usize, AlifeObjectClimable)> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 

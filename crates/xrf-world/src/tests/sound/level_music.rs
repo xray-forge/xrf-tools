@@ -1,5 +1,4 @@
-//! A level's music, `CLevelSoundManager::Update`: which track is picked by the game's hour, how the engines pick, and
-//! OpenXRay's halves where the stereo file is missing.
+// A level's music against `CLevelSoundManager::Update`.
 
 use std::collections::HashSet;
 use std::time::Duration;
@@ -27,7 +26,6 @@ fn track(name: &str, hours: [u32; 2]) -> WorldMusicTrack {
   }
 }
 
-/// The tracks picked over `ticks` ticks of 100 ms at `game_time`, in order.
 fn play(music: &mut LevelMusic, game_time: u32, ticks: u64) -> Vec<String> {
   let mut emitters: SoundEmitters = SoundEmitters::default();
   let mut picked: Vec<String> = Vec::new();
@@ -85,7 +83,6 @@ fn takes_a_track_from_midnight_as_always_eligible() {
   assert_eq!(play(&mut music, 15 * HOUR, 5), ["dawn"]);
 }
 
-// With none eligible the music checks again ten seconds later.
 #[test]
 fn waits_ten_seconds_when_no_track_is_eligible() {
   let mut music: LevelMusic = LevelMusic::new(vec![track("night", [21, 23])], XrayEngine::Vanilla);
@@ -96,7 +93,6 @@ fn waits_ten_seconds_when_no_track_is_eligible() {
   assert_eq!(music.report(&emitters, seconds(1)).wait, seconds(10));
 }
 
-// Monolith shuffles once and plays every eligible track before any again; OpenXRay draws each pick.
 #[test]
 fn plays_every_track_once_before_repeating_on_monolith() {
   let tracks: Vec<WorldMusicTrack> = (0..5).map(|index| track(&format!("t{index}"), [1, 23])).collect();
@@ -107,7 +103,6 @@ fn plays_every_track_once_before_repeating_on_monolith() {
   assert_eq!(first.len(), 5, "{picked:?}");
 }
 
-// OpenXRay plays a track's halves either side where its stereo file is missing; Monolith plays nothing of it.
 #[test]
 fn plays_a_missing_tracks_halves_on_openxray_only() {
   let halved = || WorldMusicTrack {
@@ -133,8 +128,6 @@ fn plays_a_missing_tracks_halves_on_openxray_only() {
   assert_eq!(emitters.iter_playing(seconds(1)).count(), 0);
 }
 
-// A track played by hand plays at once whatever the hour, and again each time it ends with no pause, until the
-// schedule is asked back, which picks at once.
 #[test]
 fn plays_a_track_by_hand_over_and_over_until_the_schedule_is_back() {
   let mut music: LevelMusic = LevelMusic::new(
@@ -190,7 +183,6 @@ fn plays_a_track_by_hand_over_and_over_until_the_schedule_is_back() {
   assert_eq!(scheduled.chosen, None);
 }
 
-// A seek plays the track playing from the point asked, which the report then stands at; none plays between tracks.
 #[test]
 fn plays_the_track_playing_from_a_point_asked() {
   let mut music: LevelMusic = LevelMusic::new(vec![track("day", [1, 23])], XrayEngine::Extended);

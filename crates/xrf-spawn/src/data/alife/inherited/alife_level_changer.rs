@@ -77,8 +77,8 @@ impl ChunkFieldReadWrite for AlifeLevelChanger {
     writer.write_u16::<T>(self.dest_game_vertex_id)?;
     writer.write_u32::<T>(self.dest_level_vertex_id)?;
 
-    // `CSE_ALifeLevelChanger::STATE_Write` puts the position down as three floats and the angles as one vector
-    // (`xrServer_Objects_ALife.cpp:798`); the bytes are the same, the fields are not.
+    // `CSE_ALifeLevelChanger::STATE_Write` puts the position down as three floats and the angles as one vector; the
+    // bytes are the same, the fields are not.
     for component in self.dest_position.to_array() {
       writer.write_f32::<T>(component)?;
     }

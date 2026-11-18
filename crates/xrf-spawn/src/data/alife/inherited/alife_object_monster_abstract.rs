@@ -43,7 +43,7 @@ impl AlifeObjectMonsterAbstract {
 
 impl AlifeObjectMonsterAbstract {
   /// `m_task_reached`, a `bool` the bytes hold raw and fields as a `u16` of 0 or 1
-  /// (`CSE_ALifeMonsterAbstract::STATE_Read`, `xrServer_Objects_ALife_Monsters.cpp:1126`).
+  /// (`CSE_ALifeMonsterAbstract::STATE_Read`).
   fn read_task_reached<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<u8> {
     if reader.is_field_form() {
       Ok(u8::from(reader.read_u16::<T>()? != 0))
@@ -52,7 +52,7 @@ impl AlifeObjectMonsterAbstract {
     }
   }
 
-  /// As `CSE_ALifeMonsterAbstract::STATE_Write` writes it (`xrServer_Objects_ALife_Monsters.cpp:1105`).
+  /// As `CSE_ALifeMonsterAbstract::STATE_Write` writes it.
   fn write_task_reached<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     if writer.is_field_form() {
       writer.write_u16::<T>(u16::from(self.task_reached != 0))
@@ -64,7 +64,7 @@ impl AlifeObjectMonsterAbstract {
 
 impl AlifePacketsReadWrite for AlifeObjectMonsterAbstract {
   /// The creature's, then the graph vertices it walks between as the constructor sets them: none, copied from the
-  /// object's game vertex while that is still unset (`xrServer_Objects_ALife_Monsters.cpp:1017`), and no distance.
+  /// object's game vertex while that is still unset, and no distance.
   fn set_spawned_update(&mut self, header: &SpawnPacketHeader) {
     self.base.set_spawned_update(header);
     self.update_next_game_vertex_id = u16::MAX;
@@ -203,8 +203,8 @@ mod tests {
     object
   }
 
-  /// Two strings, the smart terrain and a byte after the creature's 88 spawn bytes; two vertices and two distances
-  /// after its 40 update bytes.
+  // Two strings, the smart terrain and a byte after the creature's 88 spawn bytes; two vertices and two distances
+  // after its 40 update bytes.
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectMonsterAbstract = new_object();

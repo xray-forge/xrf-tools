@@ -1,4 +1,4 @@
-//! The weather ambient's sound channels, `CGamePersistent::WeathersUpdate`: first waits, places and later waits.
+// The weather ambient's sound channels against `CGamePersistent::WeathersUpdate`.
 
 use std::collections::HashMap;
 use std::time::Duration;
@@ -43,7 +43,6 @@ fn day() -> WeatherAmbients {
   }
 }
 
-/// When each sound started and where, over `ticks` ticks of 10 ms.
 fn play(level: &WorldLevelWeather, ticks: u64) -> Vec<(Duration, [f32; 3])> {
   let mut channels: AmbientChannels = AmbientChannels::default();
   let mut emitters: SoundEmitters = SoundEmitters::default();

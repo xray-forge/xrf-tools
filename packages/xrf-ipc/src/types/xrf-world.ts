@@ -397,8 +397,8 @@ export type WorldSurfaceSpan = {
 };
 
 /**
- * What of the level's world plays, rather than what is drawn of it: the weather's rain, bolts and wind, the campfires,
- * the ambient effects, which groups of the spawned objects stream in, and what of its sound is heard.
+ * What of the level's world plays, rather than what is drawn of it: weather, campfires, ambient effects, spawned
+ * objects and sound.
  */
 export type WorldToggles = {
   /** Whether the weather's rain falls and wets surfaces. */
@@ -432,8 +432,8 @@ export enum EWorldViewportEvent {
   /** Where the camera stands, sent while it moves and once more after it stops. */
   CAMERA = "camera",
   /**
-   * The fly camera's wheel, turned while the secondary button flies it, asked for it faster or slower: whole steps,
-   * positive faster, which the page's speed setting takes, since the speed the camera flies at is the page's to keep.
+   * Whole steps of fly speed the wheel asked for while the secondary button flies the camera, positive faster. The
+   * page owns the speed setting and applies them.
    */
   FLY_SPEED = "flySpeed",
   /** Where its weather stands, sent as it changes, a few times a second at most; none while nothing plays. */
@@ -445,8 +445,8 @@ export type WorldViewportEvent =
   /** Where the camera stands, sent while it moves and once more after it stops. */
   | { kind: "camera"; pose: WorldCameraPose }
   /**
-   * The fly camera's wheel, turned while the secondary button flies it, asked for it faster or slower: whole steps,
-   * positive faster, which the page's speed setting takes, since the speed the camera flies at is the page's to keep.
+   * Whole steps of fly speed the wheel asked for while the secondary button flies the camera, positive faster. The
+   * page owns the speed setting and applies them.
    */
   | { kind: "flySpeed"; steps: number }
   /** Where its weather stands, sent as it changes, a few times a second at most; none while nothing plays. */

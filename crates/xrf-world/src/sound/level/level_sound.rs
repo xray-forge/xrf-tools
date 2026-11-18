@@ -29,13 +29,11 @@ use crate::sound::schedule::zone_states::ZoneStates;
 use crate::sound::weather::ambient_channels::AmbientChannels;
 use crate::sound::weather::rain_sound::RainSound;
 
-/// A level's sound as the world plays it beside its picture, by the level's clock: its static sounds, music and zones'
-/// sounds read on a loader thread, the weather's ambient channels, rain, thunder and ambient-effect sounds as the
-/// viewport it is heard by plays them, and a frame to the host's audio at most sixty times a second.
+/// A level's sound on the level's clock: its own static sounds, music and zones, and the weather's channels, rain,
+/// thunder and ambient-effect sounds, sent to the host's audio at most sixty times a second.
 ///
-/// Its schedules start at the first frame it plays, which its level gives it once its scene stands ready. A burst's
-/// first frame starts every schedule afresh at the burst's time, as that first frame does, and so does the first frame
-/// after a burst: what a burst plays depends on its own frames alone, so bursts from one time play alike.
+/// Its schedules start at the first frame it plays. A burst's first frame, and the first frame after a burst, start
+/// every schedule afresh, so bursts from one time play alike.
 pub(crate) struct LevelSound {
   pending: LoaderOnce<WorldLevelSounds>,
   /// The level's own sounds as read, which a schedule starting afresh plays from again.
@@ -95,18 +93,16 @@ impl LevelSound {
     }
   }
 
-  /// Reads the level's own sounds again from `source`, a next source of the same level, whose spawn or helpers changed:
-  /// once read, every schedule starts afresh at the clock's time as a burst's end starts them, so an edited zone plays
-  /// as it now stands and each sounding emitter names its helper by the helpers' new order. What plays meanwhile plays on.
+  /// Reads the level's own sounds again from `source`, a next source of the same level whose spawn or helpers changed.
+  /// What plays meanwhile plays on; once read, every schedule starts afresh, so emitters follow the new helpers.
   pub(crate) fn reload(&mut self, source: &Arc<dyn WorldLevelSource>, workers: &RenderWorkers) {
     // todo: Reopen the sink where the level's collision changed, so the acoustics' walls follow it; they stay as the
     // level opened, since a new sink builds Steam Audio's scene afresh, seconds on a large level.
     self.pending = Self::read_sounds(source, workers);
   }
 
-  /// Plays on to `now` on the level's clock, as `drive` gives the frame over what the level's weathers play with and
-  /// `zones` stand its zones, an ambient effect's sound starting with it where one does, and sends the scene's frame
-  /// where one is due.
+  /// Plays on to `now` on the level's clock as `drive` gives the frame, starting `effect`'s sound if any, and sends the
+  /// scene's frame when one is due.
   pub(crate) fn advance(
     &mut self,
     now: Duration,
@@ -251,8 +247,7 @@ impl LevelSound {
     })
   }
 
-  /// Takes the level's sounds once read: the first time its schedules start from them, read again on a reload every
-  /// schedule starts afresh at `now` from them.
+  /// Takes the level's sounds once read; sounds read again on a reload start every schedule afresh at `now`.
   fn take_read(&mut self, now: Duration) {
     if let Some(sounds) = self.pending.take() {
       log::info!(
@@ -300,9 +295,8 @@ impl LevelSound {
     }
   }
 
-  /// Hears the frame from the drive's camera, moving as fast as it moved since the last. Its up is the drive's made
-  /// square to where it looks, as a camera looking at a point holds it, so a camera pitched up or down still hears left
-  /// from right; looking along the drive's up, it keeps the last up it had.
+  /// Moves the listener to the drive's camera, with its velocity since the last frame. Its up is made square to where
+  /// it looks, so a pitched camera still hears left from right; looking along the drive's up, it keeps its last up.
   fn follow_listener(&mut self, drive: &SoundDrive<'_>, delta: Duration) {
     let before: Vec3 = Vec3::from(self.listener.position);
     let seconds: f32 = delta.as_secs_f32();
@@ -326,8 +320,8 @@ impl LevelSound {
     };
   }
 
-  /// Each strike's sound, delayed by how far it struck: a strike stamped at a moment before the frame's struck as long
-  /// before `now` on the level's clock.
+  /// Plays each strike's sound, delayed by its distance, dated on the level's clock as long before `now` as its stamp
+  /// precedes the frame's.
   fn thunder(&mut self, weather: &WorldLevelWeather, drive: &SoundDrive<'_>, now: Duration) {
     for strike in drive.thunder {
       let Some(sound) = weather.thunder_sounds.get(&strike.bolt) else {
@@ -368,8 +362,7 @@ impl LevelSound {
     }
   }
 
-  /// Sends the audio the scene's frame where one is due: what plays, heard from the listener as the drive's toggles say,
-  /// by the voice rules of `engine`.
+  /// Sends the audio the scene's frame when one is due, under the voice rules of `engine`.
   fn send(&mut self, drive: &SoundDrive<'_>, engine: XrayEngine) {
     let now: Duration = self.now;
     let Some(outlet) = self.outlet.as_mut().filter(|outlet| outlet.is_due(now)) else {
@@ -414,7 +407,7 @@ impl LevelSound {
         check(&record.sound, WorldSoundKind::Static);
       }
 
-      // Vanilla plays a track's two halves where its stereo file is missing, so the halves are what may be missing then.
+      // Vanilla plays a track's two halves where its stereo file is missing, so then the halves may be missing.
       for track in level.music.iter_tracks() {
         match &track.halves {
           Some(halves) if level.engine != XrayEngine::Extended => {

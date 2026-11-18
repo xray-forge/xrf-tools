@@ -142,7 +142,7 @@ mod tests {
     }
   }
 
-  /// Four strings after the group, closed by the marker counting them.
+  // Four strings after the group, closed by the marker counting them.
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeSquad = new_object();

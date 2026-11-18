@@ -123,7 +123,6 @@ mod tests {
   use crate::data::generic::offline_object_state::OfflineObjectState;
   use crate::fixtures::GameWrittenPackets;
 
-  /// What the game writes for a new stalker reads whole and writes back byte for byte.
   #[test]
   fn reads_and_writes_what_the_game_writes() -> XrfResult {
     let spawn: Vec<u8> = GameWrittenPackets::bytes(GameWrittenPackets::STALKER_SPAWN);
@@ -163,8 +162,7 @@ mod tests {
     Ok(())
   }
 
-  /// The tail in `Stalker.ts`'s `STATE_Write` order - the level vertex and active section as strings, then the loot
-  /// flag - reads as the offline state and flag it saved.
+  // `Stalker.ts`'s `STATE_Write` order: the level vertex and active section as strings, then the loot flag.
   #[test]
   fn reads_the_tail_in_the_script_order() -> XrfResult {
     let original: AlifeStalker = AlifeStalker::new_mock(Vector3d::new(1.0, 2.0, 3.0));
@@ -197,7 +195,7 @@ mod tests {
     Ok(())
   }
 
-  /// A compiled spawn's tail: two `nil` strings and the loot byte close the spawn packet, with no marker counting them.
+  // A compiled spawn's tail: two `nil` strings and the loot byte, with no marker counting them.
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeStalker = AlifeStalker::new_mock(Vector3d::new(-12.5, 0.75, 310.0));

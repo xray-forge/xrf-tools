@@ -3,7 +3,6 @@ use xrf_error::XrfResult;
 
 use crate::level::level_spawn_file::LevelSpawnFile;
 
-/// Frames a payload as one X-Ray chunk.
 fn new_chunk(id: u32, payload: &[u8]) -> XrfResult<Vec<u8>> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
@@ -12,7 +11,6 @@ fn new_chunk(id: u32, payload: &[u8]) -> XrfResult<Vec<u8>> {
   writer.flush_chunk_into_buffer::<XRayByteOrder>(id)
 }
 
-/// One spawn packet, as `CSE_Abstract::Spawn_Write` frames it.
 fn new_object(action: u16, section: &str, name: &str, position: [f32; 3], tail: &[u8]) -> Vec<u8> {
   let mut bytes: Vec<u8> = action.to_le_bytes().to_vec();
 
@@ -35,7 +33,7 @@ fn new_object(action: u16, section: &str, name: &str, position: [f32; 3], tail: 
   bytes
 }
 
-/// A whole list out of the objects it is given, numbered as every shipped file numbers them.
+// Numbered from zero, as every shipped file numbers them.
 fn new_list(objects: &[Vec<u8>]) -> XrfResult<Vec<u8>> {
   let mut bytes: Vec<u8> = Vec::new();
 
@@ -46,7 +44,6 @@ fn new_list(objects: &[Vec<u8>]) -> XrfResult<Vec<u8>> {
   Ok(bytes)
 }
 
-/// A list holding three objects of two sections.
 fn new_sample() -> XrfResult<Vec<u8>> {
   new_list(&[
     new_object(1, "graph_point", "fake_graph_point", [0.0, 0.0, 0.0], &[7; 12]),
@@ -69,8 +66,7 @@ fn reads_every_object_of_a_flat_packet_run() -> XrfResult {
 
 #[test]
 fn counts_what_a_level_spawns_by_section() -> XrfResult {
-  // A level spawns up to 2,832 objects out of at most 175 sections, so the sections are the answer and the objects
-  // are not.
+  // A level spawns up to 2,832 objects of at most 175 sections, so the sections are the answer.
   let file: LevelSpawnFile = LevelSpawnFile::read_from_bytes::<XRayByteOrder>(new_sample()?)?;
   let sections = file.get_sections();
 
@@ -83,8 +79,7 @@ fn counts_what_a_level_spawns_by_section() -> XrfResult {
 
 #[test]
 fn keeps_the_rest_of_a_packet_verbatim() -> XrfResult {
-  // Everything past the generic header is version- and class-dependent. It is carried rather than read, so a list
-  // rewrites exactly without this reader having to resolve a server class.
+  // The payload is carried, not read, so a list rewrites exactly without resolving a server class.
   let file: LevelSpawnFile = LevelSpawnFile::read_from_bytes::<XRayByteOrder>(new_sample()?)?;
 
   assert_eq!(file.objects[0].payload, vec![7; 12]);
@@ -108,8 +103,7 @@ fn writes_a_list_back_byte_for_byte() -> XrfResult {
 
 #[test]
 fn refuses_a_spawn_set_though_it_shares_the_extension() -> XrfResult {
-  // A set opens with its header chunk, whose first field is the version and not `M_SPAWN`. Every shipped set reads
-  // as action 10 here, which is what tells the two formats apart before either is parsed.
+  // A root spawn opens with its header, whose version every shipped set holds as 10 where `M_SPAWN` would be.
   let set: Vec<u8> = new_list(&[new_object(10, "", "", [0.0, 0.0, 0.0], &[0; 40])])?;
 
   assert!(LevelSpawnFile::read_from_bytes::<XRayByteOrder>(set).is_err());

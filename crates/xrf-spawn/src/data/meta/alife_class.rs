@@ -7,9 +7,8 @@ use crate::data::alife::script_dialect::ScriptDialect;
 use crate::data::meta::cls_id::ClsId;
 use crate::data::meta::map::CLS_ID_TO_CLASS;
 
-/// The server class a spawned object is read as: those Call of Pripyat creates from a spawn, by the engine's
-/// `object_factory_register.cpp` and the scripts' `class_registrator.script`, and Clear Sky's script classes where its
-/// own `class_registrator.script` registers one that saves other fields.
+/// The server class a spawned object is read as: Call of Pripyat's spawnable classes (`object_factory_register.cpp`,
+/// `class_registrator.script`), and Clear Sky's script classes that save other fields.
 #[derive(Clone, Debug, Enum, PartialEq, Eq, FromStr, Display)]
 pub enum AlifeClass {
   #[display("CseAlifeAnomalousZone")]
@@ -125,8 +124,8 @@ impl AlifeClass {
     CLS_ID_TO_CLASS.index(cls_id.clone()).clone()
   }
 
-  /// The class the game whose scripts the object follows reads an object of `cls_id` as: Clear Sky's own script class
-  /// where its `class_registrator.script` registers one that saves other fields than Call of Pripyat's.
+  /// The class an object of `cls_id` is read as under `dialect`: Clear Sky's own script class where it saves other
+  /// fields than Call of Pripyat's.
   pub fn from_dialect_cls_id(cls_id: &ClsId, dialect: ScriptDialect) -> Self {
     let class: Self = Self::from_cls_id(cls_id);
 
@@ -150,7 +149,7 @@ mod tests {
   use crate::data::meta::alife_class::AlifeClass;
   use crate::data::meta::cls_id::ClsId;
 
-  /// The script classes the two games disagree on resolve by dialect; the engine classes they share do not.
+  // The script classes the two games disagree on resolve by dialect; the engine classes they share do not.
   #[test]
   fn resolves_the_script_classes_the_games_disagree_on() {
     for (cls_id, call_of_pripyat, clear_sky) in [

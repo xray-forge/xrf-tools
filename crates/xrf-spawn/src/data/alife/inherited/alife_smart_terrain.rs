@@ -225,7 +225,7 @@ mod tests {
     Ok(())
   }
 
-  /// A count with nothing behind it would be read by the game as the start of a list, so it is not written.
+  // The game would read a count with nothing behind it as the start of a list.
   #[test]
   fn refuses_to_write_simulation_state_it_cannot_carry() {
     let mut terrain: AlifeSmartTerrain = new_terrain();

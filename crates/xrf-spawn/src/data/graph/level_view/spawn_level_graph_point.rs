@@ -1,6 +1,6 @@
 use xrf_math::Vector3d;
 
-/// One game vertex of a level, by its id in the game graph and where it stands on the level.
+/// One game vertex of a level.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SpawnLevelGraphPoint {
   /// The vertex's id in the game graph, its position in the graph's vertex list.

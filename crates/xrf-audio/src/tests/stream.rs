@@ -9,7 +9,6 @@ use crate::{
   SoundChannels, SoundFormat, SoundStream, SoundStreamStart, StreamControl, StreamReader, VoiceSource,
 };
 
-/// Renders until the voice has sounded, or two seconds pass: the stream's thread fills its ring meanwhile.
 fn render_until_audible(engine: &AudioEngine, render: &mut OfflineRender, voice: AudioVoiceId) -> Vec<f32> {
   let deadline: Instant = Instant::now() + Duration::from_secs(2);
 
@@ -120,8 +119,7 @@ fn loops_a_stream_until_told_otherwise() {
   assert_eq!(engine.get_playback(voice).state, AudioVoiceState::Ended);
 }
 
-/// A sound whose pages claim frames its packets do not render would start over forever, a thread spinning at full
-/// speed; one pass that decodes nothing ends it, naming why.
+// Pages claiming frames its packets do not render would otherwise loop forever, spinning a thread.
 #[test]
 fn ends_a_looped_stream_of_a_sound_that_decodes_to_nothing() {
   let empty: Arc<[u8]> = VorbisNoiseFixture::refused(1, 20).into();
@@ -161,8 +159,6 @@ fn reports_the_frame_a_stream_plays() {
   assert_eq!(reported, 5256);
 }
 
-/// A stream opens on its own thread, so a sound that cannot be read, or is not what it was started as, ends its voice
-/// and names why rather than holding up the caller.
 #[test]
 fn fails_a_stream_it_cannot_open_on_its_thread() {
   let format: SoundFormat = SoundFormat {

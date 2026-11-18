@@ -133,8 +133,8 @@ mod tests {
     object
   }
 
-  /// The skeleton's animation, flags and source, then the bound object, close the spawn packet; the update packet is
-  /// the monster's 52 bytes.
+  // The skeleton's animation, flags and source, then the bound object, close the spawn packet; the update packet is
+  // the monster's 52 bytes.
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectMonsterBase = new_object();

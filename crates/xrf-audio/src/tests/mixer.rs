@@ -146,8 +146,6 @@ fn holds_a_paused_voice_in_place_and_ends_a_stopped_one_after_its_fade() {
   assert_eq!(engine.get_playback(voice).state, AudioVoiceState::Ended);
 }
 
-/// The mixer renders whole blocks and hands a buffer what it asks for out of them: a buffer shorter than a block takes
-/// the rest of the last block first, and a command lands at the next block.
 #[test]
 fn hands_out_whole_blocks_across_buffers_of_any_length() {
   let sound: Arc<DecodedSound> = Arc::new(sine(RATE, RATE as usize, 1000.0, 0.5, SoundChannels::Mono));
@@ -238,8 +236,7 @@ fn follows_a_voice_s_gain_and_rate_from_the_next_buffer() {
   assert_eq!(engine.get_playback(voice).frame, frame + 9216);
 }
 
-/// Continuous controls never wait on the audio thread: with no device rendering, as many writes as a level's voices
-/// send in many frames are all kept, the last of each winning.
+// Far more writes than the command ring holds: continuous controls never wait on the audio thread.
 #[test]
 fn keeps_the_last_of_many_writes_while_no_buffer_renders() {
   let sound: Arc<DecodedSound> = Arc::new(sine(RATE, RATE as usize, 1000.0, 0.5, SoundChannels::Mono));

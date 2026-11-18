@@ -4,9 +4,9 @@ use xrf_error::XrfResult;
 
 use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 
-/// One entity's spawn packet, `CSE_Abstract::Spawn_Write`: its header, then its class's own fields, `state`, after the
-/// size the header patches in. `level.spawn` holds one per entity as bytes, and the Level Editor saves one as
-/// `[object_N_spawndata]` fields.
+/// One entity's spawn packet, `CSE_Abstract::Spawn_Write`: its header, then its class's own fields after the size the
+/// header patches in. `level.spawn` holds these as bytes, and the Level Editor saves one as `[object_N_spawndata]`
+/// fields.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SpawnPacket<S> {
   pub header: SpawnPacketHeader,
@@ -47,7 +47,6 @@ mod tests {
 
   type Restrictor = SpawnPacket<AlifeObjectSpaceRestrictor>;
 
-  /// Fields handed out in order, as an entity's saved spawn data would be.
   struct QueuedFields(VecDeque<ChunkField>);
 
   impl ChunkFieldSource for QueuedFields {
@@ -63,7 +62,6 @@ mod tests {
     }
   }
 
-  /// A restrictor as a level designer places one: the ids the editor leaves unset, two lines of logic.
   fn new_restrictor(shape: Vec<Shape>) -> Restrictor {
     SpawnPacket {
       header: SpawnPacketHeader {
@@ -125,8 +123,7 @@ mod tests {
     Ok(writer.buffer)
   }
 
-  /// The fields in the order and kinds GSC's `labx8` scene saves a space restrictor's (`[object_50_spawndata]`): the
-  /// size `Spawn_Write` patches in kept as the zero first written, the sphere as a vector and a float.
+  // As GSC's `labx8` scene saves a space restrictor (`[object_50_spawndata]`), the patched size kept as zero.
   #[test]
   fn records_a_restrictor_as_the_editor_numbers_its_fields() -> XrfResult {
     assert_eq!(
@@ -169,7 +166,6 @@ mod tests {
     Ok(())
   }
 
-  /// Bytes and fields read back into the same packet, the bytes with the state's size patched in.
   #[test]
   fn reads_bytes_and_fields_back_into_the_same_packet() -> XrfResult {
     for shape in [
@@ -204,7 +200,6 @@ mod tests {
     Ok(())
   }
 
-  /// A size that counts other than the state's fields is refused.
   #[test]
   fn refuses_bytes_whose_state_size_counts_other_fields() -> XrfResult {
     let packet: Restrictor = new_restrictor(new_unit_sphere());
@@ -230,7 +225,6 @@ mod tests {
     Ok(())
   }
 
-  /// Client data is raw bytes, which fields cannot hold; the bytes carry it.
   #[test]
   fn refuses_client_data_in_fields() -> XrfResult {
     let mut packet: Restrictor = new_restrictor(new_unit_sphere());

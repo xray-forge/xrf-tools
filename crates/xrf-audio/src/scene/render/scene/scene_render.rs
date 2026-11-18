@@ -35,12 +35,12 @@ use crate::voice::shared::voice_spatial_parameters::VoiceSpatialParameters;
 use crate::voice::voice_source::VoiceSource;
 use crate::voice::voice_spatial::VoiceSpatial;
 
-/// One scene as the control thread plays it: every emitter its frames name simulates by the scene's clock, and the
-/// loudest by priority, up to the engine's targets, hold a voice placed where its clock says it is.
+/// One scene as the control thread plays it: every emitter its frames name simulates on the scene's clock, and the
+/// loudest, up to the engine's targets, hold a voice placed where that clock says.
 ///
-/// A placed mono sound is heard through the acoustics where they run: the distance curve, the air, the walls in its
-/// way as the scene's simulation hears them, both ears, and its share of the listener's reverb; elsewhere it plays dry,
-/// by the distance curve and panning. Its pitch follows its own motion and the listener's.
+/// Where the acoustics run, a placed mono sound is heard through them: distance, air, the walls in its way, both ears
+/// and its reverb share. Elsewhere it plays dry, by the distance curve and panning. Its pitch follows its own motion
+/// and the listener's.
 pub(crate) struct SceneRender {
   scene: u32,
   rules: AudioSceneRules,
@@ -143,9 +143,8 @@ impl SceneRender {
     }
   }
 
-  /// Plays the scene on to the tick's mixer frame, its sounds read through `assets`: lets go of the plays the last
-  /// frame did not name, simulates every emitter, realizes the loudest, and hands the acoustics where the placed ones
-  /// are.
+  /// Plays the scene on to the tick's mixer frame, its sounds read through `assets`, ending the plays the last frame
+  /// did not name and handing the acoustics where the placed ones are.
   pub(crate) fn tick(&mut self, mut tick: SceneTick<'_>, assets: &SceneAssets, generation: u64) {
     self.emitters.retain(|_, rendered| {
       let is_named: bool = rendered.seen == generation;
@@ -342,10 +341,9 @@ impl SceneRender {
     }
   }
 
-  /// Gives an emitter a voice where its clock says its sound is at `now`, starting one where it has none, or where its
-  /// voice ended or starved past [`SceneClock::DRIFT`], and sets how it is heard, through the HRTF or panned as `ears`
-  /// says where the acoustics place it, the walls' hold eased over the `seconds` since the last tick. Answers whether it
-  /// holds one.
+  /// Gives an emitter a voice where its clock puts its sound at `now`, starting one where it has none or its voice
+  /// ended or starved, and sets how it is heard: through the HRTF or panned as `ears` says, the walls eased over
+  /// `seconds`. Answers whether it holds a voice.
   fn realize(
     &mut self,
     rendered: &mut RenderedEmitter,
@@ -512,10 +510,11 @@ impl SceneRender {
     }
   }
 
-  /// Whether a voice has ended while its emitter plays on, or lags where its own reckoning should have it by more than
-  /// the drift allowed, as a stream its decoder has not fed: it neither renders nor advances. Measured against the
-  /// voice's own start at the rates it was set to, never the scene's clock, so neither a clock stepped or anchored again
-  /// nor a Doppler shift moves a voice; a voice not yet taken up by the mixer is where it was started.
+  /// Whether a voice ended while its emitter plays on, or lags its own reckoning by more than [`SceneClock::DRIFT`],
+  /// as a stream its decoder has not fed does.
+  ///
+  /// The lag is measured from the voice's own start at the rates it was set to, never the scene's clock, so neither a
+  /// re-anchored clock nor a Doppler shift moves a voice. A voice the mixer has not taken up is never starved.
   fn is_starved(playback: AudioVoicePlayback, voice: &RealVoice, place: &SoundPlace, tick: &SceneTick<'_>) -> bool {
     match playback.state {
       AudioVoiceState::Ended => true,

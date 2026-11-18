@@ -39,8 +39,7 @@ pub struct World {
   next_scene: u32,
   /// The pool its levels and weather are read on.
   workers: RenderWorkers,
-  /// The viewport heard whatever the host names while it is pinned, as a recording pins its viewport; the viewport heard,
-  /// as the host last named it; and the last one shown a level, heard while the host names none.
+  /// The listener candidates in the order `get_listener` tries them: pinned, named by the host, last shown a level.
   pinned: Option<RenderViewportId>,
   listener: Option<RenderViewportId>,
   last_shown: Option<RenderViewportId>,
@@ -59,20 +58,18 @@ impl World {
     }
   }
 
-  /// Hears the scene a viewport shows from its camera from the next frame on: the focused window's active pane. Every
-  /// other scene falls silent and plays on. A pinned viewport is heard over it until it is let go.
+  /// Hears the scene `viewport` shows from its camera from the next frame on; every other scene plays on silent. A
+  /// pinned viewport is heard over it until let go.
   pub fn set_listener(&mut self, viewport: RenderViewportId) {
     self.listener = Some(viewport);
   }
 
-  /// Hears `viewport` whatever the host names from the next frame on, as a recording of it does; none lets it go, the
-  /// viewport the host last named heard again.
+  /// Hears `viewport` from the next frame on whatever the host names, as a recording needs; none unpins it.
   pub fn pin_listener(&mut self, viewport: Option<RenderViewportId>) {
     self.pinned = viewport;
   }
 
-  /// What the scene a viewport shows plays as the world schedules it, and the scene; none for a viewport showing no
-  /// level.
+  /// The sound report of the scene a viewport shows, none for a viewport showing no level.
   pub fn report_sound(&mut self, viewport: RenderViewportId) -> Option<WorldSceneSound> {
     let id: RenderSceneId = self.viewports.get(&viewport)?.scene?;
     let scene: &mut WorldScene = self.scenes.get_mut(&id)?;
@@ -83,8 +80,8 @@ impl World {
     })
   }
 
-  /// Whether the scene a viewport shows plays sound, so a burst of it has sound to take: not for a viewport showing no
-  /// level, or a level whose host opened no place for its sound.
+  /// Whether the scene a viewport shows plays sound, so a burst of it has sound to take: false for no level, or a level
+  /// whose host opened no sound outlet.
   pub fn has_sound(&self, viewport: RenderViewportId) -> bool {
     self
       .viewports
@@ -94,8 +91,8 @@ impl World {
       .is_some_and(|scene| scene.level.has_sound())
   }
 
-  /// Does what a viewer asks of the music of the scene a viewport shows, answering whether it could: none can for a
-  /// viewport showing no level, or before its sounds are read.
+  /// Does what a viewer asks of the music of the scene a viewport shows, answering whether it could; it cannot for no
+  /// level, or before the sounds are read.
   pub fn command_music(&mut self, viewport: RenderViewportId, command: &WorldMusicCommand) -> bool {
     let scene: Option<RenderSceneId> = self.viewports.get(&viewport).and_then(|world| world.scene);
 
@@ -104,7 +101,7 @@ impl World {
       .is_some_and(|scene| scene.level.command_music(command))
   }
 
-  /// The viewport heard: the pinned one, else the one the host named, while it is attached; else the last shown a level.
+  /// The viewport heard: the pinned one, else the one the host named, else the last shown a level, if attached.
   pub(crate) fn get_listener(&self) -> Option<RenderViewportId> {
     let is_attached = |viewport: &RenderViewportId| self.viewports.contains_key(viewport);
 

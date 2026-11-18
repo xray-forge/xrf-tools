@@ -11,7 +11,6 @@ use crate::{
   AudioVoiceState, DecodedSound, OfflineRender, SoundChannels,
 };
 
-/// A device that goes drops its stream's callback: the mixer comes back with its voices, to play on the next stream.
 #[test]
 fn hands_the_mixer_back_with_its_voices_when_a_stream_drops_its_callback() {
   let sound: Arc<DecodedSound> = Arc::new(sine(RATE, RATE as usize, 1000.0, 0.5, SoundChannels::Mono));
@@ -34,8 +33,6 @@ fn hands_the_mixer_back_with_its_voices_when_a_stream_drops_its_callback() {
   assert_eq!(engine.get_playback(voice).frame, 1024);
 }
 
-/// While no device plays, the output thread renders the mixer at a device's pace: commands are taken, voices play out
-/// and come back to be freed, and the mixer's clock runs on.
 #[test]
 fn plays_the_mixer_to_nothing_while_no_device_plays_it() {
   let sound: Arc<DecodedSound> = Arc::new(sine(RATE, 480, 1000.0, 0.5, SoundChannels::Mono));
@@ -72,7 +69,7 @@ fn plays_the_mixer_to_nothing_while_no_device_plays_it() {
   );
 }
 
-/// The machine may have a device or none: either way the output answers with a status rather than a panic, and closes.
+// The machine may have a device or none; either way the output answers with a status.
 #[test]
 fn answers_a_missing_device_with_the_default_or_a_failure() {
   let AudioEngineParts { mixer, .. } = engine(4);

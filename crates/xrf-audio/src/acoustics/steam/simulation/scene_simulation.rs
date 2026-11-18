@@ -12,9 +12,8 @@ use crate::acoustics::scene::simulation_pace::SimulationPace;
 use crate::acoustics::steam::simulation::simulated_world::SimulatedWorld;
 use crate::scene::host::audio_scene_geometry::AudioSceneGeometry;
 
-/// One scene's simulation: it reads the scene's geometry and builds Steam Audio's scene from it, then, each time the
-/// control side hands it where the listener and the sounds are, hears each sound's way through the walls (occlusion,
-/// and what the walls let through) and, less often, the listener's reverb from the rays it sends around.
+/// One scene's Steam Audio simulation, built from the scene's geometry. Each hand-over of the listener and sounds
+/// updates every sound's occlusion and transmission and, less often, the listener's reverb.
 pub(crate) struct SceneSimulation {
   run: SimulationRun,
 }
@@ -73,9 +72,8 @@ impl SceneSimulation {
   /// Threads the reverb's rays are traced on in real time, beside the control thread and the mixer's.
   const REVERB_THREADS: u32 = 2;
 
-  /// Threads the reverb's rays are traced on stepped, which waits for them. Steam Audio seeds each thread's draws, which
-  /// decide where a ray scatters, by the wall clock's second as the simulator is made: with one thread, simulators made
-  /// within one second trace the same rays; with two, the threads share out the rays differently every run.
+  /// Threads the reverb's rays are traced on stepped. Steam Audio seeds each thread's ray scattering from the wall
+  /// clock's second: one thread repeats its rays within that second, while two share them out differently every run.
   const STEPPED_REVERB_THREADS: u32 = 1;
 
   /// A simulation of the scene `geometry` holds, keeping up as `pace` says.
@@ -170,8 +168,8 @@ impl SceneSimulation {
   }
 
   /// Steam Audio's world of the scene's geometry built as `build` says, and the geometry's state: ready, or failed with
-  /// no world. None where the acoustics do not run, or where the scene closed before its world was built: a level
-  /// switched away from while its walls are read builds no world it would never hear, beside the next level's.
+  /// no world. None where the acoustics do not run or the scene closed before its world was built, so a level switched
+  /// away from builds nothing beside the next one.
   fn build(
     acoustics: &AudioAcoustics,
     geometry: &dyn AudioSceneGeometry,

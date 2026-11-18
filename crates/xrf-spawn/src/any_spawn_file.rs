@@ -10,8 +10,7 @@ use crate::level::level_spawn_file::LevelSpawnFile;
 use crate::spawn_file::SpawnFile;
 use crate::spawn_file_kind::SpawnFileKind;
 
-/// A `.spawn` file as whichever of the two formats sharing the extension it is, told by its own chunks, or by its
-/// unpacked folder's files ([`SpawnFileKind`]), since its name cannot say.
+/// A `.spawn` file in whichever of the two formats sharing the extension it is ([`SpawnFileKind`]).
 #[derive(Clone, Debug)]
 pub enum AnySpawnFile {
   Root(Box<SpawnFile>),
@@ -19,12 +18,12 @@ pub enum AnySpawnFile {
 }
 
 impl AnySpawnFile {
-  /// Reads the file at `path` once, walking its top-level chunks a single time for both the kind and the read.
+  /// Reads a root spawn or a level spawn list from `path`, walking its top-level chunks once.
   ///
   /// # Errors
   ///
-  /// Returns an error when the file cannot be opened or walked as chunks, when a root spawn does not read, or when the
-  /// file is neither a root spawn nor a level's spawn list.
+  /// Returns an error when the file cannot be opened or walked as chunks, a root spawn does not read, or the file is
+  /// neither kind.
   pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<InMemoryChunkDataSource>> =
       ChunkReader::from_file(File::open(path.as_ref())?)?.read_children()?;
@@ -135,7 +134,7 @@ mod tests {
     Ok(())
   }
 
-  /// A root spawn's folder is imported as a root spawn, the empty spawn's graph, of no cross table, included.
+  // The empty spawn's graph holds no cross table, which the import must accept too.
   #[test]
   fn imports_a_root_spawns_folder_as_its_kind() -> XrfResult {
     let path: PathBuf = GeneratedResources::create_dir("any_spawn_file/root_folder")?;
@@ -180,7 +179,6 @@ mod tests {
     Ok(())
   }
 
-  /// What a folder holds tells its kind, so a folder holding both kinds' files, or neither, is refused naming each.
   #[test]
   fn refuses_a_folder_of_neither_kind_or_both_naming_what_each_holds() -> XrfResult {
     let path: PathBuf = GeneratedResources::create_dir("any_spawn_file/neither_folder")?;
@@ -208,7 +206,7 @@ mod tests {
     Ok(())
   }
 
-  /// A folder that is not there was not read, which is not a judgement of what it holds.
+  // A missing folder is an IO error, not a verdict on what it holds.
   #[test]
   fn answers_a_missing_folder_as_unread() -> XrfResult {
     let path: PathBuf = GeneratedResources::create_dir("any_spawn_file/missing_folder")?.join("absent");

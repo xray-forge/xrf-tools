@@ -110,7 +110,7 @@ mod tests {
     Ok(())
   }
 
-  /// The grenade mode precedes the physics state, so the state's opening byte is the update packet's second.
+  // The grenade mode precedes the physics state, so the state's opening byte is the update packet's second.
   #[test]
   fn writes_the_grenade_mode_ahead_of_the_physics_state() -> XrfResult {
     let original: AlifeObjectItemWeaponMagazinedWgl = new_object();

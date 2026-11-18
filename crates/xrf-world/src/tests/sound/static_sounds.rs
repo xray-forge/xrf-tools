@@ -1,4 +1,4 @@
-//! A level's static sounds, `SStaticSound::Update`: their windows, plays and pauses on the level's clock.
+// A level's static sounds against `SStaticSound::Update`.
 
 use std::time::Duration;
 
@@ -52,7 +52,7 @@ fn loops_one_with_no_pause_for_ever_as_one_play() {
   );
 }
 
-// No play window plays the sound through once, then waits its length and a drawn pause from its start.
+// The gap from start to start is the sound's four seconds plus the drawn pause.
 #[test]
 fn plays_one_through_and_waits_a_drawn_pause_after() {
   let mut sounds: StaticSounds = StaticSounds::new(vec![record([0, 0], [0, 0], [2000, 3000])]);
@@ -83,7 +83,6 @@ fn plays_one_through_and_waits_a_drawn_pause_after() {
   }
 }
 
-// A play window loops the sound until a drawn stop, which fades it out deferred, and waits a drawn pause after it.
 #[test]
 fn loops_one_until_its_drawn_stop_and_fades_it_out() {
   let mut sounds: StaticSounds = StaticSounds::new(vec![record([0, 0], [1000, 1000], [5000, 5000])]);
@@ -112,7 +111,6 @@ fn loops_one_until_its_drawn_stop_and_fades_it_out() {
   assert_eq!(playing(&emitters, seconds(6)).len(), 1);
 }
 
-// Outside its window of the game's day a sound starts none, and one playing fades out.
 #[test]
 fn follows_its_active_window_of_the_day() {
   let mut sounds: StaticSounds = StaticSounds::new(vec![record([1000, 2000], [0, 0], [0, 0])]);
@@ -131,7 +129,7 @@ fn follows_its_active_window_of_the_day() {
   assert_eq!(playing(&emitters, seconds(2))[0].emitter.stop, Some(seconds(2)));
 }
 
-// A frequency so slow the sound would outlast any clock never ends; one that is no speed at all plays at its own.
+// An infinite or NaN frequency is no speed at all, so the sound plays at its own.
 #[test]
 fn plays_one_slowed_past_any_clock_without_an_end() {
   for (frequency, end) in [

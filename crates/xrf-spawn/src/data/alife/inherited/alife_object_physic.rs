@@ -173,8 +173,7 @@ mod tests {
     Ok(())
   }
 
-  /// `UPDATE_Read` returns at once on an empty packet, leaving the object without a physics state; the packet writes
-  /// back empty.
+  // `UPDATE_Read` returns at once on an empty packet.
   #[test]
   fn keeps_an_empty_update_packet() -> XrfResult {
     let mut original: AlifeObjectPhysic = new_object();
@@ -204,8 +203,7 @@ mod tests {
     Ok(())
   }
 
-  /// The SDK's 2009 factory writes the state of an object of no items and both velocities set behind a zero byte; it
-  /// reads as that state and writes back byte for byte.
+  // The SDK's 2009 factory writes a state of no items and both velocities set behind a zero byte.
   #[test]
   fn reads_a_state_the_sdk_packed_to_zero() -> XrfResult {
     let mut original: AlifeObjectPhysic = new_object();
