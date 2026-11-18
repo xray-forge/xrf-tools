@@ -1,3 +1,4 @@
+use glam::{DVec3, Vec3};
 use xrf_editable_level::EditableSceneObject;
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::XrfResult;
@@ -8,8 +9,8 @@ use xrf_spawn::{
   SpawnPacketHeader,
 };
 
-use crate::level::build::level_build_parts::{LevelBuildPartBox, LevelBuildParts};
-use crate::level::build::level_build_vector::LevelBuildVector;
+use crate::level::build::level_build_part_box::LevelBuildPartBox;
+use crate::level::build::level_build_parts::LevelBuildParts;
 
 /// The ladders a build cuts out of the geometry (`ESceneObjectTool::ExportClimableObjects`,
 /// `ESceneObjectToolsExportBreakable.cpp:236`): the parts of the static objects' faces of a climbable game material
@@ -86,33 +87,19 @@ impl LevelBuildClimbables {
       .parts
       .fit_box(part)
       .ok_or_else(|| String::from("its corners hold no box"))?;
-    let normal: [f64; 3] =
-      part
-        .iter()
-        .flat_map(|face| self.parts.faces[*face].normals)
-        .fold([0.0; 3], |sum, normal| {
-          [
-            sum[0] + f64::from(normal.x),
-            sum[1] + f64::from(normal.y),
-            sum[2] + f64::from(normal.z),
-          ]
-        });
-    let local: [f64; 3] = fitted.axes.map(|axis| LevelBuildVector::dot(&axis, &normal));
+    let normal: DVec3 = part
+      .iter()
+      .flat_map(|face| self.parts.faces[*face].normals)
+      .fold(DVec3::ZERO, |sum, normal| sum + Vec3::from(normal).as_dvec3());
 
-    if !Self::orient_to_normal(&local, &mut fitted) {
+    if !Self::orient_to_normal(fitted.get_local(normal), &mut fitted) {
       return Err(String::from(
         "its thinnest axis is not the one its faces face along most (\"Invalid climable object found\")",
       ));
     }
 
-    let to_vector = |value: [f64; 3]| Vector3d::new(value[0] as f32, value[1] as f32, value[2] as f32);
-    let frame: Affine3d = Affine3d {
-      x_axis: to_vector(fitted.axes[0]),
-      y_axis: to_vector(fitted.axes[1]),
-      z_axis: to_vector(fitted.axes[2]),
-      translation: to_vector(fitted.centre),
-    };
-    let half: Vector3d = to_vector(fitted.half);
+    let frame: Affine3d = fitted.get_frame();
+    let half: Vector3d = Vector3d::from(fitted.half.as_vec3());
 
     Ok(AlifeObject {
       header: SpawnPacketHeader {
@@ -169,7 +156,7 @@ impl LevelBuildClimbables {
   /// `OrientToNorm` (`ESceneObjectToolsExportBreakable.cpp:214`): false unless the axis the faces' summed normal
   /// `local` (in the box's frame) leans on most is the box's thinnest; where it leans the negative way, that axis and
   /// the next are turned round, so the box stays right-handed.
-  fn orient_to_normal(local: &[f64; 3], fitted: &mut LevelBuildPartBox) -> bool {
+  fn orient_to_normal(local: DVec3, fitted: &mut LevelBuildPartBox) -> bool {
     let (mut most, mut thinnest) = (0, 0);
 
     for axis in 1..3 {
@@ -188,7 +175,7 @@ impl LevelBuildClimbables {
 
     if local[most] < 0.0 {
       for axis in [most, (most + 1) % 3] {
-        fitted.axes[axis] = fitted.axes[axis].map(|value| -value);
+        fitted.axes[axis] = -fitted.axes[axis];
       }
     }
 

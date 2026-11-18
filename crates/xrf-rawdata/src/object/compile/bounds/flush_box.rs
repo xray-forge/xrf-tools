@@ -1,4 +1,5 @@
 use glam::{DVec2, DVec3};
+use xrf_geometry::{ConvexOutline, SymmetricEigen};
 use xrf_math::{Obb, Vector3d};
 
 use crate::object::compile::bounds::convex_hull::ConvexHull;
@@ -97,12 +98,12 @@ impl FlushBox {
     let helper: DVec3 = if normal.x.abs() < 0.9 { DVec3::X } else { DVec3::Y };
     let u: DVec3 = normal.cross(helper).try_normalize()?;
     let v: DVec3 = normal.cross(u);
-    let mut planar: Vec<DVec2> = points
+    let planar: Vec<DVec2> = points
       .iter()
       .map(|point| DVec2::new(point.dot(u), point.dot(v)))
       .collect();
     let depth: f64 = Self::half_span(points.iter().map(|point| point.dot(normal))).max(floor);
-    let outline: Vec<DVec2> = Self::hull_2d(&mut planar);
+    let outline: Vec<DVec2> = ConvexOutline::of(&planar);
     let mut best: Option<(f64, DVec2)> = None;
 
     for (index, a) in outline.iter().enumerate() {
@@ -136,37 +137,7 @@ impl FlushBox {
     0.5 * (high - low)
   }
 
-  /// The convex hull of 2D points, counter-clockwise, by Andrew's monotone chain.
-  fn hull_2d(points: &mut [DVec2]) -> Vec<DVec2> {
-    points.sort_by(|a, b| a.x.total_cmp(&b.x).then(a.y.total_cmp(&b.y)));
-
-    let turn = |o: DVec2, a: DVec2, b: DVec2| (a - o).perp_dot(b - o);
-    let mut outline: Vec<DVec2> = Vec::with_capacity(points.len() + 1);
-
-    // The lower chain left to right, then the upper chain back, never popping into the lower one.
-    for point in points.iter() {
-      while outline.len() >= 2 && turn(outline[outline.len() - 2], outline[outline.len() - 1], *point) <= 0.0 {
-        outline.pop();
-      }
-
-      outline.push(*point);
-    }
-
-    let lower: usize = outline.len() + 1;
-
-    for point in points.iter().rev().skip(1) {
-      while outline.len() >= lower && turn(outline[outline.len() - 2], outline[outline.len() - 1], *point) <= 0.0 {
-        outline.pop();
-      }
-
-      outline.push(*point);
-    }
-
-    outline.pop();
-    outline
-  }
-
-  /// The principal axes of the points, the eigenvectors of their covariance by Jacobi rotations, right-handed.
+  /// The principal axes of the points, the eigenvectors of their covariance, right-handed.
   fn principal_axes(points: &[DVec3]) -> [DVec3; 3] {
     let count: f64 = points.len() as f64;
     let mean: DVec3 = points.iter().sum::<DVec3>() / count;
@@ -182,39 +153,7 @@ impl FlushBox {
       }
     }
 
-    let mut vectors: [[f64; 3]; 3] = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
-
-    for _ in 0..32 {
-      for (p, q) in [(0, 1), (0, 2), (1, 2)] {
-        if matrix[p][q].abs() < 1e-15 {
-          continue;
-        }
-
-        let theta: f64 = 0.5 * (matrix[q][q] - matrix[p][p]) / matrix[p][q];
-        let t: f64 = theta.signum() / (theta.abs() + (theta * theta + 1.0).sqrt());
-        let (c, s) = (1.0 / (t * t + 1.0).sqrt(), t / (t * t + 1.0).sqrt());
-
-        for row in matrix.iter_mut().chain(vectors.iter_mut()) {
-          let (kp, kq) = (row[p], row[q]);
-
-          row[p] = c * kp - s * kq;
-          row[q] = s * kp + c * kq;
-        }
-
-        // `p` is always below `q`, so the two rows split apart.
-        let (low, high) = matrix.split_at_mut(q);
-
-        for (pk, qk) in low[p].iter_mut().zip(high[0].iter_mut()) {
-          let (a, b) = (*pk, *qk);
-
-          *pk = c * a - s * b;
-          *qk = s * a + c * b;
-        }
-      }
-    }
-
-    let column = |index: usize| DVec3::new(vectors[0][index], vectors[1][index], vectors[2][index]);
-    let (first, second) = (column(0), column(1));
+    let [first, second, _] = SymmetricEigen::of(matrix).vectors;
 
     [first, second, first.cross(second)]
   }

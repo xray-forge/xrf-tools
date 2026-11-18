@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 
+use glam::{DVec3, Vec3};
 use xrf_editable_level::EditableSceneObject;
 use xrf_editable_object::{EditableMeshNormals, EditableObjectFile, EditableSurface, EditableVMapKind};
 use xrf_error::{XrfError, XrfResult};
 use xrf_gamemtl::{GameMtlFile, GameMtlMaterial};
-use xrf_geometry::PointWelder;
+use xrf_geometry::{PointWelder, SymmetricEigen};
 use xrf_math::{Matrix4x4, Vector2d, Vector3d};
 
-use crate::level::build::level_build_eigen::LevelBuildEigen;
-use crate::level::build::level_build_vector::LevelBuildVector;
+use crate::level::build::level_build_part_box::LevelBuildPartBox;
 use crate::object::compile::geometry::source::mesh_corners::MeshCorners;
 
 /// The faces of one kind of game material the static objects hold, split into the parts a build cuts out of the
@@ -34,13 +34,6 @@ pub(crate) struct LevelBuildPartFace {
   pub(crate) normals: [Vector3d; 3],
   pub(crate) texture_coordinates: [Vector2d; 3],
   pub(crate) surface: usize,
-}
-
-/// A part's box: its centre, and its axes and half sizes, each axis in a row.
-pub(crate) struct LevelBuildPartBox {
-  pub(crate) centre: [f64; 3],
-  pub(crate) axes: [[f64; 3]; 3],
-  pub(crate) half: [f64; 3],
 }
 
 impl LevelBuildParts {
@@ -228,25 +221,17 @@ impl LevelBuildParts {
   /// them; the axes made right-handed after (`ComputeOBB_RAPID`). Done in double precision about the first corner, since
   /// the editor's single precision on level coordinates turns a box by noise.
   pub(crate) fn fit_box(&self, part: &[usize]) -> Option<LevelBuildPartBox> {
-    let corners: Vec<[f64; 3]> = part
+    let corners: Vec<DVec3> = part
       .iter()
       .flat_map(|face| self.faces[*face].corners)
-      .map(|point| [f64::from(point.x), f64::from(point.y), f64::from(point.z)])
+      .map(|point| Vec3::from(point).as_dvec3())
       .collect();
-    let origin: [f64; 3] = *corners.first()?;
-    let local: Vec<[f64; 3]> = corners
-      .iter()
-      .map(|corner| LevelBuildVector::sub(corner, &origin))
-      .collect();
-    let triangles: &[[[f64; 3]; 3]] = local.as_chunks::<3>().0;
+    let origin: DVec3 = *corners.first()?;
+    let local: Vec<DVec3> = corners.iter().map(|corner| *corner - origin).collect();
+    let triangles: &[[DVec3; 3]] = local.as_chunks::<3>().0;
     let areas: Vec<f64> = triangles
       .iter()
-      .map(|triangle| {
-        LevelBuildVector::length(&LevelBuildVector::cross(
-          &LevelBuildVector::sub(&triangle[1], &triangle[0]),
-          &LevelBuildVector::sub(&triangle[2], &triangle[0]),
-        )) / 2.0
-      })
+      .map(|triangle| (triangle[1] - triangle[0]).cross(triangle[2] - triangle[0]).length() / 2.0)
       .collect();
     // A triangle of no area counts with the least area of the others, or 1 where every one has none.
     let least: f64 = areas
@@ -255,18 +240,15 @@ impl LevelBuildParts {
       .filter(|area| *area > 0.0)
       .reduce(f64::min)
       .unwrap_or(1.0);
-    let (mut total, mut mean, mut second) = (0.0, [0.0; 3], [[0.0; 3]; 3]);
+    let (mut total, mut mean, mut second) = (0.0, DVec3::ZERO, [[0.0; 3]; 3]);
 
     for (triangle, area) in triangles.iter().zip(&areas) {
-      let [p, q, r] = [triangle[0], triangle[1], triangle[2]];
-      let centroid: [f64; 3] = [0, 1, 2].map(|axis| (p[axis] + q[axis] + r[axis]) / 3.0);
+      let [p, q, r] = *triangle;
+      let centroid: DVec3 = (p + q + r) / 3.0;
       let weight: f64 = if *area > 0.0 { *area } else { least };
 
       total += weight;
-
-      for axis in 0..3 {
-        mean[axis] += centroid[axis] * weight;
-      }
+      mean += centroid * weight;
 
       for (row, cells) in second.iter_mut().enumerate() {
         for (column, cell) in cells.iter_mut().enumerate() {
@@ -283,36 +265,31 @@ impl LevelBuildParts {
 
     let covariance: [[f64; 3]; 3] =
       [0, 1, 2].map(|row| [0, 1, 2].map(|column| second[row][column] - mean[row] * mean[column] / total));
-    let (values, vectors) = LevelBuildEigen::decompose(covariance);
-    let largest: usize = (0..3).max_by(|a, b| values[*a].total_cmp(&values[*b]))?;
+    let eigen: SymmetricEigen = SymmetricEigen::of(covariance);
     let mut order: [usize; 3] = [0, 1, 2];
 
-    order.swap(0, largest);
+    order.swap(0, eigen.get_greatest());
 
-    let mut axes: [[f64; 3]; 3] = order.map(|column| LevelBuildEigen::get_column(&vectors, column));
+    let mut axes: [DVec3; 3] = order.map(|column| eigen.vectors[column]);
 
-    axes[0] = LevelBuildVector::cross(&axes[1], &axes[2]);
-    axes[1] = LevelBuildVector::cross(&axes[2], &axes[0]);
+    axes[0] = axes[1].cross(axes[2]);
+    axes[1] = axes[2].cross(axes[0]);
 
-    let (mut low, mut high) = ([f64::MAX; 3], [f64::MIN; 3]);
+    let (mut low, mut high) = (DVec3::MAX, DVec3::MIN);
 
     for corner in &local {
-      for (axis, (low, high)) in axes.iter().zip(low.iter_mut().zip(high.iter_mut())) {
-        let along: f64 = LevelBuildVector::dot(axis, corner);
+      let along: DVec3 = DVec3::from_array(axes.map(|axis| axis.dot(*corner)));
 
-        *low = low.min(along);
-        *high = high.max(along);
-      }
+      low = low.min(along);
+      high = high.max(along);
     }
 
-    let middle: [f64; 3] = [0, 1, 2].map(|axis| f64::midpoint(low[axis], high[axis]));
-    let centre: [f64; 3] = [0, 1, 2]
-      .map(|axis| origin[axis] + middle[0] * axes[0][axis] + middle[1] * axes[1][axis] + middle[2] * axes[2][axis]);
+    let middle: DVec3 = DVec3::from_array([0, 1, 2].map(|axis| f64::midpoint(low[axis], high[axis])));
 
     Some(LevelBuildPartBox {
-      centre,
+      centre: origin + middle.x * axes[0] + middle.y * axes[1] + middle.z * axes[2],
       axes,
-      half: [0, 1, 2].map(|axis| (high[axis] - low[axis]) / 2.0),
+      half: (high - low) / 2.0,
     })
   }
 

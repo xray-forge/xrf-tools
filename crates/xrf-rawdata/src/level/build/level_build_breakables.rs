@@ -1,4 +1,5 @@
 use byteorder::ByteOrder;
+use glam::{DVec3, Vec3};
 use xrf_chunk::ChunkLayout;
 use xrf_editable_level::EditableSceneObject;
 use xrf_editable_object::{
@@ -15,8 +16,8 @@ use xrf_spawn::{
   SpawnPacketHeader,
 };
 
-use crate::level::build::level_build_parts::{LevelBuildPartBox, LevelBuildParts};
-use crate::level::build::level_build_vector::LevelBuildVector;
+use crate::level::build::level_build_part_box::LevelBuildPartBox;
+use crate::level::build::level_build_parts::LevelBuildParts;
 use crate::level::level_breakable_conversion::LevelBreakableConversion;
 use crate::object::compile::bounds::bone_boxes::BoneBoxes;
 use crate::object::compile::object_compile_options::TangentMethod;
@@ -174,22 +175,12 @@ impl LevelBuildBreakables {
       .parts
       .fit_box(part)
       .ok_or_else(|| String::from("its corners hold no box"))?;
-    let to_vector = |value: [f64; 3]| Vector3d::new(value[0] as f32, value[1] as f32, value[2] as f32);
-    let frame: Affine3d = Affine3d {
-      x_axis: to_vector(fitted.axes[0]),
-      y_axis: to_vector(fitted.axes[1]),
-      z_axis: to_vector(fitted.axes[2]),
-      translation: to_vector(fitted.centre),
-    };
+    let frame: Affine3d = fitted.get_frame();
     let into_frame = |point: &Vector3d, is_point: bool| -> Vector3d {
-      let value: [f64; 3] = [f64::from(point.x), f64::from(point.y), f64::from(point.z)];
-      let local: [f64; 3] = if is_point {
-        LevelBuildVector::sub(&value, &fitted.centre)
-      } else {
-        value
-      };
+      let value: DVec3 = Vec3::from(point).as_dvec3();
+      let local: DVec3 = if is_point { value - fitted.centre } else { value };
 
-      to_vector(fitted.axes.map(|axis| LevelBuildVector::dot(&axis, &local)))
+      Vector3d::from(fitted.get_local(local).as_vec3())
     };
     let corners: Vec<[Vector3d; 3]> = part
       .iter()

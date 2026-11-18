@@ -1,5 +1,6 @@
 #![doc = include_str!("../README.md")]
 
+pub(crate) mod fit;
 pub(crate) mod mesh;
 pub(crate) mod progressive;
 pub(crate) mod ray;
@@ -8,6 +9,8 @@ pub(crate) mod tracer;
 pub(crate) mod triangle;
 pub(crate) mod weld;
 
+pub use crate::fit::convex_outline::ConvexOutline;
+pub use crate::fit::symmetric_eigen::SymmetricEigen;
 pub use crate::mesh::mesh::Mesh;
 pub use crate::mesh::mesh_vertex::MeshVertex;
 pub use crate::mesh::mesh_vertex_bone::MeshVertexBone;

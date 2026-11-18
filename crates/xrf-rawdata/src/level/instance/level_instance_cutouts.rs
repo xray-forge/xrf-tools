@@ -2,13 +2,15 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use byteorder::ByteOrder;
+use glam::{DVec3, Vec3};
 use xrf_editable_level::{EditableCustomObject, EditableSceneObject};
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::XrfResult;
 use xrf_gamemtl::{GameMtlFile, GameMtlMaterial};
 use xrf_spawn::{AlifeObject, AlifeObjectInherited, Shape};
 
-use crate::level::build::level_build_parts::{LevelBuildPartBox, LevelBuildParts};
+use crate::level::build::level_build_part_box::LevelBuildPartBox;
+use crate::level::build::level_build_parts::LevelBuildParts;
 use crate::level::instance::level_instance_placement::LevelInstancePlacement;
 
 /// The ladders and breakable parts the placed library objects make again when the scene is built: the boxes of the
@@ -72,11 +74,7 @@ impl LevelInstanceCutouts {
   /// as long and as wide, a breakable standing at a part's box. A ladder's thickness is not compared: the SDK's library
   /// gives some of vanilla's ladders flat, which GSC's own objects built up to 20 cm thick.
   pub(crate) fn is_made(&self, entity: &AlifeObject) -> bool {
-    let position: [f64; 3] = [
-      f64::from(entity.header.position.x),
-      f64::from(entity.header.position.y),
-      f64::from(entity.header.position.z),
-    ];
+    let position: DVec3 = Vec3::from(entity.header.position).as_dvec3();
 
     match &entity.inherited {
       AlifeObjectInherited::CseAlifeObjectClimable(climable) => {
@@ -86,15 +84,13 @@ impl LevelInstanceCutouts {
         let half: [f64; 3] =
           Self::sorted([shape.x_axis, shape.y_axis, shape.z_axis].map(|axis| f64::from(axis.length())));
 
-        self
-          .ladders
-          .iter()
-          .any(|part| Self::is_near(&part.centre, &position) && Self::is_near_outline(&Self::sorted(part.half), &half))
+        self.ladders.iter().any(|part| {
+          Self::is_near(part.centre, position) && Self::is_near_outline(&Self::sorted(part.half.to_array()), &half)
+        })
       }
-      AlifeObjectInherited::CseAlifeObjectBreakable(_) => self
-        .breakables
-        .iter()
-        .any(|part| Self::is_near(&part.centre, &position)),
+      AlifeObjectInherited::CseAlifeObjectBreakable(_) => {
+        self.breakables.iter().any(|part| Self::is_near(part.centre, position))
+      }
       _ => false,
     }
   }
@@ -108,11 +104,8 @@ impl LevelInstanceCutouts {
       .collect()
   }
 
-  fn is_near(first: &[f64; 3], second: &[f64; 3]) -> bool {
-    first
-      .iter()
-      .zip(second)
-      .all(|(first, second)| (first - second).abs() <= Self::TOLERANCE)
+  fn is_near(first: DVec3, second: DVec3) -> bool {
+    (first - second).abs().cmple(DVec3::splat(Self::TOLERANCE)).all()
   }
 
   /// Whether two boxes' sorted half sizes, thinnest first, agree but for the thinnest.

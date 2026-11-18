@@ -27,6 +27,8 @@ the object compile and the level compilers use it alike.
 | `ProgressiveWindow`  | One level of detail: its run of the index buffer and the vertices it reaches                      |
 | `FaceArea`           | `CalcArea`, Heron's formula in single precision, and the `EPS` a face must reach                  |
 | `Sky`, `SkyLight`    | The editor's generated sky (`xrHemisphereBuild`) and sun by quality, each light a `SkyLight`      |
+| `SymmetricEigen`     | A symmetric 3x3 matrix's axes by Jacobi rotations, double precision, as the SDK's fits take them  |
+| `ConvexOutline`      | The convex hull of points in a plane, counter-clockwise, no collinear corner (monotone chain)     |
 
 ```rust
 use glam::Vec3;

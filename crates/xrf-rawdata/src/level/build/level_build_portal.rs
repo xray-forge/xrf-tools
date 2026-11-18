@@ -1,8 +1,7 @@
+use glam::{DVec2, DVec3, Vec3};
+use xrf_geometry::{ConvexOutline, SymmetricEigen};
 use xrf_level::BuildPrjPortal;
 use xrf_math::Vector3d;
-
-use crate::level::build::level_build_eigen::LevelBuildEigen;
-use crate::level::build::level_build_vector::LevelBuildVector;
 
 /// A portal's polygon as the Build simplifies one of more corners than a compiled portal holds (`CPortal::Simplify`,
 /// `portal.cpp:355`): the plane fitted to its corners, the corners seen along the plane's normal, their convex hull
@@ -11,36 +10,27 @@ use crate::level::build::level_build_vector::LevelBuildVector;
 /// geometry library does most of it.
 pub(crate) struct LevelBuildPortal;
 
-/// A point on the fitted plane, in the plane's own axes.
-type Point = [f64; 2];
-
 /// The plane a portal is seen on: a point of it, and its axes, right, up and the normal.
 struct PortalPlane {
-  origin: [f64; 3],
-  right: [f64; 3],
-  up: [f64; 3],
+  origin: DVec3,
+  right: DVec3,
+  up: DVec3,
 }
 
 impl LevelBuildPortal {
   /// The simplified polygon of `vertices`; none where the corners hold no plane or fewer than three remain.
   pub(crate) fn simplify(vertices: &[Vector3d]) -> Option<Vec<Vector3d>> {
-    let points: Vec<[f64; 3]> = vertices
-      .iter()
-      .map(|vertex| [f64::from(vertex.x), f64::from(vertex.y), f64::from(vertex.z)])
-      .collect();
+    let points: Vec<DVec3> = vertices.iter().map(|vertex| Vec3::from(vertex).as_dvec3()).collect();
     let plane: PortalPlane = Self::fit_plane(&points)?;
-    let flat: Vec<Point> = points
+    let flat: Vec<DVec2> = points
       .iter()
       .map(|point| {
-        let offset: [f64; 3] = LevelBuildVector::sub(point, &plane.origin);
+        let offset: DVec3 = *point - plane.origin;
 
-        [
-          LevelBuildVector::dot(&offset, &plane.right),
-          LevelBuildVector::dot(&offset, &plane.up),
-        ]
+        DVec2::new(offset.dot(plane.right), offset.dot(plane.up))
       })
       .collect();
-    let mut hull: Vec<Point> = Self::get_hull(&flat);
+    let mut hull: Vec<DVec2> = ConvexOutline::of(&flat);
 
     while hull.len() > BuildPrjPortal::MAXIMUM_VERTICES {
       if !Self::collapse_smallest_edge(&mut hull) {
@@ -52,22 +42,12 @@ impl LevelBuildPortal {
       return None;
     }
 
-    #[expect(
-      clippy::cast_possible_truncation,
-      reason = "the build stores portals in single precision"
-    )]
     let mut simplified: Vec<Vector3d> = hull
       .iter()
-      .map(|[x, y]| {
-        Vector3d::new(
-          (plane.origin[0] + x * plane.right[0] + y * plane.up[0]) as f32,
-          (plane.origin[1] + x * plane.right[1] + y * plane.up[1]) as f32,
-          (plane.origin[2] + x * plane.right[2] + y * plane.up[2]) as f32,
-        )
-      })
+      .map(|point| Vector3d::from((plane.origin + point.x * plane.right + point.y * plane.up).as_vec3()))
       .collect();
 
-    if LevelBuildVector::dot(&Self::get_normal(&simplified), &Self::get_normal(vertices)) < 0.0 {
+    if Self::get_normal(&simplified).dot(Self::get_normal(vertices)) < 0.0 {
       simplified.reverse();
     }
 
@@ -76,98 +56,56 @@ impl LevelBuildPortal {
 
   /// `Mgc::OrthogonalPlaneFit`: the plane through the points' mean whose normal is the direction they spread least
   /// along, and on it the axes `CPortal::Simplify` looks along (`build_camera` from the mean towards `-normal`).
-  fn fit_plane(points: &[[f64; 3]]) -> Option<PortalPlane> {
+  fn fit_plane(points: &[DVec3]) -> Option<PortalPlane> {
     #[expect(clippy::cast_precision_loss, reason = "a portal holds a few dozen corners")]
     let count: f64 = points.len() as f64;
-    let origin: [f64; 3] = points
-      .iter()
-      .fold([0.0; 3], |sum, point| LevelBuildVector::add(&sum, point))
-      .map(|sum| sum / count);
+    let origin: DVec3 = points.iter().fold(DVec3::ZERO, |sum, point| sum + *point) / count;
     let mut covariance: [[f64; 3]; 3] = [[0.0; 3]; 3];
 
     for point in points {
-      let offset: [f64; 3] = LevelBuildVector::sub(point, &origin);
+      let offset: DVec3 = *point - origin;
 
-      for (row, value) in covariance.iter_mut().zip(offset) {
-        for (cell, other) in row.iter_mut().zip(offset) {
+      for (row, value) in covariance.iter_mut().zip(offset.to_array()) {
+        for (cell, other) in row.iter_mut().zip(offset.to_array()) {
           *cell += value * other;
         }
       }
     }
 
-    let normal: [f64; 3] = Self::get_least_eigenvector(covariance)?;
-    let up_hint: [f64; 3] = if normal[1].abs() > 0.99 {
-      [1.0, 0.0, 0.0]
-    } else {
-      [0.0, 1.0, 0.0]
-    };
+    let eigen: SymmetricEigen = SymmetricEigen::of(covariance);
+    let normal: DVec3 = Self::normalize(eigen.vectors[eigen.get_least()])?;
+    let up_hint: DVec3 = if normal.y.abs() > 0.99 { DVec3::X } else { DVec3::Y };
     // `build_camera(from, from - normal, up)`: looking along -normal, right is up × look and up look × right.
-    let look: [f64; 3] = normal.map(|value| -value);
-    let up: [f64; 3] = LevelBuildVector::normalize(&LevelBuildVector::cross(
-      &normal,
-      &LevelBuildVector::normalize(&LevelBuildVector::cross(&up_hint, &normal))?,
-    ))?;
-    let right: [f64; 3] = LevelBuildVector::normalize(&LevelBuildVector::cross(&up, &look))?;
-    let up: [f64; 3] = LevelBuildVector::normalize(&LevelBuildVector::cross(&look, &right))?;
+    let look: DVec3 = -normal;
+    let up: DVec3 = Self::normalize(normal.cross(Self::normalize(up_hint.cross(normal))?))?;
+    let right: DVec3 = Self::normalize(up.cross(look))?;
+    let up: DVec3 = Self::normalize(look.cross(right))?;
 
     Some(PortalPlane { origin, right, up })
   }
 
-  /// The eigenvector of the least eigenvalue of a symmetric matrix.
-  fn get_least_eigenvector(matrix: [[f64; 3]; 3]) -> Option<[f64; 3]> {
-    let (values, vectors) = LevelBuildEigen::decompose(matrix);
-    let least: usize = (0..3).min_by(|a, b| values[*a].total_cmp(&values[*b]))?;
+  /// `vector` divided by its length, as the editor normalizes; none for a vector of no length.
+  fn normalize(vector: DVec3) -> Option<DVec3> {
+    let length: f64 = vector.length();
 
-    LevelBuildVector::normalize(&LevelBuildEigen::get_column(&vectors, least))
-  }
-
-  /// The convex hull of `points` counterclockwise, no collinear point kept (`ConvexHull2D::ByIncremental` and
-  /// `RemoveCollinear`), by Andrew's monotone chain.
-  fn get_hull(points: &[Point]) -> Vec<Point> {
-    let mut sorted: Vec<Point> = points.to_vec();
-
-    sorted.sort_by(|a, b| a[0].total_cmp(&b[0]).then(a[1].total_cmp(&b[1])));
-    sorted.dedup();
-
-    if sorted.len() < 3 {
-      return sorted;
-    }
-
-    let turn = |o: &Point, a: &Point, b: &Point| (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
-    let mut hull: Vec<Point> = Vec::with_capacity(sorted.len() * 2);
-
-    for pass in [&sorted[..], &sorted.iter().rev().copied().collect::<Vec<_>>()[..]] {
-      let start: usize = hull.len();
-
-      for point in pass {
-        while hull.len() >= start + 2 && turn(&hull[hull.len() - 2], &hull[hull.len() - 1], point) <= 0.0 {
-          hull.pop();
-        }
-
-        hull.push(*point);
-      }
-
-      hull.pop();
-    }
-
-    hull
+    (length > f64::EPSILON).then(|| vector / length)
   }
 
   /// `SimplifyVertices` (`portal.cpp:307`): of each edge, the point its two neighbouring edges meet at and the area of
   /// the triangle it adds; the edge of the least area collapses into its point. False where no neighbouring edges
   /// meet.
-  fn collapse_smallest_edge(vertices: &mut Vec<Point>) -> bool {
+  fn collapse_smallest_edge(vertices: &mut Vec<DVec2>) -> bool {
     let count: usize = vertices.len();
-    let mut smallest: Option<(usize, f64, Point)> = None;
+    let mut smallest: Option<(usize, f64, DVec2)> = None;
 
     for index in 0..count {
-      let before: Point = vertices[(index + count - 1) % count];
+      let before: DVec2 = vertices[(index + count - 1) % count];
       let (first, second) = (vertices[index], vertices[(index + 1) % count]);
-      let after: Point = vertices[(index + 2) % count];
-      let Some(meet) = Self::intersect(&before, &first, &after, &second) else {
+      let after: DVec2 = vertices[(index + 2) % count];
+      let Some(meet) = Self::intersect(before, first, after, second) else {
         continue;
       };
-      let area: f64 = Self::get_area(&first, &meet, &second);
+      let area: f64 = Self::get_area(first, meet, second);
 
       if smallest.is_none_or(|(_, least, _)| area < least) {
         smallest = Some((index, area, meet));
@@ -186,21 +124,24 @@ impl LevelBuildPortal {
 
   /// `Isect2DLvs2DL`: where the line through `a` and `b` meets the one through `c` and `d`; none for lines nearly
   /// parallel.
-  fn intersect(a: &Point, b: &Point, c: &Point, d: &Point) -> Option<Point> {
-    let (a1, b1, c1) = (b[1] - a[1], a[0] - b[0], b[0] * a[1] - a[0] * b[1]);
-    let (a2, b2, c2) = (d[1] - c[1], c[0] - d[0], d[0] * c[1] - c[0] * d[1]);
+  fn intersect(a: DVec2, b: DVec2, c: DVec2, d: DVec2) -> Option<DVec2> {
+    let (a1, b1, c1) = (b.y - a.y, a.x - b.x, b.x * a.y - a.x * b.y);
+    let (a2, b2, c2) = (d.y - c.y, c.x - d.x, d.x * c.y - c.x * d.y);
     let denominator: f64 = a1 * b2 - a2 * b1;
 
     if denominator.abs() < f64::from(xrf_math::EPS) {
       return None;
     }
 
-    Some([(b1 * c2 - b2 * c1) / denominator, (a2 * c1 - a1 * c2) / denominator])
+    Some(DVec2::new(
+      (b1 * c2 - b2 * c1) / denominator,
+      (a2 * c1 - a1 * c2) / denominator,
+    ))
   }
 
   /// `tri_area`: Heron's formula.
-  fn get_area(a: &Point, b: &Point, c: &Point) -> f64 {
-    let distance = |p: &Point, q: &Point| (p[0] - q[0]).hypot(p[1] - q[1]);
+  fn get_area(a: DVec2, b: DVec2, c: DVec2) -> f64 {
+    let distance = |p: DVec2, q: DVec2| (p.x - q.x).hypot(p.y - q.y);
     let (first, second, third) = (distance(a, b), distance(b, c), distance(c, a));
     let half: f64 = (first + second + third) / 2.0;
 
@@ -209,23 +150,13 @@ impl LevelBuildPortal {
 
   /// The way a polygon winds, as `CPortal::Update` takes it: the sum of each consecutive pair's turn about the middle
   /// (`mknormal`), the last corner not joined back to the first.
-  fn get_normal(vertices: &[Vector3d]) -> [f64; 3] {
-    let points: Vec<[f64; 3]> = vertices
-      .iter()
-      .map(|vertex| [f64::from(vertex.x), f64::from(vertex.y), f64::from(vertex.z)])
-      .collect();
+  fn get_normal(vertices: &[Vector3d]) -> DVec3 {
+    let points: Vec<DVec3> = vertices.iter().map(|vertex| Vec3::from(vertex).as_dvec3()).collect();
     #[expect(clippy::cast_precision_loss, reason = "a portal holds a few dozen corners")]
-    let centre: [f64; 3] = points
-      .iter()
-      .fold([0.0; 3], |sum, point| LevelBuildVector::add(&sum, point))
-      .map(|sum| sum / points.len() as f64);
+    let centre: DVec3 = points.iter().fold(DVec3::ZERO, |sum, point| sum + *point) / points.len() as f64;
 
-    points.windows(2).fold([0.0; 3], |sum, pair| {
-      LevelBuildVector::normalize(&LevelBuildVector::cross(
-        &LevelBuildVector::sub(&pair[0], &centre),
-        &LevelBuildVector::sub(&pair[1], &centre),
-      ))
-      .map_or(sum, |turn| LevelBuildVector::add(&sum, &turn))
+    points.windows(2).fold(DVec3::ZERO, |sum, pair| {
+      Self::normalize((pair[0] - centre).cross(pair[1] - centre)).map_or(sum, |turn| sum + turn)
     })
   }
 }

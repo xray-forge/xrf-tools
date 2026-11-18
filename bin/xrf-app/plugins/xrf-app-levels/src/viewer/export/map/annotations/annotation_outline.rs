@@ -1,3 +1,5 @@
+use glam::DVec2;
+use xrf_geometry::ConvexOutline;
 use xrf_math::Vector3d;
 use xrf_visual::VisualTransform;
 
@@ -46,7 +48,18 @@ impl AnnotationOutline {
           .map(|local| Self::from_renderer_point(&to_world.apply_to_point(&local)))
           .collect();
 
-        Self::Polygon(Self::build_convex_hull(corners))
+        // Every hull corner is one of the corners, so the round trip through double precision gives each back exactly.
+        let corners: Vec<DVec2> = corners
+          .iter()
+          .map(|[x, z]| DVec2::new(f64::from(*x), f64::from(*z)))
+          .collect();
+
+        Self::Polygon(
+          ConvexOutline::of(&corners)
+            .iter()
+            .map(|corner| corner.as_vec2().to_array())
+            .collect(),
+        )
       }
     }
   }
@@ -54,45 +67,6 @@ impl AnnotationOutline {
   /// A point of renderer space from above, in engine space: mirrored back through `z`.
   pub(crate) fn from_renderer_point(point: &Vector3d) -> AnnotationPoint {
     [point.x, -point.z]
-  }
-
-  /// The convex hull of `points`, counterclockwise from the leftmost, by Andrew's monotone chain.
-  pub(crate) fn build_convex_hull(mut points: Vec<AnnotationPoint>) -> Vec<AnnotationPoint> {
-    points.sort_by(|a, b| a[0].total_cmp(&b[0]).then(a[1].total_cmp(&b[1])));
-    points.dedup();
-
-    if points.len() < 3 {
-      return points;
-    }
-
-    let cross = |o: AnnotationPoint, a: AnnotationPoint, b: AnnotationPoint| -> f32 {
-      (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
-    };
-    let mut hull: Vec<AnnotationPoint> = Vec::with_capacity(points.len() + 1);
-
-    // The lower chain left to right, then the upper right to left on top of it, each turning only counterclockwise.
-    for point in points.iter().copied() {
-      while hull.len() >= 2 && cross(hull[hull.len() - 2], hull[hull.len() - 1], point) <= 0.0 {
-        hull.pop();
-      }
-
-      hull.push(point);
-    }
-
-    let lower: usize = hull.len() + 1;
-
-    for point in points.iter().rev().skip(1).copied() {
-      while hull.len() >= lower && cross(hull[hull.len() - 2], hull[hull.len() - 1], point) <= 0.0 {
-        hull.pop();
-      }
-
-      hull.push(point);
-    }
-
-    // The last point is the first again.
-    hull.pop();
-
-    hull
   }
 
   /// Its middle: a circle's centre, a polygon's mean corner.
