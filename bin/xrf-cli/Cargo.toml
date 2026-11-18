@@ -30,7 +30,6 @@ xrf-math = { workspace = true }
 xrf-ogf = { workspace = true }
 xrf-dds = { workspace = true }
 xrf-editable-object = { workspace = true }
-xrf-editable-level = { workspace = true }
 xrf-rawdata = { workspace = true }
 xrf-dialog = { workspace = true }
 xrf-gamedata = { workspace = true }
@@ -63,6 +62,7 @@ xrf-chunk = { workspace = true }
 
 [dev-dependencies]
 uuid = { workspace = true }
+xrf-editable-level = { workspace = true }
 xrf-test-utils = { workspace = true }
 # Publication tests arm a staged write to fail; the feature reaches no normal build.
 xrf-utils = { workspace = true, features = ["staging-faults"] }

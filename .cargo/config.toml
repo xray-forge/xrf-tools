@@ -9,7 +9,8 @@ rustflags = ["-Clink-arg=-lstdc++"]
 # its library is delay-loaded, which every binary linking it needs, hence here rather than in a build script. Media
 # Foundation's libraries are delayed the same way, which the `windows` crate's raw-dylib imports take, so a Windows
 # without them (an N edition lacking the Media Feature Pack) still starts the app and only video is refused. A binary
-# importing nothing of a library is told so by the linker (LNK4199), which is no fault.
+# importing nothing of a library is told so by the linker (LNK4199), which is no fault. A set `RUSTFLAGS` replaces this
+# table; the app's build script adds back what it then lacks.
 [target.'cfg(windows)']
 rustflags = [
   "-Clink-arg=/DELAYLOAD:phonon.dll",

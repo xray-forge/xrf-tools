@@ -18,7 +18,7 @@ rayon = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 # The GPU zones' context; xrf-profiler pins the version and starts the client.
-tracy-client = { version = "=0.18.5", optional = true }
+tracy-client = { workspace = true, optional = true }
 wgpu = { workspace = true }
 xrf-error = { workspace = true }
 xrf-profiler = { workspace = true, optional = true }

@@ -67,6 +67,7 @@ fn main() {
 
   println!("cargo:rerun-if-changed=icons");
 
+  keep_delay_loads();
   link_dlss_runtime();
   add_dlss_resources();
 
@@ -87,6 +88,36 @@ fn resolve_windows_attributes() -> WindowsAttributes {
     BuildKind::Development => attributes.window_icon_path("icons/development/icon.ico"),
     BuildKind::Local => attributes.window_icon_path("icons/local/icon.ico"),
   }
+}
+
+/// The libraries `.cargo/config.toml` delay-loads, so the app starts without Steam Audio or Media Foundation. Cargo
+/// drops that table's flags whenever `RUSTFLAGS` is set, so the app adds each one the flags it is built with lack.
+fn keep_delay_loads() {
+  const DELAY_LOADS: [&str; 4] = ["phonon.dll", "mfplat.dll", "mfreadwrite.dll", "mf.dll"];
+
+  if env::var("CARGO_CFG_TARGET_ENV").as_deref() != Ok("msvc") {
+    return;
+  }
+
+  let flags: String = env::var("CARGO_ENCODED_RUSTFLAGS").unwrap_or_default();
+  let missing: Vec<&str> = DELAY_LOADS
+    .into_iter()
+    .filter(|library| !flags.contains(&format!("/DELAYLOAD:{library}")))
+    .collect();
+
+  if missing.is_empty() {
+    return;
+  }
+
+  for library in missing {
+    println!("cargo:rustc-link-arg-bins=/DELAYLOAD:{library}");
+  }
+
+  if !flags.contains("delayimp.lib") {
+    println!("cargo:rustc-link-arg-bins=delayimp.lib");
+  }
+
+  println!("cargo:rustc-link-arg-bins=/IGNORE:4199");
 }
 
 /// Tauri links the C runtime's vcruntime statically, and NGX's library imports `wcsstr` from the DLL one: the linker

@@ -9,7 +9,7 @@ rust-version.workspace = true
 profiling = { workspace = true }
 # Tracy 0.14's protocol, which the workspace's Tracy tools speak and whose exporter reads GPU zones; the `-sys` crate is a
 # direct dependency only to pin it.
-tracy-client = { version = "=0.18.5", optional = true }
+tracy-client = { workspace = true, optional = true }
 tracy-client-sys = { version = "=0.29.0", optional = true }
 
 [features]
