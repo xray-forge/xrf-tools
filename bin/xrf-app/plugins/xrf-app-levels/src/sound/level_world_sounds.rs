@@ -8,7 +8,7 @@ use xrf_world::{WorldLevelSounds, WorldMusicTrack};
 
 use crate::level::{LevelConfigs, SelectedLevel};
 use crate::objects::LevelObjectsDescription;
-use crate::sound::{LevelSoundEmitters, LevelSoundFiles};
+use crate::sound::{LevelSoundEmitters, LevelSoundFiles, LevelSoundFilesPart};
 
 /// What a level plays whatever its weather, as the world takes it (`CLevelSoundManager::Load`, `CCustomZone::Load`):
 /// its static sounds and zones' sounds (`LevelSoundEmitters`), and the music tracks of the section its `game.ltx`
@@ -27,9 +27,14 @@ impl LevelWorldSounds {
   /// Returns an error when the game's configs cannot be opened.
   pub(crate) fn read(level: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> XrfResult<WorldLevelSounds> {
     let objects: Option<LevelObjectsDescription> = LevelObjectsDescription::read(level, search).ok();
-    let mut files: LevelSoundFiles<'_> = LevelSoundFiles::new(search);
-    let emitters: LevelSoundEmitters = LevelSoundEmitters::read(level, search, objects.as_ref(), &mut files);
-    let music: Vec<WorldMusicTrack> = Self::read_music(level, search, &mut files)?;
+    let (emitters, music): (LevelSoundEmitters, XrfResult<Vec<WorldMusicTrack>>) =
+      LevelSoundFilesPart::with_files(level, search, |files| {
+        (
+          LevelSoundEmitters::read(level, search, objects.as_ref(), files),
+          Self::read_music(level, search, files),
+        )
+      });
+    let music: Vec<WorldMusicTrack> = music?;
 
     Ok(WorldLevelSounds {
       engine: level.engine.engine,
@@ -44,7 +49,7 @@ impl LevelWorldSounds {
   fn read_music(
     level: &SessionSnapshot<SelectedLevel>,
     search: &XraySearch,
-    files: &mut LevelSoundFiles<'_>,
+    files: &LevelSoundFiles<'_>,
   ) -> XrfResult<Vec<WorldMusicTrack>> {
     let name: String = level.source.get_name().unwrap_or_default();
     let project: LtxProject = LevelConfigs::of(level)
@@ -82,7 +87,7 @@ impl LevelWorldSounds {
 
   /// `SMusicTrack::Load`: `from_hour, to_hour, volume, pause_from_s, pause_to_s` read as `sscanf` reads them, each value
   /// it cannot read left at its default; a pause whose two ends are equal widens by one.
-  fn read_track(track: &str, parameters: &str, files: &mut LevelSoundFiles<'_>) -> WorldMusicTrack {
+  fn read_track(track: &str, parameters: &str, files: &LevelSoundFiles<'_>) -> WorldMusicTrack {
     let values: Vec<&str> = parameters.split(',').map(str::trim).collect();
     let integer = |index: usize| values.get(index).and_then(|value| value.parse::<i64>().ok());
     let from_hour: i64 = integer(0).unwrap_or(0);

@@ -6,6 +6,7 @@ use crate::parts::{
   LevelHemiPart, LevelLightsPart, LevelObjectMotionsPart, LevelParticlesPart, LevelPlacementsPart, LevelSectionsPart,
   LevelSpawnPart, LevelSpawnVisualsPart, LevelSurfacesPart, LevelWeatherPart,
 };
+use crate::sound::LevelSoundFilesPart;
 
 /// How a level's session parts feed the scene the renderer draws it as: the scene each session shares, the parts whose
 /// going stale streams it afresh, and the renderer's parts read again for the rest.
@@ -40,7 +41,8 @@ impl LevelRenderParts {
 
   /// The session parts the renderer's read of `part` is built from, as `LevelRenderSource` reads it. The sectors
   /// stream afresh on theirs instead (`VIEW_PARTS`). The helpers are the level objects, which the level's sounds are
-  /// read from too: the spawn, the graph, the placements (`level.snd_static` among them) and the sections.
+  /// read from too: the spawn, the graph, the placements (`level.snd_static` among them) and the sections, and the sound
+  /// files whose distances size the emitters' spheres; the weather reads its rain, thunder and ambients' files too.
   fn list_read_from(part: LevelPart) -> &'static [&'static str] {
     match part {
       LevelPart::Spawn => &[
@@ -63,7 +65,11 @@ impl LevelRenderParts {
         LevelHemiPart::NAME,
         LevelParticlesPart::NAME,
       ],
-      LevelPart::Weather => &[LevelEnvironmentPart::NAME, LevelWeatherPart::NAME],
+      LevelPart::Weather => &[
+        LevelEnvironmentPart::NAME,
+        LevelWeatherPart::NAME,
+        LevelSoundFilesPart::NAME,
+      ],
       LevelPart::Motions => &[LevelObjectMotionsPart::NAME],
       LevelPart::Grass => &[LevelDetailsPart::NAME],
       LevelPart::AiMap => &[LevelAiMapPart::NAME],
@@ -72,6 +78,7 @@ impl LevelRenderParts {
         LevelGraphPart::NAME,
         LevelPlacementsPart::NAME,
         LevelSectionsPart::NAME,
+        LevelSoundFilesPart::NAME,
       ],
       LevelPart::Sectors => &[],
     }

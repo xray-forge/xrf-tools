@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, OnceLock};
 
 use xrf_app_core::TauriResult;
@@ -312,7 +312,9 @@ impl WorldLevelSource for SceneRenderSource {
       }
     });
 
-    let is_read = |name: &str| models.iter().any(|model| model.name == name);
+    // Looked up once a drawn object's kind and once a spawn point, so a set rather than a scan of the batch.
+    let read_names: HashSet<&str> = models.iter().map(|model| model.name.as_str()).collect();
+    let is_read = |name: &str| read_names.contains(name);
     let lighting: Vec<RenderSpawnLighting> = drawn
       .objects
       .iter()

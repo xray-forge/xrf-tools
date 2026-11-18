@@ -9,6 +9,7 @@ use crate::parts::{
   LevelSpawnVisualsPart, LevelStartPart, LevelTexturesPart, LevelWeatherPart,
 };
 use crate::render::LevelRenderParts;
+use crate::sound::LevelSoundFilesPart;
 
 /// The set of `parts`.
 fn parts(parts: &[LevelPart]) -> LevelParts {
@@ -61,6 +62,11 @@ fn a_stale_part_reloads_only_the_packages_built_from_it() {
   assert_eq!(
     LevelRenderParts::select_reload(&[LevelSpawnVisualsPart::NAME]),
     parts(&[LevelPart::Spawn, LevelPart::Lights])
+  );
+  assert_eq!(
+    LevelRenderParts::select_reload(&[LevelSoundFilesPart::NAME]),
+    parts(&[LevelPart::Weather, LevelPart::Helpers]),
+    "a sound file's distances size its emitter's sphere, and the weather plays its own files"
   );
   assert_eq!(
     LevelRenderParts::select_reload(&[LevelCollisionPart::NAME, LevelHemiPart::NAME]),

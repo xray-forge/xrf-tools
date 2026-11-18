@@ -331,6 +331,55 @@ fn refuses_a_matrix_no_object_stands_at() {
 }
 
 #[test]
+fn finds_the_saved_transform_a_matrix_composes_from_as_the_whole_search_does() -> XrfResult {
+  // A small deterministic generator, so the transforms are the same every run.
+  let mut state: u64 = 11;
+  let mut next = |low: f32, high: f32| -> f32 {
+    state = state
+      .wrapping_mul(6_364_136_223_846_793_005)
+      .wrapping_add(1_442_695_040_888_963_407);
+
+    low + (high - low) * ((state >> 40) as f32 / (1u64 << 24) as f32)
+  };
+
+  let mut composing: usize = 0;
+
+  for index in 0..300 {
+    let saved: EditableObjectTransform = EditableObjectTransform {
+      position: Vector3d::new(next(-500.0, 500.0), next(-20.0, 40.0), next(-500.0, 500.0)),
+      rotation: Vector3d::new(
+        if index % 50 == 0 { FRAC_PI_2 } else { next(-1.5, 1.5) },
+        next(-3.1, 3.1),
+        next(-0.5, 0.5),
+      ),
+      scale: Vector3d::new(next(0.5, 3.0), next(0.5, 3.0), next(0.5, 3.0)),
+    }
+    .round_as_saved();
+    let matrix: Matrix4x4 = saved.to_matrix();
+    let bits: [u32; 16] = matrix.values.map(f32::to_bits);
+    let decomposed: EditableObjectTransform = EditableObjectTransform::from_matrix(&matrix)?;
+    let searched: EditableObjectTransform = decomposed
+      .find_saved(|transform| transform.to_matrix().values.map(f32::to_bits) == bits)
+      .unwrap_or_else(|| decomposed.round_as_saved());
+
+    assert_eq!(
+      EditableObjectTransform::from_matrix_as_saved(&matrix)?,
+      searched,
+      "transform {index}"
+    );
+
+    if searched.to_matrix().values.map(f32::to_bits) == bits {
+      composing += 1;
+    }
+  }
+
+  // The comparison means something only where the search finds a transform rather than falling back to rounding.
+  assert!(composing >= 250, "only {composing} of 300 found composing");
+
+  Ok(())
+}
+
+#[test]
 fn refuses_a_matrix_scaled_along_axes_other_than_its_own() {
   let turned: Matrix4x4 = EditableObjectTransform {
     position: Vector3d::ZERO,

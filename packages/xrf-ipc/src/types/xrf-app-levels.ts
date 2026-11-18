@@ -335,6 +335,9 @@ export const LEVEL_SECTIONS_PART = "sections" as const;
  */
 export const LEVEL_SOUND_EMITTERS_HELPER_KIND: number = 24;
 
+/** What a change event calls the sound files a level's emitters, music and weather read when they go stale. */
+export const LEVEL_SOUND_FILES_PART = "soundFiles" as const;
+
 /** What a change event calls a level's spawn when it goes stale. */
 export const LEVEL_SPAWN_PART = "spawn" as const;
 

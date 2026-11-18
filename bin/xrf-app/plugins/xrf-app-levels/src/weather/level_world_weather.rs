@@ -11,7 +11,7 @@ use xrf_world::{WorldLevelWeather, WorldSound};
 
 use crate::level::SelectedLevel;
 use crate::parts::LevelEnvironment;
-use crate::sound::LevelSoundFiles;
+use crate::sound::{LevelSoundFiles, LevelSoundFilesPart};
 use crate::weather::LevelWorldAmbients;
 use crate::weather::render::{LevelLensFlares, LevelRain, LevelThunderbolts, LevelWetSurfaces};
 
@@ -26,14 +26,24 @@ impl LevelWorldWeather {
     environment: &LevelEnvironment,
     search: &XraySearch,
   ) -> WorldLevelWeather {
+    LevelSoundFilesPart::with_files(level, search, |files| {
+      Self::read_with(level, environment, search, files)
+    })
+  }
+
+  /// [`Self::read`], its sounds read through `files`.
+  fn read_with(
+    level: &SessionSnapshot<SelectedLevel>,
+    environment: &LevelEnvironment,
+    search: &XraySearch,
+    files: &LevelSoundFiles<'_>,
+  ) -> WorldLevelWeather {
     let source = environment.get_source(level, search);
     let rain: LevelRain = LevelRain::read(&source);
     let wet: LevelWetSurfaces = LevelWetSurfaces::read(&source);
     let thunder: LevelThunderbolts = LevelThunderbolts::read(&source);
     let modifiers: Vec<LevelEnvModifier> = LevelEnvironment::read_modifiers(level, search);
-    let mut files: LevelSoundFiles<'_> = LevelSoundFiles::new(search);
-    let thunder_sounds: HashMap<String, WorldSound> =
-      Self::read_thunder_sounds(&environment.catalog, &thunder, &mut files);
+    let thunder_sounds: HashMap<String, WorldSound> = Self::read_thunder_sounds(&environment.catalog, &thunder, files);
 
     WorldLevelWeather {
       render: Arc::new(RenderLevelWeather {
@@ -76,7 +86,7 @@ impl LevelWorldWeather {
   fn read_thunder_sounds(
     catalog: &EnvironmentCatalog,
     thunder: &LevelThunderbolts,
-    files: &mut LevelSoundFiles<'_>,
+    files: &LevelSoundFiles<'_>,
   ) -> HashMap<String, WorldSound> {
     thunder
       .bolts

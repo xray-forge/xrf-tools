@@ -32,7 +32,7 @@ use crate::parts::{
 use crate::render::{LevelAudio, LevelParticleCollider, LevelRenderParts};
 use crate::report::LevelReport;
 use crate::sound::{
-  LevelSoundAssets, LevelSoundEmitters, LevelSoundFiles, LevelSoundGeometry, LevelSoundSink, LevelWorldSounds,
+  LevelSoundAssets, LevelSoundEmitters, LevelSoundFilesPart, LevelSoundGeometry, LevelSoundSink, LevelWorldSounds,
 };
 use crate::weather::LevelWorldWeather;
 
@@ -283,8 +283,9 @@ impl WorldLevelSource for LevelRenderSource {
     // The objects the page lists, in its order: each helper is named by its object's place among them.
     let objects: LevelObjectsDescription =
       LevelObjectsDescription::read(&self.level, &search).map_err(XrfError::new_asset_error)?;
-    let emitters: LevelSoundEmitters =
-      LevelSoundEmitters::read(&self.level, &search, Some(&objects), &mut LevelSoundFiles::new(&search));
+    let emitters: LevelSoundEmitters = LevelSoundFilesPart::with_files(&self.level, &search, |files| {
+      LevelSoundEmitters::read(&self.level, &search, Some(&objects), files)
+    });
     let mut helpers: RenderLevelHelpers = RenderLevelHelpers::from(&objects);
 
     helpers.objects.extend(emitters.to_helpers());

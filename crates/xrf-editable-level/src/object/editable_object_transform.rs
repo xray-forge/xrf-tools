@@ -101,22 +101,59 @@ impl EditableObjectTransform {
     })
   }
 
-  /// The saved transform composing into `matrix`'s very bits: [`Self::from_matrix`], then [`Self::find_saved`] for
-  /// one whose [`Self::to_matrix`] is `matrix`, else the decomposed transform rounded as saved, as for a matrix the
-  /// editor composed from other angles (a pitch straight up or down) or no saved text gives.
+  /// The saved transform composing into `matrix`'s very bits: [`Self::from_matrix`], then the first of
+  /// [`Self::find_saved`]'s neighbours whose [`Self::to_matrix`] is `matrix`, else the decomposed transform rounded as
+  /// saved, as for a matrix the editor composed from other angles (a pitch straight up or down) or no saved text gives.
   ///
   /// # Errors
   ///
   /// Returns an error as [`Self::from_matrix`] does.
   pub fn from_matrix_as_saved(matrix: &Matrix4x4) -> XrfResult<Self> {
     let decomposed: Self = Self::from_matrix(matrix)?;
-    let bits: [u32; 16] = matrix.values.map(f32::to_bits);
 
     Ok(
       decomposed
-        .find_saved(|transform| transform.to_matrix().values.map(f32::to_bits) == bits)
+        .find_composing(matrix)
         .unwrap_or_else(|| decomposed.round_as_saved()),
     )
+  }
+
+  /// What [`Self::find_saved`] finds accepting only a transform whose [`Self::to_matrix`] is `matrix` bit for bit, in a
+  /// fraction of the compositions. The composed matrix's row of an axis is that axis's scale times the turned row alone,
+  /// a scale's zeros adding nothing (`Fmatrix::mul`), so under each rotation in turn each axis takes the first of its
+  /// scale's neighbours whose row matches; the transform so found is composed whole once more before it is taken.
+  fn find_composing(&self, matrix: &Matrix4x4) -> Option<Self> {
+    let rounded: Self = self.round_as_saved();
+    let bits: [u32; 16] = matrix.values.map(f32::to_bits);
+    let moved: Matrix4x4 = Matrix4x4::from_translation(&rounded.position);
+    let scales: [[f32; 5]; 3] = rounded.scale.to_array().map(EditableLevelValue::get_saved_neighbours);
+
+    Self::get_saved_neighbours(&rounded.rotation)
+      .into_iter()
+      .find_map(|rotation| {
+        let turned: Matrix4x4 = moved.multiply(&Matrix4x4::from(&Affine3d::from_xyz_inverse(&-&rotation)));
+        let mut scale: [f32; 3] = [1.0; 3];
+
+        for axis in 0..3 {
+          scale[axis] = *scales[axis].iter().find(|candidate| {
+            let mut along: [f32; 3] = [1.0; 3];
+
+            along[axis] = **candidate;
+
+            let row: [f32; 16] = turned.multiply(&Matrix4x4::from_scale(&Vector3d::from(along))).values;
+
+            (axis * 4..axis * 4 + 4).all(|index| row[index].to_bits() == bits[index])
+          })?;
+        }
+
+        let transform: Self = Self {
+          position: rounded.position,
+          rotation,
+          scale: Vector3d::from(scale),
+        };
+
+        (transform.to_matrix().values.map(f32::to_bits) == bits).then_some(transform)
+      })
   }
 
   /// The first saved transform near this one that `accepts`: this one rounded as saved, then each angle and scale a

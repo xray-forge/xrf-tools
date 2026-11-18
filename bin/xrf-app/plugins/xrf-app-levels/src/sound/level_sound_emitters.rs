@@ -38,7 +38,7 @@ impl LevelSoundEmitters {
     level: &SessionSnapshot<SelectedLevel>,
     search: &XraySearch,
     objects: Option<&LevelObjectsDescription>,
-    files: &mut LevelSoundFiles<'_>,
+    files: &LevelSoundFiles<'_>,
   ) -> Self {
     let places: HashMap<LevelObjectId, u32> = objects
       .into_iter()
@@ -114,11 +114,7 @@ impl LevelSoundEmitters {
     helpers
   }
 
-  fn read_static(
-    sound: &LevelSndStaticSound,
-    object: Option<u32>,
-    files: &mut LevelSoundFiles<'_>,
-  ) -> WorldStaticSound {
+  fn read_static(sound: &LevelSndStaticSound, object: Option<u32>, files: &LevelSoundFiles<'_>) -> WorldStaticSound {
     let window = |window: &LevelSndStaticWindow| [window.from, window.to];
 
     WorldStaticSound {
@@ -139,7 +135,7 @@ impl LevelSoundEmitters {
     spawn: &LevelSpawn,
     sections: &Ltx,
     places: &HashMap<LevelObjectId, u32>,
-    files: &mut LevelSoundFiles<'_>,
+    files: &LevelSoundFiles<'_>,
   ) -> Vec<WorldZoneSound> {
     spawn
       .objects
@@ -158,7 +154,7 @@ impl LevelSoundEmitters {
     object: &AlifeObject,
     sections: &Ltx,
     place: Option<u32>,
-    files: &mut LevelSoundFiles<'_>,
+    files: &LevelSoundFiles<'_>,
   ) -> Option<WorldZoneSound> {
     let (motion, zone): (Option<&AlifeObjectMotion>, &AlifeObjectCustomZone) = match &object.inherited {
       AlifeObjectInherited::CseAlifeAnomalousZone(zone) => (None, &zone.base.base),

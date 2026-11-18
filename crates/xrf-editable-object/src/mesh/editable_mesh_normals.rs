@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 
@@ -39,34 +41,29 @@ impl EditableMeshNormals {
         (&second - &first).cross(&(&third - &second)).normalize_safe()
       })
       .collect();
+    let fans: Vec<FanWalk<'_>> = point_faces
+      .iter()
+      .map(|around| FanWalk::of(&mesh.faces, &flags, around))
+      .collect();
     let corners: Vec<[Vector3d; 3]> = mesh
       .faces
       .iter()
       .enumerate()
       .map(|(index, face)| {
         face.corners.map(|corner| {
-          let around: &[u32] = &point_faces[corner.point as usize];
-          let mut walk: FanWalk<'_> = FanWalk {
-            faces: &mesh.faces,
-            flags: &flags,
-            face_normals: &faces,
-            around,
-            is_reached: vec![false; around.len()],
-            sum: Vector3d::ZERO,
-          };
-          let start: usize = around
+          let fan: &FanWalk<'_> = &fans[corner.point as usize];
+          let start: usize = fan
+            .around
             .iter()
             .position(|face| *face as usize == index)
             .expect("a face is around each of its own points");
-
-          walk.recurse(start);
-
-          let length: f32 = walk.sum.length();
+          let sum: Vector3d = fan.sum_from(start, &faces);
+          let length: f32 = sum.length();
 
           if length > Self::NEGLIGIBLE_LENGTH {
-            &walk.sum / length
+            &sum / length
           } else {
-            faces[around[0] as usize]
+            faces[fan.around[0] as usize]
           }
         })
       })
@@ -103,62 +100,102 @@ impl EditableMeshNormals {
   }
 }
 
-/// One corner's walk around its point, `itterate_adjacents::RecurseTri` over `itterate_adjacents_params_dynamic`.
+/// The walks around one point, `itterate_adjacents::RecurseTri` over `itterate_adjacents_params_dynamic`: the faces
+/// around it, and which of them each crosses to, found once for every corner at the point.
 struct FanWalk<'a> {
-  faces: &'a [EditableFace],
-  flags: &'a [u32],
-  face_normals: &'a [Vector3d],
   /// The faces around the point, as the adjacency lists them.
   around: &'a [u32],
-  is_reached: Vec<bool>,
-  sum: Vector3d,
+  /// For each place in `around`, the places the walk crosses to from it, in ascending order, its own among them: a
+  /// face reaches itself, which is how a corner's own face is summed.
+  links: Vec<Vec<usize>>,
 }
 
-impl FanWalk<'_> {
-  fn recurse(&mut self, from: usize) {
-    for to in 0..self.around.len() {
-      if self.reach(from, to) {
-        self.recurse(to);
+impl<'a> FanWalk<'a> {
+  /// The walks around the point `around` lists the faces of: each pair of faces sharing an edge, both calling it soft
+  /// and their back-face bits agreeing, linked, and each face to itself.
+  fn of(faces: &[EditableFace], flags: &[u32], around: &'a [u32]) -> Self {
+    let mut by_edge: HashMap<[u32; 2], Vec<usize>> = HashMap::new();
+
+    for (place, face) in around.iter().enumerate() {
+      for edge in 0..3 {
+        by_edge
+          .entry(Self::get_edge(&faces[*face as usize], edge))
+          .or_default()
+          .push(place);
       }
     }
+
+    let links: Vec<Vec<usize>> = (0..around.len())
+      .map(|from| {
+        let face: &EditableFace = &faces[around[from] as usize];
+        let mut linked: Vec<usize> = (0..3)
+          .flat_map(|edge| by_edge[&Self::get_edge(face, edge)].iter().copied())
+          .filter(|to| Self::is_connected(faces, flags, around[from] as usize, around[*to] as usize))
+          .collect();
+
+        linked.sort_unstable();
+        linked.dedup();
+        linked
+      })
+      .collect();
+
+    Self { around, links }
   }
 
-  /// Whether the walk crosses from one face around the point to another not yet reached, summing its normal when it
-  /// does. A face reaches itself, which is how the corner's own face is summed.
-  fn reach(&mut self, from: usize, to: usize) -> bool {
-    if self.is_reached[to] {
-      return false;
+  /// The sum of the normals `face_normals` gives the faces reached from the place `start`, walked depth first through
+  /// the links in their order, each face summed as it is first reached: the order the SDK's recursion sums them in.
+  /// The walk keeps its own stack, as deep as the fan, rather than the thread's.
+  fn sum_from(&self, start: usize, face_normals: &[Vector3d]) -> Vector3d {
+    let mut is_reached: Vec<bool> = vec![false; self.around.len()];
+    let mut sum: Vector3d = Vector3d::ZERO;
+    // Each face being walked from, and how far through its links the walk has gone.
+    let mut stack: Vec<(usize, usize)> = vec![(start, 0)];
+
+    while let Some(top) = stack.last_mut() {
+      let (from, next): (usize, usize) = *top;
+      let Some(to) = self.links[from].get(next).copied() else {
+        stack.pop();
+        continue;
+      };
+
+      top.1 += 1;
+
+      if !is_reached[to] {
+        is_reached[to] = true;
+        sum += &face_normals[self.around[to] as usize];
+        stack.push((to, 0));
+      }
     }
 
-    let (from_face, to_face): (usize, usize) = (self.around[from] as usize, self.around[to] as usize);
-    let Some((from_edge, to_edge)) = Self::find_shared_edge(&self.faces[from_face], &self.faces[to_face]) else {
+    sum
+  }
+
+  /// Whether the walk crosses from one face to another: the same face, or one sharing an edge both call soft, their
+  /// back-face bits agreeing.
+  fn is_connected(faces: &[EditableFace], flags: &[u32], from_face: usize, to_face: usize) -> bool {
+    let Some((from_edge, to_edge)) = Self::find_shared_edge(&faces[from_face], &faces[to_face]) else {
       return false;
     };
-    let (from_flags, to_flags): (u32, u32) = (self.flags[from_face], self.flags[to_face]);
-    let is_connected: bool = from_face == to_face
+    let (from_flags, to_flags): (u32, u32) = (flags[from_face], flags[to_face]);
+
+    from_face == to_face
       || (from_flags & EditableMesh::BACK_FACE_SMOOTHING_FLAG == to_flags & EditableMesh::BACK_FACE_SMOOTHING_FLAG
         && EditableMeshNormals::is_soft_edge(from_flags, from_edge)
-        && EditableMeshNormals::is_soft_edge(to_flags, to_edge));
+        && EditableMeshNormals::is_soft_edge(to_flags, to_edge))
+  }
 
-    if is_connected {
-      self.is_reached[to] = true;
-      self.sum += &self.face_normals[to_face];
-    }
+  /// Edge `index` of `face` by its points, the lesser first.
+  fn get_edge(face: &EditableFace, index: usize) -> [u32; 2] {
+    let (start, end): (u32, u32) = (face.corners[index].point, face.corners[(index + 1) % 3].point);
 
-    is_connected
+    if start <= end { [start, end] } else { [end, start] }
   }
 
   /// The first edge of `first` that `second` also has, by point, and its index in each (`has_same_edge`).
   fn find_shared_edge(first: &EditableFace, second: &EditableFace) -> Option<(usize, usize)> {
-    let edge = |face: &EditableFace, index: usize| -> [u32; 2] {
-      let (start, end): (u32, u32) = (face.corners[index].point, face.corners[(index + 1) % 3].point);
-
-      if start <= end { [start, end] } else { [end, start] }
-    };
-
     (0..3).find_map(|own| {
       (0..3)
-        .find(|other| edge(first, own) == edge(second, *other))
+        .find(|other| Self::get_edge(first, own) == Self::get_edge(second, *other))
         .map(|other| (own, other))
     })
   }
