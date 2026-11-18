@@ -5,10 +5,9 @@ use xrf_app_core::session::{SessionPart, SessionSnapshot};
 use xrf_editable_level::{
   EditableFogVolumeObject, EditableGlowObject, EditableGroupTool, EditableLightObject, EditableParticleObject,
   EditablePortalObject, EditableSceneObject, EditableSectorObject, EditableShapeObject, EditableSoundEnvironmentObject,
-  EditableSoundSourceObject, EditableSpawnPointObject, EditableWayObject,
+  EditableSoundSourceObject, EditableSpawnPointObject, EditableToolObjects, EditableWayObject,
 };
 use xrf_error::XrfResult;
-use xrf_rawdata::LevelSceneToolObjects;
 use xrf_vfs::XraySearch;
 
 use crate::scene::{
@@ -89,7 +88,7 @@ impl SceneObjectsPart {
     scene: &SelectedScene,
     objects: &XraySearch,
   ) -> XrfResult<Option<SceneObjectToolDescription>> {
-    let read: LevelSceneToolObjects<O> = LevelSceneToolObjects::read(&scene.scene, scene.guid)?;
+    let read: EditableToolObjects<O> = EditableToolObjects::read(&scene.scene, scene.guid)?;
 
     if read.members.is_empty() && scene.scene.get_tool(O::TOOL_NAME).is_none() {
       return Ok(None);

@@ -1,6 +1,6 @@
 use xrf_chunk::XRayByteOrder;
-use xrf_editable_level::{EditableSpawnPointKind, EditableSpawnPointObject};
-use xrf_rawdata::{LevelSceneToolObjects, LevelSpawnDataFields};
+use xrf_editable_level::{EditableSpawnPointKind, EditableSpawnPointObject, EditableToolObjects};
+use xrf_rawdata::LevelSpawnDataFields;
 
 use crate::scene::{SceneObjectId, SceneSpawnModel, SceneToolKind, SelectedScene};
 use crate::visuals::SpawnVisualReader;
@@ -24,7 +24,7 @@ impl SceneSpawnModels {
       return Self::default();
     }
 
-    let Ok(read) = LevelSceneToolObjects::<EditableSpawnPointObject>::read(&scene.scene, scene.guid) else {
+    let Ok(read) = EditableToolObjects::<EditableSpawnPointObject>::read(&scene.scene, scene.guid) else {
       return Self::default();
     };
     let mut models: Self = Self::default();

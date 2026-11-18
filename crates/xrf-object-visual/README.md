@@ -1,12 +1,12 @@
 # xrf-object-visual
 
 Turns an SDK `.object` editable object into the model a renderer draws: the object compiled as the Actor Editor's
-`Export OGF` writes it, packed as any game visual is, with each submesh's surface described.
+`Export OGF` writes it, and packed as any game visual is, so its surfaces are described as a game visual's are.
 
-It joins three crates that stay apart: [xrf-rawdata](../xrf-rawdata/README.md) compiles the object,
-[xrf-visual](../xrf-visual/README.md) packs the model and [xrf-material](../xrf-material/README.md) answers how each
-surface draws. `xrf-visual` taking `xrf-rawdata` would pull the compile's shaders, DDS and tangent work into every
-renderer build, and `xrf-rawdata` is conversion only, so the join is a crate of its own. The desktop app's model viewer
+It joins two crates that stay apart: [xrf-rawdata](../xrf-rawdata/README.md) compiles the object and
+[xrf-visual](../xrf-visual/README.md) packs the model, whose `VisualSurfaces` describes each submesh's surface through
+[xrf-material](../xrf-material/README.md). `xrf-visual` taking `xrf-rawdata` would pull the compile's shaders, DDS and
+tangent work into every renderer build, and `xrf-rawdata` is conversion only, so the join is a crate of its own. The desktop app's model viewer
 and its scene editor draw `.object` files through it.
 
 ## Draw an object
@@ -15,9 +15,10 @@ and its scene editor draw `.object` files through it.
 use xrf_chunk::XRayByteOrder;
 use xrf_editable_object::EditableObjectFile;
 use xrf_material::{XraySurfaceResolver, XrayTextureScope};
-use xrf_object_visual::{ObjectVisual, VisualSurfaces};
+use xrf_object_visual::ObjectVisual;
 use xrf_rawdata::{ObjectCompileOptions, ObjectCompileSource};
 use xrf_vfs::{XrayMountMode, XraySearchPlan};
+use xrf_visual::VisualSurfaces;
 
 fn main() -> xrf_error::XrfResult {
   let object = EditableObjectFile::read_from_path::<XRayByteOrder, _>(&"rawdata/objects/example.object")?;
@@ -46,8 +47,8 @@ fn main() -> xrf_error::XrfResult {
   of its parts is packed as a `VisualMesh`, its tangent frame derived from its uvs, and the model described as the file
   declares it. A skeleton packs through `VisualPacker::pack` like any skinned model.
 - `ObjectVisual::motions` keeps what posing a skeleton object needs, and is `None` for a static one.
-- `VisualSurfaces::describe` answers every submesh in its order, a game visual's as well as a compiled object's; open one
-  `XraySurfaceResolver` for many models, since one `shaders.xr` answers every surface in a tree.
+- `xrf-visual`'s `VisualSurfaces::describe` answers every submesh in its order, a compiled object's as a game visual's;
+  open one `XraySurfaceResolver` for many models, since one `shaders.xr` answers every surface in a tree.
 - A compile fails where the object does not export, a static object holding no mesh among the cases `ObjectCompiler`
   refuses.
 
@@ -55,4 +56,4 @@ fn main() -> xrf_error::XrfResult {
 
 Run `cargo test --locked -p xrf-object-visual` from the repository root.
 
-Sources: the [object visual](src/object_visual.rs) and the [surfaces](src/visual_surfaces.rs).
+Sources: the [object visual](src/object_visual.rs).

@@ -1,20 +1,10 @@
-use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::path::PathBuf;
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_build_info::{BuildInfo, build_info};
-use xrf_chunk::XRayByteOrder;
-use xrf_editable_object::EditableObjectFile;
-use xrf_error::{XrfError, XrfResult};
-use xrf_extension::XrayExtension;
 use xrf_output::OutputOptions;
-use xrf_rawdata::{
-  DetailParameters, ObjectCompile, ObjectCompileOptions, ObjectCompileSource, ObjectCompiler, ObjectProvenance,
-  TangentMethod,
-};
-use xrf_utils::{StagedFile, format_path};
+use xrf_rawdata::{ObjectCompileReport, ObjectCompileRequest, ObjectCompiler, TangentMethod};
 
-use crate::commands::object::compile::report::ObjectCompileReport;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 /// Compiles an SDK editable object into the OGF the engine loads, as the Actor Editor's export does, or into a detail
@@ -73,16 +63,29 @@ impl GenericCommand for CompileCommand {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let source: &PathBuf = matches.get_one::<PathBuf>("path").expect("the path is required");
-    let destination: &PathBuf = matches.get_one::<PathBuf>("dest").expect("the destination is required");
-    let tangents: &str = matches
-      .get_one::<String>("tangents")
-      .map(String::as_str)
-      .expect("the tangent method has a default");
+    let request: ObjectCompileRequest = ObjectCompileRequest {
+      source: matches
+        .get_one::<PathBuf>("path")
+        .expect("the path is required")
+        .clone(),
+      destination: matches
+        .get_one::<PathBuf>("dest")
+        .expect("the destination is required")
+        .clone(),
+      tangents: Self::get_tangents(
+        matches
+          .get_one::<String>("tangents")
+          .map(String::as_str)
+          .expect("the tangent method has a default"),
+      ),
+      is_forced: matches.get_flag("force"),
+    };
     let output: OutputOptions = context.get_output().clone();
+    let build: BuildInfo = build_info!();
+    let report: ObjectCompileReport =
+      ObjectCompiler::compile_to_path(&request, "xrf-cli object compile", &build.get_tool_version())?;
 
-    let report: ObjectCompileReport = Self::compile(&output, source, destination, matches.get_flag("force"), tangents)?;
-
+    Self::print(&output, &report);
     context.set_result(|| &report)?;
 
     Ok(())
@@ -94,77 +97,17 @@ impl CompileCommand {
   const ACTOR_EDITOR: &'static str = "actor-editor";
   const MIKKTSPACE: &'static str = "mikktspace";
 
-  /// The options `tangents` asks for: `auto` follows the object's provenance sidecar, if it has one.
-  pub(super) fn get_options(source: &Path, tangents: &str) -> XrfResult<ObjectCompileOptions> {
-    Ok(match tangents {
-      Self::ACTOR_EDITOR => ObjectCompileOptions {
-        tangents: TangentMethod::ActorEditor,
-      },
-      Self::MIKKTSPACE => ObjectCompileOptions {
-        tangents: TangentMethod::MikkTSpace,
-      },
+  /// The tangent method `tangents` asks for; none for `auto`, which follows the object's provenance sidecar.
+  fn get_tangents(tangents: &str) -> Option<TangentMethod> {
+    match tangents {
+      Self::ACTOR_EDITOR => Some(TangentMethod::ActorEditor),
+      Self::MIKKTSPACE => Some(TangentMethod::MikkTSpace),
       // `auto`, the default and the one value the parser leaves.
-      _ => ObjectCompileOptions::following(ObjectProvenance::read_beside(source)?.as_ref()),
-    })
+      _ => None,
+    }
   }
 
-  fn compile(
-    output: &OutputOptions,
-    source: &Path,
-    destination: &Path,
-    is_forced: bool,
-    tangents: &str,
-  ) -> XrfResult<ObjectCompileReport> {
-    if !is_forced && destination.exists() {
-      return Err(XrfError::new_invalid_error(format!(
-        "{} already exists; pass --force to overwrite it",
-        format_path(destination)
-      )));
-    }
-
-    let object: EditableObjectFile = EditableObjectFile::read_from_path::<XRayByteOrder, _>(&source)?;
-    // A `.dm` destination is a detail model, whose flags and scale range a decompiled object's sidecar keeps.
-    let compiled: ObjectCompile = if XrayExtension::Dm.matches_path(destination) {
-      let parameters: DetailParameters = ObjectProvenance::read_beside(source)?
-        .and_then(|provenance| provenance.detail)
-        .unwrap_or_default();
-
-      ObjectCompiler::compile_detail(&object, &parameters)?
-    } else {
-      let build: BuildInfo = build_info!();
-
-      ObjectCompiler::compile_with(
-        &object,
-        &ObjectCompileSource {
-          source_file: format_path(source).to_string(),
-          convertor: format!("xrf-cli object compile {}", build.get_tool_version()),
-          built_at: SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_or(0, |elapsed| elapsed.as_secs()),
-        },
-        &Self::get_options(source, tangents)?,
-      )?
-    };
-
-    StagedFile::write_creating_directories(destination, &compiled.bytes).map_err(|error| {
-      XrfError::new_io_error(
-        format!("{} was not written: {error}", format_path(destination)),
-        error.kind(),
-      )
-    })?;
-
-    let report: ObjectCompileReport = ObjectCompileReport {
-      source: format_path(source).to_string(),
-      destination: format_path(destination).to_string(),
-      children: compiled.children,
-      vertices: compiled.vertices,
-      faces: compiled.faces,
-      dropped_faces: compiled.dropped_faces,
-      bones: object.bones.as_ref().map_or(0, Vec::len),
-      bytes: compiled.bytes.len(),
-      tangents: compiled.tangents,
-    };
-
+  fn print(output: &OutputOptions, report: &ObjectCompileReport) {
     xrf_output::success!(
       output,
       "Compiled {} into {}: {} children, {} vertices, {} faces ({} dropped), {} bones, {}",
@@ -181,7 +124,5 @@ impl CompileCommand {
         None => "no tangents",
       }
     );
-
-    Ok(report)
   }
 }

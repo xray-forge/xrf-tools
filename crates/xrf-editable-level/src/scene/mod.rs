@@ -6,3 +6,4 @@ pub(crate) mod editable_scene_part_file;
 pub(crate) mod editable_scene_part_source;
 pub(crate) mod editable_scene_read;
 pub(crate) mod editable_scene_tool;
+pub(crate) mod editable_tool_objects;

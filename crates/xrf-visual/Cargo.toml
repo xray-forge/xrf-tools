@@ -22,6 +22,7 @@ xrf-skeleton = { workspace = true }
 xrf-chunk = { workspace = true }
 xrf-error = { workspace = true }
 xrf-level = { workspace = true }
+xrf-material = { workspace = true }
 xrf-vfs = { workspace = true }
 xrf-spawn = { workspace = true }
 xrf-light-anim = { workspace = true }

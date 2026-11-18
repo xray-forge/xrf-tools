@@ -8,7 +8,7 @@ use xrf_chunk::ChunkWriter;
 use xrf_editable_level::{
   EditableFogVolumeObject, EditableLevelGuid, EditableLevelScene, EditableObjectPart, EditableParticleObject,
   EditableSoundEnvironmentObject, EditableSoundSourceObject, EditableSpawnPointObject, EditableToolObject,
-  EditableWallmarkTool, EditableWayObject,
+  EditableToolObjects, EditableWallmarkTool, EditableWayObject,
 };
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{
@@ -22,7 +22,6 @@ use crate::level::build::level_exported_file::LevelExportedFile;
 use crate::level::build::level_exported_previous::LevelExportedPrevious;
 use crate::level::entities::level_entity_conversion::LevelEntityConversion;
 use crate::level::entities::level_entity_export::LevelEntityExport;
-use crate::level::level_scene_tool_objects::LevelSceneToolObjects;
 use crate::level::parts::level_fog_volume_conversion::LevelFogVolumeConversion;
 use crate::level::parts::level_particle_conversion::LevelParticleConversion;
 use crate::level::parts::level_sound_environment_conversion::LevelSoundEnvironmentConversion;
@@ -187,13 +186,13 @@ impl LevelSceneExporter {
     Ok(written)
   }
 
-  /// The scene's part of tool `O` as the editor holds it once loaded ([`LevelSceneToolObjects::into_part`]): an empty
+  /// The scene's part of tool `O` as the editor holds it once loaded ([`EditableToolObjects::into_part`]): an empty
   /// one where the scene has no such tool, its objects the groups' members of the tool's class, then the part's own.
   pub(crate) fn get_part<O: EditableToolObject>(
     scene: &EditableLevelScene,
     guid: EditableLevelGuid,
   ) -> XrfResult<EditableObjectPart<O>> {
-    Ok(LevelSceneToolObjects::<O>::read(scene, guid)?.into_part())
+    Ok(EditableToolObjects::<O>::read(scene, guid)?.into_part())
   }
 
   /// `list` with `built` before its entities, every one numbered again in order; none where both are empty.

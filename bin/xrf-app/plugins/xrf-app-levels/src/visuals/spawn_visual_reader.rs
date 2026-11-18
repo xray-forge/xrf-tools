@@ -9,6 +9,7 @@ use xrf_ogf::OgfFile;
 use xrf_vfs::{XrayAsset, XrayAssetType, XrayLogicalPath, XraySearch};
 use xrf_visual::{
   VisualDependencies, VisualDescription, VisualMotions, VisualPackage, VisualPacker, VisualRestPose, VisualSkeleton,
+  VisualSurfaces,
 };
 
 use crate::parts::LevelTextureReference;
@@ -80,16 +81,7 @@ impl SpawnVisualReader {
     let resolver: &XraySurfaceResolver = self
       .resolver
       .get_or_init(|| XraySurfaceResolver::open(search, self.scope.clone()));
-    let surfaces: Vec<XraySurfaceDescriptor> = package
-      .description
-      .submeshes
-      .iter()
-      .map(|submesh| {
-        let textures: Vec<String> = submesh.texture_name.clone().into_iter().collect();
-
-        resolver.describe(submesh.shader_name.as_deref().unwrap_or_default(), &textures)
-      })
-      .collect();
+    let surfaces: Vec<XraySurfaceDescriptor> = VisualSurfaces::describe(resolver, &package.description);
     let references: BTreeSet<String> = package
       .description
       .submeshes

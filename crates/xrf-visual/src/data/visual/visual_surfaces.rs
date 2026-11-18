@@ -1,5 +1,6 @@
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver};
-use xrf_visual::VisualDescription;
+
+use crate::data::visual::visual_description::VisualDescription;
 
 /// How the renderer dresses each submesh of a packed model, a compiled editable object's or a game visual's alike.
 pub struct VisualSurfaces;

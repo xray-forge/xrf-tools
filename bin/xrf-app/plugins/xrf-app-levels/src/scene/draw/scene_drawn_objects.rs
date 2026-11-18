@@ -1,5 +1,4 @@
-use xrf_editable_level::EditableSceneObject;
-use xrf_rawdata::LevelSceneToolObjects;
+use xrf_editable_level::{EditableSceneObject, EditableToolObjects};
 use xrf_vfs::XraySearch;
 
 use crate::scene::{
@@ -21,7 +20,7 @@ impl SceneDrawnObjects {
   /// by its place among them as the scene's objects are, and its `.object` looked for through `objects`, a search of
   /// the scene's objects roots; none where the tool's objects do not read, which the scene's objects report.
   pub(crate) fn read(scene: &SelectedScene, objects: &XraySearch) -> Self {
-    let Ok(read) = LevelSceneToolObjects::<EditableSceneObject>::read(&scene.scene, scene.guid) else {
+    let Ok(read) = EditableToolObjects::<EditableSceneObject>::read(&scene.scene, scene.guid) else {
       return Self::default();
     };
     let mut drawn: Self = Self::default();

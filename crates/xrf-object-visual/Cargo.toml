@@ -12,7 +12,6 @@ path = "src/lib.rs"
 xrf-chunk = { workspace = true }
 xrf-editable-object = { workspace = true }
 xrf-error = { workspace = true }
-xrf-material = { workspace = true }
 xrf-ogf = { workspace = true }
 xrf-rawdata = { workspace = true }
 xrf-visual = { workspace = true }

@@ -45,6 +45,7 @@ pub use crate::scene::editable_scene_part_file::EditableScenePartFile;
 pub use crate::scene::editable_scene_part_source::EditableScenePartSource;
 pub use crate::scene::editable_scene_read::EditableSceneRead;
 pub use crate::scene::editable_scene_tool::EditableSceneTool;
+pub use crate::scene::editable_tool_objects::EditableToolObjects;
 pub use crate::tool::editable_ai_map_node::EditableAiMapNode;
 pub use crate::tool::editable_ai_map_tool::{EditableAiMapParams, EditableAiMapTool};
 pub use crate::tool::editable_detail_object::EditableDetailObject;

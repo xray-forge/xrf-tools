@@ -510,8 +510,8 @@ and CS's `agroprom_underground`, decompile, read back to the same bytes, and exp
 GSC's own `labx8` scene.
 
 Every export reads a tool's objects with the groups' members of its class first (`EditableGroupTool`), as the editor
-loads the group tool before the others and keeps a member's transform in the level. `LevelSceneToolObjects` is that
-read, the members kept apart with their groups' names for a reader listing them, and `into_part` the part the editor
+loads the group tool before the others and keeps a member's transform in the level. `xrf-editable-level`'s
+`EditableToolObjects` is that read, the members kept apart with their groups' names for a reader listing them, and `into_part` the part the editor
 holds once loaded, which every export reads. GSC's `labx8` holds 99 scene
 objects, 229 lights, 43 spawn points and 29 glows in groups; with them its scene exports 361 of the shipped
 `level.spawn`'s 379 packets byte for byte and in its order, the other 18 being the climbable objects the Build cuts out

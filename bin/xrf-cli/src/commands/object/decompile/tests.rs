@@ -72,8 +72,8 @@ fn refuses_to_replace_an_object_without_force() -> XrfResult {
   let error: String = get_error(decompile(&source, &destination, &[]));
 
   assert!(
-    error.contains("--force"),
-    "Expect the refusal to name the flag: {error}"
+    error.contains("model.object") && error.contains("force"),
+    "Expect the refusal to name the object and ask for force: {error}"
   );
   assert_eq!(fs::read(&destination)?, b"authored");
   assert!(!root.join("model.object.xrf.json").exists());

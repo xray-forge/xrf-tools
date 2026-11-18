@@ -1,8 +1,12 @@
+use std::path::PathBuf;
+
 use xrf_chunk::{ChunkLayout, XRayByteOrder};
 use xrf_editable_object::{EditableBone, EditableDescription, EditableMotion, EditableObjectFile, EditableTimeWidth};
 use xrf_error::{XrfError, XrfResult};
+use xrf_extension::XrayExtension;
 use xrf_level::DetailModel;
 use xrf_ogf::{OgfDescriptionChunk, OgfDescriptionTimeWidth, OgfFile, OgfModelType};
+use xrf_utils::{StagedFile, format_path};
 
 use crate::level::geometry::level_visual_geometry::LevelVisualGeometry;
 use crate::object::compile::tangent_method::TangentMethod;
@@ -18,11 +22,14 @@ use crate::object::decompile::mesh::assembled_mesh::AssembledMesh;
 use crate::object::decompile::mesh::mesh_assembler::MeshAssembler;
 use crate::object::decompile::mesh::mesh_kind::MeshKind;
 use crate::object::decompile::object_decompile::ObjectDecompile;
+use crate::object::decompile::object_decompile_report::ObjectDecompileReport;
+use crate::object::decompile::object_decompile_request::ObjectDecompileRequest;
 use crate::object::decompile::object_inference::ObjectInference;
 use crate::object::decompile::skeleton::bone_converter::BoneConverter;
 use crate::object::decompile::skeleton::converted_motions::ConvertedMotions;
 use crate::object::decompile::skeleton::motion_converter::MotionConverter;
 use crate::object::detail_parameters::DetailParameters;
+use crate::provenance::object_provenance::ObjectProvenance;
 
 /// Turns an OGF the Actor Editor exported back into the editable object it was exported from, as near as the OGF
 /// allows: see the crate's documentation for what is recovered and what inferred.
@@ -42,6 +49,55 @@ impl ObjectDecompiler {
     ObjectInference::Smoothing,
     ObjectInference::TwoSidedSurfaces,
   ];
+
+  /// Decompiles the OGF, or the `.dm` detail model, `request` names into its destination `.object`, by `tool` at
+  /// `tool_version`, with a provenance sidecar beside it: the source and its hash, the tool and the time, what was
+  /// inferred, the tangent method found, and a detail model's flags and scale range. An existing object or sidecar is
+  /// refused before the source is read unless the request is forced.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the object or sidecar exists unforced, the source does not read or decompile (see
+  /// [`Self::decompile`] and [`Self::decompile_detail`]), or a file is not written.
+  pub fn decompile_to_path(
+    request: &ObjectDecompileRequest,
+    tool: &str,
+    tool_version: &str,
+  ) -> XrfResult<ObjectDecompileReport> {
+    request.get_outputs().assert_free(request.is_forced)?;
+
+    let bytes: Vec<u8> = std::fs::read(&request.source)
+      .map_err(|error| XrfError::new_read_error(format!("{} was not read: {error}", format_path(&request.source))))?;
+    let decompile: ObjectDecompile = if XrayExtension::Dm.matches_path(&request.source) {
+      Self::decompile_detail(&DetailModel::read_from_bytes::<XRayByteOrder>(bytes.clone())?)?
+    } else {
+      Self::decompile(&OgfFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?)?
+    };
+    let provenance: ObjectProvenance = ObjectProvenance::new(
+      format_path(&request.source).to_string(),
+      &bytes,
+      tool,
+      tool_version,
+      decompile.inferred.clone(),
+      decompile.tangents,
+    )
+    .with_detail(decompile.detail);
+    let sidecar: PathBuf = request.get_sidecar_path();
+
+    // The sidecar first: an object that failed to publish leaves a stray sidecar, never a decompile taken for an
+    // authored file.
+    StagedFile::write_creating_directories(&sidecar, provenance.to_json()?.as_bytes()).map_err(|error| {
+      XrfError::new_io_error(
+        format!("{} was not written: {error}", format_path(&sidecar)),
+        error.kind(),
+      )
+    })?;
+    decompile
+      .object
+      .write_to_path::<XRayByteOrder, _>(&request.destination)?;
+
+    Ok(ObjectDecompileReport::new(request, &decompile))
+  }
 
   /// Decompiles an OGF the Actor Editor exported: a skeleton, its vertices following one bone each or blended across up
   /// to four, or a static visual (`MT_NORMAL`, `MT_PROGRESSIVE`, or `MT_HIERRARHY` holding them), which comes back as

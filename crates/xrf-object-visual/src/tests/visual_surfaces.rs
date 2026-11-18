@@ -8,9 +8,10 @@ use xrf_rawdata::ObjectCompileOptions;
 use xrf_shaders::ShaderBlenderClass;
 use xrf_shaders::fixtures::ShaderBlenderFixture;
 use xrf_vfs::{XrayLookupScope, XrayMountId, XraySearch, XrayVfs};
+use xrf_visual::VisualSurfaces;
 
+use crate::ObjectVisual;
 use crate::tests::fixtures::{compile_source, object_of, quad, surface};
-use crate::{ObjectVisual, VisualSurfaces};
 
 /// A search over `tree` alone, mounted as the game's root.
 fn mount_search(tree: &FixtureTree) -> XraySearch {

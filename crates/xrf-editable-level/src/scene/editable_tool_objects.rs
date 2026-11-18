@@ -1,19 +1,23 @@
-use xrf_editable_level::{
-  EditableGroupMember, EditableGroupTool, EditableLevelGuid, EditableLevelScene, EditableObjectPart, EditableToolObject,
-};
 use xrf_error::XrfResult;
+
+use crate::level::editable_level_guid::EditableLevelGuid;
+use crate::object::editable_tool_object::EditableToolObject;
+use crate::part::editable_object_part::EditableObjectPart;
+use crate::scene::editable_group_member::EditableGroupMember;
+use crate::scene::editable_group_tool::EditableGroupTool;
+use crate::scene::editable_level_scene::EditableLevelScene;
 
 /// One object tool's objects in a scene as the editor loads them: the group tool's members of the tool's class first,
 /// since it loads the group tool (class 0) before the others, then the objects of the tool's own part.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct LevelSceneToolObjects<O> {
+pub struct EditableToolObjects<O> {
   /// The groups' members of the tool's class, in the order the group tool's files hold them.
   pub members: Vec<EditableGroupMember<O>>,
   /// The tool's own part, or an empty one where the scene has no such tool, as the editor holds every tool.
   pub part: EditableObjectPart<O>,
 }
 
-impl<O: EditableToolObject> LevelSceneToolObjects<O> {
+impl<O: EditableToolObject> EditableToolObjects<O> {
   /// The objects of tool `O` the scene holds, a new tool's empty part standing for one it lacks, made with `guid`.
   ///
   /// # Errors

@@ -1,20 +1,14 @@
-use std::path::PathBuf;
+//! A tool's objects as the editor loads them: the groups' members of its class first, then its own part's.
 
-use xrf_chunk::XRayByteOrder;
-use xrf_editable_level::{
-  EditableBuildParams, EditableCustomObject, EditableGroupTool, EditableLevelCamera, EditableLevelFile,
-  EditableLevelOptions, EditableLevelPart, EditableLevelScene, EditableObjectPart, EditableObjectTransform,
-  EditableSceneObject, EditableSceneTool, EditableTextPart, EditableToolObject,
-};
 use xrf_error::XrfResult;
 use xrf_ini::{IniFile, IniSection};
-use xrf_job::JobHandle;
-use xrf_test_utils::GeneratedResources;
 
-use crate::level::build::level_build_exporter::LevelBuildExporter;
-use crate::level::build::level_build_request::LevelBuildRequest;
-use crate::level::level_scene_tool_objects::LevelSceneToolObjects;
-use crate::level::tests::fixtures::GUID;
+use crate::tests::fixtures::GUID;
+use crate::{
+  EditableCustomObject, EditableGroupTool, EditableLevelFile, EditableLevelPart, EditableLevelScene,
+  EditableObjectPart, EditableObjectTransform, EditableSceneObject, EditableSceneTool, EditableTextPart,
+  EditableToolObject, EditableToolObjects,
+};
 
 fn scene_object(name: &str) -> EditableSceneObject {
   EditableSceneObject {
@@ -61,51 +55,13 @@ fn scene(tools: Vec<EditableSceneTool>) -> EditableLevelScene {
   EditableLevelScene { level, tools }
 }
 
-/// The ladders and breakables a build cuts out of placed objects by game material open the spawn list, so a scene
-/// placing objects is not built without the game materials, and nothing is written.
-#[test]
-fn refuses_to_build_a_scene_placing_objects_without_the_game_materials() -> XrfResult {
-  let root: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "no_materials"))?;
-  let source: PathBuf = root.join("scenes").join("test_level.level");
-  let destination: PathBuf = root.join("level");
-
-  EditableLevelScene {
-    level: EditableLevelFile::new(
-      &GUID,
-      &EditableLevelOptions::new("test_level", EditableLevelOptions::SINGLE_PLAYER),
-      &EditableBuildParams::DEFAULT,
-      &EditableLevelCamera::default(),
-      "test",
-      0,
-    ),
-    tools: vec![EditableObjectPart::new(GUID, vec![scene_object("own_0")]).to_scene_tool()?],
-  }
-  .write_to_path::<XRayByteOrder, _>(&source)?;
-
-  let error: String = LevelBuildExporter::build_to_directory::<XRayByteOrder>(
-    &LevelBuildRequest {
-      source,
-      destination: destination.clone(),
-      ..LevelBuildRequest::default()
-    },
-    &JobHandle::inert(),
-  )
-  .expect_err("a scene of objects is refused without game materials")
-  .to_string();
-
-  assert!(error.contains("name the game materials"), "{error}");
-  assert!(!destination.exists(), "a refusal writes nothing");
-
-  Ok(())
-}
-
 #[test]
 fn reads_the_groups_members_apart_from_the_tools_own_objects_and_merges_them_first() -> XrfResult {
   let scene: EditableLevelScene = scene(vec![
     group_tool("lab_group", &[scene_object("grouped")]),
     EditableObjectPart::new(GUID, vec![scene_object("own_0"), scene_object("own_1")]).to_scene_tool()?,
   ]);
-  let read: LevelSceneToolObjects<EditableSceneObject> = LevelSceneToolObjects::read(&scene, GUID)?;
+  let read: EditableToolObjects<EditableSceneObject> = EditableToolObjects::read(&scene, GUID)?;
 
   assert_eq!(
     read
@@ -132,8 +88,8 @@ fn reads_the_groups_members_apart_from_the_tools_own_objects_and_merges_them_fir
 
 #[test]
 fn a_tool_the_scene_lacks_is_an_empty_part_holding_its_members() -> XrfResult {
-  let read: LevelSceneToolObjects<EditableSceneObject> =
-    LevelSceneToolObjects::read(&scene(vec![group_tool("lab_group", &[scene_object("grouped")])]), GUID)?;
+  let read: EditableToolObjects<EditableSceneObject> =
+    EditableToolObjects::read(&scene(vec![group_tool("lab_group", &[scene_object("grouped")])]), GUID)?;
 
   assert_eq!(read.part, EditableObjectPart::new(GUID, Vec::new()));
   assert_eq!(read.members.len(), 1);

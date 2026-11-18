@@ -5,10 +5,9 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::assets::{AssetMountState, AssetSource, AssetTextureDescriptor};
 use xrf_chunk::XRayByteOrder;
 use xrf_material::{XrayMaterialDescriptor, XrayMaterialResolver, XraySurfaceResolver, XrayTextureScope};
-use xrf_object_visual::VisualSurfaces;
 use xrf_ogf::OgfFile;
 use xrf_vfs::{XrayRoots, XraySearch};
-use xrf_visual::{VisualDependencies, VisualMotions, VisualPackage, VisualPacker};
+use xrf_visual::{VisualDependencies, VisualMotions, VisualPackage, VisualPacker, VisualSurfaces};
 
 use crate::{SelectedObject, SelectedObjectDescription, SelectedVisualDescription};
 

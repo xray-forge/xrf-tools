@@ -4,6 +4,8 @@ pub(crate) mod geometry;
 pub(crate) mod motion;
 pub(crate) mod object_compile;
 pub(crate) mod object_compile_options;
+pub(crate) mod object_compile_report;
+pub(crate) mod object_compile_request;
 pub(crate) mod object_compile_source;
 pub(crate) mod object_compiler;
 pub(crate) mod ogf_export_chunks;

@@ -89,6 +89,9 @@ fn main() -> xrf_error::XrfResult {
 - Embedded motions are already in the model and are not external dependencies.
 - Resolution never fails as a whole; a reference that cannot be looked up reports a rejected resolution.
 - The caller decides which roots the search covers, and in what order.
+- `VisualSurfaces::describe` answers how each submesh draws, in the description's order, as an `xrf-material`
+  `XraySurfaceResolver` answers its shader and its one texture: the list a renderer indexes by submesh, a game visual's
+  and a compiled `.object`'s alike.
 
 ## Animation
 

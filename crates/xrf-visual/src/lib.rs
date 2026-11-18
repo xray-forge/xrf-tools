@@ -40,6 +40,7 @@ pub use crate::data::visual::skeleton::visual_bone::VisualBone;
 pub use crate::data::visual::skeleton::visual_rest_pose::VisualRestPose;
 pub use crate::data::visual::skeleton::visual_transform::VisualTransform;
 pub use crate::data::visual::visual_description::VisualDescription;
+pub use crate::data::visual::visual_surfaces::VisualSurfaces;
 pub use crate::pack::buffer::visual_buffer_builder::VisualBufferBuilder;
 pub use crate::pack::buffer::visual_cluster_table::VisualClusterTable;
 pub use crate::pack::details::details_package::DetailsPackage;

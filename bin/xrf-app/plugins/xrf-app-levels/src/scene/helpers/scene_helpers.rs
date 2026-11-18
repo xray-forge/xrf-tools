@@ -4,10 +4,9 @@ use glam::{Mat4, Vec3};
 use xrf_editable_level::{
   EditableFogVolumeObject, EditableGlowObject, EditableLightObject, EditableParticleObject, EditablePortalObject,
   EditableShapeObject, EditableSoundEnvironmentObject, EditableSoundSourceObject, EditableSpawnPointObject,
-  EditableWayObject,
+  EditableToolObjects, EditableWayObject,
 };
 use xrf_math::{Aabb, Sphere, Vector3d};
-use xrf_rawdata::LevelSceneToolObjects;
 use xrf_renderer::{RenderHelperObject, RenderHelperShape, RenderLevelHelpers};
 use xrf_visual::VisualBounds;
 
@@ -160,7 +159,7 @@ impl SceneHelperRead<'_> {
   /// one standing as its model counted though its model is all it shows.
   fn read_tool<O: SceneHelpedObject>(&self, objects: &mut Vec<RenderHelperObject>) -> u32 {
     let Self { scene, entry, models } = self;
-    let Ok(read) = LevelSceneToolObjects::<O>::read(&scene.scene, scene.guid) else {
+    let Ok(read) = EditableToolObjects::<O>::read(&scene.scene, scene.guid) else {
       return 0;
     };
     let mut count: u32 = 0;

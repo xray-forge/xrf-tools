@@ -11,4 +11,5 @@ mod scene_object;
 mod sector;
 mod spawn;
 mod tool;
+mod tool_objects;
 mod way;

@@ -1,5 +1,6 @@
 mod ai_map;
 mod build;
+mod build_materials;
 mod collision;
 mod detail;
 mod entity;
@@ -16,7 +17,6 @@ mod map;
 mod occluder;
 mod particle;
 mod scene;
-mod scene_tool_objects;
 mod sound_environment;
 mod sound_source;
 mod spawn_data;

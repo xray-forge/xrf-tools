@@ -1,10 +1,15 @@
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use xrf_chunk::XRayByteOrder;
 use xrf_editable_object::EditableObjectFile;
-use xrf_error::XrfResult;
+use xrf_error::{XrfError, XrfResult};
+use xrf_utils::{OutputFiles, StagedFile, format_path};
 
 use crate::object::compile::detail::detail_model_builder::DetailModelBuilder;
 use crate::object::compile::object_compile::ObjectCompile;
 use crate::object::compile::object_compile_options::ObjectCompileOptions;
+use crate::object::compile::object_compile_report::ObjectCompileReport;
+use crate::object::compile::object_compile_request::ObjectCompileRequest;
 use crate::object::compile::object_compile_source::ObjectCompileSource;
 use crate::object::compile::rigid::rigid_geometry::RigidGeometry;
 use crate::object::compile::rigid::rigid_geometry_builder::RigidGeometryBuilder;
@@ -13,12 +18,70 @@ use crate::object::compile::skeleton::skeleton_geometry::SkeletonGeometry;
 use crate::object::compile::skeleton::skeleton_geometry_builder::SkeletonGeometryBuilder;
 use crate::object::compile::skeleton::skeleton_ogf_writer::SkeletonOgfWriter;
 use crate::object::detail_parameters::DetailParameters;
+use crate::provenance::object_provenance::ObjectProvenance;
 
 /// Turns an editable object into what the Actor Editor's `Export OGF` writes, for the engine to load: see the crate's
 /// documentation for what matches the editor's output and what only matches what the engine draws.
 pub struct ObjectCompiler;
 
 impl ObjectCompiler {
+  /// Compiles the `.object` `request` names into its destination, by `tool` at `tool_version`: a detail model where the
+  /// destination ends in `.dm`, with the flags and scale range the source's sidecar keeps or the editor's defaults; the
+  /// OGF otherwise, recording the source, the tool and the time. An existing destination is refused before the object is
+  /// read unless the request is forced.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the destination exists unforced, the object or its sidecar does not read, the compile fails
+  /// (see [`Self::compile`] and [`Self::compile_detail`]), or the file is not written.
+  pub fn compile_to_path(
+    request: &ObjectCompileRequest,
+    tool: &str,
+    tool_version: &str,
+  ) -> XrfResult<ObjectCompileReport> {
+    OutputFiles::of_path(&request.destination).assert_free(request.is_forced)?;
+
+    let object: EditableObjectFile = EditableObjectFile::read_from_path::<XRayByteOrder, _>(&request.source)?;
+    let compiled: ObjectCompile = if request.is_detail() {
+      let parameters: DetailParameters = ObjectProvenance::read_beside(&request.source)?
+        .and_then(|provenance| provenance.detail)
+        .unwrap_or_default();
+
+      Self::compile_detail(&object, &parameters)?
+    } else {
+      Self::compile_with(
+        &object,
+        &ObjectCompileSource {
+          source_file: format_path(&request.source).to_string(),
+          convertor: format!("{tool} {tool_version}"),
+          built_at: SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_or(0, |elapsed| elapsed.as_secs()),
+        },
+        &request.get_options()?,
+      )?
+    };
+
+    StagedFile::write_creating_directories(&request.destination, &compiled.bytes).map_err(|error| {
+      XrfError::new_io_error(
+        format!("{} was not written: {error}", format_path(&request.destination)),
+        error.kind(),
+      )
+    })?;
+
+    Ok(ObjectCompileReport {
+      source: format_path(&request.source).to_string(),
+      destination: format_path(&request.destination).to_string(),
+      children: compiled.children,
+      vertices: compiled.vertices,
+      faces: compiled.faces,
+      dropped_faces: compiled.dropped_faces,
+      bones: object.bones.as_ref().map_or(0, Vec::len),
+      bytes: compiled.bytes.len(),
+      tangents: compiled.tangents,
+    })
+  }
+
   /// The OGF of an object: a skeleton's where it has bones, a static visual's otherwise, as
   /// `CEditableObject::PrepareOGF` chooses.
   ///

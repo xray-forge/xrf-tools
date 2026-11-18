@@ -1,10 +1,10 @@
 use xrf_app_core::TauriResult;
 use xrf_editable_object::{EditableObjectFile, EditableOccluder};
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver};
-use xrf_object_visual::{ObjectVisual, VisualSurfaces};
+use xrf_object_visual::ObjectVisual;
 use xrf_rawdata::{ObjectCompileOptions, ObjectCompileSource};
 use xrf_renderer::RenderSpawnModel;
-use xrf_visual::VisualPoser;
+use xrf_visual::{VisualPoser, VisualSurfaces};
 
 use crate::scene::{
   SceneDrawnObject, SceneObjectModels, SceneObjectParts, SceneOccluderLook, SceneSurfaceKind, SceneSurfaceKinds,

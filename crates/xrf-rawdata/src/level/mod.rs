@@ -8,7 +8,6 @@ pub(crate) mod level_object_library;
 pub(crate) mod level_object_library_entry;
 pub(crate) mod level_object_names;
 pub(crate) mod level_scene_exporter;
-pub(crate) mod level_scene_tool_objects;
 pub(crate) mod parts;
 pub(crate) mod scene;
 pub(crate) mod surfaces;
