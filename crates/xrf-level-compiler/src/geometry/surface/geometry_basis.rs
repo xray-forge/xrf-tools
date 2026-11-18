@@ -31,7 +31,7 @@ impl GeometryBasis {
     within(self.tangent, other.tangent) && within(self.binormal, other.binormal)
   }
 
-  /// `base_basis::set`: the direction normalized where it has a length, then a byte a component as `u8_vec4` takes it.
+  /// `base_basis::set`: the direction normalized where it has a length, then a byte a component.
   fn quantize(direction: &Vector3d) -> [u8; 3] {
     let length_squared: f32 = direction.x * direction.x + direction.y * direction.y + direction.z * direction.z;
     let normalized: Vector3d = if length_squared > f32::MIN_POSITIVE {

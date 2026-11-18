@@ -8,8 +8,7 @@ use crate::object::compile::object_compiler::ObjectCompiler;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
 use crate::object::decompile::tests::fixtures::{UP, assemble, chain, corner, object, surface, with_links};
 
-/// A quad cut into two fragments as the Level Editor cuts a breakable part: one triangle on each of the first two
-/// bones, each bone of its own game material.
+// As the Level Editor cuts a breakable part: one triangle on each of two bones, each of its own game material.
 fn part() -> XrfResult<OgfFile> {
   let [a, b, c, d] = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 0.0, 1.0], [0.0, 0.0, 1.0]];
   let on_second = |position: [f32; 3]| with_links(corner(position, UP), &[(1, 1.0)]);
@@ -34,8 +33,6 @@ fn part() -> XrfResult<OgfFile> {
   OgfFile::read_from_bytes::<XRayByteOrder>(ObjectCompiler::compile(&authored, &source)?.bytes)
 }
 
-/// The fragments' bones are dropped and their points welded back into one static mesh, a surface for each game
-/// material the fragments carry.
 #[test]
 fn decompiles_a_breakable_part_into_the_static_faces_it_was_cut_from() -> XrfResult {
   let decompiled: EditableObjectFile = ObjectDecompiler::decompile_breakable(&part()?)?.object;
@@ -59,7 +56,6 @@ fn decompiles_a_breakable_part_into_the_static_faces_it_was_cut_from() -> XrfRes
   Ok(())
 }
 
-/// A part of no skeleton is no breakable part.
 #[test]
 fn refuses_a_part_that_is_no_rigid_skeleton() -> XrfResult {
   let mut file: OgfFile = part()?;

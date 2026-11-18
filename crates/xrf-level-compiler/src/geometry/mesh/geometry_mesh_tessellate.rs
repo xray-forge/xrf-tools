@@ -8,16 +8,13 @@ impl GeometryMesh {
   /// The longest edge xrLC leaves whole, `aht_max_edge`: `c_SS_maxsize / 2.5`, 12.8 m.
   pub(crate) const LONGEST_EDGE: f32 = 32.0 / 2.5;
 
-  /// The first pass of `CBuild::xrPhase_AdaptiveHT` (`xrLC/xrPhase_AdaptiveHT.cpp`), the only one that changes
-  /// geometry and the one xrLC runs at every quality: every face with an edge of `Self::LONGEST_EDGE` or more is cut
-  /// at the middle of its longest, with every other face sharing that edge, until none is left (`u_Tesselate` with
-  /// `callback_edge_longest`). Its later passes only light vertices. Returns the faces cut.
+  /// The first pass of `CBuild::xrPhase_AdaptiveHT` (`u_Tesselate`), the only one that changes geometry, run at every
+  /// quality: each face with an edge of [`Self::LONGEST_EDGE`] or more is cut at the middle of its longest, with every
+  /// face sharing that edge, until none is left. Returns the faces cut.
   ///
-  /// Faces are taken in order, the halves of a cut one appended after them all and so taken in their turn; a face of an
-  /// area under `EPS_L` is left whole. The faces sharing an edge are cut in face order, each into two halves on the new
-  /// vertex at the edge's middle, with the base coordinate between the edge's two: the half before the edge in the
-  /// face's winding first. A half keeps its face's back-face flag and its two outer edges' softness, and the new edge
-  /// between the halves is soft. The cut faces are dropped at the end, the others keeping their order.
+  /// Faces are taken in order, halves appended and taken in their turn; a face of an area under `EPS_L` is left whole.
+  /// A half keeps its face's back-face flag and outer edges' softness, the new edge between halves is soft, and the cut
+  /// faces are dropped at the end, the others keeping their order.
   pub(crate) fn tessellate(&mut self) -> usize {
     let mut around: Vec<Vec<u32>> = self.get_faces_around_vertices();
     let mut is_cut: Vec<bool> = vec![false; self.faces.len()];
@@ -72,7 +69,7 @@ impl GeometryMesh {
   }
 
   /// The edge of face `face` to cut, as its two vertices: its longest of [`Self::LONGEST_EDGE`] or more, the first of
-  /// equals (`callback_edge_longest`); none for a face too small to cut.
+  /// equals (`callback_edge_longest`).
   fn find_edge_to_cut(&self, face: usize) -> Option<[u32; 2]> {
     let face: &GeometryFace = &self.faces[face];
 
@@ -94,7 +91,8 @@ impl GeometryMesh {
     longest.map(|(ends, _)| ends)
   }
 
-  /// The two halves face `face` is cut into at `middle`, on its edge from `start` to `end` (`tessalate_faces`).
+  /// The two halves face `face` is cut into at `middle`, on its edge from `start` to `end`, the half before the edge in
+  /// the face's winding first (`tessalate_faces`).
   fn cut(&self, face: usize, start: u32, end: u32, middle: u32) -> [GeometryFace; 2] {
     let face: &GeometryFace = &self.faces[face];
     let first: usize = face.get_corner(start).expect("a face sharing an edge holds its start");
@@ -152,7 +150,7 @@ impl GeometryMesh {
     }
   }
 
-  /// `Fvector::lerp` at a half: each end weighed by a half and summed.
+  /// `Fvector::lerp` at a half, each end halved before the sum.
   fn get_middle(from: &Vector3d, to: &Vector3d) -> Vector3d {
     Vector3d::new(
       from.x * 0.5 + to.x * 0.5,

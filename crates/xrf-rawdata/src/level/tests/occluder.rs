@@ -7,7 +7,6 @@ use xrf_math::Vector3d;
 use crate::level::geometry::level_decompiled_object::LevelDecompiledObject;
 use crate::level::parts::level_occluder_conversion::LevelOccluderConversion;
 
-/// A triangle standing up at `x`.
 fn wall(x: f32) -> [Vector3d; 3] {
   [
     Vector3d::new(x, 0.0, 0.0),
@@ -16,7 +15,6 @@ fn wall(x: f32) -> [Vector3d; 3] {
   ]
 }
 
-/// Each surface's name, game material and whether it is two-sided, with the faces it holds.
 fn surfaces_of(object: &EditableObjectFile) -> Vec<(String, bool, usize)> {
   let mesh = &object.meshes.as_deref().unwrap_or_default()[0];
 

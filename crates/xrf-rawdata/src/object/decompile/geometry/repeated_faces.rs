@@ -6,11 +6,9 @@ use crate::object::decompile::geometry::welded_face::WeldedFace;
 /// Drops the faces an export wrote again: a face of the same surface on the same points, wound the same way, with the
 /// same corners, draws nothing the first did not.
 ///
-/// `CExportObjectOGF::PrepareMESH` counts a two-sided surface's faces twice, once for each copy it writes, but counts
-/// them down once per face, so it walks the surface's faces a second time and writes every face and its mirror again,
-/// onto the vertices the first walk packed: SoC's `plitka_br1` writes each of its 1,320 two-sided faces four times.
-/// A mirror is wound the other way, so it is never taken for a repeat; [`super::two_sided_pairs::TwoSidedPairs`] folds
-/// it afterwards.
+/// `CExportObjectOGF::PrepareMESH` walks a two-sided surface twice, writing every face and its mirror again onto the
+/// same vertices: SoC's `plitka_br1` holds each of its 1,320 two-sided faces four times. A mirror, wound the other way,
+/// is no repeat; [`super::two_sided_pairs::TwoSidedPairs`] folds it.
 pub(crate) struct RepeatedFaces;
 
 impl RepeatedFaces {

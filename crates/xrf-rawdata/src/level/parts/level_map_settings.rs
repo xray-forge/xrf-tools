@@ -13,9 +13,8 @@ pub(crate) struct LevelMapSettings {
   pub texture: Option<String>,
   /// `[sub_level_map]`: each sector's part of the map, by the sector's number.
   pub sector_maps: BTreeMap<u16, u8>,
-  /// Sections other than those the Build writes itself, which came from the build options' text or a later edit, as
-  /// that text again: each of their lines as read, `;` and blank ones left out, ended by line breaks between them.
-  /// Empty where there is none.
+  /// The sections the Build does not write itself, from the build options' text or a later edit, as that text again:
+  /// their lines joined by line breaks, `;` and blank ones left out.
   pub build_options: String,
   /// Names `[map_usage]` holds that are no game type the Build writes.
   pub unknown_game_types: Vec<String>,

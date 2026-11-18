@@ -12,10 +12,10 @@ use crate::level::build::level_build_part_box::LevelBuildPartBox;
 use crate::level::build::level_build_part_face::LevelBuildPartFace;
 use crate::object::compile::geometry::source::mesh_corners::MeshCorners;
 
-/// The faces of one kind of game material the static objects hold, split into the parts a build cuts out of the
-/// geometry (`CGeomPartExtractor`, `LevelEditor/Edit/GeometryPartExtractor.cpp`): every face whose surface's game
-/// material carries a flag, placed, its points welded within `EPS_L` (`VCPacked`), and the parts its faces make by
-/// sharing a point. The ladders (`LevelBuildClimbables`) and the breakables (`LevelBuildBreakables`) are made of them.
+/// The static objects' faces whose game material carries one flag, split into the parts a build cuts out of the
+/// geometry, `CGeomPartExtractor`: placed, their points welded within `EPS_L`, and grouped by shared points.
+///
+/// The ladders and the breakables are made of them.
 pub(crate) struct LevelBuildParts {
   /// `SGameMtl`'s flag a surface's game material must carry for its faces to be gathered.
   flag: u32,
@@ -23,12 +23,10 @@ pub(crate) struct LevelBuildParts {
   /// Each surface a face names, once per object and surface name.
   pub(crate) surfaces: Vec<EditableSurface>,
   surface_index: HashMap<(String, String), usize>,
-  /// The faces' corners welded into points.
   points: PointWelder,
 }
 
 impl LevelBuildParts {
-  /// Parts of the faces whose game material carries `flag`.
   pub(crate) fn new(flag: u32) -> Self {
     Self {
       flag,
@@ -39,14 +37,13 @@ impl LevelBuildParts {
     }
   }
 
-  /// Adds every face of `object`, placed by `placed`, whose surface's game material carries the flag: each corner with
-  /// the normal the editor gives it (`GenerateVNormals`) turned into the level, and the texture coordinate of its
-  /// first map (`GetFaceTC`).
+  /// Adds every face of `object`, placed by `placed`, whose game material carries the flag, with the editor's corner
+  /// normals (`GenerateVNormals`) and first map's texture coordinates (`GetFaceTC`).
   ///
   /// # Errors
   ///
-  /// Returns an error, as the Build stops, for a surface of a game material the library lacks, a face naming a surface
-  /// or point its object lacks, or a mesh whose normals do not compute.
+  /// Returns an error, as the Build stops, for a game material the library lacks, a face naming a surface or point
+  /// its object lacks, or a mesh whose normals do not compute.
   pub(crate) fn add_object(
     &mut self,
     placed: &EditableSceneObject,
@@ -128,8 +125,8 @@ impl LevelBuildParts {
     Ok(())
   }
 
-  /// The parts, each its faces in the order `recurse_tri` reaches them: from the first face no part holds yet, depth
-  /// first through the faces around each of its points in the order they were added.
+  /// The parts, each its faces in the order `recurse_tri` reaches them: depth first from the first face no part holds
+  /// yet, through the faces around each point in the order they were added.
   pub(crate) fn get_parts(&self) -> Vec<Vec<usize>> {
     let around: Vec<Vec<usize>> = self.get_faces_around_points();
     let mut is_taken: Vec<bool> = vec![false; self.faces.len()];
@@ -176,8 +173,7 @@ impl LevelBuildParts {
     parts
   }
 
-  /// Each face of `part`'s neighbours across an edge, as `SBPart::prepare` lists them: for each of its corners, the
-  /// faces around that point in the order they were added, each sharing two points with it, once.
+  /// Each face of `part`'s neighbours across an edge, once each, in the order `SBPart::prepare` lists them.
   pub(crate) fn get_edge_neighbours(&self, part: &[usize]) -> Vec<Vec<usize>> {
     let around: Vec<Vec<usize>> = self.get_faces_around_points();
     let mut neighbours: Vec<Vec<usize>> = vec![Vec::new(); self.faces.len()];
@@ -207,10 +203,11 @@ impl LevelBuildParts {
     part.iter().map(|face| std::mem::take(&mut neighbours[*face])).collect()
   }
 
-  /// `RAPIDMinBox` (`ECore/WildMagic/RAPIDMinBox.cpp:230`) of `part`'s triangles: the area-weighted covariance of the
-  /// triangles, its eigenvectors as axes, the one of the largest eigenvalue first, then the corners' extents along
-  /// them; the axes made right-handed after (`ComputeOBB_RAPID`). Done in double precision about the first corner, since
-  /// the editor's single precision on level coordinates turns a box by noise.
+  /// The box of `part`'s triangles, `RAPIDMinBox` with `ComputeOBB_RAPID`'s right-handed axes: the area-weighted
+  /// covariance's eigenvectors, the largest first.
+  ///
+  /// Done in double precision about the first corner, since the editor's single precision on level coordinates turns
+  /// a box by noise.
   pub(crate) fn fit_box(&self, part: &[usize]) -> Option<LevelBuildPartBox> {
     let corners: Vec<DVec3> = part
       .iter()
@@ -297,7 +294,7 @@ impl LevelBuildParts {
     around
   }
 
-  /// The surface's index, added the first time `object` names it.
+  /// The surface's index, appended the first time `object` names it.
   fn intern_surface(&mut self, object: &str, surface: &EditableSurface) -> usize {
     let key: (String, String) = (object.to_owned(), surface.name.clone());
 
@@ -310,7 +307,7 @@ impl LevelBuildParts {
     self.surfaces.len() - 1
   }
 
-  /// Each face's texture coordinates of `mesh`, its first map's (`GetFaceTC`), zero where a corner names none.
+  /// Each face's texture coordinates from its first map (`GetFaceTC`), zero where a corner names none.
   fn read_texture_coordinates(mesh: &xrf_editable_object::EditableMesh) -> XrfResult<Vec<[Vector2d; 3]>> {
     MeshCorners::without_normals(mesh).read_faces(|corner| {
       Ok(

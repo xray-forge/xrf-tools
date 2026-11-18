@@ -39,7 +39,6 @@ use crate::level::trees::level_tree_impostor_atlas::LevelTreeImpostorAtlas;
 use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 use crate::object::decompile::object_decompile::ObjectDecompile;
 
-/// A square of render geometry two metres across on the ground, centred on `x`.
 fn square(x: f32) -> [[f32; 3]; 4] {
   [
     [x - 1.0, 0.0, -1.0],
@@ -57,7 +56,6 @@ fn chunk(id: u32, payload: &[u8]) -> XrfResult<Vec<u8>> {
   writer.flush_chunk_into_buffer::<XRayByteOrder>(id)
 }
 
-/// A `level.geom` of positions alone: one buffer of the squares' corners, and one of two triangles a square.
 fn geometry(squares: &[[[f32; 3]; 4]]) -> XrfResult<LevelGeomSource<InMemoryChunkDataSource>> {
   let mut vertices: Vec<u8> = 1u32.to_le_bytes().to_vec();
 
@@ -103,7 +101,6 @@ fn header(model_type: u8) -> OgfHeaderChunk {
   }
 }
 
-/// The visual drawing the `index`th square.
 fn drawable(index: u32) -> LevelVisual {
   LevelVisual {
     header: header(0),
@@ -134,8 +131,7 @@ fn hierarchy(children: Vec<u32>) -> LevelVisual {
   }
 }
 
-/// Two sectors joined by a portal: the first a hierarchy over the square west of the origin, the second the square
-/// east of it as its own root.
+// The first sector a hierarchy over the west square, the second the east square as its own root.
 fn level(portal_sectors: (u16, u16)) -> LevelFile {
   LevelFile {
     header: LevelHeaderChunk {
@@ -187,8 +183,7 @@ fn decompile(level: &LevelFile) -> XrfResult<LevelGeometryDecompile> {
   decompile_with(level, vec![drawable(0), drawable(1), hierarchy(vec![0])], None, None)
 }
 
-/// The squares' geometry, drawn by `visuals` as `level` arranges them in sectors, with `collision` and `inference` where
-/// given: the two the sectors draw, then two a tree's subdivisions may draw in its own space.
+// The two squares the sectors draw, then two a tree's subdivisions may draw in its own space.
 fn decompile_with(
   level: &LevelFile,
   visuals: Vec<LevelVisual>,
@@ -198,7 +193,6 @@ fn decompile_with(
   decompile_from(level, visuals, collision, inference, None, None)
 }
 
-/// As [`decompile_with`], looking for `library`'s objects and cutting the trees' strips from `impostors` where given.
 fn decompile_from(
   level: &LevelFile,
   visuals: Vec<LevelVisual>,
@@ -439,7 +433,6 @@ fn leaves_sectors_and_portals_out_where_a_sector_draws_no_static_geometry() -> X
   Ok(())
 }
 
-/// A tree visual drawing the `index`th square in its own space, placed by `placement`.
 fn tree(index: u32, placement: Matrix4x4) -> LevelVisual {
   let color: OgfTreeColor = OgfTreeColor {
     rgb: Vector3d::ZERO,
@@ -457,7 +450,6 @@ fn tree(index: u32, placement: Matrix4x4) -> LevelVisual {
   }
 }
 
-/// An `MT_LOD` over `children`, its impostor not read.
 fn lod(children: Vec<u32>) -> LevelVisual {
   LevelVisual {
     lod: Some(Err(XrfError::new_invalid_error("no impostor"))),
@@ -465,8 +457,6 @@ fn lod(children: Vec<u32>) -> LevelVisual {
   }
 }
 
-/// Trees fold back into one multi-use object per set of subdivisions, kept in its own space, and a scene object per
-/// placement: the visuals an `MT_LOD` parents, whatever their order, or one standing alone.
 #[test]
 fn folds_tree_visuals_into_models_and_their_placements() -> XrfResult {
   let at = |x: f32| Matrix4x4::from_translation(&Vector3d::new(x, 0.0, 20.0));
@@ -560,9 +550,7 @@ fn folds_tree_visuals_into_models_and_their_placements() -> XrfResult {
   Ok(())
 }
 
-/// A tree model a library tree stands for comes back as that tree with the impostor strips cut for the model, named
-/// for the tree, since the Build loads a placement's strips by its object's library name; a textures root already
-/// holding the library's own strips keeps them.
+// The Build loads a placement's strips by its object's library name.
 #[test]
 fn names_the_strips_of_a_library_trees_impostor_for_it() -> XrfResult {
   let placement: Matrix4x4 = Matrix4x4::from_translation(&Vector3d::new(1.0, 0.0, 20.0));
@@ -684,9 +672,8 @@ fn names_the_strips_of_a_library_trees_impostor_for_it() -> XrfResult {
   Ok(())
 }
 
-/// A tree placed scaled to nothing, as GSC hid trees rather than delete them, stands its impostor where no box can be
-/// read back through the placement: a level model is kept with its own box and the fit refused, while a model a
-/// library tree stands for takes no fit, the Build standing the impostor in the library object's own box.
+// GSC hid trees by scaling them to nothing, so no box reads back through the placement; the Build stands a library
+// tree's impostor in the library object's own box.
 #[test]
 fn fits_no_impostor_box_for_a_model_a_library_tree_stands_for() -> XrfResult {
   // Far enough out that the impostor's corners, stored in the level's space, fall within a step of f32 of each other.
@@ -755,9 +742,7 @@ fn fits_no_impostor_box_for_a_model_a_library_tree_stands_for() -> XrfResult {
 const STONE: u16 = 3;
 const EARTH: u16 = 5;
 
-/// The two squares' collision form: the west one's own triangles as faces of stone, where `with_earth` a larger face of
-/// earth beneath the east one, which only a ray finds, and where `with_wall` a wall of stone in the second sector no
-/// render triangle draws.
+// The earth face lies beneath the east square, where only a ray finds it.
 fn collision(with_earth: bool, with_wall: bool) -> XrfResult<LevelCollisionIndex> {
   let face = |vertices: [u32; 3], material: u16, sector: u16| LevelCformFace {
     vertices,
@@ -793,7 +778,6 @@ fn collision(with_earth: bool, with_wall: bool) -> XrfResult<LevelCollisionIndex
   Ok(LevelCollisionIndex::new(LevelCformGeometry::new(vertices, faces)?))
 }
 
-/// What names the materials and offers compiler shaders.
 fn inference() -> LevelSurfaceInference {
   let shader = |name: &str, flags: u32| ShaderCompilerShader {
     name: String::from(name),
@@ -823,7 +807,6 @@ fn inference() -> LevelSurfaceInference {
   )
 }
 
-/// Each shell's surfaces, as compiler shader and game material.
 fn dress_of(decompiled: &LevelGeometryDecompile) -> Vec<Vec<(String, String)>> {
   decompiled
     .objects

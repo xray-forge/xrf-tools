@@ -19,7 +19,6 @@ use crate::level::details::level_detail_decompile::LevelDetailDecompile;
 use crate::level::details::level_detail_library::LevelDetailLibrary;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
 
-/// A model of one quad, `size` across, its coordinates `uv` gives each corner's.
 fn quad(size: f32, uv: impl Fn(f32, f32) -> (f32, f32)) -> DetailModel {
   DetailModel {
     shader: String::from("details\\blend"),
@@ -43,7 +42,6 @@ fn quad(size: f32, uv: impl Fn(f32, f32) -> (f32, f32)) -> DetailModel {
   }
 }
 
-/// A slot planting `corners`' models, its base and height set and its light full.
 fn slot(corners: [u8; 4]) -> [u32; 4] {
   let objects: u64 = corners
     .iter()
@@ -76,9 +74,6 @@ fn library() -> LevelDetailLibrary {
   ])
 }
 
-/// A model the library draws comes back as its reference at the level's scale range and flags, its coordinates the
-/// library's moved into the atlas, turned or not; a model it lacks is refused, and the corners planting it plant
-/// nothing. The slots keep their heights and densities, their light zeroed.
 #[test]
 fn decompiles_details_into_the_library_objects_drawing_them() {
   let mut atlas: DetailModel = quad(2.0, |u, v| (0.25 * u + 0.5, 0.5 * v));
@@ -125,8 +120,7 @@ fn decompiles_details_into_the_library_objects_drawing_them() {
   );
 }
 
-/// Where the library draws none of the level's models, there is no tool: the Build would refuse one with nothing to
-/// merge into its atlas.
+// The Build refuses a detail tool with nothing to merge into its atlas.
 #[test]
 fn leaves_the_tool_out_where_no_model_is_found() {
   let file: LevelDetailsFile = details(vec![quad(3.0, |u, v| (u, v))], vec![slot([0, 63, 63, 63])]);
@@ -137,7 +131,6 @@ fn leaves_the_tool_out_where_no_model_is_found() {
   assert_eq!(decompile.refused.len(), 1);
 }
 
-/// A model of the library's geometry whose coordinates no single remap reaches is another object's.
 #[test]
 fn matches_no_model_whose_coordinates_are_no_remap() {
   let bent: DetailModel = quad(2.0, |u, v| (u + 0.3 * v, v));
@@ -149,9 +142,6 @@ fn matches_no_model_whose_coordinates_are_no_remap() {
   );
 }
 
-/// Each found object's texture comes back cut from the level's atlas at the size its place spans, turned back where it
-/// was turned in, once for objects sharing it, named as the library object's own; one whose place is no whole pixels is
-/// refused.
 #[test]
 fn cuts_the_found_objects_textures_from_the_level_atlas() -> XrfResult {
   const RED: Rgba<u8> = Rgba([255, 0, 0, 255]);
@@ -251,8 +241,6 @@ fn cuts_the_found_objects_textures_from_the_level_atlas() -> XrfResult {
   Ok(())
 }
 
-/// Textures go in largest first at the first free spot, row by row; one fitting only turned goes in turned, and the
-/// atlas doubles its narrower side until all fit.
 #[test]
 fn merges_textures_as_the_editor_packs_its_detail_atlas() {
   let image = |width: u32, height: u32| RgbaImage::from_pixel(width, height, Rgba([200, 100, 50, 255]));
@@ -312,8 +300,6 @@ fn merges_textures_as_the_editor_packs_its_detail_atlas() {
   assert_eq!(turned.places[0].remap(0.0, 1.0), (1.0, 0.0), "turned, u and v swap");
 }
 
-/// Impostor strips merge with their normals as a second layer at the same spots, in an atlas starting one strip in
-/// size that grows tall first.
 #[test]
 fn merges_layered_strips_as_the_build_packs_its_impostors() {
   let strip = |value: u8| RgbaImage::from_pixel(512, 64, Rgba([value, value, value, 255]));
@@ -335,8 +321,6 @@ fn merges_layered_strips_as_the_build_packs_its_impostors() {
   );
 }
 
-/// The export keeps the planted objects alone, compiled from their library objects with their coordinates moved into
-/// an atlas of their textures named `build_details`, and the slots renumbered with their light zeroed.
 #[test]
 fn exports_the_planted_details_with_their_atlas() -> XrfResult {
   let root: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "details_export"))?;

@@ -22,8 +22,6 @@ use crate::level::tests::spawn_data::restrictor;
 use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
 
-/// A ladder as the Build exports one: a box of half sizes `half` in its frame, standing at `position` and turned by
-/// `direction`, of `material`.
 fn ladder(position: Vector3d, direction: Vector3d, half: [f32; 3], material: &str) -> XrfResult<AlifeObject> {
   let base: AlifeObjectAbstract = restrictor().state.base;
 
@@ -62,8 +60,7 @@ fn get_mesh(object: &EditableObjectFile) -> &EditableMesh {
   &object.meshes.as_deref().unwrap_or_default()[0]
 }
 
-/// Each face's normal and corners in the ladder's own frame, as the scene places it: the frame the packet's angles name,
-/// at its position.
+// In the frame the packet's angles name, at its position.
 fn get_box_faces(ladder: &LevelDecompiledLadder, entity: &AlifeObject) -> Vec<(Vector3d, [Vector3d; 3])> {
   let mesh: &EditableMesh = get_mesh(&ladder.object.decompile.object);
   let transform = &ladder.object.transform;
@@ -96,8 +93,6 @@ fn get_box_faces(ladder: &LevelDecompiledLadder, entity: &AlifeObject) -> Vec<(V
     .collect()
 }
 
-/// A ladder of some thickness comes back as its box less the face behind it: each face wound to face out of the box,
-/// none facing back, its corners the box's.
 #[test]
 fn decompiles_a_ladder_into_its_box_less_the_back_face() -> XrfResult {
   let entity: AlifeObject = ladder(
@@ -133,8 +128,7 @@ fn decompiles_a_ladder_into_its_box_less_the_back_face() -> XrfResult {
   Ok(())
 }
 
-/// A flat ladder comes back as its front alone, facing the way its box does, its pivot the middle of its lowest end:
-/// one whose box keeps the micrometres of thickness the Build's fit leaves too.
+// A box keeping the micrometres of thickness the Build's fit leaves is flat too.
 #[test]
 fn decompiles_a_flat_ladder_into_its_front_standing_at_its_base() -> XrfResult {
   let entity: AlifeObject = ladder(Vector3d::new(10.0, 5.0, 3.0), Vector3d::ZERO, [0.4, 2.0, 0.000_002], "")?;
@@ -155,8 +149,7 @@ fn decompiles_a_flat_ladder_into_its_front_standing_at_its_base() -> XrfResult {
   Ok(())
 }
 
-/// A packet of no game material, as written before version 127, takes the ladders' own; one that keeps it is dressed
-/// with it.
+// Packets before version 127 keep no game material.
 #[test]
 fn dresses_a_ladder_with_its_game_material() -> XrfResult {
   let material = |name: &str| -> XrfResult<(String, bool)> {
@@ -175,7 +168,6 @@ fn dresses_a_ladder_with_its_game_material() -> XrfResult {
   Ok(())
 }
 
-/// A breakable as the Build exports one, standing at `position`.
 fn breakable(position: Vector3d) -> AlifeObject {
   let ladder: AlifeObject = ladder(position, Vector3d::ZERO, [1.0; 3], "").expect("a ladder");
 
@@ -197,8 +189,7 @@ fn breakable(position: Vector3d) -> AlifeObject {
   }
 }
 
-/// A library object of a ladder, an upright panel 0.8 m wide and 2 m high rising from its pivot, and a pane of glass
-/// 2 m beside it, written where a placement reads it from.
+// A ladder panel 0.8 m wide and 2 m high rising from the pivot, and a pane of glass 2 m beside it.
 fn library_ladder(path: &PathBuf) -> XrfResult {
   let dress = |material: &str| SurfaceDress {
     compiler_shader: String::from("default"),
@@ -231,8 +222,7 @@ fn library_ladder(path: &PathBuf) -> XrfResult {
     .write_to_path::<XRayByteOrder, _>(path)
 }
 
-/// A ladder and a breakable whose packets a placed library object's own faces make again are told from those it does
-/// not make: the object brings them back, and the Build cuts them out of it again.
+// The placed object brings them back, and the Build cuts them out of it again.
 #[test]
 fn tells_the_ladders_and_breakables_a_placed_library_object_makes_again() -> XrfResult {
   let path: PathBuf =
@@ -290,7 +280,6 @@ fn tells_the_ladders_and_breakables_a_placed_library_object_makes_again() -> Xrf
   Ok(())
 }
 
-/// An entity of another class is no ladder.
 #[test]
 fn leaves_other_entities() -> XrfResult {
   let entity: AlifeObject = listed(&restrictor(), 0)?.read_alife_object::<XRayByteOrder>()?;

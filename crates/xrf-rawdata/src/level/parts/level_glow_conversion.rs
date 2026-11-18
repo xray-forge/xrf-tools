@@ -5,14 +5,14 @@ use xrf_math::Vector3d;
 
 use crate::level::level_decompile_context::LevelDecompileContext;
 
-/// A level's light flares, from the compiled `fsL_GLOWS` back into the scene's `glow.part`. The level compiler writes
-/// each `b_glow` the build gave it (`SceneBuilder::BuildGlow`, `BuilderRemote.cpp:1161`) as its position, radius and
-/// the shader table row of its shader and texture; the fixed-size flag does not survive.
+/// A level's light flares, from the compiled `fsL_GLOWS` back into the scene's `glow.part`.
+///
+/// The compiler keeps each `b_glow` (`SceneBuilder::BuildGlow`) as its position, radius and shader table row; the
+/// fixed-size flag is lost.
 pub struct LevelGlowConversion;
 
 impl LevelGlowConversion {
-  /// The glow part of a compiled level: a glow per `fsL_GLOWS` record, unturned at its position, named after its
-  /// texture, its shader and texture those of its shader table row, its flags clear.
+  /// The glow part of a compiled level: a glow per `fsL_GLOWS` record, named after its texture, its flags clear.
   ///
   /// # Errors
   ///

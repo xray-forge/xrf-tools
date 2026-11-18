@@ -21,26 +21,23 @@ use crate::provenance::level_scene_refusal::LevelSceneRefusal;
 use crate::provenance::level_scene_update_packet::LevelSceneUpdatePacket;
 use crate::provenance::sidecar::Sidecar;
 
-/// A level's server entities, between the scene's `spawn.part` and the spawn lists `CSpawnPoint::SSpawnData::
-/// ExportGame` (`SpawnPoint.cpp:374`) fills: `level.spawn`, and `level_rs.spawn` for entities marked to respawn in
-/// multiplayer.
+/// A level's server entities, between the scene's `spawn.part` and the spawn lists
+/// `CSpawnPoint::SSpawnData::ExportGame` fills: `level.spawn`, and `level_rs.spawn` for multiplayer respawns.
 ///
-/// The export takes an entity's name, position and angles from its spawn point, and its volume from the shape attached
-/// to it, over what its packet holds; the decompile therefore gives each spawn point the packet's name and place, and a
-/// class with a volume the packet's shapes as an attached shape.
+/// The export takes an entity's name, position and angles from its spawn point, and its volume from its attached
+/// shape, over its packet's; the decompile puts the packet's back there.
 pub struct LevelEntityConversion;
 
 impl LevelEntityConversion {
-  /// The spawn lists the build writes, `BuilderGame.cpp:30` and `:36`.
+  /// The spawn lists the build writes.
   pub const SPAWN_FILE_NAME: &'static str = "level.spawn";
   pub const RESPAWN_FILE_NAME: &'static str = "level_rs.spawn";
 
   /// The prefix the decompile names an entity's attached shape after.
   pub const SHAPE_PREFIX: &'static str = "shape";
 
-  /// Keeps every entity's name in `sources` from the names generated after, as the export keeps each entity's name. A
-  /// scene decompile does this before any step names an object; [`Self::decompile`] does it again for a decompile of
-  /// the entities alone.
+  /// Reserves every entity's name in `sources`, which the export keeps, against generated names. A scene decompile
+  /// calls it before any step names an object; [`Self::decompile`] calls it too, for the entities alone.
   pub fn reserve_names<'a>(sources: &LevelEntitySources<'a>, context: &mut LevelDecompileContext) {
     let listed = |file: Option<&'a LevelSpawnFile>| file.into_iter().flat_map(|list| &list.objects);
 
@@ -54,18 +51,17 @@ impl LevelEntityConversion {
   }
 
   /// The spawn points of a level's entities: those of `spawn` (or the root spawn's) first, then those of `respawn`
-  /// marked to respawn, every name reserved ([`Self::reserve_names`]) before any shape's is generated.
+  /// marked to respawn.
   ///
-  /// From a root spawn, each object takes the place of its `level.spawn` packet of the same name, the fields xrAI fills
-  /// in (`AlifeBuiltFields`) taken from that packet, and the objects only the root spawn holds follow in its order with
-  /// a fresh entity's (`AlifeBuiltFields::UNBUILT`), as does an object whose `level.spawn` packet does not read. A
-  /// disagreement is recorded for each of those, for each packet only `level.spawn` holds (left out), and for each
-  /// object whose packet then is not `level.spawn`'s; an update packet is kept where it differs from a fresh entity's.
+  /// From a root spawn, each object replaces its `level.spawn` packet of the same name, taking that packet's fields
+  /// xrAI fills in (`AlifeBuiltFields`), or a fresh entity's where none reads; objects only the root spawn holds
+  /// follow. Disagreements are recorded for those, for packets only `level.spawn` holds (left out), and for packets
+  /// that then differ. An update packet is kept where it differs from a fresh entity's.
   ///
   /// # Errors
   ///
-  /// Returns an error when a typed packet's fields cannot be saved, a string holding a double quote, or a root spawn
-  /// object does not write; a packet whose class is not known is refused one by one instead.
+  /// Returns an error when a packet's fields cannot be saved (a string holding a double quote) or a root spawn object
+  /// does not write. A packet of an unknown class is refused on its own instead.
   pub fn decompile<'a, T: ByteOrder>(
     sources: &LevelEntitySources<'a>,
     context: &mut LevelDecompileContext,
@@ -124,8 +120,8 @@ impl LevelEntityConversion {
     Ok(())
   }
 
-  /// `level.spawn`'s packets in its order, each replaced by the root spawn's object of its name, then the root spawn's
-  /// objects `level.spawn` lacks; its graph points kept, its other packets the root spawn lacks left out.
+  /// `level.spawn`'s packets in order, each replaced by the root spawn's object of its name, then the root spawn's
+  /// other objects. Of the packets the root spawn lacks, only graph points are kept.
   fn decompile_root<T: ByteOrder>(
     listed: &[&LevelSpawnObject],
     root: &[&AlifeObject],
@@ -178,8 +174,8 @@ impl LevelEntityConversion {
   ) -> XrfResult {
     let name: &str = &built.header.name;
     let mut entity: AlifeObject = built.clone();
-    // xrAI overwrites these whatever the editor wrote, so they come from the editor's own packet where `level.spawn`
-    // holds one that reads, and are a fresh entity's otherwise.
+    // xrAI overwrites these, so they come from the editor's packet in `level.spawn` where one reads, else a fresh
+    // entity's.
     let editor_fields: AlifeBuiltFields = listed
       .and_then(|listed| listed.read_alife_object::<T>().ok())
       .map_or(AlifeBuiltFields::UNBUILT, |listed| listed.get_built_fields());
@@ -250,13 +246,12 @@ impl LevelEntityConversion {
     }
   }
 
-  /// The spawn lists the part's entities export to, each entity at the place, under the name and with the shape its
-  /// spawn point gives, numbered from zero in the part's order within its list.
+  /// The spawn lists the part's entities export to, numbered from zero in the part's order within each list.
   ///
   /// # Errors
   ///
-  /// Returns an error naming the spawn point whose spawn data does not read as its section's class, whose class has a
-  /// volume but no shape attached (as the build refuses it), or whose packet the writer refuses.
+  /// Returns an error naming a spawn point whose data does not read as its section's class, whose class has a volume
+  /// but no attached shape (as the build refuses it), or whose packet does not write.
   pub fn export<T: ByteOrder>(part: &EditableObjectPart<EditableSpawnPointObject>) -> XrfResult<LevelEntityExport> {
     let mut spawn: Vec<LevelSpawnObject> = Vec::new();
     let mut respawn: Vec<LevelSpawnObject> = Vec::new();
@@ -287,8 +282,7 @@ impl LevelEntityConversion {
     })
   }
 
-  /// The spawn point of a typed packet: at its position and angles, unscaled, under its name, its packet as spawn data
-  /// and a class's volume as an attached shape standing at the entity, unturned.
+  /// The spawn point of a typed packet, at its place under its name, a class's volume attached as an unturned shape.
   fn decompile_entity<T: ByteOrder>(
     entity: &AlifeObject,
     flags: u8,
@@ -333,8 +327,8 @@ impl LevelEntityConversion {
     })
   }
 
-  /// One entity's packet as `ExportGame` writes it: the spawn data read as the section's class, then the spawn point's
-  /// name, position and angles over the packet's, and a class's volume from the attached shape with its scale applied.
+  /// One entity's packet as `ExportGame` writes it: the spawn data with the spawn point's name, position and angles,
+  /// and a class's volume from the attached shape, scaled.
   fn export_entity<T: ByteOrder>(
     point: &EditableSpawnPointObject,
     section: &str,

@@ -1,12 +1,11 @@
 use xrf_geometry::PackGrid;
 use xrf_math::{Aabb, EPS_L, Vector3d};
 
-/// Points packed into vertices as the collision forms are, `CDB::CollectorPacked` (`xrCDB/xrCDB_Collector.cpp`): a
-/// point takes a vertex already packed within `EPS_L` on every axis, strictly, found through a [`PackGrid`] of
-/// [`Self::CELLS`] over a box, or becomes one.
+/// Points packed into vertices as `CDB::CollectorPacked` packs the collision forms: a point takes a vertex already
+/// packed strictly within `EPS_L` on every axis, found through a [`PackGrid`] over a box, or becomes one.
 ///
-/// A point outside the box is clamped into the grid as `VPack` clamps it: its cell index is an unsigned one, so a point
-/// below the box lands in the last cell of that axis, not the first.
+/// A point outside the box is clamped as `VPack` clamps it: the cell index is unsigned, so a point below the box lands
+/// in the last cell of that axis, not the first.
 #[derive(Clone, Debug)]
 pub(crate) struct GeometryCollector {
   vertices: Vec<Vector3d>,
@@ -62,7 +61,7 @@ impl GeometryCollector {
     self.vertices
   }
 
-  /// The cell `point` falls in: `iFloor((p - min) / size * cells)` on each axis, its unsigned clamp included.
+  /// The cell `point` falls in: `iFloor((p - min) / size * cells)` on each axis, clamped unsigned.
   fn get_cell(&self, point: &Vector3d) -> [usize; 3] {
     let axis = |value: f32, minimum: f32, size: f32, cells: usize| -> usize {
       let cell: f32 = ((value - minimum) / size * cells as f32).floor();

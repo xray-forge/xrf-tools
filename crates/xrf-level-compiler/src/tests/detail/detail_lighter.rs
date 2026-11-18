@@ -1,5 +1,3 @@
-//! How the detail lighter meets and lights each slot of a small grid.
-
 use std::path::Path;
 
 use glam::Vec3;
@@ -21,13 +19,8 @@ use crate::ray::ray_tracing::RayTracing;
 use crate::shadow::shadow_materials::ShadowMaterials;
 use crate::{DetailSlotCounts, RayBackend};
 
-/// A row of five slots, 2 m each from the origin along x, each 1 m tall from its base at 0 m:
-///
-/// - over ground at 0.5 m, open to the sky;
-/// - over the same ground, under a roof at 3 m;
-/// - over nothing;
-/// - planting an object at no density;
-/// - planting nothing.
+// Five 2 m slots along x: over open ground, over ground under a roof, over nothing, planting an object at no
+// density, and planting nothing.
 pub(super) fn details() -> LevelDetailsFile {
   // Base 1000 units of 0.2 m from -200 m, height 10 units of 0.1 m, no corner planting.
   let empty: [u32; 4] = (0..LevelDetailsSlot::CORNERS).fold([1000 | (10 << 12), 0, 0, 0], |words, corner| {
@@ -50,7 +43,6 @@ pub(super) fn details() -> LevelDetailsFile {
   }
 }
 
-/// A quad from `low` to `high` across x and z at height `y`, facing up or down.
 fn quad(low: [f32; 2], high: [f32; 2], y: f32, is_up: bool) -> [[Vec3; 3]; 2] {
   let corner = |x: f32, z: f32| Vec3::new(x, y, z);
   let [a, b, c, d] = [
@@ -67,7 +59,7 @@ fn quad(low: [f32; 2], high: [f32; 2], y: f32, is_up: bool) -> [[Vec3; 3]; 2] {
   }
 }
 
-/// Ground under the first two slots, ending short of the third, and a roof over the second.
+// Ground under the first two slots, ending short of the third, and a roof over the second.
 pub(super) fn triangles() -> Vec<[Vec3; 3]> {
   [
     quad([-1.0, -1.0], [3.9, 3.0], 0.5, true),
@@ -108,8 +100,7 @@ fn light(kind: u16, position: [f32; 3], direction: [f32; 3], diffuse: [f32; 3]) 
   }
 }
 
-/// The sun straight overhead, and a bright red point light beside the first slot, reaching a corner of its points and
-/// none of the second's.
+// The point light reaches a corner of the first slot's points and none of the second's.
 pub(super) fn lights() -> LevelLightsFile {
   LevelLightsFile {
     chunks: vec![
@@ -139,12 +130,10 @@ pub(super) fn lights() -> LevelLightsFile {
   }
 }
 
-/// The grid lit over the ground and roof, every face opaque, on the CPU.
 pub(crate) fn lighting() -> XrfResult<DetailLighting> {
   lighting_on(RayBackend::Cpu, None)
 }
 
-/// The grid lit over the ground and roof, every face opaque, its shadow rays traced on `backend`, with `dxc` for D3D12.
 pub(crate) fn lighting_on(backend: RayBackend, dxc: Option<&Path>) -> XrfResult<DetailLighting> {
   let details: LevelDetailsFile = details();
   let tracer: BvhTracer = tracer();

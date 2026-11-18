@@ -10,8 +10,8 @@ use crate::level::build::level_build_sectors::LevelBuildSectors;
 use crate::level::build::level_build_tables::LevelBuildTables;
 use crate::level::build::level_build_textures::LevelBuildTextures;
 
-/// A build's multi-use objects (`SceneBuilder::BuildMUObject`, `BuilderRemote.cpp:837`): each object's model, built
-/// once in its own space, its impostor where it has one, and a reference per placement.
+/// A build's multi-use objects, `SceneBuilder::BuildMUObject`: each object's model, built once in its own space, its
+/// impostor where it has one, and a reference per placement.
 #[derive(Default)]
 pub(crate) struct LevelBuildModels {
   pub(crate) models: Vec<BuildPrjMuModel>,
@@ -20,14 +20,13 @@ pub(crate) struct LevelBuildModels {
 }
 
 impl LevelBuildModels {
-  /// The reference placing `object` by `placed`'s transform in the sector of its first mesh; the model of `object`
-  /// built first where none of its name is held, in its own space and that first placement's sector, after its
-  /// impostor where it is flagged `eoUsingLOD`, whose strips are read under `textures`.
+  /// Adds a reference placing `object` by `placed`'s transform in the sector of its first mesh. The first placement
+  /// of a name also builds the model in that sector, after its impostor where it is flagged `eoUsingLOD`.
   ///
   /// # Errors
   ///
   /// Returns an error, as the Build stops, when the model does not build, or it has an impostor and `textures` names
-  /// no root or its impostor does not build ([`LevelBuildImpostors::add`]).
+  /// no root or the impostor does not build ([`LevelBuildImpostors::add`]).
   pub(crate) fn add(
     &mut self,
     placed: &EditableSceneObject,

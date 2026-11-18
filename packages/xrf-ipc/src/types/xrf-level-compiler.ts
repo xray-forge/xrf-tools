@@ -80,8 +80,8 @@ export type LevelCompileRequest = {
    */
   textures: Array<string>;
   /**
-   * Whether the compile replaces what its steps write where the level's directory holds it, and removes the lightmap
-   * pages an earlier compile wrote past its own; unforced, it refuses before any step runs.
+   * Whether the compile replaces files its steps write and removes an earlier compile's surplus lightmap pages;
+   * unforced, it refuses before any step runs when one is there.
    */
   isForced: boolean;
   /**
@@ -96,17 +96,16 @@ export type LevelCompileRequest = {
   /** The covers the AI step computes: full ones traced against `build.cform`, or none, needing no `build.cform`. */
   aiCovers: AiMapCovers;
   /**
-   * How finely the light step lights the level: by `build.prj`'s own settings, or a draft that regenerates the sky and
-   * sun and takes fewer samples. It also decides the sky and sun the geometry step writes to `build.lights`.
+   * How finely the light step lights the level: `build.prj`'s settings, or a draft with regenerated sky and sun and
+   * fewer samples. It also decides the sky and sun the geometry step writes to `build.lights`.
    */
   lightQuality: LightQuality;
 };
 
 /**
- * One step of a level's compile from the files `level build` writes, in the order they run: the geometry (xrLC's
- * geometry phases), its light (xrLC's light phases, baked within the geometry step's pass, since the lightmap pages
- * decide the visuals), the details' light (xrDO_Light's, by `DetailLighter`) and the AI map (xrAI's `-f`, by
- * `AiMapCompiler`).
+ * One step of a level's compile from the files `level build` writes, in run order: the geometry (xrLC's geometry
+ * phases), its light (xrLC's light phases, baked in the geometry pass since the lightmap pages decide the visuals),
+ * the details' light (xrDO_Light) and the AI map (xrAI's `-f`).
  */
 export enum ELevelCompileStep {
   GEOMETRY = "geometry",
@@ -128,44 +127,33 @@ export type LevelCompileStepReport = {
 
 /** Every `kind` the `LevelCompileStepRun` union is told apart by, so a switch or a comparison names one. */
 export enum ELevelCompileStepRun {
-  /**
-   * The detail lighter (`DetailLighter`), how it met the slots, and the GPU that traced its shadow rays, none where
-   * the CPU traced them.
-   */
+  /** The detail lighter (`DetailLighter`) and how it met the slots. */
   DETAIL_LIGHTER = "detailLighter",
   /** The geometry compiler (`GeometryLevel`), and what it made. */
   GEOMETRY_COMPILER = "geometryCompiler",
-  /**
-   * The light baker (`LightBaker`), run within the geometry compile, what it made, and the GPU that traced its
-   * shadow rays, none where the CPU traced them.
-   */
+  /** The light baker (`LightBaker`), run within the geometry compile, and what it made. */
   LIGHT_BAKER = "lightBaker",
   /**
-   * The AI map compiler (`AiMapCompiler`): the covers it computed, the GPU that traced their rays, none where
-   * the CPU did or no ray was traced, where the map's identity came from, and the graph check run on the map it wrote,
-   * with what the map held.
+   * The AI map compiler (`AiMapCompiler`): the covers it computed, where the map's identity came from, and the graph
+   * check of the map it wrote with what the map held. Its `gpu` is also none where no ray was traced.
    */
   AI_MAP_COMPILER = "aiMapCompiler",
 }
 
-/** What ran a step of a level's compile, and what it says of the run. */
+/**
+ * What ran a step of a level's compile, and what it says of the run. A `gpu` is the GPU that traced the step's rays,
+ * none where the CPU did.
+ */
 export type LevelCompileStepRun =
-  /**
-   * The detail lighter (`DetailLighter`), how it met the slots, and the GPU that traced its shadow rays, none where
-   * the CPU traced them.
-   */
+  /** The detail lighter (`DetailLighter`) and how it met the slots. */
   | { kind: "detailLighter"; slots: DetailSlotCounts; gpu: string | null }
   /** The geometry compiler (`GeometryLevel`), and what it made. */
   | { kind: "geometryCompiler"; census: GeometryLevelCensus }
-  /**
-   * The light baker (`LightBaker`), run within the geometry compile, what it made, and the GPU that traced its
-   * shadow rays, none where the CPU traced them.
-   */
+  /** The light baker (`LightBaker`), run within the geometry compile, and what it made. */
   | { kind: "lightBaker"; census: LightBakeCensus; gpu: string | null }
   /**
-   * The AI map compiler (`AiMapCompiler`): the covers it computed, the GPU that traced their rays, none where
-   * the CPU did or no ray was traced, where the map's identity came from, and the graph check run on the map it wrote,
-   * with what the map held.
+   * The AI map compiler (`AiMapCompiler`): the covers it computed, where the map's identity came from, and the graph
+   * check of the map it wrote with what the map held. Its `gpu` is also none where no ray was traced.
    */
   | {
       kind: "aiMapCompiler";
@@ -201,10 +189,11 @@ export enum ELightQuality {
 export type LightQuality = `${ELightQuality}`;
 
 /**
- * What traces the compile's rays through the ray model: the light baker's lightmap and implicit map shadow rays, the
- * detail lighter's shadow rays and the AI map's corner rays.
- * The CPU is the reference the SDK's runs are matched against; the GPU traces with hardware ray queries, each slot and
- * each cover within one step of the CPU's, several times faster.
+ * What traces the compile's rays through the ray model: the lightmaps' and implicit maps' shadow rays, the detail
+ * lighter's and the AI map's corner rays.
+ *
+ * The CPU is the reference matched against the SDK's runs. The GPU traces with hardware ray queries, several times
+ * faster, each detail slot and cover within one step of the CPU's.
  */
 export enum ERayBackend {
   CPU = "cpu",

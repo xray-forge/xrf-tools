@@ -2,9 +2,8 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_level::{BuildPrjFace, BuildPrjFile, BuildPrjMuModel};
 use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 
-/// Each `build.prj` material's compiler shader, as the SDK's compilers resolve it (`post_process_materials`,
-/// `utils/Shader_xrLC.h`): the project's compiler shader the material names, found by name in the library, `None`
-/// for a material with none.
+/// Each `build.prj` material's compiler shader, found by name in the library as `post_process_materials` resolves it;
+/// `None` for a material with none.
 #[derive(Clone, Debug)]
 pub(crate) struct CompilerShaders {
   by_material: Vec<Option<ShaderCompilerShader>>,
@@ -18,8 +17,8 @@ impl CompilerShaders {
   ///
   /// # Errors
   ///
-  /// Returns an error naming a material whose compiler shader the project does not hold, or every compiler shader the
-  /// library lacks, on which the compilers assert.
+  /// Returns an error naming a material whose compiler shader the project lacks, or every compiler shader the library
+  /// lacks, on which the compilers assert.
   pub(crate) fn resolve(project: &BuildPrjFile, library: &ShaderCompilerFile) -> XrfResult<Self> {
     let mut missing: Vec<&str> = Vec::new();
     let mut by_material: Vec<Option<ShaderCompilerShader>> = Vec::with_capacity(project.materials.len());
@@ -59,7 +58,7 @@ impl CompilerShaders {
     }
   }
 
-  /// The compiler shader of material `material`, `None` for one with none or one the project does not hold.
+  /// The compiler shader of `material`, `None` for one with none or one the project lacks.
   pub(crate) fn get(&self, material: u16) -> Option<&ShaderCompilerShader> {
     self.by_material.get(usize::from(material)).and_then(Option::as_ref)
   }
@@ -68,7 +67,7 @@ impl CompilerShaders {
   ///
   /// # Errors
   ///
-  /// Returns an error for a face of a material with no compiler shader or one the project does not hold.
+  /// Returns an error for a face of a material with no compiler shader or one the project lacks.
   pub(crate) fn require(
     &self,
     model: &BuildPrjMuModel,

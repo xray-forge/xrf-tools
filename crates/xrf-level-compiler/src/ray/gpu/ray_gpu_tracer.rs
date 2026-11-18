@@ -18,11 +18,11 @@ use crate::shadow::shadow_face::ShadowFace;
 use crate::shadow::shadow_materials::ShadowMaterials;
 
 /// Traces shadow rays on the GPU with ray queries (`shadow_rays.wgsl`), for the detail lighter, the AI map's covers
-/// and the lightmaps: the ray model as one acceleration structure of two geometries, its opaque faces and its alpha
-/// faces, and the alpha faces' textures uploaded once; then each batch's rays made from their plans and answered with
-/// how much light each lets through, as the CPU answers it by a batch's [`RayRules`]: which sides of a face stop a
-/// ray, how much an alpha texel lets through, whether a ray passes a face of its own, and whether a face counts only
-/// where the CPU's ray test meets it too.
+/// and the lightmaps.
+///
+/// The ray model is uploaded once, as one acceleration structure of an opaque and an alpha geometry with the alpha
+/// textures. Each batch's rays are made on the GPU from their plans and answered with how much light each lets
+/// through, as the CPU answers by the batch's [`RayRules`].
 pub(crate) struct RayGpuTracer {
   device: RayQueryDevice,
   packets_pipeline: wgpu::ComputePipeline,
@@ -48,8 +48,7 @@ struct RaySplitFaces {
 /// The buffers bound for every batch.
 struct RayGpuFixed {
   tlas: wgpu::Tlas,
-  /// The opaque geometry's corners and the alpha geometry's, the structure's inputs, read where a candidate is tested
-  /// as the CPU tests it.
+  /// The opaque and alpha geometries' corners, read where a candidate is retested as the CPU tests it.
   corners: [wgpu::Buffer; 2],
   alpha_faces: wgpu::Buffer,
   alpha_textures: wgpu::Buffer,
@@ -481,10 +480,9 @@ impl RayGpuTracer {
     }
   }
 
-  /// The corners of the ray model's opaque faces, and of its alpha faces in their order among
-  /// `ShadowMaterials::get_alpha_faces`; the faces passing light left out. A geometry left empty holds one inactive
-  /// triangle, its corners not numbers, which no ray meets, since a structure's geometry cannot be empty. With them,
-  /// each face's skip code, its place in its geometry.
+  /// The corners of the ray model's opaque faces and of its alpha faces, in `ShadowMaterials::get_alpha_faces` order,
+  /// with each face's skip code; faces passing light are left out. An empty geometry holds one triangle of NaN
+  /// corners, which no ray meets, since a structure's geometry cannot be empty.
   fn split_faces(tracer: &BvhTracer, shadows: &ShadowMaterials) -> XrfResult<RaySplitFaces> {
     let parts: &[ShadowFace] = shadows.get_faces();
     let alpha_count: usize = shadows.get_alpha_faces().count();

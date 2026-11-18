@@ -1,5 +1,3 @@
-//! Lightmap charts: how faces are cut into charts and sized, the texels a chart's mask takes, and how pages are packed.
-
 use glam::Vec3;
 use xrf_geometry::BvhTracer;
 use xrf_level::{BuildPrjFile, BuildPrjName, BuildPrjShader};
@@ -33,7 +31,6 @@ use crate::ray::ray_scene::RayScene;
 use crate::shadow::shadow_materials::ShadowMaterials;
 use crate::tests::geometry::geometry_mesh::project;
 
-/// A face of material 0 over `vertices`.
 fn face(vertices: [u32; 3]) -> GeometryFace {
   GeometryFace {
     vertices,
@@ -53,8 +50,8 @@ fn mesh(vertices: Vec<Vector3d>, faces: Vec<GeometryFace>) -> GeometryMesh {
   }
 }
 
-/// A floor 2 m square facing up, and a wall 2 m high rising from its far edge facing it, its top `lean` metres further
-/// out: upright at 0, folded 90 degrees from the floor, and opening the fold the further it leans.
+// The wall rises from the floor's far edge facing it, folded 90 degrees at a `lean` of 0 and opening as its top leans
+// out.
 pub(crate) fn floor_and_wall(lean: f32) -> GeometryMesh {
   mesh(
     vec![
@@ -69,7 +66,6 @@ pub(crate) fn floor_and_wall(lean: f32) -> GeometryMesh {
   )
 }
 
-/// The geometry tests' project, its material 0 rendered and lit at a light density of 1.
 fn tables() -> (BuildPrjFile, CompilerShaders, Vec<CompilerTexture>) {
   let shader = ShaderCompilerShader {
     name: String::from("default"),
@@ -101,7 +97,6 @@ fn tables() -> (BuildPrjFile, CompilerShaders, Vec<CompilerTexture>) {
   (project, shaders, textures)
 }
 
-/// The charts `mesh`'s one split is cut into at 10 texels a metre.
 fn charts(mesh: &GeometryMesh) -> Vec<LightChart> {
   let (project, shaders, textures) = tables();
   let normals: GeometryNormals = GeometryNormals::of(mesh);
@@ -111,7 +106,6 @@ fn charts(mesh: &GeometryMesh) -> Vec<LightChart> {
   LightChart::cut(&split, &scene)
 }
 
-/// A chart of one triangle `width` by `height` texels, its corners across its rectangle's lower left half.
 fn triangle_chart(width: u32, height: u32) -> LightChart {
   LightChart {
     faces: vec![0],
@@ -158,7 +152,6 @@ fn keeps_a_bend_within_the_smoothing_angle_on_one_chart() {
   assert_eq!(charts[0].faces.len(), 4);
 }
 
-/// A sun straight above of `energy`.
 pub(crate) fn sun(energy: f32) -> LightSource {
   LightSource {
     is_directional: true,
@@ -174,12 +167,10 @@ pub(crate) fn sun(energy: f32) -> LightSource {
   }
 }
 
-/// `charts`' first, the floor, lit by `lights` through a ray model of `mesh`'s own faces, each skipped by its own.
 fn light(mesh: &GeometryMesh, lights: &LightSources) -> LitChart {
   light_by(mesh, lights, |lighter, floor| lighter.light(floor))
 }
 
-/// [`light`], the floor lit by `lighting` with the lighter over the ray model of `mesh` and the shadow materials.
 pub(crate) fn light_by<R>(
   mesh: &GeometryMesh,
   lights: &LightSources,

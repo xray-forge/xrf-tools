@@ -108,8 +108,8 @@ impl AiMapCompiler {
     (cover * 15.0 + 0.5).floor().clamp(0.0, 15.0) as u8
   }
 
-  /// Whether `nodes` under `header` are the replaced map's graph: as many nodes, of the same cell size, each at the
-  /// same cell and linked to the same nodes: what a root spawn built against the replaced map indexes.
+  /// Whether `nodes` under `header` are the graph a root spawn built against `replaced` indexes: as many nodes, of the
+  /// same cell size, each at the same cell with the same links.
   fn is_same_graph(header: &LevelAiHeader, nodes: &[LevelAiNode], replaced: &AiMap) -> bool {
     let theirs: &LevelAiHeader = &replaced.file.header;
 
@@ -134,8 +134,8 @@ impl AiMapCompiler {
       .all(|(ours, their)| cell(header, ours) == cell(theirs, &their) && links(header, ours) == links(theirs, &their))
   }
 
-  /// An identity hashed from the map's bytes, `header`'s own identity nil, so the same nodes always take the same one:
-  /// the first 16 bytes of their SHA-256.
+  /// The first 16 bytes of the SHA-256 of the map's bytes with a nil identity, so the same nodes always take the same
+  /// identity.
   fn derive_guid(header: &LevelAiHeader, nodes: &LevelAiNodes) -> XrfResult<Uuid> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 

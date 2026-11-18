@@ -17,14 +17,10 @@ use crate::object::compile::tangent_method::TangentMethod;
 
 /// Builds a skeleton object's splits as `CExportSkeleton::PrepareGeometry` does, its tangent pass included.
 ///
-/// Every mesh's faces are taken surface by surface in the object's surface order, the closest record of the order the
-/// export walks them in (their addresses in memory), each surface's faces as the mesh lists them. A face's link count
-/// is its widest corner's; a corner of a face whose corners all follow one bone lists that bone twice, the copy
-/// weightless, and any other corner lists its own bones, each sorted by bone. The face goes to the split of its
-/// surface's engine shader and texture and its bones' breakable part, made in the order first needed, and a two-sided
-/// surface's face goes again mirrored, its normals turned around. Each split then goes through the tangent pass
-/// ([`TangentBasis`], or [`MikkTSpaceBasis`] where the options ask), and its triangles and vertices are ordered for the
-/// vertex cache ([`VertexCacheOrder`]).
+/// Faces are walked surface by surface in the object's surface order, the nearest record of the export's walk by
+/// memory address. Each face goes to the split of its surface's shader, texture and breakable part, a two-sided one
+/// again mirrored; a face whose corners all follow one bone lists it twice, the copy weightless. Each split takes the
+/// tangent pass ([`TangentBasis`] or [`MikkTSpaceBasis`]) and the vertex cache order ([`VertexCacheOrder`]).
 pub(crate) struct SkeletonGeometryBuilder {
   splits: Vec<PendingSplit>,
   bounds: Aabb,

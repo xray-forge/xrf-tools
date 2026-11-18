@@ -4,10 +4,10 @@ use xrf_math::Vector2d;
 use crate::level::build::level_build_atlas_place::LevelBuildAtlasPlace;
 use crate::level::build::level_build_atlas_sizes::LevelBuildAtlasSizes;
 
-/// Textures merged into one, as `CImageManager::CreateMergedTexture` (`ImageManagerDO.cpp:145`, `:238`) merges the
-/// detail objects' textures for `build_details.dds` and the impostors' strips and their normals for `level_lods.dds`
-/// and `level_lods_nm.dds`: each texture placed largest first at the first free spot of a scan, row by row, turned
-/// where only that fits, every layer of it at the same spot of its own image.
+/// Textures merged into one image per layer, `CImageManager::CreateMergedTexture`, as for `build_details.dds` and
+/// `level_lods.dds` with `level_lods_nm.dds`.
+///
+/// Each texture goes largest first to the first free spot of a row-by-row scan, turned only where that alone fits.
 pub(crate) struct LevelBuildAtlas {
   /// One merged image per layer the textures hold.
   pub(crate) layers: Vec<RgbaImage>,
@@ -22,22 +22,23 @@ impl LevelBuildAtlas {
     largest: (1024, 1024),
   };
 
-  /// The atlas sizes the Build allows its impostors (`BuilderRemote.cpp:1541`), one strip to 2048 a side.
+  /// The atlas sizes the Build allows its impostors, one strip to 2048 a side.
   pub(crate) const LOD_SIZES: LevelBuildAtlasSizes = LevelBuildAtlasSizes {
     smallest: (512, 64),
     largest: (2048, 2048),
   };
 
-  /// The impostor sizes past SDK 0.7's, to 4096 a side, the next after 2048 by 2048 being 4096 by 2048.
+  /// The impostor sizes past SDK 0.7's, to 4096 a side.
   pub(crate) const EXTENDED_LOD_SIZES: LevelBuildAtlasSizes = LevelBuildAtlasSizes {
     smallest: (512, 64),
     largest: (4096, 4096),
   };
 
-  /// `textures` merged, each given as its layers of one size, every texture of as many; `None` where they do not fit
-  /// the largest of `sizes`. The editor sorts by a predicate that is no ordering (larger area, or else a longer edge,
-  /// either way round), so its order is its sort's own; this one places the larger area first, then the longer edge,
-  /// then the given order.
+  /// `textures` merged, each given as its layers of one size and every texture with as many; `None` where they do not
+  /// fit the largest of `sizes`.
+  ///
+  /// The editor's sort predicate is no ordering, so its order is its sort's own. This one places the larger area
+  /// first, then the longer edge, then the given order.
   pub(crate) fn merge(textures: &[&[RgbaImage]], sizes: &LevelBuildAtlasSizes) -> Option<Self> {
     let (mut width, mut height) = sizes.smallest;
 
@@ -117,8 +118,8 @@ impl LevelBuildAtlas {
     })
   }
 
-  /// `_rect_place`: the first free corner, scanning rows top down, where a rectangle `size` fits, else where it fits
-  /// turned; the rectangle marked taken.
+  /// `_rect_place`: marks taken the first free spot, scanning rows top down, where `size` fits, else where it fits
+  /// turned.
   fn place(mask: &mut [bool], (width, height): (u32, u32), size: (u32, u32)) -> Option<(u32, u32, bool)> {
     for (is_rotated, (rect_width, rect_height)) in [(false, size), (true, (size.1, size.0))] {
       if rect_width > width || rect_height > height {

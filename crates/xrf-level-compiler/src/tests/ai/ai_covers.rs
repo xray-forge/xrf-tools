@@ -1,5 +1,3 @@
-//! The AI map's covers, as xrAI's `xrCover` computes them.
-
 use std::path::Path;
 
 use glam::Vec3;
@@ -22,12 +20,10 @@ use crate::shadow::shadow_materials::ShadowMaterials;
 
 const SIDE: u32 = 5;
 
-/// A node's index in a [`SIDE`] by [`SIDE`] grid, by column along x and row along z.
 fn at(x: u32, z: u32) -> u32 {
   x * SIDE + z
 }
 
-/// A flat grid of 1 m cells, every node linked to its neighbours, less the nodes `holes` names.
 fn grid(holes: &[u32]) -> Vec<AiVertex> {
   let link = |x: i64, z: i64| {
     let inside: bool = (0..i64::from(SIDE)).contains(&x) && (0..i64::from(SIDE)).contains(&z);
@@ -53,7 +49,7 @@ fn grid(holes: &[u32]) -> Vec<AiVertex> {
     .collect()
 }
 
-/// A wall 3 m high across the grid between x 2 and x 3, its front toward -x.
+// Its front faces -x.
 pub(crate) fn wall() -> BvhTracer {
   BvhTracer::new(
     &[
@@ -66,8 +62,6 @@ pub(crate) fn wall() -> BvhTracer {
   )
 }
 
-/// Each node of the grid's covers once computed against `tracer`, every face blocking, its corner rays traced on
-/// `backend`, with `dxc` for D3D12.
 pub(crate) fn covers(tracer: &BvhTracer, backend: RayBackend, dxc: Option<&Path>) -> XrfResult<Vec<AiNodeCovers>> {
   let shadows: ShadowMaterials = ShadowMaterials::new_opaque(tracer.get_face_count());
   let mut vertices: Vec<AiVertex> = grid(&[]);

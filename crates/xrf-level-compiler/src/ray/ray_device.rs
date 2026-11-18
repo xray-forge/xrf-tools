@@ -11,8 +11,8 @@ pub(crate) struct RayDevice {
 }
 
 impl RayDevice {
-  /// The device `tracing` names, the GPU started with `scene` on it where it traces there; `Auto` on the CPU where
-  /// the GPU does not start, saying so with `what`, the rays traced.
+  /// Starts the device `tracing` names, a GPU with `scene` uploaded. `Auto` falls back to the CPU where the GPU does
+  /// not start, logging it under `what`, the rays traced.
   ///
   /// # Errors
   ///

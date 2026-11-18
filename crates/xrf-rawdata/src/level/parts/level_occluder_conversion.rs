@@ -14,18 +14,15 @@ use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
 
 /// A level's occluders back into the objects the Build exports them from (`SceneBuilder::BuildHOMModel` and
-/// `BuildSOMModel`, `BuilderOGF.cpp:17`, `:94`), each polygon in the level's space, two-sided where the file says so.
+/// `BuildSOMModel`), each polygon in the level's space, two-sided where the file says so.
 ///
-/// - `level.hom` takes every face of a surface whose game material is `materials\occ` (or of an object flagged
-///   `eoHOM`); the decompile follows GSC's own `labx8`, an ordinary object of such a surface, `<level>_hom`.
-/// - `level.som` takes every face of an object flagged `eoSoundOccluder`, with its surface's game material's sound
-///   occlusion factor; the decompile gives `<level>_som` that flag, and each surface the game material of the library
-///   whose factor is the polygon's.
+/// - `level.hom` comes back as `<level>_hom`, an ordinary object of `materials\occ` surfaces, as GSC's `labx8` is.
+/// - `level.som` comes back as `<level>_som`, flagged `eoSoundOccluder`, each surface of the library's game material
+///   whose sound occlusion factor is the polygon's.
 pub struct LevelOccluderConversion;
 
 impl LevelOccluderConversion {
-  /// The game material whose faces the Build exports to `level.hom` (`BuilderOGF.cpp:64`), which it leaves out of the
-  /// level's geometry (`BuilderRemote.cpp:539`).
+  /// The game material whose faces the Build exports to `level.hom` and leaves out of the level's geometry.
   pub const OCCLUDER_GAME_MATERIAL: &'static str = "materials\\occ";
 
   /// How GSC dressed `labx8`'s occluder object, which both objects take beside their game materials.
@@ -52,8 +49,8 @@ impl LevelOccluderConversion {
     )
   }
 
-  /// `level.som` as `<level>_som`, flagged a sound occluder: a surface per game material whose sound occlusion factor
-  /// is a polygon's, found in `game_materials`, two-sided where its polygons are.
+  /// `level.som` as `<level>_som`, flagged a sound occluder: a surface per game material of `game_materials` whose
+  /// sound occlusion factor is a polygon's, two-sided where its polygons are.
   ///
   /// # Errors
   ///

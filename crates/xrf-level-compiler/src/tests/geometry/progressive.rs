@@ -1,5 +1,3 @@
-//! How a visual is made progressive, `OGF::MakeProgressive`.
-
 use std::collections::HashSet;
 
 use xrf_math::{Vector2d, Vector3d};
@@ -11,7 +9,6 @@ use crate::geometry::visual::geometry_visual_light::GeometryVisualLight;
 use crate::geometry::visual::geometry_visual_vertex::GeometryVisualVertex;
 use crate::light::point::light_color::LightColor;
 
-/// A flat opaque visual of a grid `side` points a side, a unit apart, its base coordinates following its positions.
 fn grid_visual(side: u16) -> GeometryVisual {
   let mut visual: GeometryVisual = GeometryVisual::new(
     0,
@@ -46,7 +43,6 @@ fn grid_visual(side: u16) -> GeometryVisual {
   visual
 }
 
-/// A visual's triangles by their corners' positions, as bits.
 fn positions(vertices: &[Vector3d], faces: &[[u16; 3]]) -> HashSet<[[u32; 3]; 3]> {
   faces
     .iter()

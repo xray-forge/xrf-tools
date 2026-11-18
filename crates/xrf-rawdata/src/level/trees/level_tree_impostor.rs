@@ -12,9 +12,9 @@ pub(crate) struct LevelTreeImpostor {
 }
 
 impl LevelTreeImpostor {
-  /// The strips as the textures the Build loads for the model of `reference`, `lod\lod_<model>` and its `_nm`, each
-  /// encoded as the atlas they were cut from ([`LevelLodStrip::encode`]). They are the model's own, not a library
-  /// object's: a caller naming them for a library tree marks them [`LevelSceneTextureFile::is_library`].
+  /// The strips as the textures the Build loads for the model of `reference`, encoded as their atlas
+  /// ([`LevelLodStrip::encode`]). They are marked the model's own; a caller naming them for a library tree marks them
+  /// [`LevelSceneTextureFile::is_library`].
   ///
   /// # Errors
   ///

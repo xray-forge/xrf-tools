@@ -2,17 +2,15 @@
 /// be one: a smoothed normal shared across a seam, or a two-sided copy's normal turned around.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum NormalPrecision {
-  /// Three floats, as an OGF's vertices store a normal: the export sums a fan's face normals once per corner, starting
-  /// from a different face each time, so one smoothed normal can differ in its last bits. A hard edge differs by far
-  /// more.
+  /// Three floats, as an OGF stores a normal: the export sums each corner's fan from a different face, so one smoothed
+  /// normal can differ in its last bits, where a hard edge differs by far more.
   Float,
-  /// A byte a component, `(n + 1) * 127.5` truncated, as a level's vertices store a normal (`D3DCOLOR`). A mirrored
-  /// copy's inverted normal truncates to one step off the exact negation: over vanilla CoP's 22 levels at full detail,
-  /// 11,692,886 mirrored corners stand one step from their mirror's negation and 36 at none. Corners sharing a position
-  /// either agree exactly (2,599,789) or differ by over 20 steps (8,370,887), but for 5,372 a step apart.
+  /// A byte a component, `(n + 1) * 127.5` truncated, as a level stores a normal (`D3DCOLOR`). A mirror's inverted
+  /// normal truncates one step off the exact negation: over vanilla CoP's levels, 11.7 million mirrored corners stand
+  /// one step off and 36 at none, while corners sharing a position agree exactly or differ by over 20 steps.
   Byte,
-  /// No normal at all, as a detail model's vertices (`fvfVertexIn`: a position and a texture coordinate): nothing tells
-  /// a hard edge from a soft one or a face from its mirror, and `EDetail::Update` drops a mirrored copy anyway.
+  /// No normal, as a detail model's vertices (`fvfVertexIn`): nothing tells a hard edge from a soft one or a face from
+  /// its mirror, and `EDetail::Update` drops a mirror anyway.
   Unstored,
 }
 

@@ -20,12 +20,13 @@ use crate::ray::gpu::ray_gpu_batch::RayGpuBatch;
 use crate::ray::gpu::ray_gpu_tracer::RayGpuTracer;
 use crate::ray::ray_lamp_mode::RayLampMode;
 
-/// The lightmaps' points lit with their shadow rays traced on a started GPU by xrLC's rules: planned on the CPU's
-/// threads a few hundred points a plan ([`LightPlan`]) with the lights reaching them, every light's rays a packet the
-/// GPU makes, traced in batches as large as a dispatch takes, finished on the CPU's threads. Each face the device meets
-/// is tested again as the CPU tests it, so a point's light is the CPU's but where the GPU's arithmetic parts from it in
-/// a last bit: one point in a few hundred on a level of trees, a few steps of light, which settling a chart can carry
-/// further.
+/// The lightmaps' points lit by xrLC's rules, their shadow rays traced on a started GPU. The CPU's threads plan a few
+/// hundred points at a time ([`LightPlan`]) with the lights reaching them and finish their light; the GPU makes each
+/// light's rays as a packet and traces them in dispatch-sized batches.
+///
+/// Each face the device meets is retested as the CPU tests it, so a point's light is the CPU's but where the GPU's
+/// arithmetic parts in a last bit: one point in a few hundred on a level of trees, a few steps of light, which
+/// settling a chart can carry further.
 pub(crate) struct LightmapGpu<'a> {
   /// The GPU holding the lighter's ray scene.
   pub(crate) tracer: &'a RayGpuTracer,
@@ -37,8 +38,8 @@ impl LightmapGpu<'_> {
     variant: LightPointVariant::Level,
   };
 
-  /// How much wider than its points a plan's sphere is taken, in meters, when it selects the lights reaching them: far
-  /// more than the rounding of a level's coordinates, so a light reaching a point at the sphere's edge stays.
+  /// How much wider than its points a plan's sphere is taken when selecting the lights reaching them, in meters: far
+  /// more than a level's coordinate rounding, so a light reaching a point at the edge stays.
   const REACH_MARGIN: f32 = 0.01;
 
   /// The texel samples a chunk of charts is lit for together at most, each round of a chunk one batch or a few.
@@ -155,8 +156,7 @@ impl LightmapGpu<'_> {
     let plans: Vec<LightPlan> = points
       .par_chunks(LightPlan::MOST_POINTS)
       .map(|chunk| {
-        // A chunk's points lie together on a chart or a few: the lights reaching their sphere, the only ones giving any
-        // of them light, a little wider so rounding keeps a light reaching its edge.
+        // A chunk's points lie together on a chart or a few, so only the lights reaching their sphere give them light.
         let (low, high): (Vec3, Vec3) = chunk
           .iter()
           .fold((Vec3::splat(f32::MAX), Vec3::splat(f32::MIN)), |(low, high), point| {

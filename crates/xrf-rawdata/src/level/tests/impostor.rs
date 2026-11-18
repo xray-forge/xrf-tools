@@ -26,15 +26,13 @@ use crate::level::trees::level_tree_impostor_atlas::LevelTreeImpostorAtlas;
 use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
 
-/// A strip whose every pixel names its place and the strip it belongs to, so a cut that reads one pixel amiss shows.
+// Every pixel names its place and its strip, so a cut that reads one pixel amiss shows.
 pub(super) fn strip(seed: u8) -> RgbaImage {
   RgbaImage::from_fn(LevelLodStrip::WIDTH, LevelLodStrip::HEIGHT, |x, y| {
     Rgba([(x % 256) as u8, (x / 256) as u8 * 64 + y as u8, seed, 255])
   })
 }
 
-/// The impostor a level draws from a strip at `place` in its atlas: each frame's corners at `bounds` placed by
-/// `placement`, its coordinates moved to `place`.
 pub(super) fn lod(place: &LevelBuildAtlasPlace, bounds: &Aabb, placement: &Matrix4x4) -> OgfLodDefinitionChunk {
   OgfLodDefinitionChunk {
     facets: std::array::from_fn(|frame| {
@@ -67,8 +65,6 @@ pub(super) fn bounds(min: (f32, f32, f32), max: (f32, f32, f32)) -> Aabb {
   }
 }
 
-/// A frame's quad stands through the box's middle, as wide as its widest half side and as tall as its half height, a
-/// pixel in from each edge, turned an eighth of a circle per frame; the first frame's corners give the box back.
 #[test]
 fn stands_each_frame_through_the_box_and_reads_the_box_back() {
   let box_of: Aabb = bounds((-1.0, 0.0, -3.0), (3.0, 8.0, 1.0));
@@ -108,8 +104,7 @@ fn stands_each_frame_through_the_box_and_reads_the_box_back() {
   );
 }
 
-/// One strip past the 128 a 2048 atlas holds: SDK 0.7's limit refuses it, the default grows the atlas to 4096 by 2048,
-/// as Anomaly's largest levels ship it.
+// One strip past the 128 a 2048 atlas holds; Anomaly's largest levels ship a 4096 by 2048 atlas.
 #[test]
 fn grows_the_impostor_atlas_past_the_sdks_limit_by_default() {
   let strips: Vec<[RgbaImage; 2]> = (0..129).map(|_| [strip(1), strip(2)]).collect();
@@ -125,8 +120,6 @@ fn grows_the_impostor_atlas_past_the_sdks_limit_by_default() {
   );
 }
 
-/// Each strip comes back out of the atlas the Build merged, from where its facets' coordinates name it, turned back
-/// where the atlas holds it turned; facets naming no whole strip are refused.
 #[test]
 fn cuts_each_strip_back_out_of_the_atlas_where_its_facets_name_it() -> XrfResult {
   let (first, second) = ([strip(1), strip(101)], [strip(2), strip(102)]);
@@ -166,8 +159,7 @@ fn cuts_each_strip_back_out_of_the_atlas_where_its_facets_name_it() -> XrfResult
   Ok(())
 }
 
-/// The model's stored box widens to the box its impostor was stood in, which held geometry the level does not draw,
-/// read back through the placement; a recovered box not holding the model leaves it as it was.
+// The impostor's box held geometry the level does not draw.
 #[test]
 fn widens_the_models_box_to_the_one_its_impostor_stood_in() -> XrfResult {
   let triangle: [[Vector3d; 3]; 1] = [[
@@ -223,9 +215,6 @@ fn widens_the_models_box_to_the_one_its_impostor_stood_in() -> XrfResult {
   Ok(())
 }
 
-/// A multi-use object of an impostor gets eight quads around its box from the strips the decompile writes, its
-/// material first, and a model naming it; the strips merge into the atlas its coordinates move into. Without a
-/// textures root it is refused.
 #[test]
 fn builds_an_impostor_from_the_strips_the_decompile_writes() -> XrfResult {
   let library: GameMtlFile = GameMtlFile::new(vec![GameMtlMaterial::new(3, "materials\\tree")], Vec::new());

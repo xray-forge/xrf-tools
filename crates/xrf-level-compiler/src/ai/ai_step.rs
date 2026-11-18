@@ -17,10 +17,8 @@ use crate::compile::level_compile_request::LevelCompileRequest;
 use crate::compile::level_compile_step_run::LevelCompileStepRun;
 use crate::ray::ray_model::RayModel;
 
-/// A compile's AI step, xrAI `-f`'s part: the level's `level.ai` compiled from `build.aimap` by [`AiMapCompiler`], its
-/// covers traced against the ray model (`build.cform`) or left out as the request says, its identity kept from the
-/// `level.ai` it replaces while the graph stands; then checked as a graph (`LevelAiGraphVerifier`) before it is
-/// written, a node linked to itself refusing the map.
+/// A compile's AI step, xrAI `-f`'s part: `level.ai` compiled from `build.aimap` by [`AiMapCompiler`] and checked as a
+/// graph (`LevelAiGraphVerifier`) before it is written; a node linked to itself refuses the map.
 pub(crate) struct AiStep;
 
 impl AiStep {

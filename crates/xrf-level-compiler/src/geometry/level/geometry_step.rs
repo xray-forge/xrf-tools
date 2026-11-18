@@ -19,10 +19,8 @@ use crate::input::compiler_textures::CompilerTextures;
 use crate::light::lightmap::atlas::lightmap_faces::LightmapFaces;
 use crate::ray::ray_tracing::RayTracing;
 
-/// A compile's geometry step by our compiler, xrLC's part ([`GeometryLevel`]), with the light step where the compile
-/// runs it: the level's `level`, `level.geom`, `level.geomx`, `level.cform`, `build.cform`, `build.lights`, each
-/// lightmap page's pair and each implicitly lit texture's maps, from its `build.prj`, the game data's
-/// `shaders_xrlc.xr` and the textures under the request's roots.
+/// A compile's geometry step, xrLC's part ([`GeometryLevel`]), with the light step where the compile runs it: the
+/// level's files, lightmap pages and implicit maps from `build.prj`, `shaders_xrlc.xr` and the request's textures.
 pub(crate) struct GeometryStep;
 
 impl GeometryStep {
@@ -39,14 +37,14 @@ impl GeometryStep {
   /// The prefix of every lightmap page's file, as many as the compile bakes.
   pub(crate) const LIGHTMAP_FAMILY: &'static str = "lmap#";
 
-  /// The textures an implicitly lit texture's maps are written as below the level's directory, each a `.dds`: its
-  /// base with the hemisphere in alpha, then its lightmap.
+  /// The `.dds` textures an implicitly lit texture's maps are written as below the level's directory: its base with the
+  /// hemisphere in alpha, then its lightmap.
   pub(crate) fn get_implicit_textures(name: &str) -> [String; 2] {
     [String::from(name), format!("{name}_lm")]
   }
 
-  /// Compiles the request's level and writes what xrLC writes, its light baked with its rays traced by `light` where
-  /// the light step runs with it, else neutral; with the report, how the light was baked.
+  /// Compiles the request's level and writes what xrLC writes, its light baked with rays traced by `light` where
+  /// given, else neutral.
   ///
   /// # Errors
   ///
@@ -141,8 +139,7 @@ impl GeometryStep {
     })
   }
 
-  /// A lightmap texture of `texels`, `width` by `height`, as BC3 with no mips (`CLightmap::Save`'s and the implicit
-  /// maps' DXT5), its folder made where it is missing.
+  /// Writes a lightmap texture as BC3 with no mips, the DXT5 of `CLightmap::Save` and the implicit maps.
   fn write_texture(path: &Path, texels: &[[u8; 4]], width: u32, height: u32) -> XrfResult {
     let image: RgbaImage = RgbaImage::from_raw(width, height, texels.as_flattened().to_vec())
       .ok_or_else(|| XrfError::new_unexpected_error("A lightmap texture holds as many texels as its size"))?;

@@ -1,5 +1,3 @@
-//! Which texel of an alpha texture a hit reads, and how much light it stops.
-
 use xrf_dds::GrayImage;
 use xrf_math::Vector2d;
 

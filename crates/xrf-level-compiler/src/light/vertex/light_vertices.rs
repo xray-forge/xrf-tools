@@ -16,22 +16,19 @@ use crate::light::point::light_sample_point::LightSamplePoint;
 use crate::light::source::light_sources::LightSources;
 use crate::shadow::shadow_materials::ShadowMaterials;
 
-/// Every split vertex's light as xrLC leaves it in the vertex (`LightVertex`, `xrLC_Light/xrLightVertex.cpp`): the sky
-/// term of the welded vertex it was split from ([`LightHemisphere`](super::light_hemisphere::LightHemisphere)), and for
-/// a vertex of a vertex-lit face also
-/// the static light and the sun from every light, halved; then, among the vertex-lit vertices within `EPS_L` of the
-/// first at a place, each moved toward the brightest of them by its faces' mean `vert_translucency`, never darker. Each
-/// term is kept as `base_color` stores it.
+/// Every split vertex's light as xrLC leaves it (`LightVertex`, `xrLC_Light/xrLightVertex.cpp`), as `base_color`
+/// stores it.
 ///
-/// The rays go through xrLC's own ray model ([`XrlcTracer`]), as each vertex is matched to xrLC's: a shadow ray
-/// grazing an axis-aligned wall exactly at its edge passes in xrLC where a tighter tree stops it. The lightmaps keep
-/// [`xrf_geometry::BvhTracer`], which the GPU backend mirrors byte for byte; a texel's light is matched in distribution,
-/// not texel for texel, so the rays xrLC loses there do not show.
+/// A vertex takes the sky term of the welded vertex it was split from
+/// ([`LightHemisphere`](super::light_hemisphere::LightHemisphere)); a vertex-lit face's vertex also takes the static
+/// light and sun from every light, halved. Among vertex-lit vertices within `EPS_L` of the first at a place, each then
+/// moves toward the brightest by its faces' mean `vert_translucency`, never darker.
 ///
-/// xrLC's threads take the vertices in order one at a time and share each light's remembered blocker (`rayTrace`'s
-/// `L.tri`), which a vertex's ray is tested against before the query: where the tree loses a ray at a corner, the
-/// blocker of the vertex lit just before can still stop it. Each run of `Self::REMEMBERED_RUN` vertices is lit in
-/// order the same way, remembering from one vertex to the next.
+/// The rays go through xrLC's own ray model ([`XrlcTracer`]) to match each vertex: a shadow ray grazing an
+/// axis-aligned wall exactly at its edge passes there where a tighter tree stops it. xrLC's threads take vertices in
+/// order and test each ray first against the light's remembered blocker (`rayTrace`'s `L.tri`), so where the tree
+/// loses a ray at a corner, the previous vertex's blocker can still stop it. Each run of `Self::REMEMBERED_RUN`
+/// vertices is lit in order the same way.
 pub(crate) struct LightVertices;
 
 impl LightVertices {

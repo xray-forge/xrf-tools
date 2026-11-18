@@ -1,6 +1,3 @@
-//! The pieces a `build.prj` export is made of: its tables, its generated sky and sun, its sectors, its multi-use
-//! models, the occluders, ladders and the map's settings written beside it.
-
 use std::path::PathBuf;
 
 use xrf_chunk::XRayByteOrder;
@@ -48,7 +45,6 @@ fn sector(name: &str, is_default: bool, object: &str) -> EditableSectorObject {
   }
 }
 
-/// Two sectors, `room` holding the unit box at the origin and `hall` the one 10 m along x, and the default after them.
 fn sectors() -> LevelBuildSectors {
   LevelBuildSectors::new(
     &[sector("room", false, "room_shell"), sector("hall", false, "hall_shell")],
@@ -136,7 +132,6 @@ fn places_items_and_spheres_in_the_sectors_holding_them() {
   );
 }
 
-/// An object of one quad on the ground, two triangles of the game material `material`, flagged `flags`.
 fn quad(material: &str, flags: u32) -> XrfResult<EditableObjectFile> {
   let corner = |x: f32, z: f32| Vector3d::new(x, 0.0, z);
 
@@ -150,7 +145,6 @@ fn quad(material: &str, flags: u32) -> XrfResult<EditableObjectFile> {
   )
 }
 
-/// An object of `triangles`, one surface of the game material `material`, flagged `flags`.
 fn object_of(triangles: &[[Vector3d; 3]], material: &str, flags: u32) -> XrfResult<EditableObjectFile> {
   let geometry: Vec<LevelVisualGeometry> = LevelVisualGeometry::of_triangles(
     "floor\\floor_tile",
@@ -354,7 +348,6 @@ fn registers_a_climbable_surfaces_material_though_its_faces_are_left_out() -> Xr
   Ok(())
 }
 
-/// A game material library of one climbable material, `materials\fake_ladders`, and `materials\stone`.
 fn ladders() -> GameMtlFile {
   let mut ladder: GameMtlMaterial = GameMtlMaterial::new(7, "materials\\fake_ladders");
 
@@ -402,8 +395,6 @@ fn makes_a_ladder_of_a_climbable_part_at_its_box_turned_to_face_its_faces() -> X
   Ok(())
 }
 
-/// A breakable part comes out as a rigid skeleton in the frame of its box, a bone per fragment, placed by a
-/// `breakable_object` named by its file; its points, placed as the engine places them, are the faces' own.
 #[test]
 fn makes_a_breakable_of_a_breakable_part_in_the_frame_of_its_box() -> XrfResult {
   let mut glass: GameMtlMaterial = GameMtlMaterial::new(9, "materials\\glass");
@@ -487,8 +478,8 @@ fn makes_a_breakable_of_a_breakable_part_in_the_frame_of_its_box() -> XrfResult 
   Ok(())
 }
 
-/// A build of the geometry owns every breakable part an earlier build wrote, under the path it writes them to, so an
-/// unforced rebuild refuses them and a forced one replaces or removes them; a build of the game files alone owns none.
+// An unforced rebuild refuses an earlier build's parts, a forced one replaces or removes them; a build of the game
+// files alone owns none.
 #[test]
 fn owns_a_written_breakable_part_where_it_builds_the_geometry() -> XrfResult {
   let directory: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "owned_part"))?;
@@ -515,8 +506,6 @@ fn owns_a_written_breakable_part_where_it_builds_the_geometry() -> XrfResult {
   Ok(())
 }
 
-/// A multi-use object's model is built once, in its own space and its first placement's sector, with no impostor;
-/// each placement references it with its own transform, in the sector of its own first mesh.
 #[test]
 fn builds_a_multi_use_model_once_and_references_it_per_placement() -> XrfResult {
   let library: GameMtlFile = GameMtlFile::new(vec![GameMtlMaterial::new(3, "materials\\stone")], Vec::new());

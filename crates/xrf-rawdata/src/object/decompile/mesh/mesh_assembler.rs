@@ -11,11 +11,8 @@ use crate::object::decompile::mesh::mesh_kind::MeshKind;
 use crate::object::decompile::mesh::surface_layout::SurfaceLayout;
 use crate::object::decompile::mesh::vertex_maps::VertexMaps;
 
-/// Builds the editable mesh and its surfaces from welded faces, laid out as the SDK lays out an object of `kind`.
-///
-/// One mesh, whose every corner refers to its UV and, in a skinned mesh, to its point's weight for each bone the point
-/// follows: a point UV map, a weight map named after each bone, and a polygon-mapped UV map for the corners whose UV is
-/// not their point's, which is how a seam gives one point two UVs.
+/// Builds the editable mesh and its surfaces from welded faces, laid out as the SDK lays out an object of `kind`, its
+/// vertex maps as [`VertexMaps`] orders them.
 pub(crate) struct MeshAssembler;
 
 impl MeshAssembler {
@@ -67,9 +64,8 @@ impl MeshAssembler {
         has_point_faces: false,
         faces,
         smoothing_groups: Some(smoothing),
-        // The normals the OGF stores, which the smoothing only approximates where another exporter's rule made them:
-        // the compile takes them over the SDK's, and `blender-xray` imports them; the SDK reads only the smoothing. A
-        // detail model stores none, so its object leaves them to the smoothing.
+        // The smoothing only approximates another exporter's normals; the compile and `blender-xray` read these, the
+        // SDK only the smoothing. A detail model stores none.
         corner_normals: welded
           .faces
           .iter()

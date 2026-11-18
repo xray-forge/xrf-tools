@@ -1,7 +1,7 @@
 use crate::geometry::model::geometry_lod_vertex::GeometryLodVertex;
 
-/// A multi-use reference's LOD, an `MT_LOD` node (`OGF_LOD`, `xrMU_Model_export_OGF.cpp`): the impostor's eight
-/// quads placed by the reference, over the tree visuals the reference placed.
+/// A multi-use reference's LOD, an `MT_LOD` node (`OGF_LOD`): the impostor's eight quads placed by the reference, over
+/// its tree visuals.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct GeometryLod {
   /// The reference, by index into `build.prj`'s multi-use references.

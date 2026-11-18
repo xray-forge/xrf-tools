@@ -7,31 +7,31 @@ use xrf_spawn::{AlifeObject, AlifeObjectInherited};
 use crate::level::geometry::level_decompiled_object::LevelDecompiledObject;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
 
-/// A level's breakable parts folded back into the geometry they were built from. The Build leaves the
-/// faces of a breakable game material out of the level's geometry and exports each connected part
-/// (`ESceneObjectTool::ExportBreakableObjects`) as a rigid skeleton in the level's directory, `meshes\brkbl#<N>.ogf`,
-/// its points in the frame of the part's box, and a `breakable_object` naming it, standing at the box with the angles
-/// `getXYZ` reads of its axes. The part comes back as a static object of its faces ([`ObjectDecompiler::
-/// decompile_breakable`]) that the scene places as the packet placed the part, which the Build cuts out again.
+/// A level's breakable parts folded back into the geometry they were built from.
+///
+/// The Build exports each breakable part (`ESceneObjectTool::ExportBreakableObjects`) as a rigid skeleton
+/// `meshes\brkbl#<N>.ogf` in its box's frame, placed by a `breakable_object` at the box. The part comes back as a
+/// static object of its faces ([`ObjectDecompiler::decompile_breakable`]) placed as the packet placed it, which the
+/// Build cuts out again.
 pub struct LevelBreakableConversion;
 
 impl LevelBreakableConversion {
-  /// The directory of the level's the parts are written to, and how their names begin and end.
+  /// The level's directory the parts are written to, and how their names begin and end.
   pub const DIRECTORY: &'static str = "meshes";
   const PREFIX: &'static str = "brkbl#";
   const EXTENSION: &'static str = ".ogf";
 
-  /// Every part's path in the level's directory begins so, [`Self::DIRECTORY`] then [`Self::PREFIX`]: the files the
-  /// Build owns there, a build of fewer parts leaving the rest for the game to load.
+  /// How every part's path in the level's directory begins: the Build owns these files, since a build of fewer parts
+  /// would leave the rest for the game to load.
   pub(crate) const FAMILY: &'static str = "meshes/brkbl#";
 
-  /// Whether a file of the parts' directory, by its name, is a part the Build exported.
+  /// Whether a file name in the parts' directory is a part the Build exported.
   pub fn is_part_file(name: &str) -> bool {
     name.starts_with(Self::PREFIX) && name.ends_with(Self::EXTENSION)
   }
 
-  /// The name the Build gives the part numbered `index`, `meshes\brkbl#<index>`, which its entity and visual take, and
-  /// the part's path in the level's directory, `meshes/brkbl#<index>.ogf`.
+  /// The Build's name for part `index`, `meshes\brkbl#<index>`, which its entity and visual take, and its path in the
+  /// level's directory, `meshes/brkbl#<index>.ogf`.
   pub(crate) fn get_part_names(index: usize) -> (String, String) {
     (
       format!("{}\\{}{index}", Self::DIRECTORY, Self::PREFIX),
@@ -39,9 +39,9 @@ impl LevelBreakableConversion {
     )
   }
 
-  /// The part a breakable's packet names, by its path in the level's directory, `meshes/brkbl#<N>.ogf`; `None` for an
-  /// entity that is no breakable or names a visual of no part. The packet keeps the name the export gave it, lowered
-  /// and without its extension (`CSE_Visual::set_visual`).
+  /// The path of the part a breakable's packet names, `meshes/brkbl#<N>.ogf`; `None` for an entity that is no
+  /// breakable or names no part. The packet keeps the name lowered and without its extension
+  /// (`CSE_Visual::set_visual`).
   pub fn get_part_path(entity: &AlifeObject) -> Option<String> {
     let AlifeObjectInherited::CseAlifeObjectBreakable(breakable) = &entity.inherited else {
       return None;
@@ -54,8 +54,8 @@ impl LevelBreakableConversion {
       .then(|| format!("{directory}/{name}{}", Self::EXTENSION))
   }
 
-  /// The breakable `entity`, its part read from `path`, as `levels\<level>\<level>_breakable_<index>`, placed where its
-  /// packet placed the part.
+  /// The breakable `entity`'s part, read from `path`, as `levels\<level>\<level>_breakable_<index>` placed where its
+  /// packet placed it.
   ///
   /// # Errors
   ///

@@ -8,13 +8,9 @@ use xrf_math::Vector3d;
 /// Gives a split's vertices MikkTSpace tangents and binormals, the basis Blender bakes and `blender-xray` exports
 /// against, in place of the Actor Editor's (see [`TangentBasis`]).
 ///
-/// MikkTSpace gives each face corner a unit tangent along the texture's `u`, squared to the normal, and a sign from the
-/// texture's orientation across the face; the binormal is `sign · (normal × tangent)`, along `v` as the export's runs.
-/// On the OGF's texture coordinates, whose `v` runs the other way from Blender's, it is the negated Blender bitangent
-/// `blender-xray` stores. A vertex is split where its
-/// corners' bases differ, the vertices are kept in the order the faces first reach them, and texture coordinates are
-/// moved by whole tiles as the export moves them. A corner MikkTSpace gives no basis, a degenerate face's with no
-/// neighbour to borrow one from, takes one built from its normal.
+/// The binormal is `sign · (normal × tangent)`, along `v` as the export's runs; on the OGF's coordinates, whose `v` runs
+/// opposite to Blender's, that is the negated bitangent `blender-xray` stores. A corner MikkTSpace gives no basis, on a
+/// degenerate face with no neighbour to borrow from, takes one built from its normal.
 pub(crate) struct MikkTSpaceBasis;
 
 /// A split as [`Geometry`] reads it, and the basis it gives each face corner.

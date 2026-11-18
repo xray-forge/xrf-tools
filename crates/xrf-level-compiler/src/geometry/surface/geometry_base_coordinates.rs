@@ -3,12 +3,11 @@ use xrf_math::{EPS, Vector2d};
 use crate::geometry::mesh::geometry_mesh::GeometryMesh;
 use crate::geometry::surface::geometry_normals::GeometryNormals;
 
-/// Each face's base texture coordinates as the tangent-basis pass leaves them (`fill_mender_input`,
-/// `xrLC/xrPhase_TangentBasis.cpp`), which every later phase reads.
+/// Each face's base texture coordinates as the tangent-basis pass leaves them (`fill_mender_input`), which every later
+/// phase reads.
 ///
-/// Faces are taken in order and each corner registered at its split vertex: a corner takes the coordinate of the first
-/// one already registered there within `EPS` on both axes (`find_same_vertex`, `fsimilar`), or registers its own. So
-/// faces meeting at a vertex with coordinates a rounding apart come out with the same one.
+/// A corner takes the first coordinate already registered at its split vertex within `EPS` on both axes
+/// (`find_same_vertex`), so faces meeting at a vertex with coordinates a rounding apart come out with the same one.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct GeometryBaseCoordinates {
   /// Each face of the mesh, in its order, its three corners' coordinates.

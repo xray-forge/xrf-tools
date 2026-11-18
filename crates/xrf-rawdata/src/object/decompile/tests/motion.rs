@@ -1,14 +1,10 @@
-//! That a key's rotation comes back from the angles the decompile keys it by, at a straight up or down pitch too.
-
 use xrf_math::{Affine3d, Quaternion};
 
 use crate::object::decompile::skeleton::motion_converter::MotionConverter;
 
-/// One quantisation step of a 16-bit key's component.
 const STEP: f32 = 1.0 / 32767.0;
 
-/// How far `rotation` comes back from its angles, through the compile's conversion, in quantisation steps; `q` and
-/// `-q` being one rotation.
+// Through the compile's conversion, in quantisation steps; `q` and `-q` are one rotation.
 fn steps_back(rotation: Quaternion) -> f32 {
   let length: f32 =
     (rotation.x * rotation.x + rotation.y * rotation.y + rotation.z * rotation.z + rotation.w * rotation.w).sqrt();

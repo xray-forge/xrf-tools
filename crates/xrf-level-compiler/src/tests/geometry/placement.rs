@@ -3,7 +3,7 @@ use xrf_math::{Matrix4x4, Vector3d};
 use crate::geometry::model::geometry_placement::GeometryPlacement;
 use crate::geometry::model::geometry_placement_sum::GeometryPlacementSum;
 
-/// A placement of `jupiter`'s whose `y` row's sums part in the last bit by their order, with a model corner it places.
+// A placement of `jupiter`'s whose `y` row's sums part in the last bit by their order, and a corner it places.
 fn tilted() -> (Matrix4x4, Vector3d) {
   let mut matrix: Matrix4x4 = Matrix4x4::IDENTITY;
 

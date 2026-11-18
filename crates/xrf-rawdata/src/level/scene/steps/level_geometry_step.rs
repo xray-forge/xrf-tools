@@ -46,11 +46,11 @@ use crate::provenance::level_scene_surfaces::LevelSceneSurfaces;
 use crate::provenance::level_scene_tree_match::LevelSceneTreeMatch;
 use crate::provenance::sidecar::Sidecar;
 
-/// The level's geometry ([`LevelGeometryConversion`]): the objects of its static geometry, collision, occluders,
-/// ladders and breakable parts, the scene objects placing them, and the sectors and portals, their surfaces dressed
-/// from `level.cform` where the options ask it and the directory holds one. It runs before every step but the map's, so
-/// the sectors take the first names of their prefix, and names the folded ladders' and breakables' packets in the
-/// draft, which the game step leaves out of the spawn points.
+/// The level's geometry ([`LevelGeometryConversion`]): its objects, the scene objects placing them, and the sectors and
+/// portals.
+///
+/// It runs right after the map step, so the sectors take the first names of their prefix, and records the folded
+/// ladders' and breakables' packets in the draft for the game step to leave out.
 pub(crate) struct LevelGeometryStep;
 
 impl LevelSceneStep for LevelGeometryStep {
@@ -230,8 +230,7 @@ impl LevelSceneStep for LevelGeometryStep {
 }
 
 impl LevelGeometryStep {
-  /// Each library object `placements` place, read from its library with its thumbnail to be copied beside the scene's
-  /// objects, and the record of the roots, the copies and the placements.
+  /// Each placed library object read with its thumbnail for copying beside the scene, and the sidecar's record of them.
   ///
   /// # Errors
   ///
@@ -301,10 +300,8 @@ impl LevelGeometryStep {
     Ok((files, instances))
   }
 
-  /// What the geometry takes from the objects of the library roots the options name, each read once: the shader
-  /// pairings where `is_inferring` surfaces, and the objects looked for in the static geometry, none without a root. A
-  /// surface renders where its compiler shader in `compiler_shaders` says so, or where none is named. The walk stops once
-  /// `job` is cancelled.
+  /// Reads each library object once for the shader pairings, where `is_inferring`, and the objects to look for in the
+  /// static geometry, where a root is named. The walk stops once `job` is cancelled.
   fn read_object_library<T: ByteOrder>(
     options: &LevelDecompileOptions,
     library: &mut LevelObjectLibrary,
@@ -333,8 +330,7 @@ impl LevelGeometryStep {
     )?;
 
     if let Some(instances) = &mut instances {
-      // The decompile's own folder holds what an earlier decompile of this level wrote, whose shells would be found
-      // whole.
+      // An earlier decompile's own objects would be found whole as placements.
       let own: String = format!("levels\\{}\\", options.name).to_lowercase();
 
       instances.sort();
@@ -346,8 +342,8 @@ impl LevelGeometryStep {
     Ok((pairings, instances))
   }
 
-  /// The trees' impostor atlas, read from its two files. A level without either has no impostors. An atlas missing one
-  /// of its files, or one that does not read, is refused, and the trees come back without impostors.
+  /// The trees' impostor atlas, where the level has one. One missing a file or not reading is refused, and the trees
+  /// come back without impostors.
   fn read_impostors(sources: &mut LevelSceneSources, draft: &mut LevelSceneDraft) -> Option<LevelTreeImpostorAtlas> {
     let color: Option<Vec<u8>> = sources.take(LevelTreeImpostorAtlas::COLOR_FILE_NAME);
     let normal: Option<Vec<u8>> = sources.take(LevelTreeImpostorAtlas::NORMAL_FILE_NAME);

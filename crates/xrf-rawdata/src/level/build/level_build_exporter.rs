@@ -44,28 +44,23 @@ use crate::level::scene::level_scene_object_file::LevelSceneObjectFile;
 use crate::level::scene::level_scene_texture_file::LevelSceneTextureFile;
 use crate::provenance::level_scene_refusal::LevelSceneRefusal;
 
-/// Exports a scene into the `build.prj` the Level Editor's Build hands xrLC (`SceneBuilder::CompileStatic` and
-/// `SaveBuild`, `BuilderRemote.cpp:1421`, `:357`): the sky and the sun generated from the level options, then each tool
-/// in the editor's order of classes, glows, static objects, lights, portals and wall marks; with it the occluders
-/// (`BuildHOMModel`, `BuildSOMModel`) and the map's settings (`BuildLTX`) the Build writes from the placed objects, the
-/// breakables and ladders it cuts out of their geometry (`ExportBreakableObjects`, `ExportClimableObjects`), and the
-/// details (`EDetailManager::Export`) and the AI map (`ESceneAIMapTool::Export`).
+/// Exports a scene as the Level Editor's Build does, `SceneBuilder::CompileStatic` and `SaveBuild`: the `build.prj`
+/// it hands xrLC, and the occluders, `level.ltx`, breakables, ladders, details and AI map it writes beside it.
+///
+/// The project takes the generated sky and sun first, then each tool in the editor's order: glows, static objects,
+/// lights, portals and wall marks.
 pub struct LevelBuildExporter;
 
 impl LevelBuildExporter {
-  /// `ebqDraft`, the quality whose materials the Build swaps for the plain vertex shaders, which this does not.
+  /// `ebqDraft`, the quality whose shaders the Build swaps for plain ones, which this does not do.
   const DRAFT_QUALITY: u16 = 0;
 
-  /// The build project of `scene` and what goes beside it, its library objects, game materials and detail textures read
-  /// from `sources`, in `T`'s byte order, with the build options the scene sets, as the Level Editor's Build writes
-  /// them.
+  /// The build project of `scene` and the files beside it, reading what the scene names from `sources`.
   ///
   /// # Errors
   ///
-  /// Returns an error, as the Build stops, when a part does not read, a placed object is missing from the library or
-  /// does not build, the scene is of draft quality, or a light does not build; or it holds details or a multi-use
-  /// object with an impostor and `sources` name no textures root, or they do not export ([`LevelBuildDetails`],
-  /// `LevelBuildImpostors`).
+  /// Returns an error, as the Build stops, when the scene is of draft quality, a part does not read, a placed object
+  /// or light does not build, or the details or impostors need a textures root `sources` lacks or do not export.
   pub fn export<T: ByteOrder>(
     scene: &EditableLevelScene,
     sources: &LevelBuildSources<'_>,
@@ -321,9 +316,8 @@ impl LevelBuildExporter {
     })
   }
 
-  /// A portal between the sectors it names: its polygon as the scene holds it where it has no more corners than a
-  /// compiled portal (a decompiled portal holds the compiled one), else simplified as the Build simplifies it
-  /// ([`LevelBuildPortal`]).
+  /// A portal between the sectors it names, its polygon simplified ([`LevelBuildPortal`]) only where it has more
+  /// corners than a compiled portal holds.
   fn get_portal(portal: &EditablePortalObject, sectors: &LevelBuildSectors) -> XrfResult<BuildPrjPortal> {
     let sector = |name: &str| {
       sectors.get_number(name).ok_or_else(|| {
@@ -360,19 +354,17 @@ impl LevelBuildExporter {
   /// What a job reports a build under: its stages, each named as its detail.
   pub const PROGRESS_STAGES: &'static str = "stages";
 
-  /// The scene `request.source` built into the level directory `request.destination`, as the Level Editor's Build
-  /// writes it: the level compiler's files first where the request names the game materials ([`Self::export`]), since
-  /// the entities they cut out open the spawn list, then the game files ([`LevelSceneExporter::export`]). Unforced, a
-  /// directory holding a file the build owns ([`LevelBuildRequest::get_outputs`]) is refused before the scene is read;
-  /// forced, the build's own files it does not write this time are removed after it writes.
+  /// Builds `request.source` into the level directory `request.destination`: the level compiler's files where the
+  /// request names game materials ([`Self::export`]), then the game files ([`LevelSceneExporter::export`]).
+  ///
+  /// The compiler's files go first because the entities they cut out open the spawn list. A forced build removes the
+  /// files of its own ([`LevelBuildRequest::get_outputs`]) it did not write this time.
   ///
   /// # Errors
   ///
-  /// Returns an error when the request is not forced and the directory holds a file the build owns, the scene or the
-  /// game materials do not read, the scene places objects and the request names no game materials (their ladders and
-  /// breakables open the spawn list), it names game materials but has no objects root
-  /// ([`LevelBuildRequest::get_objects_roots`]), the export fails, the job is cancelled before writing, or a file does
-  /// not write or a stale one is not removed.
+  /// Returns an error when an unforced build finds a file it owns (before reading the scene), the scene or game
+  /// materials do not read, the scene places objects but no game materials are named, no objects root is found, the
+  /// export fails, the job is cancelled, or a file does not write or remove.
   pub fn build_to_directory<T: ByteOrder>(request: &LevelBuildRequest, job: &JobHandle) -> XrfResult<LevelBuildReport> {
     let (source, destination) = (&request.source, &request.destination);
     let outputs: OutputFiles = request.get_outputs();
@@ -463,8 +455,8 @@ impl LevelBuildExporter {
     })
   }
 
-  /// Refuses a scene placing objects, for a build with no game materials: the ladders and breakables the Build cuts out
-  /// of their geometry by game material open the spawn list, which a build without them would write without.
+  /// Refuses a scene placing objects when no game materials are named: without them the spawn list would miss the
+  /// ladders and breakables cut out of those objects.
   fn assert_no_objects(scene: &EditableLevelScene) -> XrfResult {
     let placed: EditableObjectPart<EditableSceneObject> = LevelSceneExporter::get_part(scene, scene.level.get_guid()?)?;
 

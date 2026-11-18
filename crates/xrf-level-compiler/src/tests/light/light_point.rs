@@ -1,5 +1,3 @@
-//! What `LightPoint` gathers at one point, by each compiler's variant.
-
 use glam::Vec3;
 use xrf_geometry::{BvhTracer, Triangle};
 use xrf_level::LevelLightRole;
@@ -20,7 +18,6 @@ const LEVEL: LightPoint = LightPoint {
   variant: LightPointVariant::Level,
 };
 
-/// A static point light 2 m above the origin.
 fn lamp() -> LightSource {
   LightSource {
     is_directional: false,
@@ -36,7 +33,6 @@ fn lamp() -> LightSource {
   }
 }
 
-/// A sun straight overhead.
 fn sun() -> LightSource {
   LightSource {
     is_directional: true,
@@ -52,7 +48,6 @@ fn sun() -> LightSource {
   }
 }
 
-/// A square 1 m above the origin, wound so its front faces `up` or down.
 fn roof(up: bool) -> BvhTracer {
   let [a, b, c, d] = [
     Vec3::new(-5.0, 1.0, -5.0),
@@ -69,7 +64,6 @@ fn roof(up: bool) -> BvhTracer {
   BvhTracer::of_triangles(triangles)
 }
 
-/// A tracer meeting nothing near the origin.
 fn open() -> BvhTracer {
   BvhTracer::of_triangles(vec![Triangle::new([
     Vec3::new(100.0, 0.0, 100.0),
@@ -78,7 +72,6 @@ fn open() -> BvhTracer {
   ])])
 }
 
-/// `light` alone, a static light.
 fn statics(light: LightSource) -> LightSources {
   LightSources {
     rgb: vec![light],
@@ -86,7 +79,6 @@ fn statics(light: LightSource) -> LightSources {
   }
 }
 
-/// `light` alone, a sun.
 fn suns(light: LightSource) -> LightSources {
   LightSources {
     sun: vec![light],

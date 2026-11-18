@@ -8,11 +8,9 @@ use crate::level::instance::level_instance_triangle::LevelInstanceTriangle;
 use crate::level::instance::level_library_object::LevelLibraryObject;
 use crate::level::instance::level_library_triangle::LevelLibraryTriangle;
 
-/// A level's static triangles of textures a library object draws, indexed four ways for instance recovery: by their
-/// texture and edge lengths, which a library triangle placed rigidly keeps; by their edges' ratios, which a scaled
-/// placement keeps; by the cells their corners stand in, to
-/// find the triangle at three placed corners; and by the coarse cells their centres stand in, to find what a placement
-/// covers. Each knows its sector's visual and triangle, and whether a placement has claimed it.
+/// A level's static triangles of library textures, indexed for instance recovery by texture and edge lengths (kept by
+/// a rigid placement), edge ratios (kept by a scaled one), corner cells (to find a triangle at placed corners), and
+/// coarse centre cells (to find what a placement covers). Each triangle records whether a placement claimed it.
 pub(crate) struct LevelInstanceTriangles {
   pub(crate) triangles: Vec<LevelInstanceTriangle>,
   by_edges: HashMap<(u32, [i64; 3]), Vec<u32>>,

@@ -13,9 +13,8 @@ use crate::level::details::level_detail_match::LevelDetailMatch;
 use crate::level::scene::level_scene_texture_file::LevelSceneTextureFile;
 use crate::provenance::level_scene_refusal::LevelSceneRefusal;
 
-/// A level's details, `level.details`, back into the detail object tool (`EDetailManager`): each detail model as the
-/// library detail object drawing its geometry, and the slot grid as stored, its light zeroed as
-/// `EDetailManager::Export` zeroes it before the detail lighter lights it again.
+/// A level's `level.details` back into the detail object tool (`EDetailManager`): each model as the library detail
+/// object drawing it, and the slot grid as stored with its light zeroed, as `EDetailManager::Export` leaves it.
 pub(crate) struct LevelDetailConversion;
 
 impl LevelDetailConversion {
@@ -23,13 +22,12 @@ impl LevelDetailConversion {
   /// keeps none, since the slots' densities are already spread.
   pub(crate) const DEFAULT_DENSITY: f32 = 0.3;
 
-  /// The tool of `file`, each model matched in `library`. A model the library lacks is refused and the corners
-  /// planting it plant nothing, since `level.details` keeps only its place in the atlas, not its texture; where no
-  /// model is found, there is no tool, as the Build refuses one with nothing to merge into its atlas.
+  /// The tool of `file`, each model matched in `library`. A model the library lacks is refused and plants nothing,
+  /// since `level.details` keeps no texture for it; with no model found there is no tool, as the Build refuses an
+  /// empty one.
   ///
-  /// Each found object's texture is cut from `atlas`, the level's `build_details.dds`, where given: the game ships
-  /// that atlas but not the textures it merges, which the SDK keeps with its own editors. A texture that does not cut
-  /// is refused, and a build then needs the library's own.
+  /// Each found object's texture is cut from `atlas` where given, since the game ships the atlas but not the textures.
+  /// A texture that does not cut is refused, and a build then needs the library's own.
   ///
   /// # Errors
   ///
@@ -122,9 +120,8 @@ impl LevelDetailConversion {
     })
   }
 
-  /// Each texture the `found` objects draw, once, cut from `atlas` at the place of the first object drawing it whose
-  /// place cuts (objects sharing a texture share its place, `EDetailManager::Export` merging each name once); a texture
-  /// no place cuts is refused, with the first object's reason.
+  /// Each texture the `found` objects draw, cut once at the first of their places that cuts, since
+  /// `EDetailManager::Export` merges each name once; one no place cuts is refused with the first object's reason.
   fn cut_textures(
     atlas: &LevelDetailAtlas,
     found: &[LevelDetailMatch<'_>],

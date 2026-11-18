@@ -10,8 +10,7 @@ pub(crate) struct ShadowTexture {
 }
 
 impl ShadowTexture {
-  /// The alpha at texture coordinates `coordinates`, `alpha / 255` at the nearest texel, the coordinates wrapped
-  /// (`getLastRP_Scale`, `xrLC_Light/detail_slot_calculate.cpp`).
+  /// The alpha at `coordinates`, `alpha / 255` at the nearest texel with the coordinates wrapped (`getLastRP_Scale`).
   pub(crate) fn get_opacity(&self, coordinates: Vector2d) -> f32 {
     let column: u32 = Self::get_texel(coordinates.x, self.alpha.width());
     let row: u32 = Self::get_texel(coordinates.y, self.alpha.height());

@@ -1,5 +1,3 @@
-//! How each ray model face meets a light ray, from the project, the compiler shader library and the textures.
-
 use std::path::{Path, PathBuf};
 
 use xrf_chunk::XRayByteOrder;
@@ -20,17 +18,14 @@ use crate::shadow::shadow_class_counts::ShadowClassCounts;
 use crate::shadow::shadow_materials::ShadowMaterials;
 use crate::shadow::shadow_materials_request::ShadowMaterialsRequest;
 
-/// The compiler shader casting shadows, and the one letting light through.
 const CASTING: u16 = 0;
 const CLEAR: u16 = 1;
 
-/// The textures `build.prj` names, by index.
 const WALL: u16 = 0;
 const LEAF: u16 = 1;
 const LOD_LEAF: u16 = 2;
 const LEVEL_LODS: u16 = 3;
 
-/// What a project, a library and two texture roots hold.
 struct Scene {
   project: BuildPrjFile,
   library: ShaderCompilerFile,
@@ -38,8 +33,7 @@ struct Scene {
 }
 
 impl Scene {
-  /// A wall, a leaf with alpha, a `lod\` leaf and the impostors' atlas, under materials pairing them with the two
-  /// compiler shaders, the leaf's image in the second root and every `.thm` in the first.
+  // The leaf's image in the second root and every `.thm` in the first.
   fn new(name: &str) -> XrfResult<Self> {
     let root: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), name))?;
     let roots: Vec<PathBuf> = vec![root.join("first"), root.join("second")];
@@ -120,7 +114,6 @@ impl Scene {
     })
   }
 
-  /// One face a material, the alpha leaf's corners at texture coordinates whose second sits in its opaque half.
   fn faces(materials: &[u16]) -> Vec<BuildCformRaycastFace> {
     materials
       .iter()
@@ -170,7 +163,6 @@ impl Scene {
     }
   }
 
-  /// A `.thm` describing an 8 by 4 texture of `format`.
   fn write_thm(root: &Path, name: &str, format: ThmFormat) -> XrfResult {
     let mut thumbnail: ThmFile = ThmFile::new_texture();
     let path: PathBuf = name.split('\\').fold(root.to_path_buf(), |path, part| path.join(part));
@@ -185,7 +177,6 @@ impl Scene {
     thumbnail.write_to_path::<XRayByteOrder, _>(&path.with_extension("thm"))
   }
 
-  /// A DXT5 leaf `width` by 4, clear in its left block and opaque in the rest.
   fn write_leaf(path: &Path, width: u32) -> XrfResult {
     let image: RgbaImage = RgbaImage::from_fn(width, 4, |x, _| Rgba([0, 128, 0, if x < 4 { 0 } else { 255 }]));
 

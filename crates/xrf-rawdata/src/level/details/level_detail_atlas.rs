@@ -5,9 +5,8 @@ use crate::level::build::level_build_atlas_place::LevelBuildAtlasPlace;
 use crate::level::build::level_build_details::LevelBuildDetails;
 use crate::level::scene::level_scene_texture_file::LevelSceneTextureFile;
 
-/// A level's detail atlas, `build_details.dds`, which the game ships beside `level.details`: every planted detail
-/// object's texture merged by `CImageManager::CreateMergedTexture` (`ECore/Editor/ImageManagerDO.cpp`), each placed
-/// whole at a pixel corner at its own size, turned or not.
+/// A level's detail atlas, `build_details.dds`: every planted detail object's texture merged by
+/// `CImageManager::CreateMergedTexture`, each whole at a pixel corner at its own size, turned or not.
 pub(crate) struct LevelDetailAtlas {
   image: RgbaImage,
 }
@@ -27,10 +26,9 @@ impl LevelDetailAtlas {
     })
   }
 
-  /// Texture `name` cut back out of the atlas at `place`, turned back where it was turned in: at the size the place
-  /// spans, so a build merging it again packs it as the level's was, and encoded as the atlas is
-  /// ([`LevelBuildDetails::encode`]). The texture stands in for the library object's own, which a textures root holding
-  /// it keeps.
+  /// Texture `name` cut back out of the atlas at `place`, unturned, at the size it spans so a rebuild packs it as the
+  /// level's was, and encoded as the atlas is ([`LevelBuildDetails::encode`]). It stands in for the library object's
+  /// own texture.
   ///
   /// # Errors
   ///
@@ -67,8 +65,8 @@ impl LevelDetailAtlas {
     })
   }
 
-  /// The pixels of a side `size` long that a place starting at `offset` and spanning `scale` of it covers, where both
-  /// stand within rounding of whole pixels and the span is not empty and ends within the side.
+  /// The pixels of a side `size` long covered from `offset` over `scale` of it, where both round to whole pixels and
+  /// the span is non-empty and inside the side.
   fn get_span(offset: f32, scale: f32, size: u32) -> Option<LevelDetailAtlasSpan> {
     let start: u32 = Self::get_pixels(offset, size)?;
     let length: u32 = Self::get_pixels(scale, size)?;

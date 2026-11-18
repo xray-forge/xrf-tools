@@ -23,13 +23,12 @@ struct MaskOrientation<'a> {
   orientation: LightmapOrientation,
 }
 
-/// A level's charts packed onto lightmap pages, as `xrPhase_MergeLM` takes them and in its order, each placed by our
-/// own packer ([`LightmapPage`]) where xrLC scans its page a texel at a time (`_rect_place`).
+/// A level's charts packed onto lightmap pages in `xrPhase_MergeLM`'s order, each placed by our own packer
+/// ([`LightmapPage`]) where xrLC scans its page a texel at a time (`_rect_place`).
 ///
-/// Page after page, the charts not yet placed are sorted, a stable sort: by the largest chart of their material, then
-/// their material's sector, then the material, then their own area, each the larger first. The first of them that
-/// together take no more than eight pages' texels are tried in turn on the new page, upright first and crosswise where
-/// that fits nowhere; those that fit nowhere wait for the next page.
+/// For each page, the unplaced charts are stably sorted by their material's largest chart, the material's sector, the
+/// material, then their own area, larger first. The first of them within eight pages' texels together are tried in
+/// turn, upright first, crosswise where upright fits nowhere; the rest wait for the next page.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct LightmapAtlas {
   /// How many pages the charts take.
@@ -137,9 +136,9 @@ impl LightmapAtlas {
     }
   }
 
-  /// The two textures of page `page` of the charts `lit`, its texels row by row, as `CLightmap::Capture` and `Save`
-  /// make them: each chart placed on it takes its place with the texels it takes ([`LightmapLayer::TAKEN`]), crosswise
-  /// where it lies so; those are then lit, the rest not, and sixteen border rings fill round them.
+  /// The two textures of page `page` of the charts `lit`, as `CLightmap::Capture` and `Save` make them: each chart
+  /// placed there copies the texels it takes ([`LightmapLayer::TAKEN`]), crosswise where it lies so, and sixteen border
+  /// rings fill round them.
   pub(crate) fn compose(&self, page: u32, lit: &[LitChart]) -> LightmapImagePair {
     let side: u32 = LightChart::PAGE_SIDE;
     let mut target: LightmapLayer = LightmapLayer::new(side, side);

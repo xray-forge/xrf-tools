@@ -2,24 +2,21 @@ use xrf_math::{Aabb, Vector3d};
 
 use crate::geometry::mesh::geometry_face::GeometryFace;
 
-/// A level's static geometry as xrLC works on it before it splits it by material: the vertices of `build.prj`, welded,
-/// and its faces over them. Its steps run in xrLC's order (`CBuild::Run`, `xrLC/Build.cpp`): [`Self::load`],
-/// [`Self::optimize`] (`PreOptimize`), [`Self::tessellate`] (the first pass of `xrPhase_AdaptiveHT`), then
-/// `GeometryNormals::of` (`CalcNormals`).
+/// A level's static geometry before xrLC splits it by material: `build.prj`'s vertices, welded, and its faces.
 ///
-/// Order is kept as xrLC keeps it, since later steps read it: a face removed leaves the others in their order, a face
-/// added goes after them all.
+/// Its steps run in `CBuild::Run`'s order: [`Self::load`], [`Self::optimize`], [`Self::tessellate`], then
+/// `GeometryNormals::of`. Later steps read the face order, so it is kept as xrLC keeps it: a removed face leaves the
+/// others in order, an added one goes last.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct GeometryMesh {
   pub vertices: Vec<Vector3d>,
   pub faces: Vec<GeometryFace>,
-  /// The box around every vertex `build.prj` holds, used or not, `scene_bb`: what the weld lays its grid over.
+  /// The box around every `build.prj` vertex, used or not, `scene_bb`: what the weld lays its grid over.
   pub bounds: Aabb,
 }
 
 impl GeometryMesh {
-  /// The faces about each vertex, each list in face order: `m_adjacents`, which xrLC sorts by the faces' addresses,
-  /// the order it made them in.
+  /// The faces about each vertex in face order: `m_adjacents`, which xrLC sorts by face address, its creation order.
   pub(crate) fn get_faces_around_vertices(&self) -> Vec<Vec<u32>> {
     let mut around: Vec<Vec<u32>> = vec![Vec::new(); self.vertices.len()];
 

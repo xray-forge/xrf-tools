@@ -1,4 +1,4 @@
-//! Shadow rays traced on the GPU with ray queries, for every compiler of ours that traces them.
+//! Shadow rays traced on the GPU with ray queries, shared by every compiler that traces them.
 
 pub(crate) mod ray_gpu_alpha_face;
 pub(crate) mod ray_gpu_alpha_texture;

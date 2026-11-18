@@ -42,9 +42,9 @@ impl LightmapLayer {
     }
   }
 
-  /// `ApplyBorders`: every texel nothing has reached that has a neighbour, beside it or across a corner, marked above
-  /// `reference` takes those neighbours' mean light, as stored, and `reference`; all at once, as the source's scan
-  /// works out to. Whether any texel was reached.
+  /// `ApplyBorders`: every unreached texel with a neighbour, beside or across a corner, marked above `reference` takes
+  /// those neighbours' mean stored light and the marker `reference`, all at once as the source's scan works out to.
+  /// Returns whether any texel was reached.
   pub(crate) fn apply_borders(&mut self, reference: u8) -> bool {
     let (width, height) = (i64::from(self.width), i64::from(self.height));
     let (surface, marker) = (self.surface.clone(), self.marker.clone());

@@ -87,12 +87,11 @@ impl MotionConverter {
     Ok(bone_of_run)
   }
 
-  /// A motion's key runs, one per bone, and the frames they span: those it declares, or one more where every run holds
-  /// one key more and only so do the runs fill the payload exactly.
+  /// A motion's key runs, one per bone, and the frames they span: those it declares, or one more where only then do the
+  /// runs fill the payload exactly.
   ///
-  /// `blender-xray` declares `int(end - start + 1)` frames but samples `int(start)` to `int(end)`, one frame more for an
-  /// action starting between frames; `motions_value::load` then reads each run short, and the rest of the payload as
-  /// the next runs. The keys are whole, so the motion is read at their length, and compiled again it declares it.
+  /// `blender-xray` declares `int(end - start + 1)` frames but samples `int(start)` to `int(end)`, one more for an
+  /// action starting between frames, which `motions_value::load` misreads; the motion is read at its keys' length.
   ///
   /// # Errors
   ///
@@ -207,9 +206,8 @@ impl MotionConverter {
   /// The bone angles a key's rotation stands for, `Fmatrix::getXYZi` of its matrix (`Fmatrix::rotation`), worked in
   /// double precision on the normalised quaternion; the identity's for a quaternion of no length.
   ///
-  /// By a straight up or down pitch, heading and bank come from matrix elements as small as 1e-5, which a 16-bit key's
-  /// rounding and single precision leave mostly noise: worked in `f32`, keys within a degree of the pole came back up
-  /// to 73 quantisation steps off. In double the elements are exact, and so are the angles to single precision.
+  /// Near a straight up or down pitch, heading and bank come from matrix elements as small as 1e-5, which `f32` leaves
+  /// mostly noise: keys within a degree of the pole came back up to 73 quantisation steps off.
   pub(crate) fn get_xyz_inverse(rotation: &Quaternion) -> Vector3d {
     let [x, y, z, w] = [rotation.x, rotation.y, rotation.z, rotation.w].map(f64::from);
     let length: f64 = (x * x + y * y + z * z + w * w).sqrt();

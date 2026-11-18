@@ -1,5 +1,3 @@
-//! `level.ltx` read back into a scene's map settings and written again as the Build writes it.
-
 use xrf_chunk::XRayByteOrder;
 use xrf_editable_level::{
   EditableCustomObject, EditableLevelFile, EditableLevelOptions, EditableObjectPart, EditableObjectTransform,
@@ -17,14 +15,13 @@ use crate::level::scene::level_scene_decompiler::LevelSceneDecompiler;
 use crate::level::tests::fixtures::GUID;
 use crate::provenance::level_scene_inference::LevelSceneInference;
 
-/// `labx8`'s `level.ltx` as shipped, saved again after the Build: spaced keys, blank lines; with two game types, an
-/// extra section and a build options' line ended by a zero byte.
+// `labx8`'s `level.ltx` as shipped, saved again after the Build: spaced keys, blank lines, two game types, an extra
+// section and a build options' line ended by a zero byte.
 const SHIPPED: &[u8] =
   b"[map_usage]\r\nver = 1.0\r\ndeathmatch\r\ncapturetheartefact\r\nfreemp\r\n;\r\n\r\n[level_map]\r\n\
 bound_rect = -122.440560,44.614076,-40.440560,126.614072\r\ntexture = map\\map_labx8\r\n;\r\n\
 [deathmatch_game_anomaly_sets]\r\nset1 = zone_mine\0;\r\n\r\n[sub_level_map]\r\n0 = 255\r\n1 = 0\r\n2 = 3\r\n";
 
-/// The shipped rectangle as the decompile reads it.
 fn shipped_bounds() -> [f32; 4] {
   ["-122.440560", "44.614076", "-40.440560", "126.614072"].map(|value| value.parse::<f32>().unwrap_or_default())
 }
@@ -57,8 +54,7 @@ fn reads_the_maps_settings_as_the_build_wrote_them_and_a_later_save_left_them() 
   Ok(())
 }
 
-/// The game reads `level.ltx` as Windows-1251, so Cyrillic in the build options reads and writes back byte for byte,
-/// and text with no Windows-1251 byte is refused rather than written as UTF-8.
+// The game reads `level.ltx` as Windows-1251, so text it cannot encode is refused rather than written as UTF-8.
 #[test]
 fn reads_and_writes_the_maps_text_as_windows_1251() -> XrfResult {
   // «зона» in Windows-1251.

@@ -37,10 +37,11 @@ impl LightChart {
   /// `EPS`: how much a face's area weighs its normal into its chart's (`OA_Export`).
   const AREA_WEIGHT: f32 = 0.000_01;
 
-  /// `xrPhase_UVmap`: the charts one material split of `scene` is cut into, in the order they are cut. Each starts from
-  /// the largest face not yet charted, the first of equals, and takes, depth first through the faces sharing a split
-  /// vertex in the split's order (`Face::OA_Unwarp`), every face within the smoothing angle and a degree of that face's
-  /// normal (`CDeflector::OA_Place`); each is then sized ([`Self::of`]). A face of no area starts none.
+  /// `xrPhase_UVmap`: the charts one material split of `scene` is cut into, in cut order, each sized by [`Self::of`].
+  ///
+  /// Each starts from the largest uncharted face of some area, the first of equals, and takes every face within the
+  /// smoothing angle and a degree of its normal (`CDeflector::OA_Place`), depth first through the faces sharing a split
+  /// vertex in the split's order (`Face::OA_Unwarp`).
   pub(crate) fn cut(split: &[u32], scene: &LightChartScene<'_>) -> Vec<Self> {
     let mut adjacency: HashMap<u32, Vec<u32>> = HashMap::new();
 
@@ -53,7 +54,7 @@ impl LightChart {
     let limit: f32 = (scene.smooth_angle + 1.0).to_radians().cos();
     let mut is_charted: HashMap<u32, bool> = split.iter().map(|face| (*face, false)).collect();
     let mut charts: Vec<Self> = Vec::new();
-    // The seeds in the order they are taken: the largest first, the first of equals, none of no area.
+    // A stable sort keeps the first of equals first.
     let mut seeds: Vec<u32> = split
       .iter()
       .copied()
@@ -114,10 +115,11 @@ impl LightChart {
     charts
   }
 
-  /// `CDeflector::OA_Export`: the chart of `faces`, in their order. Its normal is the faces' normals summed, each
-  /// weighed by a hair of its area, and normalised; its plane is the view `build_camera` looks along it from, up being
-  /// the world's up or, for a normal near it, the world's x; and each side is the projected rectangle's at the density
-  /// times the faces' mean light density, rounded up from a half texel on, between 1 and [`Self::MAXIMUM_SIDE`].
+  /// `CDeflector::OA_Export`: the chart of `faces`, in their order.
+  ///
+  /// Its normal is the faces' normals, each weighed by a hair of its area, summed and normalised; its plane is
+  /// `build_camera`'s view along it. Each side is the projected rectangle's at the density times the faces' mean light
+  /// density, rounded up from a half texel, between 1 and [`Self::MAXIMUM_SIDE`].
   pub(crate) fn of(faces: Vec<u32>, scene: &LightChartScene<'_>) -> Self {
     let mut sum: Vector3d = Vector3d::ZERO;
     let mut density: f32 = 0.0;
@@ -219,7 +221,8 @@ impl LightChart {
     )
   }
 
-  /// Each face's corners in the view `build_camera(normal, 0, up)` gives (`transform_tiny`).
+  /// Each face's corners in the view `build_camera(normal, 0, up)` gives (`transform_tiny`), `up` being the world's up,
+  /// or its x for a normal near it.
   fn project(faces: &[u32], normal: &Vector3d, scene: &LightChartScene<'_>) -> Vec<[Vector2d; 3]> {
     let world_up: Vector3d = if normal.y.abs() > 0.99 {
       Vector3d::new(1.0, 0.0, 0.0)

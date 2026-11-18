@@ -6,11 +6,8 @@ use glam::DVec3;
 /// The convex hull of a point set, by quickhull, in double precision: its faces as triangles over the points' indices,
 /// counter-clockwise seen from outside.
 ///
-/// It starts from the widest tetrahedron the points give, then repeatedly takes, of the first face in order that still
-/// has points outside it, the point farthest out, removes every face that point sees, found by walking neighbours from
-/// that face so the hull stays a closed manifold, and closes the hole with a fan of faces from the point to the horizon.
-/// Points within one tolerance of a face, a billionth of the points' extent, count as inside; ties go to the lower
-/// index, so one input gives one hull.
+/// Points within a billionth of the points' extent of a face count as inside, and ties go to the lower index, so one
+/// input gives one hull.
 pub(crate) struct ConvexHull {
   pub(crate) faces: Vec<[usize; 3]>,
 }

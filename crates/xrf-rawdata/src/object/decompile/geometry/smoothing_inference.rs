@@ -6,11 +6,9 @@ use crate::object::decompile::geometry::welded_face::WeldedFace;
 
 /// Infers each face's smoothing edge flags from the normals the export gave its corners.
 ///
-/// A CoP SDK mesh keeps one word per face, a bit per edge marking it hard (`EditableMesh::get_hard_edge_flag`), and
-/// `CEditableMesh::GenerateVNormals` sums, for each corner, the face normals it can reach around its point through soft
-/// edges (`EditableMeshNormals`). Two faces smoothed across an edge so carry one normal at both its ends; a hard edge
-/// splits them. So an edge is soft where every face across it agrees with this one at both ends, and hard otherwise, an
-/// open edge included. Every face is written a front face, and one with no soft edge as the SDK's flat face.
+/// `CEditableMesh::GenerateVNormals` sums the face normals a corner reaches through soft edges, so faces smoothed across
+/// an edge share a normal at both its ends. An edge is soft where every face across it agrees at both ends, and hard
+/// otherwise, an open edge included; a face with no soft edge is written as the SDK's flat face.
 pub(crate) struct SmoothingInference;
 
 impl SmoothingInference {

@@ -2,20 +2,18 @@ use xrf_editable_level::{EditableAiMapNode, EditableAiMapParams, EditableAiMapTo
 use xrf_level::{BuildAimapFile, BuildAimapNode, BuildAimapParams, LevelAiHeader, LevelAiNode};
 use xrf_math::{Aabb, AiNodePosition, EPS_L, Vector3d};
 
-/// A level's AI map, `level.ai`, back into the AI map tool (`ESceneAIMapTool`), and the tool out to the `build.aimap`
-/// the Build hands xrAI (`ESceneAIMapTool::Export`, `LevelEditor/Edit/ESceneAIMapTools_Export.cpp:31`).
+/// A level's AI map, `level.ai`, back into the AI map tool, and the tool out to the `build.aimap` the Build hands xrAI
+/// (`ESceneAIMapTool::Export`).
 ///
-/// xrAI keeps each node's cell, height, plane and links, so they come back as the nodes, in the level's order. It keeps
-/// the patch size as the cell size, but not the generator's other settings or the editor's own, which take a new
-/// tool's. The covers xrAI computes are not kept, since it computes them again.
+/// The nodes' cells, heights, planes and links come back in the level's order, and the patch size as the cell size.
+/// The generator's other settings and the editor's own take a new tool's; covers are dropped, as xrAI recomputes them.
 ///
-/// The heights come back as the `build.aimap` held them, so that xrAI packs them again into the level's: the tool's box
-/// is the level's, which is the box the export wrote, and each height is one whose export xrAI saves as the level's
+/// The heights come back as the `build.aimap` held them, so that xrAI packs them into the level's again
 /// ([`Self::get_tool_height`]).
 pub(crate) struct LevelAiMapConversion;
 
 impl LevelAiMapConversion {
-  /// The tool of a level's AI map of `header` and its `nodes`, decoded.
+  /// The tool of a level's AI map, `header` and its `nodes`.
   pub(crate) fn decompile(header: &LevelAiHeader, nodes: impl IntoIterator<Item = LevelAiNode>) -> EditableAiMapTool {
     let params: EditableAiMapParams = EditableAiMapParams {
       patch_size: header.size,
@@ -48,9 +46,9 @@ impl LevelAiMapConversion {
     )
   }
 
-  /// The `build.aimap` the Build exports from `tool`: each node unpacked against the tool's box and packed again
-  /// against the box around every node (`CalculateNodesBBox`, `PackPosition`), in the tool's order; each height moves
-  /// between the boxes in double precision ([`Self::get_exported_height`]).
+  /// The `build.aimap` the Build exports from `tool`: each node, in the tool's order, repacked from the tool's box into
+  /// the box around every node (`CalculateNodesBBox`, `PackPosition`), heights in double precision
+  /// ([`Self::get_exported_height`]).
   pub(crate) fn export(tool: &EditableAiMapTool) -> BuildAimapFile {
     let positions: Vec<Vector3d> = tool.nodes.iter().map(|node| tool.get_node_position(node)).collect();
     let bounds: Aabb = positions.iter().fold(
@@ -91,18 +89,13 @@ impl LevelAiMapConversion {
 
   /// The tool height whose export xrAI saves as a node's `level_height`.
   ///
-  /// xrAI unpacks each exported height across the export's box, `k / 65535 * extent + floor`, and saves it packed
-  /// across the nodes' own box, whose floor and top are the lowest and highest exported heights (0 and 65535, as the
-  /// export packs across the box around every node), but whose height is `extent + EPS_L` (`CalculateHeight`). The
-  /// level's header so keeps the export's floor and top, and the stored height is
-  /// `iFloor(k * extent / (extent + EPS_L) + EPS_L)`: a step below the exported one on most nodes, since the ratio falls
-  /// short of one by about `EPS_L / extent`.
+  /// xrAI unpacks an exported height `k` across the export's box and repacks it across the nodes' box, which keeps
+  /// the export's floor and top but is `extent + EPS_L` tall (`CalculateHeight`). It stores
+  /// `iFloor(k * extent / (extent + EPS_L) + EPS_L)`, a step below `k` on most nodes.
   ///
-  /// The inverse searches the few heights around `level_height * size_y / extent` for those xrAI saves as it; the
-  /// export keeps them, its box being the tool's ([`Self::get_exported_height`]). Two heights a step apart can save as
-  /// one, where the ratio's shortfall adds up to a step; the higher is taken, so that the top node comes back at 65535
-  /// and the export's box is the level's again. The floor node stays at 0. Where float rounding in another build of
-  /// xrAI stored a height this one cannot save, the nearest is kept.
+  /// The inverse searches a few heights around `level_height * size_y / extent` for one xrAI saves as it. Where two
+  /// do, the higher is taken, so the top node comes back at 65535 and the export's box is the level's again. Where
+  /// another xrAI build's float rounding stored a height none saves as, the nearest is kept.
   fn get_tool_height(level_height: u16, header: &LevelAiHeader) -> u16 {
     let floor: f32 = header.bounds.min.y;
     let extent: f32 = header.bounds.max.y - floor;
@@ -127,11 +120,11 @@ impl LevelAiMapConversion {
       .unwrap_or_else(|| estimate.clamp(0, i32::from(u16::MAX)) as u16)
   }
 
-  /// A height of the tool's box `from` packed again across the export's box `to`, as `PackPosition` packs the node's
-  /// unpacked position, but in double precision. In single precision the node's position rounds by up to half a unit
-  /// in the last place, which at tens of metres is more than the `EPS_L` the packing adds, so the editor's round trip
-  /// drops a height a step on many nodes even where the boxes are one, and a decompiled tool could not export every
-  /// height xrAI compiled a level from.
+  /// A height of the tool's box `from` repacked across the export's box `to`, as `PackPosition` does but in double
+  /// precision.
+  ///
+  /// In single precision, rounding at tens of metres exceeds the `EPS_L` the packing adds, so the editor drops many
+  /// heights a step even between equal boxes, and a decompiled tool could not export every height xrAI compiled from.
   fn get_exported_height(height: u16, from: &Aabb, to: &Aabb) -> u16 {
     let from_floor: f64 = f64::from(from.min.y);
     let to_floor: f64 = f64::from(to.min.y);
@@ -148,8 +141,8 @@ impl LevelAiMapConversion {
       .clamp(0.0, f64::from(u16::MAX)) as u16
   }
 
-  /// The cell a coordinate falls in, in patches from the world origin: the nearest, since a node stands on a multiple
-  /// of the patch size that the map's floor and float rounding move off it by a hair.
+  /// The cell a coordinate falls in, in patches from the world origin, rounded to the nearest: float rounding moves a
+  /// node a hair off its multiple of the patch size.
   fn get_cell(coordinate: f32, patch_size: f32) -> i16 {
     (coordinate / patch_size).round().clamp(-32767.0, 32767.0) as i16
   }

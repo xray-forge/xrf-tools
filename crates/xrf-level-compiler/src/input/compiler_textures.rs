@@ -8,12 +8,10 @@ use xrf_utils::HostRelativePath;
 pub(crate) struct CompilerTextures;
 
 impl CompilerTextures {
-  /// The texture the compilers take without loading its `.thm` or image, the merged impostors' atlas
-  /// (`xrLC/Build_Load.cpp`, `xrLC_Light/global_calculation_data.cpp`).
+  /// The texture the compilers take without loading its `.thm` or image, the merged impostors' atlas.
   pub(crate) const UNLOADED: &'static str = "level_lods";
 
-  /// A texture's name as the compilers look it up: `build.prj`'s, cut at its first dot and lowered
-  /// (`xrLC_Light/global_calculation_data.cpp`).
+  /// A texture's name as the compilers look it up: `build.prj`'s, cut at its first dot and lowered.
   pub(crate) fn get_name(name: &str) -> String {
     name.split('.').next().unwrap_or_default().to_ascii_lowercase()
   }
@@ -22,8 +20,7 @@ impl CompilerTextures {
   ///
   /// # Errors
   ///
-  /// Returns an invalid error when the name, taken from `build.prj`, names no file below the root: one carrying a
-  /// drive, or empty.
+  /// Returns an invalid error when the name names no file below the root: one carrying a drive, or empty.
   pub(crate) fn get_path(root: &Path, name: &str, extension: &str) -> XrfResult<PathBuf> {
     Ok(root.join(HostRelativePath::new_file(name, "Texture name")?.with_extension(extension)))
   }
@@ -45,8 +42,7 @@ impl CompilerTextures {
     Ok(None)
   }
 
-  /// The top image of the `.dds` of an implicitly lit texture under the first of `roots` holding it, which its maps
-  /// are made from.
+  /// The top image of an implicitly lit texture's `.dds`, under the first of `roots` holding it.
   ///
   /// # Errors
   ///

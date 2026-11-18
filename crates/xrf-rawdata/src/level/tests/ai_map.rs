@@ -5,8 +5,7 @@ use xrf_math::{Aabb, AiNodePosition, EPS_L, Vector3d};
 
 use crate::level::parts::level_ai_map_conversion::LevelAiMapConversion;
 
-/// A map xrAI saved over nodes from a box `floor` to `top`, with cells 0.7 across over 14 metres square, 21 cells
-/// along z: its height the box's plus `EPS_L`, as `CalculateHeight` gives it.
+// The height is the box's plus `EPS_L`, as xrAI's `CalculateHeight` gives it.
 fn header(count: u32, floor: f32, top: f32) -> LevelAiHeader {
   LevelAiHeader {
     version: 10,
@@ -33,7 +32,7 @@ fn node(cell: (u32, u32), packed_y: u16, links: [u32; 4]) -> LevelAiNode {
   }
 }
 
-/// A 10 m high map's top node, stored at 65528 across the map's 10.001 m, and its floor node.
+// 65528 across the map's 10.001 m is the top of a 10 m box.
 fn tool() -> EditableAiMapTool {
   LevelAiMapConversion::decompile(
     &header(2, -5.0, 5.0),
@@ -41,7 +40,6 @@ fn tool() -> EditableAiMapTool {
   )
 }
 
-/// The height xrAI stores for a `build.aimap` height: unpacked across the export's box, packed across the map's.
 fn save_height(exported: u16, exported_bounds: &Aabb, header: &LevelAiHeader) -> u16 {
   let floor: f32 = exported_bounds.min.y;
 
@@ -52,8 +50,6 @@ fn save_height(exported: u16, exported_bounds: &Aabb, header: &LevelAiHeader) ->
   )
 }
 
-/// Each node keeps its cell, counted from the world origin, the height the export gave it over the map's box, and its
-/// plane; a link past the map's nodes is no link. The covers are left for xrAI to compute again.
 #[test]
 fn decompiles_a_level_ai_into_the_ai_map_tool() {
   let tool: EditableAiMapTool = tool();
@@ -86,8 +82,6 @@ fn decompiles_a_level_ai_into_the_ai_map_tool() {
   );
 }
 
-/// The export packs each node again across the box around every node, as `ESceneAIMapTool::Export` does, keeping its
-/// cell, plane and links.
 #[test]
 fn exports_the_tool_as_the_editor_writes_build_aimap() {
   let tool: EditableAiMapTool = tool();
@@ -116,9 +110,7 @@ fn exports_the_tool_as_the_editor_writes_build_aimap() {
   assert_eq!((exported.bounds.min.y, exported.bounds.max.y), (-5.0, 5.0));
 }
 
-/// A level's map decompiled and exported again gives xrAI the box and heights it compiled the level from: it saves
-/// every height the level stores, which sits a step below the exported one on most nodes, and the level's header
-/// again. Jupiter's floor and top, over a sweep of heights.
+// Jupiter's floor and top, over a sweep of heights.
 #[test]
 fn exports_the_heights_xrai_saves_into_the_level() {
   let (floor, top): (f32, f32) = (-29.987507, 46.926617);

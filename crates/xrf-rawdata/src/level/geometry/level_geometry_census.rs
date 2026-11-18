@@ -37,10 +37,11 @@ pub struct LevelGeometryCensus {
   /// Tree models given their impostor strips back, cut from the level's atlas; a library tree's named for it.
   #[serde(default)]
   pub tree_impostors: usize,
-  /// Static triangles dropped as copies of wall marks ([`LevelDecalIndex`](crate::parts::LevelDecalIndex)), counted in the static triangles read.
+  /// Static triangles dropped as copies of wall marks ([`LevelDecalIndex`](crate::parts::LevelDecalIndex)), counted
+  /// in the static triangles read.
   pub decal_triangles: usize,
-  /// Static and collision-only triangles dropped as needles, so thin that xrLC measures no area in them and stops, the
-  /// static ones counted in the static triangles read.
+  /// Static and collision-only triangles dropped as needles, which xrLC stops on; the static ones are counted in the
+  /// static triangles read.
   #[serde(default)]
   pub needle_triangles: usize,
   /// Sectors drawing no static geometry, such as one of trees alone, which no shell stands for.

@@ -36,7 +36,7 @@ use crate::provenance::object_provenance::ObjectProvenance;
 pub struct ObjectDecompiler;
 
 impl ObjectDecompiler {
-  /// The least points and faces a mesh holds for the Level Editor to load it (`CDB::MODEL::build`, `xrCDB.cpp:86`).
+  /// The least points and faces a mesh holds for the Level Editor to load it (`CDB::MODEL::build`).
   const EDITOR_LEAST_POINTS: usize = 4;
   const EDITOR_LEAST_FACES: usize = 2;
 
@@ -50,10 +50,8 @@ impl ObjectDecompiler {
     ObjectInference::TwoSidedSurfaces,
   ];
 
-  /// Decompiles the OGF, or the `.dm` detail model, `request` names into its destination `.object`, by `tool` at
-  /// `tool_version`, with a provenance sidecar beside it: the source and its hash, the tool and the time, what was
-  /// inferred, the tangent method found, and a detail model's flags and scale range. An existing object or sidecar is
-  /// refused before the source is read unless the request is forced.
+  /// Decompiles the OGF or `.dm` `request` names into its destination `.object`, with an [`ObjectProvenance`] sidecar
+  /// beside it. An existing object or sidecar is refused before the source is read unless the request is forced.
   ///
   /// # Errors
   ///
@@ -99,14 +97,12 @@ impl ObjectDecompiler {
     Ok(ObjectDecompileReport::new(request, &decompile))
   }
 
-  /// Decompiles an OGF the Actor Editor exported: a skeleton, its vertices following one bone each or blended across up
-  /// to four, or a static visual (`MT_NORMAL`, `MT_PROGRESSIVE`, or `MT_HIERRARHY` holding them), which comes back as
-  /// a static object without bones.
+  /// Decompiles an OGF the Actor Editor exported: a skeleton, or a static visual (`MT_NORMAL`, `MT_PROGRESSIVE`, or an
+  /// `MT_HIERRARHY` of them) as a static object without bones.
   ///
   /// # Errors
   ///
-  /// Returns an error for an OGF of another model type, which no editable object exports to, and for one whose bones,
-  /// IK data, vertex layouts or indices do not hold together.
+  /// Returns an error for another model type, or bones, IK data, vertex layouts or indices that do not hold together.
   pub fn decompile(file: &OgfFile) -> XrfResult<ObjectDecompile> {
     match OgfModelType::from_raw(file.header.model_type) {
       Some(OgfModelType::SkeletonRigid | OgfModelType::SkeletonAnim) => Self::decompile_skeleton(file),
@@ -121,11 +117,9 @@ impl ObjectDecompiler {
     }
   }
 
-  /// Decompiles a part the Level Editor cut out of a level's geometry to break (`SBPart::Export`, written to the level's
-  /// `meshes\brkbl#<N>.ogf`) back into the static object of the faces it was cut from. Its bones are fragments the
-  /// export drew at random (`Random.randI`), so they are dropped and the points welded across them; each surface takes
-  /// the game material of the bone its faces follow, the one the export named the fragment by, split where its faces
-  /// follow bones of different materials.
+  /// Decompiles a breakable part the Level Editor cut out of a level (`SBPart::Export`, `meshes\brkbl#<N>.ogf`) into
+  /// the static object it was cut from. Its bones are random fragments (`Random.randI`), so they are dropped and the
+  /// points welded across them; each surface takes its fragment bone's game material, split where those differ.
   ///
   /// # Errors
   ///
@@ -186,10 +180,9 @@ impl ObjectDecompiler {
     ))
   }
 
-  /// Decompiles visuals of a compiled level into one static object: the visuals drawn with one texture and shader and
-  /// dressed alike are one surface, and every triangle is welded into one mesh, so faces of different visuals that met
-  /// in the source meet again. Level normals are stored a byte a component, which the weld, the two-sided folding and
-  /// the smoothing allow one quantisation step for.
+  /// Decompiles visuals of a compiled level into one static object, welded into one mesh so faces of different visuals
+  /// meet again; visuals of one texture, shader and dress share a surface. The weld, folding and smoothing allow level
+  /// normals one quantisation step.
   ///
   /// # Errors
   ///
@@ -233,10 +226,9 @@ impl ObjectDecompiler {
     Ok(decompile)
   }
 
-  /// Decompiles a detail model (`.dm`, `CDetail`) into a static object of one mesh and one surface, as `EDetail::Update`
-  /// reads one: its shader and texture, and its triangles over vertices of a position and a texture coordinate. Its
-  /// flags and scale range, which the object cannot hold, come back in [`ObjectDecompile::detail`]. A model stores no
-  /// normal and no mirrored copy, so every edge comes back smooth and no surface two-sided.
+  /// Decompiles a detail model (`.dm`, `CDetail`) into a static object of one mesh and one surface, its flags and scale
+  /// range in [`ObjectDecompile::detail`]. A model stores no normal or mirror, so every edge comes back smooth and no
+  /// surface two-sided.
   ///
   /// # Errors
   ///
@@ -379,11 +371,9 @@ impl ObjectDecompiler {
     })
   }
 
-  /// The tangent method `file`'s basis was made with: MikkTSpace where its description's convertor names Blender, whose
-  /// exports take Blender's tangents, else the Actor Editor's. On the models naming `blender-xray` MikkTSpace gives the
-  /// stored tangent back within a degree on 88 to 97% of vertices (enhanced editions, Gunslinger) and 65% (GAMMA, 3,565
-  /// models), the editor's pass on under 42%; on GAMMA's 669 naming plain `blender`, 76% against 39%. On every other
-  /// model the editor's pass does better.
+  /// The tangent method `file`'s basis was made with: MikkTSpace where its convertor names Blender, else the Actor
+  /// Editor's. On Blender models MikkTSpace gives the stored tangent back within a degree on 65% to 97% of vertices
+  /// against the editor's under 42%, and on every other model the editor's pass does better.
   fn get_tangent_method(file: &OgfFile) -> TangentMethod {
     let is_blender: bool = file
       .get_description()

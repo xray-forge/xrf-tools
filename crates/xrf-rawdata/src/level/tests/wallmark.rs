@@ -77,8 +77,6 @@ fn wall_marks_come_back_to_the_same_file_through_the_part() -> XrfResult {
   Ok(())
 }
 
-/// A wall mark's triangle too small for xrLC goes into neither `build.prj` nor the face count, but stays in the wall
-/// marks the game draws.
 #[test]
 fn leaves_a_wall_mark_triangle_of_no_area_out_of_the_build() -> XrfResult {
   let mut tiny: LevelWallmark = decal(0.0, 6);

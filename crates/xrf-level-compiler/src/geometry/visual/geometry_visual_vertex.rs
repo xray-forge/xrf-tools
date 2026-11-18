@@ -3,8 +3,8 @@ use xrf_math::{Vector2d, Vector3d};
 use crate::geometry::surface::geometry_basis::GeometryBasis;
 use crate::light::point::light_color::LightColor;
 
-/// One vertex of a visual as xrLC welds it, `OGF_Vertex`: what each face corner carries into its visual, before it is
-/// quantized. A weld keeps the first corner's light, as `OGF_Vertex::similar` does not compare it.
+/// One vertex of a visual before it is quantized, `OGF_Vertex`. A weld keeps the first corner's light, as
+/// `OGF_Vertex::similar` does not compare it.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct GeometryVisualVertex {
   pub position: Vector3d,

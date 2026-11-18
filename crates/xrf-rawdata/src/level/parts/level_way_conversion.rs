@@ -7,18 +7,17 @@ use xrf_level::{LevelGameWay, LevelGameWayLink, LevelGameWayPoint};
 
 use crate::level::level_decompile_context::LevelDecompileContext;
 
-/// A level's patrol paths, between the scene's `way.part` and the patrol path table of `level.game`, which
-/// `CWayObject::ExportGame` (`WayPoint.cpp:854`) fills. The file's respawn point table comes from the spawn tool.
+/// A level's patrol paths, between the scene's `way.part` and `level.game`'s patrol path table, which
+/// `CWayObject::ExportGame` fills. The file's respawn point table comes from the spawn tool.
 pub struct LevelWayConversion;
 
 impl LevelWayConversion {
-  /// The way part the patrol paths were exported from: a way per path under its name, standing where a new object
-  /// does, of the type a path keeps (none ships one, so a patrol path), each point unselected, and each link appended to
-  /// the point it leaves, in the file's order.
+  /// The way part the patrol paths were exported from: a way per path under its name, of the type a path keeps (none
+  /// ships one, so a patrol path), each link appended to the point it leaves in the file's order.
   ///
   /// # Errors
   ///
-  /// Returns an error naming a path whose link names a point it does not hold or its own point, which the editor never
+  /// Returns an error naming a path with a link to a point it lacks or to its own point, which the editor never
   /// exports.
   pub fn decompile(
     ways: &[LevelGameWay],
@@ -70,13 +69,12 @@ impl LevelWayConversion {
     Ok(EditableObjectPart::new(context.guid, objects))
   }
 
-  /// The patrol paths `ExportGame` writes from the part, one per way in the part's order: `WAYOBJECT_VERSION`, the
-  /// way's name, its points' positions, flags and names, and their links point by point; no type chunk.
+  /// The patrol paths `ExportGame` writes from the part, one per way in the part's order, with no type chunk.
   ///
   /// # Errors
   ///
-  /// Returns an error when a way's link leads to its own point or past the way's points
-  /// ([`EditableWayObject::check_links`]), or a way's point is past what the file's `u16` indices name.
+  /// Returns an error when a way's link leads to its own point or past its points
+  /// ([`EditableWayObject::check_links`]), or a way holds more points than `u16` indices name.
   pub fn export(part: &EditableObjectPart<EditableWayObject>) -> XrfResult<Vec<LevelGameWay>> {
     part
       .objects

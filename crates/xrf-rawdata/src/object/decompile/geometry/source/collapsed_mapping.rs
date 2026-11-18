@@ -4,14 +4,10 @@ use crate::object::decompile::geometry::source::ogf_corner::OgfCorner;
 
 /// Gives back a texture span to a level triangle whose stored base coordinates collapsed to one point.
 ///
-/// `level.geom` stores a base coordinate as a short over 1024 and a fraction byte riding in a tangent or binormal alpha
-/// (`LevelVertexLayout::rebuild_coordinate`). A surface mapped across hundreds of metres to a fraction of a texel, as a
-/// flat plane running to vanilla pripyat's eastern edge is, comes back with faces whose corners all store one coordinate,
-/// their fraction bytes at 255: xrLC compiled them, but refuses them as the level stores them (`Face::Verify`, "Invalid
-/// face"). Each such triangle is mapped again by its corners' positions, flattened along the axis its normal leans on
-/// most, to a span just over xrLC's least from the corners' lowest coordinate, so it samples the texel the level drew it
-/// with. The new coordinates depend on the corners as a set, so a two-sided face's mirror maps alike and still folds
-/// with it.
+/// A surface mapped across hundreds of metres to a fraction of a texel, as vanilla pripyat's eastern plane is, stores
+/// every corner of a face at one coordinate, which xrLC's `Face::Verify` refuses. Each such triangle is mapped again by
+/// its flattened positions to just over xrLC's least span from its lowest coordinate, so it samples the texel the
+/// level drew; the mapping depends on the corners as a set, so a mirror maps alike and still folds.
 pub(crate) struct CollapsedMapping;
 
 impl CollapsedMapping {

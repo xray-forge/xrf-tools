@@ -26,8 +26,7 @@ use crate::provenance::level_scene_provenance::LevelSceneProvenance;
 use crate::provenance::level_scene_refusal::LevelSceneRefusal;
 use crate::provenance::object_provenance::ObjectProvenance;
 
-/// A scene being decompiled, as the steps build it: the context its parts share, its level options and the files they
-/// came from, each tool with the files it came from, the objects it places, and what was inferred and refused.
+/// A scene being decompiled, which each step adds its tools, objects, inferences and refusals to.
 pub(crate) struct LevelSceneDraft {
   pub(crate) context: LevelDecompileContext,
   pub(crate) level_options: EditableLevelOptions,
@@ -46,14 +45,13 @@ pub(crate) struct LevelSceneDraft {
   pub(crate) folded_entities: Vec<String>,
   /// The root spawn the entities come from, where one was given.
   pub(crate) root_spawn: Option<LevelRootSpawn>,
-  /// `level.spawn` and `level_rs.spawn`, where the directory holds them: read once, before any step, for the geometry
-  /// to fold ladders and breakables from and the game step to decompile the entities of.
+  /// `level.spawn` and `level_rs.spawn`, read once before any step: the geometry step folds ladders and breakables
+  /// from them, the game step decompiles their entities.
   pub(crate) spawn: Option<LevelSpawnFile>,
   pub(crate) respawn: Option<LevelSpawnFile>,
   /// What `level.ltx` says, where the directory holds one: the sectors' parts of the map and the game types.
   pub(crate) map: Option<LevelMapSettings>,
-  /// The objects of the options' library roots, listed once for the steps that look in them, and what they could not
-  /// read, refused when the scene is finished.
+  /// The options' library roots, listed once; what they could not read is refused when the scene is finished.
   pub(crate) object_library: LevelObjectLibrary,
   /// The decompile's job, which the library walks stop on when it is cancelled.
   pub(crate) job: JobHandle,
@@ -63,9 +61,9 @@ impl LevelSceneDraft {
   /// The owner the scene's `[level_tag]` names.
   pub(crate) const OWNER: &'static str = "xrf";
 
-  /// A scene of `guid` named `name`, holding no tool yet, with the inferences every decompiled scene makes; the game
-  /// types are inferred only where no `level.ltx` names them. Every entity's name is reserved from the start, so that no
-  /// name a step generates takes one.
+  /// An empty scene of `guid` named `name`, with the inferences every decompiled scene makes.
+  ///
+  /// Every entity's name is reserved from the start, so no name a step generates takes one.
   pub(crate) fn new(
     guid: EditableLevelGuid,
     name: &str,

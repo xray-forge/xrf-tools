@@ -12,12 +12,11 @@ use xrf_utils::format_path;
 use crate::level::level_object_library_entry::LevelObjectLibraryEntry;
 use crate::provenance::level_scene_refusal::LevelSceneRefusal;
 
-/// The `.object` files under a decompile's object library roots, listed once for every step that looks in them, and
-/// each one under them that could not be read, with why.
+/// The `.object` files under a decompile's object library roots, listed once for every step, and each one that could
+/// not be read, with why.
 ///
-/// Each root is walked in name order, so a library numbers what it finds the same on every machine, through the links
-/// and junctions a mod manager lays a library out with; a link back to a folder above it, or to nothing, is recorded,
-/// not followed.
+/// Each root is walked in name order, so results match on every machine, following links and junctions; a link back
+/// to a folder above it, or to nothing, is recorded, not followed.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct LevelObjectLibrary {
   entries: Vec<LevelObjectLibraryEntry>,

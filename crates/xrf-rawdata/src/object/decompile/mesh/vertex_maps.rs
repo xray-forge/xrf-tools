@@ -10,10 +10,9 @@ use crate::object::decompile::mesh::mesh_kind::MeshKind;
 
 /// A mesh's vertex maps as they fill, and the references its corners make into them.
 ///
-/// The maps come in a fixed order: the point UV map first, one weight map per bone some point follows, in bone order,
-/// then the polygon UV map, written only where some corner's UV is not its point's. A corner refers to its UV and to
-/// its point's entry in the weight map of each bone the point follows, as `CEditableMesh::GenerateSVertices` reads
-/// them back.
+/// The maps come in a fixed order: the point UV map, a weight map per bone some point follows in bone order, then the
+/// polygon UV map, only where a seam gives some corner a UV other than its point's. A corner refers to its UV and its
+/// point's weight entries, as `CEditableMesh::GenerateSVertices` reads them.
 pub(crate) struct VertexMaps {
   /// The UV of each point, from the first corner standing on it.
   point_uvs: Vec<Option<Vector2d>>,

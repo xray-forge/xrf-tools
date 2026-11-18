@@ -1,6 +1,6 @@
 use xrf_math::{Vector2d, Vector3d};
 
-/// One face of a level's static geometry as xrLC works on it (`Face`, `xrLC_Light/xrFace.h`).
+/// One face of a level's static geometry as xrLC works on it (`Face`).
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct GeometryFace {
   /// Its corners, by index into the mesh's vertices.
@@ -12,7 +12,7 @@ pub(crate) struct GeometryFace {
   /// The game material it is made of, by its id in `gamemtl.xr`.
   pub game_material: u32,
   /// The editor's edge flags, `sm_group`: bits 0 to 2 an edge each, set where the edge is hard; bit 3 set for the back
-  /// of a two-sided surface, whose edges count the other way round (`common/face_smoth_flags.h`).
+  /// of a two-sided surface, whose edges count the other way round.
   pub smoothing: u32,
   /// The face of `build.prj` it is, or was cut from.
   pub source: u32,
@@ -30,7 +30,7 @@ impl GeometryFace {
     self.smoothing & Self::BACK_FACE != 0
   }
 
-  /// Whether edge `edge` is soft, `is_soft_edge`: its bit clear, a back face's edges numbered the other way round.
+  /// Whether edge `edge` is soft, its bit clear, `is_soft_edge`.
   pub(crate) fn is_soft_edge(&self, edge: usize) -> bool {
     self.smoothing & (1 << self.get_edge_bit(edge)) == 0
   }

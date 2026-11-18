@@ -4,15 +4,15 @@ use xrf_level::{LevelPsStaticFile, LevelPsStaticPlacement};
 
 use crate::level::level_decompile_context::LevelDecompileContext;
 
-/// A level's planted particle effects, between the scene's `ps.part` and the compiled `level.ps_static`, which the
-/// build passes through with no compiler (`BuilderGame.cpp:81`).
+/// A level's planted particle effects, between the scene's `ps.part` and `level.ps_static`, which the build writes
+/// with no compiler.
 pub struct LevelParticleConversion;
 
 impl LevelParticleConversion {
-  /// The particle part a `level.ps_static` was exported from, each placement an object named after its effect, its
-  /// transform the saved one composing into the placement's matrix
-  /// ([`EditableObjectTransform::from_matrix_as_saved`]). A file of version 0 keeps no game modes, so its effects play
-  /// in all of them.
+  /// The particle part a `level.ps_static` was exported from, each placement an object named after its effect at the
+  /// saved transform composing into its matrix ([`EditableObjectTransform::from_matrix_as_saved`]).
+  ///
+  /// A file of version 0 keeps no game modes, so its effects play in all of them.
   ///
   /// # Errors
   ///
@@ -45,9 +45,8 @@ impl LevelParticleConversion {
     Ok(EditableObjectPart::new(context.guid, objects))
   }
 
-  /// The `level.ps_static` the build writes from the part, `EParticlesObject::ExportGame`: version 1, then each
-  /// object's game modes, effect and transform in the part's order. None for a part of no objects, for which the build
-  /// writes no file.
+  /// The `level.ps_static` the build writes from the part, `EParticlesObject::ExportGame`, in the part's order; none
+  /// for a part of no objects, as the build then writes no file.
   pub fn export(part: &EditableObjectPart<EditableParticleObject>) -> Option<LevelPsStaticFile> {
     (!part.objects.is_empty()).then(|| LevelPsStaticFile {
       version: LevelPsStaticFile::CURRENT_VERSION,

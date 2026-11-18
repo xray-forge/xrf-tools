@@ -22,9 +22,8 @@ impl LevelInstanceFit {
   /// a rigid placement's least squares scale a few parts in a million off.
   const UNSCALED: f64 = 1e-4;
 
-  /// The transform taking the triangle `from` onto `to`, corner by corner: the rotation the frames their first two
-  /// edges span give, and where `is_scaled`, the scale their perimeters give, else none; none where either is
-  /// degenerate.
+  /// The transform taking the triangle `from` onto `to`, corner by corner, scaled by their perimeters' ratio where
+  /// `is_scaled`; none where either is degenerate.
   pub(crate) fn of_triangles(from: &[DVec3; 3], to: &[DVec3; 3], is_scaled: bool) -> Option<Self> {
     let rotation: DMat3 = Self::get_frame(to)? * Self::get_frame(from)?.transpose();
     let scale: f64 = if is_scaled {
@@ -40,9 +39,8 @@ impl LevelInstanceFit {
     })
   }
 
-  /// The rotation, scale where `is_scaled`, and translation that best take each pair's first point onto its second in
-  /// the least squares sense (Umeyama: the orthonormal polar factor of the pairs' cross-covariance, then the scale it
-  /// leaves); none where the pairs span no volume or the best orthonormal fit mirrors.
+  /// The least squares transform taking each pair's first point onto its second (Umeyama), scaled where `is_scaled`;
+  /// none where the pairs span no volume or the best fit mirrors.
   pub(crate) fn of_pairs(pairs: &[(DVec3, DVec3)], is_scaled: bool) -> Option<Self> {
     if pairs.len() < 3 {
       return None;

@@ -1,5 +1,3 @@
-//! The AI map compiler: `build.aimap` into `level.ai`, as SDK 0.7's `xrAI -f` writes it.
-
 use uuid::Uuid;
 use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
@@ -16,8 +14,8 @@ use crate::{AiMapCovers, AiMapGuid, RayBackend};
 
 const NO_LINK: u32 = BuildAimapNode::NARROW_LINK_MASK;
 
-/// A plane the SDK keeps, one it moves a step down (`(0, 1, 110)` to `(0, 0, 109)`), and one on the fold's edge it
-/// moves to the other sign (`(1, 0, 127)` to `(1, 2, 127)`), from xrAI's round trip of every plane value.
+// From xrAI's round trip of every plane value: one it keeps, one it moves a step down (`(0, 1, 110)` to
+// `(0, 0, 109)`), and one on the fold's edge it moves to the other sign (`(1, 0, 127)` to `(1, 2, 127)`).
 const PLANES: [(u16, u16); 3] = [
   ((4 << 13) | (1 << 7) | 79, (4 << 13) | (1 << 7) | 79),
   ((1 << 7) | 110, 109),
@@ -32,8 +30,7 @@ fn node(x: i16, z: i16, y: u16, plane: u16, links: [u32; 4]) -> BuildAimapNode {
   }
 }
 
-/// Four nodes out of the save's order: a row of three along z at x 3 (one of them high up), and one at x 2, linked
-/// in a chain by their indices here.
+// Out of the save's order, so the save sorts them.
 pub(super) fn aimap() -> BuildAimapFile {
   BuildAimapFile {
     version: BuildAimapFile::NARROW_LINKS_VERSION,
@@ -56,7 +53,6 @@ pub(super) fn aimap() -> BuildAimapFile {
   }
 }
 
-/// Tracing on the CPU, which a map with no covers never starts.
 fn on_cpu() -> RayTracing<'static> {
   RayTracing {
     backend: RayBackend::Cpu,

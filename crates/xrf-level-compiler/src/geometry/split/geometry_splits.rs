@@ -9,35 +9,19 @@ use crate::input::compiler_shaders::CompilerShaders;
 use crate::light::lightmap::chart::light_chart::LightChart;
 use crate::light::lightmap::chart::light_chart_scene::LightChartScene;
 
-/// One split while the splits are cut: its faces, and the chart it holds whole, by index among the charts cut so far.
+/// One split while the splits are cut: its faces, and the chart it holds whole, by index into the charts so far.
 struct ChartedSplit {
   faces: Vec<u32>,
   chart: Option<usize>,
 }
 
 /// A level's rendered faces grouped into the splits that each become a visual, as xrLC groups them: by material
-/// (`xrPhase_ResolveMaterials`), each lightmapped one into its lightmap charts (`xrPhase_UVmap`), cut in space
-/// (`xrPhase_Subdivide`), then joined again where small (`xrPhase_MergeGeometry`).
+/// (`xrPhase_ResolveMaterials`), each lightmapped one into its charts (`xrPhase_UVmap`), cut in space
+/// (`xrPhase_Subdivide`), then joined again where small ([`Self::merge`], `xrPhase_MergeGeometry`).
 ///
-/// - **By material.** Materials are taken in the order faces first name them, every face counted; a split each holds
-///   that material's faces whose compiler shader renders, in face order, and a split left empty goes.
-/// - **Charted.** Where charts are cut (`Self::cut`), each split of a lightmapped material is cut into charts
-///   (`LightChart::cut`), each chart's faces leaving it, in its order, for a split of their own at the end of the
-///   list; the split, left empty, goes.
-/// - **Cut.** A split of at least `Self::LOW_FACES` twice over whose box is wider than `Self::MAXIMUM_SIZE` on an
-///   axis, or which holds more than `Self::HIGH_FACES`, is halved on its box's longest axis, each face going by its
-///   centre to the lower half's closed box or else the upper. Where a half would hold under `Self::LOW_FACES`, the
-///   cut moves by half the larger half's width towards it, up to ten times while the split holds more than four times
-///   the least, then turns to the next axis, three axes in all. A split cut goes, its halves joining the end of the
-///   list, where they are cut in their turn; a chart's split cut gives each half a chart of its own
-///   (`LightChart::of`), the chart cut leaving the charts and the two joining their end. xrLC also cuts a split whose
-///   chart outgrows a page, which a chart's largest side never does.
-/// - **Joined** ([`Self::merge`]). Each split in turn, while it holds under three quarters of the high limit and its
-///   box, grown by `EPS_S`, is narrower than the size on some axis, takes in the later split of its material and page
-///   that needs joining too and gives the smallest joined box by volume, the first of equals: one that keeps the two
-///   under four thirds of the high limit, keeps every axis of the joined box within four thirds of the size or within
-///   a metre of either part's, and is no more than eight times the two parts' cubes. Its faces go before the split's
-///   own.
+/// A split is cut on its box's longest axis while it is wider than [`Self::MAXIMUM_SIZE`] or holds more than
+/// [`Self::HIGH_FACES`], each half keeping at least [`Self::LOW_FACES`]; a chart's split cut gives each half a chart of
+/// its own. xrLC also cuts a split whose chart outgrows a page, which a chart's largest side never does.
 ///
 /// Which split a face lands in is not held to xrLC's, as xrLC's splits follow its lightmap pages, and this crate packs
 /// the charts onto pages its own way.
@@ -297,7 +281,9 @@ impl GeometrySplits {
     }
   }
 
-  /// One split's cut into two halves of at least [`Self::LOW_FACES`] each, or none found.
+  /// One split's cut into two halves of at least [`Self::LOW_FACES`] each, or none found: halved on the box's longest
+  /// axis, each face by its centre, the cut moved by half the larger half's width towards it up to ten times while the
+  /// split holds more than four times the least, then on the next axis, three in all.
   fn halve(mesh: &GeometryMesh, split: &[u32], bounds: &GeometrySplitBox, size: [f32; 3]) -> Option<[Vec<u32>; 2]> {
     let mut axis: usize = if size[0] >= size[1] && size[0] >= size[2] {
       0
@@ -367,7 +353,9 @@ impl GeometrySplits {
       .then_some(grown)
   }
 
-  /// `ValidateMerge`: the joined box's volume where two splits may join, none where they may not.
+  /// `ValidateMerge`: the joined box's volume where two splits may join, none where they may not. They may where they
+  /// hold at most four thirds of the high limit together, every axis of the joined box stays within four thirds of the
+  /// size or a metre of either part's, and the box is at most eight times the two parts' cubes.
   fn get_merged_volume(
     faces: usize,
     bounds: &GeometrySplitBox,

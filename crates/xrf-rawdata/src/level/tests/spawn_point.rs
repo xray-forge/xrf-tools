@@ -19,7 +19,7 @@ fn respawn_point(team: u8, profile: &str) -> LevelGameRPoint {
   }
 }
 
-/// A modifier whose colours are `u32_3f` of these bytes.
+// Colours as `u32_3f` decodes these bytes.
 fn modifier(fog: u8, sky: u8) -> LevelEnvModifier {
   let channel = |byte: u8| (1.0_f32 / 255.0) * f32::from(byte);
 

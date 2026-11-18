@@ -6,8 +6,8 @@ use crate::geometry::visual::geometry_fast_path::GeometryFastPath;
 use crate::geometry::visual::geometry_visual_light::GeometryVisualLight;
 use crate::geometry::visual::geometry_visual_vertex::GeometryVisualVertex;
 
-/// One static visual as xrLC builds it from a split (`Flex2OGF`, `xrLC/xrFlex2OGF.cpp`): its dress, its welded
-/// vertices and faces, and the fast path's positions for an opaque surface.
+/// One visual as xrLC builds it from a split (`Flex2OGF`): its dress, its welded vertices and faces, and the fast
+/// path's positions for an opaque surface.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct GeometryVisual {
   /// The `build.prj` material of its faces.
@@ -63,10 +63,8 @@ impl GeometryVisual {
   }
 
   /// `OGF::MakeProgressive`: a visual of [`Self::PROGRESSIVE_FACE_LIMIT`] faces or more made progressive
-  /// ([`ProgressiveMesh`]) over its positions and base coordinates, kept so where its windows step through at least
-  /// `metric_limit` of its vertices, counted as xrLC counts them, the collapses and the whole mesh's window. Its fast
-  /// path is then made progressive over positions alone, with no such limit; where that fails, the visual stays as it
-  /// was.
+  /// ([`ProgressiveMesh`]) where its windows step through at least `metric_limit` of its vertices. Its fast path
+  /// follows over positions alone, with no limit; where that fails, the visual stays as it was.
   pub(crate) fn make_progressive(&mut self, metric_limit: f32) {
     if self.faces.len() < Self::PROGRESSIVE_FACE_LIMIT {
       return;
@@ -137,16 +135,13 @@ impl GeometryVisual {
     placed.into_iter().flatten().collect()
   }
 
-  /// `OGF::_BuildFace`: each corner welded to the first vertex similar to it ([`Self::is_similar`]) or added; a face
-  /// closing on itself drops the vertices it added, a face repeating one already held, in any order of its corners,
-  /// is left out with its vertices kept; a face taken is added to the fast path too as `fast_path` says.
-  ///
-  /// `texel` is a texel of each coordinate channel's texture, `1 / width` and `1 / height`.
+  /// `OGF::_BuildFace`: each corner welded to the first similar vertex ([`Self::is_similar`]) or added. A degenerate
+  /// face drops the vertices it added; a repeated one is left out, its vertices kept. `texel` is one texel of each
+  /// coordinate channel's texture.
   ///
   /// # Errors
   ///
-  /// Returns an error when a corner would be the visual's 65,537th vertex, past what its 16-bit indices reach, where
-  /// xrLC wraps the index onto another vertex.
+  /// Returns an error for a 65,537th vertex, past the 16-bit indices, where xrLC wraps onto another vertex.
   pub(crate) fn add_face(
     &mut self,
     corners: [GeometryVisualVertex; 3],
@@ -179,8 +174,7 @@ impl GeometryVisual {
     Ok(())
   }
 
-  /// `OGF::x_BuildFace`: the corners' positions welded within `EPS_L`, a face closing on itself dropping the vertices
-  /// it added.
+  /// `OGF::x_BuildFace`: the corners welded within `EPS_L`, a degenerate face dropping the vertices it added.
   fn add_fast_face(&mut self, [first, second, third]: [Vector3d; 3]) -> XrfResult {
     let held: usize = self.fast_vertices.len();
     let face: [u16; 3] = [self.weld_fast(first)?, self.weld_fast(second)?, self.weld_fast(third)?];
@@ -238,8 +232,8 @@ impl GeometryVisual {
     })
   }
 
-  /// `OGF_Vertex::similar`: position and normal within `EPS_L`, the basis within a step, each coordinate within a texel
-  /// of its channel's texture, all strictly.
+  /// `OGF_Vertex::similar`: position and normal within `EPS_L`, the basis within a step, each coordinate within a
+  /// texel, all strictly.
   fn is_similar(first: &GeometryVisualVertex, second: &GeometryVisualVertex, texel: &[Vector2d]) -> bool {
     let near = |one: &Vector2d, other: &Vector2d, texel: &Vector2d| {
       (one.x - other.x).abs() < texel.x && (one.y - other.y).abs() < texel.y
@@ -270,10 +264,9 @@ impl GeometryVisual {
     one == other
   }
 
-  /// `OGF::Optimize` where the compiler shader optimizes coordinates: the faces gathered into groups joined by shared
-  /// vertices, each sweep in face order taking any face sharing a vertex with the group, until a sweep adds no vertex;
-  /// then each group's base coordinates moved by the whole tiles nearest the middle of their span, whose upper end
-  /// starts from the smallest positive float. A vertex an earlier group took is not taken again.
+  /// `OGF::Optimize` for a compiler shader that optimizes coordinates: each group of faces joined by shared vertices
+  /// has its base coordinates moved by the whole tiles nearest the middle of their span. The span's upper end starts
+  /// from the smallest positive float, as xrLC's does.
   pub(crate) fn shift_texture_coordinates(&mut self) {
     let mut is_vertex_taken: Vec<bool> = vec![false; self.vertices.len()];
     let mut is_face_taken: Vec<bool> = vec![false; self.faces.len()];

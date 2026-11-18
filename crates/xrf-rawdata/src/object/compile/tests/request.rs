@@ -1,5 +1,3 @@
-//! Which tangent method a compile asked for by path takes.
-
 use std::fs;
 use std::path::{Path, PathBuf};
 

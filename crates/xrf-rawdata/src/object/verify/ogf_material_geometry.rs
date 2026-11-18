@@ -7,12 +7,8 @@ use crate::object::verify::material_vertex::MaterialVertex;
 use crate::object::verify::ogf_material_comparison::OgfMaterialComparison;
 use crate::object::verify::position_key::PositionKey;
 
-/// Everything an OGF draws with one texture and shader, over every child drawing with them, as the comparison reads it:
-/// its vertices and the faces it draws at full detail.
-///
-/// Where one surface's faces fall among children is the exporter's choice: the export splits a surface by breakable
-/// part, the compile cuts one past 16-bit indices, and other tools spread one over several children. The engine draws
-/// any of these alike, so the comparison takes a texture and shader's children together.
+/// Every vertex and full-detail face an OGF draws with one texture and shader, over all its children drawing with them:
+/// how a surface spreads over children is the exporter's choice, and the engine draws any spread alike.
 pub(crate) struct OgfMaterialGeometry<'a> {
   pub(crate) texture: &'a str,
   pub(crate) shader: &'a str,
@@ -99,10 +95,8 @@ impl<'a> OgfMaterialGeometry<'a> {
   /// How this compiled geometry compares with `reference`: its vertices by position, normal, texture coordinate and
   /// weights, and the faces either draws by their corners' positions in winding order.
   ///
-  /// Each face is compared once: a face drawn twice draws nothing more, as the static export's second walk of a
-  /// two-sided surface writes every face again, while its mirror, wound the other way, is a face of its own. A face
-  /// with two corners at one position draws nothing, so it is compared on neither side: the export leaves one where
-  /// `VPack` moved a corner onto another, which either side may have done where the other did not.
+  /// Each face is compared once, its mirror apart, since the static export writes two-sided faces again. A face with two
+  /// corners at one position, which `VPack` leaves on either side alone, draws nothing and is compared on neither.
   pub(crate) fn compare(&self, reference: &Self) -> OgfMaterialComparison {
     let mut comparison: OgfMaterialComparison = OgfMaterialComparison::default();
     let by_position: HashMap<PositionKey, Vec<&MaterialVertex>> = reference.by_position();

@@ -8,8 +8,9 @@ use xrf_math::{Color, Matrix4x4, Vector2d, Vector3d};
 
 use crate::level::build::level_build_sectors::LevelBuildSectors;
 
-/// The lights of a build: the layers they are controlled by (`SceneBuilder::BuildLightControl`,
-/// `BuilderRemote.cpp:918`), the static ones baked into the lightmaps and the dynamic ones the multi-use models take.
+/// The lights of a build and the control layers they sit in (`SceneBuilder::BuildLightControl`): static ones baked
+/// into the lightmaps, and dynamic ones for the multi-use models.
+///
 /// The sky and the sun are generated from the level options (`BuildHemiLights`, `BuildSun`); every other light is the
 /// scene's (`BuildLight`).
 #[derive(Default)]
@@ -33,8 +34,8 @@ impl LevelBuildLights {
     }
   }
 
-  /// The sun of `quality` along `direction` (pitch, then heading) under `$sun`: its static lights,
-  /// [`Sky::get_sun`], and one dynamic light along it.
+  /// The sun of `quality` along `direction` (pitch, then heading) under `$sun`: its static lights ([`Sky::get_sun`])
+  /// and one dynamic light.
   ///
   /// # Errors
   ///
@@ -60,14 +61,13 @@ impl LevelBuildLights {
     Ok(())
   }
 
-  /// A scene light under the control `controls` name for its index: baked where it lights static geometry, spread
-  /// over its fuzzy points where it has them, and dynamic, reaching the sectors its range does, where it lights
-  /// dynamic models.
+  /// A scene light under its control layer: static where it lights static geometry, spread over its fuzzy points if
+  /// it has them, and dynamic, in the sectors its range reaches, where it lights dynamic models.
   ///
   /// # Errors
   ///
-  /// Returns an error, as the Build stops, for a light lighting nothing, of a control the tool does not name, of a
-  /// kind other than point, or dynamic and reaching no sector.
+  /// Returns an error, as the Build stops, for a light lighting nothing, of a control `controls` lacks, of a kind
+  /// other than point, or dynamic and reaching no sector.
   pub(crate) fn add_light(
     &mut self,
     light: &EditableLightObject,
@@ -168,7 +168,7 @@ impl LevelBuildLights {
     Ok(())
   }
 
-  /// The layers as `build.prj` stores them, none holding the frames the format leaves room for.
+  /// The layers as `build.prj` stores them, with no frames.
   ///
   /// # Errors
   ///
@@ -186,7 +186,7 @@ impl LevelBuildLights {
       .collect()
   }
 
-  /// The index of the layer `name`, added last where none is named so.
+  /// The index of the layer `name`, appended when new.
   fn get_control(&mut self, name: &str) -> u32 {
     let index: usize = self.controls.iter().position(|held| held == name).unwrap_or_else(|| {
       self.controls.push(name.to_owned());
@@ -196,7 +196,7 @@ impl LevelBuildLights {
     u32::try_from(index).unwrap_or(u32::MAX)
   }
 
-  /// A generated sky or sun light, of its energy in each channel.
+  /// A generated sky or sun light, white at its energy.
   fn get_sky_light(controller: u32, light: &SkyLight) -> LevelDynamicLight {
     LevelDynamicLight::new_directional(
       controller,

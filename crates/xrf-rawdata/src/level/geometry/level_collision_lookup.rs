@@ -3,8 +3,8 @@
 pub enum LevelCollisionLookup {
   /// On a collision face of the very same three points, of this game material.
   Exact(u16),
-  /// On the collision face its normal through its centre crosses nearest it: the level compiler split the render face and
-  /// kept the collision face whole, or moved its points.
+  /// On the face its normal through its centre crosses nearest, where xrLC split the render face but kept the
+  /// collision face whole, or moved its points.
   Traced(u16),
   /// On none: the surface was built with a compiler shader of no collision.
   None,

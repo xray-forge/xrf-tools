@@ -3,14 +3,14 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_level::{LevelWallmark, LevelWallmarkSlot, LevelWallmarkVertex, LevelWallmarksFile};
 use xrf_math::Sphere;
 
-/// A level's baked decals, between the scene's `wallmark.part` and the compiled `level.wallmarks`, which the build
-/// writes through `ESceneWallmarkTool::Export` (`ESceneWallmarkTools.cpp:549`).
+/// A level's baked decals, between the scene's `wallmark.part` and `level.wallmarks`, which the build writes through
+/// `ESceneWallmarkTool::Export`.
 pub struct LevelWallmarkConversion;
 
 impl LevelWallmarkConversion {
-  /// The wall mark tool a `level.wallmarks` was exported from: a slot per stored slot, each decal with the sphere the
-  /// file keeps, the box `AddWallmark` gives its fan, no selection (as every decal GSC saved), and the size and turn of
-  /// the brush, a new tool's, since the file keeps neither.
+  /// The wall mark tool a `level.wallmarks` was exported from: each decal with the file's sphere, the box
+  /// `AddWallmark` gives its fan and no selection, as every decal GSC saved. The brush's size and turn are a new
+  /// tool's, since the file keeps neither.
   ///
   /// # Errors
   ///
@@ -67,9 +67,8 @@ impl LevelWallmarkConversion {
     Ok(EditableWallmarkTool { slots, ..tool })
   }
 
-  /// The `level.wallmarks` the build writes from the tool as the editor loaded it: a decal of more than
-  /// [`EditableWallmark::MAX_VERTICES`] dropped (`LoadStream`), then each slot left empty dropped (`RefiningSlots`),
-  /// and each decal's sphere and fan.
+  /// The `level.wallmarks` the build writes from the tool as the editor loaded it: decals of more than
+  /// [`EditableWallmark::MAX_VERTICES`] dropped (`LoadStream`), then empty slots (`RefiningSlots`).
   pub fn export(tool: &EditableWallmarkTool) -> LevelWallmarksFile {
     LevelWallmarksFile {
       slots: tool

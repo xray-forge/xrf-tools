@@ -14,8 +14,7 @@ use crate::level::parts::level_map_conversion::LevelMapConversion;
 use crate::level::trees::level_tree_impostor_atlas::LevelTreeImpostorAtlas;
 use crate::provenance::level_scene_refusal::LevelSceneRefusal;
 
-/// A scene exported for the level compiler: `build.prj`, the occluders and the map's settings written beside it, and
-/// what went into them.
+/// A scene exported for the level compiler: `build.prj` and the files the Build writes beside it.
 #[derive(Clone, Debug, PartialEq)]
 pub struct LevelBuildExport {
   pub project: BuildPrjFile,
@@ -23,7 +22,7 @@ pub struct LevelBuildExport {
   pub hom: Option<LevelHomFile>,
   /// `level.som`, where an object occludes sound.
   pub som: Option<LevelSomFile>,
-  /// `level.ltx` as the build writes it.
+  /// `level.ltx`.
   pub map: Vec<u8>,
   /// `build.details` and its atlas, where the scene holds details.
   pub details: Option<LevelBuildDetails>,
@@ -31,13 +30,12 @@ pub struct LevelBuildExport {
   pub ai_map: Option<BuildAimapFile>,
   /// `level_lods.dds` and `level_lods_nm.dds`, where a multi-use object has an impostor.
   pub impostors: Option<LevelBuildImpostorAtlas>,
-  /// Each breakable part's rigid skeleton, which [`Self::into_files`] writes as `meshes/brkbl#<n>.ogf`.
+  /// Each breakable part's rigid skeleton, written as `meshes/brkbl#<n>.ogf`.
   pub(crate) breakable_parts: Vec<LevelBuildBreakablePart>,
-  /// The entities the build cuts from the geometry, the breakables (`breakable_object`) and then the ladders
-  /// (`climable_object`), which `level.spawn` opens with: what
+  /// The breakables and then the ladders cut from the geometry, which open `level.spawn`: what
   /// [`LevelSceneExporter::export`](crate::parts::LevelSceneExporter::export) takes as built.
   pub entities: Vec<AlifeObject>,
-  /// The parts the build made no entity of, and why, as it reports them and goes on.
+  /// The parts the build made no entity of, and why; the build goes on without them.
   pub refused: Vec<LevelSceneRefusal>,
   pub census: LevelBuildCensus,
 }
@@ -56,10 +54,8 @@ impl LevelBuildExport {
     LevelTreeImpostorAtlas::NORMAL_FILE_NAME,
   ];
 
-  /// Each file by its path in the level's directory, written in `T`'s byte order: `build.prj` and `level.ltx` always,
-  /// `level.hom` and `level.som` where their occluders are, `build.details` and its atlas where the details are,
-  /// `build.aimap` where the AI map is, `level_lods.dds` and `level_lods_nm.dds` where the impostors are, and each
-  /// breakable part under `meshes`.
+  /// Each file by its path in the level's directory, in `T`'s byte order: `build.prj` and `level.ltx` always, each
+  /// optional file where it is present, and each breakable part under `meshes`.
   ///
   /// # Errors
   ///

@@ -5,10 +5,10 @@ use xrf_math::{Aabb, Sphere, Vector3d};
 
 use crate::level::build::level_build_visibility::LevelBuildVisibility;
 
-/// A scene's sectors as the Build numbers and tests them: each numbered in the order the scene lists it
-/// (`SceneBuilder::RenumerateSectors`, `BuilderCore.cpp:75`), the default sector the one marked so or else one past
-/// the last, each item's object and mesh looked up to its sector (`PortalUtils.FindSector`), and each sector's volume
-/// the box of its items' placed mesh boxes (`CSector::UpdateVolume`, `sector.cpp:211`).
+/// A scene's sectors as the Build numbers and tests them (`SceneBuilder::RenumerateSectors`), in the scene's order.
+///
+/// The default sector is the one marked so, else one past the last. Each sector's volume is the box of its items'
+/// placed mesh boxes (`CSector::UpdateVolume`).
 pub(crate) struct LevelBuildSectors {
   numbers: HashMap<String, u16>,
   /// Each item, object then mesh name, by the sector naming it first.
@@ -18,8 +18,7 @@ pub(crate) struct LevelBuildSectors {
 }
 
 impl LevelBuildSectors {
-  /// The sectors of `sectors`, each item's placed mesh box given by `place` (`None` where the item names no mesh the
-  /// library holds, which then adds nothing to the volume).
+  /// The sectors of `sectors`, `place` giving each item's placed mesh box, or `None` to add nothing to the volume.
   pub(crate) fn new(sectors: &[EditableSectorObject], place: impl Fn(&str, &str) -> Option<Aabb>) -> Self {
     let mut numbers: HashMap<String, u16> = HashMap::with_capacity(sectors.len());
     let mut items: HashMap<(String, String), u16> = HashMap::new();
@@ -60,12 +59,11 @@ impl LevelBuildSectors {
     }
   }
 
-  /// The number of the sector named `name`.
   pub(crate) fn get_number(&self, name: &str) -> Option<u16> {
     self.numbers.get(name).copied()
   }
 
-  /// The sector of a mesh of a placed object: the first naming it, else the default.
+  /// The sector of a placed object's mesh, `PortalUtils.FindSector`: the first naming it, else the default.
   pub(crate) fn find(&self, object: &str, mesh: &str) -> u16 {
     self
       .items
@@ -74,8 +72,8 @@ impl LevelBuildSectors {
       .unwrap_or(self.default)
   }
 
-  /// The sector a sphere lies in, `SceneBuilder::CalculateSector` (`BuilderRemote.cpp:456`): the first other than the
-  /// default it lies inside, partly or fully, else the default.
+  /// The sector a sphere lies in, `SceneBuilder::CalculateSector`: the first other than the default it lies inside,
+  /// partly or fully, else the default.
   pub(crate) fn calculate(&self, center: &Vector3d, radius: f32) -> u16 {
     (0..self.volumes.len())
       .filter_map(|index| u16::try_from(index).ok())
@@ -89,9 +87,9 @@ impl LevelBuildSectors {
       .unwrap_or(self.default)
   }
 
-  /// The sectors a dynamic light of range `radius` at `center` reaches, `SceneBuilder::BuildLight` (`:1106`): those it
-  /// lies inside, then those it reaches from outside, at most 16; the default alone for a scene of no sector, and none
-  /// where it reaches none, which the Build refuses.
+  /// The sectors a dynamic light of range `radius` at `center` reaches, as `SceneBuilder::BuildLight` finds them:
+  /// those it lies inside, then those it reaches from outside, at most 16. The default alone for a scene of no sector;
+  /// empty where it reaches none, which the Build refuses.
   pub(crate) fn get_light_sectors(&self, center: &Vector3d, radius: f32) -> Vec<u16> {
     if self.volumes.is_empty() {
       return vec![self.default];
@@ -113,7 +111,7 @@ impl LevelBuildSectors {
   /// `svector<u16, 16>`'s capacity.
   const LIGHT_SECTORS: usize = 16;
 
-  /// `CSector::Intersect(center, radius)` (`sector.cpp:258`).
+  /// `CSector::Intersect(center, radius)`.
   fn intersect(&self, number: u16, center: &Vector3d, radius: f32) -> LevelBuildVisibility {
     let Some(Some((volume, sphere))) = self.volumes.get(usize::from(number)) else {
       return LevelBuildVisibility::None;

@@ -8,10 +8,8 @@ use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 use crate::level::instance::level_library_object::LevelLibraryObject;
 use crate::level::instance::level_library_triangle::LevelLibraryTriangle;
 
-/// The objects of object libraries a decompile looks for in a level: every static object added with a surface that
-/// renders (not dynamic, an occluder or a sound occluder, which the Build does not merge into the geometry), the
-/// multi-use ones apart as the trees a level's tree models may be, and the textures their surfaces draw, each numbered
-/// once.
+/// The library objects a decompile looks for in a level: each added object the Build merges into the geometry with a
+/// surface that renders, multi-use ones kept apart as trees, and the textures they draw, each numbered once.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct LevelInstanceLibrary {
   /// The objects the Build merges into the static geometry, and the multi-use ones it builds once and references; each
@@ -27,8 +25,7 @@ impl LevelInstanceLibrary {
   const UNBUILT_FLAGS: u32 =
     EditableObjectFile::DYNAMIC_FLAG | EditableObjectFile::HOM_FLAG | EditableObjectFile::SOUND_OCCLUDER_FLAG;
 
-  /// Orders the objects and the trees as they are tried, once every object is added: the largest first, then by
-  /// reference.
+  /// Orders the objects and trees as they are tried, largest first, then by reference; call once all are added.
   pub fn sort(&mut self) {
     for objects in [&mut self.objects, &mut self.trees] {
       objects.sort_by(|left, right| {
@@ -45,9 +42,8 @@ impl LevelInstanceLibrary {
     self.textures.get(&texture.to_lowercase()).copied()
   }
 
-  /// Adds `object`, found at `path` and referenced as `reference`, where the Build builds it and it renders: to the
-  /// trees where it is multi-use, else to the objects. Each surface's compiler shader is looked up in
-  /// `compiler_shaders`, one it does not hold, or of none named, taken to draw and collide.
+  /// Adds `object` where the Build builds it and it renders: to the trees where it is multi-use, else to the objects.
+  /// A surface whose compiler shader `compiler_shaders` lacks, or with none given, is taken to draw and collide.
   pub fn add(
     &mut self,
     reference: String,
@@ -72,8 +68,8 @@ impl LevelInstanceLibrary {
     }
   }
 
-  /// `object` as the library would hold it, its textures numbered as the library numbers them and a surface of a
-  /// texture no library object draws left out: a decompiled model to look for library objects in.
+  /// A decompiled model as the library would hold it, to look for library objects in; surfaces of textures no library
+  /// object draws are left out.
   pub(crate) fn get_object(&self, reference: String, object: &EditableObjectFile) -> Option<LevelLibraryObject> {
     Self::read_object(reference, PathBuf::new(), object, None, &mut |texture| {
       self.get_texture(texture)

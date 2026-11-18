@@ -12,10 +12,9 @@ use crate::level::build::level_build_tables::LevelBuildTables;
 use crate::level::build::level_build_textures::LevelBuildTextures;
 use crate::level::trees::level_lod_strip::LevelLodStrip;
 
-/// The impostors a build draws its multi-use models as from afar (`SceneBuilder::BuildObjectLOD`,
-/// `BuilderLODs.cpp:54`): for each model flagged `eoUsingLOD`, eight quads standing through its box in its own space,
-/// drawn from its strips `lod\lod_<model>` and `_nm`, which the Build merges into the level's impostor atlas
-/// (`BuilderRemote.cpp:1516`).
+/// The impostors a build draws its multi-use models as from afar, `SceneBuilder::BuildObjectLOD`: for each model
+/// flagged `eoUsingLOD`, eight quads through its box, drawn from its strips `lod\lod_<model>` and `_nm`, which the
+/// Build merges into the level's impostor atlas.
 #[derive(Default)]
 pub(crate) struct LevelBuildImpostors {
   lods: Vec<BuildPrjLod>,
@@ -28,13 +27,13 @@ impl LevelBuildImpostors {
   pub(crate) const TEXTURE: &'static str = "level_lods";
   pub(crate) const SHADER: &'static str = "details\\lod";
 
-  /// Adds the impostor of `object`, the model of `reference`, in `sector`, its strips read under `textures`; its index,
-  /// which the model's `lod` names. Its material goes in first, before the model's own, as the Build adds it.
+  /// Adds the impostor of `object`, the model of `reference`, in `sector`, returning the index its model's `lod`
+  /// names. Its material goes in before the model's own, as the Build adds it.
   ///
   /// # Errors
   ///
-  /// Returns an error, as the Build stops, when a strip is missing, does not read or is not one of eight 64 by 64
-  /// frames, or the object holds no mesh to stand the quads in.
+  /// Returns an error, as the Build stops, when a strip is missing, does not read or is not eight 64 by 64 frames, or
+  /// the object holds no mesh.
   pub(crate) fn add(
     &mut self,
     reference: &str,
@@ -78,8 +77,8 @@ impl LevelBuildImpostors {
       .ok_or_else(|| XrfError::new_invalid_error("A build holds more impostors than its u16 indices number"))
   }
 
-  /// The project's `b_lod`s with their coordinates moved into the atlas of their strips, and the atlas as the Build
-  /// saves it; `None` where there is no impostor.
+  /// The project's `b_lod`s, their coordinates moved into the atlas of their strips, and that atlas encoded; `None`
+  /// where there is no impostor.
   ///
   /// # Errors
   ///
@@ -126,7 +125,7 @@ impl LevelBuildImpostors {
     )))
   }
 
-  /// The strip `name` under `textures`, a `.dds` of eight frames side by side, where the decompile writes it.
+  /// The strip `name`, a `.dds` of eight frames side by side.
   fn read_strip(textures: &LevelBuildTextures<'_>, name: &str) -> XrfResult<RgbaImage> {
     let image: RgbaImage = textures.read("Impostor strip", name)?;
 

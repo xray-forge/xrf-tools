@@ -37,14 +37,14 @@ use crate::ray::ray_scene::RayScene;
 use crate::shadow::shadow_materials::ShadowMaterials;
 use crate::shadow::shadow_materials_request::ShadowMaterialsRequest;
 
-/// The light baker, the light step's part of a level's compile: every vertex lit ([`LightHemisphere`],
-/// [`LightVertices`]), every multi-use model and placement ([`LightModels`]), the lightmapped faces cut into charts,
-/// each lit and compressed ([`LightChartLighter`]) and packed onto pages ([`LightmapAtlas`]), and each implicitly lit
-/// texture's map ([`ImplicitLighter`]), the lightmaps' and implicit maps' shadow rays traced by the request's backend.
+/// The light baker, the light step's part of a level's compile: the vertices ([`LightHemisphere`], [`LightVertices`]),
+/// multi-use models and placements ([`LightModels`]) lit; the lightmapped faces cut into charts, lit and compressed
+/// ([`LightChartLighter`]) and packed onto pages ([`LightmapAtlas`]); and each implicitly lit texture's map
+/// ([`ImplicitLighter`]).
 ///
-/// The vertex and model passes trace on the CPU through xrLC's own ray model ([`XrlcTracer`]), which loses the rays
-/// xrLC's tree loses, as their light is matched vertex for vertex. The lightmaps and implicit maps trace
-/// through [`BvhTracer`], which the GPU backend mirrors byte for byte; their light is matched in distribution.
+/// The vertex and model passes trace on the CPU through xrLC's own ray model ([`XrlcTracer`]), losing the rays xrLC
+/// loses, as they are matched vertex for vertex. The lightmaps and implicit maps trace through [`BvhTracer`] on the
+/// request's backend, which the GPU mirrors byte for byte; their light is matched in distribution.
 pub(crate) struct LightBaker;
 
 impl LightBaker {
@@ -52,9 +52,9 @@ impl LightBaker {
   ///
   /// # Errors
   ///
-  /// Returns an error where the shadow materials cannot be loaded, a multi-use model refuses its light, an implicitly
-  /// lit texture's image is missing or unreadable, the job is cancelled, and for the GPU backend where this build has
-  /// none, no GPU traces rays or the GPU fails; `Auto` lights on the CPU instead where the GPU does not start.
+  /// Returns an error when the shadow materials cannot be loaded, a multi-use model refuses its light, an implicitly
+  /// lit texture's image is missing or unreadable, the job is cancelled, or the GPU backend cannot trace or fails.
+  /// `Auto` falls back to the CPU where the GPU does not start.
   pub(crate) fn bake(request: &LightBakeInput<'_>) -> XrfResult<LightBaked> {
     let started: Instant = Instant::now();
     let LightBakeInput {
@@ -182,8 +182,8 @@ impl LightBaker {
     })
   }
 
-  /// Each texture lit implicitly, its faces those of `mesh` rendered with it (`hasImplicitLighting`), in the mesh's
-  /// order, its image read from the first of `roots` holding it, lit by `lighter` on `backend`.
+  /// Each implicitly lit texture's map (`hasImplicitLighting`), over the faces of `mesh` rendered with it, its image
+  /// read from the first of `roots` holding it.
   ///
   /// # Errors
   ///

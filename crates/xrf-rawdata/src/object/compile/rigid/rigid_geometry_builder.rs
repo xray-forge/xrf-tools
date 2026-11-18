@@ -11,17 +11,14 @@ use crate::object::compile::rigid::rigid_split::RigidSplit;
 
 /// Builds a static object's splits as `CExportObjectOGF::Prepare` does, its tangent pass included.
 ///
-/// Every mesh's faces are taken surface by surface in the object's surface order ([`MeshSurfaceFaces`]), and each
-/// surface packs into a split of its own, made in the order first needed (`FindSplit`, by surface rather than by
-/// texture and shader as the skeleton export splits), over a grid of [`VertexPacking::RIGID`]. A two-sided surface's
-/// face goes again mirrored, its normals turned around. Each split then goes through the tangent pass
-/// ([`TangentBasis`]), which splits and orders its vertices though the OGF keeps no tangents, and is cut where it
-/// outgrows one child ([`SplitPartition`]).
+/// Each surface packs into a split of its own (`FindSplit`, by surface where the skeleton export splits by texture and
+/// shader), in [`MeshSurfaceFaces`] order over a grid of [`VertexPacking::RIGID`], a two-sided face again mirrored. The
+/// tangent pass ([`TangentBasis`]) still splits and orders the vertices though the OGF keeps no tangents, and a split
+/// that outgrows one child is cut ([`SplitPartition`]).
 ///
-/// Two of the export's slips are not followed. It counts a two-sided surface's faces twice but down once per face, so
-/// walks them a second time and writes every face and its mirror again onto the same vertices; a face drawn twice
-/// draws nothing more, so each is written once. And it starts a new part where packing reaches 65,535 vertices,
-/// losing the face being packed; a split is packed whole here and cut after the tangent pass.
+/// Two export slips are not followed: its second walk of a two-sided surface writes every face and mirror again, here
+/// written once; and its new part at 65,535 vertices loses the face being packed, where here a split is cut after the
+/// tangent pass.
 pub(crate) struct RigidGeometryBuilder {
   splits: Vec<PendingSplit>,
   bounds: Aabb,

@@ -6,8 +6,8 @@ use crate::geometry::mesh::geometry_face::GeometryFace;
 use crate::geometry::mesh::geometry_mesh::GeometryMesh;
 
 impl GeometryMesh {
-  /// A multi-use model's geometry as `xrMU_Model::Load` reads it (`xrLC_Light/xrMU_Model_Load.cpp`): a vertex each of
-  /// the model's, none welded, and its faces in order with their smoothing flags.
+  /// A multi-use model's geometry as `xrMU_Model::Load` reads it: its vertices unwelded, and its faces in order with
+  /// their smoothing flags.
   ///
   /// # Errors
   ///

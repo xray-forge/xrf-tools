@@ -14,12 +14,9 @@ use crate::object::detail_parameters::DetailParameters;
 
 /// Builds a detail model (`.dm`) from an editable object as `EDetail::Update` and `EDetail::Export` do.
 ///
-/// The object holds one surface, whose engine shader and texture the model draws with, and the faces of its first mesh
-/// are taken in order, whatever surface they name. Each corner is its point and the texture coordinate its vertex map
-/// reference names first; it reuses the first vertex already added within `EPS_L` of it in position and coordinate,
-/// else is added, so vertices come in the order faces first reach them. A face two of whose corners became one vertex
-/// is dropped, and so is one on the vertices of a face already kept in any order, a mirrored copy among them. The
-/// object holds no flags or scale range, so `parameters` give them.
+/// The model draws with the one surface's shader and texture, over its first mesh's faces in order whatever surface
+/// they name. Corners within `EPS_L` in position and coordinate share a vertex, in first-use order. A face collapsed to
+/// fewer than three vertices is dropped, and so is one on a kept face's vertices in any order, a mirror among them.
 pub(crate) struct DetailModelBuilder {
   vertices: Vec<DetailVertex>,
   indices: Vec<u16>,
@@ -29,18 +26,16 @@ pub(crate) struct DetailModelBuilder {
 }
 
 impl DetailModelBuilder {
-  /// `EPS_L`: how close two corners stand, component by component, in position and texture coordinate, to be one
-  /// vertex (`EDetail::EVertexIn::similar`).
+  /// `EPS_L`: how close two corners stand, per component of position and coordinate, to be one vertex
+  /// (`EDetail::EVertexIn::similar`).
   const SIMILAR: f32 = 1e-3;
 
-  /// The detail model of `object` and `parameters`, written as `EDetail::Export` writes it, with what the export made
-  /// of the geometry.
+  /// The detail model of `object` and `parameters`, written as `EDetail::Export` writes it.
   ///
   /// # Errors
   ///
-  /// Returns an error where `EDetail::Update` refuses the object, of other than one surface or of no mesh, for a corner
-  /// whose reference's first entry is not a texture coordinate, past 65,535 vertices, which 16-bit indices do not
-  /// reach, and where the mesh does not hold together.
+  /// Returns an error for an object of other than one surface or of no mesh, a corner whose reference's first entry is
+  /// not a texture coordinate, more than 65,535 vertices, or a mesh that does not hold together.
   pub(crate) fn build<T: ByteOrder>(
     object: &EditableObjectFile,
     parameters: &DetailParameters,
@@ -60,8 +55,7 @@ impl DetailModelBuilder {
     })
   }
 
-  /// The detail model of `object` and `parameters` as [`Self::build`] writes it, and how many faces the export
-  /// dropped.
+  /// The model [`Self::build`] writes, and how many faces the export dropped.
   ///
   /// # Errors
   ///

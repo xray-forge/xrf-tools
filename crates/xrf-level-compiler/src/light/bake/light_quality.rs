@@ -57,8 +57,8 @@ impl LightQuality {
     }
   }
 
-  /// The samples a multi-use model's vertex takes: `LightModels::DRAFT_SAMPLES`, as xrLC lights them at its draft
-  /// quality, always at [`Self::Draft`] and where `build.prj`'s `params` ask for a draft; else `LightModels::SAMPLES`.
+  /// The samples a multi-use model's vertex takes: xrLC's draft count, `LightModels::DRAFT_SAMPLES`, at
+  /// [`Self::Draft`] or where `params` ask for a draft; else `LightModels::SAMPLES`.
   pub fn get_model_samples(self, params: &BuildPrjParams) -> u32 {
     if self == Self::Draft || params.is_draft() {
       LightModels::DRAFT_SAMPLES

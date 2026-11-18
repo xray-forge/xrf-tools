@@ -11,7 +11,6 @@ use crate::object::decompile::tests::fixtures::{
   BONES, DOWN, UP, assemble, bone, chain, corner, object, surface, with_links,
 };
 
-/// Compiles the object the decompiler builds from one surface of `triangles`, on `bones`.
 fn compile(
   triangles: Vec<[OgfCorner; 3]>,
   bones: Vec<xrf_editable_object::EditableBone>,
@@ -21,7 +20,7 @@ fn compile(
   ObjectCompiler::build_skeleton_geometry(&object)
 }
 
-/// A flat quad `a b c d`, its two faces sharing the edge `a c`.
+// Its two faces share the edge `a c`.
 const QUAD: [[f32; 3]; 4] = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 0.0, 1.0], [0.0, 0.0, 1.0]];
 
 #[test]

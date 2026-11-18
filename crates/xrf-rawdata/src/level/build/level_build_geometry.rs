@@ -11,9 +11,8 @@ use crate::level::build::level_build_tables::LevelBuildTables;
 use crate::level::parts::level_occluder_conversion::LevelOccluderConversion;
 use crate::object::compile::geometry::source::mesh_corners::MeshCorners;
 
-/// The static geometry a build hands xrLC: every vertex in world space, the faces over them and a smoothing group per
-/// face, as `SceneBuilder::BuildMesh` (`BuilderRemote.cpp:587`) gathers them from the static objects and
-/// `ESceneWallmarkTool::ExportStatic` (`ESceneWallmarkTools.cpp:954`) from the wall marks.
+/// The static geometry a build hands xrLC, in world space with a smoothing group per face: the static objects' as
+/// `SceneBuilder::BuildMesh` gathers it, and the wall marks' as `ESceneWallmarkTool::ExportStatic` does.
 #[derive(Default)]
 pub(crate) struct LevelBuildGeometry {
   pub(crate) vertices: Vec<Vector3d>,
@@ -21,13 +20,12 @@ pub(crate) struct LevelBuildGeometry {
   pub(crate) smoothing_groups: Vec<u32>,
   /// Faces of surfaces the build leaves out: occluders, breakables and ladders, which other exports take.
   pub(crate) skipped_faces: usize,
-  /// Faces of no area left out: the objects' faces, which the build drops (`"has %d invalid face(s). Removed."`), and
-  /// the wall marks' triangles, which it would hand xrLC to stop on.
+  /// Faces of no area left out: the objects', which the Build drops, and the wall marks', which xrLC would stop on.
   pub(crate) invalid_faces: usize,
 }
 
 impl LevelBuildGeometry {
-  /// The compiler shader of a wall mark's faces, `COMPILER_SHADER` (`ESceneWallmarkTools.cpp`).
+  /// The compiler shader of a wall mark's faces, the wall mark tool's `COMPILER_SHADER`.
   const WALLMARK_COMPILER_SHADER: &'static str = "def_shaders\\def_vertex_ghost_no_shadow";
 
   /// `D3DFVF_TEXCOUNT_MASK` and its shift, which say how many texture coordinate sets a surface's corners carry.
@@ -38,8 +36,8 @@ impl LevelBuildGeometry {
   ///
   /// # Errors
   ///
-  /// Returns an error, as the Build stops, for a surface of a game material the library lacks or of a dynamic one, of
-  /// other than one texture coordinate set, or naming no texture; or a mesh whose faces name points or maps it lacks.
+  /// Returns an error, as the Build stops, for a surface the object lacks, naming no texture, of a missing or dynamic
+  /// game material, or of other than one texture coordinate set; or a mesh whose faces name points or maps it lacks.
   pub(crate) fn add_object(
     &mut self,
     placed: &EditableSceneObject,
@@ -58,8 +56,8 @@ impl LevelBuildGeometry {
     )
   }
 
-  /// A multi-use model of `object` as `BuildMUObject` builds one for its first placement `placed`: its meshes in its
-  /// own space, every face in the sector of the placement's first mesh, which it returns.
+  /// A multi-use model of `object` as `BuildMUObject` builds it for its first placement `placed`: its meshes in its own
+  /// space, every face in the sector of the placement's first mesh, which it returns.
   ///
   /// # Errors
   ///
@@ -148,8 +146,8 @@ impl LevelBuildGeometry {
           continue;
         }
 
-        // Registered before the game material is looked at, so a breakable or climbable surface's material is in the
-        // tables though its faces are not, as `BuildMesh` (`BuilderRemote.cpp:631`) registers it.
+        // Registered before the game material is looked at, as `BuildMesh` does, so a breakable or climbable surface's
+        // material is in the tables though its faces are not.
         let material: u16 = tables.get_material(
           &surface.shader,
           Some(&surface.compiler_shader),
@@ -262,13 +260,11 @@ impl LevelBuildGeometry {
     Ok(())
   }
 
-  /// Adds every wall mark's triangles, each mark in the sector its bounds lie in, under the slot's shader and texture
-  /// and the wall marks' compiler shader. Each corner is a vertex of its own, as the tool writes them; the face's game
-  /// material and smoothing are what the editor leaves unset, here zero.
+  /// Adds every wall mark's triangles, each mark in the sector its bounds lie in, every corner a vertex of its own and
+  /// the game material and smoothing the editor leaves unset zero.
   ///
-  /// A triangle of no area is counted and left out, where the editor writes it: xrLC refuses such a face by the same
-  /// measure (`Face::Verify`, `xrLC_Light/xrFace.cpp:198`) and stops the build on seven of them. Vanilla `jupiter`'s
-  /// `level.wallmarks` holds seven, a few millimetres across; they stay in the wall marks the game draws.
+  /// A triangle of no area is counted and left out, where the editor writes it: xrLC refuses it (`Face::Verify`) and
+  /// stops the build on seven. Vanilla `jupiter`'s `level.wallmarks` holds seven, which stay in the game's wall marks.
   ///
   /// # Errors
   ///

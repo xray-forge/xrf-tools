@@ -8,9 +8,8 @@ use crate::ai::ai_vertex::AiVertex;
 impl AiMapCompiler {
   /// The map's nodes as xrAI loads them (`xrLoad`, `xrAI/compiler_load.cpp`), in `build.aimap`'s order.
   ///
-  /// Each cell goes through the packed form xrAI's save uses, over the map's box, and back, which is where its position
-  /// lands; the height is unpacked across the box. Each plane normal is decompressed and normalised again
-  /// (`Fplane::build`), as the save compresses it.
+  /// Each position goes through the save's packed form over the map's box and back, and each plane normal is
+  /// decompressed and normalised again (`Fplane::build`), so both land where xrAI's do.
   pub(crate) fn load(aimap: &BuildAimapFile) -> XrfResult<Vec<AiVertex>> {
     if aimap.version != BuildAimapFile::NARROW_LINKS_VERSION {
       return Err(XrfError::new_invalid_error(format!(

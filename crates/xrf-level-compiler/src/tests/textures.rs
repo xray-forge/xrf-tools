@@ -1,5 +1,3 @@
-//! How the compilers name and find the textures `build.prj` names.
-
 use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
@@ -19,8 +17,7 @@ fn names_a_texture_by_what_precedes_its_first_dot_lowered() -> XrfResult {
   Ok(())
 }
 
-/// A name from `build.prj` is data: one carrying a drive would discard the root on Windows, and an empty one would
-/// name the root itself.
+// A drive would discard the root on Windows, and an empty name would name the root itself.
 #[test]
 fn refuses_a_name_that_names_no_file_below_the_root() {
   for name in [

@@ -13,11 +13,10 @@ use crate::level::build::level_build_climbable_export::LevelBuildClimbableExport
 use crate::level::build::level_build_part_box::LevelBuildPartBox;
 use crate::level::build::level_build_parts::LevelBuildParts;
 
-/// The ladders a build cuts out of the geometry (`ESceneObjectTool::ExportClimableObjects`,
-/// `ESceneObjectToolsExportBreakable.cpp:236`): the parts of the static objects' faces of a climbable game material
-/// ([`LevelBuildParts`]), each a `climable_object` named `clmbl#<n>` standing at its box's centre (`ComputeOBB_RAPID`),
-/// turned so its thinnest axis faces the way its faces do (`OrientToNorm`), its shape the box, its game material its
-/// last face's.
+/// The ladders a build cuts out of the geometry, `ESceneObjectTool::ExportClimableObjects`.
+///
+/// Each part of climbable faces ([`LevelBuildParts`]) becomes a `climable_object` `clmbl#<n>` shaped as its box, turned
+/// so its thinnest axis faces the way its faces do (`OrientToNorm`), and of its last face's game material.
 pub(crate) struct LevelBuildClimbables {
   parts: LevelBuildParts,
 }
@@ -49,8 +48,8 @@ impl LevelBuildClimbables {
     self.parts.add_object(placed, object, game_materials)
   }
 
-  /// A ladder of each part, numbered by part; a part some face of which shares no edge with another, or whose
-  /// thinnest axis is not the one its faces face along, refused as the Build refuses it.
+  /// A ladder of each part, numbered by part. As the Build does, it refuses a part with a face sharing no edge with
+  /// another, or whose thinnest axis is not the one its faces face along.
   pub(crate) fn into_export(self) -> LevelBuildClimbableExport {
     let mut export: LevelBuildClimbableExport = LevelBuildClimbableExport {
       entities: Vec::new(),
@@ -147,9 +146,8 @@ impl LevelBuildClimbables {
     })
   }
 
-  /// `OrientToNorm` (`ESceneObjectToolsExportBreakable.cpp:214`): false unless the axis the faces' summed normal
-  /// `local` (in the box's frame) leans on most is the box's thinnest; where it leans the negative way, that axis and
-  /// the next are turned round, so the box stays right-handed.
+  /// `OrientToNorm`: false unless the axis the summed normal `local`, in the box's frame, leans on most is the box's
+  /// thinnest. Where it leans the negative way, that axis and the next are flipped, keeping the box right-handed.
   fn orient_to_normal(local: DVec3, fitted: &mut LevelBuildPartBox) -> bool {
     let (mut most, mut thinnest) = (0, 0);
 

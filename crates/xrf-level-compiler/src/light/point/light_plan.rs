@@ -12,10 +12,11 @@ use crate::light::source::light_sources::LightSources;
 use crate::ray::ray_group::RayGroup;
 use crate::ray::ray_lamp_mode::RayLampMode;
 
-/// What lighting a few points asks of the ray model, [`LightPoint`] split in two: the shadow rays described rather than
-/// made, and the light each lets through turned into each light's amount as `LightPoint` turns it. Planned and finished
-/// on the CPU; its rays made and traced by either backend, numbered in the order its groups list them: a light's rays
-/// one after another, a ray for each point it gives anything, in the points' order.
+/// [`LightPoint`] split in two for a few points: their shadow rays described rather than made, then what each lets
+/// through turned into each light's amount as `LightPoint` turns it. Planned and finished on the CPU, its rays made and
+/// traced by either backend.
+///
+/// Rays are numbered in group order: a light's rays together, one for each point it gives anything, in point order.
 #[derive(Clone, Debug)]
 pub(crate) struct LightPlan {
   pub(crate) light_point: LightPoint,

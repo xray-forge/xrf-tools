@@ -1,5 +1,3 @@
-//! A compile's AI step on a level directory: what it reads, writes, checks and refuses.
-
 use std::path::PathBuf;
 
 use xrf_chunk::XRayByteOrder;
@@ -23,7 +21,6 @@ use crate::{
   LevelCompiler, RayBackend,
 };
 
-/// The details step's level, with the AI tests' four-node map as `build.aimap`.
 fn level(name: &str, aimap: &BuildAimapFile) -> XrfResult<Fixture> {
   let fixture: Fixture = Fixture::new(file!(), name)?;
 
@@ -41,7 +38,6 @@ fn request(fixture: &Fixture, covers: AiMapCovers, is_forced: bool) -> LevelComp
   }
 }
 
-/// The run the compile reports for its one step.
 fn run(report: &LevelCompileReport) -> &LevelCompileStepRun {
   &report.steps[0].run
 }

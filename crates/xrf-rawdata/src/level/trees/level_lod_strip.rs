@@ -2,9 +2,8 @@ use xrf_dds::{DdsEncoding, DdsMipChain, DdsMipFilter, DdsMipmaps, ImageFormat, Q
 use xrf_error::XrfResult;
 use xrf_math::{Aabb, Vector2d, Vector3d};
 
-/// An object's impostor as the editor lays it out (`CEditableObject::GetLODFrame`, `ECore/Editor/EditObjectEditor.cpp`):
-/// eight views of it, each a quad standing through the middle of its box turned an eighth of a circle further, drawn
-/// from a strip of eight 64 by 64 frames side by side.
+/// An object's impostor as the editor lays it out (`CEditableObject::GetLODFrame`): eight quads through its box's
+/// middle, each turned an eighth of a circle further, drawn from a strip of eight 64 by 64 frames.
 pub(crate) struct LevelLodStrip;
 
 impl LevelLodStrip {
@@ -19,8 +18,7 @@ impl LevelLodStrip {
   /// What the normals' strip's name adds to the colours'.
   pub(crate) const NORMAL_SUFFIX: &'static str = "_nm";
 
-  /// `image`, a strip or an atlas of them, as the Build saves its impostor textures (`BuilderRemote.cpp:1544`): DXT5
-  /// with mips, advanced filtering.
+  /// `image`, a strip or an atlas of them, encoded as the Build saves impostor textures: DXT5 with filtered mips.
   ///
   /// # Errors
   ///
@@ -31,8 +29,8 @@ impl LevelLodStrip {
       .write_to_bytes()
   }
 
-  /// The texture the object of `reference` takes its strip from (`CEditableObject::GetLODTextureName`): `lod_` and its
-  /// reference, folders joined by `_`, in the `lod` folder `ImageLib.UpdateFileName` takes from its first word.
+  /// The texture the object of `reference` takes its strip from (`CEditableObject::GetLODTextureName`):
+  /// `lod\lod_<reference>`, folders joined by `_`.
   pub(crate) fn get_texture_name(reference: &str) -> String {
     format!("lod\\lod_{}", reference.replace('\\', "_"))
   }
@@ -53,8 +51,8 @@ impl LevelLodStrip {
     ]
   }
 
-  /// What the first frame's quad `corners`, in the object's own space, was stood from: the box's middle, its widest
-  /// half side across and its half height, read back from the quad's top left and bottom right corners.
+  /// The box the first frame's quad `corners` was stood from, read back from its top left and bottom right corners:
+  /// its middle, widest half side across, and half height.
   pub(crate) fn get_first_frame_extent(corners: &[Vector3d; 4]) -> (Vector3d, f32, f32) {
     let (offset_x, offset_y) = Self::get_corner_offsets();
     let (top_left, bottom_right) = (corners[0], corners[2]);
@@ -75,9 +73,8 @@ impl LevelLodStrip {
     (1.0 / Self::WIDTH as f32, 1.0 / Self::HEIGHT as f32)
   }
 
-  /// `frame`'s quad around an object of `bounds`, in the object's own space: the unit square `LOD_pos`, a pixel in from
-  /// each edge, turned about y by the frame's angle, stretched over the box's widest half side across and its half
-  /// height up, and moved to its middle.
+  /// `frame`'s quad around an object of `bounds`, in its own space: the square `LOD_pos`, a pixel in from each edge,
+  /// turned about y by the frame's angle and stretched over the box's widest half side and half height.
   pub(crate) fn get_frame_corners(frame: usize, bounds: &Aabb) -> [Vector3d; 4] {
     let (offset_x, offset_y) = Self::get_corner_offsets();
     let center: Vector3d = Vector3d::new(

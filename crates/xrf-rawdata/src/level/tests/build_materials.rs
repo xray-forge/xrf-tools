@@ -1,5 +1,3 @@
-//! A build of a scene placing objects needs the game materials its spawn list's ladders and breakables are cut by.
-
 use std::path::PathBuf;
 
 use xrf_chunk::XRayByteOrder;
@@ -23,8 +21,7 @@ fn scene_object(name: &str) -> EditableSceneObject {
   }
 }
 
-/// The ladders and breakables a build cuts out of placed objects by game material open the spawn list, so a scene
-/// placing objects is not built without the game materials, and nothing is written.
+// A build cuts ladders and breakables out of placed objects by game material.
 #[test]
 fn refuses_to_build_a_scene_placing_objects_without_the_game_materials() -> XrfResult {
   let root: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "no_materials"))?;

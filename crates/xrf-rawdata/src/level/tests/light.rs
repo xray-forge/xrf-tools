@@ -10,8 +10,7 @@ use crate::level::level_decompile_context::LevelDecompileContext;
 use crate::level::parts::level_light_conversion::LevelLightConversion;
 use crate::level::tests::fixtures::GUID;
 
-/// A static light as the level compiler stores one it was given: diffuse over its energy, the mean of its channels, and
-/// range times 1.1 (IX-Ray's `xrLC/Build_Load.cpp:241`).
+// As xrLC stores a light it was given: diffuse over its channels' mean, range times 1.1 (IX-Ray's `xrLC` build load).
 fn compiled_static(kind: u16, position: [f32; 3], diffuse: [f32; 3], range: f32) -> LevelLight {
   let energy: f32 = (diffuse[0] + diffuse[1] + diffuse[2]) / 3.0;
 

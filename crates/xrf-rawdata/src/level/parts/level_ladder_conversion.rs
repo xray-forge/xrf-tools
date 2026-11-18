@@ -10,29 +10,28 @@ use crate::level::parts::level_decompiled_ladder::LevelDecompiledLadder;
 use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
 
-/// A level's ladders folded back into the geometry they were built from. The Build leaves the faces of a
-/// climbable game material out of the level's geometry and exports each connected part as a `climable_object` whose
-/// box is the part's (`ESceneObjectTool::ExportClimableObjects`): its frame the box's axes, turned so its thinnest
-/// axis faces the way the faces did, its half sizes the box matrix's axes, and from packet version 127 the material.
-/// The authored faces are lost, so each ladder comes back as its box less the back face: the panel seen from the side
-/// it is climbed from, which the Build turns into the same box again, facing the same way. Only 106 of vanilla's 380
-/// ladders are flat, so a quad alone would lose the rest's thickness.
+/// A level's ladders folded back into the geometry they were built from.
+///
+/// The Build exports each climbable part as a `climable_object` of the part's box, its thinnest axis facing the way
+/// the faces did, with the game material from packet version 127 (`ESceneObjectTool::ExportClimableObjects`). The
+/// authored faces are lost, so a ladder comes back as its box less the back face, which the Build turns into the same
+/// box facing the same way. Only 106 of vanilla's 380 ladders are flat, so a quad alone would lose the rest's
+/// thickness.
 pub struct LevelLadderConversion;
 
 impl LevelLadderConversion {
-  /// How GSC dressed the ladders of its own scenes (`labx8.object`'s `prop_fake_ladder` surface): the Build reads only
-  /// the game material, which must be climbable.
+  /// How GSC dressed its own scenes' ladders (`labx8.object`); the Build reads only the game material.
   pub const TEXTURE: &'static str = "prop\\prop_fake_ladder";
   pub const ENGINE_SHADER: &'static str = "def_shaders\\def_trans_v";
   pub const COMPILER_SHADER: &'static str = "def_shaders\\def_kolizion_vertex";
 
-  /// The game material of a ladder whose packet keeps none (before version 127), every vanilla ladder's but those of
-  /// wood.
+  /// The game material of a ladder whose packet keeps none (before version 127): every vanilla ladder's but the
+  /// wooden ones.
   pub const DEFAULT_GAME_MATERIAL: &'static str = "materials\\fake_ladders";
 
-  /// The half thickness below which a box is flat, its front alone given back: a flat ladder's box keeps a few
-  /// micrometres the Build's `f32` fit leaves (vanilla's thinnest are 1.9 µm), and side faces that thin would give
-  /// normals too rough for `OrientToNorm` to find the front by.
+  /// The half thickness below which a box is flat and only its front comes back. The Build's `f32` fit leaves a flat
+  /// ladder a few micrometres (vanilla's thinnest 1.9 µm), and side faces that thin give normals too rough for
+  /// `OrientToNorm`.
   pub const FLAT_HALF_THICKNESS: f32 = 1e-4;
 
   /// The entity's ladder as `levels\<level>\<level>_ladder_<index>`, its pivot at the base of the box, or `None` for
@@ -86,8 +85,8 @@ impl LevelLadderConversion {
     }))
   }
 
-  /// The box's faces in its frame, its half sizes `half`, less the face behind its thinnest axis, each wound to face
-  /// out; its front alone where it is flat ([`Self::FLAT_HALF_THICKNESS`]).
+  /// The faces, wound outward, of the box of half sizes `half` less the face behind its thinnest axis; its front alone
+  /// where it is flat ([`Self::FLAT_HALF_THICKNESS`]).
   fn get_faces(half: &[f32; 3]) -> Vec<[Vector3d; 3]> {
     let thin: usize = Self::get_thin_axis(half);
     let corner = |signs: [f32; 3]| Vector3d::new(signs[0] * half[0], signs[1] * half[1], signs[2] * half[2]);
@@ -122,15 +121,15 @@ impl LevelLadderConversion {
     faces
   }
 
-  /// The axis the box is thinnest along, which the export turned to face the way the ladder's faces did.
+  /// The axis the box is thinnest along, which the export turned to face the way the faces did.
   fn get_thin_axis(half: &[f32; 3]) -> usize {
     (0..3)
       .min_by(|first, second| half[*first].total_cmp(&half[*second]))
       .unwrap_or(0)
   }
 
-  /// The middle of the box's lowest end, where its scene object stands: along whichever of its other axes rises most
-  /// in the level, at the end that lies lower.
+  /// The middle of the box's lower end, where its scene object stands, along whichever other axis rises most in the
+  /// level.
   fn get_base(half: &[f32; 3], frame: &Affine3d) -> Vector3d {
     let thin: usize = Self::get_thin_axis(half);
     let axes: [Vector3d; 3] = [Vector3d::X, Vector3d::Y, Vector3d::Z];

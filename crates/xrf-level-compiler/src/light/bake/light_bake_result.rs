@@ -5,9 +5,8 @@ use crate::light::lightmap::atlas::lightmap_images::LightmapImages;
 use crate::light::point::light_color::LightColor;
 use crate::light::vertex::light_models::LightModels;
 
-/// A level's baked light, the light step's part of its compile ([`crate::light::bake::light_baker::LightBaker`]):
-/// every vertex's, every multi-use model's and placement's, each face's place on the lightmap pages and the pages
-/// themselves, and each implicitly lit texture's map.
+/// A level's baked light ([`crate::light::bake::light_baker::LightBaker`]): the vertices', models' and placements',
+/// the lightmap pages and each face's place on them, and the implicitly lit textures' maps.
 pub(crate) struct LightBakeResult {
   /// Each split vertex's light.
   pub(crate) vertices: Vec<LightColor>,

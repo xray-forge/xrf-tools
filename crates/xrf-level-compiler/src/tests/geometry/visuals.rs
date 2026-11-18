@@ -15,7 +15,6 @@ use crate::input::compiler_shaders::CompilerShaders;
 use crate::light::point::light_color::LightColor;
 use crate::tests::geometry::geometry_mesh::project;
 
-/// A face of `material` over `vertices`, mapped across the texture.
 fn face(vertices: [u32; 3], material: u16) -> GeometryFace {
   GeometryFace {
     vertices,
@@ -31,7 +30,6 @@ fn face(vertices: [u32; 3], material: u16) -> GeometryFace {
   }
 }
 
-/// A mesh of `count` unit squares in a row along x, `spacing` metres apart, each two faces of `material`.
 fn row(count: u32, spacing: f32, material: u16) -> GeometryMesh {
   let mut vertices: Vec<Vector3d> = Vec::new();
   let mut faces: Vec<GeometryFace> = Vec::new();
@@ -57,7 +55,6 @@ fn row(count: u32, spacing: f32, material: u16) -> GeometryMesh {
   }
 }
 
-/// Compiler shaders for the geometry tests' project with materials 0 and 2 rendering and material 1 only colliding.
 fn shaders_rendering_material_zero() -> CompilerShaders {
   let shader = |name: &str, flags: u32| ShaderCompilerShader {
     name: String::from(name),
@@ -101,8 +98,8 @@ fn groups_rendered_faces_by_material_in_the_order_faces_first_name_it() {
 
 #[test]
 fn cuts_a_split_wider_than_the_limit_at_its_middle_and_keeps_halves_too_wide_to_join() {
-  // 80 squares side by side from x = 0 to 80: 160 faces over 80 m, cut once at 40 m into two of 80 faces, which hold
-  // too few faces to be cut again. Joined they would span 80 m, past four thirds of the limit and a metre past each.
+  // 160 faces over 80 m, cut once at 40 m into halves too few faces to cut again; joined they would span 80 m, past
+  // four thirds of the limit.
   let wide: GeometrySplits = GeometrySplits::of(&row(80, 1.0, 0), &shaders_rendering_material_zero());
 
   assert_eq!(wide.splits.len(), 2);

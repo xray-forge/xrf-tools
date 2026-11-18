@@ -14,7 +14,6 @@ use crate::geometry::visual::geometry_visuals::GeometryVisuals;
 use crate::light::point::light_color::LightColor;
 use crate::tests::geometry::geometry_mesh::project;
 
-/// A visual of one triangle at `x`, a metre a side, in `sector`.
 fn visual_at(x: f32, sector: u16) -> GeometryVisual {
   let mut visual: GeometryVisual = GeometryVisual::new(
     0,
@@ -80,8 +79,7 @@ fn builds_a_models_visuals_by_material_once_and_places_them_by_each_reference() 
   };
   let mut file: BuildPrjFile = project(&[[0.0; 3]], &[])?;
 
-  // A two-metre-high model of a floor face of material 2 and a wall face of material 0, the later one first by
-  // material.
+  // The wall, of material 0, comes later but sorts first by material.
   file.mu_models = vec![BuildPrjMuModel {
     name: String::from("bush"),
     vertices: vec![
@@ -140,8 +138,8 @@ fn builds_a_models_visuals_by_material_once_and_places_them_by_each_reference() 
   Ok(())
 }
 
-/// A model drawing nothing has no tree for a LOD to hold; a LOD made for it anyway would stop every later reference's
-/// LOD from reaching the hierarchy, and with it their trees.
+// A LOD made for a model drawing nothing would stop every later reference's LOD, and its trees, from reaching the
+// hierarchy.
 #[test]
 fn gives_no_lod_to_a_model_that_draws_nothing_and_keeps_the_lods_after_it() -> XrfResult {
   use xrf_level::{BuildPrjFace, BuildPrjLod, BuildPrjLodFace, BuildPrjMuModel, BuildPrjMuReference};

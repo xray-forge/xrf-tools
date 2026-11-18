@@ -4,7 +4,6 @@ use xrf_math::{Vector2d, Vector3d};
 
 use crate::object::compile::skeleton::mikktspace_basis::MikkTSpaceBasis;
 
-/// A vertex on the floor, facing up, at `position` and mapped at `uv`.
 fn vertex(position: [f32; 3], uv: [f32; 2]) -> MeshVertex {
   MeshVertex {
     position: Vector3d::from(position),

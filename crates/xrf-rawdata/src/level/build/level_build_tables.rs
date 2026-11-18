@@ -3,10 +3,11 @@ use xrf_level::{BuildPrjMaterial, BuildPrjName, BuildPrjShader, BuildPrjTexture}
 
 use crate::level::build::level_build_table_records::LevelBuildTableRecords;
 
-/// The material, shader and texture tables of a build, filled as the faces and glows name them
-/// (`SceneBuilder::BuildMaterial`, `BuildShader`, `BuildShaderXRLC`, `BuildTexture`, `BuilderRemote.cpp:1208`): each
-/// name kept once in the order first named, shaders compared exactly and textures without case, and a material once
-/// per texture, shaders and sector.
+/// The material, shader and texture tables of a build, filled as faces and glows name them
+/// (`SceneBuilder::BuildMaterial`, `BuildShader`, `BuildShaderXRLC`, `BuildTexture`).
+///
+/// Each name is kept once in the order first named, shaders compared exactly and textures without case; a material
+/// once per texture, shaders and sector.
 #[derive(Default)]
 pub(crate) struct LevelBuildTables {
   materials: Vec<BuildPrjMaterial>,
@@ -16,15 +17,14 @@ pub(crate) struct LevelBuildTables {
 }
 
 impl LevelBuildTables {
-  /// What a glow's material names for its compiler shader, which it has none of: `u16(-1)`.
+  /// The compiler shader index of a glow's material, which has none: `u16(-1)`.
   pub(crate) const NO_COMPILER_SHADER: u16 = u16::MAX;
 
-  /// The material of `texture` under the render shader `shader` and the compiler shader `compiler_shader` (none for a
-  /// glow) in `sector`, by its index.
+  /// The index of the material of `texture`, `shader`, `compiler_shader` (none for a glow) and `sector`.
   ///
   /// # Errors
   ///
-  /// Returns an error when a name is empty, as the editor refuses one, or a table outgrows its `u16` indices.
+  /// Returns an error when the texture name is empty, as the editor refuses one, or a table outgrows its `u16` indices.
   pub(crate) fn get_material(
     &mut self,
     shader: &str,
@@ -63,8 +63,8 @@ impl LevelBuildTables {
     }
   }
 
-  /// The tables as records, each name in a fresh `string128` buffer, and each texture's size, alpha and surface zero
-  /// as the editor leaves them for the compiler to read.
+  /// The tables as records, each name in a fresh `string128`, each texture's size, alpha and surface left zero for the
+  /// compiler to read, as the editor leaves them.
   ///
   /// # Errors
   ///
@@ -96,7 +96,7 @@ impl LevelBuildTables {
     })
   }
 
-  /// The index of `name` in `names`, added last where `same` matches none.
+  /// The index of `name` in `names`, appended where `same` matches none.
   fn intern(names: &mut Vec<String>, name: &str, same: fn(&str, &str) -> bool) -> XrfResult<u16> {
     match names.iter().position(|held| same(held, name)) {
       Some(index) => Self::get_index(index),

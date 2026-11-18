@@ -16,11 +16,12 @@ use crate::ray::ray_device::RayDevice;
 use crate::ray::ray_rules::RayRules;
 use crate::ray::ray_scene::RayScene;
 
-/// xrAI's covers (`xrCover`, `xrAI/compiler_cover.cpp`), its arithmetic in single precision in the same order:
-/// each node at a corner of the map traced against the ray model toward every node it reaches within 30 m, from a
-/// standing and a crouching height; every other node then given the covers of the corner nodes it walks straight to
-/// within 30 m, weighted by nearness. Unlike xrAI, every ray is a full query of the ray model, never a test of the face
-/// that last blocked a ray toward the same node first, so the covers are the same whatever the order and threads.
+/// xrAI's covers (`xrCover`, `xrAI/compiler_cover.cpp`), in single precision and the same order: each corner node
+/// traces rays toward every node it reaches within 30 m, from a standing and a crouching height; every other node mixes
+/// the covers of the corner nodes it walks straight to within 30 m, weighted by nearness.
+///
+/// Unlike xrAI, every ray is a full query, never first tested against the face that last blocked one, so the covers do
+/// not depend on order or threads.
 pub(crate) struct AiCoverPass;
 
 impl AiCoverPass {
@@ -30,8 +31,8 @@ impl AiCoverPass {
   /// What a job reports mixing under: the other nodes.
   pub(crate) const PROGRESS_OTHERS: &'static str = "other nodes";
 
-  /// The heights a corner node's rays leave from, `high_cover_height` and `low_cover_height`: a standing eye and a
-  /// crouching one, its high covers and its low ones.
+  /// The heights a corner node's rays leave from for its high and low covers, `high_cover_height` and
+  /// `low_cover_height`.
   pub(crate) const HEIGHTS: [f32; 2] = [1.5, 0.6];
 
   /// `cover_distance`, how far a node's covers look across the ground.
@@ -40,14 +41,13 @@ impl AiCoverPass {
   /// A cover summed over its four directions from which a node counts as open, `4 * .999f`.
   const OPEN: f32 = 4.0 * 0.999;
 
-  /// Computes every node's covers, the map's cells `cell_size` across, the corner nodes' rays traced as `rays` says;
-  /// answers the name of the GPU that traced, if one did.
+  /// Computes every node's covers, the map's cells `cell_size` across, tracing as `rays` says; returns the name of the
+  /// GPU that traced, if one did.
   ///
   /// # Errors
   ///
-  /// Returns [`XrfError::Cancelled`] when the job is cancelled, the covers then left unfinished; and, for the GPU
-  /// backend, an error when this build has none, no GPU traces rays, or the GPU fails; `Auto` traces on the CPU instead
-  /// when the GPU does not start, but fails with a GPU that fails once started.
+  /// Returns [`XrfError::Cancelled`] when the job is cancelled, leaving the covers unfinished, and an error when the
+  /// GPU backend cannot trace or fails. `Auto` falls back to the CPU only where the GPU does not start.
   pub(crate) fn compute(
     vertices: &mut [AiVertex],
     cell_size: f32,

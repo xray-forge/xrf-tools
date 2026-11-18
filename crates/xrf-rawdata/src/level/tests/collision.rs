@@ -15,9 +15,8 @@ fn face(vertices: [u32; 3]) -> LevelCformFace {
   }
 }
 
-/// A collision face no render triangle's centre lands on, but which lies under a render triangle on collision of its
-/// material, is covered by it: xrLC kept it whole where it split the render faces, so it is no collision-only geometry.
-/// A face of another material under it, a collision-only prop laid there, and a face under none stay uncovered.
+// xrLC keeps a collision face whole where it splits the render faces, so one under a render triangle of its material
+// is no collision-only geometry.
 #[test]
 fn covers_a_collision_face_lying_under_a_render_triangle_no_centre_reaches() -> XrfResult {
   let render: [Vector3d; 3] = [
@@ -84,8 +83,6 @@ fn covers_a_collision_face_lying_under_a_render_triangle_no_centre_reaches() -> 
   Ok(())
 }
 
-/// A collision face only a placed library object's collision-only triangle lies on comes back with the object, so it
-/// leaves the uncovered faces and is counted apart; a face a render triangle covers stays covered by it.
 #[test]
 fn covers_a_collision_face_a_placed_object_brings_itself() -> XrfResult {
   let render: [Vector3d; 3] = [

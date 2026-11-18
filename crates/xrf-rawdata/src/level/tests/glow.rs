@@ -7,7 +7,6 @@ use crate::level::level_decompile_context::LevelDecompileContext;
 use crate::level::parts::level_glow_conversion::LevelGlowConversion;
 use crate::level::tests::fixtures::GUID;
 
-/// A compiled level of these shader table rows and glows, and nothing else.
 fn level(shaders: &[&str], glows: Vec<LevelGlow>) -> LevelFile {
   LevelFile {
     header: LevelHeaderChunk {

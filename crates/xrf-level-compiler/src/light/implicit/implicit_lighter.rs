@@ -32,12 +32,12 @@ impl ImplicitLighter<'_> {
   /// The texels a side of a cell of the grid the faces are found by.
   const CELL: u32 = 8;
 
-  /// About how many points a band of the map is lit with at once, as many as the GPU lights charts in at a time: a
-  /// terrain map's points all at once would hold gigabytes.
+  /// About how many points a band of the map is lit with at once, as many as the GPU lights charts in at a time; a
+  /// whole terrain map's points would hold gigabytes.
   const BAND_POINTS: usize = 1 << 21;
 
-  /// The map of texture `name`, of the texels `base` holds, over `faces` (mesh faces of it, in the mesh's order), its
-  /// points lit on the CPU a row's worth at a time, each light first tested against the face that last stopped it.
+  /// The map of texture `name`, of the texels `base` holds, over its mesh faces `faces` in the mesh's order, lit on the
+  /// CPU a row's worth of points at a time, each light first tested against the face that last stopped it.
   ///
   /// # Errors
   ///
@@ -95,11 +95,11 @@ impl ImplicitLighter<'_> {
   }
 
   /// The map of texture `name`, of the texels `base` holds, over `faces`, its points lit by `light_points` a band of
-  /// rows at a time ([`Self::BAND_POINTS`]). A texel
-  /// sums the light of every face under each of its jitter samples (`ImplicitExecute::Execute`), a face lit at its
-  /// place there facing its corners' normals blended there and normalised, the face itself let through, and takes the
-  /// mean halved; the texels unlit are then filled ring by ring to the map's edges. Each texel's hemisphere becomes the
-  /// texture's alpha there, and the map holds its static light and sun.
+  /// rows at a time ([`Self::BAND_POINTS`]).
+  ///
+  /// A texel takes half the mean light of every face under each of its jitter samples (`ImplicitExecute::Execute`),
+  /// each facing its corners' normals blended there, the face itself let through. Unlit texels are then filled ring by
+  /// ring to the map's edges. Each texel's hemisphere becomes the texture's alpha; the map holds static light and sun.
   fn light_by(
     &self,
     name: String,
@@ -182,9 +182,9 @@ impl ImplicitLighter<'_> {
     })
   }
 
-  /// How many rows of a map `width` by `height` a band holds, at `samples` jitter samples a texel: as many as keep its
-  /// points near [`Self::BAND_POINTS`] where each sample falls on one face, as on terrain, and at least one. A texel's
-  /// samples never leave its row, so a band is lit whole on its own.
+  /// How many rows of a map `width` by `height` a band holds at `samples` jitter samples a texel: at least one, and as
+  /// many as keep its points near [`Self::BAND_POINTS`] where each sample falls on one face, as on terrain. A texel's
+  /// samples stay in its row, so a band lights on its own.
   fn get_band_rows(width: u32, height: u32, samples: usize) -> u32 {
     let row_points: usize = (width as usize * samples).max(1);
 

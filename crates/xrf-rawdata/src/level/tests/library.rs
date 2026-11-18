@@ -1,5 +1,3 @@
-//! The object library a decompile lists once for every step that looks in it.
-
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -15,7 +13,6 @@ use crate::level::level_object_library::LevelObjectLibrary;
 use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
 
-/// One triangle's object, written at `path`.
 fn write_object(path: &Path) -> XrfResult {
   let floor = [[
     Vector3d::new(0.0, 0.0, 0.0),
@@ -62,7 +59,6 @@ fn lists_each_roots_objects_in_name_order_through_their_folders() -> XrfResult {
   Ok(())
 }
 
-/// Which file failed and why reaches the scene's refusals, once however many steps read it.
 #[test]
 fn records_each_object_that_does_not_read_once_with_why() -> XrfResult {
   let root: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "unread"))?;
@@ -107,7 +103,7 @@ fn records_each_object_that_does_not_read_once_with_why() -> XrfResult {
   Ok(())
 }
 
-/// A junction or link back to a folder above it, as a hand-made mod layout can hold, would walk forever.
+// A hand-made mod layout can hold one, and following it would walk forever.
 #[test]
 fn records_a_link_back_to_a_folder_above_it_rather_than_following_it() -> XrfResult {
   let root: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "loop"))?;
@@ -128,7 +124,7 @@ fn records_a_link_back_to_a_folder_above_it_rather_than_following_it() -> XrfRes
   Ok(())
 }
 
-/// A junction left behind by a mod removed since is a file not used, not a library that cannot be read.
+// A junction a removed mod left behind.
 #[test]
 fn records_a_link_to_nothing_rather_than_failing() -> XrfResult {
   let root: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "dangling"))?;

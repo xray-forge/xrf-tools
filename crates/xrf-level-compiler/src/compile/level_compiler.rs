@@ -22,11 +22,10 @@ use crate::input::compiler_textures::CompilerTextures;
 use crate::light::bake::light_bake::LightBake;
 use crate::ray::ray_tracing::RayTracing;
 
-/// Compiles a level from the files `level build` wrote, step by step ([`LevelCompileStep`]): every step's inputs are
-/// checked before any runs, so a missing file stops the compile at once rather than an hour in; then each runs in order
-/// in this process, reported to a job and stopped when it is cancelled. The geometry step compiles the level's geometry
-/// (`GeometryLevel`), baking its light in the same pass where the light step runs, which reports the bake; the details
-/// step lights the details (`DetailLighter`) and the AI step compiles the AI map (`AiMapCompiler`).
+/// Compiles a level from the files `level build` wrote, step by step ([`LevelCompileStep`]), in this process.
+///
+/// Every step's inputs are checked before any runs, so a missing file stops the compile at once rather than an hour in.
+/// The geometry step bakes the light in its own pass where the light step runs; the light step only reports that bake.
 pub struct LevelCompiler;
 
 impl LevelCompiler {
@@ -38,21 +37,18 @@ impl LevelCompiler {
   /// # Errors
   ///
   /// Returns an error before any step runs when the light step is asked for without the geometry step, the level's
-  /// directory has no name, a step's input or the compiler shader library is missing, a texture `build.prj` names has
-  /// no `.thm` under the textures roots where a step reads them, or the request is not forced and the level's
-  /// directory holds a file a step writes; and while running when a step fails or the job is cancelled.
+  /// directory has no name, a step's input or `shaders_xrlc.xr` is missing, a texture lacks its `.thm` where a step
+  /// reads textures, or an unforced request would overwrite a file; later, when a step fails or the job is cancelled.
   pub fn compile(request: &LevelCompileRequest, job: &JobHandle) -> XrfResult<LevelCompileReport> {
     let steps: Vec<LevelCompileStep> = Self::get_steps(&request.steps);
 
     Self::check_files(request, &steps, &[])?;
     Self::check_textures_and_outputs(request, &steps)?;
 
-    // The geometry step bakes the light in its own pass where the light step runs.
     let light: Option<RayTracing<'_>> = steps.contains(&LevelCompileStep::Light).then(|| request.get_tracing());
 
     let scope: JobScope = job.enter(Self::PROGRESS_STEPS, Some(steps.len() as u64));
     let mut reports: Vec<LevelCompileStepReport> = Vec::with_capacity(steps.len());
-    // The light the geometry step baked, which the light step reports.
     let mut baked: Option<LightBake> = None;
 
     for step in &steps {
@@ -109,9 +105,8 @@ impl LevelCompiler {
     })
   }
 
-  /// What [`Self::compile`] can refuse before a run that writes `built` into the level's directory first, as a build
-  /// does before the compile in one job: every check but the textures', which read the `build.prj` the run writes,
-  /// each of `built` taken as there.
+  /// The checks of [`Self::compile`] for a job that writes `built` into the level's directory first, as a build before
+  /// its compile does: each of `built` taken as there, and the textures unchecked since `build.prj` is not yet written.
   ///
   /// # Errors
   ///
@@ -131,7 +126,7 @@ impl LevelCompiler {
       .collect()
   }
 
-  /// Whether `level` ends in a level directory's name, which the level is known by.
+  /// Whether `level` ends in a directory name, which the level is known by.
   fn check_level_name(level: &Path) -> XrfResult {
     level
       .file_name()
@@ -141,9 +136,8 @@ impl LevelCompiler {
       .ok_or_else(|| XrfError::new_invalid_error(format!("{} names no level directory", format_path(level))))
   }
 
-  /// Whether `steps` run together (the light only with the geometry), the level's directory is named, every file they
-  /// read is there, those `given` or an earlier step of the same compile writes left aside, and the game data holds the
-  /// compiler shader library where a step reads it.
+  /// Whether `steps` can run together, the level's directory is named, every input is there (those `given` or written
+  /// by an earlier step aside), and the game data holds `shaders_xrlc.xr` where a step reads it.
   fn check_files(request: &LevelCompileRequest, steps: &[LevelCompileStep], given: &[&str]) -> XrfResult {
     if let Some(step) = steps.iter().find(|step| {
       step
@@ -187,8 +181,8 @@ impl LevelCompiler {
     }
   }
 
-  /// Whether every texture `build.prj` names has its `.thm` where a step reads them, as each of the compilers loads and
-  /// asserts on (`xrAI/compiler_load.cpp` for one); and, unforced, no file a step writes is already there.
+  /// Whether every `build.prj` texture has the `.thm` the compilers assert on, where a step reads textures; and,
+  /// unforced, no file a step writes is already there.
   fn check_textures_and_outputs(request: &LevelCompileRequest, steps: &[LevelCompileStep]) -> XrfResult {
     let mut implicit: Vec<String> = Vec::new();
 
@@ -212,7 +206,7 @@ impl LevelCompiler {
     Self::get_outputs(request, steps, &implicit).assert_free(request.is_forced)
   }
 
-  /// Whether every texture `project` names names a file below the roots and has its `.thm` under one of them.
+  /// Whether every texture of `project` names a file below the roots and has its `.thm` under one of them.
   fn check_textures(project: &BuildPrjFile, roots: &[PathBuf]) -> XrfResult {
     let mut missing: Vec<String> = Vec::new();
 
@@ -234,8 +228,7 @@ impl LevelCompiler {
     }
   }
 
-  /// The files `steps` write in the level's directory: the geometry step's own and every lightmap page, the maps of
-  /// the `implicit` textures where the light step runs, and the details' and the AI map.
+  /// The files `steps` write in the level's directory, the `implicit` textures' maps among them.
   pub(crate) fn get_outputs(
     request: &LevelCompileRequest,
     steps: &[LevelCompileStep],
@@ -267,8 +260,7 @@ impl LevelCompiler {
     outputs
   }
 
-  /// Whether the game data holds the compiler shader library ([`LevelCompileStep::is_reading_library`]), `step` naming
-  /// the first step reading it in a message.
+  /// Whether the game data holds `shaders_xrlc.xr`, `step` being the one the error names.
   fn check_library(request: &LevelCompileRequest, step: LevelCompileStep) -> XrfResult {
     let library: PathBuf = request.gamedata.join(ShaderCompilerFile::FILE_NAME);
 

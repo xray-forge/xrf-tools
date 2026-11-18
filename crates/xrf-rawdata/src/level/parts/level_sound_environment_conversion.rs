@@ -11,10 +11,9 @@ use crate::level::level_decompile_context::LevelDecompileContext;
 
 /// A level's reverb volumes, between the scene's `sound_env.part` and the compiled `level.snd_env`.
 ///
-/// The CoP SDK's Build writes no `level.snd_env`: its exporter, `CLevelSoundManager::MakeEnvGeometry`, is commented
-/// out (`SoundManager_LE.cpp:51`, `BuilderGame.cpp:72`), and IX-Ray's editor runs the same code. This ports it, and
-/// every shipped file is laid out as it writes: per exported volume, its box's 8 corners and 12 faces naming the
-/// volume's outer environment in front and its inner one behind.
+/// The CoP SDK's Build, like IX-Ray's editor, writes no `level.snd_env`: its exporter,
+/// `CLevelSoundManager::MakeEnvGeometry`, is commented out. This ports it, and every shipped file is laid out as it
+/// writes: per exported volume, its box's 8 corners and 12 faces, the outer environment in front and the inner behind.
 pub struct LevelSoundEnvironmentConversion;
 
 impl LevelSoundEnvironmentConversion {
@@ -40,11 +39,11 @@ impl LevelSoundEnvironmentConversion {
     [1, 6, 2],
   ];
 
-  /// The sound environment part a `level.snd_env` was exported from, a volume per box named as the editor names a new
-  /// one. A box comes back as the editor's own volume, its unit box placed by the object's transform, when that
-  /// transform saved as text composes into the same corners; otherwise, as for a box sheared by a scaled turn, the
-  /// object stands at the origin and the box's own matrix holds it, chosen so its saved text gives the same corners.
-  /// The mesh header's bounds are not kept: the export computes them, over volumes it skips too.
+  /// The sound environment part a `level.snd_env` was exported from, a volume per box.
+  ///
+  /// A box comes back as a unit box placed by the object's transform where that transform, saved as text, gives the
+  /// same corners. Otherwise, as for a box sheared by a scaled turn, the object stands at the origin and the box's own
+  /// matrix, chosen to save exactly, holds it. The header's bounds are dropped, as the export recomputes them.
   ///
   /// # Errors
   ///
@@ -113,10 +112,9 @@ impl LevelSoundEnvironmentConversion {
     Ok(EditableObjectPart::new(context.guid, objects))
   }
 
-  /// The `level.snd_env` the export writes from the part, `MakeEnvGeometry`: the environments in the order volumes
-  /// first name them, inner before outer; each exported volume's box corners, merged with an earlier one within `EPS`
-  /// as `CDB::Collector::VPack` does, and faces; and bounds over every volume, exported or not. None when no volume is
-  /// exported, for which it writes no file.
+  /// The `level.snd_env` `MakeEnvGeometry` writes from the part: environments in the order volumes first name them,
+  /// inner before outer, corners merged within `EPS` (`CDB::Collector::VPack`), and bounds over every volume,
+  /// exported or not. None when no volume is exported, as it then writes no file.
   ///
   /// # Errors
   ///
@@ -240,8 +238,8 @@ impl LevelSoundEnvironmentConversion {
     )
   }
 
-  /// The saved values of the four rows' `axis` components that give every corner's `axis` exactly, as
-  /// `Fmatrix::transform_tiny` sums them.
+  /// Saved values of the four rows' `axis` components that give every corner's `axis` exactly under
+  /// `Fmatrix::transform_tiny`.
   fn find_axis(rows: &[Vector3d; 4], corners: &[Vector3d; 8], axis: usize) -> Option<[f32; 4]> {
     let candidates: [[f32; 5]; 4] = rows.map(|row| EditableLevelValue::get_saved_neighbours(row.to_array()[axis]));
     let fits = |[i, j, k, c]: [f32; 4]| {

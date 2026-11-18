@@ -1,5 +1,3 @@
-//! A compile's details step on a level directory: what it reads, writes and refuses.
-
 use std::path::{Path, PathBuf};
 
 use glam::Vec3;
@@ -21,17 +19,15 @@ use crate::{
   RayBackend,
 };
 
-/// Game data holding a compiler shader library of one shadow-casting shader, a textures root with one opaque
-/// texture's `.thm`, and `levels/test_level` holding what the details step reads: the lighter tests' grid, ground,
-/// roof and lights, every face of the one material.
+// Game data of one shadow-casting compiler shader and one opaque texture, its level the detail lighter tests' grid,
+// ground, roof and lights.
 pub(crate) struct Fixture {
   pub(crate) gamedata: PathBuf,
   pub(crate) level: PathBuf,
 }
 
 impl Fixture {
-  /// The fixture of test `name` in `test_file`, the caller's `file!()`: its directory is named after both, so tests of
-  /// two files sharing a name never share a directory when the suite runs in parallel.
+  // `test_file` is the caller's `file!()`, so same-named tests of two files never share a directory.
   pub(crate) fn new(test_file: &str, name: &str) -> XrfResult<Self> {
     let gamedata: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(test_file, name))?;
     let level: PathBuf = gamedata.join("levels").join("test_level");
@@ -81,7 +77,6 @@ impl Fixture {
     self.request_steps(&[LevelCompileStep::Details], is_forced)
   }
 
-  /// The compile of `steps` on the level, on the CPU.
   pub(crate) fn request_steps(&self, steps: &[LevelCompileStep], is_forced: bool) -> LevelCompileRequest {
     LevelCompileRequest {
       level: self.level.clone(),
@@ -135,7 +130,6 @@ impl Fixture {
     }
   }
 
-  /// One material, the opaque texture under the shadow-casting compiler shader.
   fn project() -> XrfResult<BuildPrjFile> {
     Ok(BuildPrjFile {
       version: BuildPrjFile::CURRENT_VERSION,

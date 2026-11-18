@@ -1,5 +1,3 @@
-//! The light baked into vertices: storage, the sky term, and the trees' fit.
-
 use glam::Vec3;
 use xrf_geometry::{Triangle, XrlcTracer};
 use xrf_math::{Aabb, Vector2d, Vector3d};
@@ -12,7 +10,6 @@ use crate::light::vertex::light_hemisphere::LightHemisphere;
 use crate::light::vertex::light_models::LightModels;
 use crate::shadow::shadow_materials::ShadowMaterials;
 
-/// A sky light from straight above.
 fn sky(energy: f32) -> LightSource {
   LightSource {
     is_directional: true,
@@ -28,7 +25,6 @@ fn sky(energy: f32) -> LightSource {
   }
 }
 
-/// A flat square facing up, two faces over four corners.
 fn square() -> GeometryMesh {
   let face = |vertices: [u32; 3]| GeometryFace {
     vertices,

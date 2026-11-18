@@ -7,12 +7,9 @@ use crate::object::decompile::geometry::source::bone_influences::BoneInfluences;
 use crate::object::decompile::geometry::source::ogf_surface::OgfSurface;
 use crate::object::decompile::geometry::welded_face::WeldedFace;
 
-/// The exported triangles of every surface welded back into one mesh: a point for each distinct position and set of
-/// bones with their weights, in the order the triangles first reach them, and the triangles indexing them.
-///
-/// Weights tell points apart as well as bones do: a point's weights are its own, and the export's `VPack` moves a
-/// vertex onto a neighbour within a millimetre, so two source points can come back at one position, following the same
-/// bones with different weights. Welded, one of them would take the other's weights.
+/// The exported triangles of every surface welded back into one mesh: a point for each distinct position, bones and
+/// weights, in first-use order. Weights count because `VPack` moves a vertex onto a neighbour within a millimetre, so
+/// two source points can share a position and bones with different weights.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct WeldedMesh {
   pub(crate) points: Vec<Vector3d>,

@@ -23,9 +23,8 @@ export type LevelBuildCensus = {
   /** Multi-use models and the placements referencing them. */
   multiUseModels: number;
   multiUseReferences: number;
-  /** Impostors of those models, whose strips the atlas merges. */
+  /** Multi-use models drawn from afar as impostors. */
   impostors: number;
-  /** AI map nodes the map holds. */
   aiMapNodes: number;
   /** Detail objects the slots plant, and the textures their atlas merges. */
   detailObjects: number;
@@ -38,11 +37,11 @@ export type LevelBuildCensus = {
 
 /** How large a build lets the impostor atlas, `level_lods.dds` and `_nm`, grow. */
 export enum ELevelBuildImpostorLimit {
-  /** SDK 0.7's, 2048 a side, 128 strips of 512 by 64; a level of more is refused, as that Level Editor refuses it. */
+  /** SDK 0.7's, 2048 a side or 128 strips of 512 by 64; a level of more is refused, as that Level Editor refuses it. */
   SDK = "sdk",
   /**
-   * 4096 a side, 512 strips, as the editors Anomaly's and GAMMA's largest levels were built with grew it: their
-   * `jupiter` and `pripyat` ship a 4096 by 2048 atlas of 130 to 153 strips.
+   * 4096 a side or 512 strips, as Anomaly's and GAMMA's editors grew it: their `jupiter` and `pripyat` ship a 4096 by
+   * 2048 atlas of 130 to 153 strips.
    */
   EXTENDED = "extended",
 }
@@ -50,27 +49,23 @@ export enum ELevelBuildImpostorLimit {
 /** Every `ELevelBuildImpostorLimit` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type LevelBuildImpostorLimit = `${ELevelBuildImpostorLimit}`;
 
-/**
- * What a build into a level directory wrote ([`crate::LevelBuildExporter::build_to_directory`]), as the front-ends
- * report it.
- */
+/** What [`crate::LevelBuildExporter::build_to_directory`] wrote, for the front-ends to report. */
 export type LevelBuildReport = {
   source: string;
   destination: string;
   /** Each file written, its size and what it replaced. */
   files: Array<LevelExportedFile>;
-  /** The files of the build's own an earlier build wrote and this one does not, removed, by path in the directory. */
+  /** Files an earlier build wrote that this one did not, removed, by path in the directory. */
   removed: Array<string>;
   /** What `build.prj` took from the scene, where the build wrote one. */
   geometry: LevelBuildCensus | null;
-  /** The parts the build made nothing of, and why, as it reports them and goes on. */
+  /** The parts the build made nothing of, and why. */
   refused: Array<LevelSceneRefusal>;
 };
 
 /**
- * A scene's build into a level directory, as a front-end asks for it: the game files always, and the level compiler's
- * files (`build.prj`, the occluders, `level.ltx`, details, AI map, impostors, breakables) where the game material
- * library is named, the objects read from the objects roots ([`Self::get_objects_roots`]).
+ * A front-end's request to build a scene into a level directory: the game files always, and the level compiler's
+ * files where the game material library is named.
  */
 export type LevelBuildRequest = {
   /** The scene's main file, `<name>.level`, its parts in the directory beside it named after it. */
@@ -78,22 +73,21 @@ export type LevelBuildRequest = {
   /** The level directory the files are written into. */
   destination: string;
   /**
-   * The objects roots (`$objects$`) the scene's objects are read from, each from the first holding it; none for
-   * `<rawdata>/objects` beside the scene, where a decompile writes them.
+   * The objects roots (`$objects$`), each object read from the first holding it; empty for the default
+   * ([`Self::get_objects_roots`]).
    */
   objects: Array<string>;
   /** The game material library, `gamemtl.xr`; the level compiler's files are written only where it is named. */
   gameMaterials: string | null;
   /**
-   * The textures root (`$game_textures$`) the details' textures and the impostors' strips are read from; none for
-   * where a decompile writes them ([`Self::get_textures_root`]).
+   * The textures root (`$game_textures$`) of the details' textures and the impostors' strips; none for the default
+   * ([`Self::get_textures_root`]).
    */
   textures: string | null;
-  /** How large the impostor atlas may grow. */
   impostorLimit: LevelBuildImpostorLimit;
   /**
-   * Whether the build replaces what it writes where the directory holds it, and removes the files of its own an
-   * earlier build wrote that this one does not; unforced, it refuses before reading the scene.
+   * Whether the build replaces files the directory holds and removes its own stale ones; unforced, it refuses a
+   * directory holding a file it owns before reading the scene.
    */
   isForced: boolean;
 };
@@ -141,9 +135,8 @@ export type LevelDecompileReportTool = {
 };
 
 /**
- * A level's decompile into a scene on disk, as a front-end asks for it: the paths, and the options it may leave to
- * their defaults, which [`Self::get_options`] and [`Self::get_objects_root`] resolve as the SDK lays a level and its
- * rawdata out.
+ * A front-end's request to decompile a level into a scene on disk; [`Self::get_options`] and the root getters resolve
+ * the defaults as the SDK lays out a level and its rawdata.
  */
 export type LevelDecompileRequest = {
   /** The compiled level's directory, `<gamedata>/levels/<level>`. */
@@ -167,9 +160,8 @@ export type LevelDecompileRequest = {
   /** Object library roots whose surfaces break ties between compiler shaders, such as an SDK's `rawdata/objects`. */
   libraries: Array<string>;
   /**
-   * Whether an existing scene, its objects and textures are overwritten rather than refused, and the parts and objects
-   * of the level's own an earlier decompile wrote that this one does not are removed; unforced, the scene and the
-   * level's objects already there are refused before the level is read.
+   * Whether existing files are overwritten and an earlier decompile's stale parts and objects removed. Unforced, an
+   * existing scene or level object is refused before the level is read.
    */
   isForced: boolean;
 };
@@ -251,11 +243,14 @@ export type LevelGeometryCensus = {
   impostors: number;
   /** Tree models given their impostor strips back, cut from the level's atlas; a library tree's named for it. */
   treeImpostors?: number;
-  /** Static triangles dropped as copies of wall marks ([`LevelDecalIndex`](crate::parts::LevelDecalIndex)), counted in the static triangles read. */
+  /**
+   * Static triangles dropped as copies of wall marks ([`LevelDecalIndex`](crate::parts::LevelDecalIndex)), counted
+   * in the static triangles read.
+   */
   decalTriangles: number;
   /**
-   * Static and collision-only triangles dropped as needles, so thin that xrLC measures no area in them and stops, the
-   * static ones counted in the static triangles read.
+   * Static and collision-only triangles dropped as needles, which xrLC stops on; the static ones are counted in the
+   * static triangles read.
    */
   needleTriangles?: number;
   /** Sectors drawing no static geometry, such as one of trees alone, which no shell stands for. */
@@ -326,15 +321,13 @@ export enum ELevelSceneInference {
    */
   ENTITY_SHAPES = "entityShapes",
   /**
-   * The static geometry comes back as one object per compiled sector, named after it, its points in the level's space
-   * and placed at the origin; sectors take a new sector's colour, and sectors and portals are named as the editor
-   * names new ones. The compiled level merged the authored objects into each sector.
+   * The static geometry, which the compiled level merged per sector, comes back as one object per sector, named after
+   * it and placed at the origin; sectors take a new sector's colour, and sectors and portals the editor's new names.
    */
   SECTOR_SHELLS = "sectorShells",
   /**
-   * Each static surface's game material is the collision face's its triangles lie on, a surface split where they lie
-   * on different ones or none; its compiler shader is one of `shaders_xrlc.xr` fitting what the level shows
-   * (collision, vertex lighting), chosen as the sidecar's `geometry.surfaces` records.
+   * Each static surface takes the game material of the collision faces under it, split where those differ, and a
+   * `shaders_xrlc.xr` compiler shader fitting what the level shows, as the sidecar's `geometry.surfaces` records.
    */
   SURFACE_DRESS = "surfaceDress",
   /**
@@ -350,41 +343,36 @@ export enum ELevelSceneInference {
    */
   OCCLUDERS = "occluders",
   /**
-   * Each ladder the spawn list keeps (`climable_object`) comes back as an object, `<level>_ladder_<N>`, of its box
-   * less the back face (its front alone where the box is flat), standing at the middle of the box's lowest end and
-   * dressed as GSC dressed its ladders (`prop\prop_fake_ladder`, `def_shaders\def_trans_v`,
-   * `def_shaders\def_kolizion_vertex`), of `materials\fake_ladders` where the packet keeps no game material; its
-   * packet is no spawn point, since the Build exports it again. The authored faces are lost.
+   * Each ladder (`climable_object`) comes back as an object, `<level>_ladder_<N>`, of its box less the back face,
+   * standing at the middle of its lowest end and dressed as GSC's ladders (`prop\prop_fake_ladder`,
+   * `def_shaders\def_trans_v`, `def_shaders\def_kolizion_vertex`, `materials\fake_ladders` where the packet keeps no
+   * game material). Its packet is no spawn point, since the Build exports it again; the authored faces are lost.
    */
   LADDERS = "ladders",
   /**
-   * Each breakable part the Build wrote (`meshes\brkbl#<N>.ogf`) comes back as a static object,
-   * `<level>_breakable_<N>`, standing where its `breakable_object` placed it: its fragments' bones dropped, each surface
-   * of the game material of the fragments its faces follow, its compiler shader the editor's default. Its packet is no
-   * spawn point, since the Build exports it again, cut into new fragments at random.
+   * Each breakable part (`meshes\brkbl#<N>.ogf`) comes back as a static object, `<level>_breakable_<N>`, where its
+   * `breakable_object` placed it, its fragments' bones dropped and each surface of its fragments' game material. Its
+   * packet is no spawn point, since the Build exports it again, cut into new random fragments.
    */
   BREAKABLE_PARTS = "breakableParts",
   /**
-   * Library objects found placed in the static geometry come back as scene objects placing them by reference, at the
-   * transform that best takes their rendered triangles onto the level's (one scale on every axis), their triangles
-   * taken out of the shells; each object is copied from its library with its thumbnail beside the scene's objects, as
-   * the sidecar's `geometry.instances` records. Where two library objects draw the same geometry, the larger,
-   * then the one whose reference sorts first, stands for both.
+   * Library objects found in the static geometry come back as scene objects referencing them at their best-fitting
+   * transform (one scale on every axis), their triangles taken out of the shells, each copied beside the scene's
+   * objects as the sidecar's `geometry.instances` records. Of two drawing the same geometry, the larger stands for
+   * both, then the one whose reference sorts first.
    */
   LIBRARY_INSTANCES = "libraryInstances",
   /**
-   * Trees come back as multi-use objects, `<level>_tree_<N>`, one per set of subdivisions the compiled tree visuals
-   * draw, each in its own space and dressed as its first placement lies on the collision form, with a scene object per
-   * placement. A model's impostor strips are cut from the level's atlas where its first placement's `MT_LOD` names
-   * them, and written as the textures the Build loads (`lod\lod_<model>` and its `_nm`), the model flagged
-   * `eoUsingLOD`; a model of no strip draws no impostor far off after a rebuild.
+   * Trees come back as multi-use objects, `<level>_tree_<N>`, one per set of subdivisions, dressed as their first
+   * placement lies on the collision form, with a scene object per placement. Impostor strips are cut from the level's
+   * atlas as `lod\lod_<model>` and its `_nm`, the model flagged `eoUsingLOD`; a model of no strip draws no impostor
+   * after a rebuild.
    */
   TREE_MODELS = "treeModels",
   /**
-   * Each detail model comes back as the detail object of the object libraries drawing its geometry (the first by
-   * path where several do), at the level's scale range and flags and a density factor of 1; the tool takes a density
-   * of 0.3, no base texture, colour indices or snap objects, and the grid's box, and each slot's light is zeroed, as
-   * the Build zeroes it before the detail lighter lights it again.
+   * Each detail model comes back as the library object drawing its geometry (the first by path), at the level's scale
+   * range and flags and a density factor of 1; the tool takes a density of 0.3, no base texture, colour indices or
+   * snap objects, and each slot's light is zeroed, as the Build zeroes it before lighting.
    */
   DETAIL_OBJECTS = "detailObjects",
   /**
@@ -399,9 +387,8 @@ export enum ELevelSceneInference {
    */
   MAP_BOUND = "mapBound",
   /**
-   * The sections of `level.ltx` the Build does not write itself (a multiplayer map's anomaly sets) come back as the
-   * build options' text, which the Build writes into `level.ltx` again: a line each as the file held it, without its
-   * blank and `;` lines.
+   * The `level.ltx` sections the Build does not write itself (a multiplayer map's anomaly sets) come back as the build
+   * options' text, which the Build writes back, without their blank and `;` lines.
    */
   BUILD_OPTIONS = "buildOptions",
 }

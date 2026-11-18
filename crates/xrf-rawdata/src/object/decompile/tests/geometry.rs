@@ -11,7 +11,6 @@ use crate::object::decompile::geometry::welded_face::WeldedFace;
 use crate::object::decompile::geometry::welded_mesh::WeldedMesh;
 use crate::object::decompile::tests::fixtures::{DOWN, OUT, UP, corner, link, surface, with_links, with_uv};
 
-/// Two triangles of a flat quad, `a b c` and `a c d`, each triangle's corners carrying its own normal.
 fn quad(first_normal: [f32; 3], second_normal: [f32; 3]) -> Vec<[OgfCorner; 3]> {
   let [a, b, c, d] = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 0.0, 1.0], [0.0, 0.0, 1.0]];
 

@@ -1,5 +1,3 @@
-//! The sky and the sun `build.lights` takes at each light quality.
-
 use xrf_error::XrfResult;
 use xrf_geometry::{Sky, SkyLight};
 use xrf_level::{
@@ -13,11 +11,10 @@ use crate::light::source::light_layers::LightLayers;
 use crate::light::vertex::light_models::LightModels;
 use crate::tests::geometry::geometry_mesh::project;
 
-/// The sun's pitch and heading in the editor's level options.
+// Pitch and heading.
 const SUN: (f32, f32) = (-0.8, 2.4);
 
-/// A project lit as the editor writes it at `sky` quality: a lamp under `$static`, the sky under `$hemi` and a scene
-/// lamp the level's author put there, the sun under `$sun` with its dynamic light along it.
+// As the editor writes it at `sky` quality; the second lamp, under `$hemi`, is one the level's author placed.
 pub(crate) fn lit(sky: u8) -> XrfResult<BuildPrjFile> {
   let light = |controller: u32, light: &SkyLight| {
     LevelDynamicLight::new_directional(
@@ -58,7 +55,6 @@ pub(crate) fn lit(sky: u8) -> XrfResult<BuildPrjFile> {
   Ok(project)
 }
 
-/// The directions of a role's lights.
 fn directions(lights: &LevelLightsFile, role: LevelLightRole) -> Vec<Vector3d> {
   lights
     .get_role_lights(role)

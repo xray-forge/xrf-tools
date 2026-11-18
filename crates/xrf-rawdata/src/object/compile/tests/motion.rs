@@ -12,7 +12,6 @@ use crate::object::decompile::object_decompile::ObjectDecompile;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
 use crate::object::decompile::object_inference::ObjectInference;
 
-/// Decodes the one run `rotations` and `translations` write.
 fn run(rotations: &[[i16; 4]], translations: &[Vector3d]) -> XrfResult<(u8, SkeletonBoneMotion)> {
   let mut keys: Vec<u8> = Vec::new();
 
@@ -66,13 +65,10 @@ fn quantises_a_short_move_to_8_bits_and_a_long_one_to_16() -> XrfResult {
   Ok(())
 }
 
-/// [`authored`] playing a motion of its own instead of referencing motion files: `lid` rising a metre over a second,
-/// `link` and `hinge` left to their bind poses.
 fn animated(flags: u8) -> XrfResult<EditableObjectFile> {
   playing(opening(flags))
 }
 
-/// [`authored`] playing `motion` of its own.
 fn playing(motion: EditableMotion) -> XrfResult<EditableObjectFile> {
   let mut object: EditableObjectFile = authored()?;
 
@@ -82,7 +78,6 @@ fn playing(motion: EditableMotion) -> XrfResult<EditableObjectFile> {
   Ok(object)
 }
 
-/// `lid` rising a metre over a second.
 fn opening(flags: u8) -> EditableMotion {
   let mut rise: AnimationEnvelope = AnimationEnvelope::default();
 

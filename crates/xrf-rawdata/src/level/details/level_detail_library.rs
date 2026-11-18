@@ -12,9 +12,8 @@ use crate::level::level_object_library::LevelObjectLibrary;
 use crate::object::compile::detail::detail_model_builder::DetailModelBuilder;
 use crate::object::detail_parameters::DetailParameters;
 
-/// The detail objects of the object library roots, each compiled as `EDetail` exports it: what a level's
-/// detail models are matched against, since `level.details` keeps their geometry but not the objects they came from.
-/// The Level Editor keeps its detail objects under `detail\`, so only that folder of each root is read.
+/// The library detail objects, each compiled as `EDetail` exports it, that a level's detail models are matched
+/// against. Only each root's `detail\` folder is read, where the Level Editor keeps them.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct LevelDetailLibrary {
   /// Each object by its reference, in the order of their paths.

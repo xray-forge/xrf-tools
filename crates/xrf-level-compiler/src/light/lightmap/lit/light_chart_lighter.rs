@@ -41,13 +41,8 @@ pub(crate) struct LightChartLighter<'a> {
 }
 
 impl LightChartLighter<'_> {
-  /// The light and border `chart` takes, as `CDeflector::Light` leaves it. The chart is lit at its size
-  /// ([`Self::calculate`]) and its unlit texels filled ring by ring. Where every lit texel and the first ring lie
-  /// within `rms_zero` of their mean (the hemisphere a third more), it is that one colour, two texels a side. Else each
-  /// side tries half, then a quarter or three quarters, kept where the chart shrunk to it by Lanczos and grown back by
-  /// the cubic stays within `rms_shrink` on every texel lit or in the first two rings, and the chart is lit again at
-  /// the smaller size. Then it takes its border: a side one texel across a strip two texels wide of its texels, any
-  /// other its lit texels and the first ring set in a texel's frame, the rest filled ring by ring.
+  /// The light and border `chart` takes, as `CDeflector::Light` leaves it: lit at its size ([`Self::calculate`]) and
+  /// settled ([`Self::settle`]), lit again at a smaller size where it may shrink, then bordered ([`Self::expand`]).
   pub(crate) fn light(&self, chart: &LightChart) -> LitChart {
     match self.settle(self.calculate(chart, chart.width, chart.height)) {
       LitChartNext::Lit(lit) => lit,
@@ -56,8 +51,9 @@ impl LightChartLighter<'_> {
     }
   }
 
-  /// What a chart's first `layer` leads to: filled ring by ring, one colour where it may be, else lit again at a
-  /// smaller size where it may shrink, else bordered as it is.
+  /// What a chart's first `layer` leads to once filled ring by ring: one colour, two texels a side, where it may be
+  /// ([`Self::get_one_colour`]); else lit again at a smaller size where it may shrink ([`Self::get_shrunk`]); else
+  /// bordered as it is.
   pub(crate) fn settle(&self, mut layer: LightmapLayer) -> LitChartNext {
     layer.fill_borders(254);
 
@@ -135,12 +131,13 @@ impl LightChartLighter<'_> {
     }
   }
 
-  /// The points `chart` is lit at `width` by `height` texels, texel by texel, then the edges' (`L_Calculate`). A
-  /// texel's points are its jitter samples that fall on a face, the first face of the chart's order holding the sample,
-  /// each at its place on the face facing its corners' normals blended there and joined with the face's own
-  /// (`L_Direct`); then each face's edges are walked in steps of an eighth of a texel, every texel they reach that has
-  /// no sample and no walk yet taking the point of the edge there, facing the face (`L_Direct_Edge`). Which texel takes
-  /// which is geometry alone, known before any light.
+  /// The points `chart` is lit at, `width` by `height` texels, texel by texel then the edges' (`L_Calculate`). They
+  /// depend on geometry alone, known before any light.
+  ///
+  /// A texel's points are its jitter samples on a face, the first of the chart's faces holding each, facing its
+  /// corners' normals blended there and joined with the face's own (`L_Direct`). Each face's edges are then walked in
+  /// eighth-texel steps, every texel with no sample and no walk yet taking the edge's point there, facing the face
+  /// (`L_Direct_Edge`).
   pub(crate) fn get_points(&self, chart: &LightChart, width: u32, height: u32) -> Vec<LightTexelPoint> {
     let mut is_taken: Vec<bool> = vec![false; (width * height) as usize];
     let mut points: Vec<LightTexelPoint> = Vec::new();
@@ -365,8 +362,8 @@ impl LightChartLighter<'_> {
   }
 
   /// `rms_test`: whether `layer`, its texels `packed`, shrunk to `width` by `height` and grown back stays within
-  /// `rms_shrink` steps on each of its lit and first two rings' texels. The source's hemisphere test reads the sun
-  /// again, held already, so the hemisphere is not tested.
+  /// `rms_shrink` steps on each of its lit and first two rings' texels. The hemisphere goes untested, as the source's
+  /// hemisphere test reads the sun again.
   fn holds(&self, layer: &LightmapLayer, packed: &[[u8; 4]], width: u32, height: u32) -> bool {
     if width <= 1 || height <= 1 {
       return false;

@@ -3,11 +3,10 @@ use std::collections::{HashMap, HashSet};
 use xrf_level::LevelWallmarksFile;
 use xrf_math::Vector3d;
 
-/// A level's wall marks, indexed to tell which static render triangles are their copies. The Level Editor's Build adds
-/// every decal of the wall mark tool to the static faces (`ESceneWallmarkTool::ExportStatic`) beside writing
-/// `level.wallmarks`, so the compiled geometry holds each decal again, its points where the decal's were or moved a
-/// little by the level compiler: a scene keeping `wallmark.part` would draw them twice if its static geometry kept them
-/// too.
+/// A level's wall marks, indexed to tell which static render triangles are their copies.
+///
+/// The Build adds every decal to the static faces as well as to `level.wallmarks` (`ESceneWallmarkTool::ExportStatic`),
+/// so a scene keeping both `wallmark.part` and those copies would draw each decal twice.
 pub struct LevelDecalIndex {
   /// Each decal triangle's centre, by its slot's texture lowercased, in cells of [`Self::REACH`].
   centres: HashMap<String, HashMap<[i32; 3], Vec<Vector3d>>>,
@@ -15,9 +14,8 @@ pub struct LevelDecalIndex {
 }
 
 impl LevelDecalIndex {
-  /// How far a static triangle's centre lies from a decal triangle's at most to be its copy. Over vanilla CoP every
-  /// static triangle of a wall mark slot's texture lies within it, 6,601 exactly, 5,021 within 1 mm and 146 within it;
-  /// none further.
+  /// How far, metres, a static triangle's centre may lie from a decal triangle's to be its copy. Every such triangle
+  /// of vanilla CoP lies within it: 6,601 exactly, 5,021 within 1 mm, 146 beyond.
   pub const REACH: f32 = 0.01;
 
   pub fn new(wallmarks: &LevelWallmarksFile) -> Self {

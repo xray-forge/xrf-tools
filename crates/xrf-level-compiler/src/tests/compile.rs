@@ -1,5 +1,3 @@
-//! What a compile runs, and what stops it before anything runs.
-
 use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
@@ -9,7 +7,6 @@ use xrf_test_utils::GeneratedResources;
 
 use crate::{AiMapCovers, LevelCompileRequest, LevelCompileStep, LevelCompiler};
 
-/// A level directory holding `files`, empty each.
 fn level(name: &str, files: &[&str]) -> XrfResult<PathBuf> {
   let root: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), name))?;
   let level: PathBuf = root.join("levels").join("test_level");
@@ -23,8 +20,7 @@ fn level(name: &str, files: &[&str]) -> XrfResult<PathBuf> {
   Ok(level)
 }
 
-/// A game data directory holding an empty compiler shader library: enough for the checks to find it, never read by
-/// these tests.
+// An empty compiler shader library: the checks only need to find it.
 fn gamedata(name: &str) -> XrfResult<PathBuf> {
   let root: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), name))?;
 
@@ -101,8 +97,7 @@ fn refuses_a_step_whose_input_is_missing_before_running_anything() -> XrfResult 
 
 #[test]
 fn takes_what_the_geometry_writes_as_given_when_it_runs_first() -> XrfResult {
-  // Without the geometry, the AI map needs the geometry's build.cform; with it, the checks move on past the library to
-  // the textures, which an empty build.prj cannot name, and so fail reading it rather than on a missing input.
+  // Chained, the checks pass the library and fail reading the empty build.prj rather than on a missing input.
   let level: PathBuf = level("chained", &["build.prj", "build.aimap"])?;
   let gamedata: PathBuf = gamedata("chained_gamedata")?;
   let compile = |steps: &[LevelCompileStep]| {
@@ -135,7 +130,7 @@ fn refuses_the_geometry_step_without_the_compiler_shader_library() -> XrfResult 
     .unwrap_err()
     .to_string();
 
-  // Our geometry compiler reads the library for each face's flags; without it the compile stops before anything runs.
+  // The geometry compiler reads each face's flags from the library.
   assert!(
     error.contains("geometry step needs") && error.contains("shaders_xrlc.xr"),
     "{error}"

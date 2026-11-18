@@ -5,17 +5,14 @@ use xrf_gamemtl::GameMtlFile;
 use crate::level::build::level_build_impostor_limit::LevelBuildImpostorLimit;
 use crate::level::scene::level_scene_decompile::LevelSceneDecompile;
 
-/// What a build reads besides the scene, and how it builds: the objects roots (`$objects$`) its library objects are
-/// found under, the first holding each, the game material library their surfaces name, the textures root
-/// (`$game_textures$`) the detail objects' textures are merged from, which a scene of details needs, and how large the
-/// impostor atlas may grow.
+/// What a build reads besides the scene: the objects roots (`$objects$`), each object read from the first holding it,
+/// the game material library, and the textures root (`$game_textures$`), which details and impostors need.
 #[derive(Clone, Copy, Debug)]
 pub struct LevelBuildSources<'a> {
   pub objects: &'a [PathBuf],
   pub game_materials: &'a GameMtlFile,
   pub textures: Option<&'a Path>,
   pub impostor_limit: LevelBuildImpostorLimit,
-  /// The decompile the scene came from, where it is built without being written: its objects and textures taken
-  /// before any root.
+  /// The decompile the scene came from, when built without being written: its objects and textures win over any root.
   pub held: Option<&'a LevelSceneDecompile>,
 }

@@ -29,14 +29,12 @@ impl MotionExport {
   /// The most frames a motion holds: `CMotion` keeps its frame count in 24 bits.
   const MAX_FRAMES: u32 = (1 << 24) - 1;
 
-  /// The object's own motions, none for an object that keeps none or references motion files instead, which the
-  /// export then leaves to those files.
+  /// The object's own motions, none for an object that keeps none or references motion files instead.
   ///
   /// # Errors
   ///
-  /// Returns an error where the export refuses: a motion moving the object through its root, which the export only
-  /// takes from a dedicated root bone and is not compiled yet, bone parts that do not hold every bone once, or a motion
-  /// on a part past them; and where the stored motions do not read.
+  /// Returns an error for a motion moving the object through its root, which is not compiled yet, bone parts that do
+  /// not hold every bone once, a motion on a part past them, or stored motions that do not read.
   pub(crate) fn of<T: ByteOrder>(object: &EditableObjectFile) -> XrfResult<Option<Self>> {
     if object.motion_references.as_ref().is_some_and(|it| !it.is_empty()) {
       return Ok(None);

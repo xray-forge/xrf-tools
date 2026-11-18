@@ -25,10 +25,9 @@ use crate::provenance::object_provenance::ObjectProvenance;
 pub struct ObjectCompiler;
 
 impl ObjectCompiler {
-  /// Compiles the `.object` `request` names into its destination, by `tool` at `tool_version`: a detail model where the
-  /// destination ends in `.dm`, with the flags and scale range the source's sidecar keeps or the editor's defaults; the
-  /// OGF otherwise, recording the source, the tool and the time. An existing destination is refused before the object is
-  /// read unless the request is forced.
+  /// Compiles the `.object` `request` names into its destination: a detail model where it ends in `.dm`, with the
+  /// sidecar's flags and scale range or the editor's defaults, else the OGF recording the source, `tool` and the time.
+  /// An existing destination is refused before the object is read unless the request is forced.
   ///
   /// # Errors
   ///
@@ -130,13 +129,12 @@ impl ObjectCompiler {
   }
 
   /// The detail model (`.dm`) of an object of one surface, as the Level Editor's `EDetail` exports it, with
-  /// `parameters` for the flags and scale range the object does not hold (the ones its decompile recorded, or
-  /// `DetailParameters::default`).
+  /// `parameters` for the flags and scale range the object does not hold.
   ///
   /// # Errors
   ///
-  /// Returns an error where `EDetail::Update` refuses the object: other than one surface, no mesh, a face corner whose
-  /// reference names no texture coordinate first; past 65,535 vertices; and where the mesh does not hold together.
+  /// Returns an error for an object of other than one surface or of no mesh, a corner whose reference names no texture
+  /// coordinate first, more than 65,535 vertices, or a mesh that does not hold together.
   pub fn compile_detail(object: &EditableObjectFile, parameters: &DetailParameters) -> XrfResult<ObjectCompile> {
     DetailModelBuilder::build::<XRayByteOrder>(object, parameters)
   }

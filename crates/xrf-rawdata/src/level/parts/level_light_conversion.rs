@@ -9,11 +9,10 @@ use crate::level::level_decompile_context::LevelDecompileContext;
 /// A level's authored lights, from the compiled `build.lights` and the bundle's `fsL_LIGHT_DYNAMIC` back into the
 /// scene's `light.part`.
 ///
-/// The build hands each light to the level compiler as a static light, a dynamic one or both
-/// (`SceneBuilder::BuildLight`, `BuilderRemote.cpp:1080`). The compiler writes the static ones into `build.lights` by
-/// their control's layer, chunk 0 for `$static` and 1 for `$hemi` beside the sky it generates, each diffuse divided by
-/// its energy and its range times 1.1; the dynamic ones into `fsL_LIGHT_DYNAMIC` as given. Neither keeps a light's
-/// colour and brightness apart, its fuzzy points, or a dynamic light's control.
+/// The build hands each light to the compiler as static, dynamic or both (`SceneBuilder::BuildLight`). The compiler
+/// writes static ones into `build.lights` by layer, chunk 0 for `$static` and 1 for `$hemi`, each diffuse divided by
+/// its energy and its range times 1.1; dynamic ones into `fsL_LIGHT_DYNAMIC` as given. Neither keeps colour and
+/// brightness apart, fuzzy points, or a dynamic light's control.
 pub struct LevelLightConversion;
 
 impl LevelLightConversion {
@@ -23,14 +22,14 @@ impl LevelLightConversion {
     (1, EditableLightObject::HEMI_CONTROL),
   ];
 
-  /// How far a static light's diffuse, divided and multiplied back by its energy, may stand from its dynamic twin's.
+  /// How far a static light's diffuse, after its energy round trip, may stand from its dynamic twin's.
   const DIFFUSE_TOLERANCE: f32 = 1e-5;
 
-  /// The light part a level was built from: a light per compiled point light of an authored layer, one affecting both
-  /// static and dynamic lighting where a dynamic light stands at the same position with the same diffuse, and one per
-  /// remaining dynamic point light under `$static`; each named `light_NNNN`, unturned, its brightness the channel of
-  /// its diffuse of the largest magnitude and its colour the rest. A fuzzy light comes back as one light per point it
-  /// was spread over. The tool data is a new scene's.
+  /// The light part a level was built from: a light per compiled point light of an authored layer, affecting dynamic
+  /// lighting too where a dynamic light matches its position and diffuse, then one per remaining dynamic point light
+  /// under `$static`.
+  ///
+  /// A fuzzy light comes back as one light per point it was spread over. The tool data is a new scene's.
   pub fn decompile(
     lights: Option<&LevelLightsFile>,
     level: &LevelFile,
@@ -109,9 +108,8 @@ impl LevelLightConversion {
     part
   }
 
-  /// The level options' hemisphere quality the build generated `build.lights` chunk 1's sky with
-  /// (`SceneBuilder::BuildHemiLights`, `BuilderRemote.cpp:946`): one light for 0, else `xrHemisphereBuild`'s 26, 91 or
-  /// 196 for 1 to 3. None for a sky of another count.
+  /// The hemisphere quality `build.lights` chunk 1's sky was generated at (`SceneBuilder::BuildHemiLights`): 0 to 3
+  /// for 1, 26, 91 or 196 lights; none for another count.
   pub fn get_hemi_quality(lights: &LevelLightsFile) -> Option<u8> {
     let sky: usize = Self::get_chunk_lights(lights, 1)
       .filter(|light| light.kind != LevelLight::KIND_POINT)
@@ -123,8 +121,8 @@ impl LevelLightConversion {
       .map(|quality| quality as u8)
   }
 
-  /// The level options' sun quality the build spread chunk 2's sun with (`SceneBuilder::BuildSun`,
-  /// `BuilderRemote.cpp:981`): 1, 3, 4 or 7 samples a side for 0 to 3. None for a sun of another count.
+  /// The sun quality chunk 2's sun was spread at (`SceneBuilder::BuildSun`): 0 to 3 for 1, 3, 4 or 7 samples a side;
+  /// none for another count.
   pub fn get_sun_quality(lights: &LevelLightsFile) -> Option<u8> {
     let sun: usize = Self::get_chunk_lights(lights, 2).count();
 
@@ -134,8 +132,8 @@ impl LevelLightConversion {
       .map(|quality| quality as u8)
   }
 
-  /// The light tool's `sun_shadow_dir`, pitch then heading, that the build pointed the dynamic sun along
-  /// (`direction.setHP(dir.y, dir.x)`), its heading within a turn upwards of 0 as the editor's default 292 degrees is.
+  /// The light tool's `sun_shadow_dir`, pitch then heading, that the build pointed the dynamic sun along; the heading
+  /// in `[0, 2π)`, as the editor's default of 292 degrees is.
   fn get_sun_direction(level: &LevelFile) -> Option<Vector2d> {
     let sun: &LevelDynamicLight = level.lights.as_ref()?.lights.iter().find(|light| light.is_sun())?;
     let heading: f32 = (-sun.direction.x).atan2(sun.direction.z);
@@ -162,7 +160,7 @@ impl LevelLightConversion {
     Vector3d::new(light.diffuse.r, light.diffuse.g, light.diffuse.b)
   }
 
-  /// A dynamic point light as the build was given it: its diffuse, range, attenuation and cone, under `$static`.
+  /// A dynamic point light as the build was given it, under `$static`.
   fn from_dynamic(light: &LevelDynamicLight, context: &mut LevelDecompileContext) -> EditableLightObject {
     let mut object: EditableLightObject = Self::new_light(light.position, &Self::get_diffuse(light), context);
 
@@ -173,8 +171,8 @@ impl LevelLightConversion {
     object
   }
 
-  /// A new light at `position` lighting with `diffuse`: brightness its channel of the largest magnitude, sign kept, so
-  /// a darkening light of negative channels stays one, and colour the diffuse over it.
+  /// A new light `light_NNNN` at `position` of `diffuse`: its brightness the channel of largest magnitude, sign kept
+  /// so a darkening light stays one, and its colour the diffuse over that.
   fn new_light(position: Vector3d, diffuse: &Vector3d, context: &mut LevelDecompileContext) -> EditableLightObject {
     let mut object: EditableLightObject = EditableLightObject::new(EditableCustomObject::new(
       context.names.get_next("light"),
@@ -209,8 +207,8 @@ impl LevelLightConversion {
     object
   }
 
-  /// The range a static light was authored at, whose 1.1 times is the compiled one: the nearest float to the quotient
-  /// whose product gives the compiled bits, else the quotient.
+  /// The authored range of a static light compiled at 1.1 times it: the float nearest the quotient whose product
+  /// gives the compiled bits, else the quotient.
   fn get_saved_range(compiled: f32) -> f32 {
     let quotient: f32 = compiled / 1.1;
 

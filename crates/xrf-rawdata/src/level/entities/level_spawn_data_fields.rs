@@ -7,8 +7,8 @@ use xrf_math::Vector3d;
 use xrf_spawn::AlifeObject;
 
 /// An entity's spawn packet as the Level Editor saves it in `[object_N_spawndata]`: one field per value, numbered from
-/// `000001` (`SIniFileStream::gen_name`, `iniStreamImpl.cpp`) and printed as `CInifile` prints its kind. Read field by
-/// field, it is the source a [`xrf_chunk::ChunkFieldReplay`] reads the packet from.
+/// `000001` (`SIniFileStream::gen_name`) and printed as `CInifile` prints its kind. It is the source a
+/// [`xrf_chunk::ChunkFieldReplay`] reads the packet from.
 pub struct LevelSpawnDataFields<'a> {
   section: &'a IniSection,
   /// The number of the field read last.
@@ -26,8 +26,8 @@ impl<'a> LevelSpawnDataFields<'a> {
   }
 
   /// A field's value as the editor prints it: integers `%d`, so a `u32` past `i32::MAX` negative, floats `%f`,
-  /// vectors spaced `x, y, z`, strings quoted. A `u64` prints in decimal as `CInifile::w_u64` does outside the editor
-  /// build; no scene GSC saved holds one to show the editor build's own print.
+  /// vectors `x, y, z`, strings quoted. A `u64` prints in decimal, as `CInifile::w_u64` does outside the editor build;
+  /// no GSC scene holds one to show the editor build's print.
   pub fn format_value(field: &ChunkField) -> String {
     match field {
       ChunkField::U8(value) => value.to_string(),
@@ -62,13 +62,12 @@ impl<'a> LevelSpawnDataFields<'a> {
     Ok(())
   }
 
-  /// The entity whose packet `data` holds, a spawn point's `[object_N_spawndata]` with its name and flags left out,
-  /// read whole as the build reads it.
+  /// The entity whose packet a spawn point's `[object_N_spawndata]` holds, read whole as the build reads it.
   ///
   /// # Errors
   ///
-  /// Returns an error where the packet is not a spawn packet of a known class, its state does not read whole, or it
-  /// holds a field past the packet's last.
+  /// Returns an error where the packet is not of a known class, its state does not read whole, or it holds a field
+  /// past the packet's last.
   pub fn read_entity<T: ByteOrder>(data: &IniSection) -> XrfResult<AlifeObject> {
     let mut fields: LevelSpawnDataFields<'_> = LevelSpawnDataFields::new(data);
     let entity: AlifeObject = AlifeObject::read_spawn_packet::<T, _>(&mut ChunkFieldReplay::new(&mut fields))?;
@@ -78,9 +77,8 @@ impl<'a> LevelSpawnDataFields<'a> {
     Ok(entity)
   }
 
-  /// The visual the entity whose packet `data` holds is drawn as, by the name its packet keeps
-  /// (`cse_visual::visual_name`), which is what the Level Editor draws a spawn point as, whatever its section's config
-  /// says; none for a class drawn as nothing and for a packet naming no visual.
+  /// The visual the Level Editor draws the spawn point as: its packet's `cse_visual::visual_name`, whatever its
+  /// section's config says; none for a class drawn as nothing or a packet naming no visual.
   ///
   /// # Errors
   ///
@@ -89,8 +87,8 @@ impl<'a> LevelSpawnDataFields<'a> {
     Ok(Self::read_entity::<T>(data)?.inherited.get_visual().map(str::to_owned))
   }
 
-  /// Refuses a numbered field past the last one read, which the packet did not take: the editor would ignore it, so
-  /// it is a field of another layout than the class read.
+  /// Refuses a numbered field past the last one read: the editor would ignore it, so it belongs to another layout
+  /// than the class read.
   ///
   /// # Errors
   ///

@@ -22,8 +22,8 @@ fn vertex(position: [f32; 3], u: f32, v: f32) -> DetailVertex {
   }
 }
 
-/// A leaf of two triangles meeting along `a c`, its corner `c` mapped differently on either side, as a seam stores one
-/// point twice; the vertices in the order the triangles first reach them, as the export leaves them.
+// Corner `c` is mapped differently on either side, as a seam stores one point twice; the vertices come in the order
+// the triangles first reach them, as the export leaves them.
 fn leaf(parameters: &DetailParameters) -> DetailModel {
   DetailModel {
     shader: String::from("details\\blend"),

@@ -13,7 +13,6 @@ use crate::object::decompile::object_inference::ObjectInference;
 use crate::object::decompile::tests::fixtures::{UP, assemble_static, corner, static_object, surface, unweighted};
 use crate::object::verify::object_verifier::ObjectVerifier;
 
-/// A flat quad of side one at height `y`, its two faces sharing the edge `a c`, every corner following no bone.
 fn quad(y: f32) -> Vec<[OgfCorner; 3]> {
   let [a, b, c, d] = [[0.0, y, 0.0], [1.0, y, 0.0], [1.0, y, 1.0], [0.0, y, 1.0]];
   let at = |position: [f32; 3]| unweighted(corner(position, UP));
@@ -21,7 +20,6 @@ fn quad(y: f32) -> Vec<[OgfCorner; 3]> {
   vec![[at(a), at(b), at(c)], [at(a), at(c), at(d)]]
 }
 
-/// A surface of `triangles` drawn with `texture`.
 fn textured(texture: &str, triangles: Vec<[OgfCorner; 3]>) -> OgfSurface {
   OgfSurface {
     texture: String::from(texture),
@@ -29,7 +27,6 @@ fn textured(texture: &str, triangles: Vec<[OgfCorner; 3]>) -> OgfSurface {
   }
 }
 
-/// The geometry a static visual holds.
 fn geometry(file: &OgfFile) -> &OgfGeometry {
   file.geometry.as_ref().expect("Expect the visual's geometry")
 }

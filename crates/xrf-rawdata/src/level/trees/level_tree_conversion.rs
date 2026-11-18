@@ -23,21 +23,19 @@ use crate::object::decompile::object_decompiler::ObjectDecompiler;
 use crate::provenance::level_scene_refusal::LevelSceneRefusal;
 
 /// A level's trees folded back into the multi-use objects the Build placed them from (`SceneBuilder::BuildMUObject`).
-/// xrLC drew each placement as one tree visual (`MT_TREE_ST`, `MT_TREE_PM`) per subdivision of its model, in the model's
-/// own space with the placement's matrix (`OGF_TREEDEF2`), under one `MT_LOD` where the model had an impostor
-/// (`xrMU_Model_export_OGF.cpp`). So a placement is the visuals one `MT_LOD` parents, or that share a matrix where none
-/// does, and a model is the subdivisions every placement of it names: no subdivision belongs to two (vanilla's
-/// `mp_darkvalley`, `mp_firestation` and `zaton`).
 ///
-/// Each model comes back as an object of its subdivisions in its own space, flagged `eoMultipleUsage`, dressed as its
-/// first placement lies on the collision form; each placement as a scene object of its matrix, in its sector. Where
-/// that placement's `MT_LOD` names the model's strip in the level's impostor atlas, the strips are cut back out as the
-/// textures the Build reads (`lod\lod_<model>`) and the model is flagged `eoUsingLOD`.
+/// xrLC drew each placement as a tree visual per model subdivision, in the model's space with the placement's matrix,
+/// under one `MT_LOD` where the model had an impostor. So a placement is the visuals one `MT_LOD` parents, or that
+/// share a matrix where none does, and a model is the subdivisions its placements name; no subdivision belongs to two
+/// models in vanilla.
+///
+/// Each model comes back flagged `eoMultipleUsage`, dressed as its first placement lies on the collision form, and
+/// each placement as a scene object in its sector. Where the `MT_LOD` names the model's strip in the impostor atlas,
+/// the strips are cut back out (`lod\lod_<model>`) and the model is flagged `eoUsingLOD`.
 pub(crate) struct LevelTreeConversion;
 
 impl LevelTreeConversion {
-  /// The tree visual `visual` is, in sector `sector` under the `MT_LOD` `parent` where one parents it, with `geometry`
-  /// read from the level's buffers; `None` for a visual that is no tree.
+  /// `visual` as a tree visual of `sector` under the `MT_LOD` `parent`, if any; `None` for a visual that is no tree.
   pub(crate) fn read(
     visual: &LevelVisual,
     sector: u16,
@@ -60,9 +58,8 @@ impl LevelTreeConversion {
     })
   }
 
-  /// The models and placements of `visuals`, each model named `levels\<name>\<name>_tree_<N>` in the order its first
-  /// placement comes; each model dressed by `surfaces` from where its first placement lies on `collision`, and given
-  /// its impostor from `impostors` where that placement's `MT_LOD` names one.
+  /// The models and placements of `visuals`, each model named `levels\<name>\<name>_tree_<N>` in order of its first
+  /// placement, which dresses it and gives its impostor.
   ///
   /// # Errors
   ///
@@ -181,10 +178,11 @@ impl LevelTreeConversion {
     Ok(decompile)
   }
 
-  /// Fits the box of each model `trees` still holds to where its impostor was stood ([`Self::fit_impostor_box`]), its
-  /// `MT_LOD` read from `lods`, refusing the fit where it does not hold the model. A model a library tree stands for is
-  /// no longer held and takes no fit: the Build stands that tree's impostor in the library object's own box, which the
-  /// level's placements need not let through, such as one GSC scaled to nothing rather than delete (`mp_agroprom`).
+  /// Fits the box of each model `trees` still holds to its impostor ([`Self::fit_impostor_box`]), refusing a fit that
+  /// does not hold the model.
+  ///
+  /// A model a library tree replaced takes no fit: the Build stands that impostor in the library object's own box,
+  /// which placements need not reveal, as with one GSC scaled to nothing (`mp_agroprom`).
   pub(crate) fn fit_impostor_boxes(trees: &mut LevelTreeDecompile, lods: &HashMap<u32, &OgfLodDefinitionChunk>) {
     for frame in std::mem::take(&mut trees.frames) {
       let (Some(model), Some(lod)) = (
@@ -207,11 +205,12 @@ impl LevelTreeConversion {
     }
   }
 
-  /// Widens `object`'s first mesh's stored box to the box its impostor `lod` was stood in by `placement`, as the Build
-  /// stands it in the union of the meshes' boxes (`CEditableObject::GetLODFrame`), which the editor reads as saved
-  /// (`CEditableMesh::LoadMesh`). The source object's box held geometry the level does not draw, such as a collision
-  /// trunk under the ground; so the rebuilt quads stand where the shipped ones did. The box across is known only as
-  /// its widest half side, which goes on the model's own widest axis.
+  /// Widens `object`'s first mesh's stored box to the box its impostor `lod` was stood in by `placement`, so the
+  /// rebuilt quads stand where the shipped ones did.
+  ///
+  /// The Build stands impostors in the union of the meshes' saved boxes (`CEditableObject::GetLODFrame`), and the
+  /// source box held geometry the level does not draw, such as a buried collision trunk. Only the widest half side
+  /// across is known, so it goes on the model's widest axis.
   ///
   /// Returns `false`, leaving the box as it was, where `placement` does not invert or the recovered box does not hold
   /// the model's.

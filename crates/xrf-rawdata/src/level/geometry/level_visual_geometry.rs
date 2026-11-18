@@ -6,15 +6,13 @@ use xrf_math::{Vector2d, Vector3d};
 
 use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 
-/// One visual of a compiled level, as the decompile takes it: what it is dressed with, and its full-detail triangles
-/// over the vertices `level.geom` stores for it, in the space they are stored in, the level's for static geometry and a
-/// tree's own until its placement is applied.
+/// One visual of a compiled level, as the decompile takes it: its dress and full-detail triangles, in the level's space
+/// for static geometry and in a tree's own until its placement is applied.
 #[derive(Clone, Debug, PartialEq)]
 pub struct LevelVisualGeometry {
   pub texture: String,
   pub shader: String,
-  /// The compiler shader and game material its surface takes: the editor's defaults as read, which the level's
-  /// collision form and lighting may dress.
+  /// The compiler shader and game material its surface takes, the editor's defaults until inferred.
   pub dress: SurfaceDress,
   pub vertices: Vec<LevelVertex>,
   /// Three a triangle, into [`Self::vertices`].
@@ -22,9 +20,8 @@ pub struct LevelVisualGeometry {
 }
 
 impl LevelVisualGeometry {
-  /// Geometry of bare triangles, such as collision faces or occluder polygons, which keep nothing but their corners:
-  /// each corner takes its triangle's own normal and texture coordinates spanning the texture once, in parts small
-  /// enough for a visual's `u16` indices.
+  /// Geometry of bare triangles, such as collision faces or occluder polygons: each corner takes its face normal and
+  /// the texture spans each triangle once, split into parts that fit `u16` indices.
   pub(crate) fn of_triangles(
     texture: &str,
     shader: &str,
@@ -71,10 +68,9 @@ impl LevelVisualGeometry {
     [corner(a, 0.0, 0.0), corner(b, 1.0, 0.0), corner(c, 0.0, 1.0)]
   }
 
-  /// The geometry of `visual`: its texture and shader from its own texture chunk, else from the row of `shaders` its
-  /// header names (its base texture, the first the row lists), and its vertices and full-detail indices from `source`
-  /// (`LevelGeomSource::read_full_detail_indices`, which takes a progressive visual's first slide window). `None` for a
-  /// visual drawing nothing from the buffers.
+  /// The geometry of `visual`: texture and shader from its own chunk, else the first texture of its `shaders` row, and
+  /// full-detail vertices and indices from `source` (a progressive visual's first slide window). `None` for a visual
+  /// drawing nothing from the buffers.
   ///
   /// # Errors
   ///

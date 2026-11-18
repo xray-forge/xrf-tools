@@ -15,9 +15,9 @@ use crate::ray::ray_lamp_mode::RayLampMode;
 use crate::ray::ray_rules::RayRules;
 use crate::ray::ray_scene::RayScene;
 
-/// Lights one planted slot as xrDO_Light does (`LightThread::Execute` and its `LightPoint`,
-/// `xrDO_Light/LightThread.cpp`), its arithmetic in the same order, every shadow ray a full query of the ray model
-/// with no remembered blocker: planned ([`Self::plan`]), its rays traced, then finished ([`Self::finish`]).
+/// Lights one planted slot as xrDO_Light's `LightThread::Execute` does, its arithmetic in the same order, but every
+/// shadow ray a full query with no remembered blocker: planned ([`Self::plan`]), traced, then finished
+/// ([`Self::finish`]).
 pub(crate) struct DetailSlotLighter<'a> {
   pub(crate) header: &'a LevelDetailsHeader,
   pub(crate) scene: RayScene<'a>,
@@ -37,8 +37,7 @@ impl DetailSlotLighter<'_> {
   /// The further growth of the box's half extents for the triangle query.
   const QUERY_GROW: f32 = 0.01;
 
-  /// `LIGHT_Count`: sample points run from minus to plus this many steps each way, a step being a seventh of half a
-  /// slot.
+  /// `LIGHT_Count`: sample points run this many steps each way, a step being a seventh of half a slot.
   const SAMPLE_STEPS: i32 = 7;
 
   /// How far under the box a drop ray's height starts, so a point whose ray meets nothing stays out of it.
@@ -49,7 +48,7 @@ impl DetailSlotLighter<'_> {
     Self::LIGHT_POINT.variant.get_rules()
   }
 
-  /// What lighting the slot in grid cell `cell` asks of the ray model, or `None` where its box touches no face of it.
+  /// The rays lighting the slot in grid cell `cell` needs, or `None` where its box touches no ray model face.
   pub(crate) fn plan(&self, cell: usize, slot: &LevelDetailsSlot) -> Option<LightPlan> {
     // A grid's sides are `u32`, so a cell's column and row are too.
     let column: u32 = (cell % self.header.size_x as usize) as u32;
@@ -95,8 +94,8 @@ impl DetailSlotLighter<'_> {
     ))
   }
 
-  /// How much light each of a plan's rays lets through, traced on the CPU: the product of every face's transmittance it
-  /// crosses from the front (`rayTrace`), by xrDO_Light's rules.
+  /// How much light each of a plan's rays lets through, traced on the CPU: the product of the transmittances of every
+  /// face it crosses from the front (`rayTrace`).
   pub(crate) fn trace(&self, plan: &LightPlan) -> Vec<f32> {
     let rules: RayRules = Self::get_rules();
     let RayScene { tracer, shadows } = self.scene;
@@ -123,8 +122,8 @@ impl DetailSlotLighter<'_> {
     transmittances
   }
 
-  /// The slot's light from what each of its plan's rays lets through, summed in the SDK's order: point by point, each
-  /// point's lights in turn.
+  /// The slot's light from its rays' transmittances, summed in the SDK's order: point by point, each point's lights in
+  /// turn.
   pub(crate) fn finish(&self, plan: &LightPlan, transmittances: &[f32]) -> LevelDetailsLight {
     let mut sum: LightColor = LightColor::default();
     let point_count: usize = plan.points.len();
@@ -135,8 +134,8 @@ impl DetailSlotLighter<'_> {
         for (light, source) in lights.iter().enumerate() {
           let amount: f32 = amounts.get(role)[light * point_count + index];
 
-          // Each sum is rounded to a float as it is stored, as the SDK's `base_color` members are: wider sums move
-          // more slots across a step than they settle.
+          // Summed in single precision as the SDK's `base_color` members are: wider sums move more slots across a
+          // quantization step than they settle.
           match role {
             LevelLightRole::Rgb => sum.rgb += self.lights.rgb[*source as usize].diffuse * amount,
             LevelLightRole::Hemi => sum.hemi += amount,
@@ -165,9 +164,8 @@ impl DetailSlotLighter<'_> {
     }
   }
 
-  /// The slot's 15 by 15 points across the box from `low` to `high` about `center`, each dropped onto the highest
-  /// face of `triangles` under it, a later face replacing it only from more than `EPS` above; those meeting none
-  /// inside the box are left out.
+  /// The slot's 15 by 15 points across the box, each dropped onto the highest face of `triangles` under it (a later
+  /// face wins only from more than `EPS` above); those meeting none inside the box are left out.
   fn get_points(triangles: &[Triangle], center: Vec3, low: Vec3, high: Vec3) -> Vec<LightSamplePoint> {
     let step: f32 = (DETAIL_SLOT_METERS * 0.5) / Self::SAMPLE_STEPS as f32;
     let mut points: Vec<LightSamplePoint> = Vec::new();

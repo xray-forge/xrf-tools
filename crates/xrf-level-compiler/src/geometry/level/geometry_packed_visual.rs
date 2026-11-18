@@ -1,8 +1,7 @@
 use xrf_level::LevelGeomRange;
 
-/// Where one visual's geometry went in the level's buffers: its vertices and indices in `level.geom`, and its fast
-/// path's in `level.geomx` where it has one. A progressive multi-use visual's windows go to `level.geom`'s table too,
-/// as its `slide_window`.
+/// Where one visual's geometry went: its vertices and indices in `level.geom`, its fast path's in `level.geomx`, and a
+/// progressive multi-use visual's windows in `level.geom`'s table as `slide_window`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct GeometryPackedVisual {
   pub vertices: LevelGeomRange,

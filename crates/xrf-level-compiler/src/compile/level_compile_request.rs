@@ -24,8 +24,8 @@ pub struct LevelCompileRequest {
   /// The textures roots (`$game_textures$`) searched before the game data's own `textures`, such as one a decompile
   /// wrote impostor strips into ([`Self::get_textures_roots`]).
   pub textures: Vec<PathBuf>,
-  /// Whether the compile replaces what its steps write where the level's directory holds it, and removes the lightmap
-  /// pages an earlier compile wrote past its own; unforced, it refuses before any step runs.
+  /// Whether the compile replaces files its steps write and removes an earlier compile's surplus lightmap pages;
+  /// unforced, it refuses before any step runs when one is there.
   pub is_forced: bool,
   /// What traces the rays: the light step's lightmap and implicit map shadow rays, the details step's shadow rays and
   /// the AI step's corner rays.
@@ -36,8 +36,8 @@ pub struct LevelCompileRequest {
   pub gpu: Option<RayGpu>,
   /// The covers the AI step computes: full ones traced against `build.cform`, or none, needing no `build.cform`.
   pub ai_covers: AiMapCovers,
-  /// How finely the light step lights the level: by `build.prj`'s own settings, or a draft that regenerates the sky and
-  /// sun and takes fewer samples. It also decides the sky and sun the geometry step writes to `build.lights`.
+  /// How finely the light step lights the level: `build.prj`'s settings, or a draft with regenerated sky and sun and
+  /// fewer samples. It also decides the sky and sun the geometry step writes to `build.lights`.
   pub light_quality: LightQuality,
 }
 
@@ -45,9 +45,8 @@ impl LevelCompileRequest {
   /// The directory below the game data holding the game's own textures.
   pub const TEXTURES_DIRECTORY: &'static str = "textures";
 
-  /// The textures roots the steps search in order for each file, a `.thm` for every texture `build.prj` names and the
-  /// image where the texture has alpha or is lit implicitly: the roots named, then the game data's `textures` unless it
-  /// is among them, so a root holding only what a decompile wrote finds every other texture in the game's.
+  /// The textures roots the steps search in order for each `.thm` and image: the roots named, then the game data's
+  /// `textures` unless named, so a root holding only a decompile's output finds the rest in the game's.
   pub fn get_textures_roots(&self) -> Vec<PathBuf> {
     let game: PathBuf = self.gamedata.join(Self::TEXTURES_DIRECTORY);
     let mut roots: Vec<PathBuf> = self.textures.clone();
@@ -59,7 +58,7 @@ impl LevelCompileRequest {
     roots
   }
 
-  /// What traces the steps' rays, as the request names it.
+  /// What traces the steps' rays.
   pub fn get_tracing(&self) -> RayTracing<'_> {
     RayTracing {
       backend: self.backend,

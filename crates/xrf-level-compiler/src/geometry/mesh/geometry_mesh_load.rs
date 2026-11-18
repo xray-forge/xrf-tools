@@ -7,18 +7,19 @@ use crate::geometry::mesh::geometry_mesh::GeometryMesh;
 use crate::input::compiler_shaders::CompilerShaders;
 
 impl GeometryMesh {
-  /// The game material ids xrLC takes, below `1 << 16` (`R_ASSERT(B.dwMaterialGame<65536)`, `xrLC/Build_Load.cpp`).
+  /// The game material ids xrLC takes, below `1 << 16`, which `CBuild::Load` asserts.
   const GAME_MATERIAL_LIMIT: u32 = 1 << 16;
 
-  /// The static geometry of `project`, as `CBuild::Load` reads it (`xrLC/Build_Load.cpp`), checked first for what
-  /// xrLC would stop on or read past: a face naming a vertex or material the project lacks, a game material past its
-  /// limit, a material naming a texture or shader the project lacks, and smoothing flags missing or not one a face.
-  /// The smoothing flags are the edge flags of a project from Clear Sky's editor on; Shadow of Chernobyl's has none,
-  /// which xrLC reads only under `-nosmg`.
+  /// The static geometry of `project`, as `CBuild::Load` reads it.
+  ///
+  /// The smoothing flags are required: projects from Clear Sky's editor on carry them, Shadow of Chernobyl's do not,
+  /// and xrLC reads those only under `-nosmg`.
   ///
   /// # Errors
   ///
-  /// Returns an error naming every problem found, up to a few of each kind with their counts.
+  /// Returns an error for what xrLC would stop on or read past: a face naming a missing vertex or material, a game
+  /// material past its limit, a material naming a missing texture or shader, or smoothing flags missing or not one a
+  /// face. It names a few of each kind with their counts.
   pub(crate) fn load(project: &BuildPrjFile) -> XrfResult<Self> {
     Self::check(project)?;
 

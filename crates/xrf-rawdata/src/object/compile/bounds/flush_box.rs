@@ -4,14 +4,11 @@ use xrf_math::{Obb, Vector3d};
 
 use crate::object::compile::bounds::convex_hull::ConvexHull;
 
-/// A box around a point set with a face flush to a face of the points' convex hull: of the boxes so placed, the one of
-/// least volume, each found as the smallest rectangle around the hull projected on that face's plane with a side along
-/// an edge of the projection's own hull; the boxes along the points' principal axes stand in where they are smaller, or
-/// where the points span no volume. The minimal box has a face flush to a hull face in practice, so this lands on or
-/// near it, with one answer for one input and no search.
+/// The least-volume box around a point set with a face flush to a face of its convex hull, or along its principal axes
+/// where that is smaller or the points span no volume: one answer for one input, with no search.
 ///
-/// It replaces the export's Wild Magic `MinBox3`, whose Powell search lands in another local minimum for a last-bit
-/// change of its input: on vanilla's bones this one is 11% to 15% smaller in volume and never leaves a point out.
+/// It stands in for the export's Wild Magic `MinBox3`, whose Powell search moves to another local minimum for a
+/// last-bit change of its input: on vanilla's bones this one is 11% to 15% smaller and never leaves a point out.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct FlushBox {
   /// Three orthonormal axes, right-handed.

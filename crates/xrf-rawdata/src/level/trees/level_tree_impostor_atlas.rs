@@ -7,9 +7,8 @@ use crate::level::build::level_build_atlas_place::LevelBuildAtlasPlace;
 use crate::level::trees::level_lod_strip::LevelLodStrip;
 use crate::level::trees::level_tree_impostor::LevelTreeImpostor;
 
-/// A level's impostor atlas, `level_lods.dds` and `level_lods_nm.dds`: every multi-use object's strip of eight views
-/// and of their normals, which the Build merged into one (`SceneBuilder::CompileStatic`, `BuilderRemote.cpp:1516`)
-/// and whose places the `MT_LOD` visuals' facets name.
+/// A level's impostor atlas, `level_lods.dds` and `level_lods_nm.dds`: every multi-use object's colour and normal
+/// strips, merged by `SceneBuilder::CompileStatic`, at the places the `MT_LOD` visuals' facets name.
 pub struct LevelTreeImpostorAtlas {
   pub(crate) color: RgbaImage,
   pub(crate) normal: RgbaImage,

@@ -24,13 +24,13 @@ pub struct ObjectProvenance {
   /// Seconds since the Unix epoch.
   pub decompiled_at: u64,
   pub inferred: Vec<ObjectInference>,
-  /// The tangent method the source's basis was made with, which a compile of the object follows unless told otherwise
-  /// (see [`ObjectCompileOptions::following`](crate::ObjectCompileOptions::following)). Sidecars written before it was
-  /// recorded read as the Actor Editor's.
+  /// The tangent method the source's basis was made with, which a compile follows unless told otherwise
+  /// ([`ObjectCompileOptions::following`](crate::ObjectCompileOptions::following)); a sidecar without it reads as the
+  /// Actor Editor's.
   #[serde(default)]
   pub tangents: TangentMethod,
-  /// What a detail model it was decompiled from carried beside its geometry, which a compile of the object back into
-  /// a `.dm` writes again; absent for an object decompiled from an OGF.
+  /// The source detail model's flags and scale range, which a compile back into a `.dm` writes again; absent for an
+  /// object decompiled from an OGF.
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub detail: Option<DetailParameters>,
 }

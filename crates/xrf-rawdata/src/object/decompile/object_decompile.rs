@@ -21,9 +21,8 @@ pub struct ObjectDecompile {
 }
 
 impl ObjectDecompile {
-  /// One object holding each part's meshes under the name paired with it, the first part's object the rest join: a
-  /// surface the same as one already held but for its name takes that one's, another whose name is taken is numbered
-  /// `_1` upwards, and each mesh's faces follow their surface's name. Inferences are joined. `None` for no part.
+  /// One object holding each part's meshes under its paired name, joined onto the first part's object, or `None` for no
+  /// part. A surface equal to a held one but for its name takes that one's; a clashing name is numbered from `_1`.
   pub(crate) fn merge_meshes(parts: Vec<(String, Self)>) -> Option<Self> {
     let mut parts = parts.into_iter();
     let (name, mut merged) = parts.next()?;

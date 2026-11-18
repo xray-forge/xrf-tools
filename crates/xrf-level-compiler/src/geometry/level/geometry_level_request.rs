@@ -22,9 +22,9 @@ pub(crate) struct GeometryLevelRequest<'a> {
   pub(crate) roots: &'a [PathBuf],
   /// How finely the level is lit, which also decides the sky and sun `build.lights` holds.
   pub(crate) quality: LightQuality,
-  /// What traces the baked light's lightmap and implicit map shadow rays; none for the neutral light the renderers
-  /// light over in real time ([`LightDraft`](crate::light::light_draft::LightDraft)).
+  /// What traces the bake's shadow rays; none for the neutral light
+  /// ([`LightDraft`](crate::light::light_draft::LightDraft)).
   pub(crate) light: Option<RayTracing<'a>>,
-  /// The job the compile reports its phases, charts and implicit map rows to, and stops on when it is cancelled.
+  /// The job the compile reports progress to and stops on when it is cancelled.
   pub(crate) job: &'a JobHandle,
 }

@@ -2,8 +2,7 @@ use xrf_math::Vector3d;
 
 use crate::geometry::mesh::geometry_mesh::GeometryMesh;
 
-/// A box as xrLC's split phases reckon it (`Fbox`), each operation in the order of its single-precision steps, the
-/// axes indexable so a cut can move along one.
+/// A box as xrLC's split phases reckon it (`Fbox`), each operation in its single-precision order, with indexable axes.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct GeometrySplitBox {
   pub(crate) min: [f32; 3],
@@ -67,7 +66,7 @@ impl GeometrySplitBox {
       .all(|(axis, value)| value >= self.min[axis] && value <= self.max[axis])
   }
 
-  /// `setup_bbs`: the box halved on `axis`, its lower and upper halves.
+  /// `setup_bbs`: the lower and upper halves on `axis`.
   pub(crate) fn halve(&self, axis: usize) -> [Self; 2] {
     let half: f32 = self.get_size()[axis] / 2.0;
     let (mut lower, mut upper): (Self, Self) = (*self, *self);
@@ -78,7 +77,7 @@ impl GeometrySplitBox {
     [lower, upper]
   }
 
-  /// `MakeCube`: the cube about the box's centre reaching its widest half-side (`get_CD`, then `grow` from the centre).
+  /// `MakeCube`: the cube about the box's centre reaching its widest half-side.
   pub(crate) fn get_cube(&self) -> Self {
     let half: [f32; 3] = std::array::from_fn(|axis| (self.max[axis] - self.min[axis]) * 0.5);
     let center: [f32; 3] = std::array::from_fn(|axis| self.min[axis] + half[axis]);

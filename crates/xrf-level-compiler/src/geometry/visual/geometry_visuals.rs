@@ -18,17 +18,12 @@ use crate::light::lightmap::atlas::lightmap_faces::LightmapFaces;
 use crate::light::lightmap::chart::light_chart::LightChart;
 use crate::light::point::light_color::LightColor;
 
-/// A level's static visuals, a visual a split, as xrLC converts them (`Flex2OGF`, `xrLC/xrFlex2OGF.cpp`).
+/// A level's static visuals, one a split, as `Flex2OGF` converts them.
 ///
-/// A visual takes its first face's material: its sector, its base texture, and its lightmaps, its first face's page's
-/// `lmap#N_1` and `_2`, or for a texture lit implicitly the base's `_lm`; a vertex-lit visual has none. Each face's
-/// corners carry the split vertex's place and normal, the corner's basis and base coordinate, and a lightmap
-/// coordinate: the base coordinate for an implicitly lit texture, its chart's on its page for the rest, or where no
-/// lightmaps are given the draft lightmap's (`LightDraft`). The faces are welded in order
-/// (`GeometryVisual::add_face`), the fast path taking an opaque texture's, and a visual whose compiler shader
-/// optimizes coordinates has them shifted (`GeometryVisual::shift_texture_coordinates`). Above draft quality each is
-/// then made progressive where it gains enough (`GeometryVisual::make_progressive`). Other faces keep the order they
-/// were taken in, where xrLC strips them.
+/// A visual takes its first face's material, sector, base texture and lightmaps: that face's page's `lmap#N_1` and
+/// `_2`, the base's `_lm` for an implicitly lit texture, none for a vertex-lit one. A corner's lightmap coordinate is
+/// its base coordinate for an implicitly lit texture, else its chart's, or the draft lightmap's (`LightDraft`) without
+/// a bake. Faces keep the order they were taken in, where xrLC strips them.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct GeometryVisuals {
   pub visuals: Vec<GeometryVisual>,
@@ -39,8 +34,8 @@ impl GeometryVisuals {
   ///
   /// # Errors
   ///
-  /// Returns an error for a material, texture or render shader the project or its textures lack, a material of no
-  /// compiler shader, or a split that welds into more vertices than a visual's 16-bit indices reach.
+  /// Returns an error for a missing material, texture or render shader, a material of no compiler shader, or a split
+  /// welding into more vertices than 16-bit indices reach.
   pub(crate) fn build(request: &GeometryVisualsRequest<'_>) -> XrfResult<Self> {
     let GeometryVisualsRequest {
       mesh,
@@ -169,9 +164,8 @@ impl GeometryVisuals {
     Ok(Self { visuals })
   }
 
-  /// The visuals' vertices and indices packed into the level's buffers, `geometry` for `level.geom` and `fast` for
-  /// `level.geomx`, as `SaveTREE` packs them (`xrLC/xrSaveOGF.cpp`): in the order of their base textures' names, a
-  /// stable sort, each visual's fast path before its own geometry. Where each one went, in visual order.
+  /// Packs the visuals into `geometry` (`level.geom`) and `fast` (`level.geomx`) as `SaveTREE` does: stably sorted by
+  /// base texture name, each fast path before its visual's geometry. Returns where each went, in visual order.
   ///
   /// # Errors
   ///
@@ -237,13 +231,13 @@ impl GeometryVisuals {
     Ok(packed.into_iter().flatten().collect())
   }
 
-  /// A texel of a texture of `width` by `height`, as a coordinate weld reaches.
+  /// One texel of a `width` by `height` texture, a coordinate weld's reach.
   fn get_texel(width: u32, height: u32) -> Vector2d {
     Vector2d::new(1.0 / width as f32, 1.0 / height as f32)
   }
 
-  /// A vertex's stored form (`r1v_lmap` and `r1v_vert`): its sky term in the normal's fourth byte, and for a vertex-lit
-  /// one its static light and sun as its colour, each by `u8_clr`; a lightmapped one its lightmap coordinates.
+  /// A vertex's stored form (`r1v_lmap` and `r1v_vert`): the sky term in the normal's fourth byte, then a vertex-lit
+  /// one's static light and sun as its colour, or a lightmapped one's lightmap coordinates.
   fn get_stored(vertex: &GeometryVisualVertex, light: GeometryVisualLight) -> LevelVertexStored {
     let is_vertex_lit: bool = light == GeometryVisualLight::Vertex;
     let normal: Vector3d = vertex.normal.normalize();

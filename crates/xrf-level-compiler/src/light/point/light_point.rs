@@ -12,15 +12,13 @@ use crate::light::source::light_sources::LightSources;
 use crate::ray::ray_rules::RayRules;
 use crate::shadow::shadow_materials::ShadowMaterials;
 
-/// The SDK's `LightPoint`: what each light gives a point with a normal, scaled by how much of it its shadow ray lets
-/// through the ray model. Static lights give their colour by the cosine; the sun and the sky an amount, by the cosine
-/// only when they stand at a position; a light at a position fades with its attenuation and gives nothing past its
-/// range; any light gives a point it faces away from nothing, and traces no ray for it. The two compilers' copies
-/// differ in a static point light's colour and in the rules their shadow rays follow ([`LightPointVariant`]).
+/// The SDK's `LightPoint`: what each light gives a point with a normal, scaled by how much its shadow ray lets through
+/// the ray model, by the compiler's [`LightPointVariant`].
 ///
-/// [`Self::evaluate`] and [`Self::evaluate_by`] trace every shadow ray as a full query; [`Self::evaluate_remembering`]
-/// first tests the face that last stopped the light whole, as the SDK does, for the same light. xrLC's `-att` (linear
-/// attenuation) and `LT_SECONDARY` lights, which only its unported radiosity pass makes, are not followed.
+/// Static lights give their colour by the cosine; the sun and the sky an amount, by the cosine only when at a position.
+/// A light at a position fades with its attenuation and gives nothing past its range; a light behind the point gives
+/// nothing and traces no ray. xrLC's `-att` (linear attenuation) and `LT_SECONDARY` lights, which only its unported
+/// radiosity pass makes, are not followed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct LightPoint {
   pub(crate) variant: LightPointVariant,
@@ -112,8 +110,8 @@ impl LightPoint {
     )
   }
 
-  /// The light `point` gathers from `lights` of the roles `roles` names, in that order, every ray traced on the CPU
-  /// against `tracer`, each face it crosses dimming it as `shadows` says.
+  /// The light `point` gathers from `lights` of the roles `roles` names, in that order, every ray a full CPU query of
+  /// `tracer`, each face it crosses dimming it as `shadows` says.
   pub(crate) fn evaluate(
     &self,
     point: &LightSamplePoint,
@@ -138,8 +136,8 @@ impl LightPoint {
   }
 
   /// [`Self::evaluate_by`], each light's ray first tested against the face that last stopped that light whole
-  /// (`rayTrace`'s cached polygon): where it stops this ray whole too, the ray is traced no further, as nothing else it
-  /// meets could let more through. The light is the same; only the query is spared.
+  /// (`rayTrace`'s cached polygon), as the SDK does: where it stops this ray whole too, the query is spared. The light
+  /// is the same.
   pub(crate) fn evaluate_remembering(
     &self,
     point: &LightSamplePoint,

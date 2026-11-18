@@ -1,8 +1,8 @@
 use xrf_math::{Aabb, Vector3d};
 
-/// xrAI's quadtree of cover points (`CQuadTree`, `xrAI/quadtree_inline.h`), ported as it is so its query returns the
-/// points in the engine's order: the mix of the other nodes sums their weights in that order. Its query also prunes as
-/// the engine's does, which can leave out a point within reach; kept, since the engine's mix leaves it out too.
+/// xrAI's quadtree of cover points (`CQuadTree`, `xrAI/quadtree_inline.h`), ported as it is so its query lists points
+/// in the engine's order, which the other nodes' mix sums in. Its query prunes as the engine's does, which can leave
+/// out a point within reach, as the engine's mix does too.
 pub(crate) struct AiCoverTree {
   center: Vector3d,
   radius: f32,

@@ -13,8 +13,6 @@ use crate::object::decompile::tests::fixtures::{UP, assemble, chain, corner, obj
 
 const SOURCE: &str = "props\\crate.object";
 
-/// A quad on [`chain`], one corner blended between its first two bones, with a class script, LODs, motion
-/// references, an authored description, and physics on its second bone.
 pub(super) fn authored() -> XrfResult<EditableObjectFile> {
   let [a, b, c, d] = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 0.0, 1.0], [0.0, 0.0, 1.0]];
   let mut bones: Vec<EditableBone> = chain();

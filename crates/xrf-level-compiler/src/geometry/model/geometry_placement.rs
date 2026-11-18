@@ -7,29 +7,25 @@ use crate::geometry::model::geometry_placement_sum::GeometryPlacementSum;
 /// The order each axis of each corner of a placed face sums in: by corner, then by axis.
 pub(crate) type GeometryFaceSums = [[GeometryPlacementSum; 3]; 3];
 
-/// Multi-use models' faces and points placed in the level by their references, as the collision forms, the visual tree
-/// and the LODs take them (`xrLC_Light/xrMU_Model_Reference.cpp`).
+/// Multi-use models' faces and points placed in the level by their references (`xrMU_Reference`).
 pub(crate) struct GeometryPlacement;
 
 impl GeometryPlacement {
-  /// How `xrMU_Model::export_cform_rcast` places a face's corners in the ray model, as SDK 0.7's xrLC sums them:
-  /// the first two with the point's last two products first, the third in order.
+  /// How SDK 0.7's `xrMU_Model::export_cform_rcast` sums a face's corners into the ray model.
   pub(crate) const RAY_MODEL_SUMS: GeometryFaceSums = {
     use GeometryPlacementSum::{Ordered, YzFirst};
 
     [[YzFirst; 3], [YzFirst; 3], [Ordered; 3]]
   };
 
-  /// How `xrMU_Reference::export_cform_game` places a face's corners in the collision form, as SDK 0.7's xrLC sums
-  /// them: the first with its last two products first on `x` and its outer two first on `y` and `z`, the others in
-  /// order.
+  /// How SDK 0.7's `xrMU_Reference::export_cform_game` sums a face's corners into the collision form.
   pub(crate) const COLLISION_SUMS: GeometryFaceSums = {
     use GeometryPlacementSum::{Ordered, XzFirst, YzFirst};
 
     [[YzFirst, XzFirst, XzFirst], [Ordered; 3], [Ordered; 3]]
   };
 
-  /// The model reference `index` of `project` places.
+  /// The model that reference `index` of `project` places.
   ///
   /// # Errors
   ///

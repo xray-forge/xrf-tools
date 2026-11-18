@@ -27,20 +27,13 @@ use crate::light::point::light_color::LightColor;
 use crate::light::vertex::light_models::LightModels;
 use crate::light::vertex::light_reference::LightReference;
 
-/// A level's multi-use models as xrLC exports them (`RunAfterLight`, `xrLC/Build.cpp`): each model's visuals once,
-/// each reference's placements of them, and its LOD.
+/// A level's multi-use models as xrLC's `RunAfterLight` exports them: each model's visuals once, each reference's
+/// placements of them, and its LOD.
 ///
-/// - **A model** gets its own normals, the static pass's over its vertices, none welded, by its smoothing flags. Its
-///   faces are sorted by material (`calc_materials`; xrLC's sort is unstable, this one keeps face order within a
-///   material), and each rendering material's run becomes a visual: its faces welded as a static visual's with no
-///   basis yet and no fast path, its coordinates shifted where its shader optimizes them, then its basis mended
-///   (`GeometryVisual::mend_basis`), and above draft quality made progressive where it gains enough
-///   (`GeometryVisual::make_progressive`).
-/// - **A reference** places each of its model's visuals as a tree ([`GeometryTree`]), with its light's scale and bias
-///   ([`LightModels`]). Where its model names a LOD, a [`GeometryLod`] node stands over them, its quads placed by the
-///   reference and their light the model's vertices' weighted by `1 / (1 + 100 d²)` from each corner.
-///
-/// [`LightModels`]: crate::light::vertex::light_models::LightModels
+/// A model's faces are sorted by material (`calc_materials`), and each rendering material's run becomes a visual with
+/// no fast path, its basis mended (`GeometryVisual::mend_basis`). xrLC's sort is unstable; this one keeps face order
+/// within a material. A reference places each visual as a [`GeometryTree`], and a [`GeometryLod`] where its model
+/// names one.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct GeometryModels {
   /// Each `build.prj` multi-use model, in its order.
@@ -52,15 +45,12 @@ pub(crate) struct GeometryModels {
 }
 
 impl GeometryModels {
-  /// The models and placements of `project`, lit by `light` ([`LightModels`]), or under the draft light where none is
-  /// given.
-  ///
-  /// [`LightModels`]: crate::light::vertex::light_models::LightModels
+  /// The models and placements of `project`, lit by `light`, or by the draft light where none is given.
   ///
   /// # Errors
   ///
-  /// Returns an error for a model whose faces xrLC would read past, a face of a material with no compiler shader or
-  /// one the project lacks, a reference naming a model the project lacks, or a model naming a LOD it lacks.
+  /// Returns an error for a model whose faces xrLC would read past, a face of a material with no compiler shader or a
+  /// missing one, or a reference or model naming a missing model or LOD.
   pub(crate) fn build(
     project: &BuildPrjFile,
     shaders: &CompilerShaders,
@@ -147,9 +137,8 @@ impl GeometryModels {
     Ok(Self { models, trees, lods })
   }
 
-  /// The models' visuals packed into the level's buffers in the tree layout, model by model, as `export_geometry`
-  /// packs them before the static visuals, a progressive one's windows added to `slide_windows`. Where each one went,
-  /// by model and visual.
+  /// Packs the models' visuals into the level's buffers in the tree layout as `export_geometry` does, before the static
+  /// visuals, adding progressive windows to `slide_windows`; returns where each went, by model and visual.
   ///
   /// # Errors
   ///
@@ -311,8 +300,8 @@ impl GeometryModels {
     })
   }
 
-  /// A LOD corner's light: each of the model's placed vertices' light (the placement's `colors`, or the draft light)
-  /// weighted by `1 / (1 + 100 d²)`, summed in order and divided by the weights and `EPS`.
+  /// A LOD corner's light: the placed vertices' light (`colors`, or the draft light) weighted by `1 / (1 + 100 d²)`,
+  /// summed in order and divided by the weights plus `EPS`.
   fn get_lod_light(corner: &Vector3d, vertices: &[Vector3d], colors: Option<&[LightColor]>) -> [f32; 5] {
     let terms = |color: &LightColor| [color.rgb.x, color.rgb.y, color.rgb.z, color.hemi, color.sun];
     let mut sum: [f32; 5] = [0.0; 5];
@@ -335,8 +324,8 @@ impl GeometryModels {
     sum.map(|term| term * scale)
   }
 
-  /// A tree vertex's stored form (`export_geometry`): its normal as computed, the model's hemisphere in its fourth
-  /// byte, its basis, and its coordinate with the wind fraction at 2,048 a tile.
+  /// A tree vertex's stored form (`export_geometry`): the hemisphere in the normal's fourth byte, and the wind fraction
+  /// beside its coordinate at 2,048 a tile.
   #[expect(
     clippy::manual_midpoint,
     reason = "xrLC averages the two wind terms in single precision, which `f32::midpoint` does not"

@@ -12,9 +12,8 @@ use crate::ai::cover::gpu::ai_cover_gpu_batch::AiCoverGpuBatch;
 use crate::ray::gpu::ray_gpu_tracer::RayGpuTracer;
 use crate::ray::ray_rules::RayRules;
 
-/// The corner nodes' rays traced on a started GPU by xrAI's rules ([`RayRules::COVERS`]), which answer a ray as the
-/// CPU's pass does: back faces passed, the first opaque face ending it, alpha faces dimming it. Nodes are flooded and
-/// their rays aimed on the CPU's threads a chunk at a time, while the GPU traces the chunk before; the covers are
+/// The corner nodes' rays traced on a started GPU by xrAI's rules ([`RayRules::COVERS`]), answered as the CPU's pass
+/// answers them. The CPU's threads flood and aim one chunk of nodes while the GPU traces the chunk before; covers are
 /// summed on the CPU in the CPU pass's order.
 pub(crate) struct AiCoverGpu<'a> {
   /// The GPU holding the cover pass's ray scene, started by `RayDevice`.

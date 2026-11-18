@@ -9,19 +9,16 @@ use xrf_utils::{decode_w1251_bytes_to_string, encode_string_to_w1251_bytes};
 use crate::level::level_decompile_context::LevelDecompileContext;
 use crate::level::parts::level_map_settings::LevelMapSettings;
 
-/// `level.ltx`, the map's settings the Build writes from the scene (`SceneBuilder::BuildLTX`, `BuilderLTX.cpp:25`), and
-/// back: the map's version and the game types it serves, the map's rectangle and texture, the build options' text, and
-/// each sector's part of the map.
+/// `level.ltx`, the map's settings the Build writes from the scene (`SceneBuilder::BuildLTX`), and back.
 pub(crate) struct LevelMapConversion;
 
 impl LevelMapConversion {
-  /// The file the build writes the map's settings to.
   pub(crate) const FILE_NAME: &'static str = "level.ltx";
 
   /// The name a level-bound shape takes.
   pub(crate) const BOUND_PREFIX: &'static str = "level_bound";
 
-  /// Each game type `[map_usage]` names, by its `EGameIDs` bit (`game_base_space.h`), as `BuildLTX` writes them.
+  /// Each game type `[map_usage]` names, by its `EGameIDs` bit, in the order `BuildLTX` writes them.
   const GAME_TYPES: [(u16, &'static str); 6] = [
     (1 << 1, "deathmatch"),
     (1 << 2, "teamdeathmatch"),
@@ -37,9 +34,9 @@ impl LevelMapConversion {
   /// How tall the level-bound shape stands, which `level.ltx` does not keep.
   const BOUND_HEIGHT: f32 = 1.0;
 
-  /// The settings `level.ltx` holds, read line by line as the Build writes them and a later save of the file leaves
-  /// them: sections, `key = value` lines and bare names, `;` lines and blank ones skipped, a line read up to a zero
-  /// byte (which ends the build options' text). The text is Windows-1251, as the game reads it.
+  /// The settings `level.ltx` holds, as the Build writes them or a later save leaves them, in Windows-1251.
+  ///
+  /// `;` and blank lines are skipped, and a line is read up to a zero byte, which ends the build options' text.
   ///
   /// # Errors
   ///
@@ -109,9 +106,8 @@ impl LevelMapConversion {
     Ok(settings)
   }
 
-  /// The level-bound shape whose box the Build takes for a map of `bounds` (lowest x and z, then highest): a box over
-  /// them, `Self::BOUND_HEIGHT` tall around height 0, its centre in the element and the object at the origin, so the
-  /// object's transform moves no corner off the box's ends.
+  /// The level-bound shape whose box the Build takes for a map of `bounds` (lowest x and z, then highest). The object
+  /// stands at the origin with the centre in the element, so no transform moves a corner off the box's ends.
   pub(crate) fn decompile_bound(bounds: &[f32; 4], context: &mut LevelDecompileContext) -> EditableShapeObject {
     let [min_x, min_z, max_x, max_z] = *bounds;
     let (centre_x, width) = Self::fit_span(min_x, max_x);
@@ -134,10 +130,11 @@ impl LevelMapConversion {
     }
   }
 
-  /// A centre and a width whose unit box ends where `min` and `max` are, `-0.5` and `0.5` times the width added to the
-  /// centre in single precision as the editor places a box's corners: the plain middle and span, or the nearest of a
-  /// few single-precision steps around them that ends exactly there, since the plain ones can miss by a step and
-  /// `level.ltx`'s six decimals show it. The plain ones where no nearby pair ends there.
+  /// A centre and width whose unit box ends exactly at `min` and `max` in the editor's single precision,
+  /// `±0.5 * width + centre`.
+  ///
+  /// The plain middle and span can miss by a step, which `level.ltx`'s six decimals show, so the nearest few steps
+  /// around them are tried; the plain ones where none fits.
   fn fit_span(min: f32, max: f32) -> (f32, f32) {
     let (centre, width) = (min + (max - min) / 2.0, max - min);
     let steps = |value: f32| {
@@ -159,13 +156,11 @@ impl LevelMapConversion {
   /// How many single-precision steps either way [`Self::fit_span`] tries.
   const FIT_STEPS: usize = 16;
 
-  /// `level.ltx` of a scene of `options`, its map over `bounds`' x and z (the level-bound shape's box, else the box of
-  /// the placed objects), and `sectors` in the order the scene numbers them, a line at a time as `IWriter::w_string`
-  /// ends them.
+  /// `level.ltx` of a scene of `options`, its map over `bounds`' x and z, and `sectors` in the scene's order, in
+  /// Windows-1251.
   ///
-  /// The build options' text goes in as `w_stringZ` writes it, ended by a zero byte rather than a line break, so its
-  /// last line runs on into the `;` written after it, where a reader of the line stops at the zero. The text is
-  /// Windows-1251, as the game reads it.
+  /// The build options' text ends with a zero byte, as `w_stringZ` writes it, so its last line runs on into the next
+  /// `;`, where a reader stops at the zero.
   ///
   /// # Errors
   ///
@@ -241,7 +236,7 @@ impl LevelMapConversion {
       .map_err(|_| XrfError::new_parsing_error(format!("bound_rect '{value}' is not four floats")))
   }
 
-  /// Writes `line` as `IWriter::w_string` does: the line, then a line break.
+  /// Writes `line` as `IWriter::w_string` does, ended by `\r\n`.
   fn line(text: &mut String, line: &str) {
     text.push_str(line);
     text.push_str("\r\n");

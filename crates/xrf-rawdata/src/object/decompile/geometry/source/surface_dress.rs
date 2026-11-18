@@ -1,9 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-/// What a surface is built and played with besides its texture and engine shader: the compiler shader the level
-/// compiler lights and collides it by (`shaders_xrlc.xr`), and the game material bullets, steps and physics read
-/// (`gamemtl.xr`). No OGF keeps either, so a decompiled surface takes the editor's defaults unless a level's collision
-/// form and lighting say more.
+/// A surface's compiler shader (`shaders_xrlc.xr`) and game material (`gamemtl.xr`). No OGF keeps either, so a
+/// decompiled surface takes the editor's defaults unless a level's collision form and lighting say more.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SurfaceDress {

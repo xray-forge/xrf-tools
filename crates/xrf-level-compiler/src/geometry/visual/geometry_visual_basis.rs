@@ -10,9 +10,8 @@ use crate::geometry::visual::geometry_visual_vertex::GeometryVisualVertex;
 use crate::light::point::light_color::LightColor;
 
 impl GeometryVisual {
-  /// `OGF::CalculateTB` (`xrLC/OGF_CalculateTB.cpp`), as a multi-use model's visuals take their basis: the vertices
-  /// ordered by first use, the mender run over the visual alone with the arguments both exports give it, each vertex
-  /// it splits a copy of its source, and the vertices ordered by first use again.
+  /// `OGF::CalculateTB`, as a multi-use model's visuals take their basis: the mender run over the visual alone, each
+  /// vertex it splits a copy of its source, the vertices ordered by first use before and after.
   ///
   /// # Errors
   ///

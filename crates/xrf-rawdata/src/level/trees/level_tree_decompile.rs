@@ -11,8 +11,7 @@ pub(crate) struct LevelTreeDecompile {
   pub(crate) placements: Vec<LevelTreePlacement>,
   /// Each model's impostor strips, by its reference, where it has one.
   pub(crate) impostors: Vec<(String, LevelTreeImpostor)>,
-  /// Each model given its strips, with where its impostor was stood, for
-  /// [`LevelTreeConversion::fit_impostor_boxes`](crate::level::trees::level_tree_conversion::LevelTreeConversion::fit_impostor_boxes).
+  /// Where each model given strips had its impostor stood, for `LevelTreeConversion::fit_impostor_boxes`.
   pub(crate) frames: Vec<LevelTreeImpostorFrame>,
   /// The impostors that did not cut, the model coming back without one.
   pub(crate) refused: Vec<LevelSceneRefusal>,

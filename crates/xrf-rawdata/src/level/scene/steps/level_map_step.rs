@@ -11,10 +11,8 @@ use crate::level::scene::steps::level_scene_step::LevelSceneStep;
 use crate::provenance::level_scene_inference::LevelSceneInference;
 use crate::provenance::level_scene_refusal::LevelSceneRefusal;
 
-/// What `level.ltx` gives ([`LevelMapConversion`]): the map's version, game types and the sections the Build does not
-/// write itself (as the build options' text) into the level options, the map's rectangle as a level-bound shape, and
-/// each sector's part of the map, which the draft keeps for the geometry step's sectors. It runs before the geometry
-/// step, which makes the sectors.
+/// What `level.ltx` gives ([`LevelMapConversion`]): level options, the map's rectangle as a level-bound shape, and each
+/// sector's part of the map, kept in the draft for the geometry step, which runs after it.
 pub(crate) struct LevelMapStep;
 
 impl LevelSceneStep for LevelMapStep {

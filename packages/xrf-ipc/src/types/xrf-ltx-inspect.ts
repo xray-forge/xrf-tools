@@ -16,8 +16,8 @@ export type LtxAnchoredFinding = {
 /**
  * One statement that writes a section or a field, where it is written, and how.
  *
- * This is authored text, not a resolved value: a field found here can be overridden by a later patch, deleted, or
- * never reached at all. Which value survives is what `LtxRootReader::read_sections` answers.
+ * Authored text, not a resolved value: a later patch can override or delete it. `LtxRootReader::read_sections`
+ * answers which value survives.
  */
 export type LtxDeclaration = {
   /** Engine identity of the config holding the statement. */
@@ -30,13 +30,12 @@ export type LtxDeclaration = {
   line: number;
   /** The header the statement sits under, or is; absent for a key written before the first header. */
   section: string | null;
-  /** That header's operation prefix, spelled as the engine spells it: empty, `!`, `@` or `!!`. */
+  /** That header's operation prefix: empty, `!`, `@` or `!!`. */
   sectionOperation: string;
   /**
-   * Whether the statement is written as a patch, by a prefix on itself or on its header.
+   * Whether a prefix on the statement or its header makes it a patch, read from the text alone.
    *
-   * Read from the text alone. Standard LTX refuses every such statement; under DLTX it edits whatever an earlier
-   * config declared.
+   * Standard LTX refuses patches; under DLTX one edits what an earlier config declared.
    */
   isPatch: boolean;
 } & LtxDeclarationStatement;
@@ -44,14 +43,12 @@ export type LtxDeclaration = {
 /**
  * What a declaration search asks for: a section, a field, a value, or any combination.
  *
- * Names match whole, the way resolution looks them up, so a section found here is the section
- * `LtxRootReader::read_sections` resolves under the same name. A field name is compared case-sensitively; a section
- * name in any case where `is_section_case_folded` says the dialect lowercases section names, as both shipped dialects
- * do (`LtxDialect::is_folding_section_names`). A value matches as a case-sensitive substring of the text written after
- * `=`, because a value is usually a list or a condlist and the part a person remembers is one item of it.
+ * Names match whole, as `LtxRootReader::read_sections` resolves them. Field names are case-sensitive; section names
+ * ignore case under [`Self::is_section_case_folded`]. A value matches as a case-sensitive substring of the text after
+ * `=`, since a value is usually a list or condlist and a person remembers one item of it.
  *
- * A header is answered only when the query names a section and nothing narrower; once a field or value is asked for,
- * the answer is the field lines alone. A query naming nothing matches nothing.
+ * Headers answer only a query naming a section alone; a field or value query answers field lines. A query naming
+ * nothing matches nothing.
  */
 export type LtxDeclarationQuery = {
   /** Section name without its brackets or operation prefix. */
@@ -60,7 +57,10 @@ export type LtxDeclarationQuery = {
   field: string | null;
   /** Text the written value must contain. */
   value: string | null;
-  /** Whether section names compare without regard to case, because the dialect resolving them folds it. */
+  /**
+   * Whether section names compare without regard to case, as the dialect folds them
+   * (`LtxDialect::is_folding_section_names`, true for both shipped dialects).
+   */
   isSectionCaseFolded: boolean;
 };
 
@@ -390,8 +390,7 @@ export type LtxStructureSection = {
 /**
  * A config a declaration search could not read, and why.
  *
- * Recorded rather than failing the search: one broken config says nothing about what the others declare, and a search
- * that stopped at it would hide every answer behind the one file that cannot give any.
+ * Recorded rather than failing the search, so one broken config does not hide what the others declare.
  */
 export type LtxUnreadableConfig = {
   /** Engine identity of the config. */

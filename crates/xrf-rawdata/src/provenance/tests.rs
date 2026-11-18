@@ -10,7 +10,6 @@ use crate::object::decompile::object_inference::ObjectInference;
 use crate::object::detail_parameters::DetailParameters;
 use crate::provenance::object_provenance::ObjectProvenance;
 
-/// An empty directory of generated resources for one test.
 fn directory(name: &str) -> PathBuf {
   let directory: PathBuf = GeneratedResources::path(&format!("rawdata/provenance/{name}"));
 

@@ -2,9 +2,8 @@ use std::collections::HashMap;
 
 use xrf_editable_object::EditableObjectFile;
 
-/// How often GSC, or whoever authored an object library, paired each engine shader with each compiler shader, counted
-/// over the surfaces of every `.object` under the library's roots: what breaks a tie between compiler shaders that fit
-/// what a compiled level shows of a surface.
+/// How often an object library's surfaces pair each engine shader with each compiler shader, which breaks ties between
+/// compiler shaders that fit a compiled surface.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct LevelShaderPairings {
   /// Surfaces by engine shader, then by compiler shader, both lowercased.

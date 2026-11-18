@@ -4,14 +4,10 @@ use crate::object::decompile::geometry::welded_face::WeldedFace;
 
 /// Folds the mirrored copies a two-sided surface's export wrote back into single faces.
 ///
-/// `CExportObjectOGF::PrepareMESH` and its skeleton counterpart write each face of an `sf2Sided` surface twice, the
-/// second with its winding reversed and its normals inverted. A face and its mirror in the same OGF surface are one
-/// authored face, kept once and marked two-sided.
-///
-/// Which of the two is kept decides how the face meets its neighbours: smoothing joins faces that run a shared edge in
-/// opposite directions. A progressive mesh reorders the triangles, so neither copy is reliably first; the kept member
-/// of each pair is the one consistent with a single-sided neighbour where it has one, and with the pairs already
-/// chosen around it otherwise.
+/// The exports write each `sf2Sided` face twice, the second wound back with inverted normals; the pair is kept once,
+/// marked two-sided. Smoothing joins faces running a shared edge in opposite directions, and a progressive mesh
+/// reorders triangles, so the member kept is the one consistent with a single-sided neighbour, else with the pairs
+/// already chosen around it.
 pub(crate) struct TwoSidedPairs;
 
 impl TwoSidedPairs {

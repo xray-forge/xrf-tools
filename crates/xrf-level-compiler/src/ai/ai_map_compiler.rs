@@ -14,15 +14,13 @@ use crate::ai::cover::ai_cover_tracing::AiCoverTracing;
 pub(crate) struct AiMapCompiler;
 
 impl AiMapCompiler {
-  /// Compiles the map `request` names, its covers shared over the installed pool and the corner nodes' rays traced by
-  /// the request's backend.
+  /// Compiles the map `request` names, its covers computed on the installed pool and the request's ray backend.
   ///
   /// # Errors
   ///
-  /// Returns an error when `build.aimap` holds no node or is not the version xrAI loads, when a node does not fit the
-  /// file's layout, or for full covers with no ray model; [`XrfError::Cancelled`] when the job is cancelled; and, for
-  /// the GPU backend, an error when this build has none, no GPU traces rays, or the GPU fails. `Auto` traces on the CPU
-  /// instead when the GPU does not start, but fails with a GPU that fails once started.
+  /// Returns an error when `build.aimap` holds no node, is not the version xrAI loads or has a node the file's layout
+  /// cannot hold, when full covers have no ray model, when the job is cancelled ([`XrfError::Cancelled`]), or when the
+  /// GPU backend cannot trace or fails. `Auto` falls back to the CPU only where the GPU does not start.
   pub(crate) fn compile(request: AiMapRequest<'_>, job: &JobHandle) -> XrfResult<AiMapCompilation> {
     let mut vertices: Vec<AiVertex> = Self::load(request.aimap)?;
     let gpu: Option<String> = match request.covers {

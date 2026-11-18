@@ -409,7 +409,7 @@ export const SCENE_RENDER_EDITOR_BIT: number = 1073741824;
 export const SCENE_RENDER_INDEX_BITS: number = 24;
 
 /**
- * Every tool in the editor's order, the place a scene render id's top bits name each by. Only the page reads it: the
+ * Every tool in the editor's order, the place a scene render id's tool bits name each by. Only the page reads it: the
  * backend reads a tool's place off its variant.
  */
 export const SCENE_RENDER_TOOLS: Array<SceneToolKind> = [

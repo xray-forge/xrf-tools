@@ -31,11 +31,11 @@ use crate::level::scene::steps::level_root_spawn::LevelRootSpawn;
 use crate::level::scene::steps::level_scene_step::LevelSceneStep;
 use crate::provenance::level_scene_provenance::LevelSceneProvenance;
 
-/// Decompiles a level's directory into a Level Editor scene, step by step over one draft: the map's settings, the
-/// geometry and its objects, sectors and portals; the bundle's glows and lights; the files the build passes through from
-/// a part (`BuilderGame.cpp`); the details and the AI map; and the game's ways and spawn points. Each step names the
-/// files it reads; the decompile reads them all once and hashes them into the scene's GUID, so decompiling the same
-/// level twice gives the same scene.
+/// Decompiles a level's directory into a Level Editor scene, running its steps in turn over one draft: map settings,
+/// geometry, glows and lights, passed-through parts, details, AI map, ways and spawn points.
+///
+/// Every step's files are read once and hashed into the scene's GUID, so decompiling the same level twice gives the
+/// same scene.
 pub struct LevelSceneDecompiler;
 
 impl LevelSceneDecompiler {
@@ -95,14 +95,13 @@ impl LevelSceneDecompiler {
     .concat()
   }
 
-  /// The scene of the level in `directory`: a part per tool whose compiled file the directory holds, the objects of
-  /// its geometry, and the main file its name and those files give.
+  /// Decompiles the level in `directory`: a part per tool whose compiled file it holds, the geometry's objects, and the
+  /// main file.
   ///
   /// # Errors
   ///
-  /// Returns an error when the directory holds none of [`Self::get_source_files`], one cannot be read or is not the
-  /// file its name says, the root spawn given cannot be read or holds no objects chunk or graph, or a step refuses what
-  /// it holds.
+  /// Returns an error when the directory holds none of [`Self::get_source_files`], a file cannot be read or is not
+  /// what its name says, the root spawn cannot be read or lacks an objects chunk or graph, or a step refuses its data.
   pub fn decompile<T: ByteOrder>(directory: &Path, options: &LevelDecompileOptions) -> XrfResult<LevelSceneDecompile> {
     Self::decompile_with::<T>(directory, options, &JobHandle::inert())
   }
@@ -178,17 +177,15 @@ impl LevelSceneDecompiler {
     Ok(draft.finish(options, &sources))
   }
 
-  /// The level of `request.source` decompiled into the scene `request.destination`, its objects and textures written
-  /// under their roots ([`LevelDecompileRequest`]'s defaults resolved), and what was written, as both front-ends report
-  /// it. `tool` and `tool_version` name the front-end in the sidecars.
+  /// Decompiles `request.source` into the scene `request.destination`, writes its objects and textures under their
+  /// roots, and reports what was written. `tool` and `tool_version` name the front-end in the sidecars.
   ///
   /// # Errors
   ///
-  /// Returns an error when the request does not resolve; before the level is read, when it is not forced and the scene
-  /// or an object of the level's own is there ([`LevelDecompileRequest::get_scene_outputs`],
-  /// [`LevelDecompileRequest::get_object_outputs`]); when the decompile fails ([`Self::decompile`]) or is cancelled;
-  /// when it is not forced and a library copy or a texture it writes is there, which only the decompile names; or when
-  /// a file does not write or a stale one is not removed.
+  /// Returns an error when the request does not resolve; unforced, before the level is read, when the scene or one of
+  /// the level's objects exists ([`LevelDecompileRequest::get_scene_outputs`],
+  /// [`LevelDecompileRequest::get_object_outputs`]); when the decompile fails or is cancelled; unforced, when a library
+  /// copy or texture it writes exists; or when a file does not write or a stale one is not removed.
   pub fn decompile_to_path<T: ByteOrder>(
     request: &LevelDecompileRequest,
     tool: &str,
@@ -204,8 +201,7 @@ impl LevelSceneDecompiler {
     object_outputs.assert_free(request.is_forced)?;
 
     let decompiled: LevelSceneDecompile = Self::decompile_with::<T>(source, &options, job)?;
-    // Resolved before anything is removed or written, so a name from the level or a library that would leave its root
-    // refuses the run whole.
+    // Resolved before anything is removed or written, so a name that would leave its root refuses the whole run.
     let written_scene: Vec<PathBuf> = decompiled.get_written_scene_paths(destination)?;
     let written_objects: Vec<PathBuf> = decompiled.get_written_object_paths(&objects)?;
     let mut existing: Vec<PathBuf> = decompiled.get_existing_object_paths(&objects)?;

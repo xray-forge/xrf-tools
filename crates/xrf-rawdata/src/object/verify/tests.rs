@@ -1,5 +1,3 @@
-//! What `ObjectVerifier` counts as a difference, each reference here compiled from the object with one thing changed.
-
 use xrf_chunk::XRayByteOrder;
 use xrf_editable_object::{EditableBone, EditableBoneMass, EditableObjectFile};
 use xrf_error::XrfResult;
@@ -16,7 +14,6 @@ use crate::object::verify::object_verifier::ObjectVerifier;
 use crate::object::verify::ogf_material_comparison::OgfMaterialComparison;
 use crate::object::verify::ogf_material_geometry::OgfMaterialGeometry;
 
-/// A quad on a chain of three bones, one corner blended between the first two, with LODs and motion references.
 fn quad() -> XrfResult<EditableObjectFile> {
   let [a, b, c, d] = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 0.0, 1.0], [0.0, 0.0, 1.0]];
   let mut quad: EditableObjectFile = object(
@@ -37,7 +34,6 @@ fn quad() -> XrfResult<EditableObjectFile> {
   Ok(quad)
 }
 
-/// `object` compiled, as a reference read from disk would be.
 fn compiled(object: &EditableObjectFile) -> XrfResult<OgfFile> {
   let source: ObjectCompileSource = ObjectCompileSource {
     source_file: String::from("props\\crate.object"),
@@ -48,7 +44,6 @@ fn compiled(object: &EditableObjectFile) -> XrfResult<OgfFile> {
   OgfFile::read_from_bytes::<XRayByteOrder>(ObjectCompiler::compile(object, &source)?.bytes)
 }
 
-/// How the quad verifies against a reference compiled from it after `change`.
 fn verify_against(change: impl FnOnce(&mut EditableObjectFile)) -> XrfResult<ObjectVerification> {
   let mut changed: EditableObjectFile = quad()?;
 
@@ -234,7 +229,6 @@ fn finds_a_moved_corner_in_its_vertices_faces_and_bounds() -> XrfResult {
   Ok(())
 }
 
-/// A vertex at `x` along the X axis, facing up, at the origin of its texture, following no bone.
 fn vertex(x: f32) -> OgfVertex {
   OgfVertex {
     position: Vector3d::new(x, 0.0, 0.0),

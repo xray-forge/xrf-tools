@@ -5,10 +5,10 @@ use xrf_spawn::{AlifeObject, LevelSpawnFile};
 pub struct LevelEntitySources<'a> {
   pub spawn: Option<&'a LevelSpawnFile>,
   pub respawn: Option<&'a LevelSpawnFile>,
-  /// The root spawn's objects standing on the level. Where it holds any, they stand in for `spawn`'s
-  /// entities but its graph points, which a root spawn keeps as graph vertices instead.
+  /// The root spawn's objects on the level; where any are, they stand in for `spawn`'s entities but its graph points,
+  /// which a root spawn keeps as graph vertices.
   pub root: &'a [AlifeObject],
-  /// The names of entities the Build exported from the scene's geometry, which the decompile folded back into objects:
-  /// left out of every list, as the Build writes them again.
+  /// Names of the entities the Build cut from the geometry, which the decompile folded back into objects: left out of
+  /// every list, as the Build writes them again.
   pub folded: &'a [String],
 }

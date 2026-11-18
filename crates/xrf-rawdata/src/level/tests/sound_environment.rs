@@ -13,7 +13,7 @@ use crate::level::level_decompile_context::LevelDecompileContext;
 use crate::level::parts::level_sound_environment_conversion::LevelSoundEnvironmentConversion;
 use crate::level::tests::fixtures::GUID;
 
-/// A box sheared by its own matrix, which no object transform of the unit box gives.
+// Sheared, which no object transform of the unit box gives.
 const SHEARED: Affine3d = Affine3d {
   x_axis: Vector3d::new(2.0, 0.0, 0.5),
   y_axis: Vector3d::new(0.0, 3.0, 0.0),

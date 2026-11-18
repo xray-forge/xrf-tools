@@ -11,8 +11,7 @@ use crate::level::geometry::level_decal_index::LevelDecalIndex;
 use crate::level::instance::level_instance_library::LevelInstanceLibrary;
 use crate::level::trees::level_tree_impostor_atlas::LevelTreeImpostorAtlas;
 
-/// What a level's geometry decompiles from: the compiled bundle named `name`, its visuals and the buffers they draw
-/// from, and where the level's directory holds them, its collision form, indexed, and its occlusion meshes.
+/// What a level's geometry decompiles from; the optional files are those the level's directory may lack.
 pub struct LevelGeometrySources<'a, D: ChunkDataSource> {
   pub name: &'a str,
   pub level: &'a LevelFile,
@@ -31,8 +30,7 @@ pub struct LevelGeometrySources<'a, D: ChunkDataSource> {
   pub impostors: Option<&'a LevelTreeImpostorAtlas>,
   /// The library objects looked for in the static geometry, each found placement placed by reference.
   pub library: Option<&'a LevelInstanceLibrary>,
-  /// The game material library telling which faces of the placed library objects the Build cuts into ladders and
-  /// breakables, read where the surfaces are not inferred; inferred surfaces tell it by their own. With neither, no
-  /// ladder or breakable is folded into a placement.
+  /// The game material library telling which placed library faces the Build cuts into ladders and breakables, used
+  /// where surfaces are not inferred. With neither, no ladder or breakable folds into a placement.
   pub game_materials: Option<&'a GameMtlFile>,
 }

@@ -30,10 +30,9 @@ use crate::level::parts::level_spawn_point_conversion::LevelSpawnPointConversion
 use crate::level::parts::level_wallmark_conversion::LevelWallmarkConversion;
 use crate::level::parts::level_way_conversion::LevelWayConversion;
 
-/// Exports a scene's parts into the level files the Level Editor's Build writes from them with no compiler between:
-/// `SceneBuilder::BuildGame` (`BuilderGame.cpp:17`) and `BuildWallmarks` (`BuilderOGF.cpp:172`), plus `level.snd_env`,
-/// whose export the SDK leaves commented out. The inverse of
-/// [`LevelSceneDecompiler`](crate::LevelSceneDecompiler) for the files it reads.
+/// Exports a scene's parts into the level files the Build writes with no compiler between, as
+/// `SceneBuilder::BuildGame` and `BuildWallmarks` do, plus `level.snd_env`, whose export the SDK leaves commented out.
+/// The inverse of [`LevelSceneDecompiler`](crate::LevelSceneDecompiler) for those files.
 pub struct LevelSceneExporter;
 
 impl LevelSceneExporter {
@@ -55,8 +54,8 @@ impl LevelSceneExporter {
   /// - `level.game`, `level.env_mod` and `level.fog_vol` for every scene, from its way and spawn parts and its fog
   ///   volumes, each empty where the scene has no such tool;
   /// - `level.spawn` and `level_rs.spawn` where the spawn part places an entity there, `level.spawn` opening with
-  ///   `built`, the entities a build of the geometry cut from it ([`LevelBuildExport::entities`](crate::LevelBuildExport)),
-  ///   as the object tool exports before the spawn tool;
+  ///   `built`, the entities a build cut from the geometry ([`LevelBuildExport`](crate::LevelBuildExport)), as the
+  ///   object tool exports before the spawn tool;
   /// - `level.ps_static` and `level.snd_static` where the scene places a particle or a sound;
   /// - `level.snd_env` where it holds a sound environment;
   /// - `level.wallmarks` where its wall mark tool exports a slot (the build exports only a tool holding slots).

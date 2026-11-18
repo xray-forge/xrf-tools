@@ -12,28 +12,23 @@ use crate::geometry::surface::geometry_base_coordinates::GeometryBaseCoordinates
 use crate::geometry::surface::geometry_normals::GeometryNormals;
 use crate::input::compiler_shaders::CompilerShaders;
 
-/// The ray model the light, detail and AI compilers query, `build.cform`, as `CBuild::BuildRapid` builds and saves it
-/// (`xrLC/xrBuildRapidModel.cpp`).
+/// The ray model the light, detail and AI compilers query, `build.cform`, as `CBuild::BuildRapid` builds it.
 ///
-/// The static faces whose compiler shader casts a shadow, in the mesh's order, then each multi-use reference's, in
-/// `build.prj`'s order, its model's shadow-casting faces in theirs placed by its transform (`export_cform_rcast`). A
-/// static face with the same three corners as one already taken is left out, its corners as the smoothing split leaves
-/// them, so a double-sided face's back stays apart from its front. A model face repeating another of its model is left
-/// out alike, its corners as the model's own smoothing split leaves them. Each corner is packed by a
-/// `GeometryCollector` over the scene's box, which is also the form's. A face's record holds its `build.prj` material,
-/// its game material and its base texture coordinates, a static face's as the tangent-basis pass leaves them
-/// (`GeometryBaseCoordinates`); its handle, xrLC's face address that no reader uses, is its index.
+/// The shadow-casting static faces in mesh order, then each multi-use reference's shadow-casting model faces placed by
+/// its transform (`export_cform_rcast`), corners packed over the scene's box, which is also the form's. A face
+/// repeating the corners of one taken before it, as the smoothing split leaves them, is left out, so a double-sided
+/// face's back stays apart from its front. A face's record holds its material, game material and base coordinates (a
+/// static face's from `GeometryBaseCoordinates`); its handle, xrLC's face address that no reader uses, is its index.
 pub(crate) struct GeometryRayModel;
 
 impl GeometryRayModel {
-  /// The ray model of `mesh`, split as `normals` with `coordinates`, and `project`'s multi-use references, by
-  /// `shaders`.
+  /// The ray model of `mesh`, split as `normals` with `coordinates`, and `project`'s multi-use references.
   ///
   /// # Errors
   ///
   /// Returns an error when `normals` or `coordinates` is not of `mesh`'s faces, and where xrLC would read past a table:
-  /// a reference naming a model the project lacks, a placed model with no vertex or without a smoothing flag a face, a
-  /// model face naming a vertex the model lacks or a material of no compiler shader.
+  /// a reference naming a missing model, a placed model with no vertex or without a smoothing flag a face, or a model
+  /// face naming a missing vertex or a material of no compiler shader.
   pub(crate) fn build(
     mesh: &GeometryMesh,
     normals: &GeometryNormals,
@@ -56,9 +51,8 @@ impl GeometryRayModel {
   }
 
   /// The ray model `xrPhase_AdaptiveHT` builds for its sky term before the smoothing split (`BuildRapid(FALSE)`): as
-  /// [`Self::build`], but a face repeating another's corners as the weld leaves them is left out, a double-sided face's
-  /// back with it, a model face repeating another's corners as the model is loaded, and each face keeps its base
-  /// coordinates as loaded.
+  /// [`Self::build`], but repeats are judged by the welded or loaded corners, so a double-sided face's back is left
+  /// out, and each face keeps its base coordinates as loaded.
   ///
   /// # Errors
   ///
@@ -76,8 +70,7 @@ impl GeometryRayModel {
     })
   }
 
-  /// Where each of `mesh`'s faces, its corners split as `normals` leaves them, stands in [`Self::build`]'s form: its
-  /// index there, none for a face that casts no shadow or repeats one taken before it.
+  /// Each of `mesh`'s faces' index in [`Self::build`]'s form, none for one left out.
   pub(crate) fn get_static_faces(
     mesh: &GeometryMesh,
     normals: &GeometryNormals,
@@ -106,9 +99,8 @@ impl GeometryRayModel {
     .collect()
   }
 
-  /// Whether each face of `model` is taken into the form, its corners named by `corners`: one casting a shadow that
-  /// repeats no face taken before it (`xrMU_Model::export_cform_rcast`, which clears its marks for each placement, so
-  /// every placement of a model takes the same faces).
+  /// Whether each face of `model`, its corners named by `corners`, is taken (`xrMU_Model::export_cform_rcast`). Every
+  /// placement of a model takes the same faces, as xrLC clears its marks for each.
   fn get_model_taken(model: &BuildPrjMuModel, corners: &[[u32; 3]], shaders: &CompilerShaders) -> XrfResult<Vec<bool>> {
     let casts_shadow: Vec<bool> = model
       .faces
@@ -120,8 +112,8 @@ impl GeometryRayModel {
     Ok(Self::get_unrepeated(corners.iter().zip(casts_shadow)))
   }
 
-  /// Whether each face, by its corners and whether it casts a shadow, is taken: one casting a shadow with corners no
-  /// face taken before it holds, in any order (`FaceEqual` over the faces marked processed).
+  /// Whether each face is taken: one casting a shadow whose corners, in any order, no earlier taken face holds
+  /// (`FaceEqual`).
   fn get_unrepeated<'a>(faces: impl Iterator<Item = (&'a [u32; 3], bool)>) -> Vec<bool> {
     let mut taken: HashSet<[u32; 3]> = HashSet::new();
 
@@ -130,8 +122,8 @@ impl GeometryRayModel {
       .collect()
   }
 
-  /// The form of `mesh`'s faces, each named by `corners` for the repeat test and with its `coordinates`, then the
-  /// references', each model's faces named for the repeat test by `model_corners`.
+  /// The form of `mesh`'s faces, then the references', `corners` and `model_corners` naming the corners the repeat
+  /// test compares.
   fn collect(
     mesh: &GeometryMesh,
     corners: &[[u32; 3]],
@@ -214,7 +206,7 @@ impl GeometryRayModel {
     }
   }
 
-  /// One face of the form, its corners packed (`CollectorPacked::add_face_D`), and its record.
+  /// Adds a face with its corners packed (`CollectorPacked::add_face_D`), and its record.
   fn push(
     collector: &mut GeometryCollector,
     faces: &mut Vec<BuildCformFace>,

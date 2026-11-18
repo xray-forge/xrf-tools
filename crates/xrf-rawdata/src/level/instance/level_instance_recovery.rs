@@ -21,11 +21,9 @@ pub(crate) struct LevelInstanceRecovery {
 }
 
 impl LevelInstanceRecovery {
-  /// The placements of `library`'s objects in `sectors`' static visuals, each sector's by its compiled index; each mesh
-  /// of a placement belongs to the sector holding most of its triangles, as the editor puts a scene object's meshes in
-  /// sectors one by one (`CSector::AddMesh`, `sector.cpp`), and one the placement took none of to the sector holding
-  /// most of the placement's. Where `collision` is given, each placement's collision-only triangles cover their faces
-  /// there, so they come back with it rather than as collision of their own.
+  /// The placements of `library`'s objects in `sectors`' static visuals, each mesh in a sector as
+  /// [`LevelInstanceMesh::sector`] says. Where `collision` is given, each placement's collision-only triangles cover
+  /// their faces there, so they come back with the placement.
   ///
   /// # Errors
   ///

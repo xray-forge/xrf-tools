@@ -57,8 +57,7 @@ fn writes_an_object_that_reads_back_and_rewrites_alike() -> XrfResult {
   Ok(())
 }
 
-/// A static visual of `model_type` holding one quad, `a b c` and `a c d` over four vertices, then a third face behind
-/// the first sliding window where `windows` are given, as a progressive mesh keeps its coarser levels.
+// The third face lies behind the first sliding window, as a progressive mesh keeps its coarser levels.
 fn static_visual(model_type: OgfModelType, windows: Option<Vec<OgfSlideWindow>>) -> XrfResult<OgfFile> {
   let mut file: ChunkWriter = ChunkWriter::new();
   let mut chunk = |id: u32, write: &dyn Fn(&mut ChunkWriter) -> XrfResult| -> XrfResult {

@@ -16,13 +16,12 @@ impl GeometryMesh {
   /// How many refused faces an error lists by place.
   const LISTED_REFUSALS: usize = 7;
 
-  /// `CBuild::PreOptimize` (`xrLC/xrPreOptimize.cpp`): welds the vertices, drops the faces the weld leaves
-  /// degenerate, refuses the build over any face `Face::Verify` fails, and drops the vertices no face uses.
+  /// `CBuild::PreOptimize`: welds the vertices, drops the faces left degenerate, refuses any face `Face::Verify` fails,
+  /// and drops unused vertices.
   ///
-  /// A vertex welds to a kept one within `weld_distance` on every axis, strictly, found through a [`PackGrid`] of
-  /// `Self::WELD_CELLS` over the scene's box, the vertices taken in `build.prj`'s order. So across a cell's border a
-  /// weld reaches no further than `EPS_L`, whatever the distance asked; and a distance of 0 welds nothing, not even
-  /// vertices at one place.
+  /// A vertex welds to an earlier kept one strictly within `weld_distance` on every axis, found through a [`PackGrid`]
+  /// over the scene's box. So across a cell's border a weld reaches no further than `EPS_L`, whatever the distance;
+  /// and a distance of 0 welds nothing, not even coincident vertices.
   ///
   /// # Errors
   ///
@@ -107,8 +106,7 @@ impl GeometryMesh {
     welded
   }
 
-  /// The weld grid's cell `position` falls in: `(p - min) * (cells / size)` floored, a point below the box in the first
-  /// cell and one above in the last.
+  /// The weld grid's cell `position` falls in: `(p - min) * (cells / size)` floored, clamped into the grid.
   fn get_weld_cell(&self, position: &Vector3d) -> [usize; 3] {
     let size: Vector3d = &self.bounds.max - &self.bounds.min;
     let minimum: &Vector3d = &self.bounds.min;

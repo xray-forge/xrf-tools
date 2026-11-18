@@ -11,8 +11,8 @@ use crate::detail::gpu::detail_gpu_waiting::DetailGpuWaiting;
 use crate::ray::gpu::ray_gpu_batch::RayGpuBatch;
 use crate::ray::gpu::ray_gpu_tracer::RayGpuTracer;
 
-/// The detail lighter with its shadow rays made and traced on a started GPU: slots planned on the CPU's threads a few
-/// at a time until enough rays wait, those rays traced in one go, then those slots finished on the CPU's threads.
+/// The detail lighter with its shadow rays traced on a started GPU: slots planned on CPU threads until enough rays
+/// wait, those rays traced in one dispatch, then those slots finished on CPU threads.
 pub(crate) struct DetailGpuLighting<'a> {
   /// The GPU holding the lighter's ray scene, started by `RayDevice`.
   pub(crate) tracer: &'a RayGpuTracer,
@@ -22,7 +22,7 @@ impl DetailGpuLighting<'_> {
   /// Slots planned together, then planned again until enough rays wait.
   const PLANNED: usize = 64;
 
-  /// Every slot's fate of `details`.
+  /// Every slot's fate.
   ///
   /// # Errors
   ///
@@ -48,7 +48,7 @@ impl DetailGpuLighting<'_> {
         .map(|cell| DetailLighter::plan(lighter, cell, &slots[cell]))
         .collect();
 
-      // Slot by slot, so a slot whose rays would overflow the dispatch, as many lamps reaching it can, goes in the next.
+      // Slot by slot, so a slot whose rays would overflow the dispatch goes in the next.
       for stage in planned {
         let first: usize = match &stage {
           DetailSlotStage::Planned(plan) => {
@@ -67,7 +67,7 @@ impl DetailGpuLighting<'_> {
 
       next = end;
 
-      // Traced once no room is left for one more packet or single ray, or enough rays wait, or the slots run out.
+      // Traced once not one more packet or single ray fits, or the slots run out.
       if waiting.batch.is_full(1, 1) || next == slots.len() {
         fates.extend(self.trace(&mut waiting, lighter, scope)?);
       }

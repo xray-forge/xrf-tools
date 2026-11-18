@@ -11,19 +11,15 @@ use crate::geometry::model::geometry_models::GeometryModels;
 use crate::geometry::model::geometry_placement::GeometryPlacement;
 use crate::geometry::visual::geometry_visuals::GeometryVisuals;
 
-/// A level's visual tree and its sectors, as xrLC lays them out (`g_tree`; `CBuild::BuildSectors`,
-/// `xrLC/xrSectors.cpp`).
+/// A level's visual tree and its sectors, as `CBuild::BuildSectors` lays them out (`g_tree`).
 ///
-/// The tree starts with the static visuals in order, then each multi-use reference's trees followed by its LOD node
-/// where it has one. Each visual's sector is its material's, a tree's and a LOD's their reference's; the sectors are
-/// numbered up to the highest, and each must hold a visual.
+/// The tree starts with the static visuals in order, then each multi-use reference's trees and its LOD node. A visual
+/// takes its material's sector, a tree and a LOD their reference's; every sector up to the highest must hold a visual.
 ///
-/// Each sector then grows its hierarchy (`CSector::BuildHierrarhy`, `xrLC/Sector.cpp`): the size starts at 8 m and
-/// doubles while within twice the scene's widest side. At each size, each of the sector's nodes not yet under another
-/// starts a node and takes in, one at a time, the node whose box joined with the node's, grown by `EPS_L`, stays within
-/// the size and is smallest by volume (the first of equals); a node that took in nothing is undone, and one that did
-/// joins the tree with its bounds taken from all the geometry under it. The sector's root is the last node it grew, or
-/// its one node where it grew none. A portal is listed in both its sectors.
+/// Each sector then grows its hierarchy as `CSector::BuildHierrarhy` does: from 8 m, doubling while within twice the
+/// scene's widest side, each free node greedily takes in the free node giving the smallest joined box within the size
+/// (by volume, the first of equals). The root is the last node grown, or the sector's one node. A portal is listed in
+/// both its sectors.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct GeometryHierarchy {
   pub nodes: Vec<GeometryNode>,
@@ -38,8 +34,8 @@ impl GeometryHierarchy {
   ///
   /// # Errors
   ///
-  /// Returns an error for a sector holding no visual, a portal naming a sector past the last or with the same sector
-  /// on both sides, which xrLC asserts on.
+  /// Returns an error for a sector holding no visual, or a portal naming a sector past the last or the same sector on
+  /// both sides, which xrLC asserts on.
   pub(crate) fn build(visuals: &GeometryVisuals, models: &GeometryModels, project: &BuildPrjFile) -> XrfResult<Self> {
     let mut points: Vec<Vec<Vector3d>> = Vec::new();
     let mut nodes: Vec<GeometryNode> = Vec::new();

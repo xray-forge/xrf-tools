@@ -8,13 +8,10 @@ use crate::geometry::surface::geometry_base_coordinates::GeometryBaseCoordinates
 use crate::geometry::surface::geometry_basis::GeometryBasis;
 use crate::geometry::surface::geometry_normals::GeometryNormals;
 
-/// Each face corner's tangent and binormal as xrLC's tangent-basis pass leaves them on the faces
-/// (`xrPhase_TangentBasis`, `xrLC/xrPhase_TangentBasis.cpp`).
+/// Each face corner's tangent and binormal as `xrPhase_TangentBasis` leaves them on the faces.
 ///
-/// Every face in order gives the mender a vertex per corner: its split vertex's place and normal with the corner's base
-/// coordinate, one vertex per split vertex and coordinate (`fill_mender_input`). The mender runs with the arguments
-/// both exports give it ([`TangentBasis::mend_in_place`]), and each corner takes its vertex's directions back
-/// (`set_face`), normalized safely and quantized to a byte a component ([`GeometryBasis::of`]).
+/// The mender ([`TangentBasis::mend_in_place`]) gets one vertex per split vertex and base coordinate
+/// (`fill_mender_input`), and each corner takes its vertex's directions back quantized ([`GeometryBasis::of`]).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct GeometryTangents {
   /// Each face of the mesh, in its order, its three corners' bases.

@@ -7,8 +7,7 @@ use crate::level::geometry::level_visual_geometry::LevelVisualGeometry;
 use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
 
-/// A level vertex at `position` whose normal is `normal` stored as xrLC stores it, a byte a component, `(n + 1) *
-/// 127.5` truncated.
+// The normal stored as xrLC stores it, a byte a component, `(n + 1) * 127.5` truncated.
 fn vertex(position: [f32; 3], normal: [f32; 3]) -> LevelVertex {
   let byte = |component: f32| ((component + 1.0) * 127.5) as u8;
   let normal: Vector3d =
@@ -26,7 +25,6 @@ fn vertex(position: [f32; 3], normal: [f32; 3]) -> LevelVertex {
   }
 }
 
-/// A visual drawn with `texture` of `vertices`, its triangles `indices`.
 fn visual(texture: &str, vertices: Vec<LevelVertex>, indices: Vec<u16>) -> LevelVisualGeometry {
   LevelVisualGeometry {
     texture: String::from(texture),
@@ -179,8 +177,7 @@ fn refuses_an_index_past_a_visuals_vertices() {
   assert!(error.contains("Index 7"), "{error}");
 }
 
-/// The Level Editor refuses a mesh of fewer than 4 points and 2 faces, so a lone triangle comes back halved through
-/// its longest edge, the same area in two faces; a two-sided one, two two-sided halves.
+// The Level Editor refuses a mesh of fewer than 4 points and 2 faces.
 #[test]
 fn halves_a_lone_triangle_the_level_editor_would_refuse() -> XrfResult {
   let [a, b, c] = [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [0.0, 0.0, 1.0]];
@@ -235,9 +232,8 @@ fn halves_a_lone_triangle_the_level_editor_would_refuse() -> XrfResult {
   Ok(())
 }
 
-/// Two faces of the flat plane running to vanilla pripyat's eastern edge, two-sided, as `level.geom` stores them: every
-/// corner at one base coordinate, which xrLC refuses as a face mapped to a point. They come back spread over just more
-/// than xrLC's least span, near the stored coordinate, and still fold with their mirrors.
+// Two-sided faces of the plane running to vanilla pripyat's eastern edge, as `level.geom` stores them: every corner at
+// one base coordinate, which xrLC refuses as a face mapped to a point.
 #[test]
 fn spreads_the_base_coordinates_of_a_face_stored_mapped_to_a_point() -> XrfResult {
   let points: [[f32; 3]; 5] = [

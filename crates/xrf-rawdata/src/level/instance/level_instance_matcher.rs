@@ -9,14 +9,13 @@ use crate::level::instance::level_library_triangle::LevelLibraryTriangle;
 
 /// Finds library objects placed in a level's static geometry, which the Build merged into it.
 ///
-/// A rigid placement keeps every triangle's edge lengths, so each object is looked for from its anchors, triangles of
-/// its whose lengths the level holds rarely: each level triangle of the anchor's texture and lengths, corner by corner,
-/// gives a candidate placement, which a sample of the object's largest triangles must find first. A candidate stands
-/// once its placed triangles find enough of the object's area among the level's own, fitted again over every corner
-/// they matched; it then claims every level triangle of its textures whose corners lie on its placed surface, which
-/// takes them out of the search, so objects are tried largest first and an object contained in a larger one is not
-/// found inside a placement of it. A placement is found only where the level keeps one of the object's larger triangles
-/// whole to anchor on; the pieces xrLC cut the others into count towards its area.
+/// A rigid placement keeps edge lengths, so each level triangle matching an anchor (an object triangle of rare texture
+/// and lengths) gives a candidate placement. A candidate stands once a sample of the object's largest triangles and
+/// then enough of its area are found; it then claims the level triangles on its surface. Objects are tried largest
+/// first, so one contained in a larger object is not found inside it.
+///
+/// A placement is found only where the level keeps one of the object's larger triangles whole to anchor on; the pieces
+/// xrLC cut the others into still count towards its area.
 pub(crate) struct LevelInstanceMatcher;
 
 impl LevelInstanceMatcher {
@@ -32,8 +31,8 @@ impl LevelInstanceMatcher {
   const SCALES: std::ops::RangeInclusive<f64> = 0.25..=4.0;
   const RIGID_SCALE: f64 = 1e-3;
 
-  /// Every placement of `objects`, largest first, the level `triangles` holds, at least `coverage` found, each one's
-  /// triangles claimed in `triangles`; each match names its object by its place in `objects`.
+  /// Every placement of `objects` in `triangles` covering at least `coverage`, claiming its triangles as found; each
+  /// match names its object by its index in `objects`.
   pub(crate) fn find(
     objects: &[LevelLibraryObject],
     triangles: &mut LevelInstanceTriangles,
@@ -43,8 +42,7 @@ impl LevelInstanceMatcher {
 
     for (index, object) in objects.iter().enumerate() {
       for is_scaled in [false, true] {
-        // The anchors are chosen again after a round that finds a placement: its claims may have taken every whole copy
-        // of an anchor, which another placement of the object keeps only in pieces.
+        // Anchors are chosen again each round: a placement's claims may have taken every whole copy of an anchor.
         loop {
           let found: Vec<LevelInstanceMatch> = Self::search(index, object, triangles, coverage, is_scaled);
 
@@ -60,8 +58,7 @@ impl LevelInstanceMatcher {
     matches
   }
 
-  /// One round of the search for `object`, the `index`-th, rigid or where `is_scaled` scaled: each placement its
-  /// anchors find, claimed in `triangles` as it is found.
+  /// One round of the search for `object`, rigid or scaled: each placement its anchors find, claimed as found.
   fn search(
     index: usize,
     object: &LevelLibraryObject,
@@ -114,8 +111,7 @@ impl LevelInstanceMatcher {
     matches
   }
 
-  /// The object placed by `fit`, where its sample and then its area are found; fitted again over the corners matched,
-  /// its scale too where `is_scaled`.
+  /// The object placed by `fit`, refitted over the matched corners, where its sample and then its area are found.
   fn try_place(
     index: usize,
     object: &LevelLibraryObject,
@@ -169,8 +165,8 @@ impl LevelInstanceMatcher {
     })
   }
 
-  /// The area of `object`'s triangles placed by `fit` that the level holds, as triangles of their own or in pieces
-  /// ([`Self::get_piece_area`]), and each corner of a whole one with the level's corner nearest it.
+  /// The area of `object` placed by `fit` that the level holds, whole or in pieces, and each whole triangle's corners
+  /// paired with the nearest level corners.
   fn measure(
     object: &LevelLibraryObject,
     fit: &LevelInstanceFit,
@@ -205,9 +201,8 @@ impl LevelInstanceMatcher {
     (found, pairs)
   }
 
-  /// The level's copies of `triangle` whole, placed at `placed`, that one placement of it takes: one facing as it does,
-  /// and one facing away where its surface is two-sided; a second copy facing either way is another object's, placed
-  /// on the same spot.
+  /// The level's whole copies of `triangle` at `placed` that one placement takes: one facing along, plus one facing
+  /// away where two-sided. A further copy belongs to another object placed on the same spot.
   fn get_whole(triangle: &LevelLibraryTriangle, placed: &[DVec3; 3], triangles: &LevelInstanceTriangles) -> Vec<u32> {
     let normal: DVec3 = (placed[1] - placed[0]).cross(placed[2] - placed[0]);
     let found: Vec<u32> = triangles.find_all_at(triangle.texture, placed, triangle.uvs.as_ref());
@@ -234,11 +229,10 @@ impl LevelInstanceMatcher {
       .sum()
   }
 
-  /// The unclaimed level triangles of `triangle`'s texture that lie on it, placed at `placed`, and map it as it does:
-  /// the triangle itself, its mirror where it is two-sided, and the pieces xrLC cut it into (along T-junctions and for
-  /// its lightmaps), each corner's texture coordinate the library's at that point of the triangle, moved by one shift
-  /// of whole repeats. The mapping tells apart two copies of an object overlapping on one plane, as GSC laid lamps in
-  /// rows, whose triangles lie on each other's.
+  /// The unclaimed level triangles of `triangle`'s texture lying on it at `placed` and mapped as it is (up to a shift
+  /// of whole repeats): itself, its mirror, and the pieces xrLC cut it into.
+  ///
+  /// The mapping tells apart overlapping copies on one plane, such as GSC's rows of lamps.
   fn get_pieces(triangle: &LevelLibraryTriangle, placed: &[DVec3; 3], triangles: &LevelInstanceTriangles) -> Vec<u32> {
     let margin: DVec3 = DVec3::splat(LevelInstanceTriangles::TOLERANCE);
     let min: DVec3 = placed[0].min(placed[1]).min(placed[2]);
@@ -290,9 +284,8 @@ impl LevelInstanceMatcher {
     [1.0 - v - w, v, w]
   }
 
-  /// The level triangles of `object`'s textures whose every corner lies within the tolerance of the object's surface
-  /// placed by `fit`: its own triangles and the pieces xrLC cut them into, sorted, each with the object's mesh it lies
-  /// on, the lowest numbered where two meshes' triangles hold it.
+  /// The level triangles, whole or in pieces, lying on `object` placed by `fit`, sorted, each with the lowest numbered
+  /// mesh it lies on.
   fn get_claimed(
     object: &LevelLibraryObject,
     fit: &LevelInstanceFit,
@@ -317,9 +310,8 @@ impl LevelInstanceMatcher {
     claimed
   }
 
-  /// The triangles of `object` tried as anchors: its largest whose texture and lengths the level holds, those that do
-  /// not turn into themselves first, since a match of one fixes its corners. A large anchor turns its fit least wrong
-  /// for the rounding of its corners, which a small one magnifies across the object.
+  /// The triangles of `object` tried as anchors: its largest the level holds a match for, scalene ones first since a
+  /// match fixes their corners. A large anchor magnifies its corners' rounding least across the object.
   fn get_anchors(object: &LevelLibraryObject, triangles: &LevelInstanceTriangles, is_scaled: bool) -> Vec<usize> {
     let mut anchors: Vec<(bool, usize)> = object
       .triangles
@@ -348,9 +340,8 @@ impl LevelInstanceMatcher {
       .collect()
   }
 
-  /// Whether the two triangles' edges, corner by corner, are as long within the tolerance; where `is_scaled`, once
-  /// `from`'s are scaled by the ratio of their perimeters, a scale within the range a designer sets and not one,
-  /// which the rigid search has tried.
+  /// Whether the two triangles' edges, corner by corner, are as long within the tolerance. Where `is_scaled`, `from`
+  /// is first scaled by the perimeter ratio, which must lie in [`Self::SCALES`] and not near one.
   fn is_alike(from: &[DVec3; 3], to: &[DVec3; 3], is_scaled: bool) -> bool {
     let edge = |points: &[DVec3; 3], a: usize, b: usize| points[a].distance(points[b]);
     let pairs: [(usize, usize); 3] = [(0, 1), (1, 2), (2, 0)];

@@ -24,9 +24,8 @@ pub struct LevelBuildCensus {
   /// Multi-use models and the placements referencing them.
   pub multi_use_models: usize,
   pub multi_use_references: usize,
-  /// Impostors of those models, whose strips the atlas merges.
+  /// Multi-use models drawn from afar as impostors.
   pub impostors: usize,
-  /// AI map nodes the map holds.
   pub ai_map_nodes: usize,
   /// Detail objects the slots plant, and the textures their atlas merges.
   pub detail_objects: usize,

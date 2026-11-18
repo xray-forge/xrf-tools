@@ -13,15 +13,13 @@ use crate::level::build::level_build_textures::LevelBuildTextures;
 use crate::object::compile::detail::detail_model_builder::DetailModelBuilder;
 use crate::object::detail_parameters::DetailParameters;
 
-/// What the Build makes of the detail object tool (`EDetailManager::Export`, `LevelEditor/Edit/ESceneDOTools.cpp:500`):
-/// `build.details`, which the detail lighter turns into `level.details`, and the atlas of the planted objects' textures
-/// beside it, `build_details.dds`.
+/// What the Build makes of the detail object tool, `EDetailManager::Export`: `build.details`, which the detail lighter
+/// turns into `level.details`, and the atlas of the planted objects' textures, `build_details.dds`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct LevelBuildDetails {
-  /// `build.details`: the planted objects, each compiled from its library object with its coordinates moved into the
-  /// atlas, and the slots renumbered with their light zeroed.
+  /// The planted objects, their coordinates moved into the atlas, and the slots renumbered with their light zeroed.
   pub file: LevelDetailsFile,
-  /// `build_details.dds`, DXT1 with its one bit of alpha and mipmaps.
+  /// `build_details.dds`, DXT1 with one bit of alpha and mipmaps.
   pub atlas: Vec<u8>,
   /// The atlas's size, and how many textures it merges.
   pub atlas_size: (u32, u32),
@@ -29,10 +27,9 @@ pub struct LevelBuildDetails {
 }
 
 impl LevelBuildDetails {
-  /// The file the Build writes the details into.
   pub const FILE_NAME: &'static str = "build.details";
 
-  /// The atlas's file beside it, and the texture name each object draws with.
+  /// The atlas's file, and the texture name each object draws with.
   pub const ATLAS_FILE_NAME: &'static str = "build_details.dds";
   pub const ATLAS_TEXTURE: &'static str = "build_details";
 
@@ -40,9 +37,8 @@ impl LevelBuildDetails {
   ///
   /// # Errors
   ///
-  /// Returns an error, as the Build stops, where no slot plants anything, so there is no texture to merge; a slot
-  /// names an object the tool does not hold; an object does not read or is no detail object; a texture does not read;
-  /// or the textures do not fit the largest atlas.
+  /// Returns an error, as the Build stops, when no slot plants anything, a slot names an object the tool lacks, an
+  /// object or texture does not read, or the textures do not fit the largest atlas.
   pub(crate) fn export<T: ByteOrder>(
     tool: &EditableDetailObjectTool,
     library: &mut LevelBuildLibrary<'_>,
@@ -138,8 +134,8 @@ impl LevelBuildDetails {
     })
   }
 
-  /// `image` as the atlas is saved, `tfADXT1` (`EDetailManager::Export`, `ESceneDOTools.cpp`): DXT1 with mips whose
-  /// cut-out pixels stay transparent, or each card draws its clear around the leaves black.
+  /// `image` encoded as the editor saves the atlas, `tfADXT1`: DXT1 with mips whose cut-out pixels stay transparent,
+  /// or each card would draw black around its leaves.
   ///
   /// # Errors
   ///
@@ -151,7 +147,7 @@ impl LevelBuildDetails {
       .write_to_bytes()
   }
 
-  /// Each of the tool's objects' number in the export: the planted ones counted in the tool's order, the rest none.
+  /// Each tool object's number in the export: the planted ones counted in the tool's order, the rest none.
   fn renumber(tool: &EditableDetailObjectTool) -> XrfResult<Vec<Option<u8>>> {
     let mut is_planted: Vec<bool> = vec![false; tool.objects.len()];
 

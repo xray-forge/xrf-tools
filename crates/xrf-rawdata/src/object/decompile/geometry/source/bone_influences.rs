@@ -2,12 +2,9 @@ use xrf_ogf::OgfVertexLink;
 
 /// The bones one point follows and how strongly, as an exported vertex's links give them back.
 ///
-/// `CExportSkeleton` writes every vertex of a child in the child's widest layout, padding the links a vertex lacks:
-/// two-link vertices repeat the first bone with the whole weight on the copy, and three- or four-link vertices repeat
-/// it with no weight, the last link taking what the stored weights leave, which rounding can make a sliver above or
-/// below nought. Summing each bone's weights and dropping the empty ones undoes the padding, so a point reads alike in
-/// every child it was exported to. The weights are the ones `st_VertexWB::prepare_weights` normalised, at most the
-/// four strongest; the scale they were authored at is not stored.
+/// `CExportSkeleton` pads every vertex to its child's widest layout by repeating the first bone, its weight whole,
+/// none, or a rounding sliver; summing each bone's weights and dropping empty ones undoes that, so a point reads alike
+/// in every child. The weights are `st_VertexWB::prepare_weights`'s normalised strongest four, not the authored ones.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct BoneInfluences {
   /// Each bone and its weight, by ascending bone, then unused slots.
@@ -25,12 +22,11 @@ impl BoneInfluences {
     count: 0,
   };
 
-  /// A summed weight at or below which a bone is padding the export wrote, not an influence: the remainder of weights
-  /// that already sum to one differs from nought by rounding alone.
+  /// A summed weight at or below which a bone is padding rather than an influence.
   const NEGLIGIBLE_WEIGHT: f32 = 1e-6;
 
-  /// How far one point's weights may come back apart in two children of different link layouts, where the export
-  /// derives the last link's weight from the others: rounding, far below any two points' authored weights.
+  /// How far one point's weights may differ between children of different layouts, where the export derives the last
+  /// link's weight from the others: rounding, far below any two points' authored weights.
   const WEIGHT_TOLERANCE: f32 = 1e-4;
 
   /// The influences `links` stand for, padding undone.

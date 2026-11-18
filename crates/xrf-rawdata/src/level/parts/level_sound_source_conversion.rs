@@ -7,14 +7,14 @@ use xrf_math::Vector2d;
 
 use crate::level::level_decompile_context::LevelDecompileContext;
 
-/// A level's planted sounds, between the scene's `sound_src.part` and the compiled `level.snd_static`, which the build
-/// passes through with no compiler (`BuilderGame.cpp:65`).
+/// A level's planted sounds, between the scene's `sound_src.part` and `level.snd_static`, which the build writes with
+/// no compiler.
 pub struct LevelSoundSourceConversion;
 
 impl LevelSoundSourceConversion {
-  /// The sound source part a `level.snd_static` was exported from, each sound an object named after its file, standing
-  /// where a new one does, looped, with the distances a new one takes until the editor reads the file's own. Each
-  /// window becomes the seconds the part's text saves that export to the same milliseconds.
+  /// The sound source part a `level.snd_static` was exported from: each sound a looped object named after its file,
+  /// with a new one's distances, since the file keeps none. Each window becomes saved seconds that export to the same
+  /// milliseconds.
   ///
   /// # Errors
   ///
@@ -60,9 +60,8 @@ impl LevelSoundSourceConversion {
     Ok(EditableObjectPart::new(context.guid, objects))
   }
 
-  /// The `level.snd_static` the build writes from the part, `ESoundSource::ExportGame`: each object's sound, position,
-  /// volume, frequency and windows in milliseconds, in the part's order. None for a part of no objects, for which the
-  /// build writes no file.
+  /// The `level.snd_static` the build writes from the part, `ESoundSource::ExportGame`, in the part's order; none for
+  /// a part of no objects, as the build then writes no file.
   pub fn export(part: &EditableObjectPart<EditableSoundSourceObject>) -> Option<LevelSndStaticFile> {
     (!part.objects.is_empty()).then(|| LevelSndStaticFile {
       sounds: part
@@ -81,7 +80,7 @@ impl LevelSoundSourceConversion {
     })
   }
 
-  /// A window in milliseconds, as `ExportGame` converts the editor's seconds: `u32(seconds * 1000)`, in `f32`.
+  /// A window in milliseconds as `ExportGame` converts seconds, `u32(seconds * 1000)` in `f32`.
   fn get_window(seconds: &Vector2d) -> LevelSndStaticWindow {
     LevelSndStaticWindow {
       from: Self::get_milliseconds(seconds.x),
@@ -93,7 +92,7 @@ impl LevelSoundSourceConversion {
     (seconds * 1000.0) as u32
   }
 
-  /// The seconds, as the part's `%f` text saves them, that export to a window's milliseconds; None when none near do.
+  /// Seconds, as the part's `%f` text saves them, that export to a window's milliseconds; none when none near do.
   fn get_seconds(window: &LevelSndStaticWindow) -> Option<Vector2d> {
     Some(Vector2d::new(
       Self::get_saved_seconds(window.from)?,
@@ -101,8 +100,8 @@ impl LevelSoundSourceConversion {
     ))
   }
 
-  /// The quotient rounded to six decimals can land under the millisecond the export truncates to (`0.511` exports as
-  /// 510), so its saved neighbours are tried too.
+  /// The quotient at six decimals can fall under the millisecond the export truncates to (`0.511` exports as 510), so
+  /// its saved neighbours are tried too.
   fn get_saved_seconds(milliseconds: u32) -> Option<f32> {
     EditableLevelValue::get_saved_neighbours((f64::from(milliseconds) / 1000.0) as f32)
       .into_iter()

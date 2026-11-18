@@ -5,9 +5,8 @@ use crate::ray::gpu::ray_gpu_single::RayGpuSingle;
 use crate::ray::gpu::ray_gpu_tracer::RayGpuTracer;
 use crate::ray::ray_group::RayGroup;
 
-/// The rays of several plans as the GPU makes and traces them: their points' origins, each with the skip code of the
-/// face its rays pass, their packets and their single rays, every ray numbered in one run, a plan's after the plan
-/// before.
+/// The rays of several plans as the GPU makes and traces them: origins, packets and single rays, every ray numbered in
+/// one run, plan after plan.
 #[derive(Default)]
 pub(crate) struct RayGpuBatch {
   pub(crate) packets: Vec<RayGpuPacket>,
@@ -23,8 +22,7 @@ impl RayGpuBatch {
   /// Packets a batch holds at most: a dispatch's workgroups, less room for one more plan's.
   const FULL_PACKETS: usize = RayGpuTracer::MOST_WORKGROUPS / 2;
 
-  /// Adds `plan`'s rays, each point's face named by its skip code `skip` gives, answering the number its first ray
-  /// takes.
+  /// Adds `plan`'s rays, each point's face coded by `skip`, and returns its first ray's number.
   pub(crate) fn push(&mut self, plan: &impl RayGpuPlan, skip: impl Fn(Option<u32>) -> u32) -> usize {
     let first_ray: usize = self.ray_count;
     let first_origin: u32 = self.origins.len() as u32;

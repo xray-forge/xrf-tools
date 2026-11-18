@@ -7,9 +7,9 @@ use xrf_math::Vector3d;
 
 use crate::level::level_decompile_context::LevelDecompileContext;
 
-/// A level's respawn points and environment modifiers, between the scene's `spawn.part` and the respawn point table of
-/// `level.game` and `level.env_mod`, which `CSpawnPoint::ExportGame` (`SpawnPoint.cpp:1328`) fills. The part's entity
-/// spawns, which the build exports into `level.spawn`, are converted on their own.
+/// A level's respawn points and environment modifiers, between the scene's `spawn.part` and what
+/// `CSpawnPoint::ExportGame` fills: `level.game`'s respawn point table and `level.env_mod`. The part's entities are
+/// converted on their own.
 pub struct LevelSpawnPointConversion;
 
 impl LevelSpawnPointConversion {
@@ -17,9 +17,8 @@ impl LevelSpawnPointConversion {
   pub const RESPAWN_POINT_PREFIX: &'static str = "rpoint";
   pub const ENVIRONMENT_MODIFIER_PREFIX: &'static str = "env_mod";
 
-  /// The spawn part the respawn points and environment modifiers were exported from, the respawn points first, each
-  /// at the file's position and turn as a new object stands, named after its kind. A colour comes back as the packed
-  /// word whose channels `u32_3f` gives the file's floats from, with no alpha.
+  /// The spawn part the respawn points and environment modifiers were exported from, respawn points first, each named
+  /// after its kind. A colour comes back as the packed word, alpha zero, that `u32_3f` turns into the file's floats.
   ///
   /// # Errors
   ///
@@ -87,8 +86,7 @@ impl LevelSpawnPointConversion {
     Ok(EditableObjectPart::new(context.guid, objects))
   }
 
-  /// The respawn point table `ExportGame` fills from the part, a record per respawn point in the part's order: its
-  /// position, turn, team, kind, game modes and profile.
+  /// The respawn point table `ExportGame` fills from the part, a record per respawn point in the part's order.
   pub fn export_respawn_points(part: &EditableObjectPart<EditableSpawnPointObject>) -> Vec<LevelGameRPoint> {
     part
       .objects
@@ -112,9 +110,7 @@ impl LevelSpawnPointConversion {
       .collect()
   }
 
-  /// The `level.env_mod` `BuildGame` writes for every level: `SPAWNPOINT_VERSION` in its first chunk
-  /// (`BuilderGame.cpp:21`), then a modifier per environment modifier in the part's order, its colours through
-  /// `u32_3f`.
+  /// The `level.env_mod` `BuildGame` writes for every level, a modifier per environment modifier in the part's order.
   pub fn export_environment_modifiers(part: &EditableObjectPart<EditableSpawnPointObject>) -> LevelEnvModFile {
     LevelEnvModFile {
       version: EditableSpawnPointObject::VERSION,
@@ -165,7 +161,7 @@ impl LevelSpawnPointConversion {
     (1.0_f32 / 255.0) * f32::from(byte)
   }
 
-  /// The packed colour of no alpha whose channels [`Self::get_color_vector`] gives `color`'s very bits from.
+  /// The packed colour, alpha zero, that [`Self::get_color_vector`] turns into exactly `color`'s bits.
   fn get_packed_color(color: &Vector3d) -> Option<u32> {
     let byte = |value: f32| (0..=u8::MAX).find(|byte| Self::get_channel(*byte).to_bits() == value.to_bits());
 

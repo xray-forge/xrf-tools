@@ -10,8 +10,7 @@ pub(crate) struct LevelBuildAtlasPlace {
 }
 
 impl LevelBuildAtlasPlace {
-  /// A texture coordinate of the texture moved to its place in the atlas, `MergedTextureRemapUV`
-  /// (`ImageManagerDO.cpp:352`).
+  /// A texture coordinate moved to the texture's place in the atlas, `MergedTextureRemapUV`.
   pub(crate) fn remap(&self, u: f32, v: f32) -> (f32, f32) {
     let (u, v) = if self.is_rotated { (v, u) } else { (u, v) };
 

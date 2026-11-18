@@ -46,9 +46,7 @@ use crate::light::light_draft::LightDraft;
 use crate::light::lightmap::atlas::lightmap_images::LightmapImages;
 use crate::light::source::light_layers::LightLayers;
 
-/// Everything xrLC writes for a level's geometry, compiled from its `build.prj`, lit by the light baker or with neutral
-/// light: the `level` file, its render geometry, the game's collision form, the compilers' ray model and lights, the
-/// lightmap pages and the implicit maps.
+/// Everything xrLC writes for a level's geometry from its `build.prj`, lit by the light baker or with neutral light.
 #[derive(Debug)]
 pub(crate) struct GeometryLevel {
   pub(crate) bundle: LevelBundle,
@@ -66,8 +64,8 @@ pub(crate) struct GeometryLevel {
   /// ([`LightmapAtlas::compose_all`](crate::light::lightmap::atlas::lightmap_atlas::LightmapAtlas::compose_all)), or
   /// the one pair of neutral light ([`LightDraft::get_lightmaps`]).
   pub(crate) lightmaps: LightmapImages,
-  /// Each implicitly lit texture's maps, such as terrain's: lit by the bake, or neutral ([`LightDraft::get_implicit_map`])
-  /// where the bake did not light it.
+  /// Each implicitly lit texture's maps, such as terrain's: baked, or neutral ([`LightDraft::get_implicit_map`]) where
+  /// the bake did not light it.
   pub(crate) implicit_maps: Vec<ImplicitMap>,
   /// What the compile made, for its report.
   pub(crate) census: GeometryLevelCensus,
@@ -85,15 +83,14 @@ impl GeometryLevel {
   /// How many phases [`Self::PROGRESS_PHASES`] counts.
   const PHASES: u64 = 4;
 
-  /// The level the request's project compiles to, its compiler shaders from its library and its textures as it loads
-  /// them: xrLC's geometry phases, then, where the request asks for light, the light baked at its quality
-  /// ([`LightBaker::bake`]), its pages deciding which splits join into a visual; else the neutral light
-  /// ([`LightDraft`]), every lightmapped visual on its one pair.
+  /// Compiles the request's project through xrLC's geometry phases, then bakes its light ([`LightBaker::bake`]) where
+  /// asked, whose pages decide which splits join into a visual; else every lightmapped visual takes the neutral pair
+  /// ([`LightDraft`]).
   ///
   /// # Errors
   ///
   /// Returns an error where a phase refuses the project, for a static light layer `build.prj` lacks, where the bake
-  /// fails ([`LightBaker::bake`]), and when the job is cancelled.
+  /// fails, and when the job is cancelled.
   pub(crate) fn compile(request: &GeometryLevelRequest<'_>) -> XrfResult<Self> {
     let GeometryLevelRequest {
       project,
@@ -171,7 +168,7 @@ impl GeometryLevel {
     let packed_visuals: Vec<GeometryPackedVisual> = visuals.pack(&mut geometry, &mut fast)?;
     let mut table: GeometryShaderTable = GeometryShaderTable::default();
 
-    // An empty first entry, then the glows', then the visuals' as they are saved (`xrLC/Build.cpp`).
+    // An empty first entry, then the glows', then the visuals' as they are saved, as xrLC orders the table.
     table.register("")?;
 
     let glows: Vec<LevelGlow> = project
@@ -337,8 +334,8 @@ impl GeometryLevel {
       None => (LightDraft::get_lightmaps(), Vec::new(), None),
     };
 
-    // A visual of an implicitly lit texture names its `_lm` whether or not the bake lit it, so one left unlit, with no
-    // light step or at draft quality, gets neutral maps rather than drawing with none.
+    // A visual of an implicitly lit texture names its `_lm` whether or not the bake lit it, so an unlit one gets
+    // neutral maps rather than drawing with none.
     for texture in Self::get_implicitly_lit(&visuals, project, textures) {
       if !implicit_maps.iter().any(|map| map.name == texture.name) {
         let image: RgbaImage = CompilerTextures::read_implicit_image(request.roots, &texture.name)?;
@@ -414,8 +411,7 @@ impl GeometryLevel {
     job.check_cancelled()
   }
 
-  /// The implicitly lit textures `visuals` are dressed with, each once, in `build.prj`'s texture order as the bake
-  /// lights them.
+  /// The implicitly lit textures `visuals` use, each once, in `build.prj`'s texture order as the bake lights them.
   fn get_implicitly_lit<'t>(
     visuals: &GeometryVisuals,
     project: &BuildPrjFile,

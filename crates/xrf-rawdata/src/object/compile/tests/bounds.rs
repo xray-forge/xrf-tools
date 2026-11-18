@@ -5,7 +5,7 @@ use glam::{DQuat, DVec3};
 use crate::object::compile::bounds::convex_hull::ConvexHull;
 use crate::object::compile::bounds::flush_box::FlushBox;
 
-/// A unit cube's corners and a lattice inside it and on its faces, none of which may become a hull vertex.
+// No lattice point may become a hull vertex.
 fn cube_with_lattice() -> Vec<DVec3> {
   let mut points: Vec<DVec3> = (0..8)
     .map(|corner| {
@@ -28,7 +28,7 @@ fn cube_with_lattice() -> Vec<DVec3> {
   points
 }
 
-/// Every edge is shared by exactly two faces running it opposite ways: a closed, consistently wound surface.
+// Every edge shared by exactly two faces running it opposite ways.
 fn assert_closed(faces: &[[usize; 3]]) {
   let mut edges: Vec<(usize, usize)> = faces
     .iter()
@@ -46,7 +46,6 @@ fn assert_closed(faces: &[[usize; 3]]) {
   }
 }
 
-/// Every face looks away from the hull's centre, and every point lies on or behind every face.
 fn assert_encloses(points: &[DVec3], hull: &ConvexHull) {
   let vertices: Vec<usize> = hull.vertices();
   let centre: DVec3 = vertices.iter().map(|it| points[*it]).sum::<DVec3>() / vertices.len() as f64;
@@ -65,7 +64,6 @@ fn assert_encloses(points: &[DVec3], hull: &ConvexHull) {
   }
 }
 
-/// How far `point` lies outside the box.
 fn outside(fitted: &FlushBox, point: DVec3) -> f64 {
   let offset: DVec3 = point - fitted.center;
 

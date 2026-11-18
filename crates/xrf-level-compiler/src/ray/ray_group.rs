@@ -4,9 +4,8 @@ use xrf_geometry::Ray;
 /// Rays of a plan made and traced together, numbered in the plan's order.
 #[derive(Clone, Debug)]
 pub(crate) enum RayGroup {
-  /// A directional light's rays, one from each point it faces, traced as a packet: toward `toward` for `range`, each
-  /// starting `lift` along it from its point's origin; the points by bit of `facing`, in their order; the rays numbered
-  /// from `first`.
+  /// A directional light's packet: a ray from each point `facing` marks, toward `toward` for `range`, starting `lift`
+  /// along it from the point's origin, numbered from `first` in the points' order.
   Directional {
     toward: Vec3,
     lift: f32,
@@ -14,9 +13,8 @@ pub(crate) enum RayGroup {
     facing: [u32; Self::FACING_WORDS],
     first: u32,
   },
-  /// A light at `position`'s rays, one from each point it gives anything, traced as a packet: each from its point's
-  /// origin toward the light, as far as the light; the points by bit of `facing`, in their order; the rays numbered
-  /// from `first`.
+  /// A packet for the light at `position`: a ray from each point `facing` marks, from its origin to the light,
+  /// numbered from `first` in the points' order.
   Lamp {
     position: Vec3,
     facing: [u32; Self::FACING_WORDS],

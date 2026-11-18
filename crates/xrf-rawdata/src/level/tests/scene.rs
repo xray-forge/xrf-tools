@@ -97,8 +97,6 @@ fn bytes_of(write: impl FnOnce(&mut ChunkWriter) -> XrfResult) -> XrfResult<Vec<
   Ok(writer.buffer)
 }
 
-/// A level directory under this test's resources holding `level.game`, a `level.env_mod` of the given radius, and the
-/// `level.fog_vol` of no fog every build writes.
 fn level_directory(name: &str, radius: f32) -> XrfResult<PathBuf> {
   let directory: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), name))?;
   let fog: LevelFogVolFile = LevelFogVolumeConversion::export(&EditableObjectPart::new(GUID, Vec::new()))?;
@@ -284,8 +282,7 @@ fn writes_each_object_under_the_objects_root_after_its_sidecar() -> XrfResult {
   Ok(())
 }
 
-/// A texture named by a library object's surface, or an object by a scene, is data: one that would leave its root
-/// refuses the write before the sidecar or anything else lands.
+// A texture a library object's surface names, or an object a scene names, is data and may point anywhere.
 #[test]
 fn refuses_a_name_that_would_leave_its_root_and_writes_nothing() -> XrfResult {
   let output: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "escaping_names"))?;
@@ -443,8 +440,6 @@ fn refuses_a_directory_of_no_level_file() -> XrfResult {
   Ok(())
 }
 
-/// A front-end's decompile into a scene on disk: one cancelled before its first step writes nothing, one run whole
-/// writes the scene, reports what it wrote and each step it took.
 #[test]
 fn writes_a_scene_for_a_front_end_and_nothing_once_cancelled() -> XrfResult {
   let level: PathBuf = level_directory("front_end", 10.0)?;
@@ -485,8 +480,7 @@ fn writes_a_scene_for_a_front_end_and_nothing_once_cancelled() -> XrfResult {
   Ok(())
 }
 
-/// The level's own objects, under `levels\<name>\` named `<name>_`, are the decompile's: one an earlier decompile left
-/// refuses the run unforced before the level is read, and a forced run removes it as one it no longer writes.
+// The level's own objects are those under `levels\<name>\` named `<name>_`.
 #[test]
 fn owns_the_levels_objects_refused_unforced_and_removed_forced_where_no_longer_written() -> XrfResult {
   let level: PathBuf = level_directory("own_objects", 10.0)?;

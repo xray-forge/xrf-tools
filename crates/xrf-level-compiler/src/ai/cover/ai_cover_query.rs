@@ -25,9 +25,8 @@ impl AiCoverQuery {
     }
   }
 
-  /// Lists the nodes the cover node `start` of `vertices` reaches. The engine's recursion visits a node's links in
-  /// order, depth first, marking each as it is visited; taking each link from a stack, pushed last to first and marked
-  /// as it is taken, visits them in the same order.
+  /// Lists the nodes the cover node `start` of `vertices` reaches into [`Self::list`], in the engine's depth-first
+  /// order.
   pub(crate) fn perform(&mut self, vertices: &[AiVertex], start: u32) {
     let base = vertices[start as usize].position;
 

@@ -1,12 +1,9 @@
 use xrf_math::{Aabb, EPS_L, Vector3d};
 
-/// A visual's or node's bounds as its header carries them (`OGF_Base::CalcBounds`, `xrLC/OGF_Face_Sphere.cpp`):
-/// the box of its geometry grown by `EPS_L`, and a sphere around it.
+/// A visual's or node's header bounds (`OGF_Base::CalcBounds`): its geometry's box grown by `EPS_L`, and a sphere.
 ///
-/// The box is xrLC's exactly. The sphere is the smaller of two that hold every point within `EPS_L`: the box's centre
-/// reaching its farthest point, as xrLC's second candidate is, and Ritter's grown sphere. xrLC also tries two minimal
-/// spheres (a miniball and Magic's `MinSphere`) and takes the smallest valid one, so its radius may be smaller; a
-/// larger sphere only culls later.
+/// The box is xrLC's exactly. The sphere is the smaller of the box-centred one and Ritter's; xrLC also tries two
+/// minimal spheres, so its radius may be smaller, and a larger sphere only culls later.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct GeometryBounds {
   pub bounds: Aabb,

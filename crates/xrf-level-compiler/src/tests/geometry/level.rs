@@ -1,6 +1,3 @@
-//! A level assembled whole from a small `build.prj`: its visual records, a model's trees under their LOD, the shader
-//! table and the sectors, and splits joined by material and page.
-
 use std::path::PathBuf;
 
 use xrf_error::XrfResult;
@@ -22,8 +19,7 @@ use crate::light::bake::light_quality::LightQuality;
 use crate::tests::geometry::geometry_mesh::{library, project};
 use crate::tests::light::light_quality::lit;
 
-/// A floor square, and a model of a floor face of material 0 and a wall face of material 2 placed once beside it with
-/// its LOD, lit as the editor writes a level.
+// A floor square, and a model of a floor face and a wall face placed once beside it with its LOD.
 fn level_project() -> XrfResult<BuildPrjFile> {
   let face = |vertices: [u32; 3], material: u16| BuildPrjFace {
     vertices,
@@ -154,7 +150,6 @@ fn assembles_a_level_of_visuals_trees_under_their_lod_and_one_rooted_sector() ->
   Ok(())
 }
 
-/// A mesh of a unit square at each of `xs` along x, each two faces of material 0.
 fn squares(xs: &[f32]) -> GeometryMesh {
   let mut vertices: Vec<Vector3d> = Vec::new();
   let mut faces: Vec<GeometryFace> = Vec::new();

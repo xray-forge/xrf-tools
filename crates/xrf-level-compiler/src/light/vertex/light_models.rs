@@ -47,19 +47,18 @@ struct LightPass<'a> {
 
 /// The multi-use models' light as xrLC computes it (`xrLC/xrMU_Model_Calc_lighting.cpp`).
 ///
-/// - **A model**'s vertices lit in its own space, by the sky alone, through a ray model of its own shadow-casting faces
-///   (`xrMU_Model::calc_lighting()`): what its trees store in each vertex, its sky term.
-/// - **A placement**'s vertices lit in the level with every term through the level's ray model
-///   (`xrMU_Reference::calc_lighting`); its tree's scale and bias for each term a least-squares line of the placement's
-///   term on the model's sky term (`vfComputeLinearRegression`), then `simple_optimize` as GSC calls it, on the model's
-///   sun, which is 0, so that only the bias moves toward the term's mean.
+/// - **A model**'s vertices are lit in its own space by the sky alone, through a ray model of its own shadow-casting
+///   faces (`xrMU_Model::calc_lighting`): the sky term its trees store in each vertex.
+/// - **A placement**'s vertices are lit with every term through the level's ray model
+///   (`xrMU_Reference::calc_lighting`). Its tree's scale and bias for each term are a least-squares line of the
+///   placement's term on the model's sky term (`vfComputeLinearRegression`), then `simple_optimize` on the model's
+///   sun, which is 0, so only the bias moves toward the term's mean.
 ///
 /// A vertex is lit from [`Self::SAMPLES`] samples ([`Self::DRAFT_SAMPLES`] at draft), each from a normal jittered
-/// within `Self::JITTER_DEGREES` of the vertex's and a step along it, its faces' mean `vert_ambient` added to the
-/// sky; then vertices within `EPS_L` of the first at a place are moved toward their brightest by their mean
-/// `vert_translucency`, never darker, and halved. xrLC jitters from its global random source; this from one seeded by
-/// the model, placement, vertex and sample, so a compile gives the same light every time. Both ray models are xrLC's
-/// own ([`XrlcTracer`]), a model's built over its faces as `calc_lighting` builds its `CDB::MODEL`.
+/// within `Self::JITTER_DEGREES` and a step along it, its faces' mean `vert_ambient` added to the sky. Vertices within
+/// `EPS_L` of the first at a place then move toward their brightest by their mean `vert_translucency`, never darker,
+/// and are halved. Where xrLC jitters from its global random source, this seeds by model, placement, vertex and
+/// sample, so a compile is repeatable. Both ray models are xrLC's own ([`XrlcTracer`]).
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct LightModels {
   /// Each model's vertices' light, by model in `build.prj`'s order and vertex as its normals pass splits them.

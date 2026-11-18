@@ -8,15 +8,12 @@ use crate::geometry::mesh::geometry_mesh::GeometryMesh;
 use crate::geometry::model::geometry_placement::GeometryPlacement;
 use crate::input::compiler_shaders::CompilerShaders;
 
-/// A level's collision form, `level.cform`, as `CBuild::BuildCForm` builds it (`xrLC/xrBuildCForm.cpp`) at draft
-/// quality: no simplification.
+/// A level's collision form, `level.cform`, as `CBuild::BuildCForm` builds it at draft quality: no simplification.
 ///
-/// The static faces whose compiler shader collides, in the mesh's order, then each multi-use reference's, in
-/// `build.prj`'s order, its model's colliding faces in theirs placed by its transform (`export_cform_game`,
-/// `xrLC_Light/xrMU_Model_Reference.cpp`). Each corner is packed by a `GeometryCollector` over the box of the
-/// static faces' corners. A face keeps its game material, cut to the 14 bits the form holds, and its sector: its
-/// material's for a static face, the reference's for a model's. The two flag bits, which xrLC leaves uninitialised and
-/// the engine sets from the game material on load, are written clear.
+/// The colliding static faces in mesh order, then each multi-use reference's colliding model faces placed by its
+/// transform (`export_cform_game`), corners packed over the static faces' box. A face keeps its game material, cut to
+/// the form's 14 bits, and its sector: its material's, or a model face's reference's. The two flag bits, uninitialised
+/// in xrLC and set by the engine on load, are written clear.
 pub(crate) struct GeometryCollision;
 
 impl GeometryCollision {
@@ -24,9 +21,8 @@ impl GeometryCollision {
   ///
   /// # Errors
   ///
-  /// Returns an error where xrLC would read past a table: a reference naming a model the project lacks, a model face
-  /// naming a vertex the model lacks or a material of no compiler shader; and for a level with no static face to
-  /// collide, whose form has no box to pack in.
+  /// Returns an error where xrLC would read past a table (a reference naming a missing model, a model face naming a
+  /// missing vertex or a material of no compiler shader), and for a level with no colliding static face.
   pub(crate) fn build(
     mesh: &GeometryMesh,
     project: &BuildPrjFile,

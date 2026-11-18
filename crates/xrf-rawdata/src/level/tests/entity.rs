@@ -15,7 +15,6 @@ use crate::level::level_decompile_context::LevelDecompileContext;
 use crate::level::tests::fixtures::GUID;
 use crate::level::tests::spawn_data::restrictor;
 
-/// A packet as a spawn list holds it, under chunk `id`.
 pub(super) fn listed<S: ChunkReadWrite>(packet: &S, id: u32) -> XrfResult<LevelSpawnObject> {
   let mut bytes: ChunkWriter = ChunkWriter::new();
 
@@ -32,7 +31,7 @@ fn restrictor_named(name: &str) -> SpawnPacket<AlifeObjectSpaceRestrictor> {
   packet
 }
 
-/// A graph point, a class of no volume, named as a generated shape name would be.
+// Named as a generated shape name would be.
 fn graph_point() -> SpawnPacket<AlifeGraphPoint> {
   SpawnPacket {
     header: SpawnPacketHeader {
@@ -52,7 +51,6 @@ fn graph_point() -> SpawnPacket<AlifeGraphPoint> {
   }
 }
 
-/// `level.spawn` with a restrictor and a graph point, and `level_rs.spawn` with a restrictor marked to respawn.
 fn lists() -> XrfResult<(LevelSpawnFile, LevelSpawnFile)> {
   Ok((
     LevelSpawnFile {
@@ -84,7 +82,7 @@ fn decompile_with_root(
   )
 }
 
-/// A restrictor as xrAI builds it into a root spawn: its spawn id, vertices and distance filled in.
+// As xrAI builds it into a root spawn: its spawn id, vertices and distance filled in.
 fn built(packet: &SpawnPacket<AlifeObjectSpaceRestrictor>) -> XrfResult<AlifeObject> {
   let mut object: AlifeObject = listed(packet, 0)?.read_alife_object::<XRayByteOrder>()?;
   let base = object.inherited.get_abstract_mut().expect("an abstract object");
@@ -105,8 +103,6 @@ fn bytes_of(list: Option<&LevelSpawnFile>) -> XrfResult<Vec<u8>> {
   Ok(writer.buffer)
 }
 
-/// Each entity stands at its packet's place under its name, a respawning one marked so, a restrictor's volume attached
-/// as a shape at the entity; no generated name takes an entity's.
 #[test]
 fn decompiles_entities_at_their_place_with_their_shapes_attached() -> XrfResult {
   let (spawn, respawn) = lists()?;
@@ -153,7 +149,6 @@ fn decompiles_entities_at_their_place_with_their_shapes_attached() -> XrfResult 
   Ok(())
 }
 
-/// Both lists export byte for byte, each entity to the list it came from.
 #[test]
 fn exports_entities_back_to_their_spawn_lists() -> XrfResult {
   let (spawn, respawn) = lists()?;
@@ -168,7 +163,6 @@ fn exports_entities_back_to_their_spawn_lists() -> XrfResult {
   Ok(())
 }
 
-/// The spawn point's name, place and attached shape, scaled, are what the build exports, over the packet's own.
 #[test]
 fn exports_the_spawn_point_name_place_and_shape_over_the_packet() -> XrfResult {
   let (spawn, respawn) = lists()?;
@@ -201,7 +195,6 @@ fn exports_the_spawn_point_name_place_and_shape_over_the_packet() -> XrfResult {
   Ok(())
 }
 
-/// A packet of no known class is left out and recorded with its list, name and section; the rest decompile.
 #[test]
 fn refuses_an_entity_of_no_known_class_alone() -> XrfResult {
   let mut unknown: SpawnPacket<AlifeObjectSpaceRestrictor> = restrictor_named("test_team_base");
@@ -231,7 +224,7 @@ fn refuses_an_entity_of_no_known_class_alone() -> XrfResult {
   Ok(())
 }
 
-/// A class with a volume exports only with a shape attached, as the build refuses it otherwise.
+// The build refuses it otherwise.
 #[test]
 fn refuses_to_export_an_entity_of_a_volume_without_a_shape() -> XrfResult {
   let (spawn, respawn) = lists()?;
@@ -251,9 +244,7 @@ fn refuses_to_export_an_entity_of_a_volume_without_a_shape() -> XrfResult {
   Ok(())
 }
 
-/// Where the root spawn holds the level, its objects stand in for `level.spawn`'s in that list's order, the fields xrAI
-/// filled in reset, so an object as built exports to the editor's packet; the graph points stay, and every object only
-/// one of the two holds is recorded, kept from the root spawn and left out from `level.spawn`.
+// The fields xrAI filled in are reset, so an object as built exports to the editor's packet.
 #[test]
 fn takes_a_root_spawns_objects_in_place_of_the_level_spawn_list() -> XrfResult {
   let (mut spawn, respawn) = lists()?;
@@ -302,7 +293,6 @@ fn takes_a_root_spawns_objects_in_place_of_the_level_spawn_list() -> XrfResult {
   Ok(())
 }
 
-/// An entity the geometry's objects stand for is left out of every list, the root spawn's too, with no disagreement.
 #[test]
 fn leaves_out_entities_folded_into_objects() -> XrfResult {
   let (spawn, respawn) = lists()?;
@@ -344,8 +334,6 @@ fn leaves_out_entities_folded_into_objects() -> XrfResult {
   Ok(())
 }
 
-/// An object whose packet differs from `level.spawn`'s past what xrAI fills in is taken from the root spawn and
-/// recorded.
 #[test]
 fn records_an_object_the_root_spawn_changed_past_its_build() -> XrfResult {
   let (spawn, respawn) = lists()?;

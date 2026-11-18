@@ -10,9 +10,8 @@ use crate::level::surfaces::level_surface_inference::LevelSurfaceInference;
 use crate::level::surfaces::level_surfaces::LevelSurfaces;
 use crate::provenance::level_scene_provenance::LevelSceneProvenance;
 
-/// A level's decompile into a scene on disk, as a front-end asks for it: the paths, and the options it may leave to
-/// their defaults, which [`Self::get_options`] and [`Self::get_objects_root`] resolve as the SDK lays a level and its
-/// rawdata out.
+/// A front-end's request to decompile a level into a scene on disk; [`Self::get_options`] and the root getters resolve
+/// the defaults as the SDK lays out a level and its rawdata.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -35,9 +34,8 @@ pub struct LevelDecompileRequest {
   pub compiler_shaders: Option<PathBuf>,
   /// Object library roots whose surfaces break ties between compiler shaders, such as an SDK's `rawdata/objects`.
   pub libraries: Vec<PathBuf>,
-  /// Whether an existing scene, its objects and textures are overwritten rather than refused, and the parts and objects
-  /// of the level's own an earlier decompile wrote that this one does not are removed; unforced, the scene and the
-  /// level's objects already there are refused before the level is read.
+  /// Whether existing files are overwritten and an earlier decompile's stale parts and objects removed. Unforced, an
+  /// existing scene or level object is refused before the level is read.
   pub is_forced: bool,
 }
 
@@ -98,8 +96,7 @@ impl LevelDecompileRequest {
     Ok(outputs)
   }
 
-  /// What the decompile owns under the objects root: the level's own objects and their sidecars, every one under
-  /// `levels\<name>\` named `<name>_`, as the conversions name them.
+  /// What the decompile owns under the objects root: the level's objects and sidecars, `levels\<name>\<name>_*`.
   ///
   /// # Errors
   ///
@@ -110,8 +107,7 @@ impl LevelDecompileRequest {
     Ok(OutputFiles::new(&self.get_objects_root()).with_family(&format!("levels/{name}/{name}_")))
   }
 
-  /// The objects root the scene's objects go under: the one named, else `<rawdata>/objects` beside the scene, as the
-  /// SDK's `fs.ltx` puts `$maps$` and `$objects$` side by side under its rawdata.
+  /// The objects root: the one named, else `<rawdata>/objects`, where the SDK's `fs.ltx` puts `$objects$`.
   pub fn get_objects_root(&self) -> PathBuf {
     self
       .objects
@@ -119,8 +115,8 @@ impl LevelDecompileRequest {
       .unwrap_or_else(|| self.get_rawdata().join("objects"))
   }
 
-  /// The game textures root the objects' textures go under: the one named, else `<rawdata>/../gamedata/textures`, as
-  /// the SDK's `fs.ltx` puts `$game_textures$` under the gamedata beside its rawdata.
+  /// The game textures root: the one named, else `<rawdata>/../gamedata/textures`, where the SDK's `fs.ltx` puts
+  /// `$game_textures$`.
   pub fn get_textures_root(&self) -> PathBuf {
     self
       .textures

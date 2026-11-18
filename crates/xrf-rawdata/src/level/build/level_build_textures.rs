@@ -6,10 +6,11 @@ use xrf_utils::format_path;
 
 use crate::level::scene::level_scene_texture_file::LevelSceneTextureFile;
 
-/// The textures a build merges into its atlases, the detail objects' and the impostors' strips: those held in memory
-/// (a decompile's own, by name) before those under the textures root (`$game_textures$`), each as `Surface_Load` reads
-/// its `.dds`; but a held one standing in for a library object's own gives way to the root's, as a written decompile
-/// keeps it ([`LevelSceneTextureFile::is_held_by`]).
+/// The textures a build merges into its atlases: those held in memory (a decompile's own) before those under the
+/// textures root (`$game_textures$`), each read as `Surface_Load` reads its `.dds`.
+///
+/// A held texture standing in for a library object's own gives way to the root's, as a written decompile keeps it
+/// ([`LevelSceneTextureFile::is_held_by`]).
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct LevelBuildTextures<'a> {
   root: Option<&'a Path>,
@@ -26,13 +27,11 @@ impl<'a> LevelBuildTextures<'a> {
     self.root.is_some() || !self.held.is_empty()
   }
 
-  /// The top level of texture `name`, a texture path such as `lod\lod_tree`, held or under the root; `kind` names what
-  /// it is for in an error.
+  /// The top mip level of texture `name`, such as `lod\lod_tree`; `kind` names what it is for in an error.
   ///
   /// # Errors
   ///
-  /// Returns an error when no held texture has the name and the root names none, the name names no file below the
-  /// root, or the texture does not decode.
+  /// Returns an error when the texture is neither held nor under a named root, or does not decode.
   pub(crate) fn read(&self, kind: &str, name: &str) -> XrfResult<RgbaImage> {
     for held in self.held.iter().filter(|held| held.name.eq_ignore_ascii_case(name)) {
       if let Some(root) = self.root

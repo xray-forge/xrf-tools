@@ -32,8 +32,7 @@ pub struct LevelCollisionIndex {
 }
 
 impl LevelCollisionIndex {
-  /// What a render triangle lying on no collision face carries in [`Self::cover_under_static`]'s index: past every
-  /// material id a face holds, fourteen bits (`LevelCformFace::MATERIAL_MASK`).
+  /// The material of a render triangle lying on no collision face, past every 14-bit face material id.
   const NO_MATERIAL: u16 = u16::MAX;
 
   pub fn new(geometry: LevelCformGeometry) -> Self {
@@ -71,12 +70,11 @@ impl LevelCollisionIndex {
     self.find(points, LevelCollisionCover::Instance);
   }
 
-  /// Marks each face of `sector` no render triangle's centre found that lies under one of `triangles`, the sector's
-  /// static render triangles, lying itself on a face of the same game material: a face xrLC kept whole where it split
-  /// the render faces over it, so their centres land on its neighbours and miss it. Each is found as a render triangle
-  /// finds its face, but the other way: the render triangle its normal through its centre crosses nearest it. A face of
-  /// another material under a render triangle is collision of its own, such as a collision-only prop laid on a floor,
-  /// and stays uncovered.
+  /// Marks covered each uncovered face of `sector` whose normal through its centre meets one of `triangles`, the
+  /// sector's static render triangles, lying on a face of the same game material.
+  ///
+  /// This catches faces xrLC kept whole while splitting the render faces over them, whose centres then miss it. A face
+  /// of another material stays uncovered: it is collision of its own, such as a collision-only prop on a floor.
   ///
   /// # Errors
   ///
@@ -175,8 +173,8 @@ impl LevelCollisionIndex {
     lookup
   }
 
-  /// The faces a triangle lies on, and where: those on its very points, else the one its normal through its centre
-  /// crosses nearest it within a few centimetres either side, before a face stacked close above or below.
+  /// The faces a triangle lies on: those on its very points, else the nearest its normal through its centre crosses
+  /// within a few centimetres either side.
   fn locate(&self, points: &[Vector3d; 3]) -> (Vec<u32>, LevelCollisionLookup) {
     if let Some(faces) = self.exact.get(&Self::get_key(points)) {
       return (
@@ -211,7 +209,7 @@ impl LevelCollisionIndex {
     length.is_normal().then(|| (&(&(a + b) + c) / 3.0, &cross / length))
   }
 
-  /// A static triangle covers a face for good; a tree's covers one nothing covers yet.
+  /// A static triangle covers a face for good; any other covers one nothing covers yet.
   fn mark(current: &mut LevelCollisionCover, cover: LevelCollisionCover) {
     if *current == LevelCollisionCover::None || cover == LevelCollisionCover::Static {
       *current = cover;

@@ -3,14 +3,14 @@ use xrf_geometry::{ConvexOutline, SymmetricEigen};
 use xrf_level::BuildPrjPortal;
 use xrf_math::Vector3d;
 
-/// A portal's polygon as the Build simplifies one of more corners than a compiled portal holds (`CPortal::Simplify`,
-/// `portal.cpp:355`): the plane fitted to its corners, the corners seen along the plane's normal, their convex hull
-/// without collinear corners, the edge whose collapse adds the least area collapsed until six corners are left, and
-/// those put back on the plane, wound as the portal's own corners are. Done in double precision, as the editor's
-/// geometry library does most of it.
+/// A portal's polygon simplified as the Build simplifies one of more corners than a compiled portal holds,
+/// `CPortal::Simplify`.
+///
+/// The corners' convex hull on their fitted plane loses the edge whose collapse adds least area until six corners
+/// are left, wound as the portal's own. Done in double precision, as the editor's geometry library does most of it.
 pub(crate) struct LevelBuildPortal;
 
-/// The plane a portal is seen on: a point of it, and its axes, right, up and the normal.
+/// The plane a portal is seen on: a point of it, and its right and up axes.
 struct PortalPlane {
   origin: DVec3,
   right: DVec3,
@@ -54,8 +54,8 @@ impl LevelBuildPortal {
     Some(simplified)
   }
 
-  /// `Mgc::OrthogonalPlaneFit`: the plane through the points' mean whose normal is the direction they spread least
-  /// along, and on it the axes `CPortal::Simplify` looks along (`build_camera` from the mean towards `-normal`).
+  /// `Mgc::OrthogonalPlaneFit`: the plane through the points' mean, normal to the direction they spread least along,
+  /// with the axes `CPortal::Simplify`'s `build_camera` gives it.
   fn fit_plane(points: &[DVec3]) -> Option<PortalPlane> {
     #[expect(clippy::cast_precision_loss, reason = "a portal holds a few dozen corners")]
     let count: f64 = points.len() as f64;
@@ -84,16 +84,15 @@ impl LevelBuildPortal {
     Some(PortalPlane { origin, right, up })
   }
 
-  /// `vector` divided by its length, as the editor normalizes; none for a vector of no length.
+  /// `vector` normalized; none for a vector of no length.
   fn normalize(vector: DVec3) -> Option<DVec3> {
     let length: f64 = vector.length();
 
     (length > f64::EPSILON).then(|| vector / length)
   }
 
-  /// `SimplifyVertices` (`portal.cpp:307`): of each edge, the point its two neighbouring edges meet at and the area of
-  /// the triangle it adds; the edge of the least area collapses into its point. False where no neighbouring edges
-  /// meet.
+  /// `SimplifyVertices`: collapses the edge whose neighbouring edges meet at the point adding least area into that
+  /// point. False where no neighbouring edges meet.
   fn collapse_smallest_edge(vertices: &mut Vec<DVec2>) -> bool {
     let count: usize = vertices.len();
     let mut smallest: Option<(usize, f64, DVec2)> = None;
@@ -148,8 +147,8 @@ impl LevelBuildPortal {
     (half * (half - first) * (half - second) * (half - third)).sqrt()
   }
 
-  /// The way a polygon winds, as `CPortal::Update` takes it: the sum of each consecutive pair's turn about the middle
-  /// (`mknormal`), the last corner not joined back to the first.
+  /// The way a polygon winds, as `CPortal::Update` takes it: each consecutive pair's turn about the middle summed,
+  /// the last corner not joined back to the first.
   fn get_normal(vertices: &[Vector3d]) -> DVec3 {
     let points: Vec<DVec3> = vertices.iter().map(|vertex| Vec3::from(vertex).as_dvec3()).collect();
     #[expect(clippy::cast_precision_loss, reason = "a portal holds a few dozen corners")]

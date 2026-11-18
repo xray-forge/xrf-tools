@@ -16,10 +16,8 @@ use crate::geometry::surface::geometry_base_coordinates::GeometryBaseCoordinates
 use crate::geometry::surface::geometry_normals::GeometryNormals;
 use crate::input::compiler_shaders::CompilerShaders;
 
-/// The edge flags of a front face with every edge soft.
 const SOFT: u32 = 0;
 
-/// A project of `vertices` and `faces` (corners, then edge flags), each face of material 0, mapped across the texture.
 pub(crate) fn project(vertices: &[[f32; 3]], faces: &[([u32; 3], u32)]) -> XrfResult<BuildPrjFile> {
   let material = |compiler_shader: u16| BuildPrjMaterial {
     texture: 0,
@@ -91,8 +89,6 @@ pub(crate) fn project(vertices: &[[f32; 3]], faces: &[([u32; 3], u32)]) -> XrfRe
   })
 }
 
-/// The compiler shader library the project's two compiler shaders resolve in: `default` collides, casts a shadow and
-/// is drawn, `ghost` is only drawn.
 pub(super) fn library() -> ShaderCompilerFile {
   let shader = |name: &str, flags: u32| ShaderCompilerShader {
     name: String::from(name),
@@ -114,7 +110,7 @@ pub(super) fn library() -> ShaderCompilerFile {
   }
 }
 
-/// A unit square on the floor, `0 1 2 3` round its edge, as two faces over the diagonal `0 2` with the flags given.
+// `0 1 2 3` round its edge, two faces over the diagonal `0 2`.
 fn square(first: u32, second: u32) -> XrfResult<BuildPrjFile> {
   project(
     &[[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 0.0, 1.0], [0.0, 0.0, 1.0]],

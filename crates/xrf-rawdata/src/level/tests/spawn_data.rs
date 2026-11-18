@@ -11,10 +11,8 @@ use xrf_spawn::{
 
 use crate::level::entities::level_spawn_data_fields::LevelSpawnDataFields;
 
-/// The section the editor saves the packet under.
 const SECTION: &str = "object_1_spawndata";
 
-/// A restrictor as a designer places one, its script settings two lines of custom data.
 pub(super) fn restrictor() -> SpawnPacket<AlifeObjectSpaceRestrictor> {
   SpawnPacket {
     header: SpawnPacketHeader {
@@ -78,8 +76,6 @@ fn read_text(text: &str) -> XrfResult<SpawnPacket<AlifeObjectSpaceRestrictor>> {
   Ok(packet)
 }
 
-/// Each kind printed as the editor prints it: unsigned bytes and words, `%d` words of 32 bits, `%f` floats and
-/// vectors with a negative zero kept, the custom data's lines inside its quotes.
 #[test]
 fn writes_spawn_data_as_the_editor_prints_it() -> XrfResult {
   let text: String = write_text(&restrictor())?;
@@ -108,7 +104,6 @@ fn writes_spawn_data_as_the_editor_prints_it() -> XrfResult {
   Ok(())
 }
 
-/// The saved text reads back into the same packet, which writes the same bytes.
 #[test]
 fn reads_spawn_data_back_into_the_same_packet() -> XrfResult {
   let packet: SpawnPacket<AlifeObjectSpaceRestrictor> = restrictor();
@@ -127,7 +122,7 @@ fn reads_spawn_data_back_into_the_same_packet() -> XrfResult {
   Ok(())
 }
 
-/// A field the packet does not take belongs to another layout than the class read, and is refused.
+// A field the packet does not take belongs to another layout than the class read.
 #[test]
 fn refuses_spawn_data_past_the_packet() -> XrfResult {
   let mut ini: IniFile = IniFile::read_from_str_as(&write_text(&restrictor())?, &IniFormat::XRAY_SAVE_AS)?;
@@ -146,7 +141,6 @@ fn refuses_spawn_data_past_the_packet() -> XrfResult {
   Ok(())
 }
 
-/// A breakable box drawn as `visual`, the restrictor's header otherwise.
 fn breakable(visual: &str) -> AlifeObject {
   AlifeObject {
     header: SpawnPacketHeader {
@@ -166,7 +160,6 @@ fn breakable(visual: &str) -> AlifeObject {
   }
 }
 
-/// `entity`'s spawn packet as the editor saves it in a spawn point's spawn data.
 fn write_entity(entity: &AlifeObject) -> XrfResult<IniSection> {
   let mut recorder: ChunkFieldRecorder = ChunkFieldRecorder::new();
   let mut section: IniSection = IniSection::new("spawndata");
@@ -177,8 +170,6 @@ fn write_entity(entity: &AlifeObject) -> XrfResult<IniSection> {
   Ok(section)
 }
 
-/// The visual a spawn point is drawn as is its packet's own, read whatever its class, and none for a class drawn as
-/// nothing or a packet naming none.
 #[test]
 fn reads_the_visual_a_packet_names() -> XrfResult {
   assert_eq!(
@@ -206,7 +197,7 @@ fn reads_the_visual_a_packet_names() -> XrfResult {
   Ok(())
 }
 
-/// A packet that does not read names no visual: it is refused as the build refuses it.
+// The build refuses it too.
 #[test]
 fn refuses_the_visual_of_a_packet_that_does_not_read() -> XrfResult {
   let mut data: IniSection = write_entity(&breakable("dynamics\\box\\box_wood_01"))?;
@@ -222,7 +213,7 @@ fn refuses_the_visual_of_a_packet_that_does_not_read() -> XrfResult {
   Ok(())
 }
 
-/// A double quote in a string would end its quoted value early, so it is refused rather than saved.
+// A double quote would end its quoted value early.
 #[test]
 fn refuses_a_string_holding_a_double_quote() {
   let mut packet: SpawnPacket<AlifeObjectSpaceRestrictor> = restrictor();

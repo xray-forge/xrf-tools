@@ -8,10 +8,11 @@ use xrf_utils::format_path;
 
 use crate::level::scene::level_scene_object_file::LevelSceneObjectFile;
 
-/// The library objects a scene names: those held in memory (a decompile's own) by their reference, else read from
-/// objects roots (`$objects$`) the first time each is named, from the first root holding it: a reference
-/// `levels\labx8\labx8_sector_0` is `<root>/levels/labx8/labx8_sector_0.object`. A decompiled scene's own objects and
-/// the library objects it names, such as GSC's detail objects, may stand in different roots.
+/// The library objects a scene names: those held in memory (a decompile's own), else read once from the first objects
+/// root (`$objects$`) holding them, `levels\labx8\labx8_sector_0` as `<root>/levels/labx8/labx8_sector_0.object`.
+///
+/// A decompiled scene's own objects and the library objects it names, such as GSC's detail objects, may stand in
+/// different roots.
 pub(crate) struct LevelBuildLibrary<'a> {
   roots: Vec<PathBuf>,
   held: HashMap<&'a str, &'a EditableObjectFile>,
@@ -34,8 +35,8 @@ impl<'a> LevelBuildLibrary<'a> {
   ///
   /// # Errors
   ///
-  /// Returns an error naming the reference whose object no root holds or that does not read, or that names no file
-  /// below a root.
+  /// Returns an error naming a reference that names no file below a root, or whose object no root holds or does not
+  /// read.
   pub(crate) fn load<'r, T: ByteOrder>(&mut self, references: impl IntoIterator<Item = &'r str>) -> XrfResult {
     for reference in references {
       if self.held.contains_key(reference) || self.objects.contains_key(reference) {

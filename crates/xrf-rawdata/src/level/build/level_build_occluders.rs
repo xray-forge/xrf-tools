@@ -7,10 +7,11 @@ use xrf_math::{Matrix4x4, Vector3d};
 
 use crate::level::parts::level_occluder_conversion::LevelOccluderConversion;
 
-/// The occluders a build writes beside `build.prj`, from every placed object whatever kind it is:
-/// `SceneBuilder::BuildHOMModel` (`BuilderOGF.cpp:17`) takes each face of an object flagged `eoHOM` and each face of a
-/// `materials\occ` surface of any other, and `BuildSOMModel` (`:95`) each face of an object flagged `eoSoundOccluder`
-/// with its game material's sound occlusion factor. Faces go in placed, in each mesh's order of surfaces.
+/// The occluders a build writes beside `build.prj`, from every placed object of any kind.
+///
+/// `SceneBuilder::BuildHOMModel` takes each face of an object flagged `eoHOM` and each `materials\occ` face of any
+/// other. `BuildSOMModel` takes each face of an object flagged `eoSoundOccluder`, with its game material's sound
+/// occlusion factor. Faces go in placed, in each mesh's order of surfaces.
 #[derive(Default)]
 pub(crate) struct LevelBuildOccluders {
   hom: Vec<LevelHomPolygon>,
@@ -104,7 +105,7 @@ impl LevelBuildOccluders {
     Ok(())
   }
 
-  /// `level.hom` and `level.som`, each where a face went into it: the Build writes neither file of no polygon.
+  /// `level.hom` and `level.som`, each `None` where it has no polygon, as the Build then writes none.
   pub(crate) fn into_files(self) -> (Option<LevelHomFile>, Option<LevelSomFile>) {
     (
       (!self.hom.is_empty()).then_some(LevelHomFile {

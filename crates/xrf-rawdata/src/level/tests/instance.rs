@@ -1,5 +1,3 @@
-//! Library objects found placed in a level's geometry: the fit, the search and what a placement claims.
-
 use std::path::PathBuf;
 
 use glam::{DMat3, DVec2, DVec3};
@@ -10,7 +8,7 @@ use crate::level::instance::level_instance_triangles::LevelInstanceTriangles;
 use crate::level::instance::level_library_object::LevelLibraryObject;
 use crate::level::instance::level_library_triangle::LevelLibraryTriangle;
 
-/// A wedge of five faces, no two alike, so a placement fits it one way only: a 2 by 1 by 0.5 metre block cut on a slant.
+// Five faces, no two alike, so a placement fits it one way only.
 fn wedge(texture: u32, uv_offset: f64) -> Vec<([DVec3; 3], [DVec2; 3])> {
   let p = |x: f64, y: f64, z: f64| DVec3::new(x, y, z);
   let uv = |u: f64, v: f64| DVec2::new(u * 0.37 + uv_offset, v * 0.61);
@@ -73,8 +71,7 @@ fn fit(degrees: f64, scale: f64, translation: DVec3) -> LevelInstanceFit {
   }
 }
 
-/// `object` placed by `fit`, as a level holds it: its triangles in the level's space, where `is_split` its largest each
-/// cut in four at its edges' middles, as xrLC cuts long faces and leaves the rest whole.
+// `is_split` cuts the largest triangle in four at its edges' middles, as xrLC cuts long faces.
 fn place(object: &LevelLibraryObject, fit: &LevelInstanceFit, is_split: bool) -> Vec<LevelLibraryTriangle> {
   object
     .triangles
@@ -113,7 +110,6 @@ fn triangle_texture(object: &LevelLibraryObject) -> u32 {
   object.triangles[0].texture
 }
 
-/// A level of `triangles`, indexed as the decompile indexes its static geometry.
 fn level(triangles: Vec<LevelLibraryTriangle>) -> LevelInstanceTriangles {
   LevelInstanceTriangles::of_object(&LevelLibraryObject {
     reference: String::from("level"),

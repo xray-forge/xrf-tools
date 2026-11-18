@@ -14,18 +14,17 @@ use crate::light::source::light_source::LightSource;
 use crate::light::source::light_sources::LightSources;
 use crate::shadow::shadow_materials::ShadowMaterials;
 
-/// Every vertex's sky term as xrLC computes it before the smoothing split (`xrPhase_AdaptiveHT`,
-/// `xrLC/xrPhase_AdaptiveHT.cpp`), which every vertex split from it keeps: each welded vertex of the cut mesh, its
-/// normal the sum of its faces' (`normalFromAdj`), lit by the sky alone through the ray model of that mesh
-/// ([`GeometryRayModel::build_welded`]) and halved; then `Self::SMOOTHING_ROUNDS` rounds in which each vertex takes the
-/// mean of every vertex of its faces, itself included (`u_SmoothVertColors`). Each term is kept as `base_color` stores
-/// it.
+/// Every vertex's sky term as xrLC computes it before the smoothing split (`xrPhase_AdaptiveHT`), kept by every vertex
+/// split from it, as `base_color` stores it.
 ///
-/// The rays go through xrLC's own ray model ([`XrlcTracer`]), as the term is matched vertex for vertex: a sky ray
-/// grazing an axis-aligned wall exactly at its edge passes in xrLC where a tighter tree stops it. Each ray is a full
-/// query: xrLC's eight threads light runs of vertices far apart and share each light's remembered blocker
-/// (`rayTrace`'s `L.tri`), so a vertex is tested against a blocker of an unrelated one, which with the threads in step
-/// changes no vertex's light, and otherwise as the threads' timing falls.
+/// Each welded vertex of the cut mesh, its normal its faces' summed (`normalFromAdj`), is lit by the sky alone through
+/// that mesh's ray model ([`GeometryRayModel::build_welded`]) and halved; then in `Self::SMOOTHING_ROUNDS` rounds each
+/// vertex takes the mean of every vertex of its faces, itself included (`u_SmoothVertColors`).
+///
+/// The rays go through xrLC's own ray model ([`XrlcTracer`]) to match it vertex for vertex: a sky ray grazing an
+/// axis-aligned wall exactly at its edge passes there where a tighter tree stops it. Each ray is a full query: xrLC's
+/// threads share each light's remembered blocker (`rayTrace`'s `L.tri`) across far-apart vertices, which changes no
+/// vertex's light with the threads in step and otherwise depends on their timing.
 ///
 /// [`GeometryRayModel::build_welded`]: crate::geometry::collision::geometry_ray_model::GeometryRayModel::build_welded
 pub(crate) struct LightHemisphere;

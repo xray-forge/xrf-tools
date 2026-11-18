@@ -1,6 +1,3 @@
-//! The detail lighter's shadow rays, the lightmaps' and the AI map's corner rays traced on the GPU, on Vulkan and on
-//! D3D12 through the checkout's DXC, against the CPU's answers. A backend no GPU of the host traces rays on is skipped.
-
 use std::path::PathBuf;
 
 use glam::Vec3;
@@ -27,7 +24,6 @@ use crate::tests::ai::ai_covers;
 use crate::tests::detail::detail_lighter::{lighting, lighting_on, tracer};
 use crate::tests::light::charts;
 
-/// The DXC each backend is asked with: none, for Vulkan, then the checkout's, for D3D12 first.
 fn dxcs() -> [Option<PathBuf>; 2] {
   [
     None,
@@ -35,7 +31,6 @@ fn dxcs() -> [Option<PathBuf>; 2] {
   ]
 }
 
-/// A device tracing rays with `dxc`, or none where the host has none, the skip reported.
 fn device(dxc: Option<&PathBuf>) -> Option<RayQueryDevice> {
   RayQueryDevice::request(RayQueryAsk {
     dxc: dxc.map(PathBuf::as_path),
@@ -100,7 +95,7 @@ fn stops_a_ray_at_a_face_seen_from_its_front_alone() -> XrfResult {
 #[test]
 fn passes_a_ray_through_its_own_face_by_xrlc_s_rules() -> XrfResult {
   let tracer: BvhTracer = tracer();
-  // Down onto the ground's top, which is face 0 or 1; the ground stops it unless it passes the face it meets.
+  // The ground stops it unless it passes the face it meets.
   let ray: Ray = Ray::new(Vec3::new(0.5, 2.0, 1.0), Vec3::NEG_Y, 10.0);
   let mut met: Option<u32> = None;
 

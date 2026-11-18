@@ -6,17 +6,14 @@ use crate::object::compile::bounds::flush_box::FlushBox;
 use crate::object::compile::skeleton::skeleton_hierarchy::SkeletonHierarchy;
 use crate::object::compile::skeleton::skeleton_split::SkeletonSplit;
 
-/// The box stored beside each bone's name, in the bone's rest space: the engine moves it with the bone to bound the
-/// animated model for culling (`CKinematics::CalculateBones`), to gate a decal's per-triangle placement on the bone
-/// (`CKinematics::AddWallmark`) and as an AI obstacle of a physics object. Bullet hits test the IK data's shapes
-/// instead, so no damage depends on it.
+/// The box stored beside each bone's name, in the bone's rest space: the engine moves it with the bone for culling
+/// (`CKinematics::CalculateBones`), decal placement (`CKinematics::AddWallmark`) and AI obstacles; bullet hits test the
+/// IK shapes instead.
 ///
-/// Each box is the [`FlushBox`] around every vertex linked to the bone with any weight, as Godot boxes its bones. The
-/// export gathers a vertex into the box of its lowest-numbered bone alone, so a vertex blended toward a child leaves its
-/// box as the child turns: posed through vanilla's motions, 1.7% of vanilla's vertices end more than a centimetre
-/// outside every box gating their triangles' decals, and the animated bounds lose one by a centimetre in 0.9% of frames. Every linked vertex brings
-/// that to 0.03% and none, with boxes still 11% smaller in sum. A bone no vertex is linked to gets the empty box
-/// `Fobb::invalidate` leaves.
+/// Each box is the [`FlushBox`] around every vertex linked to the bone with any weight, where the export takes only a
+/// vertex's lowest-numbered bone: through vanilla's motions that leaves 1.7% of vertices over a centimetre outside their
+/// decal boxes, and this 0.03%, with boxes 11% smaller in sum. A bone no vertex is linked to gets `Fobb::invalidate`'s
+/// empty box.
 pub(crate) struct BoneBoxes;
 
 impl BoneBoxes {

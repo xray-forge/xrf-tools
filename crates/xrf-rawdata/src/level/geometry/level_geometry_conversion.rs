@@ -45,16 +45,13 @@ use crate::object::decompile::object_decompiler::ObjectDecompiler;
 use crate::object::decompile::object_inference::ObjectInference;
 use crate::provenance::level_scene_refusal::LevelSceneRefusal;
 
-/// A level's geometry, from the compiled level back into objects the scene places, and the sectors and portals that
-/// cull them: a shell per compiled sector, one object holding every static triangle the sector draws, named by the
-/// sector, whose index the Build gives back since it numbers sectors in the order the scene lists them
-/// (`SceneBuilder::RenumerateSectors`, `BuilderCore.cpp:75`); the collision no render triangle draws; the occluders;
-/// and the ladders and breakable parts the Build took out of the geometry.
+/// A compiled level's geometry turned back into the objects a scene places, with the sectors and portals that cull
+/// them: a shell per sector, the collision no render triangle draws, the occluders, and the ladders and breakables.
+/// The Build numbers sectors in scene order (`SceneBuilder::RenumerateSectors`), so each sector keeps its index.
 ///
-/// A shell, the collision and the occluders keep the level's coordinates and stand at the origin: a shell spans its
-/// sector, so a pivot inside it would round the low bits off every point nearer the origin than the pivot, and two
-/// sectors would no longer meet exactly where the level had them meet. A ladder or a breakable part stands where its
-/// packet placed it, in a frame of its own.
+/// Shells, collision and occluders stand at the origin in the level's coordinates: a pivot inside a shell would round
+/// off low bits, and neighbouring sectors would no longer meet exactly. Ladders and breakable parts stand where their
+/// packets placed them.
 pub struct LevelGeometryConversion;
 
 /// One mesh of the collision object: the sector its faces lie in, which names it, and how many faces it holds.
@@ -80,12 +77,11 @@ struct SectorGeometry {
 }
 
 impl LevelGeometryConversion {
-  /// A new sector's colour, white and clear (`CSector::Construct`, `sector.cpp:55`), which the compiled level does not
-  /// keep.
+  /// A new sector's colour, white and clear (`CSector::Construct`), which the compiled level does not keep.
   pub const SECTOR_COLOR: [u8; 4] = [255, 255, 255, 0];
 
-  /// How GSC dressed the collision-only props of its own scenes (`prop\prop_fake_kollision` in the SDK's objects), which
-  /// the collision object takes: the build reads only the compiler shader, of collision and no rendering.
+  /// How GSC dressed its collision-only props (`prop\prop_fake_kollision`), which the collision object takes; the Build
+  /// reads only the compiler shader.
   pub const COLLISION_TEXTURE: &'static str = "prop\\prop_fake_kollision";
   pub const COLLISION_ENGINE_SHADER: &'static str = "def_shaders\\def_trans_v";
   pub const COLLISION_COMPILER_SHADER: &'static str = "def_shaders\\def_kolizion_vertex";
@@ -97,26 +93,21 @@ impl LevelGeometryConversion {
   const SECTOR_PREFIX: &'static str = "sector";
   const PORTAL_PREFIX: &'static str = "portal";
 
-  /// The geometry of a compiled level, every object of it at the origin in the level's space, placed by a scene object:
+  /// Decompiles a level's geometry, each object placed by a scene object:
   ///
-  /// - each sector's static visuals but its trees and impostors decompiled into one object of the sector's name
-  ///   (`ObjectDecompiler::decompile_level_geometry`), a sector per compiled sector naming it, and a portal per compiled
-  ///   portal; with `surfaces`, each visual's triangles are split by the game material they lie on and dressed
-  ///   else every surface takes the editor's defaults;
-  /// - the trees, as multi-use objects and a scene object per placement (`LevelTreeConversion`), each model with its
-  ///   impostor strips cut from the atlas where the sources give one, as textures;
+  /// - each sector's static visuals, trees and impostors aside, as one shell named for the sector, with a sector per
+  ///   compiled sector and a portal per compiled portal; with `surfaces`, triangles are split and dressed by the game
+  ///   material they lie on, else surfaces take the editor's defaults;
+  /// - the trees, as multi-use objects placed once per placement, with impostor strips where the atlas is given;
   /// - with the collision form, the faces no render triangle lies on, as `<level>_collision`;
   /// - `level.hom` and `level.som`, as `<level>_hom` and `<level>_som` ([`LevelOccluderConversion`]);
-  /// - with the spawn list, each ladder and breakable part the Build exported from the geometry, as `<level>_ladder_<N>`
-  ///   and `<level>_breakable_<N>` standing where their packets placed them ([`LevelLadderConversion`],
-  ///   [`LevelBreakableConversion`]), each packet named in the decompile's folded entities; one a placed library
-  ///   object's own faces make again is folded into its placement alone, where a game material library tells which.
+  /// - with the spawn list, each ladder and breakable part, as `<level>_ladder_<N>` and `<level>_breakable_<N>`
+  ///   ([`LevelLadderConversion`], [`LevelBreakableConversion`]), their packets recorded as folded; one a placed
+  ///   library object makes again folds into that placement, where a game material library tells which.
   ///
-  /// A sector names its shell and each mesh of a tree or library object placed in it, a library object's meshes each by
-  /// the sector holding most of its triangles. A sector drawing no static geometry of its own or of a placed mesh has
-  /// nothing to name, and the editor drops a sector of no item (`CSector::LoadStream`, `sector.cpp`), which would
-  /// renumber every sector after it. Where one does, the objects come back without sectors or portals, each such sector
-  /// refused, and the Build puts every face in its default sector.
+  /// The editor drops a sector naming no item (`CSector::LoadStream`), renumbering every sector after it. Where a
+  /// sector draws nothing, the objects come back without sectors or portals, that sector refused, and the Build puts
+  /// every face in its default sector.
   ///
   /// # Errors
   ///
@@ -419,7 +410,7 @@ impl LevelGeometryConversion {
 
       census.faces += faces;
       census.two_sided_faces += two_sided;
-      // A two-sided face stands for a triangle and its mirror; what neither a face nor a fold accounts for was a repeat.
+      // A two-sided face stands for a triangle and its mirror; what no face or fold accounts for was a repeat.
       census.repeated_triangles += triangles.saturating_sub(faces + two_sided);
 
       let reference: String = format!("levels\\{name}\\{name}_sector_{index}");
@@ -455,8 +446,8 @@ impl LevelGeometryConversion {
     Ok(sector_names)
   }
 
-  /// The placements of `library`'s objects found in the sectors' static geometry ([`LevelInstanceRecovery`]), each
-  /// one's triangles taken out of the sectors read and counted there.
+  /// The placements of `library`'s objects in the sectors' static geometry ([`LevelInstanceRecovery`]), their triangles
+  /// taken out of `reads` and counted.
   ///
   /// # Errors
   ///
@@ -528,8 +519,8 @@ impl LevelGeometryConversion {
       .collect()
   }
 
-  /// The geometry a sector's root reaches, the sector of `number`: every static drawable visual, and the trees, each
-  /// with the `MT_LOD` of `parents` that parents it; the impostors are counted.
+  /// The geometry sector `number`'s root reaches: its static visuals and its trees with their `MT_LOD` parents; the
+  /// impostors are only counted.
   fn read_sector<T: ByteOrder, D: ChunkDataSource>(
     visuals: &LevelVisualsChunk,
     (root, number): (u32, u16),
@@ -635,11 +626,12 @@ impl LevelGeometryConversion {
     dropped
   }
 
-  /// Whether a triangle is a needle: its two shorter edges add up to its longest within a few single-precision steps of
-  /// it, as xrLC leaves along T-junctions in its own output. The Build and xrLC measure a face by Heron's formula in
-  /// single precision (`CalcArea`, `BuilderRemote.cpp:254`, `xrLC/xrFace.cpp:248`), which rounds such a face's area to
-  /// zero or to no number, and xrLC stops on one (`Face::Verify`, `PreOptimize`), so the decompile leaves them out:
-  /// each is a millimetre or two across.
+  /// Whether a triangle is a needle, its two shorter edges adding up to its longest within a few single-precision
+  /// steps, as xrLC leaves along T-junctions.
+  ///
+  /// The Build and xrLC measure area by Heron's formula in single precision (`CalcArea`), which gives such a face zero
+  /// or NaN, and xrLC stops on one (`Face::Verify`), so the decompile leaves them out; each is a millimetre or two
+  /// across.
   pub(crate) fn is_needle(points: &[Vector3d; 3]) -> bool {
     let distance = |from: &Vector3d, to: &Vector3d| {
       let (x, y, z) = (
@@ -673,8 +665,8 @@ impl LevelGeometryConversion {
     })
   }
 
-  /// The triangles of `geometry`, placed in the level by `placement` where it stands in a space of its own; an index
-  /// past its vertices is left out, as the decompile refuses it on its own.
+  /// The triangles of `geometry`, moved into the level by `placement` where given; an index past its vertices is left
+  /// out, since the decompile refuses it anyway.
   fn list_triangles<'a>(
     geometry: &'a LevelVisualGeometry,
     placement: Option<&'a Matrix4x4>,
@@ -685,10 +677,9 @@ impl LevelGeometryConversion {
     })
   }
 
-  /// The collision faces no render triangle covers, as one object, `<level>_collision`, of a mesh per sector they lie
-  /// in, `collision_<sector>`, which that sector names, so the faces keep the sector the renderer finds the camera's
-  /// by: dressed as GSC dressed its collision-only props, a compiler shader of collision and no rendering, with each
-  /// face's game material where `surfaces` names them. Counted into `decompile` with the faces only trees cover.
+  /// The collision faces no render triangle covers, as `<level>_collision` with a mesh `collision_<sector>` per sector,
+  /// which that sector names so the faces keep their sector. Dressed as GSC's collision-only props, with each face's
+  /// game material where `surfaces` names it; the census counts them.
   fn decompile_collision(
     decompile: &mut LevelGeometryDecompile,
     name: &str,
@@ -798,12 +789,10 @@ impl LevelGeometryConversion {
     }))
   }
 
-  /// Each entity of `spawn` the Build exported from the geometry as an object standing where the packet placed it, its
-  /// packet's name folded into `decompile`: a ladder as its box ([`LevelLadderConversion`]), a breakable as its part of
-  /// `parts` ([`LevelBreakableConversion`]), either refused, and left an entity, where its geometry does not decompile.
-  /// One a placed library object makes again (`cutouts`) is folded into its placement with no object of its own. A
-  /// packet that does not read is left to the spawn points, which refuse it, and a breakable whose part is missing
-  /// stays an entity.
+  /// Each ladder and breakable of `spawn` as an object where its packet placed it, the packet recorded as folded.
+  ///
+  /// One `cutouts` makes again folds with no object of its own. One whose geometry does not decompile is refused and
+  /// stays an entity, as does a breakable missing its part; a packet that does not read is left to the spawn points.
   fn decompile_entities<T: ByteOrder>(
     decompile: &mut LevelGeometryDecompile,
     name: &str,
@@ -875,8 +864,8 @@ impl LevelGeometryConversion {
       .expect("a decompiled object holds one mesh")
   }
 
-  /// The faces the decompiled mesh stands for, and how many of them are two-sided: those it holds, or the one it held
-  /// where it was halved for the editor ([`ObjectInference::HalvedFace`]).
+  /// The faces the decompiled mesh stands for, counting a face halved for the editor once
+  /// ([`ObjectInference::HalvedFace`]), and how many are two-sided.
   fn count_faces(decompile: &ObjectDecompile) -> (usize, usize) {
     let object: &EditableObjectFile = &decompile.object;
     let mesh: &EditableMesh = Self::get_mesh(object);

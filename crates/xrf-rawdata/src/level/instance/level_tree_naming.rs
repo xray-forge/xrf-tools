@@ -9,14 +9,14 @@ use crate::level::instance::level_library_triangle::LevelLibraryTriangle;
 use crate::level::instance::level_tree_match::LevelTreeMatch;
 use crate::level::trees::level_tree_decompile::LevelTreeDecompile;
 
-/// The tree models of a level that a library's trees draw, found as a static object is found ([`LevelInstanceMatcher`],
-/// the model standing for the level).
+/// Finds the level's tree models that library trees draw, searching each model as [`LevelInstanceMatcher`] searches a
+/// level.
 pub(crate) struct LevelTreeNaming;
 
 impl LevelTreeNaming {
-  /// Each model of `trees` one of `library`'s trees stands for whole: the model left out, its impostor strips named for
-  /// the library tree, and each placement of it placing the library tree instead, composed with the fit. A model one of
-  /// whose placements composes into no transform the editor saves stays as it was decompiled.
+  /// Replaces each model of `trees` that a library tree stands for whole: its placements place the library tree
+  /// instead, and its impostor strips are named for it. A model any of whose placements composes into no transform the
+  /// editor saves stays as decompiled.
   pub(crate) fn name(library: &LevelInstanceLibrary, trees: &mut LevelTreeDecompile) -> Vec<LevelTreeMatch> {
     let mut matches: Vec<LevelTreeMatch> = Vec::new();
     let mut kept: Vec<LevelDecompiledObject> = Vec::with_capacity(trees.models.len());
@@ -45,8 +45,7 @@ impl LevelTreeNaming {
       };
       let tree = &library.trees[found.object];
       let fit = found.fit.to_matrix();
-      // A placement scaled unevenly and the library tree turned within it compose into a shear no scene object holds;
-      // the model then stays, as it was decompiled, rather than placing the library tree elsewhere.
+      // An uneven scale and the library tree's turn compose into a shear no scene object holds; the model then stays.
       let Ok(placed) = trees
         .placements
         .iter()
@@ -88,11 +87,11 @@ impl LevelTreeNaming {
     matches
   }
 
-  /// Gives the strips cut for `model` to the library tree of `reference` that stands for it. The Build loads a
-  /// placement's strips by its object's library name (`CEditableObject::GetLODTextureName`,
-  /// `ECore/Editor/EditObjectEditor.cpp`; `SceneBuilder::BuildObjectLOD`, `LevelEditor/Edit/BuilderLODs.cpp`), and the
-  /// level's atlas holds the very strips it loaded for that tree; a library's objects need not ship them, as the game's
-  /// textures do not. A tree standing for two models keeps the first one's.
+  /// Gives the strips cut for `model` to the library tree `reference` standing for it; a tree standing for two models
+  /// keeps the first one's.
+  ///
+  /// The Build loads strips by the library name (`CEditableObject::GetLODTextureName`), and libraries need not ship
+  /// them, so the strips the atlas holds for that tree are the ones it needs.
   fn rename_impostor(trees: &mut LevelTreeDecompile, model: &str, reference: &str) {
     let is_held: bool = trees.impostors.iter().any(|(held, _)| held == reference);
 

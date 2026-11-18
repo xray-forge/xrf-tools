@@ -2,9 +2,9 @@ use xrf_geometry::Facing;
 
 use crate::ray::ray_alpha::RayAlpha;
 
-/// The rules a shadow ray follows through the ray model, one source for the CPU's tracing and the GPU's: which sides of
-/// a face stop it, how much an alpha texel lets through, whether it passes the face its point lies on, and whether a
-/// face the GPU's ray test meets counts only where the CPU's (`Triangle::cross`) meets it too.
+/// The rules a shadow ray follows through the ray model, shared by the CPU's tracing and the GPU's: which sides of a
+/// face stop it, how much an alpha texel lets through, whether it passes its point's own face, and whether a face the
+/// GPU meets counts only where the CPU's test (`Triangle::cross`) meets it too.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct RayRules {
   pub(crate) facing: Facing,
@@ -29,9 +29,10 @@ impl RayRules {
   pub(crate) const COVERS: Self = Self::DETAILS;
 
   /// xrLC's (`xrLC_Light/xrDeflectorLight.cpp`): a face stops a ray from either side (`ray_options(0)`), an alpha
-  /// texel lets `1 - alpha²` through, and a ray passes its point's own face. The light baker's samples sit on their
-  /// faces and its skies hold grazing directions: the device's watertight test takes crossings the CPU's determinant
-  /// test turns away, a step of light apart on a lightmap, so the GPU tests each face again as the CPU does.
+  /// texel lets `1 - alpha²` through, and a ray passes its point's own face.
+  ///
+  /// The GPU retests each face as the CPU does: with samples on their faces and grazing sky directions, the device's
+  /// watertight test takes crossings the CPU's determinant test turns away, a step of light apart on a lightmap.
   pub(crate) const LEVEL: Self = Self {
     facing: Facing::Both,
     alpha: RayAlpha::Squared,
@@ -39,9 +40,7 @@ impl RayRules {
     is_cpu_tested: true,
   };
 
-  /// The rules' bits, `RULE_*` in `shadow_rays.wgsl`: a face stops a ray from either side; an alpha texel lets
-  /// `1 - alpha²` through rather than `1 - alpha`; a ray passes the face its skip code names; a face the device's ray
-  /// test meets counts only where the CPU's meets it too.
+  /// The rules' bits, `RULE_*` in `shadow_rays.wgsl`.
   #[cfg(feature = "gpu")]
   const RULE_BOTH_SIDES: u32 = 1;
   #[cfg(feature = "gpu")]

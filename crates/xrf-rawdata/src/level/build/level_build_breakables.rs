@@ -26,18 +26,18 @@ use crate::object::compile::skeleton::skeleton_geometry_builder::SkeletonGeometr
 use crate::object::compile::skeleton::skin_corner::SkinCorner;
 use crate::object::compile::tangent_method::TangentMethod;
 
-/// The breakables a build cuts out of the geometry (`ESceneObjectTool::ExportBreakableObjects`,
-/// `ESceneObjectToolsExportBreakable.cpp:105`): the parts of the static objects' faces of a breakable game material
-/// ([`LevelBuildParts`]), each moved into the frame of its box (`ComputeOBB_RAPID`) and cut into fragments grown at
-/// random (`SBPart::prepare`, `GeometryPartExtractor.cpp:51`), written as a rigid skeleton of a bone per fragment,
-/// `meshes\brkbl#<n>.ogf` (`SBPart::Export`), and placed by a `breakable_object` standing at the box.
+/// The breakables a build cuts out of the geometry, `ESceneObjectTool::ExportBreakableObjects`.
+///
+/// Each part of breakable faces ([`LevelBuildParts`]) moves into its box's frame and is cut into fragments grown at
+/// random (`SBPart::prepare`). It is written as a rigid skeleton of a bone per fragment, `meshes\brkbl#<n>.ogf`, and
+/// placed by a `breakable_object` standing at the box.
 pub(crate) struct LevelBuildBreakables {
   parts: LevelBuildParts,
   random: EditorRandom,
 }
 
-/// One fragment of a part, `SBBone`: the game material of the face it grew from, how many faces it grew and their area,
-/// and its offset from the first fragment.
+/// One fragment of a part, `SBBone`: its seed face's game material, the faces it grew and their area, and its offset
+/// from the first fragment.
 struct Fragment {
   game_material: String,
   faces: usize,
@@ -45,8 +45,7 @@ struct Fragment {
   offset: Vector3d,
 }
 
-/// A part moved into its box's frame, `SBPart` after `prepare`: its faces' corners and normals there, each face's
-/// fragment, and the fragments.
+/// A part moved into its box's frame, `SBPart` after `prepare`.
 struct PreparedPart {
   frame: Affine3d,
   corners: Vec<[Vector3d; 3]>,
@@ -92,7 +91,7 @@ impl LevelBuildBreakables {
     self.parts.add_object(placed, object, game_materials)
   }
 
-  /// A breakable of each part, numbered by part; a part some face of which shares no edge with another refused as the
+  /// A breakable of each part, numbered by part. A part with a face sharing no edge with another is refused, as the
   /// Build refuses it.
   ///
   /// # Errors
@@ -120,10 +119,10 @@ impl LevelBuildBreakables {
     Ok(export)
   }
 
-  /// `SBPart::prepare`: `part` in the frame of its box, and its fragments, each grown from a face with fewer than two
-  /// neighbours free or with none, to a size drawn at random, faces left over joining a neighbour's fragment. As the
-  /// editor does, the first pass over the leftovers gives every one of them to the first fragment, and an offset sums
-  /// every face of its fragment but divides by the faces it grew.
+  /// `SBPart::prepare`: `part` in its box's frame, cut into fragments of random size.
+  ///
+  /// As in the editor, every face left over goes to the first fragment, and an offset sums every face of its fragment
+  /// but divides by the faces it grew.
   fn prepare(&mut self, part: &[usize]) -> Result<PreparedPart, String> {
     let neighbours: Vec<Vec<usize>> = self.part_neighbours(part);
 
@@ -186,7 +185,7 @@ impl LevelBuildBreakables {
       .collect()
   }
 
-  /// The fragments of a part of `corners` and `neighbours`, and each face's fragment.
+  /// The part's fragments, and each face's fragment.
   fn grow_fragments(
     &mut self,
     part: &[usize],
@@ -273,9 +272,8 @@ impl LevelBuildBreakables {
     (bone_of_face, fragments)
   }
 
-  /// `SBPart::Export`: a rigid skeleton of a bone per fragment, the first the root and every other its child, each face
-  /// following its fragment's bone alone, into a child per engine shader and texture; each bone's box the one around its
-  /// vertices, which its physics shape repeats, breaking off when struck, its mass the area it grew.
+  /// `SBPart::Export`: a rigid skeleton of a bone per fragment, every bone a child of the first. Each bone's physics
+  /// box is the box around its vertices, and its mass the area it grew.
   fn build_part(&self, path: String, part: &[usize], prepared: &PreparedPart) -> XrfResult<LevelBuildBreakablePart> {
     let mut builder: SkeletonGeometryBuilder = SkeletonGeometryBuilder::of_faces(prepared.bounds);
 
@@ -333,7 +331,7 @@ impl LevelBuildBreakables {
     })
   }
 
-  /// A fragment's bone: named by its number, the first the root, its joint none and breakable, its mass its area.
+  /// A fragment's bone, named by its number, with a breakable joint of no kind.
   fn get_bone(index: usize, fragment: &Fragment) -> EditableBone {
     let limit: SkeletonJointLimit = SkeletonJointLimit {
       min: 0.0,
@@ -395,9 +393,8 @@ impl LevelBuildBreakables {
     }
   }
 
-  /// The `breakable_object` placing the part `name` at `frame`: named by its file, its visual the same without the
-  /// extension (`CSE_Visual::set_visual`), standing at the box with the angles `getXYZ` reads off its axes; the rest as
-  /// GSC's build left it in vanilla's packets.
+  /// The `breakable_object` placing the part `name` at `frame`, with the angles `getXYZ` reads off its axes. Its other
+  /// fields are as GSC's build left them in vanilla's packets.
   fn get_entity(name: &str, frame: &Affine3d) -> AlifeObject {
     AlifeObject {
       header: SpawnPacketHeader {
@@ -496,15 +493,14 @@ impl Growth<'_> {
   }
 }
 
-/// The editor's `CRandom` (`xrCore/_random.h`), seeded at zero: a fragment's size is drawn from it, so a part is cut
-/// the same way every build of ours, though not as GSC's builds cut it.
+/// The editor's `CRandom`, seeded at zero: every build of ours cuts a part the same way, though not as GSC's did.
 #[derive(Default)]
 struct EditorRandom {
   state: u32,
 }
 
 impl EditorRandom {
-  /// `randI(min, max)`: from `min` up to `max`, `max` itself excluded.
+  /// `randI(min, max)`, `max` excluded.
   fn get_between(&mut self, min: usize, max: usize) -> usize {
     self.state = self.state.wrapping_mul(214_013).wrapping_add(2_531_011);
 

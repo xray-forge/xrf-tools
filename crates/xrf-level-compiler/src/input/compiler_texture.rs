@@ -8,12 +8,11 @@ use xrf_thm::{ThmFile, ThmTextureFlag, ThmTextureParamChunk};
 
 use crate::input::compiler_textures::CompilerTextures;
 
-/// One `build.prj` texture as xrLC loads it (`xrLC/Build_Load.cpp`): its name as the compilers look it up, its size,
-/// whether it has alpha, whether its image is loaded, and whether it is lit implicitly.
+/// One `build.prj` texture as `CBuild::Load` loads it.
 ///
 /// The size and flags come from its `.thm`; the image is loaded where the texture has alpha or is lit implicitly and is
-/// not a `lod\` texture, and where the image's size differs from the `.thm`'s, the image's is taken. The merged
-/// impostors' atlas, `level_lods`, has no `.thm` read: 1024 a side, alpha, no image.
+/// not a `lod\` texture, and its size then wins over the `.thm`'s. The merged impostors' atlas, `level_lods`, has no
+/// `.thm` read: 1024 a side, alpha, no image.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct CompilerTexture {
   /// The name cut at its first dot and lowered (`CompilerTextures::get_name`), as visuals name it.
@@ -37,8 +36,7 @@ impl CompilerTexture {
   ///
   /// # Errors
   ///
-  /// Returns an error listing the textures with no `.thm` describing a texture, and for an image xrLC would load that
-  /// cannot be read.
+  /// Returns an error listing the textures with no texture `.thm`, or for an image xrLC loads that cannot be read.
   pub(crate) fn resolve_all(project: &BuildPrjFile, roots: &[PathBuf]) -> XrfResult<Vec<Self>> {
     let mut missing: Vec<String> = Vec::new();
     let mut textures: Vec<Self> = Vec::with_capacity(project.textures.len());
