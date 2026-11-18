@@ -20,7 +20,9 @@ use crate::viewer::recording::{RecordingOutcome, RecordingProgress};
 /// were presented and the mix before the master as the device plays it, put on one line by the audio's clock. Time zero
 /// is the first frame's present; the sound from the mixer's frame its anchor places there, each block at its own frame
 /// on from it, so a block the tap had no room for is a gap, not a shift. It ends when stopped, or by itself where the
-/// renderer stops recording or the audio goes on at another rate, the file finished to there either way.
+/// renderer stops recording, the audio goes on at another rate or the writer refuses a frame or sound, the file
+/// finished to there; a writer that fails to finish leaves it playable to where it stopped, and a recording with no
+/// frame leaves no file.
 pub(crate) struct ViewportRecorder {
   renderer: Renderer,
   viewport: RenderViewportId,

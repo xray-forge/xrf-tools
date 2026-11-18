@@ -53,7 +53,7 @@ impl SoundDecoder {
   }
 
   /// Frames each channel plays: `ov_pcm_total` for Ogg/Vorbis, as the engine counts it, and the track's stated length
-  /// for WAV.
+  /// for WAV. Decoding is not cut to it: [`Self::decode_next`] gives every frame the container holds.
   pub fn get_frames_count(&self) -> u64 {
     self.frames_count
   }

@@ -241,7 +241,6 @@ impl GraphCompiler {
     alive
   }
 
-  /// No surviving pass reads a transient before a pass before it, or it itself, has written it.
   /// Refuses a pass drawing into a texture of several mips or layers without naming which (`named`: whether its mip and
   /// its layer were): the graph knows the texture behind an import, never which part of it the imported view shows,
   /// so an unnamed target would be drawn into the first mip and layer while a pass reading the view sees its own.
@@ -271,6 +270,7 @@ impl GraphCompiler {
     }
   }
 
+  /// No surviving pass reads a transient before a pass before it, or it itself, has written it.
   fn validate_order(
     passes: &[GraphPass<'_>],
     textures: &[GraphTextureRecord],

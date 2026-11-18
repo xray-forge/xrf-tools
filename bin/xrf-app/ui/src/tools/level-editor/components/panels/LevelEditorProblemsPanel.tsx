@@ -33,9 +33,10 @@ function toPartStatus(name: string, state: AsyncState<unknown>): Nullable<string
 /**
  * Everything of the open scene the SDK's Level Editor would skip or refuse, and what of it is not drawn: what the open
  * found of its part files, then what reading its objects and its binary tools found, then the scene objects its
- * picture leaves out, then the textures and the models of library objects and spawn points the renderer could not draw,
- * said to be incomplete until each is read; what the renderer could not draw is said once the scene is resident, as the
- * level viewer says it.
+ * picture leaves out, then the textures and the models of library objects and spawn points the renderer could not draw.
+ * The findings listed are those read so far: beside them, the panel says which of the objects, binary tools, library
+ * objects and helpers is still being read or could not be read, the first such in that order, and then, as the level
+ * viewer says it, that what the renderer could not draw waits for the scene to be resident.
  */
 export function LevelEditorProblemsPanel({
   "data-testid": dataTestId = "level-editor-problems-panel",

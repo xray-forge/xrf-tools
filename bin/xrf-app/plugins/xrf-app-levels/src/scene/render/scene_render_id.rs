@@ -18,7 +18,7 @@ pub(crate) const SCENE_RENDER_EDITOR_BIT: u32 = 1 << (u32::BITS - 2);
 /// The bits above every tool's place, each naming one of an object's models apart from its own.
 const SCENE_RENDER_PART_BITS: u32 = SCENE_RENDER_COLLISION_BIT | SCENE_RENDER_EDITOR_BIT;
 
-/// Every tool in the editor's order, the place a scene render id's top bits name each by. Only the page reads it: the
+/// Every tool in the editor's order, the place a scene render id's tool bits name each by. Only the page reads it: the
 /// backend reads a tool's place off its variant.
 #[cfg(feature = "typescript-bindings")]
 #[xrf_ipc::constant]
@@ -26,7 +26,7 @@ pub(crate) const SCENE_RENDER_TOOLS: &[SceneToolKind] = &SceneToolKind::ALL;
 
 /// The one id a scene object is named to the renderer by, whatever it draws: a model's spawn object, its lighting and
 /// its hiding, a selection's target, a helper, and what a pick of any of them answers. Its tool's place in
-/// `SceneToolKind::ALL` is in the top eight bits and its index among the tool's objects in the low
+/// `SceneToolKind::ALL` is in the six bits under the models' two and its index among the tool's objects in the low
 /// [`SCENE_RENDER_INDEX_BITS`], so an id names its object both ways with no listing at hand, a spawn point's model and
 /// its shape are one object, and ids sort by tool, then by index. A scene object's collision surfaces stand under its
 /// id with [`SCENE_RENDER_COLLISION_BIT`] set, its editor-only surfaces with [`SCENE_RENDER_EDITOR_BIT`]. The page

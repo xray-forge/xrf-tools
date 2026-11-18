@@ -8,7 +8,7 @@ import { LEVEL_EDITOR_HELP } from "./help";
 
 export const LEVEL_EDITOR_TOOL: IToolDescriptor = createToolDescriptor(
   {
-    description: "Edit level geometry and scene objects",
+    description: "View an SDK level scene and its objects",
     group: EToolGroupId.LEVEL,
     help: LEVEL_EDITOR_HELP,
     icon: <EditLocationAltIcon />,

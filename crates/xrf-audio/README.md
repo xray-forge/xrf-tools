@@ -109,10 +109,12 @@ the first two; a mono device gets the two averaged.
 ## Sounds
 
 `SoundDecoder` reads Ogg/Vorbis, as the game ships sounds, through `xrf-sound`'s `VorbisDecoder` (its own Ogg reading,
-symphonia's Vorbis codec), and 16-bit WAV, as the SDK keeps sources, through symphonia.
+symphonia's Vorbis codec), and WAV, as the SDK keeps sources, through symphonia: any PCM WAV its `pcm` codec decodes,
+16-bit, 24-bit or float.
 
 - Only one or two channels are accepted, as the engines play nothing else.
-- An Ogg/Vorbis sound's length is what `ov_pcm_total` says, the engine's count.
+- An Ogg/Vorbis sound's length is what `ov_pcm_total` says, the engine's count, and a WAV's the length its track
+  states. Decoding is not cut to it: the decoder gives every frame the container holds.
 - Seeking is exact to the frame: the decoder lands on the packet holding the frame, or before it, and drops what it
   decodes before the frame.
 
@@ -135,6 +137,8 @@ A sound is held one of three ways:
   opens a new stream when the device goes. The same mixer, and so the same voices, carry over.
 - With no device it renders the mixer at a device's pace and drops the result, so commands are taken, voices play out
   and the clock runs on. It retries a device every 2 s; `AudioOutput::get_status` says why none plays.
+- A closed stream whose device has not handed the mixer back leaves it unrendered, voices and clock held, and no device
+  is tried until the mixer comes back.
 - On macOS it does not list devices during playback and relies on the stream's own rerouting and loss errors.
 
 `AudioDevices::list` names the system's output devices.

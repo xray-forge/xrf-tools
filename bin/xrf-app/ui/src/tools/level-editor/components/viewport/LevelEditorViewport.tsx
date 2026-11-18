@@ -16,7 +16,7 @@ import { LevelEditorRenderService } from "@/tools/level-editor/services/level-ed
 import { LevelEditorSceneService } from "@/tools/level-editor/services/level-editor-scene";
 
 interface ILevelEditorViewportProps extends BaseComponentProps {
-  /** Whether a scene is open, which the viewport draws. */
+  /** Whether a scene is open, which chooses its cover over why the last open failed; the surface draws regardless. */
   isOpen?: boolean;
   /** Whether a scene is being opened. */
   isLoading?: boolean;

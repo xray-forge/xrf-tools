@@ -127,7 +127,7 @@ impl LevelSpawnObject {
   /// The reason a refusal's `message` gives, as the object's record states it. It leaves out the object's name, which
   /// the record holds beside it, so objects refused alike share one. It is kept to one line and holds no double quote,
   /// as a record's value must: a message quoting a packet's text can carry an odd number, and a value leaving a quote
-  /// open is refused on import, since the engine would read the lines after it into it.
+  /// open is refused on import, since the engine reads the following lines into it, or warns and drops the quote.
   fn format_reason(&self, message: &str) -> String {
     message
       .replace(&format!(" '{}'", self.name), "")

@@ -117,7 +117,7 @@ impl LevelSpawnFile {
   }
 
   /// Imports the list's unpacked folder at `path`: its objects in the order its file holds them
-  /// ([`LevelSpawnObject::import_record`]).
+  /// (`LevelSpawnObject::import_record`).
   ///
   /// # Errors
   ///
@@ -135,7 +135,7 @@ impl LevelSpawnFile {
   }
 
   /// Exports the list into the folder `path` as one record per object, named by its place in the list
-  /// ([`LevelSpawnObject::export_record`]), answering how many were written typed and how many verbatim.
+  /// (`LevelSpawnObject::export_record`), answering how many were written typed and how many verbatim.
   ///
   /// # Errors
   ///

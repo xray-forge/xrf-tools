@@ -11,7 +11,7 @@ use crate::level::level_spawn_file::LevelSpawnFile;
 
 /// Which of the two formats sharing `.spawn` a file or its unpacked folder is, which its name cannot say: a root spawn
 /// such as `all.spawn` ([`SpawnFile`](crate::SpawnFile)), or the run of spawn packets a level's `level.spawn` holds
-/// ([`LevelSpawnFile`](crate::LevelSpawnFile)).
+/// ([`LevelSpawnFile`]).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SpawnFileKind {
   /// A root spawn, which opens with its header chunk.

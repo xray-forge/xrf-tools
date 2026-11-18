@@ -20,8 +20,9 @@ fn rcas_sharpen(b: vec3<f32>, d: vec3<f32>, e: vec3<f32>, f: vec3<f32>, h: vec3<
 }
 
 // `rcas_sharpen` over the reversible tonemap of linear light, held at most halfway from the brightest of its five taps
-// to the tonemap's white, so it undoes to at most about twice that tap's light: the limiter lets the most sharpening
-// reach white itself, which undoes to no bound.
+// to the tonemap's white, so it undoes to a bounded light: the limiter lets the most sharpening reach white itself,
+// which undoes to no bound. The hold is in tonemapped space, so against the tap's own light it is about twice for a
+// bright tap and far more for a dark one.
 fn rcas_sharpen_held(
   b: vec3<f32>,
   d: vec3<f32>,

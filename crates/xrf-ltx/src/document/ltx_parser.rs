@@ -432,8 +432,8 @@ impl LtxParser<'_> {
   /// The key, value and comment of a field line, the statement starting at `span`. The comment is cut where the engine
   /// cuts it ([`Self::strip_engine_comment`]), so `"a;b"` stays one value.
   ///
-  /// A value inside a section with an odd number of quotes is refused: the engine would read the following lines into
-  /// it, and this parser reads one line per statement.
+  /// A value inside a section with an odd number of quotes is refused: the engine reads the following lines into it, or,
+  /// when one of them holds `[...]`, warns and drops the quote, and this parser reads one line per statement.
   fn parse_key_value_from_line<'line>(&self, line: &'line str, span: LtxSpan) -> XrfResult<ParsedKeyValue<'line>> {
     if line.is_empty() {
       return self.error("Failed to parse empty value statement");
@@ -455,7 +455,10 @@ impl LtxParser<'_> {
       return Err(XrfError::new_ltx_parse_error(
         span.get_line(),
         span.get_column(),
-        format!("Value of '{key}' leaves a quote open, and the engine would read the lines after it into it"),
+        format!(
+          "Value of '{key}' leaves a quote open, and the engine reads the following lines into it, or warns and \
+           drops the quote"
+        ),
       ));
     }
 
@@ -685,15 +688,15 @@ mod test {
     for (input, expected) in [
       (
         "[box]\nx = \"open\n",
-        "Ltx parse error: 2:1 Value of 'x' leaves a quote open, and the engine would read the lines after it into it",
+        "Ltx parse error: 2:1 Value of 'x' leaves a quote open, and the engine reads the following lines into it, or warns and drops the quote",
       ),
       (
         "[box]\n  x = \"a\" \"b\r\n",
-        "Ltx parse error: 2:3 Value of 'x' leaves a quote open, and the engine would read the lines after it into it",
+        "Ltx parse error: 2:3 Value of 'x' leaves a quote open, and the engine reads the following lines into it, or warns and drops the quote",
       ),
       (
         "[box]\n>list = \"a\n",
-        "Ltx parse error: 2:1 Value of 'list' leaves a quote open, and the engine would read the lines after it into it",
+        "Ltx parse error: 2:1 Value of 'list' leaves a quote open, and the engine reads the following lines into it, or warns and drops the quote",
       ),
     ] {
       assert_eq!(
@@ -763,7 +766,7 @@ mod test {
       Ltx::read_from_str(input)
         .expect_err("custom data across lines")
         .to_string(),
-      "Ltx parse error: 2:1 Value of 'custom_data' leaves a quote open, and the engine would read the lines after it into it"
+      "Ltx parse error: 2:1 Value of 'custom_data' leaves a quote open, and the engine reads the following lines into it, or warns and drops the quote"
     );
   }
 
@@ -771,8 +774,7 @@ mod test {
   #[test]
   fn refuses_an_open_quote_through_every_reader() {
     let input: &str = "[box]\nx = \"open\ny = 1\n";
-    let expected: &str =
-      "Ltx parse error: 2:1 Value of 'x' leaves a quote open, and the engine would read the lines after it into it";
+    let expected: &str = "Ltx parse error: 2:1 Value of 'x' leaves a quote open, and the engine reads the following lines into it, or warns and drops the quote";
 
     for error in [
       Ltx::read_from_str(input).map(drop),

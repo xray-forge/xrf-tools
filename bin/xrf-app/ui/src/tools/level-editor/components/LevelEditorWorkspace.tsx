@@ -23,7 +23,10 @@ import { LevelEditorViewport } from "@/tools/level-editor/components/viewport/Le
 import { ELevelEditorPanelId } from "@/tools/level-editor/lib/panels/level-editor-panel-id";
 
 interface ILevelEditorWorkspaceProps extends BaseComponentProps {
-  /** What the open scene is called, which heads the workspace. Its presence is what the viewport draws. */
+  /**
+   * What the open scene is called, which heads the workspace. Its presence decides only what covers the viewport: the
+   * open scene's cover, or why the last open failed; what the viewport draws is the render service's.
+   */
   name?: Nullable<string>;
   /** What the scene being opened is called, which heads the workspace until it is open. */
   pending?: Nullable<string>;
