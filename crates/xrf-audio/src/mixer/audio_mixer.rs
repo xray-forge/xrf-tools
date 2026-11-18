@@ -2,6 +2,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use rtrb::{Consumer, Producer};
+use xrf_audio_scene::AudioBus;
 
 use crate::acoustics::audio_acoustics::AudioAcoustics;
 use crate::acoustics::effects::ear_blocks::EarBlocks;
@@ -18,7 +19,6 @@ use crate::voice::playback::audio_voice_state::AudioVoiceState;
 use crate::voice::shared::voice_parameters::VoiceParameters;
 use crate::voice::shared::voice_status::VoiceStatus;
 use crate::voice::voice::Voice;
-use xrf_audio_scene::AudioBus;
 
 /// The audio thread's half: a fixed pool of voice slots mixed into their buses, the buses and the listener's reverb into
 /// the master, and the master into the device's buffer; a tap takes the mix before the master.

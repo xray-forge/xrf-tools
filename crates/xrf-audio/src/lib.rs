@@ -10,6 +10,11 @@ pub(crate) mod scene;
 mod tests;
 pub(crate) mod voice;
 
+// What a host tells the audio of a scene, so a host playing one names it here beside the server it plays through.
+pub use xrf_audio_scene::{
+  AudioBus, AudioListener, AudioSceneEmitter, AudioSceneFrame, AudioSceneInbox, AudioSceneRules,
+};
+
 pub use crate::acoustics::audio_acoustics::AudioAcoustics;
 pub use crate::acoustics::audio_spatialization::AudioSpatialization;
 pub use crate::control::audio_play::AudioPlay;
@@ -63,7 +68,3 @@ pub use crate::voice::audio_voice_id::AudioVoiceId;
 pub use crate::voice::playback::audio_voice_playback::AudioVoicePlayback;
 pub use crate::voice::playback::audio_voice_state::AudioVoiceState;
 pub use crate::voice::voice_source::VoiceSource;
-// What a host tells the audio of a scene, so a host playing one names it here beside the server it plays through.
-pub use xrf_audio_scene::{
-  AudioBus, AudioListener, AudioSceneEmitter, AudioSceneFrame, AudioSceneInbox, AudioSceneRules,
-};

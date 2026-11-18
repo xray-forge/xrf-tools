@@ -2,6 +2,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use rtrb::{Consumer, Producer};
+use xrf_audio_scene::AudioBus;
 
 use crate::acoustics::audio_acoustics::AudioAcoustics;
 use crate::control::audio_play::AudioPlay;
@@ -21,7 +22,6 @@ use crate::voice::shared::voice_spatial_parameters::VoiceSpatialParameters;
 use crate::voice::shared::voice_status::VoiceStatus;
 use crate::voice::voice::Voice;
 use crate::voice::voice_spatial::VoiceSpatial;
-use xrf_audio_scene::AudioBus;
 
 /// The control side of the audio: it starts, steers and stops voices on the mixer it was made with
 /// ([`crate::AudioEngineParts::new`]), from any one thread, without waiting on the audio thread.

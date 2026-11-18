@@ -1,3 +1,5 @@
+use xrf_audio_scene::AudioBus;
+
 use crate::acoustics::effects::ear_blocks::EarBlocks;
 use crate::acoustics::effects::placed_block::PlacedBlock;
 use crate::mixer::gain_ramp::GainRamp;
@@ -8,7 +10,6 @@ use crate::voice::shared::voice_parameters::VoiceParameters;
 use crate::voice::shared::voice_spatial_parameters::VoiceSpatialParameters;
 use crate::voice::voice_source::VoiceSource;
 use crate::voice::voice_spatial::VoiceSpatial;
-use xrf_audio_scene::AudioBus;
 
 /// A sound playing on the audio thread. Built on the control thread and boxed there, so the audio thread only moves it
 /// in and out of its slot and frees nothing.

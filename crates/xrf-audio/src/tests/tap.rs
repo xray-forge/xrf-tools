@@ -1,8 +1,7 @@
 //! The mix tapped before the master, and the clock that places the mixer's frames: what a recorder takes its sound
 //! from and lines it up with the picture by.
 
-use std::sync::mpsc;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, mpsc};
 use std::time::{Duration, Instant};
 
 use xrf_test_utils::TestSkip;

@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
+use xrf_audio_scene::{AudioBus, AudioSceneInbox};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::acoustics::audio_acoustics::AudioAcoustics;
@@ -28,8 +29,6 @@ use crate::output::device::audio_output_status::AudioOutputStatus;
 use crate::scene::host::audio_asset_source::AudioAssetSource;
 use crate::scene::host::audio_scene_geometry::AudioSceneGeometry;
 use crate::scene::report::audio_scene_report::AudioSceneReport;
-use xrf_audio_scene::AudioBus;
-use xrf_audio_scene::AudioSceneInbox;
 
 /// The audio's control tier: a thread of its own owns the [`AudioEngine`] and every transport, takes requests from any
 /// thread, and tells its host what changed through an [`AudioEventSink`]. A clone is a handle on the same thread; the

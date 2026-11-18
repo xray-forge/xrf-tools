@@ -11,6 +11,7 @@ use audionimbus::{
   ReflectionsSharedInputs, Scene, SimulationInputs, SimulationParameters, SimulationSettings, SimulationSharedInputs,
   Simulator, Source, StaticMesh, StaticMeshSettings, Transmission, TransmissionParameters, Triangle,
 };
+use xrf_audio_scene::AudioListener;
 
 use crate::acoustics::scene::simulated_source::SimulatedSource;
 use crate::acoustics::scene::source_acoustics::SourceAcoustics;
@@ -19,7 +20,6 @@ use crate::acoustics::steam::steam_audio::SteamAudio;
 use crate::acoustics::steam::steam_space::SteamSpace;
 use crate::mixer::audio_mixer::AudioMixer;
 use crate::scene::host::audio_scene_mesh::AudioSceneMesh;
-use xrf_audio_scene::AudioListener;
 
 type DirectSimulator = Simulator<DefaultRayTracer, Direct>;
 type DirectSource = Source<Direct>;

@@ -445,6 +445,40 @@ mod tests {
     Ok(())
   }
 
+  /// Children of `ids`, in that order, each holding its own id.
+  fn children_of(ids: &[u32]) -> XrfResult<Vec<u8>> {
+    let mut parent: ChunkWriter = ChunkWriter::new();
+
+    for id in ids {
+      let mut child: ChunkWriter = ChunkWriter::new();
+
+      child.write_u32::<XRayByteOrder>(*id)?;
+      child.flush_chunk_into::<XRayByteOrder>(&mut parent.buffer, *id)?;
+    }
+
+    Ok(parent.buffer)
+  }
+
+  fn read_numbered(ids: &[u32]) -> XrfResult<Vec<u32>> {
+    ChunkReader::from_bytes(&children_of(ids)?)?
+      .read_numbered_children("test child", |child| Ok(child.read_u32::<XRayByteOrder>()?))
+  }
+
+  #[test]
+  fn reads_children_numbered_from_zero_and_refuses_a_gap_or_another_order() -> XrfResult {
+    assert_eq!(read_numbered(&[0, 1, 2])?, vec![0, 1, 2]);
+
+    for ids in [&[0, 2][..], &[1][..], &[1, 0][..]] {
+      let error: String = read_numbered(ids)
+        .expect_err("expect a numbering the editor does not open to be refused")
+        .to_string();
+
+      assert!(error.contains("test child chunk"), "{ids:?}: {error}");
+    }
+
+    Ok(())
+  }
+
   #[test]
   fn rejects_u16_vector_count_larger_than_remaining_payload() -> XrfResult {
     let mut chunk: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[2, 0, 0, 0, 1, 0])?;

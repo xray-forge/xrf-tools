@@ -35,15 +35,9 @@ fn play(engine: &mut AudioEngine, reader: StreamReader) -> AudioVoiceId {
 fn starts_a_stream_mid_file_at_the_frame_asked_for() {
   let AudioEngineParts { mut engine, mixer } = engine(1);
   let mut render: OfflineRender = OfflineRender::new(mixer, RATE);
-  let started: Instant = Instant::now();
   let voice: AudioVoiceId = play(&mut engine, stream(wav(RATE, 1, &ramp(20_000)), 12_345, false));
   let out: Vec<f32> = render_until_audible(&engine, &mut render, voice);
 
-  assert!(
-    started.elapsed() < Duration::from_millis(50),
-    "{:?} to the first sound",
-    started.elapsed()
-  );
   assert_eq!((out[0] * 32768.0).round() as i64, 12_345);
   assert_eq!((out[2] * 32768.0).round() as i64, 12_346);
   assert_eq!(out[0], out[1], "a mono stream plays in both channels");

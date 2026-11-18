@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use xrf_audio_scene::{AudioSceneFrame, AudioSceneMailbox};
+
 use crate::acoustics::audio_acoustics::AudioAcoustics;
 use crate::acoustics::scene::simulation_pace::SimulationPace;
 use crate::control::engine::audio_engine::AudioEngine;
@@ -8,8 +10,6 @@ use crate::scene::host::audio_scene_geometry::AudioSceneGeometry;
 use crate::scene::render::scene::scene_assets::SceneAssets;
 use crate::scene::render::scene::scene_render::SceneRender;
 use crate::scene::render::scene::scene_tick::SceneTick;
-use xrf_audio_scene::AudioSceneFrame;
-use xrf_audio_scene::AudioSceneMailbox;
 
 /// A scene open on the control thread: where its frames come in and go back, where its sounds are read, and how it
 /// plays.

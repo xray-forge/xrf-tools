@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::ops::ControlFlow;
 use std::time::{Duration, Instant};
 
+use xrf_audio_scene::AudioBus;
 use xrf_error::{XrfError, XrfResult};
 
 use crate::acoustics::audio_spatialization::AudioSpatialization;
@@ -22,7 +23,6 @@ use crate::scene::render::bank::sound_bank::SoundBank;
 use crate::scene::render::scene::scene_tick::SceneTick;
 use crate::scene::render::stream_launcher::StreamLauncher;
 use crate::scene::report::audio_scene_report::AudioSceneReport;
-use xrf_audio_scene::AudioBus;
 
 /// What the control thread owns: the engine, the transports and the scenes open on it, steered by requests and looked
 /// at once a tick. A plain state machine, so a test or an offline session drives it without the thread.

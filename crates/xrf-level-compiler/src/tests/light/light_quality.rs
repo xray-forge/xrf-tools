@@ -18,7 +18,7 @@ const SUN: (f32, f32) = (-0.8, 2.4);
 
 /// A project lit as the editor writes it at `sky` quality: a lamp under `$static`, the sky under `$hemi` and a scene
 /// lamp the level's author put there, the sun under `$sun` with its dynamic light along it.
-fn lit(sky: u8) -> XrfResult<BuildPrjFile> {
+pub(crate) fn lit(sky: u8) -> XrfResult<BuildPrjFile> {
   let light = |controller: u32, light: &SkyLight| {
     LevelDynamicLight::new_directional(
       controller,

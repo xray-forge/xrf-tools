@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use xrf_audio_scene::AudioBus;
 use xrf_error::{XrfError, XrfResult};
 
 use crate::control::audio_play::AudioPlay;
@@ -15,7 +16,6 @@ use crate::decode::stream::stream_control::StreamControl;
 use crate::voice::audio_voice_id::AudioVoiceId;
 use crate::voice::playback::audio_voice_state::AudioVoiceState;
 use crate::voice::voice_source::VoiceSource;
-use xrf_audio_scene::AudioBus;
 
 /// One sound a player plays, pauses, seeks and stops, as a media element would: each play streams the sound from where
 /// the transport stands, and a pause or a seek ends that voice and remembers the frame.

@@ -1,5 +1,5 @@
 pub(super) mod charts;
 mod light_draft;
 mod light_point;
-mod light_quality;
+pub(super) mod light_quality;
 mod vertex_light;

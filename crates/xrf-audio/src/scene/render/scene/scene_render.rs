@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
+use xrf_audio_scene::{AudioBus, AudioListener, AudioSceneEmitter, AudioSceneFrame, AudioSceneRules};
+
 use crate::acoustics::audio_acoustics::AudioAcoustics;
 use crate::acoustics::audio_spatialization::AudioSpatialization;
 use crate::acoustics::listener_space::ListenerSpace;
@@ -32,11 +34,6 @@ use crate::voice::playback::audio_voice_state::AudioVoiceState;
 use crate::voice::shared::voice_spatial_parameters::VoiceSpatialParameters;
 use crate::voice::voice_source::VoiceSource;
 use crate::voice::voice_spatial::VoiceSpatial;
-use xrf_audio_scene::AudioBus;
-use xrf_audio_scene::AudioListener;
-use xrf_audio_scene::AudioSceneEmitter;
-use xrf_audio_scene::AudioSceneFrame;
-use xrf_audio_scene::AudioSceneRules;
 
 /// One scene as the control thread plays it: every emitter its frames name simulates by the scene's clock, and the
 /// loudest by priority, up to the engine's targets, hold a voice placed where its clock says it is.

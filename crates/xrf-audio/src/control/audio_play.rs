@@ -1,5 +1,6 @@
-use crate::voice::voice_source::VoiceSource;
 use xrf_audio_scene::AudioBus;
+
+use crate::voice::voice_source::VoiceSource;
 
 /// A voice to start.
 #[derive(Debug)]

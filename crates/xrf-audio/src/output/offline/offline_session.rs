@@ -1,6 +1,8 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use xrf_audio_scene::AudioSceneInbox;
+
 use crate::acoustics::audio_acoustics::AudioAcoustics;
 use crate::acoustics::audio_spatialization::AudioSpatialization;
 use crate::acoustics::scene::simulation_pace::SimulationPace;
@@ -18,7 +20,6 @@ use crate::scene::host::audio_scene_geometry::AudioSceneGeometry;
 use crate::scene::render::bank::sound_bank::SoundBank;
 use crate::scene::render::stream_launcher::StreamLauncher;
 use crate::scene::report::audio_scene_report::AudioSceneReport;
-use xrf_audio_scene::AudioSceneInbox;
 
 /// The audio's whole runtime without a device or a thread, on a clock of the frames it renders: the control side ticks
 /// every `Self::TICK` of them however the renders are cut, sounds are read and streams decode before each tick, so a

@@ -2,6 +2,8 @@ use std::sync::{Arc, Condvar, Mutex, MutexGuard, PoisonError};
 use std::thread;
 use std::time::{Duration, Instant};
 
+use xrf_audio_scene::AudioListener;
+
 use crate::acoustics::audio_acoustics::AudioAcoustics;
 use crate::acoustics::scene::scene_acoustics_state::SceneAcousticsState;
 use crate::acoustics::scene::scene_geometry_state::SceneGeometryState;
@@ -9,7 +11,6 @@ use crate::acoustics::scene::simulated_source::SimulatedSource;
 use crate::acoustics::scene::simulation_pace::SimulationPace;
 use crate::acoustics::steam::simulation::simulated_world::SimulatedWorld;
 use crate::scene::host::audio_scene_geometry::AudioSceneGeometry;
-use xrf_audio_scene::AudioListener;
 
 /// One scene's simulation: it reads the scene's geometry and builds Steam Audio's scene from it, then, each time the
 /// control side hands it where the listener and the sounds are, hears each sound's way through the walls (occlusion,

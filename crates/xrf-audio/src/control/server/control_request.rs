@@ -2,6 +2,7 @@ use std::sync::Arc;
 use std::sync::mpsc::SyncSender;
 use std::time::Duration;
 
+use xrf_audio_scene::AudioSceneMailbox;
 use xrf_error::XrfResult;
 
 use crate::acoustics::audio_spatialization::AudioSpatialization;
@@ -15,7 +16,6 @@ use crate::mixer::tap::audio_tap::AudioTap;
 use crate::scene::host::audio_asset_source::AudioAssetSource;
 use crate::scene::host::audio_scene_geometry::AudioSceneGeometry;
 use crate::scene::report::audio_scene_report::AudioSceneReport;
-use xrf_audio_scene::AudioSceneMailbox;
 
 /// What an [`crate::AudioServer`] sends its control thread; a request with an `answer` is waited on.
 pub(crate) enum ControlRequest {

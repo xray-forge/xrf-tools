@@ -1,6 +1,8 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use xrf_audio_scene::AudioListener;
+
 use crate::acoustics::audio_acoustics::AudioAcoustics;
 use crate::acoustics::scene::scene_acoustics_state::SceneAcousticsState;
 use crate::acoustics::scene::scene_geometry_state::SceneGeometryState;
@@ -12,7 +14,6 @@ use crate::acoustics::steam::simulation::scene_simulation::SceneSimulation;
 use crate::scene::host::audio_scene_geometry::AudioSceneGeometry;
 use crate::scene::report::audio_acoustics_report::AudioAcousticsReport;
 use crate::voice::voice_spatial::VoiceSpatial;
-use xrf_audio_scene::AudioListener;
 
 /// A scene's acoustics on the control thread: where the acoustics run and the host gave the scene's geometry, a
 /// simulation hears each placed sound's way through the walls and the listener's reverb; the control thread hands it

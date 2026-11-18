@@ -2,9 +2,8 @@ use std::sync::Mutex;
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_geometry::{BvhTracer, Tracer};
-use xrf_renderer_core::RayQueryDevice;
-use xrf_renderer_core::wgpu;
 use xrf_renderer_core::wgpu::util::DeviceExt;
+use xrf_renderer_core::{RayQueryDevice, wgpu};
 
 use crate::ray::gpu::ray_gpu_alpha_face::RayGpuAlphaFace;
 use crate::ray::gpu::ray_gpu_alpha_texture::RayGpuAlphaTexture;
